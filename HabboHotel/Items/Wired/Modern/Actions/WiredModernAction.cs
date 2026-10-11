@@ -393,9 +393,9 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     && !(name == "wf_act_move_furni_to" && config.IntParams.Length == 4
                         || name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6), passengers: passengers,
                     landingUsers: landingUsers),
-                (user, target, slide, fast, walkMode) => slide
+                (user, target, slide, _, walkMode) => slide
                     ? _movement.MoveAvatar(context, user, target.GetX, target.GetY, true, walkMode)
-                    : Teleport(context, user, target, fast),
+                    : Teleport(context, user, target),
                 (item, state) =>
                 {
                     var mark = FurnitureStateEvents.Mark();
@@ -700,7 +700,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         _ => throw new ArgumentOutOfRangeException(nameof(choice))
     };
 
-    private bool Teleport(WiredRuntimeContext context, RoomUser user, Item target, bool fast)
+    private bool Teleport(WiredRuntimeContext context, RoomUser user, Item target)
     {
         // A freeze that ends on teleport ends before the move, including when the user is already there.
         WiredAvatarState.For(context.Room).Thaw(user, teleport: true);
@@ -713,11 +713,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return true;
         }
 
-        // Fast is an animation time of 0. The relocate itself is immediate either way.
-        var duration = fast || context.Policy.Addons.DisableAnimation ? 0 : context.Policy.Addons.AnimationTimeMs;
-
-        // Turbo's teleport helper relocates and sends the glide. It does not apply an avatar effect.
-        return _movement.MoveAvatar(context, user, target.GetX, target.GetY, true, 2, ignoreOccupants: true, animationTimeMs: duration);
+        // The native teleport relocates at once and publishes no avatar movement entry. It does not apply an avatar effect.
+        return _movement.MoveAvatar(context, user, target.GetX, target.GetY, false, 2, ignoreOccupants: true);
     }
 
     private string FormatLegacyText(WiredRuntimeContext context, RoomUser user, string text) =>

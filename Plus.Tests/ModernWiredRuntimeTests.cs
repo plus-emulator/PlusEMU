@@ -2141,9 +2141,7 @@ public class ModernWiredRuntimeTests
         f.Fire();
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(new Point(1, 1), second.Coordinate);
-        var durations = MovementDurations(replies);
-        Assert.Equal(2, durations.Length);
-        Assert.All(durations, duration => Assert.Equal(500, duration));
+        Assert.Empty(MovementDurations(replies));
         f.Advance(500);
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(new Point(1, 1), second.Coordinate);
@@ -2163,7 +2161,7 @@ public class ModernWiredRuntimeTests
         f.Fire();
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(new Point(1, 1), resident.Coordinate);
-        Assert.Equal(new[] { 0 }, MovementDurations(replies));
+        Assert.Empty(MovementDurations(replies));
         Assert.Equal(8, f.User.CurrentEffect);
         Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
         Assert.Empty(f.Errors);
@@ -2178,7 +2176,7 @@ public class ModernWiredRuntimeTests
         f.Fire();
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(8, f.User.CurrentEffect);
-        Assert.Equal(new[] { 0 }, MovementDurations(replies));
+        Assert.Empty(MovementDurations(replies));
         Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
         f.Advance(500);
         Assert.Equal(8, f.User.CurrentEffect);
@@ -2186,14 +2184,14 @@ public class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void TeleportMovesAtOnceAndGlidesForTheStackAnimationTime()
+    public void TeleportMovesAtOnceAndPublishesNoMovementEntry()
     {
         using var f = new TeleportFixture();
         var replies = Capture(f.Habbo.Client);
         f.Fire();
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(8, f.User.CurrentEffect);
-        Assert.Equal(new[] { 500 }, MovementDurations(replies));
+        Assert.Empty(MovementDurations(replies));
         Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
         f.Advance(1500);
         Assert.Equal(8, f.User.CurrentEffect);
@@ -2350,7 +2348,7 @@ public class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void V2IncomingTeleportPublishesDestinationAndWalkOnlyAfterTheOwnerMoves()
+    public void V2IncomingTeleportMovesAndWalksOnlyAfterTheOwnerDrains()
     {
         using var f = new TeleportFixture();
         f.Target.Definition.Walkable = true;
@@ -2367,8 +2365,8 @@ public class ModernWiredRuntimeTests
         f.DrainOwned();
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Same(f.Target, f.User.LastItem);
-        Assert.Equal((0, 0, 1, 1, 500), Assert.Single(MovementEndpoints(replies)));
-        Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.WiredFurniMoveStyleComposer);
+        Assert.Empty(MovementEndpoints(replies));
+        Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.WiredFurniMoveStyleComposer);
         Assert.Empty(f.Errors);
     }
 

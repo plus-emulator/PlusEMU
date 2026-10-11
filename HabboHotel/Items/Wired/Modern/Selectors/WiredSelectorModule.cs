@@ -131,7 +131,7 @@ public static class WiredSelectorModule
                             continue;
                         }
 
-                        foreach (var other in available.Where(x => (P(0) == 3 || x.Id != item.Id) && x.Tiles.Contains((item.X, item.Y)))) {
+                        foreach (var other in available.Where(x => (P(0) is 2 or 3 || x.Id != item.Id) && x.Tiles.Contains((item.X, item.Y)))) {
                             if (P(0) switch
                             {
                                 0 => other.Z > item.Z,

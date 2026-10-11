@@ -35,7 +35,7 @@ public sealed class WiredSelectorParityTests
     [Theory]
     [InlineData(0, new uint[] { 2 })]
     [InlineData(1, new uint[] { 3 })]
-    [InlineData(2, new uint[] { 4 })]
+    [InlineData(2, new uint[] { 1, 4 })]
     [InlineData(3, new uint[] { 1, 2, 3, 4 })]
     public void FurnitureOnFurnitureUsesAnchorOriginAndRelativeBaseHeight(int mode, uint[] expected)
     {

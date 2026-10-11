@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Plus.Communication.Flash;
+using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Users.Inventory.Furniture;
@@ -9,6 +11,7 @@ using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Conditions;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Users;
 using Xunit;
 
 namespace Plus.Tests;
@@ -47,6 +50,44 @@ public sealed class WiredConditionParityTests
         Expect("wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs", empty, true, true, true, true, "negative all empty");
         Expect("wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs", occupied, false, false, false, false, "negative all occupied");
         Expect("wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs", mixed, true, false, true, false, "negative mixed");
+    }
+
+    [Theory]
+    [InlineData(1, 101, "", true)]
+    [InlineData(2, 101, "", false)]
+    [InlineData(4, 101, "", false)]
+    [InlineData(1, 0, "", true)]
+    [InlineData(2, 0, "", false)]
+    [InlineData(4, 0, "", false)]
+    [InlineData(1, 101, "Objecto", true)]
+    [InlineData(1, 101, "Missing", false)]
+    public void TriggererMatchTreatsAnEmptyNameAsAnyNameAndNegativeIsTheComplement(int kind, int comparison, string text, bool expected)
+    {
+        Assert.Equal((expected, !expected),
+            (TriggererMatches("wf_cnd_triggerer_match", kind, comparison, text), TriggererMatches("wf_cnd_not_triggerer_match", kind, comparison, text)));
+    }
+
+    private static bool TriggererMatches(string name, int kind, int comparison, string text)
+    {
+        var (room, _, _) = World();
+        var client = new FlashGameClient(TestGameServer.Instance, new FlashPacketFactory(), TestLogging.GameClient);
+        client.SetHabbo(new Habbo { Id = 1, Username = "Objecto", CurrentRoom = room, Client = client });
+        var user = new RoomUser(1, 0, 1, room, client, TestChatEmotions.Unused, TestRewardProgress.Unused);
+        user.SetPos(1, 1, 0);
+        var box = Box(room, name, _ => null);
+        var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor) with
+        {
+            OwnedIntParams = [kind],
+            UserSourceTypes = [0, comparison],
+            Text = text
+        };
+        Assert.True(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native, out var proposed));
+        Assert.True(box.TryValidateConfiguration(proposed, out var config, out var error), error);
+        box.ApplyConfiguration(config);
+        var context = Context(room, [], [user]);
+        context.Triggering.UserIds.Add(user.VirtualId);
+
+        return box.Execute(context);
     }
 
     private static void Expect(string furniName, string avatarName, Occupancy scene,

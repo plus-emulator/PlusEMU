@@ -90,6 +90,10 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_user_performs_action":
                 return Quantify(user => IsPerforming(user, config, context.Event), 6);
             case "wf_cnd_triggerer_match":
+                if (config.UserSources["comparison"] == 101 && config.Text.Length == 0 && Param(config, 1) == 0) {
+                    return Quantify(user => MatchesKind(user, Param(config, 0)), 4);
+                }
+
                 var comparisons = Users(context, config, "comparison", config.UserSources["comparison"] == 101 ? config.Text : null)
                     .Where(user => MatchesKind(user, Param(config, 0)))
                     .Where(user => Param(config, 1) == 0 || string.Equals(Name(user), config.Text, StringComparison.OrdinalIgnoreCase))

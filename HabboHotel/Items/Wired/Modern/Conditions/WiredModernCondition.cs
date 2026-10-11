@@ -105,7 +105,12 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_furnis_hv_avtrs":
                 return WiredItemConditions.HasAvatars(config, Items(), context.Targets.AllUsers());
             case "wf_cnd_has_furni_on":
-                return WiredItemConditions.HasStackedFurniture(config, Items(), item => WiredRoomOperations.HasStackedItem(context.Room, item));
+                var stackSubjects = Items();
+                var ignoredSupports = Descriptor.CanonicalName == "wf_cnd_not_furni_on" && config.FurniSources["items"] == 100
+                    ? stackSubjects.Select(item => item.Id).ToHashSet() : null;
+
+                return WiredItemConditions.HasStackedFurniture(config, stackSubjects,
+                    item => WiredRoomOperations.HasStackedItem(context.Room, item, ignoredSupports));
             case "wf_cnd_match_snapshot":
                 return WiredItemConditions.MatchesSnapshot(config, Items());
             case "wf_cnd_stuff_is":

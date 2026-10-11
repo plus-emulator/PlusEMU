@@ -74,10 +74,10 @@ public static class WiredRoomOperations
     public static bool IsOnItem(RoomUser user, Item item) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(user.Coordinate);
 
-    public static bool HasStackedItem(Room room, Item item) =>
+    public static bool HasStackedItem(Room room, Item item, IReadOnlySet<uint>? ignored = null) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation)
             .SelectMany(point => room.GetGameMap().GetCoordinatedItems(point))
-            .Any(other => other.Id != item.Id && other.GetZ >= item.TotalHeight);
+            .Any(other => other.Id != item.Id && ignored?.Contains(other.Id) != true && other.GetZ >= item.TotalHeight);
 
     public static bool CanMoveItem(Room room, Item item, int x, int y, int rotation,
         double? height = null, bool throughUsers = false, bool throughFurni = false, WiredCollisionPolicy? collision = null)

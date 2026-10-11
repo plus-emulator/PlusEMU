@@ -90,6 +90,50 @@ public sealed class WiredConditionParityTests
         return box.Execute(context);
     }
 
+    [Theory]
+    [InlineData("wf_cnd_not_furni_on", new[] { 1u, 2u }, 0, 1, -1, true, true)]
+    [InlineData("wf_cnd_not_furni_on", new[] { 1u }, 0, 1, -1, false, false)]
+    [InlineData("wf_cnd_not_furni_on", new[] { 1u, 2u }, 0, 1, 2, false, false)]
+    [InlineData("wf_cnd_not_furni_on", new[] { 1u, 2u }, 1, 0, 2, false, false)]
+    [InlineData("wf_cnd_has_furni_on", new[] { 1u, 2u }, 0, 1, -1, true, false)]
+    public void PickedFurnitureDoesNotCountAsStackedOnOtherPickedFurniture(string name, uint[] picked, int firstZ, int secondZ, int externalZ,
+        bool radioZero, bool radioOne)
+    {
+        Assert.Equal((radioZero, radioOne), (RunStack(name, 0, picked, firstZ, secondZ, externalZ), RunStack(name, 1, picked, firstZ, secondZ, externalZ)));
+    }
+
+    private static bool RunStack(string name, int radio, uint[] picked, int firstZ, int secondZ, int externalZ)
+    {
+        var (room, map, items) = World();
+        var first = Floor(1, "subject", 0, 0);
+        var second = Floor(2, "subject", 0, 0);
+        first.Definition.Height = second.Definition.Height = 1;
+        first.SetState(0, 0, firstZ, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+        second.SetState(0, 0, secondZ, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+        Place(map, items, first);
+        Place(map, items, second);
+
+        if (externalZ >= 0) {
+            var external = Floor(3, "external", 0, 0);
+            external.Definition.Height = 1;
+            external.SetState(0, 0, externalZ, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+            Place(map, items, external);
+        }
+
+        var box = Box(room, name, _ => null);
+        var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor) with
+        {
+            OwnedIntParams = [radio],
+            FurniSourceTypes = [100],
+            PrimaryItems = [.. picked.Select(id => new WiredNativeItemReference(id, false))]
+        };
+        Assert.True(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native, out var proposed));
+        Assert.True(box.TryValidateConfiguration(proposed, out var config, out var error), error);
+        box.ApplyConfiguration(config);
+
+        return box.Execute(Context(room, items.Values.ToArray(), []));
+    }
+
     private static void Expect(string furniName, string avatarName, Occupancy scene,
         bool furniAny, bool furniAll, bool avatarAny, bool avatarAll, string label)
     {

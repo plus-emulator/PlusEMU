@@ -805,8 +805,8 @@ public class ModernWiredRuntimeTests
         Assert.False(new WiredDirectionalActions().MoveHeading(item, 0, 6, false,
             (x, y) => { attempts.Add(new(x, y)); return false; }, (_, _) => [], (_, _) => throw new Exception()));
         Assert.Single(attempts);
-        Assert.Equal(2, WiredDirectionalActions.AvatarRotation(0, 8));
-        Assert.Equal(6, WiredDirectionalActions.AvatarRotation(0, 9));
+        Assert.Equal(1, WiredDirectionalActions.AvatarRotation(0, 8));
+        Assert.Equal(7, WiredDirectionalActions.AvatarRotation(0, 9));
     }
 
     [Theory]

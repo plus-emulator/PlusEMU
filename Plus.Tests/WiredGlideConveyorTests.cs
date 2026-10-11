@@ -300,7 +300,8 @@ public sealed partial class WiredGlideConveyorTests
             Items = (ConcurrentDictionary<uint, Item>)Get(handler, "_floorItems");
             _users = (ConcurrentDictionary<int, RoomUser>)Get(users, "_users");
             var saved = layout.Where(entry => entry.Json != null)
-                .Select(entry => WiredNativeTestSupport.NativeRow(entry.Id, entry.Name, entry.Json!)).ToArray();
+                .Select(entry => entry.Json!.StartsWith("native:", StringComparison.Ordinal) ? new ModernWiredRuntimeTests.StoredRuntimeRow(entry.Id, entry.Name, 2, entry.Json[7..])
+                    : WiredNativeTestSupport.NativeRow(entry.Id, entry.Name, entry.Json!)).ToArray();
             _savedRows = saved.ToImmutableDictionary(row => row.ItemId);
             _wired = new(_room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance,
                 new SavedConfigurations(saved), TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance,

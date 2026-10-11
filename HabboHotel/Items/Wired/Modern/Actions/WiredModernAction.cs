@@ -585,13 +585,14 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                     var rotation = WiredDirectionalActions.AvatarRotation(user.RotBody, Param(config, 1));
 
-                    if (user.RotBody == rotation && user.RotHead == rotation) {
-                        continue;
+                    // The direction entry is sent even when the avatar already faces that way; only a real change needs a status update.
+                    if (user.RotBody != rotation || user.RotHead != rotation) {
+                        user.RotBody = rotation;
+                        user.RotHead = rotation;
+                        user.UpdateNeeded = true;
                     }
 
-                    user.RotBody = rotation;
-                    user.RotHead = rotation;
-                    user.UpdateNeeded = true;
+                    context.Room.SendPacket(new WiredUserDirectionComposer(user.VirtualId, rotation, rotation));
                     changed = true;
                 }
 

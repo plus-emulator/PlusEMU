@@ -85,5 +85,5 @@ public sealed class WiredDirectionalActions
             .Where(point => point.X != item.GetX || point.Y != item.GetY);
     }
     public static int AvatarRotation(int body, int raw) => raw switch
-    { 8 => (body + 2) % 8, 9 => (body + 6) % 8, _ => raw };
+    { 8 => (body + 1) % 8, 9 => (body + 7) % 8, _ => raw };
 }

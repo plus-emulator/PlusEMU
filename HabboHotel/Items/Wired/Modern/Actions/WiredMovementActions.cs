@@ -8,8 +8,11 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// Executes the existing Octane movement editors. Resolved movers and targets are separate;
 /// the caller owns source selection, scheduling and packet policy.
 /// </summary>
-public sealed class WiredMovementActions
+public sealed class WiredMovementActions(Random? random = null)
 {
+    // Only the move/rotate direction choices draw from this; every other random choice here still uses Random.Shared.
+    private readonly Random _random = random ?? Random.Shared;
+
     public delegate bool MoveFurniture(Item item, int x, int y, int rotation, double? height);
     public delegate bool MoveAvatar(RoomUser avatar, Item target, bool slide, bool fastTeleport, int walkMode);
     /// <summary>Runs each mover's step; the step commits through the given (x, y, rotation) move.</summary>
@@ -255,13 +258,13 @@ public sealed class WiredMovementActions
         return next == oldState ? null : next.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    private static int MovementDirection(int movement) => movement switch
+    private int MovementDirection(int movement) => movement switch
     {
         >= 0 and <= 7 => movement,
-        // Read-only conversion preserves old editor's random/none choices, absent from the current grid.
-        8 => Random.Shared.Next(4) * 2,
-        9 => Random.Shared.Next(2) == 0 ? 2 : 6,
-        10 => Random.Shared.Next(2) == 0 ? 0 : 4,
+        // Stored movement choices include fixed, random and no movement.
+        8 => _random.Next(8),
+        9 => _random.Next(2) == 0 ? 2 : 6,
+        10 => _random.Next(2) == 0 ? 0 : 4,
         _ => -1
     };
 }

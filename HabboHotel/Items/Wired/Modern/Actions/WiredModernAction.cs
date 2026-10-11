@@ -24,6 +24,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
     private readonly WiredDirectionalActions _directions = new();
     private readonly ILogger _logger;
     private readonly TimeProvider _clock;
+    private readonly Random? _movementRandom;
     private readonly IWiredRewardService _rewards;
     private readonly IBotManagementStore _botStore;
     private readonly IGameClientManager _clients;
@@ -42,7 +43,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
     public WiredModernAction(Room room, Item item, WiredBoxDescriptor descriptor, WiredCounterController clocks,
         Action<WiredRuntimeEvent> publish, Action<RoomUser, IEnumerable<Item>, IEnumerable<Item>> walkTransition, WiredRoomLog roomLog, ILogger logger,
         TimeProvider clock, IWiredRewardService rewards, IBotManagementStore botStore, IGameClientManager clients, IItemDataManager definitions,
-        IItemTravelStore travelStore, bool transparentWalkTransition = false) : base(room, item, descriptor)
+        IItemTravelStore travelStore, bool transparentWalkTransition = false, Random? movementRandom = null) : base(room, item, descriptor)
     {
         if (!Supports(descriptor.CanonicalName)) {
             throw new ArgumentException("Unknown action.", nameof(descriptor));
@@ -59,6 +60,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         _clients = clients;
         _definitions = definitions;
         _travelStore = travelStore;
+        _movementRandom = movementRandom;
     }
 
     internal void BindHeadingCollision(Func<WiredRuntimeContext, WiredRuntimeEvent, bool?> enqueue)
@@ -387,7 +389,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             IReadOnlySet<int>? landingUsers = name == "wf_act_furni_to_user" && movementUsers.Length > 0
                 ? new HashSet<int> { movementUsers[0].VirtualId } : null;
 
-            return new WiredMovementActions().Execute(name, config, movers, targets, movementUsers,
+            return new WiredMovementActions(_movementRandom).Execute(name, config, movers, targets, movementUsers,
                 (item, x, y, rotation, height) => _movement.MoveFurniture(context, item, x, y, rotation, height,
                     WiredMovementActions.Steps.Contains(name)
                     && !(name == "wf_act_move_furni_to" && config.IntParams.Length == 4

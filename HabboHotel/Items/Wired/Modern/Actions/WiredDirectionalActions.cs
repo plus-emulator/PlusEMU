@@ -8,7 +8,8 @@ public sealed class WiredDirectionalActions
 {
     private readonly Dictionary<Item, int> _headings = [];
     public bool MoveHeading(Item item, int initial, int turn, bool blockUsers,
-        Func<int, int, bool> move, Func<int, int, RoomUser[]> usersAt, Action<Item, RoomUser> collision)
+        Func<int, int, bool> move, Func<int, int, RoomUser[]> usersAt, Action<Item, RoomUser> collision,
+        IReadOnlySet<int>? throughUsers = null)
     {
         var heading = Heading(item, initial);
         var moved = false;
@@ -17,13 +18,19 @@ public sealed class WiredDirectionalActions
             var offset = WiredRoomOperations.Offset(heading);
             var x = item.GetX + offset.X;
             var y = item.GetY + offset.Y;
-            var occupants = blockUsers ? usersAt(x, y) : [];
+            var occupants = usersAt(x, y);
 
             foreach (var user in occupants.Where(user => !user.IsBot)) {
                 collision(item, user);
             }
 
-            if (occupants.Length == 0 && move(x, y)) {
+            var blocked = blockUsers && occupants.Any(user => throughUsers?.Contains(user.VirtualId) != true);
+
+            if (blocked) {
+                break;
+            }
+
+            if (move(x, y)) {
                 moved = true;
                 break;
             }

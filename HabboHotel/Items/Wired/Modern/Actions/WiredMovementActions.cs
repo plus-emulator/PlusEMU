@@ -70,7 +70,7 @@ public sealed class WiredMovementActions
                     }
 
                     var z = Param(0, 2) switch { 0 => item.GetZ + altitude, 1 => item.GetZ - altitude, _ => altitude };
-                    affected |= move(item, item.GetX, item.GetY, item.Rotation, Math.Clamp(z, 0, Math.Max(0, 80 - item.Definition.Height)));
+                    affected |= move(item, item.GetX, item.GetY, item.Rotation, Math.Clamp(z, 0, Math.Max(0, 80 - item.CurrentHeight)));
                 }
 
                 break;

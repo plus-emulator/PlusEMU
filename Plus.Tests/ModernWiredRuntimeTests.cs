@@ -843,7 +843,7 @@ public class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public async Task MoveToDirectionRandomRetriesEightBlockedAttempts()
+    public async Task MoveToDirectionRandomTurnStopsAtTheFirstBlockingUser()
     {
         var f = new MovementOracleSession("wf_act_move_to_dir");
         var item = f.Items[8];
@@ -871,7 +871,7 @@ public class ModernWiredRuntimeTests
 
         Assert.False(f.Action.Execute(Context(f.Room, new(WiredEventKind.Use), [item], users.ToArray())));
 
-        Assert.Equal(8, collisions);
+        Assert.Equal(1, collisions);
         Assert.Equal(new Point(1, 1), item.Coordinate);
     }
 

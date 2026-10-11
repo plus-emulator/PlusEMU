@@ -42,10 +42,10 @@ public static class WiredItemConditions
     public static bool MatchesType(WiredConfiguration config, IEnumerable<Item> items,
         IEnumerable<Item> comparisonItems)
     {
-        var definitions = comparisonItems.Select(item => item.Definition.Id).ToHashSet();
+        var ids = comparisonItems.Select(item => item.Id).ToHashSet();
 
-        return definitions.Count != 0 && WiredRoomOperations.Quantify(
-            items.Select(item => definitions.Contains(item.Definition.Id)), Param(config, 2));
+        return ids.Count != 0 && WiredRoomOperations.Quantify(
+            items.Select(item => ids.Contains(item.Id)), Param(config, 2));
     }
 
     public static bool MatchesAltitude(WiredConfiguration config, IEnumerable<Item> items)

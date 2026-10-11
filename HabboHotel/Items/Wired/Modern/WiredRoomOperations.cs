@@ -125,7 +125,7 @@ public static class WiredRoomOperations
 
             var top = height ?? placement.PlacementZ;
 
-            if (top + item.Definition.Height > 80) {
+            if (top + item.CurrentHeight > 80) {
                 return false;
             }
         }

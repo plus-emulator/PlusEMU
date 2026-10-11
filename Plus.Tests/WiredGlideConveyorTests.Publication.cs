@@ -249,6 +249,29 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal((5, 11, 2.0), (rider.X, rider.Y, rider.Z));
     }
 
+    [Theory]
+    [InlineData(0.5, 1.5, "0.5")]
+    [InlineData(0.25, 1.25, "0.25")]
+    public void SameTileCarryAnimationStartsAtTheMovedFurnituresPriorTop(double height, double riderZ, string fromZ)
+    {
+        var f = new Fixture(FastQueueLayout(2), live: true);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        f.Items[1].Definition.Height = height;
+        rider.Z = riderZ;
+        var context = f.MovementContext();
+        context.Policy.Addons.Carry = new(true, new HashSet<int> { rider.VirtualId });
+        var passengers = WiredRoomMovement.CapturePassengers(context, [f.Items[1]]);
+        var movement = new WiredRoomMovement((_, _, _) => { });
+        var packets = CapturePublication(rider);
+
+        Assert.True(movement.MoveFurniture(context, f.Items[1], 5, 11, 0, null, passengers: passengers));
+        f.Owned(context.Room.GetGameMap().Navigation!.ApplyDirty);
+        f.DrainMovement();
+
+        var carried = Assert.Single(ReadPublication(packets).Where(move => move.Type == 0));
+        Assert.Equal(fromZ, carried.FromZ);
+    }
+
     [Fact]
     public void OpaqueObserverAndNonemptyProductionVariableDrainSealAndAreConsumedOnce()
     {

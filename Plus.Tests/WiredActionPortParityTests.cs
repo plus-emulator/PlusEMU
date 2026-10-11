@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Plus.HabboHotel.Items;
@@ -70,6 +71,60 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.True(action.Execute(Context(room, topFirst ? [top, bottom] : [bottom, top], [user])));
         Assert.Equal((topFirst ? 2 : 3, 2, 0.0), (bottom.GetX, bottom.GetY, bottom.GetZ));
         Assert.Equal((3, 2, topFirst ? 0.0 : 0.5), (top.GetX, top.GetY, top.GetZ));
+    }
+
+    [Theory]
+    [InlineData(1, false, false)]
+    [InlineData(0, false, false)]
+    [InlineData(1, true, true)]
+    [InlineData(0, true, true)]
+    public void MoveToDirectionDispatchesCollisionAndLetsPhysicsThroughUsersPass(int blockUsers, bool throughUser, bool moves)
+    {
+        var (room, map, items) = World();
+        var item = Floor(1, 2, 2);
+        Place(map, items, item);
+        var user = Avatar(room, 1, 3, 2);
+        map.AddUserToMap(user, new(3, 2));
+        var collisions = new List<WiredRuntimeEvent>();
+        var action = Box(room, "wf_act_move_to_dir", [2, 0, 100, blockUsers], [1], collisions.Add);
+        var context = Context(room, [item], [user]);
+        context.Policy.Addons.Physics = new(false, new HashSet<uint>(), throughUser ? new HashSet<int> { user.VirtualId } : new HashSet<int>(), new HashSet<uint>());
+        action.Execute(context);
+        var collision = Assert.Single(collisions.Where(published => published.Kind == WiredEventKind.Collision));
+        Assert.Same(user, collision.Actor);
+        Assert.Same(item, collision.EventItem);
+        Assert.Equal(moves ? (3, 2) : (2, 2), (item.GetX, item.GetY));
+    }
+
+    [Fact]
+    public void MoveToDirectionStaysOnItsHeadingWhileAUserBlocksAndMovesOnceTheyLeave()
+    {
+        var (room, map, items) = World();
+        var item = Floor(1, 2, 2);
+        Place(map, items, item);
+        var user = Avatar(room, 1, 3, 2);
+        map.AddUserToMap(user, new(3, 2));
+        var action = Box(room, "wf_act_move_to_dir", [2, 2, 100, 1], [1], _ => { });
+        Assert.False(action.Execute(Context(room, [item], [user])));
+        Assert.Equal((2, 2), (item.GetX, item.GetY));
+        Assert.False(action.Execute(Context(room, [item], [user])));
+        Assert.Equal((2, 2), (item.GetX, item.GetY));
+        map.RemoveUserFromMap(user, new(3, 2));
+        Assert.True(action.Execute(Context(room, [item], [user])));
+        Assert.Equal((3, 2), (item.GetX, item.GetY));
+    }
+
+    [Fact]
+    public void MoveToDirectionWithoutBlockingUsersTurnsAndRetriesInTheSameExecution()
+    {
+        var (room, map, items) = World();
+        var item = Floor(1, 2, 2);
+        Place(map, items, item);
+        var user = Avatar(room, 1, 3, 2);
+        map.AddUserToMap(user, new(3, 2));
+        var action = Box(room, "wf_act_move_to_dir", [2, 2, 100, 0], [1], _ => { });
+        Assert.True(action.Execute(Context(room, [item], [user])));
+        Assert.Equal((2, 3), (item.GetX, item.GetY));
     }
 
     [Theory]
@@ -257,11 +312,17 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
     [InlineData(1, "50", 50)]
     [InlineData(1, "80", 79)]
     [InlineData(0.65, "80", 79.35)]
-    public void AltitudeSetHonorsTheEightyTileTopLimitAndDefinitionHeight(double height, string requested, double expected)
+    [InlineData(1, "80", 79, "1,0.75,0.5,0.25,0.1", "0")]
+    [InlineData(1, "80", 79.5, "1,0.75,0.5,0.25,0.1", "2")]
+    public void AltitudeSetHonorsTheEightyTileTopLimitAndDefinitionHeight(double height, string requested, double expected,
+        string adjustableHeights = "", string state = "0")
     {
         var (room, map, items) = World();
         var item = Floor(1, 1, 1);
         item.Definition.Height = height;
+        item.Definition.AdjustableHeights = adjustableHeights.Length == 0 ? new List<double>()
+            : adjustableHeights.Split(',').Select(value => double.Parse(value, CultureInfo.InvariantCulture)).ToList();
+        item.ExtraData = new LegacyDataFormat { Data = state };
         Place(map, items, item);
         var action = Box(room, "wf_act_set_altitude", [2, 100], [1], text: requested);
         Assert.True(action.Execute(Context(room, [item], [])));

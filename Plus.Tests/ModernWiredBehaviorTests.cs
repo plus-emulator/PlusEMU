@@ -272,15 +272,16 @@ public class ModernWiredBehaviorTests
     }
 
     [Fact]
-    public void TypeConditionComparesResolvedRolesWithoutMixingThem()
+    public void ItemIdentityConditionComparesExactItemsWithoutMixingRoles()
     {
         var selected = Item(1, 0, 0);
         selected.Definition.Id = 10;
         var other = Item(2, 0, 0);
+        other.Definition.Id = 10;
+        Assert.False(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [other]));
         other.Definition.Id = 20;
         Assert.False(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [other]));
-        other.Definition.Id = 10;
-        Assert.True(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [other]));
+        Assert.True(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [selected]));
         Assert.False(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 1] }, [selected], []));
     }
 

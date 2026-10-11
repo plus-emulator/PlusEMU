@@ -563,7 +563,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                             context.Publication?.Flush();
                             _publish(collision);
-                        });
+                        }, context.Policy.Addons.Physics?.ThroughUsers);
                 }
 
                 return changed;

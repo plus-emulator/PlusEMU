@@ -172,9 +172,14 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             _prepareCarryPublication?.Invoke(context, carried);
         }
 
-        // Placement immediately rebinds support heights; carry animation starts at the prior pose.
-        var carrySources = carried.ToDictionary(user => user,
-            user => passengers?.SourcePose(user) ?? (user.X, user.Y, user.Z));
+        // Placement immediately rebinds support heights; carry animation starts at the moved furniture's prior top.
+        var sourceTop = source.Z + source.Height;
+        var carrySources = carried.ToDictionary(user => user, user =>
+        {
+            var pose = passengers?.SourcePose(user) ?? (user.X, user.Y, user.Z);
+
+            return (pose.X, pose.Y, Z: sourceTop);
+        });
         var z = height ?? (physics?.KeepAltitude == true ? item.GetZ : (double?)null);
 
         if (!WiredRoomOperations.MoveItem(room, item, x, y, options.Rotation, z, animate: false,

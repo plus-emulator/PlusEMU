@@ -132,6 +132,13 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             PublishClock(clock, previous);
         }
 
+        if (operation == 0 && origin == WiredClockOrigin.ModernWired && !clock.Running && !clock.Countdown && !clock.GameAware
+            && clock.Value != 0) {
+            var previous = clock.Value;
+            clock.Value = 0;
+            PublishClock(clock, previous);
+        }
+
         if (operation is 0 or 4 && !clock.Running) {
             if (clock.Countdown && clock.Value <= 0) {
                 var previous = clock.Value;

@@ -2801,6 +2801,65 @@ public class ModernWiredRuntimeTests
     }
 
     [Fact]
+    public void WiredStartOfAStoppedPlainCounterRestartsFromZeroAndCrossesLaterThresholds()
+    {
+        var (room, _, items) = World();
+        var item = MakeItem(1, "wf_upcounter1");
+        items[1] = item;
+        var clocks = new WiredCounterController();
+        clocks.Attach(item);
+        Assert.True(clocks.Adjust(item, 2, 0, 10));
+        Assert.Equal(5000, clocks.ReadMilliseconds(item));
+        clocks.TakeChanges();
+        var box = ActionBox(room, "wf_act_control_clock", clocks);
+        WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [0, 100], SelectedItems = [1] }, out var config, out _);
+        box.ApplyConfiguration(config);
+        Assert.True(box.Execute(Context(room, new(WiredEventKind.Use), [item], [])));
+        Assert.True(clocks.IsRunning(item));
+        Assert.Equal(0, clocks.ReadMilliseconds(item));
+        var reset = Assert.Single(clocks.TakeChanges());
+        Assert.Equal((5000, 0), (reset.Event.PreviousValue, reset.Event.Value));
+        Assert.Equal("0", item.LegacyDataString);
+        var threshold = new WiredConfiguration { IntParams = [0, 4, 100] };
+        var crossings = 0;
+
+        for (var now = 500; now <= 4000; now += 500) {
+            foreach (var change in clocks.Poll(now)) {
+                crossings += WiredTriggerPredicates.MatchesCounter(threshold, change.Event.PreviousValue, change.Event.Value) ? 1 : 0;
+            }
+        }
+
+        Assert.Equal(1, crossings);
+    }
+
+    [Theory]
+    [InlineData("wf_upcounter1", 0, WiredClockOrigin.Unknown)]
+    [InlineData("wf_upcounter1", 0, WiredClockOrigin.Gui)]
+    [InlineData("wf_upcounter1", 4, WiredClockOrigin.ModernWired)]
+    [InlineData("wf_game_upcounter1", 0, WiredClockOrigin.ModernWired)]
+    public void StartingOrResumingOutsideThePlainWiredStartKeepsTheCounterValue(string name, int operation, WiredClockOrigin origin)
+    {
+        var item = MakeItem(1, name);
+        var clocks = new WiredCounterController();
+        clocks.Attach(item);
+        Assert.True(clocks.Adjust(item, 2, 0, 10));
+        Assert.True(clocks.Control(item, operation, 0, origin));
+        Assert.Equal(5000, clocks.ReadMilliseconds(item));
+    }
+
+    [Fact]
+    public void WiredStartOfAnAlreadyRunningCounterKeepsItsValue()
+    {
+        var item = MakeItem(1, "wf_upcounter1");
+        var clocks = new WiredCounterController();
+        clocks.Attach(item);
+        Assert.True(clocks.Control(item, 0, 0, WiredClockOrigin.ModernWired));
+        Assert.Single(clocks.Poll(500));
+        Assert.True(clocks.Control(item, 0, 600, WiredClockOrigin.ModernWired));
+        Assert.Equal(500, clocks.ReadMilliseconds(item));
+    }
+
+    [Fact]
     public void ClockStopResetResumeAndRemovalHaveActualLifecycleState()
     {
         var item = MakeItem(1, "wf_upcounter1");

@@ -414,7 +414,18 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         var expected = expectedCount == 0 ? new long[] { 10, 30, 20 } : expectedCount == 2
             ? sortFirst ? new long[] { 10, 7, 7 } : [7, 7, 20]
             : sortFirst ? new long[] { 10, 7, 20 } : [7, 30, 20];
-        Assert.Equal(expected, holders.Select(holder => module.Read(new(holder.Target, "custom:10"), holder, frame)!.Value));
+        var actual = holders.Select(holder => module.Read(new(holder.Target, "custom:10"), holder, frame)!.Value).ToArray();
+
+        if (!variableQuantity) {
+            // A literal amount keeps a random subset of the picks: exactly one holder was changed to 7 and every other holder keeps its own original value.
+            long[] original = [10, 30, 20];
+            Assert.Equal(1, actual.Count(value => value == 7));
+            Assert.All(actual.Select((value, index) => (value, index)).Where(pair => pair.value != 7), pair => Assert.Equal(original[pair.index], pair.value));
+
+            return;
+        }
+
+        Assert.Equal(expected, actual);
     }
 
     [Fact]

@@ -74,6 +74,8 @@ public sealed class WiredAddonPolicy
     public int AnimationTimeMs { get; set; } = 500;
     public int? FurniLimit { get; set; }
     public int? UserLimit { get; set; }
+    // When set, a furniture limit that truncates keeps a random subset of the eligible selection instead of its first entries. Users and unset policies keep the prefix.
+    internal Random? FurniFilterRandom { get; set; }
     public WiredCarryPolicy? Carry { get; set; }
     public WiredPhysicsPolicy? Physics { get; set; }
     public WiredCurvePolicy? Curve { get; set; }
@@ -93,21 +95,38 @@ public sealed class WiredAddonPolicy
         IEnumerable<uint>? furniOrder = null, IEnumerable<int>? userOrder = null)
     {
         var result = selection.Copy();
-        Limit(result.FurniIds, FurniLimit, furniOrder);
+        Limit(result.FurniIds, FurniLimit, furniOrder, FurniFilterRandom);
         Limit(result.UserIds, UserLimit, userOrder);
 
         return result;
     }
 
-    private static void Limit<T>(HashSet<T> values, int? limit, IEnumerable<T>? order)
+    private static void Limit<T>(HashSet<T> values, int? limit, IEnumerable<T>? order, Random? random = null)
     {
         if (limit is not >= 0 || values.Count <= limit.Value) {
             return;
         }
 
-        var candidates = (order ?? values).Where(values.Contains).Take(limit.Value).ToArray();
+        var candidates = random is null || limit.Value == 0
+            ? (order ?? values).Where(values.Contains).Take(limit.Value).ToArray()
+            : Sample((order ?? values).Where(values.Contains).Distinct().ToArray(), limit.Value, random);
         values.Clear();
         values.UnionWith(candidates);
+    }
+
+    // A partial Fisher-Yates shuffle: the first "count" entries are drawn without replacement from the eligible candidates; nothing is drawn unless they truncate.
+    private static T[] Sample<T>(T[] eligible, int count, Random random)
+    {
+        if (eligible.Length <= count) {
+            return eligible;
+        }
+
+        for (var index = 0; index < count; index++) {
+            var other = random.Next(index, eligible.Length);
+            (eligible[index], eligible[other]) = (eligible[other], eligible[index]);
+        }
+
+        return eligible[..count];
     }
 }
 

@@ -98,7 +98,16 @@ public sealed class WiredAddonModule
                     var keep = (int)Math.Clamp(count, 0, 10000);
 
                     if (Name == "wf_xtra_filter_furni") {
+                        var literalIsTheLimit = P(1) == 0 && keep < (policy.FurniLimit ?? int.MaxValue);
                         policy.FurniLimit = Math.Min(policy.FurniLimit ?? int.MaxValue, keep);
+
+                        // A literal furniture amount that sets the limit keeps a random subset of its picks; a variable-mode filter keeps the first entries.
+                        if (P(1) == 1) {
+                            policy.FurniFilterRandom = null;
+                        }
+                        else if (literalIsTheLimit) {
+                            policy.FurniFilterRandom = _random;
+                        }
                     }
                     else {
                         policy.UserLimit = Math.Min(policy.UserLimit ?? int.MaxValue, keep);

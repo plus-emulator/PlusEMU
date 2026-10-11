@@ -52,6 +52,34 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
     }
 
     [Theory]
+    [InlineData("wf_act_chase", 3, 2, 2, 2, true)]
+    [InlineData("wf_act_flee", 3, 2, 2, 2, true)]
+    [InlineData("wf_act_chase", 4, 2, 3, 2, false)]
+    [InlineData("wf_act_flee", 4, 2, 1, 2, false)]
+    public void AdjacentAvatarPublishesCollisionForChaseAndFleeAndDistanceTwoStillMoves(string name, int userX, int userY,
+        int expectedX, int expectedY, bool collision)
+    {
+        var (room, map, items) = World();
+        var mover = Floor(1, 2, 2);
+        Place(map, items, mover);
+        var user = Avatar(room, 1, userX, userY);
+        var events = new List<WiredRuntimeEvent>();
+        var action = Box(room, name, [100], [mover.Id], events.Add);
+        Assert.True(action.Execute(Context(room, [mover], [user])));
+        Assert.Equal((expectedX, expectedY), (mover.GetX, mover.GetY));
+
+        if (collision) {
+            var published = Assert.Single(events);
+            Assert.Equal(WiredEventKind.Collision, published.Kind);
+            Assert.Same(user, published.Actor);
+            Assert.Same(mover, published.EventItem);
+        }
+        else {
+            Assert.Empty(events);
+        }
+    }
+
+    [Theory]
     [InlineData("wf_act_chase", true)]
     [InlineData("wf_act_chase", false)]
     [InlineData("wf_act_flee", true)]

@@ -532,7 +532,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         return Move(item.GetX + random.X, item.GetY + random.Y);
                     }
 
-                    if (name == "wf_act_chase" && Math.Abs(nearest.X - item.GetX) + Math.Abs(nearest.Y - item.GetY) <= 1) {
+                    if (Math.Abs(nearest.X - item.GetX) + Math.Abs(nearest.Y - item.GetY) <= 1) {
                         _publish(new(WiredEventKind.Collision) { Actor = nearest, EventItem = item });
 
                         return true;

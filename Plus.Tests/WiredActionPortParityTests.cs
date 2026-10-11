@@ -51,6 +51,97 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Empty(events);
     }
 
+    [Fact]
+    public void FurniToUserStillBlocksWhenAnotherHumanSharesTheTargetTile()
+    {
+        var (room, map, items) = World();
+        var mover = StackableMover(map, items);
+        var owner = Avatar(room, 1, 4, 4);
+        Register(room, map, owner);
+        Register(room, map, Avatar(room, 2, 4, 4));
+        Assert.Equal(2, map.GetRoomUsers(new(4, 4)).Count);
+        var action = Box(room, "wf_act_furni_to_user", [100, 0], [mover.Id]);
+        Assert.False(action.Execute(Context(room, [mover], [owner], owner)));
+        Assert.Equal((1, 1), (mover.GetX, mover.GetY));
+    }
+
+    [Fact]
+    public void FurniToUserKeepsPhysicsThroughUsersForOtherOccupants()
+    {
+        var (room, map, items) = World();
+        var mover = StackableMover(map, items);
+        var owner = Avatar(room, 1, 4, 4);
+        var other = Avatar(room, 2, 4, 4);
+        Register(room, map, owner);
+        Register(room, map, other);
+        var action = Box(room, "wf_act_furni_to_user", [100, 0], [mover.Id]);
+        var context = Context(room, [mover], [owner], owner);
+        context.Policy.Addons.Physics = new(false, new HashSet<uint>(), new HashSet<int> { other.VirtualId }, new HashSet<uint>());
+        Assert.True(action.Execute(context));
+        Assert.Equal((4, 4), (mover.GetX, mover.GetY));
+        Assert.Equal(new HashSet<int> { other.VirtualId }, context.Policy.Addons.Physics.ThroughUsers);
+    }
+
+    [Fact]
+    public void OrdinaryMovementStillBlocksATileHoldingAUser()
+    {
+        var (room, map, items) = World();
+        var mover = StackableMover(map, items);
+        var owner = Avatar(room, 1, 4, 4);
+        Register(room, map, owner);
+        var action = Box(room, "wf_act_rel_mov", [1, 3, 1, 3, 100], [mover.Id]);
+        Assert.False(action.Execute(Context(room, [mover], [owner], owner)));
+        Assert.Equal((1, 1), (mover.GetX, mover.GetY));
+    }
+
+    private static Item StackableMover(Gamemap map, ConcurrentDictionary<uint, Item> items)
+    {
+        var mover = Floor(1, 1, 1);
+        mover.Definition.Height = 1;
+        mover.Definition.Walkable = true;
+        mover.Definition.Stackable = true;
+        Place(map, items, mover);
+
+        return mover;
+    }
+
+    [Fact]
+    public void FurniToUserOnlyFailsOntoAnOccupiedTargetNotForTheCardItself()
+    {
+        var (room, map, items) = World();
+        var mover = Floor(1, 1, 1);
+        mover.Definition.Height = 1;
+        mover.Definition.Walkable = true;
+        mover.Definition.Stackable = true;
+        Place(map, items, mover);
+        var owner = Avatar(room, 1, 4, 4);
+        Assert.Empty(map.GetRoomUsers(new(4, 4)));
+        var action = Box(room, "wf_act_furni_to_user", [100, 0], [mover.Id]);
+        Assert.True(action.Execute(Context(room, [mover], [owner], owner)));
+        Assert.Equal((4, 4), (mover.GetX, mover.GetY));
+    }
+
+    [Theory]
+    [InlineData(4, 4)]
+    [InlineData(5, 3)]
+    public void FurniToUserMovesTheSelectedItemOntoTheStandingHumanAndLiftsThem(int ownerX, int ownerY)
+    {
+        var (room, map, items) = World();
+        var mover = Floor(1, 1, 1);
+        mover.Definition.Height = 1;
+        mover.Definition.Walkable = true;
+        mover.Definition.Stackable = true;
+        Place(map, items, mover);
+        var owner = Avatar(room, 1, ownerX, ownerY);
+        Register(room, map, owner);
+        Assert.Contains(owner, map.GetRoomUsers(new(ownerX, ownerY)));
+        var action = Box(room, "wf_act_furni_to_user", [100, 0], [mover.Id]);
+        var moved = action.Execute(Context(room, [mover], [owner], owner));
+        Assert.True(moved);
+        Assert.Equal((ownerX, ownerY), (mover.GetX, mover.GetY));
+        Assert.Equal(1.0, owner.Z);
+    }
+
     [Theory]
     [InlineData("wf_act_chase", 3, 2, 2, 2, true)]
     [InlineData("wf_act_flee", 3, 2, 2, 2, true)]
@@ -611,6 +702,13 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         public ItemDefinition? GetItemByName(string name) => Items.Values.FirstOrDefault(item => item.ItemName == name);
         public Dictionary<int, uint> Gifts { get; } = [];
         public Dictionary<uint, ItemDefinition> Items { get; } = new() { [definition.Id] = definition };
+    }
+
+    private static void Register(Room room, Gamemap map, RoomUser user)
+    {
+        var users = (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(room.GetRoomUserManager())!;
+        users[user.VirtualId] = user;
+        map.AddUserToMap(user, new(user.X, user.Y));
     }
 
     private static RoomUser Avatar(Room room, int id, int x, int y)

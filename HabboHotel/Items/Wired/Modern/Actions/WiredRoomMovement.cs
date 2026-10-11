@@ -139,7 +139,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
     /// <summary>A step to another tile is blocked by any other furniture unless physics moves it through; the unit's stack never is.</summary>
     public bool MoveFurniture(WiredRuntimeContext context, Item item, int x, int y, int rotation, double? height, bool step = false,
-        IReadOnlySet<uint>? unit = null, PassengerSnapshot? passengers = null)
+        IReadOnlySet<uint>? unit = null, PassengerSnapshot? passengers = null, IReadOnlySet<int>? landingUsers = null)
     {
         if (!item.IsFloorItem) {
             return false;
@@ -152,6 +152,12 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var options = WiredMovementPolicy.Resolve(policy, source, x, y, targetHeight, rotation, explicitHeight: height.HasValue);
         var physics = policy.Physics;
         var collision = Collision(physics, step && (x != item.GetX || y != item.GetY), unit);
+
+        if (landingUsers is { Count: > 0 }) {
+            var through = collision?.ThroughUsers.Union(landingUsers).ToHashSet() ?? [.. landingUsers];
+            collision = (collision ?? new(new HashSet<uint>(), new HashSet<int>(), new HashSet<uint>())) with { ThroughUsers = through };
+        }
+
         var carried = passengers?.For(context, item) ?? Carried(context, item);
         var dx = x - item.GetX;
         var dy = y - item.GetY;

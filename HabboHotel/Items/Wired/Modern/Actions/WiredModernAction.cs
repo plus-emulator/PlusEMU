@@ -382,12 +382,17 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 targets = targets.Where(item => item.IsFloorItem).ToArray();
             }
 
-            return new WiredMovementActions().Execute(name, config, movers, targets,
-                config.UserSources.ContainsKey("users") ? Users(context, config, "users") : [],
+            var movementUsers = config.UserSources.ContainsKey("users") ? Users(context, config, "users") : [];
+            // Furniture sent to a user lands on that user's own tile; no other occupant is let through.
+            IReadOnlySet<int>? landingUsers = name == "wf_act_furni_to_user" && movementUsers.Length > 0
+                ? new HashSet<int> { movementUsers[0].VirtualId } : null;
+
+            return new WiredMovementActions().Execute(name, config, movers, targets, movementUsers,
                 (item, x, y, rotation, height) => _movement.MoveFurniture(context, item, x, y, rotation, height,
                     WiredMovementActions.Steps.Contains(name)
                     && !(name == "wf_act_move_furni_to" && config.IntParams.Length == 4
-                        || name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6), passengers: passengers),
+                        || name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6), passengers: passengers,
+                    landingUsers: landingUsers),
                 (user, target, slide, fast, walkMode) => slide
                     ? _movement.MoveAvatar(context, user, target.GetX, target.GetY, true, walkMode)
                     : Teleport(context, user, target, fast),

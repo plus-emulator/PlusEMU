@@ -50,8 +50,8 @@ public sealed class WiredModernCondition : WiredModernBox
 
         var negative = WiredConditionConfiguration.NegativeNames.TryGetValue(Descriptor.CanonicalName, out var positive);
 
-        // Negative labels are the empty direction: 0 is at least one empty, 1 is all empty.
-        if (negative && Descriptor.CanonicalName is "wf_cnd_not_furni_on" or "wf_cnd_not_hv_avtrs") {
+        // The negative furniture-on label is the empty direction: 0 is at least one empty, 1 is all empty.
+        if (negative && Descriptor.CanonicalName is "wf_cnd_not_furni_on") {
             config = config with { IntParams = config.IntParams.SetItem(0, config.IntParams[0] == 0 ? 1 : 0) };
         }
 

@@ -49,7 +49,7 @@ public sealed class WiredConditionParityTests
         Expect("wf_cnd_has_furni_on", "wf_cnd_furnis_hv_avtrs", occupied, true, true, true, true, "positive all occupied");
         Expect("wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs", empty, true, true, true, true, "negative all empty");
         Expect("wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs", occupied, false, false, false, false, "negative all occupied");
-        Expect("wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs", mixed, true, false, true, false, "negative mixed");
+        Expect("wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs", mixed, true, false, false, true, "negative mixed");
     }
 
     [Theory]

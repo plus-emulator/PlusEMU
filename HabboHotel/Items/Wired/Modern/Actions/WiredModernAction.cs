@@ -604,7 +604,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 return changed;
             case "wf_act_adjust_clock":
                 foreach (var item in items) {
-                    changed |= _clocks.Adjust(item, Param(config, 0), Param(config, 2), Param(config, 3));
+                    changed |= _clocks.Adjust(item, Param(config, 0), Param(config, 2), Param(config, 3),
+                        Param(config, 0) == 2 ? WiredClockOrigin.ModernWired : WiredClockOrigin.Unknown);
                 }
 
                 return changed;

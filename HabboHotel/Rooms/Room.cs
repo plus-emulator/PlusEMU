@@ -864,6 +864,30 @@ public class Room
         }
     }
 
+    // Clients whose revision does not map the data composer get the full update instead; the mapping is checked before anything is sent to a client.
+    internal void SendObjectData(Item item, string data, bool batch)
+    {
+        IServerPacket packet = batch ? new ObjectsDataUpdateComposer([(item.Id, data)]) : new ObjectDataUpdateComposer(item.Id, data);
+
+        try {
+            if (_roomUserManager == null) {
+                return;
+            }
+
+            var clients = _roomUserManager.GetRoomUsers().Select(user => user?.GetClient()).OfType<GameClient>().ToArray();
+            bool Maps(GameClient client, uint id) => client.Revision?.InternalIdToOutgoingIdMapping.ContainsKey(id) == true;
+            GameClient.SendBroadcast(packet, clients.Where(client => Maps(client, packet.MessageId)));
+            var fallback = clients.Where(client => !Maps(client, packet.MessageId) && Maps(client, Plus.Communication.Packets.Outgoing.ServerPacketHeader.ObjectUpdateComposer)).ToArray();
+
+            if (fallback.Length > 0) {
+                GameClient.SendBroadcast(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item) with { Data = new FurnitureDataSnapshot.Legacy(data) }), fallback);
+            }
+        }
+        catch (Exception e) {
+            ExceptionLogger.LogException(e);
+        }
+    }
+
     public void SendPacket(List<IServerPacket> packets)
     {
         foreach (var packet in packets) {

@@ -28,7 +28,15 @@ public sealed record WiredClockTransition(Item Item, object Clock, long Sequence
     internal string DefinitionName { get; } = Definition.ItemName;
 }
 
-public sealed record WiredCounterChange(Item Item, WiredRuntimeEvent Event, bool DisplayChanged);
+/// <summary>How a display change reaches clients: the full object update, or the legacy data only (one object / a batch).</summary>
+public enum WiredCounterPublication
+{
+    Object, SingleData, BatchData
+}
+
+/// <summary><paramref name="Text"/> is the display this change wrote; a later drain must send it, not the item's final string.</summary>
+public sealed record WiredCounterChange(Item Item, WiredRuntimeEvent Event, bool DisplayChanged,
+    WiredCounterPublication Publication = WiredCounterPublication.Object, bool ForceDisplay = false, string Text = "");
 
 /// <summary>Room-owned clock state. The room drains changes and publishes packets/events once.</summary>
 public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<Item, bool>? gameControl = null, int defaultGameSeconds = 30,
@@ -129,14 +137,14 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             clock.Started = false;
             var previous = clock.Value;
             clock.Value = clock.Countdown ? defaultGameSeconds * 2L : 0;
-            PublishClock(clock, previous);
+            PublishClock(clock, previous, ModernBatch(origin));
         }
 
         if (operation == 0 && origin == WiredClockOrigin.ModernWired && !clock.Running && !clock.Countdown && !clock.GameAware
             && clock.Value != 0) {
             var previous = clock.Value;
             clock.Value = 0;
-            PublishClock(clock, previous);
+            PublishClock(clock, previous, WiredCounterPublication.BatchData);
         }
 
         if (operation is 0 or 4 && !clock.Running) {
@@ -168,7 +176,7 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
         return true;
     }
     // Octane and Turbo operators: 0 increase, 1 decrease, 2 set.
-    public bool Adjust(Item item, int operation, int minutes, int halfSecondSteps)
+    public bool Adjust(Item item, int operation, int minutes, int halfSecondSteps, WiredClockOrigin origin = WiredClockOrigin.Unknown)
     {
         var clock = Find(item);
 
@@ -182,11 +190,12 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             amount = amount / 2 * 2;
         }
 
-        Evidence(clock, WiredClockReason.Adjust);
+        Evidence(clock, WiredClockReason.Adjust, origin);
         var previous = clock.Value;
         clock.Value = Math.Clamp(operation switch { 0 => previous + amount, 1 => previous - amount, _ => amount }, 0,
             clock.Countdown ? int.MaxValue * 2L : maxHalfSeconds);
-        PublishClock(clock, previous);
+        var set = operation == 2 && origin == WiredClockOrigin.ModernWired;
+        PublishClock(clock, previous, set ? WiredCounterPublication.BatchData : WiredCounterPublication.Object, set);
 
         return true;
     }
@@ -224,7 +233,7 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             var previous = clock.Value;
             clock.Value = clock.Countdown ? Math.Max(0, clock.Value - 2) : clock.Value + 1;
             clock.NextTick = nowMilliseconds + (clock.Countdown ? 1000 : 500);
-            PublishClock(clock, previous);
+            PublishClock(clock, previous, clock.LastOrigin == WiredClockOrigin.ModernWired ? WiredCounterPublication.SingleData : WiredCounterPublication.Object);
 
             if (clock.Countdown && clock.Value == 0) {
                 Stop(clock);
@@ -285,9 +294,12 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
 
         return transition;
     }
-    private void PublishClock(Clock clock, long previous) => PublishDisplay(clock,
-        new(WiredEventKind.Counter) { EventItem = clock.Item, PreviousValue = previous * 500L, Value = clock.Value * 500L });
-    private void PublishDisplay(Clock clock, WiredRuntimeEvent @event)
+    // Only Wired-driven plain counters publish the data-only frames; game timers, game counters and GUI/unknown writers keep the object update.
+    private static WiredCounterPublication ModernBatch(WiredClockOrigin origin) =>
+        origin == WiredClockOrigin.ModernWired ? WiredCounterPublication.BatchData : WiredCounterPublication.Object;
+    private void PublishClock(Clock clock, long previous, WiredCounterPublication publication = WiredCounterPublication.Object, bool force = false) => PublishDisplay(clock,
+        new(WiredEventKind.Counter) { EventItem = clock.Item, PreviousValue = previous * 500L, Value = clock.Value * 500L }, publication, force);
+    private void PublishDisplay(Clock clock, WiredRuntimeEvent @event, WiredCounterPublication publication, bool force)
     {
         var text = (clock.Value / 2).ToString(CultureInfo.InvariantCulture);
         var changed = clock.Item.LegacyDataString != text;
@@ -296,6 +308,11 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             clock.Item.LegacyDataString = text;
         }
 
-        _changes.Enqueue(new(clock.Item, @event, changed));
+        if (clock.Countdown || clock.GameAware) {
+            publication = WiredCounterPublication.Object;
+            force = false;
+        }
+
+        _changes.Enqueue(new(clock.Item, @event, changed, publication, force, text));
     }
 }

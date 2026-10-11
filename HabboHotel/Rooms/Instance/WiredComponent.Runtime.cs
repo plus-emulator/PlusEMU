@@ -323,7 +323,12 @@ public partial class WiredComponent
             }
 
             if (change.DisplayChanged) {
-                change.Item.UpdateState();
+                // Data-only publications keep the full state bookkeeping once and send their own frame below.
+                change.Item.UpdateState(true, change.Publication == WiredCounterPublication.Object);
+            }
+
+            if (change.Publication != WiredCounterPublication.Object && (change.DisplayChanged || change.ForceDisplay)) {
+                _room.SendObjectData(change.Item, change.Text, change.Publication == WiredCounterPublication.BatchData);
             }
 
             if (change.Event.Kind == WiredEventKind.StateChanged

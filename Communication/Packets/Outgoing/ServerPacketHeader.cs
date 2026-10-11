@@ -59,6 +59,8 @@ public static class ServerPacketHeader
     public const uint ObjectAddComposer = 1357;
     public const uint ObjectsComposer = 2852;
     public const uint ObjectUpdateComposer = 324;
+    public const uint ObjectDataUpdateComposer = 714;
+    public const uint ObjectsDataUpdateComposer = 1211;
     public const uint ObjectRemoveComposer = 1202;
     public const uint SlideObjectBundleComposer = 3125;
     public const uint ItemsComposer = 3506;

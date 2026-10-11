@@ -461,6 +461,8 @@
     "ObjectAddComposer": 1357,
     "ObjectsComposer": 2852,
     "ObjectUpdateComposer": 324,
+    "ObjectDataUpdateComposer": 714,
+    "ObjectsDataUpdateComposer": 1211,
     "ObjectRemoveComposer": 1202,
     "SlideObjectBundleComposer": 3125,
     "ItemsComposer": 3506,

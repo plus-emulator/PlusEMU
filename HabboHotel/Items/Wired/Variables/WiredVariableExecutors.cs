@@ -13,9 +13,29 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
     {
         error = "Invalid scalar variable settings.";
 
+        if (IsUnresolvedLiteralZero(name, configuration)) {
+            error = "";
+
+            return true;
+        }
+
         return TryDecode(name, configuration, out var core, out _) && TryTokens(name, configuration, core, null, out var tokens)
             && ValidateCore(name, configuration, core, tokens, out error);
     }
+
+    /// <summary>
+    /// The measured native has-var / not-has-var shape whose variable id is the literal "0": owned [1], F100, U0, quantifier 0, one id "0", no text,
+    /// picks or secondary picks, with its native record. It names no definition, so it is admitted as a reference that never resolves;
+    /// it is not read as any variable or sentinel. Every other shape and id still goes through the normal token rules.
+    /// </summary>
+    internal static bool IsUnresolvedLiteralZero(string name, WiredConfiguration configuration) =>
+        name is "wf_cnd_has_var" or "wf_cnd_neg_has_var" && configuration.Version == 1
+        && configuration.Origin?.Native is { } native
+        && configuration.IntParams.SequenceEqual([0, 0, 100, 0]) && configuration.VariableIds.SequenceEqual(["0"])
+        && configuration.Text == "" && configuration.SelectedItems.IsEmpty && configuration.SecondarySelectedItems.IsEmpty
+        && native.OwnedIntParams.SequenceEqual([1]) && native.FurniSourceTypes.SequenceEqual([100]) && native.UserSourceTypes.SequenceEqual([0])
+        && native.Quantifier == 0 && native.VariableIds.SequenceEqual(["0"]) && native.Text == ""
+        && native.PrimaryItems.IsEmpty && native.SecondaryItems.IsEmpty;
 
     /// <summary>
     /// The native picker saves opaque catalog ids. Without an authority they only have to be well formed for their target;
@@ -162,8 +182,11 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
 
     public bool Execute(string name, WiredConfiguration configuration, WiredVariableFrame frame)
     {
-        if (!TryDecode(name, configuration, out var p, out var literal) || !TryTokens(name, configuration, p, variables, out var tokens)
-            || !ValidateCore(name, configuration, p, tokens, out _)) {
+        string[] tokens = ["", ""];
+
+        if (!TryDecode(name, configuration, out var p, out var literal)
+            || !IsUnresolvedLiteralZero(name, configuration) && (!TryTokens(name, configuration, p, variables, out tokens)
+                || !ValidateCore(name, configuration, p, tokens, out _))) {
             return false;
         }
 

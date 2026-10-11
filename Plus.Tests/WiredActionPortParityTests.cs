@@ -7,6 +7,7 @@ using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Users.Inventory.Furniture;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
+using Plus.HabboHotel.Items.Wired.Modern;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Modern.Conditions;
 using Plus.HabboHotel.Items.Wired.Runtime;
@@ -15,6 +16,7 @@ using Plus.HabboHotel.Items.Wired.Modern.Addons;
 using Plus.HabboHotel.Items.Wired.Modern.Triggers;
 using Plus.HabboHotel.Items.Wired.Modern.Selectors;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Rooms.Instance;
 using Plus.HabboHotel.Rooms.Games.Teams;
 using Xunit;
@@ -314,6 +316,12 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
     [InlineData(0.65, "80", 79.35)]
     [InlineData(1, "80", 79, "1,0.75,0.5,0.25,0.1", "0")]
     [InlineData(1, "80", 79.5, "1,0.75,0.5,0.25,0.1", "2")]
+    [InlineData(1, "80", 80, "1,0.75,0.5,0.25,0", "4")]
+    [InlineData(4, "80", 76, "4,3,2,1,0", "0")]
+    [InlineData(4, "80", 77, "4,3,2,1,0", "1")]
+    [InlineData(4, "80", 78, "4,3,2,1,0", "2")]
+    [InlineData(4, "80", 79, "4,3,2,1,0", "3")]
+    [InlineData(4, "80", 80, "4,3,2,1,0", "4")]
     public void AltitudeSetHonorsTheEightyTileTopLimitAndDefinitionHeight(double height, string requested, double expected,
         string adjustableHeights = "", string state = "0")
     {
@@ -327,6 +335,47 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         var action = Box(room, "wf_act_set_altitude", [2, 100], [1], text: requested);
         Assert.True(action.Execute(Context(room, [item], [])));
         Assert.Equal(expected, item.GetZ);
+    }
+
+    [Fact]
+    public void ZeroHeightStateAtTheFloorStacksTheNextItemAtTheFloorAndNavSeesNoHeight()
+    {
+        var (room, map, items) = World();
+        var support = Floor(1, 2, 2);
+        support.Definition.Stackable = true;
+        support.Definition.Height = 4;
+        support.Definition.AdjustableHeights = [4, 3, 2, 1, 0];
+        support.ExtraData = new LegacyDataFormat { Data = "4" };
+        Place(map, items, support);
+        Assert.Equal((0, 0), (support.CurrentHeight, support.TotalHeight));
+        var nav = NavItemRecord.Capture(support, 1, 6, 6);
+        Assert.Equal((0, 0), (nav.Height, nav.Top));
+        var next = Floor(2, 4, 4);
+        next.Definition.Stackable = true;
+        next.SetState(4, 4, 3, Gamemap.GetAffectedTiles(1, 1, 4, 4, 0));
+        Place(map, items, next);
+        Assert.True(WiredRoomOperations.MoveItem(room, next, 2, 2, 0, null, animate: false));
+        Assert.Equal(0, next.GetZ);
+    }
+
+    [Fact]
+    public void AdjustableHeightFallsBackToTheDefinitionWhenTheStateOrListCannotSelectOne()
+    {
+        var item = Floor(1, 2, 2);
+        item.Definition.Height = 2;
+        item.Definition.AdjustableHeights = [1, 0.5];
+        item.ExtraData = new LegacyDataFormat { Data = "5" };
+        Assert.Equal(2, item.CurrentHeight);
+        item.ExtraData = new LegacyDataFormat { Data = "x" };
+        Assert.Equal(2, item.CurrentHeight);
+        item.ExtraData = new LegacyDataFormat { Data = "-1" };
+        Assert.Equal(2, item.CurrentHeight);
+        item.ExtraData = new LegacyDataFormat { Data = "1" };
+        Assert.Equal(0.5, item.CurrentHeight);
+        item.Definition.AdjustableHeights = [1];
+        Assert.Equal(2, item.CurrentHeight);
+        item.Definition.AdjustableHeights = [1, -0.5];
+        Assert.Equal(2, item.CurrentHeight);
     }
 
     [Theory]

@@ -402,7 +402,7 @@ public class Item
         {
             if (Definition.AdjustableHeights is { Count: > 1 } heights
                 && int.TryParse(LegacyDataString, out var index) && index >= 0 && index < heights.Count
-                && GetZ + heights[index] > 0) {
+                && GetZ + heights[index] >= 0) {
                 return heights[index];
             }
 

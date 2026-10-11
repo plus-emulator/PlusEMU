@@ -23,7 +23,7 @@ public sealed class RoomUserStatusSnapshotTests
             var composer = new UserUpdateComposer(data);
             var first = new HabbiconTestSupport.RecordingPacket();
             composer.Compose(first);
-            Assert.Equal(new object[] { 1, 9, 3, 4, "1.25", 2, 6, "/sit 0.5//" }, first.Writes);
+            Assert.Equal(new object[] { 1, 9, 3, 4, "1.25", 2, 6, 0, "/sit 0.5//" }, first.Writes);
 
             user.X = 99;
             user.Z = 99;
@@ -94,6 +94,7 @@ public sealed class RoomUserStatusSnapshotTests
             Assert.Equal("0", incoming.ReadString());
             Assert.Equal(bot.RotHead, incoming.ReadInt());
             Assert.Equal(bot.RotBody, incoming.ReadInt());
+            Assert.Equal(0, incoming.ReadInt());
             Assert.Equal("/mv 2,1,0//", incoming.ReadString());
         }
     }

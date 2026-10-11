@@ -246,6 +246,7 @@ public partial class PlacedFurniRoomTests
             packet.ReadString();
             var head = packet.ReadInt();
             var body = packet.ReadInt();
+            Assert.Equal(0, packet.ReadInt());
             packet.ReadString();
 
             if (id == actor.VirtualId) {

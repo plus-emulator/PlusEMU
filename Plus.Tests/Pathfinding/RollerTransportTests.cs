@@ -293,6 +293,7 @@ public partial class PlacedFurniRoomTests
                 body.ReadString();
                 body.ReadInt();
                 body.ReadInt();
+                Assert.Equal(0, body.ReadInt());
                 body.ReadString();
 
                 if (id == actor.VirtualId) {

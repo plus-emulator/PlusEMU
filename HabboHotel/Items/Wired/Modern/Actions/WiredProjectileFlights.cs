@@ -4,30 +4,54 @@ using Plus.HabboHotel.Rooms;
 
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
-/// <summary>Room-owned last flights follow the exact client animation clock, not another timer or item cycle.</summary>
+/// <summary>Room-owned last projectile flights sampled at crossed tile centers.</summary>
 public sealed class WiredProjectileFlights(Room room)
 {
     private static readonly ConditionalWeakTable<Room, WiredProjectileFlights> Rooms = new();
     private readonly Dictionary<uint, Flight> _flights = [];
     public static WiredProjectileFlights For(Room room) => Rooms.GetValue(room, current => new(current));
 
-    public bool Begin(Item item, int sourceX, int sourceY, double sourceZ, int durationMs, long nowMs, int variableMask = 127)
+    public bool Begin(Item item, int sourceX, int sourceY, double sourceZ, int durationMs, long nowMs, int variableMask = 127,
+        int? curveStrength = null)
     {
         if (!item.IsFloorItem || !ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item)) {
             return false;
         }
 
-        var path = BuildPath(sourceX, sourceY, item.GetX, item.GetY);
+        var sourceHundredths = (int)(sourceZ * 100);
+        var targetHundredths = (int)(item.GetZ * 100);
+        var cells = BuildCells(sourceX, sourceY, item.GetX, item.GetY);
         var map = room.GetGameMap();
 
-        if (path.Any(point => !map.ValidTile(point.X, point.Y))) {
+        if (cells.Any(cell => !map.ValidTile(cell.X, cell.Y))) {
             return false;
         }
 
-        _flights[item.Id] = new(item, sourceX, sourceY, (int)(sourceZ * 100), item.GetX, item.GetY, (int)(item.GetZ * 100),
-            nowMs, durationMs, variableMask,
-            path.Select(point => map.GetRoomUsers(point).DistinctBy(user => user.VirtualId).Count()).ToArray(),
-            path.Select(point => map.GetCoordinatedItems(point).Where(other => !ReferenceEquals(other, item)).DistinctBy(other => other.Id).Count()).ToArray());
+        // Length is in tiles; altitude is in hundredths.
+        var length = Math.Sqrt(Math.Pow(item.GetX - sourceX, 2) + Math.Pow(item.GetY - sourceY, 2) + Math.Pow(item.GetZ - sourceZ, 2));
+        int Altitude(int index)
+        {
+            if (index == 0) {
+                return sourceHundredths;
+            }
+
+            if (index == cells.Count - 1) {
+                return targetHundredths;
+            }
+
+            var t = (cells[index].Entry + cells[index + 1].Entry) / 2;
+
+            return (int)Math.Round(sourceHundredths + (targetHundredths - sourceHundredths) * t
+                + (curveStrength ?? 0) * length * t * (1 - t), MidpointRounding.AwayFromZero);
+        }
+
+        var altitudes = Enumerable.Range(0, cells.Count).Select(Altitude).ToArray();
+
+        // Snapshot collisions at launch, excluding furniture below the sampled altitude.
+        _flights[item.Id] = new(item, cells, altitudes, sourceHundredths, targetHundredths, nowMs, durationMs, variableMask,
+            cells.Select(cell => map.GetRoomUsers(new(cell.X, cell.Y)).DistinctBy(user => user.VirtualId).Count()).ToArray(),
+            cells.Select((cell, index) => map.GetCoordinatedItems(new(cell.X, cell.Y)).Where(other => !ReferenceEquals(other, item)
+                && altitudes[index] / 100d <= other.TotalHeight).DistinctBy(other => other.Id).Count()).ToArray());
 
         return true;
     }
@@ -66,19 +90,29 @@ public sealed class WiredProjectileFlights(Room room)
         }
 
         var progress = flight.DurationMs <= 0 ? 1 : Math.Clamp((nowMs - flight.StartedAtMs) / (double)flight.DurationMs, 0, 1);
-        var travelled = (int)Math.Floor(progress * Math.Max(0, flight.UserCounts.Length - 1));
-        int Position(int from, int to) => (int)Math.Round(from + (to - from) * progress);
+        var last = flight.Cells.Count - 1;
+        var travelled = 0;
+
+        while (travelled < last && flight.Cells[travelled + 1].Entry <= progress) {
+            travelled++;
+        }
+
+        var cell = flight.Cells[travelled];
         int Collisions(int[] counts) => counts.Skip(1).Take(travelled).Sum(); // Launch tile is not crossed into.
+
+        // A move with no horizontal change has a single cell; it stays travelling for the whole duration and climbs linearly.
+        var travelling = last == 0 ? progress < 1 : progress < flight.Cells[last].Entry;
+        var altitude = last == 0 ? (int)Math.Round(flight.SourceZ + (flight.TargetZ - flight.SourceZ) * progress) : flight.Altitudes[travelled];
 
         return key switch
         {
             "@projectile.animation.furni_collisions" => Collisions(flight.FurniCounts),
             "@projectile.animation.user_collisions" => Collisions(flight.UserCounts),
             "@projectile.animation.tiles_traveled" => travelled,
-            "@projectile.animation.is_traveling" => progress < 1 ? 1 : null,
-            "@projectile.animation.position.x" => Position(flight.SourceX, flight.TargetX),
-            "@projectile.animation.position.y" => Position(flight.SourceY, flight.TargetY),
-            "@projectile.animation.position.altitude" => Position(flight.SourceZ, flight.TargetZ),
+            "@projectile.animation.is_traveling" => travelling ? -1 : null,
+            "@projectile.animation.position.x" => cell.X,
+            "@projectile.animation.position.y" => cell.Y,
+            "@projectile.animation.position.altitude" => altitude,
             _ => null
         };
     }
@@ -103,6 +137,36 @@ public sealed class WiredProjectileFlights(Room room)
 
         return path;
     }
-    private sealed record Flight(Item Item, int SourceX, int SourceY, int SourceZ, int TargetX, int TargetY, int TargetZ,
+    /// <summary>Cells entered along the straight line, each with its entry progress; simultaneous axis crossings merge into one entry.</summary>
+    private static List<(int X, int Y, double Entry)> BuildCells(int sourceX, int sourceY, int targetX, int targetY)
+    {
+        var events = new List<(double Progress, int X, int Y)>();
+
+        void Crossings(int from, int to, bool horizontal)
+        {
+            var d = to - from;
+            var step = Math.Sign(d);
+
+            for (var k = 0; k < Math.Abs(d); k++) {
+                events.Add(((k + 0.5) / Math.Abs(d), horizontal ? step : 0, horizontal ? 0 : step));
+            }
+        }
+
+        Crossings(sourceX, targetX, true);
+        Crossings(sourceY, targetY, false);
+        var cells = new List<(int X, int Y, double Entry)> { (sourceX, sourceY, 0) };
+        var x = sourceX;
+        var y = sourceY;
+
+        foreach (var group in events.OrderBy(e => e.Progress).GroupBy(e => Math.Round(e.Progress, 9))) {
+            x += group.Sum(e => e.X);
+            y += group.Sum(e => e.Y);
+            cells.Add((x, y, group.Key));
+        }
+
+        return cells;
+    }
+
+    private sealed record Flight(Item Item, IReadOnlyList<(int X, int Y, double Entry)> Cells, int[] Altitudes, int SourceZ, int TargetZ,
         long StartedAtMs, int DurationMs, int VariableMask, int[] UserCounts, int[] FurniCounts);
 }

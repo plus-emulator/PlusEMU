@@ -255,10 +255,9 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
 
         for (var index = 0; index < targets.Length; index++) {
             if (frame.VariableChanges is { } batch) {
-                if (variables.Read(reference, targets[index], frame) is not null) {
-                    batch.Add(variables, reference, targets[index], p[1], operand, frame);
-                    any = true;
-                }
+                // Presence is judged when the batch flushes, so a Change may run ahead of the Give that creates it.
+                batch.Add(variables, reference, targets[index], p[1], operand, frame);
+                any |= variables.Read(reference, targets[index], frame) is not null;
             }
             else {
                 any |= variables.Change(reference, targets[index], WiredVariableMutation.Set, current => WiredVariableArithmetic.Apply(p[1], current, operand), frame, notifyUnchanged: true);

@@ -24,8 +24,9 @@ public sealed record WiredVariableWrite(WiredVariableValue? Before, WiredVariabl
 public sealed record WiredVariableChange(uint RoomId, WiredVariableKey Key, WiredVariableChangeKind Kind,
     WiredVariableValue? Before, WiredVariableValue? After, int EntityId, int Depth)
 {
-    public int Origin { get; init; } // 0 Wired, 1 API, 2 creator tools; active editor mask bits.
+    public int Origin { get; init; } // Raw write provenance; NativeOrigin translates to the editor's origin indices.
     public string InternalKey { get; init; } = "";
+    public int NativeOrigin(uint currentRoomId) => Origin == 1 ? 3 : Origin == 2 ? 2 : RoomId != currentRoomId ? 1 : 0;
 }
 
 /// <summary>Mutate is atomic, including when no value exists. Failure throws before a change is published.</summary>

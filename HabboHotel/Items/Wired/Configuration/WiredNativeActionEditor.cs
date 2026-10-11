@@ -34,23 +34,23 @@ internal static class WiredNativeActionEditor
         ["wf_act_leave_team"] = Meta([], [SignalUsers], [], [0], []),
         ["wf_act_bot_teleport"] = Meta([Furni], [BotCodes], [100], [100], []),
         ["wf_act_bot_move"] = Meta([Furni], [BotCodes], [100], [100], []),
-        ["wf_act_bot_follow_avatar"] = Meta([], [BotCodes, Users], [], [100, 0], [0]),
-        ["wf_act_bot_give_handitem"] = Meta([], [BotCodes, Users], [], [100, 0], [0]),
+        ["wf_act_bot_follow_avatar"] = Meta([], [BotCodes, Users], [], [100, 0], [1]),
+        ["wf_act_bot_give_handitem"] = Meta([], [BotCodes, Users], [], [100, 0], [2]),
         ["wf_act_bot_talk"] = Meta([], [BotCodes], [], [100], [0, -1]),
         ["wf_act_bot_talk_to_avatar"] = Meta([], [BotCodes, Users], [], [100, 0], [0, -1]),
         ["wf_act_bot_clothes"] = Meta([], [BotCodes], [], [100], []),
         ["wf_act_give_reward"] = Meta([], [Users], [], [0], [0, 0, 0, 1]),
-        ["wf_act_give_score_tm"] = Meta([], [Users], [], [0], [5, 0, 1]),
+        ["wf_act_give_score_tm"] = Meta([], [], [], [], [5, 0, 1]),
         ["wf_act_chase"] = Meta([Furni], [], [100], [], []),
         ["wf_act_flee"] = Meta([Furni], [], [100], [], []),
         ["wf_act_move_rotate_user"] = Meta([], [Users], [], [0], [-1, -1]),
         ["wf_act_rel_mov"] = Meta([Furni], [], [100], [], [0, 0]),
-        ["wf_act_furni_to_furni"] = Meta([Furni, FurniAndSnapshot], [], [100, 101], [], []),
+        ["wf_act_furni_to_furni"] = Meta([FurniAndSnapshot, FurniAndSnapshot], [], [100, 101], [], []),
         ["wf_act_furni_to_user"] = Meta([Furni], [MoveUsers], [100], [0], []),
         ["wf_act_move_furni_to"] = Meta([Furni, FurniAndSnapshot], [], [100, 101], [], [0, 1]),
         ["wf_act_match_to_sshot"] = Meta([FurniAndSnapshot], [], [100], [], [0, 0, 0, 0], true),
         ["wf_act_user_to_furni"] = Meta([Furni], [MoveUsers], [100], [0], [0]),
-        ["wf_act_place_furni"] = Meta([Furni, FurniAndSnapshot, FurniAndSnapshot], [Users, Users], [100, 100, 100], [0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], true) with
+        ["wf_act_place_furni"] = Meta([Furni, FurniAndSnapshot, FurniAndSnapshot], [Users, Users], [100, 100, 100], [0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, -20], true) with
         {
             VariableDefaults = [WiredVariableAbsent.Id, WiredVariableAbsent.Id]
         },
@@ -221,8 +221,7 @@ internal static class WiredNativeActionEditor
                     return false;
                 }
 
-                parameters = [Math.Abs(p[0]), p[0] < 0 ? 1 : 0, p[2], User(native, 0), p[1]];
-                users["users"] = User(native, 0);
+                parameters = [Math.Abs(p[0]), p[0] < 0 ? 1 : 0, p[2]];
                 quota = p[1] == 0 ? null : p[1];
                 break;
             case "wf_act_move_rotate_user":

@@ -47,7 +47,8 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
             context.Event.Kind == WiredEventKind.BotReachedUser ? context.Event.TargetUser?.VirtualId : null);
 
         return new(world, input, variables?.ReadOperand,
-            (source, configuration) => context.Targets.ResolveFurni(context, configuration.SelectedItems, source).Select(x => x.Id),
+            (source, configuration) => context.Targets.ResolveFurni(context,
+                source == RuntimeSources.Snapshot ? configuration.SecondarySelectedItems : configuration.SelectedItems, source).Select(x => x.Id),
             source => context.Targets.ResolveUsers(context, [], source).Select(x => x.VirtualId));
     }
 

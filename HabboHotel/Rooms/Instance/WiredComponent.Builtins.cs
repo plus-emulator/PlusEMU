@@ -37,7 +37,7 @@ public partial class WiredComponent
                     "@event.variable_update.old_value" => change.Before?.Value ?? 0,
                     "@event.variable_update.new_value" => change.After?.Value ?? 0,
                     "@event.variable_update.difference" => unchecked((change.After?.Value ?? 0) - (change.Before?.Value ?? 0)),
-                    "@event.variable_update.change_origin" => change.Origin == 1 ? 3 : change.Origin == 2 ? 2 : change.RoomId != _room.Id ? 1 : 0,
+                    "@event.variable_update.change_origin" => change.NativeOrigin(_room.Id),
                     _ => null
                 };
             }

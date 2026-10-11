@@ -38,8 +38,10 @@ public sealed class WiredAddonBox : WiredConfiguredBehaviorBox, IWiredContextual
             "wf_xtra_filter_furni" or "wf_xtra_filter_users" => configuration.IntParams.Length == 5
                 && WiredSelectorSources.Param(configuration, 1) == 1,
             "wf_xtra_mov_curve" => WiredSelectorSources.Param(configuration, 3) == 1,
-            "wf_xtra_rotate_to_dir" => WiredSelectorSources.Param(configuration, 14) != 0
-                && WiredSelectorSources.Param(configuration, 15) == 1,
+            "wf_xtra_rotate_to_dir" => (WiredSelectorSources.Param(configuration, 2) == 1
+                    && WiredSelectorSources.Param(configuration, 3) == 1)
+                || (WiredSelectorSources.Param(configuration, 14) != 0
+                    && WiredSelectorSources.Param(configuration, 15) == 1),
             _ => false
         };
         using var variables = needsVariables ? _variables?.Invoke(context) : null;

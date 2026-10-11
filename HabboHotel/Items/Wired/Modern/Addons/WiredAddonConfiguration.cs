@@ -19,11 +19,12 @@ public static class WiredAddonConfiguration
         int Source(int index, bool users = false, bool all = false) => P(index) switch
         {
             0 or 200 or 201 => P(index),
-            100 when !users => 100,
+            100 or 101 when !users => P(index),
             11 when users => 11,
             900 when all => 900,
             _ => 0
         };
+        int ProjectileSource(int value) => value is 0 or 100 or 200 or 201 or WiredProjectilePolicy.StackMovedSource ? value : 0;
         int TextFallback(int fallback) => c.IntParams.IsEmpty && int.TryParse(c.Text, NumberStyles.Integer,
             CultureInfo.InvariantCulture, out var value) ? value : P(0, fallback);
         var text = c.Text;
@@ -87,7 +88,7 @@ public static class WiredAddonConfiguration
                 fields = [B(0), Range(1, 0, 3), B(2), B(3), Range(4, 1, 100000, 1), Range(5, 0, 3),
                     B(6), B(7), B(8), Range(9, 0, 100000), Range(10, 0, 7), Range(11, 0, 127), B(12), B(13),
                     Range(14, 0, 2), B(15), Range(16, -64, 64), Range(17, 0, 3), Range(18, -1000, 1000),
-                    Source(19, true), Source(20), Source(21, true), Source(22), Source(23, true)];
+                    Source(19, true), Source(20), Source(21, true), Source(22), Source(23, true), ProjectileSource(P(24, 100))];
                 break;
             default:
                 fields = [];

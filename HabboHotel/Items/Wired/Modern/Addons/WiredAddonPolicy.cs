@@ -26,7 +26,42 @@ public enum WiredProjectileDistance
 public sealed record WiredProjectilePolicy(IReadOnlySet<uint> ItemIds, int? DirectionSystem,
     int RotationOffset, int? CurveStrength, WiredProjectileDistance Distance, int DistanceTiles)
 {
+    /// <summary>Source 901 applies projectile movement to every furniture item moved by the stack.</summary>
+    public const int StackMovedSource = 901;
+
+    public bool AppliesToAllMovedFurniture { get; init; }
+    public bool AppliesTo(uint itemId) => AppliesToAllMovedFurniture || ItemIds.Contains(itemId);
+
     public int VariableMask { get; init; }
+    public int? TimePerTileMs { get; init; }
+    public int SpeedIncrease { get; init; }
+    public bool MeasureX { get; init; }
+    public bool MeasureY { get; init; }
+    public bool MeasureAltitude { get; init; }
+    public int? ShooterSource { get; init; }
+    public bool BunnyHop { get; init; }
+    internal bool ShooterAimed { get; set; }
+
+    internal int Duration(long dx, long dy, double dz, int stackDuration)
+    {
+        if (TimePerTileMs is not { } time) {
+            return stackDuration;
+        }
+
+        // Enabled-axis Euclidean distance, with separately truncated time and acceleration.
+        var x = MeasureX ? (double)dx : 0;
+        var y = MeasureY ? (double)dy : 0;
+        var z = MeasureAltitude ? dz : 0;
+        var distance = Math.Sqrt(x * x + y * y + z * z);
+        var total = Math.Floor(time * distance);
+
+        if (distance >= 2 && SpeedIncrease > 0 && SpeedIncrease < time) {
+            var acceleratedDistance = Math.Min(distance, (double)time / SpeedIncrease);
+            total -= Math.Floor(SpeedIncrease * acceleratedDistance * (acceleratedDistance - 1) / 2);
+        }
+
+        return (int)Math.Clamp(total, 0, 100000);
+    }
 }
 
 /// <summary>One firing's typed options. Stateful pickers belong to the placed addon, not this policy.</summary>

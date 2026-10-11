@@ -344,7 +344,7 @@ internal sealed partial class WiredStackEngine
                 continue;
             }
 
-            // The room timer only: repeaters, legacy ones included, keep their period (Turbo RoomWiredSystem.ResetTimers).
+            // Room timer reset restarts at-time elapsed and re-arms armed repeaters after the fixed cooldown.
             foreach (var box in GetStack(source)) {
                 if (box is IWiredTimedTrigger timer) {
                     timer.ResetElapsed(now);
@@ -403,6 +403,7 @@ internal sealed partial class WiredStackEngine
             WiredEventKind.BotReachedUser => context.Event.TargetUser,
             WiredEventKind.Variable => null,
             WiredEventKind.BotReachedFurni => null,
+            WiredEventKind.StateChanged => null,
             _ => context.Event.Actor
         };
 

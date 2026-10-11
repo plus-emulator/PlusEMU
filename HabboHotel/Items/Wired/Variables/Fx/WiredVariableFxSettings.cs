@@ -30,7 +30,7 @@ public static class WiredVariableFxSettings
     public static ImmutableArray<int> Defaults(int category)
     {
         var style = WiredVariableFxStyles.All[(category, 0)];
-        int[] ints = [1, 2, 0, 0, 0, 3000, 0, style.DefaultColor, style.DefaultWidth, style.DefaultRenderer, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0];
+        int[] ints = [1, 2, 0, 7, 0, 3000, 0, style.DefaultColor, style.DefaultWidth, style.DefaultRenderer, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0];
 
         return category switch
         {

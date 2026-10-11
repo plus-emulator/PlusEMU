@@ -193,7 +193,7 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
         var values = WiredVariableExecutors.Select(frame, reference.Target, p[3], p[4], WiredVariableExecutors.Picks(configuration, p[4]))
             .Select(holder => reads.Read(reference, holder, frame)).OfType<WiredVariableValue>()
             .Select(value => value.Value is >= int.MinValue and <= int.MaxValue && labels?.GetValueOrDefault((int)value.Value) is { } label ? label : value.Value.ToString(CultureInfo.InvariantCulture));
-        var replacement = p[2] == 2 ? string.Join(tokens[2], values) : values.FirstOrDefault() ?? "";
+        var replacement = p[2] == 2 ? string.Join(tokens[2], values) : values.FirstOrDefault() ?? "null";
 
         return text.Replace(placeholder, replacement, StringComparison.Ordinal);
     }

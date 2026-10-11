@@ -15,7 +15,11 @@ internal static partial class WiredNativeAuxiliaryEditor
     // Octane user sources accepted by the addons: trigger, clicked user, selector, signal, all users.
     private static readonly ImmutableArray<int> AddonUsers = [0, 11, 200, 201, 900];
     private static readonly ImmutableArray<int> AddonFurni = [0, 100, 200, 201, 900];
+    private static readonly ImmutableArray<int> PhysicsFurni = [0, 100, 101, 200, 201, 900];
     private static readonly ImmutableArray<int> PlainFurni = [0, 100, 200, 201];
+    // Source 901 applies to all furniture moved by the stack.
+    private static readonly ImmutableArray<int> ProjectileFurni = [0, 100, 200, 201, 901];
+    private static readonly ImmutableArray<int> ProjectileUsers = [0, 200, 201];
     private static readonly ImmutableArray<int> PlainUsers = [0, 11, 200, 201];
 
     /// <summary>The executor's own normalizer runs here, so the stored runtime is already its fixed point.</summary>
@@ -49,34 +53,42 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_xtra_exec_in_order", Plain("wf_xtra_exec_in_order", [], 0));
         yield return new("wf_xtra_unseen", Plain("wf_xtra_unseen", [], 0));
         // Amount per window and the window in half-second pulses.
-        yield return new("wf_xtra_execution_limit", Plain("wf_xtra_execution_limit", [1, 1], 2, p => In(p[0], 1, 100) && In(p[1], 1, 20)));
+        yield return new("wf_xtra_execution_limit", Plain("wf_xtra_execution_limit", [100, 1], 2, p => In(p[0], 1, 100) && In(p[1], 1, 20)));
         // The AIR form lists skipped executions first, the picker takes the amount first.
         yield return new("wf_xtra_random", Plain("wf_xtra_random", [0, 1], 2, p => In(p[0], 0, 100) && In(p[1], 1, 100), p => [p[1], p[0]]));
         // -1 selects a comparison (index, value); 0..3 are the plain evaluation modes.
-        yield return new("wf_xtra_or_eval", Plain("wf_xtra_or_eval", [0, 0, 0], 3,
-            p => p[0] == -1 ? In(p[1], 0, 2) && In(p[2], 0, 1000) : In(p[0], 0, 3) && p[1] == 0 && p[2] == 0,
-            p => p[0] == -1 ? [4 + p[1], 0, p[2]] : [p[0], 0, 1]));
+        yield return new("wf_xtra_or_eval", new(Sources([PlainFurni], [], [1, 0, 0]) with { FurniDefaults = [100] }, n =>
+        {
+            var p = n.OwnedIntParams;
+
+            if (!Shape(n, 3, 1, 0, 0)
+                || !(p[0] == -1 ? In(p[1], 0, 2) && In(p[2], 0, 1000) : In(p[0], 0, 3) && p[1] == 0 && p[2] == 0)) {
+                return null;
+            }
+
+            return Norm("wf_xtra_or_eval", n, p[0] == -1 ? [4 + p[1], 0, p[2]] : [p[0], 0, 1]);
+        }));
         yield return new("wf_xtra_mov_carry_users", new(Sources([], [AddonUsers], [0]), n => Shape(n, 1, 0, 1, 0) && In(n.OwnedIntParams[0], 0, 1)
             ? Norm("wf_xtra_mov_carry_users", n, [n.OwnedIntParams[0], n.UserSourceTypes[0]]) : null));
-        yield return new("wf_xtra_mov_physics", new(Sources([AddonFurni, AddonFurni], [AddonUsers], [0, 0, 0, 0]), n => Shape(n, 4, 2, 1, 0)
+        yield return new("wf_xtra_mov_physics", new(Sources([PhysicsFurni, PhysicsFurni], [AddonUsers], [1, 0, 0, 0]), n => Shape(n, 4, 2, 1, 0)
             && n.OwnedIntParams.All(flag => flag is 0 or 1)
             ? Norm("wf_xtra_mov_physics", n, [.. n.OwnedIntParams, n.FurniSourceTypes[0], n.FurniSourceTypes[1], n.UserSourceTypes[0]]) : null));
         yield return new("wf_xtra_text_output_furni_name", new(Sources([[0, 100, 200, 201]], [], [0]), n => Shape(n, 1, 1, 0, 0) && Placeholder(n)
             ? Norm("wf_xtra_text_output_furni_name", n, [n.OwnedIntParams[0] == 1 ? 2 : 1, n.FurniSourceTypes[0]]) : null));
         yield return new("wf_xtra_text_output_username", new(Sources([], [[0, 11, 200, 201]], [0]), n => Shape(n, 1, 0, 1, 0) && Placeholder(n)
             ? Norm("wf_xtra_text_output_username", n, [n.OwnedIntParams[0] == 1 ? 2 : 1, n.UserSourceTypes[0]]) : null));
-        yield return new("wf_xtra_filter_furni", new(Meta(1, 1, [1, 0, 0], 1), FilterSpec("wf_xtra_filter_furni")));
-        yield return new("wf_xtra_filter_users", new(Meta(1, 1, [1, 0, 1], 1), FilterSpec("wf_xtra_filter_users")));
+        yield return new("wf_xtra_filter_furni", new(Meta(1, 1, [10, 0, 1], 1), FilterSpec("wf_xtra_filter_furni")));
+        yield return new("wf_xtra_filter_users", new(Meta(1, 1, [10, 0, 1], 1), FilterSpec("wf_xtra_filter_users")));
         // Jump strength: literal or variable value, with the merged reference's own target and source.
-        yield return new("wf_xtra_mov_curve", new(Meta(1, 1, [0, 80, 1], 1), n =>
+        yield return new("wf_xtra_mov_curve", new(Meta(1, 1, [0, 160, -20], 1), n =>
         {
             var p = n.OwnedIntParams;
 
             return Shape(n, 3, 1, 1, 1) && p[0] is 0 or 1 && In(p[1], -1000, 1000) && TryTarget(p[2], out var target)
                 ? Norm("wf_xtra_mov_curve", n, [7, 100, p[1], p[0], target, n.UserSourceTypes[0], n.FurniSourceTypes[0]]) : null;
         }));
-        yield return new("wf_xtra_rotate_to_dir", new(Sources([[100], PlainFurni, PlainFurni], [PlainUsers, PlainUsers, PlainUsers],
-            [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0], 2), n =>
+        yield return new("wf_xtra_rotate_to_dir", new(Sources([ProjectileFurni, PlainFurni, PlainFurni], [ProjectileUsers, ProjectileUsers, ProjectileUsers],
+            [1, 1, 0, 0, 100, -20, 1, 1, 0, 4, 0, 0, 1, 1, 0, 0, 1, -20, 50], 2) with { FurniDefaults = [901, 0, 0], VariableDefaults = ["0", "0"] }, n =>
         {
             var p = n.OwnedIntParams;
 
@@ -94,7 +106,7 @@ internal static partial class WiredNativeAuxiliaryEditor
 
             // Animation-time variable, then distance variable, then the shooter.
             return Norm("wf_xtra_rotate_to_dir", n, [.. fields, n.UserSourceTypes[0], n.FurniSourceTypes[1], n.UserSourceTypes[2],
-                n.FurniSourceTypes[2], n.UserSourceTypes[1]]);
+                n.FurniSourceTypes[2], n.UserSourceTypes[1], n.FurniSourceTypes[0]]);
         }));
     }
 

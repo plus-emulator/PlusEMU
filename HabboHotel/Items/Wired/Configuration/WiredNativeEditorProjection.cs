@@ -36,8 +36,8 @@ public static class WiredNativeEditorProjection
         // No Sept16 server metadata oracle is claimed.
         "wf_trg_says_something" => new([], [], [], [], [0, 0, 1], false),
         // Walk/Show footer defaults are local support; Condition borrows Sept9, not Sept16 metadata.
-        "wf_trg_walks_on_furni" => new([[0, 100, 200, 201]], [], [100], [], [], false),
-        "wf_act_show_message" => new([], [[0, 11, 200, 201]], [], [0], [0, 34, -1], false),
+        "wf_trg_walks_on_furni" => new([[100, 200]], [], [100], [], [], false),
+        "wf_act_show_message" => new([], [[0, 11, 200, 201]], [], [0], [0, 202, -1], false),
         "wf_cnd_furnis_hv_avtrs" => new([[0, 100, 200, 201]], [], [100], [], [1], false),
         // Complete Sept9 server footers are borrowed; no official Sept16/v86 metadata claim.
         "wf_trg_periodically" => new([], [], [], [], [1], false),
@@ -53,7 +53,7 @@ public static class WiredNativeEditorProjection
         "wf_act_set_altitude" => new([[0, 100, 200, 201]], [], [100], [], [0, 0], true),
         "wf_act_send_signal" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201]], [100, 200], [200], [0, 0], false),
         // This is the reviewed executable local subset, not an official Group metadata oracle.
-        "wf_act_move_furni_as_group" => new([[0, 100, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201]], [100, 101], [0], [0, 0, 0], false),
+        "wf_act_move_furni_as_group" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201]], [100, 101], [0], [1, 0, 0], false),
         _ => CategoryMetadata(name)
     };
 

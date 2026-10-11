@@ -221,7 +221,7 @@ public static class WiredConditionConfiguration
                 users["users"] = p[2];
                 break;
             case "wf_cnd_team_has_score":
-                if (p.Length != 5 || !Range(0, 0, 4) || !Range(1, 0, 2) || p[2] < 0 || !U(3) || !Q(4)) {
+                if (p.Length != 5 || !Range(0, 0, 4) || !Range(1, 0, 2) || p[2] is < 0 or > 1000 || !U(3) || !Q(4)) {
                     return false;
                 }
 

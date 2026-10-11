@@ -14,15 +14,17 @@ internal static class WiredNativeSelectorEditor
         ImmutableArray<int> defaults = name switch {
             "wf_slc_furni_bytype" => [0],
             "wf_slc_users_bytype" => [1],
-            "wf_slc_users_team" or "wf_slc_users_handitem" or "wf_slc_users_byaction" or "wf_slc_furni_onfurni" => [0],
+            "wf_slc_users_handitem" => [2],
+            "wf_slc_users_team" or "wf_slc_users_byaction" or "wf_slc_furni_onfurni" => [0],
             "wf_slc_furni_area" or "wf_slc_users_area" => [0, 0, 0, 0],
-            "wf_slc_furni_altitude" => [0, 1],
+            "wf_slc_furni_altitude" => [0, 0],
             "wf_slc_remote" => [0, 0],
-            "wf_slc_furni_neighborhood" or "wf_slc_users_neighborhood" => [0, 0, 0, .. Enumerable.Repeat(0, 14)],
+            "wf_slc_furni_neighborhood" or "wf_slc_users_neighborhood" => [1, 0, 0, 33554431, .. Enumerable.Repeat(0, 13)],
             _ => []
         };
         return name switch {
-            "wf_slc_furni_bytype" or "wf_slc_furni_onfurni" or "wf_slc_users_onfurni" or "wf_slc_remote" =>
+            "wf_slc_remote" => new([[0, 100, 201]], [], [100], [], defaults, false),
+            "wf_slc_furni_bytype" or "wf_slc_furni_onfurni" or "wf_slc_users_onfurni" =>
                 new([[0, 100, 200, 201]], [], [100], [], defaults, false),
             "wf_slc_furni_neighborhood" or "wf_slc_users_neighborhood" =>
                 new([[0, 100, 200, 201]], [[0, 10, 11, 200, 201]], [100], [0], defaults, false),
@@ -81,7 +83,7 @@ internal static class WiredNativeSelectorEditor
                 fields = [.. p, filter, invert];
                 break;
             case "wf_slc_furni_altitude":
-                if (p.Length != 2 || p[0] < 0 || p[1] is < 0 or > 2) return false;
+                if (p.Length != 2 || p[0] is < 0 or > 8000 || p[1] is < 0 or > 2) return false;
                 fields = [p[1], filter, invert];
                 text = (p[0] / 100m).ToString(CultureInfo.InvariantCulture);
                 break;

@@ -40,13 +40,13 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Draft(n, [target, p[2] == 1 ? 2 : 1, p[0] == 1 ? 2 : 1, n.UserSourceTypes[0], n.FurniSourceTypes[0]],
                 "\t" + parts[0] + "\t" + (parts.Length > 1 ? parts[1] : ""));
         }));
-        yield return new("wf_xtra_filter_furni_by_var", new(Meta(1, 1, [1, 0, 0, 0], 2), FilterByVariable));
-        yield return new("wf_xtra_filter_users_by_var", new(Meta(1, 1, [1, 0, 0, 1], 2), FilterByVariable));
+        yield return new("wf_xtra_filter_furni_by_var", new(Meta(1, 1, [10, 0, 0, 1], 2), FilterByVariable));
+        yield return new("wf_xtra_filter_users_by_var", new(Meta(1, 1, [10, 0, 0, 1], 2), FilterByVariable));
         yield return new("wf_xtra_var_text_connector", new(Meta(0, 0, []), n => Shape(n, 0, 0, 0, 0)
             ? Metadata("wf_xtra_var_text_connector", n, [], n.Text) : null));
-        yield return new("wf_xtra_var_time_util", new(Meta(0, 0, [0, 0]), n => Shape(n, 2, 0, 0, 0) && n.Text.Length == 0
+        yield return new("wf_xtra_var_time_util", new(Meta(0, 0, [0, 1]), n => Shape(n, 2, 0, 0, 0) && n.Text.Length == 0
             ? Metadata("wf_xtra_var_time_util", n, n.OwnedIntParams, "") : null));
-        yield return new("wf_xtra_var_lvlup_system", new(Meta(0, 0, [3, 1, 100, 50]), LevelSystem));
+        yield return new("wf_xtra_var_lvlup_system", new(Meta(0, 0, [0, 1, 100, 50]), LevelSystem));
 
         // The six display forms share one int layout (plus one extra int for levelling and number displays); the three variable
         // slots are the range-override minimum and maximum and the audience, and a number display's icon rides the text.

@@ -550,92 +550,120 @@ internal sealed partial class WiredStackEngine
         var prune = false;
         var batches = new HashSet<ActionChain>();
         var deferred = new List<(ScheduledAction Action, (long Due, double Height, uint Id, long Firing, int Order) Priority)>();
+        var readers = new List<(ScheduledAction Action, (long Due, double Height, uint Id, long Firing, int Order) Priority)>();
 
         try {
-            while (_schedule.TryPeek(out _, out var priority) && priority.Due <= resumeAt && !OutOfBudget()) {
-                var scheduled = _schedule.Dequeue();
-                var chain = scheduled.Chain;
-
-                if (!_pending.Contains(chain)) {
-                    CancelAuxiliary(scheduled);
-                    continue;
+            do {
+                // Readers released below re-enter this loop after the wave's variable batch has flushed.
+                foreach (var reader in readers) {
+                    _schedule.Enqueue(reader.Action, reader.Priority);
                 }
 
-                if (!IsChainValid(chain)) {
-                    _pending.Remove(chain);
+                readers.Clear();
 
-                    if (scheduled.Callback == null) {
-                        chain.Context.Runtime?.VariableChanges?.Clear();
-                    }
+                while (_schedule.TryPeek(out _, out var priority) && priority.Due <= resumeAt && !OutOfBudget()) {
+                    var scheduled = _schedule.Dequeue();
+                    var chain = scheduled.Chain;
 
-                    CancelAuxiliary(scheduled);
-                    prune = true;
-                    continue;
-                }
-
-                if (chain.ReadyAtCycle > _cycle) {
-                    deferred.Add((scheduled, priority));
-                    continue;
-                }
-
-                chain.FirstResumeAt ??= resumeAt;
-
-                if (scheduled.Callback == null && !scheduled.DelayElapsed && scheduled.DelayMilliseconds > 0) {
-                    scheduled.DelayElapsed = true;
-                    _schedule.Enqueue(scheduled, (chain.FirstResumeAt.Value + scheduled.DelayMilliseconds,
-                        scheduled.PriorityHeight, scheduled.PriorityId, scheduled.PriorityFiring, scheduled.PriorityOrder));
-                    continue;
-                }
-
-                var action = scheduled.Box;
-
-                try {
-                    if (!IsAttached(action) || (action.Item.GetX, action.Item.GetY) != chain.Tile) {
+                    if (!_pending.Contains(chain)) {
                         CancelAuxiliary(scheduled);
                         continue;
                     }
 
-                    scheduled.Finished = true;
+                    if (!IsChainValid(chain)) {
+                        _pending.Remove(chain);
 
-                    if (scheduled.Callback == null) {
-                        batches.Add(chain);
+                        if (scheduled.Callback == null) {
+                            chain.Context.Runtime?.VariableChanges?.Clear();
+                        }
+
+                        CancelAuxiliary(scheduled);
+                        prune = true;
+                        continue;
                     }
 
-                    var previousAction = _executingAction;
-                    _executingAction = scheduled;
+                    if (chain.ReadyAtCycle > _cycle) {
+                        deferred.Add((scheduled, priority));
+                        continue;
+                    }
+
+                    chain.FirstResumeAt ??= resumeAt;
+
+                    if (scheduled.Callback == null && !scheduled.DelayElapsed && scheduled.DelayMilliseconds > 0) {
+                        scheduled.DelayElapsed = true;
+                        _schedule.Enqueue(scheduled, (chain.FirstResumeAt.Value + scheduled.DelayMilliseconds,
+                            scheduled.PriorityHeight, scheduled.PriorityId, scheduled.PriorityFiring, scheduled.PriorityOrder));
+                        continue;
+                    }
+
+                    // Default-mode Show Message with a variable placeholder reads the state after the wave's changes apply.
+                    if (!scheduled.ReadReleased && ReadsVariableText(scheduled, chain)) {
+                        scheduled.ReadReleased = true;
+                        readers.Add((scheduled, priority));
+                        batches.Add(chain);
+                        continue;
+                    }
+
+                    var action = scheduled.Box;
 
                     try {
-                        if (scheduled.Callback != null) {
-                            SealPublication();
+                        if (!IsAttached(action) || (action.Item.GetX, action.Item.GetY) != chain.Tile) {
+                            CancelAuxiliary(scheduled);
+                            continue;
                         }
 
-                        var succeeded = scheduled.Callback == null ? Execute(action, chain.Context)
-                            : Invoke(action, chain.Context, () => { scheduled.Callback(); return true; });
+                        scheduled.Finished = true;
 
-                        if (succeeded && chain.Context.Runtime?.Policy.StopOnSuccess == true) {
-                            FlushVariableChanges(chain);
-                            _pending.Remove(chain);
-                            prune = true;
+                        if (scheduled.Callback == null) {
+                            batches.Add(chain);
                         }
+
+                        var previousAction = _executingAction;
+                        _executingAction = scheduled;
+
+                        try {
+                            if (scheduled.Callback != null) {
+                                SealPublication();
+                            }
+
+                            var succeeded = scheduled.Callback == null ? Execute(action, chain.Context)
+                                : Invoke(action, chain.Context, () => { scheduled.Callback(); return true; });
+
+                            if (succeeded && chain.Context.Runtime?.Policy.StopOnSuccess == true) {
+                                FlushVariableChanges(chain);
+                                _pending.Remove(chain);
+                                prune = true;
+                            }
+                        }
+                        finally {
+                            _executingAction = previousAction;
+                        }
+
+                        Flash(action);
                     }
                     finally {
-                        _executingAction = previousAction;
-                    }
+                        if (--chain.Remaining == 0) {
+                            if (scheduled.Callback == null) {
+                                FlushVariableChanges(chain);
+                            }
 
-                    Flash(action);
-                }
-                finally {
-                    if (--chain.Remaining == 0) {
-                        if (scheduled.Callback == null) {
-                            FlushVariableChanges(chain);
+                            _pending.Remove(chain);
                         }
-
-                        _pending.Remove(chain);
                     }
                 }
-            }
+
+                foreach (var batch in batches.Where(_pending.Contains)) {
+                    FlushVariableChanges(batch);
+                }
+
+                batches.Clear();
+            } while (readers.Count > 0 && !OutOfBudget());
         }
         finally {
+            foreach (var reader in readers) {
+                _schedule.Enqueue(reader.Action, reader.Priority);
+            }
+
             foreach (var batch in batches.Where(_pending.Contains)) {
                 FlushVariableChanges(batch);
             }
@@ -652,6 +680,22 @@ internal sealed partial class WiredStackEngine
         }
 
         DrainReadySignals();
+    }
+
+    // Only a Show Message whose captured text names a numeric-mode text-output placeholder reads variable state.
+    private static bool ReadsVariableText(ScheduledAction scheduled, ActionChain chain)
+    {
+        if (scheduled.Callback != null || chain.Context.Runtime is not { VariableChanges: not null } runtime
+            || scheduled.Box is not IWiredConfiguredItem { Descriptor.CanonicalName: "wf_act_show_message" } show) {
+            return false;
+        }
+
+        var text = runtime.ConfigurationOf(show).Text;
+
+        return chain.Stack.OfType<IWiredConfiguredItem>().Where(x => x.Descriptor.CanonicalName == "wf_xtra_text_output_variable")
+            .Select(addon => runtime.ConfigurationOf(addon))
+            .Any(config => config.IntParams.Length > 1 && config.IntParams[1] == 1
+                && config.Text.Split('\t') is { Length: > 1 } parts && text.Contains("$(" + parts[1] + ")", StringComparison.Ordinal));
     }
 
     private void FlushVariableChanges(ActionChain chain)
@@ -913,6 +957,7 @@ internal sealed partial class WiredStackEngine
         public int PriorityOrder { get; init; }
         public long DelayMilliseconds { get; init; }
         public bool DelayElapsed { get; set; }
+        public bool ReadReleased { get; set; }
     }
 
     private sealed class ActionChain(IWiredItem source, IWiredItem[] stack,

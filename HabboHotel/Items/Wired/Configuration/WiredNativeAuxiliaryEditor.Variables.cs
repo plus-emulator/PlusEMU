@@ -59,7 +59,7 @@ internal static partial class WiredNativeAuxiliaryEditor
                 ? Draft(n, [target, n.UserSourceTypes[0], n.FurniSourceTypes[0]]) : null;
         }));
         // Destination target, operator, literal-or-variable option, value (high, low), reference target; destination and reference sources.
-        yield return new("wf_act_change_var_val", new(Meta(2, 2, [1, 0, 0, 0, 0, 1], 2), n =>
+        yield return new("wf_act_change_var_val", new(Meta(2, 2, [1, 0, 0, 0, 0, -10], 2), n =>
         {
             var p = n.OwnedIntParams;
 
@@ -73,7 +73,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         }));
         yield return new("wf_cnd_has_var", new(HasVar(false), HasVarSpec));
         yield return new("wf_cnd_neg_has_var", new(HasVar(true), HasVarSpec));
-        yield return new("wf_cnd_var_val_match", new(Meta(2, 2, [1, 1, 0, 0, 0, 1], 2) with { QuantifierType = 3 }, n =>
+        yield return new("wf_cnd_var_val_match", new(Meta(2, 2, [1, 2, 0, 0, 0, -10], 2) with { QuantifierType = 3 }, n =>
         {
             var p = n.OwnedIntParams;
 
@@ -98,10 +98,10 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Draft(n, [target, p[2], p[1], p[4], p[5], n.UserSourceTypes[0], n.FurniSourceTypes[0], n.Quantifier ?? 0]);
         }));
         // Variable (fixed target), comparison, value mode (none, literal, variable), value (high, low), the variable's target.
-        yield return new("wf_slc_furni_with_var", new(Meta(1, 1, [1, 0, 0, 0, 1], 2), WithVariable));
-        yield return new("wf_slc_users_with_var", new(Meta(1, 1, [1, 0, 0, 0, 1], 2), WithVariable));
+        yield return new("wf_slc_furni_with_var", new(Meta(1, 1, [2, 0, 0, 0, -10], 2), WithVariable));
+        yield return new("wf_slc_users_with_var", new(Meta(1, 1, [2, 0, 0, 0, -10], 2), WithVariable));
         // Created, value changed, deleted; increased/decreased/unchanged mask; origin mask. The target comes from the chosen variable.
-        yield return new("wf_trg_var_changed", new(Meta(0, 0, [1, 1, 1, 7, -1], 1), n =>
+        yield return new("wf_trg_var_changed", new(Meta(0, 0, [1, 1, 0, 7, -1], 1), n =>
         {
             var p = n.OwnedIntParams;
 
@@ -115,7 +115,7 @@ internal static partial class WiredNativeAuxiliaryEditor
                 return null;
             }
 
-            var draft = Draft(n, [target, p[0], p[1], p[3] & 1, p[3] >> 1 & 1, p[3] >> 2 & 1, p[2], p[4] < 0 ? -1 : p[4] & 7]);
+            var draft = Draft(n, [target, p[0], p[1], p[3] & 1, p[3] >> 1 & 1, p[3] >> 2 & 1, p[2], p[4] < 0 ? -1 : p[4] & 15]);
 
             return Plus.HabboHotel.Items.Wired.Variables.WiredVariableChangedTrigger.TryNormalize(draft, out var normalized, out _) ? normalized : draft;
         }));

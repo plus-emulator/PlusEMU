@@ -19,6 +19,11 @@ public sealed class WiredVariableChangeBatch
 
         foreach (var group in changes.GroupBy(change => (change.Module, Reference: change.Module.WriteTarget(change.Reference), change.Holder))) {
             var first = group.First();
+
+            if (first.Module.Read(first.Reference, first.Holder, first.Frame) is null) {
+                continue;
+            }
+
             var ordered = group.OrderBy(change => Rank(change.Operation)).ToArray();
             changed |= first.Module.Change(first.Reference, first.Holder, WiredVariableMutation.Set, current =>
                 ordered.Aggregate(current, (value, change) => WiredVariableArithmetic.Apply(change.Operation, value, change.Operand)), first.Frame, notifyUnchanged: true);

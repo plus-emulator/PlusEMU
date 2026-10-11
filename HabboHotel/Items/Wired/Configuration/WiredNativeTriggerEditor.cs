@@ -11,15 +11,19 @@ internal static class WiredNativeTriggerEditor
 
     internal static WiredNativeEditorMetadata Metadata(string name) => name switch
     {
-        "wf_trg_walks_off_furni" or "wf_trg_click_furni" or "wf_trg_click_tile" or "wf_trg_stuff_state"
-            or "wf_trg_recv_signal" => new([[0, 100, 200, 201]], [], [100], [], [], false),
-        "wf_trg_state_changed" => new([[0, 100, 200, 201]], [], [100], [], [0], false),
-        "wf_trg_clock_counter" => new([[0, 100, 200, 201]], [], [100], [], [0, 0, 0], false),
-        "wf_trg_bot_reached_stf" => new([[0, 100, 200, 201]], [[0, 200, 201]], [100], [0], [], false),
-        "wf_trg_bot_reached_avtr" => new([], [[0, 200, 201]], [], [0], [], false),
-        "wf_trg_click_user" => new([], [], [], [], [0, 0], false),
-        "wf_trg_score_achieved" => new([], [], [], [], [1, 0], false),
+        "wf_trg_walks_off_furni" or "wf_trg_click_furni" or "wf_trg_click_tile" => new([[0, 100, 200, 201]], [], [100], [], [], false),
+        "wf_trg_recv_signal" => new([[100, 200, 201]], [], [100], [], [], false),
+        // The use trigger has no state radio; the state-change trigger does.
+        "wf_trg_state_changed" => new([[100, 200]], [], [100], [], [], false),
+        "wf_trg_stuff_state" => new([[100, 200]], [], [100], [], [1], false),
+        "wf_trg_clock_counter" => new([[100, 200]], [], [100], [], [0, 0, 0], false),
+        "wf_trg_bot_reached_stf" => new([[100, 200]], [[100, 200]], [100], [100], [], false),
+        "wf_trg_bot_reached_avtr" => new([], [[100, 200]], [], [100], [], false),
+        "wf_trg_click_user" => new([], [], [], [], [1, 0], false),
+        "wf_trg_score_achieved" => new([], [], [], [], [100, 0], false),
         "wf_trg_user_performs_action" => new([], [], [], [], [0], false),
+        "wf_trg_period_short" => new([], [], [], [], [4], false),
+        "wf_trg_period_long" => new([], [], [], [], [10], false),
         _ when WiredTriggerConfiguration.IsTimed(name) => new([], [], [], [], [1], false),
         _ when Supports(name) => new([], [], [], [], [], false),
         _ => throw new InvalidDataException("Unknown native trigger.")
@@ -51,12 +55,12 @@ internal static class WiredNativeTriggerEditor
                 if (!p.IsEmpty || f.Length != 1) return false;
                 parameters = [f[0]];
                 break;
-            case "wf_trg_stuff_state":
+            case "wf_trg_state_changed":
             case "wf_trg_recv_signal":
                 if (!p.IsEmpty || f.Length != 1) return false;
                 parameters = [0, f[0]];
                 break;
-            case "wf_trg_state_changed":
+            case "wf_trg_stuff_state":
                 if (p.Length != 1 || f.Length != 1) return false;
                 parameters = [p[0], f[0]];
                 break;

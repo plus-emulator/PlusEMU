@@ -15,24 +15,31 @@ internal static class WiredNativeConditionEditor
         var positive = Positive(name);
         ImmutableArray<int> defaults = positive switch
         {
-            "wf_cnd_actor_dir" => [255],
-            "wf_cnd_actor_in_team" or "wf_cnd_has_handitem" or "wf_cnd_wearing_effect" => [0],
+            "wf_cnd_actor_dir" => [0],
+            "wf_cnd_actor_in_team" or "wf_cnd_wearing_effect" => [0],
+            "wf_cnd_has_handitem" => [2],
             "wf_cnd_user_performs_action" => [0],
             "wf_cnd_triggerer_match" => [1],
-            "wf_cnd_furnis_hv_avtrs" or "wf_cnd_has_furni_on" => [1],
+            "wf_cnd_furnis_hv_avtrs" => [1],
+            "wf_cnd_has_furni_on" => [0],
             "wf_cnd_match_snapshot" => [0, 0, 0, 0],
-            "wf_cnd_has_altitude" => [0, 1],
-            "wf_cnd_slc_quantity" => [0, 0, 1],
+            "wf_cnd_has_altitude" => [0, 0],
+            "wf_cnd_slc_quantity" => [0, 5, 0],
             "wf_cnd_user_count_in" => [1, 50],
-            "wf_cnd_team_has_rank" => [1, 0],
-            "wf_cnd_team_has_score" => [1, 0, 1],
-            "wf_cnd_counter_time_matches" => [0, 0, 0, 1],
+            "wf_cnd_team_has_rank" => [0, 0],
+            "wf_cnd_team_has_score" => [0, 0, 0],
+            "wf_cnd_counter_time_matches" => [0, 0, 0, 0],
             "wf_cnd_time_less_than" or "wf_cnd_time_more_than" => [1],
             "wf_cnd_date_rng_active" => [0, 0],
-            "wf_cnd_match_time" => [0, 0, 0, 0, 59, 0, 59, 0, 23],
-            "wf_cnd_match_date" => [0, 0, 127, 1, 31, 4095, DateTime.UtcNow.Year, DateTime.UtcNow.Year],
+            "wf_cnd_match_time" => [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "wf_cnd_match_date" => [0, 0, 127, 1, 1, 4095, 0, 0],
             _ => []
         };
+        // The negative avatar condition has a separate default from the positive card.
+        if (name == "wf_cnd_not_hv_avtrs") {
+            defaults = [0];
+        }
+
         WiredNativeEditorMetadata metadata = positive switch
         {
             "wf_cnd_trggrer_on_frn" => new([[0, 100, 200, 201]], [[0, 10, 11, 200, 201]], [100], [0], defaults, false),
@@ -40,7 +47,7 @@ internal static class WiredNativeConditionEditor
             "wf_cnd_stuff_is" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [], [100, 101], [], defaults, true),
             "wf_cnd_slc_quantity" => new([[0, 100, 200, 201]], [[0, 10, 11, 200, 201]], [100], [0], defaults, true),
             "wf_cnd_furnis_hv_avtrs" or "wf_cnd_has_furni_on" or "wf_cnd_match_snapshot"
-                or "wf_cnd_has_altitude" or "wf_cnd_valid_moves" or "wf_cnd_counter_time_matches" =>
+                or "wf_cnd_has_altitude" or "wf_cnd_counter_time_matches" =>
                 new([[0, 100, 200, 201]], [], [100], [], defaults, positive == "wf_cnd_has_altitude"),
             "wf_cnd_actor_dir" or "wf_cnd_actor_in_group" or "wf_cnd_actor_in_team" or "wf_cnd_has_handitem"
                 or "wf_cnd_wearing_effect" or "wf_cnd_wearing_badge" or "wf_cnd_user_performs_action"
@@ -155,7 +162,7 @@ internal static class WiredNativeConditionEditor
                 text = (p[0] / 100m).ToString(CultureInfo.InvariantCulture);
                 break;
             case "wf_cnd_valid_moves":
-                if (!p.IsEmpty || f.Length != 1)
+                if (!p.IsEmpty || f.Length != 0)
                     return false;
 
                 parameters = [];
@@ -243,9 +250,6 @@ internal static class WiredNativeConditionEditor
 
         if (positive == "wf_cnd_stuff_is") {
             runtime = runtime with { FurniSources = runtime.FurniSources.SetItem("items", f[0]).SetItem("comparison", f[1]) };
-        }
-        else if (positive == "wf_cnd_valid_moves") {
-            runtime = runtime with { FurniSources = runtime.FurniSources.SetItem("items", f[0]) };
         }
 
         return true;

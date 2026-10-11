@@ -51,7 +51,7 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             p = p.SetItem(1, 0).SetItem(6, 0);
         }
 
-        p = p.SetItem(7, p[7] < 0 ? -1 : p[7] & 7);
+        p = p.SetItem(7, p[7] < 0 ? -1 : p[7] & 15);
 
         if (p[1] == 0 && p[6] == 0 && (p[2] == 0 || p[3] + p[4] + p[5] == 0)) {
             return false;
@@ -71,9 +71,10 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             return false;
         }
 
-        return Matches(config with { Text = reference.Token }, change);
+        return Matches(config with { Text = reference.Token }, change, context.Room.Id);
     }
-    public static bool Matches(WiredConfiguration config, WiredVariableChange change)
+    public static bool Matches(WiredConfiguration config, WiredVariableChange change) => Matches(config, change, change.RoomId);
+    public static bool Matches(WiredConfiguration config, WiredVariableChange change, uint currentRoomId)
     {
         var p = config.IntParams;
 
@@ -90,7 +91,7 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             return false;
         }
 
-        var origin = change.Origin is >= 0 and <= 2 ? change.Origin : 0;
+        var origin = change.NativeOrigin(currentRoomId);
 
         if (p[7] is not (-1 or 0) && (p[7] & (1 << origin)) == 0) {
             return false;

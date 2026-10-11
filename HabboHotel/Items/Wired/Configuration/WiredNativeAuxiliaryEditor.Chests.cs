@@ -23,13 +23,16 @@ internal static partial class WiredNativeAuxiliaryEditor
         UserSources = n.UserSourceTypes.Select((source, index) => (source, index)).ToImmutableDictionary(pair => "u" + pair.index, pair => pair.source)
     };
 
+    // Transaction triggers filter the explicitly picked furniture.
+    private static readonly WiredNativeEditorMetadata TransactionTrigger = new([[100]], [], [100], [], [], false);
+
     private static IEnumerable<KeyValuePair<string, Spec>> Chests()
     {
         // Mode (amount or all), amount, literal-or-variable option, its target, show-by-default, then currency category / iteration order.
-        yield return new("wf_act_give_currency", new(ChestMeta(2, 2, [0, 1, 0, 1, 1, 11], 1, [100, 0], [0, 0]), n => Reward(n, 11, 13)));
-        yield return new("wf_act_give_furni", new(ChestMeta(2, 2, [0, 1, 0, 1, 0, 0], 1, [100, 0], [0, 0]), n => Reward(n, 0, 2)));
+        yield return new("wf_act_give_currency", new(ChestMeta(2, 2, [0, 1, 0, -20, 1, 11], 1, [100, 0], [0, 0]), n => Reward(n, 11, 13)));
+        yield return new("wf_act_give_furni", new(ChestMeta(2, 2, [0, 1, 0, -20, 1, 0], 1, [100, 0], [0, 0]), n => Reward(n, 0, 2)));
         // Mode, multiplier, option, target, timeout flag and seconds; chests, contracts and the merged reference.
-        yield return new("wf_act_init_transaction", new(ChestMeta(3, 2, [0, 1, 0, 1, 0, 300], 1, [100, 100, 0], [0, 0]), n =>
+        yield return new("wf_act_init_transaction", new(ChestMeta(3, 2, [0, 10, 0, -20, 0, 300], 1, [100, 100, 0], [0, 0]), n =>
         {
             var p = n.OwnedIntParams;
 
@@ -38,15 +41,15 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_act_cancel_transaction", new(ChestMeta(1, 1, [0], 0, [100], [0]), n =>
             Shape(n, 1, 1, 1, 0) ? ChestDraft(n, [.. n.OwnedIntParams]) : null));
         // Compared amount, its option and target, comparison (the form's own codes).
-        yield return new("wf_cnd_chest_has_items", new(ChestMeta(2, 1, [0, 0, 1, 2], 1, [100, 0], [0]) with { QuantifierType = 0 }, HasChest(2)));
-        yield return new("wf_cnd_chest_has_item_type", new(ChestMeta(3, 1, [0, 0, 1, 2], 1, [100, 100, 0], [0]) with { QuantifierType = 0 }, HasChest(3)));
-        yield return new("wf_trg_transaction_complete", new(Meta(0, 0, []), n => Shape(n, 0, 0, 0, 0) ? ChestDraft(n, []) : null));
-        yield return new("wf_trg_transaction_fail", new(Meta(0, 0, []), n => Shape(n, 0, 0, 0, 0) ? ChestDraft(n, []) : null));
+        yield return new("wf_cnd_chest_has_items", new(ChestMeta(2, 1, [0, 0, -20, 2], 1, [100, 0], [0]) with { QuantifierType = 0 }, HasChest(2)));
+        yield return new("wf_cnd_chest_has_item_type", new(ChestMeta(3, 1, [0, 0, -20, 2], 1, [100, 100, 0], [0]) with { QuantifierType = 0 }, HasChest(3)));
+        yield return new("wf_trg_transaction_complete", new(TransactionTrigger, n => Shape(n, 0, 1, 0, 0) && n.FurniSourceTypes[0] == 100 ? ChestDraft(n, []) : null));
+        yield return new("wf_trg_transaction_fail", new(TransactionTrigger, n => Shape(n, 0, 1, 0, 0) && n.FurniSourceTypes[0] == 100 ? ChestDraft(n, []) : null));
         // Scanning mode; item types and chests, writing into a context variable.
         yield return new("wf_xtra_scan_chest_furni_by_type", new(ChestMeta(2, 0, [0], 1, [100, 100], []), n =>
             Shape(n, 1, 2, 0, 1) ? ChestDraft(n, [.. n.OwnedIntParams]) : null));
         // Payment then reward: enabled, element type, option, amount, target; payment/reward furni, then the merged references.
-        yield return new("wf_xtra_custom_contract", new(ChestMeta(4, 2, [0, 0, 0, 1, 1, 0, 0, 0, 1, 1], 2, [100, 100, 0, 0], [0, 0]), n =>
+        yield return new("wf_xtra_custom_contract", new(ChestMeta(4, 2, [0, 0, 0, 1, -20, 0, 0, 0, 1, -20], 2, [100, 100, 0, 0], [0, 0]), n =>
         {
             var p = n.OwnedIntParams;
 

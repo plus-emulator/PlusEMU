@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Plus.HabboHotel.Items.Wired.Modern.Addons;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Selectors;
@@ -181,9 +182,26 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             return false;
         }
 
-        if (policy.Projectile?.ItemIds.Contains(item.Id) == true) {
+        var projectile = policy.Projectile?.AppliesTo(item.Id) == true ? policy.Projectile : null;
+
+        if (projectile != null) {
+            var duration = projectile.Duration((long)item.GetX - source.X,
+                (long)item.GetY - source.Y, item.GetZ - source.Z, options.AnimationTimeMs);
+            var publishImmediate = options.Animate && duration == 0;
+            options = options with
+            {
+                AnimationTimeMs = duration,
+                Animate = options.Animate && duration > 0
+            };
+
+            if (publishImmediate) {
+                context.Publication?.Flush();
+                room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
+            }
+
             WiredProjectileFlights.For(room).Begin(item, source.X, source.Y, source.Z,
-                options.Animate ? options.AnimationTimeMs : 0, context.NowMilliseconds, policy.Projectile.VariableMask);
+                options.Animate ? options.AnimationTimeMs : 0, context.NowMilliseconds, projectile.VariableMask,
+                options.CurveType == 7 ? options.CurveStrength : null);
         }
 
         if (options.Animate) {
@@ -195,17 +213,56 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 CurveStrength = options.CurveType == 7 ? options.CurveStrength : null
             };
 
-            if (context.Publication?.Append(item, movement, style) != true) {
+            var aimed = projectile == null ? null
+                : AimShooter(context, projectile, (long)item.GetX - source.X, (long)item.GetY - source.Y);
+
+            if (context.Publication?.Append(item, movement, style) == true) {
+                if (aimed is { } late && IsCurrentAim(room, late)) {
+                    room.SendPacket(late.Turn);
+                }
+            }
+            else {
                 room.SendPacket(style);
-                room.SendPacket(movement);
+
+                // One packet: the furniture body, then the shooter's direction (re-checked after the style callback).
+                var turn = aimed is { } pending && IsCurrentAim(room, pending) ? pending.Turn : null;
+                room.SendPacket(new WiredMovementBatchComposer([movement], turn == null ? null : new[] { turn }));
             }
         }
 
         foreach (var user in carried) {
-            MoveAvatar(context, user, user.X + dx, user.Y + dy, options.Animate, 1, true, passengers: passengers, carrySource: carrySources[user]);
+            MoveAvatar(context, user, user.X + dx, user.Y + dy, options.Animate, 1, true, animationTimeMs: options.AnimationTimeMs, passengers: passengers, carrySource: carrySources[user]);
         }
 
         return true;
+    }
+
+    private static bool IsCurrentAim(Room room, (RoomUser Shooter, long Lifetime, WiredUserDirectionComposer Turn) aim) =>
+        aim.Shooter.Movement.State != Plus.HabboHotel.Rooms.PathFinding.NavState.Removing
+        && aim.Shooter.Movement.LifetimeId == aim.Lifetime
+        && ReferenceEquals(room.GetRoomUserManager().GetRoomUserByVirtualId(aim.Shooter.VirtualId), aim.Shooter);
+
+    private static (RoomUser Shooter, long Lifetime, WiredUserDirectionComposer Turn)? AimShooter(WiredRuntimeContext context, WiredProjectilePolicy projectile, long dx, long dy)
+    {
+        if (projectile.ShooterSource is not { } source || projectile.DirectionSystem is not { } system
+            || projectile.ShooterAimed || WiredMovementPolicy.Direction(system, dx, dy) is not { } direction) {
+            return null;
+        }
+
+        // Aims the first present shooter once per firing, without the item offset; the once-per-firing and source policy are not proven.
+        projectile.ShooterAimed = true;
+        var room = context.Room;
+        var shooter = context.Targets.ResolveUsers(context, [], source).FirstOrDefault(user =>
+            ReferenceEquals(room.GetRoomUserManager().GetRoomUserByVirtualId(user.VirtualId), user));
+
+        if (shooter == null) {
+            return null;
+        }
+
+        shooter.RotBody = direction;
+        shooter.RotHead = direction;
+
+        return (shooter, shooter.Movement.LifetimeId, new WiredUserDirectionComposer(shooter.VirtualId, direction, direction));
     }
 
     /// <summary>

@@ -149,5 +149,6 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
     {
         _started = nowMilliseconds;
         _epoch++;
+        _timers.ResetPeriodic(Item.Id, nowMilliseconds);
     }
 }

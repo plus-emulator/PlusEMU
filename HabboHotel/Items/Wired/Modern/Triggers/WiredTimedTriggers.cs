@@ -8,6 +8,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Triggers;
 /// </summary>
 public sealed class WiredTimedTriggers
 {
+    private const long ResetCooldownMs = 500;
     private readonly Dictionary<uint, long> _nextPeriodicAt = [];
     private readonly Dictionary<uint, long> _firedEpoch = [];
 
@@ -61,6 +62,14 @@ public sealed class WiredTimedTriggers
         _nextPeriodicAt[boxId] = nowMs + intervalMs;
 
         return true;
+    }
+
+    /// <summary>A room timer reset re-arms an armed repeater one fixed cooldown out; an unarmed one stays unarmed.</summary>
+    public void ResetPeriodic(uint boxId, long nowMs)
+    {
+        if (_nextPeriodicAt.ContainsKey(boxId)) {
+            _nextPeriodicAt[boxId] = nowMs + ResetCooldownMs;
+        }
     }
 
     public void Forget(uint boxId)

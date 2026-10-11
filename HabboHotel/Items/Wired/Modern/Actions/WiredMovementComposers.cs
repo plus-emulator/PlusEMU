@@ -63,15 +63,38 @@ public sealed record WiredMovementComposer(int Type, int Id, int FromX, int From
     }
 }
 
-internal sealed record WiredMovementBatchComposer(IReadOnlyList<WiredMovementComposer> Movements) : IServerPacket
+public sealed record WiredUserDirectionComposer(int Id, int BodyRotation, int HeadRotation) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.WiredMovementsComposer;
     public void Compose(IOutgoingPacket packet)
     {
-        packet.WriteInteger(Movements.Count);
+        packet.WriteInteger(1);
+        WriteEntry(packet);
+    }
+
+    internal void WriteEntry(IOutgoingPacket packet)
+    {
+        packet.WriteInteger(3);
+        packet.WriteInteger(Id);
+        packet.WriteInteger(BodyRotation);
+        packet.WriteInteger(HeadRotation);
+    }
+}
+
+internal sealed record WiredMovementBatchComposer(IReadOnlyList<WiredMovementComposer> Movements,
+    IReadOnlyList<WiredUserDirectionComposer>? Directions = null) : IServerPacket
+{
+    public uint MessageId => ServerPacketHeader.WiredMovementsComposer;
+    public void Compose(IOutgoingPacket packet)
+    {
+        packet.WriteInteger(Movements.Count + (Directions?.Count ?? 0));
 
         foreach (var movement in Movements) {
             movement.WriteEntry(packet);
+        }
+
+        foreach (var direction in Directions ?? []) {
+            direction.WriteEntry(packet);
         }
     }
 }

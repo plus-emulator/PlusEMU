@@ -157,15 +157,31 @@ public sealed class WiredAddonModule
             case "wf_xtra_rotate_to_dir": {
                     var distance = (WiredProjectileDistance)P(14);
                     long? tiles = distance != WiredProjectileDistance.Normal && P(15) == 1
-                        ? ReadVariable(input, P(17), c.VariableIds.ElementAtOrDefault(1) ?? "", P(21), P(22), c) : P(16);
+                        ? ReadVariable(input, P(17), ProjectileVariable(c, 1), P(21), P(22), c) : P(16);
 
                     if (tiles is null) {
                         distance = WiredProjectileDistance.Normal;
                     }
 
-                    policy.Projectile = new(Furni(100), P(0) == 1 ? P(1) : null, P(10),
+                    long time = P(4);
+
+                    if (P(2) == 1 && P(3) == 1) {
+                        time = ReadVariable(input, P(5), ProjectileVariable(c, 0), P(19), P(20), c) ?? time;
+                    }
+
+                    policy.Projectile = new(P(24) == WiredProjectilePolicy.StackMovedSource ? [] : Furni(P(24)), P(0) == 1 ? P(1) : null, P(10),
                     P(18) == 0 ? null : P(18), distance, (int)Math.Clamp(tiles ?? 0, -64, 64))
-                    { VariableMask = P(11) };
+                    {
+                        AppliesToAllMovedFurniture = P(24) == WiredProjectilePolicy.StackMovedSource,
+                        VariableMask = P(11),
+                        TimePerTileMs = P(2) == 1 ? (int)Math.Clamp(time, 1, 100000) : null,
+                        SpeedIncrease = P(9),
+                        MeasureX = P(6) == 1,
+                        MeasureY = P(7) == 1,
+                        MeasureAltitude = P(8) == 1,
+                        ShooterSource = P(0) == 1 && P(12) == 1 ? P(23) : null,
+                        BunnyHop = P(13) == 1
+                    };
                     break;
                 }
             default:
@@ -174,6 +190,10 @@ public sealed class WiredAddonModule
 
         return true;
     }
+
+    // Projectile variable slots accept "0" as an unpicked value.
+    private static string ProjectileVariable(WiredConfiguration c, int slot) =>
+        c.VariableIds.ElementAtOrDefault(slot) is { } id && id != "0" ? id : "";
 
     private static long? ReadVariable(WiredAddonInputs input, int target, string token, int users, int furni,
         WiredConfiguration c)

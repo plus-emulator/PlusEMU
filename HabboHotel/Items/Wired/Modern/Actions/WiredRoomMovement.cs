@@ -215,7 +215,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             var movement = new WiredMovementComposer(1, (int)item.Id, source.X, source.Y, source.Z,
                 item.GetX, item.GetY, item.GetZ, item.Rotation, item.Rotation, options.AnimationTimeMs)
             {
-                CurveStrength = options.CurveType == 7 ? options.CurveStrength : null
+                CurveStrength = options.CurveType == 7 && options.CurveStrength != 0 ? options.CurveStrength : null
             };
 
             var aimed = projectile == null ? null

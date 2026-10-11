@@ -48,7 +48,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(Enumerable.Range(1, 7), floor.Select(move => move.Id));
         Assert.All(floor, move =>
         {
-            Assert.Equal(strength, move.Strength);
+            Assert.Equal(strength == 0 ? null : strength, move.Strength);
             Assert.Null(move.Overshoot);
             Assert.Equal(move.FromX, move.ToX);
             Assert.Equal(500, move.Duration);
@@ -63,17 +63,17 @@ public sealed partial class WiredGlideConveyorTests
     [Theory]
     [InlineData("literal-positive", 100, 100)]
     [InlineData("literal-negative", -100, -100)]
-    [InlineData("literal-zero", 0, 0)]
+    [InlineData("literal-zero", null, 0)]
     [InlineData("variable-positive-clamp", 1000, 1000)]
     [InlineData("variable-negative-clamp", -1000, -1000)]
-    [InlineData("variable-zero", 0, 0)]
+    [InlineData("variable-zero", null, 0)]
     [InlineData("missing-variable", null, null)]
     [InlineData("missing-variable-projectile", 100, null)]
     [InlineData("projectile-positive", 100, null)]
     [InlineData("projectile-negative", -100, null)]
     [InlineData("projectile-zero", null, null)]
     [InlineData("projectile-unselected", null, null)]
-    [InlineData("addon-zero-projectile", 0, 0)]
+    [InlineData("addon-zero-projectile", null, 0)]
     [InlineData("addon-negative-projectile", -100, -100)]
     [InlineData("absent", null, null)]
     public void CanonicalStrengthResolvedAddonAndProjectileScopeReachActualProducers(string scenario, int? floorExpected, int? avatarExpected)

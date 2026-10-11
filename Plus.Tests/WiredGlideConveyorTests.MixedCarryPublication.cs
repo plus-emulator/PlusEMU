@@ -603,9 +603,13 @@ public sealed partial class WiredGlideConveyorTests
     [InlineData(null, "v2")]
     [InlineData(0, "v2")]
     [InlineData(-100, "v2")]
+    [InlineData(160, "v2")]
+    [InlineData(-160, "v2")]
     [InlineData(null, "legacy")]
     [InlineData(0, "legacy")]
     [InlineData(-100, "legacy")]
+    [InlineData(160, "legacy")]
+    [InlineData(-160, "legacy")]
     public void CanonicalStrengthCoalescedResetKeepsLastMetadataAndFirstSource(int? resetStrength, string movementEngine)
     {
         var layout = FastQueueLayout(2).ToList();
@@ -634,7 +638,8 @@ public sealed partial class WiredGlideConveyorTests
             Assert.Equal(Enumerable.Range(1, 7).Where(id => pulse == 1 || id != 1), floor.Select(move => move.Id));
             Assert.All(floor, move =>
             {
-                Assert.Equal(resetStrength, move.Strength);
+                // Zero strengths are omitted from furniture movement entries.
+                Assert.Equal(resetStrength == 0 ? null : resetStrength, move.Strength);
                 Assert.Equal(move.FromX, move.ToX);
                 Assert.Equal(500, move.Duration);
                 Assert.Null(move.Overshoot);

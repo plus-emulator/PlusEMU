@@ -71,12 +71,28 @@ public sealed class WiredSelectorTests
         yield return ["wf_slc_users_byname", Config(text: " ADA \nana"), Array.Empty<uint>(), new[] { 1, 4 }];
         yield return ["wf_slc_users_neighborhood", Hood(1, 1, -1, WiredSources.Trigger, 0), Array.Empty<uint>(), new[] { 4 }];
         yield return ["wf_slc_users_area", Config([1, 1, 2, 1]), Array.Empty<uint>(), new[] { 1 }];
-        yield return ["wf_slc_users_handitem", Config([0]), Array.Empty<uint>(), new[] { 1 }];
+        yield return ["wf_slc_users_handitem", Config([0]), Array.Empty<uint>(), new[] { 2, 3, 4 }];
         yield return ["wf_slc_users_group", Config([0]), Array.Empty<uint>(), new[] { 1 }];
         yield return ["wf_slc_furni_altitude", Config([1], text: "1.004"), Array.Empty<uint>(), Array.Empty<int>()];
         yield return ["wf_slc_furni_with_var", Config(text: "custom:77"), new uint[] { 3 }, Array.Empty<int>()];
         yield return ["wf_slc_users_with_var", Config(text: "custom:77"), Array.Empty<uint>(), new[] { 4 }];
         yield return ["wf_slc_remote", Config(picks: [99]), new uint[] { 3 }, Array.Empty<int>()];
+    }
+
+    [Theory]
+    [InlineData(0, new[] { 3 })]
+    [InlineData(2, new[] { 1 })]
+    [InlineData(5, new[] { 2 })]
+    public void HandItemSelectorMatchesTheCarriedCodeExactlyAndZeroMeansNoHandItem(int code, int[] expected)
+    {
+        var world = new WiredSelectorWorld(10, 10, [],
+        [
+            new(1, "Ada", WiredSelectorEntityKind.Player, 1, 1, HandItem: 2),
+            new(2, "Bob", WiredSelectorEntityKind.Player, 2, 1, HandItem: 5),
+            new(3, "Cat", WiredSelectorEntityKind.Player, 3, 1)
+        ], 0, new Dictionary<uint, WiredRemoteSelector>());
+        var result = WiredSelectorModule.SelectRaw("wf_slc_users_handitem", Config([code]), world, Inputs());
+        Assert.Equal(expected.Order(), result.Selection.UserIds.Order());
     }
 
     [Theory]

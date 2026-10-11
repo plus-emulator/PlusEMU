@@ -76,7 +76,7 @@ public static class WiredSelectorModule
                     break;
                 }
             case "wf_slc_users_handitem":
-                selected.UserIds.UnionWith(world.Users.Where(x => P(0) == 0 ? x.HandItem != 0 : x.HandItem == P(0)).Select(x => x.Id));
+                selected.UserIds.UnionWith(world.Users.Where(x => x.HandItem == P(0)).Select(x => x.Id));
                 break;
             case "wf_slc_users_group": {
                     var groupId = P(0) == 0 ? world.RoomGroupId : P(1);

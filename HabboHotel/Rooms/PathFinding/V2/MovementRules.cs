@@ -191,6 +191,13 @@ public sealed class MovementRules(NavGrid grid, PathfindingSettings settings, Ac
             return StepReason.CornerVoid;
         }
 
+        // A room that allows squeezing lets its actors pass between blocked flanks (furniture, height,
+        // locks, gates), never past a void one: that step stays under the global rule, so Official
+        // refuses it above and Strict below. Corner rule None never reaches this check.
+        if (actor.DiagonalSqueeze && !grid.TileVoid[a] && !grid.TileVoid[b]) {
+            return StepReason.Ok;
+        }
+
         var openA = CanFlankKnownTile(actor, from, a);
 
         if (_cornerRule == CornerRule.Strict

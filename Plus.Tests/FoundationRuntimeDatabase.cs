@@ -86,6 +86,7 @@ internal static class FoundationRuntimeDatabase
     {
         Assert.Equal("tinyint(1)", Column(connection, "rooms", "lay_enabled"));
         Assert.Equal("tinyint(1)", Column(connection, "rooms", "hide_wired"));
+        Assert.Equal("tinyint(1)", Column(connection, "rooms", "diagonal_squeeze"));
         Assert.NotNull(Column(connection, "users", "bubble_id"));
         Assert.NotNull(Column(connection, "users", "auth_ticket_expires_at"));
         Assert.NotNull(Column(connection, "user_statistics", "id"));

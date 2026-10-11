@@ -2222,6 +2222,7 @@ CREATE TABLE `rooms` (
   `allow_hidewall` tinyint(1) NOT NULL DEFAULT 0,
   `hide_wired` tinyint(1) NOT NULL DEFAULT 0,
   `group_ref` int(11) unsigned GENERATED ALWAYS AS (nullif(`group_id`,0)) STORED,
+  `diagonal_squeeze` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `users_now` (`users_now`),
   KEY `caption` (`caption`),

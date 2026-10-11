@@ -239,7 +239,9 @@ namespace Plus.Tests
                 await definitions.Start();
                 var items = CatalogSnapshotTestSupport.Proxy<IItemDataManager>((_, _) => throw new InvalidOperationException("Empty configured gifts do not need item metadata."));
                 var talents = new TalentTrackProgressionService(definitions, items, new TalentTrackRewardStore(Database), NullLogger<TalentTrackProgressionService>.Instance);
-                var manager = new AchievementManager(new AchievementLevelFactory(Database), Database, badges, talents);
+                var messenger = CatalogSnapshotTestSupport.Proxy<Plus.HabboHotel.Friends.IMessengerDataLoader>((method, _) =>
+                    method == "BroadcastStatusUpdate" ? null : throw new InvalidOperationException(method));
+                var manager = new AchievementManager(new AchievementLevelFactory(Database), Database, badges, talents, messenger);
                 await manager.Init();
                 var entry = CatalogSnapshotTestSupport.Proxy<IAchievementManager>((method, args) =>
                 {

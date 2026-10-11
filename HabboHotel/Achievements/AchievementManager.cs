@@ -3,6 +3,7 @@ using Plus.Communication.Packets.Outgoing.Inventory.Achievements;
 using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Database;
 using Plus.HabboHotel.Badges;
+using Plus.HabboHotel.Friends;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users.Messenger;
 using Plus.HabboHotel.Users;
@@ -18,13 +19,16 @@ public class AchievementManager : IAchievementManager, IStartable
     private readonly IDatabase _database;
     private readonly IBadgeManager _badgeManager;
     private readonly ITalentTrackProgressionService _talents;
+    private readonly IMessengerDataLoader _messenger;
 
-    public AchievementManager(IAchievementLevelFactory achievementLevelFactory, IDatabase database, IBadgeManager badgeManager, ITalentTrackProgressionService talents)
+    public AchievementManager(IAchievementLevelFactory achievementLevelFactory, IDatabase database, IBadgeManager badgeManager, ITalentTrackProgressionService talents,
+        IMessengerDataLoader messenger)
     {
         _achievementLevelFactory = achievementLevelFactory;
         _database = database;
         _badgeManager = badgeManager;
         _talents = talents;
+        _messenger = messenger;
         Achievements = new();
     }
 
@@ -107,7 +111,6 @@ public class AchievementManager : IAchievementManager, IStartable
             }
 
             session.Send(new AchievementUnlockedComposer(AchievementUnlockSnapshot.Capture(data, targetLevel, level.RewardPoints, level.RewardPixels)));
-            BroadcastAchievement(habbo, MessengerEventTypes.AchievementUnlocked, group + targetLevel);
 
             lock (habbo.WalletSync) {
                 if (habbo.AccessClosed) {
@@ -130,6 +133,8 @@ public class AchievementManager : IAchievementManager, IStartable
                 session.Send(new AchievementProgressedComposer(AchievementNotificationSnapshot.CaptureProgress(data, newTarget, newLevelData, totalLevels, habbo.GetAchievementData(group))));
             }
 
+            // Only a committed level reaches friends; the friend bar shows the badge code as "earned an achievement".
+            _messenger.BroadcastStatusUpdate(habbo, MessengerEventTypes.AchievementUnlocked, group + targetLevel);
             _talents.Progress(habbo, Achievements);
 
             return true;
@@ -162,6 +167,4 @@ public class AchievementManager : IAchievementManager, IStartable
 
         return achievements;
     }
-
-    public void BroadcastAchievement(Habbo habbo, MessengerEventTypes eventType, string level) { }
 }

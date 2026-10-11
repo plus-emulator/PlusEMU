@@ -29,7 +29,8 @@ public class AchievementSnapshotTests
             throw new InvalidOperationException(method);
         });
         var manager = new AchievementManager(Untouched<IAchievementLevelFactory>(), Untouched<Plus.Database.IDatabase>(),
-            Untouched<Plus.HabboHotel.Badges.IBadgeManager>(), Untouched<Plus.HabboHotel.Talents.ITalentTrackProgressionService>());
+            Untouched<Plus.HabboHotel.Badges.IBadgeManager>(), Untouched<Plus.HabboHotel.Talents.ITalentTrackProgressionService>(),
+            Untouched<Plus.HabboHotel.Friends.IMessengerDataLoader>());
         var achievement = new Achievement { GroupName = "ACH_Probe", Category = "probe" };
         achievement.AddLevel(new AchievementLevel(1, 20, 7, 1));
         manager.Achievements.Add("ACH_Probe", achievement);

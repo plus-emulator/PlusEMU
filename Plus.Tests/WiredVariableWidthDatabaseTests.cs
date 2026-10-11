@@ -77,7 +77,8 @@ public sealed class WiredVariableWidthDatabaseTests
                     Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
                     var high = unchecked((int)(number >> 32));
                     var low = unchecked((int)number);
-                    var scalar = WiredNativeEditorProjection.DefaultNative(descriptor) with {
+                    var scalar = WiredNativeEditorProjection.DefaultNative(descriptor) with
+                    {
                         OwnedIntParams = name == "wf_act_give_var" ? [0, high, low, 0]
                             : [0, name == "wf_cnd_var_val_match" ? 1 : 0, 0, high, low, 0],
                         VariableIds = name == "wf_act_give_var" ? ["furni:10"] : ["furni:10", "n"]

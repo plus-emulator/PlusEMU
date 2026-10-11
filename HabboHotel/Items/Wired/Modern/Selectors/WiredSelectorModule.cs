@@ -309,6 +309,7 @@ public static class WiredSelectorModule
     private static HashSet<(int X, int Y)> Neighborhood(WiredConfiguration c, WiredSelectorWorld world, WiredSelectorInputs input)
     {
         int P(int i) => WiredSelectorSources.Param(c, i);
+
         if (c.IntParams.Length != 17) {
             throw new ArgumentException("Neighborhood requires its native 441-tile bitmap");
         }
@@ -341,17 +342,21 @@ public static class WiredSelectorModule
         var dy = 0;
         var index = 0;
         var length = 1;
+
         while (index < 441) {
             for (var turn = 0; turn < 2; turn++) {
                 for (var step = 0; step < length && index < 441; step++, index++) {
                     if (((uint)fields[3 + index / 32] & (1u << (index % 32))) != 0) {
                         yield return (x, y);
                     }
+
                     x += dx;
                     y += dy;
                 }
+
                 (dx, dy) = (dy, -dx);
             }
+
             length++;
         }
     }

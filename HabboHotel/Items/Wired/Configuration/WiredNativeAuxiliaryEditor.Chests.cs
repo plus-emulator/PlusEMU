@@ -12,9 +12,9 @@ internal static partial class WiredNativeAuxiliaryEditor
         ImmutableArray<int> furniDefaults, ImmutableArray<int> userDefaults) => new(
             [.. Enumerable.Repeat(ChestFurni, furniSelections)], [.. Enumerable.Repeat(ChestUsers, userSelections)],
             furniDefaults, userDefaults, owned, false)
-    {
-        VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Id, variables)]
-    };
+        {
+            VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Id, variables)]
+        };
 
     /// <summary>Selections become indexed role sources ("f0", "u1", ...) the chest boxes read.</summary>
     private static WiredConfiguration ChestDraft(WiredNativeEditorConfiguration n, int[] ints, string text = "") => Draft(n, [.. ints], text) with

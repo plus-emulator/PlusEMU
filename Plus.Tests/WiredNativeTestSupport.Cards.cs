@@ -9,8 +9,9 @@ internal static partial class WiredNativeTestSupport
 {
     internal static WiredNativeEditorConfiguration? FromOtherRuntime(WiredBoxDescriptor descriptor, WiredConfiguration c, Func<uint, bool>? isWall)
     {
-        if (descriptor.Category == WiredBoxCategory.Action)
+        if (descriptor.Category == WiredBoxCategory.Action) {
             return FromActionRuntime(descriptor, c, isWall);
+        }
 
         var n = WiredNativeEditorProjection.DefaultNative(descriptor) with
         {
@@ -128,10 +129,12 @@ internal static partial class WiredNativeTestSupport
                 case "wf_cnd_slc_quantity":
                     owned = [P(2) == 1 ? 0 : 1, P(1), P(0)];
 
-                    if (P(2) == 1)
+                    if (P(2) == 1) {
                         f = [P(3)];
-                    else
+                    }
+                    else {
                         u = [P(3)];
+                    }
 
                     break;
                 case "wf_cnd_team_has_rank":
@@ -261,8 +264,9 @@ internal static partial class WiredNativeTestSupport
                     break;
             }
         }
-        else
+        else {
             return null;
+        }
 
         return n with { OwnedIntParams = owned, FurniSourceTypes = f, UserSourceTypes = u };
     }
@@ -278,8 +282,9 @@ internal static partial class WiredNativeTestSupport
         FromRuntime(box.Descriptor, draft, id => box.Instance.GetRoomItemHandler()?.GetItem(id)?.IsWallItem ?? false));
     public static bool TryValidateRuntime(IWiredConfiguredItem box, WiredConfiguration draft, out WiredConfiguration validated, out string error)
     {
-        if (!WiredNativeEditorProjection.Supports(box.Descriptor.CanonicalName) || WiredNativeEditorProjection.IsBound(box.Item.Id, box.Descriptor, draft))
+        if (!WiredNativeEditorProjection.Supports(box.Descriptor.CanonicalName) || WiredNativeEditorProjection.IsBound(box.Item.Id, box.Descriptor, draft)) {
             return box.TryValidateConfiguration(draft, out validated, out error);
+        }
 
         validated = draft;
         error = "Invalid native fixture configuration.";

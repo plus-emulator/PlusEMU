@@ -219,6 +219,7 @@ public static class WiredLegacyProtocol
                 shared.Variable.Write(packet, false);
             }
         }
+
         WriteInts(packet, metadata.OwnedDefaults);
     }
 

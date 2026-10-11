@@ -26,8 +26,11 @@ public sealed class WiredCurrentSelectorTests
         var input = Inputs();
         input.SelectorPool.FurniIds.UnionWith([2u, 3u]);
         input = input with { FurniModified = true };
-        var runtime = Compile("wf_slc_furni_bytype", native => native with {
-            FurniSourceTypes = [200], OwnedIntParams = [0], Filter = true,
+        var runtime = Compile("wf_slc_furni_bytype", native => native with
+        {
+            FurniSourceTypes = [200],
+            OwnedIntParams = [0],
+            Filter = true,
             PrimaryItems = [new(1, false)]
         });
         var result = WiredSelectorModule.SelectRaw("wf_slc_furni_bytype", runtime, world, input);
@@ -41,8 +44,10 @@ public sealed class WiredCurrentSelectorTests
     {
         var world = new WiredSelectorWorld(30, 30, [Furniture(1, 10, 15, 15), Furniture(2, 10, 16, 15), Furniture(3, 10, 16, 14)],
             [new(7, "Reached", WiredSelectorEntityKind.Player, 15, 15)]);
-        var runtime = Compile("wf_slc_furni_neighborhood", native => native with {
-            OwnedIntParams = [1, 0, 0, 5, .. Enumerable.Repeat(0, 13)], UserSourceTypes = [10]
+        var runtime = Compile("wf_slc_furni_neighborhood", native => native with
+        {
+            OwnedIntParams = [1, 0, 0, 5, .. Enumerable.Repeat(0, 13)],
+            UserSourceTypes = [10]
         });
         var result = WiredSelectorModule.SelectRaw("wf_slc_furni_neighborhood", runtime, world, Inputs() with { ReachedUserId = 7 });
         Assert.Equal(new uint[] { 1, 3 }, result.Selection.FurniIds.Order().ToArray());
@@ -67,6 +72,7 @@ public sealed class WiredCurrentSelectorTests
     {
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
         Assert.True(WiredNativeEditorProjection.TryCompile(1, descriptor, edit(WiredNativeEditorProjection.DefaultNative(descriptor)), out var runtime));
+
         return runtime;
     }
 

@@ -54,6 +54,7 @@ public class ModernWiredRuntimeTests
         var item = MakeItem(100, name);
         typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, room);
         item.RoomId = room.Id;
+
         return new(room, item, Descriptor(name), clocks ?? new(), publish ?? (_ => { }), (_, _, _) => { }, log ?? new(), TestLogging.Logger,
             clock ?? TimeProvider.System, rewards ?? TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, definitions ?? TestWiredDefinitions.Unused, TestItemRuntime.Travel);
     }
@@ -3400,6 +3401,7 @@ public class ModernWiredRuntimeTests
             var descriptor = WiredBoxRegistry.All.Single(entry => entry.CanonicalName == "wf_act_place_furni");
             var native = WiredNativeTestSupport.FromRuntime(descriptor, draft);
             Assert.True(WiredNativeEditorProjection.TryCompile(box.Id, descriptor, native, out var compiled));
+
             return compiled;
         }
         Assert.True(WiredTemporaryFurnitureActions.Execute("wf_act_place_furni", box, aimed, Bind(aimedConfig), manager));

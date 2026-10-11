@@ -14,21 +14,62 @@ public static class WiredVariableFxStyles
 {
     private static readonly Dictionary<string, int> Colors = new()
     {
-        ["NOT_APPLICABLE"] = -1, ["GREEN"] = 1, ["LIME_GREEN"] = 2, ["YELLOW"] = 3, ["ORANGE"] = 4, ["RED"] = 5, ["CYAN"] = 6, ["BLUE"] = 7,
-        ["PURPLE"] = 8, ["PINK"] = 9, ["BROWN"] = 10, ["BEIGE"] = 11, ["TEAL"] = 12, ["INDIGO"] = 13, ["MAGENTA"] = 14, ["LIGHT_BLUE"] = 15,
-        ["FIRE_ORANGE"] = 16, ["DARK_GREEN"] = 17, ["DARK_BLUE"] = 18, ["WHITE"] = 19, ["BRONZE"] = 100, ["SILVER"] = 101, ["GOLD"] = 102,
-        ["DIAMOND"] = 103, ["EMERALD"] = 104, ["DYNAMIC_RED_TO_GREEN"] = 1000, ["DYNAMIC_LEVELLING"] = 1001, ["DYNAMIC_TEAM_COLOR"] = 1002
+        ["NOT_APPLICABLE"] = -1,
+        ["GREEN"] = 1,
+        ["LIME_GREEN"] = 2,
+        ["YELLOW"] = 3,
+        ["ORANGE"] = 4,
+        ["RED"] = 5,
+        ["CYAN"] = 6,
+        ["BLUE"] = 7,
+        ["PURPLE"] = 8,
+        ["PINK"] = 9,
+        ["BROWN"] = 10,
+        ["BEIGE"] = 11,
+        ["TEAL"] = 12,
+        ["INDIGO"] = 13,
+        ["MAGENTA"] = 14,
+        ["LIGHT_BLUE"] = 15,
+        ["FIRE_ORANGE"] = 16,
+        ["DARK_GREEN"] = 17,
+        ["DARK_BLUE"] = 18,
+        ["WHITE"] = 19,
+        ["BRONZE"] = 100,
+        ["SILVER"] = 101,
+        ["GOLD"] = 102,
+        ["DIAMOND"] = 103,
+        ["EMERALD"] = 104,
+        ["DYNAMIC_RED_TO_GREEN"] = 1000,
+        ["DYNAMIC_LEVELLING"] = 1001,
+        ["DYNAMIC_TEAM_COLOR"] = 1002
     };
     private static readonly Dictionary<string, int> Widths = new()
     {
-        ["not_applicable"] = -1, ["extra_small"] = 0, ["small"] = 1, ["medium"] = 2, ["large"] = 3, ["extra_large"] = 4, ["big_mahoosive_chonky"] = 100
+        ["not_applicable"] = -1,
+        ["extra_small"] = 0,
+        ["small"] = 1,
+        ["medium"] = 2,
+        ["large"] = 3,
+        ["extra_large"] = 4,
+        ["big_mahoosive_chonky"] = 100
     };
     private static readonly Dictionary<string, int> Renderers = new()
     {
-        ["classic_progress"] = 0, ["classic_mini_progress"] = 1, ["block_progress"] = 2, ["striped_progress"] = 3, ["arrow_progress"] = 4,
-        ["health_progress"] = 10, ["masked_heart_fill"] = 11, ["stacked_health_points"] = 12, ["thermometer_health_points"] = 13,
-        ["level_with_progress"] = 20, ["level_with_bar_and_numerical_progress"] = 21, ["boss_health_bar"] = 100, ["numerical_progress"] = 101,
-        ["number_recolorable"] = 200, ["number_baked_colors"] = 201
+        ["classic_progress"] = 0,
+        ["classic_mini_progress"] = 1,
+        ["block_progress"] = 2,
+        ["striped_progress"] = 3,
+        ["arrow_progress"] = 4,
+        ["health_progress"] = 10,
+        ["masked_heart_fill"] = 11,
+        ["stacked_health_points"] = 12,
+        ["thermometer_health_points"] = 13,
+        ["level_with_progress"] = 20,
+        ["level_with_bar_and_numerical_progress"] = 21,
+        ["boss_health_bar"] = 100,
+        ["numerical_progress"] = 101,
+        ["number_recolorable"] = 200,
+        ["number_baked_colors"] = 201
     };
     private static readonly string[] Normal = ["GREEN", "LIME_GREEN", "YELLOW", "ORANGE", "RED", "CYAN", "BLUE", "PURPLE", "PINK", "BROWN", "BEIGE",
         "TEAL", "INDIGO", "MAGENTA", "LIGHT_BLUE", "FIRE_ORANGE", "DARK_GREEN", "DARK_BLUE", "WHITE", "BRONZE", "SILVER", "GOLD", "DIAMOND", "EMERALD"];

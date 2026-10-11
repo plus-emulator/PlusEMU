@@ -275,7 +275,7 @@ public partial class PlacedFurniRoomTests
         admitted.Definition.Modes = 7;
         InitializeNativeState(admitted);
         admitted.LegacyDataString = "-1";
-                Viewer(0, 3);
+        Viewer(0, 3);
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(_client, admitted, 2, 2, 0, true, false, false));
         Assert.Equal("0", admitted.LegacyDataString);
         Stack(130, 1, "wf_trg_state_changed", ChangeLine, admitted);

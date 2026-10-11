@@ -63,8 +63,9 @@ public static class WiredTimeConditions
 
     internal static bool IsValidZone(string zone)
     {
-        if (zone.Length == 0)
+        if (zone.Length == 0) {
             return true;
+        }
 
         try {
             _ = TimeZoneInfo.FindSystemTimeZoneById(zone);

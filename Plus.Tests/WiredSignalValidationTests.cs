@@ -46,6 +46,7 @@ public sealed class WiredSignalValidationTests
             else {
                 Assert.Equal("wiredfurni.error.require_antenna_furni", error);
             }
+
             Assert.Empty(trigger.Configuration.SelectedItems);
         }
     }

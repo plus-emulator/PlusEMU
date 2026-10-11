@@ -88,7 +88,8 @@ internal static partial class WiredNativeAuxiliaryEditor
                 ? Norm("wf_xtra_mov_curve", n, [7, 100, p[1], p[0], target, n.UserSourceTypes[0], n.FurniSourceTypes[0]]) : null;
         }));
         yield return new("wf_xtra_rotate_to_dir", new(Sources([ProjectileFurni, PlainFurni, PlainFurni], [ProjectileUsers, ProjectileUsers, ProjectileUsers],
-            [1, 1, 0, 0, 100, -20, 1, 1, 0, 4, 0, 0, 1, 1, 0, 0, 1, -20, 50], 2) with { FurniDefaults = [901, 0, 0], VariableDefaults = ["0", "0"] }, n =>
+            [1, 1, 0, 0, 100, -20, 1, 1, 0, 4, 0, 0, 1, 1, 0, 0, 1, -20, 50], 2) with
+        { FurniDefaults = [901, 0, 0], VariableDefaults = ["0", "0"] }, n =>
         {
             var p = n.OwnedIntParams;
 

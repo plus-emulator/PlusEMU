@@ -2908,9 +2908,9 @@ public class ModernWiredRuntimeTests
         var (room, _, items) = World();
         var item = MakeItem(1, "test");
         items[1] = item;
-        var triggerItem = MakeItem(100, "wf_trg_state_changed");
+        var triggerItem = MakeItem(100, "wf_trg_stuff_state");
         typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(triggerItem, room);
-        var box = new WiredModernTrigger(room, triggerItem, Descriptor("wf_trg_state_changed"));
+        var box = new WiredModernTrigger(room, triggerItem, Descriptor("wf_trg_stuff_state"));
         WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [1, 100], SelectedItems = [1], Snapshots = [WiredRoomOperations.Capture(item)] }, out var config, out _);
         box.ApplyConfiguration(config);
         Assert.False(box.Execute(Context(room, new(WiredEventKind.Use) { EventItem = item }, [item], [])));
@@ -3933,9 +3933,12 @@ public class ModernWiredRuntimeTests
         definition.Walkable = true;
         var mover = Assert.IsType<Item>(room.GetRoomItemHandler().PlaceTemporaryFloorItem(definition, 1, 0, 1, 0, 0.25));
         f.Target.Definition.Stackable = true;
+        // A flight only collides with furniture whose top reaches the flight's sampled altitude there.
+        f.Target.Definition.Height = 2;
         map.AddToMap(f.Target);
         var obstacle = MakeItem(2, "obstacle");
         obstacle.Definition.Stackable = true;
+        obstacle.Definition.Height = 3;
         obstacle.SetState(2, 1, 0, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
         f.Items[2] = obstacle;
         map.AddToMap(obstacle);
@@ -3956,7 +3959,7 @@ public class ModernWiredRuntimeTests
         var movements = new WiredRoomMovement(room.GetWired().DispatchWalkTransition);
         Assert.True(movements.MoveFurniture(context, mover, 2, 1, 0, 2.25));
         Assert.Equal(0, flights.Read(mover, "@projectile.animation.position.x", 999));
-        Assert.Equal(1, flights.Read(mover, "@projectile.animation.is_traveling", 1000));
+        Assert.Equal(-1, flights.Read(mover, "@projectile.animation.is_traveling", 1000));
         Assert.Equal(0, flights.Read(mover, "@projectile.animation.user_collisions", 1000)); // Launch tile is excluded.
         Assert.True(WiredRoomOperations.RelocateAvatar(room, user, 1, 2, false));
         var late = Bot(room, 10);
@@ -4004,7 +4007,7 @@ public class ModernWiredRuntimeTests
         Assert.True(movement.MoveFurniture(ctx, mover, 0, 2, 0, null));
         Assert.Equal(2, flights.Read(mover, "@projectile.animation.position.x", 2000));
         Assert.Equal(1, flights.Read(mover, "@projectile.animation.position.x", 2500));
-        Assert.Equal(1, flights.Read(mover, "@projectile.animation.is_traveling", 2500));
+        Assert.Equal(-1, flights.Read(mover, "@projectile.animation.is_traveling", 2500));
         var sameIdDifferentItem = MakeItem(mover.Id, "replacement");
         f.Items[mover.Id] = sameIdDifferentItem;
         Assert.Null(flights.Read(sameIdDifferentItem, "@projectile.animation.position.x", 2500));

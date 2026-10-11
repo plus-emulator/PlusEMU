@@ -322,7 +322,7 @@ public sealed class WiredNativeLifecycleTests
         f.PrepareVariables();
         var item = f.Item(3);
         var triggerItem = f.Item(1);
-        triggerItem.Definition.InteractionName = "wf_trg_state_changed";
+        triggerItem.Definition.InteractionName = "wf_trg_stuff_state";
         var trigger = f.Wired.CreateConfiguredBox(triggerItem)!;
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(trigger, new() { IntParams = [0, 100], SelectedItems = [item.Id] }, out var config, out var error), error);
         trigger.ApplyConfiguration(config);

@@ -15,7 +15,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // Writes that land later or outside a use (dice results, vending, item cycles, queued gates) raise
-// wf_trg_state_changed once per actual write; whoever reports a write takes it, so nothing is reported twice.
+// wf_trg_stuff_state once per actual write; whoever reports a write takes it, so nothing is reported twice.
 public partial class PlacedFurniRoomTests
 {
     [Fact]
@@ -30,7 +30,7 @@ public partial class PlacedFurniRoomTests
         Cycle();
         Assert.Equal("-1", dice.LegacyDataString);
         Assert.Equal((0, 1), StateLines());
-        Assert.Equal(1, Whispers()); // the roll is the user's
+        Assert.Equal(0, Whispers()); // StateChanged names no triggering recipient
 
         for (var tick = 0; tick < 5 && dice.LegacyDataString == "-1"; tick++) {
             dice.ProcessUpdates();
@@ -39,7 +39,7 @@ public partial class PlacedFurniRoomTests
         Cycle();
         Assert.NotEqual("-1", dice.LegacyDataString);
         Assert.Equal((0, 2), StateLines());
-        Assert.Equal(1, Whispers()); // the landing is the room's
+        Assert.Equal(0, Whispers()); // StateChanged names no triggering recipient
 
         UseService().TurnOffDice(_room, _client, dice.Id);
         Cycle();
@@ -141,7 +141,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void QueuedGateClickNamesItsUserOnceWhenItLands()
+    public void QueuedGateClickReportsItsChangeWithoutATriggeringUserWhenItLands()
     {
         _room.EnableV2Movement();
         var gate = ClosableGate();
@@ -159,7 +159,7 @@ public partial class PlacedFurniRoomTests
 
         Assert.Equal("0", gate.LegacyDataString);
         Assert.Equal((1, 1), StateLines());
-        Assert.Equal(1, whispers);
+        Assert.Equal(0, whispers);
     }
 
     [Fact]
@@ -178,11 +178,11 @@ public partial class PlacedFurniRoomTests
 
         Assert.Equal("1", gate.LegacyDataString);
         Assert.Equal((1, 3), StateLines());
-        Assert.Equal(1, Whispers()); // only the use's own write names the user
+        Assert.Equal(0, Whispers()); // no write, the use's own included, names a triggering recipient
     }
 
     [Fact]
-    public void ACapturedWriteKeepsItsUserWhileAnotherThreadRunsTheRoomPass()
+    public void ACapturedWriteIsReportedWhileAnotherThreadRunsTheRoomPass()
     {
         var lamp = Toggle(30);
         WatchState(lamp);
@@ -203,7 +203,7 @@ public partial class PlacedFurniRoomTests
         Cycle();
 
         Assert.Equal((0, 1), StateLines());
-        Assert.Equal(1, Whispers());
+        Assert.Equal(0, Whispers());
     }
 
     [Fact]
@@ -219,12 +219,12 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("interactor failed", error.Message);
         Cycle();
         Assert.Equal((0, 1), StateLines());
-        Assert.Equal(1, Whispers());
+        Assert.Equal(0, Whispers());
 
         lamp.LegacyDataString = "0"; // the capture is gone: this write is the room's
         Cycle();
         Assert.Equal((0, 2), StateLines());
-        Assert.Equal(1, Whispers());
+        Assert.Equal(0, Whispers());
     }
 
     [Fact]
@@ -278,7 +278,7 @@ public partial class PlacedFurniRoomTests
         Viewer(0, 3);
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(_client, admitted, 2, 2, 0, true, false, false));
         Assert.Equal("0", admitted.LegacyDataString);
-        Stack(130, 1, "wf_trg_state_changed", ChangeLine, admitted);
+        Stack(130, 1, "wf_trg_stuff_state", ChangeLine, admitted);
         Cycle();
         Assert.Equal((0, 1), StateLines()); // the admitted dice's reset is its initial state
 
@@ -386,7 +386,7 @@ public partial class PlacedFurniRoomTests
     // A stack on its own tile: using the button toggles the target.
     private void TogglesOnUse(uint id, Item button, Item target)
     {
-        var trigger = WiredBox(id, "wf_trg_stuff_state", 0, 1);
+        var trigger = WiredBox(id, "wf_trg_state_changed", 0, 1);
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(trigger, new() { IntParams = [0, 100], SelectedItems = [button.Id] }, out var config, out var error), error);
         trigger.ApplyConfiguration(config);
         Assert.True(_room.GetWired().AddBox(trigger));

@@ -27,7 +27,11 @@ internal static partial class WiredNativeTestSupport
             case "wf_trg_periodically" or "wf_trg_period_short" or "wf_trg_period_long" or "wf_trg_at_given_time":
                 owned = [p[0]];
                 break;
-            case "wf_trg_recv_signal" or "wf_trg_stuff_state":
+            case "wf_trg_recv_signal":
+                furni = [p[1]];
+                break;
+            case "wf_trg_stuff_state":
+                owned = [p[0]];
                 furni = [p[1]];
                 break;
             case "wf_cnd_user_count_in":

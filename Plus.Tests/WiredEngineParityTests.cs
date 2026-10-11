@@ -412,7 +412,7 @@ public partial class WiredRuntimeEngineTests
         bot.BotData.Name = "Bob";
         bot.BotData.AiType = BotAiType.Generic;
         var reached = f.User(2);
-        ModernTrigger(f, "wf_trg_bot_reached_avtr", new() { IntParams = [0], Text = "" });
+        ModernTrigger(f, "wf_trg_bot_reached_avtr", new() { IntParams = [100], Text = "" });
         var action = f.Action();
         Assert.True(f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.BotReachedUser) { Actor = bot, TargetUser = reached }));
         f.Engine.OnFastCycle();

@@ -97,7 +97,6 @@ internal static partial class WiredNativeTestSupport
             case "wf_act_give_score_tm":
                 var quota = p.Length >= 5 ? At(4) : c.ScoreQuotaPerGame ?? 0;
                 owned = [At(1) == 1 ? -At(0, 1) : At(0, 1), quota, At(2, 1)];
-                users = [p.Length >= 4 ? At(3) : UserRole("users", 0)];
                 break;
             case "wf_act_move_rotate_user":
                 owned = [At(0, -1), EditorRotation(At(1, -1))];

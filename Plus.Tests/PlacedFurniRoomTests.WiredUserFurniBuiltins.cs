@@ -293,7 +293,7 @@ public partial class PlacedFurniRoomTests
         var frame = new WiredVariableFrame(RoomId, [holder]);
         var builtins = new RoomWiredBuiltinVariables(_room, engineRead: _room.GetWired().ReadBuiltin);
         WiredVariableValue? Read(string key) => builtins.Read(new(holder.Target, "internal:" + key), holder, frame);
-        Assert.Equal(1, Read("@projectile.animation.is_travelling")?.Value);
+        Assert.Equal(-1, Read("@projectile.animation.is_travelling")?.Value);
         Assert.Equal(Read("@projectile.animation.tiles_traveled")?.Value, Read("@projectile.animation.tiles_travelled")?.Value);
         Assert.True(RoomWiredBuiltinVariables.HasNumericValue(new(holder.Target, "internal:@projectile.animation.tiles_travelled")));
         Assert.False(RoomWiredBuiltinVariables.HasNumericValue(new(holder.Target, "internal:@projectile.animation.is_travelling")));

@@ -38,7 +38,7 @@ internal static partial class WiredNativeTestSupport
                     f = [P(0, 100)];
                     break;
                 case "wf_trg_state_changed":
-                    owned = [P(0)];
+                    owned = [];
                     f = [P(1, 100)];
                     break;
                 case "wf_trg_clock_counter":

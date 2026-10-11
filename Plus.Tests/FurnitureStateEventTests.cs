@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// A user's use raises wf_trg_stuff_state once per request and wf_trg_state_changed once per state it
+// A user's use raises wf_trg_state_changed once per request and wf_trg_stuff_state once per state it
 // actually wrote, including gate writes the v2 sequencer applies after the request returned.
 public partial class PlacedFurniRoomTests
 {
@@ -151,7 +151,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void StateChangeNamesOnlyAUserWhoseVisitIsStillThisRoom()
+    public void StateChangeShowsNoTriggeringRecipientBeforeOrAfterTheUserLeaves()
     {
         var lamp = Toggle(30);
         WatchState(lamp);
@@ -162,7 +162,7 @@ public partial class PlacedFurniRoomTests
         _room.GetWired().OnFastCycle();
         _room.GetWired().OnCycle();
         Assert.Equal((0, 1), StateLines());
-        Assert.Contains(ServerPacketHeader.WhisperComposer, _client.Sent);
+        Assert.DoesNotContain(ServerPacketHeader.WhisperComposer, _client.Sent);
 
         _client.Sent.Clear();
         _client.GetHabbo().CurrentRoom = null; // moved on while the room still lists the avatar
@@ -173,10 +173,10 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(ServerPacketHeader.WhisperComposer, _client.Sent);
     }
 
-    // A third stack that whispers to the user the state change names, if it names one.
+    // State changes provide no triggering recipient, so this whisper stack stays silent.
     private void WhisperOnChange(uint id, Item watched)
     {
-        var trigger = WiredBox(id, "wf_trg_state_changed", 1, 0);
+        var trigger = WiredBox(id, "wf_trg_stuff_state", 1, 0);
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(trigger, new() { IntParams = [0, 100], SelectedItems = [watched.Id] }, out var config, out var error), error);
         trigger.ApplyConfiguration(config);
         Assert.True(_room.GetWired().AddBox(trigger));
@@ -202,8 +202,8 @@ public partial class PlacedFurniRoomTests
     // Two real stacks on their own tiles: each trigger watches the furni and writes its own log line.
     private void WatchState(Item watched)
     {
-        Stack(100, 2, "wf_trg_stuff_state", UseLine, watched);
-        Stack(102, 3, "wf_trg_state_changed", ChangeLine, watched);
+        Stack(100, 2, "wf_trg_state_changed", UseLine, watched);
+        Stack(102, 3, "wf_trg_stuff_state", ChangeLine, watched);
     }
 
     private void Stack(uint id, int x, string trigger, string line, Item watched)

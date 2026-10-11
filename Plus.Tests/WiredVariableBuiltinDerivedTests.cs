@@ -17,6 +17,8 @@ public sealed class WiredVariableBuiltinDerivedTests
     {
         var fixture = new Fixture("@achievement_score");
         var level = fixture.AddMetadata("wf_xtra_var_lvlup_system");
+        // A level system with no selected subvariable derives nothing: select current_level in linear mode.
+        WiredNativeTestSupport.Install(level, WiredNativeEditorProjection.DefaultNative(level.Descriptor) with { OwnedIntParams = [1, 1, 100, 50] });
         var id = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, 0, false)!.Value;
         var derived = new WiredVariableReference(WiredVariableTarget.User, $"custom:{id}");
         Assert.Contains(fixture.Variables.Catalog().Variables, variable => variable.Definition.ItemId == id && variable.ReadOnly);

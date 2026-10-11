@@ -339,7 +339,7 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         user.Team = Team.Red;
         room.GetGameManager().AddPointToTeam(Team.Red, 20);
         var action = Box(room, name, name == "wf_act_give_score" ? [5, 1, 0, 2] : [5, 1, 1, 0, 2], []);
-        var context = Context(room, [], [user]);
+        var context = Context(room, [], [user], user);
         Assert.True(action.Execute(context));
         Assert.True(action.Execute(context));
         Assert.False(action.Execute(context));
@@ -594,9 +594,9 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         return (room, map, (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling).GetField("_floorItems", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(handler)!);
     }
 
-    private static WiredRuntimeContext Context(Room room, Item[] items, RoomUser[] users)
+    private static WiredRuntimeContext Context(Room room, Item[] items, RoomUser[] users, RoomUser? eventActor = null)
     {
-        var context = new WiredRuntimeContext(room, new(WiredEventKind.Use), new(() => items, () => users), new UnusedOperations());
+        var context = new WiredRuntimeContext(room, new(WiredEventKind.Use) { Actor = eventActor }, new(() => items, () => users), new UnusedOperations());
 
         if (users.FirstOrDefault() is { } actor) {
             context.Triggering.UserIds.Add(actor.VirtualId);

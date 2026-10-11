@@ -184,7 +184,7 @@ public static class ClientPacketHeader
     public const uint GetForumUserProfileEvent = 2576;
     public const uint OpenWiredEvent = 3540;
     public const uint WiredMonitorRequestEvent = 10021;
-    public const uint WiredRoomLogsPageEvent = 65422;
+    public const uint WiredRoomLogsPageEvent = 250;
     public const uint WiredRoomSettingsRequestEvent = 10022;
     public const uint WiredRoomSettingsSaveEvent = 10023;
     public const uint WiredMenuPermissionsSaveEvent = 65465;

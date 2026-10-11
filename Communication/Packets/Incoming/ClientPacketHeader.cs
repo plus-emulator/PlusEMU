@@ -204,6 +204,7 @@ public static class ClientPacketHeader
     public const uint SetTonerEvent = 3204;
     public const uint SaveWiredTriggerConfigEvent = 2786;
     public const uint PlaceBotEvent = 2612;
+    public const uint MoveEntityInFlatEvent = 2282;
     public const uint GetRelationshipsEvent = 3435;
     public const uint SetMessengerInviteStatusEvent = 682;
     public const uint UseFurnitureEvent = 2401;
@@ -312,6 +313,7 @@ public static class ClientPacketHeader
     public const uint GetThreadDataEvent = 3086;
     public const uint ManageGroupEvent = 1959;
     public const uint PlacePetEvent = 2233;
+    public const uint MovePetEvent = 636;
     public const uint EditRoomPromotionEvent = 2586;
     public const uint UpdateFloorPropertiesEvent = 352;
     public const uint MoveWallItemEvent = 2629;

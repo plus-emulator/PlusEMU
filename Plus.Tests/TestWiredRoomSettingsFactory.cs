@@ -96,6 +96,8 @@ internal sealed class TestBotManagementStore : IBotManagementStore
         throw new InvalidOperationException("Unused Wired bot persistence must remain lazy.");
     public void SaveName(int botId, uint roomId, string name) =>
         throw new InvalidOperationException("Unused Wired bot persistence must remain lazy.");
+    public void SavePosition(int botId, uint roomId, int x, int y, double z, int rotation) =>
+        throw new InvalidOperationException("Unused Wired bot persistence must remain lazy.");
 }
 
 internal sealed class TestWiredDatabase : IDatabase

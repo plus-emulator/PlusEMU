@@ -51,6 +51,19 @@ namespace Plus.Tests
         }
 
         [GroupForumDatabaseFact]
+        public void EnablingAForumOpensItOnceAndListsIt()
+        {
+            using var fixture = new Fixture();
+            var store = fixture.Store;
+            Assert.Null(store.Forum(Owner, 12, Now));
+            Assert.True(store.Enable(12));
+            Assert.False(store.Enable(12));
+            Assert.False(store.Enable(99));
+            Assert.NotNull(store.Forum(Owner, 12, Now));
+            Assert.Equal(3, store.List(Owner, 0, 0, 20, Now).Total);
+        }
+
+        [GroupForumDatabaseFact]
         public void CurrentMembershipAndOwnerPermissionsGovernEveryMutation()
         {
             using var fixture = new Fixture();

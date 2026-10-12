@@ -176,6 +176,7 @@ public sealed partial class RoomNavigation
         profile.IgnoreStepHeight = actor.RidingHorse && Settings.RidersIgnoreHeight;
         profile.Walkthrough = _room.RoomBlockingEnabled;
         profile.DiagonalEnabled = _room.GetGameMap().DiagonalEnabled;
+        profile.DiagonalSqueeze = _room.DiagonalSqueeze;
 
         return profile;
     }

@@ -2,9 +2,13 @@ using Microsoft.IO;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets;
 using Plus.Communication.Packets.Outgoing.Rooms.Engine;
+using System.Runtime.CompilerServices;
+using System.Reflection;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.DataFormat;
+using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Users.Inventory.Furniture;
 using Xunit;
 
@@ -77,6 +81,54 @@ public sealed class RoomItemSnapshotTests
         Assert.Equal(expectedWall, Encode(wall));
         Assert.Equal(expectedWall, Encode(wall));
         Assert.Equal(expectedAll, Encode(all));
+    }
+
+    [Theory]
+    [InlineData(InteractionType.GuildItem)]
+    [InlineData(InteractionType.GuildGate)]
+    [InlineData(InteractionType.GuildForum)]
+    public void GuildFurnitureSendsItsGroupAsTheAirStringArray(InteractionType type)
+    {
+        var group = new Group(4, "Plus", "", "b28060s27124", 2, 1, null, 0, 3, 5, 0, true, GroupMembershipSnapshot.Empty);
+        var data = Assert.IsType<FurnitureDataSnapshot.Strings>(RoomItemSnapshot.Capture(GuildItem(type, group)).Data);
+
+        // FurnitureGuildCustomizedLogic: [state, groupId, badge, colour1, colour2].
+        Assert.Equal(new[] { "4", "4", "b28060s27124", "colour:3:True", "colour:5:False" }, data.Values.ToArray());
+    }
+
+    [Fact]
+    public void GuildFurnitureWithoutItsGroupKeepsItsStoredData()
+    {
+        Assert.Equal(new FurnitureDataSnapshot.Legacy("4"), RoomItemSnapshot.Capture(GuildItem(InteractionType.GuildForum, null)).Data);
+    }
+
+    private static Item GuildItem(InteractionType type, Group? group)
+    {
+        var groups = CatalogSnapshotTestSupport.Proxy<IGroupManager>((method, args) =>
+        {
+            switch (method) {
+                case nameof(IGroupManager.TryGetGroup):
+                    args[1] = (int)args[0]! == 4 ? group : null;
+
+                    return args[1] != null;
+                case nameof(IGroupManager.GetColourCode):
+                    return $"colour:{args[0]}:{args[1]}";
+                default:
+                    throw new InvalidOperationException(method);
+            }
+        });
+        var roomData = (RoomData)RuntimeHelpers.GetUninitializedObject(typeof(RoomData));
+        roomData.Id = 2;
+        var room = new Room(roomData, Array.Empty<IRoomComponent>(), TestLogging.Navigation, TestLogging.Logger, TestRoomAchievements.Unused,
+            TestRoomOwners.Unused, groups);
+        typeof(Room).GetField("_interactionClock", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(room, TimeProvider.System);
+        var item = Item(new LegacyDataFormat { Data = "4" });
+        item.Definition.InteractionType = type;
+        item.GroupId = 4;
+        item.RoomId = 2;
+        item.Attach(room, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
+
+        return item;
     }
 
     private static Item Item(FurniObjectData data) => new()

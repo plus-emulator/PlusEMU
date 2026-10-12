@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Achievements;
+using Plus.HabboHotel.Groups;
 
 namespace Plus.HabboHotel.Rooms;
 
@@ -17,7 +18,8 @@ public sealed class ScopedRoomFactory(IServiceScopeFactory scopeFactory, ILogger
 
         try {
             var room = new Room(data, scope.ServiceProvider.GetServices<IRoomComponent>(), navigationLogger, loggerFactory.CreateLogger("Wired"),
-                scope.ServiceProvider.GetRequiredService<IAchievementManager>(), scope.ServiceProvider.GetRequiredService<IRoomManager>());
+                scope.ServiceProvider.GetRequiredService<IAchievementManager>(), scope.ServiceProvider.GetRequiredService<IRoomManager>(),
+                scope.ServiceProvider.GetService<IGroupManager>());
 
             if (!_scopes.TryAdd(data.Id, scope)) {
                 throw new InvalidOperationException($"A dependency scope already exists for room {data.Id}.");

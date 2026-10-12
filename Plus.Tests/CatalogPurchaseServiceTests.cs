@@ -9,6 +9,8 @@ using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
 using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Groups;
+using Plus.HabboHotel.Groups.Forums;
 using Plus.HabboHotel.Habbicons;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Subscriptions;
@@ -275,10 +277,79 @@ public sealed class CatalogPurchaseServiceTests
         Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.ScrSendUserInfoComposer);
     }
 
+    [Fact]
+    public async Task OwnerBuyingTheFirstForumTerminalOpensTheGroupForum()
+    {
+        var group = Group(owner: 42, members: [], forum: false);
+        var enabled = new List<int>();
+        var context = Context(interaction: InteractionType.GuildForum, groups: Groups(group), forums: Forums(enabled));
+
+        await context.Service.Purchase(context.Client, new(1, 2, "4", 1));
+
+        Assert.Equal([4], context.Factory.GroupIds);
+        Assert.Equal([4], enabled);
+        Assert.True(group.ForumEnabled);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+    }
+
+    [Theory]
+    [InlineData(InteractionType.GuildForum, false, false)]
+    [InlineData(InteractionType.GuildForum, true, true)]
+    [InlineData(InteractionType.GuildItem, false, true)]
+    [InlineData(InteractionType.GuildGate, false, true)]
+    public async Task MembersBuyGroupFurnitureButOnlyTheOwnerOpensAForum(InteractionType interaction, bool forum, bool bought)
+    {
+        var enabled = new List<int>();
+        var context = Context(interaction: interaction, groups: Groups(Group(owner: 7, members: [42], forum)), forums: Forums(enabled));
+
+        await context.Service.Purchase(context.Client, new(1, 2, "4", 1));
+
+        Assert.Equal(bought ? [4] : [], context.Factory.GroupIds);
+        Assert.Equal(bought ? 1 : 0, context.Rewards.Charges);
+        Assert.Equal(!bought, context.Sent.Any(packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer));
+        Assert.Empty(enabled);
+    }
+
+    [Theory]
+    [InlineData("4")]
+    [InlineData("9")]
+    [InlineData("abc")]
+    [InlineData("-4")]
+    [InlineData(" 4")]
+    public async Task GroupFurnitureNeedsAnExistingGroupTheBuyerBelongsTo(string extraData)
+    {
+        var context = Context(interaction: InteractionType.GuildItem, groups: Groups(Group(owner: 7, members: [], forum: true)), forums: Forums([]));
+
+        await context.Service.Purchase(context.Client, new(1, 2, extraData, 1));
+
+        Assert.Equal(0, context.Factory.Creates);
+        Assert.Equal(0, context.Rewards.Charges);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
+    }
+
+    private static Group Group(int owner, int[] members, bool forum) =>
+        new(4, "Plus", "", "b28060s27124", 2, owner, null, 0, 3, 5, 0, forum, new([.. members], [], []));
+
+    private static IGroupManager Groups(Group group) => CatalogSnapshotTestSupport.Proxy<IGroupManager>((method, args) =>
+    {
+        Assert.Equal(nameof(IGroupManager.TryGetGroup), method);
+        args[1] = (int)args[0]! == group.Id ? group : null;
+
+        return args[1] != null;
+    });
+
+    private static IGroupForumStore Forums(List<int> enabled) => CatalogSnapshotTestSupport.Proxy<IGroupForumStore>((method, args) =>
+    {
+        Assert.Equal(nameof(IGroupForumStore.Enable), method);
+        enabled.Add((int)args[0]!);
+
+        return true;
+    });
+
     private static TestContext Context(bool enabled = true, bool chargeSucceeds = true,
         bool factorySucceeds = true, bool club = false, bool bot = false, bool botPreset = true,
         bool botStoreFails = false, int points = 0, int pointsType = 0, bool effect = false,
-        InteractionType interaction = InteractionType.None, string extraParam = "")
+        InteractionType interaction = InteractionType.None, string extraParam = "", IGroupManager? groups = null, IGroupForumStore? forums = null)
     {
         var definition = new ItemDefinition
         {
@@ -345,6 +416,8 @@ public sealed class CatalogPurchaseServiceTests
             rewards,
             tracks,
             Proxy<IAvatarEffectStore, EmptyProxy>(),
+            groups ?? Proxy<IGroupManager, EmptyProxy>(),
+            forums ?? Proxy<IGroupForumStore, EmptyProxy>(),
             new FixedClock(new DateTimeOffset(2040, 2, 3, 4, 5, 6, TimeSpan.Zero)),
             NullLogger<CatalogPurchaseService>.Instance);
 
@@ -449,11 +522,13 @@ public sealed class CatalogPurchaseServiceTests
     {
         public int Creates { get; private set; }
         public List<string> ExtraData { get; } = [];
+        public List<int> GroupIds { get; } = [];
         public Item CreateSingleItemNullable(ItemDefinition definition, Habbo habbo, string extraData,
             string displayFlags, int groupId = 0, uint limitedNumber = 0, uint limitedStack = 0)
         {
             Creates++;
             ExtraData.Add(extraData);
+            GroupIds.Add(groupId);
 
             if (!succeeds) {
                 return null!;

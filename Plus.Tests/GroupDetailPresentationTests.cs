@@ -54,7 +54,8 @@ public sealed class GroupDetailPresentationTests
     [Theory]
     [InlineData(InteractionType.GuildGate, false, true)]
     [InlineData(InteractionType.GuildGate, true, false)]
-    [InlineData(InteractionType.GuildItem, false, false)]
+    [InlineData(InteractionType.GuildItem, false, true)]
+    [InlineData(InteractionType.GuildForum, false, false)]
     public void FurnitureSettingsValidateTheItemAndPreservePacketOrder(InteractionType type, bool temporary, bool allowed)
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
@@ -65,6 +66,7 @@ public sealed class GroupDetailPresentationTests
         {
             Id = 92,
             RoomId = 42,
+            GroupId = 9,
             IsTemporary = temporary,
             Definition = new ItemDefinition { Id = 92, Type = ItemType.Floor, InteractionType = type },
             ExtraData = FurniObjectData.Empty
@@ -86,6 +88,9 @@ public sealed class GroupDetailPresentationTests
         Service(Group()).ShowFurnitureSettings(client, 999, 9);
         Assert.Empty(sent);
         Service(null).ShowFurnitureSettings(client, item.Id, 99);
+        Assert.Empty(sent);
+        // The item's own group decides; another group's id is not answered.
+        Service(Group()).ShowFurnitureSettings(client, item.Id, 8);
         Assert.Empty(sent);
     }
 

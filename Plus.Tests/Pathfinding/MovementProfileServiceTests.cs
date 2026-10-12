@@ -156,6 +156,34 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new InteractionAuthorization(1, 0, 1, 1), profile.Interaction);
     }
 
+    [Fact]
+    public void MovementProfileServiceAppliesTheRoomsSavedDiagonalSqueeze()
+    {
+        var actor = Viewer();
+        var service = new MovementProfileService(_room, ProfileGrid(), new(), (_, _) => false);
+        Assert.False(service.Refresh(actor).DiagonalSqueeze);
+
+        // A room loaded with diagonal_squeeze = 1 hands it to every actor's next refresh.
+        var saved = RoomDataMapping.CreateData(new RoomDataRow
+        {
+            Id = RoomId,
+            Caption = "Squeeze",
+            ModelName = "test",
+            Username = "owner",
+            Owner = 7,
+            Roomtype = "private",
+            State = "open",
+            DiagonalSqueeze = true
+        }, _room.GetGameMap().StaticModel, false);
+        Set("_data", saved);
+        var profile = service.Refresh(actor);
+        Assert.True(profile.DiagonalSqueeze);
+        Assert.True(profile.DiagonalEnabled);
+
+        _room.DiagonalSqueeze = false;
+        Assert.False(service.Refresh(actor).DiagonalSqueeze);
+    }
+
     private static NavGrid ProfileGrid() => new(4, 4, new double[16], new SquareState[16]);
 
     private static RoomBot ProfileBot(bool temporary)

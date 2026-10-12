@@ -18,6 +18,7 @@ public sealed class MovementProfileService(Room room, NavGrid grid, PathfindingS
         profile.IgnoreStepHeight = actor.RidingHorse && settings.RidersIgnoreHeight;
         profile.Walkthrough = room.RoomBlockingEnabled;
         profile.DiagonalEnabled = room.GetGameMap().DiagonalEnabled;
+        profile.DiagonalSqueeze = room.DiagonalSqueeze;
 
         if (_groupVersion != grid.Version) {
             RefreshGroups();

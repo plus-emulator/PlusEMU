@@ -7,6 +7,7 @@ using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Plus.Communication.Packets.Outgoing.Rooms.Session;
 using Plus.Core;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Data.Moodlight;
 using Plus.HabboHotel.Items.Data.Toner;
@@ -72,8 +73,10 @@ public class Room
     private readonly ILogger _wiredLogger;
     private readonly IAchievementManager _achievements;
     private readonly IRoomManager _rooms;
+    private readonly IGroupManager? _groups;
 
-    public Room(RoomData data, IEnumerable<IRoomComponent> components, ILogger<RoomNavigation> navigationLogger, ILogger wiredLogger, IAchievementManager achievements, IRoomManager rooms)
+    public Room(RoomData data, IEnumerable<IRoomComponent> components, ILogger<RoomNavigation> navigationLogger, ILogger wiredLogger, IAchievementManager achievements, IRoomManager rooms,
+        IGroupManager? groups = null)
     {
         _data = data;
         _components = components.OrderBy(component => component.Order).ToArray();
@@ -81,8 +84,15 @@ public class Room
         _wiredLogger = wiredLogger;
         _achievements = achievements;
         _rooms = rooms;
+        _groups = groups;
     }
 
+
+    // Guild furniture shows its group's badge and colours; null without the group (or a group manager, in tests).
+    internal GuildFurnitureAppearance? FindGuildAppearance(int groupId) =>
+        groupId > 0 && _groups != null && _groups.TryGetGroup(groupId, out var group)
+            ? new(group.Id, group.Badge, _groups.GetColourCode(group.Colour1, true), _groups.GetColourCode(group.Colour2, false))
+            : null;
 
     public RoomData Data => _data ??= new RoomData();
     public static implicit operator RoomData(Room room) => room.Data;
@@ -178,6 +188,7 @@ public class Room
     public bool ReverseRollers { get => Data.ReverseRollers; set => Data.ReverseRollers = value; }
     public bool LayEnabled { get => Data.LayEnabled; set => Data.LayEnabled = value; }
     public bool HideWired { get => Data.HideWired; set => Data.HideWired = value; }
+    public bool DiagonalSqueeze { get => Data.DiagonalSqueeze; set => Data.DiagonalSqueeze = value; }
     public RoomModel Model { get => Data.Model; set => Data.Model = value; }
     public RoomPromotion Promotion { get => Data.Promotion; set => Data.Promotion = value; }
     public Plus.HabboHotel.Groups.Group? Group { get => Data.Group; set => Data.Group = value; }

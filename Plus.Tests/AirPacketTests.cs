@@ -36,6 +36,8 @@ public class AirPacketTests
             Assert.Equal(1090u, ClientPacketHeader.GetCatalogIndexEvent);
             Assert.Equal(2697u, ClientPacketHeader.GetBundleDiscountRulesetEvent);
             Assert.Equal(3582u, ClientPacketHeader.GetProductOfferEvent);
+            Assert.Equal(636u, ClientPacketHeader.MovePetEvent);
+            Assert.Equal(2282u, ClientPacketHeader.MoveEntityInFlatEvent);
             Assert.Equal(1920u, ServerPacketHeader.AuthenticationOkComposer);
             Assert.Equal(56u, ServerPacketHeader.CreditBalanceComposer);
             Assert.Equal(3933u, ServerPacketHeader.CatalogIndexComposer);

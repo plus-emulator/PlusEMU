@@ -17,6 +17,8 @@ using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
 using Plus.HabboHotel.Catalog.Utilities;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Groups;
+using Plus.HabboHotel.Groups.Forums;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Users.Effects;
@@ -50,6 +52,8 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
     private readonly IClubRewards _clubRewards;
     private readonly IRewardTrackManager _rewardTracks;
     private readonly IAvatarEffectStore _avatarEffects;
+    private readonly IGroupManager _groups;
+    private readonly IGroupForumStore _forums;
     private readonly TimeProvider _clock;
     private readonly ILogger<CatalogPurchaseService> _logger;
     // Window id the client's club purchase page requests offers for.
@@ -64,6 +68,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         ICatalogBotPurchaseStore botPurchases,
         IHabbiconService habbicons,
         IClubMembershipService clubMemberships, IClubRewards clubRewards, IRewardTrackManager rewardTracks, IAvatarEffectStore avatarEffects,
+        IGroupManager groups, IGroupForumStore forums,
         TimeProvider clock, ILogger<CatalogPurchaseService> logger)
     {
         _catalogManager = catalogManager;
@@ -78,6 +83,8 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         _clubRewards = clubRewards;
         _rewardTracks = rewardTracks;
         _avatarEffects = avatarEffects;
+        _groups = groups;
+        _forums = forums;
         _clock = clock;
         _logger = logger;
     }
@@ -255,6 +262,10 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                         }
                     }
 
+                    if (!offer.IsBundle && product.Definition!.InteractionType == InteractionType.GuildForum && generatedGenericItems.Count > 0) {
+                        EnableBoughtForum(extraData);
+                    }
+
                     if (generatedGenericItems.Count > 0) {
                         _rewardTracks.Progress(session, RewardTrackActions.BuyFromCatalogue);
                     }
@@ -367,7 +378,8 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         switch (definition.InteractionType) {
             case InteractionType.GuildItem:
             case InteractionType.GuildGate:
-                return FurniExtraData.RejectsClientImage(new[] { extraData }) ? "" : extraData;
+            case InteractionType.GuildForum:
+                return ReadGuildExtraData(session, definition.InteractionType, extraData);
             case InteractionType.Floor:
             case InteractionType.Wallpaper:
             case InteractionType.Landscape:
@@ -404,6 +416,32 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                 return $"{extraData}{Convert.ToChar(9)}{session.GetHabbo().Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}";
             default:
                 return "";
+        }
+    }
+
+    // GuildSelectorCatalogWidget sends the chosen group's id. Group furniture needs a group the buyer belongs to. A forum
+    // terminal for a group without a forum opens that forum, which only its owner may do: GuildForumSelectorCatalogWidget
+    // offers the groups that have a forum and the groups the user owns.
+    private string? ReadGuildExtraData(GameClient session, InteractionType type, string extraData)
+    {
+        var habboId = session.GetHabbo().Id;
+
+        if (int.TryParse(extraData, NumberStyles.None, CultureInfo.InvariantCulture, out var groupId) && _groups.TryGetGroup(groupId, out var group)
+            && (type == InteractionType.GuildForum && !group.ForumEnabled ? group.CreatorId == habboId : group.CreatorId == habboId || group.IsMember(habboId))) {
+            return groupId.ToString(CultureInfo.InvariantCulture);
+        }
+
+        session.Send(new PurchaseErrorComposer(PurchaseError.Rejected));
+
+        return null;
+    }
+
+    // Buying a group's first forum terminal is what gives the group its forum.
+    private void EnableBoughtForum(string extraData)
+    {
+        if (int.TryParse(extraData, NumberStyles.None, CultureInfo.InvariantCulture, out var groupId) && _groups.TryGetGroup(groupId, out var group)
+            && !group.ForumEnabled && _forums.Enable(groupId)) {
+            group.ForumEnabled = true;
         }
     }
 

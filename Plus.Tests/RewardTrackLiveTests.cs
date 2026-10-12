@@ -197,6 +197,7 @@ public class RewardTrackLiveTests
         public Task Init() => Task.CompletedTask;
         public Task GiveBadge(Habbo habbo, string code) => throw new InvalidOperationException("Claims grant badges in their own transaction.");
         public Task RemoveBadge(Habbo habbo, string badge) => throw new NotSupportedException();
+        public Task<bool> ReplaceBadge(Habbo habbo, string? previous, string code) => throw new NotSupportedException();
         public Task<List<Badge>> LoadBadgesForHabbo(int userId) => throw new NotSupportedException();
     }
 

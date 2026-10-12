@@ -27,10 +27,11 @@ public class TalentTrackPresentationTests
     }
 
     [Fact]
-    public void CompletedAchievementLevelsRemainCompletedAfterTheirProgressReset()
+    public void CompletedAchievementLevelsRemainCompletedWhileTheNextTaskCountsFromItsLevelStart()
     {
         var habbo = new Habbo();
-        habbo.Achievements.TryAdd("ACH_A", new("ACH_A", 1, 2));
+        // A total of 7 holds level 1 (threshold 5) and has earned 2 towards level 2.
+        habbo.Achievements.TryAdd("ACH_A", new("ACH_A", 1, 7));
         var levels = TalentTrackSnapshot.Capture(Levels().Where(level => level.Type == "citizenship"), habbo, Achievements());
         Assert.Equal(2, levels[0].State);
         Assert.Equal(5, levels[0].SubLevels[0].Progress);

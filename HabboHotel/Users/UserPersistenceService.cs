@@ -87,7 +87,22 @@ public sealed class UserPersistenceService(IDatabase database, TimeProvider cloc
 
         UserCurrencyStore.SetMany(connection, habbo.Id, habbo.Currencies.Snapshot(), transaction);
 
+        // Achievement progress without a level-up is only kept in memory until the session is saved; levels are written when unlocked.
+        var achievements = habbo.Achievements.Values.Where(achievement => achievement.ProgressUnsaved).ToList();
+
+        if (achievements.Count > 0) {
+            connection.Execute(
+                "INSERT INTO `user_achievements` (`userid`,`group`,`level`,`progress`) VALUES (@UserId, @Group, @Level, @Progress) " +
+                "ON DUPLICATE KEY UPDATE `progress` = VALUES(`progress`)",
+                achievements.Select(achievement => new { UserId = habbo.Id, Group = achievement.AchievementGroup, achievement.Level, achievement.Progress }),
+                transaction);
+        }
+
         transaction.Commit();
+
+        foreach (var achievement in achievements) {
+            achievement.ProgressUnsaved = false;
+        }
     }
 
     public void SetProfileValue(int userId, string column, object? value)

@@ -43,7 +43,50 @@ public class WiredClickPacketHookTests
         var service = new RecordingFurniture();
         var handler = new ClickFurniEvent(service);
 
-        foreach (var values in new[] { Array.Empty<int>(), new[] { 1 }, new[] { 0, 10 }, new[] { 1, 0 }, new[] { 1, 10, 9 } }) {
+        foreach (var values in new[] { Array.Empty<int>(), new[] { 1 }, new[] { 0, 10 }, new[] { 0, 0 }, new[] { 1, 0, 9 }, new[] { -5, 0 }, new[] { int.MinValue, 0 }, new[] { 1, 10, 9 } }) {
+            await handler.Parse(null!, null!, Packet(values));
+        }
+
+        Assert.Empty(service.Clicks);
+    }
+
+    // Local regression only: AIR contract 3db3d3c1 sends [positive floor id, 0]; no native 21 semantics and no official-server claim.
+    [Theory]
+    [InlineData(5)]
+    [InlineData(4096)]
+    public async Task AirFloorClickWithZeroSecondIntDelegatesOneFloorClickRequest(int id)
+    {
+        var service = new RecordingFurniture();
+        await new ClickFurniEvent(service).Parse(null!, null!, Packet(id, 0));
+        Assert.Equal(new FurnitureClickRequest((uint)id, false), Assert.Single(service.Clicks));
+    }
+
+    // Category 10 is the existing local grammar and proves the same permanent-item route dispatches; 0 is the AIR second int.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(10)]
+    public async Task FloorClickReachesNativeClickFurniThroughTheRealDomain(int second)
+    {
+        var world = new World("wf_trg_click_furni", [0]);
+        var item = new Item { Id = 77, ExtraData = new LegacyDataFormat { Data = "1" }, Definition = new() { ItemName = "bc_tile_1", Type = ItemType.Floor } };
+        world.Items("_floorItems").TryAdd(item.Id, item);
+        typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, world.Room);
+        await new ClickFurniEvent(new FurnitureUseService(null!, null!)).Parse(world.Room, world.Client, Packet((int)item.Id, second));
+        world.FlushWired();
+        var evt = Assert.Single(world.Capture.Events);
+        Assert.Equal(WiredEventKind.ClickFurni, evt.Kind);
+        Assert.Same(world.Actor, evt.Actor);
+        Assert.Same(item, evt.EventItem);
+    }
+
+    // Controls: these stay not delegated before and after the AIR grammar fix.
+    [Fact]
+    public async Task AirShapedMalformedFurnitureClicksStayUndelegated()
+    {
+        var service = new RecordingFurniture();
+        var handler = new ClickFurniEvent(service);
+
+        foreach (var values in new[] { new[] { 0, 0 }, new[] { 5, 0, 9 }, new[] { 5 }, Array.Empty<int>() }) {
             await handler.Parse(null!, null!, Packet(values));
         }
 

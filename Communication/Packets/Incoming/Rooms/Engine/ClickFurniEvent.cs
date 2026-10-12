@@ -18,7 +18,10 @@ public sealed class ClickFurniEvent(IFurnitureUseService furniture) : RoomPacket
             return Task.CompletedTask;
         }
 
-        if (wireId == 0 || category is not (10 or 20) || packet.HasDataRemaining()) {
+        // The supported AIR client sends [positive floor id, 0]; a negative id with category 0 stays rejected until its wall/temporary meaning is evidenced.
+        var air = category == 0 && wireId > 0;
+
+        if (wireId == 0 || !air && category is not (10 or 20) || packet.HasDataRemaining()) {
             return Task.CompletedTask;
         }
 

@@ -27936,3 +27936,7 @@ SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TA
 EXECUTE IMMEDIATE @migration_72;
 
 SET @migration_72 = NULL;
+-- 75_DiagonalSqueeze
+-- :disablediagonal now toggles, per room, whether avatars may walk diagonally between two
+-- blocked tiles that touch at a corner. Every room starts with squeezing off.
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS diagonal_squeeze TINYINT(1) NOT NULL DEFAULT 0;

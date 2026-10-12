@@ -44,14 +44,15 @@ public class PathSearchTests
 
             occupancy.Targets[startTile] = TargetOccupancy.None;
 
-            foreach (var profile in Enumerable.Range(0, 6)) {
+            foreach (var profile in Enumerable.Range(0, 7)) {
                 var actor = new ActorProfile
                 {
                     LegacyOverride = profile == 1,
                     IgnoreUsers = profile == 2,
                     IgnoreStepHeight = profile == 3,
                     Walkthrough = profile == 4,
-                    DiagonalEnabled = profile != 5
+                    DiagonalEnabled = profile != 5,
+                    DiagonalSqueeze = profile == 6
                 };
 
                 if (iteration % 2 == 0) {

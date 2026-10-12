@@ -113,6 +113,7 @@ public class RoomData
         ReverseRollers = data.ReverseRollers;
         LayEnabled = data.LayEnabled;
         HideWired = data.HideWired;
+        DiagonalSqueeze = data.DiagonalSqueeze;
         Model = data.Model;
     }
 
@@ -159,6 +160,8 @@ public class RoomData
     public bool ReverseRollers { get; set; }
     public bool LayEnabled { get; set; }
     public bool HideWired { get; set; }
+    // Avatars may walk diagonally between two blocked tiles that touch at a corner.
+    public bool DiagonalSqueeze { get; set; }
 
 
     public RoomModel Model { get; set; }

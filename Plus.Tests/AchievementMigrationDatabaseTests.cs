@@ -87,4 +87,51 @@ public sealed class AchievementMigrationDatabaseTests
             admin.Execute($"DROP DATABASE `{schema}`");
         }
     }
+
+    // Runs Database/Migrations/77_AchievementBadgeCleanup.sql after 76 on badges the old engine left behind.
+    [RoomComponentDatabaseFact]
+    public void BadgeCleanupKeepsOnlyTheHighestLevelBadgeAndCarriesAWornSlot()
+    {
+        var root = Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!;
+        var schema = "task_achievement_badges_" + Guid.NewGuid().ToString("N");
+        using var admin = new MySqlConnection(root);
+        admin.Execute($"CREATE DATABASE `{schema}`");
+
+        try {
+            var database = new HabbiconDatabaseTests.TestDatabase(new MySqlConnectionStringBuilder(root) { Database = schema }.ConnectionString);
+            using var connection = database.Connection();
+            var pristine = File.ReadAllText(HabbiconPacketTests.Repo("Resources/SQLs/Original Database.sql"));
+
+            foreach (var table in new[] { "achievements", "badge_definitions", "user_achievements", "user_badges" }) {
+                connection.Execute(Regex.Match(pristine, $@"CREATE TABLE `{table}` \([\s\S]*?\) ENGINE=[^;]+;").Value);
+            }
+
+            connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/76_OfficialAchievements.sql")));
+            connection.Execute("INSERT INTO user_badges(user_id,badge_id,badge_slot) VALUES " +
+                // Earlier levels worn in slots 2 and 3, the highest level not worn: it takes slot 2.
+                "(7,'ACH_RoomEntry1',2),(7,'ACH_RoomEntry2',3),(7,'ACH_RoomEntry3',0)," +
+                // One-level achievements with their own badge codes are different achievements.
+                "(7,'ACH_Profile1',0),(7,'ACH_Profile2',1)," +
+                // The highest level is already worn and keeps its slot.
+                "(8,'ACH_RespectEarned2',1),(8,'ACH_RespectEarned4',4)," +
+                // Not achievement badges of a known achievement, and a single level badge: untouched.
+                "(8,'ADM',5),(8,'ACH_Gone1',0),(8,'ACH_Gone2',0),(9,'ACH_RoomEntry1',1)");
+            var migration = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/77_AchievementBadgeCleanup.sql"));
+            var expected = new[] {
+                (7, "ACH_Profile1", 0), (7, "ACH_Profile2", 1), (7, "ACH_RoomEntry3", 2),
+                (8, "ACH_Gone1", 0), (8, "ACH_Gone2", 0), (8, "ACH_RespectEarned4", 4), (8, "ADM", 5),
+                (9, "ACH_RoomEntry1", 1)
+            };
+
+            connection.Execute(migration);
+            Assert.Equal(expected, connection.Query<(int, string, int)>("SELECT user_id,badge_id,badge_slot FROM user_badges ORDER BY user_id,badge_id"));
+
+            // A second run changes nothing.
+            connection.Execute(migration);
+            Assert.Equal(expected, connection.Query<(int, string, int)>("SELECT user_id,badge_id,badge_slot FROM user_badges ORDER BY user_id,badge_id"));
+        }
+        finally {
+            admin.Execute($"DROP DATABASE `{schema}`");
+        }
+    }
 }

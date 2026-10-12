@@ -14,20 +14,50 @@ public class AchievementLevelFactory : IAchievementLevelFactory
         var achievements = new Dictionary<string, Achievement>();
 
         using var connection = _database.Connection();
-        var table = await connection.QueryAsync<Achievement>("SELECT `id`,`category`,`group_name`,`level`,`reward_pixels`,`reward_points`,`progress_needed`,`game_id` FROM `achievements`");
+        // habbo.com order (by official id, the hotel's own achievements last), so the client sees its categories in the official order.
+        var table = await connection.QueryAsync<AchievementRow>(
+            "SELECT `id` AS Id, `category` AS Category, `group_name` AS GroupName, `level` AS Level, `reward_pixels` AS RewardPixels, " +
+            "`reward_points` AS RewardPoints, `progress_needed` AS ProgressNeeded, `game_id` AS GameId, `official_id` AS OfficialId, " +
+            "`state` AS State, `visible` AS Visible, `badge_code` AS BadgeCode " +
+            "FROM `achievements` ORDER BY `official_id` IS NULL, `official_id`, `group_name`, `level`");
 
-        foreach (Achievement row in table) {
-            var level = new AchievementLevel(row.Level, row.RewardPixels, row.RewardPoints, row.ProgressNeeded);
+        foreach (var row in table) {
+            var level = new AchievementLevel(row.Level, row.RewardPixels, row.RewardPoints, row.ProgressNeeded, row.BadgeCode);
 
-            if (achievements.ContainsKey(row.GroupName!)) {
-                achievements[row.GroupName!].AddLevel(level);
+            // The lowest level of a group describes the whole group.
+            if (!achievements.TryGetValue(row.GroupName, out var achievement)) {
+                achievement = new Achievement
+                {
+                    Id = row.OfficialId ?? row.Id,
+                    Category = row.Category,
+                    GroupName = row.GroupName,
+                    GameId = row.GameId,
+                    OfficialId = row.OfficialId,
+                    State = (AchievementState)row.State,
+                    Visible = row.Visible
+                };
+                achievements.Add(row.GroupName, achievement);
             }
-            else {
-                row.AddLevel(level);
-                achievements.Add(row.GroupName!, row);
-            }
+
+            achievement.AddLevel(level);
         }
 
         return achievements;
+    }
+
+    private sealed class AchievementRow
+    {
+        public int Id { get; set; }
+        public string Category { get; set; } = string.Empty;
+        public string GroupName { get; set; } = string.Empty;
+        public int Level { get; set; }
+        public int RewardPixels { get; set; }
+        public int RewardPoints { get; set; }
+        public int ProgressNeeded { get; set; }
+        public int GameId { get; set; }
+        public int? OfficialId { get; set; }
+        public short State { get; set; }
+        public bool Visible { get; set; }
+        public string? BadgeCode { get; set; }
     }
 }

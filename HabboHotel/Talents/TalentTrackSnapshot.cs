@@ -31,14 +31,16 @@ public static class TalentTrackSnapshot
     {
         foreach (var (group, achievement) in achievements) {
             foreach (var requiredLevel in achievement.Levels.Keys) {
-                if (task.Badge != group + requiredLevel) {
+                if (task.Badge != achievement.BadgeCode(requiredLevel)) {
                     continue;
                 }
 
                 var user = habbo.GetAchievementData(group);
+                // Achievement totals are cumulative; a task counts what was earned since the level before it.
+                var earned = user == null ? 0 : user.Progress - achievement.ScoreAtStartOf(requiredLevel);
                 var completed = user != null && (user.Level >= requiredLevel ||
-                    user.Level + 1 == requiredLevel && user.Progress >= task.RequiredProgress);
-                var progress = completed ? task.RequiredProgress : user != null && user.Level + 1 == requiredLevel ? Math.Max(0, user.Progress) : 0;
+                    user.Level + 1 == requiredLevel && earned >= task.RequiredProgress);
+                var progress = completed ? task.RequiredProgress : user != null && user.Level + 1 == requiredLevel ? Math.Max(0, earned) : 0;
 
                 return new(achievement.Id, requiredLevel, task.Badge, completed ? 2 : 1, progress, task.RequiredProgress);
             }

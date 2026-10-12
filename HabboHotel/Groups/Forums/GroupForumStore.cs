@@ -216,6 +216,13 @@ namespace Plus.HabboHotel.Groups.Forums
                 " AND (g.owner_id=@userId OR " + Member + ") AND COALESCE(f.message_count,0)>COALESCE(r.last_message_id,0)", new { userId = viewer.UserId, staff = viewer.Staff });
         }
 
+        public bool Enable(int groupId)
+        {
+            using var connection = database.Connection();
+
+            return connection.Execute("UPDATE `groups` SET forum_enabled=TRUE WHERE id=@groupId AND forum_enabled=FALSE LIMIT 1", new { groupId }) > 0;
+        }
+
         private T? WithForum<T>(ForumViewer viewer, int groupId, bool write, Func<IDbConnection, IDbTransaction, ForumRow, T?> operation) where T : class
         {
             if (groupId <= 0 || viewer.UserId <= 0) {

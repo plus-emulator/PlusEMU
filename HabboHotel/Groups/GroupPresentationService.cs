@@ -88,7 +88,10 @@ public sealed class GroupPresentationService(IGroupManager groups, ICacheManager
 
         var item = room.GetRoomItemHandler().GetItem(itemId);
 
-        if (item == null || item.IsTemporary || item.Definition.InteractionType != InteractionType.GuildGate ||
+        // AIR asks for this from FurnitureGuildCustomizedLogic, so group items and gates; the forum terminal overrides
+        // openContextMenu and never does. The item's own group decides, not the id the client sent.
+        if (item == null || item.IsTemporary || item.Definition.InteractionType is not (InteractionType.GuildItem or InteractionType.GuildGate) ||
+            item.GroupId != groupId ||
             !groups.TryGetGroup(groupId, out var group)) {
             return;
         }

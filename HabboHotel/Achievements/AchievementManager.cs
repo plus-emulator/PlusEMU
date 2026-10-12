@@ -110,7 +110,7 @@ public class AchievementManager : IAchievementManager, IStartable
                 newTarget = totalLevels;
             }
 
-            session.Send(new AchievementUnlockedComposer(AchievementUnlockSnapshot.Capture(data, targetLevel, level.RewardPoints, level.RewardPixels)));
+            session.Send(new AchievementUnlockedComposer(AchievementUnlockSnapshot.Capture(data, level)));
 
             lock (habbo.WalletSync) {
                 if (habbo.AccessClosed) {
@@ -129,8 +129,7 @@ public class AchievementManager : IAchievementManager, IStartable
                 stats.AchievementPoints += level.RewardPoints;
                 session.Send(new HabboActivityPointNotificationComposer(habbo.Duckets, level.RewardPixels));
                 session.Send(new AchievementScoreComposer(stats.AchievementPoints));
-                var newLevelData = data.Levels[newTarget];
-                session.Send(new AchievementProgressedComposer(AchievementNotificationSnapshot.CaptureProgress(data, newTarget, newLevelData, totalLevels, habbo.GetAchievementData(group))));
+                session.Send(new AchievementProgressedComposer(AchievementProgressSnapshot.Capture(data, habbo.GetAchievementData(group))!));
             }
 
             // Only a committed level reaches friends; the friend bar shows the badge code as "earned an achievement".
@@ -148,7 +147,7 @@ public class AchievementManager : IAchievementManager, IStartable
                 new { habboId = habbo.Id, group, newLevel, newProgress });
         }
 
-        session.Send(new AchievementProgressedComposer(AchievementNotificationSnapshot.CaptureProgress(data, targetLevel, level, totalLevels, habbo.GetAchievementData(group))));
+        session.Send(new AchievementProgressedComposer(AchievementProgressSnapshot.Capture(data, habbo.GetAchievementData(group))!));
 
         _talents.Progress(habbo, Achievements);
 

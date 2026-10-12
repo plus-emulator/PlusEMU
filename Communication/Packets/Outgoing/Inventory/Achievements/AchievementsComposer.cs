@@ -13,21 +13,28 @@ public class AchievementsComposer(ImmutableArray<AchievementProgressSnapshot> ac
         packet.WriteInteger(achievements.Length);
 
         foreach (var achievement in achievements) {
-            packet.WriteInteger(achievement.Id); // Achievement ID
-            packet.WriteInteger(achievement.TargetLevel); // Target level
-            packet.WriteString(achievement.Badge); // Badge code
-            packet.WriteInteger(1);
-            packet.WriteInteger(achievement.Requirement); // Progress req/target
-            packet.WriteInteger(achievement.RewardPixels);
-            packet.WriteInteger(0); // Type of reward
-            packet.WriteInteger(achievement.Progress); // Current progress
-            packet.WriteBoolean(achievement.Completed); // Final achievement level completed.
-            packet.WriteString(achievement.Category); // Category
-            packet.WriteString(string.Empty);
-            packet.WriteInteger(achievement.TotalLevels); // Total amount of levels
-            packet.WriteInteger(0);
+            WriteAchievement(packet, achievement);
         }
 
-        packet.WriteString("");
+        packet.WriteString(""); // Default category: none, the window opens on its overview.
+    }
+
+    // WIN63 AchievementData (package_92.class_3624), shared by Achievements 1487, AchievementProgressed 1049 and UserGameAchievements 564.
+    internal static void WriteAchievement(IOutgoingPacket packet, AchievementProgressSnapshot achievement)
+    {
+        packet.WriteInteger(achievement.Id); // achievementId
+        packet.WriteInteger(achievement.TargetLevel); // level
+        packet.WriteString(achievement.Badge); // badgeId
+        packet.WriteInteger(achievement.ScoreAtStartOfLevel); // scoreAtStartOfLevel: the previous level's threshold
+        packet.WriteInteger(achievement.Requirement); // scoreLimit: this level's threshold
+        packet.WriteInteger(achievement.RewardPixels); // levelRewardPoints
+        packet.WriteInteger(0); // levelRewardPointType: duckets
+        packet.WriteInteger(achievement.Progress); // currentPoints: the total score
+        packet.WriteBoolean(achievement.Completed); // finalLevel
+        packet.WriteString(achievement.Category); // category
+        packet.WriteString(string.Empty); // subCategory
+        packet.WriteInteger(achievement.TotalLevels); // levelCount
+        packet.WriteInteger(0); // displayMethod: show the progress of the level
+        packet.WriteShort((short)achievement.State); // state
     }
 }

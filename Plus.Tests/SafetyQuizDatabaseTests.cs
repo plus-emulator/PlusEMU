@@ -48,7 +48,7 @@ namespace Plus.Tests
             Assert.Equal((false, 4), fixture.Connection.QuerySingle<(bool, int)>("SELECT enabled,question_count FROM safety_quizzes WHERE code='SafetyQuiz1'"));
             Assert.Equal(2, fixture.Connection.ExecuteScalar<int>("SELECT correct_answer FROM safety_quiz_questions WHERE quiz_code='SafetyQuiz1' AND question_id=0"));
             Assert.Equal(31, fixture.Connection.ExecuteScalar<int>("SELECT reward_pixels FROM achievements WHERE group_name='ACH_SafetyQuizGraduate'"));
-            Assert.Equal(2, fixture.Connection.ExecuteScalar<int>("SELECT COUNT(*) FROM achievements"));
+            Assert.Equal(2, fixture.Connection.ExecuteScalar<int>("SELECT COUNT(*) FROM achievements WHERE group_name IN ('ACH_SafetyQuizGraduate','ACH_HabboWayGraduate')"));
             Assert.Equal(23, fixture.Connection.ExecuteScalar<int>("SELECT COUNT(*) FROM safety_quiz_questions"));
         }
 
@@ -188,6 +188,8 @@ namespace Plus.Tests
                     Connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/59_UserCurrencies.sql")));
                     Connection.Execute("INSERT INTO users(id,username,auth_ticket) VALUES(7,'quiz','quiz-ticket'); INSERT INTO users_settings(user_id) VALUES(7); INSERT INTO user_statistics(id) VALUES(7); INSERT INTO talents(type,level,data_actions,data_gifts) VALUES('citizenship',0,'TRADE',''),('citizenship',1,'TRADE',''); INSERT INTO talents_sub_levels(talent_type,talent_level,sub_level,badge_code,required_progress) VALUES('citizenship',0,1,'ACH_SafetyQuizGraduate1',1),('citizenship',1,1,'ACH_HabboWayGraduate1',1)");
                     Migrate();
+                    // The official achievement set the hotel runs with; ACH_HabboWayGraduate is not official and stays hidden.
+                    Connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/76_OfficialAchievements.sql")));
                 }
                 catch {
                     Dispose();

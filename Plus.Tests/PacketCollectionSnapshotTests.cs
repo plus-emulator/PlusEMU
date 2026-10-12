@@ -84,18 +84,21 @@ public sealed class PacketCollectionSnapshotTests
     }
 
     [Theory]
-    [InlineData(0, false)]
-    [InlineData(3, true)]
-    public void AchievementNotificationsFreezeDefinitionAndUserProgress(int userLevel, bool completed)
+    [InlineData(1, 2, "ACH_TEST2", 10, 20, 5, 12, false)]
+    [InlineData(3, 3, "ACH_TEST3", 20, 30, 7, 20, true)]
+    public void AchievementNotificationsFreezeDefinitionAndUserProgress(int userLevel, int level, string badge, int start, int limit, int reward,
+        int progress, bool completed)
     {
         var achievement = new Achievement { Id = 7, GroupName = "ACH_TEST", Category = "social" };
+        achievement.AddLevel(new AchievementLevel(1, 3, 5, 10));
+        achievement.AddLevel(new AchievementLevel(2, 5, 10, 20));
+        achievement.AddLevel(new AchievementLevel(3, 7, 10, 30));
         var user = new UserAchievement("ACH_TEST", userLevel, 12);
-        var level = new AchievementLevel(2, 5, 10, 20);
-        var progressed = new AchievementProgressedComposer(AchievementNotificationSnapshot.CaptureProgress(achievement, 2, level, 3, user));
+        var progressed = new AchievementProgressedComposer(AchievementProgressSnapshot.Capture(achievement, user)!);
         var rarity = new BadgeRarityTable(BadgeRarityScale.Empty, new Dictionary<string, int> { ["ACH_TEST2"] = 3 });
-        var unlocked = new AchievementUnlockedComposer(AchievementUnlockSnapshot.Capture(achievement, 2, 10, 5, rarity));
-        object[] expectedProgress = [7, 2, "ACH_TEST2", 1, 20, 5, 0, 12, completed, "social", "", 3, 0];
-        object[] expectedUnlock = [7, 2, 144, "ACH_TEST2", 10, 5, 0, 10, 21, "ACH_TEST1", "social", true, 3, 5];
+        var unlocked = new AchievementUnlockedComposer(AchievementUnlockSnapshot.Capture(achievement, achievement.Levels[2], rarity));
+        object[] expectedProgress = [7, level, badge, start, limit, reward, 0, progress, completed, "social", "", 3, 0, (short)1];
+        object[] expectedUnlock = [7, 2, 1, "ACH_TEST2", 10, 5, 0, 0, 7, "ACH_TEST1", "social", true, 3, 5];
         Assert.Equal(expectedProgress, Writes(progressed));
         Assert.Equal(expectedUnlock, Writes(unlocked));
         achievement.Id = 9;

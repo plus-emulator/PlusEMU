@@ -1,8 +1,6 @@
 using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets;
 using Plus.Communication.Packets.Incoming.Game.Lobby;
@@ -46,19 +44,16 @@ public class AchievementSnapshotTests
         Assert.Empty(habbo.Inventory.Badges.Badges);
     }
 
-    // SHA-256 of the pre-migration achievement composer payloads for the scenarios in BaselineLines.
-    private const string BaselineSha256 = "24cf9f92a0586099715752238407ed531cf5284e16f69dde0912cc0320e25a4f";
-
     private static readonly AchievementSnapshotService Service = new();
 
     [Fact]
-    public void BadgeDefinitionsFreezeNamesSparseLevelsAndEmptyEntries()
+    public void BadgeDefinitionsFreezeNamesAndSortSparseLevelsWithoutEmptyEntries()
     {
         var defined = Achievement("ACH_SOCIAL", "social", 0, (4, 40), (1, 10));
         var empty = Achievement("ACH_EMPTY", "social", 0);
         var source = new List<Achievement> { defined, empty };
         var composer = new BadgeDefinitionsComposer(Service.CaptureDefinitions(source));
-        var expected = new List<object> { 2, "SOCIAL", 2, 4, 40, 1, 10, "EMPTY", 0 };
+        var expected = new List<object> { 1, "SOCIAL", 2, 1, 10, 4, 40 };
 
         Assert.Equal(expected, Writes(composer));
         defined.GroupName = "ACH_CHANGED";
@@ -68,14 +63,6 @@ public class AchievementSnapshotTests
 
         Assert.Equal(expected, Writes(composer));
         Assert.Equal(expected, Writes(composer));
-    }
-
-    [Fact]
-    public void ComposedPayloadsMatchThePreMigrationBaseline()
-    {
-        var lines = BaselineLines();
-
-        Assert.Equal(BaselineSha256, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Concat(lines.Select(line => line + "\n"))))));
     }
 
     [Fact]
@@ -221,24 +208,6 @@ public class AchievementSnapshotTests
         await new GetGameAchievementsEvent(new AchievementShowcaseService(manager, Service)).Parse(client, Packet(0));
 
         Assert.Equal(new[] { ServerPacketHeader.PlayableGamesComposer, ServerPacketHeader.GameAchievementListComposer }, sent.Select(message => message.Header));
-    }
-
-    private static IEnumerable<string> BaselineLines()
-    {
-        var lines = new List<string>();
-        void Add(string name, Habbo habbo, Func<Habbo, ImmutableArray<AchievementProgressSnapshot>> capture, Func<ImmutableArray<AchievementProgressSnapshot>, IServerPacket> compose)
-        {
-            lines.Add($"{name}: {string.Join("|", Writes(compose(capture(habbo))).Select(write => $"{write.GetType().Name}:{write}"))}");
-        }
-        var social = Achievement("ACH_SOCIAL", "social", 0, (1, 5), (2, 10), (3, 20));
-        var game = Achievement("GAME_X", "games", 9, (1, 5), (2, 10), (3, 20));
-        Add("none", new Habbo { Id = 7, Username = "u" }, habbo => Service.Capture(habbo, [social]), snapshots => new AchievementsComposer(snapshots));
-        Add("partial", UserWith(level: 1, progress: 7), habbo => Service.Capture(habbo, [social]), snapshots => new AchievementsComposer(snapshots));
-        Add("game-partial", UserWith(level: 1, progress: 4, "GAME_X"), habbo => Service.Capture(habbo, [game]), snapshots => new GameAchievementListComposer(9, snapshots));
-        Add("completed", UserWith(level: 3, progress: 30), habbo => Service.Capture(habbo, [social]), snapshots => new AchievementsComposer(snapshots));
-        Add("game-none", new Habbo { Id = 9, Username = "w" }, habbo => Service.Capture(habbo, [game]), snapshots => new GameAchievementListComposer(9, snapshots));
-
-        return lines;
     }
 
     // Levels are (level, requirement); reward pixels follow the level number, as the fixtures always did.

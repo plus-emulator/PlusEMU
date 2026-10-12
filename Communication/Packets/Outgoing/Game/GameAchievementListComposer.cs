@@ -1,9 +1,11 @@
 using System.Collections.Immutable;
+using Plus.Communication.Packets.Outgoing.Inventory.Achievements;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.Game;
 
+// WIN63 UserGameAchievementsMessageParser: the game type id, then the Achievements (1487) payload.
 public class GameAchievementListComposer(int gameId, ImmutableArray<AchievementProgressSnapshot> achievements) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.GameAchievementListComposer;
@@ -14,21 +16,9 @@ public class GameAchievementListComposer(int gameId, ImmutableArray<AchievementP
         packet.WriteInteger(achievements.Length);
 
         foreach (var achievement in achievements) {
-            packet.WriteInteger(achievement.Id); // ach id
-            packet.WriteInteger(achievement.TargetLevel); // target level
-            packet.WriteString(achievement.Badge); // badge
-            packet.WriteInteger(achievement.Requirement); // requirement
-            packet.WriteInteger(achievement.Requirement); // requirement
-            packet.WriteInteger(achievement.RewardPixels); // pixels
-            packet.WriteInteger(0); // ach score
-            packet.WriteInteger(achievement.Progress); // Current progress
-            packet.WriteBoolean(achievement.Completed); // Final achievement level completed.
-            packet.WriteString(achievement.Category);
-            packet.WriteString("basejump");
-            packet.WriteInteger(0); // total levels
-            packet.WriteInteger(0);
+            AchievementsComposer.WriteAchievement(packet, achievement);
         }
 
-        packet.WriteString("");
+        packet.WriteString(""); // Default category
     }
 }

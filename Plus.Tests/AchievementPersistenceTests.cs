@@ -8,9 +8,11 @@ using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
+using Plus.HabboHotel.Friends;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Users;
+using Plus.HabboHotel.Users.Messenger;
 using Plus.HabboHotel.Talents;
 using Xunit;
 
@@ -58,6 +60,7 @@ public sealed class AchievementPersistenceTests
             fixture.Habbo.Duckets, Assert.IsType<HabboStats>(fixture.Habbo.HabboStats).AchievementPoints));
         Assert.DoesNotContain(fixture.Sent, packet => packet.Header is
             ServerPacketHeader.HabboActivityPointNotificationComposer or ServerPacketHeader.AchievementScoreComposer);
+        Assert.Empty(fixture.Broadcasts);
     }
 
     [RoomComponentDatabaseFact]
@@ -96,6 +99,7 @@ public sealed class AchievementPersistenceTests
         Assert.DoesNotContain(fixture.Sent, packet => packet.Header is
             ServerPacketHeader.HabboActivityPointNotificationComposer or ServerPacketHeader.AchievementScoreComposer
             or ServerPacketHeader.AchievementProgressedComposer);
+        Assert.Empty(fixture.Broadcasts);
     }
 
     [RoomComponentDatabaseFact]
@@ -141,6 +145,7 @@ public sealed class AchievementPersistenceTests
         Assert.Equal((20, 7), fixture.StoredAward());
         Assert.Equal((1, 0), (fixture.Habbo.GetAchievementData(Group)!.Level,
             fixture.Habbo.GetAchievementData(Group)!.Progress));
+        Assert.Equal(new[] { (7, MessengerEventTypes.AchievementUnlocked, Group + "1") }, fixture.Broadcasts);
     }
 
     [RoomComponentDatabaseFact]
@@ -191,6 +196,7 @@ public sealed class AchievementPersistenceTests
         Assert.Equal((0, 0, 0), (fixture.Habbo.GetAchievementData(Group)!.Level,
             fixture.Habbo.Duckets, Assert.IsType<HabboStats>(fixture.Habbo.HabboStats).AchievementPoints));
         Assert.Equal(ServerPacketHeader.AchievementUnlockedComposer, Assert.Single(fixture.Sent).Header);
+        Assert.Empty(fixture.Broadcasts);
     }
 
     private sealed class Fixture : IDisposable
@@ -201,6 +207,7 @@ public sealed class AchievementPersistenceTests
         public Habbo Habbo { get; }
         public FlashGameClient Client { get; }
         public List<(uint Header, byte[] Payload)> Sent { get; }
+        public List<(int UserId, MessengerEventTypes Type, string Value)> Broadcasts { get; } = [];
 
         public Fixture()
         {
@@ -236,6 +243,8 @@ public sealed class AchievementPersistenceTests
                     Access = UserAccess.Empty,
                     SessionStartedAt = DateTimeOffset.UtcNow,
                     HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "old", 0),
+                    // ProgressAchievement refuses a level-up without loaded statistics and inventory.
+                    Inventory = new Plus.HabboHotel.Users.Inventory.InventoryComponent(),
                     Persistence = new UserPersistenceService(Database, TimeProvider.System, TestGameClientManager.Empty)
                 };
                 (Client, Sent) = HabbiconTestSupport.Client(Habbo);
@@ -254,7 +263,18 @@ public sealed class AchievementPersistenceTests
         {
             var badges = CatalogSnapshotTestSupport.Proxy<IBadgeManager>((method, _) =>
                 method == "GiveBadge" ? giveBadge?.Invoke() ?? Task.CompletedTask : throw new InvalidOperationException(method));
-            var manager = new AchievementManager(null!, Database, badges, CatalogSnapshotTestSupport.Proxy<ITalentTrackProgressionService>((method, _) => method == "Progress" ? null : throw new InvalidOperationException(method)));
+            var messenger = CatalogSnapshotTestSupport.Proxy<IMessengerDataLoader>((method, args) =>
+            {
+                if (method != "BroadcastStatusUpdate") {
+                    throw new InvalidOperationException(method);
+                }
+
+                Broadcasts.Add((((Habbo)args[0]!).Id, (MessengerEventTypes)args[1]!, (string)args[2]!));
+
+                return null;
+            });
+            var manager = new AchievementManager(null!, Database, badges, CatalogSnapshotTestSupport.Proxy<ITalentTrackProgressionService>((method, _) => method == "Progress" ? null : throw new InvalidOperationException(method)),
+                messenger);
             var achievement = new Achievement { Id = 1, GroupName = Group, Category = "identity" };
             achievement.AddLevel(new AchievementLevel(1, 20, 7, 1));
             manager.Achievements.Add(Group, achievement);

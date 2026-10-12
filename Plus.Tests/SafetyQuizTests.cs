@@ -191,7 +191,7 @@ namespace Plus.Tests
             Assert.Equal(0, fixture.TalentCalls);
             Assert.Single(fixture.Packets);
 
-            var manager = new AchievementManager(null!, null!, null!, null!);
+            var manager = new AchievementManager(null!, null!, null!, null!, null!);
             manager.Achievements.Add(fixture.Group, fixture.Manager.Achievements[fixture.Group]);
             Assert.False(manager.ProgressAchievement(fixture.Client, fixture.Group, 1, true));
         }
@@ -199,7 +199,7 @@ namespace Plus.Tests
         [Fact]
         public void GenuineAchievementEntryRejectsMissingHabboBeforeAnyBadgeOrDatabaseAccess()
         {
-            var manager = new AchievementManager(null!, null!, null!, null!);
+            var manager = new AchievementManager(null!, null!, null!, null!, null!);
             manager.Achievements.Add("ACH_SafetyQuizGraduate", new() { GroupName = "ACH_SafetyQuizGraduate" });
             var (client, _) = HabbiconTestSupport.Client(null!);
             Assert.False(manager.ProgressAchievement(client, "ACH_SafetyQuizGraduate", 1, true));

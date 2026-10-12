@@ -167,6 +167,7 @@ public sealed class BotManagementServiceTests
             return speech;
         }
         public void SaveName(int botId, uint roomId, string name) => throw new NotSupportedException();
+        public void SavePosition(int botId, uint roomId, int x, int y, double z, int rotation) => throw new NotSupportedException();
         public void SaveWalkingMode(int botId, uint roomId, string mode)
         {
             if (Fail) {

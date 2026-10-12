@@ -14,6 +14,7 @@ public interface IPetPlacementService
 {
     void Place(Room room, GameClient session, int petId, int x, int y);
     void PickUp(Room room, GameClient session, int petId);
+    void Move(Room room, GameClient session, int petId, int x, int y, int direction);
 }
 
 public sealed class PetPlacementService(
@@ -132,6 +133,42 @@ public sealed class PetPlacementService(
 
             room.GetRoomUserManager().RemoveBot(pet.VirtualId, false);
         }
+    }
+
+    // AIR lets a room controller move (Alt+click, then a tile) or rotate (Shift+click) a placed monsterplant.
+    public void Move(Room room, GameClient session, int petId, int x, int y, int direction)
+    {
+        var habbo = session.GetHabbo();
+
+        if (!ReferenceEquals(habbo.CurrentRoom, room) || direction < 0
+            || !room.GetRoomUserManager().TryGetPet(petId, out var pet) || pet.PetData is not { PetId: > 0 } data) {
+            return;
+        }
+
+        // AIR offers this to room controllers; the pet's owner may always arrange it too.
+        if (habbo.Id != data.OwnerId && !room.CheckRights(session, false, true)) {
+            return;
+        }
+
+        RoomUnitPlacement.Place(room, pet, x, y, direction % 8, z =>
+        {
+            lock (data) {
+                if (data.RoomId != room.RoomId || !data.PlacedInRoom) {
+                    return false;
+                }
+
+                // Pets keep no saved facing, so only a new tile is stored.
+                if ((pet.X != x || pet.Y != y) && !store.TryMove(Move(data, room.RoomId, x, y, z))) {
+                    return false;
+                }
+
+                data.X = x;
+                data.Y = y;
+                data.Z = z;
+
+                return true;
+            }
+        });
     }
 
     private static PetRoomMove Move(Pet pet, uint roomId, int x, int y, double z) => new(

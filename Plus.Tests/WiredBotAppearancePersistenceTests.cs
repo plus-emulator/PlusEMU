@@ -215,6 +215,7 @@ public sealed class WiredBotAppearancePersistenceTests
             bool automatic, int interval, bool mix) => throw new NotSupportedException();
         public void SaveWalkingMode(int botId, uint roomId, string mode) => throw new NotSupportedException();
         public void SaveName(int botId, uint roomId, string name) => throw new NotSupportedException();
+        public void SavePosition(int botId, uint roomId, int x, int y, double z, int rotation) => throw new NotSupportedException();
     }
 
     private sealed class NoWiredOperations : IWiredRuntimeOperations

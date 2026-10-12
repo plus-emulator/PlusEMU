@@ -36,9 +36,11 @@ public sealed class PetPlacementServiceTests
 
         await new PlacePetEvent(pets).Parse(room, null!, HabbiconTestSupport.Incoming(12, 3, 4));
         await new PickUpPetEvent(pets).Parse(room, null!, HabbiconTestSupport.Incoming(13));
+        await new MovePetEvent(pets).Parse(room, null!, HabbiconTestSupport.Incoming(14, 2, 1, 6));
 
         Assert.Equal((room, 12, 3, 4), pets.Placed);
         Assert.Equal((room, 13), pets.PickedUp);
+        Assert.Equal((room, 14, 2, 1, 6), pets.Moved);
     }
 
     [Fact]
@@ -272,8 +274,10 @@ public sealed class PetPlacementServiceTests
     {
         public (Room Room, int PetId, int X, int Y)? Placed { get; private set; }
         public (Room Room, int PetId)? PickedUp { get; private set; }
+        public (Room Room, int PetId, int X, int Y, int Direction)? Moved { get; private set; }
         public void Place(Room room, GameClient session, int petId, int x, int y) => Placed = (room, petId, x, y);
         public void PickUp(Room room, GameClient session, int petId) => PickedUp = (room, petId);
+        public void Move(Room room, GameClient session, int petId, int x, int y, int direction) => Moved = (room, petId, x, y, direction);
     }
 
     private sealed class RecordingStore : IPetRoomStore

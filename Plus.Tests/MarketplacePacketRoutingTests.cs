@@ -9,20 +9,19 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The marketplace requests the AIR client (WIN63-202609161723-93809945) sends, with the id of the composer each HabboCatalog method uses (communication/class_2036.as composer table):
-// getOwnMarketPlaceOffers class_1889 3217, buyMarketPlaceOffer class_1883 3948, redeemSoldMarketPlaceOffers class_1774 1229, redeemExpiredMarketPlaceOffer class_1825 802.
+// October AIR marketplace request IDs are pinned to their direction-qualified composer identities.
 public class MarketplacePacketRoutingTests
 {
     private static readonly (Type Handler, uint Id)[] Expected =
     [
-        (typeof(GetMarketplaceItemStatsEvent), 994),
-        (typeof(MakeOfferEvent), 3676),
-        (typeof(GetMarketplaceCanMakeOfferEvent), 2865),
-        (typeof(GetOffersEvent), 324),
-        (typeof(GetOwnOffersEvent), 3217),
-        (typeof(BuyOfferEvent), 3948),
-        (typeof(RedeemOfferCreditsEvent), 1229),
-        (typeof(CancelOfferEvent), 802)
+        (typeof(GetMarketplaceItemStatsEvent), 3067),
+        (typeof(MakeOfferEvent), 1010),
+        (typeof(GetMarketplaceCanMakeOfferEvent), 3097),
+        (typeof(GetOffersEvent), 2813),
+        (typeof(GetOwnOffersEvent), 2188),
+        (typeof(BuyOfferEvent), 3858),
+        (typeof(RedeemOfferCreditsEvent), 3420),
+        (typeof(CancelOfferEvent), 938)
     ];
 
     [Fact]

@@ -20,7 +20,7 @@ public class CurrentRevisionTests
 
             Assert.Same(cache.InternalRevision, Assert.Single(cache.Revisions).Value);
             Assert.Equal("example.json", Path.GetFileName(Assert.Single(Directory.GetFiles(directory))));
-            Assert.Equal(0u, cache.InternalRevision.IncomingIdToInternalIdMapping[ClientPacketHeader.InfoRetrieveEvent]);
+            Assert.Equal(312u, cache.InternalRevision.IncomingIdToInternalIdMapping[ClientPacketHeader.InfoRetrieveEvent]);
             Assert.All(cache.InternalRevision.IncomingIdToInternalIdMapping, pair => Assert.Equal(pair.Key, pair.Value));
             Assert.All(cache.InternalRevision.InternalIdToOutgoingIdMapping, pair => Assert.Equal(pair.Key, pair.Value));
         });
@@ -108,13 +108,13 @@ public class CurrentRevisionTests
 
         Assert.False(client.Closed.IsCancellationRequested);
         Assert.Same(cache.InternalRevision, client.Revision);
-        Assert.Equal(0u, Assert.IsType<Revision>(client.Revision).IncomingIdToInternalIdMapping[0]);
+        Assert.Equal(312u, Assert.IsType<Revision>(client.Revision).IncomingIdToInternalIdMapping[312]);
     }
 
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void ConcatenatedHelloDispatchesZeroOnlyForTheSupportedBuild(bool supported)
+    public void ConcatenatedHelloDispatchesInfoOnlyForTheSupportedBuild(bool supported)
     {
         var cache = new RevisionsCache();
         var handler = new ClientHelloEvent(cache, NullLogger<ClientHelloEvent>.Instance);
@@ -144,17 +144,17 @@ public class CurrentRevisionTests
         hello.WriteInt(1);
         var frame = stream.GetBuffer().AsMemory(0, (int)stream.Length);
         client.CreateHeader(frame, ClientPacketHeader.ClientHelloEvent);
-        var frames = frame.ToArray().Concat(new byte[] { 0, 0, 0, 2, 0, 0 }).ToArray();
+        var frames = frame.ToArray().Concat(new byte[] { 0, 0, 0, 2, 1, 56 }).ToArray();
 
         client.OnReceived(frames, 0, frames.Length);
 
         Assert.Equal(!supported, client.Closed.IsCancellationRequested);
-        Assert.Equal(supported ? new uint[] { 4000, 0 } : new uint[] { 4000 }, received);
+        Assert.Equal(supported ? new uint[] { 4000, 312 } : new uint[] { 4000 }, received);
         Assert.Same(cache.InternalRevision, client.Revision);
         Assert.Null(client._incompleteStream);
 
         if (!supported) {
-            var subsequent = new byte[] { 0, 0, 0, 2, 0, 0 };
+            var subsequent = new byte[] { 0, 0, 0, 2, 1, 56 };
             client.OnReceived(subsequent, 0, subsequent.Length);
             Assert.Equal(new uint[] { 4000 }, received);
         }
@@ -168,7 +168,7 @@ public class CurrentRevisionTests
         composer.Compose(new FlashOutgoingPacket(stream));
         var incoming = new FlashIncomingPacket { Buffer = stream.ToArray()[6..] };
 
-        Assert.Equal(1822u, composer.MessageId);
+        Assert.Equal(1611u, composer.MessageId);
         Assert.Equal("hd-180-1", incoming.ReadString());
         Assert.Equal("M", incoming.ReadString());
         Assert.False(incoming.HasDataRemaining());

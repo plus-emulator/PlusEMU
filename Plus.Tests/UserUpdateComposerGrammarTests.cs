@@ -8,7 +8,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// The supported client build (WIN63-202609161723-93809945) registers header 399 to class_3303, whose parser class_2725 reads
+/// The supported client build (WIN63-202610121709-785561319) registers header 2029 to class_3347, whose parser class_2754 reads
 /// i32 count, then per user: i32 index, i32 x, i32 y, string z, i32 head, i32 body, i32 third, string status.
 /// </summary>
 public sealed class UserUpdateComposerGrammarTests
@@ -30,10 +30,10 @@ public sealed class UserUpdateComposerGrammarTests
     [InlineData("wf")]
     [InlineData("two humans")]
     [InlineData("unicode status")]
-    public void UserUpdateIsReadByTheSupportedSept16UserUpdateGrammarToTheExactEnd(string name)
+    public void UserUpdateIsReadByTheSupportedOctoberUserUpdateGrammarToTheExactEnd(string name)
     {
         var users = Cases[name];
-        Assert.Equal(399u, ServerPacketHeader.UserUpdateComposer);
+        Assert.Equal(2029u, ServerPacketHeader.UserUpdateComposer);
         var bytes = TypedFurnitureStateTests.Payload(new UserUpdateComposer([.. users]));
 
         var read = ReadUserUpdate(bytes);
@@ -44,7 +44,7 @@ public sealed class UserUpdateComposerGrammarTests
 
     private sealed record ReadUser(int Index, int X, int Y, string Z, int Head, int Body, int Third, string Status);
 
-    // class_2725: i32 count; per user index, x, y, z string, head, body, third, status string. Anything short or left over is a failure.
+    // class_2754: i32 count; per user index, x, y, z string, head, body, third, status string. Anything short or left over is a failure.
     private static List<ReadUser> ReadUserUpdate(byte[] bytes)
     {
         var position = 0;

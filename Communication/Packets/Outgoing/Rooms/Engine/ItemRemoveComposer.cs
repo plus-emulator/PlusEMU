@@ -19,7 +19,7 @@ public class ItemRemoveComposer : IServerPacket
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteString(_itemId);
-        packet.WriteBoolean(false);
         packet.WriteInteger(_userId);
+        packet.WriteBoolean(false);
     }
 }

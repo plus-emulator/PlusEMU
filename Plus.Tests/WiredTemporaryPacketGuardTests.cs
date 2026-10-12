@@ -159,6 +159,7 @@ public class WiredTemporaryPacketGuardTests
         Assert.False(input.ReadBool());
         Assert.Equal(42, input.ReadInt());
         Assert.Equal(0, input.ReadInt());
+        Assert.False(input.ReadBool());
         Assert.False(input.HasDataRemaining());
     }
 

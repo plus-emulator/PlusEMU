@@ -389,7 +389,7 @@ public sealed partial class WiredGlideConveyorTests
         public RoomUser Walker(int virtualId, int fromX, int fromY, int x, int y)
         {
             var client = new Client();
-            client.SetHabbo(new Habbo
+            var habbo = new Habbo
             {
                 Id = virtualId,
                 Username = $"user{virtualId}",
@@ -398,7 +398,9 @@ public sealed partial class WiredGlideConveyorTests
                 IgnoresComponent = new([]),
                 Effects = new(new FixedTimeProvider(FixedTimeProvider.Epoch)),
                 HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0)
-            });
+            };
+            habbo.Effects.Init(habbo);
+            client.SetHabbo(habbo);
             var user = new RoomUser(virtualId, 14, virtualId, _room, client, new TestChatEmotions(), new TestRewardProgress())
             {
                 InternalRoomId = virtualId,

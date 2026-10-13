@@ -2224,38 +2224,45 @@ public class ModernWiredRuntimeTests
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(new Point(1, 1), resident.Coordinate);
         Assert.Empty(MovementDurations(replies));
-        Assert.Equal(8, f.User.CurrentEffect);
-        Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
+        Assert.Equal(4, f.User.CurrentEffect);
+        Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
         Assert.Empty(f.Errors);
     }
 
     [Fact]
-    public void FastTeleportMovesAtOnceAndSendsNoAnimationTime()
+    public void FastTeleportLandsOnTheStateUpdateAndSendsNoAnimationTime()
     {
         using var f = new TeleportFixture();
         f.Use(1, 0);
         var replies = Capture(f.Habbo.Client);
         f.Fire();
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
-        Assert.Equal(8, f.User.CurrentEffect);
+        Assert.Equal(4, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
-        Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
-        f.Advance(500);
+        Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
+        f.Advance(1500);
         Assert.Equal(8, f.User.CurrentEffect);
         Assert.Empty(f.Errors);
     }
 
     [Fact]
-    public void TeleportMovesAtOnceAndPublishesNoMovementEntry()
+    public void TeleportLandsOnTheStateUpdateAfterTheGlowAndPublishesNoMovementEntry()
     {
         using var f = new TeleportFixture();
         var replies = Capture(f.Habbo.Client);
-        f.Fire();
+        f.Fire(land: false);
+        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        Assert.Equal(4, f.User.CurrentEffect);
+        Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
+        f.Advance(1000);
+        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        f.Advance(500);
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
-        Assert.Equal(8, f.User.CurrentEffect);
+        Assert.Equal(4, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
-        Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
-        f.Advance(1500);
+        f.Advance(1400);
+        Assert.Equal(4, f.User.CurrentEffect);
+        f.Advance(100);
         Assert.Equal(8, f.User.CurrentEffect);
         Assert.Empty(f.Errors);
     }
@@ -2267,11 +2274,11 @@ public class ModernWiredRuntimeTests
         f.Room.GetGameMap().Model.SqState[1, 1] = SquareState.Blocked;
         var replies = Capture(f.Habbo.Client);
         f.Fire();
-        f.Advance(500);
+        f.Advance(1500);
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         Assert.Equal(8, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
-        Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
+        Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
         Assert.Empty(f.Errors);
     }
 
@@ -2283,11 +2290,11 @@ public class ModernWiredRuntimeTests
         f.Room.GetGameMap().AddToMap(f.Target);
         var replies = Capture(f.Habbo.Client);
         f.Fire();
-        f.Advance(500);
+        f.Advance(1500);
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         Assert.Equal(8, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
-        Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
+        Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
         Assert.Empty(f.Errors);
     }
 
@@ -2596,7 +2603,7 @@ public class ModernWiredRuntimeTests
     {
         using var f = new TeleportFixture();
         f.Fire();
-        Assert.Equal(8, f.User.CurrentEffect);
+        Assert.Equal(4, f.User.CurrentEffect);
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
 
         if (change == "target") {
@@ -2628,8 +2635,9 @@ public class ModernWiredRuntimeTests
     {
         using var f = new TeleportFixture();
         f.Fire();
+        f.User.SetPos(0, 0, 0);
         f.Fire();
-        Assert.Equal(8, f.User.CurrentEffect);
+        Assert.Equal(4, f.User.CurrentEffect);
         f.Advance(1500);
         Assert.Equal(8, f.User.CurrentEffect);
         f.User.SetPos(0, 0, 0);
@@ -2747,10 +2755,16 @@ public class ModernWiredRuntimeTests
             Engine.Add(Trigger);
             Engine.Add(Action);
         }
-        public void Fire()
+        // The native teleport lands the user on the state update 1500 ms after the fire (observed on hhus, WIN63-202610131318).
+        public const int TeleportLandsAfterMilliseconds = 1500;
+        public void Fire(bool land = true)
         {
             Assert.True(Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = User }));
             Engine.OnFastCycle();
+
+            if (land) {
+                Advance(TeleportLandsAfterMilliseconds);
+            }
         }
         public void Advance(int milliseconds)
         {

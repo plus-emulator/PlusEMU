@@ -357,6 +357,8 @@ public static class WiredNativeEditorProjection
         return true;
     }
 
+    private const string ClickTileInteraction = "room_invisible_click_tile";
+
     internal static bool TryValidatePicks(Item item, WiredBoxDescriptor descriptor, WiredConfiguration proposed, out string error)
     {
         error = "Invalid native editor picks.";
@@ -374,6 +376,15 @@ public static class WiredNativeEditorProjection
 
         if (room == null || references.Any(reference =>
             room.GetRoomItemHandler().GetItem(reference.ItemId) is not { IsTemporary: false } picked || picked.IsWallItem != reference.Wall)) {
+            return false;
+        }
+
+        // Observed on hhus (WIN63-202610131318): saving a click-tile trigger that picks a furni which is not an invisible click tile
+        // is refused with wiredfurni.error.require_click_tiles and no parameters.
+        if (descriptor.CanonicalName == "wf_trg_click_tile" && references.Any(reference =>
+            room.GetRoomItemHandler().GetItem(reference.ItemId)?.Definition.InteractionName != ClickTileInteraction)) {
+            error = "wiredfurni.error.require_click_tiles";
+
             return false;
         }
 

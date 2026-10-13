@@ -11,7 +11,8 @@ internal static class WiredNativeTriggerEditor
 
     internal static WiredNativeEditorMetadata Metadata(string name) => name switch
     {
-        "wf_trg_walks_off_furni" or "wf_trg_click_furni" => new([[0, 100, 200, 201]], [], [100], [], [], false),
+        "wf_trg_walks_off_furni" => new([[100, 200]], [], [100], [], [], false),
+        "wf_trg_click_furni" => new([[0, 100, 200, 201]], [], [100], [], [], false),
         "wf_trg_click_tile" => new([[100, 200]], [], [100], [], [], false),
         "wf_trg_recv_signal" => new([[100, 200, 201]], [], [100], [], [], false),
         // The use trigger has no state radio; the state-change trigger does.

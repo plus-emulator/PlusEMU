@@ -719,8 +719,24 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         return _movement.MoveAvatar(context, user, target.GetX, target.GetY, false, 2, ignoreOccupants: true);
     }
 
+    // Observed on hhus: a "<...>" segment of Show Message text is removed (brackets included) at output; the stored text is untouched.
+    // Unknown $(name) placeholders are left literal by the text formatters.
+    internal static string StripAngleSegments(string text)
+    {
+        string previous;
+
+        do {
+            previous = text;
+            text = AngleSegment.Replace(text, "");
+        } while (text != previous);
+
+        return text;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex AngleSegment = new("<[^<>]*>", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private string FormatLegacyText(WiredRuntimeContext context, RoomUser user, string text) =>
-        context.Policy.FormatText(context, text.Replace("%USERNAME%", user.GetUsername(), StringComparison.Ordinal)
+        context.Policy.FormatText(context, StripAngleSegments(text).Replace("%USERNAME%", user.GetUsername(), StringComparison.Ordinal)
             .Replace("%ROOMNAME%", context.Room.Name ?? "", StringComparison.Ordinal)
             .Replace("%USERCOUNT%", context.Room.UserCount.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
             .Replace("%USERSONLINE%", _clients.Count.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal));

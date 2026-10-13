@@ -30,6 +30,26 @@ public sealed class WiredVariableFxTests
         Assert.Equal(new object[] { 1, 50, true, 1, 15, true }, packet.Values.Take(6).ToArray());
     }
 
+    // Official hhus WIN63-202610131318 (r78 batch): the reopened ints of each card saved from its defaults. The official editor sends two
+    // more trailing ints (a sub-renderer slot and a stack order) than this hotel's editor shape, so only the shared prefix is compared.
+    [Theory]
+    [InlineData("wf_xtra_var_fx_status", new[] { 1, 2, 0, 7, 0, 3000, 0, -1, 2, 2, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0 })]
+    [InlineData("wf_xtra_var_fx_health", new[] { 1, 2, 0, 7, 0, 3000, 0, 1000, 2, 10, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0 })]
+    [InlineData("wf_xtra_var_fx_progress", new[] { 1, 2, 0, 7, 0, 3000, 0, 1, 2, 0, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0 })]
+    [InlineData("wf_xtra_var_fx_level", new[] { 1, 2, 0, 7, 0, 3000, 0, 1001, 2, 20, -1, -1, -1, -1, 0, 0, 1, 1, 0, 0, 0, 2 })]
+    [InlineData("wf_xtra_var_fx_boss", new[] { 1, 2, 0, 7, 0, 3000, 0, 5, 4, 100, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0 })]
+    [InlineData("wf_xtra_var_fx_number", new[] { 1, 2, 0, 7, 0, 3000, 0, 1, -1, 201, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0 })]
+    public void ObservedNormalizedIntsRoundTripThroughTheNativeSave(string name, int[] observed)
+    {
+        Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor);
+        // The official default leaves the style options unset (-1); saving stores the style's own defaults.
+        var unset = observed.ToArray();
+        (unset[7], unset[8], unset[9]) = (-1, -1, -1);
+        Assert.True(WiredNativeEditorProjection.TryCompile(50, descriptor, native with { OwnedIntParams = [.. unset] }, out var configuration));
+        Assert.Equal(observed, configuration.IntParams.ToArray());
+    }
+
     [Theory]
     [InlineData("wf_xtra_var_fx_status", -1, 2, 2)]
     [InlineData("wf_xtra_var_fx_health", 1000, 2, 10)]

@@ -106,14 +106,16 @@ public static class WiredConditionConfiguration
             case "wf_cnd_actor_in_team":
             case "wf_cnd_has_handitem":
             case "wf_cnd_wearing_effect":
-                if (p.Length != 3 || p[0] < 0 || name == "wf_cnd_actor_in_team" && p[0] > 4 || !U(1) || !Q(2)) {
+                // AirSourceOnly (class_4227.as): the effect id box spans the whole int range.
+                if (p.Length != 3 || p[0] < 0 && name != "wf_cnd_wearing_effect" || name == "wf_cnd_actor_in_team" && p[0] > 4 || !U(1) || !Q(2)) {
                     return false;
                 }
 
                 users["users"] = p[1];
                 break;
             case "wf_cnd_wearing_badge":
-                if (p.Length != 2 || !U(0) || !Q(1) || proposed.Text.Length > 64) {
+                // AirSourceOnly (class_4263.as): the badge code box takes up to 1000 characters.
+                if (p.Length != 2 || !U(0) || !Q(1) || proposed.Text.Length > 1000) {
                     return false;
                 }
 

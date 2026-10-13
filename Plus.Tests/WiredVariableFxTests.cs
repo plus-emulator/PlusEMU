@@ -31,6 +31,33 @@ public sealed class WiredVariableFxTests
     }
 
     [Theory]
+    [InlineData("wf_xtra_var_fx_status", -1, 2, 2)]
+    [InlineData("wf_xtra_var_fx_health", 1000, 2, 10)]
+    [InlineData("wf_xtra_var_fx_progress", 1, 2, 0)]
+    [InlineData("wf_xtra_var_fx_level", 1001, 2, 20)]
+    [InlineData("wf_xtra_var_fx_boss", 5, 4, 100)]
+    [InlineData("wf_xtra_var_fx_number", 1, -1, 201)]
+    public void SavedUnsetStyleOptionsReopenAsTheStyleDefaults(string name, int color, int width, int renderer)
+    {
+        Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
+        var owned = WiredNativeEditorProjection.DefaultNative(descriptor).OwnedIntParams.ToArray();
+        owned[7] = owned[8] = owned[9] = -1;
+        var level = name == "wf_xtra_var_fx_level";
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = [.. owned] };
+        Assert.True(WiredNativeEditorProjection.TryCompile(50, descriptor, native, out var configuration));
+        var expected = owned.ToArray();
+        (expected[7], expected[8], expected[9]) = (color, width, renderer);
+
+        if (level) {
+            expected[10] = expected[11] = expected[12] = expected[13] = -1;
+        }
+
+        Assert.Equal(expected, configuration.IntParams.ToArray());
+        Assert.True(WiredVariableFxSettings.TryDecode(name, 50, configuration, new(WiredVariableTarget.User, "custom:10"), null, out var binding, out _));
+        Assert.Equal((0L, 100L), (binding!.Config.Min, binding.Config.Max));
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void ReusedRoomUnitIdInitializesReplacementAndRejectsDetachedPendingBatch(bool samePlayer)

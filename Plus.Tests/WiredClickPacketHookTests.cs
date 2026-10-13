@@ -256,7 +256,7 @@ public class WiredClickPacketHookTests
     [Fact]
     public async Task TileClickFiresForValidFrozenActorAndInvisibleTileItemWithoutWalking()
     {
-        var world = new World("wf_trg_click_tile", [0]);
+        var world = new World("wf_trg_click_tile", [100]);
         var item = new Item
         {
             Id = 5,

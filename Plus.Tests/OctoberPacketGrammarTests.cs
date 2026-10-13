@@ -82,18 +82,19 @@ public sealed class OctoberPacketGrammarTests
         };
         var bytes = Write(packet => WiredAllVariablesDiffComposer.WriteVariable(packet, variable));
         ReadSourceRecord(bytes, context ? "ctx:17" : "user:17", context ? 3 : 1, context ? 3 : 1,
-            [true, !context, true, true, false, false, true, true], context,
+            [true, !context, true, true, false, false, true, true], false,
             connector ? variable.TextConnector.OrderBy(pair => pair.Key).ToArray() : null, variable.TextConnectorFallback);
     }
 
     [Fact]
-    public void ContextCapabilityMatchesTheExistingExecutionFrameStore()
+    public void ContextVariablesAreNotMarkedAsRequiringAnExecutionContext()
     {
+        // Habbo's variable list sends requiresExecutionContext false for all of its variables, context ones included.
         var definition = new WiredVariableDefinition(17, 1, 5, "counter", WiredVariableTarget.Context, WiredVariableAvailability.RoomActive, true);
         var description = new WiredVariableDescription(definition, true, false);
         var native = WiredNativeCatalogProjection.Project(new(description, definition, null, true, false), null);
-        Assert.True(description.RequiresExecutionContext);
-        Assert.True(native.RequiresExecutionContext);
+        Assert.False(description.RequiresExecutionContext);
+        Assert.False(native.RequiresExecutionContext);
         Assert.Null(native.TextConnectorFallback);
     }
 

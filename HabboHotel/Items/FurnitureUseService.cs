@@ -138,10 +138,6 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
         }
 
         room.GetWired().Dispatch(new(WiredEventKind.ClickFurni) { Actor = actor, EventItem = item });
-
-        if (!request.IsWall && string.Equals(item.Definition.InteractionName, "room_invisible_click_tile", StringComparison.OrdinalIgnoreCase)) {
-            room.GetWired().Dispatch(new(WiredEventKind.ClickTile) { Actor = actor, EventItem = item, X = item.GetX, Y = item.GetY });
-        }
     }
 
     public void Use(Room room, GameClient session, FurnitureUseRequest request)

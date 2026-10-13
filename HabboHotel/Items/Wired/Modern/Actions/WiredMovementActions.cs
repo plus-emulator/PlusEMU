@@ -164,10 +164,23 @@ public sealed class WiredMovementActions(Random? random = null)
 
                 break;
             case "wf_act_match_to_sshot":
+                // A furni outside a one-furni snapshot takes that furni's state; nothing else of it was recorded.
+                var only = configuration.Snapshots.Length == 1 && configuration.Snapshots[0].Wall == null ? configuration.Snapshots[0] : null;
+
                 foreach (var item in movers) {
                     var snapshot = configuration.Snapshots.FirstOrDefault(entry => entry.ItemId == item.Id);
 
                     if (snapshot == null) {
+                        if (only != null && Param(0) == 1 && item.IsFloorItem) {
+                            if (toggleState != null) {
+                                affected |= toggleState(item, current => string.Equals(current, only.State, StringComparison.Ordinal) ? null : only.State);
+                            }
+                            else if (!string.Equals(item.LegacyDataString, only.State, StringComparison.Ordinal)) {
+                                setState(item, only.State);
+                                affected = true;
+                            }
+                        }
+
                         continue;
                     }
 

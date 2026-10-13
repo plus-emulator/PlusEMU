@@ -1383,6 +1383,26 @@ public class ModernWiredRuntimeTests
         Assert.Equal(new Point(dx, dy), Assert.Single(moves));
     }
 
+    [Fact]
+    public void OneFurniSnapshotGivesItsStateToEveryPickedFurni()
+    {
+        // Match to Snapshot over a selector: a single snapshotted furni's state goes to every furni the source picks;
+        // nothing else of it (position, rotation, altitude) is applied to the others.
+        var snapshotted = MakeItem(1, "tile");
+        var other = MakeItem(2, "tile");
+        var states = new Dictionary<uint, string>();
+        var moves = new List<uint>();
+        var config = new WiredConfiguration
+        {
+            IntParams = [1, 1, 1, 1, 200],
+            Snapshots = [new(1, 1, 3, 4, 0, 2, "3")]
+        };
+        new WiredMovementActions().Execute("wf_act_match_to_sshot", config, [snapshotted, other], [], [],
+            (item, _, _, _, _) => { moves.Add(item.Id); return true; }, (_, _, _, _, _) => false, (item, state) => states[item.Id] = state);
+        Assert.Equal("3", states[2]);
+        Assert.DoesNotContain(2u, moves);
+    }
+
     [Theory]
     [InlineData(0, 0, -1)]
     [InlineData(1, 1, -1)]

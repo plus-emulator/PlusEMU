@@ -40,8 +40,9 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Draft(n, [target, p[2] == 1 ? 2 : 1, p[0] == 1 ? 2 : 1, n.UserSourceTypes[0], n.FurniSourceTypes[0]],
                 "\t" + parts[0] + "\t" + (parts.Length > 1 ? parts[1] : ""));
         }));
-        yield return new("wf_xtra_filter_furni_by_var", new(Meta(1, 1, [10, 0, 0, 1], 2), FilterByVariable));
-        yield return new("wf_xtra_filter_users_by_var", new(Meta(1, 1, [10, 0, 0, 1], 2), FilterByVariable));
+        // Observed: picked furni (100) and the triggering user (0) by default, no walls (the official editor also hides the selector pool).
+        yield return new("wf_xtra_filter_furni_by_var", new(FilterMeta(), FilterByVariable));
+        yield return new("wf_xtra_filter_users_by_var", new(FilterMeta(), FilterByVariable));
         yield return new("wf_xtra_var_text_connector", new(Meta(0, 0, []), n => Shape(n, 0, 0, 0, 0)
             ? Metadata("wf_xtra_var_text_connector", n, [], n.Text) : null));
         yield return new("wf_xtra_var_time_util", new(Meta(0, 0, [0, 1]), n => Shape(n, 2, 0, 0, 0) && n.Text.Length == 0
@@ -60,6 +61,8 @@ internal static partial class WiredNativeAuxiliaryEditor
                 ? Metadata(fx, n, Plus.HabboHotel.Items.Wired.Variables.Fx.WiredVariableFxSettings.Normalize(fx, n.OwnedIntParams), n.Text) : null));
         }
     }
+
+    private static WiredNativeEditorMetadata FilterMeta() => Meta(1, 1, [10, 0, 0, 1], 2) with { FurniDefaults = [100], UserDefaults = [0] };
 
     // Count, sort order, literal-or-variable option and its target; the filtered variable and the operand variable.
     private static WiredConfiguration? FilterByVariable(WiredNativeEditorConfiguration n)

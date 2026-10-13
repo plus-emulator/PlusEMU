@@ -77,7 +77,7 @@ public sealed class WiredNativeAuxiliaryTests
         Assert.Equal(9, match.IntParams[3]);
         Assert.Equal(1, match.IntParams[^1]);
         // The age form lists the comparison before the clock; the executors take the clock first.
-        var age = Compile("wf_cnd_var_age_match", Native("wf_cnd_var_age_match", [1, 2, 1, 0, 30, 2], variables: ["user:12"]));
+        var age = Compile("wf_cnd_var_age_match", Native("wf_cnd_var_age_match", [1, 2, 1, 0, 30, 2], [0], [0], ["user:12"]));
         Assert.Equal([0, 1, 2, 30, 2, 0, 0, 0], age.IntParams.ToArray());
     }
 
@@ -138,7 +138,7 @@ public sealed class WiredNativeAuxiliaryTests
     public void WithVariableSelectorsMapComparisonValueModeAndFlags()
     {
         var selector = Compile("wf_slc_furni_with_var", Native("wf_slc_furni_with_var", [2, 2, 0, 0, 1], variables: ["furni:6", "user:7"]) with { Filter = true, Inverse = false });
-        Assert.Equal([1, 0, 1, 0, 0, 0, 0, 1, 0], selector.IntParams.ToArray());
+        Assert.Equal([1, 0, 1, 0, 0, 0, 100, 1, 0], selector.IntParams.ToArray());
         Assert.Equal(["furni:6", "user:7"], selector.VariableIds.ToArray());
     }
 

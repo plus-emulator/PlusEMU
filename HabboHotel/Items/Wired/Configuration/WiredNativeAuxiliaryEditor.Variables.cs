@@ -43,7 +43,12 @@ internal static partial class WiredNativeAuxiliaryEditor
         // Destination: variable target, value (high, low), override-existing; one furni and one user source. The October
         // editor (GiveVariable) adds value-or-variable, the reference's target and "same holder", with the reference as a
         // second variable id ("n" in value mode). A fresh box opens on [1, 0, 0, 0, 0, -10, 0].
-        yield return new("wf_act_give_var", new(Meta(1, 1, [1, 0, 0, 0, 0, -10, 0], 2), n =>
+        // Observed on hhus (WIN63-202610131318): the editor opens with two merged source selectors, the destination and the reference,
+        // both defaulting to the triggering user/furni (0) and the selector pool (200), and allows wall furniture.
+        yield return new("wf_act_give_var", new(Meta(2, 2, [1, 0, 0, 0, 0, -10, 0], 2) with
+        {
+            FurniDefaults = [0, 200], UserDefaults = [0, 200], AllowWall = true, LegacySlots = 1
+        }, n =>
         {
             var p = n.OwnedIntParams;
 
@@ -51,14 +56,22 @@ internal static partial class WiredNativeAuxiliaryEditor
                 return Draft(n, WithLiteral([legacyTarget, p[3], 0, n.UserSourceTypes[0], n.FurniSourceTypes[0]], 2, p[1], p[2]));
             }
 
-            if (!Shape(n, 7, 1, 1, 2) || !TryTarget(p[0], out var target) || !TryReference(p[4], p[5], p[6], target, out var reference)) {
+            var referenced = Shape(n, 7, 2, 2, 2);
+
+            if (!(Shape(n, 7, 1, 1, 2) || referenced) || !TryTarget(p[0], out var target) || !TryReference(p[4], p[5], p[6], target, out var reference)) {
                 return null;
             }
 
-            return Draft(n, WithLiteral([target, p[3], 0, n.UserSourceTypes[0], n.FurniSourceTypes[0], p[4], reference, p[4] == 1 ? p[6] : 0],
-                2, p[1], p[2]));
+            int[] core = [target, p[3], 0, n.UserSourceTypes[0], n.FurniSourceTypes[0], p[4], reference, p[4] == 1 ? p[6] : 0];
+
+            // The reference's own sources only matter when the value is read from a variable.
+            return Draft(n, WithLiteral(referenced && p[4] == 1 ? [.. core, n.UserSourceTypes[1], n.FurniSourceTypes[1]] : core, 2, p[1], p[2]));
         }));
-        yield return new("wf_act_remove_var", new(Meta(1, 1, [1], 1), n =>
+        // Observed: no secondary pick source, picked furni (100) and the triggering user (0) by default, wall furniture allowed.
+        yield return new("wf_act_remove_var", new(Meta(1, 1, [1], 1) with
+        {
+            FurniAllowed = [[0, 100, 200, 201]], UsersAllowed = [[0, 200, 201]], FurniDefaults = [100], UserDefaults = [0], AllowWall = true
+        }, n =>
         {
             var p = n.OwnedIntParams;
 
@@ -67,7 +80,10 @@ internal static partial class WiredNativeAuxiliaryEditor
         }));
         // Destination target, operator, literal-or-variable option, value (high, low), reference target; destination and reference sources.
         // The October editor (ChangeVariable) adds "same holder": the reference is read on each destination holder.
-        yield return new("wf_act_change_var_val", new(Meta(2, 2, [1, 0, 0, 0, 0, -10, 0], 2), n =>
+        yield return new("wf_act_change_var_val", new(Meta(2, 2, [1, 0, 0, 0, 0, -10, 0], 2) with
+        {
+            FurniDefaults = [0, 200], UserDefaults = [0, 200], AllowWall = true
+        }, n =>
         {
             var p = n.OwnedIntParams;
 
@@ -101,30 +117,41 @@ internal static partial class WiredNativeAuxiliaryEditor
         // Target, comparison (< or >), creation-or-update clock, duration (high, low), time unit. The October editor
         // (VariableAge) adds value-or-variable and the duration variable's target, with that variable as a second id.
         // A fresh box opens on [1, 0, 0, 0, 0, 1, 0, -10].
-        yield return new("wf_cnd_var_age_match", new(Meta(1, 1, [1, 0, 0, 0, 0, 1, 0, -10], 2) with { QuantifierType = 3 }, n =>
+        yield return new("wf_cnd_var_age_match", new(Meta(2, 2, [1, 0, 0, 0, 0, 1, 0, -10], 2) with
+        {
+            QuantifierType = 3, FurniDefaults = [0, 200], UserDefaults = [0, 200], AllowWall = true, LegacySlots = 1
+        }, n =>
         {
             var p = n.OwnedIntParams;
             var october = Shape(n, 8, 1, 1, 2);
+            var referenced = Shape(n, 8, 2, 2, 2);
 
-            if (!(Shape(n, 6, 1, 1, 1) || october) || !TryTarget(p[0], out var target)
+            if (!(Shape(n, 6, 1, 1, 1) || october || referenced) || !TryTarget(p[0], out var target)
                 || ((long)p[3] << 32 | (uint)p[4]) is < int.MinValue or > int.MaxValue || p[1] is not (0 or 2) || p[2] is not (0 or 1)) {
                 return null;
             }
 
             int[] core = [target, p[2], p[1], p[4], p[5], n.UserSourceTypes[0], n.FurniSourceTypes[0]];
 
-            if (!october) {
+            if (!october && !referenced) {
                 return Draft(n, [.. core, n.Quantifier ?? 0]);
             }
 
-            return TryReference(p[6], p[7], 0, target, out var reference)
-                ? Draft(n, [.. core, p[6], reference, n.Quantifier ?? 0]) : null;
+            if (!TryReference(p[6], p[7], 0, target, out var reference)) {
+                return null;
+            }
+
+            // The duration variable's own sources only matter when the duration is read from a variable.
+            return referenced && p[6] == 1
+                ? Draft(n, [.. core, p[6], reference, n.UserSourceTypes[1], n.FurniSourceTypes[1], n.Quantifier ?? 0])
+                : Draft(n, [.. core, p[6], reference, n.Quantifier ?? 0]);
         }));
         // Variable (fixed target), comparison, value mode (none, literal, variable), value (high, low), the variable's target.
-        yield return new("wf_slc_furni_with_var", new(Meta(1, 1, [2, 0, 0, 0, -10], 2), WithVariable));
-        yield return new("wf_slc_users_with_var", new(Meta(1, 1, [2, 0, 0, 0, -10], 2), WithVariable));
+        // Observed: a selector offers no selector-pool source, defaults to picked furni (100) and the triggering user (0), allows walls.
+        yield return new("wf_slc_furni_with_var", new(SelectorMeta([2, 0, 0, 0, -10]), WithVariable));
+        yield return new("wf_slc_users_with_var", new(SelectorMeta([2, 0, 0, 0, -10]), WithVariable));
         // Created, value changed, deleted; increased/decreased/unchanged mask; origin mask. The target comes from the chosen variable.
-        yield return new("wf_trg_var_changed", new(Meta(0, 0, [1, 1, 0, 7, -1], 1), n =>
+        yield return new("wf_trg_var_changed", new(Meta(0, 0, [1, 1, 0, 7, -1, 0], 1), n =>
         {
             var p = n.OwnedIntParams;
 
@@ -158,6 +185,11 @@ internal static partial class WiredNativeAuxiliaryEditor
     private static bool TryReference(int option, int air, int sameHolder, int target, out int reference) =>
         TryTarget(air, out reference) && option is 0 or 1 && sameHolder is 0 or 1
         && (sameHolder == 0 || option == 0 || reference == target && target is 0 or 1);
+
+    private static WiredNativeEditorMetadata SelectorMeta(ImmutableArray<int> owned) => Meta(1, 1, owned, 2) with
+    {
+        FurniAllowed = [[0, 100, 201]], UsersAllowed = [[0, 201]], FurniDefaults = [100], UserDefaults = [0], AllowWall = true
+    };
 
     private static WiredNativeEditorMetadata HasVar(bool negative) => Meta(1, 1, [1], 1) with { QuantifierType = 3, Invert = negative, AllowWall = true };
 

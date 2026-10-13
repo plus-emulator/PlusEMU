@@ -314,7 +314,12 @@ internal sealed partial class WiredStackEngine
         return accepted;
     });
 
-    public bool ScheduleAux(WiredRuntimeContext context, int delayMilliseconds, Action callback, Action? onCancelled = null) => Pass(() =>
+    /// <summary>
+    /// Runs <paramref name="callback"/> as part of the executing action's chain. With <paramref name="alignToStateUpdate"/> it waits for
+    /// the next 500 ms state update boundary, the cycle that also carries the box flashes.
+    /// </summary>
+    public bool ScheduleAux(WiredRuntimeContext context, int delayMilliseconds, Action callback, Action? onCancelled = null,
+        bool alignToStateUpdate = false) => Pass(() =>
     {
         var active = _executingAction;
 
@@ -326,11 +331,15 @@ internal sealed partial class WiredStackEngine
         var chain = new ActionChain(active.Chain.Source, active.Chain.Stack, active.Chain.Context, 1);
         _pending.Add(chain);
         _schedule.Enqueue(new(chain, active.Box, callback, onCancelled),
-            (_now() + Math.Max(0, delayMilliseconds), active.Box.Item.GetZ, active.Box.Item.Id, ++_sequence, 0));
+            (DueAt(_now() + Math.Max(0, delayMilliseconds), alignToStateUpdate), active.Box.Item.GetZ, active.Box.Item.Id, ++_sequence, 0));
         UpdateFastWork();
 
         return true;
     });
+
+    private static long DueAt(long due, bool alignToStateUpdate) => alignToStateUpdate
+        ? (due + WiredFlashStates.StateUpdateMilliseconds - 1) / WiredFlashStates.StateUpdateMilliseconds * WiredFlashStates.StateUpdateMilliseconds
+        : due;
 
     public void ResetTimers(IEnumerable<Item> targets) => Pass(() =>
     {

@@ -206,8 +206,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.CallStacks(context, targets, negative);
     public bool SendSignal(WiredRuntimeContext context, IEnumerable<Item> receivers, WiredSelection selection, bool negative = false) =>
         _engine.SendSignal(context, receivers, selection, negative);
-    public bool ScheduleAux(WiredRuntimeContext context, int delayMilliseconds, Action callback, Action? onCancelled = null) =>
-        _engine.ScheduleAux(context, delayMilliseconds, callback, onCancelled);
+    public bool ScheduleAux(WiredRuntimeContext context, int delayMilliseconds, Action callback, Action? onCancelled = null,
+        bool alignToStateUpdate = false) =>
+        _engine.ScheduleAux(context, delayMilliseconds, callback, onCancelled, alignToStateUpdate);
     public void DispatchWalkTransition(RoomUser actor, IEnumerable<Item> before, IEnumerable<Item> after)
     {
         var oldItems = before.DistinctBy(x => x.Id).ToDictionary(x => x.Id);

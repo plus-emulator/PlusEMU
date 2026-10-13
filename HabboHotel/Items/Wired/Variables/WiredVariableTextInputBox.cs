@@ -27,6 +27,13 @@ public sealed class WiredVariableTextInputBox(Room room, Item item, WiredBoxDesc
             return false;
         }
 
+        // Observed on hhus (WIN63-202610131318): an empty placeholder name is refused with this key and no parameters, before the variable is checked.
+        if (!NameLengthIsValid(proposed.Text)) {
+            error = NameLengthKey;
+
+            return false;
+        }
+
         error = "Choose a context variable and capturer name.";
 
         return proposed.Version == 1 && proposed.IntParams.Length == 1 && proposed.IntParams[0] is 1 or 2
@@ -44,7 +51,23 @@ public sealed class WiredVariableTextInputBox(Room room, Item item, WiredBoxDesc
             name = name[1..^1].Trim();
         }
 
-        return name.Length is < 1 or > 32 || name.IndexOfAny(['\r', '\n', '#']) >= 0 ? null : name;
+        return name.Length is < 1 or > MaxNameLength || name.IndexOfAny(['\r', '\n', '#']) >= 0 ? null : name;
+    }
+
+    internal const string NameLengthKey = "wiredfurni.error.placeholder.name_length";
+    // The hotel text reads "Placeholder length must be between 1 and 40 characters."
+    internal const int MaxNameLength = 40;
+
+    /// <summary>Whether the name, as the player types it, is 1 to 40 characters once padding and surrounding "#" are dropped.</summary>
+    internal static bool NameLengthIsValid(string text)
+    {
+        var name = text.Trim();
+
+        if (name.Length >= 2 && name.StartsWith('#') && name.EndsWith('#')) {
+            name = name[1..^1].Trim();
+        }
+
+        return name.Length is >= 1 and <= MaxNameLength;
     }
 
     /// <summary>The captured context variable's current local definition id and the capture name, or none when it no longer resolves.</summary>

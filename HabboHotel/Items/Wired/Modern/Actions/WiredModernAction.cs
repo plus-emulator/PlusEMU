@@ -440,22 +440,29 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 context.Room.GetGameManager().Highscores.Invalidate();
 
                 foreach (var user in Users(context, config, "users")) {
+                    // The own avatar's effect change reaches the client on the next 500 ms state update, for joins and leaves alike.
+                    void Deliver(Action apply)
+                    {
+                        if (!context.Room.GetWired().ScheduleAux(context, 0, apply, alignToStateUpdate: true)) {
+                            apply();
+                        }
+                    }
+
                     changed |= name == "wf_act_join_team"
                         ? WiredGameState.For(context.Room).Join(context.Room, user, Param(config, 0), (Team)Param(config, 1), Param(config, 3), context.Targets.AllUsers(),
-                            (member, team, effect) =>
+                            (member, team, effect) => Deliver(() =>
                             {
-                                void Apply()
-                                {
-                                    if (member.IsAttachedTo(context.Room) && member.Team == team) {
-                                        member.ApplyEffect(effect);
-                                    }
+                                if (member.IsAttachedTo(context.Room) && member.Team == team) {
+                                    member.ApplyEffect(effect);
                                 }
-
-                                if (!context.Room.GetWired().ScheduleAux(context, WiredGameState.JoinEffectDelayMilliseconds, Apply)) {
-                                    Apply();
-                                }
-                            })
-                        : WiredGameState.For(context.Room).Leave(context.Room, user);
+                            }))
+                        : WiredGameState.For(context.Room).Leave(context.Room, user, (member, effect) => Deliver(() =>
+                        {
+                            if (member.IsAttachedTo(context.Room) && member.Team == Team.None
+                                && member.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == effect) {
+                                member.ApplyEffect(0);
+                            }
+                        }));
                 }
 
                 return changed;

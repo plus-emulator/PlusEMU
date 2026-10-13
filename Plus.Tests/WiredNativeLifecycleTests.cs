@@ -31,7 +31,7 @@ namespace Plus.Tests;
 
 // Swaps PlusEnvironment's game for one test, so it must not run beside tests that read it.
 [Collection("Modern Wired database seam")]
-public sealed class WiredNativeLifecycleTests
+public sealed partial class WiredNativeLifecycleTests
 {
     [Fact]
     public void NativeWakeFiresOnceThroughConfiguredTriggerAndRoomEngine()

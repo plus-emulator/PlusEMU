@@ -379,6 +379,7 @@ internal sealed partial class WiredStackEngine
 
             if (passed) {
                 matched++;
+                Flash(condition);
             }
         }
 
@@ -396,6 +397,7 @@ internal sealed partial class WiredStackEngine
 
                 if (passed) {
                     matched++;
+                    Flash(condition);
                 }
             }
 
@@ -427,6 +429,10 @@ internal sealed partial class WiredStackEngine
             && (x is IWiredContextualAction action && action.IsNegative) == (negative == null && !conditionsPassed)).ToArray();
 
         if (negative == null && !conditionsPassed && actions.Length == 0) {
+            // Observed on hhus (WIN63-202610131318): a click trigger flips even when its date condition fails; the failed condition
+            // and the actions it gates stay at rest.
+            Flash(firing.Source);
+
             yield break;
         }
 

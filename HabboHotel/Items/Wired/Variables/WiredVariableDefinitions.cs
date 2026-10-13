@@ -6,6 +6,7 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 
 public static class WiredVariableDefinitions
 {
+    internal const string InvalidReferenceKey = "wiredfurni.error.variables.reference.valid";
     public static bool Supports(string name) => name is "wf_var_user" or "wf_var_furni" or "wf_var_room"
         or "wf_var_context" or "wf_var_echo" or "wf_var_reference" or "wf_var_quest" or "wf_var_quest_chain";
     /// <summary>The picker id of a variable shared from another room; the module still authorizes the source it names.</summary>
@@ -97,9 +98,14 @@ public static class WiredVariableDefinitions
                 break;
             case "wf_var_reference":
                 // A reference names one shared variable of another room: "shared:{room}:{user|room}:{definition}".
-                if (configuration.VariableIds.Length != 1 || ints.Length != 1 || ints[0] is not (0 or 1)
-                    || !TryParseShared(configuration.VariableIds[0], out var sourceRoom, out target, out var sourceItem)
-                    || sourceRoom == roomId) {
+                if (configuration.VariableIds.Length != 1 || ints.Length != 1 || ints[0] is not (0 or 1)) {
+                    return false;
+                }
+
+                // Observed on hhus (WIN63-202610131318): an unchosen reference ("0") is refused with this key and no parameters.
+                if (!TryParseShared(configuration.VariableIds[0], out var sourceRoom, out target, out var sourceItem) || sourceRoom == roomId) {
+                    error = InvalidReferenceKey;
+
                     return false;
                 }
 

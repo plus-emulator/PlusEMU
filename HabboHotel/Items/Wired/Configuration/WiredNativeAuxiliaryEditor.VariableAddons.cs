@@ -57,7 +57,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             var defaults = Plus.HabboHotel.Items.Wired.Variables.Fx.WiredVariableFxSettings.Defaults(category);
 
             yield return new(fx, new(Meta(0, 0, defaults, 3), n => Shape(n, defaults.Length, 0, 0, 3)
-                ? Metadata(fx, n, n.OwnedIntParams, n.Text) : null));
+                ? Metadata(fx, n, Plus.HabboHotel.Items.Wired.Variables.Fx.WiredVariableFxSettings.Normalize(fx, n.OwnedIntParams), n.Text) : null));
         }
     }
 

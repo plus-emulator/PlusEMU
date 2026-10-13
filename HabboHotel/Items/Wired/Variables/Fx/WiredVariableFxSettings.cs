@@ -40,6 +40,31 @@ public static class WiredVariableFxSettings
         };
     }
 
+    /// <summary>
+    /// The hotel's stored form of a saved variable FX form: a colour, width or renderer id that the selected style does not offer is
+    /// replaced by that style's default (-1 survives only where it is itself an option), and levelling progress keeps no value range.
+    /// Forms with an unknown style or the wrong shape are returned untouched for the validator to refuse.
+    /// </summary>
+    public static ImmutableArray<int> Normalize(string name, ImmutableArray<int> ints)
+    {
+        var category = Category(name);
+
+        if (category < 0 || ints.Length != (category is 2 or 5 ? 22 : 21) || !WiredVariableFxStyles.TryGet(category, ints[6], out var style)) {
+            return ints;
+        }
+
+        var builder = ints.ToBuilder();
+        builder[7] = style.Colors.Contains(ints[7]) ? ints[7] : style.DefaultColor;
+        builder[8] = style.Widths.Contains(ints[8]) ? ints[8] : style.DefaultWidth;
+        builder[9] = style.Renderers.Contains(ints[9]) ? ints[9] : style.DefaultRenderer;
+
+        if (category == 2) {
+            builder[10] = builder[11] = builder[12] = builder[13] = -1;
+        }
+
+        return builder.ToImmutable();
+    }
+
     public static bool UsesUserSource(WiredConfiguration configuration) => configuration.IntParams.Length > 0 && configuration.IntParams[0] == 1;
 
     public static bool TryDecode(string name, int itemId, WiredConfiguration configuration, WiredVariableReference shownVariable,
@@ -66,8 +91,13 @@ public static class WiredVariableFxSettings
             return false;
         }
 
-        // Levelling and number displays always span 0..100; every other category needs a real range.
-        var range = category is 2 or 5 ? min == 0 && max == 100 : max > min;
+        // Number displays always span 0..100 and levelling progress stores no range (-1/-1, read as 0..100); the others need a real range.
+        var unranged = category == 2 && min == -1 && max == -1;
+        var range = category switch { 2 => unranged || min == 0 && max == 100, 5 => min == 0 && max == 100, _ => max > min };
+
+        if (unranged) {
+            (min, max) = (0, 100);
+        }
 
         if (!style.Colors.Contains(p[7]) || !style.Widths.Contains(p[8]) || !style.Renderers.Contains(p[9]) || !range
             || p[14] is not (0 or 1) || p[15] is not (0 or 1) || p[16] != -10 && p[16] != p[0] || p[17] != -10 && p[17] != p[0]

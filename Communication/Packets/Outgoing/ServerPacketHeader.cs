@@ -444,6 +444,7 @@ public static class ServerPacketHeader
     public const uint WiredVariableInspectionDataComposer = 9483;
     public const uint WiredEnvironmentComposer = 347;
     public const uint AreaHideComposer = 6001;
+    public const uint ConfigurationItemStatesComposer = 3660;
     public const uint WiredUserVariablesData64Composer = 9480;
     public const uint WiredVariableHolders64Composer = 9481;
     public const uint WiredVariableHoldersPage64Composer = 9482;
@@ -458,4 +459,4 @@ public static class ServerPacketHeader
     public const uint WiredChestSettingsAckComposer = 9347;
     public const uint WiredChestLockComposer = 9329;
 }
-
+

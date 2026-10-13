@@ -832,6 +832,7 @@
     "WiredVariableInspectionDataComposer": 9483,
     "WiredEnvironmentComposer": 347,
     "AreaHideComposer": 6001,
+    "ConfigurationItemStatesComposer": 3660,
     "WiredUserVariablesData64Composer": 9480,
     "WiredVariableHolders64Composer": 9481,
     "WiredVariableHoldersPage64Composer": 9482,

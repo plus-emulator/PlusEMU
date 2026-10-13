@@ -43,7 +43,8 @@ public sealed class WiredGameState
 
         return true;
     }
-    public bool Join(Room room, RoomUser user, int type, Team chosen, int mode, IEnumerable<RoomUser> allUsers)
+    public bool Join(Room room, RoomUser user, int type, Team chosen, int mode, IEnumerable<RoomUser> allUsers,
+        Action<RoomUser, Team, int>? applyEffect = null)
     {
         if (user.IsBot) {
             return false;
@@ -71,7 +72,14 @@ public sealed class WiredGameState
         user.Team = team;
         _types[user] = (type, team);
         manager?.AddUser(user);
-        user.ApplyEffect(TeamEffect(type, team));
+
+        if (applyEffect == null) {
+            user.ApplyEffect(TeamEffect(type, team));
+        }
+        else {
+            applyEffect(user, team, TeamEffect(type, team));
+        }
+
         user.UpdateNeeded = true;
 
         return true;
@@ -110,8 +118,11 @@ public sealed class WiredGameState
 
         return _types.TryGetValue(user, out var joined) && joined.Team == user.Team && joined.Type == 0 ? 4 : null;
     }
-    // Battle Banzai teams wear effects 33-36 (as on the banzai tiles); Freeze and plain wired teams wear 40-43.
-    internal static int TeamEffect(int type, Team team) => (int)team + (type == 1 ? 32 : 39);
+    // Observed on hhus (build WIN63-202610131318): a plain wired team (type 0), team 1, delivers AvatarEffect 223 to the own avatar about
+    // 420 ms after the action's own stack effects, and leaving delivers effect 0 with them. 224-226 for teams 2-4 follow the
+    // observed 223 and are unobserved. Battle Banzai teams wear effects 33-36 (as on the banzai tiles); Freeze teams wear 40-43.
+    internal const int JoinEffectDelayMilliseconds = 420;
+    internal static int TeamEffect(int type, Team team) => (int)team + type switch { 1 => 32, 2 => 39, _ => 222 };
     private int TeamType(Room room, RoomUser user) => _types.TryGetValue(user, out var joined) && joined.Team == user.Team ? joined.Type
         : Contains(room.Teambanzai, user) ? 1 : Contains(room.Teamfreeze, user) ? 2 : 0;
     private static bool Contains(TeamManager? manager, RoomUser user) => manager != null

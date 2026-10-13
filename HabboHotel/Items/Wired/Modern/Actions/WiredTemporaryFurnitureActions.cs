@@ -11,7 +11,7 @@ public static class WiredTemporaryFurnitureActions
     public static bool Supports(string name) => name is "wf_act_place_furni" or "wf_act_remove_furni";
     public static WiredConfiguration Defaults(string name) => name == "wf_act_place_furni"
         ? new() { TemporaryPlacement = new() }
-        : new() { IntParams = [0, 100] };
+        : new() { IntParams = [0, 200] };
 
     public static bool Execute(string name, Item box, WiredRuntimeContext context, WiredConfiguration config, IItemDataManager definitions)
     {

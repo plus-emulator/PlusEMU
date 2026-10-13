@@ -91,6 +91,23 @@ public static class WiredNativeEditorProjection
         return false;
     }
 
+    /// <summary>
+    /// The localization key the editor reports when a furni source is outside the card's allowed group. Observed on hhus for
+    /// Remove Furni with source 100 (WiredValidationError, no parameters). User sources are unobserved and keep the generic refusal.
+    /// </summary>
+    public static string? SourceRejectionKey(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native)
+    {
+        if (!Supports(descriptor.CanonicalName)) {
+            return null;
+        }
+
+        var allowed = Metadata(descriptor.CanonicalName).FurniAllowed;
+
+        return native.FurniSourceTypes.Length == allowed.Length
+            && native.FurniSourceTypes.Where((source, index) => !allowed[index].Contains(source)).Any()
+            ? "wiredfurni.error.invalid_furni_source" : null;
+    }
+
     public static bool TryCompile(uint itemId, WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
         out WiredConfiguration runtime)
     {

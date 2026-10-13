@@ -107,8 +107,13 @@ public sealed class WiredConfigurationService(
             };
 
             var error = "Invalid native Wired settings.";
+            var compiled = WiredNativeEditorProjection.TryCompile(selectedItem.Id, descriptor, native, out var runtime);
 
-            if (!WiredNativeEditorProjection.TryCompile(selectedItem.Id, descriptor, native, out var runtime)
+            if (!compiled) {
+                error = WiredNativeEditorProjection.SourceRejectionKey(descriptor, native) ?? error;
+            }
+
+            if (!compiled
                 || !WiredConfigurationSave.TrySave(configured, runtime, store, out error,
                     id => room.GetRoomItemHandler().GetItem(id) != null,
                     (original, validated, persist) => room.GetWired().PublishConfigured(original, validated, () =>

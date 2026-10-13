@@ -12,9 +12,8 @@ public static class WiredMovementConfiguration
     private static readonly int[] EditorMovement = [-1, 8, 9, 10, 0, 2, 4, 6, 1, 3, 5, 7];
     private static readonly int[] EditorRotation = [0, 2, 4, 6];
 
-    // Ten seconds at most, as 20 pulses or as a precise delay.
-    private static bool IsMovementDelay(int delay) => delay is >= 0 and <= 20
-        || WiredConfigurationLimits.IsDelay(delay) && WiredConfigurationLimits.DelayMilliseconds(delay) <= 10_000;
+    // The October action delay section is shared by every effect: 0 to 120 pulses, or a precise delay of up to 60 s.
+    private static bool IsMovementDelay(int delay) => delay is >= 0 and <= 120 || delay < 0 && WiredConfigurationLimits.IsDelay(delay);
 
     public static bool TryValidate(string name, WiredConfiguration proposed,
         out WiredConfiguration validated, out string error)

@@ -44,6 +44,16 @@ public sealed class WiredOctoberEditorParityTests
     }
 
     [Theory]
+    [InlineData(120)]
+    [InlineData(-60_000)]
+    public void MovementEffectsTakeTheSharedDelayRange(int encoded)
+    {
+        var runtime = Compile("wf_act_rel_mov", native => native with { OwnedIntParams = [1, 1], Delay = encoded });
+
+        Assert.True(Plus.HabboHotel.Items.Wired.Modern.Actions.WiredMovementConfiguration.TryValidate("wf_act_rel_mov", runtime, out _, out _));
+    }
+
+    [Theory]
     [InlineData(-38_801)]
     [InlineData(-60_050)]
     public void ActionDelaysRefuseOffStepPreciseValues(int encoded) =>

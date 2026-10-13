@@ -74,7 +74,7 @@ internal static class WiredNativeActionEditor
     {
         runtime = new();
 
-        if (!Supports(name) || native.Delay is not int delay || delay is < 0 or > WiredConfigurationLimits.DelayPulses) {
+        if (!Supports(name) || native.Delay is not int delay || !WiredConfigurationLimits.IsDelay(delay)) {
             return false;
         }
 

@@ -29,6 +29,26 @@ public sealed class WiredOctoberEditorParityTests
         Assert.False(TryCompile("wf_act_show_message", native => native with { Text = new string('a', 401) }));
     }
 
+    [Theory]
+    [InlineData(120, 60_000L)]
+    [InlineData(-38_800, 38_800L)]
+    [InlineData(-60_000, 60_000L)]
+    [InlineData(-50, 50L)]
+    public void ActionDelaysTakeStandardPulsesAndPreciseMilliseconds(int encoded, long milliseconds)
+    {
+        // ActionDelaySection.encodedDelay: precise mode is -(steps * 50) for 0..1200 steps, standard mode 0..120 pulses.
+        var runtime = Compile("wf_act_toggle_state", native => native with { Delay = encoded });
+
+        Assert.Equal(encoded, runtime.Delay);
+        Assert.Equal(milliseconds, WiredConfigurationLimits.DelayMilliseconds(runtime.Delay));
+    }
+
+    [Theory]
+    [InlineData(-38_801)]
+    [InlineData(-60_050)]
+    public void ActionDelaysRefuseOffStepPreciseValues(int encoded) =>
+        Assert.False(TryCompile("wf_act_toggle_state", native => native with { Delay = encoded }));
+
     internal static WiredConfiguration Compile(string name, Func<WiredNativeEditorConfiguration, WiredNativeEditorConfiguration> edit)
     {
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));

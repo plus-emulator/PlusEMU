@@ -12,6 +12,10 @@ public static class WiredMovementConfiguration
     private static readonly int[] EditorMovement = [-1, 8, 9, 10, 0, 2, 4, 6, 1, 3, 5, 7];
     private static readonly int[] EditorRotation = [0, 2, 4, 6];
 
+    // Ten seconds at most, as 20 pulses or as a precise delay.
+    private static bool IsMovementDelay(int delay) => delay is >= 0 and <= 20
+        || WiredConfigurationLimits.IsDelay(delay) && WiredConfigurationLimits.DelayMilliseconds(delay) <= 10_000;
+
     public static bool TryValidate(string name, WiredConfiguration proposed,
         out WiredConfiguration validated, out string error)
     {
@@ -19,7 +23,7 @@ public static class WiredMovementConfiguration
         error = "Invalid movement configuration.";
 
         if (!WiredMovementActions.Names.Contains(name) || !WiredLegacyProtocol.IsWithinLimits(proposed) || proposed.Version != WiredConfiguration.CurrentVersion
-            || proposed.Delay is < 0 or > 20 || proposed.IntParams.IsDefault
+            || !IsMovementDelay(proposed.Delay) || proposed.IntParams.IsDefault
             || proposed.SelectedItems.IsDefault || proposed.SecondarySelectedItems.IsDefault
             || proposed.Snapshots.IsDefault || proposed.Text == null
             || proposed.SelectedItems.Length > 100 || proposed.SecondarySelectedItems.Length > 100

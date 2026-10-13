@@ -131,7 +131,7 @@ public static class WiredLegacyProtocol
         && configuration.SelectedItems.All(id => id > 0)
         && !configuration.SecondarySelectedItems.IsDefault && configuration.SecondarySelectedItems.Length <= WiredConfigurationLimits.SelectedItems
         && configuration.SecondarySelectedItems.All(id => id > 0)
-        && configuration.Delay is >= 0 and <= WiredConfigurationLimits.DelayPulses
+        && WiredConfigurationLimits.IsDelay(configuration.Delay)
         && configuration.SelectionCode is >= 0 and <= WiredConfigurationLimits.SelectionCode
         && (configuration.ScoreQuotaPerGame is null or >= 1 and <= 10)
         && (configuration.TemporaryPlacement?.IsWithinLimits() ?? true)

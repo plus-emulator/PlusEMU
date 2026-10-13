@@ -428,6 +428,42 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal(expected, actual);
     }
 
+    [Theory]
+    [InlineData(false, "0", "1", "2")]
+    [InlineData(true, "3", "4", "5")]
+    public void SelectorsFlashBetweenTheirRestingStatePlusOneAndPlusTwo(bool filter, string resting, string first, string second)
+    {
+        // Room 79874981 (WIN63-202610121709): area selectors rest at 0 and alternate 1/2; filter-mode selectors rest at 3 and alternate 4/5.
+        var (room, _, items) = World();
+        var flashed = new List<Item>();
+        var world = new WiredSelectorWorld(6, 6, [], []);
+        var engine = new WiredStackEngine(() => 0, _ => true, _ => true, flashed.Add, error => throw error);
+        engine.BindRuntime(room, new(() => items.Values, () => []), new UnusedOperations());
+        Assert.True(WiredBoxRegistry.TryGet("wf_trg_game_starts", out var triggerDescriptor));
+        var trigger = new WiredModernTrigger(room, Floor(50, 5, 5), triggerDescriptor);
+        WiredNativeTestSupport.InstallRuntime(trigger, WiredTriggerConfiguration.Defaults("wf_trg_game_starts"));
+        engine.Add(trigger);
+        Assert.True(WiredBoxRegistry.TryGet("wf_slc_furni_area", out var selectorDescriptor));
+        var selectorItem = InRoom(room, Floor(51, 5, 5));
+        var selector = new WiredSelectorBox(room, selectorItem, selectorDescriptor, new(), TestGroupManager.Empty, readWorld: _ => world);
+        WiredNativeTestSupport.Install(selector, WiredNativeEditorProjection.DefaultNative(selectorDescriptor) with
+        {
+            OwnedIntParams = [0, 0, 2, 2],
+            Filter = filter
+        });
+        engine.Add(selector);
+
+        Assert.True(engine.DispatchSynchronously(new(WiredEventKind.GameStart)));
+        engine.OnFastCycle();
+
+        Assert.Contains(selectorItem, flashed);
+        Assert.Equal(first, WiredFlashStates.Next(resting, selector));
+        Assert.Equal(second, WiredFlashStates.Next(first, selector));
+        Assert.Equal(first, WiredFlashStates.Next(second, selector));
+        Assert.Equal("1", WiredFlashStates.Next("0", trigger));
+        Assert.Equal("0", WiredFlashStates.Next("1", trigger));
+    }
+
     [Fact]
     public void AltitudeAdditionCanPassFortyWithinThePlatformTopLimit()
     {

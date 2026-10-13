@@ -888,6 +888,39 @@ public class Room
         }
     }
 
+    /// <summary>
+    /// Several floor items' data in one ObjectsDataUpdate; clients whose revision does not map it get each item's full
+    /// update instead.
+    /// </summary>
+    internal void SendObjectsData(IReadOnlyList<Item> items)
+    {
+        if (items.Count == 0) {
+            return;
+        }
+
+        IServerPacket packet = new ObjectsDataUpdateComposer([.. items.Select(item => (item.Id, item.LegacyDataString))]);
+
+        try {
+            if (_roomUserManager == null) {
+                return;
+            }
+
+            var clients = _roomUserManager.GetRoomUsers().Select(user => user?.GetClient()).OfType<GameClient>().ToArray();
+            bool Maps(GameClient client, uint id) => client.Revision?.InternalIdToOutgoingIdMapping.ContainsKey(id) == true;
+            GameClient.SendBroadcast(packet, clients.Where(client => Maps(client, packet.MessageId)));
+            var fallback = clients.Where(client => !Maps(client, packet.MessageId) && Maps(client, Plus.Communication.Packets.Outgoing.ServerPacketHeader.ObjectUpdateComposer)).ToArray();
+
+            if (fallback.Length > 0) {
+                foreach (var item in items) {
+                    GameClient.SendBroadcast(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)), fallback);
+                }
+            }
+        }
+        catch (Exception e) {
+            ExceptionLogger.LogException(e);
+        }
+    }
+
     public void SendPacket(List<IServerPacket> packets)
     {
         foreach (var packet in packets) {

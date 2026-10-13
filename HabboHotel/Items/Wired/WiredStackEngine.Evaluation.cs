@@ -323,8 +323,15 @@ internal sealed partial class WiredStackEngine
 
         foreach (var selector in stack.OfType<IWiredContextualSelector>().Where(RuntimeSupported)) {
             var passed = false;
-            yield return new(() => passed = InvokeRuntime(selector, context, () =>
-            { ComposeSelector(context, selector.Select(context)); return true; }));
+            yield return new(() =>
+            {
+                passed = InvokeRuntime(selector, context, () => { ComposeSelector(context, selector.Select(context)); return true; });
+
+                // A selector flashes each time its stack runs it.
+                if (passed) {
+                    Flash(selector);
+                }
+            });
 
             if (!passed) {
                 yield break;

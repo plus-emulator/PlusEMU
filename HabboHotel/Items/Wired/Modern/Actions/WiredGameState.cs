@@ -71,7 +71,7 @@ public sealed class WiredGameState
         user.Team = team;
         _types[user] = (type, team);
         manager?.AddUser(user);
-        user.ApplyEffect((int)team + 39);
+        user.ApplyEffect(TeamEffect(type, team));
         user.UpdateNeeded = true;
 
         return true;
@@ -82,7 +82,7 @@ public sealed class WiredGameState
             return false;
         }
 
-        var effect = (int)user.Team + 39;
+        var effect = TeamEffect(TeamType(room, user), user.Team);
         RemoveFromManagers(room, user);
         user.Team = Team.None;
         _types.Remove(user);
@@ -110,6 +110,8 @@ public sealed class WiredGameState
 
         return _types.TryGetValue(user, out var joined) && joined.Team == user.Team && joined.Type == 0 ? 4 : null;
     }
+    // Battle Banzai teams wear effects 33-36 (as on the banzai tiles); Freeze and plain wired teams wear 40-43.
+    internal static int TeamEffect(int type, Team team) => (int)team + (type == 1 ? 32 : 39);
     private int TeamType(Room room, RoomUser user) => _types.TryGetValue(user, out var joined) && joined.Team == user.Team ? joined.Type
         : Contains(room.Teambanzai, user) ? 1 : Contains(room.Teamfreeze, user) ? 2 : 0;
     private static bool Contains(TeamManager? manager, RoomUser user) => manager != null

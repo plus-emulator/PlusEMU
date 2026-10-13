@@ -38,6 +38,7 @@ public sealed class ItemInteractorFactory(
         {
             InteractionType.IceSkates or InteractionType.IceTagPole => new InteractorIceTag(),
             InteractionType.AreaHide => new InteractorAreaHide(),
+            InteractionType.InvisibleFurniControl => new InteractorInvisibleFurniControl(),
             InteractionType.Gate => new InteractorGate(),
             InteractionType.Teleport => new InteractorTeleport(timeProvider),
             InteractionType.Hopper => new InteractorHopper(travelStore),

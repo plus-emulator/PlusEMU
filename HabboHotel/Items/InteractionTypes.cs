@@ -21,6 +21,8 @@ public static class InteractionTypes
         switch (type.ToLower()) {
             case "area_hide":
                 return InteractionType.AreaHide;
+            case "invis_control":
+                return InteractionType.InvisibleFurniControl;
             case "wired_chest_furni":
                 return InteractionType.WiredChestFurni;
             case "wired_chest_coins":

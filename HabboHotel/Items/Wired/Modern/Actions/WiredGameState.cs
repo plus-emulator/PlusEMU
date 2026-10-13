@@ -84,7 +84,7 @@ public sealed class WiredGameState
 
         return true;
     }
-    public bool Leave(Room room, RoomUser user)
+    public bool Leave(Room room, RoomUser user, Action<RoomUser, int>? clearEffect = null)
     {
         if (user.IsBot || user.Team == Team.None) {
             return false;
@@ -96,7 +96,10 @@ public sealed class WiredGameState
         _types.Remove(user);
         user.UpdateNeeded = true;
 
-        if (user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == effect) {
+        if (clearEffect != null) {
+            clearEffect(user, effect);
+        }
+        else if (user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == effect) {
             user.ApplyEffect(0);
         }
 
@@ -118,10 +121,10 @@ public sealed class WiredGameState
 
         return _types.TryGetValue(user, out var joined) && joined.Team == user.Team && joined.Type == 0 ? 4 : null;
     }
-    // Observed on hhus (build WIN63-202610131318): a plain wired team (type 0), team 1, delivers AvatarEffect 223 to the own avatar about
-    // 420 ms after the action's own stack effects, and leaving delivers effect 0 with them. 224-226 for teams 2-4 follow the
-    // observed 223 and are unobserved. Battle Banzai teams wear effects 33-36 (as on the banzai tiles); Freeze teams wear 40-43.
-    internal const int JoinEffectDelayMilliseconds = 420;
+    // Observed on hhus (build WIN63-202610131318): the effect is 222 + team for a plain wired team (type 0, team 1 gave 223), 32 + team for
+    // a Battle Banzai team (team 2 gave 34) and 39 + team for a Freeze team (team 3 gave 42); leaving delivers effect 0. 224-226 for
+    // plain teams 2-4 follow the observed 223 and are unobserved. The own avatar gets it 54 to 498 ms after the action's own stack effects
+    // (join 54, 273, 420; leave 306, 498), so it rides the next 500 ms state update instead of a fixed delay.
     internal static int TeamEffect(int type, Team team) => (int)team + type switch { 1 => 32, 2 => 39, _ => 222 };
     private int TeamType(Room room, RoomUser user) => _types.TryGetValue(user, out var joined) && joined.Team == user.Team ? joined.Type
         : Contains(room.Teambanzai, user) ? 1 : Contains(room.Teamfreeze, user) ? 2 : 0;

@@ -1070,6 +1070,7 @@ public partial class WiredRuntimeEngineTests
         public readonly List<Item> Walls = [];
         public readonly List<RoomUser> Users = [];
         public readonly List<Exception> Errors = [];
+        public readonly List<Item> Flashed = [];
         public WiredStackEngine Engine { get; }
         public long Now;
         public int FurnitureReads, UserReads;
@@ -1082,7 +1083,7 @@ public partial class WiredRuntimeEngineTests
             var handler = new RoomItemHandling(Room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
             typeof(Room).GetField("_roomItemHandling", Private)!.SetValue(Room, handler);
             _placed = (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling).GetField("_floorItems", Private)!.GetValue(handler)!;
-            Engine = new(() => Now, box => Furniture.Contains(box.Item), _ => true, _ => { }, Errors.Add, limits, effectOrderRandom: effectOrderRandom);
+            Engine = new(() => Now, box => Furniture.Contains(box.Item), _ => true, Flashed.Add, Errors.Add, limits, effectOrderRandom: effectOrderRandom);
             Engine.BindRuntime(Room, new(() => { FurnitureReads++; return Furniture; }, () => { UserReads++; return Users; },
                 id => Furniture.Concat(Walls).FirstOrDefault(x => x.Id == id), id => Users.FirstOrDefault(x => x.VirtualId == id)), this);
         }

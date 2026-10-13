@@ -609,6 +609,14 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     private static bool NativeHasValue(Resolved resolved) => resolved.Definition?.HasValue
         ?? (resolved.Builtin is { } builtin && RoomWiredBuiltinVariables.HasNumericValue(builtin));
 
+    /// <summary>Whether the variable holds a number, as opposed to only existing (and carrying timestamps).</summary>
+    internal bool CarriesValue(WiredVariableReference reference)
+    {
+        lock (_gate) {
+            return Resolve(reference, false) is { } resolved && NativeHasValue(resolved);
+        }
+    }
+
     internal WiredVariableReference WriteTarget(WiredVariableReference reference)
     {
         lock (_gate) {

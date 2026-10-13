@@ -269,6 +269,7 @@ public sealed partial class WiredGlideConveyorTests
         private readonly bool _live;
         private long _now;
         public ConcurrentDictionary<uint, Item> Items { get; }
+        public Room Room => _room;
         public WiredStackEngine Engine => (WiredStackEngine)Get(_wired, "_engine");
         public IWiredItem Box(uint id) => ((Dictionary<uint, IWiredItem>)Get(Engine, "_items"))[id];
 

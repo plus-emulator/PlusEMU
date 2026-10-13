@@ -25,15 +25,18 @@ public sealed class WiredOctoberVariableBoxTests
     {
         // Give: [target, value high, value low, override, from variable, reference target, same holder], ids [variable, reference].
         var give = WiredOctoberEditorParityTests.Compile("wf_act_give_var", n => n with { OwnedIntParams = [0, 0, 5, 1, 1, 0, 1], VariableIds = ["furni:10", "furni:11"] });
-        Assert.Equal([1, 1, 5, 0, 0, 1, 1, 1], give.IntParams.ToArray());
-        Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_act_give_var", n => n with { OwnedIntParams = [0, 0, 5, 1], VariableIds = ["furni:10"] }));
+        // The reference variable is read through the second selector, which opens on the selector pool (200).
+        Assert.Equal([1, 1, 5, 0, 0, 1, 1, 1, 200, 200], give.IntParams.ToArray());
+        // Older saves carry one source selector per kind and keep compiling.
+        Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_act_give_var", n => n with { OwnedIntParams = [0, 0, 5, 1], VariableIds = ["furni:10"], FurniSourceTypes = [0], UserSourceTypes = [0] }));
         // Value mode: the reference slot is WiredVariable.NONE ("n").
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_act_give_var", n => n with { OwnedIntParams = [0, 0, 5, 0, 0, -10, 0], VariableIds = ["furni:10", "n"] }));
         // Change and Variable Value: a seventh field, same holder.
         Assert.Equal(10, WiredOctoberEditorParityTests.Compile("wf_act_change_var_val", n => n with { OwnedIntParams = [0, 1, 1, 0, 0, 0, 1], VariableIds = ["furni:10", "furni:11"] }).IntParams.Length);
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_cnd_var_val_match", n => n with { OwnedIntParams = [0, 1, 1, 0, 0, 0, 1], VariableIds = ["furni:10", "furni:11"], Quantifier = 0 }));
         // Age: [target, comparison, clock, duration high, duration low, unit, from variable, reference target].
-        Assert.Equal(10, WiredOctoberEditorParityTests.Compile("wf_cnd_var_age_match", n => n with { OwnedIntParams = [0, 0, 0, 0, 0, 1, 1, -10], VariableIds = ["furni:10", "room:12"], Quantifier = 0 }).IntParams.Length);
+        // With the duration read from a variable the compiled form also carries the second selector's two sources.
+        Assert.Equal(12, WiredOctoberEditorParityTests.Compile("wf_cnd_var_age_match", n => n with { OwnedIntParams = [0, 0, 0, 0, 0, 1, 1, -10], VariableIds = ["furni:10", "room:12"], Quantifier = 0 }).IntParams.Length);
         // With Variable and Variable Changed gain a sixth field; the same-holder selector and box watch mode are not implemented.
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_trg_var_changed", n => n with { OwnedIntParams = [1, 1, 0, 7, -1, 0] }));
         Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_trg_var_changed", n => n with { OwnedIntParams = [1, 1, 0, 7, -1, 1] }));

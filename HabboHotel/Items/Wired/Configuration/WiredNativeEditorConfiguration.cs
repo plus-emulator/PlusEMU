@@ -50,4 +50,10 @@ public sealed record WiredNativeEditorMetadata(ImmutableArray<ImmutableArray<int
     /// <summary>Condition footer: 0 none, 1 furni, 2 users, 3 variables (the AIR quantifier wording), and the invert flag.</summary>
     public int QuantifierType { get; init; }
     public bool Invert { get; init; }
+
+    /// <summary>
+    /// Source selectors per kind that earlier saves of the card carry, when the editor has since gained a second one (a reference
+    /// selector). Such a save still compiles; the editor then opens it padded with the new selector's defaults.
+    /// </summary>
+    public int LegacySlots { get; init; }
 }

@@ -93,8 +93,8 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
     /// </summary>
     private static (int Option, int Target)? ReferenceSlot(string name, System.Collections.Immutable.ImmutableArray<int> p) => name switch
     {
-        "wf_act_give_var" when p.Length == GiveExtended => (5, 6),
-        "wf_cnd_var_age_match" when p.Length == AgeExtended => (7, 8),
+        "wf_act_give_var" when p.Length is GiveExtended or GiveReferenced => (5, 6),
+        "wf_cnd_var_age_match" when p.Length is AgeExtended or AgeReferenced => (7, 8),
         _ => null
     };
 
@@ -103,11 +103,14 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
     private const int ChangeExtended = 10;
     private const int ValueMatchExtended = 11;
     private const int AgeExtended = 10;
+    // Give and Age with a reference variable carry the reference's own user and furniture sources (the editor's second selector).
+    private const int GiveReferenced = 10;
+    private const int AgeReferenced = 12;
 
     /// <summary>"Same holder": the reference variable is read on each destination holder rather than from its own source.</summary>
     private static bool SameHolder(string name, System.Collections.Immutable.ImmutableArray<int> p) => name switch
     {
-        "wf_act_give_var" => p.Length == GiveExtended && p[5] == 1 && p[7] == 1,
+        "wf_act_give_var" => p.Length is GiveExtended or GiveReferenced && p[5] == 1 && p[7] == 1,
         "wf_act_change_var_val" => p.Length == ChangeExtended && p[2] == 1 && p[9] == 1,
         "wf_cnd_var_val_match" => p.Length == ValueMatchExtended && p[2] == 1 && p[9] == 1,
         _ => false
@@ -117,27 +120,19 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
     {
         core = configuration.IntParams;
         literal = 0;
-        var count = name switch
+        var lengths = name switch
         {
-            "wf_act_give_var" => 5,
-            "wf_act_remove_var" => 3,
-            "wf_act_change_var_val" => 9,
-            "wf_cnd_has_var" or "wf_cnd_neg_has_var" => 4,
-            "wf_cnd_var_val_match" => 10,
-            "wf_cnd_var_age_match" => 8,
-            _ => -1
-        };
-        var extended = name switch
-        {
-            "wf_act_give_var" => GiveExtended,
-            "wf_act_change_var_val" => ChangeExtended,
-            "wf_cnd_var_val_match" => ValueMatchExtended,
-            "wf_cnd_var_age_match" => AgeExtended,
-            _ => -1
+            "wf_act_give_var" => new[] { 5, GiveExtended, GiveReferenced },
+            "wf_act_remove_var" => [3],
+            "wf_act_change_var_val" => [9, ChangeExtended],
+            "wf_cnd_has_var" or "wf_cnd_neg_has_var" => [4],
+            "wf_cnd_var_val_match" => [10, ValueMatchExtended],
+            "wf_cnd_var_age_match" => [8, AgeExtended, AgeReferenced],
+            _ => [-1]
         };
         var literalIndex = name switch { "wf_act_give_var" => 2, "wf_act_change_var_val" or "wf_cnd_var_val_match" => 3, _ => -1 };
 
-        foreach (var length in extended < 0 ? [count] : new[] { count, extended }) {
+        foreach (var length in lengths) {
             if (core.Length == length + 2 && literalIndex >= 0 && core[length] == 1) {
                 literal = ((long)core[length + 1] << 32) | (uint)core[literalIndex];
                 core = core[..length];
@@ -146,7 +141,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             }
         }
 
-        if (core.Length != count && core.Length != extended) {
+        if (!lengths.Contains(core.Length)) {
             return false;
         }
 
@@ -207,7 +202,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         // Same holder reads the reference on the destination's own holders, so both must be of one user or furni kind.
         var sameIndex = name switch
         {
-            "wf_act_give_var" when p.Length == GiveExtended => 7,
+            "wf_act_give_var" when p.Length is GiveExtended or GiveReferenced => 7,
             "wf_act_change_var_val" when p.Length == ChangeExtended => 9,
             "wf_cnd_var_val_match" when p.Length == ValueMatchExtended => 9,
             _ => -1
@@ -226,10 +221,10 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
 
         var sourceIndices = name switch
         {
-            "wf_act_give_var" => new[] { 3, 4 },
+            "wf_act_give_var" => p.Length == GiveReferenced ? new[] { 3, 4, 8, 9 } : [3, 4],
             "wf_act_remove_var" => [1, 2],
             "wf_act_change_var_val" or "wf_cnd_var_val_match" => [5, 6, 7, 8],
-            "wf_cnd_var_age_match" => [5, 6],
+            "wf_cnd_var_age_match" => p.Length == AgeReferenced ? [5, 6, 9, 10] : [5, 6],
             _ => [1, 2]
         };
 
@@ -273,7 +268,9 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
 
             // Given from a variable: its value on each holder itself, or the first value its reference holders have.
             if (operandReference is { } given && !sameHolder) {
-                if (FirstValue(configuration, given, p[3], p[4], frame) is not { } first) {
+                var (referenceUsers, referenceFurni) = p.Length == GiveReferenced ? (p[8], p[9]) : (p[3], p[4]);
+
+                if (FirstValue(configuration, given, referenceUsers, referenceFurni, frame) is not { } first) {
                     return false;
                 }
 
@@ -316,7 +313,9 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
 
             // The October editor can read the duration, in the chosen unit, from a variable.
             if (operandReference is { } timeout) {
-                if (FirstValue(configuration, timeout, p[5], p[6], frame) is not { } read) {
+                var (durationUsers, durationFurni) = p.Length == AgeReferenced ? (p[9], p[10]) : (p[5], p[6]);
+
+                if (FirstValue(configuration, timeout, durationUsers, durationFurni, frame) is not { } read) {
                     return false;
                 }
 

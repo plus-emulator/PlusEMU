@@ -251,6 +251,7 @@ public partial class PlacedFurniRoomTests
     {
         var (_, actor) = PrepareSpeech(new SpeechClock());
         actor.Team = Plus.HabboHotel.Rooms.Games.Teams.Team.Red;
+        _room.GetSoccer().StartGame();
         var (box, store) = CanonicalBox("wf_act_give_score", new() { IntParams = [1, 0, 0] });
         await CanonicalHandler().Parse(_client, ClientPacket(601, 2, 17, 1, "", 0, 0, 0, 1, 0, 0, 0));
         var context = _room.GetWired().CaptureVariableInspectionFrame().RuntimeContext!;

@@ -143,6 +143,10 @@ public static class WiredLegacyProtocol
         && configuration.FurniSources != null && configuration.FurniSources.Count <= WiredConfigurationLimits.IntParams
         && configuration.UserSources != null && configuration.UserSources.Count <= WiredConfigurationLimits.IntParams;
 
+    // A save from before a card gained its reference selector opens with that selector on its default.
+    private static IEnumerable<int> Padded(ImmutableArray<int> sources, ImmutableArray<int> defaults) =>
+        sources.Length > 0 && sources.Length < defaults.Length ? sources.Concat(defaults.Skip(sources.Length)) : sources;
+
     public static void Write(IOutgoingPacket packet, uint itemId, int spriteId, WiredBoxDescriptor descriptor,
         WiredConfiguration configuration, int furniLimit, IReadOnlyList<int> blockedItems,
         WiredNativeEditorConfiguration? editor = null, int? catalogHash = null,
@@ -170,8 +174,8 @@ public static class WiredLegacyProtocol
             packet.WriteString(token);
         }
 
-        WriteInts(packet, editor.FurniSourceTypes);
-        WriteInts(packet, editor.UserSourceTypes);
+        WriteInts(packet, Padded(editor.FurniSourceTypes, metadata.FurniDefaults));
+        WriteInts(packet, Padded(editor.UserSourceTypes, metadata.UserDefaults));
         packet.WriteInteger(editor.NativeCode);
 
         if (editor.Category == WiredBoxCategory.Action) {

@@ -121,8 +121,11 @@ public static class WiredNativeEditorProjection
 
         var metadata = Metadata(name);
 
-        if (native.FurniSourceTypes.Length != metadata.FurniAllowed.Length
-            || native.UserSourceTypes.Length != metadata.UsersAllowed.Length
+        var legacy = metadata.LegacySlots > 0 && native.FurniSourceTypes.Length == metadata.LegacySlots
+            && native.UserSourceTypes.Length == metadata.LegacySlots;
+
+        if (!legacy && (native.FurniSourceTypes.Length != metadata.FurniAllowed.Length
+            || native.UserSourceTypes.Length != metadata.UsersAllowed.Length)
             || native.FurniSourceTypes.Where((source, index) => !metadata.FurniAllowed[index].Contains(source)).Any()
             || native.UserSourceTypes.Where((source, index) => !metadata.UsersAllowed[index].Contains(source)).Any()
             || !metadata.AllowWall && native.PrimaryItems.Concat(native.SecondaryItems).Any(item => item.Wall)

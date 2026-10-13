@@ -2119,6 +2119,7 @@ public class ModernWiredRuntimeTests
         var (room, _, _) = World();
         var state = new WiredGameState();
         var scores = new List<WiredRuntimeEvent>();
+        room.GetSoccer().StartGame();
         Assert.True(state.GiveScore(room, 1, 7, Team.Red, 10, 1, scores.Add));
         Assert.False(state.GiveScore(room, 1, 7, Team.Red, 10, 1, scores.Add));
         Assert.True(state.GiveScore(room, 1, 8, Team.Red, -20, 1, scores.Add));

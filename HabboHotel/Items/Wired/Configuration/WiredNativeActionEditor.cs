@@ -47,7 +47,7 @@ internal static class WiredNativeActionEditor
         ["wf_act_chase"] = Meta([Furni], [], [100], [], []),
         ["wf_act_flee"] = Meta([Furni], [], [100], [], []),
         ["wf_act_move_rotate_user"] = Meta([], [SignalUsers], [], [0], [-1, -1]),
-        ["wf_act_rel_mov"] = Meta([Furni], [], [100], [], [0, 0]),
+        ["wf_act_rel_mov"] = Meta([Furni], [], [100], [], [0, 0], true),
         ["wf_act_furni_to_furni"] = Meta([FurniAndSnapshot, FurniAndSnapshot], [], [100, 101], [], []),
         ["wf_act_furni_to_user"] = Meta([Furni], [MoveUsers], [100], [0], []),
         ["wf_act_move_furni_to"] = Meta([Furni, FurniAndSnapshot], [], [100, 101], [], [0, 1]),

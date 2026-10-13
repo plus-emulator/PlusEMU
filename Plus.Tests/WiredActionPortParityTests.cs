@@ -552,6 +552,7 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         var (room, _, _) = World();
         var user = Avatar(room, 1, 1, 1);
         user.Team = Team.Red;
+        room.GetSoccer().StartGame();
         room.GetGameManager().AddPointToTeam(Team.Red, 20);
         var action = Box(room, name, name == "wf_act_give_score" ? [5, 1, 0, 2] : [5, 1, 1, 0, 2], []);
         var context = Context(room, [], [user], user);

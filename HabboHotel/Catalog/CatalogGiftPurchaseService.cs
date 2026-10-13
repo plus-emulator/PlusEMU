@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.Logging;
 using Plus.Communication.Packets;
 using Plus.Communication.Packets.Outgoing.Catalog;
 using Plus.Communication.Packets.Outgoing.Inventory.Furni;
@@ -47,6 +48,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
     private readonly IClubRewards _clubRewards;
     private readonly ICatalogGiftStore _giftStore;
     private readonly TimeProvider _clock;
+    private readonly ILogger<CatalogGiftPurchaseService> _logger;
 
     public CatalogGiftPurchaseService(ICatalogManager catalogManager,
         ISettingsManager settingsManager,
@@ -57,7 +59,8 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         IClubMembershipService clubMemberships,
         IClubRewards clubRewards,
         ICatalogGiftStore giftStore,
-        TimeProvider clock)
+        TimeProvider clock,
+        ILogger<CatalogGiftPurchaseService> logger)
     {
         _catalogManager = catalogManager;
         _settingsManager = settingsManager;
@@ -69,6 +72,16 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         _clubRewards = clubRewards;
         _giftStore = giftStore;
         _clock = clock;
+        _logger = logger;
+    }
+
+    // The client keeps its gift dialog busy until it receives a purchase outcome, so every rejection must answer it.
+    private Task Reject(GameClient session, string reason, params object?[] args)
+    {
+        _logger.LogWarning("Gift purchase by user {UserId} rejected: " + reason, [session.GetHabbo().Id, ..args]);
+        session.Send(new PurchaseErrorComposer(PurchaseError.Unavailable));
+
+        return Task.CompletedTask;
     }
 
     public Task Purchase(GameClient session, CatalogGiftPurchaseRequest request)
@@ -86,15 +99,15 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         if (_settingsManager.TryGetValue("room.item.gifts.enabled") != "1") {
             session.SendNotification("The hotel managers have disabled gifting");
 
-            return Task.CompletedTask;
+            return Reject(session, "gifting is disabled");
         }
 
         if (!_catalogManager.TryGetPage(pageId, out var page)) {
-            return Task.CompletedTask;
+            return Reject(session, "catalogue page {PageId} not found", pageId);
         }
 
         if (!page.CanOpen(session.GetHabbo())) {
-            return Task.CompletedTask;
+            return Reject(session, "catalogue page {PageId} is not available to the user", pageId);
         }
 
         if (page.Layout is "club_buy" or "vip_buy" or "loyalty_vip_buy") {
@@ -120,22 +133,22 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         }
 
         if (!page.Offers.TryGetValue(itemId, out var item) || !item.Enabled) {
-            return Task.CompletedTask;
+            return Reject(session, "offer {OfferId} not found or disabled on page {PageId}", itemId, pageId);
         }
 
         if (!item.CanPurchase(session.GetHabbo())) {
-            return Task.CompletedTask;
+            return Reject(session, "offer {OfferId} cannot be purchased by the user", itemId);
         }
 
         // Only a single piece of furniture can be wrapped, so the offer's definition is known from here on.
         if (!ItemUtility.CanGiftItem(item)) {
-            return Task.CompletedTask;
+            return Reject(session, "offer {OfferId} cannot be gifted", itemId);
         }
 
         var definition = item.Definition!;
 
         if (!_itemManager.Gifts.TryGetValue(spriteId, out var presentId) || !_itemManager.Items.TryGetValue(presentId, out var presentData) || presentData.InteractionType != InteractionType.Gift) {
-            return Task.CompletedTask;
+            return Reject(session, "gift wrapper sprite {SpriteId} is not a configured gift box", spriteId);
         }
 
         if (session.GetHabbo().Credits < item.CostCredits) {
@@ -159,13 +172,13 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         }
 
         if (habbo.Id == session.GetHabbo().Id) {
-            return Task.CompletedTask;
+            return Reject(session, "users cannot gift to themselves");
         }
 
         if (!habbo.AllowGifts) {
             session.SendNotification("Oops, this user doesn't allow gifts to be sent to them!");
 
-            return Task.CompletedTask;
+            return Reject(session, "recipient {RecipientId} does not accept gifts", habbo.Id);
         }
 
         var sender = session.GetHabbo();
@@ -179,11 +192,11 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
                     sender.SessionGiftBlocked = true;
                 }
 
-                return Task.CompletedTask;
+                return Reject(session, "throttled, {Warnings} warnings", sender.GiftPurchasingWarnings);
             }
 
             if (sender.SessionGiftBlocked) {
-                return Task.CompletedTask;
+                return Reject(session, "gifting is blocked for this session");
             }
 
             var extra_data = GiftWrap.PresentData(giftUser, giftMessage, session.GetHabbo().Id, definition.Id, spriteId, boxId, ribbonId);
@@ -196,7 +209,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
                     break;
                 case InteractionType.Pet:
                     if (!GiftWrap.PetDataAccepted(data)) {
-                        return Task.CompletedTask;
+                        return Reject(session, "invalid pet data for offer {OfferId}", itemId);
                     }
 
                     progressPetAchievement = true;
@@ -231,7 +244,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
                     if (!session.GetHabbo().Inventory.Badges.HasBadge(data)) {
                         session.Send(new BroadcastMessageAlertComposer("Oops, it appears that you do not own this badge."));
 
-                        return Task.CompletedTask;
+                        return Reject(session, "badge {Badge} is not owned", data);
                     }
 
                     itemExtraData = $"{data}{Convert.ToChar(9)}{sender.Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}";

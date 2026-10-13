@@ -735,9 +735,54 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return true;
         }
 
-        // The native teleport relocates at once and publishes no avatar movement entry. It does not apply an avatar effect.
-        return _movement.MoveAvatar(context, user, target.GetX, target.GetY, false, 2, ignoreOccupants: true);
+        var room = context.Room;
+        bool Relocate() => _movement.MoveAvatar(context, user, target.GetX, target.GetY, false, 2, ignoreOccupants: true);
+
+        var effects = user.GetClient()?.GetHabbo()?.Effects;
+
+        if (user.IsBot || effects == null) {
+            return Relocate();
+        }
+
+        // Observed on hhus: the native teleport applies avatar effect 4 at firing, republishes the avatar in place on the state update
+        // at least 1000 ms later, relocates it on the next one and drops the effect 1500 ms after that, all on the 500 ms state updates.
+        var wired = room.GetWired();
+        var release = () => { };
+
+        // Nothing is applied unless the firing can hold its three scheduled steps; the effect starts with the first one.
+        if (!wired.ScheduleAux(context, TeleportRepublishMilliseconds, () =>
+            {
+                if (user.IsAttachedTo(room)) {
+                    user.UpdateNeeded = true;
+                }
+            }, () => release(), alignToStateUpdate: true)) {
+            return Relocate();
+        }
+
+        var restore = WiredTemporaryEffects.For(room).Acquire(user, () => effects.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room));
+        release = restore;
+
+        if (!wired.ScheduleAux(context, TeleportRelocateMilliseconds, () =>
+            {
+                if (user.IsAttachedTo(room)) {
+                    Relocate();
+                }
+            }, alignToStateUpdate: true)) {
+            restore();
+
+            return Relocate();
+        }
+
+        if (!wired.ScheduleAux(context, TeleportEffectEndMilliseconds, restore, restore, alignToStateUpdate: true)) {
+            restore();
+        }
+
+        return true;
     }
+
+    private const int TeleportRepublishMilliseconds = 1000;
+    private const int TeleportRelocateMilliseconds = 1500;
+    private const int TeleportEffectEndMilliseconds = 3000;
 
     // Observed on hhus: a "<...>" segment of Show Message text is removed (brackets included) at output; the stored text is untouched.
     // Unknown $(name) placeholders are left literal by the text formatters.

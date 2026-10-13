@@ -10,8 +10,8 @@ public sealed partial class WiredGlideConveyorTests
 {
     private const int TeleportTargetId = 20;
 
-    // Official native 8, one standing human, one 1x1 walkable floor target of height 1: the owner ends on the target at z 1 with an unchanged
-    // direction, and no avatar movement or direction entry was collected for either flag in the watched windows.
+    // Official native 8 (WIN63-202610131318, 3 s windows): the owner got avatar effect 4 at the fire, an in-place update on the third state update,
+    // the relocation one update later and the effect cleared three updates after that. No avatar movement or direction entry was collected.
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
@@ -21,8 +21,18 @@ public sealed partial class WiredGlideConveyorTests
 
         f.Owned(() => rider.OnChat(0, "pulse", false));
         f.Advance(200);
+        Assert.Equal((4, 11, 4), (rider.X, rider.Y, rider.CurrentEffect));
+        f.Advance(750);
+        Assert.Equal((4, 11), (rider.X, rider.Y));
+        Assert.Equal(4, rider.CurrentEffect);
+        f.Advance(500);
+        Assert.Equal((4, 11), (rider.X, rider.Y));
+        f.Advance(500);
 
         Assert.Equal((8, 10, 1.0), (rider.X, rider.Y, rider.Z));
+        Assert.Equal(4, rider.CurrentEffect);
+        f.Advance(1500);
+        Assert.Equal(0, rider.CurrentEffect);
         Assert.Equal((6, 6), (rider.RotBody, rider.RotHead));
         var own = ReadMovementEntries(packets).Where(entry => entry.Type is 0 or 3 && entry.Id == rider.VirtualId).ToArray();
         Assert.Empty(own);
@@ -37,7 +47,7 @@ public sealed partial class WiredGlideConveyorTests
         var (f, rider, _) = TeleportToRoom(flag);
 
         f.Owned(() => rider.OnChat(0, "pulse", false));
-        f.Advance(200);
+        f.Advance(3500);
 
         Assert.Equal((8, 10, 1.0), (rider.X, rider.Y, rider.Z));
         Assert.Equal((6, 6), (rider.RotBody, rider.RotHead));

@@ -10,13 +10,14 @@ namespace Plus.Tests;
 public sealed class WiredVariableDefinitionBoxTests
 {
     [Theory]
-    [InlineData("wf_act_give_var", 5)]
+    // Give, Change and Age drafts follow the October editors' fresh-box payloads, so they carry the reference fields.
+    [InlineData("wf_act_give_var", 8)]
     [InlineData("wf_act_remove_var", 3)]
-    [InlineData("wf_act_change_var_val", 9)]
+    [InlineData("wf_act_change_var_val", 10)]
     [InlineData("wf_cnd_has_var", 4)]
     [InlineData("wf_cnd_neg_has_var", 4)]
     [InlineData("wf_cnd_var_val_match", 10)]
-    [InlineData("wf_cnd_var_age_match", 8)]
+    [InlineData("wf_cnd_var_age_match", 10)]
     public void ScalarDraftOpensWithClientShapeButCannotExecuteWithoutSelection(string name, int count)
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));

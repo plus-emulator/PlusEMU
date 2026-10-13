@@ -8,6 +8,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Modern;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Permissions;
+using Plus.HabboHotel.Rooms.Chat.Filter;
 using Plus.HabboHotel.Subscriptions;
 
 namespace Plus.HabboHotel.Items.Wired.Configuration;
@@ -23,6 +24,7 @@ public interface IWiredConfigurationService
 public sealed class WiredConfigurationService(
     IWiredConfigurationStore store,
     IFigureDataManager figures,
+    IWordFilterManager wordFilter,
     ILogger<WiredConfigurationService> logger) : IWiredConfigurationService
 {
     public void Save(GameClient session, WiredConfigurationSaveRequest request)
@@ -83,6 +85,10 @@ public sealed class WiredConfigurationService(
                 native = native with { Text = ValidateBotFigure(native.Text, session) };
             }
 
+            if (descriptor.CanonicalName == "wf_act_show_message") {
+                native = native with { Text = FilterMessageText(native.Text) };
+            }
+
             var current = configured.Configuration;
 
             if (!WiredNativeEditorProjection.TryProject(selectedItem, descriptor, current, out var projected)) {
@@ -125,6 +131,15 @@ public sealed class WiredConfigurationService(
             logger.LogWarning(error, "Failed to save Wired settings in room {RoomId}", room.Id);
             session.Send(new WiredValidationErrorComposer("Unable to save these Wired settings."));
         }
+    }
+
+    // Observed on hhus: the filtered Show Message text is what is stored and returned on reopen, and the save still succeeds.
+    // The official rule set is unobserved; this applies only the hotel word filter that PlusEMU already has.
+    private string FilterMessageText(string text)
+    {
+        var filtered = wordFilter.CheckMessage(text);
+
+        return filtered == text.TrimEnd(' ') ? text : filtered;
     }
 
     private static readonly HashSet<string> SnapshotNames = ["wf_act_match_to_sshot", "wf_cnd_match_snapshot",

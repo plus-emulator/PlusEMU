@@ -405,7 +405,7 @@ public partial class PlacedFurniRoomTests
 
     private SaveWiredEffectConfigEvent CanonicalHandler() => new(CanonicalService((CanonicalStore)typeof(Plus.HabboHotel.Rooms.Instance.WiredComponent).GetField("_configurationStore", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(_room.GetWired())!));
 
-    private static WiredConfigurationService CanonicalService(CanonicalStore store) => new(store, null!, TestLogging.For<WiredConfigurationService>());
+    private static WiredConfigurationService CanonicalService(CanonicalStore store) => new(store, null!, null!, TestLogging.For<WiredConfigurationService>());
 
     private sealed class CanonicalStore(WiredConfiguration? previous) : IWiredConfigurationStore
     {

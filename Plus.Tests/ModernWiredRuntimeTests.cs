@@ -1766,7 +1766,7 @@ public class ModernWiredRuntimeTests
             picks ??= [];
             object[] body = [100, owned.Length, .. owned.Cast<object>(), "", picks.Length, .. picks.Cast<object>(), delay, 1, source, 0, 0, 0, .. suffix ?? []];
 
-            return new SaveWiredEffectConfigEvent(new WiredConfigurationService(Store, null!, TestLogging.For<WiredConfigurationService>())).Parse(Client, Request(body));
+            return new SaveWiredEffectConfigEvent(new WiredConfigurationService(Store, null!, null!, TestLogging.For<WiredConfigurationService>())).Parse(Client, Request(body));
         }
         public MovementOracleReply Open()
         {
@@ -1852,7 +1852,7 @@ public class ModernWiredRuntimeTests
         }
 
         f.Client.Packets.Clear();
-        await new SaveWiredEffectConfigEvent(new WiredConfigurationService(f.Store, null!, TestLogging.For<WiredConfigurationService>()))
+        await new SaveWiredEffectConfigEvent(new WiredConfigurationService(f.Store, null!, null!, TestLogging.For<WiredConfigurationService>()))
             .Parse(f.Client, Request(values));
         Assert.Same(saved, f.Action.Configuration);
         Assert.Equal(row, f.Store.Rows[100]);
@@ -1860,6 +1860,29 @@ public class ModernWiredRuntimeTests
         Assert.Equal(published, f.Published);
         Assert.Equal(pending, f.Engine.ReadStats().Pending);
         Assert.DoesNotContain(f.Client.Packets, packet => packet.Header == ServerPacketHeader.HideWiredConfigComposer);
+    }
+
+    [Fact]
+    public async Task ShowMessageSaveStoresWordFilteredTextAndStillAcknowledges()
+    {
+        // hotel-text-filter-fact-r63: the hotel word filter rewrites the text at save; the stored text is what the editor returns.
+        var f = new MovementOracleSession("wf_act_show_message");
+        var filter = new ReplacingFilter("56-20261013", "bobba");
+        object[] body = [100, 3, 0, 202, -1, "wiredprobe-username-sol-r56-20261013 B<$(clickprobeuser)>E", 0, 0, 0, 1, 0, 0, 0];
+        f.Client.Packets.Clear();
+        await new SaveWiredEffectConfigEvent(new WiredConfigurationService(f.Store, null!, filter, TestLogging.For<WiredConfigurationService>()))
+            .Parse(f.Client, Request(body));
+        Assert.Contains(f.Client.Packets, packet => packet.Header == ServerPacketHeader.HideWiredConfigComposer);
+        Assert.Equal("wiredprobe-username-sol-rbobba B<$(clickprobeuser)>E", f.Action.Configuration.Text);
+        Assert.Equal("wiredprobe-username-sol-rbobba B<$(clickprobeuser)>E", Assert.Single(f.Store.Saves).Text);
+    }
+
+    private sealed class ReplacingFilter(string word, string replacement) : Plus.HabboHotel.Rooms.Chat.Filter.IWordFilterManager
+    {
+        public void Init() { }
+        public string CheckMessage(string message) => message.Replace(word, replacement);
+        public bool CheckBannedWords(string message) => false;
+        public bool IsFiltered(string message) => message.Contains(word);
     }
 
     [Fact]

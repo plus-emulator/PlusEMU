@@ -78,7 +78,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
     // The client keeps its gift dialog busy until it receives a purchase outcome, so every rejection must answer it.
     private Task Reject(GameClient session, string reason, params object?[] args)
     {
-        _logger.LogWarning("Gift purchase by user {UserId} rejected: " + reason, [session.GetHabbo().Id, ..args]);
+        _logger.LogWarning("Gift purchase by user {UserId} rejected: " + reason, [session.GetHabbo().Id, .. args]);
         session.Send(new PurchaseErrorComposer(PurchaseError.Unavailable));
 
         return Task.CompletedTask;

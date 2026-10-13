@@ -102,8 +102,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.PublicationPollIsSilent = () => _counterItems.Count == 0 && _chests == null
             && !WiredBotTargets.For(_room).HasTargets;
         _engine.LimitReached = NoteLimit;
+        // The hidden message is echoed to its speaker as a whisper with the receiver and bubble width tail.
         _engine.SpeechHidden = evt => evt.Actor?.GetClient()?.Send(
-            new Plus.Communication.Packets.Outgoing.Rooms.Chat.WhisperComposer(evt.Actor.VirtualId, evt.Message, 0, evt.ChatStyle));
+            new Plus.HabboHotel.Items.Wired.Modern.Actions.WiredChatComposer(evt.Actor.VirtualId, evt.Message, evt.ChatStyle, -1, true));
         _engine.CaptureSpeech = (context, trigger) => _variables?.IsValueCreated == true
             ? _variables.Value.CaptureSpeech(context, trigger) : null;
         _engine.ConfigurationPublished = box =>
@@ -169,6 +170,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         PublishStateWrites();
         _engine.OnCycle();
         FlushVariableFx();
+        FlushFlashes();
     }
 
     internal void OnFastCycle()
@@ -180,6 +182,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
         if (_variables?.IsValueCreated == true && _variables.Value.FxDirty) {
             FlushVariableFx();
         }
+
+        FlushFlashes();
     }
     internal bool NeedsFastCycle => _engine.NeedsFastCycle;
     internal void ObserveFastWork(Action<bool>? observer) => _engine.ObserveFastWork(observer);
@@ -410,6 +414,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     public ICollection<IWiredItem> GetConditions(IWiredItem item) => _engine.GetBoxes(item, InteractionType.WiredCondition);
 
+    /// <summary>
+    /// A box acts: it flips to its other flash state, which goes out with the next state update (Habbo: one
+    /// ObjectsDataUpdate every 500 ms carrying the furni whose state changed). Boxes hold their state between flashes.
+    /// </summary>
     public void OnEvent(Item item)
     {
         // Hidden wired boxes are not on the clients, so they do not flash.
@@ -417,14 +425,34 @@ public partial class WiredComponent : IWiredRuntimeOperations
             return;
         }
 
-        // A box saved mid-flash loads as "1" with no reset pending, so only a pending reset means it is still lit.
-        if (item.LegacyDataString == "1" && item.UpdateNeeded) {
-            return;
+        TryGet(item.Id, out var box);
+        item.LegacyDataString = WiredFlashStates.Next(item.LegacyDataString, box);
+
+        lock (_pendingFlashes) {
+            _pendingFlashes.Add(item);
+        }
+    }
+
+    private readonly HashSet<Item> _pendingFlashes = [];
+    private long _nextFlashUpdate;
+
+    /// <summary>Sends the flashed boxes' current states together, at most once per state update interval.</summary>
+    internal void FlushFlashes(bool force = false)
+    {
+        Item[] items;
+        var now = (long)Stopwatch.GetElapsedTime(0).TotalMilliseconds;
+
+        lock (_pendingFlashes) {
+            if (!force && now < _nextFlashUpdate || _pendingFlashes.Count == 0) {
+                return;
+            }
+
+            _nextFlashUpdate = now - now % WiredFlashStates.StateUpdateMilliseconds + WiredFlashStates.StateUpdateMilliseconds;
+            items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
+            _pendingFlashes.Clear();
         }
 
-        item.LegacyDataString = "1";
-        item.UpdateState(false, true);
-        item.RequestUpdate(2, true);
+        _room.SendObjectsData(items);
     }
 
     public bool AddBox(IWiredItem item) => _engine.Mutate(() =>

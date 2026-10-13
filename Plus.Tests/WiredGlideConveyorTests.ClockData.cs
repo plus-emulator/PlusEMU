@@ -114,7 +114,13 @@ public sealed partial class WiredGlideConveyorTests
         rider.GetClient()!.SendCallback = args =>
         {
             var bytes = args.MemoryBuffer.ToArray();
-            frames.Add((BinaryPrimitives.ReadUInt32BigEndian(bytes), bytes[6..]));
+            var frame = (BinaryPrimitives.ReadUInt32BigEndian(bytes), bytes[6..]);
+
+            if (IsBoxFlashBatch(frame)) {
+                return false;
+            }
+
+            frames.Add(frame);
 
             if (frames[^1].Header == ServerPacketHeader.ObjectsDataUpdateComposer) {
                 generations.Add(item.StateGeneration);
@@ -369,13 +375,21 @@ public sealed partial class WiredGlideConveyorTests
         user.GetClient()!.SendCallback = args =>
         {
             var bytes = args.MemoryBuffer.ToArray();
-            frames.Add((BinaryPrimitives.ReadUInt32BigEndian(bytes), bytes[6..]));
+            var frame = (BinaryPrimitives.ReadUInt32BigEndian(bytes), bytes[6..]);
+
+            if (!IsBoxFlashBatch(frame)) {
+                frames.Add(frame);
+            }
 
             return false;
         };
 
         return frames;
     }
+
+    // The boxes' own flash states go out in batches of their own; these tests follow the counter's data.
+    private static bool IsBoxFlashBatch((uint Header, byte[] Payload) frame) =>
+        frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer && ReadBatch(frame).All(entry => entry.Id != CounterId);
 
     private static (uint Header, byte[] Payload)[] ObjectUpdates(List<(uint Header, byte[] Payload)> frames) => frames
         .Where(frame => frame.Header == ServerPacketHeader.ObjectUpdateComposer && BinaryPrimitives.ReadInt32BigEndian(frame.Payload) == CounterId).ToArray();

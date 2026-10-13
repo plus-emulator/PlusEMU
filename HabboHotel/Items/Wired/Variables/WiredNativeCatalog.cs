@@ -162,9 +162,6 @@ internal static class WiredNativeCatalogProjection
                 : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
-            !derived && definition.Link is null && writable && builtin is null, false, timestamps, timestamps, connector)
-        {
-            RequiresExecutionContext = definition.Target == WiredVariableTarget.Context
-        };
+            !derived && definition.Link is null && writable && builtin is null, false, timestamps, timestamps, connector);
     }
 }

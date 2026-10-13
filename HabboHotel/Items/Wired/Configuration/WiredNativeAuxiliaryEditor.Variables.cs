@@ -40,16 +40,23 @@ internal static partial class WiredNativeAuxiliaryEditor
 
     private static IEnumerable<KeyValuePair<string, Spec>> Variables()
     {
-        // Destination: variable target, value (high, low), override-existing; one furni and one user source.
-        yield return new("wf_act_give_var", new(Meta(1, 1, [1, 0, 0, 0], 1), n =>
+        // Destination: variable target, value (high, low), override-existing; one furni and one user source. The October
+        // editor (GiveVariable) adds value-or-variable, the reference's target and "same holder", with the reference as a
+        // second variable id ("n" in value mode). A fresh box opens on [1, 0, 0, 0, 0, -10, 0].
+        yield return new("wf_act_give_var", new(Meta(1, 1, [1, 0, 0, 0, 0, -10, 0], 2), n =>
         {
             var p = n.OwnedIntParams;
 
-            if (!Shape(n, 4, 1, 1, 1) || !TryTarget(p[0], out var target)) {
+            if (Shape(n, 4, 1, 1, 1) && TryTarget(p[0], out var legacyTarget)) {
+                return Draft(n, WithLiteral([legacyTarget, p[3], 0, n.UserSourceTypes[0], n.FurniSourceTypes[0]], 2, p[1], p[2]));
+            }
+
+            if (!Shape(n, 7, 1, 1, 2) || !TryTarget(p[0], out var target) || !TryReference(p[4], p[5], p[6], target, out var reference)) {
                 return null;
             }
 
-            return Draft(n, WithLiteral([target, p[3], 0, n.UserSourceTypes[0], n.FurniSourceTypes[0]], 2, p[1], p[2]));
+            return Draft(n, WithLiteral([target, p[3], 0, n.UserSourceTypes[0], n.FurniSourceTypes[0], p[4], reference, p[4] == 1 ? p[6] : 0],
+                2, p[1], p[2]));
         }));
         yield return new("wf_act_remove_var", new(Meta(1, 1, [1], 1), n =>
         {
@@ -59,43 +66,59 @@ internal static partial class WiredNativeAuxiliaryEditor
                 ? Draft(n, [target, n.UserSourceTypes[0], n.FurniSourceTypes[0]]) : null;
         }));
         // Destination target, operator, literal-or-variable option, value (high, low), reference target; destination and reference sources.
-        yield return new("wf_act_change_var_val", new(Meta(2, 2, [1, 0, 0, 0, 0, -10], 2), n =>
+        // The October editor (ChangeVariable) adds "same holder": the reference is read on each destination holder.
+        yield return new("wf_act_change_var_val", new(Meta(2, 2, [1, 0, 0, 0, 0, -10, 0], 2), n =>
         {
             var p = n.OwnedIntParams;
 
-            if (!Shape(n, 6, 2, 2, 2) || !TryTarget(p[0], out var target) || !TryTarget(p[5], out var reference)
-                || p[2] is not (0 or 1)) {
+            if (!(Shape(n, 6, 2, 2, 2) || Shape(n, 7, 2, 2, 2)) || !TryTarget(p[0], out var target)
+                || !TryReference(p[2], p[5], p.Length == 7 ? p[6] : 0, target, out var reference)) {
                 return null;
             }
 
-            return Draft(n, WithLiteral([target, p[1], p[2], 0, reference, n.UserSourceTypes[0], n.FurniSourceTypes[0],
-                n.UserSourceTypes[1], n.FurniSourceTypes[1]], 3, p[3], p[4]));
+            int[] core = [target, p[1], p[2], 0, reference, n.UserSourceTypes[0], n.FurniSourceTypes[0], n.UserSourceTypes[1], n.FurniSourceTypes[1]];
+
+            return Draft(n, WithLiteral(p.Length == 7 ? [.. core, p[2] == 1 ? p[6] : 0] : core, 3, p[3], p[4]));
         }));
         yield return new("wf_cnd_has_var", new(HasVar(false), HasVarSpec));
         yield return new("wf_cnd_neg_has_var", new(HasVar(true), HasVarSpec));
+        // The October editor (VariableValue) adds "same holder" as a seventh field.
         yield return new("wf_cnd_var_val_match", new(Meta(2, 2, [1, 2, 0, 0, 0, -10], 2) with { QuantifierType = 3 }, n =>
         {
             var p = n.OwnedIntParams;
 
-            if (!Shape(n, 6, 2, 2, 2) || !TryTarget(p[0], out var target) || !TryTarget(p[5], out var reference)
-                || p[1] is < 0 or > 5 || p[2] is not (0 or 1)) {
+            if (!(Shape(n, 6, 2, 2, 2) || Shape(n, 7, 2, 2, 2)) || !TryTarget(p[0], out var target)
+                || p[1] is < 0 or > 5 || !TryReference(p[2], p[5], p.Length == 7 ? p[6] : 0, target, out var reference)) {
                 return null;
             }
 
-            return Draft(n, WithLiteral([target, ScalarComparison[p[1]], p[2], 0, reference, n.UserSourceTypes[0], n.FurniSourceTypes[0],
-                n.UserSourceTypes[1], n.FurniSourceTypes[1], n.Quantifier ?? 0], 3, p[3], p[4]));
+            int[] core = [target, ScalarComparison[p[1]], p[2], 0, reference, n.UserSourceTypes[0], n.FurniSourceTypes[0],
+                n.UserSourceTypes[1], n.FurniSourceTypes[1]];
+
+            return Draft(n, WithLiteral(p.Length == 7 ? [.. core, p[2] == 1 ? p[6] : 0, n.Quantifier ?? 0] : [.. core, n.Quantifier ?? 0],
+                3, p[3], p[4]));
         }));
-        // Target, comparison (< or >), creation-or-update clock, duration (high, low), time unit.
-        yield return new("wf_cnd_var_age_match", new(Meta(1, 1, [1, 0, 0, 0, 0, 1], 1) with { QuantifierType = 3 }, n =>
+        // Target, comparison (< or >), creation-or-update clock, duration (high, low), time unit. The October editor
+        // (VariableAge) adds value-or-variable and the duration variable's target, with that variable as a second id.
+        // A fresh box opens on [1, 0, 0, 0, 0, 1, 0, -10].
+        yield return new("wf_cnd_var_age_match", new(Meta(1, 1, [1, 0, 0, 0, 0, 1, 0, -10], 2) with { QuantifierType = 3 }, n =>
         {
             var p = n.OwnedIntParams;
+            var october = Shape(n, 8, 1, 1, 2);
 
-            if (!Shape(n, 6, 1, 1, 1) || !TryTarget(p[0], out var target)
+            if (!(Shape(n, 6, 1, 1, 1) || october) || !TryTarget(p[0], out var target)
                 || ((long)p[3] << 32 | (uint)p[4]) is < int.MinValue or > int.MaxValue || p[1] is not (0 or 2) || p[2] is not (0 or 1)) {
                 return null;
             }
 
-            return Draft(n, [target, p[2], p[1], p[4], p[5], n.UserSourceTypes[0], n.FurniSourceTypes[0], n.Quantifier ?? 0]);
+            int[] core = [target, p[2], p[1], p[4], p[5], n.UserSourceTypes[0], n.FurniSourceTypes[0]];
+
+            if (!october) {
+                return Draft(n, [.. core, n.Quantifier ?? 0]);
+            }
+
+            return TryReference(p[6], p[7], 0, target, out var reference)
+                ? Draft(n, [.. core, p[6], reference, n.Quantifier ?? 0]) : null;
         }));
         // Variable (fixed target), comparison, value mode (none, literal, variable), value (high, low), the variable's target.
         yield return new("wf_slc_furni_with_var", new(Meta(1, 1, [2, 0, 0, 0, -10], 2), WithVariable));
@@ -107,6 +130,13 @@ internal static partial class WiredNativeAuxiliaryEditor
 
             // The scalar target follows the picked variable's own target; an unchosen variable keeps the user default.
             var target = 0;
+
+            // The October editor (VariableUpdate) adds the watch mode: 0 the picked variable, 1 the variables of picked
+            // variable boxes. Only the first is implemented here.
+            if (Shape(n, 6, 0, 0, 1) && p[5] == 0) {
+                n = n with { OwnedIntParams = p[..5] };
+                p = n.OwnedIntParams;
+            }
 
             if (!Shape(n, 5, 0, 0, 1) || !Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Is(n.VariableIds[0])
                 && !(Plus.HabboHotel.Items.Wired.Variables.WiredVariableDescription.TryParseCatalogId(n.VariableIds[0], out var picked, out _)
@@ -121,6 +151,14 @@ internal static partial class WiredNativeAuxiliaryEditor
         }));
     }
 
+    /// <summary>
+    /// The October value-or-variable tail: the option (0 value, 1 variable), the reference's AIR target and "same holder",
+    /// which only applies to a variable read on holders of the destination's own kind.
+    /// </summary>
+    private static bool TryReference(int option, int air, int sameHolder, int target, out int reference) =>
+        TryTarget(air, out reference) && option is 0 or 1 && sameHolder is 0 or 1
+        && (sameHolder == 0 || option == 0 || reference == target && target is 0 or 1);
+
     private static WiredNativeEditorMetadata HasVar(bool negative) => Meta(1, 1, [1], 1) with { QuantifierType = 3, Invert = negative, AllowWall = true };
 
     private static WiredConfiguration? HasVarSpec(WiredNativeEditorConfiguration n)
@@ -134,6 +172,12 @@ internal static partial class WiredNativeAuxiliaryEditor
     private static WiredConfiguration? WithVariable(WiredNativeEditorConfiguration n)
     {
         var p = n.OwnedIntParams;
+
+        // The October editor (WithVariable) adds "same holder" as a sixth field; only its off state is implemented here.
+        if (Shape(n, 6, 1, 1, 2) && p[5] == 0) {
+            n = n with { OwnedIntParams = p[..5] };
+            p = n.OwnedIntParams;
+        }
 
         if (!Shape(n, 5, 1, 1, 2) || n.Filter is null || n.Inverse is null || p[0] is < 0 or > 5 || p[1] is < 0 or > 2
             || !TryTarget(p[4], out var target) || p[3] < 0 != (p[2] == -1) || p[2] is not (0 or -1)) {

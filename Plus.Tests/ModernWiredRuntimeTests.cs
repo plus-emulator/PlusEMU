@@ -695,8 +695,12 @@ public class ModernWiredRuntimeTests
         var fields = new List<object>();
         var packet = DispatchProxy.Create<IOutgoingPacket, RecordingProxy>();
         ((RecordingProxy)(object)packet).InvokeMethod = (_, args) => { fields.Add(args![0]!); return null; };
+        // October parser order after the tracking id: receiver room index, bubble width, hideUsername.
         new WiredChatComposer(7, "Hello", 252, 2, true).Compose(packet);
-        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, 5, 2 }, fields);
+        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, 5, 0, 2 }, fields);
+        fields.Clear();
+        new WiredChatComposer(7, "Hello", 252, -1, false, HideUsername: true).Compose(packet);
+        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, 5, -1, -1, true }, fields);
         fields.Clear();
         new WiredMovementComposer(1, 10, 0, 1, 1.25, 2, 2, 3.5, 4, 4, 750).Compose(packet);
         Assert.Equal(new object[] { 1, 1, 0, 1, 2, 2, "1.25", "3.5", 10, 750, 4, false, false }, fields);
@@ -1066,17 +1070,19 @@ public class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void BoxSavedMidFlashFlashesAgainOnItsNextEvent()
+    public void BoxesHoldTheirFlashStateAndFlipOnEachEvent()
     {
+        // Habbo's boxes flip 0 <-> 1 each time they act and hold the state; nothing resets them afterwards.
         var (room, _, _) = World();
         var wired = new WiredComponent(room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance, TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
         var box = MakeItem(100, "wf_act_move_to_dir");
         box.LegacyDataString = "1";
 
         wired.OnEvent(box);
-
-        Assert.True(box.UpdateNeeded);
-        Assert.Equal(2, box.UpdateCounter);
+        Assert.Equal("0", box.LegacyDataString);
+        wired.OnEvent(box);
+        Assert.Equal("1", box.LegacyDataString);
+        Assert.False(box.UpdateNeeded);
     }
 
     [Fact]
@@ -1377,6 +1383,26 @@ public class ModernWiredRuntimeTests
         Assert.True(new WiredMovementActions().Execute("wf_act_move_rotate", new() { IntParams = [raw, 0, 100] }, [item], [], [],
             (_, x, y, _, _) => { moves.Add(new(x, y)); return true; }, (_, _, _, _, _) => false, (_, _) => throw new Exception()));
         Assert.Equal(new Point(dx, dy), Assert.Single(moves));
+    }
+
+    [Fact]
+    public void OneFurniSnapshotGivesItsStateToEveryPickedFurni()
+    {
+        // Match to Snapshot over a selector: a single snapshotted furni's state goes to every furni the source picks;
+        // nothing else of it (position, rotation, altitude) is applied to the others.
+        var snapshotted = MakeItem(1, "tile");
+        var other = MakeItem(2, "tile");
+        var states = new Dictionary<uint, string>();
+        var moves = new List<uint>();
+        var config = new WiredConfiguration
+        {
+            IntParams = [1, 1, 1, 1, 200],
+            Snapshots = [new(1, 1, 3, 4, 0, 2, "3")]
+        };
+        new WiredMovementActions().Execute("wf_act_match_to_sshot", config, [snapshotted, other], [], [],
+            (item, _, _, _, _) => { moves.Add(item.Id); return true; }, (_, _, _, _, _) => false, (item, state) => states[item.Id] = state);
+        Assert.Equal("3", states[2]);
+        Assert.DoesNotContain(2u, moves);
     }
 
     [Theory]
@@ -2126,6 +2152,19 @@ public class ModernWiredRuntimeTests
         Assert.Equal(2, config.IntParams[3]);
         Assert.True(WiredBotActions.FigureWellFormed("hd-180-1.ch-210-66"));
         Assert.False(WiredBotActions.FigureWellFormed("hd-180-script"));
+    }
+
+    [Fact]
+    public void BotTalkKeepsTheOctoberHideNameFieldAndOlderSaves()
+    {
+        // WIN63-202610121709 bot talk editors save [mode, bubble width, hide bot name].
+        Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk", new() { IntParams = [0, 100, -1, 1], Text = "Alice\tHello" }, out var talk, out _));
+        Assert.Equal(1, talk.IntParams[3]);
+        Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk", new() { IntParams = [0, 100, -1], Text = "Alice\tHello" }, out _, out _));
+        Assert.False(WiredBotActions.TryValidate("wf_act_bot_talk", new() { IntParams = [0, 100, -1, 2], Text = "Alice\tHello" }, out _, out _));
+        Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk_to_avatar", new() { IntParams = [1, 11, 100, 2, 1], Text = "Alice\tHello" }, out var direct, out _));
+        Assert.Equal(1, direct.IntParams[4]);
+        Assert.False(WiredBotActions.TryValidate("wf_act_bot_talk_to_avatar", new() { IntParams = [1, 11, 100, 2, 3], Text = "Alice\tHello" }, out _, out _));
     }
 
     [Fact]

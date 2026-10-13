@@ -157,4 +157,26 @@ public class FurnitureWireTests
         public void WriteString(string value) => Writes.Add(value ?? "");
         public void WriteDouble(double value) => Writes.Add(value);
     }
+
+    [Theory]
+    [InlineData("wf_act_give_var", 1, 1)]
+    [InlineData("wf_trg_click_tile", 1, 1)]
+    [InlineData("plain_chair", 1, 0)]
+    [InlineData("plain_lamp", 2, 1)]
+    public void WiredBoxesAreUsableByControllersWhateverTheirModes(string name, int modes, int usage)
+    {
+        // ObjectAdd of wired boxes carries usage policy 1 (controllers); a box imported with one mode must still open.
+        var item = new Item
+        {
+            Id = 1,
+            ExtraData = new Plus.HabboHotel.Items.DataFormat.LegacyDataFormat { Data = "0" },
+            Definition = new()
+            {
+                Type = Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor, ItemName = name, InteractionName = name, PublicName = name, Width = 1, Length = 1, Modes = modes,
+                VendingIds = [], AdjustableHeights = []
+            }
+        };
+
+        Assert.Equal(usage, RoomItemSnapshot.Capture(item).UseButton);
+    }
 }

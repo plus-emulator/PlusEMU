@@ -36,8 +36,9 @@ internal static class WiredNativeActionEditor
         ["wf_act_bot_move"] = Meta([Furni], [BotCodes], [100], [100], []),
         ["wf_act_bot_follow_avatar"] = Meta([], [BotCodes, Users], [], [100, 0], [1]),
         ["wf_act_bot_give_handitem"] = Meta([], [BotCodes, Users], [], [100, 0], [2]),
-        ["wf_act_bot_talk"] = Meta([], [BotCodes], [], [100], [0, -1]),
-        ["wf_act_bot_talk_to_avatar"] = Meta([], [BotCodes, Users], [], [100, 0], [0, -1]),
+        // The October editor saves a third field, "hide bot name" (0/1).
+        ["wf_act_bot_talk"] = Meta([], [BotCodes], [], [100], [0, -1, 0]),
+        ["wf_act_bot_talk_to_avatar"] = Meta([], [BotCodes, Users], [], [100, 0], [0, -1, 0]),
         ["wf_act_bot_clothes"] = Meta([], [BotCodes], [], [100], []),
         ["wf_act_give_reward"] = Meta([], [Users], [], [0], [0, 0, 0, 1]),
         ["wf_act_give_score_tm"] = Meta([], [], [], [], [5, 0, 1]),
@@ -73,7 +74,7 @@ internal static class WiredNativeActionEditor
     {
         runtime = new();
 
-        if (!Supports(name) || native.Delay is not int delay || delay is < 0 or > WiredConfigurationLimits.DelayPulses) {
+        if (!Supports(name) || native.Delay is not int delay || !WiredConfigurationLimits.IsDelay(delay)) {
             return false;
         }
 
@@ -182,19 +183,19 @@ internal static class WiredNativeActionEditor
                 users["bots"] = User(native, 0);
                 break;
             case "wf_act_bot_talk":
-                if (p.Length != 2 || p[0] is < 0 or > 1 || p[1] is < -1 or > 2 || !BotName(text)) {
+                if (p.Length is not (2 or 3) || p[0] is < 0 or > 1 || p[1] is < -1 or > 2 || !HideBotName(p) || !BotName(text)) {
                     return false;
                 }
 
-                parameters = [p[0], User(native, 0), p[1]];
+                parameters = [p[0], User(native, 0), p[1], p.Length == 3 ? p[2] : 0];
                 users["bots"] = User(native, 0);
                 break;
             case "wf_act_bot_talk_to_avatar":
-                if (p.Length != 2 || p[0] is < 0 or > 1 || p[1] is < -1 or > 2 || !BotName(text)) {
+                if (p.Length is not (2 or 3) || p[0] is < 0 or > 1 || p[1] is < -1 or > 2 || !HideBotName(p) || !BotName(text)) {
                     return false;
                 }
 
-                parameters = [p[0], User(native, 1), User(native, 0), p[1]];
+                parameters = [p[0], User(native, 1), User(native, 0), p[1], p.Length == 3 ? p[2] : 0];
                 users["users"] = User(native, 1);
                 users["bots"] = User(native, 0);
                 break;
@@ -411,6 +412,8 @@ internal static class WiredNativeActionEditor
 
         return raw is -1 or >= 0 and <= 7 or 9 or 10;
     }
+
+    private static bool HideBotName(ImmutableArray<int> p) => p.Length < 3 || p[2] is 0 or 1;
 
     private static bool BotName(string text) => text.Split('\t', 2)[0].Length <= 64;
 

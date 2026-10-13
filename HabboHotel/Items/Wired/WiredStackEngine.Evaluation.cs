@@ -323,8 +323,15 @@ internal sealed partial class WiredStackEngine
 
         foreach (var selector in stack.OfType<IWiredContextualSelector>().Where(RuntimeSupported)) {
             var passed = false;
-            yield return new(() => passed = InvokeRuntime(selector, context, () =>
-            { ComposeSelector(context, selector.Select(context)); return true; }));
+            yield return new(() =>
+            {
+                passed = InvokeRuntime(selector, context, () => { ComposeSelector(context, selector.Select(context)); return true; });
+
+                // A selector flashes each time its stack runs it.
+                if (passed) {
+                    Flash(selector);
+                }
+            });
 
             if (!passed) {
                 yield break;
@@ -466,7 +473,7 @@ internal sealed partial class WiredStackEngine
         {
             context.VariableChanges = context.Policy.Addons.ExecuteInOrder ? null : new WiredVariableChangeBatch();
             firing.Accepted = ScheduleActions(firing.Source, stack, ready.ToArray(), legacy,
-                action => action is IWiredConfiguredItem configured ? context.ConfigurationOf(configured).Delay * 500L : GetDelay(action),
+                action => action is IWiredConfiguredItem configured ? WiredConfigurationLimits.DelayMilliseconds(context.ConfigurationOf(configured).Delay) : GetDelay(action),
                 firing.FiredAt, prepared: true);
 
             if (firing.Accepted) {

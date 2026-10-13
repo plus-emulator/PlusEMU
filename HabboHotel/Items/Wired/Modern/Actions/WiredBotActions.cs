@@ -60,14 +60,15 @@ public static class WiredBotActions
                 u["bots"] = p[2];
                 break;
             case "wf_act_bot_talk":
-                if (p.Length != 3 || p[0] is < 0 or > 1 || !Source(1) || p[2] is < -1 or > 2) {
+                if (p.Length is not (3 or 4) || p[0] is < 0 or > 1 || !Source(1) || p[2] is < -1 or > 2 || p.Length == 4 && p[3] is not (0 or 1)) {
                     return false;
                 }
 
                 u["bots"] = p[1];
                 break;
             case "wf_act_bot_talk_to_avatar":
-                if (p.Length != 4 || p[0] is < 0 or > 1 || !User(1) || !Source(2) || p[3] is < -1 or > 2) {
+                if (p.Length is not (4 or 5) || p[0] is < 0 or > 1 || !User(1) || !Source(2) || p[3] is < -1 or > 2
+                    || p.Length == 5 && p[4] is not (0 or 1)) {
                     return false;
                 }
 
@@ -223,6 +224,7 @@ public static class WiredBotActions
 
                     var formatted = context.Policy.FormatText(context, text.Replace("%name%", botData.Name, StringComparison.Ordinal));
                     var width = p[name == "wf_act_bot_talk" ? 2 : 3];
+                    var hideName = p.Length > (name == "wf_act_bot_talk" ? 3 : 4) && p[name == "wf_act_bot_talk" ? 3 : 4] == 1;
 
                     if (name == "wf_act_bot_talk_to_avatar" && p[0] == 1) {
                         foreach (var user in users) {
@@ -232,12 +234,12 @@ public static class WiredBotActions
                                 continue;
                             }
 
-                            client.Send(new WiredChatComposer(bot.VirtualId, formatted, botData.ChatBubble, width, true));
+                            client.Send(new WiredChatComposer(bot.VirtualId, formatted, botData.ChatBubble, width, true, HideUsername: hideName));
                             changed = true;
                         }
                     }
                     else {
-                        context.Room.SendPacket(new WiredChatComposer(bot.VirtualId, formatted, botData.ChatBubble, width, false, name == "wf_act_bot_talk" && p[0] == 1));
+                        context.Room.SendPacket(new WiredChatComposer(bot.VirtualId, formatted, botData.ChatBubble, width, false, name == "wf_act_bot_talk" && p[0] == 1, hideName));
                         changed = true;
                     }
                 }

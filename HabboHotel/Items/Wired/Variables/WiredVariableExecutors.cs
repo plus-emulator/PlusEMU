@@ -48,8 +48,9 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         tokens = ["", ""];
         var ids = configuration.VariableIds;
         var operand = name is "wf_act_change_var_val" or "wf_cnd_var_val_match";
+        var reference = ReferenceSlot(name, p);
 
-        if (ids.Length != (operand ? 2 : 1) || !Enum.IsDefined((WiredVariableTarget)p[0])) {
+        if (ids.Length != (operand || reference is not null ? 2 : 1) || !Enum.IsDefined((WiredVariableTarget)p[0])) {
             return false;
         }
 
@@ -79,8 +80,38 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return Enum.IsDefined((WiredVariableTarget)p[4]) && Resolve(ids[1], p[4], out tokens[1]);
         }
 
+        if (reference is { } slot && p[slot.Option] == 1) {
+            return Enum.IsDefined((WiredVariableTarget)p[slot.Target]) && Resolve(ids[1], p[slot.Target], out tokens[1]);
+        }
+
         return true;
     }
+
+    /// <summary>
+    /// The October Give Variable and Variable Age layouts add "from a variable": the option's index and the reference
+    /// variable's target index. Older saves have neither.
+    /// </summary>
+    private static (int Option, int Target)? ReferenceSlot(string name, System.Collections.Immutable.ImmutableArray<int> p) => name switch
+    {
+        "wf_act_give_var" when p.Length == GiveExtended => (5, 6),
+        "wf_cnd_var_age_match" when p.Length == AgeExtended => (7, 8),
+        _ => null
+    };
+
+    // Runtime layouts written for the October editors: the older count plus their new fields.
+    private const int GiveExtended = 8;
+    private const int ChangeExtended = 10;
+    private const int ValueMatchExtended = 11;
+    private const int AgeExtended = 10;
+
+    /// <summary>"Same holder": the reference variable is read on each destination holder rather than from its own source.</summary>
+    private static bool SameHolder(string name, System.Collections.Immutable.ImmutableArray<int> p) => name switch
+    {
+        "wf_act_give_var" => p.Length == GiveExtended && p[5] == 1 && p[7] == 1,
+        "wf_act_change_var_val" => p.Length == ChangeExtended && p[2] == 1 && p[9] == 1,
+        "wf_cnd_var_val_match" => p.Length == ValueMatchExtended && p[2] == 1 && p[9] == 1,
+        _ => false
+    };
 
     private static bool TryDecode(string name, WiredConfiguration configuration, out System.Collections.Immutable.ImmutableArray<int> core, out long literal)
     {
@@ -96,16 +127,26 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             "wf_cnd_var_age_match" => 8,
             _ => -1
         };
+        var extended = name switch
+        {
+            "wf_act_give_var" => GiveExtended,
+            "wf_act_change_var_val" => ChangeExtended,
+            "wf_cnd_var_val_match" => ValueMatchExtended,
+            "wf_cnd_var_age_match" => AgeExtended,
+            _ => -1
+        };
         var literalIndex = name switch { "wf_act_give_var" => 2, "wf_act_change_var_val" or "wf_cnd_var_val_match" => 3, _ => -1 };
 
-        if (core.Length == count + 2 && literalIndex >= 0 && core[count] == 1) {
-            literal = ((long)core[count + 1] << 32) | (uint)core[literalIndex];
-            core = core[..count];
+        foreach (var length in extended < 0 ? [count] : new[] { count, extended }) {
+            if (core.Length == length + 2 && literalIndex >= 0 && core[length] == 1) {
+                literal = ((long)core[length + 1] << 32) | (uint)core[literalIndex];
+                core = core[..length];
 
-            return true;
+                return true;
+            }
         }
 
-        if (core.Length != count) {
+        if (core.Length != count && core.Length != extended) {
             return false;
         }
 
@@ -158,6 +199,27 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
+        if (ReferenceSlot(name, p) is { } slot && (p[slot.Option] is not (0 or 1) || !Enum.IsDefined((WiredVariableTarget)p[slot.Target])
+            || p[slot.Option] == 1 && !ValidToken(tokens[1]))) {
+            return false;
+        }
+
+        // Same holder reads the reference on the destination's own holders, so both must be of one user or furni kind.
+        var sameIndex = name switch
+        {
+            "wf_act_give_var" when p.Length == GiveExtended => 7,
+            "wf_act_change_var_val" when p.Length == ChangeExtended => 9,
+            "wf_cnd_var_val_match" when p.Length == ValueMatchExtended => 9,
+            _ => -1
+        };
+        var referenceTarget = name == "wf_act_give_var" ? 6 : 4;
+        var option = name == "wf_act_give_var" ? 5 : 2;
+
+        if (sameIndex >= 0 && (p[sameIndex] is not (0 or 1) || p[sameIndex] == 1 && (p[option] != 1 || p[referenceTarget] != p[0]
+            || (WiredVariableTarget)p[0] is not (WiredVariableTarget.User or WiredVariableTarget.Furni)))) {
+            return false;
+        }
+
         if (name.StartsWith("wf_cnd_", StringComparison.Ordinal) && p[^1] is not (0 or 1)) {
             return false;
         }
@@ -200,12 +262,36 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         };
         var targets = Select(frame, reference.Target, p[sourceStart], p[sourceStart + 1], Picks(configuration, p[sourceStart + 1])).ToArray();
 
+        var operandReference = ReferenceSlot(name, p) is { } slot && p[slot.Option] == 1
+            ? new WiredVariableReference((WiredVariableTarget)p[slot.Target], tokens[1]) : (WiredVariableReference?)null;
+        var sameHolder = SameHolder(name, p);
+
         if (name is "wf_act_give_var" or "wf_act_remove_var") {
             var mutation = name == "wf_act_remove_var" ? WiredVariableMutation.Remove : p[1] == 1 ? WiredVariableMutation.Replace : WiredVariableMutation.Give;
             var changed = false;
+            var initial = literal;
+
+            // Given from a variable: its value on each holder itself, or the first value its reference holders have.
+            if (operandReference is { } given && !sameHolder) {
+                if (FirstValue(configuration, given, p[3], p[4], frame) is not { } first) {
+                    return false;
+                }
+
+                initial = first;
+            }
 
             foreach (var target in targets) {
-                changed |= variables.Mutate(reference, target, mutation, name == "wf_act_remove_var" ? 0 : literal, frame);
+                var value = initial;
+
+                if (operandReference is { } own && sameHolder) {
+                    if (variables.Read(own, target, frame) is not { } held) {
+                        continue;
+                    }
+
+                    value = held.Value;
+                }
+
+                changed |= variables.Mutate(reference, target, mutation, name == "wf_act_remove_var" ? 0 : value, frame);
             }
 
             return changed;
@@ -226,7 +312,18 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         if (name == "wf_cnd_var_age_match") {
             // Octane duration units: milliseconds, seconds, minutes, hours, days, weeks, months, years.
             long[] units = [1, 1000, 60000, 3600000, 86400000, 604800000, 2592000000, 31536000000];
-            var durationTicks = (decimal)p[3] * units[p[4]] * TimeSpan.TicksPerMillisecond;
+            long duration = p[3];
+
+            // The October editor can read the duration, in the chosen unit, from a variable.
+            if (operandReference is { } timeout) {
+                if (FirstValue(configuration, timeout, p[5], p[6], frame) is not { } read) {
+                    return false;
+                }
+
+                duration = read;
+            }
+
+            var durationTicks = (decimal)duration * units[p[4]] * TimeSpan.TicksPerMillisecond;
             var now = clock.GetUtcNow();
 
             return Quantify(targets.Select(target =>
@@ -250,14 +347,31 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         }
 
         var operands = new List<(WiredVariableHolder Holder, long Value)>();
+        var unary = name == "wf_act_change_var_val" && WiredVariableArithmetic.IsUnary(p[1]);
 
-        if (p[2] == 1 && !(name == "wf_act_change_var_val" && WiredVariableArithmetic.IsUnary(p[1]))) {
-            var operandReference = new WiredVariableReference((WiredVariableTarget)p[4], tokens[1]);
+        // Same holder: each destination holder supplies its own operand from the reference variable.
+        if (sameHolder && !unary) {
+            var own = new WiredVariableReference((WiredVariableTarget)p[4], tokens[1]);
+            using var ownReads = variables.CaptureReads([own], frame);
+            var paired = targets.Select(target => (Target: target, Operand: ownReads.Read(own, target, frame)))
+                .Where(pair => pair.Operand is not null).Select(pair => (pair.Target, pair.Operand!.Value)).ToArray();
+
+            if (name == "wf_cnd_var_val_match") {
+                // A holder without the reference variable does not match.
+                return Quantify(targets.Select(target => ownReads.Read(own, target, frame) is { } operandValue
+                    && variables.Read(reference, target, frame) is { } value && WiredVariablePredicates.Compare(p[1], value.Value, operandValue.Value)), p[^1]);
+            }
+
+            return ChangeEach(reference, paired, p[1], frame);
+        }
+
+        if (p[2] == 1 && !unary) {
+            var operandVariable = new WiredVariableReference((WiredVariableTarget)p[4], tokens[1]);
             var picked = Picks(configuration, p[8]);
-            using var reads = variables.CaptureReads([operandReference], frame);
+            using var reads = variables.CaptureReads([operandVariable], frame);
 
-            foreach (var source in Select(frame, operandReference.Target, p[7], p[8], picked)) {
-                if (reads.Read(operandReference, source, frame) is { } value) {
+            foreach (var source in Select(frame, operandVariable.Target, p[7], p[8], picked)) {
+                if (reads.Read(operandVariable, source, frame) is { } value) {
                     operands.Add((source, value.Value));
                 }
             }
@@ -274,20 +388,41 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
                 && WiredVariablePredicates.Compare(p[1], value.Value, operand)), p[^1]);
         }
 
+        return ChangeEach(reference, targets.Select(target => (target, operand)).ToArray(), p[1], frame);
+    }
+
+    private bool ChangeEach(WiredVariableReference reference, (WiredVariableHolder Target, long Operand)[] targets, int operation,
+        WiredVariableFrame frame)
+    {
         var any = false;
 
-        for (var index = 0; index < targets.Length; index++) {
+        foreach (var (target, operand) in targets) {
             if (frame.VariableChanges is { } batch) {
                 // Presence is judged when the batch flushes, so a Change may run ahead of the Give that creates it.
-                batch.Add(variables, reference, targets[index], p[1], operand, frame);
-                any |= variables.Read(reference, targets[index], frame) is not null;
+                batch.Add(variables, reference, target, operation, operand, frame);
+                any |= variables.Read(reference, target, frame) is not null;
             }
             else {
-                any |= variables.Change(reference, targets[index], WiredVariableMutation.Set, current => WiredVariableArithmetic.Apply(p[1], current, operand), frame, notifyUnchanged: true);
+                any |= variables.Change(reference, target, WiredVariableMutation.Set, current => WiredVariableArithmetic.Apply(operation, current, operand), frame, notifyUnchanged: true);
             }
         }
 
         return any;
+    }
+
+    /// <summary>The first value a reference variable has among the holders its source picks.</summary>
+    private long? FirstValue(WiredConfiguration configuration, WiredVariableReference reference, int userSource, int furniSource,
+        WiredVariableFrame frame)
+    {
+        using var reads = variables.CaptureReads([reference], frame);
+
+        foreach (var source in Select(frame, reference.Target, userSource, furniSource, Picks(configuration, furniSource))) {
+            if (reads.Read(reference, source, frame) is { } value) {
+                return value.Value;
+            }
+        }
+
+        return null;
     }
 
     internal static IEnumerable<uint> Picks(WiredConfiguration configuration, int source) =>

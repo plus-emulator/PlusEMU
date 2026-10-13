@@ -15,6 +15,9 @@ public sealed record WiredEditorSnapshot(
     /// <summary>The shared variables a reference box may point at; null for every other form.</summary>
     public ImmutableArray<Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable>? SharedVariables { get; init; }
 
+    /// <summary>Context section 7 for message editors (Show Message, bot talk); null for every other form.</summary>
+    public Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders? TextPlaceholders { get; init; }
+
     public static WiredEditorSnapshot Capture(IWiredConfiguredItem box)
     {
         var configuration = box.Configuration;
@@ -33,7 +36,9 @@ public sealed record WiredEditorSnapshot(
             Native = native,
             CatalogHash = hash,
             SharedVariables = box.Descriptor.CanonicalName == "wf_var_reference"
-                ? [.. box.Instance.GetWired().Variables.Module.ListShared().Select(Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable.Project)] : null
+                ? [.. box.Instance.GetWired().Variables.Module.ListShared().Select(Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable.Project)] : null,
+            TextPlaceholders = Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Applies(box.Descriptor.CanonicalName)
+                ? Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Capture(box) : null
         };
     }
 }

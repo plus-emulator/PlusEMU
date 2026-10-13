@@ -146,7 +146,8 @@ public static class WiredLegacyProtocol
     public static void Write(IOutgoingPacket packet, uint itemId, int spriteId, WiredBoxDescriptor descriptor,
         WiredConfiguration configuration, int furniLimit, IReadOnlyList<int> blockedItems,
         WiredNativeEditorConfiguration? editor = null, int? catalogHash = null,
-        IReadOnlyList<Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable>? sharedVariables = null)
+        IReadOnlyList<Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable>? sharedVariables = null,
+        Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders? textPlaceholders = null)
     {
         editor ??= configuration.Origin?.Native;
 
@@ -201,7 +202,7 @@ public static class WiredLegacyProtocol
 
         // One context entry (type 0, the room's variable catalog) carries its hash; the client synchronizes the catalog by it.
         // Zero is the "unknown, request it" hint and is also what a failed capture sends. Cards without pickers carry no context.
-        packet.WriteInteger((catalogHash is null ? 0 : 1) + (sharedVariables is null ? 0 : 1));
+        packet.WriteInteger((catalogHash is null ? 0 : 1) + (sharedVariables is null ? 0 : 1) + (textPlaceholders is null ? 0 : 1));
 
         if (catalogHash is { } hash) {
             packet.WriteInteger(0);
@@ -217,6 +218,22 @@ public static class WiredLegacyProtocol
                 packet.WriteInteger(checked((int)shared.RoomId));
                 packet.WriteString(shared.RoomName);
                 shared.Variable.Write(packet, false);
+            }
+        }
+
+        // Context 7: the message editor's placeholder names, then the stack's capturer names.
+        if (textPlaceholders is not null) {
+            packet.WriteInteger(Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.ContextType);
+            packet.WriteInteger(textPlaceholders.PlaceholderNames.Length);
+
+            foreach (var name in textPlaceholders.PlaceholderNames) {
+                packet.WriteString(name);
+            }
+
+            packet.WriteInteger(textPlaceholders.CapturerNames.Length);
+
+            foreach (var name in textPlaceholders.CapturerNames) {
+                packet.WriteString(name);
             }
         }
 

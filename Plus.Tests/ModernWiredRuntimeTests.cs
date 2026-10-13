@@ -695,8 +695,12 @@ public class ModernWiredRuntimeTests
         var fields = new List<object>();
         var packet = DispatchProxy.Create<IOutgoingPacket, RecordingProxy>();
         ((RecordingProxy)(object)packet).InvokeMethod = (_, args) => { fields.Add(args![0]!); return null; };
+        // October parser order after the tracking id: receiver room index, bubble width, hideUsername.
         new WiredChatComposer(7, "Hello", 252, 2, true).Compose(packet);
-        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, 5, 2 }, fields);
+        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, 5, 0, 2 }, fields);
+        fields.Clear();
+        new WiredChatComposer(7, "Hello", 252, -1, false, HideUsername: true).Compose(packet);
+        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, 5, -1, -1, true }, fields);
         fields.Clear();
         new WiredMovementComposer(1, 10, 0, 1, 1.25, 2, 2, 3.5, 4, 4, 750).Compose(packet);
         Assert.Equal(new object[] { 1, 1, 0, 1, 2, 2, "1.25", "3.5", 10, 750, 4, false, false }, fields);
@@ -2126,6 +2130,19 @@ public class ModernWiredRuntimeTests
         Assert.Equal(2, config.IntParams[3]);
         Assert.True(WiredBotActions.FigureWellFormed("hd-180-1.ch-210-66"));
         Assert.False(WiredBotActions.FigureWellFormed("hd-180-script"));
+    }
+
+    [Fact]
+    public void BotTalkKeepsTheOctoberHideNameFieldAndOlderSaves()
+    {
+        // WIN63-202610121709 bot talk editors save [mode, bubble width, hide bot name].
+        Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk", new() { IntParams = [0, 100, -1, 1], Text = "Alice\tHello" }, out var talk, out _));
+        Assert.Equal(1, talk.IntParams[3]);
+        Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk", new() { IntParams = [0, 100, -1], Text = "Alice\tHello" }, out _, out _));
+        Assert.False(WiredBotActions.TryValidate("wf_act_bot_talk", new() { IntParams = [0, 100, -1, 2], Text = "Alice\tHello" }, out _, out _));
+        Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk_to_avatar", new() { IntParams = [1, 11, 100, 2, 1], Text = "Alice\tHello" }, out var direct, out _));
+        Assert.Equal(1, direct.IntParams[4]);
+        Assert.False(WiredBotActions.TryValidate("wf_act_bot_talk_to_avatar", new() { IntParams = [1, 11, 100, 2, 3], Text = "Alice\tHello" }, out _, out _));
     }
 
     [Fact]

@@ -7,6 +7,8 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// <summary>Native records own editor data; runtime fields are checked immutable projections.</summary>
 public static class WiredNativeEditorProjection
 {
+    // The October Show Message editor: TextAreaParam(40, -1, 8, -1, 400), eight lines of at most 400 characters.
+    private const int ShowMessageMaxCharacters = 400;
     private static readonly int[] ShowStyles = [34, 200, 201, 202, 210, 211, 212, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 250, 251, 252];
 
     private static readonly HashSet<string> BuiltIn = ["wf_trg_says_something", "wf_trg_walks_on_furni", "wf_trg_periodically",
@@ -172,7 +174,7 @@ public static class WiredNativeEditorProjection
                 break;
             case "wf_act_show_message":
                 if (p.Length != 3 || p[0] is < 0 or > 1 || !ShowStyles.Contains(p[1]) || p[2] is < -1 or > 2
-                    || native.Text.Length > 200 || native.Text.Replace("\r\n", "\n").Replace('\r', '\n').Count(c => c == '\n') >= 8) {
+                    || native.Text.Length > ShowMessageMaxCharacters || native.Text.Replace("\r\n", "\n").Replace('\r', '\n').Count(c => c == '\n') >= 8) {
                     return false;
                 }
 

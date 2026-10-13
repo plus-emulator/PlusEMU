@@ -79,11 +79,11 @@ internal static partial class WiredNativeTestSupport
                 users = [At(2, UserRole("bots", 100)), At(1, UserRole("users", 0))];
                 break;
             case "wf_act_bot_talk":
-                owned = [At(0), At(2, -1)];
+                owned = p.Length > 3 ? [At(0), At(2, -1), At(3)] : [At(0), At(2, -1)];
                 users = [At(1, UserRole("bots", 100))];
                 break;
             case "wf_act_bot_talk_to_avatar":
-                owned = [At(0), At(3, -1)];
+                owned = p.Length > 4 ? [At(0), At(3, -1), At(4)] : [At(0), At(3, -1)];
                 users = [At(2, UserRole("bots", 100)), At(1, UserRole("users", 0))];
                 break;
             case "wf_act_bot_clothes":

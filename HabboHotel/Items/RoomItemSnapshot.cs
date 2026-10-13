@@ -46,6 +46,10 @@ public sealed record RoomItemSnapshot(
         }
     }
 
+    // AIR usage policy: 0 nobody, 1 room controllers, 2 everybody. Wired boxes are always used (their editor opened) by
+    // those with rights, whatever states their furni definition declares.
+    private static int UsagePolicy(ItemDefinition definition) => definition.WiredDescriptor != null || definition.Modes > 1 ? 1 : 0;
+
     private static RoomItemSnapshot CaptureLocked(Item item)
     {
         var definition = item.Definition;
@@ -76,7 +80,7 @@ public sealed record RoomItemSnapshot(
             z.ToString(CultureInfo.InvariantCulture), definition.Height.ToString(CultureInfo.InvariantCulture), extra,
             data, item.UniqueNumber, item.UniqueSeries, item.WallCoordinates ?? "",
             type == InteractionType.Postit ? legacy.Split(' ')[0] : legacy,
-            definition.Modes > 1 ? 1 : 0, item.UserId, item.Username ?? "",
+            UsagePolicy(definition), item.UserId, item.Username ?? "",
             new(definition.Stackable, definition.IsSeat, type == InteractionType.Bed, definition.Walkable, definition.Width, definition.Length));
     }
 }

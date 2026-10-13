@@ -301,6 +301,15 @@ public partial class PlacedFurniRoomTests
         Assert.Null(Read("@projectile.animation.is_travelling"));
     }
 
+    [Theory]
+    [InlineData(0, 1, 40)]
+    [InlineData(1, 1, 33)]
+    [InlineData(1, 4, 36)]
+    [InlineData(2, 1, 40)]
+    [InlineData(2, 4, 43)]
+    public void JoinTeamWearsTheTeamEffectOfItsGameType(int type, int team, int effect) =>
+        Assert.Equal(effect, Plus.HabboHotel.Items.Wired.Modern.Actions.WiredGameState.TeamEffect(type, (Plus.HabboHotel.Rooms.Games.Teams.Team)team));
+
     [Fact]
     public void TeamTypeUsesKnownJoinAndNativeMembershipAndNeverGuessesFromColor()
     {

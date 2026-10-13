@@ -441,7 +441,20 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 foreach (var user in Users(context, config, "users")) {
                     changed |= name == "wf_act_join_team"
-                        ? WiredGameState.For(context.Room).Join(context.Room, user, Param(config, 0), (Team)Param(config, 1), Param(config, 3), context.Targets.AllUsers())
+                        ? WiredGameState.For(context.Room).Join(context.Room, user, Param(config, 0), (Team)Param(config, 1), Param(config, 3), context.Targets.AllUsers(),
+                            (member, team, effect) =>
+                            {
+                                void Apply()
+                                {
+                                    if (member.IsAttachedTo(context.Room) && member.Team == team) {
+                                        member.ApplyEffect(effect);
+                                    }
+                                }
+
+                                if (!context.Room.GetWired().ScheduleAux(context, WiredGameState.JoinEffectDelayMilliseconds, Apply)) {
+                                    Apply();
+                                }
+                            })
                         : WiredGameState.For(context.Room).Leave(context.Room, user);
                 }
 

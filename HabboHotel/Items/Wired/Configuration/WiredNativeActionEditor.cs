@@ -11,6 +11,8 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 internal static class WiredNativeActionEditor
 {
     private static readonly int[] Furni = [0, 100, 200, 201];
+    // Observed on hhus: Remove Furni offers 0/200/201 with 200 selected, and refuses the selected-furni source 100.
+    private static readonly int[] RemoveFurniSources = [0, 200, 201];
     private static readonly int[] FurniAndSnapshot = [0, 100, 101, 200, 201];
     private static readonly int[] SignalFurni = [0, 100, 101, 200, 201];
     private static readonly int[] Users = [0, 10, 11, 200, 201];
@@ -55,7 +57,7 @@ internal static class WiredNativeActionEditor
         {
             VariableDefaults = [WiredVariableAbsent.Id, WiredVariableAbsent.Id]
         },
-        ["wf_act_remove_furni"] = Meta([Furni], [], [100], [], []),
+        ["wf_act_remove_furni"] = Meta([RemoveFurniSources], [], [200], [], []),
         ["wf_act_adjust_clock"] = Meta([Furni], [], [100], [], [0, 0, 0, 0]),
         ["wf_act_neg_send_signal"] = Meta([SignalFurni, SignalFurni], [SignalUsers], [100, 200], [200], [0, 0]),
         ["wf_act_log"] = Meta([], [], [], [], [0]),

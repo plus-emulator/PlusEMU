@@ -121,7 +121,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         }));
     }
 
-    private static WiredNativeEditorMetadata HasVar(bool negative) => Meta(1, 1, [1], 1) with { QuantifierType = 3, Invert = negative };
+    private static WiredNativeEditorMetadata HasVar(bool negative) => Meta(1, 1, [1], 1) with { QuantifierType = 3, Invert = negative, AllowWall = true };
 
     private static WiredConfiguration? HasVarSpec(WiredNativeEditorConfiguration n)
     {

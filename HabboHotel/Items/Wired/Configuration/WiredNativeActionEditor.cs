@@ -23,7 +23,7 @@ internal static class WiredNativeActionEditor
     private static readonly Dictionary<string, WiredNativeEditorMetadata> Known = new(StringComparer.Ordinal)
     {
         ["wf_act_toggle_state"] = Meta([Furni], [], [100], [], [0]),
-        ["wf_act_toggle_to_rnd"] = Meta([Furni], [], [100], [], []),
+        ["wf_act_toggle_to_rnd"] = Meta([Furni], [], [100], [], [], true),
         ["wf_act_reset_timers"] = Meta([], [], [], [], []),
         ["wf_act_call_stacks"] = Meta([Furni], [], [100], [], []),
         ["wf_act_neg_call_stacks"] = Meta([Furni], [], [100], [], []),

@@ -53,7 +53,7 @@ public static class WiredNativeEditorProjection
         "wf_act_set_altitude" => new([[0, 100, 200, 201]], [], [100], [], [0, 0], true),
         "wf_act_send_signal" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201]], [100, 200], [200], [0, 0], false),
         // This is the reviewed executable local subset, not an official Group metadata oracle.
-        "wf_act_move_furni_as_group" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201]], [100, 101], [0], [1, 0, 0], false),
+        "wf_act_move_furni_as_group" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201]], [100, 0], [0], [1, 0, 0], true),
         _ => CategoryMetadata(name)
     };
 

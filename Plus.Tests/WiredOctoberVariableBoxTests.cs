@@ -97,6 +97,22 @@ public sealed class WiredOctoberVariableBoxTests
         Assert.False(executor.Execute("wf_cnd_var_age_match", Config([1, 0, 0, 0, 1, 0, 0, 1, 1, 0], "furni:10", "furni:12"), frame));
     }
 
+    [Theory]
+    [InlineData("-120", WiredVariableTarget.Furni, "internal:@position.x")]
+    [InlineData("-230", WiredVariableTarget.User, "internal:@position.x")]
+    [InlineData("-300", WiredVariableTarget.Global, "internal:@furni_count")]
+    [InlineData("-420", WiredVariableTarget.Context, "internal:@event.signal.antenna_id")]
+    [InlineData("~131", WiredVariableTarget.Furni, "internal:~chest.locked")]
+    public void HabboBuiltInIdsNameOurBuiltInTokens(string id, WiredVariableTarget target, string token)
+    {
+        // hhus WiredAllVariablesDiffs, WIN63-202610121709: 162 built-in and smart variables with fixed ids.
+        Assert.Equal(162, WiredHabboVariableIds.Count);
+        Assert.True(WiredVariableDescription.TryParseCatalogId(id, out var parsed, out var parsedToken));
+        Assert.Equal((target, token), (parsed, parsedToken));
+        Assert.Equal(id, WiredHabboVariableIds.IdOf(target, token));
+        Assert.False(WiredVariableDescription.TryParseCatalogId("-99999", out _, out _));
+    }
+
     private static int[] Defaults(string name) => [.. WiredNativeEditorProjection.Metadata(name).OwnedDefaults];
 
     private static WiredConfiguration Config(int[] ints, params string[] ids) => new() { IntParams = [.. ints], VariableIds = [.. ids] };

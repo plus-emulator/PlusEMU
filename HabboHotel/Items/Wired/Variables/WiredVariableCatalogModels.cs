@@ -39,6 +39,11 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
         token = "";
         target = default;
 
+        // Habbo's own ids for built-in and smart variables ("-120", "~131").
+        if (id is ['-' or '~', ..]) {
+            return WiredHabboVariableIds.TryResolve(id, out target, out token);
+        }
+
         foreach (var candidate in Enum.GetValues<WiredVariableTarget>()) {
             var prefix = CatalogPrefix(candidate);
 

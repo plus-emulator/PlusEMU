@@ -130,5 +130,7 @@ public enum InteractionType
     WiredContractPayment,
     WiredContractTrade,
     WiredContractReward,
-    WiredRoomLinker
+    WiredRoomLinker,
+    WiredLabel,
+    WiredLink
 }

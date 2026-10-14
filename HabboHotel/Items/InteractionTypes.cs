@@ -38,6 +38,10 @@ public static class InteractionTypes
                 return InteractionType.WiredContractReward;
             case "wired_room_linker":
                 return InteractionType.WiredRoomLinker;
+            case "wired_label":
+                return InteractionType.WiredLabel;
+            case "wired_link":
+                return InteractionType.WiredLink;
             case "":
             case "default":
                 return InteractionType.None;

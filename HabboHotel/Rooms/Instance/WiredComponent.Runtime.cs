@@ -169,6 +169,11 @@ public partial class WiredComponent
             Chests.Refresh(item);
         }
 
+        if (Plus.HabboHotel.Items.Wired.Labels.WiredLabel.IsLabel(item) && !item.IsTemporary
+            && ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item)) {
+            LabelAttached(item);
+        }
+
         if (WiredCounterController.Recognizes(item) && ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item)
             && (!_counterItems.TryGetValue(item.Id, out var previous) || !ReferenceEquals(previous, item))) {
             _counterItems[item.Id] = item;
@@ -191,6 +196,11 @@ public partial class WiredComponent
     {
         _highscores?.Invalidate();
         ForgetFxItem(item);
+
+        if (Plus.HabboHotel.Items.Wired.Labels.WiredLabel.IsLabel(item)) {
+            LabelDetached(item);
+        }
+
         _counters.Forget(item);
         WiredProjectileFlights.For(_room).Forget(item);
 

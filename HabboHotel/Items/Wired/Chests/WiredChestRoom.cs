@@ -529,7 +529,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         }
 
         if (session.Contract != null) {
-            Fail(session.Actor, session.SourceId, reason, notify: false);
+            Fail(session.Actor, session.SourceId, reason, notify: false, cancelledByWired: session.CancelAt != null);
         }
     }
     public void Outcome(RoomUser actor, uint sourceId, WiredChestTransferResult result, bool notifyFailure = true)
@@ -541,13 +541,13 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             Fail(actor, sourceId, result.Failure!.Value, notifyFailure);
         }
     }
-    public void Fail(RoomUser actor, uint sourceId, WiredChestFailure reason, bool notify = true)
+    public void Fail(RoomUser actor, uint sourceId, WiredChestFailure reason, bool notify = true, bool cancelledByWired = false)
     {
         if (notify) {
             actor.GetClient()?.Send(new WiredChestTradeEndComposer(reason));
         }
 
-        publish(new(WiredEventKind.TransactionFail) { Actor = actor, EventItem = room.GetRoomItemHandler().GetItem(sourceId), SourceId = sourceId, Code = (int)reason });
+        publish(new(WiredEventKind.TransactionFail) { Actor = actor, EventItem = room.GetRoomItemHandler().GetItem(sourceId), SourceId = sourceId, Code = (int)reason, CancelledByWired = cancelledByWired });
     }
     public void Lock(GameClient client, bool locked, bool all)
     {

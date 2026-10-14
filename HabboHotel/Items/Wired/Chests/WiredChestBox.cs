@@ -266,7 +266,12 @@ public sealed class WiredChestTrigger(Room room, Item item, WiredBoxDescriptor d
     {
         var selected = context.ConfigurationOf(this).SelectedItems;
 
-        return selected.Length == 0 || selected.Contains(context.Event.SourceId) || context.Event.EventItem is { } source && selected.Contains(source.Id);
+        // Observed on hhus: a fail trigger with no source selected does not fire for a session that wired cancelled.
+        if (selected.Length == 0) {
+            return !context.Event.CancelledByWired;
+        }
+
+        return selected.Contains(context.Event.SourceId) || context.Event.EventItem is { } source && selected.Contains(source.Id);
     }
 }
 

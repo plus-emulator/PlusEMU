@@ -22,6 +22,8 @@ public sealed record WiredRuntimeEvent(WiredEventKind Kind)
     public int ChatStyle { get; init; }
     public int Action { get; init; }
     public int Code { get; init; }
+    /// <summary>A transaction failure caused by a Cancel Transaction effect.</summary>
+    public bool CancelledByWired { get; init; }
     public WiredVariableChange? VariableChange { get; init; }
     public long PreviousValue { get; init; }
     public long Value { get; init; }

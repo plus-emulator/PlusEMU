@@ -26,7 +26,7 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         var player = world.AddPlayer();
         var chest = world.AddChest(WiredChestKind.Furni);
         var contract = world.AddContract(WiredContractKind.Payment, Pays());
-        var stacks = Initiate(world, player, [chest], [contract]);
+        var stacks = Initiate(world, player, [chest], [contract], failSelectsContracts: true);
         AddCancel(world, false, contract);
         var item = player.Give(G1World.Furni(201));
         world.Fire(Enter(player));
@@ -52,6 +52,25 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         Assert.True(player.Owns(item.Id));
         Assert.Empty(world.Store.Chests[chest.Id].Items);
         Assert.Equal(1, player.Sent(ServerPacketHeader.WiredChestTradeCancelledComposer));
+    }
+
+    [Fact]
+    public void AFailTriggerWithNoContractSelectedDoesNotFireWhenWiredCancelsTheTrade()
+    {
+        using var world = new G1World();
+        var player = world.AddPlayer();
+        var chest = world.AddChest(WiredChestKind.Furni);
+        var contract = world.AddContract(WiredContractKind.Payment, Pays());
+        var stacks = Initiate(world, player, [chest], [contract]);
+        AddCancel(world, false, contract);
+        var item = player.Give(G1World.Furni(201));
+        world.Fire(Enter(player));
+        world.Module.Offer(player.Client, [item.Id], true);
+        world.Fire(Leave(player));
+        world.Advance(TimeSpan.FromMilliseconds(500));
+
+        Assert.False(player.User.IsTrading);
+        Assert.Empty(stacks.Failed.Runs);
     }
 
     [Fact]
@@ -81,7 +100,7 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         var player = world.AddPlayer();
         var chest = world.AddChest(WiredChestKind.Furni);
         var contract = world.AddContract(WiredContractKind.Payment, Pays());
-        var stacks = Initiate(world, player, [chest], [contract]);
+        var stacks = Initiate(world, player, [chest], [contract], failSelectsContracts: true);
         AddCancel(world, true);
         var item = player.Give(G1World.Furni(201));
 
@@ -131,7 +150,7 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         var player = world.AddPlayer();
         var chest = world.AddChest(WiredChestKind.Furni);
         var contract = world.AddContract(WiredContractKind.Payment, Pays());
-        var stacks = Initiate(world, player, [chest], [contract]);
+        var stacks = Initiate(world, player, [chest], [contract], failSelectsContracts: true);
         AddCancel(world, true);
         world.AddBox("wf_act_init_transaction", _ => G1World.Chest("wf_act_init_transaction", [0, 1, 0, 0, 0, 300], [3], [100, 101, 0], [0, 0], ["n"],
             [chest.Id], [contract.Id]), 3, 0, 1);

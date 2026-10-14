@@ -26,14 +26,14 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         public required G1Witness Failed { get; init; }
     }
 
-    private static Stacks Initiate(G1World world, G1Player player, Item[] chests, Item[] contracts, int[]? ints = null, Action<Stacks>? _ = null)
+    private static Stacks Initiate(G1World world, G1Player player, Item[] chests, Item[] contracts, int[]? ints = null, Action<Stacks>? _ = null, bool failSelectsContracts = false)
     {
         world.AddBox("wf_trg_enter_room");
         world.AddBox("wf_act_init_transaction", _ => G1World.Chest("wf_act_init_transaction", ints ?? [0, 1, 0, 0, 0, 300], [3], [100, 101, 0], [0, 0], ["n"],
             [.. chests.Select(chest => chest.Id)], [.. contracts.Select(contract => contract.Id)]));
         world.AddBox("wf_trg_transaction_complete", _ => G1World.Chest("wf_trg_transaction_complete", [], [], [100], [], [], [], []), 1, 0);
         var completed = world.AddWitness(1, 0);
-        world.AddBox("wf_trg_transaction_fail", _ => G1World.Chest("wf_trg_transaction_fail", [], [], [100], [], [], [], []), 1, 1);
+        world.AddBox("wf_trg_transaction_fail", _ => G1World.Chest("wf_trg_transaction_fail", [], [], [100], [], [], failSelectsContracts ? [.. contracts.Select(contract => contract.Id)] : [], []), 1, 1);
         var failed = world.AddWitness(1, 1);
 
         return new() { World = world, Player = player, Completed = completed, Failed = failed };

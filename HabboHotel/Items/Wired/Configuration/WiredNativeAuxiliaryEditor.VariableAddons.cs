@@ -27,7 +27,12 @@ internal static partial class WiredNativeAuxiliaryEditor
                 ? Draft(n, [n.OwnedIntParams[0] == 1 ? 2 : 1], name ?? n.Text) : null;
         }));
         // Placeholder name with an optional separator, the picked variable's target and display mode, over one merged source.
-        yield return new("wf_xtra_text_output_variable", new(Sources([FurniSources], [[0, 11, 200, 201]], [0, 1, 0], 1), n =>
+        // Observed on hhus (WIN63-202610131318): picked furni (100) and the triggering user (0) by default, no clicked-user or
+        // second pick source, wall furniture allowed.
+        yield return new("wf_xtra_text_output_variable", new(Sources([[0, 100, 200, 201]], [[0, 200, 201]], [0, 1, 0], 1) with
+        {
+            FurniDefaults = [100], AllowWall = true
+        }, n =>
         {
             var p = n.OwnedIntParams;
 
@@ -47,7 +52,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             ? Metadata("wf_xtra_var_text_connector", n, [], n.Text) : null));
         yield return new("wf_xtra_var_time_util", new(Meta(0, 0, [0, 1]), n => Shape(n, 2, 0, 0, 0) && n.Text.Length == 0
             ? Metadata("wf_xtra_var_time_util", n, n.OwnedIntParams, "") : null));
-        yield return new("wf_xtra_var_lvlup_system", new(Meta(0, 0, [0, 1, 100, 50]), LevelSystem));
+        yield return new("wf_xtra_var_lvlup_system", new(Meta(0, 0, [0, 1, 100, 50, 50]), LevelSystem));
 
         // The six display forms share one int layout (plus one extra int for levelling and number displays); the three variable
         // slots are the range-override minimum and maximum and the audience, and a number display's icon rides the text.
@@ -73,13 +78,14 @@ internal static partial class WiredNativeAuxiliaryEditor
             ? Draft(n, [p[1], p[2], p[0], target, n.UserSourceTypes[0], n.FurniSourceTypes[0]]) : null;
     }
 
-    // Subvariable mask and mode (0 manual, 1 linear, 2 exponential) then the mode's own fields; manual keeps its text.
+    // Subvariable mask and mode (0 manual, 1 linear, 2 exponential) then the mode's own fields; manual keeps its text. The official
+    // editor opens on [0, 1, 100, 50, 50] (the linear fields plus the exponential maximum) and saves only the selected mode's fields.
     private static WiredConfiguration? LevelSystem(WiredNativeEditorConfiguration n)
     {
         var p = n.OwnedIntParams;
 
         if (n.FurniSourceTypes.Length != 0 || n.UserSourceTypes.Length != 0 || n.VariableIds.Length != 0 || p.Length < 2
-            || p[0] is < 0 or > 255 || p[1] is < 0 or > 2 || p.Length != p[1] switch { 0 => 2, 1 => 4, _ => 5 }
+            || p[0] is < 0 or > 255 || p[1] is < 0 or > 2 || p.Length != p[1] switch { 0 => 2, 1 => 4, _ => 5 } && !(p[1] == 1 && p.Length == 5)
             || p[1] != 0 && n.Text.Length != 0) {
             return null;
         }
@@ -92,6 +98,6 @@ internal static partial class WiredNativeAuxiliaryEditor
             _ => new { mode = 3, interpolationText = n.Text.Replace("\r\n", "\n").Replace('\r', '\n'), maxLevel = 10, subvariables }
         };
 
-        return p[1] != 0 && p[^1] is < 2 or > 10000 ? null : Metadata("wf_xtra_var_lvlup_system", n, [], JsonSerializer.Serialize(settings));
+        return p[1] != 0 && p[p[1] == 1 ? 3 : 4] is < 2 or > 10000 ? null : Metadata("wf_xtra_var_lvlup_system", n, [], JsonSerializer.Serialize(settings));
     }
 }

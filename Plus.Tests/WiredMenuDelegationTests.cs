@@ -66,9 +66,9 @@ public sealed class WiredMenuDelegationTests
 
         await new WiredMonitorRequestEvent(monitor).Parse(room, session, Packet());
         await new WiredMonitorRequestEvent(monitor).Parse(room, session, Packet(1));
-        await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(3, 50, -1, 8, " GATE "));
+        await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(3, 50, -1, 1, " GATE "));
 
-        Assert.Equal(new[] { "Monitor 0", "Monitor 1", "Logs 3 50 -1 8  GATE " }, monitor.Calls); // the handler passes the text raw; trimming is the service's job
+        Assert.Equal(new[] { "Monitor 0", "Monitor 1", "Logs 3 50 -1 1  GATE " }, monitor.Calls); // the handler passes the text raw; trimming is the service's job
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public sealed class WiredMenuDelegationTests
         await new WiredMonitorRequestEvent(monitor).Parse(room, session, Packet(2));
         await new WiredMonitorRequestEvent(monitor).Parse(room, session, Packet(0, 0));
         await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(1, 50, 4, -1, ""));
-        await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(1, 50, -1, 9, ""));
+        await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(1, 50, -1, 2, ""));
         await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(1, 50, -1, -1, new string('x', 401)));
         await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(1, 50, -1, -1, "x", 1));
 

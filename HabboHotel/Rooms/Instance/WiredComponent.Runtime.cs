@@ -299,6 +299,7 @@ public partial class WiredComponent
 
         if (variables.Count > 0) {
             _engine.SealExternalPublication();
+            LeaderboardValuesChanged(variables);
         }
 
         foreach (var change in variables) {

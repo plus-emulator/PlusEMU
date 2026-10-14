@@ -1,4 +1,5 @@
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Links;
 using Plus.HabboHotel.Items.Wired.Runtime;
@@ -45,6 +46,14 @@ public partial class WiredComponent
         }
 
         return placeholders;
+    }
+
+    /// <summary>A box's new settings are live: leaderboards republish, the web API takes the saved keys.</summary>
+    private void OctoberConfigurationPublished(IWiredItem box)
+    {
+        if (box is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_var_leaderboard" } leaderboard) {
+            LeaderboardSaved(leaderboard);
+        }
     }
 
     internal bool SendLink(Item[] endpoints, WiredLinkPayload payload, WiredEventKind kind) =>

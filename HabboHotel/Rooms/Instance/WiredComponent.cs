@@ -114,6 +114,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
             if (_variables?.IsValueCreated == true) {
                 _variables.Value.ConfigurationSaved(box);
             }
+
+            OctoberConfigurationPublished(box);
         };
         _bindMovementPublication = _engine.CreateMovementPublicationFactory(this, DispatchWalkTransition);
     }
@@ -171,6 +173,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.OnCycle();
         FlushVariableFx();
         FlushFlashes();
+        FlushLeaderboards();
     }
 
     internal void OnFastCycle()

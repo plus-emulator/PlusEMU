@@ -73,22 +73,14 @@ public static class WiredEvidenceRegistry
         ["wf_trg_at_time_long"] = new(WiredEvidenceLevel.TurboReferenceOnly, Triggers + "TriggerOnce.as", AirEditorCards),
         // AS3 actiontypes/class_4162.as; turbo WiredActionMoveFurniTo.cs
         ["wf_act_move_furni_to"] = new(WiredEvidenceLevel.TurboReferenceOnly, Actions + "class_4162.as", AirEditorCards),
-        // AS3 actiontypes/chests/class_4180.as; turbo WiredActionInitiateTransaction.cs
-        ["wf_act_init_transaction"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/chests/class_4180.as", RemainderCards),
-        // AS3 actiontypes/chests/class_4182.as; turbo WiredActionCancelTransaction.cs
-        ["wf_act_cancel_transaction"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/chests/class_4182.as", RemainderCards),
         // AS3 triggerconfs/class_4226.as; turbo WiredTriggerTransactionCompleted.cs
         ["wf_trg_transaction_complete"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/triggerconfs/class_4226.as", RemainderCards),
-        // AS3 triggerconfs/class_4009.as; turbo WiredTriggerTransactionFailed.cs
-        ["wf_trg_transaction_fail"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/triggerconfs/class_4009.as", RemainderCards),
         // AS3 conditions/chests/ChestHasAmount.as; turbo WiredConditionChestHasItems.cs
         ["wf_cnd_chest_has_items"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/conditions/chests/ChestHasAmount.as", RemainderCards),
         // AS3 conditions/chests/class_4163.as; turbo WiredConditionChestHasItemTypes.cs
         ["wf_cnd_chest_has_item_type"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/conditions/chests/class_4163.as", RemainderCards),
         // AS3 addons/chests/class_3960.as; turbo WiredAddonChestItemTypeScanner.cs
         ["wf_xtra_scan_chest_furni_by_type"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/chests/class_3960.as", RemainderCards),
-        // AS3 addons/chests/class_4265.as; turbo WiredAddonCustomContract.cs
-        ["wf_xtra_custom_contract"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/chests/class_4265.as", RemainderCards),
         // AS3 actiontypes/chests/class_4174.as; turbo WiredActionGiveCurrencyFromChest.cs
         ["wf_act_give_currency"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/chests/class_4174.as", RemainderCards),
         // AS3 actiontypes/chests/class_4292.as; turbo WiredActionGiveFurniFromChest.cs

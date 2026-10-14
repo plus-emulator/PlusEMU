@@ -67,7 +67,15 @@ internal static partial class WiredNativeAuxiliaryEditor
         }
     }
 
-    private static WiredNativeEditorMetadata FilterMeta() => Meta(1, 1, [10, 0, 0, 1], 2) with { FurniDefaults = [100], UserDefaults = [0] };
+    // Observed on hhus (r62-batch-05, WIN63-202610131318): the amount reference offers the triggering furni, the picked furni and the
+    // selector's on the furni slot, and the triggering user and the signal's on the user slot; it opens on 100 and 0.
+    private static WiredNativeEditorMetadata FilterMeta() => Meta(1, 1, [10, 0, 0, 1], 2) with
+    {
+        FurniAllowed = [[0, 100, 201]],
+        UsersAllowed = [[0, 201]],
+        FurniDefaults = [100],
+        UserDefaults = [0]
+    };
 
     // Count, sort order, literal-or-variable option and its target; the filtered variable and the operand variable.
     private static WiredConfiguration? FilterByVariable(WiredNativeEditorConfiguration n)

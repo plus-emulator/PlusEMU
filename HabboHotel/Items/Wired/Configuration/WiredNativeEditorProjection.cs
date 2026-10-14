@@ -401,12 +401,33 @@ public static class WiredNativeEditorProjection
             return false;
         }
 
+        // The AIR client (WIN63-202610131318) never filters furni picks itself (UserDefinedRoomEventsCtrl.stuffSelected only checks
+        // the wall flag and the furni limit); these keys exist only as server refusals shown on save.
+        var picksSelected = native.FurniSourceTypes.IsDefaultOrEmpty || native.FurniSourceTypes[0] == 100;
+
+        // Counter boxes drive Wired counters and game timers; client text: "Can only select counter furni."
+        if (descriptor.CanonicalName is "wf_act_control_clock" or "wf_act_adjust_clock" or "wf_trg_clock_counter" or "wf_cnd_counter_time_matches"
+            && picksSelected && native.PrimaryItems.Any(reference =>
+                room.GetRoomItemHandler().GetItem(reference.ItemId) is not { } picked || !WiredCounterController.Recognizes(picked))) {
+            error = "wiredfurni.error.require_counter_furni";
+
+            return false;
+        }
+
+        // OR evaluation scopes picked conditions and add-ons; client text: "Can only select WIRED Conditions and Add-Ons!"
+        if (descriptor.CanonicalName == "wf_xtra_or_eval" && picksSelected && native.PrimaryItems.Any(reference =>
+            room.GetRoomItemHandler().GetItem(reference.ItemId)?.Definition.WiredDescriptor is not { Category: WiredBoxCategory.Condition or WiredBoxCategory.Addon })) {
+            error = "wiredfurni.error.condition_evaluation_furni";
+
+            return false;
+        }
+
         bool AllAntennas(IEnumerable<WiredNativeItemReference> picks) =>
             picks.All(reference => WiredStackEngine.IsSignalAntenna(room.GetRoomItemHandler().GetItem(reference.ItemId)!));
 
         if (descriptor.CanonicalName is "wf_act_send_signal" or "wf_act_neg_send_signal" && native.FurniSourceTypes[0] is 100 or 101
             && !AllAntennas(native.FurniSourceTypes[0] == 100 ? native.PrimaryItems : native.SecondaryItems)) {
-            error = "Signal targets must be antenna furniture.";
+            error = "wiredfurni.error.require_antenna_furni";
 
             return false;
         }

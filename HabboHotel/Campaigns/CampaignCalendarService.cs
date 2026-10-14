@@ -104,7 +104,7 @@ namespace Plus.HabboHotel.Campaigns
 
                     // Calendar rewards are inventory furniture, not pets, bundles or boxes needing another product contract.
                     if (reward.ItemId != 0 && (!items.Items.TryGetValue(reward.ItemId, out definition) ||
-                        definition.ProductType is not ("s" or "i") || definition.InteractionType is InteractionType.Teleport or InteractionType.Gift or InteractionType.Moodlight or InteractionType.Toner ||
+                        definition.ProductType is not ("s" or "i") || definition.InteractionType is InteractionType.Teleport or InteractionType.WiredRoomLinker or InteractionType.Gift or InteractionType.Moodlight or InteractionType.Toner ||
                         definition.Category is FurniCategory.GuildFurni or FurniCategory.EcotronBox)) {
                         session.Send(new CampaignCalendarDoorOpenedComposer(false));
 

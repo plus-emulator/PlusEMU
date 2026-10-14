@@ -344,7 +344,21 @@ public class RoomUserManager
             }
 
             if (item != null) {
-                if (session.GetHabbo().IsTeleporting) {
+                if (session.GetHabbo().IsTeleporting && item.Definition.InteractionType == InteractionType.WiredRoomLinker) {
+                    // Forwarded through a WIRED Room Linker: the user arrives standing on it; it has no door to flash.
+                    if (UsesV2Movement) {
+                        user.InitializePosition(item.GetX, item.GetY, item.GetZ);
+                    }
+                    else {
+                        user.SetPos(item.GetX, item.GetY, item.GetZ);
+                    }
+
+                    user.SetRot(item.Rotation, false);
+                    // Nothing walks the user out of a linker, so the entry ends here (the wired entry snapshot was taken above).
+                    session.GetHabbo().IsTeleporting = false;
+                    session.GetHabbo().TeleporterId = 0;
+                }
+                else if (session.GetHabbo().IsTeleporting) {
                     item.LegacyDataString = "2";
                     item.UpdateState(false, true);
 

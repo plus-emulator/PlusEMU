@@ -392,6 +392,15 @@ public static class WiredNativeEditorProjection
             return false;
         }
 
+        // Teleport to Room only forwards through WIRED Room Linkers; the client text for this key (WIN63-202610131318) is
+        // "Can only select wired room linkers!".
+        if (descriptor.CanonicalName == "wf_act_teleport_to_room" && native.PrimaryItems.Any(reference =>
+            room.GetRoomItemHandler().GetItem(reference.ItemId)?.Definition.InteractionType != InteractionType.WiredRoomLinker)) {
+            error = "wiredfurni.error.require_room_linker";
+
+            return false;
+        }
+
         bool AllAntennas(IEnumerable<WiredNativeItemReference> picks) =>
             picks.All(reference => WiredStackEngine.IsSignalAntenna(room.GetRoomItemHandler().GetItem(reference.ItemId)!));
 

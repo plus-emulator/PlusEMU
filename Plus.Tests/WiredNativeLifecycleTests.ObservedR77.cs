@@ -141,4 +141,28 @@ public sealed partial class WiredNativeLifecycleTests
             native with { PrimaryItems = [new(tile.Id, false)] }, out runtime));
         Assert.True(WiredConfigurationSave.TrySave(trigger, runtime, TestWiredConfigurationStore.Instance, out error), error);
     }
+
+    // Client text (WIN63-202610131318): wiredfurni.error.require_room_linker = "Can only select wired room linkers!".
+    [Fact]
+    public void TeleportToRoomRefusesAPickThatIsNotARoomLinker()
+    {
+        var f = new World();
+        var tele = f.Item(2);
+        tele.Definition.InteractionName = "teleport";
+        tele.Definition.InteractionType = Plus.HabboHotel.Items.InteractionType.Teleport;
+        var linker = f.Item(3);
+        linker.Definition.InteractionName = "wired_room_linker";
+        linker.Definition.InteractionType = Plus.HabboHotel.Items.InteractionType.WiredRoomLinker;
+        var actionItem = f.Item(1);
+        actionItem.Definition.InteractionName = "wf_act_teleport_to_room";
+        var action = f.Wired.CreateConfiguredBox(actionItem)!;
+        var native = WiredNativeEditorProjection.DefaultNative(action.Descriptor);
+        Assert.True(WiredNativeEditorProjection.TryCompile(actionItem.Id, action.Descriptor,
+            native with { PrimaryItems = [new(linker.Id, false), new(tele.Id, false)] }, out var runtime));
+        Assert.False(WiredConfigurationSave.TrySave(action, runtime, TestWiredConfigurationStore.Instance, out var error));
+        Assert.Equal("wiredfurni.error.require_room_linker", error);
+        Assert.True(WiredNativeEditorProjection.TryCompile(actionItem.Id, action.Descriptor,
+            native with { PrimaryItems = [new(linker.Id, false)] }, out runtime));
+        Assert.True(WiredConfigurationSave.TrySave(action, runtime, TestWiredConfigurationStore.Instance, out error), error);
+    }
 }

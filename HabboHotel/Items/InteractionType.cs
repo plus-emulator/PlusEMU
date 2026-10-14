@@ -129,5 +129,6 @@ public enum InteractionType
     WiredChestCoins,
     WiredContractPayment,
     WiredContractTrade,
-    WiredContractReward
+    WiredContractReward,
+    WiredRoomLinker
 }

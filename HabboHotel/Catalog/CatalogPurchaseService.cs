@@ -465,6 +465,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                 break;
             case InteractionType.Arrow:
             case InteractionType.Teleport:
+            case InteractionType.WiredRoomLinker:
                 for (var i = 0; i < amount; i++) {
                     items.AddRange(_itemFactory.CreateTeleporterItems(definition, session.GetHabbo()) ?? []);
                 }

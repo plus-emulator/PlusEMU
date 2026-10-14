@@ -84,6 +84,23 @@ public sealed class CatalogPurchaseServiceTests
     }
 
     [Theory]
+    [InlineData(InteractionType.Teleport)]
+    [InlineData(InteractionType.WiredRoomLinker)]
+    public async Task TeleportersAndRoomLinkersAreBoughtAsOneLinkedPair(InteractionType interaction)
+    {
+        var context = Context(interaction: interaction);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "ignored", 1));
+
+        Assert.Equal(1, context.Factory.LinkedPairs);
+        Assert.Empty(context.Factory.ExtraData);
+        var inventory = Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture;
+        Assert.NotNull(inventory.GetItem(700));
+        Assert.NotNull(inventory.GetItem(701));
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+    }
+
+    [Theory]
     [InlineData("110", "", "110")]
     [InlineData("2.10", "999", "2.10")]
     [InlineData("", "205", "205")]
@@ -557,8 +574,15 @@ public sealed class CatalogPurchaseServiceTests
         }
         public List<Item> CreateMultipleItems(ItemDefinition definition, int ownerId, string extraData, int amount,
             int groupId = 0) => throw new NotSupportedException();
-        public List<Item> CreateTeleporterItems(ItemDefinition definition, Habbo habbo, int groupId = 0) =>
-            throw new NotSupportedException();
+        public int LinkedPairs { get; private set; }
+        public List<Item> CreateTeleporterItems(ItemDefinition definition, Habbo habbo, int groupId = 0)
+        {
+            LinkedPairs++;
+            Creates += 2;
+
+            return [new Item { Id = (uint)(698 + Creates), OwnerId = (uint)habbo.Id, Definition = definition },
+                new Item { Id = (uint)(699 + Creates), OwnerId = (uint)habbo.Id, Definition = definition }];
+        }
         public void CreateMoodlightData(Item item) => throw new NotSupportedException();
         public void CreateTonerData(Item item) => throw new NotSupportedException();
     }

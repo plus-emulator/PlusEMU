@@ -14,7 +14,7 @@ public static class ItemUtility
         }
 
         return definition.AllowGift && !offer.IsLimited && product.Amount <= 1 && (offer.CostPoints == 0 || offer.PointsType == ActivityPointType.Duckets) && !definition.IsRare &&
-            definition.InteractionType is not (InteractionType.Exchange or InteractionType.Badge or InteractionType.Teleport or InteractionType.Deal or InteractionType.Pet);
+            definition.InteractionType is not (InteractionType.Exchange or InteractionType.Badge or InteractionType.Teleport or InteractionType.WiredRoomLinker or InteractionType.Deal or InteractionType.Pet);
     }
 
     public static bool CanSelectAmount(CatalogOffer offer) =>

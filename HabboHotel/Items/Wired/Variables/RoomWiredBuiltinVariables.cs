@@ -234,7 +234,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
         if (holder.Target == WiredVariableTarget.Furni && key == "~teleport.target_id") {
             var item = FindItem(holder, frame);
 
-            return value > 0 && item is { IsTemporary: false } && item.Definition.InteractionType == InteractionType.Teleport
+            return value > 0 && item is { IsTemporary: false } && InteractionTypes.IsLinkedPair(item.Definition.InteractionType)
                 && travelStore?.SetLinkedTeleporter(item.Id, room.Id, (uint)value) == true;
         }
 
@@ -329,7 +329,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@state" => int.TryParse(item.LegacyDataString, out var state) ? state : null,
             "@position" => (item.GetX << 8) | item.GetY,
             "@occupation" => (item.GetX << 16) | (item.GetY << 8) | item.Rotation,
-            "~teleport.target_id" when item.Definition.InteractionType == InteractionType.Teleport => travelStore?.FindLinkedTeleporter(item.Id),
+            "~teleport.target_id" when InteractionTypes.IsLinkedPair(item.Definition.InteractionType) => travelStore?.FindLinkedTeleporter(item.Id),
             "~background_color.hue" when IsToner(item) => room.TonerData.Hue,
             "~background_color.saturation" when IsToner(item) => room.TonerData.Saturation,
             "~background_color.lightness" when IsToner(item) => room.TonerData.Lightness,

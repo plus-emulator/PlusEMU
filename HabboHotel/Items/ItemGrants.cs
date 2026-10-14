@@ -6,7 +6,7 @@ public static class ItemGrants
     // These need linked rows or data a bare inventory item cannot carry.
     private static readonly HashSet<InteractionType> NeedLinkedData = new()
     {
-        InteractionType.Teleport, InteractionType.Moodlight, InteractionType.Toner, InteractionType.Gift, InteractionType.Trophy,
+        InteractionType.Teleport, InteractionType.WiredRoomLinker, InteractionType.Moodlight, InteractionType.Toner, InteractionType.Gift, InteractionType.Trophy,
         InteractionType.GuildItem, InteractionType.GuildGate, InteractionType.GuildForum, InteractionType.BadgeDisplay,
         InteractionType.Badge, InteractionType.Pet, InteractionType.Bot, InteractionType.PurchasableClothing
     };

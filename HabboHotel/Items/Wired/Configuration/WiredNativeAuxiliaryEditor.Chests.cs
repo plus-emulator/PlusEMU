@@ -7,6 +7,20 @@ internal static partial class WiredNativeAuxiliaryEditor
     // Chest furni selections: picked group (100/101), live trigger furni, selector or signal; users never include bots here.
     private static readonly ImmutableArray<int> ChestFurni = [0, 100, 101, 200, 201];
     private static readonly ImmutableArray<int> ChestUsers = [0, 11, 200, 201];
+    // Observed on hhus (WIN63-202610131318, r62 batch 04): a chest card with one pick list offers the triggering furni, the picks, the selector
+    // and the signal; one with two pick lists (item types and chests) also offers the second list (101) on every slot. Users never include
+    // the clicked user (11) here.
+    private static readonly ImmutableArray<int> OnePickList = [0, 100, 200, 201];
+    private static readonly ImmutableArray<int> TwoPickLists = [0, 100, 101, 200, 201];
+    private static readonly ImmutableArray<int> TransactionUsers = [0, 200, 201];
+
+    private static WiredNativeEditorMetadata TransactionMeta(ImmutableArray<int> furniSources, int furniSelections, int userSelections, ImmutableArray<int> owned, int variables,
+        ImmutableArray<int> furniDefaults, ImmutableArray<int> userDefaults) => new(
+            [.. Enumerable.Repeat(furniSources, furniSelections)], [.. Enumerable.Repeat(TransactionUsers, userSelections)],
+            furniDefaults, userDefaults, owned, true)
+        {
+            VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Id, variables)]
+        };
 
     private static WiredNativeEditorMetadata ChestMeta(int furniSelections, int userSelections, ImmutableArray<int> owned, int variables,
         ImmutableArray<int> furniDefaults, ImmutableArray<int> userDefaults) => new(
@@ -32,24 +46,24 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_act_give_currency", new(ChestMeta(2, 2, [0, 1, 0, -20, 1, 11], 1, [100, 0], [0, 0]), n => Reward(n, 11, 13)));
         yield return new("wf_act_give_furni", new(ChestMeta(2, 2, [0, 1, 0, -20, 1, 0], 1, [100, 0], [0, 0]), n => Reward(n, 0, 2)));
         // Mode, multiplier, option, target, timeout flag and seconds; chests, contracts and the merged reference.
-        yield return new("wf_act_init_transaction", new(ChestMeta(3, 2, [0, 10, 0, -20, 0, 300], 1, [100, 100, 0], [0, 0]), n =>
+        yield return new("wf_act_init_transaction", new(TransactionMeta(TwoPickLists, 3, 2, [0, 10, 0, -20, 0, 300], 1, [100, 101, 0], [0, 0]), n =>
         {
             var p = n.OwnedIntParams;
 
             return Shape(n, 6, 3, 2, 1) && TryTarget(p[3], out var target) ? ChestDraft(n, [p[0], p[1], p[2], target, p[4], p[5]], n.Text) : null;
         }));
-        yield return new("wf_act_cancel_transaction", new(ChestMeta(1, 1, [0], 0, [100], [0]), n =>
+        yield return new("wf_act_cancel_transaction", new(TransactionMeta(OnePickList, 1, 1, [0], 0, [100], [0]), n =>
             Shape(n, 1, 1, 1, 0) ? ChestDraft(n, [.. n.OwnedIntParams]) : null));
         // Compared amount, its option and target, comparison (the form's own codes).
-        yield return new("wf_cnd_chest_has_items", new(ChestMeta(2, 1, [0, 0, -20, 2], 1, [100, 0], [0]) with { QuantifierType = 0 }, HasChest(2)));
-        yield return new("wf_cnd_chest_has_item_type", new(ChestMeta(3, 1, [0, 0, -20, 2], 1, [100, 100, 0], [0]) with { QuantifierType = 0 }, HasChest(3)));
+        yield return new("wf_cnd_chest_has_items", new(TransactionMeta(OnePickList, 2, 1, [0, 0, -20, 2], 1, [100, 200], [200]) with { QuantifierType = 0 }, HasChest(2)));
+        yield return new("wf_cnd_chest_has_item_type", new(TransactionMeta(TwoPickLists, 3, 1, [0, 0, -20, 2], 1, [100, 101, 0], [0]) with { QuantifierType = 0 }, HasChest(3)));
         yield return new("wf_trg_transaction_complete", new(TransactionTrigger, n => Shape(n, 0, 1, 0, 0) && n.FurniSourceTypes[0] == 100 ? ChestDraft(n, []) : null));
         yield return new("wf_trg_transaction_fail", new(TransactionTrigger, n => Shape(n, 0, 1, 0, 0) && n.FurniSourceTypes[0] == 100 ? ChestDraft(n, []) : null));
         // Scanning mode; item types and chests, writing into a context variable.
-        yield return new("wf_xtra_scan_chest_furni_by_type", new(ChestMeta(2, 0, [0], 1, [100, 100], []), n =>
+        yield return new("wf_xtra_scan_chest_furni_by_type", new(TransactionMeta(TwoPickLists, 2, 0, [0], 1, [0, 100], []), n =>
             Shape(n, 1, 2, 0, 1) ? ChestDraft(n, [.. n.OwnedIntParams]) : null));
         // Payment then reward: enabled, element type, option, amount, target; payment/reward furni, then the merged references.
-        yield return new("wf_xtra_custom_contract", new(ChestMeta(4, 2, [0, 0, 0, 1, -20, 0, 0, 0, 1, -20], 2, [100, 100, 0, 0], [0, 0]), n =>
+        yield return new("wf_xtra_custom_contract", new(TransactionMeta(TwoPickLists, 4, 2, [0, 0, 0, 1, -20, 0, 0, 0, 1, -20], 2, [100, 101, 0, 0], [0, 0]), n =>
         {
             var p = n.OwnedIntParams;
 

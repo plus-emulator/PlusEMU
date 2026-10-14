@@ -273,7 +273,7 @@ public sealed partial class WiredGlideConveyorTests
         public WiredStackEngine Engine => (WiredStackEngine)Get(_wired, "_engine");
         public IWiredItem Box(uint id) => ((Dictionary<uint, IWiredItem>)Get(Engine, "_items"))[id];
 
-        public Fixture((uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] layout, bool live = false, string movementEngine = "v2")
+        public Fixture((uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] layout, bool live = false, string movementEngine = "v2", IRoomItemStore? itemStore = null)
         {
             _room.Id = 14;
             _room.WordFilterList = [];
@@ -283,7 +283,7 @@ public sealed partial class WiredGlideConveyorTests
                 TestLogging.Navigation, live && movementEngine != "legacy"
                     ? new TestRoomSettings(new() { ["pathfinding.engine"] = movementEngine, ["pathfinding.layering_enabled"] = "1" }) : TestRoomSettings.Empty,
                 TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
-            var handler = new RoomItemHandling(_room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty,
+            var handler = new RoomItemHandling(_room, itemStore ?? TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty,
                 TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
             Set(_room, "_gamemap", _map);
             Set(_room, "_roomItemHandling", handler);

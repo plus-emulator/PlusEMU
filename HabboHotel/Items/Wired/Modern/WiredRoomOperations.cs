@@ -156,7 +156,7 @@ public static class WiredRoomOperations
 
         // The full placement path maintains map/index, moved-item persistence and room statuses.
         if (!room.GetRoomItemHandler().SetFloorItem(null!, item, x, y, rot, false, false,
-                announce && (!animate || rotationChanged), true, z ?? -1, collision)) {
+                announce && (!animate || rotationChanged), true, z ?? -1, collision, deferPositionSave: true)) {
             return false;
         }
 

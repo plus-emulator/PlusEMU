@@ -88,7 +88,7 @@ public sealed class WiredTurboRemainderG3Tests
     }
 
     [Fact]
-    public void RemoveFurniHasNoParametersAndSixtyFourFurniSelectorSourcesOnly()
+    public void RemoveFurniHasNoParametersAndOnlyTheTriggeringSelectorAndSignalSources()
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_act_remove_furni", out var descriptor));
         var native = WiredNativeEditorProjection.DefaultNative(descriptor);

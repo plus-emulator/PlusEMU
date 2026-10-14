@@ -6,8 +6,41 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 
 public static class WiredVariableDefinitions
 {
+    internal const string InvalidReferenceKey = "wiredfurni.error.variables.reference.valid";
     public static bool Supports(string name) => name is "wf_var_user" or "wf_var_furni" or "wf_var_room"
-        or "wf_var_context" or "wf_var_echo" or "wf_var_reference";
+        or "wf_var_context" or "wf_var_echo" or "wf_var_reference" or "wf_var_quest" or "wf_var_quest_chain";
+    /// <summary>The picker id of a variable shared from another room; the module still authorizes the source it names.</summary>
+    internal static string SharedId(uint roomId, WiredVariableTarget target, uint definitionId) =>
+        $"shared:{roomId}:{(target == WiredVariableTarget.Global ? "room" : "user")}:{definitionId}";
+
+    internal static bool TryParseShared(string id, out uint roomId, out WiredVariableTarget target, out uint definitionId)
+    {
+        roomId = definitionId = 0;
+        target = default;
+        var parts = id.Split(':');
+
+        if (parts.Length != 4 || parts[0] != "shared" || parts[2] is not ("user" or "room")
+            || !uint.TryParse(parts[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out roomId) || roomId == 0
+            || !uint.TryParse(parts[3], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out definitionId) || definitionId == 0
+            || SharedId(roomId, parts[2] == "room" ? WiredVariableTarget.Global : WiredVariableTarget.User, definitionId) != id) {
+            return false;
+        }
+
+        target = parts[2] == "room" ? WiredVariableTarget.Global : WiredVariableTarget.User;
+
+        return true;
+    }
+
+    private static bool ValidName(string text) => text.Length is >= 1 and <= 40 && Regex.IsMatch(text, "^[A-Za-z0-9_]+$", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// An echo saved before its variable was picked (observed on hhus: the initial frame, variable id "0", saved under a name and
+    /// reopened unchanged). It is a valid card that mirrors nothing, so it is stored but defines no variable.
+    /// </summary>
+    public static bool IsUnpickedEcho(string name, WiredConfiguration configuration) => name == "wf_var_echo" && configuration.Version == 1
+        && configuration.IntParams.Length == 0 && configuration.VariableIds.Length == 1 && WiredVariableAbsent.Is(configuration.VariableIds[0])
+        && ValidName(configuration.Text);
+
     public static bool TryDecode(string name, uint itemId, uint roomId, uint ownerId, WiredConfiguration configuration,
         out WiredVariableDefinition? definition, out string error)
     {
@@ -23,7 +56,7 @@ public static class WiredVariableDefinitions
         WiredVariableTarget target;
         WiredVariableAvailability availability;
         bool hasValue;
-        var initial = 0;
+        var initial = 0L;
         WiredVariableLink? link = null;
 
         switch (name) {
@@ -44,14 +77,14 @@ public static class WiredVariableDefinitions
                 hasValue = ints[0] == 1;
                 break;
             case "wf_var_room":
-                if (ints.Length != 2 || ints[0] is not (1 or 10 or 11)) {
+                // The AIR form edits availability only; the starting value is always zero and live values survive saves.
+                if (ints.Length != 2 || ints[0] is not (1 or 10 or 11) || ints[1] != 0) {
                     return false;
                 }
 
                 target = WiredVariableTarget.Global;
                 availability = (WiredVariableAvailability)ints[0];
                 hasValue = true;
-                initial = ints[1];
                 break;
             case "wf_var_context":
                 if (ints.Length != 1 || ints[0] is not (0 or 1)) {
@@ -63,36 +96,45 @@ public static class WiredVariableDefinitions
                 hasValue = ints[0] == 1;
                 break;
             case "wf_var_echo":
-            case "wf_var_reference":
-                try {
-                    using var document = JsonDocument.Parse(text);
-                    var root = document.RootElement;
-                    text = root.GetProperty("variableName").GetString() ?? "";
-                    target = (WiredVariableTarget)root.GetProperty("sourceTargetType").GetInt32();
-
-                    if (!Enum.IsDefined(target)) {
-                        return false;
-                    }
-
-                    var sourceRoom = name == "wf_var_reference" ? root.GetProperty("sourceRoomId").GetUInt32() : roomId;
-                    var sourceToken = name == "wf_var_reference"
-                        ? $"custom:{root.GetProperty("sourceVariableItemId").GetUInt32()}"
-                        : root.GetProperty("sourceVariableToken").GetString() ?? "";
-
-                    if (sourceRoom == 0 || sourceToken.Length == 0
-                        || (name == "wf_var_reference" && (sourceRoom == roomId || target is not (WiredVariableTarget.User or WiredVariableTarget.Global)))) {
-                        return false;
-                    }
-
-                    var readOnly = name == "wf_var_reference" && (!root.TryGetProperty("readOnly", out var readOnlyValue) || readOnlyValue.GetBoolean());
-                    link = new(sourceRoom, new(target, sourceToken), readOnly);
-                    availability = WiredVariableAvailability.RoomActive;
-                    hasValue = true; // Actual source flags are enforced by resolution, never these labels.
-                }
-                catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException or FormatException or OverflowException) {
+                // An echo names one variable of this room; the picked catalog id carries its target and definition.
+                if (configuration.VariableIds.Length != 1
+                    || !WiredVariableDescription.TryParseCatalogId(configuration.VariableIds[0], out target, out var echoed)) {
                     return false;
                 }
 
+                link = new(roomId, new(target, echoed), false);
+                availability = WiredVariableAvailability.RoomActive;
+                hasValue = true; // Actual source flags are enforced by resolution, never these labels.
+                break;
+            case "wf_var_reference":
+                // A reference names one shared variable of another room: "shared:{room}:{user|room}:{definition}".
+                if (configuration.VariableIds.Length != 1 || ints.Length != 1 || ints[0] is not (0 or 1)) {
+                    return false;
+                }
+
+                // Observed on hhus (WIN63-202610131318): an unchosen reference ("0") is refused with this key and no parameters.
+                if (!TryParseShared(configuration.VariableIds[0], out var sourceRoom, out target, out var sourceItem) || sourceRoom == roomId) {
+                    error = InvalidReferenceKey;
+
+                    return false;
+                }
+
+                link = new(sourceRoom, new(target, $"custom:{sourceItem}"), ints[0] == 1);
+                availability = WiredVariableAvailability.RoomActive;
+                hasValue = true;
+                break;
+            case "wf_var_quest":
+            case "wf_var_quest_chain":
+                // A read-only user variable over the real quest tables; its own builtin token reads the player's quest state.
+                if (ints.Length != 0 || configuration.VariableIds.Length != 0 || WiredQuestVariables.Binding(name, text.Contains('\t') ? text : "") is null) {
+                    return false;
+                }
+
+                text = text.Split('\t')[0];
+                target = WiredVariableTarget.User;
+                availability = WiredVariableAvailability.RoomActive;
+                hasValue = true;
+                link = new(roomId, new(WiredVariableTarget.User, WiredQuestVariables.Token(itemId)), true);
                 break;
             default:
                 error = "This variable definition has no executable implementation.";
@@ -100,7 +142,7 @@ public static class WiredVariableDefinitions
                 return false;
         }
 
-        if (text.Length is < 1 or > 40 || !Regex.IsMatch(text, "^[A-Za-z0-9_]+$", RegexOptions.CultureInvariant)) {
+        if (!ValidName(text)) {
             return false;
         }
 

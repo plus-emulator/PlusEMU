@@ -246,6 +246,7 @@ public partial class PlacedFurniRoomTests
 
         new LandingEffects(_room, _database).Apply(actor, wasLaying);
         _room.GetWired().OnFastCycle();
+        _room.GetWired().OnFastCycle();
         Assert.Equal(expected, action.Calls);
     }
 
@@ -365,7 +366,7 @@ public partial class PlacedFurniRoomTests
         triggerItem.Definition.InteractionName = "wf_trg_user_performs_action";
         var wired = _room.GetWired();
         var trigger = wired.CreateConfiguredBox(triggerItem)!;
-        Assert.True(trigger.TryValidateConfiguration(new() { IntParams = [(int)WiredAvatarAction.Lay, 0, 0, 0, 1] }, out var config, out var error), error);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(trigger, new() { IntParams = [(int)WiredAvatarAction.Lay, 0, 0, 0, 1] }, out var config, out var error), error);
         trigger.ApplyConfiguration(config);
         Assert.True(wired.AddBox(trigger));
         var item = Add(901, 3, 3, type: InteractionType.WiredEffect);
@@ -385,7 +386,7 @@ public partial class PlacedFurniRoomTests
         public bool BoolData { get; set; }
         public string ItemsData { get; set; } = "";
         public int Calls;
-        public WiredBoxDescriptor Descriptor { get; } = new("test", WiredBoxCategory.Action, 0, 0, "test") { Support = WiredBoxSupport.Implemented };
+        public WiredBoxDescriptor Descriptor { get; } = new("test", WiredBoxCategory.Action, 0, "test") { Support = WiredBoxSupport.Implemented };
         public WiredConfiguration Configuration { get; private set; } = new();
         public bool IsNegative => false;
         public bool Execute(params object[] arguments) => throw new NotSupportedException();

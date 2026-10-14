@@ -106,21 +106,23 @@ public static class WiredConditionConfiguration
             case "wf_cnd_actor_in_team":
             case "wf_cnd_has_handitem":
             case "wf_cnd_wearing_effect":
-                if (p.Length != 3 || p[0] < 0 || name == "wf_cnd_actor_in_team" && p[0] > 4 || !U(1) || !Q(2)) {
+                // AirSourceOnly (class_4227.as): the effect id box spans the whole int range.
+                if (p.Length != 3 || p[0] < 0 && name != "wf_cnd_wearing_effect" || name == "wf_cnd_actor_in_team" && p[0] > 4 || !U(1) || !Q(2)) {
                     return false;
                 }
 
                 users["users"] = p[1];
                 break;
             case "wf_cnd_wearing_badge":
-                if (p.Length != 2 || !U(0) || !Q(1) || proposed.Text.Length > 64) {
+                // AirSourceOnly (class_4263.as): the badge code box takes up to 1000 characters.
+                if (p.Length != 2 || !U(0) || !Q(1) || proposed.Text.Length > 1000) {
                     return false;
                 }
 
                 users["users"] = p[0];
                 break;
             case "wf_cnd_user_performs_action":
-                if (p.Length != 7 || !Range(0, 1, 11) || !Q(1) || !Range(2, 0, 17)
+                if (p.Length != 7 || !Range(0, 1, 12) || !Q(1) || !Range(2, 0, 17)
                     || !Q(3) || !Range(4, 0, 4) || !U(5) || !Q(6)) {
                     return false;
                 }
@@ -221,14 +223,14 @@ public static class WiredConditionConfiguration
                 users["users"] = p[2];
                 break;
             case "wf_cnd_team_has_score":
-                if (p.Length != 5 || !Range(0, 0, 4) || !Range(1, 0, 2) || p[2] < 0 || !U(3) || !Q(4)) {
+                if (p.Length != 5 || !Range(0, 0, 4) || !Range(1, 0, 2) || p[2] is < 0 or > 1000 || !U(3) || !Q(4)) {
                     return false;
                 }
 
                 users["users"] = p[3];
                 break;
             case "wf_cnd_counter_time_matches":
-                if (p.Length != 5 || !Range(0, 0, 2) || !Range(1, 0, 59) || !Range(2, 0, 119) || !F(3) || !Q(4)) {
+                if (p.Length != 5 || !Range(0, 0, 2) || !Range(1, 0, 99) || !Range(2, 0, 119) || !F(3) || !Q(4)) {
                     return false;
                 }
 

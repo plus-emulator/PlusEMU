@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// A user's use raises wf_trg_stuff_state once per request and wf_trg_state_changed once per state it
+// A user's use raises wf_trg_state_changed once per request and wf_trg_stuff_state once per state it
 // actually wrote, including gate writes the v2 sequencer applies after the request returned.
 public partial class PlacedFurniRoomTests
 {
@@ -32,12 +32,14 @@ public partial class PlacedFurniRoomTests
         var lamp = Toggle(30);
         WatchState(lamp);
         var revert = WiredBox(106, "wf_act_toggle_state", 2, 0); // joins the stuff_state stack
-        Assert.True(revert.TryValidateConfiguration(new() { IntParams = [0, 100], SelectedItems = [lamp.Id] }, out var config, out var error), error);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(revert, new() { IntParams = [0, 100], SelectedItems = [lamp.Id] }, out var config, out var error), error);
         revert.ApplyConfiguration(config);
         Assert.True(_room.GetWired().AddBox(revert));
         Viewer(0, 0);
 
         UseItem(lamp);
+
+        _room.GetWired().OnFastCycle(); // Runs the state-change stack emitted by the use effect.
 
         Assert.Equal("0", lamp.LegacyDataString);
         Assert.Equal((1, 2), StateLines()); // the user's write and the effect's write back
@@ -149,7 +151,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void StateChangeNamesOnlyAUserWhoseVisitIsStillThisRoom()
+    public void StateChangeShowsNoTriggeringRecipientBeforeOrAfterTheUserLeaves()
     {
         var lamp = Toggle(30);
         WatchState(lamp);
@@ -160,7 +162,7 @@ public partial class PlacedFurniRoomTests
         _room.GetWired().OnFastCycle();
         _room.GetWired().OnCycle();
         Assert.Equal((0, 1), StateLines());
-        Assert.Contains(ServerPacketHeader.WhisperComposer, _client.Sent);
+        Assert.DoesNotContain(ServerPacketHeader.WhisperComposer, _client.Sent);
 
         _client.Sent.Clear();
         _client.GetHabbo().CurrentRoom = null; // moved on while the room still lists the avatar
@@ -171,15 +173,15 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(ServerPacketHeader.WhisperComposer, _client.Sent);
     }
 
-    // A third stack that whispers to the user the state change names, if it names one.
+    // State changes provide no triggering recipient, so this whisper stack stays silent.
     private void WhisperOnChange(uint id, Item watched)
     {
-        var trigger = WiredBox(id, "wf_trg_state_changed", 1, 0);
-        Assert.True(trigger.TryValidateConfiguration(new() { IntParams = [0, 100], SelectedItems = [watched.Id] }, out var config, out var error), error);
+        var trigger = WiredBox(id, "wf_trg_stuff_state", 1, 0);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(trigger, new() { IntParams = [0, 100], SelectedItems = [watched.Id] }, out var config, out var error), error);
         trigger.ApplyConfiguration(config);
         Assert.True(_room.GetWired().AddBox(trigger));
         var whisper = WiredBox(id + 1, "wf_act_show_message", 1, 0);
-        Assert.True(whisper.TryValidateConfiguration(new() { IntParams = [0, 0, 34, -1], Text = "changed" }, out config, out error), error);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(whisper, new() { IntParams = [0, 0, 34, -1], Text = "changed" }, out config, out error), error);
         whisper.ApplyConfiguration(config);
         Assert.True(_room.GetWired().AddBox(whisper));
     }
@@ -200,18 +202,18 @@ public partial class PlacedFurniRoomTests
     // Two real stacks on their own tiles: each trigger watches the furni and writes its own log line.
     private void WatchState(Item watched)
     {
-        Stack(100, 2, "wf_trg_stuff_state", UseLine, watched);
-        Stack(102, 3, "wf_trg_state_changed", ChangeLine, watched);
+        Stack(100, 2, "wf_trg_state_changed", UseLine, watched);
+        Stack(102, 3, "wf_trg_stuff_state", ChangeLine, watched);
     }
 
     private void Stack(uint id, int x, string trigger, string line, Item watched)
     {
         var triggerBox = WiredBox(id, trigger, x, 0);
-        Assert.True(triggerBox.TryValidateConfiguration(new() { IntParams = [0, 100], SelectedItems = [watched.Id] }, out var config, out var error), error);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(triggerBox, new() { IntParams = [0, 100], SelectedItems = [watched.Id] }, out var config, out var error), error);
         triggerBox.ApplyConfiguration(config);
         Assert.True(_room.GetWired().AddBox(triggerBox));
         var log = WiredBox(id + 1, "wf_act_log", x, 0);
-        Assert.True(log.TryValidateConfiguration(new() { IntParams = [1, 0], Text = line }, out config, out error), error);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(log, new() { IntParams = [1, 0], Text = line }, out config, out error), error);
         log.ApplyConfiguration(config);
         Assert.True(_room.GetWired().AddBox(log));
     }

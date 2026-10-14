@@ -20,10 +20,10 @@ public sealed class WiredAddonModule
         "wf_xtra_filter_furni", "wf_xtra_mov_curve", "wf_xtra_mov_physics", "wf_xtra_rotate_to_dir",
         "wf_xtra_random", "wf_xtra_unseen", "wf_xtra_filter_users", "wf_xtra_text_output_username"
     ];
-    private readonly Queue<long> _executions = new();
     private readonly Random _random;
     private IWiredActionPicker? _picker;
-    private long _lastNow;
+    private long _windowStartMs;
+    private int _executionsInWindow;
     public string Name { get; }
     public WiredConfiguration Configuration { get; private set; }
 
@@ -44,8 +44,8 @@ public sealed class WiredAddonModule
 
     public void Reset()
     {
-        _executions.Clear();
-        _lastNow = 0;
+        _windowStartMs = 0;
+        _executionsInWindow = 0;
         _picker?.Reset();
     }
 
@@ -87,17 +87,34 @@ public sealed class WiredAddonModule
                 policy.ActionPicker = _picker;
                 break;
             case "wf_xtra_filter_furni":
-                if (P(0) > 0) {
-                    policy.FurniLimit = Math.Min(policy.FurniLimit ?? int.MaxValue, P(0));
-                }
+            case "wf_xtra_filter_users": {
+                    long count = P(0);
 
-                break;
-            case "wf_xtra_filter_users":
-                if (P(0) > 0) {
-                    policy.UserLimit = Math.Min(policy.UserLimit ?? int.MaxValue, P(0));
-                }
+                    if (P(1) == 1) {
+                        var token = c.VariableIds.FirstOrDefault() ?? "";
+                        count = ReadVariable(input, P(2), token, P(3), P(4), c) ?? count;
+                    }
 
-                break;
+                    var keep = (int)Math.Clamp(count, 0, 10000);
+
+                    if (Name == "wf_xtra_filter_furni") {
+                        var literalIsTheLimit = P(1) == 0 && keep < (policy.FurniLimit ?? int.MaxValue);
+                        policy.FurniLimit = Math.Min(policy.FurniLimit ?? int.MaxValue, keep);
+
+                        // A literal furniture amount that sets the limit keeps a random subset of its picks; a variable-mode filter keeps the first entries.
+                        if (P(1) == 1) {
+                            policy.FurniFilterRandom = null;
+                        }
+                        else if (literalIsTheLimit) {
+                            policy.FurniFilterRandom = _random;
+                        }
+                    }
+                    else {
+                        policy.UserLimit = Math.Min(policy.UserLimit ?? int.MaxValue, keep);
+                    }
+
+                    break;
+                }
             case "wf_xtra_text_output_furni_name":
             case "wf_xtra_text_output_username": {
                     var parts = c.Text.Split('\t', 2);
@@ -138,7 +155,7 @@ public sealed class WiredAddonModule
                     break;
                 }
             case "wf_xtra_mov_curve": {
-                    long? strength = P(3) == 1 ? ReadVariable(input, P(4), c.Text, P(5), P(6), c) : P(2);
+                    long? strength = P(3) == 1 ? ReadVariable(input, P(4), c.VariableIds.FirstOrDefault() ?? "", P(5), P(6), c) : P(2);
 
                     if (strength is not null) {
                         policy.Curve = new(P(0), P(1), (int)Math.Clamp(strength.Value, -1000, 1000));
@@ -149,14 +166,31 @@ public sealed class WiredAddonModule
             case "wf_xtra_rotate_to_dir": {
                     var distance = (WiredProjectileDistance)P(14);
                     long? tiles = distance != WiredProjectileDistance.Normal && P(15) == 1
-                        ? ReadVariable(input, P(17), c.Text.Split('\t').ElementAtOrDefault(1) ?? "", P(21), P(22), c) : P(16);
+                        ? ReadVariable(input, P(17), ProjectileVariable(c, 1), P(21), P(22), c) : P(16);
 
                     if (tiles is null) {
                         distance = WiredProjectileDistance.Normal;
                     }
 
-                    policy.Projectile = new(Furni(100), P(0) == 1 ? P(1) : null, P(10),
-                    P(18) == 0 ? null : P(18), distance, (int)Math.Clamp(tiles ?? 0, -64, 64));
+                    long time = P(4);
+
+                    if (P(2) == 1 && P(3) == 1) {
+                        time = ReadVariable(input, P(5), ProjectileVariable(c, 0), P(19), P(20), c) ?? time;
+                    }
+
+                    policy.Projectile = new(P(24) == WiredProjectilePolicy.StackMovedSource ? [] : Furni(P(24)), P(0) == 1 ? P(1) : null, P(10),
+                    P(18) == 0 ? null : P(18), distance, (int)Math.Clamp(tiles ?? 0, -64, 64))
+                    {
+                        AppliesToAllMovedFurniture = P(24) == WiredProjectilePolicy.StackMovedSource,
+                        VariableMask = P(11),
+                        TimePerTileMs = P(2) == 1 ? (int)Math.Clamp(time, 1, 100000) : null,
+                        SpeedIncrease = P(9),
+                        MeasureX = P(6) == 1,
+                        MeasureY = P(7) == 1,
+                        MeasureAltitude = P(8) == 1,
+                        ShooterSource = P(0) == 1 && P(12) == 1 ? P(23) : null,
+                        BunnyHop = P(13) == 1
+                    };
                     break;
                 }
             default:
@@ -165,6 +199,10 @@ public sealed class WiredAddonModule
 
         return true;
     }
+
+    // Projectile variable slots accept "0" as an unpicked value.
+    private static string ProjectileVariable(WiredConfiguration c, int slot) =>
+        c.VariableIds.ElementAtOrDefault(slot) is { } id && id != "0" ? id : "";
 
     private static long? ReadVariable(WiredAddonInputs input, int target, string token, int users, int furni,
         WiredConfiguration c)
@@ -178,21 +216,16 @@ public sealed class WiredAddonModule
 
     private bool Acquire(long now, int max, int window)
     {
-        if (now < _lastNow) {
-            _executions.Clear();
+        if (now < _windowStartMs || now - _windowStartMs >= window) {
+            _windowStartMs = now;
+            _executionsInWindow = 0;
         }
 
-        _lastNow = now;
-
-        while (_executions.TryPeek(out var oldest) && now - oldest >= window) {
-            _executions.Dequeue();
-        }
-
-        if (_executions.Count >= max) {
+        if (_executionsInWindow >= max) {
             return false;
         }
 
-        _executions.Enqueue(now);
+        _executionsInWindow++;
 
         return true;
     }

@@ -1,8 +1,8 @@
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
-/// Where a room log line came from, numbered as the client's log source filter and monitor rows
-/// number them. Plus only produces these four: the engine has no heavy, overload or kill state.
+/// Where a room log line came from, as the monitor rows name it. Plus only produces these four: the engine has no heavy,
+/// overload or kill state. The log page itself knows two sources, <see cref="WiredRoomLogEntry.WireSource"/>.
 /// </summary>
 public enum WiredLogSource
 {
@@ -18,7 +18,14 @@ public sealed record WiredRoomLogEntry(long Id, int Level, WiredLogSource Source
         WiredLogSource.RecursionTimeout => "RECURSION_TIMEOUT",
         _ => "WIRED_LOG"
     };
-    public static string LevelName(int level) => level switch { 0 => "DEBUG", 1 => "INFO", 2 => "WARNING", _ => "ERROR" };
+    // The client's log levels (default texts wiredmenu.logs_overview.log_level.N): 0 INFO, 1 WARN, 2 ERROR, 3 DEBUG.
+    public static string LevelName(int level) => level switch { 0 => "INFO", 1 => "WARNING", 2 => "ERROR", _ => "DEBUG" };
+
+    // Observed on hhus (WIN63-202610131318): a Write to Logs line is listed under source 1; the client's two log sources
+    // are 0 System (the engine's own notes) and 1 Wired (lines the boxes wrote).
+    public const int SystemSource = 0;
+    public const int WiredSource = 1;
+    public int WireSource => Source == WiredLogSource.WiredLog ? WiredSource : SystemSource;
     // A "write to logs" line reads as the box wrote it; an engine note names its limit.
     public string Message => Source == WiredLogSource.WiredLog ? Reason : $"{TypeName(Source)}: {Reason}";
 }
@@ -28,12 +35,17 @@ public sealed record WiredRoomLogPage(int Total, int Page, int Amount, IReadOnly
 public sealed record WiredRoomLogTally(WiredLogSource Source, int Count, WiredRoomLogEntry? Latest);
 public sealed record WiredRoomLogSummary(IReadOnlyList<WiredRoomLogTally> Tallies, IReadOnlyList<WiredRoomLogEntry> Recent);
 
-/// <summary>Room-owned bounded log. The log page and the monitor read this same buffer.</summary>
-public sealed class WiredRoomLog(int capacity = 500)
+/// <summary>
+/// Room-owned bounded log. The log page and the monitor read this same buffer. The client states that only the most recent
+/// 200 logs are stored per type, so the capacity bounds each of the two log sources on its own.
+/// </summary>
+public sealed class WiredRoomLog(int capacity = 200)
 {
-    public const int ErrorLevel = 3;
-    private static readonly WiredLogSource[] Sources = Enum.GetValues<WiredLogSource>();
-    private readonly Queue<WiredRoomLogEntry> _entries = [];
+    public const int InfoLevel = 0;
+    public const int ErrorLevel = 2;
+    private static readonly WiredLogSource[] Sources =
+        [WiredLogSource.ExecutionCap, WiredLogSource.DelayedEventsCap, WiredLogSource.RecursionTimeout, WiredLogSource.WiredLog];
+    private readonly List<WiredRoomLogEntry> _entries = [];
     private readonly Dictionary<WiredLogSource, (int Count, WiredRoomLogEntry Latest)> _tallies = [];
     private long _nextId;
     private readonly object _gate = new();
@@ -45,10 +57,10 @@ public sealed class WiredRoomLog(int capacity = 500)
     {
         lock (_gate) {
             var entry = new WiredRoomLogEntry(++_nextId, level, source, boxId, label, reason, timestamp);
-            _entries.Enqueue(entry);
+            _entries.Add(entry);
 
-            while (_entries.Count > Math.Max(1, capacity)) {
-                _entries.Dequeue();
+            if (_entries.Count(x => x.WireSource == entry.WireSource) > Math.Max(1, capacity)) {
+                _entries.RemoveAt(_entries.FindIndex(x => x.WireSource == entry.WireSource));
             }
 
             _tallies[source] = (_tallies.GetValueOrDefault(source).Count + 1, entry);
@@ -61,8 +73,8 @@ public sealed class WiredRoomLog(int capacity = 500)
         amount = Math.Clamp(amount, 1, 100);
 
         lock (_gate) {
-            var matching = _entries.Reverse().Where(entry => (level < 0 || entry.Level == level)
-                && (source < 0 || (int)entry.Source == source)
+            var matching = _entries.AsEnumerable().Reverse().Where(entry => (level < 0 || entry.Level == level)
+                && (source < 0 || entry.WireSource == source)
                 && (query.Length == 0 || entry.Message.Contains(query, StringComparison.OrdinalIgnoreCase))).ToArray();
             // A page past the end, after a clear or a narrower filter, reads as the last page.
             page = Math.Min(page, Math.Max(0, (matching.Length - 1) / amount));
@@ -76,7 +88,7 @@ public sealed class WiredRoomLog(int capacity = 500)
         lock (_gate) {
             return new(Sources.Select(source => _tallies.TryGetValue(source, out var tally)
                     ? new WiredRoomLogTally(source, tally.Count, tally.Latest) : new(source, 0, null)).ToArray(),
-                _entries.Reverse().Take(Math.Max(0, recent)).ToArray());
+                _entries.AsEnumerable().Reverse().Take(Math.Max(0, recent)).ToArray());
         }
     }
 

@@ -8,8 +8,11 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// Executes the existing Volt movement editors. Resolved movers and targets are separate;
 /// the caller owns source selection, scheduling and packet policy.
 /// </summary>
-public sealed class WiredMovementActions
+public sealed class WiredMovementActions(Random? random = null)
 {
+    // Only the move/rotate direction choices draw from this; every other random choice here still uses Random.Shared.
+    private readonly Random _random = random ?? Random.Shared;
+
     public delegate bool MoveFurniture(Item item, int x, int y, int rotation, double? height);
     public delegate bool MoveAvatar(RoomUser avatar, Item target, bool slide, bool fastTeleport, int walkMode);
     /// <summary>Runs each mover's step; the step commits through the given (x, y, rotation) move.</summary>
@@ -31,7 +34,9 @@ public sealed class WiredMovementActions
     public bool Execute(string name, WiredConfiguration configuration, IReadOnlyList<Item> movers,
         IReadOnlyList<Item> targets, IReadOnlyList<RoomUser> users,
         MoveFurniture move, MoveAvatar relocate, Action<Item, string> setState,
-        Func<Item, Func<string, string?>, bool>? toggleState = null, MoveTogether? together = null)
+        Func<Item, Func<string, string?>, bool>? toggleState = null, MoveTogether? together = null,
+        Func<int, int, bool>? inBounds = null, Func<Item, WiredFurniSnapshot, bool, bool, bool>? restoreWall = null,
+        Func<Item, int, double, bool>? setWallAltitude = null)
     {
         if (!WiredMovementConfiguration.TryValidate(name, configuration, out configuration, out _)) {
             return false;
@@ -61,8 +66,14 @@ public sealed class WiredMovementActions
                 }
 
                 foreach (var item in movers) {
+                    if (item.IsWallItem) {
+                        affected |= setWallAltitude?.Invoke(item, Param(0, 2), altitude) == true;
+
+                        continue;
+                    }
+
                     var z = Param(0, 2) switch { 0 => item.GetZ + altitude, 1 => item.GetZ - altitude, _ => altitude };
-                    affected |= move(item, item.GetX, item.GetY, item.Rotation, Math.Clamp(z, 0, 80));
+                    affected |= move(item, item.GetX, item.GetY, item.Rotation, Math.Clamp(z, 0, Math.Max(0, 80 - item.CurrentHeight)));
                 }
 
                 break;
@@ -85,6 +96,32 @@ public sealed class WiredMovementActions
 
                 break;
             case "wf_act_move_furni_as_group":
+                if (p.Length == 6) {
+                    if (movers.Count == 0 || (Param(0) == 1 ? users.Count == 0 : targets.Count == 0)) {
+                        return false;
+                    }
+
+                    var anchorX = Param(0) == 1 ? users[0].X : targets[0].GetX;
+                    var anchorY = Param(0) == 1 ? users[0].Y : targets[0].GetY;
+                    var groupDx = anchorX + Param(1) - movers[0].GetX;
+                    var groupDy = anchorY + Param(2) - movers[0].GetY;
+
+                    if (groupDx == 0 && groupDy == 0
+                        || inBounds != null && movers.Any(item => !inBounds(item.GetX + groupDx, item.GetY + groupDy))) {
+                        return false;
+                    }
+
+                    foreach (var item in movers.OrderByDescending(item => item.GetX * Math.Sign(groupDx) + item.GetY * Math.Sign(groupDy))) {
+                        if (!move(item, item.GetX + groupDx, item.GetY + groupDy, item.Rotation, null)) {
+                            break;
+                        }
+
+                        affected = true;
+                    }
+
+                    break;
+                }
+
                 var groupOffset = WiredRoomOperations.Offset(Param(0));
 
                 // Volt/Polaris direction editor: leading edge first, blocked members skipped.
@@ -105,7 +142,7 @@ public sealed class WiredMovementActions
                 var targetX = target.GetX + spacing.X * Param(1, 1);
                 var targetY = target.GetY + spacing.Y * Param(1, 1);
 
-                if (Steps.Contains(name)) {
+                if (Steps.Contains(name) && p.Length == 3) {
                     affected = together(movers, (item, step) => step(targetX, targetY, item.Rotation));
 
                     break;
@@ -127,10 +164,35 @@ public sealed class WiredMovementActions
 
                 break;
             case "wf_act_match_to_sshot":
+                // A furni outside a one-furni snapshot takes that furni's state; nothing else of it was recorded.
+                var only = configuration.Snapshots.Length == 1 && configuration.Snapshots[0].Wall == null ? configuration.Snapshots[0] : null;
+
                 foreach (var item in movers) {
                     var snapshot = configuration.Snapshots.FirstOrDefault(entry => entry.ItemId == item.Id);
 
                     if (snapshot == null) {
+                        if (only != null && Param(0) == 1 && item.IsFloorItem) {
+                            if (toggleState != null) {
+                                affected |= toggleState(item, current => string.Equals(current, only.State, StringComparison.Ordinal) ? null : only.State);
+                            }
+                            else if (!string.Equals(item.LegacyDataString, only.State, StringComparison.Ordinal)) {
+                                setState(item, only.State);
+                                affected = true;
+                            }
+                        }
+
+                        continue;
+                    }
+
+                    if (item.IsWallItem) {
+                        if (Param(0) == 0 && Param(1) == 0 && (Param(2) == 1 || Param(3) == 1) && restoreWall != null) {
+                            affected |= restoreWall(item, snapshot, Param(2) == 1, Param(3) == 1);
+                        }
+
+                        continue;
+                    }
+
+                    if (!item.IsFloorItem || snapshot.Wall != null) {
                         continue;
                     }
 
@@ -209,13 +271,13 @@ public sealed class WiredMovementActions
         return next == oldState ? null : next.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    private static int MovementDirection(int movement) => movement switch
+    private int MovementDirection(int movement) => movement switch
     {
         >= 0 and <= 7 => movement,
-        // Read-only conversion preserves old editor's random/none choices, absent from the current grid.
-        8 => Random.Shared.Next(4) * 2,
-        9 => Random.Shared.Next(2) == 0 ? 2 : 6,
-        10 => Random.Shared.Next(2) == 0 ? 0 : 4,
+        // Stored movement choices include fixed, random and no movement.
+        8 => _random.Next(8),
+        9 => _random.Next(2) == 0 ? 2 : 6,
+        10 => _random.Next(2) == 0 ? 0 : 4,
         _ => -1
     };
 }

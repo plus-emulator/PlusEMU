@@ -12,6 +12,8 @@ public sealed partial class WiredRoomVariables
     private readonly TimeProvider _clock;
     private readonly WiredVariableConfigurationPersistence _persistence;
     private readonly Dictionary<uint, WiredVariableDefinitionBox> _definitions = [];
+    private readonly Plus.HabboHotel.Quests.IQuestManager? _quests;
+    private readonly WiredSharedVariableBroadcast.Endpoint _broadcast;
     public WiredVariableModule Module { get; }
     public WiredVariableEditor Editor { get; }
     public WiredVariableFxTracker Fx { get; }
@@ -26,17 +28,22 @@ public sealed partial class WiredRoomVariables
     public bool FxDirty { get; private set; } = true;
 
     public WiredRoomVariables(Room room, IDatabase database, TimeProvider clock,
-        Func<WiredVariableReference, WiredVariableHolder, WiredVariableFrame, int?>? builtinRead = null,
+        Func<WiredVariableReference, WiredVariableHolder, WiredVariableFrame, long?>? builtinRead = null,
         Func<WiredVariableReference, WiredVariableHolder, int, WiredVariableFrame, bool>? builtinWrite = null,
-        Action<Item, WiredVariableFrame>? stateChanged = null)
+        Action<Item, WiredVariableFrame>? stateChanged = null, IItemTravelStore? travelStore = null,
+        Plus.HabboHotel.Quests.IQuestManager? quests = null)
     {
         _room = room;
         _clock = clock;
+        _quests = quests;
         Module = new(room.Id, new DatabaseWiredVariableDirectory(database), new DatabaseWiredVariableStore(database), clock,
-            new RoomWiredBuiltinVariables(room, builtinRead, builtinWrite, stateChanged), ResolveDerived);
+            new RoomWiredBuiltinVariables(room, builtinRead, builtinWrite, stateChanged, new RoomItemMetadataStore(database), travelStore, quests, QuestBinding), ResolveDerived);
         Editor = new(Module);
         Fx = new(Module);
         _persistence = new(database, Module, clock);
+        _broadcast = new(Module, playerId => playerId is > 0 and <= int.MaxValue
+            ? room.GetRoomUserManager()?.GetRoomUserByHabbo((int)playerId)?.VirtualId ?? 0 : 0);
+        WiredSharedVariableBroadcast.Register(_broadcast);
     }
 
     public IWiredConfiguredItem? CreateBox(Item item)
@@ -66,13 +73,20 @@ public sealed partial class WiredRoomVariables
     public void ConfigurationLoaded(IWiredConfiguredItem box)
     {
         if (box is WiredVariableTextInputBox textInput) {
-            _textInputs[box.Item.Id] = textInput;
+            lock (_membershipGate) {
+                _textInputs[box.Item.Id] = textInput;
+                _membershipEpoch++;
+            }
 
             return;
         }
 
         if (box is WiredVariableMetadataBox metadata) {
-            _metadata[box.Item.Id] = metadata;
+            lock (_membershipGate) {
+                _metadata[box.Item.Id] = metadata;
+                _membershipEpoch++;
+            }
+
             FxDirty = true;
 
             return;
@@ -82,7 +96,10 @@ public sealed partial class WiredRoomVariables
             return;
         }
 
-        _definitions[box.Item.Id] = definition;
+        lock (_membershipGate) {
+            _definitions[box.Item.Id] = definition;
+            _membershipEpoch++;
+        }
 
         if (definition.Descriptor.CanonicalName == "wf_var_room" && !Module.InitializeGlobal(box.Item.Id)) {
             throw new InvalidOperationException("The room variable could not be initialized from its authoritative definition.");
@@ -93,16 +110,20 @@ public sealed partial class WiredRoomVariables
     /// <summary>Memory-only publication hook, called after atomic persistence and ApplyConfiguration.</summary>
     public void ConfigurationSaved(IWiredConfiguredItem box)
     {
-        if (box is WiredVariableTextInputBox textInput) {
-            _textInputs[box.Item.Id] = textInput;
-        }
+        lock (_membershipGate) {
+            if (box is WiredVariableTextInputBox textInput) {
+                _textInputs[box.Item.Id] = textInput;
+            }
 
-        if (box is WiredVariableMetadataBox metadata) {
-            _metadata[box.Item.Id] = metadata;
-        }
+            if (box is WiredVariableMetadataBox metadata) {
+                _metadata[box.Item.Id] = metadata;
+            }
 
-        if (box is WiredVariableDefinitionBox definition) {
-            _definitions[box.Item.Id] = definition;
+            if (box is WiredVariableDefinitionBox definition) {
+                _definitions[box.Item.Id] = definition;
+            }
+
+            _membershipEpoch++;
         }
 
         FxDirty = true;
@@ -134,9 +155,13 @@ public sealed partial class WiredRoomVariables
     }
     private void ItemDetached(uint itemId, WiredVariableHolder? holder)
     {
-        _textInputs.Remove(itemId);
-        _metadata.Remove(itemId);
-        _definitions.Remove(itemId);
+        lock (_membershipGate) {
+            _textInputs.Remove(itemId);
+            _metadata.Remove(itemId);
+            _definitions.Remove(itemId);
+            _membershipEpoch++;
+        }
+
         Module.DetachDefinition(itemId);
 
         if (holder is { } detached) {
@@ -159,6 +184,7 @@ public sealed partial class WiredRoomVariables
 
         if (changes.Count > 0) {
             FxDirty = true;
+            WiredSharedVariableBroadcast.Deliver(Module.RoomId, changes);
         }
 
         return changes;

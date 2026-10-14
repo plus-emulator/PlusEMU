@@ -10,7 +10,6 @@ using Plus.Database;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
-using Plus.HabboHotel.Items.Wired.Boxes.Effects;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Runtime;
@@ -37,6 +36,36 @@ public sealed class WiredBotAppearancePersistenceTests
     }
 
     [Fact]
+    public void ModernActionDressesTheBotNamedInItsTextAndKeepsItsGender()
+    {
+        using var fixture = new Fixture();
+        var store = new RecordingStore(() => { });
+        var action = fixture.Modern(store, 100, "alice\thd-200-1.ch-210-66");
+
+        Assert.True(action.Execute(fixture.Context()));
+
+        Assert.Equal((31, 42u, "hd-200-1.ch-210-66", "F"), Assert.Single(store.Writes));
+        fixture.AssertPublished("hd-200-1.ch-210-66", "F");
+    }
+
+    [Theory]
+    [InlineData("Carl\thd-200-1")]
+    [InlineData("\thd-200-1")]
+    [InlineData("Alice\thd-200-script")]
+    [InlineData("Alice\t")]
+    public void ModernActionLeavesTheBotAloneForAnotherNameNoNameOrAMalformedFigure(string text)
+    {
+        using var fixture = new Fixture();
+        var store = new RecordingStore(() => { });
+        var action = fixture.Modern(store, 100, text);
+
+        Assert.False(action.Execute(fixture.Context()));
+
+        Assert.Empty(store.Writes);
+        fixture.AssertUnpublished();
+    }
+
+    [Fact]
     public void ModernStoreFailureLeavesStateAndPacketsUnchanged()
     {
         using var fixture = new Fixture();
@@ -47,36 +76,7 @@ public sealed class WiredBotAppearancePersistenceTests
         fixture.AssertUnpublished();
     }
 
-    [Fact]
-    public void LegacyActionPersistsBeforePublishingNewAppearance()
-    {
-        using var fixture = new Fixture();
-        var store = new RecordingStore(() => fixture.AssertUnpublished());
-        var box = new BotChangesClothesBox(fixture.Room, new Item(), store)
-        {
-            StringData = "Alice\thd-300-2"
-        };
 
-        Assert.True(box.Execute(new object()));
-
-        Assert.Equal((31, 42u, "hd-300-2", "M"), Assert.Single(store.Writes));
-        fixture.AssertPublished("hd-300-2", "M");
-    }
-
-    [Fact]
-    public void LegacyStoreFailureLeavesStateAndPacketsUnchanged()
-    {
-        using var fixture = new Fixture();
-        var store = new RecordingStore(() => fixture.AssertUnpublished()) { Fail = true };
-        var box = new BotChangesClothesBox(fixture.Room, new Item(), store)
-        {
-            StringData = "Alice\thd-300-2"
-        };
-
-        Assert.Throws<InvalidOperationException>(() => box.Execute(new object()));
-
-        fixture.AssertUnpublished();
-    }
 
     [RoomComponentDatabaseFact]
     public void CanonicalStoreRequiresExactCurrentRoomBeforeUpdatingAppearance()
@@ -155,14 +155,14 @@ public sealed class WiredBotAppearancePersistenceTests
             people[roomUser.VirtualId] = roomUser;
         }
 
-        public WiredModernAction Modern(IBotManagementStore store)
+        public WiredModernAction Modern(IBotManagementStore store, int source = 0, string text = "\thd-200-1")
         {
             var descriptor = WiredBoxRegistry.All.Single(value => value.CanonicalName == "wf_act_bot_clothes");
             var action = new WiredModernAction(Room, new Item { Id = 1 }, descriptor, new(), _ => { },
                 (_, _, _) => { }, new(), TestLogging.Logger, TimeProvider.System,
                 TestWiredRewardService.Instance, store, TestWiredClients.Empty, TestWiredDefinitions.Unused, TestItemRuntime.Travel);
-            Assert.True(action.TryValidateConfiguration(
-                new() { IntParams = [0], Text = "\thd-200-1" }, out var configuration, out var error), error);
+            Assert.True(WiredNativeTestSupport.TryValidateRuntime(action,
+                new() { IntParams = [source], Text = text }, out var configuration, out var error), error);
             action.ApplyConfiguration(configuration);
 
             return action;

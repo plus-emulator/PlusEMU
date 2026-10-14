@@ -23,7 +23,12 @@ public sealed class WiredVariableConfigurationPersistence(IDatabase database, Wi
 
         if (!WiredVariableDefinitions.TryDecode(box.Descriptor.CanonicalName, box.Item.Id,
             roomId, ownerId, validated, out var definition, out var error)) {
-            throw new InvalidOperationException(error);
+            if (!WiredVariableDefinitions.IsUnpickedEcho(box.Descriptor.CanonicalName, validated)) {
+                throw new InvalidOperationException(error);
+            }
+
+            // An echo with no variable picked is stored and defines nothing; the value-free placeholder only carries the save.
+            definition = new(box.Item.Id, roomId, ownerId, validated.Text, WiredVariableTarget.User, WiredVariableAvailability.RoomActive, false);
         }
 
         var expected = box.HasPersistedConfiguration ? box.Configuration : null;
@@ -75,7 +80,8 @@ public sealed class WiredVariableConfigurationPersistence(IDatabase database, Wi
                 before = row is null ? null : new(row.Value, row.CreatedAt, row.UpdatedAt);
             }
 
-            if (before?.Value == definition.InitialValue) {
+            if (before is not null) {
+                // An existing value is the room's live state; saving the definition never resets it.
                 write = new(before, before);
             }
             else {
@@ -88,7 +94,7 @@ public sealed class WiredVariableConfigurationPersistence(IDatabase database, Wi
             INSERT INTO wired_item_configurations (item_id,box_name,schema_version,configuration)
             VALUES (@itemId,@name,@Version,@configuration)
             ON DUPLICATE KEY UPDATE box_name=@name,schema_version=@Version,configuration=@configuration
-            """, new { itemId, name, proposed.Version, configuration = JsonSerializer.Serialize(proposed) }, transaction);
+            """, new { itemId, name, proposed.Origin!.Native.Version, configuration = JsonSerializer.Serialize(proposed.Origin.Native) }, transaction);
 
         if (definition.IsDurable && write is { Changed: true, After: { } after }) {
             connection.Execute("""
@@ -105,9 +111,10 @@ public sealed class WiredVariableConfigurationPersistence(IDatabase database, Wi
     private static bool SameConfiguration(string json, WiredConfiguration expected)
     {
         try {
-            var saved = JsonSerializer.Deserialize<WiredConfiguration>(json, DatabaseWiredVariableDirectory.JsonOptions);
+            var saved = JsonSerializer.Deserialize<WiredNativeEditorConfiguration>(json);
 
-            return saved is not null && JsonNode.DeepEquals(JsonSerializer.SerializeToNode(saved), JsonSerializer.SerializeToNode(expected));
+            return saved is not null && expected.Origin?.Native is { } native
+                && JsonNode.DeepEquals(JsonSerializer.SerializeToNode(saved), JsonSerializer.SerializeToNode(native));
         }
         catch (JsonException) {
             return false;
@@ -119,7 +126,7 @@ public sealed class WiredVariableConfigurationPersistence(IDatabase database, Wi
     }
     private sealed class ValueRow
     {
-        public int Value { get; set; }
+        public long Value { get; set; }
         public DateTimeOffset? CreatedAt { get; set; }
         public DateTimeOffset? UpdatedAt { get; set; }
     }

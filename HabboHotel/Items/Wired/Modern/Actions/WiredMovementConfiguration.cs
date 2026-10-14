@@ -7,30 +7,13 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// <summary>Validates the current Volt editors and decodes named source roles without changing wire fields.</summary>
 public static class WiredMovementConfiguration
 {
-    // wf_act_move_rotate: index = current Volt editor option, value = stored direction/turn.
+    // wf_act_move_rotate: index = editor option, value = stored direction/turn.
     // AIR's move/rotate radios: 4 ↗ 8 → 5 ↘ 9 ↓ 6 ↙ 10 ← 7 ↖ 11 ↑ (icons move_0..move_7).
     private static readonly int[] EditorMovement = [-1, 8, 9, 10, 0, 2, 4, 6, 1, 3, 5, 7];
     private static readonly int[] EditorRotation = [0, 2, 4, 6];
 
-    /// <summary>Shows stored four-field move/rotate settings in the three-field editor order they were saved from.</summary>
-    public static WiredConfiguration ForEditor(string name, WiredConfiguration stored)
-    {
-        if (!name.Equals("wf_act_move_rotate", StringComparison.OrdinalIgnoreCase)
-            || stored.IntParams.IsDefault || stored.IntParams.Length != 4) {
-            return stored;
-        }
-
-        var p = stored.IntParams;
-        var movement = Array.IndexOf(EditorMovement, p[0]);
-        var rotation = Array.IndexOf(EditorRotation, p[1]);
-
-        // Validation admits only values the editor can show; anything else is sent as stored.
-        if (movement < 0 || rotation < 0 || p[3] != 0) {
-            return stored;
-        }
-
-        return stored with { IntParams = [movement, rotation, p[2]] };
-    }
+    // The October action delay section is shared by every effect: 0 to 120 pulses, or a precise delay of up to 60 s.
+    private static bool IsMovementDelay(int delay) => delay is >= 0 and <= 120 || delay < 0 && WiredConfigurationLimits.IsDelay(delay);
 
     public static bool TryValidate(string name, WiredConfiguration proposed,
         out WiredConfiguration validated, out string error)
@@ -39,13 +22,24 @@ public static class WiredMovementConfiguration
         error = "Invalid movement configuration.";
 
         if (!WiredMovementActions.Names.Contains(name) || !WiredLegacyProtocol.IsWithinLimits(proposed) || proposed.Version != WiredConfiguration.CurrentVersion
-            || proposed.Delay is < 0 or > 20 || proposed.IntParams.IsDefault
+            || !IsMovementDelay(proposed.Delay) || proposed.IntParams.IsDefault
             || proposed.SelectedItems.IsDefault || proposed.SecondarySelectedItems.IsDefault
             || proposed.Snapshots.IsDefault || proposed.Text == null
             || proposed.SelectedItems.Length > 100 || proposed.SecondarySelectedItems.Length > 100
             || proposed.SelectedItems.Any(id => id == 0) || proposed.SecondarySelectedItems.Any(id => id == 0)
             || proposed.Text.Length > 4000) {
             return false;
+        }
+
+        if (proposed.Origin?.Native is { } native) {
+            if (!WiredBoxRegistry.TryGet(name, out var descriptor)
+                || !WiredNativeEditorProjection.IsBound(proposed.Origin.ItemId, descriptor, proposed)) {
+                return false;
+            }
+
+            error = "";
+
+            return true;
         }
 
         var p = proposed.IntParams;
@@ -67,7 +61,7 @@ public static class WiredMovementConfiguration
                 break;
             case "wf_act_set_altitude":
                 if (p.Length != 2 || !Range(0, 0, 2) || !Source(1)
-                    || !WiredRoomOperations.TryAltitude(proposed.Text, out var altitude) || altitude > 40) {
+                    || !WiredRoomOperations.TryAltitude(proposed.Text, out _)) {
                     return false;
                 }
 
@@ -92,11 +86,25 @@ public static class WiredMovementConfiguration
                 furni["movers"] = p[2];
                 break;
             case "wf_act_move_furni_as_group":
-                if (p.Length != 2 || !Range(0, 0, 7) || !Source(1)) {
-                    return false;
+                if (p.Length == 2) {
+                    if (!Range(0, 0, 7) || !Source(1)) {
+                        return false;
+                    }
+
+                    furni["movers"] = p[1];
+                }
+                else {
+                    // Target editor: user/furni toggle, signed offsets, mover and target sources.
+                    if (p.Length != 6 || !Range(0, 0, 1) || !Range(1, -64, 64) || !Range(2, -64, 64)
+                        || !Source(3) || !Source(4) || !Users(5) || !TryItemIds(proposed.Text, out secondary)) {
+                        return false;
+                    }
+
+                    furni["movers"] = p[3];
+                    furni["targets"] = p[4];
+                    users["users"] = p[5];
                 }
 
-                furni["movers"] = p[1];
                 break;
             case "wf_act_furni_to_furni":
                 if (p.Length != 2 || !Source(0) || !Source(1)
@@ -116,14 +124,15 @@ public static class WiredMovementConfiguration
                 users["users"] = p[1];
                 break;
             case "wf_act_move_furni_to":
-                if (p.Length != 3 || p[0] is not (0 or 2 or 4 or 6)
-                    || !Range(1, 1, 5) || !Source(2)) {
+                if (p.Length is not (3 or 4) || p[0] is not (0 or 2 or 4 or 6)
+                    || !Range(1, 1, 5) || !Source(2)
+                    || p.Length == 4 && (!Source(3) || !TryItemIds(proposed.Text, out secondary))) {
                     return false;
                 }
 
                 // This legacy editor moves the event's furni toward resolved target picks.
-                furni["movers"] = 0;
-                furni["targets"] = p[2];
+                furni["movers"] = p.Length == 3 ? 0 : p[2];
+                furni["targets"] = p[p.Length - 1];
                 break;
             case "wf_act_match_to_sshot":
                 if (p.Length != 5 || Enumerable.Range(0, 4).Any(index => !Range(index, 0, 1)) || !Source(4)
@@ -180,7 +189,7 @@ public static class WiredMovementConfiguration
         return true;
     }
 
-    private static bool TryItemIds(string text, out ImmutableArray<uint> ids)
+    internal static bool TryItemIds(string text, out ImmutableArray<uint> ids)
     {
         var builder = ImmutableArray.CreateBuilder<uint>();
 

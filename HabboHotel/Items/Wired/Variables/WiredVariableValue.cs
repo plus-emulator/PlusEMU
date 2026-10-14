@@ -6,14 +6,14 @@ public sealed record WiredVariableValue
     private DateTimeOffset? _createdAt;
     private DateTimeOffset? _updatedAt;
 
-    public WiredVariableValue(int value, DateTimeOffset? createdAt, DateTimeOffset? updatedAt)
+    public WiredVariableValue(long value, DateTimeOffset? createdAt, DateTimeOffset? updatedAt)
     {
         Value = value;
         CreatedAt = createdAt?.ToUniversalTime();
         UpdatedAt = updatedAt?.ToUniversalTime();
     }
 
-    public int Value { get; init; }
+    public long Value { get; init; }
     public DateTimeOffset? CreatedAt { get => _createdAt; init => _createdAt = value?.ToUniversalTime(); }
     public DateTimeOffset? UpdatedAt { get => _updatedAt; init => _updatedAt = value?.ToUniversalTime(); }
 }
@@ -24,8 +24,11 @@ public sealed record WiredVariableWrite(WiredVariableValue? Before, WiredVariabl
 public sealed record WiredVariableChange(uint RoomId, WiredVariableKey Key, WiredVariableChangeKind Kind,
     WiredVariableValue? Before, WiredVariableValue? After, int EntityId, int Depth)
 {
-    public int Origin { get; init; } // 0 Wired, 1 API, 2 creator tools; active editor mask bits.
+    public int Origin { get; init; } // Raw write provenance (1 external, 2 inspection, 3 another room); NativeOrigin translates to the editor's origin indices.
     public string InternalKey { get; init; } = "";
+    /// <summary>The changed variable is "permanent, shared": other rooms of its owner reach it through references.</summary>
+    public bool Shared { get; init; }
+    public int NativeOrigin(uint currentRoomId) => Origin == 1 ? 3 : Origin == 2 ? 2 : Origin == 3 || RoomId != currentRoomId ? 1 : 0;
 }
 
 /// <summary>Mutate is atomic, including when no value exists. Failure throws before a change is published.</summary>

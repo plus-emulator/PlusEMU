@@ -19,6 +19,7 @@ public sealed class UserUpdateComposer(ImmutableArray<RoomUserStatusSnapshot> us
             packet.WriteString(user.Z);
             packet.WriteInteger(user.HeadRotation);
             packet.WriteInteger(user.BodyRotation);
+            // The client reads a third integer here; the model has no value for it, so the slot is zero.
             packet.WriteInteger(0);
             packet.WriteString(user.Status);
         }

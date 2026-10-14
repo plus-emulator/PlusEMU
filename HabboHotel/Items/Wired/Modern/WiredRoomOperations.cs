@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Plus.HabboHotel.Items.Wired.Configuration;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.PathFinding;
 
@@ -34,7 +35,9 @@ public static class WiredRoomOperations
 
         var handler = box.Instance.GetRoomItemHandler();
         var picked = proposed.SelectedItems.Distinct().Select(handler.GetItem)
-            .Where(item => item is { IsFloorItem: true }).ToArray();
+            .Where(item => item is { IsFloorItem: true }
+                || box.Descriptor.CanonicalName == "wf_act_match_to_sshot" && item is { IsWallItem: true }
+                && WiredWallSnapshot.TryParse(item.WallCoordinates, out _)).ToArray();
         var templates = box.Descriptor.CanonicalName == "wf_act_place_furni" && proposed.TemporaryPlacement != null;
 
         return proposed with
@@ -71,10 +74,10 @@ public static class WiredRoomOperations
     public static bool IsOnItem(RoomUser user, Item item) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(user.Coordinate);
 
-    public static bool HasStackedItem(Room room, Item item) =>
+    public static bool HasStackedItem(Room room, Item item, IReadOnlySet<uint>? ignored = null) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation)
             .SelectMany(point => room.GetGameMap().GetCoordinatedItems(point))
-            .Any(other => other.Id != item.Id && other.GetZ >= item.TotalHeight);
+            .Any(other => other.Id != item.Id && ignored?.Contains(other.Id) != true && other.GetZ >= item.TotalHeight);
 
     public static bool CanMoveItem(Room room, Item item, int x, int y, int rotation,
         double? height = null, bool throughUsers = false, bool throughFurni = false, WiredCollisionPolicy? collision = null)
@@ -122,7 +125,7 @@ public static class WiredRoomOperations
 
             var top = height ?? placement.PlacementZ;
 
-            if (top + item.Definition.Height > 80) {
+            if (top + item.CurrentHeight > 80) {
                 return false;
             }
         }
@@ -166,10 +169,10 @@ public static class WiredRoomOperations
     }
 
     public static bool RelocateAvatar(Room room, RoomUser avatar, int x, int y,
-        bool slide, bool throughUsers = false)
+        bool slide, bool throughUsers = false, bool ignoreOccupants = false, long? discardThrough = null)
     {
         if (room.UsesV2Movement) {
-            return RelocateExecutorAvatar(room, avatar, x, y, slide, throughUsers);
+            return RelocateExecutorAvatar(room, avatar, x, y, slide, throughUsers, ignoreOccupants, discardThrough);
         }
 
         var map = room.GetGameMap();
@@ -183,7 +186,14 @@ public static class WiredRoomOperations
             return false;
         }
 
-        if (!throughUsers && (!map.CanWalk(x, y, false)
+        // throughUsers also skips CanWalk, which is the user-occupancy check. Teleport must not use it:
+        // other users are ignored, but a furni that cannot be stood on still refuses.
+        if (ignoreOccupants) {
+            if (!AvatarCanStand(map, x, y)) {
+                return false;
+            }
+        }
+        else if (!throughUsers && (!map.CanWalk(x, y, false)
                              || map.GetRoomUsers(new(x, y)).Any(other => other != avatar))) {
             return false;
         }
@@ -211,7 +221,7 @@ public static class WiredRoomOperations
         return true;
     }
 
-    private static bool CanRelocateAvatar(Room room, RoomUser avatar, int x, int y, bool throughUsers)
+    private static bool CanRelocateAvatar(Room room, RoomUser avatar, int x, int y, bool throughUsers, bool ignoreOccupants)
     {
         var map = room.GetGameMap();
 
@@ -224,13 +234,46 @@ public static class WiredRoomOperations
             return false;
         }
 
+        if (ignoreOccupants) {
+            return AvatarCanStand(map, x, y);
+        }
+
         return throughUsers || map.CanWalk(x, y, false) && !map.GetRoomUsers(new(x, y)).Any(other => other != avatar);
     }
 
-    private static void RelocateOwned(Room room, RoomNavigation navigation, RoomUser actor,
-        int x, int y, bool slide, bool throughUsers, long discardThrough)
+    // A magic tile or an empty square can be stood on. Otherwise the highest furni must be walkable or a seat/bed.
+    // An uninitialized map byte of 0 is not solid: tests and unloaded tiles have no furni there.
+    private static bool AvatarCanStand(Gamemap map, int x, int y)
     {
-        if (!CanRelocateAvatar(room, actor, x, y, throughUsers)) {
+        if (map.WalkMagicAt(x, y) != null) {
+            return true;
+        }
+
+        var items = map.GetCoordinatedItems(new(x, y));
+
+        if (items.Count == 0) {
+            return true;
+        }
+
+        Item? top = null;
+
+        foreach (var item in items) {
+            if (item.Definition.InteractionType == InteractionType.WalkMagicTile) {
+                continue;
+            }
+
+            if (top == null || item.TotalHeight > top.TotalHeight || item.TotalHeight == top.TotalHeight && item.Id > top.Id) {
+                top = item;
+            }
+        }
+
+        return top == null || map.ItemWalkState(top) is 1 or 3;
+    }
+
+    private static void RelocateOwned(Room room, RoomNavigation navigation, RoomUser actor,
+        int x, int y, bool slide, bool throughUsers, bool ignoreOccupants, long discardThrough)
+    {
+        if (!CanRelocateAvatar(room, actor, x, y, throughUsers, ignoreOccupants)) {
             return;
         }
 
@@ -246,24 +289,41 @@ public static class WiredRoomOperations
     }
 
     private static bool RelocateExecutorAvatar(Room room, RoomUser avatar, int x, int y,
-        bool slide, bool throughUsers = false)
+        bool slide, bool throughUsers = false, bool ignoreOccupants = false, long? discardThrough = null)
     {
-        if (!CanRelocateAvatar(room, avatar, x, y, throughUsers)) {
+        if (!CanRelocateAvatar(room, avatar, x, y, throughUsers, ignoreOccupants)) {
             return false;
         }
 
         var navigation = room.GetGameMap().Navigation!;
-        navigation.RunOwner(avatar, (actor, sequence) => RelocateOwned(room, navigation, actor, x, y, slide, throughUsers, sequence));
+        navigation.RunOwner(avatar, (actor, sequence) => RelocateOwned(room, navigation, actor, x, y, slide, throughUsers, ignoreOccupants, discardThrough ?? sequence));
 
         return true;
     }
 
     public static WiredFurniSnapshot Capture(Item item) => new(item.Id, item.Definition.Id,
-        item.GetX, item.GetY, item.GetZ, item.Rotation, item.LegacyDataString ?? string.Empty);
+        item.GetX, item.GetY, item.GetZ, item.Rotation, item.LegacyDataString ?? string.Empty)
+    {
+        Wall = CaptureWall(item)
+    };
+
+    private static WiredWallSnapshot? CaptureWall(Item item)
+    {
+        if (!item.IsWallItem || !WiredWallSnapshot.TryParse(item.WallCoordinates, out var wall)) {
+            return null;
+        }
+
+        if (wall!.NativeAltitude == null && item.GetRoom()?.GetGameMap().StaticModel is { } model) {
+            wall = wall with { CapturedAltitudeHundredths = (int)Math.Floor(WiredWallGeometry.Altitude(model, wall) * 100 + 0.5) };
+        }
+
+        return wall;
+    }
 
     public static bool MatchesSnapshot(Item item, WiredFurniSnapshot snapshot,
         bool state, bool direction, bool position, bool altitude) =>
-        (!state || string.Equals(item.LegacyDataString ?? string.Empty, snapshot.State, StringComparison.Ordinal))
+        item.IsFloorItem && snapshot.Wall == null
+        && (!state || string.Equals(item.LegacyDataString ?? string.Empty, snapshot.State, StringComparison.Ordinal))
         && (!direction || item.Rotation == snapshot.Rotation)
         && (!position || item.GetX == snapshot.X && item.GetY == snapshot.Y)
         && (!altitude || Math.Abs(item.GetZ - snapshot.Z) < 0.00001);

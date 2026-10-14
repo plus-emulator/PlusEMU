@@ -396,25 +396,21 @@ public class Item
         }
     }
 
-    public double TotalHeight
+    public double CurrentHeight
     {
         get
         {
-            var curHeight = 0.0;
-
-            if (Definition.AdjustableHeights?.Count > 1) {
-                if (int.TryParse(LegacyDataString, out var num2) && Definition.AdjustableHeights.Count - 1 >= num2) {
-                    curHeight = GetZ + Definition.AdjustableHeights[num2];
-                }
+            if (Definition.AdjustableHeights is { Count: > 1 } heights
+                && int.TryParse(LegacyDataString, out var index) && index >= 0 && index < heights.Count
+                && GetZ + heights[index] >= 0) {
+                return heights[index];
             }
 
-            if (curHeight <= 0.0) {
-                curHeight = GetZ + Definition.Height;
-            }
-
-            return curHeight;
+            return Definition.Height;
         }
     }
+
+    public double TotalHeight => GetZ + CurrentHeight;
 
     public bool IsWallItem => Definition.Type == ItemType.Wall;
 
@@ -1155,6 +1151,10 @@ public class Item
                             break;
                         }
                     case InteractionType.Banzaicounter: {
+                            if (WiredCounterController.Recognizes(this)) {
+                                break;
+                            }
+
                             if (string.IsNullOrEmpty(LegacyDataString)) {
                                 break;
                             }
@@ -1305,6 +1305,10 @@ public class Item
                             break;
                         }
                     case InteractionType.Freezetimer: {
+                            if (WiredCounterController.Recognizes(this)) {
+                                break;
+                            }
+
                             if (string.IsNullOrEmpty(LegacyDataString)) {
                                 break;
                             }

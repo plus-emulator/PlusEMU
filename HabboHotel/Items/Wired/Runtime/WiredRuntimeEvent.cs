@@ -7,20 +7,27 @@ public enum WiredEventKind
 {
     Enter, Speech, WalkOn, WalkOff, Use, StateChanged, GameStart, GameEnd, Collision,
     Score, AvatarAction, Leave, ClickFurni, ClickTile, ClickUser, BotReachedFurni,
-    BotReachedUser, Counter, Signal, Variable, Periodic, Elapsed
+    BotReachedUser, Counter, Signal, Variable, Periodic, Elapsed, TransactionComplete, TransactionFail, Inspection
 }
 
 public sealed record WiredRuntimeEvent(WiredEventKind Kind)
 {
     public RoomUser? Actor { get; init; }
     public Item? EventItem { get; init; }
+    /// <summary>The contract (or the Initiate Transaction box of a custom contract) a transaction event is about, even once its furni has left the room.</summary>
+    public uint SourceId { get; init; }
     public RoomUser? TargetUser { get; init; }
     public string Message { get; init; } = "";
+    public int ChatType { get; init; }
+    public int ChatStyle { get; init; }
     public int Action { get; init; }
     public int Code { get; init; }
+    /// <summary>A transaction failure caused by a Cancel Transaction effect.</summary>
+    public bool CancelledByWired { get; init; }
     public WiredVariableChange? VariableChange { get; init; }
     public long PreviousValue { get; init; }
     public long Value { get; init; }
+    public Plus.HabboHotel.Items.Wired.Chests.WiredChestFigures? Transaction { get; init; }
     public int Team { get; init; }
     public int X { get; init; }
     public int Y { get; init; }

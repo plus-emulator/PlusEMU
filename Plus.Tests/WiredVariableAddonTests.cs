@@ -11,19 +11,20 @@ namespace Plus.Tests;
 public sealed class WiredVariableAddonTests
 {
     [Fact]
-    public void VariableFilterRanksSelectedHoldersAndUsesSnapshotReferenceAmount()
+    public void VariableFilterRanksSelectorPoolAndUsesSnapshotReferenceAmount()
     {
         var (room, context, module, holders) = World();
         var box = Box("wf_xtra_filter_users_by_var", room, module);
-        var config = new WiredConfiguration { IntParams = [0, 1, 0, 0, 200, 0], Text = "custom:10\tcustom:11" };
-        Assert.True(box.TryValidateConfiguration(config, out var valid, out _));
-        box.ApplyConfiguration(valid);
+        // Rank by custom:10 and keep as many as custom:11 holds (2); a literal amount keeps that many of the top ranked.
+        // The official editor offers the triggering user (0) and the signal's (201) for the amount reference, not the selector's.
+        context.Triggering.UserIds.Add(context.SelectorUserOrder[0]);
+        WiredNativeTestSupport.Install(box, WiredNativeTestSupport.FromLegacyVariableAddon(box.Descriptor, new() { IntParams = [0, 1, 1, 0, 0, 0], Text = "custom:10\tcustom:11" }));
         Assert.True(box.Apply(context));
         Assert.Equal(new[] { 2, 3 }, context.Selected.UserIds.Order().ToArray());
-        var empty = config with { IntParams = [0, 0, 0, 0, 0, 0] };
-        box.ApplyConfiguration(empty);
+        WiredNativeTestSupport.Install(box, WiredNativeTestSupport.FromLegacyVariableAddon(box.Descriptor, new() { IntParams = [0, 0, 1, 0, 0, 0], Text = "custom:10\t" }));
+        context.Selected.UserIds.UnionWith(context.SelectorPool.UserIds);
         Assert.True(box.Apply(context));
-        Assert.Empty(context.Selected.UserIds);
+        Assert.Single(context.Selected.UserIds);
         Assert.Empty(module.DrainChanges());
     }
     [Fact]
@@ -31,15 +32,42 @@ public sealed class WiredVariableAddonTests
     {
         var (room, context, module, holders) = World();
         var box = Box("wf_xtra_text_output_variable", room, module);
-        var config = new WiredConfiguration { IntParams = [0, 2, 2, 200, 0], Text = "custom:10\tpoints\t|" };
-        Assert.True(box.TryValidateConfiguration(config, out var valid, out _));
-        box.ApplyConfiguration(valid);
+        WiredNativeTestSupport.Install(box, WiredNativeTestSupport.FromLegacyVariableAddon(box.Descriptor, new() { IntParams = [0, 2, 2, 200, 0], Text = "custom:10\tpoints\t|" }));
         Assert.True(box.Apply(context));
         Assert.Equal("scores=ten|twenty|30", context.Policy.FormatText(context, "scores=$(points)"));
-        box.ApplyConfiguration(config with { Text = "custom:11\tpoints\t," });
+        WiredNativeTestSupport.Install(box, WiredNativeTestSupport.FromLegacyVariableAddon(box.Descriptor, new() { IntParams = [0, 2, 2, 200, 0], Text = "custom:11\tpoints\t," }));
         module.Mutate(new(WiredVariableTarget.User, "custom:10"), holders[0], WiredVariableMutation.Set, 40, context.VariableFrame!);
         Assert.Equal("scores=40|twenty|30", context.Policy.FormatText(context, "scores=$(points)"));
     }
+    [Theory]
+    [InlineData(long.MinValue)]
+    [InlineData(long.MaxValue)]
+    [InlineData(9007199254740993L)]
+    public void TextOutputPreservesExactWideNumbersInsteadOfNarrowingConnectorKeys(long number)
+    {
+        var (room, context, module, holders) = World();
+        Assert.True(module.Mutate(new(WiredVariableTarget.User, "custom:10"), holders[0], WiredVariableMutation.Set, number, context.VariableFrame!));
+        var box = Box("wf_xtra_text_output_variable", room, module);
+        WiredNativeTestSupport.Install(box, WiredNativeTestSupport.FromLegacyVariableAddon(box.Descriptor, new() { IntParams = [0, 2, 1, 200, 0], Text = "custom:10\tpoints\t|" }));
+        Assert.True(box.Apply(context));
+        Assert.Equal(number.ToString(System.Globalization.CultureInfo.InvariantCulture), context.Policy.FormatText(context, "$(points)"));
+    }
+
+    [Theory]
+    [InlineData("wf_xtra_text_output_variable")]
+    [InlineData("wf_xtra_filter_furni_by_var")]
+    public void SmartBuiltinTokensAreAcceptedForOutputAndFilterOperands(string name)
+    {
+        var (room, _, module, _) = World();
+        var box = Box(name, room, module);
+        var config = name == "wf_xtra_text_output_variable"
+            ? new WiredConfiguration { IntParams = [1, 1, 1, 0, 0], Text = "internal:~area_hide.width\twidth\t, " }
+            : new WiredConfiguration { IntParams = [0, 1, 1, 1, 0, 0], Text = "internal:~area_hide.width\tinternal:~background_color.hue" };
+        var native = WiredNativeTestSupport.FromLegacyVariableAddon(box.Descriptor, config);
+        Assert.True(WiredNativeEditorProjection.TryCompile(90, box.Descriptor, native, out var runtime));
+        Assert.True(box.TryValidateConfiguration(runtime, out _, out _));
+    }
+
     private static WiredVariableAddonBox Box(string name, Room room, WiredVariableModule module)
     {
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
@@ -53,6 +81,8 @@ public sealed class WiredVariableAddonTests
         var users = Enumerable.Range(1, 3).Select(i => new RoomUser(900 + i, 0, i, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused)).ToArray();
         var context = new WiredRuntimeContext(room, new(WiredEventKind.Enter), new(() => [], () => users), new Operations());
         context.SelectorPool.UserIds.UnionWith(users.Select(x => x.VirtualId));
+        context.SelectorUserOrder.AddRange(users.Select(x => x.VirtualId));
+        context.SelectorKinds = WiredSelectionKind.Users;
         context.Selected.UserIds.UnionWith(users.Select(x => x.VirtualId));
         var frame = WiredVariableRuntimeFrames.Create(context);
         context.VariableFrame = frame;

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Reflection;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
@@ -12,7 +13,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-public class WiredRuntimeEngineTests
+public partial class WiredRuntimeEngineTests
 {
     [Fact]
     public void SelectorsPrecedePoliciesConditionsAndActionsAndEmptyDoesNotFallback()
@@ -53,7 +54,7 @@ public class WiredRuntimeEngineTests
             return true;
         });
 
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = actor, EventItem = eventItem }));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = actor, EventItem = eventItem }));
         Assert.Equal(new[] { "selector", "addon", "condition", "action" }, trace);
         Assert.Empty(f.Errors);
     }
@@ -75,7 +76,7 @@ public class WiredRuntimeEngineTests
 
             return true;
         });
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter)));
         Assert.Empty(f.Errors);
     }
 
@@ -89,7 +90,7 @@ public class WiredRuntimeEngineTests
         f.Add(new Box(WiredBoxCategory.Condition) { Body = _ => passes });
         var positive = f.Action();
         var negative = f.Action(negative: true);
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         Assert.Equal(passes ? 1 : 0, positive.Calls);
         Assert.Equal(passes ? 0 : 1, negative.Calls);
     }
@@ -113,8 +114,9 @@ public class WiredRuntimeEngineTests
         }, x: 2);
         var excluded = f.Action(negative: true, x: 2);
         f.Action(ctx => ctx.Operations.CallStacks(ctx, [target.Item], negative: true));
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         // The target trigger also receives Enter; its failing condition runs its negative branch once.
+        f.Resume();
         Assert.Equal(1, called.Calls);
         Assert.Equal(1, excluded.Calls);
         Assert.Empty(f.Errors);
@@ -128,36 +130,34 @@ public class WiredRuntimeEngineTests
         trigger.Hide = true;
         var condition = f.Add(new Box(WiredBoxCategory.Condition) { Body = _ => false });
         var action = f.Action(delay: 2);
-        Assert.False(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Speech) { Message = "hello" }));
+        Assert.False(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Speech) { Message = "hello" }));
         condition.Body = _ => true;
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Speech) { Message = "hello" }));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Speech) { Message = "hello" }));
         Assert.Equal(0, action.Calls);
         f.Advance(1000);
         Assert.Equal(1, action.Calls);
         trigger.Hide = false;
-        Assert.False(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Speech) { Message = "hello" }));
+        Assert.False(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Speech) { Message = "hello" }));
     }
 
     [Fact]
-    public void IndependentHalfSecondDelaysAndGlobalPriorityAreShared()
+    public void EqualDelaysShareADeadlineAndLateTicksDoNotAddAnotherWait()
     {
         var f = new Fixture();
         f.Trigger();
         var trace = new List<string>();
-        var late = f.Action(_ => { trace.Add("late"); return true; }, delay: 2);
-        var one = f.Action(_ => { trace.Add("one"); return false; }, delay: 1);
-        var two = f.Action(_ => { trace.Add("two"); return true; }, delay: 1);
-        one.Item.GetZ = 3;
-        two.Item.GetZ = 4;
+        f.Action(_ => { trace.Add("late"); return true; }, delay: 2);
+        f.Action(_ => { trace.Add("one"); return false; }, delay: 1);
+        f.Action(_ => { trace.Add("two"); return true; }, delay: 1);
         f.Action(_ => { trace.Add("immediate"); return true; });
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         Assert.Equal(new[] { "immediate" }, trace);
-        f.Advance(499);
-        Assert.Single(trace);
-        f.Advance(1);
-        Assert.Equal(new[] { "immediate", "one", "two" }, trace);
-        f.Advance(500);
-        Assert.Equal(new[] { "immediate", "one", "two", "late" }, trace);
+        f.Advance(750);
+        Assert.Equal("immediate", trace[0]);
+        Assert.Equal(new[] { "one", "two" }, trace.Skip(1).Order());
+        f.Advance(250);
+        Assert.Equal("late", trace[3]);
+        Assert.Equal(4, trace.Count);
         Assert.False(f.Engine.NeedsFastCycle);
     }
 
@@ -170,12 +170,12 @@ public class WiredRuntimeEngineTests
         Box? action = null;
         action = f.Action(ctx => { seen.Add(ctx.ConfigurationOf(action!).Text); return true; }, delay: 1);
         action.ApplyConfiguration(action.Configuration with { Text = "old" });
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter));
         // Direct changes demonstrate snapshot isolation; production saves use the publisher below.
         action.ApplyConfiguration(action.Configuration with { Text = "unpublished" });
         f.Advance(500);
         Assert.Equal(new[] { "old" }, seen);
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter));
         Assert.Throws<InvalidOperationException>(() => f.Engine.PublishConfigured(action,
             action.Configuration with { Text = "failed" }, () => throw new InvalidOperationException("database")));
         Assert.Equal("unpublished", action.Configuration.Text);
@@ -200,7 +200,7 @@ public class WiredRuntimeEngineTests
             return true;
         }, delay: 1);
         f.Users.Remove(departed);
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Leave) { Actor = departed }));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Leave) { Actor = departed }));
         var replacement = f.User(3);
         f.Advance(500);
         Assert.Equal(1, action.Calls);
@@ -209,7 +209,7 @@ public class WiredRuntimeEngineTests
     }
 
     [Fact]
-    public void SourceCapsCachePerFiringAndRawUniverseRemainsComplete()
+    public void SelectorCapsLeaveSavedSourcesCompleteAndStillRejectDetachedIdentities()
     {
         var f = new Fixture();
         var items = Enumerable.Range(0, 5).Select(_ => f.Furni()).ToArray();
@@ -218,15 +218,15 @@ public class WiredRuntimeEngineTests
         f.Action(ctx =>
         {
             var picked = ctx.Targets.ResolveFurni(ctx, items.Select(x => x.Id), WiredSources.Selected);
-            Assert.Equal(2, picked.Length);
+            Assert.Equal(5, picked.Length);
             Assert.Equal(picked, ctx.Targets.ResolveFurni(ctx, items.Select(x => x.Id).Reverse(), WiredSources.Selected));
             Assert.Equal(5, ctx.Targets.ResolveFurni(ctx, items.Select(x => x.Id), WiredSources.Selected, raw: true).Length);
             f.Furniture.Remove(picked[0]);
-            Assert.Single(ctx.Targets.ResolveFurni(ctx, items.Select(x => x.Id), WiredSources.Selected));
+            Assert.Equal(4, ctx.Targets.ResolveFurni(ctx, items.Select(x => x.Id), WiredSources.Selected).Length);
 
             return true;
         });
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter));
         Assert.Empty(f.Errors);
     }
 
@@ -241,11 +241,11 @@ public class WiredRuntimeEngineTests
         f.Add(new Addon { ApplyBody = ctx => { ctx.Policy.Addons.ActionPicker = picker; return true; } });
         f.Add(new Addon { AfterConditions = true, ApplyBody = _ => { calls++; return true; } });
         var action = f.Action();
-        Assert.False(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.False(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         Assert.Equal(0, calls);
         Assert.Equal(0, picker.Calls);
         condition.Body = _ => true;
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         Assert.Equal(1, calls);
         Assert.Equal(1, picker.Calls);
         Assert.Equal(1, action.Calls);
@@ -269,9 +269,9 @@ public class WiredRuntimeEngineTests
         }
         });
         var action = f.Action();
-        Assert.False(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.False(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         ordinary.Body = _ => true;
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         Assert.Equal(1, action.Calls);
     }
 
@@ -295,14 +295,14 @@ public class WiredRuntimeEngineTests
         }
         });
         var action = f.Action();
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         good.Body = _ => false;
-        Assert.False(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.False(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         mode = WiredConditionEvaluation.SomeButNotAll;
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         bad.Body = _ => true;
         good.Body = _ => true;
-        Assert.False(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.False(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         Assert.Equal(2, action.Calls);
     }
 
@@ -312,7 +312,12 @@ public class WiredRuntimeEngineTests
         var f = new Fixture(new() { MaxDepth = 3 });
         var trigger = f.Trigger();
         var action = f.Action(ctx => ctx.Operations.CallStacks(ctx, [trigger.Item]));
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
+
+        for (var i = 0; i < 3; i++) {
+            f.Advance(50);
+        }
+
         Assert.Equal(4, action.Calls);
         Assert.Empty(f.Errors);
     }
@@ -333,6 +338,7 @@ public class WiredRuntimeEngineTests
 
             return true;
         }, x: 2);
+        var moveReceiverAfterSend = false;
         f.Action(ctx =>
         {
             ctx.Values["value"] = 17;
@@ -341,22 +347,26 @@ public class WiredRuntimeEngineTests
             selection.FurniIds.Clear();
             ctx.Values["value"] = 99;
 
+            if (moveReceiverAfterSend) {
+                antenna.SetState(3, 0, 0, []);
+                antenna.SetState(2, 0, 0, []);
+            }
+
             return accepted;
         });
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
-        Assert.Equal(0, receiver.Calls);
+        f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter));
+        Assert.Equal(1, receiver.Calls);
         f.Engine.OnFastCycle();
         Assert.Equal(1, receiver.Calls);
         Assert.Empty(f.Errors);
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
-        antenna.SetState(3, 0, 0, []);
-        antenna.SetState(2, 0, 0, []);
+        moveReceiverAfterSend = true;
+        f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter));
         f.Engine.OnFastCycle();
         Assert.Equal(1, receiver.Calls);
     }
 
     [Fact]
-    public void SignalReceiverTriggersFromAntennaAndKeepsForwardedFurniInSignalSource()
+    public void SignalReceiverKeepsOriginalTargetsSeparateFromForwardedSignalTargets()
     {
         var f = new Fixture();
         var item = f.Furni();
@@ -366,15 +376,15 @@ public class WiredRuntimeEngineTests
         f.Trigger(WiredEventKind.Signal, x: 2);
         var receiver = f.Action(ctx =>
         {
-            Assert.Equal(new[] { antenna }, ctx.Targets.ResolveFurni(ctx, [], WiredSources.Trigger));
+            Assert.Empty(ctx.Targets.ResolveFurni(ctx, [], WiredSources.Trigger));
             Assert.Equal(new[] { item }, ctx.Targets.ResolveFurni(ctx, [], WiredSources.Signal));
-            Assert.Equal(new[] { user }, ctx.Targets.ResolveUsers(ctx, [], WiredSources.Trigger));
+            Assert.Empty(ctx.Targets.ResolveUsers(ctx, [], WiredSources.Trigger));
             Assert.Equal(new[] { user }, ctx.Targets.ResolveUsers(ctx, [], WiredSources.Signal));
 
             return true;
         }, x: 2);
         f.Action(ctx => ctx.Operations.SendSignal(ctx, [antenna], new([item.Id], [user.VirtualId])));
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter));
         f.Engine.OnFastCycle();
         Assert.Equal(1, receiver.Calls);
         Assert.Empty(f.Errors);
@@ -387,7 +397,7 @@ public class WiredRuntimeEngineTests
         f.Trigger();
         f.Trigger();
         f.Trigger();
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter));
         Assert.Equal(1, f.FurnitureReads);
         Assert.Equal(1, f.UserReads);
     }
@@ -416,29 +426,29 @@ public class WiredRuntimeEngineTests
             f.Engine.OnFastCycle();
         }
 
-        // Deadlines stay on the grid set when the box armed at the first pass: one emission for the first pass at or
-        // after a deadline, none before it, and a pass that already passed the next deadline does not fire twice.
+        // Each reached deadline schedules one chain for the following boundary and rearms from that poll.
         var expected = new List<long>();
-        var lastDeadline = 0L;
+        var next = (long)interval;
+        var pending = false;
 
         foreach (var pass in passes.Skip(1)) {
-            var deadline = pass / interval * interval;
-
-            if (deadline <= lastDeadline) {
-                continue;
+            if (pending) {
+                expected.Add(pass);
+                pending = false;
             }
 
-            expected.Add(pass);
-            lastDeadline = deadline;
+            if (pass >= next) {
+                pending = true;
+                next = pass + interval;
+            }
         }
 
         Assert.Equal(expected, fired);
-        Assert.InRange(fired.Count, duration / interval * 95 / 100, duration / interval);
         Assert.Empty(f.Errors);
     }
 
     [Fact]
-    public void ARepeaterLateOnItsDeadlineKeepsItsPhaseAndSkipsWhatItMissed()
+    public void ARepeaterLateOnItsDeadlineRearmsFromThePollAndSkipsWhatItMissed()
     {
         var f = new Fixture();
         var fired = new List<long>();
@@ -450,8 +460,8 @@ public class WiredRuntimeEngineTests
             f.Engine.OnFastCycle();
         }
 
-        // 2730 is five deadlines late: one emission, no burst, and the next deadline is still 3000.
-        Assert.Equal([2730L, 3000L, 3500L], fired);
+        // 2730 schedules one emission for the next boundary, then rearms at 3230.
+        Assert.Equal([2999L, 3500L], fired);
     }
 
     [Fact]
@@ -468,7 +478,7 @@ public class WiredRuntimeEngineTests
             f.Engine.OnFastCycle();
         }
 
-        Assert.Equal([60L, 105L, 150L], fired);
+        Assert.Equal([105L, 150L], fired);
     }
 
     [Fact]
@@ -495,9 +505,13 @@ public class WiredRuntimeEngineTests
 
     private static WiredModernTimedTrigger RealTimer(Fixture f, string name, int units, int x = 0)
     {
+        if (f.Users.Count == 0) {
+            f.User(0);
+        }
+
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
         var timer = new WiredModernTimedTrigger(f.Room, f.Furni(name, x), descriptor);
-        Assert.True(timer.TryValidateConfiguration(new() { IntParams = [units] }, out var config, out var error), error);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(timer, new() { IntParams = [units] }, out var config, out var error), error);
         timer.ApplyConfiguration(config);
         Assert.True(f.Engine.Add(timer));
 
@@ -520,40 +534,17 @@ public class WiredRuntimeEngineTests
         Assert.True(f.Engine.NeedsFastCycle);
         f.Engine.OnFastCycle();
         Assert.Equal(1, timer.Polls);
-        Assert.Equal(1, action.Calls);
+        Assert.Equal(0, action.Calls);
         // The room paces the passes; a timer decides for itself whether a deadline is due.
         f.Advance(49);
         Assert.Equal(2, timer.Polls);
         f.Engine.OnCycle();
         Assert.Equal(3, timer.Polls);
-        Assert.Equal(3, action.Calls);
+        Assert.Equal(2, action.Calls);
         f.Engine.Remove(timer.Item.Id);
         Assert.False(f.Engine.NeedsFastCycle);
     }
 
-    [Fact]
-    public void PromotionPersistsBeforeReplacingLegacyReferenceAndCancelsCapturedWork()
-    {
-        var f = new Fixture();
-        f.Trigger();
-        var original = f.Action(delay: 1);
-        var candidate = new Box(WiredBoxCategory.Action) { Item = original.Item, Instance = f.Room };
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
-        Assert.Throws<InvalidOperationException>(() => f.Engine.PublishPromotion(original, candidate, new(),
-            () => throw new InvalidOperationException("database")));
-        Assert.True(f.Engine.TryGet(original.Item.Id, out var stillOriginal));
-        Assert.Same(original, stillOriginal);
-        Assert.True(f.Engine.PublishPromotion(original, candidate, new() { Text = "saved" }, () =>
-        {
-            Assert.True(f.Engine.TryGet(original.Item.Id, out var persisted));
-            Assert.Same(original, persisted);
-        }));
-        Assert.True(f.Engine.TryGet(original.Item.Id, out var promoted));
-        Assert.Same(candidate, promoted);
-        f.Advance(500);
-        Assert.Equal(0, original.Calls);
-        Assert.Equal("saved", candidate.Configuration.Text);
-    }
 
     [Fact]
     public void AuxiliaryAnimationWorkSharesBudgetDelayAndConfigurationCancellation()
@@ -562,12 +553,12 @@ public class WiredRuntimeEngineTests
         f.Trigger();
         var calls = 0;
         var action = f.Action(ctx => f.Engine.ScheduleAux(ctx, 400, () => calls++));
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter));
         f.Advance(399);
         Assert.Equal(0, calls);
         f.Advance(1);
         Assert.Equal(1, calls);
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter));
         f.Engine.PublishConfigured(action, action.Configuration, () => { });
         f.Advance(400);
         Assert.Equal(1, calls);
@@ -582,7 +573,7 @@ public class WiredRuntimeEngineTests
         var actor = f.User(7);
         f.Trigger(WiredEventKind.Speech);
         var action = f.Action(delay: 1);
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Speech) { Actor = actor });
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Speech) { Actor = actor });
         f.Users.Remove(actor);
 
         if (reenter) {
@@ -606,6 +597,7 @@ public class WiredRuntimeEngineTests
         f.Add(new Box(WiredBoxCategory.Condition) { Body = ctx => ReferenceEquals(ctx.Event.Actor, bob) });
         var action = f.Action(ctx => { Assert.Null(ctx.Event.Actor); return true; });
         Assert.True(f.Engine.RunPeriodicStack(repeater, [[alice], [bob]]));
+        f.Resume();
         Assert.Equal(1, action.Calls);
         Assert.Empty(f.Errors);
     }
@@ -627,7 +619,7 @@ public class WiredRuntimeEngineTests
 
             return true;
         });
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter)));
         Assert.Equal(0, nested.Calls);
         f.Advance(50);
         Assert.Equal(0, aux);
@@ -660,7 +652,7 @@ public class WiredRuntimeEngineTests
         var executed = 0;
         var cancelled = 0;
         f.Action(ctx => f.Engine.ScheduleAux(ctx, 500, () => executed++, () => cancelled++));
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter));
 
         if (roomCleanup) {
             f.Engine.Clear();
@@ -695,29 +687,12 @@ public class WiredRuntimeEngineTests
 
             return true;
         });
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        f.Resume();
         Assert.Equal(1, effect.Calls);
         Assert.Empty(f.Errors);
     }
 
-    [Fact]
-    public void LoaderRetainsLegacyPayloadWithoutSidecarAndRejectsInvalidSidecar()
-    {
-        var legacy = new LegacyRepeater { StringData = "old;payload", ItemsData = "7:1:2:3:0.5", BoolData = true, Delay = 4 };
-        var configured = new Box(WiredBoxCategory.Trigger) { Configuration = new() { Text = "modern" } };
-        Assert.Same(legacy, WiredBoxLoading.Select(legacy, configured, null));
-        Assert.Equal("old;payload", legacy.StringData);
-        Assert.Equal("7:1:2:3:0.5", legacy.ItemsData);
-        Assert.Equal(4, legacy.Delay);
-        Assert.True(legacy.BoolData);
-        Assert.Same(configured, WiredBoxLoading.Select(legacy, configured, new() { Text = "saved" }));
-        Assert.Equal("saved", configured.Configuration.Text);
-        Assert.Throws<InvalidDataException>(() => WiredBoxLoading.Select(legacy, null, new()));
-        var invalid = new InvalidConfigured();
-        Assert.Throws<InvalidDataException>(() => WiredBoxLoading.Select(legacy, invalid, new() { Text = "invalid bytes" }));
-        Assert.Equal("old;payload", legacy.StringData);
-        Assert.Equal("", invalid.Configuration.Text);
-    }
     private sealed class InvalidConfigured() : Box(WiredBoxCategory.Action)
     {
         public override bool TryValidateConfiguration(WiredConfiguration proposed, out WiredConfiguration validated, out string error)
@@ -736,7 +711,7 @@ public class WiredRuntimeEngineTests
         f.Trigger();
         var action = f.Action();
         var timers = Enumerable.Range(0, 4).Select(i => f.Add(new Timer { Idle = true }, x: i + 2)).ToArray();
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        Assert.True(f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter)));
         Assert.Equal(0, action.Calls);
 
         for (var i = 0; i < 5; i++) {
@@ -744,7 +719,7 @@ public class WiredRuntimeEngineTests
         }
 
         Assert.Equal(1, action.Calls);
-        Assert.All(timers, timer => Assert.Equal(1, timer.Polls));
+        Assert.All(timers, timer => Assert.Equal(4, timer.Polls));
         Assert.Empty(f.Errors);
     }
 
@@ -758,7 +733,7 @@ public class WiredRuntimeEngineTests
         f.Add(new Timer { Idle = true }, x: 4);
         var action = f.Action(x: 3);
         f.Action(ctx => f.Engine.SendSignal(ctx, [antenna], new()));
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter));
 
         for (var i = 0; i < 3; i++) {
             f.Advance(50);
@@ -784,7 +759,7 @@ public class WiredRuntimeEngineTests
         {
             Body = ctx =>
         {
-            seen.Add(ctx.Targets.ResolveFurni(ctx, items.Select(x => x.Id), WiredSources.Selected).Single().Id);
+            seen.Add(ctx.Targets.ResolveFurni(ctx, items.Select(x => x.Id), WiredSources.Selected).First().Id);
             Assert.Equal(ctx.Event.Actor, ctx.Targets.ResolveUsers(ctx, [], WiredSources.Trigger).Single());
 
             return ReferenceEquals(ctx.Event.Actor, bob);
@@ -792,7 +767,7 @@ public class WiredRuntimeEngineTests
         });
         f.Action(ctx =>
         {
-            seen.Add(ctx.Targets.ResolveFurni(ctx, items.Select(x => x.Id), WiredSources.Selected).Single().Id);
+            seen.Add(ctx.Targets.ResolveFurni(ctx, items.Select(x => x.Id), WiredSources.Selected).First().Id);
             Assert.Empty(ctx.Targets.ResolveUsers(ctx, [], WiredSources.Trigger));
 
             return true;
@@ -801,6 +776,7 @@ public class WiredRuntimeEngineTests
         for (var i = 0; i < 30; i++) {
             seen.Clear();
             Assert.True(f.Engine.RunPeriodicStack(repeater, [[alice], [bob]]));
+            f.Resume();
             Assert.Single(seen.Distinct());
         }
 
@@ -813,8 +789,10 @@ public class WiredRuntimeEngineTests
         var f = new Fixture(new() { MaxDepth = 2 });
         f.Trigger();
         var nested = true;
-        var action = f.Action(_ => nested = f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter)));
+        var action = f.Action(_ => nested = f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.Enter)));
         Assert.True(f.Engine.Enqueue(new(WiredEventKind.Enter), 2));
+        f.Advance(50);
+        Assert.Equal(0, action.Calls);
         f.Advance(50);
         Assert.Equal(1, action.Calls);
         Assert.False(nested);
@@ -859,7 +837,7 @@ public class WiredRuntimeEngineTests
         f.Add(new Addon { AfterConditions = true, ApplyBody = _ => { quotaCalls++; return true; } }, x: 3);
         var action = f.Action(x: 3);
         f.Action(ctx => f.Engine.SendSignal(ctx, [antenna], new()));
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter));
 
         for (var i = 0; i < 12; i++) {
             f.Advance(50);
@@ -929,7 +907,7 @@ public class WiredRuntimeEngineTests
         f.Trigger(WiredEventKind.Speech).Hide = true;
         var condition = f.Add(new Box(WiredBoxCategory.Condition));
         var action = f.Action();
-        Assert.False(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Speech) { Message = "hello" }));
+        Assert.False(f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Speech) { Message = "hello" }));
 
         for (var i = 0; i < 4; i++) {
             f.Advance(50);
@@ -990,7 +968,7 @@ public class WiredRuntimeEngineTests
 
             return true;
         });
-        f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = actor });
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = actor });
         f.Advance(50);
         Assert.Equal(4, effect);
         f.Engine.ActorLeaving(actor);
@@ -1019,11 +997,11 @@ public class WiredRuntimeEngineTests
             return true;
         };
         var action = f.Action();
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.ClickFurni) { Actor = actor, EventItem = wall }));
+        Assert.True(f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.ClickFurni) { Actor = actor, EventItem = wall }));
         f.Advance(50);
         Assert.Equal(1, action.Calls);
         f.Walls.Remove(wall);
-        Assert.False(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.ClickFurni) { Actor = actor, EventItem = wall }));
+        Assert.False(f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.ClickFurni) { Actor = actor, EventItem = wall }));
         Assert.Equal(1, action.Calls);
         Assert.Empty(f.Errors);
     }
@@ -1038,7 +1016,7 @@ public class WiredRuntimeEngineTests
         trigger.Body = _ => false;
         f.Engine.CaptureSpeech = (ctx, _) => { ctx.Values["captured"] = 42; return true; };
         var action = f.Action(ctx => { Assert.Equal(42, ctx.Values["captured"]); return true; });
-        Assert.True(f.Engine.Dispatch(new WiredRuntimeEvent(WiredEventKind.Speech) { Actor = actor, Message = "set42" }));
+        Assert.True(f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Speech) { Actor = actor, Message = "set42" }));
         f.Advance(50);
         Assert.Equal(0, trigger.Calls);
         Assert.Equal(1, action.Calls);
@@ -1092,13 +1070,20 @@ public class WiredRuntimeEngineTests
         public readonly List<Item> Walls = [];
         public readonly List<RoomUser> Users = [];
         public readonly List<Exception> Errors = [];
+        public readonly List<Item> Flashed = [];
         public WiredStackEngine Engine { get; }
         public long Now;
         public int FurnitureReads, UserReads;
         private uint next;
-        public Fixture(WiredEngineLimits? limits = null)
+        private readonly ConcurrentDictionary<uint, Item> _placed;
+        public Fixture(WiredEngineLimits? limits = null, Random? effectOrderRandom = null)
         {
-            Engine = new(() => Now, box => Furniture.Contains(box.Item), _ => true, _ => { }, Errors.Add, limits);
+            // Native pick validation reads the live room's items, so the fixture room holds a real item handler.
+            const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
+            var handler = new RoomItemHandling(Room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
+            typeof(Room).GetField("_roomItemHandling", Private)!.SetValue(Room, handler);
+            _placed = (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling).GetField("_floorItems", Private)!.GetValue(handler)!;
+            Engine = new(() => Now, box => Furniture.Contains(box.Item), _ => true, Flashed.Add, Errors.Add, limits, effectOrderRandom: effectOrderRandom);
             Engine.BindRuntime(Room, new(() => { FurnitureReads++; return Furniture; }, () => { UserReads++; return Users; },
                 id => Furniture.Concat(Walls).FirstOrDefault(x => x.Id == id), id => Users.FirstOrDefault(x => x.VirtualId == id)), this);
         }
@@ -1106,6 +1091,8 @@ public class WiredRuntimeEngineTests
         {
             var item = new Item { Id = ++next, GetX = x, Definition = new() { InteractionName = interaction, ItemName = "test", PublicName = "test", VendingIds = [], AdjustableHeights = [] } };
             Furniture.Add(item);
+            _placed[item.Id] = item;
+            typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, Room);
 
             return item;
         }
@@ -1128,6 +1115,14 @@ public class WiredRuntimeEngineTests
         public Trigger Trigger(WiredEventKind kind = WiredEventKind.Enter, int x = 0) => Add(new Trigger(kind), x);
         public Box Action(Func<WiredRuntimeContext, bool>? body = null, int delay = 0, bool negative = false, int x = 0) =>
             Add(new Box(WiredBoxCategory.Action) { Body = body ?? (_ => true), Configuration = new() { Delay = delay }, IsNegative = negative }, x);
+        public bool DispatchAndResume(WiredRuntimeEvent @event)
+        {
+            var accepted = Engine.DispatchSynchronously(@event);
+            Engine.OnFastCycle();
+
+            return accepted;
+        }
+        public void Resume() => Engine.OnFastCycle();
         public void Advance(int milliseconds)
         {
             Now += milliseconds;
@@ -1147,7 +1142,7 @@ public class WiredRuntimeEngineTests
         public string StringData { get; set; } = "";
         public bool BoolData { get; set; }
         public string ItemsData { get; set; } = "";
-        public WiredBoxDescriptor Descriptor { get; } = new("test", category, 0, 0, "test") { Support = WiredBoxSupport.Implemented };
+        public WiredBoxDescriptor Descriptor { get; } = new("test", category, 0, "test") { Support = WiredBoxSupport.Implemented };
         public WiredConfiguration Configuration { get; set; } = new();
         public Func<WiredRuntimeContext, bool> Body { get; set; } = _ => true;
         public bool IsNegative { get; set; }

@@ -12,7 +12,7 @@ public static class WiredMovementPolicy
         int targetX, int targetY, double targetZ, int? rotation = null, bool explicitHeight = false)
     {
         var projectile = policy.Projectile;
-        var scoped = projectile?.ItemIds.Contains(mover.Id) == true;
+        var scoped = projectile?.AppliesTo(mover.Id) == true;
         var direction = scoped && projectile!.DirectionSystem is int system
             ? Direction(system, (long)targetX - mover.X, (long)targetY - mover.Y) : null;
         var offset = scoped ? projectile!.Distance switch

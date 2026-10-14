@@ -18,7 +18,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// AIR's Shift+click rotate and Alt-move of a placed monsterplant (MovePet 636) or rentable bot (MoveEntityInFlat 2282).
+// AIR's Shift+click rotate and Alt-move of a placed monsterplant (MovePet 2281) or rentable bot (MoveEntityInFlat 1528); ids from WIN63-202610121709-785561319.
 public sealed class RoomUnitMoveTests
 {
     private const int RoomOwnerId = 1;
@@ -51,8 +51,8 @@ public sealed class RoomUnitMoveTests
         var movePet = HabbiconTestSupport.Incoming(PetId, 3, 1, 6);
         var moveBot = HabbiconTestSupport.Incoming(4, 0, 3, 2);
 
-        await manager.TryExecutePacket(client, 636, movePet);
-        await manager.TryExecutePacket(client, 2282, moveBot);
+        await manager.TryExecutePacket(client, 2281, movePet);
+        await manager.TryExecutePacket(client, 1528, moveBot);
 
         Assert.False(movePet.HasDataRemaining());
         Assert.False(moveBot.HasDataRemaining());

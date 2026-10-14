@@ -13,8 +13,8 @@ public static class WiredTriggerConfiguration
         ["wf_trg_says_something"] = WiredEventKind.Speech,
         ["wf_trg_walks_on_furni"] = WiredEventKind.WalkOn,
         ["wf_trg_walks_off_furni"] = WiredEventKind.WalkOff,
-        ["wf_trg_stuff_state"] = WiredEventKind.Use,
-        ["wf_trg_state_changed"] = WiredEventKind.StateChanged,
+        ["wf_trg_stuff_state"] = WiredEventKind.StateChanged,
+        ["wf_trg_state_changed"] = WiredEventKind.Use,
         ["wf_trg_collision"] = WiredEventKind.Collision,
         ["wf_trg_game_starts"] = WiredEventKind.GameStart,
         ["wf_trg_game_ends"] = WiredEventKind.GameEnd,
@@ -39,7 +39,7 @@ public static class WiredTriggerConfiguration
     public static int MaxTimedUnits(string name) => name switch
     {
         "wf_trg_period_short" => 10,
-        "wf_trg_at_given_time" => 1200,
+        "wf_trg_at_given_time" or "wf_trg_at_time_long" => 1200,
         _ => 120
     };
 
@@ -139,7 +139,7 @@ public static class WiredTriggerConfiguration
 
                 break;
             case "wf_trg_clock_counter":
-                if (p.Length != 3 || p[0] is < 0 or > 59 || p[1] is < 0 or > 119 || !F(2)) {
+                if (p.Length != 3 || p[0] is < 0 or > 99 || p[1] is < 0 or > 119 || !F(2)) {
                     return false;
                 }
 
@@ -153,13 +153,14 @@ public static class WiredTriggerConfiguration
                 furni["items"] = p[1];
                 break;
             case "wf_trg_score_achieved":
-                if (p.Length != 2 || p[0] < 0 || p[1] is < 0 or > 4) {
+                // ScoreAchieved.as: the points slider runs 1 to 1000 (Turbo's range rule agrees) and the team radio 0 (any) to 4.
+                if (p.Length != 2 || p[0] is < 1 or > 1000 || p[1] is < 0 or > 4) {
                     return false;
                 }
 
                 break;
             case "wf_trg_user_performs_action":
-                if (p.Length != 5 || p[0] is < 1 or > 11 || !Bit(1) || p[2] is < 0 or > 17 || !Bit(3) || p[4] is < 0 or > 4) {
+                if (p.Length != 5 || p[0] is < 1 or > 12 || !Bit(1) || p[2] is < 0 or > 17 || !Bit(3) || p[4] is < 0 or > 4) {
                     return false;
                 }
 

@@ -10,13 +10,14 @@ namespace Plus.Tests;
 public sealed class WiredVariableDefinitionBoxTests
 {
     [Theory]
-    [InlineData("wf_act_give_var", 5)]
+    // Give, Change, Value and Age drafts follow the October editors' fresh-box payloads, so they carry the reference fields.
+    [InlineData("wf_act_give_var", 8)]
     [InlineData("wf_act_remove_var", 3)]
-    [InlineData("wf_act_change_var_val", 9)]
+    [InlineData("wf_act_change_var_val", 10)]
     [InlineData("wf_cnd_has_var", 4)]
     [InlineData("wf_cnd_neg_has_var", 4)]
-    [InlineData("wf_cnd_var_val_match", 10)]
-    [InlineData("wf_cnd_var_age_match", 8)]
+    [InlineData("wf_cnd_var_val_match", 11)]
+    [InlineData("wf_cnd_var_age_match", 10)]
     public void ScalarDraftOpensWithClientShapeButCannotExecuteWithoutSelection(string name, int count)
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
@@ -53,15 +54,16 @@ public sealed class WiredVariableDefinitionBoxTests
         var draft = box.Configuration;
         Assert.False(box.HasPersistedConfiguration);
         Assert.False(box.TryValidateConfiguration(draft, out _, out _));
-        Assert.Equal(draft, box.GetEditorConfiguration());
-        var proposed = new WiredConfiguration { Text = text, IntParams = first < 0 ? [] : second < 0 ? [first] : [first, second] };
+        var native = WiredNativeTestSupport.FromLegacyVariableDraft(descriptor, new WiredConfiguration { Text = text, IntParams = first < 0 ? [] : second < 0 ? [first] : [first, second] });
+        Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native, out var proposed));
         Assert.True(box.TryValidateConfiguration(proposed, out var valid, out var error), error);
         Assert.Equal(draft, box.Configuration); // Pure validation has no publication or persistence side effects.
         box.ApplyConfiguration(valid);
         Assert.Equal(proposed, box.Configuration);
         Assert.False(box.Execute());
         Assert.True(box.HasPersistedConfiguration);
-        Assert.False(box.TryValidateConfiguration(proposed with { Text = "invalid name with spaces" }, out _, out _));
+        Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { Text = "invalid name with spaces" }, out var invalid));
+        Assert.False(box.TryValidateConfiguration(invalid, out _, out _));
         Assert.Equal(proposed, box.Configuration);
     }
 }

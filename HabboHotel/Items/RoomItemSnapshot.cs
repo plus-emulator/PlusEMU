@@ -12,7 +12,10 @@ public abstract record FurnitureDataSnapshot(FurniDataStructure Structure)
     public sealed record Strings(ImmutableArray<string> Values) : FurnitureDataSnapshot(FurniDataStructure.StringArray);
     public sealed record Vote(string State, int Result) : FurnitureDataSnapshot(FurniDataStructure.VoteResult);
     public sealed record Integers(ImmutableArray<int> Values) : FurnitureDataSnapshot(FurniDataStructure.IntArray);
-    public sealed record Highscore(string State, uint ScoreType, uint ClearType) : FurnitureDataSnapshot(FurniDataStructure.HighScore);
+    public sealed record Highscore(string State, uint ScoreType, uint ClearType) : FurnitureDataSnapshot(FurniDataStructure.HighScore)
+    {
+        public ImmutableArray<HighscoreEntry> Entries { get; init; } = [];
+    }
     public sealed record Crackable(string State, uint Hits, uint Target) : FurnitureDataSnapshot(FurniDataStructure.Crackable);
 
     public static FurnitureDataSnapshot Capture(IFurniObjectData data) => data switch
@@ -23,7 +26,7 @@ public abstract record FurnitureDataSnapshot(FurniDataStructure Structure)
         StringArrayDataFormat value => new Strings(value.Data.ToImmutableArray()),
         VoteResultDataFormat value => new Vote(value.State, value.Result),
         IntArrayDataFormat value => new Integers(value.Data.ToImmutableArray()),
-        HighscoreDataFormat value => new Highscore(value.State, value.ScoreType, value.ClearType),
+        HighscoreDataFormat value => new Highscore(value.State, value.ScoreType, value.ClearType) { Entries = value.CaptureEntries() },
         CrackableDataFormat value => new Crackable(value.State, value.Hits, value.Target),
         _ => throw new ArgumentOutOfRangeException(nameof(data), data.StructureType, "Unsupported furniture wire data.")
     };
@@ -52,6 +55,10 @@ public sealed record RoomItemSnapshot(
         item.Definition.InteractionType is InteractionType.GuildItem or InteractionType.GuildGate or InteractionType.GuildForum
             ? item.GetRoom()?.FindGuildAppearance(item.GroupId)
             : null;
+
+    // AIR usage policy: 0 nobody, 1 room controllers, 2 everybody. Wired boxes are always used (their editor opened) by
+    // those with rights, whatever states their furni definition declares.
+    private static int UsagePolicy(ItemDefinition definition) => definition.WiredDescriptor != null || definition.Modes > 1 ? 1 : 0;
 
     private static RoomItemSnapshot CaptureLocked(Item item, GuildFurnitureAppearance? guild)
     {
@@ -87,7 +94,7 @@ public sealed record RoomItemSnapshot(
             z.ToString(CultureInfo.InvariantCulture), definition.Height.ToString(CultureInfo.InvariantCulture), extra,
             data, item.UniqueNumber, item.UniqueSeries, item.WallCoordinates ?? "",
             type == InteractionType.Postit ? legacy.Split(' ')[0] : legacy,
-            definition.Modes > 1 ? 1 : 0, item.UserId, item.Username ?? "",
+            UsagePolicy(definition), item.UserId, item.Username ?? "",
             new(definition.Stackable, definition.IsSeat, type == InteractionType.Bed, definition.Walkable, definition.Width, definition.Length));
     }
 }

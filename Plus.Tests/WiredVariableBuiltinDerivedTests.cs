@@ -17,6 +17,8 @@ public sealed class WiredVariableBuiltinDerivedTests
     {
         var fixture = new Fixture("@achievement_score");
         var level = fixture.AddMetadata("wf_xtra_var_lvlup_system");
+        // A level system with no selected subvariable derives nothing: select current_level in linear mode.
+        WiredNativeTestSupport.Install(level, WiredNativeEditorProjection.DefaultNative(level.Descriptor) with { OwnedIntParams = [1, 1, 100, 50] });
         var id = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, 0, false)!.Value;
         var derived = new WiredVariableReference(WiredVariableTarget.User, $"custom:{id}");
         Assert.Contains(fixture.Variables.Catalog().Variables, variable => variable.Definition.ItemId == id && variable.ReadOnly);
@@ -51,7 +53,7 @@ public sealed class WiredVariableBuiltinDerivedTests
         fixture.Builtin.Value = new(1, DateTimeOffset.FromUnixTimeMilliseconds(1000), DateTimeOffset.FromUnixTimeMilliseconds(2000));
         fixture.AddMetadata("wf_xtra_var_lvlup_system");
         var time = fixture.AddMetadata("wf_xtra_var_time_util");
-        time.ApplyConfiguration(new() { IntParams = [1 << 21, 1] });
+        WiredNativeTestSupport.InstallLegacyVariableDraft(time, new() { IntParams = [1 << 21, 1] });
         var catalog = fixture.Variables.Catalog();
         var alias = Assert.Single(catalog.Variables);
         Assert.False(alias.HasValue);
@@ -81,7 +83,7 @@ public sealed class WiredVariableBuiltinDerivedTests
         var fixture = new Fixture("@achievement_score");
         fixture.Builtin.Value = new(150, DateTimeOffset.FromUnixTimeMilliseconds(12000), DateTimeOffset.FromUnixTimeMilliseconds(24000));
         var time = fixture.AddMetadata("wf_xtra_var_time_util");
-        time.ApplyConfiguration(new() { IntParams = [1 << 22, 0] });
+        WiredNativeTestSupport.InstallLegacyVariableDraft(time, new() { IntParams = [1 << 22, 0] });
         var id = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, 22, true)!.Value;
         var reference = new WiredVariableReference(WiredVariableTarget.User, $"custom:{id}");
         Assert.Equal(2, fixture.Read(reference)!.Value);
@@ -91,7 +93,7 @@ public sealed class WiredVariableBuiltinDerivedTests
         }
 
         foreach (var mode in new[] { 1, 2 }) {
-            time.ApplyConfiguration(new() { IntParams = [1 << 22, mode] });
+            WiredNativeTestSupport.InstallLegacyVariableDraft(time, new() { IntParams = [1 << 22, mode] });
             Assert.DoesNotContain(fixture.Variables.Catalog().Variables, variable => variable.Definition.ItemId == id);
             Assert.Null(fixture.Read(reference));
             using var reads = fixture.Module.CaptureReads([reference], fixture.Frame);
@@ -129,8 +131,7 @@ public sealed class WiredVariableBuiltinDerivedTests
             var item = new Item { Id = 20, OwnerId = 5, Definition = new() { InteractionName = "wf_var_echo" } };
             _floor[item.Id] = item;
             var box = Variables.CreateBox(item)!;
-            Assert.True(box.TryValidateConfiguration(new() { Text = "{\"variableName\":\"points\",\"sourceTargetType\":0,\"sourceVariableToken\":\"internal:" + key + "\"}" }, out var config, out _));
-            box.ApplyConfiguration(config);
+            WiredNativeTestSupport.InstallLegacyVariableDraft(box, new() { Text = "{\"variableName\":\"points\",\"sourceTargetType\":0,\"sourceVariableToken\":\"internal:" + key + "\"}" });
             Variables.ConfigurationLoaded(box);
         }
         public WiredVariableMetadataBox AddMetadata(string name)

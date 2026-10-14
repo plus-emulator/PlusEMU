@@ -123,13 +123,13 @@ public class RewardTrackTests
     public void CurrentHeadersMatchTheDirectContract()
     {
         Assert.Equal(9450u, ClientPacketHeader.GetRewardTracksEvent);
-        Assert.Equal(3859u, ClientPacketHeader.ClaimRewardTrackPrizeEvent);
-        Assert.Equal(1663u, ClientPacketHeader.PurchaseRewardTrackPremiumEvent);
-        Assert.Equal(2693u, ServerPacketHeader.RewardTracksComposer);
-        Assert.Equal(3629u, ServerPacketHeader.RewardTrackClaimResultComposer);
-        Assert.Equal(465u, ServerPacketHeader.RewardTrackProgressComposer);
-        Assert.Equal(1374u, ServerPacketHeader.RewardTrackPremiumPurchaseResultComposer);
-        Assert.Equal(3050u, ServerPacketHeader.UserChangeComposer);
+        Assert.Equal(1784u, ClientPacketHeader.ClaimRewardTrackPrizeEvent);
+        Assert.Equal(3162u, ClientPacketHeader.PurchaseRewardTrackPremiumEvent);
+        Assert.Equal(2475u, ServerPacketHeader.RewardTracksComposer);
+        Assert.Equal(1438u, ServerPacketHeader.RewardTrackClaimResultComposer);
+        Assert.Equal(3817u, ServerPacketHeader.RewardTrackProgressComposer);
+        Assert.Equal(1829u, ServerPacketHeader.RewardTrackPremiumPurchaseResultComposer);
+        Assert.Equal(2130u, ServerPacketHeader.UserChangeComposer);
         Assert.NotEqual(ServerPacketHeader.UserChangeComposer, ServerPacketHeader.RewardTrackPremiumPurchaseResultComposer);
 
     }

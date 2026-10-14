@@ -8,6 +8,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Triggers;
 /// </summary>
 public sealed class WiredTimedTriggers
 {
+    private const long ResetCooldownMs = 500;
     private readonly Dictionary<uint, long> _nextPeriodicAt = [];
     private readonly Dictionary<uint, long> _firedEpoch = [];
 
@@ -21,8 +22,8 @@ public sealed class WiredTimedTriggers
         }
 
         if (name is "wf_trg_at_given_time" or "wf_trg_at_time_long") {
-            // Approved legacy contract: at-time-long is one-shot in five-second units.
-            var targetMs = units * (name == "wf_trg_at_time_long" ? 5000L : 500L);
+            // Both asset variants use the current one-shot editor in half-second units.
+            var targetMs = units * 500L;
 
             if (elapsedMs < targetMs || _firedEpoch.TryGetValue(boxId, out var fired) && fired == resetEpoch) {
                 return false;
@@ -57,11 +58,18 @@ public sealed class WiredTimedTriggers
             return false;
         }
 
-        // Deadlines stay on the grid set when the box armed: a late poll does not push the next one back, and
-        // deadlines the room slept through are skipped rather than fired in a burst.
-        _nextPeriodicAt[boxId] = next + ((nowMs - next) / intervalMs + 1) * intervalMs;
+        // A late poll fires once, then waits a full period from this firing.
+        _nextPeriodicAt[boxId] = nowMs + intervalMs;
 
         return true;
+    }
+
+    /// <summary>A room timer reset re-arms an armed repeater one fixed cooldown out; an unarmed one stays unarmed.</summary>
+    public void ResetPeriodic(uint boxId, long nowMs)
+    {
+        if (_nextPeriodicAt.ContainsKey(boxId)) {
+            _nextPeriodicAt[boxId] = nowMs + ResetCooldownMs;
+        }
     }
 
     public void Forget(uint boxId)

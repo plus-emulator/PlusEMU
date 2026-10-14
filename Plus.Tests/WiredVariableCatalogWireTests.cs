@@ -29,7 +29,7 @@ public sealed class WiredVariableCatalogWireTests
         var packet = new Packet();
         new WiredAllVariablesDiffComposer(new(42, true, [], [variable])).Compose(packet);
         Assert.Equal(new object[] { 42, true, 0, 1, variable.Hash, "room:10", 0, "score", 10, 0,
-            true, false, true, true, false, false, true, true, false }, packet.Values);
+            true, false, true, true, false, false, false, true, true, false }, packet.Values);
     }
     [Fact]
     public void PageUsesStableUserIdAndHighLowMillisecondsInClientOrder()

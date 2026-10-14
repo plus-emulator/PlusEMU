@@ -16,10 +16,11 @@ public static class WiredSelectorModule
     ];
 
     public static WiredSelectorResult SelectRaw(string name, WiredConfiguration configuration,
-        WiredSelectorWorld world, WiredSelectorInputs input) => SelectRaw(name, configuration, world, input, []);
+        WiredSelectorWorld world, WiredSelectorInputs input, Random? remoteRandom = null) =>
+        SelectRaw(name, configuration, world, input, [], remoteRandom ?? Random.Shared);
 
     private static WiredSelectorResult SelectRaw(string name, WiredConfiguration c,
-        WiredSelectorWorld world, WiredSelectorInputs input, HashSet<uint> visiting)
+        WiredSelectorWorld world, WiredSelectorInputs input, HashSet<uint> visiting, Random remoteRandom)
     {
         if (!Names.Contains(name, StringComparer.Ordinal)) {
             throw new ArgumentException("Not a supported selector", nameof(name));
@@ -32,8 +33,8 @@ public static class WiredSelectorModule
         var target = name == "wf_slc_remote" ? WiredSelectorTarget.Both
             : name.StartsWith("wf_slc_users_", StringComparison.Ordinal) ? WiredSelectorTarget.User : WiredSelectorTarget.Furni;
         var (filterIndex, invertIndex) = SwitchIndexes(name);
-        var filter = WiredSelectorSources.Param(c, filterIndex) == 1;
-        var invert = WiredSelectorSources.Param(c, invertIndex) == 1;
+        var filter = c.Origin?.Native.Filter ?? WiredSelectorSources.Param(c, filterIndex) == 1;
+        var invert = c.Origin?.Native.Inverse ?? WiredSelectorSources.Param(c, invertIndex) == 1;
         int P(int index, int fallback = 0) => WiredSelectorSources.Param(c, index, fallback);
         IEnumerable<WiredSelectorFurniture> Furni(int source) =>
             world.Furni.Where(x => WiredSelectorSources.Furni(source, c, input, world).Contains(x.Id));
@@ -49,11 +50,12 @@ public static class WiredSelectorModule
                 selected.UserIds.UnionWith(world.Users.Where(x => input.Signal.UserIds.Contains(x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_furni_bytype": {
-                    var source = P(0) switch { 0 => 100, 1 => 201, 2 => 0, _ => throw new ArgumentException("Unknown type source") };
-                    var examples = Furni(source).ToList();
+                    var source = c.FurniSources.GetValueOrDefault("items", P(0) switch { 0 => 100, 1 => 201, 2 => 0, _ => throw new ArgumentException("Unknown type source") });
+                    var matchState = P(1) != 0;
+                    var kinds = Furni(source).Select(x => (x.DefinitionId, State: matchState ? x.State : "")).ToHashSet();
 
                     foreach (var item in available) {
-                        if (examples.Any(x => x.DefinitionId == item.DefinitionId && (P(1) == 0 || x.State == item.State))) {
+                        if (kinds.Contains((item.DefinitionId, matchState ? item.State : ""))) {
                             selected.FurniIds.Add(item.Id);
                         }
                     }
@@ -74,14 +76,14 @@ public static class WiredSelectorModule
                     break;
                 }
             case "wf_slc_users_handitem":
-                selected.UserIds.UnionWith(world.Users.Where(x => P(0) == 0 ? x.HandItem != 0 : x.HandItem == P(0)).Select(x => x.Id));
+                selected.UserIds.UnionWith(world.Users.Where(x => x.HandItem == P(0)).Select(x => x.Id));
                 break;
             case "wf_slc_users_group": {
                     var groupId = P(0) == 0 ? world.RoomGroupId : P(1);
 
                     if (groupId > 0) {
                         selected.UserIds.UnionWith(world.Users.Where(x => x.Kind == WiredSelectorEntityKind.Player
-                        && x.GroupIds?.Contains(groupId) == true).Select(x => x.Id));
+                        && x.EquippedGroupId == groupId).Select(x => x.Id));
                     }
 
                     break;
@@ -111,9 +113,9 @@ public static class WiredSelectorModule
 
                     selected.FurniIds.UnionWith(available.Where(x => (P(0, 1) switch
                     {
-                        0 => RoundHeight(x.Z) < RoundHeight(altitude),
-                        1 => RoundHeight(x.Z) == RoundHeight(altitude),
-                        2 => RoundHeight(x.Z) > RoundHeight(altitude),
+                        0 => x.Z < altitude,
+                        1 => x.Z == altitude,
+                        2 => x.Z > altitude,
                         _ => false
                     })).Select(x => x.Id));
                     break;
@@ -129,12 +131,12 @@ public static class WiredSelectorModule
                             continue;
                         }
 
-                        foreach (var other in available.Where(x => (P(0) == 3 || x.Id != item.Id) && x.Tiles.Intersect(item.Tiles).Any())) {
+                        foreach (var other in available.Where(x => (P(0) is 2 or 3 || x.Id != item.Id) && x.Tiles.Contains((item.X, item.Y)))) {
                             if (P(0) switch
                             {
-                                0 => RoundHeight(other.Z) >= RoundHeight(item.Z + item.Height),
-                                1 => RoundHeight(other.Z + other.Height) <= RoundHeight(item.Z),
-                                2 => RoundHeight(other.Z) == RoundHeight(item.Z),
+                                0 => other.Z > item.Z,
+                                1 => other.Z < item.Z,
+                                2 => other.Z == item.Z,
                                 3 => true,
                                 _ => false
                             }) {
@@ -159,57 +161,115 @@ public static class WiredSelectorModule
                     break;
                 }
             case "wf_slc_furni_with_var":
-                if (input.FurniVariablePredicate is null) {
+                if (input.FurniVariablePredicate is null && input.ScopedFurniVariablePredicate is null) {
                     throw new InvalidOperationException("Furniture variable predicate is required");
                 }
 
-                selected.FurniIds.UnionWith(available.Where(x => input.FurniVariablePredicate(name, c, x.Id)).Select(x => x.Id));
+                selected.FurniIds.UnionWith(available.Where(x => input.ScopedFurniVariablePredicate?.Invoke(name, c, x.Id, input) ?? input.FurniVariablePredicate!(name, c, x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_users_with_var":
-                if (input.UserVariablePredicate is null) {
+                if (input.UserVariablePredicate is null && input.ScopedUserVariablePredicate is null) {
                     throw new InvalidOperationException("Avatar variable predicate is required");
                 }
 
-                selected.UserIds.UnionWith(world.Users.Where(x => input.UserVariablePredicate(name, c, x.Id)).Select(x => x.Id));
+                selected.UserIds.UnionWith(world.Users.Where(x => input.ScopedUserVariablePredicate?.Invoke(name, c, x.Id, input) ?? input.UserVariablePredicate!(name, c, x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_remote": {
-                    var remotePool = new WiredSelectedIds();
-                    var remoteFurniModified = false;
-                    var remoteUsersModified = false;
+                    var stacks = RemoteStacks(c, world, input).ToList();
 
-                    foreach (var id in c.SelectedItems) {
-                        if (visiting.Count >= 20 || !visiting.Add(id)) {
+                    if (c.IntParams.Length >= 4 && P(3) > 0 && P(3) < stacks.Count) {
+                        // Sample stacks once; all selectors on each chosen tile participate.
+                        for (var i = stacks.Count - 1; i > 0; i--) {
+                            var other = remoteRandom.Next(i + 1);
+                            (stacks[i], stacks[other]) = (stacks[other], stacks[i]);
+                        }
+
+                        stacks = stacks.Take(P(3)).ToList();
+                    }
+
+                    var firstStack = true;
+
+                    foreach (var stack in stacks) {
+                        if (visiting.Count >= 20 || !visiting.Add(stack[0])) {
                             continue;
                         }
 
-                        try {
-                            if (world.RemoteSelectors?.TryGetValue(id, out var remote) != true) {
-                                continue;
-                            }
+                        // Referenced stacks have their own selector sequence, including filter/invert.
+                        var stackPool = new WiredSelectedIds();
+                        var furniModified = false;
+                        var usersModified = false;
 
-                            var remoteInput = input with
-                            {
-                                SelectorPool = remotePool,
-                                FurniModified = remoteFurniModified,
-                                UsersModified = remoteUsersModified
-                            };
-                            var result = SelectRaw(remote.Name, remote.Configuration, world, remoteInput, visiting);
-                            remotePool = Compose(result, world, remoteInput);
-                            remoteFurniModified |= result.Target is WiredSelectorTarget.Furni or WiredSelectorTarget.Both;
-                            remoteUsersModified |= result.Target is WiredSelectorTarget.User or WiredSelectorTarget.Both;
+                        try {
+                            foreach (var id in stack) {
+                                var remote = world.RemoteSelectors![id];
+                                var remoteInput = input with
+                                {
+                                    SelectorPool = stackPool,
+                                    FurniModified = furniModified,
+                                    UsersModified = usersModified
+                                };
+                                var result = SelectRaw(remote.Name, remote.Configuration, world, remoteInput, visiting, remoteRandom);
+                                stackPool = Compose(result, world, remoteInput);
+                                furniModified |= result.Target is WiredSelectorTarget.Furni or WiredSelectorTarget.Both;
+                                usersModified |= result.Target is WiredSelectorTarget.User or WiredSelectorTarget.Both;
+                            }
                         }
                         finally {
-                            visiting.Remove(id);
+                            visiting.Remove(stack[0]);
                         }
+
+                        if (firstStack || P(2) == 0) {
+                            selected.FurniIds.UnionWith(stackPool.FurniIds);
+                            selected.UserIds.UnionWith(stackPool.UserIds);
+                        }
+                        else {
+                            selected.FurniIds.IntersectWith(stackPool.FurniIds);
+                            selected.UserIds.IntersectWith(stackPool.UserIds);
+                        }
+
+                        firstStack = false;
                     }
 
-                    selected.FurniIds.UnionWith(remotePool.FurniIds);
-                    selected.UserIds.UnionWith(remotePool.UserIds);
                     break;
                 }
         }
 
         return new(selected, target, filter, invert);
+    }
+
+    internal static IReadOnlyList<IReadOnlyList<uint>> RemoteStacks(WiredConfiguration c, WiredSelectorWorld world, WiredSelectorInputs? input = null)
+    {
+        var stacks = new List<IReadOnlyList<uint>>();
+        var seen = new HashSet<(int X, int Y, uint UnprojectedId)>();
+        var source = WiredSelectorSources.Param(c, 4, WiredSources.Selected);
+        var pickedIds = input is null ? c.SelectedItems : WiredSelectorSources.Furni(source, c, input, world);
+
+        foreach (var pickedId in pickedIds) {
+            var picked = world.Furni.FirstOrDefault(item => item.Id == pickedId && item.IsFloor);
+
+            if (picked is null) {
+                // Custom projections can supply a selector without a furniture model.
+                if (world.RemoteSelectors?.ContainsKey(pickedId) == true && seen.Add((0, 0, pickedId))) {
+                    stacks.Add(new[] { pickedId });
+                }
+
+                continue;
+            }
+
+            if (!seen.Add((picked.X, picked.Y, 0))) {
+                continue;
+            }
+
+            var selectors = world.Furni.Where(item => item.IsFloor && item.X == picked.X && item.Y == picked.Y
+                && world.RemoteSelectors?.ContainsKey(item.Id) == true)
+                .OrderBy(item => item.Z).ThenBy(item => item.Id).Select(item => item.Id).ToArray();
+
+            if (selectors.Length > 0) {
+                stacks.Add(selectors);
+            }
+        }
+
+        return stacks;
     }
 
     public static WiredSelectedIds Compose(WiredSelectorResult result, WiredSelectorWorld world, WiredSelectorInputs input)
@@ -249,39 +309,21 @@ public static class WiredSelectorModule
     private static HashSet<(int X, int Y)> Neighborhood(WiredConfiguration c, WiredSelectorWorld world, WiredSelectorInputs input)
     {
         int P(int i) => WiredSelectorSources.Param(c, i);
-        var source = P(0);
-        IEnumerable<(int X, int Y)> positions = source switch
-        {
-            0 or 1 or 2 => world.Users.Where(x => WiredSelectorSources.Users(source switch { 0 => 0, 1 => 201, _ => 11 }, input, world).Contains(x.Id)).Select(x => (x.X, x.Y)),
-            3 or 4 or 5 => world.Furni.Where(x => x.IsFloor && WiredSelectorSources.Furni(source switch { 3 => 0, 4 => 100, _ => 201 }, c, input, world).Contains(x.Id)).Select(x => (x.X, x.Y)),
-            _ => throw new ArgumentException("Unknown neighborhood source")
-        };
-        var offsets = new List<(int X, int Y)>();
-        var count = P(5);
 
-        if (count < 0 || count > 64 || c.IntParams.Length < 6 + count * 2 && count > 0) {
-            throw new ArgumentException("Neighborhood offsets are incomplete or exceed 64 tiles");
+        if (c.IntParams.Length != 17) {
+            throw new ArgumentException("Neighborhood requires its native 441-tile bitmap");
         }
 
-        if (count == 0) {
-            for (var y = -4; y <= 4; y++) {
-                for (var x = -4; x <= 4; x++) {
-                    offsets.Add((x, y));
-                }
-            }
-        }
-        else {
-            for (var i = 0; i < count; i++) {
-                offsets.Add((P(6 + i * 2), P(7 + i * 2)));
-            }
-        }
-
+        IEnumerable<(int X, int Y)> positions = P(0) == 1
+            ? world.Users.Where(x => WiredSelectorSources.Users(c.UserSources.GetValueOrDefault("anchor", 0), input, world).Contains(x.Id)).Select(x => (x.X, x.Y))
+            : world.Furni.Where(x => x.IsFloor && WiredSelectorSources.Furni(c.FurniSources.GetValueOrDefault("anchor", 100), c, input, world).Contains(x.Id)).Select(x => (x.X, x.Y));
+        var offsets = NeighborhoodOffsets(c.IntParams).ToArray();
         var tiles = new HashSet<(int X, int Y)>();
 
         foreach (var (x, y) in positions) {
             foreach (var (dx, dy) in offsets) {
-                var tx = (long)x + dx - P(3);
-                var ty = (long)y + dy - P(4);
+                var tx = (long)x + dx - P(1);
+                var ty = (long)y + dy - P(2);
 
                 if (tx >= 0 && ty >= 0 && tx < world.Width && ty < world.Height) {
                     tiles.Add(((int)tx, (int)ty));
@@ -292,10 +334,46 @@ public static class WiredSelectorModule
         return tiles;
     }
 
+    internal static IEnumerable<(int X, int Y)> NeighborhoodOffsets(System.Collections.Immutable.ImmutableArray<int> fields)
+    {
+        var x = 0;
+        var y = 0;
+        var dx = 1;
+        var dy = 0;
+        var index = 0;
+        var length = 1;
+
+        while (index < 441) {
+            for (var turn = 0; turn < 2; turn++) {
+                for (var step = 0; step < length && index < 441; step++, index++) {
+                    if (((uint)fields[3 + index / 32] & (1u << (index % 32))) != 0) {
+                        yield return (x, y);
+                    }
+
+                    x += dx;
+                    y += dy;
+                }
+
+                (dx, dy) = (dy, -dx);
+            }
+
+            length++;
+        }
+    }
+
     private static bool MatchesAction(WiredSelectorAvatar user, WiredConfiguration c, WiredSelectorInputs input)
     {
         int P(int i, int fallback = 0) => WiredSelectorSources.Param(c, i, fallback);
         var wanted = P(0, 1);
+
+        if (wanted == 4) {
+            return !user.Idle;
+        }
+
+        if (wanted == 7) {
+            return !user.Sitting && !user.Lying;
+        }
+
         bool Match(int action, int value) => action == wanted && (wanted switch
         {
             9 => P(1) == 0 || value == P(2),
@@ -322,8 +400,6 @@ public static class WiredSelectorModule
         return user.LastAction is int previous && input.NowMs >= user.LastActionAtMs
             && input.NowMs - user.LastActionAtMs <= 5000 && Match(previous, user.LastActionParameter);
     }
-
-    private static double RoundHeight(double value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
     internal static (int Filter, int Invert) SwitchIndexes(string name) => name switch
     {

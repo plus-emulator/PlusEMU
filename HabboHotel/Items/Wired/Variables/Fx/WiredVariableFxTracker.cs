@@ -106,7 +106,7 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
                 var extra = ImmutableSortedDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
 
                 if (binding.Config.ColorId == 1002) {
-                    var color = team(holder) switch { 1 => "#ff0000", 2 => "#00ff00", 3 => "#0000ff", 4 => "#ffff00", _ => null };
+                    var color = WiredVariableFxSettings.TeamColorOf(team(holder));
 
                     if (color is not null) {
                         extra["delegated_color"] = color;

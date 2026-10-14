@@ -17,17 +17,54 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
         Events = [kind];
     }
     public IReadOnlyCollection<WiredEventKind> Events { get; }
-    public override bool TryValidateConfiguration(WiredConfiguration proposed, out WiredConfiguration validated, out string error) =>
-        WiredTriggerConfiguration.TryValidate(Descriptor.CanonicalName, proposed, out validated, out error);
+    public override bool TryValidateConfiguration(WiredConfiguration proposed, out WiredConfiguration validated, out string error)
+    {
+        if (WiredNativeEditorProjection.Supports(Descriptor.CanonicalName)) {
+            if (!WiredNativeEditorProjection.IsBound(Item.Id, Descriptor, proposed)) {
+                validated = proposed;
+                error = "Invalid native trigger authority.";
+
+                return false;
+            }
+
+            return WiredNativeEditorProjection.TryValidateRuntime(Item, Descriptor, proposed, out validated, out error);
+        }
+
+        if (!WiredTriggerConfiguration.TryValidate(Descriptor.CanonicalName, proposed, out validated, out error)) {
+            return false;
+        }
+
+        if (Descriptor.CanonicalName == "wf_trg_recv_signal"
+            && validated.FurniSources.GetValueOrDefault("items") == WiredSources.Selected
+            && Instance.GetRoomItemHandler() is { } handler
+            && validated.SelectedItems.Select(handler.GetItem).OfType<Item>().Any(item => !WiredStackEngine.IsSignalAntenna(item))) {
+            error = "wiredfurni.error.require_antenna_furni";
+
+            return false;
+        }
+
+        return true;
+    }
     public bool HidesChat(WiredRuntimeContext context) => Descriptor.CanonicalName == "wf_trg_says_something"
         && WiredTriggerPredicates.HidesChat(context.ConfigurationOf(this));
 
     public override bool Execute(WiredRuntimeContext context) => Matches(context, afterSelectors: false);
 
-    public bool CanTrigger(WiredRuntimeContext context) =>
-        TryValidateConfiguration(context.ConfigurationOf(this), out var config, out _)
-        && (!config.FurniSources.Values.Contains(WiredSources.Selector) && !config.UserSources.Values.Contains(WiredSources.Selector)
-            || Matches(context, afterSelectors: true));
+    public bool CanTrigger(WiredRuntimeContext context)
+    {
+        if (!TryValidateConfiguration(context.ConfigurationOf(this), out var config, out _)
+            || (config.FurniSources.Values.Contains(WiredSources.Selector) || config.UserSources.Values.Contains(WiredSources.Selector))
+                && !Matches(context, afterSelectors: true)) {
+            return false;
+        }
+
+        if (Descriptor.CanonicalName == "wf_trg_score_achieved") {
+            context.Selected.UserIds.UnionWith(context.Targets.ResolveUsers(context, [], WiredSources.AllRoom, raw: true)
+                .Where(user => !user.IsBot && (int)user.Team == context.Event.Team).Select(user => user.VirtualId));
+        }
+
+        return true;
+    }
 
     private bool Matches(WiredRuntimeContext context, bool afterSelectors)
     {
@@ -50,6 +87,7 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
         bool ItemMatches(bool state = false) => evt.EventItem is { } item
             && (deferItems || WiredTriggerPredicates.MatchesItem(config, item, Items(), state));
         bool BotMatches() => evt.Actor?.IsBot == true && !evt.Actor.IsPet
+            && WiredTriggerPredicates.MatchesName(config, WiredModernCondition.Name(evt.Actor))
             && (deferBots || (config.UserSources["bots"] == 0
                 ? context.Targets.AllUsers().Any(user => ReferenceEquals(user, evt.Actor))
                 : Users(context, config, "bots", config.Text).Contains(evt.Actor)));
@@ -68,8 +106,7 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
             "wf_trg_clock_counter" => ItemMatches() && WiredTriggerPredicates.MatchesCounter(config, evt.PreviousValue, evt.Value),
             "wf_trg_score_achieved" => WiredTriggerPredicates.MatchesScore(config, evt.Team, (int)evt.PreviousValue, (int)evt.Value),
             "wf_trg_user_performs_action" => evt.Actor != null && WiredTriggerPredicates.MatchesAction(config, evt.Action, evt.Code),
-            "wf_trg_recv_signal" => context.Signal != null && (deferItems || Items().Any(item => item.Id == (uint)evt.Code)
-                || Items().Length == 0 && Param(config, 0) > 0 && Param(config, 0) == evt.Code),
+            "wf_trg_recv_signal" => context.Signal != null && (deferItems || Items().Any(item => item.Id == unchecked((uint)evt.Code))),
             "wf_trg_game_starts" or "wf_trg_game_ends" => true,
             "wf_trg_collision" => evt.Actor != null && evt.EventItem != null,
             "wf_trg_at_given_time" or "wf_trg_at_time_long" or "wf_trg_periodically" or "wf_trg_period_short" or "wf_trg_period_long" =>
@@ -112,5 +149,6 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
     {
         _started = nowMilliseconds;
         _epoch++;
+        _timers.ResetPeriodic(Item.Id, nowMilliseconds);
     }
 }

@@ -406,7 +406,7 @@ public class RoomUserManager
         _room.SendUser(user);
 
         if (_room.CheckRights(session, true)) {
-            user.SetStatus("flatctrl", "useradmin");
+            user.SetStatus("flatctrl", "4");
             session.Send(new YouAreOwnerComposer());
             session.Send(new YouAreControllerComposer(_room.Id, 4));
         }

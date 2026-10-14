@@ -7,51 +7,119 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// <summary>Volt's established three-envelope ABI, shared by configured boxes of all six categories.</summary>
 public static class WiredLegacyProtocol
 {
-    // The caller has already read the item id. Never read or mutate the live configuration here.
-    public static bool TryRead(IIncomingPacket packet, WiredBoxCategory envelope, out WiredConfiguration configuration)
+    // The caller already read the owning floor item ID. Exactly one canonical body is accepted.
+    public static bool TryRead(IIncomingPacket packet, WiredBoxCategory category, out WiredConfiguration configuration)
     {
-        configuration = new();
+        var accepted = TryReadNative(packet, category, out var native);
+        configuration = accepted ? WireDraft(native) : new();
+
+        return accepted;
+    }
+
+    internal static WiredConfiguration WireDraft(WiredNativeEditorConfiguration native) => new()
+    {
+        IntParams = native.OwnedIntParams,
+        Text = native.Text,
+        SelectedItems = native.PrimaryItems.Select(item => item.ItemId).ToImmutableArray(),
+        SecondarySelectedItems = native.SecondaryItems.Select(item => item.ItemId).ToImmutableArray(),
+        VariableIds = native.VariableIds,
+        Delay = native.Delay ?? 0
+    };
+
+    public static bool TryReadNative(IIncomingPacket packet, WiredBoxCategory category, out WiredNativeEditorConfiguration native)
+    {
+        native = new();
 
         try {
-            var intCount = packet.ReadInt();
-
-            if (intCount is < 0 or > WiredConfigurationLimits.IntParams) {
-                return false;
-            }
-
-            var ints = ImmutableArray.CreateBuilder<int>(intCount);
-
-            for (var i = 0; i < intCount; i++) {
-                ints.Add(packet.ReadInt());
-            }
-
+            var owned = ReadInts(packet, WiredConfigurationLimits.IntParams);
             var text = packet.ReadString();
-            var itemCount = packet.ReadInt();
+            var primary = ReadItems(packet);
+            int? delay = category == WiredBoxCategory.Action ? packet.ReadInt() : null;
+            int? quantifier = category == WiredBoxCategory.Condition ? packet.ReadInt() : null;
+            bool? filter = category == WiredBoxCategory.Selector ? ReadBoolean(packet) : null;
+            bool? inverse = category == WiredBoxCategory.Selector ? ReadBoolean(packet) : null;
+            var furni = ReadInts(packet, WiredConfigurationLimits.IntParams);
+            var users = ReadInts(packet, WiredConfigurationLimits.IntParams);
+            var variableCount = ReadCount(packet, WiredConfigurationLimits.IntParams);
+            var variables = ImmutableArray.CreateBuilder<string>(variableCount);
 
-            if (itemCount is < 0 or > WiredConfigurationLimits.SelectedItems) {
-                return false;
+            for (var index = 0; index < variableCount; index++) {
+                variables.Add(packet.ReadString());
             }
 
-            var items = ImmutableArray.CreateBuilder<uint>(itemCount);
-
-            for (var i = 0; i < itemCount; i++) {
-                items.Add(packet.ReadUInt());
-            }
-
-            configuration = new()
+            var secondary = ReadItems(packet);
+            native = new()
             {
-                IntParams = ints.MoveToImmutable(),
+                Category = category,
+                OwnedIntParams = owned,
                 Text = text,
-                SelectedItems = items.MoveToImmutable(),
-                Delay = envelope == WiredBoxCategory.Action ? packet.ReadInt() : 0,
-                SelectionCode = packet.ReadInt()
+                PrimaryItems = primary,
+                SecondaryItems = secondary,
+                FurniSourceTypes = furni,
+                UserSourceTypes = users,
+                VariableIds = variables.MoveToImmutable(),
+                Delay = delay,
+                Quantifier = quantifier,
+                Filter = filter,
+                Inverse = inverse
             };
 
-            return !packet.HasDataRemaining() && IsWithinLimits(configuration);
+            return !packet.HasDataRemaining() && WiredNativeEditorProjection.WithinBounds(native);
         }
-        catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or OverflowException) {
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or InvalidDataException or OverflowException) {
             return false;
         }
+    }
+
+    private static bool ReadBoolean(IIncomingPacket packet)
+    {
+        if (!packet.HasDataRemaining()) {
+            throw new EndOfStreamException("Missing native Wired boolean.");
+        }
+
+        return packet.ReadByte() switch
+        {
+            0 => false,
+            1 => true,
+            _ => throw new InvalidDataException("Invalid native Wired boolean.")
+        };
+    }
+
+    private static int ReadCount(IIncomingPacket packet, int maximum)
+    {
+        var count = packet.ReadInt();
+
+        return count is >= 0 && count <= maximum ? count : throw new InvalidDataException("Invalid native Wired count.");
+    }
+
+    private static ImmutableArray<int> ReadInts(IIncomingPacket packet, int maximum)
+    {
+        var count = ReadCount(packet, maximum);
+        var values = ImmutableArray.CreateBuilder<int>(count);
+
+        for (var index = 0; index < count; index++) {
+            values.Add(packet.ReadInt());
+        }
+
+        return values.MoveToImmutable();
+    }
+
+    private static ImmutableArray<WiredNativeItemReference> ReadItems(IIncomingPacket packet)
+    {
+        var count = ReadCount(packet, WiredConfigurationLimits.SelectedItems);
+        var items = ImmutableArray.CreateBuilder<WiredNativeItemReference>(count);
+
+        for (var index = 0; index < count; index++) {
+            var id = packet.ReadInt();
+
+            if (id is 0 or int.MinValue) {
+                throw new InvalidDataException("Invalid native furniture identity.");
+            }
+
+            items.Add(new((uint)Math.Abs(id), id < 0));
+        }
+
+        return items.MoveToImmutable();
     }
 
     public static bool IsWithinLimits(WiredConfiguration configuration) =>
@@ -63,50 +131,135 @@ public static class WiredLegacyProtocol
         && configuration.SelectedItems.All(id => id > 0)
         && !configuration.SecondarySelectedItems.IsDefault && configuration.SecondarySelectedItems.Length <= WiredConfigurationLimits.SelectedItems
         && configuration.SecondarySelectedItems.All(id => id > 0)
-        && configuration.Delay is >= 0 and <= WiredConfigurationLimits.DelayPulses
+        && WiredConfigurationLimits.IsDelay(configuration.Delay)
         && configuration.SelectionCode is >= 0 and <= WiredConfigurationLimits.SelectionCode
         && (configuration.ScoreQuotaPerGame is null or >= 1 and <= 10)
         && (configuration.TemporaryPlacement?.IsWithinLimits() ?? true)
         && !configuration.VariableIds.IsDefault && configuration.VariableIds.Length <= WiredConfigurationLimits.IntParams
         && configuration.VariableIds.All(id => id != null && id.Length <= 1024)
         && !configuration.Snapshots.IsDefault && configuration.Snapshots.Length <= WiredConfigurationLimits.SelectedItems
-        && configuration.Snapshots.All(snapshot => snapshot != null && double.IsFinite(snapshot.Z) && snapshot.State != null)
+        && configuration.Snapshots.All(snapshot => snapshot != null && double.IsFinite(snapshot.Z) && snapshot.State != null
+            && (snapshot.Wall?.IsWithinLimits() ?? true))
         && configuration.FurniSources != null && configuration.FurniSources.Count <= WiredConfigurationLimits.IntParams
         && configuration.UserSources != null && configuration.UserSources.Count <= WiredConfigurationLimits.IntParams;
 
-    public static void Write(IOutgoingPacket packet, uint itemId, int spriteId, WiredBoxDescriptor descriptor,
-        WiredConfiguration configuration, int furniLimit, IReadOnlyList<int> blockedItems)
-    {
-        packet.WriteBoolean(false);
-        packet.WriteInteger(furniLimit);
-        packet.WriteInteger(configuration.SelectedItems.Length);
+    // A save from before a card gained its reference selector opens with that selector on its default.
+    private static IEnumerable<int> Padded(ImmutableArray<int> sources, ImmutableArray<int> defaults) =>
+        sources.Length > 0 && sources.Length < defaults.Length ? sources.Concat(defaults.Skip(sources.Length)) : sources;
 
-        foreach (var selected in configuration.SelectedItems) {
-            packet.WriteUInteger(selected);
+    public static void Write(IOutgoingPacket packet, uint itemId, int spriteId, WiredBoxDescriptor descriptor,
+        WiredConfiguration configuration, int furniLimit, IReadOnlyList<int> blockedItems,
+        WiredNativeEditorConfiguration? editor = null, int? catalogHash = null,
+        IReadOnlyList<Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable>? sharedVariables = null,
+        Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders? textPlaceholders = null)
+    {
+        editor ??= configuration.Origin?.Native;
+
+        if (editor == null || !WiredNativeEditorProjection.Supports(descriptor.CanonicalName)
+            || editor.NativeCode != WiredNativeEditorProjection.Code(descriptor.CanonicalName)) {
+            throw new InvalidDataException("This box has no proven canonical native editor projection.");
         }
 
+        var metadata = WiredNativeEditorProjection.Metadata(descriptor.CanonicalName);
+        packet.WriteInteger(furniLimit);
+        WriteInts(packet, editor.PrimaryItems.Select(item => item.WireId));
+        WriteInts(packet, editor.SecondaryItems.Select(item => item.WireId));
         packet.WriteInteger(spriteId);
         packet.WriteUInteger(itemId);
-        packet.WriteString(configuration.Text);
-        packet.WriteInteger(configuration.IntParams.Length);
+        packet.WriteString(editor.Text);
+        WriteInts(packet, editor.OwnedIntParams);
+        packet.WriteInteger(editor.VariableIds.Length);
 
-        foreach (var value in configuration.IntParams) {
-            packet.WriteInteger(value);
+        foreach (var token in editor.VariableIds) {
+            packet.WriteString(token);
         }
 
-        packet.WriteInteger(configuration.SelectionCode);
-        packet.WriteInteger(descriptor.EditorCode);
+        WriteInts(packet, Padded(editor.FurniSourceTypes, metadata.FurniDefaults));
+        WriteInts(packet, Padded(editor.UserSourceTypes, metadata.UserDefaults));
+        packet.WriteInteger(editor.NativeCode);
 
-        if (descriptor.Envelope == WiredBoxCategory.Action) {
-            packet.WriteInteger(configuration.Delay);
+        if (editor.Category == WiredBoxCategory.Action) {
+            packet.WriteInteger(editor.Delay!.Value);
         }
 
-        if (descriptor.Envelope != WiredBoxCategory.Condition) {
-            packet.WriteInteger(blockedItems.Count);
+        if (editor.Category == WiredBoxCategory.Condition) {
+            packet.WriteInteger(editor.Quantifier!.Value);
+        }
 
-            foreach (var blocked in blockedItems) {
-                packet.WriteInteger(blocked);
+        // A selector's two flags follow its code, ahead of the advanced footer.
+        if (editor.Category == WiredBoxCategory.Selector) {
+            packet.WriteBoolean(editor.Filter!.Value);
+            packet.WriteBoolean(editor.Inverse!.Value);
+        }
+
+        packet.WriteBoolean(true);
+        WriteGroups(packet, metadata.FurniAllowed);
+        WriteGroups(packet, metadata.UsersAllowed);
+        WriteInts(packet, metadata.FurniDefaults);
+        WriteInts(packet, metadata.UserDefaults);
+        packet.WriteBoolean(metadata.AllowWall);
+
+        if (editor.Category == WiredBoxCategory.Condition) {
+            packet.WriteByte((byte)metadata.QuantifierType);
+            packet.WriteBoolean(metadata.Invert);
+        }
+
+        // One context entry (type 0, the room's variable catalog) carries its hash; the client synchronizes the catalog by it.
+        // Zero is the "unknown, request it" hint and is also what a failed capture sends. Cards without pickers carry no context.
+        packet.WriteInteger((catalogHash is null ? 0 : 1) + (sharedVariables is null ? 0 : 1) + (textPlaceholders is null ? 0 : 1));
+
+        if (catalogHash is { } hash) {
+            packet.WriteInteger(0);
+            packet.WriteInteger(hash);
+        }
+
+        // Context 4: the variables other rooms share, each as its room and the standard variable block.
+        if (sharedVariables is not null) {
+            packet.WriteInteger(4);
+            packet.WriteInteger(sharedVariables.Count);
+
+            foreach (var shared in sharedVariables) {
+                packet.WriteInteger(checked((int)shared.RoomId));
+                packet.WriteString(shared.RoomName);
+                shared.Variable.Write(packet, false);
             }
+        }
+
+        // Context 7: the message editor's placeholder names, then the stack's capturer names.
+        if (textPlaceholders is not null) {
+            packet.WriteInteger(Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.ContextType);
+            packet.WriteInteger(textPlaceholders.PlaceholderNames.Length);
+
+            foreach (var name in textPlaceholders.PlaceholderNames) {
+                packet.WriteString(name);
+            }
+
+            packet.WriteInteger(textPlaceholders.CapturerNames.Length);
+
+            foreach (var name in textPlaceholders.CapturerNames) {
+                packet.WriteString(name);
+            }
+        }
+
+        WriteInts(packet, metadata.OwnedDefaults);
+    }
+
+    private static void WriteGroups(IOutgoingPacket packet, ImmutableArray<ImmutableArray<int>> groups)
+    {
+        packet.WriteInteger(groups.Length);
+
+        foreach (var group in groups) {
+            WriteInts(packet, group);
+        }
+    }
+
+    private static void WriteInts(IOutgoingPacket packet, IEnumerable<int> values)
+    {
+        var array = values.ToArray();
+        packet.WriteInteger(array.Length);
+
+        foreach (var value in array) {
+            packet.WriteInteger(value);
         }
     }
 }

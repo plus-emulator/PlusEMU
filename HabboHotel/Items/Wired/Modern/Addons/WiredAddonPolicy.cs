@@ -24,7 +24,45 @@ public enum WiredProjectileDistance
     Normal, Overshoot, Fixed
 }
 public sealed record WiredProjectilePolicy(IReadOnlySet<uint> ItemIds, int? DirectionSystem,
-    int RotationOffset, int? CurveStrength, WiredProjectileDistance Distance, int DistanceTiles);
+    int RotationOffset, int? CurveStrength, WiredProjectileDistance Distance, int DistanceTiles)
+{
+    /// <summary>Source 901 applies projectile movement to every furniture item moved by the stack.</summary>
+    public const int StackMovedSource = 901;
+
+    public bool AppliesToAllMovedFurniture { get; init; }
+    public bool AppliesTo(uint itemId) => AppliesToAllMovedFurniture || ItemIds.Contains(itemId);
+
+    public int VariableMask { get; init; }
+    public int? TimePerTileMs { get; init; }
+    public int SpeedIncrease { get; init; }
+    public bool MeasureX { get; init; }
+    public bool MeasureY { get; init; }
+    public bool MeasureAltitude { get; init; }
+    public int? ShooterSource { get; init; }
+    public bool BunnyHop { get; init; }
+    internal bool ShooterAimed { get; set; }
+
+    internal int Duration(long dx, long dy, double dz, int stackDuration)
+    {
+        if (TimePerTileMs is not { } time) {
+            return stackDuration;
+        }
+
+        // Enabled-axis Euclidean distance, with separately truncated time and acceleration.
+        var x = MeasureX ? (double)dx : 0;
+        var y = MeasureY ? (double)dy : 0;
+        var z = MeasureAltitude ? dz : 0;
+        var distance = Math.Sqrt(x * x + y * y + z * z);
+        var total = Math.Floor(time * distance);
+
+        if (distance >= 2 && SpeedIncrease > 0 && SpeedIncrease < time) {
+            var acceleratedDistance = Math.Min(distance, (double)time / SpeedIncrease);
+            total -= Math.Floor(SpeedIncrease * acceleratedDistance * (acceleratedDistance - 1) / 2);
+        }
+
+        return (int)Math.Clamp(total, 0, 100000);
+    }
+}
 
 /// <summary>One firing's typed options. Stateful pickers belong to the placed addon, not this policy.</summary>
 public sealed class WiredAddonPolicy
@@ -36,6 +74,8 @@ public sealed class WiredAddonPolicy
     public int AnimationTimeMs { get; set; } = 500;
     public int? FurniLimit { get; set; }
     public int? UserLimit { get; set; }
+    // When set, a furniture limit that truncates keeps a random subset of the eligible selection instead of its first entries. Users and unset policies keep the prefix.
+    internal Random? FurniFilterRandom { get; set; }
     public WiredCarryPolicy? Carry { get; set; }
     public WiredPhysicsPolicy? Physics { get; set; }
     public WiredCurvePolicy? Curve { get; set; }
@@ -51,25 +91,42 @@ public sealed class WiredAddonPolicy
         return text;
     }
 
-    public WiredSelectedIds FilterSelection(WiredSelectedIds selection, Random random)
+    public WiredSelectedIds FilterSelection(WiredSelectedIds selection,
+        IEnumerable<uint>? furniOrder = null, IEnumerable<int>? userOrder = null)
     {
         var result = selection.Copy();
-        Limit(result.FurniIds, FurniLimit, random);
-        Limit(result.UserIds, UserLimit, random);
+        Limit(result.FurniIds, FurniLimit, furniOrder, FurniFilterRandom);
+        Limit(result.UserIds, UserLimit, userOrder);
 
         return result;
     }
 
-    private static void Limit<T>(HashSet<T> values, int? limit, Random random)
+    private static void Limit<T>(HashSet<T> values, int? limit, IEnumerable<T>? order, Random? random = null)
     {
-        if (limit is not > 0 || values.Count <= limit.Value) {
+        if (limit is not >= 0 || values.Count <= limit.Value) {
             return;
         }
 
-        var candidates = values.ToArray();
-        random.Shuffle(candidates);
+        var candidates = random is null || limit.Value == 0
+            ? (order ?? values).Where(values.Contains).Take(limit.Value).ToArray()
+            : Sample((order ?? values).Where(values.Contains).Distinct().ToArray(), limit.Value, random);
         values.Clear();
-        values.UnionWith(candidates.Take(limit.Value));
+        values.UnionWith(candidates);
+    }
+
+    // A partial Fisher-Yates shuffle: the first "count" entries are drawn without replacement from the eligible candidates; nothing is drawn unless they truncate.
+    private static T[] Sample<T>(T[] eligible, int count, Random random)
+    {
+        if (eligible.Length <= count) {
+            return eligible;
+        }
+
+        for (var index = 0; index < count; index++) {
+            var other = random.Next(index, eligible.Length);
+            (eligible[index], eligible[other]) = (eligible[other], eligible[index]);
+        }
+
+        return eligible[..count];
     }
 }
 

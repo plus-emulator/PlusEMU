@@ -172,7 +172,7 @@ public class ModernWiredBehaviorTests
     public void OneShotLongTimerDoesNotRepeatUntilRoomTimerReset()
     {
         var timers = new WiredTimedTriggers();
-        var config = new WiredConfiguration { IntParams = [2] };
+        var config = new WiredConfiguration { IntParams = [20] }; // Current one-shot form uses half-second units.
         Assert.False(timers.TryFire("wf_trg_at_time_long", 1, config, 9999, 9999, 0));
         Assert.True(timers.TryFire("wf_trg_at_time_long", 1, config, 10000, 10000, 0));
         Assert.False(timers.TryFire("wf_trg_at_time_long", 1, config, 20000, 20000, 0));
@@ -192,15 +192,16 @@ public class ModernWiredBehaviorTests
     }
 
     [Fact]
-    public void RepeaterDeadlinesStayOnTheirGridWhateverThePollTimes()
+    public void RepeaterDeadlinesRestartFromLatePolls()
     {
         var timers = new WiredTimedTriggers();
         var config = new WiredConfiguration { IntParams = [2] };
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1000, 0, 0));
         Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1130, 0, 0));
-        // Late by 30ms: the next deadline is still 1200, not 1230.
+        // The late poll starts the next 100ms wait at 1130.
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1199, 0, 0));
-        Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1200, 0, 0));
+        Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1200, 0, 0));
+        Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1230, 0, 0));
         // A poll long after skips the deadlines it slept through instead of firing for each.
         Assert.True(timers.TryFire("wf_trg_period_short", 1, config, long.MaxValue / 2, 0, 0));
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, long.MaxValue / 2, 0, 0));
@@ -210,7 +211,7 @@ public class ModernWiredBehaviorTests
     [InlineData("wf_trg_period_short", 10)]
     [InlineData("wf_trg_periodically", 120)]
     [InlineData("wf_trg_period_long", 120)]
-    [InlineData("wf_trg_at_time_long", 120)]
+    [InlineData("wf_trg_at_time_long", 1200)]
     [InlineData("wf_trg_at_given_time", 1200)]
     public void TimedTriggersAcceptTheirEditorRangeOnly(string name, int max)
     {
@@ -271,15 +272,16 @@ public class ModernWiredBehaviorTests
     }
 
     [Fact]
-    public void TypeConditionComparesResolvedRolesWithoutMixingThem()
+    public void ItemIdentityConditionComparesExactItemsWithoutMixingRoles()
     {
         var selected = Item(1, 0, 0);
         selected.Definition.Id = 10;
         var other = Item(2, 0, 0);
+        other.Definition.Id = 10;
+        Assert.False(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [other]));
         other.Definition.Id = 20;
         Assert.False(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [other]));
-        other.Definition.Id = 10;
-        Assert.True(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [other]));
+        Assert.True(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [selected]));
         Assert.False(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 1] }, [selected], []));
     }
 

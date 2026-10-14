@@ -23,6 +23,7 @@ using Plus.HabboHotel.Rooms.Instance;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Effects;
 using Plus.HabboHotel.Users.Ignores;
+using Plus.HabboHotel.Users.Inventory.Furniture;
 using Xunit;
 
 namespace Plus.Tests;
@@ -127,7 +128,13 @@ public sealed class RoomChatServiceTests
 
         Assert.Equal(2, world.Logs.Entries.Count);
         Assert.Equal(2, world.Quests.Progresses.Count);
-        Assert.Empty(world.SenderPackets);
+        Assert.Equal(2, world.SenderPackets.Count);
+        Assert.All(world.SenderPackets, packet =>
+        {
+            Assert.Equal(ServerPacketHeader.WhisperComposer, packet.Header);
+            Assert.Contains("filtered words", Text(packet.Payload));
+        });
+        Assert.Empty(world.RecipientPackets);
         Assert.False(world.Sender.GetHabbo().HasSpoken);
     }
 
@@ -355,6 +362,7 @@ public sealed class RoomChatServiceTests
             clock ??= new FixedClock(Now);
             _room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
             _room.Id = 42;
+            Set(_room, "_interactionClock", clock);
             _room.MutedUsers = [];
             _room.WordFilterList = [];
             var users = new RoomUserManager(_room, TestRoomUserStore.Instance, clock, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
@@ -398,16 +406,31 @@ public sealed class RoomChatServiceTests
 
         public void AddHiddenSpeechTrigger(string message)
         {
+            _room.HideWired = true;
+
             var item = new Item
             {
                 Id = _nextItemId++,
+                RoomId = _room.Id,
                 ExtraData = new LegacyDataFormat { Data = "1" },
-                Definition = new() { ItemName = "wf_trg_says_something" }
+                Definition = new() { ItemName = "wf_trg_says_something", Type = ItemType.Floor }
             };
+            item.Attach(_room, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
             _floorItems[item.Id] = item;
             var trigger = _wired.CreateConfiguredBox(item)!;
-            Assert.True(trigger.TryValidateConfiguration(new()
-            { Text = message, IntParams = [1, 1, 0] }, out var configuration, out var error), error);
+            Assert.Same(item, trigger.Item);
+            Assert.Same(_room, trigger.Instance);
+            Assert.True(WiredNativeEditorProjection.TryCompile(item.Id, trigger.Descriptor, new()
+            {
+                Category = WiredBoxCategory.Trigger,
+                NativeCode = 0,
+                OwnedIntParams = [0, 1, 1],
+                Text = message,
+                FurniSourceTypes = [],
+                UserSourceTypes = [],
+                VariableIds = []
+            }, out var proposed));
+            Assert.True(trigger.TryValidateConfiguration(proposed, out var configuration, out var error), error);
             trigger.ApplyConfiguration(configuration);
             Assert.True(_wired.AddBox(trigger));
         }

@@ -37,6 +37,7 @@ public class Gamemap
     {
         public bool Entry => EntrySession != null;
     }
+    private short[,]? _placementSnapshot;
     private int _placementWidth;
     private int _placementHeight;
 
@@ -138,7 +139,20 @@ public class Gamemap
             if (changed.Count != 0 || resized) {
                 // Byte-sized delta counts/coordinates cannot represent larger maps.
                 var full = resized || changed.Any(tile => tile.X > byte.MaxValue || tile.Y > byte.MaxValue);
-                _placementOutbound.Enqueue(new(++_placementVersion, PlacementHeightMap(), full ? null : changed.ToArray(), CapturePlacementVisits()));
+                // Reuse unchanged cell heights instead of resolving every furniture stack for every move.
+                // Clone before patching: queued full snapshots must remain immutable for reentrant delivery.
+                var snapshot = _placementSnapshot;
+                if (snapshot == null || resized) {
+                    snapshot = PlacementHeightMap();
+                }
+                else {
+                    snapshot = (short[,])snapshot.Clone();
+                    foreach (var tile in changed) {
+                        snapshot[tile.X, tile.Y] = tile.Value;
+                    }
+                }
+                _placementSnapshot = snapshot;
+                _placementOutbound.Enqueue(new(++_placementVersion, snapshot, full ? null : changed.ToArray(), CapturePlacementVisits()));
             }
         }
 

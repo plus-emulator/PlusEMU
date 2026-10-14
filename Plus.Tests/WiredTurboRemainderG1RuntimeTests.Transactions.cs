@@ -283,4 +283,23 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         public bool SendSignal(WiredRuntimeContext context, IEnumerable<Item> receivers, WiredSelection selection, bool negative = false) => throw new NotSupportedException();
         public void ResetTimers(IEnumerable<Item> targets) => throw new NotSupportedException();
     }
+
+    [Fact]
+    public void AFailStackThatStartsTheSameFailingTransactionAgainDoesNotRunAwayWithinOneCycle()
+    {
+        using var world = new G1World();
+        var player = world.AddPlayer();
+        var chest = world.AddChest(WiredChestKind.Furni);
+        // No contract is picked, so every initiation fails; the fail trigger beside it initiates again.
+        world.AddBox("wf_trg_enter_room");
+        world.AddBox("wf_act_init_transaction", _ => G1World.Chest("wf_act_init_transaction", [0, 1, 0, 0, 0, 300], [3], [100, 101, 0], [0, 0], ["n"], [chest.Id], []));
+        world.AddBox("wf_trg_transaction_fail", _ => G1World.Chest("wf_trg_transaction_fail", [], [], [100], [], [], [], []), 1, 1);
+        world.AddBox("wf_act_init_transaction", _ => G1World.Chest("wf_act_init_transaction", [0, 1, 0, 0, 0, 300], [3], [100, 101, 0], [0, 0], ["n"], [chest.Id], []), 1, 1);
+
+        world.Fire(Enter(player));
+
+        Assert.InRange(world.Published.Count, 2, 200);
+        Assert.All(world.Published, evt => Assert.Equal((int)WiredChestFailure.Misconfig, evt.Code));
+        Assert.False(player.User.IsTrading);
+    }
 }

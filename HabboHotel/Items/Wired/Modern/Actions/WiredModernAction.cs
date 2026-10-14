@@ -517,7 +517,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     }
 
                     if (name == "wf_act_kick_user") {
-                        context.Room.GetRoomUserManager().RemoveUserFromRoom(client, true, true);
+                        Kick(context, user, client);
                     }
                     else {
                         context.Room.MutedUsers[player.Id] = mutedUntil;
@@ -780,6 +780,37 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         return true;
     }
 
+    // Observed on hhus: the kick applies avatar effect 4 on the next 500 ms state update and removes the user 2000 ms after the firing.
+    private void Kick(WiredRuntimeContext context, RoomUser user, GameClient client)
+    {
+        var room = context.Room;
+        var wired = room.GetWired();
+
+        void Remove()
+        {
+            if (user.IsAttachedTo(room)) {
+                room.GetRoomUserManager().RemoveUserFromRoom(client, true, true);
+            }
+        }
+
+        if (!wired.ScheduleAux(context, KickRemoveMilliseconds, Remove)) {
+            Remove();
+
+            return;
+        }
+
+        if (!wired.ScheduleAux(context, 0, () =>
+            {
+                if (user.IsAttachedTo(room)) {
+                    user.ApplyEffect(KickEffectId);
+                }
+            }, alignToStateUpdate: true)) {
+            user.ApplyEffect(KickEffectId);
+        }
+    }
+
+    private const int KickEffectId = 4;
+    private const int KickRemoveMilliseconds = 2000;
     private const int TeleportRepublishMilliseconds = 1000;
     private const int TeleportRelocateMilliseconds = 1500;
     private const int TeleportEffectEndMilliseconds = 3000;

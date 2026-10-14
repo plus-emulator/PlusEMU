@@ -26,6 +26,42 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
+    public void KickAppliesEffectFourOnTheNextStateUpdateAndRemovesTheUserTwoSecondsAfterTheFiring()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_kick_user", intParams: [], text: "");
+        GiveUserAccess(f);
+        var replies = Capture(f.Client);
+        f.Fire(land: false);
+        f.Advance(500);
+        var effect = Assert.Single(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
+        var reader = new WireReader(effect.Body);
+        Assert.Equal(7, reader.Int());
+        Assert.Equal(4, reader.Int());
+        Assert.Equal(0, reader.Int());
+        Assert.Equal(4, f.Habbo.Effects!.CurrentEffect);
+        f.Advance(1499);
+        Assert.True(f.User.IsAttachedTo(f.Room));
+        Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.UserRemoveComposer);
+        f.Advance(1);
+        Assert.False(f.User.IsAttachedTo(f.Room));
+        Assert.Empty(f.Errors);
+    }
+
+    [Fact]
+    public void KickLeavesAUserWhoAlreadyLeftTheRoomAlone()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_kick_user", intParams: [], text: "");
+        GiveUserAccess(f);
+        var replies = Capture(f.Client);
+        f.Fire(land: false);
+        f.Room.GetRoomUserManager().RemoveUserFromRoom(f.Client, true, false);
+        replies.Clear();
+        f.Advance(2000);
+        Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.UserRemoveComposer || reply.Header == ServerPacketHeader.AvatarEffectComposer);
+        Assert.Empty(f.Errors);
+    }
+
+    [Fact]
     public void MuteTriggererMutesTheTriggeringUserForTheMinutesAndWhispersTheMessage()
     {
         using var f = new TeleportFixture(actionName: "wf_act_mute_triggerer", intParams: [3, 0], text: "Quiet please");

@@ -153,7 +153,8 @@ public static class WiredTriggerConfiguration
                 furni["items"] = p[1];
                 break;
             case "wf_trg_score_achieved":
-                if (p.Length != 2 || p[0] < 0 || p[1] is < 0 or > 4) {
+                // ScoreAchieved.as: the points slider runs 1 to 1000 (Turbo's range rule agrees) and the team radio 0 (any) to 4.
+                if (p.Length != 2 || p[0] is < 1 or > 1000 || p[1] is < 0 or > 4) {
                     return false;
                 }
 

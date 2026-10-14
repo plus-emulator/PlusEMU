@@ -247,7 +247,8 @@ public static class WiredNativeEditorProjection
                 users["users"] = native.UserSourceTypes[0];
                 break;
             case "wf_act_give_score":
-                if (p.Length != 2 || p[0] is < -1000 or > 1000 || p[1] is < 0 or > 10) {
+                // The slider runs 1 to 1000 and the radio flips the sign (GiveScore.as), so zero points cannot come from the editor.
+                if (p.Length != 2 || p[0] is < -1000 or > 1000 or 0 || p[1] is < 0 or > 10) {
                     return false;
                 }
 

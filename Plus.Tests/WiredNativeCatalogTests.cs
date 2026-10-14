@@ -177,11 +177,11 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         field.SetValue(connector, capturedConfiguration);
         Assert.Equal("old", connector.TextConnector[2]);
         Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
-        var native = Assert.Single(catalog!.Variables);
+        var native = Assert.Single(Own(catalog!));
         Assert.Equal(new KeyValuePair<int, string>(1, "new"), Assert.Single(native.Connector!.Value));
         WiredNativeTestSupport.InstallLegacyVariableDraft(connector, new() { Text = "1=after" });
         Assert.Equal("new", Assert.Single(native.Connector.Value).Value);
-        Assert.Equal(native.Hash, Assert.Single(catalog.Diff(new Dictionary<string, int>())).Changed[0].Hash);
+        Assert.Equal(native.Hash, catalog.Diff(new Dictionary<string, int>()).SelectMany(diff => diff.Changed).Single(row => row.Id == native.Id).Hash);
     }
 
     [Theory]
@@ -251,7 +251,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         var id = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 10, 0, false)!.Value;
         fixture.AddDefinition(11, "wf_var_echo", new() { Text = "{\"variableName\":\"unreachable\",\"sourceTargetType\":0,\"sourceVariableToken\":\"custom:" + id + "\"}" });
         Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
-        Assert.Equal(7, catalog!.Variables.Length); // the user definition, the quest definition and its five derived keys
+        Assert.Equal(7, Own(catalog!).Length); // the user definition, the quest definition and its five derived keys
         Assert.DoesNotContain(catalog.Variables, variable => variable.Id == "user:11");
         Assert.All(catalog.Variables.Where(variable => variable.Type == 3), variable =>
         {
@@ -405,7 +405,38 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         fixture.AddMetadata(20, "wf_xtra_var_time_util", new() { IntParams = [1 << 21, mode] });
         Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
         Assert.DoesNotContain(catalog!.Variables, variable => variable.Type == 3);
-        Assert.DoesNotContain(catalog.Variables, variable => variable.Name.Contains('.'));
+        Assert.DoesNotContain(Own(catalog), variable => variable.Name.Contains('.'));
+    }
+
+    [Fact]
+    public void ARoomWithoutOwnVariablesStillListsTheBuiltinsUnderHabbosIds()
+    {
+        // AIR WIN63-202610131318: NewVariablePicker lists only the room catalogue (Echo, Give, Change pickers alike), and hhus
+        // sends its built-ins there (r90: 163 rows besides the room's own). Without them an empty room's pickers were empty.
+        var fixture = new Fixture();
+        Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
+        Assert.Empty(Own(catalog!));
+        Assert.Equal(WiredHabboVariableIds.Count, catalog!.Variables.Length);
+        Assert.All(catalog.Variables, variable =>
+        {
+            Assert.Equal(1, variable.Type);
+            Assert.Equal(variable.Id, WiredHabboVariableIds.IdOf(variable.Target switch
+            {
+                0 => WiredVariableTarget.Furni,
+                1 => WiredVariableTarget.User,
+                -10 => WiredVariableTarget.Global,
+                _ => WiredVariableTarget.Context
+            }, variable.Name));
+            Assert.False(variable.RequiresExecutionContext);
+            Assert.False(variable.IsInvisible);
+            Assert.False(variable.CanReadCreationTime);
+        });
+        var direction = Assert.Single(catalog.Variables, variable => variable.Id == "-232");
+        Assert.Equal(("@direction", 1, true, true), (direction.Name, direction.Target, direction.HasValue, direction.CanWriteValue));
+        var index = Assert.Single(catalog.Variables, variable => variable.Id == "-200");
+        Assert.Equal(("@index", true, false), (index.Name, index.HasValue, index.CanWriteValue));
+        Assert.Contains(catalog.Variables, variable => variable.Id == "-420" && variable.Target == -20);
+        Assert.Equal(2, catalog.Diff(new Dictionary<string, int>()).Length);
     }
 
     [Fact]
@@ -415,7 +446,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         fixture.AddDefinition(10);
         fixture.Directory.Rows[10] = fixture.Directory.Rows[10] with { OwnerId = 2 };
         Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var omitted));
-        Assert.Empty(omitted!.Variables);
+        Assert.Empty(Own(omitted!));
         fixture.Directory.Rows[10] = fixture.Directory.Rows[10] with { OwnerId = 1, Name = "inconsistent" };
         Assert.False(fixture.Variables.TryCaptureNativeCatalog(out var refused));
         Assert.Null(refused);
@@ -435,6 +466,9 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.False(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
         Assert.Null(catalog);
     }
+
+    /// <summary>The room's own rows, without the fixed built-in rows every catalogue carries.</summary>
+    private static WiredNativeVariable[] Own(WiredNativeCatalog catalog) => catalog.Variables.Where(variable => variable.Type != 1).ToArray();
 
     private static WiredNativeVariable Native() => new("user:10", 0, "score", 10, 1, false, true, true, true, true, false, true, true, null);
     private static WiredVariableModule Module(Directory directory) => new(42, directory, new MemoryWiredVariableStore(), TimeProvider.System,

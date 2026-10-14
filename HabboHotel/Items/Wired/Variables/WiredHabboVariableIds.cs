@@ -176,6 +176,10 @@ public static class WiredHabboVariableIds
 
     public static int Count => Ids.Count;
 
+    /// <summary>Every fixed id with the built-in token ("internal:@index") and target it names, in table order.</summary>
+    public static IEnumerable<(string Id, WiredVariableTarget Target, string Token)> All =>
+        Ids.Select(pair => (pair.Key, pair.Value.Target, "internal:" + pair.Value.Name));
+
     /// <summary>The built-in token ("internal:@position.x") and target a Habbo id names.</summary>
     public static bool TryResolve(string id, out WiredVariableTarget target, out string token)
     {

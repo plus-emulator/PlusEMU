@@ -99,7 +99,12 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_cnd_has_var", new(HasVar(false), HasVarSpec));
         yield return new("wf_cnd_neg_has_var", new(HasVar(true), HasVarSpec));
         // The October editor (VariableValue) adds "same holder" as a seventh field.
-        yield return new("wf_cnd_var_val_match", new(Meta(2, 2, [1, 2, 0, 0, 0, -10], 2) with { QuantifierType = 3 }, n =>
+        // Observed on hhus (WIN63-202610131318): opens on [1, 2, 0, 0, 0, -10, 0] with the merged destination and reference source
+        // selectors on the triggering user/furni (0) and the selector pool (200), and allows wall furniture.
+        yield return new("wf_cnd_var_val_match", new(Meta(2, 2, [1, 2, 0, 0, 0, -10, 0], 2) with
+        {
+            QuantifierType = 3, FurniDefaults = [0, 200], UserDefaults = [0, 200], AllowWall = true
+        }, n =>
         {
             var p = n.OwnedIntParams;
 

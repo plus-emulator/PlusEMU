@@ -99,6 +99,13 @@ public sealed class WiredConfigurationService(
                 native = native with { Text = FilterMessageText(native.Text) };
             }
 
+            // The Web API add-on saves only keys this server made for it (VariablesWebApiAddon.as:108).
+            if (descriptor.CanonicalName == "wf_xtra_var_web_api" && !room.GetWired().WebApiKeysAccepted(selectedItem.Id, native.Text)) {
+                session.Send(new WiredValidationErrorComposer("These Web API keys were not made for this add-on."));
+
+                return;
+            }
+
             var current = configured.Configuration;
 
             if (!WiredNativeEditorProjection.TryProject(selectedItem, descriptor, current, out var projected)) {

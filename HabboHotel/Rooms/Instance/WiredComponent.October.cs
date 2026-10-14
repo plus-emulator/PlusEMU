@@ -54,6 +54,26 @@ public partial class WiredComponent
         if (box is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_var_leaderboard" } leaderboard) {
             LeaderboardSaved(leaderboard);
         }
+
+        if (box is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_var_web_api" } webApi) {
+            WebApiSaved(webApi);
+        }
+    }
+
+    /// <summary>
+    /// The Share add-on's Synchronize button (class_3048 [wired id], VariableAddonShareAddon.as:31, write permission only): the room's
+    /// variable displays are redrawn from the current shared values. What else the official server does here is not known.
+    /// </summary>
+    public bool SynchronizeShare(Plus.HabboHotel.GameClients.GameClient session, uint itemId)
+    {
+        if (!ReferenceEquals(session.GetHabbo()?.CurrentRoom, _room) || !Settings.CanModify(session)
+            || !TryGet(itemId, out var box) || box is not IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_var_share" }) {
+            return false;
+        }
+
+        Variables.InvalidateFx();
+
+        return true;
     }
 
     internal bool SendLink(Item[] endpoints, WiredLinkPayload payload, WiredEventKind kind) =>

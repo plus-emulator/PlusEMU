@@ -16,7 +16,9 @@ public sealed class WiredVariableAddonTests
         var (room, context, module, holders) = World();
         var box = Box("wf_xtra_filter_users_by_var", room, module);
         // Rank by custom:10 and keep as many as custom:11 holds (2); a literal amount keeps that many of the top ranked.
-        WiredNativeTestSupport.Install(box, WiredNativeTestSupport.FromLegacyVariableAddon(box.Descriptor, new() { IntParams = [0, 1, 1, 0, 200, 0], Text = "custom:10\tcustom:11" }));
+        // The official editor offers the triggering user (0) and the signal's (201) for the amount reference, not the selector's.
+        context.Triggering.UserIds.Add(context.SelectorUserOrder[0]);
+        WiredNativeTestSupport.Install(box, WiredNativeTestSupport.FromLegacyVariableAddon(box.Descriptor, new() { IntParams = [0, 1, 1, 0, 0, 0], Text = "custom:10\tcustom:11" }));
         Assert.True(box.Apply(context));
         Assert.Equal(new[] { 2, 3 }, context.Selected.UserIds.Order().ToArray());
         WiredNativeTestSupport.Install(box, WiredNativeTestSupport.FromLegacyVariableAddon(box.Descriptor, new() { IntParams = [0, 0, 1, 0, 0, 0], Text = "custom:10\t" }));

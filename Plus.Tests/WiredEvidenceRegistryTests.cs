@@ -28,13 +28,24 @@ public sealed class WiredEvidenceRegistryTests
 
     private static readonly string[] ExpectedTurbo =
     [
-        "wf_act_bot_clothes", "wf_act_bot_follow_avatar", "wf_act_bot_give_handitem", "wf_act_bot_move", "wf_act_bot_talk",
-        "wf_act_bot_talk_to_avatar", "wf_act_bot_teleport", "wf_act_move_furni_to", "wf_trg_at_time_long",
-        "wf_trg_bot_reached_avtr", "wf_trg_bot_reached_stf", "wf_trg_game_ends", "wf_trg_game_starts"
+        "wf_act_bot_clothes", "wf_act_bot_follow_avatar", "wf_act_bot_give_handitem",
+        "wf_act_bot_move", "wf_act_bot_talk", "wf_act_bot_talk_to_avatar",
+        "wf_act_bot_teleport", "wf_act_cancel_transaction", "wf_act_give_currency",
+        "wf_act_give_furni", "wf_act_give_reward", "wf_act_give_score",
+        "wf_act_give_score_tm", "wf_act_init_transaction", "wf_act_move_furni_to",
+        "wf_act_mute_triggerer", "wf_act_place_furni", "wf_act_remove_furni",
+        "wf_cnd_chest_has_item_type", "wf_cnd_chest_has_items", "wf_trg_at_time_long",
+        "wf_trg_bot_reached_avtr", "wf_trg_bot_reached_stf", "wf_trg_game_ends",
+        "wf_trg_game_starts", "wf_trg_score_achieved", "wf_trg_transaction_complete",
+        "wf_trg_transaction_fail", "wf_var_context", "wf_var_echo",
+        "wf_var_reference", "wf_xtra_custom_contract", "wf_xtra_filter_users_by_var",
+        "wf_xtra_scan_chest_furni_by_type", "wf_xtra_text_input_variable", "wf_xtra_var_fx_boss",
+        "wf_xtra_var_fx_health", "wf_xtra_var_fx_level", "wf_xtra_var_fx_number",
+        "wf_xtra_var_fx_progress", "wf_xtra_var_fx_status", "wf_xtra_var_time_util"
     ];
 
     [Fact]
-    public void ExactlyTheThirteenTurboReferenceOnlyCardsAreMarked()
+    public void ExactlyTheTurboReferenceOnlyCardsAreMarked()
     {
         Assert.Equal(ExpectedTurbo, WiredEvidenceRegistry.TurboReferenceOnly.Keys.Order(StringComparer.Ordinal));
         Assert.All(WiredEvidenceRegistry.TurboReferenceOnly.Values, evidence => {
@@ -60,7 +71,7 @@ public sealed class WiredEvidenceRegistryTests
     public void OtherCardsStayObserved()
     {
         Assert.Equal(WiredEvidenceLevel.Observed, WiredEvidenceRegistry.LevelOf("wf_cnd_actor_in_group"));
-        Assert.Equal(WiredEvidenceLevel.Observed, WiredEvidenceRegistry.LevelOf("wf_var_context"));
+        Assert.Equal(WiredEvidenceLevel.Observed, WiredEvidenceRegistry.LevelOf("wf_act_move_rotate"));
     }
 
     [Theory]

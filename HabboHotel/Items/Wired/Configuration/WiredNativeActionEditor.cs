@@ -36,11 +36,12 @@ internal static class WiredNativeActionEditor
         ["wf_act_leave_team"] = Meta([], [SignalUsers], [], [0], []),
         ["wf_act_bot_teleport"] = Meta([Furni], [BotCodes], [100], [100], []),
         ["wf_act_bot_move"] = Meta([Furni], [BotCodes], [100], [100], []),
-        ["wf_act_bot_follow_avatar"] = Meta([], [BotCodes, Users], [], [100, 0], [1]),
-        ["wf_act_bot_give_handitem"] = Meta([], [BotCodes, Users], [], [100, 0], [2]),
+        // Observed on hhus (r62-batch-02): the bots slot offers 0/100/200/201 and the users slot 0/200/201, with 100 and 0 selected.
+        ["wf_act_bot_follow_avatar"] = Meta([], [BotCodes, SignalUsers], [], [100, 0], [1]),
+        ["wf_act_bot_give_handitem"] = Meta([], [BotCodes, SignalUsers], [], [100, 0], [2]),
         // The October editor saves a third field, "hide bot name" (0/1).
         ["wf_act_bot_talk"] = Meta([], [BotCodes], [], [100], [0, -1, 0]),
-        ["wf_act_bot_talk_to_avatar"] = Meta([], [BotCodes, Users], [], [100, 0], [0, -1, 0]),
+        ["wf_act_bot_talk_to_avatar"] = Meta([], [BotCodes, SignalUsers], [], [100, 0], [0, -1, 0]),
         ["wf_act_bot_clothes"] = Meta([], [BotCodes], [], [100], []),
         ["wf_act_give_reward"] = Meta([], [Users], [], [0], [0, 0, 0, 1]),
         ["wf_act_give_score_tm"] = Meta([], [], [], [], [5, 0, 1]),
@@ -417,7 +418,8 @@ internal static class WiredNativeActionEditor
 
     private static bool HideBotName(ImmutableArray<int> p) => p.Length < 3 || p[2] is 0 or 1;
 
-    private static bool BotName(string text) => text.Split('\t', 2)[0].Length <= 64;
+    // The bot name box of every bot editor takes 32 characters (AS3 TextInputParam("", 32, ...)).
+    private static bool BotName(string text) => text.Split('\t', 2)[0].Length <= WiredBotActions.NameEditorLength;
 
     // Spawn is always a furni variable. The operand uses the owned domain target. Ids stay opaque catalog strings.
     private static bool PlaceVariables(ImmutableArray<string> ids, WiredVariableTarget operand) => ids.IsEmpty

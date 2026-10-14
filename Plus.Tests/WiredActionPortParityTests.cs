@@ -335,6 +335,69 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
     }
 
     [Theory]
+    [InlineData(0, 1, 3, 2)]
+    [InlineData(2, 1, 4, 3)]
+    [InlineData(4, 2, 3, 5)]
+    [InlineData(6, 2, 1, 3)]
+    public void MoveToSpacesTheMoverFromTheTargetByTheDirectionAndTileCount(int direction, int tiles, int expectedX, int expectedY)
+    {
+        // wf_act_move_furni_to: radio N/E/S/W (0/2/4/6) and "Space placed furnis N tiles apart" (1..5), measured from the target furni.
+        var (room, map, items) = World();
+        var mover = Floor(1, 0, 0);
+        var target = Floor(3, 3, 3);
+        Place(map, items, mover);
+        Place(map, items, target);
+        var action = Box(room, "wf_act_move_furni_to", [direction, tiles, 100, 100], [1], text: "3");
+        Assert.True(action.Execute(Context(room, [mover, target], [])));
+        Assert.Equal((expectedX, expectedY), (mover.GetX, mover.GetY));
+        Assert.Equal((3, 3), (target.GetX, target.GetY));
+    }
+
+    [Fact]
+    public void MoveToUsesOnlyTheFirstTargetAndDoesNothingWithoutOne()
+    {
+        var (room, map, items) = World();
+        var mover = Floor(1, 0, 0);
+        var first = Floor(3, 3, 3);
+        var second = Floor(4, 5, 5);
+        Place(map, items, mover);
+        Place(map, items, first);
+        Place(map, items, second);
+        var action = Box(room, "wf_act_move_furni_to", [2, 1, 100, 100], [1], text: "3;4");
+        Assert.True(action.Execute(Context(room, [mover, first, second], [])));
+        Assert.Equal((4, 3), (mover.GetX, mover.GetY));
+        var none = Box(room, "wf_act_move_furni_to", [2, 1, 100, 100], [1], text: "99");
+        Assert.False(none.Execute(Context(room, [mover, first, second], [])));
+        Assert.Equal((4, 3), (mover.GetX, mover.GetY));
+    }
+
+    [Fact]
+    public void MoveToLeavesTheTargetWhereItIsWhenItIsAlsoAMover()
+    {
+        var (room, map, items) = World();
+        var mover = Floor(1, 0, 0);
+        var target = Floor(3, 3, 3);
+        Place(map, items, mover);
+        Place(map, items, target);
+        var action = Box(room, "wf_act_move_furni_to", [2, 1, 100, 100], [1, 3], text: "3");
+        Assert.True(action.Execute(Context(room, [mover, target], [])));
+        Assert.Equal((4, 3), (mover.GetX, mover.GetY));
+        Assert.Equal((3, 3), (target.GetX, target.GetY));
+    }
+
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(3, 1)]
+    [InlineData(2, 0)]
+    [InlineData(2, 6)]
+    public void MoveToRefusesDirectionsAndTileCountsTheEditorDoesNotOffer(int direction, int tiles)
+    {
+        var (room, _, _) = World();
+        var action = CreateBox(room, "wf_act_move_furni_to");
+        Assert.False(WiredNativeTestSupport.TryValidateRuntime(action, new() { IntParams = [direction, tiles, 100, 100], SelectedItems = [1], Text = "3" }, out _, out _));
+    }
+
+    [Theory]
     [InlineData(true, false, null, 1)]
     [InlineData(false, false, null, 1)]
     [InlineData(true, true, 1, 1)]

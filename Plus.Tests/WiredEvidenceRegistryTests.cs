@@ -26,6 +26,28 @@ public sealed class WiredEvidenceRegistryTests
         Assert.Equal(Expected.Length, marked.Count());
     }
 
+    private static readonly string[] ExpectedTurbo =
+    [
+        "wf_act_bot_clothes", "wf_act_bot_follow_avatar", "wf_act_bot_give_handitem", "wf_act_bot_move", "wf_act_bot_talk",
+        "wf_act_bot_talk_to_avatar", "wf_act_bot_teleport", "wf_act_move_furni_to", "wf_trg_at_time_long",
+        "wf_trg_bot_reached_avtr", "wf_trg_bot_reached_stf", "wf_trg_game_ends", "wf_trg_game_starts"
+    ];
+
+    [Fact]
+    public void ExactlyTheThirteenTurboReferenceOnlyCardsAreMarked()
+    {
+        Assert.Equal(ExpectedTurbo, WiredEvidenceRegistry.TurboReferenceOnly.Keys.Order(StringComparer.Ordinal));
+        Assert.All(WiredEvidenceRegistry.TurboReferenceOnly.Values, evidence => {
+            Assert.Equal(WiredEvidenceLevel.TurboReferenceOnly, evidence.Level);
+            Assert.EndsWith(".as", evidence.Source);
+        });
+        Assert.All(ExpectedTurbo, name => {
+            Assert.Equal(WiredEvidenceLevel.TurboReferenceOnly, WiredEvidenceRegistry.LevelOf(name));
+            Assert.True(WiredBoxRegistry.TryGet(name, out _), name);
+        });
+        Assert.Empty(ExpectedTurbo.Intersect(WiredEvidenceRegistry.AirSourceOnly.Keys));
+    }
+
     [Fact]
     public void EveryMarkedCardIsARegisteredBox()
     {

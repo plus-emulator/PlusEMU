@@ -9,6 +9,8 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 public static class WiredBotActions
 {
+    /// <summary>The bot name box of every bot editor takes 32 characters (AS3 TextInputParam("", 32, ...)).</summary>
+    public const int NameEditorLength = 32;
     public static readonly IReadOnlySet<string> Names = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     { "wf_act_bot_teleport", "wf_act_bot_move", "wf_act_bot_follow_avatar", "wf_act_bot_give_handitem", "wf_act_bot_talk", "wf_act_bot_talk_to_avatar", "wf_act_bot_clothes" };
     public static WiredConfiguration Defaults(string name) => new()
@@ -104,10 +106,12 @@ public static class WiredBotActions
         var botName = parts[0];
         var text = parts.Length > 1 ? parts[1] : "";
         var source = config.UserSources["bots"];
+        // The bot box names its bot; an empty name picks nobody. Hand item alone lets the bot be left out (its "use bot" box unticked).
+        var optionalUnnamedHandItem = name == "wf_act_bot_give_handitem" && botName.Length == 0;
         var bots = source == 0 ? context.Event.Actor is { IsBot: true, IsPet: false } actor
                 && context.Targets.AllUsers().Any(user => ReferenceEquals(user, actor)) ? new[] { actor } : []
+            : source == WiredSources.BotByName && botName.Length == 0 ? []
             : context.Targets.ResolveUsers(context, [], source, botName).Where(user => user.IsBot && !user.IsPet).ToArray();
-        var optionalUnnamedHandItem = name == "wf_act_bot_give_handitem" && source == 0 && botName.Length == 0;
 
         if (bots.Length == 0 && !optionalUnnamedHandItem) {
             return false;

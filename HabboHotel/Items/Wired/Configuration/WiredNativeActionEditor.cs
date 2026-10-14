@@ -149,8 +149,9 @@ internal static class WiredNativeActionEditor
                 users["users"] = User(native, 0);
                 break;
             case "wf_act_mute_triggerer":
-                // Zero minutes cannot mute: the room deadline rejects a non-positive duration.
-                if (p.Length != 1 || p[0] is < 1 or > 10 || text.Length > 100) {
+                // The October slider runs 0 to 10 (class_4046 createSliderSection min 0, max 10, default 1), so a zero saves.
+                // Zero minutes mutes nobody at run time: the room deadline rejects a non-positive duration, as Turbo does.
+                if (p.Length != 1 || p[0] is < 0 or > 10 || text.Length > 100) {
                     return false;
                 }
 

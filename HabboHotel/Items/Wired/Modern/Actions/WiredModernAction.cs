@@ -204,7 +204,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 break;
             case "wf_act_mute_triggerer":
-                if (p.Length != 2 || p[0] is < 1 or > 100000 || !U(1)) {
+                if (p.Length != 2 || p[0] is < 0 or > 100000 || !U(1)) {
                     return false;
                 }
 

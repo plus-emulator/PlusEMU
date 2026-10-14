@@ -85,7 +85,8 @@ public sealed class WiredConfigurationService(
                 native = native with { Text = ValidateBotFigure(native.Text, session) };
             }
 
-            if (descriptor.CanonicalName == "wf_act_show_message") {
+            // Turbo word-filters the reward pop-up text of the two give-from-chest boxes; here it is filtered once at save, like Show Message.
+            if (descriptor.CanonicalName is "wf_act_show_message" or "wf_act_give_currency" or "wf_act_give_furni") {
                 native = native with { Text = FilterMessageText(native.Text) };
             }
 

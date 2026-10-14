@@ -24,9 +24,11 @@ public sealed record WiredVariableWrite(WiredVariableValue? Before, WiredVariabl
 public sealed record WiredVariableChange(uint RoomId, WiredVariableKey Key, WiredVariableChangeKind Kind,
     WiredVariableValue? Before, WiredVariableValue? After, int EntityId, int Depth)
 {
-    public int Origin { get; init; } // Raw write provenance; NativeOrigin translates to the editor's origin indices.
+    public int Origin { get; init; } // Raw write provenance (1 external, 2 inspection, 3 another room); NativeOrigin translates to the editor's origin indices.
     public string InternalKey { get; init; } = "";
-    public int NativeOrigin(uint currentRoomId) => Origin == 1 ? 3 : Origin == 2 ? 2 : RoomId != currentRoomId ? 1 : 0;
+    /// <summary>The changed variable is "permanent, shared": other rooms of its owner reach it through references.</summary>
+    public bool Shared { get; init; }
+    public int NativeOrigin(uint currentRoomId) => Origin == 1 ? 3 : Origin == 2 ? 2 : Origin == 3 || RoomId != currentRoomId ? 1 : 0;
 }
 
 /// <summary>Mutate is atomic, including when no value exists. Failure throws before a change is published.</summary>

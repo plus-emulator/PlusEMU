@@ -6,14 +6,33 @@ namespace Plus.HabboHotel.Items.Wired.Variables.Fx;
 
 /// <summary>
 /// The AIR variable FX form: source (0 furni, 1 user), visibility, show mode and duration, then style/colour/width/renderer from the
-/// shared catalog, the value range, range-override and audience variables, segments, and for levelling progress its sub-renderer or
-/// for number displays the icon alignment (the icon rides the text). Variable ids are [range minimum, range maximum, audience].
+/// shared catalog, the value range, range-override and audience variables, segments, then two trailing ints the AIR editor always
+/// writes (observed on hhus, WIN63-202610131318, all six cards): [21] the category slot (levelling sub-renderer, number icon alignment,
+/// 0 for the others) and [22] the "Order in FX stack" (any int, higher places the FX lower in the holder's stack). A number display's
+/// icon rides the text. Variable ids are [range minimum, range maximum, audience].
 /// </summary>
 public static class WiredVariableFxSettings
 {
-    private static readonly HashSet<string> Icons = ["energy", "shield", "magic", "food", "stamina", "poison", "mana", "health", "gold", "gems", "honor",
-        "reputation", "cooldown", "timeleft", "burning", "freezing", "battery", "repairing", "stealth", "upgrading", "star_power", "droplet",
-        "cash", "eye", "fish", "wooden_logs", "misc_heart", "misc_skull", "misc_star"];
+    /// <summary>Total ints of every variable FX form (the observed official editor frame).</summary>
+    public const int IntCount = 23;
+    private const int CategorySlot = 21;
+    private const int StackOrder = 22;
+
+    /// <summary>
+    /// The icons of the AIR editor's dropdown (VariableFxVisualizationSettingsPreset STANDARD_ICON_IDS plus the campaign "ranch." icons the
+    /// editor shows behind a client flag); the renderer throws on any other asset name, so no other name is ever stored.
+    /// </summary>
+    private static readonly HashSet<string> Icons = ["battery", "burning", "cash", "cooldown", "droplet", "energy", "eye", "fish", "food", "freezing", "gems",
+        "gold", "health", "honor", "magic", "mana", "poison", "repairing", "reputation", "shield", "stamina", "star_power", "stealth", "timeleft",
+        "upgrading", "wooden_logs", "ranch.aubergine", "ranch.carrot", "ranch.corn", "ranch.egg", "ranch.grape", "ranch.potato", "ranch.pumpkin",
+        "ranch.sapling", "ranch.tomato", "ranch.wheat"];
+
+    // The delegated colours the client's baked number renderer matches by exact RGB against its RED/GREEN/BLUE/YELLOW rows
+    // (VariableFxColorType.resolve); any other value paints a baked number white.
+    private static string? TeamColor(int team) => team switch { 1 => "#df291e", 2 => "#36b24a", 3 => "#3b7de3", 4 => "#ffd83d", _ => null };
+
+    public static bool IsKnownIcon(string icon) => Icons.Contains(icon);
+    internal static string? TeamColorOf(int team) => TeamColor(team);
 
     public static int Category(string name) => name switch
     {
@@ -32,12 +51,7 @@ public static class WiredVariableFxSettings
         var style = WiredVariableFxStyles.All[(category, 0)];
         int[] ints = [1, 2, 0, 7, 0, 3000, 0, style.DefaultColor, style.DefaultWidth, style.DefaultRenderer, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0];
 
-        return category switch
-        {
-            2 => [.. ints, style.SubRenderers[0]],
-            5 => [.. ints, 0],
-            _ => [.. ints]
-        };
+        return [.. ints, category == 2 ? style.SubRenderers[0] : 0, 0];
     }
 
     /// <summary>
@@ -49,7 +63,13 @@ public static class WiredVariableFxSettings
     {
         var category = Category(name);
 
-        if (category < 0 || ints.Length != (category is 2 or 5 ? 22 : 21) || !WiredVariableFxStyles.TryGet(category, ints[6], out var style)) {
+        if (category < 0) {
+            return ints;
+        }
+
+        ints = Upgrade(category, ints);
+
+        if (ints.Length != IntCount || !WiredVariableFxStyles.TryGet(category, ints[6], out var style)) {
             return ints;
         }
 
@@ -65,6 +85,21 @@ public static class WiredVariableFxSettings
         return builder.ToImmutable();
     }
 
+    /// <summary>
+    /// A form saved before the stack order existed (21 ints, 22 for levelling and number displays) keeps its settings and takes order 0;
+    /// the trailing category slot is added where the older shape had none.
+    /// </summary>
+    public static ImmutableArray<int> Upgrade(int category, ImmutableArray<int> ints) => ints.Length switch
+    {
+        21 when category is not (2 or 5) => [.. ints, 0, 0],
+        22 when category is 2 or 5 => [.. ints, 0],
+        _ => ints
+    };
+
+    /// <summary>The ints an editor may send: the current 23, or the shape of a form saved before the stack order.</summary>
+    public static bool IsAcceptedLength(string name, int length) => Category(name) is var category and >= 0
+        && (length == IntCount || length == (category is 2 or 5 ? 22 : 21));
+
     public static bool UsesUserSource(WiredConfiguration configuration) => configuration.IntParams.Length > 0 && configuration.IntParams[0] == 1;
 
     public static bool TryDecode(string name, int itemId, WiredConfiguration configuration, WiredVariableReference shownVariable,
@@ -75,7 +110,7 @@ public static class WiredVariableFxSettings
         var category = Category(name);
         var p = configuration.IntParams;
 
-        if (category < 0 || itemId <= 0 || p.Length != (category is 2 or 5 ? 22 : 21) || p[0] is not (0 or 1) || configuration.VariableIds.Length != 3) {
+        if (category < 0 || itemId <= 0 || p.Length != IntCount || p[0] is not (0 or 1) || configuration.VariableIds.Length != 3) {
             return false;
         }
 
@@ -105,11 +140,11 @@ public static class WiredVariableFxSettings
             return false;
         }
 
-        var subRenderer = category == 2 ? p[21] : 0;
+        var subRenderer = category == 2 ? p[CategorySlot] : 0;
         var segmentRenderer = category == 2 && p[9] == 20 ? subRenderer : p[9];
 
         if (p[20] > 0 && segmentRenderer is not (2 or 4 or 13) || category == 2 && !style.SubRenderers.Contains(subRenderer)
-            || category == 5 && p[21] is < 0 or > 2 || category != 5 && configuration.Text.Length != 0
+            || category == 5 && p[CategorySlot] is < 0 or > 2 || category is not (2 or 5) && p[CategorySlot] != 0 || category != 5 && configuration.Text.Length != 0
             || category == 5 && configuration.Text.Length != 0 && !Icons.Contains(configuration.Text)) {
             return false;
         }
@@ -156,7 +191,12 @@ public static class WiredVariableFxSettings
                 extra["icon"] = configuration.Text;
             }
 
-            extra["icon_alignment"] = p[21] switch { 1 => "right", 2 => "double", _ => "left" };
+            extra["icon_alignment"] = p[CategorySlot] switch { 1 => "right", 2 => "double", _ => "left" };
+        }
+
+        // The renderer reads VariableFxConfigData.stackOrder from the config extra, 0 when absent.
+        if (p[StackOrder] != 0) {
+            extra["stack_order"] = p[StackOrder].ToString(CultureInfo.InvariantCulture);
         }
 
         var config = new WiredVariableFxConfig(itemId, user, p[2], p[5], category, p[6], p[7], p[8], p[9], min, max, extra.ToImmutable())

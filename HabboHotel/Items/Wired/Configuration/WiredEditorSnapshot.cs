@@ -18,7 +18,8 @@ public sealed record WiredEditorSnapshot(
     /// <summary>Context section 7 for message editors (Show Message, bot talk); null for every other form.</summary>
     public Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders? TextPlaceholders { get; init; }
 
-    public static WiredEditorSnapshot Capture(IWiredConfiguredItem box)
+    /// <param name="sharedVariablesVisible">False for an editor who may not set a reference up: the list of the owner's other rooms stays empty.</param>
+    public static WiredEditorSnapshot Capture(IWiredConfiguredItem box, bool sharedVariablesVisible = true)
     {
         var configuration = box.Configuration;
 
@@ -36,7 +37,10 @@ public sealed record WiredEditorSnapshot(
             Native = native,
             CatalogHash = hash,
             SharedVariables = box.Descriptor.CanonicalName == "wf_var_reference"
-                ? [.. box.Instance.GetWired().Variables.Module.ListShared().Select(Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable.Project)] : null,
+                ? sharedVariablesVisible
+                    ? [.. box.Instance.GetWired().Variables.Module.ListShared().Select(Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable.Project)]
+                    : []
+                : null,
             TextPlaceholders = Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Applies(box.Descriptor.CanonicalName)
                 ? Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Capture(box) : null
         };

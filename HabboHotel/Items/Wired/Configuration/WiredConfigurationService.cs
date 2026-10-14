@@ -27,6 +27,8 @@ public sealed class WiredConfigurationService(
     IWordFilterManager wordFilter,
     ILogger<WiredConfigurationService> logger) : IWiredConfigurationService
 {
+    internal const string WiredVariableOwnerOnly = "Only the room owner can set up a reference to another room.";
+
     public void Save(GameClient session, WiredConfigurationSaveRequest request)
     {
         var habbo = session.GetHabbo();
@@ -74,6 +76,13 @@ public sealed class WiredConfigurationService(
 
             if (descriptor.CanonicalName == "wf_act_give_reward" && !habbo.Access.Can(PermissionKeys.ModerationTool)) {
                 session.Send(new WiredValidationErrorComposer("You do not have permission to configure Wired rewards."));
+
+                return;
+            }
+
+            // A reference reads and writes variables of the owner's other rooms, so only the owner sets one up.
+            if (descriptor.CanonicalName == "wf_var_reference" && room.OwnerId != habbo.Id) {
+                session.Send(new WiredValidationErrorComposer(WiredVariableOwnerOnly));
 
                 return;
             }

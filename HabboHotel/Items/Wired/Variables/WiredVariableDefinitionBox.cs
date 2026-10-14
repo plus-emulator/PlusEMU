@@ -46,6 +46,12 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
             return false;
         }
 
+        if (WiredVariableDefinitions.IsUnpickedEcho(Descriptor.CanonicalName, proposed)) {
+            error = "";
+
+            return true;
+        }
+
         return WiredVariableDefinitions.TryDecode(Descriptor.CanonicalName, Item.Id, Instance.Id,
             Instance.OwnerId > 0 ? (uint)Instance.OwnerId : 0, proposed, out _, out error);
     }

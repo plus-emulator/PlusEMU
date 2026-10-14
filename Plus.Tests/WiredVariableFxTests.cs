@@ -30,15 +30,15 @@ public sealed class WiredVariableFxTests
         Assert.Equal(new object[] { 1, 50, true, 1, 15, true }, packet.Values.Take(6).ToArray());
     }
 
-    // Official hhus WIN63-202610131318 (r78 batch): the reopened ints of each card saved from its defaults. The official editor sends two
-    // more trailing ints (a sub-renderer slot and a stack order) than this hotel's editor shape, so only the shared prefix is compared.
+    // Official hhus WIN63-202610131318 (r78 batch): the reopened ints of each card saved from its defaults, all 23 of them: the category
+    // slot at [21] and the "Order in FX stack" at [22] (the spec saved 1 there and it reopened as 1).
     [Theory]
-    [InlineData("wf_xtra_var_fx_status", new[] { 1, 2, 0, 7, 0, 3000, 0, -1, 2, 2, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0 })]
-    [InlineData("wf_xtra_var_fx_health", new[] { 1, 2, 0, 7, 0, 3000, 0, 1000, 2, 10, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0 })]
-    [InlineData("wf_xtra_var_fx_progress", new[] { 1, 2, 0, 7, 0, 3000, 0, 1, 2, 0, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0 })]
-    [InlineData("wf_xtra_var_fx_level", new[] { 1, 2, 0, 7, 0, 3000, 0, 1001, 2, 20, -1, -1, -1, -1, 0, 0, 1, 1, 0, 0, 0, 2 })]
-    [InlineData("wf_xtra_var_fx_boss", new[] { 1, 2, 0, 7, 0, 3000, 0, 5, 4, 100, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0 })]
-    [InlineData("wf_xtra_var_fx_number", new[] { 1, 2, 0, 7, 0, 3000, 0, 1, -1, 201, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0 })]
+    [InlineData("wf_xtra_var_fx_status", new[] { 1, 2, 0, 7, 0, 3000, 0, -1, 2, 2, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
+    [InlineData("wf_xtra_var_fx_health", new[] { 1, 2, 0, 7, 0, 3000, 0, 1000, 2, 10, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
+    [InlineData("wf_xtra_var_fx_progress", new[] { 1, 2, 0, 7, 0, 3000, 0, 1, 2, 0, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
+    [InlineData("wf_xtra_var_fx_level", new[] { 1, 2, 0, 7, 0, 3000, 0, 1001, 2, 20, -1, -1, -1, -1, 0, 0, 1, 1, 0, 0, 0, 2, 1 })]
+    [InlineData("wf_xtra_var_fx_boss", new[] { 1, 2, 0, 7, 0, 3000, 0, 5, 4, 100, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
+    [InlineData("wf_xtra_var_fx_number", new[] { 1, 2, 0, 7, 0, 3000, 0, 1, -1, 201, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
     public void ObservedNormalizedIntsRoundTripThroughTheNativeSave(string name, int[] observed)
     {
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
@@ -63,6 +63,7 @@ public sealed class WiredVariableFxTests
         var owned = WiredNativeEditorProjection.DefaultNative(descriptor).OwnedIntParams.ToArray();
         owned[7] = owned[8] = owned[9] = -1;
         var level = name == "wf_xtra_var_fx_level";
+        Assert.Equal(23, owned.Length);
         var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = [.. owned] };
         Assert.True(WiredNativeEditorProjection.TryCompile(50, descriptor, native, out var configuration));
         var expected = owned.ToArray();
@@ -131,7 +132,7 @@ public sealed class WiredVariableFxTests
         // User source, visible to its audience, classic progress bar, range maximum read from custom:11.
         var native = WiredNativeEditorProjection.DefaultNative(descriptor) with
         {
-            OwnedIntParams = [1, 3, 0, 0, 0, 3000, 0, 1, 2, 0, 0, 0, 0, 100, 0, 1, 1, 1, 0, 0, 0],
+            OwnedIntParams = [1, 3, 0, 0, 0, 3000, 0, 1, 2, 0, 0, 0, 0, 100, 0, 1, 1, 1, 0, 0, 0, 0, 0],
             VariableIds = ["n", "user:11", "user:12"]
         };
         Assert.True(WiredNativeEditorProjection.TryCompile(50, descriptor, native, out var configuration));

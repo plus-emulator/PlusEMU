@@ -160,5 +160,7 @@ internal static class WiredVariablePaging
 public static class WiredVariableAbsent
 {
     public const string Id = "n";
-    public static bool Is(string? id) => string.IsNullOrEmpty(id) || id == Id;
+    /// <summary>The wire id of a slot that names no variable. The client's own constant is "n"; the official hotel's editor frames carry "0".</summary>
+    public const string WireId = "0";
+    public static bool Is(string? id) => string.IsNullOrEmpty(id) || id == Id || id == WireId;
 }

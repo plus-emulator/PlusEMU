@@ -31,6 +31,16 @@ public static class WiredVariableDefinitions
         return true;
     }
 
+    private static bool ValidName(string text) => text.Length is >= 1 and <= 40 && Regex.IsMatch(text, "^[A-Za-z0-9_]+$", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// An echo saved before its variable was picked (observed on hhus: the initial frame, variable id "0", saved under a name and
+    /// reopened unchanged). It is a valid card that mirrors nothing, so it is stored but defines no variable.
+    /// </summary>
+    public static bool IsUnpickedEcho(string name, WiredConfiguration configuration) => name == "wf_var_echo" && configuration.Version == 1
+        && configuration.IntParams.Length == 0 && configuration.VariableIds.Length == 1 && WiredVariableAbsent.Is(configuration.VariableIds[0])
+        && ValidName(configuration.Text);
+
     public static bool TryDecode(string name, uint itemId, uint roomId, uint ownerId, WiredConfiguration configuration,
         out WiredVariableDefinition? definition, out string error)
     {
@@ -132,7 +142,7 @@ public static class WiredVariableDefinitions
                 return false;
         }
 
-        if (text.Length is < 1 or > 40 || !Regex.IsMatch(text, "^[A-Za-z0-9_]+$", RegexOptions.CultureInvariant)) {
+        if (!ValidName(text)) {
             return false;
         }
 

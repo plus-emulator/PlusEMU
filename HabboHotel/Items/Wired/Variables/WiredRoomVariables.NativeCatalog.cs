@@ -51,6 +51,11 @@ public sealed partial class WiredRoomVariables
             var decoded = new List<WiredVariableDefinition>();
 
             foreach (var pair in definitions) {
+                // An echo saved before its variable was picked mirrors nothing; it is not in the catalog and must not hide the rest of it.
+                if (pair.Value.HasPersistedConfiguration && WiredVariableDefinitions.IsUnpickedEcho(pair.Value.Descriptor.CanonicalName, configurations[pair.Value])) {
+                    continue;
+                }
+
                 if (!pair.Value.HasPersistedConfiguration || !WiredVariableDefinitions.TryDecode(pair.Value.Descriptor.CanonicalName,
                     pair.Key, _room.Id, (uint)_room.OwnerId, configurations[pair.Value], out var definition, out _)) {
                     return false;

@@ -33,7 +33,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void SetFurniHighlightSendsBrightenAsAWhitePulse()
+    public void SetFurniHighlightSendsBrightenAsAWhitePulseAtTheStrengthTheEditorShowed()
     {
         using var f = new TeleportFixture();
         Assert.True(f.Engine.Remove(100));
@@ -46,7 +46,8 @@ public partial class ModernWiredRuntimeTests
         f.Fire(land: false);
 
         var packet = Reply(sent, ServerPacketHeader.WiredFurniHighlightComposer);
-        Assert.Equal((1, 1, 4, 38, 0xFFFFFF, 1, 0), (packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int()));
+        // Saved 38 (class_4214.as:117 stores On 76 / 2); the room gets 76.
+        Assert.Equal((1, 1, 4, 76, 0xFFFFFF, 1, 0), (packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int()));
         packet.End();
     }
 

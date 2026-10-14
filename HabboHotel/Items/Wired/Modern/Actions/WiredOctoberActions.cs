@@ -206,7 +206,11 @@ public static class WiredOctoberActions
         var type = P(config, 1);
         var color = type == 2 ? 0 : type == 4 ? 0xFFFFFF : P(config, 3);
         var animation = type == 4 ? 1 : P(config, 4);
-        Show(context, config, users, new WiredFurniHighlightComposer(targets, type, P(config, 2), color, animation, animation == 0 ? P(config, 5) : 0));
+        // The editor offers Brighten On as 76 but saves half of it (class_4214.as:117 selectedId / 2, :183 option 76), and the room
+        // applies the packet's strength as a plain percentage (WiredFurnitureEffectState.setHighlight L132 clampPercentage). The saved
+        // 38 stays as the editor wrote it; the room is sent the 76 the editor showed. Inferred: the official packet is not observed.
+        var strength = type == 4 ? P(config, 2) * 2 : P(config, 2);
+        Show(context, config, users, new WiredFurniHighlightComposer(targets, type, strength, color, animation, animation == 0 ? P(config, 5) : 0));
 
         return true;
     }

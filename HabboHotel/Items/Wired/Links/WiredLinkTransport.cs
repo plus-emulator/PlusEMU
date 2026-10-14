@@ -51,12 +51,22 @@ public static class WiredLinkTransport
                     continue;
                 }
 
-                delivered |= target.GetWired().Dispatch(new(kind)
+                var @event = new WiredRuntimeEvent(kind)
                 {
                     EventItem = receiver,
                     Message = payload.Message,
                     Link = payload with { SourceItemId = endpoint.Id }
-                });
+                };
+
+                // The sending room's engine is locked while its effect runs; another room is handed the event on the thread pool,
+                // so two rooms sending to each other never wait on each other's lock.
+                if (ReferenceEquals(target, room)) {
+                    delivered |= room.GetWired().Dispatch(@event);
+                }
+                else {
+                    _ = Task.Run(() => target.GetWired()?.Dispatch(@event));
+                    delivered = true;
+                }
             }
         }
 

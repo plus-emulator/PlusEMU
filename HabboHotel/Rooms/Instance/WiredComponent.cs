@@ -93,6 +93,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         // Only these concrete adapters are known silent for publication purposes.
         _engine.PublicationBridgesAreTrusted = true;
         _engine.PublicationEvaluationIsSilent = box => box is Plus.HabboHotel.Items.Wired.Modern.Addons.WiredAddonBox or Plus.HabboHotel.Items.Wired.Modern.Selectors.WiredSelectorBox
+            or Plus.HabboHotel.Items.Wired.Modern.Addons.WiredOctoberAddonBox
             or Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredModernCondition
             || box.GetType() == typeof(Plus.HabboHotel.Items.Wired.Modern.Triggers.WiredModernTrigger)
             || box is Plus.HabboHotel.Items.Wired.Modern.Triggers.WiredModernTimedTrigger;
@@ -114,6 +115,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
             if (_variables?.IsValueCreated == true) {
                 _variables.Value.ConfigurationSaved(box);
             }
+
+            OctoberConfigurationPublished(box);
         };
         _bindMovementPublication = _engine.CreateMovementPublicationFactory(this, DispatchWalkTransition);
     }
@@ -171,6 +174,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.OnCycle();
         FlushVariableFx();
         FlushFlashes();
+        FlushLeaderboards();
     }
 
     internal void OnFastCycle()

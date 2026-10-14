@@ -76,6 +76,9 @@ public sealed class WiredModernCondition : WiredModernBox
                 return Quantify(user => user.CarryItemId == Param(config, 0), 2);
             case "wf_cnd_wearing_effect":
                 return Quantify(user => !user.IsBot && user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == Param(config, 0), 2);
+            case "wf_cnd_user_level":
+                return Quantify(user => !user.IsBot && WiredUserLevel.Of(user) is var level
+                    && (Param(config, 1) == 0 ? level < Param(config, 0) : Param(config, 1) == 1 ? level == Param(config, 0) : level > Param(config, 0)), 2);
             case "wf_cnd_wearing_badge":
                 return Quantify(user => user.GetClient()?.GetHabbo()?.Inventory?.Badges.EquippedBadges.Any(badge =>
                 string.Equals(badge.Code, config.Text, StringComparison.OrdinalIgnoreCase)) == true, 1);

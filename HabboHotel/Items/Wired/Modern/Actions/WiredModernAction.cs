@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Plus.Communication.Packets.Outgoing.Rooms.Chat;
+using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Rooms;
@@ -37,7 +38,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         "wf_act_chase", "wf_act_flee", "wf_act_move_to_dir", "wf_act_move_rotate_user", "wf_act_freeze", "wf_act_unfreeze",
         "wf_act_join_team", "wf_act_leave_team", "wf_act_give_score", "wf_act_give_score_tm", "wf_act_kick_user", "wf_act_mute_triggerer", "wf_act_teleport_to_room", "wf_act_give_reward"
     };
-    public static bool Supports(string name) => WiredTemporaryFurnitureActions.Supports(name) || WiredMovementActions.Names.Contains(name) || OtherNames.Contains(name) || WiredBotActions.Names.Contains(name);
+    public static bool Supports(string name) => WiredTemporaryFurnitureActions.Supports(name) || WiredMovementActions.Names.Contains(name) || OtherNames.Contains(name) || WiredBotActions.Names.Contains(name)
+        || WiredOctoberActions.Names.Contains(name);
     public bool IsNegative => Descriptor.CanonicalName is "wf_act_neg_call_stacks" or "wf_act_neg_send_signal" or "wf_act_neg_log";
 
     public WiredModernAction(Room room, Item item, WiredBoxDescriptor descriptor, WiredCounterController clocks,
@@ -354,6 +356,12 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return _rewards.Execute(Item, context, config);
         }
 
+        if (WiredOctoberActions.Names.Contains(name)) {
+            var native = config;
+
+            return WiredOctoberActions.Execute(name, this, context, config, slot => Furni(context, native, slot), slot => Users(context, native, slot));
+        }
+
         if (WiredTemporaryFurnitureActions.Supports(name)) {
             return WiredTemporaryFurnitureActions.Execute(name, Item, context, config, _definitions);
         }
@@ -448,7 +456,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         }
                     }
 
-                    changed |= name == "wf_act_join_team"
+                    var moved = name == "wf_act_join_team"
                         ? WiredGameState.For(context.Room).Join(context.Room, user, Param(config, 0), (Team)Param(config, 1), Param(config, 3), context.Targets.AllUsers(),
                             (member, team, effect) => Deliver(() =>
                             {
@@ -463,6 +471,14 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                                 member.ApplyEffect(0);
                             }
                         }));
+
+                    // Observed on hhus (r90 game-b): YouArePlayingGame goes out with the join (true) and the leave (false), in the same
+                    // tick and ahead of the team effect (223 on join, 0 on leave) of the next state update.
+                    if (moved) {
+                        user.GetClient()?.Send(new YouArePlayingGameComposer(name == "wf_act_join_team"));
+                    }
+
+                    changed |= moved;
                 }
 
                 return changed;

@@ -488,4 +488,17 @@ public static class ClientPacketHeader
     public const uint WiredChestCancelEvent = 9337;
     public const uint ChestUpgradeEvent = 9317;
     public const uint WiredChestLockEvent = 9329;
+
+    // October wired boxes (r88). Ids are the WIN63-202610121709 equivalents of the WIN63-202610131318-860371703 classes named.
+    public const uint WiredWebApiKeyRequestEvent = 752; // class_2618 (new 2515)
+    public const uint WiredVariableShareSynchronizeEvent = 3631; // class_3048 (new 2144)
+    public const uint WiredVariableLeaderboardSubscribeEvent = 2438; // package_221.class_3707 (new 2833)
+    public const uint SaveWiredLabelTextEvent = 2839; // class_2797 (new 2638)
+    public const uint SaveWiredLabelSettingsEvent = 1436; // class_3219 (new 2970)
+    public const uint WiredLinkRequestConfigEvent = 2882; // package_129.class_2716 (new 3208)
+    public const uint WiredLinkSaveSelectionEvent = 2425; // package_129.class_2533 (new 385)
+    public const uint WiredLinkCreateNetworkEvent = 309; // package_129.class_3715 (new 2192)
+    public const uint WiredLinkRenameNetworkEvent = 3467; // package_129.class_3841 (new 2794)
+    public const uint WiredLinkDeleteNetworkEvent = 2978; // package_129.class_3622 (new 2731)
+    public const uint WiredLinkGetConnectionsEvent = 3197; // package_129.class_3524 (new 2300)
 }

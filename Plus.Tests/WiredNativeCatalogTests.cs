@@ -397,16 +397,15 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public void CapturedTimeMetadataPreservesSourceValueVersusTimestampEligibility(int mode)
+    public void CapturedTimeMetadataAddsNoPartToTheNativeCatalog(int mode)
     {
+        // Observed on hhus (r84 creation time, r90 value): the room catalogue lists only the parent variable.
         var fixture = new Fixture();
         fixture.AddDefinition(10);
         fixture.AddMetadata(20, "wf_xtra_var_time_util", new() { IntParams = [1 << 21, mode] });
         Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
-        var row = Assert.Single(catalog!.Variables, variable => variable.Type == 3);
-        Assert.False(row.CanReadCreationTime);
-        Assert.False(row.CanWriteValue);
-        Assert.Equal("score10.second", row.Name);
+        Assert.DoesNotContain(catalog!.Variables, variable => variable.Type == 3);
+        Assert.DoesNotContain(catalog.Variables, variable => variable.Name.Contains('.'));
     }
 
     [Fact]

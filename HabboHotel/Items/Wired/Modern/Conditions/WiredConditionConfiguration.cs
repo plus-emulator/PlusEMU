@@ -29,7 +29,8 @@ public static class WiredConditionConfiguration
         "wf_cnd_has_handitem", "wf_cnd_match_date", "wf_cnd_match_snapshot", "wf_cnd_match_time",
         "wf_cnd_slc_quantity", "wf_cnd_stuff_is", "wf_cnd_team_has_rank", "wf_cnd_team_has_score",
         "wf_cnd_time_less_than", "wf_cnd_time_more_than", "wf_cnd_trggrer_on_frn", "wf_cnd_triggerer_match",
-        "wf_cnd_user_count_in", "wf_cnd_user_performs_action", "wf_cnd_valid_moves", "wf_cnd_wearing_badge", "wf_cnd_wearing_effect"
+        "wf_cnd_user_count_in", "wf_cnd_user_performs_action", "wf_cnd_valid_moves", "wf_cnd_wearing_badge", "wf_cnd_wearing_effect",
+        "wf_cnd_user_level"
     };
     public static bool Supports(string name) => PositiveNames.Contains(name) || NegativeNames.ContainsKey(name);
 
@@ -59,6 +60,7 @@ public static class WiredConditionConfiguration
             "wf_cnd_date_rng_active" => [0, 0],
             "wf_cnd_match_time" => [0, 0, 0, 0, 0, 0, 0, 0, 0],
             "wf_cnd_match_date" => [127, 0, 1, 31, 4095, 0, calendarYear, calendarYear],
+            "wf_cnd_user_level" => [1, 1, 0],
             _ => throw new ArgumentException("Unknown condition.", nameof(name))
         };
 
@@ -112,6 +114,14 @@ public static class WiredConditionConfiguration
                 }
 
                 users["users"] = p[1];
+                break;
+            case "wf_cnd_user_level":
+                // AirSourceOnly (LevelMatches.as:49): level 1..30, comparison 0 lower, 1 equal, 2 higher, then the quantifier.
+                if (p.Length != 3 || !Range(0, 1, 30) || !Range(1, 0, 2) || !Q(2)) {
+                    return false;
+                }
+
+                users["users"] = WiredSources.Trigger;
                 break;
             case "wf_cnd_wearing_badge":
                 // AirSourceOnly (class_4263.as): the badge code box takes up to 1000 characters.

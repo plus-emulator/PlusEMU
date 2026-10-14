@@ -85,6 +85,9 @@ public partial class WiredComponent
             box = new WiredSelectorBox(_room, item, descriptor, _selectorState, _groups,
                 context => WiredSelectorVariableBridge.Create(context, Variables.Module));
         }
+        else if (descriptor.Category == WiredBoxCategory.Addon && WiredOctoberAddonBox.Names.Contains(descriptor.CanonicalName)) {
+            box = new WiredOctoberAddonBox(_room, item, descriptor);
+        }
         else if (descriptor.Category == WiredBoxCategory.Addon && WiredAddonModule.Names.Contains(descriptor.CanonicalName)) {
             box = new WiredAddonBox(_room, item, descriptor, _selectorState, _groups,
                 context => WiredSelectorVariableBridge.Create(context, Variables.Module));
@@ -132,6 +135,7 @@ public partial class WiredComponent
 
     public void BeforeActorLeaves(RoomUser actor) => _engine.Mutate(() =>
     {
+        ForgetVisualization(true, actor.VirtualId);
         _chests?.Leave(actor);
         WiredTemporaryEffects.For(_room).Forget(actor);
         _engine.ActorLeaving(actor);
@@ -166,6 +170,11 @@ public partial class WiredComponent
             Chests.Refresh(item);
         }
 
+        if (Plus.HabboHotel.Items.Wired.Labels.WiredLabel.IsLabel(item) && !item.IsTemporary
+            && ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item)) {
+            LabelAttached(item);
+        }
+
         if (WiredCounterController.Recognizes(item) && ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item)
             && (!_counterItems.TryGetValue(item.Id, out var previous) || !ReferenceEquals(previous, item))) {
             _counterItems[item.Id] = item;
@@ -188,6 +197,16 @@ public partial class WiredComponent
     {
         _highscores?.Invalidate();
         ForgetFxItem(item);
+        ForgetVisualization(false, unchecked((int)item.Id));
+
+        if (Plus.HabboHotel.Items.Wired.Labels.WiredLabel.IsLabel(item)) {
+            LabelDetached(item);
+        }
+
+        if (DescriptorOf(item)?.CanonicalName == "wf_xtra_var_leaderboard" && TryGet(item.Id, out _)) {
+            LeaderboardRemoved(item.Id);
+        }
+
         _counters.Forget(item);
         WiredProjectileFlights.For(_room).Forget(item);
 
@@ -286,6 +305,7 @@ public partial class WiredComponent
 
         if (variables.Count > 0) {
             _engine.SealExternalPublication();
+            LeaderboardValuesChanged(variables);
         }
 
         foreach (var change in variables) {

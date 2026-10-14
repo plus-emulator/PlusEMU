@@ -32,8 +32,8 @@ public static class WebErrors
 }
 
 /// <summary>
-/// Kestrel host for the badge leaderboard (/api/badges/leaderboard) and furnidata
-/// (/api/gamedata/furnidata). TLS is terminated by the reverse proxy in front of it.
+/// Kestrel host for the badge leaderboard (/api/badges/leaderboard), furnidata (/api/gamedata/furnidata) and the
+/// Wired Variables Web API (/api/wired/variables). TLS is terminated by the reverse proxy in front of it.
 /// </summary>
 public class WebServer : IWebServer
 {
@@ -42,13 +42,16 @@ public class WebServer : IWebServer
     private readonly WebServerConfiguration _configuration;
     private readonly BadgeLeaderboardEndpoints _badgeLeaderboard;
     private readonly FurnidataEndpoints _furnidata;
+    private readonly WiredWebApiEndpoints? _wiredWebApi;
     private WebApplication? _app;
 
-    public WebServer(IOptions<WebServerConfiguration> options, IBadgeRarityManager badgeRarity, ICatalogFurnidata furnidata)
+    public WebServer(IOptions<WebServerConfiguration> options, IBadgeRarityManager badgeRarity, ICatalogFurnidata furnidata,
+        Plus.HabboHotel.Items.Wired.WebApi.IWiredWebApiService? wiredWebApi = null)
     {
         _configuration = options.Value;
         _badgeLeaderboard = new(badgeRarity);
         _furnidata = new(furnidata);
+        _wiredWebApi = wiredWebApi == null ? null : new(wiredWebApi);
     }
 
     public IReadOnlyCollection<string> Urls => _app?.Urls.ToList() ?? [];
@@ -72,6 +75,7 @@ public class WebServer : IWebServer
         app.Use(AddSecurityHeaders);
         _badgeLeaderboard.Map(app);
         _furnidata.Map(app);
+        _wiredWebApi?.Map(app);
 
         await app.StartAsync();
         _app = app;

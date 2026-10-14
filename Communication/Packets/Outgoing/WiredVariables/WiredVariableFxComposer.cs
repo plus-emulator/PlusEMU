@@ -3,13 +3,17 @@ using Plus.HabboHotel.Items.Wired.Variables.Fx;
 
 namespace Plus.Communication.Packets.Outgoing.WiredVariables;
 
-/// <summary>Volt FX messages. The revision must explicitly map these IDs before sending.</summary>
+/// <summary>
+/// Variable FX messages with their official WIN63-202610121709 ids (old registry; WIN63-202610131318-860371703 ids in brackets):
+/// configs 3340 (2205, class_2593 -> class_2815), configs removed 1418 (364, class_3245 -> class_3169), status 1943 (2372,
+/// class_2741 -> class_2548), status removed 2532 (214, class_2530 -> class_2887). Bodies follow those parsers' reads.
+/// </summary>
 public sealed class WiredVariableFxComposer : IServerPacket
 {
-    public const uint ConfigsId = 9473;
-    public const uint RemovedConfigsId = 9474;
-    public const uint StatusesId = 9475;
-    public const uint RemovedStatusesId = 9476;
+    public const uint ConfigsId = ServerPacketHeader.WiredVariableFxConfigsComposer;
+    public const uint RemovedConfigsId = ServerPacketHeader.WiredVariableFxConfigsRemovedComposer;
+    public const uint StatusesId = ServerPacketHeader.WiredVariableFxStatusComposer;
+    public const uint RemovedStatusesId = ServerPacketHeader.WiredVariableFxStatusRemovedComposer;
     private readonly WiredVariableFxBatch _batch;
     private WiredVariableFxComposer(uint id, WiredVariableFxBatch batch)
     {

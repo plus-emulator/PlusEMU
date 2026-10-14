@@ -16,8 +16,8 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
 
     private static readonly string TriggerTextToken = "$(" + TriggerTextName + ")";
 
-    /// <summary>The boxes whose editor is a message editor: Show Message and the two bot talk effects.</summary>
-    public static bool Applies(string name) => name is "wf_act_show_message" or "wf_act_bot_talk" or "wf_act_bot_talk_to_avatar";
+    /// <summary>The boxes whose editor is a message editor: Show Message, the two bot talk effects and Send Link Message.</summary>
+    public static bool Applies(string name) => name is "wf_act_show_message" or "wf_act_bot_talk" or "wf_act_bot_talk_to_avatar" or "wf_act_send_message";
 
     /// <summary>The stack on a box's tile, bottom up: the trigger's placeholder, the text output add-ons and the capturers.</summary>
     public static WiredTextPlaceholders Capture(IWiredConfiguredItem box)
@@ -30,9 +30,15 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
         var placeholders = new List<string>();
         var capturers = new List<string>();
 
-        if (stack.Any(IsSaysKeyword)) {
+        if (stack.Any(box => IsSaysKeyword(box) || box is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_trg_receive_message" })) {
             placeholders.Add(TriggerTextName);
         }
+
+        foreach (var receiver in stack.OfType<IWiredConfiguredItem>().Where(box => box.Descriptor.CanonicalName == "wf_trg_receive_dataframe")) {
+            placeholders.AddRange(DataframePlaceholders(receiver.Configuration).Select(row => row.Placeholder));
+        }
+
+        placeholders.AddRange(wired.GlobalPlaceholders().Keys);
 
         foreach (var configured in stack.OfType<IWiredConfiguredItem>()) {
             var parts = configured.Configuration.Text.Split('\t');
@@ -55,10 +61,45 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
             [.. capturers.Where(name => name.Length > 0).Distinct(StringComparer.Ordinal)]);
     }
 
-    /// <summary>$(trigger_text) is what the user said, when a "user says keyword" trigger started the stack.</summary>
-    public static string FillTriggerText(WiredRuntimeContext context, string text) =>
-        context.Event.Kind == WiredEventKind.Speech && context.Trigger is { } trigger && IsSaysKeyword(trigger)
-            ? text.Replace(TriggerTextToken, context.Event.Message, StringComparison.Ordinal) : text;
+    /// <summary>
+    /// $(trigger_text) is what the user said, when a "user says keyword" trigger started the stack, or the link message a Receive Link
+    /// Message trigger received. A Receive Link Dataframe trigger fills its placeholder rows from the dataframe's keys, and the room's
+    /// Global Placeholders fill their own names.
+    /// </summary>
+    public static string FillTriggerText(WiredRuntimeContext context, string text)
+    {
+        if (context.Event.Kind == WiredEventKind.Speech && context.Trigger is { } trigger && IsSaysKeyword(trigger)
+            || context.Event.Kind == WiredEventKind.LinkMessage && context.Trigger is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_trg_receive_message" }) {
+            text = text.Replace(TriggerTextToken, context.Event.Message, StringComparison.Ordinal);
+        }
+
+        if (!text.Contains("$(", StringComparison.Ordinal)) {
+            return text;
+        }
+
+        if (context.Event is { Kind: WiredEventKind.LinkDataframe, Link: { } link }
+            && context.Trigger is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_trg_receive_dataframe" } receiver) {
+            foreach (var (key, placeholder) in DataframePlaceholders(context.ConfigurationOf(receiver))) {
+                if (link.Rows.FirstOrDefault(row => row.Key == key) is { } value) {
+                    text = text.Replace("$(" + placeholder + ")", value.Text, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+        }
+
+        foreach (var (name, value) in context.Room.GetWired()?.GlobalPlaceholders() ?? new Dictionary<string, string>()) {
+            text = text.Replace("$(" + name + ")", value, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return text;
+    }
+
+    // Kind 0 rows of a Receive Link Dataframe trigger: the normalized key and the placeholder it fills.
+    private static IEnumerable<(string Key, string Placeholder)> DataframePlaceholders(WiredConfiguration config) =>
+        Plus.HabboHotel.Items.Wired.Links.WiredLinkDataframeCodec.Decode(config.Text, config.IntParams.Length > 0 ? config.IntParams[0] : 0) is { } rows
+            ? rows.Select((row, index) => (Row: row, Index: index))
+                .Where(pair => config.IntParams.Length > 1 + pair.Index && config.IntParams[1 + pair.Index] == 0)
+                .Select(pair => (Plus.HabboHotel.Items.Wired.Links.WiredLinkDataframeCodec.NormalizeKey(pair.Row.Key), pair.Row.Text))
+            : [];
 
     private static bool IsSaysKeyword(IWiredItem box) => box is IWiredConfiguredItem configured
         ? configured.Descriptor.CanonicalName == "wf_trg_says_something"

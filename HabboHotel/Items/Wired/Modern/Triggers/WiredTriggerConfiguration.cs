@@ -31,7 +31,10 @@ public static class WiredTriggerConfiguration
         ["wf_trg_at_time_long"] = WiredEventKind.Elapsed,
         ["wf_trg_periodically"] = WiredEventKind.Periodic,
         ["wf_trg_period_short"] = WiredEventKind.Periodic,
-        ["wf_trg_period_long"] = WiredEventKind.Periodic
+        ["wf_trg_period_long"] = WiredEventKind.Periodic,
+        ["wf_trg_room_initializes"] = WiredEventKind.RoomInitialized,
+        ["wf_trg_receive_message"] = WiredEventKind.LinkMessage,
+        ["wf_trg_receive_dataframe"] = WiredEventKind.LinkDataframe
     };
     public static bool IsTimed(string name) => name is "wf_trg_at_given_time" or "wf_trg_at_time_long"
         or "wf_trg_periodically" or "wf_trg_period_short" or "wf_trg_period_long";
@@ -175,6 +178,10 @@ public static class WiredTriggerConfiguration
                 }
 
                 break;
+            case "wf_trg_room_initializes":
+            case "wf_trg_receive_message":
+            case "wf_trg_receive_dataframe":
+            // The October triggers exist only as native editor records (WiredNativeAuxiliaryEditor.October); this is their empty default.
             case "wf_trg_game_starts":
             case "wf_trg_game_ends":
             case "wf_trg_collision":

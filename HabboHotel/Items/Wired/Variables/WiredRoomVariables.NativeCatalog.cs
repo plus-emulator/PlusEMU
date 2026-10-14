@@ -103,14 +103,7 @@ public sealed partial class WiredRoomVariables
                     }
                 }
 
-                var time = associated.FirstOrDefault(box => box.Time is not null)?.Time;
-
-                if (time is not null) {
-                    foreach (var sub in time.Selected.ToArray()) {
-                        AddDerived(sub, true, WiredVariableTimeUtilities.Key(sub), time.Mode == 0, time.Mode != 0,
-                            value => time.Read(value, sub, zone) is { } result ? new(result, null, null) : null);
-                    }
-                }
+                // Time Utilities parts are not catalogue variables on hhus (r84, r90); none are added.
 
                 void AddDerived(int sub, bool isTime, string key, bool requiresValue, bool requiresTimestamps,
                     Func<WiredVariableValue, WiredVariableValue?> read, WiredVariableReference? source = null)

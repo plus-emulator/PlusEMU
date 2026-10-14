@@ -396,10 +396,17 @@ public class Item
         }
     }
 
+    /// <summary>A stacking height set by the Override Height effect; null keeps the definition's height. Not persisted.</summary>
+    internal double? WiredHeightOverride { get; set; }
+
     public double CurrentHeight
     {
         get
         {
+            if (WiredHeightOverride is { } overridden) {
+                return overridden;
+            }
+
             if (Definition.AdjustableHeights is { Count: > 1 } heights
                 && int.TryParse(LegacyDataString, out var index) && index >= 0 && index < heights.Count
                 && GetZ + heights[index] >= 0) {

@@ -7,7 +7,8 @@ public enum WiredEventKind
 {
     Enter, Speech, WalkOn, WalkOff, Use, StateChanged, GameStart, GameEnd, Collision,
     Score, AvatarAction, Leave, ClickFurni, ClickTile, ClickUser, BotReachedFurni,
-    BotReachedUser, Counter, Signal, Variable, Periodic, Elapsed, TransactionComplete, TransactionFail, Inspection
+    BotReachedUser, Counter, Signal, Variable, Periodic, Elapsed, TransactionComplete, TransactionFail, Inspection,
+    RoomInitialized, LinkMessage, LinkDataframe
 }
 
 public sealed record WiredRuntimeEvent(WiredEventKind Kind)
@@ -31,6 +32,8 @@ public sealed record WiredRuntimeEvent(WiredEventKind Kind)
     public int Team { get; init; }
     public int X { get; init; }
     public int Y { get; init; }
+    /// <summary>A link message or dataframe received by <see cref="EventItem"/>, a WIRED Link endpoint of this room.</summary>
+    public Plus.HabboHotel.Items.Wired.Links.WiredLinkPayload? Link { get; init; }
 }
 
 public readonly record struct WiredClickResult(bool Triggered, bool BlockMenu, bool DoNotRotate);

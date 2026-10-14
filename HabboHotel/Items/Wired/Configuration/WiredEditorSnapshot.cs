@@ -18,6 +18,9 @@ public sealed record WiredEditorSnapshot(
     /// <summary>Context section 7 for message editors (Show Message, bot talk); null for every other form.</summary>
     public Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders? TextPlaceholders { get; init; }
 
+    /// <summary>Context section 8 for the Variable Leaderboard add-on; null for every other form.</summary>
+    public Plus.HabboHotel.Items.Wired.Leaderboard.WiredLeaderboardContext? Leaderboard { get; init; }
+
     /// <param name="sharedVariablesVisible">False for an editor who may not set a reference up: the list of the owner's other rooms stays empty.</param>
     public static WiredEditorSnapshot Capture(IWiredConfiguredItem box, bool sharedVariablesVisible = true)
     {
@@ -42,7 +45,8 @@ public sealed record WiredEditorSnapshot(
                     : []
                 : null,
             TextPlaceholders = Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Applies(box.Descriptor.CanonicalName)
-                ? Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Capture(box) : null
+                ? Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Capture(box) : null,
+            Leaderboard = box.Descriptor.CanonicalName == "wf_xtra_var_leaderboard" ? box.Instance.GetWired().LeaderboardContext(box) : null
         };
     }
 }

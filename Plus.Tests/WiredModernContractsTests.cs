@@ -23,14 +23,14 @@ public class WiredModernContractsTests
     [Fact]
     public void RegistrySeparatesEngineCategoriesFromVoltEditorCodesAndCapabilities()
     {
-        Assert.Equal(182, WiredBoxRegistry.All.Count);
+        Assert.Equal(204, WiredBoxRegistry.All.Count);
         var categories = WiredBoxRegistry.All.GroupBy(box => box.Category).ToDictionary(group => group.Key, group => group.Count());
-        Assert.Equal(27, categories[WiredBoxCategory.Trigger]);
-        Assert.Equal(53, categories[WiredBoxCategory.Action]);
-        Assert.Equal(44, categories[WiredBoxCategory.Condition]);
+        Assert.Equal(30, categories[WiredBoxCategory.Trigger]);
+        Assert.Equal(62, categories[WiredBoxCategory.Action]);
+        Assert.Equal(45, categories[WiredBoxCategory.Condition]);
         Assert.Equal(20, categories[WiredBoxCategory.Selector]);
-        Assert.Equal(30, categories[WiredBoxCategory.Addon]);
-        Assert.Equal(8, categories[WiredBoxCategory.Variable]);
+        Assert.Equal(37, categories[WiredBoxCategory.Addon]);
+        Assert.Equal(10, categories[WiredBoxCategory.Variable]);
         Assert.All(WiredBoxRegistry.All, box => Assert.Equal(WiredBoxSupport.DescriptorOnly, box.Support));
         Assert.True(WiredBoxRegistry.TryGet("wf_act_send_signal", out var signal));
         Assert.Equal(30, signal.EditorCode);

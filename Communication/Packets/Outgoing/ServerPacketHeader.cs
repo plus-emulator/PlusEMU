@@ -99,10 +99,10 @@ public static class ServerPacketHeader
     public const uint WiredClickSettingsComposer = 1136;
     public const uint WiredClickUserResponseComposer = 202;
     public const uint InClientLinkComposer = 2231;
-    public const uint WiredVariableFxConfigsComposer = 9473;
-    public const uint WiredVariableFxConfigsRemovedComposer = 9474;
-    public const uint WiredVariableFxStatusComposer = 9475;
-    public const uint WiredVariableFxStatusRemovedComposer = 9476;
+    public const uint WiredVariableFxConfigsComposer = 3340; // class_2593 (new 2205)
+    public const uint WiredVariableFxConfigsRemovedComposer = 1418; // class_3245 (new 364)
+    public const uint WiredVariableFxStatusComposer = 1943; // class_2741 (new 2372)
+    public const uint WiredVariableFxStatusRemovedComposer = 2532; // class_2530 (new 214)
     public const uint WiredUserVariablesDataComposer = 5103;
     public const uint WiredAllVariablesHashComposer = 2585;
     public const uint WiredAllVariablesDiffComposer = 2364;
@@ -434,5 +434,24 @@ public static class ServerPacketHeader
     public const uint WiredChestUpgradeComposer = 9335;
     public const uint WiredChestSettingsAckComposer = 9347;
     public const uint WiredChestLockComposer = 9329;
-}
 
+    // October wired boxes (r88). Ids are the WIN63-202610121709 equivalents of the WIN63-202610131318-860371703 classes named.
+    public const uint WiredFurniTransparencyComposer = 3710; // class_3390 (new 2321)
+    public const uint WiredUserTransparencyComposer = 536; // class_2828 (new 3664)
+    public const uint WiredFurniHighlightComposer = 2218; // class_2680 (new 2380)
+    public const uint WiredWebApiKeyComposer = 467; // class_3530 (new 162)
+    public const uint WiredVariableLeaderboardSnapshotComposer = 1284; // package_160.class_3569 (new 1494)
+    public const uint WiredVariableLeaderboardChunkComposer = 995; // package_160.class_3168 (new 3979)
+    public const uint WiredLabelsComposer = 656; // class_3043 (new 2237)
+    public const uint WiredLabelsUpdateComposer = 1240; // class_2856 (new 796)
+    public const uint WiredLinkOpenComposer = 2161; // package_82.class_3692 (new 1715)
+    public const uint WiredLinkConfigurationComposer = 778; // package_82.class_3192 (new 3405)
+    public const uint WiredLinkOperationResultComposer = 1586; // package_82.class_3722 (new 3961)
+    public const uint WiredLinkConnectionsComposer = 830; // package_82.class_2742 (new 3962)
+    public const uint WiredLinkNetworkInvalidatedComposer = 1949; // package_82.class_2356 (new 999)
+    public const uint WiredUserHighlightComposer = 2552; // class_3603 (new 1684)
+    public const uint WiredFurniVisualizationStateComposer = 3355; // class_3560 (new 1826)
+    public const uint WiredUserVisualizationStateComposer = 2901; // class_3459 (new 1454)
+    public const uint ObjectRemoveConfirmComposer = 3498; // package_64/class_3455 (new 1631)
+    public const uint YouArePlayingGameComposer = 1293; // package_44/class_3256 (new 403)
+}

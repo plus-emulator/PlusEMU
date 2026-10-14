@@ -151,7 +151,8 @@ public static class WiredLegacyProtocol
         WiredConfiguration configuration, int furniLimit, IReadOnlyList<int> blockedItems,
         WiredNativeEditorConfiguration? editor = null, int? catalogHash = null,
         IReadOnlyList<Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable>? sharedVariables = null,
-        Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders? textPlaceholders = null)
+        Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders? textPlaceholders = null,
+        Plus.HabboHotel.Items.Wired.Leaderboard.WiredLeaderboardContext? leaderboard = null)
     {
         editor ??= configuration.Origin?.Native;
 
@@ -206,7 +207,8 @@ public static class WiredLegacyProtocol
 
         // One context entry (type 0, the room's variable catalog) carries its hash; the client synchronizes the catalog by it.
         // Zero is the "unknown, request it" hint and is also what a failed capture sends. Cards without pickers carry no context.
-        packet.WriteInteger((catalogHash is null ? 0 : 1) + (sharedVariables is null ? 0 : 1) + (textPlaceholders is null ? 0 : 1));
+        packet.WriteInteger((catalogHash is null ? 0 : 1) + (sharedVariables is null ? 0 : 1) + (textPlaceholders is null ? 0 : 1)
+            + (leaderboard is null ? 0 : 1));
 
         if (catalogHash is { } hash) {
             packet.WriteInteger(0);
@@ -238,6 +240,25 @@ public static class WiredLegacyProtocol
 
             foreach (var name in textPlaceholders.CapturerNames) {
                 packet.WriteString(name);
+            }
+        }
+
+        // Context 8 (class_4357.VARIABLE_LEADERBOARD; package_127/VariableLeaderboardContext.as:18-36 and VariableLeaderboardChoice.as:18-25):
+        // overlay, stack tile, candidate count, then each offered variable's id, technical name, persistent, has value, level-up add-ons.
+        if (leaderboard is not null) {
+            packet.WriteInteger(Plus.HabboHotel.Items.Wired.Leaderboard.WiredLeaderboardContext.ContextType);
+            packet.WriteInteger(leaderboard.OverlayInstanceId);
+            packet.WriteInteger(leaderboard.TileX);
+            packet.WriteInteger(leaderboard.TileY);
+            packet.WriteInteger(leaderboard.TotalCandidateCount);
+            packet.WriteInteger(leaderboard.Choices.Count);
+
+            foreach (var choice in leaderboard.Choices) {
+                packet.WriteString(choice.VariableId);
+                packet.WriteString(choice.Description.Definition.Name);
+                packet.WriteBoolean(choice.Persistent);
+                packet.WriteBoolean(choice.Description.HasValue);
+                packet.WriteInteger(choice.LevelSystem is null ? 0 : 1);
             }
         }
 

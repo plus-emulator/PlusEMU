@@ -171,7 +171,7 @@ public sealed class WiredMovementActions(Random? random = null)
                     var snapshot = configuration.Snapshots.FirstOrDefault(entry => entry.ItemId == item.Id);
 
                     if (snapshot == null) {
-                        if (only != null && Param(0) == 1 && item.IsFloorItem) {
+                        if (only != null && !only.SkipStateRestore && Param(0) == 1 && item.IsFloorItem) {
                             if (toggleState != null) {
                                 affected |= toggleState(item, current => string.Equals(current, only.State, StringComparison.Ordinal) ? null : only.State);
                             }
@@ -196,10 +196,10 @@ public sealed class WiredMovementActions(Random? random = null)
                         continue;
                     }
 
-                    if (Param(0) == 1 && toggleState != null) {
+                    if (!snapshot.SkipStateRestore && Param(0) == 1 && toggleState != null) {
                         affected |= toggleState(item, current => string.Equals(current, snapshot.State, StringComparison.Ordinal) ? null : snapshot.State);
                     }
-                    else if (Param(0) == 1 && !string.Equals(item.LegacyDataString, snapshot.State, StringComparison.Ordinal)) {
+                    else if (!snapshot.SkipStateRestore && Param(0) == 1 && !string.Equals(item.LegacyDataString, snapshot.State, StringComparison.Ordinal)) {
                         setState(item, snapshot.State);
                         affected = true;
                     }

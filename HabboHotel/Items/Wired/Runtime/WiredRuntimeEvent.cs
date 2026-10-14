@@ -14,6 +14,8 @@ public sealed record WiredRuntimeEvent(WiredEventKind Kind)
 {
     public RoomUser? Actor { get; init; }
     public Item? EventItem { get; init; }
+    /// <summary>The contract (or the Initiate Transaction box of a custom contract) a transaction event is about, even once its furni has left the room.</summary>
+    public uint SourceId { get; init; }
     public RoomUser? TargetUser { get; init; }
     public string Message { get; init; } = "";
     public int ChatType { get; init; }

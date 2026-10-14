@@ -73,6 +73,13 @@ public class WiredChestBox : WiredModernBox
         return context.Targets.ResolveUsers(context, [], source).Where(user => !user.IsBot && user.GetClient() != null).ToArray();
     }
 
+    /// <summary>
+    /// The variable frame of this run. Only variable boxes made one before, so a chest box in a stack without them found none and its variable
+    /// operands, scan results and contract amounts silently did nothing; like the variable boxes, it refreshes the frame it was given.
+    /// </summary>
+    protected static WiredVariableFrame Frame(WiredRuntimeContext context) =>
+        context.VariableFrame = WiredVariableRuntimeFrames.Create(context, context.VariableFrame);
+
     /// <summary>The picked variable's current local reference, resolved through the room's catalog authority at use.</summary>
     protected WiredVariableReference? Variable(WiredRuntimeContext context, WiredConfiguration config, int slot, WiredVariableTarget target) =>
         slot < config.VariableIds.Length && !WiredVariableAbsent.Is(config.VariableIds[slot])
@@ -85,9 +92,11 @@ public class WiredChestBox : WiredModernBox
 
         var target = (WiredVariableTarget)config.IntParams[targetIndex];
 
-        if (context.VariableFrame == null || Variable(context, config, variableSlot, target) is not { } reference) {
+        if (Variable(context, config, variableSlot, target) is not { } reference) {
             return null;
         }
+
+        var frame = Frame(context);
 
         var holders = target switch
         {
@@ -97,7 +106,7 @@ public class WiredChestBox : WiredModernBox
         };
 
         foreach (var holder in holders) {
-            var value = context.Room.GetWired().Variables.Module.Read(reference, holder, context.VariableFrame);
+            var value = context.Room.GetWired().Variables.Module.Read(reference, holder, frame);
 
             if (value != null) {
                 return value.Value;
@@ -127,16 +136,17 @@ public class WiredChestBox : WiredModernBox
             _ => false
         };
     }
-    private sealed record ContractSource(WiredChestContract? Contract);
-    protected static void SetCustom(WiredRuntimeContext context, WiredChestContract? contract)
+    // The add-on's contract is built when the transaction starts, from the variables as they are then (Turbo WiredAddonCustomContract.BuildContract).
+    private sealed record ContractSource(Func<WiredChestContract?> Build);
+    protected static void SetCustom(WiredRuntimeContext context, Func<WiredChestContract?> build)
     {
         Custom.Remove(context.Policy);
-        Custom.Add(context.Policy, new(contract));
+        Custom.Add(context.Policy, new(build));
     }
     protected static bool TryCustom(WiredRuntimeContext context, out WiredChestContract? contract)
     {
         var found = Custom.TryGetValue(context.Policy, out var value);
-        contract = value?.Contract;
+        contract = value?.Build();
 
         return found;
     }
@@ -153,13 +163,26 @@ public sealed class WiredChestAction(Room room, Item item, WiredBoxDescriptor de
         var picked = Furni(context, c, 0);
 
         if (Descriptor.CanonicalName == "wf_act_cancel_transaction") {
-            return Chests.CancelByWired(actors, picked.Where(item => WiredChestFurniture.IsContract(item.Definition)).Select(item => item.Id).ToArray(), c.IntParams[0] == 1);
+            var any = c.IntParams[0] == 1;
+            var contracts = picked.Where(item => WiredChestFurniture.IsContract(item.Definition)).Select(item => item.Id).ToArray();
+
+            // Without users, or without a picked contract when not cancelling every transaction, the box has nothing to act on.
+            if (actors.Length == 0 || !any && contracts.Length == 0) {
+                return false;
+            }
+
+            Chests.CancelByWired(actors, contracts, any);
+
+            // Like Turbo, the box counts as run once it was told to cancel, whether or not a transaction stood to be cancelled.
+            return true;
         }
 
         if (Descriptor.CanonicalName == "wf_act_init_transaction") {
             WiredChestContract? contract;
             var custom = TryCustom(context, out contract);
-            var contractItem = custom ? null : Furni(context, c, 1).FirstOrDefault(item => WiredChestFurniture.IsContract(item.Definition));
+            // Exactly one picked contract is offered; none or several is a misconfiguration (Turbo d4b3d94a, "Misconfig Too Many Or No Contracts").
+            var contractItems = custom ? [] : Furni(context, c, 1).Where(item => WiredChestFurniture.IsContract(item.Definition)).DistinctBy(item => item.Id).Take(2).ToArray();
+            var contractItem = contractItems.Length == 1 ? contractItems[0] : null;
             contract ??= contractItem == null ? null : Chests.Store.LoadContract(contractItem);
             var multiplier = c.IntParams[0] == 0 ? 1 : Operand(context, c, 1, 2, 3, 0, 2, 1);
             var changed = false;
@@ -243,7 +266,7 @@ public sealed class WiredChestTrigger(Room room, Item item, WiredBoxDescriptor d
     {
         var selected = context.ConfigurationOf(this).SelectedItems;
 
-        return selected.Length == 0 || context.Event.EventItem is { } source && selected.Contains(source.Id);
+        return selected.Length == 0 || selected.Contains(context.Event.SourceId) || context.Event.EventItem is { } source && selected.Contains(source.Id);
     }
 }
 
@@ -259,12 +282,13 @@ public sealed class WiredChestAddon(Room room, Item item, WiredBoxDescriptor des
 
         if (Descriptor.CanonicalName == "wf_xtra_scan_chest_furni_by_type") {
             var types = Furni(context, c, 0).Select(WiredChestItemType.Of).ToHashSet();
-            var frame = context.VariableFrame;
 
-            if (frame == null || Variable(context, c, 0, WiredVariableTarget.Context) is not { } captured
+            if (Variable(context, c, 0, WiredVariableTarget.Context) is not { } captured
                 || !WiredVariableModule.TryDefinitionId(captured.Token, out var id)) {
                 return false;
             }
+
+            var frame = Frame(context);
 
             var count = Chests.Read(Furni(context, c, 1)).Sum(chest => c.IntParams[0] == 1
                 ? WiredChestRoom.Preview(chest).Count(types.Contains) : chest.Items.Count(item => types.Contains(WiredChestItemType.Of(item))));
@@ -287,17 +311,20 @@ public sealed class WiredChestAddon(Room room, Item item, WiredBoxDescriptor des
                 ? null : new((int)amount.Value, furni == null ? null : WiredChestItemType.Of(furni));
         }
 
-        var payment = Node(0);
-        var reward = Node(1);
-        var contract = payment == null && reward == null ? null : new WiredChestContract
+        SetCustom(context, () =>
         {
-            Id = Item.Id,
-            Kind = payment == null ? WiredContractKind.Reward : reward == null ? WiredContractKind.Payment : WiredContractKind.Trade,
-            PaymentMode = 1,
-            Payment = payment == null ? [] : [[payment]],
-            Reward = reward == null ? null : [reward]
-        };
-        SetCustom(context, contract);
+            var payment = Node(0);
+            var reward = Node(1);
+
+            return payment == null && reward == null ? null : new WiredChestContract
+            {
+                Id = Item.Id,
+                Kind = payment == null ? WiredContractKind.Reward : reward == null ? WiredContractKind.Payment : WiredContractKind.Trade,
+                PaymentMode = 1,
+                Payment = payment == null ? [] : [[payment]],
+                Reward = reward == null ? null : [reward]
+            };
+        });
 
         return true;
     }

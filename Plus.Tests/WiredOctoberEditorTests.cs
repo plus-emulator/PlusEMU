@@ -37,7 +37,8 @@ public sealed class WiredOctoberEditorTests
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
         Assert.Equal(category, descriptor.Category);
         Assert.Equal(code, descriptor.EditorCode);
-        Assert.Equal(WiredEvidenceLevel.AirSourceOnly, WiredEvidenceRegistry.LevelOf(name));
+        // The leaderboard was observed on hhus in r90 (ledger v39); the others still rest on the AIR source alone.
+        Assert.Equal(name == "wf_xtra_var_leaderboard" ? WiredEvidenceLevel.Observed : WiredEvidenceLevel.AirSourceOnly, WiredEvidenceRegistry.LevelOf(name));
         Assert.True(WiredNativeEditorProjection.Supports(name));
         Assert.NotNull(WiredNativeEditorProjection.DefaultRuntime(1, descriptor));
     }

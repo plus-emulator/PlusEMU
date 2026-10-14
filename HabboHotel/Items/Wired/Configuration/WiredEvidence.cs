@@ -59,8 +59,6 @@ public static class WiredEvidenceRegistry
         ["wf_cnd_user_level"] = new(WiredEvidenceLevel.AirSourceOnly, Conditions + "LevelMatches.as", OctoberUnsold),
         ["wf_xtra_var_share"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "VariableAddonShareAddon.as", OctoberCards),
         ["wf_xtra_var_import"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "VariableAddonImportAddon.as", OctoberCards),
-        // Live check on hhus pending; the overlay packets are kept in WiredLeaderboard* so observed facts land in one place.
-        ["wf_xtra_var_leaderboard"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "leaderboard/VariableLeaderboardAddon.as", OctoberCards),
         ["wf_xtra_global_placeholder"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "GlobalPlaceholderAddon.as", OctoberUnsold),
         ["wf_xtra_achievement_enabler"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "class_4012.as", OctoberCards),
         ["wf_xtra_var_web_api"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "VariablesWebApiAddon.as", OctoberCards),
@@ -94,10 +92,6 @@ public static class WiredEvidenceRegistry
         ["wf_trg_bot_reached_avtr"] = new(WiredEvidenceLevel.TurboReferenceOnly, Triggers + "class_4024.as", BotCards),
         // AS3 triggerconfs/class_4251.as; turbo WiredTriggerBotReachesItem.cs
         ["wf_trg_bot_reached_stf"] = new(WiredEvidenceLevel.TurboReferenceOnly, Triggers + "class_4251.as", BotCards),
-        // AS3 triggerconfs/class_4195.as; turbo WiredTriggerGameStarts.cs
-        ["wf_trg_game_starts"] = new(WiredEvidenceLevel.TurboReferenceOnly, Triggers + "class_4195.as", GameCards),
-        // AS3 triggerconfs/class_4066.as; turbo WiredTriggerGameEnds.cs
-        ["wf_trg_game_ends"] = new(WiredEvidenceLevel.TurboReferenceOnly, Triggers + "class_4066.as", GameCards),
         // AS3 triggerconfs/TriggerOnce.as (code 3, shared with wf_trg_at_given_time); turbo WiredTriggerAtTimeLong.cs
         ["wf_trg_at_time_long"] = new(WiredEvidenceLevel.TurboReferenceOnly, Triggers + "TriggerOnce.as", AirEditorCards),
         // AS3 actiontypes/class_4162.as; turbo WiredActionMoveFurniTo.cs
@@ -118,40 +112,41 @@ public static class WiredEvidenceRegistry
         ["wf_act_give_reward"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4199.as", RemainderCards),
         // AS3 actiontypes/class_4046.as; turbo WiredActionMuteTriggerer.cs
         ["wf_act_mute_triggerer"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4046.as", RemainderCards),
-        // AS3 actiontypes/GiveScore.as; turbo WiredActionGiveScore.cs
-        ["wf_act_give_score"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/GiveScore.as", RemainderCards),
-        // AS3 actiontypes/class_4040.as; turbo WiredActionGiveScoreToTeam.cs
-        ["wf_act_give_score_tm"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4040.as", RemainderCards),
-        // AS3 triggerconfs/ScoreAchieved.as; turbo WiredTriggerScoreAchieved.cs
-        ["wf_trg_score_achieved"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/triggerconfs/ScoreAchieved.as", RemainderCards),
         // AS3 actiontypes/class_3972.as; turbo WiredActionPlaceFurni.cs
         ["wf_act_place_furni"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_3972.as", RemainderCards),
         // AS3 actiontypes/class_4089.as; turbo WiredActionRemoveFurni.cs
         ["wf_act_remove_furni"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4089.as", RemainderCards),
-        // AS3 addons/class_4236.as; turbo WiredAddonFilterUsersByVariable.cs
-        ["wf_xtra_filter_users_by_var"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/class_4236.as", RemainderCards),
-        // AS3 addons/VariableCapturerAddon.as; turbo WiredAddonVariableCapturer.cs
-        ["wf_xtra_text_input_variable"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/VariableCapturerAddon.as", RemainderCards),
         // AS3 addons/VariableTimeUtilAddon.as; turbo WiredAddonVariableTimeUtil.cs
         ["wf_xtra_var_time_util"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/VariableTimeUtilAddon.as", RemainderCards),
-        // AS3 variables/ContextVariable.as; turbo WiredVariableContext.cs
-        ["wf_var_context"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/variables/ContextVariable.as", RemainderCards),
-        // AS3 variables/EchoVariable.as; turbo WiredVariableEcho.cs
-        ["wf_var_echo"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/variables/EchoVariable.as", RemainderCards),
         // AS3 variables/ReferenceVariable.as; turbo WiredVariableReference.cs
-        ["wf_var_reference"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/variables/ReferenceVariable.as", RemainderCards),
-        // AS3 addons/variablefx/VariableFxHealthPointsAddon.as; turbo WiredAddonVariableFxHealthPoints.cs
-        ["wf_xtra_var_fx_health"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/variablefx/VariableFxHealthPointsAddon.as", RemainderCards),
-        // AS3 addons/variablefx/VariableFxProgressBarAddon.as; turbo WiredAddonVariableFxProgressBar.cs
-        ["wf_xtra_var_fx_progress"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/variablefx/VariableFxProgressBarAddon.as", RemainderCards),
-        // AS3 addons/variablefx/VariableFxLevellingProgressAddon.as; turbo WiredAddonVariableFxLevellingProgress.cs
-        ["wf_xtra_var_fx_level"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/variablefx/VariableFxLevellingProgressAddon.as", RemainderCards),
-        // AS3 addons/variablefx/VariableFxStatusBarAddon.as; turbo WiredAddonVariableFxStatusBar.cs
-        ["wf_xtra_var_fx_status"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/variablefx/VariableFxStatusBarAddon.as", RemainderCards),
-        // AS3 addons/variablefx/VariableFxBossBarAddon.as; turbo WiredAddonVariableFxBossBar.cs
-        ["wf_xtra_var_fx_boss"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/variablefx/VariableFxBossBarAddon.as", RemainderCards),
-        // AS3 addons/variablefx/VariableFxNumberDisplayAddon.as; turbo WiredAddonVariableFxNumberDisplay.cs
-        ["wf_xtra_var_fx_number"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/variablefx/VariableFxNumberDisplayAddon.as", RemainderCards)
+        ["wf_var_reference"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/variables/ReferenceVariable.as", RemainderCards)
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+    private const string R90 = "reviews/october-batch-r90-r90-";
+    private const string R90Observed = "Observed on hhus (r90, WIN63-202610131318-860371703, ledger v39 limited_observed_slice).";
+
+    /// <summary>Cards promoted to Observed by the r90 live run (ledger v39); the source is that batch's summary.</summary>
+    public static readonly FrozenDictionary<string, WiredEvidence> ObservedR90 = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["wf_cnd_date_rng_active"] = new(WiredEvidenceLevel.Observed, R90 + "date-rng-summary.json", R90Observed),
+        ["wf_xtra_var_fx_health"] = new(WiredEvidenceLevel.Observed, R90 + "varfx-a-summary.json", R90Observed),
+        ["wf_xtra_var_fx_progress"] = new(WiredEvidenceLevel.Observed, R90 + "varfx-a-summary.json", R90Observed),
+        ["wf_xtra_var_fx_status"] = new(WiredEvidenceLevel.Observed, R90 + "varfx-a-summary.json", R90Observed),
+        ["wf_xtra_var_fx_boss"] = new(WiredEvidenceLevel.Observed, R90 + "varfx-b-summary.json", R90Observed),
+        ["wf_xtra_var_fx_level"] = new(WiredEvidenceLevel.Observed, R90 + "varfx-b-summary.json", R90Observed),
+        ["wf_xtra_var_fx_number"] = new(WiredEvidenceLevel.Observed, R90 + "varfx-b-summary.json", R90Observed),
+        ["wf_var_echo"] = new(WiredEvidenceLevel.Observed, R90 + "var-echo-summary.json", R90Observed),
+        ["wf_var_context"] = new(WiredEvidenceLevel.Observed, R90 + "var-context-summary.json", R90Observed),
+        ["wf_xtra_text_input_variable"] = new(WiredEvidenceLevel.Observed, R90 + "capturer-summary.json", R90Observed),
+        ["wf_trg_game_starts"] = new(WiredEvidenceLevel.Observed, R90 + "game-a-summary.json", R90Observed),
+        ["wf_trg_game_ends"] = new(WiredEvidenceLevel.Observed, R90 + "game-a-summary.json", R90Observed),
+        ["wf_act_give_score_tm"] = new(WiredEvidenceLevel.Observed, R90 + "game-a-summary.json", R90Observed),
+        ["wf_act_give_score"] = new(WiredEvidenceLevel.Observed, R90 + "game-b-summary.json", R90Observed),
+        ["wf_trg_score_achieved"] = new(WiredEvidenceLevel.Observed, R90 + "game-a-summary.json", R90Observed),
+        ["wf_xtra_filter_users_by_var"] = new(WiredEvidenceLevel.Observed, R90 + "pair-leaderboard-summary.json", R90Observed),
+        ["wf_xtra_var_leaderboard"] = new(WiredEvidenceLevel.Observed, R90 + "pair-leaderboard-summary.json", R90Observed),
+        // Not a wired box: the label furni (WiredLabel), recorded here with the cards of the same run.
+        ["wf_label"] = new(WiredEvidenceLevel.Observed, R90 + "label-summary.json", R90Observed)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     public static WiredEvidenceLevel LevelOf(string name) => AirSourceOnly.ContainsKey(name) ? WiredEvidenceLevel.AirSourceOnly

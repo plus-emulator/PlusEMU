@@ -16,7 +16,7 @@ public sealed class WiredEvidenceRegistryTests
         "wf_trg_receive_dataframe", "wf_trg_receive_message", "wf_trg_room_initializes",
         "wf_var_dailytask", "wf_var_pointer", "wf_var_quest", "wf_var_quest_chain",
         "wf_xtra_achievement_enabler", "wf_xtra_global_placeholder", "wf_xtra_link_speaker", "wf_xtra_var_import",
-        "wf_xtra_var_leaderboard", "wf_xtra_var_share", "wf_xtra_var_web_api"
+        "wf_xtra_var_share", "wf_xtra_var_web_api"
     ];
 
     [Fact]
@@ -37,17 +37,11 @@ public sealed class WiredEvidenceRegistryTests
         "wf_act_bot_clothes", "wf_act_bot_follow_avatar", "wf_act_bot_give_handitem",
         "wf_act_bot_move", "wf_act_bot_talk", "wf_act_bot_talk_to_avatar",
         "wf_act_bot_teleport", "wf_act_give_currency",
-        "wf_act_give_furni", "wf_act_give_reward", "wf_act_give_score",
-        "wf_act_give_score_tm", "wf_act_move_furni_to",
+        "wf_act_give_furni", "wf_act_give_reward", "wf_act_move_furni_to",
         "wf_act_mute_triggerer", "wf_act_place_furni", "wf_act_remove_furni",
         "wf_cnd_chest_has_item_type", "wf_cnd_chest_has_items", "wf_trg_at_time_long",
-        "wf_trg_bot_reached_avtr", "wf_trg_bot_reached_stf", "wf_trg_game_ends",
-        "wf_trg_game_starts", "wf_trg_score_achieved", "wf_trg_transaction_complete",
-        "wf_var_context", "wf_var_echo",
-        "wf_var_reference", "wf_xtra_filter_users_by_var",
-        "wf_xtra_scan_chest_furni_by_type", "wf_xtra_text_input_variable", "wf_xtra_var_fx_boss",
-        "wf_xtra_var_fx_health", "wf_xtra_var_fx_level", "wf_xtra_var_fx_number",
-        "wf_xtra_var_fx_progress", "wf_xtra_var_fx_status", "wf_xtra_var_time_util"
+        "wf_trg_bot_reached_avtr", "wf_trg_bot_reached_stf", "wf_trg_transaction_complete",
+        "wf_var_reference", "wf_xtra_scan_chest_furni_by_type", "wf_xtra_var_time_util"
     ];
 
     [Fact]
@@ -63,6 +57,19 @@ public sealed class WiredEvidenceRegistryTests
             Assert.True(WiredBoxRegistry.TryGet(name, out _), name);
         });
         Assert.Empty(ExpectedTurbo.Intersect(WiredEvidenceRegistry.AirSourceOnly.Keys));
+    }
+
+    [Fact]
+    public void TheR90CardsAreObservedWithTheirBatchSummary()
+    {
+        Assert.Equal(18, WiredEvidenceRegistry.ObservedR90.Count);
+        Assert.All(WiredEvidenceRegistry.ObservedR90, pair =>
+        {
+            Assert.Equal(WiredEvidenceLevel.Observed, pair.Value.Level);
+            Assert.Equal(WiredEvidenceLevel.Observed, WiredEvidenceRegistry.LevelOf(pair.Key));
+            Assert.StartsWith("reviews/october-batch-r90-r90-", pair.Value.Source);
+            Assert.True(pair.Key == "wf_label" || WiredBoxRegistry.TryGet(pair.Key, out _), pair.Key);
+        });
     }
 
     [Fact]

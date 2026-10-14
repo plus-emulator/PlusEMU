@@ -233,7 +233,7 @@ public static class ClientPacketHeader
     public const uint GetTalentTrackEvent = 3496;
     public const uint GiveAdminRightsEvent = 1443;
     public const uint GetCatalogIndexEvent = 56;
-    public const uint SendBullyReportEvent = 1724;
+    public const uint GetGuideReportingStatusEvent = 1724; // class_2244, GetGuideReportingStatus (new 2428)
     public const uint CancelOfferEvent = 938;
     public const uint SaveWiredConditionConfigEvent = 2794;
     public const uint RedeemVoucherEvent = 2728;
@@ -485,7 +485,7 @@ public static class ClientPacketHeader
     public const uint ChestSaveNotificationsEvent = 9316;
     public const uint WiredChestOfferItemsEvent = 9335;
     public const uint WiredChestAcceptEvent = 9336;
-    public const uint WiredChestCancelEvent = 9337;
+    public const uint WiredChestCancelEvent = 1898; // class_3259, WiredTradeCancel (new 1474)
     public const uint ChestUpgradeEvent = 9317;
     public const uint WiredChestLockEvent = 9329;
 

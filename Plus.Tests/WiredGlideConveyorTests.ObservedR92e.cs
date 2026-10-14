@@ -58,6 +58,22 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
+    [Theory]
+    [InlineData(false, 900, 10)]
+    [InlineData(true, 0, 10)]
+    [InlineData(true, 900, 11)]
+    public void ColourTileQueueCarriesOntoAnOccupiedEndOnlyWhenForwardPhysicsPassesThatUser(bool passUsers, int userSource, int expectedX)
+    {
+        var layout = Configure(ColourTileFastQueueLayout(), (16, [1, 0, passUsers ? 1 : 0, 0, 900, 900, userSource]));
+        var f = new Fixture(layout, live: true);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        var occupant = f.Walker(2, 11, 11);
+        f.Advance(2000);
+        Assert.Equal((expectedX, 11), (rider.X, rider.Y));
+        Assert.Equal((11, 11), (occupant.X, occupant.Y));
+        Assert.Equal(Enumerable.Range(4, 8), Enumerable.Range(1, 8).Select(id => f.Items[(uint)id].GetX));
+    }
+
     // Room 14 also has an unused collision trigger, an unrelated walk-on area and variable metadata.
     // None of those may split a blocked queue step from its same-pulse snapshot restore.
     [Theory]

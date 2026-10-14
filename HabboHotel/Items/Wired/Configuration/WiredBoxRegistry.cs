@@ -155,6 +155,8 @@ public static class WiredBoxRegistry
         new("wf_slc_users_signal", WiredBoxCategory.Selector, 10, "habbohotel/items/interactions/wired/selector/WiredEffectUsersSignal.java"),
         new("wf_slc_users_team", WiredBoxCategory.Selector, 3, "habbohotel/items/interactions/wired/selector/WiredEffectUsersTeam.java"),
         new("wf_slc_users_with_var", WiredBoxCategory.Selector, 18, "habbohotel/items/interactions/wired/selector/WiredEffectUsersWithVariable.java"),
+        // Both timers open AIR TriggerOnce (TriggerConfCodes.TRIGGER_ONCE = 3, triggerconfs/TriggerOnce.as); the client has no
+        // separate long-timer code, so sharing 3 is intended and both take the same 1-1200 half-second pulses.
         new("wf_trg_at_given_time", WiredBoxCategory.Trigger, 3, "habbohotel/items/interactions/wired/triggers/WiredTriggerAtSetTime.java"),
         new("wf_trg_at_time_long", WiredBoxCategory.Trigger, 3, "habbohotel/items/interactions/wired/triggers/WiredTriggerAtTimeLong.java"),
         new("wf_trg_bot_reached_avtr", WiredBoxCategory.Trigger, 14, "habbohotel/items/interactions/wired/triggers/WiredTriggerBotReachedHabbo.java"),

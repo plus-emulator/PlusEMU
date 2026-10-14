@@ -281,19 +281,16 @@ public sealed class WiredChestAddon(Room room, Item item, WiredBoxDescriptor des
         var c = context.ConfigurationOf(this);
 
         if (Descriptor.CanonicalName == "wf_xtra_scan_chest_furni_by_type") {
-            var types = Furni(context, c, 0).Select(WiredChestItemType.Of).ToHashSet();
-
-            if (Variable(context, c, 0, WiredVariableTarget.Context) is not { } captured
-                || !WiredVariableModule.TryDefinitionId(captured.Token, out var id)) {
-                return false;
+            // Like Turbo's scanner, a stack whose scan has nowhere to go still runs its effects (Turbo WiredAddonChestItemTypeScanner.BeforeEffectsAsync).
+            if (Variable(context, c, 0, WiredVariableTarget.Context) is { } captured && WiredVariableModule.TryDefinitionId(captured.Token, out var id)) {
+                var types = Furni(context, c, 0).Select(WiredChestItemType.Of).ToHashSet();
+                var frame = Frame(context);
+                var count = Chests.Read(Furni(context, c, 1)).Sum(chest => c.IntParams[0] == 1
+                    ? WiredChestRoom.Preview(chest).Count(types.Contains) : chest.Items.Count(item => types.Contains(WiredChestItemType.Of(item))));
+                context.Room.GetWired().Variables.Module.CaptureContextValues(new Dictionary<uint, long> { [id] = count }, frame);
             }
 
-            var frame = Frame(context);
-
-            var count = Chests.Read(Furni(context, c, 1)).Sum(chest => c.IntParams[0] == 1
-                ? WiredChestRoom.Preview(chest).Count(types.Contains) : chest.Items.Count(item => types.Contains(WiredChestItemType.Of(item))));
-
-            return context.Room.GetWired().Variables.Module.CaptureContextValues(new Dictionary<uint, long> { [id] = count }, frame);
+            return true;
         }
 
         WiredChestNode? Node(int side)

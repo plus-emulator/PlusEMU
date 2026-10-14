@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Reflection;
 using Plus.HabboHotel.Items;
@@ -19,6 +20,12 @@ namespace Plus.Tests;
 public partial class ModernWiredRuntimeTests
 {
     private const uint G3Lamp = 5;
+
+    internal static (Room Room, Gamemap Map, ConcurrentDictionary<uint, Item> Items) WorldForG3() => World();
+
+    internal static Item MakeItemForG3(uint id, string name) => MakeItem(id, name);
+
+    internal static WiredModernAction ActionBoxForG3(Room room, string name, IItemDataManager definitions) => ActionBox(room, name, definitions: definitions);
 
     private sealed record G3Stack(TeleportFixture F, WiredModernAction Action, ItemDefinition Lamp);
 

@@ -10,7 +10,7 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
     public bool Has(int id) => id is > 0 and <= 26 && (Mask & (1 << id) & ValidMask) != 0;
     public static string Key(int id) => id switch
     {
-        1 => "millisecond_of_second",
+        1 => "milliseconds_of_seconds",
         2 => "seconds_of_minute",
         3 => "minute_of_hour",
         4 => "hour_of_day",

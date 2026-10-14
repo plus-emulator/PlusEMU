@@ -7,14 +7,20 @@ namespace Plus.Tests;
 
 public sealed class WiredEvidenceRegistryTests
 {
+    // The six October conditions/variables of r61, then the 22 boxes of the r88 dossier.
     private static readonly string[] Expected =
     [
-        "wf_cnd_not_wearing_b", "wf_cnd_not_wearing_fx", "wf_cnd_wearing_badge", "wf_cnd_wearing_effect",
-        "wf_var_quest", "wf_var_quest_chain"
+        "wf_act_give_effect", "wf_act_override_height", "wf_act_progress_ach", "wf_act_progress_reward_track", "wf_act_reset_reward_track",
+        "wf_act_send_dataframe", "wf_act_send_message", "wf_act_set_highlight", "wf_act_set_visibility",
+        "wf_cnd_not_wearing_b", "wf_cnd_not_wearing_fx", "wf_cnd_user_level", "wf_cnd_wearing_badge", "wf_cnd_wearing_effect",
+        "wf_trg_receive_dataframe", "wf_trg_receive_message", "wf_trg_room_initializes",
+        "wf_var_dailytask", "wf_var_pointer", "wf_var_quest", "wf_var_quest_chain",
+        "wf_xtra_achievement_enabler", "wf_xtra_global_placeholder", "wf_xtra_link_speaker", "wf_xtra_var_import",
+        "wf_xtra_var_leaderboard", "wf_xtra_var_share", "wf_xtra_var_web_api"
     ];
 
     [Fact]
-    public void ExactlyTheSixAirSourceOnlyCardsAreMarked()
+    public void ExactlyTheAirSourceOnlyCardsAreMarked()
     {
         Assert.Equal(Expected, WiredEvidenceRegistry.AirSourceOnly.Keys.Order(StringComparer.Ordinal));
         Assert.All(WiredEvidenceRegistry.AirSourceOnly.Values, evidence => {

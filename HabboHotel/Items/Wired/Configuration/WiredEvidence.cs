@@ -21,6 +21,11 @@ public static class WiredEvidenceRegistry
     private const string NoCatalogue = "No catalogue offer on hhus (offerid -1); editor read from the AIR client, server semantics inferred from the editor fields.";
     private const string Conditions = "wired_setup/conditions/";
     private const string Variables = "wired_setup/variables/";
+    private const string Actions = "wired_setup/actiontypes/";
+    private const string Triggers = "wired_setup/triggerconfs/";
+    private const string Addons = "wired_setup/addons/";
+    private const string OctoberCards = "Editor read from the AIR client (WIN63-202610131318-860371703); no live observation yet, runtime inferred from the editor.";
+    private const string OctoberUnsold = "No furni on hhus; editor read from the AIR client (WIN63-202610131318-860371703), runtime inferred from the editor.";
 
     public static readonly FrozenDictionary<string, WiredEvidence> AirSourceOnly = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
     {
@@ -35,15 +40,39 @@ public static class WiredEvidenceRegistry
         // AS3 wired_setup/variables/QuestVariable.as
         ["wf_var_quest"] = new(WiredEvidenceLevel.AirSourceOnly, Variables + "QuestVariable.as", NoCatalogue),
         // AS3 wired_setup/variables/QuestChainVariable.as
-        ["wf_var_quest_chain"] = new(WiredEvidenceLevel.AirSourceOnly, Variables + "QuestChainVariable.as", NoCatalogue)
+        ["wf_var_quest_chain"] = new(WiredEvidenceLevel.AirSourceOnly, Variables + "QuestChainVariable.as", NoCatalogue),
+        // The October boxes of the r88 dossier: editor grammar read from WIN63-202610131318-860371703, runtime inferred from it.
+        ["wf_act_progress_ach"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "ProgressAchievement.as", OctoberCards),
+        ["wf_act_give_effect"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "class_3931.as", OctoberUnsold),
+        ["wf_act_override_height"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "class_4092.as", OctoberUnsold),
+        ["wf_act_progress_reward_track"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "ProgressRewardTrack.as", OctoberUnsold),
+        ["wf_act_reset_reward_track"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "class_4288.as", OctoberUnsold),
+        // The incoming furni transparency/highlight payloads are read from the client parsers class_2988 and class_3488.
+        ["wf_act_set_visibility"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "class_4285.as", OctoberCards),
+        ["wf_act_set_highlight"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "class_4214.as", OctoberCards),
+        // Link transport is server-only in the client: delivery between wf_link endpoints is inferred.
+        ["wf_act_send_message"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "SendLinkMessage.as", OctoberCards),
+        ["wf_act_send_dataframe"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "SendLinkDataframe.as", OctoberCards),
+        ["wf_trg_room_initializes"] = new(WiredEvidenceLevel.AirSourceOnly, Triggers + "RoomInitialized.as", OctoberCards),
+        ["wf_trg_receive_message"] = new(WiredEvidenceLevel.AirSourceOnly, Triggers + "ReceiveLinkMessage.as", OctoberCards),
+        ["wf_trg_receive_dataframe"] = new(WiredEvidenceLevel.AirSourceOnly, Triggers + "ReceiveLinkDataframe.as", OctoberCards),
+        ["wf_cnd_user_level"] = new(WiredEvidenceLevel.AirSourceOnly, Conditions + "LevelMatches.as", OctoberUnsold),
+        ["wf_xtra_var_share"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "VariableAddonShareAddon.as", OctoberCards),
+        ["wf_xtra_var_import"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "VariableAddonImportAddon.as", OctoberCards),
+        // Live check on hhus pending; the overlay packets are kept in WiredLeaderboard* so observed facts land in one place.
+        ["wf_xtra_var_leaderboard"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "leaderboard/VariableLeaderboardAddon.as", OctoberCards),
+        ["wf_xtra_global_placeholder"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "GlobalPlaceholderAddon.as", OctoberUnsold),
+        ["wf_xtra_achievement_enabler"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "class_4012.as", OctoberCards),
+        ["wf_xtra_var_web_api"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "VariablesWebApiAddon.as", OctoberCards),
+        ["wf_xtra_link_speaker"] = new(WiredEvidenceLevel.AirSourceOnly, Addons + "class_4123.as", OctoberCards),
+        ["wf_var_dailytask"] = new(WiredEvidenceLevel.AirSourceOnly, Variables + "DailyTaskVariable.as", OctoberCards),
+        ["wf_var_pointer"] = new(WiredEvidenceLevel.AirSourceOnly, Variables + "PointerVariable.as", OctoberCards)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     private const string BotCards = "Editor observed on hhus (r62-batch-02); runtime behaviour read from turbo-cloud, never fired on official.";
     private const string GameCards = "Editor observed on hhus (r62-batch-01); the game start and end sources read from turbo-cloud, never fired on official.";
     private const string AirEditorCards = "Editor read from the AIR client only (no catalogue offer on hhus); runtime read from turbo-cloud, never fired on official.";
     private const string RemainderCards = "Editor read from the AIR client (and observed on hhus where the card has an offer); runtime read from turbo-cloud, never fired on official.";
-    private const string Actions = "wired_setup/actiontypes/";
-    private const string Triggers = "wired_setup/triggerconfs/";
 
     public static readonly FrozenDictionary<string, WiredEvidence> TurboReferenceOnly = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
     {

@@ -308,7 +308,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 if (proposed.SelectedItems.Any(id => Instance.GetRoomItemHandler().GetItem(id) is { } receiver
                     && !WiredStackEngine.IsSignalAntenna(receiver))) {
-                    error = "Signal targets must be antenna furniture.";
+                    error = "wiredfurni.error.require_antenna_furni";
 
                     return false;
                 }

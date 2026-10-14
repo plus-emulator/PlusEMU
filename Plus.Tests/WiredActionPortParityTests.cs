@@ -248,6 +248,29 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal((2, 3), (item.GetX, item.GetY));
     }
 
+    // Official AIR r92d r92-mtd-blocked: east stacks at z=1; NE passes between the two neighboring blocks at z=0.
+    [Theory]
+    [InlineData(2, 3, 2, 1.0)]
+    [InlineData(1, 3, 1, 0.0)]
+    public void MoveToDirectionMatchesObservedStackingAndDiagonalPassage(int heading, int x, int y, double z)
+    {
+        var (room, map, items) = World();
+        var mover = Floor(1, 2, 2);
+        var east = Floor(2, 3, 2);
+        var north = Floor(3, 2, 1);
+        foreach (var item in new[] { mover, east, north }) {
+            item.Definition.Stackable = true;
+            item.Definition.Height = 1;
+            Place(map, items, item);
+        }
+
+        var action = Box(room, "wf_act_move_to_dir", [heading, 0, 100, 1], [mover.Id]);
+        Assert.True(action.Execute(Context(room, [mover], [])));
+        Assert.Equal((x, y, z), (mover.GetX, mover.GetY, mover.GetZ));
+        Assert.Equal((3, 2, 0.0), (east.GetX, east.GetY, east.GetZ));
+        Assert.Equal((2, 1, 0.0), (north.GetX, north.GetY, north.GetZ));
+    }
+
     [Theory]
     [InlineData(0, 3, 3, true)]
     [InlineData(0, 2, 0, true)]

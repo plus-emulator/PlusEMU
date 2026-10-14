@@ -62,14 +62,16 @@ public sealed class WiredEvidenceRegistryTests
     [Fact]
     public void TheR90CardsAreObservedWithTheirBatchSummary()
     {
-        Assert.Equal(18, WiredEvidenceRegistry.ObservedR90.Count);
+        Assert.Equal(17, WiredEvidenceRegistry.ObservedR90.Count);
         Assert.All(WiredEvidenceRegistry.ObservedR90, pair =>
         {
             Assert.Equal(WiredEvidenceLevel.Observed, pair.Value.Level);
             Assert.Equal(WiredEvidenceLevel.Observed, WiredEvidenceRegistry.LevelOf(pair.Key));
             Assert.StartsWith("reviews/october-batch-r90-r90-", pair.Value.Source);
-            Assert.True(pair.Key == "wf_label" || WiredBoxRegistry.TryGet(pair.Key, out _), pair.Key);
+            Assert.True(WiredBoxRegistry.TryGet(pair.Key, out _), pair.Key);
         });
+        Assert.False(WiredBoxRegistry.TryGet("wf_label", out _));
+        Assert.StartsWith("reviews/october-batch-r90-r90-", WiredEvidenceRegistry.LabelFurniR90.Source);
     }
 
     [Fact]

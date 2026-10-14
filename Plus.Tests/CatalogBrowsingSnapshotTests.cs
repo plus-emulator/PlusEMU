@@ -65,10 +65,8 @@ public sealed class CatalogBrowsingSnapshotTests
         await new GetSellablePetPalettesEvent(service).Parse(null!, HabbiconTestSupport.Incoming("pet"));
         await new GetPromotableRoomsEvent(service).Parse(null!, null!);
         var page = HabbiconTestSupport.Incoming(12, 34, "BUILDERS_CLUB");
-        var index = HabbiconTestSupport.Incoming("BUILDERS_CLUB");
         var mode = HabbiconTestSupport.Incoming("BUILDERS_CLUB");
         await new GetCatalogPageEvent(service).Parse(null!, page);
-        await new GetCatalogIndexWithDiscountEvent(service).Parse(null!, index);
         await new GetCatalogIndexEvent(service).Parse(null!, mode);
         var offer = HabbiconTestSupport.Incoming(44);
         await new GetProductOfferEvent(service).Parse(null!, offer);
@@ -77,9 +75,8 @@ public sealed class CatalogBrowsingSnapshotTests
         Assert.Equal("pet", service.Type);
         Assert.True(service.PromotableRequested);
         Assert.Equal(new CatalogPageRequest(12, 34, "BUILDERS_CLUB"), service.PageRequest);
-        Assert.Equal(["index:BUILDERS_CLUB", "mode:BUILDERS_CLUB"], service.Modes);
+        Assert.Equal(["mode:BUILDERS_CLUB"], service.Modes);
         Assert.False(page.HasDataRemaining());
-        Assert.False(index.HasDataRemaining());
         Assert.False(mode.HasDataRemaining());
     }
 

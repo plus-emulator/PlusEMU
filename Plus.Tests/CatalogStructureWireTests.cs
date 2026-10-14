@@ -46,7 +46,7 @@ public class CatalogStructureWireTests
     }
 
     [Fact]
-    public async Task UnsupportedCatalogModeFallsBackToTheNormalIndex()
+    public void UnsupportedCatalogModeFallsBackToTheNormalIndex()
     {
         var pages = new[] { Page(1, -1) };
         var catalog = CatalogSnapshotTestSupport.Proxy<ICatalogManager>((method, _) => method == "get_Pages" ? pages : throw new InvalidOperationException(method));
@@ -54,7 +54,7 @@ public class CatalogStructureWireTests
         var packet = HabbiconTestSupport.Incoming("BUILDERS_CLUB");
 
         var service = new CatalogBrowsingService(null!, null!, null!, TimeProvider.System, catalog, CatalogSnapshotTestSupport.Snapshots());
-        await new GetCatalogIndexWithDiscountEvent(service).Parse(client, packet);
+        service.ShowIndex(client, packet.ReadString());
 
         Assert.False(packet.HasDataRemaining());
         Assert.Equal([ServerPacketHeader.CatalogIndexComposer, ServerPacketHeader.CatalogItemDiscountComposer], sent.Select(value => value.Header));

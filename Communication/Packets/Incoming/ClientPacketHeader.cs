@@ -20,7 +20,6 @@ public static class ClientPacketHeader
     public const uint SetChatPreferenceEvent = 65476;
 
     // Catalog
-    public const uint GetCatalogIndexWithDiscountEvent = 3226; //1294
     public const uint GetCatalogPageEvent = 1972;
     public const uint GetProductOfferEvent = 336;
     public const uint GetKickbackInfoEvent = 84;
@@ -198,6 +197,7 @@ public static class ClientPacketHeader
     public const uint WiredVariableHashesEvent = 3150;
     public const uint WiredAllVariablesRequestEvent = 1070;
     public const uint SaveWiredEffectConfigEvent = 799;
+    public const uint ApplySnapshotEvent = 383; // class_3027, ApplySnapshot (new 3788)
     public const uint SaveWiredSelectorConfigEvent = 1758;
     public const uint SaveWiredAddonConfigEvent = 3371;
     public const uint SaveWiredVariableConfigEvent = 218;
@@ -233,7 +233,7 @@ public static class ClientPacketHeader
     public const uint GetTalentTrackEvent = 3496;
     public const uint GiveAdminRightsEvent = 1443;
     public const uint GetCatalogIndexEvent = 56;
-    public const uint SendBullyReportEvent = 1724;
+    public const uint GetGuideReportingStatusEvent = 1724; // class_2244, GetGuideReportingStatus (new 2428)
     public const uint CancelOfferEvent = 938;
     public const uint SaveWiredConditionConfigEvent = 2794;
     public const uint RedeemVoucherEvent = 2728;
@@ -266,7 +266,6 @@ public static class ClientPacketHeader
     public const uint UnignoreUserEvent = 2333;
     public const uint OpenGiftEvent = 3313;
     public const uint ApplyDecorationEvent = 503;
-    public const uint GetRecipeConfigEvent = 2428; //3654
     public const uint ScrGetUserInfoEvent = 174;
     public const uint RemoveGroupMemberEvent = 3888;
     public const uint ConfirmRemoveGroupMemberEvent = 3580;
@@ -362,23 +361,10 @@ public static class ClientPacketHeader
     //public const uint OpenCampaignCalendarDoorEvent =;
 
     //catalog
-    //public const uint GetBonusRareInfoEvent =;
-    //public const uint GetCatalogPageExpirationEvent =;
-    //public const uint GetCatalogPageWithEarliestExpiryEvent =;
-    //public const uint GetDirectClubBuyAvailableEvent =;
-    //public const uint GetHabboBasicMembershipExtendOfferEvent =;
-    //public const uint GetLimitedOfferAppearingNextEvent =;
     public const uint GetHabboClubExtendOfferEvent = 1926;
-    //public const uint GetIsOfferGiftableEvent =;
-    //public const uint GetNextTargetedOfferEvent =;
-    //public const uint GetSeasonalCalendarDailyOfferEvent =;
-    //public const uint MarkCatalogNewAdditionsPageOpenedEvent =;
     public const uint PurchaseBasicMembershipExtensionEvent = 3881;
-    //public const uint PurchaseTargetedOfferEvent =;
     public const uint PurchaseVipMembershipExtensionEvent = 907;
     public const uint SelectClubGiftEvent = 2524;
-    //public const uint SetTargetedOfferStateEvent =;
-    //public const uint ShopTargetedOfferViewedEvent =;
 
 
     //recycler
@@ -388,19 +374,7 @@ public static class ClientPacketHeader
 
     //FriendList
     //public const uint FriendFurniConfirmLockEvent =;
-    //public const uint SetRelationshipStatusEvent =;
     //public const uint VisitUserEvent =;
-
-    //competition
-    //public const uint ForwardToACompetitionRoomEvent =;
-    //public const uint ForwardToASubmittableRoomEvent =;
-    //public const uint ForwardToRandomCompetitionRoomEvent =;
-    //public const uint GetCurrentTimingCodeEvent =;
-    //public const uint GetIsUserPartOfCompetitionEvent =;
-    //public const uint GetSecondsUntilEvent =;
-    //public const uint RoomCompetitionInitEvent =;
-    //public const uint SubmitRoomToCompetitionEvent =;
-    //public const uint VoteForRoomEvent =;
 
     //crafting
     public const uint CraftEvent = 2100;
@@ -485,7 +459,7 @@ public static class ClientPacketHeader
     public const uint ChestSaveNotificationsEvent = 9316;
     public const uint WiredChestOfferItemsEvent = 9335;
     public const uint WiredChestAcceptEvent = 9336;
-    public const uint WiredChestCancelEvent = 9337;
+    public const uint WiredChestCancelEvent = 1898; // class_3259, WiredTradeCancel (new 1474)
     public const uint ChestUpgradeEvent = 9317;
     public const uint WiredChestLockEvent = 9329;
 

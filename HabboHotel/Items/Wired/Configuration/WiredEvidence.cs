@@ -144,10 +144,11 @@ public static class WiredEvidenceRegistry
         ["wf_act_give_score"] = new(WiredEvidenceLevel.Observed, R90 + "game-b-summary.json", R90Observed),
         ["wf_trg_score_achieved"] = new(WiredEvidenceLevel.Observed, R90 + "game-a-summary.json", R90Observed),
         ["wf_xtra_filter_users_by_var"] = new(WiredEvidenceLevel.Observed, R90 + "pair-leaderboard-summary.json", R90Observed),
-        ["wf_xtra_var_leaderboard"] = new(WiredEvidenceLevel.Observed, R90 + "pair-leaderboard-summary.json", R90Observed),
-        // Not a wired box: the label furni (WiredLabel), recorded here with the cards of the same run.
-        ["wf_label"] = new(WiredEvidenceLevel.Observed, R90 + "label-summary.json", R90Observed)
+        ["wf_xtra_var_leaderboard"] = new(WiredEvidenceLevel.Observed, R90 + "pair-leaderboard-summary.json", R90Observed)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The label furni wf_label (WiredLabel) is not a wired box, so it is kept out of the card tables; the r90 run observed it too.</summary>
+    public static readonly WiredEvidence LabelFurniR90 = new(WiredEvidenceLevel.Observed, R90 + "label-summary.json", R90Observed);
 
     public static WiredEvidenceLevel LevelOf(string name) => AirSourceOnly.ContainsKey(name) ? WiredEvidenceLevel.AirSourceOnly
         : TurboReferenceOnly.ContainsKey(name) ? WiredEvidenceLevel.TurboReferenceOnly : WiredEvidenceLevel.Observed;

@@ -268,7 +268,7 @@ public static class ServerPacketHeader
     public const uint SubmitBullyReportComposer = 1969;
     public const uint UserNameChangeComposer = 3449;
     public const uint FriendFurniStartConfirmationComposer = 101;
-    public const uint SendBullyReportComposer = 356;
+    public const uint GuideReportingStatusComposer = 356; // class_2127 -> parser class_2132 [statusCode]
     public const uint VoucherRedeemErrorComposer = 3077;
     public const uint PurchaseErrorComposer = 1173;
     public const uint CampaignCalendarDoorOpenedComposer = 90;

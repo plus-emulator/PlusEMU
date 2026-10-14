@@ -475,4 +475,6 @@ public static class ClientPacketHeader
     public const uint WiredLinkRenameNetworkEvent = 3467; // package_129.class_3841 (new 2794)
     public const uint WiredLinkDeleteNetworkEvent = 2978; // package_129.class_3622 (new 2731)
     public const uint WiredLinkGetConnectionsEvent = 3197; // package_129.class_3524 (new 2300)
+    public const uint GetWiredContractContentsEvent = 3415; // AIR 202610121709; 202610131318: 3170.
+    public const uint UpdateWiredContractEvent = 2559; // AIR 202610121709; 202610131318: 413.
 }

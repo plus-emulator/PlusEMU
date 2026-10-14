@@ -454,4 +454,7 @@ public static class ServerPacketHeader
     public const uint WiredUserVisualizationStateComposer = 2901; // class_3459 (new 1454)
     public const uint ObjectRemoveConfirmComposer = 3498; // package_64/class_3455 (new 1631)
     public const uint YouArePlayingGameComposer = 1293; // package_44/class_3256 (new 403)
+    public const uint WiredContractOpenComposer = 3833; // AIR 202610121709; 202610131318: 241.
+    public const uint WiredContractContentsComposer = 2796; // AIR 202610121709; 202610131318: 2057.
+    public const uint WiredContractUpdateResultComposer = 72; // AIR 202610121709; 202610131318: 2687.
 }

@@ -1,54 +1,16 @@
-using System.Collections.Immutable;
 using System.Text.Json;
-using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Configuration;
 
 namespace Plus.HabboHotel.Items.Wired.Chests;
 
-// Physical contract editors retain Volt's alternatives grammar. It is not the dynamic addon grammar.
+// Legacy physical-contract save bridge; native editor packets use WiredNativeContractEditor.
 public static class WiredChestContractEditor
 {
+    // Compatibility entry point now opens the native window; the old generic envelope has no native projection.
     public static void Open(WiredChestRoom module, GameClient client, Item item)
     {
-        if (item.GetRoom() is not { } room || !room.GetWired().Settings.CanInspect(client) || module.Store.LoadContract(item) is not { } contract) {
-            return;
-        }
-
-        var fields = new List<int> { -1, contract.Payment?.Length ?? 0 };
-        var posters = new List<string>();
-        var index = 0;
-        void Node(WiredChestNode node)
-        {
-            fields.AddRange([node.ItemType == null ? 0 : 1, node.ItemType == null ? -1 : 0, node.ItemType?.Wall == true ? 1 : 0, node.ItemType?.SpriteId ?? 0, node.Amount]);
-
-            if (node.ItemType is { PosterId.Length: > 0 } type) {
-                posters.Add($"{index}={type.PosterId}");
-            }
-
-            index++;
-        }
-
-        foreach (var rule in contract.Payment ?? []) {
-            fields.Add(rule.Length);
-
-            foreach (var node in rule) {
-                Node(node);
-            }
-        }
-
-        fields.Add(contract.Reward?.Length ?? 0);
-
-        foreach (var node in contract.Reward ?? []) {
-            Node(node);
-        }
-
-        var descriptor = new WiredBoxDescriptor(item.Definition.ItemName, WiredBoxCategory.Action,
-            contract.Kind == WiredContractKind.Payment ? 110 : contract.Kind == WiredContractKind.Reward ? 111 : 112,
-            "Turbo f702041c/WiredTrading")
-        { Support = WiredBoxSupport.Implemented };
-        client.Send(new WiredEffectConfigComposer(new(item.Id, item.Definition.SpriteId, descriptor,
-            new() { IntParams = fields.ToImmutableArray(), Text = "@contract:" + JsonSerializer.Serialize(new ContractFields { Posters = string.Join(',', posters), PaymentMode = contract.PaymentMode, ReceiveText = contract.ReceiveText, Layout = contract.Layout, RewardCategory = contract.RewardCategory, ShowDialog = contract.ShowDialog, RewardText = contract.RewardText }) }, 0, [])));
+        if (item.GetRoom() is { } room) WiredNativeContractEditor.Open(room, client, item.Id);
     }
 
     public static bool TrySave(WiredChestRoom module, Item item, WiredConfiguration configuration)

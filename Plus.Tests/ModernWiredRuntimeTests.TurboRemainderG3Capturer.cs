@@ -136,6 +136,31 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Theory]
+    [InlineData("price #(amount)", "the price 9 please", 9)]
+    [InlineData("price #(amount)", "price 250 and more", 250)]
+    [InlineData("price #(amount)", "PRICE 75", 75)]
+    [InlineData("#(amount) coins", "give 12 coins now", 12)]
+    public void G3AKeywordThatIsPartOfALineHandsOverTheTypedWordAndTheLineGoesOn(string keyword, string said, long expected)
+    {
+        var rig = G3CapturerStack(keyword, 0, ("amount", "ctx:10", 0));
+        using var f = rig.F;
+        G3Say(rig, said);
+        Assert.Equal(expected, Assert.Single(rig.Recorder.Runs)[0]);
+    }
+
+    [Theory]
+    [InlineData("price two")]
+    [InlineData("price")]
+    [InlineData("pricey 3")]
+    public void G3AKeywordThatIsPartOfALineStillNeedsANumberWhereTheTokenStands(string said)
+    {
+        var rig = G3CapturerStack("price #(amount)", 0, ("amount", "ctx:10", 0));
+        using var f = rig.F;
+        G3Say(rig, said);
+        Assert.Empty(rig.Recorder.Runs);
+    }
+
+    [Theory]
     [InlineData("price #(amount)", "price 250", 250)]
     [InlineData("price #(amount)", "PRICE 75", 75)]
     [InlineData("price #(amount)", "price -12", -12)]

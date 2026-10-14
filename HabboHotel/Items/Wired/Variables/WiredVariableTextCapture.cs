@@ -84,33 +84,46 @@ public static class WiredVariableTextCapture
             pattern.Append("(?>(.+?)").Append(Regex.Escape(literals[index + 1])).Append(')');
         }
 
-        pattern.Append("(.+)").Append(Regex.Escape(literals[^1]));
-        var expression = mode == 0 ? pattern.ToString() : "\\A" + pattern + "\\z";
+        var head = pattern.ToString();
+        var tail = Regex.Escape(literals[^1]);
+
+        // A keyword that is only part of the line ("the price #(p) please") hands over the typed word first, as the line goes on after it;
+        // a line that is the keyword, or a word that cannot be read, hands over the rest of the line, so a text of several words still reads.
+        string[] lasts = mode == 0 ? ["(\\S+)", "(.+)"] : ["(.+)"];
 
         try {
-            var match = Regex.Match(text, expression, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(25));
+            foreach (var last in lasts) {
+                var expression = mode == 0 ? head + last + tail : "\\A" + head + last + tail + "\\z";
+                var match = Regex.Match(text, expression, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(25));
 
-            if (!match.Success) {
-                return false;
-            }
-
-            var captured = new Dictionary<uint, long>();
-
-            for (var index = 0; index < names.Length; index++) {
-                if (!byName.TryGetValue(names[index], out var capturer)) {
+                if (!match.Success) {
                     continue;
                 }
 
-                if (capturer.Read(match.Groups[index + 1].Value) is not { } value) {
-                    return false;
+                var captured = new Dictionary<uint, long>();
+                var readable = true;
+
+                for (var index = 0; index < names.Length && readable; index++) {
+                    if (!byName.TryGetValue(names[index], out var capturer)) {
+                        continue;
+                    }
+
+                    if (capturer.Read(match.Groups[index + 1].Value) is { } value) {
+                        captured[capturer.DefinitionId] = value;
+                    }
+                    else {
+                        readable = false;
+                    }
                 }
 
-                captured[capturer.DefinitionId] = value;
+                if (readable) {
+                    values = captured;
+
+                    return true;
+                }
             }
 
-            values = captured;
-
-            return true;
+            return false;
         }
         catch (RegexMatchTimeoutException) {
             return false;

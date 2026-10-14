@@ -184,7 +184,7 @@ public sealed partial class WiredRoomVariables
 
         if (changes.Count > 0) {
             FxDirty = true;
-            WiredSharedVariableBroadcast.Deliver(_room.Id, changes);
+            WiredSharedVariableBroadcast.Deliver(Module.RoomId, changes);
         }
 
         return changes;

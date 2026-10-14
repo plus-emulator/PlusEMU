@@ -492,4 +492,149 @@ public sealed class WiredTurboRemainderG4VariableTests
 
         Assert.Equal(30, world.Hall.Read(Global(200), RoomHolder, world.HallFrame)!.Value);
     }
+
+    // A change made through a reference reaches the room the variable lives in.
+
+    private sealed class FarDirectory : IWiredVariableDirectory
+    {
+        // Room 7101 (the shop) shares user variable 7110 "hp"; room 7102 (the hall) references it as 7210. Both belong to player 5.
+        public WiredVariableDefinition? Find(uint id) => id switch
+        {
+            7110 => new(7110, 7101, 5, "hp", WiredVariableTarget.User, WiredVariableAvailability.Shared, true),
+            7210 => new(7210, 7102, 5, "far_hp", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true,
+                Link: new(7101, new(WiredVariableTarget.User, "custom:7110"), false)),
+            _ => null
+        };
+        public uint? GetRoomOwner(uint roomId) => roomId is 7101 or 7102 ? 5u : null;
+    }
+
+    private static (WiredVariableModule Shop, WiredVariableModule Hall, WiredSharedVariableBroadcast.Endpoint Endpoint) FarRooms()
+    {
+        var directory = new FarDirectory();
+        var durable = new MemoryWiredVariableStore();
+        var time = new Clock();
+        var shop = new WiredVariableModule(7101, directory, durable, time);
+        var hall = new WiredVariableModule(7102, directory, durable, time);
+        // The shop finds player 105 as its unit 41.
+        var endpoint = new WiredSharedVariableBroadcast.Endpoint(shop, playerId => playerId == 105 ? 41 : 0);
+        WiredSharedVariableBroadcast.Register(endpoint);
+
+        return (shop, hall, endpoint);
+    }
+
+    private static bool ShopTriggerHears(WiredVariableModule shop, WiredVariableChange change, int originMask)
+    {
+        var configuration = new WiredConfiguration { IntParams = [0, 1, 1, 1, 1, 1, 1, originMask], Text = "custom:7110" };
+
+        return WiredVariableChangedTrigger.Matches(configuration, change, 7101);
+    }
+
+    [Fact]
+    public void AChangeThroughAReferenceFiresTheTriggersOfTheRoomItLivesInAsOneFromAnotherRoom()
+    {
+        var (shop, hall, endpoint) = FarRooms();
+        var hallFrame = new WiredVariableFrame(7102, [new(WiredVariableTarget.User, 105, 5)]);
+        var player = new WiredVariableHolder(WiredVariableTarget.User, 105, 5);
+        var far = new WiredVariableReference(WiredVariableTarget.User, "custom:7210");
+
+        Assert.True(hall.Mutate(far, player, WiredVariableMutation.Give, 10, hallFrame));
+        Assert.True(hall.Mutate(far, player, WiredVariableMutation.Set, 25, hallFrame));
+        var written = hall.DrainChanges();
+        Assert.Equal(2, WiredSharedVariableBroadcast.Deliver(7102, written));
+
+        var heard = shop.DrainChanges();
+
+        Assert.Equal([WiredVariableChangeKind.Created, WiredVariableChangeKind.Updated], heard.Select(change => change.Kind));
+        Assert.All(heard, change => Assert.Equal((7110u, 7101u, 1, 41, 3), (change.Key.DefinitionId, change.RoomId, change.NativeOrigin(7101), change.EntityId, change.Origin)));
+        // "Another room" is bit 1 of the trigger's allowed origins: it hears the change with it, and not with "this room" only.
+        Assert.All(heard, change => Assert.True(ShopTriggerHears(shop, change, 2)));
+        Assert.All(heard, change => Assert.False(ShopTriggerHears(shop, change, 1)));
+        // The Hall's own queue was drained; nothing comes back.
+        Assert.Empty(shop.DrainChanges());
+        GC.KeepAlive(endpoint);
+    }
+
+    [Fact]
+    public void AChangeMadeWhereTheVariableLivesIsAThisRoomChangeAndIsNotBroadcast()
+    {
+        var (shop, _, endpoint) = FarRooms();
+        var shopFrame = new WiredVariableFrame(7101, [new(WiredVariableTarget.User, 105, 41)]);
+        var player = new WiredVariableHolder(WiredVariableTarget.User, 105, 41);
+
+        Assert.True(shop.Mutate(new(WiredVariableTarget.User, "custom:7110"), player, WiredVariableMutation.Give, 3, shopFrame));
+        var changes = shop.DrainChanges();
+
+        Assert.Equal(0, Assert.Single(changes).NativeOrigin(7101));
+        Assert.Equal(0, WiredSharedVariableBroadcast.Deliver(7101, changes));
+        Assert.Empty(shop.DrainChanges());
+        GC.KeepAlive(endpoint);
+    }
+
+    [Fact]
+    public void AChangeThatCameFromAnotherRoomIsNeverPassedOnAndAnUnloadedRoomHearsNothing()
+    {
+        var (shop, hall, endpoint) = FarRooms();
+        var player = new WiredVariableHolder(WiredVariableTarget.User, 105, 5);
+        var hallFrame = new WiredVariableFrame(7102, [player]);
+        Assert.True(hall.Mutate(new(WiredVariableTarget.User, "custom:7210"), player, WiredVariableMutation.Give, 10, hallFrame));
+        var changes = hall.DrainChanges();
+
+        Assert.Equal(1, WiredSharedVariableBroadcast.Deliver(7102, changes));
+        // Delivered again from the room that received it: marked as foreign, so no echo ping-pong.
+        Assert.Equal(0, WiredSharedVariableBroadcast.Deliver(7101, shop.DrainChanges()));
+        // Nobody is listening for room 7103's variables.
+        Assert.Equal(0, WiredSharedVariableBroadcast.Deliver(7102, [changes[0] with { RoomId = 7103 }]));
+        GC.KeepAlive(endpoint);
+    }
+
+    [Fact]
+    public void OnlySharedVariablesAreBroadcastAndTheOtherRoomLosesNothingWhenThePlayerIsNotThereToo()
+    {
+        var (shop, hall, endpoint) = FarRooms();
+        var stranger = new WiredVariableHolder(WiredVariableTarget.User, 888, 9);
+        var frame = new WiredVariableFrame(7102, [stranger]);
+        Assert.True(hall.Mutate(new(WiredVariableTarget.User, "custom:7210"), stranger, WiredVariableMutation.Give, 1, frame));
+
+        var change = Assert.Single(hall.DrainChanges());
+        Assert.True(change.Shared);
+        Assert.Equal(1, WiredSharedVariableBroadcast.Deliver(7102, [change]));
+        // The shop does not have player 888: the change is delivered without a unit to point at.
+        Assert.Equal(0, Assert.Single(shop.DrainChanges()).EntityId);
+        // A change to an unshared variable stays where it is.
+        Assert.Equal(0, WiredSharedVariableBroadcast.Deliver(7102, [change with { Shared = false }]));
+        GC.KeepAlive(endpoint);
+    }
+
+    private sealed class NoDatabase : Plus.Database.IDatabase
+    {
+        public bool IsConnected() => false;
+        public System.Data.IDbConnection Connection() => throw new InvalidOperationException("No database in this test.");
+    }
+
+    [Fact]
+    public void TheRoomsOwnDrainPassesSharedChangesOnToTheRoomTheyLiveIn()
+    {
+        Room Unloaded(uint id)
+        {
+            var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
+            room.Id = id;
+
+            return room;
+        }
+
+        var shop = new WiredRoomVariables(Unloaded(7201), new NoDatabase(), new Clock());
+        var hall = new WiredRoomVariables(Unloaded(7202), new NoDatabase(), new Clock());
+        var change = new WiredVariableChange(7201, new(7110, WiredVariableTarget.User, 105), WiredVariableChangeKind.Updated,
+            new(1, null, null), new(2, null, null), 5, 1) { Shared = true };
+        var queue = (Queue<WiredVariableChange>)typeof(WiredVariableModule).GetField("_changes", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(hall.Module)!;
+        queue.Enqueue(change);
+
+        var drained = hall.DrainChanges();
+
+        Assert.Single(drained);
+        Assert.True(hall.FxDirty);
+        var heard = Assert.Single(shop.DrainChanges());
+        Assert.Equal((7201u, 3, 1), (heard.RoomId, heard.Origin, heard.NativeOrigin(7201)));
+        Assert.Empty(hall.DrainChanges());
+    }
 }

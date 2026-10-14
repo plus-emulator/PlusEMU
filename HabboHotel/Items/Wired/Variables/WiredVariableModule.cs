@@ -342,7 +342,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         _changes.Enqueue(new(definition.RoomId, key, write.After is null ? WiredVariableChangeKind.Removed :
             write.Before is null ? WiredVariableChangeKind.Created : WiredVariableChangeKind.Updated,
             write.Before, write.After, holder.EntityId, frame.Depth + 1)
-        { Origin = origin });
+        { Origin = origin, Shared = definition.Availability == WiredVariableAvailability.Shared });
 
         return true;
     }
@@ -436,6 +436,17 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             }
 
             return true;
+        }
+    }
+
+    /// <summary>
+    /// A change another room made to a variable that lives here (through its reference): the room's own triggers hear of it as one
+    /// from another room. The holder was named by the other room's index, so the caller says which unit it is here.
+    /// </summary>
+    internal void EnqueueForeign(WiredVariableChange change)
+    {
+        lock (_gate) {
+            _changes.Enqueue(change with { Origin = 3 });
         }
     }
 

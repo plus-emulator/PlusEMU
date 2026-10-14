@@ -45,7 +45,7 @@ public class InteractorWired : IFurniInteractor
         }
 
         try {
-            session.Send(new WiredConfiguredConfigComposer(WiredEditorSnapshot.Capture(configured)));
+            session.Send(new WiredConfiguredConfigComposer(WiredEditorSnapshot.Capture(configured, itemRoom.OwnerId == session.GetHabbo()?.Id)));
         }
         catch (InvalidDataException) {
             session.Send(new WiredValidationErrorComposer("The saved settings cannot be represented by this native editor."));

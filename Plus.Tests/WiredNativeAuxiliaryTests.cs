@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text.Json;
 using Plus.HabboHotel.Items.Wired.Configuration;
+using Plus.HabboHotel.Items.Wired.Modern.Addons;
 using Plus.HabboHotel.Items.Wired.Variables;
 using Xunit;
 
@@ -33,6 +34,47 @@ public sealed class WiredNativeAuxiliaryTests
         Assert.True(WiredNativeEditorProjection.TryCompile(7, descriptor, stored, out var runtime));
         Assert.True(WiredNativeEditorProjection.IsBound(7, descriptor, runtime));
         Assert.Equal(WiredNativeEditorProjection.Metadata(name).VariableDefaults.Length, runtime.VariableIds.Length);
+    }
+
+    // Observed r92b in the official editor frames (AIR WIN63-202610131318-860371703).
+    [Fact]
+    public void MovementAddonEditorDefaultsMatchTheHotel()
+    {
+        Assert.True(WiredBoxRegistry.TryGet("wf_xtra_mov_physics", out var physics));
+        var physicsDefaults = WiredNativeEditorProjection.DefaultNative(physics);
+        Assert.Equal([1, 0, 0, 0], physicsDefaults.OwnedIntParams.ToArray());
+        Assert.Equal([900, 900], physicsDefaults.FurniSourceTypes.ToArray());
+        Assert.Equal([900], physicsDefaults.UserSourceTypes.ToArray());
+
+        Assert.True(WiredBoxRegistry.TryGet("wf_xtra_mov_carry_users", out var carry));
+        var carryDefaults = WiredNativeEditorProjection.DefaultNative(carry);
+        Assert.Equal([0], carryDefaults.OwnedIntParams.ToArray());
+        Assert.Equal([900], carryDefaults.UserSourceTypes.ToArray());
+
+        Assert.Equal([500], WiredNativeEditorProjection.DefaultNative(
+            WiredBoxRegistry.TryGet("wf_xtra_anim_time", out var anim) ? anim : throw new InvalidOperationException()).OwnedIntParams.ToArray());
+        Assert.Equal([1, 0, 0, 0, 900, 900, 900], WiredNativeEditorProjection.DefaultRuntime(7, physics)!.IntParams.ToArray());
+        Assert.Equal([0, 900], WiredNativeEditorProjection.DefaultRuntime(7, carry)!.IntParams.ToArray());
+    }
+
+    // Source 0 (the triggering user or furni) is a valid choice. Only a card with no saved row opens on the 900 defaults.
+    [Fact]
+    public void ExplicitlySavedSourceZeroSurvivesTheNewMovementAddonDefaults()
+    {
+        var physics = Compile("wf_xtra_mov_physics", Native("wf_xtra_mov_physics", [0, 1, 1, 0], furni: [0, 0], users: [0]));
+        Assert.Equal([0, 1, 1, 0, 0, 0, 0], physics.IntParams.ToArray());
+        var carry = Compile("wf_xtra_mov_carry_users", Native("wf_xtra_mov_carry_users", [0], users: [0]));
+        Assert.Equal([0, 0], carry.IntParams.ToArray());
+
+        // A row saved before the editor sources existed keeps its zeros through the stored JSON and the executor's normalizer.
+        var stored = JsonSerializer.Deserialize<WiredConfiguration>(JsonSerializer.Serialize(physics))!;
+        Assert.Equal([0, 1, 1, 0, 0, 0, 0], stored.IntParams.ToArray());
+        Assert.Equal([0, 1, 1, 0, 0, 0, 0], WiredAddonConfiguration.Normalize("wf_xtra_mov_physics", new() { IntParams = [0, 1, 1, 0, 0, 0, 0] }).IntParams.ToArray());
+        Assert.Equal([0, 0], WiredAddonConfiguration.Normalize("wf_xtra_mov_carry_users", new() { IntParams = [0, 0] }).IntParams.ToArray());
+
+        // A fresh card still opens on 900, which differs from the saved zeros above.
+        Assert.True(WiredBoxRegistry.TryGet("wf_xtra_mov_physics", out var descriptor));
+        Assert.Equal([1, 0, 0, 0, 900, 900, 900], WiredNativeEditorProjection.DefaultRuntime(9, descriptor)!.IntParams.ToArray());
     }
 
     private static WiredConfiguration Compile(string name, WiredNativeEditorConfiguration native)

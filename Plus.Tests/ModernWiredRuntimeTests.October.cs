@@ -52,6 +52,50 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
+    public void SetFurniHighlightOnTargetUsersSendsTheUserHighlightPacket()
+    {
+        using var f = new TeleportFixture();
+        Assert.True(f.Engine.Remove(100));
+        // Target users (the triggering user, room index 7), audience the triggering user; colour tint 50.
+        OctoberBox<WiredModernAction>(f, 110, "wf_act_set_highlight", 0, 0, native => native with
+        {
+            OwnedIntParams = [0, 3, 50, 0xFF0000, 0, 2, 1], FurniSourceTypes = [100], UserSourceTypes = [0, 0]
+        });
+        var sent = Capture(f.Client);
+
+        f.Fire(land: false);
+
+        var packet = Reply(sent, ServerPacketHeader.WiredUserHighlightComposer);
+        Assert.Equal((1, 7, 3, 50, 0xFF0000, 0, 2), (packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int()));
+        packet.End();
+    }
+
+    [Fact]
+    public void RoomWideVisualsAreReplayedToUsersEnteringAndForgottenWithTheirFurni()
+    {
+        using var f = new TeleportFixture();
+        var wired = f.Room.GetWired();
+        wired.RememberTransparency(false, [1, 2], 100, true, 3);
+        wired.RememberTransparency(false, [2], 0, false, 0);
+        wired.RememberHighlight(true, [7], 4, 76, 0xFFFFFF, 1, 0);
+        var sent = Capture(f.Client);
+
+        wired.SendVisualizationState(f.Client);
+
+        var furni = Reply(sent, ServerPacketHeader.WiredFurniVisualizationStateComposer);
+        Assert.Equal((1, 1, 100, true, 3, 0), (furni.Int(), furni.Int(), furni.Int(), furni.Bool(), furni.Int(), furni.Int()));
+        furni.End();
+        var users = Reply(sent, ServerPacketHeader.WiredUserVisualizationStateComposer);
+        Assert.Equal((0, 1, 7, 4, 76, 0xFFFFFF, 1, 0), (users.Int(), users.Int(), users.Int(), users.Int(), users.Int(), users.Int(), users.Int(), users.Int()));
+        users.End();
+
+        wired.DetachRoomItem(f.Target);
+        wired.RememberHighlight(true, [7], 4, 0, 0, 0, 0);
+        wired.SendVisualizationState(f.Client);
+        Assert.Empty(sent);
+    }
+
+    [Fact]
     public void LinkMessageReachesAReceiverOfTheSameNetworkThatReceivesLocally()
     {
         using var f = new TeleportFixture();

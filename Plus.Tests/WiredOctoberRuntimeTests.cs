@@ -37,6 +37,23 @@ public sealed class WiredOctoberRuntimeTests
     }
 
     [Fact]
+    public void UserHighlightAndEntryStatePacketsFollowTheClientParsers()
+    {
+        // class_2412 L37-57: [n, room indices], type, strength, colour, animation, easing.
+        var user = new HabbiconTestSupport.RecordingPacket();
+        new WiredUserHighlightComposer([3, 4], 1, 100, 0x00FF00, 0, 4).Compose(user);
+        Assert.Equal(new object[] { 2, 3, 4, 1, 100, 0x00FF00, 0, 4 }, user.Writes);
+
+        // class_3015 / class_2803 L25-52: transparencies then highlights.
+        var state = new HabbiconTestSupport.RecordingPacket();
+        new WiredVisualizationStateComposer(false, [new(9, 100, false, 1)], [new(9, 2, 30, 0, 1, 0)]).Compose(state);
+        Assert.Equal(new object[] { 1, 9, 100, false, 1, 1, 9, 2, 30, 0, 1, 0 }, state.Writes);
+
+        Assert.Equal((2552u, 3355u, 2901u), (new WiredUserHighlightComposer([], 0, 0, 0, 0, 0).MessageId,
+            new WiredVisualizationStateComposer(false, [], []).MessageId, new WiredVisualizationStateComposer(true, [], []).MessageId));
+    }
+
+    [Fact]
     public void EnvironmentPacketListsTheEnabledAchievements()
     {
         // class_3405.parse L25-42: [click user wired, n, achievement x n]; trailing fields are left unread.

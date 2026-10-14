@@ -135,6 +135,7 @@ public partial class WiredComponent
 
     public void BeforeActorLeaves(RoomUser actor) => _engine.Mutate(() =>
     {
+        ForgetVisualization(true, actor.VirtualId);
         _chests?.Leave(actor);
         WiredTemporaryEffects.For(_room).Forget(actor);
         _engine.ActorLeaving(actor);
@@ -196,6 +197,7 @@ public partial class WiredComponent
     {
         _highscores?.Invalidate();
         ForgetFxItem(item);
+        ForgetVisualization(false, unchecked((int)item.Id));
 
         if (Plus.HabboHotel.Items.Wired.Labels.WiredLabel.IsLabel(item)) {
             LabelDetached(item);

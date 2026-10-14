@@ -39,6 +39,8 @@ public sealed class RoomEntryService(IQuestManager quests, TimeProvider clock, I
         session.Send(new RoomEntryInfoComposer(room.RoomId, room.CheckRights(session, true)));
         // WIRED Label bubbles (class_3043): the full list this user may see, once the room is entered.
         room.GetWired()?.SendLabels(session);
+        // Transparency and highlight shown to the whole room (class_3560 furni, class_3459 users), so late joiners see them too.
+        room.GetWired()?.SendVisualizationState(session);
         session.Send(new RoomVisualizationSettingsComposer(room.WallThickness, room.FloorThickness, Convert.ToBoolean(room.Hidewall)));
         var user = room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Username);
 

@@ -449,4 +449,7 @@ public static class ServerPacketHeader
     public const uint WiredLinkOperationResultComposer = 1586; // package_82.class_3722 (new 3961)
     public const uint WiredLinkConnectionsComposer = 830; // package_82.class_2742 (new 3962)
     public const uint WiredLinkNetworkInvalidatedComposer = 1949; // package_82.class_2356 (new 999)
+    public const uint WiredUserHighlightComposer = 2552; // class_3603 (new 1684)
+    public const uint WiredFurniVisualizationStateComposer = 3355; // class_3560 (new 1826)
+    public const uint WiredUserVisualizationStateComposer = 2901; // class_3459 (new 1454)
 }

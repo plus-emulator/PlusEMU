@@ -163,40 +163,34 @@ public static class WiredOctoberActions
     // class_4285.as [audience, visibility 0/100, click through, easing, target users]; the targets are furni or, with target users, users.
     private static bool SetVisibility(WiredRuntimeContext context, WiredConfiguration config, Func<string, Item[]> furni, Func<string, RoomUser[]> users)
     {
-        IServerPacket packet;
+        var targetUsers = P(config, 4) == 1;
+        var targets = Targets(config, furni, users, targetUsers);
 
-        if (P(config, 4) == 1) {
-            var targets = users("targets").Select(user => user.VirtualId).Distinct().ToArray();
-
-            if (targets.Length == 0) {
-                return false;
-            }
-
-            packet = new WiredUserTransparencyComposer(targets, P(config, 1), P(config, 2) == 1, P(config, 3));
-        }
-        else {
-            var targets = furni("items").Where(item => item.IsFloorItem).Select(item => unchecked((int)item.Id)).Distinct().ToArray();
-
-            if (targets.Length == 0) {
-                return false;
-            }
-
-            packet = new WiredFurniTransparencyComposer(targets, P(config, 1), P(config, 2) == 1, P(config, 3));
+        if (targets.Length == 0) {
+            return false;
         }
 
-        Show(context, config, users, packet);
+        var (transparency, clickThrough, easing) = (P(config, 1), P(config, 2) == 1, P(config, 3));
+        Show(context, config, users, targetUsers
+            ? new WiredUserTransparencyComposer(targets, transparency, clickThrough, easing)
+            : new WiredFurniTransparencyComposer(targets, transparency, clickThrough, easing));
+
+        if (P(config, 0) == 1) {
+            context.Room.GetWired().RememberTransparency(targetUsers, targets, transparency, clickThrough, easing);
+        }
 
         return true;
     }
 
-    // class_4214.as [audience, type, strength, colour, animation, easing, target users]; the client has only a furni highlight packet.
+    private static int[] Targets(WiredConfiguration config, Func<string, Item[]> furni, Func<string, RoomUser[]> users, bool targetUsers) => targetUsers
+        ? [.. users("targets").Select(user => user.VirtualId).Distinct()]
+        : [.. furni("items").Where(item => item.IsFloorItem).Select(item => unchecked((int)item.Id)).Distinct()];
+
+    // class_4214.as [audience, type, strength, colour, animation, easing, target users]; users get class_3603, furni class_2680.
     private static bool SetHighlight(WiredRuntimeContext context, WiredConfiguration config, Func<string, Item[]> furni, Func<string, RoomUser[]> users)
     {
-        if (P(config, 6) == 1) {
-            return false;
-        }
-
-        var targets = furni("items").Where(item => item.IsFloorItem).Select(item => unchecked((int)item.Id)).Distinct().ToArray();
+        var targetUsers = P(config, 6) == 1;
+        var targets = Targets(config, furni, users, targetUsers);
 
         if (targets.Length == 0) {
             return false;
@@ -210,7 +204,14 @@ public static class WiredOctoberActions
         // applies the packet's strength as a plain percentage (WiredFurnitureEffectState.setHighlight L132 clampPercentage). The saved
         // 38 stays as the editor wrote it; the room is sent the 76 the editor showed. Inferred: the official packet is not observed.
         var strength = type == 4 ? P(config, 2) * 2 : P(config, 2);
-        Show(context, config, users, new WiredFurniHighlightComposer(targets, type, strength, color, animation, animation == 0 ? P(config, 5) : 0));
+        var easing = animation == 0 ? P(config, 5) : 0;
+        Show(context, config, users, targetUsers
+            ? new WiredUserHighlightComposer(targets, type, strength, color, animation, easing)
+            : new WiredFurniHighlightComposer(targets, type, strength, color, animation, easing));
+
+        if (P(config, 0) == 1) {
+            context.Room.GetWired().RememberHighlight(targetUsers, targets, type, strength, color, animation, easing);
+        }
 
         return true;
     }

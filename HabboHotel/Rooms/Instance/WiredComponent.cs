@@ -102,7 +102,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.PublicationObserverIsSilent = evt => evt.Kind != WiredEventKind.Leave;
         // This concrete flush seals from each drained snapshot before publishing its work.
         _engine.PublicationFlushIsSilent = () => true;
-        _engine.PublicationPollIsSilent = () => _counterItems.Count == 0 && _chests == null
+        _engine.PublicationPollIsSilent = () => _counterItems.Count == 0 && _chests?.HasPending != true
             && !WiredBotTargets.For(_room).HasTargets;
         _engine.LimitReached = NoteLimit;
         // The hidden message is echoed to its speaker as a whisper with the receiver and bubble width tail.

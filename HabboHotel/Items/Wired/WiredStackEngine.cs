@@ -716,10 +716,12 @@ internal sealed partial class WiredStackEngine
         ? Math.Max(0, intrinsic.DelayMilliseconds)
         : action is IWiredCycle cycle ? Math.Max(0L, cycle.Delay) * 500 : 0;
 
-    private void Flash(IWiredItem box)
+    private void Flash(IWiredItem box) => Flash(box.Item);
+
+    private void Flash(Item item)
     {
         try {
-            _flash(box.Item);
+            _flash(item);
         }
         catch (Exception e) {
             SealPublication();

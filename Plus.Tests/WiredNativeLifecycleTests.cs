@@ -168,12 +168,17 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.True(f.Wired.AddBox(trigger));
         var effect = f.Effect();
         var context = f.Context();
+        antenna.LegacyDataString = "0";
         Assert.True(f.Wired.SendSignal(context, [antenna], new()));
+        Assert.Equal("1", antenna.LegacyDataString);
         f.Wired.OnFastCycle();
         f.Wired.OnFastCycle();
         Assert.Equal(1, effect.Calls);
+        Assert.True(f.Wired.SendSignal(context, [antenna, antenna], new()));
+        Assert.Equal("0", antenna.LegacyDataString);
         f.Remove(antenna);
         Assert.False(f.Wired.SendSignal(context, [antenna], new()));
+        Assert.Equal("0", antenna.LegacyDataString);
     }
 
     [Fact]

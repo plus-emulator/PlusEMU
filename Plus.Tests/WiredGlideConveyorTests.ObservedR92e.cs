@@ -76,6 +76,7 @@ public sealed partial class WiredGlideConveyorTests
         }
 
         var f = new Fixture(layout.ToArray(), live: true);
+        _ = f.Room.GetWired().Chests; // Room 14 has idle chests; opening their component must not split a pulse.
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
         var errors = new List<Exception>();

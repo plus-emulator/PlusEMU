@@ -306,6 +306,7 @@ internal sealed partial class WiredStackEngine
             }
 
             QueueDispatch(dispatch);
+            Flash(antenna);
             accepted = true;
         }
 

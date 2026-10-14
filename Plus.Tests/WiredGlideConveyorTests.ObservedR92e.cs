@@ -51,6 +51,9 @@ public sealed partial class WiredGlideConveyorTests
             Assert.Equal((3 + pulse, 4 + pulse, 300), (carry.FromX, carry.ToX, carry.Duration));
             Assert.Equal(0, group[^1].Type); // The rider's entry follows the tiles' entries, as in the official packet.
             Assert.Equal((4 + pulse, 11), (rider.X, rider.Y));
+            // Movement Physics, Carry Users and Animation Time participate in each accepted pulse.
+            Assert.All(new uint[] { 15, 16, 17, 18 }, id =>
+                Assert.Equal(pulse % 2 == 1 ? "1" : "0", f.Items[id].LegacyDataString));
             Assert.Equal(0, f.Engine.ReadStats().Pending);
         }
     }

@@ -31,7 +31,7 @@ public sealed class AreaHideParityTests
         var packet = new RecordingPacket();
         var composer = new AreaHideComposer(item.Id, state);
         composer.Compose(packet);
-        Assert.Equal(6001u, composer.MessageId);
+        Assert.Equal(496u, composer.MessageId);
         Assert.Equal(new object[] { 300u, true, 2, 3, 4, 5, true, false, true }, packet.Writes);
         var removed = new RecordingPacket();
         new AreaHideComposer(item.Id, state, removed: true).Compose(removed);
@@ -63,7 +63,7 @@ public sealed class AreaHideParityTests
         Assert.Equal(new[] { 1, 1, 2, 3, 4, 1, 0, 1 }, saved.Values);
         var stored = fixture.Connection.QuerySingle<string>("SELECT extra_data FROM items WHERE id=300");
         Assert.Equal(saved.Values, AreaHideState.Load(stored).Data);
-        Assert.Contains(world.Packets, packet => packet.Header == 6001);
+        Assert.Contains(world.Packets, packet => packet.Header == 496);
         var packetCount = world.Packets.Count;
         var guestHabbo = new Habbo { Id = 2, Username = "guest", CurrentRoom = world.Room, Access = EditorTestSupport.Access([]) };
         var (guest, _) = Client(guestHabbo);
@@ -127,11 +127,11 @@ public sealed class AreaHideParityTests
         var users = (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(world.Room.GetRoomUserManager())!;
         users.Clear(); // Furniture snapshot is independent of avatar snapshot services.
         world.Room.SendObjects(world.Client);
-        Assert.Equal(1, Assert.Single(world.Packets.Where(packet => packet.Header == 6001)).Payload[4]);
+        Assert.Equal(1, Assert.Single(world.Packets.Where(packet => packet.Header == 496)).Payload[4]);
         users.TryAdd(world.Actor.VirtualId, world.Actor);
         world.Packets.Clear();
         Assert.True(world.Room.GetRoomItemHandler().RemoveFurniture(world.Client, item));
-        Assert.Equal(0, Assert.Single(world.Packets.Where(packet => packet.Header == 6001)).Payload[4]);
+        Assert.Equal(0, Assert.Single(world.Packets.Where(packet => packet.Header == 496)).Payload[4]);
         Assert.False(AreaHideState.Set(world.Room, item, 1, 3));
         Assert.True(AreaHideState.TryRead(item, out state));
         Assert.True(state.On); // Pickup resets the client's area; the saved controller settings survive reentry.

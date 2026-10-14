@@ -136,19 +136,19 @@ public class WiredClickPacketHookTests
         var world = new World("wf_trg_click_furni", [0]);
         Assert.Empty(world.Packets);
         world.Ready();
-        var first = Assert.Single(world.Packets, p => p.Id == 347).Payload;
+        var first = Assert.Single(world.Packets, p => p.Id == 3583).Payload;
         ReadEnvironment(first, false);
         world.Packets.Clear();
 
         var firstTrigger = world.AddBox("wf_trg_click_user", [1, 1]);
-        ReadEnvironment(Assert.Single(world.Packets, p => p.Id == 347).Payload, true);
+        ReadEnvironment(Assert.Single(world.Packets, p => p.Id == 3583).Payload, true);
         world.Packets.Clear();
         var secondTrigger = world.AddBox("wf_trg_click_user", [0, 0]);
         Assert.Empty(world.Packets);
         Assert.True(world.Remove(firstTrigger.Item.Id));
         Assert.Empty(world.Packets);
         Assert.True(world.Remove(secondTrigger.Item.Id));
-        ReadEnvironment(Assert.Single(world.Packets, p => p.Id == 347).Payload, false);
+        ReadEnvironment(Assert.Single(world.Packets, p => p.Id == 3583).Payload, false);
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class WiredClickPacketHookTests
         var world = new World("wf_trg_click_user", [1, 0]);
         Assert.Empty(world.Packets);
         world.Ready();
-        ReadEnvironment(Assert.Single(world.Packets, p => p.Id == 347).Payload, true);
+        ReadEnvironment(Assert.Single(world.Packets, p => p.Id == 3583).Payload, true);
     }
 
     private static void ReadEnvironment(FlashIncomingPacket packet, bool hasClick)
@@ -435,7 +435,7 @@ public class WiredClickPacketHookTests
                 {
                     InternalIdToOutgoingIdMapping = new Dictionary<uint, uint>
                     {
-                        [ServerPacketHeader.WiredEnvironmentComposer] = 347,
+                        [ServerPacketHeader.WiredEnvironmentComposer] = 3583,
                         [ServerPacketHeader.WiredClickUserResponseComposer] = 9460,
                         [ServerPacketHeader.InClientLinkComposer] = 2023,
                         [ServerPacketHeader.ObjectAddComposer] = 1534,

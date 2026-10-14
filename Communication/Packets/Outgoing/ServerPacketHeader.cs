@@ -418,8 +418,8 @@ public static class ServerPacketHeader
     public const uint QuizResultsComposer = 3020;
     public const uint CampaignCalendarDataComposer = 395;
     public const uint WiredVariableInspectionDataComposer = 9483;
-    public const uint WiredEnvironmentComposer = 347;
-    public const uint AreaHideComposer = 6001;
+    public const uint WiredEnvironmentComposer = 3583;
+    public const uint AreaHideComposer = 496;
     public const uint ConfigurationItemStatesComposer = 3660;
     public const uint WiredUserVariablesData64Composer = 9480;
     public const uint WiredVariableHolders64Composer = 9481;

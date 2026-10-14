@@ -20,7 +20,8 @@ public sealed record WiredVariableCapturer(uint DefinitionId, string Name, IRead
 /// <summary>Bounded template matching. Resolve every capture before publishing any context values.</summary>
 public static class WiredVariableTextCapture
 {
-    private static readonly Regex Placeholder = new("#([^#]+)#", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
+    // The capturer is written "#(name)", as the editor's preview tells the player; "#name#" is the older spelling this box also reads.
+    private static readonly Regex Placeholder = new("#\\(([^()#]+)\\)|#([^#()]+)#", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
     public static bool TryMatch(string template, string text, int mode, IReadOnlyList<WiredVariableCapturer> capturers,
         out IReadOnlyDictionary<uint, long> values)
     {
@@ -54,7 +55,7 @@ public static class WiredVariableTextCapture
             return Literal(template, text, mode);
         }
 
-        var names = matches.Select(match => match.Groups[1].Value.Trim()).ToArray();
+        var names = matches.Select(match => (match.Groups[1].Success ? match.Groups[1] : match.Groups[2]).Value.Trim()).ToArray();
 
         if (matches[0].Index == 0 && matches[^1].Index + matches[^1].Length == template.Length
             && matches.Skip(1).Select((match, index) => match.Index == matches[index].Index + matches[index].Length).All(value => value)

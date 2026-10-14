@@ -149,6 +149,7 @@
     "WiredVariableHashesEvent": 3150,
     "WiredAllVariablesRequestEvent": 1070,
     "SaveWiredEffectConfigEvent": 799,
+    "ApplySnapshotEvent": 383,
     "SaveWiredSelectorConfigEvent": 1758,
     "SaveWiredAddonConfigEvent": 3371,
     "SaveWiredVariableConfigEvent": 218,

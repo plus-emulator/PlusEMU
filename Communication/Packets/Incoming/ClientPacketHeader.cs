@@ -197,6 +197,7 @@ public static class ClientPacketHeader
     public const uint WiredVariableHashesEvent = 3150;
     public const uint WiredAllVariablesRequestEvent = 1070;
     public const uint SaveWiredEffectConfigEvent = 799;
+    public const uint ApplySnapshotEvent = 383; // class_3027, ApplySnapshot (new 3788)
     public const uint SaveWiredSelectorConfigEvent = 1758;
     public const uint SaveWiredAddonConfigEvent = 3371;
     public const uint SaveWiredVariableConfigEvent = 218;

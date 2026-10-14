@@ -28,6 +28,9 @@ public sealed partial class WiredRoomVariables
     }
     private bool IsAttached(Item item) => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item);
 
+    /// <summary>Variable FX boxes a room draws; the rest are ignored (each one is drawn over every holder of its variable).</summary>
+    public const int MaxFxBoxes = 25;
+
     public IReadOnlyList<WiredVariableFxBinding> FxBindings()
     {
         var authorized = Module.DescribeDefinitions(_definitions.Keys).ToDictionary(x => x.Definition.ItemId);
@@ -47,6 +50,10 @@ public sealed partial class WiredRoomVariables
 
             var level = definition is null ? null : MetadataOn(definition.Item.Id, "wf_xtra_var_lvlup_system")?.LevelSystem;
             result.Add(binding! with { Level = level is null ? null : level.Level });
+
+            if (result.Count >= MaxFxBoxes) {
+                break;
+            }
         }
 
         return result;

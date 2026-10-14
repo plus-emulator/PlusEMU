@@ -20,7 +20,8 @@ public sealed record WiredVariableCapturer(uint DefinitionId, string Name, IRead
 /// <summary>Bounded template matching. Resolve every capture before publishing any context values.</summary>
 public static class WiredVariableTextCapture
 {
-    private static readonly Regex Placeholder = new("#([^#]+)#", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
+    // The capturer is written "#(name)", as the editor's preview tells the player; "#name#" is the older spelling this box also reads.
+    private static readonly Regex Placeholder = new("#\\(([^()#]+)\\)|#([^#()]+)#", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
     public static bool TryMatch(string template, string text, int mode, IReadOnlyList<WiredVariableCapturer> capturers,
         out IReadOnlyDictionary<uint, long> values)
     {
@@ -54,7 +55,7 @@ public static class WiredVariableTextCapture
             return Literal(template, text, mode);
         }
 
-        var names = matches.Select(match => match.Groups[1].Value.Trim()).ToArray();
+        var names = matches.Select(match => (match.Groups[1].Success ? match.Groups[1] : match.Groups[2]).Value.Trim()).ToArray();
 
         if (matches[0].Index == 0 && matches[^1].Index + matches[^1].Length == template.Length
             && matches.Skip(1).Select((match, index) => match.Index == matches[index].Index + matches[index].Length).All(value => value)
@@ -83,33 +84,46 @@ public static class WiredVariableTextCapture
             pattern.Append("(?>(.+?)").Append(Regex.Escape(literals[index + 1])).Append(')');
         }
 
-        pattern.Append("(.+)").Append(Regex.Escape(literals[^1]));
-        var expression = mode == 0 ? pattern.ToString() : "\\A" + pattern + "\\z";
+        var head = pattern.ToString();
+        var tail = Regex.Escape(literals[^1]);
+
+        // A keyword that is only part of the line ("the price #(p) please") hands over the typed word first, as the line goes on after it;
+        // a line that is the keyword, or a word that cannot be read, hands over the rest of the line, so a text of several words still reads.
+        string[] lasts = mode == 0 ? ["(\\S+)", "(.+)"] : ["(.+)"];
 
         try {
-            var match = Regex.Match(text, expression, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(25));
+            foreach (var last in lasts) {
+                var expression = mode == 0 ? head + last + tail : "\\A" + head + last + tail + "\\z";
+                var match = Regex.Match(text, expression, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(25));
 
-            if (!match.Success) {
-                return false;
-            }
-
-            var captured = new Dictionary<uint, long>();
-
-            for (var index = 0; index < names.Length; index++) {
-                if (!byName.TryGetValue(names[index], out var capturer)) {
+                if (!match.Success) {
                     continue;
                 }
 
-                if (capturer.Read(match.Groups[index + 1].Value) is not { } value) {
-                    return false;
+                var captured = new Dictionary<uint, long>();
+                var readable = true;
+
+                for (var index = 0; index < names.Length && readable; index++) {
+                    if (!byName.TryGetValue(names[index], out var capturer)) {
+                        continue;
+                    }
+
+                    if (capturer.Read(match.Groups[index + 1].Value) is { } value) {
+                        captured[capturer.DefinitionId] = value;
+                    }
+                    else {
+                        readable = false;
+                    }
                 }
 
-                captured[capturer.DefinitionId] = value;
+                if (readable) {
+                    values = captured;
+
+                    return true;
+                }
             }
 
-            values = captured;
-
-            return true;
+            return false;
         }
         catch (RegexMatchTimeoutException) {
             return false;

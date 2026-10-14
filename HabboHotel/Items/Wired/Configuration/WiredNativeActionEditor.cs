@@ -14,6 +14,8 @@ internal static class WiredNativeActionEditor
     // Observed on hhus: Remove Furni offers 0/200/201 with 200 selected, and refuses the selected-furni source 100.
     private static readonly int[] RemoveFurniSources = [0, 200, 201];
     private static readonly int[] FurniAndSnapshot = [0, 100, 101, 200, 201];
+    // Observed on hhus (WIN63-202610131318, r80 place card): the furni to place also offers 110, the snapshot taken at save, and opens on it.
+    private static readonly int[] PlaceTemplateSources = [0, 100, 101, 110, 200, 201];
     private static readonly int[] SignalFurni = [0, 100, 101, 200, 201];
     private static readonly int[] Users = [0, 10, 11, 200, 201];
     private static readonly int[] MoveUsers = [0, 11, 200, 201];
@@ -54,7 +56,7 @@ internal static class WiredNativeActionEditor
         ["wf_act_move_furni_to"] = Meta([Furni, FurniAndSnapshot], [], [100, 101], [], [0, 1]),
         ["wf_act_match_to_sshot"] = Meta([FurniAndSnapshot], [], [100], [], [0, 0, 0, 0], true),
         ["wf_act_user_to_furni"] = Meta([Furni], [MoveUsers], [100], [0], [0]),
-        ["wf_act_place_furni"] = Meta([Furni, FurniAndSnapshot, FurniAndSnapshot], [Users, Users], [100, 100, 100], [0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, -20], true) with
+        ["wf_act_place_furni"] = Meta([PlaceTemplateSources, FurniAndSnapshot, FurniAndSnapshot], [SignalUsers, SignalUsers], [110, 0, 200], [0, 200], [0, 0, 0, 0, 0, 0, 0, 0, 0, -20], true) with
         {
             VariableDefaults = [WiredVariableAbsent.Id, WiredVariableAbsent.Id]
         },
@@ -149,8 +151,9 @@ internal static class WiredNativeActionEditor
                 users["users"] = User(native, 0);
                 break;
             case "wf_act_mute_triggerer":
-                // Zero minutes cannot mute: the room deadline rejects a non-positive duration.
-                if (p.Length != 1 || p[0] is < 1 or > 10 || text.Length > 100) {
+                // The October slider runs 0 to 10 (class_4046 createSliderSection min 0, max 10, default 1), so a zero saves.
+                // Zero minutes mutes nobody at run time: the room deadline rejects a non-positive duration, as Turbo does.
+                if (p.Length != 1 || p[0] is < 0 or > 10 || text.Length > 100) {
                     return false;
                 }
 

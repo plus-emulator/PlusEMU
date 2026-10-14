@@ -23,7 +23,12 @@ public sealed class WiredVariableConfigurationPersistence(IDatabase database, Wi
 
         if (!WiredVariableDefinitions.TryDecode(box.Descriptor.CanonicalName, box.Item.Id,
             roomId, ownerId, validated, out var definition, out var error)) {
-            throw new InvalidOperationException(error);
+            if (!WiredVariableDefinitions.IsUnpickedEcho(box.Descriptor.CanonicalName, validated)) {
+                throw new InvalidOperationException(error);
+            }
+
+            // An echo with no variable picked is stored and defines nothing; the value-free placeholder only carries the save.
+            definition = new(box.Item.Id, roomId, ownerId, validated.Text, WiredVariableTarget.User, WiredVariableAvailability.RoomActive, false);
         }
 
         var expected = box.HasPersistedConfiguration ? box.Configuration : null;

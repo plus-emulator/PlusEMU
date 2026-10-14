@@ -85,12 +85,16 @@ public static class WiredTemporaryFurnitureActions
         var valueTarget = (WiredVariableTarget)policy.ValueTarget;
         var module = policy.SpawnWithVariable ? context.Room.GetWired().Variables.Module : null;
 
-        if (module != null && policy.ValueIsVariable && context.VariableFrame is { } valueFrame
-            && config.VariableIds.Length > 1 && Enum.IsDefined(valueTarget)
-            && module.TryResolveCatalogId(config.VariableIds[1], valueTarget, out _)) {
-            using var queries = new WiredVariableQueries(module, valueFrame);
-            spawnValue = queries.ReadOperand(valueTarget, config.VariableIds[1],
-                config.UserSources.GetValueOrDefault("value", 0), config.FurniSources.GetValueOrDefault("value", 0), config) ?? 0;
+        if (module != null && policy.ValueIsVariable) {
+            // A value read from a variable is 0 whenever that variable cannot be read; the literal in the form is not a fallback.
+            spawnValue = 0;
+
+            if (context.VariableFrame is { } valueFrame && config.VariableIds.Length > 1 && Enum.IsDefined(valueTarget)
+                && module.TryResolveCatalogId(config.VariableIds[1], valueTarget, out _)) {
+                using var queries = new WiredVariableQueries(module, valueFrame);
+                spawnValue = queries.ReadOperand(valueTarget, config.VariableIds[1],
+                    config.UserSources.GetValueOrDefault("value", 0), config.FurniSources.GetValueOrDefault("value", 0), config) ?? 0;
+            }
         }
 
         var placedAny = false;

@@ -54,20 +54,30 @@ internal static partial class WiredNativeAuxiliaryEditor
             ? Metadata("wf_xtra_var_time_util", n, n.OwnedIntParams, "") : null));
         yield return new("wf_xtra_var_lvlup_system", new(Meta(0, 0, [0, 1, 100, 50, 50]), LevelSystem));
 
-        // The six display forms share one int layout (plus one extra int for levelling and number displays); the three variable
-        // slots are the range-override minimum and maximum and the audience, and a number display's icon rides the text.
+        // The six display forms share one 23-int layout (category slot at 21, stack order at 22); the three variable slots are the
+        // range-override minimum and maximum and the audience, and a number display's icon rides the text. A form saved before the stack
+        // order (21 ints, 22 for levelling and number displays) is still read and upgraded.
         foreach (var name in new[] { "wf_xtra_var_fx_health", "wf_xtra_var_fx_progress", "wf_xtra_var_fx_level", "wf_xtra_var_fx_status",
             "wf_xtra_var_fx_boss", "wf_xtra_var_fx_number" }) {
             var fx = name;
             var category = Plus.HabboHotel.Items.Wired.Variables.Fx.WiredVariableFxSettings.Category(fx);
             var defaults = Plus.HabboHotel.Items.Wired.Variables.Fx.WiredVariableFxSettings.Defaults(category);
 
-            yield return new(fx, new(Meta(0, 0, defaults, 3), n => Shape(n, defaults.Length, 0, 0, 3)
+            yield return new(fx, new(Meta(0, 0, defaults, 3), n => Plus.HabboHotel.Items.Wired.Variables.Fx.WiredVariableFxSettings.IsAcceptedLength(fx, n.OwnedIntParams.Length)
+                && Shape(n, n.OwnedIntParams.Length, 0, 0, 3)
                 ? Metadata(fx, n, Plus.HabboHotel.Items.Wired.Variables.Fx.WiredVariableFxSettings.Normalize(fx, n.OwnedIntParams), n.Text) : null));
         }
     }
 
-    private static WiredNativeEditorMetadata FilterMeta() => Meta(1, 1, [10, 0, 0, 1], 2) with { FurniDefaults = [100], UserDefaults = [0] };
+    // Observed on hhus (r62-batch-05, WIN63-202610131318): the amount reference offers the triggering furni, the picked furni and the
+    // selector's on the furni slot, and the triggering user and the signal's on the user slot; it opens on 100 and 0.
+    private static WiredNativeEditorMetadata FilterMeta() => Meta(1, 1, [10, 0, 0, 1], 2) with
+    {
+        FurniAllowed = [[0, 100, 201]],
+        UsersAllowed = [[0, 201]],
+        FurniDefaults = [100],
+        UserDefaults = [0]
+    };
 
     // Count, sort order, literal-or-variable option and its target; the filtered variable and the operand variable.
     private static WiredConfiguration? FilterByVariable(WiredNativeEditorConfiguration n)

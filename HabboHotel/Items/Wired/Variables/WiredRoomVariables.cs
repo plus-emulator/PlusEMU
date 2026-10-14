@@ -13,6 +13,7 @@ public sealed partial class WiredRoomVariables
     private readonly WiredVariableConfigurationPersistence _persistence;
     private readonly Dictionary<uint, WiredVariableDefinitionBox> _definitions = [];
     private readonly Plus.HabboHotel.Quests.IQuestManager? _quests;
+    private readonly WiredSharedVariableBroadcast.Endpoint _broadcast;
     public WiredVariableModule Module { get; }
     public WiredVariableEditor Editor { get; }
     public WiredVariableFxTracker Fx { get; }
@@ -40,6 +41,9 @@ public sealed partial class WiredRoomVariables
         Editor = new(Module);
         Fx = new(Module);
         _persistence = new(database, Module, clock);
+        _broadcast = new(Module, playerId => playerId is > 0 and <= int.MaxValue
+            ? room.GetRoomUserManager()?.GetRoomUserByHabbo((int)playerId)?.VirtualId ?? 0 : 0);
+        WiredSharedVariableBroadcast.Register(_broadcast);
     }
 
     public IWiredConfiguredItem? CreateBox(Item item)
@@ -180,6 +184,7 @@ public sealed partial class WiredRoomVariables
 
         if (changes.Count > 0) {
             FxDirty = true;
+            WiredSharedVariableBroadcast.Deliver(Module.RoomId, changes);
         }
 
         return changes;

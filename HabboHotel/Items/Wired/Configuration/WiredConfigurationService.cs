@@ -27,6 +27,8 @@ public sealed class WiredConfigurationService(
     IWordFilterManager wordFilter,
     ILogger<WiredConfigurationService> logger) : IWiredConfigurationService
 {
+    internal const string WiredVariableOwnerOnly = "Only the room owner can set up a reference to another room.";
+
     public void Save(GameClient session, WiredConfigurationSaveRequest request)
     {
         var habbo = session.GetHabbo();
@@ -78,6 +80,13 @@ public sealed class WiredConfigurationService(
                 return;
             }
 
+            // A reference reads and writes variables of the owner's other rooms, so only the owner sets one up.
+            if (descriptor.CanonicalName == "wf_var_reference" && room.OwnerId != habbo.Id) {
+                session.Send(new WiredValidationErrorComposer(WiredVariableOwnerOnly));
+
+                return;
+            }
+
             bool CanModify() => habbo.CurrentRoom == room && room.GetWired().Settings.CanModify(session);
             var native = requested with { NativeCode = descriptor.EditorCode };
 
@@ -85,7 +94,8 @@ public sealed class WiredConfigurationService(
                 native = native with { Text = ValidateBotFigure(native.Text, session) };
             }
 
-            if (descriptor.CanonicalName == "wf_act_show_message") {
+            // Turbo word-filters the reward pop-up text of the two give-from-chest boxes; here it is filtered once at save, like Show Message.
+            if (descriptor.CanonicalName is "wf_act_show_message" or "wf_act_give_currency" or "wf_act_give_furni") {
                 native = native with { Text = FilterMessageText(native.Text) };
             }
 
@@ -152,17 +162,19 @@ public sealed class WiredConfigurationService(
 
     private static ImmutableArray<WiredFurniSnapshot> CaptureSnapshots(Rooms.Room room, string name, WiredNativeEditorConfiguration native)
     {
-        // Place templates come from the picked group only; a live or selector source keeps no templates.
-        if (name == "wf_act_place_furni" && native.FurniSourceTypes is not [100, ..]) {
+        // Place templates come from a pick list only: the picked furni (100, or 110 the snapshot the editor opens on) or the second
+        // pick list (101). A live or selector source keeps no templates.
+        if (name == "wf_act_place_furni" && native.FurniSourceTypes is not [100 or 101 or 110, ..]) {
             return [];
         }
 
         var handler = room.GetRoomItemHandler();
+        var picks = name == "wf_act_place_furni" && native.FurniSourceTypes is [101, ..] ? native.SecondaryItems : native.PrimaryItems;
 
         var allowWall = name != "wf_act_place_furni" && WiredNativeEditorProjection.Metadata(name).AllowWall;
 
         // Only cards whose editor admits wall picks capture them, and only with a parseable wall position.
-        return native.PrimaryItems.Select(reference => reference.ItemId).Distinct().Select(handler.GetItem)
+        return picks.Select(reference => reference.ItemId).Distinct().Select(handler.GetItem)
             .Where(item => item is { IsFloorItem: true } || allowWall && item is { IsWallItem: true })
             .Select(item => (Item: item!, Snapshot: WiredRoomOperations.Capture(item!)))
             .Where(pair => !pair.Item.IsWallItem || pair.Snapshot.Wall != null).Select(pair => pair.Snapshot).ToImmutableArray();

@@ -1,0 +1,388 @@
+using System.Collections.Concurrent;
+using System.Collections.Immutable;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using Plus.Database;
+using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired.Configuration;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
+using Plus.HabboHotel.Items.Wired.Runtime;
+using Plus.HabboHotel.Items.Wired.Variables;
+using Plus.HabboHotel.Rooms;
+using Xunit;
+
+namespace Plus.Tests;
+
+// Group g3 of bugfix/wired-turbo-reference-remainder: the editors of the five cards against the October AS3 and the official frames,
+// Time Utilities through the room's variable catalog, and Filter Users by Variable through the stack's selector pool.
+public sealed class WiredTurboRemainderG3Tests
+{
+    private static string Groups(ImmutableArray<ImmutableArray<int>> groups) => string.Join(';', groups.Select(group => string.Join(',', group)));
+
+    // Official initial frames: r80 (place, remove), r77 batch 05 (filter, capturer, time utilities; r83 for the last).
+    [Theory]
+    [InlineData("wf_act_place_furni", "0,100,101,110,200,201;0,100,101,200,201;0,100,101,200,201", "0,200,201;0,200,201", "110,0,200", "0,200", true, "0,0,0,0,0,0,0,0,0,-20")]
+    [InlineData("wf_act_remove_furni", "0,200,201", "", "200", "", false, "")]
+    [InlineData("wf_xtra_filter_users_by_var", "0,100,201", "0,201", "100", "0", false, "10,0,0,1")]
+    [InlineData("wf_xtra_text_input_variable", "", "", "", "", false, "0")]
+    [InlineData("wf_xtra_var_time_util", "", "", "", "", false, "0,1")]
+    public void TheEditorOpensTheWayTheOfficialFrameDid(string name, string furniAllowed, string usersAllowed, string furniDefaults,
+        string userDefaults, bool wall, string owned)
+    {
+        var metadata = WiredNativeEditorProjection.Metadata(name);
+        Assert.Equal(furniAllowed, Groups(metadata.FurniAllowed));
+        Assert.Equal(usersAllowed, Groups(metadata.UsersAllowed));
+        Assert.Equal(furniDefaults, string.Join(',', metadata.FurniDefaults));
+        Assert.Equal(userDefaults, string.Join(',', metadata.UserDefaults));
+        Assert.Equal(wall, metadata.AllowWall);
+        Assert.Equal(owned, string.Join(',', metadata.OwnedDefaults));
+    }
+
+    [Fact]
+    public void PlaceFurniOpensOnItsSnapshotAndSavesWithEveryOfferedSourceButNoOther()
+    {
+        Assert.True(WiredBoxRegistry.TryGet("wf_act_place_furni", out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor);
+        Assert.Equal([110, 0, 200], native.FurniSourceTypes.ToArray());
+        Assert.Equal([0, 200], native.UserSourceTypes.ToArray());
+        Assert.Equal(["n", "n"], native.VariableIds.Select(id => WiredVariableAbsent.Is(id) ? "n" : id).ToArray());
+        Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native, out var runtime));
+        Assert.Equal(110, runtime.FurniSources["templates"]);
+        Assert.Equal(0, runtime.FurniSources["target"]);
+        Assert.Equal(200, runtime.FurniSources["value"]);
+        Assert.Equal(0, runtime.UserSources["target"]);
+        Assert.Equal(200, runtime.UserSources["value"]);
+
+        foreach (var source in new[] { 0, 100, 101, 110, 200, 201 }) {
+            Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { FurniSourceTypes = [source, 0, 200] }, out _), source.ToString());
+        }
+
+        // 110 is the template slot's alone; the user slots offer only the triggering user, the selector and the signal.
+        Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { FurniSourceTypes = [110, 110, 200] }, out _));
+        Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { FurniSourceTypes = [110, 0, 110] }, out _));
+        Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { FurniSourceTypes = [111, 0, 200] }, out _));
+        Assert.Equal("wiredfurni.error.invalid_furni_source", WiredNativeEditorProjection.SourceRejectionKey(descriptor, native with { FurniSourceTypes = [110, 110, 200] }));
+
+        foreach (var user in new[] { 10, 11, 100, 101 }) {
+            Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { UserSourceTypes = [user, 200] }, out _), user.ToString());
+        }
+    }
+
+    [Fact]
+    public void PlaceFurniRefusesOutOfRangeOffsetsAndTheEditorFormsItCannotWrite()
+    {
+        Assert.True(WiredBoxRegistry.TryGet("wf_act_place_furni", out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor);
+
+        bool Compiles(params int[] owned) => WiredNativeEditorProjection.TryCompile(10, descriptor, native with { OwnedIntParams = [.. owned] }, out _);
+
+        Assert.True(Compiles(1, 1, 2, 64, -64, 8000, 0, 0, 0, 0));
+        Assert.True(Compiles(0, 0, 0, 0, 0, -8000, 1, 1, int.MinValue, -20));
+        Assert.False(Compiles(0, 0, 0, 65, 0, 0, 0, 0, 0, -20));
+        Assert.False(Compiles(0, 0, 0, 0, -65, 0, 0, 0, 0, -20));
+        Assert.False(Compiles(0, 0, 0, 0, 0, 8001, 0, 0, 0, -20));
+        Assert.False(Compiles(0, 2, 0, 0, 0, 0, 0, 0, 0, -20));
+        Assert.False(Compiles(0, 0, 3, 0, 0, 0, 0, 0, 0, -20));
+        Assert.False(Compiles(2, 0, 0, 0, 0, 0, 0, 0, 0, -20));
+        Assert.False(Compiles(0, 0, 0, 0, 0, 0, 0, 0));
+    }
+
+    [Fact]
+    public void RemoveFurniHasNoParametersAndOnlyTheTriggeringSelectorAndSignalSources()
+    {
+        Assert.True(WiredBoxRegistry.TryGet("wf_act_remove_furni", out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor);
+
+        foreach (var source in new[] { 0, 200, 201 }) {
+            Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { FurniSourceTypes = [source] }, out var runtime), source.ToString());
+            Assert.Equal(source, runtime.FurniSources["items"]);
+        }
+
+        foreach (var source in new[] { 100, 101, 110 }) {
+            Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { FurniSourceTypes = [source] }, out _), source.ToString());
+        }
+
+        Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { OwnedIntParams = [0] }, out _));
+        Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { Text = "x" }, out _));
+    }
+
+    [Theory]
+    [InlineData(100, "primary")]
+    [InlineData(110, "primary")]
+    [InlineData(101, "secondary")]
+    [InlineData(0, "none")]
+    [InlineData(200, "none")]
+    [InlineData(201, "none")]
+    public void PlaceFurniSavesTheSnapshotOfTheListTheTemplateSourceNames(int source, string kept)
+    {
+        var (room, _, items) = ModernWiredRuntimeTests.WorldForG3();
+        var definition = ModernWiredRuntimeTests.MakeItemForG3(5, "lamp").Definition;
+        definition.Id = 5;
+        definition.Stackable = true;
+        var primary = ModernWiredRuntimeTests.MakeItemForG3(10, "lamp");
+        primary.Definition = definition;
+        primary.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        var secondary = ModernWiredRuntimeTests.MakeItemForG3(11, "lamp");
+        secondary.Definition = definition;
+        secondary.SetState(2, 2, 0, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+        items[primary.Id] = primary;
+        items[secondary.Id] = secondary;
+        Assert.True(WiredBoxRegistry.TryGet("wf_act_place_furni", out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with
+        {
+            PrimaryItems = [new(10, false)],
+            SecondaryItems = [new(11, false)],
+            FurniSourceTypes = [source, 0, 200]
+        };
+        var snapshots = (ImmutableArray<WiredFurniSnapshot>)typeof(WiredConfigurationService)
+            .GetMethod("CaptureSnapshots", BindingFlags.Static | BindingFlags.NonPublic)!
+            .Invoke(null, [room, "wf_act_place_furni", native])!;
+        var expected = kept switch { "primary" => new uint[] { 10 }, "secondary" => [11u], _ => [] };
+        Assert.Equal(expected, snapshots.Select(snapshot => snapshot.ItemId).ToArray());
+    }
+
+    [Fact]
+    public void PlaceFurniCopiesTheSavedSnapshotWhenTheTemplateSourceIsTheSnapshotItself()
+    {
+        var (room, _, items) = ModernWiredRuntimeTests.WorldForG3();
+        var definition = ModernWiredRuntimeTests.MakeItemForG3(5, "lamp").Definition;
+        definition.Id = 5;
+        definition.Stackable = true;
+        var manager = new TestWiredDefinitions(() => new() { [5] = definition });
+        var action = ModernWiredRuntimeTests.ActionBoxForG3(room, "wf_act_place_furni", manager);
+        Assert.True(WiredBoxRegistry.TryGet("wf_act_place_furni", out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with
+        {
+            SavedState = new() { Snapshots = [new(900, 5, 2, 1, 0, 0, "1")] }
+        };
+        Assert.True(WiredNativeEditorProjection.TryCompile(action.Item.Id, descriptor, native, out var compiled));
+        Assert.True(WiredConfigurationSave.TrySave(action, compiled, TestWiredConfigurationStore.Instance, out var error), error);
+        Assert.True(action.Execute(new WiredRuntimeContext(room, new(WiredEventKind.Use), new(() => items.Values.ToArray(), () => []), new G3Operations())));
+        var copy = Assert.Single(room.GetRoomItemHandler().GetFloor.Where(item => item.IsTemporary));
+        Assert.Equal((2, 1, "1"), (copy.GetX, copy.GetY, copy.LegacyDataString));
+    }
+
+    private sealed class G3Operations : IWiredRuntimeOperations
+    {
+        public bool CallStacks(WiredRuntimeContext context, IEnumerable<Item> targets, bool negative = false) => throw new NotSupportedException();
+        public bool SendSignal(WiredRuntimeContext context, IEnumerable<Item> receivers, WiredSelection selection, bool negative = false) => throw new NotSupportedException();
+        public void ResetTimers(IEnumerable<Item> targets) => throw new NotSupportedException();
+    }
+
+    // ---------------------------------------------------------------- Time Utilities
+
+    private sealed class G3Clock(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    private sealed class G3Directory : IWiredVariableDirectory
+    {
+        public uint? GetRoomOwner(uint roomId) => roomId == 1 ? 5u : null;
+        public WiredVariableDefinition? Find(uint id) => id == 20
+            ? new(20, 1, 5, "stamp", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true) : null;
+    }
+
+    private sealed class G3TimeRig
+    {
+        private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
+        private readonly ConcurrentDictionary<uint, Item> _floor;
+        public G3Clock Clock { get; } = new(DateTimeOffset.FromUnixTimeMilliseconds(1_000_000));
+        public WiredRoomVariables Variables { get; }
+        public WiredVariableModule Module { get; }
+        public WiredVariableHolder Holder { get; } = new(WiredVariableTarget.User, 7, 1);
+        public WiredVariableFrame Frame { get; }
+        public WiredVariableMetadataBox TimeUtil { get; }
+
+        public G3TimeRig(int mask, int mode)
+        {
+            var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
+            room.Id = 1;
+            room.OwnerId = 5;
+            var handler = new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
+            typeof(Room).GetField("_roomItemHandling", Private)!.SetValue(room, handler);
+            _floor = (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling).GetField("_floorItems", Private)!.GetValue(handler)!;
+            var database = DispatchProxy.Create<IDatabase, ModernWiredRuntimeTests.RecordingProxy>();
+            ((ModernWiredRuntimeTests.RecordingProxy)(object)database).InvokeMethod = (method, _) => throw new InvalidOperationException("Unexpected database access: " + method.Name);
+            Variables = new(room, database, Clock);
+            var resolve = typeof(WiredRoomVariables).GetMethod("ResolveDerived", Private)!.CreateDelegate<Func<WiredVariableReference, WiredVariableDerivation?>>(Variables);
+            Module = new(1, new G3Directory(), new MemoryWiredVariableStore(), Clock, null, resolve);
+            typeof(WiredRoomVariables).GetField("<Module>k__BackingField", Private)!.SetValue(Variables, Module);
+            Frame = new(1, [Holder]);
+            var baseItem = new Item { Id = 20, OwnerId = 5, RoomId = 1, Definition = new() { Id = 20, InteractionName = "wf_var_user" } };
+            _floor[baseItem.Id] = baseItem;
+            var definition = Assert.IsType<WiredVariableDefinitionBox>(Variables.CreateBox(baseItem));
+            WiredNativeTestSupport.InstallLegacyVariableDraft(definition, new() { IntParams = [1, 0], Text = "stamp" });
+            Variables.ConfigurationLoaded(definition);
+            var item = new Item { Id = 21, Definition = new() { InteractionName = "wf_xtra_var_time_util" } };
+            _floor[item.Id] = item;
+            TimeUtil = Assert.IsType<WiredVariableMetadataBox>(Variables.CreateBox(item));
+            Variables.ConfigurationLoaded(TimeUtil);
+            Configure(mask, mode);
+        }
+
+        public void Configure(int mask, int mode) => WiredNativeTestSupport.InstallLegacyVariableDraft(TimeUtil, new() { IntParams = [mask, mode] });
+
+        public void Give(long value, Action? later = null)
+        {
+            Assert.True(Module.Mutate(new(WiredVariableTarget.User, "custom:20"), Holder, WiredVariableMutation.Give, value, Frame));
+            later?.Invoke();
+        }
+
+        public void Set(long value) => Assert.True(Module.Mutate(new(WiredVariableTarget.User, "custom:20"), Holder, WiredVariableMutation.Set, value, Frame));
+
+        public long? Read(int sub)
+        {
+            var id = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, sub, true)!.Value;
+
+            return Module.Read(new(WiredVariableTarget.User, $"custom:{id}"), Holder, Frame)?.Value;
+        }
+
+        public string[] Names() => Variables.Catalog().Variables.Select(variable => variable.Definition.Name).Order().ToArray();
+    }
+
+    private const long Tuesday = 1_700_000_000; // 2023-11-14 22:13:20 UTC, a Tuesday in ISO week 46.
+
+    [Fact]
+    public void TimeUtilitiesReadEveryCalendarFieldAndEveryElapsedUnitOfTheValueAsAUnixTimestamp()
+    {
+        var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
+        rig.Give(Tuesday);
+        var expected = new Dictionary<int, long>
+        {
+            [1] = 0, [2] = 20, [3] = 13, [4] = 22, [5] = 2, [6] = 14, [7] = 318, [8] = 46, [9] = 11, [10] = 2023,
+            [20] = Tuesday * 1000, [21] = Tuesday, [22] = Tuesday / 60, [23] = Tuesday / 3600, [24] = Tuesday / 86400,
+            [25] = Tuesday / 604800, [26] = (2023 - 1970) * 12 + 10
+        };
+
+        foreach (var (sub, value) in expected) {
+            Assert.Equal(value, rig.Read(sub));
+        }
+
+        Assert.Equal(17, rig.Names().Count(name => name.StartsWith("stamp.")));
+    }
+
+    [Fact]
+    public void TheEditorsWordsNameTheSubVariablesAndOnlyTheTickedOnesExist()
+    {
+        var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
+        rig.Give(Tuesday);
+        Assert.Equal(new[]
+        {
+            "stamp", "stamp.day", "stamp.day_of_month", "stamp.day_of_week", "stamp.day_of_year", "stamp.hour", "stamp.hour_of_day",
+            "stamp.millisecond", "stamp.milliseconds_of_seconds", "stamp.minute", "stamp.minute_of_hour", "stamp.month", "stamp.month_of_year",
+            "stamp.second", "stamp.seconds_of_minute", "stamp.week", "stamp.week_of_year", "stamp.year"
+        }.Order().ToArray(), rig.Names());
+        rig.Configure((1 << 10) | (1 << 21), 0);
+        Assert.Equal(["stamp", "stamp.second", "stamp.year"], rig.Names());
+        Assert.Equal(2023, rig.Read(10));
+        Assert.Equal(Tuesday, rig.Read(21));
+        Assert.Null(rig.Read(9));
+        Assert.Null(rig.Read(22));
+    }
+
+    [Theory]
+    [InlineData(2, 0, 15)]
+    [InlineData(-5, 17, 14)]
+    public void CalendarFieldsFollowTheRoomTimezoneWhileElapsedUnitsStayUtc(int hours, int hour, int day)
+    {
+        var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
+        rig.Variables.TimeZone = () => TimeZoneInfo.CreateCustomTimeZone("g3", TimeSpan.FromHours(hours), "g3", "g3");
+        rig.Give(Tuesday);
+        Assert.Equal((hour, 2023, 11, day), (rig.Read(4), rig.Read(10), rig.Read(9), rig.Read(6)));
+        Assert.Equal(Tuesday, rig.Read(21));
+        Assert.Equal(Tuesday / 86400, rig.Read(24));
+    }
+
+    [Fact]
+    public void CreationAndLastUpdateModesReadTheMillisecondsOfTheVariablesOwnTimestamps()
+    {
+        var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 1);
+        rig.Clock.Now = DateTimeOffset.FromUnixTimeMilliseconds(1_700_000_000_123);
+        rig.Give(5);
+        rig.Clock.Now = DateTimeOffset.FromUnixTimeMilliseconds(1_700_003_661_456);
+        rig.Set(6);
+        Assert.Equal(123, rig.Read(1));
+        Assert.Equal(1_700_000_000_123, rig.Read(20));
+        Assert.Equal(Tuesday, rig.Read(21));
+        Assert.Equal(22, rig.Read(4));
+        rig.Configure(WiredVariableTimeUtilities.ValidMask, 2);
+        Assert.Equal(456, rig.Read(1));
+        Assert.Equal(1_700_003_661_456, rig.Read(20));
+        Assert.Equal(Tuesday + 3661, rig.Read(21));
+        Assert.Equal(23, rig.Read(4));
+        Assert.Equal(14, rig.Read(3));
+        Assert.Equal(21, rig.Read(2));
+        // The value mode is a different reading of the same variable: the stored 6 is second six of 1970.
+        rig.Configure(WiredVariableTimeUtilities.ValidMask, 0);
+        Assert.Equal(6, rig.Read(21));
+        Assert.Equal(1970, rig.Read(10));
+    }
+
+    [Fact]
+    public void TwoElapsedUnitsSubtractToTheTimeBetweenTwoInstants()
+    {
+        var rig = new G3TimeRig(1 << 23, 0);
+        rig.Give(Tuesday);
+        var first = rig.Read(23)!.Value;
+        rig.Set(Tuesday + 7200 + 59);
+        Assert.Equal(2, rig.Read(23)!.Value - first);
+    }
+
+    [Theory]
+    [InlineData(-1L, 1970)]
+    [InlineData(long.MinValue, 1970)]
+    [InlineData(253402300799L, 9999)]
+    public void AnOutOfEraValueClampsAtTheEpochOrReadsAsNothingInsteadOfFailing(long value, int year)
+    {
+        var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
+        rig.Give(value);
+        Assert.Equal(year, rig.Read(10));
+    }
+
+    [Theory]
+    [InlineData(253402300800L)]
+    [InlineData(long.MaxValue)]
+    public void AValueBeyondTheLastCalendarYearHasNoCalendarOrElapsedReading(long value)
+    {
+        var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
+        rig.Give(value);
+
+        foreach (var sub in new[] { 1, 4, 10, 20, 21, 26 }) {
+            Assert.Null(rig.Read(sub));
+        }
+    }
+
+    [Fact]
+    public void ADerivedTimeVariableIsReadOnly()
+    {
+        var rig = new G3TimeRig(1 << 10, 0);
+        rig.Give(Tuesday);
+        var id = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, 10, true)!.Value;
+        var derived = new WiredVariableReference(WiredVariableTarget.User, $"custom:{id}");
+        Assert.False(rig.Module.Mutate(derived, rig.Holder, WiredVariableMutation.Set, 1, rig.Frame));
+        Assert.False(rig.Module.Mutate(derived, rig.Holder, WiredVariableMutation.Give, 1, rig.Frame));
+        Assert.Equal(2023, rig.Read(10));
+    }
+
+    [Theory]
+    [InlineData(0, 0, true)]
+    [InlineData(0x7FE | 0x7F00000, 2, true)]
+    [InlineData(1 << 1, 1, true)]
+    [InlineData(1 << 0, 0, false)]
+    [InlineData(1 << 11, 0, false)]
+    [InlineData(1 << 19, 0, false)]
+    [InlineData(1 << 27, 0, false)]
+    [InlineData(-1, 0, false)]
+    [InlineData(0, 3, false)]
+    [InlineData(0, -1, false)]
+    public void ASubVariableOrClockTheEditorDoesNotOfferIsRefusedNotTrimmed(int mask, int mode, bool accepted)
+    {
+        Assert.True(WiredBoxRegistry.TryGet("wf_xtra_var_time_util", out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = [mask, mode] };
+        Assert.Equal(accepted, WiredNativeEditorProjection.TryCompile(10, descriptor, native, out _));
+        Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { OwnedIntParams = [mask] }, out _));
+        Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { Text = "x" }, out _));
+    }
+}

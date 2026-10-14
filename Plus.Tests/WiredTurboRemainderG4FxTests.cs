@@ -109,6 +109,18 @@ public sealed class WiredTurboRemainderG4FxTests
 
     [Theory]
     [MemberData(nameof(AllCards))]
+    public void TheOfficialEditorSendsZeroForEveryUnpickedVariableSlotAndTheCardStillSaves(string card)
+    {
+        // Observed on hhus: variableIds ["0","0","0"] in the initial frame and in every saved frame of the six cards.
+        Assert.NotNull(Bind(card, variables: ["0", "0", "0"]));
+        Assert.NotNull(Bind(card, variables: ["n", "n", "n"]));
+        // With an audience restriction the third slot must be a real variable, and "0" is none.
+        Assert.Null(Bind(card, ints => { ints[1] = 3; return ints; }, variables: ["0", "0", "0"]));
+        Assert.NotNull(Bind(card, ints => { ints[1] = 3; return ints; }, variables: ["0", "0", "user:12"]));
+    }
+
+    [Theory]
+    [MemberData(nameof(AllCards))]
     public void TheOrderInTheFxStackReachesTheClientOnlyWhenItIsNotZero(string card)
     {
         Assert.DoesNotContain("stack_order", Bind(card)!.Config.Extra.Keys);
@@ -596,7 +608,7 @@ public sealed class WiredTurboRemainderG4FxTests
     }
 
     [Fact]
-    public void AnyFxUsingTheLevellingColourReadsTheLevelsToo()
+    public void ALevelBadgeInTheLevellingColourCarriesTheLevelExtras()
     {
         var world = new World();
         world.Give(10, Holder, 150);

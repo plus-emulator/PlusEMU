@@ -55,6 +55,37 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
+    // Room 14 also has an unused collision trigger, an unrelated walk-on area and variable metadata.
+    // None of those may split a blocked queue step from its same-pulse snapshot restore.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ColourTileQueueStaysStationaryWithOtherWiredInTheRoom(bool unrelatedWalkStack)
+    {
+        var layout = ColourTileFastQueueLayout().ToList();
+        layout.Add((19, 8, 15, 0, 0, "wf_trg_collision", null));
+        layout.Add((20, 2, 4, 0, 0, "wf_var_echo", null));
+        layout.Add((21, 2, 4, 1, 0, "wf_xtra_var_text_connector", null));
+        if (unrelatedWalkStack) {
+            layout.Add((22, 8, 16, 0, 0, "wf_trg_walks_on_furni", System.Text.Json.JsonSerializer.Serialize(new WiredConfiguration
+            { IntParams = [200] })));
+            layout.Add((23, 8, 16, 1, 0, "wf_slc_furni_area", System.Text.Json.JsonSerializer.Serialize(new WiredConfiguration
+            { IntParams = [2, 2, 1, 1] })));
+        }
+
+        var f = new Fixture(layout.ToArray(), live: true);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        var packets = CapturePublication(rider);
+        for (var pulse = 1; pulse <= 10; pulse++) {
+            packets.Clear();
+            f.Advance(pulse == 1 ? 250 : 200);
+            var furniture = ReadPublication(packets).Where(move => move.Type == 1).ToArray();
+            Assert.NotEmpty(furniture);
+            Assert.All(furniture, move => Assert.Equal(move.FromX, move.ToX));
+            Assert.Equal(Math.Min(4 + pulse, 11), rider.X);
+        }
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

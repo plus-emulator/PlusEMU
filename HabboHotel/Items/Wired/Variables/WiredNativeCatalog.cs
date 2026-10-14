@@ -138,6 +138,31 @@ internal sealed record WiredNativeEndpoint(WiredVariableDescription Description,
 
 internal static class WiredNativeCatalogProjection
 {
+    /// <summary>
+    /// The built-in (@) and smart (~) variables every room catalogue lists, under Habbo's fixed ids. The AIR variable pickers
+    /// (NewVariablePicker.filteredAllVariables, WIN63-202610131318) list only the room catalogue, so these rows are what puts
+    /// "@index" or "@direction" in the Echo, Give, Change and condition pickers. Type 1 is class_4027.INTERNAL.
+    /// </summary>
+    internal static ImmutableArray<WiredNativeVariable> Builtins { get; } = [.. WiredHabboVariableIds.All.Select(Builtin)];
+
+    private static WiredNativeVariable Builtin((string Id, WiredVariableTarget Target, string Token) entry)
+    {
+        var reference = new WiredVariableReference(entry.Target, entry.Token);
+        var hasValue = RoomWiredBuiltinVariables.HasNumericValue(reference);
+
+        return new(entry.Id, 1, entry.Token["internal:".Length..], 999, CatalogTarget(entry.Target), false,
+            RoomWiredBuiltinVariables.SupportsPresenceMutation(reference), hasValue,
+            hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference), false, false, false, false, null);
+    }
+
+    private static int CatalogTarget(WiredVariableTarget target) => target switch
+    {
+        WiredVariableTarget.Furni => 0,
+        WiredVariableTarget.User => 1,
+        WiredVariableTarget.Global => -10,
+        _ => -20
+    };
+
     internal static WiredNativeVariable Project(WiredNativeEndpoint endpoint, ImmutableArray<KeyValuePair<int, string>>? connector)
     {
         var description = endpoint.Description;
@@ -149,13 +174,7 @@ internal static class WiredNativeCatalogProjection
         var presence = writable && (builtin is { } reference ? RoomWiredBuiltinVariables.SupportsPresenceMutation(reference)
             : endpoint.Terminal?.Target is WiredVariableTarget.User or WiredVariableTarget.Furni or WiredVariableTarget.Context);
         var timestamps = !derived && builtin is null && endpoint.Terminal is not null;
-        var target = definition.Target switch
-        {
-            WiredVariableTarget.Furni => 0,
-            WiredVariableTarget.User => 1,
-            WiredVariableTarget.Global => -10,
-            _ => -20
-        };
+        var target = CatalogTarget(definition.Target);
 
         return new(description.CatalogId, description.IsDerived ? 3 : definition.Link is null ? 0 : 2,
             definition.Name, builtin is not null || definition.Target == WiredVariableTarget.Context ? 999

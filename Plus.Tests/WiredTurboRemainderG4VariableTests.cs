@@ -683,7 +683,7 @@ public sealed class WiredTurboRemainderG4VariableTests
 
         Assert.True(variables.TryCaptureNativeCatalog(out var catalog));
 
-        Assert.Equal(["user:10", "user:11"], catalog!.Variables.Select(variable => variable.Id).Order());
+        Assert.Equal(["user:10", "user:11"], catalog!.Variables.Where(variable => variable.Type != 1).Select(variable => variable.Id).Order());
         Assert.Equal(2, catalog.Variables.Single(variable => variable.Id == "user:11").Type);
         Assert.DoesNotContain(catalog.Variables, variable => variable.Name == "idle");
     }

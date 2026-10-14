@@ -39,7 +39,7 @@ public sealed class WiredMonitorDataComposer(WiredMonitorSnapshot snapshot) : IS
         foreach (var tally in _captured.Logs.Tallies) {
             var latest = tally.Latest;
             packet.WriteString(WiredRoomLogEntry.TypeName(tally.Source));
-            packet.WriteString(WiredRoomLogEntry.LevelName(latest?.Level ?? (tally.Source == WiredLogSource.WiredLog ? 1 : WiredRoomLog.ErrorLevel)));
+            packet.WriteString(WiredRoomLogEntry.LevelName(latest?.Level ?? (tally.Source == WiredLogSource.WiredLog ? WiredRoomLog.InfoLevel : WiredRoomLog.ErrorLevel)));
             packet.WriteInteger(tally.Count);
             packet.WriteInteger(latest == null ? 0 : Seconds(latest));
             packet.WriteString(latest?.Reason ?? "");
@@ -77,7 +77,7 @@ public sealed class WiredRoomLogPageComposer(WiredRoomLogPage page, int levelFil
             packet.WriteInteger(unchecked((int)(entry.Id >> 32)));
             packet.WriteInteger(unchecked((int)entry.Id));
             packet.WriteByte((byte)entry.Level);
-            packet.WriteByte((byte)entry.Source);
+            packet.WriteByte((byte)entry.WireSource);
             packet.WriteString(entry.Message);
             WiredVariableHoldersPageComposer.WriteTimestamp(packet, entry.Timestamp);
         }

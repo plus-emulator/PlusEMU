@@ -663,7 +663,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 var message = context.Policy.FormatText(context, config.Text);
                 _roomLog.Append(Param(config, 0), WiredLogSource.WiredLog, Item.Id, Descriptor.CanonicalName, message, _clock.GetUtcNow());
-                _logger.Log(Param(config, 0) switch { 0 => LogLevel.Debug, 1 => LogLevel.Information, 2 => LogLevel.Warning, _ => LogLevel.Error }, "{Message}", message);
+                _logger.Log(Param(config, 0) switch { 0 => LogLevel.Information, 1 => LogLevel.Warning, 2 => LogLevel.Error, _ => LogLevel.Debug }, "{Message}", message);
 
                 return true;
             case "wf_act_show_message":

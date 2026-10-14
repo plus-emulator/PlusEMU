@@ -271,7 +271,7 @@ public class ModernWiredRuntimeTests
             .SetValue(f.Room.GetWired(), settings);
         var item = MakeItem(102, "wf_act_log");
         var box = Assert.IsType<WiredModernAction>(f.Room.GetWired().CreateConfiguredBox(item, Descriptor("wf_act_log")));
-        Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [2, 0], Text = "Gate opened" }, out var config, out _));
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [1, 0], Text = "Gate opened" }, out var config, out _));
         box.ApplyConfiguration(config);
         f.Items[102] = item;
         f.Engine.Add(box);
@@ -281,21 +281,21 @@ public class ModernWiredRuntimeTests
         await RoomLogsPage().Parse(f.Room, f.Client, Request(1, 50, -1, -1, ""));
         var page = Reply(alice, ServerPacketHeader.WiredRoomLogPageComposer);
         Assert.Equal((1, 1, 50, 1), (page.Int(), page.Int(), page.Int(), page.Int()));
-        Assert.Equal((1d, 2, 8, "Gate opened"), (page.Long(), page.Byte(), page.Byte(), page.String()));
+        Assert.Equal((1d, 1, 1, "Gate opened"), (page.Long(), page.Byte(), page.Byte(), page.String()));
         var millis = page.Long();
         Assert.InRange(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - millis, 0, 60_000);
         Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds((long)millis).UtcDateTime.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture), page.String());
         Assert.Equal((false, false, false), (page.Bool(), page.Bool(), page.Bool()));
         page.End();
 
-        await RoomLogsPage().Parse(f.Room, f.Client, Request(9, 50, 2, 8, " GATE "));
+        await RoomLogsPage().Parse(f.Room, f.Client, Request(9, 50, 1, 1, " GATE "));
         page = Reply(alice, ServerPacketHeader.WiredRoomLogPageComposer);
         Assert.Equal((1, 1, 50, 1), (page.Int(), page.Int(), page.Int(), page.Int()));
         Assert.Equal("Gate opened", page.Skip(2, 1, 1).String());
         page.Skip(2).String();
-        Assert.Equal((true, 2, true, 8, true, "GATE"), (page.Bool(), page.Byte(), page.Bool(), page.Byte(), page.Bool(), page.String()));
+        Assert.Equal((true, 1, true, 1, true, "GATE"), (page.Bool(), page.Byte(), page.Bool(), page.Byte(), page.Bool(), page.String()));
         page.End();
-        await RoomLogsPage().Parse(f.Room, f.Client, Request(1, 50, -1, 4, "")); // a source Plus never writes
+        await RoomLogsPage().Parse(f.Room, f.Client, Request(1, 50, -1, 0, "")); // System: the engine wrote no note
         page = Reply(alice, ServerPacketHeader.WiredRoomLogPageComposer);
         Assert.Equal((0, 1, 50, 0), (page.Int(), page.Int(), page.Int(), page.Int()));
 
@@ -400,7 +400,7 @@ public class ModernWiredRuntimeTests
         // Seed one room log line through the real wired log action.
         var item = MakeItem(102, "wf_act_log");
         var box = Assert.IsType<WiredModernAction>(f.Room.GetWired().CreateConfiguredBox(item, Descriptor("wf_act_log")));
-        Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [2, 0], Text = "Gate opened" }, out var config, out _));
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [1, 0], Text = "Gate opened" }, out var config, out _));
         box.ApplyConfiguration(config);
         f.Items[102] = item;
         f.Engine.Add(box);

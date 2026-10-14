@@ -51,8 +51,8 @@ public sealed class WiredRoomLogsPageEvent(IWiredMonitorService monitor) : RoomP
             return Task.CompletedTask;
         }
 
-        // Every source the client can filter by is accepted; the ones Plus never writes read as empty.
-        if (packet.HasDataRemaining() || level is < -1 or > 3 || source is < -1 or > (int)WiredLogSource.WiredLog || query.Length > MaxQuery) {
+        // Every source the client can filter by is accepted: 0 System, 1 Wired.
+        if (packet.HasDataRemaining() || level is < -1 or > 3 || source is < -1 or > WiredRoomLogEntry.WiredSource || query.Length > MaxQuery) {
             return Task.CompletedTask;
         }
 

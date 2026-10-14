@@ -186,10 +186,10 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
                 {
                     InternalIdToOutgoingIdMapping = new Dictionary<uint, uint>
                     {
-                        [9473] = 9473,
-                        [9474] = 9474,
-                        [9475] = 9475,
-                        [9476] = 9476
+                        [3340] = 3340,
+                        [1418] = 1418,
+                        [1943] = 1943,
+                        [2532] = 2532
                     }
                 },
                 SendCallback = args => { sentFx.Add(BinaryPrimitives.ReadUInt16BigEndian(args.MemoryBuffer.Span.Slice(4, 2))); return true; }
@@ -212,7 +212,7 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
             var fxFrame = new WiredVariableFrame(room, [holders[0]]);
             var viewers = new[] { new WiredVariableFxViewer(fxUser, [holders[0]]) };
             Assert.True(roomVariables.FlushFx(fxFrame, viewers, (client, packet) => client.Send(packet), exception => throw exception));
-            Assert.Equal(new uint[] { 9473, 9475 }, sentFx);
+            Assert.Equal(new uint[] { 3340, 1943 }, sentFx);
             sentFx.Clear();
             atomicDb.Commands = 0;
             Assert.False(roomVariables.FlushFx(fxFrame, viewers, (client, packet) => client.Send(packet), exception => throw exception));
@@ -225,11 +225,11 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
             Assert.True(failedSend);
             Assert.True(roomVariables.FxDirty);
             roomVariables.FlushFx(fxFrame, viewers, (client, packet) => client.Send(packet), exception => throw exception);
-            Assert.Equal(new uint[] { 9473, 9475 }, sentFx);
+            Assert.Equal(new uint[] { 3340, 1943 }, sentFx);
             sentFx.Clear();
             fxItem.SetState(1, 1, 0, []);
             roomVariables.FlushFx(fxFrame, viewers, (client, packet) => client.Send(packet), exception => throw exception);
-            Assert.Equal(new uint[] { 9476 }, sentFx);
+            Assert.Equal(new uint[] { 2532 }, sentFx);
             output.WriteLine("Actual room FX binding/composition: initial configs/status, unchanged flush zero SQL, enqueue-failure retry, and moved-off-variable removal passed.");
             // Exercise production readiness and cycle entry with the same actual SQL module, not FlushFx directly.
             TestRoomUserSnapshots.Install(liveRoom);
@@ -260,7 +260,7 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
                     throw new IOException("Injected native snapshot enqueue failure");
                 }
 
-                if (header is >= 9473 and <= 9476) {
+                if (header is 3340 or 1418 or 1943 or 2532) {
                     if (failFx) {
                         failedFx = true;
                         throw new IOException("Injected native FX enqueue failure");
@@ -288,7 +288,7 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
             Assert.Single(nativeWired.CaptureFxViewers());
             atomicDb.Commands = 0;
             nativeWired.OnCycle();
-            Assert.Equal(new uint[] { 9473, 9475 }, sentFx);
+            Assert.Equal(new uint[] { 3340, 1943 }, sentFx);
             var nativeReadCommands = atomicDb.Commands;
             Assert.InRange(nativeReadCommands, 1, 5);
             sentFx.Clear();
@@ -305,17 +305,17 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
             Assert.Empty(sentFx);
             failFx = false;
             nativeWired.OnCycle();
-            Assert.Equal(new uint[] { 9473, 9475 }, sentFx);
+            Assert.Equal(new uint[] { 3340, 1943 }, sentFx);
             sentFx.Clear();
             admin.Execute("UPDATE rooms SET owner='invalid-owner' WHERE id=@room", new { room });
             roomVariables.InvalidateFx();
             nativeWired.OnCycle();
-            Assert.Contains(9476u, sentFx);
+            Assert.Contains(2532u, sentFx);
             sentFx.Clear();
             admin.Execute("UPDATE rooms SET owner=@owner WHERE id=@room", new { owner = owner.ToString(), room });
             roomVariables.InvalidateFx();
             nativeWired.OnCycle();
-            Assert.Contains(9475u, sentFx);
+            Assert.Contains(1943u, sentFx);
             sentFx.Clear();
             var replacementViewer = new RoomUser(fxPlayer.Id, 0, fxUser.VirtualId, liveRoom, fxClient, TestChatEmotions.Unused, TestRewardProgress.Unused);
             liveUsers[replacementViewer.VirtualId] = replacementViewer;
@@ -324,7 +324,7 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
             Assert.Empty(nativeWired.CaptureFxViewers());
             liveRoom.SendObjects(fxClient);
             nativeWired.OnCycle();
-            Assert.Equal(new uint[] { 9473, 9475 }, sentFx);
+            Assert.Equal(new uint[] { 3340, 1943 }, sentFx);
             sentFx.Clear();
             liveUsers[fxUser.VirtualId] = fxUser;
             liveRoom.SendObjects(fxClient);
@@ -332,7 +332,7 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
             sentFx.Clear();
             fxItem.SetState(1, 1, 0, []);
             nativeWired.OnCycle();
-            Assert.Equal(new uint[] { 9476 }, sentFx);
+            Assert.Equal(new uint[] { 2532 }, sentFx);
             sentFx.Clear();
             output.WriteLine($"Actual SQL + native Room.SendObjects/OnCycle FX: initial {nativeReadCommands} SQL commands; unchanged0; no pre-snapshot FX; failed snapshot/send retry; owner recheck; same-ID viewer replacement; detach-placement removal passed.");
             var global = Assert.IsType<WiredVariableDefinitionBox>(roomVariables.CreateBox(new Item

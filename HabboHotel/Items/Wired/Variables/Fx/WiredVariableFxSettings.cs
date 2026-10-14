@@ -49,7 +49,8 @@ public static class WiredVariableFxSettings
     public static ImmutableArray<int> Defaults(int category)
     {
         var style = WiredVariableFxStyles.All[(category, 0)];
-        int[] ints = [1, 2, 0, 7, 0, 3000, 0, style.DefaultColor, style.DefaultWidth, style.DefaultRenderer, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0];
+        // Observed on hhus (r90 varfx-a/b): the fresh editor frame leaves colour, width and renderer at -1; a save normalises them per style.
+        int[] ints = [1, 2, 0, 7, 0, 3000, 0, -1, -1, -1, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0];
 
         return [.. ints, category == 2 ? style.SubRenderers[0] : 0, 0];
     }

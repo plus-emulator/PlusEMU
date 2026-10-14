@@ -99,10 +99,10 @@ public static class ServerPacketHeader
     public const uint WiredClickSettingsComposer = 1136;
     public const uint WiredClickUserResponseComposer = 202;
     public const uint InClientLinkComposer = 2231;
-    public const uint WiredVariableFxConfigsComposer = 9473;
-    public const uint WiredVariableFxConfigsRemovedComposer = 9474;
-    public const uint WiredVariableFxStatusComposer = 9475;
-    public const uint WiredVariableFxStatusRemovedComposer = 9476;
+    public const uint WiredVariableFxConfigsComposer = 3340; // class_2593 (new 2205)
+    public const uint WiredVariableFxConfigsRemovedComposer = 1418; // class_3245 (new 364)
+    public const uint WiredVariableFxStatusComposer = 1943; // class_2741 (new 2372)
+    public const uint WiredVariableFxStatusRemovedComposer = 2532; // class_2530 (new 214)
     public const uint WiredUserVariablesDataComposer = 5103;
     public const uint WiredAllVariablesHashComposer = 2585;
     public const uint WiredAllVariablesDiffComposer = 2364;

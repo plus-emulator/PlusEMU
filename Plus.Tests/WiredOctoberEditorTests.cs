@@ -70,6 +70,18 @@ public sealed class WiredOctoberEditorTests
         Assert.Equal(accepted, WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [.. ints] }));
 
     [Fact]
+    public void UserLevelAdvertisesTheUserConditionFooter()
+    {
+        // LevelMatches.as overrides the same members as the badge condition (class_4263.as); both get one user source and a user quantifier.
+        var level = WiredNativeEditorProjection.Metadata("wf_cnd_user_level");
+        var badge = WiredNativeEditorProjection.Metadata("wf_cnd_wearing_badge");
+
+        Assert.Equal(badge.UsersAllowed.Single().ToArray(), level.UsersAllowed.Single().ToArray());
+        Assert.Equal((badge.QuantifierType, badge.FurniAllowed.Length), (level.QuantifierType, level.FurniAllowed.Length));
+        Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_cnd_user_level", native => native with { UserSourceTypes = [11], Quantifier = 1 }));
+    }
+
+    [Fact]
     public void ProgressAchievementTakesValueOrVariableAndTheAchievementName()
     {
         var runtime = WiredOctoberEditorParityTests.Compile("wf_act_progress_ach", native => native with

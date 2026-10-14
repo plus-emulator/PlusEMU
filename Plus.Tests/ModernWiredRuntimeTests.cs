@@ -3188,9 +3188,45 @@ public partial class ModernWiredRuntimeTests
         Assert.False(action.Execute(context));
         Assert.Equal(0, actor.X);
         context.Policy.Addons.Physics = new(false, new HashSet<uint>(), new HashSet<int> { 8 }, new HashSet<uint>());
+        Assert.False(action.Execute(context));
+        Assert.Equal(0, actor.X);
+        context.Policy.Addons.Physics = new(false, new HashSet<uint> { 10 }, new HashSet<int> { 8 }, new HashSet<uint>());
         Assert.True(action.Execute(context));
         Assert.Equal(1, actor.X);
         Assert.Equal(0, actor.Y);
+    }
+
+    [Theory]
+    [InlineData(false, false, false, false)]
+    [InlineData(false, true, false, true)]
+    [InlineData(false, false, true, false)]
+    [InlineData(false, true, true, true)]
+    [InlineData(true, false, false, false)]
+    [InlineData(true, true, false, true)]
+    [InlineData(true, false, true, false)]
+    [InlineData(true, true, true, true)]
+    public void AvatarPhysicsChecksFurnitureSeparatelyFromPassedUsers(bool executor, bool throughFurni, bool occupied, bool expected)
+    {
+        using var f = new TeleportFixture();
+        f.Target.Definition.Walkable = false;
+        f.Target.Definition.IsSeat = false;
+        f.Room.GetGameMap().AddToMap(f.Target);
+        var resident = occupied ? f.AddPlayer(8, 1, 1) : null;
+        if (executor) {
+            f.UseExecutor();
+        }
+
+        var context = Context(f.Room, new(WiredEventKind.Use) { Actor = f.User }, f.Items.Values.ToArray(), RoomUsers(f.Room).Values.ToArray());
+        context.Policy.Addons.DisableAnimation = true;
+        context.Policy.Addons.Physics = new(false,
+            throughFurni ? new HashSet<uint> { f.Target.Id } : new HashSet<uint>(),
+            resident == null ? new HashSet<int>() : new HashSet<int> { resident.VirtualId }, new HashSet<uint>());
+        var movement = new WiredRoomMovement(f.Room.GetWired().DispatchWalkTransition);
+        using (RoomOwnerScope.Enter(f.Room)) {
+            Assert.Equal(expected, movement.MoveAvatar(context, f.User, 1, 1, false));
+        }
+        Assert.Equal(expected ? new Point(1, 1) : new Point(0, 0), f.User.Coordinate);
+        Assert.Empty(f.Errors);
     }
 
     [Fact]

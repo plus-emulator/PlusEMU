@@ -35,7 +35,7 @@ public partial class WiredComponent
         }
 
         _fxViewers[viewer] = ready;
-        session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.WiredEnvironmentComposer(_clickUserTriggers.Count != 0, _room.Id));
+        session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.WiredEnvironmentComposer(_clickUserTriggers.Count != 0, _room.Id, EnabledAchievements()));
 
         if (_variables?.IsValueCreated == true) {
             _variables.Value.InvalidateFx();

@@ -27,10 +27,13 @@ public partial class WiredComponent
         .Select(item => TryGet(item.Id, out var box) ? box as IWiredConfiguredItem : null).OfType<IWiredConfiguredItem>()
         .Where(box => ReferenceEquals(_room.GetRoomItemHandler().GetItem(box.Item.Id), box.Item));
 
-    /// <summary>Achievements an Achievement Enabler of this room lists, one per line (class_4012.as:27).</summary>
-    internal bool AchievementEnabled(string achievement) => achievement.Length > 0 && ConfiguredBoxes("wf_xtra_achievement_enabler")
-        .SelectMany(box => box.Configuration.Text.Split('\n'))
-        .Any(line => string.Equals(line.Trim(), achievement, StringComparison.OrdinalIgnoreCase));
+    /// <summary>Achievements the room's Achievement Enablers list, one per line (class_4012.as:27), first mention first.</summary>
+    internal IReadOnlyList<string> EnabledAchievements() => [.. ConfiguredBoxes("wf_xtra_achievement_enabler")
+        .SelectMany(box => box.Configuration.Text.Split('\n')).Select(line => line.Trim()).Where(line => line.Length > 0)
+        .Distinct(StringComparer.OrdinalIgnoreCase)];
+
+    internal bool AchievementEnabled(string achievement) => achievement.Length > 0
+        && EnabledAchievements().Contains(achievement, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Custom-text Global Placeholders of this room as $(name) to text; a later box with the same name wins.</summary>
     internal IReadOnlyDictionary<string, string> GlobalPlaceholders()
@@ -57,6 +60,14 @@ public partial class WiredComponent
 
         if (box is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_var_web_api" } webApi) {
             WebApiSaved(webApi);
+        }
+
+        // The editors of Progress Achievement list the enabled achievements from the environment packet.
+        if (box is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_achievement_enabler" }) {
+            foreach (var viewer in _fxViewers.Keys.Where(viewer => ReferenceEquals(_room.GetRoomUserManager().GetRoomUserByVirtualId(viewer.VirtualId), viewer))) {
+                viewer.GetClient()?.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.WiredEnvironmentComposer(
+                    _clickUserTriggers.Count != 0, _room.Id, EnabledAchievements()));
+            }
         }
     }
 

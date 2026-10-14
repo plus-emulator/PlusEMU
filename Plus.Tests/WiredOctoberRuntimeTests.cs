@@ -36,6 +36,15 @@ public sealed class WiredOctoberRuntimeTests
         Assert.Equal(ServerPacketHeader.WiredFurniHighlightComposer, new WiredFurniHighlightComposer([], 0, 0, 0, 0, 0).MessageId);
     }
 
+    [Fact]
+    public void EnvironmentPacketListsTheEnabledAchievements()
+    {
+        // class_3405.parse L25-42: [click user wired, n, achievement x n]; trailing fields are left unread.
+        var packet = new HabbiconTestSupport.RecordingPacket();
+        new WiredEnvironmentComposer(true, 42, ["ACH_RoomEntry", "ACH_Login"]).Compose(packet);
+        Assert.Equal(new object[] { true, 2, "ACH_RoomEntry", "ACH_Login", 1, 42 }, packet.Writes);
+    }
+
     [Theory]
     [InlineData(0, 1)]
     [InlineData(999, 1)]

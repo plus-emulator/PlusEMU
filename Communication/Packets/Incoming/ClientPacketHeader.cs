@@ -20,7 +20,6 @@ public static class ClientPacketHeader
     public const uint SetChatPreferenceEvent = 65476;
 
     // Catalog
-    public const uint GetCatalogIndexWithDiscountEvent = 3226; //1294
     public const uint GetCatalogPageEvent = 1972;
     public const uint GetProductOfferEvent = 336;
     public const uint GetKickbackInfoEvent = 84;
@@ -266,7 +265,6 @@ public static class ClientPacketHeader
     public const uint UnignoreUserEvent = 2333;
     public const uint OpenGiftEvent = 3313;
     public const uint ApplyDecorationEvent = 503;
-    public const uint GetRecipeConfigEvent = 2428; //3654
     public const uint ScrGetUserInfoEvent = 174;
     public const uint RemoveGroupMemberEvent = 3888;
     public const uint ConfirmRemoveGroupMemberEvent = 3580;
@@ -362,23 +360,10 @@ public static class ClientPacketHeader
     //public const uint OpenCampaignCalendarDoorEvent =;
 
     //catalog
-    //public const uint GetBonusRareInfoEvent =;
-    //public const uint GetCatalogPageExpirationEvent =;
-    //public const uint GetCatalogPageWithEarliestExpiryEvent =;
-    //public const uint GetDirectClubBuyAvailableEvent =;
-    //public const uint GetHabboBasicMembershipExtendOfferEvent =;
-    //public const uint GetLimitedOfferAppearingNextEvent =;
     public const uint GetHabboClubExtendOfferEvent = 1926;
-    //public const uint GetIsOfferGiftableEvent =;
-    //public const uint GetNextTargetedOfferEvent =;
-    //public const uint GetSeasonalCalendarDailyOfferEvent =;
-    //public const uint MarkCatalogNewAdditionsPageOpenedEvent =;
     public const uint PurchaseBasicMembershipExtensionEvent = 3881;
-    //public const uint PurchaseTargetedOfferEvent =;
     public const uint PurchaseVipMembershipExtensionEvent = 907;
     public const uint SelectClubGiftEvent = 2524;
-    //public const uint SetTargetedOfferStateEvent =;
-    //public const uint ShopTargetedOfferViewedEvent =;
 
 
     //recycler
@@ -388,19 +373,7 @@ public static class ClientPacketHeader
 
     //FriendList
     //public const uint FriendFurniConfirmLockEvent =;
-    //public const uint SetRelationshipStatusEvent =;
     //public const uint VisitUserEvent =;
-
-    //competition
-    //public const uint ForwardToACompetitionRoomEvent =;
-    //public const uint ForwardToASubmittableRoomEvent =;
-    //public const uint ForwardToRandomCompetitionRoomEvent =;
-    //public const uint GetCurrentTimingCodeEvent =;
-    //public const uint GetIsUserPartOfCompetitionEvent =;
-    //public const uint GetSecondsUntilEvent =;
-    //public const uint RoomCompetitionInitEvent =;
-    //public const uint SubmitRoomToCompetitionEvent =;
-    //public const uint VoteForRoomEvent =;
 
     //crafting
     public const uint CraftEvent = 2100;

@@ -637,4 +637,54 @@ public sealed class WiredTurboRemainderG4VariableTests
         Assert.Equal((7201u, 3, 1), (heard.RoomId, heard.Origin, heard.NativeOrigin(7201)));
         Assert.Empty(hall.DrainChanges());
     }
+
+    // The room's native variable catalog with an echo whose variable was never picked.
+
+    private sealed class CatalogDirectory : IWiredVariableDirectory
+    {
+        public Dictionary<uint, WiredVariableDefinition> Rows { get; } = [];
+        public uint? GetRoomOwner(uint id) => id == 42 ? 1u : null;
+        public WiredVariableDefinition? Find(uint id) => Rows.GetValueOrDefault(id);
+    }
+
+    [Fact]
+    public void AnEchoWithoutAVariableDoesNotHideTheRestOfTheRoomsCatalog()
+    {
+        var world = new WiredChestProtocolTests.World();
+        world.Room.Type = "private";
+        var directory = new CatalogDirectory();
+        var variables = world.Room.GetWired().Variables;
+        typeof(WiredRoomVariables).GetField("<Module>k__BackingField", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .SetValue(variables, new WiredVariableModule(42, directory, new MemoryWiredVariableStore(), world.Clock, new RoomWiredBuiltinVariables(world.Room)));
+        var floor = (System.Collections.Concurrent.ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling)
+            .GetField("_floorItems", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(world.Room.GetRoomItemHandler())!;
+
+        WiredVariableDefinitionBox Add(uint id, string name, WiredNativeEditorConfiguration? native = null)
+        {
+            Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
+            var item = new Item { Id = id, RoomId = 42, OwnerId = 1, Definition = new() { Id = id, InteractionName = name } };
+            floor[id] = item;
+            var box = new WiredVariableDefinitionBox(world.Room, item, descriptor);
+            WiredNativeTestSupport.Install(box, native ?? WiredNativeEditorProjection.DefaultNative(descriptor));
+            variables.ConfigurationLoaded(box);
+
+            return box;
+        }
+
+        var score = Add(10, "wf_var_user", WiredNativeEditorProjection.DefaultNative(Box("wf_var_user").Descriptor) with { OwnedIntParams = [10, 1], Text = "score" });
+        Assert.True(WiredVariableDefinitions.TryDecode("wf_var_user", 10, 42, 1, score.Configuration, out var scoreDefinition, out _));
+        directory.Rows[10] = scoreDefinition!;
+        var mirror = Add(11, "wf_var_echo", WiredNativeEditorProjection.DefaultNative(Box("wf_var_echo").Descriptor) with { Text = "mirror", VariableIds = ["user:10"] });
+        Assert.True(WiredVariableDefinitions.TryDecode("wf_var_echo", 11, 42, 1, mirror.Configuration, out var mirrorDefinition, out _));
+        directory.Rows[11] = mirrorDefinition!;
+        var idle = Add(12, "wf_var_echo", WiredNativeEditorProjection.DefaultNative(Box("wf_var_echo").Descriptor) with { Text = "idle", VariableIds = ["0"] });
+        Assert.False(WiredVariableDefinitions.TryDecode("wf_var_echo", 12, 42, 1, idle.Configuration, out _, out _));
+        Assert.True(WiredVariableDefinitions.IsUnpickedEcho("wf_var_echo", idle.Configuration));
+
+        Assert.True(variables.TryCaptureNativeCatalog(out var catalog));
+
+        Assert.Equal(["user:10", "user:11"], catalog!.Variables.Select(variable => variable.Id).Order());
+        Assert.Equal(2, catalog.Variables.Single(variable => variable.Id == "user:11").Type);
+        Assert.DoesNotContain(catalog.Variables, variable => variable.Name == "idle");
+    }
 }

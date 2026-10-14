@@ -232,12 +232,12 @@ public sealed class WiredTurboRemainderG3Tests
 
         public void Set(long value) => Assert.True(Module.Mutate(new(WiredVariableTarget.User, "custom:20"), Holder, WiredVariableMutation.Set, value, Frame));
 
-        public long? Read(int sub)
-        {
-            var id = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, sub, true)!.Value;
+        // The parts are not catalogue variables (hhus r84, r90), so the add-on's reading is checked on the stored value itself.
+        public long? Read(int sub) => TimeUtil.TimeUtilities is { } time && time.Has(sub)
+            && Module.Read(new(WiredVariableTarget.User, "custom:20"), Holder, Frame) is { } value ? time.Read(value, sub, Variables.TimeZone()) : null;
 
-            return Module.Read(new(WiredVariableTarget.User, $"custom:{id}"), Holder, Frame)?.Value;
-        }
+        public WiredVariableValue? ReadSynthetic(int sub) =>
+            Module.Read(new(WiredVariableTarget.User, $"custom:{WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, sub, true)!.Value}"), Holder, Frame);
 
         public string[] Names() => Variables.Catalog().Variables.Select(variable => variable.Definition.Name).Order().ToArray();
     }
@@ -260,26 +260,21 @@ public sealed class WiredTurboRemainderG3Tests
             Assert.Equal(value, rig.Read(sub));
         }
 
-        Assert.Equal(17, rig.Names().Count(name => name.StartsWith("stamp.")));
+        // Observed on hhus (r90 time-util, r84): the room catalogue lists only the parent, never the parts.
+        Assert.Equal(["stamp"], rig.Names());
     }
 
     [Fact]
-    public void TheEditorsWordsNameTheSubVariablesAndOnlyTheTickedOnesExist()
+    public void OnlyTheTickedPartsAreReadAndNoneBecomesACatalogueVariable()
     {
-        var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
+        var rig = new G3TimeRig((1 << 10) | (1 << 21), 0);
         rig.Give(Tuesday);
-        Assert.Equal(new[]
-        {
-            "stamp", "stamp.day", "stamp.day_of_month", "stamp.day_of_week", "stamp.day_of_year", "stamp.hour", "stamp.hour_of_day",
-            "stamp.millisecond", "stamp.milliseconds_of_seconds", "stamp.minute", "stamp.minute_of_hour", "stamp.month", "stamp.month_of_year",
-            "stamp.second", "stamp.seconds_of_minute", "stamp.week", "stamp.week_of_year", "stamp.year"
-        }.Order().ToArray(), rig.Names());
-        rig.Configure((1 << 10) | (1 << 21), 0);
-        Assert.Equal(["stamp", "stamp.second", "stamp.year"], rig.Names());
+        Assert.Equal(["stamp"], rig.Names());
         Assert.Equal(2023, rig.Read(10));
         Assert.Equal(Tuesday, rig.Read(21));
         Assert.Null(rig.Read(9));
         Assert.Null(rig.Read(22));
+        Assert.Null(rig.ReadSynthetic(10));
     }
 
     [Theory]
@@ -355,14 +350,14 @@ public sealed class WiredTurboRemainderG3Tests
     }
 
     [Fact]
-    public void ADerivedTimeVariableIsReadOnly()
+    public void ATimePartIdNamesNoVariable()
     {
         var rig = new G3TimeRig(1 << 10, 0);
         rig.Give(Tuesday);
         var id = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, 10, true)!.Value;
-        var derived = new WiredVariableReference(WiredVariableTarget.User, $"custom:{id}");
-        Assert.False(rig.Module.Mutate(derived, rig.Holder, WiredVariableMutation.Set, 1, rig.Frame));
-        Assert.False(rig.Module.Mutate(derived, rig.Holder, WiredVariableMutation.Give, 1, rig.Frame));
+        var part = new WiredVariableReference(WiredVariableTarget.User, $"custom:{id}");
+        Assert.False(rig.Module.Mutate(part, rig.Holder, WiredVariableMutation.Set, 1, rig.Frame));
+        Assert.Null(rig.ReadSynthetic(10));
         Assert.Equal(2023, rig.Read(10));
     }
 

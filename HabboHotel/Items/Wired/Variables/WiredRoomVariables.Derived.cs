@@ -38,13 +38,8 @@ public sealed partial class WiredRoomVariables
             }
         }
 
-        if (MetadataOn(definition.ItemId, "wf_xtra_var_time_util")?.TimeUtilities is { } time && (time.Mode == 0 ? source.HasValue : source.CanReadTimestamps)) {
-            foreach (var sub in time.Selected) {
-                if (SyntheticId(definition.Target, definition.ItemId, sub, true) is { } id && _room.GetRoomItemHandler().GetItem(id) is null) {
-                    yield return new(definition with { ItemId = id, Name = definition.Name + "." + WiredVariableTimeUtilities.Key(sub) }, true, true) { IsDerived = true };
-                }
-            }
-        }
+        // Time Utilities add no sub-variables to the room catalogue: observed on hhus in both modes (r84 creation time, r90 value), the
+        // catalogue lists only the parent. How the hotel exposes the parts, if at all, is not known.
     }
 
     private WiredVariableDerivation? ResolveDerived(WiredVariableReference reference)
@@ -58,16 +53,9 @@ public sealed partial class WiredRoomVariables
 
         var source = new WiredVariableReference(reference.Target, $"custom:{baseId}");
 
+        // Time Utilities parts are not catalogue variables (see DerivedDescriptions), so their ids resolve to nothing.
         if (isTime) {
-            var time = MetadataOn(baseId, "wf_xtra_var_time_util")?.TimeUtilities;
-
-            if (time is null || !time.Has(sub)) {
-                return null;
-            }
-
-            var zone = TimeZone();
-
-            return new(source, value => time.Read(value, sub, zone) is { } result ? new(result, null, null) : null, time.Mode == 0, time.Mode != 0);
+            return null;
         }
 
         if (QuestBinding(baseId) is { } quest && _quests is not null && sub < WiredQuestVariables.Keys(quest.Kind).Length) {

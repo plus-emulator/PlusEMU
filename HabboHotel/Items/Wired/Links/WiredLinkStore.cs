@@ -29,15 +29,21 @@ public interface IWiredLinkStore
     WiredLinkResult Delete(int ownerId, uint networkId, out IReadOnlyList<WiredLinkConnection> detached);
 }
 
-/// <summary>Result codes the link window reads (WiredLinkController): 0 ok, 3 invalid name, 5 cannot connect; others are refusals.</summary>
+/// <summary>
+/// Result codes of the link window: WiredLinkView.operationFailed (L170-187, WIN63-202610131318-860371703) shows
+/// ${wiredlink.error.N}; the external flash texts give the meanings.
+/// </summary>
 public enum WiredLinkResult
 {
     Ok = 0,
-    NotFound = 1,
-    LimitReached = 2,
+    OwnerOnly = 1,
+    NetworkMissing = 2,
     InvalidName = 3,
-    Denied = 4,
-    CannotConnect = 5
+    DuplicateName = 4,
+    AlreadyConnected = 5,
+    InvalidNetworkId = 6,
+    LinkUnavailable = 7,
+    NetworkLimit = 8
 }
 
 /// <summary>
@@ -100,13 +106,13 @@ public sealed class DatabaseWiredLinkStore(IDatabase database) : IWiredLinkStore
         }
 
         if (connection.ExecuteScalar<int?>("SELECT owner_id FROM wired_link_networks WHERE id = @Id FOR UPDATE", new { Id = networkId }, transaction) != ownerId) {
-            return WiredLinkResult.NotFound;
+            return WiredLinkResult.NetworkMissing;
         }
 
         // A room joins a network through one furni only (WiredLinkController.canConnect).
         if (connection.ExecuteScalar<int>("SELECT COUNT(*) FROM wired_link_endpoints e JOIN items i ON i.id = e.item_id "
             + "WHERE e.network_id = @NetworkId AND i.room_id = @RoomId AND e.item_id <> @ItemId", new { NetworkId = networkId, RoomId = roomId, ItemId = itemId }, transaction) > 0) {
-            return WiredLinkResult.CannotConnect;
+            return WiredLinkResult.AlreadyConnected;
         }
 
         connection.Execute("INSERT INTO wired_link_endpoints (item_id, network_id, receive_local) VALUES (@ItemId, @NetworkId, @ReceiveLocal) "
@@ -123,7 +129,11 @@ public sealed class DatabaseWiredLinkStore(IDatabase database) : IWiredLinkStore
         {
             if (connection.ExecuteScalar<int>("SELECT COUNT(*) FROM wired_link_networks WHERE owner_id = @OwnerId FOR UPDATE", new { OwnerId = ownerId }, transaction)
                 >= MaxNetworksPerOwner) {
-                return WiredLinkResult.LimitReached;
+                return WiredLinkResult.NetworkLimit;
+            }
+
+            if (NameTaken(connection, transaction, ownerId, name.Trim(), 0)) {
+                return WiredLinkResult.DuplicateName;
             }
 
             created = connection.ExecuteScalar<uint>("INSERT INTO wired_link_networks (owner_id, name) VALUES (@OwnerId, @Name); SELECT LAST_INSERT_ID();",
@@ -136,18 +146,21 @@ public sealed class DatabaseWiredLinkStore(IDatabase database) : IWiredLinkStore
         return result;
     }
 
-    public WiredLinkResult Rename(int ownerId, uint networkId, string name)
-    {
-        if (!ValidName(name)) {
-            return WiredLinkResult.InvalidName;
-        }
+    public WiredLinkResult Rename(int ownerId, uint networkId, string name) => !ValidName(name) ? WiredLinkResult.InvalidName
+        : InTransaction((connection, transaction) =>
+        {
+            if (connection.ExecuteScalar<int?>("SELECT owner_id FROM wired_link_networks WHERE id = @Id FOR UPDATE", new { Id = networkId }, transaction) != ownerId) {
+                return WiredLinkResult.NetworkMissing;
+            }
 
-        using var connection = database.Connection();
+            if (NameTaken(connection, transaction, ownerId, name.Trim(), networkId)) {
+                return WiredLinkResult.DuplicateName;
+            }
 
-        return connection.Execute("UPDATE wired_link_networks SET name = @Name WHERE id = @Id AND owner_id = @OwnerId",
-            new { Name = name.Trim(), Id = networkId, OwnerId = ownerId }) > 0 || Owned(connection, ownerId, networkId)
-            ? WiredLinkResult.Ok : WiredLinkResult.NotFound;
-    }
+            connection.Execute("UPDATE wired_link_networks SET name = @Name WHERE id = @Id", new { Name = name.Trim(), Id = networkId }, transaction);
+
+            return WiredLinkResult.Ok;
+        });
 
     public WiredLinkResult Delete(int ownerId, uint networkId, out IReadOnlyList<WiredLinkConnection> detached)
     {
@@ -155,7 +168,7 @@ public sealed class DatabaseWiredLinkStore(IDatabase database) : IWiredLinkStore
         var result = InTransaction((connection, transaction) =>
         {
             if (connection.ExecuteScalar<int?>("SELECT owner_id FROM wired_link_networks WHERE id = @Id FOR UPDATE", new { Id = networkId }, transaction) != ownerId) {
-                return WiredLinkResult.NotFound;
+                return WiredLinkResult.NetworkMissing;
             }
 
             members = connection.Query<ConnectionRow>(MemberSelect + "WHERE e.network_id = @NetworkId", new { NetworkId = networkId }, transaction).Select(row => row.Connection).ToArray();
@@ -169,8 +182,10 @@ public sealed class DatabaseWiredLinkStore(IDatabase database) : IWiredLinkStore
         return result;
     }
 
-    private static bool Owned(IDbConnection connection, int ownerId, uint networkId) =>
-        connection.ExecuteScalar<int>("SELECT COUNT(*) FROM wired_link_networks WHERE id = @Id AND owner_id = @OwnerId", new { Id = networkId, OwnerId = ownerId }) > 0;
+    // The column's utf8mb4_unicode_ci collation compares names without case, as the duplicate-name text expects.
+    private static bool NameTaken(IDbConnection connection, IDbTransaction transaction, int ownerId, string name, uint exceptId) =>
+        connection.ExecuteScalar<int>("SELECT COUNT(*) FROM wired_link_networks WHERE owner_id = @OwnerId AND name = @Name AND id <> @ExceptId",
+            new { OwnerId = ownerId, Name = name, ExceptId = exceptId }, transaction) > 0;
 
     private WiredLinkResult InTransaction(Func<IDbConnection, IDbTransaction, WiredLinkResult> work)
     {

@@ -11,20 +11,58 @@ namespace Plus.HabboHotel.Items.Wired.Links;
 /// </summary>
 public static class WiredLinkController
 {
-    // WiredLinkController operation constants, echoed in the result packet.
+    // WiredLinkController operation constants, echoed in the result packet. Result codes are WiredLinkResult.
     public const int Save = 1;
     public const int Create = 2;
     public const int Rename = 3;
     public const int Delete = 4;
     public const int Connections = 5;
 
-    private static bool TryOwned(Room room, GameClient session, uint furniId, out Item item, out int ownerId)
+    private static bool InRoom(Room room, GameClient session) => ReferenceEquals(session.GetHabbo()?.CurrentRoom, room);
+
+    /// <summary>7 when the furni is no WIRED Link of this room, 1 when the user does not own it (wiredlink.error.7, .1).</summary>
+    private static WiredLinkResult Owned(Room room, GameClient session, uint furniId, out Item item, out int ownerId)
     {
         ownerId = session.GetHabbo()?.Id ?? 0;
         item = room.GetRoomItemHandler().GetItem(furniId)!;
 
-        return item != null && WiredLinkTransport.IsLink(item) && ownerId > 0 && item.OwnerId == (uint)ownerId
-            && ReferenceEquals(session.GetHabbo().CurrentRoom, room);
+        return item == null || !WiredLinkTransport.IsLink(item) ? WiredLinkResult.LinkUnavailable
+            : ownerId <= 0 || item.OwnerId != (uint)ownerId ? WiredLinkResult.OwnerOnly : WiredLinkResult.Ok;
+    }
+
+    private static bool TryOwned(Room room, GameClient session, uint furniId, out Item item, out int ownerId) =>
+        Owned(room, session, furniId, out item, out ownerId) == WiredLinkResult.Ok && InRoom(room, session);
+
+    /// <summary>An operation's admission: the furni and its owner, then the network id; a refusal is answered with its code.</summary>
+    private static bool Admit(Room room, GameClient session, uint furniId, int operation, string? networkId, out Item item, out int ownerId,
+        out uint network)
+    {
+        network = 0;
+
+        if (!InRoom(room, session)) {
+            item = null!;
+            ownerId = 0;
+
+            return false;
+        }
+
+        var result = Owned(room, session, furniId, out item, out ownerId);
+
+        // wiredlink.error.6: an id that is not a canonical number, or no network where one is needed.
+        if (result == WiredLinkResult.Ok && networkId != null
+            && (!TryParseNetwork(networkId, out network) || network == 0 && operation != Save)) {
+            result = WiredLinkResult.InvalidNetworkId;
+        }
+
+        if (result == WiredLinkResult.Ok) {
+            return true;
+        }
+
+        // A furni the user may not configure gets no networks back.
+        session.Send(new WiredLinkOperationResultComposer(room.Id, furniId, operation, result, null, "",
+            result == WiredLinkResult.InvalidNetworkId ? room.GetWired().LinkStore.Networks(ownerId, room.Id) : []));
+
+        return false;
     }
 
     public static bool TryParseNetwork(string id, out uint networkId) =>
@@ -52,7 +90,7 @@ public static class WiredLinkController
 
     public static void SaveSelection(Room room, GameClient session, uint furniId, string networkId, bool receiveLocal)
     {
-        if (!TryOwned(room, session, furniId, out var item, out var ownerId) || !TryParseNetwork(networkId, out var network)) {
+        if (!Admit(room, session, furniId, Save, networkId, out var item, out var ownerId, out var network)) {
             return;
         }
 
@@ -62,7 +100,7 @@ public static class WiredLinkController
 
     public static void CreateNetwork(Room room, GameClient session, uint furniId, string name)
     {
-        if (!TryOwned(room, session, furniId, out var item, out var ownerId)) {
+        if (!Admit(room, session, furniId, Create, null, out var item, out var ownerId, out _)) {
             return;
         }
 
@@ -71,7 +109,7 @@ public static class WiredLinkController
 
     public static void RenameNetwork(Room room, GameClient session, uint furniId, string networkId, string name)
     {
-        if (!TryOwned(room, session, furniId, out var item, out var ownerId) || !TryParseNetwork(networkId, out var network) || network == 0) {
+        if (!Admit(room, session, furniId, Rename, networkId, out var item, out var ownerId, out var network)) {
             return;
         }
 
@@ -80,7 +118,7 @@ public static class WiredLinkController
 
     public static void DeleteNetwork(Room room, GameClient session, uint furniId, string networkId)
     {
-        if (!TryOwned(room, session, furniId, out var item, out var ownerId) || !TryParseNetwork(networkId, out var network) || network == 0) {
+        if (!Admit(room, session, furniId, Delete, networkId, out var item, out var ownerId, out var network)) {
             return;
         }
 
@@ -95,7 +133,7 @@ public static class WiredLinkController
 
     public static void SendConnections(Room room, GameClient session, uint furniId, string networkId)
     {
-        if (!TryOwned(room, session, furniId, out var item, out var ownerId) || !TryParseNetwork(networkId, out var network) || network == 0) {
+        if (!Admit(room, session, furniId, Connections, networkId, out var item, out var ownerId, out var network)) {
             return;
         }
 

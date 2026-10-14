@@ -73,13 +73,26 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((0, 50, WiredLinkController.Save, 0), (saved.Int(), saved.Int(), saved.Int(), saved.Int()));
         Assert.Equal((50u, 0u, false), store.Selected);
 
-        // A network id that is not a canonical number, extra bytes, or someone else's furni get no answer.
+        // wiredlink.error.6: a network id that is not a canonical number.
         await new WiredLinkSaveSelectionEvent().Parse(f.Room, f.Client, EditorTestSupport.Incoming(50, "07", false));
+        var invalid = Reply(sent, ServerPacketHeader.WiredLinkOperationResultComposer);
+        Assert.Equal((0, 50, WiredLinkController.Save, 6, false), (invalid.Int(), invalid.Int(), invalid.Int(), invalid.Int(), invalid.Bool()));
+
+        // wiredlink.error.7: a furni that is no WIRED Link of the room.
+        await new WiredLinkDeleteNetworkEvent().Parse(f.Room, f.Client, EditorTestSupport.Incoming(999, "7"));
+        Assert.Equal((0, 999, WiredLinkController.Delete, 7), Codes(Reply(sent, ServerPacketHeader.WiredLinkOperationResultComposer)));
+
+        // Extra bytes get no answer; someone else's furni does not open and answers operations with wiredlink.error.1.
         await new WiredLinkRequestConfigEvent().Parse(f.Room, f.Client, EditorTestSupport.Incoming(50, 1));
         link.OwnerId = 2;
         WiredLinkController.Open(f.Client, link);
         await new WiredLinkRequestConfigEvent().Parse(f.Room, f.Client, EditorTestSupport.Incoming(50));
         Assert.Empty(sent);
+        await new WiredLinkCreateNetworkEvent().Parse(f.Room, f.Client, EditorTestSupport.Incoming(50, "Doors"));
+        var refused = Reply(sent, ServerPacketHeader.WiredLinkOperationResultComposer);
+        Assert.Equal((0, 50, WiredLinkController.Create, 1), Codes(refused));
+        Assert.Equal((false, "", 0), (refused.Bool(), refused.String(), refused.Int()));
+        refused.End();
     }
 
     [Fact]
@@ -121,6 +134,19 @@ public partial class ModernWiredRuntimeTests
         var removal = Reply(sent, ServerPacketHeader.WiredLabelsUpdateComposer);
         Assert.Equal((0, 1, 60), (removal.Int(), removal.Int(), removal.Int()));
         Assert.Equal(new[] { store.Saved[61] }, f.Room.GetWired().Labels());
+    }
+
+    private static (int Room, int Furni, int Operation, int Result) Codes(WireReader result) => (result.Int(), result.Int(), result.Int(), result.Int());
+
+    [Fact]
+    public void LinkResultCodesAreTheOfficialErrorTexts()
+    {
+        // WiredLinkView.operationFailed (L170-187) shows ${wiredlink.error.N}; external_flash_texts wiredlink.error.1-8.
+        Assert.Equal(new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 }, new[]
+        {
+            WiredLinkResult.Ok, WiredLinkResult.OwnerOnly, WiredLinkResult.NetworkMissing, WiredLinkResult.InvalidName, WiredLinkResult.DuplicateName,
+            WiredLinkResult.AlreadyConnected, WiredLinkResult.InvalidNetworkId, WiredLinkResult.LinkUnavailable, WiredLinkResult.NetworkLimit
+        }.Select(result => (int)result));
     }
 
     private static Item LabelFurni(TeleportFixture f, uint id, int x, int y)

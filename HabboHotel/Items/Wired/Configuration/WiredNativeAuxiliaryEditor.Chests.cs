@@ -46,11 +46,12 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_act_give_currency", new(ChestMeta(2, 2, [0, 1, 0, -20, 1, 11], 1, [100, 0], [0, 0]), n => Reward(n, 11, 13)));
         yield return new("wf_act_give_furni", new(ChestMeta(2, 2, [0, 1, 0, -20, 1, 0], 1, [100, 0], [0, 0]), n => Reward(n, 0, 2)));
         // Mode, multiplier, option, target, timeout flag and seconds; chests, contracts and the merged reference.
+        // Observed on hhus: mode 0 stores a multiplier below 2 as 2.
         yield return new("wf_act_init_transaction", new(TransactionMeta(TwoPickLists, 3, 2, [0, 10, 0, -20, 0, 300], 1, [100, 101, 0], [0, 0]), n =>
         {
             var p = n.OwnedIntParams;
 
-            return Shape(n, 6, 3, 2, 1) && TryTarget(p[3], out var target) ? ChestDraft(n, [p[0], p[1], p[2], target, p[4], p[5]], n.Text) : null;
+            return Shape(n, 6, 3, 2, 1) && TryTarget(p[3], out var target) ? ChestDraft(n, [p[0], p[0] == 0 && p[1] == 1 ? 2 : p[1], p[2], target, p[4], p[5]], n.Text) : null;
         }));
         yield return new("wf_act_cancel_transaction", new(TransactionMeta(OnePickList, 1, 1, [0], 0, [100], [0]), n =>
             Shape(n, 1, 1, 1, 0) ? ChestDraft(n, [.. n.OwnedIntParams]) : null));

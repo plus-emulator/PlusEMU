@@ -60,6 +60,18 @@ public sealed class WiredNativeAuxiliaryTests
         };
     }
 
+    [Theory]
+    [InlineData(0, 1, 2)]
+    [InlineData(0, 2, 2)]
+    [InlineData(0, 7, 7)]
+    [InlineData(1, 1, 1)]
+    [InlineData(2, 1, 1)]
+    public void InitiateTransactionStoresMultiplierTwoForModeZeroOnly(int mode, int multiplier, int stored)
+    {
+        var init = Compile("wf_act_init_transaction", Native("wf_act_init_transaction", [mode, multiplier, 0, -20, 1, 30], [100, 0, 0], [0, 0], ["n"]));
+        Assert.Equal(stored, init.IntParams[1]);
+    }
+
     [Fact]
     public void ScalarBoxesKeepTheOpaqueIdsAndTranslateTargetsLiteralsAndComparisons()
     {

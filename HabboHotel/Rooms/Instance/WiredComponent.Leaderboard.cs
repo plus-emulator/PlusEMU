@@ -10,11 +10,16 @@ namespace Plus.HabboHotel.Rooms.Instance;
 /// Variable Leaderboard overlays (VariableLeaderboardController, WIN63-202610131318-860371703). On room entry the client asks with
 /// [0, 0, "0", no chunks] and gets the snapshot of published boards (at most four); it then subscribes to at most two 50-row chunks
 /// of the selected variable and gets them now and again when the variable changes. A save of a board republishes the snapshot.
+/// Observed on hhus (r90, pair-leaderboard): every room entry carries the snapshot (10 bytes when empty), a save republishes it at
+/// once, a pickup republishes it without the board, and row updates after value writes arrive seconds later (+5.3 s, +9.4 s), not in
+/// the write's tick: changed variables are pushed no sooner than <see cref="LeaderboardPushDelay"/> after the first unsent change.
 /// </summary>
 public partial class WiredComponent
 {
     public const int MaxLeaderboards = 4;
     public const int MaxLeaderboardChoices = 10;
+    public static readonly TimeSpan LeaderboardPushDelay = TimeSpan.FromSeconds(5);
+    private DateTimeOffset? _leaderboardPushDue;
 
     private readonly object _leaderboardGate = new();
     private readonly Dictionary<uint, int> _leaderboardRevisions = [];
@@ -49,12 +54,15 @@ public partial class WiredComponent
         return new(published ? checked((int)box.Item.Id) : 0, box.Item.GetX, box.Item.GetY, candidates.Count, [.. candidates.Take(MaxLeaderboardChoices)]);
     }
 
+    /// <summary>The room's leaderboard snapshot for one user, as on room entry.</summary>
+    public void SendLeaderboardSnapshot(GameClient session) => session.Send(new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors()));
+
     /// <summary>The published boards of the room, lowest furni id first, each with its persisted user variables to choose from.</summary>
-    public IReadOnlyList<WiredLeaderboardDescriptor> LeaderboardDescriptors()
+    public IReadOnlyList<WiredLeaderboardDescriptor> LeaderboardDescriptors(uint? leaving = null)
     {
         var descriptors = new List<WiredLeaderboardDescriptor>();
 
-        foreach (var box in ConfiguredBoxes("wf_xtra_var_leaderboard")) {
+        foreach (var box in ConfiguredBoxes("wf_xtra_var_leaderboard").Where(box => box.Item.Id != leaving)) {
             if (WiredLeaderboardConfig.Decode(box.Configuration.IntParams, box.Configuration.VariableIds, box.Configuration.Text) is not { Published: true } config) {
                 continue;
             }
@@ -149,7 +157,15 @@ public partial class WiredComponent
             _leaderboardRevisions[box.Item.Id] = LeaderboardRevisionUnlocked(box.Item.Id) + 1;
         }
 
-        var snapshot = new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors());
+        BroadcastLeaderboards(null);
+    }
+
+    /// <summary>A board left the room: everyone gets the snapshot without it.</summary>
+    private void LeaderboardRemoved(uint itemId) => BroadcastLeaderboards(itemId);
+
+    private void BroadcastLeaderboards(uint? leaving)
+    {
+        var snapshot = new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors(leaving));
 
         foreach (var client in _room.GetRoomUserManager()?.GetRoomUsers().Select(user => user.GetClient()).OfType<GameClient>() ?? []) {
             client.Send(snapshot);
@@ -168,6 +184,8 @@ public partial class WiredComponent
             foreach (var change in changes) {
                 _dirtyLeaderboardVariables.Add(change.Key.DefinitionId);
             }
+
+            _leaderboardPushDue ??= _clock.GetUtcNow() + LeaderboardPushDelay;
         }
     }
 
@@ -177,9 +195,11 @@ public partial class WiredComponent
         KeyValuePair<(int HabboId, int OverlayId), LeaderboardSubscription>[] due;
 
         lock (_leaderboardGate) {
-            if (_dirtyLeaderboardVariables.Count == 0) {
+            if (_dirtyLeaderboardVariables.Count == 0 || _leaderboardPushDue is not { } pushAt || _clock.GetUtcNow() < pushAt) {
                 return;
             }
+
+            _leaderboardPushDue = null;
 
             due = [.. _leaderboardSubscriptions.Where(pair => DefinitionOf(pair.Value.VariableId) is { } id && _dirtyLeaderboardVariables.Contains(id))];
             _dirtyLeaderboardVariables.Clear();

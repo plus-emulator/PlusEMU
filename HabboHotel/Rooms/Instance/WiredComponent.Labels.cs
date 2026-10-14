@@ -52,15 +52,9 @@ public partial class WiredComponent
     // FurnitureLabelWidget.canView (L255): everyone sees visibility 0, wired readers see every label.
     private bool CanSeeLabel(GameClient session, WiredLabel label) => label.Visibility == 0 || Settings.CanInspect(session);
 
-    /// <summary>The room's labels this user may see, sent on room entry.</summary>
-    public void SendLabels(GameClient session)
-    {
-        var labels = Labels();
-
-        if (labels.Count > 0) {
-            session.Send(new WiredLabelsComposer([.. labels.Where(label => CanSeeLabel(session, label))]));
-        }
-    }
+    /// <summary>The room's labels this user may see, sent on room entry; empty when there are none (observed on hhus, r90: 10 bytes).</summary>
+    public void SendLabels(GameClient session) =>
+        session.Send(new WiredLabelsComposer([.. Labels().Where(label => CanSeeLabel(session, label))]));
 
     private void PublishLabel(WiredLabel? changed, uint furniId)
     {

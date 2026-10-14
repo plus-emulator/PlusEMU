@@ -74,6 +74,10 @@ public partial class PlacedFurniRoomTests
         var expected = new List<uint>
         {
             ServerPacketHeader.RoomEntryInfoComposer,
+            // Observed on hhus (r90): labels, the playing-game flag and the leaderboard snapshot come with every room entry.
+            ServerPacketHeader.WiredLabelsComposer,
+            ServerPacketHeader.YouArePlayingGameComposer,
+            ServerPacketHeader.WiredVariableLeaderboardSnapshotComposer,
             ServerPacketHeader.RoomVisualizationSettingsComposer,
             ServerPacketHeader.UserChangeComposer,
             ServerPacketHeader.RoomEventComposer

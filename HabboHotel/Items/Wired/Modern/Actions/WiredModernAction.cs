@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Plus.Communication.Packets.Outgoing.Rooms.Chat;
+using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Rooms;
@@ -455,7 +456,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         }
                     }
 
-                    changed |= name == "wf_act_join_team"
+                    var moved = name == "wf_act_join_team"
                         ? WiredGameState.For(context.Room).Join(context.Room, user, Param(config, 0), (Team)Param(config, 1), Param(config, 3), context.Targets.AllUsers(),
                             (member, team, effect) => Deliver(() =>
                             {
@@ -470,6 +471,14 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                                 member.ApplyEffect(0);
                             }
                         }));
+
+                    // Observed on hhus (r90 game-b): YouArePlayingGame goes out with the join (true) and the leave (false), in the same
+                    // tick and ahead of the team effect (223 on join, 0 on leave) of the next state update.
+                    if (moved) {
+                        user.GetClient()?.Send(new YouArePlayingGameComposer(name == "wf_act_join_team"));
+                    }
+
+                    changed |= moved;
                 }
 
                 return changed;

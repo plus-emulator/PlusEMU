@@ -453,4 +453,5 @@ public static class ServerPacketHeader
     public const uint WiredFurniVisualizationStateComposer = 3355; // class_3560 (new 1826)
     public const uint WiredUserVisualizationStateComposer = 2901; // class_3459 (new 1454)
     public const uint ObjectRemoveConfirmComposer = 3498; // package_64/class_3455 (new 1631)
+    public const uint YouArePlayingGameComposer = 1293; // package_44/class_3256 (new 403)
 }

@@ -203,6 +203,10 @@ public partial class WiredComponent
             LabelDetached(item);
         }
 
+        if (DescriptorOf(item)?.CanonicalName == "wf_xtra_var_leaderboard" && TryGet(item.Id, out _)) {
+            LeaderboardRemoved(item.Id);
+        }
+
         _counters.Forget(item);
         WiredProjectileFlights.For(_room).Forget(item);
 

@@ -95,6 +95,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.PublicationEvaluationIsSilent = box => box is Plus.HabboHotel.Items.Wired.Modern.Addons.WiredAddonBox or Plus.HabboHotel.Items.Wired.Modern.Selectors.WiredSelectorBox
             or Plus.HabboHotel.Items.Wired.Modern.Addons.WiredOctoberAddonBox
             or Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredModernCondition
+            // This add-on only installs a deferred formatter; the message action performs the reads/output.
+            || box is WiredVariableAddonBox { Descriptor.CanonicalName: "wf_xtra_text_output_variable" }
             || box.GetType() == typeof(Plus.HabboHotel.Items.Wired.Modern.Triggers.WiredModernTrigger)
             || box is Plus.HabboHotel.Items.Wired.Modern.Triggers.WiredModernTimedTrigger;
         _engine.PublicationObserverIsSilent = evt => evt.Kind != WiredEventKind.Leave;

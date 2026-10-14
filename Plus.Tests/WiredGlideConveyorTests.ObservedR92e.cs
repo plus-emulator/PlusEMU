@@ -71,19 +71,34 @@ public sealed partial class WiredGlideConveyorTests
             { IntParams = [200] })));
             layout.Add((23, 8, 16, 1, 0, "wf_slc_furni_area", System.Text.Json.JsonSerializer.Serialize(new WiredConfiguration
             { IntParams = [2, 2, 1, 1] })));
+            layout.Add((24, 8, 16, 2, 0, "wf_xtra_text_output_variable", "native:" +
+                """{"Version":2,"Category":4,"NativeCode":15,"OwnedIntParams":[0,1,0],"Text":"direction\t, ","PrimaryItems":[],"SecondaryItems":[],"FurniSourceTypes":[100],"UserSourceTypes":[0],"VariableIds":["-232"],"Delay":null,"Quantifier":null,"Filter":null,"Inverse":null,"SavedState":{"Snapshots":[]}}"""));
         }
 
         var f = new Fixture(layout.ToArray(), live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
+        var errors = new List<Exception>();
+        f.SetEngineCallback("_error", (Action<Exception>)errors.Add);
+        if (unrelatedWalkStack) {
+            f.SetBoxField(24, "_variables", new WiredVariableModule(14, new QueueVariableDirectory(),
+                new MemoryWiredVariableStore(), TimeProvider.System));
+        }
         for (var pulse = 1; pulse <= 10; pulse++) {
             packets.Clear();
             f.Advance(pulse == 1 ? 250 : 200);
+            Assert.Empty(errors);
             var furniture = ReadPublication(packets).Where(move => move.Type == 1).ToArray();
             Assert.NotEmpty(furniture);
             Assert.All(furniture, move => Assert.Equal(move.FromX, move.ToX));
             Assert.Equal(Math.Min(4 + pulse, 11), rider.X);
         }
+    }
+
+    private sealed class QueueVariableDirectory : IWiredVariableDirectory
+    {
+        public WiredVariableDefinition? Find(uint itemId) => null;
+        public uint? GetRoomOwner(uint roomId) => roomId == 14 ? 1u : null;
     }
 
     [Theory]

@@ -87,6 +87,14 @@ public partial class WiredComponent
         return true;
     }
 
+    /// <summary>
+    /// A permanent or shared variable box (availability 10 or 11): hhus asks before picking it up, since its stored values go with it
+    /// (r90, wf_var_user; in-room variables were picked up directly).
+    /// </summary>
+    public bool StoresVariableData(Item item) => item.Definition.WiredDescriptor?.Category == WiredBoxCategory.Variable
+        && TryGet(item.Id, out var box) && box is IWiredConfiguredItem
+        && Variables.Module.DescribeDefinitions([item.Id]).FirstOrDefault()?.Definition.IsDurable == true;
+
     internal bool SendLink(Item[] endpoints, WiredLinkPayload payload, WiredEventKind kind) =>
         WiredLinkTransport.Send(_room, endpoints, payload, kind, LinkStore, _room.Rooms);
 }

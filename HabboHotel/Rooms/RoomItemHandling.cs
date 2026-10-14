@@ -148,6 +148,7 @@ public partial class RoomItemHandling
     public void TryAddRoller(uint itemId, Item roller)
     {
         _rollers.TryAdd(itemId, roller);
+        GotRollers = true;
     }
 
     public void QueueRoomItemUpdate(Item item)

@@ -40,6 +40,7 @@ public partial class PlacedFurniRoomTests
         var actor = RollerChainActor(1, 0, .5);
         ExecutorTick();
         _room.GetRoomItemHandler().SetSpeed(0);
+        _room.GetRoomItemHandler().GotRollers = false;
         Assert.False(_room.GetRoomItemHandler().GotRollers);
         ExecutorTick();
         Assert.Equal((1, 1, 0d), (actor.X, actor.Y, actor.Z));

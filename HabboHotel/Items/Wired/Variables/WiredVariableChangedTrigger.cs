@@ -35,10 +35,11 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
         error = "Choose a scalar variable and change types.";
         var p = proposed.IntParams;
 
-        if (proposed.Version != 1 || p.Length != 8 || !Enum.IsDefined((WiredVariableTarget)p[0])
+        var pickedBoxes = p.Length == 9 && p[8] == 1;
+        if (proposed.Version != 1 || p.Length != 8 && !pickedBoxes || !Enum.IsDefined((WiredVariableTarget)p[0])
             || p.Skip(1).Take(6).Any(value => value is not (0 or 1)) || proposed.VariableIds.Length != 1
-            || WiredVariableAbsent.Is(proposed.VariableIds[0])
-            || !WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out var target, out var pickedToken) || (int)target != p[0]) {
+            || !pickedBoxes && (WiredVariableAbsent.Is(proposed.VariableIds[0])
+                || !WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out var target, out _) || (int)target != p[0])) {
             return false;
         }
 
@@ -47,7 +48,9 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
         }
 
         // Room variables and built-ins are never created or deleted by a box.
-        if (p[0] == (int)WiredVariableTarget.Global || pickedToken.StartsWith("internal:", StringComparison.Ordinal)) {
+        if (!pickedBoxes && (p[0] == (int)WiredVariableTarget.Global
+            || WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out _, out var pickedToken)
+                && pickedToken.StartsWith("internal:", StringComparison.Ordinal))) {
             p = p.SetItem(1, 0).SetItem(6, 0);
         }
 
@@ -66,19 +69,30 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
     {
         if (!ReferenceEquals(context.Room, Instance) || context.Event.Kind != WiredEventKind.Variable
             || context.Event.VariableChange is not { } change || change.RoomId != context.Room.Id
-            || !TryValidateConfiguration(context.ConfigurationOf(this), out var config, out _)
-            || !Instance.GetWired().Variables.Module.TryResolveCatalogId(config.VariableIds[0], (WiredVariableTarget)config.IntParams[0], out var reference)) {
+            || !TryValidateConfiguration(context.ConfigurationOf(this), out var config, out _)) {
             return false;
         }
 
-        return Matches(config with { Text = reference.Token }, change, context.Room.Id);
+        var module = Instance.GetWired().Variables.Module;
+        if (config.IntParams.Length == 9) return MatchesPickedBoxes(config, change, module, context.Room.Id);
+        return module.TryResolveCatalogId(config.VariableIds[0], (WiredVariableTarget)config.IntParams[0], out var reference)
+            && Matches(config with { Text = reference.Token }, change, context.Room.Id);
+    }
+    // Source-derived scalar support. Resolve only live definitions of this room through the module's ownership checks.
+    // Echo/reference/derived-box identity is intentionally not guessed without a runtime observation.
+    internal static bool MatchesPickedBoxes(WiredConfiguration config, WiredVariableChange change, WiredVariableModule module, uint roomId)
+    {
+        if (change.RoomId != roomId || module.RoomId != roomId || config.IntParams.Length != 9 || config.IntParams[8] != 1) return false;
+        return module.DescribeDefinitions(config.SelectedItems).Any(variable => variable.Definition.Link is null
+            && variable.Definition.Target != WiredVariableTarget.Context
+            && Matches(config with { IntParams = config.IntParams.SetItem(0, (int)variable.Definition.Target), Text = variable.Definition.Token }, change, roomId));
     }
     public static bool Matches(WiredConfiguration config, WiredVariableChange change) => Matches(config, change, change.RoomId);
     public static bool Matches(WiredConfiguration config, WiredVariableChange change, uint currentRoomId)
     {
         var p = config.IntParams;
 
-        if (p.Length != 8 || p[0] != (int)change.Key.Target) {
+        if (p.Length is not (8 or 9) || p[0] != (int)change.Key.Target) {
             return false;
         }
 

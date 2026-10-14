@@ -1,0 +1,31 @@
+{
+  "evidenceLevel": "AIR static source-derived; not live runtime verified",
+  "sources": [
+    {
+      "path": "/home/krypton/habbo-wired-runtime-20261012/protocol/current-source-r75/decompiled/scripts/com/sulake/habbo/roomevents/wired_setup/triggerconfs/VariableUpdate.as",
+      "sha256": "a7e59a14a02b1a78b7f9959cce5f1426ebf61ea05b73eda25ca3c0991eefe86b"
+    },
+    {
+      "path": "/home/krypton/habbo-wired-runtime-20261012/protocol/current-source-r75/decompiled/scripts/com/sulake/habbo/roomevents/wired_setup/selectors/WithVariable.as",
+      "sha256": "5ea4e4ab0f4b777d62bce231b41f43acada88e575a5e846d67bdf77b98ecc28c"
+    }
+  ],
+  "changes": {
+    "VariableUpdate": {
+      "wire": "six owned ints [created,changed,deleted,deltaMask,originMask,mode]; one variableId; selected furniture IDs",
+      "implemented": "mode1 watches directly selected current-room scalar user/furniture/global definitions through existing module ownership checks and existing change/origin filters",
+      "notEstablished": [
+        "echo/reference boxes (links) as watched aliases",
+        "derived smart-variable definitions",
+        "context variable boxes"
+      ],
+      "compatibility": "mode0 retains previous eight-int runtime; mode1 appends a ninth runtime mode flag. Native catalogue and IDs unchanged."
+    },
+    "WithVariable": {
+      "wire": "sixth owned int selects referenceVariableOnTarget; reference must have same target as selected entity",
+      "implemented": "read the reference on each candidate using the existing evaluation snapshot; do not reuse the first reference-source operand for every candidate",
+      "compatibility": "legacy nine-int executor remains; same-holder adds tenth runtime flag. Filter/inverse remain indices7/8."
+    }
+  },
+  "referenceCheck": "Local Habz WiredTriggerVariableChanged has no picked-variable-box mode; no local live observation of that mode was identified. No Habz code copied."
+}

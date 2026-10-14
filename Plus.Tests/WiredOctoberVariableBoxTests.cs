@@ -37,11 +37,11 @@ public sealed class WiredOctoberVariableBoxTests
         // Age: [target, comparison, clock, duration high, duration low, unit, from variable, reference target].
         // With the duration read from a variable the compiled form also carries the second selector's two sources.
         Assert.Equal(12, WiredOctoberEditorParityTests.Compile("wf_cnd_var_age_match", n => n with { OwnedIntParams = [0, 0, 0, 0, 0, 1, 1, -10], VariableIds = ["furni:10", "room:12"], Quantifier = 0 }).IntParams.Length);
-        // With Variable and Variable Changed gain a sixth field; the same-holder selector and box watch mode are not implemented.
+        // With Variable and Variable Changed gain an implemented sixth mode field.
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_trg_var_changed", n => n with { OwnedIntParams = [1, 1, 0, 7, -1, 0] }));
-        Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_trg_var_changed", n => n with { OwnedIntParams = [1, 1, 0, 7, -1, 1] }));
+        Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_trg_var_changed", n => n with { OwnedIntParams = [1, 1, 0, 7, -1, 1] }));
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_slc_furni_with_var", n => n with { OwnedIntParams = [2, 0, 0, 0, -10, 0] }));
-        Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_slc_furni_with_var", n => n with { OwnedIntParams = [2, 2, 0, 0, 0, 1] }));
+        Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_slc_furni_with_var", n => n with { OwnedIntParams = [2, 2, 0, 0, 0, 1] }));
     }
 
     [Fact]

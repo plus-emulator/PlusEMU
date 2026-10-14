@@ -153,8 +153,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         }));
         // Variable (fixed target), comparison, value mode (none, literal, variable), value (high, low), the variable's target.
         // Observed: a selector offers no selector-pool source, defaults to picked furni (100) and the triggering user (0), allows walls.
-        yield return new("wf_slc_furni_with_var", new(SelectorMeta([2, 0, 0, 0, -10]), WithVariable));
-        yield return new("wf_slc_users_with_var", new(SelectorMeta([2, 0, 0, 0, -10]), WithVariable));
+        yield return new("wf_slc_furni_with_var", new(SelectorMeta([2, 0, 0, 0, -10]), n => WithVariable(n, 1)));
+        yield return new("wf_slc_users_with_var", new(SelectorMeta([2, 0, 0, 0, -10]), n => WithVariable(n, 0)));
         // Created, value changed, deleted; increased/decreased/unchanged mask; origin mask. The target comes from the chosen variable.
         yield return new("wf_trg_var_changed", new(Meta(0, 0, [1, 1, 0, 7, -1, 0], 1), n =>
         {
@@ -163,8 +163,17 @@ internal static partial class WiredNativeAuxiliaryEditor
             // The scalar target follows the picked variable's own target; an unchosen variable keeps the user default.
             var target = 0;
 
-            // The October editor (VariableUpdate) adds the watch mode: 0 the picked variable, 1 the variables of picked
-            // variable boxes. Only the first is implemented here.
+            // AIR VariableUpdate: mode 1 watches the selected variable definition boxes, independently of the disabled picker.
+            if (Shape(n, 6, 0, 0, 1) && p[5] == 1) {
+                if (p[0] is not (0 or 1) || p[1] is not (0 or 1) || p[2] is not (0 or 1) || p[3] is < 0 or > 7) {
+                    return null;
+                }
+
+                var pickedDraft = Draft(n, [0, p[0], p[1], p[3] & 1, p[3] >> 1 & 1, p[3] >> 2 & 1, p[2], p[4] < 0 ? -1 : p[4] & 15, 1]);
+                return Plus.HabboHotel.Items.Wired.Variables.WiredVariableChangedTrigger.TryNormalize(pickedDraft, out var pickedNormalized, out _) ? pickedNormalized : pickedDraft;
+            }
+
+            // Mode 0 retains the existing scalar catalogue lookup and its eight-field runtime.
             if (Shape(n, 6, 0, 0, 1) && p[5] == 0) {
                 n = n with { OwnedIntParams = p[..5] };
                 p = n.OwnedIntParams;
@@ -206,23 +215,26 @@ internal static partial class WiredNativeAuxiliaryEditor
             ? Draft(n, [target, n.UserSourceTypes[0], n.FurniSourceTypes[0], n.Quantifier ?? 0]) : null;
     }
 
-    private static WiredConfiguration? WithVariable(WiredNativeEditorConfiguration n)
+    private static WiredConfiguration? WithVariable(WiredNativeEditorConfiguration n, int destination)
     {
         var p = n.OwnedIntParams;
 
-        // The October editor (WithVariable) adds "same holder" as a sixth field; only its off state is implemented here.
-        if (Shape(n, 6, 1, 1, 2) && p[5] == 0) {
+        // WithVariable.as: referenceVariableOnTarget reads the reference on each candidate holder.
+        var sameHolder = Shape(n, 6, 1, 1, 2) ? p[5] : 0;
+        if (sameHolder is not (0 or 1)) return null;
+        if (Shape(n, 6, 1, 1, 2)) {
             n = n with { OwnedIntParams = p[..5] };
             p = n.OwnedIntParams;
         }
 
         if (!Shape(n, 5, 1, 1, 2) || n.Filter is null || n.Inverse is null || p[0] is < 0 or > 5 || p[1] is < 0 or > 2
-            || !TryTarget(p[4], out var target) || p[3] < 0 != (p[2] == -1) || p[2] is not (0 or -1)) {
+            || !TryTarget(p[4], out var target) || sameHolder == 1 && (p[1] != 2 || target != destination) || p[3] < 0 != (p[2] == -1) || p[2] is not (0 or -1)) {
             return null;
         }
 
         // The selector executor takes a 32-bit literal; a wider one has no representation here.
-        return Draft(n, [p[1] == 0 ? 0 : 1, ScalarComparison[p[0]], p[1] == 2 ? 1 : 0, p[3], target, n.UserSourceTypes[0],
-            n.FurniSourceTypes[0], n.Filter.Value ? 1 : 0, n.Inverse.Value ? 1 : 0]);
+        int[] core = [p[1] == 0 ? 0 : 1, ScalarComparison[p[0]], p[1] == 2 ? 1 : 0, p[3], target, n.UserSourceTypes[0],
+            n.FurniSourceTypes[0], n.Filter.Value ? 1 : 0, n.Inverse.Value ? 1 : 0];
+        return Draft(n, sameHolder == 1 ? [.. core, 1] : [.. core]);
     }
 }

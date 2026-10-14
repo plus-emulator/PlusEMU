@@ -29,15 +29,57 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             return false;
         }
 
-        var inventory = habbo.Inventory;
-
-        if (inventory == null) {
+        if (habbo.Inventory == null) {
             if (_sessions.TryGetValue(habbo.Id, out var invalid)) {
                 End(invalid, WiredChestFailure.Invalid);
             }
             else {
                 Fail(actor, sourceId, WiredChestFailure.Invalid);
             }
+
+            return false;
+        }
+
+        var snapshots = Read(chests);
+        var usable = contract == null ? snapshots : snapshots.Where(chest => chest.Usable).ToArray();
+
+        // A reward is paid at once and opens no window, so what the user is doing meanwhile does not matter (Turbo RoomWiredTransactionSystem.RewardAsync).
+        if (contract is { Kind: WiredContractKind.Reward }) {
+            if (usable.Length == 0) {
+                Fail(actor, sourceId, WiredChestFailure.NoOrLockedChests);
+
+                return false;
+            }
+
+            var result = Move(client, new()
+            {
+                RoomId = room.Id,
+                UserId = habbo.Id,
+                SourceId = sourceId,
+                ChestIds = usable.Select(chest => chest.Id).ToArray(),
+                Reward = WiredChestContracts.Scale(contract.Reward, multiplier),
+                Wired = true,
+                Multiplier = multiplier
+            });
+
+            if (result.Succeeded && !result.Replayed) {
+                client.Send(new WiredChestRewardComposer(result, contract.RewardText, contract.ShowDialog));
+            }
+
+            Outcome(actor, sourceId, result);
+
+            return result.Succeeded;
+        }
+
+        // A wired transaction works with the usable chests among the picked ones and fails only when none is (Turbo UsableChests);
+        // a user's own deposit needs every chest to take it.
+        var failure = contract != null ? usable.Length == 0 ? WiredChestFailure.NoOrLockedChests : (WiredChestFailure?)null
+            : snapshots.Length != chests.Length || snapshots.Length == 0 ? WiredChestFailure.ChestNotInRoom
+            : snapshots.Any(chest => !chest.CanDeposit((uint)habbo.Id, room.GetWired().Settings.CanModify(client))) ? WiredChestFailure.NoOrLockedChests
+            : (WiredChestFailure?)null;
+
+        if (failure != null) {
+            Fail(actor, sourceId, failure.Value);
 
             return false;
         }
@@ -57,44 +99,11 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             return false;
         }
 
-        var snapshots = Read(chests);
-        var failure = snapshots.Length != chests.Length || snapshots.Length == 0 ? WiredChestFailure.ChestNotInRoom
-            : contract != null && snapshots.Any(chest => !chest.Usable) ? WiredChestFailure.NoOrLockedChests
-            : contract == null && snapshots.Any(chest => !chest.CanDeposit((uint)habbo.Id, room.GetWired().Settings.CanModify(client))) ? WiredChestFailure.NoOrLockedChests
-            : (WiredChestFailure?)null;
-
-        if (failure != null) {
-            Fail(actor, sourceId, failure.Value);
-
-            return false;
-        }
-
-        if (contract is { Kind: WiredContractKind.Reward }) {
-            var result = Move(client, new()
-            {
-                RoomId = room.Id,
-                UserId = habbo.Id,
-                SourceId = sourceId,
-                ChestIds = chests.Select(item => item.Id).ToArray(),
-                Reward = WiredChestContracts.Scale(contract.Reward, multiplier),
-                Wired = true,
-                Multiplier = multiplier
-            });
-
-            if (result.Succeeded && !result.Replayed) {
-                client.Send(new WiredChestRewardComposer(result, contract.RewardText, contract.ShowDialog));
-            }
-
-            Outcome(actor, sourceId, result);
-
-            return result.Succeeded;
-        }
-
-        var session = new Session(client, actor, sourceId, chests.Select(item => item.Id).ToArray(), contract, mode, multiplier,
+        var session = new Session(client, actor, sourceId, usable.Select(chest => chest.Id).ToArray(), contract, mode, multiplier,
             timeout > 0 ? clock.GetUtcNow().AddSeconds(timeout) : null);
         _sessions[habbo.Id] = session;
         actor.IsTrading = true;
-        client.Send(new WiredChestTradeOpenComposer(contract, snapshots[0].Kind, mode, multiplier, timeout, previous != null));
+        client.Send(new WiredChestTradeOpenComposer(contract, usable[0].Kind, mode, multiplier, timeout, previous != null));
         SendOffer(session);
 
         return true;
@@ -190,13 +199,27 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         // Consume the session before I/O. Duplicate confirmations can never execute twice.
         _sessions.Remove(client.GetHabbo().Id);
         session.Actor.IsTrading = false;
+        // A wired transaction pays the chests that are still usable now and fails, paying nothing, when none is (Turbo CarryOutTradeAsync).
+        var chestIds = session.Contract == null ? session.Chests : session.Chests
+            .Select(id => room.GetRoomItemHandler().GetItem(id)).OfType<Item>().Select(item => Read(item)).OfType<WiredChestSnapshot>()
+            .Where(chest => chest.Usable).Select(chest => chest.Id).ToArray();
+
+        if (chestIds.Length == 0) {
+            var refused = WiredChestTransferResult.Refused(WiredChestFailure.NoOrLockedChests);
+            client.Send(new WiredChestTradeEndComposer(refused.Failure));
+            Outcome(session.Actor, session.SourceId, refused, notifyFailure: false);
+            RefreshChests(session.Chests);
+
+            return;
+        }
+
         var result = Move(client, new()
         {
             OperationId = session.OperationId,
             RoomId = room.Id,
             UserId = client.GetHabbo().Id,
             SourceId = session.SourceId,
-            ChestIds = session.Chests,
+            ChestIds = chestIds,
             PaymentIds = session.Contract == null ? session.Offer.ToArray()
                 : WiredChestContracts.Payment(session.Contract, offered, session.Mode, session.Multiplier),
             Reward = session.Contract is { Kind: WiredContractKind.Trade } trade ? WiredChestContracts.Scale(trade.Reward, times) : [],
@@ -225,7 +248,9 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         var changed = false;
 
         foreach (var actor in actors) {
-            if (_sessions.TryGetValue(actor.HabboId, out var session) && (any || contracts.Contains(session.SourceId))) {
+            // Only a contract's payment or trade can be cancelled by wired, not a user's plain deposit (Turbo WiredTradeGrain.CancelByWiredAsync).
+            if (_sessions.TryGetValue(actor.HabboId, out var session) && session.Contract != null && session.CancelAt == null
+                && (any || contracts.Contains(session.SourceId))) {
                 session.CancelAt = clock.GetUtcNow().AddMilliseconds(500);
                 changed = true;
             }
@@ -510,7 +535,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
     public void Outcome(RoomUser actor, uint sourceId, WiredChestTransferResult result, bool notifyFailure = true)
     {
         if (result.Succeeded) {
-            publish(new(WiredEventKind.TransactionComplete) { Actor = actor, EventItem = room.GetRoomItemHandler().GetItem(sourceId), Transaction = result.Figures });
+            publish(new(WiredEventKind.TransactionComplete) { Actor = actor, EventItem = room.GetRoomItemHandler().GetItem(sourceId), SourceId = sourceId, Transaction = result.Figures });
         }
         else {
             Fail(actor, sourceId, result.Failure!.Value, notifyFailure);
@@ -522,7 +547,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             actor.GetClient()?.Send(new WiredChestTradeEndComposer(reason));
         }
 
-        publish(new(WiredEventKind.TransactionFail) { Actor = actor, EventItem = room.GetRoomItemHandler().GetItem(sourceId), Code = (int)reason });
+        publish(new(WiredEventKind.TransactionFail) { Actor = actor, EventItem = room.GetRoomItemHandler().GetItem(sourceId), SourceId = sourceId, Code = (int)reason });
     }
     public void Lock(GameClient client, bool locked, bool all)
     {

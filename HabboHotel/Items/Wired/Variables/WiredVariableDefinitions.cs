@@ -8,7 +8,8 @@ public static class WiredVariableDefinitions
 {
     internal const string InvalidReferenceKey = "wiredfurni.error.variables.reference.valid";
     public static bool Supports(string name) => name is "wf_var_user" or "wf_var_furni" or "wf_var_room"
-        or "wf_var_context" or "wf_var_echo" or "wf_var_reference" or "wf_var_quest" or "wf_var_quest_chain";
+        or "wf_var_context" or "wf_var_echo" or "wf_var_reference" or "wf_var_quest" or "wf_var_quest_chain"
+        or "wf_var_dailytask" or "wf_var_pointer";
     /// <summary>The picker id of a variable shared from another room; the module still authorizes the source it names.</summary>
     internal static string SharedId(uint roomId, WiredVariableTarget target, uint definitionId) =>
         $"shared:{roomId}:{(target == WiredVariableTarget.Global ? "room" : "user")}:{definitionId}";
@@ -135,6 +136,31 @@ public static class WiredVariableDefinitions
                 availability = WiredVariableAvailability.RoomActive;
                 hasValue = true;
                 link = new(roomId, new(WiredVariableTarget.User, WiredQuestVariables.Token(itemId)), true);
+                break;
+            case "wf_var_dailytask":
+                // AirSourceOnly (DailyTaskVariable.as): name TAB task text. PlusEMU has no daily tasks, so this is a user variable that
+                // Wired effects set; the task text is kept with the box.
+                if (ints.Length != 0 || configuration.VariableIds.Length != 0) {
+                    return false;
+                }
+
+                text = text.Split('\t')[0];
+                target = WiredVariableTarget.User;
+                availability = WiredVariableAvailability.UserActive;
+                hasValue = true;
+                break;
+            case "wf_var_pointer":
+                // AirSourceOnly (PointerVariable.as): the variable lives on its source type (0 furni, 1 user, -10 global, -20 context);
+                // its accessor is a context variable with a value, or none yet.
+                if (ints.Length != 1 || configuration.VariableIds.Length != 1 || ints[0] is not (0 or 1 or -10 or -20)
+                    || !WiredVariableAbsent.Is(configuration.VariableIds[0])
+                    && !(WiredVariableDescription.TryParseCatalogId(configuration.VariableIds[0], out var accessor, out _) && accessor == WiredVariableTarget.Context)) {
+                    return false;
+                }
+
+                target = ints[0] switch { 0 => WiredVariableTarget.Furni, 1 => WiredVariableTarget.User, -10 => WiredVariableTarget.Global, _ => WiredVariableTarget.Context };
+                availability = target == WiredVariableTarget.User ? WiredVariableAvailability.UserActive : WiredVariableAvailability.RoomActive;
+                hasValue = true;
                 break;
             default:
                 error = "This variable definition has no executable implementation.";

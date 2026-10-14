@@ -1,7 +1,9 @@
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Modern.Conditions;
+using Plus.HabboHotel.Items.Wired.Links;
 using Plus.HabboHotel.Items.Wired.Runtime;
+using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Rooms;
 
 namespace Plus.HabboHotel.Items.Wired.Modern.Triggers;
@@ -108,11 +110,49 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
             "wf_trg_user_performs_action" => evt.Actor != null && WiredTriggerPredicates.MatchesAction(config, evt.Action, evt.Code),
             "wf_trg_recv_signal" => context.Signal != null && (deferItems || Items().Any(item => item.Id == unchecked((uint)evt.Code))),
             "wf_trg_game_starts" or "wf_trg_game_ends" => true,
+            "wf_trg_room_initializes" => true,
+            "wf_trg_receive_message" or "wf_trg_receive_dataframe" => evt.Link != null && evt.EventItem is { } endpoint
+                && (!afterSelectors && config.FurniSources.GetValueOrDefault("endpoints") == WiredSources.Selector
+                    || Furni(context, config, "endpoints").Any(item => item.Id == endpoint.Id)) && (name == "wf_trg_receive_message" || CaptureDataframe(context, config)),
             "wf_trg_collision" => evt.Actor != null && evt.EventItem != null,
             "wf_trg_at_given_time" or "wf_trg_at_time_long" or "wf_trg_periodically" or "wf_trg_period_short" or "wf_trg_period_long" =>
                 ReferenceEquals(evt.EventItem, Item),
             _ => throw new InvalidOperationException("Trigger has no event predicate.")
         };
+    }
+
+    /// <summary>
+    /// LinkDataframeReceivePreset rows: kind 1 writes the row's number into the picked context variable. Placeholder rows (kind 0) are
+    /// read by WiredTextPlaceholders. A row whose key the dataframe lacks, or whose value is not a number, is left alone.
+    /// </summary>
+    private static bool CaptureDataframe(WiredRuntimeContext context, WiredConfiguration config)
+    {
+        if (WiredLinkDataframeCodec.Decode(config.Text, Param(config, 0)) is not { } rows) {
+            return false;
+        }
+
+        var values = new Dictionary<uint, long>();
+
+        for (var row = 0; row < rows.Length; row++) {
+            if (Param(config, 1 + row) != WiredLinkDataframeCodec.VariableDestination || config.VariableIds.Length <= row
+                || !WiredVariableDescription.TryParseCatalogId(config.VariableIds[row], out var target, out var token)
+                || target != WiredVariableTarget.Context || !WiredVariableModule.TryDefinitionId(token, out var definition)
+                || context.Event.Link!.Rows.FirstOrDefault(sent => sent.Key == WiredLinkDataframeCodec.NormalizeKey(rows[row].Key)) is not { } value
+                || (value.Number ?? (long.TryParse(value.Text, System.Globalization.NumberStyles.AllowLeadingSign,
+                    System.Globalization.CultureInfo.InvariantCulture, out var parsed) ? parsed : null)) is not { } number) {
+                continue;
+            }
+
+            values[definition] = number;
+        }
+
+        if (values.Count == 0) {
+            return true;
+        }
+
+        context.VariableFrame = WiredVariableRuntimeFrames.Create(context, context.VariableFrame);
+
+        return context.Room.GetWired().Variables.Module.CaptureContextValues(values, context.VariableFrame);
     }
 
     public (bool BlockMenu, bool DoNotRotate) ClickSettings(WiredRuntimeContext context) =>

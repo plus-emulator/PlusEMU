@@ -24,6 +24,11 @@ public static class WiredActionConfiguration
             return WiredBotActions.Defaults(name);
         }
 
+        // The October effects only exist as native editor records; a fresh box opens on the compiled native defaults.
+        if (WiredOctoberActions.Names.Contains(name)) {
+            return new();
+        }
+
         ImmutableArray<int> parameters = name switch
         {
             "wf_act_join_team" => [0, 1, 0, 0],

@@ -434,5 +434,19 @@ public static class ServerPacketHeader
     public const uint WiredChestUpgradeComposer = 9335;
     public const uint WiredChestSettingsAckComposer = 9347;
     public const uint WiredChestLockComposer = 9329;
-}
 
+    // October wired boxes (r88). Ids are the WIN63-202610121709 equivalents of the WIN63-202610131318-860371703 classes named.
+    public const uint WiredFurniTransparencyComposer = 3710; // class_3390 (new 2321)
+    public const uint WiredUserTransparencyComposer = 536; // class_2828 (new 3664)
+    public const uint WiredFurniHighlightComposer = 2218; // class_2680 (new 2380)
+    public const uint WiredWebApiKeyComposer = 467; // class_3530 (new 162)
+    public const uint WiredVariableLeaderboardSnapshotComposer = 1284; // package_160.class_3569 (new 1494)
+    public const uint WiredVariableLeaderboardChunkComposer = 995; // package_160.class_3168 (new 3979)
+    public const uint WiredLabelsComposer = 656; // class_3043 (new 2237)
+    public const uint WiredLabelsUpdateComposer = 1240; // class_2856 (new 796)
+    public const uint WiredLinkOpenComposer = 2161; // package_82.class_3692 (new 1715)
+    public const uint WiredLinkConfigurationComposer = 778; // package_82.class_3192 (new 3405)
+    public const uint WiredLinkOperationResultComposer = 1586; // package_82.class_3722 (new 3961)
+    public const uint WiredLinkConnectionsComposer = 830; // package_82.class_2742 (new 3962)
+    public const uint WiredLinkNetworkInvalidatedComposer = 1949; // package_82.class_2356 (new 999)
+}

@@ -94,6 +94,12 @@ public class Room
             ? new(group.Id, group.Badge, _groups.GetColourCode(group.Colour1, true), _groups.GetColourCode(group.Colour2, false))
             : null;
 
+    /// <summary>The hotel's achievements, for wired boxes that progress them.</summary>
+    internal IAchievementManager Achievements => _achievements;
+
+    /// <summary>The loaded rooms, for wired link deliveries to other rooms.</summary>
+    internal IRoomManager Rooms => _rooms;
+
     public RoomData Data => _data ??= new RoomData();
     public static implicit operator RoomData(Room room) => room.Data;
     internal IReadOnlyList<IRoomComponent> Components => _components;

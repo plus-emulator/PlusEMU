@@ -74,7 +74,7 @@ public sealed class WiredRuntimeFactoryTests
 
             return new { name = descriptor.CanonicalName, support = box?.Descriptor.Support.ToString() ?? "DescriptorOnly" };
         }).ToArray();
-        Assert.Equal(182, boxes.Length);
+        Assert.Equal(204, boxes.Length);
         Assert.Contains(boxes, x => x.name == "wf_act_teleport_to" && x.support == "Implemented");
         Assert.All(boxes, x => Assert.Equal("Implemented", x.support));
         var auxiliaries = new[] { "wf_upcounter1", "wf_upcounter2", "wf_game_upcounter1", "wf_game_upcounter2", "wf_antenna1", "wf_antenna2" }

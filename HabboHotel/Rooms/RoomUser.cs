@@ -772,6 +772,9 @@ public class RoomUser
 
     public GameClient? GetClient() => IsBot ? null : _mClient;
 
+    /// <summary>The reward tracks this user progresses, for wired boxes that progress them.</summary>
+    internal IRewardTrackManager RewardTracks => _rewards;
+
     internal bool IsAttachedTo(Room room) => ReferenceEquals(_mRoom, room);
 
     private Room? GetRoom() => _mRoom;

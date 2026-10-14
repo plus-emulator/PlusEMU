@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using System.Globalization;
 using Plus.HabboHotel.Items.Wired.Modern.Triggers;
 
@@ -126,6 +127,10 @@ internal static class WiredNativeTriggerEditor
 
         if (name is not ("wf_trg_enter_room" or "wf_trg_leave_room" or "wf_trg_bot_reached_avtr"
             or "wf_trg_bot_reached_stf" or "wf_trg_user_performs_action") && native.Text.Length != 0) {
+            return false;
+        }
+
+        if (name is "wf_trg_bot_reached_avtr" or "wf_trg_bot_reached_stf" && native.Text.Length > WiredBotActions.NameEditorLength) {
             return false;
         }
 

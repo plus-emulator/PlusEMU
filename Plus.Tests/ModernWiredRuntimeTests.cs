@@ -46,7 +46,7 @@ namespace Plus.Tests;
 public sealed class ModernWiredDatabaseCollection;
 
 [Collection("Modern Wired database seam")]
-public class ModernWiredRuntimeTests
+public partial class ModernWiredRuntimeTests
 {
     private static WiredModernAction ActionBox(Room room, string name, WiredCounterController? clocks = null, WiredRoomLog? log = null,
         TimeProvider? clock = null, IWiredRewardService? rewards = null, IItemDataManager? definitions = null, Action<WiredRuntimeEvent>? publish = null)
@@ -2694,7 +2694,7 @@ public class ModernWiredRuntimeTests
         public readonly TestRewardProgress HandRewards = new();
         private readonly object? _originalGame; private long _now;
         public TeleportFixture(int cap = 100, IDatabase? database = null, IGameClientManager? clientsForText = null,
-            string actionName = "wf_act_teleport_to", int[]? intParams = null)
+            string actionName = "wf_act_teleport_to", int[]? intParams = null, string text = "")
         {
             (Room, _, Items) = World();
             var gameField = typeof(PlusEnvironment).GetField("_game", BindingFlags.Static | BindingFlags.NonPublic)!;
@@ -2747,8 +2747,8 @@ public class ModernWiredRuntimeTests
             Action = new(Room, actionItem, Descriptor(actionName), new(),
                 evt => wired.Dispatch(evt), wired.DispatchWalkTransition, new(), TestLogging.Logger, TimeProvider.System, TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestWiredDefinitions.Unused, TestItemRuntime.Travel);
             var parameters = intParams == null
-                ? new WiredConfiguration { IntParams = [0, 100, 0], SelectedItems = [1] }
-                : new WiredConfiguration { IntParams = System.Collections.Immutable.ImmutableArray.Create(intParams), SelectedItems = [1] };
+                ? new WiredConfiguration { IntParams = [0, 100, 0], SelectedItems = [1], Text = text }
+                : new WiredConfiguration { IntParams = System.Collections.Immutable.ImmutableArray.Create(intParams), SelectedItems = [1], Text = text };
             WiredNativeTestSupport.TryValidateRuntime(Action, parameters, out var config, out _);
             Action.ApplyConfiguration(config);
             Items[101] = Trigger.Item;

@@ -191,7 +191,6 @@ internal class BartenderBot : BotAi
                         if (botUser.Coordinate == botData.TargetCoordinate) {
                             botData.ForcedMovement = false;
                             botData.TargetCoordinate = new();
-                            botUser.MoveTo(botData.TargetCoordinate.X, botData.TargetCoordinate.Y);
                         }
                     }
                     else if (botData.ForcedUserTargetMovement > 0) {

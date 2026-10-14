@@ -36,6 +36,36 @@ public sealed class WiredBotAppearancePersistenceTests
     }
 
     [Fact]
+    public void ModernActionDressesTheBotNamedInItsTextAndKeepsItsGender()
+    {
+        using var fixture = new Fixture();
+        var store = new RecordingStore(() => { });
+        var action = fixture.Modern(store, 100, "alice\thd-200-1.ch-210-66");
+
+        Assert.True(action.Execute(fixture.Context()));
+
+        Assert.Equal((31, 42u, "hd-200-1.ch-210-66", "F"), Assert.Single(store.Writes));
+        fixture.AssertPublished("hd-200-1.ch-210-66", "F");
+    }
+
+    [Theory]
+    [InlineData("Carl\thd-200-1")]
+    [InlineData("\thd-200-1")]
+    [InlineData("Alice\thd-200-script")]
+    [InlineData("Alice\t")]
+    public void ModernActionLeavesTheBotAloneForAnotherNameNoNameOrAMalformedFigure(string text)
+    {
+        using var fixture = new Fixture();
+        var store = new RecordingStore(() => { });
+        var action = fixture.Modern(store, 100, text);
+
+        Assert.False(action.Execute(fixture.Context()));
+
+        Assert.Empty(store.Writes);
+        fixture.AssertUnpublished();
+    }
+
+    [Fact]
     public void ModernStoreFailureLeavesStateAndPacketsUnchanged()
     {
         using var fixture = new Fixture();
@@ -125,14 +155,14 @@ public sealed class WiredBotAppearancePersistenceTests
             people[roomUser.VirtualId] = roomUser;
         }
 
-        public WiredModernAction Modern(IBotManagementStore store)
+        public WiredModernAction Modern(IBotManagementStore store, int source = 0, string text = "\thd-200-1")
         {
             var descriptor = WiredBoxRegistry.All.Single(value => value.CanonicalName == "wf_act_bot_clothes");
             var action = new WiredModernAction(Room, new Item { Id = 1 }, descriptor, new(), _ => { },
                 (_, _, _) => { }, new(), TestLogging.Logger, TimeProvider.System,
                 TestWiredRewardService.Instance, store, TestWiredClients.Empty, TestWiredDefinitions.Unused, TestItemRuntime.Travel);
             Assert.True(WiredNativeTestSupport.TryValidateRuntime(action,
-                new() { IntParams = [0], Text = "\thd-200-1" }, out var configuration, out var error), error);
+                new() { IntParams = [source], Text = text }, out var configuration, out var error), error);
             action.ApplyConfiguration(configuration);
 
             return action;

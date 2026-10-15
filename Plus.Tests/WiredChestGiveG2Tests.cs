@@ -99,7 +99,15 @@ public sealed class WiredChestGiveG2Tests
         world.Coins(FirstChest, 20, locked: true);
         world.Coins(101, 20, enabled: false);
         world.Furni(102, 5);
-        var box = world.Box("wf_act_give_currency", Currency(0, 5, 0), [FirstChest, 101, 102, 999]);
+        // hhus refuses the save when any pick is not an upgraded coin chest (require_coin_chests): disabled, furni and unplaced picks.
+        foreach (var pick in new uint[] { 101, 102, 999 }) {
+            var refused = (WiredChestAction)WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(entry => entry.CanonicalName == "wf_act_give_currency"), world.Module);
+            Assert.True(WiredNativeEditorProjection.TryCompile(9, refused.Descriptor, world.Native("wf_act_give_currency", Currency(0, 5, 0), [FirstChest, pick], ""), out var runtime));
+            Assert.False(refused.TryValidateConfiguration(runtime, out _, out var error));
+            Assert.Equal("wiredfurni.error.require_coin_chests", error);
+        }
+
+        var box = world.Box("wf_act_give_currency", Currency(0, 5, 0), [FirstChest]);
         Assert.False(box.Execute(world.Context()));
         Assert.Empty(world.Store.Requests);
         Assert.Equal(100, world.Habbo.Credits);
@@ -255,7 +263,12 @@ public sealed class WiredChestGiveG2Tests
         using var world = new Scene();
         world.Coins(FirstChest, 20);
         world.Furni(101, 2, sprites: [10, 10], locked: true);
-        var box = world.Box("wf_act_give_furni", FurniGive(0, 1, order: 1), [FirstChest, 101]);
+        // A picked coin chest refuses the save (hhus require_furni_chests); the locked furni chest alone saves but gives nothing.
+        var refused = (WiredChestAction)WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(entry => entry.CanonicalName == "wf_act_give_furni"), world.Module);
+        Assert.True(WiredNativeEditorProjection.TryCompile(9, refused.Descriptor, world.Native("wf_act_give_furni", FurniGive(0, 1, order: 1), [FirstChest, 101], ""), out var mixed));
+        Assert.False(refused.TryValidateConfiguration(mixed, out _, out var error));
+        Assert.Equal("wiredfurni.error.require_furni_chests", error);
+        var box = world.Box("wf_act_give_furni", FurniGive(0, 1, order: 1), [101]);
         Assert.False(box.Execute(world.Context()));
         Assert.Empty(world.Store.Requests);
         world.Store.Chests[101].Locked = false;
@@ -281,6 +294,14 @@ public sealed class WiredChestGiveG2Tests
     public void TheEditorFormsKeepToTheOctoberFieldRanges(string name, int[] owned, bool accepted)
     {
         using var world = new Scene();
+
+        if (name == "wf_act_give_currency") {
+            world.Coins(FirstChest, 0);
+        }
+        else {
+            world.Furni(FirstChest, 0);
+        }
+
         var box = (WiredChestAction)WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(entry => entry.CanonicalName == name), world.Module);
         var native = world.Native(name, owned, [FirstChest], "");
         Assert.Equal(accepted, WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native, out var runtime)
@@ -291,6 +312,7 @@ public sealed class WiredChestGiveG2Tests
     public void TheRewardPopupTextIsLimitedToTwoHundredCharacters()
     {
         using var world = new Scene();
+        world.Coins(FirstChest, 0);
         var box = (WiredChestAction)WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(entry => entry.CanonicalName == "wf_act_give_currency"), world.Module);
         var owned = Currency(0, 1, 0);
         Assert.True(WiredNativeEditorProjection.TryCompile(9, box.Descriptor, world.Native("wf_act_give_currency", owned, [FirstChest], new('x', 200)), out var fits)

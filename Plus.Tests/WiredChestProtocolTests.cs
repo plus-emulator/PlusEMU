@@ -341,6 +341,43 @@ public sealed class WiredChestProtocolTests
         Assert.False(effect.Execute(context));
         Assert.Single(world.Store.Requests);
     }
+    [Fact]
+    public void GiveBoxesRefuseChestsThatAreNotUpgradedWiredChestsOfTheirKind()
+    {
+        // Observed r93h/r93j (hhus): the save is refused with the official keys until the picked chest is upgraded to a Wired chest.
+        var world = new World();
+        world.Store.Kind = WiredChestKind.Coins;
+        world.Store.Settings = world.Store.Settings with { WiredEnabled = false };
+        var currency = WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(box => box.CanonicalName == "wf_act_give_currency"), world.Module);
+        var furni = WiredChestBox.Create(world.Room, new() { Id = 10 }, WiredBoxRegistry.All.Single(box => box.CanonicalName == "wf_act_give_furni"), world.Module);
+        var give = WiredNativeTestSupport.Chest("wf_act_give_currency", [0, 1, 0, 2, 1, 11], [3], [100, 0], [0, 0], [""], [100], []);
+        var gift = WiredNativeTestSupport.Chest("wf_act_give_furni", [0, 1, 0, 2, 1, 0], [3], [100, 0], [0, 0], [""], [100], []);
+        Assert.True(WiredNativeEditorProjection.TryCompile(9, currency.Descriptor, give, out var giveRuntime));
+        Assert.True(WiredNativeEditorProjection.TryCompile(10, furni.Descriptor, gift, out var giftRuntime));
+
+        Assert.False(currency.TryValidateConfiguration(giveRuntime, out _, out var error));
+        Assert.Equal("wiredfurni.error.require_coin_chests", error);
+        world.Store.Settings = world.Store.Settings with { WiredEnabled = true };
+        Assert.True(currency.TryValidateConfiguration(giveRuntime, out _, out error), error);
+        Assert.False(furni.TryValidateConfiguration(giftRuntime, out _, out error));
+        Assert.Equal("wiredfurni.error.require_furni_chests", error);
+    }
+    [Fact]
+    public void GiveFromLockedChestsAnswersEachUserWithNoOrLockedChests()
+    {
+        // Observed r93j r93-p2-chests-empty: upgraded chests are locked by default and a give answers WiredTransactionFail reason 15.
+        var world = new World();
+        world.Store.Kind = WiredChestKind.Coins;
+        var effect = (WiredChestAction)WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(box => box.CanonicalName == "wf_act_give_currency"), world.Module);
+        WiredNativeTestSupport.Install(effect, WiredNativeTestSupport.Chest("wf_act_give_currency", [0, 1, 0, 2, 1, 11], [3], [100, 0], [0, 0], [""], [100], []));
+        world.Store.Settings = world.Store.Settings with { Locked = true };
+        var context = new WiredRuntimeContext(world.Room, new(WiredEventKind.Use) { Actor = world.Actor }, new(() => [world.Chest], () => [world.Actor]), new Operations());
+        context.Triggering.UserIds.Add(world.Actor.VirtualId);
+
+        Assert.False(effect.Execute(context));
+        Assert.Empty(world.Store.Requests);
+        Assert.Equal(WiredChestFailure.NoOrLockedChests, (WiredChestFailure)Assert.Single(world.Events, e => e.Kind == WiredEventKind.TransactionFail).Code);
+    }
     [WiredChestDatabaseFact]
     public void WideGiveCurrencyOperandCannotWrapOrPayOutsideSupportedDomain()
     {

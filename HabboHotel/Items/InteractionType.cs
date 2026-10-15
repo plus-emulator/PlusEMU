@@ -125,6 +125,7 @@ public enum InteractionType
     IceTagPole,
     AreaHide,
     InvisibleFurniControl,
+    ChooserDisabler,
     WiredChestFurni,
     WiredChestCoins,
     WiredContractPayment,

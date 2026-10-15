@@ -29,10 +29,10 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         var diff = new WiredVariableHashesEvent(new WiredVariableMenuService());
         using var manager = new PacketManager([hash, diff], NullLogger<PacketManager>.Instance);
         var registered = (Dictionary<uint, IPacketEvent>)typeof(PacketManager).GetField("_incomingPackets", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(manager)!;
-        Assert.Same(hash, registered[1327]);
-        Assert.Same(diff, registered[3698]);
-        Assert.Equal(3478u, ServerPacketHeader.WiredAllVariablesHashComposer);
-        Assert.Equal(3058u, ServerPacketHeader.WiredAllVariablesDiffComposer);
+        Assert.Same(hash, registered[1070]);
+        Assert.Same(diff, registered[3150]);
+        Assert.Equal(2585u, ServerPacketHeader.WiredAllVariablesHashComposer);
+        Assert.Equal(2364u, ServerPacketHeader.WiredAllVariablesDiffComposer);
     }
 
     [Fact]
@@ -137,7 +137,11 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         var variable = Native();
         Assert.NotEqual(variable.Hash, (variable with { Name = "renamed" }).Hash);
         Assert.NotEqual(variable.Hash, (variable with { CanWriteValue = false }).Hash);
+        Assert.NotEqual(variable.Hash, (variable with { RequiresExecutionContext = true }).Hash);
         Assert.NotEqual(variable.Hash, (variable with { Connector = [] }).Hash);
+        Assert.NotEqual((variable with { Connector = [] }).Hash, (variable with { Connector = [], TextConnectorFallback = "" }).Hash);
+        Assert.NotEqual((variable with { Connector = [], TextConnectorFallback = "one" }).Hash,
+            (variable with { Connector = [], TextConnectorFallback = "two" }).Hash);
         Assert.NotEqual((variable with { Connector = [] }).Hash, (variable with { Connector = [new(1, "one")] }).Hash);
     }
 
@@ -291,7 +295,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         };
         new WiredVariableMenuService().ShowCatalogDiff(fixture.World.Room, fixture.World.Client, new Dictionary<string, int>());
         Assert.Single(fixture.World.Packets);
-        Assert.Equal(3058u, fixture.World.Packets[0].Header);
+        Assert.Equal(2364u, fixture.World.Packets[0].Header);
     }
 
     [Fact]
@@ -311,15 +315,21 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     }
 
     [Theory]
-    [InlineData(int.MinValue, false)]
-    [InlineData(int.MaxValue, true)]
-    public void ActualNativeByteFixturesPreserveSignedHashesAndConnectorPresence(int hash, bool present)
+    [InlineData(int.MinValue, false, false)]
+    [InlineData(int.MaxValue, true, true)]
+    public void ActualNativeByteFixturesPreserveSignedHashesAndConnectorPresence(int hash, bool present, bool context)
     {
-        var row = Native() with { Target = -20, Availability = 999, Connector = present ? [] : null };
+        var row = Native() with
+        {
+            Target = -20,
+            Availability = 999,
+            Connector = present ? [] : null,
+            RequiresExecutionContext = context
+        };
         var (client, sent) = HabbiconTestSupport.Client(new Habbo());
         client.Send(new WiredNativeCatalogDiffComposer(new(hash, true, ["removed:opaque"], [row])));
         var frame = Assert.Single(sent);
-        Assert.Equal(3058u, frame.Header);
+        Assert.Equal(2364u, frame.Header);
         var packet = new FlashIncomingPacket { Buffer = frame.Payload };
         Assert.Equal(hash, packet.ReadInt());
         Assert.True(packet.ReadBool());
@@ -333,14 +343,16 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.Equal(999, packet.ReadInt());
         Assert.Equal(-20, packet.ReadInt());
 
-        for (var index = 0; index < 8; index++) {
-            packet.ReadBool();
-        }
-
+        Assert.Equal(new[] { row.AlwaysAvailable, row.CanCreateAndDelete, row.HasValue, row.CanWriteValue,
+            row.CanInterceptChanges, row.IsInvisible }, Enumerable.Range(0, 6).Select(_ => packet.ReadBool()));
+        Assert.Equal(context, packet.ReadBool());
+        Assert.Equal(row.CanReadCreationTime, packet.ReadBool());
+        Assert.Equal(row.CanReadLastUpdateTime, packet.ReadBool());
         Assert.Equal(present, packet.ReadBool());
 
         if (present) {
             Assert.Equal(0, packet.ReadInt());
+            Assert.False(packet.ReadBool());
         }
 
         Assert.False(packet.HasDataRemaining());

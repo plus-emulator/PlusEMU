@@ -45,19 +45,24 @@ public sealed class WiredAllVariablesDiffComposer(WiredVariableCatalogDiff diff)
         packet.WriteBoolean(variable.CanWriteValue);
         packet.WriteBoolean(false);
         packet.WriteBoolean(false);
+        packet.WriteBoolean(variable.RequiresExecutionContext);
         packet.WriteBoolean(variable.CanReadTimestamps);
         packet.WriteBoolean(variable.CanReadTimestamps);
         packet.WriteBoolean(variable.TextConnector.Count > 0);
 
-        if (variable.TextConnector.Count == 0) {
-            return;
-        }
+        if (variable.TextConnector.Count > 0) {
+            packet.WriteInteger(variable.TextConnector.Count);
 
-        packet.WriteInteger(variable.TextConnector.Count);
+            foreach (var (key, value) in variable.TextConnector.OrderBy(x => x.Key)) {
+                packet.WriteInteger(key);
+                packet.WriteString(value);
+            }
 
-        foreach (var (key, value) in variable.TextConnector.OrderBy(x => x.Key)) {
-            packet.WriteInteger(key);
-            packet.WriteString(value);
+            packet.WriteBoolean(variable.HasTextConnectorFallback);
+
+            if (variable.HasTextConnectorFallback) {
+                packet.WriteString(variable.TextConnectorFallback!);
+            }
         }
     }
 }

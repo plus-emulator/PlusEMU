@@ -62,7 +62,7 @@ public class MarketplaceOfferWireTests
 
         composer.Compose(packet);
 
-        Assert.Equal(3183u, composer.MessageId);
+        Assert.Equal(144u, composer.MessageId);
         Assert.Equal(new object[] { 3, 9, 250, 5 }, packet.Writes);
     }
 

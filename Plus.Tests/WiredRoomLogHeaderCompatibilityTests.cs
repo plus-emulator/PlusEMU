@@ -14,12 +14,12 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The supported client build (WIN63-202609161723-93809945, communication/class_2036.as) sends the room log page request under
-// _composers[250] = class_3750 and registers the room log page frame as name_1[3824] = class_3589.
+// The supported client build (WIN63-202610121709-785561319, communication/class_2049.as) sends the room log page request under
+// _composers[324] = class_3807 and registers the room log page frame as name_1[1028] = class_3640.
 public class WiredRoomLogHeaderCompatibilityTests
 {
-    private const uint ClientRequestId = 250;
-    private const uint ClientPageId = 3824;
+    private const uint ClientRequestId = 324;
+    private const uint ClientPageId = 1028;
 
     [Fact]
     public void TheClientsLogPageRequestIdResolvesToTheRoomLogPageHandler()

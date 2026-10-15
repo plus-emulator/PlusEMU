@@ -169,7 +169,7 @@ public sealed class WiredChestProtocolTests
             0, 1, -1, 20, 0, 0, true, 5000, true, false, 0, false, false, 0, 1, false, false, false }, coins.Writes);
 
         var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
-        Assert.Equal("WIN63-202609161723-93809945", revision.Name);
+        Assert.Equal("WIN63-202610121709-785561319", revision.Name);
         Assert.Equal(9327u, revision.IncomingHeaders["ChestOpenEvent"]);
         Assert.Equal(9331u, revision.OutgoingHeaders["WiredChestTradeOpenComposer"]);
         Assert.Equal(9327u, revision.IncomingIdToInternalIdMapping[9327]);

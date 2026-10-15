@@ -8,6 +8,10 @@ public sealed record WiredNativeVariable(string Id, int Type, string Name, int A
     bool CanInterceptChanges, bool IsInvisible, bool CanReadCreationTime, bool CanReadLastUpdateTime,
     ImmutableArray<KeyValuePair<int, string>>? Connector)
 {
+    public bool RequiresExecutionContext { get; init; }
+    public string? TextConnectorFallback { get; init; }
+    public bool HasTextConnectorFallback => Connector.HasValue && TextConnectorFallback is not null;
+
     /// <summary>The AIR variable record: the catalog diff leads it with the row hash, a shared-variable row does not.</summary>
     public void Write(Plus.HabboHotel.GameClients.IOutgoingPacket packet, bool withHash)
     {
@@ -26,6 +30,7 @@ public sealed record WiredNativeVariable(string Id, int Type, string Name, int A
         packet.WriteBoolean(CanWriteValue);
         packet.WriteBoolean(CanInterceptChanges);
         packet.WriteBoolean(IsInvisible);
+        packet.WriteBoolean(RequiresExecutionContext);
         packet.WriteBoolean(CanReadCreationTime);
         packet.WriteBoolean(CanReadLastUpdateTime);
         packet.WriteBoolean(Connector.HasValue);
@@ -36,6 +41,12 @@ public sealed record WiredNativeVariable(string Id, int Type, string Name, int A
             foreach (var pair in connector) {
                 packet.WriteInteger(pair.Key);
                 packet.WriteString(pair.Value);
+            }
+
+            packet.WriteBoolean(HasTextConnectorFallback);
+
+            if (HasTextConnectorFallback) {
+                packet.WriteString(TextConnectorFallback!);
             }
         }
     }
@@ -48,7 +59,8 @@ public sealed record WiredNativeVariable(string Id, int Type, string Name, int A
 
             foreach (var value in new[] { Type, TextHash(Name), Availability, Target, AlwaysAvailable ? 1 : 0,
                 CanCreateAndDelete ? 1 : 0, HasValue ? 1 : 0, CanWriteValue ? 1 : 0, CanInterceptChanges ? 1 : 0,
-                IsInvisible ? 1 : 0, CanReadCreationTime ? 1 : 0, CanReadLastUpdateTime ? 1 : 0, Connector.HasValue ? 1 : 0 }) {
+                IsInvisible ? 1 : 0, RequiresExecutionContext ? 1 : 0, CanReadCreationTime ? 1 : 0,
+                CanReadLastUpdateTime ? 1 : 0, Connector.HasValue ? 1 : 0 }) {
                 hash = unchecked(hash * 31 + value);
             }
 
@@ -58,6 +70,12 @@ public sealed record WiredNativeVariable(string Id, int Type, string Name, int A
                 foreach (var pair in connector) {
                     hash = unchecked(hash * 31 + pair.Key);
                     hash = unchecked(hash * 31 + TextHash(pair.Value));
+                }
+
+                hash = unchecked(hash * 31 + (HasTextConnectorFallback ? 1 : 0));
+
+                if (HasTextConnectorFallback) {
+                    hash = unchecked(hash * 31 + TextHash(TextConnectorFallback!));
                 }
             }
 
@@ -144,6 +162,9 @@ internal static class WiredNativeCatalogProjection
                 : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
-            !derived && definition.Link is null && writable && builtin is null, false, timestamps, timestamps, connector);
+            !derived && definition.Link is null && writable && builtin is null, false, timestamps, timestamps, connector)
+        {
+            RequiresExecutionContext = definition.Target == WiredVariableTarget.Context
+        };
     }
 }

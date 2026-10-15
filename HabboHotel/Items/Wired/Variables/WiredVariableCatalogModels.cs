@@ -3,6 +3,9 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 public sealed record WiredVariableDescription(WiredVariableDefinition Definition, bool HasValue, bool ReadOnly)
 {
     public IReadOnlyDictionary<int, string> TextConnector { get; init; } = new Dictionary<int, string>();
+    public bool RequiresExecutionContext => Definition.Target == WiredVariableTarget.Context;
+    public string? TextConnectorFallback { get; init; }
+    public bool HasTextConnectorFallback => TextConnector.Count > 0 && TextConnectorFallback is not null;
     public bool IsBuiltin { get; init; }
     public bool IsDerived { get; init; }
     public bool CanCreateAndDelete => !ReadOnly && !IsBuiltin && Definition.Target is WiredVariableTarget.User or WiredVariableTarget.Furni;
@@ -68,13 +71,22 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
             var hash = StableHash(CatalogId);
 
             foreach (var value in new[] { StableHash(Definition.Name), CatalogTarget, (int)Definition.Availability, CatalogTarget,
-                HasValue ? 1 : 0, TextConnector.Count > 0 ? 2 : 0, ReadOnly ? 4 : 0, IsBuiltin ? 1 : 0, IsDerived ? 1 : 0 }) {
+                HasValue ? 1 : 0, TextConnector.Count > 0 ? 2 : 0, ReadOnly ? 4 : 0, IsBuiltin ? 1 : 0, IsDerived ? 1 : 0,
+                RequiresExecutionContext ? 1 : 0 }) {
                 hash = unchecked(hash * 31 + value);
             }
 
             foreach (var (key, value) in TextConnector.OrderBy(x => x.Key)) {
                 hash = unchecked(hash * 31 + key);
                 hash = unchecked(hash * 31 + StableHash(value));
+            }
+
+            if (TextConnector.Count > 0) {
+                hash = unchecked(hash * 31 + (HasTextConnectorFallback ? 1 : 0));
+
+                if (HasTextConnectorFallback) {
+                    hash = unchecked(hash * 31 + StableHash(TextConnectorFallback!));
+                }
             }
 
             return hash;

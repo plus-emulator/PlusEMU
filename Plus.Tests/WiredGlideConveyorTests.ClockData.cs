@@ -32,8 +32,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal([0, 0, 0, 2,
             0, 0, 0, 20, 0, 0, 0, 0, 0, 1, (byte)'7',
             0, 0, 1, 45, 0, 0, 0, 0, 0, 2, (byte)'1', (byte)'2'], batch);
-        Assert.Equal(714u, ServerPacketHeader.ObjectDataUpdateComposer);
-        Assert.Equal(1211u, ServerPacketHeader.ObjectsDataUpdateComposer);
+        Assert.Equal(1456u, ServerPacketHeader.ObjectDataUpdateComposer);
+        Assert.Equal(80u, ServerPacketHeader.ObjectsDataUpdateComposer);
     }
 
     [Fact]
@@ -43,13 +43,13 @@ public sealed partial class WiredGlideConveyorTests
         using var example = JsonDocument.Parse(File.ReadAllText(HabbiconPacketTests.Repo("Resources/Revisions/example.json")));
         var outgoing = example.RootElement.GetProperty("OutgoingHeaders");
 
-        Assert.Equal("WIN63-202609161723-93809945", revision.Name);
-        Assert.Equal(714u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectDataUpdateComposer]);
-        Assert.Equal(1211u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectsDataUpdateComposer]);
-        Assert.Equal(714u, outgoing.GetProperty("ObjectDataUpdateComposer").GetUInt32());
-        Assert.Equal(1211u, outgoing.GetProperty("ObjectsDataUpdateComposer").GetUInt32());
-        // 1752/3638 belong to the previous client build and must not become ids of the current table.
-        Assert.DoesNotContain(revision.InternalIdToOutgoingIdMapping.Keys, id => id is 1752 or 3638);
+        Assert.Equal("WIN63-202610121709-785561319", revision.Name);
+        Assert.Equal(1456u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectDataUpdateComposer]);
+        Assert.Equal(80u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectsDataUpdateComposer]);
+        Assert.Equal(1456u, outgoing.GetProperty("ObjectDataUpdateComposer").GetUInt32());
+        Assert.Equal(80u, outgoing.GetProperty("ObjectsDataUpdateComposer").GetUInt32());
+        Assert.NotEqual(714u, ServerPacketHeader.ObjectDataUpdateComposer);
+        Assert.NotEqual(1211u, ServerPacketHeader.ObjectsDataUpdateComposer);
     }
 
     [Fact]

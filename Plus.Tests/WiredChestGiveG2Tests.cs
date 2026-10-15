@@ -99,6 +99,7 @@ public sealed class WiredChestGiveG2Tests
         world.Coins(FirstChest, 20, locked: true);
         world.Coins(101, 20, enabled: false);
         world.Furni(102, 5);
+
         // hhus refuses the save when any pick is not an upgraded coin chest (require_coin_chests): disabled, furni and unplaced picks.
         foreach (var pick in new uint[] { 101, 102, 999 }) {
             var refused = (WiredChestAction)WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(entry => entry.CanonicalName == "wf_act_give_currency"), world.Module);

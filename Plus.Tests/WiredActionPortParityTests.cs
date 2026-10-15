@@ -259,6 +259,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         var mover = Floor(1, 2, 2);
         var east = Floor(2, 3, 2);
         var north = Floor(3, 2, 1);
+
         foreach (var item in new[] { mover, east, north }) {
             item.Definition.Stackable = true;
             item.Definition.Height = 1;

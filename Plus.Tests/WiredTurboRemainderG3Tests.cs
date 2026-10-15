@@ -251,9 +251,23 @@ public sealed class WiredTurboRemainderG3Tests
         rig.Give(Tuesday);
         var expected = new Dictionary<int, long>
         {
-            [1] = 0, [2] = 20, [3] = 13, [4] = 22, [5] = 2, [6] = 14, [7] = 318, [8] = 46, [9] = 11, [10] = 2023,
-            [20] = Tuesday * 1000, [21] = Tuesday, [22] = Tuesday / 60, [23] = Tuesday / 3600, [24] = Tuesday / 86400,
-            [25] = Tuesday / 604800, [26] = (2023 - 1970) * 12 + 10
+            [1] = 0,
+            [2] = 20,
+            [3] = 13,
+            [4] = 22,
+            [5] = 2,
+            [6] = 14,
+            [7] = 318,
+            [8] = 46,
+            [9] = 11,
+            [10] = 2023,
+            [20] = Tuesday * 1000,
+            [21] = Tuesday,
+            [22] = Tuesday / 60,
+            [23] = Tuesday / 3600,
+            [24] = Tuesday / 86400,
+            [25] = Tuesday / 604800,
+            [26] = (2023 - 1970) * 12 + 10
         };
 
         foreach (var (sub, value) in expected) {

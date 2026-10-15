@@ -157,6 +157,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         if (x == item.GetX && y == item.GetY && height == null && rotation != item.Rotation) {
             options = options with { Animate = false };
         }
+
         var physics = policy.Physics;
         var collision = Collision(physics, step && (x != item.GetX || y != item.GetY), unit);
 

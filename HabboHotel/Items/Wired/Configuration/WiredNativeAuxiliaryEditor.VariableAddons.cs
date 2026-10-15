@@ -31,7 +31,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         // second pick source, wall furniture allowed.
         yield return new("wf_xtra_text_output_variable", new(Sources([[0, 100, 200, 201]], [[0, 200, 201]], [0, 1, 0], 1) with
         {
-            FurniDefaults = [100], AllowWall = true
+            FurniDefaults = [100],
+            AllowWall = true
         }, n =>
         {
             var p = n.OwnedIntParams;

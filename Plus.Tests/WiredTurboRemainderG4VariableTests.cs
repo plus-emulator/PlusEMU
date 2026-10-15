@@ -625,7 +625,8 @@ public sealed class WiredTurboRemainderG4VariableTests
         var shop = new WiredRoomVariables(Unloaded(7201), new NoDatabase(), new Clock());
         var hall = new WiredRoomVariables(Unloaded(7202), new NoDatabase(), new Clock());
         var change = new WiredVariableChange(7201, new(7110, WiredVariableTarget.User, 105), WiredVariableChangeKind.Updated,
-            new(1, null, null), new(2, null, null), 5, 1) { Shared = true };
+            new(1, null, null), new(2, null, null), 5, 1)
+        { Shared = true };
         var queue = (Queue<WiredVariableChange>)typeof(WiredVariableModule).GetField("_changes", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(hall.Module)!;
         queue.Enqueue(change);
 

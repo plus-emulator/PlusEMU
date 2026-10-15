@@ -3,7 +3,7 @@
 -- Regenerate with scripts/build-fresh-install-sql.sh after adding a migration.
 -- MariaDB dump 10.19-11.4.13-MariaDB, for debian-linux-gnu (x86_64)
 --
--- Host: localhost    Database: task_fresh_modern
+-- Host: 127.0.0.1    Database: plusemu_fresh
 -- ------------------------------------------------------
 -- Server version	11.4.13-MariaDB-ubu2404
 
@@ -3235,6 +3235,59 @@ CREATE TABLE `wired_items` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `wired_labels`
+--
+
+DROP TABLE IF EXISTS `wired_labels`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `wired_labels` (
+  `item_id` int(10) unsigned NOT NULL,
+  `text` text NOT NULL,
+  `bubble_color` int(11) NOT NULL DEFAULT 4278912,
+  `visibility` tinyint(1) NOT NULL DEFAULT 1,
+  `always_open` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`item_id`),
+  CONSTRAINT `fk_wired_labels_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `wired_link_endpoints`
+--
+
+DROP TABLE IF EXISTS `wired_link_endpoints`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `wired_link_endpoints` (
+  `item_id` int(10) unsigned NOT NULL,
+  `network_id` int(10) unsigned NOT NULL,
+  `receive_local` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`item_id`),
+  KEY `wired_link_endpoints_network` (`network_id`),
+  CONSTRAINT `fk_wired_link_endpoints_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_wired_link_endpoints_network_id` FOREIGN KEY (`network_id`) REFERENCES `wired_link_networks` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `wired_link_networks`
+--
+
+DROP TABLE IF EXISTS `wired_link_networks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `wired_link_networks` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `owner_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `wired_link_networks_owner` (`owner_id`),
+  CONSTRAINT `fk_wired_link_networks_owner_id` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `wired_reward_state`
 --
 
@@ -3285,6 +3338,26 @@ CREATE TABLE `wired_variable_values` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `wired_web_api_keys`
+--
+
+DROP TABLE IF EXISTS `wired_web_api_keys`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `wired_web_api_keys` (
+  `item_id` int(10) unsigned NOT NULL,
+  `room_id` int(10) unsigned NOT NULL,
+  `read_key_hash` char(64) DEFAULT NULL,
+  `write_key_hash` char(64) DEFAULT NULL,
+  `bulk_delete` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`item_id`),
+  UNIQUE KEY `wired_web_api_read_key` (`read_key_hash`),
+  UNIQUE KEY `wired_web_api_write_key` (`write_key_hash`),
+  CONSTRAINT `fk_wired_web_api_keys_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `wordfilter`
 --
 
@@ -3301,7 +3374,7 @@ CREATE TABLE `wordfilter` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping routines for database 'task_fresh_modern'
+-- Dumping routines for database 'plusemu_fresh'
 --
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -3316,7 +3389,7 @@ CREATE TABLE `wordfilter` (
 -- Dump completed
 -- MariaDB dump 10.19-11.4.13-MariaDB, for debian-linux-gnu (x86_64)
 --
--- Host: localhost    Database: task_fresh_modern
+-- Host: 127.0.0.1    Database: plusemu_fresh
 -- ------------------------------------------------------
 -- Server version	11.4.13-MariaDB-ubu2404
 
@@ -31903,7 +31976,36 @@ INSERT INTO `catalog_offer_products` VALUES
 (1900000314,0,'furni',1000000223,NULL,NULL,NULL,NULL,NULL,1,''),
 (1900000315,0,'furni',1000000224,NULL,NULL,NULL,NULL,NULL,1,''),
 (1900000316,0,'furni',1000000225,NULL,NULL,NULL,NULL,NULL,1,''),
-(1900000317,0,'furni',1000000226,NULL,NULL,NULL,NULL,NULL,1,'');
+(1900000317,0,'furni',1000000226,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000318,0,'furni',1000012092,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000319,0,'furni',30870,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000320,0,'furni',30871,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000321,0,'furni',30868,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000322,0,'furni',30869,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000323,0,'furni',1000000139,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000324,0,'furni',1000000121,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000325,0,'furni',30873,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000326,0,'furni',1000000182,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000327,0,'furni',1000000199,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000328,0,'furni',1000000200,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000333,0,'furni',1000012282,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000334,0,'furni',1000012283,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000335,0,'furni',1000012270,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000336,0,'furni',1000012274,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000337,0,'furni',1000012273,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000338,0,'furni',1000012272,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000339,0,'furni',1000012271,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000340,0,'furni',1000012275,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000341,0,'furni',1000012276,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000342,0,'furni',1000012279,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000343,0,'furni',1000012278,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000344,0,'furni',1000012277,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000345,0,'furni',1000012280,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000346,0,'furni',1000012281,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000347,0,'furni',1000012286,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000348,0,'furni',1000012284,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000349,0,'furni',1000012285,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000350,0,'furni',1000012118,NULL,NULL,NULL,NULL,NULL,1,'');
 /*!40000 ALTER TABLE `catalog_offer_products` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -51086,7 +51188,36 @@ INSERT INTO `catalog_offers` VALUES
 (1900000314,'wf_xtra_var_fx_level',0,0,0,0,1,1,''),
 (1900000315,'wf_xtra_var_fx_number',0,0,0,0,1,1,''),
 (1900000316,'wf_xtra_var_fx_progress',0,0,0,0,1,1,''),
-(1900000317,'wf_xtra_var_fx_status',0,0,0,0,1,1,'');
+(1900000317,'wf_xtra_var_fx_status',0,0,0,0,1,1,''),
+(1900000318,'wf_storage_furni_starter',0,0,0,0,0,1,''),
+(1900000319,'wf_cnd_wearing_badge',5,0,0,0,1,1,''),
+(1900000320,'wf_cnd_not_wearing_b',5,0,0,0,1,1,''),
+(1900000321,'wf_cnd_wearing_effect',5,0,0,0,1,1,''),
+(1900000322,'wf_cnd_not_wearing_fx',5,0,0,0,1,1,''),
+(1900000323,'wf_cnd_date_rng_active',5,0,0,0,1,1,''),
+(1900000324,'wf_act_move_furni_to',7,0,0,0,1,1,''),
+(1900000325,'wf_act_mute_triggerer',7,0,0,0,1,1,''),
+(1900000326,'wf_trg_at_time_long',6,0,0,0,1,1,''),
+(1900000327,'wf_var_quest',7,0,0,0,1,1,''),
+(1900000328,'wf_var_quest_chain',7,0,0,0,1,1,''),
+(1900000333,'wf_xtra_achievement_enabler',5,0,0,0,1,1,''),
+(1900000334,'wf_xtra_link_speaker',5,0,0,0,1,1,''),
+(1900000335,'wf_act_progress_ach',7,0,0,0,1,1,''),
+(1900000336,'wf_act_set_visibility',7,0,0,0,1,1,''),
+(1900000337,'wf_act_set_highlight',7,0,0,0,1,1,''),
+(1900000338,'wf_act_send_message',7,0,0,0,1,1,''),
+(1900000339,'wf_act_send_dataframe',7,0,0,0,1,1,''),
+(1900000340,'wf_label',5,0,0,0,1,1,''),
+(1900000341,'wf_link',5,0,0,0,1,1,''),
+(1900000342,'wf_trg_room_initializes',6,0,0,0,1,1,''),
+(1900000343,'wf_trg_receive_message',6,0,0,0,1,1,''),
+(1900000344,'wf_trg_receive_dataframe',6,0,0,0,1,1,''),
+(1900000345,'wf_var_dailytask',7,0,0,0,1,1,''),
+(1900000346,'wf_var_pointer',7,0,0,0,1,1,''),
+(1900000347,'wf_xtra_var_share',8,0,0,0,1,1,''),
+(1900000348,'wf_xtra_var_import',8,0,0,0,1,1,''),
+(1900000349,'wf_xtra_var_leaderboard',8,0,0,0,1,1,''),
+(1900000350,'wf_xtra_var_web_api',8,0,0,0,1,1,'');
 /*!40000 ALTER TABLE `catalog_offers` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -60447,6 +60578,10 @@ INSERT INTO `catalog_page_offers` VALUES
 (2124186,9108,20),
 (2124186,16072,21),
 (2124186,16066,22),
+(2124186,1900000326,23),
+(2124186,1900000342,24),
+(2124186,1900000343,25),
+(2124186,1900000344,26),
 (2124187,9120,0),
 (2124187,9098,1),
 (2124187,29896,2),
@@ -60490,6 +60625,13 @@ INSERT INTO `catalog_page_offers` VALUES
 (2124187,28811,40),
 (2124187,28810,41),
 (2124187,32842,42),
+(2124187,1900000324,43),
+(2124187,1900000325,44),
+(2124187,1900000335,45),
+(2124187,1900000336,46),
+(2124187,1900000337,47),
+(2124187,1900000338,48),
+(2124187,1900000339,49),
 (2124188,9130,0),
 (2124188,9129,1),
 (2124188,9127,2),
@@ -60523,6 +60665,11 @@ INSERT INTO `catalog_page_offers` VALUES
 (2124188,13130,30),
 (2124188,13120,31),
 (2124188,13124,32),
+(2124188,1900000319,33),
+(2124188,1900000320,34),
+(2124188,1900000321,35),
+(2124188,1900000322,36),
+(2124188,1900000323,37),
 (2124189,28420,0),
 (2124189,28429,1),
 (2124189,28421,2),
@@ -60556,6 +60703,8 @@ INSERT INTO `catalog_page_offers` VALUES
 (2124190,26129,10),
 (2124190,29899,11),
 (2124190,33989,12),
+(2124190,1900000333,13),
+(2124190,1900000334,14),
 (2124192,29895,0),
 (2124192,29887,1),
 (2124192,29897,2),
@@ -60576,9 +60725,17 @@ INSERT INTO `catalog_page_offers` VALUES
 (2124193,29889,3),
 (2124193,29905,4),
 (2124193,31921,5),
+(2124193,1900000327,6),
+(2124193,1900000328,7),
+(2124193,1900000345,8),
+(2124193,1900000346,9),
 (2124194,29891,0),
 (2124194,31920,1),
 (2124194,31919,2),
+(2124194,1900000347,3),
+(2124194,1900000348,4),
+(2124194,1900000349,5),
+(2124194,1900000350,6),
 (2124195,34996,0),
 (2124195,34999,1),
 (2124195,35000,2),
@@ -60589,6 +60746,7 @@ INSERT INTO `catalog_page_offers` VALUES
 (2124197,33981,1),
 (2124197,34015,2),
 (2124197,34014,3),
+(2124197,1900000318,4),
 (2124198,33972,0),
 (2124198,33973,1),
 (2124198,33976,2),
@@ -60610,6 +60768,8 @@ INSERT INTO `catalog_page_offers` VALUES
 (2124200,28115,4),
 (2124200,28113,5),
 (2124200,31667,6),
+(2124200,1900000340,7),
+(2124200,1900000341,8),
 (2124201,26582,0),
 (2124201,26583,1),
 (2124201,26584,2),
@@ -77766,9 +77926,9 @@ INSERT INTO `furniture` VALUES
 (30866,'wf_cnd_user_count_in','WIRED Condition: User count in Room','s',1,1,0.65,1,0,1,5445,1,1,1,1,1,'wired_condition',0,2,'0','0',0,30,0,0,1,63018,'wired_condition',0,1,1,NULL,'WIRED Condition: User count in Room','Triggering is allowed if the user count in room is within the defined limits',NULL,0,'5',1,1,0,0,1,0.65,'','',0,1,1,5445,'wf_cnd_user_count_in'),
 (30867,'wf_cnd_not_user_count','','s',1,1,0.65,1,0,1,5443,1,1,1,1,1,'wired_condition',0,2,'0','0',0,31,0,0,1,50950,'wired_condition',0,1,1,NULL,'WIRED Condition: User DOESN\'T count in Room','Triggering is allowed if the user count in room is NOT within the defined limits',NULL,0,'16',1,1,0,0,1,0.65,'','',0,1,1,5443,'wf_cnd_not_user_count'),
 (30868,'wf_cnd_wearing_effect','Wired Condition: Wearing Avatar Effect','s',1,1,0.65,1,0,1,5095,1,1,1,1,1,'wired_condition',0,2,'0','0',0,26,0,0,1,50950,'wired_condition',2,1,1,NULL,'Wired Condition: Wearing Avatar Effect','Wired Condition: Wearing Avatar Effect',NULL,0,'12',1,1,0,0,1,0.65,'','',0,1,1,5095,'wf_cnd_wearing_effect'),
-(30869,'wf_cnd_not_wearing_fx','wf_cnd_not_wearing_fx name','s',1,1,0.65,1,0,1,5444,1,1,1,1,1,'wired_condition',0,2,'0','0',0,28,0,0,1,50950,'wired_condition',2,1,1,NULL,'wf_cnd_not_wearing_fx name','wf_cnd_not_wearing_fx desc',NULL,0,'23',1,1,0,0,1,0.65,'','',0,1,1,5444,'wf_cnd_not_wearing_fx'),
+(30869,'wf_cnd_not_wearing_fx','WIRED Negative Condition: User Is NOT Wearing Effect','s',1,1,0.65,1,0,1,5444,1,1,1,1,1,'wired_condition',0,2,'0','0',0,28,0,0,1,50950,'wired_condition',2,1,1,NULL,'WIRED Negative Condition: User Is NOT Wearing Effect','wf_cnd_not_wearing_fx desc',NULL,0,'23',1,1,0,0,1,0.65,'','',0,1,1,5444,'wf_cnd_not_wearing_fx'),
 (30870,'wf_cnd_wearing_badge','Wired Condition: Wearing Badge','s',1,1,0.65,1,0,1,5094,1,1,1,1,1,'wired_condition',0,2,'0','0',0,25,0,0,1,50950,'wired_condition',2,1,1,NULL,'Wired Condition: Wearing Badge','Wired Condition: Wearing Badge',NULL,0,'11',1,1,0,0,1,0.65,'','',0,1,1,5094,'wf_cnd_wearing_badge'),
-(30871,'wf_cnd_not_wearing_b','wf_cnd_not_wearing_b name','s',1,1,0.65,1,0,1,5446,1,1,1,1,1,'wired_condition',0,2,'0','0',0,27,0,0,1,50950,'wired_condition',2,1,1,NULL,'wf_cnd_not_wearing_b name','wf_cnd_not_wearing_b desc',NULL,0,'22',1,1,0,0,1,0.65,'','',0,1,1,5446,'wf_cnd_not_wearing_b'),
+(30871,'wf_cnd_not_wearing_b','WIRED Negative Condition: User Is NOT Wearing Badge','s',1,1,0.65,1,0,1,5446,1,1,1,1,1,'wired_condition',0,2,'0','0',0,27,0,0,1,50950,'wired_condition',2,1,1,NULL,'WIRED Negative Condition: User Is NOT Wearing Badge','wf_cnd_not_wearing_b desc',NULL,0,'22',1,1,0,0,1,0.65,'','',0,1,1,5446,'wf_cnd_not_wearing_b'),
 (30872,'wf_act_kick_user','WIRED EFFECT: Kick User','s',1,1,0.65,1,0,1,4947,1,1,1,1,1,'wired_effect',0,2,'0','0',0,10,0,0,1,50950,'wired_effect',2,1,1,NULL,'WIRED EFFECT: Kick User','This effect kicks a user depending on the triggering criteria',NULL,0,'19',1,1,0,0,1,0.65,'','',0,1,1,4947,'wf_act_kick_user'),
 (30873,'wf_act_mute_triggerer','WIRED Effect: Mute user','s',1,1,0.65,1,0,1,5854,1,1,1,1,1,'wired_effect',0,2,'0','0',0,39,1,0,1,51550,'wired_effect',2,1,1,NULL,'WIRED Effect: Mute user','This Effect mutes the triggering user.',NULL,0,'20',1,1,0,0,1,0.65,'','',0,1,1,5854,'wf_act_mute_triggerer'),
 (30874,'wf_cnd_match_snapshot','WIRED Condition: Furni States And Positions Match','s',1,1,0.65,1,0,1,3695,1,1,1,1,1,'wired_condition',0,2,'0','0',0,29,0,0,1,50950,'wired_condition',2,1,1,NULL,'WIRED Condition: Furni States And Positions Match','Triggering is allowed if the states and positions of the selected Furni match.',NULL,0,'0',1,1,0,0,1,0.65,'','',0,1,1,3695,'wf_cnd_match_snapshot'),
@@ -78356,9 +78516,9 @@ INSERT INTO `furniture` VALUES
 (65309,'pixel_clock_pink','Pink Clock','i',0,0,0,1,0,0,4483,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,48082,'other',0,1,1,NULL,'Pink Clock','What\'s the time?',NULL,0,NULL,1,0,0,0,NULL,NULL,'duckets','',0,0,0,4483,'pixel_clock_pink'),
 (65310,'pixel_mirror','pixel_mirror name','i',0,0,0,1,0,0,4484,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,48082,'wall_decoration',0,1,1,NULL,'Base Mirror','How am I looking?',NULL,0,NULL,1,0,0,0,NULL,NULL,'duckets','',0,0,0,4484,'pixel_mirror'),
 (65311,'pixel_clock_black','Black Clock','i',0,0,0,1,0,0,4485,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,45508,'other',0,1,1,NULL,'Black Clock','What\'s the time?',NULL,0,NULL,1,0,0,0,NULL,NULL,'duckets','',0,0,0,4485,'pixel_clock_black'),
-(65312,'pixel_clock_green','Green Clock','i',0,0,0,1,0,0,4486,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,48082,'other',0,1,1,NULL,'Green Clock','What\'s the time?',NULL,0,NULL,1,0,0,0,NULL,NULL,'duckets','',0,0,0,4486,'pixel_clock_green'),
-(65313,'pixel_clock_blue','Blue Clock','i',0,0,0,1,0,0,4487,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,48082,'other',0,1,1,NULL,'Blue Clock','What\'s the time?',NULL,0,NULL,1,0,0,0,NULL,NULL,'duckets','',0,0,0,4487,'pixel_clock_blue');
+(65312,'pixel_clock_green','Green Clock','i',0,0,0,1,0,0,4486,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,48082,'other',0,1,1,NULL,'Green Clock','What\'s the time?',NULL,0,NULL,1,0,0,0,NULL,NULL,'duckets','',0,0,0,4486,'pixel_clock_green');
 INSERT INTO `furniture` VALUES
+(65313,'pixel_clock_blue','Blue Clock','i',0,0,0,1,0,0,4487,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,48082,'other',0,1,1,NULL,'Blue Clock','What\'s the time?',NULL,0,NULL,1,0,0,0,NULL,NULL,'duckets','',0,0,0,4487,'pixel_clock_blue'),
 (65314,'pixel_wall_green','Green Base Wall','i',0,0,0,1,0,0,4488,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,48082,'wall_decoration',0,1,1,NULL,'Green Base Wall','No more bare walls!',NULL,0,NULL,1,0,0,0,NULL,NULL,'duckets','',0,0,0,4488,'pixel_wall_green'),
 (65315,'pixel_wall_red','Red Base Wall','i',0,0,0,1,0,0,4489,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,48082,'wall_decoration',0,1,1,NULL,'Red Base Wall','No more bare walls!',NULL,0,NULL,1,0,0,0,NULL,NULL,'duckets','',0,0,0,4489,'pixel_wall_red'),
 (65316,'pixel_painting_pink','Pink Base Painting','i',0,0,0,1,0,0,4490,1,1,1,1,1,'default',0,3,'0','0',0,0,0,0,1,48082,'wall_decoration',0,1,1,NULL,'Pink Base Painting','No more bare walls!',NULL,0,NULL,1,0,0,0,NULL,NULL,'duckets','',0,0,0,4490,'pixel_painting_pink'),
@@ -81530,7 +81690,7 @@ INSERT INTO `furniture` VALUES
 (1000000179,'wf_slc_users_signal','WIRED Selector: Users From Signal','s',1,1,1,1,0,1,14338,1,1,1,1,1,'wired_selector',0,1,'0','0',0,0,0,0,1,69982,'wired',0,1,1,NULL,'WIRED Selector: Users From Signal','wf_slc_users_signal desc',NULL,0,'10',1,1,0,0,1,1,'wired',NULL,0,1,1,14338,'wf_slc_users_signal'),
 (1000000180,'wf_slc_users_team','WIRED Selector: Users In Team','s',1,1,1,1,0,1,14345,1,1,1,1,1,'wired_selector',0,1,'0','0',0,0,0,0,1,69982,'wired',0,1,1,NULL,'WIRED Selector: Users In Team','wf_slc_users_team desc',NULL,0,'3',1,1,0,0,1,1,'wired',NULL,0,1,1,14345,'wf_slc_users_team'),
 (1000000181,'wf_slc_users_with_var','WIRED Selector: Users With Variable','s',1,1,1,1,0,1,15360,1,1,1,1,1,'wired_selector',0,1,'0','0',0,0,0,0,1,71546,'wired',0,1,1,NULL,'WIRED Selector: Users With Variable','wf_slc_users_with_var desc',NULL,0,'18',1,1,0,0,1,1,'wired',NULL,0,1,1,15360,'wf_slc_users_with_var'),
-(1000000182,'wf_trg_at_time_long','wf_trg_at_time_long name','s',1,1,0.65,1,0,1,5442,1,1,1,1,1,'wired_trigger',0,1,'0','0',0,0,0,0,1,45623,'wired_trigger',0,1,1,NULL,'wf_trg_at_time_long name','wf_trg_at_time_long desc',NULL,0,'3',1,1,0,0,1,0.65,'','',0,1,1,5442,'wf_trg_at_time_long'),
+(1000000182,'wf_trg_at_time_long','WIRED Trigger: At Set Time (Long)','s',1,1,0.65,1,0,1,5442,1,1,1,1,1,'wired_trigger',0,1,'0','0',0,0,0,0,1,45623,'wired_trigger',0,1,1,NULL,'WIRED Trigger: At Set Time (Long)','wf_trg_at_time_long desc',NULL,0,'3',1,1,0,0,1,0.65,'','',0,1,1,5442,'wf_trg_at_time_long'),
 (1000000183,'wf_trg_bot_reached_avtr','WIRED Trigger: Bot reaches user','s',1,1,0.65,1,0,0,7856,1,1,1,1,1,'wired_trigger',0,1,'0','0',0,0,0,0,1,57492,'wired_trigger',0,1,1,NULL,'WIRED Trigger: Bot reaches user','Effects are triggered when the selected Bot reaches a user',NULL,0,'14',1,0,0,0,1,0.65,'','',0,1,1,7856,'wf_trg_bot_reached_avtr'),
 (1000000184,'wf_trg_bot_reached_stf','WIRED Trigger: Bot reaches Furni','s',1,1,0.65,1,0,0,7850,1,1,1,1,1,'wired_trigger',0,1,'0','0',0,0,0,0,1,57492,'wired_trigger',0,1,1,NULL,'WIRED Trigger: Bot reaches Furni','Effects are triggered when the selected Bot reaches one of the selected Furni',NULL,0,'13',1,0,0,0,1,0.65,'','',0,1,1,7850,'wf_trg_bot_reached_stf'),
 (1000000185,'wf_trg_click_furni','WIRED Trigger: User Clicks Furni','s',1,1,0.65,1,0,1,14089,1,1,1,1,1,'wired_trigger',0,1,'0','0',0,0,0,0,1,69540,'wired',0,1,1,NULL,'WIRED Trigger: User Clicks Furni','wf_trg_click_furni desc',NULL,0,'18',1,1,0,0,1,0.65,'wired',NULL,0,1,1,14089,'wf_trg_click_furni'),
@@ -82343,9 +82503,9 @@ INSERT INTO `furniture` VALUES
 (1000000992,'clothing_tuxoutfit','Posh Waiter Outfit','s',1,1,0.5,0,0,0,8613,1,1,1,1,1,'purchasable_clothing',0,2,'0','0',0,0,0,0,1,61703,'other',0,1,1,NULL,'Posh Waiter Outfit','You can smell the starch.',NULL,0,'3503,3504,3505,3506,3507,3508',23,0,0,0,0,0.5,'easter_2016',NULL,0,1,1,8613,'clothing_tuxoutfit'),
 (1000000993,'clothing_rippedtop','Ripped Up Top','s',1,1,0.12,1,0,0,8614,1,1,1,1,1,'purchasable_clothing',0,2,'0','0',0,0,0,0,1,61703,'other',0,1,1,NULL,'Ripped Up Top','Realistically rugged.',NULL,0,'3527,3530',23,0,0,0,1,0.12,'easter_2016',NULL,0,1,1,8614,'clothing_rippedtop'),
 (1000000994,'easter16_habberge7ltd','Efflorescent Habberge Egg','s',1,1,2,1,0,0,8615,1,1,1,1,1,'default',0,2,'0','0',0,0,0,0,1,61703,'other',0,1,1,NULL,'Efflorescent Habberge Egg','Smells totally wonderful inside.',NULL,0,NULL,1,0,0,0,1,2,'easter_2016',NULL,0,1,0,8615,'easter16_habberge7ltd'),
-(1000000995,'clothing_hipoutfit1','Bearded Hipster Outfit','s',1,1,0.5,0,0,0,8616,1,1,1,1,1,'purchasable_clothing',0,2,'0','0',0,0,0,0,1,61703,'other',0,1,1,NULL,'Bearded Hipster Outfit','Flat whites and laptops.',NULL,0,'3342,3344,3531',23,0,0,0,0,0.5,'easter_2016',NULL,0,1,1,8616,'clothing_hipoutfit1'),
-(1000000996,'clothing_hipoutfit2','Spectacled Designer Outfit','s',1,1,0.5,0,0,0,8617,1,1,1,1,1,'purchasable_clothing',0,2,'0','0',0,0,0,0,1,61703,'other',0,1,1,NULL,'Spectacled Designer Outfit','Seriously good hair.',NULL,0,'3499,3524,3528,3529,3484,3328',23,0,0,0,0,0.5,'easter_2016',NULL,0,1,1,8617,'clothing_hipoutfit2');
+(1000000995,'clothing_hipoutfit1','Bearded Hipster Outfit','s',1,1,0.5,0,0,0,8616,1,1,1,1,1,'purchasable_clothing',0,2,'0','0',0,0,0,0,1,61703,'other',0,1,1,NULL,'Bearded Hipster Outfit','Flat whites and laptops.',NULL,0,'3342,3344,3531',23,0,0,0,0,0.5,'easter_2016',NULL,0,1,1,8616,'clothing_hipoutfit1');
 INSERT INTO `furniture` VALUES
+(1000000996,'clothing_hipoutfit2','Spectacled Designer Outfit','s',1,1,0.5,0,0,0,8617,1,1,1,1,1,'purchasable_clothing',0,2,'0','0',0,0,0,0,1,61703,'other',0,1,1,NULL,'Spectacled Designer Outfit','Seriously good hair.',NULL,0,'3499,3524,3528,3529,3484,3328',23,0,0,0,0,0.5,'easter_2016',NULL,0,1,1,8617,'clothing_hipoutfit2'),
 (1000000997,'clothing_camera','Paparazzi Camera','s',1,1,0.2,1,0,0,8618,1,1,1,1,1,'purchasable_clothing',0,2,'0','0',0,0,0,0,1,61703,'other',0,1,1,NULL,'Paparazzi Camera','Follow the famous Habbos.',NULL,0,'3485',23,0,0,0,1,0.2,'easter_2016',NULL,0,1,1,8618,'clothing_camera'),
 (1000000998,'clothing_bedhair','Bed Hair','s',1,1,0.96,1,0,0,8619,1,1,1,1,1,'purchasable_clothing',0,2,'0','0',0,0,0,0,1,61703,'other',0,1,1,NULL,'Bed Hair','Smells as bad as it looks.',NULL,0,'3520',23,0,0,0,1,0.96,'easter_2016',NULL,0,1,1,8619,'clothing_bedhair'),
 (1000000999,'clothing_halter','Halter Top','s',1,1,0.2,1,0,0,8620,1,1,1,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,61703,'other',0,1,1,NULL,'Halter Top','BRING the looks!',NULL,1,'3496,3510',23,0,0,0,1,0.2,'easter_2016',NULL,0,1,1,8620,'clothing_halter'),
@@ -86130,9 +86290,9 @@ INSERT INTO `furniture` VALUES
 (1000004778,'bc_panel*50','Panel Block 50','s',2,1,2.01,1,0,0,12399,1,1,1,1,1,'default',0,5,'0','0',0,0,0,0,1,70394,'other',0,2,1,'#ffffff,#9abd00,#ffffff,#ffffff,#ffffff,#9abd00','Panel Block 50','bc_panel_50 desc',NULL,0,'-0.5',1,0,0,0,1,2.01,'buildersclub',NULL,0,0,1,12399,'bc_panel*50'),
 (1000004779,'bc_panel*51','Panel Block 51','s',2,1,2.01,1,0,0,12400,1,1,1,1,1,'default',0,5,'0','0',0,0,0,0,1,70394,'other',0,2,1,'#ffffff,#dbf96f,#ffffff,#ffffff,#ffffff,#dbf96f','Panel Block 51','bc_panel_51 desc',NULL,0,'-0.5',1,0,0,0,1,2.01,'buildersclub',NULL,0,0,1,12400,'bc_panel*51'),
 (1000004780,'bc_panel*52','Panel Block 52','s',2,1,2.01,1,0,0,12401,1,1,1,1,1,'default',0,5,'0','0',0,0,0,0,1,70394,'other',0,2,1,'#ffffff,#bafa00,#ffffff,#ffffff,#ffffff,#bafa00','Panel Block 52','bc_panel_52 desc',NULL,0,'-0.5',1,0,0,0,1,2.01,'buildersclub',NULL,0,0,1,12401,'bc_panel*52'),
-(1000004781,'bc_panel*53','Panel Block 53','s',2,1,2.01,1,0,0,12402,1,1,1,1,1,'default',0,5,'0','0',0,0,0,0,1,70394,'other',0,2,1,'#ffffff,#00ba00,#ffffff,#ffffff,#ffffff,#00ba00','Panel Block 53','bc_panel_53 desc',NULL,0,'-0.5',1,0,0,0,1,2.01,'buildersclub',NULL,0,0,1,12402,'bc_panel*53'),
-(1000004782,'bc_panel*54','Panel Block 54','s',2,1,2.01,1,0,0,12403,1,1,1,1,1,'default',0,5,'0','0',0,0,0,0,1,70394,'other',0,2,1,'#ffffff,#007900,#ffffff,#ffffff,#ffffff,#007900','Panel Block 54','bc_panel_54 desc',NULL,0,'-0.5',1,0,0,0,1,2.01,'buildersclub',NULL,0,0,1,12403,'bc_panel*54');
+(1000004781,'bc_panel*53','Panel Block 53','s',2,1,2.01,1,0,0,12402,1,1,1,1,1,'default',0,5,'0','0',0,0,0,0,1,70394,'other',0,2,1,'#ffffff,#00ba00,#ffffff,#ffffff,#ffffff,#00ba00','Panel Block 53','bc_panel_53 desc',NULL,0,'-0.5',1,0,0,0,1,2.01,'buildersclub',NULL,0,0,1,12402,'bc_panel*53');
 INSERT INTO `furniture` VALUES
+(1000004782,'bc_panel*54','Panel Block 54','s',2,1,2.01,1,0,0,12403,1,1,1,1,1,'default',0,5,'0','0',0,0,0,0,1,70394,'other',0,2,1,'#ffffff,#007900,#ffffff,#ffffff,#ffffff,#007900','Panel Block 54','bc_panel_54 desc',NULL,0,'-0.5',1,0,0,0,1,2.01,'buildersclub',NULL,0,0,1,12403,'bc_panel*54'),
 (1000004783,'bc_panel*55','Panel Block 55','s',2,1,2.01,1,0,0,12404,1,1,1,1,1,'default',0,5,'0','0',0,0,0,0,1,70394,'other',0,2,1,'#ffffff,#2e632e,#ffffff,#ffffff,#ffffff,#2e632e','Panel Block 55','bc_panel_55 desc',NULL,0,'-0.5',1,0,0,0,1,2.01,'buildersclub',NULL,0,0,1,12404,'bc_panel*55'),
 (1000004784,'bc_panel*56','Panel Block 56','s',2,1,2.01,1,0,0,12405,1,1,1,1,1,'default',0,5,'0','0',0,0,0,0,1,70394,'other',0,2,1,'#ffffff,#00aa00,#ffffff,#ffffff,#ffffff,#00aa00','Panel Block 56','bc_panel_56 desc',NULL,0,'-0.5',1,0,0,0,1,2.01,'buildersclub',NULL,0,0,1,12405,'bc_panel*56'),
 (1000004785,'bc_panel*57','Panel Block 57','s',2,1,2.01,1,0,0,12406,1,1,1,1,1,'default',0,5,'0','0',0,0,0,0,1,70394,'other',0,2,1,'#ffffff,#52da50,#ffffff,#ffffff,#ffffff,#52da50','Panel Block 57','bc_panel_57 desc',NULL,0,'-0.5',1,0,0,0,1,2.01,'buildersclub',NULL,0,0,1,12406,'bc_panel*57'),
@@ -88219,14 +88379,14 @@ INSERT INTO `furniture` VALUES
 (1000006866,'nft_h23_boxrobot','Robo Box','s',1,1,1,0,0,0,14546,1,1,1,1,1,'default',0,4,'0','0',0,0,0,0,1,70521,'other',0,1,1,NULL,'Robo Box','nft_h23_boxrobot desc',NULL,0,NULL,1,0,0,0,0,1,'nft',NULL,0,0,0,14546,'nft_h23_boxrobot'),
 (1000006867,'clothing_23test_hat1','clothing_23test_hat1 name','s',1,1,0.95,1,0,0,14547,1,1,1,1,1,'purchasable_clothing',0,2,'0','0',0,0,0,0,1,70528,'other',0,1,1,NULL,'clothing_23test_hat1 name','clothing_23test_hat1 desc',NULL,0,'5375',23,0,0,0,1,0.95,'testing',NULL,0,1,1,14547,'clothing_23test_hat1'),
 (1000006868,'clothing_23test_hat2','clothing_23test_hat2 name','s',1,1,0.95,1,0,0,14548,1,1,1,1,1,'purchasable_clothing',0,2,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'clothing_23test_hat2 name','clothing_23test_hat2 desc',NULL,0,'5376',23,0,0,0,1,0.95,'testing',NULL,0,1,1,14548,'clothing_23test_hat2'),
-(1000006869,'conf_invis_control','Invisible Furni Controller','s',1,1,1,1,0,0,14549,1,1,1,1,1,'default',0,2,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Invisible Furni Controller','conf_invis_control desc',NULL,0,NULL,1,0,0,0,1,1,'configuration',NULL,0,1,1,14549,'conf_invis_control'),
+(1000006869,'conf_invis_control','Invisible Furni Controller','s',1,1,1,1,0,0,14549,1,1,1,1,1,'invis_control',0,2,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Invisible Furni Controller','conf_invis_control desc',NULL,0,NULL,1,0,0,0,1,1,'configuration',NULL,0,1,1,14549,'conf_invis_control'),
 (1000006870,'conf_wired_disable','Wired Disabler','s',1,1,1,0,0,0,14550,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Wired Disabler','conf_wired_disable desc',NULL,0,NULL,1,0,0,0,0,1,'configuration',NULL,0,1,1,14550,'conf_wired_disable'),
 (1000006871,'conf_queue_speed','Roller Speed Controller','s',1,1,1,0,0,0,14551,1,1,1,1,1,'default',0,12,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Roller Speed Controller','conf_queue_speed desc',NULL,0,NULL,1,0,0,0,0,1,'configuration',NULL,0,1,1,14551,'conf_queue_speed'),
 (1000006872,'conf_handitem_block','Handitem blocker','s',1,1,1,0,0,0,14552,1,1,1,1,1,'default',0,2,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Handitem blocker','conf_handitem_block desc',NULL,0,NULL,1,0,0,0,0,1,'configuration',NULL,0,1,1,14552,'conf_handitem_block'),
 (1000006873,'room_invisible_sit_tile','Invisible Chair Tile','s',1,1,0.55,0,1,0,14558,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Invisible Chair Tile','room_invisible_sit_tile desc',NULL,0,NULL,1,0,1,0,0,0.55,'puzzle_box',NULL,0,1,1,14558,'room_invisible_sit_tile'),
 (1000006874,'room_invisible_block4','Invisible Block (Non-stackable and Non-Walkable)','s',1,1,0,0,0,0,14559,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Invisible Block (Non-stackable and Non-Walkable)','room_invisible_block4 desc',NULL,0,NULL,1,0,0,0,0,0,'puzzle_box',NULL,0,1,1,14559,'room_invisible_block4'),
 (1000006875,'room_invisible_block2','Invisible Block (Stackable and Walkable)','s',1,1,0,1,0,1,14560,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Invisible Block (Stackable and Walkable)','room_invisible_block2 desc',NULL,0,NULL,1,1,0,0,1,0,'puzzle_box',NULL,0,1,1,14560,'room_invisible_block2'),
-(1000006876,'room_invisible_click_tile','Invisible Click Tile','s',1,1,0,1,0,1,14561,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Invisible Click Tile','room_invisible_click_tile desc',NULL,0,NULL,1,1,0,0,1,0,'puzzle_box',NULL,0,1,1,14561,'room_invisible_click_tile'),
+(1000006876,'room_invisible_click_tile','Invisible Click Tile','s',1,1,0,1,0,1,14561,1,1,1,1,1,'room_invisible_click_tile',0,1,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Invisible Click Tile','room_invisible_click_tile desc',NULL,0,NULL,1,1,0,0,1,0,'puzzle_box',NULL,0,1,1,14561,'room_invisible_click_tile'),
 (1000006877,'room_invisible_block3','Invisible Block (Non-stackable and Walkable)','s',1,1,0,0,0,1,14562,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,70536,'other',0,1,1,NULL,'Invisible Block (Non-stackable and Walkable)','room_invisible_block3 desc',NULL,0,NULL,1,1,0,0,0,0,'puzzle_box',NULL,0,1,1,14562,'room_invisible_block3'),
 (1000006878,'nft_h23_haf_mummy','Mummy Action Figure','s',1,1,1,0,0,0,14563,1,1,1,1,1,'default',0,8,'0','0',0,0,0,0,1,72326,'other',0,1,1,NULL,'Mummy Action Figure','nft_h23_haf_mummy desc',NULL,0,NULL,1,0,0,0,0,1,'nft2023',NULL,0,0,0,14563,'nft_h23_haf_mummy'),
 (1000006879,'nft_u23_hweenduck2','Count Duckula Duck','s',1,1,1,0,0,0,14564,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,70595,'other',2,1,1,NULL,'Count Duckula Duck','nft_u23_hweenduck2 desc',NULL,0,NULL,1,0,0,0,0,1,'nft2023','',0,1,1,14564,'nft_u23_hweenduck2'),
@@ -89897,9 +90057,9 @@ INSERT INTO `furniture` VALUES
 (1000009150,'clothing_nftlittlemonkey','Mini Shoulder Monkey','s',1,1,1,0,0,0,18802,0,0,0,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,75185,'other',0,1,1,NULL,'Mini Shoulder Monkey','clothing_nftlittlemonkey desc',NULL,0,'6487',23,0,0,0,0,1,'nft2026',NULL,0,0,0,18802,'clothing_nftlittlemonkey'),
 (1000009151,'clothing_nftmayhair1','Big Bouffant Hair','s',1,1,1,0,0,0,18746,0,0,0,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,75066,'other',0,1,1,NULL,'Big Bouffant Hair','clothing_nftmayhair1 desc',NULL,0,'6465',23,0,0,0,0,1,'nft2026',NULL,0,0,0,18746,'clothing_nftmayhair1'),
 (1000009152,'clothing_nftmayhair2','Spiky Mullet','s',1,1,1,0,0,0,18747,0,0,0,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,75066,'other',0,1,1,NULL,'Spiky Mullet','clothing_nftmayhair2 desc',NULL,0,'6466',23,0,0,0,0,1,'nft2026',NULL,0,0,0,18747,'clothing_nftmayhair2'),
-(1000009153,'clothing_nftmayhair3','Tight Curls','s',1,1,1,0,0,0,18748,0,0,0,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,75066,'other',0,1,1,NULL,'Tight Curls','clothing_nftmayhair3 desc',NULL,0,'6467',23,0,0,0,0,1,'nft2026',NULL,0,0,0,18748,'clothing_nftmayhair3'),
-(1000009154,'clothing_nftmduckhat','Habbo Duck Hat','s',1,1,1,0,0,0,18676,0,0,0,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,74965,'other',0,1,1,NULL,'Habbo Duck Hat','clothing_nftmduckhat desc',NULL,0,'6413',23,0,0,0,0,1,'nftmerch',NULL,0,0,0,18676,'clothing_nftmduckhat');
+(1000009153,'clothing_nftmayhair3','Tight Curls','s',1,1,1,0,0,0,18748,0,0,0,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,75066,'other',0,1,1,NULL,'Tight Curls','clothing_nftmayhair3 desc',NULL,0,'6467',23,0,0,0,0,1,'nft2026',NULL,0,0,0,18748,'clothing_nftmayhair3');
 INSERT INTO `furniture` VALUES
+(1000009154,'clothing_nftmduckhat','Habbo Duck Hat','s',1,1,1,0,0,0,18676,0,0,0,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,74965,'other',0,1,1,NULL,'Habbo Duck Hat','clothing_nftmduckhat desc',NULL,0,'6413',23,0,0,0,0,1,'nftmerch',NULL,0,0,0,18676,'clothing_nftmduckhat'),
 (1000009155,'clothing_nftmerryxmasprint','Merry Xmas Print','s',1,1,1,0,0,0,18177,0,0,0,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,74426,'other',0,1,1,NULL,'Merry Xmas Print','clothing_nftmerryxmasprint desc',NULL,0,'6282',23,0,0,0,0,1,'nft2025',NULL,0,0,0,18177,'clothing_nftmerryxmasprint'),
 (1000009156,'clothing_nftmessycut','Wild Tufts','s',1,1,1,0,0,0,16529,0,0,0,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,72612,'other',0,1,1,NULL,'Wild Tufts','clothing_nftmessycut desc',NULL,0,'5841',23,0,0,0,0,1,'nft2024',NULL,0,0,0,16529,'clothing_nftmessycut'),
 (1000009157,'clothing_nftmhandshirt','Habbo Hand T-Shirt','s',1,1,1,0,0,0,18677,0,0,0,1,1,'purchasable_clothing',0,1,'0','0',0,0,0,0,1,74965,'other',0,1,1,NULL,'Habbo Hand T-Shirt','clothing_nftmhandshirt desc',NULL,0,'6414,6415',23,0,0,0,0,1,'nftmerch',NULL,0,0,0,18677,'clothing_nftmhandshirt'),
@@ -92830,7 +92990,7 @@ INSERT INTO `furniture` VALUES
 (1000012082,'wf_proto_cnd_trggrer_on_frn','Ancient WIRED Condition: Triggerer Is On Furni','s',1,1,1,1,0,1,17679,1,1,1,1,1,'wf_cnd_trggrer_on_frn',0,4,'0','0',0,0,0,0,1,74122,'wired',0,1,1,NULL,'Ancient WIRED Condition: Triggerer Is On Furni','wf_proto_cnd_trggrer_on_frn desc',NULL,0,'2',1,1,0,0,1,1,'wired',NULL,0,1,1,17679,'wf_proto_cnd_trggrer_on_frn'),
 (1000012083,'wf_proto_pyramid','Ancient WIRED Pyramid','s',1,1,0.01,0,0,1,17677,1,1,1,1,1,'default',0,4,'0','0',0,0,0,0,1,74122,'wired',0,1,1,NULL,'Ancient WIRED Pyramid','wf_proto_pyramid desc',NULL,0,'10,8,20,12',1,1,0,0,0,0.01,'wired',NULL,0,1,1,17677,'wf_proto_pyramid'),
 (1000012084,'wf_proto_trg_at_given_time','Ancient WIRED Trigger: At Given Time','s',1,1,1,1,0,1,17678,1,1,1,1,1,'wf_trg_at_given_time',0,4,'0','0',0,0,0,0,1,74122,'wired',0,1,1,NULL,'Ancient WIRED Trigger: At Given Time','wf_proto_trg_at_given_time desc',NULL,0,'3',1,1,0,0,1,1,'wired',NULL,0,1,1,17678,'wf_proto_trg_at_given_time'),
-(1000012085,'wf_room_linker','WIRED Room Linker','s',1,1,0,1,0,1,16744,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,72921,'wired',0,1,1,NULL,'WIRED Room Linker','wf_room_linker desc',NULL,0,NULL,1,1,0,0,1,0,'wired',NULL,0,1,1,16744,'wf_room_linker'),
+(1000012085,'wf_room_linker','WIRED Room Linker','s',1,1,0,1,0,1,16744,1,1,1,1,1,'wired_room_linker',0,1,'0','0',0,0,0,0,1,72921,'wired',0,1,1,NULL,'WIRED Room Linker','wf_room_linker desc',NULL,0,NULL,1,1,0,0,1,0,'wired',NULL,0,1,1,16744,'wf_room_linker'),
 (1000012086,'wf_screenseparator','Screen Separator','s',1,1,1,0,0,0,18028,1,1,1,1,1,'default',0,13,'0','0',0,0,0,0,1,74315,'other',0,1,1,NULL,'Screen Separator','wf_screenseparator desc',NULL,0,NULL,1,0,0,0,0,1,'wired',NULL,0,1,1,18028,'wf_screenseparator'),
 (1000012087,'wf_slider','Slider','s',1,1,1,0,0,0,17879,1,1,1,1,1,'default',0,4,'0','0',0,0,0,0,1,74173,'other',0,1,1,NULL,'Slider','wf_slider desc',NULL,0,NULL,1,0,0,0,0,1,'wired',NULL,0,1,1,17879,'wf_slider'),
 (1000012088,'wf_storage_coins1','Credit Chest','s',1,1,1,0,0,0,18486,0,0,0,1,1,'wired_chest_coins',0,5,'0','0',0,0,0,0,1,74772,'wired',0,1,1,NULL,'Credit Chest','wf_storage_coins1 desc',NULL,0,NULL,25,0,0,0,0,1,'wired',NULL,0,0,0,18486,'wf_storage_coins1'),
@@ -92863,7 +93023,7 @@ INSERT INTO `furniture` VALUES
 (1000012115,'wf_vu','Analogue Meter','s',1,1,1,0,0,0,17868,1,1,1,1,1,'default',0,10,'0','0',0,0,0,0,1,74173,'other',0,1,1,NULL,'Analogue Meter','wf_vu desc',NULL,0,NULL,1,0,0,0,0,1,'wired',NULL,0,1,1,17868,'wf_vu'),
 (1000012116,'wf_xtra_custom_contract','WIRED Add-on: Custom Contract','s',1,1,0.37,1,0,1,18493,1,1,1,1,1,'wired_addon',0,1,'0','0',0,0,0,0,1,74772,'wired',0,1,1,NULL,'WIRED Add-on: Custom Contract','wf_xtra_custom_contract desc',NULL,0,'20',1,1,0,0,1,0.37,'wired',NULL,0,1,1,18493,'wf_xtra_custom_contract'),
 (1000012117,'wf_xtra_scan_chest_furni_by_type','WIRED Scanner Add-on: Chest Furni of Type','s',1,1,0.37,1,0,1,18494,1,1,1,1,1,'wired_addon',0,2,'0','0',0,0,0,0,1,74772,'wired',0,1,1,NULL,'WIRED Scanner Add-on: Chest Furni of Type','wf_xtra_scan_chest_furni_by_type desc',NULL,0,'18',1,1,0,0,1,0.37,'wired',NULL,0,1,1,18494,'wf_xtra_scan_chest_furni_by_type'),
-(1000012118,'wf_xtra_var_web_api','Variable Global Add-on: Web API','s',1,1,0.75,1,0,1,19190,0,0,0,1,1,'default',0,4,'0','0',0,0,0,0,1,75694,'wired',0,1,1,NULL,'Variable Global Add-on: Web API','wf_xtra_var_web_api desc',NULL,0,'2002',1,1,0,0,1,0.75,'wired',NULL,0,0,0,19190,'wf_xtra_var_web_api'),
+(1000012118,'wf_xtra_var_web_api','Variable Global Add-on: Web API','s',1,1,0.75,1,0,1,19190,0,0,0,1,1,'wired_addon',0,4,'0','0',0,0,0,0,1,75694,'wired',0,1,1,NULL,'Variable Global Add-on: Web API','wf_xtra_var_web_api desc',NULL,0,'2002',1,1,0,0,1,0.75,'wired',NULL,0,0,0,19190,'wf_xtra_var_web_api'),
 (1000012119,'wonderland_c25_cardthrone','Throne of Cards','s',1,1,1,0,1,0,17032,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,73101,'chair',0,1,1,NULL,'Throne of Cards','wonderland_c25_cardthrone desc',NULL,0,NULL,1,0,1,0,0,1,'wonderland',NULL,0,1,1,17032,'wonderland_c25_cardthrone'),
 (1000012120,'wonderland_c25_castletower','Rosy Castle Tower','s',2,2,6,1,0,0,17037,1,1,1,1,1,'default',0,4,'0','0',0,0,0,0,1,73101,'other',0,2,2,NULL,'Rosy Castle Tower','wonderland_c25_castletower desc',NULL,0,NULL,1,0,0,0,1,6,'wonderland',NULL,0,1,1,17037,'wonderland_c25_castletower'),
 (1000012121,'wonderland_c25_castlewall','Rosy Castle Wall','s',3,2,3.7,1,0,0,17034,1,1,1,1,1,'default',0,6,'0','0',0,0,0,0,1,73101,'other',0,3,2,NULL,'Rosy Castle Wall','wonderland_c25_castlewall desc',NULL,0,NULL,1,0,0,0,1,3.7,'wonderland',NULL,0,1,1,17034,'wonderland_c25_castlewall'),
@@ -93014,7 +93174,24 @@ INSERT INTO `furniture` VALUES
 (1000012266,'xmas_r25_habubuhope','Hope Habubu','s',1,1,1.3,1,0,0,18075,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,74324,'other',0,1,1,NULL,'Hope Habubu','xmas_r25_habubuhope desc',NULL,0,NULL,1,0,0,0,1,1.3,'xmas2025',NULL,0,1,1,18075,'xmas_r25_habubuhope'),
 (1000012267,'xmas_r25_habubulove','Love Habubu','s',1,1,1.3,1,0,0,18064,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,74324,'other',0,1,1,NULL,'Love Habubu','xmas_r25_habubulove desc',NULL,0,NULL,1,0,0,0,1,1.3,'xmas2025',NULL,0,1,1,18064,'xmas_r25_habubulove'),
 (1000012268,'xmas_r25_habubuluck','Luck Habubu','s',1,1,1.3,1,0,0,18033,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,74324,'other',0,1,1,NULL,'Luck Habubu','xmas_r25_habubuluck desc',NULL,0,NULL,1,0,0,0,1,1.3,'xmas2025',NULL,0,1,1,18033,'xmas_r25_habubuluck'),
-(1000012269,'xmas_r25_icepillow','Ice Pillow','s',1,1,0.9,0,1,0,18066,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,74324,'other',0,1,1,NULL,'Ice Pillow','xmas_r25_icepillow desc',NULL,0,NULL,1,0,1,0,0,0.9,'xmas2025',NULL,0,1,1,18066,'xmas_r25_icepillow');
+(1000012269,'xmas_r25_icepillow','Ice Pillow','s',1,1,0.9,0,1,0,18066,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,74324,'other',0,1,1,NULL,'Ice Pillow','xmas_r25_icepillow desc',NULL,0,NULL,1,0,1,0,0,0.9,'xmas2025',NULL,0,1,1,18066,'xmas_r25_icepillow'),
+(1000012270,'wf_act_progress_ach','WIRED Effect: Progress Achievement','s',1,1,0.65,1,0,1,19393,1,1,1,1,1,'wired_effect',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Effect: Progress Achievement','wf_act_progress_ach desc',NULL,0,'51',1,1,0,0,1,0.65,'wired',NULL,0,1,1,19393,'wf_act_progress_ach'),
+(1000012271,'wf_act_send_dataframe','WIRED Effect: Send Link Dataframe','s',1,1,0.65,1,0,1,19394,1,1,1,1,1,'wired_effect',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Effect: Send Link Dataframe','wf_act_send_dataframe desc',NULL,0,'64',1,1,0,0,1,0.65,'wired',NULL,0,1,1,19394,'wf_act_send_dataframe'),
+(1000012272,'wf_act_send_message','WIRED Effect: Send Link Message','s',1,1,0.65,1,0,1,19395,1,1,1,1,1,'wired_effect',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Effect: Send Link Message','wf_act_send_message desc',NULL,0,'63',1,1,0,0,1,0.65,'wired',NULL,0,1,1,19395,'wf_act_send_message'),
+(1000012273,'wf_act_set_highlight','WIRED Effect: Set Furni Highlight','s',1,1,0.65,1,0,1,19396,1,1,1,1,1,'wired_effect',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Effect: Set Furni Highlight','wf_act_set_highlight desc',NULL,0,'62',1,1,0,0,1,0.65,'wired',NULL,0,1,1,19396,'wf_act_set_highlight'),
+(1000012274,'wf_act_set_visibility','WIRED Effect: Set Furni Transparency','s',1,1,0.65,1,0,1,19397,1,1,1,1,1,'wired_effect',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Effect: Set Furni Transparency','wf_act_set_visibility desc',NULL,0,'61',1,1,0,0,1,0.65,'wired',NULL,0,1,1,19397,'wf_act_set_visibility'),
+(1000012275,'wf_label','WIRED Label','s',1,1,0.11,1,0,0,19398,1,1,1,1,1,'wired_label',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Label','wf_label desc',NULL,0,NULL,1,0,0,0,1,0.11,'wired',NULL,0,1,1,19398,'wf_label'),
+(1000012276,'wf_link','WIRED Link','s',1,1,1.8,0,0,0,19399,1,1,1,1,1,'wired_link',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Link','wf_link desc',NULL,0,NULL,1,0,0,0,0,1.8,'wired',NULL,0,1,1,19399,'wf_link'),
+(1000012277,'wf_trg_receive_dataframe','WIRED Trigger: Receive Link Dataframe','s',1,1,0.65,1,0,1,19400,1,1,1,1,1,'wired_trigger',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Trigger: Receive Link Dataframe','wf_trg_receive_dataframe desc',NULL,0,'30',1,1,0,0,1,0.65,'wired',NULL,0,1,1,19400,'wf_trg_receive_dataframe'),
+(1000012278,'wf_trg_receive_message','WIRED Trigger: Receive Link Message','s',1,1,0.65,1,0,1,19401,1,1,1,1,1,'wired_trigger',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Trigger: Receive Link Message','wf_trg_receive_message desc',NULL,0,'29',1,1,0,0,1,0.65,'wired',NULL,0,1,1,19401,'wf_trg_receive_message'),
+(1000012279,'wf_trg_room_initializes','WIRED Trigger: Room Initialized','s',1,1,0.65,1,0,1,19402,1,1,1,1,1,'wired_trigger',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Trigger: Room Initialized','wf_trg_room_initializes desc',NULL,0,'28',1,1,0,0,1,0.65,'wired',NULL,0,1,1,19402,'wf_trg_room_initializes'),
+(1000012280,'wf_var_dailytask','WIRED Variable: Daily Task','s',1,1,1.2,1,0,1,19403,1,1,1,1,1,'wired_variable',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Variable: Daily Task','wf_var_dailytask desc',NULL,0,'8',1,1,0,0,1,1.2,'wired',NULL,0,1,1,19403,'wf_var_dailytask'),
+(1000012281,'wf_var_pointer','WIRED Variable: Pointer Variable','s',1,1,1.2,1,0,1,19404,1,1,1,1,1,'wired_variable',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Variable: Pointer Variable','wf_var_pointer desc',NULL,0,'9',1,1,0,0,1,1.2,'wired',NULL,0,1,1,19404,'wf_var_pointer'),
+(1000012282,'wf_xtra_achievement_enabler','WIRED Add-on: Achievement Enabler','s',1,1,0.74,1,0,1,19405,1,1,1,1,1,'wired_addon',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Add-on: Achievement Enabler','wf_xtra_achievement_enabler desc',NULL,0,'2001',1,1,0,0,1,0.74,'wired',NULL,0,1,1,19405,'wf_xtra_achievement_enabler'),
+(1000012283,'wf_xtra_link_speaker','WIRED Link Speaker','s',1,1,1,0,0,0,19406,1,1,1,1,1,'wired_addon',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'WIRED Link Speaker','wf_xtra_link_speaker desc',NULL,0,'2003',1,0,0,0,0,1,'wired',NULL,0,1,1,19406,'wf_xtra_link_speaker'),
+(1000012284,'wf_xtra_var_import','Variable Add-on: Import','s',1,1,0.75,1,0,1,19407,1,1,1,1,1,'wired_addon',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'Variable Add-on: Import','wf_xtra_var_import desc',NULL,0,'1004',1,1,0,0,1,0.75,'wired',NULL,0,1,1,19407,'wf_xtra_var_import'),
+(1000012285,'wf_xtra_var_leaderboard','Variable Add-on: Leaderboard','s',1,1,0.75,1,0,1,19408,1,1,1,1,1,'wired_addon',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'Variable Add-on: Leaderboard','wf_xtra_var_leaderboard desc',NULL,0,'1005',1,1,0,0,1,0.75,'wired',NULL,0,1,1,19408,'wf_xtra_var_leaderboard'),
+(1000012286,'wf_xtra_var_share','Variable Add-on: Share','s',1,1,0.75,1,0,1,19409,1,1,1,1,1,'wired_addon',0,1,'0','0',0,0,0,0,1,75953,'wired',0,1,1,NULL,'Variable Add-on: Share','wf_xtra_var_share desc',NULL,0,'1003',1,1,0,0,1,0.75,'wired',NULL,0,1,1,19409,'wf_xtra_var_share');
 /*!40000 ALTER TABLE `furniture` ENABLE KEYS */;
 UNLOCK TABLES;
 

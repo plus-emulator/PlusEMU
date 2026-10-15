@@ -6,7 +6,7 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 public sealed class WiredVariableQueries(WiredVariableModule variables, WiredVariableFrame frame) : IDisposable
 {
     private readonly Dictionary<WiredVariableReference, WiredVariableReadSnapshot> _reads = [];
-    private readonly Dictionary<(string Name, WiredConfiguration Configuration), Dictionary<WiredVariableHolder, int>> _operands = [];
+    private readonly Dictionary<(string Name, WiredConfiguration Configuration), long?> _operands = [];
     private bool _disposed;
 
     public bool MatchSelector(string name, WiredConfiguration configuration, WiredVariableHolder holder)
@@ -19,14 +19,16 @@ public sealed class WiredVariableQueries(WiredVariableModule variables, WiredVar
             _ => (WiredVariableTarget)(-1)
         };
         var p = configuration.IntParams;
-        var tokens = configuration.Text.Split('\t');
+        var ids = configuration.VariableIds;
 
-        if (holder.Target != target || p.Length != 9 || p[0] is not (0 or 1) || p[1] is < 0 or > 5
-            || p[2] is not (0 or 1) || !Enum.IsDefined((WiredVariableTarget)p[4]) || tokens[0].Length == 0) {
+        if (holder.Target != target || p.Length is not (9 or 10)
+            || p.Length == 10 && (p[9] is not (0 or 1) || p[9] == 1 && (p[2] != 1 || p[4] != (int)target)) || p[0] is not (0 or 1) || p[1] is < 0 or > 5
+            || p[2] is not (0 or 1) || !Enum.IsDefined((WiredVariableTarget)p[4]) || ids.Length != 2
+            || Resolve(target, ids[0]) is not { } variable) {
             return false;
         }
 
-        var value = Read(new(target, tokens[0]), holder);
+        var value = Read(variable, holder);
 
         if (value is null) {
             return false;
@@ -36,47 +38,54 @@ public sealed class WiredVariableQueries(WiredVariableModule variables, WiredVar
             return true;
         }
 
-        var operand = p[3];
+        long operand = p[3];
 
         if (p[2] == 1) {
-            if (tokens.Length < 2 || tokens[1].Length == 0) {
+            if (Resolve((WiredVariableTarget)p[4], ids[1]) is not { } reference) {
                 return false;
             }
 
-            if (!_operands.TryGetValue((name, configuration), out var operands)) {
-                var reference = new WiredVariableReference((WiredVariableTarget)p[4], tokens[1]);
-                operands = [];
+            if (p.Length == 10 && p[9] == 1) {
+                return Read(reference, holder) is { } sameHolderValue
+                    && WiredVariablePredicates.Compare(p[1], value.Value, sameHolderValue.Value);
+            }
 
-                foreach (var source in WiredVariableExecutors.Select(frame, reference.Target, p[5], p[6], configuration.SelectedItems)) {
+            if (!_operands.TryGetValue((name, configuration), out var captured)) {
+
+                foreach (var source in WiredVariableExecutors.Select(frame, reference.Target, p[5], p[6], WiredVariableExecutors.Picks(configuration, p[6]))) {
                     if (Read(reference, source) is { } found) {
-                        operands[source] = found.Value;
+                        captured = found.Value;
+                        break;
                     }
                 }
 
-                _operands[(name, configuration)] = operands;
+                _operands[(name, configuration)] = captured;
             }
 
-            if (operands.Count == 0) {
+            if (captured is not { } capturedOperand) {
                 return false;
             }
 
-            operand = operands.TryGetValue(holder, out var sameHolder) ? sameHolder : operands.First().Value;
+            operand = capturedOperand;
         }
 
         return WiredVariablePredicates.Compare(p[1], value.Value, operand);
     }
 
-    public long? ReadOperand(WiredVariableTarget target, string token, int userSource, int furniSource, WiredConfiguration configuration)
+    /// <summary>A picked variable is an opaque catalog id; it resolves through the room module's current authority.</summary>
+    private WiredVariableReference? Resolve(WiredVariableTarget target, string variableId) =>
+        Enum.IsDefined(target) && !WiredVariableAbsent.Is(variableId) && variables.TryResolveCatalogId(variableId, target, out var reference)
+            ? reference : null;
+
+    public long? ReadOperand(WiredVariableTarget target, string variableId, int userSource, int furniSource, WiredConfiguration configuration)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (!Enum.IsDefined(target) || string.IsNullOrWhiteSpace(token)) {
+        if (Resolve(target, variableId) is not { } reference) {
             return null;
         }
 
-        var reference = new WiredVariableReference(target, token);
-
-        foreach (var holder in WiredVariableExecutors.Select(frame, target, userSource, furniSource, configuration.SelectedItems)) {
+        foreach (var holder in WiredVariableExecutors.Select(frame, target, userSource, furniSource, WiredVariableExecutors.Picks(configuration, furniSource))) {
             if (Read(reference, holder) is { } value) {
                 return value.Value;
             }

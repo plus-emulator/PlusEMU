@@ -165,7 +165,7 @@ public class BotRoamingTests
         user.GoalX = -1;
         user.GoalY = -1;
         var ai = new GenericBot(user.VirtualId, new FakeWordFilter());
-        ai.Init(user.BotData.BotId, user.VirtualId, 1, user, room);
+        ai.Init(Assert.IsType<RoomBot>(user.BotData).BotId, user.VirtualId, 1, user, room);
         var timer = typeof(GenericBot).GetField("_actionTimer", BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(timer);
 
@@ -176,6 +176,27 @@ public class BotRoamingTests
             Assert.NotEqual(new Point(0, 0), goal);
             Assert.Equal(1, map.GameMap[goal.X, goal.Y]);
         }
+    }
+
+    [Fact]
+    public void ArrivingAtAWiredMoveTargetEndsTheForcedWalkAndStaysThere()
+    {
+        // wf_act_bot_move marks the bot as force-walking to the furni; the arrival must not send it on to the corner tile.
+        var (room, _) = Create("000\r000\r000", 1, 1);
+        var user = Bot(room, allowOverride: false, temporary: false);
+        user.SetPos(1, 2, 0);
+        user.GoalX = -1;
+        user.GoalY = -1;
+        var data = Assert.IsType<RoomBot>(user.BotData);
+        data.ForcedMovement = true;
+        data.TargetCoordinate = new Point(1, 2);
+        var ai = new GenericBot(user.VirtualId, new FakeWordFilter());
+        ai.Init(data.BotId, user.VirtualId, 1, user, room);
+        typeof(GenericBot).GetField("_actionTimer", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(ai, 0);
+        ai.OnTimerTick();
+        Assert.False(data.ForcedMovement);
+        Assert.Equal(-1, user.GoalX);
+        Assert.Equal(-1, user.GoalY);
     }
 
     [Fact]
@@ -348,7 +369,7 @@ public class BotRoamingTests
         user.GoalX = -1;
         user.GoalY = -1;
         var ai = new GenericBot(user.VirtualId, new FakeWordFilter());
-        ai.Init(user.BotData.BotId, user.VirtualId, 1, user, room);
+        ai.Init(Assert.IsType<RoomBot>(user.BotData).BotId, user.VirtualId, 1, user, room);
         ai.OnTimerTick();
         Assert.Contains(new Point(user.GoalX, user.GoalY), map.WalkableSquares());
         Assert.NotEqual(new Point(0, 0), new Point(user.GoalX, user.GoalY));
@@ -358,7 +379,7 @@ public class BotRoamingTests
         stuck.GoalX = 4;
         stuck.GoalY = 4;
         var idle = new GenericBot(stuck.VirtualId, new FakeWordFilter());
-        idle.Init(stuck.BotData.BotId, stuck.VirtualId, 1, stuck, blockedRoom);
+        idle.Init(Assert.IsType<RoomBot>(stuck.BotData).BotId, stuck.VirtualId, 1, stuck, blockedRoom);
         idle.OnTimerTick();
         Assert.False(blockedMap.TryGetRandomWalkableSquare(out _));
         Assert.Equal(4, stuck.GoalX);

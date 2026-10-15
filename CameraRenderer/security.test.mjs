@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { allowedBrowserRequest, buildEffectCatalogue, cameraEffectAsset, containedPath, JOB_DEADLINE_MS, MAX_ACTIVE, MAX_BODY, MAX_QUEUE, mediaPath, nitroAssetRelative, pageConfiguration, QUEUE_WAIT_MS, renderedPngSize, SMALL_PNG_SIZE, validateJob } from './security.mjs';
+import { allowedBrowserRequest, buildEffectCatalogue, cameraEffectAsset, containedPath, JOB_DEADLINE_MS, MAX_ACTIVE, MAX_BODY, MAX_QUEUE, mediaPath, nitroAssetRelative, pageConfiguration, QUEUE_WAIT_MS, renderedPngSize, SMALL_PNG_SIZE, validateJob, validatePreparation } from './security.mjs';
 
 const configured = [
     { name: 'dark_sepia', colorMatrix: [1, 0, 0, 0, 0], minLevel: 0, enabled: true },
@@ -13,6 +13,15 @@ const configured = [
 ];
 
 const catalogue = buildEffectCatalogue(configured);
+
+test('trusted bundle routes support HAB and Nitro without allowing arbitrary paths', () => {
+    for (const extension of ['hab', 'nitro']) {
+        const path = `/assets/furniture/hc26_3.${extension}`;
+        assert.equal(nitroAssetRelative(path), `furniture/nitro/hc26_3.${extension}`);
+        assert.equal(allowedBrowserRequest('GET', `http://camera.local${path}`, 'http://camera.local', catalogue), true);
+    }
+    for (const path of ['/assets/furniture/../secret.hab', '/assets/furniture/a.js', '/assets/furniture/a.hab/extra']) assert.equal(nitroAssetRelative(path), null);
+});
 
 const viewport = (cropWidth, cropHeight) => ({
     width: 1280, height: 900, offsetX: 0, offsetY: 0, x: 10, y: 20,
@@ -189,4 +198,20 @@ test('a frame keeps its name and drops strength, and an unknown or locked effect
     assert.throws(() => validateJob(job(320, 320, [{ name: 'missing_effect', strength: 1 }]), catalogue), /Effect is unavailable/);
     assert.throws(() => validateJob(job(320, 320, [{ name: 'frame_gold', strength: 1 }]), catalogue.map(entry => entry.name === 'frame_gold' ? { ...entry, minLevel: 9 } : entry)), /Effect is unavailable/);
     assert.throws(() => validateJob(job(320, 320, [{ name: 'dark_sepia' }]), catalogue), /Invalid effect selection/);
+});
+
+test('a preparation carries a validated scene and optionally its validated viewport', () => {
+    const scene = () => ({ ...job(320, 320).scene, users: [{ gesture: '0' }] });
+    assert.equal(validatePreparation({ scene: scene() }).scene.users[0].gesture, '');
+    assert.equal(validatePreparation({ scene: scene(), viewport: viewport(320, 320) }).viewport.cropWidth, 320);
+    assert.throws(() => validatePreparation({ scene: scene(), effects: [] }), /Invalid preparation/);
+    assert.throws(() => validatePreparation({ scene: scene(), viewport: viewport(320, 110) }), /Invalid viewport crop/);
+    assert.throws(() => validatePreparation({ scene: scene(), viewport: { ...viewport(320, 320), locationZ: 257 } }), /Invalid viewport position/);
+    assert.throws(() => validatePreparation({ scene: scene(), viewport: { ...viewport(320, 320), extra: 1 } }), /Invalid viewport/);
+    assert.throws(() => validatePreparation({ scene: scene(), viewport: null }), /Invalid viewport/);
+    assert.throws(() => validatePreparation(null), /Invalid preparation/);
+    assert.throws(() => validatePreparation({}), /Invalid server scene/);
+    assert.throws(() => validatePreparation({ scene: { ...scene(), roomId: 0 } }), /Invalid server scene/);
+    assert.throws(() => validatePreparation({ scene: { ...scene(), items: Array(5001).fill({}) } }), /Invalid server scene/);
+    assert.throws(() => validatePreparation({ scene: { ...scene(), wallpaper: 'https://evil.example/a.png' } }), /URL in scene/);
 });

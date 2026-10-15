@@ -304,23 +304,19 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public async Task AdjacentPacketTranslates2687RegistersAndEchoes2816()
+    public async Task AdjacentPacketDispatchesAndEchoesTheCurrentHeader()
     {
         Viewer();
         var tile = Add(10, 1, 1, z: 2, type: InteractionType.WalkMagicTile);
-        var path = Path.Combine(AppContext.BaseDirectory, "revisions", "OCTANE-3-6-0-FLOOR-20260909.json");
-        var revision = JsonSerializer.Deserialize<Revision>(File.ReadAllText(path))!;
-        revision.InternalIdToOutgoingIdMapping = revision.OutgoingHeaders.Where(pair => pair.Value > 0).ToDictionary(pair => (uint)typeof(ServerPacketHeader).GetField(pair.Key)!.GetRawConstantValue()!, pair => pair.Value);
-        _client.Revision = revision;
-        var mapping = revision.IncomingHeaders.Where(pair => pair.Value > 0).ToDictionary(pair => pair.Value, pair => (uint)typeof(ClientPacketHeader).GetField(pair.Key)!.GetRawConstantValue()!);
+        _client.Revision = new RevisionsCache().InternalRevision;
         using var manager = new PacketManager([new UpdateMagicTileAdjacentEvent(new MagicTileService())], NullLogger<PacketManager>.Instance);
-        await manager.TryExecutePacket(_client, mapping[2687], ClientPacket(10, false));
+        await manager.TryExecutePacket(_client, ClientPacketHeader.UpdateMagicTileAdjacentEvent, ClientPacket(10, false));
         Assert.Equal(2.01, tile.GetZ);
-        Assert.Contains(2816u, _client.Sent);
-        var echo = new FlashIncomingPacket { Buffer = _client.Packets.Last(packet => packet.Header == 2816).Body };
+        Assert.Contains(ServerPacketHeader.UpdateMagicTileComposer, _client.Sent);
+        var echo = new FlashIncomingPacket { Buffer = _client.Packets.Last(packet => packet.Header == ServerPacketHeader.UpdateMagicTileComposer).Body };
         Assert.Equal(10u, echo.ReadUInt());
         Assert.Equal(201, echo.ReadInt());
-        await manager.TryExecutePacket(_client, mapping[2687], ClientPacket(10, true));
+        await manager.TryExecutePacket(_client, ClientPacketHeader.UpdateMagicTileAdjacentEvent, ClientPacket(10, true));
         Assert.Equal(2, tile.GetZ);
     }
 
@@ -394,7 +390,9 @@ public partial class PlacedFurniRoomTests
         status.ReadString();
         status.ReadInt();
         status.ReadInt();
+        Assert.Equal(0, status.ReadInt());
         Assert.Contains("/mv 1,1,0.75/", status.ReadString());
+        Assert.False(status.HasDataRemaining());
     }
 
     [Fact]
@@ -439,24 +437,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("200;1", _room.GetRoomItemHandler().GetItem(10).LegacyDataString);
     }
 
-    [Fact]
-    public void LegacyWiredRotationUpdatesOldAndNewRectangleProjection()
-    {
-        Viewer();
-        var table = Add(10, 1, 1, height: 2, length: 2);
-        var box = new Plus.HabboHotel.Items.Wired.Boxes.Effects.MatchPositionBox(_room, Furni(12, InteractionType.WiredEffect, WiredBoxType.EffectMatchPosition))
-        {
-            StringData = "0;1;0",
-            ItemsData = "10:1,1,0,2,0"
-        };
-        box.SetItems.TryAdd(10, table);
-        Assert.True(box.Execute());
-        Assert.Equal(2, table.Rotation);
-        Assert.Equal((short)0, DeltaAt(1, 2));
-        Assert.Equal((short)512, DeltaAt(2, 1));
-        Assert.Contains(table, _room.GetGameMap().GetCoordinatedItems(new(2, 1)));
-        Assert.DoesNotContain(table, _room.GetGameMap().GetCoordinatedItems(new(1, 2)));
-    }
 
     [Fact]
     public void MovementKeepsLegacyEffectHookWhileHeightRebindingIsCallbackFree()
@@ -466,23 +446,23 @@ public partial class PlacedFurniRoomTests
         effect.ExtraData = new LegacyDataFormat { Data = "0" };
         var tile = Add(11, 1, 1, z: 0.75, type: InteractionType.WalkMagicTile);
         var user = Viewer(1, 1);
-        _client.GetHabbo().Effects.Init(_client.GetHabbo());
+        Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).Init(_client.GetHabbo());
         _room.GetRoomUserManager().UpdateUserStatus(user, true);
-        Assert.Equal(7, _client.GetHabbo().Effects.CurrentEffect);
+        Assert.Equal(7, Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).CurrentEffect);
         Assert.Equal("1", effect.LegacyDataString);
         effect.LegacyDataString = "0";
-        _client.GetHabbo().Effects.CurrentEffect = 0;
+        Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).CurrentEffect = 0;
         _room.GetRoomItemHandler().SetFloorItem(tile, 1, 1, 1);
         Assert.Equal(1, user.Z);
         Assert.Equal("0", effect.LegacyDataString);
-        Assert.Equal(0, _client.GetHabbo().Effects.CurrentEffect);
+        Assert.Equal(0, Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).CurrentEffect);
     }
 
     [Fact]
     public void OlderRevisionViewerReceivesFullProjectionWithoutChangingItsHeaders()
     {
         Viewer();
-        _client.Revision.InternalIdToOutgoingIdMapping = _client.Revision.InternalIdToOutgoingIdMapping
+        Assert.IsType<Plus.Communication.Revisions.Revision>(_client.Revision).InternalIdToOutgoingIdMapping = Assert.IsType<Plus.Communication.Revisions.Revision>(_client.Revision).InternalIdToOutgoingIdMapping
             .Where(pair => pair.Key != ServerPacketHeader.HeightMapUpdateComposer).ToDictionary();
         Add(10, 1, 1, height: 1.25);
         Assert.DoesNotContain(ServerPacketHeader.HeightMapUpdateComposer, _client.Sent);

@@ -7,6 +7,7 @@ using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Plus.Communication.Packets.Outgoing.Rooms.Session;
 using Plus.Core;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Data.Moodlight;
 using Plus.HabboHotel.Items.Data.Toner;
@@ -72,8 +73,10 @@ public class Room
     private readonly ILogger _wiredLogger;
     private readonly IAchievementManager _achievements;
     private readonly IRoomManager _rooms;
+    private readonly IGroupManager? _groups;
 
-    public Room(RoomData data, IEnumerable<IRoomComponent> components, ILogger<RoomNavigation> navigationLogger, ILogger wiredLogger, IAchievementManager achievements, IRoomManager rooms)
+    public Room(RoomData data, IEnumerable<IRoomComponent> components, ILogger<RoomNavigation> navigationLogger, ILogger wiredLogger, IAchievementManager achievements, IRoomManager rooms,
+        IGroupManager? groups = null)
     {
         _data = data;
         _components = components.OrderBy(component => component.Order).ToArray();
@@ -81,8 +84,21 @@ public class Room
         _wiredLogger = wiredLogger;
         _achievements = achievements;
         _rooms = rooms;
+        _groups = groups;
     }
 
+
+    // Guild furniture shows its group's badge and colours; null without the group (or a group manager, in tests).
+    internal GuildFurnitureAppearance? FindGuildAppearance(int groupId) =>
+        groupId > 0 && _groups != null && _groups.TryGetGroup(groupId, out var group)
+            ? new(group.Id, group.Badge, _groups.GetColourCode(group.Colour1, true), _groups.GetColourCode(group.Colour2, false))
+            : null;
+
+    /// <summary>The hotel's achievements, for wired boxes that progress them.</summary>
+    internal IAchievementManager Achievements => _achievements;
+
+    /// <summary>The loaded rooms, for wired link deliveries to other rooms.</summary>
+    internal IRoomManager Rooms => _rooms;
 
     public RoomData Data => _data ??= new RoomData();
     public static implicit operator RoomData(Room room) => room.Data;
@@ -177,9 +193,11 @@ public class Room
     public int SalePrice { get => Data.SalePrice; set => Data.SalePrice = value; }
     public bool ReverseRollers { get => Data.ReverseRollers; set => Data.ReverseRollers = value; }
     public bool LayEnabled { get => Data.LayEnabled; set => Data.LayEnabled = value; }
+    public bool HideWired { get => Data.HideWired; set => Data.HideWired = value; }
+    public bool DiagonalSqueeze { get => Data.DiagonalSqueeze; set => Data.DiagonalSqueeze = value; }
     public RoomModel Model { get => Data.Model; set => Data.Model = value; }
     public RoomPromotion Promotion { get => Data.Promotion; set => Data.Promotion = value; }
-    public Plus.HabboHotel.Groups.Group Group { get => Data.Group; set => Data.Group = value; }
+    public Plus.HabboHotel.Groups.Group? Group { get => Data.Group; set => Data.Group = value; }
     public bool HasActivePromotion => Data.HasActivePromotion;
     public void EndPromotion() => Data.EndPromotion();
 
@@ -301,9 +319,9 @@ public class Room
 
     public TradingComponent GetTrading() => _tradingComponent;
 
-    public bool CheckRights(GameClient session) => CheckRights(session, false);
+    public bool CheckRights(GameClient? session) => CheckRights(session, false);
 
-    public bool CheckRights(GameClient session, bool requireOwnership, bool checkForGroups = false)
+    public bool CheckRights(GameClient? session, bool requireOwnership, bool checkForGroups = false)
     {
         try {
             if (session == null || session.GetHabbo() == null) {
@@ -672,7 +690,9 @@ public class Room
     public void SendObjects(GameClient session)
     {
         GetGameMap().SendPlacementHeightMap(session);
-        session.Send(new FloorHeightMapComposer(GetGameMap().Model.GetRelativeHeightmap(), GetGameMap().StaticModel.WallHeight));
+        var presentation = GetGameMap().StaticModel.Presentation;
+        session.Send(new FloorHeightMapComposer(GetGameMap().Model.GetRelativeHeightmap(), GetGameMap().StaticModel.WallHeight,
+            presentation.HalfScale, cameraX: presentation.CameraX, cameraY: presentation.CameraY, cameraZ: presentation.CameraZ));
         var snapshotUsers = _roomUserManager.GetUserList().Where(user => user != null).ToArray();
 
         foreach (var user in snapshotUsers) {
@@ -707,8 +727,10 @@ public class Room
         }
 
         session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(_roomUserManager.GetUserList())));
-        var snapshotFurniture = GetRoomItemHandler().GetFloor.ToArray();
+        var snapshotFurniture = VisibleFloorItems.ToArray();
         session.Send(new ObjectsComposer(RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName)));
+        Plus.HabboHotel.Items.AreaHide.AreaHideState.SendSnapshot(session, snapshotFurniture);
+        Plus.HabboHotel.Items.InvisibleFurniState.SendTo(session, this);
         var snapshotWalls = GetRoomItemHandler().GetWall.ToArray();
         session.Send(new ItemsComposer(RoomFurnitureSnapshot.Capture(snapshotWalls, OwnerId, OwnerName)));
         _wiredComponent?.SnapshotEnqueued(session, snapshotFurniture.Concat(snapshotWalls), snapshotUsers);
@@ -792,6 +814,29 @@ public class Room
 
     public void SendPacket(IServerPacket packet, bool withRightsOnly = false) => SendPacket(packet, withRightsOnly, null);
 
+    public IEnumerable<Item> VisibleFloorItems => GetRoomItemHandler().GetFloor.Where(item => !HideWired || !item.IsWired);
+
+    public void SetWiredHidden(bool hidden)
+    {
+        HideWired = hidden;
+        var wired = GetRoomItemHandler().GetFloor.Where(item => item.IsWired).ToArray();
+
+        if (hidden) {
+            foreach (var item in wired) {
+                SendPacket(new ObjectRemoveComposer(item.Id, item.IsTemporary, item.UserId));
+            }
+
+            return;
+        }
+
+        SendPacket(new ObjectsComposer(RoomFurnitureSnapshot.Capture(wired, OwnerId, OwnerName)), false, viewer =>
+        {
+            foreach (var item in wired) {
+                _wiredComponent?.ObjectEnqueued(viewer, item, null);
+            }
+        });
+    }
+
     public void SendObject(Item item) => SendPacket(item.IsWallItem ? new ItemAddComposer(RoomItemSnapshot.Capture(item)) : new ObjectAddComposer(RoomItemSnapshot.Capture(item)), false,
         viewer => _wiredComponent?.ObjectEnqueued(viewer, item, null));
 
@@ -829,6 +874,69 @@ public class Room
                     yield return client;
                     // SendBroadcast sends inside its loop, so this runs after the packet is queued for this viewer.
                     enqueued?.Invoke(user);
+                }
+            }
+        }
+        catch (Exception e) {
+            ExceptionLogger.LogException(e);
+        }
+    }
+
+    // Clients whose revision does not map the data composer get the full update instead; the mapping is checked before anything is sent to a client.
+    internal void SendObjectData(Item item, string data, bool batch)
+    {
+        IServerPacket packet = batch ? new ObjectsDataUpdateComposer([(item.Id, data)]) : new ObjectDataUpdateComposer(item.Id, data);
+
+        try {
+            if (_roomUserManager == null) {
+                return;
+            }
+
+            var clients = _roomUserManager.GetRoomUsers().Select(user => user?.GetClient()).OfType<GameClient>().ToArray();
+            bool Maps(GameClient client, uint id) => client.Revision?.InternalIdToOutgoingIdMapping.ContainsKey(id) == true;
+            GameClient.SendBroadcast(packet, clients.Where(client => Maps(client, packet.MessageId)));
+            var fallback = clients.Where(client => !Maps(client, packet.MessageId) && Maps(client, Plus.Communication.Packets.Outgoing.ServerPacketHeader.ObjectUpdateComposer)).ToArray();
+
+            if (fallback.Length > 0) {
+                GameClient.SendBroadcast(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item) with { Data = new FurnitureDataSnapshot.Legacy(data) }), fallback);
+            }
+        }
+        catch (Exception e) {
+            ExceptionLogger.LogException(e);
+        }
+    }
+
+    /// <summary>
+    /// Several floor items' data in one ObjectsDataUpdate; clients whose revision does not map it get each item's full
+    /// update instead.
+    /// </summary>
+    /// <summary>
+    /// The tick's box flashes go out before its Wired movement packet. Observed r92f (AIR WIN63-202610131318-860371703): the
+    /// ObjectsDataUpdate with the fired boxes precedes the WiredMovements of the same firing (r92-chase, r92-u2f-targets, r92-room14-slow).
+    /// </summary>
+    internal void FlushWiredFlashes() => _wiredComponent?.FlushFlashes(force: true);
+
+    internal void SendObjectsData(IReadOnlyList<Item> items)
+    {
+        if (items.Count == 0) {
+            return;
+        }
+
+        IServerPacket packet = new ObjectsDataUpdateComposer([.. items.Select(item => (item.Id, item.LegacyDataString))]);
+
+        try {
+            if (_roomUserManager == null) {
+                return;
+            }
+
+            var clients = _roomUserManager.GetRoomUsers().Select(user => user?.GetClient()).OfType<GameClient>().ToArray();
+            bool Maps(GameClient client, uint id) => client.Revision?.InternalIdToOutgoingIdMapping.ContainsKey(id) == true;
+            GameClient.SendBroadcast(packet, clients.Where(client => Maps(client, packet.MessageId)));
+            var fallback = clients.Where(client => !Maps(client, packet.MessageId) && Maps(client, Plus.Communication.Packets.Outgoing.ServerPacketHeader.ObjectUpdateComposer)).ToArray();
+
+            if (fallback.Length > 0) {
+                foreach (var item in items) {
+                    GameClient.SendBroadcast(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)), fallback);
                 }
             }
         }

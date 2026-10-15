@@ -4,9 +4,13 @@ public sealed partial class WiredRoomVariables
 {
     // The room adapter can provide its configured wired timezone; UTC is the upstream default.
     public Func<TimeZoneInfo> TimeZone { get; set; } = () => TimeZoneInfo.Utc;
-    private WiredVariableMetadataBox? DerivedMetadataOn(uint definitionId) =>
-        new[] { "wf_xtra_var_lvlup_system", "wf_var_quest", "wf_var_quest_chain" }.Select(name => MetadataOn(definitionId, name))
-            .OfType<WiredVariableMetadataBox>().OrderBy(box => box.Item.GetZ).ThenBy(box => box.Item.Id).FirstOrDefault();
+    private WiredVariableMetadataBox? DerivedMetadataOn(uint definitionId) => MetadataOn(definitionId, "wf_xtra_var_lvlup_system");
+
+    /// <summary>The quest or chain a published quest definition of this room reads, or none.</summary>
+    private WiredQuestBinding? QuestBinding(uint definitionId) =>
+        _definitions.TryGetValue(definitionId, out var box) && box.HasPersistedConfiguration && IsAttached(box.Item)
+        && box.Descriptor.CanonicalName is "wf_var_quest" or "wf_var_quest_chain"
+            ? WiredQuestVariables.Binding(box.Descriptor.CanonicalName, box.Configuration.Text) : null;
 
     private IEnumerable<WiredVariableDescription> DerivedDescriptions(WiredVariableDescription source)
     {
@@ -24,13 +28,18 @@ public sealed partial class WiredRoomVariables
             }
         }
 
-        if (MetadataOn(definition.ItemId, "wf_xtra_var_time_util")?.TimeUtilities is { } time && (time.Mode == 0 ? source.HasValue : source.CanReadTimestamps)) {
-            foreach (var sub in time.Selected) {
-                if (SyntheticId(definition.Target, definition.ItemId, sub, true) is { } id && _room.GetRoomItemHandler().GetItem(id) is null) {
-                    yield return new(definition with { ItemId = id, Name = definition.Name + "." + WiredVariableTimeUtilities.Key(sub) }, true, true) { IsDerived = true };
+        if (source.HasValue && QuestBinding(definition.ItemId) is { } quest) {
+            var keys = WiredQuestVariables.Keys(quest.Kind);
+
+            foreach (var sub in Enumerable.Range(0, keys.Length)) {
+                if (SyntheticId(definition.Target, definition.ItemId, sub, false) is { } id && _room.GetRoomItemHandler().GetItem(id) is null) {
+                    yield return new(definition with { ItemId = id, Name = definition.Name + "." + keys[sub] }, true, true) { IsDerived = true };
                 }
             }
         }
+
+        // Time Utilities add no sub-variables to the room catalogue: observed on hhus in both modes (r84 creation time, r90 value), the
+        // catalogue lists only the parent. How the hotel exposes the parts, if at all, is not known.
     }
 
     private WiredVariableDerivation? ResolveDerived(WiredVariableReference reference)
@@ -44,16 +53,18 @@ public sealed partial class WiredRoomVariables
 
         var source = new WiredVariableReference(reference.Target, $"custom:{baseId}");
 
+        // Time Utilities parts are not catalogue variables (see DerivedDescriptions), so their ids resolve to nothing.
         if (isTime) {
-            var time = MetadataOn(baseId, "wf_xtra_var_time_util")?.TimeUtilities;
+            return null;
+        }
 
-            if (time is null || !time.Has(sub)) {
-                return null;
+        if (QuestBinding(baseId) is { } quest && _quests is not null && sub < WiredQuestVariables.Keys(quest.Kind).Length) {
+            // A chain's current step reads the player's own step progress through its builtin part.
+            if (quest.Kind == WiredQuestKind.Chain && sub == 0) {
+                return new(new(WiredVariableTarget.User, WiredQuestVariables.Token(baseId, WiredQuestVariables.CurrentStepPart)), value => value);
             }
 
-            var zone = TimeZone();
-
-            return new(source, value => time.Read(value, sub, zone) is { } result ? new(result, null, null) : null, time.Mode == 0, time.Mode != 0);
+            return new(source, value => WiredQuestVariables.Derive(_quests, quest, value.Value, sub) is { } derived ? new(derived, null, null) : null);
         }
 
         var level = DerivedMetadataOn(baseId);

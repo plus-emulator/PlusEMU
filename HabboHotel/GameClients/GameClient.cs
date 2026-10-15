@@ -27,20 +27,44 @@ public abstract class GameClient
 
     public bool IsAuthenticated { get; set; } = false;
 
-    [Obsolete("Will be removed")]
-    public string MachineId { get; set; } = string.Empty;
+    private string _machineId = string.Empty;
 
     [Obsolete("Will be removed")]
-    public int PingCount { get; set; }
+    public string MachineId
+    {
+        get => _machineId;
+        set => _machineId = value;
+    }
 
-    public Revision Revision { get; set; }
+    // The handshake records the machine id without going through the deprecated property.
+    public void RecordMachineId(string machineId) => _machineId = machineId;
 
-    // True only when the supplied args have a pending operation that will raise Completed.
-    internal Func<SocketAsyncEventArgs, bool> SendCallback { get; set; }
+    private int _pingCount;
+
+    [Obsolete("Will be removed")]
+    public int PingCount
+    {
+        get => _pingCount;
+        set => _pingCount = value;
+    }
+
+    // A pong clears the ping counter without going through the deprecated property.
+    public void ResetPingCount() => _pingCount = 0;
+
+    // The factory sets the internal revision before ClientHello replaces it; a client built without one cannot speak the protocol.
+    public Revision? Revision { get; set; }
+    private int _revisionSelectionLogged;
+
+    internal bool TryRecordRevisionSelection() => Interlocked.Exchange(ref _revisionSelectionLogged, 1) == 0;
+
+    // True only when the supplied args have a pending operation that will raise Completed; unset until a transport attaches.
+    internal Func<SocketAsyncEventArgs, bool>? SendCallback { get; set; }
     internal Action? DisconnectRequested { get; set; }
 
     public Guid Id { get; set; }
 
+
+    private Revision RequiredRevision => Revision ?? throw new InvalidOperationException("The client has no packet revision.");
 
     public void Disconnect()
     {
@@ -131,6 +155,13 @@ public abstract class GameClient
         await _receiveLock.WaitAsync();
 
         try {
+            if (Closed.IsCancellationRequested) {
+                _incompleteStream?.Dispose();
+                _incompleteStream = null;
+
+                return;
+            }
+
             var decrypted = SupportsLegacyCrypto && Rc4Client != null;
 
             if (decrypted) {
@@ -146,7 +177,7 @@ public abstract class GameClient
                 memory = _incompleteStream.GetBuffer().AsMemory().Slice(0, (int)_incompleteStream.Length);
             }
 
-            while (memory.Length > 0) {
+            while (memory.Length > 0 && !Closed.IsCancellationRequested) {
                 var (complete, malformed, messageId, headerLength, length) = GetMessageIdAndPacketLength(memory);
 
                 if (malformed) {
@@ -162,7 +193,7 @@ public abstract class GameClient
                 }
 
                 try {
-                    if (Revision.IncomingIdToInternalIdMapping.TryGetValue(messageId, out var internalMessageId)) {
+                    if (RequiredRevision.IncomingIdToInternalIdMapping.TryGetValue(messageId, out var internalMessageId)) {
                         await using var packetStream = PlusMemoryStream.GetStream(memory.Slice(headerLength, length).Span);
                         await _server.PacketReceived(this, internalMessageId, _packetFactory.CreateIncomingPacket(packetStream));
                     }
@@ -182,7 +213,7 @@ public abstract class GameClient
                 }
             }
 
-            if (memory.Length == 0) {
+            if (memory.Length == 0 || Closed.IsCancellationRequested) {
                 _incompleteStream?.Dispose();
                 _incompleteStream = null;
             }
@@ -211,7 +242,7 @@ public abstract class GameClient
 
     public void Send(IServerPacket composer)
     {
-        var outgoingMessageId = Revision.InternalIdToOutgoingIdMapping[composer.MessageId];
+        var outgoingMessageId = RequiredRevision.InternalIdToOutgoingIdMapping[composer.MessageId];
         var encoded = EncodePacket(composer, outgoingMessageId);
 
         if (encoded == null) {
@@ -228,8 +259,13 @@ public abstract class GameClient
         var encodedPackets = new Dictionary<(Revision, IPacketFactory, Type, uint), byte[]>();
 
         foreach (var client in clients) {
-            var outgoingMessageId = client.Revision.InternalIdToOutgoingIdMapping[composer.MessageId];
-            var key = (client.Revision, client._packetFactory, client.GetType(), outgoingMessageId);
+            // A client without a revision cannot receive packets; it is skipped rather than aborting everyone else's copy.
+            if (client.Revision is not { } revision) {
+                continue;
+            }
+
+            var outgoingMessageId = revision.InternalIdToOutgoingIdMapping[composer.MessageId];
+            var key = (revision, client._packetFactory, client.GetType(), outgoingMessageId);
             byte[] buffer;
 
             if (client._server.HasOutgoingPacketInjectors(composer.MessageId) || !encodedPackets.TryGetValue(key, out buffer!)) {
@@ -313,7 +349,8 @@ public abstract class GameClient
                 args.SetBuffer(buffer.AsMemory());
             }
 
-            if (!SendCallback(args)) {
+            // Without an attached transport nothing is pending, so the args are released like a completed send.
+            if (SendCallback is not { } send || !send(args)) {
                 args.Dispose();
             }
         }

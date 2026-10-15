@@ -123,7 +123,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, actionItem, x, y, 0, true, false, false));
         Assert.True(WiredBoxRegistry.TryGet(trigger, out var descriptor));
         var box = new WiredModernTrigger(_room, triggerItem, descriptor);
-        Assert.True(box.TryValidateConfiguration(WiredTriggerConfiguration.Defaults(trigger) with { SelectedItems = [picked.Id] },
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, WiredTriggerConfiguration.Defaults(trigger) with { SelectedItems = [picked.Id] },
             out var config, out var error), error);
         box.ApplyConfiguration(config);
         Assert.True(_room.GetWired().AddBox(box));
@@ -140,7 +140,7 @@ public partial class PlacedFurniRoomTests
         public string StringData { get; set; } = "";
         public bool BoolData { get; set; }
         public string ItemsData { get; set; } = "";
-        public WiredBoxDescriptor Descriptor { get; } = new("test", WiredBoxCategory.Action, 0, 0, "test") { Support = WiredBoxSupport.Implemented };
+        public WiredBoxDescriptor Descriptor { get; } = new("test", WiredBoxCategory.Action, 0, "test") { Support = WiredBoxSupport.Implemented };
         public WiredConfiguration Configuration { get; private set; } = new();
         public bool IsNegative => false;
         public void HandleSave(IIncomingPacket packet) => throw new NotSupportedException();

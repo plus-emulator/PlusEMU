@@ -122,7 +122,7 @@ public class ClubMembershipTests
     [Fact]
     public void FigureFallbackCannotPickSameGenderPremiumSetsOrPremiumColors()
     {
-        var manager = new FigureDataManager(null!, NullLogger<FigureDataManager>.Instance);
+        var manager = new FigureDataManager(NullLogger<FigureDataManager>.Instance);
         var types = (Dictionary<string, FigureSet>)typeof(FigureDataManager).GetField("_setTypes", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(manager)!;
         var palettes = (Dictionary<int, Palette>)typeof(FigureDataManager).GetField("_palettes", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(manager)!;
         var hd = new FigureSet(SetTypeUtility.GetSetType("hd"), 1);
@@ -145,7 +145,7 @@ public class ClubMembershipTests
         var page = new CatalogPage { Enabled = true, RequiredClubLevel = 1 };
         Assert.False(page.CanOpen(normal));
         Assert.True(page.CanOpen(member));
-        page.RequiredPermission = PermissionKeys.CatalogEdit;
+        page.RequiredPermission = PermissionKeys.CameraUse;
         Assert.False(page.CanOpen(member));
         var settings = DispatchProxy.Create<ISettingsManager, SettingProxy>();
         Assert.Equal(50, ClubLimits.For(normal.Access, "visitors", settings));

@@ -25496,7 +25496,7 @@ CREATE TABLE IF NOT EXISTS `wired_variable_values` (
     `definition_id` int unsigned NOT NULL,
     `target_kind` tinyint unsigned NOT NULL,
     `holder_id` bigint NOT NULL,
-    `value` int NOT NULL,
+    `value` bigint NOT NULL,
     `created_at` DATETIME(6) NULL DEFAULT NULL,
     `updated_at` DATETIME(6) NULL DEFAULT NULL,
     PRIMARY KEY (`definition_id`, `target_kind`, `holder_id`)
@@ -26594,3 +26594,3897 @@ SET `furniture`.`has_furnidata` = TRUE, `furniture`.`sprite_id` = `entry`.`id`, 
 
 DROP TABLE `furnidata_migration_entries`;
 SET @furnidata_json = NULL;
+-- 61_RconGrants
+-- Receipts of applied RCON grant bundles, one per CMS idempotency key. A retry with the same key and payload replays the
+-- stored result instead of granting again. Only applied grants are recorded, so a refused grant leaves the key free.
+-- Receipts are kept forever.
+CREATE TABLE IF NOT EXISTS rcon_grants (
+    idempotency_key VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    user_id INT NOT NULL,
+    payload_sha256 CHAR(64) CHARACTER SET ascii NOT NULL,
+    status VARCHAR(16) CHARACTER SET ascii NOT NULL DEFAULT 'applied',
+    result_json MEDIUMTEXT NOT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (idempotency_key),
+    KEY idx_rcon_grants_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- 63_HideWiredCommand
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS hide_wired TINYINT(1) NOT NULL DEFAULT 0;
+
+INSERT IGNORE INTO acl_permissions (`key`, category, description, is_orphan)
+VALUES ('command.hidewired', 'command', 'Hide or show the wired furniture in an owned room.', FALSE);
+
+INSERT IGNORE INTO role_permissions (role_id, permission_key)
+SELECT id, 'command.hidewired' FROM roles WHERE slug = 'default';
+
+-- 14_AddWiredItemConfigurations (existing Wired prerequisite, before schema modernization)
+-- Apply explicitly before enabling configured Wired boxes. No existing Wired rows are rewritten.
+CREATE TABLE IF NOT EXISTS `wired_item_configurations` (
+    `item_id` int unsigned NOT NULL,
+    `box_name` varchar(100) NOT NULL,
+    `schema_version` int NOT NULL,
+    `configuration` longtext NOT NULL,
+    PRIMARY KEY (`item_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 18_AddWiredRoomSettings (existing Wired prerequisite, before schema modernization)
+-- Apply manually before enabling Wired room settings. Existing rooms columns are unchanged.
+CREATE TABLE IF NOT EXISTS room_wired_settings (
+    room_id INT UNSIGNED NOT NULL PRIMARY KEY,
+    inspect_mask INT NOT NULL DEFAULT 2,
+    modify_mask INT NOT NULL DEFAULT 2,
+    timezone VARCHAR(64) NOT NULL DEFAULT ''
+) ENGINE=InnoDB;
+
+-- 69_DropUnusedSchema
+-- Drops tables and columns that neither the emulator nor the CMS reads or writes. Apply while PlusEMU is stopped.
+-- Write-only audit tables (logs_client_*, chatlogs_console*, ambassador_logs, catalog_admin_log, furni_editor_log)
+-- stay: they are records for staff, not stale data.
+
+-- Clothing furni carry their figure sets in furniture.custom_params; tickets live in memory; the client reads its
+-- texts and talents from gamedata; nothing reads server_status.
+DROP TABLE IF EXISTS `catalog_clothing`;
+DROP TABLE IF EXISTS `moderation_tickets`;
+DROP TABLE IF EXISTS `achievements_talents`;
+DROP TABLE IF EXISTS `client_external_badge_texts`;
+DROP TABLE IF EXISTS `client_external_texts`;
+DROP TABLE IF EXISTS `server_status`;
+
+ALTER TABLE `furniture` DROP COLUMN IF EXISTS `clothing_id`;
+ALTER TABLE `bans` DROP COLUMN IF EXISTS `appeal_state`;
+ALTER TABLE `bots`
+    DROP COLUMN IF EXISTS `min_x`, DROP COLUMN IF EXISTS `min_y`, DROP COLUMN IF EXISTS `max_x`, DROP COLUMN IF EXISTS `max_y`,
+    DROP COLUMN IF EXISTS `effect`, DROP COLUMN IF EXISTS `dance`;
+ALTER TABLE `bots_speech` DROP COLUMN IF EXISTS `shout`, DROP COLUMN IF EXISTS `type`;
+ALTER TABLE `bots_pet_commands` DROP COLUMN IF EXISTS `input_title`;
+ALTER TABLE `catalog_promotions` DROP COLUMN IF EXISTS `unknown`, DROP COLUMN IF EXISTS `parent_id`;
+ALTER TABLE `games_config` DROP COLUMN IF EXISTS `socket_policy_port`, DROP COLUMN IF EXISTS `last_reset`;
+ALTER TABLE `room_models` DROP COLUMN IF EXISTS `poolmap`;
+ALTER TABLE `server_settings` DROP COLUMN IF EXISTS `description`;
+ALTER TABLE `user_info` DROP COLUMN IF EXISTS `reg_timestamp`, DROP COLUMN IF EXISTS `login_timestamp`;
+ALTER TABLE `user_statistics`
+    DROP COLUMN IF EXISTS `lev_builder`, DROP COLUMN IF EXISTS `lev_social`, DROP COLUMN IF EXISTS `lev_identity`,
+    DROP COLUMN IF EXISTS `lev_explore`, DROP COLUMN IF EXISTS `tickets_answered`;
+-- Trading locks live in user_info.trading_locked; machine ids are only logged in logs_client_staff.
+ALTER TABLE `users` DROP INDEX IF EXISTS `machine_id`, DROP COLUMN IF EXISTS `machine_id`, DROP COLUMN IF EXISTS `trading_locked`;
+ALTER TABLE `users_settings`
+    DROP COLUMN IF EXISTS `is_muted`, DROP COLUMN IF EXISTS `hide_online`, DROP COLUMN IF EXISTS `hide_inroom`,
+    DROP COLUMN IF EXISTS `advertising_report_blocked`;
+ALTER TABLE `wordfilter` DROP COLUMN IF EXISTS `addedby`;
+-- 70_Utf8mb4InnoDB
+-- One character set and engine for the whole database: every table InnoDB, every text column utf8mb4 with
+-- utf8mb4_unicode_ci (what the CMS creates its tables with), so names and chat keep emoji and any language, and string
+-- joins between tables compare with one collation and can use their indexes. Columns that are deliberately ASCII or
+-- binary (permission keys, idempotency keys, UUIDs, JSON payloads, case-sensitive codes) keep their collation.
+-- Apply while PlusEMU is stopped; large tables are rebuilt. Each table's statement is built from its current columns,
+-- and a table this install does not have is skipped. No stored procedures, so it runs through any MySQL client.
+
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- MariaDB will not change the collation of a column in a foreign key, so those keys come off and go back unchanged.
+CREATE TEMPORARY TABLE `migration_70_keys` AS
+    SELECT r.TABLE_NAME, r.CONSTRAINT_NAME,
+           CONCAT('ADD CONSTRAINT `', r.CONSTRAINT_NAME, '` FOREIGN KEY (',
+                  GROUP_CONCAT(CONCAT('`', k.COLUMN_NAME, '`') ORDER BY k.ORDINAL_POSITION), ') REFERENCES `', r.REFERENCED_TABLE_NAME, '` (',
+                  GROUP_CONCAT(CONCAT('`', k.REFERENCED_COLUMN_NAME, '`') ORDER BY k.ORDINAL_POSITION), ') ON DELETE ', r.DELETE_RULE,
+                  ' ON UPDATE ', r.UPDATE_RULE) AS `addition`
+    FROM information_schema.REFERENTIAL_CONSTRAINTS r
+    JOIN information_schema.KEY_COLUMN_USAGE k
+      ON k.CONSTRAINT_SCHEMA = r.CONSTRAINT_SCHEMA AND k.TABLE_NAME = r.TABLE_NAME AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME
+    LEFT JOIN information_schema.COLUMNS c
+      ON c.TABLE_SCHEMA = k.TABLE_SCHEMA AND c.TABLE_NAME = k.TABLE_NAME AND c.COLUMN_NAME = k.COLUMN_NAME
+    LEFT JOIN information_schema.COLUMNS p
+      ON p.TABLE_SCHEMA = k.TABLE_SCHEMA AND p.TABLE_NAME = k.REFERENCED_TABLE_NAME AND p.COLUMN_NAME = k.REFERENCED_COLUMN_NAME
+    WHERE r.CONSTRAINT_SCHEMA = DATABASE()
+    GROUP BY r.TABLE_NAME, r.CONSTRAINT_NAME, r.REFERENCED_TABLE_NAME, r.DELETE_RULE, r.UPDATE_RULE
+    HAVING SUM(c.CHARACTER_SET_NAME IS NOT NULL AND c.CHARACTER_SET_NAME <> 'ascii' AND c.COLLATION_NAME NOT IN ('utf8mb4_unicode_ci', 'utf8mb4_bin') OR p.CHARACTER_SET_NAME IS NOT NULL AND p.CHARACTER_SET_NAME <> 'ascii' AND p.COLLATION_NAME NOT IN ('utf8mb4_unicode_ci', 'utf8mb4_bin')) > 0;
+
+SET SESSION group_concat_max_len = 1048576;
+PREPARE `migration_70_drop` FROM
+    'SELECT COALESCE(CONCAT(''ALTER TABLE `'', MAX(TABLE_NAME), ''` '', GROUP_CONCAT(CONCAT(''DROP FOREIGN KEY `'', CONSTRAINT_NAME, ''`'') SEPARATOR '', '')), ''DO 0'')
+     INTO @migration_70_statement FROM `migration_70_keys` WHERE TABLE_NAME = ?';
+PREPARE `migration_70_restore` FROM
+    'SELECT COALESCE(CONCAT(''ALTER TABLE `'', MAX(TABLE_NAME), ''` '', GROUP_CONCAT(`addition` SEPARATOR '', '')), ''DO 0'')
+     INTO @migration_70_statement FROM `migration_70_keys` WHERE TABLE_NAME = ?';
+PREPARE `migration_70_convert` FROM
+    'SELECT COALESCE(MAX(CONCAT(''ALTER TABLE `'', t.TABLE_NAME, ''`'', IF(t.ENGINE <> ''InnoDB'', '' ENGINE=InnoDB,'', ''''),
+            '' DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'',
+            COALESCE((SELECT GROUP_CONCAT(CONCAT('', MODIFY `'', c.COLUMN_NAME, ''` '', c.COLUMN_TYPE, '' CHARACTER SET utf8mb4 COLLATE '',
+                         IF(c.COLLATION_NAME LIKE ''%\\_bin'', ''utf8mb4_bin'', ''utf8mb4_unicode_ci''),
+                         IF(c.EXTRA LIKE ''%GENERATED%'',
+                            CONCAT('' GENERATED ALWAYS AS ('', c.GENERATION_EXPRESSION, '') '', IF(c.EXTRA LIKE ''STORED%'', ''STORED'', ''VIRTUAL'')),
+                            CONCAT(IF(c.IS_NULLABLE = ''YES'', '' NULL'', '' NOT NULL''),
+                                   IF(c.COLUMN_DEFAULT IS NULL, '''', CONCAT('' DEFAULT '', c.COLUMN_DEFAULT)))),
+                         IF(c.COLUMN_COMMENT = '''', '''', CONCAT('' COMMENT '', QUOTE(c.COLUMN_COMMENT))))
+                         ORDER BY c.ORDINAL_POSITION SEPARATOR '''')
+                      FROM information_schema.COLUMNS c
+                      WHERE c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME AND c.CHARACTER_SET_NAME IS NOT NULL AND c.CHARACTER_SET_NAME <> ''ascii'' AND c.COLLATION_NAME NOT IN (''utf8mb4_unicode_ci'', ''utf8mb4_bin'')), ''''))), ''DO 0'')
+     INTO @migration_70_statement FROM information_schema.TABLES t
+     WHERE t.TABLE_SCHEMA = DATABASE() AND t.TABLE_TYPE = ''BASE TABLE'' AND t.TABLE_NAME = ?
+       AND (t.ENGINE <> ''InnoDB'' OR t.TABLE_COLLATION <> ''utf8mb4_unicode_ci'' OR EXISTS (
+            SELECT 1 FROM information_schema.COLUMNS c WHERE c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME AND c.CHARACTER_SET_NAME IS NOT NULL AND c.CHARACTER_SET_NAME <> ''ascii'' AND c.COLLATION_NAME NOT IN (''utf8mb4_unicode_ci'', ''utf8mb4_bin'')))';
+
+SET @migration_70_checks = @@FOREIGN_KEY_CHECKS;
+SET FOREIGN_KEY_CHECKS = 0;
+EXECUTE `migration_70_drop` USING 'catalog_offer_products'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_drop` USING 'catalog_pages'; EXECUTE IMMEDIATE @migration_70_statement;
+
+EXECUTE `migration_70_convert` USING 'achievements'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'acl_audit_log'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'acl_permissions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'activity_log'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'ambassador_logs'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'badge_definitions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'bans'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'bots'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'bots_pet_commands'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'bots_pet_responses'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'bots_petdata'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'bots_responses'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'bots_speech'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'cache'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'cache_locks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'camera_accounts'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'camera_competition_entries'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'camera_media'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'camera_publications'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'camera_purchases'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'camera_quota'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'campaign_calendar_rewards'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'campaign_calendars'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_admin_log'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_bot_presets'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_club_offers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_marketplace_data'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_marketplace_offers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_offer_limited'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_offer_products'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_offers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_page_images'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_page_offers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_page_texts'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_pages'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_pet_races'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_promotions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'catalog_vouchers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'chatlogs'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'chatlogs_console'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'chatlogs_console_invitations'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'claimed_referral_logs'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'club_credit_spending'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'club_gift_claims'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'club_gift_offers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'club_membership_intervals'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'club_paydays'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'crafting_altars_recipes'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'crafting_recipes'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'crafting_recipes_ingredients'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'failed_jobs'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'furni_editor_log'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'furniture'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'games_config'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'group_forum_messages'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'group_forum_post_limits'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'group_forum_read_markers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'group_forum_threads'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'group_forums'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'group_memberships'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'group_requests'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'groups'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'groups_items'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'habbicon_collections'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'habbicons'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'home_categories'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'home_items'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'housekeeping_log'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'housekeeping_online_peaks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'items'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'items_groups'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'items_youtube'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'logs_client_namechange'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'logs_client_staff'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'logs_client_trade'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'messenger_friendships'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'messenger_offline_messages'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'messenger_requests'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'migrations'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'moderation_preset_action_categories'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'moderation_preset_action_messages'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'moderation_presets'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'moderation_topic_actions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'moderation_topics'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'navigator_categories'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'navigator_publics'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'personal_access_tokens'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'quests'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'rcon_grants'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'recycler_levels'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'recycler_prizes'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'recycler_settings'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'referrals'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'reward_track_prizes'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'reward_track_task_levels'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'reward_track_tasks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'reward_tracks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'role_limits'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'role_permissions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'roles'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_bans'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_chat_styles'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_filter'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_items_moodlight'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_items_tele_links'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_items_toner'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_models'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_music_disc_definitions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_music_players'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_music_playlist'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_music_songs'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_poll_questions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_poll_responses'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_polls'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_promotions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_rights'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'room_wired_settings'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'rooms'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'safety_quiz_questions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'safety_quizzes'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'server_landing'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'server_locale'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'server_reward_logs'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'server_rewards'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'server_settings'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'sessions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'snowwar_game_tokens'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'snowwar_scores'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'snowwar_token_offers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'taggables'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'tags'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'talents'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'talents_sub_levels'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_access_tokens'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_achievements'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_badges'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_calendar_claims'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_clothing'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_club_memberships'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_crafting_recipes'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_currencies'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_effects'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_favorites'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_home_items'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_home_messages'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_home_ratings'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_ignores'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_info'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_permissions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_presents'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_quests'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_recycler'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_referrals'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_remember_tokens'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_roles'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_roomvisits'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_safety_quizzes'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_saved_searches'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_sessions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_statistics'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_talent_rewards'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_vouchers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'user_wardrobe'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'users'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'users_habbicons'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'users_reward_track_prizes'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'users_reward_track_tasks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'users_reward_tracks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'users_settings'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_ads'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_api_idempotency_keys'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_article_comments'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_article_reactions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_articles'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_badge_grant_locks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_badges'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_beta_codes'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_drawbadges'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_help_center_categories'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_help_center_ticket_replies'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_help_center_tickets'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_housekeeping_permissions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_installation'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_ip_blacklist'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_ip_whitelist'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_languages'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_maintenance_tasks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_open_positions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_password_resets'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_paypal_transactions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_permissions'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_rare_value_categories'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_rare_values'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_registration_locks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_rule_categories'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_rules'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_settings'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_shop_article_features'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_shop_articles'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_shop_categories'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_shop_items'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_shop_package_items'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_shop_packages'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_shop_purchases'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_shop_vouchers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_staff_applications'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_teams'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_used_shop_vouchers'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_user_guestbooks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_users'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'website_wordfilter'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'wired_item_configurations'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'wired_items'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'wired_reward_state'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'wired_variable_locks'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'wired_variable_values'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_convert` USING 'wordfilter'; EXECUTE IMMEDIATE @migration_70_statement;
+
+EXECUTE `migration_70_restore` USING 'catalog_offer_products'; EXECUTE IMMEDIATE @migration_70_statement;
+EXECUTE `migration_70_restore` USING 'catalog_pages'; EXECUTE IMMEDIATE @migration_70_statement;
+SET FOREIGN_KEY_CHECKS = @migration_70_checks;
+
+DEALLOCATE PREPARE `migration_70_drop`;
+DEALLOCATE PREPARE `migration_70_restore`;
+DEALLOCATE PREPARE `migration_70_convert`;
+DROP TEMPORARY TABLE `migration_70_keys`;
+SET @migration_70_statement = NULL, @migration_70_checks = NULL;
+-- 71_KeysAndIndexes
+-- Primary and unique keys that say what a row is, indexes for the queries the emulator and CMS run on logins, room loads
+-- and packets, and no index that nothing uses. Duplicate rows a new key forbids are removed first, keeping the oldest.
+-- Apply while PlusEMU is stopped.
+
+DELETE a FROM `room_rights` a JOIN `room_rights` b ON b.`room_id` = a.`room_id` AND b.`user_id` = a.`user_id` AND b.`id` < a.`id`;
+DELETE a FROM `room_filter` a JOIN `room_filter` b ON b.`room_id` = a.`room_id` AND b.`word` = a.`word` AND b.`id` < a.`id`;
+DELETE a FROM `messenger_requests` a JOIN `messenger_requests` b ON b.`from_id` = a.`from_id` AND b.`to_id` = a.`to_id` AND b.`id` < a.`id`;
+DELETE a FROM `user_favorites` a JOIN `user_favorites` b ON b.`user_id` = a.`user_id` AND b.`room_id` = a.`room_id` AND b.`id` < a.`id`;
+DELETE a FROM `user_presents` a JOIN `user_presents` b ON b.`item_id` = a.`item_id` AND b.`id` < a.`id`;
+DELETE a FROM `user_vouchers` a JOIN `user_vouchers` b ON b.`user_id` = a.`user_id` AND b.`voucher` = a.`voucher` AND b.`id` < a.`id`;
+DELETE a FROM `room_items_tele_links` a JOIN `room_items_tele_links` b ON b.`tele_one_id` = a.`tele_one_id` AND b.`id` < a.`id`;
+DELETE a FROM `server_reward_logs` a JOIN `server_reward_logs` b ON b.`user_id` = a.`user_id` AND b.`reward_id` = a.`reward_id` AND b.`id` < a.`id`;
+DELETE a FROM `group_memberships` a JOIN `group_memberships` b ON b.`group_id` = a.`group_id` AND b.`user_id` = a.`user_id` AND b.`id` < a.`id`;
+DELETE a FROM `user_clothing` a JOIN `user_clothing` b ON b.`user_id` = a.`user_id` AND b.`part_id` = a.`part_id` AND b.`id` < a.`id`;
+DELETE a FROM `catalog_marketplace_data` a JOIN `catalog_marketplace_data` b ON b.`sprite` = a.`sprite` AND b.`id` < a.`id`;
+DELETE a FROM `talents` a JOIN `talents` b ON b.`type` = a.`type` AND b.`level` <=> a.`level` AND b.`id` < a.`id`;
+-- group_requests and catalog_pet_races have no id to choose by; identical rows collapse to one.
+CREATE TEMPORARY TABLE `migration_71_group_requests` AS SELECT DISTINCT * FROM `group_requests`;
+DELETE FROM `group_requests`;
+INSERT INTO `group_requests` SELECT * FROM `migration_71_group_requests`;
+DROP TEMPORARY TABLE `migration_71_group_requests`;
+CREATE TEMPORARY TABLE `migration_71_pet_races` AS
+    SELECT `raceid`, `color1`, `color2`, MAX(`has1color`) AS `has1color`, MAX(`has2color`) AS `has2color`
+    FROM `catalog_pet_races` WHERE `raceid` IS NOT NULL AND `color1` IS NOT NULL AND `color2` IS NOT NULL GROUP BY `raceid`, `color1`, `color2`;
+DELETE FROM `catalog_pet_races`;
+INSERT INTO `catalog_pet_races` (`raceid`, `color1`, `color2`, `has1color`, `has2color`) SELECT * FROM `migration_71_pet_races`;
+DROP TEMPORARY TABLE `migration_71_pet_races`;
+
+-- Natural keys instead of surrogate ids nothing reads; each also stops duplicate rows.
+ALTER TABLE `room_rights` DROP PRIMARY KEY, DROP COLUMN `id`, DROP INDEX IF EXISTS `room_id`, ADD PRIMARY KEY (`room_id`, `user_id`);
+ALTER TABLE `room_filter` DROP PRIMARY KEY, DROP COLUMN `id`, DROP INDEX IF EXISTS `room_id`, DROP INDEX IF EXISTS `word`,
+    ADD PRIMARY KEY (`room_id`, `word`);
+ALTER TABLE `messenger_requests` DROP PRIMARY KEY, DROP COLUMN `id`, DROP INDEX IF EXISTS `from_id`, ADD PRIMARY KEY (`from_id`, `to_id`);
+ALTER TABLE `user_favorites` DROP PRIMARY KEY, DROP COLUMN `id`, DROP INDEX IF EXISTS `user_id`, ADD PRIMARY KEY (`user_id`, `room_id`);
+ALTER TABLE `user_presents` DROP PRIMARY KEY, DROP COLUMN `id`, DROP INDEX IF EXISTS `item_id`, ADD PRIMARY KEY (`item_id`);
+ALTER TABLE `user_vouchers` DROP PRIMARY KEY, DROP COLUMN `id`, DROP INDEX IF EXISTS `user_id, voucher`, ADD PRIMARY KEY (`user_id`, `voucher`);
+ALTER TABLE `room_items_tele_links` DROP PRIMARY KEY, DROP COLUMN `id`, DROP INDEX IF EXISTS `tele_one_id`,
+    ADD PRIMARY KEY (`tele_one_id`), ADD KEY `tele_two_id` (`tele_two_id`);
+ALTER TABLE `server_reward_logs` DROP PRIMARY KEY, DROP COLUMN `id`, ADD PRIMARY KEY (`user_id`, `reward_id`);
+ALTER TABLE `group_requests` DROP INDEX IF EXISTS `groupid`, ADD PRIMARY KEY (`group_id`, `user_id`);
+ALTER TABLE `catalog_pet_races` MODIFY `raceid` INT NOT NULL, MODIFY `color1` INT NOT NULL, MODIFY `color2` INT NOT NULL,
+    ADD PRIMARY KEY (`raceid`, `color1`, `color2`);
+
+-- Unique keys the code already assumes.
+ALTER TABLE `group_memberships` DROP INDEX IF EXISTS `groupid`, DROP INDEX IF EXISTS `rank`, ADD UNIQUE KEY `group_user` (`group_id`, `user_id`);
+ALTER TABLE `user_clothing` MODIFY `part_id` INT UNSIGNED NOT NULL, DROP INDEX IF EXISTS `user_id`, ADD UNIQUE KEY `user_part` (`user_id`, `part_id`);
+ALTER TABLE `catalog_marketplace_data` ADD UNIQUE KEY `sprite` (`sprite`);
+ALTER TABLE `talents` ADD UNIQUE KEY `type_level` (`type`, `level`);
+
+-- Group ranks were an ENUM('0','1','2') written with numbers, so MariaDB stored 1 (administrator) as '0' (member).
+-- Members are 0 and administrators 1, and a group's owner is always an administrator.
+ALTER TABLE `group_memberships` ADD COLUMN `rank_number` TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER `rank`;
+UPDATE `group_memberships` SET `rank_number` = IF(CAST(`rank` AS CHAR) IN ('1', '2'), 1, 0);
+UPDATE `group_memberships` m JOIN `groups` g ON g.`id` = m.`group_id` AND g.`owner_id` = m.`user_id` SET m.`rank_number` = 1;
+ALTER TABLE `group_memberships` DROP COLUMN `rank`, CHANGE `rank_number` `rank` TINYINT UNSIGNED NOT NULL DEFAULT 0;
+
+-- Room owners are user ids, stored as text, so neither the owner index nor a join to users could be used.
+ALTER TABLE `rooms` MODIFY `owner` INT NOT NULL;
+
+-- Indexes that duplicate the primary key or the start of another index.
+ALTER TABLE `ambassador_logs` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `badge_definitions` DROP INDEX IF EXISTS `code`;
+ALTER TABLE `bots` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `bots_petdata` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `chatlogs_console_invitations` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `furniture` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `games_config` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `groups` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `items_groups` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `items_youtube` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `messenger_friendships` DROP INDEX IF EXISTS `user_one_id`;
+ALTER TABLE `room_bans` DROP INDEX IF EXISTS `user_id`;
+ALTER TABLE `room_items_toner` DROP INDEX IF EXISTS `id`, DROP INDEX IF EXISTS `enabled`;
+ALTER TABLE `room_items_moodlight` DROP INDEX IF EXISTS `enabled`;
+ALTER TABLE `room_models` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `server_landing` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `user_achievements` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `user_badges` DROP INDEX IF EXISTS `user_id`;
+ALTER TABLE `user_ignores` DROP INDEX IF EXISTS `user_id`;
+ALTER TABLE `user_info` DROP INDEX IF EXISTS `user_id`;
+ALTER TABLE `wired_items` DROP INDEX IF EXISTS `id`;
+ALTER TABLE `wordfilter` DROP INDEX IF EXISTS `word`;
+ALTER TABLE `user_saved_searches` DROP INDEX IF EXISTS `value`;
+
+-- users: point lookups by id, username, mail, SSO ticket and IP; nothing filters on rank, credits or ip_reg.
+ALTER TABLE `users` DROP INDEX IF EXISTS `id`, DROP INDEX IF EXISTS `rank`, DROP INDEX IF EXISTS `ip_reg`,
+    DROP INDEX IF EXISTS `credits`, DROP INDEX IF EXISTS `messenger`;
+ALTER TABLE `user_statistics` DROP INDEX IF EXISTS `id`, ADD KEY `AchievementScore` (`AchievementScore`);
+-- The CMS ranks duckets and diamonds per currency type.
+ALTER TABLE `user_currencies` ADD KEY `type_amount` (`type`, `amount`);
+
+-- rooms: owner lookups for My Rooms, the navigator and every login; nothing filters on roomtype, score or category.
+ALTER TABLE `rooms` DROP INDEX IF EXISTS `id`, DROP INDEX IF EXISTS `roomtype`, DROP INDEX IF EXISTS `score`,
+    DROP INDEX IF EXISTS `category`, DROP INDEX IF EXISTS `owner`, ADD KEY `owner_caption` (`owner`, `caption`);
+
+-- items: inventories load by owner where room_id is 0, rooms by room_id; the CMS counts holdings per furni.
+ALTER TABLE `items` DROP INDEX IF EXISTS `id`, DROP INDEX IF EXISTS `userid`, DROP INDEX IF EXISTS `base_item`,
+    ADD KEY `user_room` (`user_id`, `room_id`), ADD KEY `base_user` (`base_item`, `user_id`);
+
+-- Every login reads and locks the user's offline messages.
+ALTER TABLE `messenger_offline_messages` ADD KEY `to_id` (`to_id`);
+
+-- Leaving a room closes the user's latest visit to it.
+ALTER TABLE `user_roomvisits` DROP INDEX IF EXISTS `user_id`, DROP INDEX IF EXISTS `entry_timestamp`, DROP INDEX IF EXISTS `exit_timestamp`,
+    ADD KEY `user_room_entry` (`user_id`, `room_id`, `entry_timestamp`), ADD KEY `room_id` (`room_id`);
+
+-- Logins check bans by type and value; the startup sweep removes expired ones.
+ALTER TABLE `bans` DROP INDEX IF EXISTS `value`, DROP INDEX IF EXISTS `bantype`, ADD KEY `type_value_expire` (`bantype`, `value`, `expire`);
+
+-- Moderator chat logs read a room's or user's lines newest first.
+ALTER TABLE `chatlogs` DROP INDEX IF EXISTS `user_id`, DROP INDEX IF EXISTS `room_id`,
+    ADD KEY `room_time` (`room_id`, `timestamp`), ADD KEY `user_id` (`user_id`, `id`);
+
+-- Marketplace: own offers by user and state, the search by state and listing time.
+ALTER TABLE `catalog_marketplace_offers` ADD KEY `user_state` (`user_id`, `state`), ADD KEY `state_listed` (`state`, `listed_at`),
+    ADD KEY `item_id` (`item_id`);
+
+-- Groups: forum lists filter on forum_enabled.
+ALTER TABLE `groups` ADD KEY `forum_enabled` (`forum_enabled`);
+
+-- Camera quota cleanup deletes by day.
+ALTER TABLE `camera_quota` ADD KEY `quota_date` (`quota_date`);
+
+-- Wired variables: holder reads skip the target kind; the manager page sorts by value.
+ALTER TABLE `wired_variable_values` ADD KEY `definition_holder` (`definition_id`, `holder_id`),
+    ADD KEY `definition_kind_value` (`definition_id`, `target_kind`, `value`);
+-- 72_ForeignKeys
+-- Foreign keys for the relations the emulator and CMS use, so a row can no longer point at something that is gone.
+-- Child columns take their parent's exact type first; rows that already point nowhere are removed (or, for optional
+-- references, cleared). Rows only meaningful for their parent go with it (CASCADE); definitions in use and rooms or
+-- groups that still have an owner cannot be deleted (RESTRICT); audit and history tables keep no key on purpose.
+-- Apply while PlusEMU is stopped. A statement whose table or column an install does not have is skipped.
+
+-- 1. Child columns take their parent's type (user and room ids are signed, item and furniture ids unsigned).
+SET @migration_72_checks = @@FOREIGN_KEY_CHECKS;
+SET FOREIGN_KEY_CHECKS = 0;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('bots', 'room_id'))) = 1,
+    'ALTER TABLE `bots` MODIFY `room_id` int(10) NOT NULL DEFAULT 0', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('bots', 'user_id'))) = 1,
+    'ALTER TABLE `bots` MODIFY `user_id` int(11) NOT NULL DEFAULT 0', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('catalog_marketplace_offers', 'user_id'))) = 1,
+    'ALTER TABLE `catalog_marketplace_offers` MODIFY `user_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_memberships', 'user_id'))) = 1,
+    'ALTER TABLE `group_memberships` MODIFY `user_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_requests', 'user_id'))) = 1,
+    'ALTER TABLE `group_requests` MODIFY `user_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('groups', 'owner_id'))) = 1,
+    'ALTER TABLE `groups` MODIFY `owner_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items', 'room_id'))) = 1,
+    'ALTER TABLE `items` MODIFY `room_id` int(10) NOT NULL DEFAULT 0', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items_groups', 'group_id'))) = 1,
+    'ALTER TABLE `items_groups` MODIFY `group_id` int(11) unsigned NOT NULL DEFAULT 0', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_friendships', 'user_one_id'))) = 1,
+    'ALTER TABLE `messenger_friendships` MODIFY `user_one_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_friendships', 'user_two_id'))) = 1,
+    'ALTER TABLE `messenger_friendships` MODIFY `user_two_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_offline_messages', 'from_id'))) = 1,
+    'ALTER TABLE `messenger_offline_messages` MODIFY `from_id` int(11) NOT NULL DEFAULT 0', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_offline_messages', 'to_id'))) = 1,
+    'ALTER TABLE `messenger_offline_messages` MODIFY `to_id` int(11) NOT NULL DEFAULT 0', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_requests', 'from_id'))) = 1,
+    'ALTER TABLE `messenger_requests` MODIFY `from_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_requests', 'to_id'))) = 1,
+    'ALTER TABLE `messenger_requests` MODIFY `to_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('moderation_topic_actions', 'parent_id'))) = 1,
+    'ALTER TABLE `moderation_topic_actions` MODIFY `parent_id` int(11) unsigned NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_bans', 'room_id'))) = 1,
+    'ALTER TABLE `room_bans` MODIFY `room_id` int(10) NOT NULL DEFAULT 0', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_bans', 'user_id'))) = 1,
+    'ALTER TABLE `room_bans` MODIFY `user_id` int(11) NOT NULL DEFAULT 0', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_polls', 'room_id'))) = 1,
+    'ALTER TABLE `room_polls` MODIFY `room_id` int(10) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_rights', 'room_id'))) = 1,
+    'ALTER TABLE `room_rights` MODIFY `room_id` int(10) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_rights', 'user_id'))) = 1,
+    'ALTER TABLE `room_rights` MODIFY `user_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_wired_settings', 'room_id'))) = 1,
+    'ALTER TABLE `room_wired_settings` MODIFY `room_id` int(10) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_achievements', 'userid'))) = 1,
+    'ALTER TABLE `user_achievements` MODIFY `userid` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_badges', 'user_id'))) = 1,
+    'ALTER TABLE `user_badges` MODIFY `user_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_effects', 'user_id'))) = 1,
+    'ALTER TABLE `user_effects` MODIFY `user_id` int(11) NULL DEFAULT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_favorites', 'room_id'))) = 1,
+    'ALTER TABLE `user_favorites` MODIFY `room_id` int(10) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_favorites', 'user_id'))) = 1,
+    'ALTER TABLE `user_favorites` MODIFY `user_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_ignores', 'ignore_id'))) = 1,
+    'ALTER TABLE `user_ignores` MODIFY `ignore_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_ignores', 'user_id'))) = 1,
+    'ALTER TABLE `user_ignores` MODIFY `user_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_quests', 'user_id'))) = 1,
+    'ALTER TABLE `user_quests` MODIFY `user_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_roomvisits', 'room_id'))) = 1,
+    'ALTER TABLE `user_roomvisits` MODIFY `room_id` int(10) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_roomvisits', 'user_id'))) = 1,
+    'ALTER TABLE `user_roomvisits` MODIFY `user_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_statistics', 'groupid'))) = 1,
+    'ALTER TABLE `user_statistics` MODIFY `groupid` int(11) unsigned NOT NULL DEFAULT 0', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_wardrobe', 'user_id'))) = 1,
+    'ALTER TABLE `user_wardrobe` MODIFY `user_id` int(11) NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_settings', 'home_room'))) = 1,
+    'ALTER TABLE `users_settings` MODIFY `home_room` int(10) NOT NULL DEFAULT 0', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('wired_items', 'id'))) = 1,
+    'ALTER TABLE `wired_items` MODIFY `id` int(10) unsigned NOT NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET FOREIGN_KEY_CHECKS = @migration_72_checks;
+
+-- 2. Rows pointing at a parent that no longer exists.
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('bots', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `bots` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('bots_petdata', 'id'), ('bots', 'id'))) = 2,
+    'DELETE c FROM `bots_petdata` c WHERE c.`id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `bots` p WHERE p.`id` = c.`id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('bots_speech', 'bot_id'), ('bots', 'id'))) = 2,
+    'DELETE c FROM `bots_speech` c WHERE c.`bot_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `bots` p WHERE p.`id` = c.`bot_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_accounts', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `camera_accounts` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_competition_entries', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `camera_competition_entries` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_media', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `camera_media` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_publications', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `camera_publications` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_purchases', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `camera_purchases` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_purchases', 'item_id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `camera_purchases` c WHERE c.`item_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`item_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_quota', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `camera_quota` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('catalog_marketplace_offers', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `catalog_marketplace_offers` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('catalog_marketplace_offers', 'item_id'), ('furniture', 'id'))) = 2,
+    'DELETE c FROM `catalog_marketplace_offers` c WHERE c.`item_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `furniture` p WHERE p.`id` = c.`item_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('club_credit_spending', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `club_credit_spending` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('club_gift_claims', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `club_gift_claims` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('club_membership_intervals', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `club_membership_intervals` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('club_paydays', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `club_paydays` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('crafting_altars_recipes', 'altar_item_id'), ('furniture', 'id'))) = 2,
+    'DELETE c FROM `crafting_altars_recipes` c WHERE c.`altar_item_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `furniture` p WHERE p.`id` = c.`altar_item_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('crafting_recipes', 'reward_item_id'), ('furniture', 'id'))) = 2,
+    'DELETE c FROM `crafting_recipes` c WHERE c.`reward_item_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `furniture` p WHERE p.`id` = c.`reward_item_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('crafting_recipes_ingredients', 'item_id'), ('furniture', 'id'))) = 2,
+    'DELETE c FROM `crafting_recipes_ingredients` c WHERE c.`item_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `furniture` p WHERE p.`id` = c.`item_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_forum_messages', 'author_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `group_forum_messages` c WHERE c.`author_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`author_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_forum_post_limits', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `group_forum_post_limits` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_forum_read_markers', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `group_forum_read_markers` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_forum_threads', 'author_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `group_forum_threads` c WHERE c.`author_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`author_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_memberships', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `group_memberships` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_memberships', 'group_id'), ('groups', 'id'))) = 2,
+    'DELETE c FROM `group_memberships` c WHERE c.`group_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `groups` p WHERE p.`id` = c.`group_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_requests', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `group_requests` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_requests', 'group_id'), ('groups', 'id'))) = 2,
+    'DELETE c FROM `group_requests` c WHERE c.`group_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `groups` p WHERE p.`id` = c.`group_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('groups', 'owner_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `groups` c WHERE c.`owner_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`owner_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `items` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items', 'base_item'), ('furniture', 'id'))) = 2,
+    'DELETE c FROM `items` c WHERE c.`base_item` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `furniture` p WHERE p.`id` = c.`base_item`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items_groups', 'id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `items_groups` c WHERE c.`id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items_groups', 'group_id'), ('groups', 'id'))) = 2,
+    'DELETE c FROM `items_groups` c WHERE c.`group_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `groups` p WHERE p.`id` = c.`group_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_friendships', 'user_one_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `messenger_friendships` c WHERE c.`user_one_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_one_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_friendships', 'user_two_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `messenger_friendships` c WHERE c.`user_two_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_two_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_offline_messages', 'to_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `messenger_offline_messages` c WHERE c.`to_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`to_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_offline_messages', 'from_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `messenger_offline_messages` c WHERE c.`from_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`from_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_requests', 'from_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `messenger_requests` c WHERE c.`from_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`from_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_requests', 'to_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `messenger_requests` c WHERE c.`to_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`to_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('moderation_preset_action_messages', 'parent_id'), ('moderation_preset_action_categories', 'id'))) = 2,
+    'DELETE c FROM `moderation_preset_action_messages` c WHERE c.`parent_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `moderation_preset_action_categories` p WHERE p.`id` = c.`parent_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('moderation_topic_actions', 'parent_id'), ('moderation_topics', 'id'))) = 2,
+    'DELETE c FROM `moderation_topic_actions` c WHERE c.`parent_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `moderation_topics` p WHERE p.`id` = c.`parent_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('navigator_publics', 'room_id'), ('rooms', 'id'))) = 2,
+    'DELETE c FROM `navigator_publics` c WHERE c.`room_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('rcon_grants', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `rcon_grants` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('recycler_prizes', 'item_id'), ('furniture', 'id'))) = 2,
+    'DELETE c FROM `recycler_prizes` c WHERE c.`item_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `furniture` p WHERE p.`id` = c.`item_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('recycler_prizes', 'level'), ('recycler_levels', 'level'))) = 2,
+    'DELETE c FROM `recycler_prizes` c WHERE c.`level` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `recycler_levels` p WHERE p.`level` = c.`level`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('reward_track_prizes', 'track_id'), ('reward_tracks', 'id'))) = 2,
+    'DELETE c FROM `reward_track_prizes` c WHERE c.`track_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `reward_tracks` p WHERE p.`id` = c.`track_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('reward_track_tasks', 'track_id'), ('reward_tracks', 'id'))) = 2,
+    'DELETE c FROM `reward_track_tasks` c WHERE c.`track_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `reward_tracks` p WHERE p.`id` = c.`track_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_bans', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `room_bans` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_bans', 'room_id'), ('rooms', 'id'))) = 2,
+    'DELETE c FROM `room_bans` c WHERE c.`room_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_filter', 'room_id'), ('rooms', 'id'))) = 2,
+    'DELETE c FROM `room_filter` c WHERE c.`room_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_items_moodlight', 'item_id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `room_items_moodlight` c WHERE c.`item_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`item_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_items_tele_links', 'tele_one_id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `room_items_tele_links` c WHERE c.`tele_one_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`tele_one_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_items_tele_links', 'tele_two_id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `room_items_tele_links` c WHERE c.`tele_two_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`tele_two_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_items_toner', 'id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `room_items_toner` c WHERE c.`id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_music_disc_definitions', 'base_item'), ('furniture', 'id'))) = 2,
+    'DELETE c FROM `room_music_disc_definitions` c WHERE c.`base_item` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `furniture` p WHERE p.`id` = c.`base_item`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_poll_questions', 'poll_id'), ('room_polls', 'id'))) = 2,
+    'DELETE c FROM `room_poll_questions` c WHERE c.`poll_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `room_polls` p WHERE p.`id` = c.`poll_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_poll_responses', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `room_poll_responses` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_poll_responses', 'poll_id'), ('room_polls', 'id'))) = 2,
+    'DELETE c FROM `room_poll_responses` c WHERE c.`poll_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `room_polls` p WHERE p.`id` = c.`poll_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_polls', 'room_id'), ('rooms', 'id'))) = 2,
+    'DELETE c FROM `room_polls` c WHERE c.`room_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_promotions', 'room_id'), ('rooms', 'id'))) = 2,
+    'DELETE c FROM `room_promotions` c WHERE c.`room_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_rights', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `room_rights` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_rights', 'room_id'), ('rooms', 'id'))) = 2,
+    'DELETE c FROM `room_rights` c WHERE c.`room_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_wired_settings', 'room_id'), ('rooms', 'id'))) = 2,
+    'DELETE c FROM `room_wired_settings` c WHERE c.`room_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('rooms', 'owner'), ('users', 'id'))) = 2,
+    'DELETE c FROM `rooms` c WHERE c.`owner` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`owner`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('rooms', 'model_name'), ('room_models', 'id'))) = 2,
+    'DELETE c FROM `rooms` c WHERE c.`model_name` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `room_models` p WHERE p.`id` = c.`model_name`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('rooms', 'category'), ('navigator_categories', 'id'))) = 2,
+    'DELETE c FROM `rooms` c WHERE c.`category` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `navigator_categories` p WHERE p.`id` = c.`category`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('safety_quiz_questions', 'quiz_code'), ('safety_quizzes', 'code'))) = 2,
+    'DELETE c FROM `safety_quiz_questions` c WHERE c.`quiz_code` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `safety_quizzes` p WHERE p.`code` = c.`quiz_code`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('server_reward_logs', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `server_reward_logs` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('server_reward_logs', 'reward_id'), ('server_rewards', 'id'))) = 2,
+    'DELETE c FROM `server_reward_logs` c WHERE c.`reward_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `server_rewards` p WHERE p.`id` = c.`reward_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('snowwar_game_tokens', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `snowwar_game_tokens` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('snowwar_scores', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `snowwar_scores` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_access_tokens', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_access_tokens` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_access_tokens', 'session_id'), ('user_sessions', 'id'))) = 2,
+    'DELETE c FROM `user_access_tokens` c WHERE c.`session_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `user_sessions` p WHERE p.`id` = c.`session_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_achievements', 'userid'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_achievements` c WHERE c.`userid` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`userid`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_badges', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_badges` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_calendar_claims', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_calendar_claims` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_calendar_claims', 'campaign_id'), ('campaign_calendars', 'id'))) = 2,
+    'DELETE c FROM `user_calendar_claims` c WHERE c.`campaign_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `campaign_calendars` p WHERE p.`id` = c.`campaign_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_calendar_claims', 'reward_id'), ('campaign_calendar_rewards', 'id'))) = 2,
+    'DELETE c FROM `user_calendar_claims` c WHERE c.`reward_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `campaign_calendar_rewards` p WHERE p.`id` = c.`reward_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_clothing', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_clothing` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_club_memberships', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_club_memberships` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_crafting_recipes', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_crafting_recipes` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_effects', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_effects` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_favorites', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_favorites` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_favorites', 'room_id'), ('rooms', 'id'))) = 2,
+    'DELETE c FROM `user_favorites` c WHERE c.`room_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_ignores', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_ignores` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_ignores', 'ignore_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_ignores` c WHERE c.`ignore_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`ignore_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_info', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_info` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_permissions', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_permissions` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_permissions', 'granted_by'), ('users', 'id'))) = 2,
+    'UPDATE `user_permissions` c SET c.`granted_by` = NULL WHERE c.`granted_by` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`granted_by`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_presents', 'item_id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `user_presents` c WHERE c.`item_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`item_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_presents', 'base_id'), ('furniture', 'id'))) = 2,
+    'DELETE c FROM `user_presents` c WHERE c.`base_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `furniture` p WHERE p.`id` = c.`base_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_quests', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_quests` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_quests', 'quest_id'), ('quests', 'id'))) = 2,
+    'DELETE c FROM `user_quests` c WHERE c.`quest_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `quests` p WHERE p.`id` = c.`quest_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_recycler', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_recycler` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_remember_tokens', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_remember_tokens` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_remember_tokens', 'family_id'), ('user_sessions', 'id'))) = 2,
+    'DELETE c FROM `user_remember_tokens` c WHERE c.`family_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `user_sessions` p WHERE p.`id` = c.`family_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_roles', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_roles` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_roles', 'granted_by'), ('users', 'id'))) = 2,
+    'UPDATE `user_roles` c SET c.`granted_by` = NULL WHERE c.`granted_by` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`granted_by`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_roomvisits', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_roomvisits` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_roomvisits', 'room_id'), ('rooms', 'id'))) = 2,
+    'DELETE c FROM `user_roomvisits` c WHERE c.`room_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_safety_quizzes', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_safety_quizzes` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_safety_quizzes', 'quiz_code'), ('safety_quizzes', 'code'))) = 2,
+    'DELETE c FROM `user_safety_quizzes` c WHERE c.`quiz_code` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `safety_quizzes` p WHERE p.`code` = c.`quiz_code`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_saved_searches', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_saved_searches` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_sessions', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_sessions` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_statistics', 'id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_statistics` c WHERE c.`id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_talent_rewards', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_talent_rewards` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_vouchers', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_vouchers` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_vouchers', 'voucher'), ('catalog_vouchers', 'voucher'))) = 2,
+    'DELETE c FROM `user_vouchers` c WHERE c.`voucher` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `catalog_vouchers` p WHERE p.`voucher` = c.`voucher`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_wardrobe', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `user_wardrobe` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_habbicons', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `users_habbicons` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_reward_track_prizes', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `users_reward_track_prizes` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_reward_track_tasks', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `users_reward_track_tasks` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_reward_tracks', 'user_id'), ('users', 'id'))) = 2,
+    'DELETE c FROM `users_reward_tracks` c WHERE c.`user_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `users` p WHERE p.`id` = c.`user_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_reward_tracks', 'track_id'), ('reward_tracks', 'id'))) = 2,
+    'DELETE c FROM `users_reward_tracks` c WHERE c.`track_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `reward_tracks` p WHERE p.`id` = c.`track_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('wired_item_configurations', 'item_id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `wired_item_configurations` c WHERE c.`item_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`item_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('wired_items', 'id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `wired_items` c WHERE c.`id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('wired_reward_state', 'item_id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `wired_reward_state` c WHERE c.`item_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`item_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('wired_variable_values', 'definition_id'), ('items', 'id'))) = 2,
+    'DELETE c FROM `wired_variable_values` c WHERE c.`definition_id` IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `items` p WHERE p.`id` = c.`definition_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items', 'room_id'), ('rooms', 'id'))) = 2,
+    'UPDATE `items` c SET c.`room_id` = 0 WHERE c.`room_id` <> 0 AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('bots', 'room_id'), ('rooms', 'id'))) = 2,
+    'UPDATE `bots` c SET c.`room_id` = 0 WHERE c.`room_id` <> 0 AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`room_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_settings', 'home_room'), ('rooms', 'id'))) = 2,
+    'UPDATE `users_settings` c SET c.`home_room` = 0 WHERE c.`home_room` <> 0 AND NOT EXISTS (SELECT 1 FROM `rooms` p WHERE p.`id` = c.`home_room`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('rooms', 'group_id'), ('groups', 'id'))) = 2,
+    'UPDATE `rooms` c SET c.`group_id` = 0 WHERE c.`group_id` <> 0 AND NOT EXISTS (SELECT 1 FROM `groups` p WHERE p.`id` = c.`group_id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_statistics', 'groupid'), ('groups', 'id'))) = 2,
+    'UPDATE `user_statistics` c SET c.`groupid` = 0 WHERE c.`groupid` <> 0 AND NOT EXISTS (SELECT 1 FROM `groups` p WHERE p.`id` = c.`groupid`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+
+-- 3. Jukebox playlists and crafting recipes follow their player, disc or recipe instead of blocking its removal.
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_music_playlist', 'player_id'), ('room_music_players', 'item_id'))) = 2,
+    'ALTER TABLE `room_music_playlist` DROP FOREIGN KEY IF EXISTS `room_music_playlist_ibfk_1`, ADD CONSTRAINT `fk_room_music_playlist_player_id` FOREIGN KEY (`player_id`) REFERENCES `room_music_players` (`item_id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_music_playlist', 'disc_id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `room_music_playlist` DROP FOREIGN KEY IF EXISTS `room_music_playlist_ibfk_2`, ADD CONSTRAINT `fk_room_music_playlist_disc_id` FOREIGN KEY (`disc_id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('crafting_altars_recipes', 'recipe_id'), ('crafting_recipes', 'id'))) = 2,
+    'ALTER TABLE `crafting_altars_recipes` DROP FOREIGN KEY IF EXISTS `crafting_altars_recipes_ibfk_1`, ADD CONSTRAINT `fk_crafting_altars_recipes_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `crafting_recipes` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('crafting_recipes_ingredients', 'recipe_id'), ('crafting_recipes', 'id'))) = 2,
+    'ALTER TABLE `crafting_recipes_ingredients` DROP FOREIGN KEY IF EXISTS `crafting_recipes_ingredients_ibfk_1`, ADD CONSTRAINT `fk_crafting_recipes_ingredients_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `crafting_recipes` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_crafting_recipes', 'recipe_id'), ('crafting_recipes', 'id'))) = 2,
+    'ALTER TABLE `user_crafting_recipes` DROP FOREIGN KEY IF EXISTS `user_crafting_recipes_ibfk_1`, ADD CONSTRAINT `fk_user_crafting_recipes_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `crafting_recipes` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+
+-- 4. Where the code writes 0 for "none" (inventory, no home room, no group), a stored NULLIF(column, 0) carries the key.
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `items` ADD COLUMN `room_ref` int(10) GENERATED ALWAYS AS (NULLIF(`room_id`, 0)) STORED, ADD CONSTRAINT `fk_items_room_ref` FOREIGN KEY (`room_ref`) REFERENCES `rooms` (`id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('bots', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `bots` ADD COLUMN `room_ref` int(10) GENERATED ALWAYS AS (NULLIF(`room_id`, 0)) STORED, ADD CONSTRAINT `fk_bots_room_ref` FOREIGN KEY (`room_ref`) REFERENCES `rooms` (`id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_settings', 'home_room'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `users_settings` ADD COLUMN `home_room_ref` int(10) GENERATED ALWAYS AS (NULLIF(`home_room`, 0)) STORED, ADD CONSTRAINT `fk_users_settings_home_room_ref` FOREIGN KEY (`home_room_ref`) REFERENCES `rooms` (`id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('rooms', 'group_id'), ('groups', 'id'))) = 2,
+    'ALTER TABLE `rooms` ADD COLUMN `group_ref` int(11) unsigned GENERATED ALWAYS AS (NULLIF(`group_id`, 0)) STORED, ADD CONSTRAINT `fk_rooms_group_ref` FOREIGN KEY (`group_ref`) REFERENCES `groups` (`id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_statistics', 'groupid'), ('groups', 'id'))) = 2,
+    'ALTER TABLE `user_statistics` ADD COLUMN `group_ref` int(11) unsigned GENERATED ALWAYS AS (NULLIF(`groupid`, 0)) STORED, ADD CONSTRAINT `fk_user_statistics_group_ref` FOREIGN KEY (`group_ref`) REFERENCES `groups` (`id`)', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+
+-- 5. The keys.
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('bots', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `bots` ADD CONSTRAINT `fk_bots_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('bots_petdata', 'id'), ('bots', 'id'))) = 2,
+    'ALTER TABLE `bots_petdata` ADD CONSTRAINT `fk_bots_petdata_id` FOREIGN KEY (`id`) REFERENCES `bots` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('bots_speech', 'bot_id'), ('bots', 'id'))) = 2,
+    'ALTER TABLE `bots_speech` ADD CONSTRAINT `fk_bots_speech_bot_id` FOREIGN KEY (`bot_id`) REFERENCES `bots` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_accounts', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `camera_accounts` ADD CONSTRAINT `fk_camera_accounts_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_competition_entries', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `camera_competition_entries` ADD CONSTRAINT `fk_camera_competition_entries_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_media', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `camera_media` ADD CONSTRAINT `fk_camera_media_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_publications', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `camera_publications` ADD CONSTRAINT `fk_camera_publications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_purchases', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `camera_purchases` ADD CONSTRAINT `fk_camera_purchases_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_purchases', 'item_id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `camera_purchases` ADD CONSTRAINT `fk_camera_purchases_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('camera_quota', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `camera_quota` ADD CONSTRAINT `fk_camera_quota_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('catalog_marketplace_offers', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `catalog_marketplace_offers` ADD CONSTRAINT `fk_catalog_marketplace_offers_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('catalog_marketplace_offers', 'item_id'), ('furniture', 'id'))) = 2,
+    'ALTER TABLE `catalog_marketplace_offers` ADD CONSTRAINT `fk_catalog_marketplace_offers_item_id` FOREIGN KEY (`item_id`) REFERENCES `furniture` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('club_credit_spending', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `club_credit_spending` ADD CONSTRAINT `fk_club_credit_spending_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('club_gift_claims', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `club_gift_claims` ADD CONSTRAINT `fk_club_gift_claims_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('club_membership_intervals', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `club_membership_intervals` ADD CONSTRAINT `fk_club_membership_intervals_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('club_paydays', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `club_paydays` ADD CONSTRAINT `fk_club_paydays_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('crafting_altars_recipes', 'altar_item_id'), ('furniture', 'id'))) = 2,
+    'ALTER TABLE `crafting_altars_recipes` ADD CONSTRAINT `fk_crafting_altars_recipes_altar_item_id` FOREIGN KEY (`altar_item_id`) REFERENCES `furniture` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('crafting_recipes', 'reward_item_id'), ('furniture', 'id'))) = 2,
+    'ALTER TABLE `crafting_recipes` ADD CONSTRAINT `fk_crafting_recipes_reward_item_id` FOREIGN KEY (`reward_item_id`) REFERENCES `furniture` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('crafting_recipes_ingredients', 'item_id'), ('furniture', 'id'))) = 2,
+    'ALTER TABLE `crafting_recipes_ingredients` ADD CONSTRAINT `fk_crafting_recipes_ingredients_item_id` FOREIGN KEY (`item_id`) REFERENCES `furniture` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_forum_messages', 'author_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `group_forum_messages` ADD CONSTRAINT `fk_group_forum_messages_author_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_forum_post_limits', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `group_forum_post_limits` ADD CONSTRAINT `fk_group_forum_post_limits_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_forum_read_markers', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `group_forum_read_markers` ADD CONSTRAINT `fk_group_forum_read_markers_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_forum_threads', 'author_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `group_forum_threads` ADD CONSTRAINT `fk_group_forum_threads_author_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_memberships', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `group_memberships` ADD CONSTRAINT `fk_group_memberships_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_memberships', 'group_id'), ('groups', 'id'))) = 2,
+    'ALTER TABLE `group_memberships` ADD CONSTRAINT `fk_group_memberships_group_id` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_requests', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `group_requests` ADD CONSTRAINT `fk_group_requests_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('group_requests', 'group_id'), ('groups', 'id'))) = 2,
+    'ALTER TABLE `group_requests` ADD CONSTRAINT `fk_group_requests_group_id` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('groups', 'owner_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `groups` ADD CONSTRAINT `fk_groups_owner_id` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `items` ADD CONSTRAINT `fk_items_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items', 'base_item'), ('furniture', 'id'))) = 2,
+    'ALTER TABLE `items` ADD CONSTRAINT `fk_items_base_item` FOREIGN KEY (`base_item`) REFERENCES `furniture` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items_groups', 'id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `items_groups` ADD CONSTRAINT `fk_items_groups_id` FOREIGN KEY (`id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('items_groups', 'group_id'), ('groups', 'id'))) = 2,
+    'ALTER TABLE `items_groups` ADD CONSTRAINT `fk_items_groups_group_id` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_friendships', 'user_one_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `messenger_friendships` ADD CONSTRAINT `fk_messenger_friendships_user_one_id` FOREIGN KEY (`user_one_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_friendships', 'user_two_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `messenger_friendships` ADD CONSTRAINT `fk_messenger_friendships_user_two_id` FOREIGN KEY (`user_two_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_offline_messages', 'to_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `messenger_offline_messages` ADD CONSTRAINT `fk_messenger_offline_messages_to_id` FOREIGN KEY (`to_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_offline_messages', 'from_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `messenger_offline_messages` ADD CONSTRAINT `fk_messenger_offline_messages_from_id` FOREIGN KEY (`from_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_requests', 'from_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `messenger_requests` ADD CONSTRAINT `fk_messenger_requests_from_id` FOREIGN KEY (`from_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('messenger_requests', 'to_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `messenger_requests` ADD CONSTRAINT `fk_messenger_requests_to_id` FOREIGN KEY (`to_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('moderation_preset_action_messages', 'parent_id'), ('moderation_preset_action_categories', 'id'))) = 2,
+    'ALTER TABLE `moderation_preset_action_messages` ADD CONSTRAINT `fk_moderation_preset_action_messages_parent_id` FOREIGN KEY (`parent_id`) REFERENCES `moderation_preset_action_categories` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('moderation_topic_actions', 'parent_id'), ('moderation_topics', 'id'))) = 2,
+    'ALTER TABLE `moderation_topic_actions` ADD CONSTRAINT `fk_moderation_topic_actions_parent_id` FOREIGN KEY (`parent_id`) REFERENCES `moderation_topics` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('navigator_publics', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `navigator_publics` ADD CONSTRAINT `fk_navigator_publics_room_id` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('rcon_grants', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `rcon_grants` ADD CONSTRAINT `fk_rcon_grants_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('recycler_prizes', 'item_id'), ('furniture', 'id'))) = 2,
+    'ALTER TABLE `recycler_prizes` ADD CONSTRAINT `fk_recycler_prizes_item_id` FOREIGN KEY (`item_id`) REFERENCES `furniture` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('recycler_prizes', 'level'), ('recycler_levels', 'level'))) = 2,
+    'ALTER TABLE `recycler_prizes` ADD CONSTRAINT `fk_recycler_prizes_level` FOREIGN KEY (`level`) REFERENCES `recycler_levels` (`level`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('reward_track_prizes', 'track_id'), ('reward_tracks', 'id'))) = 2,
+    'ALTER TABLE `reward_track_prizes` ADD CONSTRAINT `fk_reward_track_prizes_track_id` FOREIGN KEY (`track_id`) REFERENCES `reward_tracks` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('reward_track_tasks', 'track_id'), ('reward_tracks', 'id'))) = 2,
+    'ALTER TABLE `reward_track_tasks` ADD CONSTRAINT `fk_reward_track_tasks_track_id` FOREIGN KEY (`track_id`) REFERENCES `reward_tracks` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_bans', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `room_bans` ADD CONSTRAINT `fk_room_bans_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_bans', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `room_bans` ADD CONSTRAINT `fk_room_bans_room_id` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_filter', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `room_filter` ADD CONSTRAINT `fk_room_filter_room_id` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_items_moodlight', 'item_id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `room_items_moodlight` ADD CONSTRAINT `fk_room_items_moodlight_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_items_tele_links', 'tele_one_id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `room_items_tele_links` ADD CONSTRAINT `fk_room_items_tele_links_tele_one_id` FOREIGN KEY (`tele_one_id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_items_tele_links', 'tele_two_id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `room_items_tele_links` ADD CONSTRAINT `fk_room_items_tele_links_tele_two_id` FOREIGN KEY (`tele_two_id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_items_toner', 'id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `room_items_toner` ADD CONSTRAINT `fk_room_items_toner_id` FOREIGN KEY (`id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_music_disc_definitions', 'base_item'), ('furniture', 'id'))) = 2,
+    'ALTER TABLE `room_music_disc_definitions` ADD CONSTRAINT `fk_room_music_disc_definitions_base_item` FOREIGN KEY (`base_item`) REFERENCES `furniture` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_poll_questions', 'poll_id'), ('room_polls', 'id'))) = 2,
+    'ALTER TABLE `room_poll_questions` ADD CONSTRAINT `fk_room_poll_questions_poll_id` FOREIGN KEY (`poll_id`) REFERENCES `room_polls` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_poll_responses', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `room_poll_responses` ADD CONSTRAINT `fk_room_poll_responses_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_poll_responses', 'poll_id'), ('room_polls', 'id'))) = 2,
+    'ALTER TABLE `room_poll_responses` ADD CONSTRAINT `fk_room_poll_responses_poll_id` FOREIGN KEY (`poll_id`) REFERENCES `room_polls` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_polls', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `room_polls` ADD CONSTRAINT `fk_room_polls_room_id` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_promotions', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `room_promotions` ADD CONSTRAINT `fk_room_promotions_room_id` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_rights', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `room_rights` ADD CONSTRAINT `fk_room_rights_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_rights', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `room_rights` ADD CONSTRAINT `fk_room_rights_room_id` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('room_wired_settings', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `room_wired_settings` ADD CONSTRAINT `fk_room_wired_settings_room_id` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('rooms', 'owner'), ('users', 'id'))) = 2,
+    'ALTER TABLE `rooms` ADD CONSTRAINT `fk_rooms_owner` FOREIGN KEY (`owner`) REFERENCES `users` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('rooms', 'model_name'), ('room_models', 'id'))) = 2,
+    'ALTER TABLE `rooms` ADD CONSTRAINT `fk_rooms_model_name` FOREIGN KEY (`model_name`) REFERENCES `room_models` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('rooms', 'category'), ('navigator_categories', 'id'))) = 2,
+    'ALTER TABLE `rooms` ADD CONSTRAINT `fk_rooms_category` FOREIGN KEY (`category`) REFERENCES `navigator_categories` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('safety_quiz_questions', 'quiz_code'), ('safety_quizzes', 'code'))) = 2,
+    'ALTER TABLE `safety_quiz_questions` ADD CONSTRAINT `fk_safety_quiz_questions_quiz_code` FOREIGN KEY (`quiz_code`) REFERENCES `safety_quizzes` (`code`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('server_reward_logs', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `server_reward_logs` ADD CONSTRAINT `fk_server_reward_logs_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('server_reward_logs', 'reward_id'), ('server_rewards', 'id'))) = 2,
+    'ALTER TABLE `server_reward_logs` ADD CONSTRAINT `fk_server_reward_logs_reward_id` FOREIGN KEY (`reward_id`) REFERENCES `server_rewards` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('snowwar_game_tokens', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `snowwar_game_tokens` ADD CONSTRAINT `fk_snowwar_game_tokens_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('snowwar_scores', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `snowwar_scores` ADD CONSTRAINT `fk_snowwar_scores_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_access_tokens', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_access_tokens` ADD CONSTRAINT `fk_user_access_tokens_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_access_tokens', 'session_id'), ('user_sessions', 'id'))) = 2,
+    'ALTER TABLE `user_access_tokens` ADD CONSTRAINT `fk_user_access_tokens_session_id` FOREIGN KEY (`session_id`) REFERENCES `user_sessions` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_achievements', 'userid'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_achievements` ADD CONSTRAINT `fk_user_achievements_userid` FOREIGN KEY (`userid`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_badges', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_badges` ADD CONSTRAINT `fk_user_badges_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_calendar_claims', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_calendar_claims` ADD CONSTRAINT `fk_user_calendar_claims_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_calendar_claims', 'campaign_id'), ('campaign_calendars', 'id'))) = 2,
+    'ALTER TABLE `user_calendar_claims` ADD CONSTRAINT `fk_user_calendar_claims_campaign_id` FOREIGN KEY (`campaign_id`) REFERENCES `campaign_calendars` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_calendar_claims', 'reward_id'), ('campaign_calendar_rewards', 'id'))) = 2,
+    'ALTER TABLE `user_calendar_claims` ADD CONSTRAINT `fk_user_calendar_claims_reward_id` FOREIGN KEY (`reward_id`) REFERENCES `campaign_calendar_rewards` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_clothing', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_clothing` ADD CONSTRAINT `fk_user_clothing_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_club_memberships', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_club_memberships` ADD CONSTRAINT `fk_user_club_memberships_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_crafting_recipes', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_crafting_recipes` ADD CONSTRAINT `fk_user_crafting_recipes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_effects', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_effects` ADD CONSTRAINT `fk_user_effects_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_favorites', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_favorites` ADD CONSTRAINT `fk_user_favorites_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_favorites', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `user_favorites` ADD CONSTRAINT `fk_user_favorites_room_id` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_ignores', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_ignores` ADD CONSTRAINT `fk_user_ignores_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_ignores', 'ignore_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_ignores` ADD CONSTRAINT `fk_user_ignores_ignore_id` FOREIGN KEY (`ignore_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_info', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_info` ADD CONSTRAINT `fk_user_info_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_permissions', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_permissions` ADD CONSTRAINT `fk_user_permissions_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_permissions', 'granted_by'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_permissions` ADD CONSTRAINT `fk_user_permissions_granted_by` FOREIGN KEY (`granted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_presents', 'item_id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `user_presents` ADD CONSTRAINT `fk_user_presents_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_presents', 'base_id'), ('furniture', 'id'))) = 2,
+    'ALTER TABLE `user_presents` ADD CONSTRAINT `fk_user_presents_base_id` FOREIGN KEY (`base_id`) REFERENCES `furniture` (`id`) ON DELETE RESTRICT', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_quests', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_quests` ADD CONSTRAINT `fk_user_quests_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_quests', 'quest_id'), ('quests', 'id'))) = 2,
+    'ALTER TABLE `user_quests` ADD CONSTRAINT `fk_user_quests_quest_id` FOREIGN KEY (`quest_id`) REFERENCES `quests` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_recycler', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_recycler` ADD CONSTRAINT `fk_user_recycler_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_remember_tokens', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_remember_tokens` ADD CONSTRAINT `fk_user_remember_tokens_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_remember_tokens', 'family_id'), ('user_sessions', 'id'))) = 2,
+    'ALTER TABLE `user_remember_tokens` ADD CONSTRAINT `fk_user_remember_tokens_family_id` FOREIGN KEY (`family_id`) REFERENCES `user_sessions` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_roles', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_roles` ADD CONSTRAINT `fk_user_roles_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_roles', 'granted_by'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_roles` ADD CONSTRAINT `fk_user_roles_granted_by` FOREIGN KEY (`granted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_roomvisits', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_roomvisits` ADD CONSTRAINT `fk_user_roomvisits_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_roomvisits', 'room_id'), ('rooms', 'id'))) = 2,
+    'ALTER TABLE `user_roomvisits` ADD CONSTRAINT `fk_user_roomvisits_room_id` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_safety_quizzes', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_safety_quizzes` ADD CONSTRAINT `fk_user_safety_quizzes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_safety_quizzes', 'quiz_code'), ('safety_quizzes', 'code'))) = 2,
+    'ALTER TABLE `user_safety_quizzes` ADD CONSTRAINT `fk_user_safety_quizzes_quiz_code` FOREIGN KEY (`quiz_code`) REFERENCES `safety_quizzes` (`code`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_saved_searches', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_saved_searches` ADD CONSTRAINT `fk_user_saved_searches_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_sessions', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_sessions` ADD CONSTRAINT `fk_user_sessions_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_statistics', 'id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_statistics` ADD CONSTRAINT `fk_user_statistics_id` FOREIGN KEY (`id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_talent_rewards', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_talent_rewards` ADD CONSTRAINT `fk_user_talent_rewards_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_vouchers', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_vouchers` ADD CONSTRAINT `fk_user_vouchers_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_vouchers', 'voucher'), ('catalog_vouchers', 'voucher'))) = 2,
+    'ALTER TABLE `user_vouchers` ADD CONSTRAINT `fk_user_vouchers_voucher` FOREIGN KEY (`voucher`) REFERENCES `catalog_vouchers` (`voucher`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('user_wardrobe', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `user_wardrobe` ADD CONSTRAINT `fk_user_wardrobe_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_habbicons', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `users_habbicons` ADD CONSTRAINT `fk_users_habbicons_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_reward_track_prizes', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `users_reward_track_prizes` ADD CONSTRAINT `fk_users_reward_track_prizes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_reward_track_tasks', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `users_reward_track_tasks` ADD CONSTRAINT `fk_users_reward_track_tasks_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_reward_tracks', 'user_id'), ('users', 'id'))) = 2,
+    'ALTER TABLE `users_reward_tracks` ADD CONSTRAINT `fk_users_reward_tracks_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('users_reward_tracks', 'track_id'), ('reward_tracks', 'id'))) = 2,
+    'ALTER TABLE `users_reward_tracks` ADD CONSTRAINT `fk_users_reward_tracks_track_id` FOREIGN KEY (`track_id`) REFERENCES `reward_tracks` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('wired_item_configurations', 'item_id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `wired_item_configurations` ADD CONSTRAINT `fk_wired_item_configurations_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('wired_items', 'id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `wired_items` ADD CONSTRAINT `fk_wired_items_id` FOREIGN KEY (`id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('wired_reward_state', 'item_id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `wired_reward_state` ADD CONSTRAINT `fk_wired_reward_state_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+SET @migration_72 = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME, COLUMN_NAME) IN (('wired_variable_values', 'definition_id'), ('items', 'id'))) = 2,
+    'ALTER TABLE `wired_variable_values` ADD CONSTRAINT `fk_wired_variable_values_definition_id` FOREIGN KEY (`definition_id`) REFERENCES `items` (`id`) ON DELETE CASCADE', 'DO 0');
+EXECUTE IMMEDIATE @migration_72;
+
+SET @migration_72 = NULL;
+
+-- 64_WiredFurnitureInteractions (Wired parity, applied after schema modernization)
+-- Store the concrete Wired interaction on official furniture rows.
+-- Asset names, IDs, offers, owned items and persisted box_name/configuration stay unchanged.
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_health'
+WHERE item_name = 'wf_xtra_varfx_hp' AND type = 's' AND sprite_id = 19196
+  AND interaction_type IN ('default', 'wired_addon', 'wf_xtra_varfx_hp');
+
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_progress'
+WHERE item_name = 'wf_xtra_varfx_prog' AND type = 's' AND sprite_id = 19199
+  AND interaction_type IN ('default', 'wired_addon', 'wf_xtra_varfx_prog');
+
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_level'
+WHERE item_name = 'wf_xtra_varfx_levelling' AND type = 's' AND sprite_id = 19197
+  AND interaction_type IN ('default', 'wired_addon', 'wf_xtra_varfx_levelling');
+
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_status'
+WHERE item_name = 'wf_xtra_varfx_status' AND type = 's' AND sprite_id = 19200
+  AND interaction_type IN ('default', 'wired_addon', 'wf_xtra_varfx_status');
+
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_boss'
+WHERE item_name = 'wf_xtra_varfx_boss' AND type = 's' AND sprite_id = 19195
+  AND interaction_type IN ('default', 'wired_addon', 'wf_xtra_varfx_boss');
+
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_number'
+WHERE item_name = 'wf_xtra_varfx_number' AND type = 's' AND sprite_id = 19198
+  AND interaction_type IN ('default', 'wired_addon', 'wf_xtra_varfx_number');
+
+UPDATE furniture SET interaction_type = 'wf_trg_at_given_time'
+WHERE item_name = 'wf_proto_trg_at_given_time' AND type = 's' AND sprite_id = 17678
+  AND interaction_type IN ('default', 'wired_trigger', 'wf_proto_trg_at_given_time');
+
+UPDATE furniture SET interaction_type = 'wf_cnd_trggrer_on_frn'
+WHERE item_name = 'wf_proto_cnd_trggrer_on_frn' AND type = 's' AND sprite_id = 17679
+  AND interaction_type IN ('default', 'wired_condition', 'wf_proto_cnd_trggrer_on_frn');
+
+UPDATE furniture SET interaction_type = 'wf_act_toggle_state'
+WHERE item_name = 'wf_ltdproto_act_toggle_state' AND type = 's' AND sprite_id = 17676
+  AND interaction_type IN ('default', 'wired_effect', 'wf_ltdproto_act_toggle_state');
+
+
+-- 65_WiredChests (Wired parity, applied after schema modernization)
+-- Chest stock consists of existing inventory items or redeemed credit vouchers.
+ALTER TABLE items ADD COLUMN IF NOT EXISTS chest_item_id INT UNSIGNED NULL,
+    ADD COLUMN IF NOT EXISTS chest_transaction_id BIGINT UNSIGNED NULL,
+    ADD COLUMN IF NOT EXISTS chest_random_order BIGINT UNSIGNED NULL;
+CREATE TABLE IF NOT EXISTS wired_chests (
+    item_id INT UNSIGNED NOT NULL PRIMARY KEY,
+    kind TINYINT UNSIGNED NOT NULL,
+    coins INT UNSIGNED NOT NULL DEFAULT 0,
+    capacity_level INT UNSIGNED NOT NULL DEFAULT 0,
+    settings LONGTEXT NOT NULL,
+    CONSTRAINT wired_chest_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS wired_contracts (
+    item_id INT UNSIGNED NOT NULL PRIMARY KEY,
+    contract LONGTEXT NOT NULL,
+    CONSTRAINT wired_contract_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Transaction rows and entry item IDs are retained audit history, not live parent relationships.
+CREATE TABLE IF NOT EXISTS wired_chest_transactions (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    operation_id CHAR(32) NOT NULL UNIQUE,
+    user_id INT NOT NULL,
+    room_id INT NOT NULL,
+    source_id INT UNSIGNED NOT NULL,
+    result LONGTEXT NOT NULL,
+    created_at DATETIME(6) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS wired_chest_transaction_entries (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    transaction_id BIGINT UNSIGNED NOT NULL,
+    chest_id INT UNSIGNED NOT NULL,
+    item_id INT UNSIGNED NULL,
+    is_deposit TINYINT(1) NOT NULL,
+    coins INT UNSIGNED NOT NULL DEFAULT 0,
+    CONSTRAINT wired_chest_entry_log FOREIGN KEY (transaction_id) REFERENCES wired_chest_transactions(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Normalize existing companion tables as well as newly created ones.
+ALTER TABLE wired_chests CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE wired_contracts CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE wired_chest_transactions MODIFY COLUMN room_id INT NOT NULL,
+    CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE wired_chest_transaction_entries CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- Stored chest stock has no inventory owner; zero remains the existing runtime sentinel.
+-- Apply after the schema modernization owner key, including in the staged fresh-install script.
+ALTER TABLE items DROP FOREIGN KEY IF EXISTS fk_items_user_id,
+    ADD COLUMN IF NOT EXISTS user_ref INT GENERATED ALWAYS AS (NULLIF(user_id, 0)) STORED;
+CREATE INDEX IF NOT EXISTS items_user_ref ON items(user_ref);
+SET @wired_owner_fk_sql = IF(EXISTS(SELECT 1 FROM information_schema.REFERENTIAL_CONSTRAINTS
+    WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='items' AND CONSTRAINT_NAME='fk_items_user_ref'),
+    'SELECT 1', 'ALTER TABLE items ADD CONSTRAINT fk_items_user_ref FOREIGN KEY (user_ref) REFERENCES users(id) ON DELETE CASCADE');
+PREPARE wired_owner_fk FROM @wired_owner_fk_sql;
+EXECUTE wired_owner_fk;
+DEALLOCATE PREPARE wired_owner_fk;
+CREATE INDEX IF NOT EXISTS items_chest ON items(chest_item_id,chest_transaction_id);
+SET @wired_chest_fk_sql = IF(EXISTS(SELECT 1 FROM information_schema.REFERENTIAL_CONSTRAINTS
+    WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='items' AND CONSTRAINT_NAME='wired_stored_item_chest'),
+    'SELECT 1', 'ALTER TABLE items ADD CONSTRAINT wired_stored_item_chest FOREIGN KEY (chest_item_id) REFERENCES wired_chests(item_id) ON DELETE RESTRICT');
+PREPARE wired_chest_fk FROM @wired_chest_fk_sql;
+EXECUTE wired_chest_fk;
+DEALLOCATE PREPARE wired_chest_fk;
+UPDATE furniture SET interaction_type='wired_chest_furni' WHERE item_name IN ('wf_storage_furni1','wf_storage_furni2','wf_storage_furni_starter');
+UPDATE furniture SET interaction_type='wired_chest_coins' WHERE item_name IN ('wf_storage_coins1','wf_storage_coins2');
+UPDATE furniture SET interaction_type='wired_contract_payment' WHERE item_name='wf_contract_payment';
+UPDATE furniture SET interaction_type='wired_contract_reward' WHERE item_name='wf_contract_reward';
+UPDATE furniture SET interaction_type='wired_contract_trade' WHERE item_name='wf_contract_trade';
+UPDATE furniture SET interaction_type='wired_effect' WHERE item_name IN ('wf_act_give_currency','wf_act_give_furni','wf_act_init_transaction','wf_act_cancel_transaction');
+UPDATE furniture SET interaction_type='wired_condition' WHERE item_name IN ('wf_cnd_chest_has_items','wf_cnd_chest_has_item_type');
+UPDATE furniture SET interaction_type='wired_trigger' WHERE item_name IN ('wf_trg_transaction_complete','wf_trg_transaction_fail');
+UPDATE furniture SET interaction_type='wired_addon' WHERE item_name IN ('wf_xtra_custom_contract','wf_xtra_scan_chest_furni_by_type');
+
+
+-- 66_WiredVariableValueWidth (Wired parity, applied after schema modernization)
+ALTER TABLE `wired_variable_values` MODIFY COLUMN `value` BIGINT NOT NULL;
+
+
+-- 67_AreaHideInteraction (Wired parity, applied after schema modernization)
+UPDATE furniture SET interaction_type = 'area_hide'
+WHERE item_name = 'conf_area_hide' AND type = 's' AND sprite_id = 15215
+  AND interaction_type IN ('default', 'default_floor', 'conf_area_hide');
+
+
+-- 68_RoomModelPresentation (Wired parity, applied after schema modernization)
+ALTER TABLE room_models
+    ADD COLUMN IF NOT EXISTS half_scale BOOL NOT NULL DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS camera_x INT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS camera_y INT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS camera_z FLOAT NOT NULL DEFAULT 0;
+
+-- 75_DiagonalSqueeze
+-- :disablediagonal now toggles, per room, whether avatars may walk diagonally between two
+-- blocked tiles that touch at a corner. Every room starts with squeezing off.
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS diagonal_squeeze TINYINT(1) NOT NULL DEFAULT 0;
+-- 76_OfficialAchievements
+-- The achievements window shows exactly the official habbo.com achievements: the 166 groups with levels that
+-- https://www.habbo.com/api/public/achievements listed on 2026-10-11 (1876 levels), with their official ids, categories,
+-- states (ENABLED 1, ARCHIVED 2, OFF_SEASON 3, the AIR codes) and thresholds. Thresholds are cumulative totals, so
+-- user_achievements.progress becomes the user's total score.
+-- No official source publishes rewards: a level this hotel already had keeps its reward_points and reward_pixels,
+-- every other level gives 10 achievement points and no duckets.
+-- Achievements that are not official stay, with their user progress and badges, but visible = 0 keeps them out of the
+-- list. badge_code names a badge that is not group_name + level (ACH_Profile1 and ACH_Profile2 have one level each).
+
+-- Totals are converted once, on the run that adds the columns.
+SET @migration_76_convert = (SELECT COUNT(*) = 0 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'achievements' AND COLUMN_NAME = 'official_id');
+
+ALTER TABLE `achievements`
+    ADD COLUMN IF NOT EXISTS `official_id` int(11) DEFAULT NULL AFTER `game_id`,
+    ADD COLUMN IF NOT EXISTS `state` tinyint(4) NOT NULL DEFAULT 1 AFTER `official_id`,
+    ADD COLUMN IF NOT EXISTS `visible` tinyint(1) NOT NULL DEFAULT 1 AFTER `state`,
+    ADD COLUMN IF NOT EXISTS `badge_code` varchar(64) DEFAULT NULL AFTER `visible`;
+ALTER TABLE `achievements` ADD UNIQUE KEY IF NOT EXISTS `group_level` (`group_name`, `level`);
+
+-- Same column types and collations as achievements.
+DROP TEMPORARY TABLE IF EXISTS `migration_76_official`;
+CREATE TEMPORARY TABLE `migration_76_official` AS
+SELECT `group_name`, `category`, `level`, `progress_needed`, `official_id`, `state`, `badge_code` FROM `achievements` WHERE 0;
+ALTER TABLE `migration_76_official` ADD PRIMARY KEY (`group_name`, `level`);
+
+INSERT INTO `migration_76_official` (`group_name`, `category`, `level`, `progress_needed`, `official_id`, `state`, `badge_code`) VALUES
+('ACH_EmailVerification','identity',1,1,3,1,'ACH_EmailVerification1'),
+('ACH_Login','identity',1,5,4,1,'ACH_Login1'),
+('ACH_Login','identity',2,8,4,1,'ACH_Login2'),
+('ACH_Login','identity',3,15,4,1,'ACH_Login3'),
+('ACH_Login','identity',4,28,4,1,'ACH_Login4'),
+('ACH_Login','identity',5,35,4,1,'ACH_Login5'),
+('ACH_Login','identity',6,50,4,1,'ACH_Login6'),
+('ACH_Login','identity',7,60,4,1,'ACH_Login7'),
+('ACH_Login','identity',8,70,4,1,'ACH_Login8'),
+('ACH_Login','identity',9,80,4,1,'ACH_Login9'),
+('ACH_Login','identity',10,100,4,1,'ACH_Login10'),
+('ACH_Login','identity',11,120,4,1,'ACH_Login11'),
+('ACH_Login','identity',12,140,4,1,'ACH_Login12'),
+('ACH_Login','identity',13,160,4,1,'ACH_Login13'),
+('ACH_Login','identity',14,180,4,1,'ACH_Login14'),
+('ACH_Login','identity',15,205,4,1,'ACH_Login15'),
+('ACH_Login','identity',16,230,4,1,'ACH_Login16'),
+('ACH_Login','identity',17,255,4,1,'ACH_Login17'),
+('ACH_Login','identity',18,280,4,1,'ACH_Login18'),
+('ACH_Login','identity',19,305,4,1,'ACH_Login19'),
+('ACH_Login','identity',20,335,4,1,'ACH_Login20'),
+('ACH_AvatarLooks','identity',1,1,6,1,'ACH_AvatarLooks1'),
+('ACH_RoomEntry','explore',1,5,8,1,'ACH_RoomEntry1'),
+('ACH_RoomEntry','explore',2,20,8,1,'ACH_RoomEntry2'),
+('ACH_RoomEntry','explore',3,45,8,1,'ACH_RoomEntry3'),
+('ACH_RoomEntry','explore',4,80,8,1,'ACH_RoomEntry4'),
+('ACH_RoomEntry','explore',5,120,8,1,'ACH_RoomEntry5'),
+('ACH_RoomEntry','explore',6,180,8,1,'ACH_RoomEntry6'),
+('ACH_RoomEntry','explore',7,250,8,1,'ACH_RoomEntry7'),
+('ACH_RoomEntry','explore',8,350,8,1,'ACH_RoomEntry8'),
+('ACH_RoomEntry','explore',9,500,8,1,'ACH_RoomEntry9'),
+('ACH_RoomEntry','explore',10,700,8,1,'ACH_RoomEntry10'),
+('ACH_RoomEntry','explore',11,900,8,1,'ACH_RoomEntry11'),
+('ACH_RoomEntry','explore',12,1100,8,1,'ACH_RoomEntry12'),
+('ACH_RoomEntry','explore',13,1300,8,1,'ACH_RoomEntry13'),
+('ACH_RoomEntry','explore',14,1600,8,1,'ACH_RoomEntry14'),
+('ACH_RoomEntry','explore',15,1900,8,1,'ACH_RoomEntry15'),
+('ACH_RoomEntry','explore',16,2200,8,1,'ACH_RoomEntry16'),
+('ACH_RoomEntry','explore',17,2600,8,1,'ACH_RoomEntry17'),
+('ACH_RoomEntry','explore',18,3000,8,1,'ACH_RoomEntry18'),
+('ACH_RoomEntry','explore',19,3500,8,1,'ACH_RoomEntry19'),
+('ACH_RoomEntry','explore',20,4000,8,1,'ACH_RoomEntry20'),
+('ACH_HappyHour','identity',1,1,10,1,'ACH_HappyHour1'),
+('ACH_RegistrationDuration','identity',1,1,11,1,'ACH_RegistrationDuration1'),
+('ACH_RegistrationDuration','identity',2,3,11,1,'ACH_RegistrationDuration2'),
+('ACH_RegistrationDuration','identity',3,10,11,1,'ACH_RegistrationDuration3'),
+('ACH_RegistrationDuration','identity',4,20,11,1,'ACH_RegistrationDuration4'),
+('ACH_RegistrationDuration','identity',5,30,11,1,'ACH_RegistrationDuration5'),
+('ACH_RegistrationDuration','identity',6,56,11,1,'ACH_RegistrationDuration6'),
+('ACH_RegistrationDuration','identity',7,84,11,1,'ACH_RegistrationDuration7'),
+('ACH_RegistrationDuration','identity',8,112,11,1,'ACH_RegistrationDuration8'),
+('ACH_RegistrationDuration','identity',9,168,11,1,'ACH_RegistrationDuration9'),
+('ACH_RegistrationDuration','identity',10,224,11,1,'ACH_RegistrationDuration10'),
+('ACH_RegistrationDuration','identity',11,280,11,1,'ACH_RegistrationDuration11'),
+('ACH_RegistrationDuration','identity',12,365,11,1,'ACH_RegistrationDuration12'),
+('ACH_RegistrationDuration','identity',13,548,11,1,'ACH_RegistrationDuration13'),
+('ACH_RegistrationDuration','identity',14,730,11,1,'ACH_RegistrationDuration14'),
+('ACH_RegistrationDuration','identity',15,913,11,1,'ACH_RegistrationDuration15'),
+('ACH_RegistrationDuration','identity',16,1095,11,1,'ACH_RegistrationDuration16'),
+('ACH_RegistrationDuration','identity',17,1278,11,1,'ACH_RegistrationDuration17'),
+('ACH_RegistrationDuration','identity',18,1460,11,1,'ACH_RegistrationDuration18'),
+('ACH_RegistrationDuration','identity',19,1643,11,1,'ACH_RegistrationDuration19'),
+('ACH_RegistrationDuration','identity',20,1825,11,1,'ACH_RegistrationDuration20'),
+('ACH_RespectEarned','social',1,1,17,1,'ACH_RespectEarned1'),
+('ACH_RespectEarned','social',2,6,17,1,'ACH_RespectEarned2'),
+('ACH_RespectEarned','social',3,16,17,1,'ACH_RespectEarned3'),
+('ACH_RespectEarned','social',4,66,17,1,'ACH_RespectEarned4'),
+('ACH_RespectEarned','social',5,166,17,1,'ACH_RespectEarned5'),
+('ACH_RespectEarned','social',6,366,17,1,'ACH_RespectEarned6'),
+('ACH_RespectEarned','social',7,566,17,1,'ACH_RespectEarned7'),
+('ACH_RespectEarned','social',8,766,17,1,'ACH_RespectEarned8'),
+('ACH_RespectEarned','social',9,966,17,1,'ACH_RespectEarned9'),
+('ACH_RespectEarned','social',10,1166,17,1,'ACH_RespectEarned10'),
+('ACH_RespectGiven','social',1,2,18,1,'ACH_RespectGiven1'),
+('ACH_RespectGiven','social',2,5,18,1,'ACH_RespectGiven2'),
+('ACH_RespectGiven','social',3,10,18,1,'ACH_RespectGiven3'),
+('ACH_RespectGiven','social',4,20,18,1,'ACH_RespectGiven4'),
+('ACH_RespectGiven','social',5,40,18,1,'ACH_RespectGiven5'),
+('ACH_RespectGiven','social',6,70,18,1,'ACH_RespectGiven6'),
+('ACH_RespectGiven','social',7,110,18,1,'ACH_RespectGiven7'),
+('ACH_RespectGiven','social',8,170,18,1,'ACH_RespectGiven8'),
+('ACH_RespectGiven','social',9,250,18,1,'ACH_RespectGiven9'),
+('ACH_RespectGiven','social',10,350,18,1,'ACH_RespectGiven10'),
+('ACH_RespectGiven','social',11,470,18,1,'ACH_RespectGiven11'),
+('ACH_RespectGiven','social',12,610,18,1,'ACH_RespectGiven12'),
+('ACH_RespectGiven','social',13,770,18,1,'ACH_RespectGiven13'),
+('ACH_RespectGiven','social',14,950,18,1,'ACH_RespectGiven14'),
+('ACH_RespectGiven','social',15,1150,18,1,'ACH_RespectGiven15'),
+('ACH_RespectGiven','social',16,1370,18,1,'ACH_RespectGiven16'),
+('ACH_RespectGiven','social',17,1610,18,1,'ACH_RespectGiven17'),
+('ACH_RespectGiven','social',18,1870,18,1,'ACH_RespectGiven18'),
+('ACH_RespectGiven','social',19,2150,18,1,'ACH_RespectGiven19'),
+('ACH_RespectGiven','social',20,2450,18,1,'ACH_RespectGiven20'),
+('ACH_AllTimeHotelPresence','identity',1,30,19,1,'ACH_AllTimeHotelPresence1'),
+('ACH_AllTimeHotelPresence','identity',2,60,19,1,'ACH_AllTimeHotelPresence2'),
+('ACH_AllTimeHotelPresence','identity',3,120,19,1,'ACH_AllTimeHotelPresence3'),
+('ACH_AllTimeHotelPresence','identity',4,180,19,1,'ACH_AllTimeHotelPresence4'),
+('ACH_AllTimeHotelPresence','identity',5,360,19,1,'ACH_AllTimeHotelPresence5'),
+('ACH_AllTimeHotelPresence','identity',6,720,19,1,'ACH_AllTimeHotelPresence6'),
+('ACH_AllTimeHotelPresence','identity',7,1440,19,1,'ACH_AllTimeHotelPresence7'),
+('ACH_AllTimeHotelPresence','identity',8,2160,19,1,'ACH_AllTimeHotelPresence8'),
+('ACH_AllTimeHotelPresence','identity',9,2880,19,1,'ACH_AllTimeHotelPresence9'),
+('ACH_AllTimeHotelPresence','identity',10,4320,19,1,'ACH_AllTimeHotelPresence10'),
+('ACH_AllTimeHotelPresence','identity',11,7200,19,1,'ACH_AllTimeHotelPresence11'),
+('ACH_AllTimeHotelPresence','identity',12,10080,19,1,'ACH_AllTimeHotelPresence12'),
+('ACH_AllTimeHotelPresence','identity',13,20160,19,1,'ACH_AllTimeHotelPresence13'),
+('ACH_AllTimeHotelPresence','identity',14,30240,19,1,'ACH_AllTimeHotelPresence14'),
+('ACH_AllTimeHotelPresence','identity',15,40320,19,1,'ACH_AllTimeHotelPresence15'),
+('ACH_AllTimeHotelPresence','identity',16,50400,19,1,'ACH_AllTimeHotelPresence16'),
+('ACH_AllTimeHotelPresence','identity',17,60480,19,1,'ACH_AllTimeHotelPresence17'),
+('ACH_AllTimeHotelPresence','identity',18,80640,19,1,'ACH_AllTimeHotelPresence18'),
+('ACH_AllTimeHotelPresence','identity',19,100800,19,1,'ACH_AllTimeHotelPresence19'),
+('ACH_AllTimeHotelPresence','identity',20,138240,19,1,'ACH_AllTimeHotelPresence20'),
+('ACH_TraderPass','identity',1,1,21,1,'ACH_TraderPass1'),
+('ACH_PetLover','pets',1,1,23,1,'ACH_PetLover1'),
+('ACH_PetLover','pets',2,3,23,1,'ACH_PetLover2'),
+('ACH_PetLover','pets',3,5,23,1,'ACH_PetLover3'),
+('ACH_PetLover','pets',4,10,23,1,'ACH_PetLover4'),
+('ACH_PetLover','pets',5,15,23,1,'ACH_PetLover5'),
+('ACH_PetLover','pets',6,25,23,1,'ACH_PetLover6'),
+('ACH_PetLover','pets',7,35,23,1,'ACH_PetLover7'),
+('ACH_PetLover','pets',8,45,23,1,'ACH_PetLover8'),
+('ACH_PetLover','pets',9,60,23,1,'ACH_PetLover9'),
+('ACH_PetLover','pets',10,75,23,1,'ACH_PetLover10'),
+('ACH_PetLevelUp','pets',1,2,24,1,'ACH_PetLevelUp1'),
+('ACH_PetLevelUp','pets',2,5,24,1,'ACH_PetLevelUp2'),
+('ACH_PetLevelUp','pets',3,10,24,1,'ACH_PetLevelUp3'),
+('ACH_PetLevelUp','pets',4,20,24,1,'ACH_PetLevelUp4'),
+('ACH_PetLevelUp','pets',5,30,24,1,'ACH_PetLevelUp5'),
+('ACH_PetLevelUp','pets',6,50,24,1,'ACH_PetLevelUp6'),
+('ACH_PetLevelUp','pets',7,80,24,1,'ACH_PetLevelUp7'),
+('ACH_PetLevelUp','pets',8,130,24,1,'ACH_PetLevelUp8'),
+('ACH_PetLevelUp','pets',9,200,24,1,'ACH_PetLevelUp9'),
+('ACH_PetLevelUp','pets',10,320,24,1,'ACH_PetLevelUp10'),
+('ACH_PetFeeding','pets',1,200,25,1,'ACH_PetFeeding1'),
+('ACH_PetFeeding','pets',2,600,25,1,'ACH_PetFeeding2'),
+('ACH_PetFeeding','pets',3,1400,25,1,'ACH_PetFeeding3'),
+('ACH_PetFeeding','pets',4,3000,25,1,'ACH_PetFeeding4'),
+('ACH_PetFeeding','pets',5,6200,25,1,'ACH_PetFeeding5'),
+('ACH_PetFeeding','pets',6,12600,25,1,'ACH_PetFeeding6'),
+('ACH_PetFeeding','pets',7,25400,25,1,'ACH_PetFeeding7'),
+('ACH_PetFeeding','pets',8,51000,25,1,'ACH_PetFeeding8'),
+('ACH_PetFeeding','pets',9,102200,25,1,'ACH_PetFeeding9'),
+('ACH_PetFeeding','pets',10,204600,25,1,'ACH_PetFeeding10'),
+('ACH_PetFeeding','pets',11,306900,25,1,'ACH_PetFeeding11'),
+('ACH_PetFeeding','pets',12,460350,25,1,'ACH_PetFeeding12'),
+('ACH_PetFeeding','pets',13,690525,25,1,'ACH_PetFeeding13'),
+('ACH_PetFeeding','pets',14,1035788,25,1,'ACH_PetFeeding14'),
+('ACH_PetFeeding','pets',15,1553681,25,1,'ACH_PetFeeding15'),
+('ACH_PetFeeding','pets',16,2330522,25,1,'ACH_PetFeeding16'),
+('ACH_PetFeeding','pets',17,3495783,25,1,'ACH_PetFeeding17'),
+('ACH_PetFeeding','pets',18,5243674,25,1,'ACH_PetFeeding18'),
+('ACH_PetFeeding','pets',19,7865511,25,1,'ACH_PetFeeding19'),
+('ACH_PetFeeding','pets',20,11798267,25,1,'ACH_PetFeeding20'),
+('ACH_PetRespectGiver','pets',1,2,26,1,'ACH_PetRespectGiver1'),
+('ACH_PetRespectGiver','pets',2,5,26,1,'ACH_PetRespectGiver2'),
+('ACH_PetRespectGiver','pets',3,10,26,1,'ACH_PetRespectGiver3'),
+('ACH_PetRespectGiver','pets',4,20,26,1,'ACH_PetRespectGiver4'),
+('ACH_PetRespectGiver','pets',5,40,26,1,'ACH_PetRespectGiver5'),
+('ACH_PetRespectGiver','pets',6,70,26,1,'ACH_PetRespectGiver6'),
+('ACH_PetRespectGiver','pets',7,110,26,1,'ACH_PetRespectGiver7'),
+('ACH_PetRespectGiver','pets',8,170,26,1,'ACH_PetRespectGiver8'),
+('ACH_PetRespectGiver','pets',9,250,26,1,'ACH_PetRespectGiver9'),
+('ACH_PetRespectGiver','pets',10,350,26,1,'ACH_PetRespectGiver10'),
+('ACH_PetRespectGiver','pets',11,470,26,1,'ACH_PetRespectGiver11'),
+('ACH_PetRespectGiver','pets',12,610,26,1,'ACH_PetRespectGiver12'),
+('ACH_PetRespectGiver','pets',13,770,26,1,'ACH_PetRespectGiver13'),
+('ACH_PetRespectGiver','pets',14,950,26,1,'ACH_PetRespectGiver14'),
+('ACH_PetRespectGiver','pets',15,1150,26,1,'ACH_PetRespectGiver15'),
+('ACH_PetRespectGiver','pets',16,1370,26,1,'ACH_PetRespectGiver16'),
+('ACH_PetRespectGiver','pets',17,1610,26,1,'ACH_PetRespectGiver17'),
+('ACH_PetRespectGiver','pets',18,1870,26,1,'ACH_PetRespectGiver18'),
+('ACH_PetRespectGiver','pets',19,2150,26,1,'ACH_PetRespectGiver19'),
+('ACH_PetRespectGiver','pets',20,2450,26,1,'ACH_PetRespectGiver20'),
+('ACH_PetRespectReceiver','pets',1,3,27,1,'ACH_PetRespectReceiver1'),
+('ACH_PetRespectReceiver','pets',2,10,27,1,'ACH_PetRespectReceiver2'),
+('ACH_PetRespectReceiver','pets',3,20,27,1,'ACH_PetRespectReceiver3'),
+('ACH_PetRespectReceiver','pets',4,40,27,1,'ACH_PetRespectReceiver4'),
+('ACH_PetRespectReceiver','pets',5,70,27,1,'ACH_PetRespectReceiver5'),
+('ACH_PetRespectReceiver','pets',6,120,27,1,'ACH_PetRespectReceiver6'),
+('ACH_PetRespectReceiver','pets',7,200,27,1,'ACH_PetRespectReceiver7'),
+('ACH_PetRespectReceiver','pets',8,300,27,1,'ACH_PetRespectReceiver8'),
+('ACH_PetRespectReceiver','pets',9,500,27,1,'ACH_PetRespectReceiver9'),
+('ACH_PetRespectReceiver','pets',10,750,27,1,'ACH_PetRespectReceiver10'),
+('ACH_Name','identity',1,1,28,3,'ACH_Name1'),
+('ACH_GiftGiver','social',1,1,29,1,'ACH_GiftGiver1'),
+('ACH_GiftGiver','social',2,6,29,1,'ACH_GiftGiver2'),
+('ACH_GiftGiver','social',3,14,29,1,'ACH_GiftGiver3'),
+('ACH_GiftGiver','social',4,25,29,1,'ACH_GiftGiver4'),
+('ACH_GiftGiver','social',5,45,29,1,'ACH_GiftGiver5'),
+('ACH_GiftGiver','social',6,80,29,1,'ACH_GiftGiver6'),
+('ACH_GiftGiver','social',7,140,29,1,'ACH_GiftGiver7'),
+('ACH_GiftGiver','social',8,230,29,1,'ACH_GiftGiver8'),
+('ACH_GiftGiver','social',9,350,29,1,'ACH_GiftGiver9'),
+('ACH_GiftGiver','social',10,550,29,1,'ACH_GiftGiver10'),
+('ACH_GiftGiver','social',11,800,29,1,'ACH_GiftGiver11'),
+('ACH_GiftGiver','social',12,1100,29,1,'ACH_GiftGiver12'),
+('ACH_GiftGiver','social',13,1500,29,1,'ACH_GiftGiver13'),
+('ACH_GiftGiver','social',14,2000,29,1,'ACH_GiftGiver14'),
+('ACH_GiftGiver','social',15,2500,29,1,'ACH_GiftGiver15'),
+('ACH_GiftReceiver','social',1,1,30,1,'ACH_GiftReceiver1'),
+('ACH_GiftReceiver','social',2,5,30,1,'ACH_GiftReceiver2'),
+('ACH_GiftReceiver','social',3,12,30,1,'ACH_GiftReceiver3'),
+('ACH_GiftReceiver','social',4,25,30,1,'ACH_GiftReceiver4'),
+('ACH_GiftReceiver','social',5,45,30,1,'ACH_GiftReceiver5'),
+('ACH_GiftReceiver','social',6,80,30,1,'ACH_GiftReceiver6'),
+('ACH_GiftReceiver','social',7,140,30,1,'ACH_GiftReceiver7'),
+('ACH_GiftReceiver','social',8,230,30,1,'ACH_GiftReceiver8'),
+('ACH_GiftReceiver','social',9,350,30,1,'ACH_GiftReceiver9'),
+('ACH_GiftReceiver','social',10,500,30,1,'ACH_GiftReceiver10'),
+('ACH_BasicClub','identity',1,0,32,2,'ACH_BasicClub1'),
+('ACH_BasicClub','identity',2,12,32,2,'ACH_BasicClub2'),
+('ACH_BasicClub','identity',3,24,32,2,'ACH_BasicClub3'),
+('ACH_BasicClub','identity',4,36,32,2,'ACH_BasicClub4'),
+('ACH_BasicClub','identity',5,48,32,2,'ACH_BasicClub5'),
+('ACH_BattleBallTilesLocked','games',1,25,33,1,'ACH_BattleBallTilesLocked1'),
+('ACH_BattleBallTilesLocked','games',2,65,33,1,'ACH_BattleBallTilesLocked2'),
+('ACH_BattleBallTilesLocked','games',3,125,33,1,'ACH_BattleBallTilesLocked3'),
+('ACH_BattleBallTilesLocked','games',4,205,33,1,'ACH_BattleBallTilesLocked4'),
+('ACH_BattleBallTilesLocked','games',5,335,33,1,'ACH_BattleBallTilesLocked5'),
+('ACH_BattleBallTilesLocked','games',6,525,33,1,'ACH_BattleBallTilesLocked6'),
+('ACH_BattleBallTilesLocked','games',7,805,33,1,'ACH_BattleBallTilesLocked7'),
+('ACH_BattleBallTilesLocked','games',8,1235,33,1,'ACH_BattleBallTilesLocked8'),
+('ACH_BattleBallTilesLocked','games',9,1875,33,1,'ACH_BattleBallTilesLocked9'),
+('ACH_BattleBallTilesLocked','games',10,2875,33,1,'ACH_BattleBallTilesLocked10'),
+('ACH_BattleBallTilesLocked','games',11,4375,33,1,'ACH_BattleBallTilesLocked11'),
+('ACH_BattleBallTilesLocked','games',12,6875,33,1,'ACH_BattleBallTilesLocked12'),
+('ACH_BattleBallTilesLocked','games',13,10775,33,1,'ACH_BattleBallTilesLocked13'),
+('ACH_BattleBallTilesLocked','games',14,17075,33,1,'ACH_BattleBallTilesLocked14'),
+('ACH_BattleBallTilesLocked','games',15,27175,33,1,'ACH_BattleBallTilesLocked15'),
+('ACH_BattleBallTilesLocked','games',16,43275,33,1,'ACH_BattleBallTilesLocked16'),
+('ACH_BattleBallTilesLocked','games',17,69075,33,1,'ACH_BattleBallTilesLocked17'),
+('ACH_BattleBallTilesLocked','games',18,110375,33,1,'ACH_BattleBallTilesLocked18'),
+('ACH_BattleBallTilesLocked','games',19,176375,33,1,'ACH_BattleBallTilesLocked19'),
+('ACH_BattleBallTilesLocked','games',20,282075,33,1,'ACH_BattleBallTilesLocked20'),
+('ACH_GameAuthorExperience','room_builder',1,400,34,1,'ACH_GameAuthorExperience1'),
+('ACH_GameAuthorExperience','room_builder',2,1000,34,1,'ACH_GameAuthorExperience2'),
+('ACH_GameAuthorExperience','room_builder',3,2000,34,1,'ACH_GameAuthorExperience3'),
+('ACH_GameAuthorExperience','room_builder',4,3600,34,1,'ACH_GameAuthorExperience4'),
+('ACH_GameAuthorExperience','room_builder',5,6200,34,1,'ACH_GameAuthorExperience5'),
+('ACH_GameAuthorExperience','room_builder',6,10400,34,1,'ACH_GameAuthorExperience6'),
+('ACH_GameAuthorExperience','room_builder',7,17100,34,1,'ACH_GameAuthorExperience7'),
+('ACH_GameAuthorExperience','room_builder',8,27800,34,1,'ACH_GameAuthorExperience8'),
+('ACH_GameAuthorExperience','room_builder',9,45000,34,1,'ACH_GameAuthorExperience9'),
+('ACH_GameAuthorExperience','room_builder',10,77600,34,1,'ACH_GameAuthorExperience10'),
+('ACH_GameAuthorExperience','room_builder',11,139600,34,1,'ACH_GameAuthorExperience11'),
+('ACH_GameAuthorExperience','room_builder',12,257600,34,1,'ACH_GameAuthorExperience12'),
+('ACH_GameAuthorExperience','room_builder',13,481600,34,1,'ACH_GameAuthorExperience13'),
+('ACH_GameAuthorExperience','room_builder',14,906600,34,1,'ACH_GameAuthorExperience14'),
+('ACH_GameAuthorExperience','room_builder',15,1714600,34,1,'ACH_GameAuthorExperience15'),
+('ACH_GameAuthorExperience','room_builder',16,3250600,34,1,'ACH_GameAuthorExperience16'),
+('ACH_GameAuthorExperience','room_builder',17,6168600,34,1,'ACH_GameAuthorExperience17'),
+('ACH_GameAuthorExperience','room_builder',18,11712600,34,1,'ACH_GameAuthorExperience18'),
+('ACH_GameAuthorExperience','room_builder',19,22245600,34,1,'ACH_GameAuthorExperience19'),
+('ACH_GameAuthorExperience','room_builder',20,42258600,34,1,'ACH_GameAuthorExperience20'),
+('ACH_GamePlayerExperience','games',1,100,35,1,'ACH_GamePlayerExperience1'),
+('ACH_GamePlayerExperience','games',2,250,35,1,'ACH_GamePlayerExperience2'),
+('ACH_GamePlayerExperience','games',3,480,35,1,'ACH_GamePlayerExperience3'),
+('ACH_GamePlayerExperience','games',4,820,35,1,'ACH_GamePlayerExperience4'),
+('ACH_GamePlayerExperience','games',5,1330,35,1,'ACH_GamePlayerExperience5'),
+('ACH_GamePlayerExperience','games',6,2090,35,1,'ACH_GamePlayerExperience6'),
+('ACH_GamePlayerExperience','games',7,3230,35,1,'ACH_GamePlayerExperience7'),
+('ACH_GamePlayerExperience','games',8,4930,35,1,'ACH_GamePlayerExperience8'),
+('ACH_GamePlayerExperience','games',9,7530,35,1,'ACH_GamePlayerExperience9'),
+('ACH_GamePlayerExperience','games',10,12430,35,1,'ACH_GamePlayerExperience10'),
+('ACH_GamePlayerExperience','games',11,21730,35,1,'ACH_GamePlayerExperience11'),
+('ACH_GamePlayerExperience','games',12,39330,35,1,'ACH_GamePlayerExperience12'),
+('ACH_GamePlayerExperience','games',13,72730,35,1,'ACH_GamePlayerExperience13'),
+('ACH_GamePlayerExperience','games',14,136230,35,1,'ACH_GamePlayerExperience14'),
+('ACH_GamePlayerExperience','games',15,256830,35,1,'ACH_GamePlayerExperience15'),
+('ACH_GamePlayerExperience','games',16,485930,35,1,'ACH_GamePlayerExperience16'),
+('ACH_GamePlayerExperience','games',17,921230,35,1,'ACH_GamePlayerExperience17'),
+('ACH_GamePlayerExperience','games',18,1748230,35,1,'ACH_GamePlayerExperience18'),
+('ACH_GamePlayerExperience','games',19,3319530,35,1,'ACH_GamePlayerExperience19'),
+('ACH_GamePlayerExperience','games',20,6305030,35,1,'ACH_GamePlayerExperience20'),
+('ACH_EsA','games',1,2,36,1,'ACH_EsA1'),
+('ACH_EsA','games',2,5,36,1,'ACH_EsA2'),
+('ACH_EsA','games',3,10,36,1,'ACH_EsA3'),
+('ACH_EsA','games',4,18,36,1,'ACH_EsA4'),
+('ACH_EsA','games',5,30,36,1,'ACH_EsA5'),
+('ACH_EsA','games',6,50,36,1,'ACH_EsA6'),
+('ACH_EsA','games',7,80,36,1,'ACH_EsA7'),
+('ACH_EsA','games',8,125,36,1,'ACH_EsA8'),
+('ACH_EsA','games',9,200,36,1,'ACH_EsA9'),
+('ACH_EsA','games',10,300,36,1,'ACH_EsA10'),
+('ACH_EsA','games',11,420,36,1,'ACH_EsA11'),
+('ACH_EsA','games',12,600,36,1,'ACH_EsA12'),
+('ACH_EsA','games',13,900,36,1,'ACH_EsA13'),
+('ACH_EsA','games',14,1500,36,1,'ACH_EsA14'),
+('ACH_EsA','games',15,2500,36,1,'ACH_EsA15'),
+('ACH_EsA','games',16,3700,36,1,'ACH_EsA16'),
+('ACH_EsA','games',17,5400,36,1,'ACH_EsA17'),
+('ACH_EsA','games',18,8000,36,1,'ACH_EsA18'),
+('ACH_EsA','games',19,12000,36,1,'ACH_EsA19'),
+('ACH_EsA','games',20,20000,36,1,'ACH_EsA20'),
+('ACH_TagB','games',1,1,38,1,'ACH_TagB1'),
+('ACH_TagB','games',2,4,38,1,'ACH_TagB2'),
+('ACH_TagB','games',3,9,38,1,'ACH_TagB3'),
+('ACH_TagB','games',4,17,38,1,'ACH_TagB4'),
+('ACH_TagB','games',5,29,38,1,'ACH_TagB5'),
+('ACH_TagB','games',6,44,38,1,'ACH_TagB6'),
+('ACH_TagB','games',7,62,38,1,'ACH_TagB7'),
+('ACH_TagB','games',8,87,38,1,'ACH_TagB8'),
+('ACH_TagB','games',9,114,38,1,'ACH_TagB9'),
+('ACH_TagB','games',10,144,38,1,'ACH_TagB10'),
+('ACH_TagB','games',11,186,38,1,'ACH_TagB11'),
+('ACH_TagB','games',12,242,38,1,'ACH_TagB12'),
+('ACH_TagB','games',13,314,38,1,'ACH_TagB13'),
+('ACH_TagB','games',14,402,38,1,'ACH_TagB14'),
+('ACH_TagB','games',15,498,38,1,'ACH_TagB15'),
+('ACH_TagB','games',16,618,38,1,'ACH_TagB16'),
+('ACH_TagB','games',17,754,38,1,'ACH_TagB17'),
+('ACH_TagB','games',18,904,38,1,'ACH_TagB18'),
+('ACH_TagB','games',19,1084,38,1,'ACH_TagB19'),
+('ACH_TagB','games',20,1284,38,1,'ACH_TagB20'),
+('ACH_TagC','explore',1,3,39,1,'ACH_TagC1'),
+('ACH_TagC','explore',2,8,39,1,'ACH_TagC2'),
+('ACH_TagC','explore',3,16,39,1,'ACH_TagC3'),
+('ACH_TagC','explore',4,31,39,1,'ACH_TagC4'),
+('ACH_TagC','explore',5,51,39,1,'ACH_TagC5'),
+('ACH_TagC','explore',6,81,39,1,'ACH_TagC6'),
+('ACH_TagC','explore',7,121,39,1,'ACH_TagC7'),
+('ACH_TagC','explore',8,171,39,1,'ACH_TagC8'),
+('ACH_TagC','explore',9,231,39,1,'ACH_TagC9'),
+('ACH_TagC','explore',10,301,39,1,'ACH_TagC10'),
+('ACH_TagC','explore',11,381,39,1,'ACH_TagC11'),
+('ACH_TagC','explore',12,471,39,1,'ACH_TagC12'),
+('ACH_TagC','explore',13,571,39,1,'ACH_TagC13'),
+('ACH_TagC','explore',14,681,39,1,'ACH_TagC14'),
+('ACH_TagC','explore',15,801,39,1,'ACH_TagC15'),
+('ACH_TagC','explore',16,931,39,1,'ACH_TagC16'),
+('ACH_TagC','explore',17,1071,39,1,'ACH_TagC17'),
+('ACH_TagC','explore',18,1221,39,1,'ACH_TagC18'),
+('ACH_TagC','explore',19,1381,39,1,'ACH_TagC19'),
+('ACH_TagC','explore',20,1551,39,1,'ACH_TagC20'),
+('ACH_TagA','room_builder',1,10,40,1,'ACH_TagA1'),
+('ACH_TagA','room_builder',2,20,40,1,'ACH_TagA2'),
+('ACH_TagA','room_builder',3,30,40,1,'ACH_TagA3'),
+('ACH_TagA','room_builder',4,45,40,1,'ACH_TagA4'),
+('ACH_TagA','room_builder',5,60,40,1,'ACH_TagA5'),
+('ACH_TagA','room_builder',6,80,40,1,'ACH_TagA6'),
+('ACH_TagA','room_builder',7,100,40,1,'ACH_TagA7'),
+('ACH_TagA','room_builder',8,125,40,1,'ACH_TagA8'),
+('ACH_TagA','room_builder',9,150,40,1,'ACH_TagA9'),
+('ACH_TagA','room_builder',10,170,40,1,'ACH_TagA10'),
+('ACH_Spr','room_builder',1,1,42,1,'ACH_Spr1'),
+('ACH_Spr','room_builder',2,3,42,1,'ACH_Spr2'),
+('ACH_Spr','room_builder',3,6,42,1,'ACH_Spr3'),
+('ACH_Spr','room_builder',4,10,42,1,'ACH_Spr4'),
+('ACH_Spr','room_builder',5,15,42,1,'ACH_Spr5'),
+('ACH_Spr','room_builder',6,21,42,1,'ACH_Spr6'),
+('ACH_Spr','room_builder',7,28,42,1,'ACH_Spr7'),
+('ACH_Spr','room_builder',8,36,42,1,'ACH_Spr8'),
+('ACH_Spr','room_builder',9,45,42,1,'ACH_Spr9'),
+('ACH_Spr','room_builder',10,55,42,1,'ACH_Spr10'),
+('ACH_RbTagC','explore',1,3,47,1,'ACH_RbTagC1'),
+('ACH_RbTagC','explore',2,8,47,1,'ACH_RbTagC2'),
+('ACH_RbTagC','explore',3,16,47,1,'ACH_RbTagC3'),
+('ACH_RbTagC','explore',4,31,47,1,'ACH_RbTagC4'),
+('ACH_RbTagC','explore',5,51,47,1,'ACH_RbTagC5'),
+('ACH_RbTagC','explore',6,81,47,1,'ACH_RbTagC6'),
+('ACH_RbTagC','explore',7,121,47,1,'ACH_RbTagC7'),
+('ACH_RbTagC','explore',8,171,47,1,'ACH_RbTagC8'),
+('ACH_RbTagC','explore',9,231,47,1,'ACH_RbTagC9'),
+('ACH_RbTagC','explore',10,301,47,1,'ACH_RbTagC10'),
+('ACH_RbTagC','explore',11,381,47,1,'ACH_RbTagC11'),
+('ACH_RbTagC','explore',12,471,47,1,'ACH_RbTagC12'),
+('ACH_RbTagC','explore',13,571,47,1,'ACH_RbTagC13'),
+('ACH_RbTagC','explore',14,681,47,1,'ACH_RbTagC14'),
+('ACH_RbTagC','explore',15,801,47,1,'ACH_RbTagC15'),
+('ACH_RbTagC','explore',16,931,47,1,'ACH_RbTagC16'),
+('ACH_RbTagC','explore',17,1071,47,1,'ACH_RbTagC17'),
+('ACH_RbTagC','explore',18,1221,47,1,'ACH_RbTagC18'),
+('ACH_RbTagC','explore',19,1381,47,1,'ACH_RbTagC19'),
+('ACH_RbTagC','explore',20,1551,47,1,'ACH_RbTagC20'),
+('ACH_RbTagA','room_builder',1,10,48,1,'ACH_RbTagA1'),
+('ACH_RbTagA','room_builder',2,20,48,1,'ACH_RbTagA2'),
+('ACH_RbTagA','room_builder',3,30,48,1,'ACH_RbTagA3'),
+('ACH_RbTagA','room_builder',4,45,48,1,'ACH_RbTagA4'),
+('ACH_RbTagA','room_builder',5,60,48,1,'ACH_RbTagA5'),
+('ACH_RbTagA','room_builder',6,80,48,1,'ACH_RbTagA6'),
+('ACH_RbTagA','room_builder',7,100,48,1,'ACH_RbTagA7'),
+('ACH_RbTagA','room_builder',8,125,48,1,'ACH_RbTagA8'),
+('ACH_RbTagA','room_builder',9,150,48,1,'ACH_RbTagA9'),
+('ACH_RbTagA','room_builder',10,170,48,1,'ACH_RbTagA10'),
+('ACH_RoomDecoFurniCount','room_builder',1,10,50,1,'ACH_RoomDecoFurniCount1'),
+('ACH_RoomDecoFurniCount','room_builder',2,12,50,1,'ACH_RoomDecoFurniCount2'),
+('ACH_RoomDecoFurniCount','room_builder',3,15,50,1,'ACH_RoomDecoFurniCount3'),
+('ACH_RoomDecoFurniCount','room_builder',4,19,50,1,'ACH_RoomDecoFurniCount4'),
+('ACH_RoomDecoFurniCount','room_builder',5,24,50,1,'ACH_RoomDecoFurniCount5'),
+('ACH_RoomDecoFurniCount','room_builder',6,30,50,1,'ACH_RoomDecoFurniCount6'),
+('ACH_RoomDecoFurniCount','room_builder',7,40,50,1,'ACH_RoomDecoFurniCount7'),
+('ACH_RoomDecoFurniCount','room_builder',8,50,50,1,'ACH_RoomDecoFurniCount8'),
+('ACH_RoomDecoFurniCount','room_builder',9,60,50,1,'ACH_RoomDecoFurniCount9'),
+('ACH_RoomDecoFurniCount','room_builder',10,70,50,1,'ACH_RoomDecoFurniCount10'),
+('ACH_RoomDecoFurniCount','room_builder',11,85,50,1,'ACH_RoomDecoFurniCount11'),
+('ACH_RoomDecoFurniCount','room_builder',12,100,50,1,'ACH_RoomDecoFurniCount12'),
+('ACH_RoomDecoFurniCount','room_builder',13,120,50,1,'ACH_RoomDecoFurniCount13'),
+('ACH_RoomDecoFurniCount','room_builder',14,140,50,1,'ACH_RoomDecoFurniCount14'),
+('ACH_RoomDecoFurniCount','room_builder',15,170,50,1,'ACH_RoomDecoFurniCount15'),
+('ACH_RoomDecoFurniCount','room_builder',16,200,50,1,'ACH_RoomDecoFurniCount16'),
+('ACH_RoomDecoFurniCount','room_builder',17,240,50,1,'ACH_RoomDecoFurniCount17'),
+('ACH_RoomDecoFurniCount','room_builder',18,280,50,1,'ACH_RoomDecoFurniCount18'),
+('ACH_RoomDecoFurniCount','room_builder',19,330,50,1,'ACH_RoomDecoFurniCount19'),
+('ACH_RoomDecoFurniCount','room_builder',20,380,50,1,'ACH_RoomDecoFurniCount20'),
+('ACH_RoomDecoFurniTypeCount','room_builder',1,10,51,1,'ACH_RoomDecoFurniTypeCount1'),
+('ACH_RoomDecoFurniTypeCount','room_builder',2,12,51,1,'ACH_RoomDecoFurniTypeCount2'),
+('ACH_RoomDecoFurniTypeCount','room_builder',3,14,51,1,'ACH_RoomDecoFurniTypeCount3'),
+('ACH_RoomDecoFurniTypeCount','room_builder',4,19,51,1,'ACH_RoomDecoFurniTypeCount4'),
+('ACH_RoomDecoFurniTypeCount','room_builder',5,24,51,1,'ACH_RoomDecoFurniTypeCount5'),
+('ACH_RoomDecoFurniTypeCount','room_builder',6,29,51,1,'ACH_RoomDecoFurniTypeCount6'),
+('ACH_RoomDecoFurniTypeCount','room_builder',7,39,51,1,'ACH_RoomDecoFurniTypeCount7'),
+('ACH_RoomDecoFurniTypeCount','room_builder',8,49,51,1,'ACH_RoomDecoFurniTypeCount8'),
+('ACH_RoomDecoFurniTypeCount','room_builder',9,59,51,1,'ACH_RoomDecoFurniTypeCount9'),
+('ACH_RoomDecoFurniTypeCount','room_builder',10,74,51,1,'ACH_RoomDecoFurniTypeCount10'),
+('ACH_RoomDecoFurniTypeCount','room_builder',11,89,51,1,'ACH_RoomDecoFurniTypeCount11'),
+('ACH_RoomDecoFurniTypeCount','room_builder',12,104,51,1,'ACH_RoomDecoFurniTypeCount12'),
+('ACH_RoomDecoFurniTypeCount','room_builder',13,124,51,1,'ACH_RoomDecoFurniTypeCount13'),
+('ACH_RoomDecoFurniTypeCount','room_builder',14,144,51,1,'ACH_RoomDecoFurniTypeCount14'),
+('ACH_RoomDecoFurniTypeCount','room_builder',15,174,51,1,'ACH_RoomDecoFurniTypeCount15'),
+('ACH_RoomDecoFurniTypeCount','room_builder',16,204,51,1,'ACH_RoomDecoFurniTypeCount16'),
+('ACH_RoomDecoFurniTypeCount','room_builder',17,244,51,1,'ACH_RoomDecoFurniTypeCount17'),
+('ACH_RoomDecoFurniTypeCount','room_builder',18,284,51,1,'ACH_RoomDecoFurniTypeCount18'),
+('ACH_RoomDecoFurniTypeCount','room_builder',19,334,51,1,'ACH_RoomDecoFurniTypeCount19'),
+('ACH_RoomDecoFurniTypeCount','room_builder',20,384,51,1,'ACH_RoomDecoFurniTypeCount20'),
+('ACH_RoomDecoHosting','room_builder',1,5,52,1,'ACH_RoomDecoHosting1'),
+('ACH_RoomDecoHosting','room_builder',2,10,52,1,'ACH_RoomDecoHosting2'),
+('ACH_RoomDecoHosting','room_builder',3,20,52,1,'ACH_RoomDecoHosting3'),
+('ACH_RoomDecoHosting','room_builder',4,40,52,1,'ACH_RoomDecoHosting4'),
+('ACH_RoomDecoHosting','room_builder',5,90,52,1,'ACH_RoomDecoHosting5'),
+('ACH_RoomDecoHosting','room_builder',6,180,52,1,'ACH_RoomDecoHosting6'),
+('ACH_RoomDecoHosting','room_builder',7,350,52,1,'ACH_RoomDecoHosting7'),
+('ACH_RoomDecoHosting','room_builder',8,750,52,1,'ACH_RoomDecoHosting8'),
+('ACH_RoomDecoHosting','room_builder',9,1600,52,1,'ACH_RoomDecoHosting9'),
+('ACH_RoomDecoHosting','room_builder',10,3500,52,1,'ACH_RoomDecoHosting10'),
+('ACH_RoomDecoHosting','room_builder',11,7500,52,1,'ACH_RoomDecoHosting11'),
+('ACH_RoomDecoHosting','room_builder',12,15000,52,1,'ACH_RoomDecoHosting12'),
+('ACH_RoomDecoHosting','room_builder',13,35000,52,1,'ACH_RoomDecoHosting13'),
+('ACH_RoomDecoHosting','room_builder',14,75000,52,1,'ACH_RoomDecoHosting14'),
+('ACH_RoomDecoHosting','room_builder',15,150000,52,1,'ACH_RoomDecoHosting15'),
+('ACH_RoomDecoHosting','room_builder',16,500000,52,1,'ACH_RoomDecoHosting16'),
+('ACH_RoomDecoHosting','room_builder',17,1500000,52,1,'ACH_RoomDecoHosting17'),
+('ACH_RoomDecoHosting','room_builder',18,5000000,52,1,'ACH_RoomDecoHosting18'),
+('ACH_RoomDecoHosting','room_builder',19,15000000,52,1,'ACH_RoomDecoHosting19'),
+('ACH_RoomDecoHosting','room_builder',20,30000000,52,1,'ACH_RoomDecoHosting20'),
+('ACH_RoomDecoFloor','room_builder',1,3,53,1,'ACH_RoomDecoFloor1'),
+('ACH_RoomDecoFloor','room_builder',2,5,53,1,'ACH_RoomDecoFloor2'),
+('ACH_RoomDecoFloor','room_builder',3,7,53,1,'ACH_RoomDecoFloor3'),
+('ACH_RoomDecoFloor','room_builder',4,12,53,1,'ACH_RoomDecoFloor4'),
+('ACH_RoomDecoFloor','room_builder',5,17,53,1,'ACH_RoomDecoFloor5'),
+('ACH_RoomDecoFloor','room_builder',6,22,53,1,'ACH_RoomDecoFloor6'),
+('ACH_RoomDecoFloor','room_builder',7,27,53,1,'ACH_RoomDecoFloor7'),
+('ACH_RoomDecoFloor','room_builder',8,32,53,1,'ACH_RoomDecoFloor8'),
+('ACH_RoomDecoFloor','room_builder',9,37,53,1,'ACH_RoomDecoFloor9'),
+('ACH_RoomDecoFloor','room_builder',10,47,53,1,'ACH_RoomDecoFloor10'),
+('ACH_RoomDecoFloor','room_builder',11,57,53,1,'ACH_RoomDecoFloor11'),
+('ACH_RoomDecoFloor','room_builder',12,67,53,1,'ACH_RoomDecoFloor12'),
+('ACH_RoomDecoFloor','room_builder',13,77,53,1,'ACH_RoomDecoFloor13'),
+('ACH_RoomDecoFloor','room_builder',14,97,53,1,'ACH_RoomDecoFloor14'),
+('ACH_RoomDecoFloor','room_builder',15,117,53,1,'ACH_RoomDecoFloor15'),
+('ACH_RoomDecoFloor','room_builder',16,137,53,1,'ACH_RoomDecoFloor16'),
+('ACH_RoomDecoFloor','room_builder',17,167,53,1,'ACH_RoomDecoFloor17'),
+('ACH_RoomDecoFloor','room_builder',18,197,53,1,'ACH_RoomDecoFloor18'),
+('ACH_RoomDecoFloor','room_builder',19,237,53,1,'ACH_RoomDecoFloor19'),
+('ACH_RoomDecoFloor','room_builder',20,287,53,1,'ACH_RoomDecoFloor20'),
+('ACH_RoomDecoLandscape','room_builder',1,3,54,1,'ACH_RoomDecoLandscape1'),
+('ACH_RoomDecoLandscape','room_builder',2,5,54,1,'ACH_RoomDecoLandscape2'),
+('ACH_RoomDecoLandscape','room_builder',3,7,54,1,'ACH_RoomDecoLandscape3'),
+('ACH_RoomDecoLandscape','room_builder',4,12,54,1,'ACH_RoomDecoLandscape4'),
+('ACH_RoomDecoLandscape','room_builder',5,17,54,1,'ACH_RoomDecoLandscape5'),
+('ACH_RoomDecoLandscape','room_builder',6,22,54,1,'ACH_RoomDecoLandscape6'),
+('ACH_RoomDecoLandscape','room_builder',7,27,54,1,'ACH_RoomDecoLandscape7'),
+('ACH_RoomDecoLandscape','room_builder',8,32,54,1,'ACH_RoomDecoLandscape8'),
+('ACH_RoomDecoLandscape','room_builder',9,37,54,1,'ACH_RoomDecoLandscape9'),
+('ACH_RoomDecoLandscape','room_builder',10,47,54,1,'ACH_RoomDecoLandscape10'),
+('ACH_RoomDecoLandscape','room_builder',11,57,54,1,'ACH_RoomDecoLandscape11'),
+('ACH_RoomDecoLandscape','room_builder',12,67,54,1,'ACH_RoomDecoLandscape12'),
+('ACH_RoomDecoLandscape','room_builder',13,77,54,1,'ACH_RoomDecoLandscape13'),
+('ACH_RoomDecoLandscape','room_builder',14,97,54,1,'ACH_RoomDecoLandscape14'),
+('ACH_RoomDecoLandscape','room_builder',15,117,54,1,'ACH_RoomDecoLandscape15'),
+('ACH_RoomDecoLandscape','room_builder',16,137,54,1,'ACH_RoomDecoLandscape16'),
+('ACH_RoomDecoLandscape','room_builder',17,167,54,1,'ACH_RoomDecoLandscape17'),
+('ACH_RoomDecoLandscape','room_builder',18,197,54,1,'ACH_RoomDecoLandscape18'),
+('ACH_RoomDecoLandscape','room_builder',19,237,54,1,'ACH_RoomDecoLandscape19'),
+('ACH_RoomDecoLandscape','room_builder',20,287,54,1,'ACH_RoomDecoLandscape20'),
+('ACH_RoomDecoWallpaper','room_builder',1,3,55,1,'ACH_RoomDecoWallpaper1'),
+('ACH_RoomDecoWallpaper','room_builder',2,5,55,1,'ACH_RoomDecoWallpaper2'),
+('ACH_RoomDecoWallpaper','room_builder',3,7,55,1,'ACH_RoomDecoWallpaper3'),
+('ACH_RoomDecoWallpaper','room_builder',4,12,55,1,'ACH_RoomDecoWallpaper4'),
+('ACH_RoomDecoWallpaper','room_builder',5,17,55,1,'ACH_RoomDecoWallpaper5'),
+('ACH_RoomDecoWallpaper','room_builder',6,22,55,1,'ACH_RoomDecoWallpaper6'),
+('ACH_RoomDecoWallpaper','room_builder',7,27,55,1,'ACH_RoomDecoWallpaper7'),
+('ACH_RoomDecoWallpaper','room_builder',8,32,55,1,'ACH_RoomDecoWallpaper8'),
+('ACH_RoomDecoWallpaper','room_builder',9,37,55,1,'ACH_RoomDecoWallpaper9'),
+('ACH_RoomDecoWallpaper','room_builder',10,47,55,1,'ACH_RoomDecoWallpaper10'),
+('ACH_RoomDecoWallpaper','room_builder',11,57,55,1,'ACH_RoomDecoWallpaper11'),
+('ACH_RoomDecoWallpaper','room_builder',12,67,55,1,'ACH_RoomDecoWallpaper12'),
+('ACH_RoomDecoWallpaper','room_builder',13,77,55,1,'ACH_RoomDecoWallpaper13'),
+('ACH_RoomDecoWallpaper','room_builder',14,97,55,1,'ACH_RoomDecoWallpaper14'),
+('ACH_RoomDecoWallpaper','room_builder',15,117,55,1,'ACH_RoomDecoWallpaper15'),
+('ACH_RoomDecoWallpaper','room_builder',16,137,55,1,'ACH_RoomDecoWallpaper16'),
+('ACH_RoomDecoWallpaper','room_builder',17,167,55,1,'ACH_RoomDecoWallpaper17'),
+('ACH_RoomDecoWallpaper','room_builder',18,197,55,1,'ACH_RoomDecoWallpaper18'),
+('ACH_RoomDecoWallpaper','room_builder',19,237,55,1,'ACH_RoomDecoWallpaper19'),
+('ACH_RoomDecoWallpaper','room_builder',20,287,55,1,'ACH_RoomDecoWallpaper20'),
+('ACH_RbBunnyTag','room_builder',1,10,56,1,'ACH_RbBunnyTag1'),
+('ACH_RbBunnyTag','room_builder',2,20,56,1,'ACH_RbBunnyTag2'),
+('ACH_RbBunnyTag','room_builder',3,30,56,1,'ACH_RbBunnyTag3'),
+('ACH_RbBunnyTag','room_builder',4,45,56,1,'ACH_RbBunnyTag4'),
+('ACH_RbBunnyTag','room_builder',5,60,56,1,'ACH_RbBunnyTag5'),
+('ACH_RbBunnyTag','room_builder',6,80,56,1,'ACH_RbBunnyTag6'),
+('ACH_RbBunnyTag','room_builder',7,100,56,1,'ACH_RbBunnyTag7'),
+('ACH_RbBunnyTag','room_builder',8,125,56,1,'ACH_RbBunnyTag8'),
+('ACH_RbBunnyTag','room_builder',9,150,56,1,'ACH_RbBunnyTag9'),
+('ACH_RbBunnyTag','room_builder',10,170,56,1,'ACH_RbBunnyTag10'),
+('ACH_NotesLeft','social',1,2,57,1,'ACH_NotesLeft1'),
+('ACH_NotesLeft','social',2,7,57,1,'ACH_NotesLeft2'),
+('ACH_NotesLeft','social',3,17,57,1,'ACH_NotesLeft3'),
+('ACH_NotesLeft','social',4,37,57,1,'ACH_NotesLeft4'),
+('ACH_NotesLeft','social',5,77,57,1,'ACH_NotesLeft5'),
+('ACH_NotesLeft','social',6,137,57,1,'ACH_NotesLeft6'),
+('ACH_NotesLeft','social',7,227,57,1,'ACH_NotesLeft7'),
+('ACH_NotesLeft','social',8,347,57,1,'ACH_NotesLeft8'),
+('ACH_NotesLeft','social',9,507,57,1,'ACH_NotesLeft9'),
+('ACH_NotesLeft','social',10,707,57,1,'ACH_NotesLeft10'),
+('ACH_NotesLeft','social',11,1107,57,1,'ACH_NotesLeft11'),
+('ACH_NotesLeft','social',12,1707,57,1,'ACH_NotesLeft12'),
+('ACH_NotesLeft','social',13,2707,57,1,'ACH_NotesLeft13'),
+('ACH_NotesLeft','social',14,4307,57,1,'ACH_NotesLeft14'),
+('ACH_NotesLeft','social',15,6907,57,1,'ACH_NotesLeft15'),
+('ACH_NotesLeft','social',16,11107,57,1,'ACH_NotesLeft16'),
+('ACH_NotesLeft','social',17,17907,57,1,'ACH_NotesLeft17'),
+('ACH_NotesLeft','social',18,28907,57,1,'ACH_NotesLeft18'),
+('ACH_NotesLeft','social',19,46707,57,1,'ACH_NotesLeft19'),
+('ACH_NotesLeft','social',20,76707,57,1,'ACH_NotesLeft20'),
+('ACH_NotesReceived','social',1,2,58,1,'ACH_NotesReceived1'),
+('ACH_NotesReceived','social',2,7,58,1,'ACH_NotesReceived2'),
+('ACH_NotesReceived','social',3,17,58,1,'ACH_NotesReceived3'),
+('ACH_NotesReceived','social',4,37,58,1,'ACH_NotesReceived4'),
+('ACH_NotesReceived','social',5,77,58,1,'ACH_NotesReceived5'),
+('ACH_NotesReceived','social',6,137,58,1,'ACH_NotesReceived6'),
+('ACH_NotesReceived','social',7,227,58,1,'ACH_NotesReceived7'),
+('ACH_NotesReceived','social',8,347,58,1,'ACH_NotesReceived8'),
+('ACH_NotesReceived','social',9,507,58,1,'ACH_NotesReceived9'),
+('ACH_NotesReceived','social',10,707,58,1,'ACH_NotesReceived10'),
+('ACH_NotesReceived','social',11,1107,58,1,'ACH_NotesReceived11'),
+('ACH_NotesReceived','social',12,1707,58,1,'ACH_NotesReceived12'),
+('ACH_NotesReceived','social',13,2707,58,1,'ACH_NotesReceived13'),
+('ACH_NotesReceived','social',14,4307,58,1,'ACH_NotesReceived14'),
+('ACH_NotesReceived','social',15,6907,58,1,'ACH_NotesReceived15'),
+('ACH_NotesReceived','social',16,11107,58,1,'ACH_NotesReceived16'),
+('ACH_NotesReceived','social',17,17907,58,1,'ACH_NotesReceived17'),
+('ACH_NotesReceived','social',18,28907,58,1,'ACH_NotesReceived18'),
+('ACH_NotesReceived','social',19,46707,58,1,'ACH_NotesReceived19'),
+('ACH_NotesReceived','social',20,76707,58,1,'ACH_NotesReceived20'),
+('ACH_MusicPlayer','explore',1,5,59,1,'ACH_MusicPlayer1'),
+('ACH_MusicPlayer','explore',2,105,59,1,'ACH_MusicPlayer2'),
+('ACH_MusicPlayer','explore',3,305,59,1,'ACH_MusicPlayer3'),
+('ACH_MusicPlayer','explore',4,605,59,1,'ACH_MusicPlayer4'),
+('ACH_MusicPlayer','explore',5,1005,59,1,'ACH_MusicPlayer5'),
+('ACH_MusicPlayer','explore',6,1505,59,1,'ACH_MusicPlayer6'),
+('ACH_MusicPlayer','explore',7,2105,59,1,'ACH_MusicPlayer7'),
+('ACH_MusicPlayer','explore',8,2805,59,1,'ACH_MusicPlayer8'),
+('ACH_MusicPlayer','explore',9,3605,59,1,'ACH_MusicPlayer9'),
+('ACH_MusicPlayer','explore',10,4605,59,1,'ACH_MusicPlayer10'),
+('ACH_MusicPlayer','explore',11,6605,59,1,'ACH_MusicPlayer11'),
+('ACH_MusicPlayer','explore',12,9605,59,1,'ACH_MusicPlayer12'),
+('ACH_MusicPlayer','explore',13,13605,59,1,'ACH_MusicPlayer13'),
+('ACH_MusicPlayer','explore',14,18605,59,1,'ACH_MusicPlayer14'),
+('ACH_MusicPlayer','explore',15,24605,59,1,'ACH_MusicPlayer15'),
+('ACH_MusicPlayer','explore',16,31605,59,1,'ACH_MusicPlayer16'),
+('ACH_MusicPlayer','explore',17,39605,59,1,'ACH_MusicPlayer17'),
+('ACH_MusicPlayer','explore',18,49605,59,1,'ACH_MusicPlayer18'),
+('ACH_MusicPlayer','explore',19,64605,59,1,'ACH_MusicPlayer19'),
+('ACH_MusicPlayer','explore',20,94605,59,1,'ACH_MusicPlayer20'),
+('ACH_MusicCollector','explore',1,2,60,1,'ACH_MusicCollector1'),
+('ACH_MusicCollector','explore',2,5,60,1,'ACH_MusicCollector2'),
+('ACH_MusicCollector','explore',3,9,60,1,'ACH_MusicCollector3'),
+('ACH_MusicCollector','explore',4,14,60,1,'ACH_MusicCollector4'),
+('ACH_MusicCollector','explore',5,20,60,1,'ACH_MusicCollector5'),
+('ACH_MusicCollector','explore',6,27,60,1,'ACH_MusicCollector6'),
+('ACH_MusicCollector','explore',7,35,60,1,'ACH_MusicCollector7'),
+('ACH_MusicCollector','explore',8,44,60,1,'ACH_MusicCollector8'),
+('ACH_MusicCollector','explore',9,54,60,1,'ACH_MusicCollector9'),
+('ACH_MusicCollector','explore',10,69,60,1,'ACH_MusicCollector10'),
+('ACH_SkateBoardJump','games',1,5,62,3,'ACH_SkateBoardJump1'),
+('ACH_SkateBoardJump','games',2,13,62,3,'ACH_SkateBoardJump2'),
+('ACH_SkateBoardJump','games',3,25,62,3,'ACH_SkateBoardJump3'),
+('ACH_SkateBoardJump','games',4,45,62,3,'ACH_SkateBoardJump4'),
+('ACH_SkateBoardJump','games',5,75,62,3,'ACH_SkateBoardJump5'),
+('ACH_SkateBoardJump','games',6,120,62,3,'ACH_SkateBoardJump6'),
+('ACH_SkateBoardJump','games',7,185,62,3,'ACH_SkateBoardJump7'),
+('ACH_SkateBoardJump','games',8,300,62,3,'ACH_SkateBoardJump8'),
+('ACH_SkateBoardJump','games',9,475,62,3,'ACH_SkateBoardJump9'),
+('ACH_SkateBoardJump','games',10,750,62,3,'ACH_SkateBoardJump10'),
+('ACH_SkateBoardJump','games',11,1125,62,3,'ACH_SkateBoardJump11'),
+('ACH_SkateBoardJump','games',12,1675,62,3,'ACH_SkateBoardJump12'),
+('ACH_SkateBoardJump','games',13,2500,62,3,'ACH_SkateBoardJump13'),
+('ACH_SkateBoardJump','games',14,3750,62,3,'ACH_SkateBoardJump14'),
+('ACH_SkateBoardJump','games',15,5600,62,3,'ACH_SkateBoardJump15'),
+('ACH_SkateBoardJump','games',16,8750,62,3,'ACH_SkateBoardJump16'),
+('ACH_SkateBoardJump','games',17,13500,62,3,'ACH_SkateBoardJump17'),
+('ACH_SkateBoardJump','games',18,20000,62,3,'ACH_SkateBoardJump18'),
+('ACH_SkateBoardJump','games',19,30000,62,3,'ACH_SkateBoardJump19'),
+('ACH_SkateBoardJump','games',20,50000,62,3,'ACH_SkateBoardJump20'),
+('ACH_SkateBoardSlide','games',1,20,63,3,'ACH_SkateBoardSlide1'),
+('ACH_SkateBoardSlide','games',2,50,63,3,'ACH_SkateBoardSlide2'),
+('ACH_SkateBoardSlide','games',3,100,63,3,'ACH_SkateBoardSlide3'),
+('ACH_SkateBoardSlide','games',4,180,63,3,'ACH_SkateBoardSlide4'),
+('ACH_SkateBoardSlide','games',5,300,63,3,'ACH_SkateBoardSlide5'),
+('ACH_SkateBoardSlide','games',6,480,63,3,'ACH_SkateBoardSlide6'),
+('ACH_SkateBoardSlide','games',7,750,63,3,'ACH_SkateBoardSlide7'),
+('ACH_SkateBoardSlide','games',8,1200,63,3,'ACH_SkateBoardSlide8'),
+('ACH_SkateBoardSlide','games',9,1900,63,3,'ACH_SkateBoardSlide9'),
+('ACH_SkateBoardSlide','games',10,3000,63,3,'ACH_SkateBoardSlide10'),
+('ACH_SkateBoardSlide','games',11,4500,63,3,'ACH_SkateBoardSlide11'),
+('ACH_SkateBoardSlide','games',12,6700,63,3,'ACH_SkateBoardSlide12'),
+('ACH_SkateBoardSlide','games',13,10000,63,3,'ACH_SkateBoardSlide13'),
+('ACH_SkateBoardSlide','games',14,15000,63,3,'ACH_SkateBoardSlide14'),
+('ACH_SkateBoardSlide','games',15,22500,63,3,'ACH_SkateBoardSlide15'),
+('ACH_SkateBoardSlide','games',16,35000,63,3,'ACH_SkateBoardSlide16'),
+('ACH_SkateBoardSlide','games',17,54000,63,3,'ACH_SkateBoardSlide17'),
+('ACH_SkateBoardSlide','games',18,80000,63,3,'ACH_SkateBoardSlide18'),
+('ACH_SkateBoardSlide','games',19,120000,63,3,'ACH_SkateBoardSlide19'),
+('ACH_SkateBoardSlide','games',20,200000,63,3,'ACH_SkateBoardSlide20'),
+('ACH_BattleBallQuestCompleted','games',1,3,64,1,'ACH_BattleBallQuestCompleted1'),
+('ACH_BattleBallQuestCompleted','games',2,5,64,1,'ACH_BattleBallQuestCompleted2'),
+('ACH_BattleBallQuestCompleted','games',3,7,64,1,'ACH_BattleBallQuestCompleted3'),
+('ACH_BattleBallQuestCompleted','games',4,10,64,1,'ACH_BattleBallQuestCompleted4'),
+('ACH_BattleBallQuestCompleted','games',5,13,64,1,'ACH_BattleBallQuestCompleted5'),
+('ACH_BattleBallQuestCompleted','games',6,16,64,1,'ACH_BattleBallQuestCompleted6'),
+('ACH_BattleBallQuestCompleted','games',7,19,64,1,'ACH_BattleBallQuestCompleted7'),
+('ACH_BattleBallQuestCompleted','games',8,20,64,1,'ACH_BattleBallQuestCompleted8'),
+('ACH_BattleBallQuestCompleted','games',9,21,64,1,'ACH_BattleBallQuestCompleted9'),
+('ACH_BattleBallQuestCompleted','games',10,22,64,1,'ACH_BattleBallQuestCompleted10'),
+('ACH_FreezeQuestCompleted','games',1,3,65,2,'ACH_FreezeQuestCompleted1'),
+('ACH_FreezeQuestCompleted','games',2,5,65,2,'ACH_FreezeQuestCompleted2'),
+('ACH_FreezeQuestCompleted','games',3,8,65,2,'ACH_FreezeQuestCompleted3'),
+('ACH_FreezeQuestCompleted','games',4,10,65,2,'ACH_FreezeQuestCompleted4'),
+('ACH_FreezeQuestCompleted','games',5,16,65,2,'ACH_FreezeQuestCompleted5'),
+('ACH_FreezeQuestCompleted','games',6,19,65,2,'ACH_FreezeQuestCompleted6'),
+('ACH_FreezeQuestCompleted','games',7,22,65,2,'ACH_FreezeQuestCompleted7'),
+('ACH_FreezeQuestCompleted','games',8,25,65,2,'ACH_FreezeQuestCompleted8'),
+('ACH_FreezeQuestCompleted','games',9,28,65,2,'ACH_FreezeQuestCompleted9'),
+('ACH_FreezeQuestCompleted','games',10,29,65,2,'ACH_FreezeQuestCompleted10'),
+('ACH_BadMonkeyLevelUp','pets',1,1,66,2,'ACH_BadMonkeyLevelUp1'),
+('ACH_BadMonkeyLevelUp','pets',2,2,66,2,'ACH_BadMonkeyLevelUp2'),
+('ACH_BadMonkeyLevelUp','pets',3,3,66,2,'ACH_BadMonkeyLevelUp3'),
+('ACH_BadMonkeyLevelUp','pets',4,4,66,2,'ACH_BadMonkeyLevelUp4'),
+('ACH_BadMonkeyLevelUp','pets',5,5,66,2,'ACH_BadMonkeyLevelUp5'),
+('ACH_BadMonkeyLevelUp','pets',6,6,66,2,'ACH_BadMonkeyLevelUp6'),
+('ACH_BadMonkeyLevelUp','pets',7,7,66,2,'ACH_BadMonkeyLevelUp7'),
+('ACH_BadMonkeyLevelUp','pets',8,8,66,2,'ACH_BadMonkeyLevelUp8'),
+('ACH_BadMonkeyLevelUp','pets',9,9,66,2,'ACH_BadMonkeyLevelUp9'),
+('ACH_BadMonkeyLevelUp','pets',10,10,66,2,'ACH_BadMonkeyLevelUp10'),
+('ACH_BattleBallWinner','games',1,50,67,1,'ACH_BattleBallWinner1'),
+('ACH_BattleBallWinner','games',2,125,67,1,'ACH_BattleBallWinner2'),
+('ACH_BattleBallWinner','games',3,240,67,1,'ACH_BattleBallWinner3'),
+('ACH_BattleBallWinner','games',4,410,67,1,'ACH_BattleBallWinner4'),
+('ACH_BattleBallWinner','games',5,665,67,1,'ACH_BattleBallWinner5'),
+('ACH_BattleBallWinner','games',6,1045,67,1,'ACH_BattleBallWinner6'),
+('ACH_BattleBallWinner','games',7,1615,67,1,'ACH_BattleBallWinner7'),
+('ACH_BattleBallWinner','games',8,2465,67,1,'ACH_BattleBallWinner8'),
+('ACH_BattleBallWinner','games',9,3765,67,1,'ACH_BattleBallWinner9'),
+('ACH_BattleBallWinner','games',10,6215,67,1,'ACH_BattleBallWinner10'),
+('ACH_BattleBallWinner','games',11,10865,67,1,'ACH_BattleBallWinner11'),
+('ACH_BattleBallWinner','games',12,19665,67,1,'ACH_BattleBallWinner12'),
+('ACH_BattleBallWinner','games',13,36365,67,1,'ACH_BattleBallWinner13'),
+('ACH_BattleBallWinner','games',14,68115,67,1,'ACH_BattleBallWinner14'),
+('ACH_BattleBallWinner','games',15,128415,67,1,'ACH_BattleBallWinner15'),
+('ACH_BattleBallWinner','games',16,242965,67,1,'ACH_BattleBallWinner16'),
+('ACH_BattleBallWinner','games',17,460615,67,1,'ACH_BattleBallWinner17'),
+('ACH_BattleBallWinner','games',18,874115,67,1,'ACH_BattleBallWinner18'),
+('ACH_BattleBallWinner','games',19,1659765,67,1,'ACH_BattleBallWinner19'),
+('ACH_BattleBallWinner','games',20,3152515,67,1,'ACH_BattleBallWinner20'),
+('ACH_BattleBallPlayer','games',1,50,68,1,'ACH_BattleBallPlayer1'),
+('ACH_BattleBallPlayer','games',2,125,68,1,'ACH_BattleBallPlayer2'),
+('ACH_BattleBallPlayer','games',3,240,68,1,'ACH_BattleBallPlayer3'),
+('ACH_BattleBallPlayer','games',4,410,68,1,'ACH_BattleBallPlayer4'),
+('ACH_BattleBallPlayer','games',5,665,68,1,'ACH_BattleBallPlayer5'),
+('ACH_BattleBallPlayer','games',6,1045,68,1,'ACH_BattleBallPlayer6'),
+('ACH_BattleBallPlayer','games',7,1615,68,1,'ACH_BattleBallPlayer7'),
+('ACH_BattleBallPlayer','games',8,2465,68,1,'ACH_BattleBallPlayer8'),
+('ACH_BattleBallPlayer','games',9,3765,68,1,'ACH_BattleBallPlayer9'),
+('ACH_BattleBallPlayer','games',10,6215,68,1,'ACH_BattleBallPlayer10'),
+('ACH_BattleBallPlayer','games',11,10865,68,1,'ACH_BattleBallPlayer11'),
+('ACH_BattleBallPlayer','games',12,19665,68,1,'ACH_BattleBallPlayer12'),
+('ACH_BattleBallPlayer','games',13,36365,68,1,'ACH_BattleBallPlayer13'),
+('ACH_BattleBallPlayer','games',14,68115,68,1,'ACH_BattleBallPlayer14'),
+('ACH_BattleBallPlayer','games',15,128415,68,1,'ACH_BattleBallPlayer15'),
+('ACH_BattleBallPlayer','games',16,242965,68,1,'ACH_BattleBallPlayer16'),
+('ACH_BattleBallPlayer','games',17,460615,68,1,'ACH_BattleBallPlayer17'),
+('ACH_BattleBallPlayer','games',18,874115,68,1,'ACH_BattleBallPlayer18'),
+('ACH_BattleBallPlayer','games',19,1659765,68,1,'ACH_BattleBallPlayer19'),
+('ACH_BattleBallPlayer','games',20,3152515,68,1,'ACH_BattleBallPlayer20'),
+('ACH_FreezeWinner','games',1,50,69,1,'ACH_FreezeWinner1'),
+('ACH_FreezeWinner','games',2,125,69,1,'ACH_FreezeWinner2'),
+('ACH_FreezeWinner','games',3,240,69,1,'ACH_FreezeWinner3'),
+('ACH_FreezeWinner','games',4,410,69,1,'ACH_FreezeWinner4'),
+('ACH_FreezeWinner','games',5,665,69,1,'ACH_FreezeWinner5'),
+('ACH_FreezeWinner','games',6,1045,69,1,'ACH_FreezeWinner6'),
+('ACH_FreezeWinner','games',7,1615,69,1,'ACH_FreezeWinner7'),
+('ACH_FreezeWinner','games',8,2465,69,1,'ACH_FreezeWinner8'),
+('ACH_FreezeWinner','games',9,3765,69,1,'ACH_FreezeWinner9'),
+('ACH_FreezeWinner','games',10,6215,69,1,'ACH_FreezeWinner10'),
+('ACH_FreezeWinner','games',11,10865,69,1,'ACH_FreezeWinner11'),
+('ACH_FreezeWinner','games',12,19665,69,1,'ACH_FreezeWinner12'),
+('ACH_FreezeWinner','games',13,36365,69,1,'ACH_FreezeWinner13'),
+('ACH_FreezeWinner','games',14,68115,69,1,'ACH_FreezeWinner14'),
+('ACH_FreezeWinner','games',15,128415,69,1,'ACH_FreezeWinner15'),
+('ACH_FreezeWinner','games',16,242965,69,1,'ACH_FreezeWinner16'),
+('ACH_FreezeWinner','games',17,460615,69,1,'ACH_FreezeWinner17'),
+('ACH_FreezeWinner','games',18,874115,69,1,'ACH_FreezeWinner18'),
+('ACH_FreezeWinner','games',19,1659765,69,1,'ACH_FreezeWinner19'),
+('ACH_FreezeWinner','games',20,3152515,69,1,'ACH_FreezeWinner20'),
+('ACH_FreezePlayer','games',1,50,70,1,'ACH_FreezePlayer1'),
+('ACH_FreezePlayer','games',2,125,70,1,'ACH_FreezePlayer2'),
+('ACH_FreezePlayer','games',3,240,70,1,'ACH_FreezePlayer3'),
+('ACH_FreezePlayer','games',4,410,70,1,'ACH_FreezePlayer4'),
+('ACH_FreezePlayer','games',5,665,70,1,'ACH_FreezePlayer5'),
+('ACH_FreezePlayer','games',6,1045,70,1,'ACH_FreezePlayer6'),
+('ACH_FreezePlayer','games',7,1615,70,1,'ACH_FreezePlayer7'),
+('ACH_FreezePlayer','games',8,2465,70,1,'ACH_FreezePlayer8'),
+('ACH_FreezePlayer','games',9,3765,70,1,'ACH_FreezePlayer9'),
+('ACH_FreezePlayer','games',10,6215,70,1,'ACH_FreezePlayer10'),
+('ACH_FreezePlayer','games',11,10865,70,1,'ACH_FreezePlayer11'),
+('ACH_FreezePlayer','games',12,19665,70,1,'ACH_FreezePlayer12'),
+('ACH_FreezePlayer','games',13,36365,70,1,'ACH_FreezePlayer13'),
+('ACH_FreezePlayer','games',14,68115,70,1,'ACH_FreezePlayer14'),
+('ACH_FreezePlayer','games',15,128415,70,1,'ACH_FreezePlayer15'),
+('ACH_FreezePlayer','games',16,242965,70,1,'ACH_FreezePlayer16'),
+('ACH_FreezePlayer','games',17,460615,70,1,'ACH_FreezePlayer17'),
+('ACH_FreezePlayer','games',18,874115,70,1,'ACH_FreezePlayer18'),
+('ACH_FreezePlayer','games',19,1659765,70,1,'ACH_FreezePlayer19'),
+('ACH_FreezePlayer','games',20,3152515,70,1,'ACH_FreezePlayer20'),
+('ACH_FreezePowerUp','games',1,100,71,1,'ACH_FreezePowerUp1'),
+('ACH_FreezePowerUp','games',2,300,71,1,'ACH_FreezePowerUp2'),
+('ACH_FreezePowerUp','games',3,600,71,1,'ACH_FreezePowerUp3'),
+('ACH_FreezePowerUp','games',4,1000,71,1,'ACH_FreezePowerUp4'),
+('ACH_FreezePowerUp','games',5,1500,71,1,'ACH_FreezePowerUp5'),
+('ACH_FreezePowerUp','games',6,2100,71,1,'ACH_FreezePowerUp6'),
+('ACH_FreezePowerUp','games',7,2900,71,1,'ACH_FreezePowerUp7'),
+('ACH_FreezePowerUp','games',8,3900,71,1,'ACH_FreezePowerUp8'),
+('ACH_FreezePowerUp','games',9,5200,71,1,'ACH_FreezePowerUp9'),
+('ACH_FreezePowerUp','games',10,6800,71,1,'ACH_FreezePowerUp10'),
+('ACH_FreezePowerUp','games',11,8800,71,1,'ACH_FreezePowerUp11'),
+('ACH_FreezePowerUp','games',12,11200,71,1,'ACH_FreezePowerUp12'),
+('ACH_FreezePowerUp','games',13,14100,71,1,'ACH_FreezePowerUp13'),
+('ACH_FreezePowerUp','games',14,17600,71,1,'ACH_FreezePowerUp14'),
+('ACH_FreezePowerUp','games',15,22100,71,1,'ACH_FreezePowerUp15'),
+('ACH_FreezePowerUp','games',16,28100,71,1,'ACH_FreezePowerUp16'),
+('ACH_FreezePowerUp','games',17,36100,71,1,'ACH_FreezePowerUp17'),
+('ACH_FreezePowerUp','games',18,48100,71,1,'ACH_FreezePowerUp18'),
+('ACH_FreezePowerUp','games',19,66100,71,1,'ACH_FreezePowerUp19'),
+('ACH_FreezePowerUp','games',20,96100,71,1,'ACH_FreezePowerUp20'),
+('ACH_RoomDecoHoleFurniCount','room_builder',1,10,72,1,'ACH_RoomDecoHoleFurniCount1'),
+('ACH_RoomDecoHoleFurniCount','room_builder',2,20,72,1,'ACH_RoomDecoHoleFurniCount2'),
+('ACH_RoomDecoHoleFurniCount','room_builder',3,30,72,1,'ACH_RoomDecoHoleFurniCount3'),
+('ACH_RoomDecoHoleFurniCount','room_builder',4,45,72,1,'ACH_RoomDecoHoleFurniCount4'),
+('ACH_RoomDecoHoleFurniCount','room_builder',5,60,72,1,'ACH_RoomDecoHoleFurniCount5'),
+('ACH_RoomDecoHoleFurniCount','room_builder',6,80,72,1,'ACH_RoomDecoHoleFurniCount6'),
+('ACH_RoomDecoHoleFurniCount','room_builder',7,100,72,1,'ACH_RoomDecoHoleFurniCount7'),
+('ACH_RoomDecoHoleFurniCount','room_builder',8,125,72,1,'ACH_RoomDecoHoleFurniCount8'),
+('ACH_RoomDecoHoleFurniCount','room_builder',9,150,72,1,'ACH_RoomDecoHoleFurniCount9'),
+('ACH_RoomDecoHoleFurniCount','room_builder',10,170,72,1,'ACH_RoomDecoHoleFurniCount10'),
+('ACH_SnowWarTotalScore','games',1,10,74,1,'ACH_SnowWarTotalScore1'),
+('ACH_SnowWarTotalScore','games',2,55,74,1,'ACH_SnowWarTotalScore2'),
+('ACH_SnowWarTotalScore','games',3,200,74,1,'ACH_SnowWarTotalScore3'),
+('ACH_SnowWarTotalScore','games',4,560,74,1,'ACH_SnowWarTotalScore4'),
+('ACH_SnowWarTotalScore','games',5,1240,74,1,'ACH_SnowWarTotalScore5'),
+('ACH_SnowWarTotalScore','games',6,2360,74,1,'ACH_SnowWarTotalScore6'),
+('ACH_SnowWarTotalScore','games',7,4050,74,1,'ACH_SnowWarTotalScore7'),
+('ACH_SnowWarTotalScore','games',8,6500,74,1,'ACH_SnowWarTotalScore8'),
+('ACH_SnowWarTotalScore','games',9,10000,74,1,'ACH_SnowWarTotalScore9'),
+('ACH_SnowWarTotalScore','games',10,15000,74,1,'ACH_SnowWarTotalScore10'),
+('ACH_SnowWarTotalScore','games',11,20000,74,1,'ACH_SnowWarTotalScore11'),
+('ACH_SnowWarTotalScore','games',12,25000,74,1,'ACH_SnowWarTotalScore12'),
+('ACH_SnowWarTotalScore','games',13,30000,74,1,'ACH_SnowWarTotalScore13'),
+('ACH_SnowWarTotalScore','games',14,35000,74,1,'ACH_SnowWarTotalScore14'),
+('ACH_SnowWarTotalScore','games',15,40000,74,1,'ACH_SnowWarTotalScore15'),
+('ACH_SnowWarTotalScore','games',16,47000,74,1,'ACH_SnowWarTotalScore16'),
+('ACH_SnowWarTotalScore','games',17,54000,74,1,'ACH_SnowWarTotalScore17'),
+('ACH_SnowWarTotalScore','games',18,61000,74,1,'ACH_SnowWarTotalScore18'),
+('ACH_SnowWarTotalScore','games',19,68000,74,1,'ACH_SnowWarTotalScore19'),
+('ACH_SnowWarTotalScore','games',20,75000,74,1,'ACH_SnowWarTotalScore20'),
+('ACH_SnowWarTotalScore','games',21,87000,74,1,'ACH_SnowWarTotalScore21'),
+('ACH_SnowWarTotalScore','games',22,99000,74,1,'ACH_SnowWarTotalScore22'),
+('ACH_SnowWarTotalScore','games',23,111000,74,1,'ACH_SnowWarTotalScore23'),
+('ACH_SnowWarTotalScore','games',24,123000,74,1,'ACH_SnowWarTotalScore24'),
+('ACH_SnowWarTotalScore','games',25,135000,74,1,'ACH_SnowWarTotalScore25'),
+('ACH_SnowWarTotalScore','games',26,156000,74,1,'ACH_SnowWarTotalScore26'),
+('ACH_SnowWarTotalScore','games',27,177000,74,1,'ACH_SnowWarTotalScore27'),
+('ACH_SnowWarTotalScore','games',28,198000,74,1,'ACH_SnowWarTotalScore28'),
+('ACH_SnowWarTotalScore','games',29,219000,74,1,'ACH_SnowWarTotalScore29'),
+('ACH_SnowWarTotalScore','games',30,240000,74,1,'ACH_SnowWarTotalScore30'),
+('ACH_snowBoardBuild','room_builder',1,16,75,1,'ACH_snowBoardBuild1'),
+('ACH_snowBoardBuild','room_builder',2,36,75,1,'ACH_snowBoardBuild2'),
+('ACH_snowBoardBuild','room_builder',3,64,75,1,'ACH_snowBoardBuild3'),
+('ACH_snowBoardBuild','room_builder',4,100,75,1,'ACH_snowBoardBuild4'),
+('ACH_snowBoardBuild','room_builder',5,160,75,1,'ACH_snowBoardBuild5'),
+('ACH_SnowWarWeeklyTopTen','games',1,1,76,1,'ACH_SnowWarWeeklyTopTen1'),
+('ACH_SnowWarWeeklyTopTen','games',2,2,76,1,'ACH_SnowWarWeeklyTopTen2'),
+('ACH_SnowWarWeeklyTopTen','games',3,3,76,1,'ACH_SnowWarWeeklyTopTen3'),
+('ACH_SnowWarWeeklyTopTen','games',4,4,76,1,'ACH_SnowWarWeeklyTopTen4'),
+('ACH_SnowWarWeeklyTopTen','games',5,5,76,1,'ACH_SnowWarWeeklyTopTen5'),
+('ACH_SnowWarWeeklyTopTen','games',6,6,76,1,'ACH_SnowWarWeeklyTopTen6'),
+('ACH_SnowWarWeeklyTopTen','games',7,7,76,1,'ACH_SnowWarWeeklyTopTen7'),
+('ACH_SnowWarWeeklyTopTen','games',8,8,76,1,'ACH_SnowWarWeeklyTopTen8'),
+('ACH_SnowWarWeeklyTopTen','games',9,9,76,1,'ACH_SnowWarWeeklyTopTen9'),
+('ACH_SnowWarWeeklyTopTen','games',10,10,76,1,'ACH_SnowWarWeeklyTopTen10'),
+('ACH_SnowWarWeeklyBest','games',1,1,77,1,'ACH_SnowWarWeeklyBest1'),
+('ACH_SnowWarWeeklyBest','games',2,2,77,1,'ACH_SnowWarWeeklyBest2'),
+('ACH_SnowWarWeeklyBest','games',3,3,77,1,'ACH_SnowWarWeeklyBest3'),
+('ACH_SnowWarWeeklyBest','games',4,4,77,1,'ACH_SnowWarWeeklyBest4'),
+('ACH_SnowWarWeeklyBest','games',5,5,77,1,'ACH_SnowWarWeeklyBest5'),
+('ACH_SnowWarWeeklyBest','games',6,6,77,1,'ACH_SnowWarWeeklyBest6'),
+('ACH_SnowWarWeeklyBest','games',7,7,77,1,'ACH_SnowWarWeeklyBest7'),
+('ACH_SnowWarWeeklyBest','games',8,8,77,1,'ACH_SnowWarWeeklyBest8'),
+('ACH_SnowWarWeeklyBest','games',9,9,77,1,'ACH_SnowWarWeeklyBest9'),
+('ACH_SnowWarWeeklyBest','games',10,10,77,1,'ACH_SnowWarWeeklyBest10'),
+('ACH_RoomHorseJumpCount','pets',1,250,79,1,'ACH_RoomHorseJumpCount1'),
+('ACH_RoomHorseJumpCount','pets',2,2750,79,1,'ACH_RoomHorseJumpCount2'),
+('ACH_RoomHorseJumpCount','pets',3,7750,79,1,'ACH_RoomHorseJumpCount3'),
+('ACH_RoomHorseJumpCount','pets',4,17750,79,1,'ACH_RoomHorseJumpCount4'),
+('ACH_RoomHorseJumpCount','pets',5,37750,79,1,'ACH_RoomHorseJumpCount5'),
+('ACH_HorseJumping','pets',1,50,80,1,'ACH_HorseJumping1'),
+('ACH_HorseJumping','pets',2,300,80,1,'ACH_HorseJumping2'),
+('ACH_HorseJumping','pets',3,950,80,1,'ACH_HorseJumping3'),
+('ACH_HorseJumping','pets',4,2500,80,1,'ACH_HorseJumping4'),
+('ACH_HorseJumping','pets',5,6000,80,1,'ACH_HorseJumping5'),
+('ACH_HorseConsecutiveJumpsCount','pets',1,6,81,1,'ACH_HorseConsecutiveJumpsCount1'),
+('ACH_HorseConsecutiveJumpsCount','pets',2,7,81,1,'ACH_HorseConsecutiveJumpsCount2'),
+('ACH_HorseConsecutiveJumpsCount','pets',3,8,81,1,'ACH_HorseConsecutiveJumpsCount3'),
+('ACH_HorseConsecutiveJumpsCount','pets',4,9,81,1,'ACH_HorseConsecutiveJumpsCount4'),
+('ACH_HorseConsecutiveJumpsCount','pets',5,10,81,1,'ACH_HorseConsecutiveJumpsCount5'),
+('ACH_HorseConsecutiveJumpsCount','pets',6,11,81,1,'ACH_HorseConsecutiveJumpsCount6'),
+('ACH_HorseConsecutiveJumpsCount','pets',7,12,81,1,'ACH_HorseConsecutiveJumpsCount7'),
+('ACH_HorseConsecutiveJumpsCount','pets',8,13,81,1,'ACH_HorseConsecutiveJumpsCount8'),
+('ACH_HorseConsecutiveJumpsCount','pets',9,14,81,1,'ACH_HorseConsecutiveJumpsCount9'),
+('ACH_HorseConsecutiveJumpsCount','pets',10,15,81,1,'ACH_HorseConsecutiveJumpsCount10'),
+('ACH_HorseConsecutiveJumpsCount','pets',11,17,81,1,'ACH_HorseConsecutiveJumpsCount11'),
+('ACH_HorseConsecutiveJumpsCount','pets',12,19,81,1,'ACH_HorseConsecutiveJumpsCount12'),
+('ACH_HorseConsecutiveJumpsCount','pets',13,21,81,1,'ACH_HorseConsecutiveJumpsCount13'),
+('ACH_HorseConsecutiveJumpsCount','pets',14,23,81,1,'ACH_HorseConsecutiveJumpsCount14'),
+('ACH_HorseConsecutiveJumpsCount','pets',15,25,81,1,'ACH_HorseConsecutiveJumpsCount15'),
+('ACH_HorseConsecutiveJumpsCount','pets',16,27,81,1,'ACH_HorseConsecutiveJumpsCount16'),
+('ACH_HorseConsecutiveJumpsCount','pets',17,29,81,1,'ACH_HorseConsecutiveJumpsCount17'),
+('ACH_HorseConsecutiveJumpsCount','pets',18,31,81,1,'ACH_HorseConsecutiveJumpsCount18'),
+('ACH_HorseConsecutiveJumpsCount','pets',19,33,81,1,'ACH_HorseConsecutiveJumpsCount19'),
+('ACH_HorseConsecutiveJumpsCount','pets',20,35,81,1,'ACH_HorseConsecutiveJumpsCount20'),
+('ACH_HorseRent','pets',1,4,82,1,'ACH_HorseRent1'),
+('ACH_HorseRent','pets',2,12,82,1,'ACH_HorseRent2'),
+('ACH_HorseRent','pets',3,28,82,1,'ACH_HorseRent3'),
+('ACH_HorseRent','pets',4,60,82,1,'ACH_HorseRent4'),
+('ACH_HorseRent','pets',5,124,82,1,'ACH_HorseRent5'),
+('ACH_HorseRent','pets',6,252,82,1,'ACH_HorseRent6'),
+('ACH_HorseRent','pets',7,508,82,1,'ACH_HorseRent7'),
+('ACH_HorseRent','pets',8,1020,82,1,'ACH_HorseRent8'),
+('ACH_HorseRent','pets',9,2044,82,1,'ACH_HorseRent9'),
+('ACH_HorseRent','pets',10,4092,82,1,'ACH_HorseRent10'),
+('ACH_MonsterPlantTreater','pets',1,5,101,1,'ACH_MonsterPlantTreater1'),
+('ACH_MonsterPlantTreater','pets',2,30,101,1,'ACH_MonsterPlantTreater2'),
+('ACH_MonsterPlantTreater','pets',3,130,101,1,'ACH_MonsterPlantTreater3'),
+('ACH_MonsterPlantTreater','pets',4,380,101,1,'ACH_MonsterPlantTreater4'),
+('ACH_MonsterPlantTreater','pets',5,1380,101,1,'ACH_MonsterPlantTreater5'),
+('ACH_MonsterPlantBreeder','pets',1,5,102,1,'ACH_MonsterPlantBreeder1'),
+('ACH_MonsterPlantBreeder','pets',2,30,102,1,'ACH_MonsterPlantBreeder2'),
+('ACH_MonsterPlantBreeder','pets',3,130,102,1,'ACH_MonsterPlantBreeder3'),
+('ACH_MonsterPlantBreeder','pets',4,380,102,1,'ACH_MonsterPlantBreeder4'),
+('ACH_MonsterPlantBreeder','pets',5,1380,102,1,'ACH_MonsterPlantBreeder5'),
+('ACH_MonsterPlantBreeder','pets',6,2880,102,1,'ACH_MonsterPlantBreeder6'),
+('ACH_MonsterPlantBreeder','pets',7,4880,102,1,'ACH_MonsterPlantBreeder7'),
+('ACH_MonsterPlantBreeder','pets',8,7380,102,1,'ACH_MonsterPlantBreeder8'),
+('ACH_MonsterPlantBreeder','pets',9,10380,102,1,'ACH_MonsterPlantBreeder9'),
+('ACH_MonsterPlantBreeder','pets',10,13880,102,1,'ACH_MonsterPlantBreeder10'),
+('ACH_MonsterPlantQuestCompleted','pets',1,3,104,2,'ACH_MonsterPlantQuestCompleted1'),
+('ACH_MonsterPlantQuestCompleted','pets',2,6,104,2,'ACH_MonsterPlantQuestCompleted2'),
+('ACH_MonsterPlantQuestCompleted','pets',3,9,104,2,'ACH_MonsterPlantQuestCompleted3'),
+('ACH_MonsterPlantQuestCompleted','pets',4,12,104,2,'ACH_MonsterPlantQuestCompleted4'),
+('ACH_MonsterPlantQuestCompleted','pets',5,15,104,2,'ACH_MonsterPlantQuestCompleted5'),
+('ACH_MonsterPlantQuestCompleted','pets',6,18,104,2,'ACH_MonsterPlantQuestCompleted6'),
+('ACH_MonsterPlantQuestCompleted','pets',7,21,104,2,'ACH_MonsterPlantQuestCompleted7'),
+('ACH_MonsterPlantQuestCompleted','pets',8,24,104,2,'ACH_MonsterPlantQuestCompleted8'),
+('ACH_MonsterPlantQuestCompleted','pets',9,27,104,2,'ACH_MonsterPlantQuestCompleted9'),
+('ACH_MonsterPlantQuestCompleted','pets',10,30,104,2,'ACH_MonsterPlantQuestCompleted10'),
+('ACH_MonsterPlantShapeCollector','pets',1,2,112,1,'ACH_MonsterPlantShapeCollector1'),
+('ACH_MonsterPlantShapeCollector','pets',2,3,112,1,'ACH_MonsterPlantShapeCollector2'),
+('ACH_MonsterPlantShapeCollector','pets',3,4,112,1,'ACH_MonsterPlantShapeCollector3'),
+('ACH_MonsterPlantShapeCollector','pets',4,5,112,1,'ACH_MonsterPlantShapeCollector4'),
+('ACH_MonsterPlantShapeCollector','pets',5,6,112,1,'ACH_MonsterPlantShapeCollector5'),
+('ACH_MonsterPlantShapeCollector','pets',6,7,112,1,'ACH_MonsterPlantShapeCollector6'),
+('ACH_MonsterPlantShapeCollector','pets',7,8,112,1,'ACH_MonsterPlantShapeCollector7'),
+('ACH_MonsterPlantShapeCollector','pets',8,9,112,1,'ACH_MonsterPlantShapeCollector8'),
+('ACH_MonsterPlantShapeCollector','pets',9,10,112,1,'ACH_MonsterPlantShapeCollector9'),
+('ACH_MonsterPlantShapeCollector','pets',10,11,112,1,'ACH_MonsterPlantShapeCollector10'),
+('ACH_MonsterPlantColorCollector','pets',1,2,113,1,'ACH_MonsterPlantColorCollector1'),
+('ACH_MonsterPlantColorCollector','pets',2,3,113,1,'ACH_MonsterPlantColorCollector2'),
+('ACH_MonsterPlantColorCollector','pets',3,4,113,1,'ACH_MonsterPlantColorCollector3'),
+('ACH_MonsterPlantColorCollector','pets',4,5,113,1,'ACH_MonsterPlantColorCollector4'),
+('ACH_MonsterPlantColorCollector','pets',5,6,113,1,'ACH_MonsterPlantColorCollector5'),
+('ACH_MonsterPlantColorCollector','pets',6,7,113,1,'ACH_MonsterPlantColorCollector6'),
+('ACH_MonsterPlantColorCollector','pets',7,8,113,1,'ACH_MonsterPlantColorCollector7'),
+('ACH_MonsterPlantColorCollector','pets',8,9,113,1,'ACH_MonsterPlantColorCollector8'),
+('ACH_MonsterPlantColorCollector','pets',9,10,113,1,'ACH_MonsterPlantColorCollector9'),
+('ACH_MonsterPlantColorCollector','pets',10,11,113,1,'ACH_MonsterPlantColorCollector10'),
+('ACH_MonsterPlantHealer','pets',1,5,114,1,'ACH_MonsterPlantHealer1'),
+('ACH_MonsterPlantHealer','pets',2,30,114,1,'ACH_MonsterPlantHealer2'),
+('ACH_MonsterPlantHealer','pets',3,100,114,1,'ACH_MonsterPlantHealer3'),
+('ACH_MonsterPlantHealer','pets',4,500,114,1,'ACH_MonsterPlantHealer4'),
+('ACH_MonsterPlantHealer','pets',5,2000,114,1,'ACH_MonsterPlantHealer5'),
+('ACH_MonsterPlantGardenOfDeath','pets',1,5,115,1,'ACH_MonsterPlantGardenOfDeath1'),
+('ACH_MonsterPlantGardenOfDeath','pets',2,30,115,1,'ACH_MonsterPlantGardenOfDeath2'),
+('ACH_MonsterPlantGardenOfDeath','pets',3,100,115,1,'ACH_MonsterPlantGardenOfDeath3'),
+('ACH_MonsterPlantGardenOfDeath','pets',4,500,115,1,'ACH_MonsterPlantGardenOfDeath4'),
+('ACH_MonsterPlantGardenOfDeath','pets',5,2000,115,1,'ACH_MonsterPlantGardenOfDeath5'),
+('ACH_MonsterPlantUnluckyGardener','pets',1,3,116,1,'ACH_MonsterPlantUnluckyGardener1'),
+('ACH_MonsterPlantUnluckyGardener','pets',2,10,116,1,'ACH_MonsterPlantUnluckyGardener2'),
+('ACH_MonsterPlantUnluckyGardener','pets',3,40,116,1,'ACH_MonsterPlantUnluckyGardener3'),
+('ACH_MonsterPlantUnluckyGardener','pets',4,100,116,1,'ACH_MonsterPlantUnluckyGardener4'),
+('ACH_MonsterPlantUnluckyGardener','pets',5,500,116,1,'ACH_MonsterPlantUnluckyGardener5'),
+('ACH_SafetyQuizGraduate','identity',1,1,125,2,'ACH_SafetyQuizGraduate1'),
+('ACH_FootballGoalScored','games',1,1,127,1,'ACH_FootballGoalScored1'),
+('ACH_FootballGoalScored','games',2,10,127,1,'ACH_FootballGoalScored2'),
+('ACH_FootballGoalScored','games',3,100,127,1,'ACH_FootballGoalScored3'),
+('ACH_FootballGoalScored','games',4,1000,127,1,'ACH_FootballGoalScored4'),
+('ACH_FootballGoalScored','games',5,10000,127,1,'ACH_FootballGoalScored5'),
+('ACH_FootballGoalScoredInRoom','games',1,1,128,1,'ACH_FootballGoalScoredInRoom1'),
+('ACH_FootballGoalScoredInRoom','games',2,20,128,1,'ACH_FootballGoalScoredInRoom2'),
+('ACH_FootballGoalScoredInRoom','games',3,400,128,1,'ACH_FootballGoalScoredInRoom3'),
+('ACH_FootballGoalScoredInRoom','games',4,8000,128,1,'ACH_FootballGoalScoredInRoom4'),
+('ACH_FootballGoalScoredInRoom','games',5,160000,128,1,'ACH_FootballGoalScoredInRoom5'),
+('ACH_RoomCompetitionVoter','explore',1,3,129,2,'ACH_RoomCompetitionVoter1'),
+('ACH_RoomCompetitionVoter','explore',2,6,129,2,'ACH_RoomCompetitionVoter2'),
+('ACH_RoomCompetitionVoter','explore',3,12,129,2,'ACH_RoomCompetitionVoter3'),
+('ACH_RoomCompetitionVoter','explore',4,18,129,2,'ACH_RoomCompetitionVoter4'),
+('ACH_RoomCompetitionVoter','explore',5,24,129,2,'ACH_RoomCompetitionVoter5'),
+('ACH_RoomCompetitionVoter','explore',6,36,129,2,'ACH_RoomCompetitionVoter6'),
+('ACH_RoomCompetitionVoter','explore',7,48,129,2,'ACH_RoomCompetitionVoter7'),
+('ACH_RoomCompetitionVoter','explore',8,60,129,2,'ACH_RoomCompetitionVoter8'),
+('ACH_RoomCompetitionVoter','explore',9,72,129,2,'ACH_RoomCompetitionVoter9'),
+('ACH_RoomCompetitionVoter','explore',10,84,129,2,'ACH_RoomCompetitionVoter10'),
+('ACH_FriendListSize','social',1,2,142,1,'ACH_FriendListSize1'),
+('ACH_FriendListSize','social',2,10,142,1,'ACH_FriendListSize2'),
+('ACH_FriendListSize','social',3,30,142,1,'ACH_FriendListSize3'),
+('ACH_FriendListSize','social',4,60,142,1,'ACH_FriendListSize4'),
+('ACH_FriendListSize','social',5,100,142,1,'ACH_FriendListSize5'),
+('ACH_FriendListSize','social',6,200,142,1,'ACH_FriendListSize6'),
+('ACH_FriendListSize','social',7,300,142,1,'ACH_FriendListSize7'),
+('ACH_FriendListSize','social',8,400,142,1,'ACH_FriendListSize8'),
+('ACH_FriendListSize','social',9,500,142,1,'ACH_FriendListSize9'),
+('ACH_FriendListSize','social',10,600,142,1,'ACH_FriendListSize10'),
+('ACH_FriendListSize','social',11,700,142,1,'ACH_FriendListSize11'),
+('ACH_FriendListSize','social',12,800,142,1,'ACH_FriendListSize12'),
+('ACH_FriendListSize','social',13,900,142,1,'ACH_FriendListSize13'),
+('ACH_FriendListSize','social',14,1000,142,1,'ACH_FriendListSize14'),
+('ACH_FriendListSize','social',15,1100,142,1,'ACH_FriendListSize15'),
+('ACH_Citizenship','identity',1,1,143,2,'ACH_Citizenship1'),
+('ACH_TerrierBreeder','pets',1,2,153,1,'ACH_TerrierBreeder1'),
+('ACH_TerrierBreeder','pets',2,4,153,1,'ACH_TerrierBreeder2'),
+('ACH_TerrierBreeder','pets',3,6,153,1,'ACH_TerrierBreeder3'),
+('ACH_TerrierBreeder','pets',4,8,153,1,'ACH_TerrierBreeder4'),
+('ACH_TerrierBreeder','pets',5,10,153,1,'ACH_TerrierBreeder5'),
+('ACH_TerrierBreeder','pets',6,12,153,1,'ACH_TerrierBreeder6'),
+('ACH_TerrierBreeder','pets',7,14,153,1,'ACH_TerrierBreeder7'),
+('ACH_TerrierBreeder','pets',8,16,153,1,'ACH_TerrierBreeder8'),
+('ACH_TerrierBreeder','pets',9,18,153,1,'ACH_TerrierBreeder9'),
+('ACH_TerrierBreeder','pets',10,19,153,1,'ACH_TerrierBreeder10'),
+('ACH_BearBreeder','pets',1,2,154,1,'ACH_BearBreeder1'),
+('ACH_BearBreeder','pets',2,4,154,1,'ACH_BearBreeder2'),
+('ACH_BearBreeder','pets',3,6,154,1,'ACH_BearBreeder3'),
+('ACH_BearBreeder','pets',4,8,154,1,'ACH_BearBreeder4'),
+('ACH_BearBreeder','pets',5,10,154,1,'ACH_BearBreeder5'),
+('ACH_BearBreeder','pets',6,12,154,1,'ACH_BearBreeder6'),
+('ACH_BearBreeder','pets',7,14,154,1,'ACH_BearBreeder7'),
+('ACH_BearBreeder','pets',8,16,154,1,'ACH_BearBreeder8'),
+('ACH_BearBreeder','pets',9,18,154,1,'ACH_BearBreeder9'),
+('ACH_BearBreeder','pets',10,20,154,1,'ACH_BearBreeder10'),
+('ACH_VipHC','identity',1,0,163,1,'ACH_VipHC1'),
+('ACH_VipHC','identity',2,12,163,1,'ACH_VipHC2'),
+('ACH_VipHC','identity',3,24,163,1,'ACH_VipHC3'),
+('ACH_VipHC','identity',4,36,163,1,'ACH_VipHC4'),
+('ACH_VipHC','identity',5,48,163,1,'ACH_VipHC5'),
+('ACH_PinataWhacker','crackables',1,1,184,1,'ACH_PinataWhacker1'),
+('ACH_PinataWhacker','crackables',2,5,184,1,'ACH_PinataWhacker2'),
+('ACH_PinataWhacker','crackables',3,25,184,1,'ACH_PinataWhacker3'),
+('ACH_PinataWhacker','crackables',4,50,184,1,'ACH_PinataWhacker4'),
+('ACH_PinataWhacker','crackables',5,100,184,1,'ACH_PinataWhacker5'),
+('ACH_PinataWhacker','crackables',6,200,184,1,'ACH_PinataWhacker6'),
+('ACH_PinataWhacker','crackables',7,400,184,1,'ACH_PinataWhacker7'),
+('ACH_PinataWhacker','crackables',8,800,184,1,'ACH_PinataWhacker8'),
+('ACH_PinataWhacker','crackables',9,1600,184,1,'ACH_PinataWhacker9'),
+('ACH_PinataWhacker','crackables',10,3200,184,1,'ACH_PinataWhacker10'),
+('ACH_PinataBreaker','crackables',1,1,185,1,'ACH_PinataBreaker1'),
+('ACH_PinataBreaker','crackables',2,2,185,1,'ACH_PinataBreaker2'),
+('ACH_PinataBreaker','crackables',3,4,185,1,'ACH_PinataBreaker3'),
+('ACH_PinataBreaker','crackables',4,8,185,1,'ACH_PinataBreaker4'),
+('ACH_PinataBreaker','crackables',5,16,185,1,'ACH_PinataBreaker5'),
+('ACH_StoryChallengeChampion','games',1,1,191,2,'ACH_StoryChallengeChampion1'),
+('ACH_StoryChallengeChampion','games',2,2,191,2,'ACH_StoryChallengeChampion2'),
+('ACH_StoryChallengeChampion','games',3,3,191,2,'ACH_StoryChallengeChampion3'),
+('ACH_StoryChallengeChampion','games',4,4,191,2,'ACH_StoryChallengeChampion4'),
+('ACH_StoryChallengeChampion','games',5,5,191,2,'ACH_StoryChallengeChampion5'),
+('ACH_StoryChallengeChampion','games',6,6,191,2,'ACH_StoryChallengeChampion6'),
+('ACH_StoryChallengeChampion','games',7,7,191,2,'ACH_StoryChallengeChampion7'),
+('ACH_StoryChallengeChampion','games',8,8,191,2,'ACH_StoryChallengeChampion8'),
+('ACH_StoryChallengeChampion','games',9,9,191,2,'ACH_StoryChallengeChampion9'),
+('ACH_StoryChallengeChampion','games',10,10,191,2,'ACH_StoryChallengeChampion10'),
+('ACH_StoryChallengeChampion','games',11,13,191,2,'ACH_StoryChallengeChampion11'),
+('ACH_StoryChallengeChampion','games',12,16,191,2,'ACH_StoryChallengeChampion12'),
+('ACH_StoryChallengeChampion','games',13,19,191,2,'ACH_StoryChallengeChampion13'),
+('ACH_StoryChallengeChampion','games',14,22,191,2,'ACH_StoryChallengeChampion14'),
+('ACH_StoryChallengeChampion','games',15,25,191,2,'ACH_StoryChallengeChampion15'),
+('ACH_StoryChallengeChampion','games',16,30,191,2,'ACH_StoryChallengeChampion16'),
+('ACH_StoryChallengeChampion','games',17,35,191,2,'ACH_StoryChallengeChampion17'),
+('ACH_StoryChallengeChampion','games',18,40,191,2,'ACH_StoryChallengeChampion18'),
+('ACH_StoryChallengeChampion','games',19,45,191,2,'ACH_StoryChallengeChampion19'),
+('ACH_StoryChallengeChampion','games',20,50,191,2,'ACH_StoryChallengeChampion20'),
+('ACH_BuildersClub','identity',1,1,195,1,'ACH_BuildersClub1'),
+('ACH_BuildersClub','identity',2,31,195,1,'ACH_BuildersClub2'),
+('ACH_BuildersClub','identity',3,62,195,1,'ACH_BuildersClub3'),
+('ACH_BuildersClub','identity',4,124,195,1,'ACH_BuildersClub4'),
+('ACH_BuildersClub','identity',5,248,195,1,'ACH_BuildersClub5'),
+('ACH_BuildersClub','identity',6,372,195,1,'ACH_BuildersClub6'),
+('ACH_BuildersClub','identity',7,620,195,1,'ACH_BuildersClub7'),
+('ACH_BuildersClub','identity',8,868,195,1,'ACH_BuildersClub8'),
+('ACH_BuildersClub','identity',9,1240,195,1,'ACH_BuildersClub9'),
+('ACH_BuildersClub','identity',10,1612,195,1,'ACH_BuildersClub10'),
+('ACH_BuildersClub','identity',11,1984,195,1,'ACH_BuildersClub11'),
+('ACH_RoomDecoBC','room_builder',1,3,196,1,'ACH_RoomDecoBC1'),
+('ACH_RoomDecoBC','room_builder',2,5,196,1,'ACH_RoomDecoBC2'),
+('ACH_RoomDecoBC','room_builder',3,8,196,1,'ACH_RoomDecoBC3'),
+('ACH_RoomDecoBC','room_builder',4,16,196,1,'ACH_RoomDecoBC4'),
+('ACH_RoomDecoBC','room_builder',5,32,196,1,'ACH_RoomDecoBC5'),
+('ACH_RoomDecoBC','room_builder',6,64,196,1,'ACH_RoomDecoBC6'),
+('ACH_RoomDecoBC','room_builder',7,125,196,1,'ACH_RoomDecoBC7'),
+('ACH_RoomDecoBC','room_builder',8,250,196,1,'ACH_RoomDecoBC8'),
+('ACH_RoomDecoBC','room_builder',9,500,196,1,'ACH_RoomDecoBC9'),
+('ACH_RoomDecoBC','room_builder',10,1000,196,1,'ACH_RoomDecoBC10'),
+('ACH_RoomDecoBC','room_builder',11,2000,196,1,'ACH_RoomDecoBC11'),
+('ACH_RoomDecoBC','room_builder',12,4000,196,1,'ACH_RoomDecoBC12'),
+('ACH_RoomDecoBC','room_builder',13,8000,196,1,'ACH_RoomDecoBC13'),
+('ACH_RoomDecoBC','room_builder',14,16000,196,1,'ACH_RoomDecoBC14'),
+('ACH_RoomDecoBC','room_builder',15,33000,196,1,'ACH_RoomDecoBC15'),
+('ACH_RoomDecoBC','room_builder',16,66000,196,1,'ACH_RoomDecoBC16'),
+('ACH_RoomDecoBC','room_builder',17,100000,196,1,'ACH_RoomDecoBC17'),
+('ACH_RoomDecoBC','room_builder',18,300000,196,1,'ACH_RoomDecoBC18'),
+('ACH_RoomDecoBC','room_builder',19,500000,196,1,'ACH_RoomDecoBC19'),
+('ACH_RoomDecoBC','room_builder',20,1000000,196,1,'ACH_RoomDecoBC20'),
+('ACH_GnomeFeeding','pets',1,200,197,1,'ACH_GnomeFeeding1'),
+('ACH_GnomeFeeding','pets',2,600,197,1,'ACH_GnomeFeeding2'),
+('ACH_GnomeFeeding','pets',3,1400,197,1,'ACH_GnomeFeeding3'),
+('ACH_GnomeFeeding','pets',4,3000,197,1,'ACH_GnomeFeeding4'),
+('ACH_GnomeFeeding','pets',5,6000,197,1,'ACH_GnomeFeeding5'),
+('ACH_GnomeFeeding','pets',6,12400,197,1,'ACH_GnomeFeeding6'),
+('ACH_GnomeFeeding','pets',7,25400,197,1,'ACH_GnomeFeeding7'),
+('ACH_GnomeFeeding','pets',8,51000,197,1,'ACH_GnomeFeeding8'),
+('ACH_GnomeFeeding','pets',9,102200,197,1,'ACH_GnomeFeeding9'),
+('ACH_GnomeFeeding','pets',10,204600,197,1,'ACH_GnomeFeeding10'),
+('ACH_GnomeLevelUp','pets',1,1,198,1,'ACH_GnomeLevelUp1'),
+('ACH_GnomeLevelUp','pets',2,3,198,1,'ACH_GnomeLevelUp2'),
+('ACH_GnomeLevelUp','pets',3,5,198,1,'ACH_GnomeLevelUp3'),
+('ACH_GnomeLevelUp','pets',4,7,198,1,'ACH_GnomeLevelUp4'),
+('ACH_GnomeLevelUp','pets',5,9,198,1,'ACH_GnomeLevelUp5'),
+('ACH_GnomeLevelUp','pets',6,11,198,1,'ACH_GnomeLevelUp6'),
+('ACH_GnomeLevelUp','pets',7,13,198,1,'ACH_GnomeLevelUp7'),
+('ACH_GnomeLevelUp','pets',8,15,198,1,'ACH_GnomeLevelUp8'),
+('ACH_GnomeLevelUp','pets',9,17,198,1,'ACH_GnomeLevelUp9'),
+('ACH_GnomeLevelUp','pets',10,20,198,1,'ACH_GnomeLevelUp10'),
+('ACH_GnomeRespectGiver','pets',1,3,199,1,'ACH_GnomeRespectGiver1'),
+('ACH_GnomeRespectGiver','pets',2,10,199,1,'ACH_GnomeRespectGiver2'),
+('ACH_GnomeRespectGiver','pets',3,20,199,1,'ACH_GnomeRespectGiver3'),
+('ACH_GnomeRespectGiver','pets',4,40,199,1,'ACH_GnomeRespectGiver4'),
+('ACH_GnomeRespectGiver','pets',5,70,199,1,'ACH_GnomeRespectGiver5'),
+('ACH_GnomeRespectGiver','pets',6,120,199,1,'ACH_GnomeRespectGiver6'),
+('ACH_GnomeRespectGiver','pets',7,200,199,1,'ACH_GnomeRespectGiver7'),
+('ACH_GnomeRespectGiver','pets',8,300,199,1,'ACH_GnomeRespectGiver8'),
+('ACH_GnomeRespectGiver','pets',9,500,199,1,'ACH_GnomeRespectGiver9'),
+('ACH_GnomeRespectGiver','pets',10,750,199,1,'ACH_GnomeRespectGiver10'),
+('ACH_LeprechaunFeeding','pets',1,200,200,1,'ACH_LeprechaunFeeding1'),
+('ACH_LeprechaunFeeding','pets',2,600,200,1,'ACH_LeprechaunFeeding2'),
+('ACH_LeprechaunFeeding','pets',3,1400,200,1,'ACH_LeprechaunFeeding3'),
+('ACH_LeprechaunFeeding','pets',4,3000,200,1,'ACH_LeprechaunFeeding4'),
+('ACH_LeprechaunFeeding','pets',5,6000,200,1,'ACH_LeprechaunFeeding5'),
+('ACH_LeprechaunFeeding','pets',6,12400,200,1,'ACH_LeprechaunFeeding6'),
+('ACH_LeprechaunFeeding','pets',7,25400,200,1,'ACH_LeprechaunFeeding7'),
+('ACH_LeprechaunFeeding','pets',8,51000,200,1,'ACH_LeprechaunFeeding8'),
+('ACH_LeprechaunFeeding','pets',9,102200,200,1,'ACH_LeprechaunFeeding9'),
+('ACH_LeprechaunFeeding','pets',10,204600,200,1,'ACH_LeprechaunFeeding10'),
+('ACH_LeprechaunRespectGiver','pets',1,3,201,1,'ACH_LeprechaunRespectGiver1'),
+('ACH_LeprechaunRespectGiver','pets',2,10,201,1,'ACH_LeprechaunRespectGiver2'),
+('ACH_LeprechaunRespectGiver','pets',3,20,201,1,'ACH_LeprechaunRespectGiver3'),
+('ACH_LeprechaunRespectGiver','pets',4,40,201,1,'ACH_LeprechaunRespectGiver4'),
+('ACH_LeprechaunRespectGiver','pets',5,70,201,1,'ACH_LeprechaunRespectGiver5'),
+('ACH_LeprechaunRespectGiver','pets',6,120,201,1,'ACH_LeprechaunRespectGiver6'),
+('ACH_LeprechaunRespectGiver','pets',7,200,201,1,'ACH_LeprechaunRespectGiver7'),
+('ACH_LeprechaunRespectGiver','pets',8,300,201,1,'ACH_LeprechaunRespectGiver8'),
+('ACH_LeprechaunRespectGiver','pets',9,500,201,1,'ACH_LeprechaunRespectGiver9'),
+('ACH_LeprechaunRespectGiver','pets',10,750,201,1,'ACH_LeprechaunRespectGiver10'),
+('ACH_LeprechaunLevelUp','pets',1,1,202,1,'ACH_LeprechaunLevelUp1'),
+('ACH_LeprechaunLevelUp','pets',2,5,202,1,'ACH_LeprechaunLevelUp2'),
+('ACH_LeprechaunLevelUp','pets',3,10,202,1,'ACH_LeprechaunLevelUp3'),
+('ACH_LeprechaunLevelUp','pets',4,20,202,1,'ACH_LeprechaunLevelUp4'),
+('ACH_LeprechaunLevelUp','pets',5,30,202,1,'ACH_LeprechaunLevelUp5'),
+('ACH_LeprechaunLevelUp','pets',6,50,202,1,'ACH_LeprechaunLevelUp6'),
+('ACH_LeprechaunLevelUp','pets',7,80,202,1,'ACH_LeprechaunLevelUp7'),
+('ACH_LeprechaunLevelUp','pets',8,130,202,1,'ACH_LeprechaunLevelUp8'),
+('ACH_LeprechaunLevelUp','pets',9,200,202,1,'ACH_LeprechaunLevelUp9'),
+('ACH_LeprechaunLevelUp','pets',10,350,202,1,'ACH_LeprechaunLevelUp10'),
+('ACH_ViciousViking','explore',1,1,204,1,'ACH_ViciousViking1'),
+('ACH_ViciousViking','explore',2,5,204,1,'ACH_ViciousViking2'),
+('ACH_ViciousViking','explore',3,10,204,1,'ACH_ViciousViking3'),
+('ACH_ViciousViking','explore',4,20,204,1,'ACH_ViciousViking4'),
+('ACH_ViciousViking','explore',5,40,204,1,'ACH_ViciousViking5'),
+('ACH_ViciousViking','explore',6,80,204,1,'ACH_ViciousViking6'),
+('ACH_ViciousViking','explore',7,160,204,1,'ACH_ViciousViking7'),
+('ACH_ViciousViking','explore',8,250,204,1,'ACH_ViciousViking8'),
+('ACH_ViciousViking','explore',9,350,204,1,'ACH_ViciousViking9'),
+('ACH_ViciousViking','explore',10,600,204,1,'ACH_ViciousViking10'),
+('ACH_SelfModDoorModeSeen','explore',1,1,206,1,'ACH_SelfModDoorModeSeen1'),
+('ACH_SelfModForumCanReadSeen','explore',1,1,215,2,'ACH_SelfModForumCanReadSeen1'),
+('ACH_SelfModForumCanPostSeen','explore',1,1,216,2,'ACH_SelfModForumCanPostSeen1'),
+('ACH_SelfModForumCanPostThrdSeen','explore',1,1,217,2,'ACH_SelfModForumCanPostThrdSeen1'),
+('ACH_SelfModForumCanModerateSeen','explore',1,1,218,2,'ACH_SelfModForumCanModerateSeen1'),
+('ACH_DogBreeder','pets',1,2,219,1,'ACH_DogBreeder1'),
+('ACH_DogBreeder','pets',2,4,219,1,'ACH_DogBreeder2'),
+('ACH_DogBreeder','pets',3,6,219,1,'ACH_DogBreeder3'),
+('ACH_DogBreeder','pets',4,8,219,1,'ACH_DogBreeder4'),
+('ACH_DogBreeder','pets',5,10,219,1,'ACH_DogBreeder5'),
+('ACH_DogBreeder','pets',6,12,219,1,'ACH_DogBreeder6'),
+('ACH_DogBreeder','pets',7,14,219,1,'ACH_DogBreeder7'),
+('ACH_DogBreeder','pets',8,16,219,1,'ACH_DogBreeder8'),
+('ACH_DogBreeder','pets',9,18,219,1,'ACH_DogBreeder9'),
+('ACH_DogBreeder','pets',10,19,219,1,'ACH_DogBreeder10'),
+('ACH_CatBreeder','pets',1,2,220,1,'ACH_CatBreeder1'),
+('ACH_CatBreeder','pets',2,4,220,1,'ACH_CatBreeder2'),
+('ACH_CatBreeder','pets',3,6,220,1,'ACH_CatBreeder3'),
+('ACH_CatBreeder','pets',4,8,220,1,'ACH_CatBreeder4'),
+('ACH_CatBreeder','pets',5,10,220,1,'ACH_CatBreeder5'),
+('ACH_CatBreeder','pets',6,12,220,1,'ACH_CatBreeder6'),
+('ACH_CatBreeder','pets',7,14,220,1,'ACH_CatBreeder7'),
+('ACH_CatBreeder','pets',8,16,220,1,'ACH_CatBreeder8'),
+('ACH_CatBreeder','pets',9,18,220,1,'ACH_CatBreeder9'),
+('ACH_CatBreeder','pets',10,19,220,1,'ACH_CatBreeder10'),
+('ACH_PigBreeder','pets',1,2,221,1,'ACH_PigBreeder1'),
+('ACH_PigBreeder','pets',2,4,221,1,'ACH_PigBreeder2'),
+('ACH_PigBreeder','pets',3,6,221,1,'ACH_PigBreeder3'),
+('ACH_PigBreeder','pets',4,8,221,1,'ACH_PigBreeder4'),
+('ACH_PigBreeder','pets',5,10,221,1,'ACH_PigBreeder5'),
+('ACH_PigBreeder','pets',6,12,221,1,'ACH_PigBreeder6'),
+('ACH_PigBreeder','pets',7,14,221,1,'ACH_PigBreeder7'),
+('ACH_PigBreeder','pets',8,16,221,1,'ACH_PigBreeder8'),
+('ACH_PigBreeder','pets',9,18,221,1,'ACH_PigBreeder9'),
+('ACH_PigBreeder','pets',10,19,221,1,'ACH_PigBreeder10'),
+('ACH_HaloompaFeeding','pets',1,200,222,1,'ACH_HaloompaFeeding1'),
+('ACH_HaloompaFeeding','pets',2,600,222,1,'ACH_HaloompaFeeding2'),
+('ACH_HaloompaFeeding','pets',3,1400,222,1,'ACH_HaloompaFeeding3'),
+('ACH_HaloompaFeeding','pets',4,3000,222,1,'ACH_HaloompaFeeding4'),
+('ACH_HaloompaFeeding','pets',5,6000,222,1,'ACH_HaloompaFeeding5'),
+('ACH_HaloompaFeeding','pets',6,12400,222,1,'ACH_HaloompaFeeding6'),
+('ACH_HaloompaFeeding','pets',7,25400,222,1,'ACH_HaloompaFeeding7'),
+('ACH_HaloompaFeeding','pets',8,51000,222,1,'ACH_HaloompaFeeding8'),
+('ACH_HaloompaFeeding','pets',9,102200,222,1,'ACH_HaloompaFeeding9'),
+('ACH_HaloompaFeeding','pets',10,204600,222,1,'ACH_HaloompaFeeding10'),
+('ACH_HaloompaRespectGiver','pets',1,3,223,1,'ACH_HaloompaRespectGiver1'),
+('ACH_HaloompaRespectGiver','pets',2,10,223,1,'ACH_HaloompaRespectGiver2'),
+('ACH_HaloompaRespectGiver','pets',3,20,223,1,'ACH_HaloompaRespectGiver3'),
+('ACH_HaloompaRespectGiver','pets',4,40,223,1,'ACH_HaloompaRespectGiver4'),
+('ACH_HaloompaRespectGiver','pets',5,70,223,1,'ACH_HaloompaRespectGiver5'),
+('ACH_HaloompaRespectGiver','pets',6,120,223,1,'ACH_HaloompaRespectGiver6'),
+('ACH_HaloompaRespectGiver','pets',7,200,223,1,'ACH_HaloompaRespectGiver7'),
+('ACH_HaloompaRespectGiver','pets',8,300,223,1,'ACH_HaloompaRespectGiver8'),
+('ACH_HaloompaRespectGiver','pets',9,500,223,1,'ACH_HaloompaRespectGiver9'),
+('ACH_HaloompaRespectGiver','pets',10,750,223,1,'ACH_HaloompaRespectGiver10'),
+('ACH_HaloompaLevelUp','pets',1,1,224,1,'ACH_HaloompaLevelUp1'),
+('ACH_HaloompaLevelUp','pets',2,2,224,1,'ACH_HaloompaLevelUp2'),
+('ACH_HaloompaLevelUp','pets',3,3,224,1,'ACH_HaloompaLevelUp3'),
+('ACH_HaloompaLevelUp','pets',4,5,224,1,'ACH_HaloompaLevelUp4'),
+('ACH_HaloompaLevelUp','pets',5,8,224,1,'ACH_HaloompaLevelUp5'),
+('ACH_HaloompaLevelUp','pets',6,10,224,1,'ACH_HaloompaLevelUp6'),
+('ACH_HaloompaLevelUp','pets',7,12,224,1,'ACH_HaloompaLevelUp7'),
+('ACH_HaloompaLevelUp','pets',8,14,224,1,'ACH_HaloompaLevelUp8'),
+('ACH_HaloompaLevelUp','pets',9,17,224,1,'ACH_HaloompaLevelUp9'),
+('ACH_HaloompaLevelUp','pets',10,20,224,1,'ACH_HaloompaLevelUp10'),
+('ACH_CameraPhotoCount','explore',1,1,226,1,'ACH_CameraPhotoCount1'),
+('ACH_CameraPhotoCount','explore',2,5,226,1,'ACH_CameraPhotoCount2'),
+('ACH_CameraPhotoCount','explore',3,15,226,1,'ACH_CameraPhotoCount3'),
+('ACH_CameraPhotoCount','explore',4,30,226,1,'ACH_CameraPhotoCount4'),
+('ACH_CameraPhotoCount','explore',5,50,226,1,'ACH_CameraPhotoCount5'),
+('ACH_CameraPhotoCount','explore',6,100,226,1,'ACH_CameraPhotoCount6'),
+('ACH_CameraPhotoCount','explore',7,200,226,1,'ACH_CameraPhotoCount7'),
+('ACH_CameraPhotoCount','explore',8,400,226,1,'ACH_CameraPhotoCount8'),
+('ACH_CameraPhotoCount','explore',9,800,226,1,'ACH_CameraPhotoCount9'),
+('ACH_CameraPhotoCount','explore',10,1600,226,1,'ACH_CameraPhotoCount10'),
+('ACH_Atcg','crafting',1,1,231,1,'ACH_Atcg1'),
+('ACH_Atcg','crafting',2,3,231,1,'ACH_Atcg2'),
+('ACH_Atcg','crafting',3,6,231,1,'ACH_Atcg3'),
+('ACH_Atcg','crafting',4,18,231,1,'ACH_Atcg4'),
+('ACH_Atcg','crafting',5,38,231,1,'ACH_Atcg5'),
+('ACH_Atcg','crafting',6,76,231,1,'ACH_Atcg6'),
+('ACH_Atcg','crafting',7,152,231,1,'ACH_Atcg7'),
+('ACH_Atcg','crafting',8,200,231,1,'ACH_Atcg8'),
+('ACH_Atcg','crafting',9,300,231,1,'ACH_Atcg9'),
+('ACH_Atcg','crafting',10,400,231,1,'ACH_Atcg10'),
+('ACH_Atcg','crafting',11,500,231,1,'ACH_Atcg11'),
+('ACH_Atcg','crafting',12,600,231,1,'ACH_Atcg12'),
+('ACH_Atcg','crafting',13,700,231,1,'ACH_Atcg13'),
+('ACH_Atcg','crafting',14,800,231,1,'ACH_Atcg14'),
+('ACH_Atcg','crafting',15,900,231,1,'ACH_Atcg15'),
+('ACH_Atcg','crafting',16,1000,231,1,'ACH_Atcg16'),
+('ACH_Atcg','crafting',17,1200,231,1,'ACH_Atcg17'),
+('ACH_Atcg','crafting',18,1400,231,1,'ACH_Atcg18'),
+('ACH_Atcg','crafting',19,1700,231,1,'ACH_Atcg19'),
+('ACH_Atcg','crafting',20,2000,231,1,'ACH_Atcg20'),
+('ACH_AtcgSecret','crafting',1,1,232,1,'ACH_AtcgSecret1'),
+('ACH_AtcgSecret','crafting',2,5,232,1,'ACH_AtcgSecret2'),
+('ACH_AtcgSecret','crafting',3,15,232,1,'ACH_AtcgSecret3'),
+('ACH_AtcgSecret','crafting',4,38,232,1,'ACH_AtcgSecret4'),
+('ACH_Horticulturist','crackables',1,1,236,1,'ACH_Horticulturist1'),
+('ACH_Horticulturist','crackables',2,2,236,1,'ACH_Horticulturist2'),
+('ACH_Horticulturist','crackables',3,4,236,1,'ACH_Horticulturist3'),
+('ACH_Horticulturist','crackables',4,8,236,1,'ACH_Horticulturist4'),
+('ACH_Horticulturist','crackables',5,16,236,1,'ACH_Horticulturist5'),
+('ACH_Horticulturist','crackables',6,40,236,1,'ACH_Horticulturist6'),
+('ACH_Horticulturist','crackables',7,50,236,1,'ACH_Horticulturist7'),
+('ACH_Horticulturist','crackables',8,60,236,1,'ACH_Horticulturist8'),
+('ACH_Horticulturist','crackables',9,70,236,1,'ACH_Horticulturist9'),
+('ACH_Horticulturist','crackables',10,80,236,1,'ACH_Horticulturist10'),
+('ACH_Jogger','explore',1,1,237,1,'ACH_Jogger1'),
+('ACH_Jogger','explore',2,10,237,1,'ACH_Jogger2'),
+('ACH_Jogger','explore',3,30,237,1,'ACH_Jogger3'),
+('ACH_Jogger','explore',4,60,237,1,'ACH_Jogger4'),
+('ACH_Jogger','explore',5,120,237,1,'ACH_Jogger5'),
+('ACH_Jogger','explore',6,240,237,1,'ACH_Jogger6'),
+('ACH_Jogger','explore',7,600,237,1,'ACH_Jogger7'),
+('ACH_Jogger','explore',8,1200,237,1,'ACH_Jogger8'),
+('ACH_Jogger','explore',9,2400,237,1,'ACH_Jogger9'),
+('ACH_Jogger','explore',10,4800,237,1,'ACH_Jogger10'),
+('ACH_Trampolinist','explore',1,1,238,1,'ACH_Trampolinist1'),
+('ACH_Trampolinist','explore',2,10,238,1,'ACH_Trampolinist2'),
+('ACH_Trampolinist','explore',3,30,238,1,'ACH_Trampolinist3'),
+('ACH_Trampolinist','explore',4,60,238,1,'ACH_Trampolinist4'),
+('ACH_Trampolinist','explore',5,120,238,1,'ACH_Trampolinist5'),
+('ACH_Trampolinist','explore',6,240,238,1,'ACH_Trampolinist6'),
+('ACH_Trampolinist','explore',7,600,238,1,'ACH_Trampolinist7'),
+('ACH_Trampolinist','explore',8,1200,238,1,'ACH_Trampolinist8'),
+('ACH_Trampolinist','explore',9,2400,238,1,'ACH_Trampolinist9'),
+('ACH_Trampolinist','explore',10,4800,238,1,'ACH_Trampolinist10'),
+('ACH_CrossTrainer','explore',1,1,239,1,'ACH_CrossTrainer1'),
+('ACH_CrossTrainer','explore',2,10,239,1,'ACH_CrossTrainer2'),
+('ACH_CrossTrainer','explore',3,30,239,1,'ACH_CrossTrainer3'),
+('ACH_CrossTrainer','explore',4,60,239,1,'ACH_CrossTrainer4'),
+('ACH_CrossTrainer','explore',5,120,239,1,'ACH_CrossTrainer5'),
+('ACH_CrossTrainer','explore',6,240,239,1,'ACH_CrossTrainer6'),
+('ACH_CrossTrainer','explore',7,600,239,1,'ACH_CrossTrainer7'),
+('ACH_CrossTrainer','explore',8,1200,239,1,'ACH_CrossTrainer8'),
+('ACH_CrossTrainer','explore',9,2400,239,1,'ACH_CrossTrainer9'),
+('ACH_CrossTrainer','explore',10,4800,239,1,'ACH_CrossTrainer10'),
+('ACH_GhostHunter','crackables',1,1,240,1,'ACH_GhostHunter1'),
+('ACH_GhostHunter','crackables',2,5,240,1,'ACH_GhostHunter2'),
+('ACH_GhostHunter','crackables',3,10,240,1,'ACH_GhostHunter3'),
+('ACH_GhostHunter','crackables',4,20,240,1,'ACH_GhostHunter4'),
+('ACH_GhostHunter','crackables',5,40,240,1,'ACH_GhostHunter5'),
+('ACH_GhostHunter','crackables',6,60,240,1,'ACH_GhostHunter6'),
+('ACH_GhostHunter','crackables',7,80,240,1,'ACH_GhostHunter7'),
+('ACH_GhostHunter','crackables',8,100,240,1,'ACH_GhostHunter8'),
+('ACH_GhostHunter','crackables',9,120,240,1,'ACH_GhostHunter9'),
+('ACH_GhostHunter','crackables',10,140,240,1,'ACH_GhostHunter10'),
+('ACH_CreatureRearer','crackables',1,2,241,1,'ACH_CreatureRearer1'),
+('ACH_CreatureRearer','crackables',2,4,241,1,'ACH_CreatureRearer2'),
+('ACH_CreatureRearer','crackables',3,6,241,1,'ACH_CreatureRearer3'),
+('ACH_CreatureRearer','crackables',4,8,241,1,'ACH_CreatureRearer4'),
+('ACH_CreatureRearer','crackables',5,10,241,1,'ACH_CreatureRearer5'),
+('ACH_CreatureRearer','crackables',6,12,241,1,'ACH_CreatureRearer6'),
+('ACH_CreatureRearer','crackables',7,14,241,1,'ACH_CreatureRearer7'),
+('ACH_CreatureRearer','crackables',8,16,241,1,'ACH_CreatureRearer8'),
+('ACH_CreatureRearer','crackables',9,18,241,1,'ACH_CreatureRearer9'),
+('ACH_CreatureRearer','crackables',10,20,241,1,'ACH_CreatureRearer10'),
+('ACH_Farmer','crackables',1,1,242,1,'ACH_Farmer1'),
+('ACH_Farmer','crackables',2,5,242,1,'ACH_Farmer2'),
+('ACH_Farmer','crackables',3,10,242,1,'ACH_Farmer3'),
+('ACH_Farmer','crackables',4,20,242,1,'ACH_Farmer4'),
+('ACH_Farmer','crackables',5,40,242,1,'ACH_Farmer5'),
+('ACH_Farmer','crackables',6,60,242,1,'ACH_Farmer6'),
+('ACH_Farmer','crackables',7,80,242,1,'ACH_Farmer7'),
+('ACH_Farmer','crackables',8,100,242,1,'ACH_Farmer8'),
+('ACH_Farmer','crackables',9,120,242,1,'ACH_Farmer9'),
+('ACH_Farmer','crackables',10,140,242,1,'ACH_Farmer10'),
+('ACH_Chef','crafting',1,1,243,1,'ACH_Chef1'),
+('ACH_Chef','crafting',2,5,243,1,'ACH_Chef2'),
+('ACH_Chef','crafting',3,10,243,1,'ACH_Chef3'),
+('ACH_Chef','crafting',4,20,243,1,'ACH_Chef4'),
+('ACH_Chef','crafting',5,40,243,1,'ACH_Chef5'),
+('ACH_Chef','crafting',6,60,243,1,'ACH_Chef6'),
+('ACH_Chef','crafting',7,80,243,1,'ACH_Chef7'),
+('ACH_Chef','crafting',8,100,243,1,'ACH_Chef8'),
+('ACH_Chef','crafting',9,120,243,1,'ACH_Chef9'),
+('ACH_Chef','crafting',10,140,243,1,'ACH_Chef10'),
+('ACH_Restorer','crackables',1,2,244,1,'ACH_Restorer1'),
+('ACH_Restorer','crackables',2,4,244,1,'ACH_Restorer2'),
+('ACH_Restorer','crackables',3,6,244,1,'ACH_Restorer3'),
+('ACH_Restorer','crackables',4,8,244,1,'ACH_Restorer4'),
+('ACH_Restorer','crackables',5,10,244,1,'ACH_Restorer5'),
+('ACH_bazaar17','crafting',1,1,246,1,'ACH_bazaar171'),
+('ACH_bazaar17','crafting',2,5,246,1,'ACH_bazaar172'),
+('ACH_bazaar17','crafting',3,10,246,1,'ACH_bazaar173'),
+('ACH_bazaar17','crafting',4,20,246,1,'ACH_bazaar174'),
+('ACH_bazaar17','crafting',5,40,246,1,'ACH_bazaar175'),
+('ACH_bazaar17','crafting',6,60,246,1,'ACH_bazaar176'),
+('ACH_bazaar17','crafting',7,80,246,1,'ACH_bazaar177'),
+('ACH_bazaar17','crafting',8,100,246,1,'ACH_bazaar178'),
+('ACH_bazaar17','crafting',9,120,246,1,'ACH_bazaar179'),
+('ACH_bazaar17','crafting',10,140,246,1,'ACH_bazaar1710'),
+('ACH_flamingknight','crackables',1,2,247,1,'ACH_flamingknight1'),
+('ACH_flamingknight','crackables',2,4,247,1,'ACH_flamingknight2'),
+('ACH_flamingknight','crackables',3,6,247,1,'ACH_flamingknight3'),
+('ACH_flamingknight','crackables',4,8,247,1,'ACH_flamingknight4'),
+('ACH_flamingknight','crackables',5,10,247,1,'ACH_flamingknight5'),
+('ACH_victailor','crafting',1,2,248,1,'ACH_victailor1'),
+('ACH_victailor','crafting',2,4,248,1,'ACH_victailor2'),
+('ACH_victailor','crafting',3,6,248,1,'ACH_victailor3'),
+('ACH_victailor','crafting',4,8,248,1,'ACH_victailor4'),
+('ACH_victailor','crafting',5,10,248,1,'ACH_victailor5'),
+('ACH_victailor','crafting',6,12,248,1,'ACH_victailor6'),
+('ACH_victailor','crafting',7,14,248,1,'ACH_victailor7'),
+('ACH_victailor','crafting',8,16,248,1,'ACH_victailor8'),
+('ACH_victailor','crafting',9,18,248,1,'ACH_victailor9'),
+('ACH_victailor','crafting',10,20,248,1,'ACH_victailor10'),
+('ACH_AdvancedHorticulturist','crackables',1,1,250,1,'ACH_AdvancedHorticulturist1'),
+('ACH_AdvancedHorticulturist','crackables',2,5,250,1,'ACH_AdvancedHorticulturist2'),
+('ACH_AdvancedHorticulturist','crackables',3,10,250,1,'ACH_AdvancedHorticulturist3'),
+('ACH_AdvancedHorticulturist','crackables',4,20,250,1,'ACH_AdvancedHorticulturist4'),
+('ACH_AdvancedHorticulturist','crackables',5,30,250,1,'ACH_AdvancedHorticulturist5'),
+('ACH_AdvancedHorticulturist','crackables',6,40,250,1,'ACH_AdvancedHorticulturist6'),
+('ACH_AdvancedHorticulturist','crackables',7,50,250,1,'ACH_AdvancedHorticulturist7'),
+('ACH_AdvancedHorticulturist','crackables',8,60,250,1,'ACH_AdvancedHorticulturist8'),
+('ACH_AdvancedHorticulturist','crackables',9,70,250,1,'ACH_AdvancedHorticulturist9'),
+('ACH_AdvancedHorticulturist','crackables',10,80,250,1,'ACH_AdvancedHorticulturist10'),
+('ACH_ffusion','crafting',1,1,251,1,'ACH_ffusion1'),
+('ACH_ffusion','crafting',2,2,251,1,'ACH_ffusion2'),
+('ACH_ffusion','crafting',3,3,251,1,'ACH_ffusion3'),
+('ACH_ffusion','crafting',4,4,251,1,'ACH_ffusion4'),
+('ACH_ffusion','crafting',5,5,251,1,'ACH_ffusion5'),
+('ACH_Tokyo','crafting',1,2,253,1,'ACH_Tokyo1'),
+('ACH_Tokyo','crafting',2,4,253,1,'ACH_Tokyo2'),
+('ACH_Tokyo','crafting',3,6,253,1,'ACH_Tokyo3'),
+('ACH_Tokyo','crafting',4,8,253,1,'ACH_Tokyo4'),
+('ACH_Tokyo','crafting',5,10,253,1,'ACH_Tokyo5'),
+('ACH_Tokyo','crafting',6,12,253,1,'ACH_Tokyo6'),
+('ACH_Tokyo','crafting',7,14,253,1,'ACH_Tokyo7'),
+('ACH_Tokyo','crafting',8,16,253,1,'ACH_Tokyo8'),
+('ACH_Tokyo','crafting',9,18,253,1,'ACH_Tokyo9'),
+('ACH_Tokyo','crafting',10,20,253,1,'ACH_Tokyo10'),
+('ACH_InfectedLab','crackables',1,2,254,1,'ACH_InfectedLab1'),
+('ACH_InfectedLab','crackables',2,4,254,1,'ACH_InfectedLab2'),
+('ACH_InfectedLab','crackables',3,6,254,1,'ACH_InfectedLab3'),
+('ACH_InfectedLab','crackables',4,8,254,1,'ACH_InfectedLab4'),
+('ACH_InfectedLab','crackables',5,10,254,1,'ACH_InfectedLab5'),
+('ACH_InfectedLab','crackables',6,12,254,1,'ACH_InfectedLab6'),
+('ACH_InfectedLab','crackables',7,14,254,1,'ACH_InfectedLab7'),
+('ACH_InfectedLab','crackables',8,16,254,1,'ACH_InfectedLab8'),
+('ACH_InfectedLab','crackables',9,18,254,1,'ACH_InfectedLab9'),
+('ACH_InfectedLab','crackables',10,20,254,1,'ACH_InfectedLab10'),
+('ACH_wintercity','crafting',1,2,256,1,'ACH_wintercity1'),
+('ACH_wintercity','crafting',2,4,256,1,'ACH_wintercity2'),
+('ACH_wintercity','crafting',3,6,256,1,'ACH_wintercity3'),
+('ACH_wintercity','crafting',4,8,256,1,'ACH_wintercity4'),
+('ACH_wintercity','crafting',5,10,256,1,'ACH_wintercity5'),
+('ACH_wintercity','crafting',6,12,256,1,'ACH_wintercity6'),
+('ACH_wintercity','crafting',7,14,256,1,'ACH_wintercity7'),
+('ACH_wintercity','crafting',8,16,256,1,'ACH_wintercity8'),
+('ACH_wintercity','crafting',9,18,256,1,'ACH_wintercity9'),
+('ACH_wintercity','crafting',10,20,256,1,'ACH_wintercity10'),
+('ACH_EasterCreatures','crackables',1,2,257,1,'ACH_EasterCreatures1'),
+('ACH_EasterCreatures','crackables',2,4,257,1,'ACH_EasterCreatures2'),
+('ACH_EasterCreatures','crackables',3,6,257,1,'ACH_EasterCreatures3'),
+('ACH_EasterCreatures','crackables',4,8,257,1,'ACH_EasterCreatures4'),
+('ACH_EasterCreatures','crackables',5,10,257,1,'ACH_EasterCreatures5'),
+('ACH_EasterCreatures','crackables',6,12,257,1,'ACH_EasterCreatures6'),
+('ACH_EasterCreatures','crackables',7,14,257,1,'ACH_EasterCreatures7'),
+('ACH_EasterCreatures','crackables',8,16,257,1,'ACH_EasterCreatures8'),
+('ACH_EasterCreatures','crackables',9,18,257,1,'ACH_EasterCreatures9'),
+('ACH_EasterCreatures','crackables',10,20,257,1,'ACH_EasterCreatures10'),
+('ACH_Festival','crafting',1,2,258,1,'ACH_Festival1'),
+('ACH_Festival','crafting',2,4,258,1,'ACH_Festival2'),
+('ACH_Festival','crafting',3,6,258,1,'ACH_Festival3'),
+('ACH_Festival','crafting',4,8,258,1,'ACH_Festival4'),
+('ACH_Festival','crafting',5,10,258,1,'ACH_Festival5'),
+('ACH_Festival','crafting',6,12,258,1,'ACH_Festival6'),
+('ACH_Festival','crafting',7,14,258,1,'ACH_Festival7'),
+('ACH_Festival','crafting',8,16,258,1,'ACH_Festival8'),
+('ACH_Festival','crafting',9,18,258,1,'ACH_Festival9'),
+('ACH_Festival','crafting',10,20,258,1,'ACH_Festival10'),
+('ACH_Suncity','crafting',1,2,259,1,'ACH_Suncity1'),
+('ACH_Suncity','crafting',2,4,259,1,'ACH_Suncity2'),
+('ACH_Suncity','crafting',3,6,259,1,'ACH_Suncity3'),
+('ACH_Suncity','crafting',4,8,259,1,'ACH_Suncity4'),
+('ACH_Suncity','crafting',5,10,259,1,'ACH_Suncity5'),
+('ACH_Suncity','crafting',6,12,259,1,'ACH_Suncity6'),
+('ACH_Suncity','crafting',7,14,259,1,'ACH_Suncity7'),
+('ACH_Suncity','crafting',8,16,259,1,'ACH_Suncity8'),
+('ACH_Suncity','crafting',9,18,259,1,'ACH_Suncity9'),
+('ACH_Suncity','crafting',10,20,259,1,'ACH_Suncity10'),
+('ACH_WitchesCoven','crafting',1,2,260,1,'ACH_WitchesCoven1'),
+('ACH_WitchesCoven','crafting',2,4,260,1,'ACH_WitchesCoven2'),
+('ACH_WitchesCoven','crafting',3,6,260,1,'ACH_WitchesCoven3'),
+('ACH_WitchesCoven','crafting',4,8,260,1,'ACH_WitchesCoven4'),
+('ACH_WitchesCoven','crafting',5,10,260,1,'ACH_WitchesCoven5'),
+('ACH_WitchesCoven','crafting',6,12,260,1,'ACH_WitchesCoven6'),
+('ACH_WitchesCoven','crafting',7,14,260,1,'ACH_WitchesCoven7'),
+('ACH_WitchesCoven','crafting',8,16,260,1,'ACH_WitchesCoven8'),
+('ACH_WitchesCoven','crafting',9,18,260,1,'ACH_WitchesCoven9'),
+('ACH_WitchesCoven','crafting',10,20,260,1,'ACH_WitchesCoven10'),
+('ACH_Xmascrystal','crafting',1,2,263,1,'ACH_Xmascrystal1'),
+('ACH_Xmascrystal','crafting',2,4,263,1,'ACH_Xmascrystal2'),
+('ACH_Xmascrystal','crafting',3,6,263,1,'ACH_Xmascrystal3'),
+('ACH_Xmascrystal','crafting',4,8,263,1,'ACH_Xmascrystal4'),
+('ACH_Xmascrystal','crafting',5,10,263,1,'ACH_Xmascrystal5'),
+('ACH_Xmascrystal','crafting',6,12,263,1,'ACH_Xmascrystal6'),
+('ACH_Xmascrystal','crafting',7,14,263,1,'ACH_Xmascrystal7'),
+('ACH_Xmascrystal','crafting',8,16,263,1,'ACH_Xmascrystal8'),
+('ACH_Xmascrystal','crafting',9,18,263,1,'ACH_Xmascrystal9'),
+('ACH_Xmascrystal','crafting',10,20,263,1,'ACH_Xmascrystal10'),
+('ACH_Profile1','identity',1,1,282,1,'ACH_Profile1'),
+('ACH_Profile2','identity',1,1,283,1,'ACH_Profile2'),
+('ACH_Profile_Gimmegimme_','identity',1,2,286,1,'ACH_Profile_Gimmegimme_1'),
+('ACH_Profile_Gimmegimme_','identity',2,4,286,1,'ACH_Profile_Gimmegimme_2'),
+('ACH_Profile_Gimmegimme_','identity',3,6,286,1,'ACH_Profile_Gimmegimme_3'),
+('ACH_Profile_Gimmegimme_','identity',4,9,286,1,'ACH_Profile_Gimmegimme_4'),
+('ACH_Profile_Gimmegimme_','identity',5,14,286,1,'ACH_Profile_Gimmegimme_5'),
+('ACH_Profile_Gimmegimme_','identity',6,20,286,1,'ACH_Profile_Gimmegimme_6'),
+('ACH_Profile_Gimmegimme_','identity',7,30,286,1,'ACH_Profile_Gimmegimme_7'),
+('ACH_Profile_Gimmegimme_','identity',8,45,286,1,'ACH_Profile_Gimmegimme_8'),
+('ACH_Profile_Gimmegimme_','identity',9,60,286,1,'ACH_Profile_Gimmegimme_9'),
+('ACH_Profile_Gimmegimme_','identity',10,80,286,1,'ACH_Profile_Gimmegimme_10'),
+('ACH_Profile_Gimmegimme_','identity',11,100,286,1,'ACH_Profile_Gimmegimme_11'),
+('ACH_Profile_Gimmegimme_','identity',12,125,286,1,'ACH_Profile_Gimmegimme_12'),
+('ACH_Profile_Gimmegimme_','identity',13,160,286,1,'ACH_Profile_Gimmegimme_13'),
+('ACH_Profile_Gimmegimme_','identity',14,210,286,1,'ACH_Profile_Gimmegimme_14'),
+('ACH_Profile_Gimmegimme_','identity',15,280,286,1,'ACH_Profile_Gimmegimme_15'),
+('ACH_Profile_Gimmegimme_','identity',16,365,286,1,'ACH_Profile_Gimmegimme_16'),
+('ACH_Profile_Gimmegimme_','identity',17,460,286,1,'ACH_Profile_Gimmegimme_17'),
+('ACH_Profile_Gimmegimme_','identity',18,580,286,1,'ACH_Profile_Gimmegimme_18'),
+('ACH_Profile_Gimmegimme_','identity',19,730,286,1,'ACH_Profile_Gimmegimme_19'),
+('ACH_Profile_Gimmegimme_','identity',20,910,286,1,'ACH_Profile_Gimmegimme_20'),
+('ACH_Profile_Pantheon_','identity',1,1000,288,1,'ACH_Profile_Pantheon_1'),
+('ACH_Profile_Pantheon_','identity',2,2000,288,1,'ACH_Profile_Pantheon_2'),
+('ACH_Profile_Pantheon_','identity',3,3000,288,1,'ACH_Profile_Pantheon_3'),
+('ACH_Profile_Pantheon_','identity',4,4000,288,1,'ACH_Profile_Pantheon_4'),
+('ACH_Profile_Pantheon_','identity',5,5000,288,1,'ACH_Profile_Pantheon_5'),
+('ACH_Profile_Pantheon_','identity',6,6000,288,1,'ACH_Profile_Pantheon_6'),
+('ACH_Profile_Pantheon_','identity',7,7000,288,1,'ACH_Profile_Pantheon_7'),
+('ACH_Profile_Pantheon_','identity',8,8000,288,1,'ACH_Profile_Pantheon_8'),
+('ACH_Profile_Pantheon_','identity',9,9000,288,1,'ACH_Profile_Pantheon_9'),
+('ACH_Profile_Pantheon_','identity',10,10000,288,1,'ACH_Profile_Pantheon_10'),
+('ACH_Profile_Pantheon_','identity',11,11000,288,1,'ACH_Profile_Pantheon_11'),
+('ACH_Profile_Pantheon_','identity',12,12000,288,1,'ACH_Profile_Pantheon_12'),
+('ACH_Profile_Pantheon_','identity',13,13000,288,1,'ACH_Profile_Pantheon_13'),
+('ACH_Profile_Pantheon_','identity',14,14000,288,1,'ACH_Profile_Pantheon_14'),
+('ACH_Profile_Pantheon_','identity',15,15000,288,1,'ACH_Profile_Pantheon_15'),
+('ACH_Profile_Pantheon_','identity',16,16000,288,1,'ACH_Profile_Pantheon_16'),
+('ACH_Profile_Pantheon_','identity',17,17000,288,1,'ACH_Profile_Pantheon_17'),
+('ACH_Profile_Pantheon_','identity',18,18000,288,1,'ACH_Profile_Pantheon_18'),
+('ACH_Profile_Pantheon_','identity',19,19000,288,1,'ACH_Profile_Pantheon_19'),
+('ACH_Profile_Pantheon_','identity',20,20000,288,1,'ACH_Profile_Pantheon_20'),
+('ACH_HC','identity',1,14,289,1,'ACH_HC1'),
+('ACH_HC','identity',2,360,289,1,'ACH_HC2'),
+('ACH_HC','identity',3,720,289,1,'ACH_HC3'),
+('ACH_HC','identity',4,1080,289,1,'ACH_HC4'),
+('ACH_HC','identity',5,1440,289,1,'ACH_HC5'),
+('ACH_HabboBuilder_TSale_','explore',1,2,290,1,'ACH_HabboBuilder_TSale_1'),
+('ACH_HabboBuilder_TSale_','explore',2,6,290,1,'ACH_HabboBuilder_TSale_2'),
+('ACH_HabboBuilder_TSale_','explore',3,15,290,1,'ACH_HabboBuilder_TSale_3'),
+('ACH_HabboBuilder_TSale_','explore',4,50,290,1,'ACH_HabboBuilder_TSale_4'),
+('ACH_HabboBuilder_TSale_','explore',5,200,290,1,'ACH_HabboBuilder_TSale_5'),
+('ACH_HabboExplorer','explore',1,1,291,1,'ACH_HabboExplorer1'),
+('ACH_SnowStormWin_','games',1,5,293,1,'ACH_SnowStormWin_1'),
+('ACH_SnowStormWin_','games',2,25,293,1,'ACH_SnowStormWin_2'),
+('ACH_SnowStormWin_','games',3,100,293,1,'ACH_SnowStormWin_3'),
+('ACH_SnowStormWin_','games',4,400,293,1,'ACH_SnowStormWin_4'),
+('ACH_SnowStormWin_','games',5,1000,293,1,'ACH_SnowStormWin_5'),
+('ACH_SnowStormWin_','games',6,2000,293,1,'ACH_SnowStormWin_6'),
+('ACH_SnowStormWin_','games',7,4000,293,1,'ACH_SnowStormWin_7'),
+('ACH_SnowStormWin_','games',8,6000,293,1,'ACH_SnowStormWin_8'),
+('ACH_SnowStormWin_','games',9,8000,293,1,'ACH_SnowStormWin_9'),
+('ACH_SnowStormWin_','games',10,10000,293,1,'ACH_SnowStormWin_10'),
+('ACH_SnowStormHit_','games',1,5,294,1,'ACH_SnowStormHit_1'),
+('ACH_SnowStormHit_','games',2,50,294,1,'ACH_SnowStormHit_2'),
+('ACH_SnowStormHit_','games',3,500,294,1,'ACH_SnowStormHit_3'),
+('ACH_SnowStormHit_','games',4,5000,294,1,'ACH_SnowStormHit_4'),
+('ACH_SnowStormHit_','games',5,15000,294,1,'ACH_SnowStormHit_5'),
+('ACH_SnowStormHit_','games',6,30000,294,1,'ACH_SnowStormHit_6'),
+('ACH_SnowStormHit_','games',7,60000,294,1,'ACH_SnowStormHit_7'),
+('ACH_SnowStormHit_','games',8,100000,294,1,'ACH_SnowStormHit_8'),
+('ACH_SnowStormHit_','games',9,150000,294,1,'ACH_SnowStormHit_9'),
+('ACH_SnowStormHit_','games',10,200000,294,1,'ACH_SnowStormHit_10'),
+('ACH_SnowStormThrow_','games',1,5,295,1,'ACH_SnowStormThrow_1'),
+('ACH_SnowStormThrow_','games',2,50,295,1,'ACH_SnowStormThrow_2'),
+('ACH_SnowStormThrow_','games',3,500,295,1,'ACH_SnowStormThrow_3'),
+('ACH_SnowStormThrow_','games',4,5000,295,1,'ACH_SnowStormThrow_4'),
+('ACH_SnowStormThrow_','games',5,15000,295,1,'ACH_SnowStormThrow_5'),
+('ACH_SnowStormThrow_','games',6,30000,295,1,'ACH_SnowStormThrow_6'),
+('ACH_SnowStormThrow_','games',7,60000,295,1,'ACH_SnowStormThrow_7'),
+('ACH_SnowStormThrow_','games',8,100000,295,1,'ACH_SnowStormThrow_8'),
+('ACH_SnowStormThrow_','games',9,150000,295,1,'ACH_SnowStormThrow_9'),
+('ACH_SnowStormThrow_','games',10,200000,295,1,'ACH_SnowStormThrow_10'),
+('ACH_HabboBuilder_LDesign_','explore',1,3,296,2,'ACH_HabboBuilder_LDesign_1'),
+('ACH_HabboBuilder_LDesign_','explore',2,10,296,2,'ACH_HabboBuilder_LDesign_2'),
+('ACH_HabboBuilder_LDesign_','explore',3,20,296,2,'ACH_HabboBuilder_LDesign_3'),
+('ACH_HabboBuilder_LDesign_','explore',4,35,296,2,'ACH_HabboBuilder_LDesign_4'),
+('ACH_HabboBuilder_LDesign_','explore',5,60,296,2,'ACH_HabboBuilder_LDesign_5'),
+('ACH_HabboBuilder_LDesign_','explore',6,90,296,2,'ACH_HabboBuilder_LDesign_6'),
+('ACH_HabboBuilder_LDesign_','explore',7,140,296,2,'ACH_HabboBuilder_LDesign_7'),
+('ACH_HabboBuilder_LDesign_','explore',8,210,296,2,'ACH_HabboBuilder_LDesign_8'),
+('ACH_HabboBuilder_LDesign_','explore',9,300,296,2,'ACH_HabboBuilder_LDesign_9'),
+('ACH_HabboBuilder_LDesign_','explore',10,500,296,2,'ACH_HabboBuilder_LDesign_10'),
+('ACH_HabboBuilder_MDesign_','explore',1,2,297,2,'ACH_HabboBuilder_MDesign_1'),
+('ACH_HabboBuilder_MDesign_','explore',2,6,297,2,'ACH_HabboBuilder_MDesign_2'),
+('ACH_HabboBuilder_MDesign_','explore',3,12,297,2,'ACH_HabboBuilder_MDesign_3'),
+('ACH_HabboBuilder_MDesign_','explore',4,25,297,2,'ACH_HabboBuilder_MDesign_4'),
+('ACH_HabboBuilder_MDesign_','explore',5,50,297,2,'ACH_HabboBuilder_MDesign_5'),
+('ACH_FairPlay','identity',1,1,298,1,'ACH_FairPlay1'),
+('ACH_HweenTombsCrackable','crackables',1,2,301,1,'ACH_HweenTombsCrackable1'),
+('ACH_HweenTombsCrackable','crackables',2,4,301,1,'ACH_HweenTombsCrackable2'),
+('ACH_HweenTombsCrackable','crackables',3,6,301,1,'ACH_HweenTombsCrackable3'),
+('ACH_HweenTombsCrackable','crackables',4,8,301,1,'ACH_HweenTombsCrackable4'),
+('ACH_HweenTombsCrackable','crackables',5,10,301,1,'ACH_HweenTombsCrackable5'),
+('ACH_HweenTombsCrackable','crackables',6,12,301,1,'ACH_HweenTombsCrackable6'),
+('ACH_HweenTombsCrackable','crackables',7,14,301,1,'ACH_HweenTombsCrackable7'),
+('ACH_HweenTombsCrackable','crackables',8,16,301,1,'ACH_HweenTombsCrackable8'),
+('ACH_HweenTombsCrackable','crackables',9,18,301,1,'ACH_HweenTombsCrackable9'),
+('ACH_HweenTombsCrackable','crackables',10,20,301,1,'ACH_HweenTombsCrackable10'),
+('ACH_NFTRelicMintCount','collectibles',1,1,302,1,'ACH_NFTRelicMintCount1'),
+('ACH_NFTRelicMintCount','collectibles',2,2,302,1,'ACH_NFTRelicMintCount2'),
+('ACH_NFTRelicMintCount','collectibles',3,4,302,1,'ACH_NFTRelicMintCount3'),
+('ACH_NFTRelicMintCount','collectibles',4,10,302,1,'ACH_NFTRelicMintCount4'),
+('ACH_NFTRelicMintCount','collectibles',5,20,302,1,'ACH_NFTRelicMintCount5'),
+('ACH_NFTRelicMintCount','collectibles',6,50,302,1,'ACH_NFTRelicMintCount6'),
+('ACH_NFTRelicMintCount','collectibles',7,75,302,1,'ACH_NFTRelicMintCount7'),
+('ACH_NFTRelicMintCount','collectibles',8,100,302,1,'ACH_NFTRelicMintCount8'),
+('ACH_NFTRelicMintCount','collectibles',9,150,302,1,'ACH_NFTRelicMintCount9'),
+('ACH_NFTRelicMintCount','collectibles',10,250,302,1,'ACH_NFTRelicMintCount10'),
+('ACH_ChatStyleOwner','identity',1,1,303,1,'ACH_ChatStyleOwner1'),
+('ACH_ChatStyleOwner','identity',2,2,303,1,'ACH_ChatStyleOwner2'),
+('ACH_ChatStyleOwner','identity',3,4,303,1,'ACH_ChatStyleOwner3'),
+('ACH_ChatStyleOwner','identity',4,6,303,1,'ACH_ChatStyleOwner4'),
+('ACH_ChatStyleOwner','identity',5,8,303,1,'ACH_ChatStyleOwner5'),
+('ACH_ChatStyleOwner','identity',6,10,303,1,'ACH_ChatStyleOwner6'),
+('ACH_ChatStyleOwner','identity',7,13,303,1,'ACH_ChatStyleOwner7'),
+('ACH_ChatStyleOwner','identity',8,16,303,1,'ACH_ChatStyleOwner8'),
+('ACH_ChatStyleOwner','identity',9,20,303,1,'ACH_ChatStyleOwner9'),
+('ACH_ChatStyleOwner','identity',10,25,303,1,'ACH_ChatStyleOwner10'),
+('ACH_TradeCount','explore',1,5,304,1,'ACH_TradeCount1'),
+('ACH_TradeCount','explore',2,10,304,1,'ACH_TradeCount2'),
+('ACH_TradeCount','explore',3,20,304,1,'ACH_TradeCount3'),
+('ACH_TradeCount','explore',4,50,304,1,'ACH_TradeCount4'),
+('ACH_TradeCount','explore',5,100,304,1,'ACH_TradeCount5'),
+('ACH_TradeCount','explore',6,200,304,1,'ACH_TradeCount6'),
+('ACH_TradeCount','explore',7,500,304,1,'ACH_TradeCount7'),
+('ACH_TradeCount','explore',8,1000,304,1,'ACH_TradeCount8'),
+('ACH_TradeCount','explore',9,2000,304,1,'ACH_TradeCount9'),
+('ACH_TradeCount','explore',10,5000,304,1,'ACH_TradeCount10'),
+('ACH_CollectiblesTraded','collectibles',1,5,305,1,'ACH_CollectiblesTraded1'),
+('ACH_CollectiblesTraded','collectibles',2,10,305,1,'ACH_CollectiblesTraded2'),
+('ACH_CollectiblesTraded','collectibles',3,20,305,1,'ACH_CollectiblesTraded3'),
+('ACH_CollectiblesTraded','collectibles',4,50,305,1,'ACH_CollectiblesTraded4'),
+('ACH_CollectiblesTraded','collectibles',5,100,305,1,'ACH_CollectiblesTraded5'),
+('ACH_CollectiblesTraded','collectibles',6,200,305,1,'ACH_CollectiblesTraded6'),
+('ACH_CollectiblesTraded','collectibles',7,500,305,1,'ACH_CollectiblesTraded7'),
+('ACH_CollectiblesTraded','collectibles',8,1000,305,1,'ACH_CollectiblesTraded8'),
+('ACH_CollectiblesTraded','collectibles',9,2000,305,1,'ACH_CollectiblesTraded9'),
+('ACH_CollectiblesTraded','collectibles',10,5000,305,1,'ACH_CollectiblesTraded10'),
+('ACH_CoinValueTraded','explore',1,10,306,1,'ACH_CoinValueTraded1'),
+('ACH_CoinValueTraded','explore',2,50,306,1,'ACH_CoinValueTraded2'),
+('ACH_CoinValueTraded','explore',3,250,306,1,'ACH_CoinValueTraded3'),
+('ACH_CoinValueTraded','explore',4,750,306,1,'ACH_CoinValueTraded4'),
+('ACH_CoinValueTraded','explore',5,2250,306,1,'ACH_CoinValueTraded5'),
+('ACH_CoinValueTraded','explore',6,5500,306,1,'ACH_CoinValueTraded6'),
+('ACH_CoinValueTraded','explore',7,11000,306,1,'ACH_CoinValueTraded7'),
+('ACH_CoinValueTraded','explore',8,22000,306,1,'ACH_CoinValueTraded8'),
+('ACH_CoinValueTraded','explore',9,39600,306,1,'ACH_CoinValueTraded9'),
+('ACH_CoinValueTraded','explore',10,55400,306,1,'ACH_CoinValueTraded10'),
+('ACH_CoinValueTraded','explore',11,77600,306,1,'ACH_CoinValueTraded11'),
+('ACH_CoinValueTraded','explore',12,100900,306,1,'ACH_CoinValueTraded12'),
+('ACH_CoinValueTraded','explore',13,131000,306,1,'ACH_CoinValueTraded13'),
+('ACH_CoinValueTraded','explore',14,164000,306,1,'ACH_CoinValueTraded14'),
+('ACH_CoinValueTraded','explore',15,204000,306,1,'ACH_CoinValueTraded15'),
+('ACH_CoinValueTraded','explore',16,245000,306,1,'ACH_CoinValueTraded16'),
+('ACH_CoinValueTraded','explore',17,295000,306,1,'ACH_CoinValueTraded17'),
+('ACH_CoinValueTraded','explore',18,354000,306,1,'ACH_CoinValueTraded18'),
+('ACH_CoinValueTraded','explore',19,425000,306,1,'ACH_CoinValueTraded19'),
+('ACH_CoinValueTraded','explore',20,510000,306,1,'ACH_CoinValueTraded20'),
+('ACH_SilverTraded','collectibles',1,5,307,1,'ACH_SilverTraded1'),
+('ACH_SilverTraded','collectibles',2,10,307,1,'ACH_SilverTraded2'),
+('ACH_SilverTraded','collectibles',3,20,307,1,'ACH_SilverTraded3'),
+('ACH_SilverTraded','collectibles',4,50,307,1,'ACH_SilverTraded4'),
+('ACH_SilverTraded','collectibles',5,100,307,1,'ACH_SilverTraded5'),
+('ACH_SilverTraded','collectibles',6,200,307,1,'ACH_SilverTraded6'),
+('ACH_SilverTraded','collectibles',7,500,307,1,'ACH_SilverTraded7'),
+('ACH_SilverTraded','collectibles',8,1000,307,1,'ACH_SilverTraded8'),
+('ACH_SilverTraded','collectibles',9,2000,307,1,'ACH_SilverTraded9'),
+('ACH_SilverTraded','collectibles',10,5000,307,1,'ACH_SilverTraded10'),
+('ACH_PlaceCreditValue','room_builder',1,1,308,1,'ACH_PlaceCreditValue1'),
+('ACH_PlaceCreditValue','room_builder',2,5,308,1,'ACH_PlaceCreditValue2'),
+('ACH_PlaceCreditValue','room_builder',3,10,308,1,'ACH_PlaceCreditValue3'),
+('ACH_PlaceCreditValue','room_builder',4,50,308,1,'ACH_PlaceCreditValue4'),
+('ACH_PlaceCreditValue','room_builder',5,100,308,1,'ACH_PlaceCreditValue5'),
+('ACH_PlaceCreditValue','room_builder',6,200,308,1,'ACH_PlaceCreditValue6'),
+('ACH_PlaceCreditValue','room_builder',7,500,308,1,'ACH_PlaceCreditValue7'),
+('ACH_PlaceCreditValue','room_builder',8,1000,308,1,'ACH_PlaceCreditValue8'),
+('ACH_PlaceCreditValue','room_builder',9,2000,308,1,'ACH_PlaceCreditValue9'),
+('ACH_PlaceCreditValue','room_builder',10,5000,308,1,'ACH_PlaceCreditValue10'),
+('ACH_PlaceCreditValue','room_builder',11,10000,308,1,'ACH_PlaceCreditValue11'),
+('ACH_PlaceCreditValue','room_builder',12,15000,308,1,'ACH_PlaceCreditValue12'),
+('ACH_PlaceCreditValue','room_builder',13,20000,308,1,'ACH_PlaceCreditValue13'),
+('ACH_PlaceCreditValue','room_builder',14,25000,308,1,'ACH_PlaceCreditValue14'),
+('ACH_PlaceCreditValue','room_builder',15,50000,308,1,'ACH_PlaceCreditValue15'),
+('ACH_TimeSpentRoomTypeChat','explore',1,15,309,1,'ACH_TimeSpentRoomTypeChat1'),
+('ACH_TimeSpentRoomTypeChat','explore',2,30,309,1,'ACH_TimeSpentRoomTypeChat2'),
+('ACH_TimeSpentRoomTypeChat','explore',3,60,309,1,'ACH_TimeSpentRoomTypeChat3'),
+('ACH_TimeSpentRoomTypeChat','explore',4,120,309,1,'ACH_TimeSpentRoomTypeChat4'),
+('ACH_TimeSpentRoomTypeChat','explore',5,180,309,1,'ACH_TimeSpentRoomTypeChat5'),
+('ACH_TimeSpentRoomTypeChat','explore',6,360,309,1,'ACH_TimeSpentRoomTypeChat6'),
+('ACH_TimeSpentRoomTypeChat','explore',7,720,309,1,'ACH_TimeSpentRoomTypeChat7'),
+('ACH_TimeSpentRoomTypeChat','explore',8,1440,309,1,'ACH_TimeSpentRoomTypeChat8'),
+('ACH_TimeSpentRoomTypeChat','explore',9,2160,309,1,'ACH_TimeSpentRoomTypeChat9'),
+('ACH_TimeSpentRoomTypeChat','explore',10,2880,309,1,'ACH_TimeSpentRoomTypeChat10'),
+('ACH_TimeSpentRoomTypeChat','explore',11,4320,309,1,'ACH_TimeSpentRoomTypeChat11'),
+('ACH_TimeSpentRoomTypeChat','explore',12,7200,309,1,'ACH_TimeSpentRoomTypeChat12'),
+('ACH_TimeSpentRoomTypeChat','explore',13,10080,309,1,'ACH_TimeSpentRoomTypeChat13'),
+('ACH_TimeSpentRoomTypeChat','explore',14,20160,309,1,'ACH_TimeSpentRoomTypeChat14'),
+('ACH_TimeSpentRoomTypeChat','explore',15,30240,309,1,'ACH_TimeSpentRoomTypeChat15'),
+('ACH_TimeSpentRoomTypeTrade','explore',1,15,310,1,'ACH_TimeSpentRoomTypeTrade1'),
+('ACH_TimeSpentRoomTypeTrade','explore',2,30,310,1,'ACH_TimeSpentRoomTypeTrade2'),
+('ACH_TimeSpentRoomTypeTrade','explore',3,60,310,1,'ACH_TimeSpentRoomTypeTrade3'),
+('ACH_TimeSpentRoomTypeTrade','explore',4,120,310,1,'ACH_TimeSpentRoomTypeTrade4'),
+('ACH_TimeSpentRoomTypeTrade','explore',5,180,310,1,'ACH_TimeSpentRoomTypeTrade5'),
+('ACH_TimeSpentRoomTypeTrade','explore',6,360,310,1,'ACH_TimeSpentRoomTypeTrade6'),
+('ACH_TimeSpentRoomTypeTrade','explore',7,720,310,1,'ACH_TimeSpentRoomTypeTrade7'),
+('ACH_TimeSpentRoomTypeTrade','explore',8,1440,310,1,'ACH_TimeSpentRoomTypeTrade8'),
+('ACH_TimeSpentRoomTypeTrade','explore',9,2160,310,1,'ACH_TimeSpentRoomTypeTrade9'),
+('ACH_TimeSpentRoomTypeTrade','explore',10,2880,310,1,'ACH_TimeSpentRoomTypeTrade10'),
+('ACH_TimeSpentRoomTypeTrade','explore',11,4320,310,1,'ACH_TimeSpentRoomTypeTrade11'),
+('ACH_TimeSpentRoomTypeTrade','explore',12,7200,310,1,'ACH_TimeSpentRoomTypeTrade12'),
+('ACH_TimeSpentRoomTypeTrade','explore',13,10080,310,1,'ACH_TimeSpentRoomTypeTrade13'),
+('ACH_TimeSpentRoomTypeTrade','explore',14,20160,310,1,'ACH_TimeSpentRoomTypeTrade14'),
+('ACH_TimeSpentRoomTypeTrade','explore',15,30240,310,1,'ACH_TimeSpentRoomTypeTrade15'),
+('ACH_TimeSpentRoomTypeRPG','explore',1,15,311,1,'ACH_TimeSpentRoomTypeRPG1'),
+('ACH_TimeSpentRoomTypeRPG','explore',2,30,311,1,'ACH_TimeSpentRoomTypeRPG2'),
+('ACH_TimeSpentRoomTypeRPG','explore',3,60,311,1,'ACH_TimeSpentRoomTypeRPG3'),
+('ACH_TimeSpentRoomTypeRPG','explore',4,120,311,1,'ACH_TimeSpentRoomTypeRPG4'),
+('ACH_TimeSpentRoomTypeRPG','explore',5,180,311,1,'ACH_TimeSpentRoomTypeRPG5'),
+('ACH_TimeSpentRoomTypeRPG','explore',6,360,311,1,'ACH_TimeSpentRoomTypeRPG6'),
+('ACH_TimeSpentRoomTypeRPG','explore',7,720,311,1,'ACH_TimeSpentRoomTypeRPG7'),
+('ACH_TimeSpentRoomTypeRPG','explore',8,1440,311,1,'ACH_TimeSpentRoomTypeRPG8'),
+('ACH_TimeSpentRoomTypeRPG','explore',9,2160,311,1,'ACH_TimeSpentRoomTypeRPG9'),
+('ACH_TimeSpentRoomTypeRPG','explore',10,2880,311,1,'ACH_TimeSpentRoomTypeRPG10'),
+('ACH_TimeSpentRoomTypeRPG','explore',11,4320,311,1,'ACH_TimeSpentRoomTypeRPG11'),
+('ACH_TimeSpentRoomTypeRPG','explore',12,7200,311,1,'ACH_TimeSpentRoomTypeRPG12'),
+('ACH_TimeSpentRoomTypeRPG','explore',13,10080,311,1,'ACH_TimeSpentRoomTypeRPG13'),
+('ACH_TimeSpentRoomTypeRPG','explore',14,20160,311,1,'ACH_TimeSpentRoomTypeRPG14'),
+('ACH_TimeSpentRoomTypeRPG','explore',15,30240,311,1,'ACH_TimeSpentRoomTypeRPG15'),
+('ACH_TimeSpentRoomTypeGames','explore',1,15,312,1,'ACH_TimeSpentRoomTypeGames1'),
+('ACH_TimeSpentRoomTypeGames','explore',2,30,312,1,'ACH_TimeSpentRoomTypeGames2'),
+('ACH_TimeSpentRoomTypeGames','explore',3,60,312,1,'ACH_TimeSpentRoomTypeGames3'),
+('ACH_TimeSpentRoomTypeGames','explore',4,120,312,1,'ACH_TimeSpentRoomTypeGames4'),
+('ACH_TimeSpentRoomTypeGames','explore',5,180,312,1,'ACH_TimeSpentRoomTypeGames5'),
+('ACH_TimeSpentRoomTypeGames','explore',6,360,312,1,'ACH_TimeSpentRoomTypeGames6'),
+('ACH_TimeSpentRoomTypeGames','explore',7,720,312,1,'ACH_TimeSpentRoomTypeGames7'),
+('ACH_TimeSpentRoomTypeGames','explore',8,1440,312,1,'ACH_TimeSpentRoomTypeGames8'),
+('ACH_TimeSpentRoomTypeGames','explore',9,2160,312,1,'ACH_TimeSpentRoomTypeGames9'),
+('ACH_TimeSpentRoomTypeGames','explore',10,2880,312,1,'ACH_TimeSpentRoomTypeGames10'),
+('ACH_TimeSpentRoomTypeGames','explore',11,4320,312,1,'ACH_TimeSpentRoomTypeGames11'),
+('ACH_TimeSpentRoomTypeGames','explore',12,7200,312,1,'ACH_TimeSpentRoomTypeGames12'),
+('ACH_TimeSpentRoomTypeGames','explore',13,10080,312,1,'ACH_TimeSpentRoomTypeGames13'),
+('ACH_TimeSpentRoomTypeGames','explore',14,20160,312,1,'ACH_TimeSpentRoomTypeGames14'),
+('ACH_TimeSpentRoomTypeGames','explore',15,30240,312,1,'ACH_TimeSpentRoomTypeGames15'),
+('ACH_DailyTasksCompleted','explore',1,3,313,1,'ACH_DailyTasksCompleted1'),
+('ACH_DailyTasksCompleted','explore',2,6,313,1,'ACH_DailyTasksCompleted2'),
+('ACH_DailyTasksCompleted','explore',3,10,313,1,'ACH_DailyTasksCompleted3'),
+('ACH_DailyTasksCompleted','explore',4,25,313,1,'ACH_DailyTasksCompleted4'),
+('ACH_DailyTasksCompleted','explore',5,45,313,1,'ACH_DailyTasksCompleted5'),
+('ACH_DailyTasksCompleted','explore',6,70,313,1,'ACH_DailyTasksCompleted6'),
+('ACH_DailyTasksCompleted','explore',7,100,313,1,'ACH_DailyTasksCompleted7'),
+('ACH_DailyTasksCompleted','explore',8,150,313,1,'ACH_DailyTasksCompleted8'),
+('ACH_DailyTasksCompleted','explore',9,205,313,1,'ACH_DailyTasksCompleted9'),
+('ACH_DailyTasksCompleted','explore',10,270,313,1,'ACH_DailyTasksCompleted10'),
+('ACH_DailyTasksCompleted','explore',11,370,313,1,'ACH_DailyTasksCompleted11'),
+('ACH_DailyTasksCompleted','explore',12,520,313,1,'ACH_DailyTasksCompleted12'),
+('ACH_DailyTasksCompleted','explore',13,720,313,1,'ACH_DailyTasksCompleted13'),
+('ACH_DailyTasksCompleted','explore',14,950,313,1,'ACH_DailyTasksCompleted14'),
+('ACH_DailyTasksCompleted','explore',15,1250,313,1,'ACH_DailyTasksCompleted15'),
+('ACH_DailyTasksCompleted','explore',16,1650,313,1,'ACH_DailyTasksCompleted16'),
+('ACH_DailyTasksCompleted','explore',17,2150,313,1,'ACH_DailyTasksCompleted17'),
+('ACH_DailyTasksCompleted','explore',18,2750,313,1,'ACH_DailyTasksCompleted18'),
+('ACH_DailyTasksCompleted','explore',19,3500,313,1,'ACH_DailyTasksCompleted19'),
+('ACH_DailyTasksCompleted','explore',20,4500,313,1,'ACH_DailyTasksCompleted20'),
+('ACH_DailyTaskStreakDays','explore',1,1,314,1,'ACH_DailyTaskStreakDays1'),
+('ACH_DailyTaskStreakDays','explore',2,2,314,1,'ACH_DailyTaskStreakDays2'),
+('ACH_DailyTaskStreakDays','explore',3,3,314,1,'ACH_DailyTaskStreakDays3'),
+('ACH_DailyTaskStreakDays','explore',4,5,314,1,'ACH_DailyTaskStreakDays4'),
+('ACH_DailyTaskStreakDays','explore',5,7,314,1,'ACH_DailyTaskStreakDays5'),
+('ACH_DailyTaskStreakDays','explore',6,9,314,1,'ACH_DailyTaskStreakDays6'),
+('ACH_DailyTaskStreakDays','explore',7,11,314,1,'ACH_DailyTaskStreakDays7'),
+('ACH_DailyTaskStreakDays','explore',8,14,314,1,'ACH_DailyTaskStreakDays8'),
+('ACH_DailyTaskStreakDays','explore',9,17,314,1,'ACH_DailyTaskStreakDays9'),
+('ACH_DailyTaskStreakDays','explore',10,20,314,1,'ACH_DailyTaskStreakDays10'),
+('ACH_DailyTaskStreakDays','explore',11,24,314,1,'ACH_DailyTaskStreakDays11'),
+('ACH_DailyTaskStreakDays','explore',12,28,314,1,'ACH_DailyTaskStreakDays12'),
+('ACH_DailyTaskStreakDays','explore',13,32,314,1,'ACH_DailyTaskStreakDays13'),
+('ACH_DailyTaskStreakDays','explore',14,36,314,1,'ACH_DailyTaskStreakDays14'),
+('ACH_DailyTaskStreakDays','explore',15,40,314,1,'ACH_DailyTaskStreakDays15'),
+('ACH_LegDay','explore',1,75,315,1,'ACH_LegDay1'),
+('ACH_LegDay','explore',2,150,315,1,'ACH_LegDay2'),
+('ACH_LegDay','explore',3,250,315,1,'ACH_LegDay3'),
+('ACH_LegDay','explore',4,450,315,1,'ACH_LegDay4'),
+('ACH_LegDay','explore',5,700,315,1,'ACH_LegDay5'),
+('ACH_LegDay','explore',6,1100,315,1,'ACH_LegDay6'),
+('ACH_LegDay','explore',7,1800,315,1,'ACH_LegDay7'),
+('ACH_LegDay','explore',8,3000,315,1,'ACH_LegDay8'),
+('ACH_LegDay','explore',9,4800,315,1,'ACH_LegDay9'),
+('ACH_LegDay','explore',10,7800,315,1,'ACH_LegDay10'),
+('ACH_LegDay','explore',11,12500,315,1,'ACH_LegDay11'),
+('ACH_LegDay','explore',12,20500,315,1,'ACH_LegDay12'),
+('ACH_LegDay','explore',13,33500,315,1,'ACH_LegDay13'),
+('ACH_LegDay','explore',14,54500,315,1,'ACH_LegDay14'),
+('ACH_LegDay','explore',15,88500,315,1,'ACH_LegDay15'),
+('ACH_LegDay','explore',16,144000,315,1,'ACH_LegDay16'),
+('ACH_LegDay','explore',17,233500,315,1,'ACH_LegDay17'),
+('ACH_LegDay','explore',18,379500,315,1,'ACH_LegDay18'),
+('ACH_LegDay','explore',19,616000,315,1,'ACH_LegDay19'),
+('ACH_LegDay','explore',20,1000000,315,1,'ACH_LegDay20'),
+('ACH_RecycledItems','explore',1,5,316,1,'ACH_RecycledItems1'),
+('ACH_RecycledItems','explore',2,10,316,1,'ACH_RecycledItems2'),
+('ACH_RecycledItems','explore',3,20,316,1,'ACH_RecycledItems3'),
+('ACH_RecycledItems','explore',4,30,316,1,'ACH_RecycledItems4'),
+('ACH_RecycledItems','explore',5,50,316,1,'ACH_RecycledItems5'),
+('ACH_RecycledItems','explore',6,75,316,1,'ACH_RecycledItems6'),
+('ACH_RecycledItems','explore',7,100,316,1,'ACH_RecycledItems7'),
+('ACH_RecycledItems','explore',8,150,316,1,'ACH_RecycledItems8'),
+('ACH_RecycledItems','explore',9,200,316,1,'ACH_RecycledItems9'),
+('ACH_RecycledItems','explore',10,300,316,1,'ACH_RecycledItems10'),
+('ACH_RecycledItems','explore',11,500,316,1,'ACH_RecycledItems11'),
+('ACH_RecycledItems','explore',12,750,316,1,'ACH_RecycledItems12'),
+('ACH_RecycledItems','explore',13,1000,316,1,'ACH_RecycledItems13'),
+('ACH_RecycledItems','explore',14,1500,316,1,'ACH_RecycledItems14'),
+('ACH_RecycledItems','explore',15,2000,316,1,'ACH_RecycledItems15'),
+('ACH_RecycledItems','explore',16,3000,316,1,'ACH_RecycledItems16'),
+('ACH_RecycledItems','explore',17,5000,316,1,'ACH_RecycledItems17'),
+('ACH_RecycledItems','explore',18,7500,316,1,'ACH_RecycledItems18'),
+('ACH_RecycledItems','explore',19,5000,316,1,'ACH_RecycledItems19'),
+('ACH_RecycledItems','explore',20,10000,316,1,'ACH_RecycledItems20'),
+('ACH_RecyclerGrandPrize','explore',1,1,317,1,'ACH_RecyclerGrandPrize1'),
+('ACH_RecyclerGrandPrize','explore',2,2,317,1,'ACH_RecyclerGrandPrize2'),
+('ACH_RecyclerGrandPrize','explore',3,3,317,1,'ACH_RecyclerGrandPrize3'),
+('ACH_RecyclerGrandPrize','explore',4,4,317,1,'ACH_RecyclerGrandPrize4'),
+('ACH_RecyclerGrandPrize','explore',5,5,317,1,'ACH_RecyclerGrandPrize5'),
+('ACH_RecyclerRarePrize','explore',1,1,318,1,'ACH_RecyclerRarePrize1'),
+('ACH_RecyclerRarePrize','explore',2,3,318,1,'ACH_RecyclerRarePrize2'),
+('ACH_RecyclerRarePrize','explore',3,7,318,1,'ACH_RecyclerRarePrize3'),
+('ACH_RecyclerRarePrize','explore',4,12,318,1,'ACH_RecyclerRarePrize4'),
+('ACH_RecyclerRarePrize','explore',5,20,318,1,'ACH_RecyclerRarePrize5'),
+('ACH_RecyclerRarePrize','explore',6,30,318,1,'ACH_RecyclerRarePrize6'),
+('ACH_RecyclerRarePrize','explore',7,45,318,1,'ACH_RecyclerRarePrize7'),
+('ACH_RecyclerRarePrize','explore',8,60,318,1,'ACH_RecyclerRarePrize8'),
+('ACH_RecyclerRarePrize','explore',9,80,318,1,'ACH_RecyclerRarePrize9'),
+('ACH_RecyclerRarePrize','explore',10,100,318,1,'ACH_RecyclerRarePrize10'),
+('ACH_RecycleBoxOpener','explore',1,1,319,1,'ACH_RecycleBoxOpener1'),
+('ACH_RecycleBoxOpener','explore',2,10,319,1,'ACH_RecycleBoxOpener2'),
+('ACH_RecycleBoxOpener','explore',3,25,319,1,'ACH_RecycleBoxOpener3'),
+('ACH_RecycleBoxOpener','explore',4,50,319,1,'ACH_RecycleBoxOpener4'),
+('ACH_RecycleBoxOpener','explore',5,100,319,1,'ACH_RecycleBoxOpener5'),
+('ACH_RecycleBoxOpener','explore',6,150,319,1,'ACH_RecycleBoxOpener6'),
+('ACH_RecycleBoxOpener','explore',7,250,319,1,'ACH_RecycleBoxOpener7'),
+('ACH_RecycleBoxOpener','explore',8,350,319,1,'ACH_RecycleBoxOpener8'),
+('ACH_RecycleBoxOpener','explore',9,600,319,1,'ACH_RecycleBoxOpener9'),
+('ACH_RecycleBoxOpener','explore',10,1000,319,1,'ACH_RecycleBoxOpener10'),
+('ACH_RecycleEcoprizes','explore',1,1,320,1,'ACH_RecycleEcoprizes1'),
+('ACH_RecycleEcoprizes','explore',2,10,320,1,'ACH_RecycleEcoprizes2'),
+('ACH_RecycleEcoprizes','explore',3,25,320,1,'ACH_RecycleEcoprizes3'),
+('ACH_RecycleEcoprizes','explore',4,50,320,1,'ACH_RecycleEcoprizes4'),
+('ACH_RecycleEcoprizes','explore',5,100,320,1,'ACH_RecycleEcoprizes5'),
+('ACH_RecycleEcoprizes','explore',6,150,320,1,'ACH_RecycleEcoprizes6'),
+('ACH_RecycleEcoprizes','explore',7,250,320,1,'ACH_RecycleEcoprizes7'),
+('ACH_RecycleEcoprizes','explore',8,350,320,1,'ACH_RecycleEcoprizes8'),
+('ACH_RecycleEcoprizes','explore',9,600,320,1,'ACH_RecycleEcoprizes9'),
+('ACH_RecycleEcoprizes','explore',10,1000,320,1,'ACH_RecycleEcoprizes10'),
+('ACH_LTDPurchaser','explore',1,1,321,1,'ACH_LTDPurchaser1'),
+('ACH_LTDPurchaser','explore',2,2,321,1,'ACH_LTDPurchaser2'),
+('ACH_LTDPurchaser','explore',3,4,321,1,'ACH_LTDPurchaser3'),
+('ACH_LTDPurchaser','explore',4,7,321,1,'ACH_LTDPurchaser4'),
+('ACH_LTDPurchaser','explore',5,10,321,1,'ACH_LTDPurchaser5'),
+('ACH_LTDPurchaser','explore',6,15,321,1,'ACH_LTDPurchaser6'),
+('ACH_LTDPurchaser','explore',7,20,321,1,'ACH_LTDPurchaser7'),
+('ACH_LTDPurchaser','explore',8,25,321,1,'ACH_LTDPurchaser8'),
+('ACH_LTDPurchaser','explore',9,30,321,1,'ACH_LTDPurchaser9'),
+('ACH_LTDPurchaser','explore',10,40,321,1,'ACH_LTDPurchaser10'),
+('ACH_LTDEarlyBird','explore',1,1,322,1,'ACH_LTDEarlyBird1'),
+('ACH_LTDEarlyBird','explore',2,2,322,1,'ACH_LTDEarlyBird2'),
+('ACH_LTDEarlyBird','explore',3,3,322,1,'ACH_LTDEarlyBird3'),
+('ACH_LTDEarlyBird','explore',4,4,322,1,'ACH_LTDEarlyBird4'),
+('ACH_LTDEarlyBird','explore',5,5,322,1,'ACH_LTDEarlyBird5'),
+('ACH_LTDEarlyBird','explore',6,6,322,1,'ACH_LTDEarlyBird6'),
+('ACH_LTDEarlyBird','explore',7,7,322,1,'ACH_LTDEarlyBird7'),
+('ACH_LTDEarlyBird','explore',8,8,322,1,'ACH_LTDEarlyBird8'),
+('ACH_LTDEarlyBird','explore',9,9,322,1,'ACH_LTDEarlyBird9'),
+('ACH_LTDEarlyBird','explore',10,10,322,1,'ACH_LTDEarlyBird10'),
+('ACH_GamerPaycheck','games',1,8,328,1,'ACH_GamerPaycheck1'),
+('ACH_GamerPaycheck','games',2,10,328,1,'ACH_GamerPaycheck2'),
+('ACH_GamerPaycheck','games',3,20,328,1,'ACH_GamerPaycheck3'),
+('ACH_GamerPaycheck','games',4,40,328,1,'ACH_GamerPaycheck4'),
+('ACH_GamerPaycheck','games',5,80,328,1,'ACH_GamerPaycheck5'),
+('ACH_GamerPaycheck','games',6,160,328,1,'ACH_GamerPaycheck6'),
+('ACH_GamerPaycheck','games',7,320,328,1,'ACH_GamerPaycheck7'),
+('ACH_GamerPaycheck','games',8,640,328,1,'ACH_GamerPaycheck8'),
+('ACH_GamerPaycheck','games',9,1280,328,1,'ACH_GamerPaycheck9'),
+('ACH_GamerPaycheck','games',10,2560,328,1,'ACH_GamerPaycheck10'),
+('ACH_FurniOrganizer','room_builder',1,1,329,1,'ACH_FurniOrganizer1'),
+('ACH_FurniOrganizer','room_builder',2,2,329,1,'ACH_FurniOrganizer2'),
+('ACH_FurniOrganizer','room_builder',3,4,329,1,'ACH_FurniOrganizer3'),
+('ACH_FurniOrganizer','room_builder',4,7,329,1,'ACH_FurniOrganizer4'),
+('ACH_FurniOrganizer','room_builder',5,10,329,1,'ACH_FurniOrganizer5'),
+('ACH_MoneyPrinter','room_builder',1,1,330,1,'ACH_MoneyPrinter1'),
+('ACH_MoneyPrinter','room_builder',2,5,330,1,'ACH_MoneyPrinter2'),
+('ACH_MoneyPrinter','room_builder',3,10,330,1,'ACH_MoneyPrinter3'),
+('ACH_MoneyPrinter','room_builder',4,25,330,1,'ACH_MoneyPrinter4'),
+('ACH_MoneyPrinter','room_builder',5,50,330,1,'ACH_MoneyPrinter5'),
+('ACH_HabbiconUsed','explore',1,1,331,1,'ACH_HabbiconUsed1'),
+('ACH_HabbiconUsed','explore',2,10,331,1,'ACH_HabbiconUsed2'),
+('ACH_HabbiconUsed','explore',3,25,331,1,'ACH_HabbiconUsed3'),
+('ACH_HabbiconUsed','explore',4,40,331,1,'ACH_HabbiconUsed4'),
+('ACH_HabbiconUsed','explore',5,75,331,1,'ACH_HabbiconUsed5'),
+('ACH_HabbiconUsed','explore',6,100,331,1,'ACH_HabbiconUsed6'),
+('ACH_HabbiconUsed','explore',7,150,331,1,'ACH_HabbiconUsed7'),
+('ACH_HabbiconUsed','explore',8,200,331,1,'ACH_HabbiconUsed8'),
+('ACH_HabbiconUsed','explore',9,300,331,1,'ACH_HabbiconUsed9'),
+('ACH_HabbiconUsed','explore',10,500,331,1,'ACH_HabbiconUsed10'),
+('ACH_HabbiconCollected','explore',1,1,332,1,'ACH_HabbiconCollected1'),
+('ACH_HabbiconCollected','explore',2,2,332,1,'ACH_HabbiconCollected2'),
+('ACH_HabbiconCollected','explore',3,4,332,1,'ACH_HabbiconCollected3'),
+('ACH_HabbiconCollected','explore',4,7,332,1,'ACH_HabbiconCollected4'),
+('ACH_HabbiconCollected','explore',5,10,332,1,'ACH_HabbiconCollected5'),
+('ACH_HabbiconCollected','explore',6,15,332,1,'ACH_HabbiconCollected6'),
+('ACH_HabbiconCollected','explore',7,20,332,1,'ACH_HabbiconCollected7'),
+('ACH_HabbiconCollected','explore',8,25,332,1,'ACH_HabbiconCollected8'),
+('ACH_HabbiconCollected','explore',9,30,332,1,'ACH_HabbiconCollected9'),
+('ACH_HabbiconCollected','explore',10,35,332,1,'ACH_HabbiconCollected10'),
+('ACH_HabbiconCollected','explore',11,40,332,1,'ACH_HabbiconCollected11'),
+('ACH_HabbiconCollected','explore',12,45,332,1,'ACH_HabbiconCollected12'),
+('ACH_HabbiconCollected','explore',13,50,332,1,'ACH_HabbiconCollected13'),
+('ACH_HabbiconCollected','explore',14,55,332,1,'ACH_HabbiconCollected14'),
+('ACH_HabbiconCollected','explore',15,60,332,1,'ACH_HabbiconCollected15'),
+('ACH_HabbiconCollected','explore',16,65,332,1,'ACH_HabbiconCollected16'),
+('ACH_HabbiconCollected','explore',17,70,332,1,'ACH_HabbiconCollected17'),
+('ACH_HabbiconCollected','explore',18,80,332,1,'ACH_HabbiconCollected18'),
+('ACH_HabbiconCollected','explore',19,90,332,1,'ACH_HabbiconCollected19'),
+('ACH_HabbiconCollected','explore',20,100,332,1,'ACH_HabbiconCollected20'),
+('ACH_HabbiconCollectionComp','explore',1,1,333,1,'ACH_HabbiconCollectionComp1'),
+('ACH_HabbiconCollectionComp','explore',2,2,333,1,'ACH_HabbiconCollectionComp2'),
+('ACH_HabbiconCollectionComp','explore',3,3,333,1,'ACH_HabbiconCollectionComp3'),
+('ACH_HabbiconCollectionComp','explore',4,4,333,1,'ACH_HabbiconCollectionComp4'),
+('ACH_HabbiconCollectionComp','explore',5,5,333,1,'ACH_HabbiconCollectionComp5'),
+('ACH_HabbiconCollectionComp','explore',6,6,333,1,'ACH_HabbiconCollectionComp6'),
+('ACH_HabbiconCollectionComp','explore',7,7,333,1,'ACH_HabbiconCollectionComp7'),
+('ACH_HabbiconCollectionComp','explore',8,8,333,1,'ACH_HabbiconCollectionComp8'),
+('ACH_HabbiconCollectionComp','explore',9,9,333,1,'ACH_HabbiconCollectionComp9'),
+('ACH_HabbiconCollectionComp','explore',10,10,333,1,'ACH_HabbiconCollectionComp10'),
+('ACH_RewardTracksCompleted','explore',1,1,334,1,'ACH_RewardTracksCompleted1'),
+('ACH_RewardTracksCompleted','explore',2,2,334,1,'ACH_RewardTracksCompleted2'),
+('ACH_RewardTracksCompleted','explore',3,3,334,1,'ACH_RewardTracksCompleted3'),
+('ACH_RewardTracksCompleted','explore',4,4,334,1,'ACH_RewardTracksCompleted4'),
+('ACH_RewardTracksCompleted','explore',5,5,334,1,'ACH_RewardTracksCompleted5'),
+('ACH_RewardTracksCompleted','explore',6,6,334,1,'ACH_RewardTracksCompleted6'),
+('ACH_RewardTracksCompleted','explore',7,7,334,1,'ACH_RewardTracksCompleted7'),
+('ACH_RewardTracksCompleted','explore',8,8,334,1,'ACH_RewardTracksCompleted8'),
+('ACH_RewardTracksCompleted','explore',9,9,334,1,'ACH_RewardTracksCompleted9'),
+('ACH_RewardTracksCompleted','explore',10,10,334,1,'ACH_RewardTracksCompleted10');
+
+-- Levels used to restart from 0, so a user's total is everything the levels held so far took plus the progress since the last
+-- one, and never less than the official threshold of the level held. Levels and badges stay as they are.
+DROP TEMPORARY TABLE IF EXISTS `migration_76_progress`;
+CREATE TEMPORARY TABLE `migration_76_progress` AS
+SELECT u.`userid`, u.`group`, LEAST(2147483647, GREATEST(
+        COALESCE((SELECT SUM(GREATEST(a.`progress_needed`, 0)) FROM `achievements` a
+            WHERE a.`group_name` = u.`group` AND a.`level` <= u.`level`), 0) + GREATEST(u.`progress`, 0),
+        COALESCE((SELECT MAX(o.`progress_needed`) FROM `migration_76_official` o
+            WHERE o.`group_name` = u.`group` AND o.`level` <= u.`level`), 0))) AS `progress`
+FROM `user_achievements` u
+WHERE @migration_76_convert;
+UPDATE `user_achievements` u
+JOIN `migration_76_progress` t ON t.`userid` = u.`userid` AND t.`group` = u.`group`
+SET u.`progress` = t.`progress`;
+DROP TEMPORARY TABLE `migration_76_progress`;
+
+INSERT INTO `achievements` (`group_name`, `category`, `level`, `reward_pixels`, `reward_points`, `progress_needed`, `game_id`,
+    `official_id`, `state`, `visible`, `badge_code`)
+SELECT o.`group_name`, o.`category`, o.`level`, 0, 10, o.`progress_needed`, 0, o.`official_id`, o.`state`, 1,
+    NULLIF(o.`badge_code`, CONCAT(o.`group_name`, o.`level`))
+FROM `migration_76_official` o
+ORDER BY o.`official_id`, o.`level`
+ON DUPLICATE KEY UPDATE `category` = VALUES(`category`), `progress_needed` = VALUES(`progress_needed`),
+    `official_id` = VALUES(`official_id`), `state` = VALUES(`state`), `visible` = 1, `badge_code` = VALUES(`badge_code`);
+
+-- An official achievement has exactly its official levels.
+DELETE a FROM `achievements` a
+JOIN (SELECT `group_name`, MAX(`level`) AS `levels` FROM `migration_76_official` GROUP BY `group_name`) o ON o.`group_name` = a.`group_name`
+WHERE a.`level` > o.`levels`;
+
+UPDATE `achievements` a
+LEFT JOIN (SELECT DISTINCT `group_name` FROM `migration_76_official`) o ON o.`group_name` = a.`group_name`
+SET a.`visible` = 0
+WHERE o.`group_name` IS NULL;
+
+DROP TEMPORARY TABLE `migration_76_official`;
+
+-- BadgeManager gives no badge without a definition.
+INSERT IGNORE INTO `badge_definitions` (`code`, `required_right`)
+SELECT COALESCE(`badge_code`, CONCAT(`group_name`, `level`)), '' FROM `achievements`;
+-- 77_AchievementBadgeCleanup
+-- On habbo.com a user holds one badge per achievement: the badge of the highest level reached. The old engine only
+-- removed the previous level's badge from the loaded inventory, so the user_badges row of every earlier level stayed
+-- and came back on the next login. Those earlier badges are removed here, keeping the highest level's badge. When the
+-- kept badge is not worn and an earlier one was, the kept badge takes the lowest of their slots.
+-- Running it again changes nothing.
+DROP TEMPORARY TABLE IF EXISTS `migration_77_held`;
+CREATE TEMPORARY TABLE `migration_77_held` AS
+SELECT ub.`id`, ub.`user_id`, ub.`badge_slot`, a.`group_name`, a.`level`
+FROM `user_badges` ub
+JOIN `achievements` a ON ub.`badge_id` = COALESCE(a.`badge_code`, CONCAT(a.`group_name`, a.`level`));
+
+-- The highest level held of every achievement a user holds more than one badge of.
+DROP TEMPORARY TABLE IF EXISTS `migration_77_top`;
+CREATE TEMPORARY TABLE `migration_77_top` AS
+SELECT `user_id`, `group_name`, MAX(`level`) AS `level`
+FROM `migration_77_held`
+GROUP BY `user_id`, `group_name`
+HAVING COUNT(*) > 1;
+
+-- MariaDB opens a temporary table once per statement, so the badges to keep, the slots to carry and the badges to
+-- remove are worked out in separate tables.
+DROP TEMPORARY TABLE IF EXISTS `migration_77_keep`;
+CREATE TEMPORARY TABLE `migration_77_keep` AS
+SELECT h.`id`, h.`user_id`, h.`group_name`
+FROM `migration_77_held` h
+JOIN `migration_77_top` t ON t.`user_id` = h.`user_id` AND t.`group_name` = h.`group_name` AND t.`level` = h.`level`;
+
+DROP TEMPORARY TABLE IF EXISTS `migration_77_slot`;
+CREATE TEMPORARY TABLE `migration_77_slot` AS
+SELECT h.`user_id`, h.`group_name`, MIN(h.`badge_slot`) AS `badge_slot`
+FROM `migration_77_held` h
+JOIN `migration_77_top` t ON t.`user_id` = h.`user_id` AND t.`group_name` = h.`group_name` AND h.`level` < t.`level`
+WHERE h.`badge_slot` > 0
+GROUP BY h.`user_id`, h.`group_name`;
+
+DROP TEMPORARY TABLE IF EXISTS `migration_77_remove`;
+CREATE TEMPORARY TABLE `migration_77_remove` AS
+SELECT h.`id`
+FROM `migration_77_held` h
+JOIN `migration_77_top` t ON t.`user_id` = h.`user_id` AND t.`group_name` = h.`group_name` AND h.`level` < t.`level`;
+
+UPDATE `user_badges` ub
+JOIN `migration_77_keep` k ON k.`id` = ub.`id`
+JOIN `migration_77_slot` s ON s.`user_id` = k.`user_id` AND s.`group_name` = k.`group_name`
+SET ub.`badge_slot` = s.`badge_slot`
+WHERE ub.`badge_slot` = 0;
+
+DELETE ub FROM `user_badges` ub
+JOIN `migration_77_remove` r ON r.`id` = ub.`id`;
+
+DROP TEMPORARY TABLE `migration_77_held`;
+DROP TEMPORARY TABLE `migration_77_top`;
+DROP TEMPORARY TABLE `migration_77_keep`;
+DROP TEMPORARY TABLE `migration_77_slot`;
+DROP TEMPORARY TABLE `migration_77_remove`;
+-- 79_WiredFurnitureAndCatalogue
+-- Wired furniture rows resolve to the box PlusEMU implements, and every implemented box a player can configure is sold.
+-- Interaction rules (ItemDataManager.ReadInteractionType, ItemDefinition.WiredDescriptor, WiredComponent.DescriptorOf):
+-- a row whose item_name is a WiredBoxRegistry canonical name keeps its generic category interaction (wired_effect,
+-- wired_trigger, wired_condition, wired_selector, wired_addon, wired_variable) or the canonical name itself. Rows
+-- named after a different client asset store the canonical name. Chests and contracts use their own interactions,
+-- counters their own item name, antennas 'antenna', and the click tile 'room_invisible_click_tile'.
+-- Sprite ids are checked against official furnidata (WIN63-202610131318). Idempotent: reruns change nothing.
+START TRANSACTION;
+
+-- 1. The 182 canonical boxes: a missing or wrong category becomes the box's generic category interaction.
+CREATE TEMPORARY TABLE wired_canonical_79 (
+    item_name VARCHAR(70) NOT NULL PRIMARY KEY,
+    interaction VARCHAR(25) NOT NULL
+) ENGINE=MEMORY;
+INSERT INTO wired_canonical_79 (item_name, interaction) VALUES
+    ('wf_act_adjust_clock','wired_effect'), ('wf_act_bot_clothes','wired_effect'),
+    ('wf_act_bot_follow_avatar','wired_effect'), ('wf_act_bot_give_handitem','wired_effect'),
+    ('wf_act_bot_move','wired_effect'), ('wf_act_bot_talk','wired_effect'),
+    ('wf_act_bot_talk_to_avatar','wired_effect'), ('wf_act_bot_teleport','wired_effect'),
+    ('wf_act_call_stacks','wired_effect'), ('wf_act_cancel_transaction','wired_effect'),
+    ('wf_act_change_var_val','wired_effect'), ('wf_act_chase','wired_effect'), ('wf_act_click_conf','wired_effect'),
+    ('wf_act_control_clock','wired_effect'), ('wf_act_flee','wired_effect'), ('wf_act_freeze','wired_effect'),
+    ('wf_act_furni_to_furni','wired_effect'), ('wf_act_furni_to_user','wired_effect'),
+    ('wf_act_give_currency','wired_effect'), ('wf_act_give_furni','wired_effect'),
+    ('wf_act_give_reward','wired_effect'), ('wf_act_give_score','wired_effect'),
+    ('wf_act_give_score_tm','wired_effect'), ('wf_act_give_var','wired_effect'),
+    ('wf_act_init_transaction','wired_effect'), ('wf_act_join_team','wired_effect'),
+    ('wf_act_kick_user','wired_effect'), ('wf_act_leave_team','wired_effect'), ('wf_act_log','wired_effect'),
+    ('wf_act_match_to_sshot','wired_effect'), ('wf_act_move_furni_as_group','wired_effect'),
+    ('wf_act_move_furni_to','wired_effect'), ('wf_act_move_rotate','wired_effect'),
+    ('wf_act_move_rotate_user','wired_effect'), ('wf_act_move_to_dir','wired_effect'),
+    ('wf_act_mute_triggerer','wired_effect'), ('wf_act_neg_call_stacks','wired_effect'),
+    ('wf_act_neg_log','wired_effect'), ('wf_act_neg_send_signal','wired_effect'),
+    ('wf_act_place_furni','wired_effect'), ('wf_act_rel_mov','wired_effect'), ('wf_act_remove_furni','wired_effect'),
+    ('wf_act_remove_var','wired_effect'), ('wf_act_reset_timers','wired_effect'),
+    ('wf_act_send_signal','wired_effect'), ('wf_act_set_altitude','wired_effect'),
+    ('wf_act_show_message','wired_effect'), ('wf_act_teleport_to','wired_effect'),
+    ('wf_act_teleport_to_room','wired_effect'), ('wf_act_toggle_state','wired_effect'),
+    ('wf_act_toggle_to_rnd','wired_effect'), ('wf_act_unfreeze','wired_effect'),
+    ('wf_act_user_to_furni','wired_effect'), ('wf_cnd_actor_dir','wired_condition'),
+    ('wf_cnd_actor_in_group','wired_condition'), ('wf_cnd_actor_in_team','wired_condition'),
+    ('wf_cnd_chest_has_item_type','wired_condition'), ('wf_cnd_chest_has_items','wired_condition'),
+    ('wf_cnd_counter_time_matches','wired_condition'), ('wf_cnd_date_rng_active','wired_condition'),
+    ('wf_cnd_furnis_hv_avtrs','wired_condition'), ('wf_cnd_has_altitude','wired_condition'),
+    ('wf_cnd_has_furni_on','wired_condition'), ('wf_cnd_has_handitem','wired_condition'),
+    ('wf_cnd_has_var','wired_condition'), ('wf_cnd_match_date','wired_condition'),
+    ('wf_cnd_match_snapshot','wired_condition'), ('wf_cnd_match_time','wired_condition'),
+    ('wf_cnd_neg_has_var','wired_condition'), ('wf_cnd_not_furni_on','wired_condition'),
+    ('wf_cnd_not_has_handitem','wired_condition'), ('wf_cnd_not_hv_avtrs','wired_condition'),
+    ('wf_cnd_not_in_group','wired_condition'), ('wf_cnd_not_in_team','wired_condition'),
+    ('wf_cnd_not_match_snap','wired_condition'), ('wf_cnd_not_stuff_is','wired_condition'),
+    ('wf_cnd_not_trggrer_on','wired_condition'), ('wf_cnd_not_triggerer_match','wired_condition'),
+    ('wf_cnd_not_user_count','wired_condition'), ('wf_cnd_not_user_performs_action','wired_condition'),
+    ('wf_cnd_not_wearing_b','wired_condition'), ('wf_cnd_not_wearing_fx','wired_condition'),
+    ('wf_cnd_slc_quantity','wired_condition'), ('wf_cnd_stuff_is','wired_condition'),
+    ('wf_cnd_team_has_rank','wired_condition'), ('wf_cnd_team_has_score','wired_condition'),
+    ('wf_cnd_time_less_than','wired_condition'), ('wf_cnd_time_more_than','wired_condition'),
+    ('wf_cnd_trggrer_on_frn','wired_condition'), ('wf_cnd_triggerer_match','wired_condition'),
+    ('wf_cnd_user_count_in','wired_condition'), ('wf_cnd_user_performs_action','wired_condition'),
+    ('wf_cnd_valid_moves','wired_condition'), ('wf_cnd_var_age_match','wired_condition'),
+    ('wf_cnd_var_val_match','wired_condition'), ('wf_cnd_wearing_badge','wired_condition'),
+    ('wf_cnd_wearing_effect','wired_condition'), ('wf_slc_furni_altitude','wired_selector'),
+    ('wf_slc_furni_area','wired_selector'), ('wf_slc_furni_bytype','wired_selector'),
+    ('wf_slc_furni_neighborhood','wired_selector'), ('wf_slc_furni_onfurni','wired_selector'),
+    ('wf_slc_furni_picks','wired_selector'), ('wf_slc_furni_signal','wired_selector'),
+    ('wf_slc_furni_with_var','wired_selector'), ('wf_slc_remote','wired_selector'),
+    ('wf_slc_users_area','wired_selector'), ('wf_slc_users_byaction','wired_selector'),
+    ('wf_slc_users_byname','wired_selector'), ('wf_slc_users_bytype','wired_selector'),
+    ('wf_slc_users_group','wired_selector'), ('wf_slc_users_handitem','wired_selector'),
+    ('wf_slc_users_neighborhood','wired_selector'), ('wf_slc_users_onfurni','wired_selector'),
+    ('wf_slc_users_signal','wired_selector'), ('wf_slc_users_team','wired_selector'),
+    ('wf_slc_users_with_var','wired_selector'), ('wf_trg_at_given_time','wired_trigger'),
+    ('wf_trg_at_time_long','wired_trigger'), ('wf_trg_bot_reached_avtr','wired_trigger'),
+    ('wf_trg_bot_reached_stf','wired_trigger'), ('wf_trg_click_furni','wired_trigger'),
+    ('wf_trg_click_tile','wired_trigger'), ('wf_trg_click_user','wired_trigger'),
+    ('wf_trg_clock_counter','wired_trigger'), ('wf_trg_collision','wired_trigger'),
+    ('wf_trg_enter_room','wired_trigger'), ('wf_trg_game_ends','wired_trigger'),
+    ('wf_trg_game_starts','wired_trigger'), ('wf_trg_leave_room','wired_trigger'),
+    ('wf_trg_period_long','wired_trigger'), ('wf_trg_period_short','wired_trigger'),
+    ('wf_trg_periodically','wired_trigger'), ('wf_trg_recv_signal','wired_trigger'),
+    ('wf_trg_says_something','wired_trigger'), ('wf_trg_score_achieved','wired_trigger'),
+    ('wf_trg_state_changed','wired_trigger'), ('wf_trg_stuff_state','wired_trigger'),
+    ('wf_trg_transaction_complete','wired_trigger'), ('wf_trg_transaction_fail','wired_trigger'),
+    ('wf_trg_user_performs_action','wired_trigger'), ('wf_trg_var_changed','wired_trigger'),
+    ('wf_trg_walks_off_furni','wired_trigger'), ('wf_trg_walks_on_furni','wired_trigger'),
+    ('wf_var_context','wired_variable'), ('wf_var_echo','wired_variable'), ('wf_var_furni','wired_variable'),
+    ('wf_var_quest','wired_variable'), ('wf_var_quest_chain','wired_variable'), ('wf_var_reference','wired_variable'),
+    ('wf_var_room','wired_variable'), ('wf_var_user','wired_variable'), ('wf_xtra_anim_time','wired_addon'),
+    ('wf_xtra_custom_contract','wired_addon'), ('wf_xtra_exec_in_order','wired_addon'),
+    ('wf_xtra_execution_limit','wired_addon'), ('wf_xtra_filter_furni','wired_addon'),
+    ('wf_xtra_filter_furni_by_var','wired_addon'), ('wf_xtra_filter_users','wired_addon'),
+    ('wf_xtra_filter_users_by_var','wired_addon'), ('wf_xtra_mov_carry_users','wired_addon'),
+    ('wf_xtra_mov_curve','wired_addon'), ('wf_xtra_mov_no_animation','wired_addon'),
+    ('wf_xtra_mov_physics','wired_addon'), ('wf_xtra_or_eval','wired_addon'), ('wf_xtra_random','wired_addon'),
+    ('wf_xtra_rotate_to_dir','wired_addon'), ('wf_xtra_scan_chest_furni_by_type','wired_addon'),
+    ('wf_xtra_text_input_variable','wired_addon'), ('wf_xtra_text_output_furni_name','wired_addon'),
+    ('wf_xtra_text_output_username','wired_addon'), ('wf_xtra_text_output_variable','wired_addon'),
+    ('wf_xtra_unseen','wired_addon'), ('wf_xtra_var_fx_boss','wired_addon'), ('wf_xtra_var_fx_health','wired_addon'),
+    ('wf_xtra_var_fx_level','wired_addon'), ('wf_xtra_var_fx_number','wired_addon'),
+    ('wf_xtra_var_fx_progress','wired_addon'), ('wf_xtra_var_fx_status','wired_addon'),
+    ('wf_xtra_var_lvlup_system','wired_addon'), ('wf_xtra_var_text_connector','wired_addon'),
+    ('wf_xtra_var_time_util','wired_addon');
+
+UPDATE furniture f JOIN wired_canonical_79 w ON w.item_name = f.item_name
+SET f.interaction_type = w.interaction
+WHERE f.type = 's' AND f.interaction_type NOT IN (w.interaction, w.item_name);
+
+DROP TEMPORARY TABLE wired_canonical_79;
+
+-- 2. Boxes named after another client asset store the canonical name (Polaris ItemManager pairs them the same way).
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_boss'
+WHERE item_name = 'wf_xtra_varfx_boss' AND type = 's' AND sprite_id = 19195 AND interaction_type <> 'wf_xtra_var_fx_boss';
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_health'
+WHERE item_name = 'wf_xtra_varfx_hp' AND type = 's' AND sprite_id = 19196 AND interaction_type <> 'wf_xtra_var_fx_health';
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_level'
+WHERE item_name = 'wf_xtra_varfx_levelling' AND type = 's' AND sprite_id = 19197 AND interaction_type <> 'wf_xtra_var_fx_level';
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_number'
+WHERE item_name = 'wf_xtra_varfx_number' AND type = 's' AND sprite_id = 19198 AND interaction_type <> 'wf_xtra_var_fx_number';
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_progress'
+WHERE item_name = 'wf_xtra_varfx_prog' AND type = 's' AND sprite_id = 19199 AND interaction_type <> 'wf_xtra_var_fx_progress';
+UPDATE furniture SET interaction_type = 'wf_xtra_var_fx_status'
+WHERE item_name = 'wf_xtra_varfx_status' AND type = 's' AND sprite_id = 19200 AND interaction_type <> 'wf_xtra_var_fx_status';
+UPDATE furniture SET interaction_type = 'wf_trg_at_given_time'
+WHERE item_name = 'wf_proto_trg_at_given_time' AND type = 's' AND sprite_id = 17678 AND interaction_type <> 'wf_trg_at_given_time';
+UPDATE furniture SET interaction_type = 'wf_cnd_trggrer_on_frn'
+WHERE item_name = 'wf_proto_cnd_trggrer_on_frn' AND type = 's' AND sprite_id = 17679 AND interaction_type <> 'wf_cnd_trggrer_on_frn';
+UPDATE furniture SET interaction_type = 'wf_act_toggle_state'
+WHERE item_name = 'wf_ltdproto_act_toggle_state' AND type = 's' AND sprite_id = 17676 AND interaction_type <> 'wf_act_toggle_state';
+
+-- 3. Chests and contracts (WiredChestFurniture keys on these interaction types), counters, antennas, switches, click tile.
+UPDATE furniture SET interaction_type = 'wired_chest_furni'
+WHERE item_name IN ('wf_storage_furni1', 'wf_storage_furni2', 'wf_storage_furni_starter') AND type = 's' AND interaction_type <> 'wired_chest_furni';
+UPDATE furniture SET interaction_type = 'wired_chest_coins'
+WHERE item_name IN ('wf_storage_coins1', 'wf_storage_coins2') AND type = 's' AND interaction_type <> 'wired_chest_coins';
+UPDATE furniture SET interaction_type = 'wired_contract_payment'
+WHERE item_name = 'wf_contract_payment' AND type = 's' AND interaction_type <> 'wired_contract_payment';
+UPDATE furniture SET interaction_type = 'wired_contract_reward'
+WHERE item_name = 'wf_contract_reward' AND type = 's' AND interaction_type <> 'wired_contract_reward';
+UPDATE furniture SET interaction_type = 'wired_contract_trade'
+WHERE item_name = 'wf_contract_trade' AND type = 's' AND interaction_type <> 'wired_contract_trade';
+-- WiredCounterController recognizes a Wired counter by its interaction name; 'counter' would make it a countdown timer.
+UPDATE furniture SET interaction_type = item_name
+WHERE item_name IN ('wf_upcounter1', 'wf_upcounter2', 'wf_game_upcounter1', 'wf_game_upcounter2', 'wf_floor_switch1', 'wf_floor_switch2')
+  AND type = 's' AND interaction_type <> item_name;
+UPDATE furniture SET interaction_type = 'antenna'
+WHERE item_name IN ('wf_antenna1', 'wf_antenna2') AND type = 's' AND interaction_type <> 'antenna';
+-- wf_trg_click_tile only accepts picks whose interaction is the invisible click tile (wiredfurni.error.require_click_tiles).
+UPDATE furniture SET interaction_type = 'room_invisible_click_tile'
+WHERE item_name = 'room_invisible_click_tile' AND type = 's' AND sprite_id = 14561 AND interaction_type <> 'room_invisible_click_tile';
+
+-- 4. Furnidata names the catalogue shows for boxes that become public below (official furnidata only has placeholders).
+UPDATE furniture SET name = 'WIRED Trigger: At Set Time (Long)', public_name = 'WIRED Trigger: At Set Time (Long)'
+WHERE item_name = 'wf_trg_at_time_long' AND name = 'wf_trg_at_time_long name';
+UPDATE furniture SET name = 'WIRED Negative Condition: User Is NOT Wearing Badge', public_name = 'WIRED Negative Condition: User Is NOT Wearing Badge'
+WHERE item_name = 'wf_cnd_not_wearing_b' AND name = 'wf_cnd_not_wearing_b name';
+UPDATE furniture SET name = 'WIRED Negative Condition: User Is NOT Wearing Effect', public_name = 'WIRED Negative Condition: User Is NOT Wearing Effect'
+WHERE item_name = 'wf_cnd_not_wearing_fx' AND name = 'wf_cnd_not_wearing_fx name';
+
+-- 5. Implemented boxes that were only on staff pages join the public Wired pages, priced like their page.
+-- wf_act_give_reward stays staff-only: saving its settings requires the moderation tool permission.
+CREATE TEMPORARY TABLE wired_offer_plan_79 (
+    item_name VARCHAR(70) NOT NULL PRIMARY KEY,
+    sprite_id INT NOT NULL,
+    page_link VARCHAR(128) NOT NULL,
+    cost_credits INT UNSIGNED NOT NULL,
+    bulk_purchase TINYINT(1) NOT NULL,
+    sort_order INT NOT NULL,
+    furniture_id INT UNSIGNED NULL,
+    page_id INT NULL,
+    offer_id INT NULL
+) ENGINE=MEMORY;
+INSERT INTO wired_offer_plan_79 (item_name, sprite_id, page_link, cost_credits, bulk_purchase, sort_order) VALUES
+    ('wf_trg_at_time_long', 5442, 'wired_triggers', 6, 1, 1),
+    ('wf_act_move_furni_to', 5450, 'wired_effects', 7, 1, 1),
+    ('wf_act_mute_triggerer', 5854, 'wired_effects', 7, 1, 2),
+    ('wf_cnd_wearing_badge', 5094, 'wired_conditions', 5, 1, 1),
+    ('wf_cnd_not_wearing_b', 5446, 'wired_conditions', 5, 1, 2),
+    ('wf_cnd_wearing_effect', 5095, 'wired_conditions', 5, 1, 3),
+    ('wf_cnd_not_wearing_fx', 5444, 'wired_conditions', 5, 1, 4),
+    ('wf_cnd_date_rng_active', 5861, 'wired_conditions', 5, 1, 5),
+    ('wf_var_quest', 16877, 'wired_variables', 7, 1, 1),
+    ('wf_var_quest_chain', 16879, 'wired_variables', 7, 1, 2),
+    ('wf_storage_furni_starter', 18490, 'wired_chests', 0, 0, 1);
+
+-- The client's furnidata entry (has_furnidata) with the official sprite, and the page by its link.
+UPDATE wired_offer_plan_79 p
+JOIN furniture f ON f.furnidata_classname = p.item_name AND f.type = 's' AND f.sprite_id = p.sprite_id
+SET p.furniture_id = f.id;
+UPDATE wired_offer_plan_79 p JOIN catalog_pages c ON c.link = p.page_link SET p.page_id = c.id;
+
+-- Already sold on that page (any offer whose product is this furniture): nothing to add.
+DELETE p FROM wired_offer_plan_79 p
+WHERE p.furniture_id IS NULL OR p.page_id IS NULL OR EXISTS (
+    SELECT 1 FROM catalog_page_offers po
+    JOIN catalog_offer_products op ON op.offer_id = po.offer_id AND op.product_type = 'furni'
+    WHERE po.page_id = p.page_id AND op.furniture_id = p.furniture_id);
+
+SET @wired_offer_floor_79 = (SELECT COALESCE(MAX(id), 0) FROM catalog_offers);
+INSERT INTO catalog_offers (localization_key, cost_credits, cost_points, points_type, club_level, bulk_purchase, enabled, preview_image)
+SELECT p.item_name, p.cost_credits, 0, 0, 0, p.bulk_purchase, 1, ''
+FROM wired_offer_plan_79 p ORDER BY p.page_link, p.sort_order;
+
+-- New offers are the ones above the floor; localization keys are the item names inserted just now.
+UPDATE wired_offer_plan_79 p
+JOIN catalog_offers o ON o.id > @wired_offer_floor_79 AND o.localization_key = p.item_name
+SET p.offer_id = o.id;
+
+INSERT INTO catalog_offer_products (offer_id, position, product_type, furniture_id, amount, extra_param)
+SELECT p.offer_id, 0, 'furni', p.furniture_id, 1, '' FROM wired_offer_plan_79 p WHERE p.offer_id IS NOT NULL;
+
+-- Appended after the page's current offers, in plan order.
+INSERT INTO catalog_page_offers (page_id, offer_id, position)
+SELECT p.page_id, p.offer_id,
+       (SELECT COALESCE(MAX(po.position), -1) FROM catalog_page_offers po WHERE po.page_id = p.page_id) + p.sort_order
+FROM wired_offer_plan_79 p WHERE p.offer_id IS NOT NULL;
+
+DROP TEMPORARY TABLE wired_offer_plan_79;
+
+COMMIT;
+-- 80_WiredRoomLinker
+-- WIRED Room Linker (wf_room_linker, official sprite 16744) is sold as a linked pair like a teleporter
+-- (room_items_tele_links), and "WIRED Effect: Teleport to Room" forwards users to the room its other half stands in.
+-- The interaction 'wired_room_linker' makes the catalogue create both halves. Idempotent: reruns change nothing.
+UPDATE furniture SET interaction_type = 'wired_room_linker'
+WHERE item_name = 'wf_room_linker' AND type = 's'
+  AND interaction_type IN ('default', 'default_floor', 'wf_room_linker');
+-- 81_WiredOctoberBoxes
+-- The October wired boxes of the r88 dossier, the WIRED Label and the WIRED Link (official furnidata WIN63-202610131318, sprites
+-- 19393-19409 and the Web API add-on 19190). Adds their furniture rows where furnidata has none yet, gives every row the interaction
+-- the engine needs, sells them on the Wired pages, and creates the tables for label bubbles, link networks and Web API keys.
+-- Box rows keep the generic category interaction (ItemDefinition.WiredDescriptor reads the canonical item name); the label is
+-- 'wired_label' and the link 'wired_link'. Idempotent: reruns change nothing.
+
+-- 1. Tables (DDL commits implicitly, so it runs before the transaction). Rows go with their furni (items ON DELETE CASCADE); networks belong to a player.
+CREATE TABLE IF NOT EXISTS `wired_labels` (
+    `item_id` INT(10) UNSIGNED NOT NULL,
+    `text` TEXT NOT NULL,
+    `bubble_color` INT(11) NOT NULL DEFAULT 4278912,
+    `visibility` TINYINT(1) NOT NULL DEFAULT 1,
+    `always_open` TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (`item_id`),
+    CONSTRAINT `fk_wired_labels_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `wired_link_networks` (
+    `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `owner_id` INT(11) NOT NULL,
+    `name` VARCHAR(255) NOT NULL,
+    PRIMARY KEY (`id`),
+    KEY `wired_link_networks_owner` (`owner_id`),
+    CONSTRAINT `fk_wired_link_networks_owner_id` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `wired_link_endpoints` (
+    `item_id` INT(10) UNSIGNED NOT NULL,
+    `network_id` INT(10) UNSIGNED NOT NULL,
+    `receive_local` TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (`item_id`),
+    KEY `wired_link_endpoints_network` (`network_id`),
+    CONSTRAINT `fk_wired_link_endpoints_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_wired_link_endpoints_network_id` FOREIGN KEY (`network_id`) REFERENCES `wired_link_networks` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Only SHA-256 hashes of the keys; the add-on's own saved text holds the keys themselves.
+CREATE TABLE IF NOT EXISTS `wired_web_api_keys` (
+    `item_id` INT(10) UNSIGNED NOT NULL,
+    `room_id` INT(10) UNSIGNED NOT NULL,
+    `read_key_hash` CHAR(64) NULL DEFAULT NULL,
+    `write_key_hash` CHAR(64) NULL DEFAULT NULL,
+    `bulk_delete` TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (`item_id`),
+    UNIQUE KEY `wired_web_api_read_key` (`read_key_hash`),
+    UNIQUE KEY `wired_web_api_write_key` (`write_key_hash`),
+    CONSTRAINT `fk_wired_web_api_keys_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+START TRANSACTION;
+
+-- 2. Furnidata rows (classname, sprite, name, description, revision, customparams, stand/sit/lay/put on, height, interaction).
+-- Three classnames only have placeholder names in official furnidata; they get readable ones, as migration 79 did.
+CREATE TEMPORARY TABLE wired_furni_81 (
+    item_name VARCHAR(70) NOT NULL PRIMARY KEY,
+    sprite_id INT NOT NULL,
+    name VARCHAR(56) NOT NULL,
+    description VARCHAR(255) NOT NULL,
+    revision INT NOT NULL,
+    custom_params VARCHAR(16) NULL,
+    can_stand_on TINYINT(1) NOT NULL,
+    can_sit_on TINYINT(1) NOT NULL,
+    can_lay_on TINYINT(1) NOT NULL,
+    can_put_stuff_on TINYINT(1) NOT NULL,
+    height DOUBLE NOT NULL,
+    interaction VARCHAR(25) NOT NULL
+) ENGINE=MEMORY;
+INSERT INTO wired_furni_81 VALUES
+    ('wf_act_progress_ach', 19393, 'WIRED Effect: Progress Achievement', 'wf_act_progress_ach desc', 75953, '51', 1, 0, 0, 1, 0.65, 'wired_effect'),
+    ('wf_act_send_dataframe', 19394, 'WIRED Effect: Send Link Dataframe', 'wf_act_send_dataframe desc', 75953, '64', 1, 0, 0, 1, 0.65, 'wired_effect'),
+    ('wf_act_send_message', 19395, 'WIRED Effect: Send Link Message', 'wf_act_send_message desc', 75953, '63', 1, 0, 0, 1, 0.65, 'wired_effect'),
+    ('wf_act_set_highlight', 19396, 'WIRED Effect: Set Furni Highlight', 'wf_act_set_highlight desc', 75953, '62', 1, 0, 0, 1, 0.65, 'wired_effect'),
+    ('wf_act_set_visibility', 19397, 'WIRED Effect: Set Furni Transparency', 'wf_act_set_visibility desc', 75953, '61', 1, 0, 0, 1, 0.65, 'wired_effect'),
+    ('wf_label', 19398, 'WIRED Label', 'wf_label desc', 75953, NULL, 0, 0, 0, 1, 0.11, 'wired_label'),
+    ('wf_link', 19399, 'WIRED Link', 'wf_link desc', 75953, NULL, 0, 0, 0, 0, 1.8, 'wired_link'),
+    ('wf_trg_receive_dataframe', 19400, 'WIRED Trigger: Receive Link Dataframe', 'wf_trg_receive_dataframe desc', 75953, '30', 1, 0, 0, 1, 0.65, 'wired_trigger'),
+    ('wf_trg_receive_message', 19401, 'WIRED Trigger: Receive Link Message', 'wf_trg_receive_message desc', 75953, '29', 1, 0, 0, 1, 0.65, 'wired_trigger'),
+    ('wf_trg_room_initializes', 19402, 'WIRED Trigger: Room Initialized', 'wf_trg_room_initializes desc', 75953, '28', 1, 0, 0, 1, 0.65, 'wired_trigger'),
+    ('wf_var_dailytask', 19403, 'WIRED Variable: Daily Task', 'wf_var_dailytask desc', 75953, '8', 1, 0, 0, 1, 1.2, 'wired_variable'),
+    ('wf_var_pointer', 19404, 'WIRED Variable: Pointer Variable', 'wf_var_pointer desc', 75953, '9', 1, 0, 0, 1, 1.2, 'wired_variable'),
+    ('wf_xtra_achievement_enabler', 19405, 'WIRED Add-on: Achievement Enabler', 'wf_xtra_achievement_enabler desc', 75953, '2001', 1, 0, 0, 1, 0.74, 'wired_addon'),
+    ('wf_xtra_link_speaker', 19406, 'WIRED Link Speaker', 'wf_xtra_link_speaker desc', 75953, '2003', 0, 0, 0, 0, 1.0, 'wired_addon'),
+    ('wf_xtra_var_import', 19407, 'Variable Add-on: Import', 'wf_xtra_var_import desc', 75953, '1004', 1, 0, 0, 1, 0.75, 'wired_addon'),
+    ('wf_xtra_var_leaderboard', 19408, 'Variable Add-on: Leaderboard', 'wf_xtra_var_leaderboard desc', 75953, '1005', 1, 0, 0, 1, 0.75, 'wired_addon'),
+    ('wf_xtra_var_share', 19409, 'Variable Add-on: Share', 'wf_xtra_var_share desc', 75953, '1003', 1, 0, 0, 1, 0.75, 'wired_addon'),
+    ('wf_xtra_var_web_api', 19190, 'Variable Global Add-on: Web API', 'wf_xtra_var_web_api desc', 75694, '2002', 1, 0, 0, 1, 0.75, 'wired_addon');
+
+-- A classname or sprite already taken by a furnidata row (60_FurnitureFurnidata) keeps that row.
+INSERT INTO furniture (item_name, public_name, type, width, length, stack_height, can_stack, can_sit, is_walkable, sprite_id,
+    allow_recycle, allow_trade, allow_marketplace_sell, allow_gift, allow_inventory_stack, interaction_type, interaction_modes_count,
+    has_furnidata, revision, category, default_dir, xdim, ydim, name, description, custom_params, special_type,
+    can_stand_on, can_sit_on, can_lay_on, can_put_stuff_on, height, furni_line, rare, tradeable, recyclable)
+SELECT w.item_name, w.name, 's', 1, 1, w.height, w.can_put_stuff_on, 0, w.can_stand_on, w.sprite_id,
+    1, 1, 1, 1, 1, w.interaction, 1,
+    1, w.revision, 'wired', 0, 1, 1, w.name, w.description, w.custom_params, 1,
+    w.can_stand_on, w.can_sit_on, w.can_lay_on, w.can_put_stuff_on, w.height, 'wired', 0, 1, 1
+FROM wired_furni_81 w
+WHERE NOT EXISTS (SELECT 1 FROM furniture f WHERE f.type = 's' AND f.furnidata_classname = w.item_name)
+  AND NOT EXISTS (SELECT 1 FROM furniture f WHERE f.type = 's' AND f.furnidata_sprite_id = w.sprite_id);
+
+-- Existing rows (the Web API add-on shipped as 'default') take the interaction the engine needs.
+UPDATE furniture f JOIN wired_furni_81 w ON w.item_name = f.item_name AND w.sprite_id = f.sprite_id
+SET f.interaction_type = w.interaction
+WHERE f.type = 's' AND f.interaction_type NOT IN (w.interaction, w.item_name);
+
+-- 3. Catalogue offers on the Wired pages, priced like their page; already sold on the page means nothing to add.
+CREATE TEMPORARY TABLE wired_offer_plan_81 (
+    item_name VARCHAR(70) NOT NULL PRIMARY KEY,
+    sprite_id INT NOT NULL,
+    page_link VARCHAR(128) NOT NULL,
+    cost_credits INT UNSIGNED NOT NULL,
+    bulk_purchase TINYINT(1) NOT NULL,
+    sort_order INT NOT NULL,
+    furniture_id INT UNSIGNED NULL,
+    page_id INT NULL,
+    offer_id INT NULL
+) ENGINE=MEMORY;
+INSERT INTO wired_offer_plan_81 (item_name, sprite_id, page_link, cost_credits, bulk_purchase, sort_order) VALUES
+    ('wf_trg_room_initializes', 19402, 'wired_triggers', 6, 1, 1),
+    ('wf_trg_receive_message', 19401, 'wired_triggers', 6, 1, 2),
+    ('wf_trg_receive_dataframe', 19400, 'wired_triggers', 6, 1, 3),
+    ('wf_act_progress_ach', 19393, 'wired_effects', 7, 1, 1),
+    ('wf_act_set_visibility', 19397, 'wired_effects', 7, 1, 2),
+    ('wf_act_set_highlight', 19396, 'wired_effects', 7, 1, 3),
+    ('wf_act_send_message', 19395, 'wired_effects', 7, 1, 4),
+    ('wf_act_send_dataframe', 19394, 'wired_effects', 7, 1, 5),
+    ('wf_xtra_achievement_enabler', 19405, 'wired_addons', 5, 1, 1),
+    ('wf_xtra_link_speaker', 19406, 'wired_addons', 5, 1, 2),
+    ('wf_var_dailytask', 19403, 'wired_variables', 7, 1, 1),
+    ('wf_var_pointer', 19404, 'wired_variables', 7, 1, 2),
+    ('wf_xtra_var_share', 19409, 'wired_variables_addons', 8, 1, 1),
+    ('wf_xtra_var_import', 19407, 'wired_variables_addons', 8, 1, 2),
+    ('wf_xtra_var_leaderboard', 19408, 'wired_variables_addons', 8, 1, 3),
+    ('wf_xtra_var_web_api', 19190, 'wired_variables_addons', 8, 1, 4),
+    ('wf_label', 19398, 'wired_extras', 5, 1, 1),
+    ('wf_link', 19399, 'wired_extras', 5, 1, 2);
+
+UPDATE wired_offer_plan_81 p
+JOIN furniture f ON f.furnidata_classname = p.item_name AND f.type = 's' AND f.sprite_id = p.sprite_id
+SET p.furniture_id = f.id;
+UPDATE wired_offer_plan_81 p JOIN catalog_pages c ON c.link = p.page_link SET p.page_id = c.id;
+
+DELETE p FROM wired_offer_plan_81 p
+WHERE p.furniture_id IS NULL OR p.page_id IS NULL OR EXISTS (
+    SELECT 1 FROM catalog_page_offers po
+    JOIN catalog_offer_products op ON op.offer_id = po.offer_id AND op.product_type = 'furni'
+    WHERE po.page_id = p.page_id AND op.furniture_id = p.furniture_id);
+
+SET @wired_offer_floor_81 = (SELECT COALESCE(MAX(id), 0) FROM catalog_offers);
+INSERT INTO catalog_offers (localization_key, cost_credits, cost_points, points_type, club_level, bulk_purchase, enabled, preview_image)
+SELECT p.item_name, p.cost_credits, 0, 0, 0, p.bulk_purchase, 1, ''
+FROM wired_offer_plan_81 p ORDER BY p.page_link, p.sort_order;
+
+UPDATE wired_offer_plan_81 p
+JOIN catalog_offers o ON o.id > @wired_offer_floor_81 AND o.localization_key = p.item_name
+SET p.offer_id = o.id;
+
+INSERT INTO catalog_offer_products (offer_id, position, product_type, furniture_id, amount, extra_param)
+SELECT p.offer_id, 0, 'furni', p.furniture_id, 1, '' FROM wired_offer_plan_81 p WHERE p.offer_id IS NOT NULL;
+
+INSERT INTO catalog_page_offers (page_id, offer_id, position)
+SELECT p.page_id, p.offer_id,
+       (SELECT COALESCE(MAX(po.position), -1) FROM catalog_page_offers po WHERE po.page_id = p.page_id) + p.sort_order
+FROM wired_offer_plan_81 p WHERE p.offer_id IS NOT NULL;
+
+DROP TEMPORARY TABLE wired_offer_plan_81;
+DROP TEMPORARY TABLE wired_furni_81;
+
+COMMIT;

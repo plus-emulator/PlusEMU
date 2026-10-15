@@ -28,24 +28,32 @@ public sealed partial class WiredRoomVariables
     }
     private bool IsAttached(Item item) => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item);
 
+    /// <summary>Variable FX boxes a room draws; the rest are ignored (each one is drawn over every holder of its variable).</summary>
+    public const int MaxFxBoxes = 25;
+
     public IReadOnlyList<WiredVariableFxBinding> FxBindings()
     {
         var authorized = Module.DescribeDefinitions(_definitions.Keys).ToDictionary(x => x.Definition.ItemId);
         var result = new List<WiredVariableFxBinding>();
 
         foreach (var box in _metadata.Values.Where(x => WiredVariableMetadataBox.IsFx(x.Descriptor.CanonicalName) && IsAttached(x.Item)).OrderBy(x => x.Item.Id)) {
-            var target = box.Configuration.IntParams[0] == 0 ? WiredVariableTarget.User : WiredVariableTarget.Furni;
+            var target = WiredVariableFxSettings.UsesUserSource(box.Configuration) ? WiredVariableTarget.User : WiredVariableTarget.Furni;
             var definition = _definitions.Values.Where(x => x.Descriptor.CanonicalName == (target == WiredVariableTarget.User ? "wf_var_user" : "wf_var_furni")
                 && authorized.ContainsKey(x.Item.Id) && IsAttached(x.Item) && x.Item.GetX == box.Item.GetX && x.Item.GetY == box.Item.GetY)
                 .OrderBy(x => x.Item.GetZ).ThenBy(x => x.Item.Id).FirstOrDefault();
             var reference = new WiredVariableReference(target, definition is null ? "" : $"custom:{definition.Item.Id}");
 
-            if (!WiredVariableFxSettings.TryDecode(box.Descriptor.CanonicalName, checked((int)box.Item.Id), box.Configuration, reference, out var binding, out _)) {
+            if (!WiredVariableFxSettings.TryDecode(box.Descriptor.CanonicalName, checked((int)box.Item.Id), box.Configuration, reference,
+                (id, expected) => Module.TryResolveCatalogId(id, expected, out var resolved) ? resolved : null, out var binding, out _)) {
                 continue;
             }
 
             var level = definition is null ? null : MetadataOn(definition.Item.Id, "wf_xtra_var_lvlup_system")?.LevelSystem;
             result.Add(binding! with { Level = level is null ? null : level.Level });
+
+            if (result.Count >= MaxFxBoxes) {
+                break;
+            }
         }
 
         return result;

@@ -8,8 +8,8 @@ namespace Plus.Communication.Revisions;
 
 public class RevisionsCache : IRevisionsCache, IStartable
 {
-    public IReadOnlyDictionary<string, Revision> Revisions { get; set; }
-    public Revision InternalRevision { get; private set; }
+    public IReadOnlyDictionary<string, Revision> Revisions { get; set; } = new Dictionary<string, Revision>();
+    public Revision InternalRevision { get; } = CreateInternalRevision();
 
     private string? _directory;
     public string Location => _directory ??= Path.Join(Directory.GetCurrentDirectory(), "revisions");
@@ -22,24 +22,31 @@ public class RevisionsCache : IRevisionsCache, IStartable
 
     public async Task Start()
     {
-        LoadInternalRevision();
+        WriteExampleRevision();
         await LoadRevisions();
-        Validate();
     }
 
-    private void LoadInternalRevision()
+    private static Revision CreateInternalRevision()
     {
-        var incomingHeaders = typeof(ClientPacketHeader).GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy).ToDictionary(field => field.Name, field => (uint)field.GetRawConstantValue());
-        var outgoingHeaders = typeof(ServerPacketHeader).GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy).ToDictionary(field => field.Name, field => (uint)field.GetRawConstantValue());
-        InternalRevision = new()
+        var incomingHeaders = ReadHeaderIds(typeof(ClientPacketHeader));
+        var outgoingHeaders = ReadHeaderIds(typeof(ServerPacketHeader));
+
+        return new()
         {
-            Name = "PRODUCTION-201701242205-837386173",
+            Name = "WIN63-202610121709-785561319",
             IncomingHeaders = incomingHeaders,
-            IncomingIdToInternalIdMapping = incomingHeaders.Where(kvp => kvp.Value > 0).ToDictionary(kvp => kvp.Value, kvp => kvp.Value),
+            IncomingIdToInternalIdMapping = incomingHeaders.ToDictionary(kvp => kvp.Value, kvp => kvp.Value),
             OutgoingHeaders = outgoingHeaders,
             InternalIdToOutgoingIdMapping = outgoingHeaders.Where(kvp => kvp.Value > 0).ToDictionary(kvp => kvp.Value, kvp => kvp.Value)
         };
+    }
 
+    private static Dictionary<string, uint> ReadHeaderIds(Type headers) =>
+        headers.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy).ToDictionary(field => field.Name,
+            field => field.GetRawConstantValue() is uint id ? id : throw new InvalidOperationException($"{headers.Name}.{field.Name} is not a packet ID constant."));
+
+    private void WriteExampleRevision()
+    {
         if (!Directory.Exists(Location)) {
             Directory.CreateDirectory(Location);
         }
@@ -52,44 +59,35 @@ public class RevisionsCache : IRevisionsCache, IStartable
         var revisions = new Dictionary<string, Revision>();
 
         foreach (var file in Directory.GetFiles(Location).Where(f => f.EndsWith(".json"))) {
-            var revision = JsonSerializer.Deserialize<Revision>(await File.ReadAllTextAsync(file), SerializerOptions);
+            var revision = JsonSerializer.Deserialize<Revision>(await File.ReadAllTextAsync(file), SerializerOptions)
+                ?? throw new InvalidOperationException($"{file}: empty packet revision.");
 
-            if (revision.Name.Equals(InternalRevision.Name)) {
-                continue;
+            if (string.IsNullOrWhiteSpace(revision.Name)) {
+                throw new InvalidOperationException($"{file}: packet revision name is missing.");
             }
 
-            revisions[revision.Name] = revision;
+            if (!revision.Name.Equals(InternalRevision.Name, StringComparison.Ordinal)) {
+                throw new InvalidOperationException($"{file}: unsupported packet revision '{revision.Name}'. Only '{InternalRevision.Name}' is supported.");
+            }
+
+            ValidateCurrentHeaders(file, revision.IncomingHeaders, InternalRevision.IncomingHeaders, "incoming");
+            ValidateCurrentHeaders(file, revision.OutgoingHeaders, InternalRevision.OutgoingHeaders, "outgoing");
+
+            if (!revisions.TryAdd(InternalRevision.Name, InternalRevision)) {
+                throw new InvalidOperationException($"{file}: duplicate packet revision name '{revision.Name}'.");
+            }
         }
 
         revisions[InternalRevision.Name] = InternalRevision;
         Revisions = revisions;
     }
 
-    private void Validate()
+    private static void ValidateCurrentHeaders(string file, IReadOnlyDictionary<string, uint> supplied,
+        IReadOnlyDictionary<string, uint> current, string direction)
     {
-        foreach (var revision in Revisions.Values) {
-            var undefinedIncoming = revision.IncomingHeaders.Keys.Where(key => !InternalRevision.IncomingHeaders.ContainsKey(key)).ToList();
-            var undefinedOutgoing = revision.OutgoingHeaders.Keys.Where(key => !InternalRevision.OutgoingHeaders.ContainsKey(key)).ToList();
-
-            if (undefinedIncoming.Any()) {
-                Console.WriteLine($"{revision.Name}: Missing Incoming Headers ({undefinedIncoming.Count}):");
-
-                foreach (var incoming in undefinedIncoming) {
-                    Console.WriteLine(incoming);
-                }
-            }
-
-            if (undefinedOutgoing.Any()) {
-                Console.WriteLine($"{revision.Name}: Missing Outgoing Headers ({undefinedOutgoing.Count}):");
-
-                foreach (var outgoing in undefinedOutgoing) {
-                    Console.WriteLine(outgoing);
-                }
-            }
-
-
-            revision.IncomingIdToInternalIdMapping = revision.IncomingHeaders.Where(kvp => kvp.Value > 0).ToDictionary(kvp => kvp.Value, kvp => InternalRevision.IncomingHeaders[kvp.Key]);
-            revision.InternalIdToOutgoingIdMapping = revision.OutgoingHeaders.Where(kvp => kvp.Value > 0).ToDictionary(kvp => InternalRevision.OutgoingHeaders[kvp.Key], kvp => kvp.Value);
+        if (supplied.Count != current.Count || current.Any(entry =>
+            !supplied.TryGetValue(entry.Key, out var id) || id != entry.Value)) {
+            throw new InvalidOperationException($"{file}: {direction} headers do not match the current packet revision.");
         }
     }
 }

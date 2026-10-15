@@ -396,25 +396,28 @@ public class Item
         }
     }
 
-    public double TotalHeight
+    /// <summary>A stacking height set by the Override Height effect; null keeps the definition's height. Not persisted.</summary>
+    internal double? WiredHeightOverride { get; set; }
+
+    public double CurrentHeight
     {
         get
         {
-            var curHeight = 0.0;
-
-            if (Definition.AdjustableHeights?.Count > 1) {
-                if (int.TryParse(LegacyDataString, out var num2) && Definition.AdjustableHeights.Count - 1 >= num2) {
-                    curHeight = GetZ + Definition.AdjustableHeights[num2];
-                }
+            if (WiredHeightOverride is { } overridden) {
+                return overridden;
             }
 
-            if (curHeight <= 0.0) {
-                curHeight = GetZ + Definition.Height;
+            if (Definition.AdjustableHeights is { Count: > 1 } heights
+                && int.TryParse(LegacyDataString, out var index) && index >= 0 && index < heights.Count
+                && GetZ + heights[index] >= 0) {
+                return heights[index];
             }
 
-            return curHeight;
+            return Definition.Height;
         }
     }
+
+    public double TotalHeight => GetZ + CurrentHeight;
 
     public bool IsWallItem => Definition.Type == ItemType.Wall;
 
@@ -612,6 +615,10 @@ public class Item
         var room = GetRoom();
 
         if (room == null) {
+            // Detached items leave the update queue, so a later placement can restart them.
+            UpdateNeeded = false;
+            UpdateCounter = 0;
+
             return;
         }
 
@@ -1151,6 +1158,10 @@ public class Item
                             break;
                         }
                     case InteractionType.Banzaicounter: {
+                            if (WiredCounterController.Recognizes(this)) {
+                                break;
+                            }
+
                             if (string.IsNullOrEmpty(LegacyDataString)) {
                                 break;
                             }
@@ -1301,6 +1312,10 @@ public class Item
                             break;
                         }
                     case InteractionType.Freezetimer: {
+                            if (WiredCounterController.Recognizes(this)) {
+                                break;
+                            }
+
                             if (string.IsNullOrEmpty(LegacyDataString)) {
                                 break;
                             }
@@ -1566,6 +1581,11 @@ public class Item
         _interactors = interactors;
         _travelStore = travelStore;
         _rewards = rewards;
+
+        // Teleports and hoppers run their door state machine every cycle while placed.
+        if (Definition.InteractionType is InteractionType.Teleport or InteractionType.Hopper && !UpdateNeeded && UpdateCounter <= 0) {
+            RequestUpdate(1, true);
+        }
     }
 
     internal void Detach(Room room)

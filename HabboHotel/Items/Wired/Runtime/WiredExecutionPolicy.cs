@@ -19,5 +19,5 @@ public sealed class WiredExecutionPolicy
     public Func<IReadOnlyList<IWiredItem>, IReadOnlyList<IWiredItem>>? ChooseActions { get; set; }
     public List<Func<WiredRuntimeContext, string, string>> TextFormatters { get; } = [];
     public string FormatText(WiredRuntimeContext context, string text) =>
-        TextFormatters.Aggregate(text, (current, formatter) => formatter(context, current));
+        TextFormatters.Aggregate(WiredTextPlaceholders.FillTriggerText(context, text), (current, formatter) => formatter(context, current));
 }

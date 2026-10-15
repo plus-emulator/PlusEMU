@@ -5,11 +5,14 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
-/// Executes the existing Octane movement editors. Resolved movers and targets are separate;
+/// Executes the existing Volt movement editors. Resolved movers and targets are separate;
 /// the caller owns source selection, scheduling and packet policy.
 /// </summary>
-public sealed class WiredMovementActions
+public sealed class WiredMovementActions(Random? random = null)
 {
+    // Injected randomness also makes target distribution and execution order reproducible in tests.
+    private readonly Random _random = random ?? Random.Shared;
+
     public delegate bool MoveFurniture(Item item, int x, int y, int rotation, double? height);
     public delegate bool MoveAvatar(RoomUser avatar, Item target, bool slide, bool fastTeleport, int walkMode);
     /// <summary>Runs each mover's step; the step commits through the given (x, y, rotation) move.</summary>
@@ -22,16 +25,21 @@ public sealed class WiredMovementActions
         "wf_act_toggle_state", "wf_act_toggle_to_rnd", "wf_act_teleport_to", "wf_act_user_to_furni"
     };
 
-    /// <summary>Furniture movers stepping to a derived tile, not onto a furni, user or snapshot position.</summary>
+    /// <summary>
+    /// Furniture movers stepping to a derived tile, where any other furniture blocks. wf_act_rel_mov is not one: observed r92f
+    /// r92-move-addons nophys-w1, a +1x move onto an own stackable marker stacked on it (z 2.0) without a physics add-on.
+    /// </summary>
     public static readonly IReadOnlySet<string> Steps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "wf_act_rel_mov", "wf_act_move_rotate", "wf_act_move_furni_as_group", "wf_act_move_furni_to"
+        "wf_act_move_rotate", "wf_act_move_furni_as_group", "wf_act_move_furni_to"
     };
 
     public bool Execute(string name, WiredConfiguration configuration, IReadOnlyList<Item> movers,
         IReadOnlyList<Item> targets, IReadOnlyList<RoomUser> users,
         MoveFurniture move, MoveAvatar relocate, Action<Item, string> setState,
-        Func<Item, Func<string, string?>, bool>? toggleState = null, MoveTogether? together = null)
+        Func<Item, Func<string, string?>, bool>? toggleState = null, MoveTogether? together = null,
+        Func<int, int, bool>? inBounds = null, Func<Item, WiredFurniSnapshot, bool, bool, bool>? restoreWall = null,
+        Func<Item, int, double, bool>? setWallAltitude = null)
     {
         if (!WiredMovementConfiguration.TryValidate(name, configuration, out configuration, out _)) {
             return false;
@@ -61,8 +69,14 @@ public sealed class WiredMovementActions
                 }
 
                 foreach (var item in movers) {
+                    if (item.IsWallItem) {
+                        affected |= setWallAltitude?.Invoke(item, Param(0, 2), altitude) == true;
+
+                        continue;
+                    }
+
                     var z = Param(0, 2) switch { 0 => item.GetZ + altitude, 1 => item.GetZ - altitude, _ => altitude };
-                    affected |= move(item, item.GetX, item.GetY, item.Rotation, Math.Clamp(z, 0, 80));
+                    affected |= move(item, item.GetX, item.GetY, item.Rotation, Math.Clamp(z, 0, Math.Max(0, 80 - item.CurrentHeight)));
                 }
 
                 break;
@@ -85,14 +99,60 @@ public sealed class WiredMovementActions
 
                 break;
             case "wf_act_move_furni_as_group":
+                if (p.Length == 6) {
+                    if (movers.Count == 0 || (Param(0) == 1 ? users.Count == 0 : targets.Count == 0)) {
+                        return false;
+                    }
+
+                    var anchorX = Param(0) == 1 ? users[0].X : targets[0].GetX;
+                    var anchorY = Param(0) == 1 ? users[0].Y : targets[0].GetY;
+                    var groupDx = anchorX + Param(1) - movers[0].GetX;
+                    var groupDy = anchorY + Param(2) - movers[0].GetY;
+
+                    if (groupDx == 0 && groupDy == 0
+                        || inBounds != null && movers.Any(item => !inBounds(item.GetX + groupDx, item.GetY + groupDy))) {
+                        return false;
+                    }
+
+                    foreach (var item in movers.OrderByDescending(item => item.GetX * Math.Sign(groupDx) + item.GetY * Math.Sign(groupDy))) {
+                        if (!move(item, item.GetX + groupDx, item.GetY + groupDy, item.Rotation, null)) {
+                            break;
+                        }
+
+                        affected = true;
+                    }
+
+                    break;
+                }
+
                 var groupOffset = WiredRoomOperations.Offset(Param(0));
 
-                // Octane/Polaris direction editor: leading edge first, blocked members skipped.
+                // Volt/Polaris direction editor: leading edge first, blocked members skipped.
                 affected = together(movers.OrderByDescending(item => item.GetX * groupOffset.X + item.GetY * groupOffset.Y).ToArray(),
                     (item, step) => step(item.GetX + groupOffset.X, item.GetY + groupOffset.Y, item.Rotation));
 
                 break;
             case "wf_act_furni_to_furni":
+                if (targets.Count == 0) {
+                    return false;
+                }
+
+                var destinations = Shuffled(targets);
+                var uses = new int[destinations.Length];
+                var assignments = movers.Select(item => ReserveTarget(destinations, uses, item.Id)).ToArray();
+
+                // Assign before moving: every target gets a turn, including assignments whose move is blocked.
+                // Execute separately in random order because earlier moves change the stack for later ones.
+                foreach (var index in Shuffled(Enumerable.Range(0, movers.Count).ToArray())) {
+                    var item = movers[index];
+                    var assigned = assignments[index];
+
+                    if (assigned != null && (item.GetX != assigned.GetX || item.GetY != assigned.GetY)) {
+                        affected |= move(item, assigned.GetX, assigned.GetY, item.Rotation, null);
+                    }
+                }
+
+                break;
             case "wf_act_move_furni_to":
                 if (targets.Count == 0) {
                     return false;
@@ -105,7 +165,7 @@ public sealed class WiredMovementActions
                 var targetX = target.GetX + spacing.X * Param(1, 1);
                 var targetY = target.GetY + spacing.Y * Param(1, 1);
 
-                if (Steps.Contains(name)) {
+                if (Steps.Contains(name) && p.Length == 3) {
                     affected = together(movers, (item, step) => step(targetX, targetY, item.Rotation));
 
                     break;
@@ -127,10 +187,35 @@ public sealed class WiredMovementActions
 
                 break;
             case "wf_act_match_to_sshot":
+                // A furni outside a one-furni snapshot takes that furni's state; nothing else of it was recorded.
+                var only = configuration.Snapshots.Length == 1 && configuration.Snapshots[0].Wall == null ? configuration.Snapshots[0] : null;
+
                 foreach (var item in movers) {
                     var snapshot = configuration.Snapshots.FirstOrDefault(entry => entry.ItemId == item.Id);
 
                     if (snapshot == null) {
+                        if (only != null && Param(0) == 1 && item.IsFloorItem) {
+                            if (toggleState != null) {
+                                affected |= toggleState(item, current => string.Equals(current, only.State, StringComparison.Ordinal) ? null : only.State);
+                            }
+                            else if (!string.Equals(item.LegacyDataString, only.State, StringComparison.Ordinal)) {
+                                setState(item, only.State);
+                                affected = true;
+                            }
+                        }
+
+                        continue;
+                    }
+
+                    if (item.IsWallItem) {
+                        if (Param(0) == 0 && Param(1) == 0 && (Param(2) == 1 || Param(3) == 1) && restoreWall != null) {
+                            affected |= restoreWall(item, snapshot, Param(2) == 1, Param(3) == 1);
+                        }
+
+                        continue;
+                    }
+
+                    if (!item.IsFloorItem || snapshot.Wall != null) {
                         continue;
                     }
 
@@ -177,19 +262,28 @@ public sealed class WiredMovementActions
                 }
 
                 break;
-            case "wf_act_teleport_to":
             case "wf_act_user_to_furni":
+                if (targets.Count == 0) {
+                    return false;
+                }
+
+                var userDestinations = Shuffled(targets);
+                var userUses = new int[userDestinations.Length];
+
+                foreach (var user in Shuffled(users)) {
+                    var destination = ReserveTarget(userDestinations, userUses)!;
+                    affected |= relocate(user, destination, true, false, Param(2, 1));
+                }
+
+                break;
+            case "wf_act_teleport_to":
                 if (targets.Count == 0) {
                     return false;
                 }
 
                 foreach (var user in users) {
                     var destination = targets[Random.Shared.Next(targets.Count)];
-                    // These are distinct legacy editors: teleport's flag changes its animation
-                    // delay; user-to-furni always slides and its third slot controls walk continuity.
-                    var slide = name.Equals("wf_act_user_to_furni", StringComparison.OrdinalIgnoreCase);
-                    affected |= relocate(user, destination, slide, !slide && Param(0) == 1,
-                        slide ? Param(2, 1) : 2);
+                    affected |= relocate(user, destination, false, Param(0) == 1, 2);
                 }
 
                 break;
@@ -198,6 +292,31 @@ public sealed class WiredMovementActions
         }
 
         return affected;
+    }
+
+    private T[] Shuffled<T>(IReadOnlyList<T> values)
+    {
+        var result = values.ToArray();
+        _random.Shuffle(result.AsSpan());
+        return result;
+    }
+
+    private static Item? ReserveTarget(Item[] targets, int[] uses, uint? excludedItemId = null)
+    {
+        var index = -1;
+
+        for (var i = 0; i < targets.Length; i++) {
+            if (targets[i].Id != excludedItemId && (index < 0 || uses[i] < uses[index])) {
+                index = i;
+            }
+        }
+
+        if (index < 0) {
+            return null;
+        }
+
+        uses[index]++;
+        return targets[index];
     }
 
     // v2 only. Null when the toggle would not change the state.
@@ -209,13 +328,13 @@ public sealed class WiredMovementActions
         return next == oldState ? null : next.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    private static int MovementDirection(int movement) => movement switch
+    private int MovementDirection(int movement) => movement switch
     {
         >= 0 and <= 7 => movement,
-        // Read-only conversion preserves old editor's random/none choices, absent from the current grid.
-        8 => Random.Shared.Next(4) * 2,
-        9 => Random.Shared.Next(2) == 0 ? 2 : 6,
-        10 => Random.Shared.Next(2) == 0 ? 0 : 4,
+        // Stored movement choices include fixed, random and no movement.
+        8 => _random.Next(8),
+        9 => _random.Next(2) == 0 ? 2 : 6,
+        10 => _random.Next(2) == 0 ? 0 : 4,
         _ => -1
     };
 }

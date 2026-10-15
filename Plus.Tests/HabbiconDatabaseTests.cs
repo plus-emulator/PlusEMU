@@ -56,13 +56,13 @@ public class HabbiconDatabaseTests
 
         ImportPristineSchemaOnce(connectionString);
         Execute(File.ReadAllText(HabbiconPacketTests.Repo("Resources/SQLs/Updates/14_Habbicons.sql")));
-        Execute("DELETE FROM users_habbicons; DELETE FROM users WHERE id = 910001");
+        Execute("DELETE FROM users_habbicons; DELETE FROM users WHERE id IN (910001, 910002)");
 
         using (var connection = _database.Connection()) {
             bool hasTicket = connection.QuerySingle<int>("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'auth_ticket'") > 0;
             Execute(hasTicket
-                ? "INSERT INTO users (id, username, auth_ticket, credits) VALUES (910001, 'habicon_tests', '', 100)"
-                : "INSERT INTO users (id, username, credits) VALUES (910001, 'habicon_tests', 100)");
+                ? "INSERT INTO users (id, username, auth_ticket, credits) VALUES (910001, 'habicon_tests', '', 100), (910002, 'habicon_recipient', '', 0)"
+                : "INSERT INTO users (id, username, credits) VALUES (910001, 'habicon_tests', 100), (910002, 'habicon_recipient', 0)");
             Execute("INSERT INTO user_currencies (user_id, type, amount) VALUES (910001, 0, 20), (910001, 5, 20)");
         }
 
@@ -324,7 +324,7 @@ public class HabbiconDatabaseTests
         var (client, sent) = HabbiconTestSupport.Client(habbo);
         var clients = new Plus.HabboHotel.GameClients.GameClientManager(null!, null!);
         clients.RegisterClient(client, habbo.Id, "habicon_tests");
-        var give = new Plus.Communication.RCON.Commands.User.GiveUserCurrencyCommand(new Plus.HabboHotel.Users.UserMaintenanceService(new Plus.HabboHotel.Users.UserMaintenanceStore(_database), new Plus.HabboHotel.Users.Authentication.AccountSessionGate(), clients));
+        Plus.Communication.RCON.Commands.IRconCommand give = new Plus.Communication.RCON.Commands.User.GiveUserCurrencyCommand(new Plus.HabboHotel.Users.UserMaintenanceService(new Plus.HabboHotel.Users.UserMaintenanceStore(_database), new Plus.HabboHotel.Users.Authentication.AccountSessionGate(), clients));
         using var enteredPurchase = new ManualResetEventSlim();
         using var releasePurchase = new ManualResetEventSlim();
         using var startedAward = new ManualResetEventSlim();
@@ -353,8 +353,10 @@ public class HabbiconDatabaseTests
         SaveWallet(habbo);
         Assert.Equal(105, Scalar("SELECT credits FROM users WHERE id = 910001"));
         Assert.Equal(1, Assert.Throws<HabbiconRejected>(() => _service.Change(habbo, HabbiconAction.Buy, 62)).Code);
-        Assert.False(await give.TryExecute(new[] { UserId.ToString(), "credits", "10" }));
+        // A saved wallet is never written from memory again; the award goes to the account row instead.
+        Assert.True(await give.TryExecute(new[] { UserId.ToString(), "credits", "10" }));
         Assert.Equal(105, habbo.Credits);
+        Assert.Equal(115, Scalar("SELECT credits FROM users WHERE id = 910001"));
     }
 
     private static void HabbiconMessagesForTest(Plus.HabboHotel.GameClients.GameClient client, HabbiconChange change) =>
@@ -496,7 +498,7 @@ public class HabbiconDatabaseTests
     {
         Execute("INSERT IGNORE INTO users_settings (user_id) VALUES (910001); INSERT IGNORE INTO user_statistics (id) VALUES (910001)");
         habbo.SessionStartedAt = DateTimeOffset.UtcNow;
-        habbo.Persistence = new UserPersistenceService(_database, TimeProvider.System);
+        habbo.Persistence = new UserPersistenceService(_database, TimeProvider.System, TestGameClientManager.Empty);
         habbo.Save();
     }
 

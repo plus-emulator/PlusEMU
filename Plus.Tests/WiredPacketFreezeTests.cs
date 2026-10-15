@@ -30,7 +30,7 @@ public class WiredPacketFreezeTests
         };
         var expected = composers.Select(Write).ToArray();
         Assert.Equal(new object[] { 42, true, 1, "user:9", 1, variable.Hash, "user:10", 1, "score", 10, 1,
-            true, true, true, true, false, false, true, true, true, 1, 1, "one" }, expected[0]);
+            true, true, true, true, false, false, false, true, true, true, 1, 1, "one", false }, expected[0]);
         Assert.Contains("Alice", expected[2]);
         Assert.Contains("[{\"itemId\":10,\"variableType\":2,\"textConnector\":[{\"key\":1,\"value\":\"one\"}]}]", expected[3]);
 

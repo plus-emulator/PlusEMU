@@ -3,6 +3,7 @@ using Plus.Communication.Packets;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Users;
+using Plus.HabboHotel.Users.Inventory.Furniture;
 
 namespace Plus.HabboHotel.Rooms.Trading;
 
@@ -15,7 +16,7 @@ public interface ITradeRequestService
     void Cancel(GameClient session);
     void CancelConfirmation(GameClient session);
     void OfferItem(GameClient session, uint itemId);
-    void OfferItems(GameClient session, int amount, uint itemId);
+    void OfferItems(GameClient session, IReadOnlyList<uint> itemIds);
     void RemoveItem(GameClient session, uint itemId);
 }
 
@@ -250,38 +251,40 @@ public sealed class TradeRequestService(ITradingLockService tradingLocks) : ITra
             return;
         }
 
-        var item = habbo.Inventory.Furniture.GetItem(itemId);
+        lock (habbo.InventoryMutationSync) {
+            var item = habbo.Inventory?.Furniture.GetItem(itemId);
 
-        if (item == null) {
-            return;
-        }
-
-        if (!trade.CanChange) {
-            return;
-        }
-
-        if (!TryGetTradeUser(trade, roomUser, out var tradeUser)) {
-            return;
-        }
-
-        if (tradeUser.OfferedItems.ContainsKey(item.Id)) {
-            return;
-        }
-
-        trade.RemoveAccepted();
-
-        if (tradeUser.OfferedItems.Count <= 499) {
-            var totalLtDs = tradeUser.OfferedItems.Count(x => x.Value.UniqueNumber > 0);
-
-            if (totalLtDs < 9) {
-                tradeUser.OfferedItems.Add(item.Id, item);
+            if (item == null) {
+                return;
             }
-        }
 
-        trade.SendPacket(new TradingUpdateComposer(TradeOfferSnapshot.Capture(trade)));
+            if (!trade.CanChange) {
+                return;
+            }
+
+            if (!TryGetTradeUser(trade, roomUser, out var tradeUser)) {
+                return;
+            }
+
+            if (tradeUser.OfferedItems.ContainsKey(item.Id)) {
+                return;
+            }
+
+            trade.RemoveAccepted();
+
+            if (tradeUser.OfferedItems.Count <= 499) {
+                var totalLtDs = tradeUser.OfferedItems.Count(x => x.Value.UniqueNumber > 0);
+
+                if (totalLtDs < 9) {
+                    tradeUser.OfferedItems.Add(item.Id, item);
+                }
+            }
+
+            trade.SendPacket(new TradingUpdateComposer(TradeOfferSnapshot.Capture(trade)));
+        }
     }
 
-    public void OfferItems(GameClient session, int amount, uint itemId)
+    public void OfferItems(GameClient session, IReadOnlyList<uint> itemIds)
     {
         if (!TryGetRoomUser(session, out var room, out var roomUser, out var habbo)) {
             return;
@@ -299,33 +302,44 @@ public sealed class TradeRequestService(ITradingLockService tradingLocks) : ITra
             return;
         }
 
-        var item = habbo.Inventory.Furniture.GetItem(itemId);
-
-        if (item == null) {
-            return;
-        }
-
-        if (!trade.CanChange) {
-            return;
-        }
-
-        if (!TryGetTradeUser(trade, roomUser, out var tradeUser)) {
-            return;
-        }
-
-        var allItems = habbo.Inventory.Furniture.AllItems.Where(x => x.Definition.Id == item.Definition.Id).Take(amount).ToList();
-
-        foreach (var offered in allItems) {
-            // A duplicate stops the batch without a packet, after earlier items in the batch were already added.
-            if (tradeUser.OfferedItems.ContainsKey(offered.Id)) {
+        lock (habbo.InventoryMutationSync) {
+            if (!trade.CanChange) {
                 return;
             }
 
-            trade.RemoveAccepted();
-            tradeUser.OfferedItems.Add(offered.Id, offered);
-        }
+            if (!TryGetTradeUser(trade, roomUser, out var tradeUser)) {
+                return;
+            }
 
-        trade.SendPacket(new TradingUpdateComposer(TradeOfferSnapshot.Capture(trade)));
+            if (itemIds.Count == 0) {
+                return;
+            }
+
+            var selected = new List<InventoryItem>(itemIds.Count);
+            var seen = new HashSet<uint>();
+
+            foreach (var itemId in itemIds) {
+                if (!seen.Add(itemId) || tradeUser.OfferedItems.ContainsKey(itemId)) {
+                    return;
+                }
+
+                var item = habbo.Inventory?.Furniture.GetItem(itemId);
+
+                if (item == null) {
+                    return;
+                }
+
+                selected.Add(item);
+            }
+
+            trade.RemoveAccepted();
+
+            foreach (var item in selected) {
+                tradeUser.OfferedItems.Add(item.Id, item);
+            }
+
+            trade.SendPacket(new TradingUpdateComposer(TradeOfferSnapshot.Capture(trade)));
+        }
     }
 
     public void RemoveItem(GameClient session, uint itemId)
@@ -340,27 +354,29 @@ public sealed class TradeRequestService(ITradingLockService tradingLocks) : ITra
             return;
         }
 
-        var item = habbo.Inventory.Furniture.GetItem(itemId);
+        lock (habbo.InventoryMutationSync) {
+            var item = habbo.Inventory?.Furniture.GetItem(itemId);
 
-        if (item == null) {
-            return;
+            if (item == null) {
+                return;
+            }
+
+            if (!trade.CanChange) {
+                return;
+            }
+
+            if (!TryGetTradeUser(trade, roomUser, out var tradeUser)) {
+                return;
+            }
+
+            if (!tradeUser.OfferedItems.ContainsKey(item.Id)) {
+                return;
+            }
+
+            trade.RemoveAccepted();
+            tradeUser.OfferedItems.Remove(item.Id);
+            trade.SendPacket(new TradingUpdateComposer(TradeOfferSnapshot.Capture(trade)));
         }
-
-        if (!trade.CanChange) {
-            return;
-        }
-
-        if (!TryGetTradeUser(trade, roomUser, out var tradeUser)) {
-            return;
-        }
-
-        if (!tradeUser.OfferedItems.ContainsKey(item.Id)) {
-            return;
-        }
-
-        trade.RemoveAccepted();
-        tradeUser.OfferedItems.Remove(item.Id);
-        trade.SendPacket(new TradingUpdateComposer(TradeOfferSnapshot.Capture(trade)));
     }
 
     private static bool TryGetRoomUser(GameClient session, out Room room, out RoomUser roomUser, out Habbo habbo)

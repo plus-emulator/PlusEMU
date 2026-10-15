@@ -101,7 +101,7 @@ public class WiredTemporaryPacketGuardTests
                         : parameter.ParameterType == typeof(ILoveLockService)
                             ? new LoveLockService(new LoveLockStore(database), TimeProvider.System, TestRewardProgress.Unused)
                             : parameter.ParameterType == typeof(IItemRedemptionService)
-                                ? new ItemRedemptionService(new ItemRedemptionStore(database), new EnabledExchangeSettings(), null!)
+                                ? new ItemRedemptionService(new ItemRedemptionStore(database), new EnabledExchangeSettings())
                                 : parameter.ParameterType == typeof(IHorseCustomizationService)
                                     ? new HorseCustomizationService(null!, null!, null!, new HorseCustomizationStore(database),
                                         new PetInformationService(TimeProvider.System))
@@ -159,6 +159,7 @@ public class WiredTemporaryPacketGuardTests
         Assert.False(input.ReadBool());
         Assert.Equal(42, input.ReadInt());
         Assert.Equal(0, input.ReadInt());
+        Assert.False(input.ReadBool());
         Assert.False(input.HasDataRemaining());
     }
 

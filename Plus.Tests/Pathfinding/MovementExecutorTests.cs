@@ -295,6 +295,27 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
+    public void ExecutorBedExitAnnouncesAndCommitsTheAdjacentDiagonalFloor()
+    {
+        var bed = Furni(10, InteractionType.Bed, WiredBoxType.None);
+        bed.Definition.Length = 2;
+        bed.Definition.Width = 1;
+        bed.Definition.Height = 1.9;
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, bed, 1, 1, 0, true, false, false));
+        ExecutorFloor(11, 2, 1, height: 17);
+        var actor = ExecutorActor(1, 1);
+        Assert.True(actor.HasStatus("lay"));
+        actor.MoveTo(2, 2);
+        ExecutorTick();
+        Assert.Contains("/mv 2,2,0/", ExecutorUpdate(actor).Status);
+        ExecutorTick();
+        Assert.Equal((2, 2, 0d), (actor.X, actor.Y, actor.Z));
+        Assert.False(actor.IsWalking);
+        Assert.False(actor.HasStatus("lay"));
+        Assert.DoesNotContain("/mv ", ExecutorUpdate(actor).Status);
+    }
+
+    [Fact]
     public void ExecutorDoorArrivalRemovesActorAfterWalkOffAndSkipsWalkOn()
     {
         var origin = ExecutorFloor(10, 1, 1);
@@ -357,6 +378,7 @@ public partial class PlacedFurniRoomTests
         var sent = _client.Packets.Last(packet => packet.Header == ServerPacketHeader.UserUpdateComposer);
         var body = new FlashIncomingPacket { Buffer = sent.Body.ToArray() };
         var count = body.ReadInt();
+        (int X, int Y, string Z, string Status)? match = null;
 
         for (var i = 0; i < count; i++) {
             var id = body.ReadInt();
@@ -365,14 +387,21 @@ public partial class PlacedFurniRoomTests
             var z = body.ReadString();
             body.ReadInt();
             body.ReadInt();
+            Assert.Equal(0, body.ReadInt());
             var status = body.ReadString();
 
             if (id == actor.VirtualId) {
-                return (x, y, z, status);
+                match = (x, y, z, status);
             }
         }
 
-        throw new InvalidOperationException($"No status for actor {actor.VirtualId}");
+        Assert.False(body.HasDataRemaining());
+
+        if (match == null) {
+            throw new InvalidOperationException($"No status for actor {actor.VirtualId}");
+        }
+
+        return match.Value;
     }
 
     private List<ExecutorWalkEvent> ExecutorWalkEvents()

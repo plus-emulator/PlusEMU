@@ -138,10 +138,6 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
         }
 
         room.GetWired().Dispatch(new(WiredEventKind.ClickFurni) { Actor = actor, EventItem = item });
-
-        if (!request.IsWall && string.Equals(item.Definition.InteractionName, "room_invisible_click_tile", StringComparison.OrdinalIgnoreCase)) {
-            room.GetWired().Dispatch(new(WiredEventKind.ClickTile) { Actor = actor, EventItem = item, X = item.GetX, Y = item.GetY });
-        }
     }
 
     public void Use(Room room, GameClient session, FurnitureUseRequest request)
@@ -172,6 +168,7 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
                 var enabled = room.TonerData.Enabled == 0;
                 store.SetTonerEnabled(item.Id, room.Id, enabled);
                 room.TonerData.Enabled = enabled ? 1 : 0;
+                Plus.HabboHotel.Items.Data.Toner.TonerState.Synchronize(room, item);
                 room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
                 item.UpdateState();
             }

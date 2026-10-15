@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Plus.HabboHotel.Permissions;
 using System.Drawing;
 using Plus.Communication.Packets;
@@ -32,8 +33,8 @@ public class RoomUser
     public bool AllowOverride;
 
     public FreezePowerUp BanzaiPowerUp;
-    public BotAi BotAi;
-    public RoomBot BotData;
+    public BotAi? BotAi;
+    public RoomBot? BotData;
     public bool CanWalk;
     public int CarryItemId; //byte
     public int CarryTimer; //byte
@@ -65,7 +66,7 @@ public class RoomUser
     public bool IsWalking;
     public int LastBubble = 0;
     public DateTimeOffset? LastInteractionAt;
-    public Item LastItem = null;
+    public Item? LastItem = null;
 
     public int LlPartner = 0;
     public int LockedTilesCount;
@@ -74,7 +75,7 @@ public class RoomUser
     public List<Vector2D> Path = new();
     public bool PathRecalcNeeded;
     public int PathStep = 1;
-    public Pet PetData;
+    public Pet? PetData;
 
     public int PrevTime;
     public bool RidingHorse = false;
@@ -87,12 +88,35 @@ public class RoomUser
     public int SetX; //byte
     public int SetY; //byte
     public double SetZ;
+    // Absolute Z set by :bh; furniture this user places or moves lands at it, ignoring the stack below.
+    public double? BuildHeight;
     public bool ShieldActive;
     public int ShieldCounter;
     public DateTimeOffset? SignExpiresAt;
     public byte SqState;
     public bool SuperFastWalking = false;
-    public Team Team;
+    private sealed record TeamMembership(Team Value, long Revision);
+    private TeamMembership? _teamMembership;
+    public Team Team
+    {
+        get => Volatile.Read(ref _teamMembership)?.Value ?? Team.None;
+        set
+        {
+            TeamMembership? previous;
+            TeamMembership next;
+
+            do {
+                previous = Volatile.Read(ref _teamMembership);
+
+                if ((previous?.Value ?? Team.None) == value) {
+                    return;
+                }
+
+                next = new(value, checked((previous?.Revision ?? 0) + 1));
+            } while (!ReferenceEquals(Interlocked.CompareExchange(ref _teamMembership, next, previous), previous));
+        }
+    }
+    internal long TeamRevision => Volatile.Read(ref _teamMembership)?.Revision ?? 0;
     public int TeleDelay; //byte
     public bool TeleportEnabled;
     public double TimeInRoom;
@@ -147,7 +171,7 @@ public class RoomUser
 
     public bool IsPet => IsBot && BotData.IsPet;
 
-    public int CurrentEffect => GetClient()?.GetHabbo()?.Effects.CurrentEffect ?? 0;
+    public int CurrentEffect => GetClient()?.GetHabbo()?.Effects?.CurrentEffect ?? 0;
 
 
     public bool IsDancing
@@ -180,11 +204,11 @@ public class RoomUser
                 return false;
             }
 
-            if (GetClient() == null || GetClient().GetHabbo() == null) {
+            if (GetClient()?.GetHabbo() is not { } habbo) {
                 return true;
             }
 
-            if (GetClient().GetHabbo().Access.Can(PermissionKeys.ModerationTool) || GetRoom().OwnerId == HabboId) {
+            if (habbo.Access.Can(PermissionKeys.ModerationTool) || GetRoom().OwnerId == HabboId) {
                 return false;
             }
 
@@ -200,6 +224,7 @@ public class RoomUser
         }
     }
 
+    [MemberNotNullWhen(true, nameof(BotData))]
     public bool IsBot
     {
         get
@@ -419,7 +444,7 @@ public class RoomUser
             return;
         }
 
-        if (room.GetWired().TriggerEvent(WiredBoxType.TriggerUserSays, habbo, message)) {
+        if (room.GetWired().TriggerEvent(WiredBoxType.TriggerUserSays, habbo, message, colour, shout)) {
             return;
         }
 
@@ -474,9 +499,8 @@ public class RoomUser
                     continue;
                 }
 
-                if (user.IsBot) {
-                    user.BotAi.OnUserShout(this, message);
-                }
+                // A placed bot always has its AI; the reaction is skipped only if it does not.
+                user.BotAi?.OnUserShout(this, message);
             }
         }
         else {
@@ -485,9 +509,7 @@ public class RoomUser
                     continue;
                 }
 
-                if (user.IsBot) {
-                    user.BotAi.OnUserSay(this, message);
-                }
+                user.BotAi?.OnUserSay(this, message);
             }
         }
     }
@@ -749,6 +771,9 @@ public class RoomUser
 
 
     public GameClient? GetClient() => IsBot ? null : _mClient;
+
+    /// <summary>The reward tracks this user progresses, for wired boxes that progress them.</summary>
+    internal IRewardTrackManager RewardTracks => _rewards;
 
     internal bool IsAttachedTo(Room room) => ReferenceEquals(_mRoom, room);
 

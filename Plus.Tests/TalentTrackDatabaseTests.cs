@@ -92,8 +92,10 @@ public sealed class TalentTrackDatabaseTests
                 method == "GetItemByName" ? gifts[0] : throw new InvalidOperationException(method));
             var progression = new TalentTrackProgressionService(definitions, itemDefinitions, store, NullLogger<TalentTrackProgressionService>.Instance);
             var badges = CatalogSnapshotTestSupport.Proxy<IBadgeManager>((method, _) =>
-                method == "GiveBadge" ? Task.CompletedTask : throw new InvalidOperationException(method));
-            var achievements = new AchievementManager(null!, database, badges, progression);
+                method == "ReplaceBadge" ? Task.FromResult(false) : throw new InvalidOperationException(method));
+            var messenger = CatalogSnapshotTestSupport.Proxy<Plus.HabboHotel.Friends.IMessengerDataLoader>((method, _) =>
+                method == "BroadcastStatusUpdate" ? null : throw new InvalidOperationException(method));
+            var achievements = new AchievementManager(null!, database, badges, progression, messenger);
             achievements.Achievements.Add("ACH_A", TalentTrackPresentationTests.Achievements()["ACH_A"]);
             Assert.True(achievements.ProgressAchievement(client, "ACH_A", 5));
             Assert.Equal(1, habbo.GetAchievementData("ACH_A")!.Level);

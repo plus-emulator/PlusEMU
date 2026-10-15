@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Runtime;
@@ -23,8 +24,21 @@ public sealed class WiredModernCondition : WiredModernBox
         _clock = clock;
         _groups = groups;
     }
-    public override bool TryValidateConfiguration(WiredConfiguration proposed, out WiredConfiguration validated, out string error) =>
-        WiredConditionConfiguration.TryValidate(Descriptor.CanonicalName, proposed, out validated, out error);
+    public override bool TryValidateConfiguration(WiredConfiguration proposed, out WiredConfiguration validated, out string error)
+    {
+        if (WiredNativeEditorProjection.Supports(Descriptor.CanonicalName)) {
+            if (!WiredNativeEditorProjection.IsBound(Item.Id, Descriptor, proposed)) {
+                validated = proposed;
+                error = "Invalid native condition authority.";
+
+                return false;
+            }
+
+            return WiredNativeEditorProjection.TryValidateRuntime(Item, Descriptor, proposed, out validated, out error);
+        }
+
+        return WiredConditionConfiguration.TryValidate(Descriptor.CanonicalName, proposed, out validated, out error);
+    }
 
     public override bool Execute(WiredRuntimeContext context)
     {
@@ -35,6 +49,12 @@ public sealed class WiredModernCondition : WiredModernBox
         }
 
         var negative = WiredConditionConfiguration.NegativeNames.TryGetValue(Descriptor.CanonicalName, out var positive);
+
+        // The negative furniture-on label is the empty direction: 0 is at least one empty, 1 is all empty.
+        if (negative && Descriptor.CanonicalName is "wf_cnd_not_furni_on") {
+            config = config with { IntParams = config.IntParams.SetItem(0, config.IntParams[0] == 0 ? 1 : 0) };
+        }
+
         var result = Evaluate(positive ?? Descriptor.CanonicalName, context, config);
 
         return negative ? !result : result;
@@ -55,9 +75,12 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_has_handitem":
                 return Quantify(user => user.CarryItemId == Param(config, 0), 2);
             case "wf_cnd_wearing_effect":
-                return Quantify(user => !user.IsBot && user.GetClient()?.GetHabbo()?.Effects.CurrentEffect == Param(config, 0), 2);
+                return Quantify(user => !user.IsBot && user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == Param(config, 0), 2);
+            case "wf_cnd_user_level":
+                return Quantify(user => !user.IsBot && WiredUserLevel.Of(user) is var level
+                    && (Param(config, 1) == 0 ? level < Param(config, 0) : Param(config, 1) == 1 ? level == Param(config, 0) : level > Param(config, 0)), 2);
             case "wf_cnd_wearing_badge":
-                return Quantify(user => user.GetClient()?.GetHabbo()?.Inventory.Badges.EquippedBadges.Any(badge =>
+                return Quantify(user => user.GetClient()?.GetHabbo()?.Inventory?.Badges.EquippedBadges.Any(badge =>
                 string.Equals(badge.Code, config.Text, StringComparison.OrdinalIgnoreCase)) == true, 1);
             case "wf_cnd_actor_in_group":
                 var group = context.Room.Group;
@@ -70,6 +93,10 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_user_performs_action":
                 return Quantify(user => IsPerforming(user, config, context.Event), 6);
             case "wf_cnd_triggerer_match":
+                if (config.UserSources["comparison"] == 101 && config.Text.Length == 0 && Param(config, 1) == 0) {
+                    return Quantify(user => MatchesKind(user, Param(config, 0)), 4);
+                }
+
                 var comparisons = Users(context, config, "comparison", config.UserSources["comparison"] == 101 ? config.Text : null)
                     .Where(user => MatchesKind(user, Param(config, 0)))
                     .Where(user => Param(config, 1) == 0 || string.Equals(Name(user), config.Text, StringComparison.OrdinalIgnoreCase))
@@ -81,7 +108,12 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_furnis_hv_avtrs":
                 return WiredItemConditions.HasAvatars(config, Items(), context.Targets.AllUsers());
             case "wf_cnd_has_furni_on":
-                return WiredItemConditions.HasStackedFurniture(config, Items(), item => WiredRoomOperations.HasStackedItem(context.Room, item));
+                var stackSubjects = Items();
+                var ignoredSupports = Descriptor.CanonicalName == "wf_cnd_not_furni_on" && config.FurniSources["items"] == 100
+                    ? stackSubjects.Select(item => item.Id).ToHashSet() : null;
+
+                return WiredItemConditions.HasStackedFurniture(config, stackSubjects,
+                    item => WiredRoomOperations.HasStackedItem(context.Room, item, ignoredSupports));
             case "wf_cnd_match_snapshot":
                 return WiredItemConditions.MatchesSnapshot(config, Items());
             case "wf_cnd_stuff_is":
@@ -89,7 +121,11 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_has_altitude":
                 return WiredItemConditions.MatchesAltitude(config, Items());
             case "wf_cnd_valid_moves":
-                return WiredItemConditions.ValidMoves(Items(), (item, x, y) => WiredRoomOperations.CanMoveItem(context.Room, item, x, y, item.Rotation,
+                // Observed r92g r92-valid-moves (AIR WIN63-202610131318-860371703): the hotel editor has no furni source; saved that way,
+                // the condition passed on a say trigger in windows a-w1, b-w1 and c-w1. With nothing selected nothing is invalid.
+                var moving = Items();
+
+                return moving.Length == 0 || WiredItemConditions.ValidMoves(moving, (item, x, y) => WiredRoomOperations.CanMoveItem(context.Room, item, x, y, item.Rotation,
                     collision: WiredRoomMovement.Collision(context.Policy.Addons.Physics, step: true)));
             case "wf_cnd_slc_quantity":
                 return WiredItemConditions.SelectionQuantity(config,
@@ -99,10 +135,10 @@ public sealed class WiredModernCondition : WiredModernBox
 
                 return count >= Param(config, 0) && count <= Param(config, 1);
             case "wf_cnd_counter_time_matches":
-                var times = Items().Select(_counterTime).ToArray();
+                var targetMs = Param(config, 1) * 60_000L + Param(config, 2) * 500L;
 
-                return times.Length != 0 && times.All(time => time.HasValue)
-                    && WiredTimeConditions.MatchesCounter(config, times.Select(time => time!.Value));
+                return WiredRoomOperations.Quantify(Items().Select(item => _counterTime(item) is { } time
+                    && WiredRoomOperations.Compare(time, targetMs, Param(config, 0))), Param(config, 4));
             case "wf_cnd_match_time":
                 return WiredTimeConditions.MatchesTime(config, now);
             case "wf_cnd_match_date":

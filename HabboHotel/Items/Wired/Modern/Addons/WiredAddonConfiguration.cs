@@ -19,11 +19,12 @@ public static class WiredAddonConfiguration
         int Source(int index, bool users = false, bool all = false) => P(index) switch
         {
             0 or 200 or 201 => P(index),
-            100 when !users => 100,
+            100 or 101 when !users => P(index),
             11 when users => 11,
             900 when all => 900,
             _ => 0
         };
+        int ProjectileSource(int value) => value is 0 or 100 or 200 or 201 or WiredProjectilePolicy.StackMovedSource ? value : 0;
         int TextFallback(int fallback) => c.IntParams.IsEmpty && int.TryParse(c.Text, NumberStyles.Integer,
             CultureInfo.InvariantCulture, out var value) ? value : P(0, fallback);
         var text = c.Text;
@@ -35,11 +36,21 @@ public static class WiredAddonConfiguration
                 break;
             case "wf_xtra_filter_furni":
             case "wf_xtra_filter_users":
-                fields = [Math.Clamp(TextFallback(0), 0, 10000)];
+                if (c.IntParams.Length != 5 || P(1) is not (0 or 1) || P(2) is < 0 or > 3
+                    || P(3) is not (0 or 200 or 201) || P(4) is not (0 or 100 or 101 or 200 or 201)) {
+                    throw new ArgumentException("Invalid quantity filter operand configuration");
+                }
+
+                fields = [Range(0, 0, 10000), P(1), P(2), P(3), P(4)];
                 break;
-            case "wf_xtra_execution_limit":
-                fields = [Range(0, 1, 100, 1), (Math.Clamp(P(1, 1000), 1000, 10000) + 250) / 500 * 500];
-                break;
+            case "wf_xtra_execution_limit": {
+                    // Official and Volt sliders save raw pulses 1..20. A larger value is milliseconds,
+                    // snapped to the same half-second grid the editor uses; 1250 becomes 1500 and 5000 stays 5000.
+                    var window = P(1, 1);
+                    window = window is >= 1 and <= 20 ? window * 500 : (Math.Clamp(window, 500, 10000) + 250) / 500 * 500;
+                    fields = [Range(0, 1, 100, 1), window];
+                    break;
+                }
             case "wf_xtra_random":
                 fields = [Range(0, 1, 1000, 1), Range(1, 0, 1000)];
                 break;
@@ -77,7 +88,7 @@ public static class WiredAddonConfiguration
                 fields = [B(0), Range(1, 0, 3), B(2), B(3), Range(4, 1, 100000, 1), Range(5, 0, 3),
                     B(6), B(7), B(8), Range(9, 0, 100000), Range(10, 0, 7), Range(11, 0, 127), B(12), B(13),
                     Range(14, 0, 2), B(15), Range(16, -64, 64), Range(17, 0, 3), Range(18, -1000, 1000),
-                    Source(19, true), Source(20), Source(21, true), Source(22), Source(23, true)];
+                    Source(19, true), Source(20), Source(21, true), Source(22), Source(23, true), ProjectileSource(P(24, 100))];
                 break;
             default:
                 fields = [];

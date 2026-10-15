@@ -1,10 +1,11 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
 /// Immutable editor settings and their decoded runtime inputs. Concrete boxes own the mapping
-/// from Octane's per-name int/text fields to sources and variable references; there are no shared slots.
+/// from Volt's per-name int/text fields to sources and variable references; there are no shared slots.
 /// </summary>
 public sealed record WiredConfiguration
 {
@@ -23,4 +24,7 @@ public sealed record WiredConfiguration
     public ImmutableDictionary<string, int> UserSources { get; init; } = ImmutableDictionary<string, int>.Empty;
     public ImmutableArray<string> VariableIds { get; init; } = [];
     public ImmutableArray<WiredFurniSnapshot> Snapshots { get; init; } = [];
+    [JsonIgnore]
+    internal WiredConfigurationOrigin? Origin { get; private init; }
+    internal WiredConfiguration Bind(WiredConfigurationOrigin origin) => this with { Origin = origin };
 }

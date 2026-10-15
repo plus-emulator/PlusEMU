@@ -1,3 +1,6 @@
+using Microsoft.IO;
+using Plus.Communication.Flash;
+using Plus.Communication.Packets;
 using Plus.Communication.Packets.Incoming.Catalog;
 using Plus.Communication.Packets.Outgoing.Catalog;
 using Plus.Communication.Packets.Outgoing;
@@ -11,6 +14,27 @@ namespace Plus.Tests;
 public class CatalogStructureWireTests
 {
     [Fact]
+    public void MissingCatalogTextIsWrittenAsTheSameEmptyStrings()
+    {
+        static CatalogIndexSnapshot Index(string? text) =>
+            new("NORMAL", [new CatalogIndexNode(true, 1, 2, -1, text, text, [], [])]);
+        static CatalogPageSnapshot Page(string? text, int itemType) =>
+            new(9, "NORMAL", "frontpage4", [], [], [], -1, [new CatalogPromotionSnapshot(1, text, text, itemType, 0, null, text, 60)]);
+
+        Assert.Equal(Encode(new CatalogIndexComposer(Index(""))), Encode(new CatalogIndexComposer(Index(null))));
+        Assert.Equal(Encode(new CatalogPageComposer(Page("", CatalogPromotion.CataloguePageItem))),
+            Encode(new CatalogPageComposer(Page(null, CatalogPromotion.CataloguePageItem))));
+    }
+
+    private static byte[] Encode(IServerPacket composer)
+    {
+        using var stream = (RecyclableMemoryStream)new RecyclableMemoryStreamManager().GetStream();
+        composer.Compose(new FlashOutgoingPacket(stream));
+
+        return stream.ToArray()[6..];
+    }
+
+    [Fact]
     public void UserPerksDoNotAdvertiseBuildersClub()
     {
         var packet = new HabbiconTestSupport.RecordingPacket();
@@ -22,18 +46,28 @@ public class CatalogStructureWireTests
     }
 
     [Fact]
-    public async Task UnsupportedCatalogModeFallsBackToTheNormalIndex()
+    public void UnsupportedCatalogModeFallsBackToTheNormalIndex()
     {
         var pages = new[] { Page(1, -1) };
         var catalog = CatalogSnapshotTestSupport.Proxy<ICatalogManager>((method, _) => method == "get_Pages" ? pages : throw new InvalidOperationException(method));
         var (client, sent) = HabbiconTestSupport.Client(EditorTestSupport.Player());
         var packet = HabbiconTestSupport.Incoming("BUILDERS_CLUB");
 
-        var service = new CatalogBrowsingService(null!, null!, null!, TimeProvider.System, catalog, null!, CatalogSnapshotTestSupport.Snapshots());
-        await new GetCatalogIndexEvent(service).Parse(client, packet);
+        var service = new CatalogBrowsingService(null!, null!, null!, TimeProvider.System, catalog, CatalogSnapshotTestSupport.Snapshots());
+        service.ShowIndex(client, packet.ReadString());
 
         Assert.False(packet.HasDataRemaining());
         Assert.Equal([ServerPacketHeader.CatalogIndexComposer, ServerPacketHeader.CatalogItemDiscountComposer], sent.Select(value => value.Header));
+    }
+
+    [Fact]
+    public async Task EmptyBundleDiscountRequestRepliesWithTheRuleset()
+    {
+        var (client, sent) = HabbiconTestSupport.Client(EditorTestSupport.Player());
+
+        await new GetBundleDiscountRulesetEvent().Parse(client, HabbiconTestSupport.Incoming());
+
+        Assert.Equal([ServerPacketHeader.CatalogItemDiscountComposer], sent.Select(value => value.Header));
     }
 
     private static CatalogPage Page(int id, int parentId, bool enabled = true, string? requiredPermission = null, params int[] offerIds)

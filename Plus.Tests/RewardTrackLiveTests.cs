@@ -27,22 +27,22 @@ public class RewardTrackLiveTests
     private const string Badge = "ACH_RewardTracksCompleted1";
 
     [Fact]
-    public async Task LoginSendsTracksToTheOctaneClient()
+    public async Task LoginSendsTracksToTheVoltClient()
     {
-        var client = new TestClient(await Profile("OCTANE-3-6-0-FLOOR-20260909"));
+        var client = new TestClient(await Profile());
         client.SetHabbo(new Habbo { Id = 7 });
         var manager = await Manager(new FakeDatabase(), new BadgeDefinitions());
 
         manager.SendTracks(client);
 
-        Assert.Equal(new uint[] { 2327 }, client.Sent);
+        Assert.Equal(new uint[] { ServerPacketHeader.RewardTracksComposer }, client.Sent);
     }
 
     [Fact]
     public async Task SendTracksReadsTheInjectedClockOnceAtANonUtcOffset()
     {
         var clock = new CountingClock(new DateTimeOffset(2025, 1, 1, 12, 0, 0, TimeSpan.FromHours(5)));
-        var client = new TestClient(await Profile("OCTANE-3-6-0-FLOOR-20260909"));
+        var client = new TestClient(await Profile());
         client.SetHabbo(new Habbo { Id = 7 });
         var manager = new RewardTrackManager(NullLogger<RewardTrackManager>.Instance, new FakeDatabase(), new BadgeDefinitions(), clock);
         await manager.Start();
@@ -51,19 +51,7 @@ public class RewardTrackLiveTests
         manager.SendTracks(client);
 
         Assert.Equal(1, clock.Reads);
-        Assert.Equal(new uint[] { 2327 }, client.Sent);
-    }
-
-    [Fact]
-    public async Task LoginSkipsTracksForARevisionWithoutThem()
-    {
-        var client = new TestClient(await Profile("NITRO-1-6-6"));
-        client.SetHabbo(new Habbo { Id = 7 });
-        var manager = await Manager(new FakeDatabase(), new BadgeDefinitions());
-
-        manager.SendTracks(client);
-
-        Assert.Empty(client.Sent);
+        Assert.Equal(new uint[] { ServerPacketHeader.RewardTracksComposer }, client.Sent);
     }
 
     [Fact]
@@ -77,9 +65,9 @@ public class RewardTrackLiveTests
         var write = Assert.Single(database.Committed);
         Assert.Contains(write, sql => sql.Contains("INTO users_reward_track_prizes"));
         Assert.Contains(write, sql => sql.Contains("INTO user_badges"));
-        Assert.True(habbo.Inventory.Badges.HasBadge(Badge));
+        Assert.True(Assert.IsType<InventoryComponent>(habbo.Inventory).Badges.HasBadge(Badge));
         Assert.Equal(RewardTrackResults.Ok, client.ClaimResult());
-        Assert.True(client.Sent.IndexOf(9451) > client.Sent.IndexOf(ServerHeader(client, ServerPacketHeader.BadgesComposer)));
+        Assert.True(client.Sent.IndexOf(ServerPacketHeader.RewardTrackClaimResultComposer) > client.Sent.IndexOf(ServerHeader(client, ServerPacketHeader.BadgesComposer)));
     }
 
     [Fact]
@@ -93,7 +81,7 @@ public class RewardTrackLiveTests
 
         Assert.Equal(RewardTrackResults.Unknown, client.ClaimResult());
         Assert.Empty(database.Committed);
-        Assert.False(habbo.Inventory.Badges.HasBadge(Badge));
+        Assert.False(Assert.IsType<InventoryComponent>(habbo.Inventory).Badges.HasBadge(Badge));
 
         badges.Add(Badge);
         await manager.Claim(client, "introduction", "track_champ");
@@ -111,7 +99,7 @@ public class RewardTrackLiveTests
 
         Assert.Equal(RewardTrackResults.Unknown, client.ClaimResult());
         Assert.Empty(database.Committed);
-        Assert.False(habbo.Inventory.Badges.HasBadge(Badge));
+        Assert.False(Assert.IsType<InventoryComponent>(habbo.Inventory).Badges.HasBadge(Badge));
     }
 
     [Fact]
@@ -126,7 +114,7 @@ public class RewardTrackLiveTests
         Assert.Equal(RewardTrackResults.Unknown, client.ClaimResult());
         Assert.Empty(database.Committed);
         Assert.Equal(1, database.RolledBack);
-        Assert.False(habbo.Inventory.Badges.HasBadge(Badge));
+        Assert.False(Assert.IsType<InventoryComponent>(habbo.Inventory).Badges.HasBadge(Badge));
         Assert.DoesNotContain(ServerHeader(client, ServerPacketHeader.BadgesComposer), client.Sent);
 
         database.FailOn = null;
@@ -135,28 +123,9 @@ public class RewardTrackLiveTests
         Assert.True(habbo.Inventory.Badges.HasBadge(Badge));
     }
 
-    private static uint ServerHeader(TestClient client, uint internalId) => client.Revision.InternalIdToOutgoingIdMapping[internalId];
+    private static uint ServerHeader(TestClient client, uint internalId) => Assert.IsType<Plus.Communication.Revisions.Revision>(client.Revision).InternalIdToOutgoingIdMapping[internalId];
 
-    // RevisionsCache.Start rewrites example.json; a private copy keeps it from racing tests that read the shared one.
-    private static async Task<Revision> Profile(string name)
-    {
-        var directory = Directory.CreateTempSubdirectory("revisions-").FullName;
-
-        try {
-            foreach (var file in Directory.GetFiles(Path.Join(AppContext.BaseDirectory, "revisions"), "*.json")) {
-                File.Copy(file, Path.Join(directory, Path.GetFileName(file)));
-            }
-
-            var cache = new RevisionsCache();
-            typeof(RevisionsCache).GetField("_directory", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(cache, directory);
-            await cache.Start();
-
-            return cache.Revisions[name];
-        }
-        finally {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
+    private static Task<Revision> Profile() => Task.FromResult(new RevisionsCache().InternalRevision);
 
     private static async Task<RewardTrackManager> Manager(FakeDatabase database, IBadgeManager badges)
     {
@@ -168,7 +137,7 @@ public class RewardTrackLiveTests
 
     private static async Task<(TestClient Client, Habbo Habbo, RewardTrackManager Manager)> Claimer(FakeDatabase database, IBadgeManager badges)
     {
-        var client = new TestClient(await Profile("OCTANE-3-6-0-FLOOR-20260909"));
+        var client = new TestClient(await Profile());
         var habbo = new Habbo
         {
             Id = 7,
@@ -228,6 +197,7 @@ public class RewardTrackLiveTests
         public Task Init() => Task.CompletedTask;
         public Task GiveBadge(Habbo habbo, string code) => throw new InvalidOperationException("Claims grant badges in their own transaction.");
         public Task RemoveBadge(Habbo habbo, string badge) => throw new NotSupportedException();
+        public Task<bool> ReplaceBadge(Habbo habbo, string? previous, string code) => throw new NotSupportedException();
         public Task<List<Badge>> LoadBadgesForHabbo(int userId) => throw new NotSupportedException();
     }
 
@@ -403,7 +373,7 @@ public class RewardTrackLiveTests
         /// <summary>Result code of the last RewardTrackClaimResult: string track, string prize, int result.</summary>
         public RewardTrackResults ClaimResult()
         {
-            var body = _bodies[Sent.LastIndexOf(9451)];
+            var body = _bodies[Sent.LastIndexOf(ServerPacketHeader.RewardTrackClaimResultComposer)];
 
             return (RewardTrackResults)BinaryPrimitives.ReadInt32BigEndian(body.AsSpan(body.Length - 4));
         }

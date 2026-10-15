@@ -42,7 +42,7 @@ public partial class PlacedFurniRoomTests
         {
             Assert.Equal(new RoomItemPickup(30, RoomId, 7, 7, InteractionType.None, false), request);
             Assert.Same(item, _room.GetRoomItemHandler().GetItem(item.Id));
-            Assert.Null(_client.GetHabbo().Inventory.Furniture.GetItem(item.Id));
+            Assert.Null(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(item.Id));
             Assert.Empty(_client.Sent);
             Assert.False(progressed);
 
@@ -56,7 +56,7 @@ public partial class PlacedFurniRoomTests
 
         Assert.Single(store.Calls);
         Assert.Null(_room.GetRoomItemHandler().GetItem(item.Id));
-        Assert.NotNull(_client.GetHabbo().Inventory.Furniture.GetItem(item.Id));
+        Assert.NotNull(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(item.Id));
         Assert.True(progressed);
         Assert.Contains(ServerPacketHeader.FurniListUpdateComposer, _client.Sent);
     }
@@ -74,7 +74,7 @@ public partial class PlacedFurniRoomTests
         await pickup.PickUp(_client, item.Id);
 
         Assert.Same(item, _room.GetRoomItemHandler().GetItem(item.Id));
-        Assert.Null(_client.GetHabbo().Inventory.Furniture.GetItem(item.Id));
+        Assert.Null(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(item.Id));
         Assert.Empty(_client.Sent);
     }
 
@@ -95,7 +95,7 @@ public partial class PlacedFurniRoomTests
         await new RoomItemPickupService(Proxy<IGameClientManager>((_, _) => null),
             Proxy<IQuestManager>((_, _) => null), store).PickUp(_client, item.Id);
 
-        Assert.Equal(7u, _client.GetHabbo().Inventory.Furniture.GetItem(item.Id)!.OwnerId);
+        Assert.Equal(7u, Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(item.Id)!.OwnerId);
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public partial class PlacedFurniRoomTests
         await new RoomItemPickupService(Proxy<IGameClientManager>((_, _) => null),
             Proxy<IQuestManager>((_, _) => null), store).PickUp(_client, item.Id);
         Assert.Null(_room.GetRoomItemHandler().GetItem(item.Id));
-        Assert.Null(_client.GetHabbo().Inventory.Furniture.GetItem(item.Id));
+        Assert.Null(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(item.Id));
     }
 
     [Fact]
@@ -170,13 +170,16 @@ public class RoomItemPickupStoreTests
                 CREATE TABLE room_items_moodlight(item_id INT PRIMARY KEY);
                 CREATE TABLE room_items_toner(id INT PRIMARY KEY);
                 INSERT INTO items VALUES(30,42,99,'preserved');
+                ALTER TABLE items ADD base_item INT UNSIGNED NOT NULL DEFAULT 0;
                 INSERT INTO room_items_moodlight VALUES(30);
                 CREATE TRIGGER reject_cleanup BEFORE DELETE ON room_items_moodlight
                     FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='forced pickup rollback';
                 """);
             var store = new RoomItemPickupStore(new PickupDatabase(builder.ConnectionString));
             var request = new RoomItemPickup(30, 42, 99, 7, InteractionType.Moodlight, false);
-            Assert.Throws<MySqlException>(() => store.PickUp(request));
+            var rollback = Assert.Throws<MySqlException>(() => store.PickUp(request));
+            Assert.Equal("45000", rollback.SqlState);
+            Assert.Contains("forced pickup rollback", rollback.Message);
             Assert.Equal((42, 99), connection.QuerySingle<(int, int)>("SELECT room_id,user_id FROM items"));
             Assert.Equal(1, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM room_items_moodlight"));
             connection.Execute("DROP TRIGGER reject_cleanup");

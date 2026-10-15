@@ -85,6 +85,8 @@ internal static class FoundationRuntimeDatabase
     private static void AssertShippedShapes(MySqlConnection connection)
     {
         Assert.Equal("tinyint(1)", Column(connection, "rooms", "lay_enabled"));
+        Assert.Equal("tinyint(1)", Column(connection, "rooms", "hide_wired"));
+        Assert.Equal("tinyint(1)", Column(connection, "rooms", "diagonal_squeeze"));
         Assert.NotNull(Column(connection, "users", "bubble_id"));
         Assert.NotNull(Column(connection, "users", "auth_ticket_expires_at"));
         Assert.NotNull(Column(connection, "user_statistics", "id"));
@@ -97,7 +99,7 @@ internal static class FoundationRuntimeDatabase
         Assert.Equal("enum('false','true')", Column(connection, "bots", "automatic_chat"));
         Assert.Equal("int(10) unsigned", Column(connection, "bots", "id"));
         Assert.Equal("datetime(6)", Column(connection, "bots_petdata", "createstamp"));
-        Assert.Equal("varchar(25)", Column(connection, "user_clothing", "part_id"));
+        Assert.Equal("int(10) unsigned", Column(connection, "user_clothing", "part_id"));
     }
 
     private static string? Column(MySqlConnection connection, string table, string column) => connection.QuerySingleOrDefault<string>(

@@ -22,6 +22,14 @@ public sealed class ItemInteractorFactory(
             return new InteractorRoomMusic();
         }
 
+        if (Plus.HabboHotel.Items.Wired.Chests.WiredChestFurniture.IsChest(item.Definition)) {
+            return new InteractorWiredChest();
+        }
+
+        if (Plus.HabboHotel.Items.Wired.Chests.WiredChestFurniture.IsContract(item.Definition)) {
+            return new InteractorWiredContract();
+        }
+
         if (item.IsWired) {
             return new InteractorWired();
         }
@@ -29,6 +37,10 @@ public sealed class ItemInteractorFactory(
         return item.Definition.InteractionType switch
         {
             InteractionType.IceSkates or InteractionType.IceTagPole => new InteractorIceTag(),
+            InteractionType.AreaHide => new InteractorAreaHide(),
+            InteractionType.WiredLink => new InteractorWiredLink(),
+            InteractionType.WiredLabel => new InteractorWiredLabel(),
+            InteractionType.InvisibleFurniControl => new InteractorInvisibleFurniControl(),
             InteractionType.Gate => new InteractorGate(),
             InteractionType.Teleport => new InteractorTeleport(timeProvider),
             InteractionType.Hopper => new InteractorHopper(travelStore),
@@ -55,6 +67,7 @@ public sealed class ItemInteractorFactory(
             InteractionType.Counter => new InteractorCounter(),
             InteractionType.CrackableEgg => new InteractorCrackable(achievements),
             InteractionType.Skateboard => new InteractorSkateboard(achievements),
+            InteractionType.CameraPicture => new InteractorCameraPicture(),
             _ => new InteractorGenericSwitch(quests, rewards)
         };
     }

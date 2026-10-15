@@ -2,6 +2,7 @@ using System.Reflection;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets.Incoming.Marketplace;
 using Plus.Communication.Packets.Outgoing;
+using Plus.Communication.Packets.Outgoing.Marketplace;
 using Plus.HabboHotel.Catalog.Marketplace;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.DataFormat;
@@ -28,26 +29,42 @@ public class MarketplacePurchaseTests
         await Buy(store, averages, counts).Parse(client, Packet(5));
 
         Assert.Equal(899, client.GetHabbo().Credits);
-        Assert.Equal(900u, client.GetHabbo().Inventory.Furniture.GetItem(77)!.Definition.Id);
+        Assert.Equal(900u, Assert.IsType<InventoryComponent>(client.GetHabbo().Inventory).Furniture.GetItem(77)!.Definition.Id);
         Assert.Equal(new[]
         {
             ServerPacketHeader.CreditBalanceComposer, ServerPacketHeader.FurniListNotificationComposer, ServerPacketHeader.PurchaseOKComposer,
-            ServerPacketHeader.FurniListAddComposer, ServerPacketHeader.FurniListUpdateComposer, ServerPacketHeader.MarketPlaceOffersComposer,
+            ServerPacketHeader.FurniListAddComposer, ServerPacketHeader.FurniListUpdateComposer, ServerPacketHeader.MarketplaceBuyOfferResultComposer,
         }, sent.Select(message => message.Header));
+        Assert.Equal(new byte[] { 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5 }, sent[^1].Payload);
         Assert.Equal(101, averages[55]);
         Assert.Equal(1, counts[55]);
         Assert.Equal(5, store.Requests.Single().OfferId);
     }
 
+    [Fact]
+    public async Task BuyerWithoutALoadedInventoryClaimsNothing()
+    {
+        var store = new ClaimStore(Claim());
+        var buyer = Buyer(credits: 1000);
+        buyer.Inventory = null;
+        var (client, sent) = HabbiconTestSupport.Client(buyer);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Buy(store, new(), new()).Parse(client, Packet(5)));
+
+        Assert.Empty(store.Requests);
+        Assert.Equal(1000, buyer.Credits);
+        Assert.Empty(sent);
+    }
+
     [Theory]
-    [InlineData(MarketplacePurchaseRefusal.Sold, true)]
-    [InlineData(MarketplacePurchaseRefusal.Expired, true)]
-    [InlineData(MarketplacePurchaseRefusal.UnknownItem, true)]
-    [InlineData(MarketplacePurchaseRefusal.NotFound, true)]
-    [InlineData(MarketplacePurchaseRefusal.OwnOffer, false)]
-    [InlineData(MarketplacePurchaseRefusal.InsufficientCredits, false)]
-    [InlineData(MarketplacePurchaseRefusal.InvalidOffer, true)]
-    public async Task RefusedOffersChangeNothingAndReloadOnlyWhenTheOfferMayHaveMoved(MarketplacePurchaseRefusal refusal, bool reloads)
+    [InlineData(MarketplacePurchaseRefusal.Sold, MarketplaceBuyResult.OfferGone)]
+    [InlineData(MarketplacePurchaseRefusal.Expired, MarketplaceBuyResult.OfferGone)]
+    [InlineData(MarketplacePurchaseRefusal.UnknownItem, MarketplaceBuyResult.OfferGone)]
+    [InlineData(MarketplacePurchaseRefusal.NotFound, MarketplaceBuyResult.OfferGone)]
+    [InlineData(MarketplacePurchaseRefusal.InvalidOffer, MarketplaceBuyResult.OfferGone)]
+    [InlineData(MarketplacePurchaseRefusal.InsufficientCredits, MarketplaceBuyResult.NotEnoughCredits)]
+    [InlineData(MarketplacePurchaseRefusal.OwnOffer, MarketplaceBuyResult.RefreshOffers)]
+    public async Task RefusedOffersChangeNothingAndAnswerWithTheTypedResult(MarketplacePurchaseRefusal refusal, MarketplaceBuyResult result)
     {
         var store = new ClaimStore(refusal);
         var (client, sent) = HabbiconTestSupport.Client(Buyer(credits: 1000));
@@ -55,9 +72,13 @@ public class MarketplacePurchaseTests
         await Buy(store, new(), new()).Parse(client, Packet(5));
 
         Assert.Equal(1000, client.GetHabbo().Credits);
-        Assert.Null(client.GetHabbo().Inventory.Furniture.GetItem(77));
+        Assert.Null(Assert.IsType<InventoryComponent>(client.GetHabbo().Inventory).Furniture.GetItem(77));
         Assert.DoesNotContain(ServerPacketHeader.CreditBalanceComposer, sent.Select(message => message.Header));
-        Assert.Equal(reloads, sent.Any(message => message.Header == ServerPacketHeader.MarketPlaceOffersComposer));
+        Assert.DoesNotContain(ServerPacketHeader.MarketPlaceOffersComposer, sent.Select(message => message.Header));
+
+        var answer = Assert.Single(sent, message => message.Header == ServerPacketHeader.MarketplaceBuyOfferResultComposer);
+
+        Assert.Equal(new byte[] { 0, 0, 0, (byte)result, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5 }, answer.Payload);
     }
 
     [Fact]
@@ -114,11 +135,8 @@ public class MarketplacePurchaseTests
             _ => throw new InvalidOperationException(method),
         });
 
-        return new MarketplacePurchaseService(store, items, marketplace, Search(), new FixedClock(Now));
+        return new MarketplacePurchaseService(store, items, marketplace, new FixedClock(Now));
     }
-
-    private static IMarketplaceOfferSearchService Search() => CatalogSnapshotTestSupport.Proxy<IMarketplaceOfferSearchService>((method, _) =>
-        method == "Search" ? new MarketplaceOffersSnapshot([]) : throw new InvalidOperationException(method));
 
     private static MarketplaceClaimedOffer Claim() => new(101, 55, new InventoryItem { Id = 77, OwnerId = 8, Definition = Definition(), ExtraData = FurniObjectData.Empty });
 

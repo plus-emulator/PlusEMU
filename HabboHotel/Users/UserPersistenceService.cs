@@ -1,24 +1,58 @@
 using Dapper;
 using Plus.Database;
+using Plus.HabboHotel.GameClients;
 
 namespace Plus.HabboHotel.Users;
 
 public interface IUserPersistenceService
 {
-    void Save(Habbo habbo, bool reopenModerationTickets = false);
+    void Save(Habbo habbo);
+
+    /// <summary>Marks the account online for a session that just registered, unless it already closed or was replaced.</summary>
+    void MarkOnline(GameClient session, int userId);
+
     void SetProfileValue(int userId, string column, object? value);
 }
 
-public sealed class UserPersistenceService(IDatabase database, TimeProvider clock) : IUserPersistenceService
+public sealed class UserPersistenceService(IDatabase database, TimeProvider clock, IGameClientManager clients) : IUserPersistenceService
 {
-    public void Save(Habbo habbo, bool reopenModerationTickets = false)
+    // A replaced session logs out off-thread while its successor logs in. The online flag is written under one lock
+    // per account together with the registered-session check, so the older logout never clears the newer login.
+    private readonly object[] _presence = Enumerable.Range(0, 64).Select(_ => new object()).ToArray();
+
+    public void Save(Habbo habbo)
     {
+        lock (Presence(habbo.Id)) {
+            SaveCore(habbo);
+        }
+    }
+
+    public void MarkOnline(GameClient session, int userId)
+    {
+        lock (Presence(userId)) {
+            if (session.Closed.IsCancellationRequested || !ReferenceEquals(clients.GetClientByUserId(userId), session)) {
+                return;
+            }
+
+            using var connection = database.Connection();
+            connection.Execute("UPDATE `users` SET `online` = true WHERE `id` = @userId", new { userId });
+        }
+    }
+
+    private object Presence(int userId) => _presence[(uint)userId % (uint)_presence.Length];
+
+    private void SaveCore(Habbo habbo)
+    {
+        // A session whose statistics never loaded must not overwrite the saved row with nothing.
+        var stats = habbo.HabboStats ?? throw new InvalidOperationException($"User {habbo.Id} has no loaded statistics to save.");
+        // A newer session of this account owns the online flag; its own logout clears it.
+        var replaced = clients.GetClientByUserId(habbo.Id) is { } current && !ReferenceEquals(current, habbo.Client);
         var now = clock.GetUtcNow();
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
         connection.Execute(
-            "UPDATE `users` SET `online` = false, `last_online` = @now, `credits` = @Credits, " +
+            "UPDATE `users` SET `online` = `online` AND @replaced, `last_online` = @now, `credits` = @Credits, " +
             "`time_muted` = @TimeMuted, `bubble_id` = @CustomBubbleId WHERE `id` = @Id; " +
             "UPDATE `users_settings` SET `home_room` = @HomeRoom, `friend_bar_state` = @FriendbarState WHERE `user_id` = @Id; " +
             "UPDATE `user_statistics` SET `roomvisits` = @RoomVisits, `onlineTime` = `onlineTime` + @SessionSeconds, " +
@@ -34,30 +68,41 @@ public sealed class UserPersistenceService(IDatabase database, TimeProvider cloc
                 habbo.CustomBubbleId,
                 habbo.HomeRoom,
                 FriendbarState = Messenger.FriendBar.FriendBarStateUtility.GetInt(habbo.FriendbarState),
-                habbo.HabboStats.RoomVisits,
+                stats.RoomVisits,
                 SessionSeconds = Math.Max(0L, (long)(now - habbo.SessionStartedAt).TotalSeconds),
-                habbo.HabboStats.Respect,
-                habbo.HabboStats.RespectGiven,
-                habbo.HabboStats.GiftsGiven,
-                habbo.HabboStats.GiftsReceived,
-                habbo.HabboStats.DailyRespectPoints,
-                habbo.HabboStats.DailyPetRespectPoints,
-                habbo.HabboStats.AchievementPoints,
-                habbo.HabboStats.QuestId,
-                habbo.HabboStats.QuestProgress,
-                habbo.HabboStats.FavouriteGroupId,
-                habbo.HabboStats.ForumPosts,
-                now = now.UtcDateTime
+                stats.Respect,
+                stats.RespectGiven,
+                stats.GiftsGiven,
+                stats.GiftsReceived,
+                stats.DailyRespectPoints,
+                stats.DailyPetRespectPoints,
+                stats.AchievementPoints,
+                stats.QuestId,
+                stats.QuestProgress,
+                stats.FavouriteGroupId,
+                stats.ForumPosts,
+                now = now.UtcDateTime,
+                replaced
             }, transaction);
 
         UserCurrencyStore.SetMany(connection, habbo.Id, habbo.Currencies.Snapshot(), transaction);
 
-        if (reopenModerationTickets) {
-            connection.Execute("UPDATE `moderation_tickets` SET `status` = 'open', `moderator_id` = 0 WHERE `status` = 'picked' AND `moderator_id` = @id",
-                new { id = habbo.Id }, transaction);
+        // Achievement progress without a level-up is only kept in memory until the session is saved; levels are written when unlocked.
+        var achievements = habbo.Achievements.Values.Where(achievement => achievement.ProgressUnsaved).ToList();
+
+        if (achievements.Count > 0) {
+            connection.Execute(
+                "INSERT INTO `user_achievements` (`userid`,`group`,`level`,`progress`) VALUES (@UserId, @Group, @Level, @Progress) " +
+                "ON DUPLICATE KEY UPDATE `progress` = VALUES(`progress`)",
+                achievements.Select(achievement => new { UserId = habbo.Id, Group = achievement.AchievementGroup, achievement.Level, achievement.Progress }),
+                transaction);
         }
 
         transaction.Commit();
+
+        foreach (var achievement in achievements) {
+            achievement.ProgressUnsaved = false;
+        }
     }
 
     public void SetProfileValue(int userId, string column, object? value)

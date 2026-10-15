@@ -8,6 +8,9 @@ public sealed class ActorProfile
     // Plus's inverted RoomBlockingEnabled: true means walkthrough.
     public bool Walkthrough { get; set; }
     public bool DiagonalEnabled { get; set; } = true;
+    // The room's :disablediagonal setting: a diagonal step may pass between two blocked tiles that
+    // touch at a corner (furniture squeeze). Void flanks still follow the global corner rule.
+    public bool DiagonalSqueeze { get; set; }
     public ActorAccess Access { get; } = new();
     public int CapabilityVersion => Access.CapabilityVersion;
     public bool IsMember(int group) => Access.IsMember(group);

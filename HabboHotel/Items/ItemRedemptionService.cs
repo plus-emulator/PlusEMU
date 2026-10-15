@@ -6,7 +6,6 @@ using Plus.Communication.Packets.Outgoing.Inventory.Purse;
 using Plus.Communication.Packets.Outgoing.Rooms.Notifications;
 using Plus.Core.Settings;
 using Plus.Database;
-using Plus.HabboHotel.Catalog.Clothing;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Users.Clothing.Parts;
@@ -87,7 +86,7 @@ public interface IItemRedemptionService
     void RedeemClothing(GameClient session, uint itemId);
 }
 
-public sealed class ItemRedemptionService(IItemRedemptionStore store, ISettingsManager settings, IClothingManager clothingManager) : IItemRedemptionService
+public sealed class ItemRedemptionService(IItemRedemptionStore store, ISettingsManager settings) : IItemRedemptionService
 {
     public void RedeemCredits(Room room, GameClient session, uint itemId)
     {
@@ -132,7 +131,8 @@ public sealed class ItemRedemptionService(IItemRedemptionStore store, ISettingsM
             store.DeleteExchange(item.Id, habbo.Id, room.RoomId);
             habbo.Credits = balance;
             room.GetRoomItemHandler().RemoveFurniture(null, item.Id);
-            habbo.Inventory.Furniture.RemoveItem(item.Id);
+            // The exchange item was placed in the room; this only drops a stale inventory copy, which an unloaded inventory cannot hold.
+            habbo.Inventory?.Furniture.RemoveItem(item.Id);
             session.Send(new CreditBalanceComposer(balance));
             session.Send(new FurniListUpdateComposer());
             session.Send(new FurniListRemoveComposer(item.Id));
@@ -144,7 +144,8 @@ public sealed class ItemRedemptionService(IItemRedemptionStore store, ISettingsM
         var habbo = session.GetHabbo();
         var room = habbo.CurrentRoom;
 
-        if (room == null) {
+        // The wardrobe is loaded at login; without it the redeemed parts would have nowhere to go.
+        if (room == null || habbo.Clothing is not { } wardrobe) {
             return;
         }
 
@@ -165,24 +166,17 @@ public sealed class ItemRedemptionService(IItemRedemptionStore store, ISettingsM
                 return;
             }
 
-            if (item.Definition.BehaviourData == 0) {
+            if (item.Definition.FigureSetIds.Count == 0) {
                 session.SendNotification("Oops, this item doesn't have a linking clothing configuration, please report it!");
 
                 return;
             }
 
-            if (!clothingManager.TryGetClothing(item.Definition.BehaviourData, out var clothing)) {
-                session.SendNotification("Oops, we couldn't find this clothing part!");
-
-                return;
-            }
-
-            var committed = store.ConsumeClothing(item.Id, habbo.Id, room.RoomId, clothing.ClothingName, clothing.PartIds);
-            habbo.Clothing.PublishCommitted(committed);
+            var committed = store.ConsumeClothing(item.Id, habbo.Id, room.RoomId, item.Definition.ItemName, item.Definition.FigureSetIds);
+            wardrobe.PublishCommitted(committed);
             room.GetRoomItemHandler().RemoveFurniture(session, item.Id);
-            session.Send(new FigureSetIdsComposer(habbo.Clothing.GetClothingParts.ToArray()));
+            session.Send(new FigureSetIdsComposer(wardrobe.GetClothingParts.ToArray()));
             session.Send(new RoomNotificationComposer("figureset.redeemed.success"));
-            session.SendWhisper("If for some reason cannot see your new clothing, reload the hotel!");
         }
     }
 }

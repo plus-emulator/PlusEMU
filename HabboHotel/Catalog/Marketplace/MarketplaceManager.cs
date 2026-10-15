@@ -144,8 +144,6 @@ public class MarketplaceManager : IMarketplaceManager
         return (int)Math.Clamp(minutes, int.MinValue, int.MaxValue);
     }
 
-    public int CalculateComissionPrice(float price) => Convert.ToInt32(Math.Ceiling(price / 100 * 1));
-
     public async Task<bool> TryCancelOffer(Habbo habbo, uint offerId)
     {
         var offer = await GetOffer(offerId);
@@ -161,8 +159,8 @@ public class MarketplaceManager : IMarketplaceManager
         }
 
         var giveItem = _itemFactory.CreateSingleItem(item, habbo, offer.ExtraData, offer.ExtraData, offer.FurniId, offer.LimitedNumber, offer.LimitedStack);
-        habbo.Client.Send(new FurniListNotificationComposer(giveItem.Id, 1));
-        habbo.Client.Send(new FurniListUpdateComposer());
+        habbo.Client?.Send(new FurniListNotificationComposer(giveItem.Id, 1));
+        habbo.Client?.Send(new FurniListUpdateComposer());
         await DeleteOffer(offerId);
 
         return true;

@@ -4,7 +4,6 @@ using Dapper;
 using Microsoft.Extensions.Logging;
 using Plus.Core;
 using Plus.Database;
-using Plus.HabboHotel.Catalog.Clothing;
 using Plus.HabboHotel.Catalog.Marketplace;
 using Plus.HabboHotel.Catalog.Pets;
 using Plus.HabboHotel.Catalog.Vouchers;
@@ -23,19 +22,17 @@ public class CatalogManager : ICatalogManager, IStartable
     private CatalogOfferIndex _offers = new();
     private Dictionary<int, ClubOffer> _clubOffers = new();
 
-    private readonly IClothingManager _clothingManager;
     private readonly IDatabase _database;
     private readonly IMarketplaceManager _marketplace;
     private readonly IPetRaceManager _petRaceManager;
     private readonly IVoucherManager _voucherManager;
     private readonly IItemDataManager _itemDataManager;
 
-    public CatalogManager(IMarketplaceManager marketplace, IPetRaceManager petRaceManager, IVoucherManager voucherManager, IClothingManager clothingManager, IDatabase database, ILogger<CatalogManager> logger, IItemDataManager itemDataManager)
+    public CatalogManager(IMarketplaceManager marketplace, IPetRaceManager petRaceManager, IVoucherManager voucherManager, IDatabase database, ILogger<CatalogManager> logger, IItemDataManager itemDataManager)
     {
         _marketplace = marketplace;
         _petRaceManager = petRaceManager;
         _voucherManager = voucherManager;
-        _clothingManager = clothingManager;
         _itemDataManager = itemDataManager;
         _database = database;
         _logger = logger;
@@ -48,7 +45,6 @@ public class CatalogManager : ICatalogManager, IStartable
     public async Task Init()
     {
         _voucherManager.Init();
-        _clothingManager.Init();
         _petRaceManager.Init();
         await Load();
     }
@@ -97,7 +93,7 @@ public class CatalogManager : ICatalogManager, IStartable
             botPresets.Add(bot.Id, bot);
         }
 
-        var promotions = await connection.QueryAsync<CatalogPromotion>("SELECT `id`,`title`,`image`,`unknown`,`page_link`,`parent_id`,`position`,`item_type` AS `ItemType`,`offer_id` AS `OfferId`,`product_code` AS `ProductCode`,`expires_at` AS `ExpiresAt` FROM `catalog_promotions`");
+        var promotions = await connection.QueryAsync<CatalogPromotion>("SELECT `id`,`title`,`image`,`page_link`,`position`,`item_type` AS `ItemType`,`offer_id` AS `OfferId`,`product_code` AS `ProductCode`,`expires_at` AS `ExpiresAt` FROM `catalog_promotions`");
 
         foreach (CatalogPromotion promotion in promotions) {
             if (promotionsById.ContainsKey(promotion.Id)) {
@@ -254,6 +250,4 @@ public class CatalogManager : ICatalogManager, IStartable
     public IPetRaceManager PetRaceManager => _petRaceManager;
 
     public IVoucherManager VoucherManager => _voucherManager;
-
-    public IClothingManager ClothingManager => _clothingManager;
 }

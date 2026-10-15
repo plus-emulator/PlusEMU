@@ -27,31 +27,26 @@ public sealed class CraftingPacketTests
         Assert.Equal(new object[] { 1, 2, "ingredient" }, packet.Writes);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void ProductLayoutsLeaveTheFollowingIngredientCountAtTheCorrectOffset(bool native)
+    [Fact]
+    public void ProductLayoutLeavesTheFollowingIngredientCountAtTheCorrectOffset()
     {
         using var stream = Plus.Communication.Flash.PlusMemoryStream.GetStream();
         var outgoing = new Plus.Communication.Flash.FlashOutgoingPacket(stream);
         var product = new CraftingProduct("recipe", "product", "furniture");
-        new CraftableProductsComposer([product], ["ingredient"], native).Compose(outgoing);
+        new CraftableProductsComposer([product], ["ingredient"]).Compose(outgoing);
         var incoming = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = stream.ToArray()[6..] };
         Assert.Equal(1, incoming.ReadInt());
         Assert.Equal("recipe", incoming.ReadString());
 
-        if (native) {
-            Assert.Equal("product", incoming.ReadString());
-        }
+        Assert.Equal("product", incoming.ReadString());
 
         Assert.Equal("furniture", incoming.ReadString());
         Assert.Equal(1, incoming.ReadInt());
         Assert.Equal("ingredient", incoming.ReadString());
         Assert.False(incoming.HasDataRemaining());
         var result = new HabbiconTestSupport.RecordingPacket();
-        new CraftingResultComposer(product, native).Compose(result);
-        Assert.Equal(native ? new object[] { true, "recipe", "product", "furniture" }
-            : [true, "recipe", "furniture"], result.Writes);
+        new CraftingResultComposer(product).Compose(result);
+        Assert.Equal(new object[] { true, "recipe", "product", "furniture" }, result.Writes);
     }
 
     [Fact]
@@ -67,6 +62,30 @@ public sealed class CraftingPacketTests
         Assert.Equal(new[] { "products:10", "recipe:recipe", "craft:10:recipe", "available:10:20,21", "secret:10:20,21" }, service.Calls);
     }
 
+    [Fact]
+    public async Task AirCraftingIdsDispatchAltarAndRecipePayloadsToTheirOwnOperations()
+    {
+        var service = new Recorder();
+        var (client, _) = HabbiconTestSupport.Client(new Habbo { Id = 7 });
+        using var manager = new Plus.Communication.Packets.PacketManager(
+            [new GetCraftableProductsEvent(service), new GetCraftingRecipeEvent(service)],
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Plus.Communication.Packets.PacketManager>.Instance);
+        using var altarStream = Plus.Communication.Flash.PlusMemoryStream.GetStream();
+        new Plus.Communication.Flash.FlashOutgoingPacket(altarStream).WriteInt(100_000);
+        var altar = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = altarStream.ToArray()[6..] };
+        using var recipeStream = Plus.Communication.Flash.PlusMemoryStream.GetStream();
+        new Plus.Communication.Flash.FlashOutgoingPacket(recipeStream).WriteString("recipe");
+        var recipe = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = recipeStream.ToArray()[6..] };
+
+        // October AIR crafting request identities are pinned in the paired packet manifest.
+        await manager.TryExecutePacket(client, 822, altar);
+        await manager.TryExecutePacket(client, 1531, recipe);
+
+        Assert.Equal(new[] { "products:100000", "recipe:recipe" }, service.Calls);
+        Assert.False(altar.HasDataRemaining());
+        Assert.False(recipe.HasDataRemaining());
+    }
+
     [Theory]
     [InlineData(-1)]
     [InlineData(51)]
@@ -78,39 +97,6 @@ public sealed class CraftingPacketTests
         var (client, _) = HabbiconTestSupport.Client(new Habbo { Id = 7 });
         await new CraftSecretEvent(service).Parse(client, HabbiconTestSupport.Incoming(10, count));
         Assert.Equal("secret:10:0", Assert.Single(service.Calls));
-    }
-
-    [Fact]
-    public async Task EverySupportedBrowserRevisionMapsAllFiveRequestsAndFourResponses()
-    {
-        var directory = Directory.CreateTempSubdirectory("crafting-revisions-").FullName;
-
-        try {
-            foreach (var file in Directory.GetFiles(HabbiconPacketTests.Repo("Resources/Revisions"), "*.json")) {
-                File.Copy(file, Path.Join(directory, Path.GetFileName(file)));
-            }
-
-            var cache = new Plus.Communication.Revisions.RevisionsCache();
-            typeof(Plus.Communication.Revisions.RevisionsCache).GetField("_directory",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(cache, directory);
-            await cache.Start();
-
-            foreach (var name in new[] { "NITRO-1-6-6", "NITRO-3-6-0", "OCTANE-3-6-0-FLOOR-20260909" }) {
-                var revision = cache.Revisions[name];
-                Assert.Equal(Plus.Communication.Packets.Incoming.ClientPacketHeader.CraftEvent, revision.IncomingIdToInternalIdMapping[3591]);
-                Assert.Equal(Plus.Communication.Packets.Incoming.ClientPacketHeader.CraftSecretEvent, revision.IncomingIdToInternalIdMapping[1251]);
-                Assert.Equal(Plus.Communication.Packets.Incoming.ClientPacketHeader.GetCraftableProductsEvent, revision.IncomingIdToInternalIdMapping[633]);
-                Assert.Equal(Plus.Communication.Packets.Incoming.ClientPacketHeader.GetCraftingRecipeEvent, revision.IncomingIdToInternalIdMapping[1173]);
-                Assert.Equal(Plus.Communication.Packets.Incoming.ClientPacketHeader.GetCraftingRecipesAvailableEvent, revision.IncomingIdToInternalIdMapping[3086]);
-                Assert.Equal(1000u, revision.InternalIdToOutgoingIdMapping[Plus.Communication.Packets.Outgoing.ServerPacketHeader.CraftableProductsComposer]);
-                Assert.Equal(2774u, revision.InternalIdToOutgoingIdMapping[Plus.Communication.Packets.Outgoing.ServerPacketHeader.CraftingRecipeComposer]);
-                Assert.Equal(618u, revision.InternalIdToOutgoingIdMapping[Plus.Communication.Packets.Outgoing.ServerPacketHeader.CraftingResultComposer]);
-                Assert.Equal(2124u, revision.InternalIdToOutgoingIdMapping[Plus.Communication.Packets.Outgoing.ServerPacketHeader.CraftingRecipesAvailableComposer]);
-            }
-        }
-        finally {
-            Directory.Delete(directory, recursive: true);
-        }
     }
 
     private sealed class Recorder : ICraftingService

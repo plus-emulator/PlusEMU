@@ -26,12 +26,15 @@ public sealed class WiredGroupDependencyCollection;
 public sealed class WiredGroupDependencyTests
 {
     [Fact]
-    public void SelectorAndAddonShareInjectedGroupSnapshotAndNextFiringRefreshesMembership()
+    public void SelectorAndAddonShareEquippedBadgeSnapshotAndNextFiringRefreshesIt()
     {
         var group = Group(7, 1);
         var lookups = 0;
         var groups = new TestGroupManager(id => { lookups++; return id == group.Id ? group : null; });
         var fixture = new Fixture(groups, group);
+        var badge = (Plus.HabboHotel.Users.HabboStats)RuntimeHelpers.GetUninitializedObject(typeof(Plus.HabboHotel.Users.HabboStats));
+        fixture.Member.GetClient().GetHabbo().HabboStats = badge;
+        badge.FavouriteGroupId = group.Id;
         var selector = fixture.Selector([0, 0, 0, 0]);
         var addon = fixture.Addon();
         var context = fixture.Context(selector.Item, addon.Item);
@@ -43,6 +46,7 @@ public sealed class WiredGroupDependencyTests
         var before = lookups;
 
         group.DeleteMember(fixture.Member.HabboId);
+        badge.FavouriteGroupId = 0;
         Assert.Equal([fixture.Member.VirtualId], selector.Select(context).Selection.UserIds);
         Assert.DoesNotContain("$(users)", context.Policy.FormatText(context, "$(users)"));
         Assert.Same(captured, context.SelectorWorldSnapshot);
@@ -50,9 +54,9 @@ public sealed class WiredGroupDependencyTests
 
         var next = fixture.Context(selector.Item, addon.Item);
         Assert.Empty(selector.Select(next).Selection.UserIds);
-        Assert.True(lookups > before);
+        Assert.Equal(before, lookups);
 
-        Assert.True(selector.TryValidateConfiguration(new() { IntParams = [1, 404, 0, 0] },
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(selector, new() { IntParams = [1, 404, 0, 0] },
             out var missing, out var error), error);
         selector.ApplyConfiguration(missing);
         Assert.Empty(selector.Select(fixture.Context(selector.Item, addon.Item)).Selection.UserIds);
@@ -157,7 +161,7 @@ public sealed class WiredGroupDependencyTests
         {
             var item = Item(1, "wf_slc_users_group");
             var box = Assert.IsAssignableFrom<IWiredContextualSelector>(_wired.CreateConfiguredBox(item));
-            Assert.True(box.TryValidateConfiguration(new() { IntParams = [.. parameters] }, out var valid, out var error), error);
+            Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [.. parameters] }, out var valid, out var error), error);
             box.ApplyConfiguration(valid);
             Assert.True(_wired.AddBox(box));
             _items[0] = item;
@@ -169,7 +173,7 @@ public sealed class WiredGroupDependencyTests
         {
             var item = Item(2, "wf_xtra_text_output_username");
             var box = Assert.IsAssignableFrom<IWiredContextualAddon>(_wired.CreateConfiguredBox(item));
-            Assert.True(box.TryValidateConfiguration(new() { IntParams = [2, 0], Text = "users\t," },
+            Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [2, 0], Text = "users\t," },
                 out var valid, out var error), error);
             box.ApplyConfiguration(valid);
             Assert.True(_wired.AddBox(box));
@@ -182,7 +186,7 @@ public sealed class WiredGroupDependencyTests
         {
             var item = Item(3, "wf_cnd_actor_in_group");
             var box = Assert.IsType<WiredModernCondition>(_wired.CreateConfiguredBox(item));
-            Assert.True(box.TryValidateConfiguration(new() { IntParams = [.. parameters] }, out var valid, out var error), error);
+            Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [.. parameters] }, out var valid, out var error), error);
             box.ApplyConfiguration(valid);
 
             return box;

@@ -37,7 +37,7 @@ public class WiredRoomSettingsTests
         room.UsersWithRights.Add(2);
         var admin = Client(room, 3);
         var guest = Client(room, 4);
-        Set(room.Group, "_administrators", new List<int> { 3 });
+        Set(Assert.IsType<Plus.HabboHotel.Groups.Group>(room.Group), "_administrators", new List<int> { 3 });
         var settings = new WiredRoomSettings(room, new MemoryStore());
         Assert.True(settings.CanModify(rights));
         Assert.True(settings.CanInspect(rights));
@@ -57,8 +57,8 @@ public class WiredRoomSettingsTests
     {
         var room = Room();
         room.UsersWithRights.Add(2);
-        Set(room.Group, "_members", new List<int> { 3 });
-        Set(room.Group, "_administrators", new List<int> { 4 });
+        Set(Assert.IsType<Plus.HabboHotel.Groups.Group>(room.Group), "_members", new List<int> { 3 });
+        Set(Assert.IsType<Plus.HabboHotel.Groups.Group>(room.Group), "_administrators", new List<int> { 4 });
         var settings = new WiredRoomSettings(room, new MemoryStore { Saved = new(mask, 0) });
         Assert.Equal(rightsAllowed, settings.CanInspect(Client(room, 2)));
         Assert.Equal(memberAllowed, settings.CanInspect(Client(room, 3)));
@@ -196,15 +196,13 @@ public class WiredRoomSettingsTests
         Assert.Equal(2, service.Saves.Count);
     }
 
-    [Theory]
-    [InlineData("1.6.6.json")]
-    [InlineData("example.json")]
-    public void ActualRoomSettingsHandlersHaveUniqueActiveProfileMappings(string profile)
+    [Fact]
+    public void ActualRoomSettingsHandlersHaveUniqueActiveProfileMappings()
     {
         IPacketEvent[] handlers = [new WiredRoomSettingsRequestEvent(Service()), new WiredRoomSettingsSaveEvent(Service()), new WiredMenuPermissionsSaveEvent(Service())];
         using var manager = new PacketManager(handlers, NullLogger<PacketManager>.Instance);
         var registered = (Dictionary<uint, IPacketEvent>)typeof(PacketManager).GetField("_incomingPackets", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(manager)!;
-        var revision = JsonSerializer.Deserialize<Revision>(File.ReadAllText(Path.Join(AppContext.BaseDirectory, "revisions", profile)))!;
+        var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
 
         foreach (var handler in handlers) {
             var name = handler.GetType().Name;
@@ -212,14 +210,9 @@ public class WiredRoomSettingsTests
             Assert.Same(handler, registered[id]);
             Assert.Single(typeof(ClientPacketHeader).GetFields(), field => field.IsLiteral && field.GetRawConstantValue() is uint value && value == id);
 
-            if (profile == "example.json" && handler is WiredMenuPermissionsSaveEvent) {
-                Assert.False(revision.IncomingHeaders.ContainsKey(name));
-                Assert.Equal(1936u, revision.IncomingHeaders["UpdateFloorPropertiesEvent"]);
-                continue;
-            }
+            var wire = revision.IncomingHeaders[name];
+            Assert.Equal(id, revision.IncomingIdToInternalIdMapping[wire]);
 
-            var wire = handler is WiredMenuPermissionsSaveEvent ? 1936u : id;
-            Assert.Equal(wire, revision.IncomingHeaders[name]);
             Assert.Single(revision.IncomingHeaders, entry => entry.Value == wire);
         }
 
@@ -259,8 +252,8 @@ public class WiredRoomSettingsTests
         room.Type = "private";
         room.UsersWithRights = [];
         room.Group = (Group)RuntimeHelpers.GetUninitializedObject(typeof(Group));
-        Set(room.Group, "_administrators", new List<int>());
-        Set(room.Group, "_members", new List<int>());
+        Set(Assert.IsType<Plus.HabboHotel.Groups.Group>(room.Group), "_administrators", new List<int>());
+        Set(Assert.IsType<Plus.HabboHotel.Groups.Group>(room.Group), "_members", new List<int>());
 
         return room;
     }

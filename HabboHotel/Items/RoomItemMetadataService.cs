@@ -203,9 +203,14 @@ public sealed class RoomItemMetadataService(IRoomItemMetadataStore store, IFigur
             return;
         }
 
+        // Paid clothing is only checked against a loaded wardrobe; without one the mannequin is left untouched.
+        if (habbo.Clothing is not { } wardrobe) {
+            return;
+        }
+
         var name = fields.Length >= 3 ? fields[2] : "Default";
         var figure = string.Join('.', figures.ProcessFigure(habbo.Look, habbo.Gender,
-                habbo.Clothing.GetClothingParts, ClubAccess.LevelFor(habbo.Access))
+                wardrobe.GetClothingParts, ClubAccess.LevelFor(habbo.Access))
             .Split('.').Where(part => !part.Contains("hr") && !part.Contains("hd") && !part.Contains("he")
                 && !part.Contains("ea") && !part.Contains("ha"))).TrimEnd('.');
         var data = $"{habbo.Gender.ToLowerInvariant()}{(char)5}{figure}{(char)5}{name}";
@@ -241,6 +246,14 @@ public sealed class RoomItemMetadataService(IRoomItemMetadataStore store, IFigur
     {
         var habbo = session.GetHabbo();
         var room = habbo.CurrentRoom;
+
+        if (room != null && room.GetRoomItemHandler().GetItem(request.ItemId) is { } area && AreaHide.AreaHideState.IsAreaHide(area)) {
+            if (request.Values is { } fields) {
+                AreaHide.AreaHideState.Configure(room, session, area, fields);
+            }
+
+            return;
+        }
 
         if (!habbo.InRoom || room == null || !room.CheckRights(session, true) || !habbo.Access.Can(PermissionKeys.RoomItemSaveBrandingItems)) {
             return;
@@ -287,12 +300,26 @@ public sealed class RoomItemMetadataService(IRoomItemMetadataStore store, IFigur
             return;
         }
 
+        SetTonerFromWired(room, item, request, store);
+    }
+
+    internal static bool SetTonerFromWired(Room room, Item item, TonerSettingsRequest request, IRoomItemMetadataStore store)
+    {
+        if (!ReferenceEquals(room.GetRoomItemHandler().GetItem(request.ItemId), item) || request.ItemId != item.Id
+            || item.IsTemporary || item.Definition?.InteractionType != InteractionType.Toner || room.TonerData?.ItemId != item.Id
+            || request.Hue is < 0 or > 255 || request.Saturation is < 0 or > 255 || request.Lightness is < 0 or > 255) {
+            return false;
+        }
+
         store.SetToner(item.Id, room.Id, request.Hue, request.Saturation, request.Lightness);
         room.TonerData.Hue = request.Hue;
         room.TonerData.Saturation = request.Saturation;
         room.TonerData.Lightness = request.Lightness;
         room.TonerData.Enabled = 1;
+        Plus.HabboHotel.Items.Data.Toner.TonerState.Synchronize(room, item);
         room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
         item.UpdateState();
+
+        return true;
     }
 }

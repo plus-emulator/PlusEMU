@@ -16,6 +16,7 @@ using Plus.HabboHotel;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Quests;
@@ -126,6 +127,22 @@ public partial class PlacedFurniRoomTests : IDisposable
         Assert.Same(_room, item.GetRoom());
     }
 
+    [Fact]
+    public void UsingAPlacedPhotoKeepsItsImage()
+    {
+        // Photo furni have two modes, so a generic switch would replace the image record with "1".
+        const string image = "{\"w\":\"/camera/photo.png\"}";
+        var photo = Furni(13, InteractionType.CameraPicture, WiredBoxType.None, ItemType.Wall);
+        photo.Definition.Modes = 2;
+        photo.ExtraData = new LegacyDataFormat { Data = image };
+
+        Assert.True(_room.GetRoomItemHandler().SetWallItem(_client, photo));
+        photo.Interactor.OnTrigger(_client, photo, 0, true);
+        photo.Interactor.OnWiredTrigger(photo);
+
+        Assert.Equal(image, photo.LegacyDataString);
+    }
+
     [Theory]
     [InlineData(InteractionType.WiredTrigger, WiredBoxType.TriggerWalkOnFurni, ServerPacketHeader.WiredTriggeRconfigComposer)]
     [InlineData(InteractionType.WiredEffect, WiredBoxType.EffectShowMessage, ServerPacketHeader.WiredEffectConfigComposer)]
@@ -149,14 +166,14 @@ public partial class PlacedFurniRoomTests : IDisposable
 
         await PlaceObject().Parse(_room, _client, ClientPacket("30 1 1 0"));
         var placed = _room.GetRoomItemHandler().GetItem(30);
-        Assert.Null(_client.GetHabbo().Inventory.Furniture.GetItem(30));
+        Assert.Null(Assert.IsType<InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(30));
 
         _client.Sent.Clear();
         await PickupObject()
             .Parse(_client, ClientPacket(0, 30));
 
         Assert.Null(_room.GetRoomItemHandler().GetItem(30));
-        Assert.NotNull(_client.GetHabbo().Inventory.Furniture.GetItem(30));
+        Assert.NotNull(Assert.IsType<InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(30));
         Assert.Contains(ServerPacketHeader.FurniListUpdateComposer, _client.Sent);
         Assert.Equal((7, "owner", 7u), (placed.UserId, placed.Username, placed.OwnerId));
     }
@@ -169,7 +186,7 @@ public partial class PlacedFurniRoomTests : IDisposable
         await PlaceObject().Parse(_room, _client, ClientPacket("31 1 1 0"));
 
         Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
-        Assert.NotNull(_client.GetHabbo().Inventory.Furniture.GetItem(30));
+        Assert.NotNull(Assert.IsType<InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(30));
         Assert.Empty(_client.Sent);
     }
 

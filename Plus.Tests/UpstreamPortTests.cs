@@ -93,8 +93,8 @@ public class UpstreamPortTests
         var packet = new RecordingPacket();
         new KickbackInfoComposer(new Plus.HabboHotel.Subscriptions.ClubKickback(0, "", 0d, 0, 0, 0, 0, 0, 0)).Compose(packet);
         Assert.Equal(new object[] { 0, "", 0d, 0, 0, 0, 0, 0, 0 }, packet.Writes);
-        Assert.Equal(4001u, ServerPacketHeader.KickbackInfoComposer);
-        Assert.Equal(4001u, ClientPacketHeader.GetKickbackInfoEvent);
+        Assert.Equal(2543u, ServerPacketHeader.KickbackInfoComposer);
+        Assert.Equal(84u, ClientPacketHeader.GetKickbackInfoEvent);
         Assert.Equal(nameof(GetKickbackInfoEvent), typeof(GetKickbackInfoEvent).Name);
 
         var incoming = HeaderValues(typeof(ClientPacketHeader));
@@ -102,14 +102,6 @@ public class UpstreamPortTests
         Assert.Equal(incoming.Count, incoming.Distinct().Count());
         Assert.Equal(outgoing.Count, outgoing.Distinct().Count());
 
-        var revisionPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Resources", "Revisions", "1.6.6.json"));
-        using var document = JsonDocument.Parse(File.ReadAllText(revisionPath));
-        var incomingHeaders = document.RootElement.GetProperty("IncomingHeaders");
-        var outgoingHeaders = document.RootElement.GetProperty("OutgoingHeaders");
-        Assert.Equal(869u, incomingHeaders.GetProperty("GetKickbackInfoEvent").GetUInt32());
-        Assert.Equal(3277u, outgoingHeaders.GetProperty("KickbackInfoComposer").GetUInt32());
-        AssertUniquePositiveIds(incomingHeaders);
-        AssertUniquePositiveIds(outgoingHeaders);
     }
 
     [Fact]

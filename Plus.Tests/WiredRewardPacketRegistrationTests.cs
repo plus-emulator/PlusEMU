@@ -8,15 +8,15 @@ namespace Plus.Tests;
 
 public class WiredRewardPacketRegistrationTests
 {
-    [Theory]
-    [InlineData("1.6.6.json")]
-    [InlineData("example.json")]
-    public void ConcreteRewardResultUsesActiveCollisionFreeProfileMapping(string profile)
+    [Fact]
+    public void ConcreteRewardResultUsesActiveCollisionFreeProfileMapping()
     {
-        var revision = JsonSerializer.Deserialize<Revision>(File.ReadAllText(Path.Join(AppContext.BaseDirectory, "revisions", profile)))!;
+        var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
         var composer = new WiredRewardResultComposer(5);
         Assert.Equal(ServerPacketHeader.WiredRewardResultComposer, composer.MessageId);
-        Assert.Equal(178u, revision.OutgoingHeaders[nameof(ServerPacketHeader.WiredRewardResultComposer)]);
-        Assert.Single(revision.OutgoingHeaders, pair => pair.Value == 178);
+        var wire = revision.OutgoingHeaders[nameof(ServerPacketHeader.WiredRewardResultComposer)];
+        Assert.Equal(ServerPacketHeader.WiredRewardResultComposer, wire);
+        Assert.Equal(wire, revision.InternalIdToOutgoingIdMapping[composer.MessageId]);
+        Assert.Single(revision.OutgoingHeaders, pair => pair.Value == wire);
     }
 }

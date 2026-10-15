@@ -24,12 +24,12 @@ namespace Plus.Tests
             Inventory(disc);
             store.BeforeAdd = () =>
             {
-                Assert.Same(disc, _client.GetHabbo().Inventory.Furniture.GetItem(31));
+                Assert.Same(disc, Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(31));
                 Assert.Empty(_client.Sent);
             };
             await new AddJukeboxDiskEvent().Parse(_room, _client, ClientPacket(31, 0));
             Assert.Equal((31u, 0), Assert.Single(store.Adds));
-            Assert.Null(_client.GetHabbo().Inventory.Furniture.GetItem(31));
+            Assert.Null(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(31));
             var body = new FlashIncomingPacket { Buffer = _client.Packets.Last(entry => entry.Header == ServerPacketHeader.JukeboxPlaylistComposer).Body };
             Assert.Equal(10, body.ReadInt());
             Assert.Equal(1, body.ReadInt());
@@ -61,7 +61,7 @@ namespace Plus.Tests
             Assert.Empty(store.Adds);
             store.Failure = new InvalidOperationException("rollback");
             Assert.Throws<InvalidOperationException>(() => music.Add(_client, 31, 0));
-            Assert.Same(disc, _client.GetHabbo().Inventory.Furniture.GetItem(31));
+            Assert.Same(disc, Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(31));
             Assert.Empty(_client.Sent);
             Assert.True(disc.TryReserve());
             disc.ReleaseReservation();
@@ -118,7 +118,7 @@ namespace Plus.Tests
             success.PickUp(_client, player.Id).GetAwaiter().GetResult();
             Assert.Null(_room.GetRoomItemHandler().GetItem(player.Id));
             Assert.Null(player.GetRoom());
-            Assert.Equal("0", _client.GetHabbo().Inventory.Furniture.GetItem(player.Id)!.ExtraData.Serialize());
+            Assert.Equal("0", Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(player.Id)!.ExtraData.Serialize());
             _client.Packets.Clear();
             music.RequestNowPlaying(_client);
             var body = new FlashIncomingPacket { Buffer = Assert.Single(_client.Packets).Body };
@@ -168,7 +168,7 @@ namespace Plus.Tests
             _room.GetRoomUserManager().RemoveUserFromRoom(_client, false, false);
             ExecutorTick();
             Assert.Empty(store.Adds);
-            Assert.NotNull(_client.GetHabbo().Inventory.Furniture.GetItem(31));
+            Assert.NotNull(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(31));
             Assert.DoesNotContain(ServerPacketHeader.FurniListRemoveComposer, _client.Sent);
             Assert.Same(player, _room.GetRoomItemHandler().GetItem(player.Id));
         }
@@ -299,7 +299,7 @@ namespace Plus.Tests
             var clients = Proxy<Plus.HabboHotel.GameClients.IGameClientManager>((name, args) => name == "GetClientByUserId" ? (int)args[0]! == 7 ? _client : foreignClient : null);
             var clear = new InventoryClearService(new InventoryClearStore(fixture.Database, fixture.Definitions), new AccountSessionGate(), clients);
             Assert.True(clear.TryClear(_client, _room));
-            Assert.Equal(31u, Assert.Single(_client.GetHabbo().Inventory.Furniture.GetItems).Id);
+            Assert.Equal(31u, Assert.Single(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItems).Id);
             Assert.Equal(33u, Assert.Single(foreign.Inventory.Furniture.GetItems).Id);
             Assert.Equal(ServerPacketHeader.FurniListAddComposer, Assert.Single(sent).Header);
         }
@@ -341,7 +341,7 @@ namespace Plus.Tests
                 });
                 await teardown.WaitAsync(TimeSpan.FromSeconds(2));
                 Assert.True(_room.MDisposed);
-                Assert.Null(_client.GetHabbo().Inventory.Furniture.GetItem(31));
+                Assert.Null(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(31));
             }
             finally {
                 held.Dispose();
@@ -355,64 +355,7 @@ namespace Plus.Tests
                 }
             }
 
-            Assert.NotNull(_client.GetHabbo().Inventory.Furniture.GetItem(31));
-        }
-
-        [Theory]
-        [InlineData("NITRO-1-6-6")]
-        [InlineData("NITRO-3-6-0")]
-        [InlineData("OCTANE-3-6-0-FLOOR-20260909")]
-        public async Task MusicSupportedProfilesResolveNativeRequestsAndPublishDiscInventory(string name)
-        {
-            var (_, store, _, _) = Music();
-            Inventory(MusicDisc(31));
-            var directory = Directory.CreateTempSubdirectory("music-revisions-").FullName;
-
-            try {
-                foreach (var file in Directory.GetFiles(Path.Join(AppContext.BaseDirectory, "revisions"), "*.json")) {
-                    File.Copy(file, Path.Join(directory, Path.GetFileName(file)));
-                }
-
-                var cache = new Plus.Communication.Revisions.RevisionsCache();
-                typeof(Plus.Communication.Revisions.RevisionsCache).GetField("_directory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.SetValue(cache, directory);
-                await cache.Start();
-                var profile = cache.Revisions[name];
-                var requests = new (uint Header, uint Internal)[] {
-                    (753, Plus.Communication.Packets.Incoming.ClientPacketHeader.AddJukeboxDiskEvent),
-                    (3050, Plus.Communication.Packets.Incoming.ClientPacketHeader.RemoveJukeboxDiskEvent),
-                    (1435, Plus.Communication.Packets.Incoming.ClientPacketHeader.GetJukeboxPlaylistEvent),
-                    (3498, Plus.Communication.Packets.Incoming.ClientPacketHeader.GetSoundMachinePlaylistEvent),
-                    (3082, Plus.Communication.Packets.Incoming.ClientPacketHeader.GetSongInfoEvent),
-                    (2304, Plus.Communication.Packets.Incoming.ClientPacketHeader.GetUserSongDisksEvent),
-                    (1325, Plus.Communication.Packets.Incoming.ClientPacketHeader.GetNowPlayingEvent),
-                    (3189, Plus.Communication.Packets.Incoming.ClientPacketHeader.GetOfficialSongIdEvent)
-                };
-
-                foreach (var request in requests) {
-                    Assert.Equal(request.Internal, profile.IncomingIdToInternalIdMapping[request.Header]);
-                }
-
-                var responses = new (uint Internal, uint Header)[] {
-                    (ServerPacketHeader.JukeboxPlaylistComposer, 34), (ServerPacketHeader.JukeboxPlaylistFullComposer, 105),
-                    (ServerPacketHeader.NowPlayingComposer, 469), (ServerPacketHeader.OfficialSongIdComposer, 1381),
-                    (ServerPacketHeader.SoundMachinePlaylistComposer, 1748), (ServerPacketHeader.TraxSongInfoComposer, 3365),
-                    (ServerPacketHeader.SongDisksInventoryComposer, 2602)
-                };
-
-                foreach (var response in responses) {
-                    Assert.Equal(response.Header, profile.InternalIdToOutgoingIdMapping[response.Internal]);
-                }
-
-                _client.Revision = profile;
-                await new GetUserSongDisksEvent(new RoomMusicService(store)).Parse(_client, ClientPacket());
-                var packet = Assert.Single(_client.Packets);
-                Assert.Equal(2602u, packet.Header);
-                var body = new FlashIncomingPacket { Buffer = packet.Body };
-                Assert.Equal(new[] { 1, 31, 71 }, Enumerable.Range(0, 3).Select(_ => body.ReadInt()));
-            }
-            finally {
-                Directory.Delete(directory, recursive: true);
-            }
+            Assert.NotNull(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(31));
         }
 
         private (RoomMusicComponent Music, MusicStore Store, MusicClock Clock, Item Player) Music(MusicPlayerState? state = null, bool v2 = false, AccountSessionGate? accounts = null)

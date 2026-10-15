@@ -1,4 +1,5 @@
 using Plus.Communication.Packets;
+using Plus.Communication.Packets.Incoming;
 using System.Buffers.Binary;
 using System.Reflection;
 using System.Text;
@@ -13,6 +14,14 @@ namespace Plus.Tests;
 
 internal static class HabbiconTestSupport
 {
+    internal static Revision InternalRevision() => new()
+    {
+        IncomingHeaders = typeof(ClientPacketHeader).GetFields(BindingFlags.Public | BindingFlags.Static)
+            .ToDictionary(field => field.Name, field => (uint)field.GetRawConstantValue()!),
+        OutgoingHeaders = typeof(ServerPacketHeader).GetFields(BindingFlags.Public | BindingFlags.Static)
+            .ToDictionary(field => field.Name, field => (uint)field.GetRawConstantValue()!)
+    };
+
     public static (FlashGameClient Client, List<(uint Header, byte[] Payload)> Sent) Client(Habbo habbo)
     {
         var sent = new List<(uint, byte[])>();

@@ -11,8 +11,6 @@ using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
-using Plus.HabboHotel.Items.Wired.Boxes.Conditions;
-using Plus.HabboHotel.Items.Wired.Boxes.Effects;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.Instance;
@@ -23,121 +21,106 @@ namespace Plus.Tests;
 public class WiredModernContractsTests
 {
     [Fact]
-    public void RegistrySeparatesEngineCategoriesFromOctaneEditorCodesAndCapabilities()
+    public void RegistrySeparatesEngineCategoriesFromVoltEditorCodesAndCapabilities()
     {
-        Assert.Equal(172, WiredBoxRegistry.All.Count);
+        Assert.Equal(204, WiredBoxRegistry.All.Count);
         var categories = WiredBoxRegistry.All.GroupBy(box => box.Category).ToDictionary(group => group.Key, group => group.Count());
-        Assert.Equal(25, categories[WiredBoxCategory.Trigger]);
-        Assert.Equal(49, categories[WiredBoxCategory.Action]);
-        Assert.Equal(42, categories[WiredBoxCategory.Condition]);
+        Assert.Equal(30, categories[WiredBoxCategory.Trigger]);
+        Assert.Equal(62, categories[WiredBoxCategory.Action]);
+        Assert.Equal(45, categories[WiredBoxCategory.Condition]);
         Assert.Equal(20, categories[WiredBoxCategory.Selector]);
-        Assert.Equal(28, categories[WiredBoxCategory.Addon]);
-        Assert.Equal(8, categories[WiredBoxCategory.Variable]);
+        Assert.Equal(37, categories[WiredBoxCategory.Addon]);
+        Assert.Equal(10, categories[WiredBoxCategory.Variable]);
         Assert.All(WiredBoxRegistry.All, box => Assert.Equal(WiredBoxSupport.DescriptorOnly, box.Support));
         Assert.True(WiredBoxRegistry.TryGet("wf_act_send_signal", out var signal));
-        Assert.Equal(33, signal.EditorCode);
-        Assert.Equal(30, signal.TurboCode);
+        Assert.Equal(30, signal.EditorCode);
         Assert.True(WiredBoxRegistry.TryGet("wf_slc_furni_area", out var selector));
-        Assert.Equal(28, selector.EditorCode);
-        Assert.Equal(7, selector.TurboCode);
-        Assert.Equal(WiredBoxCategory.Action, selector.Envelope);
+        Assert.Equal(7, selector.EditorCode);
+        Assert.Equal(WiredBoxCategory.Selector, selector.Envelope);
         Assert.True(WiredBoxRegistry.TryGet("wf_var_room", out var variable));
-        Assert.Equal(72, variable.EditorCode);
-        Assert.Equal(WiredBoxCategory.Action, variable.Envelope);
+        Assert.Equal(2, variable.EditorCode);
+        Assert.Equal(WiredBoxCategory.Variable, variable.Envelope);
     }
 
     [Fact]
-    public void OctaneSaveReadsPerBoxIntAndTextFieldsWithoutConsumingTurboSourceArrays()
+    public void NativeSaveReadsOwnedFieldsAndSourceArraysAsOneCanonicalBody()
     {
-        var packet = Incoming(5, 1, 4, 2, 7, WiredSources.Selected, "forward:9", 2, 9, 10, 6, 0);
-        Assert.True(WiredLegacyProtocol.TryRead(packet, WiredBoxCategory.Action, out var configuration));
-        Assert.Equal(new[] { 1, 4, 2, 7, WiredSources.Selected }, configuration.IntParams);
-        Assert.Equal("forward:9", configuration.Text);
-        Assert.Equal(new uint[] { 9, 10 }, configuration.SelectedItems);
-        Assert.Equal(6, configuration.Delay);
-        Assert.Empty(configuration.FurniSources);
+        // owned ints, text, primary items, delay, furni sources, user sources, variables, secondary items.
+        var packet = Incoming(5, 1, 4, 2, 7, WiredSources.Selected, "forward:9", 2, 9, 10, 6, 1, 100, 1, 11, 0, 1, -12);
+        Assert.True(WiredLegacyProtocol.TryReadNative(packet, WiredBoxCategory.Action, out var native));
+        Assert.Equal(new[] { 1, 4, 2, 7, WiredSources.Selected }, native.OwnedIntParams);
+        Assert.Equal("forward:9", native.Text);
+        Assert.Equal(new uint[] { 9, 10 }, native.PrimaryItems.Select(item => item.ItemId));
+        Assert.Equal(6, native.Delay);
+        Assert.Equal(new[] { 100 }, native.FurniSourceTypes);
+        Assert.Equal(new[] { 11 }, native.UserSourceTypes);
+        Assert.Equal(12u, native.SecondaryItems.Single().ItemId);
+        Assert.True(native.SecondaryItems.Single().Wall);
         Assert.False(packet.HasDataRemaining());
-        Assert.False(WiredLegacyProtocol.TryRead(Incoming(101), WiredBoxCategory.Action, out _));
-        Assert.False(WiredLegacyProtocol.TryRead(Incoming(0, "x", 0, -1, 0), WiredBoxCategory.Action, out _));
-        Assert.False(WiredLegacyProtocol.TryRead(Incoming(0, "x", 1, 0, 0, 0), WiredBoxCategory.Action, out _));
-        Assert.True(WiredLegacyProtocol.TryRead(Incoming(0, "x", 1, -1, 0, 0), WiredBoxCategory.Action, out var highId));
-        Assert.Equal(new uint[] { uint.MaxValue }, highId.SelectedItems); // Room identity owns temporary validation.
-        Assert.False(WiredLegacyProtocol.TryRead(Incoming(0, "x", 0, 0, 0, 123), WiredBoxCategory.Action, out _));
-        Assert.False(WiredLegacyProtocol.TryRead(Incoming(2, 1), WiredBoxCategory.Action, out _));
-    }
-
-    [Theory]
-    [InlineData("wf_trg_recv_signal", 15, false, true)]
-    [InlineData("wf_cnd_has_var", 40, false, false)]
-    [InlineData("wf_slc_furni_area", 28, true, true)]
-    [InlineData("wf_var_room", 72, true, true)]
-    public void ConfiguredOpenUsesExactLegacyFieldOrder(string name, int code, bool action, bool blocked)
-    {
-        var box = new ConfiguredBox(name);
-        box.ApplyConfiguration(new() { IntParams = [200, 7], Text = "schema-json", SelectedItems = [8], Delay = 3 });
-        var packet = new RecordingPacket();
-        var composer = new WiredConfiguredConfigComposer(WiredEditorSnapshot.Capture(box));
-        composer.Compose(packet);
-        var expected = new List<object> { false, 100, 1, 8u, 91, 7u, "schema-json", 2, 200, 7, 0, code };
-
-        if (action) {
-            expected.Add(3);
-        }
-
-        if (blocked) {
-            expected.Add(0);
-        }
-
-        Assert.Equal(expected, packet.Writes);
-        Assert.Equal(action ? ServerPacketHeader.WiredEffectConfigComposer
-            : blocked ? ServerPacketHeader.WiredTriggeRconfigComposer : ServerPacketHeader.WiredConditionConfigComposer, composer.MessageId);
+        Assert.False(WiredLegacyProtocol.TryReadNative(Incoming(WiredConfigurationLimits.IntParams + 1), WiredBoxCategory.Action, out _));
+        Assert.False(WiredLegacyProtocol.TryReadNative(Incoming(0, "x", -1), WiredBoxCategory.Action, out _));
+        Assert.False(WiredLegacyProtocol.TryReadNative(Incoming(0, "x", 1, 0, 0, 0, 0, 0, 0), WiredBoxCategory.Action, out _));
+        Assert.True(WiredLegacyProtocol.TryReadNative(Incoming(0, "x", 1, -1, 0, 0, 0, 0, 0), WiredBoxCategory.Action, out var wall));
+        Assert.True(wall.PrimaryItems.Single().Wall);
+        Assert.False(WiredLegacyProtocol.TryReadNative(Incoming(0, "x", 0, 0, 0, 0, 0, 0, 123), WiredBoxCategory.Action, out _));
+        Assert.False(WiredLegacyProtocol.TryReadNative(Incoming(2, 1), WiredBoxCategory.Action, out _));
     }
 
     [Fact]
-    public void EditorProjectionShowsCurrentValuesWithoutChangingSavedConfiguration()
+    public void NeighborhoodSaveAcceptsAllEightyOneEditorTilesThroughThePacketEnvelope()
     {
-        var box = new ConfiguredBox("wf_var_room");
-        box.ApplyConfiguration(new() { Text = "saved metadata" });
-        var saved = box.Configuration;
-        box.EditorConfiguration = saved with { Text = "current value" };
-        var packet = new RecordingPacket();
-        new WiredConfiguredConfigComposer(WiredEditorSnapshot.Capture(box)).Compose(packet);
-        Assert.Contains("current value", packet.Writes);
-        Assert.Same(saved, box.Configuration);
-        Assert.Equal("saved metadata", box.Configuration.Text);
+        var fields = new List<int> { 0, 0, 0, 0, 0, 81 };
+
+        for (var y = -4; y <= 4; y++) {
+            for (var x = -4; x <= 4; x++) {
+                fields.Add(x);
+                fields.Add(y);
+            }
+        }
+
+        var payload = new List<object> { fields.Count };
+        payload.AddRange(fields.Cast<object>());
+        payload.AddRange(new object[] { "", 0, 0, 0, 0, 0, 0 });
+        Assert.True(WiredLegacyProtocol.TryReadNative(Incoming(payload.ToArray()), WiredBoxCategory.Action, out var native));
+        Assert.Equal(fields, native.OwnedIntParams);
+    }
+
+    [Fact]
+    public void NativeConfigurationComposersKeepTheirOwnHeaders()
+    {
         Assert.NotEqual(ServerPacketHeader.TradingCompleteComposer, ServerPacketHeader.WiredClickSettingsComposer);
-        Assert.Equal(9477u, ServerPacketHeader.WiredClickSettingsComposer);
+        Assert.Equal(1136u, ServerPacketHeader.WiredClickSettingsComposer);
     }
 
     [Fact]
     public void FailedValidationOrPersistenceNeverPublishesNewLiveSettings()
     {
-        var box = new ConfiguredBox("wf_act_send_signal");
+        var box = new ConfiguredBox(Mapped);
         var original = box.Configuration;
         var store = new RecordingStore();
         box.Reject = true;
-        Assert.False(WiredConfigurationSave.TrySave(box, new() { Text = "rejected" }, store, out _));
+        Assert.False(WiredConfigurationSave.TrySave(box, Proposed(box, 1), store, out _));
         Assert.Same(original, box.Configuration);
         Assert.Empty(store.Saved);
         box.Reject = false;
         store.Throw = true;
-        Assert.Throws<InvalidOperationException>(() => WiredConfigurationSave.TrySave(box, new() { Text = "not durable" }, store, out _));
+        Assert.Throws<InvalidOperationException>(() => WiredConfigurationSave.TrySave(box, Proposed(box, 2), store, out _));
         Assert.Same(original, box.Configuration);
         store.Throw = false;
-        Assert.False(WiredConfigurationSave.TrySave(box, new() { SelectedItems = [999] }, store, out _, id => id == 1));
+        Assert.False(WiredConfigurationSave.TrySave(box, Proposed(box, 3, 999), store, out _, id => id == 1));
         Assert.Empty(store.Saved);
         Assert.Same(original, box.Configuration);
-        Assert.True(WiredConfigurationSave.TrySave(box, new() { Text = "durable" }, store, out _));
+        Assert.True(WiredConfigurationSave.TrySave(box, Proposed(box, 4), store, out _));
         Assert.Same(store.Saved.Single(), box.Configuration);
     }
 
     [Fact]
     public void DescriptorOnlyBoxesCannotPersistAnApparentlySuccessfulEdit()
     {
-        var box = new ConfiguredBox("wf_act_send_signal", WiredBoxSupport.DescriptorOnly);
+        var box = new ConfiguredBox(Mapped, WiredBoxSupport.DescriptorOnly);
         var original = box.Configuration;
         var store = new RecordingStore();
-        Assert.False(WiredConfigurationSave.TrySave(box, new() { Text = "unsupported" }, store, out var error));
+        Assert.False(WiredConfigurationSave.TrySave(box, Proposed(box, 1), store, out var error));
         Assert.NotEmpty(error);
         Assert.Empty(store.Saved);
         Assert.Same(original, box.Configuration);
@@ -179,47 +162,14 @@ public class WiredModernContractsTests
         Assert.True(new Item { Definition = new() { InteractionName = "wf_slc_furni_area" } }.IsWired);
     }
 
-    [Fact]
-    public void CanonicalRandomNameKeepsExplicitLegacyCategoryAndFactoryWhenWiredIdIsConstructible()
-    {
-        var wiredType = ItemDataManager.ReadWiredType(41);
-        var definition = new ItemDefinition
-        {
-            ItemName = "wf_xtra_random",
-            InteractionName = "wired_effect",
-            WiredType = wiredType,
-            InteractionType = ItemDataManager.ReadInteractionType("wf_xtra_random", "wired_effect", wiredType)
-        };
-        Assert.Equal(InteractionType.WiredEffect, definition.InteractionType);
-        Assert.Equal(WiredBoxCategory.Addon, definition.WiredDescriptor!.Category);
-        var item = new Item { Id = 7, Definition = definition };
-        var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
-        typeof(Room).GetField("_roomItemHandling", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .SetValue(room, new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards));
-        var handling = room.GetRoomItemHandler();
-        var floor = (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling)
-            .GetField("_floorItems", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(handling)!;
-        Assert.True(floor.TryAdd(item.Id, item));
-        var legacy = new WiredComponent(room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance, TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
-        var loaded = legacy.GenerateNewBox(item);
-        Assert.NotNull(loaded);
-        Assert.Equal(WiredBoxType.AddonRandomEffect, loaded.Type);
-        Assert.True(legacy.IsEffect(item));
-        Assert.True(legacy.AddBox(loaded));
-        Assert.Contains(loaded, legacy.GetEffects(loaded));
-        Assert.Equal(InteractionType.WiredAddon,
-            ItemDataManager.ReadInteractionType("wf_xtra_random", "wired_effect", WiredBoxType.None));
-        Assert.Equal(InteractionType.WiredSelector,
-            ItemDataManager.ReadInteractionType("wf_slc_furni_area", "wired_effect", ItemDataManager.ReadWiredType(34)));
-    }
 
     [Fact]
     public void RoomPublisherOwnsPersistenceAndPublicationWithoutHoldingTheBoxLock()
     {
-        var box = new ConfiguredBox("wf_act_send_signal");
+        var box = new ConfiguredBox(Mapped);
         var original = box.Configuration;
         var store = new RecordingStore();
-        Assert.False(WiredConfigurationSave.TrySave(box, new() { Text = "detached" }, store, out _,
+        Assert.False(WiredConfigurationSave.TrySave(box, Proposed(box, 1), store, out _,
             publish: (live, validated, persist) =>
             {
                 Assert.False(Monitor.IsEntered(live));
@@ -229,7 +179,7 @@ public class WiredModernContractsTests
         Assert.Empty(store.Saved);
         Assert.Same(original, box.Configuration);
         store.Throw = true;
-        Assert.Throws<InvalidOperationException>(() => WiredConfigurationSave.TrySave(box, new() { Text = "failure" },
+        Assert.Throws<InvalidOperationException>(() => WiredConfigurationSave.TrySave(box, Proposed(box, 2),
             store, out _, publish: (live, validated, persist) =>
             {
                 persist();
@@ -239,7 +189,7 @@ public class WiredModernContractsTests
             }));
         Assert.Same(original, box.Configuration);
         store.Throw = false;
-        Assert.True(WiredConfigurationSave.TrySave(box, new() { Text = "durable" }, store, out _,
+        Assert.True(WiredConfigurationSave.TrySave(box, Proposed(box, 4), store, out _,
             publish: (live, validated, persist) =>
             {
                 Assert.False(Monitor.IsEntered(live));
@@ -250,7 +200,7 @@ public class WiredModernContractsTests
 
                 return true;
             }));
-        Assert.Equal("durable", box.Configuration.Text);
+        Assert.Equal(4, box.Configuration.Delay);
     }
 
     [Fact]
@@ -258,7 +208,7 @@ public class WiredModernContractsTests
     {
         var order = new List<string>();
         var fail = true;
-        var box = new PersistingBox("wf_var_room", validated =>
+        var box = new PersistingBox(Mapped, validated =>
         {
             order.Add("persist");
 
@@ -266,88 +216,43 @@ public class WiredModernContractsTests
                 throw new IOException("Combined transaction rejected.");
             }
 
-            Assert.Equal("combined", validated.Text);
+            Assert.Equal(5, validated.Delay);
         });
         box.Applying = _ => order.Add("apply");
         var original = box.Configuration;
         var store = new RecordingStore();
         var engine = new WiredStackEngine(() => 0, _ => true, _ => true, _ => { }, _ => { });
         Assert.True(engine.Add(box));
-        Assert.Throws<IOException>(() => WiredConfigurationSave.TrySave(box, new() { Text = "combined" }, store,
+        Assert.Throws<IOException>(() => WiredConfigurationSave.TrySave(box, Proposed(box, 5), store,
             out _, publish: engine.PublishConfigured));
         Assert.Same(original, box.Configuration);
         Assert.Equal(new[] { "persist" }, order);
         Assert.Empty(store.Saved);
         fail = false;
         order.Clear();
-        Assert.True(WiredConfigurationSave.TrySave(box, new() { Text = "combined" }, store,
+        Assert.True(WiredConfigurationSave.TrySave(box, Proposed(box, 5), store,
             out _, publish: engine.PublishConfigured));
         Assert.Equal(new[] { "persist", "apply" }, order);
-        Assert.Equal("combined", box.Configuration.Text);
+        Assert.Equal(5, box.Configuration.Delay);
         Assert.Empty(store.Saved);
     }
 
-    [Fact]
-    public void SavePreparationCapturesSnapshotsBeforePureValidationAndDurablePublication()
+
+
+
+    // A bound native-compiled teleport draft stands in for any mapped card; the delay distinguishes saves.
+    private const string Mapped = "wf_act_teleport_to";
+
+    private static WiredConfiguration Proposed(ConfiguredBox box, int delay, params uint[] picks)
     {
-        var box = new ConfiguredBox("wf_act_match_to_sshot");
-        var original = box.Configuration;
-        var store = new RecordingStore();
-        var prepared = false;
-        Assert.True(WiredConfigurationSave.TrySave(box, new() { IntParams = [1, 0, 1], SelectedItems = [8] }, store,
-            out _, existsInRoom: id => id == 8, prepare: (live, proposed) =>
-            {
-                Assert.Same(original, live.Configuration);
-                Assert.Empty(store.Saved);
-                prepared = true;
+        var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor) with
+        {
+            Delay = delay,
+            PrimaryItems = [.. picks.Select(id => new WiredNativeItemReference(id, false))]
+        };
+        Assert.True(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native, out var runtime));
 
-                return proposed with { Snapshots = [new(8, 5, 1, 2, 0.5, 4, "captured")] };
-            }, publish: (live, validated, persist) =>
-            {
-                Assert.True(prepared);
-                Assert.Equal("captured", box.ValidatedInput!.Snapshots.Single().State);
-                Assert.Same(original, live.Configuration);
-                persist();
-                live.ApplyConfiguration(validated);
-
-                return true;
-            }));
-        Assert.Equal("captured", store.Saved.Single().Snapshots.Single().State);
-        Assert.Equal("captured", box.Configuration.Snapshots.Single().State);
-        prepared = false;
-        Assert.False(WiredConfigurationSave.TrySave(box, new() { SelectedItems = [999] }, store, out _,
-            existsInRoom: id => id == 8, prepare: (_, proposed) => { prepared = true; return proposed; }));
-        Assert.False(prepared);
-    }
-
-    [Fact]
-    public void LegacyCycleEffectWritesSelectionBeforeEditorCode()
-    {
-        var item = new Item { Id = 7, Definition = new() { SpriteId = 91 } };
-        var teleport = new TeleportUserBox(null!, item) { Delay = 3, StringData = string.Empty };
-        var packet = new RecordingPacket();
-        new WiredEffectConfigComposer(WiredEditorSnapshot.Effect(teleport, [])).Compose(packet);
-        Assert.Equal(new object[] { false, 15, 0, 91, 7u, "", 0, 0, 8, 3, 0 }, packet.Writes);
-    }
-
-    [Fact]
-    public void LegacySnapshotConditionAndBotHandItemAdvertiseExactlyTheirWrittenParams()
-    {
-        var item = new Item { Id = 7, Definition = new() { SpriteId = 91 } };
-        var condition = new FurniMatchStateAndPositionBox(null!, item) { StringData = "1;0;1" };
-        var conditionPacket = new RecordingPacket();
-        new WiredConditionConfigComposer(WiredEditorSnapshot.Condition(condition)).Compose(conditionPacket);
-        Assert.Equal(new object[] { false, 5, 0, 91, 7u, "1;0;1", 3, 1, 0, 1, 0, 0 }, conditionPacket.Writes);
-        var bot = new BotGivesHandItemBox(null!, item) { StringData = "Bot;12" };
-        var botPacket = new RecordingPacket();
-        new WiredEffectConfigComposer(WiredEditorSnapshot.Effect(bot, [])).Compose(botPacket);
-        Assert.Equal(new object[] { false, 15, 0, 91, 7u, "Bot", 1, 12, 0, 24, 0, 0 }, botPacket.Writes);
-        Assert.Equal(2, WiredBoxTypeUtility.GetWiredId(WiredBoxType.TriggerWalkOffFurni));
-        Assert.Equal(2, WiredBoxTypeUtility.GetWiredId(WiredBoxType.ConditionTriggererOnFurni));
-        Assert.Equal(7, WiredBoxTypeUtility.GetWiredId(WiredBoxType.ConditionFurniHasFurni));
-        Assert.Equal(19, WiredBoxTypeUtility.GetWiredId(WiredBoxType.EffectKickUser));
-        Assert.Equal(88, WiredBoxTypeUtility.GetWiredId(WiredBoxType.EffectSetRollerSpeed));
-        Assert.Equal(119, WiredBoxTypeUtility.GetWiredId(WiredBoxType.EffectGiveUserBadge));
+        return runtime;
     }
 
     private static FlashIncomingPacket Incoming(params object[] values)
@@ -387,7 +292,7 @@ public class WiredModernContractsTests
         public void Reset(IReadOnlyCollection<uint> itemIds) => Saved.Clear();
     }
 
-    private class ConfiguredBox : IWiredConfiguredItem, IWiredEditorConfigurationProvider
+    private class ConfiguredBox : IWiredConfiguredItem
     {
         public ConfiguredBox(string name, WiredBoxSupport support = WiredBoxSupport.Implemented)
         {
@@ -396,8 +301,6 @@ public class WiredModernContractsTests
         }
         public WiredBoxDescriptor Descriptor { get; }
         public WiredConfiguration Configuration { get; private set; } = new();
-        public WiredConfiguration? EditorConfiguration { get; set; }
-        public WiredConfiguration GetEditorConfiguration() => EditorConfiguration ?? Configuration;
         public Action<WiredConfiguration>? Applying { get; set; }
         public bool Reject { get; set; }
         public WiredConfiguration? ValidatedInput { get; private set; }

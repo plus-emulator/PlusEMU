@@ -24,10 +24,6 @@ public interface IModerationManager
     Task BanAccount(string mod, int userId, string username, string reason, DateTimeOffset? expiresAt, CancellationToken deadline = default,
         bool includeAddress = false, string? machineId = null, int heldUserId = 0);
 
-    /// <summary>
-    /// Removes a username ban from the database and cache. Returns false when no ban row existed.
-    /// </summary>
-    bool UnbanUser(string username);
     bool TryAddTicket(ModerationTicket ticket);
     bool TryGetTicket(int ticketId, [NotNullWhen(true)] out ModerationTicket? ticket);
     bool UserHasTickets(int userId);
@@ -39,7 +35,7 @@ public interface IModerationManager
     /// <param name="key"></param>
     /// <param name="ban"></param>
     /// <returns></returns>
-    bool IsBanned(string key, out ModerationBan ban);
+    bool IsBanned(string key, [NotNullWhen(true)] out ModerationBan? ban);
 
     /// <summary>
     /// Run a quick database check to see if this ban exists in the database.

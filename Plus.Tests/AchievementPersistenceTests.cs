@@ -8,15 +8,17 @@ using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
+using Plus.HabboHotel.Friends;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Users;
+using Plus.HabboHotel.Users.Messenger;
 using Plus.HabboHotel.Talents;
 using Xunit;
 
 namespace Plus.Tests;
 
-[Collection("HousekeepingDatabase")]
+[Collection("SharedDatabase")]
 public sealed class AchievementPersistenceTests
 {
     private const string Group = "ACH_Test";
@@ -55,9 +57,10 @@ public sealed class AchievementPersistenceTests
         Assert.Equal(0, fixture.StoredLevels());
         Assert.Equal((0, 0), fixture.StoredAward());
         Assert.Equal((0, 0, 0), (fixture.Habbo.GetAchievementData(Group)!.Level,
-            fixture.Habbo.Duckets, fixture.Habbo.HabboStats.AchievementPoints));
+            fixture.Habbo.Duckets, Assert.IsType<HabboStats>(fixture.Habbo.HabboStats).AchievementPoints));
         Assert.DoesNotContain(fixture.Sent, packet => packet.Header is
             ServerPacketHeader.HabboActivityPointNotificationComposer or ServerPacketHeader.AchievementScoreComposer);
+        Assert.Empty(fixture.Broadcasts);
     }
 
     [RoomComponentDatabaseFact]
@@ -92,10 +95,11 @@ public sealed class AchievementPersistenceTests
         Assert.Equal(0, writes);
         Assert.Equal(0, fixture.StoredLevels());
         Assert.Equal((0, 0, 0), (fixture.Habbo.GetAchievementData(Group)!.Level,
-            fixture.Habbo.Duckets, fixture.Habbo.HabboStats.AchievementPoints));
+            fixture.Habbo.Duckets, Assert.IsType<HabboStats>(fixture.Habbo.HabboStats).AchievementPoints));
         Assert.DoesNotContain(fixture.Sent, packet => packet.Header is
             ServerPacketHeader.HabboActivityPointNotificationComposer or ServerPacketHeader.AchievementScoreComposer
             or ServerPacketHeader.AchievementProgressedComposer);
+        Assert.Empty(fixture.Broadcasts);
     }
 
     [RoomComponentDatabaseFact]
@@ -139,8 +143,10 @@ public sealed class AchievementPersistenceTests
         Assert.True(await award);
         Assert.Equal(1, fixture.StoredLevels());
         Assert.Equal((20, 7), fixture.StoredAward());
-        Assert.Equal((1, 0), (fixture.Habbo.GetAchievementData(Group)!.Level,
+        // The stored progress is the total score, which the level-up keeps.
+        Assert.Equal((1, 1), (fixture.Habbo.GetAchievementData(Group)!.Level,
             fixture.Habbo.GetAchievementData(Group)!.Progress));
+        Assert.Equal(new[] { (7, MessengerEventTypes.AchievementUnlocked, Group + "1") }, fixture.Broadcasts);
     }
 
     [RoomComponentDatabaseFact]
@@ -148,7 +154,7 @@ public sealed class AchievementPersistenceTests
     {
         using var fixture = new Fixture();
         var manager = fixture.Manager();
-        var send = fixture.Client.SendCallback;
+        var send = Assert.IsAssignableFrom<Func<System.Net.Sockets.SocketAsyncEventArgs, bool>>(fixture.Client.SendCallback);
         fixture.Client.SendCallback = args =>
         {
             var result = send(args);
@@ -189,27 +195,160 @@ public sealed class AchievementPersistenceTests
         Assert.Throws<MySqlException>(() => fixture.Manager().ProgressAchievement(fixture.Client, Group, 1));
 
         Assert.Equal((0, 0, 0), (fixture.Habbo.GetAchievementData(Group)!.Level,
-            fixture.Habbo.Duckets, fixture.Habbo.HabboStats.AchievementPoints));
-        Assert.Equal(ServerPacketHeader.AchievementUnlockedComposer, Assert.Single(fixture.Sent).Header);
+            fixture.Habbo.Duckets, Assert.IsType<HabboStats>(fixture.Habbo.HabboStats).AchievementPoints));
+        // The unlock is announced only after the level is written.
+        Assert.Empty(fixture.Sent);
+        Assert.Empty(fixture.Broadcasts);
+    }
+
+    [RoomComponentDatabaseFact]
+    public void ReachingSeveralThresholdsUnlocksEveryLevelInOrder()
+    {
+        using var fixture = new Fixture();
+        var manager = fixture.Manager(achievement: Ladder());
+
+        // Cumulative thresholds 1, 5 and 10 are all within a total of 12; 50 is not.
+        Assert.True(manager.ProgressAchievement(fixture.Client, Group, 12));
+
+        Assert.Equal(new[] { ("", Group + "1"), (Group + "1", Group + "2"), (Group + "2", Group + "3") }, fixture.Replaced);
+        Assert.Equal((3, 12), fixture.Stored());
+        Assert.Equal((23, 27), (fixture.Habbo.Duckets, Assert.IsType<HabboStats>(fixture.Habbo.HabboStats).AchievementPoints));
+        Assert.Equal(new[] {
+            ServerPacketHeader.AchievementUnlockedComposer, ServerPacketHeader.HabboActivityPointNotificationComposer, ServerPacketHeader.AchievementScoreComposer,
+            ServerPacketHeader.AchievementUnlockedComposer, ServerPacketHeader.AchievementScoreComposer,
+            ServerPacketHeader.AchievementUnlockedComposer, ServerPacketHeader.HabboActivityPointNotificationComposer, ServerPacketHeader.AchievementScoreComposer,
+            ServerPacketHeader.AchievementProgressedComposer }, fixture.Sent.Select(packet => packet.Header));
+        var unlocks = fixture.Sent.Where(packet => packet.Header == ServerPacketHeader.AchievementUnlockedComposer)
+            .Select(packet => AchievementWireTests.ReadUnlock(packet.Payload)).ToList();
+        Assert.Equal(new[] { (1, Group + "1", "", 7, 20), (2, Group + "2", Group + "1", 10, 0), (3, Group + "3", Group + "2", 10, 3) },
+            unlocks.Select(unlock => (unlock.Level, unlock.Badge, unlock.RemovedBadge, unlock.Points, unlock.Reward)));
+        // The bar continues from the last unlocked threshold towards the next one.
+        var next = AchievementWireTests.ReadData(fixture.Sent[^1].Payload);
+        Assert.Equal((4, Group + "4", 10, 50, 12, false), (next.Level, next.Badge, next.ScoreAtStart, next.ScoreLimit, next.CurrentPoints, next.FinalLevel));
+        Assert.Equal(new[] { Group + "1", Group + "2", Group + "3" }, fixture.Broadcasts.Select(broadcast => broadcast.Value));
+        fixture.Habbo.Save();
+        Assert.Equal((23, 27), fixture.StoredAward());
+    }
+
+    [RoomComponentDatabaseFact]
+    public void ProgressWithoutALevelUpIsWrittenWhenTheSessionIsSaved()
+    {
+        using var fixture = new Fixture();
+        var manager = fixture.Manager(achievement: Ladder());
+        Assert.True(manager.ProgressAchievement(fixture.Client, Group, 1));
+        var writes = 0;
+        fixture.Database.BeforeConnection = () => Interlocked.Increment(ref writes);
+        fixture.Sent.Clear();
+
+        Assert.False(manager.ProgressAchievement(fixture.Client, Group, 2));
+        Assert.False(manager.ProgressAchievement(fixture.Client, Group, 1));
+
+        Assert.Equal(0, writes);
+        Assert.Equal((1, 1), fixture.Stored());
+        Assert.Equal(new[] { 3, 4 }, fixture.Sent.Select(packet => AchievementWireTests.ReadData(packet.Payload).CurrentPoints));
+        // fromBeginning replaces the total instead of adding to it, and never takes a level away.
+        Assert.False(manager.ProgressAchievement(fixture.Client, Group, 2, fromBeginning: true));
+        Assert.Equal((1, 2), (fixture.Habbo.GetAchievementData(Group)!.Level, fixture.Habbo.GetAchievementData(Group)!.Progress));
+
+        fixture.Habbo.Save();
+
+        Assert.Equal((1, 2), fixture.Stored());
+    }
+
+    [RoomComponentDatabaseFact]
+    public void HiddenAchievementProgressesWithoutUpdatingTheAchievementList()
+    {
+        using var fixture = new Fixture();
+        var hidden = Ladder();
+        hidden.Visible = false;
+        var manager = fixture.Manager(achievement: hidden);
+
+        Assert.False(manager.ProgressAchievement(fixture.Client, Group, 0));
+        Assert.Empty(fixture.Sent);
+        Assert.True(manager.ProgressAchievement(fixture.Client, Group, 1));
+
+        Assert.Equal((1, 1), fixture.Stored());
+        Assert.Equal(new[] { ServerPacketHeader.AchievementUnlockedComposer, ServerPacketHeader.HabboActivityPointNotificationComposer,
+            ServerPacketHeader.AchievementScoreComposer }, fixture.Sent.Select(packet => packet.Header));
+        Assert.Equal(Group + "1", Assert.Single(fixture.Broadcasts).Value);
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task LevelBadgeReplacesThePreviousRowAndKeepsItsWornSlot()
+    {
+        using var fixture = new Fixture();
+
+        using (var connection = fixture.Database.Connection()) {
+            connection.Execute("INSERT INTO badge_definitions(code,required_right) VALUES('ACH_Test1',''),('ACH_Test2',''),('ACH_Test3','');" +
+                "INSERT INTO user_badges(user_id,badge_id,badge_slot) VALUES(7,'ACH_Test1',2),(7,'OTHER',1)");
+        }
+
+        var badges = new BadgeManager(fixture.Database, TestGameClientManager.Empty, TestLogging.For<BadgeManager>());
+        await badges.Init();
+
+        foreach (var badge in await badges.LoadBadgesForHabbo(7)) {
+            fixture.Habbo.Inventory!.Badges.AddBadge(badge);
+        }
+
+        var manager = fixture.Manager(achievement: Ladder(), badges: badges);
+        fixture.Habbo.Achievements.TryAdd(Group, new(Group, 1, 1));
+
+        Assert.True(manager.ProgressAchievement(fixture.Client, Group, 4));
+
+        using (var connection = fixture.Database.Connection()) {
+            Assert.Equal(new[] { ("ACH_Test2", 2), ("OTHER", 1) },
+                connection.Query<(string, int)>("SELECT badge_id,badge_slot FROM user_badges WHERE user_id=7 ORDER BY badge_id"));
+        }
+
+        var inventory = fixture.Habbo.Inventory!.Badges;
+        Assert.False(inventory.HasBadge("ACH_Test1"));
+        Assert.Equal(2, inventory.GetBadge("ACH_Test2")!.Slot);
+        // The unlock makes AIR stop wearing the new badge, so the worn badges are sent after it.
+        var headers = fixture.Sent.Select(packet => packet.Header).ToList();
+        Assert.True(headers.IndexOf(ServerPacketHeader.HabboUserBadgesComposer) > headers.IndexOf(ServerPacketHeader.AchievementUnlockedComposer));
+        var worn = new FlashIncomingPacket { Buffer = fixture.Sent[headers.IndexOf(ServerPacketHeader.HabboUserBadgesComposer)].Payload };
+        Assert.Equal((7, 2), (worn.ReadInt(), worn.ReadInt()));
+        Assert.Equal((1, "OTHER"), (worn.ReadInt(), worn.ReadString()));
+        worn.ReadInt();
+        worn.ReadInt();
+        Assert.Equal((2, "ACH_Test2"), (worn.ReadInt(), worn.ReadString()));
+
+        // The slot keeps following the newest level.
+        Assert.True(manager.ProgressAchievement(fixture.Client, Group, 5));
+
+        using (var connection = fixture.Database.Connection()) {
+            Assert.Equal(new[] { ("ACH_Test3", 2), ("OTHER", 1) },
+                connection.Query<(string, int)>("SELECT badge_id,badge_slot FROM user_badges WHERE user_id=7 ORDER BY badge_id"));
+        }
+    }
+
+    // Cumulative thresholds 1, 5, 10 and 50 with mixed rewards.
+    private static Achievement Ladder()
+    {
+        var achievement = new Achievement { Id = 1, GroupName = Group, Category = "identity" };
+        achievement.AddLevel(new AchievementLevel(1, 20, 7, 1));
+        achievement.AddLevel(new AchievementLevel(2, 0, 10, 5));
+        achievement.AddLevel(new AchievementLevel(3, 3, 10, 10));
+        achievement.AddLevel(new AchievementLevel(4, 0, 10, 50));
+
+        return achievement;
     }
 
     private sealed class Fixture : IDisposable
     {
         private readonly MySqlConnection _admin;
         private readonly string _schema = "task_achievement_shutdown_" + Guid.NewGuid().ToString("N");
-        private readonly FieldInfo _game = typeof(PlusEnvironment).GetField("_game", BindingFlags.Static | BindingFlags.NonPublic)!;
-        private readonly object? _previousGame;
         public HabbiconDatabaseTests.TestDatabase Database { get; }
         public Habbo Habbo { get; }
         public FlashGameClient Client { get; }
         public List<(uint Header, byte[] Payload)> Sent { get; }
+        public List<(int UserId, MessengerEventTypes Type, string Value)> Broadcasts { get; } = [];
 
         public Fixture()
         {
             var root = Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!;
             _admin = new MySqlConnection(root);
             _admin.Execute($"CREATE DATABASE `{_schema}`");
-            _previousGame = _game.GetValue(null);
 
             try {
                 Database = new(new MySqlConnectionStringBuilder(root)
@@ -221,7 +360,7 @@ public sealed class AchievementPersistenceTests
                 using var connection = Database.Connection();
                 var pristine = File.ReadAllText(HabbiconPacketTests.Repo("Resources/SQLs/Original Database.sql"));
 
-                foreach (var table in new[] { "users", "users_settings", "user_stats", "user_achievements" }) {
+                foreach (var table in new[] { "users", "users_settings", "user_stats", "user_achievements", "user_badges", "badge_definitions" }) {
                     var definition = Regex.Match(pristine, $@"CREATE TABLE `{table}` \([\s\S]*?\) ENGINE=[^;]+;").Value;
                     Assert.NotEmpty(definition);
                     connection.Execute(definition);
@@ -239,14 +378,15 @@ public sealed class AchievementPersistenceTests
                     Access = UserAccess.Empty,
                     SessionStartedAt = DateTimeOffset.UtcNow,
                     HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "old", 0),
-                    Persistence = new UserPersistenceService(Database, TimeProvider.System)
+                    // ProgressAchievement refuses a level-up without loaded statistics and inventory.
+                    Inventory = new Plus.HabboHotel.Users.Inventory.InventoryComponent(),
+                    Persistence = new UserPersistenceService(Database, TimeProvider.System, TestGameClientManager.Empty)
                 };
                 (Client, Sent) = HabbiconTestSupport.Client(Habbo);
                 Habbo.Client = Client;
                 var clients = CatalogSnapshotTestSupport.Proxy<IGameClientManager>((method, _) =>
                     method == "UnregisterClient" ? null : throw new InvalidOperationException(method));
-                _game.SetValue(null, CatalogSnapshotTestSupport.Proxy<IGame>((method, _) =>
-                    method == "get_ClientManager" ? clients : throw new InvalidOperationException(method)));
+                Habbo.SetHotelServices(clients, TestRoomManager.Unused);
             }
             catch {
                 Dispose();
@@ -254,16 +394,48 @@ public sealed class AchievementPersistenceTests
             }
         }
 
-        public AchievementManager Manager(Func<Task>? giveBadge = null)
+        public List<(string Previous, string Badge)> Replaced { get; } = [];
+
+        public AchievementManager Manager(Func<Task>? giveBadge = null, Achievement? achievement = null, IBadgeManager? badges = null)
         {
-            var badges = CatalogSnapshotTestSupport.Proxy<IBadgeManager>((method, _) =>
-                method == "GiveBadge" ? giveBadge?.Invoke() ?? Task.CompletedTask : throw new InvalidOperationException(method));
-            var manager = new AchievementManager(null!, Database, badges, CatalogSnapshotTestSupport.Proxy<ITalentTrackProgressionService>((method, _) => method == "Progress" ? null : throw new InvalidOperationException(method)));
-            var achievement = new Achievement { Id = 1, GroupName = Group, Category = "identity" };
-            achievement.AddLevel(new AchievementLevel(1, 20, 7, 1));
+            badges ??= CatalogSnapshotTestSupport.Proxy<IBadgeManager>((method, args) =>
+            {
+                if (method != "ReplaceBadge") {
+                    throw new InvalidOperationException(method);
+                }
+
+                Replaced.Add(((string)args[1]!, (string)args[2]!));
+
+                return Replace(giveBadge?.Invoke() ?? Task.CompletedTask);
+            });
+            var messenger = CatalogSnapshotTestSupport.Proxy<IMessengerDataLoader>((method, args) =>
+            {
+                if (method != "BroadcastStatusUpdate") {
+                    throw new InvalidOperationException(method);
+                }
+
+                Broadcasts.Add((((Habbo)args[0]!).Id, (MessengerEventTypes)args[1]!, (string)args[2]!));
+
+                return null;
+            });
+            var manager = new AchievementManager(null!, Database, badges, CatalogSnapshotTestSupport.Proxy<ITalentTrackProgressionService>((method, _) => method == "Progress" ? null : throw new InvalidOperationException(method)),
+                messenger);
+
+            if (achievement == null) {
+                achievement = new Achievement { Id = 1, GroupName = Group, Category = "identity" };
+                achievement.AddLevel(new AchievementLevel(1, 20, 7, 1));
+            }
+
             manager.Achievements.Add(Group, achievement);
 
             return manager;
+        }
+
+        private static async Task<bool> Replace(Task badge)
+        {
+            await badge;
+
+            return false;
         }
 
         public int StoredLevels()
@@ -271,6 +443,13 @@ public sealed class AchievementPersistenceTests
             using var connection = Database.Connection();
 
             return connection.QuerySingle<int>("SELECT COUNT(*) FROM user_achievements WHERE userid=7 AND level=1");
+        }
+
+        public (int Level, int Progress) Stored()
+        {
+            using var connection = Database.Connection();
+
+            return connection.QuerySingle<(int, int)>("SELECT level,progress FROM user_achievements WHERE userid=7");
         }
 
         public (int Duckets, int Score) StoredAward()
@@ -284,8 +463,6 @@ public sealed class AchievementPersistenceTests
 
         public void Dispose()
         {
-            _game.SetValue(null, _previousGame);
-
             try {
                 _admin.Execute($"DROP DATABASE `{_schema}`");
             }

@@ -12,5 +12,8 @@ public sealed class RoomDataComponent(IRoomFurnitureLoader furniture) : IRoomCom
         var room = _room!;
         room.GetRoomItemHandler().LoadFurniture(furniture.Load(room.Id));
         room.GetGameMap().GenerateMaps();
+        room.GetWired().InitializeHighscores();
+        // Room Initialized (wf_trg_room_initializes) fires once the furniture and its wired boxes are loaded.
+        room.GetWired().RoomInitialized();
     }
 }

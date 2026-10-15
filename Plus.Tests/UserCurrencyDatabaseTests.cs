@@ -65,14 +65,14 @@ public sealed class UserCurrencyDatabaseTests
             habbo.Diamonds = 6;
             habbo.GotwPoints = 7;
             habbo.Currencies[101] = 8;
-            new UserPersistenceService(database, TimeProvider.System).Save(habbo);
+            new UserPersistenceService(database, TimeProvider.System, TestGameClientManager.Empty).Save(habbo);
 
             Assert.Equal([(0, 5), (5, 6), (101, 8), (103, 7), (104, 2)],
                 connection.Query<(int, int)>("SELECT type, amount FROM user_currencies WHERE user_id = 7 ORDER BY type"));
             Assert.Equal(11, connection.QuerySingle<int>("SELECT credits FROM users WHERE id = 7"));
 
             var factory = new UserDataFactory(null!, database, [], null!, null!, null!, new Plus.HabboHotel.Rooms.RoomVisitRecorder(database, TimeProvider.System),
-                TimeProvider.System, TestRoomAchievements.Unused);
+                TimeProvider.System, TestRoomAchievements.Unused, TestGameClientManager.Empty, TestRoomManager.Unused);
             var loaded = (await factory.GetUserDataByIdAsync(7))!;
             Assert.Equal((11, 5, 6, 7, 8, 2), (loaded.Credits, loaded.Duckets, loaded.Diamonds, loaded.GotwPoints, loaded.Currencies[101], loaded.Currencies[104]));
 

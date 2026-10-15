@@ -14,7 +14,7 @@ namespace Plus.HabboHotel.Camera;
 [Singleton]
 public interface ICameraPhotoService
 {
-    void Initialize(GameClient session);
+    void Initialize(GameClient session, string? viewport = null);
     void Purchase(GameClient session, Guid? mediaId);
     void Publish(GameClient session, Guid? mediaId);
     void EnterCompetition(GameClient session, Guid? mediaId);
@@ -23,7 +23,7 @@ public interface ICameraPhotoService
 public sealed class CameraPhotoService(ICameraService camera, ICameraCheckoutService checkout,
     IAchievementManager achievements, IRewardTrackManager rewards, ILogger<CameraPhotoService> logger) : ICameraPhotoService
 {
-    public void Initialize(GameClient session)
+    public void Initialize(GameClient session, string? viewport = null)
     {
         if (!session.IsAuthenticated) {
             return;
@@ -41,12 +41,23 @@ public sealed class CameraPhotoService(ICameraService camera, ICameraCheckoutSer
         }
 
         session.Send(new InitCameraComposer(prices.Credits, prices.Points, prices.PublishPoints));
+        // The client asks again with its viewport when the camera opens, so the room is prepared as it will be
+        // photographed while the shot is framed.
+        camera.Prepare(session, viewport);
     }
 
     public void Purchase(GameClient session, Guid? mediaId)
     {
         try {
             var habbo = session.GetHabbo();
+
+            // The photo is handed into the loaded inventory, so nothing is bought without one.
+            if (habbo.Inventory is not { } inventory) {
+                session.SendNotification("The photograph could not be purchased. No payment was taken.");
+
+                return;
+            }
+
             var result = Execute(session, habbo, mediaId, media => checkout.Purchase(habbo, media));
 
             if (!result.Ok || result.Item == null) {
@@ -55,7 +66,7 @@ public sealed class CameraPhotoService(ICameraService camera, ICameraCheckoutSer
                 return;
             }
 
-            habbo.Inventory.Furniture.AddItem(result.Item);
+            inventory.Furniture.AddItem(result.Item);
             session.Send(new FurniListNotificationComposer(result.Item.Id, 1));
             session.Send(new FurniListUpdateComposer());
             session.Send(new CreditBalanceComposer(habbo.Credits));

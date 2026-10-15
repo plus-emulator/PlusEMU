@@ -8,6 +8,7 @@ public interface IBadgeManager
     Task Init();
     Task GiveBadge(Habbo habbo, string code);
     Task RemoveBadge(Habbo habbo, string badge);
+    Task<bool> ReplaceBadge(Habbo habbo, string? previous, string code);
     Task<List<Badge>> LoadBadgesForHabbo(int userId);
     IReadOnlyDictionary<string, BadgeDefinition> Badges { get; }
 }

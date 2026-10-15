@@ -24,6 +24,11 @@ public static class WiredActionConfiguration
             return WiredBotActions.Defaults(name);
         }
 
+        // The October effects only exist as native editor records; a fresh box opens on the compiled native defaults.
+        if (WiredOctoberActions.Names.Contains(name)) {
+            return new();
+        }
+
         ImmutableArray<int> parameters = name switch
         {
             "wf_act_join_team" => [0, 1, 0, 0],
@@ -53,7 +58,7 @@ public static class WiredActionConfiguration
             "wf_act_reset_timers" => [],
             "wf_act_call_stacks" or "wf_act_neg_call_stacks" => [100],
             "wf_act_send_signal" or "wf_act_neg_send_signal" => [0, 100, 0, 0, 0, 0],
-            "wf_act_log" or "wf_act_neg_log" => [1, 0],
+            "wf_act_log" or "wf_act_neg_log" => [0, 0],
             "wf_act_show_message" => [0, 0, 34, -1],
             "wf_act_click_conf" => [0, 0, 0],
             _ => throw new ArgumentException("Unknown action.", nameof(name))

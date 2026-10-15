@@ -31,32 +31,36 @@ public class Habbo
 {
     private IRoomVisitRecorder _roomVisits = null!;
     private IAchievementManager _roomAchievements = null!;
+    private IGameClientManager? _clients;
+    private IRoomManager? _rooms;
     internal uint WiredRoomNetworkDestination { get; set; }
-    public HabboStats HabboStats { get; set; }
+    internal uint WiredRoomEntrySourceRoomId { get; set; }
+    internal uint WiredRoomEntryDestinationRoomId { get; set; }
+    public HabboStats? HabboStats { get; set; }
 
     private readonly DateTimeOffset? _cachedAt;
 
-    public GameClient Client { get; set; }
-    public ClothingComponent Clothing { get; set; }
+    public GameClient? Client { get; set; }
+    public ClothingComponent? Clothing { get; set; }
 
     private bool _disconnected;
     private bool _disposed;
     internal bool AccessClosed => WalletClosed || _disposed;
     internal event EventHandler? Disposed;
-    public EffectsComponent Effects { get; set; }
+    public EffectsComponent? Effects { get; set; }
 
     private bool _habboSaved;
 
-    public IgnoresComponent IgnoresComponent { get; set; }
-    public InventoryComponent Inventory { get; set; }
+    public IgnoresComponent? IgnoresComponent { get; set; }
+    public InventoryComponent? Inventory { get; set; }
 
-    public HabboMessenger Messenger { get; set; }
+    public HabboMessenger? Messenger { get; set; }
 
-    public NavigatorPreferences NavigatorPreferences { get; set; }
+    public NavigatorPreferences? NavigatorPreferences { get; set; }
     public UserAccess Access { get; set; } = UserAccess.Empty;
 
-    [Obsolete("Should be deleted /refactored to standalone service")]
-    private ProcessComponent Process { get; set; }
+    // Should be deleted / refactored to a standalone service; only InitProcess and OnDisconnect use it.
+    private ProcessComponent? Process { get; set; }
 
     public ConcurrentDictionary<string, UserAchievement> Achievements = new();
     public ArrayList FavoriteRooms = new();
@@ -79,6 +83,7 @@ public class Habbo
 
     internal DateTimeOffset? LastHabbiconTriggeredAt { get; set; }
     internal object WalletSync { get; } = new();
+    internal object InventoryMutationSync { get; } = new();
     internal bool WalletClosed => _habboSaved || _disconnected;
 
     public int Credits { get; set; }
@@ -101,7 +106,7 @@ public class Habbo
 
     public DateTimeOffset? LastNameChangedAt { get; set; }
 
-    public string MachineId { get; set; }
+    public string? MachineId { get; set; }
 
     public bool ChatPreference { get; set; }
 
@@ -152,7 +157,13 @@ public class Habbo
     public DateTimeOffset? TradingLockExpiresAt { get; set; }
 
     public DateTimeOffset SessionStartedAt { get; internal set; }
-    internal IUserPersistenceService Persistence { get; set; }
+    // UserDataFactory sets this for a logged-in user; an offline snapshot has nothing to save through.
+    private IUserPersistenceService? _persistence;
+    internal IUserPersistenceService Persistence
+    {
+        get => _persistence ?? throw new InvalidOperationException("The user has no persistence service.");
+        set => _persistence = value;
+    }
 
     public uint TentId { get; set; }
 
@@ -186,7 +197,7 @@ public class Habbo
 
     public int CreditsUpdateTick { get; set; }
 
-    public ICommandBase ChatCommand { get; set; }
+    public ICommandBase? ChatCommand { get; set; }
 
     internal object GiftPurchaseSync { get; } = new();
     public DateTimeOffset? LastGiftPurchasedAt { get; set; }
@@ -219,7 +230,7 @@ public class Habbo
                 return;
             }
 
-            Persistence.Save(this, Access.Can(PermissionKeys.ModerationTickets));
+            Persistence.Save(this);
             _habboSaved = true;
         }
     }
@@ -278,7 +289,7 @@ public class Habbo
         }
         finally {
             try {
-                PlusEnvironment.Game.ClientManager.UnregisterClient(Client, Id, Username);
+                HotelClients.UnregisterClient(Client, Id, Username);
                 Dispose();
             }
             finally {
@@ -326,8 +337,8 @@ public class Habbo
                 ducketUpdate += Access.Limit("limit.currency_duckets", 0);
                 Credits += creditUpdate;
                 Duckets += ducketUpdate;
-                Client.Send(new CreditBalanceComposer(Credits));
-                Client.Send(new HabboActivityPointNotificationComposer(Duckets, ducketUpdate));
+                Client?.Send(new CreditBalanceComposer(Credits));
+                Client?.Send(new HabboActivityPointNotificationComposer(Duckets, ducketUpdate));
                 CreditsUpdateTick = Convert.ToInt32(settings.TryGetValue("user.currency_scheduler.tick"));
             }
         }
@@ -358,6 +369,12 @@ public class Habbo
 
     public void PrepareRoom(uint id, string password)
     {
+        var networkDestination = WiredRoomNetworkDestination;
+        var sourceRoomId = (IsTeleporting || IsHopping || networkDestination == id) ? CurrentRoom?.Id ?? 0 : 0;
+        WiredRoomNetworkDestination = 0;
+        WiredRoomEntrySourceRoomId = 0;
+        WiredRoomEntryDestinationRoomId = 0;
+
         if (Client == null || Client.GetHabbo() == null) {
             return;
         }
@@ -381,7 +398,7 @@ public class Habbo
             return;
         }
 
-        if (!PlusEnvironment.Game.RoomManager.TryLoadRoom(id, out var room)) {
+        if (!HotelRooms.TryLoadRoom(id, out var room)) {
             Client.Send(new CloseConnectionComposer());
 
             return;
@@ -437,14 +454,21 @@ public class Habbo
             }
         }
 
+        WiredRoomNetworkDestination = networkDestination == id ? id : 0;
+        WiredRoomEntrySourceRoomId = sourceRoomId;
+        WiredRoomEntryDestinationRoomId = id;
+
         if (!EnterRoom(room)) {
+            WiredRoomNetworkDestination = 0;
+            WiredRoomEntrySourceRoomId = 0;
+            WiredRoomEntryDestinationRoomId = 0;
             Client.Send(new CloseConnectionComposer());
         }
     }
 
-    public bool EnterRoom(Room room)
+    public bool EnterRoom(Room? room)
     {
-        if (room == null) {
+        if (room == null || Client == null) {
             return false;
         }
 
@@ -461,14 +485,27 @@ public class Habbo
 
         Client.Send(new RoomPropertyComposer("landscape", room.Landscape));
         Client.Send(new RoomRatingComposer(room.Score, !(Client.GetHabbo().RatedRooms.Contains(room.RoomId) || room.OwnerId == Client.GetHabbo().Id)));
-        _roomVisits.RecordEntry(Client.GetHabbo().Id, Client.GetHabbo().CurrentRoom.RoomId);
+        _roomVisits.RecordEntry(Client.GetHabbo().Id, room.RoomId);
 
         if (room.OwnerId != Id) {
-            Client.GetHabbo().HabboStats.RoomVisits += 1;
+            if (HabboStats is { } stats) {
+                stats.RoomVisits += 1;
+            }
+
             _roomAchievements.ProgressAchievement(Client, "ACH_RoomEntry", 1);
         }
 
         return true;
+    }
+
+    // UserDataFactory wires every loaded user; a hand-built user has no hotel to unregister from or enter rooms in.
+    private IGameClientManager HotelClients => _clients ?? throw new InvalidOperationException("The user is not connected to the hotel services.");
+    private IRoomManager HotelRooms => _rooms ?? throw new InvalidOperationException("The user is not connected to the hotel services.");
+
+    internal void SetHotelServices(IGameClientManager clients, IRoomManager rooms)
+    {
+        _clients = clients;
+        _rooms = rooms;
     }
 
     internal void SetRoomVisitRecorder(IRoomVisitRecorder roomVisits, IAchievementManager achievements)

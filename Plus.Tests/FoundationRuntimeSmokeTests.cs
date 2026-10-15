@@ -21,9 +21,7 @@ using Plus.Database;
 using Plus.HabboHotel;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
-using Plus.HabboHotel.Catalog.Clothing;
 using Plus.HabboHotel.GameClients;
-using Plus.HabboHotel.Housekeeping;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Moderation;
 using Plus.HabboHotel.Permissions;
@@ -69,7 +67,7 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
 
             foreach (var type in new[] { typeof(ItemDataManager), typeof(FigureDataManager), typeof(RoomManager),
                          typeof(AccessControl), typeof(ModerationManager), typeof(AchievementManager), typeof(BadgeManager),
-                         typeof(PetLocale), typeof(ChatStyleManager), typeof(ClothingManager), typeof(RewardManager) }) {
+                         typeof(PetLocale), typeof(ChatStyleManager), typeof(RewardManager) }) {
                 await ((IStartable)services.GetRequiredService(type)).Start();
             }
 
@@ -78,13 +76,16 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
             var rooms = services.GetRequiredService<IRoomManager>();
 
             try {
-                var ticket = await services.GetRequiredService<ISsoTicketStore>().Issue(7);
-                output.WriteLine("Calling the public SSO packet handler with a real single-use ticket.");
-                await services.GetRequiredService<SSOTicketEvent>().Parse(client, HabbiconTestSupport.Incoming(ticket.Value));
+                const string ticket = "cms-sso-ticket-0001";
+                connection.Execute(
+                    "UPDATE users SET auth_ticket = @ticket, auth_ticket_expires_at = DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 300 SECOND), auth_ticket_exchanged = 0, auth_ticket_session = NULL WHERE id = 7",
+                    new { ticket });
+                output.WriteLine("Calling the public SSO packet handler with a CMS-issued single-use ticket.");
+                await services.GetRequiredService<SSOTicketEvent>().Parse(client, HabbiconTestSupport.Incoming(ticket));
                 Assert.True(client.IsAuthenticated);
                 var habbo = Assert.IsType<Habbo>(client.GetHabbo());
                 Assert.Same(client, services.GetRequiredService<IGameClientManager>().GetClientByUserId(7));
-                Assert.Null(await services.GetRequiredService<ISsoTicketStore>().Consume(ticket.Value));
+                Assert.Null(await services.GetRequiredService<ISsoTicketStore>().Consume(ticket));
                 Assert.Contains(sent, packet => packet.Header == ServerPacketHeader.AuthenticationOkComposer);
                 Assert.Equal("smoke_owner", habbo.Username);
                 Assert.Equal(new DateTimeOffset(2020, 1, 2, 3, 4, 5, TimeSpan.Zero), habbo.AccountCreatedAt);
@@ -93,21 +94,21 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
                 Assert.Equal(42u, habbo.HomeRoom);
                 Assert.True(habbo.AllowMimic);
                 Assert.True(habbo.DisableForcedEffects);
-                Assert.Equal(123, habbo.HabboStats.AchievementPoints);
+                Assert.Equal(123, Assert.IsType<HabboStats>(habbo.HabboStats).AchievementPoints);
                 Assert.Equal((1, 0), (habbo.GetAchievementData("ACH_SafetyQuizGraduate")!.Level, habbo.GetAchievementData("ACH_SafetyQuizGraduate")!.Progress));
                 Assert.Equal((2, 3), (habbo.GetAchievementData("ACH_FixtureProgress")!.Level, habbo.GetAchievementData("ACH_FixtureProgress")!.Progress));
                 Assert.Null(habbo.GetAchievementData("ACH_OtherUserOnly"));
                 Assert.NotNull(habbo.Messenger);
                 Assert.NotNull(habbo.IgnoresComponent);
-                Assert.Equal(10, Assert.Single(habbo.Inventory.Bots.Bots).Key);
+                Assert.Equal(10, Assert.Single(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(habbo.Inventory).Bots.Bots).Key);
                 Assert.Equal(11, Assert.Single(habbo.Inventory.Pets.Pets).Key);
                 var inventoryPet = habbo.Inventory.Pets.Pets[11];
                 Assert.Equal("smoke_owner", inventoryPet.OwnerName);
                 var createdAt = new DateTimeOffset(2017, 2, 19, 3, 13, 54, TimeSpan.Zero).AddTicks(1234560);
                 Assert.Equal(createdAt, inventoryPet.CreatedAt);
                 Assert.Equal(TimeSpan.Zero, inventoryPet.CreatedAt!.Value.Offset);
-                Assert.Equal(321, Assert.Single(habbo.Clothing.GetClothingParts).PartId);
-                Assert.Equal(2, habbo.Effects.GetAllEffects.Count);
+                Assert.Equal(321, Assert.Single(Assert.IsType<Plus.HabboHotel.Users.Clothing.ClothingComponent>(habbo.Clothing).GetClothingParts).PartId);
+                Assert.Equal(2, Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(habbo.Effects).GetAllEffects.Count);
                 var effect = Assert.Single(habbo.Effects.GetAllEffects, row => row.SpriteId == 1);
                 Assert.Equal((1, 3600d, false, 2), (effect.SpriteId, effect.Duration, effect.Activated, effect.Quantity));
                 Assert.Null(effect.ActivatedAt);
@@ -127,7 +128,7 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
                 Assert.True(room.AllowPets);
                 Assert.Contains(sent, packet => packet.Header == ServerPacketHeader.RoomReadyComposer);
                 Assert.True(room.GetRoomUserManager().TryGetBot(12, out var bot));
-                Assert.Equal("room bot", bot!.BotData.Name);
+                Assert.Equal("room bot", Assert.IsType<Plus.HabboHotel.Rooms.AI.RoomBot>(bot!.BotData).Name);
                 Assert.True(bot.BotData.AutomaticChat);
                 Assert.True(bot.BotData.MixSentences);
                 var roomPet = Assert.Single(room.GetRoomUserManager().GetPets());
@@ -144,22 +145,18 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
                 Assert.Contains(sent, packet => packet.Header == ServerPacketHeader.RoomEntryInfoComposer);
                 Assert.Equal(1, room.UserCount);
 
-                output.WriteLine("Reading DATETIME boundaries through moderation, housekeeping and live trading locks.");
+                output.WriteLine("Reading DATETIME boundaries through moderation and live trading locks.");
                 var moderation = services.GetRequiredService<IModerationUserStore>();
-                var housekeeping = services.GetRequiredService<IHousekeepingUserStore>();
                 Assert.Equal(habbo.AccountCreatedAt, moderation.Find(7)!.AccountCreatedAt);
                 Assert.Equal(habbo.LastOnlineAt, moderation.Find("smoke_owner")!.LastOnlineAt);
-                Assert.Equal(habbo.LastOnlineAt, housekeeping.Find(7)!.LastOnlineAt);
                 var locks = services.GetRequiredService<ITradingLockService>();
                 var expires = locks.Set(7, TimeSpan.FromMinutes(5));
                 Assert.True(locks.IsLocked(habbo));
                 Assert.Equal(expires, habbo.TradingLockExpiresAt);
                 Assert.Equal(expires, moderation.Find(7)!.TradingLockExpiresAt);
-                Assert.Equal(expires, housekeeping.Find("smoke_owner")!.TradingLockExpiresAt);
                 locks.Clear(7);
                 Assert.False(locks.IsLocked(habbo));
                 Assert.Null(moderation.Find(7)!.TradingLockExpiresAt);
-                Assert.Null(housekeeping.Find(7)!.TradingLockExpiresAt);
             }
             finally {
                 try {
@@ -181,8 +178,8 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
 
     private static void Seed(MySqlConnection connection) => connection.Execute("""
         INSERT INTO users (id, username, auth_ticket, look, motto, account_created, last_online) VALUES
-            (7, 'smoke_owner', '', 'hd-180-1.ch-210-66.lg-270-82', 'smoke', '2020-01-02 03:04:05', '2026-01-02 03:04:05');
-        INSERT INTO users_settings (user_id, home_room, allow_mimic, disable_forced_effects) VALUES (7, 42, TRUE, TRUE);
+            (7, 'smoke_owner', '', 'hd-180-1.ch-210-66.lg-270-82', 'smoke', '2020-01-02 03:04:05', '2026-01-02 03:04:05'),
+            (8, 'smoke_other', '', 'hd-180-1', '', '2020-01-02 03:04:05', '2026-01-02 03:04:05');
         INSERT INTO user_statistics (id, AchievementScore) VALUES (7, 123);
         INSERT INTO user_info (user_id) VALUES (7);
         INSERT INTO user_achievements (userid, `group`, level, progress) VALUES
@@ -190,6 +187,7 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
         INSERT INTO room_models (id, door_x, door_y, door_z, door_dir, heightmap, public_items)
             VALUES ('smoke', 0, 1, 0, 2, '000\r000\r000', '');
         INSERT INTO rooms (id, owner, caption, model_name, allow_pets) VALUES (42, '7', 'Smoke room', 'smoke', TRUE);
+        INSERT INTO users_settings (user_id, home_room, allow_mimic, disable_forced_effects) VALUES (7, 42, TRUE, TRUE);
         INSERT INTO bots (id, user_id, room_id, ai_type, name, motto, look, x, y, z, automatic_chat, mix_sentences) VALUES
             (10, 7, 0, 'generic', 'inventory bot', '', 'hd-180-1', 0, 0, 0, 'false', FALSE),
             (11, 7, 0, 'pet', 'inventory pet', '', '', 0, 0, 0, 'false', FALSE),
@@ -268,7 +266,6 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
                 Set("_settingsManager", Services.GetRequiredService<ISettingsManager>());
                 Set("_languageManager", Services.GetRequiredService<ILanguageManager>());
                 Set("_figureManager", Services.GetRequiredService<IFigureDataManager>());
-                Set("_itemDataManager", Services.GetRequiredService<IItemDataManager>());
                 Set("_defaultEncoding", Encoding.UTF8);
                 PlusEnvironment.CultureInfo = CultureInfo.InvariantCulture;
                 DefaultTypeMap.MatchNamesWithUnderscores = true;

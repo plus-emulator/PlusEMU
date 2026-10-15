@@ -120,21 +120,18 @@ public class RewardTrackTests
     }
 
     [Fact]
-    public void HeadersMatchTheNitroClientNumbers()
+    public void CurrentHeadersMatchTheDirectContract()
     {
-        Assert.Equal(48000u, ClientPacketHeader.GetRewardTracksEvent);
-        Assert.Equal(48001u, ClientPacketHeader.ClaimRewardTrackPrizeEvent);
-        Assert.Equal(48002u, ClientPacketHeader.PurchaseRewardTrackPremiumEvent);
-        Assert.Equal(48003u, ServerPacketHeader.RewardTracksComposer);
-        Assert.Equal(48004u, ServerPacketHeader.RewardTrackClaimResultComposer);
-        Assert.Equal(48005u, ServerPacketHeader.RewardTrackProgressComposer);
-        Assert.Equal(48006u, ServerPacketHeader.RewardTrackPremiumPurchaseResultComposer);
-        Assert.Equal(2248u, ServerPacketHeader.UserChangeComposer);
+        Assert.Equal(9450u, ClientPacketHeader.GetRewardTracksEvent);
+        Assert.Equal(1784u, ClientPacketHeader.ClaimRewardTrackPrizeEvent);
+        Assert.Equal(3162u, ClientPacketHeader.PurchaseRewardTrackPremiumEvent);
+        Assert.Equal(2475u, ServerPacketHeader.RewardTracksComposer);
+        Assert.Equal(1438u, ServerPacketHeader.RewardTrackClaimResultComposer);
+        Assert.Equal(3817u, ServerPacketHeader.RewardTrackProgressComposer);
+        Assert.Equal(1829u, ServerPacketHeader.RewardTrackPremiumPurchaseResultComposer);
+        Assert.Equal(2130u, ServerPacketHeader.UserChangeComposer);
         Assert.NotEqual(ServerPacketHeader.UserChangeComposer, ServerPacketHeader.RewardTrackPremiumPurchaseResultComposer);
 
-        AssertClient("3.6.0.json", 9450, 1111, 3022, 2327, 9451, 9452, 2248);
-        AssertClient("1.6.6.json", 0, 0, 0, 0, 0, 0, 0);
-        AssertClient("OCTANE-3-6-0-FLOOR-20260909.json", 9450, 1111, 3022, 2327, 9451, 9452, 2248);
     }
 
     [Fact]
@@ -173,20 +170,6 @@ public class RewardTrackTests
         Assert.Equal(new object[] { "introduction", 5, 0 }, premium.Writes);
     }
 
-    private static void AssertClient(string file, uint get, uint claim, uint purchase, uint tracks, uint claimResult, uint progress, uint premiumResult)
-    {
-        using var document = JsonDocument.Parse(File.ReadAllText(RevisionPath(file)));
-        var incoming = document.RootElement.GetProperty("IncomingHeaders");
-        var outgoing = document.RootElement.GetProperty("OutgoingHeaders");
-        Assert.Equal(get, incoming.GetProperty(nameof(ClientPacketHeader.GetRewardTracksEvent)).GetUInt32());
-        Assert.Equal(claim, incoming.GetProperty(nameof(ClientPacketHeader.ClaimRewardTrackPrizeEvent)).GetUInt32());
-        Assert.Equal(purchase, incoming.GetProperty(nameof(ClientPacketHeader.PurchaseRewardTrackPremiumEvent)).GetUInt32());
-        Assert.Equal(tracks, outgoing.GetProperty(nameof(ServerPacketHeader.RewardTracksComposer)).GetUInt32());
-        Assert.Equal(claimResult, outgoing.GetProperty(nameof(ServerPacketHeader.RewardTrackClaimResultComposer)).GetUInt32());
-        Assert.Equal(progress, outgoing.GetProperty(nameof(ServerPacketHeader.RewardTrackProgressComposer)).GetUInt32());
-        Assert.Equal(premiumResult, outgoing.GetProperty(nameof(ServerPacketHeader.RewardTrackPremiumPurchaseResultComposer)).GetUInt32());
-    }
-
     private static RewardTrack ChatTrack()
     {
         var track = new RewardTrack("introduction", "blue", 0, null, null, true, 1.5, 25, 0, 25);
@@ -200,23 +183,6 @@ public class RewardTrackTests
         track.AddPrize(new RewardTrackPrize("track_champ_premium", 200, 4, "badge", "ACH_RewardTracksCompleted2", 1, true, 2));
 
         return track;
-    }
-
-    private static string RevisionPath(string fileName)
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (dir != null) {
-            var candidate = Path.Combine(dir.FullName, "Resources", "Revisions", fileName);
-
-            if (File.Exists(candidate)) {
-                return candidate;
-            }
-
-            dir = dir.Parent;
-        }
-
-        throw new FileNotFoundException(fileName);
     }
 
     private sealed class RecordingPacket : IOutgoingPacket

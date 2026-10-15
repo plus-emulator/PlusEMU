@@ -17,5 +17,7 @@ namespace Plus.HabboHotel.Groups.Forums
         ForumMessageSnapshot? ModerateMessage(ForumViewer viewer, int groupId, int threadId, int messageId, int state, DateTimeOffset now);
         void MarkRead(ForumViewer viewer, IReadOnlyList<ForumReadMarker> markers);
         int Unread(ForumViewer viewer);
+        /// <summary>Turns a group's forum on; false when it was on already.</summary>
+        bool Enable(int groupId);
     }
 }

@@ -16,13 +16,7 @@ public sealed record NavItemRecord(uint ItemId, long Version, double Z, double H
     internal static NavItemRecord Capture(Item item, long version, int width, int height, NavItemRecord? previous = null)
     {
         var definition = item.Definition;
-        var currentHeight = definition.Height;
-
-        if (definition.AdjustableHeights is { Count: > 1 } heights
-            && int.TryParse(item.LegacyDataString, out var index) && index >= 0 && index < heights.Count
-            && item.GetZ + heights[index] > 0) {
-            currentHeight = heights[index];
-        }
+        var currentHeight = item.CurrentHeight;
 
         // Only gate state changes standability; adjustable state is represented by Height.
         var state = definition.InteractionType is InteractionType.Gate or InteractionType.GuildGate ? item.LegacyDataString : "";

@@ -8,6 +8,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Quests;
+using Plus.HabboHotel.Users.Inventory;
 using Plus.HabboHotel.Users.Inventory.Furniture;
 
 namespace Plus.HabboHotel.Rooms;
@@ -45,9 +46,11 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
             return;
         }
 
-        var inventoryItem = session.GetHabbo().Inventory.Furniture.GetItem(itemId);
+        // Placed furniture comes out of the loaded inventory, so nothing is placed without one.
+        var inventory = session.GetHabbo().Inventory;
+        var inventoryItem = inventory?.Furniture.GetItem(itemId);
 
-        if (inventoryItem == null) {
+        if (inventory == null || inventoryItem == null) {
             return;
         }
 
@@ -58,21 +61,21 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
         try {
             var habbo = session.GetHabbo();
 
-            if (habbo.WalletClosed || !ReferenceEquals(habbo.Inventory.Furniture.GetItem(itemId), inventoryItem)) {
+            if (habbo.WalletClosed || !ReferenceEquals(inventory.Furniture.GetItem(itemId), inventoryItem)) {
                 return;
             }
 
-            PlaceReserved(room, session, data, inventoryItem);
+            PlaceReserved(room, session, data, inventory, inventoryItem);
         }
         finally {
             inventoryItem.ReleaseReservation();
         }
     }
 
-    private void PlaceReserved(Room room, GameClient session, string[] data, InventoryItem inventoryItem)
+    private void PlaceReserved(Room room, GameClient session, string[] data, InventoryComponent inventory, InventoryItem inventoryItem)
     {
         if (!Music.RoomMusicDefinition.IsPlayer(inventoryItem.Definition)) {
-            PlaceReservedCore(room, session, data, inventoryItem);
+            PlaceReservedCore(room, session, data, inventory, inventoryItem);
 
             return;
         }
@@ -82,14 +85,14 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
         }
 
         try {
-            PlaceReservedCore(room, session, data, inventoryItem);
+            PlaceReservedCore(room, session, data, inventory, inventoryItem);
         }
         finally {
             room.Music.EndPlacement();
         }
     }
 
-    private void PlaceReservedCore(Room room, GameClient session, string[] data, InventoryItem inventoryItem)
+    private void PlaceReservedCore(Room room, GameClient session, string[] data, InventoryComponent inventory, InventoryItem inventoryItem)
     {
         var itemId = inventoryItem.Id;
         var item = inventoryItem.ToRoomObject(session.GetHabbo());
@@ -157,8 +160,8 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
                 return;
             }
 
-            if (room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true)) {
-                session.GetHabbo().Inventory.Furniture.RemoveItem(itemId);
+            if (room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true, height: BuildHeight(room, session, item, x, y, rotation))) {
+                inventory.Furniture.RemoveItem(itemId);
                 session.Send(new FurniListRemoveComposer(itemId));
 
                 if (session.GetHabbo().Id == room.OwnerId) {
@@ -194,7 +197,7 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
 
                 try {
                     if (room.GetRoomItemHandler().SetWallItem(session, item)) {
-                        session.GetHabbo().Inventory.Furniture.RemoveItem(itemId);
+                        inventory.Furniture.RemoveItem(itemId);
                         session.Send(new FurniListRemoveComposer(itemId));
 
                         if (session.GetHabbo().Id == room.OwnerId) {
@@ -247,9 +250,8 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
             return;
         }
 
-        var item = habbo.Inventory.Furniture.GetItem(itemId);
-
-        if (item == null) {
+        // The sticky note comes out of the loaded inventory, so nothing is placed without one.
+        if (habbo.Inventory is not { } inventory || inventory.Furniture.GetItem(itemId) is not { } item) {
             return;
         }
 
@@ -258,7 +260,7 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
         }
 
         try {
-            if (habbo.WalletClosed || !ReferenceEquals(habbo.Inventory.Furniture.GetItem(itemId), item)) {
+            if (habbo.WalletClosed || !ReferenceEquals(inventory.Furniture.GetItem(itemId), item)) {
                 return;
             }
 
@@ -267,7 +269,7 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
             placed.WallCoordinates = position;
 
             if (room.GetRoomItemHandler().SetWallItem(session, placed)) {
-                habbo.Inventory.Furniture.RemoveItem(itemId);
+                inventory.Furniture.RemoveItem(itemId);
                 session.Send(new FurniListRemoveComposer(itemId));
             }
         }
@@ -323,7 +325,7 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
             quests.ProgressUserQuest(session, QuestType.FurniRotate);
         }
 
-        if (!room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, false, false, true)) {
+        if (!room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, false, false, true, height: BuildHeight(room, session, item, x, y, rotation))) {
             room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
 
             return;
@@ -340,6 +342,25 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
         if (item.GetZ >= 0.1) {
             quests.ProgressUserQuest(session, QuestType.FurniStack);
         }
+    }
+
+    // The :bh height, never below the floor under the item's footprint; -1 keeps normal stacking.
+    private static double BuildHeight(Room room, GameClient session, Item item, int x, int y, int rotation)
+    {
+        if (room.GetRoomUserManager().GetRoomUserByHabbo(session.GetHabbo().Id)?.BuildHeight is not { } height) {
+            return -1;
+        }
+
+        var map = room.GetGameMap();
+        var footprint = Gamemap.GetAffectedTiles(item.Definition.Length, item.Definition.Width, x, y, rotation).Values
+            .Select(tile => (X: tile.X, Y: tile.Y)).Append((X: x, Y: y)).ToArray();
+
+        // An off-map tile is refused by the placement itself.
+        if (footprint.Any(tile => !map.ValidTile(tile.X, tile.Y))) {
+            return -1;
+        }
+
+        return MagicTileHeight.Clamp(height, footprint.Max(tile => (double)map.Model.SqFloorHeight[tile.X, tile.Y]));
     }
 
 }

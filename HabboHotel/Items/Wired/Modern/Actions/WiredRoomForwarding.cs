@@ -67,7 +67,8 @@ public static class WiredRoomForwarding
                 }
             }
 
-            if (item.Definition.InteractionType != InteractionType.Teleport || item.Id > int.MaxValue) {
+            // A teleporter or WIRED Room Linker leads to the room its other half stands in; an unplaced half leads nowhere.
+            if (!InteractionTypes.IsLinkedPair(item.Definition.InteractionType) || item.Id > int.MaxValue) {
                 continue;
             }
 

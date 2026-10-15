@@ -9,6 +9,8 @@ using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
 using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Groups;
+using Plus.HabboHotel.Groups.Forums;
 using Plus.HabboHotel.Habbicons;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Subscriptions;
@@ -47,7 +49,7 @@ public sealed class CatalogPurchaseServiceTests
 
         Assert.Equal(0, context.Rewards.Charges);
         Assert.Equal(0, context.Factory.Creates);
-        Assert.Empty(context.Habbo.Inventory.Furniture.AllItems);
+        Assert.Empty(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.AllItems);
         Assert.Empty(context.Tracks.Calls);
     }
 
@@ -60,7 +62,7 @@ public sealed class CatalogPurchaseServiceTests
 
         Assert.Equal(1, context.Rewards.Charges);
         Assert.Equal(0, context.Factory.Creates);
-        Assert.Empty(context.Habbo.Inventory.Furniture.AllItems);
+        Assert.Empty(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.AllItems);
         Assert.Empty(context.Tracks.Calls);
         Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
     }
@@ -74,11 +76,42 @@ public sealed class CatalogPurchaseServiceTests
 
         Assert.Equal(90, context.Habbo.Credits);
         Assert.Equal(1, context.Factory.Creates);
-        Assert.NotNull(context.Habbo.Inventory.Furniture.GetItem(700));
+        Assert.NotNull(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.GetItem(700));
         Assert.Equal((context.Client, Plus.HabboHotel.Quests.RewardTrackActions.BuyFromCatalogue, 1),
             Assert.Single(context.Tracks.Calls));
         Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
         Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.FurniListUpdateComposer);
+    }
+
+    [Theory]
+    [InlineData(InteractionType.Teleport)]
+    [InlineData(InteractionType.WiredRoomLinker)]
+    public async Task TeleportersAndRoomLinkersAreBoughtAsOneLinkedPair(InteractionType interaction)
+    {
+        var context = Context(interaction: interaction);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "ignored", 1));
+
+        Assert.Equal(1, context.Factory.LinkedPairs);
+        Assert.Empty(context.Factory.ExtraData);
+        var inventory = Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture;
+        Assert.NotNull(inventory.GetItem(700));
+        Assert.NotNull(inventory.GetItem(701));
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+    }
+
+    [Theory]
+    [InlineData("110", "", "110")]
+    [InlineData("2.10", "999", "2.10")]
+    [InlineData("", "205", "205")]
+    [InlineData("", "", "0")]
+    public async Task RoomDecorationPurchaseStoresTheOfferPattern(string offerParam, string clientData, string stored)
+    {
+        var context = Context(interaction: InteractionType.Floor, extraParam: offerParam);
+
+        await context.Service.Purchase(context.Client, new(1, 2, clientData, 1));
+
+        Assert.Equal(stored, Assert.Single(context.Factory.ExtraData));
     }
 
     [Fact]
@@ -111,7 +144,7 @@ public sealed class CatalogPurchaseServiceTests
 
         Assert.Equal(70, context.Habbo.Credits);
         Assert.Equal(3, context.Factory.Creates);
-        Assert.Equal(3, context.Habbo.Inventory.Furniture.AllItems.Count());
+        Assert.Equal(3, Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.AllItems.Count());
         Assert.Equal((context.Client, Plus.HabboHotel.Quests.RewardTrackActions.BuyFromCatalogue, 1),
             Assert.Single(context.Tracks.Calls));
     }
@@ -124,7 +157,7 @@ public sealed class CatalogPurchaseServiceTests
         await context.Service.Purchase(context.Client, new(1, 2, "ignored", 1));
 
         Assert.Equal(1, context.Factory.Creates);
-        Assert.Empty(context.Habbo.Inventory.Furniture.AllItems);
+        Assert.Empty(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.AllItems);
         Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.FurniListNotificationComposer);
         Assert.Empty(context.Tracks.Calls);
     }
@@ -136,7 +169,7 @@ public sealed class CatalogPurchaseServiceTests
         context.BotStore.BeforeCreate = () =>
         {
             Assert.Equal(100, context.Habbo.Credits);
-            Assert.Empty(context.Habbo.Inventory.Bots.Bots);
+            Assert.Empty(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Bots.Bots);
             Assert.Empty(context.Sent);
         };
 
@@ -148,7 +181,7 @@ public sealed class CatalogPurchaseServiceTests
         Assert.Same(context.Rewards.Transaction, context.BotStore.Transaction);
         Assert.Equal((50u, 42), (context.BotStore.Preset!.Id, context.BotStore.OwnerId));
         Assert.Equal(90, context.Habbo.Credits);
-        Assert.Single(context.Habbo.Inventory.Bots.Bots);
+        Assert.Single(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Bots.Bots);
         Assert.Equal(new[]
         {
             ServerPacketHeader.CreditBalanceComposer,
@@ -173,7 +206,33 @@ public sealed class CatalogPurchaseServiceTests
 
         Assert.Equal(90, context.Habbo.Credits);
         Assert.Equal(1, context.BotStore.Creates);
-        Assert.Single(context.Habbo.Inventory.Bots.Bots);
+        Assert.Single(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Bots.Bots);
+    }
+
+    [Fact]
+    public async Task FurniturePurchaseWithoutLoadedInventoryDoesNotCharge()
+    {
+        var context = Context();
+        context.Habbo.Inventory = null;
+
+        await context.Service.Purchase(context.Client, new(1, 2, "ignored", 1));
+
+        Assert.Equal(0, context.Rewards.Charges);
+        Assert.Equal(100, context.Habbo.Credits);
+        Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+    }
+
+    [Fact]
+    public async Task EffectPurchaseWithoutLoadedEffectsDoesNotCharge()
+    {
+        var context = Context(effect: true);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "ignored", 1));
+
+        Assert.Null(context.Habbo.Effects);
+        Assert.Equal(0, context.Rewards.Charges);
+        Assert.Equal(100, context.Habbo.Credits);
+        Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
     }
 
     [Fact]
@@ -186,7 +245,7 @@ public sealed class CatalogPurchaseServiceTests
         Assert.Equal(0, context.Rewards.Charges);
         Assert.Equal(0, context.BotStore.Creates);
         Assert.Equal(100, context.Habbo.Credits);
-        Assert.Empty(context.Habbo.Inventory.Bots.Bots);
+        Assert.Empty(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Bots.Bots);
         var error = Assert.Single(context.Sent);
         Assert.Equal(ServerPacketHeader.BroadcastMessageAlertComposer, error.Header);
         var payload = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = error.Payload };
@@ -205,7 +264,7 @@ public sealed class CatalogPurchaseServiceTests
 
         Assert.Equal(1, context.Rewards.Charges);
         Assert.Equal(0, context.BotStore.Creates);
-        Assert.Empty(context.Habbo.Inventory.Bots.Bots);
+        Assert.Empty(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Bots.Bots);
         Assert.Empty(context.Sent);
     }
 
@@ -219,7 +278,7 @@ public sealed class CatalogPurchaseServiceTests
 
         Assert.Equal(1, context.BotStore.Creates);
         Assert.Equal(100, context.Habbo.Credits);
-        Assert.Empty(context.Habbo.Inventory.Bots.Bots);
+        Assert.Empty(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Bots.Bots);
         Assert.Empty(context.Sent);
     }
 
@@ -235,9 +294,79 @@ public sealed class CatalogPurchaseServiceTests
         Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.ScrSendUserInfoComposer);
     }
 
+    [Fact]
+    public async Task OwnerBuyingTheFirstForumTerminalOpensTheGroupForum()
+    {
+        var group = Group(owner: 42, members: [], forum: false);
+        var enabled = new List<int>();
+        var context = Context(interaction: InteractionType.GuildForum, groups: Groups(group), forums: Forums(enabled));
+
+        await context.Service.Purchase(context.Client, new(1, 2, "4", 1));
+
+        Assert.Equal([4], context.Factory.GroupIds);
+        Assert.Equal([4], enabled);
+        Assert.True(group.ForumEnabled);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+    }
+
+    [Theory]
+    [InlineData(InteractionType.GuildForum, false, false)]
+    [InlineData(InteractionType.GuildForum, true, true)]
+    [InlineData(InteractionType.GuildItem, false, true)]
+    [InlineData(InteractionType.GuildGate, false, true)]
+    public async Task MembersBuyGroupFurnitureButOnlyTheOwnerOpensAForum(InteractionType interaction, bool forum, bool bought)
+    {
+        var enabled = new List<int>();
+        var context = Context(interaction: interaction, groups: Groups(Group(owner: 7, members: [42], forum)), forums: Forums(enabled));
+
+        await context.Service.Purchase(context.Client, new(1, 2, "4", 1));
+
+        Assert.Equal(bought ? [4] : [], context.Factory.GroupIds);
+        Assert.Equal(bought ? 1 : 0, context.Rewards.Charges);
+        Assert.Equal(!bought, context.Sent.Any(packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer));
+        Assert.Empty(enabled);
+    }
+
+    [Theory]
+    [InlineData("4")]
+    [InlineData("9")]
+    [InlineData("abc")]
+    [InlineData("-4")]
+    [InlineData(" 4")]
+    public async Task GroupFurnitureNeedsAnExistingGroupTheBuyerBelongsTo(string extraData)
+    {
+        var context = Context(interaction: InteractionType.GuildItem, groups: Groups(Group(owner: 7, members: [], forum: true)), forums: Forums([]));
+
+        await context.Service.Purchase(context.Client, new(1, 2, extraData, 1));
+
+        Assert.Equal(0, context.Factory.Creates);
+        Assert.Equal(0, context.Rewards.Charges);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
+    }
+
+    private static Group Group(int owner, int[] members, bool forum) =>
+        new(4, "Plus", "", "b28060s27124", 2, owner, null, 0, 3, 5, 0, forum, new([.. members], [], []));
+
+    private static IGroupManager Groups(Group group) => CatalogSnapshotTestSupport.Proxy<IGroupManager>((method, args) =>
+    {
+        Assert.Equal(nameof(IGroupManager.TryGetGroup), method);
+        args[1] = (int)args[0]! == group.Id ? group : null;
+
+        return args[1] != null;
+    });
+
+    private static IGroupForumStore Forums(List<int> enabled) => CatalogSnapshotTestSupport.Proxy<IGroupForumStore>((method, args) =>
+    {
+        Assert.Equal(nameof(IGroupForumStore.Enable), method);
+        enabled.Add((int)args[0]!);
+
+        return true;
+    });
+
     private static TestContext Context(bool enabled = true, bool chargeSucceeds = true,
         bool factorySucceeds = true, bool club = false, bool bot = false, bool botPreset = true,
-        bool botStoreFails = false, int points = 0, int pointsType = 0)
+        bool botStoreFails = false, int points = 0, int pointsType = 0, bool effect = false,
+        InteractionType interaction = InteractionType.None, string extraParam = "", IGroupManager? groups = null, IGroupForumStore? forums = null)
     {
         var definition = new ItemDefinition
         {
@@ -245,7 +374,7 @@ public sealed class CatalogPurchaseServiceTests
             ItemName = "chair",
             ProductType = bot ? "r" : "s",
             Type = ItemType.Floor,
-            InteractionType = InteractionType.None
+            InteractionType = interaction
         };
         var offer = new CatalogOffer
         {
@@ -254,9 +383,11 @@ public sealed class CatalogPurchaseServiceTests
             CostPoints = points,
             PointsType = pointsType,
             LocalizationKey = "chair",
-            Products = [bot
+            Products = [effect
+                ? new CatalogProduct { Type = CatalogProductType.Effect, EffectId = 108 }
+                : bot
                 ? new CatalogProduct { Type = CatalogProductType.Bot, BotPresetId = (int)definition.Id }
-                : new CatalogProduct { Type = CatalogProductType.Furni, Definition = definition }]
+                : new CatalogProduct { Type = CatalogProductType.Furni, Definition = definition, ExtraParam = extraParam }]
         };
         var page = new CatalogPage { Id = 1, Enabled = true, Layout = club ? "club_buy" : "default_3x3" };
         page.Offers.Add(2, offer);
@@ -285,7 +416,7 @@ public sealed class CatalogPurchaseServiceTests
             Assert.Equal(1, amount);
             Assert.Equal(1, rewards.Charges);
             Assert.True(habbo.Credits < 100);
-            Assert.NotEmpty(habbo.Inventory.Furniture.AllItems);
+            Assert.NotEmpty(Assert.IsType<InventoryComponent>(habbo.Inventory).Furniture.AllItems);
             Assert.Contains(sent, packet => packet.Header == ServerPacketHeader.FurniListNotificationComposer);
             Assert.DoesNotContain(sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
         });
@@ -302,6 +433,8 @@ public sealed class CatalogPurchaseServiceTests
             rewards,
             tracks,
             Proxy<IAvatarEffectStore, EmptyProxy>(),
+            groups ?? Proxy<IGroupManager, EmptyProxy>(),
+            forums ?? Proxy<IGroupForumStore, EmptyProxy>(),
             new FixedClock(new DateTimeOffset(2040, 2, 3, 4, 5, 6, TimeSpan.Zero)),
             NullLogger<CatalogPurchaseService>.Instance);
 
@@ -405,10 +538,14 @@ public sealed class CatalogPurchaseServiceTests
     private sealed class RecordingFactory(bool succeeds) : IItemFactory
     {
         public int Creates { get; private set; }
+        public List<string> ExtraData { get; } = [];
+        public List<int> GroupIds { get; } = [];
         public Item CreateSingleItemNullable(ItemDefinition definition, Habbo habbo, string extraData,
             string displayFlags, int groupId = 0, uint limitedNumber = 0, uint limitedStack = 0)
         {
             Creates++;
+            ExtraData.Add(extraData);
+            GroupIds.Add(groupId);
 
             if (!succeeds) {
                 return null!;
@@ -437,8 +574,15 @@ public sealed class CatalogPurchaseServiceTests
         }
         public List<Item> CreateMultipleItems(ItemDefinition definition, int ownerId, string extraData, int amount,
             int groupId = 0) => throw new NotSupportedException();
-        public List<Item> CreateTeleporterItems(ItemDefinition definition, Habbo habbo, int groupId = 0) =>
-            throw new NotSupportedException();
+        public int LinkedPairs { get; private set; }
+        public List<Item> CreateTeleporterItems(ItemDefinition definition, Habbo habbo, int groupId = 0)
+        {
+            LinkedPairs++;
+            Creates += 2;
+
+            return [new Item { Id = (uint)(698 + Creates), OwnerId = (uint)habbo.Id, Definition = definition },
+                new Item { Id = (uint)(699 + Creates), OwnerId = (uint)habbo.Id, Definition = definition }];
+        }
         public void CreateMoodlightData(Item item) => throw new NotSupportedException();
         public void CreateTonerData(Item item) => throw new NotSupportedException();
     }
@@ -481,7 +625,6 @@ public sealed class CatalogPurchaseServiceTests
         public DateTimeOffset? GetExpiry(int userId) => null;
         public DateTimeOffset? Purchase(Habbo habbo, ClubOffer offer, int? recipientId = null) =>
             new DateTimeOffset(2040, 3, 5, 4, 5, 6, TimeSpan.Zero);
-        public DateTimeOffset? Grant(Habbo actor, int userId, int days) => throw new NotSupportedException();
     }
 
     public class EmptyProxy : DispatchProxy

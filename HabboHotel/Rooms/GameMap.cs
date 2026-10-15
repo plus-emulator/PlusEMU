@@ -37,6 +37,7 @@ public class Gamemap
     {
         public bool Entry => EntrySession != null;
     }
+    private short[,]? _placementSnapshot;
     private int _placementWidth;
     private int _placementHeight;
 
@@ -138,7 +139,20 @@ public class Gamemap
             if (changed.Count != 0 || resized) {
                 // Byte-sized delta counts/coordinates cannot represent larger maps.
                 var full = resized || changed.Any(tile => tile.X > byte.MaxValue || tile.Y > byte.MaxValue);
-                _placementOutbound.Enqueue(new(++_placementVersion, PlacementHeightMap(), full ? null : changed.ToArray(), CapturePlacementVisits()));
+                // Reuse unchanged cell heights instead of resolving every furniture stack for every move.
+                // Clone before patching: queued full snapshots must remain immutable for reentrant delivery.
+                var snapshot = _placementSnapshot;
+                if (snapshot == null || resized) {
+                    snapshot = PlacementHeightMap();
+                }
+                else {
+                    snapshot = (short[,])snapshot.Clone();
+                    foreach (var tile in changed) {
+                        snapshot[tile.X, tile.Y] = tile.Value;
+                    }
+                }
+                _placementSnapshot = snapshot;
+                _placementOutbound.Enqueue(new(++_placementVersion, snapshot, full ? null : changed.ToArray(), CapturePlacementVisits()));
             }
         }
 
@@ -246,8 +260,8 @@ public class Gamemap
                 var currentClients = recipients.Where(IsCurrentPlacementRecipient).Select(recipient => recipient.Session);
                 bool CanSend(GameClient client) => recipients.Any(recipient => ReferenceEquals(recipient.Session, client)
                     && IsCurrentPlacementRecipient(recipient));
-                bool SupportsDelta(GameClient client) => client.Revision.InternalIdToOutgoingIdMapping
-                    .ContainsKey(Plus.Communication.Packets.Outgoing.ServerPacketHeader.HeightMapUpdateComposer);
+                bool SupportsDelta(GameClient client) => client.Revision?.InternalIdToOutgoingIdMapping
+                    .ContainsKey(Plus.Communication.Packets.Outgoing.ServerPacketHeader.HeightMapUpdateComposer) == true;
 
                 if (delivery.Changes != null) {
                     foreach (var chunk in delivery.Changes.Chunk(byte.MaxValue)) {
@@ -255,8 +269,8 @@ public class Gamemap
                     }
                 }
 
-                var needsFull = currentClients.Where(client => client.Revision.InternalIdToOutgoingIdMapping
-                    .ContainsKey(Plus.Communication.Packets.Outgoing.ServerPacketHeader.HeightMapComposer)
+                var needsFull = currentClients.Where(client => client.Revision?.InternalIdToOutgoingIdMapping
+                    .ContainsKey(Plus.Communication.Packets.Outgoing.ServerPacketHeader.HeightMapComposer) == true
                     && (delivery.Changes == null || !SupportsDelta(client)));
                 GameClient.SendBroadcast(new HeightMapComposer(delivery.Heights), needsFull, CanSend);
             }

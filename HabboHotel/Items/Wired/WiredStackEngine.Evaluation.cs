@@ -2,6 +2,7 @@ using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Addons;
 using Plus.HabboHotel.Items.Wired.Modern.Selectors;
 using Plus.HabboHotel.Items.Wired.Runtime;
+using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Rooms;
 
 namespace Plus.HabboHotel.Items.Wired;
@@ -11,6 +12,7 @@ internal sealed partial class WiredStackEngine
     private RuntimeFiring? _activeFiring;
     private PendingDispatch? _transferringDispatch;
     private int _queuedSlots;
+    private int _dispatchAdvanceDepth;
     private int PendingCount => _pending.Count + _queuedSlots - (_transferringDispatch != null
         && _dispatches.TryPeek(out var head) && ReferenceEquals(head, _transferringDispatch) ? 1 : 0);
 
@@ -20,10 +22,21 @@ internal sealed partial class WiredStackEngine
             return;
         }
 
-        pending.Triggers = _items.Values.OfType<IWiredContextualTrigger>()
-            .Where(trigger => RuntimeSupported(trigger) && trigger.Events.Contains(pending.Event.Kind)
-                && (pending.Signal == null || trigger.Item.GetX == pending.Signal.Receiver.GetX && trigger.Item.GetY == pending.Signal.Receiver.GetY))
+        if (pending.Call is { } call) {
+            pending.Triggers = [];
+            pending.CapturedBoxes = GetStack(call.Source);
+            pending.CapturedPositions = pending.CapturedBoxes.Select(box => (box, box.Item.GetX, box.Item.GetY, box.Item.GetZ, box.Item.MovementGeneration)).ToArray();
+
+            return;
+        }
+
+        // Observed r92g r92-signals two-w1..w3 (AIR WIN63-202610131318-860371703): two say stacks on one message ran stack two first
+        // once and stack one first twice, so stacks of one event are not run in id order. They run in a per-event random order.
+        var triggers = _items.Values.OfType<IWiredContextualTrigger>()
+            .Where(trigger => RuntimeSupported(trigger) && trigger.Events.Contains(pending.Event.Kind))
             .OrderBy(trigger => trigger.Item.GetZ).ThenBy(trigger => trigger.Item.Id).ToArray();
+        _effectOrderRandom.Shuffle(triggers);
+        pending.Triggers = triggers;
         var legacyType = pending.Event.Kind switch
         {
             WiredEventKind.GameStart => WiredBoxType.TriggerGameStarts,
@@ -39,8 +52,15 @@ internal sealed partial class WiredStackEngine
         pending.TriggerPositions = pending.Triggers.ToDictionary(trigger => trigger,
             trigger => (trigger.Item.GetX, trigger.Item.GetY, trigger.Item.GetZ, trigger.Item.MovementGeneration));
         pending.Slots = Math.Max(1, pending.Triggers.Length + pending.LegacyTriggers.Length);
-        pending.CapturedBoxes = pending.Triggers.SelectMany(trigger => GetStack(trigger)).Distinct().ToArray();
-        pending.CapturedPositions = pending.CapturedBoxes.Select(box => (box, box.Item.GetX, box.Item.GetY, box.Item.GetZ, box.Item.MovementGeneration)).ToArray();
+
+        if (pending.Signal != null) {
+            pending.RecipientStacks = pending.Triggers.ToDictionary(trigger => trigger, trigger => GetStack(trigger)
+                .Select(box => (box, box.Item.GetX, box.Item.GetY, box.Item.GetZ, box.Item.MovementGeneration)).ToArray());
+        }
+        else {
+            pending.CapturedBoxes = pending.Triggers.SelectMany(trigger => GetStack(trigger)).Distinct().ToArray();
+            pending.CapturedPositions = pending.CapturedBoxes.Select(box => (box, box.Item.GetX, box.Item.GetY, box.Item.GetZ, box.Item.MovementGeneration)).ToArray();
+        }
     }
 
     private void QueueDispatch(PendingDispatch pending)
@@ -73,9 +93,22 @@ internal sealed partial class WiredStackEngine
 
     private bool AdvanceDispatch(PendingDispatch pending)
     {
+        BeforePublicationDispatch(pending);
+        _dispatchAdvanceDepth++;
+
+        try {
+            return AdvanceDispatchCore(pending);
+        }
+        finally {
+            _dispatchAdvanceDepth--;
+        }
+    }
+
+    private bool AdvanceDispatchCore(PendingDispatch pending)
+    {
         var queued = pending.IsQueued;
 
-        if (pending.CapturedPositions.Any(position => !IsAttached(position.Box)
+        if (pending.Signal == null && pending.CapturedPositions.Any(position => !IsAttached(position.Box)
             || (position.Box.Item.GetX, position.Box.Item.GetY, position.Box.Item.GetZ, position.Box.Item.MovementGeneration)
                 != (position.X, position.Y, position.Z, position.Generation))) {
             pending.Current?.Dispose();
@@ -84,9 +117,8 @@ internal sealed partial class WiredStackEngine
         }
 
         if (pending.Signal is { } signal) {
-            var receiver = _targets!.AllFurni().FirstOrDefault(x => x.Id == signal.Receiver.Id);
-
-            if (!ReferenceEquals(receiver, signal.Receiver) || receiver.MovementGeneration != signal.Generation) {
+            if (signal.Receivers.Any(antenna => !_targets!.IsAttached(antenna.Receiver)
+                || antenna.Receiver.MovementGeneration != antenna.Generation)) {
                 pending.Current?.Dispose();
 
                 return true;
@@ -100,7 +132,21 @@ internal sealed partial class WiredStackEngine
                 return true;
             }
 
-            pending.Root = pending.Signal?.Context ?? pending.Root ?? CreateContext(pending.Event, pending.Depth);
+            if (pending.Signal is { } delivered) {
+                delivered.Context.VariableFrame = delivered.Parent.VariableFrame;
+            }
+
+            pending.Root = pending.Call is { } call ? call.Parent.Fork(pending.Event, pending.Depth)
+                : pending.Signal?.Context ?? pending.Root ?? CreateContext(pending.Event, pending.Depth);
+
+            pending.Root.InheritedPublication = pending.Publication;
+
+            if (pending.Call is { } called) {
+                pending.Root.Triggering = called.Selection.Copy();
+                pending.Root.Selected = pending.Root.Triggering.Copy();
+                pending.Root.ResumeImmediately = pending.ResumeImmediately;
+                pending.Current = BeginFiring(called.Source, pending.Root, false, called: true);
+            }
 
             if (!IsActorPresent(new([], pending.Depth, Runtime: pending.Root))) {
                 return true;
@@ -132,7 +178,7 @@ internal sealed partial class WiredStackEngine
                     pending.Click = new(true, pending.Click.BlockMenu || settings.BlockMenu, pending.Click.DoNotRotate || settings.DoNotRotate);
                 }
 
-                if (pending.Event.Kind == WiredEventKind.Speech && pending.Current.Accepted
+                if (pending.Call == null && pending.Event.Kind == WiredEventKind.Speech && pending.Current.Accepted && pending.Current.ConditionsPassed
                     && pending.Current.Context.Trigger is IWiredContextualTrigger speechTrigger) {
                     pending.ConsumedChat |= speechTrigger.HidesChat(pending.Current.Context);
                 }
@@ -173,13 +219,18 @@ internal sealed partial class WiredStackEngine
             var trigger = pending.Triggers[pending.Next++];
 
             if (!IsAttached(trigger) || pending.TriggerPositions[trigger]
-                != (trigger.Item.GetX, trigger.Item.GetY, trigger.Item.GetZ, trigger.Item.MovementGeneration)) {
+                != (trigger.Item.GetX, trigger.Item.GetY, trigger.Item.GetZ, trigger.Item.MovementGeneration)
+                || pending.Signal != null && (pending.CancelledRecipients.Contains(trigger)
+                    || pending.RecipientStacks[trigger].Any(position => !IsAttached(position.Box)
+                        || (position.Box.Item.GetX, position.Box.Item.GetY, position.Box.Item.GetZ, position.Box.Item.MovementGeneration)
+                            != (position.X, position.Y, position.Z, position.Generation)))) {
                 CompleteDispatchSlot(pending);
                 continue;
             }
 
             var context = pending.Root!.Fork(pending.Event, pending.Depth);
             context.Trigger = trigger;
+            context.ResumeImmediately = pending.ResumeImmediately;
 
             if (pending.Signal is { } forwarded) {
                 context.Signal = new(forwarded.Context.Signal!.Selection, forwarded.Context.Signal.Values);
@@ -194,7 +245,7 @@ internal sealed partial class WiredStackEngine
 
             if (InvokeRuntime(trigger, context, () => context.Event.Kind == WiredEventKind.Speech
                     ? CaptureSpeech?.Invoke(context, trigger) ?? trigger.Execute(context) : trigger.Execute(context))) {
-                pending.Current = BeginFiring(trigger, context, pending.Signal?.Negative, trigger: trigger);
+                pending.Current = BeginFiring(trigger, context, pending.Signal == null ? null : false, trigger: trigger);
             }
             else {
                 CompleteDispatchSlot(pending);
@@ -203,11 +254,12 @@ internal sealed partial class WiredStackEngine
     }
 
     private RuntimeFiring BeginFiring(IWiredItem source, WiredRuntimeContext context, bool? negative, object[][]? actors = null,
-        IWiredContextualTrigger? trigger = null)
+        IWiredContextualTrigger? trigger = null, bool called = false)
     {
+        context.Trigger ??= source;
         var firing = new RuntimeFiring(source, GetStack(source), context, _now());
         context.Capture(firing.Stack);
-        firing.Steps = EvaluateFiring(firing, negative, actors, trigger).GetEnumerator();
+        firing.Steps = EvaluateFiring(firing, negative, actors, trigger, called).GetEnumerator();
 
         return firing;
     }
@@ -268,15 +320,22 @@ internal sealed partial class WiredStackEngine
     }
 
     private IEnumerable<EvaluationStep> EvaluateFiring(RuntimeFiring firing, bool? negative, object[][]? actors,
-        IWiredContextualTrigger? trigger)
+        IWiredContextualTrigger? trigger, bool called)
     {
         var context = firing.Context;
         var stack = firing.Stack;
 
         foreach (var selector in stack.OfType<IWiredContextualSelector>().Where(RuntimeSupported)) {
             var passed = false;
-            yield return new(() => passed = InvokeRuntime(selector, context, () =>
-            { ComposeSelector(context, selector.Select(context)); return true; }));
+            yield return new(() =>
+            {
+                passed = InvokeRuntime(selector, context, () => { ComposeSelector(context, selector.Select(context)); return true; });
+
+                // A selector flashes each time its stack runs it.
+                if (passed) {
+                    Flash(selector);
+                }
+            });
 
             if (!passed) {
                 yield break;
@@ -288,39 +347,23 @@ internal sealed partial class WiredStackEngine
             context.SelectorKinds.HasFlag(WiredSelectionKind.Users) ? context.SelectorPool.UserIds : context.Triggering.UserIds);
         var addons = stack.OfType<IWiredContextualAddon>().Where(RuntimeSupported).ToArray();
 
-        foreach (var addon in addons.Where(x => !x.AfterConditions)
-                     .OrderBy(x => x.Descriptor.CanonicalName is "wf_xtra_filter_furni" or "wf_xtra_filter_users" ? 0 : 1)) {
+        foreach (var addon in addons.Where(x => !x.AfterConditions)) {
             var passed = false;
-            yield return new(() => passed = InvokeRuntime(addon, context, () => addon.Apply(context)));
+            yield return new(() =>
+            {
+                passed = InvokeRuntime(addon, context, () => addon.Apply(context));
+                ApplySelectorLimits(context);
+            });
 
             if (!passed) {
                 yield break;
             }
         }
 
-        var filtered = new WiredSelectedIds();
-        filtered.FurniIds.UnionWith(context.Selected.FurniIds);
-        filtered.UserIds.UnionWith(context.Selected.UserIds);
-        filtered = context.Policy.Addons.FilterSelection(filtered, Random.Shared);
-        context.Selected = new(filtered.FurniIds, filtered.UserIds);
+        ApplySelectorLimits(context);
 
-        if (context.SelectorKinds.HasFlag(WiredSelectionKind.Furni)) {
-            context.SelectorPool.FurniIds.Clear();
-            context.SelectorPool.FurniIds.UnionWith(filtered.FurniIds);
-        }
-
-        if (context.SelectorKinds.HasFlag(WiredSelectionKind.Users)) {
-            context.SelectorPool.UserIds.Clear();
-            context.SelectorPool.UserIds.UnionWith(filtered.UserIds);
-        }
-
-        // A trigger reading the selector pool is matched against it here, before any condition or action runs.
-        if (trigger != null && !trigger.CanTrigger(context)) {
-            yield break;
-        }
-
-        var conditions = stack.Where(x => IsKind(x, InteractionType.WiredCondition)).ToArray();
-        var scoped = context.Policy.Addons.Conditions;
+        var conditions = called ? [] : stack.Where(x => IsKind(x, InteractionType.WiredCondition)).ToArray();
+        var scoped = called ? null : context.Policy.Addons.Conditions;
         var grouped = scoped == null ? [] : conditions.Where(c => scoped.ConditionIds.Contains(c.Item.Id)).ToArray();
 
         // An evaluation add-on that selects none of this stack's conditions applies to all of them.
@@ -340,10 +383,11 @@ internal sealed partial class WiredStackEngine
 
             if (passed) {
                 matched++;
+                Flash(condition);
             }
         }
 
-        var conditionsPassed = MatchConditions(context.Policy, matched, ordinary.Length);
+        var conditionsPassed = called || MatchConditions(context.Policy, matched, ordinary.Length);
 
         if (scoped != null) {
             matched = 0;
@@ -357,6 +401,7 @@ internal sealed partial class WiredStackEngine
 
                 if (passed) {
                     matched++;
+                    Flash(condition);
                 }
             }
 
@@ -364,6 +409,21 @@ internal sealed partial class WiredStackEngine
         }
 
         firing.ConditionsPassed = conditionsPassed;
+
+        // Selector sources are ready now. Turbo evaluates conditions before this final trigger gate.
+        if (trigger != null && !trigger.CanTrigger(context)) {
+            yield break;
+        }
+
+        if (context.Event.Kind == WiredEventKind.Variable) {
+            if (context.Event.EventItem is { } holderItem) {
+                context.Selected.FurniIds.Add(holderItem.Id);
+            }
+
+            if (context.Event.TargetUser is { } holderUser) {
+                context.Selected.UserIds.Add(holderUser.VirtualId);
+            }
+        }
 
         if (negative is { } requested && (requested ? conditionsPassed : !conditionsPassed)) {
             yield break;
@@ -373,6 +433,10 @@ internal sealed partial class WiredStackEngine
             && (x is IWiredContextualAction action && action.IsNegative) == (negative == null && !conditionsPassed)).ToArray();
 
         if (negative == null && !conditionsPassed && actions.Length == 0) {
+            // Observed on hhus (WIN63-202610131318): a click trigger flips even when its date condition fails; the failed condition
+            // and the actions it gates stay at rest.
+            Flash(firing.Source);
+
             yield break;
         }
 
@@ -417,19 +481,43 @@ internal sealed partial class WiredStackEngine
 
         yield return new(() =>
         {
-            var ordered = Math.Max(0, context.Policy.DelayMilliseconds);
-            firing.Accepted = ScheduleActions(firing.Source, stack, ready.ToArray(), legacy, action =>
-            {
-                var delay = action is IWiredConfiguredItem configured ? context.ConfigurationOf(configured).Delay * 500L : GetDelay(action);
-
-                return context.Policy.OrderedEffects || context.Policy.Addons.ExecuteInOrder
-                    ? ordered += delay : Math.Max(0, context.Policy.DelayMilliseconds) + delay;
-            }, firing.FiredAt, prepared: true);
+            context.VariableChanges = context.Policy.Addons.ExecuteInOrder ? null : new WiredVariableChangeBatch();
+            firing.Accepted = ScheduleActions(firing.Source, stack, ready.ToArray(), legacy,
+                action => action is IWiredConfiguredItem configured ? WiredConfigurationLimits.DelayMilliseconds(context.ConfigurationOf(configured).Delay) : GetDelay(action),
+                firing.FiredAt, prepared: true);
 
             if (firing.Accepted) {
-                Flash(firing.Source);
+                foreach (var addon in addons) {
+                    Flash(addon);
+                }
+
+                // Observed r92g r92-signals call-w1/w2: a called stack flashes its actions, not its own trigger.
+                if (!called) {
+                    Flash(firing.Source);
+                }
             }
         }, CostsExecution: false, TransfersReservation: true);
+    }
+
+    private static void ApplySelectorLimits(WiredRuntimeContext context)
+    {
+        if (context.Policy.Addons.FurniLimit is not >= 0 && context.Policy.Addons.UserLimit is not >= 0) {
+            return;
+        }
+
+        var pool = new WiredSelectedIds();
+        pool.FurniIds.UnionWith(context.SelectorFurniOrder);
+        pool.UserIds.UnionWith(context.SelectorUserOrder);
+        var filtered = context.Policy.Addons.FilterSelection(pool, context.SelectorFurniOrder, context.SelectorUserOrder);
+        context.SelectorFurniOrder.RemoveAll(id => !filtered.FurniIds.Contains(id));
+        context.SelectorUserOrder.RemoveAll(id => !filtered.UserIds.Contains(id));
+        context.SelectorPool.FurniIds.Clear();
+        context.SelectorPool.FurniIds.UnionWith(filtered.FurniIds);
+        context.SelectorPool.UserIds.Clear();
+        context.SelectorPool.UserIds.UnionWith(filtered.UserIds);
+        context.Selected = new(
+            context.SelectorKinds.HasFlag(WiredSelectionKind.Furni) ? context.SelectorPool.FurniIds : context.Triggering.FurniIds,
+            context.SelectorKinds.HasFlag(WiredSelectionKind.Users) ? context.SelectorPool.UserIds : context.Triggering.UserIds);
     }
 
     private IEnumerable<EvaluationStep> EvaluateCondition(IWiredItem condition, WiredRuntimeContext context,

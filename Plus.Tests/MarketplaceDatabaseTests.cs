@@ -216,10 +216,32 @@ public sealed class MarketplaceDatabaseTests
         InsertFurni(41, SellerId, roomId: 0);
         var seller = Seller();
 
-        Assert.True(Listing().TryList(seller, 41, 100));
+        Assert.True(Listing().TryList(seller, [41], 1, 100));
 
         Assert.Equal(1, Count("catalog_marketplace_offers"));
         Assert.Equal(0, Count("items"));
+    }
+
+    [MarketplaceDatabaseFact]
+    public void ABatchOfOffersCommitsEveryOfferAndRemovalTogetherOrNothing()
+    {
+        InsertFurni(41, SellerId, roomId: 0);
+        InsertFurni(42, SellerId, roomId: 0);
+        var seller = SellerWithItems(41, 42);
+
+        Assert.True(Listing().TryList(seller, [41, 42], 1, 100));
+
+        Assert.Equal(2, Count("catalog_marketplace_offers"));
+        Assert.Equal(0, Count("items"));
+
+        // the second furni is in a room, so its removal fails: the first offer and removal roll back with it
+        InsertFurni(51, SellerId, roomId: 0);
+        InsertFurni(52, SellerId, roomId: 5);
+
+        Assert.Throws<InvalidOperationException>(() => Listing().TryList(SellerWithItems(51, 52), [51, 52], 1, 100));
+
+        Assert.Equal(2, Count("catalog_marketplace_offers"));
+        Assert.Equal(2, Count("items"));
     }
 
     [MarketplaceDatabaseFact]
@@ -228,7 +250,7 @@ public sealed class MarketplaceDatabaseTests
         InsertFurni(41, SellerId, roomId: 5);
         var seller = Seller();
 
-        Assert.Throws<InvalidOperationException>(() => Listing().TryList(seller, 41, 100));
+        Assert.Throws<InvalidOperationException>(() => Listing().TryList(seller, [41], 1, 100));
 
         Assert.Equal(0, Count("catalog_marketplace_offers"));
         Assert.Equal(1, Count("items"));
@@ -245,7 +267,7 @@ public sealed class MarketplaceDatabaseTests
         }
 
         try {
-            var error = Assert.Throws<MySqlException>(() => Listing().TryList(seller, 41, 100));
+            var error = Assert.Throws<MySqlException>(() => Listing().TryList(seller, [41], 1, 100));
             Assert.Contains("doesn't exist", error.Message, StringComparison.Ordinal);
         }
         finally {
@@ -333,9 +355,8 @@ public sealed class MarketplaceDatabaseTests
             "get_MarketCounts" => counts,
             _ => throw new InvalidOperationException(method),
         });
-        var search = CatalogSnapshotTestSupport.Proxy<IMarketplaceOfferSearchService>((method, _) => method == "Search" ? new MarketplaceOffersSnapshot([]) : throw new InvalidOperationException(method));
 
-        return new MarketplacePurchaseService(new MarketplacePurchaseStore(new MySqlDatabase(_connectionString)), items, marketplace, search, new FixedClock(Now));
+        return new MarketplacePurchaseService(new MarketplacePurchaseStore(new MySqlDatabase(_connectionString)), items, marketplace, new FixedClock(Now));
     }
 
     private string[] States()
@@ -358,9 +379,18 @@ public sealed class MarketplaceDatabaseTests
         return new Habbo { Id = SellerId, Username = "seller", Inventory = new InventoryComponent { Furniture = new FurnitureInventoryComponent([item], []) } };
     }
 
-    private MarketplaceListingService Listing() => new(Store(), new Manager(), new FixedClock(Now),
-        CatalogSnapshotTestSupport.Proxy<Plus.Core.Settings.ISettingsManager>((method, _) =>
-            method == "TryGetValue" ? "0" : throw new InvalidOperationException(method)));
+    private Habbo SellerWithItems(params uint[] furniIds)
+    {
+        var definition = new ItemDefinition { Id = 900, SpriteId = 55, PublicName = "Probe", ItemName = "probe", Type = ItemType.Floor, AllowTrade = true, AllowMarketplaceSell = true };
+        var items = furniIds.Select(id => new InventoryItem { Id = id, OwnerId = SellerId, ExtraData = FurniObjectData.Empty, Definition = definition }).ToArray();
+
+        return new Habbo { Id = SellerId, Username = "seller", Inventory = new InventoryComponent { Furniture = new FurnitureInventoryComponent(items, []) } };
+    }
+
+    private MarketplaceListingService Listing() => new(Store(), new MarketplaceFeePolicy(Settings), new FixedClock(Now), Settings);
+
+    private static readonly Plus.Core.Settings.ISettingsManager Settings = CatalogSnapshotTestSupport.Proxy<Plus.Core.Settings.ISettingsManager>((method, args) =>
+        method == "TryGetValue" ? args.Length > 1 ? args[1] : "0" : throw new InvalidOperationException(method));
 
     private MarketplaceOffersSnapshot Search(Manager manager, int min, int max, int mode) =>
         new MarketplaceOfferSearchService(new MySqlDatabase(_connectionString), manager, new FixedClock(Now)).Search(min, max, "", mode);
@@ -372,6 +402,8 @@ public sealed class MarketplaceDatabaseTests
         using var connection = new MySqlConnection(_connectionString);
         // Zero and negative epochs are the unknown time the migration keeps as NULL.
         DateTime? listedAt = timestamp <= 0 ? null : DateTimeOffset.FromUnixTimeSeconds(timestamp).UtcDateTime;
+        // Offers and furni belong to real accounts and rooms; the keys reject anything else.
+        connection.Execute("INSERT IGNORE INTO `users` (`id`,`username`,`auth_ticket`) VALUES (@seller, CONCAT('marketplace_', @seller), '')", new { seller });
         connection.Execute("INSERT INTO `catalog_marketplace_offers` (`offer_id`,`item_id`,`user_id`,`asking_price`,`total_price`,`public_name`,`sprite_id`,`item_type`,`listed_at`,`extra_data`,`limited_number`,`limited_stack`,`furni_id`,`state`) " +
             "VALUES (@offerId,@itemId,@seller,@asking,@total,'probe',@sprite,@itemType,@listedAt,'',0,0,@furniId,@state)",
             new { offerId, itemId, seller, asking, total, sprite, itemType, listedAt, furniId, state });
@@ -478,7 +510,8 @@ public sealed class MarketplaceDatabaseTests
         Insert(1, sprite: 55, asking: 100, total: 101, state: "1", timestamp: Now.ToUnixTimeSeconds() - 1000, seller: SellerId, furniId: 77);
 
         using (var connection = new MySqlConnection(_connectionString)) {
-            connection.Execute("INSERT INTO `items` (`id`,`user_id`,`room_id`,`base_item`,`extra_data`) VALUES (77, 9, 0, 1, '')");
+            connection.Execute("INSERT IGNORE INTO `users` (`id`,`username`,`auth_ticket`) VALUES (9, 'marketplace_9', ''); " +
+                "INSERT INTO `items` (`id`,`user_id`,`room_id`,`base_item`,`extra_data`) VALUES (77, 9, 0, 1, '')");
         }
 
         var buyer = Buyer(credits: 1000);
@@ -498,6 +531,8 @@ public sealed class MarketplaceDatabaseTests
     private void InsertFurni(uint id, int owner, int roomId)
     {
         using var connection = new MySqlConnection(_connectionString);
+        connection.Execute("INSERT IGNORE INTO `users` (`id`,`username`,`auth_ticket`) VALUES (@owner, CONCAT('marketplace_', @owner), '')", new { owner });
+        connection.Execute("INSERT IGNORE INTO `rooms` (`id`,`model_name`,`owner`) SELECT @roomId, 'model_a', @owner FROM DUAL WHERE @roomId <> 0", new { roomId, owner });
         connection.Execute("INSERT INTO `items` (`id`,`user_id`,`room_id`,`base_item`,`extra_data`) VALUES (@id,@owner,@roomId,1,'')", new { id, owner, roomId });
     }
 
@@ -547,7 +582,6 @@ public sealed class MarketplaceDatabaseTests
         public int OfferCountForSprite(uint spriteId) => 0;
         public MarketplaceItemStats ItemStats(uint spriteId) => new(0, 0);
         public MarketplaceOwnOffers OwnOffers(int userId) => new(0, []);
-        public int CalculateComissionPrice(float price) => Convert.ToInt32(Math.Ceiling(price / 100 * 1));
         public Task<bool> TryCancelOffer(Habbo habbo, uint offerId) => Task.FromResult(false);
         public Task<MarketOffer?> GetOffer(uint offerId) => Task.FromResult<MarketOffer?>(null);
         public Task DeleteOffer(uint offerId) => Task.CompletedTask;

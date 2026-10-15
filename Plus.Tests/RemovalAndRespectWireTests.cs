@@ -23,7 +23,7 @@ public sealed class RemovalAndRespectWireTests
         var item = new Item { Id = id, IsTemporary = temporary };
         var composer = new ObjectRemoveComposer(item.Id, item.IsTemporary, 42);
         item.Id = 8;
-        Recompose(composer, [wireId, false, 42, 0]);
+        Recompose(composer, [wireId, false, 42, 0, false]);
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public sealed class RemovalAndRespectWireTests
         var item = new Item { Id = uint.MaxValue };
         var wall = new ItemRemoveComposer(item.Id, 42);
         item.Id = 8;
-        Recompose(wall, ["4294967295", false, 42]);
+        Recompose(wall, ["4294967295", 42, false]);
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 9;
         var controller = new FlatControllerRemovedComposer(room.Id, 42);

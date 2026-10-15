@@ -9,8 +9,6 @@ using Plus.HabboHotel.Users;
 using Plus.Communication.Packets.Outgoing.Groups;
 using Plus.Communication.Packets.Outgoing.FriendList;
 using Plus.Communication.Packets.Outgoing.Sound;
-using Plus.Communication.Packets.Outgoing.Housekeeping;
-using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Users.Messenger;
 using Xunit;
 
@@ -18,35 +16,6 @@ namespace Plus.Tests;
 
 public sealed class PacketCollectionSnapshotTests
 {
-    [Theory]
-    [InlineData(null, 0)]
-    [InlineData(-1L, 0)]
-    [InlineData(2000000000L, 2000000000)]
-    [InlineData(2200000000L, int.MaxValue)]
-    public void AccessExpirySnapshotsPreserveUtcInstantsAndBoundLegacyWireIntegers(long? seconds, int expected)
-    {
-        var expiry = seconds.HasValue ? DateTimeOffset.FromUnixTimeSeconds(seconds.Value) : (DateTimeOffset?)null;
-        var member = new AccessMember { Id = 7, Username = "Alice", ExpiresAt = expiry };
-        var rule = new AccessOverride { Key = "camera.*", Effect = "deny", Reason = "reason", ExpiresAt = expiry };
-        var members = new List<AccessMember> { member };
-        var rules = new List<AccessOverride> { rule };
-        var memberPacket = new HousekeepingRoleMembersComposer(2, new(3, 4, 5, members));
-        var rulePacket = new HousekeepingUserOverridesComposer(2, new(7, "Alice", rules));
-        object[] expectedMembers = [2, 3, 4, 5, 1, 7, "Alice", expected];
-        object[] expectedRules = [2, 7, "Alice", 1, "camera.*", "deny", "reason", expected];
-
-        Assert.Equal(expectedMembers, Writes(memberPacket));
-        Assert.Equal(expectedRules, Writes(rulePacket));
-        member.Username = "changed";
-        member.ExpiresAt = DateTimeOffset.MaxValue;
-        rule.Key = "changed";
-        rule.ExpiresAt = DateTimeOffset.MaxValue;
-        members.Clear();
-        rules.Clear();
-        Assert.Equal(expectedMembers, Writes(memberPacket));
-        Assert.Equal(expectedRules, Writes(rulePacket));
-    }
-
     [Fact]
     public void FriendRequestsRetainTheirCountOrderAndCapturedIdentity()
     {
@@ -115,18 +84,21 @@ public sealed class PacketCollectionSnapshotTests
     }
 
     [Theory]
-    [InlineData(0, false)]
-    [InlineData(3, true)]
-    public void AchievementNotificationsFreezeDefinitionAndUserProgress(int userLevel, bool completed)
+    [InlineData(1, 2, "ACH_TEST2", 10, 20, 5, 12, false)]
+    [InlineData(3, 3, "ACH_TEST3", 20, 30, 7, 20, true)]
+    public void AchievementNotificationsFreezeDefinitionAndUserProgress(int userLevel, int level, string badge, int start, int limit, int reward,
+        int progress, bool completed)
     {
         var achievement = new Achievement { Id = 7, GroupName = "ACH_TEST", Category = "social" };
+        achievement.AddLevel(new AchievementLevel(1, 3, 5, 10));
+        achievement.AddLevel(new AchievementLevel(2, 5, 10, 20));
+        achievement.AddLevel(new AchievementLevel(3, 7, 10, 30));
         var user = new UserAchievement("ACH_TEST", userLevel, 12);
-        var level = new AchievementLevel(2, 5, 10, 20);
-        var progressed = new AchievementProgressedComposer(AchievementNotificationSnapshot.CaptureProgress(achievement, 2, level, 3, user));
+        var progressed = new AchievementProgressedComposer(AchievementProgressSnapshot.Capture(achievement, user)!);
         var rarity = new BadgeRarityTable(BadgeRarityScale.Empty, new Dictionary<string, int> { ["ACH_TEST2"] = 3 });
-        var unlocked = new AchievementUnlockedComposer(AchievementUnlockSnapshot.Capture(achievement, 2, 10, 5, rarity));
-        object[] expectedProgress = [7, 2, "ACH_TEST2", 1, 20, 5, 0, 12, completed, "social", "", 3, 0];
-        object[] expectedUnlock = [7, 2, 144, "ACH_TEST2", 10, 5, 0, 10, 21, "ACH_TEST1", "social", true, 3, 5];
+        var unlocked = new AchievementUnlockedComposer(AchievementUnlockSnapshot.Capture(achievement, achievement.Levels[2], rarity));
+        object[] expectedProgress = [7, level, badge, start, limit, reward, 0, progress, completed, "social", "", 3, 0, (short)1];
+        object[] expectedUnlock = [7, 2, 1, "ACH_TEST2", 10, 5, 0, 0, 7, "ACH_TEST1", "social", true, 3, 5];
         Assert.Equal(expectedProgress, Writes(progressed));
         Assert.Equal(expectedUnlock, Writes(unlocked));
         achievement.Id = 9;

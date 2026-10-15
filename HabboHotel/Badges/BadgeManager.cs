@@ -38,9 +38,10 @@ public class BadgeManager : IBadgeManager, IStartable
         _logger.LogInformation("Loaded " + Badges.Count + " badge definitions.");
     }
 
+    // Badges are given to and taken from the loaded inventory; without one nothing is written.
     public async Task GiveBadge(Habbo habbo, string code)
     {
-        if (habbo.Inventory.Badges.HasBadge(code)) {
+        if (habbo.Inventory is not { } inventory || inventory.Badges.HasBadge(code)) {
             return;
         }
 
@@ -54,15 +55,73 @@ public class BadgeManager : IBadgeManager, IStartable
             userId = habbo.Id,
             badge = badge.Code
         });
-        habbo.Inventory.Badges.AddBadge(new Badge(code, 0));
+        inventory.Badges.AddBadge(new Badge(code, 0));
 
-        habbo.Client.Send(new BadgesComposer(BadgeInventorySnapshot.Capture(habbo.Inventory.Badges.Badges.Values)));
-        habbo.Client.Send(new FurniListNotificationComposer(1, 4));
+        habbo.Client?.Send(new BadgesComposer(BadgeInventorySnapshot.Capture(inventory.Badges.Badges.Values)));
+        habbo.Client?.Send(new FurniListNotificationComposer(1, 4));
+    }
+
+    // An achievement level's badge replaces the badge of the level before: the old row is deleted, not just hidden for the session,
+    // and a worn old badge hands its slot to the new one. Returns whether the worn badges changed.
+    public async Task<bool> ReplaceBadge(Habbo habbo, string? previous, string code)
+    {
+        if (habbo.Inventory is not { } inventory) {
+            return false;
+        }
+
+        if (!_badges.TryGetValue(code.ToUpper(), out var definition) || definition.RequiredRight.Length > 0 && !habbo.Access.Can(definition.RequiredRight)) {
+            return false;
+        }
+
+        if (string.Equals(previous, code, StringComparison.OrdinalIgnoreCase)) {
+            previous = null;
+        }
+
+        bool wornChanged;
+        await inventory.Badges.EquipmentGate.WaitAsync();
+
+        try {
+            var old = string.IsNullOrEmpty(previous) ? null : inventory.Badges.GetBadge(previous);
+            var current = inventory.Badges.GetBadge(code);
+            var slot = current is { Slot: > 0 } ? current.Slot : old?.Slot ?? 0;
+            wornChanged = old is { Slot: > 0 };
+            using var connection = _database.Connection();
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+
+            if (!string.IsNullOrEmpty(previous)) {
+                await connection.ExecuteAsync("DELETE FROM user_badges WHERE user_id = @userId AND badge_id = @previous",
+                    new { userId = habbo.Id, previous }, transaction);
+            }
+
+            await connection.ExecuteAsync("INSERT INTO user_badges (user_id, badge_id, badge_slot) VALUES (@userId, @badge, @slot) " +
+                "ON DUPLICATE KEY UPDATE badge_slot = @slot", new { userId = habbo.Id, badge = definition.Code, slot }, transaction);
+            transaction.Commit();
+
+            if (!string.IsNullOrEmpty(previous)) {
+                inventory.Badges.RemoveBadge(previous);
+            }
+
+            if (current != null) {
+                current.Slot = slot;
+            }
+            else {
+                inventory.Badges.AddBadge(new Badge(code, slot));
+            }
+        }
+        finally {
+            inventory.Badges.EquipmentGate.Release();
+        }
+
+        habbo.Client?.Send(new BadgesComposer(BadgeInventorySnapshot.Capture(inventory.Badges.Badges.Values)));
+        habbo.Client?.Send(new FurniListNotificationComposer(1, 4));
+
+        return wornChanged;
     }
 
     public async Task RemoveBadge(Habbo habbo, string badge)
     {
-        if (!habbo.Inventory.Badges.HasBadge(badge)) {
+        if (habbo.Inventory is not { } inventory || !inventory.Badges.HasBadge(badge)) {
             return;
         }
 
@@ -72,7 +131,7 @@ public class BadgeManager : IBadgeManager, IStartable
             badge,
             userId = habbo.Id
         });
-        habbo.Inventory.Badges.RemoveBadge(badge);
+        inventory.Badges.RemoveBadge(badge);
     }
 
     public async Task<List<Badge>> LoadBadgesForHabbo(int userId)

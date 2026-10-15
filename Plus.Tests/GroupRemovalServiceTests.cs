@@ -1,8 +1,14 @@
+using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Data;
 using System.Reflection;
 using Dapper;
 using MySqlConnector;
+using Microsoft.Extensions.Logging.Abstractions;
+using Plus.Communication.Flash;
+using Plus.Communication.Packets;
+using Plus.Communication.Packets.Incoming;
+using Plus.Communication.Revisions;
 using Plus.Communication.Packets.Incoming.Groups;
 using Plus.Communication.Packets.Outgoing;
 using Plus.Core.Settings;
@@ -32,6 +38,40 @@ public sealed class GroupRemovalServiceTests
         Assert.Equal(new[] { ("delete", 9, 0), ("confirm", 9, 8), ("remove", 9, 8), ("remove", 9, 8) }, calls.Calls);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AirRemovalDispatchesSeparatelyFromConfirmationWithoutTheOldAlias(bool block)
+    {
+        var calls = new RecordingService();
+        using var manager = new PacketManager(
+            [new RemoveGroupMemberEvent(calls), new ConfirmRemoveGroupMemberEvent(calls)],
+            NullLogger<PacketManager>.Instance);
+        var server = new GroupDispatchServer(manager);
+        var client = GroupClient(server);
+        var confirmation = GroupFrame(3580);
+        client.OnReceived(confirmation, 0, confirmation.Length);
+        await server.Pending;
+        Assert.Equal(new[] { ("confirm", 9, 8) }, calls.Calls);
+        Assert.True(server.Consumed);
+
+        client = GroupClient(server);
+        var removal = GroupFrame(3888, block);
+        client.OnReceived(removal, 0, removal.Length);
+        await server.Pending;
+        Assert.Equal(new[] { ("confirm", 9, 8), ("remove", 9, 8) }, calls.Calls);
+        Assert.True(server.Consumed);
+        Assert.Equal(3888u, ClientPacketHeader.RemoveGroupMemberEvent);
+        Assert.Equal(3580u, ClientPacketHeader.ConfirmRemoveGroupMemberEvent);
+        Assert.False(manager.IsRegistered(65409));
+
+        client = GroupClient(server);
+        var oldAlias = GroupFrame(65409, block);
+        client.OnReceived(oldAlias, 0, oldAlias.Length);
+        await server.Pending;
+        Assert.Equal(2, calls.Calls.Count);
+    }
+
     [Fact]
     public async Task FailedDeletionLeavesCacheAndFavouriteUnchanged()
     {
@@ -41,7 +81,7 @@ public sealed class GroupRemovalServiceTests
         var store = new Store { DeleteResult = false };
         await Service(group, store, owner, () => deleted = true).Delete(owner, group.Id);
         Assert.False(deleted);
-        Assert.Equal(group.Id, owner.GetHabbo().HabboStats.FavouriteGroupId);
+        Assert.Equal(group.Id, Assert.IsType<HabboStats>(owner.GetHabbo().HabboStats).FavouriteGroupId);
         Assert.Empty(sent);
     }
 
@@ -56,13 +96,13 @@ public sealed class GroupRemovalServiceTests
             BeforeDelete = () =>
             {
                 Assert.False(deleted);
-                Assert.Equal(group.Id, owner.GetHabbo().HabboStats.FavouriteGroupId);
+                Assert.Equal(group.Id, Assert.IsType<HabboStats>(owner.GetHabbo().HabboStats).FavouriteGroupId);
                 Assert.Empty(sent);
             }
         };
         await Service(group, store, owner, () => deleted = true).Delete(owner, group.Id);
         Assert.True(deleted);
-        Assert.Equal(0, owner.GetHabbo().HabboStats.FavouriteGroupId);
+        Assert.Equal(0, Assert.IsType<HabboStats>(owner.GetHabbo().HabboStats).FavouriteGroupId);
         Assert.Equal(ServerPacketHeader.GroupDeactivatedComposer, sent[0].Header);
     }
 
@@ -85,7 +125,7 @@ public sealed class GroupRemovalServiceTests
 
         Assert.True(group.IsAdmin(8));
         Assert.True(group.IsMember(8));
-        Assert.Equal(group.Id, target.GetHabbo().HabboStats.FavouriteGroupId);
+        Assert.Equal(group.Id, Assert.IsType<HabboStats>(target.GetHabbo().HabboStats).FavouriteGroupId);
         Assert.Empty(sent);
     }
 
@@ -99,14 +139,14 @@ public sealed class GroupRemovalServiceTests
             BeforeRemove = () =>
             {
                 Assert.True(group.IsAdmin(8));
-                Assert.Equal(group.Id, target.GetHabbo().HabboStats.FavouriteGroupId);
+                Assert.Equal(group.Id, Assert.IsType<HabboStats>(target.GetHabbo().HabboStats).FavouriteGroupId);
                 Assert.Empty(sent);
             }
         };
         await Service(group, store, target).Remove(target, group.Id, 8);
         Assert.False(group.IsMember(8));
         Assert.False(group.IsAdmin(8));
-        Assert.Equal(0, target.GetHabbo().HabboStats.FavouriteGroupId);
+        Assert.Equal(0, Assert.IsType<HabboStats>(target.GetHabbo().HabboStats).FavouriteGroupId);
         Assert.Equal(new[] { ServerPacketHeader.GroupInfoComposer, ServerPacketHeader.RefreshFavouriteGroupComposer }, sent.Select(p => p.Header));
     }
 
@@ -129,6 +169,64 @@ public sealed class GroupRemovalServiceTests
     }
 
     [Fact]
+    public async Task OrdinaryMemberAndAdminCanConfirmLeavingThemselves()
+    {
+        var group = Members();
+        var store = new Store();
+
+        foreach (var id in new[] { 10, 8 }) {
+            var (leaver, sent) = Client(id, 0);
+            await Service(group, store, leaver).ConfirmRemove(leaver, group.Id, id);
+            var body = sent.Single().Payload;
+            Assert.Equal(ServerPacketHeader.GroupConfirmRemoveMemberComposer, sent.Single().Header);
+            Assert.Equal(id, BinaryPrimitives.ReadInt32BigEndian(body));
+            Assert.Equal(4, BinaryPrimitives.ReadInt32BigEndian(body.AsSpan(4)));
+            Assert.True(group.IsMember(id));
+        }
+
+        Assert.Equal(2, store.Counts);
+        Assert.Equal(0, store.Removes);
+    }
+
+    [Theory]
+    [InlineData(7, 7)]
+    [InlineData(99, 99)]
+    [InlineData(10, 7)]
+    [InlineData(10, 8)]
+    [InlineData(10, 11)]
+    [InlineData(99, 10)]
+    [InlineData(8, 7)]
+    [InlineData(8, 12)]
+    [InlineData(8, 99)]
+    public async Task ConfirmRefusesTheOwnerStrangersAndEveryoneTheActorMayNotRemove(int actor, int target)
+    {
+        var group = Members();
+        var store = new Store();
+        var (client, sent) = Client(actor, 0);
+        await Service(group, store, client).ConfirmRemove(client, group.Id, target);
+        Assert.Empty(sent);
+        Assert.Equal(0, store.Counts);
+        Assert.Equal(0, store.Removes);
+    }
+
+    [Theory]
+    [InlineData(7, 8)]
+    [InlineData(7, 10)]
+    [InlineData(8, 10)]
+    public async Task OwnerAndAdminsKeepConfirmingTheRemovalsTheyAreAllowed(int actor, int target)
+    {
+        var group = Members();
+        var store = new Store();
+        var (client, sent) = Client(actor, 0);
+        await Service(group, store, client).ConfirmRemove(client, group.Id, target);
+        Assert.Equal(target, BinaryPrimitives.ReadInt32BigEndian(sent.Single().Payload));
+        Assert.Equal(1, store.Counts);
+    }
+
+    private static Group Members() => new(9, "Crew", "", "b01014s02024", 42, 7, null,
+        0, 1, 1, 0, false, new([7, 10, 11], [8, 12], []));
+
+    [Fact]
     public async Task RemovalWaitsForAccountPublicationBeforeClearingFavourite()
     {
         var group = Group();
@@ -146,7 +244,7 @@ public sealed class GroupRemovalServiceTests
         });
         var store = new Store
         {
-            BeforeRemove = () => Assert.Equal(11, member.GetHabbo().HabboStats.FavouriteGroupId)
+            BeforeRemove = () => Assert.Equal(11, Assert.IsType<HabboStats>(member.GetHabbo().HabboStats).FavouriteGroupId)
         };
         var lease = gate.Enter(8);
         Task removal;
@@ -155,7 +253,7 @@ public sealed class GroupRemovalServiceTests
             removal = Task.Run(() => Service(group, store, member, sessions: sessions).Remove(owner, group.Id, 8));
             Assert.True(entering.Wait(TimeSpan.FromSeconds(5)));
             Assert.Equal(0, store.Removes);
-            member.GetHabbo().HabboStats.FavouriteGroupId = 11;
+            Assert.IsType<HabboStats>(member.GetHabbo().HabboStats).FavouriteGroupId = 11;
         }
         finally {
             lease.Dispose();
@@ -163,7 +261,7 @@ public sealed class GroupRemovalServiceTests
 
         await removal.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.False(group.IsMember(8));
-        Assert.Equal(11, member.GetHabbo().HabboStats.FavouriteGroupId);
+        Assert.Equal(11, Assert.IsType<HabboStats>(member.GetHabbo().HabboStats).FavouriteGroupId);
     }
 
     [Fact]
@@ -192,7 +290,7 @@ public sealed class GroupRemovalServiceTests
             Assert.True(Monitor.TryEnter(group), "Deleted-group lock was held while waiting for account publication");
 
             try {
-                owner.GetHabbo().HabboStats.FavouriteGroupId = 11;
+                Assert.IsType<HabboStats>(owner.GetHabbo().HabboStats).FavouriteGroupId = 11;
             }
             finally {
                 Monitor.Exit(group);
@@ -203,7 +301,7 @@ public sealed class GroupRemovalServiceTests
         }
 
         await deletion.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.Equal(11, owner.GetHabbo().HabboStats.FavouriteGroupId);
+        Assert.Equal(11, Assert.IsType<HabboStats>(owner.GetHabbo().HabboStats).FavouriteGroupId);
     }
 
     [RoomComponentDatabaseFact]
@@ -347,6 +445,49 @@ public sealed class GroupRemovalServiceTests
 
             return 4;
         }
+    }
+
+    private static FlashGameClient GroupClient(IGameServer server)
+    {
+        var client = new FlashGameClient(server, new FlashPacketFactory(), TestLogging.GameClient)
+        {
+            Revision = new RevisionsCache().InternalRevision
+        };
+        client.SetHabbo(new Habbo { Id = 7, Username = "Owner" });
+
+        return client;
+    }
+
+    private static byte[] GroupFrame(ushort header, bool? block = null)
+    {
+        var frame = new byte[14 + (block.HasValue ? 1 : 0)];
+        BinaryPrimitives.WriteInt32BigEndian(frame, frame.Length - 4);
+        BinaryPrimitives.WriteUInt16BigEndian(frame.AsSpan(4), header);
+        BinaryPrimitives.WriteInt32BigEndian(frame.AsSpan(6), 9);
+        BinaryPrimitives.WriteInt32BigEndian(frame.AsSpan(10), 8);
+
+        if (block.HasValue) {
+            frame[14] = block.Value ? (byte)1 : (byte)0;
+        }
+
+        return frame;
+    }
+
+    private sealed class GroupDispatchServer(PacketManager manager) : IGameServer
+    {
+        public bool Consumed { get; private set; }
+        public Task Pending { get; private set; } = Task.CompletedTask;
+        public bool Start() => true;
+        public bool Stop() => true;
+        public Task PacketReceived(GameClient client, uint messageId, IIncomingPacket packet) =>
+            Pending = Dispatch(client, messageId, packet);
+        private async Task Dispatch(GameClient client, uint messageId, IIncomingPacket packet)
+        {
+            await manager.TryExecutePacket(client, messageId, packet);
+            Consumed = !packet.HasDataRemaining();
+        }
+        public bool ModifyOutgoingPacket(GameClient client, IOutgoingPacket packet) => true;
+        public bool HasOutgoingPacketInjectors(uint messageId) => false;
     }
 
     private sealed class RecordingService : IGroupRemovalService

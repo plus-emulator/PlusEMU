@@ -4,6 +4,9 @@ namespace Plus.HabboHotel.Items;
 
 public static class InteractionTypes
 {
+    /// <summary>Furni sold as two linked halves (room_items_tele_links): teleporters and the WIRED Room Linker.</summary>
+    public static bool IsLinkedPair(InteractionType type) => type is InteractionType.Teleport or InteractionType.WiredRoomLinker;
+
     public static InteractionType GetTypeFromString(string type)
     {
         if (WiredBoxRegistry.TryGet(type, out var descriptor)) {
@@ -19,6 +22,26 @@ public static class InteractionTypes
         }
 
         switch (type.ToLower()) {
+            case "area_hide":
+                return InteractionType.AreaHide;
+            case "invis_control":
+                return InteractionType.InvisibleFurniControl;
+            case "wired_chest_furni":
+                return InteractionType.WiredChestFurni;
+            case "wired_chest_coins":
+                return InteractionType.WiredChestCoins;
+            case "wired_contract_payment":
+                return InteractionType.WiredContractPayment;
+            case "wired_contract_trade":
+                return InteractionType.WiredContractTrade;
+            case "wired_contract_reward":
+                return InteractionType.WiredContractReward;
+            case "wired_room_linker":
+                return InteractionType.WiredRoomLinker;
+            case "wired_label":
+                return InteractionType.WiredLabel;
+            case "wired_link":
+                return InteractionType.WiredLink;
             case "":
             case "default":
                 return InteractionType.None;

@@ -4,7 +4,7 @@ namespace Plus.HabboHotel.Rooms;
 
 public class RoomData
 {
-    private Group _group;
+    private Group? _group;
 
     public List<string> Tags;
 
@@ -112,6 +112,8 @@ public class RoomData
         EnablesEnabled = data.EnablesEnabled;
         ReverseRollers = data.ReverseRollers;
         LayEnabled = data.LayEnabled;
+        HideWired = data.HideWired;
+        DiagonalSqueeze = data.DiagonalSqueeze;
         Model = data.Model;
     }
 
@@ -157,13 +159,16 @@ public class RoomData
     public int GroupId { get; set; }
     public bool ReverseRollers { get; set; }
     public bool LayEnabled { get; set; }
+    public bool HideWired { get; set; }
+    // Avatars may walk diagonally between two blocked tiles that touch at a corner.
+    public bool DiagonalSqueeze { get; set; }
 
 
     public RoomModel Model { get; set; }
 
     public RoomPromotion Promotion { get; set; }
 
-    public Group Group
+    public Group? Group
     {
         get => _group;
         set => _group = value;

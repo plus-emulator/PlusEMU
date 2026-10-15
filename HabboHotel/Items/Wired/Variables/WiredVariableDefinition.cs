@@ -1,6 +1,6 @@
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
-// These are Octane's scalar editor codes, not the unrelated array target codes.
+// These are Volt's scalar editor codes, not the unrelated array target codes.
 public enum WiredVariableTarget
 {
     User = 0, Furni = 1, Context = 2, Global = 3
@@ -22,7 +22,7 @@ public sealed record WiredVariableReference(WiredVariableTarget Target, string T
 public sealed record WiredVariableLink(uint SourceRoomId, WiredVariableReference Source, bool ReadOnly);
 
 public sealed record WiredVariableDefinition(uint ItemId, uint RoomId, uint OwnerId, string Name,
-    WiredVariableTarget Target, WiredVariableAvailability Availability, bool HasValue, int InitialValue = 0,
+    WiredVariableTarget Target, WiredVariableAvailability Availability, bool HasValue, long InitialValue = 0,
     WiredVariableLink? Link = null)
 {
     public string Token => $"custom:{ItemId}";
@@ -34,4 +34,9 @@ public interface IWiredVariableDirectory
 {
     WiredVariableDefinition? Find(uint itemId);
     uint? GetRoomOwner(uint roomId);
+
+    /// <summary>Variables other rooms of this owner currently share; directories that cannot enumerate share nothing.</summary>
+    IReadOnlyList<WiredSharedVariable> ListShared(uint ownerId, uint exceptRoomId) => [];
 }
+
+public sealed record WiredSharedVariable(uint RoomId, string RoomName, WiredVariableDefinition Definition);

@@ -17,6 +17,8 @@ using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
 using Plus.HabboHotel.Catalog.Utilities;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Groups;
+using Plus.HabboHotel.Groups.Forums;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Users.Effects;
@@ -50,6 +52,8 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
     private readonly IClubRewards _clubRewards;
     private readonly IRewardTrackManager _rewardTracks;
     private readonly IAvatarEffectStore _avatarEffects;
+    private readonly IGroupManager _groups;
+    private readonly IGroupForumStore _forums;
     private readonly TimeProvider _clock;
     private readonly ILogger<CatalogPurchaseService> _logger;
     // Window id the client's club purchase page requests offers for.
@@ -64,6 +68,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         ICatalogBotPurchaseStore botPurchases,
         IHabbiconService habbicons,
         IClubMembershipService clubMemberships, IClubRewards clubRewards, IRewardTrackManager rewardTracks, IAvatarEffectStore avatarEffects,
+        IGroupManager groups, IGroupForumStore forums,
         TimeProvider clock, ILogger<CatalogPurchaseService> logger)
     {
         _catalogManager = catalogManager;
@@ -78,6 +83,8 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         _clubRewards = clubRewards;
         _rewardTracks = rewardTracks;
         _avatarEffects = avatarEffects;
+        _groups = groups;
+        _forums = forums;
         _clock = clock;
         _logger = logger;
     }
@@ -142,6 +149,11 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
             return;
         }
 
+        // Bought products are delivered into the loaded inventory; without it nothing is charged.
+        if (session.GetHabbo().Inventory is not { } inventory) {
+            return;
+        }
+
         if (amount < 1 || amount > 100 || !ItemUtility.CanSelectAmount(offer)) {
             amount = 1;
         }
@@ -159,7 +171,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
 
         switch (product.Type) {
             case CatalogProductType.Furni when !offer.IsBundle:
-                if (ReadFurniExtraData(session, product.Definition!, extraData, utcNow) is not { } furniExtraData) {
+                if (ReadFurniExtraData(session, product, extraData, utcNow) is not { } furniExtraData) {
                     return;
                 }
 
@@ -172,7 +184,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
 
                 break;
             case CatalogProductType.Badge:
-                if (session.GetHabbo().Inventory.Badges.HasBadge(product.BadgeCode)) {
+                if (inventory.Badges.HasBadge(product.BadgeCode)) {
                     session.Send(new PurchaseErrorComposer(PurchaseError.Rejected));
 
                     return;
@@ -245,9 +257,13 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                         : CreateFurni(session, product.Definition!, extraData, amountPurchase, limitedEditionSells, limitedEditionStack);
 
                     foreach (var purchasedItem in generatedGenericItems) {
-                        if (session.GetHabbo().Inventory.Furniture.AddItem(purchasedItem.ToInventoryItem())) {
+                        if (inventory.Furniture.AddItem(purchasedItem.ToInventoryItem())) {
                             session.Send(new FurniListNotificationComposer(purchasedItem.Id, 1));
                         }
+                    }
+
+                    if (!offer.IsBundle && product.Definition!.InteractionType == InteractionType.GuildForum && generatedGenericItems.Count > 0) {
+                        EnableBoughtForum(extraData);
                     }
 
                     if (generatedGenericItems.Count > 0) {
@@ -257,19 +273,21 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                     break;
                 }
             case CatalogProductType.Effect: {
-                    if (!ChargePurchase()) {
+                    var habbo = session.GetHabbo();
+
+                    // Effects are loaded at login; without them the bought effect could not be delivered, so nothing is charged.
+                    if (habbo.Effects is not { } effects || !ChargePurchase()) {
                         return;
                     }
 
-                    var habbo = session.GetHabbo();
-                    var effect = habbo.Effects.GetEffectNullable(product.EffectId);
+                    var effect = effects.GetEffectNullable(product.EffectId);
 
                     if (effect != null) {
                         effect.AddToQuantity();
                     }
                     else {
                         effect = _avatarEffects.Create(habbo.Id, product.EffectId, 3600);
-                        habbo.Effects.TryAdd(effect);
+                        effects.TryAdd(effect);
                     }
 
                     session.Send(new AvatarEffectAddedComposer(product.EffectId, 3600));
@@ -293,8 +311,8 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                         return;
                     }
 
-                    session.GetHabbo().Inventory.Bots.AddBot(bot!);
-                    session.Send(new BotInventoryComposer(BotInventorySnapshot.Capture(session.GetHabbo().Inventory.Bots.Bots.Values)));
+                    inventory.Bots.AddBot(bot!);
+                    session.Send(new BotInventoryComposer(BotInventorySnapshot.Capture(inventory.Bots.Bots.Values)));
                     session.Send(new FurniListNotificationComposer((uint)bot!.Id, 5));
                     break;
                 }
@@ -321,17 +339,17 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                         return;
                     }
 
-                    session.GetHabbo().Inventory.Pets.AddPet(pet!);
+                    inventory.Pets.AddPet(pet!);
                     pet!.RoomId = 0;
                     pet.PlacedInRoom = false;
                     session.Send(new FurniListNotificationComposer((uint)pet.PetId, 3));
-                    session.Send(new PetInventoryComposer(PetAppearanceSnapshots.Inventory(session.GetHabbo().Inventory.Pets.Pets.Values.ToList())));
+                    session.Send(new PetInventoryComposer(PetAppearanceSnapshots.Inventory(inventory.Pets.Pets.Values.ToList())));
 
                     if (_itemManager.Items.TryGetValue(320, out var petFood)) {
                         var food = _itemFactory.CreateSingleItemNullable(petFood, session.GetHabbo(), "", "")?.ToInventoryItem();
 
                         if (food != null) {
-                            session.GetHabbo().Inventory.Furniture.AddItem(food);
+                            inventory.Furniture.AddItem(food);
                             session.Send(new FurniListNotificationComposer(food.Id, 1));
                         }
                     }
@@ -353,15 +371,23 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
     }
 
     // The extra data a bought piece of furniture starts with; null when the purchase must be refused.
-    private string? ReadFurniExtraData(GameClient session, ItemDefinition definition, string extraData, DateTimeOffset utcNow)
+    private string? ReadFurniExtraData(GameClient session, CatalogProduct product, string extraData, DateTimeOffset utcNow)
     {
+        var definition = product.Definition!;
+
         switch (definition.InteractionType) {
             case InteractionType.GuildItem:
             case InteractionType.GuildGate:
-                return FurniExtraData.RejectsClientImage(new[] { extraData }) ? "" : extraData;
+            case InteractionType.GuildForum:
+                return ReadGuildExtraData(session, definition.InteractionType, extraData);
             case InteractionType.Floor:
             case InteractionType.Wallpaper:
             case InteractionType.Landscape:
+                // Each pattern offer names its pattern; the client sends an empty value for those.
+                if (!string.IsNullOrEmpty(product.ExtraParam)) {
+                    return product.ExtraParam;
+                }
+
                 double number = 0;
 
                 try {
@@ -381,7 +407,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
             case InteractionType.Mannequin:
                 return $"m{Convert.ToChar(5)}.ch-210-1321.lg-285-92{Convert.ToChar(5)}Default Mannequin";
             case InteractionType.BadgeDisplay:
-                if (!session.GetHabbo().Inventory.Badges.HasBadge(extraData)) {
+                if (session.GetHabbo().Inventory?.Badges.HasBadge(extraData) != true) {
                     session.Send(new BroadcastMessageAlertComposer("Oops, it appears that you do not own this badge."));
 
                     return null;
@@ -390,6 +416,32 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                 return $"{extraData}{Convert.ToChar(9)}{session.GetHabbo().Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}";
             default:
                 return "";
+        }
+    }
+
+    // GuildSelectorCatalogWidget sends the chosen group's id. Group furniture needs a group the buyer belongs to. A forum
+    // terminal for a group without a forum opens that forum, which only its owner may do: GuildForumSelectorCatalogWidget
+    // offers the groups that have a forum and the groups the user owns.
+    private string? ReadGuildExtraData(GameClient session, InteractionType type, string extraData)
+    {
+        var habboId = session.GetHabbo().Id;
+
+        if (int.TryParse(extraData, NumberStyles.None, CultureInfo.InvariantCulture, out var groupId) && _groups.TryGetGroup(groupId, out var group)
+            && (type == InteractionType.GuildForum && !group.ForumEnabled ? group.CreatorId == habboId : group.CreatorId == habboId || group.IsMember(habboId))) {
+            return groupId.ToString(CultureInfo.InvariantCulture);
+        }
+
+        session.Send(new PurchaseErrorComposer(PurchaseError.Rejected));
+
+        return null;
+    }
+
+    // Buying a group's first forum terminal is what gives the group its forum.
+    private void EnableBoughtForum(string extraData)
+    {
+        if (int.TryParse(extraData, NumberStyles.None, CultureInfo.InvariantCulture, out var groupId) && _groups.TryGetGroup(groupId, out var group)
+            && !group.ForumEnabled && _forums.Enable(groupId)) {
+            group.ForumEnabled = true;
         }
     }
 
@@ -413,6 +465,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                 break;
             case InteractionType.Arrow:
             case InteractionType.Teleport:
+            case InteractionType.WiredRoomLinker:
                 for (var i = 0; i < amount; i++) {
                     items.AddRange(_itemFactory.CreateTeleporterItems(definition, session.GetHabbo()) ?? []);
                 }
@@ -450,7 +503,8 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
             expiry = _clubMemberships.Purchase(habbo, offer);
         }
 
-        if (expiry == null) {
+        // A purchase only happened for a found offer, so either check alone means nothing was bought.
+        if (expiry == null || offer == null) {
             session.Send(new PurchaseErrorComposer(PurchaseError.Unavailable));
 
             return;

@@ -50,6 +50,7 @@ public sealed class LargeRoomTests(ITestOutputHelper output)
                 packet.ReadString(); // z
                 packet.ReadInt(); // head
                 packet.ReadInt(); // body
+                packet.ReadInt(); // AIR 202610131318 entry int before statuses
                 packet.ReadString(); // statuses
             }
         }

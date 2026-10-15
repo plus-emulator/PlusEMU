@@ -8,7 +8,6 @@ using System.Runtime.CompilerServices;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
-using Plus.HabboHotel.Items.Wired.Boxes.Effects;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.Instance;
 using Plus.HabboHotel.Users;
@@ -20,6 +19,96 @@ namespace Plus.Tests;
 
 public class WiredStackEngineTests
 {
+    [Fact]
+    public void ReusedStackIndexObservesUnannouncedMovesAndHeightChanges()
+    {
+        var fixture = new Fixture();
+        var trigger = fixture.Trigger();
+        var calls = new List<string>();
+        var first = fixture.Effect(execute: _ => { calls.Add("first"); return true; });
+        var second = fixture.Effect(execute: _ => { calls.Add("second"); return true; });
+
+        void Expect(params string[] expected)
+        {
+            calls.Clear();
+            Assert.True(fixture.Engine.RunStack(trigger, []));
+            Assert.Equal(expected, calls);
+        }
+
+        Expect("first", "second");
+        Expect("first", "second");
+        second.Item.GetZ = -1;
+        Expect("second", "first");
+        first.Item.GetX = 1;
+        Assert.Equal(0, first.Item.MovementGeneration);
+        Assert.DoesNotContain(first, fixture.Engine.GetBoxes(trigger, InteractionType.WiredEffect));
+        Expect("second");
+        first.Item.GetX = 0;
+        first.Item.GetY = 1;
+        Expect("second");
+        first.Item.GetY = 0;
+        Expect("second", "first");
+        fixture.Detached.Add(second.Item.Id);
+        Expect("first");
+        fixture.Detached.Clear();
+        Assert.True(fixture.Engine.Add(second));
+        Expect("second", "first");
+    }
+
+    [Fact]
+    public void ReusedStackIndexReturnsReplacementWithTheSameItemId()
+    {
+        var fixture = new Fixture();
+        var trigger = fixture.Trigger();
+        var original = fixture.Effect();
+        Assert.Same(original, Assert.Single(fixture.Engine.GetBoxes(trigger, InteractionType.WiredEffect)));
+        Assert.True(fixture.Engine.Remove(original.Item.Id));
+        var replacement = new DelayedBox { Item = original.Item };
+        Assert.True(fixture.Engine.Add(replacement));
+
+        Assert.Same(replacement, Assert.Single(fixture.Engine.GetBoxes(trigger, InteractionType.WiredEffect)));
+        Assert.True(fixture.Engine.RunStack(trigger, []));
+        Assert.Single(replacement.Calls);
+        Assert.Empty(original.Calls);
+    }
+
+    [Fact]
+    public void StableStackIndexAllocationDoesNotGrowWithUnrelatedBoxes()
+    {
+        static long Measure(int boxes, bool move)
+        {
+            var fixture = new Fixture();
+            var trigger = fixture.Trigger();
+            fixture.Effect();
+            Box? moving = null;
+
+            for (var i = 0; i < boxes; i++) {
+                moving = fixture.Effect();
+                moving.Item.GetX = i + 1;
+            }
+
+            fixture.Engine.RunStack(trigger, []);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+
+            for (var i = 0; i < 200; i++) {
+                if (move) {
+                    moving!.Item.GetY = i % 2;
+                }
+
+                fixture.Engine.RunStack(trigger, []);
+            }
+
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+
+        var smallClean = Measure(40, false);
+        var largeClean = Measure(400, false);
+        var smallMoving = Measure(40, true);
+        var largeMoving = Measure(400, true);
+        Assert.True(largeClean < smallClean * 2, $"Clean index allocations grew from {smallClean} to {largeClean} bytes.");
+        Assert.True(largeMoving > smallMoving * 4, $"Moving index control did not scale: {smallMoving} to {largeMoving} bytes.");
+    }
+
     [Fact]
     public void ConditionsGateOnceAndRandomAddonChoosesOneActionWithActor()
     {
@@ -514,7 +603,7 @@ public class WiredStackEngineTests
     {
         var defaults = WiredEngineLimits.FromSettings(_ => "0");
         var configured = WiredEngineLimits.FromSettings(key => key == "wired.max_depth" ? "8" : "200");
-        Assert.Equal(32, defaults.MaxDepth);
+        Assert.Equal(20, defaults.MaxDepth);
         Assert.Equal(10000, defaults.MaxExecutionsPerPass);
         Assert.Equal(8, configured.MaxDepth);
         Assert.Equal(200, configured.MaxExecutionsPerPass);
@@ -540,90 +629,8 @@ public class WiredStackEngineTests
         Assert.Equal(200, captured.MaxPendingStacks);
     }
 
-    [Fact]
-    public void EveryPreviouslyConstructibleBoxRetainsItsTypeAndConfigurationShape()
-    {
-        var wired = new WiredComponent(EmptyRoom(), TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance, TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
-        WiredBoxType[] unsupported = [WiredBoxType.None, WiredBoxType.EffectMoveFurniFromNearestUser,
-            WiredBoxType.EffectBotCommunicatesToUserBox, WiredBoxType.ConditionFurniTypeMatches,
-            WiredBoxType.ConditionFurniTypeDoesntMatch];
-        var supported = Enum.GetValues<WiredBoxType>().Except(unsupported).ToArray();
-        Assert.Equal(50, supported.Length);
 
-        foreach (var type in supported) {
-            var item = new Item { Definition = Definition(InteractionType.None, type) };
-            var box = Assert.IsAssignableFrom<IWiredItem>(wired.GenerateNewBox(item));
-            Assert.Equal(type, box.Type);
-            Assert.Same(item, box.Item);
-            Assert.Empty(box.SetItems);
-            box.StringData = "configuration";
-            box.ItemsData = "42:1,2,3,4,state;";
-            box.BoolData = true;
-            Assert.Equal("configuration", box.StringData);
-            Assert.Equal("42:1,2,3,4,state;", box.ItemsData);
-            Assert.True(box.BoolData);
 
-            if (box is IWiredCycle cycle) {
-                cycle.Delay = 7;
-                Assert.Equal(7, cycle.Delay);
-
-                if (type != WiredBoxType.TriggerRepeat) {
-                    Assert.False(cycle.OnCycle());
-                }
-            }
-        }
-
-        foreach (var type in unsupported) {
-            Assert.Null(wired.LoadWiredBox(new Item { Definition = Definition(InteractionType.None, type) }));
-        }
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void KickWarningPrecedesGraceAndProtectedActorsAreNeverScheduled(bool protectedActor)
-    {
-        var actor = ActorRoom(protectedActor);
-        var wired = new WiredComponent(actor.Room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance, TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
-        var fixture = new Fixture(actorPresent: wired.IsActorPresent, actorVisit: wired.CaptureActorVisit);
-        var trigger = fixture.Trigger();
-        var kick = fixture.Add(new KickUserBox(actor.Room,
-            new Item { Definition = Definition(InteractionType.WiredEffect, WiredBoxType.EffectKickUser) })
-        { StringData = "You will be removed" });
-
-        Assert.True(fixture.Engine.RunStack(trigger, [actor.Player]));
-        Assert.Equal(new[] { ServerPacketHeader.WhisperComposer }, actor.Packets);
-        Assert.Same(actor.Room, actor.Player.CurrentRoom);
-        fixture.Advance(1499);
-        Assert.Single(actor.Packets);
-        fixture.Advance(1);
-        Assert.Equal(1, actor.Packets.Count(id => id == ServerPacketHeader.WhisperComposer));
-        Assert.Equal(protectedActor ? 0 : 1, actor.Packets.Count(id => id == ServerPacketHeader.CloseConnectionComposer));
-        Assert.Empty(fixture.Errors);
-    }
-
-    [Fact]
-    public void TeleportGlowBeginsWhenFiringIsAcceptedBeforeItsDelay()
-    {
-        var actor = ActorRoom();
-        var wired = new WiredComponent(actor.Room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance, TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
-        var fixture = new Fixture(actorPresent: wired.IsActorPresent, actorVisit: wired.CaptureActorVisit);
-        var trigger = fixture.Trigger();
-        var teleport = fixture.Add(new TeleportUserBox(actor.Room,
-            new Item { Definition = Definition(InteractionType.WiredEffect, WiredBoxType.EffectTeleportToFurni) })
-        { Delay = 2 });
-        var target = new Item { Id = 100 };
-        teleport.SetItems.TryAdd(target.Id, target);
-
-        Assert.True(fixture.Engine.RunStack(trigger, [actor.Player]));
-        Assert.Equal(4, actor.Player.Effects.CurrentEffect);
-        Assert.Equal(new[] { ServerPacketHeader.AvatarEffectComposer }, actor.Packets);
-        Assert.DoesNotContain(teleport.Item.Id, fixture.Flashes);
-        fixture.Advance(999);
-        Assert.DoesNotContain(teleport.Item.Id, fixture.Flashes);
-        Assert.Equal(4, actor.Player.Effects.CurrentEffect);
-        Assert.Empty(fixture.Errors);
-    }
 
     [Fact]
     public void PreparationRunsOncePerAcceptedActorAndRejectionHasNoFeedback()
@@ -697,6 +704,7 @@ public class WiredStackEngineTests
         trigger.Item.SetState(7, 0, trigger.Item.GetZ, []);
         trigger.Item.SetState(0, 0, trigger.Item.GetZ, []);
         Assert.Equal(2, trigger.Item.MovementGeneration);
+        Assert.Same(effect, Assert.Single(fixture.Engine.GetBoxes(trigger, InteractionType.WiredEffect)));
 
         fixture.Advance(2000);
         Assert.Empty(effect.Calls);

@@ -63,35 +63,6 @@ public sealed class RecyclerPacketTests
     }
 
     [Fact]
-    public async Task AllShippedBrowserRevisionsMapTheThreeRequestsAndThreeResponses()
-    {
-        var directory = Directory.CreateTempSubdirectory("recycler-revisions-").FullName;
-
-        try {
-            foreach (var file in Directory.GetFiles(HabbiconPacketTests.Repo("Resources/Revisions"), "*.json")) {
-                File.Copy(file, Path.Join(directory, Path.GetFileName(file)));
-            }
-
-            var cache = new Plus.Communication.Revisions.RevisionsCache();
-            typeof(Plus.Communication.Revisions.RevisionsCache).GetField("_directory", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.SetValue(cache, directory);
-            await cache.Start();
-
-            foreach (var name in new[] { "NITRO-1-6-6", "NITRO-3-6-0", "OCTANE-3-6-0-FLOOR-20260909" }) {
-                var revision = cache.Revisions[name];
-                Assert.Equal(Plus.Communication.Packets.Incoming.ClientPacketHeader.GetRecyclerPrizesEvent, revision.IncomingIdToInternalIdMapping[398]);
-                Assert.Equal(Plus.Communication.Packets.Incoming.ClientPacketHeader.GetRecyclerStatusEvent, revision.IncomingIdToInternalIdMapping[1342]);
-                Assert.Equal(Plus.Communication.Packets.Incoming.ClientPacketHeader.RecyclerRecycleEvent, revision.IncomingIdToInternalIdMapping[2771]);
-                Assert.Equal(3164u, revision.InternalIdToOutgoingIdMapping[Plus.Communication.Packets.Outgoing.ServerPacketHeader.RecyclerPrizesComposer]);
-                Assert.Equal(3433u, revision.InternalIdToOutgoingIdMapping[Plus.Communication.Packets.Outgoing.ServerPacketHeader.RecyclerStatusComposer]);
-                Assert.Equal(468u, revision.InternalIdToOutgoingIdMapping[Plus.Communication.Packets.Outgoing.ServerPacketHeader.RecyclerFinishedComposer]);
-            }
-        }
-        finally {
-            Directory.Delete(directory, true);
-        }
-    }
-
-    [Fact]
     public void EcotronInventoryCategorySurvivesReloadWithoutMutatingSharedFurnitureDefinitions()
     {
         var definition = new ItemDefinition { ItemName = "ecotron_box", SpriteId = 3095, Type = Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor };
@@ -107,7 +78,7 @@ public sealed class RecyclerPacketTests
             Assert.Equal(Plus.HabboHotel.Users.Inventory.Furniture.FurniCategory.EcotronBox, snapshot.Category);
             var packet = new HabbiconTestSupport.RecordingPacket();
             new Plus.Communication.Packets.Outgoing.Inventory.Furni.FurniListAddComposer(snapshot).Compose(packet);
-            Assert.Equal(10, packet.Writes[4]);
+            Assert.Equal(10, packet.Writes[5]);
         }
 
         Assert.Equal(Plus.HabboHotel.Users.Inventory.Furniture.FurniCategory.Default, definition.Category);

@@ -1,6 +1,7 @@
 using Dapper;
 using Plus.Database;
 using Plus.HabboHotel.Badges;
+using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users.Badges;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Achievements;
@@ -18,8 +19,10 @@ public class UserDataFactory : IUserDataFactory
     private readonly Clothing.IClothingStore _clothingStore;
     private readonly TimeProvider _time;
     private readonly IAchievementManager _achievements;
+    private readonly IGameClientManager _clients;
+    private readonly IRoomManager _rooms;
 
-    public UserDataFactory(BadgeManager badgeManager, IDatabase database, IEnumerable<IUserDataLoadingTask> userDataLoadingTasks, IUserPersistenceService persistence, IUserComponentLoader components, Clothing.IClothingStore clothingStore, IRoomVisitRecorder roomVisits, TimeProvider time, IAchievementManager achievements)
+    public UserDataFactory(BadgeManager badgeManager, IDatabase database, IEnumerable<IUserDataLoadingTask> userDataLoadingTasks, IUserPersistenceService persistence, IUserComponentLoader components, Clothing.IClothingStore clothingStore, IRoomVisitRecorder roomVisits, TimeProvider time, IAchievementManager achievements, IGameClientManager clients, IRoomManager rooms)
     {
         _badgeManager = badgeManager;
         _database = database;
@@ -30,6 +33,8 @@ public class UserDataFactory : IUserDataFactory
         _roomVisits = roomVisits;
         _time = time;
         _achievements = achievements;
+        _clients = clients;
+        _rooms = rooms;
     }
 
     public async Task<Habbo?> Create(int userId, CancellationToken cancellationToken = default)
@@ -82,7 +87,7 @@ public class UserDataFactory : IUserDataFactory
     {
         using var connection = _database.Connection();
         var users = await connection.QueryAsync<Habbo, string, Habbo>(
-            "SELECT u.`id`, u.`username`, u.`motto`, u.`look`, u.`gender`, u.`last_online` AS LastOnlineAt, u.`credits`, us.`home_room`, us.`block_newfriends` as AllowFriendRequests, us.`hide_online` as AppearOffline, us.`hide_inroom` as AllowPublicRoomStatus, u.`vip`, u.`account_created` AS AccountCreatedAt, us.`chat_preference`, us.`focus_preference`, us.`pets_muted` as AllowPetSpeech, us.`bots_muted` as AllowBotSpeech, us.`advertising_report_blocked`, u.`last_change` as LastNameChangedAt, us.`ignore_invites` as AllowMessengerInvites, u.`time_muted`, us.`allow_gifts`, us.`friend_bar_state`, us.`disable_forced_effects`, us.`allow_mimic`, u.`bubble_id` as CustomBubbleId, s.`AchievementScore` as AchievementPoints, s.`groupid` as FavouriteGroupId, i.`trading_locked` AS TradingLockExpiresAt, us.`volume` AS Volume " +
+            "SELECT u.`id`, u.`username`, u.`motto`, u.`look`, u.`gender`, u.`last_online` AS LastOnlineAt, u.`credits`, us.`home_room`, us.`block_newfriends` as AllowFriendRequests, u.`vip`, u.`account_created` AS AccountCreatedAt, us.`chat_preference`, us.`focus_preference`, us.`pets_muted` as AllowPetSpeech, us.`bots_muted` as AllowBotSpeech, u.`last_change` as LastNameChangedAt, us.`ignore_invites` as AllowMessengerInvites, u.`time_muted`, us.`allow_gifts`, us.`friend_bar_state`, us.`disable_forced_effects`, us.`allow_mimic`, u.`bubble_id` as CustomBubbleId, s.`AchievementScore` as AchievementPoints, s.`groupid` as FavouriteGroupId, i.`trading_locked` AS TradingLockExpiresAt, us.`volume` AS Volume " +
             "FROM `users` u " +
             "INNER JOIN `users_settings` us ON us.user_id = u.id " +
             "LEFT JOIN `user_statistics` s ON u.id = s.id " +
@@ -98,6 +103,7 @@ public class UserDataFactory : IUserDataFactory
         var habbo = users.SingleOrDefault();
         habbo?.Currencies.Load(UserCurrencyStore.Load(connection, userId));
         habbo?.SetRoomVisitRecorder(_roomVisits, _achievements);
+        habbo?.SetHotelServices(_clients, _rooms);
 
         return habbo;
     }

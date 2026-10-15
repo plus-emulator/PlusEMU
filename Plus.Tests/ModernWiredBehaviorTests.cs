@@ -83,6 +83,85 @@ public class ModernWiredBehaviorTests
         Assert.Equal(new[] { (1u, 6, 7) }, requests);
     }
 
+    // Behavioral comparison with Habz reference commits 0ecad29/21a861e; not an official runtime capture.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(17)]
+    public void FurniToFurniDistributesEvenlyAndDoesNotRetryBlockedAssignments(int seed)
+    {
+        var movers = Enumerable.Range(1, 7).Select(id => Item((uint)id, 0, id)).ToArray();
+        var targets = new[] { Item(11, 5, 1), Item(12, 6, 1), Item(13, 7, 1) };
+        var requests = new List<(uint Id, int X)>();
+
+        Assert.False(new WiredMovementActions(new Random(seed)).Execute("wf_act_furni_to_furni",
+            new() { IntParams = [100, 100] }, movers, targets, [],
+            (item, x, _, _, _) => { requests.Add((item.Id, x)); return false; },
+            (_, _, _, _, _) => false, (_, _) => { }));
+
+        Assert.Equal(7, requests.Count);
+        Assert.Equal(7, requests.Select(request => request.Id).Distinct().Count());
+        Assert.Equal(new[] { 2, 2, 3 }, requests.GroupBy(request => request.X).Select(group => group.Count()).Order());
+    }
+
+    [Fact]
+    public void FurniToFurniExcludesItselfAndLeavesASameTileTargetAtItsExistingHeight()
+    {
+        var mover = Item(1, 4, 4);
+        mover.GetZ = 7.5;
+        var sameTileTarget = Item(2, 4, 4);
+        var requests = 0;
+        var action = new WiredMovementActions(new Random(17));
+        bool Run(Item[] targets) => action.Execute("wf_act_furni_to_furni",
+            new() { IntParams = [100, 100] }, [mover], targets, [],
+            (_, _, _, _, _) => { requests++; return true; }, (_, _, _, _, _) => false, (_, _) => { });
+
+        Assert.False(Run([mover]));
+        Assert.False(Run([mover, sameTileTarget]));
+        Assert.Equal(0, requests);
+        Assert.Equal(7.5, mover.GetZ);
+    }
+
+    [Fact]
+    public void FurniToFurniResolvesAssignedTargetCoordinatesWhenEachMoveExecutes()
+    {
+        var first = Item(1, 1, 1);
+        var second = Item(2, 2, 1);
+        var calls = new List<(uint Id, int X)>();
+
+        Assert.True(new WiredMovementActions(new Random(7)).Execute("wf_act_furni_to_furni",
+            new() { IntParams = [100, 100] }, [first, second], [first, second], [],
+            (item, x, y, _, _) => { calls.Add((item.Id, x)); item.GetX = x; item.GetY = y; return true; },
+            (_, _, _, _, _) => false, (_, _) => { }));
+
+        // Whichever goes first lands on the other; that other's assigned target is now on its own tile.
+        Assert.Single(calls);
+        Assert.Equal(first.GetX, second.GetX);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(17)]
+    public void UserToFurniDistributesEvenlyAndConsumesBlockedAssignments(int seed)
+    {
+        var users = Enumerable.Range(0, 7).Select(_ => (RoomUser)RuntimeHelpers.GetUninitializedObject(typeof(RoomUser))).ToArray();
+        var targets = new[] { Item(11, 5, 1), Item(12, 6, 1), Item(13, 7, 1) };
+        var requests = new List<(RoomUser User, uint Target)>();
+
+        Assert.False(new WiredMovementActions(new Random(seed)).Execute("wf_act_user_to_furni",
+            new() { IntParams = [100, 0, 1] }, [], targets, users, (_, _, _, _, _) => false,
+            (user, target, slide, fast, walkMode) => {
+                Assert.True(slide);
+                Assert.False(fast);
+                Assert.Equal(1, walkMode);
+                requests.Add((user, target.Id));
+                return false;
+            }, (_, _) => { }));
+
+        Assert.Equal(7, requests.Count);
+        Assert.Equal(7, requests.Select(request => request.User).Distinct().Count());
+        Assert.Equal(new[] { 2, 2, 3 }, requests.GroupBy(request => request.Target).Select(group => group.Count()).Order());
+    }
+
     [Fact]
     public void AltitudeUsesDecimalTextAndLegacyOperatorOrdering()
     {
@@ -172,7 +251,7 @@ public class ModernWiredBehaviorTests
     public void OneShotLongTimerDoesNotRepeatUntilRoomTimerReset()
     {
         var timers = new WiredTimedTriggers();
-        var config = new WiredConfiguration { IntParams = [2] };
+        var config = new WiredConfiguration { IntParams = [20] }; // Current one-shot form uses half-second units.
         Assert.False(timers.TryFire("wf_trg_at_time_long", 1, config, 9999, 9999, 0));
         Assert.True(timers.TryFire("wf_trg_at_time_long", 1, config, 10000, 10000, 0));
         Assert.False(timers.TryFire("wf_trg_at_time_long", 1, config, 20000, 20000, 0));
@@ -192,15 +271,16 @@ public class ModernWiredBehaviorTests
     }
 
     [Fact]
-    public void RepeaterDeadlinesStayOnTheirGridWhateverThePollTimes()
+    public void RepeaterDeadlinesRestartFromLatePolls()
     {
         var timers = new WiredTimedTriggers();
         var config = new WiredConfiguration { IntParams = [2] };
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1000, 0, 0));
         Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1130, 0, 0));
-        // Late by 30ms: the next deadline is still 1200, not 1230.
+        // The late poll starts the next 100ms wait at 1130.
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1199, 0, 0));
-        Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1200, 0, 0));
+        Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1200, 0, 0));
+        Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1230, 0, 0));
         // A poll long after skips the deadlines it slept through instead of firing for each.
         Assert.True(timers.TryFire("wf_trg_period_short", 1, config, long.MaxValue / 2, 0, 0));
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, long.MaxValue / 2, 0, 0));
@@ -210,7 +290,7 @@ public class ModernWiredBehaviorTests
     [InlineData("wf_trg_period_short", 10)]
     [InlineData("wf_trg_periodically", 120)]
     [InlineData("wf_trg_period_long", 120)]
-    [InlineData("wf_trg_at_time_long", 120)]
+    [InlineData("wf_trg_at_time_long", 1200)]
     [InlineData("wf_trg_at_given_time", 1200)]
     public void TimedTriggersAcceptTheirEditorRangeOnly(string name, int max)
     {
@@ -271,15 +351,16 @@ public class ModernWiredBehaviorTests
     }
 
     [Fact]
-    public void TypeConditionComparesResolvedRolesWithoutMixingThem()
+    public void ItemIdentityConditionComparesExactItemsWithoutMixingRoles()
     {
         var selected = Item(1, 0, 0);
         selected.Definition.Id = 10;
         var other = Item(2, 0, 0);
+        other.Definition.Id = 10;
+        Assert.False(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [other]));
         other.Definition.Id = 20;
         Assert.False(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [other]));
-        other.Definition.Id = 10;
-        Assert.True(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [other]));
+        Assert.True(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 0] }, [selected], [selected]));
         Assert.False(WiredItemConditions.MatchesType(new() { IntParams = [100, 201, 1] }, [selected], []));
     }
 

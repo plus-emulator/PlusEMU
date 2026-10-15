@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Data.Common;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -7,11 +8,13 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Modern;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Permissions;
+using Plus.HabboHotel.Rooms.Chat.Filter;
 using Plus.HabboHotel.Subscriptions;
 
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
-public sealed record WiredConfigurationSaveRequest(uint ItemId, WiredBoxCategory Envelope, WiredConfiguration Configuration);
+public sealed record WiredConfigurationSaveRequest(uint ItemId, WiredBoxCategory Envelope, WiredConfiguration Configuration,
+    WiredNativeEditorConfiguration? Native = null);
 
 public interface IWiredConfigurationService
 {
@@ -21,8 +24,11 @@ public interface IWiredConfigurationService
 public sealed class WiredConfigurationService(
     IWiredConfigurationStore store,
     IFigureDataManager figures,
+    IWordFilterManager wordFilter,
     ILogger<WiredConfigurationService> logger) : IWiredConfigurationService
 {
+    internal const string WiredVariableOwnerOnly = "Only the room owner can set up a reference to another room.";
+
     public void Save(GameClient session, WiredConfigurationSaveRequest request)
     {
         var habbo = session.GetHabbo();
@@ -34,37 +40,107 @@ public sealed class WiredConfigurationService(
         try {
             var selectedItem = room.GetRoomItemHandler().GetItem(request.ItemId);
 
+            if (selectedItem is { IsTemporary: false } && Plus.HabboHotel.Items.Wired.Chests.WiredChestFurniture.IsContract(selectedItem.Definition)) {
+                if (request.Native != null) {
+                    session.Send(new WiredValidationErrorComposer("This contract has no supported native editor conversion."));
+
+                    return;
+                }
+
+                var saved = false;
+                room.GetWired().WithChests(module => saved = request.Envelope == WiredBoxCategory.Action
+                    && Plus.HabboHotel.Items.Wired.Chests.WiredChestContractEditor.TrySave(module, selectedItem, request.Configuration));
+                session.Send(saved ? new HideWiredConfigComposer() : new WiredValidationErrorComposer("Invalid contract requirements."));
+
+                return;
+            }
+
             if (selectedItem == null || selectedItem.IsTemporary || !room.GetWired().TryGet(request.ItemId, out var box)) {
                 return;
             }
 
-            var actualEnvelope = box is IWiredConfiguredItem configuredItem ? configuredItem.Descriptor.Envelope
-                : selectedItem.Definition.InteractionType == InteractionType.WiredTrigger ? WiredBoxCategory.Trigger
-                : selectedItem.Definition.InteractionType == InteractionType.WiredCondition ? WiredBoxCategory.Condition
-                : WiredBoxCategory.Action;
+            if (box is not IWiredConfiguredItem configured || request.Native is not { } requested
+                || !WiredNativeEditorProjection.Supports(configured.Descriptor.CanonicalName)) {
+                session.Send(new WiredValidationErrorComposer("This box has no supported native editor conversion."));
 
-            if (actualEnvelope != request.Envelope) {
+                return;
+            }
+
+            var descriptor = configured.Descriptor;
+
+            if (descriptor.Envelope != request.Envelope) {
                 session.Send(new WiredValidationErrorComposer("The save packet does not match this Wired box."));
 
                 return;
             }
 
-            if (box.Type == WiredBoxType.EffectGiveUserBadge && !habbo.Access.Can(PermissionKeys.RoomItemWiredRewards)) {
+            if (descriptor.CanonicalName == "wf_act_give_reward" && !habbo.Access.Can(PermissionKeys.ModerationTool)) {
                 session.Send(new WiredValidationErrorComposer("You do not have permission to configure Wired rewards."));
 
                 return;
             }
 
-            var rewardName = box is IWiredConfiguredItem rewardBox ? rewardBox.Descriptor.CanonicalName
-                : WiredLegacyEditorProjection.TryGetDescriptor(box, out var rewardDescriptor) ? rewardDescriptor.CanonicalName : null;
-
-            if (rewardName == "wf_act_give_reward" && !habbo.Access.Can(PermissionKeys.ModerationTool)) {
-                session.Send(new WiredValidationErrorComposer("You do not have permission to configure Wired rewards."));
+            // A reference reads and writes variables of the owner's other rooms, so only the owner sets one up.
+            if (descriptor.CanonicalName == "wf_var_reference" && room.OwnerId != habbo.Id) {
+                session.Send(new WiredValidationErrorComposer(WiredVariableOwnerOnly));
 
                 return;
             }
 
-            if (!TrySave(room.GetWired(), selectedItem, box, session, request.Envelope, request.Configuration, out var error)) {
+            bool CanModify() => habbo.CurrentRoom == room && room.GetWired().Settings.CanModify(session);
+            var native = requested with { NativeCode = descriptor.EditorCode };
+
+            if (descriptor.CanonicalName == "wf_act_bot_clothes") {
+                native = native with { Text = ValidateBotFigure(native.Text, session) };
+            }
+
+            // Turbo word-filters the reward pop-up text of the two give-from-chest boxes; here it is filtered once at save, like Show Message.
+            if (descriptor.CanonicalName is "wf_act_show_message" or "wf_act_give_currency" or "wf_act_give_furni") {
+                native = native with { Text = FilterMessageText(native.Text) };
+            }
+
+            // The Web API add-on saves only keys this server made for it (VariablesWebApiAddon.as:108).
+            if (descriptor.CanonicalName == "wf_xtra_var_web_api" && !room.GetWired().WebApiKeysAccepted(selectedItem.Id, native.Text)) {
+                session.Send(new WiredValidationErrorComposer("These Web API keys were not made for this add-on."));
+
+                return;
+            }
+
+            var current = configured.Configuration;
+
+            if (!WiredNativeEditorProjection.TryProject(selectedItem, descriptor, current, out var projected)) {
+                session.Send(new WiredValidationErrorComposer("Unable to project the saved settings."));
+
+                return;
+            }
+
+            var capturesSnapshots = SnapshotNames.Contains(descriptor.CanonicalName);
+
+            native = native with
+            {
+                SavedState = capturesSnapshots
+                    ? new() { Snapshots = CaptureSnapshots(room, descriptor.CanonicalName, native) }
+                    : projected.SavedState
+            };
+
+            var error = "Invalid native Wired settings.";
+            var compiled = WiredNativeEditorProjection.TryCompile(selectedItem.Id, descriptor, native, out var runtime);
+
+            if (!compiled) {
+                error = WiredNativeEditorProjection.SourceRejectionKey(descriptor, native) ?? error;
+            }
+
+            if (!compiled
+                || !WiredConfigurationSave.TrySave(configured, runtime, store, out error,
+                    id => room.GetRoomItemHandler().GetItem(id) != null,
+                    (original, validated, persist) => room.GetWired().PublishConfigured(original, validated, () =>
+                    {
+                        if (!CanModify() || !ReferenceEquals(current, original.Configuration)) {
+                            throw new InvalidOperationException("The editor admission is no longer current.");
+                        }
+
+                        persist();
+                    }), isTemporaryInRoom: id => room.GetRoomItemHandler().GetItem(id)?.IsTemporary == true)) {
                 session.Send(new WiredValidationErrorComposer(error));
 
                 return;
@@ -79,69 +155,36 @@ public sealed class WiredConfigurationService(
         }
     }
 
-    private bool TrySave(Rooms.Instance.WiredComponent wired, Item selectedItem, IWiredItem box, GameClient session,
-        WiredBoxCategory envelope, WiredConfiguration proposed, out string error)
+    // Observed on hhus: the filtered Show Message text is what is stored and returned on reopen, and the save still succeeds.
+    // The official rule set is unobserved; this applies only the hotel word filter that PlusEMU already has.
+    private string FilterMessageText(string text)
     {
-        var room = box.Instance;
+        var filtered = wordFilter.CheckMessage(text);
 
-        if (box is IWiredConfiguredItem configured) {
-            proposed = PreserveAdvancedConfiguration(configured, proposed);
+        return filtered == text.TrimEnd(' ') ? text : filtered;
+    }
 
-            if (configured.Descriptor.CanonicalName == "wf_act_bot_clothes") {
-                proposed = proposed with { Text = ValidateBotFigure(proposed.Text, session) };
-            }
+    private static readonly HashSet<string> SnapshotNames = ["wf_act_match_to_sshot", "wf_cnd_match_snapshot",
+        "wf_cnd_not_match_snap", "wf_trg_stuff_state", "wf_trg_state_changed", "wf_act_place_furni"];
 
-            return WiredConfigurationSave.TrySave(configured, proposed, store, out error,
-                id => room.GetRoomItemHandler().GetItem(id) != null,
-                publish: wired.PublishConfigured, prepare: WiredRoomOperations.PrepareSnapshots,
-                isTemporaryInRoom: id => room.GetRoomItemHandler().GetItem(id)?.IsTemporary == true);
+    private static ImmutableArray<WiredFurniSnapshot> CaptureSnapshots(Rooms.Room room, string name, WiredNativeEditorConfiguration native)
+    {
+        // Place templates come from a pick list only: the picked furni (100, or 110 the snapshot the editor opens on) or the second
+        // pick list (101). A live or selector source keeps no templates.
+        if (name == "wf_act_place_furni" && native.FurniSourceTypes is not [100 or 101 or 110, ..]) {
+            return [];
         }
 
-        if (WiredLegacyCustomEditor.IsCustom(box)) {
-            if (!WiredLegacyCustomEditor.TryPrepare(box, proposed, WiredLegacyCustomEditor.CreateCandidate,
-                out var candidate, out error)) {
-                return false;
-            }
+        var handler = room.GetRoomItemHandler();
+        var picks = name == "wf_act_place_furni" && native.FurniSourceTypes is [101, ..] ? native.SecondaryItems : native.PrimaryItems;
 
-            if (wired.PublishLegacy(box, candidate!, () => wired.SaveBox(candidate!))) {
-                return true;
-            }
+        var allowWall = name != "wf_act_place_furni" && WiredNativeEditorProjection.Metadata(name).AllowWall;
 
-            error = "This Wired box is no longer attached to the room.";
-
-            return false;
-        }
-
-        if (WiredLegacyEditorProjection.TryGetDescriptor(box, out var descriptor)) {
-            if (descriptor.CanonicalName == "wf_act_bot_clothes") {
-                proposed = proposed with { Text = ValidateBotFigure(proposed.Text, session) };
-            }
-
-            var candidate = wired.CreateConfiguredBox(selectedItem, descriptor);
-
-            if (candidate == null) {
-                error = "This Wired behavior cannot be configured yet.";
-
-                return false;
-            }
-
-            return WiredConfigurationSave.TrySave(candidate, proposed, store, out error,
-                id => room.GetRoomItemHandler().GetItem(id) != null,
-                publish: (detached, validated, persist) => wired.PublishPromotion(box, detached, validated, persist),
-                prepare: WiredRoomOperations.PrepareSnapshots,
-                isTemporaryInRoom: id => room.GetRoomItemHandler().GetItem(id)?.IsTemporary == true);
-        }
-
-        return WiredLegacySave.TrySave(box, proposed, envelope,
-            original => wired.GenerateNewBox(original.Item),
-            (original, candidate) =>
-            {
-                if (candidate.Type == WiredBoxType.EffectBotChangesClothesBox) {
-                    candidate.StringData = ValidateBotFigure(candidate.StringData, session);
-                }
-
-                return wired.PublishLegacy(original, candidate, () => wired.SaveBox(candidate));
-            }, out error, id => room.GetRoomItemHandler().GetItem(id) is { IsTemporary: false });
+        // Only cards whose editor admits wall picks capture them, and only with a parseable wall position.
+        return picks.Select(reference => reference.ItemId).Distinct().Select(handler.GetItem)
+            .Where(item => item is { IsFloorItem: true } || allowWall && item is { IsWallItem: true })
+            .Select(item => (Item: item!, Snapshot: WiredRoomOperations.Capture(item!)))
+            .Where(pair => !pair.Item.IsWallItem || pair.Snapshot.Wall != null).Select(pair => pair.Snapshot).ToImmutableArray();
     }
 
     private string ValidateBotFigure(string data, GameClient session)
@@ -157,28 +200,14 @@ public sealed class WiredConfigurationService(
         }
 
         var habbo = session.GetHabbo();
-        var validated = figures.ProcessFigure(fields[1], habbo.Gender, habbo.Clothing.GetClothingParts, ClubAccess.LevelFor(habbo.Access));
 
-        return fields[0] + "\t" + validated.TrimEnd('.');
-    }
-
-    private static WiredConfiguration PreserveAdvancedConfiguration(IWiredConfiguredItem box, WiredConfiguration proposed)
-    {
-        var saved = box.Configuration;
-        proposed = proposed with { ScoreQuotaPerGame = saved.ScoreQuotaPerGame };
-
-        if (box.Descriptor.CanonicalName == "wf_act_place_furni" && saved.TemporaryPlacement != null) {
-            proposed = proposed with
-            {
-                TemporaryPlacement = saved.TemporaryPlacement,
-                Snapshots = saved.Snapshots,
-                SecondarySelectedItems = saved.SecondarySelectedItems,
-                FurniSources = saved.FurniSources,
-                UserSources = saved.UserSources,
-                VariableIds = saved.VariableIds
-            };
+        // Paid clothing is only checked against a loaded wardrobe, so the figure is rejected without one.
+        if (habbo.Clothing is not { } wardrobe) {
+            throw new ArgumentException("Bot figure cannot be validated without a loaded wardrobe.");
         }
 
-        return proposed;
+        var validated = figures.ProcessFigure(fields[1], habbo.Gender, wardrobe.GetClothingParts, ClubAccess.LevelFor(habbo.Access));
+
+        return fields[0] + "\t" + validated.TrimEnd('.');
     }
 }

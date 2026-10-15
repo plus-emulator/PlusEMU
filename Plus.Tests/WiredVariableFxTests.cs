@@ -10,6 +10,74 @@ namespace Plus.Tests;
 
 public sealed class WiredVariableFxTests
 {
+    [Fact]
+    public void NativeFxVisibilityControlsSurviveCompilationAndPacketSerialization()
+    {
+        Assert.True(WiredBoxRegistry.TryGet("wf_xtra_var_fx_progress", out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor);
+        var owned = native.OwnedIntParams.ToArray();
+        owned[2] = 1;
+        owned[3] = 15;
+        owned[4] = 1;
+        native = native with { OwnedIntParams = [.. owned] };
+        Assert.True(WiredNativeEditorProjection.TryCompile(50, descriptor, native, out var configuration));
+        Assert.True(WiredVariableFxSettings.TryDecode(descriptor.CanonicalName, 50, configuration,
+            new(WiredVariableTarget.User, "custom:10"), null, out var binding, out _));
+        Assert.Equal(15, binding!.Config.UpdateMask);
+        Assert.True(binding.Config.ShowOnMouseHover);
+        var packet = new Packet();
+        WiredVariableFxComposer.ComposeBatch(new(false, [binding.Config], [], [], [])).Single().Compose(packet);
+        Assert.Equal(new object[] { 1, 50, true, 1, 15, true }, packet.Values.Take(6).ToArray());
+    }
+
+    // Official hhus WIN63-202610131318 (r78 batch): the reopened ints of each card saved from its defaults, all 23 of them: the category
+    // slot at [21] and the "Order in FX stack" at [22] (the spec saved 1 there and it reopened as 1).
+    [Theory]
+    [InlineData("wf_xtra_var_fx_status", new[] { 1, 2, 0, 7, 0, 3000, 0, -1, 2, 2, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
+    [InlineData("wf_xtra_var_fx_health", new[] { 1, 2, 0, 7, 0, 3000, 0, 1000, 2, 10, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
+    [InlineData("wf_xtra_var_fx_progress", new[] { 1, 2, 0, 7, 0, 3000, 0, 1, 2, 0, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
+    [InlineData("wf_xtra_var_fx_level", new[] { 1, 2, 0, 7, 0, 3000, 0, 1001, 2, 20, -1, -1, -1, -1, 0, 0, 1, 1, 0, 0, 0, 2, 1 })]
+    [InlineData("wf_xtra_var_fx_boss", new[] { 1, 2, 0, 7, 0, 3000, 0, 5, 4, 100, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
+    [InlineData("wf_xtra_var_fx_number", new[] { 1, 2, 0, 7, 0, 3000, 0, 1, -1, 201, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
+    public void ObservedNormalizedIntsRoundTripThroughTheNativeSave(string name, int[] observed)
+    {
+        Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor);
+        // The official default leaves the style options unset (-1); saving stores the style's own defaults.
+        var unset = observed.ToArray();
+        (unset[7], unset[8], unset[9]) = (-1, -1, -1);
+        Assert.True(WiredNativeEditorProjection.TryCompile(50, descriptor, native with { OwnedIntParams = [.. unset] }, out var configuration));
+        Assert.Equal(observed, configuration.IntParams.ToArray());
+    }
+
+    [Theory]
+    [InlineData("wf_xtra_var_fx_status", -1, 2, 2)]
+    [InlineData("wf_xtra_var_fx_health", 1000, 2, 10)]
+    [InlineData("wf_xtra_var_fx_progress", 1, 2, 0)]
+    [InlineData("wf_xtra_var_fx_level", 1001, 2, 20)]
+    [InlineData("wf_xtra_var_fx_boss", 5, 4, 100)]
+    [InlineData("wf_xtra_var_fx_number", 1, -1, 201)]
+    public void SavedUnsetStyleOptionsReopenAsTheStyleDefaults(string name, int color, int width, int renderer)
+    {
+        Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
+        var owned = WiredNativeEditorProjection.DefaultNative(descriptor).OwnedIntParams.ToArray();
+        owned[7] = owned[8] = owned[9] = -1;
+        var level = name == "wf_xtra_var_fx_level";
+        Assert.Equal(23, owned.Length);
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = [.. owned] };
+        Assert.True(WiredNativeEditorProjection.TryCompile(50, descriptor, native, out var configuration));
+        var expected = owned.ToArray();
+        (expected[7], expected[8], expected[9]) = (color, width, renderer);
+
+        if (level) {
+            expected[10] = expected[11] = expected[12] = expected[13] = -1;
+        }
+
+        Assert.Equal(expected, configuration.IntParams.ToArray());
+        Assert.True(WiredVariableFxSettings.TryDecode(name, 50, configuration, new(WiredVariableTarget.User, "custom:10"), null, out var binding, out _));
+        Assert.Equal((0L, 100L), (binding!.Config.Min, binding.Config.Max));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -60,8 +128,15 @@ public sealed class WiredVariableFxTests
         module.Mutate(score, holder, WiredVariableMutation.Give, 25, frame);
         module.Mutate(max, holder, WiredVariableMutation.Give, 200, frame);
         module.Mutate(audience, viewer, WiredVariableMutation.Give, 1, frame);
-        var configuration = new WiredConfiguration { IntParams = [0, 3, 0, 3000, 0, -1, 2, 0, 0, 100, 0, 1, 0, 0, 0, 0], Text = "\tcustom:11\tcustom:12\t" };
-        Assert.True(WiredVariableFxSettings.TryDecode("wf_xtra_var_fx_progress", 50, configuration, score, out var binding, out _));
+        Assert.True(WiredBoxRegistry.TryGet("wf_xtra_var_fx_progress", out var descriptor));
+        // User source, visible to its audience, classic progress bar, range maximum read from custom:11.
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with
+        {
+            OwnedIntParams = [1, 3, 0, 0, 0, 3000, 0, 1, 2, 0, 0, 0, 0, 100, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+            VariableIds = ["n", "user:11", "user:12"]
+        };
+        Assert.True(WiredNativeEditorProjection.TryCompile(50, descriptor, native, out var configuration));
+        Assert.True(WiredVariableFxSettings.TryDecode("wf_xtra_var_fx_progress", 50, configuration, score, null, out var binding, out _));
         var tracker = new WiredVariableFxTracker(module);
         var first = tracker.Update(viewer, frame, [binding!], [holder], _ => 0);
         Assert.True(first.InitializeAll);
@@ -71,7 +146,7 @@ public sealed class WiredVariableFxTests
         Assert.Equal("user:10", status.Key.VariableId);
         Assert.Equal(200, status.Max);
         Assert.Equal(25, status.Value);
-        Assert.Equal(new uint[] { 9473, 9475 }, WiredVariableFxComposer.ComposeBatch(first).Select(x => x.MessageId));
+        Assert.Equal(new uint[] { 3340, 1943 }, WiredVariableFxComposer.ComposeBatch(first).Select(x => x.MessageId));
         var retry = tracker.Update(viewer, frame, [binding!], [holder], _ => 0);
         Assert.Single(retry.Configs);
         Assert.Single(retry.Statuses); // Failed send was not acknowledged.
@@ -109,13 +184,13 @@ public sealed class WiredVariableFxTests
         var other = new WiredVariableHolder(WiredVariableTarget.User, 123, 9);
         var frame = new WiredVariableFrame(1, [holder, other]) { Trigger = [holder] };
         var executor = new WiredVariableExecutors(module, new FixedTimeProvider(DateTimeOffset.FromUnixTimeMilliseconds(2000)));
-        Assert.True(executor.Execute("wf_act_give_var", new() { IntParams = [0, 0, 10, 0, 0], Text = "10" }, frame));
-        Assert.True(executor.Execute("wf_act_change_var_val", new() { IntParams = [0, 1, 0, 5, 0, 0, 0, 0, 0], Text = "custom:10\t\t" }, frame));
+        Assert.True(executor.Execute("wf_act_give_var", WiredNativeTestSupport.Scalar("wf_act_give_var", new() { IntParams = [0, 0, 10, 0, 0], Text = "10" }), frame));
+        Assert.True(executor.Execute("wf_act_change_var_val", WiredNativeTestSupport.Scalar("wf_act_change_var_val", new() { IntParams = [0, 1, 0, 5, 0, 0, 0, 0, 0], Text = "custom:10\t\t" }), frame));
         Assert.Equal(15, module.Read(new(WiredVariableTarget.User, "custom:10"), holder, frame)!.Value);
-        Assert.True(executor.Execute("wf_cnd_var_val_match", new() { IntParams = [0, 2, 0, 15, 0, 0, 0, 0, 0, 0], Text = "custom:10\t\t" }, frame));
+        Assert.True(executor.Execute("wf_cnd_var_val_match", WiredNativeTestSupport.Scalar("wf_cnd_var_val_match", new() { IntParams = [0, 2, 0, 15, 0, 0, 0, 0, 0, 0], Text = "custom:10\t\t" }), frame));
         frame.Selector.AddRange([holder, other]);
-        Assert.False(executor.Execute("wf_cnd_has_var", new() { IntParams = [0, 200, 0, 0], Text = "custom:10" }, frame));
-        Assert.True(executor.Execute("wf_cnd_has_var", new() { IntParams = [0, 200, 0, 1], Text = "custom:10" }, frame));
+        Assert.False(executor.Execute("wf_cnd_has_var", WiredNativeTestSupport.Scalar("wf_cnd_has_var", new() { IntParams = [0, 200, 0, 0], Text = "custom:10" }), frame));
+        Assert.True(executor.Execute("wf_cnd_has_var", WiredNativeTestSupport.Scalar("wf_cnd_has_var", new() { IntParams = [0, 200, 0, 1], Text = "custom:10" }), frame));
     }
 
     private sealed class Directory : IWiredVariableDirectory

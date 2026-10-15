@@ -124,7 +124,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     public bool Mutate(WiredVariableReference reference, WiredVariableHolder holder, WiredVariableMutation mutation,
-        int value, WiredVariableFrame frame, int origin = 0) => Change(reference, holder, mutation, _ => value, frame, origin);
+        long value, WiredVariableFrame frame, int origin = 0) => Change(reference, holder, mutation, _ => value, frame, origin);
 
     /// <summary>Arithmetic reads and writes the same locked value, including through references in another room.</summary>
     // Test seam: runs between target resolution and admission, with the attempt number.
@@ -133,18 +133,18 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     private const int AdmissionAttempts = 3;
 
     public bool Change(WiredVariableReference reference, WiredVariableHolder holder, WiredVariableMutation mutation,
-        Func<int, int> transform, WiredVariableFrame frame, int origin = 0)
+        Func<long, long> transform, WiredVariableFrame frame, int origin = 0, bool notifyUnchanged = false)
     {
         // v2 gate writes are admitted to the per-gate sequencer; everything else runs the original path.
         if (builtins?.SequencesGateWrites == true) {
-            return ChangeAdmitted(reference, holder, mutation, transform, frame, origin, admittedTarget: null);
+            return ChangeAdmitted(reference, holder, mutation, transform, frame, origin, notifyUnchanged, admittedTarget: null);
         }
 
         Action? completed;
         bool changed;
 
         lock (_gate) {
-            changed = ChangeLocked(reference, holder, mutation, transform, frame, origin, out completed);
+            changed = ChangeLocked(reference, holder, mutation, transform, frame, origin, notifyUnchanged, out completed);
         }
 
         if (changed) {
@@ -158,7 +158,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     // across it. The admitted target is then compared with the fresh authorized resolution under the lock: a fresh
     // write retries admission a few times, a replay (which carries its admitted target) refuses on any mismatch.
     private bool ChangeAdmitted(WiredVariableReference reference, WiredVariableHolder holder, WiredVariableMutation mutation,
-        Func<int, int> transform, WiredVariableFrame frame, int origin, WiredVariableReference? admittedTarget)
+        Func<long, long> transform, WiredVariableFrame frame, int origin, bool notifyUnchanged, WiredVariableReference? admittedTarget)
     {
         for (var attempt = 1; attempt <= (admittedTarget is null ? AdmissionAttempts : 1); attempt++) {
             var target = admittedTarget ?? WriteTarget(reference);
@@ -168,9 +168,24 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             IDisposable? scope = null;
 
             if (builtins != null) {
-                scope = builtins.Admit(target, holder, ref effective,
-                    replayed => () => ChangeAdmitted(reference, holder, mutation, replayed, frame, origin, target),
+                // Native gates admit bounded room state; custom variable arithmetic remains signed 64-bit.
+                Func<int, int> bounded = current =>
+                {
+                    var next = transform(current);
+
+                    return next is >= int.MinValue and <= int.MaxValue ? (int)next : current;
+                };
+                var supplied = bounded;
+                scope = builtins.Admit(target, holder, ref bounded,
+                    replayed => () => ChangeAdmitted(reference, holder, mutation,
+                        current => current is >= int.MinValue and <= int.MaxValue ? replayed((int)current) : current,
+                        frame, origin, notifyUnchanged, target),
                     () => admittedTarget is not null || WriteTarget(reference) == target, out admission);
+
+                if (!ReferenceEquals(supplied, bounded)) {
+                    var admitted = bounded;
+                    effective = current => current is >= int.MinValue and <= int.MaxValue ? admitted((int)current) : current;
+                }
             }
 
             // The admission, if any, is held until the completion callback has run.
@@ -185,7 +200,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
                 // A transform already evaluated against an old target is never reused or re-run.
                 var evaluated = !ReferenceEquals(effective, transform);
-                var changed = ChangeIfTargetHolds(reference, holder, mutation, effective, frame, origin, target,
+                var changed = ChangeIfTargetHolds(reference, holder, mutation, effective, frame, origin, notifyUnchanged, target,
                     retryable: admittedTarget is null && !evaluated);
 
                 if (changed is { } result) {
@@ -199,7 +214,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
     // Null when the target moved and a fresh write may retry admission.
     private bool? ChangeIfTargetHolds(WiredVariableReference reference, WiredVariableHolder holder, WiredVariableMutation mutation,
-        Func<int, int> transform, WiredVariableFrame frame, int origin, WiredVariableReference target, bool retryable)
+        Func<long, long> transform, WiredVariableFrame frame, int origin, bool notifyUnchanged, WiredVariableReference target, bool retryable)
     {
         Action? completed;
         bool changed;
@@ -209,7 +224,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return retryable ? null : false;
             }
 
-            changed = ChangeLocked(reference, holder, mutation, transform, frame, origin, out completed);
+            changed = ChangeLocked(reference, holder, mutation, transform, frame, origin, notifyUnchanged, out completed);
         }
 
         if (changed) {
@@ -220,7 +235,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     private bool ChangeLocked(WiredVariableReference reference, WiredVariableHolder holder, WiredVariableMutation mutation,
-        Func<int, int> transform, WiredVariableFrame frame, int origin, out Action? completed)
+        Func<long, long> transform, WiredVariableFrame frame, int origin, bool notifyUnchanged, out Action? completed)
     {
         completed = null;
 
@@ -236,7 +251,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
         if (resolved.Builtin is { } builtin) {
             if (mutation != WiredVariableMutation.Set) {
-                return false;
+                // Presence flags are not numeric operands; their dedicated source owns creation/removal.
+                // The supported area flags cannot be intercepted according to the native variable metadata.
+                return builtins?.MutatePresence(builtin, holder, mutation, frame) == true;
             }
 
             var current = builtins?.Read(builtin, holder, frame);
@@ -247,13 +264,13 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
             var next = transform(current.Value);
 
-            if (next == current.Value || !builtins!.Write(builtin, holder, next, frame, out completed)) {
+            if (next is < int.MinValue or > int.MaxValue || next == current.Value || !builtins!.Write(builtin, holder, (int)next, frame, out completed)) {
                 return false;
             }
 
             var after = builtins.Read(builtin, holder, frame);
 
-            if (after is not null && after.Value != current.Value) {
+            if (after is not null && after.Value != current.Value && builtins.CanInterceptChanges(builtin, holder, frame)) {
                 _changes.Enqueue(new(roomId, new(0, holder.Target, holder.StorageId), WiredVariableChangeKind.Updated,
                     current, after, holder.EntityId, frame.Depth + 1)
                 { Origin = origin, InternalKey = RoomWiredBuiltinVariables.Normalize(builtin.Token) });
@@ -277,7 +294,20 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         }
 
         var key = Key(definition, holder);
-        var write = Store(definition, frame).Mutate(key, previous =>
+        var store = Store(definition, frame);
+
+        if (definition.Target == WiredVariableTarget.Context) {
+            if (mutation == WiredVariableMutation.Give && frame.Context.Read(key) != null) {
+                return false;
+            }
+
+            if (mutation is WiredVariableMutation.Set or WiredVariableMutation.Remove) {
+                store = frame.Context.Owner(key) ?? frame.Context;
+            }
+        }
+
+        var acceptedUnchangedWrite = false;
+        var write = store.Mutate(key, previous =>
         {
             var current = previous ?? (definition.Target == WiredVariableTarget.Global ? new(definition.InitialValue, null, null) : null);
 
@@ -295,36 +325,40 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
             var next = definition.HasValue ? transform(current?.Value ?? 0) : 1;
 
-            if (mutation == WiredVariableMutation.Set && previous is not null && previous.Value == next) {
+            if (mutation == WiredVariableMutation.Set && !notifyUnchanged && previous is not null && previous.Value == next) {
                 return previous;
             }
 
+            acceptedUnchangedWrite = notifyUnchanged && mutation == WiredVariableMutation.Set;
             var now = clock.GetUtcNow();
 
-            return new(next, previous is null ? now : previous.CreatedAt, now);
+            return new(next, previous is null || mutation == WiredVariableMutation.Replace ? now : previous.CreatedAt, now);
         }, definition.IsDurable ? resolved.Authorization : null);
 
-        if (!write.Changed) {
+        if (!write.Changed && !acceptedUnchangedWrite) {
             return false;
         }
 
         _changes.Enqueue(new(definition.RoomId, key, write.After is null ? WiredVariableChangeKind.Removed :
             write.Before is null ? WiredVariableChangeKind.Created : WiredVariableChangeKind.Updated,
             write.Before, write.After, holder.EntityId, frame.Depth + 1)
-        { Origin = origin });
+        { Origin = origin, Shared = definition.Availability == WiredVariableAvailability.Shared });
 
         return true;
     }
 
     /// <summary>Publish a complete speech match into one firing only after every destination is authorized.</summary>
-    public bool CaptureContextValues(IReadOnlyDictionary<uint, int> values, WiredVariableFrame frame)
+    public bool CaptureContextValues(IReadOnlyDictionary<uint, int> values, WiredVariableFrame frame) =>
+        CaptureContextValues(values.ToDictionary(pair => pair.Key, pair => (long)pair.Value), frame);
+
+    public bool CaptureContextValues(IReadOnlyDictionary<uint, long> values, WiredVariableFrame frame)
     {
         lock (_gate) {
             if (frame.RoomId != roomId || frame.Depth >= 32 || values.Count > 8) {
                 return false;
             }
 
-            var destinations = new List<(WiredVariableDefinition Definition, int Value)>();
+            var destinations = new List<(WiredVariableDefinition Definition, long Value)>();
 
             foreach (var (id, value) in values) {
                 var resolved = Resolve(new(WiredVariableTarget.Context, $"custom:{id}"), true);
@@ -375,7 +409,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     /// <summary>Editor assignment reports acceptance, including an unchanged value; rejected authorization returns false.</summary>
-    public bool SaveGlobalValue(uint definitionId, int value)
+    public bool SaveGlobalValue(uint definitionId, long value)
     {
         lock (_gate) {
             var resolved = Resolve(new(WiredVariableTarget.Global, $"custom:{definitionId}"), true);
@@ -402,6 +436,17 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             }
 
             return true;
+        }
+    }
+
+    /// <summary>
+    /// A change another room made to a variable that lives here (through its reference): the room's own triggers hear of it as one
+    /// from another room. The holder was named by the other room's index, so the caller says which unit it is here.
+    /// </summary>
+    internal void EnqueueForeign(WiredVariableChange change)
+    {
+        lock (_gate) {
+            _changes.Enqueue(change with { Origin = 3 });
         }
     }
 
@@ -497,6 +542,51 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         }
     }
 
+    // Native catalog resolution uses one directory for both authorization paths and only frozen derivation inputs.
+    internal IReadOnlyList<WiredNativeEndpoint>? DescribeNativeDefinitions(
+        IReadOnlyList<WiredVariableDefinition> captured, IReadOnlyDictionary<WiredVariableReference, WiredVariableDerivation> derivations,
+        IReadOnlyList<WiredVariableDefinition> derivedDefinitions)
+    {
+        lock (_gate) {
+            var authority = new ReadDirectory(directory);
+            var result = new List<WiredNativeEndpoint>();
+
+            foreach (var local in captured.Take(4096)) {
+                var stored = authority.Find(local.ItemId);
+
+                if (stored is null || stored.RoomId != roomId) {
+                    continue;
+                }
+
+                var reference = new WiredVariableReference(stored.Target, stored.Token);
+                var read = Resolve(reference, false, authority, derivations);
+
+                if (read is null) {
+                    continue;
+                }
+
+                if (stored != local) {
+                    return null;
+                }
+
+                var write = Resolve(reference, true, authority, derivations);
+                var readOnly = read.Authorization?.Lineage.Any(value => value.Link?.ReadOnly == true) == true;
+                result.Add(new(new(local, NativeHasValue(read), readOnly) { IsBuiltin = read.Builtin is not null },
+                    read.Definition, read.Builtin, write is not null, read.Convert is not null));
+            }
+
+            foreach (var local in derivedDefinitions) {
+                var read = Resolve(new(local.Target, local.Token), false, authority, derivations);
+
+                if (read is not null) {
+                    result.Add(new(new(local, true, true) { IsDerived = true }, read.Definition, read.Builtin, false, true));
+                }
+            }
+
+            return result;
+        }
+    }
+
     public WiredVariableHolderPage ReadHolderPage(uint definitionId, int page, int size, int sort,
         IReadOnlyCollection<long>? holderFilter = null, IReadOnlyDictionary<long, string>? names = null)
     {
@@ -527,7 +617,18 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     private bool HasValue(Resolved resolved) => resolved.Definition?.HasValue
         ?? (resolved.Builtin is { } builtin && builtins?.HasValue(builtin) == true);
 
-    private WiredVariableReference WriteTarget(WiredVariableReference reference)
+    private static bool NativeHasValue(Resolved resolved) => resolved.Definition?.HasValue
+        ?? (resolved.Builtin is { } builtin && RoomWiredBuiltinVariables.HasNumericValue(builtin));
+
+    /// <summary>Whether the variable holds a number, as opposed to only existing (and carrying timestamps).</summary>
+    internal bool CarriesValue(WiredVariableReference reference)
+    {
+        lock (_gate) {
+            return Resolve(reference, false) is { } resolved && NativeHasValue(resolved);
+        }
+    }
+
+    internal WiredVariableReference WriteTarget(WiredVariableReference reference)
     {
         lock (_gate) {
             return WriteTargetLocked(reference);
@@ -540,18 +641,19 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             ? resolved.Builtin ?? new(reference.Target, resolved.Definition!.Token)
             : reference;
 
-    private Resolved? Resolve(WiredVariableReference reference, bool writing, IWiredVariableDirectory? readDirectory = null)
+    private Resolved? Resolve(WiredVariableReference reference, bool writing, IWiredVariableDirectory? readDirectory = null,
+        IReadOnlyDictionary<WiredVariableReference, WiredVariableDerivation>? frozenDerivations = null)
     {
         var authority = readDirectory ?? directory;
 
-        if (derive?.Invoke(reference) is { } derived) {
+        if ((frozenDerivations is null ? derive?.Invoke(reference) : frozenDerivations.GetValueOrDefault(reference)) is { } derived) {
             if (writing || derived.Source == reference) {
                 return null;
             }
 
-            var source = Resolve(derived.Source, false, authority);
+            var source = Resolve(derived.Source, false, authority, frozenDerivations);
 
-            return source is null || derived.RequiresValue && !HasValue(source)
+            return source is null || derived.RequiresValue && !(frozenDerivations is null ? HasValue(source) : NativeHasValue(source))
                 || derived.RequiresTimestamps && source.Definition is null ? null : source with { Convert = derived.Convert };
         }
 
@@ -611,6 +713,34 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             reference = link.Source;
         }
     }
+
+    /// <summary>
+    /// Resolves a native catalog id to the current local reference. The id must parse to this target and name a definition
+    /// the room's authority resolves now; anything else (foreign, deleted, retargeted) resolves to nothing.
+    /// </summary>
+    public bool TryResolveCatalogId(string catalogId, WiredVariableTarget expected, out WiredVariableReference reference)
+    {
+        reference = new(expected, "");
+
+        if (!WiredVariableDescription.TryParseCatalogId(catalogId, out var target, out var token) || target != expected) {
+            return false;
+        }
+
+        var candidate = new WiredVariableReference(target, token);
+
+        lock (_gate) {
+            if (Resolve(candidate, false) is null) {
+                return false;
+            }
+        }
+
+        reference = candidate;
+
+        return true;
+    }
+
+    /// <summary>The shared variables this room's owner offers from their other rooms, in directory order.</summary>
+    public IReadOnlyList<WiredSharedVariable> ListShared() => directory.GetRoomOwner(roomId) is { } owner ? directory.ListShared(owner, roomId) : [];
 
     public static bool TryDefinitionId(string token, out uint id) =>
         uint.TryParse(token.StartsWith("custom:", StringComparison.Ordinal) ? token[7..] : token,

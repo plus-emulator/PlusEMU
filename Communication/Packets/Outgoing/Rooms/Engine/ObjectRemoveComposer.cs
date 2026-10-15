@@ -24,5 +24,6 @@ public class ObjectRemoveComposer : IServerPacket
         packet.WriteBoolean(false);
         packet.WriteInteger(_userId);
         packet.WriteInteger(0);
+        packet.WriteBoolean(false);
     }
 }

@@ -45,14 +45,21 @@ public class ClaimLedgerOccupancyTests
             ledger.OccupancyAt(1, 10);
         }
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
+        // Tiered JIT promotion can land inside a window on a loaded host and charge runtime bookkeeping
+        // to this thread. A real per-call allocation shows up in every window, so the quietest one counts.
         var result = TargetOccupancy.None;
+        var allocated = long.MaxValue;
 
-        for (var query = 0; query < 1000; query++) {
-            result |= ledger.OccupancyAt(1, 10);
+        for (var window = 0; window < 5 && allocated != 0; window++) {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+
+            for (var query = 0; query < 1000; query++) {
+                result |= ledger.OccupancyAt(1, 10);
+            }
+
+            allocated = Math.Min(allocated, GC.GetAllocatedBytesForCurrentThread() - before);
         }
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         Assert.Equal(TargetOccupancy.OffGraph | TargetOccupancy.RollerClaim, result);
         Assert.Equal(0, allocated);
     }

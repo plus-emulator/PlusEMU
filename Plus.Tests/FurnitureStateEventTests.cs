@@ -27,6 +27,20 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
+    public void UsingAWiredChestOnlyOpensItAndRaisesNoStateChange()
+    {
+        // The use answers WiredChestOpen; the chest's state is not the user's to change (AIR shows no stuff_state trigger).
+        var chest = Furni(31, InteractionType.WiredChestFurni, WiredBoxType.None);
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, chest, 3, 3, 0, true, false, false));
+        WatchState(chest);
+        Viewer(0, 0);
+
+        UseItem(chest);
+
+        Assert.Equal(0, StateLines().Used);
+    }
+
+    [Fact]
     public void ManualChangeIsReportedEvenWhenTheUseStackTogglesItBack()
     {
         var lamp = Toggle(30);

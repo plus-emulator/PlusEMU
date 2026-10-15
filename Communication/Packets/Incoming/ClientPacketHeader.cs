@@ -445,23 +445,22 @@ public static class ClientPacketHeader
     public const uint WiredUserVariablesRequest64Event = 10113;
     public const uint WiredVariableHoldersRequest64Event = 10114;
     public const uint WiredVariableHoldersPage64Event = 10115;
-    public const uint ChestOpenEvent = 9327;
-    public const uint ChestCloseEvent = 9339;
-    public const uint ChestStartDepositEvent = 9324;
-    public const uint ChestDepositInventoryItemEvent = 9325;
-    public const uint ChestWithdrawAllEvent = 9326;
-    public const uint ChestWithdrawFurniEvent = 9320;
-    public const uint ChestWithdrawCoinsEvent = 9314;
-    public const uint ChestDepositCoinsEvent = 9313;
-    public const uint ChestSaveOptionsEvent = 9338;
-    public const uint ChestSavePreferencesEvent = 9315;
-    public const uint ChestEnableWiredEvent = 9345;
-    public const uint ChestSaveNotificationsEvent = 9316;
-    public const uint WiredChestOfferItemsEvent = 9335;
-    public const uint WiredChestAcceptEvent = 9336;
-    public const uint WiredChestCancelEvent = 1898; // class_3259, WiredTradeCancel (new 1474)
-    public const uint ChestUpgradeEvent = 9317;
-    public const uint WiredChestLockEvent = 9329;
+    // Wired chests and wired trades. Ids are WIN63-202610121709 (registry class_2049) for the WIN63-202610131318-860371703
+    // classes named; see reviews/chest-protocol-map.md.
+    public const uint ChestOpenEvent = 1595; // package_95.class_2544 (new 1457)
+    public const uint ChestCloseEvent = 1154; // package_95.class_2979 (new 3568)
+    public const uint ChestStartDepositEvent = 3268; // package_95.class_3668 (new 3947)
+    public const uint ChestWithdrawAllEvent = 57; // package_95.class_3881 (new 2074)
+    public const uint ChestWithdrawFurniEvent = 715; // package_95.class_2388 (new 3992)
+    public const uint ChestWithdrawCoinsEvent = 3731; // package_95.class_3305 (new 1840)
+    public const uint ChestSaveOptionsEvent = 1211; // package_95.class_3275 (new 1786)
+    public const uint ChestSavePreferencesEvent = 3274; // package_95.class_3094 (new 3680)
+    public const uint ChestSaveNotificationsEvent = 3937; // package_95.class_2747 (new 2402)
+    public const uint WiredChestOfferItemsEvent = 1774; // package_186.class_2956 (new 1287)
+    public const uint WiredChestAcceptEvent = 609; // package_186.class_3394 (new 2276)
+    public const uint WiredChestCancelEvent = 1898; // package_186.class_3259 (new 1474)
+    public const uint ChestUpgradeEvent = 2964; // package_95.class_3721 (new 1940)
+    public const uint WiredChestLockEvent = 1323; // package_95.class_3508 (new 540)
 
     // October wired boxes (r88). Ids are the WIN63-202610121709 equivalents of the WIN63-202610131318-860371703 classes named.
     public const uint WiredWebApiKeyRequestEvent = 752; // class_2618 (new 2515)

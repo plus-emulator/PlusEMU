@@ -424,16 +424,21 @@ public static class ServerPacketHeader
     public const uint WiredUserVariablesData64Composer = 9480;
     public const uint WiredVariableHolders64Composer = 9481;
     public const uint WiredVariableHoldersPage64Composer = 9482;
-    public const uint WiredChestContentsComposer = 9312;
-    public const uint WiredChestFurniChunkComposer = 9322;
-    public const uint WiredChestTradeOpenComposer = 9331;
-    public const uint WiredChestTradeItemsComposer = 9332;
-    public const uint WiredChestTradeCancelledComposer = 9333;
-    public const uint WiredChestTradeCompletedComposer = 9334;
-    public const uint WiredChestRewardComposer = 9346;
-    public const uint WiredChestUpgradeComposer = 9335;
-    public const uint WiredChestSettingsAckComposer = 9347;
-    public const uint WiredChestLockComposer = 9329;
+    // Wired chests and wired transactions. Ids are WIN63-202610121709 (registry class_2049) for the
+    // WIN63-202610131318-860371703 classes named; see reviews/chest-protocol-map.md.
+    public const uint WiredChestOpenComposer = 3966; // package_112.class_3066 (new 3327)
+    public const uint WiredChestSettingsUpdatedComposer = 2159; // package_112.class_2436 (new 1541)
+    public const uint WiredChestUpgradeComposer = 1373; // package_112.class_3153 (new 3362)
+    public const uint WiredChestCoinsComposer = 988; // package_112.class_3799 (new 419)
+    public const uint WiredChestFurniChunkComposer = 44; // package_112.class_2610 (new 1688)
+    public const uint WiredChestFurniUpdateComposer = 518; // package_112.class_3289 (new 2725)
+    public const uint WiredTransactionFailComposer = 1360; // package_196.class_3447 (new 518)
+    public const uint WiredTransactionSuccessComposer = 125; // package_196.class_3152 (new 3394)
+    public const uint WiredTradeErrorComposer = 503; // package_192.class_3890 (new 147)
+    public const uint WiredChestTradeOpenComposer = 84; // package_192.class_3295 (new 1959)
+    public const uint WiredChestTradeItemsComposer = 705; // package_192.class_3020 (new 3900)
+    public const uint WiredChestTradeCancelledComposer = 2553; // package_192.class_3825 (new 2320)
+    public const uint WiredChestTradeCompletedComposer = 1501; // package_192.class_3864 (new 555)
 
     // October wired boxes (r88). Ids are the WIN63-202610121709 equivalents of the WIN63-202610131318-860371703 classes named.
     public const uint WiredFurniTransparencyComposer = 3710; // class_3390 (new 2321)

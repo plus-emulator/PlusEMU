@@ -12,36 +12,50 @@ public static class WiredNativeContractWire
     {
         var id = packet.ReadUInt();
         var kind = packet.ReadShort();
-        if (kind is < 0 or > 2) throw new InvalidDataException("Invalid contract kind.");
+        if (kind is < 0 or > 2)
+            throw new InvalidDataException("Invalid contract kind.");
         WiredChestNode[][]? payment = null;
         if (packet.ReadBool()) {
             var count = packet.ReadInt();
-            if (count is < 0 or > 3) throw new InvalidDataException("Invalid contract alternatives.");
+            if (count is < 0 or > 3)
+                throw new InvalidDataException("Invalid contract alternatives.");
             payment = new WiredChestNode[count][];
-            for (var i = 0; i < count; i++) payment[i] = ReadRule(packet);
+            for (var i = 0; i < count; i++)
+                payment[i] = ReadRule(packet);
         }
         var reward = packet.ReadBool() ? ReadRule(packet) : null;
         var result = new WiredChestContract { Id = id, Kind = (WiredContractKind)kind, Payment = payment, Reward = reward };
-        if (result.Kind == WiredContractKind.Payment) result = result with {
-            PaymentMode = packet.ReadShort(), ReceiveText = packet.ReadString(), Layout = packet.ReadString()
-        };
-        if (result.Kind == WiredContractKind.Reward) result = result with {
-            RewardCategory = packet.ReadShort(), ShowDialog = packet.ReadBool(), RewardText = packet.ReadString()
-        };
+        if (result.Kind == WiredContractKind.Payment)
+            result = result with
+            {
+                PaymentMode = packet.ReadShort(),
+                ReceiveText = packet.ReadString(),
+                Layout = packet.ReadString()
+            };
+        if (result.Kind == WiredContractKind.Reward)
+            result = result with
+            {
+                RewardCategory = packet.ReadShort(),
+                ShowDialog = packet.ReadBool(),
+                RewardText = packet.ReadString()
+            };
         return result;
     }
 
     private static WiredChestNode[] ReadRule(IIncomingPacket packet)
     {
         var count = packet.ReadInt();
-        if (count is < 0 or > 5) throw new InvalidDataException("Invalid contract nodes.");
+        if (count is < 0 or > 5)
+            throw new InvalidDataException("Invalid contract nodes.");
         var nodes = new WiredChestNode[count];
         for (var i = 0; i < count; i++) {
             var type = packet.ReadByte();
-            if (type is not (0 or 1)) throw new InvalidDataException("Invalid contract node kind.");
+            if (type is not (0 or 1))
+                throw new InvalidDataException("Invalid contract node kind.");
             var amount = packet.ReadInt();
             WiredChestItemType? itemType = type == 1 ? new(packet.ReadBool(), packet.ReadInt(), packet.ReadString()) : null;
-            if (itemType is { PosterId.Length: > 20 }) throw new InvalidDataException("Invalid poster id.");
+            if (itemType is { PosterId.Length: > 20 })
+                throw new InvalidDataException("Invalid poster id.");
             nodes[i] = new(amount, itemType);
         }
         return nodes;
@@ -54,10 +68,12 @@ public static class WiredNativeContractWire
         packet.WriteBool(contract.Payment != null);
         if (contract.Payment != null) {
             packet.WriteInt(contract.Payment.Length);
-            foreach (var rule in contract.Payment) WriteRule(packet, rule);
+            foreach (var rule in contract.Payment)
+                WriteRule(packet, rule);
         }
         packet.WriteBool(contract.Reward != null);
-        if (contract.Reward != null) WriteRule(packet, contract.Reward);
+        if (contract.Reward != null)
+            WriteRule(packet, contract.Reward);
         if (contract.Kind == WiredContractKind.Payment) {
             packet.WriteShort((short)contract.PaymentMode);
             packet.WriteString(contract.ReceiveText);
@@ -116,7 +132,8 @@ public static class WiredNativeContractEditor
 
     public static void Open(Room room, GameClient client, uint id)
     {
-        if (Find(room, client, id, false) != null) client.Send(new WiredContractOpenComposer(id));
+        if (Find(room, client, id, false) != null)
+            client.Send(new WiredContractOpenComposer(id));
     }
 
     public static void Contents(WiredChestRoom module, Room room, GameClient client, uint id)
@@ -127,7 +144,8 @@ public static class WiredNativeContractEditor
 
     public static void Save(WiredChestRoom module, Room room, GameClient client, WiredChestContract contract, IItemDataManager definitions)
     {
-        if (Find(room, client, contract.Id, true) is not { } item) return;
+        if (Find(room, client, contract.Id, true) is not { } item)
+            return;
         var valid = contract.Kind == WiredChestFurniture.ContractKind(item.Definition)
             && (contract.Kind != WiredContractKind.Payment || contract.Reward == null)
             && (contract.Kind != WiredContractKind.Reward || contract.Payment == null)

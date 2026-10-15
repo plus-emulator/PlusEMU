@@ -36,6 +36,7 @@ jobs:
               -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "out/$rid"
             mkdir -p "out/$rid/Database"
             cp Database/FreshInstall.sql "out/$rid/Database/"
+            cp -r Database/Migrations "out/$rid/Database/"
           done
 
       - name: Package

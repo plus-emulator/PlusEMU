@@ -29,7 +29,7 @@ Every push to `master` publishes self-contained builds on [GitHub Releases](http
 | `plusemu-linux-arm64.tar.gz` | Linux ARM64 |
 | `plusemu-win-x64.zip` | Windows x64 |
 
-Each archive contains the single-file executable, `Config/` and `Database/FreshInstall.sql`. `SHA256SUMS` is attached to every release.
+Each archive contains the single-file executable, `Config/`, `Database/FreshInstall.sql` and `Database/Migrations/`. `SHA256SUMS` is attached to every release.
 
 ### Option 2: build from source
 
@@ -45,13 +45,12 @@ Some integration tests read a database connection string from an environment var
 ### Database
 
 1. Create an empty database (default name `plus`, utf8mb4).
-2. Import `Database/FreshInstall.sql` (schema plus game content such as catalogue, furniture and achievements; no users or rooms).
-3. Apply the files in `Database/Migrations/` in numeric order that are newer than your database. `FreshInstall.sql` is regenerated from a fully migrated database from time to time, so it can lag behind the newest migrations. Release archives ship only `FreshInstall.sql`; take the migrations from the repository.
+2. Import `Database/FreshInstall.sql` (schema plus game content such as catalogue, furniture and achievements; no users or rooms). It already contains every migration in `Database/Migrations/`; `scripts/build-fresh-install-sql.sh` regenerates it from a fully migrated database whenever a migration is added.
+3. When upgrading an existing database instead, apply the files in `Database/Migrations/` that are newer than your database, in numeric order (for example `mysql -u root -p plus < Database/Migrations/81_WiredOctoberBoxes.sql`).
 
 ```sh
 mysql -u root -p -e "CREATE DATABASE plus CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 mysql -u root -p plus < Database/FreshInstall.sql
-mysql -u root -p plus < Database/Migrations/81_WiredOctoberBoxes.sql   # and any other pending migrations, in order
 ```
 
 ### Configuration

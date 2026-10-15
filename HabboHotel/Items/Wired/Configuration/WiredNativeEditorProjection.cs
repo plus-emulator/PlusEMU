@@ -108,6 +108,79 @@ public static class WiredNativeEditorProjection
             ? "wiredfurni.error.invalid_furni_source" : null;
     }
 
+    /// <summary>
+    /// The frame as the hotel sends it. move_rotate and match_to_sshot end with a hotel-owned int that is 1 until the first save
+    /// and 0 after it, whatever was saved (r92k r92h-hidden-ints, r92l r92l-sshot-hidden: [0,0,1] / [0,0,0,0,1] initially, every
+    /// reopen ...,0). A saved match_to_sshot frame carries its snapshot as text, one "id,state,rotation,x,y,altitude" entry per
+    /// furni with N for each part the saved options do not restore (r92l r92l-sshot-hidden: [0,0,0,0] gives "id,N,N,N,N,N",
+    /// [1,1,1,1] gives "id,0,0,8,2,0"). The AIR editors read only the leading ints and never send these back.
+    /// </summary>
+    public static WiredNativeEditorConfiguration HotelFrame(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native)
+    {
+        var name = descriptor.CanonicalName;
+
+        if (name is not ("wf_act_move_rotate" or "wf_act_match_to_sshot") || !Supports(name)) {
+            return native;
+        }
+
+        var defaults = Metadata(name).OwnedDefaults;
+        var fresh = native.PrimaryItems.IsEmpty && native.SavedState.Snapshots.IsEmpty && native.OwnedIntParams.SequenceEqual(defaults);
+        var frame = native with { OwnedIntParams = [.. native.OwnedIntParams, fresh ? 1 : 0] };
+
+        if (name == "wf_act_match_to_sshot" && !fresh && native.OwnedIntParams.Length == 4) {
+            var p = native.OwnedIntParams;
+            string Part(bool kept, string value) => kept ? value : "N";
+            frame = frame with
+            {
+                Text = string.Join(';', native.SavedState.Snapshots.Where(entry => entry.Wall == null).OrderByDescending(entry => entry.ItemId)
+                    .Select(entry => string.Join(',', entry.ItemId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        Part(p[0] == 1, entry.State.Length == 0 ? "0" : entry.State),
+                        Part(p[1] == 1, entry.Rotation.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        Part(p[2] == 1, entry.X.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        Part(p[2] == 1, entry.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        Part(p[3] == 1, entry.Z.ToString(System.Globalization.CultureInfo.InvariantCulture)))))
+            };
+        }
+
+        return frame;
+    }
+
+    public const string SourceCountKey = "wiredfurni.error.invalid_furni_source_count";
+
+    /// <summary>
+    /// Furni source slots as the hotel stores them. Observed (AIR WIN63-202610131318-860371703): r92g r92-signals saved send_signal
+    /// with one furni source [100] and the hotel stored [100, 200], the second slot keeping its default; r92f r92-valid-moves saved
+    /// a furni source on a box without furni slots and got this count key (frame 20502).
+    /// </summary>
+    public static bool TryFillSourceSlots(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
+        out WiredNativeEditorConfiguration filled, out string? error)
+    {
+        filled = native;
+        error = null;
+
+        if (!Supports(descriptor.CanonicalName) || native.FurniSourceTypes.IsDefault) {
+            return true;
+        }
+
+        var metadata = Metadata(descriptor.CanonicalName);
+        var slots = metadata.FurniAllowed.Length;
+        var given = native.FurniSourceTypes.Length;
+
+        if (metadata.LegacySlots > 0 && given == metadata.LegacySlots || given == slots) {
+            return true;
+        }
+
+        if (given > slots) {
+            error = SourceCountKey;
+
+            return false;
+        }
+
+        filled = native with { FurniSourceTypes = [.. native.FurniSourceTypes, .. metadata.FurniDefaults.Skip(given).Take(slots - given)] };
+
+        return filled.FurniSourceTypes.Length == slots;
+    }
+
     public static bool TryCompile(uint itemId, WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
         out WiredConfiguration runtime)
     {

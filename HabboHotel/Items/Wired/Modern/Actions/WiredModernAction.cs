@@ -572,9 +572,12 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             return false;
                         }
 
-                        var random = WiredRoomOperations.Offset(Random.Shared.Next(4) * 2);
+                        // Observed r92j r92h-chase-retry (AIR WIN63-202610131318-860371703): from the corner (4,1), with north and west
+                        // void, the out-of-range marker moved on all six trials (east 3, south 3), so a blocked random direction is retried.
+                        int[] headings = [0, 2, 4, 6];
+                        Random.Shared.Shuffle(headings);
 
-                        return Move(item.GetX + random.X, item.GetY + random.Y);
+                        return headings.Select(WiredRoomOperations.Offset).Any(step => Move(item.GetX + step.X, item.GetY + step.Y));
                     }
 
                     if (Math.Abs(nearest.X - item.GetX) + Math.Abs(nearest.Y - item.GetY) <= 1) {
@@ -721,6 +724,51 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 return changed;
             default:
                 throw new InvalidOperationException("Action has no executor.");
+        }
+    }
+
+    /// <summary>
+    /// The furniture steps this box would take now, for wf_cnd_valid_moves: rel_mov, a fixed move_rotate direction and
+    /// move_to_dir's current heading. Random and target moves are not planned.
+    /// </summary>
+    internal IEnumerable<(Item Item, int X, int Y, int Rotation, bool Step)> PlannedMoves(WiredRuntimeContext context)
+    {
+        var config = context.ConfigurationOf(this);
+        var name = Descriptor.CanonicalName;
+
+        if (name is not ("wf_act_rel_mov" or "wf_act_move_rotate" or "wf_act_move_to_dir")) {
+            yield break;
+        }
+
+        var slot = name == "wf_act_move_to_dir" ? "items" : "movers";
+
+        if (!config.FurniSources.ContainsKey(slot)) {
+            yield break;
+        }
+
+        foreach (var item in Furni(context, config, slot).Where(item => item.IsFloorItem)) {
+            switch (name) {
+                case "wf_act_rel_mov":
+                    var dx = (Param(config, 0, 1) == 0 ? -1 : 1) * Param(config, 1);
+                    var dy = (Param(config, 2, 1) == 0 ? -1 : 1) * Param(config, 3);
+
+                    if (dx != 0 || dy != 0) {
+                        yield return (item, item.GetX + dx, item.GetY + dy, item.Rotation, false);
+                    }
+
+                    break;
+                case "wf_act_move_rotate":
+                    if (Param(config, 0, -1) is >= 0 and <= 7 and var direction) {
+                        var offset = WiredRoomOperations.Offset(direction);
+                        yield return (item, item.GetX + offset.X, item.GetY + offset.Y, item.Rotation, true);
+                    }
+
+                    break;
+                default:
+                    var heading = WiredRoomOperations.Offset(_directions.Heading(item, Param(config, 0)));
+                    yield return (item, item.GetX + heading.X, item.GetY + heading.Y, item.Rotation, false);
+                    break;
+            }
         }
     }
 

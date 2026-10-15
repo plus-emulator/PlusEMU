@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-public class ModernWiredBehaviorTests
+public partial class ModernWiredBehaviorTests
 {
     [Fact]
     public void RelativeMovementDecodesTheExistingFiveEditorFields()

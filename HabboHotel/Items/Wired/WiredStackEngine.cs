@@ -481,6 +481,10 @@ internal sealed partial class WiredStackEngine
                 };
                 _schedule.Enqueue(scheduled, (due, scheduled.PriorityHeight, scheduled.PriorityId,
                     scheduled.PriorityFiring, scheduled.PriorityOrder));
+                // A scheduled action flashes with its stack's firing, also when it runs later. Observed (AIR WIN63-202610131318-860371703):
+                // r92g r92-exec-order delay-w1 flashed the 500 ms action at +147 ms with its message at +648 ms; r92i r92h-f2f occupied-w1
+                // flashed the delay-2 furni_to_furni at the firing.
+                Flash(step.Box);
             }
         }
 
@@ -642,7 +646,9 @@ internal sealed partial class WiredStackEngine
                             _executingAction = previousAction;
                         }
 
-                        Flash(action);
+                        if (scheduled.Callback != null) {
+                            Flash(action);
+                        }
                     }
                     finally {
                         if (--chain.Remaining == 0) {

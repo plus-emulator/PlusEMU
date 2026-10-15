@@ -92,6 +92,8 @@ public sealed class WiredDirectionalActions
     /// Flee: away along the larger axis, then the other axis; when neither leads away (a wall behind), a sidestep to the
     /// mover's right of the away heading, then its left.
     /// Observed r92f r92-flee: (4,2) with the owner on (4,4) moves to (4,1); (4,1) against the north wall moves to (5,1) on both fires.
+    /// Observed r92j r92h-flee-sides: from (8,1) with the owner straight south on (8,3) and both sides free, the sidestep went east
+    /// (the right of the away heading) on all six trials.
     /// </summary>
     public static IEnumerable<Point> FleeSteps(Item item, RoomUser user)
     {

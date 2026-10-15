@@ -324,22 +324,17 @@ internal sealed partial class WiredStackEngine
     {
         var context = firing.Context;
         var stack = firing.Stack;
+        var selectors = new List<IWiredItem>();
 
         foreach (var selector in stack.OfType<IWiredContextualSelector>().Where(RuntimeSupported)) {
             var passed = false;
-            yield return new(() =>
-            {
-                passed = InvokeRuntime(selector, context, () => { ComposeSelector(context, selector.Select(context)); return true; });
-
-                // A selector flashes each time its stack runs it.
-                if (passed) {
-                    Flash(selector);
-                }
-            });
+            yield return new(() => passed = InvokeRuntime(selector, context, () => { ComposeSelector(context, selector.Select(context)); return true; }));
 
             if (!passed) {
                 yield break;
             }
+
+            selectors.Add(selector);
         }
 
         context.Selected = new(
@@ -361,6 +356,18 @@ internal sealed partial class WiredStackEngine
         }
 
         ApplySelectorLimits(context);
+
+        // The final trigger gate runs once the selector pool is ready and before any condition. Observed r92k r92k-trigger-gate
+        // (AIR WIN63-202610131318-860371703): a walks-on trigger whose selector pool rejected the walked tile flashed nothing in
+        // neg-w1..w3 (no trigger, selector or always-true condition), while the accepting control pos-w1/w2 flashed all of them.
+        if (trigger != null && !trigger.CanTrigger(context)) {
+            yield break;
+        }
+
+        // A selector flashes each time its stack runs past the gate.
+        foreach (var selector in selectors) {
+            Flash(selector);
+        }
 
         var conditions = called ? [] : stack.Where(x => IsKind(x, InteractionType.WiredCondition)).ToArray();
         var scoped = called ? null : context.Policy.Addons.Conditions;
@@ -410,9 +417,8 @@ internal sealed partial class WiredStackEngine
 
         firing.ConditionsPassed = conditionsPassed;
 
-        // Selector sources are ready now. Turbo evaluates conditions before this final trigger gate.
-        if (trigger != null && !trigger.CanTrigger(context)) {
-            yield break;
+        if (trigger is Modern.Triggers.WiredModernTrigger modern) {
+            modern.AfterConditions(context);
         }
 
         if (context.Event.Kind == WiredEventKind.Variable) {

@@ -35,15 +35,21 @@ public sealed class WiredEvidenceRegistryTests
 
     private static readonly string[] ExpectedTurbo =
     [
-        "wf_act_bot_clothes", "wf_act_bot_follow_avatar", "wf_act_bot_give_handitem",
-        "wf_act_bot_move", "wf_act_bot_talk", "wf_act_bot_talk_to_avatar",
-        "wf_act_bot_teleport", "wf_act_give_currency",
-        "wf_act_give_furni", "wf_act_give_reward", "wf_act_move_furni_to",
-        "wf_act_mute_triggerer", "wf_act_place_furni", "wf_act_remove_furni",
-        "wf_cnd_chest_has_item_type", "wf_cnd_chest_has_items", "wf_trg_at_time_long",
-        "wf_trg_bot_reached_avtr", "wf_trg_bot_reached_stf", "wf_trg_transaction_complete",
-        "wf_var_reference", "wf_xtra_scan_chest_furni_by_type", "wf_xtra_var_time_util"
+        "wf_act_give_reward", "wf_act_move_furni_to", "wf_act_mute_triggerer",
+        "wf_trg_at_time_long", "wf_trg_transaction_complete", "wf_xtra_var_time_util"
     ];
+
+    [Fact]
+    public void R93LiveProbesMovedTheBotChestPlaceAndReferenceCardsToObserved()
+    {
+        Assert.Equal(17, WiredEvidenceRegistry.ObservedR93.Count);
+        Assert.All(WiredEvidenceRegistry.ObservedR93, pair =>
+        {
+            Assert.Equal(WiredEvidenceLevel.Observed, pair.Value.Level);
+            Assert.Equal(WiredEvidenceLevel.Observed, WiredEvidenceRegistry.LevelOf(pair.Key));
+            Assert.False(WiredEvidenceRegistry.TurboReferenceOnly.ContainsKey(pair.Key));
+        });
+    }
 
     [Fact]
     public void ExactlyTheTurboReferenceOnlyCardsAreMarked()

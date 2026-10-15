@@ -74,53 +74,19 @@ public static class WiredEvidenceRegistry
 
     public static readonly FrozenDictionary<string, WiredEvidence> TurboReferenceOnly = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
     {
-        // AS3 actiontypes/class_4125.as; turbo WiredActionBotTeleport.cs
-        ["wf_act_bot_teleport"] = new(WiredEvidenceLevel.TurboReferenceOnly, Actions + "class_4125.as", BotCards),
-        // AS3 actiontypes/class_4124.as; turbo WiredActionBotMove.cs
-        ["wf_act_bot_move"] = new(WiredEvidenceLevel.TurboReferenceOnly, Actions + "class_4124.as", BotCards),
-        // AS3 actiontypes/class_4250.as; turbo WiredActionBotTalk.cs
-        ["wf_act_bot_talk"] = new(WiredEvidenceLevel.TurboReferenceOnly, Actions + "class_4250.as", BotCards),
-        // AS3 actiontypes/class_4184.as; turbo WiredActionBotTalkToAvatar.cs
-        ["wf_act_bot_talk_to_avatar"] = new(WiredEvidenceLevel.TurboReferenceOnly, Actions + "class_4184.as", BotCards),
-        // AS3 actiontypes/class_4307.as; turbo WiredActionBotFollowAvatar.cs
-        ["wf_act_bot_follow_avatar"] = new(WiredEvidenceLevel.TurboReferenceOnly, Actions + "class_4307.as", BotCards),
-        // AS3 actiontypes/class_4170.as; turbo WiredActionBotChangeFigure.cs
-        ["wf_act_bot_clothes"] = new(WiredEvidenceLevel.TurboReferenceOnly, Actions + "class_4170.as", BotCards),
-        // AS3 actiontypes/class_4031.as; turbo WiredActionBotGiveHandItem.cs
-        ["wf_act_bot_give_handitem"] = new(WiredEvidenceLevel.TurboReferenceOnly, Actions + "class_4031.as", BotCards),
-        // AS3 triggerconfs/class_4024.as; turbo WiredTriggerBotReachesHabbo.cs
-        ["wf_trg_bot_reached_avtr"] = new(WiredEvidenceLevel.TurboReferenceOnly, Triggers + "class_4024.as", BotCards),
-        // AS3 triggerconfs/class_4251.as; turbo WiredTriggerBotReachesItem.cs
-        ["wf_trg_bot_reached_stf"] = new(WiredEvidenceLevel.TurboReferenceOnly, Triggers + "class_4251.as", BotCards),
         // AS3 triggerconfs/TriggerOnce.as (code 3, shared with wf_trg_at_given_time); turbo WiredTriggerAtTimeLong.cs
         ["wf_trg_at_time_long"] = new(WiredEvidenceLevel.TurboReferenceOnly, Triggers + "TriggerOnce.as", AirEditorCards),
         // AS3 actiontypes/class_4162.as; turbo WiredActionMoveFurniTo.cs
         ["wf_act_move_furni_to"] = new(WiredEvidenceLevel.TurboReferenceOnly, Actions + "class_4162.as", AirEditorCards),
         // AS3 triggerconfs/class_4226.as; turbo WiredTriggerTransactionCompleted.cs
         ["wf_trg_transaction_complete"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/triggerconfs/class_4226.as", RemainderCards),
-        // AS3 conditions/chests/ChestHasAmount.as; turbo WiredConditionChestHasItems.cs
-        ["wf_cnd_chest_has_items"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/conditions/chests/ChestHasAmount.as", RemainderCards),
-        // AS3 conditions/chests/class_4163.as; turbo WiredConditionChestHasItemTypes.cs
-        ["wf_cnd_chest_has_item_type"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/conditions/chests/class_4163.as", RemainderCards),
-        // AS3 addons/chests/class_3960.as; turbo WiredAddonChestItemTypeScanner.cs
-        ["wf_xtra_scan_chest_furni_by_type"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/chests/class_3960.as", RemainderCards),
-        // AS3 actiontypes/chests/class_4174.as; turbo WiredActionGiveCurrencyFromChest.cs
-        ["wf_act_give_currency"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/chests/class_4174.as", RemainderCards),
-        // AS3 actiontypes/chests/class_4292.as; turbo WiredActionGiveFurniFromChest.cs
-        ["wf_act_give_furni"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/chests/class_4292.as", RemainderCards),
         // AS3 actiontypes/class_4199.as; turbo WiredActionGiveReward.cs
         ["wf_act_give_reward"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4199.as", RemainderCards),
         // AS3 actiontypes/class_4046.as; turbo WiredActionMuteTriggerer.cs
         ["wf_act_mute_triggerer"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4046.as", RemainderCards),
         // AS3 actiontypes/class_3972.as; turbo WiredActionPlaceFurni.cs
-        // Its save refusal of an owned tradeable template is observed (r93a, WiredPlaceTemplatePolicy); the placement runtime is not.
-        ["wf_act_place_furni"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_3972.as", RemainderCards),
-        // AS3 actiontypes/class_4089.as; turbo WiredActionRemoveFurni.cs
-        ["wf_act_remove_furni"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4089.as", RemainderCards),
         // AS3 addons/VariableTimeUtilAddon.as; turbo WiredAddonVariableTimeUtil.cs
-        ["wf_xtra_var_time_util"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/VariableTimeUtilAddon.as", RemainderCards),
-        // AS3 variables/ReferenceVariable.as; turbo WiredVariableReference.cs
-        ["wf_var_reference"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/variables/ReferenceVariable.as", RemainderCards)
+        ["wf_xtra_var_time_util"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/VariableTimeUtilAddon.as", RemainderCards)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     private const string R90 = "reviews/october-batch-r90-r90-";
@@ -182,6 +148,29 @@ public static class WiredEvidenceRegistry
         ["wf_trg_walks_on_furni"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92k-trigger-gate", R92Observed),
         ["wf_slc_furni_picks"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92k-trigger-gate", R92Observed),
         ["wf_cnd_has_furni_on"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92k-trigger-gate", R92Observed)
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+    private const string R93Observed = "Observed on hhus (r93a-r93k owned-item, bot, chest and room-2 probes, WIN63-202610131318-860371703); facts in reviews/r93-plan.md:";
+
+    public static readonly FrozenDictionary<string, WiredEvidence> ObservedR93 = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["wf_act_bot_teleport"] = new(WiredEvidenceLevel.Observed, Actions + "class_4125.as", R93Observed + " r93h r93-p3-bots"),
+        ["wf_act_bot_move"] = new(WiredEvidenceLevel.Observed, Actions + "class_4124.as", R93Observed + " r93h r93-p3-bots"),
+        ["wf_act_bot_talk"] = new(WiredEvidenceLevel.Observed, Actions + "class_4250.as", R93Observed + " r93h r93-p3-bots"),
+        ["wf_act_bot_talk_to_avatar"] = new(WiredEvidenceLevel.Observed, Actions + "class_4184.as", R93Observed + " r93h r93-p3-bots"),
+        ["wf_act_bot_follow_avatar"] = new(WiredEvidenceLevel.Observed, Actions + "class_4307.as", R93Observed + " r93h r93-p3-bots"),
+        ["wf_act_bot_clothes"] = new(WiredEvidenceLevel.Observed, Actions + "class_4170.as", R93Observed + " r93i r93i-bot-clothes"),
+        ["wf_act_bot_give_handitem"] = new(WiredEvidenceLevel.Observed, Actions + "class_4031.as", R93Observed + " r93h r93-p3-bots"),
+        ["wf_trg_bot_reached_avtr"] = new(WiredEvidenceLevel.Observed, Triggers + "class_4024.as", R93Observed + " r93h r93-p3-bots"),
+        ["wf_trg_bot_reached_stf"] = new(WiredEvidenceLevel.Observed, Triggers + "class_4251.as", R93Observed + " r93h r93-p3-bots"),
+        ["wf_cnd_chest_has_items"] = new(WiredEvidenceLevel.Observed, "wired_setup/conditions/chests/ChestHasAmount.as", R93Observed + " r93h r93-p2-chests-empty"),
+        ["wf_cnd_chest_has_item_type"] = new(WiredEvidenceLevel.Observed, "wired_setup/conditions/chests/class_4163.as", R93Observed + " r93h r93-p2-chests-empty"),
+        ["wf_xtra_scan_chest_furni_by_type"] = new(WiredEvidenceLevel.Observed, "wired_setup/addons/chests/class_3960.as", R93Observed + " r93h r93-p2-chests-empty"),
+        ["wf_act_give_currency"] = new(WiredEvidenceLevel.Observed, "wired_setup/actiontypes/chests/class_4174.as", R93Observed + " r93j r93-p2-chests-empty (Wired chests)"),
+        ["wf_act_give_furni"] = new(WiredEvidenceLevel.Observed, "wired_setup/actiontypes/chests/class_4292.as", R93Observed + " r93j r93-p2-chests-empty (Wired chests)"),
+        ["wf_act_place_furni"] = new(WiredEvidenceLevel.Observed, "wired_setup/actiontypes/class_3972.as", R93Observed + " r93a/r93b r93-p4-place-remove"),
+        ["wf_act_remove_furni"] = new(WiredEvidenceLevel.Observed, "wired_setup/actiontypes/class_4089.as", R93Observed + " r93b r93-p4-place-remove-bc"),
+        ["wf_var_reference"] = new(WiredEvidenceLevel.Observed, "wired_setup/variables/ReferenceVariable.as", R93Observed + " r93k r93-var-reference (editor, save, reopen)")
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     public static WiredEvidenceLevel LevelOf(string name) => AirSourceOnly.ContainsKey(name) ? WiredEvidenceLevel.AirSourceOnly

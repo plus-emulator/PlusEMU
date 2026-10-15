@@ -254,12 +254,64 @@ public class WiredClickPacketHookTests
     }
 
     [Fact]
-    public async Task TileClickFiresForValidFrozenActorAndInvisibleTileItemWithoutWalking()
+    public async Task MoveAvatarFiresSelectedTileClickForValidFrozenActorWithoutWalking()
     {
-        var world = new World("wf_trg_click_tile", [0]);
+        var world = new World("wf_trg_click_tile", [100]);
+        AddOwnedInvisibleTile(world);
+        world.AddBox("wf_trg_click_tile", [100], [5]);
+        world.Actor.CanWalk = false;
+        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(world.Client, Packet(1, 1));
+        world.FlushWired();
+        Assert.Equal((0, 0), (world.Actor.X, world.Actor.Y));
+        var evt = Assert.Single(world.Capture.Events);
+        Assert.Equal(WiredEventKind.ClickTile, evt.Kind);
+        Assert.Same(world.Actor, evt.Actor);
+        Assert.Equal((1, 1), (evt.X, evt.Y));
+        world.Capture.Events.Clear();
+        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(world.Client, Packet(-1, 1));
+        world.FlushWired();
+        Assert.Empty(world.Capture.Events);
+    }
+
+    // R53 official sample: AIR [owned invisible tile id, 0] did not activate selected-input native 21.
+    // Category 10 remains the legacy furnishing-click grammar; neither route emits a tile click.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(10)]
+    public async Task InvisibleFurnitureClickDoesNotFireSelectedTileButStillFiresSelectedFurniture(int second)
+    {
+        var world = new World("wf_trg_click_tile", [100]);
+        var item = AddOwnedInvisibleTile(world);
+        world.AddBox("wf_trg_click_tile", [100], [item.Id]);
+        world.Actor.CanWalk = false;
+        var click = new ClickFurniEvent(new FurnitureUseService(null!, null!));
+        await click.Parse(world.Room, world.Client, Packet((int)item.Id, second));
+        world.FlushWired();
+        Assert.Empty(world.Capture.Events);
+
+        // Positive control: the selected tile stack is active through the independent movement route.
+        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(world.Client, Packet(item.GetX, item.GetY));
+        world.FlushWired();
+        Assert.Equal(WiredEventKind.ClickTile, Assert.Single(world.Capture.Events).Kind);
+        Assert.Equal((0, 0), (world.Actor.X, world.Actor.Y));
+        world.Capture.Events.Clear();
+
+        world.AddBox("wf_trg_click_furni", [100], [item.Id]);
+        await click.Parse(world.Room, world.Client, Packet((int)item.Id, second));
+        world.FlushWired();
+        var evt = Assert.Single(world.Capture.Events);
+        Assert.Equal(WiredEventKind.ClickFurni, evt.Kind);
+        Assert.Same(world.Actor, evt.Actor);
+        Assert.Same(item, evt.EventItem);
+    }
+
+    private static Item AddOwnedInvisibleTile(World world)
+    {
         var item = new Item
         {
             Id = 5,
+            OwnerId = (uint)world.Actor.HabboId,
+            RoomId = world.Room.Id,
             GetX = 1,
             GetY = 1,
             Definition = new()
@@ -270,23 +322,10 @@ public class WiredClickPacketHookTests
                 InteractionName = "room_invisible_click_tile"
             }
         };
-        world.Items("_floorItems").TryAdd(5, item);
-        // The background click trigger's selected furnishing defines its tile.
-        world.AddBox("wf_trg_click_tile", [100], [5]);
-        world.Actor.CanWalk = false;
-        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(world.Client, Packet(1, 1));
-        world.FlushWired();
-        Assert.Equal((0, 0), (world.Actor.X, world.Actor.Y));
-        Assert.Equal((1, 1), (Assert.Single(world.Capture.Events).X, world.Capture.Events[0].Y));
-        world.Capture.Events.Clear();
-        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(world.Client, Packet(-1, 1));
-        world.FlushWired();
-        Assert.Empty(world.Capture.Events);
-        await new ClickFurniEvent(new FurnitureUseService(null!, null!)).Parse(world.Room, world.Client, Packet(5, 10));
-        world.FlushWired();
-        Assert.All(world.Capture.Events, evt => Assert.Equal(WiredEventKind.ClickTile, evt.Kind));
-        Assert.NotEmpty(world.Capture.Events);
-        Assert.Same(item, world.Capture.Events[0].EventItem);
+        Assert.True(world.Items("_floorItems").TryAdd(item.Id, item));
+        typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, world.Room);
+
+        return item;
     }
 
     [Fact]

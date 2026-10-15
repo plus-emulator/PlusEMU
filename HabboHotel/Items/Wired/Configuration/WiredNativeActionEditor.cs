@@ -43,7 +43,7 @@ internal static class WiredNativeActionEditor
         ["wf_act_give_score_tm"] = Meta([], [], [], [], [5, 0, 1]),
         ["wf_act_chase"] = Meta([Furni], [], [100], [], []),
         ["wf_act_flee"] = Meta([Furni], [], [100], [], []),
-        ["wf_act_move_rotate_user"] = Meta([], [Users], [], [0], [-1, -1]),
+        ["wf_act_move_rotate_user"] = Meta([], [SignalUsers], [], [0], [-1, -1]),
         ["wf_act_rel_mov"] = Meta([Furni], [], [100], [], [0, 0]),
         ["wf_act_furni_to_furni"] = Meta([FurniAndSnapshot, FurniAndSnapshot], [], [100, 101], [], []),
         ["wf_act_furni_to_user"] = Meta([Furni], [MoveUsers], [100], [0], []),
@@ -59,7 +59,7 @@ internal static class WiredNativeActionEditor
         ["wf_act_neg_send_signal"] = Meta([SignalFurni, SignalFurni], [SignalUsers], [100, 200], [200], [0, 0]),
         ["wf_act_log"] = Meta([], [], [], [], [0]),
         ["wf_act_neg_log"] = Meta([], [], [], [], [0]),
-        ["wf_act_click_conf"] = Meta([], [Users], [], [0], [0, 0]),
+        ["wf_act_click_conf"] = Meta([], [SignalUsers], [], [0], [0, 0]),
         ["wf_act_teleport_to_room"] = Meta([Furni], [Users], [100], [0], [])
     };
 

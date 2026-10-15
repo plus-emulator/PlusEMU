@@ -62,8 +62,8 @@ public static class WiredItemConditions
     }
 
     /// <summary>
-    /// Each item needs a valid cardinal neighbour. Only the no-item case is observed (r92g r92-valid-moves: the hotel editor
-    /// has no furni source and the condition passed); a failing hotel case has not been seen, so this per-item rule is unverified.
+    /// Legacy rule for rows that still pick furniture: each item needs a valid cardinal neighbour. The hotel editor has no furni
+    /// source; the native condition checks the stack's own planned moves instead (WiredModernCondition, observed r92k r92h-vm-fail).
     /// </summary>
     public static bool ValidMoves(IEnumerable<Item> items, Func<Item, int, int, bool> canMove) =>
         WiredRoomOperations.Quantify(items.Select(item => Enumerable.Range(0, 4).Any(index =>

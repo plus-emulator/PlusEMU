@@ -288,8 +288,9 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     /// <summary>
     /// Resolves one execution's furniture steps together. Movers stacked on each other step as one unit, decided by its
     /// bottom item. Before a unit enters a tile, a still-pending unit there that would block it takes its own step first,
-    /// so a line follows its front or waits behind it in any order. Without step rules (wf_act_rel_mov) the unit lands on
-    /// stackable furniture like any non-step move.
+    /// so a line follows its front or waits behind it in any order. Without step rules (wf_act_rel_mov) the units move in the
+    /// movers' order and land on stackable furniture like any non-step move. Observed r92k r92h-rel-wall (AIR WIN63-202610131318-860371703):
+    /// a column picked m3, m2, m1 moving into the wall left m1, stacked m2 on m1 and m3 on m2 before m2 left (m3 kept z 1.0).
     /// </summary>
     public bool MoveTogether(WiredRuntimeContext context, IReadOnlyList<Item> movers, Func<Item, Func<int, int, int, bool>, bool> step,
         PassengerSnapshot? passengers = null, bool stepRules = true)
@@ -315,7 +316,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                          .SelectMany(move => WiredRoomOperations.Footprint(move.Item, move.X, move.Y, move.Rotation))
                          .SelectMany(point => context.Room.GetGameMap().GetCoordinatedItems(point)).Distinct().ToArray()) {
                 if (unitOf.TryGetValue(ahead, out var other) && pending.Contains(other)
-                    && (!stepRules || (collision?.BlocksFurni(ahead) ?? !ahead.Definition.Stackable))) {
+                    && stepRules && (collision?.BlocksFurni(ahead) ?? !ahead.Definition.Stackable)) {
                     Step(other);
                 }
             }

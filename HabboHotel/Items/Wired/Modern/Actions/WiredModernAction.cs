@@ -727,6 +727,51 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
     }
 
+    /// <summary>
+    /// The furniture steps this box would take now, for wf_cnd_valid_moves: rel_mov, a fixed move_rotate direction and
+    /// move_to_dir's current heading. Random and target moves are not planned.
+    /// </summary>
+    internal IEnumerable<(Item Item, int X, int Y, int Rotation, bool Step)> PlannedMoves(WiredRuntimeContext context)
+    {
+        var config = context.ConfigurationOf(this);
+        var name = Descriptor.CanonicalName;
+
+        if (name is not ("wf_act_rel_mov" or "wf_act_move_rotate" or "wf_act_move_to_dir")) {
+            yield break;
+        }
+
+        var slot = name == "wf_act_move_to_dir" ? "items" : "movers";
+
+        if (!config.FurniSources.ContainsKey(slot)) {
+            yield break;
+        }
+
+        foreach (var item in Furni(context, config, slot).Where(item => item.IsFloorItem)) {
+            switch (name) {
+                case "wf_act_rel_mov":
+                    var dx = (Param(config, 0, 1) == 0 ? -1 : 1) * Param(config, 1);
+                    var dy = (Param(config, 2, 1) == 0 ? -1 : 1) * Param(config, 3);
+
+                    if (dx != 0 || dy != 0) {
+                        yield return (item, item.GetX + dx, item.GetY + dy, item.Rotation, false);
+                    }
+
+                    break;
+                case "wf_act_move_rotate":
+                    if (Param(config, 0, -1) is >= 0 and <= 7 and var direction) {
+                        var offset = WiredRoomOperations.Offset(direction);
+                        yield return (item, item.GetX + offset.X, item.GetY + offset.Y, item.Rotation, true);
+                    }
+
+                    break;
+                default:
+                    var heading = WiredRoomOperations.Offset(_directions.Heading(item, Param(config, 0)));
+                    yield return (item, item.GetX + heading.X, item.GetY + heading.Y, item.Rotation, false);
+                    break;
+            }
+        }
+    }
+
     // Editor choice -> turn rule. Observed r92d r92-mtd-wall (mover heading north into the void): right 45/90 end east, left 45/90
     // west, back south, all in the same fire, and the new heading is kept on the next fire; wait stays.
     private static int HeadingTurnRule(int choice) => choice switch

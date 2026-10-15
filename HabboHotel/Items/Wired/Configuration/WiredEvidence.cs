@@ -171,13 +171,16 @@ public static class WiredEvidenceRegistry
         ["wf_act_move_rotate"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-move-rotate", R92Observed),
         ["wf_act_furni_to_user"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-user-moves", R92Observed),
         ["wf_act_move_rotate_user"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-user-moves", R92Observed),
-        ["wf_cnd_valid_moves"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-valid-moves", R92Observed),
+        ["wf_cnd_valid_moves"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92h-vm-fail", R92Observed),
         ["wf_act_call_stacks"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-signals", R92Observed),
         ["wf_xtra_exec_in_order"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-exec-order", R92Observed),
         ["wf_xtra_random"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-exec-order", R92Observed),
         ["wf_act_send_signal"] = new(WiredEvidenceLevel.Observed, R92 + "#r92i-r92h-signal-hop", R92Observed),
         ["wf_trg_recv_signal"] = new(WiredEvidenceLevel.Observed, R92 + "#r92i-r92h-signal-hop", R92Observed),
-        ["wf_act_furni_to_furni"] = new(WiredEvidenceLevel.Observed, R92 + "#r92i-r92h-f2f", R92Observed)
+        ["wf_act_furni_to_furni"] = new(WiredEvidenceLevel.Observed, R92 + "#r92i-r92h-f2f", R92Observed),
+        ["wf_trg_walks_on_furni"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92k-trigger-gate", R92Observed),
+        ["wf_slc_furni_picks"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92k-trigger-gate", R92Observed),
+        ["wf_cnd_has_furni_on"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92k-trigger-gate", R92Observed)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     public static WiredEvidenceLevel LevelOf(string name) => AirSourceOnly.ContainsKey(name) ? WiredEvidenceLevel.AirSourceOnly

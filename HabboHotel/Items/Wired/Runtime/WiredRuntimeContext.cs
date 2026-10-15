@@ -9,6 +9,7 @@ namespace Plus.HabboHotel.Items.Wired.Runtime;
 public sealed class WiredRuntimeContext
 {
     private readonly Dictionary<uint, WiredConfiguration> _configurations = [];
+    private List<IWiredItem> _stack = [];
     internal Dictionary<uint, Item> FurniIdentity { get; } = [];
     internal Dictionary<int, RoomUser> UserIdentity { get; } = [];
     public Room Room { get; }
@@ -74,6 +75,7 @@ public sealed class WiredRuntimeContext
 
         if (shareFiring) {
             _configurations = parent._configurations;
+            _stack = parent._stack;
             Policy = parent.Policy;
             SelectorPool = parent.SelectorPool;
             SelectorFurniOrder = parent.SelectorFurniOrder;
@@ -86,9 +88,14 @@ public sealed class WiredRuntimeContext
     public WiredConfiguration ConfigurationOf(IWiredConfiguredItem box) =>
         _configurations.TryGetValue(box.Item.Id, out var captured) ? captured : box.Configuration;
 
+    /// <summary>The boxes of the stack this firing runs, as captured with its configurations.</summary>
+    internal IReadOnlyList<IWiredItem> CapturedStack => _stack;
+
     internal void Capture(IEnumerable<IWiredItem> stack)
     {
-        foreach (var box in stack.OfType<IWiredConfiguredItem>()) {
+        _stack = [.. stack];
+
+        foreach (var box in _stack.OfType<IWiredConfiguredItem>()) {
             _configurations[box.Item.Id] = box.Configuration;
         }
     }

@@ -1151,11 +1151,10 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((directional ? 1 : 0, 1, directional && tileFirst ? 1.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
     }
 
+    // wf_act_rel_mov stacks in pick order at a wall instead (observed r92k r92h-rel-wall; see WiredActionPortParityTests.ObservedR92k).
     [Theory]
     [InlineData("wf_act_move_rotate", true)]
     [InlineData("wf_act_move_rotate", false)]
-    [InlineData("wf_act_rel_mov", true)]
-    [InlineData("wf_act_rel_mov", false)]
     public void LineOfStacksWaitsIntactAtAWallAndKeepsItsSpacingInFreeSpace(string name, bool frontFirst)
     {
         var (room, line) = StackLine(0, -1, frontFirst);

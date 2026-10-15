@@ -854,11 +854,22 @@ public class RoomUserManager
 
             hasViewer |= !user.IsBot && user.GetClient() != null;
 
+            // A wired move's "wf" status lasts one status update.
+            if (user.WiredMoveStatusSent) {
+                user.WiredMoveStatusSent = false;
+
+                if (user.HasStatus("wf")) {
+                    user.RemoveStatus("wf");
+                    user.UpdateNeeded = true;
+                }
+            }
+
             if (!user.UpdateNeeded) {
                 continue;
             }
 
             user.UpdateNeeded = false;
+            user.WiredMoveStatusSent = user.HasStatus("wf");
             users.Add(user);
         }
 

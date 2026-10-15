@@ -541,6 +541,11 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             }
         }
 
+        // An animated wired move shows "wf" on the avatar for one status update (r92m r92m-wf-status).
+        if (animate && !user.IsBot) {
+            user.MarkWiredMove();
+        }
+
         // A newer walk request takes precedence over restoring the route captured by this move.
         if (wasWalking && (!resumeThrough.HasValue || (user.Movement.Commands.Read()?.Sequence ?? 0) <= resumeThrough.Value)
             && (walkMode == 1 || walkMode == 0

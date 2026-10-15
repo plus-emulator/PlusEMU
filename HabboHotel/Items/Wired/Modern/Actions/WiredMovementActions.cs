@@ -199,11 +199,14 @@ public sealed class WiredMovementActions(Random? random = null)
                 // the single furni went to A, then C).
                 var dealt = configuration.Origin?.Native == null || configuration.FurniSources.GetValueOrDefault("movers") != WiredSources.Selector ? null
                     : Shuffled(configuration.Snapshots.Where(entry => entry.Wall == null).ToArray());
+                // Which furni shares a reused spot is random as well: r92m r92m-sshot-extra put the furni without an entry on A, C,
+                // B, B, C, C, B, B, A over three spots and B, A, A, A over two, and every spot was used each time.
+                var ranks = Shuffled(Enumerable.Range(0, movers.Count).ToArray());
                 var dealIndex = 0;
 
                 foreach (var item in movers) {
                     var snapshot = dealt is { Length: > 0 } && item.IsFloorItem
-                        ? dealt[dealIndex++ % dealt.Length]
+                        ? dealt[ranks[dealIndex++] % dealt.Length]
                         : configuration.Snapshots.FirstOrDefault(entry => entry.ItemId == item.Id);
 
                     if (snapshot == null) {

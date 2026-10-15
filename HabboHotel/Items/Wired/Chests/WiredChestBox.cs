@@ -56,7 +56,37 @@ public class WiredChestBox : WiredModernBox
             "wf_xtra_custom_contract" => p.Length == 10 && B(0) && B(1) && B(2) && p[3] is >= 1 and <= 100000 && T(4)
                 && B(5) && B(6) && B(7) && p[8] is >= 1 and <= 100000 && T(9),
             _ => false
-        } && proposed.Text.Length <= 200;
+        } && proposed.Text.Length <= 200 && GiveChestsAccepted(proposed, ref error);
+    }
+
+    // Observed r93h/r93j r93-p2-chests-empty (hhus, WIN63-202610131318): give_currency and give_furni refuse a picked chest that is not
+    // an upgraded Wired chest of their kind ("wiredfurni.error.require_coin_chests" / "require_furni_chests"); after the free Wired
+    // upgrade the same saves are accepted. The chest conditions and the scan add-on accept normal chests.
+    private bool GiveChestsAccepted(WiredConfiguration proposed, ref string error)
+    {
+        if (Descriptor.CanonicalName is not ("wf_act_give_currency" or "wf_act_give_furni")) {
+            return true;
+        }
+
+        var source = proposed.FurniSources.GetValueOrDefault("f0", 100);
+
+        if (source is not (100 or 101)) {
+            return true;
+        }
+
+        var coins = Descriptor.CanonicalName == "wf_act_give_currency";
+        var kind = coins ? WiredChestKind.Coins : WiredChestKind.Furni;
+
+        foreach (var id in source == 101 ? proposed.SecondarySelectedItems : proposed.SelectedItems) {
+            if (Instance.GetRoomItemHandler().GetItem(id) is not { } item || Chests.Read(item) is not { } chest
+                || chest.Kind != kind || !chest.Settings.WiredEnabled) {
+                error = coins ? "wiredfurni.error.require_coin_chests" : "wiredfurni.error.require_furni_chests";
+
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>The furniture a furni selection resolves to: the picked group its source names, or the live/selector set.</summary>
@@ -202,6 +232,17 @@ public sealed class WiredChestAction(Room room, Item item, WiredBoxDescriptor de
 
         var kind = Descriptor.CanonicalName == "wf_act_give_currency" ? WiredChestKind.Coins : WiredChestKind.Furni;
         var snapshots = Chests.Read(picked).Where(chest => chest.Kind == kind && chest.Usable).ToArray();
+
+        // Observed r93j r93-p2-chests-empty (hhus, WIN63-202610131318): a give from upgraded but locked (and empty) chests answers each
+        // triggering user with WiredTransactionFail reason 15 (pkts 96608, 97045) instead of failing silently.
+        if (snapshots.Length == 0) {
+            foreach (var actor in actors) {
+                Chests.Fail(actor, Item.Id, WiredChestFailure.NoOrLockedChests);
+            }
+
+            return false;
+        }
+
         var amount = c.IntParams[0] == 1 ? snapshots.Sum(chest => (long)chest.Amount) : Operand(context, c, 1, 2, 3, 0, 1, 1);
 
         if (snapshots.Length == 0 || amount is null or <= 0 or > int.MaxValue || c.IntParams[0] == 1 && actors.Length > 1) {

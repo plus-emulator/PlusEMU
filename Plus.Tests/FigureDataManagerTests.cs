@@ -56,4 +56,13 @@ public class FigureDataManagerTests
         Assert.Contains("mc-3360-66.", owned);
         Assert.Contains("ch-215-66.", Manager().ProcessFigure("hd-180-1.ch-215-66.lg-270-82", "M", [], 0));
     }
+
+    [Fact]
+    public void CanonicalFiguresFollowSetTypeOrderAndKeepMissingColoursEmpty()
+    {
+        // Observed r93h r93-p3-bots: Habbo stored the bot clothes figure in figuredata order and left "hr-100-" uncoloured.
+        var processed = Manager().ProcessFigureCanonical("hd-180-1.ch-210-66.lg-270-82.sh-290-80.hr-100-", "M", null!, 2);
+
+        Assert.Equal("hr-100.hd-180-1.ch-210-66.lg-270-82.sh-290-80.", processed);
+    }
 }

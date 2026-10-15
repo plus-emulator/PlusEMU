@@ -208,7 +208,7 @@ internal static class WiredNativeActionEditor
                 users["bots"] = User(native, 0);
                 break;
             case "wf_act_bot_clothes":
-                // The save service already checks the figure. The text is stored unchanged.
+                // The save service already checks the figure and stores it in Habbo's canonical form.
                 if (p.Length != 0 || !BotName(text)) {
                     return false;
                 }

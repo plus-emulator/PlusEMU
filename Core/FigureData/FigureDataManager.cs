@@ -96,6 +96,14 @@ public class FigureDataManager : IFigureDataManager, IStartable
         => node.Attributes?[name]?.Value ?? throw new XmlException($"Figure element '{node.Name}' is missing attribute '{name}'.");
 
     public string ProcessFigure(string figure, string gender, ICollection<ClothingParts>? clothingParts, int clubLevel)
+        => Process(figure, gender, clothingParts, clubLevel, false);
+
+    // Observed r93h r93-p3-bots (bot clothes reopen, pkt 3686): "hd-180-1.ch-210-66.lg-270-82.sh-290-80.hr-100-" was stored as
+    // "hr-100.hd-180-1.ch-210-66.lg-270-82.sh-290-80".
+    public string ProcessFigureCanonical(string figure, string gender, ICollection<ClothingParts>? clothingParts, int clubLevel)
+        => Process(figure, gender, clothingParts, clubLevel, true);
+
+    private string Process(string figure, string gender, ICollection<ClothingParts>? clothingParts, int clubLevel, bool canonical)
     {
         gender = gender.ToUpperInvariant();
         var rebuilt = new Dictionary<string, string>();
@@ -125,10 +133,16 @@ public class FigureDataManager : IFigureDataManager, IStartable
                 continue;
             }
 
+            var uncoloured = pieces.Length < 3 || pieces[2].Length == 0;
             var color = pieces.Length > 2 && int.TryParse(pieces[2], out var c) ? c : 0;
             var second = pieces.Length > 3 && int.TryParse(pieces[3], out var c2) ? c2 : 0;
             int ValidateColor(int value) => _palettes.TryGetValue(type.PalletId, out var palette) &&
                 palette.Colors.TryGetValue(value, out var entry) && entry.ClubLevel <= clubLevel ? value : GetRandomColor(type.PalletId, clubLevel);
+
+            if (canonical && uncoloured) {
+                rebuilt[pieces[0]] = $"{pieces[0]}-{set.Id}";
+                continue;
+            }
 
             if (set.Colorable) {
                 color = ValidateColor(color);
@@ -157,7 +171,9 @@ public class FigureDataManager : IFigureDataManager, IStartable
             }
         }
 
-        return string.Join('.', rebuilt.Values) + (rebuilt.Count > 0 ? "." : "");
+        var parts = canonical ? _setTypes.Keys.Where(rebuilt.ContainsKey).Select(type => rebuilt[type]) : rebuilt.Values;
+
+        return string.Join('.', parts) + (rebuilt.Count > 0 ? "." : "");
     }
 
     public Palette? GetPalette(int colorId)

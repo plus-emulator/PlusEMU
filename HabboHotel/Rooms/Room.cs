@@ -730,7 +730,7 @@ public class Room
         var snapshotFurniture = VisibleFloorItems.ToArray();
         session.Send(new ObjectsComposer(RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName)));
         Plus.HabboHotel.Items.AreaHide.AreaHideState.SendSnapshot(session, snapshotFurniture);
-        Plus.HabboHotel.Items.InvisibleFurniState.SendTo(session, this);
+        Plus.HabboHotel.Items.ConfigurationItemStates.SendTo(session, this);
         var snapshotWalls = GetRoomItemHandler().GetWall.ToArray();
         session.Send(new ItemsComposer(RoomFurnitureSnapshot.Capture(snapshotWalls, OwnerId, OwnerName)));
         _wiredComponent?.SnapshotEnqueued(session, snapshotFurniture.Concat(snapshotWalls), snapshotUsers);

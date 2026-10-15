@@ -299,6 +299,8 @@ internal sealed partial class WiredStackEngine
             var dispatch = new PendingDispatch(child.Event, child.Depth,
                 new([(antenna, antenna.MovementGeneration)], child, parent))
             { ResumeImmediately = true, Publication = parent.Publication };
+            // Observed r92i r92h-signal-hop hop-w1..w6 and r92-signals sig-w1..w3 (AIR WIN63-202610131318-860371703): receivers run in
+            // the sender's tick, after the sender stack's remaining actions, and two receivers on one antenna run in a varying order.
             SnapshotDispatch(dispatch);
 
             if (QueueFull(dispatch.Slots)) {

@@ -141,6 +141,9 @@ public sealed class WiredMovementActions(Random? random = null)
                 var uses = new int[destinations.Length];
                 var assignments = movers.Select(item => ReserveTarget(destinations, uses, item.Id)).ToArray();
 
+                // Observed r92i r92h-f2f (AIR WIN63-202610131318-860371703): a random target (T2, T2, T2, T1), two movers spread one per
+                // target, two movers on one target stack (z 1.0, 2.0), a stacked target is landed on top, and a target tile held by a user
+                // refuses the move.
                 // Assign before moving: every target gets a turn, including assignments whose move is blocked.
                 // Execute separately in random order because earlier moves change the stack for later ones.
                 foreach (var index in Shuffled(Enumerable.Range(0, movers.Count).ToArray())) {

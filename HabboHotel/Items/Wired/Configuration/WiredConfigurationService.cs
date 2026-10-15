@@ -124,6 +124,13 @@ public sealed class WiredConfigurationService(
             };
 
             var error = "Invalid native Wired settings.";
+
+            if (!WiredNativeEditorProjection.TryFillSourceSlots(descriptor, native, out native, out var countError)) {
+                session.Send(new WiredValidationErrorComposer(countError ?? error));
+
+                return;
+            }
+
             var compiled = WiredNativeEditorProjection.TryCompile(selectedItem.Id, descriptor, native, out var runtime);
 
             if (!compiled) {

@@ -103,7 +103,9 @@ public sealed partial class WiredRoomVariables
                     }
                 }
 
-                // Time Utilities parts are not catalogue variables on hhus (r84, r90); none are added.
+                // Time Utilities parts are not catalogue variables on hhus (r84, r90; r92i r92h-timeutil: four catalogue reads around saves,
+                // writes and 10 s, with every sub-variable bit set on user, furni and global parents, listed none while the lvlup
+                // sub-variable on the same user parent was listed); none are added.
 
                 void AddDerived(int sub, bool isTime, string key, bool requiresValue, bool requiresTimestamps,
                     Func<WiredVariableValue, WiredVariableValue?> read, WiredVariableReference? source = null)

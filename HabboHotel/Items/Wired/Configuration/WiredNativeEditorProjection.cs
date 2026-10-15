@@ -108,6 +108,42 @@ public static class WiredNativeEditorProjection
             ? "wiredfurni.error.invalid_furni_source" : null;
     }
 
+    public const string SourceCountKey = "wiredfurni.error.invalid_furni_source_count";
+
+    /// <summary>
+    /// Furni source slots as the hotel stores them. Observed (AIR WIN63-202610131318-860371703): r92g r92-signals saved send_signal
+    /// with one furni source [100] and the hotel stored [100, 200], the second slot keeping its default; r92f r92-valid-moves saved
+    /// a furni source on a box without furni slots and got this count key (frame 20502).
+    /// </summary>
+    public static bool TryFillSourceSlots(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
+        out WiredNativeEditorConfiguration filled, out string? error)
+    {
+        filled = native;
+        error = null;
+
+        if (!Supports(descriptor.CanonicalName) || native.FurniSourceTypes.IsDefault) {
+            return true;
+        }
+
+        var metadata = Metadata(descriptor.CanonicalName);
+        var slots = metadata.FurniAllowed.Length;
+        var given = native.FurniSourceTypes.Length;
+
+        if (metadata.LegacySlots > 0 && given == metadata.LegacySlots || given == slots) {
+            return true;
+        }
+
+        if (given > slots) {
+            error = SourceCountKey;
+
+            return false;
+        }
+
+        filled = native with { FurniSourceTypes = [.. native.FurniSourceTypes, .. metadata.FurniDefaults.Skip(given).Take(slots - given)] };
+
+        return filled.FurniSourceTypes.Length == slots;
+    }
+
     public static bool TryCompile(uint itemId, WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
         out WiredConfiguration runtime)
     {

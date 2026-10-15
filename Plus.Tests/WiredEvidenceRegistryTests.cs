@@ -109,7 +109,7 @@ public sealed class WiredEvidenceRegistryTests
     [Fact]
     public void R92ObservedMovementCardsAreNotListedAsUnobserved()
     {
-        Assert.Equal(19, WiredEvidenceRegistry.ObservedR92.Count);
+        Assert.Equal(22, WiredEvidenceRegistry.ObservedR92.Count);
         Assert.All(WiredEvidenceRegistry.ObservedR92, pair =>
         {
             Assert.True(WiredBoxRegistry.TryGet(pair.Key, out _), pair.Key);

@@ -52,8 +52,23 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
             return true;
         }
 
-        return WiredVariableDefinitions.TryDecode(Descriptor.CanonicalName, Item.Id, Instance.Id,
-            Instance.OwnerId > 0 ? (uint)Instance.OwnerId : 0, proposed, out _, out error);
+        if (!WiredVariableDefinitions.TryDecode(Descriptor.CanonicalName, Item.Id, Instance.Id,
+                Instance.OwnerId > 0 ? (uint)Instance.OwnerId : 0, proposed, out var definition, out error)) {
+            return false;
+        }
+
+        // Observed r92g r92-echo-capture (AIR WIN63-202610131318-860371703, frame 50108): an echo of another echo is refused with
+        // this key and no parameters.
+        if (definition?.Link is { } link && Descriptor.CanonicalName == "wf_var_echo"
+            && WiredVariableModule.TryDefinitionId(link.Source.Token, out var echoed)
+            && (echoed == Item.Id || Instance.GetWired() is { } wired && wired.TryGet(echoed, out var source)
+                && source is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_var_echo" })) {
+            error = WiredVariableDefinitions.EchoSelfReferenceKey;
+
+            return false;
+        }
+
+        return true;
     }
     public void ApplyConfiguration(WiredConfiguration validated)
     {

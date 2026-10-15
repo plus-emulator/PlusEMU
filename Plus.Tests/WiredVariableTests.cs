@@ -349,8 +349,9 @@ public sealed class WiredVariableTests
     [InlineData(1, int.MaxValue, 1, 2147483648L)]
     [InlineData(4, int.MinValue, -1, 2147483648L)]
     [InlineData(4, 42, 0, 42)]
-    [InlineData(40, 8, 3, 3)]
-    [InlineData(41, 8, 3, 8)]
+    // Observed r92g r92g-minmax: set minimum (40) floors, set maximum (41) caps.
+    [InlineData(40, 8, 3, 8)]
+    [InlineData(41, 8, 3, 3)]
     [InlineData(110, -1, 0, 64)]
     [InlineData(112, 16, 0, 4)]
     [InlineData(120, 16, 4, -1)]

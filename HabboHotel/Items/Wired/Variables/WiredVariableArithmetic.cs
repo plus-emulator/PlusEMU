@@ -23,8 +23,10 @@ public static class WiredVariableArithmetic
             4 => operand == 0 ? current : current == long.MinValue && operand == -1 ? long.MinValue : current / operand,
             5 => Power(current, operand),
             6 => operand == 0 ? current : current == long.MinValue && operand == -1 ? 0 : current % operand,
-            40 => Math.Min(current, operand),
-            41 => Math.Max(current, operand),
+            // Observed r92g r92g-minmax (AIR WIN63-202610131318-860371703, value 5): "set minimum" 40 is a floor (8 -> 8, 3 -> 5),
+            // "set maximum" 41 a cap (8 -> 5, 3 -> 3).
+            40 => Math.Max(current, operand),
+            41 => Math.Min(current, operand),
             50 => RandomValue(operand, random ?? Random.Shared),
             60 => current < 0 ? unchecked(-current) : current,
             100 => current & operand,

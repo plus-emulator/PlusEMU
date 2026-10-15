@@ -151,7 +151,7 @@ public static class WiredEvidenceRegistry
     public static readonly WiredEvidence LabelFurniR90 = new(WiredEvidenceLevel.Observed, R90 + "label-summary.json", R90Observed);
 
     private const string R92 = "reviews/r92-movement-facts.md";
-    private const string R92Observed = "Observed on hhus (r92d/r92e/r92f/r92g movement and variable probes, WIN63-202610131318-860371703); receipts per window in the facts file.";
+    private const string R92Observed = "Observed on hhus (r92d/r92e/r92f/r92g movement, ordering and variable probes, WIN63-202610131318-860371703); receipts per window in the facts file.";
 
     /// <summary>Movement cards (and the variable min/max operators) whose runtime the r92 probes decided; the source is the facts file.</summary>
     public static readonly FrozenDictionary<string, WiredEvidence> ObservedR92 = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
@@ -167,7 +167,14 @@ public static class WiredEvidenceRegistry
         ["wf_xtra_anim_time"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-move-addons", R92Observed),
         ["wf_xtra_mov_no_animation"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-move-addons", R92Observed),
         ["wf_xtra_mov_curve"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-move-addons", R92Observed),
-        ["wf_act_change_var_val"] = new(WiredEvidenceLevel.Observed, R92 + "#4-still-undecided", R92Observed)
+        ["wf_act_change_var_val"] = new(WiredEvidenceLevel.Observed, R92 + "#4-still-undecided", R92Observed),
+        ["wf_act_move_rotate"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-move-rotate", R92Observed),
+        ["wf_act_furni_to_user"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-user-moves", R92Observed),
+        ["wf_act_move_rotate_user"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-user-moves", R92Observed),
+        ["wf_cnd_valid_moves"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-valid-moves", R92Observed),
+        ["wf_act_call_stacks"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-signals", R92Observed),
+        ["wf_xtra_exec_in_order"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-exec-order", R92Observed),
+        ["wf_xtra_random"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-exec-order", R92Observed)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     public static WiredEvidenceLevel LevelOf(string name) => AirSourceOnly.ContainsKey(name) ? WiredEvidenceLevel.AirSourceOnly

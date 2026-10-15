@@ -30,9 +30,13 @@ internal sealed partial class WiredStackEngine
             return;
         }
 
-        pending.Triggers = _items.Values.OfType<IWiredContextualTrigger>()
+        // Observed r92g r92-signals two-w1..w3 (AIR WIN63-202610131318-860371703): two say stacks on one message ran stack two first
+        // once and stack one first twice, so stacks of one event are not run in id order. They run in a per-event random order.
+        var triggers = _items.Values.OfType<IWiredContextualTrigger>()
             .Where(trigger => RuntimeSupported(trigger) && trigger.Events.Contains(pending.Event.Kind))
             .OrderBy(trigger => trigger.Item.GetZ).ThenBy(trigger => trigger.Item.Id).ToArray();
+        _effectOrderRandom.Shuffle(triggers);
+        pending.Triggers = triggers;
         var legacyType = pending.Event.Kind switch
         {
             WiredEventKind.GameStart => WiredBoxType.TriggerGameStarts,
@@ -487,7 +491,10 @@ internal sealed partial class WiredStackEngine
                     Flash(addon);
                 }
 
-                Flash(firing.Source);
+                // Observed r92g r92-signals call-w1/w2: a called stack flashes its actions, not its own trigger.
+                if (!called) {
+                    Flash(firing.Source);
+                }
             }
         }, CostsExecution: false, TransfersReservation: true);
     }

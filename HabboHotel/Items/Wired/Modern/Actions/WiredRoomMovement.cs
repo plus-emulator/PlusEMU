@@ -151,6 +151,12 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var source = Furniture(item);
         var targetHeight = height ?? room.GetGameMap().Model.SqFloorHeight[Math.Clamp(x, 0, room.GetGameMap().Model.MapSizeX - 1), Math.Clamp(y, 0, room.GetGameMap().Model.MapSizeY - 1)];
         var options = WiredMovementPolicy.Resolve(policy, source, x, y, targetHeight, rotation, explicitHeight: height.HasValue);
+
+        // A turn on the spot is a plain ObjectUpdate. Observed r92g r92-move-rotate mrCw-w1/mrCcw-w1 (AIR WIN63-202610131318-860371703,
+        // frames 39269/39535): no WiredMovements for a rotation without a move.
+        if (x == item.GetX && y == item.GetY && height == null && rotation != item.Rotation) {
+            options = options with { Animate = false };
+        }
         var physics = policy.Physics;
         var collision = Collision(physics, step && (x != item.GetX || y != item.GetY), unit);
 

@@ -161,7 +161,7 @@ public static class WiredEvidenceRegistry
         ["wf_act_flee"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-flee", R92Observed),
         ["wf_act_rel_mov"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-move-addons", R92Observed),
         ["wf_act_user_to_furni"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-u2f-targets", R92Observed),
-        ["wf_act_match_to_sshot"] = new(WiredEvidenceLevel.Observed, R92 + "#r92e-r92-room14-def", R92Observed),
+        ["wf_act_match_to_sshot"] = new(WiredEvidenceLevel.Observed, R92 + "#r92l-match-to-snapshot", R92Observed),
         ["wf_xtra_mov_physics"] = new(WiredEvidenceLevel.Observed, R92 + "#r92e-r92-room14-def", R92Observed),
         ["wf_xtra_mov_carry_users"] = new(WiredEvidenceLevel.Observed, R92 + "#r92e-r92-room14-def", R92Observed),
         ["wf_xtra_anim_time"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-move-addons", R92Observed),

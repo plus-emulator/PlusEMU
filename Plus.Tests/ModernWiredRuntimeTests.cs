@@ -1460,7 +1460,8 @@ public partial class ModernWiredRuntimeTests
                 var published = f.Published;
                 var pending = f.SeedPending();
                 f.Client.Packets.Clear();
-                await f.Save(editor.Owned, editor.Primary, editor.Delay);
+                // The editor sends back its two fields, not the hotel-owned trailing int.
+                await f.Save(editor.Owned[..2], editor.Primary, editor.Delay);
                 f.AssertExplicitSave(saved, writes, published, pending);
                 Assert.Equal(saved.IntParams.AsEnumerable(), f.Action.Configuration.IntParams);
                 Assert.Equal(saved.SelectedItems.AsEnumerable(), f.Action.Configuration.SelectedItems);
@@ -1617,7 +1618,8 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(0, reply.Sprite);
         Assert.Equal(100u, reply.ItemId);
         Assert.Equal("", reply.Text);
-        Assert.Equal(owned, reply.Owned);
+        // move_rotate frames end with the hotel-owned int: 1 until the first save, then 0 (observed r92k r92h-hidden-ints).
+        Assert.Equal(direction ? owned : [.. owned, picks.Length == 0 && owned.SequenceEqual([0, 0]) ? 1 : 0], reply.Owned);
         Assert.Empty(reply.Variables);
         Assert.Equal(new[] { 100 }, reply.Furni);
         Assert.Empty(reply.Users);

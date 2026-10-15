@@ -192,9 +192,19 @@ public sealed class WiredMovementActions(Random? random = null)
             case "wf_act_match_to_sshot":
                 // A furni outside a one-furni snapshot takes that furni's state; nothing else of it was recorded.
                 var only = configuration.Snapshots.Length == 1 && configuration.Snapshots[0].Wall == null ? configuration.Snapshots[0] : null;
+                // Observed (AIR WIN63-202610131318-860371703): with the picked furni (source 100) each item returns to its own entry
+                // (r92l r92l-sshot-perm, 6/6 from aligned and shifted layouts). With a selector pool (source 200) the saved floor spots
+                // are dealt out in a random order, also to a selected furni without an entry, and reused when there are more furni
+                // than spots (r92l r92l-sshot-unequal four-w1..w3: a, b, c took a permutation of A, B, C and d shared one; one-w1/w2:
+                // the single furni went to A, then C).
+                var dealt = configuration.Origin?.Native == null || configuration.FurniSources.GetValueOrDefault("movers") != WiredSources.Selector ? null
+                    : Shuffled(configuration.Snapshots.Where(entry => entry.Wall == null).ToArray());
+                var dealIndex = 0;
 
                 foreach (var item in movers) {
-                    var snapshot = configuration.Snapshots.FirstOrDefault(entry => entry.ItemId == item.Id);
+                    var snapshot = dealt is { Length: > 0 } && item.IsFloorItem
+                        ? dealt[dealIndex++ % dealt.Length]
+                        : configuration.Snapshots.FirstOrDefault(entry => entry.ItemId == item.Id);
 
                     if (snapshot == null) {
                         if (only != null && Param(0) == 1 && item.IsFloorItem) {
@@ -222,10 +232,13 @@ public sealed class WiredMovementActions(Random? random = null)
                         continue;
                     }
 
-                    if (Param(0) == 1 && toggleState != null) {
+                    // A dealt spot of another furni carries no state for this one.
+                    var ownState = snapshot.ItemId == item.Id;
+
+                    if (Param(0) == 1 && ownState && toggleState != null) {
                         affected |= toggleState(item, current => string.Equals(current, snapshot.State, StringComparison.Ordinal) ? null : snapshot.State);
                     }
-                    else if (Param(0) == 1 && !string.Equals(item.LegacyDataString, snapshot.State, StringComparison.Ordinal)) {
+                    else if (Param(0) == 1 && ownState && !string.Equals(item.LegacyDataString, snapshot.State, StringComparison.Ordinal)) {
                         setState(item, snapshot.State);
                         affected = true;
                     }

@@ -23,7 +23,7 @@ public sealed class InteractorWiredChest : IFurniInteractor
     public void OnTrigger(GameClient? session, Item item, int request, bool hasRights)
     {
         if (session != null && item.GetRoom() is { } room) {
-            room.GetWired().WithChests(module => module.Open(session, item));
+            room.GetWired().WithChests(module => module.RequestOpen(session, item));
         }
     }
 }

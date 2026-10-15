@@ -100,7 +100,7 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         Assert.Equal(30, world.Store.Chests[chest.Id].Coins);
         Assert.False(player.User.IsTrading);
         Assert.Equal(0, player.Sent(ServerPacketHeader.WiredChestTradeOpenComposer));
-        Assert.Equal(1, player.Sent(ServerPacketHeader.WiredChestRewardComposer));
+        Assert.Equal(1, player.Sent(ServerPacketHeader.WiredTransactionSuccessComposer));
         Assert.Equal(new WiredChestFigures(1, 0, 0, 0, 20), Assert.Single(stacks.Completed.Runs).Transaction);
         Assert.Empty(stacks.Failed.Runs);
     }
@@ -120,7 +120,9 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         Assert.Equal(50, world.Store.Chests[chest.Id].Coins);
         Assert.Equal((int)WiredChestFailure.FundsGone, Assert.Single(stacks.Failed.Runs).Code);
         Assert.Empty(stacks.Completed.Runs);
-        Assert.Equal(1, player.Sent(ServerPacketHeader.WiredChestTradeCancelledComposer));
+        // No trade window is open: AIR shows it as a WiredTransactionFail notification, not a trade cancel.
+        Assert.Equal(1, player.Sent(ServerPacketHeader.WiredTransactionFailComposer));
+        Assert.Equal(0, player.Sent(ServerPacketHeader.WiredChestTradeCancelledComposer));
     }
 
     [Fact]

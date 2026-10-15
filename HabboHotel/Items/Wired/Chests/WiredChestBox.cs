@@ -288,7 +288,7 @@ public sealed class WiredChestAction(Room room, Item item, WiredBoxDescriptor de
             });
 
             if (result.Succeeded && !result.Replayed) {
-                actor.GetClient()!.Send(new WiredChestRewardComposer(result, c.Text, c.IntParams[4] == 1));
+                actor.GetClient()!.Send(WiredTransactionSuccessComposer.Rewarded(result, c.Text, c.IntParams[4] == 1));
                 gave = true;
             }
         }

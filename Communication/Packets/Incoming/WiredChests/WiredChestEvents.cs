@@ -7,6 +7,8 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.Communication.Packets.Incoming.WiredChests;
 
 // Parse the complete bounded payload before entering the room engine; rejected packets never write.
+// Field orders are the official AIR composers of WIN63-202610131318-860371703 (package_95 / package_186), ids in
+// ClientPacketHeader are their WIN63-202610121709 equivalents; see reviews/chest-protocol-map.md.
 public abstract class WiredChestPacketEvent : RoomPacketEvent
 {
     protected abstract Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet);
@@ -25,23 +27,31 @@ public abstract class WiredChestPacketEvent : RoomPacketEvent
     }
     protected static Item? Chest(Room room, uint id) => room.GetRoomItemHandler().GetItem(id) is { IsTemporary: false } item
         && WiredChestFurniture.IsChest(item.Definition) ? item : null;
-    protected static void Settings(WiredChestRoom module, Room room, GameClient session, Item item, Func<WiredChestSettings, WiredChestSettings> change)
+    protected static void Settings(WiredChestRoom module, Room room, GameClient session, Item item, Func<WiredChestSettings, WiredChestSettings> change,
+        bool notificationPreferences = false)
     {
         var saved = module.Store.SaveSettings(item, session.GetHabbo().Id, room.GetWired().Settings.CanModify(session), room.OwnerId == session.GetHabbo().Id, change);
-        session.Send(new WiredChestSettingsAckComposer(item.Id, saved));
 
+        // AIR answers only a saved form (class_2436 closes it); a refused one stays open.
         if (saved) {
-            module.Refresh(item);
+            session.Send(new WiredChestSettingsUpdatedComposer(item.Id, notificationPreferences));
         }
 
-        // This is authoritative state, also on refusal: client options changed optimistically.
-        module.Open(session, item);
+        // The stuff data is authoritative state, also on refusal: client options changed optimistically.
+        module.Refresh(item);
     }
     protected static void Withdraw(WiredChestRoom module, Room room, GameClient session, Item item, WiredChestItemType? type, int amount, bool allFurni = false)
     {
         var chest = module.Read(item);
 
-        if (chest == null || !chest.CanWithdraw((uint)session.GetHabbo().Id, room.GetWired().Settings.CanModify(session))) {
+        if (chest == null) {
+            return;
+        }
+
+        // Only the owner withdraws from a plain chest; others need an unlocked Wired chest and modify rights.
+        if (!chest.CanWithdraw((uint)session.GetHabbo().Id, room.GetWired().Settings.CanModify(session))) {
+            session.Send(new WiredTransactionFailComposer(chest.Settings.WiredEnabled ? WiredChestFailure.NoOrLockedChests : WiredChestFailure.Disabled));
+
             return;
         }
 
@@ -64,14 +74,12 @@ public abstract class WiredChestPacketEvent : RoomPacketEvent
             CanModify = room.GetWired().Settings.CanModify(session)
         });
 
-        if (result.Failure is { } failure) {
-            session.SendNotification($"Chest transaction refused ({(int)failure}).");
-        }
-
-        module.Open(session, item);
+        session.Send(result.Failure is { } failure ? new WiredTransactionFailComposer(failure)
+            : new WiredTransactionSuccessComposer(WiredTransactionSuccess.Withdraw));
     }
 }
 
+/// <summary>package_95.class_2544: int chestId.</summary>
 public sealed class ChestOpenEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
@@ -81,6 +89,7 @@ public sealed class ChestOpenEvent : WiredChestPacketEvent
         return item == null ? null : module => module.Open(session, item);
     }
 }
+/// <summary>package_95.class_2979: int chestId.</summary>
 public sealed class ChestCloseEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
@@ -90,6 +99,7 @@ public sealed class ChestCloseEvent : WiredChestPacketEvent
         return item == null ? null : module => module.Close(session, item);
     }
 }
+/// <summary>package_95.class_3668: int chestId; the deposit runs through the wired trade window.</summary>
 public sealed class ChestStartDepositEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
@@ -99,42 +109,17 @@ public sealed class ChestStartDepositEvent : WiredChestPacketEvent
         return item == null ? null : module => module.Start(session, item.Id, [item], null);
     }
 }
-public sealed class ChestDepositInventoryItemEvent : WiredChestPacketEvent
-{
-    protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
-    {
-        var item = Chest(room, packet.ReadUInt());
-        var inventoryId = packet.ReadUInt();
-
-        return item == null ? null : module =>
-        {
-            var result = module.Move(session, new()
-            {
-                RoomId = room.Id,
-                UserId = session.GetHabbo().Id,
-                SourceId = item.Id,
-                ChestIds = [item.Id],
-                PaymentIds = [inventoryId],
-                CanModify = room.GetWired().Settings.CanModify(session)
-            });
-
-            if (result.Failure is { } failure) {
-                session.SendNotification($"Chest transaction refused ({(int)failure}).");
-            }
-
-            module.Open(session, item);
-        };
-    }
-}
+/// <summary>package_95.class_3881: int chestId. AIR sends it for coin chests too.</summary>
 public sealed class ChestWithdrawAllEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
     {
         var item = Chest(room, packet.ReadUInt());
 
-        return item == null ? null : module => Withdraw(module, room, session, item, null, -1, true);
+        return item == null ? null : module => Withdraw(module, room, session, item, null, -1, WiredChestFurniture.Kind(item.Definition) == WiredChestKind.Furni);
     }
 }
+/// <summary>package_95.class_2388: int chestId, ChestItemType (bool wall, int typeId, string posterId), int amount.</summary>
 public sealed class ChestWithdrawFurniEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
@@ -146,45 +131,18 @@ public sealed class ChestWithdrawFurniEvent : WiredChestPacketEvent
         return item == null ? null : module => Withdraw(module, room, session, item, type, amount);
     }
 }
+/// <summary>package_95.class_3305: int chestId, int amount.</summary>
 public sealed class ChestWithdrawCoinsEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
     {
         var item = Chest(room, packet.ReadUInt());
-        var currency = packet.ReadInt();
         var amount = packet.ReadInt();
 
-        return item == null || currency != -1 ? null : module => Withdraw(module, room, session, item, null, amount);
+        return item == null || amount <= 0 ? null : module => Withdraw(module, room, session, item, null, amount);
     }
 }
-public sealed class ChestDepositCoinsEvent : WiredChestPacketEvent
-{
-    protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
-    {
-        var item = Chest(room, packet.ReadUInt());
-        var currency = packet.ReadInt();
-        var amount = packet.ReadInt();
-
-        return item == null || currency != -1 || amount <= 0 ? null : module =>
-        {
-            var result = module.Move(session, new()
-            {
-                RoomId = room.Id,
-                UserId = session.GetHabbo().Id,
-                SourceId = item.Id,
-                ChestIds = [item.Id],
-                WalletDepositCredits = amount,
-                CanModify = room.GetWired().Settings.CanModify(session)
-            });
-
-            if (result.Failure is { } failure) {
-                session.SendNotification($"Chest transaction refused ({(int)failure}).");
-            }
-
-            module.Open(session, item);
-        };
-    }
-}
+/// <summary>package_95.class_3275: int chestId, bool locked, bool autoLock, int capacity.</summary>
 public sealed class ChestSaveOptionsEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
@@ -197,6 +155,11 @@ public sealed class ChestSaveOptionsEvent : WiredChestPacketEvent
         return item == null ? null : module => Settings(module, room, session, item, old => old with { Locked = locked, AutoLock = autoLock, Capacity = capacity });
     }
 }
+/// <summary>
+/// package_95.class_3094: int chestId, string name, string desc, bool everyoneCanOpen, bool everyoneCanDonate, int stateMode,
+/// int previewMode, int previewAmount, bool wiredEnabled. The Wired chest upgrade is this save with wiredEnabled set
+/// (AIR ChestSettingsUI.confirmUpgrade); it is one-way, and the store refuses it for starter chests.
+/// </summary>
 public sealed class ChestSavePreferencesEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
@@ -209,36 +172,39 @@ public sealed class ChestSavePreferencesEvent : WiredChestPacketEvent
         var state = packet.ReadInt();
         var preview = packet.ReadInt();
         var amount = packet.ReadInt();
+        var wired = packet.ReadBool();
 
         return item == null ? null : module => Settings(module, room, session, item, old => old with
-        { Name = name, Description = description, EveryoneCanOpen = open, EveryoneCanDonate = donate, StateMode = state, PreviewMode = preview, PreviewAmount = amount });
+        {
+            Name = name,
+            Description = description,
+            EveryoneCanOpen = open,
+            EveryoneCanDonate = donate,
+            StateMode = state,
+            PreviewMode = preview,
+            PreviewAmount = amount,
+            WiredEnabled = old.WiredEnabled || wired
+        });
     }
 }
-public sealed class ChestEnableWiredEvent : WiredChestPacketEvent
-{
-    protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
-    {
-        var item = Chest(room, packet.ReadUInt());
-
-        return item == null ? null : module => Settings(module, room, session, item, old => old with { WiredEnabled = true });
-    }
-}
+/// <summary>package_95.class_2747: int chestId, int notifyMode, bool chestFull, bool donation, bool someoneWithdraws, bool chestEmpty, bool wiredTransaction.</summary>
 public sealed class ChestSaveNotificationsEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
     {
         var item = Chest(room, packet.ReadUInt());
+        var mode = packet.ReadInt();
         var full = packet.ReadBool();
         var donation = packet.ReadBool();
         var withdrawal = packet.ReadBool();
         var empty = packet.ReadBool();
         var wired = packet.ReadBool();
-        var mode = packet.ReadInt();
 
         return item == null ? null : module => Settings(module, room, session, item, old => old with
-        { NotifyFull = full, NotifyDonation = donation, NotifyWithdrawal = withdrawal, NotifyEmpty = empty, NotifyTransaction = wired, NotifyMode = mode });
+        { NotifyFull = full, NotifyDonation = donation, NotifyWithdrawal = withdrawal, NotifyEmpty = empty, NotifyTransaction = wired, NotifyMode = mode }, true);
     }
 }
+/// <summary>package_186.class_2956: bool remove, int count, int[] itemIds.</summary>
 public sealed class WiredChestOfferItemsEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
@@ -259,6 +225,7 @@ public sealed class WiredChestOfferItemsEvent : WiredChestPacketEvent
         return module => module.Offer(session, ids, !remove);
     }
 }
+/// <summary>package_186.class_3394: bool confirm.</summary>
 public sealed class WiredChestAcceptEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
@@ -268,11 +235,13 @@ public sealed class WiredChestAcceptEvent : WiredChestPacketEvent
         return module => module.Confirm(session, final);
     }
 }
+/// <summary>package_186.class_3259: no body.</summary>
 public sealed class WiredChestCancelEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet) => module => module.Cancel(session);
 }
 
+/// <summary>package_95.class_3721: int chestId, int amount.</summary>
 public sealed class ChestUpgradeEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
@@ -284,6 +253,7 @@ public sealed class ChestUpgradeEvent : WiredChestPacketEvent
     }
 }
 
+/// <summary>package_95.class_3508: bool lock, bool all.</summary>
 public sealed class WiredChestLockEvent : WiredChestPacketEvent
 {
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)

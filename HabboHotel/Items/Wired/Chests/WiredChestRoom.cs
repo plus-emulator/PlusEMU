@@ -13,6 +13,8 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
 {
     private readonly Dictionary<int, Session> _sessions = [];
     private readonly Dictionary<int, uint> _viewers = [];
+    // What each viewer's open chest window shows, so a change is sent as AIR's coins update or furni delta.
+    private readonly Dictionary<int, ViewerState> _shown = [];
     public bool HasPending => _sessions.Count > 0;
     public IWiredChestStore Store => store;
 
@@ -63,7 +65,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             });
 
             if (result.Succeeded && !result.Replayed) {
-                client.Send(new WiredChestRewardComposer(result, contract.RewardText, contract.ShowDialog));
+                client.Send(WiredTransactionSuccessComposer.Rewarded(result, contract.RewardText, contract.ShowDialog));
             }
 
             Outcome(actor, sourceId, result);
@@ -103,7 +105,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             timeout > 0 ? clock.GetUtcNow().AddSeconds(timeout) : null);
         _sessions[habbo.Id] = session;
         actor.IsTrading = true;
-        client.Send(new WiredChestTradeOpenComposer(contract, usable[0].Kind, mode, multiplier, timeout, previous != null));
+        client.Send(new WiredChestTradeOpenComposer(contract, usable.Select(chest => chest.Kind).ToArray(), mode, multiplier, timeout, previous != null));
         SendOffer(session);
 
         return true;
@@ -152,10 +154,18 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         else {
             var wanted = ids.Distinct().Where(id => !session.Offer.Contains(id)).ToArray();
 
-            if (wanted.Length + session.Offer.Count > 500 || wanted.Any(id => inventory.GetItem(id) is not { } item
+            if (wanted.Length + session.Offer.Count > 500) {
+                client.Send(new WiredTradeErrorComposer(WiredTradeError.TooManyItems));
+
+                return;
+            }
+
+            if (wanted.Any(id => inventory.GetItem(id) is not { } item
                 || item.OwnerId != client.GetHabbo().Id || !item.Definition.AllowTrade
                 || WiredChestFurniture.IsChest(item.Definition) || WiredChestFurniture.IsContract(item.Definition)
                 || !WiredChestContracts.CanOffer(session.Contract, item))) {
+                client.Send(new WiredTradeErrorComposer(WiredTradeError.InvalidItem));
+
                 return;
             }
 
@@ -206,7 +216,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
 
         if (chestIds.Length == 0) {
             var refused = WiredChestTransferResult.Refused(WiredChestFailure.NoOrLockedChests);
-            client.Send(new WiredChestTradeEndComposer(refused.Failure));
+            client.Send(new WiredChestTradeCancelledComposer(refused.Failure!.Value));
             Outcome(session.Actor, session.SourceId, refused, notifyFailure: false);
             RefreshChests(session.Chests);
 
@@ -227,7 +237,18 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             CanModify = room.GetWired().Settings.CanModify(client),
             Multiplier = times
         });
-        client.Send(new WiredChestTradeEndComposer(result.Failure));
+
+        if (result.Failure is { } failure) {
+            client.Send(new WiredChestTradeCancelledComposer(failure));
+        }
+        else {
+            client.Send(new WiredChestTradeCompletedComposer());
+
+            if (!result.Replayed) {
+                client.Send(new WiredTransactionSuccessComposer(session.Contract == null ? WiredTransactionSuccess.Deposit
+                    : session.Contract.Kind == WiredContractKind.Trade ? WiredTransactionSuccess.Trade : WiredTransactionSuccess.Payment));
+            }
+        }
 
         if (session.Contract != null) {
             Outcome(session.Actor, session.SourceId, result, notifyFailure: false);
@@ -279,6 +300,8 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         if (_sessions.TryGetValue(actor.HabboId, out var session)) {
             End(session, WiredChestFailure.TradeCancelled);
         }
+
+        _shown.Remove(actor.HabboId);
 
         if (_viewers.Remove(actor.HabboId, out var viewed) && room.GetRoomItemHandler().GetItem(viewed) is { } viewedItem) {
             Refresh(viewedItem);
@@ -379,7 +402,15 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         }
 
         client.Send(new WiredChestUpgradeComposer(item.Id, result.Code));
-        Open(client, item);
+        Refresh(item);
+    }
+
+    /// <summary>Using a chest furni asks the client to open it (AIR WiredChestController.onOpenChest); it answers with ChestOpenEvent.</summary>
+    public void RequestOpen(GameClient client, Item item)
+    {
+        if (Read(item) is { } chest && chest.CanOpen((uint)client.GetHabbo().Id, room.GetWired().Settings.CanInspect(client))) {
+            client.Send(new WiredChestOpenComposer(item.Id));
+        }
     }
 
     public void Open(GameClient client, Item item)
@@ -396,14 +427,13 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         }
 
         _viewers[client.GetHabbo().Id] = item.Id;
-        var owner = chest.OwnerId == client.GetHabbo().Id;
-        var modify = room.GetWired().Settings.CanModify(client);
-        client.Send(new WiredChestContentsComposer(chest, owner, item.Definition.SpriteId,
-            item.Definition.ItemName.Contains("_starter", StringComparison.Ordinal),
-            chest.CanWithdraw((uint)client.GetHabbo().Id, modify), chest.CanDeposit((uint)client.GetHabbo().Id, modify),
-            owner || !chest.Settings.Locked && (room.OwnerId == client.GetHabbo().Id || chest.Settings.WiredEnabled && modify)));
+        _shown[client.GetHabbo().Id] = new(chest.Coins, chest.Items.Select(furni => furni.Id).ToHashSet());
 
-        if (chest.Kind == WiredChestKind.Furni) {
+        // The kind of answer picks the window: coins open the coin chest, fragments the furni chest. Settings come from stuff data.
+        if (chest.Kind == WiredChestKind.Coins) {
+            client.Send(new WiredChestCoinsComposer(chest.Id, chest.Coins, false));
+        }
+        else {
             var pages = Math.Max(1, (chest.Items.Length + 499) / 500);
 
             for (var page = 0; page < pages; page++) {
@@ -418,6 +448,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
     {
         if (_viewers.GetValueOrDefault(client.GetHabbo().Id) == item.Id) {
             _viewers.Remove(client.GetHabbo().Id);
+            _shown.Remove(client.GetHabbo().Id);
             Refresh(item);
         }
     }
@@ -449,10 +480,43 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             ["state_control_mode"] = s.StateMode.ToString(),
             ["preview_mode"] = s.PreviewMode.ToString(),
             ["preview_amount"] = s.PreviewAmount.ToString(),
+            ["notification_chest_full"] = Flag(s.NotifyFull),
+            ["notification_donation"] = Flag(s.NotifyDonation),
+            ["notification_someone_withdraws"] = Flag(s.NotifyWithdrawal),
+            ["notification_chest_empty"] = Flag(s.NotifyEmpty),
+            ["notification_wired_transaction"] = Flag(s.NotifyTransaction),
+            ["notify_mode"] = s.NotifyMode.ToString(),
             ["visuals"] = string.Join(';', Preview(chest).Select(type => $"{(type.Wall ? "true" : "false")},{type.SpriteId}"))
         };
         item.ExtraData = new MapDataFormat(map);
         item.UpdateState();
+        UpdateViewers(chest);
+    }
+
+    private void UpdateViewers(WiredChestSnapshot chest)
+    {
+        foreach (var (userId, chestId) in _viewers.ToArray()) {
+            if (chestId != chest.Id || !_shown.TryGetValue(userId, out var shown)
+                || room.GetRoomUserManager().GetRoomUserByHabbo(userId)?.GetClient() is not { } client) {
+                continue;
+            }
+
+            if (chest.Kind == WiredChestKind.Coins) {
+                if (shown.Coins != chest.Coins) {
+                    client.Send(new WiredChestCoinsComposer(chest.Id, chest.Coins, true));
+                }
+            }
+            else {
+                var removed = shown.Items.Where(id => chest.Items.All(furni => furni.Id != id)).ToArray();
+                var added = chest.Items.Where(furni => !shown.Items.Contains(furni.Id)).ToArray();
+
+                if (removed.Length > 0 || added.Length > 0) {
+                    client.Send(new WiredChestFurniUpdateComposer(chest.Id, removed, added, chest.DepositTransactions));
+                }
+            }
+
+            _shown[userId] = new(chest.Coins, chest.Items.Select(furni => furni.Id).ToHashSet());
+        }
     }
 
     public static WiredChestItemType[] Preview(WiredChestSnapshot chest)
@@ -515,9 +579,15 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             return;
         }
 
-        session.Client.Send(new WiredChestTradeItemsComposer(session.Client.GetHabbo().Id, offered,
-            session.Contract, session.Mode, session.Multiplier, session.Accepted,
-            session.Deadline is { } end ? Math.Max(0, (int)Math.Ceiling((end - clock.GetUtcNow()).TotalSeconds)) : 0));
+        var times = session.Contract == null ? offered.Length > 0 ? 1 : 0
+            : WiredChestContracts.Times(session.Contract, offered, session.Mode, session.Multiplier);
+        var reward = session.Contract is { Kind: WiredContractKind.Trade } trade ? WiredChestContracts.Scale(trade.Reward, Math.Max(1, times)) : [];
+        var stock = Read(session.Chests.Select(id => room.GetRoomItemHandler().GetItem(id)).OfType<Item>()).SelectMany(chest => chest.Items).ToArray();
+        // The chest side shows the furni that would be handed over: the first matching items of the chests, per reward node.
+        var furni = reward.Where(node => node.ItemType != null).GroupBy(node => node.ItemType!.Value)
+            .SelectMany(group => stock.Where(item => WiredChestItemType.Of(item) == group.Key).Take(group.Sum(node => node.Amount))).ToArray();
+        session.Client.Send(new WiredChestTradeItemsComposer(session.Client.GetHabbo().Id, offered, furni,
+            reward.Where(node => node.ItemType == null).Sum(node => node.Amount), times > 0, times));
     }
     private void End(Session session, WiredChestFailure reason, bool notify = true)
     {
@@ -525,7 +595,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         session.Actor.IsTrading = false;
 
         if (notify) {
-            session.Client.Send(new WiredChestTradeEndComposer(reason));
+            session.Client.Send(new WiredChestTradeCancelledComposer(reason));
         }
 
         if (session.Contract != null) {
@@ -544,20 +614,18 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
     public void Fail(RoomUser actor, uint sourceId, WiredChestFailure reason, bool notify = true, bool cancelledByWired = false)
     {
         if (notify) {
-            actor.GetClient()?.Send(new WiredChestTradeEndComposer(reason));
+            actor.GetClient()?.Send(new WiredTransactionFailComposer(reason));
         }
 
         publish(new(WiredEventKind.TransactionFail) { Actor = actor, EventItem = room.GetRoomItemHandler().GetItem(sourceId), SourceId = sourceId, Code = (int)reason, CancelledByWired = cancelledByWired });
     }
     public void Lock(GameClient client, bool locked, bool all)
     {
-        var affected = 0;
         var userId = client.GetHabbo().Id;
         var every = locked && all;
 
+        // AIR expects no answer: the chests' stuff data shows the new lock state.
         if (every && room.OwnerId != userId) {
-            client.Send(new WiredChestLockComposer(locked, all, 0));
-
             return;
         }
 
@@ -567,13 +635,11 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             }
 
             if (store.SaveSettings(item, userId, room.GetWired().Settings.CanModify(client), room.OwnerId == userId, old => old with { Locked = locked })) {
-                affected++;
                 Refresh(item);
             }
         }
-
-        client.Send(new WiredChestLockComposer(locked, all, affected));
     }
+    private sealed record ViewerState(int Coins, HashSet<uint> Items);
     private sealed class Session(GameClient client, RoomUser actor, uint sourceId, uint[] chests, WiredChestContract? contract, int mode, int multiplier, DateTimeOffset? deadline)
     {
         public Guid OperationId { get; } = Guid.NewGuid();

@@ -63,7 +63,7 @@ Settings are read from `Config/config.json` relative to the working directory. L
 | `Flash` | TCP game server | `127.0.0.1:1232` |
 | `Nitro` | WebSocket game server used by the Volt client | `127.0.0.1:2096` |
 | `Rcon` | RCON listener and the addresses allowed to use it | `127.0.0.1:30001` |
-| `WebServer` | HTTP endpoints (Wired variables API, furnidata, badge leaderboard) | `127.0.0.1:8080` |
+| `WebServer` | HTTP endpoints (Wired variables API, furnidata, badge leaderboard); see [Generating furnidata](#generating-furnidata) | `127.0.0.1:8080` |
 | `Camera` | Camera renderer URL and bearer, photo output directory, timeouts, effect allowlist | renderer at `127.0.0.1:3921` |
 
 Set your own database password and camera bearer; do not commit them.
@@ -78,6 +78,47 @@ dotnet run --project "Plus Emulator.csproj" -c Release   # from source
 ```
 
 Point the client's `socket.url` at the `Nitro` host and port (for example `ws://127.0.0.1:2096`); put a TLS proxy in front of it for `wss://` in production.
+
+Point the client's `furnidata.url` at the emulator's web server as described in [Generating furnidata](#generating-furnidata).
+
+## Generating furnidata
+
+The emulator generates `FurnitureData.json` itself, so there is no static file to keep in sync with the catalogue. It is built from the `furniture` rows with `has_furnidata` set, plus the purchase fields of the catalogue offers that sell them, and is rebuilt whenever the catalogue reloads. The web server serves it at:
+
+| Endpoint | Returns |
+|----------|---------|
+| `GET /api/gamedata/furnidata` | `FurnitureData.json` (revalidated with an `ETag`; a `?v=` matching the current version is cached for good) |
+| `GET /api/gamedata/furnidata/version` | `{"version": "..."}`, the SHA-1 of the current file |
+
+The web server listens on plain HTTP at `WebServer.Hostname`/`WebServer.Port` in `Config/config.json` (default `127.0.0.1:8080`). If that port is taken, set another one; the startup log prints `Web server listening on ...` once it is up, and the line is missing when the port could not be bound.
+
+```json
+"WebServer": {
+    "Hostname": "127.0.0.1",
+    "Port": 8080
+}
+```
+
+The web server has no TLS. To use it from Volt, either:
+
+- proxy `/api/` from the web server that serves the client to the emulator, and point `furnidata.url` in Volt's `renderer-config.json` at `https://<your host>/api/gamedata/furnidata`. With nginx:
+
+  ```nginx
+  location /api/ {
+      proxy_pass http://127.0.0.1:8080;
+  }
+  ```
+
+- or, for local testing with the client served over plain `http://`, point `furnidata.url` straight at `http://127.0.0.1:8080/api/gamedata/furnidata`. Browsers block this from a client loaded over `https://` (mixed content).
+
+Check it with `curl http://127.0.0.1:8080/api/gamedata/furnidata`. If the client gets a 404:
+
+- If curl returns JSON, the client's request does not reach the emulator: `furnidata.url` points at a host or port without the `/api/` proxy (for example `https://localhost/...` goes to port 443, not the emulator).
+- If curl also returns a 404 (`{"error":"Not found.","code":"not_found"}`), no furniture row has furnidata. `Database/FreshInstall.sql` ships with it filled in. An upgraded database gets it from `Database/Migrations/60_FurnitureFurnidata.sql` only when that migration runs with the hotel's current `FurnitureData.json` in `@furnidata`; without it the migration only adds the columns. Run it again with the file, then restart the emulator:
+
+  ```sh
+  { printf "SET @furnidata = FROM_BASE64('%s');\n" "$(base64 -w0 FurnitureData.json)"; cat Database/Migrations/60_FurnitureFurnidata.sql; } | mysql -u root -p plus
+  ```
 
 ## Branches and releases
 

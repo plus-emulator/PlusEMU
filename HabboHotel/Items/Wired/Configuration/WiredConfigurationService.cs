@@ -213,7 +213,7 @@ public sealed class WiredConfigurationService(
             throw new ArgumentException("Bot figure cannot be validated without a loaded wardrobe.");
         }
 
-        var validated = figures.ProcessFigure(fields[1], habbo.Gender, wardrobe.GetClothingParts, ClubAccess.LevelFor(habbo.Access));
+        var validated = figures.ProcessFigureCanonical(fields[1], habbo.Gender, wardrobe.GetClothingParts, ClubAccess.LevelFor(habbo.Access));
 
         return fields[0] + "\t" + validated.TrimEnd('.');
     }

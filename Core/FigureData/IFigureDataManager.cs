@@ -9,6 +9,10 @@ public interface IFigureDataManager
 
     void Init();
     string ProcessFigure(string figure, string gender, ICollection<ClothingParts>? clothingParts, int clubLevel);
+
+    // Habbo's stored form: parts in figuredata set-type order, and a part saved without a colour keeps none.
+    string ProcessFigureCanonical(string figure, string gender, ICollection<ClothingParts>? clothingParts, int clubLevel)
+        => ProcessFigure(figure, gender, clothingParts, clubLevel);
     Palette? GetPalette(int colorId);
     bool TryGetPalette(int palletId, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Palette? palette);
     int GetRandomColor(int palletId, int clubLevel = 0);

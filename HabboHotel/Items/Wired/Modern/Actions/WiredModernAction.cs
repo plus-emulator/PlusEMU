@@ -572,9 +572,12 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             return false;
                         }
 
-                        var random = WiredRoomOperations.Offset(Random.Shared.Next(4) * 2);
+                        // Observed r92j r92h-chase-retry (AIR WIN63-202610131318-860371703): from the corner (4,1), with north and west
+                        // void, the out-of-range marker moved on all six trials (east 3, south 3), so a blocked random direction is retried.
+                        int[] headings = [0, 2, 4, 6];
+                        Random.Shared.Shuffle(headings);
 
-                        return Move(item.GetX + random.X, item.GetY + random.Y);
+                        return headings.Select(WiredRoomOperations.Offset).Any(step => Move(item.GetX + step.X, item.GetY + step.Y));
                     }
 
                     if (Math.Abs(nearest.X - item.GetX) + Math.Abs(nearest.Y - item.GetY) <= 1) {

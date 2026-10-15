@@ -116,4 +116,36 @@ public sealed partial class WiredActionPortParityTests
         Assert.False(action.Execute(Context(room, [mover, target], [owner])));
         Assert.Equal((0, 0), (mover.GetX, mover.GetY));
     }
+
+    // r92j r92h-flee-sides trial-w1..w6: both sides free, owner straight south: the sidestep is east (right of the away heading) every time.
+    [Fact]
+    public void FleeSidestepsToTheRightWhenBothSidesAreFree()
+    {
+        for (var trial = 0; trial < 6; trial++) {
+            var (room, map, items) = World();
+            var mover = Floor(1, 2, 0);
+            Place(map, items, mover);
+            var owner = Avatar(room, 1, 2, 2);
+            var action = Box(room, "wf_act_flee", [100], [mover.Id]);
+
+            Assert.True(action.Execute(Context(room, [mover], [owner])));
+            Assert.Equal((3, 0), (mover.GetX, mover.GetY));
+        }
+    }
+
+    // r92j r92h-chase-retry trial-w1..w6: out of range in a corner (north and west blocked) the marker always moved (east or south).
+    [Fact]
+    public void ChaseOutOfRangeRetriesABlockedRandomStep()
+    {
+        for (var trial = 0; trial < 20; trial++) {
+            var (room, map, items) = World();
+            var mover = Floor(1, 0, 0);
+            Place(map, items, mover);
+            var owner = Avatar(room, 1, 5, 5);
+            var action = Box(room, "wf_act_chase", [100], [mover.Id]);
+
+            Assert.True(action.Execute(Context(room, [mover], [owner])));
+            Assert.Contains((mover.GetX, mover.GetY), new[] { (1, 0), (0, 1) });
+        }
+    }
 }

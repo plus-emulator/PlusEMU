@@ -172,8 +172,15 @@ public class FurnitureWireTests
             ExtraData = new Plus.HabboHotel.Items.DataFormat.LegacyDataFormat { Data = "0" },
             Definition = new()
             {
-                Type = Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor, ItemName = name, InteractionName = name, PublicName = name, Width = 1, Length = 1, Modes = modes,
-                VendingIds = [], AdjustableHeights = []
+                Type = Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor,
+                ItemName = name,
+                InteractionName = name,
+                PublicName = name,
+                Width = 1,
+                Length = 1,
+                Modes = modes,
+                VendingIds = [],
+                AdjustableHeights = []
             }
         };
 

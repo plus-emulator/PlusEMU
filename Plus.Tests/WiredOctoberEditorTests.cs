@@ -87,7 +87,11 @@ public sealed class WiredOctoberEditorTests
     {
         var runtime = WiredOctoberEditorParityTests.Compile("wf_act_progress_ach", native => native with
         {
-            OwnedIntParams = [0, 1, 25, 1], Text = "ACH_RoomEntry", VariableIds = ["user:9"], UserSourceTypes = [200, 0], FurniSourceTypes = [100]
+            OwnedIntParams = [0, 1, 25, 1],
+            Text = "ACH_RoomEntry",
+            VariableIds = ["user:9"],
+            UserSourceTypes = [200, 0],
+            FurniSourceTypes = [100]
         });
 
         // AIR target 1 (user) is the scalar user target 0; recipients and the reference keep their own sources.
@@ -132,7 +136,8 @@ public sealed class WiredOctoberEditorTests
         var ints = SendInts((0, 42, -10), (3, 0, -10));
         var runtime = WiredOctoberEditorParityTests.Compile("wf_act_send_dataframe", native => native with
         {
-            OwnedIntParams = ints, Text = "[[\"score\",\"\"],[\"greeting\",\"hello\"]]"
+            OwnedIntParams = ints,
+            Text = "[[\"score\",\"\"],[\"greeting\",\"hello\"]]"
         });
 
         Assert.Equal(2, runtime.IntParams[0]);
@@ -143,11 +148,13 @@ public sealed class WiredOctoberEditorTests
         Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_act_send_dataframe", native => native with { OwnedIntParams = ints, Text = "[[\"score\",\"\"]]" }));
         Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_act_send_dataframe", native => native with
         {
-            OwnedIntParams = ints, Text = "[[\"sco-re\",\"\"],[\"greeting\",\"hello\"]]"
+            OwnedIntParams = ints,
+            Text = "[[\"sco-re\",\"\"],[\"greeting\",\"hello\"]]"
         }));
         Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_act_send_dataframe", native => native with
         {
-            OwnedIntParams = ints, Text = "[[\"score\",\"\"],[\"greeting\",\"" + new string('a', 201) + "\"]]"
+            OwnedIntParams = ints,
+            Text = "[[\"score\",\"\"],[\"greeting\",\"" + new string('a', 201) + "\"]]"
         }));
         Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_act_send_dataframe", native => native with { OwnedIntParams = [.. ints.Take(36)] }));
     }
@@ -159,16 +166,19 @@ public sealed class WiredOctoberEditorTests
 
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_trg_receive_dataframe", native => native with
         {
-            OwnedIntParams = ints, Text = "[[\"greeting\",\"greeting\"],[\"score\",\"\"]]"
+            OwnedIntParams = ints,
+            Text = "[[\"greeting\",\"greeting\"],[\"score\",\"\"]]"
         }));
         // A placeholder row cannot fill the trigger's own $(trigger_text).
         Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_trg_receive_dataframe", native => native with
         {
-            OwnedIntParams = ints, Text = "[[\"greeting\",\"trigger_text\"],[\"score\",\"\"]]"
+            OwnedIntParams = ints,
+            Text = "[[\"greeting\",\"trigger_text\"],[\"score\",\"\"]]"
         }));
         Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_trg_receive_dataframe", native => native with
         {
-            OwnedIntParams = [2, 0, 2, .. Enumerable.Repeat(0, 10)], Text = "[[\"greeting\",\"greeting\"],[\"score\",\"\"]]"
+            OwnedIntParams = [2, 0, 2, .. Enumerable.Repeat(0, 10)],
+            Text = "[[\"greeting\",\"greeting\"],[\"score\",\"\"]]"
         }));
     }
 

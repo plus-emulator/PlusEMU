@@ -36,6 +36,7 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
         var p = proposed.IntParams;
 
         var pickedBoxes = p.Length == 9 && p[8] == 1;
+
         if (proposed.Version != 1 || p.Length != 8 && !pickedBoxes || !Enum.IsDefined((WiredVariableTarget)p[0])
             || p.Skip(1).Take(6).Any(value => value is not (0 or 1)) || proposed.VariableIds.Length != 1
             || !pickedBoxes && (WiredVariableAbsent.Is(proposed.VariableIds[0])
@@ -74,7 +75,11 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
         }
 
         var module = Instance.GetWired().Variables.Module;
-        if (config.IntParams.Length == 9) return MatchesPickedBoxes(config, change, module, context.Room.Id);
+
+        if (config.IntParams.Length == 9) {
+            return MatchesPickedBoxes(config, change, module, context.Room.Id);
+        }
+
         return module.TryResolveCatalogId(config.VariableIds[0], (WiredVariableTarget)config.IntParams[0], out var reference)
             && Matches(config with { Text = reference.Token }, change, context.Room.Id);
     }
@@ -82,7 +87,10 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
     // Echo/reference/derived-box identity is intentionally not guessed without a runtime observation.
     internal static bool MatchesPickedBoxes(WiredConfiguration config, WiredVariableChange change, WiredVariableModule module, uint roomId)
     {
-        if (change.RoomId != roomId || module.RoomId != roomId || config.IntParams.Length != 9 || config.IntParams[8] != 1) return false;
+        if (change.RoomId != roomId || module.RoomId != roomId || config.IntParams.Length != 9 || config.IntParams[8] != 1) {
+            return false;
+        }
+
         return module.DescribeDefinitions(config.SelectedItems).Any(variable => variable.Definition.Link is null
             && variable.Definition.Target != WiredVariableTarget.Context
             && Matches(config with { IntParams = config.IntParams.SetItem(0, (int)variable.Definition.Target), Text = variable.Definition.Token }, change, roomId));

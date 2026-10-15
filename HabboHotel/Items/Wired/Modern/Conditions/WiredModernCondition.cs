@@ -121,12 +121,17 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_has_altitude":
                 return WiredItemConditions.MatchesAltitude(config, Items());
             case "wf_cnd_valid_moves":
-                // Observed r92g r92-valid-moves (AIR WIN63-202610131318-860371703): the hotel editor has no furni source; saved that way,
-                // the condition passed on a say trigger in windows a-w1, b-w1 and c-w1. With nothing selected nothing is invalid.
+                // Observed (AIR WIN63-202610131318-860371703): the hotel editor has no furni source. The condition checks the moves
+                // of the stack's movement effects: r92k r92h-vm-fail one-w1/w2 and two-w1/w2 failed when a rel_mov step was blocked
+                // by the wall (also with a second, free mover); r92g r92-valid-moves a/b/c passed when the stack's move was legal.
+                var planned = context.CapturedStack.OfType<Actions.WiredModernAction>().SelectMany(action => action.PlannedMoves(context)).ToArray();
                 var moving = Items();
 
-                return moving.Length == 0 || WiredItemConditions.ValidMoves(moving, (item, x, y) => WiredRoomOperations.CanMoveItem(context.Room, item, x, y, item.Rotation,
-                    collision: WiredRoomMovement.Collision(context.Policy.Addons.Physics, step: true)));
+                return planned.All(move => WiredRoomOperations.CanMoveItem(context.Room, move.Item, move.X, move.Y, move.Rotation,
+                        collision: WiredRoomMovement.Collision(context.Policy.Addons.Physics, step: move.Step)))
+                    && (moving.Length == 0 || WiredItemConditions.ValidMoves(moving, (item, x, y) =>
+                        WiredRoomOperations.CanMoveItem(context.Room, item, x, y, item.Rotation,
+                            collision: WiredRoomMovement.Collision(context.Policy.Addons.Physics, step: true))));
             case "wf_cnd_slc_quantity":
                 return WiredItemConditions.SelectionQuantity(config,
                 Param(config, 2) == 1 ? Items().Length : 0, Param(config, 2) == 0 ? Avatars().Length : 0);

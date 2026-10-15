@@ -60,12 +60,16 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
             return false;
         }
 
+        return true;
+    }
+
+    /// <summary>After the conditions, a score trigger adds the scoring team's current members to the selection.</summary>
+    internal void AfterConditions(WiredRuntimeContext context)
+    {
         if (Descriptor.CanonicalName == "wf_trg_score_achieved") {
             context.Selected.UserIds.UnionWith(context.Targets.ResolveUsers(context, [], WiredSources.AllRoom, raw: true)
                 .Where(user => !user.IsBot && (int)user.Team == context.Event.Team).Select(user => user.VirtualId));
         }
-
-        return true;
     }
 
     private bool Matches(WiredRuntimeContext context, bool afterSelectors)

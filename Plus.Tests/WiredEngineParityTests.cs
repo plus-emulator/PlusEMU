@@ -421,7 +421,9 @@ public partial class WiredRuntimeEngineTests
     }
 
     [Fact]
-    public void DeferredSelectorTriggerChecksConditionsBeforeRejectingEvent()
+    // Observed r92k r92k-trigger-gate neg-w1..w3 (AIR WIN63-202610131318-860371703): a trigger rejected by its selector pool runs
+    // and flashes no condition.
+    public void DeferredSelectorTriggerRejectsTheEventBeforeAnyCondition()
     {
         var f = new Fixture();
         var actor = f.User(1);
@@ -431,7 +433,8 @@ public partial class WiredRuntimeEngineTests
         var condition = f.Add(new Box(WiredBoxCategory.Condition));
         var action = f.Action();
         Assert.False(f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.ClickFurni) { Actor = actor, EventItem = eventItem }));
-        Assert.Equal(1, condition.Calls);
+        Assert.Equal(0, condition.Calls);
+        Assert.Empty(f.Flashed);
         Assert.Equal(0, action.Calls);
         Assert.Empty(f.Errors);
     }

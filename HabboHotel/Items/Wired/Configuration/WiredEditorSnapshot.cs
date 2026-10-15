@@ -37,7 +37,7 @@ public sealed record WiredEditorSnapshot(
         return new(box.Item.Id, box.Item.Definition.SpriteId, box.Descriptor, configuration,
             WiredConfigurationLimits.SelectedItems, [])
         {
-            Native = native,
+            Native = WiredNativeEditorProjection.HotelFrame(box.Descriptor, native),
             CatalogHash = hash,
             SharedVariables = box.Descriptor.CanonicalName == "wf_var_reference"
                 ? sharedVariablesVisible

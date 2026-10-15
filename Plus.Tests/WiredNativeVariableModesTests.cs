@@ -12,12 +12,14 @@ public sealed class WiredNativeVariableModesTests
     {
         var config = WiredOctoberEditorParityTests.Compile("wf_trg_var_changed", n => n with
         {
-            OwnedIntParams = [1, 1, 1, 1, 4, 1], VariableIds = ["n"],
+            OwnedIntParams = [1, 1, 1, 1, 4, 1],
+            VariableIds = ["n"],
             PrimaryItems = [new(10, false), new(11, false), new(99, false)]
         });
         var native = JsonSerializer.Deserialize<WiredNativeEditorConfiguration>(JsonSerializer.Serialize(config.Origin!.Native))!;
         Assert.Equal(new uint[] { 10, 11, 99 }, native.PrimaryItems.Select(item => item.ItemId));
-        Assert.Equal(1, native.OwnedIntParams[5]); Assert.Equal("n", native.VariableIds[0]);
+        Assert.Equal(1, native.OwnedIntParams[5]);
+        Assert.Equal("n", native.VariableIds[0]);
         Assert.True(WiredVariableChangedTrigger.TryNormalize(config, out _, out _));
         var directory = new Directory();
         var module = new WiredVariableModule(1, directory, new MemoryWiredVariableStore(), TimeProvider.System);
@@ -39,7 +41,8 @@ public sealed class WiredNativeVariableModesTests
         Assert.True(WiredVariableChangedTrigger.MatchesPickedBoxes(config, Assert.Single(module.DrainChanges()), module, 1));
         directory.Removed = true;
         Assert.False(WiredVariableChangedTrigger.MatchesPickedBoxes(config, change, module, 1));
-        directory.Removed = false; directory.Owner = 6;
+        directory.Removed = false;
+        directory.Owner = 6;
         Assert.False(WiredVariableChangedTrigger.MatchesPickedBoxes(config, change, module, 1));
     }
 
@@ -54,13 +57,19 @@ public sealed class WiredNativeVariableModesTests
         var second = new WiredVariableHolder(target, 200, 2);
         var third = new WiredVariableHolder(target, 300, 3);
         var frame = new WiredVariableFrame(1, [first, second, third]) { ResolveSource = (_, _, _) => [first] };
+
         foreach (var (holder, value) in new[] { (first, 10), (second, 20), (third, 30) }) {
             Assert.True(module.Mutate(new(target, "custom:20"), holder, WiredVariableMutation.Give, value, frame));
-            if (holder != third) Assert.True(module.Mutate(new(target, "custom:21"), holder, WiredVariableMutation.Give, value, frame));
+
+            if (holder != third) {
+                Assert.True(module.Mutate(new(target, "custom:21"), holder, WiredVariableMutation.Give, value, frame));
+            }
         }
+
         var config = WiredOctoberEditorParityTests.Compile(selector, n => n with
         {
-            OwnedIntParams = [1, 2, 0, 0, airTarget, 1], VariableIds = [prefix + "20", prefix + "21"]
+            OwnedIntParams = [1, 2, 0, 0, airTarget, 1],
+            VariableIds = [prefix + "20", prefix + "21"]
         });
         using var queries = new WiredVariableQueries(module, frame);
         Assert.True(queries.MatchSelector(selector, config, first));
@@ -68,7 +77,8 @@ public sealed class WiredNativeVariableModesTests
         Assert.False(queries.MatchSelector(selector, config, third));
         var legacy = WiredOctoberEditorParityTests.Compile(selector, n => n with
         {
-            OwnedIntParams = [1, 2, 0, 0, airTarget], VariableIds = [prefix + "20", prefix + "21"]
+            OwnedIntParams = [1, 2, 0, 0, airTarget],
+            VariableIds = [prefix + "20", prefix + "21"]
         });
         Assert.Equal(9, legacy.IntParams.Length);
         Assert.True(queries.MatchSelector(selector, legacy, first));

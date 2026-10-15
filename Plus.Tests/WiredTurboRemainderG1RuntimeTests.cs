@@ -79,7 +79,10 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
 
     private static WiredChestContract Trades(int pay, int coins) => new()
     {
-        Kind = WiredContractKind.Trade, PaymentMode = 1, Payment = [[new(pay, new(false, 44))]], Reward = [new(coins)]
+        Kind = WiredContractKind.Trade,
+        PaymentMode = 1,
+        Payment = [[new(pay, new(false, 44))]],
+        Reward = [new(coins)]
     };
 
     [Fact]
@@ -482,6 +485,7 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         Assert.True(first.Owns(a.Id));
         world.Module.Offer(first.Client, [a.Id], true);
         world.Module.Offer(second.Client, [b.Id], true);
+
         foreach (var player in new[] { first, second }) {
             world.Module.Confirm(player.Client, false);
             world.Module.Confirm(player.Client, true);

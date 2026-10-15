@@ -39,7 +39,9 @@ public sealed class WiredTurboRemainderG4FxTests
         var ints = replace ?? edit?.Invoke([.. native.OwnedIntParams]) ?? [.. native.OwnedIntParams];
         var proposed = native with
         {
-            OwnedIntParams = [.. ints], Text = text, VariableIds = variables is null ? native.VariableIds : [.. variables]
+            OwnedIntParams = [.. ints],
+            Text = text,
+            VariableIds = variables is null ? native.VariableIds : [.. variables]
         };
 
         return WiredNativeEditorProjection.TryCompile(50, descriptor, proposed, out var configuration) ? configuration : null;

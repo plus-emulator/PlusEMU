@@ -111,7 +111,11 @@ public sealed class WiredObservedR83Tests
         var box = new WiredVariableAddonBox(room, new Item { Id = 90 }, descriptor, module, _ => new Dictionary<int, string> { [7] = "seven", [8] = "eight" });
         WiredNativeTestSupport.Install(box, WiredNativeEditorProjection.DefaultNative(descriptor) with
         {
-            OwnedIntParams = [0, -10, textMode], VariableIds = ["room:10"], FurniSourceTypes = [100], UserSourceTypes = [0], Text = "r80vroom"
+            OwnedIntParams = [0, -10, textMode],
+            VariableIds = ["room:10"],
+            FurniSourceTypes = [100],
+            UserSourceTypes = [0],
+            Text = "r80vroom"
         });
 
         Assert.True(box.Apply(context));

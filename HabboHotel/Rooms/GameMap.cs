@@ -142,15 +142,18 @@ public class Gamemap
                 // Reuse unchanged cell heights instead of resolving every furniture stack for every move.
                 // Clone before patching: queued full snapshots must remain immutable for reentrant delivery.
                 var snapshot = _placementSnapshot;
+
                 if (snapshot == null || resized) {
                     snapshot = PlacementHeightMap();
                 }
                 else {
                     snapshot = (short[,])snapshot.Clone();
+
                     foreach (var tile in changed) {
                         snapshot[tile.X, tile.Y] = tile.Value;
                     }
                 }
+
                 _placementSnapshot = snapshot;
                 _placementOutbound.Enqueue(new(++_placementVersion, snapshot, full ? null : changed.ToArray(), CapturePlacementVisits()));
             }

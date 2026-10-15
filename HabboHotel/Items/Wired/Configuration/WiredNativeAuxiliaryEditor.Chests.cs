@@ -4,9 +4,6 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 internal static partial class WiredNativeAuxiliaryEditor
 {
-    // Chest furni selections: picked group (100/101), live trigger furni, selector or signal; users never include bots here.
-    private static readonly ImmutableArray<int> ChestFurni = [0, 100, 101, 200, 201];
-    private static readonly ImmutableArray<int> ChestUsers = [0, 11, 200, 201];
     // Observed on hhus (WIN63-202610131318, r62 batch 04): a chest card with one pick list offers the triggering furni, the picks, the selector
     // and the signal; one with two pick lists (item types and chests) also offers the second list (101) on every slot. Users never include
     // the clicked user (11) here.
@@ -18,14 +15,6 @@ internal static partial class WiredNativeAuxiliaryEditor
         ImmutableArray<int> furniDefaults, ImmutableArray<int> userDefaults) => new(
             [.. Enumerable.Repeat(furniSources, furniSelections)], [.. Enumerable.Repeat(TransactionUsers, userSelections)],
             furniDefaults, userDefaults, owned, true)
-        {
-            VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Id, variables)]
-        };
-
-    private static WiredNativeEditorMetadata ChestMeta(int furniSelections, int userSelections, ImmutableArray<int> owned, int variables,
-        ImmutableArray<int> furniDefaults, ImmutableArray<int> userDefaults) => new(
-            [.. Enumerable.Repeat(ChestFurni, furniSelections)], [.. Enumerable.Repeat(ChestUsers, userSelections)],
-            furniDefaults, userDefaults, owned, false)
         {
             VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Id, variables)]
         };
@@ -43,8 +32,10 @@ internal static partial class WiredNativeAuxiliaryEditor
     private static IEnumerable<KeyValuePair<string, Spec>> Chests()
     {
         // Mode (amount or all), amount, literal-or-variable option, its target, show-by-default, then currency category / iteration order.
-        yield return new("wf_act_give_currency", new(ChestMeta(2, 2, [0, 1, 0, -20, 1, 11], 1, [100, 0], [0, 0]), n => Reward(n, 11, 13)));
-        yield return new("wf_act_give_furni", new(ChestMeta(2, 2, [0, 1, 0, -20, 1, 0], 1, [100, 0], [0, 0]), n => Reward(n, 0, 2)));
+        // Observed r93h r93-p2-chests-empty initial frames (pkt 8769): both slots offer [0, 100, 101, 200, 201] for furni and [0, 200, 201]
+        // for users, defaulting to [100, 200] and [0, 200], with wall items allowed.
+        yield return new("wf_act_give_currency", new(TransactionMeta(TwoPickLists, 2, 2, [0, 1, 0, -20, 1, 11], 1, [100, 200], [0, 200]), n => Reward(n, 11, 13)));
+        yield return new("wf_act_give_furni", new(TransactionMeta(TwoPickLists, 2, 2, [0, 1, 0, -20, 1, 0], 1, [100, 200], [0, 200]), n => Reward(n, 0, 2)));
         // Mode, multiplier, option, target, timeout flag and seconds; chests, contracts and the merged reference.
         // Observed on hhus: mode 0 stores a multiplier below 2 as 2.
         yield return new("wf_act_init_transaction", new(TransactionMeta(TwoPickLists, 3, 2, [0, 10, 0, -20, 0, 300], 1, [100, 101, 0], [0, 0]), n =>

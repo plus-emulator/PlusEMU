@@ -178,10 +178,10 @@ public sealed class WiredNativeAuxiliaryTests
     [Fact]
     public void ChestFormsKeepTheirFieldOrderAndExposeSourcesByIndex()
     {
-        var give = Compile("wf_act_give_currency", Native("wf_act_give_currency", [0, 5, 1, 0, 1, 13], [100, 200], [11, 0], ["furni:2"], "well done"));
+        var give = Compile("wf_act_give_currency", Native("wf_act_give_currency", [0, 5, 1, 0, 1, 13], [100, 200], [0, 200], ["furni:2"], "well done"));
         Assert.Equal([0, 5, 1, 1, 1, 13], give.IntParams.ToArray());
         Assert.Equal(200, give.FurniSources["f1"]);
-        Assert.Equal(11, give.UserSources["u0"]);
+        Assert.Equal(200, give.UserSources["u1"]);
         Assert.Equal("well done", give.Text);
         var has = Compile("wf_cnd_chest_has_item_type", Native("wf_cnd_chest_has_item_type", [3, 0, -10, 2], [100, 100, 0], [0], ["n"]));
         Assert.Equal([3, 0, 3, 2], has.IntParams.ToArray());

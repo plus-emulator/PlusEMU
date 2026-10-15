@@ -12,10 +12,13 @@ permissions:
 
 concurrency:
   group: release
+  # Keep queued merges instead of replacing the previous pending release.
+  queue: max
   cancel-in-progress: false
 
 jobs:
   release:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -52,6 +55,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="v$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
-          if gh release view "$tag" > /dev/null 2>&1; then echo "$tag is already released"; exit 0; fi
-          gh release create "$tag" dist/* --target "$GITHUB_SHA" --title "PlusEMU $tag" --generate-notes --latest
+          commit=$(git rev-parse HEAD)
+          # Commit time keeps the tag stable when a failed run is retried another day.
+          date=$(date -u -d "@$(git show -s --format=%ct HEAD)" +%Y.%m.%d)
+          tag="v$date-${commit::7}"
+          bash .github/scripts/publish-release.sh "$tag" "PlusEMU $tag" "$commit" dist/*

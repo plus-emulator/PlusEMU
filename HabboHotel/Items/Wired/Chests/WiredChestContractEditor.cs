@@ -10,8 +10,9 @@ public static class WiredChestContractEditor
     // Compatibility entry point now opens the native window; the old generic envelope has no native projection.
     public static void Open(WiredChestRoom module, GameClient client, Item item)
     {
-        if (item.GetRoom() is { } room)
+        if (item.GetRoom() is { } room) {
             WiredNativeContractEditor.Open(room, client, item.Id);
+        }
     }
 
     public static bool TrySave(WiredChestRoom module, Item item, WiredConfiguration configuration)

@@ -21,7 +21,10 @@ public partial class ModernWiredRuntimeTests
         // Audience: the triggering user; targets: the picked furni; invisible, click through, easing 2.
         OctoberBox<WiredModernAction>(f, 110, "wf_act_set_visibility", 0, 0, native => native with
         {
-            OwnedIntParams = [0, 100, 1, 2, 0], PrimaryItems = [new(1, false)], FurniSourceTypes = [100], UserSourceTypes = [0, 0]
+            OwnedIntParams = [0, 100, 1, 2, 0],
+            PrimaryItems = [new(1, false)],
+            FurniSourceTypes = [100],
+            UserSourceTypes = [0, 0]
         });
         var sent = Capture(f.Client);
 
@@ -39,7 +42,10 @@ public partial class ModernWiredRuntimeTests
         Assert.True(f.Engine.Remove(100));
         OctoberBox<WiredModernAction>(f, 110, "wf_act_set_highlight", 0, 0, native => native with
         {
-            OwnedIntParams = [0, 4, 38, 123, 0, 3, 0], PrimaryItems = [new(1, false)], FurniSourceTypes = [100], UserSourceTypes = [0, 0]
+            OwnedIntParams = [0, 4, 38, 123, 0, 3, 0],
+            PrimaryItems = [new(1, false)],
+            FurniSourceTypes = [100],
+            UserSourceTypes = [0, 0]
         });
         var sent = Capture(f.Client);
 
@@ -59,7 +65,9 @@ public partial class ModernWiredRuntimeTests
         // Target users (the triggering user, room index 7), audience the triggering user; colour tint 50.
         OctoberBox<WiredModernAction>(f, 110, "wf_act_set_highlight", 0, 0, native => native with
         {
-            OwnedIntParams = [0, 3, 50, 0xFF0000, 0, 2, 1], FurniSourceTypes = [100], UserSourceTypes = [0, 0]
+            OwnedIntParams = [0, 3, 50, 0xFF0000, 0, 2, 1],
+            FurniSourceTypes = [100],
+            UserSourceTypes = [0, 0]
         });
         var sent = Capture(f.Client);
 
@@ -109,11 +117,15 @@ public partial class ModernWiredRuntimeTests
 
         OctoberBox<WiredModernAction>(f, 110, "wf_act_send_message", 0, 0, native => native with
         {
-            OwnedIntParams = [1], Text = "door open", PrimaryItems = [new(sender.Id, false)], FurniSourceTypes = [100]
+            OwnedIntParams = [1],
+            Text = "door open",
+            PrimaryItems = [new(sender.Id, false)],
+            FurniSourceTypes = [100]
         });
         OctoberBox<WiredModernTrigger>(f, 120, "wf_trg_receive_message", 2, 2, native => native with
         {
-            PrimaryItems = [new(receiver.Id, false)], FurniSourceTypes = [100]
+            PrimaryItems = [new(receiver.Id, false)],
+            FurniSourceTypes = [100]
         });
         var log = Assert.IsType<WiredModernAction>(f.Room.GetWired().CreateConfiguredBox(Placed(f, MakeItem(121, "wf_act_log"), 2, 2), Descriptor("wf_act_log")));
         Assert.True(WiredNativeEditorProjection.TryCompile(121, Descriptor("wf_act_log"),

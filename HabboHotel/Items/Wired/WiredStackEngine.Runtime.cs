@@ -299,6 +299,10 @@ internal sealed partial class WiredStackEngine
             var dispatch = new PendingDispatch(child.Event, child.Depth,
                 new([(antenna, antenna.MovementGeneration)], child, parent))
             { ResumeImmediately = true, Publication = parent.Publication };
+            // Observed r92i r92h-signal-hop hop-w1..w6 and r92-signals sig-w1..w3 (AIR WIN63-202610131318-860371703): receivers run in
+            // the sender's tick, after the sender stack's remaining actions, and two receivers on one antenna run in a varying order.
+            // r92m r92m-recv-order (15 samples over four layouts): neither placement, id, height nor tile fixed the order (the stack on
+            // (11,3) ran first in 14 of 17 samples with r92i, the one on (9,3) in 3), so receivers keep the per-event random order.
             SnapshotDispatch(dispatch);
 
             if (QueueFull(dispatch.Slots)) {
@@ -605,6 +609,7 @@ internal sealed partial class WiredStackEngine
                     || timerStack.Any(box => !ReferenceEquals(box, timer))) {
                     SealPublication();
                 }
+
                 snapshot ??= CreateContext(@event, 0);
                 var context = snapshot.Fork(@event, 0);
                 context.Trigger = timer;

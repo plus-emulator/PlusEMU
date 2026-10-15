@@ -113,6 +113,7 @@ public static class WiredEvidenceRegistry
         // AS3 actiontypes/class_4046.as; turbo WiredActionMuteTriggerer.cs
         ["wf_act_mute_triggerer"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4046.as", RemainderCards),
         // AS3 actiontypes/class_3972.as; turbo WiredActionPlaceFurni.cs
+        // Its save refusal of an owned tradeable template is observed (r93a, WiredPlaceTemplatePolicy); the placement runtime is not.
         ["wf_act_place_furni"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_3972.as", RemainderCards),
         // AS3 actiontypes/class_4089.as; turbo WiredActionRemoveFurni.cs
         ["wf_act_remove_furni"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4089.as", RemainderCards),
@@ -161,7 +162,7 @@ public static class WiredEvidenceRegistry
         ["wf_act_flee"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-flee", R92Observed),
         ["wf_act_rel_mov"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-move-addons", R92Observed),
         ["wf_act_user_to_furni"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-u2f-targets", R92Observed),
-        ["wf_act_match_to_sshot"] = new(WiredEvidenceLevel.Observed, R92 + "#r92e-r92-room14-def", R92Observed),
+        ["wf_act_match_to_sshot"] = new(WiredEvidenceLevel.Observed, R92 + "#r92l-match-to-snapshot", R92Observed),
         ["wf_xtra_mov_physics"] = new(WiredEvidenceLevel.Observed, R92 + "#r92e-r92-room14-def", R92Observed),
         ["wf_xtra_mov_carry_users"] = new(WiredEvidenceLevel.Observed, R92 + "#r92e-r92-room14-def", R92Observed),
         ["wf_xtra_anim_time"] = new(WiredEvidenceLevel.Observed, R92 + "#r92f-r92-move-addons", R92Observed),
@@ -171,10 +172,16 @@ public static class WiredEvidenceRegistry
         ["wf_act_move_rotate"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-move-rotate", R92Observed),
         ["wf_act_furni_to_user"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-user-moves", R92Observed),
         ["wf_act_move_rotate_user"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-user-moves", R92Observed),
-        ["wf_cnd_valid_moves"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-valid-moves", R92Observed),
+        ["wf_cnd_valid_moves"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92h-vm-fail", R92Observed),
         ["wf_act_call_stacks"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-signals", R92Observed),
         ["wf_xtra_exec_in_order"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-exec-order", R92Observed),
-        ["wf_xtra_random"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-exec-order", R92Observed)
+        ["wf_xtra_random"] = new(WiredEvidenceLevel.Observed, R92 + "#r92g-r92-exec-order", R92Observed),
+        ["wf_act_send_signal"] = new(WiredEvidenceLevel.Observed, R92 + "#r92i-r92h-signal-hop", R92Observed),
+        ["wf_trg_recv_signal"] = new(WiredEvidenceLevel.Observed, R92 + "#r92i-r92h-signal-hop", R92Observed),
+        ["wf_act_furni_to_furni"] = new(WiredEvidenceLevel.Observed, R92 + "#r92i-r92h-f2f", R92Observed),
+        ["wf_trg_walks_on_furni"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92k-trigger-gate", R92Observed),
+        ["wf_slc_furni_picks"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92k-trigger-gate", R92Observed),
+        ["wf_cnd_has_furni_on"] = new(WiredEvidenceLevel.Observed, R92 + "#r92k-r92k-trigger-gate", R92Observed)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     public static WiredEvidenceLevel LevelOf(string name) => AirSourceOnly.ContainsKey(name) ? WiredEvidenceLevel.AirSourceOnly

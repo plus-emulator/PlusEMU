@@ -1151,11 +1151,10 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((directional ? 1 : 0, 1, directional && tileFirst ? 1.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
     }
 
+    // wf_act_rel_mov stacks in pick order at a wall instead (observed r92k r92h-rel-wall; see WiredActionPortParityTests.ObservedR92k).
     [Theory]
     [InlineData("wf_act_move_rotate", true)]
     [InlineData("wf_act_move_rotate", false)]
-    [InlineData("wf_act_rel_mov", true)]
-    [InlineData("wf_act_rel_mov", false)]
     public void LineOfStacksWaitsIntactAtAWallAndKeepsItsSpacingInFreeSpace(string name, bool frontFirst)
     {
         var (room, line) = StackLine(0, -1, frontFirst);
@@ -1461,7 +1460,8 @@ public partial class ModernWiredRuntimeTests
                 var published = f.Published;
                 var pending = f.SeedPending();
                 f.Client.Packets.Clear();
-                await f.Save(editor.Owned, editor.Primary, editor.Delay);
+                // The editor sends back its two fields, not the hotel-owned trailing int.
+                await f.Save(editor.Owned[..2], editor.Primary, editor.Delay);
                 f.AssertExplicitSave(saved, writes, published, pending);
                 Assert.Equal(saved.IntParams.AsEnumerable(), f.Action.Configuration.IntParams);
                 Assert.Equal(saved.SelectedItems.AsEnumerable(), f.Action.Configuration.SelectedItems);
@@ -1618,7 +1618,8 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(0, reply.Sprite);
         Assert.Equal(100u, reply.ItemId);
         Assert.Equal("", reply.Text);
-        Assert.Equal(owned, reply.Owned);
+        // move_rotate frames end with the hotel-owned int: 1 until the first save, then 0 (observed r92k r92h-hidden-ints).
+        Assert.Equal(direction ? owned : [.. owned, picks.Length == 0 && owned.SequenceEqual([0, 0]) ? 1 : 0], reply.Owned);
         Assert.Empty(reply.Variables);
         Assert.Equal(new[] { 100 }, reply.Furni);
         Assert.Empty(reply.Users);
@@ -3211,6 +3212,7 @@ public partial class ModernWiredRuntimeTests
         f.Target.Definition.IsSeat = false;
         f.Room.GetGameMap().AddToMap(f.Target);
         var resident = occupied ? f.AddPlayer(8, 1, 1) : null;
+
         if (executor) {
             f.UseExecutor();
         }
@@ -3221,9 +3223,11 @@ public partial class ModernWiredRuntimeTests
             throughFurni ? new HashSet<uint> { f.Target.Id } : new HashSet<uint>(),
             resident == null ? new HashSet<int>() : new HashSet<int> { resident.VirtualId }, new HashSet<uint>());
         var movement = new WiredRoomMovement(f.Room.GetWired().DispatchWalkTransition);
+
         using (RoomOwnerScope.Enter(f.Room)) {
             Assert.Equal(expected, movement.MoveAvatar(context, f.User, 1, 1, false));
         }
+
         Assert.Equal(expected ? new Point(1, 1) : new Point(0, 0), f.User.Coordinate);
         Assert.Empty(f.Errors);
     }

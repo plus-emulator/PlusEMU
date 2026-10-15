@@ -124,6 +124,21 @@ public sealed class WiredConfigurationService(
             };
 
             var error = "Invalid native Wired settings.";
+
+            // Place Furni refuses a template that cannot be cloned (observed r93a; see WiredPlaceTemplatePolicy).
+            if (descriptor.CanonicalName == "wf_act_place_furni"
+                && Modern.Actions.WiredPlaceTemplatePolicy.RefusalKey(room, native.SavedState.Snapshots) is { } notCloneable) {
+                session.Send(new WiredValidationErrorComposer(notCloneable));
+
+                return;
+            }
+
+            if (!WiredNativeEditorProjection.TryFillSourceSlots(descriptor, native, out native, out var countError)) {
+                session.Send(new WiredValidationErrorComposer(countError ?? error));
+
+                return;
+            }
+
             var compiled = WiredNativeEditorProjection.TryCompile(selectedItem.Id, descriptor, native, out var runtime);
 
             if (!compiled) {

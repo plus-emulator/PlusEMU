@@ -84,6 +84,7 @@ public class RoomManager : IRoomManager, IStartable
             // Retry once the shared task slot is free, before admitting any more fast Wired work.
             foreach (var pair in _pendingFullRooms) {
                 var room = pair.Value;
+
                 if (room.IsCrashed || room.MDisposed) {
                     _pendingFullRooms.TryRemove(pair);
                 }
@@ -101,6 +102,7 @@ public class RoomManager : IRoomManager, IStartable
                         if (_pendingFullRooms.ContainsKey(room.Id)) {
                             continue;
                         }
+
                         RoomCycle.TryStart(room, room.ProcessWiredOnly);
                     }
                 }

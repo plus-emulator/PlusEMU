@@ -123,6 +123,10 @@ notification keys are added.
   4 trade; a failed one `WiredTradeCancelled` (2553, reason). Rewards send 125 type 2 with the rule. Withdrawals send
   125 type 1 or `WiredTransactionFail` (1360, reason) instead of a free-text notification.
 - `WiredChestLock` (1323) has no answer; chests' stuff data shows the new state.
+- A withdrawal the chest refuses answers `WiredTransactionFail` (1360) with 12 (not a Wired chest) or 15 (locked / no
+  rights) instead of staying silent.
+- Using a chest furni only answers `WiredChestOpen`; it does not fire the furni state-changed Wired trigger (the
+  renderer used to open chests directly, and AIR has not shown that trigger firing on a chest use).
 
 ## Unresolved
 

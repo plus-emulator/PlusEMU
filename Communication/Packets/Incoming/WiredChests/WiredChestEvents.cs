@@ -44,7 +44,14 @@ public abstract class WiredChestPacketEvent : RoomPacketEvent
     {
         var chest = module.Read(item);
 
-        if (chest == null || !chest.CanWithdraw((uint)session.GetHabbo().Id, room.GetWired().Settings.CanModify(session))) {
+        if (chest == null) {
+            return;
+        }
+
+        // Only the owner withdraws from a plain chest; others need an unlocked Wired chest and modify rights.
+        if (!chest.CanWithdraw((uint)session.GetHabbo().Id, room.GetWired().Settings.CanModify(session))) {
+            session.Send(new WiredTransactionFailComposer(chest.Settings.WiredEnabled ? WiredChestFailure.NoOrLockedChests : WiredChestFailure.Disabled));
+
             return;
         }
 

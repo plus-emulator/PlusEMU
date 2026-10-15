@@ -660,6 +660,23 @@ public sealed class WiredChestProtocolTests
         Assert.Equal(new byte[] { 0, 0, 0, 0 }, error.Payload);
     }
 
+    [Theory]
+    [InlineData(false, false, WiredChestFailure.Disabled)]
+    [InlineData(true, true, WiredChestFailure.NoOrLockedChests)]
+    public async Task AWithdrawTheChestRefusesAnswersWithTransactionFail(bool wiredEnabled, bool locked, WiredChestFailure reason)
+    {
+        // Not the owner (2): a plain chest, or a locked Wired chest, refuses before any transfer (wired_transactions.notification.fail.N).
+        var world = new World();
+        world.Chest.OwnerId = 2;
+        world.Store.Settings = world.Store.Settings with { WiredEnabled = wiredEnabled, Locked = locked };
+        world.Store.Kind = WiredChestKind.Coins;
+        world.Store.Owner = 2;
+        await new ChestWithdrawCoinsEvent().Parse(world.Room, world.Client, Incoming(100, 5));
+        Assert.Empty(world.Store.Requests);
+        var fail = Assert.Single(world.Packets, packet => packet.Header == ServerPacketHeader.WiredTransactionFailComposer);
+        Assert.Equal(new byte[] { 0, 0, 0, (byte)reason }, fail.Payload);
+    }
+
     private sealed class Operations : IWiredRuntimeOperations
     {
         public bool CallStacks(WiredRuntimeContext context, IEnumerable<Item> targets, bool negative = false) => throw new NotSupportedException();
@@ -678,13 +695,14 @@ public sealed class WiredChestProtocolTests
         public WiredChestFailure? Failure;
         public WiredChestKind Kind = WiredChestKind.Furni;
         public int Coins = 20;
+        public uint Owner = 1;
         public InventoryItem[] Stock = [];
         public WiredChestSettings Settings = new() { Capacity = 1000, Locked = false, WiredEnabled = true, PreviewMode = 5, PreviewAmount = 1 };
         public WiredChestSnapshot? Load(Item item)
         {
             Reads.Add(item.Id);
 
-            return WiredChestFurniture.IsChest(item.Definition) ? new(item.Id, 1, 42, Kind, Kind == WiredChestKind.Coins ? Coins : 0, 0, Settings, Stock) : null;
+            return WiredChestFurniture.IsChest(item.Definition) ? new(item.Id, Owner, 42, Kind, Kind == WiredChestKind.Coins ? Coins : 0, 0, Settings, Stock) : null;
         }
         public WiredChestSettings? Saved;
         public bool SaveResult = true;

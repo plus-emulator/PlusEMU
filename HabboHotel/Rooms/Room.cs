@@ -910,6 +910,12 @@ public class Room
     /// Several floor items' data in one ObjectsDataUpdate; clients whose revision does not map it get each item's full
     /// update instead.
     /// </summary>
+    /// <summary>
+    /// The tick's box flashes go out before its Wired movement packet. Observed r92f (AIR WIN63-202610131318-860371703): the
+    /// ObjectsDataUpdate with the fired boxes precedes the WiredMovements of the same firing (r92-chase, r92-u2f-targets, r92-room14-slow).
+    /// </summary>
+    internal void FlushWiredFlashes() => _wiredComponent?.FlushFlashes(force: true);
+
     internal void SendObjectsData(IReadOnlyList<Item> items)
     {
         if (items.Count == 0) {

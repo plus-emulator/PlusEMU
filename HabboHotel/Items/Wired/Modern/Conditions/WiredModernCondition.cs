@@ -121,7 +121,11 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_has_altitude":
                 return WiredItemConditions.MatchesAltitude(config, Items());
             case "wf_cnd_valid_moves":
-                return WiredItemConditions.ValidMoves(Items(), (item, x, y) => WiredRoomOperations.CanMoveItem(context.Room, item, x, y, item.Rotation,
+                // Observed r92g r92-valid-moves (AIR WIN63-202610131318-860371703): the hotel editor has no furni source; saved that way,
+                // the condition passed on a say trigger in windows a-w1, b-w1 and c-w1. With nothing selected nothing is invalid.
+                var moving = Items();
+
+                return moving.Length == 0 || WiredItemConditions.ValidMoves(moving, (item, x, y) => WiredRoomOperations.CanMoveItem(context.Room, item, x, y, item.Rotation,
                     collision: WiredRoomMovement.Collision(context.Policy.Addons.Physics, step: true)));
             case "wf_cnd_slc_quantity":
                 return WiredItemConditions.SelectionQuantity(config,

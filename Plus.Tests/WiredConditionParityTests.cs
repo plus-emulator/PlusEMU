@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-public sealed class WiredConditionParityTests
+public sealed partial class WiredConditionParityTests
 {
     [Fact]
     public void CounterTimeKeepsMinuteZeroAndRejectsValuesOutsideTheEditor()

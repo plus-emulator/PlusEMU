@@ -18,6 +18,7 @@ internal sealed partial class WiredStackEngine
     private readonly PriorityQueue<ScheduledAction, (long Due, double Height, uint Id, long Firing, int Order)> _schedule = new();
     private readonly HashSet<ActionChain> _pending = new();
     private readonly Func<long> _now;
+    internal long Now => _now();
     private readonly Random _effectOrderRandom;
     private readonly Func<IWiredItem, bool> _attached;
     private readonly Func<object[], bool> _actorPresent;
@@ -462,8 +463,10 @@ internal sealed partial class WiredStackEngine
                 }
             }
 
-            var height = effects.Min(step => step.Box.Item.GetZ);
-            var id = effects.Min(step => step.Box.Item.Id);
+            // Without exec_in_order, stacks fired by one event run in their (random) firing order, not by height or id.
+            // Observed r92g r92-signals two-w1..w3 (AIR WIN63-202610131318-860371703).
+            var height = 0.0;
+            var id = 0u;
 
             for (var index = 0; index < effects.Length; index++) {
                 var step = effects[index];

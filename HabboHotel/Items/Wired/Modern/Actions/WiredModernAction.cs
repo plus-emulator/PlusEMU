@@ -425,7 +425,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             _publish(new(WiredEventKind.StateChanged) { Actor = FurnitureStateEvents.Present(context.Room, context.Event.Actor), EventItem = item });
                         }
                     }) is GateTransition.Applied or GateTransition.Queued,
-                (movers, step) => _movement.MoveTogether(context, movers, step, passengers), context.Room.GetGameMap().ValidTile,
+                (movers, step) => _movement.MoveTogether(context, movers, step, passengers, WiredMovementActions.Steps.Contains(name)), context.Room.GetGameMap().ValidTile,
                 (item, snapshot, position, altitude) => _movement.RestoreWallSnapshot(context, item, snapshot, position, altitude),
                 (item, operation, altitude) => _movement.SetWallAltitude(context, item, operation, altitude));
         }
@@ -563,10 +563,12 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 bool ChaseOrFlee(Item item)
                 {
                     bool Move(int x, int y) => _movement.MoveFurniture(context, item, x, y, item.Rotation, null, passengers: carry);
-                    var nearest = WiredDirectionalActions.Nearest(item, context.Targets.AllUsers());
+                    var flee = name == "wf_act_flee";
+                    // Observed r92f r92-flee: flee has no range (Manhattan 10 still moves away on all three fires); chase keeps its range.
+                    var nearest = WiredDirectionalActions.Nearest(item, context.Targets.AllUsers(), flee ? null : 3);
 
                     if (nearest == null) {
-                        if (name == "wf_act_flee") {
+                        if (flee) {
                             return false;
                         }
 
@@ -581,13 +583,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         return true;
                     }
 
-                    var candidates = WiredDirectionalActions.Steps(item, nearest, name == "wf_act_flee").ToArray();
+                    var candidates = flee ? WiredDirectionalActions.FleeSteps(item, nearest).ToArray()
+                        : WiredDirectionalActions.Steps(item, nearest, false).Take(1).ToArray();
 
-                    if (name == "wf_act_flee" && candidates.Length == 0) {
-                        candidates = [new(item.GetX + Random.Shared.Next(-1, 2), item.GetY)];
-                    }
-
-                    return (name == "wf_act_chase" ? candidates.Take(1) : candidates).Any(candidate => Move(candidate.X, candidate.Y));
+                    return candidates.Any(candidate => Move(candidate.X, candidate.Y));
                 }
             case "wf_act_move_to_dir":
                 _directions.Retain(context.Targets.AllFurni());
@@ -725,7 +724,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
     }
 
-    // The current editor orders Wait/right/left/back/random differently from Turbo's heading rules.
+    // Editor choice -> turn rule. Observed r92d r92-mtd-wall (mover heading north into the void): right 45/90 end east, left 45/90
+    // west, back south, all in the same fire, and the new heading is kept on the next fire; wait stays.
     private static int HeadingTurnRule(int choice) => choice switch
     {
         0 => 6,

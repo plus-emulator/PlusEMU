@@ -1026,8 +1026,8 @@ public partial class ModernWiredRuntimeTests
         Assert.True(WiredRoomOperations.CanMoveItem(room, mover, 1, 1, 0, collision: WiredRoomMovement.Collision(through, step: true)));
     }
 
+    // wf_act_rel_mov is no step move: observed r92f r92-move-addons nophys-w1 stacks it on the furni ahead (see WiredActionPortParityTests.ObservedR92).
     [Theory]
-    [InlineData("wf_act_rel_mov", new[] { 1, 1, 1, 0, 100 }, false)]
     [InlineData("wf_act_move_rotate", new[] { -1, 2, 100, 0 }, true)]
     public void StepActionsStopAtStackableFurnitureButRotatingInPlaceIsNoStep(string name, int[] ints, bool changes)
     {
@@ -1131,9 +1131,8 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((1, 1, name == "wf_act_move_to_dir" && !tileFirst ? 0.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
     }
 
+    // wf_act_rel_mov lands on stackable furni (observed r92f r92-move-addons nophys-w1), so only move_rotate keeps step rules here.
     [Theory]
-    [InlineData("wf_act_rel_mov", true)]
-    [InlineData("wf_act_rel_mov", false)]
     [InlineData("wf_act_move_rotate", true)]
     [InlineData("wf_act_move_rotate", false)]
     [InlineData("wf_act_move_to_dir", true)]

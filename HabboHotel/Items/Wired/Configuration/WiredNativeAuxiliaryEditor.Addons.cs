@@ -12,8 +12,8 @@ internal static partial class WiredNativeAuxiliaryEditor
             VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Id, variables)]
         };
 
-    // Volt user sources accepted by the addons: trigger, clicked user, selector, signal, all users.
-    private static readonly ImmutableArray<int> AddonUsers = [0, 11, 200, 201, 900];
+    // Observed r92d/r92e initial frames of carry users and physics (AIR WIN63-202610131318-860371703): trigger, selector, signal, all users.
+    private static readonly ImmutableArray<int> AddonUsers = [0, 200, 201, 900];
     private static readonly ImmutableArray<int> AddonFurni = [0, 100, 200, 201, 900];
     private static readonly ImmutableArray<int> PhysicsFurni = [0, 100, 101, 200, 201, 900];
     private static readonly ImmutableArray<int> PlainFurni = [0, 100, 200, 201];
@@ -82,7 +82,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_xtra_filter_furni", new(Meta(1, 1, [10, 0, 1], 1), FilterSpec("wf_xtra_filter_furni")));
         yield return new("wf_xtra_filter_users", new(Meta(1, 1, [10, 0, 1], 1), FilterSpec("wf_xtra_filter_users")));
         // Jump strength: literal or variable value, with the merged reference's own target and source.
-        yield return new("wf_xtra_mov_curve", new(Meta(1, 1, [0, 160, -20], 1), n =>
+        // Observed r92f r92-move-addons initial frame (pkt 19139): furni 0/100/200/201 opening on 100, users 0/200/201 opening on 0.
+        yield return new("wf_xtra_mov_curve", new(Sources([PlainFurni], [ProjectileUsers], [0, 160, -20], 1) with { FurniDefaults = [100] }, n =>
         {
             var p = n.OwnedIntParams;
 

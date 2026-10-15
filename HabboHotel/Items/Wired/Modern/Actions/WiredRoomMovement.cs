@@ -151,6 +151,12 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var source = Furniture(item);
         var targetHeight = height ?? room.GetGameMap().Model.SqFloorHeight[Math.Clamp(x, 0, room.GetGameMap().Model.MapSizeX - 1), Math.Clamp(y, 0, room.GetGameMap().Model.MapSizeY - 1)];
         var options = WiredMovementPolicy.Resolve(policy, source, x, y, targetHeight, rotation, explicitHeight: height.HasValue);
+
+        // A turn on the spot is a plain ObjectUpdate. Observed r92g r92-move-rotate mrCw-w1/mrCcw-w1 (AIR WIN63-202610131318-860371703,
+        // frames 39269/39535): no WiredMovements for a rotation without a move.
+        if (x == item.GetX && y == item.GetY && height == null && rotation != item.Rotation) {
+            options = options with { Animate = false };
+        }
         var physics = policy.Physics;
         var collision = Collision(physics, step && (x != item.GetX || y != item.GetY), unit);
 
@@ -234,6 +240,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 }
             }
             else {
+                room.FlushWiredFlashes();
                 room.SendPacket(style);
 
                 // One packet: the furniture body, then the shooter's direction (re-checked after the style callback).
@@ -280,9 +287,11 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     /// <summary>
     /// Resolves one execution's furniture steps together. Movers stacked on each other step as one unit, decided by its
     /// bottom item. Before a unit enters a tile, a still-pending unit there that would block it takes its own step first,
-    /// so a line follows its front or waits behind it in any order.
+    /// so a line follows its front or waits behind it in any order. Without step rules (wf_act_rel_mov) the unit lands on
+    /// stackable furniture like any non-step move.
     /// </summary>
-    public bool MoveTogether(WiredRuntimeContext context, IReadOnlyList<Item> movers, Func<Item, Func<int, int, int, bool>, bool> step, PassengerSnapshot? passengers = null)
+    public bool MoveTogether(WiredRuntimeContext context, IReadOnlyList<Item> movers, Func<Item, Func<int, int, int, bool>, bool> step,
+        PassengerSnapshot? passengers = null, bool stepRules = true)
     {
         var physics = context.Policy.Addons.Physics;
         var units = Units(movers);
@@ -299,18 +308,18 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         bool Move(Item[] unit, int x, int y, int rotation)
         {
-            var collision = Collision(physics, x != unit[0].GetX || y != unit[0].GetY);
+            var collision = Collision(physics, stepRules && (x != unit[0].GetX || y != unit[0].GetY));
 
             foreach (var ahead in Destinations(unit, x, y, rotation)
                          .SelectMany(move => WiredRoomOperations.Footprint(move.Item, move.X, move.Y, move.Rotation))
                          .SelectMany(point => context.Room.GetGameMap().GetCoordinatedItems(point)).Distinct().ToArray()) {
                 if (unitOf.TryGetValue(ahead, out var other) && pending.Contains(other)
-                    && (collision?.BlocksFurni(ahead) ?? !ahead.Definition.Stackable)) {
+                    && (!stepRules || (collision?.BlocksFurni(ahead) ?? !ahead.Definition.Stackable))) {
                     Step(other);
                 }
             }
 
-            return MoveUnit(context, unit, x, y, rotation, passengers);
+            return MoveUnit(context, unit, x, y, rotation, passengers, stepRules);
         }
 
         foreach (var unit in units) {
@@ -344,18 +353,18 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     /// The whole unit moves or none of it does. The bottom lands as a single item would; the others keep their height
     /// above it, and every member turns by the bottom's turn.
     /// </summary>
-    private bool MoveUnit(WiredRuntimeContext context, Item[] unit, int x, int y, int rotation, PassengerSnapshot? passengers)
+    private bool MoveUnit(WiredRuntimeContext context, Item[] unit, int x, int y, int rotation, PassengerSnapshot? passengers, bool stepRules = true)
     {
         var bottom = unit[0];
 
         if (unit.Length == 1) {
-            return MoveFurniture(context, bottom, x, y, rotation, null, step: true, passengers: passengers);
+            return MoveFurniture(context, bottom, x, y, rotation, null, step: stepRules, passengers: passengers);
         }
 
         var moves = Destinations(unit, x, y, rotation);
         var ids = unit.Select(item => item.Id).ToHashSet();
         var keepAltitude = context.Policy.Addons.Physics?.KeepAltitude == true;
-        var collision = Collision(context.Policy.Addons.Physics, x != bottom.GetX || y != bottom.GetY, ids);
+        var collision = Collision(context.Policy.Addons.Physics, stepRules && (x != bottom.GetX || y != bottom.GetY), ids);
 
         if (moves.Any(move => !WiredRoomOperations.CanMoveItem(context.Room, move.Item, move.X, move.Y, move.Rotation,
                     keepAltitude ? move.Item.GetZ : null, collision: collision)
@@ -366,12 +375,12 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         var offsets = unit.ToDictionary(item => item, item => item.GetZ - bottom.GetZ);
 
-        if (!MoveFurniture(context, bottom, x, y, rotation, null, step: true, ids, passengers)) {
+        if (!MoveFurniture(context, bottom, x, y, rotation, null, step: stepRules, ids, passengers)) {
             return false;
         }
 
         foreach (var move in moves.Skip(1)) {
-            MoveFurniture(context, move.Item, move.X, move.Y, move.Rotation, bottom.GetZ + offsets[move.Item], step: true, ids, passengers);
+            MoveFurniture(context, move.Item, move.X, move.Y, move.Rotation, bottom.GetZ + offsets[move.Item], step: stepRules, ids, passengers);
         }
 
         return true;
@@ -524,6 +533,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             };
 
             if (!carrySource.HasValue || _appendCarryPublication?.Invoke(context, user, movement, style) != true) {
+                room.FlushWiredFlashes();
                 room.SendPacket(style);
                 room.SendPacket(movement);
             }

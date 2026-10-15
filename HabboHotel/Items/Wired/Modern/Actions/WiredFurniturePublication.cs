@@ -82,6 +82,10 @@ internal sealed class WiredFurniturePublication(Room room, object root, long dea
         _order.Clear();
         _avatars.Clear();
 
+        if (live.Length != 0 || avatars.Length != 0) {
+            room.FlushWiredFlashes();
+        }
+
         foreach (var entry in live) {
             room.SendPacket(entry.Style);
         }

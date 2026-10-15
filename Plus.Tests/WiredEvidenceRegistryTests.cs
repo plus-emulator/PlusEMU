@@ -105,4 +105,16 @@ public sealed class WiredEvidenceRegistryTests
         Assert.True(WiredConditionConfiguration.TryValidate("wf_cnd_wearing_badge", new() { IntParams = [0, 0], Text = new string('a', 1000) }, out _, out _));
         Assert.False(WiredConditionConfiguration.TryValidate("wf_cnd_wearing_badge", new() { IntParams = [0, 0], Text = new string('a', 1001) }, out _, out _));
     }
+
+    [Fact]
+    public void R92ObservedMovementCardsAreNotListedAsUnobserved()
+    {
+        Assert.Equal(19, WiredEvidenceRegistry.ObservedR92.Count);
+        Assert.All(WiredEvidenceRegistry.ObservedR92, pair =>
+        {
+            Assert.True(WiredBoxRegistry.TryGet(pair.Key, out _), pair.Key);
+            Assert.Equal(WiredEvidenceLevel.Observed, WiredEvidenceRegistry.LevelOf(pair.Key));
+            Assert.StartsWith("reviews/r92-movement-facts.md#", pair.Value.Source);
+        });
+    }
 }

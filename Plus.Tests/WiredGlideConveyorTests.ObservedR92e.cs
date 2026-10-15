@@ -29,6 +29,7 @@ public sealed partial class WiredGlideConveyorTests
         room.OwnerName = rider.GetUsername();
         var packets = CapturePublication(rider);
         var request = new WiredUserVariablesRequestEvent(new WiredVariableMenuService());
+        var flashes = new List<string>();
 
         for (var pulse = 1; pulse <= 4; pulse++) {
             await request.Parse(room, rider.GetClient()!, new FlashIncomingPacket { Buffer = Array.Empty<byte>() });
@@ -51,10 +52,38 @@ public sealed partial class WiredGlideConveyorTests
             Assert.Equal((3 + pulse, 4 + pulse, 300), (carry.FromX, carry.ToX, carry.Duration));
             Assert.Equal(0, group[^1].Type); // The rider's entry follows the tiles' entries, as in the official packet.
             Assert.Equal((4 + pulse, 11), (rider.X, rider.Y));
-            // Movement Physics, Carry Users and Animation Time participate in each accepted pulse.
-            Assert.All(new uint[] { 15, 16, 17, 18 }, id =>
-                Assert.Equal(pulse % 2 == 1 ? "1" : "0", f.Items[id].LegacyDataString));
+            // Movement Physics, Carry Users and Animation Time take part in each pulse, but a box flips once per 500 ms window
+            // (observed r92e r92-room14-def: boxes 600/400 ms apart under the 200 ms repeater).
+            flashes.Add(string.Join(",", new uint[] { 15, 16, 17, 18 }.Select(id => f.Items[id].LegacyDataString).Distinct()));
             Assert.Equal(0, f.Engine.ReadStats().Pending);
+        }
+
+        Assert.Equal(["1", "1", "0", "0"], flashes);
+    }
+
+    // Observed r92e r92-room14-def and r92f r92-room14-slow / r92-chase: the ObjectsDataUpdate with the flashed boxes goes out
+    // before the WiredMovements packet of the same firing.
+    [Fact]
+    public void ColourTileFastQueueSendsTheBoxFlashesBeforeTheMovementPacket()
+    {
+        var f = new Fixture(ColourTileFastQueueLayout(), live: true);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        var headers = new List<uint>();
+        rider.GetClient()!.SendCallback = args =>
+        {
+            headers.Add(BinaryPrimitives.ReadUInt32BigEndian(args.MemoryBuffer.ToArray()));
+
+            return false;
+        };
+
+        for (var pulse = 1; pulse <= 6; pulse++) {
+            headers.Clear();
+            f.Advance(pulse == 1 ? 250 : 200);
+            var relevant = headers.Where(header => header is ServerPacketHeader.ObjectsDataUpdateComposer
+                or ServerPacketHeader.WiredMovementsComposer).ToArray();
+            var movement = Array.IndexOf(relevant, ServerPacketHeader.WiredMovementsComposer);
+            Assert.True(movement >= 0, $"pulse {pulse}: " + string.Join(",", relevant));
+            Assert.All(relevant.Skip(movement + 1), header => Assert.Equal(ServerPacketHeader.WiredMovementsComposer, header));
         }
     }
 

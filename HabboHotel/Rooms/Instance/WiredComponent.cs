@@ -422,8 +422,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
     public ICollection<IWiredItem> GetConditions(IWiredItem item) => _engine.GetBoxes(item, InteractionType.WiredCondition);
 
     /// <summary>
-    /// A box acts: it flips to its other flash state, which goes out with the next state update (Habbo: one
-    /// ObjectsDataUpdate every 500 ms carrying the furni whose state changed). Boxes hold their state between flashes.
+    /// A box acts: it flips to its other flash state, at most once per 500 ms state-update window; boxes hold their state
+    /// between flashes. A signal antenna (not a box) flips on every signal.
+    /// Observed r92e r92-room14-def (AIR WIN63-202610131318-860371703): under a 200 ms repeater every box of both stacks flips
+    /// 600, 400, 600, 400 ms apart while the antenna flips every 200 ms; the flips share one ObjectsDataUpdate per tick.
     /// </summary>
     public void OnEvent(Item item)
     {
@@ -433,6 +435,19 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
 
         TryGet(item.Id, out var box);
+
+        if (box != null) {
+            var window = _engine.Now / WiredFlashStates.StateUpdateMilliseconds;
+
+            lock (_flashWindows) {
+                if (_flashWindows.TryGetValue(item.Id, out var last) && last == window) {
+                    return;
+                }
+
+                _flashWindows[item.Id] = window;
+            }
+        }
+
         item.LegacyDataString = WiredFlashStates.Next(item.LegacyDataString, box);
 
         lock (_pendingFlashes) {
@@ -441,6 +456,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     private readonly HashSet<Item> _pendingFlashes = [];
+    private readonly Dictionary<uint, long> _flashWindows = [];
     private long _nextFlashUpdate;
 
     /// <summary>Sends the flashed boxes' current states together, at most once per state update interval.</summary>
@@ -488,6 +504,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     public void Cleanup()
     {
+        lock (_flashWindows) {
+            _flashWindows.Clear();
+        }
+
         WiredTemporaryEffects.For(_room).Clear();
         _engine.Clear();
         _selectorState.Reset();

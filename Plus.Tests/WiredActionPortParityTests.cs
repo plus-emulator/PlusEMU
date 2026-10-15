@@ -24,7 +24,7 @@ using Xunit.Abstractions;
 
 namespace Plus.Tests;
 
-public sealed class WiredActionPortParityTests(ITestOutputHelper output)
+public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
 {
     [Fact]
     public void NearestPlayerUsesManhattanRangeAndOrdering()
@@ -190,7 +190,8 @@ public sealed class WiredActionPortParityTests(ITestOutputHelper output)
         var user = Avatar(room, 1, name == "wf_act_flee" ? 0 : 4, 2);
         var action = Box(room, name, name == "wf_act_move_to_dir" ? [2, 0, 100, 0] : [100], [1, 2]);
         Assert.True(action.Execute(Context(room, topFirst ? [top, bottom] : [bottom, top], [user])));
-        Assert.Equal((topFirst ? 2 : 3, 2, 0.0), (bottom.GetX, bottom.GetY, bottom.GetZ));
+        // Flee sidesteps when its away tile is taken (observed r92f r92-flee wall-w1/w2), so a blocked bottom moves aside.
+        Assert.Equal(topFirst ? (name == "wf_act_flee" ? (2, 3, 0.0) : (2, 2, 0.0)) : (3, 2, 0.0), (bottom.GetX, bottom.GetY, bottom.GetZ));
         Assert.Equal((3, 2, topFirst ? 0.0 : 0.5), (top.GetX, top.GetY, top.GetZ));
     }
 

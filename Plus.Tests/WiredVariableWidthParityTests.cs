@@ -19,6 +19,18 @@ public sealed class WiredVariableWidthParityTests
         Assert.Equal(expected, WiredVariableArithmetic.Apply(operation, current, operand));
     }
 
+    // Observed r92g r92g-minmax (AIR WIN63-202610131318-860371703; runs/r92g-minmax-20261015T080347 windows minhigh-w1, minlow-w1,
+    // maxhigh-w1, maxlow-w1): wf_act_change_var_val from 5. Set minimum (40) is a floor, set maximum (41) a cap.
+    [Theory]
+    [InlineData(40, 5, 8, 8L)]
+    [InlineData(40, 5, 3, 5L)]
+    [InlineData(41, 5, 8, 5L)]
+    [InlineData(41, 5, 3, 3L)]
+    public void SetMinimumFloorsAndSetMaximumCapsTheCurrentValue(int operation, long current, long operand, long expected)
+    {
+        Assert.Equal(expected, WiredVariableArithmetic.Apply(operation, current, operand));
+    }
+
     [Theory]
     [InlineData(1L, -1L, 1L)]
     [InlineData(-1L, -1L, -1L)]

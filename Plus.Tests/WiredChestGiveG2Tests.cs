@@ -35,7 +35,7 @@ public sealed class WiredChestGiveG2Tests
         Assert.Equal(5, Assert.Single(request.Reward).Amount);
         Assert.Null(request.Reward[0].ItemType);
         Assert.Empty(request.PaymentIds);
-        var popup = Assert.Single(world.Packets, packet => packet.Header == 9346);
+        var popup = Assert.Single(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionSuccessComposer);
         Assert.Contains("well done", System.Text.Encoding.UTF8.GetString(popup.Payload));
         Assert.Contains(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.CreditBalanceComposer);
     }
@@ -51,7 +51,7 @@ public sealed class WiredChestGiveG2Tests
         Assert.Equal(0, world.Store.Chests[FirstChest].Coins);
         Assert.False(box.Execute(world.Context())); // Nothing left: no request, no pop-up.
         Assert.Single(world.Store.Requests);
-        Assert.Single(world.Packets, packet => packet.Header == 9346);
+        Assert.Single(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionSuccessComposer);
         Assert.Equal(120, world.Habbo.Credits);
     }
 
@@ -112,7 +112,7 @@ public sealed class WiredChestGiveG2Tests
         Assert.False(box.Execute(world.Context()));
         Assert.Empty(world.Store.Requests);
         Assert.Equal(100, world.Habbo.Credits);
-        Assert.DoesNotContain(world.Packets, packet => packet.Header == 9346);
+        Assert.DoesNotContain(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionSuccessComposer);
         world.Store.Chests[FirstChest].Locked = false;
         Assert.True(box.Execute(world.Context()));
         Assert.Equal(105, world.Habbo.Credits);
@@ -129,7 +129,7 @@ public sealed class WiredChestGiveG2Tests
         Assert.False(box.Execute(world.Context()));
         Assert.Equal(int.MaxValue - 3, world.Habbo.Credits);
         Assert.Equal(20, world.Store.Chests[FirstChest].Coins);
-        Assert.DoesNotContain(world.Packets, packet => packet.Header == 9346);
+        Assert.DoesNotContain(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionSuccessComposer);
         world.Habbo.Credits = 100;
         Assert.True(box.Execute(world.Context()));
         Assert.Equal(105, world.Habbo.Credits);
@@ -155,7 +155,7 @@ public sealed class WiredChestGiveG2Tests
         Assert.False(box.Execute(world.Context()));
         Assert.Equal(100, world.Habbo.Credits);
         Assert.Equal(20, world.Store.Chests[FirstChest].Coins);
-        Assert.DoesNotContain(world.Packets, packet => packet.Header == 9346);
+        Assert.DoesNotContain(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionSuccessComposer);
         world.Store.Refuse = null;
         world.Store.Throw = false;
         Assert.True(box.Execute(world.Context())); // The same box pays normally afterwards: one payment, not two.
@@ -188,7 +188,7 @@ public sealed class WiredChestGiveG2Tests
         Assert.NotNull(world.Habbo.Inventory.Furniture.GetItem(1001));
         Assert.Null(world.Habbo.Inventory.Furniture.GetItem(1002));
         Assert.Equal(2, world.Packets.Count(packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.FurniListAddComposer));
-        Assert.Single(world.Packets, packet => packet.Header == 9346);
+        Assert.Single(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionSuccessComposer);
     }
 
     [Fact]

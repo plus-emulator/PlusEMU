@@ -82,7 +82,9 @@ Point the client's `socket.url` at the `Nitro` host and port (for example `ws://
 ## Branches and releases
 
 - `dev` is the integration branch; open pull requests against `dev`.
-- `dev` is merged into `master` for a release. Each push to `master` builds, tests and publishes a release tagged `v<yyyy.mm.dd>-<short sha>`.
+- `dev` is merged into `master` for a release. Each push to `master` builds, tests and publishes a release tagged `v<yyyy.mm.dd>-<short sha>`. The date comes from the commit timestamp in UTC, so retries keep the same tag.
+
+Release runs queue instead of replacing pending merges (up to GitHub's 100-run queue limit). Assets upload to a draft before publication; rerunning a failed workflow resumes the draft, and an already published tag is left unchanged. To retry manually, run **Release** on `master`, or rerun the original failed workflow for an older commit.
 
 ## Contributing
 

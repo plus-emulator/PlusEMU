@@ -113,6 +113,7 @@ public static class WiredEvidenceRegistry
         // AS3 actiontypes/class_4046.as; turbo WiredActionMuteTriggerer.cs
         ["wf_act_mute_triggerer"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4046.as", RemainderCards),
         // AS3 actiontypes/class_3972.as; turbo WiredActionPlaceFurni.cs
+        // Its save refusal of an owned tradeable template is observed (r93a, WiredPlaceTemplatePolicy); the placement runtime is not.
         ["wf_act_place_furni"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_3972.as", RemainderCards),
         // AS3 actiontypes/class_4089.as; turbo WiredActionRemoveFurni.cs
         ["wf_act_remove_furni"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4089.as", RemainderCards),

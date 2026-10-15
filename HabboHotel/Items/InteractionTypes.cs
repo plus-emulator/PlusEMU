@@ -26,6 +26,8 @@ public static class InteractionTypes
                 return InteractionType.AreaHide;
             case "invis_control":
                 return InteractionType.InvisibleFurniControl;
+            case "chooser_disable":
+                return InteractionType.ChooserDisabler;
             case "wired_chest_furni":
                 return InteractionType.WiredChestFurni;
             case "wired_chest_coins":

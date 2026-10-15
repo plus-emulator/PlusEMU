@@ -8,15 +8,17 @@ namespace Plus.Tests;
 public sealed class InvisibleFurniControlTests
 {
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void ConfigurationItemStatesCarriesTheFourRoomSwitchesWithInvisibleFurniLast(bool on)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ConfigurationItemStatesCarriesTheFourRoomSwitchesWithChooserSecondAndInvisibleFurniLast(bool chooserDisabled, bool invisibleFurni)
     {
         var packet = new RecordingPacket();
-        var composer = new ConfigurationItemStatesComposer(on);
+        var composer = new ConfigurationItemStatesComposer(chooserDisabled, invisibleFurni);
         composer.Compose(packet);
         Assert.Equal(3660u, composer.MessageId);
-        Assert.Equal(new object[] { false, false, false, on }, packet.Writes);
+        Assert.Equal(new object[] { false, chooserDisabled, false, invisibleFurni }, packet.Writes);
     }
 
     [Fact]

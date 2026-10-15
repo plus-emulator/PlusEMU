@@ -2,14 +2,18 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.HabboHotel.Items.Interactor;
 
-public sealed class InteractorInvisibleFurniControl : IFurniInteractor
+/// <summary>
+/// Room-wide configuration switches (Invisible Furni Controller, :chooser disabler): a rights holder or a wired toggle flips the
+/// state between "0" and "1", and every change re-announces the room's ConfigurationItemStates.
+/// </summary>
+public sealed class InteractorConfigurationSwitch : IFurniInteractor
 {
     public void OnPlace(GameClient? session, Item item) => Announce(item);
     public void OnRemove(GameClient? session, Item item)
     {
-        // The controller is still listed while it is being taken out; leave it out of the answer.
+        // The switch is still listed while it is being taken out; leave it out of the answer.
         if (item.GetRoom() is { } room) {
-            InvisibleFurniState.Announce(room, item);
+            ConfigurationItemStates.Announce(room, item);
         }
     }
     public void OnTrigger(GameClient? session, Item item, int request, bool hasRights)
@@ -28,7 +32,7 @@ public sealed class InteractorInvisibleFurniControl : IFurniInteractor
     private static void Announce(Item item)
     {
         if (item.GetRoom() is { } room) {
-            InvisibleFurniState.Announce(room);
+            ConfigurationItemStates.Announce(room);
         }
     }
 }

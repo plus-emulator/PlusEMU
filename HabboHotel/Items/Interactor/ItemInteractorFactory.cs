@@ -40,7 +40,7 @@ public sealed class ItemInteractorFactory(
             InteractionType.AreaHide => new InteractorAreaHide(),
             InteractionType.WiredLink => new InteractorWiredLink(),
             InteractionType.WiredLabel => new InteractorWiredLabel(),
-            InteractionType.InvisibleFurniControl => new InteractorInvisibleFurniControl(),
+            InteractionType.InvisibleFurniControl or InteractionType.ChooserDisabler => new InteractorConfigurationSwitch(),
             InteractionType.Gate => new InteractorGate(),
             InteractionType.Teleport => new InteractorTeleport(timeProvider),
             InteractionType.Hopper => new InteractorHopper(travelStore),

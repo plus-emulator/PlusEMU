@@ -726,6 +726,20 @@ public class RoomUser
     }
 
 
+    /// <summary>
+    /// Set when the "wf" status of a wired move has gone out once; the next status update clears it. Observed r92m r92m-wf-status
+    /// (AIR WIN63-202610131318-860371703): "/flatctrl 4/wf//" on the update after move_rotate_user, user_to_furni or a carry, then
+    /// "/flatctrl 4//" about 500 ms later; none for furni_to_user or teleport_to.
+    /// </summary>
+    internal bool WiredMoveStatusSent { get; set; }
+
+    internal void MarkWiredMove()
+    {
+        SetStatus("wf");
+        WiredMoveStatusSent = false;
+        UpdateNeeded = true;
+    }
+
     public bool HasStatus(string key) => Statusses.ContainsKey(key);
 
     public void RemoveStatus(string key)

@@ -50,6 +50,7 @@ public sealed class CatalogGiftPurchaseServiceTests
         var self = CreateContext(recipientIsSender: true);
         await self.Service.Purchase(self.SenderClient, Request(recipient: "sender"));
         Assert.Equal(0, self.Rewards.Charges);
+        Assert.Contains(self.SenderPackets, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
 
         var missing = CreateContext(missingRecipient: true);
         await missing.Service.Purchase(missing.SenderClient, Request());
@@ -76,6 +77,7 @@ public sealed class CatalogGiftPurchaseServiceTests
         await throttled.Service.Purchase(throttled.SenderClient, Request());
         Assert.Equal(0, throttled.Store.Creates);
         Assert.Equal(1, throttled.Sender.GiftPurchasingWarnings);
+        Assert.Contains(throttled.SenderPackets, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
     }
 
     [Fact]
@@ -88,7 +90,7 @@ public sealed class CatalogGiftPurchaseServiceTests
         Assert.Equal(0, context.Clients.Lookups);
         Assert.Equal(100, context.Sender.Credits);
         Assert.Empty(Assert.IsType<InventoryComponent>(context.Recipient.Inventory).Furniture.AllItems);
-        Assert.Empty(context.SenderPackets);
+        Assert.Contains(context.SenderPackets, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
         Assert.Empty(context.RecipientPackets);
     }
 
@@ -182,7 +184,8 @@ public sealed class CatalogGiftPurchaseServiceTests
             Proxy<IClubMembershipService, EmptyProxy>(),
             rewards,
             store,
-            clock);
+            clock,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CatalogGiftPurchaseService>.Instance);
 
         return new(service, senderClient, sender, recipient, senderPackets, recipientPackets, clients, rewards, store, clock);
     }

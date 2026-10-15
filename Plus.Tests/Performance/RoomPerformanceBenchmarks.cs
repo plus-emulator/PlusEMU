@@ -132,15 +132,16 @@ internal sealed class RoomPerformanceFixture
     public List<RoomUser> Users { get; } = new();
     public List<FlashGameClient> Clients { get; } = new();
 
-    public static RoomPerformanceFixture Create(int botCount, int userCount, int mapSize = 4)
+    public static RoomPerformanceFixture Create(int botCount, int userCount, int mapSize = 4, int? mapHeight = null)
     {
+        var height = mapHeight ?? mapSize;
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         SetField(room, "_interactionClock", TimeProvider.System);
-        var map = new Gamemap(room, new RoomModel("benchmark", 0, 0, 0, 0, string.Join('\r', Enumerable.Repeat(new string('0', mapSize), mapSize)), 0, 0, false), TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
-        var grid = new byte[mapSize, mapSize];
+        var map = new Gamemap(room, new RoomModel("benchmark", 0, 0, 0, 0, string.Join('\r', Enumerable.Repeat(new string('0', mapSize), height)), 0, 0, false), TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
+        var grid = new byte[mapSize, height];
 
         for (var x = 0; x < mapSize; x++) {
-            for (var y = 0; y < mapSize; y++) {
+            for (var y = 0; y < height; y++) {
                 grid[x, y] = 1;
             }
         }

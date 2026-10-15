@@ -18,6 +18,7 @@ internal sealed partial class WiredStackEngine
     private readonly PriorityQueue<ScheduledAction, (long Due, double Height, uint Id, long Firing, int Order)> _schedule = new();
     private readonly HashSet<ActionChain> _pending = new();
     private readonly Func<long> _now;
+    internal long Now => _now();
     private readonly Random _effectOrderRandom;
     private readonly Func<IWiredItem, bool> _attached;
     private readonly Func<object[], bool> _actorPresent;

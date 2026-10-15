@@ -25,10 +25,13 @@ public sealed class WiredMovementActions(Random? random = null)
         "wf_act_toggle_state", "wf_act_toggle_to_rnd", "wf_act_teleport_to", "wf_act_user_to_furni"
     };
 
-    /// <summary>Furniture movers stepping to a derived tile, not onto a furni, user or snapshot position.</summary>
+    /// <summary>
+    /// Furniture movers stepping to a derived tile, where any other furniture blocks. wf_act_rel_mov is not one: observed r92f
+    /// r92-move-addons nophys-w1, a +1x move onto an own stackable marker stacked on it (z 2.0) without a physics add-on.
+    /// </summary>
     public static readonly IReadOnlySet<string> Steps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "wf_act_rel_mov", "wf_act_move_rotate", "wf_act_move_furni_as_group", "wf_act_move_furni_to"
+        "wf_act_move_rotate", "wf_act_move_furni_as_group", "wf_act_move_furni_to"
     };
 
     public bool Execute(string name, WiredConfiguration configuration, IReadOnlyList<Item> movers,

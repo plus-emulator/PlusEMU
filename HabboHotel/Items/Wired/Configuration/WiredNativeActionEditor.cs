@@ -51,11 +51,13 @@ internal static class WiredNativeActionEditor
         ["wf_act_flee"] = Meta([Furni], [], [100], [], []),
         ["wf_act_move_rotate_user"] = Meta([], [SignalUsers], [], [0], [-1, -1]),
         ["wf_act_rel_mov"] = Meta([Furni], [], [100], [], [0, 0], true),
-        ["wf_act_furni_to_furni"] = Meta([FurniAndSnapshot, FurniAndSnapshot], [], [100, 101], [], []),
+        // Observed r92f r92-f2f-basic initial frame (pkt 4877): movers default to the triggering furni (0), targets to the picked furni (100).
+        ["wf_act_furni_to_furni"] = Meta([FurniAndSnapshot, FurniAndSnapshot], [], [0, 100], [], []),
         ["wf_act_furni_to_user"] = Meta([Furni], [MoveUsers], [100], [0], []),
         ["wf_act_move_furni_to"] = Meta([Furni, FurniAndSnapshot], [], [100, 101], [], [0, 1]),
         ["wf_act_match_to_sshot"] = Meta([FurniAndSnapshot], [], [100], [], [0, 0, 0, 0], true),
-        ["wf_act_user_to_furni"] = Meta([Furni], [MoveUsers], [100], [0], [0]),
+        // Observed r92f r92-u2f-targets initial frame (pkt 10351): users 0/200/201, no clicked-user source.
+        ["wf_act_user_to_furni"] = Meta([Furni], [SignalUsers], [100], [0], [0]),
         ["wf_act_place_furni"] = Meta([PlaceTemplateSources, FurniAndSnapshot, FurniAndSnapshot], [SignalUsers, SignalUsers], [110, 0, 200], [0, 200], [0, 0, 0, 0, 0, 0, 0, 0, 0, -20], true) with
         {
             VariableDefaults = [WiredVariableAbsent.Id, WiredVariableAbsent.Id]

@@ -38,9 +38,11 @@ public static class WiredTemporaryFurnitureActions
             : config.Snapshots;
 
         // Wall and unavailable definitions cannot be floor templates or the placement pivot.
+        // A value-carrying definition is never cloned, also from an older saved row or a dynamic source.
         var eligibleTemplates = templates.Select(snapshot => (Snapshot: snapshot,
             Definition: definitions.Items.GetValueOrDefault(snapshot.DefinitionId)))
-            .Where(template => template.Definition?.Type == Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor).ToArray();
+            .Where(template => template.Definition?.Type == Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor
+                && !WiredPlaceTemplatePolicy.CarriesValue(template.Definition)).ToArray();
 
         if (eligibleTemplates.Length == 0) {
             return false;
@@ -146,7 +148,7 @@ public static class WiredTemporaryFurnitureActions
     // Sources 0, 200 and 201 are read when the effect fires. Source 100 keeps the saved snapshots.
     private static IReadOnlyList<WiredFurniSnapshot> DynamicTemplates(WiredRuntimeContext context, int source) =>
         context.Targets.ResolveFurni(context, [], source)
-            .Where(item => item.IsFloorItem && !item.IsTemporary)
+            .Where(item => item.IsFloorItem && !item.IsTemporary && WiredPlaceTemplatePolicy.CanClone(item))
             .Select(WiredRoomOperations.Capture)
             .ToArray();
 }

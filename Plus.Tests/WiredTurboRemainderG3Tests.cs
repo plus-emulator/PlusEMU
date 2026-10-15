@@ -15,7 +15,7 @@ namespace Plus.Tests;
 
 // Group g3 of bugfix/wired-turbo-reference-remainder: the editors of the five cards against the October AS3 and the official frames,
 // Time Utilities through the room's variable catalog, and Filter Users by Variable through the stack's selector pool.
-public sealed class WiredTurboRemainderG3Tests
+public sealed partial class WiredTurboRemainderG3Tests
 {
     private static string Groups(ImmutableArray<ImmutableArray<int>> groups) => string.Join(';', groups.Select(group => string.Join(',', group)));
 

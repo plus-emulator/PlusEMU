@@ -248,6 +248,7 @@ public static class WiredRoomOperations
         }
 
         var items = map.GetCoordinatedItems(new(x, y));
+
         return items.Any(item => throughFurni.Contains(item.Id))
             && items.All(item => throughFurni.Contains(item.Id) || map.ItemWalkState(item) is 1 or 3);
     }

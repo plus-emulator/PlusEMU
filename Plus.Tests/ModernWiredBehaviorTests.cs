@@ -149,11 +149,13 @@ public class ModernWiredBehaviorTests
 
         Assert.False(new WiredMovementActions(new Random(seed)).Execute("wf_act_user_to_furni",
             new() { IntParams = [100, 0, 1] }, [], targets, users, (_, _, _, _, _) => false,
-            (user, target, slide, fast, walkMode) => {
+            (user, target, slide, fast, walkMode) =>
+            {
                 Assert.True(slide);
                 Assert.False(fast);
                 Assert.Equal(1, walkMode);
                 requests.Add((user, target.Id));
+
                 return false;
             }, (_, _) => { }));
 

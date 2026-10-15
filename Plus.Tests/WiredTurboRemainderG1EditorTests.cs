@@ -210,7 +210,9 @@ public sealed class WiredTurboRemainderG1EditorTests
         using var world = new G1World();
         var box = world.AddBox("wf_act_init_transaction", native => native with
         {
-            OwnedIntParams = [2, 40, 0, -20, 1, 90], FurniSourceTypes = [100, 101, 0], UserSourceTypes = [200, 0]
+            OwnedIntParams = [2, 40, 0, -20, 1, 90],
+            FurniSourceTypes = [100, 101, 0],
+            UserSourceTypes = [200, 0]
         });
 
         Assert.True(WiredNativeEditorProjection.TryProject(box.Item, box.Descriptor, box.Configuration, out var reopened));

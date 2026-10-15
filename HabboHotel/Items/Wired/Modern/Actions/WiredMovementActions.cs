@@ -301,6 +301,7 @@ public sealed class WiredMovementActions(Random? random = null)
     {
         var result = values.ToArray();
         _random.Shuffle(result.AsSpan());
+
         return result;
     }
 
@@ -319,6 +320,7 @@ public sealed class WiredMovementActions(Random? random = null)
         }
 
         uses[index]++;
+
         return targets[index];
     }
 

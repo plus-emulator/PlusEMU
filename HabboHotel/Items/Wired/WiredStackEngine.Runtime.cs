@@ -607,6 +607,7 @@ internal sealed partial class WiredStackEngine
                     || timerStack.Any(box => !ReferenceEquals(box, timer))) {
                     SealPublication();
                 }
+
                 snapshot ??= CreateContext(@event, 0);
                 var context = snapshot.Fork(@event, 0);
                 context.Trigger = timer;

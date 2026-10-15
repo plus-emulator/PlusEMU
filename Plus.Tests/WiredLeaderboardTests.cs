@@ -14,7 +14,10 @@ public sealed class WiredLeaderboardTests
 
     private static WiredLeaderboardConfig Config(int sort, bool filter = false, bool comparison = false) => new()
     {
-        Sort = sort, Filter = filter, Comparison = comparison, Title = "Top",
+        Sort = sort,
+        Filter = filter,
+        Comparison = comparison,
+        Title = "Top",
         Columns = [new(0, "Name", 3), new(1, "Coins", 0)]
     };
 

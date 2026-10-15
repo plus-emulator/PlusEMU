@@ -116,6 +116,7 @@ public sealed partial class WiredGlideConveyorTests
         layout.Add((21, 2, 4, 1, 0, "wf_xtra_var_text_connector", null));
         layout.Add((25, 10, 16, 0, 0, "wf_trg_periodically", System.Text.Json.JsonSerializer.Serialize(new WiredConfiguration
         { IntParams = [1] })));
+
         if (unrelatedWalkStack) {
             layout.Add((22, 8, 16, 0, 0, "wf_trg_walks_on_furni", System.Text.Json.JsonSerializer.Serialize(new WiredConfiguration
             { IntParams = [200] })));
@@ -131,10 +132,12 @@ public sealed partial class WiredGlideConveyorTests
         var packets = CapturePublication(rider);
         var errors = new List<Exception>();
         f.SetEngineCallback("_error", (Action<Exception>)errors.Add);
+
         if (unrelatedWalkStack) {
             f.SetBoxField(24, "_variables", new WiredVariableModule(14, new QueueVariableDirectory(),
                 new MemoryWiredVariableStore(), TimeProvider.System));
         }
+
         for (var pulse = 1; pulse <= 30; pulse++) {
             packets.Clear();
             f.Advance(pulse == 1 ? 250 : 200);

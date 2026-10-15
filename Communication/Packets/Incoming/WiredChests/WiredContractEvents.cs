@@ -11,6 +11,7 @@ public sealed class GetWiredContractContentsEvent : WiredChestPacketEvent
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
     {
         var id = packet.ReadUInt();
+
         return module => WiredNativeContractEditor.Contents(module, room, session, id);
     }
 }
@@ -21,6 +22,7 @@ public sealed class UpdateWiredContractEvent(IItemDataManager definitions) : Wir
     protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
     {
         var contract = WiredNativeContractWire.Read(packet);
+
         return module => WiredNativeContractEditor.Save(module, room, session, contract, definitions);
     }
 }

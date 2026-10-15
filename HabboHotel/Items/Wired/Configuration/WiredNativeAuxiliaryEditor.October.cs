@@ -131,6 +131,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Shape(n, 2, 0, 1, 0) && n.Text.Length == 0 && In(p[0], 1, 30) && In(p[1], 0, 2)
                 ? Roles(Draft(n, [p[0], p[1], n.Quantifier ?? 0]), [], [("users", n.UserSourceTypes[0])]) : null;
         }));
+
         // class_3963.as (base of the share and import add-ons): [text connectors, subvariable creators, variable FX], each 0/1.
         foreach (var name in new[] { "wf_xtra_var_share", "wf_xtra_var_import" }) {
             yield return new(name, new(Meta(0, 0, [1, 1, 1]), n => Shape(n, 3, 0, 0, 0) && n.Text.Length == 0

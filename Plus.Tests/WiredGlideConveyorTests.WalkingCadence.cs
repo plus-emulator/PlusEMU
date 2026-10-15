@@ -24,11 +24,13 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(0, store.Placements);
         var handler = f.Room.GetRoomItemHandler();
         typeof(RoomItemHandling).GetMethod("SaveFurniture", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(handler, null);
+
         foreach (var id in Enumerable.Range(1, 7)) {
             var saved = Assert.Single(store.Saved.Where(item => item.Id == id));
             Assert.Equal((f.Items[(uint)id].GetX, f.Items[(uint)id].GetY, f.Items[(uint)id].GetZ), (saved.X, saved.Y, saved.Z));
             Assert.Equal(reset ? 3 + id : 4 + id, saved.X);
         }
+
         // Ordinary placement callers keep their immediate persistence contract.
         var tile = f.Items[7];
         Assert.True(handler.SetFloorItem(null!, tile, tile.GetX, tile.GetY, tile.Rotation, false, false, false, height: tile.GetZ));
@@ -57,6 +59,7 @@ public sealed partial class WiredGlideConveyorTests
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Assert.True(RoomCycle.TryStart(room, () => { started.SetResult(); release.Task.GetAwaiter().GetResult(); }));
         var busy = room.ProcessTask;
+
         try {
             await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
             clock.Now += TimeSpan.FromMilliseconds(500);
@@ -67,6 +70,7 @@ public sealed partial class WiredGlideConveyorTests
         finally {
             release.SetResult();
         }
+
         await busy.WaitAsync(TimeSpan.FromSeconds(5));
         clock.Now += TimeSpan.FromMilliseconds(25);
         manager.OnCycle();

@@ -23,7 +23,8 @@ public sealed class WiredEvidenceRegistryTests
     public void ExactlyTheAirSourceOnlyCardsAreMarked()
     {
         Assert.Equal(Expected, WiredEvidenceRegistry.AirSourceOnly.Keys.Order(StringComparer.Ordinal));
-        Assert.All(WiredEvidenceRegistry.AirSourceOnly.Values, evidence => {
+        Assert.All(WiredEvidenceRegistry.AirSourceOnly.Values, evidence =>
+        {
             Assert.Equal(WiredEvidenceLevel.AirSourceOnly, evidence.Level);
             Assert.EndsWith(".as", evidence.Source);
         });
@@ -48,11 +49,13 @@ public sealed class WiredEvidenceRegistryTests
     public void ExactlyTheTurboReferenceOnlyCardsAreMarked()
     {
         Assert.Equal(ExpectedTurbo, WiredEvidenceRegistry.TurboReferenceOnly.Keys.Order(StringComparer.Ordinal));
-        Assert.All(WiredEvidenceRegistry.TurboReferenceOnly.Values, evidence => {
+        Assert.All(WiredEvidenceRegistry.TurboReferenceOnly.Values, evidence =>
+        {
             Assert.Equal(WiredEvidenceLevel.TurboReferenceOnly, evidence.Level);
             Assert.EndsWith(".as", evidence.Source);
         });
-        Assert.All(ExpectedTurbo, name => {
+        Assert.All(ExpectedTurbo, name =>
+        {
             Assert.Equal(WiredEvidenceLevel.TurboReferenceOnly, WiredEvidenceRegistry.LevelOf(name));
             Assert.True(WiredBoxRegistry.TryGet(name, out _), name);
         });

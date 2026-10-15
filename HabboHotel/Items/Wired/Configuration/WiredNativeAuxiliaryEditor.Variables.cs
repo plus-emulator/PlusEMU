@@ -47,7 +47,10 @@ internal static partial class WiredNativeAuxiliaryEditor
         // both defaulting to the triggering user/furni (0) and the selector pool (200), and allows wall furniture.
         yield return new("wf_act_give_var", new(Meta(2, 2, [1, 0, 0, 0, 0, -10, 0], 2) with
         {
-            FurniDefaults = [0, 200], UserDefaults = [0, 200], AllowWall = true, LegacySlots = 1
+            FurniDefaults = [0, 200],
+            UserDefaults = [0, 200],
+            AllowWall = true,
+            LegacySlots = 1
         }, n =>
         {
             var p = n.OwnedIntParams;
@@ -70,7 +73,11 @@ internal static partial class WiredNativeAuxiliaryEditor
         // Observed: no secondary pick source, picked furni (100) and the triggering user (0) by default, wall furniture allowed.
         yield return new("wf_act_remove_var", new(Meta(1, 1, [1], 1) with
         {
-            FurniAllowed = [[0, 100, 200, 201]], UsersAllowed = [[0, 200, 201]], FurniDefaults = [100], UserDefaults = [0], AllowWall = true
+            FurniAllowed = [[0, 100, 200, 201]],
+            UsersAllowed = [[0, 200, 201]],
+            FurniDefaults = [100],
+            UserDefaults = [0],
+            AllowWall = true
         }, n =>
         {
             var p = n.OwnedIntParams;
@@ -82,7 +89,9 @@ internal static partial class WiredNativeAuxiliaryEditor
         // The October editor (ChangeVariable) adds "same holder": the reference is read on each destination holder.
         yield return new("wf_act_change_var_val", new(Meta(2, 2, [1, 0, 0, 0, 0, -10, 0], 2) with
         {
-            FurniDefaults = [0, 200], UserDefaults = [0, 200], AllowWall = true
+            FurniDefaults = [0, 200],
+            UserDefaults = [0, 200],
+            AllowWall = true
         }, n =>
         {
             var p = n.OwnedIntParams;
@@ -103,7 +112,10 @@ internal static partial class WiredNativeAuxiliaryEditor
         // selectors on the triggering user/furni (0) and the selector pool (200), and allows wall furniture.
         yield return new("wf_cnd_var_val_match", new(Meta(2, 2, [1, 2, 0, 0, 0, -10, 0], 2) with
         {
-            QuantifierType = 3, FurniDefaults = [0, 200], UserDefaults = [0, 200], AllowWall = true
+            QuantifierType = 3,
+            FurniDefaults = [0, 200],
+            UserDefaults = [0, 200],
+            AllowWall = true
         }, n =>
         {
             var p = n.OwnedIntParams;
@@ -124,7 +136,11 @@ internal static partial class WiredNativeAuxiliaryEditor
         // A fresh box opens on [1, 0, 0, 0, 0, 1, 0, -10].
         yield return new("wf_cnd_var_age_match", new(Meta(2, 2, [1, 0, 0, 0, 0, 1, 0, -10], 2) with
         {
-            QuantifierType = 3, FurniDefaults = [0, 200], UserDefaults = [0, 200], AllowWall = true, LegacySlots = 1
+            QuantifierType = 3,
+            FurniDefaults = [0, 200],
+            UserDefaults = [0, 200],
+            AllowWall = true,
+            LegacySlots = 1
         }, n =>
         {
             var p = n.OwnedIntParams;
@@ -170,6 +186,7 @@ internal static partial class WiredNativeAuxiliaryEditor
                 }
 
                 var pickedDraft = Draft(n, [0, p[0], p[1], p[3] & 1, p[3] >> 1 & 1, p[3] >> 2 & 1, p[2], p[4] < 0 ? -1 : p[4] & 15, 1]);
+
                 return Plus.HabboHotel.Items.Wired.Variables.WiredVariableChangedTrigger.TryNormalize(pickedDraft, out var pickedNormalized, out _) ? pickedNormalized : pickedDraft;
             }
 
@@ -202,7 +219,11 @@ internal static partial class WiredNativeAuxiliaryEditor
 
     private static WiredNativeEditorMetadata SelectorMeta(ImmutableArray<int> owned) => Meta(1, 1, owned, 2) with
     {
-        FurniAllowed = [[0, 100, 201]], UsersAllowed = [[0, 201]], FurniDefaults = [100], UserDefaults = [0], AllowWall = true
+        FurniAllowed = [[0, 100, 201]],
+        UsersAllowed = [[0, 201]],
+        FurniDefaults = [100],
+        UserDefaults = [0],
+        AllowWall = true
     };
 
     private static WiredNativeEditorMetadata HasVar(bool negative) => Meta(1, 1, [1], 1) with { QuantifierType = 3, Invert = negative, AllowWall = true };
@@ -221,7 +242,11 @@ internal static partial class WiredNativeAuxiliaryEditor
 
         // WithVariable.as: referenceVariableOnTarget reads the reference on each candidate holder.
         var sameHolder = Shape(n, 6, 1, 1, 2) ? p[5] : 0;
-        if (sameHolder is not (0 or 1)) return null;
+
+        if (sameHolder is not (0 or 1)) {
+            return null;
+        }
+
         if (Shape(n, 6, 1, 1, 2)) {
             n = n with { OwnedIntParams = p[..5] };
             p = n.OwnedIntParams;
@@ -235,6 +260,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         // The selector executor takes a 32-bit literal; a wider one has no representation here.
         int[] core = [p[1] == 0 ? 0 : 1, ScalarComparison[p[0]], p[1] == 2 ? 1 : 0, p[3], target, n.UserSourceTypes[0],
             n.FurniSourceTypes[0], n.Filter.Value ? 1 : 0, n.Inverse.Value ? 1 : 0];
+
         return Draft(n, sameHolder == 1 ? [.. core, 1] : [.. core]);
     }
 }

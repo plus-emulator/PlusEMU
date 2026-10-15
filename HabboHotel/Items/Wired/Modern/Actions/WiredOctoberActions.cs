@@ -28,19 +28,19 @@ public static class WiredOctoberActions
 
     public static bool Execute(string name, WiredModernBox box, WiredRuntimeContext context, WiredConfiguration config,
         Func<string, Item[]> furni, Func<string, RoomUser[]> users) => name switch
-    {
-        "wf_act_progress_ach" => ProgressAchievement(context, config, users("users")),
-        "wf_act_give_effect" => GiveEffect(config, users("users")),
-        "wf_act_override_height" => OverrideHeight(context, config, furni("items")),
-        "wf_act_progress_reward_track" => ProgressRewardTrack(context, config, users("users")),
-        // No reward track service in PlusEMU can reset a player's track; the box saves and loads but changes nothing.
-        "wf_act_reset_reward_track" => false,
-        "wf_act_set_visibility" => SetVisibility(context, config, furni, users),
-        "wf_act_set_highlight" => SetHighlight(context, config, furni, users),
-        "wf_act_send_message" => SendMessage(box, context, config, furni("endpoints")),
-        "wf_act_send_dataframe" => SendDataframe(box, context, config, furni),
-        _ => throw new InvalidOperationException("Action has no executor.")
-    };
+        {
+            "wf_act_progress_ach" => ProgressAchievement(context, config, users("users")),
+            "wf_act_give_effect" => GiveEffect(config, users("users")),
+            "wf_act_override_height" => OverrideHeight(context, config, furni("items")),
+            "wf_act_progress_reward_track" => ProgressRewardTrack(context, config, users("users")),
+            // No reward track service in PlusEMU can reset a player's track; the box saves and loads but changes nothing.
+            "wf_act_reset_reward_track" => false,
+            "wf_act_set_visibility" => SetVisibility(context, config, furni, users),
+            "wf_act_set_highlight" => SetHighlight(context, config, furni, users),
+            "wf_act_send_message" => SendMessage(box, context, config, furni("endpoints")),
+            "wf_act_send_dataframe" => SendDataframe(box, context, config, furni),
+            _ => throw new InvalidOperationException("Action has no executor.")
+        };
 
     /// <summary>A literal, or the referenced variable's value read on the reference's own sources (value-or-variable option 1).</summary>
     private static long? Amount(WiredRuntimeContext context, WiredConfiguration config, int option, int literal, int target)

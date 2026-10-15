@@ -14,7 +14,12 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
     // The AIR comparison radios: < 0, = 1, > 2, <= 3, != 4, >= 5.
     private static bool Compares(int comparison, long amount, long reference) => comparison switch
     {
-        0 => amount < reference, 1 => amount == reference, 2 => amount > reference, 3 => amount <= reference, 4 => amount != reference, _ => amount >= reference
+        0 => amount < reference,
+        1 => amount == reference,
+        2 => amount > reference,
+        3 => amount <= reference,
+        4 => amount != reference,
+        _ => amount >= reference
     };
 
     /// <summary>Stack (6,0): enter room, the condition, a witness. Returns the witness: it ran when the condition passed.</summary>
@@ -199,7 +204,9 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         var floorSprite = world.AddItem("floor_one", InteractionType.None, 4, 5, 1);
         InventoryItem Poster(uint id, string data) => new()
         {
-            Id = id, Definition = new() { Id = 1, SpriteId = 1, Type = ItemType.Wall }, ExtraData = new LegacyDataFormat { Data = data }
+            Id = id,
+            Definition = new() { Id = 1, SpriteId = 1, Type = ItemType.Wall },
+            ExtraData = new LegacyDataFormat { Data = data }
         };
         var chest = world.AddChest(WiredChestKind.Furni, 0, 3, 3, Poster(1, "24"), Poster(2, "24"), Poster(3, "30"), G1World.Furni(4, 1));
         var posters = HasTypeStack(world, [poster], 2, 1, [chest], 6);

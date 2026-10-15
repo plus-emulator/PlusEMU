@@ -327,8 +327,13 @@ public sealed class WiredChestGiveG2Tests
         public WiredChestSnapshot? Load(Item item) => Chests.TryGetValue(item.Id, out var chest)
             ? new(item.Id, owner(item.Id), 42, chest.Kind, chest.Coins, 0, new()
             {
-                Capacity = 1000, Locked = chest.Locked, WiredEnabled = chest.Enabled, PreviewMode = 5, PreviewAmount = 1
-            }, [.. chest.Items]) { RandomKeys = new Dictionary<uint, long>(chest.RandomKeys) }
+                Capacity = 1000,
+                Locked = chest.Locked,
+                WiredEnabled = chest.Enabled,
+                PreviewMode = 5,
+                PreviewAmount = 1
+            }, [.. chest.Items])
+            { RandomKeys = new Dictionary<uint, long>(chest.RandomKeys) }
             : null;
         public bool SaveSettings(Item chest, int userId, bool canModify, bool roomOwner, Func<WiredChestSettings, WiredChestSettings> change) => true;
         public WiredChestContract? LoadContract(Item item) => null;

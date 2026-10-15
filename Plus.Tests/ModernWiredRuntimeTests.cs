@@ -3211,6 +3211,7 @@ public partial class ModernWiredRuntimeTests
         f.Target.Definition.IsSeat = false;
         f.Room.GetGameMap().AddToMap(f.Target);
         var resident = occupied ? f.AddPlayer(8, 1, 1) : null;
+
         if (executor) {
             f.UseExecutor();
         }
@@ -3221,9 +3222,11 @@ public partial class ModernWiredRuntimeTests
             throughFurni ? new HashSet<uint> { f.Target.Id } : new HashSet<uint>(),
             resident == null ? new HashSet<int>() : new HashSet<int> { resident.VirtualId }, new HashSet<uint>());
         var movement = new WiredRoomMovement(f.Room.GetWired().DispatchWalkTransition);
+
         using (RoomOwnerScope.Enter(f.Room)) {
             Assert.Equal(expected, movement.MoveAvatar(context, f.User, 1, 1, false));
         }
+
         Assert.Equal(expected ? new Point(1, 1) : new Point(0, 0), f.User.Coordinate);
         Assert.Empty(f.Errors);
     }

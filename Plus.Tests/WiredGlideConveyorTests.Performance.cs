@@ -14,9 +14,11 @@ public sealed partial class WiredGlideConveyorTests
         var expected = map.PlacementHeightMap();
         var start = System.Diagnostics.Stopwatch.GetTimestamp();
         var allocation = GC.GetAllocatedBytesForCurrentThread();
+
         for (var i = 0; i < 200; i++) {
             f.Advance(200);
         }
+
         var allocated = GC.GetAllocatedBytesForCurrentThread() - allocation;
         var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         Console.WriteLine($"Queue 200 pulses: {elapsed:F1} ms; {allocated} bytes allocated");

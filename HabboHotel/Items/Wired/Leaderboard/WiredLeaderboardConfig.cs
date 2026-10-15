@@ -108,9 +108,17 @@ public sealed record WiredLeaderboardConfig
 
         var config = new WiredLeaderboardConfig
         {
-            Sort = p[0], Filter = filter, Comparison = comparison, OperandKind = p[8],
-            TileX = p[10], TileY = p[11], OffsetX = p[12], Altitude = p[13], PageSizeOption = p[18],
-            FilterVariableId = Id(0), GlobalOperandVariableId = Id(1)
+            Sort = p[0],
+            Filter = filter,
+            Comparison = comparison,
+            OperandKind = p[8],
+            TileX = p[10],
+            TileY = p[11],
+            OffsetX = p[12],
+            Altitude = p[13],
+            PageSizeOption = p[18],
+            FilterVariableId = Id(0),
+            GlobalOperandVariableId = Id(1)
         };
 
         // The unpublished board has no text: defaults stand in for the strings.
@@ -172,7 +180,11 @@ public sealed record WiredLeaderboardConfig
 
         return config with
         {
-            Columns = [.. columns], Literal = literal, Overrides = [.. overrides], Title = fields[0], Description = fields[1]
+            Columns = [.. columns],
+            Literal = literal,
+            Overrides = [.. overrides],
+            Title = fields[0],
+            Description = fields[1]
         };
     }
 

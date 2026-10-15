@@ -10,7 +10,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// </summary>
 public sealed class WiredMovementActions(Random? random = null)
 {
-    // Only the move/rotate direction choices draw from this; every other random choice here still uses Random.Shared.
+    // Injected randomness also makes target distribution and execution order reproducible in tests.
     private readonly Random _random = random ?? Random.Shared;
 
     public delegate bool MoveFurniture(Item item, int x, int y, int rotation, double? height);
@@ -130,6 +130,26 @@ public sealed class WiredMovementActions(Random? random = null)
 
                 break;
             case "wf_act_furni_to_furni":
+                if (targets.Count == 0) {
+                    return false;
+                }
+
+                var destinations = Shuffled(targets);
+                var uses = new int[destinations.Length];
+                var assignments = movers.Select(item => ReserveTarget(destinations, uses, item.Id)).ToArray();
+
+                // Assign before moving: every target gets a turn, including assignments whose move is blocked.
+                // Execute separately in random order because earlier moves change the stack for later ones.
+                foreach (var index in Shuffled(Enumerable.Range(0, movers.Count).ToArray())) {
+                    var item = movers[index];
+                    var assigned = assignments[index];
+
+                    if (assigned != null && (item.GetX != assigned.GetX || item.GetY != assigned.GetY)) {
+                        affected |= move(item, assigned.GetX, assigned.GetY, item.Rotation, null);
+                    }
+                }
+
+                break;
             case "wf_act_move_furni_to":
                 if (targets.Count == 0) {
                     return false;
@@ -239,19 +259,28 @@ public sealed class WiredMovementActions(Random? random = null)
                 }
 
                 break;
-            case "wf_act_teleport_to":
             case "wf_act_user_to_furni":
+                if (targets.Count == 0) {
+                    return false;
+                }
+
+                var userDestinations = Shuffled(targets);
+                var userUses = new int[userDestinations.Length];
+
+                foreach (var user in Shuffled(users)) {
+                    var destination = ReserveTarget(userDestinations, userUses)!;
+                    affected |= relocate(user, destination, true, false, Param(2, 1));
+                }
+
+                break;
+            case "wf_act_teleport_to":
                 if (targets.Count == 0) {
                     return false;
                 }
 
                 foreach (var user in users) {
                     var destination = targets[Random.Shared.Next(targets.Count)];
-                    // These are distinct legacy editors: teleport's flag changes its animation
-                    // delay; user-to-furni always slides and its third slot controls walk continuity.
-                    var slide = name.Equals("wf_act_user_to_furni", StringComparison.OrdinalIgnoreCase);
-                    affected |= relocate(user, destination, slide, !slide && Param(0) == 1,
-                        slide ? Param(2, 1) : 2);
+                    affected |= relocate(user, destination, false, Param(0) == 1, 2);
                 }
 
                 break;
@@ -260,6 +289,31 @@ public sealed class WiredMovementActions(Random? random = null)
         }
 
         return affected;
+    }
+
+    private T[] Shuffled<T>(IReadOnlyList<T> values)
+    {
+        var result = values.ToArray();
+        _random.Shuffle(result.AsSpan());
+        return result;
+    }
+
+    private static Item? ReserveTarget(Item[] targets, int[] uses, uint? excludedItemId = null)
+    {
+        var index = -1;
+
+        for (var i = 0; i < targets.Length; i++) {
+            if (targets[i].Id != excludedItemId && (index < 0 || uses[i] < uses[index])) {
+                index = i;
+            }
+        }
+
+        if (index < 0) {
+            return null;
+        }
+
+        uses[index]++;
+        return targets[index];
     }
 
     // v2 only. Null when the toggle would not change the state.

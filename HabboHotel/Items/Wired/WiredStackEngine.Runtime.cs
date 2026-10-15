@@ -306,6 +306,7 @@ internal sealed partial class WiredStackEngine
             }
 
             QueueDispatch(dispatch);
+            Flash(antenna);
             accepted = true;
         }
 
@@ -597,7 +598,13 @@ internal sealed partial class WiredStackEngine
                     continue;
                 }
 
-                SealPublication();
+                // An isolated timer has no work that can observe an intermediate furniture pose.
+                // Its flash is buffered like the other box flashes until the room's state update.
+                if (timer is not WiredModernTimedTrigger
+                    || !_stacks.TryGetValue((timer.Item.GetX, timer.Item.GetY), out var timerStack)
+                    || timerStack.Any(box => !ReferenceEquals(box, timer))) {
+                    SealPublication();
+                }
                 snapshot ??= CreateContext(@event, 0);
                 var context = snapshot.Fork(@event, 0);
                 context.Trigger = timer;

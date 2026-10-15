@@ -19,7 +19,7 @@ public abstract class WiredChestPacketEvent : RoomPacketEvent
                 room.GetWired().WithChests(action);
             }
         }
-        catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or OverflowException) { }
+        catch (Exception error) when (error is ArgumentException or IndexOutOfRangeException or InvalidOperationException or IOException or InvalidDataException or OverflowException) { }
 
         return Task.CompletedTask;
     }

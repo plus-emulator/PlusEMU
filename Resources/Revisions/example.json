@@ -377,7 +377,9 @@
     "WiredChestAcceptEvent": 9336,
     "WiredChestCancelEvent": 1898,
     "ChestUpgradeEvent": 9317,
-    "WiredChestLockEvent": 9329
+    "WiredChestLockEvent": 9329,
+    "GetWiredContractContentsEvent": 3415,
+    "UpdateWiredContractEvent": 2559
   },
   "OutgoingHeaders": {
     "SimplePollStartComposer": 1578,
@@ -760,6 +762,9 @@
     "WiredChestRewardComposer": 9346,
     "WiredChestUpgradeComposer": 9335,
     "WiredChestSettingsAckComposer": 9347,
-    "WiredChestLockComposer": 9329
+    "WiredChestLockComposer": 9329,
+    "WiredContractOpenComposer": 3833,
+    "WiredContractContentsComposer": 2796,
+    "WiredContractUpdateResultComposer": 72
   }
 }

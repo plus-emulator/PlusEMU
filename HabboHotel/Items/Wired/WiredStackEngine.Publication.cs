@@ -1,5 +1,6 @@
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Runtime;
+using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Addons;
 using Plus.HabboHotel.Items.Wired.Modern.Conditions;
@@ -14,6 +15,7 @@ internal sealed partial class WiredStackEngine
 {
     private WiredFurniturePublication? _activePublication;
     private long _publicationEpoch;
+    private Func<bool>? _movementPublicationBindingsCurrent;
     internal bool PublicationBridgesAreTrusted { get; set; }
     internal Func<IWiredItem, bool>? PublicationEvaluationIsSilent { get; set; }
     internal Func<WiredRuntimeEvent, bool>? PublicationObserverIsSilent { get; set; }
@@ -82,6 +84,14 @@ internal sealed partial class WiredStackEngine
             return;
         }
 
+        // Unrelated walk selectors must not expose an intermediate queue pose. The concrete
+        // observer is silent; evaluation/actions still seal normally if a walk stack actually runs.
+        if (silentObserver && pending.Event.Kind is WiredEventKind.WalkOn or WiredEventKind.WalkOff
+            && _movementPublicationBindingsCurrent?.Invoke() == true && pending.LegacyTriggers.Length == 0
+            && pending.Triggers is { } triggers && triggers.All(trigger => trigger.GetType() == typeof(WiredModernTrigger))) {
+            return;
+        }
+
         SealPublication();
     }
 
@@ -113,6 +123,8 @@ internal sealed partial class WiredStackEngine
             && ReferenceEquals(flush, _flushExternal) && ReferenceEquals(needsFast, _externalFastWork)
             && ReferenceEquals(silentPoll, PublicationPollIsSilent) && ReferenceEquals(silentFlush, PublicationFlushIsSilent)
             && bridges == PublicationBridgesAreTrusted;
+
+        _movementPublicationBindingsCurrent = BindingsCurrent;
 
         return action =>
         {
@@ -159,7 +171,7 @@ internal sealed partial class WiredStackEngine
                 || !publication.Open || publication.HasAvatarEntries || !ReferenceEquals(publication, _activePublication)
                 || publication.Epoch != _publicationEpoch || !CollisionRegistryUnchanged()
                 || _items.Values.OfType<WiredModernTrigger>().Any(trigger => trigger.Events.Contains(WiredEventKind.WalkOn)
-                    || trigger.Events.Contains(WiredEventKind.WalkOff))) {
+                    || trigger.Events.Contains(WiredEventKind.WalkOff) || trigger.Events.Contains(WiredEventKind.Collision))) {
                 return false;
             }
 
@@ -292,7 +304,10 @@ internal sealed partial class WiredStackEngine
 
             if (type != typeof(WiredModernAction) && type != typeof(WiredModernCondition)
                 && type != typeof(WiredSelectorBox) && type != typeof(WiredAddonBox)
-                && type != typeof(WiredModernTrigger) && type != typeof(WiredModernTimedTrigger)) {
+                && type != typeof(WiredModernTrigger) && type != typeof(WiredModernTimedTrigger)
+                // Passive room metadata cannot observe a collision or publish movement.
+                && type != typeof(WiredVariableDefinitionBox) && type != typeof(WiredVariableMetadataBox)
+                && type != typeof(WiredVariableAddonBox) && type != typeof(WiredOctoberAddonBox)) {
                 return false;
             }
 
@@ -301,7 +316,9 @@ internal sealed partial class WiredStackEngine
 
             if (!ReferenceEquals(box, previous.Box) || !_attached(box)
                 || (box.Item.GetX, box.Item.GetY, box.Item.GetZ) != (previous.X, previous.Y, previous.Z)
-                || box is WiredModernTrigger trigger && trigger.Events.Contains(WiredEventKind.Collision)) {
+                || box is WiredModernTrigger trigger && trigger.Events.Contains(WiredEventKind.Collision)
+                    && (!_stacks.TryGetValue((box.Item.GetX, box.Item.GetY), out var stack)
+                        || stack.Any(candidate => !ReferenceEquals(candidate, box)))) {
                 return false;
             }
         }

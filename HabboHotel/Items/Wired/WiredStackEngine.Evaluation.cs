@@ -483,6 +483,10 @@ internal sealed partial class WiredStackEngine
                 firing.FiredAt, prepared: true);
 
             if (firing.Accepted) {
+                foreach (var addon in addons) {
+                    Flash(addon);
+                }
+
                 Flash(firing.Source);
             }
         }, CostsExecution: false, TransfersReservation: true);

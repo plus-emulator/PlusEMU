@@ -156,7 +156,7 @@ public static class WiredRoomOperations
 
         // The full placement path maintains map/index, moved-item persistence and room statuses.
         if (!room.GetRoomItemHandler().SetFloorItem(null!, item, x, y, rot, false, false,
-                announce && (!animate || rotationChanged), true, z ?? -1, collision)) {
+                announce && (!animate || rotationChanged), true, z ?? -1, collision, deferPositionSave: true)) {
             return false;
         }
 
@@ -239,6 +239,17 @@ public static class WiredRoomOperations
         }
 
         return throughUsers || map.CanWalk(x, y, false) && !map.GetRoomUsers(new(x, y)).Any(other => other != avatar);
+    }
+
+    internal static bool AvatarCanStandWithPhysics(Gamemap map, int x, int y, IReadOnlySet<uint> throughFurni)
+    {
+        if (AvatarCanStand(map, x, y)) {
+            return true;
+        }
+
+        var items = map.GetCoordinatedItems(new(x, y));
+        return items.Any(item => throughFurni.Contains(item.Id))
+            && items.All(item => throughFurni.Contains(item.Id) || map.ItemWalkState(item) is 1 or 3);
     }
 
     // A magic tile or an empty square can be stood on. Otherwise the highest furni must be walkable or a seat/bed.

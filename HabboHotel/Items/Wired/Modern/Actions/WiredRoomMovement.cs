@@ -25,8 +25,9 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         _appendCarryPublication = append;
     }
 
+    // A pressure pad (colour tile) only acts through Wired walk triggers, which the engine already seals the segment for.
     internal static bool PlainPublicationItem(Item item) => item.IsFloorItem
-        && item.Definition.InteractionType == InteractionType.None && !item.Definition.IsSeat;
+        && item.Definition.InteractionType is InteractionType.None or InteractionType.PressurePad && !item.Definition.IsSeat;
 
     public bool RestoreWallSnapshot(WiredRuntimeContext context, Item item, WiredFurniSnapshot snapshot,
         bool position = true, bool altitude = true)
@@ -469,7 +470,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         if (context.Policy.Addons.Physics is { } physics) {
             if (!ValidAvatarDestination(room, x, y)
-                || room.GetGameMap().GetCoordinatedItems(new(x, y)).Any(item => physics.BlockingFurni.Contains(item.Id))) {
+                || room.GetGameMap().GetCoordinatedItems(new(x, y)).Any(item => physics.BlockingFurni.Contains(item.Id))
+                || !WiredRoomOperations.AvatarCanStandWithPhysics(room.GetGameMap(), x, y, physics.ThroughFurni)) {
                 return false;
             }
 
@@ -483,6 +485,11 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
                 throughUsers |= occupants.Length > 0 && occupants.All(other => physics.ThroughUsers.Contains(other.VirtualId));
             }
+
+            // The scoped physics checks above have independently admitted furniture and occupants.
+            // CanWalk combines both, so it must not reject furniture explicitly passed by this policy.
+            throughUsers = true;
+            ignoreOccupants = false;
         }
 
         var oldX = user.X;

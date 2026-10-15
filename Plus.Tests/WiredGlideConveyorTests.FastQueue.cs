@@ -71,6 +71,41 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(11, f.Items[8].GetX);
     }
 
+    // Hotel editor defaults, observed r92b (AIR WIN63-202610131318-860371703): physics sources [900, 900] / [900], carry user source 900.
+    // The client echoes the defaults it was sent when a slider or checkbox is changed, so only the toggled fields differ from them.
+    [Fact]
+    public void EditorDefaultSourcesAndPhysicsFlagsBuildAWorkingFastQueue()
+    {
+        string Editor(string name, int[]? owned = null)
+        {
+            Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
+            var native = WiredNativeEditorProjection.DefaultNative(descriptor);
+            native = owned == null ? native : native with { OwnedIntParams = [.. owned] };
+            Assert.True(WiredNativeEditorProjection.TryCompile(1, descriptor, native, out var runtime));
+
+            return JsonSerializer.Serialize(runtime);
+        }
+
+        var layout = FastQueueLayout(2).Select(item => item.Id switch
+        {
+            15 => item with { Json = Editor("wf_xtra_mov_physics", [0, 1, 1, 0]) },
+            16 => item with { Json = Editor("wf_xtra_mov_physics") },
+            17 => item with { Json = Editor("wf_xtra_mov_carry_users") },
+            18 => item with { Json = Editor("wf_xtra_anim_time", [200]) },
+            _ => item
+        }).ToArray();
+        var f = new Fixture(layout, live: true);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+
+        f.Advance(250);
+        Assert.Equal((5, 11, 1.0), (rider.X, rider.Y, rider.Z));
+
+        for (var pulse = 2; pulse <= 9; pulse++) {
+            f.Advance(200);
+            Assert.Equal((4 + Math.Min(pulse, 7), 11, 1.0), (rider.X, rider.Y, rider.Z));
+        }
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

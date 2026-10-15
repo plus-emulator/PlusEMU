@@ -68,9 +68,11 @@ internal static partial class WiredNativeAuxiliaryEditor
 
             return Norm("wf_xtra_or_eval", n, p[0] == -1 ? [4 + p[1], 0, p[2]] : [p[0], 0, 1]);
         }));
-        yield return new("wf_xtra_mov_carry_users", new(Sources([], [AddonUsers], [0]), n => Shape(n, 1, 0, 1, 0) && In(n.OwnedIntParams[0], 0, 1)
+        // Hotel editor defaults, observed r92b (AIR WIN63-202610131318-860371703): carry user source 900; physics furni sources [900, 900], user source 900.
+        yield return new("wf_xtra_mov_carry_users", new(Sources([], [AddonUsers], [0]) with { UserDefaults = [900] }, n => Shape(n, 1, 0, 1, 0) && In(n.OwnedIntParams[0], 0, 1)
             ? Norm("wf_xtra_mov_carry_users", n, [n.OwnedIntParams[0], n.UserSourceTypes[0]]) : null));
-        yield return new("wf_xtra_mov_physics", new(Sources([PhysicsFurni, PhysicsFurni], [AddonUsers], [1, 0, 0, 0]), n => Shape(n, 4, 2, 1, 0)
+        yield return new("wf_xtra_mov_physics", new(Sources([PhysicsFurni, PhysicsFurni], [AddonUsers], [1, 0, 0, 0]) with
+        { FurniDefaults = [900, 900], UserDefaults = [900] }, n => Shape(n, 4, 2, 1, 0)
             && n.OwnedIntParams.All(flag => flag is 0 or 1)
             ? Norm("wf_xtra_mov_physics", n, [.. n.OwnedIntParams, n.FurniSourceTypes[0], n.FurniSourceTypes[1], n.UserSourceTypes[0]]) : null));
         yield return new("wf_xtra_text_output_furni_name", new(Sources([[0, 100, 200, 201]], [], [0]), n => Shape(n, 1, 1, 0, 0) && Placeholder(n)

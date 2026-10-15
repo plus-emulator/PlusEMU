@@ -83,6 +83,85 @@ public class ModernWiredBehaviorTests
         Assert.Equal(new[] { (1u, 6, 7) }, requests);
     }
 
+    // Behavioral comparison with Habz reference commits 0ecad29/21a861e; not an official runtime capture.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(17)]
+    public void FurniToFurniDistributesEvenlyAndDoesNotRetryBlockedAssignments(int seed)
+    {
+        var movers = Enumerable.Range(1, 7).Select(id => Item((uint)id, 0, id)).ToArray();
+        var targets = new[] { Item(11, 5, 1), Item(12, 6, 1), Item(13, 7, 1) };
+        var requests = new List<(uint Id, int X)>();
+
+        Assert.False(new WiredMovementActions(new Random(seed)).Execute("wf_act_furni_to_furni",
+            new() { IntParams = [100, 100] }, movers, targets, [],
+            (item, x, _, _, _) => { requests.Add((item.Id, x)); return false; },
+            (_, _, _, _, _) => false, (_, _) => { }));
+
+        Assert.Equal(7, requests.Count);
+        Assert.Equal(7, requests.Select(request => request.Id).Distinct().Count());
+        Assert.Equal(new[] { 2, 2, 3 }, requests.GroupBy(request => request.X).Select(group => group.Count()).Order());
+    }
+
+    [Fact]
+    public void FurniToFurniExcludesItselfAndLeavesASameTileTargetAtItsExistingHeight()
+    {
+        var mover = Item(1, 4, 4);
+        mover.GetZ = 7.5;
+        var sameTileTarget = Item(2, 4, 4);
+        var requests = 0;
+        var action = new WiredMovementActions(new Random(17));
+        bool Run(Item[] targets) => action.Execute("wf_act_furni_to_furni",
+            new() { IntParams = [100, 100] }, [mover], targets, [],
+            (_, _, _, _, _) => { requests++; return true; }, (_, _, _, _, _) => false, (_, _) => { });
+
+        Assert.False(Run([mover]));
+        Assert.False(Run([mover, sameTileTarget]));
+        Assert.Equal(0, requests);
+        Assert.Equal(7.5, mover.GetZ);
+    }
+
+    [Fact]
+    public void FurniToFurniResolvesAssignedTargetCoordinatesWhenEachMoveExecutes()
+    {
+        var first = Item(1, 1, 1);
+        var second = Item(2, 2, 1);
+        var calls = new List<(uint Id, int X)>();
+
+        Assert.True(new WiredMovementActions(new Random(7)).Execute("wf_act_furni_to_furni",
+            new() { IntParams = [100, 100] }, [first, second], [first, second], [],
+            (item, x, y, _, _) => { calls.Add((item.Id, x)); item.GetX = x; item.GetY = y; return true; },
+            (_, _, _, _, _) => false, (_, _) => { }));
+
+        // Whichever goes first lands on the other; that other's assigned target is now on its own tile.
+        Assert.Single(calls);
+        Assert.Equal(first.GetX, second.GetX);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(17)]
+    public void UserToFurniDistributesEvenlyAndConsumesBlockedAssignments(int seed)
+    {
+        var users = Enumerable.Range(0, 7).Select(_ => (RoomUser)RuntimeHelpers.GetUninitializedObject(typeof(RoomUser))).ToArray();
+        var targets = new[] { Item(11, 5, 1), Item(12, 6, 1), Item(13, 7, 1) };
+        var requests = new List<(RoomUser User, uint Target)>();
+
+        Assert.False(new WiredMovementActions(new Random(seed)).Execute("wf_act_user_to_furni",
+            new() { IntParams = [100, 0, 1] }, [], targets, users, (_, _, _, _, _) => false,
+            (user, target, slide, fast, walkMode) => {
+                Assert.True(slide);
+                Assert.False(fast);
+                Assert.Equal(1, walkMode);
+                requests.Add((user, target.Id));
+                return false;
+            }, (_, _) => { }));
+
+        Assert.Equal(7, requests.Count);
+        Assert.Equal(7, requests.Select(request => request.User).Distinct().Count());
+        Assert.Equal(new[] { 2, 2, 3 }, requests.GroupBy(request => request.Target).Select(group => group.Count()).Order());
+    }
+
     [Fact]
     public void AltitudeUsesDecimalTextAndLegacyOperatorOrdering()
     {

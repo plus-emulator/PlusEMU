@@ -8,7 +8,7 @@ public sealed class InteractorWiredContract : IFurniInteractor
     public void OnTrigger(GameClient? session, Item item, int request, bool hasRights)
     {
         if (session != null && item.GetRoom() is { } room) {
-            room.GetWired().WithChests(module => WiredChestContractEditor.Open(module, session, item));
+            WiredNativeContractEditor.Open(room, session, item.Id);
         }
     }
 }

@@ -21,7 +21,8 @@ public sealed class WiredVariableQueries(WiredVariableModule variables, WiredVar
         var p = configuration.IntParams;
         var ids = configuration.VariableIds;
 
-        if (holder.Target != target || p.Length != 9 || p[0] is not (0 or 1) || p[1] is < 0 or > 5
+        if (holder.Target != target || p.Length is not (9 or 10)
+            || p.Length == 10 && (p[9] is not (0 or 1) || p[9] == 1 && (p[2] != 1 || p[4] != (int)target)) || p[0] is not (0 or 1) || p[1] is < 0 or > 5
             || p[2] is not (0 or 1) || !Enum.IsDefined((WiredVariableTarget)p[4]) || ids.Length != 2
             || Resolve(target, ids[0]) is not { } variable) {
             return false;
@@ -42,6 +43,11 @@ public sealed class WiredVariableQueries(WiredVariableModule variables, WiredVar
         if (p[2] == 1) {
             if (Resolve((WiredVariableTarget)p[4], ids[1]) is not { } reference) {
                 return false;
+            }
+
+            if (p.Length == 10 && p[9] == 1) {
+                return Read(reference, holder) is { } sameHolderValue
+                    && WiredVariablePredicates.Compare(p[1], value.Value, sameHolderValue.Value);
             }
 
             if (!_operands.TryGetValue((name, configuration), out var captured)) {

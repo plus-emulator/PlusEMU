@@ -73,6 +73,14 @@ public sealed class WiredCatalogueParityTests
     }
 
     [Fact]
+    public void WiredArchiveTextMatchesHabbo()
+    {
+        var archive = Read("Database/Migrations/83_WiredArchiveText.sql");
+        Assert.Contains("SET t.text = 'Archived Wired boxes that are still available for legacy reasons, but are not recommended to use in new Wired setups'", archive);
+        Assert.Contains("-- 83_WiredArchiveText\n" + archive, Read("Resources/SQLs/Original Database.sql"));
+    }
+
+    [Fact]
     public void OriginalDatabaseCarriesTheMigration() =>
         Assert.Contains("-- 82_WiredCatalogueParity\n" + Migration, Read("Resources/SQLs/Original Database.sql"));
 
@@ -84,5 +92,6 @@ public sealed class WiredCatalogueParityTests
         Assert.Contains("(35246,'conf_chooser_disable',5,0,0,0,1,1,'')", fresh);
         Assert.Contains("(35273,'wf_xtra_var_web_api_deal1',300,300,5,0,0,1,'')", fresh);
         Assert.Contains("'Wired Archive'", fresh);
+        Assert.Contains("(2000000016,0,'Archived Wired boxes that are still available for legacy reasons, but are not recommended to use in new Wired setups')", fresh);
     }
 }

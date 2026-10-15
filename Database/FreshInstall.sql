@@ -73611,7 +73611,7 @@ INSERT INTO `catalog_page_texts` VALUES
 (1700000141,1,''),
 (1700000142,0,'317 furni'),
 (1700000142,1,''),
-(2000000016,0,''),
+(2000000016,0,'Archived Wired boxes that are still available for legacy reasons, but are not recommended to use in new Wired setups'),
 (2000000016,1,''),
 (2000000016,2,''),
 (2000000017,0,''),

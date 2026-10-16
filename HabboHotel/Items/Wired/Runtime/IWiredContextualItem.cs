@@ -29,6 +29,8 @@ public interface IWiredClickTrigger : IWiredContextualTrigger
 public interface IWiredContextualSelector : IWiredConfiguredItem
 {
     WiredSelectorResult Select(WiredRuntimeContext context);
+    // A filter narrows what the stack's other selectors picked; the engine runs it after them.
+    bool FiltersExisting(WiredRuntimeContext context) => false;
 }
 
 public interface IWiredContextualAddon : IWiredConfiguredItem

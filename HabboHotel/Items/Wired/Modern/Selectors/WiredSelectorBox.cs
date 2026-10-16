@@ -29,6 +29,9 @@ public sealed class WiredSelectorBox : WiredConfiguredBehaviorBox, IWiredContext
         }
     }
 
+    public bool FiltersExisting(WiredRuntimeContext context) =>
+        WiredSelectorModule.FiltersExisting(Descriptor.CanonicalName, context.ConfigurationOf(this));
+
     public Runtime.WiredSelectorResult Select(WiredRuntimeContext context)
     {
         var configuration = context.ConfigurationOf(this);

@@ -78,8 +78,9 @@ public sealed class WiredAddonPolicy
     public int AnimationTimeMs { get; set; } = 500;
     public int? FurniLimit { get; set; }
     public int? UserLimit { get; set; }
-    // When set, a furniture limit that truncates keeps a random subset of the eligible selection instead of its first entries. Users and unset policies keep the prefix.
+    // When set, a limit that truncates keeps a random subset of the eligible selection instead of its first entries. Unset policies keep the prefix.
     internal Random? FurniFilterRandom { get; set; }
+    internal Random? UserFilterRandom { get; set; }
     public WiredCarryPolicy? Carry { get; set; }
     public WiredPhysicsPolicy? Physics { get; set; }
     public WiredCurvePolicy? Curve { get; set; }
@@ -100,7 +101,7 @@ public sealed class WiredAddonPolicy
     {
         var result = selection.Copy();
         Limit(result.FurniIds, FurniLimit, furniOrder, FurniFilterRandom);
-        Limit(result.UserIds, UserLimit, userOrder);
+        Limit(result.UserIds, UserLimit, userOrder, UserFilterRandom);
 
         return result;
     }

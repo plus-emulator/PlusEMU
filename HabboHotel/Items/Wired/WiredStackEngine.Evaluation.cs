@@ -326,7 +326,8 @@ internal sealed partial class WiredStackEngine
         var stack = firing.Stack;
         var selectors = new List<IWiredItem>();
 
-        foreach (var selector in stack.OfType<IWiredContextualSelector>().Where(RuntimeSupported)) {
+        foreach (var selector in WiredSelectorModule.FiltersLast(stack.OfType<IWiredContextualSelector>().Where(RuntimeSupported),
+                     selector => selector.FiltersExisting(context))) {
             var passed = false;
             yield return new(() => passed = InvokeRuntime(selector, context, () => { ComposeSelector(context, selector.Select(context)); return true; }));
 

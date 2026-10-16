@@ -2211,6 +2211,107 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
+    // Observed on AIR WIN63-202610131318-860371703 (owner and a bot inside one area, Teleport To on the selector's users):
+    // a filter alone teleports nobody, a Habbo filter keeps only the owner whether it stands above or below the area selector,
+    // a furni filter leaves the users alone, and an inverted Bot filter keeps the owner.
+    [Theory]
+    [InlineData("filter alone", false, false)]
+    [InlineData("area then habbo filter", true, false)]
+    [InlineData("habbo filter then area", true, false)]
+    [InlineData("area then furni filter", true, true)]
+    [InlineData("area then inverted bot filter", true, false)]
+    public void SelectorFiltersNarrowTheOtherSelectorsWhereverTheyStand(string layout, bool ownerMoves, bool botMoves)
+    {
+        using var f = new TeleportFixture();
+        f.Target.Definition.Walkable = true;
+        f.Room.GetGameMap().AddToMap(f.Target);
+        var bot = AddTeleportBot(f, 9, 2, 0);
+        f.Use(0, 200);
+
+        void Selector(uint id, string name, int[] ints)
+        {
+            var item = MakeItem(id, name);
+            var selector = Plus.HabboHotel.Items.Wired.Modern.Selectors.WiredSelectorFactory.Create(f.Room, item, new(), TestGroupManager.Empty);
+            Assert.NotNull(selector);
+            Assert.True(WiredNativeTestSupport.TryValidateRuntime(selector, new() { IntParams = [.. ints] }, out var config, out var error), error);
+            selector.ApplyConfiguration(config);
+            f.Items[id] = item;
+            Assert.True(f.Engine.Add(selector));
+        }
+
+        int[] area = [0, 0, 3, 1, 0, 0];
+        int[] habboFilter = [1, 1, 0];
+
+        switch (layout) {
+            case "filter alone":
+                Selector(102, "wf_slc_users_bytype", habboFilter);
+                break;
+            case "area then habbo filter":
+                Selector(102, "wf_slc_users_area", area);
+                Selector(103, "wf_slc_users_bytype", habboFilter);
+                break;
+            case "habbo filter then area":
+                Selector(102, "wf_slc_users_bytype", habboFilter);
+                Selector(103, "wf_slc_users_area", area);
+                break;
+            case "area then furni filter":
+                Selector(102, "wf_slc_users_area", area);
+                Selector(103, "wf_slc_furni_bytype", [0, 0, 1, 0]);
+                break;
+            case "area then inverted bot filter":
+                Selector(102, "wf_slc_users_area", area);
+                Selector(103, "wf_slc_users_bytype", [4, 1, 1]);
+                break;
+        }
+
+        f.Fire();
+
+        Assert.Equal(ownerMoves ? new Point(1, 1) : new Point(0, 0), f.User.Coordinate);
+        Assert.Equal(botMoves ? new Point(1, 1) : new Point(2, 0), bot.Coordinate);
+        Assert.Empty(f.Errors);
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703: an inverted Bot selector keeps every user that is not a bot.
+    [Fact]
+    public void InvertedUserTypeSelectorKeepsEveryUserOfTheOtherKinds()
+    {
+        using var f = new TeleportFixture();
+        f.Target.Definition.Walkable = true;
+        f.Room.GetGameMap().AddToMap(f.Target);
+        var bot = AddTeleportBot(f, 9, 2, 0);
+        f.Use(0, 200);
+        var item = MakeItem(102, "wf_slc_users_bytype");
+        var selector = Plus.HabboHotel.Items.Wired.Modern.Selectors.WiredSelectorFactory.Create(f.Room, item, new(), TestGroupManager.Empty);
+        Assert.NotNull(selector);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(selector, new() { IntParams = [4, 0, 1] }, out var config, out var error), error);
+        selector.ApplyConfiguration(config);
+        f.Items[102] = item;
+        Assert.True(f.Engine.Add(selector));
+
+        f.Fire();
+
+        Assert.Equal(new Point(1, 1), f.User.Coordinate);
+        Assert.Equal(new Point(2, 0), bot.Coordinate);
+        Assert.Empty(f.Errors);
+    }
+
+    private static RoomUser AddTeleportBot(TeleportFixture f, int virtualId, int x, int y)
+    {
+        List<Plus.HabboHotel.Rooms.AI.Speech.RandomSpeech> speech = [];
+        var data = new RoomBot(virtualId, f.Room.Id, "generic", "stand", "Robbie", "", "hr-100", x, y, 0, 0, 0, 0, 0, 0,
+            ref speech, "M", 0, 1, false, 7, false, 0);
+        var bot = new RoomUser(virtualId, f.Room.Id, virtualId, f.Room, null, TestChatEmotions.Unused, TestRewardProgress.Unused)
+        {
+            BotData = data,
+            X = x,
+            Y = y
+        };
+        RoomUsers(f.Room)[virtualId] = bot;
+        f.Room.GetGameMap().AddUserToMap(bot, new(x, y));
+
+        return bot;
+    }
+
     [Fact]
     public void FastTeleportKeepsWhoeverIsAlreadyThereAndStillBringsTheOthers()
     {

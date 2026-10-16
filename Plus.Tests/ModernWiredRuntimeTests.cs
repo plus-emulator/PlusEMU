@@ -2371,11 +2371,12 @@ public partial class ModernWiredRuntimeTests
         f.SelectPlayers();
         f.Use(1, 200);
         var replies = Capture(f.Habbo.Client);
-        f.Fire();
+        f.Fire(land: false);
+        Assert.Equal(235, f.User.CurrentEffect);
+        f.Advance(TeleportFixture.TeleportLandsAfterMilliseconds);
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(new Point(1, 1), resident.Coordinate);
         Assert.Empty(MovementDurations(replies));
-        Assert.Equal(4, f.User.CurrentEffect);
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
         Assert.Empty(f.Errors);
     }
@@ -2386,12 +2387,20 @@ public partial class ModernWiredRuntimeTests
         using var f = new TeleportFixture();
         f.Use(1, 0);
         var replies = Capture(f.Habbo.Client);
-        f.Fire();
+        // Observed on AIR WIN63-202610131318-860371703: fast = effect 235, an on-boundary firing lands at +1000 ms and drops the
+        // effect at +1500 ms.
+        f.Fire(land: false);
+        Assert.Equal(235, f.User.CurrentEffect);
+        f.Advance(950);
+        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        f.Advance(50);
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
-        Assert.Equal(4, f.User.CurrentEffect);
+        Assert.Equal(235, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
-        f.Advance(1500);
+        f.Advance(450);
+        Assert.Equal(235, f.User.CurrentEffect);
+        f.Advance(50);
         Assert.Equal(8, f.User.CurrentEffect);
         Assert.Empty(f.Errors);
     }
@@ -2405,9 +2414,10 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         Assert.Equal(4, f.User.CurrentEffect);
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
-        f.Advance(1000);
+        // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal firing lands at +2.0 s and drops the effect at +3.5 s.
+        f.Advance(1950);
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
-        f.Advance(500);
+        f.Advance(50);
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(4, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
@@ -2433,8 +2443,9 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
+    // Observed on AIR WIN63-202610131318-860371703: onto furni nobody can stand on, the user lands on the free tile next to it.
     [Fact]
-    public void TeleportStillRefusesFurniNobodyCanStandOn()
+    public void TeleportOntoFurniNobodyCanStandOnLandsOnTheFreeTileNextToIt()
     {
         using var f = new TeleportFixture();
         f.Target.Definition.Walkable = false;
@@ -2442,7 +2453,7 @@ public partial class ModernWiredRuntimeTests
         var replies = Capture(f.Habbo.Client);
         f.Fire();
         f.Advance(1500);
-        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        Assert.Equal(new Point(1, 0), f.User.Coordinate);
         Assert.Equal(8, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
@@ -2523,7 +2534,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void V2TeleportStillRefusesFurniNobodyCanStandOnWithTheFlag()
+    public void V2TeleportOntoFurniNobodyCanStandOnLandsNextToIt()
     {
         using var f = new TeleportFixture();
         f.Target.Definition.Walkable = false;
@@ -2531,7 +2542,7 @@ public partial class ModernWiredRuntimeTests
         f.UseExecutor();
         Assert.False(WiredRoomOperations.RelocateAvatar(f.Room, f.User, 1, 1, false, ignoreOccupants: true));
         f.FireOwned();
-        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        Assert.Equal(new Point(1, 0), f.User.Coordinate);
         Assert.Empty(f.Errors);
     }
 
@@ -2906,8 +2917,8 @@ public partial class ModernWiredRuntimeTests
             Engine.Add(Trigger);
             Engine.Add(Action);
         }
-        // The native teleport lands the user on the state update 1500 ms after the fire (observed on hhus, WIN63-202610131318).
-        public const int TeleportLandsAfterMilliseconds = 1500;
+        // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal teleport lands 2000 ms after the firing (a fast one at 1000 ms).
+        public const int TeleportLandsAfterMilliseconds = 2000;
         public void Fire(bool land = true)
         {
             Assert.True(Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = User }));
@@ -2997,11 +3008,14 @@ public partial class ModernWiredRuntimeTests
         var clocks = new WiredCounterController();
         Assert.True(clocks.Attach(item));
         Assert.True(clocks.Control(item, 0, 100));
-        Assert.Empty(clocks.Poll(599));
-        var half = Assert.Single(clocks.Poll(600));
+        // Observed on AIR WIN63-202610131318-860371703: the half-second steps sit on the room's 500 ms grid, so a firing at 100 ms
+        // takes its first step at 500 ms and shows "1" at 1000 ms.
+        Assert.Empty(clocks.Poll(499));
+        var half = Assert.Single(clocks.Poll(500));
         Assert.Equal(500, half.Event.Value);
         Assert.False(half.DisplayChanged);
-        var whole = Assert.Single(clocks.Poll(1100));
+        Assert.Empty(clocks.Poll(999));
+        var whole = Assert.Single(clocks.Poll(1000));
         Assert.Equal(500, whole.Event.PreviousValue);
         Assert.Equal(1000, whole.Event.Value);
         Assert.Equal("1", item.LegacyDataString);
@@ -3035,6 +3049,10 @@ public partial class ModernWiredRuntimeTests
         clocks.Attach(item);
         Assert.True(clocks.Adjust(item, 2, 0, 10));
         Assert.Equal(5000, clocks.ReadMilliseconds(item));
+        // A Start keeps a value adjusted after the last stop; the Stop makes the next Start restart from zero.
+        Assert.True(clocks.Control(item, 0, 0, WiredClockOrigin.ModernWired));
+        Assert.Equal(5000, clocks.ReadMilliseconds(item));
+        Assert.True(clocks.Control(item, 1, 0, WiredClockOrigin.ModernWired));
         clocks.TakeChanges();
         var box = ActionBox(room, "wf_act_control_clock", clocks);
         WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [0, 100], SelectedItems = [1] }, out var config, out _);

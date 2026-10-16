@@ -403,9 +403,9 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     && !(name == "wf_act_move_furni_to" && config.IntParams.Length == 4
                         || name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6), passengers: passengers,
                     landingUsers: landingUsers),
-                (user, target, slide, _, walkMode) => slide
+                (user, target, slide, fast, walkMode) => slide
                     ? _movement.MoveAvatar(context, user, target.GetX, target.GetY, true, walkMode)
-                    : Teleport(context, user, target),
+                    : Teleport(context, user, target, fast),
                 (item, state) =>
                 {
                     var mark = FurnitureStateEvents.Mark();
@@ -793,7 +793,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         _ => throw new ArgumentOutOfRangeException(nameof(choice))
     };
 
-    private bool Teleport(WiredRuntimeContext context, RoomUser user, Item target)
+    private bool Teleport(WiredRuntimeContext context, RoomUser user, Item target, bool fast)
     {
         // A freeze that ends on teleport ends before the move, including when the user is already there.
         WiredAvatarState.For(context.Room).Thaw(user, teleport: true);
@@ -807,7 +807,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
 
         var room = context.Room;
-        bool Relocate() => _movement.MoveAvatar(context, user, target.GetX, target.GetY, false, 2, ignoreOccupants: true);
+
+        bool Relocate()
+        {
+            var (x, y) = TeleportLanding(room, user, target);
+
+            return _movement.MoveAvatar(context, user, x, y, false, 2, ignoreOccupants: true);
+        }
 
         var effects = user.GetClient()?.GetHabbo()?.Effects;
 
@@ -815,13 +821,20 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return Relocate();
         }
 
-        // Observed on hhus: the native teleport applies avatar effect 4 at firing, republishes the avatar in place on the state update
-        // at least 1000 ms later, relocates it on the next one and drops the effect 1500 ms after that, all on the 500 ms state updates.
+        // Observed on AIR WIN63-202610131318-860371703: every step counts from the first 500 ms room boundary strictly after the firing.
+        // Normal: effect 4 at the firing, the avatar republished 1000 ms after that boundary, relocated 500 ms later and the effect
+        // dropped 1500 ms after the landing (an on-boundary firing lands at +2.0 s, effect 0 at +3.5 s); the walk is not stopped.
+        // Fast: effect 235, the walk ends on the tile being stepped onto, the landing is on the next boundary (+1000 ms for an
+        // on-boundary firing) and the effect drops 500 ms after it.
+        var firstBoundary = (int)(NextStateUpdate(context.NowMilliseconds) - context.NowMilliseconds);
+        var (republish, relocate, effectEnd) = fast
+            ? (firstBoundary, firstBoundary + FastTeleportRelocateMilliseconds, firstBoundary + FastTeleportEffectEndMilliseconds)
+            : (firstBoundary + TeleportRepublishMilliseconds, firstBoundary + TeleportRelocateMilliseconds, firstBoundary + TeleportEffectEndMilliseconds);
         var wired = room.GetWired();
         var release = () => { };
 
         // Nothing is applied unless the firing can hold its three scheduled steps; the effect starts with the first one.
-        if (!wired.ScheduleAux(context, TeleportRepublishMilliseconds, () =>
+        if (!wired.ScheduleAux(context, republish, () =>
             {
                 if (user.IsAttachedTo(room)) {
                     user.UpdateNeeded = true;
@@ -830,10 +843,15 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return Relocate();
         }
 
-        var restore = WiredTemporaryEffects.For(room).Acquire(user, () => effects.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room));
+        var restore = WiredTemporaryEffects.For(room).Acquire(user, () => effects.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room),
+            fast ? FastTeleportEffectId : TeleportEffectId);
         release = restore;
 
-        if (!wired.ScheduleAux(context, TeleportRelocateMilliseconds, () =>
+        if (fast) {
+            StopAfterCurrentStep(user);
+        }
+
+        if (!wired.ScheduleAux(context, relocate, () =>
             {
                 if (user.IsAttachedTo(room)) {
                     Relocate();
@@ -844,11 +862,55 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return Relocate();
         }
 
-        if (!wired.ScheduleAux(context, TeleportEffectEndMilliseconds, restore, restore, alignToStateUpdate: true)) {
+        if (!wired.ScheduleAux(context, effectEnd, restore, restore, alignToStateUpdate: true)) {
             restore();
         }
 
         return true;
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703: a teleport lands past users standing on the target, and onto furni nobody can stand on
+    // it does not land: the user lands on a free tile next to it (the tile north of the target was taken; the order of the other
+    // neighbours is not established).
+    private static readonly (int X, int Y)[] TeleportNeighbours = [(0, -1), (1, 0), (0, 1), (-1, 0)];
+
+    private static (int X, int Y) TeleportLanding(Room room, RoomUser user, Item target)
+    {
+        var map = room.GetGameMap();
+        var (x, y) = (target.GetX, target.GetY);
+
+        if (!map.ValidTile(x, y) || map.Model.SqState[x, y] != SquareState.Open || WiredRoomOperations.AvatarCanStand(map, x, y)) {
+            return (x, y);
+        }
+
+        foreach (var (dx, dy) in TeleportNeighbours) {
+            var (nx, ny) = (x + dx, y + dy);
+
+            if (map.ValidTile(nx, ny) && map.Model.SqState[nx, ny] == SquareState.Open && WiredRoomOperations.AvatarCanStand(map, nx, ny)
+                && !map.GetRoomUsers(new(nx, ny)).Any(other => !ReferenceEquals(other, user))) {
+                return (nx, ny);
+            }
+        }
+
+        return (x, y);
+    }
+
+    private static long NextStateUpdate(long nowMilliseconds) =>
+        (nowMilliseconds / WiredFlashStates.StateUpdateMilliseconds + 1) * WiredFlashStates.StateUpdateMilliseconds;
+
+    // The step in progress still lands; the walk ends there.
+    private static void StopAfterCurrentStep(RoomUser user)
+    {
+        if (!user.IsWalking) {
+            return;
+        }
+
+        if (user.SetStep) {
+            user.MoveTo(user.SetX, user.SetY, MoveOrigin.Wired);
+        }
+        else {
+            user.ClearMovement(true);
+        }
     }
 
     // Observed on hhus: the kick applies avatar effect 4 on the next 500 ms state update and removes the user 2000 ms after the firing.
@@ -882,9 +944,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
     private const int KickEffectId = 4;
     private const int KickRemoveMilliseconds = 2000;
+    private const int TeleportEffectId = 4;
+    private const int FastTeleportEffectId = 235;
     private const int TeleportRepublishMilliseconds = 1000;
     private const int TeleportRelocateMilliseconds = 1500;
     private const int TeleportEffectEndMilliseconds = 3000;
+    private const int FastTeleportRelocateMilliseconds = 500;
+    private const int FastTeleportEffectEndMilliseconds = 1000;
 
     // Observed on hhus: a "<...>" segment of Show Message text is removed (brackets included) at output; the stored text is untouched.
     // Unknown $(name) placeholders are left literal by the text formatters.

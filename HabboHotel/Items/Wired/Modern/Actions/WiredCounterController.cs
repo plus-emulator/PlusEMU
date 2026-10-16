@@ -55,6 +55,7 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
         public long Sequence;
         public WiredClockReason? LastReason;
         public WiredClockOrigin? LastOrigin;
+        public bool AdjustedSinceStop;
     }
     private readonly Dictionary<uint, Clock> _clocks = [];
     private readonly Queue<WiredCounterChange> _changes = [];
@@ -138,10 +139,12 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             var previous = clock.Value;
             clock.Value = clock.Countdown ? defaultGameSeconds * 2L : 0;
             PublishClock(clock, previous, ModernBatch(origin));
+            ReportState(clock);
         }
 
+        // Observed on AIR WIN63-202610131318-860371703: a Start keeps a value adjusted after the last stop, and restarts from 0 otherwise.
         if (operation == 0 && origin == WiredClockOrigin.ModernWired && !clock.Running && !clock.Countdown && !clock.GameAware
-            && clock.Value != 0) {
+            && clock.Value != 0 && !clock.AdjustedSinceStop) {
             var previous = clock.Value;
             clock.Value = 0;
             PublishClock(clock, previous, WiredCounterPublication.BatchData);
@@ -157,7 +160,11 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             var transition = Evidence(clock, operation == 0 ? WiredClockReason.Start : WiredClockReason.Resume, origin, actor);
             clock.Running = true;
             clock.Started = true;
-            clock.NextTick = nowMilliseconds + (clock.Countdown ? 1000 : 500);
+            clock.AdjustedSinceStop = false;
+            // Observed on AIR WIN63-202610131318-860371703: a started counter shows its first "1" on the 2nd 500 ms room boundary strictly after
+            // the firing (501-1000 ms later, exactly 1000 ms for an on-boundary firing), then every 1000 ms on that grid.
+            clock.NextTick = clock.Countdown ? nowMilliseconds + 1000 : NextBoundary(nowMilliseconds);
+            ReportState(clock);
 
             if (clock.Countdown) {
                 if (gameTransition != null) {
@@ -169,8 +176,9 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             }
         }
 
-        if (operation is 1 or 3) {
+        if (operation is 1 or 3 && clock.Running) {
             Stop(clock, operation == 1 ? WiredClockReason.Stop : WiredClockReason.Pause, origin, actor);
+            ReportState(clock);
         }
 
         return true;
@@ -191,6 +199,7 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
         }
 
         Evidence(clock, WiredClockReason.Adjust, origin);
+        clock.AdjustedSinceStop = !clock.Running;
         var previous = clock.Value;
         clock.Value = Math.Clamp(operation switch { 0 => previous + amount, 1 => previous - amount, _ => amount }, 0,
             clock.Countdown ? int.MaxValue * 2L : maxHalfSeconds);
@@ -232,7 +241,7 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
 
             var previous = clock.Value;
             clock.Value = clock.Countdown ? Math.Max(0, clock.Value - 2) : clock.Value + 1;
-            clock.NextTick = nowMilliseconds + (clock.Countdown ? 1000 : 500);
+            clock.NextTick = clock.Countdown ? nowMilliseconds + 1000 : NextBoundary(nowMilliseconds);
             PublishClock(clock, previous, clock.LastOrigin == WiredClockOrigin.ModernWired ? WiredCounterPublication.SingleData : WiredCounterPublication.Object);
 
             if (clock.Countdown && clock.Value == 0) {
@@ -242,6 +251,9 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
 
         return TakeChanges();
     }
+    // The first 500 ms room boundary strictly after the instant: the half-second steps of a counter sit on the room's state update grid.
+    private static long NextBoundary(long nowMilliseconds) =>
+        (nowMilliseconds / WiredFlashStates.StateUpdateMilliseconds + 1) * WiredFlashStates.StateUpdateMilliseconds;
     public IReadOnlyList<WiredCounterChange> TakeChanges()
     {
         var result = new List<WiredCounterChange>();
@@ -294,6 +306,14 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
 
         return transition;
     }
+    // Observed on AIR WIN63-202610131318-860371703: Start, Stop and Reset change a Wired counter's furni state once each,
+    // also when the displayed value stays the same.
+    private static void ReportState(Clock clock)
+    {
+        if (!clock.Countdown && clock.Item.GetRoom() is { } room) {
+            FurnitureStateEvents.Record(room, clock.Item);
+        }
+    }
     // Only Wired-driven plain counters publish the data-only frames; game timers, game counters and GUI/unknown writers keep the object update.
     private static WiredCounterPublication ModernBatch(WiredClockOrigin origin) =>
         origin == WiredClockOrigin.ModernWired ? WiredCounterPublication.BatchData : WiredCounterPublication.Object;
@@ -305,7 +325,10 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
         var changed = clock.Item.LegacyDataString != text;
 
         if (changed) {
-            clock.Item.LegacyDataString = text;
+            // Observed on AIR WIN63-202610131318-860371703: a Wired counter's ticks and adjusts do not change its furni state.
+            using (!clock.Countdown && clock.Item.GetRoom() is { } room ? FurnitureStateEvents.Unreported(room, clock.Item) : null) {
+                clock.Item.LegacyDataString = text;
+            }
         }
 
         if (clock.Countdown || clock.GameAware) {

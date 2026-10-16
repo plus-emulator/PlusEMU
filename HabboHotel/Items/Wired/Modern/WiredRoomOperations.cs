@@ -255,7 +255,7 @@ public static class WiredRoomOperations
 
     // A magic tile or an empty square can be stood on. Otherwise the highest furni must be walkable or a seat/bed.
     // An uninitialized map byte of 0 is not solid: tests and unloaded tiles have no furni there.
-    private static bool AvatarCanStand(Gamemap map, int x, int y)
+    internal static bool AvatarCanStand(Gamemap map, int x, int y)
     {
         if (map.WalkMagicAt(x, y) != null) {
             return true;

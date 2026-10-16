@@ -71,3 +71,41 @@ public sealed partial class WiredGlideConveyorTests
         Assert.True(reached, $"rider stopped at ({rider.X},{rider.Y})");
     }
 }
+
+public sealed partial class WiredGlideConveyorTests
+{
+    // Observed on AIR WIN63-202610131318-860371703: with a 200 ms Fast Queue running, placing a Write to Logs box on either stack,
+    // moving it between stacks and saving it never disturbs the queue. Every pulse publishes one WiredMovements entry per tile,
+    // home to home.
+    [Theory]
+    [InlineData("none")]
+    [InlineData("place")]
+    [InlineData("save")]
+    [InlineData("move")]
+    [InlineData("elsewhere")]
+    public void ChangingAnotherBoxKeepsTheQueuePublishingHomeToHome(string change)
+    {
+        var f = new Fixture(ColourTileFastQueueLayout(), live: true);
+        var observer = f.Walker(2, 6, 9, 6, 10);
+        f.Advance(1250);
+        var packets = CapturePublication(observer);
+        var log = change == "none" ? null! : change == "elsewhere" ? f.PlaceWired(40, 9, 15, 0, "wf_act_log") : f.PlaceWired(40, 4, 12, 3.06, "wf_act_log");
+
+        if (change == "save") {
+            var box = (Plus.HabboHotel.Items.Wired.Configuration.IWiredConfiguredItem)f.Box(40);
+            f.Owned(() => Assert.True(f.Room.GetWired().PublishConfigured(box, box.Configuration, () => { })));
+        }
+        else if (change == "move") {
+            f.Owned(() => Assert.True(f.Room.GetRoomItemHandler().SetFloorItem(log, 6, 12, 3.06)));
+        }
+
+        for (var pulse = 1; pulse <= 20; pulse++) {
+            packets.Clear();
+            f.Advance(200);
+            var furniture = ReadPublication(packets).Where(move => move.Type == 1).ToArray();
+            Assert.All(furniture, move => Assert.True(move.FromX == move.ToX && move.ToY == 11,
+                $"pulse {pulse}: #{move.Id} {move.FromX}->{move.ToX},{move.ToY} z {move.FromZ}->{move.ToZ}"));
+            Assert.Equal(Enumerable.Range(4, 8), Enumerable.Range(1, 8).Select(id => f.Items[(uint)id].GetX));
+        }
+    }
+}

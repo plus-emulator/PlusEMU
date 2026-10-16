@@ -157,7 +157,9 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             var transition = Evidence(clock, operation == 0 ? WiredClockReason.Start : WiredClockReason.Resume, origin, actor);
             clock.Running = true;
             clock.Started = true;
-            clock.NextTick = nowMilliseconds + (clock.Countdown ? 1000 : 500);
+            // Observed on AIR WIN63-202610131318-860371703: a started counter shows its first "1" on the 2nd 500 ms room boundary strictly after
+            // the firing (501-1000 ms later, exactly 1000 ms for an on-boundary firing), then every 1000 ms on that grid.
+            clock.NextTick = clock.Countdown ? nowMilliseconds + 1000 : NextBoundary(nowMilliseconds);
 
             if (clock.Countdown) {
                 if (gameTransition != null) {
@@ -232,7 +234,7 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
 
             var previous = clock.Value;
             clock.Value = clock.Countdown ? Math.Max(0, clock.Value - 2) : clock.Value + 1;
-            clock.NextTick = nowMilliseconds + (clock.Countdown ? 1000 : 500);
+            clock.NextTick = clock.Countdown ? nowMilliseconds + 1000 : NextBoundary(nowMilliseconds);
             PublishClock(clock, previous, clock.LastOrigin == WiredClockOrigin.ModernWired ? WiredCounterPublication.SingleData : WiredCounterPublication.Object);
 
             if (clock.Countdown && clock.Value == 0) {
@@ -242,6 +244,9 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
 
         return TakeChanges();
     }
+    // The first 500 ms room boundary strictly after the instant: the half-second steps of a counter sit on the room's state update grid.
+    private static long NextBoundary(long nowMilliseconds) =>
+        (nowMilliseconds / WiredFlashStates.StateUpdateMilliseconds + 1) * WiredFlashStates.StateUpdateMilliseconds;
     public IReadOnlyList<WiredCounterChange> TakeChanges()
     {
         var result = new List<WiredCounterChange>();

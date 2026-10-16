@@ -340,6 +340,43 @@ public sealed partial class WiredGlideConveyorTests
         }
     };
 
+    // Observed on AIR WIN63-202610131318-860371703: a started counter shows its first "1" on the 2nd 500 ms room boundary strictly after
+    // the firing (501-1000 ms later; exactly 1000 ms for an on-boundary firing), then ticks every 1000 ms on that grid.
+    [Theory]
+    [InlineData(150, 1000)]
+    [InlineData(450, 1000)]
+    [InlineData(500, 1500)]
+    [InlineData(550, 1500)]
+    public void WiredStartedCounterShowsItsFirstSecondOnTheSecondRoomBoundaryAfterTheFiring(int fireAt, int firstSecondAt)
+    {
+        string Config(int[] parameters, string text = "", params uint[] selected) => JsonSerializer.Serialize(new WiredConfiguration
+        {
+            IntParams = [.. parameters],
+            Text = text,
+            SelectedItems = [.. selected]
+        });
+        var f = new Fixture(
+        [
+            (CounterId, 8, 12, 0.0, 0, "wf_upcounter1", null),
+            (21, 4, 12, 0.0, 0, "wf_trg_says_something", Config([1, 0, 0], "cstart")),
+            (22, 4, 12, 0.65, 0, "wf_act_control_clock", Config([0, 100], "", CounterId))
+        ], live: true);
+        f.MovementContext().Room.GetWired().AttachRoomItem(f.Items[CounterId]);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        var counter = f.Items[CounterId];
+
+        f.Advance(fireAt);
+        f.Owned(() => rider.OnChat(0, "cstart", false));
+        f.Advance(firstSecondAt - fireAt - 50);
+        Assert.Equal("0", counter.LegacyDataString is "" ? "0" : counter.LegacyDataString);
+        f.Advance(50);
+        Assert.Equal("1", counter.LegacyDataString);
+        f.Advance(950);
+        Assert.Equal("1", counter.LegacyDataString);
+        f.Advance(50);
+        Assert.Equal("2", counter.LegacyDataString);
+    }
+
     private static Fixture ClockFixture(string counter, string action, int[] actionParams)
     {
         string Config(int[] parameters, params uint[] selected) => JsonSerializer.Serialize(new WiredConfiguration

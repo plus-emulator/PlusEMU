@@ -10,32 +10,91 @@ public sealed partial class WiredGlideConveyorTests
 {
     private const int TeleportTargetId = 20;
 
-    // Official native 8 (WIN63-202610131318, 3 s windows): the owner got avatar effect 4 at the fire, an in-place update on the third state update,
-    // the relocation one update later and the effect cleared three updates after that. No avatar movement or direction entry was collected.
-    [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    public void NativeCompiledTeleportToLandsTheStandingHumanOnTheTargetWithoutAvatarMovementEntries(int flag)
+    // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal teleport gives effect 4 at the firing, republishes the avatar in
+    // place 1000 ms after the first boundary, lands at +2.0 s and drops the effect at +3.5 s. No avatar movement entry is sent.
+    [Fact]
+    public void NativeCompiledTeleportToLandsTheStandingHumanOnTheTargetWithoutAvatarMovementEntries()
     {
-        var (f, rider, packets) = TeleportToRoom(flag);
+        var (f, rider, packets) = TeleportToRoom(0);
 
         f.Owned(() => rider.OnChat(0, "pulse", false));
         f.Advance(200);
         Assert.Equal((4, 11, 4), (rider.X, rider.Y, rider.CurrentEffect));
-        f.Advance(750);
+        f.Advance(1750);
         Assert.Equal((4, 11), (rider.X, rider.Y));
         Assert.Equal(4, rider.CurrentEffect);
-        f.Advance(500);
-        Assert.Equal((4, 11), (rider.X, rider.Y));
-        f.Advance(500);
+        f.Advance(50);
 
         Assert.Equal((8, 10, 1.0), (rider.X, rider.Y, rider.Z));
         Assert.Equal(4, rider.CurrentEffect);
-        f.Advance(1500);
+        f.Advance(1450);
+        Assert.Equal(4, rider.CurrentEffect);
+        f.Advance(50);
         Assert.Equal(0, rider.CurrentEffect);
         Assert.Equal((6, 6), (rider.RotBody, rider.RotHead));
         var own = ReadMovementEntries(packets).Where(entry => entry.Type is 0 or 3 && entry.Id == rider.VirtualId).ToArray();
         Assert.Empty(own);
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703: fast = effect 235; an on-boundary firing lands at +1.0 s and drops the effect at +1.5 s.
+    [Fact]
+    public void NativeCompiledFastTeleportToLandsOnTheSecondBoundaryWithEffect235()
+    {
+        var (f, rider, packets) = TeleportToRoom(1);
+
+        f.Owned(() => rider.OnChat(0, "pulse", false));
+        f.Advance(200);
+        Assert.Equal((4, 11, 235), (rider.X, rider.Y, rider.CurrentEffect));
+        f.Advance(750);
+        Assert.Equal((4, 11), (rider.X, rider.Y));
+        f.Advance(50);
+        Assert.Equal((8, 10, 1.0), (rider.X, rider.Y, rider.Z));
+        Assert.Equal(235, rider.CurrentEffect);
+        f.Advance(450);
+        Assert.Equal(235, rider.CurrentEffect);
+        f.Advance(50);
+        Assert.Equal(0, rider.CurrentEffect);
+        Assert.Empty(ReadMovementEntries(packets).Where(entry => entry.Type is 0 or 3 && entry.Id == rider.VirtualId));
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703: a fast teleport ends the walk on the tile being stepped onto; a normal one lets the
+    // user walk on and relocates it afterwards.
+    [Fact]
+    public void FastTeleportToEndsTheWalkOnTheTileBeingSteppedOnto()
+    {
+        var (f, rider, _) = TeleportToRoom(1);
+        f.Owned(() => rider.MoveTo(4, 5));
+        f.Advance(500);
+        Assert.True(rider.SetStep);
+        var stepping = (rider.SetX, rider.SetY);
+        f.Advance(250);
+
+        f.Owned(() => rider.OnChat(0, "pulse", false));
+        f.Advance(250);
+
+        Assert.Equal(stepping, (rider.X, rider.Y));
+        Assert.False(rider.IsWalking);
+        f.Advance(500);
+        Assert.Equal((8, 10), (rider.X, rider.Y));
+    }
+
+    [Fact]
+    public void NormalTeleportToLetsTheWalkGoOnAndRelocatesAfterwards()
+    {
+        var (f, rider, _) = TeleportToRoom(0);
+        f.Owned(() => rider.MoveTo(4, 5));
+        f.Advance(750);
+
+        f.Owned(() => rider.OnChat(0, "pulse", false));
+        f.Advance(1000);
+
+        Assert.True(rider.Y < 10);
+        Assert.True(rider.IsWalking);
+        // The first boundary after the firing is 1000; the landing is 1500 ms after it.
+        f.Advance(700);
+        Assert.NotEqual((8, 10), (rider.X, rider.Y));
+        f.Advance(50);
+        Assert.Equal((8, 10), (rider.X, rider.Y));
     }
 
     // Control: the card is valid and the placement is real, whichever way the avatar publication goes.

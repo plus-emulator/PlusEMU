@@ -3000,7 +3000,7 @@ public partial class ModernWiredRuntimeTests
         var context = Context(room, new(WiredEventKind.ClickUser) { TargetUser = user }, [], [user]);
         var box = new WiredModernCondition(room, MakeItem(100, "wf_cnd_user_performs_action"), Descriptor("wf_cnd_user_performs_action"),
             TestGroupManager.Empty, _ => null, () => DateTimeOffset.UtcNow);
-        Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [6, 0, 0, 0, 1, 11, 0] }, out var config, out _));
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [6, 0, 0, 0, 1, 11, 0] }, out var config, out var whyNot), whyNot);
         box.ApplyConfiguration(config);
         Assert.True(box.Execute(context));
         user.RemoveStatus("sit");

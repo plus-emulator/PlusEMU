@@ -20,7 +20,6 @@ internal static partial class WiredNativeAuxiliaryEditor
     // Source 901 applies to all furniture moved by the stack.
     private static readonly ImmutableArray<int> ProjectileFurni = [0, 100, 200, 201, 901];
     private static readonly ImmutableArray<int> ProjectileUsers = [0, 200, 201];
-    private static readonly ImmutableArray<int> PlainUsers = [0, 11, 200, 201];
 
     /// <summary>The executor's own normalizer runs here, so the stored runtime is already its fixed point.</summary>
     private static WiredConfiguration? Norm(string name, WiredNativeEditorConfiguration n, ImmutableArray<int> ints)
@@ -77,10 +76,14 @@ internal static partial class WiredNativeAuxiliaryEditor
             ? Norm("wf_xtra_mov_physics", n, [.. n.OwnedIntParams, n.FurniSourceTypes[0], n.FurniSourceTypes[1], n.UserSourceTypes[0]]) : null));
         yield return new("wf_xtra_text_output_furni_name", new(Sources([[0, 100, 200, 201]], [], [0]), n => Shape(n, 1, 1, 0, 0) && Placeholder(n)
             ? Norm("wf_xtra_text_output_furni_name", n, [n.OwnedIntParams[0] == 1 ? 2 : 1, n.FurniSourceTypes[0]]) : null));
-        yield return new("wf_xtra_text_output_username", new(Sources([], [[0, 11, 200, 201]], [0]), n => Shape(n, 1, 0, 1, 0) && Placeholder(n)
+        yield return new("wf_xtra_text_output_username", new(Sources([], [[0, 200, 201]], [0]), n => Shape(n, 1, 0, 1, 0) && Placeholder(n)
             ? Norm("wf_xtra_text_output_username", n, [n.OwnedIntParams[0] == 1 ? 2 : 1, n.UserSourceTypes[0]]) : null));
-        yield return new("wf_xtra_filter_furni", new(Meta(1, 1, [10, 0, 1], 1), FilterSpec("wf_xtra_filter_furni")));
-        yield return new("wf_xtra_filter_users", new(Meta(1, 1, [10, 0, 1], 1), FilterSpec("wf_xtra_filter_users")));
+        // Observed on AIR WIN63-202610131318-860371703 (initial editor frames): both filters offer furni 0/100/201 opening on 100 and
+        // users 0/201 opening on 0 for the variable-mode holder.
+        yield return new("wf_xtra_filter_furni", new(Meta(1, 1, [10, 0, 1], 1) with { FurniAllowed = [[0, 100, 201]], UsersAllowed = [[0, 201]], FurniDefaults = [100] },
+            FilterSpec("wf_xtra_filter_furni")));
+        yield return new("wf_xtra_filter_users", new(Meta(1, 1, [10, 0, 1], 1) with { FurniAllowed = [[0, 100, 201]], UsersAllowed = [[0, 201]], FurniDefaults = [100] },
+            FilterSpec("wf_xtra_filter_users")));
         // Jump strength: literal or variable value, with the merged reference's own target and source.
         // Observed r92f r92-move-addons initial frame (pkt 19139): furni 0/100/200/201 opening on 100, users 0/200/201 opening on 0.
         yield return new("wf_xtra_mov_curve", new(Sources([PlainFurni], [ProjectileUsers], [0, 160, -20], 1) with { FurniDefaults = [100] }, n =>

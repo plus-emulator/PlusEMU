@@ -41,19 +41,22 @@ internal static class WiredNativeConditionEditor
             defaults = [0];
         }
 
+        // Observed on AIR WIN63-202610131318-860371703 (initial editor frames): user slots offer 0/200/201 (10 and 11 come
+        // from the stack's trigger only); Triggerer Matches compares against 101 by default, Stuff Type Matches opens on 0 and 100, and
+        // Input Source Quantity opens both slots on the selector (200).
         WiredNativeEditorMetadata metadata = positive switch
         {
-            "wf_cnd_trggrer_on_frn" => new([[0, 100, 200, 201]], [[0, 10, 11, 200, 201]], [100], [0], defaults, false),
-            "wf_cnd_triggerer_match" => new([], [[0, 10, 11, 200, 201], [0, 10, 11, 101, 200, 201]], [], [0, 0], defaults, false),
-            "wf_cnd_stuff_is" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [], [100, 101], [], defaults, true),
-            "wf_cnd_slc_quantity" => new([[0, 100, 200, 201]], [[0, 10, 11, 200, 201]], [100], [0], defaults, true),
+            "wf_cnd_trggrer_on_frn" => new([[0, 100, 200, 201]], [[0, 200, 201]], [100], [0], defaults, false),
+            "wf_cnd_triggerer_match" => new([], [[0, 200, 201], [0, 101, 200, 201]], [], [0, 101], defaults, false),
+            "wf_cnd_stuff_is" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [], [0, 100], [], defaults, true),
+            "wf_cnd_slc_quantity" => new([[0, 200, 201]], [[0, 200, 201]], [200], [200], defaults, true),
             "wf_cnd_furnis_hv_avtrs" or "wf_cnd_has_furni_on" or "wf_cnd_match_snapshot"
                 or "wf_cnd_has_altitude" or "wf_cnd_counter_time_matches" =>
                 new([[0, 100, 200, 201]], [], [100], [], defaults, positive == "wf_cnd_has_altitude"),
             "wf_cnd_actor_dir" or "wf_cnd_actor_in_group" or "wf_cnd_actor_in_team" or "wf_cnd_has_handitem"
                 or "wf_cnd_wearing_effect" or "wf_cnd_wearing_badge" or "wf_cnd_user_performs_action"
                 or "wf_cnd_team_has_rank" or "wf_cnd_team_has_score" =>
-                new([], [[0, 10, 11, 200, 201]], [], [0], defaults, false),
+                new([], [[0, 200, 201]], [], [0], defaults, false),
             _ when Supports(name) => new([], [], [], [], defaults, false),
             _ => throw new InvalidDataException("Unknown native condition.")
         };

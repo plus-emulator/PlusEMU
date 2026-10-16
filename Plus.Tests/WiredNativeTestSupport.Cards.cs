@@ -276,7 +276,8 @@ internal static partial class WiredNativeTestSupport
         : p[0] == 10 && p.Length > 4 && p[3] != 0 ? "dance " + p[4] : "";
 
     public static bool TryCompileRuntime(IWiredConfiguredItem box, WiredConfiguration draft, out WiredConfiguration runtime) =>
-        WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, FromRuntime(box.Descriptor, draft, id => box.Instance.GetRoomItemHandler()?.GetItem(id)?.IsWallItem ?? false), out runtime);
+        WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, FromRuntime(box.Descriptor, draft, id => box.Instance.GetRoomItemHandler()?.GetItem(id)?.IsWallItem ?? false), out runtime,
+            WiredNativeEditorProjection.AnyTriggerContext);
 
     public static void InstallRuntime(IWiredConfiguredItem box, WiredConfiguration draft) => Install(box,
         FromRuntime(box.Descriptor, draft, id => box.Instance.GetRoomItemHandler()?.GetItem(id)?.IsWallItem ?? false));

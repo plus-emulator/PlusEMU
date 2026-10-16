@@ -226,7 +226,15 @@ internal static partial class WiredNativeAuxiliaryEditor
         AllowWall = true
     };
 
-    private static WiredNativeEditorMetadata HasVar(bool negative) => Meta(1, 1, [1], 1) with { QuantifierType = 3, Invert = negative, AllowWall = true };
+    // Observed on AIR WIN63-202610131318-860371703: furni 0/100/200/201 opening on 100, users 0/200/201 opening on 0.
+    private static WiredNativeEditorMetadata HasVar(bool negative) => Meta(1, 1, [1], 1) with
+    {
+        QuantifierType = 3,
+        Invert = negative,
+        AllowWall = true,
+        FurniAllowed = [[0, 100, 200, 201]],
+        FurniDefaults = [100]
+    };
 
     private static WiredConfiguration? HasVarSpec(WiredNativeEditorConfiguration n)
     {

@@ -483,7 +483,14 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
             variables: context => WiredSelectorVariableBridge.Create(context, module), readWorld: _ => world);
         var quantityNative = WiredNativeEditorProjection.DefaultNative(quantityDescriptor);
         WiredNativeTestSupport.Install(quantity, variableQuantity
-            ? quantityNative with { OwnedIntParams = [2, 1, WiredNativeAuxiliaryEditor.AirTarget(1)], FurniSourceTypes = [200], VariableIds = ["furni:11"] }
+            // Observed on AIR WIN63-202610131318-860371703: the filter's holder slot offers 0/100/201, so the holders are picked here.
+            ? quantityNative with
+            {
+                OwnedIntParams = [2, 1, WiredNativeAuxiliaryEditor.AirTarget(1)],
+                FurniSourceTypes = [100],
+                PrimaryItems = [new(1, false), new(2, false), new(3, false)],
+                VariableIds = ["furni:11"]
+            }
             : quantityNative with { OwnedIntParams = [1, 0, 0] });
         engine.Add(quantity);
         Assert.True(WiredBoxRegistry.TryGet("wf_act_change_var_val", out var actionDescriptor));

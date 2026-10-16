@@ -59,6 +59,28 @@ public static class WiredNativeEditorProjection
         _ => CategoryMetadata(name)
     };
 
+    /// <summary>
+    /// Observed on AIR WIN63-202610131318-860371703: a stack with Bot Reaches User offers source 10 and a stack with Click User offers 11,
+    /// inserted after 0 in every user slot of every box in that stack. Other triggers add nothing; furni slots and defaults never change.
+    /// </summary>
+    public static ImmutableArray<int> TriggerContextSources(IEnumerable<string> stackBoxNames)
+    {
+        var names = stackBoxNames.ToHashSet(StringComparer.Ordinal);
+
+        return [.. new[] { (Name: "wf_trg_bot_reached_avtr", Source: WiredSources.ReachedUser), (Name: "wf_trg_click_user", Source: WiredSources.ClickedUser) }
+            .Where(entry => names.Contains(entry.Name)).Select(entry => entry.Source)];
+    }
+
+    public static WiredNativeEditorMetadata WithTriggerContext(WiredNativeEditorMetadata metadata, ImmutableArray<int> contextSources) =>
+        contextSources.IsDefaultOrEmpty ? metadata : metadata with
+        {
+            UsersAllowed = [.. metadata.UsersAllowed.Select(group => group.Contains(WiredSources.Trigger)
+                ? group.Take(1).Concat(contextSources.Where(source => !group.Contains(source))).Concat(group.Skip(1)).ToImmutableArray() : group)]
+        };
+
+    // Both trigger-context sources, for callers that stand for a stack with either trigger.
+    public static readonly ImmutableArray<int> AnyTriggerContext = [WiredSources.ReachedUser, WiredSources.ClickedUser];
+
     private static WiredNativeEditorMetadata CategoryMetadata(string name) => WiredNativeAuxiliaryEditor.Supports(name)
         ? WiredNativeAuxiliaryEditor.Metadata(name)
         : WiredBoxRegistry.TryGet(name, out var descriptor)
@@ -182,7 +204,7 @@ public static class WiredNativeEditorProjection
     }
 
     public static bool TryCompile(uint itemId, WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
-        out WiredConfiguration runtime)
+        out WiredConfiguration runtime, ImmutableArray<int> triggerContext = default, bool storedRow = false)
     {
         runtime = new();
         var name = descriptor.CanonicalName;
@@ -192,15 +214,16 @@ public static class WiredNativeEditorProjection
             return false;
         }
 
-        var metadata = Metadata(name);
+        var metadata = WithTriggerContext(Metadata(name), triggerContext);
 
         var legacy = metadata.LegacySlots > 0 && native.FurniSourceTypes.Length == metadata.LegacySlots
             && native.UserSourceTypes.Length == metadata.LegacySlots;
 
         if (!legacy && (native.FurniSourceTypes.Length != metadata.FurniAllowed.Length
             || native.UserSourceTypes.Length != metadata.UsersAllowed.Length)
-            || native.FurniSourceTypes.Where((source, index) => !metadata.FurniAllowed[index].Contains(source)).Any()
-            || native.UserSourceTypes.Where((source, index) => !metadata.UsersAllowed[index].Contains(source)).Any()
+            // A stored row passed the source lists that applied when it was saved; the lists follow the official editors and may narrow later.
+            || !storedRow && native.FurniSourceTypes.Where((source, index) => !metadata.FurniAllowed[index].Contains(source)).Any()
+            || !storedRow && native.UserSourceTypes.Where((source, index) => !metadata.UsersAllowed[index].Contains(source)).Any()
             || !metadata.AllowWall && native.PrimaryItems.Concat(native.SecondaryItems).Any(item => item.Wall)
             || BuiltIn.Contains(name) && native.VariableIds.Length != 0) {
             return false;
@@ -417,7 +440,7 @@ public static class WiredNativeEditorProjection
     public static bool IsBound(uint itemId, WiredBoxDescriptor descriptor, WiredConfiguration runtime) =>
         runtime.Origin is { Native: not null } origin && origin.ItemId == itemId && origin.Name == descriptor.CanonicalName
         && Matches(runtime, origin.Derived)
-        && TryCompile(itemId, descriptor, origin.Native, out var derived) && Matches(runtime, derived);
+        && TryCompile(itemId, descriptor, origin.Native, out var derived, storedRow: true) && Matches(runtime, derived);
 
     public static bool TryValidateRuntime(Item item, WiredBoxDescriptor descriptor, WiredConfiguration proposed,
         out WiredConfiguration validated, out string error)

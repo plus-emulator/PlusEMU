@@ -726,10 +726,16 @@ public partial class RoomItemHandling
 
     private bool PlaceFloor(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses, double height, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision, (Plus.HabboHotel.Items.DataFormat.IFurniObjectData Data, Action Persist, RoomItemTransfer? Transfer)? commit, bool deferPositionSave = false)
     {
-        if (item.IsTemporary && (!OwnsTemporary(item) || session != null
+        if (item.IsTemporary && (!OwnsTemporary(item) || session != null && newItem
             || !Plus.HabboHotel.Items.Wired.Modern.WiredRoomOperations.CanPlaceItem(_room, item, newX, newY, newRot,
                 height == -1 ? null : height, collision: wiredCollision))) {
             return false;
+        }
+
+        // Observed on AIR WIN63-202610131318-860371703: a user with rights moves and rotates Place Furni copies. The copy is
+        // never stored, so the move runs as an anonymous one: no placement hooks or travel registration that write to storage.
+        if (item.IsTemporary) {
+            session = null!;
         }
 
         bool HasBlockingUsers(int x, int y) => wiredCollision == null

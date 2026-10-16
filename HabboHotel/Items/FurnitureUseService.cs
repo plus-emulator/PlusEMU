@@ -150,7 +150,19 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
 
         var item = room.GetRoomItemHandler().GetItem(request.ItemId);
 
-        if (item == null || item.IsTemporary || item.RoomId != room.Id || item.Definition == null) {
+        if (item == null || item.RoomId != room.Id || item.Definition == null) {
+            return;
+        }
+
+        // Observed on AIR WIN63-202610131318-860371703: a user with rights uses a Place Furni copy (its state goes 0 to 1);
+        // without rights it does nothing. Only a plain state switch is used, since a copy never reaches storage.
+        if (item.IsTemporary) {
+            if (room.GetRoomItemHandler().OwnsTemporary(item) && room.CheckRights(session, false, true)
+                && item.Interactor is Plus.HabboHotel.Items.Interactor.InteractorGenericSwitch) {
+                Trigger(room, session, item, request.Parameter, true);
+                room.GetWired().TriggerEvent(WiredBoxType.TriggerStateChanges, habbo, item);
+            }
+
             return;
         }
 

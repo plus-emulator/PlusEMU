@@ -18,7 +18,7 @@ public partial class PlacedFurniRoomTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void TemporaryCopyMovesRotatesAndSwitchesOnlyForAVisitorWithRightsAndIsNeverPickedUp(bool rights)
+    public void TemporaryCopyMovesRotatesAndSwitchesOnlyForAVisitorWithRightsAndIsNeverPickedUpByAVisitor(bool rights)
     {
         var item = TemporaryCopy();
         Visitor(rights);
@@ -39,6 +39,22 @@ public partial class PlacedFurniRoomTests
             new RoomItemPickupStore(_database)).TryPickUp(_client, item.Id));
         Assert.Same(item, _room.GetRoomItemHandler().GetItem(item.Id));
         Assert.True(_room.GetRoomItemHandler().OwnsTemporary(item));
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703 (hhus): the box owner picks up a Place Furni copy. The copy is removed, and
+    // nothing reaches the inventory or the database.
+    [Fact]
+    public void BoxOwnerPicksUpTemporaryCopyWithoutInventoryOrStorage()
+    {
+        var item = TemporaryCopy();
+        var store = new CountingPickupStore();
+        _client.GetHabbo().Id = 7;
+
+        Assert.True(new RoomItemPickupService(TestGameClientManager.Empty, Proxy<IQuestManager>((_, _) => null), store)
+            .TryPickUp(_client, item.Id));
+        Assert.Null(_room.GetRoomItemHandler().GetItem(item.Id));
+        Assert.False(_room.GetRoomItemHandler().OwnsTemporary(item));
+        Assert.Equal(0, store.Calls);
     }
 
     // Observed on AIR WIN63-202610131318-860371703: @level is the profile's account level, the same level User Level compares.
@@ -82,6 +98,18 @@ public partial class PlacedFurniRoomTests
         Assert.NotNull(item);
 
         return item;
+    }
+
+    private sealed class CountingPickupStore : IRoomItemPickupStore
+    {
+        public int Calls;
+
+        public bool PickUp(RoomItemPickup request)
+        {
+            Calls++;
+
+            return true;
+        }
     }
 
     private void Visitor(bool rights)

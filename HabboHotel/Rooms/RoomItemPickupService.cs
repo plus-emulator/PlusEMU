@@ -47,14 +47,20 @@ public sealed class RoomItemPickupService(
         return TryPickUpReserved(session, itemId, transfer!);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703 (hhus): the box owner can pick up a Place Furni copy. The pick-up only removes
-    // the copy: nothing goes to the inventory and nothing is stored. Rights holders and visitors are never offered it.
+    // Observed on hhus (AIR WIN63-202610131318-860371703): the owner can pick up a Place Furni copy, which carries the box owner as its
+    // owner. The pick-up only removes the copy: nothing goes to the inventory and nothing is stored. Rights holders and visitors are
+    // never offered it.
     private static bool TryPickUpTemporary(GameClient session, Room room, Item item)
     {
         var habbo = session.GetHabbo();
 
-        if (habbo == null || item.OwnerId is 0 or > int.MaxValue || (int)item.OwnerId != habbo.Id || item.RoomId != room.Id
-            || !ReferenceEquals(habbo.CurrentRoom, room)) {
+        if (habbo == null || item.RoomId != room.Id || !ReferenceEquals(habbo.CurrentRoom, room)) {
+            return false;
+        }
+
+        var ownsCopy = item.OwnerId is > 0 and <= int.MaxValue && (int)item.OwnerId == habbo.Id;
+
+        if (!ownsCopy && room.OwnerId != habbo.Id) {
             return false;
         }
 

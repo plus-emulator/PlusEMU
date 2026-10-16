@@ -137,7 +137,8 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
 
         var horse = room.GetRoomUserManager().GetRoomUserByVirtualId(actor.HorseId);
 
-        if (horse == null) {
+        // A rolling pair glides on its slides; a status now would snap the horse ahead of its rider.
+        if (horse == null || actor.IsRolling || horse.IsRolling) {
             return;
         }
 
@@ -157,7 +158,8 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
             horse.IsWalking = false;
         }
 
-        horse.UpdateNeeded = true;
+        // The horse's status follows its rider's, not every tick.
+        horse.UpdateNeeded |= actor.UpdateNeeded;
         context.RefreshMembership(horse);
     }
 }

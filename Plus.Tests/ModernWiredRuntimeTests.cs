@@ -309,11 +309,12 @@ public partial class ModernWiredRuntimeTests
         monitor.Skip(3);
         Assert.Equal(20, monitor.Int());
         Assert.Equal((0, 1000, 0, 0, 0, 0, 0, 0), (monitor.Int(), monitor.Int(), monitor.Int(), monitor.Int(), monitor.Int(), monitor.Int(), monitor.Int(), monitor.Int()));
-        Assert.Equal(4, monitor.Int());
-        var tallies = Enumerable.Range(0, 4).Select(_ => (Type: monitor.String(), Severity: monitor.String(), Count: monitor.Int(), Seconds: monitor.Int(),
+        Assert.Equal(5, monitor.Int());
+        var tallies = Enumerable.Range(0, 5).Select(_ => (Type: monitor.String(), Severity: monitor.String(), Count: monitor.Int(), Seconds: monitor.Int(),
             Reason: monitor.String(), Label: monitor.String(), Id: monitor.Int())).ToArray();
-        Assert.Equal(["EXECUTION_CAP", "DELAYED_EVENTS_CAP", "RECURSION_TIMEOUT", "WIRED_LOG"], tallies.Select(x => x.Type));
+        Assert.Equal(["EXECUTION_CAP", "DELAYED_EVENTS_CAP", "RECURSION_TIMEOUT", "WIRED_LOG", "PLACEMENT_FAILURE"], tallies.Select(x => x.Type));
         Assert.All(tallies[..3], tally => Assert.Equal(("ERROR", 0, 0), (tally.Severity, tally.Count, tally.Seconds)));
+        Assert.Equal(("ERROR", 0, 0), (tallies[4].Severity, tallies[4].Count, tallies[4].Seconds));
         Assert.Equal(("WARNING", 1, "Gate opened", "wf_act_log", 102), (tallies[3].Severity, tallies[3].Count, tallies[3].Reason, tallies[3].Label, tallies[3].Id));
         Assert.Equal(1, monitor.Int());
         Assert.Equal(("WIRED_LOG", "WARNING"), (monitor.String(), monitor.String()));
@@ -340,9 +341,9 @@ public partial class ModernWiredRuntimeTests
 
         await MonitorRequest().Parse(f.Room, f.Client, Request(1));
         monitor = Reply(alice, 5101).Skip(16, 1);
-        Assert.Equal(4, monitor.Int());
+        Assert.Equal(5, monitor.Int());
 
-        for (var i = 0; i < 4; i++) {
+        for (var i = 0; i < 5; i++) {
             monitor.String();
             monitor.String();
             Assert.Equal(0, monitor.Int());
@@ -424,6 +425,54 @@ public partial class ModernWiredRuntimeTests
         Assert.Single(bobReplies);
         Assert.Equal(5101u, bobReplies[0].Header);
         Assert.Equal(0, f.Room.GetWired().ReadLogs(0, 50, -1, "", -1).Total);
+    }
+
+    [Fact]
+    public async Task OfficialMonitorRequestsAnswerStatsAndTenErrorRowsAndEngineLimitsCountOnTheirRows()
+    {
+        using var f = new TeleportFixture();
+        f.Room.OwnerName = "Alice";
+        f.Room.Type = "private";
+        f.Room.UsersWithRights = [];
+        var monitor = new WiredMonitorService(new WiredRequestGateService(new ManualMonotonicClock()));
+        var alice = Capture(f.Client);
+
+        await new GetWiredRoomStatsEvent(monitor).Parse(f.Room, f.Client, Request());
+        var stats = Reply(alice, ServerPacketHeader.WiredRoomStatsComposer);
+        stats.Skip(2); // the cost double
+        Assert.Equal(3125d, BitConverter.Int64BitsToDouble(((long)stats.Int() << 32) | (uint)stats.Int()));
+        Assert.False(stats.Bool());
+        Assert.Equal(f.Room.GetRoomItemHandler().GetFloor.Count, stats.Int());
+        Assert.Equal(4000, stats.Int());
+        Assert.Equal(f.Room.GetRoomItemHandler().GetWall.Count, stats.Int());
+        Assert.Equal((4000, 0, 15, 0, 62, 0, 46), (stats.Int(), stats.Int(), stats.Int(), stats.Int(), stats.Int(), stats.Int(), stats.Int()));
+        stats.End();
+
+        // The engine's own limits count on their rows: execution budget, wait queue and chain depth.
+        var note = typeof(WiredComponent).GetMethod("NoteLimit", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        note.Invoke(f.Room.GetWired(), [WiredEngineLimit.ExecutionBudget, "cap"]);
+        note.Invoke(f.Room.GetWired(), [WiredEngineLimit.Depth, "deep"]);
+        note.Invoke(f.Room.GetWired(), [WiredEngineLimit.PendingStacks, "full"]);
+        f.Room.GetWired().RecordError(WiredErrorKind.PlacementFailure);
+
+        await new GetWiredErrorLogsEvent(monitor).Parse(f.Room, f.Client, Request());
+        var logs = Reply(alice, ServerPacketHeader.WiredErrorLogsComposer);
+        Assert.Equal(10, logs.Int());
+        var rows = Enumerable.Range(0, 10).Select(_ => (Id: logs.Int(), Name: logs.String(), Category: logs.String(), Count: logs.Int(),
+            High: logs.Int(), Low: logs.Int())).ToArray();
+        logs.End();
+        Assert.Equal([1, 1, 0, 0, 0, 1, 0, 0, 1, 0], rows.Select(row => row.Count));
+        Assert.All(rows.Where(row => row.Count == 0), row => Assert.Equal((-1, -1), (row.High, row.Low)));
+        Assert.All(rows.Where(row => row.Count > 0), row => Assert.True(row.High == 0 && row.Low >= 0));
+
+        await new ClearWiredErrorLogsEvent(monitor).Parse(f.Room, f.Client, Request());
+        logs = Reply(alice, ServerPacketHeader.WiredErrorLogsComposer);
+        Assert.Equal(10, logs.Int());
+        rows = Enumerable.Range(0, 10).Select(_ => (Id: logs.Int(), Name: logs.String(), Category: logs.String(), Count: logs.Int(),
+            High: logs.Int(), Low: logs.Int())).ToArray();
+        logs.End();
+        Assert.All(rows, row => Assert.Equal((0, -1, -1), (row.Count, row.High, row.Low)));
+        Assert.Empty(alice);
     }
 
     [Fact]

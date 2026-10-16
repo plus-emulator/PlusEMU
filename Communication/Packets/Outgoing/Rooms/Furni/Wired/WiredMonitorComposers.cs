@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Plus.Communication.Packets.Outgoing.WiredVariables;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Rooms.Instance;
 
@@ -98,6 +99,54 @@ public sealed class WiredRoomLogPageComposer(WiredRoomLogPage page, int levelFil
 
         if (query.Length > 0) {
             packet.WriteString(query);
+        }
+    }
+}
+
+/// <summary>
+/// Official AIR monitor statistics, read by <c>package_121/WiredRoomStatsData.as:34-50</c> (WIN63-202610131318-860371703):
+/// cost and cost cap as doubles, heavy, then floor, wall and the three permanent variable kinds as count / cap pairs.
+/// </summary>
+public sealed class WiredRoomStatsComposer(WiredRoomStats stats) : IServerPacket
+{
+    public uint MessageId => ServerPacketHeader.WiredRoomStatsComposer;
+    public void Compose(IOutgoingPacket packet)
+    {
+        packet.WriteDouble(stats.ExecutionCost);
+        packet.WriteDouble(stats.ExecutionCostCap);
+        packet.WriteBoolean(stats.IsHeavy);
+        packet.WriteInteger(stats.FloorItems);
+        packet.WriteInteger(stats.FloorItemCap);
+        packet.WriteInteger(stats.WallItems);
+        packet.WriteInteger(stats.WallItemCap);
+        packet.WriteInteger(stats.PermanentFurniVariables);
+        packet.WriteInteger(stats.MaxPermanentFurniVariables);
+        packet.WriteInteger(stats.PermanentUserVariables);
+        packet.WriteInteger(stats.MaxPermanentUserVariables);
+        packet.WriteInteger(stats.PermanentGlobalVariables);
+        packet.WriteInteger(stats.MaxPermanentGlobalVariables);
+    }
+}
+
+/// <summary>
+/// Official AIR monitor error rows: a count, then per row (<c>package_121/class_4361.as:19-28</c>, WIN63-202610131318-860371703)
+/// error id, name, category, throw count and the milliseconds since the last occurrence as a long (-1 for never).
+/// </summary>
+public sealed class WiredErrorLogsComposer(IReadOnlyList<WiredErrorRow> rows) : IServerPacket
+{
+    private readonly ImmutableArray<WiredErrorRow> _rows = rows.ToImmutableArray();
+    public uint MessageId => ServerPacketHeader.WiredErrorLogsComposer;
+    public void Compose(IOutgoingPacket packet)
+    {
+        packet.WriteInteger(_rows.Length);
+
+        foreach (var row in _rows) {
+            packet.WriteInteger(row.ErrorId);
+            packet.WriteString(row.ErrorName);
+            packet.WriteString(row.Category);
+            packet.WriteInteger(row.ThrowCount);
+            packet.WriteInteger(unchecked((int)(row.MsSinceLastOccurrence >> 32)));
+            packet.WriteInteger(unchecked((int)row.MsSinceLastOccurrence));
         }
     }
 }

@@ -476,4 +476,9 @@ public static class ClientPacketHeader
     public const uint WiredLinkGetConnectionsEvent = 3197; // package_129.class_3524 (new 2300)
     public const uint GetWiredContractContentsEvent = 3415; // AIR 202610121709; 202610131318: 3170.
     public const uint UpdateWiredContractEvent = 2559; // AIR 202610121709; 202610131318: 413.
+    // Wired monitor. Ids are the WIN63-202610121709 equivalents of the WIN63-202610131318-860371703 wiredmenu composers named;
+    // the monitor tab sends both requests together (WiredMenuMonitorTab.requestData).
+    public const uint GetWiredRoomStatsEvent = 3738; // wiredmenu.class_3333 (new 56)
+    public const uint GetWiredErrorLogsEvent = 508; // wiredmenu.class_2575 (new 1759)
+    public const uint ClearWiredErrorLogsEvent = 1248; // wiredmenu.class_3239 (new 3951)
 }

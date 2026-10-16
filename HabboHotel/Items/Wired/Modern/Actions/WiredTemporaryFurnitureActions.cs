@@ -100,12 +100,15 @@ public static class WiredTemporaryFurnitureActions
         }
 
         var placedAny = false;
+        var failedAny = false;
 
         foreach (var (snapshot, definition) in eligibleTemplates) {
             var x = snapshot.X + dx;
             var y = snapshot.Y + dy;
 
             if (!context.Room.GetGameMap().ValidTile(x, y)) {
+                failedAny = true;
+
                 continue;
             }
 
@@ -119,6 +122,8 @@ public static class WiredTemporaryFurnitureActions
                 Math.Clamp(height + policy.OffsetAltitudeHundredths / 100d, 0, 80), snapshot.State);
 
             if (item == null) {
+                failedAny = true;
+
                 continue;
             }
 
@@ -140,6 +145,11 @@ public static class WiredTemporaryFurnitureActions
                 frame.Selector.AddRange(parent.Selector);
                 module.Mutate(spawnVariable, holder, WiredVariableMutation.Give, spawnValue, frame);
             }
+        }
+
+        // One report per run, however many copies failed; the room applies the dialog cooldown.
+        if (failedAny) {
+            context.Room.GetWired()?.ReportPlacementFailure(box);
         }
 
         return placedAny;

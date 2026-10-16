@@ -69,6 +69,12 @@ public sealed class WiredMenuDelegationTests
         await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(3, 50, -1, 1, " GATE "));
 
         Assert.Equal(new[] { "Monitor 0", "Monitor 1", "Logs 3 50 -1 1  GATE " }, monitor.Calls); // the handler passes the text raw; trimming is the service's job
+
+        monitor.Calls.Clear();
+        await new GetWiredRoomStatsEvent(monitor).Parse(room, session, Packet());
+        await new GetWiredErrorLogsEvent(monitor).Parse(room, session, Packet());
+        await new ClearWiredErrorLogsEvent(monitor).Parse(room, session, Packet());
+        Assert.Equal(new[] { "RoomStats", "ErrorLogs", "ClearErrors" }, monitor.Calls);
     }
 
     [Fact]
@@ -84,6 +90,10 @@ public sealed class WiredMenuDelegationTests
         await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(1, 50, -1, 2, ""));
         await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(1, 50, -1, -1, new string('x', 401)));
         await new WiredRoomLogsPageEvent(monitor).Parse(room, session, Packet(1, 50, -1, -1, "x", 1));
+        // The official monitor requests have no body.
+        await new GetWiredRoomStatsEvent(monitor).Parse(room, session, Packet(0));
+        await new GetWiredErrorLogsEvent(monitor).Parse(room, session, Packet(0));
+        await new ClearWiredErrorLogsEvent(monitor).Parse(room, session, Packet(1));
 
         Assert.Empty(monitor.Calls);
     }
@@ -153,5 +163,8 @@ public sealed class WiredMenuDelegationTests
         public void ShowMonitor(Room room, GameClient session, int action) => Calls.Add($"Monitor {action}");
         public void ShowLogs(Room room, GameClient session, int page, int size, int level, int source, string query) =>
             Calls.Add($"Logs {page} {size} {level} {source} {query}");
+        public void ShowRoomStats(Room room, GameClient session) => Calls.Add("RoomStats");
+        public void ShowErrorLogs(Room room, GameClient session) => Calls.Add("ErrorLogs");
+        public void ClearErrorLogs(Room room, GameClient session) => Calls.Add("ClearErrors");
     }
 }

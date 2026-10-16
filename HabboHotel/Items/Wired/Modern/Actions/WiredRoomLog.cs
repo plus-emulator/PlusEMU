@@ -1,12 +1,13 @@
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
-/// Where a room log line came from, as the monitor rows name it. Plus only produces these four: the engine has no heavy,
+/// Where a room log line came from, as the monitor rows name it. Plus only produces these five: the engine has no heavy,
 /// overload or kill state. The log page itself knows two sources, <see cref="WiredRoomLogEntry.WireSource"/>.
 /// </summary>
 public enum WiredLogSource
 {
-    ExecutionCap = 0, DelayedEventsCap = 1, RecursionTimeout = 5, WiredLog = 8
+    // Habbo numbers PLACEMENT_FAILURE 8 too; 8 is already this log's own WiredLog row, so it takes the next free value.
+    ExecutionCap = 0, DelayedEventsCap = 1, RecursionTimeout = 5, WiredLog = 8, PlacementFailure = 9
 }
 
 public sealed record WiredRoomLogEntry(long Id, int Level, WiredLogSource Source, uint BoxId, string Label, string Reason, DateTimeOffset Timestamp)
@@ -16,6 +17,7 @@ public sealed record WiredRoomLogEntry(long Id, int Level, WiredLogSource Source
         WiredLogSource.ExecutionCap => "EXECUTION_CAP",
         WiredLogSource.DelayedEventsCap => "DELAYED_EVENTS_CAP",
         WiredLogSource.RecursionTimeout => "RECURSION_TIMEOUT",
+        WiredLogSource.PlacementFailure => "PLACEMENT_FAILURE",
         _ => "WIRED_LOG"
     };
     // The client's log levels (default texts wiredmenu.logs_overview.log_level.N): 0 INFO, 1 WARN, 2 ERROR, 3 DEBUG.
@@ -44,7 +46,8 @@ public sealed class WiredRoomLog(int capacity = 200)
     public const int InfoLevel = 0;
     public const int ErrorLevel = 2;
     private static readonly WiredLogSource[] Sources =
-        [WiredLogSource.ExecutionCap, WiredLogSource.DelayedEventsCap, WiredLogSource.RecursionTimeout, WiredLogSource.WiredLog];
+        [WiredLogSource.ExecutionCap, WiredLogSource.DelayedEventsCap, WiredLogSource.RecursionTimeout, WiredLogSource.WiredLog,
+            WiredLogSource.PlacementFailure];
     private readonly List<WiredRoomLogEntry> _entries = [];
     private readonly Dictionary<WiredLogSource, (int Count, WiredRoomLogEntry Latest)> _tallies = [];
     private long _nextId;

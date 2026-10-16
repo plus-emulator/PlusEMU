@@ -273,7 +273,8 @@ public sealed partial class WiredGlideConveyorTests
         public WiredStackEngine Engine => (WiredStackEngine)Get(_wired, "_engine");
         public IWiredItem Box(uint id) => ((Dictionary<uint, IWiredItem>)Get(Engine, "_items"))[id];
 
-        public Fixture((uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] layout, bool live = false, string movementEngine = "v2", IRoomItemStore? itemStore = null)
+        public Fixture((uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] layout, bool live = false, string movementEngine = "v2", IRoomItemStore? itemStore = null,
+            IItemDataManager? definitions = null)
         {
             _room.Id = 14;
             _room.WordFilterList = [];
@@ -306,7 +307,7 @@ public sealed partial class WiredGlideConveyorTests
             _savedRows = saved.ToImmutableDictionary(row => row.ItemId);
             _wired = new(_room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance,
                 new SavedConfigurations(saved), TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance,
-                TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
+                TestWiredClients.Empty, TestGroupManager.Empty, definitions ?? TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
             Set(_room, "_wiredComponent", _wired);
             var engine = Get(_wired, "_engine");
             engine.GetType().GetField("_now", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(engine, (Func<long>)(() => _now));

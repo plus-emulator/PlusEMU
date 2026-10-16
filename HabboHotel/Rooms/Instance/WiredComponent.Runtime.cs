@@ -20,6 +20,7 @@ public partial class WiredComponent
     private readonly WiredSelectorRoomState _selectorState = new();
     private readonly WiredCounterController _counters;
     private readonly WiredRoomLog _roomLog = new();
+    private readonly WiredErrorLog _errors;
     // The monitor polls several times a second; the full log stays on the paged log request.
     private const int MonitorHistory = 100;
     private readonly Dictionary<uint, Item> _counterItems = [];
@@ -155,12 +156,101 @@ public partial class WiredComponent
 
     public void ClearLogs() => _roomLog.Clear();
 
-    private void NoteLimit(WiredEngineLimit limit, string reason) => _roomLog.Append(WiredRoomLog.ErrorLevel, limit switch
+    /// <summary>
+    /// Counts one occurrence on a monitor error row. Placement failure counts the placement-failure dialogs shown to the owner,
+    /// not the failed runs: observed on AIR WIN63-202610131318-860371703, 9 dialogs over about 20 failed runs read as 9.
+    /// The dialog's sender calls this with <see cref="WiredErrorKind.PlacementFailure"/> each time it shows one.
+    /// </summary>
+    public void RecordError(WiredErrorKind kind) => _errors.Record(kind);
+
+    public IReadOnlyList<WiredErrorRow> ReadErrors() => _errors.Read();
+
+    public void ClearErrors() => _errors.Clear();
+
+    public WiredRoomStats ReadRoomStats()
     {
-        WiredEngineLimit.ExecutionBudget => WiredLogSource.ExecutionCap,
-        WiredEngineLimit.PendingStacks => WiredLogSource.DelayedEventsCap,
-        _ => WiredLogSource.RecursionTimeout
-    }, 0, "", reason, _clock.GetUtcNow());
+        int furni = 0, user = 0, global = 0;
+
+        // Variables load with the first variable box, so a room that never built one has no permanent variables.
+        if (_variables?.IsValueCreated == true) {
+            var owner = _room.OwnerId > 0 ? (uint)_room.OwnerId : 0;
+
+            foreach (var box in _variables.Value.Definitions) {
+                if (!WiredVariableDefinitions.TryDecode(box.Descriptor.CanonicalName, box.Item.Id, _room.Id, owner, box.Configuration,
+                        out var definition, out _) || definition is not { IsDurable: true, Link: null }) {
+                    continue;
+                }
+
+                switch (definition.Target) {
+                    case WiredVariableTarget.Furni:
+                        furni++;
+                        break;
+                    case WiredVariableTarget.User:
+                        user++;
+                        break;
+                    case WiredVariableTarget.Global:
+                        global++;
+                        break;
+                }
+            }
+        }
+
+        var items = _room.GetRoomItemHandler();
+
+        return WiredRoomStats.Create(_engine.ReadExecutionCost(), _engine.Limits.ExecutionCostCap, items.GetFloor.Count,
+            items.GetWall.Count, furni, user, global);
+    }
+
+    private void NoteLimit(WiredEngineLimit limit, string reason)
+    {
+        _errors.Record(limit switch
+        {
+            WiredEngineLimit.ExecutionBudget => WiredErrorKind.ExecutionCap,
+            WiredEngineLimit.PendingStacks => WiredErrorKind.DelayedEventsCap,
+            _ => WiredErrorKind.RecursionTimeout
+        });
+        _roomLog.Append(WiredRoomLog.ErrorLevel, limit switch
+        {
+            WiredEngineLimit.ExecutionBudget => WiredLogSource.ExecutionCap,
+            WiredEngineLimit.PendingStacks => WiredLogSource.DelayedEventsCap,
+            _ => WiredLogSource.RecursionTimeout
+        }, 0, "", reason, _clock.GetUtcNow());
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703: a failed wired furni placement shows every user in the room (owner and visitors
+    // without rights alike) one NotificationDialog wired.error, also for timer runs, and only when at least 5.0 s have passed since that
+    // user's last one. The rest of the stack still runs. The monitor's PLACEMENT_FAILURE count follows the runs that showed a dialog.
+    private const long PlacementFailureCooldownMs = 5000;
+    private readonly Dictionary<int, long> _lastPlacementFailureMs = [];
+
+    internal void ReportPlacementFailure(Item box)
+    {
+        var now = _engine.NowMilliseconds;
+        var shown = false;
+
+        foreach (var user in _room.GetRoomUserManager().GetRoomUsers()) {
+            if (user?.GetClient() is not { } client || client.GetHabbo() is not { } habbo
+                || _lastPlacementFailureMs.TryGetValue(habbo.Id, out var last) && now - last < PlacementFailureCooldownMs) {
+                continue;
+            }
+
+            _lastPlacementFailureMs[habbo.Id] = now;
+            shown = true;
+            client.Send(new Plus.Communication.Packets.Outgoing.Rooms.Notifications.RoomNotificationComposer("wired.error", new Dictionary<string, string>
+            {
+                ["image"] = "${image.library.url}album1584/WIRD2.png",
+                ["message"] = "${room.error.wired.placement_failure}"
+            }));
+        }
+
+        if (!shown) {
+            return;
+        }
+
+        RecordError(WiredErrorKind.PlacementFailure);
+        _roomLog.Append(WiredRoomLog.ErrorLevel, WiredLogSource.PlacementFailure, box.Id, box.Definition.ItemName,
+            "room.error.wired.placement_failure", _clock.GetUtcNow());
+    }
 
     public void AttachRoomItem(Item item) => _engine.Mutate(() =>
     {

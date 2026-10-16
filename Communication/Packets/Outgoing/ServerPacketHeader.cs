@@ -462,4 +462,8 @@ public static class ServerPacketHeader
     public const uint WiredContractOpenComposer = 3833; // AIR 202610121709; 202610131318: 241.
     public const uint WiredContractContentsComposer = 2796; // AIR 202610121709; 202610131318: 2057.
     public const uint WiredContractUpdateResultComposer = 72; // AIR 202610121709; 202610131318: 2687.
+
+    // Wired monitor. Ids are the WIN63-202610121709 equivalents of the WIN63-202610131318-860371703 classes named.
+    public const uint WiredRoomStatsComposer = 1147; // package_121.class_3178 (new 2051)
+    public const uint WiredErrorLogsComposer = 1305; // package_121.class_2819 (new 104)
 }

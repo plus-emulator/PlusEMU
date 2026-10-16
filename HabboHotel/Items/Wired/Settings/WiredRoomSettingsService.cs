@@ -41,11 +41,13 @@ public sealed class WiredRoomSettingsService(ILogger<WiredRoomSettingsService> l
             }
 
             Reply(session, settings);
+            room.GetWired().SendPermissions(session);
 
             // Publish permissions only after the transaction, room snapshot and actor reply have succeeded.
             foreach (var user in room.GetRoomUserManager().GetUserList()) {
                 if (!user.IsBot && user.GetClient() is { } client && !ReferenceEquals(client, session)) {
                     Reply(client, settings);
+                    room.GetWired().SendPermissions(client);
                 }
             }
         }

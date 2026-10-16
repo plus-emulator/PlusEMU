@@ -461,6 +461,8 @@ internal sealed partial class WiredStackEngine
                     var other = _effectOrderRandom.Next(index + 1);
                     (ranks[index], ranks[other]) = (ranks[other], ranks[index]);
                 }
+
+                ApplyDefaultPrecedence(effects, ranks);
             }
 
             // Without exec_in_order, stacks fired by one event run in their (random) firing order, not by height or id.
@@ -492,6 +494,42 @@ internal sealed partial class WiredStackEngine
 
         return true;
     }
+
+    // Observed on AIR WIN63-202610131318-860371703: without Execute in Order, effects of one firing run neither by height nor by
+    // placement or box code. With both heights, toggle_state and rel_mov ran before match_to_sshot, and change_var_val and
+    // toggle_state ran before show_message. Only these pairs are proven; every other pair keeps the per-firing order (open).
+    private static readonly Dictionary<string, string[]> DefaultRunsAfter = new()
+    {
+        ["wf_act_match_to_sshot"] = ["wf_act_toggle_state", "wf_act_rel_mov"],
+        ["wf_act_show_message"] = ["wf_act_change_var_val", "wf_act_toggle_state"]
+    };
+
+    // Moves each constrained effect just behind the last effect it must follow; all other effects keep their relative order.
+    private static void ApplyDefaultPrecedence((IWiredItem Box, long Delay)[] effects, int[] ranks)
+    {
+        var order = Enumerable.Range(0, effects.Length).OrderBy(index => ranks[index]).ToList();
+
+        foreach (var later in order.ToArray()) {
+            if (!DefaultRunsAfter.TryGetValue(EffectName(effects[later].Box), out var earlier)) {
+                continue;
+            }
+
+            var last = order.FindLastIndex(index => earlier.Contains(EffectName(effects[index].Box)));
+            var at = order.IndexOf(later);
+
+            if (last > at) {
+                order.RemoveAt(at);
+                order.Insert(last, later);
+            }
+        }
+
+        for (var position = 0; position < order.Count; position++) {
+            ranks[order[position]] = position;
+        }
+    }
+
+    private static string EffectName(IWiredItem box) => box is IWiredConfiguredItem configured ? configured.Descriptor.CanonicalName
+        : WiredBoxRegistry.TryGetByLegacyType(box.Type, out var descriptor) ? descriptor.CanonicalName : "";
 
     // Legacy-only extensions retain their existing synchronous/parallel delay contract.
     // Promoted boxes and mixed modern stacks use the runtime chain scheduler above.

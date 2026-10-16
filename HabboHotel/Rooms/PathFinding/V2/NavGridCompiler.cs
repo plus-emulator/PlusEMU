@@ -196,7 +196,7 @@ internal readonly record struct CompatSurface(double Z, NavFlags Flags, uint Sup
         }
 
         var item = SurfaceRules.ItemCandidate(top);
-        // K=1 retains each pillow slot; ResolveClick selects the nearest acceptable one.
+        // K=1 retains each pillow slot; ResolveClick selects the acceptable pillow nearest the click.
         var pillows = item.Kind == SurfaceKind.BedBase ? SurfaceRules.PillowRow(top, grid.Width) : [];
 
         return new(item.Z, item.Flags, item.Support, item.Kind, item.Group, pillows, item.Standable ? item.Z : legacyZ);

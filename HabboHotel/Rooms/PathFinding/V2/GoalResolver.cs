@@ -34,6 +34,7 @@ public static class GoalResolver
         }
 
         var best = new AcceptedGoal(x, y, -1);
+        var clickDistance = int.MaxValue;
         var distance = int.MaxValue;
 
         foreach (var tile in grid.PillowTiles[bed]) {
@@ -43,10 +44,13 @@ public static class GoalResolver
                 continue;
             }
 
+            var nextClickDistance = Math.Abs(x - tile % grid.Width) + Math.Abs(y - tile / grid.Width);
             var nextDistance = PathTieBreak.Heuristic(start.X, start.Y, tile % grid.Width, tile / grid.Width);
 
-            if (nextDistance < distance) {
+            // Keep the clicked bed lane, including clicks at its foot, before considering the approach distance.
+            if (nextClickDistance < clickDistance || nextClickDistance == clickDistance && nextDistance < distance) {
                 best = new(tile % grid.Width, tile / grid.Width, pillow);
+                clickDistance = nextClickDistance;
                 distance = nextDistance;
             }
         }

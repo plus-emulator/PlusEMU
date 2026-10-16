@@ -91,7 +91,7 @@ public class ShadowPathfindingTests
     }
 
     [Fact]
-    public void BedClicksResolvePillowsAndNearestFreePillowSlot()
+    public void BedClicksPreserveTheClickedLaneAndFallBackToAFreePillow()
     {
         var (grid, inputs, compiler) = NavTest.Create(4, 4);
         inputs.Publish(NavTest.Record(1, 1, [5, 6, 9, 10], h: 1, walkable: false,
@@ -99,10 +99,10 @@ public class ShadowPathfindingTests
         compiler.ApplyNow();
         var occupancy = new PlanningOccupancy(16);
         var goal = GoalResolver.ResolveClick(grid, new(), grid.Position(4), 2, 2, occupancy);
-        Assert.Equal(5, goal.Slot);
-        occupancy.Targets[5] = TargetOccupancy.Stationary;
-        Assert.Equal(6, GoalResolver.ResolveClick(grid, new(), grid.Position(4), 2, 2, occupancy).Slot);
+        Assert.Equal(6, goal.Slot);
         occupancy.Targets[6] = TargetOccupancy.Stationary;
+        Assert.Equal(5, GoalResolver.ResolveClick(grid, new(), grid.Position(4), 2, 2, occupancy).Slot);
+        occupancy.Targets[5] = TargetOccupancy.Stationary;
         Assert.Equal(-1, GoalResolver.ResolveClick(grid, new(), grid.Position(4), 2, 2, occupancy).Slot);
         Assert.Equal(10, GoalResolver.Resolve(grid, new() { IgnoreUsers = true }, 2, 2, occupancy).Slot);
     }

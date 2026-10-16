@@ -29,6 +29,17 @@ public sealed class WiredOctoberEditorParityTests
         Assert.False(TryCompile("wf_act_show_message", native => native with { Text = new string('a', 401) }));
     }
 
+    [Fact]
+    public void UsersByNameTakesTwentyNamesAndAThousandCharacters()
+    {
+        // The Users By Name editor is TextAreaParam(140, -1, 20, -1, 1000): one name per line, tab-saved.
+        var twenty = string.Join('\t', Enumerable.Range(1, 20).Select(i => $"user{i}"));
+        Assert.True(TryCompile("wf_slc_users_byname", native => native with { Text = twenty }));
+        Assert.True(TryCompile("wf_slc_users_byname", native => native with { Text = string.Join("\r\n", Enumerable.Range(1, 20).Select(i => $"user{i}")) }));
+        Assert.False(TryCompile("wf_slc_users_byname", native => native with { Text = twenty + "\tuser21" }));
+        Assert.False(TryCompile("wf_slc_users_byname", native => native with { Text = new string('a', 1001) }));
+    }
+
     [Theory]
     [InlineData(120, 60_000L)]
     [InlineData(-38_800, 38_800L)]

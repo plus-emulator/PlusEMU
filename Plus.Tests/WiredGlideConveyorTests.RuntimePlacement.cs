@@ -49,3 +49,25 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal([2u], moved);
     }
 }
+
+public sealed partial class WiredGlideConveyorTests
+{
+    // Observed on AIR WIN63-202610131318-860371703: on a 200 ms Fast Queue a user walking against the queue walks tile by tile to the
+    // start with no carry; carrying resumes once the walk has ended.
+    [Fact]
+    public void FastQueueDoesNotCarryAUserWhoIsWalkingAgainstIt()
+    {
+        var f = new Fixture(ColourTileFastQueueLayout(), live: true);
+        var rider = f.Walker(1, 10, 10, 10, 11);
+        f.Owned(() => rider.MoveTo(4, 11));
+        f.DrainMovement();
+        var reached = false;
+
+        for (var elapsed = 0; elapsed < 6000 && !reached; elapsed += 50) {
+            f.Advance(50);
+            reached = (rider.X, rider.Y) == (4, 11);
+        }
+
+        Assert.True(reached, $"rider stopped at ({rider.X},{rider.Y})");
+    }
+}

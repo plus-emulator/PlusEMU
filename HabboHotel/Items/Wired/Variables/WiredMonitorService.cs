@@ -31,8 +31,8 @@ public sealed class WiredMonitorService(IWiredRequestGateService gates) : IWired
         }
 
         if (action == WiredMonitorActions.Clear) {
-            // A clear has its own gate so a poll cannot swallow it.
-            if (!settings.CanManage(session) || !gates.TryPass(session, WiredRequestKind.MonitorClear)) {
+            // A clear has its own gate so a poll cannot swallow it. AIR enables Clear for Wired modify rights (WiredMenuController.hasWritePermission).
+            if (!settings.CanModify(session) || !gates.TryPass(session, WiredRequestKind.MonitorClear)) {
                 return;
             }
 
@@ -80,7 +80,7 @@ public sealed class WiredMonitorService(IWiredRequestGateService gates) : IWired
     {
         var settings = room.GetWired().Settings;
 
-        if (!settings.CanInspect(session) || !settings.CanManage(session) || !gates.TryPass(session, WiredRequestKind.ErrorClear)) {
+        if (!settings.CanInspect(session) || !settings.CanModify(session) || !gates.TryPass(session, WiredRequestKind.ErrorClear)) {
             return;
         }
 

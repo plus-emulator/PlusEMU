@@ -14,6 +14,10 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
     public bool CanRide(RoomUser actor) => actor.Movement.State == NavState.Active && !actor.IsWalking
         && actor.Movement.PendingCount == 0;
 
+    public RoomUser? Horse(RoomUser actor) => placement.Horse(actor);
+
+    public bool IsRidden(RoomUser actor) => actor.IsBot && actor.RidingHorse;
+
     public bool RestsOnRoller(Item roller, RoomUser actor) => !Grid.Layered
         || RestingStack(roller).Levels.Any(level => Math.Abs(actor.Movement.SupportZ - level) <= SurfaceSelection.Tolerance);
 
@@ -120,6 +124,13 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
         foreach (var move in moves) {
             placement.Bind(move.Actor!, move.CarriedZ, ForceResolution.ExactZ);
             context.RefreshMembership(move.Actor!);
+
+            if (move.Horse is { } horse) {
+                placement.CarryHorse(move.Actor!);
+                horse.IsRolling = true;
+                horse.RollerDelay = 1;
+                horse.UpdateNeeded = false;
+            }
 
             if (Grid.Layered) {
                 RebindRollerClaim(move);

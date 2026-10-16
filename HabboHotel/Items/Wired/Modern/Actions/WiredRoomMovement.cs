@@ -192,7 +192,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         {
             var pose = passengers?.SourcePose(user) ?? (user.X, user.Y, user.Z);
 
-            return (pose.X, pose.Y, Z: sourceTop);
+            return (pose.X, pose.Y, Z: sourceTop + user.Z - WiredRoomOperations.StandZ(room, user));
         });
         var z = height ?? (physics?.KeepAltitude == true ? item.GetZ : (double?)null);
 
@@ -415,7 +415,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         internal RoomUser[] For(WiredRuntimeContext context, Item item) =>
             _passengers.TryGetValue(item, out var users)
                 ? users.Where(user => CanMove(context, user) && WiredRoomOperations.IsOnItem(user, item)
-                    && (context.Policy.Addons.Carry?.SameTile == true || Math.Abs(user.Z - item.TotalHeight) < 0.001)).ToArray() : [];
+                    && (context.Policy.Addons.Carry?.SameTile == true
+                        || Math.Abs(WiredRoomOperations.StandZ(context.Room, user) - item.TotalHeight) < 0.001)).ToArray() : [];
 
         // Queued owner callbacks retain the original support evidence; the furniture has already moved.
         internal bool CanMove(WiredRuntimeContext context, RoomUser user) =>
@@ -441,7 +442,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         .Where(user => context.Policy.Addons.Carry?.UserIds.Contains(user.VirtualId) == true
             && !user.IsWalking && !HasQueuedWalk(user)
             && WiredRoomOperations.IsOnItem(user, item)
-            && (context.Policy.Addons.Carry.SameTile || Math.Abs(user.Z - item.TotalHeight) < 0.001)).ToArray();
+            && (context.Policy.Addons.Carry.SameTile || Math.Abs(WiredRoomOperations.StandZ(context.Room, user) - item.TotalHeight) < 0.001))
+        .Select(user => WiredRoomOperations.Rider(context.Room, user)).Distinct().ToArray();
 
     private static bool HasQueuedWalk(RoomUser user) => user.Movement.Commands.Read() is { Origin: not MoveOrigin.Wired } command
         && command.Sequence > user.Movement.ConsumedSequence;
@@ -451,6 +453,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         PassengerSnapshot? passengers = null, (int X, int Y, double Z)? carrySource = null, bool replaceStep = false)
     {
         var room = context.Room;
+        user = WiredRoomOperations.Rider(room, user);
 
         if (!carrySource.HasValue) {
             // Ordinary relocation can invoke landing/walk work before its immediate animation.
@@ -517,6 +520,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var oldX = user.X;
         var oldY = user.Y;
         var oldZ = user.Z;
+        var horse = WiredRoomOperations.Horse(room, user);
+        var horseSeat = horse == null ? 0 : oldZ - horse.Z;
         var wasWalking = user.IsWalking;
         var resumeThrough = discardThrough ?? (room.UsesV2Movement ? user.Movement.Commands.Read()?.Sequence ?? 0 : (long?)null);
         var goalX = user.GoalX;
@@ -552,6 +557,17 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 room.FlushWiredFlashes();
                 room.SendPacket(style);
                 room.SendPacket(movement);
+            }
+
+            // The horse moved with its rider; it animates along the same path below the rider.
+            if (horse != null && horse.X == user.X && horse.Y == user.Y) {
+                room.SendPacket(new WiredMoveStyleComposer(horse.VirtualId, curve?.Type ?? 0,
+                    curve?.Type == 7 ? curve.Strength : curve?.Intensity ?? 100, 0, true));
+                room.SendPacket(new WiredMovementComposer(0, horse.VirtualId, source.X, source.Y, source.Z - horseSeat,
+                    horse.X, horse.Y, horse.Z, horse.RotBody, horse.RotHead, animationTimeMs ?? context.Policy.Addons.AnimationTimeMs)
+                {
+                    JumpPower = curve?.Type == 7 ? curve.Strength : null
+                });
             }
         }
 

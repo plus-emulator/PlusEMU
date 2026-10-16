@@ -41,10 +41,14 @@ internal sealed class RollerLoadBuilder(Room room, RollerTransport transport)
             .Where(cargo => transport.RestsOnRoller(roller, cargo)).Take(MaxCargo)
             .Where(cargo => cargoSeen.Add(cargo.Id))
             .Select(cargo => CargoMove(roller, cargo, destination, nextIsRoller)).ToList();
-        var actor = map.GetRoomUsers(new(roller.GetX, roller.GetY)).FirstOrDefault(user => transport.RestsOnRoller(roller, user));
+        // A ridden horse never rolls on its own: its rider rolls and takes it along.
+        var actor = map.GetRoomUsers(new(roller.GetX, roller.GetY))
+            .FirstOrDefault(user => transport.Horse(user) == null && !transport.IsRidden(user) && transport.RestsOnRoller(roller, user))
+            ?? map.GetRoomUsers(new(roller.GetX, roller.GetY)).FirstOrDefault(user => transport.Horse(user) is { } horse
+                && transport.RestsOnRoller(roller, horse));
 
         if (actor != null && transport.CanRide(actor) && actorsSeen.Add(actor)) {
-            moves.Add(ActorMove(roller, actor, destination, nextIsRoller));
+            moves.Add(ActorMove(roller, actor, transport.Horse(actor), destination, nextIsRoller));
         }
 
         return new(roller, destination, moves);
@@ -61,8 +65,21 @@ internal sealed class RollerLoadBuilder(Room room, RollerTransport transport)
         return new(roller, new(roller.GetX, roller.GetY), destination, Snapshot(roller, cargo.GetZ, 0, cargo.Rotation), z, cargo, null, slide);
     }
 
-    private static RollerMove ActorMove(Item roller, RoomUser actor, Point destination, bool nextIsRoller)
+    // A rider is carried at its horse's height; the rider keeps its seat offset above the horse.
+    private static RollerMove ActorMove(Item roller, RoomUser actor, RoomUser? horse, Point destination, bool nextIsRoller)
     {
+        if (horse != null) {
+            var horseZ = Carried(horse.Z, roller, nextIsRoller);
+            var seat = actor.Z - horse.Z;
+            var riderSlide = new SlideObjectBundleComposer(actor.X, actor.Y, actor.Z, destination.X, destination.Y,
+                horseZ + seat, roller.Id, actor.VirtualId, 0);
+            var horseSlide = new SlideObjectBundleComposer(horse.X, horse.Y, horse.Z, destination.X, destination.Y,
+                horseZ, roller.Id, horse.VirtualId, 0);
+
+            return new(roller, new(roller.GetX, roller.GetY), destination,
+                Snapshot(roller, horse.Z, actor.Movement.LocationRevision), horseZ, null, actor, riderSlide, horse, horseSlide);
+        }
+
         var z = Carried(actor.Z, roller, nextIsRoller);
         var slide = new SlideObjectBundleComposer(actor.X, actor.Y, actor.Z, destination.X, destination.Y,
             z, roller.Id, actor.VirtualId, 0);

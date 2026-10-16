@@ -15,9 +15,9 @@ internal readonly record struct RollerSnapshot(int RollerRotation, double Roller
     int CargoRotation = 0);
 
 // One mover leaving a roller: cargo or the riding actor. Origin, Z and the slide packet are
-// captured when the cycle snapshots its loads (§14.9 a).
+// captured when the cycle snapshots its loads (§14.9 a). A horse rider brings the horse along.
 internal sealed record RollerMove(Item Roller, Point Origin, Point Destination, RollerSnapshot Snapshot,
-    double CarriedZ, Item? Cargo, RoomUser? Actor, IServerPacket Slide)
+    double CarriedZ, Item? Cargo, RoomUser? Actor, IServerPacket Slide, RoomUser? Horse = null, IServerPacket? HorseSlide = null)
 {
     internal double SourceZ => Snapshot.SourceZ;
 }
@@ -101,6 +101,6 @@ internal sealed class RollerDepartures
         }
 
         return new(list[0].Roller, list.Where(move => move.Cargo != null).Select(move => move.Cargo!.Id).ToHashSet(),
-            list.Where(move => move.Actor != null).Select(move => move.Actor!).ToHashSet<RoomUser>(ReferenceEqualityComparer.Instance));
+            list.SelectMany(move => new[] { move.Actor, move.Horse }).OfType<RoomUser>().ToHashSet<RoomUser>(ReferenceEqualityComparer.Instance));
     }
 }

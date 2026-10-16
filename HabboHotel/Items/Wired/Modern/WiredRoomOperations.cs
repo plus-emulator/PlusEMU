@@ -71,6 +71,18 @@ public static class WiredRoomOperations
         }
     }
 
+    // A ridden horse moves only with its rider; a wired that selects the horse moves the rider.
+    internal static RoomUser Rider(Room room, RoomUser user) =>
+        user is { IsBot: true, RidingHorse: true } && room.GetRoomUserManager().GetRoomUserByVirtualId(user.HorseId) is
+            { IsBot: false, RidingHorse: true } rider && rider.HorseId == user.VirtualId ? rider : user;
+
+    internal static RoomUser? Horse(Room room, RoomUser user) =>
+        user is { IsBot: false, RidingHorse: true } && room.GetRoomUserManager().GetRoomUserByVirtualId(user.HorseId) is { } horse
+            && horse != user ? horse : null;
+
+    // The height a user stands at: a rider stands where its horse does.
+    internal static double StandZ(Room room, RoomUser user) => Horse(room, user)?.Z ?? user.Z;
+
     public static bool IsOnItem(RoomUser user, Item item) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(user.Coordinate);
 
@@ -290,9 +302,16 @@ public static class WiredRoomOperations
         }
 
         var source = (actor.X, actor.Y, actor.Z);
+        var horse = Horse(room, actor);
+        var horseSource = horse == null ? default : (horse.X, horse.Y, horse.Z);
         var wasLaying = actor.HasStatus("lay");
         navigation.ForcePlaceThrough(actor, x, y, room.GetGameMap().SqAbsoluteHeight(x, y), ForceResolution.ExactZ, discardThrough);
         navigation.Executor.Context.LandingEffects.Apply(actor, wasLaying);
+
+        if (slide && horse != null) {
+            room.SendPacket(new SlideObjectBundleComposer(horseSource.X, horseSource.Y, horseSource.Z,
+                horse.X, horse.Y, horse.Z, 0, horse.VirtualId, 0));
+        }
 
         if (slide) {
             room.SendPacket(new SlideObjectBundleComposer(source.X, source.Y, source.Z,

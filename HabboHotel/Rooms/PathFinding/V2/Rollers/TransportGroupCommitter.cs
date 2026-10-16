@@ -27,7 +27,7 @@ internal sealed class TransportGroupCommitter(Room room, RollerTransport transpo
 
         transport.Publish(actors);
         items.SettleFloorMoves(furniture);
-        room.SendPacket(ordered.Select(move => move.Slide).ToList());
+        room.SendPacket(ordered.SelectMany(move => move.HorseSlide == null ? [move.Slide] : new[] { move.HorseSlide, move.Slide }).ToList());
 
         foreach (var move in actors.Where(StillLanded)) {
             transport.Land(move);

@@ -39,7 +39,7 @@ internal sealed class ForcePlacementService(Room room, RoomNavigation navigation
     }
 
     // A rider placed anywhere (teleporters, banzai tiles, wired) takes the horse along.
-    private void CarryHorse(RoomUser actor)
+    internal void CarryHorse(RoomUser actor)
     {
         var horse = Horse(actor);
 
@@ -65,7 +65,7 @@ internal sealed class ForcePlacementService(Room room, RoomNavigation navigation
         actor.Z = horse.Z + (actor.Movement.CurrentRef is { } surface ? PostureService.RiderOffset(actor, surface) : 1);
         actor.UpdateNeeded = true;
     }
-    private RoomUser? Horse(RoomUser actor)
+    internal RoomUser? Horse(RoomUser actor)
     {
         if (!actor.RidingHorse || actor.IsBot) {
             return null;

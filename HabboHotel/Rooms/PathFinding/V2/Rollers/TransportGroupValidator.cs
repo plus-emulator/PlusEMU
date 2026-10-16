@@ -26,8 +26,12 @@ internal sealed class TransportGroupValidator(Room room, RollerTransport transpo
 
         var actor = move.Actor!;
 
+        // A rider's source is its horse's height; the horse must still be under it.
         return ReferenceEquals(room.GetRoomUserManager().GetRoomUserByVirtualId(actor.VirtualId), actor)
-            && actor.X == move.Origin.X && actor.Y == move.Origin.Y && actor.Z == snapshot.SourceZ
+            && actor.X == move.Origin.X && actor.Y == move.Origin.Y
+            && (move.Horse == null ? actor.Z : move.Horse.Z) == snapshot.SourceZ
+            && (move.Horse == null || ReferenceEquals(transport.Horse(actor), move.Horse)
+                && move.Horse.X == move.Origin.X && move.Horse.Y == move.Origin.Y)
             && actor.Movement.LocationRevision == snapshot.ActorRevision && transport.CanRide(actor);
     }
 

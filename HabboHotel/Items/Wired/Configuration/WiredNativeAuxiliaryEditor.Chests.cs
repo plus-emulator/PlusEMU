@@ -37,8 +37,9 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_act_give_currency", new(TransactionMeta(TwoPickLists, 2, 2, [0, 1, 0, -20, 1, 11], 1, [100, 200], [0, 200]), n => Reward(n, 11, 13)));
         yield return new("wf_act_give_furni", new(TransactionMeta(TwoPickLists, 2, 2, [0, 1, 0, -20, 1, 0], 1, [100, 200], [0, 200]), n => Reward(n, 0, 2)));
         // Mode, multiplier, option, target, timeout flag and seconds; chests, contracts and the merged reference.
-        // Observed on hhus: mode 0 stores a multiplier below 2 as 2.
-        yield return new("wf_act_init_transaction", new(TransactionMeta(TwoPickLists, 3, 2, [0, 10, 0, -20, 0, 300], 1, [100, 101, 0], [0, 0]), n =>
+        // Observed on hhus: mode 0 stores a multiplier below 2 as 2. The editor frames open the chests on 100, the contracts on 101,
+        // the users on 0 and the merged reference on the selector (furni 200, users 200).
+        yield return new("wf_act_init_transaction", new(TransactionMeta(TwoPickLists, 3, 2, [0, 10, 0, -20, 0, 300], 1, [100, 101, 200], [0, 200]), n =>
         {
             var p = n.OwnedIntParams;
 
@@ -55,7 +56,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_xtra_scan_chest_furni_by_type", new(TransactionMeta(TwoPickLists, 2, 0, [0], 1, [0, 100], []), n =>
             Shape(n, 1, 2, 0, 1) ? ChestDraft(n, [.. n.OwnedIntParams]) : null));
         // Payment then reward: enabled, element type, option, amount, target; payment/reward furni, then the merged references.
-        yield return new("wf_xtra_custom_contract", new(TransactionMeta(TwoPickLists, 4, 2, [0, 0, 0, 1, -20, 0, 0, 0, 1, -20], 2, [100, 101, 0, 0], [0, 0]), n =>
+        // The editor frames open both furni sources on the triggering item and both merged references on the selector.
+        yield return new("wf_xtra_custom_contract", new(TransactionMeta(TwoPickLists, 4, 2, [0, 0, 0, 1, -20, 0, 0, 0, 1, -20], 2, [0, 0, 200, 200], [200, 200]), n =>
         {
             var p = n.OwnedIntParams;
 

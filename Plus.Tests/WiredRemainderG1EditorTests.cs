@@ -55,11 +55,11 @@ public sealed class WiredRemainderG1EditorTests
     public static TheoryData<string, int[], int[], int[], int[][], int[][]> AirFrames => new()
     {
         // Mode, multiplier, option, target, timeout flag, timeout seconds; chests, contracts and the merged reference; the users and the merged reference.
-        { "wf_act_init_transaction", [0, 10, 0, -20, 0, 300], [100, 101, 0], [0, 0], [[0, 100, 101, 200, 201], [0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201], [0, 200, 201]] },
+        { "wf_act_init_transaction", [0, 10, 0, -20, 0, 300], [100, 101, 200], [0, 200], [[0, 100, 101, 200, 201], [0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201], [0, 200, 201]] },
         // Cancel for the specified contract (0) or every transaction (1); the contracts and the users.
         { "wf_act_cancel_transaction", [0], [100], [0], [[0, 100, 200, 201]], [[0, 200, 201]] },
         // Payment then reward: enabled, furni, option, amount, target; payment and reward furni and their merged references, then their users.
-        { "wf_xtra_custom_contract", [0, 0, 0, 1, -20, 0, 0, 0, 1, -20], [100, 101, 0, 0], [0, 0], [[0, 100, 101, 200, 201], [0, 100, 101, 200, 201], [0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201], [0, 200, 201]] },
+        { "wf_xtra_custom_contract", [0, 0, 0, 1, -20, 0, 0, 0, 1, -20], [0, 0, 200, 200], [200, 200], [[0, 100, 101, 200, 201], [0, 100, 101, 200, 201], [0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201], [0, 200, 201]] },
         // The triggers only pick the contracts they listen for.
         { "wf_trg_transaction_complete", [], [100], [], [[100]], [] },
         { "wf_trg_transaction_fail", [], [100], [], [[100]], [] }

@@ -1557,10 +1557,14 @@ public class Item
 
         if (inRoom) {
             if (IsFloorItem) {
-                room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(this)));
+                var furnitureSnapshot = RoomItemSnapshot.Capture(this);
+                room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
+                room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
             }
             else {
-                room.SendPacket(new ItemUpdateComposer(RoomItemSnapshot.Capture(this)));
+                var furnitureSnapshot = RoomItemSnapshot.Capture(this);
+                room.SendPacket(new ItemUpdateComposer(furnitureSnapshot));
+                room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
             }
         }
     }

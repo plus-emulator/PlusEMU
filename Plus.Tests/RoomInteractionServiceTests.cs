@@ -124,8 +124,7 @@ public sealed class RoomInteractionServiceTests
         else {
             service.UpdateSticky(room, client, item.Id, "9CCEFF", "edited");
             Assert.Equal("9CCEFF edited", item.LegacyDataString);
-            Assert.Single(sent);
-            Assert.Equal(ServerPacketHeader.ItemUpdateComposer, sent[0].Header);
+            Assert.Equal(new[] { ServerPacketHeader.ItemUpdateComposer, ServerPacketHeader.FurnitureMetadataComposer }, sent.Select(packet => packet.Header));
         }
 
         Assert.Equal("9CCEFF edited", store.UpdatedData);

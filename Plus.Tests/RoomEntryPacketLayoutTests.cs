@@ -4,6 +4,8 @@ using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.Communication.Packets.Outgoing.Rooms.Permissions;
 using Plus.Communication.Packets.Outgoing.Rooms.Session;
+using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Rooms;
 using Xunit;
 
@@ -121,6 +123,105 @@ public class RoomEntryPacketLayoutTests
         }
 
         Assert.False(packet.HasDataRemaining());
+    }
+
+    [Fact]
+    public void ObjectAddEndsAtTheOwnerNameAfterTheFloorEntry()
+    {
+        // Observed on AIR WIN63-202610131318-860371703: class_4287.parseObjectData L23-46 (id, type, x, y, dir, z, sizeZ, extra,
+        // stuff data, expiry, usage, owner; the static class only when type is negative), then class_2409.parse L40-41 (owner name).
+        var packet = Read(new ObjectAddComposer(FloorItem()));
+
+        ReadFloorEntry(packet);
+        Assert.Equal("Dennis", packet.ReadString());
+        Assert.False(packet.HasDataRemaining());
+    }
+
+    [Fact]
+    public void ObjectsEndsAtTheFloorEntryWithNoMetadataInts()
+    {
+        // Observed on AIR WIN63-202610131318-860371703: class_2845.parse L56-76 (owner map, count, class_4287.parseObjectData per entry).
+        var packet = Read(new ObjectsComposer(new RoomFurnitureSnapshot([FloorItem()], [])));
+
+        Assert.Equal(0, packet.ReadInt());
+        Assert.Equal(1, packet.ReadInt());
+        ReadFloorEntry(packet);
+        Assert.False(packet.HasDataRemaining());
+    }
+
+    [Fact]
+    public void ItemAddEndsAtTheOwnerNameAfterTheWallEntry()
+    {
+        // Observed on AIR WIN63-202610131318-860371703: class_4295.parseItemData L28-118 (id string, type, location, data, expiry,
+        // usage, owner), then class_3456.parse L40-41 (owner name).
+        var packet = Read(new ItemAddComposer(WallItem()));
+
+        ReadWallEntry(packet);
+        Assert.Equal("Dennis", packet.ReadString());
+        Assert.False(packet.HasDataRemaining());
+    }
+
+    [Fact]
+    public void ItemsEndsAtTheWallEntryWithNoMetadataInts()
+    {
+        // Observed on AIR WIN63-202610131318-860371703: class_3036.parse L56-74 (owner map, count, class_4295.parseItemData per entry).
+        var packet = Read(new ItemsComposer(new RoomFurnitureSnapshot([WallItem()], [])));
+
+        Assert.Equal(0, packet.ReadInt());
+        Assert.Equal(1, packet.ReadInt());
+        ReadWallEntry(packet);
+        Assert.False(packet.HasDataRemaining());
+    }
+
+    [Fact]
+    public void FurnitureMetadataBatchCarriesSevenValuesPerItemId()
+    {
+        // Plus-only message (header 5120): count, then per item id stackable, isSeat, isBed, walkable, width, length, teleport id.
+        var packet = Read(new FurnitureMetadataComposer([FloorItem()]));
+
+        Assert.Equal(1, packet.ReadInt());
+        Assert.Equal(7, packet.ReadInt());
+        Assert.Equal(1, packet.ReadInt());
+        Assert.Equal(0, packet.ReadInt());
+        Assert.Equal(0, packet.ReadInt());
+        Assert.Equal(0, packet.ReadInt());
+        Assert.Equal(2, packet.ReadInt());
+        Assert.Equal(1, packet.ReadInt());
+        Assert.Equal(0, packet.ReadInt());
+        Assert.False(packet.HasDataRemaining());
+    }
+
+    private static RoomItemSnapshot FloorItem() => new(7, 1234, 1, 2, 0, "0.5", "1.0", 0, new FurnitureDataSnapshot.Empty(),
+        0, 0, "", "", 0, 9, "Dennis", new FurnitureMetadata(true, false, false, false, 2, 1));
+
+    private static RoomItemSnapshot WallItem() => new(8, 1234, 0, 0, 0, "0", "0", 0, new FurnitureDataSnapshot.Empty(),
+        0, 0, ":w=2,1 l=3,4 r", "1", 0, 9, "Dennis", new FurnitureMetadata(false, false, false, false, 0, 0));
+
+    private static void ReadFloorEntry(FlashIncomingPacket packet)
+    {
+        Assert.Equal(7, packet.ReadInt());
+        Assert.Equal(1234, packet.ReadInt());
+        Assert.Equal(1, packet.ReadInt());
+        Assert.Equal(2, packet.ReadInt());
+        Assert.Equal(0, packet.ReadInt());
+        Assert.Equal("0.5", packet.ReadString());
+        Assert.Equal("1.0", packet.ReadString());
+        Assert.Equal(0, packet.ReadInt());
+        Assert.Equal((int)FurniDataStructure.Empty, packet.ReadInt());
+        Assert.Equal(-1, packet.ReadInt());
+        Assert.Equal(0, packet.ReadInt());
+        Assert.Equal(9, packet.ReadInt());
+    }
+
+    private static void ReadWallEntry(FlashIncomingPacket packet)
+    {
+        Assert.Equal("8", packet.ReadString());
+        Assert.Equal(1234, packet.ReadInt());
+        Assert.Equal(":w=2,1 l=3,4 r", packet.ReadString());
+        Assert.Equal("1", packet.ReadString());
+        Assert.Equal(-1, packet.ReadInt());
+        Assert.Equal(0, packet.ReadInt());
+        Assert.Equal(9, packet.ReadInt());
     }
 
     private static void ReadCommon(FlashIncomingPacket packet, int id, string name, int kind)

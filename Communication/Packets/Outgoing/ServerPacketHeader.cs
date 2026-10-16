@@ -66,6 +66,9 @@ public static class ServerPacketHeader
     public const uint ItemsComposer = 3242;
     public const uint ItemAddComposer = 3363;
     public const uint ItemUpdateComposer = 1436;
+    // Plus-only (custom, not an AIR id): furni metadata for the entries above. 5120 is unused on AIR WIN63-202610131318-860371703 (incoming)
+    // and on the Volt-Renderer incoming table.
+    public const uint FurnitureMetadataComposer = 5120;
     public const uint ItemRemoveComposer = 382;
 
     // Room Session

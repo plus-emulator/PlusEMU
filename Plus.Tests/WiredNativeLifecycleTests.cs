@@ -446,13 +446,14 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.True(Write("@altitude", 210));
         Assert.True(Write("@rotation", 1));
         Assert.Equal(":w=1,1 l=4,-32 r a=210", wall.WallCoordinates);
-        Assert.Equal(3, packets);
+        // Two WiredMovements and the ItemUpdate, which is followed by its FurnitureMetadata batch.
+        Assert.Equal(4, packets);
         Assert.Equal(3, store.Writes.Count);
         Assert.Empty((ConcurrentDictionary<uint, Item>)Get(f.Room.GetRoomItemHandler(), "_movedItems"));
         Assert.True(Write("@altitude", 215));
         Assert.Equal(215, Read("@altitude"));
         Assert.Equal(4, store.Writes.Count);
-        Assert.Equal(4, packets);
+        Assert.Equal(5, packets);
         Assert.False(Write("@position.x", 701));
         Assert.False(Write("@rotation", 2));
         Assert.Equal(":w=1,1 l=4,-32 r a=215", wall.WallCoordinates);

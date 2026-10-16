@@ -181,7 +181,9 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
                 store.SetTonerEnabled(item.Id, room.Id, enabled);
                 room.TonerData.Enabled = enabled ? 1 : 0;
                 Plus.HabboHotel.Items.Data.Toner.TonerState.Synchronize(room, item);
-                room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
+                var furnitureSnapshot = RoomItemSnapshot.Capture(item);
+                room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
+                room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
                 item.UpdateState();
             }
 

@@ -57,7 +57,7 @@ public sealed class TypedFurnitureStateTests
 
             Assert.Equal(-1, ReadInt(reader));
 
-            for (var i = 0; i < 9; i++) {
+            for (var i = 0; i < 2; i++) {
                 Assert.Equal(0, ReadInt(reader));
             }
 

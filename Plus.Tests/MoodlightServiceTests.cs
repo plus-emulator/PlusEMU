@@ -147,7 +147,8 @@ public sealed class MoodlightServiceTests
         Assert.Equal(3, room.MoodlightData.CurrentPreset);
         Assert.False(room.MoodlightData.Presets[2].BackgroundOnly);
         Assert.Equal("2,3,1,#82F349,0", item.LegacyDataString);
-        var update = Assert.Single(sent);
+        Assert.Equal(new[] { ServerPacketHeader.ItemUpdateComposer, ServerPacketHeader.FurnitureMetadataComposer }, sent.Select(packet => packet.Header));
+        var update = sent[0];
         Assert.Equal(ServerPacketHeader.ItemUpdateComposer, update.Header);
         Assert.Equal(Payload(new ItemUpdateComposer(RoomItemSnapshot.Capture(item))), update.Payload);
     }
@@ -167,7 +168,8 @@ public sealed class MoodlightServiceTests
 
         Assert.Equal((item.Id, room.Id, true), store.EnabledWrite);
         Assert.True(room.MoodlightData!.Enabled);
-        var update = Assert.Single(sent);
+        Assert.Equal(new[] { ServerPacketHeader.ItemUpdateComposer, ServerPacketHeader.FurnitureMetadataComposer }, sent.Select(packet => packet.Header));
+        var update = sent[0];
         Assert.Equal(ServerPacketHeader.ItemUpdateComposer, update.Header);
         Assert.Equal(Payload(new ItemUpdateComposer(RoomItemSnapshot.Capture(item))), update.Payload);
         sent.Clear();

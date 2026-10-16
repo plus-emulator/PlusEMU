@@ -697,6 +697,7 @@ public partial class RoomItemHandling
         }
 
         _room.SendPacket(new ObjectUpdateComposer(snapshot));
+        _room.SendPacket(new FurnitureMetadataComposer([snapshot]));
 
         return true;
     }
@@ -910,7 +911,9 @@ public partial class RoomItemHandling
                 _room.SendObject(item);
             }
             else if (!onRoller) {
-                _room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
+                var furnitureSnapshot = RoomItemSnapshot.Capture(item);
+                _room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
+                _room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
             }
         }
 
@@ -1174,6 +1177,7 @@ public partial class RoomItemHandling
 
         if (announce) {
             _room.SendPacket(new ItemUpdateComposer(snapshot));
+            _room.SendPacket(new FurnitureMetadataComposer([snapshot]));
         }
 
         return true;

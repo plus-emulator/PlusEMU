@@ -215,7 +215,9 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
             if (publishImmediate) {
                 context.Publication?.Flush();
-                room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
+                var furnitureSnapshot = RoomItemSnapshot.Capture(item);
+                room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
+                room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
             }
 
             WiredProjectileFlights.For(room).Begin(item, source.X, source.Y, source.Z,

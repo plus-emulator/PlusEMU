@@ -728,11 +728,15 @@ public class Room
 
         session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(_roomUserManager.GetUserList())));
         var snapshotFurniture = VisibleFloorItems.ToArray();
-        session.Send(new ObjectsComposer(RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName)));
+        var furnitureSnapshot = RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName);
+        session.Send(new ObjectsComposer(furnitureSnapshot));
+        session.Send(new FurnitureMetadataComposer(furnitureSnapshot.Items));
         Plus.HabboHotel.Items.AreaHide.AreaHideState.SendSnapshot(session, snapshotFurniture);
         Plus.HabboHotel.Items.ConfigurationItemStates.SendTo(session, this);
         var snapshotWalls = GetRoomItemHandler().GetWall.ToArray();
-        session.Send(new ItemsComposer(RoomFurnitureSnapshot.Capture(snapshotWalls, OwnerId, OwnerName)));
+        var wallSnapshot = RoomFurnitureSnapshot.Capture(snapshotWalls, OwnerId, OwnerName);
+        session.Send(new ItemsComposer(wallSnapshot));
+        session.Send(new FurnitureMetadataComposer(wallSnapshot.Items));
         _wiredComponent?.SnapshotEnqueued(session, snapshotFurniture.Concat(snapshotWalls), snapshotUsers);
     }
 
@@ -829,16 +833,25 @@ public class Room
             return;
         }
 
-        SendPacket(new ObjectsComposer(RoomFurnitureSnapshot.Capture(wired, OwnerId, OwnerName)), false, viewer =>
+        var wiredSnapshot = RoomFurnitureSnapshot.Capture(wired, OwnerId, OwnerName);
+
+        SendPacket(new ObjectsComposer(wiredSnapshot), false, viewer =>
         {
             foreach (var item in wired) {
                 _wiredComponent?.ObjectEnqueued(viewer, item, null);
             }
         });
+        SendPacket(new FurnitureMetadataComposer(wiredSnapshot.Items));
     }
 
-    public void SendObject(Item item) => SendPacket(item.IsWallItem ? new ItemAddComposer(RoomItemSnapshot.Capture(item)) : new ObjectAddComposer(RoomItemSnapshot.Capture(item)), false,
-        viewer => _wiredComponent?.ObjectEnqueued(viewer, item, null));
+    public void SendObject(Item item)
+    {
+        var furniture = RoomItemSnapshot.Capture(item);
+
+        SendPacket(item.IsWallItem ? new ItemAddComposer(furniture) : new ObjectAddComposer(furniture), false,
+            viewer => _wiredComponent?.ObjectEnqueued(viewer, item, null));
+        SendPacket(new FurnitureMetadataComposer([furniture]));
+    }
 
     public void SendUser(RoomUser user)
     {
@@ -898,7 +911,9 @@ public class Room
             var fallback = clients.Where(client => !Maps(client, packet.MessageId) && Maps(client, Plus.Communication.Packets.Outgoing.ServerPacketHeader.ObjectUpdateComposer)).ToArray();
 
             if (fallback.Length > 0) {
-                GameClient.SendBroadcast(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item) with { Data = new FurnitureDataSnapshot.Legacy(data) }), fallback);
+                var legacy = RoomItemSnapshot.Capture(item) with { Data = new FurnitureDataSnapshot.Legacy(data) };
+                GameClient.SendBroadcast(new ObjectUpdateComposer(legacy), fallback);
+                GameClient.SendBroadcast(new FurnitureMetadataComposer([legacy]), fallback);
             }
         }
         catch (Exception e) {
@@ -936,7 +951,9 @@ public class Room
 
             if (fallback.Length > 0) {
                 foreach (var item in items) {
-                    GameClient.SendBroadcast(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)), fallback);
+                    var legacyFurniture = RoomItemSnapshot.Capture(item);
+                    GameClient.SendBroadcast(new ObjectUpdateComposer(legacyFurniture), fallback);
+                    GameClient.SendBroadcast(new FurnitureMetadataComposer([legacyFurniture]), fallback);
                 }
             }
         }

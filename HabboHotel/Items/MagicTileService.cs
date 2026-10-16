@@ -76,7 +76,9 @@ public sealed class MagicTileService : IMagicTileService
         }
 
         room.GetRoomUserManager().UpdateUserStatusses();
-        room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
+        var furnitureSnapshot = RoomItemSnapshot.Capture(item);
+        room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
+        room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
         room.SendPacket(new UpdateMagicTileComposer(item.Id, MagicTileHeight.ToWire(height)));
     }
 }

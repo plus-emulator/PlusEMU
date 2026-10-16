@@ -321,7 +321,7 @@ public partial class PlacedFurniRoomTests
         frame.RuntimeContext.Policy.Addons.AnimationTimeMs = duration;
         _client.Packets.Clear();
         Assert.True(WallBuiltinWrite(module, wall, frame, sideChange ? "@rotation" : "@altitude", sideChange ? 1 : 201));
-        var packet = Assert.Single(_client.Packets);
+        var packet = Assert.Single(_client.Packets, packet => packet.Header != ServerPacketHeader.FurnitureMetadataComposer);
         Assert.Equal(header, packet.Header);
 
         if (!disabled && !sideChange) {

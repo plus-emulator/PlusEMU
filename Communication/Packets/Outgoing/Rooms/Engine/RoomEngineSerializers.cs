@@ -19,7 +19,6 @@ public static class RoomEngineSerializers
         packet.WriteInteger(-1);
         packet.WriteInteger(item.UseButton);
         packet.WriteInteger(item.UserId);
-        WriteFurnitureMetadata(packet, item.Metadata);
     }
 
     internal static void WriteWallItem(IOutgoingPacket packet, RoomItemSnapshot item)
@@ -31,18 +30,6 @@ public static class RoomEngineSerializers
         packet.WriteInteger(-1);
         packet.WriteInteger(item.UseButton);
         packet.WriteInteger(item.UserId);
-        WriteFurnitureMetadata(packet, item.Metadata);
-    }
-
-    internal static void WriteFurnitureMetadata(IOutgoingPacket packet, FurnitureMetadata metadata)
-    {
-        packet.WriteInteger(metadata.Stackable ? 1 : 0);
-        packet.WriteInteger(metadata.IsSeat ? 1 : 0);
-        packet.WriteInteger(metadata.IsBed ? 1 : 0);
-        packet.WriteInteger(metadata.Walkable ? 1 : 0);
-        packet.WriteInteger(metadata.Width);
-        packet.WriteInteger(metadata.Length);
-        packet.WriteInteger(0);
     }
 
     internal static void WriteOwnerMap(IOutgoingPacket packet, RoomFurnitureSnapshot furniture)

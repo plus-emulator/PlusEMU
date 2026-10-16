@@ -27,6 +27,7 @@ internal sealed partial class WiredStackEngine
     private readonly Action<Exception> _error;
     private readonly WiredEngineLimits _limits;
     private readonly WiredEngineStats _stats = new();
+    private readonly WiredExecutionCost _cost = new();
     private WiredExecutionContext? _context;
     private int _passDepth;
     private int _remaining;
@@ -60,6 +61,13 @@ internal sealed partial class WiredStackEngine
     {
         lock (_sync) {
             return _stats.Read(_now(), PendingCount);
+        }
+    }
+
+    internal double ReadExecutionCost()
+    {
+        lock (_sync) {
+            return _cost.Read(_now());
         }
     }
 
@@ -902,6 +910,7 @@ internal sealed partial class WiredStackEngine
         }
 
         _stats.Record(_now(), Stopwatch.GetElapsedTime(_passStarted).TotalMilliseconds, executions, _passPeakDepth);
+        _cost.Record(_now(), executions);
     }
 
     // Every budget check that turns waiting work away goes through here, so a pass that spends its

@@ -48,6 +48,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             canBegin: (item, origin, actor) => _highscores?.CanBeginOwned(item, origin, actor) ?? true);
         _logger = logger;
         _clock = clock;
+        _errors = new(clock);
         _configurationStore = configurationStore;
         _database = database;
         _rewards = rewardService;

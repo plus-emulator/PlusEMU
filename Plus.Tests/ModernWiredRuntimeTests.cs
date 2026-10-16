@@ -427,6 +427,54 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
+    public async Task OfficialMonitorRequestsAnswerStatsAndTenErrorRowsAndEngineLimitsCountOnTheirRows()
+    {
+        using var f = new TeleportFixture();
+        f.Room.OwnerName = "Alice";
+        f.Room.Type = "private";
+        f.Room.UsersWithRights = [];
+        var monitor = new WiredMonitorService(new WiredRequestGateService(new ManualMonotonicClock()));
+        var alice = Capture(f.Client);
+
+        await new GetWiredRoomStatsEvent(monitor).Parse(f.Room, f.Client, Request());
+        var stats = Reply(alice, ServerPacketHeader.WiredRoomStatsComposer);
+        stats.Skip(2); // the cost double
+        Assert.Equal(3125d, BitConverter.Int64BitsToDouble(((long)stats.Int() << 32) | (uint)stats.Int()));
+        Assert.False(stats.Bool());
+        Assert.Equal(f.Room.GetRoomItemHandler().GetFloor.Count, stats.Int());
+        Assert.Equal(4000, stats.Int());
+        Assert.Equal(f.Room.GetRoomItemHandler().GetWall.Count, stats.Int());
+        Assert.Equal((4000, 0, 15, 0, 62, 0, 46), (stats.Int(), stats.Int(), stats.Int(), stats.Int(), stats.Int(), stats.Int(), stats.Int()));
+        stats.End();
+
+        // The engine's own limits count on their rows: execution budget, wait queue and chain depth.
+        var note = typeof(WiredComponent).GetMethod("NoteLimit", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        note.Invoke(f.Room.GetWired(), [WiredEngineLimit.ExecutionBudget, "cap"]);
+        note.Invoke(f.Room.GetWired(), [WiredEngineLimit.Depth, "deep"]);
+        note.Invoke(f.Room.GetWired(), [WiredEngineLimit.PendingStacks, "full"]);
+        f.Room.GetWired().RecordError(WiredErrorKind.PlacementFailure);
+
+        await new GetWiredErrorLogsEvent(monitor).Parse(f.Room, f.Client, Request());
+        var logs = Reply(alice, ServerPacketHeader.WiredErrorLogsComposer);
+        Assert.Equal(10, logs.Int());
+        var rows = Enumerable.Range(0, 10).Select(_ => (Id: logs.Int(), Name: logs.String(), Category: logs.String(), Count: logs.Int(),
+            High: logs.Int(), Low: logs.Int())).ToArray();
+        logs.End();
+        Assert.Equal([1, 1, 0, 0, 0, 1, 0, 0, 1, 0], rows.Select(row => row.Count));
+        Assert.All(rows.Where(row => row.Count == 0), row => Assert.Equal((-1, -1), (row.High, row.Low)));
+        Assert.All(rows.Where(row => row.Count > 0), row => Assert.True(row.High == 0 && row.Low >= 0));
+
+        await new ClearWiredErrorLogsEvent(monitor).Parse(f.Room, f.Client, Request());
+        logs = Reply(alice, ServerPacketHeader.WiredErrorLogsComposer);
+        Assert.Equal(10, logs.Int());
+        rows = Enumerable.Range(0, 10).Select(_ => (Id: logs.Int(), Name: logs.String(), Category: logs.String(), Count: logs.Int(),
+            High: logs.Int(), Low: logs.Int())).ToArray();
+        logs.End();
+        Assert.All(rows, row => Assert.Equal((0, -1, -1), (row.Count, row.High, row.Low)));
+        Assert.Empty(alice);
+    }
+
+    [Fact]
     public async Task MonitorAndLogGatesUseTheInjectedMonotonicClockAndStayIndependent()
     {
         using var f = new TeleportFixture();

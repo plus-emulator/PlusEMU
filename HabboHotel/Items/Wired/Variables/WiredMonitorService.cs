@@ -14,6 +14,9 @@ public interface IWiredMonitorService
 {
     void ShowMonitor(Room room, GameClient session, int action);
     void ShowLogs(Room room, GameClient session, int page, int size, int level, int source, string query);
+    void ShowRoomStats(Room room, GameClient session);
+    void ShowErrorLogs(Room room, GameClient session);
+    void ClearErrorLogs(Room room, GameClient session);
 }
 
 /// <summary>Monitor and room log inspection; owns the inspect and manage rights, the rate gates and every response it sends.</summary>
@@ -52,5 +55,36 @@ public sealed class WiredMonitorService(IWiredRequestGateService gates) : IWired
         query = query.Trim();
         var result = room.GetWired().ReadLogs(Math.Max(1, page) - 1, size, level, query, source);
         session.Send(new WiredRoomLogPageComposer(result, level, source, query));
+    }
+
+    public void ShowRoomStats(Room room, GameClient session)
+    {
+        if (!room.GetWired().Settings.CanInspect(session) || !gates.TryPass(session, WiredRequestKind.RoomStats)) {
+            return;
+        }
+
+        session.Send(new WiredRoomStatsComposer(room.GetWired().ReadRoomStats()));
+    }
+
+    public void ShowErrorLogs(Room room, GameClient session)
+    {
+        if (!room.GetWired().Settings.CanInspect(session) || !gates.TryPass(session, WiredRequestKind.ErrorLogs)) {
+            return;
+        }
+
+        session.Send(new WiredErrorLogsComposer(room.GetWired().ReadErrors()));
+    }
+
+    // The cleared rows are sent back at once, so the tab shows all ten at 0 / -1 without waiting for its next poll.
+    public void ClearErrorLogs(Room room, GameClient session)
+    {
+        var settings = room.GetWired().Settings;
+
+        if (!settings.CanInspect(session) || !settings.CanManage(session) || !gates.TryPass(session, WiredRequestKind.ErrorClear)) {
+            return;
+        }
+
+        room.GetWired().ClearErrors();
+        session.Send(new WiredErrorLogsComposer(room.GetWired().ReadErrors()));
     }
 }

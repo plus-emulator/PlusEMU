@@ -20,6 +20,7 @@ public partial class WiredComponent
     private readonly WiredSelectorRoomState _selectorState = new();
     private readonly WiredCounterController _counters;
     private readonly WiredRoomLog _roomLog = new();
+    private readonly WiredErrorLog _errors;
     // The monitor polls several times a second; the full log stays on the paged log request.
     private const int MonitorHistory = 100;
     private readonly Dictionary<uint, Item> _counterItems = [];
@@ -155,12 +156,66 @@ public partial class WiredComponent
 
     public void ClearLogs() => _roomLog.Clear();
 
-    private void NoteLimit(WiredEngineLimit limit, string reason) => _roomLog.Append(WiredRoomLog.ErrorLevel, limit switch
+    /// <summary>
+    /// Counts one occurrence on a monitor error row. Placement failure counts the placement-failure dialogs shown to the owner,
+    /// not the failed runs: observed on AIR WIN63-202610131318-860371703, 9 dialogs over about 20 failed runs read as 9.
+    /// The dialog's sender calls this with <see cref="WiredErrorKind.PlacementFailure"/> each time it shows one.
+    /// </summary>
+    public void RecordError(WiredErrorKind kind) => _errors.Record(kind);
+
+    public IReadOnlyList<WiredErrorRow> ReadErrors() => _errors.Read();
+
+    public void ClearErrors() => _errors.Clear();
+
+    public WiredRoomStats ReadRoomStats()
     {
-        WiredEngineLimit.ExecutionBudget => WiredLogSource.ExecutionCap,
-        WiredEngineLimit.PendingStacks => WiredLogSource.DelayedEventsCap,
-        _ => WiredLogSource.RecursionTimeout
-    }, 0, "", reason, _clock.GetUtcNow());
+        int furni = 0, user = 0, global = 0;
+
+        // Variables load with the first variable box, so a room that never built one has no permanent variables.
+        if (_variables?.IsValueCreated == true) {
+            var owner = _room.OwnerId > 0 ? (uint)_room.OwnerId : 0;
+
+            foreach (var box in _variables.Value.Definitions) {
+                if (!WiredVariableDefinitions.TryDecode(box.Descriptor.CanonicalName, box.Item.Id, _room.Id, owner, box.Configuration,
+                        out var definition, out _) || definition is not { IsDurable: true, Link: null }) {
+                    continue;
+                }
+
+                switch (definition.Target) {
+                    case WiredVariableTarget.Furni:
+                        furni++;
+                        break;
+                    case WiredVariableTarget.User:
+                        user++;
+                        break;
+                    case WiredVariableTarget.Global:
+                        global++;
+                        break;
+                }
+            }
+        }
+
+        var items = _room.GetRoomItemHandler();
+
+        return WiredRoomStats.Create(_engine.ReadExecutionCost(), _engine.Limits.ExecutionCostCap, items.GetFloor.Count,
+            items.GetWall.Count, furni, user, global);
+    }
+
+    private void NoteLimit(WiredEngineLimit limit, string reason)
+    {
+        _errors.Record(limit switch
+        {
+            WiredEngineLimit.ExecutionBudget => WiredErrorKind.ExecutionCap,
+            WiredEngineLimit.PendingStacks => WiredErrorKind.DelayedEventsCap,
+            _ => WiredErrorKind.RecursionTimeout
+        });
+        _roomLog.Append(WiredRoomLog.ErrorLevel, limit switch
+        {
+            WiredEngineLimit.ExecutionBudget => WiredLogSource.ExecutionCap,
+            WiredEngineLimit.PendingStacks => WiredLogSource.DelayedEventsCap,
+            _ => WiredLogSource.RecursionTimeout
+        }, 0, "", reason, _clock.GetUtcNow());
+    }
 
     public void AttachRoomItem(Item item) => _engine.Mutate(() =>
     {

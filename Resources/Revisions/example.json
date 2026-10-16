@@ -376,7 +376,10 @@
     "ChestUpgradeEvent": 2964,
     "WiredChestLockEvent": 1323,
     "GetWiredContractContentsEvent": 3415,
-    "UpdateWiredContractEvent": 2559
+    "UpdateWiredContractEvent": 2559,
+    "GetWiredRoomStatsEvent": 3738,
+    "GetWiredErrorLogsEvent": 508,
+    "ClearWiredErrorLogsEvent": 1248
   },
   "OutgoingHeaders": {
     "SimplePollStartComposer": 1578,
@@ -765,6 +768,8 @@
     "WiredChestTradeCompletedComposer": 1501,
     "WiredContractOpenComposer": 3833,
     "WiredContractContentsComposer": 2796,
-    "WiredContractUpdateResultComposer": 72
+    "WiredContractUpdateResultComposer": 72,
+    "WiredRoomStatsComposer": 1147,
+    "WiredErrorLogsComposer": 1305
   }
 }

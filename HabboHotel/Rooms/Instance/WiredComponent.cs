@@ -114,6 +114,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.ConfigurationPublished = box =>
         {
             UpdateClickEnvironment(box.Item.Id, box);
+            ShowRestingState(box);
 
             if (_variables?.IsValueCreated == true) {
                 _variables.Value.ConfigurationSaved(box);
@@ -478,6 +479,29 @@ public partial class WiredComponent : IWiredRuntimeOperations
         lock (_pendingFlashes) {
             _pendingFlashes.Add(item);
             _pendingImmediate.Add(item);
+        }
+    }
+
+    /// <summary>
+    /// Every save of a selector sends its resting state: 3 (green) with "Filter existing selection", 0 (orange) without; Invert is not
+    /// a colour. Observed on hhus (AIR WIN63-202610131318-860371703): ObjectDataUpdate right after UpdateSelector. Room entry lists the
+    /// last state, flashes included.
+    /// </summary>
+    private void ShowRestingState(IWiredItem box)
+    {
+        var state = WiredFlashStates.RestingState(box)?.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        if (state == null) {
+            return;
+        }
+
+        box.Item.LegacyDataString = state;
+        box.Item.UpdateState(true, false);
+
+        // A single ObjectDataUpdate (AIR incoming 374, class_2387). Hidden boxes are not on the clients; they show the state when they
+        // come back.
+        if (!_room.HideWired) {
+            _room.SendObjectData(box.Item, state, false);
         }
     }
 

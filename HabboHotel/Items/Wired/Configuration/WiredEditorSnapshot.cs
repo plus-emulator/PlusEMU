@@ -38,7 +38,7 @@ public sealed record WiredEditorSnapshot(
             : box.Instance.GetWired().Variables.TryCaptureNativeCatalog(out var catalog) && catalog is not null ? catalog.Hash : 0;
 
         return new(box.Item.Id, box.Item.Definition.SpriteId, box.Descriptor, configuration,
-            WiredConfigurationLimits.SelectedItems, [])
+            WiredConfigurationLimits.EditorFurniLimit, [])
         {
             Native = WiredNativeEditorProjection.HotelFrame(box.Descriptor, native),
             CatalogHash = hash,

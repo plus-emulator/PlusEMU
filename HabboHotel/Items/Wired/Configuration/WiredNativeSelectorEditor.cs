@@ -20,11 +20,13 @@ internal static class WiredNativeSelectorEditor
             "wf_slc_furni_area" or "wf_slc_users_area" => [0, 0, 0, 0],
             "wf_slc_furni_altitude" => [0, 0],
             "wf_slc_remote" => [0, 0],
-            "wf_slc_furni_neighborhood" or "wf_slc_users_neighborhood" => [1, 0, 0, 33554431, .. Enumerable.Repeat(0, 13)],
+            // Observed on hhus (AIR WIN63-202610131318-860371703): the default ends with one more zero mask word than the 14 the editor
+            // writes for its 441 tiles (InNeighborhood.as:103-110, SpiralUtils.as:47-73); that word covers no tile.
+            "wf_slc_furni_neighborhood" or "wf_slc_users_neighborhood" => [1, 0, 0, 33554431, .. Enumerable.Repeat(0, 14)],
             _ => []
         };
 
-        return name switch
+        WiredNativeEditorMetadata metadata = name switch
         {
             "wf_slc_remote" => new([[0, 100, 201]], [], [100], [], defaults, false),
             // Observed on AIR WIN63-202610131318-860371703 (initial editor frames): these selectors offer furni 0/100/201 (no selector source)
@@ -36,6 +38,9 @@ internal static class WiredNativeSelectorEditor
             _ when Supports(name) => new([], [], [], [], defaults, false),
             _ => throw new InvalidDataException("Unknown native selector.")
         };
+
+        // Observed on hhus (AIR WIN63-202610131318-860371703): Furni By Type and Picked Furni allow wall picks. A wall type selects nothing yet, as candidates are floor furni.
+        return name is "wf_slc_furni_bytype" or "wf_slc_furni_picks" ? metadata with { AllowWall = true } : metadata;
     }
 
     internal static bool TryCompile(string name, WiredNativeEditorConfiguration native, out WiredConfiguration runtime)
@@ -137,12 +142,13 @@ internal static class WiredNativeSelectorEditor
                 break;
             case "wf_slc_furni_neighborhood":
             case "wf_slc_users_neighborhood":
-                if (p.Length != 17 || p[0] is not (0 or 1) || p[1] is < -64 or > 64 || p[2] is < -64 or > 64
-                    || ((uint)p[16] & 0xfe000000u) != 0) {
+                // The editor saves 17 ints; the hotel default carries an 18th, empty mask word, which the runtime does not read.
+                if (p.Length is not (17 or 18) || p.Length == 18 && p[17] != 0 || p[0] is not (0 or 1) || p[1] is < -64 or > 64
+                    || p[2] is < -64 or > 64 || ((uint)p[16] & 0xfe000000u) != 0) {
                     return false;
                 }
 
-                fields = p;
+                fields = p[..17];
                 sources = sources.Add("anchor", native.FurniSourceTypes[0]);
                 users = users.Add("anchor", native.UserSourceTypes[0]);
                 break;

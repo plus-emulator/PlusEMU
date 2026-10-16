@@ -45,7 +45,8 @@ internal static partial class WiredNativeAuxiliaryEditor
 
             return Shape(n, 6, 3, 2, 1) && TryTarget(p[3], out var target) ? ChestDraft(n, [p[0], p[0] == 0 && p[1] == 1 ? 2 : p[1], p[2], target, p[4], p[5]], n.Text) : null;
         }));
-        yield return new("wf_act_cancel_transaction", new(TransactionMeta(OnePickList, 1, 1, [0], 0, [100], [0]), n =>
+        // Observed on hhus (AIR WIN63-202610131318-860371703): the only chest card without wall picks.
+        yield return new("wf_act_cancel_transaction", new(TransactionMeta(OnePickList, 1, 1, [0], 0, [100], [0]) with { AllowWall = false }, n =>
             Shape(n, 1, 1, 1, 0) ? ChestDraft(n, [.. n.OwnedIntParams]) : null));
         // Compared amount, its option and target, comparison (the form's own codes).
         yield return new("wf_cnd_chest_has_items", new(TransactionMeta(OnePickList, 2, 1, [0, 0, -20, 2], 1, [100, 200], [200]) with { QuantifierType = 0 }, HasChest(2)));

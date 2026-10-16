@@ -13,12 +13,13 @@ internal static class WiredNativeTriggerEditor
     internal static WiredNativeEditorMetadata Metadata(string name) => name switch
     {
         "wf_trg_walks_off_furni" => new([[100, 200]], [], [100], [], [], false),
-        "wf_trg_click_furni" => new([[0, 100, 200, 201]], [], [100], [], [], false),
+        // Observed on hhus (AIR WIN63-202610131318-860371703): click, use and state-change triggers allow wall picks; wall clicks and state writes fire them.
+        "wf_trg_click_furni" => new([[0, 100, 200, 201]], [], [100], [], [], true),
         "wf_trg_click_tile" => new([[100, 200]], [], [100], [], [], false),
         "wf_trg_recv_signal" => new([[100, 200, 201]], [], [100], [], [], false),
         // The use trigger has no state radio; the state-change trigger does.
-        "wf_trg_state_changed" => new([[100, 200]], [], [100], [], [], false),
-        "wf_trg_stuff_state" => new([[100, 200]], [], [100], [], [1], false),
+        "wf_trg_state_changed" => new([[100, 200]], [], [100], [], [], true),
+        "wf_trg_stuff_state" => new([[100, 200]], [], [100], [], [1], true),
         "wf_trg_clock_counter" => new([[100, 200]], [], [100], [], [0, 0, 0], false),
         "wf_trg_bot_reached_stf" => new([[100, 200]], [[100, 200]], [100], [100], [], false),
         "wf_trg_bot_reached_avtr" => new([], [[100, 200]], [], [100], [], false),

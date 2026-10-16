@@ -1702,7 +1702,7 @@ public partial class ModernWiredRuntimeTests
 
     private static void AssertMovementOracleReply(MovementOracleReply reply, bool direction, int[] owned, int[] picks, int delay)
     {
-        Assert.Equal(100, reply.Limit);
+        Assert.Equal(20, reply.Limit);
         Assert.Equal(picks, reply.Primary);
         Assert.Empty(reply.Secondary);
         Assert.Equal(0, reply.Sprite);
@@ -1720,10 +1720,10 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(reply.UsersAllowed);
         Assert.Equal(new[] { 100 }, reply.FurniDefaults);
         Assert.Empty(reply.UserDefaults);
-        Assert.False(reply.AllowWall);
+        // Observed on hhus (AIR WIN63-202610131318-860371703): rotate allows wall picks and its defaults end with the hotel int 1.
+        Assert.Equal(!direction, reply.AllowWall);
         Assert.Equal(0, reply.ContextCount);
-        // Rotate's two-field/default/wall footer is the explicitly supported LOCAL subset.
-        Assert.Equal(direction ? new[] { 0, 0, 1 } : new[] { 0, 0 }, reply.OwnedDefaults);
+        Assert.Equal(new[] { 0, 0, 1 }, reply.OwnedDefaults);
     }
 
     private sealed class MovementOracleClient : GameClient

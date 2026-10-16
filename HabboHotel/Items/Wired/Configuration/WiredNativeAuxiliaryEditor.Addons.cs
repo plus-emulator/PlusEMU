@@ -74,7 +74,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         { FurniDefaults = [900, 900], UserDefaults = [900] }, n => Shape(n, 4, 2, 1, 0)
             && n.OwnedIntParams.All(flag => flag is 0 or 1)
             ? Norm("wf_xtra_mov_physics", n, [.. n.OwnedIntParams, n.FurniSourceTypes[0], n.FurniSourceTypes[1], n.UserSourceTypes[0]]) : null));
-        yield return new("wf_xtra_text_output_furni_name", new(Sources([[0, 100, 200, 201]], [], [0]), n => Shape(n, 1, 1, 0, 0) && Placeholder(n)
+        // Observed on hhus (AIR WIN63-202610131318-860371703): allows wall picks; the name lookup needs no tile.
+        yield return new("wf_xtra_text_output_furni_name", new(Sources([[0, 100, 200, 201]], [], [0]) with { AllowWall = true }, n => Shape(n, 1, 1, 0, 0) && Placeholder(n)
             ? Norm("wf_xtra_text_output_furni_name", n, [n.OwnedIntParams[0] == 1 ? 2 : 1, n.FurniSourceTypes[0]]) : null));
         yield return new("wf_xtra_text_output_username", new(Sources([], [[0, 200, 201]], [0]), n => Shape(n, 1, 0, 1, 0) && Placeholder(n)
             ? Norm("wf_xtra_text_output_username", n, [n.OwnedIntParams[0] == 1 ? 2 : 1, n.UserSourceTypes[0]]) : null));

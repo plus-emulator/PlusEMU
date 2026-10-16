@@ -262,7 +262,7 @@ public static class WiredLegacyProtocol
             }
         }
 
-        WriteInts(packet, metadata.OwnedDefaults);
+        WriteInts(packet, WiredNativeEditorProjection.FrameDefaults(descriptor.CanonicalName, metadata));
     }
 
     private static void WriteGroups(IOutgoingPacket packet, ImmutableArray<ImmutableArray<int>> groups)

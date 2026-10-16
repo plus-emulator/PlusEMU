@@ -33,7 +33,8 @@ public static class WebErrors
 
 /// <summary>
 /// Kestrel host for the badge leaderboard (/api/badges/leaderboard), furnidata (/api/gamedata/furnidata) and Habbo's public
-/// Wired Variables Web API (/api/public/rooms/{roomId}/variables...). TLS is terminated by the reverse proxy in front of it.
+/// Wired Variables Web API (/api/public/rooms/{roomId}/variables...) with its docs page (/api/public/api-docs/). TLS is terminated
+/// by the reverse proxy in front of it.
 /// </summary>
 public class WebServer : IWebServer
 {
@@ -75,7 +76,11 @@ public class WebServer : IWebServer
         app.Use(AddSecurityHeaders);
         _badgeLeaderboard.Map(app);
         _furnidata.Map(app);
-        _wiredWebApi?.Map(app);
+
+        if (_wiredWebApi != null) {
+            _wiredWebApi.Map(app);
+            WebApiDocsEndpoints.Map(app);
+        }
 
         await app.StartAsync();
         _app = app;

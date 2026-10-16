@@ -27,3 +27,8 @@ csharp_style_namespace_declarations = block_scoped:silent
 
 [*.{json,yml,yaml}]
 indent_size = 2
+
+# Vendored swagger-ui-dist files and habbo.com's docs page, kept byte for byte.
+[Communication/Http/ApiDocs/{index.html,swagger-ui-init.js,swagger-ui-dist/**}]
+trim_trailing_whitespace = false
+insert_final_newline = false

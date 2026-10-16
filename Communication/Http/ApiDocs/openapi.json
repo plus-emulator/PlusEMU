@@ -1,0 +1,3046 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Habbo Web API",
+    "version": "1.0.0",
+    "description": "Habbo Web API documented with Swagger. This hotel serves the Wired Variables endpoints."
+  },
+  "tags": [
+    {
+      "name": "Wired Variables",
+      "description": "Wired variable and wired variable profile endpoints."
+    }
+  ],
+  "paths": {
+    "/api/public/rooms/{roomId}/variables": {
+      "get": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "List wired variables configured in a room.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredReadKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Room variable names grouped by scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredRoomVariables"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/rooms/{roomId}/variables/{scope}/{variableName}/{targetKind}/{entityId}": {
+      "get": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Read a single user or furni wired variable.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredScope"
+          },
+          {
+            "$ref": "#/components/parameters/WiredVariableName"
+          },
+          {
+            "$ref": "#/components/parameters/WiredTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredEntityId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredReadKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Variable value and timestamps.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredVariable"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or variable value not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Set a single user or furni wired variable.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredScope"
+          },
+          {
+            "$ref": "#/components/parameters/WiredVariableName"
+          },
+          {
+            "$ref": "#/components/parameters/WiredTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredEntityId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredWriteKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiredValueWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated variable value.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredVariable"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  },
+                  "invalidValue": {
+                    "$ref": "#/components/examples/WiredInvalidValueError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  },
+                  "userNotParticipating": {
+                    "$ref": "#/components/examples/WiredUserNotParticipatingError"
+                  },
+                  "operationNotAllowed": {
+                    "$ref": "#/components/examples/WiredOperationNotAllowedError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or variable value not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Update a single user or furni wired variable.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredScope"
+          },
+          {
+            "$ref": "#/components/parameters/WiredVariableName"
+          },
+          {
+            "$ref": "#/components/parameters/WiredTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredEntityId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredWriteKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiredValueWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated variable value.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredVariable"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  },
+                  "invalidValue": {
+                    "$ref": "#/components/examples/WiredInvalidValueError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or variable value not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Delete one stored user or furni wired variable value.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredScope"
+          },
+          {
+            "$ref": "#/components/parameters/WiredVariableName"
+          },
+          {
+            "$ref": "#/components/parameters/WiredTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredEntityId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredWriteKey"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Stored value deleted."
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or variable value not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/rooms/{roomId}/variables/{scope}/{variableName}/{targetKind}": {
+      "get": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "List wired variable values for a target kind.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredScope"
+          },
+          {
+            "$ref": "#/components/parameters/WiredVariableName"
+          },
+          {
+            "$ref": "#/components/parameters/WiredTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredReadKey"
+          },
+          {
+            "in": "query",
+            "name": "order_by",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "value",
+                "creation_time",
+                "update_time"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "order_dir",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paged variable values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredPagedVariables"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or variable definition not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/rooms/{roomId}/variables/{scope}/{variableName}/{targetKind}/count": {
+      "get": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Count wired variable values for a target kind.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredScope"
+          },
+          {
+            "$ref": "#/components/parameters/WiredVariableName"
+          },
+          {
+            "$ref": "#/components/parameters/WiredTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredReadKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching value count.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredCount"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or variable definition not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/rooms/{roomId}/variables/bulk-delete": {
+      "post": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Delete all stored values for multiple wired variables by name.",
+        "description": "Deletes values held by users, pets, bots, furni, and wall items. Variable definitions remain configured.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredWriteKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiredBulkDelete"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Stored values deleted."
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "bulkDeleteEmpty": {
+                    "$ref": "#/components/examples/WiredBulkDeleteEmptyError"
+                  },
+                  "bulkDeleteInvalidVariable": {
+                    "$ref": "#/components/examples/WiredBulkDeleteInvalidVariableError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  },
+                  "bulkDeleteNotEnabled": {
+                    "$ref": "#/components/examples/WiredBulkDeleteNotEnabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/rooms/{roomId}/variables/{scope}/{variableName}/batch": {
+      "post": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Execute a batch of wired variable operations.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredScope"
+          },
+          {
+            "$ref": "#/components/parameters/WiredVariableName"
+          },
+          {
+            "$ref": "#/components/parameters/WiredReadKey"
+          },
+          {
+            "$ref": "#/components/parameters/WiredWriteKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiredBatchRequest"
+              },
+              "examples": {
+                "userBatch": {
+                  "summary": "User-scope batch",
+                  "value": {
+                    "requests": [
+                      {
+                        "op_id": "get-user",
+                        "method": "GET",
+                        "path": "users/44"
+                      },
+                      {
+                        "op_id": "put-user",
+                        "method": "PUT",
+                        "path": "users/44",
+                        "body": {
+                          "value": "7"
+                        }
+                      },
+                      {
+                        "op_id": "delete-pet",
+                        "method": "DELETE",
+                        "path": "pets/12"
+                      }
+                    ]
+                  }
+                },
+                "furniBatch": {
+                  "summary": "Furni-scope batch",
+                  "value": {
+                    "requests": [
+                      {
+                        "op_id": "get-furni",
+                        "method": "GET",
+                        "path": "furni/22"
+                      },
+                      {
+                        "op_id": "patch-wall",
+                        "method": "PATCH",
+                        "path": "wall-items/91",
+                        "body": {
+                          "value": "3"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Batch operation results.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredBatchResults"
+                },
+                "examples": {
+                  "mixedResult": {
+                    "summary": "Mixed success and failure result",
+                    "value": {
+                      "results": [
+                        {
+                          "op_id": "get-user",
+                          "status": 200,
+                          "body": {
+                            "value": "7",
+                            "creation_time": "2023-11-16T22:13:20Z",
+                            "update_time": "2023-11-16T22:13:20Z"
+                          }
+                        },
+                        {
+                          "op_id": "delete-user",
+                          "status": 204
+                        },
+                        {
+                          "op_id": "invalid-target",
+                          "status": 400,
+                          "error": {
+                            "code": "wired.variables.invalid_target",
+                            "message": "wired.variables.invalid_target"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "batchEmpty": {
+                    "$ref": "#/components/examples/WiredBatchEmptyError"
+                  },
+                  "batchLimitExceeded": {
+                    "$ref": "#/components/examples/WiredBatchLimitExceededError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or variable definition not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/rooms/{roomId}/variables/global/{variableName}": {
+      "get": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Read a global room wired variable.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredVariableName"
+          },
+          {
+            "$ref": "#/components/parameters/WiredReadKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Variable value and timestamps.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredVariable"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or variable value not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Update a global room wired variable.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredVariableName"
+          },
+          {
+            "$ref": "#/components/parameters/WiredWriteKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiredValueWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated variable value.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredVariable"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidValue": {
+                    "$ref": "#/components/examples/WiredInvalidValueError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or variable value not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/rooms/{roomId}/variables_profile/user/users": {
+      "get": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Read a user variables profile by name or unique_id.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredReadKey"
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unique_id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User variables profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredUserProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or entity profile not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "entityNotFound": {
+                    "$ref": "#/components/examples/WiredEntityNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/rooms/{roomId}/variables_profile/user/{targetKind}/{entityId}": {
+      "get": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Read a user, pet, or bot variables profile.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredUserTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredEntityId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredReadKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User variables profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredAnyUserProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or entity profile not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "entityNotFound": {
+                    "$ref": "#/components/examples/WiredEntityNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Patch a user, pet, or bot variables profile.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredUserTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredEntityId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredWriteKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiredVariablesPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated variables profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredAnyUserProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room, entity profile, or stored variable value not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "entityNotFound": {
+                    "$ref": "#/components/examples/WiredEntityNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Delete a user, pet, or bot variables profile.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredUserTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredEntityId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredWriteKey"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Profile deleted."
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room, entity profile, or stored variable value not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "entityNotFound": {
+                    "$ref": "#/components/examples/WiredEntityNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/rooms/{roomId}/variables_profile/furni/{targetKind}/{entityId}": {
+      "get": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Read a furni variables profile.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredFurniTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredEntityId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredReadKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Furni variables profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredAnyFurniProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or entity profile not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "entityNotFound": {
+                    "$ref": "#/components/examples/WiredEntityNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Patch a furni variables profile.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredFurniTargetKind"
+          },
+          {
+            "$ref": "#/components/parameters/WiredEntityId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredWriteKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiredVariablesPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated variables profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredAnyFurniProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room, entity profile, or stored variable value not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "entityNotFound": {
+                    "$ref": "#/components/examples/WiredEntityNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/rooms/{roomId}/variables_profile/global": {
+      "get": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Read the global variables profile.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredReadKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Global variables profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredGlobalProfile"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Wired Variables"
+        ],
+        "summary": "Patch the global variables profile.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WiredRoomId"
+          },
+          {
+            "$ref": "#/components/parameters/WiredWriteKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiredGlobalVariablesPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated global variables profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredGlobalProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "invalidTarget": {
+                    "$ref": "#/components/examples/WiredInvalidTargetError"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "keyMissing": {
+                    "$ref": "#/components/examples/WiredKeyMissingError"
+                  },
+                  "keyInvalid": {
+                    "$ref": "#/components/examples/WiredKeyInvalidError"
+                  },
+                  "apiDisabled": {
+                    "$ref": "#/components/examples/WiredApiDisabledError"
+                  },
+                  "operationNotAllowed": {
+                    "$ref": "#/components/examples/WiredOperationNotAllowedError"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or stored global variable value not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "roomNotFound": {
+                    "$ref": "#/components/examples/WiredRoomNotFoundError"
+                  },
+                  "variableNotFound": {
+                    "$ref": "#/components/examples/WiredVariableNotFoundError"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WiredError"
+                },
+                "examples": {
+                  "tooManyRequests": {
+                    "$ref": "#/components/examples/WiredTooManyRequestsError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "WiredRoomId": {
+        "in": "path",
+        "name": "roomId",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "WiredVariableName": {
+        "in": "path",
+        "name": "variableName",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "WiredEntityId": {
+        "in": "path",
+        "name": "entityId",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "WiredScope": {
+        "in": "path",
+        "name": "scope",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "user",
+            "furni"
+          ]
+        }
+      },
+      "WiredTargetKind": {
+        "in": "path",
+        "name": "targetKind",
+        "required": true,
+        "description": "Scope-dependent target kind. Use users, pets, bots when scope is user. Use furni, furni-bc, wall-items, wall-items-bc when scope is furni.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "users",
+            "pets",
+            "bots",
+            "furni",
+            "furni-bc",
+            "wall-items",
+            "wall-items-bc"
+          ]
+        }
+      },
+      "WiredUserTargetKind": {
+        "in": "path",
+        "name": "targetKind",
+        "required": true,
+        "description": "User-scoped target kind.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "users",
+            "pets",
+            "bots"
+          ]
+        }
+      },
+      "WiredFurniTargetKind": {
+        "in": "path",
+        "name": "targetKind",
+        "required": true,
+        "description": "Furni-scoped target kind.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "furni",
+            "furni-bc",
+            "wall-items",
+            "wall-items-bc"
+          ]
+        }
+      },
+      "WiredReadKey": {
+        "in": "header",
+        "name": "X-Wired-Read-Key",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "WiredWriteKey": {
+        "in": "header",
+        "name": "X-Wired-Write-Key",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "examples": {
+      "WiredInvalidTargetError": {
+        "summary": "Invalid target kind or variable name.",
+        "value": {
+          "error": "wired.variables.invalid_target"
+        }
+      },
+      "WiredInvalidValueError": {
+        "summary": "Missing or invalid numeric value.",
+        "value": {
+          "error": "wired.variables.invalid_value"
+        }
+      },
+      "WiredKeyMissingError": {
+        "summary": "Wired API key is missing.",
+        "value": {
+          "error": "wired.variables.key_missing"
+        }
+      },
+      "WiredKeyInvalidError": {
+        "summary": "Wired API key is invalid.",
+        "value": {
+          "error": "wired.variables.key_invalid"
+        }
+      },
+      "WiredApiDisabledError": {
+        "summary": "Wired variables web API is disabled.",
+        "value": {
+          "error": "wired.variables.api_disabled"
+        }
+      },
+      "WiredOperationNotAllowedError": {
+        "summary": "Requested operation is not allowed.",
+        "value": {
+          "error": "wired.variables.operation_not_allowed"
+        }
+      },
+      "WiredUserNotParticipatingError": {
+        "summary": "Target user is not participating in the room variable.",
+        "value": {
+          "error": "wired.variables.user_not_participating"
+        }
+      },
+      "WiredBulkDeleteEmptyError": {
+        "summary": "Bulk delete request contained no variables.",
+        "value": {
+          "error": "wired.variables.bulk_delete_empty"
+        }
+      },
+      "WiredBulkDeleteInvalidVariableError": {
+        "summary": "Bulk delete request referenced an invalid variable.",
+        "value": {
+          "error": "wired.variables.bulk_delete_invalid_variable"
+        }
+      },
+      "WiredBulkDeleteNotEnabledError": {
+        "summary": "Bulk delete is not enabled for the room.",
+        "value": {
+          "error": "wired.variables.bulk_delete_not_enabled"
+        }
+      },
+      "WiredBatchEmptyError": {
+        "summary": "Batch request contained no operations.",
+        "value": {
+          "error": "wired.variables.batch_empty"
+        }
+      },
+      "WiredBatchLimitExceededError": {
+        "summary": "Batch request exceeded the maximum operation count.",
+        "value": {
+          "error": "wired.variables.batch_limit_exceeded"
+        }
+      },
+      "WiredRoomNotFoundError": {
+        "summary": "Room was not found.",
+        "value": {
+          "error": "room.not_found"
+        }
+      },
+      "WiredEntityNotFoundError": {
+        "summary": "Entity profile target was not found.",
+        "value": {
+          "error": "wired.variables.entity_not_found"
+        }
+      },
+      "WiredVariableNotFoundError": {
+        "summary": "Variable value or definition was not found.",
+        "value": {
+          "error": "wired.variables.not_found"
+        }
+      },
+      "WiredTooManyRequestsError": {
+        "summary": "Wired variable rate limit exceeded.",
+        "value": {
+          "error": "wired.variables.too_many_requests"
+        }
+      }
+    },
+    "schemas": {
+      "WiredError": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "WiredVariable": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "pattern": "^-?\\d+$",
+            "description": "Signed 64-bit integer encoded as a decimal string to preserve precision."
+          },
+          "creation_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "update_time": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "WiredRoomVariables": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "furni": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "global": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "WiredPagedVariables": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      },
+      "WiredCount": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          }
+        }
+      },
+      "WiredBatchResults": {
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WiredBatchOperationResult"
+            }
+          }
+        },
+        "example": {
+          "results": [
+            {
+              "op_id": "get-user",
+              "status": 200,
+              "body": {
+                "value": "7",
+                "creation_time": "2023-11-16T22:13:20Z",
+                "update_time": "2023-11-16T22:13:20Z"
+              }
+            },
+            {
+              "op_id": "delete-user",
+              "status": 204
+            },
+            {
+              "op_id": "invalid-target",
+              "status": 400,
+              "error": {
+                "code": "wired.variables.invalid_target",
+                "message": "wired.variables.invalid_target"
+              }
+            }
+          ]
+        }
+      },
+      "WiredVariableMap": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/WiredVariable"
+        },
+        "example": {
+          "variable_name1": {
+            "value": "7",
+            "creation_time": "2023-11-16T22:13:20Z",
+            "update_time": "2023-11-16T22:13:20Z"
+          },
+          "variable_name2": {
+            "value": "11",
+            "creation_time": "2023-11-17T08:00:00Z",
+            "update_time": "2023-11-17T09:30:00Z"
+          }
+        }
+      },
+      "WiredProfileBase": {
+        "type": "object",
+        "required": [
+          "variables"
+        ],
+        "properties": {
+          "variables": {
+            "$ref": "#/components/schemas/WiredVariableMap"
+          }
+        }
+      },
+      "WiredUserProfileTarget": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "unique_id": {
+            "type": "string"
+          }
+        }
+      },
+      "WiredNamedProfileTarget": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "WiredIdProfileTarget": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "WiredUserProfile": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WiredProfileBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "user"
+            ],
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/WiredUserProfileTarget"
+              }
+            }
+          }
+        ]
+      },
+      "WiredPetProfile": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WiredProfileBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "pet"
+            ],
+            "properties": {
+              "pet": {
+                "$ref": "#/components/schemas/WiredNamedProfileTarget"
+              }
+            }
+          }
+        ]
+      },
+      "WiredBotProfile": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WiredProfileBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "bot"
+            ],
+            "properties": {
+              "bot": {
+                "$ref": "#/components/schemas/WiredNamedProfileTarget"
+              }
+            }
+          }
+        ]
+      },
+      "WiredFurniProfile": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WiredProfileBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "furni"
+            ],
+            "properties": {
+              "furni": {
+                "$ref": "#/components/schemas/WiredIdProfileTarget"
+              }
+            }
+          }
+        ]
+      },
+      "WiredFurniBcProfile": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WiredProfileBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "furni_bc"
+            ],
+            "properties": {
+              "furni_bc": {
+                "$ref": "#/components/schemas/WiredIdProfileTarget"
+              }
+            }
+          }
+        ]
+      },
+      "WiredWallItemProfile": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WiredProfileBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "wall_item"
+            ],
+            "properties": {
+              "wall_item": {
+                "$ref": "#/components/schemas/WiredIdProfileTarget"
+              }
+            }
+          }
+        ]
+      },
+      "WiredWallItemBcProfile": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WiredProfileBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "wall_item_bc"
+            ],
+            "properties": {
+              "wall_item_bc": {
+                "$ref": "#/components/schemas/WiredIdProfileTarget"
+              }
+            }
+          }
+        ]
+      },
+      "WiredGlobalProfile": {
+        "$ref": "#/components/schemas/WiredProfileBase"
+      },
+      "WiredAnyUserProfile": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/WiredUserProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredPetProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredBotProfile"
+          }
+        ]
+      },
+      "WiredAnyFurniProfile": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/WiredFurniProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredFurniBcProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredWallItemProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredWallItemBcProfile"
+          }
+        ]
+      },
+      "WiredVariablesProfile": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/WiredUserProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredPetProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredBotProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredFurniProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredFurniBcProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredWallItemProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredWallItemBcProfile"
+          },
+          {
+            "$ref": "#/components/schemas/WiredGlobalProfile"
+          }
+        ]
+      },
+      "WiredValueWrite": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "pattern": "^-?\\d+$",
+            "description": "Signed 64-bit integer encoded as a decimal string to preserve precision."
+          }
+        }
+      },
+      "WiredVariablesPatch": {
+        "type": "object",
+        "required": [
+          "variables"
+        ],
+        "properties": {
+          "variables": {
+            "type": "object",
+            "additionalProperties": {
+              "nullable": true,
+              "type": "string",
+              "pattern": "^-?\\d+$"
+            }
+          }
+        },
+        "example": {
+          "variables": {
+            "variable_name1": "7",
+            "variable_name2": null
+          }
+        }
+      },
+      "WiredGlobalVariablesPatch": {
+        "type": "object",
+        "required": [
+          "variables"
+        ],
+        "properties": {
+          "variables": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^-?\\d+$"
+            }
+          }
+        },
+        "example": {
+          "variables": {
+            "variable_name1": "7",
+            "variable_name2": "11"
+          }
+        }
+      },
+      "WiredBatchOperationBody": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "pattern": "^-?\\d+$",
+            "description": "Signed 64-bit integer encoded as a decimal string for PUT and PATCH batch operations."
+          }
+        },
+        "example": {
+          "value": "7"
+        }
+      },
+      "WiredBatchOperationError": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code."
+          },
+          "message": {
+            "type": "string",
+            "description": "Current server implementation mirrors the error code here."
+          }
+        },
+        "example": {
+          "code": "wired.variables.invalid_target",
+          "message": "wired.variables.invalid_target"
+        }
+      },
+      "WiredBatchGetOperationRequest": {
+        "type": "object",
+        "required": [
+          "method",
+          "path"
+        ],
+        "properties": {
+          "op_id": {
+            "type": "string",
+            "description": "Optional client-supplied operation id echoed in the matching result."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative target path in the form <targetKind>/<entityId>, without a leading slash.",
+            "example": "users/44"
+          }
+        }
+      },
+      "WiredBatchPutOperationRequest": {
+        "type": "object",
+        "required": [
+          "method",
+          "path",
+          "body"
+        ],
+        "properties": {
+          "op_id": {
+            "type": "string",
+            "description": "Optional client-supplied operation id echoed in the matching result."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "PUT"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative target path in the form <targetKind>/<entityId>, without a leading slash.",
+            "example": "users/44"
+          },
+          "body": {
+            "$ref": "#/components/schemas/WiredBatchOperationBody"
+          }
+        }
+      },
+      "WiredBatchPatchOperationRequest": {
+        "type": "object",
+        "required": [
+          "method",
+          "path",
+          "body"
+        ],
+        "properties": {
+          "op_id": {
+            "type": "string",
+            "description": "Optional client-supplied operation id echoed in the matching result."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "PATCH"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative target path in the form <targetKind>/<entityId>, without a leading slash.",
+            "example": "users/44"
+          },
+          "body": {
+            "$ref": "#/components/schemas/WiredBatchOperationBody"
+          }
+        }
+      },
+      "WiredBatchDeleteOperationRequest": {
+        "type": "object",
+        "required": [
+          "method",
+          "path"
+        ],
+        "properties": {
+          "op_id": {
+            "type": "string",
+            "description": "Optional client-supplied operation id echoed in the matching result."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "DELETE"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative target path in the form <targetKind>/<entityId>, without a leading slash.",
+            "example": "users/44"
+          }
+        }
+      },
+      "WiredBatchOperationRequest": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/WiredBatchGetOperationRequest"
+          },
+          {
+            "$ref": "#/components/schemas/WiredBatchPutOperationRequest"
+          },
+          {
+            "$ref": "#/components/schemas/WiredBatchPatchOperationRequest"
+          },
+          {
+            "$ref": "#/components/schemas/WiredBatchDeleteOperationRequest"
+          }
+        ]
+      },
+      "WiredBatchOperationResultWithBody": {
+        "type": "object",
+        "required": [
+          "status",
+          "body"
+        ],
+        "properties": {
+          "op_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "enum": [
+              200
+            ]
+          },
+          "body": {
+            "$ref": "#/components/schemas/WiredVariable"
+          }
+        }
+      },
+      "WiredBatchOperationResultNoContent": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "op_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "enum": [
+              204
+            ]
+          }
+        }
+      },
+      "WiredBatchOperationResultError": {
+        "type": "object",
+        "required": [
+          "status",
+          "error"
+        ],
+        "properties": {
+          "op_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "enum": [
+              400,
+              403,
+              404,
+              429,
+              500
+            ]
+          },
+          "error": {
+            "$ref": "#/components/schemas/WiredBatchOperationError"
+          }
+        }
+      },
+      "WiredBatchOperationResult": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/WiredBatchOperationResultWithBody"
+          },
+          {
+            "$ref": "#/components/schemas/WiredBatchOperationResultNoContent"
+          },
+          {
+            "$ref": "#/components/schemas/WiredBatchOperationResultError"
+          }
+        ]
+      },
+      "WiredBulkDelete": {
+        "type": "object",
+        "required": [
+          "variables"
+        ],
+        "properties": {
+          "variables": {
+            "type": "array",
+            "description": "Names of user or furni variables whose stored values will be deleted. Variable definitions remain configured.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "WiredBatchRequest": {
+        "type": "object",
+        "required": [
+          "requests"
+        ],
+        "description": "Batch operations against the variable named in the route. `requests` must contain 1 to 50 operations.",
+        "properties": {
+          "requests": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/WiredBatchOperationRequest"
+            }
+          }
+        },
+        "example": {
+          "requests": [
+            {
+              "op_id": "get-user",
+              "method": "GET",
+              "path": "users/44"
+            },
+            {
+              "op_id": "patch-user",
+              "method": "PATCH",
+              "path": "users/44",
+              "body": {
+                "value": "7"
+              }
+            },
+            {
+              "op_id": "delete-user",
+              "method": "DELETE",
+              "path": "pets/12"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -3,6 +3,10 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using Plus.Communication.Http;
@@ -153,6 +157,64 @@ public sealed class WiredWebApiTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("not_found", JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task TheDocsPageIsHabbosSwaggerUiPage()
+    {
+        // habbo.com redirects the bare path to the slash form with its framework's 301 page.
+        using var noRedirect = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { BaseAddress = _http.BaseAddress };
+        var redirect = await noRedirect.GetAsync("/api/public/api-docs");
+        Assert.Equal(HttpStatusCode.MovedPermanently, redirect.StatusCode);
+        Assert.Equal("/api/public/api-docs/", redirect.Headers.Location?.OriginalString);
+        Assert.Contains("<pre>Redirecting to /api/public/api-docs/</pre>", await redirect.Content.ReadAsStringAsync());
+
+        var page = await _http.GetAsync("/api/public/api-docs/");
+        var html = await page.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Equal("text/html; charset=utf-8", page.Content.Headers.ContentType?.ToString());
+        Assert.Contains("<title>Swagger UI</title>", html);
+        Assert.Contains("<div id=\"swagger-ui\"></div>", html);
+
+        // Every file the page loads is served from the emulator itself.
+        foreach (var file in Regex.Matches(html, "(?:href|src)=\"\\./([^\"]+)\"").Select(match => match.Groups[1].Value)) {
+            var asset = await _http.GetAsync("/api/public/api-docs/" + file);
+            Assert.True(asset.StatusCode == HttpStatusCode.OK, file);
+            Assert.NotEmpty(await asset.Content.ReadAsByteArrayAsync());
+        }
+
+        Assert.Equal("text/css; charset=utf-8", (await _http.GetAsync("/api/public/api-docs/swagger-ui.css")).Content.Headers.ContentType?.ToString());
+        await AssertPage("GET", "/api/public/api-docs/index.html");
+        await AssertPage("GET", "/api/public/api-docs/package.json");
+    }
+
+    [Fact]
+    public async Task TheDocsListExactlyTheRoutedOperationsAsHabboDocumentsThem()
+    {
+        var spec = JsonNode.Parse(WebApiDocsEndpoints.Spec)!;
+        var habbo = JsonNode.Parse(File.ReadAllText(HabbiconPacketTests.Repo("Plus.Tests/Fixtures/HabboWiredVariablesOpenApi.json")))!;
+
+        foreach (var part in new[] { "openapi", "tags", "paths", "components" }) {
+            Assert.True(JsonNode.DeepEquals(habbo[part], spec[part]), $"{part} differs from habbo.com's spec");
+        }
+
+        // No servers entry: the default server "/" is the page's own origin.
+        Assert.Null(spec["servers"]);
+
+        var documented = spec["paths"]!.AsObject()
+            .SelectMany(path => path.Value!.AsObject().Select(operation => operation.Key.ToUpperInvariant() + " " + path.Key))
+            .Order(StringComparer.Ordinal);
+        var routed = _server!.Services!.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>()
+            .Where(endpoint => endpoint.RoutePattern.RawText!.StartsWith("/api/public/rooms/", StringComparison.Ordinal))
+            .SelectMany(endpoint => endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Select(method => method + " " + endpoint.RoutePattern.RawText))
+            .Order(StringComparer.Ordinal);
+        Assert.Equal(documented, routed);
+
+        // The page's swagger-ui-init.js embeds that spec.
+        var script = await _http.GetStringAsync("/api/public/api-docs/swagger-ui-init.js");
+        var embedded = Regex.Match(script, "\"swaggerDoc\": (\\{.*?\\n  \\}),\\n  \"customOptions\"", RegexOptions.Singleline).Groups[1].Value;
+        Assert.True(JsonNode.DeepEquals(spec, JsonNode.Parse(embedded)));
+        Assert.Contains("\"supportedSubmitMethods\": []", script);
     }
 
     [Fact]

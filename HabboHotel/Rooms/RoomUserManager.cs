@@ -1633,7 +1633,8 @@ public class RoomUserManager
 
     private void UpdateUserEffect(RoomUser user, int x, int y)
     {
-        if (user == null || user.IsBot) {
+        // A rider keeps the riding effect: water and skates do not replace it.
+        if (user == null || user.IsBot || user.RidingHorse) {
             return;
         }
 

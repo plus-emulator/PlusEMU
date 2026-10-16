@@ -7,7 +7,8 @@ public sealed class FloorEffectService(Room room, Action<GameClient> progressSwi
 {
     public void Apply(RoomUser actor, int x, int y, SurfaceRef? surface = null)
     {
-        if (actor.IsBot) {
+        // A rider keeps the riding effect: water and skates do not replace it.
+        if (actor.IsBot || actor.RidingHorse) {
             return;
         }
 

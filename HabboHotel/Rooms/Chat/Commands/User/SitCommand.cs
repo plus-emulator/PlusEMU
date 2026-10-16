@@ -18,7 +18,7 @@ internal class SitCommand : IChatCommand
             return;
         }
 
-        if (user.Statusses.ContainsKey("lie") || user.IsLying || user.RidingHorse || user.IsWalking) {
+        if (user.Statusses.ContainsKey("lie") || user.IsLying || user.RidingHorse || user.IsWalking || user.IsSwimming) {
             return;
         }
 

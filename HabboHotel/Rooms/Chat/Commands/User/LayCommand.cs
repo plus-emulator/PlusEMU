@@ -24,7 +24,7 @@ internal class LayCommand : IChatCommand
             return;
         }
 
-        if (user.Statusses.ContainsKey("sit") || user.IsSitting || user.RidingHorse || user.IsWalking) {
+        if (user.Statusses.ContainsKey("sit") || user.IsSitting || user.RidingHorse || user.IsWalking || user.IsSwimming) {
             return;
         }
 

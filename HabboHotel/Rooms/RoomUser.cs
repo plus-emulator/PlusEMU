@@ -79,6 +79,10 @@ public class RoomUser
 
     public int PrevTime;
     public bool RidingHorse = false;
+
+    // AIR AvatarInfoWidget.isSwimming: the swim effects. A swimming avatar cannot sit or lay.
+    private static readonly int[] SwimEffects = [29, 30, 185];
+    public bool IsSwimming => !IsBot && GetClient()?.GetHabbo()?.Effects is { } effects && SwimEffects.Contains(effects.CurrentEffect);
     public int RollerDelay = 0;
     public uint RoomId;
     public int RotBody; //byte

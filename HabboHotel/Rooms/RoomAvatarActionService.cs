@@ -204,7 +204,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
         var room = session.GetHabbo().CurrentRoom;
         var user = room.GetRoomUserManager().GetRoomUserByHabbo(session.GetHabbo().Id);
 
-        if (user == null || user.Statusses.ContainsKey("lie") || user.IsLying || user.RidingHorse || user.IsWalking) {
+        if (user == null || user.Statusses.ContainsKey("lie") || user.IsLying || user.RidingHorse || user.IsWalking || user.IsSwimming) {
             return;
         }
 

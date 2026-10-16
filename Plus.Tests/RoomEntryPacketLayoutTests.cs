@@ -45,6 +45,17 @@ public class RoomEntryPacketLayoutTests
     }
 
     [Fact]
+    public void WiredPermissionsEndsAtCanRead()
+    {
+        // class_2713.parse L25-30: canModify, then canRead, and nothing after them.
+        var packet = Read(new WiredPermissionsComposer(canModify: true, canRead: false));
+
+        Assert.True(packet.ReadBool());
+        Assert.False(packet.ReadBool());
+        Assert.False(packet.HasDataRemaining());
+    }
+
+    [Fact]
     public void UserChangeEndsAtTheBadgesRank()
     {
         // class_2587.parse L67-90: id, figure, sex, motto, achievement score, string, n x (int, int, int), badges rank.

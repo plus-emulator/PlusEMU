@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using Plus.Communication.Packets.Outgoing.Handshake;
 using Plus.Communication.Packets.Outgoing.Rooms.Avatar;
 using Plus.Communication.Packets.Outgoing.Rooms.Engine;
+using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.Communication.Packets.Outgoing.Rooms.Permissions;
 using Plus.Communication.Packets.Outgoing.Rooms.Session;
 using Plus.Core;
@@ -434,6 +435,10 @@ public class RoomUserManager
         }
         else {
             session.Send(new YouAreNotControllerComposer(_room.Id));
+        }
+
+        if (_room.GetWired() is { } wired) {
+            session.Send(new WiredPermissionsComposer(wired.Settings.CanModify(session), wired.Settings.CanInspect(session)));
         }
 
         user.UpdateNeeded = true;

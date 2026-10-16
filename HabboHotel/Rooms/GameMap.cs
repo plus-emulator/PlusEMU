@@ -392,6 +392,33 @@ public class Gamemap
         user.SetStep = false;
         user.IsWalking = false;
         user.UpdateNeeded = true;
+
+        if (!user.RidingHorse || user.IsBot) {
+            return;
+        }
+
+        // A rider takes the horse along and sits one unit above it.
+        var horse = _room.GetRoomUserManager().GetRoomUserByVirtualId(user.HorseId);
+
+        if (horse == null || horse == user) {
+            return;
+        }
+
+        GameMap[horse.X, horse.Y] = horse.SqState;
+        UpdateUserMovement(new(horse.Coordinate.X, horse.Coordinate.Y), new(item.Coordinate.X, item.Coordinate.Y), horse);
+        horse.X = user.X;
+        horse.Y = user.Y;
+        horse.Z = user.Z;
+        horse.SqState = user.SqState;
+        horse.RotBody = user.RotBody;
+        horse.RotHead = user.RotHead;
+        horse.GoalX = user.X;
+        horse.GoalY = user.Y;
+        horse.RemoveStatus("mv");
+        horse.SetStep = false;
+        horse.IsWalking = false;
+        horse.UpdateNeeded = true;
+        user.Z = horse.Z + 1;
     }
 
     public void UpdateUserMovement(Point oldCoord, Point newCoord, RoomUser user)

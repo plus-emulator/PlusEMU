@@ -8,6 +8,7 @@ public sealed partial class RoomNavigation
     private V2MovementEngine? _executor;
     private HorseMountService? _mounts;
     internal HorseMountService Mounts => _mounts ??= new(_room, this, Executor.Context);
+    internal void TickMounts() => _mounts?.TickPending();
     public void Move(RoomUser actor, int x, int y, MoveOrigin origin, MoveFlags flags = MoveFlags.None,
         ApproachDescriptor? approach = null)
     {

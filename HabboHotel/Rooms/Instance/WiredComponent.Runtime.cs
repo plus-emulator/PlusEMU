@@ -52,7 +52,7 @@ public partial class WiredComponent
     public WiredChestRoom Chests => _chests ??= new(_room, new DatabaseWiredChestStore(_database, _definitions), _clock, evt => Dispatch(evt));
     public void WithChests(Action<WiredChestRoom> action) => _engine.Mutate(() => { action(Chests); return true; });
     public WiredRoomSettings Settings { get; }
-    private TimeZoneInfo EffectiveTimeZone => Settings.ExplicitTimeZone ?? _clock.LocalTimeZone;
+    private TimeZoneInfo EffectiveTimeZone => Settings.ExplicitTimeZone ?? WiredRoomSettings.DefaultTimeZone;
     internal DateTimeOffset CalendarTime =>
         TimeZoneInfo.ConvertTime(_clock.GetUtcNow(), EffectiveTimeZone);
     private IWiredConfigurationStore ConfigurationStore => _configurationStore;

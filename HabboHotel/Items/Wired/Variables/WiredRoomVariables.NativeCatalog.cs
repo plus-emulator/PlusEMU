@@ -103,12 +103,21 @@ public sealed partial class WiredRoomVariables
                     }
                 }
 
-                // Time Utilities parts are not catalogue variables on hhus (r84, r90; r92i r92h-timeutil: four catalogue reads around saves,
-                // writes and 10 s, with every sub-variable bit set on user, furni and global parents, listed none while the lvlup
-                // sub-variable on the same user parent was listed); none are added.
+                // Observed on hhus (AIR WIN63-202610131318-860371703): each ticked part is a catalogue variable "<parent>.<mode>.<part>",
+                // and the creation-time and last-update modes add the base row "<parent>.<mode>" (17 parts, or 18 with the base row).
+                var time = associated.FirstOrDefault(box => box.Time is not null)?.Time;
+
+                if (time is not null && !(time.Mode == 1 && definition.Target == WiredVariableTarget.Global)) {
+                    foreach (var sub in time.Parts.ToArray()) {
+                        var derivation = TimeDerivation(new(definition.Target, definition.Token), time, sub, () => zone);
+                        AddDerived(sub, true, time.CatalogKey(sub), derivation.RequiresValue, derivation.RequiresTimestamps, derivation.Convert,
+                            write: derivation.Write, connector: WiredVariableTimeUtilities.Connector(sub));
+                    }
+                }
 
                 void AddDerived(int sub, bool isTime, string key, bool requiresValue, bool requiresTimestamps,
-                    Func<WiredVariableValue, WiredVariableValue?> read, WiredVariableReference? source = null)
+                    Func<WiredVariableValue, WiredVariableValue?> read, WiredVariableReference? source = null,
+                    Func<long, long, long?>? write = null, ImmutableArray<KeyValuePair<int, string>>? connector = null)
                 {
                     if (SyntheticId(definition.Target, definition.ItemId, sub, isTime) is not { } id) {
                         return;
@@ -122,8 +131,9 @@ public sealed partial class WiredRoomVariables
                     }
 
                     var derived = definition with { ItemId = id, Name = definition.Name + "." + key };
-                    derivations.Add(new(derived.Target, derived.Token), new(source ?? new(definition.Target, definition.Token), read, requiresValue, requiresTimestamps));
+                    derivations.Add(new(derived.Target, derived.Token), new(source ?? new(definition.Target, definition.Token), read, requiresValue, requiresTimestamps, write));
                     derivedDefinitions.Add(derived);
+                    connectors[id] = connector;
                 }
             }
 
@@ -135,7 +145,7 @@ public sealed partial class WiredRoomVariables
             }
 
             var variables = endpoints.Select(endpoint => WiredNativeCatalogProjection.Project(endpoint,
-                endpoint.Description.IsDerived ? null : connectors.GetValueOrDefault(endpoint.Description.Definition.ItemId)))
+                connectors.GetValueOrDefault(endpoint.Description.Definition.ItemId)))
                 .OrderBy(variable => variable.Target).ThenBy(variable => variable.Name, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(variable => variable.Id, StringComparer.Ordinal).Concat(WiredNativeCatalogProjection.Builtins).ToImmutableArray();
 
@@ -218,7 +228,7 @@ public sealed partial class WiredRoomVariables
                     throw new ArgumentException("Invalid captured level metadata.");
                 }
 
-                var keys = new[] { "current_level", "current_xp", "level_progress", "level_progress_percent", "total_xp_required", "xp_remaining", "is_at_max", "max_level" };
+                var keys = WiredVariableMetadataBox.LevelKeys;
 
                 return new(input, null, null, level, keys, Enumerable.Range(0, 8).Where(sub => (level!.SubvariableMask & (1 << sub)) != 0).ToArray());
             }

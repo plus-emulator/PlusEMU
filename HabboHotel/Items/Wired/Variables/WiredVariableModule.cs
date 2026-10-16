@@ -281,6 +281,17 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
         var definition = resolved.Definition!;
 
+        if (resolved.Compose is { } compose) {
+            // Writing a Time Utilities Value part rewrites the parent's value (observed on hhus, AIR WIN63-202610131318-860371703).
+            if (mutation != WiredVariableMutation.Set) {
+                return false;
+            }
+
+            var convert = resolved.Convert!;
+            var part = transform;
+            transform = parent => convert(new(parent, null, null)) is { } current && compose(parent, part(current.Value)) is { } next ? next : parent;
+        }
+
         if (definition.IsDurable && (!holder.CanPersist || holder.Target == WiredVariableTarget.User && holder.StableId <= 0)) {
             return false;
         }
@@ -611,7 +622,8 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 var read = Resolve(new(local.Target, local.Token), false, authority, derivations);
 
                 if (read is not null) {
-                    result.Add(new(new(local, true, true) { IsDerived = true }, read.Definition, read.Builtin, false, true));
+                    var write = Resolve(new(local.Target, local.Token), true, authority, derivations);
+                    result.Add(new(new(local, true, write is null) { IsDerived = true }, read.Definition, read.Builtin, write is not null, true));
                 }
             }
 
@@ -667,10 +679,11 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         }
     }
 
-    // The authorized final target: the builtin it echoes, otherwise the stored definition at the end of the alias chain.
+    // The authorized final target: the builtin it echoes, otherwise the stored definition at the end of the alias chain. A writable
+    // part stays its own target, so one firing's writes to a part and to its parent are never folded into one operand chain.
     private WiredVariableReference WriteTargetLocked(WiredVariableReference reference)
         => Resolve(reference, true) is { } resolved
-            ? resolved.Builtin ?? new(reference.Target, resolved.Definition!.Token)
+            ? resolved.Compose is not null ? reference : resolved.Builtin ?? new(reference.Target, resolved.Definition!.Token)
             : reference;
 
     private Resolved? Resolve(WiredVariableReference reference, bool writing, IWiredVariableDirectory? readDirectory = null,
@@ -679,14 +692,18 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         var authority = readDirectory ?? directory;
 
         if ((frozenDerivations is null ? derive?.Invoke(reference) : frozenDerivations.GetValueOrDefault(reference)) is { } derived) {
-            if (writing || derived.Source == reference) {
+            if (writing && derived.Write is null || derived.Source == reference) {
                 return null;
             }
 
-            var source = Resolve(derived.Source, false, authority, frozenDerivations);
+            // A writable part writes through to its parent's stored value, so the parent itself must be writable.
+            var source = Resolve(derived.Source, writing, authority, frozenDerivations);
 
             return source is null || derived.RequiresValue && !(frozenDerivations is null ? HasValue(source) : NativeHasValue(source))
-                || derived.RequiresTimestamps && source.Definition is null ? null : source with { Convert = derived.Convert };
+                || derived.RequiresTimestamps && source.Definition is null
+                || derived.RequiresCreationTime && source.Definition?.Target == WiredVariableTarget.Global
+                || writing && source.Definition is not { HasValue: true }
+                ? null : source with { Convert = derived.Convert, Compose = writing ? derived.Write : null };
         }
 
         var visited = new HashSet<uint>();
@@ -774,11 +791,32 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     /// <summary>The shared variables this room's owner offers from their other rooms, in directory order.</summary>
     public IReadOnlyList<WiredSharedVariable> ListShared() => directory.GetRoomOwner(roomId) is { } owner ? directory.ListShared(owner, roomId) : [];
 
+    /// <summary>
+    /// A parent change seen through an interceptable part (a Time Utilities Value part): the change keyed by the part, with the part's
+    /// before and after values. Null when the reference is not such a part of the changed variable.
+    /// </summary>
+    internal WiredVariableChange? ProjectPartChange(WiredVariableReference reference, WiredVariableChange change)
+    {
+        lock (_gate) {
+            if (derive?.Invoke(reference) is not { Write: not null } derived || !TryDefinitionId(reference.Token, out var partId)
+                || Resolve(reference, true) is not { Definition: { } parent } resolved
+                || parent.ItemId != change.Key.DefinitionId || parent.Target != change.Key.Target || change.InternalKey.Length != 0) {
+                return null;
+            }
+
+            var before = change.Before is null ? null : resolved.Convert!(change.Before);
+            var after = change.After is null ? null : resolved.Convert!(change.After);
+
+            return change with { Key = change.Key with { DefinitionId = partId }, Before = before, After = after };
+        }
+    }
+
     public static bool TryDefinitionId(string token, out uint id) =>
         uint.TryParse(token.StartsWith("custom:", StringComparison.Ordinal) ? token[7..] : token,
             NumberStyles.None, CultureInfo.InvariantCulture, out id) && id > 0;
 
-    private sealed record Resolved(WiredVariableDefinition? Definition, WiredVariableReference? Builtin, WiredVariableAuthorization? Authorization, Func<WiredVariableValue, WiredVariableValue?>? Convert = null);
+    private sealed record Resolved(WiredVariableDefinition? Definition, WiredVariableReference? Builtin, WiredVariableAuthorization? Authorization,
+        Func<WiredVariableValue, WiredVariableValue?>? Convert = null, Func<long, long, long?>? Compose = null);
 
     private sealed class ReadDirectory(IWiredVariableDirectory source) : IWiredVariableDirectory
     {

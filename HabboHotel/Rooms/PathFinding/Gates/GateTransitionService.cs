@@ -106,7 +106,13 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
 
         var mark = FurnitureStateEvents.Mark();
         item.LegacyDataString = state;
-        item.UpdateState(persist, true);
+
+        if (reason == GateCloseReason.Wired && item.GetRoom() is { } room) {
+            room.GetWired().PublishState(item, persist);
+        }
+        else {
+            item.UpdateState(persist, true);
+        }
 
         using (FurnitureStateEvents.FollowWrite(mark)) {
             afterWrite?.Invoke(item);

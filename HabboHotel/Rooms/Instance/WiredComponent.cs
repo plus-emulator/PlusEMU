@@ -452,10 +452,36 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
         lock (_pendingFlashes) {
             _pendingFlashes.Add(item);
+
+            // An antenna is not a box: its flip is not held to the state update.
+            if (box == null) {
+                _pendingImmediate.Add(item);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610131318-860371703: a furni state written by wired goes out in the tick's data batch, with the antenna flips
+    /// and any due box flashes, on every wired tick and ahead of that tick's movement packet. Other data formats keep the object update.
+    /// </summary>
+    internal void PublishState(Item item, bool persist)
+    {
+        if (!item.IsFloorItem || item.ExtraData is not Plus.HabboHotel.Items.DataFormat.LegacyDataFormat) {
+            item.UpdateState(persist, true);
+
+            return;
+        }
+
+        item.UpdateState(persist, false);
+
+        lock (_pendingFlashes) {
+            _pendingFlashes.Add(item);
+            _pendingImmediate.Add(item);
         }
     }
 
     private readonly HashSet<Item> _pendingFlashes = [];
+    private readonly HashSet<Item> _pendingImmediate = [];
     private readonly Dictionary<uint, long> _flashWindows = [];
     private long _nextFlashUpdate;
 
@@ -466,13 +492,27 @@ public partial class WiredComponent : IWiredRuntimeOperations
         var now = (long)Stopwatch.GetElapsedTime(0).TotalMilliseconds;
 
         lock (_pendingFlashes) {
-            if (!force && now < _nextFlashUpdate || _pendingFlashes.Count == 0) {
+            if (_pendingFlashes.Count == 0) {
                 return;
             }
 
-            _nextFlashUpdate = now - now % WiredFlashStates.StateUpdateMilliseconds + WiredFlashStates.StateUpdateMilliseconds;
-            items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
-            _pendingFlashes.Clear();
+            // Observed on AIR WIN63-202610131318-860371703: under a 50 ms timer the furni states go out on every wired tick while each box's
+            // flash stays on the 500 ms state updates.
+            if (!force && now < _nextFlashUpdate) {
+                if (_pendingImmediate.Count == 0) {
+                    return;
+                }
+
+                items = [.. _pendingImmediate.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
+                _pendingFlashes.ExceptWith(_pendingImmediate);
+                _pendingImmediate.Clear();
+            }
+            else {
+                _nextFlashUpdate = now - now % WiredFlashStates.StateUpdateMilliseconds + WiredFlashStates.StateUpdateMilliseconds;
+                items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
+                _pendingFlashes.Clear();
+                _pendingImmediate.Clear();
+            }
         }
 
         _room.SendObjectsData(items);

@@ -410,7 +410,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 {
                     var mark = FurnitureStateEvents.Mark();
                     item.LegacyDataString = state;
-                    item.UpdateState();
+
+                    context.Room.GetWired().PublishState(item, true);
 
                     if (FurnitureStateEvents.TakeWriteSince(item, mark)) {
                         _publish(new(WiredEventKind.StateChanged) { Actor = FurnitureStateEvents.Present(context.Room, context.Event.Actor), EventItem = item });

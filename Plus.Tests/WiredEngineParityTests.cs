@@ -463,8 +463,32 @@ public partial class WiredRuntimeEngineTests
         var configuration = new WiredConfiguration { IntParams = [1] };
         Assert.False(timers.TryFire("wf_trg_periodically", 1, configuration, 0, 0, 0));
         Assert.True(timers.TryFire("wf_trg_periodically", 1, configuration, 750, 750, 0));
-        Assert.False(timers.TryFire("wf_trg_periodically", 1, configuration, 1000, 1000, 0));
-        Assert.True(timers.TryFire("wf_trg_periodically", 1, configuration, 1250, 1250, 0));
+        // Observed on AIR WIN63-202610131318-860371703: the 500 ms timer stays on the room's 500 ms grid, so a late firing at 750 waits
+        // for 1000, not 1250.
+        Assert.False(timers.TryFire("wf_trg_periodically", 1, configuration, 999, 999, 0));
+        Assert.True(timers.TryFire("wf_trg_periodically", 1, configuration, 1000, 1000, 0));
+        Assert.False(timers.TryFire("wf_trg_periodically", 1, configuration, 1250, 1250, 0));
+        Assert.True(timers.TryFire("wf_trg_periodically", 1, configuration, 1500, 1500, 0));
+        // The longer and shorter repeaters keep their phase from the poll.
+        Assert.False(timers.TryFire("wf_trg_period_long", 2, configuration, 0, 0, 0));
+        Assert.True(timers.TryFire("wf_trg_period_long", 2, configuration, 5750, 5750, 0));
+        Assert.False(timers.TryFire("wf_trg_period_long", 2, configuration, 10500, 10500, 0));
+        Assert.True(timers.TryFire("wf_trg_period_long", 2, configuration, 10750, 10750, 0));
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703: armed at an arbitrary phase (.605), the 500 ms timer first fires on the next boundary.
+    [Theory]
+    [InlineData(105, 500)]
+    [InlineData(499, 500)]
+    [InlineData(500, 1000)]
+    public void A500MsTimerFirstFiresOnTheNextRoomBoundaryAfterItIsArmed(long armedAt, long firstAt)
+    {
+        var timers = new WiredTimedTriggers();
+        var configuration = new WiredConfiguration { IntParams = [1] };
+        Assert.False(timers.TryFire("wf_trg_periodically", 1, configuration, armedAt, 0, 0));
+        Assert.False(timers.TryFire("wf_trg_periodically", 1, configuration, firstAt - 1, 0, 0));
+        Assert.True(timers.TryFire("wf_trg_periodically", 1, configuration, firstAt, 0, 0));
+        Assert.True(timers.TryFire("wf_trg_periodically", 1, configuration, firstAt + 500, 0, 0));
     }
 
     [Theory]

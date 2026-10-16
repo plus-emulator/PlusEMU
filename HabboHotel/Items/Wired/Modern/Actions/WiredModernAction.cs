@@ -104,6 +104,9 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             && config.IntParams[0] is >= 0 and <= 7 && config.IntParams[1] == 0) {
             slot = "items";
         }
+        else if (name == "wf_act_rel_mov" && config.IntParams.Length == 5) {
+            slot = "movers";
+        }
         else if (name == "wf_act_match_to_sshot" && config.IntParams.Length == 5
             && config.IntParams.Take(4).SequenceEqual(new[] { 0, 0, 1, 1 })
             && config.Snapshots.All(snapshot => snapshot.Wall == null)) {

@@ -19,6 +19,8 @@ public sealed class WiredRuntimeContext
     internal bool ResumeImmediately { get; set; }
     internal WiredFurniturePublication? Publication { get; set; }
     internal WiredFurniturePublication? InheritedPublication { get; set; }
+    // The stack firing that is running this action; effects of one firing share it (null when unknown).
+    internal object? Firing { get; set; }
     public long NowMilliseconds { get; internal set; }
     public WiredSelection Triggering { get; internal set; } = new();
     public WiredSelection SelectorPool { get; } = new();
@@ -108,6 +110,7 @@ public sealed class WiredRuntimeContext
             ResumeImmediately = ResumeImmediately,
             Publication = Publication,
             InheritedPublication = InheritedPublication,
+            Firing = Firing,
             NowMilliseconds = NowMilliseconds,
             Trigger = Trigger,
             Triggering = Triggering.Copy(),

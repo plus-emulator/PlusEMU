@@ -235,7 +235,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             var aimed = projectile == null ? null
                 : AimShooter(context, projectile, (long)item.GetX - source.X, (long)item.GetY - source.Y);
 
-            if (context.Publication?.Append(item, movement, style) == true) {
+            if (context.Publication?.Append(item, movement, style, context.Firing, policy.ExecuteInOrder) == true) {
                 if (aimed is { } late && IsCurrentAim(room, late)) {
                     room.SendPacket(late.Turn);
                 }

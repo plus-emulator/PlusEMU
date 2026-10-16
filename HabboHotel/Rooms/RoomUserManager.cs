@@ -941,6 +941,7 @@ public class RoomUserManager
 
             if (UsesV2Movement) {
                 _room.GetGameMap().Navigation!.Executor.Tick();
+                _room.GetGameMap().Navigation!.TickMounts();
             }
             else {
                 CycleUsers();

@@ -138,6 +138,11 @@ internal sealed record WiredNativeEndpoint(WiredVariableDescription Description,
 
 internal static class WiredNativeCatalogProjection
 {
+    private const string BuiltinCatalogueResource = "Plus.Wired.BuiltinCatalogue.json";
+
+    // Declared before Builtins: static fields initialise in textual order.
+    private static readonly Lazy<IReadOnlyDictionary<string, BuiltinListing>> BuiltinListings = new(LoadBuiltinListings);
+
     /// <summary>
     /// The built-in (@) and smart (~) variables every room catalogue lists, under Habbo's fixed ids. The AIR variable pickers
     /// (NewVariablePicker.filteredAllVariables, WIN63-202610131318) list only the room catalogue, so these rows are what puts
@@ -145,14 +150,50 @@ internal static class WiredNativeCatalogProjection
     /// </summary>
     internal static ImmutableArray<WiredNativeVariable> Builtins { get; } = [.. WiredHabboVariableIds.All.Select(Builtin)];
 
+    /// <summary>
+    /// Habbo's listing of each built-in row (WiredBuiltinCatalogue.json, decoded from hhus WiredAllVariablesDiffs on AIR
+    /// WIN63-202610131318-860371703): its type (3 for every ~ row), whether it is always available or invisible, and its text
+    /// connector. An empty connector is still a connector: the AIR client then renders @position as "x: 8, y: 8".
+    /// </summary>
+    private sealed record BuiltinListing(int Type, bool AlwaysAvailable, bool IsInvisible,
+        ImmutableArray<KeyValuePair<int, string>>? Connector, string? TextConnectorFallback);
+
     private static WiredNativeVariable Builtin((string Id, WiredVariableTarget Target, string Token) entry)
     {
         var reference = new WiredVariableReference(entry.Target, entry.Token);
         var hasValue = RoomWiredBuiltinVariables.HasNumericValue(reference);
+        var name = entry.Token["internal:".Length..];
+        var target = CatalogTarget(entry.Target);
 
-        return new(entry.Id, 1, entry.Token["internal:".Length..], 999, CatalogTarget(entry.Target), false,
+        if (!BuiltinListings.Value.TryGetValue(entry.Id, out var listing)) {
+            throw new InvalidOperationException($"Built-in variable {entry.Id} ({name}) has no row in {BuiltinCatalogueResource}.");
+        }
+
+        // The behaviour flags stay ours: they gate what this server can actually read, write or create.
+        return new(entry.Id, listing.Type, name, 999, target, listing.AlwaysAvailable,
             RoomWiredBuiltinVariables.SupportsPresenceMutation(reference), hasValue,
-            hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference), false, false, false, false, null);
+            hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference), false, listing.IsInvisible, false, false,
+            listing.Connector) { TextConnectorFallback = listing.TextConnectorFallback };
+    }
+
+    private static IReadOnlyDictionary<string, BuiltinListing> LoadBuiltinListings()
+    {
+        using var stream = typeof(WiredNativeCatalogProjection).Assembly.GetManifestResourceStream(BuiltinCatalogueResource)
+            ?? throw new InvalidOperationException($"Embedded resource {BuiltinCatalogueResource} is missing.");
+        using var document = System.Text.Json.JsonDocument.Parse(stream);
+        var listings = new Dictionary<string, BuiltinListing>(StringComparer.Ordinal);
+
+        foreach (var row in document.RootElement.GetProperty("rows").EnumerateArray()) {
+            ImmutableArray<KeyValuePair<int, string>>? connector = row.TryGetProperty("textConnector", out var pairs)
+                ? [.. pairs.EnumerateArray().Select(pair => new KeyValuePair<int, string>(pair[0].GetInt32(), pair[1].GetString()!))]
+                : null;
+            var fallback = row.TryGetProperty("textConnectorFallback", out var text) ? text.GetString() : null;
+
+            listings.Add(row.GetProperty("id").GetString()!, new(row.GetProperty("type").GetInt32(),
+                row.GetProperty("alwaysAvailable").GetBoolean(), row.GetProperty("isInvisible").GetBoolean(), connector, fallback));
+        }
+
+        return listings;
     }
 
     private static int CatalogTarget(WiredVariableTarget target) => target switch

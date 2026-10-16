@@ -142,6 +142,7 @@ public sealed class GroupAppearanceService(
 
         foreach (var snapshot in snapshots) {
             room.SendPacket(new ObjectUpdateComposer(snapshot));
+            room.SendPacket(new FurnitureMetadataComposer([snapshot]));
         }
     }
 }

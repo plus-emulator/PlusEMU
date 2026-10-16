@@ -159,7 +159,7 @@ public partial class PlacedFurniRoomTests
         _client.Packets.Clear();
         Assert.True(action.Execute(context));
         Assert.Equal(":w=3,7 l=12,16 l", wall.WallCoordinates);
-        Assert.Equal(ServerPacketHeader.ItemUpdateComposer, Assert.Single(_client.Packets).Header);
+        Assert.Equal(ServerPacketHeader.ItemUpdateComposer, Assert.Single(_client.Packets, packet => packet.Header != ServerPacketHeader.FurnitureMetadataComposer).Header);
     }
 
     [WiredChestDatabaseFact]
@@ -225,7 +225,7 @@ public partial class PlacedFurniRoomTests
         context.Policy.Addons.AnimationTimeMs = duration;
         _client.Packets.Clear();
         Assert.True(action.Execute(context));
-        var packet = Assert.Single(_client.Packets);
+        var packet = Assert.Single(_client.Packets, packet => packet.Header != ServerPacketHeader.FurnitureMetadataComposer);
         Assert.Equal(disabled ? ServerPacketHeader.ItemUpdateComposer : ServerPacketHeader.WiredMovementsComposer, packet.Header);
 
         if (!disabled) {

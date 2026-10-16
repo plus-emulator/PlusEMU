@@ -99,8 +99,7 @@ public class FurnitureWireTests
 
         new ItemUpdateComposer(RoomItemSnapshot.Capture(item)).Compose(packet);
 
-        Assert.Equal(7, packet.Writes[^8]);
-        Assert.Equal(new object[] { 0, 0, 0, 0, 0, 0, 0 }, packet.Writes.TakeLast(7));
+        Assert.Equal(7, packet.Writes[^1]);
         Assert.DoesNotContain(99u, packet.Writes);
     }
 

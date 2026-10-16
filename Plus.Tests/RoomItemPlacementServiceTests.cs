@@ -49,7 +49,7 @@ public partial class PlacedFurniRoomTests
         var service = PlacementService(() => throw new InvalidOperationException("Wall move must not progress placement rewards"));
         service.MoveWall(_room, _client, 30, ":w=2,2 l=1,1 r");
         Assert.Equal(":w=2,2 l=1,1 r", item.WallCoordinates);
-        Assert.Equal(ServerPacketHeader.ItemUpdateComposer, Assert.Single(_client.Sent));
+        Assert.Equal(new[] { ServerPacketHeader.ItemUpdateComposer, ServerPacketHeader.FurnitureMetadataComposer }, _client.Sent);
         _client.Sent.Clear();
         service.MoveWall(_room, _client, 30, "malformed");
         Assert.Equal(":w=2,2 l=1,1 r", item.WallCoordinates);

@@ -207,6 +207,7 @@ public partial class RoomItemHandling
         if (snapshots != null) {
             foreach (var snapshot in snapshots) {
                 _room.SendPacket(new ObjectUpdateComposer(snapshot));
+                _room.SendPacket(new FurnitureMetadataComposer([snapshot]));
             }
         }
 

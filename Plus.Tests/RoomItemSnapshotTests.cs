@@ -35,7 +35,7 @@ public sealed class RoomItemSnapshotTests
         var item = Item(data);
         var composer = new ObjectUpdateComposer(RoomItemSnapshot.Capture(item));
         var fields = new object[] { 17u, 31, 0, 0, 0, "1.5", "0.25", 1 }
-            .Concat(dataFields).Concat(new object[] { -1, 1, 7, 1, 0, 0, 1, 2, 3, 0 }).ToArray();
+            .Concat(dataFields).Concat(new object[] { -1, 1, 7 }).ToArray();
         Assert.Equal(Encode(fields), Encode(composer));
     }
 
@@ -49,7 +49,7 @@ public sealed class RoomItemSnapshotTests
         var snapshot = RoomItemSnapshot.Capture(item);
         var composer = new ObjectAddComposer(snapshot);
         var expected = Encode(new object[] { 17u, 31, 0, 0, 0, "1.5", "0.25", 1,
-            0xFF01, 1, "state", "before", 4u, 20u, -1, 1, 7, 1, 0, 0, 1, 2, 3, 0, "Alice" });
+            0xFF01, 1, "state", "before", 4u, 20u, -1, 1, 7, "Alice" });
         data.Data["state"] = "after";
         data.Data["new"] = "entry";
         item.GetZ = 9;
@@ -72,8 +72,8 @@ public sealed class RoomItemSnapshotTests
         var furniture = RoomFurnitureSnapshot.Capture(items, 7, "room owner");
         var wall = new ItemAddComposer(furniture.Items[0]);
         var all = new ItemsComposer(furniture);
-        var expectedWall = Encode(new object[] { "17", 31, ":w=1,1 l=1,1 r", "FFFF00", -1, 1, 7, 1, 0, 0, 1, 2, 3, 0, "Alice" });
-        var expectedAll = Encode(new object[] { 1, 7, "room owner", 1, "17", 31, ":w=1,1 l=1,1 r", "FFFF00", -1, 1, 7, 1, 0, 0, 1, 2, 3, 0 });
+        var expectedWall = Encode(new object[] { "17", 31, ":w=1,1 l=1,1 r", "FFFF00", -1, 1, 7, "Alice" });
+        var expectedAll = Encode(new object[] { 1, 7, "room owner", 1, "17", 31, ":w=1,1 l=1,1 r", "FFFF00", -1, 1, 7 });
         item.LegacyDataString = "changed";
         item.WallCoordinates = "changed";
         item.Username = "changed";

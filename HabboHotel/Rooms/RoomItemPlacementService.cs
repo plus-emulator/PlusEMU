@@ -239,7 +239,9 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
         }
 
         room.GetRoomItemHandler().UpdateItem(item);
-        room.SendPacket(new ItemUpdateComposer(RoomItemSnapshot.Capture(item)));
+        var furnitureSnapshot = RoomItemSnapshot.Capture(item);
+        room.SendPacket(new ItemUpdateComposer(furnitureSnapshot));
+        room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
     }
 
     public void PlaceSticky(Room room, GameClient session, uint itemId, string location)
@@ -297,7 +299,9 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
                     return;
                 }
 
-                session.Send(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
+                var furnitureSnapshot = RoomItemSnapshot.Capture(item);
+                session.Send(new ObjectUpdateComposer(furnitureSnapshot));
+                session.Send(new FurnitureMetadataComposer([furnitureSnapshot]));
 
                 return;
             }
@@ -318,7 +322,9 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
 
         if (item.IsTemporary) {
             if (!room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, false, false, true, height: BuildHeight(room, session, item, x, y, rotation))) {
-                room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
+                var furnitureSnapshot = RoomItemSnapshot.Capture(item);
+                room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
+                room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
             }
 
             return;
@@ -336,7 +342,9 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
         }
 
         if (!room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, false, false, true, height: BuildHeight(room, session, item, x, y, rotation))) {
-            room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
+            var furnitureSnapshot = RoomItemSnapshot.Capture(item);
+            room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
+            room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
 
             return;
         }

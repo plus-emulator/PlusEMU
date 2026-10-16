@@ -360,6 +360,48 @@ public sealed partial class WiredGlideConveyorTests
             }
         }
 
+        // Places a wired box while the room runs, as RoomItemPlacementService does: map first, then LoadWiredBox.
+        public Item PlaceWired(uint id, int x, int y, double z, string name)
+        {
+            var item = new Item
+            {
+                Id = id,
+                RoomId = 14,
+                ExtraData = new LegacyDataFormat { Data = "" },
+                Definition = new()
+                {
+                    Type = ItemType.Floor,
+                    Width = 1,
+                    Length = 1,
+                    Height = 0.65,
+                    Stackable = true,
+                    Modes = 1,
+                    ItemName = name,
+                    PublicName = name,
+                    InteractionName = name,
+                    InteractionType = InteractionTypes.GetTypeFromString(name),
+                    AdjustableHeights = [],
+                    VendingIds = []
+                }
+            };
+            Set(item, "_room", _room);
+            item.SetState(x, y, z, Gamemap.GetAffectedTiles(1, 1, x, y, 0));
+            Items[item.Id] = item;
+            _room.RunFastPass(() =>
+            {
+                _map.AddToMap(item);
+
+                if (_live && _map.Navigation != null) {
+                    item.EnableNavigationSynchronization();
+                    _map.Navigation.Inputs.Attach(item);
+                }
+
+                Assert.NotNull(_wired.LoadWiredBox(item));
+            });
+
+            return item;
+        }
+
         public Plus.HabboHotel.Items.Wired.Runtime.WiredRuntimeContext MovementContext() =>
             new(_room, new(Plus.HabboHotel.Items.Wired.Runtime.WiredEventKind.Use),
                 new(() => Items.Values, () => _users.Values), _wired);

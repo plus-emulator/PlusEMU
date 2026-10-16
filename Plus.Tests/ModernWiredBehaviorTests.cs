@@ -83,7 +83,7 @@ public partial class ModernWiredBehaviorTests
         Assert.Equal(new[] { (1u, 6, 7) }, requests);
     }
 
-    // Behavioral comparison with Habz reference commits 0ecad29/21a861e; not an official runtime capture.
+    // Observed r94 F1 (hhus 2026-10-16, AIR WIN63-202610131318-860371703): 6 movers onto 2 targets split 3/3 in all 8 firings.
     [Theory]
     [InlineData(0)]
     [InlineData(17)]

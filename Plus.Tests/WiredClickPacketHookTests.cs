@@ -164,8 +164,6 @@ public class WiredClickPacketHookTests
     {
         Assert.Equal(hasClick, packet.ReadBool());
         Assert.Equal(0, packet.ReadInt());
-        Assert.Equal(1, packet.ReadInt());
-        Assert.Equal(1, packet.ReadInt());
         Assert.False(packet.HasDataRemaining());
     }
 

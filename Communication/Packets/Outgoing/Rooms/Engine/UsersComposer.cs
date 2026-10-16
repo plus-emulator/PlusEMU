@@ -5,8 +5,16 @@ using Plus.HabboHotel.Rooms;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Engine;
 
+/// <summary>
+/// class_2126 -> class_2291 (WIN63-202610131318-860371703, parse L72-186). Habbo (1): sex, group id, group status, group name,
+/// swim figure, achievement score, moderator, badges rank. Pet (2): type, owner id, owner name, rarity, saddle, riding, can breed,
+/// can harvest, can revive, breeding permission, level, posture. Rentable bot (4): sex, owner id, owner name, skills. Nothing follows.
+/// </summary>
 public sealed class UsersComposer : IServerPacket
 {
+    /// <summary>No rank; class_2587.flush L63 defaults to it and a negative rank is hidden.</summary>
+    private const int BadgesRankUnknown = -1;
+
     private readonly ImmutableArray<RoomUserSnapshot> _users;
 
     public UsersComposer(RoomUserSnapshot user) : this([user]) { }
@@ -37,6 +45,7 @@ public sealed class UsersComposer : IServerPacket
                 packet.WriteString("");
                 packet.WriteInteger(user.AchievementPoints);
                 packet.WriteBoolean(false);
+                packet.WriteInteger(BadgesRankUnknown);
             }
             else if (user.IsPet) {
                 packet.WriteInteger(user.PetType);
@@ -45,8 +54,11 @@ public sealed class UsersComposer : IServerPacket
                 packet.WriteInteger(1);
                 packet.WriteBoolean(user.HasSaddle);
                 packet.WriteBoolean(user.IsRidden);
-                packet.WriteInteger(0);
-                packet.WriteInteger(0);
+                packet.WriteBoolean(false);
+                packet.WriteBoolean(false);
+                packet.WriteBoolean(false);
+                packet.WriteBoolean(false);
+                packet.WriteInteger(user.PetLevel);
                 packet.WriteString("");
             }
             else {
@@ -60,9 +72,6 @@ public sealed class UsersComposer : IServerPacket
                 packet.WriteShort(4);
                 packet.WriteShort(5);
             }
-
-            packet.WriteString("");
-            packet.WriteInteger(0);
         }
     }
 }

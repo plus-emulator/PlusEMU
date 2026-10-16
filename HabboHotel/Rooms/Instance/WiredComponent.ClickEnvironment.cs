@@ -25,7 +25,7 @@ public partial class WiredComponent
 
         foreach (var viewer in _fxViewers.Keys) {
             if (ReferenceEquals(_room.GetRoomUserManager().GetRoomUserByVirtualId(viewer.VirtualId), viewer)) {
-                viewer.GetClient()?.Send(new WiredEnvironmentComposer(_clickUserTriggers.Count != 0, _room.Id, EnabledAchievements()));
+                viewer.GetClient()?.Send(new WiredEnvironmentComposer(_clickUserTriggers.Count != 0, EnabledAchievements()));
             }
         }
     }

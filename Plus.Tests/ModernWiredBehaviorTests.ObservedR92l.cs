@@ -62,8 +62,9 @@ public partial class ModernWiredBehaviorTests
         Assert.True(singles.Count > 1);
     }
 
-    // r92l r92l-sshot-hidden ms0..ms5 and r92l-sshot-perm: the reopened frame of a saved snapshot ends with the hotel int 0 and
-    // carries the snapshot text with N for each part the options leave out; a fresh box opens with [0,0,0,0,1] and no text.
+    // r92l r92l-sshot-hidden ms0..ms5 and r92l-sshot-perm: the reopened frame of a saved snapshot carries the snapshot text with N
+    // for each part the options leave out; a fresh box opens with the four option ints [0,0,0,0] and no text. AIR reads four ints
+    // (class_4247.as:37-67), so the frame sends no fifth int.
     [Theory]
     [InlineData(0, 0, 0, 0, "2147418170,N,N,N,N,N")]
     [InlineData(1, 0, 0, 0, "2147418170,0,N,N,N,N")]
@@ -71,11 +72,11 @@ public partial class ModernWiredBehaviorTests
     [InlineData(0, 0, 1, 0, "2147418170,N,N,8,2,N")]
     [InlineData(0, 0, 0, 1, "2147418170,N,N,N,N,0")]
     [InlineData(1, 1, 1, 1, "2147418170,0,0,8,2,0")]
-    public void SnapshotFrameCarriesTheHotelTextAndTrailingInt(int state, int rotation, int position, int altitude, string text)
+    public void SnapshotFrameCarriesTheHotelText(int state, int rotation, int position, int altitude, string text)
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_act_match_to_sshot", out var descriptor));
         var fresh = WiredNativeEditorProjection.HotelFrame(descriptor, WiredNativeEditorProjection.DefaultNative(descriptor));
-        Assert.Equal([0, 0, 0, 0, 1], fresh.OwnedIntParams.ToArray());
+        Assert.Equal([0, 0, 0, 0], fresh.OwnedIntParams.ToArray());
         Assert.Equal("", fresh.Text);
 
         var saved = WiredNativeEditorProjection.DefaultNative(descriptor) with
@@ -86,7 +87,7 @@ public partial class ModernWiredBehaviorTests
         };
         var frame = WiredNativeEditorProjection.HotelFrame(descriptor, saved);
 
-        Assert.Equal([state, rotation, position, altitude, 0], frame.OwnedIntParams.ToArray());
+        Assert.Equal([state, rotation, position, altitude], frame.OwnedIntParams.ToArray());
         Assert.Equal(text, frame.Text);
     }
 

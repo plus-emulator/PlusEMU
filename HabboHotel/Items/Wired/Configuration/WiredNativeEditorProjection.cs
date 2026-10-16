@@ -131,11 +131,12 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>
-    /// The frame as the hotel sends it. move_rotate and match_to_sshot end with a hotel-owned int that is 1 until the first save
-    /// and 0 after it, whatever was saved (r92k r92h-hidden-ints, r92l r92l-sshot-hidden: [0,0,1] / [0,0,0,0,1] initially, every
-    /// reopen ...,0). A saved match_to_sshot frame carries its snapshot as text, one "id,state,rotation,x,y,altitude" entry per
+    /// The frame as the hotel sends it. move_rotate ends with a hotel-owned int that is 1 until the first save and 0 after it,
+    /// whatever was saved (r92k r92h-hidden-ints: [0,0,1] initially, every reopen ...,0). match_to_sshot sends only its four
+    /// option ints: AIR WIN63-202610131318-860371703 wired_setup/actiontypes/class_4247.as:37-67 (code 3) reads and returns exactly
+    /// four. A saved match_to_sshot frame carries its snapshot as text, one "id,state,rotation,x,y,altitude" entry per
     /// furni with N for each part the saved options do not restore (r92l r92l-sshot-hidden: [0,0,0,0] gives "id,N,N,N,N,N",
-    /// [1,1,1,1] gives "id,0,0,8,2,0"). The AIR editors read only the leading ints and never send these back.
+    /// [1,1,1,1] gives "id,0,0,8,2,0").
     /// </summary>
     public static WiredNativeEditorConfiguration HotelFrame(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native)
     {
@@ -147,7 +148,9 @@ public static class WiredNativeEditorProjection
 
         var defaults = Metadata(name).OwnedDefaults;
         var fresh = native.PrimaryItems.IsEmpty && native.SavedState.Snapshots.IsEmpty && native.OwnedIntParams.SequenceEqual(defaults);
-        var frame = native with { OwnedIntParams = [.. native.OwnedIntParams, fresh ? 1 : 0] };
+        var frame = name == "wf_act_match_to_sshot"
+            ? native
+            : native with { OwnedIntParams = [.. native.OwnedIntParams, fresh ? 1 : 0] };
 
         if (name == "wf_act_match_to_sshot" && !fresh && native.OwnedIntParams.Length == 4) {
             var p = native.OwnedIntParams;

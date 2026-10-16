@@ -1,10 +1,6 @@
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Runtime;
-using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Items.Wired.Configuration;
-using Plus.HabboHotel.Items.Wired.Modern.Addons;
-using Plus.HabboHotel.Items.Wired.Modern.Conditions;
-using Plus.HabboHotel.Items.Wired.Modern.Selectors;
 using Plus.HabboHotel.Items.Wired.Modern.Triggers;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.PathFinding;
@@ -307,25 +303,16 @@ internal sealed partial class WiredStackEngine
         var keepsFast = false;
 
         foreach (var box in _items.Values) {
-            var type = box.GetType();
-
-            if (type != typeof(WiredModernAction) && type != typeof(WiredModernCondition)
-                && type != typeof(WiredSelectorBox) && type != typeof(WiredAddonBox)
-                && type != typeof(WiredModernTrigger) && type != typeof(WiredModernTimedTrigger)
-                // Passive room metadata cannot observe a collision or publish movement.
-                && type != typeof(WiredVariableDefinitionBox) && type != typeof(WiredVariableMetadataBox)
-                && type != typeof(WiredVariableAddonBox) && type != typeof(WiredOctoberAddonBox)
-                // A variable action or condition runs only inside its own stack, which the collision check below covers.
-                && type != typeof(WiredVariableConfiguredBox)) {
+            if (SplitsCarriedPulse(box)) {
                 return false;
             }
 
-            keepsFast |= type == typeof(WiredModernTimedTrigger) && RuntimeSupported((IWiredConfiguredItem)box);
+            keepsFast |= box is WiredModernTimedTrigger timer && RuntimeSupported(timer);
             var previous = _stackSnapshot[index++];
 
             if (!ReferenceEquals(box, previous.Box) || !_attached(box)
                 || (box.Item.GetX, box.Item.GetY, box.Item.GetZ) != (previous.X, previous.Y, previous.Z)
-                || box is WiredModernTrigger trigger && trigger.Events.Contains(WiredEventKind.Collision)
+                || box is IWiredContextualTrigger trigger && trigger.Events.Contains(WiredEventKind.Collision)
                     && (!_stacks.TryGetValue((box.Item.GetX, box.Item.GetY), out var stack)
                         || stack.Any(candidate => !ReferenceEquals(candidate, box)))) {
                 return false;
@@ -336,6 +323,20 @@ internal sealed partial class WiredStackEngine
         // Otherwise an opaque fast-work observer could run before the open segment is sealed.
         return keepsFast;
     }
+
+    // Only a box that can observe a carried tile landing on a user, or publish movement outside its own stack, splits the open
+    // pulse. Actions, conditions, selectors, add-ons, variable boxes, chests and non-collision triggers run only when their own
+    // stack fires, and that dispatch seals the publication first.
+    private static bool SplitsCarriedPulse(IWiredItem box) => box switch
+    {
+        // Legacy boxes, and box types from outside the server, run callbacks the engine cannot vouch for: an Events getter,
+        // a poll or a reset could publish before the open segment is sealed.
+        not IWiredConfiguredItem => true,
+        _ when box.GetType().Assembly != typeof(WiredStackEngine).Assembly => true,
+        // The native timer only reads deadlines when polled; any other timer's poll may publish.
+        IWiredTimedTrigger and not WiredModernTimedTrigger => true,
+        _ => false
+    };
 
     private bool CollisionStillSilent(HeadingCollisionProof proof) => proof.BindingsCurrent()
         && proof.Publication.Open && ReferenceEquals(proof.Publication, _activePublication)

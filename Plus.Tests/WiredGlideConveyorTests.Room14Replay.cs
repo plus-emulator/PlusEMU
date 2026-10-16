@@ -54,7 +54,7 @@ public sealed partial class WiredGlideConveyorTests
         RunRoom14Queue(fromX, fromY, x, [.. Room14FastQueueRows(), .. Room14OtherRows()]);
     }
 
-    private static void RunRoom14Queue(int fromX, int fromY, int x, (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] layout)
+    private static Fixture RunRoom14Queue(int fromX, int fromY, int x, (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] layout)
     {
         // Live wf_colortile stacks 0.2 high.
         var f = new Fixture(layout, live: true, colourTileHeight: 0.2);
@@ -77,5 +77,7 @@ public sealed partial class WiredGlideConveyorTests
             Assert.Equal((x + pulse, 13), (rider.X, rider.Y));
             Assert.All(homes, home => Assert.Equal(home.Value, (f.Items[home.Key].GetX, f.Items[home.Key].GetY)));
         }
+
+        return f;
     }
 }

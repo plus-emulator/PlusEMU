@@ -798,10 +798,12 @@ internal sealed partial class WiredStackEngine
     {
         var runtime = context.Runtime;
         var previous = runtime?.Publication;
+        var previousFiring = runtime?.Firing;
         var publication = PublicationFor(box, runtime);
 
         if (runtime != null) {
             runtime.Publication = publication;
+            runtime.Firing = _executingAction?.Chain;
         }
 
         try {
@@ -811,6 +813,7 @@ internal sealed partial class WiredStackEngine
         finally {
             if (runtime != null) {
                 runtime.Publication = previous;
+                runtime.Firing = previousFiring;
             }
         }
     }

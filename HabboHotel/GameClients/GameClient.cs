@@ -285,6 +285,37 @@ public abstract class GameClient
         }
     }
 
+    // One socket write per client: packets that belong together (a rider's and its horse's slides) cannot be
+    // split across sends when the transport is slow to complete the first write.
+    internal static void SendBroadcast(IReadOnlyList<IServerPacket> composers, IEnumerable<GameClient> clients)
+    {
+        foreach (var client in clients) {
+            if (client.Revision is not { } revision) {
+                continue;
+            }
+
+            var buffers = new List<(IServerPacket Composer, uint MessageId, byte[] Buffer)>(composers.Count);
+
+            foreach (var composer in composers) {
+                var outgoingMessageId = revision.InternalIdToOutgoingIdMapping[composer.MessageId];
+
+                if (client.EncodePacket(composer, outgoingMessageId) is { } buffer) {
+                    buffers.Add((composer, outgoingMessageId, buffer));
+                }
+            }
+
+            if (buffers.Count == 0) {
+                continue;
+            }
+
+            client.SendEncoded(buffers.Count == 1 ? buffers[0].Buffer : buffers.SelectMany(entry => entry.Buffer).ToArray());
+
+            foreach (var entry in buffers) {
+                client.LogPacket(entry.Composer, entry.MessageId);
+            }
+        }
+    }
+
     private byte[]? EncodePacket(IServerPacket composer, uint outgoingMessageId)
     {
         using var stream = PlusMemoryStream.GetStream();

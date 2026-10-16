@@ -964,8 +964,23 @@ public class Room
 
     public void SendPacket(List<IServerPacket> packets)
     {
-        foreach (var packet in packets) {
-            SendPacket(packet);
+        if (packets.Count <= 1) {
+            foreach (var packet in packets) {
+                SendPacket(packet);
+            }
+
+            return;
+        }
+
+        try {
+            if (_roomUserManager == null) {
+                return;
+            }
+
+            GameClient.SendBroadcast(packets, _roomUserManager.GetRoomUsers().Select(user => user?.GetClient()).OfType<GameClient>().ToList());
+        }
+        catch (Exception e) {
+            ExceptionLogger.LogException(e);
         }
     }
 

@@ -74,7 +74,7 @@ public static class WiredRoomOperations
     // A ridden horse moves only with its rider; a wired that selects the horse moves the rider.
     internal static RoomUser Rider(Room room, RoomUser user) =>
         user is { IsBot: true, RidingHorse: true } && room.GetRoomUserManager().GetRoomUserByVirtualId(user.HorseId) is
-            { IsBot: false, RidingHorse: true } rider && rider.HorseId == user.VirtualId ? rider : user;
+        { IsBot: false, RidingHorse: true } rider && rider.HorseId == user.VirtualId ? rider : user;
 
     internal static RoomUser? Horse(Room room, RoomUser user) =>
         user is { IsBot: false, RidingHorse: true } && room.GetRoomUserManager().GetRoomUserByVirtualId(user.HorseId) is { } horse

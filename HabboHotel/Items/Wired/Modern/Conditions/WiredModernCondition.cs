@@ -52,6 +52,11 @@ public sealed class WiredModernCondition : WiredModernBox
 
         // The negative furniture-on label is the empty direction: 0 is at least one empty, 1 is all empty.
         if (negative && Descriptor.CanonicalName is "wf_cnd_not_furni_on") {
+            // Observed on AIR WIN63-202610131318-860371703: the negation fails on an empty selection too, like "Furni has furni on".
+            if (Furni(context, config, "items").Length == 0) {
+                return false;
+            }
+
             config = config with { IntParams = config.IntParams.SetItem(0, config.IntParams[0] == 0 ? 1 : 0) };
         }
 

@@ -52,6 +52,37 @@ public sealed partial class WiredConditionParityTests
         Expect("wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs", mixed, true, false, false, true, "negative mixed");
     }
 
+    // Observed on AIR WIN63-202610131318-860371703 (furni source = a picks selector with nothing picked): "Furnis have avatars" passes under
+    // both all and any, "Furni has furni on" and its negation fail.
+    [Theory]
+    [InlineData("wf_cnd_furnis_hv_avtrs", true)]
+    [InlineData("wf_cnd_has_furni_on", false)]
+    [InlineData("wf_cnd_not_furni_on", false)]
+    public void QuantifiedConditionsOnAnEmptySelectionDependOnTheCondition(string name, bool expected)
+    {
+        var (room, _, _) = World();
+
+        bool RunEmpty(int radio)
+        {
+            var box = Box(room, name, _ => null);
+            var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor) with
+            {
+                OwnedIntParams = [radio],
+                FurniSourceTypes = [200]
+            };
+            Assert.True(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native, out var proposed));
+            Assert.True(box.TryValidateConfiguration(proposed, out var config, out var error), error);
+            box.ApplyConfiguration(config);
+            var context = Context(room, [], []);
+            context.SelectorKinds = WiredSelectionKind.Furni;
+            context.Selected = new();
+
+            return box.Execute(context);
+        }
+
+        Assert.Equal((expected, expected), (RunEmpty(0), RunEmpty(1)));
+    }
+
     [Theory]
     [InlineData(1, 101, "", true)]
     [InlineData(2, 101, "", false)]

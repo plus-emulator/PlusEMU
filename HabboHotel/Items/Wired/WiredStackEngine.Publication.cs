@@ -314,7 +314,9 @@ internal sealed partial class WiredStackEngine
                 && type != typeof(WiredModernTrigger) && type != typeof(WiredModernTimedTrigger)
                 // Passive room metadata cannot observe a collision or publish movement.
                 && type != typeof(WiredVariableDefinitionBox) && type != typeof(WiredVariableMetadataBox)
-                && type != typeof(WiredVariableAddonBox) && type != typeof(WiredOctoberAddonBox)) {
+                && type != typeof(WiredVariableAddonBox) && type != typeof(WiredOctoberAddonBox)
+                // A variable action or condition runs only inside its own stack, which the collision check below covers.
+                && type != typeof(WiredVariableConfiguredBox)) {
                 return false;
             }
 

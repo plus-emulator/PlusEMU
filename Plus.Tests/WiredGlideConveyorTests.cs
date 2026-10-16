@@ -274,7 +274,7 @@ public sealed partial class WiredGlideConveyorTests
         public IWiredItem Box(uint id) => ((Dictionary<uint, IWiredItem>)Get(Engine, "_items"))[id];
 
         public Fixture((uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] layout, bool live = false, string movementEngine = "v2", IRoomItemStore? itemStore = null,
-            IItemDataManager? definitions = null)
+            IItemDataManager? definitions = null, double colourTileHeight = 0.1)
         {
             _room.Id = 14;
             _room.WordFilterList = [];
@@ -328,7 +328,7 @@ public sealed partial class WiredGlideConveyorTests
                         Type = ItemType.Floor,
                         Width = 1,
                         Length = 1,
-                        Height = builderTile ? 1 : tile ? 0.1 : antenna ? 1 : 0.65,
+                        Height = builderTile ? 1 : tile ? colourTileHeight : antenna ? 1 : 0.65,
                         Stackable = true,
                         Walkable = tile,
                         Modes = tile && !builderTile ? 7 : 1,

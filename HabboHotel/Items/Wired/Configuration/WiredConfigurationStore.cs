@@ -26,7 +26,7 @@ public sealed class WiredConfigurationStore(IDatabase database) : IWiredConfigur
 
         var native = JsonSerializer.Deserialize<WiredNativeEditorConfiguration>(row.Json);
 
-        if (native == null || !WiredNativeEditorProjection.TryCompile(itemId, descriptor, native, out var runtime)) {
+        if (native == null || !WiredNativeEditorProjection.TryCompile(itemId, descriptor, native, out var runtime, storedRow: true)) {
             throw new InvalidDataException($"Invalid native Wired configuration for item {itemId}.");
         }
 
@@ -38,7 +38,7 @@ public sealed class WiredConfigurationStore(IDatabase database) : IWiredConfigur
     {
         try {
             return WiredBoxRegistry.TryGet(boxName, out var descriptor) && JsonSerializer.Deserialize<WiredNativeEditorConfiguration>(json) is { } native
-                && WiredNativeEditorProjection.TryCompile(itemId, descriptor, native, out var runtime) ? runtime : null;
+                && WiredNativeEditorProjection.TryCompile(itemId, descriptor, native, out var runtime, storedRow: true) ? runtime : null;
         }
         catch (JsonException) {
             return null;

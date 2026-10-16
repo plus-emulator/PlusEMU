@@ -21,6 +21,9 @@ public sealed record WiredEditorSnapshot(
     /// <summary>Context section 8 for the Variable Leaderboard add-on; null for every other form.</summary>
     public Plus.HabboHotel.Items.Wired.Leaderboard.WiredLeaderboardContext? Leaderboard { get; init; }
 
+    /// <summary>The user sources the stack's trigger adds to every user slot (10 under Bot Reaches User, 11 under Click User).</summary>
+    public ImmutableArray<int> TriggerContextSources { get; init; } = [];
+
     /// <param name="sharedVariablesVisible">False for an editor who may not set a reference up: the list of the owner's other rooms stays empty.</param>
     public static WiredEditorSnapshot Capture(IWiredConfiguredItem box, bool sharedVariablesVisible = true)
     {
@@ -46,7 +49,20 @@ public sealed record WiredEditorSnapshot(
                 : null,
             TextPlaceholders = Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Applies(box.Descriptor.CanonicalName)
                 ? Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Capture(box) : null,
-            Leaderboard = box.Descriptor.CanonicalName == "wf_xtra_var_leaderboard" ? box.Instance.GetWired().LeaderboardContext(box) : null
+            Leaderboard = box.Descriptor.CanonicalName == "wf_xtra_var_leaderboard" ? box.Instance.GetWired().LeaderboardContext(box) : null,
+            TriggerContextSources = TriggerContext(box)
         };
+    }
+
+    public static ImmutableArray<int> TriggerContext(IWiredConfiguredItem box) => WiredNativeEditorProjection.TriggerContextSources(StackBoxNames(box));
+
+    private static IEnumerable<string> StackBoxNames(IWiredConfiguredItem box)
+    {
+        var room = box.Instance;
+        var wired = room.GetWired();
+
+        return room.GetGameMap()?.GetCoordinatedItems(new(box.Item.GetX, box.Item.GetY))
+            .Select(item => wired.TryGet(item.Id, out var found) ? found : null).OfType<IWiredConfiguredItem>()
+            .Select(found => found.Descriptor.CanonicalName) ?? [];
     }
 }

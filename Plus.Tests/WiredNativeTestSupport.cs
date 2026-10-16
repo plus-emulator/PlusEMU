@@ -158,10 +158,10 @@ internal static partial class WiredNativeTestSupport
         };
     }
 
-    /// <summary>Compile, validate through the box and publish: the native save path without a session.</summary>
+    /// <summary>Compile, validate through the box and publish: the stored-row path without a session (either trigger-context source loads).</summary>
     public static void Install(IWiredConfiguredItem box, WiredNativeEditorConfiguration native)
     {
-        Assert.True(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native, out var runtime));
+        Assert.True(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native, out var runtime, WiredNativeEditorProjection.AnyTriggerContext));
         Assert.True(box.TryValidateConfiguration(runtime, out var validated, out var error), error);
         box.ApplyConfiguration(validated);
     }

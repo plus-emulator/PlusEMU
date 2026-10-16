@@ -17,8 +17,9 @@ internal static class WiredNativeActionEditor
     // Observed on hhus (WIN63-202610131318, r80 place card): the furni to place also offers 110, the snapshot taken at save, and opens on it.
     private static readonly int[] PlaceTemplateSources = [0, 100, 101, 110, 200, 201];
     private static readonly int[] SignalFurni = [0, 100, 101, 200, 201];
-    private static readonly int[] Users = [0, 10, 11, 200, 201];
-    private static readonly int[] MoveUsers = [0, 11, 200, 201];
+    // Observed on AIR WIN63-202610131318-860371703 (initial editor frames): user slots offer 0/200/201; 10 and 11 are added only by the
+    // stack's trigger (see WiredNativeEditorProjection.WithTriggerContext).
+    private static readonly int[] Users = [0, 200, 201];
     private static readonly int[] SignalUsers = [0, 200, 201];
     private static readonly int[] BotCodes = [0, 100, 200, 201];
     // freeze.effect.0..4 localize to fx_218, fx_12, fx_11, fx_53, fx_163. The dropdown stores the index.
@@ -53,9 +54,10 @@ internal static class WiredNativeActionEditor
         ["wf_act_rel_mov"] = Meta([Furni], [], [100], [], [0, 0], true),
         // Observed r92f r92-f2f-basic initial frame (pkt 4877): movers default to the triggering furni (0), targets to the picked furni (100).
         ["wf_act_furni_to_furni"] = Meta([FurniAndSnapshot, FurniAndSnapshot], [], [0, 100], [], []),
-        ["wf_act_furni_to_user"] = Meta([Furni], [MoveUsers], [100], [0], []),
+        ["wf_act_furni_to_user"] = Meta([Furni], [Users], [100], [0], []),
         ["wf_act_move_furni_to"] = Meta([Furni, FurniAndSnapshot], [], [100, 101], [], [0, 1]),
-        ["wf_act_match_to_sshot"] = Meta([FurniAndSnapshot], [], [100], [], [0, 0, 0, 0], true),
+        // Observed on AIR WIN63-202610131318-860371703: furni 0/100/200/201, no snapshot source.
+        ["wf_act_match_to_sshot"] = Meta([Furni], [], [100], [], [0, 0, 0, 0], true),
         // Observed r92f r92-u2f-targets initial frame (pkt 10351): users 0/200/201, no clicked-user source.
         ["wf_act_user_to_furni"] = Meta([Furni], [SignalUsers], [100], [0], [0]),
         ["wf_act_place_furni"] = Meta([PlaceTemplateSources, FurniAndSnapshot, FurniAndSnapshot], [SignalUsers, SignalUsers], [110, 0, 200], [0, 200], [0, 0, 0, 0, 0, 0, 0, 0, 0, -20], true) with

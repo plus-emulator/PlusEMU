@@ -26,12 +26,13 @@ public sealed class WiredCurrentSelectorTests
         var input = Inputs();
         input.SelectorPool.FurniIds.UnionWith([2u, 3u]);
         input = input with { FurniModified = true };
+        // Observed on AIR WIN63-202610131318-860371703: By Type offers furni 0/100/201, so the type comes from a picked furni here.
         var runtime = Compile("wf_slc_furni_bytype", native => native with
         {
-            FurniSourceTypes = [200],
+            FurniSourceTypes = [100],
             OwnedIntParams = [0],
             Filter = true,
-            PrimaryItems = [new(1, false)]
+            PrimaryItems = [new(2, false)]
         });
         var result = WiredSelectorModule.SelectRaw("wf_slc_furni_bytype", runtime, world, input);
         Assert.Equal(new uint[] { 2, 3 }, result.Selection.FurniIds.Order().ToArray());
@@ -71,7 +72,8 @@ public sealed class WiredCurrentSelectorTests
     private static WiredConfiguration Compile(string name, Func<WiredNativeEditorConfiguration, WiredNativeEditorConfiguration> edit)
     {
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
-        Assert.True(WiredNativeEditorProjection.TryCompile(1, descriptor, edit(WiredNativeEditorProjection.DefaultNative(descriptor)), out var runtime));
+        Assert.True(WiredNativeEditorProjection.TryCompile(1, descriptor, edit(WiredNativeEditorProjection.DefaultNative(descriptor)), out var runtime,
+            WiredNativeEditorProjection.AnyTriggerContext));
 
         return runtime;
     }

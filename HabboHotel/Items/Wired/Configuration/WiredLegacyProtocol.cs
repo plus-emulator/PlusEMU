@@ -152,7 +152,7 @@ public static class WiredLegacyProtocol
         WiredNativeEditorConfiguration? editor = null, int? catalogHash = null,
         IReadOnlyList<Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable>? sharedVariables = null,
         Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders? textPlaceholders = null,
-        Plus.HabboHotel.Items.Wired.Leaderboard.WiredLeaderboardContext? leaderboard = null)
+        Plus.HabboHotel.Items.Wired.Leaderboard.WiredLeaderboardContext? leaderboard = null, ImmutableArray<int> contextSources = default)
     {
         editor ??= configuration.Origin?.Native;
 
@@ -161,7 +161,7 @@ public static class WiredLegacyProtocol
             throw new InvalidDataException("This box has no proven canonical native editor projection.");
         }
 
-        var metadata = WiredNativeEditorProjection.Metadata(descriptor.CanonicalName);
+        var metadata = WiredNativeEditorProjection.WithTriggerContext(WiredNativeEditorProjection.Metadata(descriptor.CanonicalName), contextSources);
         packet.WriteInteger(furniLimit);
         WriteInts(packet, editor.PrimaryItems.Select(item => item.WireId));
         WriteInts(packet, editor.SecondaryItems.Select(item => item.WireId));

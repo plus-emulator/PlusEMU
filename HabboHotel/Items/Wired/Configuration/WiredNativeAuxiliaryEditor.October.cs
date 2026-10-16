@@ -124,7 +124,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         // LevelMatches.as:49 [level 1..30, comparison 0 lower, 1 equal, 2 higher]. LevelMatches overrides only code, inputMode, buildInputs,
         // onEditStart and readIntParamsFromForm, exactly like the badge condition (conditions/class_4263.as): its user source picker and
         // user quantifier come from the server's footer, so it advertises the footer of the other user conditions.
-        yield return new("wf_cnd_user_level", new(Sources([], [[0, 10, 11, 200, 201]], [1, 1]) with { QuantifierType = 2 }, n =>
+        yield return new("wf_cnd_user_level", new(Sources([], [[0, 200, 201]], [1, 1]) with { QuantifierType = 2 }, n =>
         {
             var p = n.OwnedIntParams;
 

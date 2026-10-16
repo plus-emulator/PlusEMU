@@ -139,7 +139,8 @@ public sealed class WiredConfigurationService(
                 return;
             }
 
-            var compiled = WiredNativeEditorProjection.TryCompile(selectedItem.Id, descriptor, native, out var runtime);
+            var compiled = WiredNativeEditorProjection.TryCompile(selectedItem.Id, descriptor, native, out var runtime,
+                WiredEditorSnapshot.TriggerContext(configured));
 
             if (!compiled) {
                 error = WiredNativeEditorProjection.SourceRejectionKey(descriptor, native) ?? error;

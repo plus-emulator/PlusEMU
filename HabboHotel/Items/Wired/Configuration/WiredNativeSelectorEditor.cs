@@ -27,10 +27,12 @@ internal static class WiredNativeSelectorEditor
         return name switch
         {
             "wf_slc_remote" => new([[0, 100, 201]], [], [100], [], defaults, false),
+            // Observed on AIR WIN63-202610131318-860371703 (initial editor frames): these selectors offer furni 0/100/201 (no selector source)
+            // and the neighborhood anchor users 0/201.
             "wf_slc_furni_bytype" or "wf_slc_furni_onfurni" or "wf_slc_users_onfurni" =>
-                new([[0, 100, 200, 201]], [], [100], [], defaults, false),
+                new([[0, 100, 201]], [], [100], [], defaults, false),
             "wf_slc_furni_neighborhood" or "wf_slc_users_neighborhood" =>
-                new([[0, 100, 200, 201]], [[0, 10, 11, 200, 201]], [100], [0], defaults, false),
+                new([[0, 100, 201]], [[0, 201]], [100], [0], defaults, false),
             _ when Supports(name) => new([], [], [], [], defaults, false),
             _ => throw new InvalidDataException("Unknown native selector.")
         };

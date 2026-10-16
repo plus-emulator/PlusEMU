@@ -79,7 +79,9 @@ public sealed class WiredOctoberEditorTests
 
         Assert.Equal(badge.UsersAllowed.Single().ToArray(), level.UsersAllowed.Single().ToArray());
         Assert.Equal((badge.QuantifierType, badge.FurniAllowed.Length), (level.QuantifierType, level.FurniAllowed.Length));
-        Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_cnd_user_level", native => native with { UserSourceTypes = [11], Quantifier = 1 }));
+        Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_cnd_user_level", native => native with { UserSourceTypes = [200], Quantifier = 1 }));
+        // Observed on AIR WIN63-202610131318-860371703: 11 is offered only when the stack has a Click User trigger.
+        Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_cnd_user_level", native => native with { UserSourceTypes = [11], Quantifier = 1 }));
     }
 
     [Fact]

@@ -428,6 +428,47 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
+    public async Task RightsHolderWithWiredModifyClearsMonitorLogsAndErrorRowsLikeAir()
+    {
+        using var f = new TeleportFixture();
+        f.Room.OwnerName = "Alice";
+        f.Room.Type = "private";
+        f.Room.UsersWithRights = [2];
+        var store = new MonitorSettingsStore();
+        var settings = new WiredRoomSettings(f.Room, store);
+        typeof(WiredComponent).GetField("<Settings>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(f.Room.GetWired(), settings);
+        // AIR enables Clear from hasWritePermission, which is the server's canModify (WiredPermissions), so a rights holder with modify rights may clear.
+        store.Saved = new(InspectMask: (int)WiredRoomAccess.Everyone, ModifyMask: (int)WiredRoomAccess.Rights);
+        settings.Reload();
+
+        // Seed one room log line through the real wired log action.
+        var item = MakeItem(102, "wf_act_log");
+        var box = Assert.IsType<WiredModernAction>(f.Room.GetWired().CreateConfiguredBox(item, Descriptor("wf_act_log")));
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [1, 0], Text = "Gate opened" }, out var config, out _));
+        box.ApplyConfiguration(config);
+        f.Items[102] = item;
+        f.Engine.Add(box);
+        f.Fire();
+        Assert.Equal(1, f.Room.GetWired().ReadLogs(0, 50, -1, "", -1).Total);
+
+        var bobHabbo = new Habbo { Id = 2, Username = "Bob", CurrentRoom = f.Room, Access = EditorTestSupport.Access([]) };
+        var bob = new FlashGameClient(TestGameServer.Instance, new FlashPacketFactory(), TestLogging.GameClient) { Revision = f.Client.Revision };
+        bob.SetHabbo(bobHabbo);
+        var bobReplies = Capture(bob);
+        var monitor = new WiredMonitorService(new WiredRequestGateService(new ManualMonotonicClock()));
+
+        await new WiredMonitorRequestEvent(monitor).Parse(f.Room, bob, Request(1));
+        Assert.Single(bobReplies);
+        Assert.Equal(5101u, bobReplies[0].Header);
+        Assert.Equal(0, f.Room.GetWired().ReadLogs(0, 50, -1, "", -1).Total);
+
+        await new ClearWiredErrorLogsEvent(monitor).Parse(f.Room, bob, Request());
+        Assert.Equal(2, bobReplies.Count);
+        Assert.Equal(ServerPacketHeader.WiredErrorLogsComposer, bobReplies[1].Header);
+    }
+
+    [Fact]
     public async Task OfficialMonitorRequestsAnswerStatsAndTenErrorRowsAndEngineLimitsCountOnTheirRows()
     {
         using var f = new TeleportFixture();

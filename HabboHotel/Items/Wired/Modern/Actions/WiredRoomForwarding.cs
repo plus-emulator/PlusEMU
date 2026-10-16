@@ -68,7 +68,7 @@ public static class WiredRoomForwarding
             }
 
             // A teleporter or WIRED Room Linker leads to the room its other half stands in; an unplaced half leads nowhere.
-            if (!InteractionTypes.IsLinkedPair(item.Definition.InteractionType) || item.Id > int.MaxValue) {
+            if (!InteractionTypes.IsLinkedPair(item.Definition.InteractionType) || item.IsTemporary || item.Id > int.MaxValue) {
                 continue;
             }
 

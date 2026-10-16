@@ -3,7 +3,7 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 /// <summary>StableId is a player/item database id; EntityId is the client room unit/item id. Bots/pets are active-only.</summary>
 public readonly record struct WiredVariableHolder(WiredVariableTarget Target, long StableId, int EntityId, bool CanPersist = true)
 {
-    public bool IsTemporaryFurni => Target == WiredVariableTarget.Furni && !CanPersist && StableId == 0 && EntityId < 0;
+    public bool IsTemporaryFurni => Target == WiredVariableTarget.Furni && !CanPersist && StableId == 0 && EntityId != 0;
     // Temporary items have no database identity; each room entity still owns independent active values.
     public long StorageId => IsTemporaryFurni ? EntityId : StableId;
 }

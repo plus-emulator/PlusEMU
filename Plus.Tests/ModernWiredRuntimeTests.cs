@@ -1934,6 +1934,26 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
+    public async Task PickingATemporaryCopyIsRefusedWithTheOfficialKey()
+    {
+        var f = new MovementOracleSession("wf_act_move_rotate");
+        var definition = MakeItem(60, "template").Definition;
+        definition.Stackable = true;
+        var copy = Assert.IsType<Item>(f.Room.GetRoomItemHandler().PlaceTemporaryFloorItem(definition, 7, 0, 0, 0));
+        f.Client.Packets.Clear();
+        await f.Save([5, 1], [8, unchecked((int)copy.Id)]);
+        Assert.Empty(f.Store.Saves);
+        var error = Assert.Single(f.Client.Packets, packet => packet.Header == ServerPacketHeader.WiredValidationErrorComposer).Body;
+        var length = (error[0] << 8) | error[1];
+        Assert.Equal(WiredConfigurationSave.TemporaryFurniNotAllowedKey, System.Text.Encoding.UTF8.GetString(error, 2, length));
+        Assert.Equal("wiredfurni.error.temp_furni_not_allowed", WiredConfigurationSave.TemporaryFurniNotAllowedKey);
+        Assert.DoesNotContain(f.Client.Packets, packet => packet.Header == ServerPacketHeader.HideWiredConfigComposer);
+        f.Client.Packets.Clear();
+        await f.Save([5, 1], [8]);
+        Assert.Single(f.Store.Saves);
+    }
+
+    [Fact]
     public void MovementOracleIndependentFooterSeparatesLocalDefaultsFromSourceDefaults()
     {
         var f = new MovementOracleSession("wf_act_move_rotate");
@@ -3484,7 +3504,7 @@ public partial class ModernWiredRuntimeTests
             var item = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 0, "1"));
             Assert.True(item.IsTemporary);
             Assert.True(handler.OwnsTemporary(item));
-            Assert.Equal(-1, unchecked((int)item.Id));
+            Assert.Equal(TemporaryItemIds.First, item.Id);
             Assert.Same(room, item.GetRoom());
             Assert.Same(item, items[item.Id]);
             Assert.Equal("1", item.LegacyDataString);
@@ -3498,7 +3518,7 @@ public partial class ModernWiredRuntimeTests
             Assert.DoesNotContain(item, map.GetCoordinatedItems(new(1, 1)));
             Assert.False(handler.RemoveTemporaryFloorItem(item));
             var replacement = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0));
-            Assert.Equal(-2, unchecked((int)replacement.Id));
+            Assert.Equal(TemporaryItemIds.First, replacement.Id); // The freed id is taken again.
             Assert.False(handler.RemoveTemporaryFloorItem(MakeItem(replacement.Id, "test")));
             handler.UpdateItem(replacement);
             handler.Dispose(); // No temporary extra-data or coordinate SQL during unload.
@@ -3589,10 +3609,10 @@ public partial class ModernWiredRuntimeTests
         var handler = f.Room.GetRoomItemHandler();
         var def = MakeItem(3, "test").Definition;
         def.Stackable = true;
-        var permanent = MakeItem(uint.MaxValue, "test");
+        var permanent = MakeItem(TemporaryItemIds.First, "test");
         f.Items[permanent.Id] = permanent;
         var item = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(def, 1, 2, 2, 0));
-        Assert.Equal(-2, unchecked((int)item.Id)); // A real permanent high-uint item owns the -1 bit pattern.
+        Assert.Equal(TemporaryItemIds.First + 1, item.Id); // An attached item already holds the band's first id.
         var action = ActionBox(f.Room, "wf_act_remove_furni");
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, new() { IntParams = [mode, 0] }, out var config, out _));
         action.ApplyConfiguration(config);

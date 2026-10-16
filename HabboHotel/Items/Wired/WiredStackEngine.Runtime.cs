@@ -499,8 +499,11 @@ internal sealed partial class WiredStackEngine
 
             context.SelectorKinds |= kind;
         }
-        Apply(context.SelectorPool.FurniIds, context.SelectorFurniOrder, result.Selection.FurniIds,
-            context.FurniIdentity.Where(pair => pair.Value.IsFloorItem).Select(pair => pair.Key), WiredSelectionKind.Furni);
+        // Selectors never deliver temporary furniture: on hhus a furni-under selector feeding Remove Temporary Furni
+        // removed no copy, and "Can not select temporary furni in Wired" is the official rule.
+        var temporary = context.FurniIdentity.Where(pair => pair.Value.IsTemporary).Select(pair => pair.Key).ToHashSet();
+        Apply(context.SelectorPool.FurniIds, context.SelectorFurniOrder, result.Selection.FurniIds.Where(id => !temporary.Contains(id)).ToHashSet(),
+            context.FurniIdentity.Where(pair => pair.Value.IsFloorItem && !pair.Value.IsTemporary).Select(pair => pair.Key), WiredSelectionKind.Furni);
         Apply(context.SelectorPool.UserIds, context.SelectorUserOrder, result.Selection.UserIds,
             context.UserIdentity.Keys, WiredSelectionKind.Users);
     }

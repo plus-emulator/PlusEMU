@@ -231,6 +231,28 @@ public class WiredClickPacketHookTests
     }
 
     [Fact]
+    public void ASpawnedCopyArrivesAsASingleObjectObjectsPacket()
+    {
+        // Observed on hhus: a Wired copy arrives as Objects (1991) holding one object, never ObjectAdd.
+        var world = new World("wf_trg_click_furni", [0]);
+        var definition = new ItemDefinition { Id = 30, ItemName = "template", Type = ItemType.Floor, Length = 1, Width = 1, Height = 0.1, Stackable = true };
+        world.Packets.Clear();
+        var item = world.Room.GetRoomItemHandler().PlaceTemporaryFloorItem(definition, 42, 1, 1, 0)!;
+        Assert.DoesNotContain(world.Packets, packet => packet.Id == 1534);
+        var objects = Assert.Single(world.Packets, packet => packet.Id == 1991).Payload;
+        var owners = objects.ReadInt();
+
+        for (var i = 0; i < owners; i++) {
+            objects.ReadInt();
+            objects.ReadString();
+        }
+
+        Assert.Equal(1, objects.ReadInt());
+        Assert.Equal(TemporaryItemIds.First, item.Id);
+        Assert.Equal(unchecked((int)TemporaryItemIds.First), objects.ReadInt());
+    }
+
+    [Fact]
     public async Task NegativeWallMagnitudeResolvesWallWhileSameFloorWireBitsStayDistinct()
     {
         var world = new World("wf_trg_click_furni", [0]);
@@ -437,6 +459,7 @@ public class WiredClickPacketHookTests
                         [ServerPacketHeader.WiredClickUserResponseComposer] = 9460,
                         [ServerPacketHeader.InClientLinkComposer] = 2023,
                         [ServerPacketHeader.ObjectAddComposer] = 1534,
+                        [ServerPacketHeader.ObjectsComposer] = 1991,
                         [ServerPacketHeader.ObjectRemoveComposer] = 2703
                     }
                 },

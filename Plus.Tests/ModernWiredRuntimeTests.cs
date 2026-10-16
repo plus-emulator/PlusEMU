@@ -4324,6 +4324,26 @@ public partial class ModernWiredRuntimeTests
         Assert.All(keys, key => Assert.Null(flights.Read(f.Target, "@projectile.animation." + key, 1000)));
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a default projectile add-on moves a colortile diagonally one tile,
+    // keeps rotation 0 and only adds curveStrength 50 to the WiredMovements entry.
+    [Fact]
+    public void DefaultProjectileAddonMovesStackFurniDiagonallyWithItsCurve()
+    {
+        using var f = new TeleportFixture();
+        Assert.False(f.Target.Definition.ExtraRot);
+        var item = MakeItem(90, "wf_xtra_rotate_to_dir");
+        typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, f.Room);
+        f.Items[item.Id] = item;
+        var addon = Assert.IsType<WiredAddonBox>(f.Room.GetWired().CreateConfiguredBox(item));
+        var context = Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User]);
+        Assert.True(addon.Apply(context));
+        var projectile = Assert.IsType<Plus.HabboHotel.Items.Wired.Modern.Addons.WiredProjectilePolicy>(context.Policy.Addons.Projectile);
+        Assert.True(projectile.AppliesTo(f.Target.Id));
+        Assert.Equal(50, projectile.CurveStrength);
+        Assert.True(new WiredRoomMovement(f.Room.GetWired().DispatchWalkTransition).MoveFurniture(context, f.Target, 2, 2, f.Target.Rotation, null));
+        Assert.Equal((2, 2, 0), (f.Target.GetX, f.Target.GetY, f.Target.Rotation));
+    }
+
     [Fact]
     public void ActualProjectileMoveSamplesPacketClockAndLaunchCollisionsWithoutLateArrivals()
     {

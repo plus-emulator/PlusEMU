@@ -65,6 +65,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         _movementRandom = movementRandom;
     }
 
+    // Saving move_to_dir restarts every furni from the configured direction; the heading is kept only across firings.
+    // Observed on hhus (AIR WIN63-202610131318-860371703): re-saves with direction 3, then 1, moved the same tile (+1,+1), then (+1,-1).
+    protected override void ConfigurationChanged() => _directions.Clear();
+
     internal void BindHeadingCollision(Func<WiredRuntimeContext, WiredRuntimeEvent, bool?> enqueue)
     {
         _headingPublisher = _publish;

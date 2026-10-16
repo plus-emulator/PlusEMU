@@ -173,7 +173,8 @@ internal static class WiredNativeCatalogProjection
         return new(entry.Id, listing.Type, name, 999, target, listing.AlwaysAvailable,
             RoomWiredBuiltinVariables.SupportsPresenceMutation(reference), hasValue,
             hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference), false, listing.IsInvisible, false, false,
-            listing.Connector) { TextConnectorFallback = listing.TextConnectorFallback };
+            listing.Connector)
+        { TextConnectorFallback = listing.TextConnectorFallback };
     }
 
     private static IReadOnlyDictionary<string, BuiltinListing> LoadBuiltinListings()

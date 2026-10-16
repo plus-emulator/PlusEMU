@@ -76,7 +76,9 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.Equal(target != WiredVariableTarget.Global, variable.CanCreateAndDelete);
         Assert.True(variable.CanWriteValue);
         Assert.True(variable.CanInterceptChanges);
-        Assert.True(variable.CanReadCreationTime);
+        // Observed on hhus (AIR WIN63-202610131318-860371703): a global lists no creation time but does list its last update time.
+        Assert.Equal(target != WiredVariableTarget.Global, variable.CanReadCreationTime);
+        Assert.True(variable.CanReadLastUpdateTime);
         Assert.Equal(target == WiredVariableTarget.Context ? 999 : (int)availability, variable.Availability);
         Assert.Empty(module.DrainChanges());
     }
@@ -253,8 +255,12 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
         Assert.Equal(7, Own(catalog!).Length); // the user definition, the quest definition and its five derived keys
         Assert.DoesNotContain(catalog.Variables, variable => variable.Id == "user:11");
-        Assert.All(Own(catalog).Where(variable => variable.Type == 3), variable =>
+        var derived = Own(catalog).Where(variable => variable.Name.Contains('.')).ToArray();
+        Assert.Equal(5, derived.Length);
+        Assert.All(derived, variable =>
         {
+            Assert.Equal(2, variable.Type);
+            Assert.Equal(999, variable.Availability);
             Assert.True(variable.HasValue);
             Assert.False(variable.CanWriteValue);
             Assert.False(variable.CanCreateAndDelete);
@@ -397,15 +403,84 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public void CapturedTimeMetadataAddsNoPartToTheNativeCatalog(int mode)
+    public void CapturedTimeMetadataPreservesSourceValueVersusTimestampEligibility(int mode)
     {
-        // Observed on hhus (r84 creation time, r90 value): the room catalogue lists only the parent variable.
         var fixture = new Fixture();
         fixture.AddDefinition(10);
         fixture.AddMetadata(20, "wf_xtra_var_time_util", new() { IntParams = [1 << 21, mode] });
         Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
-        Assert.DoesNotContain(Own(catalog!), variable => variable.Type == 3);
-        Assert.DoesNotContain(Own(catalog), variable => variable.Name.Contains('.'));
+        // Observed on hhus (AIR WIN63-202610131318-860371703): parts are "<parent>.<mode>.<part>", type 2, availability 999; the
+        // timestamp modes add the base row "<parent>.<mode>"; only Value parts are writable and interceptable.
+        var rows = Own(catalog!).Where(variable => variable.Name.Contains('.')).ToArray();
+        var names = mode switch
+        {
+            1 => new[] { "score10.creation_time", "score10.creation_time.second" },
+            2 => ["score10.last_update_time", "score10.last_update_time.second"],
+            _ => ["score10.value.second"]
+        };
+        Assert.Equal(names, rows.Select(row => row.Name));
+        Assert.All(rows, row =>
+        {
+            Assert.Equal((2, 999, true), (row.Type, row.Availability, row.HasValue));
+            Assert.False(row.AlwaysAvailable || row.CanCreateAndDelete || row.IsInvisible || row.CanReadCreationTime || row.CanReadLastUpdateTime);
+            Assert.Equal(mode == 0, row.CanWriteValue);
+            Assert.Equal(mode == 0, row.CanInterceptChanges);
+            Assert.Null(row.Connector);
+        });
+    }
+
+    [Fact]
+    public void TimeModesFollowTheParentsOwnCapabilities()
+    {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): a global has no creation time, so the creation-time mode lists nothing
+        // while the last-update mode lists the base row and its parts; the Value mode needs the parent to hold a value.
+        var fixture = new Fixture();
+        fixture.AddDefinition(10, "wf_var_room", new() { IntParams = [1, 0], Text = "glob" });
+        var metadata = fixture.AddMetadata(20, "wf_xtra_var_time_util", new() { IntParams = [1 << 10, 1] });
+        Assert.Equal([], Parts(fixture));
+        WiredNativeTestSupport.InstallLegacyVariableDraft(metadata, new() { IntParams = [1 << 10, 2] });
+        Assert.Equal(["glob.last_update_time", "glob.last_update_time.year"], Parts(fixture));
+        WiredNativeTestSupport.InstallLegacyVariableDraft(metadata, new() { IntParams = [1 << 10, 0] });
+        Assert.Equal(["glob.value.year"], Parts(fixture));
+
+        var presence = new Fixture();
+        presence.AddDefinition(10, "wf_var_user", new() { IntParams = [0, 10], Text = "flag" });
+        var time = presence.AddMetadata(20, "wf_xtra_var_time_util", new() { IntParams = [1 << 10, 0] });
+        Assert.Equal([], Parts(presence));
+        WiredNativeTestSupport.InstallLegacyVariableDraft(time, new() { IntParams = [1 << 10, 1] });
+        Assert.Equal(["flag.creation_time", "flag.creation_time.year"], Parts(presence));
+    }
+
+    private static string[] Parts(Fixture fixture)
+    {
+        Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
+
+        return [.. Own(catalog!).Where(row => row.Name.Contains('.')).Select(row => row.Name)];
+    }
+
+    [Fact]
+    public void EveryTickedPartIsListedWithHabbosNamesAndTextConnectors()
+    {
+        var fixture = new Fixture();
+        fixture.AddDefinition(10);
+        fixture.AddMetadata(20, "wf_xtra_var_time_util", new() { IntParams = [WiredVariableTimeUtilities.ValidMask, 1] });
+        Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
+        var rows = Own(catalog!).Where(row => row.Name.Contains('.')).ToDictionary(row => row.Name);
+
+        // The base row and 17 parts: 18 rows. hhus sends the month part with a trailing space.
+        Assert.Equal(18, rows.Count);
+        Assert.Contains("score10.creation_time", rows.Keys);
+        Assert.Contains("score10.creation_time.milliseconds_of_seconds", rows.Keys);
+        Assert.Contains("score10.creation_time.month_of_year ", rows.Keys);
+        Assert.Contains("score10.creation_time.month", rows.Keys);
+        Assert.Equal([KeyValuePair.Create(1, "Monday"), KeyValuePair.Create(7, "Sunday")],
+            new[] { rows["score10.creation_time.day_of_week"].Connector!.Value.First(), rows["score10.creation_time.day_of_week"].Connector!.Value.Last() });
+        Assert.Equal(7, rows["score10.creation_time.day_of_week"].Connector!.Value.Length);
+        Assert.Equal(Enumerable.Range(1, 12), rows["score10.creation_time.month_of_year "].Connector!.Value.Select(pair => pair.Key));
+        Assert.Equal(["January", "December"], new[] { rows["score10.creation_time.month_of_year "].Connector!.Value[0].Value,
+            rows["score10.creation_time.month_of_year "].Connector!.Value[11].Value });
+        Assert.Equal(2, rows.Values.Count(row => row.Connector is not null));
+        Assert.All(rows.Values, row => Assert.False(row.HasTextConnectorFallback));
     }
 
     [Fact]

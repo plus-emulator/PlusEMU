@@ -22,6 +22,12 @@ public sealed class WiredRoomSettings(Room room, IWiredRoomSettingsStore store, 
             }
         }
     }
+    /// <summary>
+    /// The Wired calendar of a room without its own timezone. Observed on hhus (AIR WIN63-202610131318-860371703): @current_time and
+    /// Time Utilities parts read UTC+1 in October 2026 and at epoch 0, which is Europe/London (British Standard Time in 1968-71).
+    /// </summary>
+    public static TimeZoneInfo DefaultTimeZone { get; } =
+        TimeZoneInfo.TryFindSystemTimeZoneById("Europe/London", out var london) ? london : TimeZoneInfo.Utc;
     public TimeZoneInfo? ExplicitTimeZone => Snapshot.TimeZoneId is { Length: > 0 } timezone
         ? TimeZoneInfo.FindSystemTimeZoneById(timezone) : null;
     public TimeZoneInfo TimeZone

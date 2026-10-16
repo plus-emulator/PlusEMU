@@ -18,7 +18,9 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
     public WiredVariableLevelSystem? LevelSystem { get; private set; }
     public IReadOnlyDictionary<int, string> TextConnector { get; private set; } = new Dictionary<int, string>();
     public static bool Supports(string name) => IsFx(name) || name is "wf_xtra_var_lvlup_system" or "wf_xtra_var_text_connector" or "wf_xtra_var_time_util";
-    public string[] DerivedKeys => ["current_level", "current_xp", "level_progress", "level_progress_percent", "total_xp_required", "xp_remaining", "is_at_max", "max_level"];
+    // AIR VariableLvlUpAddon.as:95 SubVariableParam names (WIN63-202610131318-860371703); the sub-variable is "<parent>.<name>".
+    public static readonly string[] LevelKeys = ["current_level", "current_xp", "progress", "progress_percentage", "xp_required", "xp_remaining", "is_maxed", "max_level"];
+    public string[] DerivedKeys => LevelKeys;
     public bool HasDerived(int sub) => sub >= 0 && sub < DerivedKeys.Length && LevelSystem is { } level && (level.SubvariableMask & (1 << sub)) != 0;
     public long ReadDerived(long value, int sub)
     {

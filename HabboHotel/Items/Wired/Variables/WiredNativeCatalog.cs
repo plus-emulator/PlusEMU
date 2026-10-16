@@ -173,7 +173,8 @@ internal static class WiredNativeCatalogProjection
         return new(entry.Id, listing.Type, name, 999, target, listing.AlwaysAvailable,
             RoomWiredBuiltinVariables.SupportsPresenceMutation(reference), hasValue,
             hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference), false, listing.IsInvisible, false, false,
-            listing.Connector) { TextConnectorFallback = listing.TextConnectorFallback };
+            listing.Connector)
+        { TextConnectorFallback = listing.TextConnectorFallback };
     }
 
     private static IReadOnlyDictionary<string, BuiltinListing> LoadBuiltinListings()
@@ -211,17 +212,22 @@ internal static class WiredNativeCatalogProjection
         var derived = description.IsDerived || endpoint.Converted;
         var builtin = endpoint.Builtin;
         var hasValue = description.HasValue;
-        var writable = !derived && endpoint.Writable;
-        var presence = writable && (builtin is { } reference ? RoomWiredBuiltinVariables.SupportsPresenceMutation(reference)
+        // A sub-variable is writable only when its derivation writes through to the parent (Time Utilities Value mode).
+        var writable = (!derived || description.IsDerived) && endpoint.Writable;
+        var presence = writable && !description.IsDerived && (builtin is { } reference ? RoomWiredBuiltinVariables.SupportsPresenceMutation(reference)
             : endpoint.Terminal?.Target is WiredVariableTarget.User or WiredVariableTarget.Furni or WiredVariableTarget.Context);
         var timestamps = !derived && builtin is null && endpoint.Terminal is not null;
         var target = CatalogTarget(definition.Target);
 
-        return new(description.CatalogId, description.IsDerived ? 3 : definition.Link is null ? 0 : 2,
-            definition.Name, builtin is not null || definition.Target == WiredVariableTarget.Context ? 999
+        // Observed on hhus: the lvlup sub-variable "<parent>.current_level" is listed with type 2 and availability 999.
+        // Observed on hhus (AIR WIN63-202610131318-860371703): a global lists canReadCreationTime false, canReadLastUpdateTime true;
+        // a Time Utilities Value part is writable and interceptable.
+        return new(description.CatalogId, description.IsDerived || definition.Link is not null ? 2 : 0,
+            definition.Name, builtin is not null || description.IsDerived || definition.Target == WiredVariableTarget.Context ? 999
                 : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
-            !derived && definition.Link is null && writable && builtin is null, false, timestamps, timestamps, connector);
+            definition.Link is null && writable && builtin is null, false,
+            timestamps && definition.Target != WiredVariableTarget.Global, timestamps, connector);
     }
 }

@@ -13,7 +13,8 @@ namespace Plus.Tests;
 public class WiredCalendarClockTests
 {
     [Theory]
-    [InlineData("", 2040, -7)]
+    // A room without its own timezone uses Europe/London, not the server's local zone (observed on hhus).
+    [InlineData("", 2040, 0)]
     [InlineData("Europe/Berlin", 2041, 1)]
     public void CalendarAndDateDefaultsUseOneRoomClockRead(string zone, int year, int offsetHours)
     {
@@ -43,7 +44,7 @@ public class WiredCalendarClockTests
     }
 
     [Theory]
-    [InlineData("", 16, 2040)]
+    [InlineData("", 23, 2040)]
     [InlineData("Europe/Berlin", 0, 2041)]
     public void CalendarBuiltinAndTimeUtilityShareTheEffectiveRoomTimezone(string zone, int hour, int year)
     {

@@ -72,23 +72,28 @@ public sealed class WiredVariableBuiltinDerivedTests
         Assert.Null(fixture.Read(new(WiredVariableTarget.User, "custom:20")));
         fixture.Directory.StoredPresence = true;
         Assert.True(fixture.Module.Mutate(new(WiredVariableTarget.User, "custom:20"), fixture.Holder, WiredVariableMutation.Give, 0, fixture.Frame));
-        // Time Utilities parts never become catalogue variables (hhus r84, r90), with or without timestamps.
         var storedTimeId = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, 21, true)!.Value;
-        Assert.DoesNotContain(fixture.Variables.Catalog().Variables, variable => variable.Definition.ItemId == storedTimeId);
-        Assert.Null(fixture.Read(new(WiredVariableTarget.User, $"custom:{storedTimeId}")));
+        Assert.Contains(fixture.Variables.Catalog().Variables, variable => variable.Definition.ItemId == storedTimeId);
+        Assert.Equal(1, fixture.Read(new(WiredVariableTarget.User, $"custom:{storedTimeId}"))!.Value);
     }
 
     [Fact]
-    public void TimeUtilitiesOverABuiltinAddNoPartToTheCatalogueInAnyMode()
+    public void NumericBuiltinTimeValueConvertsButIncidentalProviderTimestampsStayUnavailable()
     {
         var fixture = new Fixture("@achievement_score");
-        fixture.Builtin.Value = new(150, DateTimeOffset.FromUnixTimeMilliseconds(12000), DateTimeOffset.FromUnixTimeMilliseconds(24000));
+        // A Value-mode parent holds epoch milliseconds: 150 000 ms is minute 2.
+        fixture.Builtin.Value = new(150000, DateTimeOffset.FromUnixTimeMilliseconds(12000), DateTimeOffset.FromUnixTimeMilliseconds(24000));
         var time = fixture.AddMetadata("wf_xtra_var_time_util");
+        WiredNativeTestSupport.InstallLegacyVariableDraft(time, new() { IntParams = [1 << 22, 0] });
         var id = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, 22, true)!.Value;
         var reference = new WiredVariableReference(WiredVariableTarget.User, $"custom:{id}");
+        Assert.Equal(2, fixture.Read(reference)!.Value);
 
-        // Observed on hhus: r90 in value mode, r84 in creation time mode.
-        foreach (var mode in new[] { 0, 1, 2 }) {
+        using (var reads = fixture.Module.CaptureReads([reference], fixture.Frame)) {
+            Assert.Equal(2, reads.Read(reference, fixture.Holder, fixture.Frame)!.Value);
+        }
+
+        foreach (var mode in new[] { 1, 2 }) {
             WiredNativeTestSupport.InstallLegacyVariableDraft(time, new() { IntParams = [1 << 22, mode] });
             Assert.DoesNotContain(fixture.Variables.Catalog().Variables, variable => variable.Definition.ItemId == id);
             Assert.Null(fixture.Read(reference));

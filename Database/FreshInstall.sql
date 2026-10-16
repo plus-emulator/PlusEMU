@@ -3411,7 +3411,7 @@ LOCK TABLES `achievements` WRITE;
 /*!40000 ALTER TABLE `achievements` DISABLE KEYS */;
 INSERT INTO `achievements` VALUES
 (2,'ACH_AvatarLooks','identity',1,5,100,1,0,6,1,1,NULL),
-(3,'ACH_Motto','identity',1,5,100,1,0,NULL,1,0,NULL),
+(3,'ACH_Motto','identity',1,5,100,1,0,NULL,1,1,NULL),
 (5,'ACH_RespectGiven','social',1,5,10,2,0,18,1,1,NULL),
 (16,'ACH_RespectEarned','social',1,5,10,1,0,17,1,1,NULL),
 (17,'ACH_RespectEarned','social',2,5,10,6,0,17,1,1,NULL),

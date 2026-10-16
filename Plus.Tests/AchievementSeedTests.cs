@@ -63,10 +63,12 @@ public class AchievementSeedTests
 
         Assert.Equal(achievements.Count(character => character == '\n'), rows.Count);
         Assert.Equal(Official().Select(row => (row.Group, row.Category, row.Level, row.Needed, row.OfficialId.ToString(), row.State)).Order(),
-            rows.Where(row => row.Visible).Select(row => (row.Group, row.Category, row.Level, row.Needed, row.Official, row.State)).Order());
-        // The hotel's own achievements stay for their owners, out of the list.
+            rows.Where(row => row.Visible && row.Official != "NULL").Select(row => (row.Group, row.Category, row.Level, row.Needed, row.Official, row.State)).Order());
+        // Master of Words is the one hotel achievement in the list: changing the motto awards it.
+        Assert.Equal(new[] { "ACH_Motto" }, rows.Where(row => row.Visible && row.Official == "NULL").Select(row => row.Group).Distinct());
+        // The other hotel achievements stay for their owners, out of the list.
         Assert.Equal(new[] { "ACH_BaseJumpBigParachute", "ACH_BaseJumpDaysPlayed", "ACH_BaseJumpMissile", "ACH_BaseJumpShield", "ACH_BaseJumpWins",
-            "ACH_HabboWayGraduate", "ACH_Motto", "ACH_SelfModBanSeen", "ACH_SelfModChatFloodFilterSeen", "ACH_SelfModChatHearRangeSeen",
+            "ACH_HabboWayGraduate", "ACH_SelfModBanSeen", "ACH_SelfModChatFloodFilterSeen", "ACH_SelfModChatHearRangeSeen",
             "ACH_SelfModChatScrollSpeedSeen", "ACH_SelfModIgnoreSeen", "ACH_SelfModKickSeen", "ACH_SelfModMuteSeen", "ACH_SelfModRoomFilterSeen",
             "ACH_SelfModWalkthroughSeen" }, rows.Where(row => !row.Visible).Select(row => row.Group).Distinct().Order());
         Assert.All(rows.Where(row => !row.Visible), row => Assert.Equal("NULL", row.Official));

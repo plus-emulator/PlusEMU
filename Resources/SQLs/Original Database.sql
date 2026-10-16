@@ -30919,3 +30919,9 @@ COMMIT;
 UPDATE catalog_page_texts t JOIN catalog_pages c ON c.id = t.page_id
 SET t.text = 'Archived Wired boxes that are still available for legacy reasons, but are not recommended to use in new Wired setups'
 WHERE c.link = 'wired_archive' AND t.slot = 0;
+-- 84_MottoAchievementVisible
+-- Master of Words (ACH_Motto) is listed in the achievements window again. Migration 76 hid it as a hotel achievement,
+-- but changing the motto still awards its badge and the notification, so the list never showed what the user earned.
+-- Idempotent.
+
+UPDATE `achievements` SET `visible` = 1 WHERE `group_name` = 'ACH_Motto';

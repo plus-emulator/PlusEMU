@@ -71,6 +71,8 @@ public sealed class AchievementMigrationDatabaseTests
             Assert.Equal("ACH_EmailVerification", loaded.Values.First().GroupName);
             Assert.Equal((17, AchievementState.Enabled, true), (loaded["ACH_RespectEarned"].Id, loaded["ACH_RespectEarned"].State, loaded["ACH_RespectEarned"].Visible));
             Assert.Equal((null, false), (loaded["ACH_Motto"].OfficialId, loaded["ACH_Motto"].Visible));
+            // A hotel achievement never shares its client id with an official one.
+            Assert.True(loaded["ACH_Motto"].Id > AchievementLevelFactory.HotelAchievementIdOffset);
             Assert.Equal("ACH_Profile2", loaded["ACH_Profile2"].BadgeCode(1));
             var listed = new AchievementSnapshotService().Capture(new Habbo { Id = 7, Username = "u" }, loaded.Values);
             Assert.Equal(166, listed.Length);

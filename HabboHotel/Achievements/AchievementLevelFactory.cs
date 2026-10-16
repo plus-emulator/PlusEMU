@@ -5,6 +5,10 @@ namespace Plus.HabboHotel.Achievements;
 
 public class AchievementLevelFactory : IAchievementLevelFactory
 {
+    // The client keys achievements by id. A hotel achievement's row id can equal an official id (ACH_Motto is row 3,
+    // ACH_EmailVerification is official id 3), so hotel achievements are numbered above every official id.
+    internal const int HotelAchievementIdOffset = 1_000_000;
+
     private readonly IDatabase _database;
 
     public AchievementLevelFactory(IDatabase database) => _database = database;
@@ -28,7 +32,7 @@ public class AchievementLevelFactory : IAchievementLevelFactory
             if (!achievements.TryGetValue(row.GroupName, out var achievement)) {
                 achievement = new Achievement
                 {
-                    Id = row.OfficialId ?? row.Id,
+                    Id = row.OfficialId ?? HotelAchievementIdOffset + row.Id,
                     Category = row.Category,
                     GroupName = row.GroupName,
                     GameId = row.GameId,

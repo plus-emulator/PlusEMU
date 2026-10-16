@@ -310,7 +310,17 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
 
         item = room.GetRoomItemHandler().GetItem(itemId);
 
-        if (item == null || item.IsTemporary) {
+        // Observed on AIR WIN63-202610131318-860371703: a visitor with rights is offered Move and Rotate on a copy placed by
+        // Place Furni, and the move is applied; without rights nothing is offered.
+        if (item == null || item.IsTemporary && !room.GetRoomItemHandler().OwnsTemporary(item)) {
+            return;
+        }
+
+        if (item.IsTemporary) {
+            if (!room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, false, false, true, height: BuildHeight(room, session, item, x, y, rotation))) {
+                room.SendPacket(new ObjectUpdateComposer(RoomItemSnapshot.Capture(item)));
+            }
+
             return;
         }
 

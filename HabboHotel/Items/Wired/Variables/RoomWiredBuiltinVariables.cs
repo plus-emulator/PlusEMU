@@ -34,7 +34,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 or "~area_hide.root_x" or "~area_hide.root_y" or "~area_hide.width" or "~area_hide.length"
                 or "~clock.state" or "~clock.pulse_count" or "~teleport.target_id" or "~background_color.hue" or "~background_color.saturation" or "~background_color.lightness"
                 or "@projectile.animation.position.x" or "@projectile.animation.position.y" or "@projectile.animation.position.altitude",
-            WiredVariableTarget.User => WiredQuestVariables.TryParseKey(key, out _, out _) || key is "@achievement_score" or "@altitude" or "@bot_id" or "@dance" or "@direction" or "@effect"
+            WiredVariableTarget.User => WiredQuestVariables.TryParseKey(key, out _, out _) || key is "@achievement_score" or "@level" or "@altitude" or "@bot_id" or "@dance" or "@direction" or "@effect"
                 or "@gender" or "@handitem" or "@index" or "@pet_id" or "@pet_owner_id" or "@favourite_group_id" or "@position" or "@position.x" or "@position.y" or "@room_entry.method"
                 or "@room_entry.teleport_id" or "@sign" or "@team.type" or "@team.color" or "@team.score" or "@type" or "@user_id"
                 or "~horse.controller_user_id" or "~pet.creation_time" or "~pet.energy" or "~pet.experience"
@@ -394,6 +394,9 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@effect" => habbo?.Effects?.CurrentEffect,
             "@gender" => habbo is null ? -1 : habbo.Gender.Equals("M", StringComparison.OrdinalIgnoreCase) ? 0 : 1,
             "@achievement_score" => habbo?.HabboStats?.AchievementPoints,
+            // Observed on AIR WIN63-202610131318-860371703: @level is the account level the extended profile shows as Level
+            // (8 and 1 for two users whose achievement levels are 90 and 19), so it is the hotel's user level, not an achievement level.
+            "@level" => habbo is null ? null : Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredUserLevel.Of(avatar),
             "@favourite_group_id" => habbo?.HabboStats?.FavouriteGroupId is > 0 ? habbo.HabboStats.FavouriteGroupId : null,
             "@is_group_admin" => Flag(habbo is not null && room.Group is { } group && (group.CreatorId == habbo.Id || group.IsAdmin(habbo.Id))),
             "@pet_owner_id" => avatar.IsPet ? avatar.PetData?.OwnerId : null,

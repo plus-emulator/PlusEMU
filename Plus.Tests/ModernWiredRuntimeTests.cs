@@ -3518,7 +3518,7 @@ public partial class ModernWiredRuntimeTests
             Assert.DoesNotContain(item, map.GetCoordinatedItems(new(1, 1)));
             Assert.False(handler.RemoveTemporaryFloorItem(item));
             var replacement = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0));
-            Assert.Equal(TemporaryItemIds.First, replacement.Id); // The freed id is taken again.
+            Assert.Equal(TemporaryItemIds.First + 1, replacement.Id); // The freed id is not taken again while the room lives.
             Assert.False(handler.RemoveTemporaryFloorItem(MakeItem(replacement.Id, "test")));
             handler.UpdateItem(replacement);
             handler.Dispose(); // No temporary extra-data or coordinate SQL during unload.
@@ -3574,7 +3574,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void TemporaryPlacementChecksFullFootprintHeightAndRoomLimit()
+    public void TemporaryPlacementChecksFullFootprintAndAltitudeWithoutARoomCap()
     {
         var (room, map, _) = World();
         var handler = room.GetRoomItemHandler();
@@ -3590,14 +3590,16 @@ public partial class ModernWiredRuntimeTests
         definition.Stackable = true;
         definition.Height = 1;
         Assert.Null(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 80));
+        // Observed on hhus: copies stop at altitude 35, and there is no per-room cap (560 copies were placed).
+        Assert.Null(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 35.5));
+        Assert.NotNull(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 35));
         definition.Height = 0;
 
-        for (var i = 0; i < RoomItemHandling.TemporaryItemLimit; i++) {
+        for (var i = 0; i < 600; i++) {
             Assert.NotNull(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 0));
         }
 
-        Assert.Null(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0));
-        Assert.Equal(RoomItemHandling.TemporaryItemLimit, handler.GetFloor.Count);
+        Assert.Equal(601, handler.GetFloor.Count);
     }
 
     [Theory]

@@ -19,18 +19,24 @@ public partial class RoomItemHandling
 {
     private readonly ConcurrentDictionary<uint, Item> _floorItems;
     private readonly Dictionary<uint, Item> _temporaryItems = new();
-    public const int TemporaryItemLimit = 200;
+    private uint _nextTemporaryId = TemporaryItemIds.First;
+
+    /// <summary>
+    /// The highest altitude a Wired copy is placed at. Observed on hhus (AIR WIN63-202610131318-860371703): 560 copies stacked "On top"
+    /// stopped at 35 per tile, the top one at z 35.0, with no error and no per-room cap.
+    /// </summary>
+    public const double TemporaryItemMaxAltitude = 35;
 
     public bool OwnsTemporary(Item item) => item.IsTemporary
         && _temporaryItems.TryGetValue(item.Id, out var owned) && ReferenceEquals(owned, item);
 
-    // A copy takes the lowest free id in the client's temporary band, so a removed copy's id is reused
-    // (observed on hhus: 2147401728, then 2147401729; 2147401728 again after a pick-up).
+    // Copies take the next id of the client's temporary band. A removed copy's id is not reused while the room stays loaded; a reload
+    // starts the band again (observed on hhus: 2147401728, 1729, 1730 after Wired removals, and 2147401728 again after an unload).
     public Item? PlaceTemporaryFloorItem(ItemDefinition definition, uint ownerId, int x, int y,
         int rotation, double? height = null, string state = "")
     {
         if (definition.Type != Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor
-            || _temporaryItems.Count >= TemporaryItemLimit || FreeTemporaryId() is not { } id) {
+            || AboveTemporaryLimit(height) || NextTemporaryId() is not { } id) {
             return null;
         }
 
@@ -53,12 +59,16 @@ public partial class RoomItemHandling
             return null;
         }
 
+        _nextTemporaryId = id + 1;
+
         return item;
     }
 
-    private uint? FreeTemporaryId()
+    public static bool AboveTemporaryLimit(double? height) => height is { } z && z - TemporaryItemMaxAltitude > 1e-6;
+
+    private uint? NextTemporaryId()
     {
-        for (var id = TemporaryItemIds.First; id <= TemporaryItemIds.Last; id++) {
+        for (var id = _nextTemporaryId; id >= TemporaryItemIds.First && id <= TemporaryItemIds.Last; id++) {
             if (!_temporaryItems.ContainsKey(id) && GetItem(id) == null) {
                 return id;
             }
@@ -67,7 +77,35 @@ public partial class RoomItemHandling
         return null;
     }
 
-    public bool RemoveTemporaryFloorItem(Item item)
+    // Gates, one-way gates and rollers can be Place Furni templates, but no copy is placed onto one, also not onto their copies (observed
+    // on hhus: room.error.wired.placement_failure on top of the template, a copy on a free tile).
+    public bool BlocksTemporaryCopy(ItemDefinition definition, int x, int y, int rotation) =>
+        Gamemap.GetAffectedTiles(definition.Length, definition.Width, x, y, rotation).Values.Select(tile => new Point(tile.X, tile.Y))
+            .Append(new Point(x, y)).Distinct()
+            .Any(tile => _room.GetGameMap().GetCoordinatedItems(tile).Any(other => other.Definition.InteractionType
+                is InteractionType.Gate or InteractionType.GateVip or InteractionType.GuildGate or InteractionType.OneWayGate
+                or InteractionType.Roller));
+
+    public bool RemoveTemporaryFloorItem(Item item) => RemoveTemporary(item, true);
+
+    /// <summary>
+    /// Remove Temporary Furni: the copies leave in one ObjectRemoveMultiple, not in ObjectRemove. Observed on hhus (AIR
+    /// WIN63-202610131318-860371703): in 3589 [1, 2147401728, -1, false].
+    /// </summary>
+    public bool RemoveTemporaryFloorItemsByWired(IEnumerable<Item> items)
+    {
+        var removed = items.Where(item => RemoveTemporary(item, false)).Select(item => item.Id).ToArray();
+
+        if (removed.Length == 0) {
+            return false;
+        }
+
+        _room.SendPacket(new ObjectRemoveMultipleComposer(removed));
+
+        return true;
+    }
+
+    private bool RemoveTemporary(Item item, bool announce)
     {
         if (!OwnsTemporary(item) || !ReferenceEquals(GetItem(item.Id), item)) {
             return false;
@@ -83,7 +121,7 @@ public partial class RoomItemHandling
             _room.RemoveTent(item.Id);
         }
 
-        RemoveRoomItem(item);
+        RemoveRoomItemCore(item, announce);
         _temporaryItems.Remove(item.Id);
 
         return true;
@@ -236,6 +274,7 @@ public partial class RoomItemHandling
         }
 
         _temporaryItems.Clear();
+        _nextTemporaryId = TemporaryItemIds.First;
 
         foreach (var item in items.ToList()) {
             if (item == null) {
@@ -449,7 +488,10 @@ public partial class RoomItemHandling
         return RemoveRoomItem(item);
     }
 
-    private bool RemoveRoomItem(Item item)
+    private bool RemoveRoomItem(Item item) => RemoveRoomItemCore(item, true);
+
+    // Remove Temporary Furni sends its own batch, so its removals are not announced one by one.
+    private bool RemoveRoomItemCore(Item item, bool announce)
     {
         var inputs = _room.GetGameMap().Navigation?.Inputs;
 
@@ -472,10 +514,10 @@ public partial class RoomItemHandling
             return false;
         }
 
-        if (item.IsFloorItem) {
+        if (announce && item.IsFloorItem) {
             _room.SendPacket(new ObjectRemoveComposer(item.Id, item.IsTemporary, item.UserId));
         }
-        else if (item.IsWallItem) {
+        else if (announce && item.IsWallItem) {
             _room.SendPacket(new ItemRemoveComposer(item.Id, item.UserId));
         }
 

@@ -253,6 +253,31 @@ public class WiredClickPacketHookTests
     }
 
     [Fact]
+    public void RemoveTemporaryFurniSendsObjectRemoveMultipleAndAPickUpSendsObjectRemove()
+    {
+        // Observed on hhus: Wired removal is in 3589 [1, 2147401728, -1, false] (AIR package_71/class_2976.as:44-60), never ObjectRemove;
+        // the owner's pick-up of a copy is ObjectRemove.
+        var world = new World("wf_trg_click_furni", [0]);
+        var definition = new ItemDefinition { Id = 30, ItemName = "template", Type = ItemType.Floor, Length = 1, Width = 1, Height = 0.1, Stackable = true };
+        var handler = world.Room.GetRoomItemHandler();
+        var first = handler.PlaceTemporaryFloorItem(definition, 42, 1, 1, 0)!;
+        var second = handler.PlaceTemporaryFloorItem(definition, 42, 2, 1, 0)!;
+        world.Packets.Clear();
+        Assert.True(handler.RemoveTemporaryFloorItemsByWired([first]));
+        Assert.DoesNotContain(world.Packets, packet => packet.Id == 2703);
+        var removed = Assert.Single(world.Packets, packet => packet.Id == 3589).Payload;
+        Assert.Equal(1, removed.ReadInt());
+        Assert.Equal(unchecked((int)TemporaryItemIds.First), removed.ReadInt());
+        Assert.Equal(-1, removed.ReadInt());
+        Assert.False(removed.ReadBool());
+        Assert.Null(handler.GetItem(first.Id));
+        world.Packets.Clear();
+        Assert.True(handler.RemoveTemporaryFloorItem(second));
+        Assert.DoesNotContain(world.Packets, packet => packet.Id == 3589);
+        Assert.Single(world.Packets, packet => packet.Id == 2703);
+    }
+
+    [Fact]
     public async Task NegativeWallMagnitudeResolvesWallWhileSameFloorWireBitsStayDistinct()
     {
         var world = new World("wf_trg_click_furni", [0]);
@@ -460,7 +485,8 @@ public class WiredClickPacketHookTests
                         [ServerPacketHeader.InClientLinkComposer] = 2023,
                         [ServerPacketHeader.ObjectAddComposer] = 1534,
                         [ServerPacketHeader.ObjectsComposer] = 1991,
-                        [ServerPacketHeader.ObjectRemoveComposer] = 2703
+                        [ServerPacketHeader.ObjectRemoveComposer] = 2703,
+                        [ServerPacketHeader.ObjectRemoveMultipleComposer] = 3589
                     }
                 },
                 SendCallback = args =>

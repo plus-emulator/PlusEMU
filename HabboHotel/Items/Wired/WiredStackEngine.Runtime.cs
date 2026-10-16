@@ -499,11 +499,10 @@ internal sealed partial class WiredStackEngine
 
             context.SelectorKinds |= kind;
         }
-        // Selectors never deliver temporary furniture: on hhus a furni-under selector feeding Remove Temporary Furni
-        // removed no copy, and "Can not select temporary furni in Wired" is the official rule.
-        var temporary = context.FurniIdentity.Where(pair => pair.Value.IsTemporary).Select(pair => pair.Key).ToHashSet();
-        Apply(context.SelectorPool.FurniIds, context.SelectorFurniOrder, result.Selection.FurniIds.Where(id => !temporary.Contains(id)).ToHashSet(),
-            context.FurniIdentity.Where(pair => pair.Value.IsFloorItem && !pair.Value.IsTemporary).Select(pair => pair.Key), WiredSelectionKind.Furni);
+        // Selectors deliver temporary copies like any other floor furni; only a manual pick of a copy is refused. Observed on hhus
+        // (AIR WIN63-202610131318-860371703): area and by-type selectors fed Remove Temporary Furni, and Invert selected a copy.
+        Apply(context.SelectorPool.FurniIds, context.SelectorFurniOrder, result.Selection.FurniIds,
+            context.FurniIdentity.Where(pair => pair.Value.IsFloorItem).Select(pair => pair.Key), WiredSelectionKind.Furni);
         Apply(context.SelectorPool.UserIds, context.SelectorUserOrder, result.Selection.UserIds,
             context.UserIdentity.Keys, WiredSelectionKind.Users);
     }

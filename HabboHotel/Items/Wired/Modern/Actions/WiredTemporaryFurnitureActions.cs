@@ -18,14 +18,10 @@ public static class WiredTemporaryFurnitureActions
         var handler = context.Room.GetRoomItemHandler();
 
         if (name == "wf_act_remove_furni") {
-            var changed = false;
-
-            // Both editor modes remove temporary identities. They never return or destroy a permanent owned item.
-            foreach (var item in context.Targets.ResolveFurni(context, config.SelectedItems, config.FurniSources["items"])) {
-                changed |= handler.RemoveTemporaryFloorItem(item);
-            }
-
-            return changed;
+            // Both editor modes remove temporary identities, also copies a selector delivers. They never return or destroy a permanent
+            // owned item.
+            return handler.RemoveTemporaryFloorItemsByWired(
+                context.Targets.ResolveFurni(context, config.SelectedItems, config.FurniSources["items"]).ToArray());
         }
 
         if (config.TemporaryPlacement is not { } policy) {
@@ -38,11 +34,11 @@ public static class WiredTemporaryFurnitureActions
             : config.Snapshots;
 
         // Wall and unavailable definitions cannot be floor templates or the placement pivot.
-        // A value-carrying definition is never cloned, also from an older saved row or a dynamic source.
+        // A value-carrying definition or a Wired box is never cloned, also from an older saved row or a dynamic source.
         var eligibleTemplates = templates.Select(snapshot => (Snapshot: snapshot,
             Definition: definitions.Items.GetValueOrDefault(snapshot.DefinitionId)))
             .Where(template => template.Definition?.Type == Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor
-                && !WiredPlaceTemplatePolicy.CarriesValue(template.Definition)).ToArray();
+                && !WiredPlaceTemplatePolicy.CarriesValue(template.Definition) && !WiredPlaceTemplatePolicy.IsWiredBox(template.Definition)).ToArray();
 
         if (eligibleTemplates.Length == 0) {
             return false;
@@ -118,8 +114,16 @@ public static class WiredTemporaryFurnitureActions
                 WiredPlaceAltitudeType.CustomAltitude => targetZ,
                 _ => context.Room.GetGameMap().SqAbsoluteHeight(x, y)
             };
-            var item = handler.PlaceTemporaryFloorItem(definition!, box.OwnerId, x, y, snapshot.Rotation,
-                Math.Clamp(height + policy.OffsetAltitudeHundredths / 100d, 0, 80), snapshot.State);
+            var z = Math.Max(height + policy.OffsetAltitudeHundredths / 100d, 0);
+
+            // Above the copy altitude limit nothing is placed and nothing is reported (observed on hhus).
+            if (Plus.HabboHotel.Rooms.RoomItemHandling.AboveTemporaryLimit(z)) {
+                continue;
+            }
+
+            var item = handler.BlocksTemporaryCopy(definition!, x, y, snapshot.Rotation)
+                ? null
+                : handler.PlaceTemporaryFloorItem(definition!, box.OwnerId, x, y, snapshot.Rotation, z, snapshot.State);
 
             if (item == null) {
                 failedAny = true;

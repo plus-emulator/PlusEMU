@@ -205,9 +205,9 @@ public sealed class WiredSelectorCaptureTests(ITestOutputHelper output)
     [Theory]
     [InlineData("wf_slc_furni_area")]
     [InlineData("wf_slc_furni_bytype")]
-    public void SelectorsNeverDeliverTemporaryFurni(string name)
+    public void SelectorsDeliverTemporaryFurni(string name)
     {
-        // Official: "Can not select temporary furni in Wired"; a selector feeding Remove Temporary Furni removed no copy on hhus.
+        // Observed on hhus: area and by-type selectors deliver copies (Remove Temporary Furni removed them); only a manual pick is refused.
         var f = new Fixture();
         var user = f.User(1);
         f.Trigger();
@@ -228,7 +228,7 @@ public sealed class WiredSelectorCaptureTests(ITestOutputHelper output)
         f.Engine.OnFastCycle();
         var furni = Assert.Single(selected);
         Assert.Contains(permanent.Id, furni);
-        Assert.DoesNotContain(copy.Id, furni);
+        Assert.Contains(copy.Id, furni);
         Assert.Empty(f.Errors);
     }
 

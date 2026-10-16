@@ -87,6 +87,7 @@ public sealed class RoomRightsService(IRoomRightsStore store, ILanguageManager l
             roomUser.SetStatus("flatctrl 1");
             roomUser.UpdateNeeded = true;
             roomUser.GetClient()?.Send(new YouAreControllerComposer(room.Id, 1));
+            ResendWiredPermissions(room, userId);
             var target = roomUser.GetClient()?.GetHabbo();
 
             if (target != null) {
@@ -121,6 +122,7 @@ public sealed class RoomRightsService(IRoomRightsStore store, ILanguageManager l
             PublishRemoval(room, userId, false);
             room.UsersWithRights.Remove(userId);
             session.Send(new FlatControllerRemovedComposer(room.Id, userId));
+            ResendWiredPermissions(room, userId);
         }
     }
 
@@ -146,6 +148,10 @@ public sealed class RoomRightsService(IRoomRightsStore store, ILanguageManager l
         }
 
         room.UsersWithRights.Clear();
+
+        foreach (var userId in removals) {
+            ResendWiredPermissions(room, userId);
+        }
     }
 
     public void RemoveOwn(Room room, GameClient session)
@@ -163,6 +169,15 @@ public sealed class RoomRightsService(IRoomRightsStore store, ILanguageManager l
         store.Remove(room.Id, [userId]);
         PublishRemoval(room, userId, true);
         room.UsersWithRights.Remove(userId);
+        ResendWiredPermissions(room, userId);
+    }
+
+    // Rights feed the Wired inspect and modify masks, so the user gets their new Wired permissions once the rights list has changed.
+    private static void ResendWiredPermissions(Room room, int userId)
+    {
+        if (room.GetRoomUserManager().GetRoomUserByHabbo(userId) is { IsBot: false } user && user.GetClient() is { } client) {
+            room.GetWired()?.SendPermissions(client);
+        }
     }
 
     private static void PublishRemoval(Room room, int userId, bool own)

@@ -438,7 +438,7 @@ public class RoomUserManager
         }
 
         if (_room.GetWired() is { } wired) {
-            session.Send(new WiredPermissionsComposer(wired.Settings.CanModify(session), wired.Settings.CanInspect(session)));
+            wired.SendPermissions(session);
         }
 
         user.UpdateNeeded = true;

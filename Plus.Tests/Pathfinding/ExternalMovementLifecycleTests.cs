@@ -97,19 +97,18 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void RideHorseMountQueuesOneCoherentPlacementAndCancelsBothOldBatches()
     {
-        var rider = ExecutorActor(0, 1);
+        var rider = ExecutorActor(1, 1);
         var horse = ExternalLifecycleHorse(2, 1);
         ExecutorTick();
-        rider.MoveTo(3, 1);
+        rider.MoveTo(0, 1);
         ExecutorTick();
+        rider.MoveTo(1, 1);
         RideExternalHorse(horse, mount: true);
-        Assert.Equal((0, 1, 0d), (rider.X, rider.Y, rider.Z));
-        Assert.Equal((2, 1, 0d), (horse.X, horse.Y, horse.Z));
         Assert.False(rider.RidingHorse);
         Assert.False(horse.RidingHorse);
         ExecutorTick();
-        Assert.Equal((0, 1, 1d), (rider.X, rider.Y, rider.Z));
-        Assert.Equal((0, 1, 0d), (horse.X, horse.Y, horse.Z));
+        Assert.Equal((2, 1, 1d), (rider.X, rider.Y, rider.Z));
+        Assert.Equal((2, 1, 0d), (horse.X, horse.Y, horse.Z));
         Assert.True(rider.RidingHorse);
         Assert.True(horse.RidingHorse);
         Assert.Equal(horse.VirtualId, rider.HorseId);
@@ -121,8 +120,26 @@ public partial class PlacedFurniRoomTests
         Assert.False(horse.HasStatus("mv"));
         ExecutorTick();
         ExecutorTick();
-        Assert.Equal((0, 1), (rider.X, rider.Y));
-        Assert.Equal((0, 1), (horse.X, horse.Y));
+        Assert.Equal((2, 1), (rider.X, rider.Y));
+        Assert.Equal((2, 1), (horse.X, horse.Y));
+    }
+
+    [Fact]
+    public void RideHorseFromADistanceWalksUpBeforeMounting()
+    {
+        var rider = ExecutorActor(0, 1);
+        var horse = ExternalLifecycleHorse(2, 1);
+        ExecutorTick();
+        RideExternalHorse(horse, mount: true);
+
+        for (var tick = 0; tick < 12 && !rider.RidingHorse; tick++) {
+            ExecutorTick();
+            Assert.Equal((2, 1), (horse.X, horse.Y));
+        }
+
+        Assert.True(rider.RidingHorse);
+        Assert.Equal((2, 1, 1d), (rider.X, rider.Y, rider.Z));
+        Assert.Equal((2, 1, 0d), (horse.X, horse.Y, horse.Z));
     }
 
     [Fact]

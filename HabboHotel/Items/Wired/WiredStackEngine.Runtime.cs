@@ -471,7 +471,7 @@ internal sealed partial class WiredStackEngine
 
     private void ComposeSelector(WiredRuntimeContext context, WiredSelectorResult result)
     {
-        void Apply<T>(HashSet<T> pool, List<T> order, HashSet<T> triggering, HashSet<T> selected, IEnumerable<T> universe, WiredSelectionKind kind)
+        void Apply<T>(HashSet<T> pool, List<T> order, HashSet<T> selected, IEnumerable<T> universe, WiredSelectionKind kind)
         {
             if (!result.Kind.HasFlag(kind)) {
                 return;
@@ -480,7 +480,9 @@ internal sealed partial class WiredStackEngine
             var kept = (result.Invert ? universe.Except(selected) : selected).ToArray();
 
             if (result.FiltersExisting) {
-                var basis = context.SelectorKinds.HasFlag(kind) ? order.ToArray() : triggering.ToArray();
+                // Observed on AIR WIN63-202610131318-860371703: a filter with no selector of its kind before it selects nothing; it does
+                // not fall back to the triggering user.
+                var basis = context.SelectorKinds.HasFlag(kind) ? order.ToArray() : [];
                 var matches = kept.ToHashSet();
                 order.Clear();
                 order.AddRange(basis.Where(matches.Contains));
@@ -497,9 +499,9 @@ internal sealed partial class WiredStackEngine
 
             context.SelectorKinds |= kind;
         }
-        Apply(context.SelectorPool.FurniIds, context.SelectorFurniOrder, context.Triggering.FurniIds, result.Selection.FurniIds,
+        Apply(context.SelectorPool.FurniIds, context.SelectorFurniOrder, result.Selection.FurniIds,
             context.FurniIdentity.Where(pair => pair.Value.IsFloorItem).Select(pair => pair.Key), WiredSelectionKind.Furni);
-        Apply(context.SelectorPool.UserIds, context.SelectorUserOrder, context.Triggering.UserIds, result.Selection.UserIds,
+        Apply(context.SelectorPool.UserIds, context.SelectorUserOrder, result.Selection.UserIds,
             context.UserIdentity.Keys, WiredSelectionKind.Users);
     }
 

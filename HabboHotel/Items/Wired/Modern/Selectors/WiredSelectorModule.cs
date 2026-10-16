@@ -32,8 +32,8 @@ public static class WiredSelectorModule
         var selected = new WiredSelectedIds();
         var target = name == "wf_slc_remote" ? WiredSelectorTarget.Both
             : name.StartsWith("wf_slc_users_", StringComparison.Ordinal) ? WiredSelectorTarget.User : WiredSelectorTarget.Furni;
-        var (filterIndex, invertIndex) = SwitchIndexes(name);
-        var filter = c.Origin?.Native.Filter ?? WiredSelectorSources.Param(c, filterIndex) == 1;
+        var (_, invertIndex) = SwitchIndexes(name);
+        var filter = FiltersExistingNormalized(name, c);
         var invert = c.Origin?.Native.Inverse ?? WiredSelectorSources.Param(c, invertIndex) == 1;
         int P(int index, int fallback = 0) => WiredSelectorSources.Param(c, index, fallback);
         IEnumerable<WiredSelectorFurniture> Furni(int source) =>
@@ -200,7 +200,7 @@ public static class WiredSelectorModule
                         var usersModified = false;
 
                         try {
-                            foreach (var id in stack) {
+                            foreach (var id in FiltersLast(stack, id => FiltersExisting(world.RemoteSelectors![id].Name, world.RemoteSelectors[id].Configuration))) {
                                 var remote = world.RemoteSelectors![id];
                                 var remoteInput = input with
                                 {
@@ -281,7 +281,7 @@ public static class WiredSelectorModule
                 .Select(x => x.Id).Except(result.Selection.FurniIds) : result.Selection.FurniIds;
 
             if (result.FiltersExisting) {
-                var basis = input.FurniModified ? input.SelectorPool.FurniIds : input.Triggering.FurniIds;
+                var basis = input.FurniModified ? input.SelectorPool.FurniIds : [];
                 output.FurniIds.Clear();
                 output.FurniIds.UnionWith(basis.Intersect(kept));
             }
@@ -294,7 +294,7 @@ public static class WiredSelectorModule
             var kept = result.Invert ? world.Users.Select(x => x.Id).Except(result.Selection.UserIds) : result.Selection.UserIds;
 
             if (result.FiltersExisting) {
-                var basis = input.UsersModified ? input.SelectorPool.UserIds : input.Triggering.UserIds;
+                var basis = input.UsersModified ? input.SelectorPool.UserIds : [];
                 output.UserIds.Clear();
                 output.UserIds.UnionWith(basis.Intersect(kept));
             }
@@ -399,6 +399,21 @@ public static class WiredSelectorModule
 
         return user.LastAction is int previous && input.NowMs >= user.LastActionAtMs
             && input.NowMs - user.LastActionAtMs <= 5000 && Match(previous, user.LastActionParameter);
+    }
+
+    public static bool FiltersExisting(string name, WiredConfiguration c) =>
+        Names.Contains(name, StringComparer.Ordinal) && FiltersExistingNormalized(name, WiredSelectorConfiguration.Normalize(name, c));
+
+    private static bool FiltersExistingNormalized(string name, WiredConfiguration c) =>
+        c.Origin?.Native.Filter ?? WiredSelectorSources.Param(c, SwitchIndexes(name).Filter) == 1;
+
+    // Observed on AIR WIN63-202610131318-860371703: the filters of a stack narrow what its other selectors picked wherever they stand,
+    // so they run after them, keeping the stack order within each group.
+    public static IEnumerable<T> FiltersLast<T>(IEnumerable<T> selectors, Func<T, bool> filters)
+    {
+        var all = selectors.ToArray();
+
+        return all.Where(selector => !filters(selector)).Concat(all.Where(filters));
     }
 
     internal static (int Filter, int Invert) SwitchIndexes(string name) => name switch

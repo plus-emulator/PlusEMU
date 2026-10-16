@@ -110,7 +110,16 @@ public sealed class WiredAddonModule
                         }
                     }
                     else {
+                        // Observed on AIR WIN63-202610131318-860371703: a literal Filter To X Users keeps a random N on each firing, like furni.
+                        var literalIsTheLimit = P(1) == 0 && keep < (policy.UserLimit ?? int.MaxValue);
                         policy.UserLimit = Math.Min(policy.UserLimit ?? int.MaxValue, keep);
+
+                        if (P(1) == 1) {
+                            policy.UserFilterRandom = null;
+                        }
+                        else if (literalIsTheLimit) {
+                            policy.UserFilterRandom = _random;
+                        }
                     }
 
                     break;

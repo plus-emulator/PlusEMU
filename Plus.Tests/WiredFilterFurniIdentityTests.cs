@@ -81,15 +81,15 @@ public sealed class WiredFilterFurniIdentityTests
         Assert.Same(random, policy.FurniFilterRandom);
     }
 
-    // Users and variable-mode furniture filters keep the first selector entries whatever the draw would have been.
+    // Variable-mode filters keep the first selector entries whatever the draw would have been.
     [Theory]
     [InlineData(0)]
     [InlineData(7)]
-    public void UserFiltersAndVariableModeFurnitureFiltersKeepTheFirstEntries(int draw)
+    public void VariableModeFiltersKeepTheFirstEntries(int draw)
     {
         var random = new ScriptedRandom(draw);
         var policy = new WiredAddonPolicy();
-        Assert.True(new WiredAddonModule("wf_xtra_filter_users", Filter(1, 0), random).Apply(Inputs(), policy));
+        Assert.True(new WiredAddonModule("wf_xtra_filter_users", new() { IntParams = [1, 1, 3, 0, 0], VariableIds = ["missing"] }, random).Apply(Inputs(), policy));
         Assert.True(new WiredAddonModule("wf_xtra_filter_furni", new() { IntParams = [1, 1, 3, 0, 0], VariableIds = ["missing"] }, random).Apply(Inputs(), policy));
         var selection = new WiredSelectedIds();
         selection.FurniIds.UnionWith(new uint[] { 1, 2, 3 });
@@ -98,9 +98,33 @@ public sealed class WiredFilterFurniIdentityTests
         var filtered = policy.FilterSelection(selection, new uint[] { 3, 1, 2 }, new[] { 3, 1, 2 });
 
         Assert.Null(policy.FurniFilterRandom);
+        Assert.Null(policy.UserFilterRandom);
         Assert.Equal(new uint[] { 3 }, filtered.FurniIds);
         Assert.Equal(new[] { 3 }, filtered.UserIds);
         Assert.Equal(0, random.Calls);
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703: a literal Filter To X Users keeps a random N on each firing (both users were kept
+    // across firings), like the furni filter.
+    [Fact]
+    public void LiteralUserFilterKeepsARandomSubsetOnEachFiring()
+    {
+        var kept = new HashSet<int>();
+
+        foreach (var draw in Enumerable.Range(0, 8)) {
+            var random = new ScriptedRandom(draw);
+            var policy = new WiredAddonPolicy();
+            Assert.True(new WiredAddonModule("wf_xtra_filter_users", Filter(1, 0), random).Apply(Inputs(), policy));
+            Assert.Same(random, policy.UserFilterRandom);
+            var selection = new WiredSelectedIds();
+            selection.UserIds.UnionWith(new[] { 1, 2 });
+
+            var filtered = policy.FilterSelection(selection, userOrder: new[] { 1, 2 });
+
+            kept.Add(Assert.Single(filtered.UserIds));
+        }
+
+        Assert.Equal(new[] { 1, 2 }, kept.Order());
     }
 
     // A variable-mode furniture filter clears the random slot; a literal one sets it only when its own amount is the limit.

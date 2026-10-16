@@ -32,11 +32,41 @@ public sealed class RoomItemPickupService(
         var room = session.GetHabbo()?.CurrentRoom;
         var item = room?.GetRoomItemHandler().GetItem(itemId);
 
-        if (session.GetHabbo()?.AccessClosed != false || room == null || item == null || !room.GetRoomItemHandler().TryReserveTransfers([item], out var transfer)) {
+        if (session.GetHabbo()?.AccessClosed != false || room == null || item == null) {
+            return false;
+        }
+
+        if (item.IsTemporary) {
+            return TryPickUpTemporary(session, room, item);
+        }
+
+        if (!room.GetRoomItemHandler().TryReserveTransfers([item], out var transfer)) {
             return false;
         }
 
         return TryPickUpReserved(session, itemId, transfer!);
+    }
+
+    // Observed on hhus (AIR WIN63-202610131318-860371703): the owner can pick up a Place Furni copy, which carries the box owner as its
+    // owner. The pick-up only removes the copy: nothing goes to the inventory and nothing is stored. Rights holders and visitors are
+    // never offered it.
+    private static bool TryPickUpTemporary(GameClient session, Room room, Item item)
+    {
+        var habbo = session.GetHabbo();
+
+        if (habbo == null || item.RoomId != room.Id || !ReferenceEquals(habbo.CurrentRoom, room)) {
+            return false;
+        }
+
+        var ownsCopy = item.OwnerId is > 0 and <= int.MaxValue && (int)item.OwnerId == habbo.Id;
+
+        if (!ownsCopy && room.OwnerId != habbo.Id) {
+            return false;
+        }
+
+        lock (item) {
+            return room.GetRoomItemHandler().RemoveTemporaryFloorItem(item);
+        }
     }
 
     public bool TryPickUpReserved(GameClient session, uint itemId, RoomItemTransfer transfer)

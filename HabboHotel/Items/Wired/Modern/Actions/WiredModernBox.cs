@@ -34,7 +34,11 @@ public abstract class WiredModernBox : IWiredContextualItem
         }
 
         Interlocked.Exchange(ref _configuration, validated);
+        ConfigurationChanged();
     }
+
+    /// <summary>Runs after every applied save or load, so per-box runtime memory can restart from the new configuration.</summary>
+    protected virtual void ConfigurationChanged() { }
     public void HandleSave(IIncomingPacket packet) => throw new InvalidOperationException("Configured Wired uses WiredConfigurationSave.");
     public bool Execute(params object[] arguments) => arguments is [WiredRuntimeContext context] && Execute(context);
     public abstract bool Execute(WiredRuntimeContext context);

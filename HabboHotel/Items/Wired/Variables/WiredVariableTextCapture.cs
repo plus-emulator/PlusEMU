@@ -9,8 +9,9 @@ public sealed record WiredVariableCapturer(uint DefinitionId, string Name, IRead
     public long? Read(string text)
     {
         if (Labels is { Count: > 0 }) {
+            // Observed on AIR WIN63-202610131318-860371703: the connector lookup is case-insensitive and the last matching line wins.
             return Labels.Where(pair => string.Equals(pair.Value.Trim(), text.Trim(), StringComparison.OrdinalIgnoreCase))
-                .Select(pair => (long?)pair.Key).FirstOrDefault();
+                .Select(pair => (long?)pair.Key).LastOrDefault();
         }
 
         return long.TryParse(text.Trim(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value) ? value : null;
@@ -57,10 +58,9 @@ public static class WiredVariableTextCapture
 
         var names = matches.Select(match => (match.Groups[1].Success ? match.Groups[1] : match.Groups[2]).Value.Trim()).ToArray();
 
-        if (matches[0].Index == 0 && matches[^1].Index + matches[^1].Length == template.Length
-            && matches.Skip(1).Select((match, index) => match.Index == matches[index].Index + matches[index].Length).All(value => value)
-            && names.All(byName.ContainsKey)) {
-            return Adjacent(text, mode, names.Select(name => byName[name]).ToArray(), out values);
+        // Observed on AIR WIN63-202610131318-860371703: a marker without a capturer of its own stops the trigger.
+        if (!names.All(byName.ContainsKey)) {
+            return false;
         }
 
         var literals = new List<string>();
@@ -69,8 +69,9 @@ public static class WiredVariableTextCapture
         for (var index = 0; index < matches.Length; index++) {
             var match = matches[index];
 
+            // Observed on AIR WIN63-202610131318-860371703: adjacent markers never fire, with or without a literal prefix.
             if (index > 0 && match.Index == cursor) {
-                return Literal(template, text, mode);
+                return false;
             }
 
             literals.Add(template[cursor..match.Index]);
@@ -104,9 +105,7 @@ public static class WiredVariableTextCapture
                 var readable = true;
 
                 for (var index = 0; index < names.Length && readable; index++) {
-                    if (!byName.TryGetValue(names[index], out var capturer)) {
-                        continue;
-                    }
+                    var capturer = byName[names[index]];
 
                     if (capturer.Read(match.Groups[index + 1].Value) is { } value) {
                         captured[capturer.DefinitionId] = value;
@@ -131,40 +130,4 @@ public static class WiredVariableTextCapture
     }
     private static bool Literal(string template, string text, int mode) => template.Length > 0 && (mode == 0
         ? text.Trim().Contains(template, StringComparison.OrdinalIgnoreCase) : string.Equals(text.Trim(), template, StringComparison.OrdinalIgnoreCase));
-    private static bool Adjacent(string text, int mode, WiredVariableCapturer[] capturers, out IReadOnlyDictionary<uint, long> values)
-    {
-        values = new Dictionary<uint, long>();
-        var paths = new Dictionary<int, (int Previous, long Value)>[capturers.Length + 1];
-        paths[0] = new() { [0] = (0, 0) };
-
-        for (var index = 0; index < capturers.Length; index++) {
-            paths[index + 1] = [];
-
-            foreach (var start in paths[index].Keys.Order()) {
-                for (var end = start + 1; end <= Math.Min(text.Length, start + 64); end++) {
-                    if (!paths[index + 1].ContainsKey(end) && capturers[index].Read(text[start..end]) is { } value) {
-                        paths[index + 1][end] = (start, value);
-                    }
-                }
-            }
-        }
-
-        var cursor = mode == 0 ? paths[^1].Keys.DefaultIfEmpty(-1).Max() : text.Length;
-
-        if (!paths[^1].ContainsKey(cursor)) {
-            return false;
-        }
-
-        var captured = new Dictionary<uint, long>();
-
-        for (var index = capturers.Length - 1; index >= 0; index--) {
-            var step = paths[index + 1][cursor];
-            captured[capturers[index].DefinitionId] = step.Value;
-            cursor = step.Previous;
-        }
-
-        values = captured;
-
-        return true;
-    }
 }

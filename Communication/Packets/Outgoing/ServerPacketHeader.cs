@@ -466,4 +466,6 @@ public static class ServerPacketHeader
     // Wired monitor. Ids are the WIN63-202610121709 equivalents of the WIN63-202610131318-860371703 classes named.
     public const uint WiredRoomStatsComposer = 1147; // package_121.class_3178 (new 2051)
     public const uint WiredErrorLogsComposer = 1305; // package_121.class_2819 (new 104)
+    // Wired menu permissions, sent on room entry. Observed on AIR WIN63-202610131318-860371703 as package_121.class_3679 (new 3061), parser class_2713.
+    public const uint WiredPermissionsComposer = 2054; // package_121.class_3679 (new 3061)
 }

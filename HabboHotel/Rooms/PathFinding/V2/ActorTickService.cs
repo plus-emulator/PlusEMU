@@ -45,7 +45,7 @@ public sealed class ActorTickService(Room room)
     }
     public void AfterMovement(RoomUser actor)
     {
-        if (actor.RidingHorse && !actor.IsBot) {
+        if (actor.RidingHorse && !actor.IsBot && actor.GetClient()?.GetHabbo()?.Effects is { CurrentEffect: not 77 }) {
             actor.ApplyEffect(77);
         }
 

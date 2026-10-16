@@ -33,7 +33,7 @@ public sealed class WiredEvidenceRegistryTests
         Assert.Equal(Expected.Length, marked.Count());
     }
 
-    private static readonly string[] ExpectedTurbo =
+    private static readonly string[] ExpectedUnobservedRuntime =
     [
         "wf_act_give_reward", "wf_act_move_furni_to", "wf_act_mute_triggerer",
         "wf_trg_at_time_long", "wf_trg_transaction_complete", "wf_xtra_var_time_util"
@@ -47,25 +47,25 @@ public sealed class WiredEvidenceRegistryTests
         {
             Assert.Equal(WiredEvidenceLevel.Observed, pair.Value.Level);
             Assert.Equal(WiredEvidenceLevel.Observed, WiredEvidenceRegistry.LevelOf(pair.Key));
-            Assert.False(WiredEvidenceRegistry.TurboReferenceOnly.ContainsKey(pair.Key));
+            Assert.False(WiredEvidenceRegistry.UnobservedRuntime.ContainsKey(pair.Key));
         });
     }
 
     [Fact]
-    public void ExactlyTheTurboReferenceOnlyCardsAreMarked()
+    public void ExactlyTheUnobservedRuntimeCardsAreMarked()
     {
-        Assert.Equal(ExpectedTurbo, WiredEvidenceRegistry.TurboReferenceOnly.Keys.Order(StringComparer.Ordinal));
-        Assert.All(WiredEvidenceRegistry.TurboReferenceOnly.Values, evidence =>
+        Assert.Equal(ExpectedUnobservedRuntime, WiredEvidenceRegistry.UnobservedRuntime.Keys.Order(StringComparer.Ordinal));
+        Assert.All(WiredEvidenceRegistry.UnobservedRuntime.Values, evidence =>
         {
-            Assert.Equal(WiredEvidenceLevel.TurboReferenceOnly, evidence.Level);
+            Assert.Equal(WiredEvidenceLevel.UnobservedRuntime, evidence.Level);
             Assert.EndsWith(".as", evidence.Source);
         });
-        Assert.All(ExpectedTurbo, name =>
+        Assert.All(ExpectedUnobservedRuntime, name =>
         {
-            Assert.Equal(WiredEvidenceLevel.TurboReferenceOnly, WiredEvidenceRegistry.LevelOf(name));
+            Assert.Equal(WiredEvidenceLevel.UnobservedRuntime, WiredEvidenceRegistry.LevelOf(name));
             Assert.True(WiredBoxRegistry.TryGet(name, out _), name);
         });
-        Assert.Empty(ExpectedTurbo.Intersect(WiredEvidenceRegistry.AirSourceOnly.Keys));
+        Assert.Empty(ExpectedUnobservedRuntime.Intersect(WiredEvidenceRegistry.AirSourceOnly.Keys));
     }
 
     [Fact]

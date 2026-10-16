@@ -2217,7 +2217,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void BotValidationPreservesWidthAndFigureChecksActualTurboShape()
+    public void BotValidationPreservesWidthAndFigureChecksActualShape()
     {
         Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk_to_avatar", new() { IntParams = [1, 11, 100, 2], Text = "Alice\tHello" }, out var config, out _));
         Assert.Equal(11, config.UserSources["users"]);

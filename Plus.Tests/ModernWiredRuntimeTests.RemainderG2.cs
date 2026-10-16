@@ -102,7 +102,7 @@ public partial class ModernWiredRuntimeTests
         var replies = Capture(f.Client);
         f.Fire();
         Assert.Empty(f.Room.MutedUsers);
-        Assert.Empty(Chats(replies)); // Turbo whispers only a user it actually muted.
+        Assert.Empty(Chats(replies)); // A whisper reaches only a user that was actually muted.
     }
 
     [Theory]

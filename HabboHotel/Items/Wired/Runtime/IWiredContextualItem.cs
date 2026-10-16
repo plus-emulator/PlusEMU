@@ -17,7 +17,7 @@ public interface IWiredContextualTrigger : IWiredContextualItem
 {
     IReadOnlyCollection<WiredEventKind> Events { get; }
     bool HidesChat(WiredRuntimeContext context);
-    // Execute is the pre-filter; this runs once the stack's selectors have filled the pool (Turbo's CanTriggerAsync).
+    // Execute is the pre-filter; this runs once the stack's selectors have filled the pool.
     bool CanTrigger(WiredRuntimeContext context) => true;
 }
 

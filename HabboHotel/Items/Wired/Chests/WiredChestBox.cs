@@ -166,7 +166,7 @@ public class WiredChestBox : WiredModernBox
             _ => false
         };
     }
-    // The add-on's contract is built when the transaction starts, from the variables as they are then (Turbo WiredAddonCustomContract.BuildContract).
+    // The add-on's contract is built when the transaction starts, from the variables as they are then.
     private sealed record ContractSource(Func<WiredChestContract?> Build);
     protected static void SetCustom(WiredRuntimeContext context, Func<WiredChestContract?> build)
     {
@@ -203,14 +203,14 @@ public sealed class WiredChestAction(Room room, Item item, WiredBoxDescriptor de
 
             Chests.CancelByWired(actors, contracts, any);
 
-            // Like Turbo, the box counts as run once it was told to cancel, whether or not a transaction stood to be cancelled.
+            // The box counts as run once it was told to cancel, whether or not a transaction stood to be cancelled.
             return true;
         }
 
         if (Descriptor.CanonicalName == "wf_act_init_transaction") {
             WiredChestContract? contract;
             var custom = TryCustom(context, out contract);
-            // Exactly one picked contract is offered; none or several is a misconfiguration (Turbo d4b3d94a, "Misconfig Too Many Or No Contracts").
+            // Exactly one picked contract is offered; none or several is a misconfiguration.
             var contractItems = custom ? [] : Furni(context, c, 1).Where(item => WiredChestFurniture.IsContract(item.Definition)).DistinctBy(item => item.Id).Take(2).ToArray();
             var contractItem = contractItems.Length == 1 ? contractItems[0] : null;
             contract ??= contractItem == null ? null : Chests.Store.LoadContract(contractItem);
@@ -327,7 +327,7 @@ public sealed class WiredChestAddon(Room room, Item item, WiredBoxDescriptor des
         var c = context.ConfigurationOf(this);
 
         if (Descriptor.CanonicalName == "wf_xtra_scan_chest_furni_by_type") {
-            // Like Turbo's scanner, a stack whose scan has nowhere to go still runs its effects (Turbo WiredAddonChestItemTypeScanner.BeforeEffectsAsync).
+            // A stack whose scan has nowhere to go still runs its effects.
             if (Variable(context, c, 0, WiredVariableTarget.Context) is { } captured && WiredVariableModule.TryDefinitionId(captured.Token, out var id)) {
                 var types = Furni(context, c, 0).Select(WiredChestItemType.Of).ToHashSet();
                 var frame = Frame(context);

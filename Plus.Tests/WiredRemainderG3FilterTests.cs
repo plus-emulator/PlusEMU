@@ -10,7 +10,7 @@ namespace Plus.Tests;
 
 // Group g3, Filter Users by Variable (wf_xtra_filter_users_by_var): the add-on trims the stack's selected users to the N highest or lowest
 // (or oldest or latest) holders of a user variable.
-public sealed class WiredTurboRemainderG3FilterTests
+public sealed class WiredRemainderG3FilterTests
 {
     private const string Value = "custom:10";
     private const string Reference = "custom:11";

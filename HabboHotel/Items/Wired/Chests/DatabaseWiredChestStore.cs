@@ -58,7 +58,7 @@ public sealed class DatabaseWiredChestStore(IDatabase database, IItemDataManager
         var old = Settings(row);
         var proposed = change(old);
         var requested = proposed;
-        // Historical Turbo fadfe2a5: coin controls send unset preview values; an unset furni amount preserves its stored value.
+        // Coin controls send unset preview values; an unset furni amount preserves its stored value.
         proposed = proposed with
         {
             PreviewMode = row.Kind == (int)WiredChestKind.Coins ? old.PreviewMode : proposed.PreviewMode,
@@ -217,7 +217,7 @@ public sealed class DatabaseWiredChestStore(IDatabase database, IItemDataManager
             return WiredChestTransferResult.Refused(WiredChestFailure.ChestFull);
         }
 
-        // Rewards are planned against pre-payment stock, matching Turbo's CanCover check.
+        // Rewards are planned against pre-payment stock.
         var availableCoins = chests.ToDictionary(chest => chest.Id, chest => chest.Coins);
         var availableItems = contents.ToList();
         var received = new List<InventoryItem>();

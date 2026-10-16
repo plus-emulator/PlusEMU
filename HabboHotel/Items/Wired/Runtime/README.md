@@ -60,7 +60,7 @@ clocks and fake configured boxes. They verify dispatch/selection ordering, both 
 branches, forwarded sources, cached caps, synchronous chat, immutable delayed settings,
 publication failures/cancellation, visit identity, mixed repeaters, shared limits, recursive
 calls, copied signals, auxiliary work and serialized cadence. These tests do not establish
-full Turbo catalogue parity, production load capacity or live client animation fidelity.
+full catalogue parity, production load capacity or live client animation fidelity.
 
 Native room hooks preserve visits on entry/removal and dispatch Awake/Lay transitions,
 modern counters and bot arrival events. Variable changes retain their typed before/after,

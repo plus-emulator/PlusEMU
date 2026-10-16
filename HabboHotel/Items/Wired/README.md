@@ -4,7 +4,7 @@
 owns trigger dispatch, tile stacks, condition evaluation, random effect selection and delayed
 action chains. Each firing carries a copied legacy argument array and a stack-call depth.
 This is the legacy foundation for later contextual selectors/signals/variables, not a port
-of Turbo's complete wired catalogue.
+of the complete wired catalogue.
 
 ## Compatibility and deliberate changes
 
@@ -27,7 +27,7 @@ of Turbo's complete wired catalogue.
   firings. A zero-delay action executes immediately even when another action waits; two
   delay-1 actions both become due after 500ms. A late room tick executes due actions within
   the execution budget. This preserves Plus/Volt independent effect timing instead of
-  adopting Turbo's cumulative chain delays, which would change existing rooms. Legacy
+  adopting cumulative chain delays, which would change existing rooms. Legacy
   shared flags and inconsistent tick offsets no longer collapse or postpone firings.
 - Each firing retains its own actor and captures the actual RoomUser visit reference.
   Leaving, changing rooms or re-entering cancels the old visit's remaining actions. Actorless

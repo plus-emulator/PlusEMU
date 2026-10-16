@@ -183,7 +183,7 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
 
         return true;
     }
-    // Volt and Turbo operators: 0 increase, 1 decrease, 2 set.
+    // Volt operators: 0 increase, 1 decrease, 2 set.
     public bool Adjust(Item item, int operation, int minutes, int halfSecondSteps, WiredClockOrigin origin = WiredClockOrigin.Unknown)
     {
         var clock = Find(item);

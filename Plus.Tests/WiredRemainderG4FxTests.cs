@@ -12,9 +12,9 @@ namespace Plus.Tests;
 /// The six variable FX cards (wf_xtra_var_fx_health/progress/level/status/boss/number) of the g4 remainder batch, run end to end from the
 /// native editor frame through validation, binding and the per viewer tracker to the packets a client receives. The editor frame is the one
 /// observed on hhus (WIN63-202610131318): 23 ints, the category slot at [21] and the "Order in FX stack" at [22]. Runtime behaviour that
-/// nothing official shows is read from turbo-cloud (facts only).
+/// nothing official shows is not yet observed on official Habbo (facts only).
 /// </summary>
-public sealed class WiredTurboRemainderG4FxTests
+public sealed class WiredRemainderG4FxTests
 {
     private static readonly (string Card, int Code, int Category)[] Cards =
     [

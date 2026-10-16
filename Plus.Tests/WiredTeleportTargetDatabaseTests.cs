@@ -45,7 +45,7 @@ public sealed class WiredTeleportTargetDatabaseTests
             Assert.False(store.SetLinkedTeleporter(10, 2, 20));
             Assert.False(store.SetLinkedTeleporter(10, 1, 0));
             Assert.False(store.SetLinkedTeleporter(999, 1, 20));
-            // Turbo permits a positive dangling target. Travel resolves it when used.
+            // A positive dangling target is permitted. Travel resolves it when used.
             Assert.True(store.SetLinkedTeleporter(30, 2, 999));
             Assert.Equal(999u, reloaded.FindLinkedTeleporter(30));
             connection.Execute("""

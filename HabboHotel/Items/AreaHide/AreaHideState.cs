@@ -17,7 +17,7 @@ public sealed record AreaHideValues(ImmutableArray<int> Values)
 // The client hides the area. The room owns and persists its eight NumberData settings.
 public static class AreaHideState
 {
-    public const int ControllerMaxSize = 20; // Pinned Turbo RoomConfig.AreaHideMaxSize default.
+    public const int ControllerMaxSize = 20; // Pinned RoomConfig.AreaHideMaxSize default.
     private static readonly ConditionalWeakTable<Item, object> Gates = new();
     private static readonly string[] Fields = ["state", "rootX", "rootY", "width", "length", "invisibility", "wallItems", "invert"];
     public static bool IsAreaHide(Item item) => item.Definition.InteractionType == InteractionType.AreaHide;

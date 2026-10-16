@@ -14,7 +14,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The 13 cards of bugfix/wired-turbo-reference-13, exercised through the same fixture the other wired action tests use.
+// The 13 reference cards, exercised through the same fixture the other wired action tests use.
 public partial class ModernWiredRuntimeTests
 {
     private static RoomUser AddNamedBot(TeleportFixture f, int virtualId, string name, int x, int y)

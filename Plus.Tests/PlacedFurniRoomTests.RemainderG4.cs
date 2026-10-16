@@ -8,7 +8,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // wf_var_reference reads and writes variables of the owner's other rooms, so only the room's owner may save one. Turbo's
+    // wf_var_reference reads and writes variables of the owner's other rooms, so only the room's owner may save one.
     // WiredVariableReference.ApplyWiredUpdateAsync refuses everyone else; a perfectly valid frame from a rights holder changes nothing.
     [Fact]
     public void ReferenceVariableSaveFromSomeoneWhoDoesNotOwnTheRoomIsRefusedAndStoresNothing()

@@ -432,10 +432,17 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         internal void Moved(RoomUser user) => _moved.TryAdd(user, 0);
     }
 
+    // Observed on AIR WIN63-202610131318-860371703 (Fast Queue, 200 ms): a user walking against the queue walks tile by tile with no
+    // carry entries; carrying resumes once the walk has ended. A walking user, or one whose walk request is still queued, is not a
+    // passenger: carrying them would discard that request.
     private static RoomUser[] Carried(WiredRuntimeContext context, Item item) => context.Room.GetRoomUserManager().GetRoomUsers()
         .Where(user => context.Policy.Addons.Carry?.UserIds.Contains(user.VirtualId) == true
+            && !user.IsWalking && !HasQueuedWalk(user)
             && WiredRoomOperations.IsOnItem(user, item)
             && (context.Policy.Addons.Carry.SameTile || Math.Abs(user.Z - item.TotalHeight) < 0.001)).ToArray();
+
+    private static bool HasQueuedWalk(RoomUser user) => user.Movement.Commands.Read() is { Origin: not MoveOrigin.Wired } command
+        && command.Sequence > user.Movement.ConsumedSequence;
 
     public bool MoveAvatar(WiredRuntimeContext context, RoomUser user, int x, int y, bool animate,
         int walkMode = 2, bool throughUsers = false, bool ignoreOccupants = false, int? animationTimeMs = null,

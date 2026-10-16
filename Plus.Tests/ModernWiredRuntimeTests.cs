@@ -2293,8 +2293,9 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
+    // Observed on AIR WIN63-202610131318-860371703: onto furni nobody can stand on, the user lands on the free tile next to it.
     [Fact]
-    public void TeleportStillRefusesFurniNobodyCanStandOn()
+    public void TeleportOntoFurniNobodyCanStandOnLandsOnTheFreeTileNextToIt()
     {
         using var f = new TeleportFixture();
         f.Target.Definition.Walkable = false;
@@ -2302,7 +2303,7 @@ public partial class ModernWiredRuntimeTests
         var replies = Capture(f.Habbo.Client);
         f.Fire();
         f.Advance(1500);
-        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        Assert.Equal(new Point(1, 0), f.User.Coordinate);
         Assert.Equal(8, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
@@ -2383,7 +2384,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void V2TeleportStillRefusesFurniNobodyCanStandOnWithTheFlag()
+    public void V2TeleportOntoFurniNobodyCanStandOnLandsNextToIt()
     {
         using var f = new TeleportFixture();
         f.Target.Definition.Walkable = false;
@@ -2391,7 +2392,7 @@ public partial class ModernWiredRuntimeTests
         f.UseExecutor();
         Assert.False(WiredRoomOperations.RelocateAvatar(f.Room, f.User, 1, 1, false, ignoreOccupants: true));
         f.FireOwned();
-        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        Assert.Equal(new Point(1, 0), f.User.Coordinate);
         Assert.Empty(f.Errors);
     }
 

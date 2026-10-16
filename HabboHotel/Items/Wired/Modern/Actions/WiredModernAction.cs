@@ -800,7 +800,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
 
         var room = context.Room;
-        bool Relocate() => _movement.MoveAvatar(context, user, target.GetX, target.GetY, false, 2, ignoreOccupants: true);
+
+        bool Relocate()
+        {
+            var (x, y) = TeleportLanding(room, user, target);
+
+            return _movement.MoveAvatar(context, user, x, y, false, 2, ignoreOccupants: true);
+        }
 
         var effects = user.GetClient()?.GetHabbo()?.Effects;
 
@@ -854,6 +860,32 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
 
         return true;
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703: a teleport lands past users standing on the target, and onto furni nobody can stand on
+    // it does not land: the user lands on a free tile next to it (the tile north of the target was taken; the order of the other
+    // neighbours is not established).
+    private static readonly (int X, int Y)[] TeleportNeighbours = [(0, -1), (1, 0), (0, 1), (-1, 0)];
+
+    private static (int X, int Y) TeleportLanding(Room room, RoomUser user, Item target)
+    {
+        var map = room.GetGameMap();
+        var (x, y) = (target.GetX, target.GetY);
+
+        if (!map.ValidTile(x, y) || map.Model.SqState[x, y] != SquareState.Open || WiredRoomOperations.AvatarCanStand(map, x, y)) {
+            return (x, y);
+        }
+
+        foreach (var (dx, dy) in TeleportNeighbours) {
+            var (nx, ny) = (x + dx, y + dy);
+
+            if (map.ValidTile(nx, ny) && map.Model.SqState[nx, ny] == SquareState.Open && WiredRoomOperations.AvatarCanStand(map, nx, ny)
+                && !map.GetRoomUsers(new(nx, ny)).Any(other => !ReferenceEquals(other, user))) {
+                return (nx, ny);
+            }
+        }
+
+        return (x, y);
     }
 
     private static long NextStateUpdate(long nowMilliseconds) =>

@@ -109,6 +109,42 @@ public sealed class WiredAddonTests
         Assert.Equal(20u, Assert.Single(unseen.Pick([20, 10, 30])));
     }
 
+    // Observed on AIR WIN63-202610131318-860371703: pick 1 / avoid 2 over two effects strictly alternates, avoid 2 over three effects is a
+    // fixed rotation, and avoid 1 over two alternates; when too few effects remain the oldest avoided executions stop counting first.
+    [Theory]
+    [InlineData(2, 2)]
+    [InlineData(2, 3)]
+    [InlineData(1, 2)]
+    public void RandomPickerDropsTheOldestAvoidedExecutionsInsteadOfRepeating(int skip, int effects)
+    {
+        for (var seed = 0; seed < 50; seed++) {
+            var picker = new WiredRandomActionPicker(1, skip, new Random(seed));
+            var ids = Enumerable.Range(1, effects).Select(id => (uint)id).ToArray();
+            var picks = Enumerable.Range(0, 12).Select(_ => Assert.Single(picker.Pick(ids))).ToArray();
+            var period = Math.Min(skip + 1, effects);
+
+            for (var i = period; i < picks.Length; i++) {
+                Assert.Equal(picks[i - period], picks[i]);
+            }
+
+            Assert.Equal(period, picks.Take(period).Distinct().Count());
+        }
+    }
+
+    [Fact]
+    public void RandomPickerTopsUpFromTheLeastRecentlyUsedEffects()
+    {
+        // Pick 2 / avoid 2 over three effects: after {a, b} then {c, x}, the effect left out longest is the only top-up candidate.
+        for (var seed = 0; seed < 50; seed++) {
+            var picker = new WiredRandomActionPicker(2, 2, new Random(seed));
+            var first = picker.Pick([1, 2, 3]);
+            var second = picker.Pick([1, 2, 3]);
+            var third = picker.Pick([1, 2, 3]);
+            Assert.Equal(2, first.Distinct().Count());
+            Assert.Contains(first.Single(id => !second.Contains(id)), third);
+        }
+    }
+
     [Fact]
     public void UnseenResetAndCycleOperateOnTheCurrentCandidates()
     {

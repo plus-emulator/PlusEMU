@@ -168,9 +168,10 @@ internal static partial class WiredNativeAuxiliaryEditor
                 : Draft(n, [.. core, p[6], reference, n.Quantifier ?? 0]);
         }));
         // Variable (fixed target), comparison, value mode (none, literal, variable), value (high, low), the variable's target.
+        // The sixth int is WithVariable.as referenceVariableOnTarget (AIR WIN63-202610131318-860371703 selectors/WithVariable.as:48-56); hhus opens it on 0.
         // Observed: a selector offers no selector-pool source, defaults to picked furni (100) and the triggering user (0), allows walls.
-        yield return new("wf_slc_furni_with_var", new(SelectorMeta([2, 0, 0, 0, -10]), n => WithVariable(n, 1)));
-        yield return new("wf_slc_users_with_var", new(SelectorMeta([2, 0, 0, 0, -10]), n => WithVariable(n, 0)));
+        yield return new("wf_slc_furni_with_var", new(SelectorMeta([2, 0, 0, 0, -10, 0]), n => WithVariable(n, 1)));
+        yield return new("wf_slc_users_with_var", new(SelectorMeta([2, 0, 0, 0, -10, 0]), n => WithVariable(n, 0)));
         // Created, value changed, deleted; increased/decreased/unchanged mask; origin mask. The target comes from the chosen variable.
         yield return new("wf_trg_var_changed", new(Meta(0, 0, [1, 1, 0, 7, -1, 0], 1), n =>
         {

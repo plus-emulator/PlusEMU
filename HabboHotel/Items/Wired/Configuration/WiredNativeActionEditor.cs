@@ -27,7 +27,8 @@ internal static class WiredNativeActionEditor
 
     private static readonly Dictionary<string, WiredNativeEditorMetadata> Known = new(StringComparer.Ordinal)
     {
-        ["wf_act_toggle_state"] = Meta([Furni], [], [100], [], [0]),
+        // Observed on hhus (AIR WIN63-202610131318-860371703): allows wall picks; toggling only writes the item's state.
+        ["wf_act_toggle_state"] = Meta([Furni], [], [100], [], [0], true),
         ["wf_act_toggle_to_rnd"] = Meta([Furni], [], [100], [], [], true),
         ["wf_act_reset_timers"] = Meta([], [], [], [], []),
         ["wf_act_call_stacks"] = Meta([Furni], [], [100], [], []),

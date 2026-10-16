@@ -29,7 +29,7 @@ internal static class WiredNativeConditionEditor
             "wf_cnd_team_has_rank" => [0, 0],
             "wf_cnd_team_has_score" => [0, 0, 0],
             "wf_cnd_counter_time_matches" => [0, 0, 0, 0],
-            "wf_cnd_time_less_than" or "wf_cnd_time_more_than" => [1],
+            "wf_cnd_time_less_than" or "wf_cnd_time_more_than" => [20],
             "wf_cnd_date_rng_active" => [0, 0],
             "wf_cnd_match_time" => [0, 0, 0, 0, 0, 0, 0, 0, 0],
             "wf_cnd_match_date" => [0, 0, 127, 1, 1, 4095, 0, 0],
@@ -49,7 +49,8 @@ internal static class WiredNativeConditionEditor
             "wf_cnd_trggrer_on_frn" => new([[0, 100, 200, 201]], [[0, 200, 201]], [100], [0], defaults, false),
             "wf_cnd_triggerer_match" => new([], [[0, 200, 201], [0, 101, 200, 201]], [], [0, 101], defaults, false),
             "wf_cnd_stuff_is" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [], [0, 100], [], defaults, true),
-            "wf_cnd_slc_quantity" => new([[0, 200, 201]], [[0, 200, 201]], [200], [200], defaults, true),
+            // Observed on hhus (AIR WIN63-202610131318-860371703): no wall picks (it has no pick source).
+            "wf_cnd_slc_quantity" => new([[0, 200, 201]], [[0, 200, 201]], [200], [200], defaults, false),
             "wf_cnd_furnis_hv_avtrs" or "wf_cnd_has_furni_on" or "wf_cnd_match_snapshot"
                 or "wf_cnd_has_altitude" or "wf_cnd_counter_time_matches" =>
                 new([[0, 100, 200, 201]], [], [100], [], defaults, positive == "wf_cnd_has_altitude"),
@@ -70,7 +71,9 @@ internal static class WiredNativeConditionEditor
             _ => 0
         };
 
-        return metadata with { QuantifierType = quantifier, Invert = name != positive };
+        // The invert flag only picks the ".neg." quantifier labels (AIR WIN63-202610131318-860371703 UserDefinedRoomEventsCtrl.as:512-517);
+        // observed on hhus, Not Furni Has Furni sends it false. The condition still negates at runtime.
+        return metadata with { QuantifierType = quantifier, Invert = name != positive && name != "wf_cnd_not_furni_on" };
     }
 
     internal static bool TryCompile(string name, WiredNativeEditorConfiguration native, out WiredConfiguration runtime)

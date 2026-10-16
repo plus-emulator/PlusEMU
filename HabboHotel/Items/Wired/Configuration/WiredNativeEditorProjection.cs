@@ -45,9 +45,9 @@ public static class WiredNativeEditorProjection
         "wf_trg_periodically" => new([], [], [], [], [1], false),
         "wf_cnd_user_count_in" => new([], [], [], [], [1, 50], false),
         "wf_act_teleport_to" => new([[0, 100, 200, 201]], [[0, 200, 201]], [100], [0], [0], false),
-        // Rotate's two owned fields/defaults and floor-only scope are the explicit local subset.
-        // The captured server third field and wall support have no proven executable mapping here.
-        "wf_act_move_rotate" => new([[0, 100, 200, 201]], [], [100], [], [0, 0], false),
+        // Rotate owns two fields; the frame adds the hotel's third (FrameDefaults, HotelFrame). Wall picks are allowed as on hhus
+        // (AIR WIN63-202610131318-860371703) and skipped by the mover, which only moves floor furni.
+        "wf_act_move_rotate" => new([[0, 100, 200, 201]], [], [100], [], [0, 0], true),
         "wf_act_move_to_dir" => new([[0, 100, 200, 201]], [], [100], [], [0, 0, 1], false),
         "wf_act_control_clock" => new([[0, 100, 200, 201]], [], [100], [], [0], false),
         "wf_act_join_team" => new([], [[0, 200, 201]], [], [0], [1, 0], false),
@@ -170,6 +170,14 @@ public static class WiredNativeEditorProjection
         return frame;
     }
 
+    /// <summary>
+    /// The default int list the frame advertises. move_rotate and match_to_sshot end it with the hotel-owned int at its unsaved value 1,
+    /// as observed on hhus (AIR WIN63-202610131318-860371703): [0,0,1] and [0,0,0,0,1]. The editors never read it (class_4131.as:29-38
+    /// reads two ints, class_4247.as:45-67 four), so resetting to these defaults saves the same fields as before.
+    /// </summary>
+    public static ImmutableArray<int> FrameDefaults(string name, WiredNativeEditorMetadata metadata) =>
+        name is "wf_act_move_rotate" or "wf_act_match_to_sshot" ? [.. metadata.OwnedDefaults, 1] : metadata.OwnedDefaults;
+
     public const string SourceCountKey = "wiredfurni.error.invalid_furni_source_count";
 
     /// <summary>
@@ -227,7 +235,8 @@ public static class WiredNativeEditorProjection
             // A stored row passed the source lists that applied when it was saved; the lists follow the official editors and may narrow later.
             || !storedRow && native.FurniSourceTypes.Where((source, index) => !metadata.FurniAllowed[index].Contains(source)).Any()
             || !storedRow && native.UserSourceTypes.Where((source, index) => !metadata.UsersAllowed[index].Contains(source)).Any()
-            || !metadata.AllowWall && native.PrimaryItems.Concat(native.SecondaryItems).Any(item => item.Wall)
+            // Likewise a stored row keeps the wall picks it was saved with when a card later stops allowing them.
+            || !storedRow && !metadata.AllowWall && native.PrimaryItems.Concat(native.SecondaryItems).Any(item => item.Wall)
             || BuiltIn.Contains(name) && native.VariableIds.Length != 0) {
             return false;
         }

@@ -30,6 +30,8 @@ public abstract class WebsocketGameServer<TGameServerOptions> : WsServer, IGameS
         _logger = logger;
         _incomingInjectors = incomingInjectors.GroupBy(x => x.MessageId).ToDictionary(x => x.Key, x => x.ToArray());
         _outgoingInjectors = outgoingInjectors.GroupBy(x => x.MessageId).ToDictionary(x => x.Key, x => x.ToArray());
+        // Packets sent in the same tick (a rider's and its horse's roller slides) must not wait for an ACK.
+        OptionNoDelay = true;
     }
 
     protected override WsSession CreateSession() => _clientFactory.Create(this);

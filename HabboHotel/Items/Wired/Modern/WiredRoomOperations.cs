@@ -169,10 +169,10 @@ public static class WiredRoomOperations
     }
 
     public static bool RelocateAvatar(Room room, RoomUser avatar, int x, int y,
-        bool slide, bool throughUsers = false, bool ignoreOccupants = false, long? discardThrough = null)
+        bool slide, bool throughUsers = false, bool ignoreOccupants = false, long? discardThrough = null, bool inPlace = false)
     {
         if (room.UsesV2Movement) {
-            return RelocateExecutorAvatar(room, avatar, x, y, slide, throughUsers, ignoreOccupants, discardThrough);
+            return RelocateExecutorAvatar(room, avatar, x, y, slide, throughUsers, ignoreOccupants, discardThrough, inPlace);
         }
 
         var map = room.GetGameMap();
@@ -182,7 +182,7 @@ public static class WiredRoomOperations
             return false;
         }
 
-        if (avatar.X == x && avatar.Y == y) {
+        if (avatar.X == x && avatar.Y == y && !inPlace) {
             return false;
         }
 
@@ -221,7 +221,7 @@ public static class WiredRoomOperations
         return true;
     }
 
-    private static bool CanRelocateAvatar(Room room, RoomUser avatar, int x, int y, bool throughUsers, bool ignoreOccupants)
+    private static bool CanRelocateAvatar(Room room, RoomUser avatar, int x, int y, bool throughUsers, bool ignoreOccupants, bool inPlace = false)
     {
         var map = room.GetGameMap();
 
@@ -231,7 +231,7 @@ public static class WiredRoomOperations
         }
 
         if (avatar.X == x && avatar.Y == y) {
-            return false;
+            return inPlace;
         }
 
         if (ignoreOccupants) {
@@ -283,9 +283,9 @@ public static class WiredRoomOperations
     }
 
     private static void RelocateOwned(Room room, RoomNavigation navigation, RoomUser actor,
-        int x, int y, bool slide, bool throughUsers, bool ignoreOccupants, long discardThrough)
+        int x, int y, bool slide, bool throughUsers, bool ignoreOccupants, long discardThrough, bool inPlace)
     {
-        if (!CanRelocateAvatar(room, actor, x, y, throughUsers, ignoreOccupants)) {
+        if (!CanRelocateAvatar(room, actor, x, y, throughUsers, ignoreOccupants, inPlace)) {
             return;
         }
 
@@ -301,14 +301,14 @@ public static class WiredRoomOperations
     }
 
     private static bool RelocateExecutorAvatar(Room room, RoomUser avatar, int x, int y,
-        bool slide, bool throughUsers = false, bool ignoreOccupants = false, long? discardThrough = null)
+        bool slide, bool throughUsers = false, bool ignoreOccupants = false, long? discardThrough = null, bool inPlace = false)
     {
-        if (!CanRelocateAvatar(room, avatar, x, y, throughUsers, ignoreOccupants)) {
+        if (!CanRelocateAvatar(room, avatar, x, y, throughUsers, ignoreOccupants, inPlace)) {
             return false;
         }
 
         var navigation = room.GetGameMap().Navigation!;
-        navigation.RunOwner(avatar, (actor, sequence) => RelocateOwned(room, navigation, actor, x, y, slide, throughUsers, ignoreOccupants, discardThrough ?? sequence));
+        navigation.RunOwner(avatar, (actor, sequence) => RelocateOwned(room, navigation, actor, x, y, slide, throughUsers, ignoreOccupants, discardThrough ?? sequence, inPlace));
 
         return true;
     }

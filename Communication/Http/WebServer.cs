@@ -32,8 +32,8 @@ public static class WebErrors
 }
 
 /// <summary>
-/// Kestrel host for the badge leaderboard (/api/badges/leaderboard), furnidata (/api/gamedata/furnidata) and the
-/// Wired Variables Web API (/api/wired/variables). TLS is terminated by the reverse proxy in front of it.
+/// Kestrel host for the badge leaderboard (/api/badges/leaderboard), furnidata (/api/gamedata/furnidata) and Habbo's public
+/// Wired Variables Web API (/api/public/rooms/{roomId}/variables...). TLS is terminated by the reverse proxy in front of it.
 /// </summary>
 public class WebServer : IWebServer
 {
@@ -130,6 +130,13 @@ public class WebServer : IWebServer
 
     private static Task WriteError(HttpContext context, int status)
     {
+        // habbo.com answers an unrouted public API path, or a method a route lacks, with its plain 404 page.
+        if (status is StatusCodes.Status404NotFound or StatusCodes.Status405MethodNotAllowed && WiredWebApiEndpoints.IsPublic(context)) {
+            context.Response.Headers.CacheControl = "no-store";
+
+            return WiredWebApiEndpoints.WriteNotFoundPage(context);
+        }
+
         var (code, error) = ErrorFor(status);
         context.Response.StatusCode = status;
         context.Response.Headers.CacheControl = "no-store";

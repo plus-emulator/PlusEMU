@@ -329,7 +329,8 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return previous;
             }
 
-            acceptedUnchangedWrite = notifyUnchanged && mutation == WiredVariableMutation.Set;
+            // Observed on AIR WIN63-202610131318-860371703: a Give with override re-creates the value even when it is unchanged.
+            acceptedUnchangedWrite = (notifyUnchanged && mutation == WiredVariableMutation.Set) || mutation == WiredVariableMutation.Replace;
             var now = clock.GetUtcNow();
 
             return new(next, previous is null || mutation == WiredVariableMutation.Replace ? now : previous.CreatedAt, now);
@@ -339,8 +340,10 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             return false;
         }
 
+        // Observed on AIR WIN63-202610131318-860371703: every successful Give, including an override of an existing value,
+        // fires Variable Changed as created and never as changed.
         _changes.Enqueue(new(definition.RoomId, key, write.After is null ? WiredVariableChangeKind.Removed :
-            write.Before is null ? WiredVariableChangeKind.Created : WiredVariableChangeKind.Updated,
+            write.Before is null || mutation == WiredVariableMutation.Replace ? WiredVariableChangeKind.Created : WiredVariableChangeKind.Updated,
             write.Before, write.After, holder.EntityId, frame.Depth + 1)
         { Origin = origin, Shared = definition.Availability == WiredVariableAvailability.Shared });
 

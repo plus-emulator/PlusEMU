@@ -106,6 +106,9 @@ internal static class FurnitureStateEvents
     /// <summary>The admitted item's own placement writes are its initial state, not a change.</summary>
     public static IDisposable Placing(Room room, Item item) => new PlacementScope(room, item);
 
+    /// <summary>Writes the item makes inside this scope are display updates, not state changes, and are not reported.</summary>
+    public static IDisposable Unreported(Room room, Item item) => new PlacementScope(room, item);
+
     // Each captured write once, in order, for the placement that made it.
     public static void Publish(Room room, RoomUser? actor, IReadOnlyList<FurnitureStateTransition> transitions)
     {

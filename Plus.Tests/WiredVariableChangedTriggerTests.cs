@@ -45,6 +45,32 @@ public sealed class WiredVariableChangedTriggerTests
         Assert.False(trigger.Execute(new WiredRuntimeContext(room, new(WiredEventKind.Variable) { Code = 10, Value = 42 }, new(() => [], () => []), new Operations())));
     }
     [Fact]
+    public void EveryGiveIncludingAnOverrideIsCreatedAndOnlyChangeIsUpdated()
+    {
+        // Observed on AIR WIN63-202610131318-860371703: give 5, give again without override, override 9, override 9 again,
+        // change +1, override 9: every successful Give fires Created (also onto the same value), never Updated.
+        var module = new WiredVariableModule(1, new Directory(), new MemoryWiredVariableStore(), new FixedTimeProvider(DateTimeOffset.FromUnixTimeMilliseconds(1)));
+        var holder = new WiredVariableHolder(WiredVariableTarget.User, 7, 1);
+        var frame = new WiredVariableFrame(1, [holder]);
+        var reference = new WiredVariableReference(WiredVariableTarget.User, "custom:10");
+
+        WiredVariableChange? Write(WiredVariableMutation mutation, long value, bool accepted = true)
+        {
+            Assert.Equal(accepted, module.Mutate(reference, holder, mutation, value, frame));
+
+            return module.DrainChanges().SingleOrDefault();
+        }
+
+        Assert.Equal(WiredVariableChangeKind.Created, Write(WiredVariableMutation.Give, 5)!.Kind);
+        Assert.Null(Write(WiredVariableMutation.Give, 9, accepted: false));
+        Assert.Equal((WiredVariableChangeKind.Created, 9L), (Write(WiredVariableMutation.Replace, 9)!.Kind, module.Read(reference, holder, frame)!.Value));
+        Assert.Equal(WiredVariableChangeKind.Created, Write(WiredVariableMutation.Replace, 9)!.Kind);
+        Assert.Equal(WiredVariableChangeKind.Updated, Write(WiredVariableMutation.Set, 10)!.Kind);
+        var overridden = Write(WiredVariableMutation.Replace, 9)!;
+        Assert.Equal((WiredVariableChangeKind.Created, 10L, 9L), (overridden.Kind, overridden.Before!.Value, overridden.After!.Value));
+    }
+
+    [Fact]
     public void SuccessfulBuiltinWritesEmitActualDeltaAndFailedOrEqualWritesEmitNothing()
     {
         var builtin = new Builtin();

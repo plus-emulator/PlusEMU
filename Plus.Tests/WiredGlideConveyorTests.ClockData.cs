@@ -272,6 +272,24 @@ public sealed partial class WiredGlideConveyorTests
     }
 
     [Fact]
+    public void WiredStartKeepsAValueAdjustedAfterTheLastStopAndRestartsFromZeroAfterAStop()
+    {
+        // Observed on AIR WIN63-202610131318-860371703: set 30, start keeps 30 then counts 31, 32 ...; a start after a stop restarts from 0.
+        var item = ClockItem("wf_upcounter1", 107);
+        var clocks = new WiredCounterController();
+        clocks.Attach(item);
+        Assert.True(clocks.Adjust(item, 2, 0, 60, WiredClockOrigin.ModernWired));
+        Assert.True(clocks.Control(item, 0, 0, WiredClockOrigin.ModernWired));
+        Assert.Equal(30000, clocks.ReadMilliseconds(item));
+        clocks.Poll(500);
+        clocks.Poll(1000);
+        Assert.Equal("31", item.LegacyDataString);
+        Assert.True(clocks.Control(item, 1, 1000, WiredClockOrigin.ModernWired));
+        Assert.True(clocks.Control(item, 0, 1000, WiredClockOrigin.ModernWired));
+        Assert.Equal(0, clocks.ReadMilliseconds(item));
+    }
+
+    [Fact]
     public void ControllerStartResetAndSetCarryTheirOwnDisplayTextAndForce()
     {
         var item = ClockItem("wf_upcounter1", 105);
@@ -299,6 +317,10 @@ public sealed partial class WiredGlideConveyorTests
             Assert.Equal((WiredCounterPublication.Object, false), (change.Publication, change.ForceDisplay));
         }
 
+        // A Start right after an adjust keeps the value; the Start after a Stop restarts from zero.
+        Assert.True(clocks.Control(item, 0, 0, WiredClockOrigin.ModernWired));
+        Assert.Empty(clocks.TakeChanges());
+        Assert.True(clocks.Control(item, 1, 0, WiredClockOrigin.ModernWired));
         Assert.True(clocks.Control(item, 0, 0, WiredClockOrigin.ModernWired));
         var start = Assert.Single(clocks.TakeChanges());
         Assert.Equal((WiredCounterPublication.BatchData, false, "0"), (start.Publication, start.ForceDisplay, start.Text));

@@ -2899,6 +2899,10 @@ public partial class ModernWiredRuntimeTests
         clocks.Attach(item);
         Assert.True(clocks.Adjust(item, 2, 0, 10));
         Assert.Equal(5000, clocks.ReadMilliseconds(item));
+        // A Start keeps a value adjusted after the last stop; the Stop makes the next Start restart from zero.
+        Assert.True(clocks.Control(item, 0, 0, WiredClockOrigin.ModernWired));
+        Assert.Equal(5000, clocks.ReadMilliseconds(item));
+        Assert.True(clocks.Control(item, 1, 0, WiredClockOrigin.ModernWired));
         clocks.TakeChanges();
         var box = ActionBox(room, "wf_act_control_clock", clocks);
         WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [0, 100], SelectedItems = [1] }, out var config, out _);

@@ -9,6 +9,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Triggers;
 public sealed class WiredTimedTriggers
 {
     private const long ResetCooldownMs = 500;
+    private const long StateUpdateMs = WiredFlashStates.StateUpdateMilliseconds;
     private readonly Dictionary<uint, long> _nextPeriodicAt = [];
     private readonly Dictionary<uint, long> _firedEpoch = [];
 
@@ -47,9 +48,12 @@ public sealed class WiredTimedTriggers
         }
 
         var intervalMs = units * stepMs;
+        // Observed on AIR WIN63-202610131318-860371703: a 500 ms "Repeat every" timer first fires on the next 500 ms room boundary after it is
+        // armed (the save time does not set the phase) and then stays on that grid, the same ticks as the walk steps.
+        var onGrid = name == "wf_trg_periodically";
 
         if (!_nextPeriodicAt.TryGetValue(boxId, out var next)) {
-            _nextPeriodicAt[boxId] = nowMs + intervalMs;
+            _nextPeriodicAt[boxId] = onGrid ? NextBoundary(nowMs) + intervalMs - StateUpdateMs : nowMs + intervalMs;
 
             return false;
         }
@@ -58,11 +62,13 @@ public sealed class WiredTimedTriggers
             return false;
         }
 
-        // A late poll fires once, then waits a full period from this firing.
-        _nextPeriodicAt[boxId] = nowMs + intervalMs;
+        // A late poll fires once, then waits a full period from this firing (from its grid boundary for a grid timer).
+        _nextPeriodicAt[boxId] = (onGrid ? nowMs - nowMs % StateUpdateMs : nowMs) + intervalMs;
 
         return true;
     }
+
+    private static long NextBoundary(long nowMs) => (nowMs / StateUpdateMs + 1) * StateUpdateMs;
 
     /// <summary>A room timer reset re-arms an armed repeater one fixed cooldown out; an unarmed one stays unarmed.</summary>
     public void ResetPeriodic(uint boxId, long nowMs)

@@ -439,7 +439,8 @@ public partial class WiredRuntimeEngineTests
 
             if (pass >= next) {
                 pending = true;
-                next = pass + interval;
+                // The 500 ms timer rearms on the room's 500 ms grid; the others from the poll.
+                next = (name == "wf_trg_periodically" ? pass - pass % 500 : pass) + interval;
             }
         }
 
@@ -460,8 +461,9 @@ public partial class WiredRuntimeEngineTests
             f.Engine.OnFastCycle();
         }
 
-        // 2730 schedules one emission for the next boundary, then rearms at 3230.
-        Assert.Equal([2999L, 3500L], fired);
+        // 2730 schedules one emission for the next pass, then rearms on the grid at 3000 (observed on AIR WIN63-202610131318-860371703:
+        // the 500 ms timer stays on the room's 500 ms grid).
+        Assert.Equal([2999L, 3499L], fired);
     }
 
     [Fact]

@@ -35,6 +35,13 @@ internal sealed partial class WiredStackEngine
     {
         var scheduled = _executingAction;
 
+        // Observed on AIR WIN63-202610131318-860371703: a Write to Logs box on a running Fast Queue stack does not split the pulse;
+        // every pulse still publishes one home-to-home entry per tile. A box that sends nothing to the room leaves the open
+        // publication as it is.
+        if (box is WiredModernAction { Descriptor.CanonicalName: "wf_act_log" or "wf_act_neg_log" }) {
+            return null;
+        }
+
         if (context == null || scheduled?.Callback != null || box is not WiredModernAction action
             || !action.SupportsPublication(context) || action.PublicationBridge && !PublicationBridgesAreTrusted || scheduled == null) {
             SealPublication();

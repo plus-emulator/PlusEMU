@@ -61,6 +61,9 @@ internal sealed class ForcePlacementService(Room room, RoomNavigation navigation
         horse.Movement.CurrentRef = actor.Movement.CurrentRef;
         context.RefreshMembership(horse);
         horse.UpdateNeeded = true;
+        // The rider sits one unit above the horse even when no support surface was resolved.
+        actor.Z = horse.Z + (actor.Movement.CurrentRef is { } surface ? PostureService.RiderOffset(actor, surface) : 1);
+        actor.UpdateNeeded = true;
     }
     private RoomUser? Horse(RoomUser actor)
     {

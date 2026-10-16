@@ -45,7 +45,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         var snapshots = Read(chests);
         var usable = contract == null ? snapshots : snapshots.Where(chest => chest.Usable).ToArray();
 
-        // A reward is paid at once and opens no window, so what the user is doing meanwhile does not matter (Turbo RoomWiredTransactionSystem.RewardAsync).
+        // A reward is paid at once and opens no window, so what the user is doing meanwhile does not matter.
         if (contract is { Kind: WiredContractKind.Reward }) {
             if (usable.Length == 0) {
                 Fail(actor, sourceId, WiredChestFailure.NoOrLockedChests);
@@ -73,7 +73,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             return result.Succeeded;
         }
 
-        // A wired transaction works with the usable chests among the picked ones and fails only when none is (Turbo UsableChests);
+        // A wired transaction works with the usable chests among the picked ones and fails only when none is;
         // a user's own deposit needs every chest to take it.
         var failure = contract != null ? usable.Length == 0 ? WiredChestFailure.NoOrLockedChests : (WiredChestFailure?)null
             : snapshots.Length != chests.Length || snapshots.Length == 0 ? WiredChestFailure.ChestNotInRoom
@@ -209,7 +209,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         // Consume the session before I/O. Duplicate confirmations can never execute twice.
         _sessions.Remove(client.GetHabbo().Id);
         session.Actor.IsTrading = false;
-        // A wired transaction pays the chests that are still usable now and fails, paying nothing, when none is (Turbo CarryOutTradeAsync).
+        // A wired transaction pays the chests that are still usable now and fails, paying nothing, when none is.
         var chestIds = session.Contract == null ? session.Chests : session.Chests
             .Select(id => room.GetRoomItemHandler().GetItem(id)).OfType<Item>().Select(item => Read(item)).OfType<WiredChestSnapshot>()
             .Where(chest => chest.Usable).Select(chest => chest.Id).ToArray();
@@ -269,7 +269,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         var changed = false;
 
         foreach (var actor in actors) {
-            // Only a contract's payment or trade can be cancelled by wired, not a user's plain deposit (Turbo WiredTradeGrain.CancelByWiredAsync).
+            // Only a contract's payment or trade can be cancelled by wired, not a user's plain deposit.
             if (_sessions.TryGetValue(actor.HabboId, out var session) && session.Contract != null && session.CancelAt == null
                 && (any || contracts.Contains(session.SourceId))) {
                 session.CancelAt = clock.GetUtcNow().AddMilliseconds(500);

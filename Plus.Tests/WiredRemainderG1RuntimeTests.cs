@@ -10,7 +10,7 @@ namespace Plus.Tests;
 /// The transaction cards of group g1, fired through the real wired engine and chest module: initiate and cancel transaction, the two
 /// transaction triggers, the two chest conditions, the chest scanner and the custom contract add-on.
 /// </summary>
-public sealed partial class WiredTurboRemainderG1RuntimeTests
+public sealed partial class WiredRemainderG1RuntimeTests
 {
     private static WiredChestContract Pays(int amount = 1, int sprite = 44) => new() { Kind = WiredContractKind.Payment, PaymentMode = 1, Payment = [[new(amount, new(false, sprite))]] };
     private static WiredChestContract Gives(int coins) => new() { Kind = WiredContractKind.Reward, PaymentMode = 1, Reward = [new(coins)] };
@@ -155,7 +155,7 @@ public sealed partial class WiredTurboRemainderG1RuntimeTests
         world.Fire(Enter(player));
         Assert.True(player.User.IsTrading);
 
-        // Turbo pays a reward whatever the user is doing; only payments and trades need the single trade window.
+        // A reward is paid whatever the user is doing; only payments and trades need the single trade window.
         Assert.True(world.Module.Start(player.Client, reward.Id, [coins], world.Store.LoadContract(reward)));
         world.Flush();
 

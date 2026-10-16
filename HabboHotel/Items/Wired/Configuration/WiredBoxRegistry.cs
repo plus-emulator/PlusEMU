@@ -11,16 +11,16 @@ public static class WiredBoxRegistry
 {
     private static readonly FrozenDictionary<string, WiredBoxDescriptor> Descriptors = new WiredBoxDescriptor[]
     {
-        new("wf_act_give_currency", WiredBoxCategory.Action, 45, "Turbo f702041c/WiredTrading"),
-        new("wf_act_give_furni", WiredBoxCategory.Action, 46, "Turbo f702041c/WiredTrading"),
-        new("wf_act_init_transaction", WiredBoxCategory.Action, 47, "Turbo f702041c/WiredTrading"),
-        new("wf_act_cancel_transaction", WiredBoxCategory.Action, 48, "Turbo f702041c/WiredTrading"),
-        new("wf_cnd_chest_has_items", WiredBoxCategory.Condition, 45, "Turbo f702041c/WiredTrading"),
-        new("wf_cnd_chest_has_item_type", WiredBoxCategory.Condition, 46, "Turbo f702041c/WiredTrading"),
-        new("wf_trg_transaction_complete", WiredBoxCategory.Trigger, 25, "Turbo f702041c/WiredTrading"),
-        new("wf_trg_transaction_fail", WiredBoxCategory.Trigger, 26, "Turbo f702041c/WiredTrading"),
-        new("wf_xtra_scan_chest_furni_by_type", WiredBoxCategory.Addon, 18, "Turbo f702041c/WiredTrading"),
-        new("wf_xtra_custom_contract", WiredBoxCategory.Addon, 20, "Turbo f702041c/WiredTrading"),
+        new("wf_act_give_currency", WiredBoxCategory.Action, 45, "WiredTrading"),
+        new("wf_act_give_furni", WiredBoxCategory.Action, 46, "WiredTrading"),
+        new("wf_act_init_transaction", WiredBoxCategory.Action, 47, "WiredTrading"),
+        new("wf_act_cancel_transaction", WiredBoxCategory.Action, 48, "WiredTrading"),
+        new("wf_cnd_chest_has_items", WiredBoxCategory.Condition, 45, "WiredTrading"),
+        new("wf_cnd_chest_has_item_type", WiredBoxCategory.Condition, 46, "WiredTrading"),
+        new("wf_trg_transaction_complete", WiredBoxCategory.Trigger, 25, "WiredTrading"),
+        new("wf_trg_transaction_fail", WiredBoxCategory.Trigger, 26, "WiredTrading"),
+        new("wf_xtra_scan_chest_furni_by_type", WiredBoxCategory.Addon, 18, "WiredTrading"),
+        new("wf_xtra_custom_contract", WiredBoxCategory.Addon, 20, "WiredTrading"),
         // October AIR boxes (WIN63-202610131318-860371703, r88 dossier); codes from each editor's code getter.
         new("wf_act_progress_ach", WiredBoxCategory.Action, 51, "wired_setup/actiontypes/ProgressAchievement.as"),
         new("wf_act_give_effect", WiredBoxCategory.Action, 52, "wired_setup/actiontypes/class_3931.as"),

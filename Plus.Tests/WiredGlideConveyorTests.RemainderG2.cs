@@ -50,7 +50,7 @@ public sealed partial class WiredGlideConveyorTests
         var (f, speaker, marker, start) = RunningScoreRoom("wf_act_give_score", [7, 0], [5, 0]);
         SayAlpha(f, speaker);
         Assert.Equal(7, Points(f, Team.Red));
-        Assert.Equal(start + 1, marker.GetY); // Turbo: previous below the points and the new score at or above them.
+        Assert.Equal(start + 1, marker.GetY); // Previous below the points, new score at or above them.
     }
 
     [Theory]

@@ -13,7 +13,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Group g3 of bugfix/wired-turbo-reference-remainder: "Place Temporary Furni" and "Remove Temporary Furni", fired through the
+// Group g3 of the remainder cards: "Place Temporary Furni" and "Remove Temporary Furni", fired through the
 // same engine fixture the other wired action tests use. Both cards only ever touch temporary furni (negative ids, no owner row,
 // no inventory), so the checks that matter are that nothing permanent is created, moved or removed and that a refused
 // placement leaves no ghost behind.

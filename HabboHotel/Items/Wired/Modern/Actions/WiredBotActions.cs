@@ -187,7 +187,7 @@ public static class WiredBotActions
 
                 return true;
             case "wf_act_bot_give_handitem":
-                // Turbo's executable body grants immediately after resolving the named bot.
+                // The executable body grants immediately after resolving the named bot.
                 foreach (var user in users) {
                     user.CarryItem(p[0]);
                 }

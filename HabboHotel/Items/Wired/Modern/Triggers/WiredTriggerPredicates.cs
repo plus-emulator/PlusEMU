@@ -32,7 +32,7 @@ public static class WiredTriggerPredicates
         (Param(config, 1) == 0 || Param(config, 1) == team)
         && oldScore < Param(config, 0, 1) && newScore >= Param(config, 0, 1);
 
-    // Action IDs are Polaris editor values, not Turbo's expression enum.
+    // Action IDs are Polaris editor values, not an expression enum.
     public static bool MatchesAction(WiredConfiguration config, int action, int value)
     {
         if (Param(config, 0, 1) != action) {

@@ -4,8 +4,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>The editor frames of the 13 turbo-reference cards: observed on hhus (r62 batches 01 and 02) or read from the October AIR client.</summary>
-public sealed class WiredTurboReference13EditorTests
+/// <summary>The editor frames of the 13 reference cards: observed on hhus (r62 batches 01 and 02) or read from the October AIR client.</summary>
+public sealed class WiredReference13EditorTests
 {
     public static TheoryData<string, int[], int[], int[], int[][], int[][]> ObservedFrames => new()
     {

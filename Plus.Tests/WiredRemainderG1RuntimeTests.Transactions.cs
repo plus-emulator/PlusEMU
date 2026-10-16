@@ -8,7 +8,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // Cancel Transaction and the two transaction triggers.
-public sealed partial class WiredTurboRemainderG1RuntimeTests
+public sealed partial class WiredRemainderG1RuntimeTests
 {
     private static WiredRuntimeEvent Leave(G1Player player) => new(WiredEventKind.Leave) { Actor = player.User };
 

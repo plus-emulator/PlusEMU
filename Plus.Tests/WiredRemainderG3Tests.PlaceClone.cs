@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-public sealed partial class WiredTurboRemainderG3Tests
+public sealed partial class WiredRemainderG3Tests
 {
     // Observed r93a (AIR WIN63-202610131318-860371703, runtime receipts line 330): an owned, tradeable pura_mdl5 as the Place Furni
     // template is refused with wiredfurni.error.furni_can_not_be_cloned. The other value categories are inferred (WiredPlaceTemplatePolicy).

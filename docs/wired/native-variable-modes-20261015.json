@@ -27,5 +27,5 @@
       "compatibility": "legacy nine-int executor remains; same-holder adds tenth runtime flag. Filter/inverse remain indices7/8."
     }
   },
-  "referenceCheck": "Local Habz WiredTriggerVariableChanged has no picked-variable-box mode; no local live observation of that mode was identified. No Habz code copied."
+  "referenceCheck": "Local reference WiredTriggerVariableChanged has no picked-variable-box mode; no local live observation of that mode was identified. No code from another emulator copied."
 }

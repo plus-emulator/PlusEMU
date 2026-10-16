@@ -8,7 +8,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // The custom contract add-on, with Initiate Transaction beside it on one stack.
-public sealed partial class WiredTurboRemainderG1RuntimeTests
+public sealed partial class WiredRemainderG1RuntimeTests
 {
     /// <summary>
     /// Stack (6,0): enter room, the custom contract, initiate transaction on the chests with no picked contract. The payment side is the first

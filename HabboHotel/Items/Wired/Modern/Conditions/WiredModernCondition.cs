@@ -157,7 +157,7 @@ public sealed class WiredModernCondition : WiredModernBox
                 return WiredTimeConditions.MatchesRange(config, now);
             case "wf_cnd_time_less_than":
             case "wf_cnd_time_more_than":
-                // Like Turbo's room timer, the first elapsed check starts a shared epoch.
+                // The room timer's first elapsed check starts a shared epoch.
                 var resetAt = context.Room.LastTimerResetAt ??= now.ToUniversalTime();
                 var elapsed = now.ToUniversalTime() - resetAt;
 
@@ -177,7 +177,7 @@ public sealed class WiredModernCondition : WiredModernBox
     }
 
     public static string Name(RoomUser user) => user.IsBot ? user.BotData.Name : user.GetClient()?.GetHabbo()?.Username ?? "";
-    // Polaris' editor uses pet=2/bot=4; Turbo's internal mask reverses those bits.
+    // Polaris' editor uses pet=2/bot=4; the internal mask reverses those bits.
     public static bool MatchesKind(RoomUser user, int mask) => (mask & (user.IsPet ? 2 : user.IsBot ? 4 : 1)) != 0;
     public static bool IsPerforming(RoomUser user, WiredConfiguration config, WiredRuntimeEvent @event)
     {

@@ -4,13 +4,13 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
 /// How a wired card's behaviour is known. AirSourceOnly cards come from the October AIR client code alone and need a live check.
-/// TurboReferenceOnly cards have a runtime read from the turbo-cloud emulator (facts only) and no official runtime observation.
+/// UnobservedRuntime cards have an editor read from AIR/hhus and a runtime not yet observed on official Habbo.
 /// </summary>
 public enum WiredEvidenceLevel
 {
     Observed,
     AirSourceOnly,
-    TurboReferenceOnly
+    UnobservedRuntime
 }
 
 public sealed record WiredEvidence(WiredEvidenceLevel Level, string Source, string Reason);
@@ -67,26 +67,26 @@ public static class WiredEvidenceRegistry
         ["wf_var_pointer"] = new(WiredEvidenceLevel.AirSourceOnly, Variables + "PointerVariable.as", OctoberCards)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
-    private const string BotCards = "Editor observed on hhus (r62-batch-02); runtime behaviour read from turbo-cloud, never fired on official.";
-    private const string GameCards = "Editor observed on hhus (r62-batch-01); the game start and end sources read from turbo-cloud, never fired on official.";
-    private const string AirEditorCards = "Editor read from the AIR client only (no catalogue offer on hhus); runtime read from turbo-cloud, never fired on official.";
-    private const string RemainderCards = "Editor read from the AIR client (and observed on hhus where the card has an offer); runtime read from turbo-cloud, never fired on official.";
+    private const string BotCards = "Editor observed on hhus (r62-batch-02); runtime behaviour not yet observed on official Habbo.";
+    private const string GameCards = "Editor observed on hhus (r62-batch-01); the game start and end sources not yet observed on official Habbo.";
+    private const string AirEditorCards = "Editor read from the AIR client only (no catalogue offer on hhus); runtime not yet observed on official Habbo.";
+    private const string RemainderCards = "Editor read from the AIR client (and observed on hhus where the card has an offer); runtime not yet observed on official Habbo.";
 
-    public static readonly FrozenDictionary<string, WiredEvidence> TurboReferenceOnly = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
+    public static readonly FrozenDictionary<string, WiredEvidence> UnobservedRuntime = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
     {
-        // AS3 triggerconfs/TriggerOnce.as (code 3, shared with wf_trg_at_given_time); turbo WiredTriggerAtTimeLong.cs
-        ["wf_trg_at_time_long"] = new(WiredEvidenceLevel.TurboReferenceOnly, Triggers + "TriggerOnce.as", AirEditorCards),
-        // AS3 actiontypes/class_4162.as; turbo WiredActionMoveFurniTo.cs
-        ["wf_act_move_furni_to"] = new(WiredEvidenceLevel.TurboReferenceOnly, Actions + "class_4162.as", AirEditorCards),
-        // AS3 triggerconfs/class_4226.as; turbo WiredTriggerTransactionCompleted.cs
-        ["wf_trg_transaction_complete"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/triggerconfs/class_4226.as", RemainderCards),
-        // AS3 actiontypes/class_4199.as; turbo WiredActionGiveReward.cs
-        ["wf_act_give_reward"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4199.as", RemainderCards),
-        // AS3 actiontypes/class_4046.as; turbo WiredActionMuteTriggerer.cs
-        ["wf_act_mute_triggerer"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/actiontypes/class_4046.as", RemainderCards),
-        // AS3 actiontypes/class_3972.as; turbo WiredActionPlaceFurni.cs
-        // AS3 addons/VariableTimeUtilAddon.as; turbo WiredAddonVariableTimeUtil.cs
-        ["wf_xtra_var_time_util"] = new(WiredEvidenceLevel.TurboReferenceOnly, "wired_setup/addons/VariableTimeUtilAddon.as", RemainderCards)
+        // AS3 triggerconfs/TriggerOnce.as (code 3, shared with wf_trg_at_given_time)
+        ["wf_trg_at_time_long"] = new(WiredEvidenceLevel.UnobservedRuntime, Triggers + "TriggerOnce.as", AirEditorCards),
+        // AS3 actiontypes/class_4162.as
+        ["wf_act_move_furni_to"] = new(WiredEvidenceLevel.UnobservedRuntime, Actions + "class_4162.as", AirEditorCards),
+        // AS3 triggerconfs/class_4226.as
+        ["wf_trg_transaction_complete"] = new(WiredEvidenceLevel.UnobservedRuntime, "wired_setup/triggerconfs/class_4226.as", RemainderCards),
+        // AS3 actiontypes/class_4199.as
+        ["wf_act_give_reward"] = new(WiredEvidenceLevel.UnobservedRuntime, "wired_setup/actiontypes/class_4199.as", RemainderCards),
+        // AS3 actiontypes/class_4046.as
+        ["wf_act_mute_triggerer"] = new(WiredEvidenceLevel.UnobservedRuntime, "wired_setup/actiontypes/class_4046.as", RemainderCards),
+        // AS3 actiontypes/class_3972.as
+        // AS3 addons/VariableTimeUtilAddon.as
+        ["wf_xtra_var_time_util"] = new(WiredEvidenceLevel.UnobservedRuntime, "wired_setup/addons/VariableTimeUtilAddon.as", RemainderCards)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     private const string R90 = "reviews/october-batch-r90-r90-";
@@ -174,5 +174,5 @@ public static class WiredEvidenceRegistry
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     public static WiredEvidenceLevel LevelOf(string name) => AirSourceOnly.ContainsKey(name) ? WiredEvidenceLevel.AirSourceOnly
-        : TurboReferenceOnly.ContainsKey(name) ? WiredEvidenceLevel.TurboReferenceOnly : WiredEvidenceLevel.Observed;
+        : UnobservedRuntime.ContainsKey(name) ? WiredEvidenceLevel.UnobservedRuntime : WiredEvidenceLevel.Observed;
 }

@@ -9,7 +9,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // The two chest conditions, the chest scanner and the custom contract add-on.
-public sealed partial class WiredTurboRemainderG1RuntimeTests
+public sealed partial class WiredRemainderG1RuntimeTests
 {
     // The AIR comparison radios: < 0, = 1, > 2, <= 3, != 4, >= 5.
     private static bool Compares(int comparison, long amount, long reference) => comparison switch

@@ -9,7 +9,7 @@ namespace Plus.Tests;
 /// run 20261013T200247); the other five are read from the October AIR client (wired_setup/actiontypes/chests, addons/chests, triggerconfs) and
 /// follow the sibling frames for their sources.
 /// </summary>
-public sealed class WiredTurboRemainderG1EditorTests
+public sealed class WiredRemainderG1EditorTests
 {
     public static TheoryData<string, int[], int[], int[], int[][], int[][], bool> ObservedFrames => new()
     {

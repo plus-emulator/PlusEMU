@@ -10,9 +10,9 @@ namespace Plus.Tests;
 /// <summary>
 /// wf_var_context, wf_var_echo and wf_var_reference of the g4 remainder batch, run through the variable module the stacks use: the editor
 /// frame (observed on hhus, WIN63-202610131318), the definition each saved frame decodes to, and what reads and writes through it do.
-/// Behaviour nothing official shows is read from turbo-cloud (WiredVariableContext/Echo/Reference.cs and their tests; facts only).
+/// Behaviour nothing official shows is not yet observed on official Habbo (WiredVariableContext/Echo/Reference.cs and their tests; facts only).
 /// </summary>
-public sealed class WiredTurboRemainderG4VariableTests
+public sealed class WiredRemainderG4VariableTests
 {
     private const uint Owner = 5;
     private static readonly WiredVariableHolder Player = new(WiredVariableTarget.User, 105, 5);

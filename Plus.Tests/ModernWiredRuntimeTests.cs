@@ -309,11 +309,12 @@ public partial class ModernWiredRuntimeTests
         monitor.Skip(3);
         Assert.Equal(20, monitor.Int());
         Assert.Equal((0, 1000, 0, 0, 0, 0, 0, 0), (monitor.Int(), monitor.Int(), monitor.Int(), monitor.Int(), monitor.Int(), monitor.Int(), monitor.Int(), monitor.Int()));
-        Assert.Equal(4, monitor.Int());
-        var tallies = Enumerable.Range(0, 4).Select(_ => (Type: monitor.String(), Severity: monitor.String(), Count: monitor.Int(), Seconds: monitor.Int(),
+        Assert.Equal(5, monitor.Int());
+        var tallies = Enumerable.Range(0, 5).Select(_ => (Type: monitor.String(), Severity: monitor.String(), Count: monitor.Int(), Seconds: monitor.Int(),
             Reason: monitor.String(), Label: monitor.String(), Id: monitor.Int())).ToArray();
-        Assert.Equal(["EXECUTION_CAP", "DELAYED_EVENTS_CAP", "RECURSION_TIMEOUT", "WIRED_LOG"], tallies.Select(x => x.Type));
+        Assert.Equal(["EXECUTION_CAP", "DELAYED_EVENTS_CAP", "RECURSION_TIMEOUT", "WIRED_LOG", "PLACEMENT_FAILURE"], tallies.Select(x => x.Type));
         Assert.All(tallies[..3], tally => Assert.Equal(("ERROR", 0, 0), (tally.Severity, tally.Count, tally.Seconds)));
+        Assert.Equal(("ERROR", 0, 0), (tallies[4].Severity, tallies[4].Count, tallies[4].Seconds));
         Assert.Equal(("WARNING", 1, "Gate opened", "wf_act_log", 102), (tallies[3].Severity, tallies[3].Count, tallies[3].Reason, tallies[3].Label, tallies[3].Id));
         Assert.Equal(1, monitor.Int());
         Assert.Equal(("WIRED_LOG", "WARNING"), (monitor.String(), monitor.String()));
@@ -340,9 +341,9 @@ public partial class ModernWiredRuntimeTests
 
         await MonitorRequest().Parse(f.Room, f.Client, Request(1));
         monitor = Reply(alice, 5101).Skip(16, 1);
-        Assert.Equal(4, monitor.Int());
+        Assert.Equal(5, monitor.Int());
 
-        for (var i = 0; i < 4; i++) {
+        for (var i = 0; i < 5; i++) {
             monitor.String();
             monitor.String();
             Assert.Equal(0, monitor.Int());

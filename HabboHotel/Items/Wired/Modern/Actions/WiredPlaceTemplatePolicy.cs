@@ -20,7 +20,16 @@ public static class WiredPlaceTemplatePolicy
             or InteractionType.WiredChestCoins or InteractionType.Badge or InteractionType.PurchasableClothing
             or InteractionType.Deal or InteractionType.Roomdeal;
 
-    public static bool CanClone(Item item) => item.IsTemporary || item.UniqueNumber == 0 && !CarriesValue(item.Definition);
+    /// <summary>
+    /// Wired boxes are never templates (observed on hhus, AIR WIN63-202610131318-860371703: saving wf_act_toggle_state as the template
+    /// was refused with <c>wiredfurni.error.furni_can_not_be_cloned</c>). Gates, one-way gates and rollers can be.
+    /// </summary>
+    public static bool CanClone(Item item) => !IsWiredBox(item.Definition) && (item.IsTemporary || item.UniqueNumber == 0 && !CarriesValue(item.Definition));
+
+    /// <summary>Any Wired box: triggers, effects, conditions, selectors, add-ons and variable boxes (as <see cref="Item.IsWired"/>).</summary>
+    public static bool IsWiredBox(ItemDefinition definition) => definition.WiredDescriptor != null
+        || definition.InteractionType is InteractionType.WiredSelector or InteractionType.WiredAddon or InteractionType.WiredVariable
+            or InteractionType.WiredEffect or InteractionType.WiredTrigger or InteractionType.WiredCondition;
 
     /// <summary>The save refusal for templates that cannot be cloned; null when every template still in the room can be.</summary>
     public static string? RefusalKey(Rooms.Room room, IEnumerable<Configuration.WiredFurniSnapshot> templates) => templates

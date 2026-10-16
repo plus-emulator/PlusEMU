@@ -107,21 +107,31 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void G3EachFireAddsAnotherCopyUpToTheRoomCapAndThenPlacesNothingWithoutAnError()
+    public void G3EachFireStacksAnotherCopyUpToAltitude35AndThenPlacesNothingWithoutAnError()
     {
+        // Observed on hhus: copies stacked "On top" stopped at z 35.0 with no error and no per-room cap (560 copies).
         var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 2, 0, 0, 0, "0")));
         using var f = stack.F;
+        stack.Lamp.Height = 1;
         var handler = f.Room.GetRoomItemHandler();
 
-        for (var i = 0; i < RoomItemHandling.TemporaryItemLimit - 1; i++) {
-            Assert.NotNull(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 0, 2, 0));
+        for (var i = 0; i < 250; i++) {
+            Assert.NotNull(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 0, 2, 0, 0));
         }
 
-        f.Fire(land: false);
-        Assert.Equal(RoomItemHandling.TemporaryItemLimit, G3Temporaries(f.Room).Length);
-        // The room holds its share: the next fire adds nothing, reports nothing and takes nothing away.
+        var fires = 0;
+
+        while (fires < 100 && stack.Action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User]))) {
+            fires++;
+        }
+
+        var stacked = G3Temporaries(f.Room).Where(item => item.GetX == 2 && item.GetY == 0).ToArray();
+        Assert.Equal(36, fires);
+        Assert.Equal(36, stacked.Length);
+        Assert.Equal(35d, stacked.Max(item => item.GetZ));
+        // The next fire adds nothing, reports nothing and takes nothing away.
         Assert.False(stack.Action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
-        Assert.Equal(RoomItemHandling.TemporaryItemLimit, G3Temporaries(f.Room).Length);
+        Assert.Equal(286, G3Temporaries(f.Room).Length);
         Assert.Empty(f.Errors);
     }
 
@@ -195,9 +205,10 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void G3CopiesTakeTheLowestFreeIdOfTheTemporaryBand()
+    public void G3CopiesTakeTheNextIdOfTheTemporaryBand()
     {
-        // Observed on hhus: copies 2147401728 and 2147401729; AIR class_1846.isTempId is 2147401728..2147418111.
+        // Observed on hhus: copies 2147401728, 1729, 1730, 1731 with removals in between, and 2147401728 again after an unload. AIR
+        // class_1846.isTempId is 2147401728..2147418111.
         var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 2, 0, 0, 0, "0")));
         using var f = stack.F;
         var handler = f.Room.GetRoomItemHandler();
@@ -207,11 +218,25 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal([2147401728u, 2147401729u, 2147401730u], new[] { first.Id, second.Id, third.Id });
         Assert.All(new[] { first, second, third }, item => Assert.True(TemporaryItemIds.Contains(item.Id)));
         Assert.True(handler.RemoveTemporaryFloorItem(second));
-        var reused = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 2, 1, 0));
-        Assert.Equal(2147401729u, reused.Id);
-        Assert.Equal(2147401731u, Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 2, 0, 0)).Id);
+        Assert.True(handler.RemoveTemporaryFloorItemsByWired([first]));
+        Assert.Equal(2147401731u, Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 2, 1, 0)).Id);
+        Assert.Equal(2147401732u, Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 2, 0, 0)).Id);
         Assert.False(TemporaryItemIds.Contains(TemporaryItemIds.First - 1));
         Assert.False(TemporaryItemIds.Contains(TemporaryItemIds.Last + 1));
+    }
+
+    [Fact]
+    public void G3AReloadDropsEveryCopyAndStartsTheBandAgain()
+    {
+        // Observed on hhus: after a 16-minute unload no copy was listed and the next copy was 2147401728 again.
+        var (room, _, _) = World();
+        var handler = room.GetRoomItemHandler();
+        var lamp = G3Definition(G3Lamp);
+        Assert.Equal(TemporaryItemIds.First, Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(lamp, 1, 0, 0, 0)).Id);
+        Assert.Equal(TemporaryItemIds.First + 1, Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(lamp, 1, 1, 0, 0)).Id);
+        handler.LoadFurniture([]);
+        Assert.Empty(G3Temporaries(room));
+        Assert.Equal(TemporaryItemIds.First, Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(lamp, 1, 0, 0, 0)).Id);
     }
 
     [Fact]
@@ -229,6 +254,26 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(TemporaryItemIds.First, copy.Id);
         Assert.Null(handler.GetFloor.FirstOrDefault(item => item.IsTemporary && item.GetX == 1 && item.GetY == 1));
         Assert.Single(f.Room.GetGameMap().GetCoordinatedItems(new(1, 1)));
+    }
+
+    [Theory]
+    [InlineData(InteractionType.Gate)]
+    [InlineData(InteractionType.OneWayGate)]
+    [InlineData(InteractionType.Roller)]
+    public void G3NoCopyIsPlacedOntoAGateOrRollerEvenWhenItStacks(InteractionType type)
+    {
+        // Observed on hhus: one-way gate, gate and roller templates save, but a copy on top of them is a placement failure; with an
+        // offset to a free tile the copy is placed.
+        var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 1, 1, 0, 0, "0"), G3Snap(901, G3Lamp, 2, 2, 0, 0, "0")));
+        using var f = stack.F;
+        f.Target.Definition.Stackable = true;
+        f.Target.Definition.InteractionType = type;
+        f.Room.GetGameMap().AddToMap(f.Target);
+        Assert.True(stack.Action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
+        var copy = Assert.Single(G3Temporaries(f.Room));
+        Assert.Equal((2, 2), (copy.GetX, copy.GetY));
+        Assert.True(f.Room.GetRoomItemHandler().BlocksTemporaryCopy(stack.Lamp, 1, 1, 0));
+        Assert.False(f.Room.GetRoomItemHandler().BlocksTemporaryCopy(stack.Lamp, 2, 1, 0));
     }
 
     [Fact]
@@ -402,7 +447,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void G3PlaceThenRemoveRoundTripLeavesTheRoomAsItWasAndReusesTheFreedId()
+    public void G3PlaceThenRemoveRoundTripLeavesTheRoomAsItWasAndReusesNoIdWhileTheRoomLives()
     {
         var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 2, 0, 0, 0, "0")));
         using var f = stack.F;
@@ -414,10 +459,9 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(baseline, handler.GetFloor.Select(item => item.Id).Order().ToArray());
         Assert.True(stack.Action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
         var second = Assert.Single(G3Temporaries(f.Room));
-        // Observed on hhus: a removed copy's id is handed to the next copy.
-        Assert.Equal(first.Id, second.Id);
-        Assert.NotSame(first, second);
-        Assert.Same(second, handler.GetItem(first.Id));
+        // Observed on hhus: a removed copy's id is not handed to the next copy.
+        Assert.Equal(first.Id + 1, second.Id);
+        Assert.Null(handler.GetItem(first.Id));
         Assert.False(handler.OwnsTemporary(first));
     }
 }

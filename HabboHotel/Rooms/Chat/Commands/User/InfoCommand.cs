@@ -27,6 +27,6 @@ internal class InfoCommand : IChatCommand
         var onlineUsers = _gameClientManager.Count;
         var roomCount = _roomManager.Count;
         session.Send(new RoomNotificationComposer("Powered by Plus++ Emulator",
-            $"<b>Created by the Habbo Hotel Community</b>\n\n<b>Wired engine base</b>:\nBillsonnn and Turbo Cloud\n\n<b>Current run time information</b>:\nOnline Users: {onlineUsers}\nRooms Loaded: {roomCount}\nUptime: {uptime.Days} day(s), {uptime.Hours} hours and {uptime.Minutes} minutes.\n\n", "plus", "View on github >", "https://github.com/plus-emulator/PlusEMU"));
+            $"<b>Created by the Habbo Hotel Community</b>\n\n<b>Wired engine base</b>:\nBillsonnn\n\n<b>Current run time information</b>:\nOnline Users: {onlineUsers}\nRooms Loaded: {roomCount}\nUptime: {uptime.Days} day(s), {uptime.Hours} hours and {uptime.Minutes} minutes.\n\n", "plus", "View on github >", "https://github.com/plus-emulator/PlusEMU"));
     }
 }

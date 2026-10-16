@@ -475,7 +475,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     /// <summary>Owner-only menu operation. Clears values, retaining the definition and allowing future assignments.</summary>
-    public int ClearValues(uint definitionId, WiredVariableTarget target, WiredVariableFrame frame)
+    public int ClearValues(uint definitionId, WiredVariableTarget target, WiredVariableFrame frame, int origin = 2)
     {
         lock (_gate) {
             if (frame.RoomId != roomId || frame.Depth >= 32 || target is not (WiredVariableTarget.User or WiredVariableTarget.Furni)) {
@@ -492,10 +492,39 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
             foreach (var (key, value) in removed) {
                 var entityId = frame.Holders.FirstOrDefault(x => x.Target == key.Target && x.StorageId == key.HolderId).EntityId;
-                _changes.Enqueue(new(definition.RoomId, key, WiredVariableChangeKind.Removed, value, null, entityId, frame.Depth + 1) { Origin = 2 });
+                _changes.Enqueue(new(definition.RoomId, key, WiredVariableChangeKind.Removed, value, null, entityId, frame.Depth + 1) { Origin = origin });
             }
 
             return removed.Count;
+        }
+    }
+
+    /// <summary>
+    /// Removes one holder's value, the definition staying. Like <see cref="ClearValues"/> it reaches holders that are not in the room
+    /// (a permanent value of a user who left). Returns the removed value, or null when there was none or the variable is read-only.
+    /// </summary>
+    public WiredVariableValue? RemoveValue(uint definitionId, WiredVariableTarget target, long holderId, int entityId, int origin)
+    {
+        lock (_gate) {
+            if (target is not (WiredVariableTarget.User or WiredVariableTarget.Furni)) {
+                return null;
+            }
+
+            if (Resolve(new(target, $"custom:{definitionId}"), true) is not { Definition: { } definition } resolved) {
+                return null;
+            }
+
+            var key = new WiredVariableKey(definition.ItemId, definition.Target, holderId);
+            var write = (definition.IsDurable ? durable : _active).Mutate(key, _ => null, definition.IsDurable ? resolved.Authorization : null);
+
+            if (write.Before is null || write.After is not null) {
+                return null;
+            }
+
+            _changes.Enqueue(new(definition.RoomId, key, WiredVariableChangeKind.Removed, write.Before, null, entityId, 1)
+            { Origin = origin, Shared = definition.Availability == WiredVariableAvailability.Shared });
+
+            return write.Before;
         }
     }
 

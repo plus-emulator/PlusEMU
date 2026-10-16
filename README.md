@@ -5,7 +5,7 @@ PlusEMU is a Habbo Hotel server emulator written in C# (.NET 10). It is a commun
 ## Features
 
 - **Wired** - a stack engine modelled on the official client's editors: triggers, conditions, effects, selectors and add-ons, including the October 2026 boxes, WIRED Label, WIRED Link and Room Linker, Wired leaderboards, Wired variables with variable FX, and Wired chests (transactional contracts).
-- **Wired Web API** - read and write keys generated in the Variables Web API add-on editor, used by an HTTP API for the room's variables (`GET/PUT/DELETE /api/wired/variables`, bearer-key authenticated).
+- **Wired Web API** - read and write keys generated in the Variables Web API add-on editor open Habbo's public Wired Variables Web API for the room (`/api/public/rooms/{roomId}/variables...` and `.../variables_profile/...`, keys in the `X-Wired-Read-Key` / `X-Wired-Write-Key` headers). The reverse proxy has to send those paths to the web server.
 - **Games** - Battle Banzai, Freeze, Football, Ice Tag and SnowStorm.
 - **Economy** - catalogue, marketplace, trading, recycler, crafting, vouchers, club offers and multiple currencies.
 - **Community** - groups and group forums, friends and messenger, navigator, room polls, word quiz, achievements and talent tracks, quests, campaigns, moderation tools.

@@ -16,6 +16,9 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
 
     private static readonly string TriggerTextToken = "$(" + TriggerTextName + ")";
 
+    /// <summary>Whether a box text inserts $(trigger_text).</summary>
+    public static bool UsesTriggerText(string? text) => text?.Contains(TriggerTextToken, StringComparison.Ordinal) == true;
+
     /// <summary>The boxes whose editor is a message editor: Show Message, the two bot talk effects and Send Link Message.</summary>
     public static bool Applies(string name) => name is "wf_act_show_message" or "wf_act_bot_talk" or "wf_act_bot_talk_to_avatar" or "wf_act_send_message";
 

@@ -1,3 +1,4 @@
+using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
@@ -34,6 +35,25 @@ public partial class WiredComponent
 
     internal bool AchievementEnabled(string achievement) => achievement.Length > 0
         && EnabledAchievements().Contains(achievement, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610131318-860371703: when any box text in the room uses $(trigger_text), every user entering
+    /// (owner or visitor) gets NotificationDialog 2356 "wired.error" right after the room-enter packet 1647.
+    /// </summary>
+    public void SendTriggerTextNotice(GameClient session)
+    {
+        var usesTriggerText = (_room.GetRoomItemHandler()?.GetFloor ?? [])
+            .Select(item => TryGet(item.Id, out var box) ? box as IWiredConfiguredItem : null).OfType<IWiredConfiguredItem>()
+            .Any(box => WiredTextPlaceholders.UsesTriggerText(box.Configuration.Text));
+
+        if (usesTriggerText) {
+            session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Notifications.RoomNotificationComposer("wired.error", new Dictionary<string, string>
+            {
+                { "image", "${image.library.url}album1584/WIRD1.png" },
+                { "message", "${room.error.wired.trigger_text_capture}" }
+            }));
+        }
+    }
 
     /// <summary>Custom-text Global Placeholders of this room as $(name) to text; a later box with the same name wins.</summary>
     internal IReadOnlyDictionary<string, string> GlobalPlaceholders()

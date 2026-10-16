@@ -37,6 +37,8 @@ public sealed class RoomEntryService(IQuestManager quests, TimeProvider clock, I
         }
 
         session.Send(new RoomEntryInfoComposer(room.RoomId, room.CheckRights(session, true)));
+        // Observed on AIR WIN63-202610131318-860371703: the trigger-text notice follows the room-enter packet in the same tick.
+        room.GetWired()?.SendTriggerTextNotice(session);
         // WIRED Label bubbles (class_3043): the full list this user may see, once the room is entered.
         room.GetWired()?.SendLabels(session);
         // Transparency and highlight shown to the whole room (class_3560 furni, class_3459 users), so late joiners see them too.

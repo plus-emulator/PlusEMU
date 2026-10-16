@@ -19,30 +19,21 @@ public partial class RoomItemHandling
 {
     private readonly ConcurrentDictionary<uint, Item> _floorItems;
     private readonly Dictionary<uint, Item> _temporaryItems = new();
-    private int _nextTemporaryId = -1;
     public const int TemporaryItemLimit = 200;
 
     public bool OwnsTemporary(Item item) => item.IsTemporary
         && _temporaryItems.TryGetValue(item.Id, out var owned) && ReferenceEquals(owned, item);
 
-    // Negative wire IDs belong only to this registry; successful IDs are never reused during this room lifetime.
+    // A copy takes the lowest free id in the client's temporary band, so a removed copy's id is reused
+    // (observed on hhus: 2147401728, then 2147401729; 2147401728 again after a pick-up).
     public Item? PlaceTemporaryFloorItem(ItemDefinition definition, uint ownerId, int x, int y,
         int rotation, double? height = null, string state = "")
     {
         if (definition.Type != Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor
-            || _temporaryItems.Count >= TemporaryItemLimit || _nextTemporaryId == int.MinValue) {
+            || _temporaryItems.Count >= TemporaryItemLimit || FreeTemporaryId() is not { } id) {
             return null;
         }
 
-        while (_nextTemporaryId != int.MinValue && GetItem(unchecked((uint)_nextTemporaryId)) != null) {
-            _nextTemporaryId--;
-        }
-
-        if (_nextTemporaryId == int.MinValue) {
-            return null;
-        }
-
-        var id = unchecked((uint)_nextTemporaryId);
         var item = new Item
         {
             Id = id,
@@ -62,9 +53,18 @@ public partial class RoomItemHandling
             return null;
         }
 
-        _nextTemporaryId--;
-
         return item;
+    }
+
+    private uint? FreeTemporaryId()
+    {
+        for (var id = TemporaryItemIds.First; id <= TemporaryItemIds.Last; id++) {
+            if (!_temporaryItems.ContainsKey(id) && GetItem(id) == null) {
+                return id;
+            }
+        }
+
+        return null;
     }
 
     public bool RemoveTemporaryFloorItem(Item item)

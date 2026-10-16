@@ -846,6 +846,17 @@ public class Room
 
     public void SendObject(Item item)
     {
+        if (item is { IsTemporary: true, IsFloorItem: true }) {
+            // A Wired copy arrives as a single-object Objects (1991), not ObjectAdd (observed on hhus); AIR adds objects
+            // from either message the same way (room/class_1993.as:692-722, AIR WIN63-202610131318-860371703).
+            var copy = RoomFurnitureSnapshot.Capture([item], OwnerId, OwnerName);
+
+            SendPacket(new ObjectsComposer(copy), false, viewer => _wiredComponent?.ObjectEnqueued(viewer, item, null));
+            SendPacket(new FurnitureMetadataComposer(copy.Items));
+
+            return;
+        }
+
         var furniture = RoomItemSnapshot.Capture(item);
 
         SendPacket(item.IsWallItem ? new ItemAddComposer(furniture) : new ObjectAddComposer(furniture), false,

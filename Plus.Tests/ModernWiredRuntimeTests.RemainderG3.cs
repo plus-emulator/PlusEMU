@@ -14,7 +14,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // Group g3 of the remainder cards: "Place Temporary Furni" and "Remove Temporary Furni", fired through the
-// same engine fixture the other wired action tests use. Both cards only ever touch temporary furni (negative ids, no owner row,
+// same engine fixture the other wired action tests use. Both cards only ever touch temporary furni (temporary-band ids, no owner row,
 // no inventory), so the checks that matter are that nothing permanent is created, moved or removed and that a refused
 // placement leaves no ghost behind.
 public partial class ModernWiredRuntimeTests
@@ -79,8 +79,8 @@ public partial class ModernWiredRuntimeTests
         var copy = Assert.Single(G3Temporaries(f.Room));
         Assert.Equal((2, 0, "1"), (copy.GetX, copy.GetY, copy.LegacyDataString));
         Assert.Same(stack.Lamp, copy.Definition);
-        // A temporary id is negative on the wire and belongs to the room's registry alone.
-        Assert.True(unchecked((int)copy.Id) < 0);
+        // The first copy takes the first id of the client's temporary band and belongs to the room's registry alone.
+        Assert.Equal(TemporaryItemIds.First, copy.Id);
         Assert.True(f.Room.GetRoomItemHandler().OwnsTemporary(copy));
         Assert.Same(copy, f.Room.GetRoomItemHandler().GetItem(copy.Id));
         // Nothing permanent was created, moved or lost: the placement is not an inventory move.
@@ -195,6 +195,26 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
+    public void G3CopiesTakeTheLowestFreeIdOfTheTemporaryBand()
+    {
+        // Observed on hhus: copies 2147401728 and 2147401729; AIR class_1846.isTempId is 2147401728..2147418111.
+        var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 2, 0, 0, 0, "0")));
+        using var f = stack.F;
+        var handler = f.Room.GetRoomItemHandler();
+        var first = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 2, 0, 0));
+        var second = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 2, 1, 0));
+        var third = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 2, 2, 0));
+        Assert.Equal([2147401728u, 2147401729u, 2147401730u], new[] { first.Id, second.Id, third.Id });
+        Assert.All(new[] { first, second, third }, item => Assert.True(TemporaryItemIds.Contains(item.Id)));
+        Assert.True(handler.RemoveTemporaryFloorItem(second));
+        var reused = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 2, 1, 0));
+        Assert.Equal(2147401729u, reused.Id);
+        Assert.Equal(2147401731u, Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(stack.Lamp, 1, 2, 0, 0)).Id);
+        Assert.False(TemporaryItemIds.Contains(TemporaryItemIds.First - 1));
+        Assert.False(TemporaryItemIds.Contains(TemporaryItemIds.Last + 1));
+    }
+
+    [Fact]
     public void G3ARefusedTileLeavesNoGhostAndTheNextIdIsStillTheFirst()
     {
         var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 1, 1, 0, 0, "0"), G3Snap(901, G3Lamp, 2, 2, 0, 0, "0")));
@@ -206,7 +226,7 @@ public partial class ModernWiredRuntimeTests
         Assert.True(stack.Action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
         var copy = Assert.Single(G3Temporaries(f.Room));
         Assert.Equal((2, 2), (copy.GetX, copy.GetY));
-        Assert.Equal(-1, unchecked((int)copy.Id));
+        Assert.Equal(TemporaryItemIds.First, copy.Id);
         Assert.Null(handler.GetFloor.FirstOrDefault(item => item.IsTemporary && item.GetX == 1 && item.GetY == 1));
         Assert.Single(f.Room.GetGameMap().GetCoordinatedItems(new(1, 1)));
     }
@@ -382,7 +402,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void G3PlaceThenRemoveRoundTripLeavesTheRoomAsItWasAndReusesNoIdWhileTheRoomLives()
+    public void G3PlaceThenRemoveRoundTripLeavesTheRoomAsItWasAndReusesTheFreedId()
     {
         var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 2, 0, 0, 0, "0")));
         using var f = stack.F;
@@ -394,7 +414,10 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(baseline, handler.GetFloor.Select(item => item.Id).Order().ToArray());
         Assert.True(stack.Action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
         var second = Assert.Single(G3Temporaries(f.Room));
-        Assert.NotEqual(first.Id, second.Id);
-        Assert.Null(handler.GetItem(first.Id));
+        // Observed on hhus: a removed copy's id is handed to the next copy.
+        Assert.Equal(first.Id, second.Id);
+        Assert.NotSame(first, second);
+        Assert.Same(second, handler.GetItem(first.Id));
+        Assert.False(handler.OwnsTemporary(first));
     }
 }

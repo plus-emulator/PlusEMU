@@ -3,6 +3,9 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// <summary>Serialize edits to one box, validate before persistence, and publish only a durable configuration.</summary>
 public static class WiredConfigurationSave
 {
+    /// <summary>"Can not select temporary furni in Wired." (external_flash_texts wiredfurni.error.temp_furni_not_allowed).</summary>
+    public const string TemporaryFurniNotAllowedKey = "wiredfurni.error.temp_furni_not_allowed";
+
     public static bool TrySave(IWiredConfiguredItem box, WiredConfiguration proposed, IWiredConfigurationStore store,
         out string error, Func<uint, bool>? existsInRoom = null,
         Func<IWiredConfiguredItem, WiredConfiguration, Action, bool>? publish = null,
@@ -37,6 +40,8 @@ public static class WiredConfigurationSave
         }
 
         if (HasTemporaryPicks(proposed, isTemporaryInRoom)) {
+            error = TemporaryFurniNotAllowedKey;
+
             return false;
         }
 

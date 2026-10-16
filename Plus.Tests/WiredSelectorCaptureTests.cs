@@ -202,6 +202,36 @@ public sealed class WiredSelectorCaptureTests(ITestOutputHelper output)
         Assert.Empty(f.Errors);
     }
 
+    [Theory]
+    [InlineData("wf_slc_furni_area")]
+    [InlineData("wf_slc_furni_bytype")]
+    public void SelectorsNeverDeliverTemporaryFurni(string name)
+    {
+        // Official: "Can not select temporary furni in Wired"; a selector feeding Remove Temporary Furni removed no copy on hhus.
+        var f = new Fixture();
+        var user = f.User(1);
+        f.Trigger();
+        var permanent = f.Furni(x: 6);
+        var copy = f.Furni(x: 6, temporary: true);
+        f.Selector(name, name == "wf_slc_furni_area"
+            ? new() { IntParams = [5, 0, 3, 1, 0, 0] }
+            : new() { IntParams = [0, 0], SelectedItems = [permanent.Id] });
+        var selected = new List<uint[]>();
+        f.Action(ctx =>
+        {
+            selected.Add(ctx.Targets.ResolveFurni(ctx, [], WiredSources.Selector).Select(item => item.Id).ToArray());
+
+            return true;
+        });
+
+        Assert.True(f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = user }));
+        f.Engine.OnFastCycle();
+        var furni = Assert.Single(selected);
+        Assert.Contains(permanent.Id, furni);
+        Assert.DoesNotContain(copy.Id, furni);
+        Assert.Empty(f.Errors);
+    }
+
     private static WiredConfiguration Configuration(string name) => name switch
     {
         "wf_slc_users_area" or "wf_slc_furni_area" => new() { IntParams = [0, 0, 20, 20, 0, 0] },
@@ -252,11 +282,12 @@ public sealed class WiredSelectorCaptureTests(ITestOutputHelper output)
         {
             public override DateTimeOffset GetUtcNow() => DateTimeOffset.FromUnixTimeMilliseconds(fixture.Now);
         }
-        public Item Furni(string name = "", int x = 0)
+        public Item Furni(string name = "", int x = 0, bool temporary = false)
         {
             var item = new Item
             {
-                Id = ++_next,
+                Id = temporary ? TemporaryItemIds.First + ++_next : ++_next,
+                IsTemporary = temporary,
                 GetX = x,
                 GetZ = _next,
                 OwnerId = 5,

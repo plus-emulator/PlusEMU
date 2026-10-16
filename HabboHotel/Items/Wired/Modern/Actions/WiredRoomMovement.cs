@@ -446,7 +446,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
     public bool MoveAvatar(WiredRuntimeContext context, RoomUser user, int x, int y, bool animate,
         int walkMode = 2, bool throughUsers = false, bool ignoreOccupants = false, int? animationTimeMs = null,
-        PassengerSnapshot? passengers = null, (int X, int Y, double Z)? carrySource = null)
+        PassengerSnapshot? passengers = null, (int X, int Y, double Z)? carrySource = null, bool replaceStep = false)
     {
         var room = context.Room;
 
@@ -461,7 +461,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 return false;
             }
 
-            var moved = MoveAvatarOwned(context, actor, x, y, animate, walkMode, throughUsers, ignoreOccupants, animationTimeMs, sequence, carrySource);
+            var moved = MoveAvatarOwned(context, actor, x, y, animate, walkMode, throughUsers, ignoreOccupants, animationTimeMs, sequence, carrySource,
+                replaceStep);
 
             if (moved) {
                 passengers?.Moved(actor);
@@ -481,7 +482,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     }
 
     private bool MoveAvatarOwned(WiredRuntimeContext context, RoomUser user, int x, int y, bool animate,
-        int walkMode, bool throughUsers, bool ignoreOccupants, int? animationTimeMs, long? discardThrough, (int X, int Y, double Z)? carrySource)
+        int walkMode, bool throughUsers, bool ignoreOccupants, int? animationTimeMs, long? discardThrough, (int X, int Y, double Z)? carrySource,
+        bool replaceStep = false)
     {
         var room = context.Room;
         var curve = context.Policy.Addons.Curve;
@@ -519,7 +521,10 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var goalY = user.GoalY;
         var oldItems = room.GetGameMap().GetCoordinatedItems(user.Coordinate).DistinctBy(item => item.Id).ToArray();
 
-        if (!WiredRoomOperations.RelocateAvatar(room, user, x, y, false, throughUsers, ignoreOccupants, discardThrough)) {
+        // A push that replaces a step in progress may land back on the step's start tile.
+        var inPlace = replaceStep && user.SetStep && user.X == x && user.Y == y;
+
+        if (!WiredRoomOperations.RelocateAvatar(room, user, x, y, false, throughUsers, ignoreOccupants, discardThrough, inPlace)) {
             return false;
         }
 

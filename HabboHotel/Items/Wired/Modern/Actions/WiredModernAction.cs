@@ -616,7 +616,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 foreach (var user in Users(context, config, "users")) {
                     if (Param(config, 0) >= 0) {
                         var offset = WiredRoomOperations.Offset(Param(config, 0));
-                        changed |= _movement.MoveAvatar(context, user, user.X + offset.X, user.Y + offset.Y, true);
+                        // Observed on AIR WIN63-202610131318-860371703: a push on a walking user replaces the step in progress in the same tick.
+                        // It runs from the step's start tile to the stepped-onto tile plus the push, then the walk resumes towards its goal
+                        // (pushed back onto the start tile, the user treadmills). Pushed on the last step, the walk ends there.
+                        var stepping = user.IsWalking && user.SetStep;
+                        var (baseX, baseY) = stepping ? (user.SetX, user.SetY) : (user.X, user.Y);
+                        var resume = stepping && (user.GoalX, user.GoalY) != (baseX, baseY);
+                        changed |= _movement.MoveAvatar(context, user, baseX + offset.X, baseY + offset.Y, true, resume ? 1 : 2, replaceStep: stepping);
                     }
 
                     if (Param(config, 1) < 0) {

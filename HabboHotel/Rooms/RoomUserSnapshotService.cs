@@ -11,7 +11,7 @@ namespace Plus.HabboHotel.Rooms;
 
 public sealed record RoomUserSnapshot(int Id, string Name, string Motto, string Look, int VirtualId, int X, int Y,
     string Z, int Rotation, int Kind, string Gender, int GroupId, string GroupName, int AchievementPoints,
-    bool IsPet, int PetType, int OwnerId, string OwnerName, bool HasSaddle, bool IsRidden);
+    bool IsPet, int PetType, int OwnerId, string OwnerName, bool HasSaddle, bool IsRidden, int PetLevel = 0);
 
 [Scoped]
 public interface IRoomUserSnapshotService
@@ -58,7 +58,7 @@ public sealed class RoomUserSnapshotService(IGroupManager groups, IGameClientMan
             return new(ai.BaseId, user.BotData.Name, user.BotData.Motto, pet.Look.ToLowerInvariant(),
                 user.VirtualId, user.X, user.Y, user.Z.ToString(CultureInfo.InvariantCulture), 0, kind, "", 0, "", 0,
                 true, pet.Type, pet.OwnerId, pet.OwnerName, pet.Saddle > 0,
-                user.RidingHorse);
+                user.RidingHorse, pet.Level);
         }
 
         return new(ai.BaseId, user.BotData.Name, user.BotData.Motto, user.BotData.Look.ToLowerInvariant(),

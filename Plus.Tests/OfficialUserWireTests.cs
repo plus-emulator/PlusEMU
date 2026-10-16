@@ -77,8 +77,7 @@ public class OfficialUserWireTests
         {
             1,
             7, "Dennis", "hi", "hd-180-1", 4, 2, 3, "1.5", 2, 1,
-            "m", 0, 0, "", "", 12, false,
-            "", 0
+            "m", 0, 0, "", "", 12, false, -1
         }, packet.Writes);
     }
 
@@ -88,19 +87,18 @@ public class OfficialUserWireTests
     public void PetAndBotPacketsFreezeTheSourceCollection(bool isPet)
     {
         var snapshot = new RoomUserSnapshot(10, "Helper", "hello", "figure", 4, 2, 3, "1.5", 0,
-            isPet ? 2 : 4, "m", 0, "", 0, isPet, 13, 7, "Dennis", true, false);
+            isPet ? 2 : 4, "m", 0, "", 0, isPet, 13, 7, "Dennis", true, false, 6);
         var source = new[] { snapshot };
         var composer = new UsersComposer(source);
         var expected = new List<object> { 1, 10, "Helper", "hello", "figure", 4, 2, 3, "1.5", 0, isPet ? 2 : 4 };
 
         if (isPet) {
-            expected.AddRange(new object[] { 13, 7, "Dennis", 1, true, false, 0, 0, "" });
+            expected.AddRange(new object[] { 13, 7, "Dennis", 1, true, false, false, false, false, false, 6, "" });
         }
         else {
             expected.AddRange(new object[] { "m", 7, "Dennis", 5, (short)1, (short)2, (short)3, (short)4, (short)5 });
         }
 
-        expected.AddRange(new object[] { "", 0 });
         source[0] = snapshot with { Name = "changed", X = 99, OwnerName = "changed" };
         Assert.Equal(expected, Compose(composer));
         Assert.Equal(expected, Compose(composer));
@@ -119,7 +117,7 @@ public class OfficialUserWireTests
     }
 
     [Fact]
-    public void UnitInfoEndsAtTheAchievementScore()
+    public void UnitInfoEndsAtTheBadgesRank()
     {
         var habbo = new Habbo
         {
@@ -135,14 +133,14 @@ public class OfficialUserWireTests
 
         new UserChangeComposer(AvatarChangeSnapshot.Capture(user, true)).Compose(packet);
 
-        Assert.Equal(new object[] { -1, "hd-180-1", "M", "hi", 12 }, packet.Writes);
+        Assert.Equal(new object[] { -1, "hd-180-1", "M", "hi", 12, "", 0, -1 }, packet.Writes);
         var composer = new UserChangeComposer(AvatarChangeSnapshot.Capture(user, true));
         habbo.Look = "changed";
         habbo.Motto = "changed";
         habbo.Gender = "F";
         habbo.HabboStats.AchievementPoints = 99;
-        Assert.Equal(new object[] { -1, "hd-180-1", "M", "hi", 12 }, Compose(composer));
-        Assert.Equal(new object[] { -1, "hd-180-1", "M", "hi", 12 }, Compose(composer));
+        Assert.Equal(new object[] { -1, "hd-180-1", "M", "hi", 12, "", 0, -1 }, Compose(composer));
+        Assert.Equal(new object[] { -1, "hd-180-1", "M", "hi", 12, "", 0, -1 }, Compose(composer));
     }
 
     private static object[] Compose(IServerPacket composer)

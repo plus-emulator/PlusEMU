@@ -427,7 +427,7 @@ public class Habbo
             return;
         }
 
-        Client.Send(new OpenConnectionComposer());
+        Client.Send(new OpenConnectionComposer(room.Id));
 
         if (!room.CheckRights(Client, true, true) && !Client.GetHabbo().IsTeleporting && !Client.GetHabbo().IsHopping) {
             if (room.Access == RoomAccess.Doorbell && !Access.Can(PermissionKeys.RoomEnterLocked)) {

@@ -421,7 +421,7 @@ public class RoomUserManager
 
         if (_room.CheckRights(session, true)) {
             user.SetStatus("flatctrl", "4");
-            session.Send(new YouAreOwnerComposer());
+            session.Send(new YouAreOwnerComposer(_room.Id));
             session.Send(new YouAreControllerComposer(_room.Id, 4));
         }
         else if (_room.CheckRights(session, false) && _room.Group == null) {

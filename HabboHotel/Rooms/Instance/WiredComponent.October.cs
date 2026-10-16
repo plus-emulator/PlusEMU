@@ -66,7 +66,7 @@ public partial class WiredComponent
         if (box is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_achievement_enabler" }) {
             foreach (var viewer in _fxViewers.Keys.Where(viewer => ReferenceEquals(_room.GetRoomUserManager().GetRoomUserByVirtualId(viewer.VirtualId), viewer))) {
                 viewer.GetClient()?.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.WiredEnvironmentComposer(
-                    _clickUserTriggers.Count != 0, _room.Id, EnabledAchievements()));
+                    _clickUserTriggers.Count != 0, EnabledAchievements()));
             }
         }
     }

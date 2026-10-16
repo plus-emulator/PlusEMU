@@ -26,7 +26,7 @@ public static class WiredSelectorVariableBridge
         }
 
         foreach (var stack in WiredSelectorModule.RemoteStacks(configuration, world)) {
-            if (visiting.Count >= 20 || !visiting.Add(stack[0])) {
+            if (stack.Count == 0 || visiting.Count >= 20 || !visiting.Add(stack[0])) {
                 continue;
             }
 

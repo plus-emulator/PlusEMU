@@ -75,7 +75,8 @@ public sealed class WiredSelectorParityTests
         };
         var selected = WiredSelectorModule.SelectRaw("wf_slc_remote",
             new() { IntParams = [0, 0, 0, 0], SelectedItems = [10] }, world, new(new(), new(), new()));
-        Assert.Equal(new uint[] { 1, 2, 3 }, selected.Selection.FurniIds.Order());
+        // The nested Invert picks every other floor furni, Wired boxes included (observed on hhus).
+        Assert.Equal(new uint[] { 1, 2, 3, 10, 11, 20 }, selected.Selection.FurniIds.Order());
     }
 
     [Fact]

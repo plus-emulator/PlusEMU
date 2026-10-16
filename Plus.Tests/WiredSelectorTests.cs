@@ -121,7 +121,8 @@ public sealed class WiredSelectorTests
     {
         var result = WiredSelectorModule.Compose(WiredSelectorModule.SelectRaw("wf_slc_furni_picks",
             Config([0, 1], [1]), World(), Inputs()), World(), Inputs());
-        Assert.Equal(new uint[] { 2, 3 }, result.FurniIds.Order());
+        // Wall items stay out; Wired boxes are inverted like any other floor furni (observed on hhus).
+        Assert.Equal(new uint[] { 2, 3, 5 }, result.FurniIds.Order());
     }
 
     [Fact]

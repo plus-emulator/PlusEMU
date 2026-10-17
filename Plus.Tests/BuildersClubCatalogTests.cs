@@ -246,6 +246,19 @@ public sealed class BuildersClubCatalogTests
         Assert.Contains("'builders_club_loyalty','NORMAL',1,1,0)", fresh);
     }
 
+    // Migration 92 adds the Builders Club offers Habbo's furnidata names (bcofferid) on no index page, such as the coloured blocks.
+    [Fact]
+    public void TheFreshInstallCarriesTheBuildersClubOffersOnlyFurnidataNames()
+    {
+        var migration = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/92_BuildersClubFurnidataOffers.sql"));
+        var fresh = File.ReadAllText(HabbiconPacketTests.Repo("Database/FreshInstall.sql"));
+
+        Assert.Contains("2334 offers on one hidden, enabled Builders Club page (1 bundle left out)", migration);
+        Assert.Contains("    (13169, 'bc_block_0*1', 's', ", migration);
+        Assert.Contains("(2100000100,NULL,'Builders Club furni',1,NULL,99,'bc_furnidata_offers','default_3x3','BUILDERS_CLUB',0,1,0)", fresh);
+        Assert.Contains("(2100000100,13169,", fresh);
+    }
+
     private static CatalogOffer Offer(int id, ItemDefinition definition) => new()
     {
         Id = id,

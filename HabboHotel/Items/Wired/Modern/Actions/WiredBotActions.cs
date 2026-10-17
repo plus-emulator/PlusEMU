@@ -96,7 +96,7 @@ public static class WiredBotActions
         return true;
     }
     public static bool Execute(string name, WiredRuntimeContext context, WiredConfiguration config,
-        WiredRoomMovement movement, IBotManagementStore botStore)
+        WiredRoomMovement movement, IBotManagementStore botStore, Func<RoomUser, Item, bool>? teleport = null)
     {
         if (!TryValidate(name, config, out config, out _)) {
             return false;
@@ -140,8 +140,18 @@ public static class WiredBotActions
                     var item = items[Random.Shared.Next(items.Length)];
 
                     if (name == "wf_act_bot_teleport") {
-                        WiredAvatarState.For(context.Room).Thaw(bot, teleport: true);
-                        changed |= movement.MoveAvatar(context, bot, item.GetX, item.GetY, false);
+                        // Observed on hhus (AIR WIN63-202610131318-860371703): a bot teleport is a normal Teleport To: effect 4 at the
+                        // firing, the bot republished on the first tick + 1000 ms, landed 500 ms later and its effect dropped 1500 ms after.
+                        // A bot does not teleport onto a tile another avatar stands on.
+                        if (teleport != null) {
+                            if (!context.Room.GetGameMap().GetRoomUsers(new(item.GetX, item.GetY)).Any(other => !ReferenceEquals(other, bot))) {
+                                changed |= teleport(bot, item);
+                            }
+                        }
+                        else {
+                            WiredAvatarState.For(context.Room).Thaw(bot, teleport: true);
+                            changed |= movement.MoveAvatar(context, bot, item.GetX, item.GetY, false);
+                        }
                     }
                     else {
                         botData.ForcedUserTargetMovement = 0;

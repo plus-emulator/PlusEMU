@@ -862,6 +862,12 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             : (firstBoundary + TeleportRepublishMilliseconds, firstBoundary + TeleportRelocateMilliseconds, firstBoundary + TeleportEffectEndMilliseconds);
         var wired = room.GetWired();
         var release = () => { };
+        // The steps are scheduled from the engine's clock now, which can be a few ms past the firing's time; without this a step due
+        // on a boundary rounded up to the next one, so fast teleports landed a tick late on our hotel.
+        var lag = (int)Math.Max(0, wired.NowMilliseconds - context.NowMilliseconds);
+        republish -= lag;
+        relocate -= lag;
+        effectEnd -= lag;
         // The avatar's update goes out with the room tick after the step runs (the room serializes users before Wired runs), so the
         // republish and the landing run one tick ahead of the tick they show on. A fast republish due on the first boundary runs now.
         var tick = WiredFlashStates.StateUpdateMilliseconds;

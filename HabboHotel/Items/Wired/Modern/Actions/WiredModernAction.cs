@@ -725,15 +725,18 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 foreach (var user in Users(context, config, "users")) {
                     var client = user.GetClient();
+                    var shownToRoom = Param(config, 1) != 0;
 
-                    if (client == null) {
+                    // Observed on hhus (AIR WIN63-202610131318-860371703): a message shown to everyone for a bot is said by the bot
+                    // (Bot Reached Furni/Avatar + Show Message). A private one has nobody to go to.
+                    if (client == null && !(user.IsBot && shownToRoom)) {
                         continue;
                     }
 
-                    var packet = new WiredChatComposer(user.VirtualId, FormatLegacyText(context, user, config.Text), Param(config, 2), Param(config, 3, -1), Param(config, 1) == 0);
+                    var packet = new WiredChatComposer(user.VirtualId, FormatLegacyText(context, user, config.Text), Param(config, 2), Param(config, 3, -1), !shownToRoom);
 
                     if (packet.Private) {
-                        client.Send(packet);
+                        client!.Send(packet);
                     }
                     else {
                         context.Room.SendPacket(packet);

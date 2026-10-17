@@ -51,9 +51,10 @@ internal static class WiredNativeConditionEditor
             "wf_cnd_stuff_is" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [], [0, 100], [], defaults, true),
             // Observed on hhus (AIR WIN63-202610131318-860371703): no wall picks (it has no pick source).
             "wf_cnd_slc_quantity" => new([[0, 200, 201]], [[0, 200, 201]], [200], [200], defaults, false),
+            // Observed on hhus (AIR WIN63-202610131318-860371703): the snapshot conditions allow wall picks.
             "wf_cnd_furnis_hv_avtrs" or "wf_cnd_has_furni_on" or "wf_cnd_match_snapshot"
                 or "wf_cnd_has_altitude" or "wf_cnd_counter_time_matches" =>
-                new([[0, 100, 200, 201]], [], [100], [], defaults, positive == "wf_cnd_has_altitude"),
+                new([[0, 100, 200, 201]], [], [100], [], defaults, positive is "wf_cnd_has_altitude" or "wf_cnd_match_snapshot"),
             "wf_cnd_actor_dir" or "wf_cnd_actor_in_group" or "wf_cnd_actor_in_team" or "wf_cnd_has_handitem"
                 or "wf_cnd_wearing_effect" or "wf_cnd_wearing_badge" or "wf_cnd_user_performs_action"
                 or "wf_cnd_team_has_rank" or "wf_cnd_team_has_score" =>

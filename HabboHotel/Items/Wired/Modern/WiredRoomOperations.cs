@@ -36,7 +36,8 @@ public static class WiredRoomOperations
         var handler = box.Instance.GetRoomItemHandler();
         var picked = proposed.SelectedItems.Distinct().Select(handler.GetItem)
             .Where(item => item is { IsFloorItem: true }
-                || box.Descriptor.CanonicalName == "wf_act_match_to_sshot" && item is { IsWallItem: true }
+                || box.Descriptor.CanonicalName is "wf_act_match_to_sshot" or "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap"
+                && item is { IsWallItem: true }
                 && WiredWallSnapshot.TryParse(item.WallCoordinates, out _)).ToArray();
         var templates = box.Descriptor.CanonicalName == "wf_act_place_furni" && proposed.TemporaryPlacement != null;
 
@@ -361,11 +362,47 @@ public static class WiredRoomOperations
 
     public static bool MatchesSnapshot(Item item, WiredFurniSnapshot snapshot,
         bool state, bool direction, bool position, bool altitude) =>
+        item.IsWallItem ? MatchesWallSnapshot(item, snapshot, state, position, altitude) :
         item.IsFloorItem && snapshot.Wall == null
         && (!state || string.Equals(item.LegacyDataString ?? string.Empty, snapshot.State, StringComparison.Ordinal))
         && (!direction || item.Rotation == snapshot.Rotation)
         && (!position || item.GetX == snapshot.X && item.GetY == snapshot.Y)
         && (!altitude || Math.Abs(item.GetZ - snapshot.Z) < 0.00001);
+
+    /// <summary>
+    /// Observed on hhus (AIR WIN63-202610131318-860371703): a picked wall torch takes part in the snapshot conditions, and with state
+    /// matching on, match passes at the saved state and fails once a Wired toggle changed it. A wall item has no rotation, so direction
+    /// never fails it; position is its wall tile, offset and side, altitude its saved height.
+    /// </summary>
+    private static bool MatchesWallSnapshot(Item item, WiredFurniSnapshot snapshot, bool state, bool position, bool altitude)
+    {
+        if (snapshot.Wall is not { } saved || snapshot.DefinitionId != item.Definition.Id
+            || state && !string.Equals(item.LegacyDataString ?? string.Empty, snapshot.State, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        if (!position && !altitude) {
+            return true;
+        }
+
+        if (!WiredWallSnapshot.TryParse(item.WallCoordinates, out var current)) {
+            return false;
+        }
+
+        if (position && (current!.TileX != saved.TileX || current.TileY != saved.TileY || current.LocalX != saved.LocalX || current.Left != saved.Left)) {
+            return false;
+        }
+
+        if (!altitude) {
+            return true;
+        }
+
+        if (item.GetRoom()?.GetGameMap().StaticModel is not { } model) {
+            return current!.PixelY == saved.PixelY && current.NativeAltitude == saved.NativeAltitude;
+        }
+
+        return Math.Abs(WiredWallGeometry.Altitude(model, current!) - WiredWallGeometry.SavedAltitude(model, saved)) < 0.005;
+    }
 
     public static bool TryAltitude(string text, out double height) =>
         double.TryParse(text, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out height)

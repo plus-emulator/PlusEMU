@@ -401,6 +401,11 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 targets = targets.Where(item => item.IsFloorItem).ToArray();
             }
 
+            // Observed on hhus (AIR WIN63-202610131318-860371703): furni_to_furni with a wall item as its only target moves nothing.
+            if (name == "wf_act_furni_to_furni") {
+                targets = targets.Where(item => item.IsFloorItem).ToArray();
+            }
+
             var movementUsers = config.UserSources.ContainsKey("users") ? Users(context, config, "users") : [];
             // Furniture sent to a user lands on that user's own tile; no other occupant is let through.
             IReadOnlySet<int>? landingUsers = name == "wf_act_furni_to_user" && movementUsers.Length > 0

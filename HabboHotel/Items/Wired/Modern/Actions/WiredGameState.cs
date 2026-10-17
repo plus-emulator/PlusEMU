@@ -130,7 +130,14 @@ public sealed class WiredGameState
     // a Battle Banzai team (team 2 gave 34) and 39 + team for a Freeze team (team 3 gave 42); leaving delivers effect 0. 224-226 for
     // plain teams 2-4 follow the observed 223 and are unobserved. The own avatar gets it 54 to 498 ms after the action's own stack effects
     // (join 54, 273, 420; leave 306, 498), so it rides the next 500 ms state update instead of a fixed delay.
-    internal static int TeamEffect(int type, Team team) => (int)team + type switch { 1 => 32, 2 => 39, _ => 222 };
+    // Battle Banzai and Freeze number their effects in team order; Wired teams use 223 Red, 224 Blue, 225 Yellow, 226 Green.
+    // Observed on hhus (AIR WIN63-202610131318-860371703): joining Blue, Yellow and Green gave 224, 225 and 226.
+    internal static int TeamEffect(int type, Team team) => type switch
+    {
+        1 => (int)team + 32,
+        2 => (int)team + 39,
+        _ => team switch { Team.Red => 223, Team.Blue => 224, Team.Yellow => 225, Team.Green => 226, _ => 222 + (int)team }
+    };
     private int TeamType(Room room, RoomUser user) => _types.TryGetValue(user, out var joined) && joined.Team == user.Team ? joined.Type
         : Contains(room.Teambanzai, user) ? 1 : Contains(room.Teamfreeze, user) ? 2 : 0;
     private static bool Contains(TeamManager? manager, RoomUser user) => manager != null

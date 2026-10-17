@@ -18,7 +18,8 @@ public sealed partial class WiredNativeLifecycleTests
     [InlineData(0, 1, 223)]
     [InlineData(1, 1, 33)]
     [InlineData(2, 4, 43)]
-    [InlineData(0, 4, 226)]
+    [InlineData(0, 4, 225)]
+    [InlineData(0, 2, 226)]
     public void JoinTeamSavesMapToTheObservedEffectIds(int type, int team, int effect)
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_act_join_team", out var descriptor));

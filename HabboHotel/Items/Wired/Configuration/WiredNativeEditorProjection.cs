@@ -123,6 +123,12 @@ public static class WiredNativeEditorProjection
             return null;
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: a leaderboard whose override variables do not match its override count is refused
+        // with this key.
+        if (descriptor.CanonicalName == "wf_xtra_var_leaderboard") {
+            return "wiredfurni.error.variable_leaderboard.invalid_configuration";
+        }
+
         var allowed = Metadata(descriptor.CanonicalName).FurniAllowed;
 
         return native.FurniSourceTypes.Length == allowed.Length

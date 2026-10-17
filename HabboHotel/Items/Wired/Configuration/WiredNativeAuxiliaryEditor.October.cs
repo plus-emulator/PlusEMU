@@ -143,7 +143,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         {
             VariableDefaults = [.. Enumerable.Repeat(WiredLeaderboardConfig.NoVariable, WiredLeaderboardConfig.VariableCount)]
         }, n => n.FurniSourceTypes.Length == 0 && n.UserSourceTypes.Length == 0
-            && WiredLeaderboardConfig.Decode(n.OwnedIntParams, n.VariableIds, n.Text) is not null ? Draft(n, n.OwnedIntParams, n.Text) : null));
+            && WiredLeaderboardConfig.Decode(n.OwnedIntParams, n.VariableIds, n.Text) is not null
+                ? Draft(n, n.OwnedIntParams, WiredLeaderboardConfig.Normalize(n.Text, n.OwnedIntParams)) : null));
         // GlobalPlaceholderAddon.as:155 [mode (0 custom text, 1 room), 0, room index]; :160 placeholder name TAB text.
         yield return new("wf_xtra_global_placeholder", new(Meta(0, 0, [0, 0, 0]), n =>
         {

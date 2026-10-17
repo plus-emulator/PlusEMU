@@ -53,6 +53,34 @@ public sealed record WiredLeaderboardConfig
 
     public static int DefaultWidth(int type) => type switch { 0 => 3, 2 or 3 => 1, 5 => 2, _ => 0 };
 
+    /// <summary>
+    /// The board's text as the hotel keeps it: 17 TAB fields, with the fields of unused slots emptied. Observed on AIR
+    /// WIN63-202610151745-318700621: "lb probe\t\tValue\t\t\t\t\tOwner" (one column, no override) is accepted and reads back as
+    /// "lb probe\t\tValue" and 14 empty fields; the override name in an unused slot is dropped. Fields past the 17th are dropped.
+    /// </summary>
+    public static string Normalize(string text, ImmutableArray<int> p)
+    {
+        if (text.Length == 0 || p.Length != IntCount) {
+            return text;
+        }
+
+        var fields = text.Split('\t').Concat(Enumerable.Repeat("", TextFields)).Take(TextFields).ToArray();
+
+        for (var slot = p[1]; slot < MaxColumns; slot++) {
+            fields[2 + slot] = "";
+        }
+
+        if (!(p[7] == 1 && p[8] == 0)) {
+            fields[6] = "";
+        }
+
+        for (var index = Math.Max(0, p[9]); index < MaxOverrides; index++) {
+            fields[7 + index] = "";
+        }
+
+        return string.Join('\t', fields);
+    }
+
     /// <summary>The add-on's save, checked the way the client codec validates it; null when the client would refuse it.</summary>
     public static WiredLeaderboardConfig? Decode(ImmutableArray<int> p, ImmutableArray<string> ids, string text)
     {
@@ -130,9 +158,9 @@ public sealed record WiredLeaderboardConfig
             };
         }
 
-        var fields = text.Split('\t');
+        var fields = Normalize(text, p).Split('\t');
 
-        if (fields.Length != TextFields || fields[0].Length is < 1 or > 50 || fields[1].Length > 80) {
+        if (fields[0].Length is < 1 or > 50 || fields[1].Length > 80) {
             return null;
         }
 

@@ -7,7 +7,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 public enum WiredLogSource
 {
     // Habbo numbers PLACEMENT_FAILURE 8 too; 8 is already this log's own WiredLog row, so it takes the next free value.
-    ExecutionCap = 0, DelayedEventsCap = 1, RecursionTimeout = 5, WiredLog = 8, PlacementFailure = 9
+    ExecutionCap = 0, DelayedEventsCap = 1, RecursionTimeout = 5, WiredLog = 8, PlacementFailure = 9, TransactionFailure = 10
 }
 
 public sealed record WiredRoomLogEntry(long Id, int Level, WiredLogSource Source, uint BoxId, string Label, string Reason, DateTimeOffset Timestamp)
@@ -18,6 +18,7 @@ public sealed record WiredRoomLogEntry(long Id, int Level, WiredLogSource Source
         WiredLogSource.DelayedEventsCap => "DELAYED_EVENTS_CAP",
         WiredLogSource.RecursionTimeout => "RECURSION_TIMEOUT",
         WiredLogSource.PlacementFailure => "PLACEMENT_FAILURE",
+        WiredLogSource.TransactionFailure => "TRANSACTION_FAILURE",
         _ => "WIRED_LOG"
     };
     // The client's log levels (default texts wiredmenu.logs_overview.log_level.N): 0 INFO, 1 WARN, 2 ERROR, 3 DEBUG.
@@ -29,7 +30,8 @@ public sealed record WiredRoomLogEntry(long Id, int Level, WiredLogSource Source
     public const int WiredSource = 1;
     public int WireSource => Source == WiredLogSource.WiredLog ? WiredSource : SystemSource;
     // A "write to logs" line reads as the box wrote it; an engine note names its limit.
-    public string Message => Source == WiredLogSource.WiredLog ? Reason : $"{TypeName(Source)}: {Reason}";
+    // A transaction failure line is written whole, as Habbo words it.
+    public string Message => Source is WiredLogSource.WiredLog or WiredLogSource.TransactionFailure ? Reason : $"{TypeName(Source)}: {Reason}";
 }
 
 public sealed record WiredRoomLogPage(int Total, int Page, int Amount, IReadOnlyList<WiredRoomLogEntry> Entries);
@@ -45,6 +47,7 @@ public sealed class WiredRoomLog(int capacity = 200)
 {
     public const int InfoLevel = 0;
     public const int ErrorLevel = 2;
+    public const int DebugLevel = 3;
     private static readonly WiredLogSource[] Sources =
         [WiredLogSource.ExecutionCap, WiredLogSource.DelayedEventsCap, WiredLogSource.RecursionTimeout, WiredLogSource.WiredLog,
             WiredLogSource.PlacementFailure];

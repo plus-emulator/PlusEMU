@@ -611,10 +611,14 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             Fail(actor, sourceId, result.Failure!.Value, notifyFailure);
         }
     }
-    public void Fail(RoomUser actor, uint sourceId, WiredChestFailure reason, bool notify = true, bool cancelledByWired = false)
+    public void Fail(RoomUser actor, uint sourceId, WiredChestFailure reason, bool notify = true, bool cancelledByWired = false, bool fireTrigger = true)
     {
         if (notify) {
             actor.GetClient()?.Send(new WiredTransactionFailComposer(reason));
+        }
+
+        if (!fireTrigger) {
+            return;
         }
 
         publish(new(WiredEventKind.TransactionFail) { Actor = actor, EventItem = room.GetRoomItemHandler().GetItem(sourceId), SourceId = sourceId, Code = (int)reason, CancelledByWired = cancelledByWired });

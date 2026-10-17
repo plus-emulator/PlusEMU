@@ -292,4 +292,15 @@ public sealed class WiredOctoberEditorTests
     private static ImmutableArray<int> SendInts(params (int Mode, int Literal, int Target)[] rows) =>
         [rows.Length, .. Enumerable.Range(0, 12).SelectMany(index => index < rows.Length
             ? new[] { rows[index].Mode, rows[index].Literal, rows[index].Target } : new[] { 0, 0, -10 })];
+
+    // Observed on hhus (AIR WIN63-202610131318-860371703): the editors write 1..1200 pulses plus one, and 1201 saves.
+    [Theory]
+    [InlineData("wf_cnd_time_more_than")]
+    [InlineData("wf_cnd_time_less_than")]
+    public void TheTimeConditionsSaveTheirLargestEditorValue(string name)
+    {
+        Assert.True(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [1201] }));
+        Assert.True(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [2] }));
+        Assert.False(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [1202] }));
+    }
 }

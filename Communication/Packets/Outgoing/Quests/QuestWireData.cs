@@ -8,6 +8,8 @@ public sealed record QuestWireData(string Category, int CategoryProgress, int Ca
 
 public sealed record QuestListData(bool Send, ImmutableArray<QuestWireData> Quests);
 
+// AIR WIN63-202610151745-318700621 package_49/class_1996.as:49 reads the quest block as
+// siiiibssisiiissbb plus a seconds-left int only when the seasonal flag is true.
 internal static class QuestWireSerializer
 {
     public static void Write(IOutgoingPacket packet, QuestWireData quest)
@@ -28,5 +30,6 @@ internal static class QuestWireSerializer
         packet.WriteString("");
         packet.WriteString("");
         packet.WriteBoolean(true);
+        packet.WriteBoolean(false);
     }
 }

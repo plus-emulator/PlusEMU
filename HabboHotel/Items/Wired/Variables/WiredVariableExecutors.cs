@@ -356,7 +356,10 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
                     return false;
                 }
 
-                var timestamp = p[1] == 1 ? current.UpdatedAt : current.CreatedAt;
+                // A global has no readable creation time (its catalogue row lists canReadCreationTime false). Observed on AIR
+                // WIN63-202610151745-318700621 (wf_cnd_var_age_match.pass_fail): "created less than 60 s ago" fails for a global placed
+                // seconds earlier.
+                var timestamp = p[1] == 1 ? current.UpdatedAt : reference.Target == WiredVariableTarget.Global ? null : current.CreatedAt;
 
                 if (timestamp is null) {
                     return false;

@@ -71,7 +71,12 @@ public sealed class WiredVariableConfiguredBox : IWiredContextualItem
         // Observed on hhus (AIR WIN63-202610131318-860371703): a Give Variable or Change Variable Value that writes a variable flashes
         // that variable's definition box, and the variable add-ons on its tile, with the action's own flash.
         if (_executors.Destination(Descriptor.CanonicalName, configuration) is { } destination) {
-            Instance.GetWired()?.Variables.FlashDefinition(destination);
+            Instance.GetWired()?.Variables.FlashDefinition(destination, Descriptor.CanonicalName switch
+            {
+                "wf_act_give_var" => WiredFlashStates.DefinitionGiven,
+                "wf_act_remove_var" => WiredFlashStates.DefinitionRemoved,
+                _ => WiredFlashStates.DefinitionChanged
+            });
         }
 
         return true;

@@ -250,7 +250,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
 
     /// <summary>The variable a Give Variable or Change Variable Value box writes, resolved through the room's catalog.</summary>
     public WiredVariableReference? Destination(string name, WiredConfiguration configuration) =>
-        name is "wf_act_give_var" or "wf_act_change_var_val" && TryDecode(name, configuration, out var p, out _)
+        name is "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var" && TryDecode(name, configuration, out var p, out _)
         && TryTokens(name, configuration, p, variables, out var tokens) && tokens[0].Length > 0
             ? new WiredVariableReference((WiredVariableTarget)p[0], tokens[0]) : null;
 

@@ -187,6 +187,11 @@ public partial class PlacedFurniRoomTests
         SetStore(wired, new(HasVarId, name, 2, JsonSerializer.Serialize(native)));
         var item = HasVarItem(name, 1, 1);
 
+        // A pick of furni that left the room is dropped on load, so the picked furni stays in the room here.
+        if (change == "pick") {
+            Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, Furni(601, InteractionType.None, WiredBoxType.None), 2, 2, 0, true, false, false));
+        }
+
         Assert.Null(wired.LoadWiredBox(item));
         Assert.False(wired.TryGet(HasVarId, out _));
     }

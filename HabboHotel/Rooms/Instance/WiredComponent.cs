@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Dapper;
 using System.Diagnostics;
@@ -306,6 +307,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
                     throw new InvalidDataException("Saved static selections cannot reference temporary room furniture.");
                 }
 
+                saved = WithRoomPicks(item, descriptor, saved);
+
                 if (!configured.TryValidateConfiguration(saved, out var validated, out var error)) {
                     throw new InvalidDataException(error);
                 }
@@ -320,10 +323,37 @@ public partial class WiredComponent : IWiredRuntimeOperations
             return AddBox(configured) ? configured : null;
         }
         catch (Exception error) {
-            _logger.LogError(error, "Cannot load Wired configuration for item {ItemId} in room {RoomId}; saved bytes retained", item.Id, _room.Id);
+            _logger.LogError(error, "Cannot load Wired configuration for item {ItemId} in room {RoomId}; saved bytes retained: {Reason}",
+                item.Id, _room.Id, error.Message);
 
             return null;
         }
+    }
+
+    /// <summary>
+    /// A saved card's picks as this room holds them. Furni that left the room drops out of the selection rather than failing the card,
+    /// and a pick read from a schema 1 row, which did not record wall picks, takes the wall flag of the furni it names. The saved row
+    /// keeps its picks until the card is saved again.
+    /// </summary>
+    private WiredConfiguration WithRoomPicks(Item item, WiredBoxDescriptor descriptor, WiredConfiguration saved)
+    {
+        if (saved.Origin?.Native is not { } native) {
+            return saved;
+        }
+
+        var handler = _room.GetRoomItemHandler();
+        ImmutableArray<WiredNativeItemReference> InRoom(ImmutableArray<WiredNativeItemReference> picks) =>
+            [.. picks.Select(pick => handler.GetItem(pick.ItemId) is { } furni ? pick with { Wall = furni.IsWallItem } : null).OfType<WiredNativeItemReference>()];
+        var primary = InRoom(native.PrimaryItems);
+        var secondary = InRoom(native.SecondaryItems);
+
+        if (primary.SequenceEqual(native.PrimaryItems) && secondary.SequenceEqual(native.SecondaryItems)) {
+            return saved;
+        }
+
+        var placed = native with { PrimaryItems = primary, SecondaryItems = secondary };
+
+        return WiredNativeEditorProjection.TryCompile(item.Id, descriptor, placed, out var runtime, storedRow: true) ? runtime : saved;
     }
 
     /// <summary>The registry descriptor of placed furniture: named by its definition, or by its legacy wired type.</summary>

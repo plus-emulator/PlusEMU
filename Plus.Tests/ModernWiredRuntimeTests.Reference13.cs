@@ -103,6 +103,20 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(1, 1), bot.Coordinate);
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): Show Message to everyone for a bot is said by the bot.
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(0, false)]
+    public void ShowMessageForABotIsSaidByTheBotWhenShownToEveryone(int visibility, bool said)
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_show_message", intParams: [0, visibility, 34, -1], text: "hello");
+        var bot = AddNamedBot(f, 9, "Bobby", 2, 2);
+        var replies = Capture(f.Client);
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = bot });
+        f.Advance(0);
+        Assert.Equal(said ? 1 : 0, Chats(replies).Count(chat => chat.Text == "hello"));
+    }
+
     [Fact]
     public void BotTeleportStaysPutWhenTheFurniTileIsTaken()
     {

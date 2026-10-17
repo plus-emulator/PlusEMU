@@ -342,6 +342,65 @@ internal sealed partial class WiredStackEngine
         return true;
     });
 
+    /// <summary>
+    /// Schedules a step of the running action for the room tick whose 500 ms boundary is <paramref name="tickBoundary"/>. It runs at the
+    /// start of that tick's room pass (<see cref="OnRoomTick"/>), so what it changes goes out with that tick's avatar updates.
+    /// </summary>
+    public bool ScheduleOnRoomTick(WiredRuntimeContext context, long tickBoundary, Action callback, Action? onCancelled = null) => Pass(() =>
+    {
+        var active = _executingAction;
+
+        if (active == null || !ReferenceEquals(active.Chain.Context.Runtime, context)
+            || !CanSchedule([active.Box])) {
+            return false;
+        }
+
+        var chain = new ActionChain(active.Chain.Source, active.Chain.Stack, active.Chain.Context, 1);
+        _pending.Add(chain);
+        _schedule.Enqueue(new(chain, active.Box, callback, onCancelled) { OnRoomTick = true },
+            (tickBoundary, active.Box.Item.GetZ, active.Box.Item.Id, ++_sequence, 0));
+        UpdateFastWork();
+
+        return true;
+    });
+
+    /// <summary>The boundary of the last room tick that started, or null before the first one.</summary>
+    public long? LastRoomTick { get; private set; }
+
+    /// <summary>
+    /// The boundary of the first room tick after <paramref name="firing"/>: the tick after the last one that started, or a tick that is
+    /// due but has not started yet. Without room ticks (no room pass yet), the next 500 ms boundary.
+    /// </summary>
+    public long FirstRoomTickAfter(long firing)
+    {
+        var interval = WiredFlashStates.StateUpdateMilliseconds;
+
+        return LastRoomTick is { } last
+            ? Math.Max(last + interval, firing / interval * interval)
+            : (firing / interval + 1) * interval;
+    }
+
+    /// <summary>Starts a room tick: records its boundary and runs the steps scheduled for it, before the room moves and serializes avatars.</summary>
+    public void OnRoomTick() => Pass(() =>
+    {
+        var now = _now();
+        LastRoomTick = now - now % WiredFlashStates.StateUpdateMilliseconds;
+        _roomTickDrain = true;
+
+        try {
+            DrainDueActions();
+        }
+        finally {
+            _roomTickDrain = false;
+        }
+
+        UpdateFastWork();
+
+        return true;
+    });
+
+    private bool _roomTickDrain;
+
     private static long DueAt(long due, bool alignToStateUpdate) => alignToStateUpdate
         ? (due + WiredFlashStates.StateUpdateMilliseconds - 1) / WiredFlashStates.StateUpdateMilliseconds * WiredFlashStates.StateUpdateMilliseconds
         : due;

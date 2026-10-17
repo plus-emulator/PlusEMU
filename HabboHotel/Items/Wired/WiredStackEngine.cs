@@ -640,6 +640,12 @@ internal sealed partial class WiredStackEngine
                         continue;
                     }
 
+                    // A room tick's pass runs only the steps scheduled for room ticks, and other passes leave those for it.
+                    if (scheduled.OnRoomTick != _roomTickDrain) {
+                        deferred.Add((scheduled, priority));
+                        continue;
+                    }
+
                     chain.FirstResumeAt ??= resumeAt;
 
                     if (scheduled.Callback == null && !scheduled.DelayElapsed && scheduled.DelayMilliseconds > 0) {
@@ -733,7 +739,9 @@ internal sealed partial class WiredStackEngine
             _draining = false;
         }
 
-        DrainReadySignals();
+        if (!_roomTickDrain) {
+            DrainReadySignals();
+        }
     }
 
     // Only a Show Message whose captured text names a numeric-mode text-output placeholder reads variable state.
@@ -1018,6 +1026,7 @@ internal sealed partial class WiredStackEngine
         public long DelayMilliseconds { get; init; }
         public bool DelayElapsed { get; set; }
         public bool ReadReleased { get; set; }
+        public bool OnRoomTick { get; init; }
     }
 
     private sealed class ActionChain(IWiredItem source, IWiredItem[] stack,

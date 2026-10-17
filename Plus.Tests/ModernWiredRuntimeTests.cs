@@ -2449,22 +2449,40 @@ public partial class ModernWiredRuntimeTests
         f.Use(1, 0);
         var replies = Capture(f.Habbo.Client);
         // Observed on AIR WIN63-202610131318-860371703: fast = effect 235, an on-boundary firing lands at +1000 ms and drops the
-        // effect at +1500 ms.
-        // The relocation runs on the tick before (at +500 ms): the room publishes the avatar on the tick after a Wired step.
+        // effect at +1500 ms. The relocation runs at the start of the room tick that publishes it.
         f.Fire(land: false);
         Assert.Equal(235, f.User.CurrentEffect);
-        f.Advance(450);
+        f.Advance(950);
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         f.Advance(50);
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(235, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
-        f.Advance(950);
+        f.Advance(450);
         Assert.Equal(235, f.User.CurrentEffect);
         f.Advance(50);
         Assert.Equal(8, f.User.CurrentEffect);
         Assert.Empty(f.Errors);
+    }
+
+    // A firing after a 500 ms boundary whose room tick has not started yet counts that tick as its first, so a fast teleport lands on the
+    // tick after it rather than a tick late.
+    [Fact]
+    public void FastTeleportFiredBeforeADueRoomTickCountsThatTickAsTheFirst()
+    {
+        using var f = new TeleportFixture();
+        f.Use(1, 0);
+        f.Engine.OnRoomTick();
+        f.Skew(510);
+        f.Fire(land: false);
+        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        f.Advance(480);
+        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        f.Advance(10);
+        Assert.Equal(new Point(1, 1), f.User.Coordinate);
+        f.Advance(500);
+        Assert.Equal(8, f.User.CurrentEffect);
     }
 
     [Fact]
@@ -2477,14 +2495,14 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(4, f.User.CurrentEffect);
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
         // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal firing lands at +2.0 s and drops the effect at +3.5 s. The
-        // relocation runs on the tick before (+1.5 s): the room publishes the avatar on the tick after a Wired step.
-        f.Advance(1450);
+        // relocation runs at the start of the room tick that publishes it.
+        f.Advance(1950);
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         f.Advance(50);
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(4, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
-        f.Advance(1900);
+        f.Advance(1400);
         Assert.Equal(4, f.User.CurrentEffect);
         f.Advance(100);
         Assert.Equal(8, f.User.CurrentEffect);
@@ -2991,9 +3009,19 @@ public partial class ModernWiredRuntimeTests
                 Advance(TeleportLandsAfterMilliseconds);
             }
         }
+        // Moves the clock without a room tick or pass, like a room tick that has not started yet.
+        public void Skew(int milliseconds) => _now += milliseconds;
+        // Room ticks start on every 500 ms boundary passed, as in the room manager; then one fast pass.
         public void Advance(int milliseconds)
         {
-            _now += milliseconds;
+            var end = _now + milliseconds;
+
+            for (var boundary = (_now / 500 + 1) * 500; boundary <= end; boundary += 500) {
+                _now = boundary;
+                Engine.OnRoomTick();
+            }
+
+            _now = end;
             Engine.OnFastCycle();
         }
         public RoomUser AddPlayer(int virtualId, int x, int y)

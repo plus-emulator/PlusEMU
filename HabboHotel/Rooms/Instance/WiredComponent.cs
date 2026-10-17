@@ -227,8 +227,13 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.CallStacks(context, targets, negative);
     public bool SendSignal(WiredRuntimeContext context, IEnumerable<Item> receivers, WiredSelection selection, bool negative = false) =>
         _engine.SendSignal(context, receivers, selection, negative);
-    /// <summary>The Wired engine's clock now (the firing's context keeps the time the event was taken).</summary>
-    public long NowMilliseconds => _engine.NowMilliseconds;
+    public bool ScheduleOnRoomTick(WiredRuntimeContext context, long tickBoundary, Action callback, Action? onCancelled = null) =>
+        _engine.ScheduleOnRoomTick(context, tickBoundary, callback, onCancelled);
+    public long FirstRoomTickAfter(long firing) => _engine.FirstRoomTickAfter(firing);
+
+    /// <summary>Called at the start of every room tick's pass, before the room moves and serializes avatars.</summary>
+    public void OnRoomTick() => _engine.OnRoomTick();
+
     public bool ScheduleAux(WiredRuntimeContext context, int delayMilliseconds, Action callback, Action? onCancelled = null,
         bool alignToStateUpdate = false) =>
         _engine.ScheduleAux(context, delayMilliseconds, callback, onCancelled, alignToStateUpdate);

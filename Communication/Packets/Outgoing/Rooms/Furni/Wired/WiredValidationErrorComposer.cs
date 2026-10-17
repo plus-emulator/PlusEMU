@@ -2,14 +2,20 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 
-public sealed class WiredValidationErrorComposer(string error) : IServerPacket
+public sealed class WiredValidationErrorComposer(string error, IReadOnlyList<KeyValuePair<string, string>>? parameters = null) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.WiredValidationErrorComposer;
 
-    // The official packet carries a localization key and then a parameter list. None of the observed errors has parameters.
+    // AIR WIN63-202610151745-318700621 userdefinedroomevents/class_3246.as:27: a localization key, then a count of
+    // (placeholder key, value) pairs (incoming/userdefinedroomevents/class_3128.as:13).
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteString(error);
-        packet.WriteInteger(0);
+        packet.WriteInteger(parameters?.Count ?? 0);
+
+        foreach (var (key, value) in parameters ?? []) {
+            packet.WriteString(key);
+            packet.WriteString(value);
+        }
     }
 }

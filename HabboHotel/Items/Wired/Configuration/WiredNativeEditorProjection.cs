@@ -337,7 +337,8 @@ public static class WiredNativeEditorProjection
                 users["users"] = native.UserSourceTypes[0];
                 break;
             case "wf_cnd_furnis_hv_avtrs":
-                if (p.Length != 1 || p[0] is < 0 or > 1 || native.Quantifier != 0 || native.Text != "") {
+                // Observed on hhus (AIR WIN63-202610131318-860371703): quantifier 1 saves and reads back, though the editor shows none.
+                if (p.Length != 1 || p[0] is < 0 or > 1 || native.Quantifier is not (0 or 1) || native.Text != "") {
                     return false;
                 }
 

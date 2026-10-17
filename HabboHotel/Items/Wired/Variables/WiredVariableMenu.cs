@@ -82,10 +82,17 @@ public sealed class WiredVariableMenu(Room room, WiredRoomVariables variables)
         WiredVariableTarget target;
 
         switch (type) {
-            case 0: target = WiredVariableTarget.Furni; break;
-            case 1: target = WiredVariableTarget.User; break;
-            case -10: target = WiredVariableTarget.Global; break;
-            default: return null;
+            case 0:
+                target = WiredVariableTarget.Furni;
+                break;
+            case 1:
+                target = WiredVariableTarget.User;
+                break;
+            case -10:
+                target = WiredVariableTarget.Global;
+                break;
+            default:
+                return null;
         }
 
         if (!variables.TryCaptureNativeCatalog(out var catalog)) {

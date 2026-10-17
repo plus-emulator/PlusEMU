@@ -185,15 +185,24 @@ public class WiredClickPacketHookTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task BotAndPetTargetsAreNotHumanAvatarClicks(bool pet)
+    public async Task ABotClickFiresClickUserAndAPetClickDoesNot(bool pet)
     {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): clicking the bot Robbie fires Click User.
         var world = new World("wf_trg_click_user", [1, 1]);
         world.Target.BotData = (RoomBot)RuntimeHelpers.GetUninitializedObject(typeof(RoomBot));
         world.Target.BotData.AiType = pet ? BotAiType.Pet : BotAiType.Generic;
         await new ClickUserEvent().Parse(world.Room, world.Client, Packet(world.Target.VirtualId));
         world.FlushWired(responseEvent: true);
-        Assert.Empty(world.Capture.Events);
-        Assert.Empty(world.Packets);
+
+        if (pet) {
+            Assert.Empty(world.Capture.Events);
+            Assert.Empty(world.Packets);
+        }
+        else {
+            var evt = Assert.Single(world.Capture.Events);
+            Assert.Same(world.Actor, evt.Actor);
+            Assert.Same(world.Target, evt.TargetUser);
+        }
     }
 
     [Fact]

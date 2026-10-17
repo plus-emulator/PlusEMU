@@ -420,6 +420,28 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): click_furni on the selector (200) with a furni area selector fires for a click on
+    // furni in that pool, and an effect on the triggering furni (0) acts on the clicked furni. A click elsewhere does not fire.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ClickFurniOnTheSelectorFiresForFurniInThePool(bool inPool)
+    {
+        var f = new Fixture();
+        var actor = f.User(1);
+        var clicked = f.Furni(x: 3);
+        var other = f.Furni(x: 4);
+        ModernTrigger(f, "wf_trg_click_furni", new() { IntParams = [200] });
+        f.Add(new Selector { SelectBody = _ => new(new([(inPool ? clicked : other).Id]), WiredSelectionKind.Furni) });
+        uint[] triggering = [];
+        var action = f.Action(context => { triggering = [.. context.Triggering.FurniIds]; return true; });
+
+        Assert.Equal(inPool, f.DispatchAndResume(new WiredRuntimeEvent(WiredEventKind.ClickFurni) { Actor = actor, EventItem = clicked }));
+        Assert.Equal(inPool ? 1 : 0, action.Calls);
+        Assert.Equal(inPool ? [clicked.Id] : [], triggering);
+        Assert.Empty(f.Errors);
+    }
+
     [Fact]
     // Observed r92k r92k-trigger-gate neg-w1..w3 (AIR WIN63-202610131318-860371703): a trigger rejected by its selector pool runs
     // and flashes no condition.

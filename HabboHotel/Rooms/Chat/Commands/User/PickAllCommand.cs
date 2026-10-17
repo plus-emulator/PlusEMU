@@ -29,7 +29,8 @@ internal class PickAllCommand : IChatCommand
             return;
         }
 
-        var items = room.GetRoomItemHandler().GetWallAndFloor.Where(item => !item.IsTemporary && item.UserId == habbo.Id).ToArray();
+        // A Builders Club furni has no inventory to go to; :pickallbc returns it to the warehouse.
+        var items = room.GetRoomItemHandler().GetWallAndFloor.Where(item => !item.IsTemporary && !item.IsBuildersClub && item.UserId == habbo.Id).ToArray();
         var handler = room.GetRoomItemHandler();
 
         if (!handler.TryReserveTransfers(items, out var transfer)) {

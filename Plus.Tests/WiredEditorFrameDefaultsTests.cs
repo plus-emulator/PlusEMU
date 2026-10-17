@@ -99,6 +99,10 @@ public class WiredEditorFrameDefaultsTests
         };
 
         Assert.Equal("-2147418112,0,5,0,8,247,r", WiredNativeEditorProjection.HotelFrame(descriptor, native).Text);
+        // Floor entries, observed the same way: altitude in hundredths, highest id first.
+        Assert.Equal("2147418155,0,4,9,11,100;2147418149,3,0,8,11,0;2147418148,0,2,9,11,0", WiredNativeEditorProjection.SnapshotText([
+            new WiredFurniSnapshot(2147418148, 9, 9, 11, 0, 2, "0"), new WiredFurniSnapshot(2147418155, 9, 9, 11, 1.0, 4, ""),
+            new WiredFurniSnapshot(2147418149, 8, 8, 11, 0, 0, "3")]));
         Assert.Equal("", WiredNativeEditorProjection.HotelFrame(descriptor, WiredNativeEditorProjection.DefaultNative(descriptor)).Text);
     }
 }

@@ -38,7 +38,10 @@ public partial class WiredComponent
     }
     private bool WithHighscoreSpeechOwner(bool speech, Func<bool> action)
     {
-        if (!speech || Volatile.Read(ref _highscores)?.Enrolled != true || !_room.UsesV2Movement
+        // Speech runs its stacks inside an owned pass, so avatar moves land at once instead of on the next room tick. Observed on AIR
+        // WIN63-202610151745-318700621: Move/Rotate User and User To Furni move the avatar with the say (+130 ms round trip on all
+        // 13 fires), while ours waited for the room tick (+480..+500 ms).
+        if (!speech || !_room.UsesV2Movement
             || Plus.HabboHotel.Rooms.PathFinding.RoomOwnerScope.IsOwner(_room) || _engine.CurrentThreadOwnsPass) {
             return action();
         }

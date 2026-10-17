@@ -133,5 +133,6 @@ public enum InteractionType
     WiredContractReward,
     WiredRoomLinker,
     WiredLabel,
-    WiredLink
+    WiredLink,
+    Recolorable
 }

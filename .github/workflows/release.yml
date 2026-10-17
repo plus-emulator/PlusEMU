@@ -1,10 +1,9 @@
 name: Release
 
-# Every push to master publishes ready-to-run emulator builds. The hotel
-# installers download them from the latest release, so servers need no .NET.
+# Publishes ready-to-run emulator builds. The hotel installers download them
+# from the latest release, so servers need no .NET.
+# Releases are cut by hand once a batch of changes is ready (Actions > Release > Run workflow).
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 permissions:

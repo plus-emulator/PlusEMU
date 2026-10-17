@@ -283,6 +283,12 @@ public static class WiredNativeEditorProjection
             native = native with { Text = Leaderboard.WiredLeaderboardConfig.Normalize(native.Text, native.OwnedIntParams) };
         }
 
+        // Observed on AIR WIN63-202610151745-318700621 (r97_tc_store): the connector is stored as its valid "number=text" lines only, one per
+        // number with its last text, in ascending number order ("9=a 3=b -2=neg 20=c" reads back "-2=neg 3=b 9=a 20=c").
+        if (name == "wf_xtra_var_text_connector") {
+            native = native with { Text = Variables.WiredVariableMetadataBox.NormalizeConnector(native.Text) };
+        }
+
         if (itemId == 0 || !Supports(name) || native.Version != 2 || native.Category != descriptor.Category
             || native.NativeCode != Code(name) || !WithinBounds(native)) {
             return false;

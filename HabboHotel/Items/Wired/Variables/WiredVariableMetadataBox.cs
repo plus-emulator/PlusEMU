@@ -97,6 +97,17 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
 
         return configuration;
     }
+    internal static string NormalizeConnector(string text)
+    {
+        try {
+            return string.Join('\n', ParseConnector(text).OrderBy(pair => pair.Key)
+                .Select(pair => pair.Key.ToString(CultureInfo.InvariantCulture) + "=" + pair.Value));
+        }
+        catch (ArgumentException) {
+            return text;
+        }
+    }
+
     internal static IReadOnlyDictionary<int, string> ParseConnector(string text)
     {
         if (text.Length > 1000) {

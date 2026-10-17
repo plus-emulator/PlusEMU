@@ -21,6 +21,7 @@ public sealed class MoodlightConfigSnapshotTests
             1, 1, "#000000", 255,
             2, 2, "#0053F7", 100,
             3, 1, "#EA4532", 0,
+            true, 77u,
         }, packet.Writes);
     }
 
@@ -55,13 +56,15 @@ public sealed class MoodlightConfigSnapshotTests
 
         new MoodlightConfigComposer(MoodlightConfigSnapshot.Capture(data)).Compose(packet);
 
-        Assert.Equal(new object[] { 0, 2 }, packet.Writes);
+        Assert.Equal(new object[] { 0, 2, true, 77u }, packet.Writes);
     }
 
     private static MoodlightData Data()
     {
         var data = (MoodlightData)RuntimeHelpers.GetUninitializedObject(typeof(MoodlightData));
         data.CurrentPreset = 2;
+        data.Enabled = true;
+        data.ItemId = 77;
         data.Presets = [new("#000000", 255, false), new("#0053F7", 100, true), new("#EA4532", 0, false)];
 
         return data;

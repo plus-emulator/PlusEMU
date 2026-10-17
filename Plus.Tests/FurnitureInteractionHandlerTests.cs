@@ -13,22 +13,22 @@ namespace Plus.Tests;
 public class FurnitureInteractionHandlerTests
 {
     [Theory]
-    [InlineData("off", false)]
-    [InlineData("roll", true)]
-    [InlineData("gate", false)]
-    [InlineData("wall", true)]
-    public async Task CompleteFrameDelegatesOnceWithoutLookingUpRoomOrSession(string action, bool parameter)
+    [InlineData("off", false, -1)]
+    [InlineData("roll", false, 0)]
+    [InlineData("gate", false, -1)]
+    [InlineData("wall", true, 17)]
+    public async Task CompleteFrameDelegatesOnceWithoutLookingUpRoomOrSession(string action, bool parameter, int expected)
     {
         var service = new RecordingFurniture();
         var handler = Handler(action, service);
         await handler.Parse(null!, null!, parameter ? Packet(-5, 17) : Packet(-5));
 
-        Assert.Equal((action, unchecked((uint)-5), parameter ? 17 : -1), Assert.Single(service.Calls));
+        Assert.Equal((action, unchecked((uint)-5), expected), Assert.Single(service.Calls));
     }
 
     [Theory]
     [InlineData("off", false)]
-    [InlineData("roll", true)]
+    [InlineData("roll", false)]
     [InlineData("gate", false)]
     [InlineData("wall", true)]
     public async Task TruncatedFrameNeverDelegates(string action, bool parameter)

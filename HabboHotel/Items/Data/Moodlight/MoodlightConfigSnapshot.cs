@@ -4,8 +4,9 @@ namespace Plus.HabboHotel.Items.Data.Moodlight;
 
 public sealed record MoodlightPresetSnapshot(bool BackgroundOnly, string ColorCode, int ColorIntensity);
 
-public sealed record MoodlightConfigSnapshot(int CurrentPreset, ImmutableArray<MoodlightPresetSnapshot> Presets)
+public sealed record MoodlightConfigSnapshot(int CurrentPreset, ImmutableArray<MoodlightPresetSnapshot> Presets, bool Enabled, uint ItemId)
 {
     public static MoodlightConfigSnapshot Capture(MoodlightData data) => new(data.CurrentPreset,
-        data.Presets.Select(preset => new MoodlightPresetSnapshot(preset.BackgroundOnly, preset.ColorCode, preset.ColorIntensity)).ToImmutableArray());
+        data.Presets.Select(preset => new MoodlightPresetSnapshot(preset.BackgroundOnly, preset.ColorCode, preset.ColorIntensity)).ToImmutableArray(),
+        data.Enabled, data.ItemId);
 }

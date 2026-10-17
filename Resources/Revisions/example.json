@@ -98,7 +98,7 @@
     "RemoveFriendEvent": 2173,
     "RefreshCampaignEvent": 443,
     "AcceptFriendEvent": 2328,
-    "YouTubeVideoInformationEvent": 2488,
+    "YouTubeVideoInformationEvent": 65401,
     "FollowFriendEvent": 2669,
     "SaveBotActionEvent": 2361,
     "LetUserInEvent": 2207,

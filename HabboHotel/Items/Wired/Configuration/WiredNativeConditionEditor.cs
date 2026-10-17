@@ -10,6 +10,9 @@ internal static class WiredNativeConditionEditor
     internal static bool Supports(string name) => WiredConditionConfiguration.Supports(name)
         && name is not ("wf_cnd_furnis_hv_avtrs" or "wf_cnd_user_count_in");
 
+    /// <summary>Cards without a quantifier radio whose save still keeps a quantifier of 0 or 1.</summary>
+    internal static bool AcceptsHiddenQuantifier(string name) => name is "wf_cnd_has_furni_on" or "wf_cnd_furnis_hv_avtrs";
+
     internal static WiredNativeEditorMetadata Metadata(string name)
     {
         var positive = Positive(name);
@@ -91,7 +94,9 @@ internal static class WiredNativeConditionEditor
         var q = native.Quantifier.Value;
         var positive = Positive(name);
 
-        if (Metadata(name).QuantifierType == 0 && q != 0) {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): Furni Has Furni On saves quantifier 1 and reads it back although its
+        // editor shows no quantifier; the runtime keeps reading its own all/any field.
+        if (Metadata(name).QuantifierType == 0 && q != 0 && !AcceptsHiddenQuantifier(name)) {
             return false;
         }
 
@@ -152,7 +157,7 @@ internal static class WiredNativeConditionEditor
                 break;
             case "wf_cnd_furnis_hv_avtrs":
             case "wf_cnd_has_furni_on":
-                if (p.Length != 1 || f.Length != 1 || q != 0) {
+                if (p.Length != 1 || f.Length != 1 || q != 0 && !AcceptsHiddenQuantifier(name)) {
                     return false;
                 }
 

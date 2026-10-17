@@ -248,6 +248,7 @@ public static class ClientPacketHeader
     public const uint MemoryPerformanceEvent = 3956;
     public const uint ToggleYouTubeVideoEvent = 2442;
     public const uint SetMannequinFigureEvent = 1361;
+    public const uint SetClothingChangeDataEvent = 2545; // package_66.class_3476
     public const uint GetEventCategoriesEvent = 3413;
     public const uint DeleteGroupThreadEvent = 3333;
     public const uint PurchaseGroupEvent = 786;

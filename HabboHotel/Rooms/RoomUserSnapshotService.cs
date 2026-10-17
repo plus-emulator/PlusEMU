@@ -42,7 +42,7 @@ public sealed class RoomUserSnapshotService(IGroupManager groups, IGameClientMan
                 groups.TryGetGroup(favouriteGroupId, out group);
             }
 
-            return new(habbo.Id, habbo.Username, habbo.Motto, habbo.Look, user.VirtualId, user.X, user.Y,
+            return new(habbo.Id, habbo.Username, habbo.Motto, user.LookFor(habbo), user.VirtualId, user.X, user.Y,
                 user.Z.ToString(CultureInfo.InvariantCulture), user.RotBody, 1, habbo.Gender.ToLowerInvariant(),
                 group?.Id ?? 0, group?.Name ?? "", habbo.HabboStats?.AchievementPoints ?? 0,
                 false, 0, 0, "", false, false);

@@ -18,6 +18,8 @@ using Plus.Utilities;
 
 namespace Plus.HabboHotel.Rooms;
 
+public sealed record FootballGateOutfit(string BaseLook, string Look);
+
 public class RoomUser
 {
     internal ActorProfile? NavigationProfile { get; set; }
@@ -25,6 +27,12 @@ public class RoomUser
     public ActorMovementState Movement => LazyInitializer.EnsureInitialized(ref _movement)!;
 
     public WiredRoomEntrySnapshot WiredRoomEntry { get; internal set; }
+
+    /// <summary>The look a football gate put on, kept only while the user's own look is still the one it was made from.</summary>
+    public FootballGateOutfit? FootballGateOutfit { get; set; }
+
+    /// <summary>The look shown in this room: a football gate's outfit, or the user's own look.</summary>
+    public string LookFor(Users.Habbo habbo) => FootballGateOutfit is { } outfit && outfit.BaseLook == habbo.Look ? outfit.Look : habbo.Look;
     private GameClient? _mClient;
     private Room? _mRoom;
     private readonly IChatEmotionsManager _chatEmotions;

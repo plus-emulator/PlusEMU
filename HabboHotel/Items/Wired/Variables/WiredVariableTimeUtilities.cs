@@ -14,6 +14,11 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
     /// <summary>The creation-time and last-update modes also list the raw timestamp as "&lt;parent&gt;.&lt;mode&gt;" (bit 0).</summary>
     public const int BasePart = 0;
     public const long MaxMilliseconds = 253402300799999;
+    /// <summary>
+    /// Values before 1970 are timestamps too. Observed on hhus (AIR WIN63-202610131318-860371703): a parent of -1 reads 00:59:59.999 on
+    /// Thursday 1970-01-01 (the room zone, UTC+1), and writing day_of_week 3 from Thursday 1970-01-01 01:00:01 gives -86399000.
+    /// </summary>
+    public const long MinMilliseconds = -62135596800000;
     public IEnumerable<int> Selected => Enumerable.Range(1, 26).Where(id => (Mask & (1 << id) & ValidMask) != 0);
     /// <summary>Every catalogue part of this box: the base row in modes 1 and 2, then each ticked part.</summary>
     public IEnumerable<int> Parts => Mode == 0 ? Selected : Selected.Prepend(BasePart);
@@ -80,7 +85,7 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
         {
             1 => value.CreatedAt,
             2 => value.UpdatedAt,
-            _ => value.Value <= MaxMilliseconds ? DateTimeOffset.FromUnixTimeMilliseconds(Math.Max(0, value.Value)) : null
+            _ => value.Value is >= MinMilliseconds and <= MaxMilliseconds ? DateTimeOffset.FromUnixTimeMilliseconds(value.Value) : null
         };
 
         if (instant is null || Mode != 0 && instant.Value.ToUnixTimeMilliseconds() <= 0) {
@@ -113,7 +118,7 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
             23 => milliseconds / 3600000,
             24 => milliseconds / 86400000,
             25 => milliseconds / 604800000,
-            26 => (utc.Year - 1970L) * 12 + utc.Month - 1,
+            26 => ElapsedMonths(utc),
             _ => null
         };
 
@@ -158,7 +163,7 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
                 _ => null
             };
 
-            return next is >= 0 and <= MaxMilliseconds ? next : null;
+            return next is >= MinMilliseconds and <= MaxMilliseconds ? next : null;
         }
         catch (ArgumentException) {
             return null;
@@ -166,6 +171,19 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
         catch (OverflowException) {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Whole months since 1970-01 in UTC. The elapsed units count towards zero, so a time before 1970 counts a month only once it is a
+    /// whole month back. Observed on hhus (AIR WIN63-202610131318-860371703): -1 ms reads second 0, -86399000 reads minute -1439, hour -23,
+    /// day 0, week 0 and month 0; 1970-11-01 00:00:01 reads month 10.
+    /// </summary>
+    private static long ElapsedMonths(DateTimeOffset utc)
+    {
+        var months = (utc.Year - 1970L) * 12 + utc.Month - 1;
+        var monthStart = new DateTimeOffset(utc.Year, utc.Month, 1, 0, 0, 0, TimeSpan.Zero);
+
+        return months < 0 && utc > monthStart ? months + 1 : months;
     }
 
     // A wall-clock time in the room zone back to epoch milliseconds; a time skipped by a clock change moves forward past the gap.

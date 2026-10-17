@@ -25,7 +25,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         _appendCarryPublication = append;
     }
 
-    // A pressure pad (colour tile) only acts through Wired walk triggers, which the engine already seals the segment for.
+    // A pressure pad only acts through Wired walk triggers, which the engine already seals the segment for.
     internal static bool PlainPublicationItem(Item item) => item.IsFloorItem
         && item.Definition.InteractionType is InteractionType.None or InteractionType.PressurePad && !item.Definition.IsSeat;
 

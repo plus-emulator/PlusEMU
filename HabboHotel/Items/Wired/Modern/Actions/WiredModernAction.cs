@@ -16,6 +16,8 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 {
+    /// <summary>The whisper a Kick User sends the room owner it cannot kick (hhus text).</summary>
+    internal const string KickOwnerException = "Wired kick exception: Room owner";
     private readonly WiredCounterController _clocks;
     private readonly Action<WiredRuntimeEvent> _publish;
     private Action<WiredRuntimeEvent>? _headingPublisher;
@@ -532,7 +534,20 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     var client = user.GetClient();
                     var player = client?.GetHabbo();
 
-                    if (player == null || client == null || player.Id == context.Room.OwnerId || player.Access.Can(PermissionKeys.ModerationTool)) {
+                    if (player == null || client == null) {
+                        continue;
+                    }
+
+                    if (player.Id == context.Room.OwnerId) {
+                        // Observed on hhus (AIR WIN63-202610131318-860371703): the owner is not kicked and is whispered this notification.
+                        if (name == "wf_act_kick_user") {
+                            client.Send(new WiredChatComposer(user.VirtualId, KickOwnerException, 34, -1, true));
+                        }
+
+                        continue;
+                    }
+
+                    if (player.Access.Can(PermissionKeys.ModerationTool)) {
                         continue;
                     }
 

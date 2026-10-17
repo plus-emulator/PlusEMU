@@ -138,6 +138,23 @@ public static class WiredNativeEditorProjection
     /// furni with N for each part the saved options do not restore (r92l r92l-sshot-hidden: [0,0,0,0] gives "id,N,N,N,N,N",
     /// [1,1,1,1] gives "id,0,0,8,2,0").
     /// </summary>
+    /// <summary>
+    /// A save may echo the frame's trailing hotel-owned int (see <see cref="HotelFrame"/>); the hotel accepts it and keeps only the box's
+    /// own fields. Observed on hhus (AIR WIN63-202610131318-860371703): move_rotate saved with [0,0,1] and match_to_sshot with
+    /// [0,0,0,0,1] are accepted.
+    /// </summary>
+    public static WiredNativeEditorConfiguration WithoutHotelInt(string name, WiredNativeEditorConfiguration native)
+    {
+        if (name is not ("wf_act_move_rotate" or "wf_act_match_to_sshot") || !Supports(name)) {
+            return native;
+        }
+
+        var owned = Metadata(name).OwnedDefaults.Length;
+        var p = native.OwnedIntParams;
+
+        return p.Length == owned + 1 && p[^1] is 0 or 1 ? native with { OwnedIntParams = p[..owned] } : native;
+    }
+
     public static WiredNativeEditorConfiguration HotelFrame(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native)
     {
         var name = descriptor.CanonicalName;
@@ -214,11 +231,15 @@ public static class WiredNativeEditorProjection
         return filled.FurniSourceTypes.Length == slots;
     }
 
+    /// <summary>Characters of a Says Something keyword the hotel keeps.</summary>
+    public const int SaysKeywordLength = 200;
+
     public static bool TryCompile(uint itemId, WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
         out WiredConfiguration runtime, ImmutableArray<int> triggerContext = default, bool storedRow = false)
     {
         runtime = new();
         var name = descriptor.CanonicalName;
+        native = WithoutHotelInt(name, native);
 
         if (itemId == 0 || !Supports(name) || native.Version != 2 || native.Category != descriptor.Category
             || native.NativeCode != Code(name) || !WithinBounds(native)) {
@@ -263,6 +284,12 @@ public static class WiredNativeEditorProjection
                 if (p.Length != 3 || p[0] is < 0 or > 1 || p[1] is < 0 or > 2 || p[2] is < 0 or > 1
                     || native.Text.Length > 1000) {
                     return false;
+                }
+
+                // Observed on hhus (AIR WIN63-202610131318-860371703): a longer keyword saves, but only its first 200 characters are kept.
+                if (text.Length > SaysKeywordLength) {
+                    text = text[..SaysKeywordLength];
+                    native = native with { Text = text };
                 }
 
                 parameters = [p[1], p[2], p[0]];

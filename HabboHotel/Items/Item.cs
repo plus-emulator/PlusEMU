@@ -1623,7 +1623,13 @@ public class Item
         room.GetWired().TriggerEvent(WiredBoxType.TriggerUserFurniCollision, client.GetHabbo(), this);
     }
 
-    public void UserWalksOnFurni(RoomUser? user)
+    public void UserWalksOnFurni(RoomUser? user) => UserWalksOnFurni(user, true);
+
+    /// <summary>
+    /// The user arrives on this furni. A room cycle step passes wired: false: it raised the Wired walk-on event when it announced
+    /// the step (<see cref="WiredWalksOnFurni"/>).
+    /// </summary>
+    internal void UserWalksOnFurni(RoomUser? user, bool wired)
     {
         var room = GetRoom();
 
@@ -1635,8 +1641,8 @@ public class Item
 
         // Bots and pets can trigger modern walk stacks; legacy boxes and tents still need a Habbo.
         if (habbo == null) {
-            if (user.IsBot) {
-                room.GetWired().Dispatch(new(WiredEventKind.WalkOn) { Actor = user, EventItem = this });
+            if (wired) {
+                WiredWalksOnFurni(user);
             }
 
             return;
@@ -1646,11 +1652,17 @@ public class Item
             room.AddUserToTent(Id, user);
         }
 
-        room.GetWired().TriggerEvent(WiredBoxType.TriggerWalkOnFurni, habbo, this);
+        if (wired) {
+            WiredWalksOnFurni(user);
+        }
+
         user.LastItem = this;
     }
 
-    public void UserWalksOffFurni(RoomUser? user)
+    public void UserWalksOffFurni(RoomUser? user) => UserWalksOffFurni(user, true);
+
+    /// <summary>The user leaves this furni; see <see cref="UserWalksOnFurni(RoomUser?, bool)"/>.</summary>
+    internal void UserWalksOffFurni(RoomUser? user, bool wired)
     {
         var room = GetRoom();
 
@@ -1661,8 +1673,8 @@ public class Item
         var habbo = user.GetClient()?.GetHabbo();
 
         if (habbo == null) {
-            if (user.IsBot) {
-                room.GetWired().Dispatch(new(WiredEventKind.WalkOff) { Actor = user, EventItem = this });
+            if (wired) {
+                WiredWalksOffFurni(user);
             }
 
             return;
@@ -1672,7 +1684,32 @@ public class Item
             room.RemoveUserFromTent(Id, user);
         }
 
-        room.GetWired().TriggerEvent(WiredBoxType.TriggerWalkOffFurni, habbo, this);
+        if (wired) {
+            WiredWalksOffFurni(user);
+        }
+    }
+
+    /// <summary>
+    /// Raises only the Wired walk-on event. Observed on hhus (AIR WIN63-202610131318-860371703): a walk-on stack's flash and message go
+    /// out in the same tick as the UserUpdate that announces the step onto the furni (mv towards it), one walk tick before the arrival.
+    /// </summary>
+    internal void WiredWalksOnFurni(RoomUser user) => WiredWalk(user, WiredEventKind.WalkOn, WiredBoxType.TriggerWalkOnFurni);
+
+    /// <summary>Raises only the Wired walk-off event, in the tick that announces the step off the furni.</summary>
+    internal void WiredWalksOffFurni(RoomUser user) => WiredWalk(user, WiredEventKind.WalkOff, WiredBoxType.TriggerWalkOffFurni);
+
+    private void WiredWalk(RoomUser user, WiredEventKind kind, WiredBoxType type)
+    {
+        if (GetRoom() is not { } room) {
+            return;
+        }
+
+        if (user.GetClient()?.GetHabbo() is { } habbo) {
+            room.GetWired().TriggerEvent(type, habbo, this);
+        }
+        else if (user.IsBot) {
+            room.GetWired().Dispatch(new(kind) { Actor = user, EventItem = this });
+        }
     }
 
     public void Destroy()

@@ -2,6 +2,7 @@ using Plus.Communication.Packets.Outgoing.Moderation;
 using Plus.Communication.Packets.Outgoing.Rooms.Chat;
 using Plus.Core.Settings;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Moderation;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Quests;
@@ -69,6 +70,10 @@ public sealed class RoomChatService(
 
         if (!chatStyleManager.TryGetStyle(colour, out var style) || !style.CanUse(habbo.Access)) {
             colour = 0;
+        }
+
+        if (WiredGameState.TeamChatStyle(room, user) is { } teamStyle) {
+            colour = teamStyle;
         }
 
         if (shout) {
@@ -214,6 +219,10 @@ public sealed class RoomChatService(
 
         if (!chatStyleManager.TryGetStyle(colour, out var style) || !style.CanUse(habbo.Access)) {
             colour = 0;
+        }
+
+        if (WiredGameState.TeamChatStyle(room, user) is { } teamStyle) {
+            colour = teamStyle;
         }
 
         user.LastBubble = colour;

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Interactor;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms;
@@ -24,7 +25,8 @@ public partial class PlacedFurniRoomTests
         actor.MoveTo(0, 2);
         ExecutorTick();
         Assert.Equal((0, 1, 0d), (actor.X, actor.Y, actor.Z));
-        Assert.Empty(events);
+        // Only the walk-on announced with the seat step went out; the replaced landing runs no hooks.
+        Assert.Equal(new[] { (WiredBoxType.TriggerWalkOnFurni, 10u) }, events.Select(e => (e.Kind, e.Item)).ToArray());
         Assert.False(actor.HasStatus("sit"));
         Assert.Contains("/mv 0,2,0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
@@ -238,6 +240,44 @@ public partial class PlacedFurniRoomTests
             action(actor, (Item)arguments[1]);
 
             return false;
+        }
+    }
+
+    // Runs `action` from the landing's furni interactions (a Habbo arriving on an item), inside the commit phase. The Wired walk
+    // events go out earlier, with the step's announcement.
+    private void ExecutorObserveArrival(Action<RoomUser, Item> action)
+    {
+        var handler = _room.GetRoomItemHandler();
+        var field = typeof(RoomItemHandling).GetField("_interactors", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var observing = new LandingObservingInteractors((IItemInteractorFactory)field.GetValue(handler)!, action);
+        field.SetValue(handler, observing);
+
+        foreach (var item in handler.GetFloor) {
+            typeof(Item).GetField("_interactors", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, observing);
+        }
+    }
+
+    private sealed class LandingObservingInteractors(IItemInteractorFactory inner, Action<RoomUser, Item> action) : IItemInteractorFactory
+    {
+        public IFurniInteractor Create(Item item, TimeProvider timeProvider) => new Observer(inner.Create(item, timeProvider), item, action);
+
+        private sealed class Observer(IFurniInteractor inner, Item item, Action<RoomUser, Item> action) : IFurniInteractor
+        {
+            public void OnPlace(GameClient? session, Item placed) => inner.OnPlace(session, placed);
+            public void OnMove(GameClient? session, ThreeDCoord from, ThreeDCoord to) => inner.OnMove(session, from, to);
+            public void OnRemove(GameClient? session, Item removed) => inner.OnRemove(session, removed);
+            public void OnTrigger(GameClient? session, Item triggered, int request, bool hasRights) => inner.OnTrigger(session, triggered, request, hasRights);
+            public void OnWiredTrigger(Item triggered) => inner.OnWiredTrigger(triggered);
+            public void OnWalkOff(RoomUser user) => inner.OnWalkOff(user);
+
+            public void OnWalkOn(RoomUser user)
+            {
+                inner.OnWalkOn(user);
+
+                if (user.GetClient()?.GetHabbo() != null) {
+                    action(user, item);
+                }
+            }
         }
     }
 }

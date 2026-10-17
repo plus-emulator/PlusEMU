@@ -316,7 +316,7 @@ public sealed partial class WiredGlideConveyorTests
                 var tile = entry.Name is "wf_colortile" or "bc_tile_1";
                 var builderTile = entry.Name == "bc_tile_1";
                 var antenna = entry.Name == "wf_antenna2";
-                var interaction = builderTile ? "default" : tile ? "pressure_pad" : antenna ? "antenna" : entry.Name;
+                var interaction = tile ? "default" : antenna ? "antenna" : entry.Name;
                 var item = new Item
                 {
                     Id = entry.Id,

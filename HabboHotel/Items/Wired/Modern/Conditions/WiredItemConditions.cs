@@ -34,12 +34,12 @@ public static class WiredItemConditions
         // Observed on AIR WIN63-202610131318-860371703: "Furnis have avatars" passes on an empty selection under both "all" and "any"
         // (unlike "Furni has furni on", which fails).
         return subjects.Length == 0 || WiredRoomOperations.Quantify(subjects.Select(item => roomAvatars.Any(avatar =>
-            WiredRoomOperations.IsOnItem(avatar, item))), Param(config, 0) == 1 ? 0 : 1);
+            WiredRoomOperations.IsStandingOn(avatar, item))), Param(config, 0) == 1 ? 0 : 1);
     }
 
     public static bool TriggererOnItems(WiredConfiguration config, IReadOnlyCollection<Item> items,
         IEnumerable<RoomUser> avatars) => items.Count != 0 && WiredRoomOperations.Quantify(
-        avatars.Select(avatar => items.Any(item => WiredRoomOperations.IsOnItem(avatar, item))), Param(config, 2));
+        avatars.Select(avatar => items.Any(item => WiredRoomOperations.IsStandingOn(avatar, item))), Param(config, 2));
 
     public static bool HasStackedFurniture(WiredConfiguration config, IEnumerable<Item> items,
         Func<Item, bool> hasStackedFurniture) => WiredRoomOperations.Quantify(

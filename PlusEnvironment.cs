@@ -7,6 +7,7 @@ using Dapper;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Plus.Communication.Encryption;
+using Plus.Communication.Encryption.Keys;
 using Plus.Communication.Flash;
 using Plus.Communication.Http;
 using Plus.Communication.Nitro;
@@ -64,6 +65,7 @@ public class PlusEnvironment : IPlusEnvironment
 
     private readonly IEnumerable<IStartable> _startableTasks;
     private readonly RconConfiguration _rconConfiguration;
+    private readonly IHandshakeRsaKeyProvider _handshakeKey;
 
     public PlusEnvironment(IDatabase database,
         ILanguageManager languageManager,
@@ -78,8 +80,10 @@ public class PlusEnvironment : IPlusEnvironment
         IFlashServer flashServer,
         INitroServer nitroServer,
         IWebServer webServer,
-        ILogger<PlusEnvironment> logger, IServerUptime uptime)
+        ILogger<PlusEnvironment> logger, IServerUptime uptime,
+        IHandshakeRsaKeyProvider handshakeKey)
     {
+        _handshakeKey = handshakeKey;
         _database = database;
         _languageManager = languageManager;
         _settingsManager = settingsManager;
@@ -133,7 +137,7 @@ public class PlusEnvironment : IPlusEnvironment
             await SettingsManager.Reload();
 
             //Have our encryption ready.
-            HabboEncryptionV2.Initialize(new());
+            HabboEncryptionV2.Initialize(_handshakeKey.Key);
 
             await StartupSequence.Start(_startableTasks);
 

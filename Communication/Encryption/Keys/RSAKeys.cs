@@ -1,5 +1,9 @@
 namespace Plus.Communication.Encryption.Keys;
 
+/// <summary>
+/// The public 1024-bit key with exponent 3 that PlusEMU used to build in. It is only the fallback when no key is
+/// configured (<see cref="HandshakeRsaKeyProvider"/>); its private half is public, so it protects nothing.
+/// </summary>
 public class RsaKeys
 {
     public string D =

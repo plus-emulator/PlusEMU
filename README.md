@@ -65,6 +65,7 @@ Settings are read from `Config/config.json` relative to the working directory. L
 | `Rcon` | RCON listener and the addresses allowed to use it | `127.0.0.1:30001` |
 | `WebServer` | HTTP endpoints (Wired variables API, furnidata, badge leaderboard); see [Generating furnidata](#generating-furnidata) | `127.0.0.1:8080` |
 | `Camera` | Camera renderer URL and bearer, photo output directory, timeouts, effect allowlist | renderer at `127.0.0.1:3921` |
+| `Encryption` | `RsaPrivateKeyFile`: the PEM key of the Flash/AIR handshake; see [AIR client](#air-client) | built-in legacy key |
 
 Set your own database password and camera bearer; do not commit them.
 
@@ -119,6 +120,24 @@ Check it with `curl http://127.0.0.1:8080/api/gamedata/furnidata`. If the client
   ```sh
   { printf "SET @furnidata = FROM_BASE64('%s');\n" "$(base64 -w0 FurnitureData.json)"; cat Database/Migrations/60_FurnitureFurnidata.sql; } | mysql -u root -p plus
   ```
+
+## AIR client
+
+The official Habbo AIR client connects to the `Flash` TCP listener. Its handshake checks the server's Diffie-Hellman values with an RSA public key whose exponent it hard-codes as `65537`, so the emulator needs its own 2048-bit key with that exponent. The private key is never part of the repository:
+
+```sh
+./"Plus Emulator" --generate-rsa-key Config/rsa-private.pem   # or: openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out Config/rsa-private.pem
+```
+
+The command writes the key (mode 0600) and prints the public modulus, which the client must be given (`rsa.modulus` in `air.json`). Then point the emulator at the key with one of:
+
+- `"Encryption": { "RsaPrivateKeyFile": "rsa-private.pem" }` (relative to `Config/`)
+- `PLUS_RSA_PRIVATE_KEY_FILE=/run/secrets/rsa-private.pem`
+- `PLUS_RSA_PRIVATE_KEY` with the PEM text itself
+
+Without a key the emulator falls back to the old built-in 1024-bit key with exponent 3 and logs a warning. The AIR client cannot log in with it. Volt on the `Nitro` listener does not run this handshake, so no current client relies on the old key.
+
+The `Flash` listener binds `Flash.Hostname` (default `127.0.0.1`). For players outside the host it has to listen on a public address (for example `0.0.0.0`) behind a hostname that is not proxied over HTTP.
 
 ## Branches and releases
 

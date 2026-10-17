@@ -6,6 +6,8 @@ using Plus.Core;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using Plus.Communication.Encryption;
+using Plus.Communication.Encryption.Keys;
 using Plus.Communication.Flash;
 using Plus.Communication.Http;
 using Plus.Communication.Nitro;
@@ -25,6 +27,12 @@ public static class Program
 
     public static async Task Main(string[] args)
     {
+        if (args is ["--generate-rsa-key", .. var keyArgs]) {
+            Environment.Exit(GenerateRsaKey(keyArgs));
+
+            return;
+        }
+
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
         var services = new ServiceCollection();
@@ -49,6 +57,7 @@ public static class Program
         services.AddConfiguration<RconConfiguration>(configuration.GetSection("Rcon"));
         services.AddConfiguration<CameraConfiguration>(configuration.GetSection("Camera"));
         services.AddConfiguration<WebServerConfiguration>(configuration.GetSection("WebServer"));
+        services.AddConfiguration<EncryptionConfiguration>(configuration.GetSection("Encryption"));
 
         // Dependency Injection
         services.AddDefaultRules(typeof(Program).Assembly);
@@ -174,6 +183,39 @@ public static class Program
 
         return pluginDefinitions;
     }
+    // Writes a new 2048-bit handshake key (exponent 65537, what the AIR client uses) and prints its public modulus.
+    private static int GenerateRsaKey(string[] args)
+    {
+        if (args is not [var path]) {
+            Console.Error.WriteLine("Usage: \"Plus Emulator\" --generate-rsa-key <private-key.pem>");
+
+            return 2;
+        }
+
+        if (File.Exists(path)) {
+            Console.Error.WriteLine($"{path} already exists; not overwriting it.");
+
+            return 1;
+        }
+
+        var pem = HandshakeRsaKey.GeneratePem();
+
+        using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write)) {
+            if (!OperatingSystem.IsWindows()) {
+                File.SetUnixFileMode(stream.SafeFileHandle, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
+
+            using var writer = new StreamWriter(stream);
+            writer.Write(pem);
+        }
+
+        Console.WriteLine($"Wrote {path}. Point Encryption:RsaPrivateKeyFile or {EncryptionConfiguration.PrivateKeyFileVariable} at it and keep it out of git.");
+        Console.WriteLine("Public modulus (rsa.modulus in air.json):");
+        Console.WriteLine(HandshakeRsaKey.FromPem(pem).ModulusHex);
+
+        return 0;
+    }
+
     public static IServiceCollection AddConfiguration<T>(this IServiceCollection services, IConfigurationSection section)
         where T : class
     {

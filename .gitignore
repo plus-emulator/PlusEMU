@@ -282,3 +282,6 @@ __pycache__/
 # Server-minted camera media
 /camera/
 /camera-media/
+
+# Handshake RSA private keys (see README "AIR client").
+Config/*.pem

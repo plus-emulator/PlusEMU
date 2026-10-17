@@ -14,8 +14,9 @@ public class CompleteDiffieHandshakeEvent : IPacketEvent
         var sharedKey = HabboEncryptionV2.CalculateDiffieHellmanSharedKey(cipherPublickey);
 
         if (sharedKey != 0) {
-            session.Send(new SecretKeyComposer(HabboEncryptionV2.GetRsaDiffieHellmanPublicKey()));
-            session.ActivateLegacyCrypto(sharedKey.getBytes());
+            // Sent before RC4 starts, so it goes out in the clear like the client expects.
+            session.Send(new SecretKeyComposer(HabboEncryptionV2.GetRsaDiffieHellmanPublicKey(), session.EncryptsOutgoingTraffic));
+            session.ActivateLegacyCrypto(HabboEncryptionV2.Rc4KeyFromSharedKey(sharedKey));
         }
         else {
             session.SendNotification("There was an error logging you in, please try again!");

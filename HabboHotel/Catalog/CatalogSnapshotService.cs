@@ -30,7 +30,8 @@ public sealed class CatalogSnapshotService(ICatalogManager catalog, TimeProvider
         var now = time.GetUtcNow();
         var offers = page.Layout is "frontpage" or "club_buy" or "vip_buy" or "loyalty_vip_buy"
             ? []
-            : page.Offers.Values.Select(offer => CaptureOffer(offer, offer.LocalizationKey)).ToImmutableArray();
+            // Habbo's offer has no enabled flag, so disabled offers are left out rather than sent as unbuyable.
+            : page.Offers.Values.Where(offer => offer.Enabled).Select(offer => CaptureOffer(offer, offer.LocalizationKey)).ToImmutableArray();
         var promotions = catalog.Promotions
             .Where(promotion => !promotion.HasExpiredAt(now))
             .OrderBy(promotion => promotion.Position)
@@ -52,8 +53,8 @@ public sealed class CatalogSnapshotService(ICatalogManager catalog, TimeProvider
     public ClubGiftsSnapshot CaptureClubGifts(ClubGiftInfo info) => new(
         info.DaysUntilNextGift,
         info.Available,
-        info.Gifts.Select(gift => CaptureClubGiftOffer(gift.Offer)).ToImmutableArray(),
-        info.Gifts.Select(gift => new ClubGiftEntry(gift.Offer.Id, gift.DaysRequired,
+        info.Gifts.Where(gift => gift.Offer.Enabled).Select(gift => CaptureClubGiftOffer(gift.Offer)).ToImmutableArray(),
+        info.Gifts.Where(gift => gift.Offer.Enabled).Select(gift => new ClubGiftEntry(gift.Offer.Id, gift.DaysRequired,
             info.Available > 0 && info.PastDays >= gift.DaysRequired)).ToImmutableArray());
 
     // Gifts are free, regardless of the ordinary catalog price of the same chair.
@@ -115,7 +116,7 @@ public sealed class CatalogSnapshotService(ICatalogManager catalog, TimeProvider
             page.ParentId,
             page.Link,
             page.Caption,
-            page.Enabled ? page.Offers.Keys.ToImmutableArray() : [],
+            page.Enabled ? page.Offers.Values.Where(offer => offer.Enabled).Select(offer => offer.Id).ToImmutableArray() : [],
             childPages.Select(child => IndexNode(children, child, depth + 1)).ToImmutableArray());
     }
 }

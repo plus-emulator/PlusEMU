@@ -196,6 +196,13 @@ public sealed class CatalogBrowsingSnapshotTests
         service.ShowOffer(client, 44);
         Assert.Equal(1, snapshots.OfferCaptures);
         Assert.Single(sent);
+
+        // A disabled offer is never sent as a product offer.
+        found = true;
+        item.Enabled = false;
+        service.ShowOffer(client, 44);
+        Assert.Equal(1, snapshots.OfferCaptures);
+        Assert.Single(sent);
     }
 
     [Fact]

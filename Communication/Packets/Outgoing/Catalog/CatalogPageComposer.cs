@@ -36,6 +36,7 @@ public class CatalogPageComposer : IServerPacket
             CatalogOfferWriter.Write(packet, offer);
         }
 
+        // AIR WIN63-202610151745-318700621 package_4/class_1794.as:86, front page items package_5/class_2181.as:39
         packet.WriteInteger(_page.PreselectOfferId);
         packet.WriteBoolean(false);
         packet.WriteInteger(_page.Promotions.Length);
@@ -53,7 +54,7 @@ public class CatalogPageComposer : IServerPacket
                 case CatalogPromotion.ProductCodeItem:
                     packet.WriteString(promotion.ProductCode ?? string.Empty);
                     break;
-                default:
+                case CatalogPromotion.CataloguePageItem:
                     packet.WriteString(promotion.PageLink ?? string.Empty);
                     break;
             }

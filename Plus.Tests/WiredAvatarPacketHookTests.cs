@@ -135,6 +135,18 @@ public class WiredAvatarPacketHookTests
         Assert.Null(world.Actor.SignExpiresAt);
     }
 
+    // A standing avatar's sign expires in the v2 actor tick too; on our hotel it stayed until the avatar next walked.
+    [Fact]
+    public void TheActorTickExpiresASignWithoutAWalk()
+    {
+        var clock = new ManualClock(new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero));
+        var world = new World(9, 4, clock);
+        world.Actions.ApplySign(world.Room, world.Client, 4);
+        clock.Now = clock.Now.AddSeconds(5);
+        new Plus.HabboHotel.Rooms.PathFinding.ActorTickService(world.Room).BeforeMovement(world.Actor);
+        Assert.False(world.Actor.Statusses.ContainsKey("sign"));
+    }
+
     [Fact]
     public void ApplySignRejectsInvalidMissingActorAndForeignRoom()
     {

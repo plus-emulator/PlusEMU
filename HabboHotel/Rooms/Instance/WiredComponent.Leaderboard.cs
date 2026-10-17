@@ -147,7 +147,7 @@ public partial class WiredComponent
             : WiredLeaderboardRanking.Rank(config, new Dictionary<WiredVariableKey, WiredVariableValue>(), filter, operand);
 
         return new(descriptor.OverlayInstanceId, descriptor.QueryRevision, variableId, index, ranked.Count,
-            WiredLeaderboardRanking.Chunk(ranked, index, choice, LeaderboardProfiles));
+            WiredLeaderboardRanking.Chunk(ranked, index, choice, LeaderboardProfiles, config));
     }
 
     private static uint? DefinitionOf(string variableId) => WiredVariableDescription.TryParseCatalogId(variableId, out _, out var token)

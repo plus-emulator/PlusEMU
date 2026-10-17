@@ -175,7 +175,9 @@ public class RoomUser
 
     public bool IsPet => IsBot && BotData.IsPet;
 
-    public int CurrentEffect => GetClient()?.GetHabbo()?.Effects?.CurrentEffect ?? 0;
+    // A bot has no effects component; its effect is the last one sent for it.
+    private int _botEffect;
+    public int CurrentEffect => IsBot ? _botEffect : GetClient()?.GetHabbo()?.Effects?.CurrentEffect ?? 0;
 
 
     public bool IsDancing
@@ -773,6 +775,7 @@ public class RoomUser
         }
 
         if (IsBot) {
+            _botEffect = effectId;
             room.SendPacket(new AvatarEffectComposer(VirtualId, effectId));
 
             return;

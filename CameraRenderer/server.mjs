@@ -18,6 +18,10 @@ const rooted = (env, fallback) => env ? resolve(env) : resolve(directory, fallba
 const assets = rooted(process.env.CAMERA_ASSET_ROOT, '../../nitro-assets');
 const images = rooted(process.env.CAMERA_IMAGES_ROOT, '../../../retro-hotel-files/flash/c_images');
 const media = rooted(process.env.CAMERA_MEDIA_ROOT, '../camera');
+// The page is camera.html from the Volt client build, so photos use the same renderer as the client.
+const pageRoot = rooted(process.env.CAMERA_PAGE_ROOT, '../../Volt/dist');
+// Chromium's sandbox needs user namespaces; hosts without them (proot, some containers) set CAMERA_CHROMIUM_SANDBOX=0.
+const chromiumSandbox = process.env.CAMERA_CHROMIUM_SANDBOX !== '0';
 const assetOrigin = process.env.CAMERA_ASSET_ORIGIN ? new URL(process.env.CAMERA_ASSET_ORIGIN) : null;
 if (assetOrigin && (assetOrigin.protocol !== 'https:' || assetOrigin.username || assetOrigin.password || assetOrigin.pathname !== '/' || assetOrigin.search || assetOrigin.hash)) throw new Error('CAMERA_ASSET_ORIGIN must be an HTTPS origin');
 const furnitureData = createFurnitureDataSource({ url: process.env.CAMERA_FURNIDATA_URL, filename: resolve(assets, 'furniture/json/FurnitureData.json') });
@@ -107,7 +111,7 @@ async function safeFile(root, name) {
 async function createPage(abort, furniture) {
     furniture ??= await currentCatalogue();
     // A background page and a photo may both start the first page; they share one browser.
-    browser ??= chromium.launch({executablePath:process.env.CAMERA_CHROMIUM_PATH || undefined, headless:true, chromiumSandbox:true, args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']}).then(launched => {
+    browser ??= chromium.launch({executablePath:process.env.CAMERA_CHROMIUM_PATH || undefined, headless:true, chromiumSandbox, args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']}).then(launched => {
         launched.once('disconnected', () => {
             if (shuttingDown) return;
             console.error('Trusted camera browser disconnected; restarting renderer');
@@ -137,7 +141,7 @@ async function createPage(abort, furniture) {
         // A missing wall photo stays an empty frame, as it does in the client.
         page.on('response', response => { const path = new URL(response.url()).pathname; if (response.status() >= 400 && !mediaPath.test(path)) { slot.failures.push('Missing trusted asset: '+path); console.error('Missing camera asset: '+path); } });
         page.on('requestfailed', request => slot.failures.push('Failed trusted asset: '+request.url()));
-        await page.goto(`${origin}/page/index.html`, {waitUntil:'load',timeout:15000});
+        await page.goto(`${origin}/page/camera.html`, {waitUntil:'load',timeout:15000});
         await page.waitForFunction(() => window.cameraReady === true, {timeout:15000});
         if (slot.failures.length) throw new Error(slot.failures[0]);
         return slot;
@@ -367,7 +371,7 @@ const server = http.createServer(async (request, response) => {
         const path = decodeURIComponent(url.pathname);
         if (path.includes('\0') || path.includes('..') || path.includes('\\')) throw new Error('Invalid path');
         let data;
-        if (path.startsWith('/page/')) data=await safeFile(resolve(directory,'dist'),path.slice(6));
+        if (path.startsWith('/page/')) data=await safeFile(pageRoot,path.slice(6));
         else if (path.startsWith('/gamedata/')) {
             const relative=gamedata[path.slice(10)];if(!relative) throw new Error('Unknown gamedata');
             if (path.endsWith('/FurnitureData.json')) data=(await currentCatalogue()).body;

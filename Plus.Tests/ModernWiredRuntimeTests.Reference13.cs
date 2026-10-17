@@ -411,6 +411,21 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): said aloud, Bot Talk To Avatar addresses the avatar by name.
+    [Fact]
+    public void BotTalkToAvatarAloudAddressesTheAvatarByName()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_talk_to_avatar", intParams: [0, 0, 100, -1], text: "Bobby\twelcome");
+        var bobby = AddNamedBot(f, 9, "Bobby", 2, 2);
+        AddStackTrigger(f, 104, "wf_trg_bot_reached_avtr", new() { IntParams = [100], Text = "Bobby" });
+        var replies = Capture(f.Client);
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.BotReachedUser) { Actor = bobby, TargetUser = f.User });
+        f.Advance(0);
+        var chat = Assert.Single(Chats(replies));
+        Assert.Equal(ServerPacketHeader.ChatComposer, chat.Header);
+        Assert.Equal(f.Habbo.Username + ": welcome", chat.Text);
+    }
+
     [Fact]
     public void BotReachedAvatarHandsTheReachedUserToTheActionsAsTheTriggeringUser()
     {

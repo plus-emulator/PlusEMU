@@ -208,4 +208,8 @@ public sealed record WiredVariableDerivation(WiredVariableReference Source, Func
 {
     /// <summary>A creation-time part needs a source that keeps one; a global variable does not (observed on hhus).</summary>
     public bool RequiresCreationTime { get; init; }
+    /// <summary>Variable Changed can watch the part: every write of the parent is a change of the part (level-up parts, observed on hhus).</summary>
+    public bool Interceptable { get; init; }
+    /// <summary>False for a presence part (is_maxed): it exists or not, and has no value.</summary>
+    public bool HasValue { get; init; } = true;
 }

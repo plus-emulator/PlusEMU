@@ -141,7 +141,12 @@ public sealed class WiredVariableLevelSystem
 
         return new(current + 1, _thresholds.Length, start, maxed ? start : next, maxed);
     }
-    public long Read(long rawXp, int subvariable)
+    /// <summary>
+    /// A part's value; null when the part is absent (is_maxed below the last level). Observed on AIR WIN63-202610151745-318700621 (linear
+    /// 100, three levels): xp 50 reads level 1, current_xp 50, progress 50, 50 %, xp_required 100, xp_remaining 50, no is_maxed; xp 200
+    /// and 1200 read level 3, current_xp 200, progress 0, 0 %, xp_required 0, xp_remaining 0 and is_maxed present (-1).
+    /// </summary>
+    public long? Read(long rawXp, int subvariable)
     {
         var xp = Math.Max(0, rawXp);
         var level = Level(xp);
@@ -151,15 +156,18 @@ public sealed class WiredVariableLevelSystem
         return subvariable switch
         {
             0 => level.Level,
-            1 => xp,
-            2 => progress,
-            3 => level.IsMaxed || delta == 0 ? 100 : (long)Math.Clamp((decimal)progress * 100 / delta, 0m, 100m),
-            4 => level.Next,
-            5 => Math.Max(0L, level.Next - xp),
-            6 => level.IsMaxed ? 1 : 0,
+            1 => level.IsMaxed ? level.Start : xp,
+            2 => level.IsMaxed ? 0 : progress,
+            3 => level.IsMaxed ? 0 : delta == 0 ? 100 : (long)Math.Clamp((decimal)progress * 100 / delta, 0m, 100m),
+            4 => level.IsMaxed ? 0 : level.Next,
+            5 => level.IsMaxed ? 0 : Math.Max(0L, level.Next - xp),
+            6 => level.IsMaxed ? -1 : null,
             7 => level.MaxLevel,
             _ => throw new ArgumentOutOfRangeException(nameof(subvariable))
         };
     }
+
+    /// <summary>The variable's value after current_xp is written: at most the last level's start (observed: 250 wrote 200).</summary>
+    public long ClampXp(long xp) => Math.Clamp(xp, 0, _thresholds.Length == 0 ? xp : _thresholds[^1]);
     private static long Clamp(decimal value) => (long)Math.Clamp(value, 0m, long.MaxValue);
 }

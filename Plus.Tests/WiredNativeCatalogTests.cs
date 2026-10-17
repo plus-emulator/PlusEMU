@@ -429,6 +429,24 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         });
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: every level-up part is interceptable, current_xp is writable and is_maxed has no value.
+    [Fact]
+    public void LevelPartsAreInterceptableWithAWritableXpAndAPresenceMaxed()
+    {
+        var fixture = new Fixture();
+        fixture.AddDefinition(10);
+        fixture.AddMetadata(20, "wf_xtra_var_lvlup_system", new() { Text = "{\"mode\":1,\"stepSize\":100,\"maxLevel\":3,\"subvariables\":[0,1,6]}" });
+        Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
+        var rows = Own(catalog!).Where(variable => variable.Name.Contains('.')).ToDictionary(row => row.Name);
+
+        Assert.Equal(["score10.current_level", "score10.current_xp", "score10.is_maxed"], rows.Keys.Order());
+        Assert.All(rows.Values, row => Assert.True(row.CanInterceptChanges));
+        Assert.Equal((true, false, false), (rows["score10.current_xp"].CanWriteValue, rows["score10.current_level"].CanWriteValue,
+            rows["score10.is_maxed"].CanWriteValue));
+        Assert.Equal((true, true, false), (rows["score10.current_level"].HasValue, rows["score10.current_xp"].HasValue,
+            rows["score10.is_maxed"].HasValue));
+    }
+
     [Fact]
     public void TimeModesFollowTheParentsOwnCapabilities()
     {

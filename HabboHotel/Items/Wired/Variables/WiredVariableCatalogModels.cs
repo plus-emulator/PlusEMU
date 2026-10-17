@@ -3,6 +3,7 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 public sealed record WiredVariableDescription(WiredVariableDefinition Definition, bool HasValue, bool ReadOnly)
 {
     public IReadOnlyDictionary<int, string> TextConnector { get; init; } = new Dictionary<int, string>();
+    public bool Interceptable { get; init; }
     // The AIR client only reads this flag to keep a variable out of pickers used outside a running stack (Echo,
     // Variable Changed, FX override/audience, overview holder actions, leaderboard, pointer). Habbo sends it false
     // for every variable, context ones included, so context variables stay pickable there.

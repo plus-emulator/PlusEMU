@@ -108,7 +108,9 @@ public sealed class RoomChatService(
         }
 
         if (!habbo.Access.Can(PermissionKeys.ModerationTool) && user.IncrementAndCheckFlood(now, out var muteTime)) {
-            session.Send(new FloodControlComposer(muteTime));
+            if (muteTime > 0) {
+                session.Send(new FloodControlComposer(muteTime));
+            }
 
             return;
         }
@@ -232,7 +234,9 @@ public sealed class RoomChatService(
         user.LastBubble = colour;
 
         if (!habbo.Access.Can(PermissionKeys.ModerationTool) && user.IncrementAndCheckFlood(now, out var muteTime)) {
-            session.Send(new FloodControlComposer(muteTime));
+            if (muteTime > 0) {
+                session.Send(new FloodControlComposer(muteTime));
+            }
 
             return;
         }

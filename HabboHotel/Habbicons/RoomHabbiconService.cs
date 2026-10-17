@@ -36,7 +36,9 @@ public sealed class RoomHabbiconService(IHabbiconService habbicons, IRewardTrack
         }
 
         if (!habbo.Access.Can(PermissionKeys.ModerationTool) && user.IncrementAndCheckFlood(now, out var muteTime)) {
-            session.Send(new FloodControlComposer(muteTime));
+            if (muteTime > 0) {
+                session.Send(new FloodControlComposer(muteTime));
+            }
 
             return;
         }

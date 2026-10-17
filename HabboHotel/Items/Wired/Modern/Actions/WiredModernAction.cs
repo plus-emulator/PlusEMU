@@ -859,14 +859,17 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             : (firstBoundary + TeleportRepublishMilliseconds, firstBoundary + TeleportRelocateMilliseconds, firstBoundary + TeleportEffectEndMilliseconds);
         var wired = room.GetWired();
         var release = () => { };
+        // The avatar's update goes out with the room tick after the step runs (the room serializes users before Wired runs), so the
+        // republish and the landing run one tick ahead of the tick they show on. A fast republish due on the first boundary runs now.
+        var tick = WiredFlashStates.StateUpdateMilliseconds;
 
         // Nothing is applied unless the firing can hold its three scheduled steps; the effect starts with the first one.
-        if (!wired.ScheduleAux(context, republish, () =>
+        if (!wired.ScheduleAux(context, Math.Max(0, republish - tick), () =>
             {
                 if (user.IsAttachedTo(room)) {
                     user.UpdateNeeded = true;
                 }
-            }, () => release(), alignToStateUpdate: true)) {
+            }, () => release(), alignToStateUpdate: republish > tick)) {
             return Relocate();
         }
 
@@ -878,7 +881,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             StopAfterCurrentStep(user);
         }
 
-        if (!wired.ScheduleAux(context, relocate, () =>
+        if (!wired.ScheduleAux(context, relocate - tick, () =>
             {
                 if (user.IsAttachedTo(room)) {
                     Relocate();

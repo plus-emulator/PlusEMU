@@ -157,12 +157,27 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Empty(frames.Where(frame => frame.Header is ServerPacketHeader.ObjectDataUpdateComposer or ServerPacketHeader.ObjectsDataUpdateComposer));
     }
 
-    [Theory]
-    [InlineData("wf_game_upcounter1")]
-    [InlineData("bb_counter")]
-    public void WiredControlOfGameCountersAndTimersKeepsTheObjectUpdate(string counter)
+    [Fact]
+    public void WiredStartedGameCounterTicksPublishSingleDataAndNoObjectUpdate()
     {
-        var f = ClockFixture(counter, "wf_act_control_clock", [0, 100]);
+        // Observed on AIR WIN63-202610131318-860371703: wf_game_upcounter1 started by control_clock sends "1", "2", ... as ObjectDataUpdate.
+        var f = ClockFixture("wf_game_upcounter1", "wf_act_control_clock", [0, 100]);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        var frames = CaptureFrames(rider);
+
+        f.Advance(2600);
+
+        var data = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectDataUpdateComposer).Select(ReadSingle).ToArray();
+        // The fixture counter starts with empty data, so its first half-second step publishes "0".
+        Assert.Equal(["0", "1", "2"], data.Select(entry => entry.Text).Take(3));
+        Assert.All(data, entry => Assert.Equal((uint)CounterId, entry.Id));
+        Assert.Empty(ObjectUpdates(frames));
+    }
+
+    [Fact]
+    public void WiredControlOfGameTimersKeepsTheObjectUpdate()
+    {
+        var f = ClockFixture("bb_counter", "wf_act_control_clock", [0, 100]);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var frames = CaptureFrames(rider);
 
@@ -255,7 +270,7 @@ public sealed partial class WiredGlideConveyorTests
         foreach (var (item, origin, expected) in new[]
         {
             (plain, WiredClockOrigin.ModernWired, WiredCounterPublication.SingleData),
-            (game, WiredClockOrigin.ModernWired, WiredCounterPublication.Object),
+            (game, WiredClockOrigin.ModernWired, WiredCounterPublication.SingleData),
             (timer, WiredClockOrigin.ModernWired, WiredCounterPublication.Object)
         }) {
             Assert.True(clocks.Control(item, 0, 0, origin));

@@ -278,6 +278,11 @@ public static class WiredNativeEditorProjection
         var name = descriptor.CanonicalName;
         native = WithoutHotelInt(name, native);
 
+        // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).
+        if (name == "wf_xtra_var_leaderboard") {
+            native = native with { Text = Leaderboard.WiredLeaderboardConfig.Normalize(native.Text, native.OwnedIntParams) };
+        }
+
         if (itemId == 0 || !Supports(name) || native.Version != 2 || native.Category != descriptor.Category
             || native.NativeCode != Code(name) || !WithinBounds(native)) {
             return false;

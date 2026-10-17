@@ -23,6 +23,12 @@ public class WiredLeaderboardLenientTextTests
         Assert.Equal("lb probe", config!.Title);
         Assert.Equal("Value", Assert.Single(config.Columns).Label);
         Assert.Empty(config.Overrides);
+
+        // The saved configuration keeps the hotel's form, so the editor reads it back like the hotel does.
+        Assert.True(WiredBoxRegistry.TryGet("wf_xtra_var_leaderboard", out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = ints, Text = sent };
+        Assert.True(WiredNativeEditorProjection.TryCompile(1, descriptor, native, out var runtime));
+        Assert.Equal("lb probe\t\tValue" + new string('\t', 14), runtime.Origin!.Native.Text);
     }
 
     // Observed on AIR WIN63-202610151745-318700621: an override variable with no override counted is refused with the leaderboard key.

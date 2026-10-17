@@ -4,6 +4,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Rooms;
 using Plus.Communication.Packets.Outgoing.WiredVariables;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.WiredVariables;
 
@@ -41,7 +42,9 @@ public sealed class WiredUserVariableUpdateEvent(IWiredVariableMenuService menus
                 return false;
             }
 
-            request = new(action, (WiredVariableTarget)target, targetId, (uint)definitionId, value, token);
+            // A Builders Club furni and a Wired box placed from the Builders Club arrive by their band id.
+            request = new(action, (WiredVariableTarget)target, target == (int)WiredVariableTarget.Furni ? BuildersClubItemIds.FromWire(targetId) : targetId,
+                BuildersClubItemIds.FromWire((uint)definitionId), value, token);
 
             return true;
         }
@@ -119,7 +122,7 @@ public sealed class WiredSetObjectVariableValueEvent(IWiredVariableMenuService m
                 return false;
             }
 
-            request = new(target, objectId, variableId, value, operation);
+            request = new(target, target == 0 ? BuildersClubItemIds.FromWire(objectId) : objectId, variableId, value, operation);
 
             return true;
         }

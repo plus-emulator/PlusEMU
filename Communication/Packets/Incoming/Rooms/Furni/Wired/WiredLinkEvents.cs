@@ -1,6 +1,7 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Links;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 
@@ -10,7 +11,7 @@ public abstract class WiredLinkEvent : RoomPacketEvent
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
         try {
-            var furniId = packet.ReadUInt();
+            var furniId = BuildersClubItemIds.FromWire(packet.ReadUInt());
             var handle = Read(packet);
 
             if (!packet.HasDataRemaining()) {

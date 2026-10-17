@@ -116,7 +116,7 @@ public static class WiredLegacyProtocol
                 throw new InvalidDataException("Invalid native furniture identity.");
             }
 
-            items.Add(new((uint)Math.Abs(id), id < 0));
+            items.Add(new(BuildersClubItemIds.FromWire((uint)Math.Abs(id)), id < 0));
         }
 
         return items.MoveToImmutable();
@@ -166,7 +166,7 @@ public static class WiredLegacyProtocol
         WriteInts(packet, editor.PrimaryItems.Select(item => item.WireId));
         WriteInts(packet, editor.SecondaryItems.Select(item => item.WireId));
         packet.WriteInteger(spriteId);
-        packet.WriteUInteger(itemId);
+        packet.WriteUInteger(BuildersClubItemIds.ToWire(itemId));
         packet.WriteString(editor.Text);
         WriteInts(packet, editor.OwnedIntParams);
         packet.WriteInteger(editor.VariableIds.Length);

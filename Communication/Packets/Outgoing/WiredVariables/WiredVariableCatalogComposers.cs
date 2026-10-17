@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Collections.Immutable;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired.Variables;
 
 namespace Plus.Communication.Packets.Outgoing.WiredVariables;
@@ -84,7 +85,7 @@ public sealed class WiredVariableHoldersComposer(uint roomId, WiredVariableDescr
         packet.WriteInteger(_holders.Length);
 
         foreach (var holder in _holders) {
-            packet.WriteInteger(checked((int)holder.Key.HolderId));
+            packet.WriteInteger(checked((int)(holder.Key.Target == WiredVariableTarget.Furni ? BuildersClubItemIds.ToWire(checked((uint)holder.Key.HolderId)) : holder.Key.HolderId)));
             WiredVariableWireProtocol.WriteValue(packet, holder.Value.Value, exact);
         }
     }
@@ -108,7 +109,7 @@ public sealed class WiredVariableHoldersPageComposer(string variableId, WiredVar
 
         foreach (var holder in _captured.Holders) {
             packet.WriteInteger(holder.Key.Target switch { WiredVariableTarget.Global => 0, WiredVariableTarget.User => 1, WiredVariableTarget.Furni => 2, _ => 3 });
-            packet.WriteInteger(checked((int)holder.Key.HolderId));
+            packet.WriteInteger(checked((int)(holder.Key.Target == WiredVariableTarget.Furni ? BuildersClubItemIds.ToWire(checked((uint)holder.Key.HolderId)) : holder.Key.HolderId)));
             packet.WriteString(holder.Name);
             WiredVariableWireProtocol.WriteValue(packet, holder.Value.Value, exact);
             WriteTimestamp(packet, holder.Value.CreatedAt);

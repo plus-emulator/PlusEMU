@@ -2,6 +2,7 @@ using Plus.Communication.Packets.Incoming.Rooms;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.WiredVariables;
 
@@ -35,7 +36,8 @@ public sealed class WiredVariableInspectionRequestEvent(IWiredVariableInspection
                 return false;
             }
 
-            request = new(requestId, (uint)roomId, target, entityId, domain);
+            // A Builders Club wall furni (target 1) arrives by its band id.
+            request = new(requestId, (uint)roomId, target, target == 1 ? BuildersClubItemIds.FromWire(entityId) : entityId, domain);
 
             return true;
         }

@@ -8,7 +8,7 @@ internal sealed class UseFurnitureEvent(IFurnitureUseService furniture) : RoomPa
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
-        furniture.Use(room, session, new(packet.ReadUInt(), packet.ReadInt()));
+        furniture.Use(room, session, new(BuildersClubItemIds.FromWire(packet.ReadUInt()), packet.ReadInt()));
 
         return Task.CompletedTask;
     }

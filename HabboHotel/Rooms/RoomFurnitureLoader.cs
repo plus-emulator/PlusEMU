@@ -59,6 +59,10 @@ public sealed class RoomFurnitureLoader(IDatabase database, IItemDataManager def
         };
         MagicTileHeight.Sync(item);
 
+        if (item.IsBuildersClub) {
+            BuildersClubItemIds.Assign(item.Id);
+        }
+
         return item;
     }
 

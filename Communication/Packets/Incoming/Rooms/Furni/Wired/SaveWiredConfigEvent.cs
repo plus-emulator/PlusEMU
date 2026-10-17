@@ -1,5 +1,6 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Configuration;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 
@@ -12,7 +13,7 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
         uint itemId;
 
         try {
-            itemId = packet.ReadUInt();
+            itemId = BuildersClubItemIds.FromWire(packet.ReadUInt());
         }
         catch (ArgumentException) {
             return Task.CompletedTask;

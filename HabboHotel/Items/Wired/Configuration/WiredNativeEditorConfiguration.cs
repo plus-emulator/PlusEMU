@@ -27,7 +27,7 @@ public sealed record WiredNativeEditorConfiguration
 public sealed record WiredNativeItemReference(uint ItemId, bool Wall)
 {
     [JsonIgnore]
-    public int WireId => Wall ? checked(-(int)ItemId) : checked((int)ItemId);
+    public int WireId => Wall ? checked(-(int)BuildersClubItemIds.ToWire(ItemId)) : checked((int)BuildersClubItemIds.ToWire(ItemId));
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]

@@ -1,5 +1,6 @@
 using Plus.HabboHotel.Items.AreaHide;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni;
 
@@ -9,7 +10,7 @@ public sealed class AreaHideComposer(uint itemId, AreaHideValues state, bool rem
     public uint MessageId => ServerPacketHeader.AreaHideComposer;
     public void Compose(IOutgoingPacket packet)
     {
-        packet.WriteUInt(itemId);
+        packet.WriteUInt(BuildersClubItemIds.ToWire(itemId));
         packet.WriteBool(!removed && state.On);
         packet.WriteInt(state[1]);
         packet.WriteInt(state[2]);

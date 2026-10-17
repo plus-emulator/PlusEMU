@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 
@@ -9,7 +10,7 @@ public sealed class WiredFurniTransparencyComposer(IReadOnlyList<int> furniIds, 
 
     public void Compose(IOutgoingPacket packet)
     {
-        WriteIds(packet, furniIds);
+        WriteIds(packet, [.. furniIds.Select(id => BuildersClubItemIds.ToWire(id))]);
         packet.WriteInteger(transparency);
         packet.WriteBoolean(allowClickThrough);
         packet.WriteInteger(easing);
@@ -46,7 +47,7 @@ public sealed class WiredFurniHighlightComposer(IReadOnlyList<int> furniIds, int
 
     public void Compose(IOutgoingPacket packet)
     {
-        WiredFurniTransparencyComposer.WriteIds(packet, furniIds);
+        WiredFurniTransparencyComposer.WriteIds(packet, [.. furniIds.Select(id => BuildersClubItemIds.ToWire(id))]);
         packet.WriteInteger(type);
         packet.WriteInteger(strength);
         packet.WriteInteger(color);
@@ -92,7 +93,7 @@ public sealed class WiredVisualizationStateComposer(bool users, IReadOnlyList<Wi
         packet.WriteInteger(transparencies.Count);
 
         foreach (var state in transparencies) {
-            packet.WriteInteger(state.Id);
+            packet.WriteInteger(users ? state.Id : BuildersClubItemIds.ToWire(state.Id));
             packet.WriteInteger(state.Transparency);
             packet.WriteBoolean(state.AllowClickThrough);
             packet.WriteInteger(state.Easing);
@@ -101,7 +102,7 @@ public sealed class WiredVisualizationStateComposer(bool users, IReadOnlyList<Wi
         packet.WriteInteger(highlights.Count);
 
         foreach (var state in highlights) {
-            packet.WriteInteger(state.Id);
+            packet.WriteInteger(users ? state.Id : BuildersClubItemIds.ToWire(state.Id));
             packet.WriteInteger(state.Type);
             packet.WriteInteger(state.Strength);
             packet.WriteInteger(state.Color);

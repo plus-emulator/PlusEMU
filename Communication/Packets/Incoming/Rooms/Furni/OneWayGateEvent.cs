@@ -8,7 +8,7 @@ internal sealed class OneWayGateEvent(IFurnitureUseService furniture) : RoomPack
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
-        furniture.UseOneWayGate(room, session, packet.ReadUInt());
+        furniture.UseOneWayGate(room, session, BuildersClubItemIds.FromWire(packet.ReadUInt()));
 
         return Task.CompletedTask;
     }

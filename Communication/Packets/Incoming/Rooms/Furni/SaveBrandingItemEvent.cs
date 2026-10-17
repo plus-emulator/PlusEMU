@@ -8,7 +8,7 @@ internal sealed class SaveBrandingItemEvent(IRoomItemMetadataService metadata) :
 {
     public Task Parse(GameClient session, IIncomingPacket packet)
     {
-        var itemId = packet.ReadUInt();
+        var itemId = BuildersClubItemIds.FromWire(packet.ReadUInt());
         // The map is optional: an id-only frame keeps the placement-only behaviour of non-background furniture.
         ImmutableArray<string>? values = null;
 

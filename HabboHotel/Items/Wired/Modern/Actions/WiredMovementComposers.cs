@@ -32,7 +32,7 @@ public sealed record WiredMovementComposer(int Type, int Id, int FromX, int From
         packet.WriteInteger(ToY);
         packet.WriteString(FromZ.ToString(CultureInfo.InvariantCulture));
         packet.WriteString(ToZ.ToString(CultureInfo.InvariantCulture));
-        packet.WriteInteger(Id);
+        packet.WriteInteger(Type == 1 ? BuildersClubItemIds.ToWire(Id) : Id);
 
         if (Type == 1) {
             packet.WriteInteger(DurationMs);
@@ -105,7 +105,7 @@ public sealed record WiredMoveStyleComposer(int Id, int Style, int Intensity, in
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteInteger(1);
-        packet.WriteInteger(Id);
+        packet.WriteInteger(Avatar ? Id : BuildersClubItemIds.ToWire(Id));
         packet.WriteInteger(Style);
         packet.WriteInteger(Intensity);
         packet.WriteInteger(Overshoot);
@@ -120,7 +120,7 @@ public sealed record WiredWallMovementComposer(int Id, WiredWallSnapshot From, W
     {
         packet.WriteInteger(1);
         packet.WriteInteger(2);
-        packet.WriteInteger(Id);
+        packet.WriteInteger(BuildersClubItemIds.ToWire(Id));
         packet.WriteBoolean(!To.Left);
         packet.WriteInteger(From.TileX);
         packet.WriteInteger(From.TileY);

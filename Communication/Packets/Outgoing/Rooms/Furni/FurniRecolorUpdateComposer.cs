@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni;
 
@@ -22,7 +23,7 @@ public sealed class FurniRecolorUpdateComposer(IReadOnlyList<FurniRecolorUpdate>
             packet.WriteInteger(update.FurniIds.Count);
 
             foreach (var id in update.FurniIds) {
-                packet.WriteUInteger(id);
+                packet.WriteUInteger(BuildersClubItemIds.ToWire(id));
             }
 
             packet.WriteShort((short)update.Red);

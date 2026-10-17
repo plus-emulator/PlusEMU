@@ -1,5 +1,6 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Variables;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.WiredVariables;
 
@@ -29,7 +30,7 @@ public sealed class WiredVariableInspectionDataComposer(WiredVariableInspectionR
         packet.WriteInt(request.RequestId);
         packet.WriteUInteger(request.RoomId);
         packet.WriteInt(request.Target);
-        packet.WriteInt(request.EntityId);
+        packet.WriteInt(request.Target == 1 ? BuildersClubItemIds.ToWire(request.EntityId) : request.EntityId);
         packet.WriteInt(request.Domain);
         packet.WriteInt((int)status);
         packet.WriteInt(_entries.Length);

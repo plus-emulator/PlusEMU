@@ -1,6 +1,7 @@
 using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 
@@ -10,7 +11,7 @@ public sealed class WiredWebApiKeyRequestEvent : RoomPacketEvent
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
         try {
-            var wiredId = packet.ReadUInt();
+            var wiredId = BuildersClubItemIds.FromWire(packet.ReadUInt());
             var read = packet.ReadBool();
 
             if (!packet.HasDataRemaining() && room.GetWired().IssueWebApiKey(session, wiredId, read, out var key)) {
@@ -30,7 +31,7 @@ public sealed class WiredVariableShareSynchronizeEvent : RoomPacketEvent
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
         try {
-            var wiredId = packet.ReadUInt();
+            var wiredId = BuildersClubItemIds.FromWire(packet.ReadUInt());
 
             if (!packet.HasDataRemaining()) {
                 room.GetWired().SynchronizeShare(session, wiredId);

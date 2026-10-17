@@ -53,9 +53,9 @@ public sealed class RemovalAndRespectWireTests
         pet.PetId = 22;
         pet.Name = "changed";
         pet.Color = "FFFFFF";
-        Recompose(composer, [11, 11, 12, "Pet", 0, 0, "AA00BB", 0, 0, 1]);
+        Recompose(composer, [11, 11, 12, "Pet", 0, 0, "AA00BB", 0, 0, 1, -1]);
         Recompose(new RespectPetNotificationComposer(31, 32, "Human", "FFFFFF"),
-            [31, 31, 32, "Human", 0, 0, "FFFFFF", 0, 0, 1]);
+            [31, 31, 32, "Human", 0, 0, "FFFFFF", 0, 0, 1, -1]);
     }
 
     private static void Recompose(IServerPacket composer, object[] expected)

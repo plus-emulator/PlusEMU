@@ -146,7 +146,7 @@ public static class ClientPacketHeader
     public const uint RemoveFriendEvent = 2173;
     public const uint RefreshCampaignEvent = 443;
     public const uint AcceptFriendEvent = 2328;
-    public const uint YouTubeVideoInformationEvent = 2488;
+    public const uint YouTubeVideoInformationEvent = 65401; // No AIR WIN63-202610151745-318700621 composer; 2488 is TryPhoneNumber (package_144/class_2849)
     public const uint FollowFriendEvent = 2669;
     public const uint SaveBotActionEvent = 2361;
     public const uint LetUserInEvent = 2207;

@@ -45,7 +45,7 @@ public class FloorHeightMapComposer : IServerPacket
 
         packet.WriteInteger(_cameraX);
         packet.WriteInteger(_cameraY);
-        // Big-endian IEEE-754 bits. WriteInteger already writes big-endian, and there is no float writer.
-        packet.WriteInteger(BitConverter.SingleToInt32Bits(_cameraZ));
+        // AIR WIN63-202610151745-318700621 package_71/class_3887.as:76 reads the camera z as readFloat.
+        packet.WriteFloat(_cameraZ);
     }
 }

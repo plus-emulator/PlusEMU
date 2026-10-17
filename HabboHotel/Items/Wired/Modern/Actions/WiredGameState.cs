@@ -19,8 +19,9 @@ public sealed class WiredGameState
         _grants.Clear();
         _types.Clear();
     }
-    /// <summary>A Battle Banzai, Freeze or football game is in progress, the only time a team score exists.</summary>
-    public static bool GameRunning(Room room) => room.GetBanzai().IsBanzaiActive || room.GetFreeze().GameIsStarted || room.GetSoccer().GameIsStarted;
+    /// <summary>A Battle Banzai, Freeze or football game, or a Wired game counter, is in progress: the only time a team score exists.</summary>
+    public static bool GameRunning(Room room) => room.GetBanzai().IsBanzaiActive || room.GetFreeze().GameIsStarted || room.GetSoccer().GameIsStarted
+        || room.GetWired() is { GameCounterRunning: true };
     // Observed on hhus (build WIN63-202610131318), room without a running game: Give Score (team 0, 1 point) and Give Score To Team
     // (team 1, 1 point) both flashed their boxes, but the Score Achieved stacks (threshold 1, any team and team 1) never fired and the
     // hotel sent no score related packet. Outside a running game giving score is a no-op: no points, no quota use, no score event.

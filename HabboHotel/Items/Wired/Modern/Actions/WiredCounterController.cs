@@ -61,6 +61,8 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
     private readonly Queue<WiredCounterChange> _changes = [];
     internal bool HasPendingChanges => _changes.Count > 0;
     public bool HasRunning => _clocks.Values.Any(clock => clock.Running);
+    /// <summary>A Wired game counter (wf_game_upcounter*) is counting: the room has a running game.</summary>
+    public bool HasRunningGameCounter => _clocks.Values.Any(clock => clock.Running && clock.GameAware && !clock.Countdown);
     public static bool Recognizes(Item item) => Name(item) is "wf_upcounter1" or "wf_upcounter2" or "wf_game_upcounter1" or "wf_game_upcounter2"
         || IsGameTimer(item);
     public static bool IsGameTimer(Item item) => item.Definition.ItemName is "bb_counter" or "fball_counter" or "es_counter"
@@ -143,7 +145,8 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
         }
 
         // Observed on AIR WIN63-202610131318-860371703: a Start keeps a value adjusted after the last stop, and restarts from 0 otherwise.
-        if (operation == 0 && origin == WiredClockOrigin.ModernWired && !clock.Running && !clock.Countdown && !clock.GameAware
+        // Observed on AIR WIN63-202610131318-860371703 (wf_game_upcounter1, 8/8): game counters reset the same way, the "0" in the Start's batch.
+        if (operation == 0 && origin == WiredClockOrigin.ModernWired && !clock.Running && !clock.Countdown
             && clock.Value != 0 && !clock.AdjustedSinceStop) {
             var previous = clock.Value;
             clock.Value = 0;
@@ -173,6 +176,10 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
                 else {
                     gameControl?.Invoke(item, true);
                 }
+            }
+            else if (clock.GameAware && operation == 0) {
+                // Observed on AIR WIN63-202610131318-860371703: starting a game counter starts the game in the same tick.
+                gameTransition?.Invoke(transition);
             }
         }
 
@@ -284,6 +291,10 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
                 gameControl?.Invoke(clock.Item, false);
             }
         }
+        else if (clock.GameAware && reason != WiredClockReason.Pause) {
+            // Observed on AIR WIN63-202610131318-860371703: stopping a game counter ends the game in the same tick.
+            gameTransition?.Invoke(transition);
+        }
     }
     private WiredClockTransition Evidence(Clock clock, WiredClockReason reason, WiredClockOrigin origin = WiredClockOrigin.Unknown, RoomUser? actor = null)
     {
@@ -331,7 +342,7 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             }
         }
 
-        if (clock.Countdown || clock.GameAware) {
+        if (clock.Countdown || clock.GameAware && publication != WiredCounterPublication.BatchData) {
             publication = WiredCounterPublication.Object;
             force = false;
         }

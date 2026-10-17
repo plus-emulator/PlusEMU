@@ -156,6 +156,7 @@ public sealed class WiredMenuDelegationTests
             Manages.Add(request);
         }
         public List<WiredObjectVariableWrite> ObjectWrites { get; } = [];
+        public void ReadObject(Room room, GameClient session, int type, int objectId) => Calls.Add($"read-object:{type}:{objectId}");
         public void WriteObject(Room room, GameClient session, WiredObjectVariableWrite request)
         {
             Calls.Add("WriteObject");

@@ -128,3 +128,35 @@ public sealed class WiredSetObjectVariableValueEvent(IWiredVariableMenuService m
         }
     }
 }
+
+/// <summary>
+/// The AIR inspection tab's read of one object (AIR WIN63-202610151745-318700621 outgoing/userdefinedroomevents/wiredmenu/class_3018.as:12):
+/// type (0 furni, 1 user, -10 room) and the object id.
+/// </summary>
+public sealed class WiredGetVariablesForObjectEvent(IWiredVariableMenuService menus) : RoomPacketEvent
+{
+    public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
+    {
+        if (TryRead(packet, out var type, out var objectId)) {
+            menus.ReadObject(room, session, type, objectId);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public static bool TryRead(IIncomingPacket packet, out int type, out int objectId)
+    {
+        type = 0;
+        objectId = 0;
+
+        try {
+            type = packet.ReadInt();
+            objectId = packet.ReadInt();
+
+            return type is 0 or 1 or -10 && objectId >= 0 && !packet.HasDataRemaining();
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException) {
+            return false;
+        }
+    }
+}

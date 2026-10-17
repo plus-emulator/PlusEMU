@@ -55,6 +55,9 @@ public class Room
     public Dictionary<int, DateTimeOffset> MutedUsers;
 
     public Task ProcessTask;
+
+    // RoomCycle's task slot: 0 idle, else the kind of pass holding it.
+    internal int CycleSlot;
     private bool _usesV2Movement;
     internal bool UsesV2Movement => _usesV2Movement;
     internal void EnableV2Movement() => _usesV2Movement = true;

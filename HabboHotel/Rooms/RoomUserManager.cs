@@ -424,7 +424,7 @@ public class RoomUserManager
         // A user forwarded by Teleport to Room arrives still glowing and loses the glow as an in-room teleport does after landing.
         if (session.GetHabbo().ForwardArrivalRestoreEffect is { } restore) {
             session.GetHabbo().ForwardArrivalRestoreEffect = null;
-            user.ForwardArrivalEffect = (_clock.GetUtcNow().ToUnixTimeMilliseconds() + WiredRoomForwarding.ArrivalEffectMilliseconds, restore);
+            user.ForwardArrivalEffect = (WiredRoomForwarding.ArrivalEffectTicks, restore);
             user.ApplyEffect(WiredRoomForwarding.TeleportEffectId);
         }
 
@@ -992,10 +992,14 @@ public class RoomUserManager
 
     private void ExpireForwardArrivalEffects()
     {
-        var now = _clock.GetUtcNow().ToUnixTimeMilliseconds();
-
         foreach (var user in GetUserList()) {
-            if (user?.ForwardArrivalEffect is not { } arrival || now < arrival.EndsAt) {
+            if (user?.ForwardArrivalEffect is not { } arrival) {
+                continue;
+            }
+
+            if (arrival.TicksLeft > 1) {
+                user.ForwardArrivalEffect = (arrival.TicksLeft - 1, arrival.Restore);
+
                 continue;
             }
 

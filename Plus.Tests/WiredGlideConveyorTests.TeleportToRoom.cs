@@ -9,7 +9,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Teleport to Room glows the user with effect 4 from the firing and forwards on the tick an in-room teleport lands on.
+    // Observed on AIR WIN63-202610151745-318700621: Teleport to Room glows the user with effect 234 from the firing and takes them
+    // into the linked room about 950 ms later.
     [Fact]
     public void TeleportToRoomGlowsTheUserBeforeTheForward()
     {
@@ -35,18 +36,18 @@ public sealed partial class WiredGlideConveyorTests
 
         f.Owned(() => rider.OnChat(0, "pulse", false));
         f.Advance(200);
-        Assert.Equal(4, rider.CurrentEffect);
+        Assert.Equal(234, rider.CurrentEffect);
         Assert.False(Forwarded());
 
-        f.Advance(1750);
+        f.Advance(650);
         Assert.False(Forwarded());
-        f.Advance(50);
+        f.Advance(150);
         Assert.True(Forwarded());
         Assert.Equal(0, rider.GetClient()!.GetHabbo()!.ForwardArrivalRestoreEffect);
 
-        // A user the client did not take away loses the glow when an in-room teleport would drop it.
-        Assert.Equal(4, rider.CurrentEffect);
-        f.Advance(1500);
+        // A user the client did not take away loses the glow later.
+        Assert.Equal(234, rider.CurrentEffect);
+        f.Advance(2500);
         Assert.Equal(0, rider.CurrentEffect);
     }
 }

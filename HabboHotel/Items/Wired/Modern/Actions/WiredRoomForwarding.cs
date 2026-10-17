@@ -88,15 +88,19 @@ public static class WiredRoomForwarding
         return PositiveId(roomText, out var fallback) ? new(fallback) : null;
     }
 
-    /// <summary>The teleport glow a forwarded user wears before leaving and for a moment after arriving.</summary>
-    public const int TeleportEffectId = 4;
+    /// <summary>The glow a forwarded user wears from the firing until it is taken into the next room, and for a moment after.</summary>
+    public const int TeleportEffectId = 234;
 
-    /// <summary>How long the glow stays on a forwarded user after arriving, as an in-room teleport keeps it after landing.</summary>
-    public const int ArrivalEffectMilliseconds = 1500;
+    /// <summary>How long after the firing the user is taken into the linked room.</summary>
+    public const int ForwardDelayMilliseconds = 950;
 
-    // A forwarded user glows with the teleport effect from the firing and leaves on the room tick an in-room teleport would land on
-    // (the 4th tick after the firing), keeping the glow into the next room. Observed on AIR WIN63-202610151745-318700621: the client
-    // follows the forward at once (navigator onRoomForward), so the wait is the server's.
+    /// <summary>The arriving user loses the glow on this room tick after entering.</summary>
+    public const int ArrivalEffectTicks = 3;
+
+    // Observed on AIR WIN63-202610151745-318700621 (Furni Clicked and Walks On firings, room linker pair): the firing puts effect 234 on
+    // the user (2517) at once; the user keeps walking, and 951-953 ms later (not on a room tick) the room switch starts. The user enters
+    // on the other linker's tile facing its rotation, still with effect 234, which is cleared on the linked room's third tick after the
+    // entry (1.1-1.4 s). With the other linker picked up nothing happens.
     public static bool Execute(WiredRuntimeContext context, WiredConfiguration config, ILogger logger, IItemTravelStore travelStore)
     {
         var items = context.Targets.ResolveFurni(context, config.SelectedItems, config.FurniSources["links"]);
@@ -136,7 +140,7 @@ public static class WiredRoomForwarding
                 room.GetWired().RecordRoomNetworkForward(user, target.RoomId);
             }
 
-            if (!wired.ScheduleOnRoomTick(context, firstTick + 3 * tick, Forward)) {
+            if (!wired.ScheduleAux(context, ForwardDelayMilliseconds, Forward)) {
                 Forward();
                 forwarded = true;
 

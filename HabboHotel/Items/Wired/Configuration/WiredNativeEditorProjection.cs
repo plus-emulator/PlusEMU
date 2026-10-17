@@ -194,9 +194,10 @@ public static class WiredNativeEditorProjection
     /// <summary>
     /// The snapshot conditions' saved text. Observed on hhus (AIR WIN63-202610131318-860371703): a wall torch at `:w=5,0 l=8,40 r`
     /// saved with state matching only is stored as `-2147418112,0,5,0,8,247,r`: the negated wall id, the state, the wall tile, the
-    /// offset along the wall, the altitude in hundredths and the side, with no part masked by the unticked options. Floor entries
-    /// follow the same unmasked id,state,rotation,x,y,z order. The AIR editor never reads the text (class_4293.as:49-71 reads and
-    /// writes only the four option ints).
+    /// offset along the wall, the altitude in hundredths and the side, with no part masked by the unticked options. Floor entries are
+    /// id,state,rotation,x,y,altitude in hundredths, highest id first: a colour tile at state 3 on (8,11), a block turned to 2 on (9,11)
+    /// and a block turned to 4 stacked on it saved `2147418155,0,4,9,11,100;2147418149,3,0,8,11,0;2147418148,0,2,9,11,0`. The AIR editor
+    /// never reads the text (class_4293.as:49-71 reads and writes only the four option ints).
     /// </summary>
     internal static string SnapshotText(IEnumerable<WiredFurniSnapshot> snapshots)
     {
@@ -204,7 +205,8 @@ public static class WiredNativeEditorProjection
 
         return string.Join(';', snapshots.Where(entry => entry.Wall == null).OrderByDescending(entry => entry.ItemId)
             .Select(entry => string.Join(',', entry.ItemId.ToString(invariant), entry.State.Length == 0 ? "0" : entry.State,
-                entry.Rotation.ToString(invariant), entry.X.ToString(invariant), entry.Y.ToString(invariant), entry.Z.ToString(invariant)))
+                entry.Rotation.ToString(invariant), entry.X.ToString(invariant), entry.Y.ToString(invariant),
+                ((long)Math.Round(entry.Z * 100, MidpointRounding.AwayFromZero)).ToString(invariant)))
             .Concat(snapshots.Where(entry => entry.Wall != null).OrderBy(entry => entry.ItemId).Select(entry =>
             {
                 var wall = entry.Wall!;

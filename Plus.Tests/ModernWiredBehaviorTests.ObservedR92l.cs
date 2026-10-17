@@ -91,6 +91,26 @@ public partial class ModernWiredBehaviorTests
         Assert.Equal(text, frame.Text);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621 (r97_sshot_resave_plain): an opened snapshot editor saved back with its listing compiles.
+    [Theory]
+    [InlineData("wf_act_match_to_sshot")]
+    [InlineData("wf_cnd_match_snapshot")]
+    [InlineData("wf_cnd_not_match_snap")]
+    public void AReopenedSnapshotFrameSavesBack(string name)
+    {
+        Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
+        var saved = WiredNativeEditorProjection.DefaultNative(descriptor) with
+        {
+            OwnedIntParams = [0, 1, 0, 0],
+            PrimaryItems = [new(2147418170, false)],
+            FurniSourceTypes = [100],
+            SavedState = new() { Snapshots = [new WiredFurniSnapshot(2147418170, 1, 8, 2, 0, 0, "0")] }
+        };
+        var frame = WiredNativeEditorProjection.HotelFrame(descriptor, saved);
+        Assert.NotEqual("", frame.Text);
+        Assert.True(WiredNativeEditorProjection.TryCompile(1, descriptor, frame, out _));
+    }
+
     // r92l r92l-sshot-perm: three entries are listed by descending id.
     [Fact]
     public void SnapshotFrameListsEntriesByDescendingId()

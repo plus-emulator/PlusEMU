@@ -283,6 +283,13 @@ public static class WiredNativeEditorProjection
             native = native with { Text = Leaderboard.WiredLeaderboardConfig.Normalize(native.Text, native.OwnedIntParams) };
         }
 
+        // The snapshot boxes' text is the hotel's listing of the saved snapshot (see HotelFrame); an editor saves it back unchanged and the
+        // snapshot is captured again from the room. Observed on AIR WIN63-202610151745-318700621 (r97_sshot_resave_plain): re-saving an
+        // opened Match Snapshot succeeds.
+        if (name is "wf_act_match_to_sshot" or "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap") {
+            native = native with { Text = "" };
+        }
+
         // "bot TAB message" is split the hotel's way: a lone field is the message (see WiredBotActions.TalkText).
         if (name is "wf_act_bot_talk" or "wf_act_bot_talk_to_avatar") {
             native = native with { Text = WiredBotActions.TalkText(native.Text) };

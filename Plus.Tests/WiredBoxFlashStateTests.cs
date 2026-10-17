@@ -46,7 +46,8 @@ public sealed partial class WiredGlideConveyorTests
         var states = new List<string>();
         var last = trigger.LegacyDataString;
 
-        for (var now = 50; now <= 2000; now += 50) {
+        // The flash goes out with the effect, one wired tick after each firing (AIR WIN63-202610151745-318700621).
+        for (var now = 50; now <= 2050; now += 50) {
             f.Advance(50);
 
             if (trigger.LegacyDataString != last) {

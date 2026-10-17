@@ -48,6 +48,9 @@ public class ItemDefinition
     /// TODO @80O: This is dumb, remove it.
     public bool IsRare { get; set; }
 
-    /// TODO @80O: I think this can be removed. Seems useless and unclear what its supposed to do.
+    /// <summary>Lets a furni without asset directions face odd (diagonal) rotations.</summary>
     public bool ExtraRot { get; set; }
+
+    /// <summary>The directions the furni's asset has, in wired units (0-7), sorted; empty when unknown. See <see cref="FurnitureDirections"/>.</summary>
+    public IReadOnlyList<int> Directions { get; set; } = [];
 }

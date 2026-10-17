@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Build HabboHotel/Items/FurnitureDirections.tsv: each floor furni's directions from its .hab asset.
+
+The client takes a furni's allowed directions from logic.model.directions in the asset's JSON (degrees), the same list
+AIR keeps as furniture_allowed_directions (AIR WIN63-202610151745-318700621,
+com/sulake/habbo/room/object/logic/furniture/class_1777.as:181-196). The table stores them in wired units (degrees / 45),
+sorted, one line per classname. Re-run it after adding furni:
+
+    python3 scripts/build-furniture-directions.py --furnidata http://127.0.0.1:8080/api/gamedata/furnidata
+
+Assets are read from --hab-dir when present there, otherwise from --asset-url/furniture/<classname>.hab. Only the first
+bytes are requested, since the JSON entry comes first in a .hab.
+"""
+import argparse
+from concurrent.futures import ThreadPoolExecutor
+import json
+from pathlib import Path
+import struct
+import sys
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+import zlib
+
+ROOT = Path(__file__).resolve().parents[1]
+OUTPUT = ROOT / 'HabboHotel' / 'Items' / 'FurnitureDirections.tsv'
+HEAD_BYTES = 65536
+
+
+def fetch(url, length=None):
+    headers = {'User-Agent': 'PlusEMU furniture directions', 'Accept': '*/*'}
+    if length:
+        headers['Range'] = f'bytes=0-{length - 1}'
+    try:
+        with urlopen(Request(url, headers=headers), timeout=45) as response:
+            return response.read()
+    except HTTPError as error:
+        if error.code == 404:
+            return None
+        raise
+
+
+def inflate(raw):
+    try:
+        return zlib.decompress(raw)
+    except zlib.error:
+        return zlib.decompress(raw, -15)
+
+
+def hab_logic(data):
+    """The logic block of a .hab's JSON entry, or None when the bytes are not a complete .hab header and entry."""
+    if data[:3] != b'HAB' or len(data) < 20:
+        raise ValueError('not a .hab file')
+    index_length = struct.unpack_from('<I', data, 8)[0]
+    if len(data) < 20 + index_length:
+        return None
+    index = json.loads(inflate(data[20:20 + index_length]))
+    base = 20 + index_length
+    for entry in index['entries']:
+        if not entry['name'].endswith('.json'):
+            continue
+        end = base + entry['offset'] + entry['storedLength']
+        if len(data) < end:
+            return None
+        raw = data[base + entry['offset']:end]
+        if entry.get('compression') in ('deflate', 'zlib'):
+            raw = inflate(raw)
+        return json.loads(raw).get('logic') or {}
+    return {}
+
+
+def directions(logic):
+    values = ((logic.get('model') or {}).get('directions')) or []
+    units = sorted({int(value) // 45 % 8 for value in values if int(value) % 45 == 0})
+    return units
+
+
+def read_asset(classname, hab_dir, asset_url):
+    local = hab_dir / f'{classname}.hab' if hab_dir else None
+    if local and local.is_file():
+        return local.read_bytes()
+    url = f'{asset_url.rstrip("/")}/furniture/{classname}.hab'
+    head = fetch(url, HEAD_BYTES)
+    if head is None:
+        return None
+    try:
+        if hab_logic(head) is not None:
+            return head
+    except ValueError:
+        return head
+    return fetch(url)
+
+
+def resolve(classname, hab_dir, asset_url):
+    try:
+        data = read_asset(classname, hab_dir, asset_url)
+        if data is None:
+            return classname, 'missing', None
+        logic = hab_logic(data)
+        if logic is None:
+            return classname, 'invalid', None
+        units = directions(logic)
+        return classname, 'ok' if units else 'empty', units
+    except (ValueError, OSError, zlib.error, json.JSONDecodeError) as error:
+        return classname, f'invalid: {error}', None
+
+
+def floor_classnames(source):
+    raw = fetch(source) if source.startswith(('http://', 'https://')) else Path(source).read_bytes()
+    data = json.loads(raw)
+    return sorted({item['classname'].split('*')[0] for item in data['roomitemtypes']['furnitype'] if item.get('classname')})
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    parser.add_argument('--furnidata', required=True, help='FurnitureData.json path or URL (the hotel serves /api/gamedata/furnidata)')
+    parser.add_argument('--asset-url', default='https://assets.plusemu.dev/assets', help='asset root holding furniture/<name>.hab')
+    parser.add_argument('--hab-dir', type=Path, help='local folder of <classname>.hab files, read before the asset URL')
+    parser.add_argument('--output', type=Path, default=OUTPUT)
+    parser.add_argument('--workers', type=int, default=24)
+    args = parser.parse_args()
+
+    names = floor_classnames(args.furnidata)
+    with ThreadPoolExecutor(args.workers) as pool:
+        results = list(pool.map(lambda name: resolve(name, args.hab_dir, args.asset_url), names))
+
+    rows = [(name, units) for name, status, units in results if status == 'ok']
+    lines = ['# classname\tdirections (wired units, degrees / 45). Generated by scripts/build-furniture-directions.py.']
+    lines += [f'{name}\t{",".join(map(str, units))}' for name, units in rows]
+    args.output.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+    counts = {}
+    for _, status, _ in results:
+        key = status.split(':')[0]
+        counts[key] = counts.get(key, 0) + 1
+    sizes = {}
+    for _, units in rows:
+        sizes[len(units)] = sizes.get(len(units), 0) + 1
+    print(f'floor classnames: {len(names)}', file=sys.stderr)
+    print('assets: ' + ', '.join(f'{key} {value}' for key, value in sorted(counts.items())), file=sys.stderr)
+    print('directions per furni: ' + ', '.join(f'{key}: {value}' for key, value in sorted(sizes.items())), file=sys.stderr)
+    for name, status, _ in results:
+        if status.startswith('invalid'):
+            print(f'  {name}: {status}', file=sys.stderr)
+
+
+if __name__ == '__main__':
+    main()

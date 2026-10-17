@@ -37,6 +37,8 @@
 		<EmbeddedResource Include="Communication\Http\ApiDocs\swagger-ui-dist\swagger-ui.css;Communication\Http\ApiDocs\swagger-ui-dist\swagger-ui-bundle.js;Communication\Http\ApiDocs\swagger-ui-dist\swagger-ui-standalone-preset.js;Communication\Http\ApiDocs\swagger-ui-dist\favicon-16x16.png;Communication\Http\ApiDocs\swagger-ui-dist\favicon-32x32.png" LogicalName="Plus.ApiDocs.swagger-ui-dist.%(Filename)%(Extension)" />
 		<!-- Habbo's metadata for the built-in (@) and smart (~) variable catalogue rows (WiredNativeCatalogProjection.Builtins). -->
 		<EmbeddedResource Include="HabboHotel\Items\Wired\Variables\WiredBuiltinCatalogue.json" LogicalName="Plus.Wired.BuiltinCatalogue.json" />
+		<!-- Each floor furni's directions from its .hab asset (scripts/build-furniture-directions.py). -->
+		<EmbeddedResource Include="HabboHotel\Items\FurnitureDirections.tsv" LogicalName="Plus.Items.FurnitureDirections.tsv" />
 	</ItemGroup>
 
 	<ItemGroup>

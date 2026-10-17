@@ -42,4 +42,16 @@ public class WiredLeaderboardLenientTextTests
         Assert.Equal("wiredfurni.error.variable_leaderboard.invalid_configuration",
             WiredNativeEditorProjection.SourceRejectionKey(descriptor, WiredNativeEditorProjection.DefaultNative(descriptor)));
     }
+
+    // Observed on AIR WIN63-202610151745-318700621: a titled board with a variable in the first override slot and no override counted
+    // saves, keeps the variable and drops the override name.
+    [Fact]
+    public void APublishedBoardKeepsAnUncountedOverrideVariable()
+    {
+        ImmutableArray<int> ints = [0, 2, 0, 1, -1, -1, 0, 0, 0, 0, 7, 9, 0, 0, 3, 0, 0, 0, 0];
+        var config = WiredLeaderboardConfig.Decode(ints, NoVariables.SetItem(2, "307471"), "lb probe\t\tName\tValue\t\t\t\tPts");
+        Assert.NotNull(config);
+        Assert.Empty(config!.Overrides);
+        Assert.Null(WiredLeaderboardConfig.Decode(ints, NoVariables.SetItem(2, "307471"), "\t\tName\tValue"));
+    }
 }

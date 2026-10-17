@@ -33,6 +33,9 @@ public sealed class RoomChatService(
     IGameClientManager clientManager,
     TimeProvider clock) : IRoomChatService
 {
+    /// <summary>Characters of a room chat message the hotel keeps.</summary>
+    public const int MaxMessageLength = 200;
+
     public Task Chat(GameClient session, string message, int colour) => PublicChat(session, message, colour, false);
 
     public Task Shout(GameClient session, string message, int colour) => PublicChat(session, message, colour, true);
@@ -60,8 +63,9 @@ public sealed class RoomChatService(
         var now = clock.GetUtcNow();
         message = StringCharFilter.Escape(message);
 
-        if (message.Length > 100) {
-            message = message[..100];
+        // Observed on hhus (AIR WIN63-202610131318-860371703): talk of 250, 300 and 400 characters is echoed with its first 200.
+        if (message.Length > MaxMessageLength) {
+            message = message[..MaxMessageLength];
         }
 
         if (habbo.CustomBubbleId != 0) {

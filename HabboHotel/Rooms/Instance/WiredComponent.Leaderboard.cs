@@ -12,13 +12,14 @@ namespace Plus.HabboHotel.Rooms.Instance;
 /// of the selected variable and gets them now and again when the variable changes. A save of a board republishes the snapshot.
 /// Observed on hhus (r90, pair-leaderboard): every room entry carries the snapshot (10 bytes when empty), a save republishes it at
 /// once, a pickup republishes it without the board, and row updates after value writes arrive seconds later (+5.3 s, +9.4 s), not in
-/// the write's tick: changed variables are pushed no sooner than <see cref="LeaderboardPushDelay"/> after the first unsent change.
+/// the write's tick. Observed on AIR WIN63-202610151745-318700621: writes at +0.3, +12.3, +24.3 and +36.3 s were pushed at +10.3, +20.3,
+/// +30.3 and +40.3 s, so changed variables go out on a fixed <see cref="LeaderboardPushPeriod"/> grid.
 /// </summary>
 public partial class WiredComponent
 {
     public const int MaxLeaderboards = 4;
     public const int MaxLeaderboardChoices = 10;
-    public static readonly TimeSpan LeaderboardPushDelay = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan LeaderboardPushPeriod = TimeSpan.FromSeconds(10);
     private DateTimeOffset? _leaderboardPushDue;
 
     private readonly object _leaderboardGate = new();
@@ -42,8 +43,9 @@ public partial class WiredComponent
         }
     }
 
-    private IReadOnlyList<WiredLeaderboardChoice> PersistentChoices(IWiredConfiguredItem box) =>
-        [.. Variables.LeaderboardChoices(box.Item.GetX, box.Item.GetY).Where(choice => choice.Persistent).TakeLast(MaxLeaderboardChoices)];
+    // Observed on AIR WIN63-202610151745-318700621: a "while in room" user variable is offered too, but ranks nobody.
+    private IReadOnlyList<WiredLeaderboardChoice> BoardChoices(IWiredConfiguredItem box) =>
+        [.. Variables.LeaderboardChoices(box.Item.GetX, box.Item.GetY).TakeLast(MaxLeaderboardChoices)];
 
     /// <summary>Section 8 of the add-on's editor: the stack's user variables, the bottom ten offered (Addon.updateCapabilities).</summary>
     public WiredLeaderboardContext LeaderboardContext(IWiredConfiguredItem box)
@@ -57,7 +59,7 @@ public partial class WiredComponent
     /// <summary>The room's leaderboard snapshot for one user, as on room entry.</summary>
     public void SendLeaderboardSnapshot(GameClient session) => session.Send(new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors()));
 
-    /// <summary>The published boards of the room, lowest furni id first, each with its persisted user variables to choose from.</summary>
+    /// <summary>The published boards of the room, lowest furni id first, each with its stack's user variables to choose from.</summary>
     public IReadOnlyList<WiredLeaderboardDescriptor> LeaderboardDescriptors(uint? leaving = null)
     {
         var descriptors = new List<WiredLeaderboardDescriptor>();
@@ -67,11 +69,11 @@ public partial class WiredComponent
                 continue;
             }
 
-            var choices = PersistentChoices(box).Select(choice => new WiredLeaderboardOverride(choice.VariableId,
+            var choices = BoardChoices(box).Select(choice => new WiredLeaderboardOverride(choice.VariableId,
                 config.Overrides.FirstOrDefault(entry => entry.VariableId == choice.VariableId)?.Name
                 ?? WiredLeaderboardConfig.SuggestName(choice.Description.Definition.Name))).ToArray();
 
-            // A board without a persisted user variable has no default choice, which the client refuses (isDescriptorStructurallyValid).
+            // A board without a user variable has no default choice, which the client refuses (isDescriptorStructurallyValid).
             if (choices.Length == 0) {
                 continue;
             }
@@ -132,7 +134,7 @@ public partial class WiredComponent
     private WiredLeaderboardChunk? LeaderboardChunk(WiredLeaderboardDescriptor descriptor, string variableId, int index)
     {
         if (!TryGet((uint)descriptor.OverlayInstanceId, out var found) || found is not IWiredConfiguredItem box
-            || PersistentChoices(box).FirstOrDefault(choice => choice.VariableId == variableId) is not { } choice) {
+            || BoardChoices(box).FirstOrDefault(choice => choice.VariableId == variableId) is not { } choice) {
             return null;
         }
 
@@ -141,7 +143,8 @@ public partial class WiredComponent
         var filter = config.Filter && DefinitionOf(config.FilterVariableId) is { } filterId ? module.GetStoredHolders(filterId) : null;
         long? operand = config.Comparison ? config.OperandKind == 0 ? config.Literal
             : DefinitionOf(config.GlobalOperandVariableId) is { } globalId ? module.GetStoredHolders(globalId).Values.FirstOrDefault()?.Value : null : null;
-        var ranked = WiredLeaderboardRanking.Rank(config, module.GetStoredHolders(choice.Description.Definition.ItemId), filter, operand);
+        var ranked = choice.Persistent ? WiredLeaderboardRanking.Rank(config, module.GetStoredHolders(choice.Description.Definition.ItemId), filter, operand)
+            : WiredLeaderboardRanking.Rank(config, new Dictionary<WiredVariableKey, WiredVariableValue>(), filter, operand);
 
         return new(descriptor.OverlayInstanceId, descriptor.QueryRevision, variableId, index, ranked.Count,
             WiredLeaderboardRanking.Chunk(ranked, index, choice, LeaderboardProfiles));
@@ -185,9 +188,13 @@ public partial class WiredComponent
                 _dirtyLeaderboardVariables.Add(change.Key.DefinitionId);
             }
 
-            _leaderboardPushDue ??= _clock.GetUtcNow() + LeaderboardPushDelay;
+            _leaderboardPushDue ??= NextLeaderboardPush(_clock.GetUtcNow());
         }
     }
+
+    internal static DateTimeOffset NextLeaderboardPush(DateTimeOffset now) =>
+        DateTimeOffset.FromUnixTimeMilliseconds((now.ToUnixTimeMilliseconds() / (long)LeaderboardPushPeriod.TotalMilliseconds + 1)
+            * (long)LeaderboardPushPeriod.TotalMilliseconds);
 
     /// <summary>Subscribers whose selected variable changed get their chunks again; users who left the room are dropped.</summary>
     private void FlushLeaderboards()

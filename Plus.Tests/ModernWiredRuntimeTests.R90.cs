@@ -62,7 +62,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void LeaderboardRowsArePushedNoSoonerThanFiveSecondsAfterAChange()
+    public void LeaderboardRowsArePushedOnTheNextTenSecondBoundary()
     {
         using var f = new TeleportFixture();
         var wired = f.Room.GetWired();
@@ -76,10 +76,11 @@ public partial class ModernWiredRuntimeTests
             [new[] { new WiredVariableChange(0, new(9, WiredVariableTarget.User, 1), WiredVariableChangeKind.Updated, null, new(9, null, null), 0, 0) }]);
         typeof(WiredComponent).GetMethod("FlushLeaderboards", flags)!.Invoke(wired, []);
 
-        // Observed on hhus (r90): +5.3 s and +9.4 s after the writes, never in their tick. The change is still waiting.
+        // Observed on AIR WIN63-202610151745-318700621: pushes land on a 10 s grid, never in the write's tick. The change is still waiting.
         var due = (DateTimeOffset?)typeof(WiredComponent).GetField("_leaderboardPushDue", flags)!.GetValue(wired);
         Assert.NotNull(due);
-        Assert.True(due >= before + WiredComponent.LeaderboardPushDelay);
+        Assert.True(due > before && due <= before + WiredComponent.LeaderboardPushPeriod);
+        Assert.Equal(0, due!.Value.ToUnixTimeMilliseconds() % 10000);
         Assert.Contains(9u, (HashSet<uint>)typeof(WiredComponent).GetField("_dirtyLeaderboardVariables", flags)!.GetValue(wired)!);
     }
 

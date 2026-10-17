@@ -126,8 +126,10 @@ public sealed record WiredLeaderboardConfig
             return null;
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: an override variable past the override count is kept on a published board
+        // (with a title), and refused on an unpublished one.
         for (var index = 0; index < MaxOverrides; index++) {
-            if (index < p[9] == Absent(2 + index)) {
+            if (index < p[9] ? Absent(2 + index) : !Absent(2 + index) && text.Length == 0) {
                 return null;
             }
         }

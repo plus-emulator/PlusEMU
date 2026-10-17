@@ -76,4 +76,19 @@ public partial class PlacedFurniRoomTests
 
         Assert.Equal(2, _client.Packets.Count(packet => packet.Header == ServerPacketHeader.ObjectsDataUpdateComposer));
     }
+
+    // Speech runs its stacks outside the room's passes; the flash goes out with the chat, not on the next pass.
+    [Fact]
+    public void SpeechFlashesGoOutWithTheChat()
+    {
+        var (wired, actor) = PrepareSpeech(new SpeechClock());
+        AddSpeechBox(301, "wf_trg_says_something", new() { IntParams = [1, 0, 0], Text = "one" }, 0);
+        AddSpeechBox(302, "wf_act_show_message", new() { IntParams = [0, 1, 34, -1], Text = "A" }, 1);
+        wired.FlushFlashes();
+        _client.Packets.Clear();
+
+        actor.OnChat(0, "one", false);
+
+        Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectsDataUpdateComposer);
+    }
 }

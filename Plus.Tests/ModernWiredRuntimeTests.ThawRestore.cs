@@ -42,4 +42,18 @@ public partial class ModernWiredRuntimeTests
         Assert.True(user.UpdateNeeded);
         Assert.False(user.HasStatus("mv"));
     }
+
+    // Observed on AIR WIN63-202610151745-318700621: a teleport that cancels a freeze sends only the teleport effect, so the freeze
+    // effect is not cleared first.
+    [Fact]
+    public void ATeleportThatCancelsAFreezeLeavesTheEffectToTheTeleport()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_kick_user", intParams: [], text: "");
+        GiveUserAccess(f);
+        var state = new WiredAvatarState();
+        Assert.True(state.FreezeUser(f.User, 218, true));
+        Assert.True(state.Thaw(f.User, teleport: true));
+        Assert.Equal(218, f.Habbo.Effects!.CurrentEffect);
+        Assert.False(f.User.Frozen);
+    }
 }

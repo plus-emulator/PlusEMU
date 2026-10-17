@@ -175,8 +175,10 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         }
 
         if (name is "wf_act_give_var" or "wf_act_remove_var") {
+            // Observed on hhus (AIR WIN63-202610131318-860371703): Give Variable saves with a global variable (and then gives nothing).
             if ((!unchosenDestination && !WiredVariableModule.TryDefinitionId(tokens[0], out _)
-                && !RoomWiredBuiltinVariables.SupportsPresenceMutation(new((WiredVariableTarget)p[0], tokens[0]))) || p[0] == 3) {
+                && !RoomWiredBuiltinVariables.SupportsPresenceMutation(new((WiredVariableTarget)p[0], tokens[0])))
+                || p[0] == (int)WiredVariableTarget.Global && name == "wf_act_remove_var") {
                 return false;
             }
 
@@ -269,6 +271,11 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         var operandReference = ReferenceSlot(name, p) is { } slot && p[slot.Option] == 1
             ? new WiredVariableReference((WiredVariableTarget)p[slot.Target], tokens[1]) : (WiredVariableReference?)null;
         var sameHolder = SameHolder(name, p);
+
+        // A global variable always exists: Give Variable on one changes nothing (observed on hhus: = 0 still passed after giving 7).
+        if (name == "wf_act_give_var" && reference.Target == WiredVariableTarget.Global) {
+            return false;
+        }
 
         if (name is "wf_act_give_var" or "wf_act_remove_var") {
             var mutation = name == "wf_act_remove_var" ? WiredVariableMutation.Remove : p[1] == 1 ? WiredVariableMutation.Replace : WiredVariableMutation.Give;

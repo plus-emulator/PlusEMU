@@ -33,8 +33,9 @@ internal sealed partial class WiredStackEngine
 
         // Observed on AIR WIN63-202610131318-860371703: a Write to Logs box on a running Fast Queue stack does not split the pulse;
         // every pulse still publishes one home-to-home entry per tile. A box that sends nothing to the room leaves the open
-        // publication as it is.
-        if (box is WiredModernAction { Descriptor.CanonicalName: "wf_act_log" or "wf_act_neg_log" }) {
+        // publication as it is. Show Message only sends chat: observed on AIR WIN63-202610151745-318700621, a walk stack that
+        // whispers while a Fast Queue pulses leaves every pulse one home-to-home frame.
+        if (box is WiredModernAction { Descriptor.CanonicalName: "wf_act_log" or "wf_act_neg_log" or "wf_act_show_message" }) {
             return null;
         }
 

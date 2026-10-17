@@ -30,6 +30,26 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new[] { "@state", "@altitude" }, module.DrainChanges().Select(change => change.InternalKey));
     }
 
+    // A furni placed from the inventory can have no state text yet (wf_floor_switch1 on our hotel); it reads 0 and takes a write.
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task AirInspectionWriteSetsTheStateOfAFurniWithNoStateYet(int value)
+    {
+        WallSnapshotInstallStore();
+        var floor = Furni(302, InteractionType.WfFloorSwitch1, WiredBoxType.None);
+        floor.RoomId = RoomId;
+        floor.Definition.Modes = 3;
+        floor.ExtraData = new LegacyDataFormat { Data = "" };
+        floor.SetState(2, 2, 0, []);
+        _room.GetRoomItemHandler().LoadFurniture([floor]);
+        var module = InspectionInstallModule();
+
+        await ObjectWrite(0, floor.Id, "-110", value, 0);
+        Assert.Equal(value.ToString(), floor.LegacyDataString);
+        Assert.Equal(new[] { "@state" }, module.DrainChanges().Select(change => change.InternalKey));
+    }
+
     [Fact]
     public async Task AirInspectionWriteNeedsModifyRightsAndAMatchingTarget()
     {

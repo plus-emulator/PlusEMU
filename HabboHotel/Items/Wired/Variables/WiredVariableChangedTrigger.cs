@@ -48,10 +48,12 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             p = p.SetItem(3, 0).SetItem(4, 0).SetItem(5, 0);
         }
 
-        // Room variables and built-ins are never created or deleted by a box.
+        // Room variables and built-ins are never created or deleted by a box. A projectile's is_travelling still disappears when it
+        // lands, which hhus reports as a deletion (AIR WIN63-202610151745-318700621).
         if (!pickedBoxes && (p[0] == (int)WiredVariableTarget.Global
             || WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out _, out var pickedToken)
-                && pickedToken.StartsWith("internal:", StringComparison.Ordinal))) {
+                && pickedToken.StartsWith("internal:", StringComparison.Ordinal)
+                && Array.IndexOf(WiredProjectileFlights.Intercepted, RoomWiredBuiltinVariables.Normalize(pickedToken)) < 0)) {
             p = p.SetItem(1, 0).SetItem(6, 0);
         }
 

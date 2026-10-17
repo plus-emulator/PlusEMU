@@ -89,6 +89,7 @@ public sealed class CatalogBotPurchaseDatabaseTests
             var saved = connection.QuerySingle<BotRow>("SELECT user_id AS UserId,name AS Name,motto AS Motto,look AS Look,gender AS Gender,ai_type AS AiType FROM bots");
             Assert.Equal((42, "Catalog Bot", "A bot motto", "hd-180-1", "M", "generic"),
                 (saved.UserId, saved.Name, saved.Motto, saved.Look, saved.Gender, saved.AiType));
+            Assert.Equal(CatalogBotPurchaseStore.RentableChatBubble, connection.ExecuteScalar<int>("SELECT chat_bubble FROM bots"));
             Assert.Equal(90, connection.ExecuteScalar<int>("SELECT credits FROM users WHERE id=42"));
             Assert.Equal(1, connection.ExecuteScalar<int>("SELECT sold FROM catalog_offer_limited WHERE offer_id=50"));
             var spending = connection.QuerySingle<SpendingRow>("SELECT credits AS Credits,spent_at AS SpentAt FROM club_credit_spending");

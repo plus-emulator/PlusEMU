@@ -737,6 +737,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         continue;
                     }
 
+                    if (!WiredChatRate.For(context.Room).TryAdmit(context.NowMilliseconds)) {
+                        continue;
+                    }
+
                     var packet = new WiredChatComposer(user.VirtualId, user.VirtualId, FormatLegacyText(context, user, config.Text), Param(config, 2), Param(config, 3, -1), !shownToRoom);
 
                     if (packet.Private) {

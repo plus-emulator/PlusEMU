@@ -360,9 +360,8 @@ public sealed partial class WiredRemainderG3Tests
 
     [Theory]
     [InlineData(-1L, 1970)]
-    [InlineData(long.MinValue, 1970)]
     [InlineData(253402300799999L, 9999)]
-    public void AnOutOfEraValueClampsAtTheEpochOrReadsAsNothingInsteadOfFailing(long value, int year)
+    public void AValueAtTheEdgeOfTheCalendarReadsItsYear(long value, int year)
     {
         var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
         rig.Give(value);
@@ -370,9 +369,10 @@ public sealed partial class WiredRemainderG3Tests
     }
 
     [Theory]
+    [InlineData(long.MinValue)]
     [InlineData(253402300800000L)]
     [InlineData(long.MaxValue)]
-    public void AValueBeyondTheLastCalendarYearHasNoCalendarOrElapsedReading(long value)
+    public void AValueOutsideTheCalendarYearsHasNoCalendarOrElapsedReading(long value)
     {
         var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
         rig.Give(value);

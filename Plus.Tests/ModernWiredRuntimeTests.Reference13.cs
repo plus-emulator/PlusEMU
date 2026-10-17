@@ -291,6 +291,17 @@ public partial class ModernWiredRuntimeTests
         Assert.False(WiredBotTargets.For(stop.Room).HasTargets);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621 (wf_trg_bot_reached_avtr.bot): a bot that already stands next to the user it is told to
+    // follow raises no arrival.
+    [Fact]
+    public void BotFollowFromNextToTheUserRaisesNoArrival()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby");
+        var bot = AddNamedBot(f, 9, "Bobby", f.User.X + 1, f.User.Y);
+        WiredBotTargets.For(f.Room).Follow(bot, f.User);
+        Assert.Empty(WiredBotTargets.For(f.Room).Poll(f.Room));
+    }
+
     [Fact]
     public void BotFollowRaisesOneArrivalPerApproachOnceNextToTheUser()
     {

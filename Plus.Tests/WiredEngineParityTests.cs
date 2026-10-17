@@ -347,7 +347,7 @@ public partial class WiredRuntimeEngineTests
     [Theory]
     [InlineData(WiredEventKind.BotReachedUser)]
     [InlineData(WiredEventKind.BotReachedFurni)]
-    public void BotArrivalSeedsReachedTargetWithoutSelectingBot(WiredEventKind kind)
+    public void BotArrivalSeedsTheReachedUserOrTheBotOnAFurni(WiredEventKind kind)
     {
         var f = new Fixture();
         var bot = f.User(1);
@@ -364,7 +364,7 @@ public partial class WiredRuntimeEngineTests
             TargetUser = kind == WiredEventKind.BotReachedUser ? reached : null,
             EventItem = kind == WiredEventKind.BotReachedFurni ? chair : null
         }));
-        Assert.Equal(kind == WiredEventKind.BotReachedUser ? new[] { reached.VirtualId } : [], Assert.Single(seen));
+        Assert.Equal(kind == WiredEventKind.BotReachedUser ? new[] { reached.VirtualId } : kind == WiredEventKind.BotReachedFurni ? new[] { bot.VirtualId } : [], Assert.Single(seen));
         f.Engine.OnFastCycle();
         Assert.Equal(1, action.Calls);
         Assert.Empty(f.Errors);

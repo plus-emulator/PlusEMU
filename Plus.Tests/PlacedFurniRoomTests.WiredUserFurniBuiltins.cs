@@ -301,6 +301,23 @@ public partial class PlacedFurniRoomTests
         Assert.Null(Read("@projectile.animation.is_travelling"));
     }
 
+    [Fact]
+    public void ProjectileFlightReportsItsInterceptableChangesAfterLaunchOnly()
+    {
+        var item = Furni(204, InteractionType.None, WiredBoxType.None);
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null, item, 1, 1, 0, true, false, false));
+        var flights = Plus.HabboHotel.Items.Wired.Modern.Actions.WiredProjectileFlights.For(_room);
+        Assert.True(flights.Begin(item, 0, 0, 0, 400, 1000));
+        Assert.True(flights.HasPending);
+        Assert.Empty(flights.Poll(1100));
+        var crossed = flights.Poll(1250);
+        Assert.Contains((item, "@projectile.animation.tiles_traveled", (int?)0, (int?)1), crossed);
+        Assert.Contains((item, "@projectile.animation.is_traveling", (int?)-1, (int?)null), crossed);
+        Assert.Equal(2, crossed.Count);
+        Assert.Empty(flights.Poll(1400));
+        Assert.False(flights.HasPending);
+    }
+
     [Theory]
     [InlineData(0, 1, 223)]
     [InlineData(0, 4, 225)]

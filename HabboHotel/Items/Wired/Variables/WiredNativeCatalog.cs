@@ -172,7 +172,9 @@ internal static class WiredNativeCatalogProjection
         // The behaviour flags stay ours: they gate what this server can actually read, write or create.
         return new(entry.Id, listing.Type, name, 999, target, listing.AlwaysAvailable,
             RoomWiredBuiltinVariables.SupportsPresenceMutation(reference), hasValue,
-            hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference), false, listing.IsInvisible, false, false,
+            hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference),
+            Array.IndexOf(Modern.Actions.WiredProjectileFlights.Intercepted, RoomWiredBuiltinVariables.Normalize(reference.Token)) >= 0,
+            listing.IsInvisible, false, false,
             listing.Connector)
         { TextConnectorFallback = listing.TextConnectorFallback };
     }

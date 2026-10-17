@@ -11,14 +11,15 @@ public sealed class WiredVariableDefinitionBoxTests
 {
     [Theory]
     // Give, Change, Value and Age drafts follow the October editors' fresh-box payloads, so they carry the reference fields.
-    [InlineData("wf_act_give_var", 8)]
-    [InlineData("wf_act_remove_var", 3)]
-    [InlineData("wf_act_change_var_val", 10)]
-    [InlineData("wf_cnd_has_var", 4)]
-    [InlineData("wf_cnd_neg_has_var", 4)]
-    [InlineData("wf_cnd_var_val_match", 11)]
-    [InlineData("wf_cnd_var_age_match", 10)]
-    public void ScalarDraftOpensWithClientShapeButCannotExecuteWithoutSelection(string name, int count)
+    // Observed on hhus (AIR WIN63-202610131318-860371703): Give and Change save with no variable picked; they still change nothing.
+    [InlineData("wf_act_give_var", 8, true)]
+    [InlineData("wf_act_remove_var", 3, false)]
+    [InlineData("wf_act_change_var_val", 10, true)]
+    [InlineData("wf_cnd_has_var", 4, false)]
+    [InlineData("wf_cnd_neg_has_var", 4, false)]
+    [InlineData("wf_cnd_var_val_match", 11, false)]
+    [InlineData("wf_cnd_var_age_match", 10, false)]
+    public void ScalarDraftOpensWithClientShapeButCannotExecuteWithoutSelection(string name, int count, bool saves)
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 1;
@@ -27,7 +28,7 @@ public sealed class WiredVariableDefinitionBoxTests
         var box = new WiredVariableConfiguredBox(room, new Item { Id = 10 }, descriptor, new(module, new FixedTimeProvider(DateTimeOffset.FromUnixTimeMilliseconds(1))));
         Assert.Equal(count, box.Configuration.IntParams.Length);
         Assert.False(box.HasPersistedConfiguration);
-        Assert.False(box.TryValidateConfiguration(box.Configuration, out _, out _));
+        Assert.Equal(saves, box.TryValidateConfiguration(box.Configuration, out _, out _));
         Assert.False(box.Execute(new WiredVariableFrame(1, [])));
         Assert.Empty(module.DrainChanges());
     }

@@ -27,7 +27,9 @@ internal static class ItemBehaviourUtility
         UserId = owner.Id,
         Username = owner.Username,
         Definition = item.Definition,
-        ExtraData = item.ExtraData,
+        // The inventory keeps most stored states as empty data. Placed furni gets the data a room load gives it, so an ordinary
+        // multi-state furni has a legacy state that use and Wired can change before the room is reloaded.
+        ExtraData = item.ExtraData is DataFormat.EmptyDataFormat ? FurniExtraData.Load(item.Definition, "", keepLegacy: true) : item.ExtraData,
         UniqueNumber = item.UniqueNumber,
         UniqueSeries = item.UniqueSeries,
     };

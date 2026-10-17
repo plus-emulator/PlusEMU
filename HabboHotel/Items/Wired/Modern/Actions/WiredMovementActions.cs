@@ -93,7 +93,7 @@ public sealed class WiredMovementActions(Random? random = null)
                 {
                     var direction = MovementDirection(Param(0));
                     var offset = WiredRoomOperations.Offset(direction);
-                    // Turns skip directions the furni lacks; Random turns a quarter either way, like clockwise and counterclockwise.
+                    // Turns step to the furni's next direction in 45 degree order; Random takes either step (not observed yet).
                     var rotation = Param(1) switch
                     {
                         2 => FurnitureDirections.Turn(item.Definition, item.Rotation, clockwise: true),
@@ -267,7 +267,8 @@ public sealed class WiredMovementActions(Random? random = null)
 
                     affected |= move(item, Param(2) == 1 ? snapshot.X : item.GetX,
                         Param(2) == 1 ? snapshot.Y : item.GetY,
-                        Param(1) == 1 ? snapshot.Rotation : item.Rotation, Param(3) == 1 ? snapshot.Z : null);
+                        Param(1) == 1 ? FurnitureDirections.Write(item.Definition, snapshot.Rotation) ?? item.Rotation : item.Rotation,
+                        Param(3) == 1 ? snapshot.Z : null);
                 }
 
                 break;

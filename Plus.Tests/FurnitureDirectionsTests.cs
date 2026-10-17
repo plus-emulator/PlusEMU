@@ -1,6 +1,7 @@
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Users.Inventory.Furniture;
 using Xunit;
 
 namespace Plus.Tests;
@@ -8,6 +9,9 @@ namespace Plus.Tests;
 public class FurnitureDirectionsTests
 {
     private static ItemDefinition Definition(params int[] directions) => new() { ItemName = "test", Directions = directions };
+
+    private static ItemDefinition Definition(int defaultDirection, int[] directions) =>
+        new() { ItemName = "test", Directions = directions, DefaultDirection = defaultDirection };
 
     [Theory]
     [InlineData("wf_colortile", new[] { 0 })]
@@ -38,22 +42,23 @@ public class FurnitureDirectionsTests
         Assert.False(table.ContainsKey("none"));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: flying west (6), wf_antenna2 (0, 2) turned to 2 and wf_colortile (0) kept 0.
+    // Observed on AIR WIN63-202610151745-318700621: a heading the furni lacks lands it on its defaultdir.
     [Theory]
-    [InlineData(new[] { 0 }, 6, null)]
-    [InlineData(new[] { 0 }, 4, 0)]
-    [InlineData(new[] { 0 }, 0, 0)]
-    [InlineData(new[] { 0, 2 }, 6, 2)]
-    [InlineData(new[] { 0, 2 }, 4, 0)]
-    [InlineData(new[] { 0, 2 }, 2, 2)]
-    [InlineData(new[] { 0, 2 }, 7, null)]
-    [InlineData(new[] { 0, 2, 4, 6 }, 6, 6)]
-    [InlineData(new[] { 0, 2, 4, 6 }, 7, null)]
-    [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 7, 7)]
-    [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 6, 6)]
-    public void AHeadingSnapsToADirectionTheFurniHas(int[] directions, int heading, int? expected)
+    [InlineData(new[] { 0, 2 }, 2, 4, 2)]
+    [InlineData(new[] { 0, 2 }, 2, 3, 2)]
+    [InlineData(new[] { 0, 2 }, 2, 5, 2)]
+    [InlineData(new[] { 0, 2 }, 2, 7, 2)]
+    [InlineData(new[] { 0, 2 }, 2, 1, 2)]
+    [InlineData(new[] { 0, 2 }, 2, 6, 2)]
+    [InlineData(new[] { 2, 6 }, 2, 0, 2)]
+    [InlineData(new[] { 2, 6 }, 2, 4, 2)]
+    [InlineData(new[] { 0 }, 0, 6, 0)]
+    [InlineData(new[] { 0, 2 }, 2, 0, 0)]
+    [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 0, 7, 7)]
+    [InlineData(new[] { 0, 2 }, 4, 6, null)]
+    public void AHeadingTheFurniLacksLandsOnItsDefaultDirection(int[] directions, int defaultDirection, int heading, int? expected)
     {
-        Assert.Equal(expected, FurnitureDirections.Heading(Definition(directions), heading));
+        Assert.Equal(expected, FurnitureDirections.Heading(Definition(defaultDirection, directions), heading));
     }
 
     [Theory]
@@ -65,20 +70,56 @@ public class FurnitureDirectionsTests
         Assert.Equal(expected, FurnitureDirections.Heading(new ItemDefinition { ExtraRot = extraRot }, heading));
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: Move/Rotate clockwise leaves a wf_colortile as it is.
+    // Observed on AIR WIN63-202610151745-318700621 with Move/Rotate: each turn is the next direction in 45 degree order.
     [Theory]
-    [InlineData(new[] { 0 }, 0, true, 0)]
-    [InlineData(new[] { 0 }, 0, false, 0)]
-    [InlineData(new[] { 0, 2 }, 0, true, 2)]
-    [InlineData(new[] { 0, 2 }, 2, true, 0)]
-    [InlineData(new[] { 0, 2 }, 0, false, 2)]
-    [InlineData(new[] { 0, 2, 4, 6 }, 6, true, 0)]
-    [InlineData(new[] { 0, 2, 4, 6 }, 0, false, 6)]
-    [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 1, true, 3)]
-    [InlineData(new int[0], 6, true, 0)]
-    public void ATurnSkipsDirectionsTheFurniLacks(int[] directions, int rotation, bool clockwise, int expected)
+    [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 0, true, new[] { 1, 2, 3 })]
+    [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 0, false, new[] { 7, 6, 5 })]
+    [InlineData(new[] { 2, 4 }, 2, true, new[] { 4, 2, 4 })]
+    [InlineData(new[] { 2, 4 }, 2, false, new[] { 4, 2, 4 })]
+    [InlineData(new[] { 2, 6 }, 2, true, new[] { 6, 2, 6 })]
+    [InlineData(new[] { 0 }, 0, true, new[] { 0, 0, 0 })]
+    [InlineData(new int[0], 6, true, new[] { 0, 2, 4 })]
+    public void ATurnStepsToTheNextDirectionTheFurniHas(int[] directions, int start, bool clockwise, int[] expected)
     {
-        Assert.Equal(expected, FurnitureDirections.Turn(Definition(directions), rotation, clockwise));
+        var definition = Definition(0, directions);
+        var rotation = start;
+        var turns = new List<int>();
+
+        for (var turn = 0; turn < expected.Length; turn++) {
+            rotation = FurnitureDirections.Turn(definition, rotation, clockwise);
+            turns.Add(rotation);
+        }
+
+        Assert.Equal(expected, turns);
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: on wf_antenna2 (0, 2) at 0, @rotation 1 stored 2 and 4 sent no update;
+    // bc_stairs_recolorable took 3.
+    [Theory]
+    [InlineData(new[] { 0, 2 }, 1, 2)]
+    [InlineData(new[] { 0, 2 }, 4, 0)]
+    [InlineData(new[] { 0, 2 }, 2, 2)]
+    [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 3, 3)]
+    [InlineData(new[] { 2, 6 }, 3, 6)]
+    [InlineData(new[] { 0, 2 }, 8, null)]
+    [InlineData(new int[0], 3, null)]
+    [InlineData(new int[0], 4, 4)]
+    public void AWrittenRotationIsAlwaysADirectionTheFurniHas(int[] directions, int value, int? expected)
+    {
+        Assert.Equal(expected, FurnitureDirections.Write(Definition(2, directions), value));
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: a client move of wf_antenna2 (0, 2, defaultdir 2) to direction 4 stored 2.
+    [Theory]
+    [InlineData(new[] { 0, 2 }, 2, 4, 2)]
+    [InlineData(new[] { 0, 2 }, 2, 0, 0)]
+    [InlineData(new[] { 0, 2 }, 6, 4, 0)]
+    [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 0, 5, 5)]
+    [InlineData(new int[0], 0, 4, 4)]
+    [InlineData(new int[0], 0, 3, 0)]
+    public void AUserMoveStoresADirectionTheFurniHas(int[] directions, int defaultDirection, int rotation, int expected)
+    {
+        Assert.Equal(expected, FurnitureDirections.Place(Definition(defaultDirection, directions), rotation));
     }
 
     [Fact]
@@ -102,6 +143,23 @@ public class FurnitureDirectionsTests
             (_, _, _, value, _) => { rotation = value; return true; }, (_, _, _, _, _) => false, (_, _) => { });
 
         Assert.Equal(directions.Length == 1 ? 0 : 2, rotation);
+    }
+
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(4, 0)]
+    [InlineData(2, 2)]
+    public void MatchToSnapshotStoresOnlyADirectionTheFurniHas(int snapshotRotation, int expected)
+    {
+        var item = new Item { Id = 1, Definition = Definition(2, [0, 2]) };
+        item.Definition.Type = ItemType.Floor;
+        var rotation = -1;
+
+        new WiredMovementActions().Execute("wf_act_match_to_sshot",
+            new() { IntParams = [0, 1, 0, 0, 100], SelectedItems = [1], Snapshots = [new(1, 0, 0, 0, 0, snapshotRotation, "0")] }, [item], [], [],
+            (_, _, _, value, _) => { rotation = value; return true; }, (_, _, _, _, _) => false, (_, _) => { });
+
+        Assert.Equal(expected, rotation);
     }
 
     // AIR WIN63-202610151745-318700621 room/class_1854.as:1971-1983 rounds a diagonal up to the next quarter turn.

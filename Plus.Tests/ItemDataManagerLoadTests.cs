@@ -54,6 +54,27 @@ public class ItemDataManagerLoadTests
     }
 
     [Fact]
+    public void ADefinitionTakesTheDefaultDirectionOfItsClassnamesFurnidataRow()
+    {
+        var manager = new ItemDataManager(new RecordingLogger(), null!);
+        var table = CreateFurnitureTable(typeof(object));
+        table.Columns.Add("default_dir", typeof(object));
+        table.Columns.Add("has_furnidata", typeof(object));
+        table.Rows.Add("3", "15", "wf_antenna2", "Antenna", "s", "1", "1", "1", true, false, DBNull.Value, true, true, false, true, true,
+            "default", "0", "0", "1", "", "0", "0", false, false, 2, true);
+        table.Rows.Add("4", "16", "wf_antenna2", "Antenna", "s", "1", "1", "1", true, false, DBNull.Value, true, true, false, true, true,
+            "default", "0", "0", "1", "", "0", "0", false, false, 0, false);
+        table.Rows.Add("5", "17", "wf_colortile", "Tile", "s", "1", "1", "1", true, false, DBNull.Value, true, true, false, true, true,
+            "default", "0", "0", "1", "", "0", "0", false, false, DBNull.Value, true);
+
+        manager.Load(table);
+
+        Assert.Equal(2, manager.Items[3].DefaultDirection);
+        Assert.Equal(2, manager.Items[4].DefaultDirection);
+        Assert.Equal(0, manager.Items[5].DefaultDirection);
+    }
+
+    [Fact]
     public void ABadRowIsLoggedAndSkippedWithoutWaitingForTheConsole()
     {
         var logger = new RecordingLogger();

@@ -31,10 +31,10 @@ public static class FurnitureDirections
         rotation is >= 0 and <= 7 && (definition.Directions.Contains(rotation) || definition.ExtraRot || rotation % 2 == 0);
 
     /// <summary>
-    /// The rotation a furni takes when it heads somewhere, or null when it cannot face that way and keeps its rotation.
-    /// A heading the furni lacks falls back to the opposite direction on the same axis. Observed on AIR
-    /// WIN63-202610151745-318700621: a projectile wf_antenna2 (directions 0, 2) flying west (6) landed with rotation 2, and a
-    /// wf_colortile (direction 0 only) kept rotation 0.
+    /// The rotation a projectile furni lands on, or null when it keeps its rotation. A heading the furni lacks lands it on its
+    /// furnidata defaultdir. Observed on AIR WIN63-202610151745-318700621: wf_antenna2 (directions 0, 2, defaultdir 2) from 0
+    /// with headings 1, 3, 4, 5 and 7, and from 2 with heading 6, always landed on 2; wf_floor_switch1 (2, 6, defaultdir 2)
+    /// from 2 with headings 0 and 4 landed on 2. A heading the furni has is taken as it is; that case is not yet observed.
     /// </summary>
     public static int? Heading(ItemDefinition definition, int heading)
     {
@@ -49,31 +49,80 @@ public static class FurnitureDirections
             return heading;
         }
 
-        var opposite = (heading + 4) % 8;
-
-        return directions.Contains(opposite) ? opposite : null;
+        return directions.Contains(definition.DefaultDirection) ? definition.DefaultDirection : null;
     }
 
     /// <summary>
-    /// A quarter turn clockwise or counterclockwise that skips directions the furni lacks, so a furni with one direction
-    /// stays put. Observed on AIR WIN63-202610131318-860371703: Move/Rotate clockwise on a wf_colortile sends no update.
+    /// The next direction the furni has clockwise or counterclockwise in 45 degree order, the step the client's rotate takes
+    /// (AIR WIN63-202610151745-318700621, room/class_1854.as:2167-2222). Observed on that build with Move/Rotate:
+    /// bc_stairs_recolorable (8 directions) clockwise from 0 went 1, 2, 3 and counterclockwise 7, 6, 5; wf_game_upcounter1
+    /// (2, 4) from 2 went 4, 2, 4 either way; wf_floor_switch1 (2, 6) clockwise went 6, 2, 6.
     /// </summary>
     public static int Turn(ItemDefinition definition, int rotation, bool clockwise)
     {
-        var step = clockwise ? 2 : 6;
         var directions = definition.Directions;
 
         if (directions.Count == 0) {
-            return (rotation + step) % 8;
+            return (rotation + (clockwise ? 2 : 6)) % 8;
         }
 
-        for (var turned = (rotation + step) % 8; turned != rotation; turned = (turned + step) % 8) {
-            if (directions.Contains(turned)) {
-                return turned;
+        // Like the client, a rotation the furni lacks counts as the direction at or after it.
+        var index = IndexAtOrAfter(directions, rotation);
+
+        return directions[clockwise ? (index + 1) % directions.Count : (index - 1 + directions.Count) % directions.Count];
+    }
+
+    /// <summary>
+    /// The rotation an @rotation write or a snapshot match stores, or null to leave the furni as it is. A value the furni lacks
+    /// becomes its next direction at or after it, wrapping to the first: the lookup the client's rotate starts from
+    /// (AIR WIN63-202610151745-318700621, room/class_1854.as:2193-2208). Observed on that build on wf_antenna2 (0, 2) at 0:
+    /// assigning 1 stored 2 and assigning 4 sent no update (it wraps to 0, where the furni already was).
+    /// </summary>
+    public static int? Write(ItemDefinition definition, int value)
+    {
+        if (value is < 0 or > 7) {
+            return null;
+        }
+
+        var directions = definition.Directions;
+
+        if (directions.Count == 0) {
+            return Allows(definition, value) ? value : null;
+        }
+
+        return directions[IndexAtOrAfter(directions, value)];
+    }
+
+    /// <summary>
+    /// The rotation a user's move or placement stores: a direction the furni lacks becomes its furnidata defaultdir (or its first
+    /// direction when defaultdir is not one of them). Observed on AIR WIN63-202610151745-318700621: a client move of wf_antenna2
+    /// (0, 2, defaultdir 2) at 0 to direction 4 stored 2. Furni without asset directions keep the old rule.
+    /// </summary>
+    public static int Place(ItemDefinition definition, int rotation)
+    {
+        var directions = definition.Directions;
+
+        if (directions.Count == 0) {
+            return rotation == 8 || Allows(definition, rotation) ? rotation : 0;
+        }
+
+        if (directions.Contains(rotation)) {
+            return rotation;
+        }
+
+        return directions.Contains(definition.DefaultDirection) ? definition.DefaultDirection : directions[0];
+    }
+
+    // The first direction at or after a rotation, wrapping to the first direction.
+    private static int IndexAtOrAfter(IReadOnlyList<int> directions, int rotation)
+    {
+        for (var index = 0; index < directions.Count; index++) {
+            if (rotation <= directions[index]) {
+                return index;
             }
         }
 
-        return rotation;
+        return 0;
     }
 
     internal static FrozenDictionary<string, int[]> Parse(TextReader reader)

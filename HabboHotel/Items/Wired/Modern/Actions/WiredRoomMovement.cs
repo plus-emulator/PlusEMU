@@ -152,9 +152,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var targetHeight = height ?? room.GetGameMap().Model.SqFloorHeight[Math.Clamp(x, 0, room.GetGameMap().Model.MapSizeX - 1), Math.Clamp(y, 0, room.GetGameMap().Model.MapSizeY - 1)];
         var options = WiredMovementPolicy.Resolve(policy, source, x, y, targetHeight, rotation, explicitHeight: height.HasValue);
 
-        // A projectile turns only to a direction the furni has (the opposite one on the same axis if it lacks the heading),
-        // otherwise it keeps its rotation instead of refusing the move. Observed on AIR WIN63-202610151745-318700621: flying
-        // west, a wf_antenna2 (directions 0, 2) landed with rotation 2 and a wf_colortile (direction 0) kept rotation 0.
+        // A projectile lands on its heading when the furni has it, otherwise on its furnidata defaultdir (see
+        // FurnitureDirections.Heading); with neither it keeps its rotation instead of refusing the move.
         if (options.Rotation is { } turned && turned != rotation) {
             options = options with { Rotation = FurnitureDirections.Heading(item.Definition, turned) ?? rotation };
         }
@@ -202,7 +201,6 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             return (pose.X, pose.Y, Z: sourceTop + user.Z - WiredRoomOperations.StandZ(room, user));
         });
         var z = height ?? (physics?.KeepAltitude == true ? item.GetZ : (double?)null);
-        var sourceRotation = item.Rotation;
 
         if (!WiredRoomOperations.MoveItem(room, item, x, y, options.Rotation, z, animate: false,
                 collision: collision, announce: !options.Animate)) {
@@ -242,9 +240,10 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 CurveStrength = options.CurveType == 7 && options.CurveStrength != 0 ? options.CurveStrength : null
             };
 
-            // The shooter faces the heading only when the projectile turned. Observed on AIR WIN63-202610151745-318700621:
-            // a wf_colortile flying alone sent no avatar direction; with a wf_antenna2 turning 0 -> 2 the shooter faced 6.
-            var aimed = projectile == null || item.Rotation == sourceRotation ? null
+            // The shooter faces the exact heading, diagonals included, on every fire, also when the furni lands on the rotation
+            // it had. Observed on AIR WIN63-202610151745-318700621 with wf_antenna2 and wf_floor_switch1. A furni with a single
+            // direction cannot turn and leaves the shooter as is: a wf_colortile flying alone sent no avatar direction.
+            var aimed = projectile == null || item.Definition.Directions.Count == 1 ? null
                 : AimShooter(context, projectile, (long)item.GetX - source.X, (long)item.GetY - source.Y);
 
             if (context.Publication?.Append(item, movement, style, context.Firing, policy.ExecuteInOrder) == true) {

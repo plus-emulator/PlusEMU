@@ -230,10 +230,12 @@ public partial class WiredComponent
             {
                 "@position" => movement.MoveFurniture(context, item, (value >> 8) & 255, value & 255, item.Rotation, null),
                 "@occupation" => movement.MoveFurniture(context, item, (value >> 16) & 255, (value >> 8) & 255,
-                    (value & 255) <= 7 ? value & 255 : item.Rotation, null),
+                    FurnitureDirections.Write(item.Definition, value & 255) ?? item.Rotation, null),
                 "@position.x" => movement.MoveFurniture(context, item, value, item.GetY, item.Rotation, null),
                 "@position.y" => movement.MoveFurniture(context, item, item.GetX, value, item.Rotation, null),
-                "@rotation" when value is >= 0 and <= 7 => movement.MoveFurniture(context, item, item.GetX, item.GetY, value, null),
+                // A direction the furni lacks is never stored (FurnitureDirections.Write).
+                "@rotation" => FurnitureDirections.Write(item.Definition, value) is { } rotation
+                    && movement.MoveFurniture(context, item, item.GetX, item.GetY, rotation, null),
                 "@altitude" => movement.MoveFurniture(context, item, item.GetX, item.GetY, item.Rotation, value / 100.0),
                 _ => false
             };

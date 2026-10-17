@@ -383,7 +383,8 @@ public partial class WiredRuntimeEngineTests
         // A user holder is the triggering user (observed on hhus, AIR WIN63-202610131318-860371703); a furni holder joins after conditions.
         var triggering = target == WiredVariableTarget.User ? new[] { holder.VirtualId } : [];
         f.Add(new Selector { SelectBody = ctx => { Assert.Equal(triggering, ctx.Triggering.UserIds); Assert.Empty(ctx.Triggering.FurniIds); return new(new(), WiredSelectionKind.Both); } });
-        f.Add(new Box(WiredBoxCategory.Condition) { Body = ctx => { Assert.Equal(triggering, ctx.Selected.UserIds); Assert.Empty(ctx.Selected.FurniIds); return true; } });
+        // The selector (both kinds, empty) replaces the selection; the holder joins it again after the conditions.
+        f.Add(new Box(WiredBoxCategory.Condition) { Body = ctx => { Assert.Empty(ctx.Selected.UserIds); Assert.Empty(ctx.Selected.FurniIds); return true; } });
         var action = f.Action(ctx =>
         {
             Assert.Equal(target == WiredVariableTarget.User ? new[] { holder.VirtualId } : [], ctx.Selected.UserIds);

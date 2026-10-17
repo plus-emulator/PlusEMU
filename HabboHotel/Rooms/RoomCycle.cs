@@ -20,18 +20,39 @@ internal static class RoomCycle
     public static DateTimeOffset Boundary(DateTimeOffset now, long monotonicMilliseconds) =>
         now - TimeSpan.FromMilliseconds(monotonicMilliseconds % (long)Interval.TotalMilliseconds);
 
-    // Both passes share the room's task slot. Fast misses do not change legacy lag counters.
-    public static bool TryStart(Room room, Action pass)
+    private const int Idle = 0;
+    private const int FastPass = 1;
+    private const int FullPass = 2;
+
+    // Both passes share the room's task slot, claimed atomically: the room loop and the wired wake clock start passes from different
+    // threads. Fast misses do not change legacy lag counters.
+    public static bool TryStart(Room room, Action pass, bool full = false)
     {
-        if (room.IsCrashed || room.MDisposed || room.ProcessTask is { IsCompleted: false }) {
+        if (room.IsCrashed || room.MDisposed || Interlocked.CompareExchange(ref room.CycleSlot, full ? FullPass : FastPass, Idle) != Idle) {
             return false;
         }
 
-        room.ProcessTask?.Dispose();
-        room.ProcessTask = Task.Run(pass);
+        try {
+            room.ProcessTask = Task.Run(() =>
+            {
+                try {
+                    pass();
+                }
+                finally {
+                    Volatile.Write(ref room.CycleSlot, Idle);
+                }
+            });
+        }
+        catch {
+            Volatile.Write(ref room.CycleSlot, Idle);
+            throw;
+        }
 
         return true;
     }
+
+    /// <summary>Whether the room's slot is held by a full pass; a fast or wake-started wired pass holding it is not a missed tick.</summary>
+    public static bool FullPassRunning(Room room) => Volatile.Read(ref room.CycleSlot) == FullPass;
 
     public static RoomTick Next(bool workInProgress, int lag)
     {

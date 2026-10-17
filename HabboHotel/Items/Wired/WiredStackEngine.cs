@@ -19,6 +19,9 @@ internal sealed partial class WiredStackEngine
     private readonly HashSet<ActionChain> _pending = new();
     private readonly Func<long> _now;
     internal long Now => _now();
+
+    /// <summary>Told the engine time a delayed effect falls due, so the room can run a pass right then instead of on its next 50 ms step.</summary>
+    internal Action<long>? ActionDue { get; set; }
     private readonly Random _effectOrderRandom;
     private readonly Func<IWiredItem, bool> _attached;
     private readonly Func<object[], bool> _actorPresent;
@@ -492,6 +495,11 @@ internal sealed partial class WiredStackEngine
                 };
                 _schedule.Enqueue(scheduled, (due, scheduled.PriorityHeight, scheduled.PriorityId,
                     scheduled.PriorityFiring, scheduled.PriorityOrder));
+
+                if (delay > 0) {
+                    ActionDue?.Invoke(due + delay);
+                }
+
                 // A scheduled action flashes with its stack's firing, also when it runs later. Observed (AIR WIN63-202610131318-860371703):
                 // r92g r92-exec-order delay-w1 flashed the 500 ms action at +147 ms with its message at +648 ms; r92i r92h-f2f occupied-w1
                 // flashed the delay-2 furni_to_furni at the firing.

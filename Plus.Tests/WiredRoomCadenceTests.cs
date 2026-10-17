@@ -28,6 +28,64 @@ public class WiredRoomCadenceTests
     }
 
     [Fact]
+    public async Task TwoThreadsStartingPassesNeverRunTwoAtOnce()
+    {
+        var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
+        var running = 0;
+        var overlaps = 0;
+        var passes = 0;
+        var stop = DateTime.UtcNow.AddSeconds(1);
+
+        void Pass()
+        {
+            if (Interlocked.Increment(ref running) > 1) {
+                Interlocked.Increment(ref overlaps);
+            }
+
+            Thread.SpinWait(200);
+            Interlocked.Increment(ref passes);
+            Interlocked.Decrement(ref running);
+        }
+
+        void Hammer(bool full)
+        {
+            while (DateTime.UtcNow < stop) {
+                RoomCycle.TryStart(room, Pass, full);
+            }
+        }
+
+        await Task.WhenAll(Task.Factory.StartNew(() => Hammer(false), TaskCreationOptions.LongRunning),
+            Task.Factory.StartNew(() => Hammer(true), TaskCreationOptions.LongRunning));
+        await room.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(passes > 0);
+        Assert.Equal(0, overlaps);
+    }
+
+    [Fact]
+    public async Task AWiredPassHoldingTheSlotIsNotAMissedFullTick()
+    {
+        var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Assert.True(RoomCycle.TryStart(room, () => release.Task.GetAwaiter().GetResult()));
+
+        Assert.False(RoomCycle.FullPassRunning(room));
+        Assert.True(RoomCycle.Next(RoomCycle.FullPassRunning(room), RoomCycle.MissesUntilCrash - 1).Start);
+        Assert.False(RoomCycle.TryStart(room, () => { }, full: true));
+
+        release.SetResult();
+        await room.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var fullRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Assert.True(RoomCycle.TryStart(room, () => fullRelease.Task.GetAwaiter().GetResult(), full: true));
+        Assert.True(RoomCycle.FullPassRunning(room));
+        Assert.True(RoomCycle.Next(RoomCycle.FullPassRunning(room), RoomCycle.MissesUntilCrash - 1).Crashed);
+
+        fullRelease.SetResult();
+        await room.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public void FastCadenceDoesNotChangeLegacyTickOrCrashDuration()
     {
         Assert.Equal(TimeSpan.FromMilliseconds(50), RoomCycle.WiredInterval);

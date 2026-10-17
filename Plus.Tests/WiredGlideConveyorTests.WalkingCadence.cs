@@ -65,7 +65,7 @@ public sealed partial class WiredGlideConveyorTests
             clock.Now += TimeSpan.FromMilliseconds(500);
             manager.OnCycle();
             Assert.Same(busy, room.ProcessTask);
-            Assert.Equal(1, room.IsLagging);
+            Assert.Equal(0, room.IsLagging); // A wired pass holding the slot defers the tick without counting a miss.
         }
         finally {
             release.SetResult();

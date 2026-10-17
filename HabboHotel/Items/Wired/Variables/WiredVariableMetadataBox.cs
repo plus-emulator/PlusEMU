@@ -22,7 +22,7 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
     public static readonly string[] LevelKeys = ["current_level", "current_xp", "progress", "progress_percentage", "xp_required", "xp_remaining", "is_maxed", "max_level"];
     public string[] DerivedKeys => LevelKeys;
     public bool HasDerived(int sub) => sub >= 0 && sub < DerivedKeys.Length && LevelSystem is { } level && (level.SubvariableMask & (1 << sub)) != 0;
-    public long ReadDerived(long value, int sub)
+    public long? ReadDerived(long value, int sub)
     {
         if (!HasDerived(sub)) {
             throw new ArgumentOutOfRangeException(nameof(sub));

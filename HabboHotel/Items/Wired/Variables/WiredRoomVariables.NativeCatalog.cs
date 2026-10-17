@@ -99,7 +99,11 @@ public sealed partial class WiredRoomVariables
 
                 if (level is not null) {
                     foreach (var sub in level.Subs) {
-                        AddDerived(sub, false, level.Keys[sub], true, false, value => new(level.Read(value.Value, sub), null, null));
+                        // Observed on AIR WIN63-202610151745-318700621: every part is interceptable, current_xp is writable (to the parent,
+                        // capped at the last level) and is_maxed is a presence part without a value.
+                        AddDerived(sub, false, level.Keys[sub], true, false,
+                            value => level.Read(value.Value, sub) is { } part ? new(part, null, null) : null,
+                            write: sub == 1 ? (_, xp) => level.Level!.ClampXp(xp) : null, interceptable: true, hasValue: sub != 6);
                     }
                 }
 
@@ -117,7 +121,8 @@ public sealed partial class WiredRoomVariables
 
                 void AddDerived(int sub, bool isTime, string key, bool requiresValue, bool requiresTimestamps,
                     Func<WiredVariableValue, WiredVariableValue?> read, WiredVariableReference? source = null,
-                    Func<long, long, long?>? write = null, ImmutableArray<KeyValuePair<int, string>>? connector = null)
+                    Func<long, long, long?>? write = null, ImmutableArray<KeyValuePair<int, string>>? connector = null,
+                    bool interceptable = false, bool hasValue = true)
                 {
                     if (SyntheticId(definition.Target, definition.ItemId, sub, isTime) is not { } id) {
                         return;
@@ -131,7 +136,11 @@ public sealed partial class WiredRoomVariables
                     }
 
                     var derived = definition with { ItemId = id, Name = definition.Name + "." + key };
-                    derivations.Add(new(derived.Target, derived.Token), new(source ?? new(definition.Target, definition.Token), read, requiresValue, requiresTimestamps, write));
+                    derivations.Add(new(derived.Target, derived.Token), new(source ?? new(definition.Target, definition.Token), read, requiresValue, requiresTimestamps, write)
+                    {
+                        Interceptable = interceptable,
+                        HasValue = hasValue
+                    });
                     derivedDefinitions.Add(derived);
                     connectors[id] = connector;
                 }
@@ -236,6 +245,6 @@ public sealed partial class WiredRoomVariables
             return new(input, null, null, null, [], []);
         }
 
-        public long Read(long value, int sub) => Level!.Read(value, sub);
+        public long? Read(long value, int sub) => Level!.Read(value, sub);
     }
 }

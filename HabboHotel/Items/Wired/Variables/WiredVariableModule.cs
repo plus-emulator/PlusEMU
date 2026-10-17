@@ -623,7 +623,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
                 if (read is not null) {
                     var write = Resolve(new(local.Target, local.Token), true, authority, derivations);
-                    result.Add(new(new(local, true, write is null) { IsDerived = true }, read.Definition, read.Builtin, write is not null, true));
+                    var derivation = derivations.GetValueOrDefault(new(local.Target, local.Token));
+                    result.Add(new(new(local, derivation?.HasValue ?? true, write is null) { IsDerived = true, Interceptable = derivation?.Interceptable == true },
+                        read.Definition, read.Builtin, write is not null, true));
                 }
             }
 
@@ -798,8 +800,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     internal WiredVariableChange? ProjectPartChange(WiredVariableReference reference, WiredVariableChange change)
     {
         lock (_gate) {
-            if (derive?.Invoke(reference) is not { Write: not null } derived || !TryDefinitionId(reference.Token, out var partId)
-                || Resolve(reference, true) is not { Definition: { } parent } resolved
+            if (derive?.Invoke(reference) is not { } derived || derived.Write is null && !derived.Interceptable
+                || !TryDefinitionId(reference.Token, out var partId)
+                || Resolve(reference, derived.Write is not null) is not { Definition: { } parent } resolved
                 || parent.ItemId != change.Key.DefinitionId || parent.Target != change.Key.Target || change.InternalKey.Length != 0) {
                 return null;
             }

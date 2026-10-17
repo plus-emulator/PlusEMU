@@ -54,13 +54,35 @@ public sealed class WiredVariableLevelTests
     public void LinearLevelProgressAndFxShareCumulativeThresholds()
     {
         Assert.True(WiredVariableLevelSystem.TryParse("{\"mode\":1,\"stepSize\":100,\"maxLevel\":4}", out var system));
-        Assert.Equal(new long[] { 2, 150, 50, 50, 200, 50, 0, 4 }, Enumerable.Range(0, 8).Select(i => system!.Read(150, i)));
+        Assert.Equal(new long?[] { 2, 150, 50, 50, 200, 50, null, 4 }, Enumerable.Range(0, 8).Select(i => system!.Read(150, i)));
         Assert.Equal(100, system!.Level(150).Start);
         Assert.Equal(200, system.Level(150).Next);
         Assert.True(system.Level(999).IsMaxed);
-        Assert.Equal(100, system.Read(999, 3));
+        Assert.Equal(0, system.Read(999, 3));
         Assert.Equal(0, system.Read(999, 5));
         Assert.Equal(0, system.Read(-1, 1));
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621 (linear 100, three levels, all parts): the parts read back through placeholders.
+    [Theory]
+    [InlineData(50, new long[] { 1, 50, 50, 50, 100, 50, 3 }, false)]
+    [InlineData(200, new long[] { 3, 200, 0, 0, 0, 0, 3 }, true)]
+    [InlineData(1200, new long[] { 3, 200, 0, 0, 0, 0, 3 }, true)]
+    public void LevelPartsReadAsTheHotelShowsThem(long xp, long[] parts, bool maxed)
+    {
+        Assert.True(WiredVariableLevelSystem.TryParse("{\"mode\":1,\"stepSize\":100,\"maxLevel\":3}", out var system));
+        Assert.Equal(parts, new[] { 0, 1, 2, 3, 4, 5, 7 }.Select(i => system!.Read(xp, i)!.Value));
+        Assert.Equal(maxed, system!.Read(xp, 6) is not null);
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: assigning current_xp 250 set the variable to 200, the last level's start.
+    [Fact]
+    public void WritingCurrentXpCapsAtTheLastLevel()
+    {
+        Assert.True(WiredVariableLevelSystem.TryParse("{\"mode\":1,\"stepSize\":100,\"maxLevel\":3}", out var system));
+        Assert.Equal(200, system!.ClampXp(250));
+        Assert.Equal(150, system.ClampXp(150));
+        Assert.Equal(0, system.ClampXp(-5));
     }
     [Fact]
     public void ExponentialAndInterpolatedThresholdsAreBoundedAndUseJavaRounding()

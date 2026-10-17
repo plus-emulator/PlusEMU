@@ -475,7 +475,7 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void BotTalkToAvatarAloudAddressesTheAvatarByName()
     {
-        using var f = new TeleportFixture(actionName: "wf_act_bot_talk_to_avatar", intParams: [0, 0, 100, -1], text: "Bobby\twelcome");
+        using var f = new TeleportFixture(actionName: "wf_act_bot_talk_to_avatar", intParams: [0, 10, 100, -1], text: "Bobby\twelcome");
         var bobby = AddNamedBot(f, 9, "Bobby", 2, 2);
         AddStackTrigger(f, 104, "wf_trg_bot_reached_avtr", new() { IntParams = [100], Text = "Bobby" });
         var replies = Capture(f.Client);
@@ -486,10 +486,26 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(f.Habbo.Username + ": welcome", chat.Text);
     }
 
-    [Fact]
-    public void BotReachedAvatarHandsTheReachedUserToTheActionsAsTheTriggeringUser()
+    // Observed on hhus (AIR WIN63-202610151745-318700621): Bot Reached Avatar's triggering user is the bot, so Bot Talk To Avatar to the
+    // triggering user says nothing, whispered or aloud; the reached avatar is the Reached User source.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void BotReachedAvatarTalkingToTheTriggeringUserSaysNothing(int whisper)
     {
-        using var f = new TeleportFixture(actionName: "wf_act_bot_talk_to_avatar", intParams: [1, 0, 100, -1], text: "Bobby\twelcome");
+        using var f = new TeleportFixture(actionName: "wf_act_bot_talk_to_avatar", intParams: [whisper, 0, 100, -1], text: "Bobby\twelcome");
+        var bobby = AddNamedBot(f, 9, "Bobby", 2, 2);
+        AddStackTrigger(f, 104, "wf_trg_bot_reached_avtr", new() { IntParams = [100], Text = "Bobby" });
+        var replies = Capture(f.Client);
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.BotReachedUser) { Actor = bobby, TargetUser = f.User });
+        f.Advance(0);
+        Assert.Empty(Chats(replies));
+    }
+
+    [Fact]
+    public void BotReachedAvatarHandsTheReachedUserToTheActionsAsTheReachedUser()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_talk_to_avatar", intParams: [1, 10, 100, -1], text: "Bobby\twelcome");
         var bobby = AddNamedBot(f, 9, "Bobby", 2, 2);
         AddStackTrigger(f, 104, "wf_trg_bot_reached_avtr", new() { IntParams = [100], Text = "Bobby" });
         var replies = Capture(f.Client);

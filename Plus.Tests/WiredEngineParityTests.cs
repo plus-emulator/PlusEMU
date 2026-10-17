@@ -347,7 +347,7 @@ public partial class WiredRuntimeEngineTests
     [Theory]
     [InlineData(WiredEventKind.BotReachedUser)]
     [InlineData(WiredEventKind.BotReachedFurni)]
-    public void BotArrivalSeedsTheReachedUserOrTheBotOnAFurni(WiredEventKind kind)
+    public void BotArrivalSeedsTheBotAsTheTriggeringUser(WiredEventKind kind)
     {
         var f = new Fixture();
         var bot = f.User(1);
@@ -364,7 +364,8 @@ public partial class WiredRuntimeEngineTests
             TargetUser = kind == WiredEventKind.BotReachedUser ? reached : null,
             EventItem = kind == WiredEventKind.BotReachedFurni ? chair : null
         }));
-        Assert.Equal(kind == WiredEventKind.BotReachedUser ? new[] { reached.VirtualId } : kind == WiredEventKind.BotReachedFurni ? new[] { bot.VirtualId } : [], Assert.Single(seen));
+        // Observed on hhus (AIR WIN63-202610151745-318700621): the arriving bot is the triggering user of both bot arrivals.
+        Assert.Equal(new[] { bot.VirtualId }, Assert.Single(seen));
         f.Engine.OnFastCycle();
         Assert.Equal(1, action.Calls);
         Assert.Empty(f.Errors);

@@ -53,8 +53,6 @@ public sealed class WiredTargetResolver(Func<IEnumerable<Item>> furni, Func<IEnu
         var roomUsers = source == WiredSources.AllRoom || name != null ? AllUsers() : [];
         IEnumerable<int> ids = source switch
         {
-            WiredSources.Trigger when context.Event.Kind == WiredEventKind.BotReachedUser && context.Event.Actor?.IsBot == true
-                => context.Event.TargetUser is { } reached ? [reached.VirtualId] : [],
             WiredSources.Trigger => context.Triggering.UserIds,
             WiredSources.ClickedUser when context.Event.Kind == WiredEventKind.ClickUser =>
                 context.Event.TargetUser is { } clicked ? [clicked.VirtualId] : [],

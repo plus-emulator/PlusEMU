@@ -475,7 +475,9 @@ internal sealed partial class WiredStackEngine
         // that user; on a global it fires with no triggering user (the message is not shown), whoever ran the change.
         var user = context.Event.Kind switch
         {
-            WiredEventKind.BotReachedUser => context.Event.TargetUser,
+            // Observed on hhus (AIR WIN63-202610151745-318700621): Bot Reached Avatar + Bot Talk To Avatar (avatar: triggering user) says
+            // nothing, so the triggering user is the bot; the avatar it reached is the Reached User source.
+            WiredEventKind.BotReachedUser => context.Event.Actor,
             WiredEventKind.Variable => context.Event.TargetUser,
             // Observed on hhus (AIR WIN63-202610131318-860371703): Bot Reached Furni + Show Message (triggering user) is said by the bot.
             WiredEventKind.BotReachedFurni => context.Event.Actor,

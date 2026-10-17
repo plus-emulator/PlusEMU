@@ -40,6 +40,7 @@ public sealed class RoomSettingsDataComposer(RoomSettingsSnapshot data) : IServe
         packet.WriteInteger(data.WhoCanMute);
         packet.WriteInteger(data.WhoCanKick);
         packet.WriteInteger(data.WhoCanBan);
-        packet.WriteBoolean(false); // Hidden by Builders Club.
+        // Shows the room-locked notice (AIR WIN63-202610151745-318700621 navigator/roomsettings/RoomSettingsCtrl.as:726).
+        packet.WriteBoolean(data.HiddenByBuildersClub);
     }
 }

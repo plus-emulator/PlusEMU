@@ -26,6 +26,7 @@ public static class ServerPacketHeader
     public const uint CatalogItemDiscountComposer = 3993;
     public const uint BuildersClubSubscriptionStatusComposer = 1910; // package_5/class_1773
     public const uint BuildersClubFurniCountComposer = 3928; // package_5/class_2247
+    public const uint BuildersClubPlacementWarningComposer = 2075; // package_64/class_3565
     public const uint PurchaseOKComposer = 874;
     public const uint CatalogOfferComposer = 1684;
     public const uint CatalogPageComposer = 1260;

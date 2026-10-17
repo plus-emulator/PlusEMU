@@ -1,6 +1,7 @@
 using System.Data;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using Plus.Communication.Packets;
 using Plus.Communication.Packets.Outgoing.Catalog;
 using Plus.Communication.Packets.Outgoing.Rooms.Notifications;
 using Plus.Core.Settings;
@@ -28,8 +29,11 @@ public interface IBuildersClubService
     BuildersClubStatus Status(Habbo habbo);
     void SendStatus(GameClient session);
     void SendFurniCount(GameClient session);
-    void PlaceFloorItem(Room room, GameClient session, BuildersClubPlacement request, int x, int y, int rotation);
-    void PlaceWallItem(Room room, GameClient session, BuildersClubPlacement request, string wallLocation);
+    // A placement that would hide the room is answered with BuildersClubPlacementWarning until the client sends it confirmed.
+    void PlaceFloorItem(Room room, GameClient session, BuildersClubPlacement request, int x, int y, int rotation, bool confirmed = false);
+    void PlaceWallItem(Room room, GameClient session, BuildersClubPlacement request, string wallLocation, bool confirmed = false);
+    // Whether the room holds Builders Club furni of a user whose membership and its grace have run out: such a room is hidden.
+    bool HidesRoom(Room room);
     // Removes a Builders Club furni from its room and deletes it; it never goes to an inventory.
     bool TryPickUp(GameClient session, Room room, Item item);
     // Whether the user may buy the product now: furni for the limit need a running membership.
@@ -95,9 +99,10 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
 
     public void SendFurniCount(GameClient session) => session.Send(new BuildersClubFurniCountComposer(store.FurniCount(session.GetHabbo().Id)));
 
-    public void PlaceFloorItem(Room room, GameClient session, BuildersClubPlacement request, int x, int y, int rotation)
+    public void PlaceFloorItem(Room room, GameClient session, BuildersClubPlacement request, int x, int y, int rotation, bool confirmed = false)
     {
-        if (Prepare(room, session, request, ItemType.Floor) is not { } item) {
+        if (Prepare(room, session, request, ItemType.Floor, confirmed,
+                () => BuildersClubPlacementWarningComposer.Floor(request.PageId, request.OfferId, request.ExtraParam, x, y, rotation)) is not { } item) {
             return;
         }
 
@@ -130,9 +135,10 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         SendFurniCount(session);
     }
 
-    public void PlaceWallItem(Room room, GameClient session, BuildersClubPlacement request, string wallLocation)
+    public void PlaceWallItem(Room room, GameClient session, BuildersClubPlacement request, string wallLocation, bool confirmed = false)
     {
-        if (Prepare(room, session, request, ItemType.Wall) is not { } item) {
+        if (Prepare(room, session, request, ItemType.Wall, confirmed,
+                () => BuildersClubPlacementWarningComposer.Wall(request.PageId, request.OfferId, request.ExtraParam, wallLocation)) is not { } item) {
             return;
         }
 
@@ -194,8 +200,18 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         return true;
     }
 
-    // The furni a valid placement creates, stored but not yet in the room; null when the placement is refused.
-    private Item? Prepare(Room room, GameClient session, BuildersClubPlacement request, ItemType type)
+    public bool HidesRoom(Room room)
+    {
+        var now = clock.GetUtcNow();
+        var grace = TimeSpan.FromSeconds(Setting("builders_club.grace_seconds", 0));
+        var placers = room.GetRoomItemHandler().GetWallAndFloor.Where(item => item.IsBuildersClub).Select(item => item.UserId).Distinct().ToArray();
+
+        return placers.Any(userId => store.Membership(userId) is not { } membership || membership.ExpiresAt + grace <= now);
+    }
+
+    // The furni a valid placement creates, stored but not yet in the room; null when the placement is refused or waits for the
+    // placer to confirm that it hides the room.
+    private Item? Prepare(Room room, GameClient session, BuildersClubPlacement request, ItemType type, bool confirmed, Func<IServerPacket> warning)
     {
         var habbo = session.GetHabbo();
 
@@ -213,6 +229,14 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         if (!MayPlaceIn(room, session, status) || store.FurniCount(habbo.Id) >= status.FurniLimit ||
             room.GetRoomItemHandler().GetWallAndFloor.Count() > Setting("room.item.placement_limit", int.MaxValue)) {
             PlacementError(session);
+
+            return null;
+        }
+
+        // Without a membership (or its grace) Builders Club furni hide the room, which the client confirms first
+        // (room.confirm.hide_room, AIR WIN63-202610151745-318700621 com/sulake/habbo/room/class_2005.as:366-397).
+        if (status.SecondsLeftWithGrace <= 0 && !confirmed && !HidesRoom(room)) {
+            session.Send(warning());
 
             return null;
         }

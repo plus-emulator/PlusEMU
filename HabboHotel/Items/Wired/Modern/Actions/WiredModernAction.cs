@@ -117,6 +117,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         else if (name == "wf_act_furni_to_furni") {
             slot = "movers";
         }
+        // Observed on AIR WIN63-202610151745-318700621 (r97_group_furni_clk): a group's moves also go out in one WiredMovements.
+        else if (name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6) {
+            slot = "movers";
+        }
         else if (name == "wf_act_match_to_sshot" && config.IntParams.Length == 5
             && config.IntParams.Take(4).SequenceEqual(new[] { 0, 0, 1, 1 })
             && config.Snapshots.All(snapshot => snapshot.Wall == null)) {

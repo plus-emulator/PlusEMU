@@ -811,8 +811,9 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621 (r97_core_loop): a receiving stack that signals its own antenna runs once.
     [Fact]
-    public void DefaultSignalDepthStopsAfterTwentyNestedDeliveries()
+    public void ASignalChainReachesItsOwnAntennaOnlyOnce()
     {
         var f = new Fixture();
         var antenna = f.Furni("antenna", x: 2);
@@ -826,7 +827,7 @@ public partial class WiredRuntimeEngineTests
             f.Advance(50);
         }
 
-        Assert.Equal(20, receiver.Calls);
+        Assert.Equal(1, receiver.Calls);
         Assert.False(f.Engine.NeedsFastCycle);
         Assert.Empty(f.Errors);
     }

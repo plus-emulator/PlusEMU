@@ -228,9 +228,7 @@ public class Item
     private bool _updateNeeded;
     [Obsolete]
     public int BaseItem;
-    public string Figure = string.Empty;
     public FreezePowerUp FreezePowerUp;
-    public string Gender;
     private int _groupId;
     public int GroupId
     {

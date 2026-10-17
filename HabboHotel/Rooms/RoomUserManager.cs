@@ -552,6 +552,12 @@ public class RoomUserManager
                     }
                 }
 
+                // A football gate outfit belongs to its room: the user's own figure is given back on leaving.
+                if (user.FootballGateOutfit is { } outfit && outfit.BaseLook == session.GetHabbo().Look) {
+                    user.FootballGateOutfit = null;
+                    session.Send(new UserChangeComposer(AvatarChangeSnapshot.Capture(user, true)));
+                }
+
                 removedUser = user;
                 RemoveRoomUser(user, actorLeavePrepared: true);
 

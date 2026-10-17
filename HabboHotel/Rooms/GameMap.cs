@@ -1024,33 +1024,7 @@ public class Gamemap
     {
         switch (item.Definition.InteractionType) {
             case InteractionType.FootballGate:
-                //IsTrans = true;
                 _room.GetSoccer().RegisterGate(item);
-                var splittedExtraData = item.LegacyDataString.Split(':');
-
-                if (string.IsNullOrEmpty(item.LegacyDataString) || splittedExtraData.Length <= 1) {
-                    item.Gender = "M";
-
-                    switch (item.Team) {
-                        case Team.Yellow:
-                            item.Figure = "lg-275-93.hr-115-61.hd-207-14.ch-265-93.sh-305-62";
-                            break;
-                        case Team.Red:
-                            item.Figure = "lg-275-96.hr-115-61.hd-180-3.ch-265-96.sh-305-62";
-                            break;
-                        case Team.Green:
-                            item.Figure = "lg-275-102.hr-115-61.hd-180-3.ch-265-102.sh-305-62";
-                            break;
-                        case Team.Blue:
-                            item.Figure = "lg-275-108.hr-115-61.hd-180-3.ch-265-108.sh-305-62";
-                            break;
-                    }
-                }
-                else {
-                    item.Gender = splittedExtraData[0];
-                    item.Figure = splittedExtraData[1];
-                }
-
                 break;
             case InteractionType.Banzaifloor: {
                     _room.GetBanzai().AddTile(item, item.Id);

@@ -91,7 +91,7 @@ internal class PushCommand : ITargetChatCommand
                 targetUser.MoveTo(targetUser.X, targetUser.Y + 1);
             }
 
-            room.SendPacket(new ChatComposer(thisUser.VirtualId, $"*pushes {target.Username}*", 0, thisUser.LastBubble));
+            room.SendChat(receiver => new ChatComposer(thisUser.VirtualId, $"*pushes {target.Username}*", 0, thisUser.LastBubble, receiver));
         }
         else {
             session.SendWhisper($"Oops, {target.Username} is not close enough!");

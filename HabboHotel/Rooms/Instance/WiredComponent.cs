@@ -107,9 +107,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.PublicationPollIsSilent = () => _counterItems.Count == 0 && _chests?.HasPending != true
             && !WiredBotTargets.For(_room).HasTargets;
         _engine.LimitReached = NoteLimit;
-        // The hidden message is echoed to its speaker as a whisper with the receiver and bubble width tail.
+        // The hidden message is echoed to its speaker as a whisper.
         _engine.SpeechHidden = evt => evt.Actor?.GetClient()?.Send(
-            new Plus.HabboHotel.Items.Wired.Modern.Actions.WiredChatComposer(evt.Actor.VirtualId, evt.Message, evt.ChatStyle, -1, true));
+            new Plus.HabboHotel.Items.Wired.Modern.Actions.WiredChatComposer(evt.Actor.VirtualId, evt.Actor.VirtualId, evt.Message, evt.ChatStyle, -1, true));
         _engine.CaptureSpeech = (context, trigger) => _variables?.IsValueCreated == true
             ? _variables.Value.CaptureSpeech(context, trigger) : null;
         _engine.ConfigurationPublished = box =>

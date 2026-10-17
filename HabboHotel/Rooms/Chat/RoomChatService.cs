@@ -131,8 +131,8 @@ public sealed class RoomChatService(
             }
 
             session.Send(shout
-                ? new ShoutComposer(user.VirtualId, message, 0, colour)
-                : new ChatComposer(user.VirtualId, message, 0, colour));
+                ? new ShoutComposer(user.VirtualId, message, 0, colour, user.VirtualId)
+                : new ChatComposer(user.VirtualId, message, 0, colour, user.VirtualId));
 
             return;
         }
@@ -256,18 +256,18 @@ public sealed class RoomChatService(
                 return;
             }
 
-            session.Send(new WhisperComposer(user.VirtualId, message, 0, user.LastBubble));
+            session.Send(new WhisperComposer(user.VirtualId, message, 0, user.LastBubble, user.VirtualId));
 
             return;
         }
 
         questManager.ProgressUserQuest(session, QuestType.SocialChat);
         user.UnIdle();
-        session.Send(new WhisperComposer(user.VirtualId, message, 0, user.LastBubble));
+        session.Send(new WhisperComposer(user.VirtualId, message, 0, user.LastBubble, user.VirtualId));
 
         if (recipient.UserId != user.UserId
             && recipientHabbo.IgnoresComponent?.IsIgnored(habbo.Id) != true) {
-            recipientClient.Send(new WhisperComposer(user.VirtualId, message, 0, user.LastBubble));
+            recipientClient.Send(new WhisperComposer(user.VirtualId, message, 0, user.LastBubble, recipient.VirtualId));
         }
 
         foreach (var notifiable in room.GetRoomUserManager().GetRoomUsersWithPermission(PermissionKeys.StaffReceiveAlerts)) {
@@ -281,7 +281,7 @@ public sealed class RoomChatService(
             if (notifiableClient != null && notifiableHabbo != null && notifiableHabbo.CurrentRoom == room
                 && !notifiableHabbo.IgnorePublicWhispers) {
                 notifiableClient.Send(new WhisperComposer(user.VirtualId, $"[Whisper to {toUser}] {message}", 0,
-                    user.LastBubble));
+                    user.LastBubble, notifiable.VirtualId));
             }
         }
 

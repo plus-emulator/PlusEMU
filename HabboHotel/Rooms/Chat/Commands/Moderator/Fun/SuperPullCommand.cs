@@ -82,7 +82,7 @@ internal class SuperPullCommand : ITargetChatCommand
             targetUser.MoveTo(thisUser.X - 1, thisUser.Y);
         }
 
-        room.SendPacket(new ChatComposer(thisUser.VirtualId, $"*super pulls {target.Username} to them*", 0, thisUser.LastBubble));
+        room.SendChat(receiver => new ChatComposer(thisUser.VirtualId, $"*super pulls {target.Username} to them*", 0, thisUser.LastBubble, receiver));
 
         return Task.CompletedTask;
     }

@@ -29,7 +29,7 @@ internal class MakeSayCommand : ITargetChatCommand
 
             if (targetUser != null) {
                 if (targetUser.GetClient() != null && targetUser.GetClient().GetHabbo() != null) {
-                    room.SendPacket(new ChatComposer(targetUser.VirtualId, message, 0, targetUser.LastBubble));
+                    room.SendChat(receiver => new ChatComposer(targetUser.VirtualId, message, 0, targetUser.LastBubble, receiver));
                 }
             }
             else {

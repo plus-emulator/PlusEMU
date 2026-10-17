@@ -384,24 +384,10 @@ public class RoomUser
             return;
         }
 
-        var packet = new ChatComposer(VirtualId, message, 0, IsPet ? 0 : colour == 0 ? 2 : colour);
-        GameClient.SendBroadcast(packet, GetRecipients());
+        var style = IsPet ? 0 : colour == 0 ? 2 : colour;
 
-        IEnumerable<GameClient> GetRecipients()
-        {
-            foreach (var user in room.GetRoomUserManager().GetRoomUsers()) {
-                var client = user?.GetClient();
-                var habbo = client?.GetHabbo();
-
-                if (client == null || habbo == null) {
-                    yield break;
-                }
-
-                if (!(IsPet ? habbo.AllowPetSpeech : habbo.AllowBotSpeech)) {
-                    yield return client;
-                }
-            }
-        }
+        room.SendChat(receiver => new ChatComposer(VirtualId, message, 0, style, receiver),
+            user => user.GetClient()?.GetHabbo() is { } habbo && !(IsPet ? habbo.AllowPetSpeech : habbo.AllowBotSpeech));
     }
 
     public void HandleSpamTicks()
@@ -460,18 +446,13 @@ public class RoomUser
             message = room.GetFilter().CheckMessage(message);
         }
 
-        IServerPacket? packet = null;
-
-        if (shout) {
-            packet = new ShoutComposer(VirtualId, message, _chatEmotions.GetEmotionsForText(message), colour);
-        }
-        else {
-            packet = new ChatComposer(VirtualId, message, _chatEmotions.GetEmotionsForText(message), colour);
-        }
+        var gesture = _chatEmotions.GetEmotionsForText(message);
+        IServerPacket Packet(int receiver) => shout
+            ? new ShoutComposer(VirtualId, message, gesture, colour, receiver)
+            : new ChatComposer(VirtualId, message, gesture, colour, receiver);
 
         if (habbo.TentId > 0) {
-            room.SendToTent(habbo.Id, habbo.TentId, packet);
-            packet = new WhisperComposer(VirtualId, $"[Tent Chat] {message}", 0, colour);
+            room.SendToTent(habbo.Id, habbo.TentId, Packet);
             var toNotify = room.GetRoomUserManager().GetRoomUsersWithPermission(PermissionKeys.StaffReceiveAlerts);
 
             if (toNotify.Count > 0) {
@@ -481,7 +462,7 @@ public class RoomUser
                         continue;
                     }
 
-                    user.GetClient().Send(packet);
+                    user.GetClient().Send(new WhisperComposer(VirtualId, $"[Tent Chat] {message}", 0, colour, user.VirtualId));
                 }
             }
         }
@@ -495,7 +476,7 @@ public class RoomUser
                     continue;
                 }
 
-                user.GetClient().Send((IServerPacket)packet);
+                user.GetClient().Send(Packet(user.VirtualId));
             }
         }
 

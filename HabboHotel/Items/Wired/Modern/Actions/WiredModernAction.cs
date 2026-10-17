@@ -546,7 +546,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     if (player.Id == context.Room.OwnerId) {
                         // Observed on hhus (AIR WIN63-202610131318-860371703): the owner is not kicked and is whispered this notification.
                         if (name == "wf_act_kick_user") {
-                            client.Send(new WiredChatComposer(user.VirtualId, KickOwnerException, 34, -1, true));
+                            client.Send(new WiredChatComposer(user.VirtualId, user.VirtualId, KickOwnerException, 34, -1, true));
                         }
 
                         continue;
@@ -557,7 +557,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     }
 
                     if (config.Text.Length > 0) {
-                        client.Send(new WiredChatComposer(user.VirtualId, FormatLegacyText(context, user, config.Text), 34, -1, true));
+                        client.Send(new WiredChatComposer(user.VirtualId, user.VirtualId, FormatLegacyText(context, user, config.Text), 34, -1, true));
                     }
 
                     if (name == "wf_act_kick_user") {
@@ -733,13 +733,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         continue;
                     }
 
-                    var packet = new WiredChatComposer(user.VirtualId, FormatLegacyText(context, user, config.Text), Param(config, 2), Param(config, 3, -1), !shownToRoom);
+                    var packet = new WiredChatComposer(user.VirtualId, user.VirtualId, FormatLegacyText(context, user, config.Text), Param(config, 2), Param(config, 3, -1), !shownToRoom);
 
                     if (packet.Private) {
                         client!.Send(packet);
                     }
                     else {
-                        context.Room.SendPacket(packet);
+                        context.Room.SendChat(receiver => packet with { ReceiverVirtualId = receiver });
                     }
 
                     changed = true;

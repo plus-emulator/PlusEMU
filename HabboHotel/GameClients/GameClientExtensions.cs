@@ -17,7 +17,7 @@ public static class GameClientExtensions
             return;
         }
 
-        client.Send(new WhisperComposer(user.VirtualId, message, 0, colour == 0 ? user.LastBubble : colour));
+        client.Send(new WhisperComposer(user.VirtualId, message, 0, colour == 0 ? user.LastBubble : colour, user.VirtualId));
     }
 
     public static void SendNotification(this GameClient client, string message) => client.Send(new BroadcastMessageAlertComposer(message));

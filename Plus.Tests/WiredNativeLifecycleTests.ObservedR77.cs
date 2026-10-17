@@ -74,7 +74,7 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native, out var runtime));
         Assert.Equal([0, radio, 202, -1], runtime.IntParams.ToArray());
         Assert.Equal(whisper, runtime.IntParams[1] == 0);
-        var packet = new WiredChatComposer(1, "vis-r77", 202, -1, runtime.IntParams[1] == 0);
+        var packet = new WiredChatComposer(1, 1, "vis-r77", 202, -1, runtime.IntParams[1] == 0);
         Assert.Equal(whisper ? ServerPacketHeader.WhisperComposer : ServerPacketHeader.ChatComposer, packet.MessageId);
     }
 

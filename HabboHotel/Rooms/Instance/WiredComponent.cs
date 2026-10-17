@@ -469,11 +469,6 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
         lock (_pendingFlashes) {
             _pendingFlashes.Add(item);
-
-            // An antenna is not a box: its flip is not held to the state update.
-            if (box == null) {
-                _pendingImmediate.Add(item);
-            }
         }
     }
 
@@ -493,7 +488,6 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
         lock (_pendingFlashes) {
             _pendingFlashes.Add(item);
-            _pendingImmediate.Add(item);
         }
     }
 
@@ -521,38 +515,25 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     private readonly HashSet<Item> _pendingFlashes = [];
-    private readonly HashSet<Item> _pendingImmediate = [];
     private readonly Dictionary<uint, long> _flashWindows = [];
-    private long _nextFlashUpdate;
 
-    /// <summary>Sends the flashed boxes' current states together, at most once per state update interval.</summary>
-    internal void FlushFlashes(bool force = false)
+    /// <summary>
+    /// Sends the flashed boxes' states and Wired's furni state writes together, at the end of the pass that made them. Each box flips at most
+    /// once per 500 ms window (see <see cref="OnEvent"/>); the room has no shared flash interval. Observed on hhus (AIR
+    /// WIN63-202610131318-860371703): a box flash goes out in the same batch as the chat that fired it, and two stacks fired 200 ms apart
+    /// flash 200 ms apart.
+    /// </summary>
+    internal void FlushFlashes()
     {
         Item[] items;
-        var now = (long)Stopwatch.GetElapsedTime(0).TotalMilliseconds;
 
         lock (_pendingFlashes) {
             if (_pendingFlashes.Count == 0) {
                 return;
             }
 
-            // Observed on AIR WIN63-202610131318-860371703: under a 50 ms timer the furni states go out on every wired tick while each box's
-            // flash stays on the 500 ms state updates.
-            if (!force && now < _nextFlashUpdate) {
-                if (_pendingImmediate.Count == 0) {
-                    return;
-                }
-
-                items = [.. _pendingImmediate.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
-                _pendingFlashes.ExceptWith(_pendingImmediate);
-                _pendingImmediate.Clear();
-            }
-            else {
-                _nextFlashUpdate = now - now % WiredFlashStates.StateUpdateMilliseconds + WiredFlashStates.StateUpdateMilliseconds;
-                items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
-                _pendingFlashes.Clear();
-                _pendingImmediate.Clear();
-            }
+            items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
+            _pendingFlashes.Clear();
         }
 
         _room.SendObjectsData(FlashOrder(items));

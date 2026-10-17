@@ -32,9 +32,15 @@ public sealed partial class WiredGlideConveyorTests
         var f = new Fixture(layout, live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
+        var wakes = new List<long>();
+        f.SetEngineCallback("<ActionDue>k__BackingField", (Action<long>)wakes.Add);
         bool Forwarded() => packets.Any(bytes => BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.RoomForwardComposer);
 
+        var firedAt = f.Engine.Now;
         f.Owned(() => rider.OnChat(0, "pulse", false));
+
+        // The forward wakes the room at its own due time instead of waiting for the next 50 ms step.
+        Assert.Contains(firedAt + 950, wakes);
         f.Advance(200);
         Assert.Equal(234, rider.CurrentEffect);
         Assert.False(Forwarded());

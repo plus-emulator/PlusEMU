@@ -418,7 +418,8 @@ internal sealed partial class WiredStackEngine
         {
             WiredEventKind.BotReachedUser => context.Event.TargetUser,
             WiredEventKind.Variable => context.Event.TargetUser,
-            WiredEventKind.BotReachedFurni => null,
+            // Observed on hhus (AIR WIN63-202610131318-860371703): Bot Reached Furni + Show Message (triggering user) is said by the bot.
+            WiredEventKind.BotReachedFurni => context.Event.Actor,
             WiredEventKind.StateChanged => null,
             _ => context.Event.Actor
         };

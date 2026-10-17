@@ -935,6 +935,23 @@ public class RoomUserManager
         return false;
     }
 
+    /// <summary>
+    /// Observed on hhus (AIR WIN63-202610131318-860371703): Wired walk-off and walk-on fire in the tick whose UserUpdate announces the
+    /// step (mv towards the next tile), one walk tick before the arrival. Furni interactions still run when the step is committed.
+    /// </summary>
+    private void AnnounceWiredWalk(RoomUser walker, int fromX, int fromY, int toX, int toY)
+    {
+        var map = _room.GetGameMap();
+
+        foreach (var item in map.GetCoordinatedItems(new(fromX, fromY)).ToList()) {
+            item.WiredWalksOffFurni(walker);
+        }
+
+        foreach (var item in map.GetCoordinatedItems(new(toX, toY)).ToList()) {
+            item.WiredWalksOnFurni(walker);
+        }
+    }
+
     public void OnCycle()
     {
         lock (_stressSync) {
@@ -1021,8 +1038,9 @@ public class RoomUserManager
 
                         var coordinatedItems = _room.GetGameMap().GetCoordinatedItems(new(user.X, user.Y));
 
+                        // The Wired walk events went out when this step was announced.
                         foreach (var item in coordinatedItems.ToList()) {
-                            item.UserWalksOffFurni(user);
+                            item.UserWalksOffFurni(user, false);
                         }
 
                         if (!user.IsBot) {
@@ -1057,7 +1075,7 @@ public class RoomUserManager
                         }
 
                         foreach (var item in items.ToList()) {
-                            item.UserWalksOnFurni(user);
+                            item.UserWalksOnFurni(user, false);
                         }
 
                         UpdateUserStatus(user, true);
@@ -1222,8 +1240,11 @@ public class RoomUserManager
                                     horse.SetX = nextX;
                                     horse.SetY = nextY;
                                     horse.SetZ = nextZ;
+                                    AnnounceWiredWalk(horse, horse.X, horse.Y, nextX, nextY);
                                 }
                             }
+
+                            AnnounceWiredWalk(user, user.X, user.Y, nextX, nextY);
 
                             // Stress bots overlap without owning a walkability-grid reservation.
                             if (!user.IsBot || !user.BotData.IsTemporary) {

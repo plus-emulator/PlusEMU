@@ -2,6 +2,7 @@ using System.Reflection;
 using Plus.HabboHotel;
 using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Rooms;
 using Xunit;
 
@@ -69,7 +70,8 @@ public partial class PlacedFurniRoomTests
         actor.MoveTo(0, 2);
         ExecutorTick();
         Assert.Equal((0, 1, 0d), (actor.X, actor.Y, actor.Z));
-        Assert.Empty(events);
+        // Only the walk-on announced with the seat step went out; the replaced landing runs no hooks.
+        Assert.Equal(new[] { (WiredBoxType.TriggerWalkOnFurni, 10u) }, events.Select(e => (e.Kind, e.Item)).ToArray());
         Assert.False(actor.HasStatus("sit"));
         Assert.Contains("/mv 0,2,0/", ExecutorUpdate(actor).Status);
         ExecutorTick();

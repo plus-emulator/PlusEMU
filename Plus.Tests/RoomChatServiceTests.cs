@@ -11,6 +11,7 @@ using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Items.Wired.Configuration;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Moderation;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Rooms;
@@ -19,6 +20,7 @@ using Plus.HabboHotel.Rooms.Chat.Commands;
 using Plus.HabboHotel.Rooms.Chat.Filter;
 using Plus.HabboHotel.Rooms.Chat.Logs;
 using Plus.HabboHotel.Rooms.Chat.Styles;
+using Plus.HabboHotel.Rooms.Games.Teams;
 using Plus.HabboHotel.Rooms.Instance;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Effects;
@@ -114,6 +116,57 @@ public sealed class RoomChatServiceTests
         Assert.Contains("filtered words", Text(world.RecipientPackets[0].Payload));
         Assert.Single(world.Quests.Progresses);
         Assert.Single(world.Rewards.Progresses);
+    }
+
+    [Theory]
+    [InlineData(Team.Red, 130)]
+    [InlineData(Team.Blue, 131)]
+    [InlineData(Team.Yellow, 132)]
+    [InlineData(Team.Green, 133)]
+    public async Task UsersInAWiredTeamTalkShoutAndWhisperWithTheTeamBubble(Team team, int expected)
+    {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): own Talk echo carries 130 in Red, 133 in Green and 0 before joining.
+        // The banned-phrase path echoes the sender's own chat packet without a full room, with the same resolved bubble.
+        var world = new World();
+        world.Filter.Banned = true;
+        await world.Service.Chat(world.Sender, "before", 2);
+        Assert.Equal(2, Bubble(world.SenderPackets[^1]));
+
+        Assert.True(WiredGameState.For(world.Room).Join(world.Room, world.SenderUser, 0, team, 0, [world.SenderUser, world.RecipientUser],
+            applyEffect: (_, _, _) => { }));
+        await world.Service.Chat(world.Sender, "talk", 2);
+        Assert.Equal((ServerPacketHeader.ChatComposer, expected), (world.SenderPackets[^1].Header, Bubble(world.SenderPackets[^1])));
+        await world.Service.Shout(world.Sender, "shout", 2);
+        Assert.Equal((ServerPacketHeader.ShoutComposer, expected), (world.SenderPackets[^1].Header, Bubble(world.SenderPackets[^1])));
+        world.Filter.Banned = false;
+        await world.Service.Whisper(world.Sender, "Bob whisper", 2);
+        Assert.Equal((ServerPacketHeader.WhisperComposer, expected), (world.SenderPackets[^1].Header, Bubble(world.SenderPackets[^1])));
+        Assert.Equal(expected, Bubble(world.RecipientPackets[^1]));
+
+        Assert.True(WiredGameState.For(world.Room).Leave(world.Room, world.SenderUser, (_, _) => { }));
+        world.Filter.Banned = true;
+        await world.Service.Chat(world.Sender, "after", 2);
+        Assert.Equal(2, Bubble(world.SenderPackets[^1]));
+    }
+
+    [Fact]
+    public async Task BattleBanzaiTeamMembersKeepTheirOwnBubble()
+    {
+        var world = new World();
+        world.Filter.Banned = true;
+        world.SenderUser.Team = Team.Red;
+
+        await world.Service.Chat(world.Sender, "talk", 2);
+
+        Assert.Equal(2, Bubble(world.SenderPackets[^1]));
+    }
+
+    // Room chat packets: i32 virtual id, string message, i32 gesture, i32 bubble style.
+    private static int Bubble((uint Header, byte[] Payload) packet)
+    {
+        var length = System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(packet.Payload.AsSpan(4, 2));
+
+        return System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(packet.Payload.AsSpan(6 + length + 4, 4));
     }
 
     [Fact]
@@ -342,6 +395,7 @@ public sealed class RoomChatServiceTests
         public GameClient Recipient { get; }
         public RoomUser RecipientUser { get; }
         public RoomUser SenderUser { get; }
+        public Room Room => _room;
         public List<(uint Header, byte[] Payload)> SenderPackets { get; }
         public List<(uint Header, byte[] Payload)> RecipientPackets { get; }
         public RecordingLogs Logs { get; } = new();

@@ -128,6 +128,35 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
         actor.IsWalking = true;
         actor.UpdateNeeded = true;
         context.FloorEffects.Apply(actor, target.X, target.Y, state.Pending[state.PendingCount - 1]);
+        AnnounceWiredWalk(actor, target);
+    }
+    // Observed on hhus (AIR WIN63-202610131318-860371703): Wired walk-off and walk-on fire in the tick whose UserUpdate announces the
+    // step (mv towards the next tile), one walk tick before the landing. The landing still runs the furni interactions.
+    private void AnnounceWiredWalk(RoomUser actor, NavPosition target)
+    {
+        var state = actor.Movement;
+        var revision = state.LocationRevision;
+        var map = room.GetGameMap();
+        var grid = navigation.Grid;
+        var origin = SurfaceContacts.Of(room, actor, map.GetCoordinatedItems(new(actor.X, actor.Y)));
+        var contact = SurfaceContacts.ContactSlot(grid, target.X, target.Y, state.Pending[state.PendingCount - 1], target.Z);
+        var landing = SurfaceContacts.Filter(grid, target.X, target.Y, contact, map.GetCoordinatedItems(new(target.X, target.Y)));
+
+        foreach (var item in origin) {
+            item.WiredWalksOffFurni(actor);
+
+            if (state.LocationRevision != revision || state.State != NavState.Active) {
+                return;
+            }
+        }
+
+        foreach (var item in landing) {
+            item.WiredWalksOnFurni(actor);
+
+            if (state.LocationRevision != revision || state.State != NavState.Active) {
+                return;
+            }
+        }
     }
     public void SynchronizeHorse(RoomUser actor)
     {

@@ -10,6 +10,7 @@ using Plus.Communication.Encryption;
 using Plus.Communication.Encryption.Keys;
 using Plus.Communication.Flash;
 using Plus.Communication.Http;
+using Plus.Communication.Http.Air;
 using Plus.Communication.Nitro;
 using Plus.Communication.RCON;
 using Plus.Database;
@@ -58,6 +59,7 @@ public static class Program
         services.AddConfiguration<CameraConfiguration>(configuration.GetSection("Camera"));
         services.AddConfiguration<WebServerConfiguration>(configuration.GetSection("WebServer"));
         services.AddConfiguration<EncryptionConfiguration>(configuration.GetSection("Encryption"));
+        services.AddConfiguration<AirClientConfiguration>(configuration.GetSection("AirClient"));
 
         // Dependency Injection
         services.AddDefaultRules(typeof(Program).Assembly);

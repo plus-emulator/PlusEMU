@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NLog.Extensions.Logging;
 using Plus.HabboHotel.Badges.Rarity;
+using Plus.Communication.Http.Air;
 using Plus.HabboHotel.Catalog;
 
 namespace Plus.Communication.Http;
@@ -33,7 +34,8 @@ public static class WebErrors
 
 /// <summary>
 /// Kestrel host for the badge leaderboard (/api/badges/leaderboard), furnidata (/api/gamedata/furnidata) and Habbo's public
-/// Wired Variables Web API (/api/public/rooms/{roomId}/variables...) with its docs page (/api/public/api-docs/). TLS is terminated
+/// Wired Variables Web API (/api/public/rooms/{roomId}/variables...) with its docs page (/api/public/api-docs/), and the AIR client's
+/// Flash gamedata (/gamedata/hashes and the files it lists). TLS is terminated
 /// by the reverse proxy in front of it.
 /// </summary>
 public class WebServer : IWebServer
@@ -44,15 +46,18 @@ public class WebServer : IWebServer
     private readonly BadgeLeaderboardEndpoints _badgeLeaderboard;
     private readonly FurnidataEndpoints _furnidata;
     private readonly WiredWebApiEndpoints? _wiredWebApi;
+    private readonly FlashGamedataEndpoints? _flashGamedata;
     private WebApplication? _app;
 
     public WebServer(IOptions<WebServerConfiguration> options, IBadgeRarityManager badgeRarity, ICatalogFurnidata furnidata,
-        Plus.HabboHotel.Items.Wired.WebApi.IWiredWebApiService? wiredWebApi = null)
+        Plus.HabboHotel.Items.Wired.WebApi.IWiredWebApiService? wiredWebApi = null, IFlashGamedata? flashGamedata = null,
+        IOptions<AirClientConfiguration>? airClient = null)
     {
         _configuration = options.Value;
         _badgeLeaderboard = new(badgeRarity);
         _furnidata = new(furnidata);
         _wiredWebApi = wiredWebApi == null ? null : new(wiredWebApi);
+        _flashGamedata = flashGamedata == null ? null : new(flashGamedata, airClient?.Value ?? new());
     }
 
     public IReadOnlyCollection<string> Urls => _app?.Urls.ToList() ?? [];
@@ -76,6 +81,7 @@ public class WebServer : IWebServer
         app.Use(AddSecurityHeaders);
         _badgeLeaderboard.Map(app);
         _furnidata.Map(app);
+        _flashGamedata?.Map(app);
 
         if (_wiredWebApi != null) {
             _wiredWebApi.Map(app);

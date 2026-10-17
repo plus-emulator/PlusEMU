@@ -49,6 +49,9 @@ public class WiredEditorFrameDefaultsTests
 
     [Theory]
     [InlineData("wf_act_toggle_state", true)]
+    [InlineData("wf_act_furni_to_furni", true)]
+    [InlineData("wf_cnd_match_snapshot", true)]
+    [InlineData("wf_cnd_not_match_snap", true)]
     [InlineData("wf_act_move_rotate", true)]
     [InlineData("wf_slc_furni_bytype", true)]
     [InlineData("wf_slc_furni_picks", true)]
@@ -75,5 +78,27 @@ public class WiredEditorFrameDefaultsTests
     {
         Assert.Equal(20, WiredConfigurationLimits.EditorFurniLimit);
         Assert.Equal(100, WiredConfigurationLimits.SelectedItems);
+    }
+
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a wall torch at :w=5,0 l=8,40 r saved with state matching only.
+    [Theory]
+    [InlineData("wf_cnd_match_snapshot")]
+    [InlineData("wf_cnd_not_match_snap")]
+    public void SnapshotConditionFrameCarriesTheWallSnapshotText(string name)
+    {
+        Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
+        var wall = new WiredFurniSnapshot(2147418112, 9, 0, 0, 0, 0, "0")
+        {
+            Wall = new WiredWallSnapshot(5, 0, 8, 40, false, null) { CapturedAltitudeHundredths = 247 }
+        };
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with
+        {
+            OwnedIntParams = [1, 0, 0, 0],
+            PrimaryItems = [new(2147418112, true)],
+            SavedState = new() { Snapshots = [wall] }
+        };
+
+        Assert.Equal("-2147418112,0,5,0,8,247,r", WiredNativeEditorProjection.HotelFrame(descriptor, native).Text);
+        Assert.Equal("", WiredNativeEditorProjection.HotelFrame(descriptor, WiredNativeEditorProjection.DefaultNative(descriptor)).Text);
     }
 }

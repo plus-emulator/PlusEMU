@@ -159,6 +159,10 @@ public static class WiredNativeEditorProjection
     {
         var name = descriptor.CanonicalName;
 
+        if (name is "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap" && Supports(name)) {
+            return native.SavedState.Snapshots.IsDefaultOrEmpty ? native : native with { Text = SnapshotText(native.SavedState.Snapshots) };
+        }
+
         if (name is not ("wf_act_move_rotate" or "wf_act_match_to_sshot") || !Supports(name)) {
             return native;
         }
@@ -185,6 +189,31 @@ public static class WiredNativeEditorProjection
         }
 
         return frame;
+    }
+
+    /// <summary>
+    /// The snapshot conditions' saved text. Observed on hhus (AIR WIN63-202610131318-860371703): a wall torch at `:w=5,0 l=8,40 r`
+    /// saved with state matching only is stored as `-2147418112,0,5,0,8,247,r`: the negated wall id, the state, the wall tile, the
+    /// offset along the wall, the altitude in hundredths and the side, with no part masked by the unticked options. Floor entries
+    /// follow the same unmasked id,state,rotation,x,y,z order. The AIR editor never reads the text (class_4293.as:49-71 reads and
+    /// writes only the four option ints).
+    /// </summary>
+    internal static string SnapshotText(IEnumerable<WiredFurniSnapshot> snapshots)
+    {
+        var invariant = System.Globalization.CultureInfo.InvariantCulture;
+
+        return string.Join(';', snapshots.Where(entry => entry.Wall == null).OrderByDescending(entry => entry.ItemId)
+            .Select(entry => string.Join(',', entry.ItemId.ToString(invariant), entry.State.Length == 0 ? "0" : entry.State,
+                entry.Rotation.ToString(invariant), entry.X.ToString(invariant), entry.Y.ToString(invariant), entry.Z.ToString(invariant)))
+            .Concat(snapshots.Where(entry => entry.Wall != null).OrderBy(entry => entry.ItemId).Select(entry =>
+            {
+                var wall = entry.Wall!;
+                var altitude = wall.NativeAltitude ?? wall.CapturedAltitudeHundredths;
+
+                return string.Join(',', (-(long)entry.ItemId).ToString(invariant), entry.State.Length == 0 ? "0" : entry.State,
+                    wall.TileX.ToString(invariant), wall.TileY.ToString(invariant), wall.LocalX.ToString(invariant),
+                    altitude?.ToString(invariant) ?? wall.PixelY.ToString(invariant), wall.Left ? "l" : "r");
+            })));
     }
 
     /// <summary>

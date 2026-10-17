@@ -19,12 +19,23 @@ public sealed class WiredConfigurationStore(IDatabase database) : IWiredConfigur
             return null;
         }
 
-        // Unreleased server: only the current native record is readable; anything else is rejected and left to reset.
-        if (!string.Equals(row.BoxName, descriptor.CanonicalName, StringComparison.Ordinal) || row.Version != 2) {
-            throw new InvalidDataException($"Unsupported Wired configuration for item {itemId}.");
+        if (!string.Equals(row.BoxName, descriptor.CanonicalName, StringComparison.Ordinal)) {
+            throw new InvalidDataException($"Unsupported Wired configuration for item {itemId}: saved as {row.BoxName}.");
         }
 
-        var native = JsonSerializer.Deserialize<WiredNativeEditorConfiguration>(row.Json);
+        // The native record is schema 2. A schema 1 row is read as the record its editor saves today where that is known;
+        // anything else is rejected and left to reset.
+        WiredNativeEditorConfiguration? native;
+
+        if (row.Version == 1 && WiredLegacyConfigurationUpgrade.TryUpgrade(descriptor, row.Json, out var upgraded)) {
+            native = upgraded;
+        }
+        else if (row.Version == 2) {
+            native = JsonSerializer.Deserialize<WiredNativeEditorConfiguration>(row.Json);
+        }
+        else {
+            throw new InvalidDataException($"Unsupported Wired configuration for item {itemId}: schema {row.Version}.");
+        }
 
         if (native == null || !WiredNativeEditorProjection.TryCompile(itemId, descriptor, native, out var runtime, storedRow: true)) {
             throw new InvalidDataException($"Invalid native Wired configuration for item {itemId}.");

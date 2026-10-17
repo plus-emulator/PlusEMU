@@ -306,6 +306,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
                     throw new InvalidDataException("Saved static selections cannot reference temporary room furniture.");
                 }
 
+                saved = WithoutAbsentPicks(item, descriptor, saved);
+
                 if (!configured.TryValidateConfiguration(saved, out var validated, out var error)) {
                     throw new InvalidDataException(error);
                 }
@@ -320,10 +322,37 @@ public partial class WiredComponent : IWiredRuntimeOperations
             return AddBox(configured) ? configured : null;
         }
         catch (Exception error) {
-            _logger.LogError(error, "Cannot load Wired configuration for item {ItemId} in room {RoomId}; saved bytes retained", item.Id, _room.Id);
+            _logger.LogError(error, "Cannot load Wired configuration for item {ItemId} in room {RoomId}; saved bytes retained: {Reason}",
+                item.Id, _room.Id, error.Message);
 
             return null;
         }
+    }
+
+    /// <summary>
+    /// A saved card without the picks that are no longer in this room; furni that left the room drops out of the selection rather
+    /// than failing the card. The saved row keeps them until the card is saved again.
+    /// </summary>
+    private WiredConfiguration WithoutAbsentPicks(Item item, WiredBoxDescriptor descriptor, WiredConfiguration saved)
+    {
+        if (saved.Origin?.Native is not { } native) {
+            return saved;
+        }
+
+        var handler = _room.GetRoomItemHandler();
+        bool Present(WiredNativeItemReference reference) => handler.GetItem(reference.ItemId) != null;
+
+        if (native.PrimaryItems.All(Present) && native.SecondaryItems.All(Present)) {
+            return saved;
+        }
+
+        var pruned = native with
+        {
+            PrimaryItems = [.. native.PrimaryItems.Where(Present)],
+            SecondaryItems = [.. native.SecondaryItems.Where(Present)]
+        };
+
+        return WiredNativeEditorProjection.TryCompile(item.Id, descriptor, pruned, out var runtime, storedRow: true) ? runtime : saved;
     }
 
     /// <summary>The registry descriptor of placed furniture: named by its definition, or by its legacy wired type.</summary>

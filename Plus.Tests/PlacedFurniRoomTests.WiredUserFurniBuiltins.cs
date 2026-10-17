@@ -318,6 +318,20 @@ public partial class PlacedFurniRoomTests
         Assert.False(flights.HasPending);
     }
 
+    [Fact]
+    public void LandingDeletesIsTravellingForAWatcherThatListensForDeletion()
+    {
+        // Observed on hhus (AIR WIN63-202610151745-318700621): a Deleted-only watcher on is_travelling fires on landing.
+        var config = new Plus.HabboHotel.Items.Wired.Configuration.WiredConfiguration { Version = 1, IntParams = [1, 0, 0, 0, 0, 0, 1, -1], VariableIds = ["-2106"] };
+        Assert.True(WiredVariableChangedTrigger.TryNormalize(config, out var validated, out _));
+        Assert.Equal(1, validated.IntParams[6]);
+        var landed = new WiredVariableChange(RoomId, new(0, WiredVariableTarget.Furni, 5), WiredVariableChangeKind.Removed, new(-1, null, null), null, 5, 1)
+        { InternalKey = "@projectile.animation.is_traveling" };
+        Assert.True(WiredVariableChangedTrigger.Matches(validated with { Text = "internal:@projectile.animation.is_travelling" }, landed, RoomId));
+        Assert.True(WiredVariableChangedTrigger.TryNormalize(config with { VariableIds = ["-120"], IntParams = [1, 0, 1, 1, 1, 1, 1, -1] }, out var other, out _));
+        Assert.Equal(0, other.IntParams[6]);
+    }
+
     [Theory]
     [InlineData(0, 1, 223)]
     [InlineData(0, 4, 225)]

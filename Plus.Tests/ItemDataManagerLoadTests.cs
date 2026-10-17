@@ -41,6 +41,19 @@ public class ItemDataManagerLoadTests
     }
 
     [Fact]
+    public void ADefinitionTakesItsAssetDirectionsByClassname()
+    {
+        var manager = new ItemDataManager(new RecordingLogger(), null!);
+        var table = CreateFurnitureTable(typeof(object));
+        table.Rows.Add("3", "15", "wf_antenna2", "Antenna", "s", "1", "1", "1", true, false, DBNull.Value, true, true, false, true, true,
+            "default", "0", "0", "1", "", "0", "0", false, false);
+
+        manager.Load(table);
+
+        Assert.Equal(new[] { 0, 2 }, Assert.Single(manager.Items).Value.Directions);
+    }
+
+    [Fact]
     public void ABadRowIsLoggedAndSkippedWithoutWaitingForTheConsole()
     {
         var logger = new RecordingLogger();

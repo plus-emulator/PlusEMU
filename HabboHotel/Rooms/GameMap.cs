@@ -1776,6 +1776,12 @@ public class Gamemap
 
     public static Dictionary<int, ThreeDCoord> GetAffectedTiles(int length, int width, int posX, int posY, int rotation)
     {
+        // A diagonal covers the tiles of the quarter turn it rounds up to (AIR WIN63-202610151745-318700621,
+        // room/class_1854.as:1971-1983: (direction + 45) % 360 / 90).
+        if (rotation is 1 or 3 or 5 or 7) {
+            rotation = (rotation + 1) % 8;
+        }
+
         var x = 0;
         var pointList = new Dictionary<int, ThreeDCoord>();
 

@@ -89,12 +89,12 @@ public sealed class WiredMovementActions(Random? random = null)
                 {
                     var direction = MovementDirection(Param(0));
                     var offset = WiredRoomOperations.Offset(direction);
+                    // Turns skip directions the furni lacks; Random turns a quarter either way, like clockwise and counterclockwise.
                     var rotation = Param(1) switch
                     {
-                        2 => (item.Rotation + 2) % 8,
-                        4 => (item.Rotation + 6) % 8,
-                        // Random turns a quarter either way, like cw/ccw, so 4-direction furniture keeps a valid rotation.
-                        6 => (item.Rotation + (Random.Shared.Next(2) == 0 ? 2 : 6)) % 8,
+                        2 => FurnitureDirections.Turn(item.Definition, item.Rotation, clockwise: true),
+                        4 => FurnitureDirections.Turn(item.Definition, item.Rotation, clockwise: false),
+                        6 => FurnitureDirections.Turn(item.Definition, item.Rotation, clockwise: Random.Shared.Next(2) == 0),
                         _ => item.Rotation
                     };
 

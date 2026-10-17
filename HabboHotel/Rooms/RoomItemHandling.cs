@@ -861,7 +861,8 @@ public partial class RoomItemHandling
                     newZ = MagicTileHeight.Clamp(newZ, floorZ);
                 }
 
-                if (newRot != 0 && newRot != 2 && newRot != 4 && newRot != 6 && newRot != 8 && !item.Definition.ExtraRot) {
+                // The rotate button offers only the asset's directions, diagonals included (AIR WIN63-202610151745-318700621, room/class_1854.as:2167-2222).
+                if (newRot != 8 && !FurnitureDirections.Allows(item.Definition, newRot)) {
                     newRot = 0;
                 }
 

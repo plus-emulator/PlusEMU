@@ -96,6 +96,7 @@ public class ItemDataManager : IItemDataManager, IStartable
                         EffectId = Convert.ToInt32(row["effect_id"]),
                         IsRare = FurnitureNumbers.BooleanFromCell(row["is_rare"]),
                         ExtraRot = FurnitureNumbers.BooleanFromCell(row["extra_rot"]),
+                        Directions = FurnitureDirections.For(Convert.ToString(row["item_name"])),
                         FigureSetIds = ReadFigureSetIds(row.Table.Columns.Contains("custom_params") ? row["custom_params"] : null),
                     };
 

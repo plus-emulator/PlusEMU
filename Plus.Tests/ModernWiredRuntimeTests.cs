@@ -4380,6 +4380,34 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((2, 2, 0), (f.Target.GetX, f.Target.GetY, f.Target.Rotation));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: flying west, a wf_antenna2 (directions 0, 2) turns to 2 and the shooter
+    // faces 6; a wf_colortile (direction 0) keeps rotation 0 and the shooter is not turned.
+    [Theory]
+    [InlineData(new[] { 0 }, 0, false)]
+    [InlineData(new[] { 0, 2 }, 2, true)]
+    [InlineData(new[] { 0, 2, 4, 6 }, 6, true)]
+    [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 6, true)]
+    public void ProjectileTurnsOnlyToTheFurnisDirectionsAndAimsTheShooterOnlyWhenItTurned(int[] directions, int landed, bool aimed)
+    {
+        using var f = new TeleportFixture();
+        f.Target.Definition.Directions = directions;
+        var item = MakeItem(90, "wf_xtra_rotate_to_dir");
+        typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, f.Room);
+        f.Items[item.Id] = item;
+        var addon = Assert.IsType<WiredAddonBox>(f.Room.GetWired().CreateConfiguredBox(item));
+        var context = Context(f.Room, new(WiredEventKind.Use) { Actor = f.User }, f.Items.Values.ToArray(), [f.User]);
+        context.Triggering.UserIds.Add(f.User.VirtualId);
+        Assert.True(addon.Apply(context));
+        Assert.NotNull(context.Policy.Addons.Projectile!.ShooterSource);
+        f.User.RotBody = 2;
+        f.User.RotHead = 2;
+
+        Assert.True(new WiredRoomMovement(f.Room.GetWired().DispatchWalkTransition).MoveFurniture(context, f.Target, 0, 1, f.Target.Rotation, null));
+
+        Assert.Equal((0, 1, landed), (f.Target.GetX, f.Target.GetY, f.Target.Rotation));
+        Assert.Equal(aimed ? 6 : 2, f.User.RotBody);
+    }
+
     [Fact]
     public void ActualProjectileMoveSamplesPacketClockAndLaunchCollisionsWithoutLateArrivals()
     {

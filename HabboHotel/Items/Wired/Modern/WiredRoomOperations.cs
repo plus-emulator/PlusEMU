@@ -155,7 +155,7 @@ public static class WiredRoomOperations
     }
 
     public static bool ValidRotation(Item item, int rotation) =>
-        rotation is >= 0 and <= 7 && (item.Definition.ExtraRot || rotation % 2 == 0);
+        FurnitureDirections.Allows(item.Definition, rotation);
 
     public static bool MoveItem(Room room, Item item, int x, int y, int? rotation = null,
         double? height = null, bool keepAltitude = false, bool animate = true, WiredCollisionPolicy? collision = null, bool announce = true)

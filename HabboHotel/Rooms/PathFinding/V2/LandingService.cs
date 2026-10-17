@@ -2,7 +2,7 @@ namespace Plus.HabboHotel.Rooms.PathFinding;
 
 internal sealed class LandingService(Room room, RoomNavigation navigation, MovementContext context, MovementCancellation cancellation)
 {
-    public void Land(RoomUser actor, SurfaceRef surface, GraphView view)
+    public void Land(RoomUser actor, SurfaceRef surface, GraphView view, bool wiredOnArrival = false)
     {
         var state = actor.Movement;
         var revision = state.LocationRevision;
@@ -24,12 +24,13 @@ internal sealed class LandingService(Room room, RoomNavigation navigation, Movem
             return;
         }
 
-        Arrive(actor, revision, wasLaying);
+        Arrive(actor, revision, wasLaying, wiredOnArrival);
     }
     private bool LeaveOrigin(RoomUser actor, long revision)
     {
         foreach (var item in SurfaceContacts.Of(room, actor, room.GetGameMap().GetCoordinatedItems(new(actor.X, actor.Y)))) {
-            item.UserWalksOffFurni(actor);
+            // The Wired walk events went out when the step was announced (AnnounceService).
+            item.UserWalksOffFurni(actor, false);
 
             if (actor.Movement.LocationRevision != revision || actor.Movement.State != NavState.Active) {
                 return false;
@@ -49,7 +50,7 @@ internal sealed class LandingService(Room room, RoomNavigation navigation, Movem
         MirrorHorse(actor, target);
         context.RefreshMembership(actor);
     }
-    private void Arrive(RoomUser actor, long revision, bool wasLaying)
+    private void Arrive(RoomUser actor, long revision, bool wasLaying, bool wired)
     {
         var items = SurfaceContacts.Of(room, actor, room.GetGameMap().GetCoordinatedItems(new(actor.X, actor.Y)));
 
@@ -62,7 +63,7 @@ internal sealed class LandingService(Room room, RoomNavigation navigation, Movem
         }
 
         foreach (var item in items) {
-            item.UserWalksOnFurni(actor);
+            item.UserWalksOnFurni(actor, wired);
 
             if (actor.Movement.LocationRevision != revision || actor.Movement.State != NavState.Active) {
                 return;

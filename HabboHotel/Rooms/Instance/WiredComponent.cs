@@ -540,8 +540,15 @@ public partial class WiredComponent : IWiredRuntimeOperations
             }
         }
 
-        _room.SendObjectsData(items);
+        _room.SendObjectsData(FlashOrder(items));
     }
+
+    /// <summary>
+    /// Observed on hhus (AIR WIN63-202610131318-860371703): the tick's data batch lists the furni states written by Wired first, then the
+    /// trigger box, then the stack's other boxes (walks-on [trigger, show_message]; periodically [colour tile, trigger, toggle_state]).
+    /// </summary>
+    internal static Item[] FlashOrder(IEnumerable<Item> items) => [.. items.OrderBy(item => !item.IsWired ? 0
+        : item.Definition.InteractionType == InteractionType.WiredTrigger ? 1 : 2)];
 
     public bool AddBox(IWiredItem item) => _engine.Mutate(() =>
     {

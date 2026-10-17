@@ -23,10 +23,10 @@ public partial class WiredComponent
     public bool RoomInitialized() => Dispatch(new(WiredEventKind.RoomInitialized));
 
     /// <summary>The placed, configured boxes of one canonical name, bottom of the room first.</summary>
-    internal IEnumerable<IWiredConfiguredItem> ConfiguredBoxes(string canonicalName) => (_room.GetRoomItemHandler()?.GetFloor ?? [])
-        .Where(item => DescriptorOf(item)?.CanonicalName == canonicalName).OrderBy(item => item.Id)
+    internal IEnumerable<IWiredConfiguredItem> ConfiguredBoxes(string canonicalName) => _room.GetRoomItemHandler() is not { } handler ? [] : handler.GetFloor
+        .Where(item => item?.Definition != null && DescriptorOf(item)?.CanonicalName == canonicalName).OrderBy(item => item.Id)
         .Select(item => TryGet(item.Id, out var box) ? box as IWiredConfiguredItem : null).OfType<IWiredConfiguredItem>()
-        .Where(box => ReferenceEquals(_room.GetRoomItemHandler().GetItem(box.Item.Id), box.Item));
+        .Where(box => ReferenceEquals(handler.GetItem(box.Item.Id), box.Item));
 
     /// <summary>Achievements the room's Achievement Enablers list, one per line (class_4012.as:27), first mention first.</summary>
     internal IReadOnlyList<string> EnabledAchievements() => [.. ConfiguredBoxes("wf_xtra_achievement_enabler")

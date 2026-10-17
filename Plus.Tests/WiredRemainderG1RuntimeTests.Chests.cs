@@ -69,15 +69,14 @@ public sealed partial class WiredRemainderG1RuntimeTests
     }
 
     [Fact]
-    public void HasItemsSumsEveryPickedChestOfEitherKindAndIgnoresWhatIsNotAChest()
+    public void HasItemsSumsEveryPickedChestOfEitherKind()
     {
         using var world = new G1World();
         var player = world.AddPlayer();
         var coins = world.AddChest(WiredChestKind.Coins, 5);
         var furni = world.AddChest(WiredChestKind.Furni, 0, 3, 3, G1World.Furni(1), G1World.Furni(2), G1World.Furni(3));
-        var chair = world.AddItem("chair", InteractionType.None, 4, 4);
-        var exact = HasItemsStack(world, 8, 1, [coins, furni, chair], 6);
-        var below = HasItemsStack(world, 9, 1, [coins, furni, chair], 7);
+        var exact = HasItemsStack(world, 8, 1, [coins, furni], 6);
+        var below = HasItemsStack(world, 9, 1, [coins, furni], 7);
 
         world.Fire(Enter(player));
 
@@ -86,22 +85,23 @@ public sealed partial class WiredRemainderG1RuntimeTests
     }
 
     [Fact]
-    public void HasItemsIsFalseWithoutAnyChestWhateverTheComparison()
+    // Observed on AIR WIN63-202610151745-318700621 (r97_chest_none2): with no chest to check, the condition passes whatever the comparison.
+    public void HasItemsPassesWithoutAnyChestWhateverTheComparison()
     {
         using var world = new G1World();
         var player = world.AddPlayer();
         var chair = world.AddItem("chair", InteractionType.None, 4, 4);
         var chest = world.AddChest(WiredChestKind.Coins, 5);
         var none = HasItemsStack(world, 100, 0, [], 6);
-        var notAChest = HasItemsStack(world, 100, 0, [chair], 7);
-        world.Floor.TryRemove(chest.Id, out _);
+        // A picked furni that is not a chest is refused at save (observed on AIR WIN63-202610151745-318700621, r97_chest_none).
+        Assert.Equal("wiredfurni.error.require_chests", Assert.ThrowsAny<Exception>(() => HasItemsStack(world, 100, 0, [chair], 7)).Message);
         var gone = HasItemsStack(world, 100, 0, [chest], 8);
+        world.Floor.TryRemove(chest.Id, out _);
 
         world.Fire(Enter(player));
 
-        Assert.Empty(none.Runs);
-        Assert.Empty(notAChest.Runs);
-        Assert.Empty(gone.Runs);
+        Assert.Single(none.Runs);
+        Assert.Single(gone.Runs);
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public sealed partial class WiredRemainderG1RuntimeTests
     }
 
     [Fact]
-    public void HasItemTypeIsFalseForACoinChestAndForAMissingChest()
+    public void HasItemTypeCountsNoFurniInACoinChestAndPassesWithoutAChest()
     {
         using var world = new G1World();
         var player = world.AddPlayer();
@@ -230,9 +230,10 @@ public sealed partial class WiredRemainderG1RuntimeTests
 
         world.Fire(Enter(player));
 
-        // A coin chest holds no furni, so zero equals zero; no chest at all is false.
+        // A coin chest holds no furni, so zero equals zero; with no chest at all the condition passes (observed on AIR
+        // WIN63-202610151745-318700621, r97_chest_type_keep).
         Assert.Single(coinChest.Runs);
-        Assert.Empty(missing.Runs);
+        Assert.Single(missing.Runs);
     }
 
     [Theory]

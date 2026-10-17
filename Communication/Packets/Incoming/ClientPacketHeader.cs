@@ -205,6 +205,7 @@ public static class ClientPacketHeader
     public const uint JoinQueueEvent = 65471;
     public const uint CanCreateRoomEvent = 924;
     public const uint SetTonerEvent = 2682;
+    public const uint RecolorFurnitureEvent = 3047; // package_100/class_2402 (2852 on WIN63-202610131318-860371703)
     public const uint SaveWiredTriggerConfigEvent = 3842;
     public const uint PlaceBotEvent = 1807;
     public const uint MoveEntityInFlatEvent = 1528;

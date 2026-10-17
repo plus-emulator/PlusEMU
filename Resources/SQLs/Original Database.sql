@@ -30946,6 +30946,9 @@ WHERE `item_name` = 'wf_colortile' AND `interaction_type` = 'pressure_pad';
 -- They use the 'recolorable' interaction: a multi-state furni whose state goes out as MapData with its colour (r, g, b).
 -- interaction_modes_count is the number of states each furni's visualization animates (furniture_recolorable assets of
 -- the same revision).
+-- custom_params are Habbo's furnidata customparams (r75). allow_inventory_stack is 0: AIR's inventory groups stackable furni of
+-- one type whatever their data (inventory/furni/FurniModel.as:1270-1318), which would hide each block's own colour.
+-- The pages use Habbo's 'recolorable_furniture' layout (RecolorableFurnitureCatalogWidget.as:21), whose palette sends the colour.
 -- This hotel sells the Builders Club blocks on the ordinary Furni pages 'Building Blocks' and 'Alphabet Blocks' for one
 -- credit each, so the recolorable ones get two sibling pages right after them, in hhus' Builders Club page order
 -- (bc_blocks_recolorable, bc_alphabet_recolorable), with the official offer ids where they are free.
@@ -31055,7 +31058,7 @@ INSERT INTO furniture (item_name, public_name, type, width, length, stack_height
     has_furnidata, revision, category, default_dir, xdim, ydim, name, description, custom_params, special_type,
     can_stand_on, can_sit_on, can_lay_on, can_put_stuff_on, height, furni_line, rare, tradeable, recyclable)
 SELECT r.item_name, r.public_name, 's', r.width, r.length, r.height, r.can_stack, r.can_sit_on, r.can_stand_on, r.sprite_id,
-    r.recyclable, r.tradeable, r.tradeable, r.tradeable, 1, 'recolorable', r.modes,
+    r.recyclable, r.tradeable, r.tradeable, r.tradeable, 0, 'recolorable', r.modes,
     1, r.revision, r.category, r.default_dir, r.width, r.length, r.public_name, CONCAT(r.item_name, ' desc'), NULL, r.special_type,
     r.can_stand_on, r.can_sit_on, r.can_lay_on, r.can_stack, r.height, r.furni_line, 0, r.tradeable, r.recyclable
 FROM recolorable_furni_87 r
@@ -31063,18 +31066,32 @@ WHERE NOT EXISTS (SELECT 1 FROM furniture f WHERE f.type = 's' AND f.furnidata_c
   AND NOT EXISTS (SELECT 1 FROM furniture f WHERE f.type = 's' AND f.furnidata_sprite_id = r.sprite_id);
 
 UPDATE furniture f JOIN recolorable_furni_87 r ON f.type = 's' AND f.item_name = r.item_name
-SET f.interaction_type = 'recolorable', f.interaction_modes_count = r.modes
+SET f.interaction_type = 'recolorable', f.interaction_modes_count = r.modes, f.allow_inventory_stack = 0,
+    f.custom_params = CASE r.item_name
+        WHEN 'bc_block_0_recolorable' THEN '-0.25'
+        WHEN 'bc_block_1_recolorable' THEN '-0.25'
+        WHEN 'bc_block_small_recolorable' THEN '-0.25'
+        WHEN 'bc_standingtriangularprism_recolorable' THEN '-0.25'
+        WHEN 'bc_cylinder_recolorable' THEN '-0.25'
+        WHEN 'bc_round_recolorable' THEN '-0.25'
+        WHEN 'bc_standinghalfcylinder_recolorable' THEN '-0.25'
+        WHEN 'bc_panel_recolorable' THEN '-0.5'
+        WHEN 'bc_stick_recolorable' THEN '-1.00'
+        WHEN 'bc_block_water_recolorable' THEN '30'
+        ELSE f.custom_params END
 WHERE f.interaction_type IN ('', 'default', 'recolorable');
 
 UPDATE recolorable_furni_87 r JOIN furniture f ON f.type = 's' AND f.item_name = r.item_name SET r.furniture_id = f.id;
 
 -- 2. Pages next to the existing Builders Club block pages under Furni.
 INSERT INTO catalog_pages (parent_id, caption, icon, position, link, layout, visible, enabled, required_club_level)
-SELECT p.id, 'Recolorable Blocks', 28, 16, 'bc_blocks_recolorable', 'default_3x3', 1, 1, 0 FROM catalog_pages p
+SELECT p.id, 'Recolorable Blocks', 28, 16, 'bc_blocks_recolorable', 'recolorable_furniture', 1, 1, 0 FROM catalog_pages p
 WHERE p.link = 'furni' AND NOT EXISTS (SELECT 1 FROM catalog_pages c WHERE c.link = 'bc_blocks_recolorable');
 INSERT INTO catalog_pages (parent_id, caption, icon, position, link, layout, visible, enabled, required_club_level)
-SELECT p.id, 'Recolorable Alphabet Blocks', 101, 17, 'bc_alphabet_recolorable', 'default_3x3', 1, 1, 0 FROM catalog_pages p
+SELECT p.id, 'Recolorable Alphabet Blocks', 101, 17, 'bc_alphabet_recolorable', 'recolorable_furniture', 1, 1, 0 FROM catalog_pages p
 WHERE p.link = 'furni' AND NOT EXISTS (SELECT 1 FROM catalog_pages c WHERE c.link = 'bc_alphabet_recolorable');
+UPDATE catalog_pages SET layout = 'recolorable_furniture'
+WHERE link IN ('bc_blocks_recolorable', 'bc_alphabet_recolorable') AND layout = 'default_3x3';
 
 INSERT IGNORE INTO catalog_page_images (page_id, slot, image)
 SELECT c.id, s.slot, CASE

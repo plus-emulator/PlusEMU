@@ -11,6 +11,7 @@ using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Catalog.Utilities;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Subscriptions;
 using Plus.HabboHotel.Users.Inventory.Furniture;
@@ -205,8 +206,11 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
 
             switch (definition.InteractionType) {
                 case InteractionType.None:
-                case InteractionType.Recolorable:
                     itemExtraData = "";
+                    break;
+                case InteractionType.Recolorable:
+                    // A gift carries no colour choice, so it starts in its palette's first colour.
+                    itemExtraData = RecolorableDataFormat.FormatCatalogueColor(RecolorablePalette.PurchaseColor(definition.ItemName, null));
                     break;
                 case InteractionType.Pet:
                     if (!GiftWrap.PetDataAccepted(data)) {

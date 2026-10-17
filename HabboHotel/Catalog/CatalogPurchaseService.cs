@@ -400,8 +400,10 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
 
                 return number.ToString(CultureInfo.InvariantCulture); // maintain extra data // todo: validate
             case InteractionType.Recolorable:
-                // AIR RecolorableFurnitureCatalogWidget sends the chosen "r,g,b"; anything else is bought white.
-                return RecolorableDataFormat.TryParseCatalogueColor(extraData, out _) ? extraData : "";
+                // AIR RecolorableFurnitureCatalogWidget.as:93-121 sends the chosen "r,g,b" and only offers the class's palette
+                // (class_3492.as:13); any other value starts in the palette's first colour.
+                return RecolorableDataFormat.FormatCatalogueColor(RecolorablePalette.PurchaseColor(definition.ItemName,
+                    RecolorableDataFormat.TryParseCatalogueColor(extraData, out var chosen) ? chosen : null));
             case InteractionType.Postit:
                 return "FFFF33";
             case InteractionType.Moodlight:

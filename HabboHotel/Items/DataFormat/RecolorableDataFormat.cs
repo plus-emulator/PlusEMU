@@ -119,6 +119,10 @@ public sealed class RecolorableDataFormat : LegacyDataFormat
         return true;
     }
 
+    /// <summary>The catalogue's "r,g,b" for a colour.</summary>
+    public static string FormatCatalogueColor(int rgb) =>
+        string.Create(CultureInfo.InvariantCulture, $"{(rgb >> 16) & 0xFF},{(rgb >> 8) & 0xFF},{rgb & 0xFF}");
+
     // AIR class_2297.readChannel: one to three digits up to 255, otherwise 255.
     private static int Channel(string value) =>
         value.Length is >= 1 and <= 3 && int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var channel) && channel <= 255 ? channel : 255;

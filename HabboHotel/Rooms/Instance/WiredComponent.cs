@@ -138,6 +138,17 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _highscoreClockAdmission++;
 
         try {
+            if (!WiredCounterController.IsGameTimer(item)) {
+                // A Wired game counter is the game itself: its Start resets the team scores and raises Game Starts, its Stop raises Game Ends.
+                if (start) {
+                    _room.GetGameManager().Reset();
+                }
+
+                TriggerEvent(start ? WiredBoxType.TriggerGameStarts : WiredBoxType.TriggerGameEnds, null);
+
+                return;
+            }
+
             if (start) {
                 _room.GetGameManager().Reset();
                 _highscores?.Start(transition);
@@ -193,6 +204,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
         FlushFlashes();
     }
+    /// <summary>A Wired game counter is running, which is a game in progress for scores and team games.</summary>
+    public bool GameCounterRunning => _counters.HasRunningGameCounter;
     internal bool NeedsFastCycle => _engine.NeedsFastCycle;
     internal void ObserveFastWork(Action<bool>? observer) => _engine.ObserveFastWork(observer);
     public bool Dispatch(WiredRuntimeEvent @event) => WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() =>

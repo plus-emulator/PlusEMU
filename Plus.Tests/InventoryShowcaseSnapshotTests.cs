@@ -36,7 +36,7 @@ public sealed class InventoryShowcaseSnapshotTests
     }
 
     [Fact]
-    public void BadgeInventoryKeepsInsertionOrderAndEquippedSlotOrderWithoutLateReads()
+    public void BadgeInventoryKeepsInsertionOrderInOneFragmentWithoutLateReads()
     {
         var badge = new Badge("second", 2);
         var source = new List<Badge> { badge, new("unworn", 0), new("first", 1) };
@@ -44,7 +44,7 @@ public sealed class InventoryShowcaseSnapshotTests
         var composer = new BadgesComposer(BadgeInventorySnapshot.Capture(source, rarity));
         var before = new HabbiconTestSupport.RecordingPacket();
         composer.Compose(before);
-        Assert.Equal(new object[] { 3, 1, "second", 1, 6, 1, "unworn", 1, 6, 1, "first", 60, 0, 2, 1, "first", 2, "second" }, before.Writes);
+        Assert.Equal(new object[] { 1, 0, 3, 1, "second", 1, 6, 1, "unworn", 1, 6, 1, "first", 60, 0 }, before.Writes);
         badge.Code = "changed";
         badge.Slot = 0;
         source.Clear();

@@ -200,9 +200,10 @@ public sealed class UserPreferencePersistenceTests
         var response = Assert.Single(sent);
         Assert.Equal(ServerPacketHeader.SoundSettingsComposer, response.Header);
         var body = new FlashIncomingPacket { Buffer = response.Payload };
-        Assert.Equal((20, 30, 40, true, false, true, expected, 0, true, true, true),
+        Assert.Equal((20, 30, 40, true, false, true, expected, 0, false, false, false),
             (body.ReadInt(), body.ReadInt(), body.ReadInt(), body.ReadBool(), body.ReadBool(), body.ReadBool(),
              body.ReadInt(), body.ReadInt(), body.ReadBool(), body.ReadBool(), body.ReadBool()));
+        Assert.Equal((0, false), (body.ReadInt(), body.ReadBool()));
         Assert.False(body.HasDataRemaining());
     }
 

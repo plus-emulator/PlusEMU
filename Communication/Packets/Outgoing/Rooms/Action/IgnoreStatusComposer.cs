@@ -2,21 +2,14 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Action;
 
-public class IgnoreStatusComposer : IServerPacket
+/// <summary>AIR WIN63-202610151745-318700621 package_37/class_4292.as:25: result, then the ignored user's id.</summary>
+public class IgnoreStatusComposer(IgnoreStatus status, int userId) : IServerPacket
 {
-    private readonly IgnoreStatus _status;
-    private readonly string _username;
     public uint MessageId => ServerPacketHeader.IgnoreStatusComposer;
-
-    public IgnoreStatusComposer(IgnoreStatus status, string username)
-    {
-        _status = status;
-        _username = username;
-    }
 
     public void Compose(IOutgoingPacket packet)
     {
-        packet.WriteInteger((int)_status);
-        packet.WriteString(_username);
+        packet.WriteInteger((int)status);
+        packet.WriteInteger(userId);
     }
 }

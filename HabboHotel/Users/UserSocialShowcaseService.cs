@@ -4,7 +4,6 @@ using Plus.Communication.Packets.Outgoing.Users;
 using Plus.HabboHotel.Friends;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Groups;
-using Plus.HabboHotel.Users.Ignores;
 using Plus.HabboHotel.Users.Messenger;
 using Plus.Utilities.DependencyInjection;
 
@@ -25,7 +24,6 @@ public interface IUserSocialShowcaseService
 public sealed class UserSocialShowcaseService(
     IMessengerDataLoader messengerData,
     IGameClientManager clients,
-    IIgnoredUsersService ignoredUsers,
     IGroupManager groups) : IUserSocialShowcaseService
 {
     public async Task ShowRelationships(GameClient session, int userId)
@@ -41,11 +39,11 @@ public sealed class UserSocialShowcaseService(
         session.Send(new GetRelationshipsComposer(new(userId, entries)));
     }
 
-    public async Task ShowIgnoredUsers(GameClient session)
+    public Task ShowIgnoredUsers(GameClient session)
     {
-        var ignored = session.GetHabbo().IgnoresComponent?.IgnoredUsers.ToArray() ?? [];
-        var names = await ignoredUsers.GetIgnoredUsersByName(ignored);
-        session.Send(new IgnoredUsersComposer(names));
+        session.Send(new IgnoredUsersComposer(session.GetHabbo().IgnoresComponent?.IgnoredUsers ?? []));
+
+        return Task.CompletedTask;
     }
 
     public Task ShowGroupBadges(GameClient session)

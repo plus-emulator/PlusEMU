@@ -4,6 +4,7 @@ using Plus.HabboHotel.Users;
 
 namespace Plus.Communication.Packets.Outgoing.Users;
 
+/// <summary>AIR WIN63-202610151745-318700621 package_9/class_2227.as:61 (read by package_37/class_3916.as:24).</summary>
 public class ProfileInformationComposer(PlayerProfileSnapshot profile) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.ProfileInformationComposer;
@@ -18,7 +19,7 @@ public class ProfileInformationComposer(PlayerProfileSnapshot profile) : IServer
         packet.WriteInteger(profile.FriendCount);
         packet.WriteBoolean(profile.IsFriend);
         packet.WriteBoolean(profile.RequestedFriendship);
-        packet.WriteBoolean(profile.Online);
+        packet.WriteByte((byte)(profile.Online ? 1 : 0)); // online status
         packet.WriteInteger(profile.Groups.Length);
 
         foreach (var group in profile.Groups) {
@@ -33,6 +34,24 @@ public class ProfileInformationComposer(PlayerProfileSnapshot profile) : IServer
         }
 
         packet.WriteInteger(profile.LastOnlineSeconds);
-        packet.WriteBoolean(true);
+        packet.WriteBoolean(true); // open profile window
+
+        var badges = profile.Badges ?? ProfileBadgeStats.None;
+        packet.WriteBoolean(false); // hidden
+        packet.WriteInteger(0); // account level
+        packet.WriteInteger(0);
+        packet.WriteInteger(0); // star gems
+        packet.WriteBoolean(false);
+        packet.WriteBoolean(false);
+        packet.WriteInteger(badges.Total);
+        packet.WriteInteger(0); // achievement level
+        packet.WriteInteger(badges.RarityCounts.Length);
+
+        foreach (var (tier, count) in badges.RarityCounts) {
+            packet.WriteByte((byte)tier);
+            packet.WriteInteger(count);
+        }
+
+        packet.WriteInteger(badges.Rank);
     }
 }

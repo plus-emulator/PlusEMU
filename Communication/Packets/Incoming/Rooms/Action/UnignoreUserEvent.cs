@@ -5,5 +5,5 @@ namespace Plus.Communication.Packets.Incoming.Rooms.Action;
 
 internal class UnignoreUserEvent(IPlayerIgnoreService ignores) : IPacketEvent
 {
-    public Task Parse(GameClient session, IIncomingPacket packet) => ignores.Unignore(session, packet.ReadString());
+    public Task Parse(GameClient session, IIncomingPacket packet) => ignores.Unignore(session, packet.ReadInt());
 }

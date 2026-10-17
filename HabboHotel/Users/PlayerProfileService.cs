@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Plus.Communication.Packets.Outgoing.Users;
+using Plus.HabboHotel.Badges.Rarity;
 using Plus.HabboHotel.Friends;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Groups;
@@ -10,7 +11,24 @@ namespace Plus.HabboHotel.Users;
 public sealed record ProfileGroupSnapshot(int Id, string Name, string Badge, string FirstColor, string SecondColor, bool Favorite, bool ForumEnabled);
 public sealed record PlayerProfileSnapshot(int Id, string Username, string Look, string Motto, DateTimeOffset? CreatedAt,
     int AchievementPoints, int FriendCount, bool IsFriend, bool RequestedFriendship, bool Online,
-    ImmutableArray<ProfileGroupSnapshot> Groups, int LastOnlineSeconds);
+    ImmutableArray<ProfileGroupSnapshot> Groups, int LastOnlineSeconds, ProfileBadgeStats? Badges = null);
+
+/// <summary>Badge totals for the profile; a rank below zero hides it.</summary>
+public sealed record ProfileBadgeStats(int Total, int Rank, ImmutableArray<(BadgeRarityTier Tier, int Count)> RarityCounts)
+{
+    public static ProfileBadgeStats None { get; } = new(0, -1, []);
+
+    public static ProfileBadgeStats From(BadgeLeaderboardSnapshot snapshot, int userId)
+    {
+        var total = snapshot.TotalBadges.Find(userId);
+        var rarity = snapshot.RarityBoards.OrderBy(board => board.Key)
+            .Select(board => (board.Key, board.Value.Find(userId)?.Score ?? 0))
+            .Where(entry => entry.Item2 > 0)
+            .ToImmutableArray();
+
+        return new(total?.Score ?? 0, total?.Rank ?? -1, rarity);
+    }
+}
 
 public interface IPlayerProfileService
 {
@@ -18,7 +36,8 @@ public interface IPlayerProfileService
 }
 
 public sealed class PlayerProfileService(IGroupManager groupManager, IMessengerDataLoader messengerDataLoader,
-    IGameClientManager clients, IUserDataFactory users, IHabboStatsService statsLoader, TimeProvider clock) : IPlayerProfileService
+    IGameClientManager clients, IUserDataFactory users, IHabboStatsService statsLoader, TimeProvider clock,
+    IBadgeRarityManager badgeRarity) : IPlayerProfileService
 {
     public async Task Open(GameClient session, int userId)
     {
@@ -44,6 +63,6 @@ public sealed class PlayerProfileService(IGroupManager groupManager, IMessengerD
         session.Send(new ProfileInformationComposer(new(target.Id, target.Username, target.Look, target.Motto,
             target.AccountCreatedAt, stats.AchievementPoints, friendCount, friendship,
             otherUser && !friendship && viewer.Messenger?.OutstandingFriendRequests.Contains(target.Id) == true,
-            clients.GetClientByUserId(target.Id) != null, groups, elapsed)));
+            clients.GetClientByUserId(target.Id) != null, groups, elapsed, ProfileBadgeStats.From(badgeRarity.Snapshot, target.Id))));
     }
 }

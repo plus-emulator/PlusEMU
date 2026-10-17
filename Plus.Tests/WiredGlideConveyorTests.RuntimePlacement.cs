@@ -1,3 +1,7 @@
+using System.Buffers.Binary;
+using System.Text.Json;
+using Plus.Communication.Packets.Outgoing;
+using Plus.HabboHotel.Items.Wired.Configuration;
 using Xunit;
 
 namespace Plus.Tests;
@@ -40,13 +44,14 @@ public sealed partial class WiredGlideConveyorTests
             (2, 5, 5, 1, 0, "bc_tile_1", null),
             (3, 5, 5, 2, 0, "bc_tile_1", null)
         ], live: true);
-        var moved = new List<uint>();
+        var moved = new List<(uint Id, double? Height)>();
 
         new Plus.HabboHotel.Items.Wired.Modern.Actions.WiredMovementActions(new Random(3)).Execute("wf_act_furni_to_furni",
             new() { IntParams = [100, 100] }, [f.Items[2], f.Items[3]], [f.Items[1]], [],
-            (item, _, _, _, _) => { moved.Add(item.Id); return true; }, (_, _, _, _, _) => false, (_, _) => { });
+            (item, _, _, _, height) => { moved.Add((item.Id, height)); return true; }, (_, _, _, _, _) => false, (_, _) => { });
 
-        Assert.Equal([2u], moved);
+        // The room ignores a same-tile move without a new height, so the restack names the top of the stack.
+        Assert.Equal([(2u, (double?)f.Items[3].TotalHeight)], moved);
     }
 }
 
@@ -107,5 +112,48 @@ public sealed partial class WiredGlideConveyorTests
                 $"pulse {pulse}: #{move.Id} {move.FromX}->{move.ToX},{move.ToY} z {move.FromZ}->{move.ToZ}"));
             Assert.Equal(Enumerable.Range(4, 8), Enumerable.Range(1, 8).Select(id => f.Items[(uint)id].GetX));
         }
+    }
+}
+
+public sealed partial class WiredGlideConveyorTests
+{
+    // Observed on AIR WIN63-202610151745-318700621 (wf_act_furni_to_furni.spread): four movers sent to two targets by one say arrive in one
+    // WiredMovements packet, including the movers restacked on the target they already stood on.
+    [Fact]
+    public void FurniToFurniPublishesAFiringsMoversInOnePacket()
+    {
+        var f = new Fixture([
+            (1, 8, 9, 0, 0, "bc_tile_1", null),
+            (2, 8, 11, 0, 0, "bc_tile_1", null),
+            (3, 6, 9, 0, 0, "bc_tile_1", null),
+            (4, 6, 10, 0, 0, "bc_tile_1", null),
+            (5, 6, 11, 0, 0, "bc_tile_1", null),
+            (6, 6, 12, 0, 0, "bc_tile_1", null),
+            (10, 4, 12, 0.0, 0, "wf_trg_says_something", JsonSerializer.Serialize(new WiredConfiguration { IntParams = [1, 0, 0], Text = "alpha" })),
+            (11, 4, 12, 0.65, 0, "wf_act_furni_to_furni", JsonSerializer.Serialize(new WiredConfiguration
+            {
+                IntParams = [100, 100], Text = "1;2", SelectedItems = [3, 4, 5, 6]
+            }))
+        ], live: true);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        var packets = new List<int>();
+        rider.GetClient()!.SendCallback = args =>
+        {
+            var bytes = args.MemoryBuffer.ToArray();
+
+            if (BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredMovementsComposer) {
+                packets.Add(BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(6)));
+            }
+
+            return false;
+        };
+
+        for (var firing = 0; firing < 3; firing++) {
+            f.Owned(() => rider.OnChat(0, "alpha", false));
+            f.Advance(500);
+        }
+
+        Assert.NotEmpty(packets);
+        Assert.All(packets, count => Assert.True(count >= 2, $"movements per packet: {string.Join(",", packets)}"));
     }
 }

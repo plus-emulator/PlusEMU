@@ -252,8 +252,22 @@ public static class WiredBotActions
                             changed = true;
                         }
                     }
+                    else if (name == "wf_act_bot_talk_to_avatar") {
+                        // Observed on hhus (AIR WIN63-202610131318-860371703): said aloud, the bot addresses the avatar by name
+                        // ("Objecto: hello you"), once per avatar.
+                        foreach (var user in users) {
+                            var username = user.GetClient()?.GetHabbo()?.Username;
+
+                            if (string.IsNullOrEmpty(username)) {
+                                continue;
+                            }
+
+                            context.Room.SendPacket(new WiredChatComposer(bot.VirtualId, $"{username}: {formatted}", botData.ChatBubble, width, false, false, hideName));
+                            changed = true;
+                        }
+                    }
                     else {
-                        context.Room.SendPacket(new WiredChatComposer(bot.VirtualId, formatted, botData.ChatBubble, width, false, name == "wf_act_bot_talk" && p[0] == 1, hideName));
+                        context.Room.SendPacket(new WiredChatComposer(bot.VirtualId, formatted, botData.ChatBubble, width, false, p[0] == 1, hideName));
                         changed = true;
                     }
                 }

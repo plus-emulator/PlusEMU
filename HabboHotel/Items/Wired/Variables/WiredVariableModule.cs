@@ -797,6 +797,14 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     /// A parent change seen through an interceptable part (a Time Utilities Value part): the change keyed by the part, with the part's
     /// before and after values. Null when the reference is not such a part of the changed variable.
     /// </summary>
+    /// <summary>A derived part without a value (is_maxed): it exists or not, and a placeholder shows "null" for it.</summary>
+    internal bool IsValuelessPart(WiredVariableReference reference)
+    {
+        lock (_gate) {
+            return derive?.Invoke(reference) is { HasValue: false };
+        }
+    }
+
     internal WiredVariableChange? ProjectPartChange(WiredVariableReference reference, WiredVariableChange change)
     {
         lock (_gate) {
@@ -810,7 +818,16 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             var before = change.Before is null ? null : resolved.Convert!(change.Before);
             var after = change.After is null ? null : resolved.Convert!(change.After);
 
-            return change with { Key = change.Key with { DefinitionId = partId }, Before = before, After = after };
+            // The part's own appearance decides the kind: a presence part (is_maxed) is created when it appears and removed when it goes, and
+            // nothing happens while it stays absent. Observed on AIR WIN63-202610151745-318700621: is_maxed fired on the writes that made it
+            // appear, kept it and removed it, not on a write while absent.
+            if (before is null && after is null) {
+                return null;
+            }
+
+            var kind = before is null ? WiredVariableChangeKind.Created : after is null ? WiredVariableChangeKind.Removed : WiredVariableChangeKind.Updated;
+
+            return change with { Key = change.Key with { DefinitionId = partId }, Before = before, After = after, Kind = kind };
         }
     }
 

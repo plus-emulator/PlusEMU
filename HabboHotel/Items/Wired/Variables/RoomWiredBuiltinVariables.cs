@@ -254,8 +254,9 @@ public sealed class RoomWiredBuiltinVariables(Room room,
         if (holder.Target == WiredVariableTarget.Furni && key == "@state") {
             var item = FindItem(holder, frame);
 
+            // A furni placed from the inventory can carry no state text yet; it shows state 0, and any write sets it.
             if (item is null || value < 0 || item.Definition.Modes <= value
-                || !int.TryParse(item.LegacyDataString, out var previous) || previous == value) {
+                || item.LegacyDataString is { Length: > 0 } text && (!int.TryParse(text, out var previous) || previous == value)) {
                 return false;
             }
 
@@ -326,7 +327,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@owner_id" => checked((int)item.OwnerId),
             "@class_id" => item.IsWallItem ? WiredWallBuiltinValues.ReadIdentity(item.Id, item.Definition.SpriteId, key) : item.Definition.SpriteId,
             "@height" => Hundredths(item.TotalHeight - item.GetZ),
-            "@state" => int.TryParse(item.LegacyDataString, out var state) ? state : null,
+            // No state text yet (a furni placed from the inventory) is state 0, as the client shows it.
+            "@state" => int.TryParse(item.LegacyDataString, out var state) ? state : string.IsNullOrEmpty(item.LegacyDataString) ? 0 : null,
             "@position" => (item.GetX << 8) | item.GetY,
             "@occupation" => (item.GetX << 16) | (item.GetY << 8) | item.Rotation,
             "~teleport.target_id" when InteractionTypes.IsLinkedPair(item.Definition.InteractionType) => travelStore?.FindLinkedTeleporter(item.Id),

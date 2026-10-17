@@ -9,6 +9,18 @@ public sealed class WiredAddonTests
 {
     private static WiredAddonInputs Input(long now = 0) => new(World(), Inputs(), now);
 
+    // Observed on AIR WIN63-202610151745-318700621 (wf_xtra_execution_limit.burst): 2 executions per 4 pulses let six says one second
+    // apart all run; the window counts whole pulses, not milliseconds since the first execution.
+    [Fact]
+    public void ExecutionLimitCountsItsWindowInWholePulses()
+    {
+        var limit = new WiredAddonModule("wf_xtra_execution_limit", Config([2, 4]));
+        var passed = new[] { 2L, 1005, 2002, 3002, 4000, 5002 }.Select(now => limit.Apply(Input(now), new WiredAddonPolicy())).ToArray();
+        Assert.All(passed, Assert.True);
+        var tight = new WiredAddonModule("wf_xtra_execution_limit", Config([2, 4]));
+        Assert.Equal(new[] { true, true, false }, new[] { 0L, 400, 900 }.Select(now => tight.Apply(Input(now), new WiredAddonPolicy())));
+    }
+
     [Fact]
     public void PolicyAddonsDoNotConsumeActionHistoryUntilTheEnginePicksAndResetRestartsIt()
     {

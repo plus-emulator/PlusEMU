@@ -223,9 +223,15 @@ public sealed class WiredAddonModule
         return input.ReadVariable(new(target, token, users, furni, c));
     }
 
+    // The window counts whole wired pulses (500 ms), not milliseconds since the first execution. Observed on AIR
+    // WIN63-202610151745-318700621 (wf_xtra_execution_limit.burst): with 2 executions per 4 pulses, six says one second apart all ran.
     private bool Acquire(long now, int max, int window)
     {
-        if (now < _windowStartMs || now - _windowStartMs >= window) {
+        const int pulse = 500;
+        var start = _windowStartMs / pulse;
+        var current = now / pulse;
+
+        if (now < _windowStartMs || current - start >= Math.Max(1, window / pulse)) {
             _windowStartMs = now;
             _executionsInWindow = 0;
         }

@@ -14,7 +14,8 @@ internal static class WiredNativeTriggerEditor
     {
         "wf_trg_walks_off_furni" => new([[100, 200]], [], [100], [], [], false),
         // Observed on hhus (AIR WIN63-202610131318-860371703): click, use and state-change triggers allow wall picks; wall clicks and state writes fire them.
-        "wf_trg_click_furni" => new([[0, 100, 200, 201]], [], [100], [], [], true),
+        // The click trigger offers picks (100) and the selector (200) only; with 200 a click on furni in the stack's selector pool fires it.
+        "wf_trg_click_furni" => new([[100, 200]], [], [100], [], [], true),
         "wf_trg_click_tile" => new([[100, 200]], [], [100], [], [], false),
         "wf_trg_recv_signal" => new([[100, 200, 201]], [], [100], [], [], false),
         // The use trigger has no state radio; the state-change trigger does.

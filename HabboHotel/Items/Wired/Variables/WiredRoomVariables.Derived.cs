@@ -101,7 +101,8 @@ public sealed partial class WiredRoomVariables
 
         return level is not null && level.HasDerived(sub)
             ? new(source, value => level.ReadDerived(value.Value, sub) is { } part ? new(part, null, null) : null,
-                Write: sub == 1 ? (_, xp) => level.LevelSystem!.ClampXp(xp) : null) { Interceptable = true, HasValue = sub != 6 }
+                Write: sub == 1 ? (_, xp) => level.LevelSystem!.ClampXp(xp) : null)
+            { Interceptable = true, HasValue = sub != 6 }
             : null;
     }
 

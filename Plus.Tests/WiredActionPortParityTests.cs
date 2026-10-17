@@ -47,7 +47,8 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         var events = new List<WiredRuntimeEvent>();
         var action = Box(room, "wf_act_chase", [100], [mover.Id], events.Add);
         Assert.True(action.Execute(Context(room, [mover], [user])));
-        Assert.Equal((2, 1), (mover.GetX, mover.GetY));
+        // From an exact diagonal the step goes along either axis (observed on AIR WIN63-202610151745-318700621, r97_chase_tie).
+        Assert.Contains((mover.GetX, mover.GetY), new[] { (2, 1), (1, 2) });
         Assert.Empty(events);
     }
 

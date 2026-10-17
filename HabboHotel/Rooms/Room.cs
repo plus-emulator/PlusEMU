@@ -653,7 +653,8 @@ public class Room
     private void OnRoomCrash(Exception e)
     {
         try {
-            foreach (var user in _roomUserManager.GetRoomUsers().ToList()) {
+            // A crash while unloading comes after the users were dropped.
+            foreach (var user in _roomUserManager?.GetRoomUsers().ToList() ?? []) {
                 if (user == null || user.GetClient() == null) {
                     continue;
                 }

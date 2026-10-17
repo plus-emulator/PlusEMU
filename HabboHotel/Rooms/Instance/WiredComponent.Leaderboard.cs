@@ -200,9 +200,16 @@ public partial class WiredComponent
 
     private void BroadcastLeaderboards(uint? leaving)
     {
+        // An unloading room has dropped its users before its furniture; with nobody to tell, the boxes are not read.
+        var clients = _room.GetRoomUserManager()?.GetRoomUsers().Select(user => user.GetClient()).OfType<GameClient>().ToList() ?? [];
+
+        if (clients.Count == 0) {
+            return;
+        }
+
         var snapshot = new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors(leaving));
 
-        foreach (var client in _room.GetRoomUserManager()?.GetRoomUsers().Select(user => user.GetClient()).OfType<GameClient>() ?? []) {
+        foreach (var client in clients) {
             client.Send(snapshot);
         }
     }

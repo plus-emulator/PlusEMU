@@ -38,6 +38,10 @@ public sealed class WiredMovementActions(Random? random = null)
     private static bool OnTopOfItsTile(Item item) => item.GetRoom()?.GetGameMap()?.GetCoordinatedItems(new(item.GetX, item.GetY))
         .All(other => other.Id == item.Id || other.GetZ < item.GetZ) ?? true;
 
+    // The top of the item's stack without the item itself: where a restack onto the same tile lands.
+    private static double? RestackHeight(Item item) => item.GetRoom()?.GetGameMap()?.GetCoordinatedItems(new(item.GetX, item.GetY))
+        .Where(other => other.Id != item.Id).Select(other => other.TotalHeight).DefaultIfEmpty(item.GetZ).Max();
+
     public bool Execute(string name, WiredConfiguration configuration, IReadOnlyList<Item> movers,
         IReadOnlyList<Item> targets, IReadOnlyList<RoomUser> users,
         MoveFurniture move, MoveAvatar relocate, Action<Item, string> setState,
@@ -156,8 +160,17 @@ public sealed class WiredMovementActions(Random? random = null)
 
                     // Observed r94 F2 (hhus 2026-10-16, AIR WIN63-202610131318-860371703): a mover assigned the target it already stands
                     // on is moved again, back onto the top of that stack (same tile, new height); only one already on top stays put.
-                    if (assigned != null && (item.GetX != assigned.GetX || item.GetY != assigned.GetY || !OnTopOfItsTile(item))) {
+                    if (assigned == null) {
+                        continue;
+                    }
+
+                    if (item.GetX != assigned.GetX || item.GetY != assigned.GetY) {
                         affected |= move(item, assigned.GetX, assigned.GetY, item.Rotation, null);
+                    }
+                    else if (!OnTopOfItsTile(item)) {
+                        // The room drops a move that keeps tile, rotation and height, so the restack names its new height
+                        // (observed on AIR WIN63-202610151745-318700621: (8,13) z 2 -> (8,13) z 4).
+                        affected |= move(item, assigned.GetX, assigned.GetY, item.Rotation, RestackHeight(item));
                     }
                 }
 

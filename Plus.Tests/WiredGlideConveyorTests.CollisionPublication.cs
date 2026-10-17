@@ -74,7 +74,7 @@ public sealed partial class WiredGlideConveyorTests
         void Output()
         {
             Assert.NotEmpty(ReadPublication(packets).Where(move => move.Type == 1));
-            rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, "opaque", 0, -1, true));
+            rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, rider.VirtualId, "opaque", 0, -1, true));
             callbacks++;
         }
 

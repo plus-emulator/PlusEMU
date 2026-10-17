@@ -808,7 +808,7 @@ public class Room
         }
     }
 
-    public void SendToTent(int id, uint tentId, IServerPacket packet)
+    public void SendToTent(int id, uint tentId, Func<int, IServerPacket> chat)
     {
         if (!_tents.ContainsKey(tentId)) {
             return;
@@ -820,11 +820,30 @@ public class Room
                 continue;
             }
 
-            user.GetClient().Send(packet);
+            user.GetClient().Send(chat(user.VirtualId));
         }
     }
 
     public void SendPacket(IServerPacket packet, bool withRightsOnly = false) => SendPacket(packet, withRightsOnly, null);
+
+    /// <summary>
+    /// Sends a chat packet to everyone in the room. Each copy carries the viewer's own room index as its receiver
+    /// (AIR WIN63-202610151745-318700621 package_167/class_2856.as:124), so <paramref name="chat"/> composes it per viewer.
+    /// </summary>
+    public void SendChat(Func<int, IServerPacket> chat, Func<RoomUser, bool>? receives = null)
+    {
+        if (_roomUserManager == null) {
+            return;
+        }
+
+        foreach (var user in _roomUserManager.GetRoomUsers()) {
+            if (user?.GetClient() is not { Revision: not null } client || receives?.Invoke(user) == false) {
+                continue;
+            }
+
+            client.Send(chat(user.VirtualId));
+        }
+    }
 
     public IEnumerable<Item> VisibleFloorItems => GetRoomItemHandler().GetFloor.Where(item => !HideWired || !item.IsWired);
 

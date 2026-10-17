@@ -166,7 +166,7 @@ public class Pet
                 Room.SendPacket(new AddExperiencePointsComposer(PetId, VirtualId, amount));
 
                 if (Experience >= ExperienceGoal) {
-                    Room.SendPacket(new ChatComposer(VirtualId, $"*leveled up to level {Level} *", 0, 0));
+                    Room.SendChat(receiver => new ChatComposer(VirtualId, $"*leveled up to level {Level} *", 0, 0, receiver));
                 }
             }
         }

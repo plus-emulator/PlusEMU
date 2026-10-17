@@ -248,7 +248,7 @@ public static class WiredBotActions
                                 continue;
                             }
 
-                            client.Send(new WiredChatComposer(bot.VirtualId, formatted, botData.ChatBubble, width, true, HideUsername: hideName));
+                            client.Send(new WiredChatComposer(bot.VirtualId, user.VirtualId, formatted, botData.ChatBubble, width, true, HideUsername: hideName));
                             changed = true;
                         }
                     }
@@ -262,12 +262,12 @@ public static class WiredBotActions
                                 continue;
                             }
 
-                            context.Room.SendPacket(new WiredChatComposer(bot.VirtualId, $"{username}: {formatted}", botData.ChatBubble, width, false, false, hideName));
+                            context.Room.SendChat(receiver => new WiredChatComposer(bot.VirtualId, receiver, $"{username}: {formatted}", botData.ChatBubble, width, false, false, hideName));
                             changed = true;
                         }
                     }
                     else {
-                        context.Room.SendPacket(new WiredChatComposer(bot.VirtualId, formatted, botData.ChatBubble, width, false, p[0] == 1, hideName));
+                        context.Room.SendChat(receiver => new WiredChatComposer(bot.VirtualId, receiver, formatted, botData.ChatBubble, width, false, p[0] == 1, hideName));
                         changed = true;
                     }
                 }

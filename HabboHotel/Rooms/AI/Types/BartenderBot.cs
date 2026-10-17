@@ -74,7 +74,7 @@ internal class BartenderBot : BotAi
                 botUser.Chat(response.ResponseText.Replace("{username}", speakerSession.GetHabbo().Username));
                 break;
             case "whisper":
-                speakerSession.Send(new WhisperComposer(botUser.VirtualId, response.ResponseText.Replace("{username}", speakerSession.GetHabbo().Username), 0, 0));
+                speakerSession.Send(new WhisperComposer(botUser.VirtualId, response.ResponseText.Replace("{username}", speakerSession.GetHabbo().Username), 0, 0, user.VirtualId));
                 break;
         }
 
@@ -125,7 +125,7 @@ internal class BartenderBot : BotAi
                 botUser.Chat(response.ResponseText.Replace("{username}", speakerSession.GetHabbo().Username));
                 break;
             case "whisper":
-                speakerSession.Send(new WhisperComposer(botUser.VirtualId, response.ResponseText.Replace("{username}", speakerSession.GetHabbo().Username), 0, 0));
+                speakerSession.Send(new WhisperComposer(botUser.VirtualId, response.ResponseText.Replace("{username}", speakerSession.GetHabbo().Username), 0, 0, user.VirtualId));
                 break;
         }
 

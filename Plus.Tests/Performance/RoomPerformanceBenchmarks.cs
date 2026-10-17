@@ -86,7 +86,7 @@ public class RoomPerformanceBenchmarks
         Measure("500 small GameClient.Send calls", 1000, () =>
         {
             for (var i = 0; i < 500; i++) {
-                users.Clients[0].Send(new ChatComposer(i, "test", 0, 2));
+                users.Clients[0].Send(new ChatComposer(i, "test", 0, 2, 0));
             }
         });
         Measure("500 avatar packet to 500 recipients", 30, () => users.Room.SendPacket(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(users.Users))));

@@ -247,7 +247,7 @@ public sealed partial class WiredGlideConveyorTests
                 Assert.True(f.Engine.Mutate(() =>
                 {
                     Assert.Single(ReadPublication(packets), move => move.Type == 1);
-                    rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, "legacy observer", 0, -1, true));
+                    rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, rider.VirtualId, "legacy observer", 0, -1, true));
 
                     return true;
                 }));

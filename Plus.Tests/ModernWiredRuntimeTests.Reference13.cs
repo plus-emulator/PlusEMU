@@ -214,7 +214,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(9, chat.VirtualId);
         Assert.Equal("Hello there", chat.Text);
         Assert.Equal(31, chat.Bubble);
-        Assert.Equal(-1, chat.Receiver);
+        Assert.Equal(f.User.VirtualId, chat.Receiver);
         Assert.Equal(width, chat.Width);
         Assert.Equal(hideName == 1, replies.Single(reply => reply.Header == chat.Header).Body[^1] == 1);
     }
@@ -252,7 +252,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(ServerPacketHeader.WhisperComposer, secret.Header);
         Assert.Equal(9, secret.VirtualId);
         Assert.Equal("Psst", secret.Text);
-        Assert.Equal(0, secret.Receiver);
+        Assert.Equal(whisper.User.VirtualId, secret.Receiver);
 
         using var talk = new TeleportFixture(actionName: "wf_act_bot_talk_to_avatar", intParams: [0, 0, 100, -1], text: "Bobby\tHi");
         AddNamedBot(talk, 9, "Bobby", 2, 2);
@@ -260,7 +260,7 @@ public partial class ModernWiredRuntimeTests
         talk.Fire();
         var open = Assert.Single(Chats(replies));
         Assert.Equal(ServerPacketHeader.ChatComposer, open.Header);
-        Assert.Equal(-1, open.Receiver);
+        Assert.Equal(talk.User.VirtualId, open.Receiver);
     }
 
     [Fact]

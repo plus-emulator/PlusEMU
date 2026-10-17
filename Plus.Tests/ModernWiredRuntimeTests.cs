@@ -785,12 +785,12 @@ public partial class ModernWiredRuntimeTests
         var fields = new List<object>();
         var packet = DispatchProxy.Create<IOutgoingPacket, RecordingProxy>();
         ((RecordingProxy)(object)packet).InvokeMethod = (_, args) => { fields.Add(args![0]!); return null; };
-        // October parser order after the tracking id: receiver room index, bubble width, hideUsername.
-        new WiredChatComposer(7, "Hello", 252, 2, true).Compose(packet);
-        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, 5, 0, 2 }, fields);
+        // Parser order after the tracking id: receiver room index, bubble width, hideUsername.
+        new WiredChatComposer(7, 3, "Hello", 252, 2, true).Compose(packet);
+        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, -1, 3, 2, false }, fields);
         fields.Clear();
-        new WiredChatComposer(7, "Hello", 252, -1, false, HideUsername: true).Compose(packet);
-        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, 5, -1, -1, true }, fields);
+        new WiredChatComposer(7, 3, "Hello", 252, -1, false, HideUsername: true).Compose(packet);
+        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, -1, 3, -1, true }, fields);
         fields.Clear();
         new WiredMovementComposer(1, 10, 0, 1, 1.25, 2, 2, 3.5, 4, 4, 750).Compose(packet);
         Assert.Equal(new object[] { 1, 1, 0, 1, 2, 2, "1.25", "3.5", 10, 750, 4, false, false }, fields);

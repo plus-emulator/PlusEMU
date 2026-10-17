@@ -146,25 +146,13 @@ public sealed record WiredClickSettingsComposer(int UserOption, int FurniOption)
 }
 
 /// <summary>
-/// A chat packet sent by wired. The October client reads three optional fields after the tracking id, in this
-/// order: the receiver's room index, the bubble width and hideUsername. A whisper always carries the first two
-/// (receiver 0, width -1 when the box sets none); a bot can hide its name over the bubble.
+/// A chat packet sent by wired, in the room chat layout (<see cref="RoomChatPacket"/>). The receiver is the viewing client's own
+/// room index, so a copy shown to the room is composed per viewer; the box can set a bubble width and a bot can hide its name.
 /// </summary>
-public sealed record WiredChatComposer(int VirtualId, string Message, int BubbleStyle, int BubbleWidth, bool Private, bool Shout = false,
-    bool HideUsername = false) : IServerPacket
+public sealed record WiredChatComposer(int VirtualId, int ReceiverVirtualId, string Message, int BubbleStyle, int BubbleWidth, bool Private,
+    bool Shout = false, bool HideUsername = false) : IServerPacket
 {
-    private const int WhisperReceiver = 0;
-    private const int NoReceiver = -1;
-
     public uint MessageId => Private ? ServerPacketHeader.WhisperComposer : Shout ? ServerPacketHeader.ShoutComposer : ServerPacketHeader.ChatComposer;
-    public void Compose(IOutgoingPacket packet)
-    {
-        RoomChatPacket.Write(packet, VirtualId, Message, 0, BubbleStyle);
-        packet.WriteInteger(Private ? WhisperReceiver : NoReceiver);
-        packet.WriteInteger(BubbleWidth);
-
-        if (HideUsername) {
-            packet.WriteBoolean(true);
-        }
-    }
+    public void Compose(IOutgoingPacket packet) =>
+        RoomChatPacket.Write(packet, VirtualId, Message, 0, BubbleStyle, ReceiverVirtualId, BubbleWidth, HideUsername);
 }

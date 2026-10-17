@@ -107,11 +107,13 @@ public class OfficialUserWireTests
     [Fact]
     public void ChatVariantsWriteTheOfficialLayout()
     {
-        var chat = Compose(new ChatComposer(4, "hello", 0, 34));
-        var shout = Compose(new ShoutComposer(4, "hello", 0, 34));
-        var whisper = Compose(new WhisperComposer(4, "hello", 0, 34));
+        var chat = Compose(new ChatComposer(4, "hello", 0, 34, 9));
+        var shout = Compose(new ShoutComposer(4, "hello", 0, 34, 9));
+        var whisper = Compose(new WhisperComposer(4, "hello", 0, 34, 9));
 
-        Assert.Equal(new object[] { 4, "hello", 0, 34, 0, 5 }, chat);
+        // AIR WIN63-202610151745-318700621 package_167/class_2856.as:101-140: tracking id -1, then the viewer's own room index,
+        // no bubble width and hideUsername false; the location is left out.
+        Assert.Equal(new object[] { 4, "hello", 0, 34, 0, -1, 9, -1, false }, chat);
         Assert.Equal(chat, shout);
         Assert.Equal(chat, whisper);
     }

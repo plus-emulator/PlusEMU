@@ -485,7 +485,7 @@ public sealed partial class WiredGlideConveyorTests
         var f = new Fixture(FastQueueLayout(2), live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
-        void Output() => rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, "barrier", 0, -1, true));
+        void Output() => rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, rider.VirtualId, "barrier", 0, -1, true));
 
         f.Advance(200);
         packets.Clear();
@@ -617,7 +617,7 @@ public sealed partial class WiredGlideConveyorTests
         {
             if (evt.Kind == WiredEventKind.Collision) {
                 Assert.NotEmpty(ReadPublication(packets).Where(move => move.Type == 1));
-                rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, "collision", 0, -1, true));
+                rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, rider.VirtualId, "collision", 0, -1, true));
                 observed++;
             }
         };
@@ -641,7 +641,7 @@ public sealed partial class WiredGlideConveyorTests
         var builtin = new PublicationBuiltin(() =>
         {
             Assert.NotEmpty(ReadPublication(packets).Where(move => move.Type == 1));
-            rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, "batch", 0, -1, true));
+            rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, rider.VirtualId, "batch", 0, -1, true));
         });
         var roomId = f.MovementContext().Room.Id;
         var module = new WiredVariableModule(roomId, new PublicationDirectory(), new MemoryWiredVariableStore(), TimeProvider.System, builtin);
@@ -675,7 +675,7 @@ public sealed partial class WiredGlideConveyorTests
         f.SetBoxField(12, "_movement", new WiredRoomMovement((actor, _, _) =>
         {
             Assert.Single(ReadPublication(packets).Where(move => move.Type == 1));
-            actor.GetClient()!.Send(new WiredChatComposer(actor.VirtualId, "nested", 0, -1, true));
+            actor.GetClient()!.Send(new WiredChatComposer(actor.VirtualId, actor.VirtualId, "nested", 0, -1, true));
             var context = Assert.IsType<WiredRuntimeContext>(f.EngineField("_runtimeContext"));
             Assert.True(f.Engine.CallStacks(context, [f.Items[14]]));
             callbacks++;

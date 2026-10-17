@@ -86,7 +86,7 @@ public class RoomBroadcastTests
             client.SendCallback = args => { received.Add(args.MemoryBuffer.ToArray()); return false; };
         }
 
-        var composer = new CountingPacket(new ChatComposer(1, "hello", 0, 2));
+        var composer = new CountingPacket(new ChatComposer(1, "hello", 0, 2, 1));
         GameClient.SendBroadcast(composer, clients);
         Assert.Equal(3, composer.Count);
         Assert.Equal(received[0], received[1]);
@@ -99,7 +99,7 @@ public class RoomBroadcastTests
         var client = RoomPerformanceFixture.Create(0, 1).Clients[0];
         ReadOnlyMemory<byte> pending = default;
         client.SendCallback = args => { pending = args.MemoryBuffer; return true; };
-        var composer = new ChatComposer(1, "pending async TCP send", 0, 2);
+        var composer = new ChatComposer(1, "pending async TCP send", 0, 2, 1);
         client.Send(composer);
         var expected = pending.ToArray();
 
@@ -117,7 +117,7 @@ public class RoomBroadcastTests
         var client = RoomPerformanceFixture.Create(0, 1).Clients[0];
         SocketAsyncEventArgs? synchronous = null;
         client.SendCallback = args => { synchronous = args; return false; };
-        var composer = new ChatComposer(1, "test", 0, 2);
+        var composer = new ChatComposer(1, "test", 0, 2, 1);
         client.Send(composer);
         Assert.Throws<ObjectDisposedException>(() => synchronous!.SetBuffer(Array.Empty<byte>()));
 
@@ -142,7 +142,7 @@ public class RoomBroadcastTests
         var client = RoomPerformanceFixture.Create(0, 1).Clients[0];
         SocketAsyncEventArgs? pending = null;
         client.SendCallback = args => { pending = args; return true; };
-        var composer = new ChatComposer(1, "test", 0, 2);
+        var composer = new ChatComposer(1, "test", 0, 2, 1);
         client.Send(composer);
         Assert.Equal(Encode(client, composer), pending!.MemoryBuffer.ToArray());
         // Raise the same event as a native async completion, without opening a socket.
@@ -167,7 +167,26 @@ public class RoomBroadcastTests
         fixture.Clients[0].SendCallback = args => { received.Add(args.MemoryBuffer.ToArray()); return false; };
         fixture.Clients[1].SendCallback = _ => throw new InvalidOperationException("Speech preference was ignored");
         bot.Chat("test", colour);
-        Assert.Equal(Encode(fixture.Clients[0], new ChatComposer(bot.VirtualId, "test", 0, expectedColour)), Assert.Single(received));
+        Assert.Equal(Encode(fixture.Clients[0], new ChatComposer(bot.VirtualId, "test", 0, expectedColour, fixture.Users[0].VirtualId)), Assert.Single(received));
+    }
+
+    [Fact]
+    public void ChatCarriesEachViewersOwnRoomIndex()
+    {
+        var fixture = RoomPerformanceFixture.Create(0, 3);
+        var received = fixture.Clients.Select(_ => new List<byte[]>()).ToArray();
+
+        for (var i = 0; i < fixture.Clients.Count; i++) {
+            var inbox = received[i];
+            fixture.Clients[i].SendCallback = args => { inbox.Add(args.MemoryBuffer.ToArray()); return false; };
+        }
+
+        fixture.Room.SendChat(receiver => new ChatComposer(fixture.Users[0].VirtualId, "test", 0, 2, receiver));
+
+        for (var i = 0; i < fixture.Clients.Count; i++) {
+            var expected = new ChatComposer(fixture.Users[0].VirtualId, "test", 0, 2, fixture.Users[i].VirtualId);
+            Assert.Equal(Encode(fixture.Clients[i], expected), Assert.Single(received[i]));
+        }
     }
 
     [Fact]

@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+using Plus.Communication.Packets.Outgoing;
 using Xunit;
 
 namespace Plus.Tests;
@@ -52,6 +54,46 @@ public sealed partial class WiredGlideConveyorTests
     public void Room14WholeRoomCarriesTheRiderWhileTheTilesStayHome(int fromX, int fromY, int x)
     {
         RunRoom14Queue(fromX, fromY, x, [.. Room14FastQueueRows(), .. Room14OtherRows()]);
+    }
+
+    // Room 14's walk stack: walking onto the 3x3 colour tiles whispers the user's heading.
+    private static (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] Room14WalkMessageRows() =>
+    [
+        (3199, 5, 1, 0.0, 2, "wf_trg_walks_on_furni", "native:" + """{"Version":2,"Category":0,"NativeCode":1,"OwnedIntParams":[],"Text":"","PrimaryItems":[],"SecondaryItems":[],"FurniSourceTypes":[200],"UserSourceTypes":[],"VariableIds":[],"Delay":null,"Quantifier":null,"Filter":null,"Inverse":null,"SavedState":{"Snapshots":[]}}"""),
+        (3200, 5, 1, 0.65, 0, "wf_slc_furni_area", "native:" + """{"Version":2,"Category":3,"NativeCode":7,"OwnedIntParams":[4,6,3,3],"Text":"","PrimaryItems":[],"SecondaryItems":[],"FurniSourceTypes":[],"UserSourceTypes":[],"VariableIds":[],"Delay":null,"Quantifier":null,"Filter":false,"Inverse":false,"SavedState":{"Snapshots":[]}}"""),
+        (3201, 5, 1, 1.65, 0, "wf_act_show_message", "native:" + """{"Version":2,"Category":1,"NativeCode":7,"OwnedIntParams":[0,34,-1],"Text":"you are walking","PrimaryItems":[],"SecondaryItems":[],"FurniSourceTypes":[],"UserSourceTypes":[0],"VariableIds":[],"Delay":0,"Quantifier":null,"Filter":null,"Inverse":null,"SavedState":{"Snapshots":[]}}"""),
+    ];
+
+    // Observed on AIR WIN63-202610151745-318700621: a walk stack whispering in the same pass as a Fast Queue pulse leaves the pulse
+    // one home-to-home frame. The whisper ran between the forward step and the snapshot reset and sent them as two frames, so the
+    // tiles jumped a tile ahead and back.
+    [Fact]
+    public void Room14WalkMessageDuringAPulseKeepsTheTilesHome()
+    {
+        var shared = 0;
+
+        for (var wait = 1000; wait < 2000; wait += 50) {
+            var f = new Fixture([.. Room14FastQueueRows(), .. Room14OtherRows(), .. Room14WalkMessageRows()], live: true, colourTileHeight: 0.2);
+            var walker = f.Walker(1, 5, 5, 5, 6);
+            var packets = CapturePublication(walker);
+            f.Advance(wait);
+            walker.MoveTo(5, 7);
+
+            for (var pass = 0; pass < 30; pass++) {
+                packets.Clear();
+                f.Advance(50);
+                var headers = packets.Select(bytes => BinaryPrimitives.ReadUInt32BigEndian(bytes)).ToArray();
+
+                if (headers.Contains(ServerPacketHeader.WhisperComposer) && headers.Contains(ServerPacketHeader.WiredMovementsComposer)) {
+                    shared++;
+                }
+
+                Assert.True(packets.Count(IsMovementBody) <= 1);
+                Assert.All(ReadPublication(packets).Where(move => move.Type == 1), move => Assert.Equal(move.FromX, move.ToX));
+            }
+        }
+
+        Assert.True(shared > 0);
     }
 
     private static Fixture RunRoom14Queue(int fromX, int fromY, int x, (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] layout)

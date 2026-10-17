@@ -559,8 +559,9 @@ public sealed partial class WiredGlideConveyorTests
         layout.Add((19, 4, 9, 0, 0, "bc_tile_1", null));
         layout.Add((20, 4, 12, 2.1, 0, "wf_act_move_to_dir", JsonSerializer.Serialize(new WiredConfiguration
         { IntParams = [2, 0, 100, 0], SelectedItems = [19] })));
-        layout.Add((21, 4, 12, 1.9, 0, "wf_act_show_message", JsonSerializer.Serialize(new WiredConfiguration
-        { IntParams = [200, 0, 34, 0], Text = "between" })));
+        // Toggle State still splits the segment; Show Message no longer does (see Room14WalkMessageDuringAPulseKeepsTheTilesHome).
+        layout.Add((21, 4, 12, 1.9, 0, "wf_act_toggle_state", JsonSerializer.Serialize(new WiredConfiguration
+        { IntParams = [0, 100], SelectedItems = [19] })));
         layout.Add((22, 4, 12, 3, 0, "wf_xtra_exec_in_order", JsonSerializer.Serialize(new WiredConfiguration())));
         layout.Add((23, 4, 12, 3.5, 0, "wf_slc_users_bytype", JsonSerializer.Serialize(new WiredConfiguration { IntParams = [1, 0, 0] })));
         var f = new Fixture(layout.ToArray(), live: true);
@@ -574,8 +575,6 @@ public sealed partial class WiredGlideConveyorTests
         var first = ReadPublication([packets.First(IsFurnitureMovement)]);
         Assert.Equal(7, first.Count(move => move.Type == 1));
         Assert.Equal(0, first[^1].Type);
-        var message = packets.FindIndex(IsChat);
-        Assert.True(message > packets.FindIndex(IsFurnitureMovement));
         Assert.Equal(5, rider.X);
         Assert.Equal(5, f.Items[19].GetX);
     }

@@ -57,7 +57,7 @@ public sealed class PacketCollectionSnapshotTests
         var volumes = Enumerable.Range(1, count).ToList();
         var composer = new SoundSettingsComposer(volumes, true, false, true, 2);
         object[] expected = [count > 0 ? 1 : 0, count > 1 ? 2 : 0, count > 2 ? 3 : 0,
-            true, false, true, 2, 0, true, true, true];
+            true, false, true, 2, 0, true, true, true, 0, false];
 
         Assert.Equal(expected, Writes(composer));
         volumes.Clear();

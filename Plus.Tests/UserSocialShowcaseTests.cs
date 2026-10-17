@@ -50,16 +50,19 @@ public sealed class UserSocialShowcaseTests
     }
 
     [Fact]
-    public void IgnoredNamesAndNameSuggestionsCopySourceCollections()
+    public void IgnoredIdsAndNameSuggestionsCopySourceCollections()
     {
+        var ids = new List<int> { 7, 8 };
+        var ignored = new IgnoredUsersComposer(ids);
         var names = new List<string> { "Alice", "Bob" };
-        var ignored = new IgnoredUsersComposer(names);
         var suggestions = new NameChangeUpdateComposer("Dennis", NameChangeError.InUse, names);
         var ignoredBefore = Compose(ignored);
         var suggestionsBefore = Compose(suggestions);
+        ids[0] = 99;
+        ids.Clear();
         names[0] = "changed";
         names.Clear();
-        Assert.Equal(new object[] { 2, "Alice", "Bob" }, ignoredBefore);
+        Assert.Equal(new object[] { 2, 7, 8 }, ignoredBefore);
         Assert.Equal(new object[] { (int)NameChangeError.InUse, "Dennis", 2, "DennisAlice", "DennisBob" }, suggestionsBefore);
         Assert.Equal(ignoredBefore, Compose(ignored));
         Assert.Equal(suggestionsBefore, Compose(suggestions));
@@ -94,7 +97,7 @@ public sealed class UserSocialShowcaseTests
                 [1] = (new() { Id = 20, Username = "Stored", Look = "stored" }, 4)
             });
         });
-        var service = new UserSocialShowcaseService(loader, clients, Unused<IIgnoredUsersService>(), Unused<IGroupManager>());
+        var service = new UserSocialShowcaseService(loader, clients, Unused<IGroupManager>());
         await service.ShowRelationships(viewer, 17);
         Assert.Equal(0, loads);
         Assert.Equal(ServerPacketHeader.GetRelationshipsComposer, Assert.Single(sent).Header);
@@ -111,22 +114,18 @@ public sealed class UserSocialShowcaseTests
     }
 
     [Fact]
-    public async Task IgnoredLookupReceivesPreparedIdsAndMissingRoomSendsNothing()
+    public async Task IgnoredListSendsIdsAndMissingRoomSendsNothing()
     {
         var habbo = new Habbo { Id = 42, IgnoresComponent = new([7, 8]) };
         var (viewer, sent) = HabbiconTestSupport.Client(habbo);
-        var ignored = Proxy.Create<IIgnoredUsersService>((method, args) =>
-        {
-            Assert.Equal(nameof(IIgnoredUsersService.GetIgnoredUsersByName), method.Name);
-            Assert.Equal(new[] { 7, 8 }, (IReadOnlyCollection<int>)args![0]!);
-
-            return Task.FromResult(new List<string> { "Alice", "Bob" });
-        });
-        var service = new UserSocialShowcaseService(Unused<IMessengerDataLoader>(), Unused<IGameClientManager>(), ignored, Unused<IGroupManager>());
+        var service = new UserSocialShowcaseService(Unused<IMessengerDataLoader>(), Unused<IGameClientManager>(), Unused<IGroupManager>());
         await service.ShowGroupBadges(viewer);
         Assert.Empty(sent);
         await service.ShowIgnoredUsers(viewer);
         Assert.Equal(ServerPacketHeader.IgnoredUsersComposer, Assert.Single(sent).Header);
+        Assert.Equal(2, ReadInt(sent[0].Payload, 0));
+        Assert.Equal(7, ReadInt(sent[0].Payload, 4));
+        Assert.Equal(8, ReadInt(sent[0].Payload, 8));
     }
 
     private static int ReadInt(byte[] data, int offset) =>

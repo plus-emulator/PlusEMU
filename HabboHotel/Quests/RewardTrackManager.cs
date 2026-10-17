@@ -1,4 +1,3 @@
-using Plus.HabboHotel.Users.Inventory.Badges;
 using System.Data;
 using Dapper;
 using Microsoft.Extensions.Logging;
@@ -233,7 +232,7 @@ public sealed class RewardTrackManager : IRewardTrackManager, IStartable
 
             if (badge != null && habbo.Inventory is { } inventory && !inventory.Badges.HasBadge(badge)) {
                 inventory.Badges.AddBadge(new Badge(badge, 0));
-                session.Send(new BadgesComposer(BadgeInventorySnapshot.Capture(inventory.Badges.Badges.Values)));
+                session.SendBadgeInventory(habbo.Id, inventory.Badges.Badges.Values);
                 session.Send(new FurniListNotificationComposer(1, 4));
             }
 

@@ -26,9 +26,9 @@ public sealed class PlayerIgnoreServiceTests
     public async Task HandlersDecodeAndAwaitOnlyTheService()
     {
         var service = new RecordingService();
-        await new IgnoreUserEvent(service).Parse(null!, HabbiconTestSupport.Incoming("Alice"));
-        await new UnignoreUserEvent(service).Parse(null!, HabbiconTestSupport.Incoming("Bob"));
-        Assert.Equal(new[] { "ignore Alice", "unignore Bob" }, service.Calls);
+        await new IgnoreUserEvent(service).Parse(null!, HabbiconTestSupport.Incoming(5));
+        await new UnignoreUserEvent(service).Parse(null!, HabbiconTestSupport.Incoming(6));
+        Assert.Equal(new[] { "ignore 5", "unignore 6" }, service.Calls);
         service.Calls.Clear();
         await Assert.ThrowsAnyAsync<ArgumentException>(() => new IgnoreUserEvent(service).Parse(null!, HabbiconTestSupport.Incoming()));
         Assert.Empty(service.Calls);
@@ -47,12 +47,12 @@ public sealed class PlayerIgnoreServiceTests
 
             return Task.CompletedTask;
         };
-        await f.Service.Ignore(f.Client, "target");
+        await f.Service.Ignore(f.Client, 2);
         Assert.True(Assert.IsType<IgnoresComponent>(f.Actor.IgnoresComponent).IsIgnored(2));
         Assert.Equal(1, f.Achievements);
         AssertStatus(Assert.Single(f.Sent), IgnoreStatus.Added);
         f.Sent.Clear();
-        await f.Service.Unignore(f.Client, "target");
+        await f.Service.Unignore(f.Client, 2);
         Assert.False(Assert.IsType<IgnoresComponent>(f.Actor.IgnoresComponent).IsIgnored(2));
         Assert.Equal(1, f.Achievements);
         AssertStatus(Assert.Single(f.Sent), IgnoreStatus.Removed);
@@ -71,7 +71,7 @@ public sealed class PlayerIgnoreServiceTests
         }
 
         f.Store.BeforeWrite = (_, _, _) => throw new InvalidOperationException("forced store failure");
-        await Assert.ThrowsAsync<InvalidOperationException>(() => ignore ? f.Service.Ignore(f.Client, "target") : f.Service.Unignore(f.Client, "target"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ignore ? f.Service.Ignore(f.Client, 2) : f.Service.Unignore(f.Client, 2));
         Assert.Equal(!ignore, Assert.IsType<IgnoresComponent>(f.Actor.IgnoresComponent).IsIgnored(2));
         Assert.Empty(f.Sent);
         Assert.Equal(0, f.Achievements);
@@ -83,21 +83,21 @@ public sealed class PlayerIgnoreServiceTests
         var f = new Fixture();
         var room = f.Actor.CurrentRoom;
         f.Actor.CurrentRoom = null;
-        await f.Service.Ignore(f.Client, "target");
+        await f.Service.Ignore(f.Client, 2);
         Assert.Equal(0, f.Lookups);
         f.Actor.CurrentRoom = room;
-        await f.Service.Ignore(f.Client, "missing");
+        await f.Service.Ignore(f.Client, 99);
         f.Target.Access = EditorTestSupport.Access([PermissionKeys.ModerationTool]);
-        await f.Service.Ignore(f.Client, "target");
+        await f.Service.Ignore(f.Client, 2);
         f.Target.Access = UserAccess.Empty;
-        await f.Service.Unignore(f.Client, "target");
+        await f.Service.Unignore(f.Client, 2);
         Assert.IsType<IgnoresComponent>(f.Actor.IgnoresComponent).PublishIgnore(2);
-        await f.Service.Ignore(f.Client, "target");
+        await f.Service.Ignore(f.Client, 2);
         Assert.Empty(f.Store.Writes);
         Assert.Empty(f.Sent);
         Assert.Equal(0, f.Achievements);
         f.Store.Refused = true;
-        await f.Service.Unignore(f.Client, "target");
+        await f.Service.Unignore(f.Client, 2);
         Assert.True(Assert.IsType<IgnoresComponent>(f.Actor.IgnoresComponent).IsIgnored(2));
         Assert.Empty(f.Sent);
     }
@@ -118,9 +118,9 @@ public sealed class PlayerIgnoreServiceTests
                 Assert.True(Assert.IsType<IgnoresComponent>(f.Actor.IgnoresComponent).IsIgnored(2));
             }
         };
-        var first = f.Service.Ignore(f.Client, "target");
+        var first = f.Service.Ignore(f.Client, 2);
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var second = f.Service.Unignore(f.Client, "target");
+        var second = f.Service.Unignore(f.Client, 2);
 
         try {
             Assert.False(first.IsCompleted);
@@ -180,7 +180,7 @@ public sealed class PlayerIgnoreServiceTests
         Assert.Equal(ServerPacketHeader.IgnoreStatusComposer, sent.Header);
         var packet = new FlashIncomingPacket { Buffer = sent.Payload };
         Assert.Equal((int)status, packet.ReadInt());
-        Assert.Equal("prepared name", packet.ReadString());
+        Assert.Equal(2, packet.ReadInt());
         Assert.False(packet.HasDataRemaining());
     }
 
@@ -208,8 +208,7 @@ public sealed class PlayerIgnoreServiceTests
             var (target, _) = HabbiconTestSupport.Client(Target);
             var clients = Proxy<IGameClientManager>((method, args) => method switch
             {
-                "GetClientByUsername" => Lookup((string)args[0]!, target),
-                "GetNameById" => Task.FromResult("prepared name"),
+                "GetClientByUserId" => Lookup((int)args[0]!, target),
                 _ => throw new NotSupportedException(method)
             });
             var achievements = Proxy<IAchievementManager>((method, _) =>
@@ -224,11 +223,11 @@ public sealed class PlayerIgnoreServiceTests
             Service = new(clients, Store, achievements, new AccountSessionGate());
         }
 
-        private GameClient? Lookup(string name, GameClient target)
+        private GameClient? Lookup(int userId, GameClient target)
         {
             Lookups++;
 
-            return name == "target" ? target : null;
+            return userId == 2 ? target : null;
         }
     }
 
@@ -260,15 +259,15 @@ public sealed class PlayerIgnoreServiceTests
     private sealed class RecordingService : IPlayerIgnoreService
     {
         public List<string> Calls = [];
-        public Task Ignore(GameClient session, string username)
+        public Task Ignore(GameClient session, int userId)
         {
-            Calls.Add("ignore " + username);
+            Calls.Add("ignore " + userId);
 
             return Task.CompletedTask;
         }
-        public Task Unignore(GameClient session, string username)
+        public Task Unignore(GameClient session, int userId)
         {
-            Calls.Add("unignore " + username);
+            Calls.Add("unignore " + userId);
 
             return Task.CompletedTask;
         }

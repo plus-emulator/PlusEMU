@@ -11,8 +11,8 @@ namespace Plus.HabboHotel.Users.Ignores;
 [Singleton]
 public interface IPlayerIgnoreService
 {
-    Task Ignore(GameClient session, string username);
-    Task Unignore(GameClient session, string username);
+    Task Ignore(GameClient session, int userId);
+    Task Unignore(GameClient session, int userId);
 }
 
 public sealed class PlayerIgnoreService(
@@ -21,11 +21,11 @@ public sealed class PlayerIgnoreService(
     IAchievementManager achievements,
     IAccountSessionGate accounts) : IPlayerIgnoreService
 {
-    public Task Ignore(GameClient session, string username) => Change(session, username, true);
+    public Task Ignore(GameClient session, int userId) => Change(session, userId, true);
 
-    public Task Unignore(GameClient session, string username) => Change(session, username, false);
+    public Task Unignore(GameClient session, int userId) => Change(session, userId, false);
 
-    private async Task Change(GameClient session, string username, bool ignored)
+    private async Task Change(GameClient session, int userId, bool ignored)
     {
         var habbo = session.GetHabbo();
         using var held = await accounts.EnterAsync(habbo.Id);
@@ -35,7 +35,7 @@ public sealed class PlayerIgnoreService(
             return;
         }
 
-        var target = clients.GetClientByUsername(username)?.GetHabbo();
+        var target = clients.GetClientByUserId(userId)?.GetHabbo();
 
         if (target == null || (ignored && target.Access.Can(PermissionKeys.ModerationTool))) {
             return;
@@ -45,8 +45,6 @@ public sealed class PlayerIgnoreService(
         if (habbo.IgnoresComponent is not { } ignores || ignores.IsIgnored(target.Id) == ignored) {
             return;
         }
-
-        var name = await clients.GetNameById(target.Id);
 
         if (habbo.CurrentRoom != room || !await store.SetIgnored(habbo.Id, target.Id, ignored)) {
             return;
@@ -59,7 +57,7 @@ public sealed class PlayerIgnoreService(
             ignores.PublishUnignore(target.Id);
         }
 
-        session.Send(new IgnoreStatusComposer(ignored ? IgnoreStatus.Added : IgnoreStatus.Removed, name));
+        session.Send(new IgnoreStatusComposer(ignored ? IgnoreStatus.Added : IgnoreStatus.Removed, target.Id));
 
         if (ignored) {
             achievements.ProgressAchievement(session, "ACH_SelfModIgnoreSeen", 1);

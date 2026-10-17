@@ -13,7 +13,6 @@ using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Users.Authentication;
 using Plus.HabboHotel.Users.Badges;
-using Plus.HabboHotel.Users.Inventory.Badges;
 using Plus.HabboHotel.Users.Inventory.Furniture;
 
 namespace Plus.HabboHotel.Campaigns
@@ -189,7 +188,7 @@ namespace Plus.HabboHotel.Campaigns
             }
 
             if (grant.Badge.Length > 0) {
-                session.Send(new BadgesComposer(BadgeInventorySnapshot.Capture(inventory.Badges.Badges.Values)));
+                session.SendBadgeInventory(habbo.Id, inventory.Badges.Badges.Values);
                 session.Send(new FurniListNotificationComposer(1, 4));
             }
 

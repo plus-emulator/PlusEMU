@@ -3,7 +3,6 @@ using Plus.Communication.Packets.Outgoing.Inventory.Bots;
 using Plus.Communication.Packets.Outgoing.Inventory.Pets;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms.AI;
-using Plus.HabboHotel.Users.Inventory.Badges;
 using Plus.HabboHotel.Users.Inventory.Bots;
 using Plus.Utilities.DependencyInjection;
 
@@ -41,6 +40,6 @@ public sealed class InventoryShowcaseService : IInventoryShowcaseService
         session.Send(new PetInventoryComposer(PetAppearanceSnapshots.Inventory(inventory.Pets.Pets.Values)));
     }
 
-    public void ShowBadges(GameClient session) => session.Send(new BadgesComposer(
-        BadgeInventorySnapshot.Capture(session.GetHabbo().Inventory?.Badges.Badges.Values ?? [])));
+    public void ShowBadges(GameClient session) =>
+        session.SendBadgeInventory(session.GetHabbo().Id, session.GetHabbo().Inventory?.Badges.Badges.Values ?? []);
 }

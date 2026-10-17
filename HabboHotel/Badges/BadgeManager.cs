@@ -57,7 +57,7 @@ public class BadgeManager : IBadgeManager, IStartable
         });
         inventory.Badges.AddBadge(new Badge(code, 0));
 
-        habbo.Client?.Send(new BadgesComposer(BadgeInventorySnapshot.Capture(inventory.Badges.Badges.Values)));
+        habbo.Client.SendBadgeInventory(habbo.Id, inventory.Badges.Badges.Values);
         habbo.Client?.Send(new FurniListNotificationComposer(1, 4));
     }
 
@@ -113,7 +113,7 @@ public class BadgeManager : IBadgeManager, IStartable
             inventory.Badges.EquipmentGate.Release();
         }
 
-        habbo.Client?.Send(new BadgesComposer(BadgeInventorySnapshot.Capture(inventory.Badges.Badges.Values)));
+        habbo.Client.SendBadgeInventory(habbo.Id, inventory.Badges.Badges.Values);
         habbo.Client?.Send(new FurniListNotificationComposer(1, 4));
 
         return wornChanged;

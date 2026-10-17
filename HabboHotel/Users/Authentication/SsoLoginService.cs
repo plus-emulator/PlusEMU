@@ -80,7 +80,7 @@ public sealed class SsoLoginService : ISsoLoginService
         var error = await _authenticate.AuthenticateUsingSSO(session, sso);
 
         if (error == null) {
-            session.Send(new AuthenticationOkComposer());
+            session.Send(new AuthenticationOkComposer(session.GetHabbo().Id));
 
             // TODO @80O: Move to individual incoming message handlers.
             session.Send(new AvatarEffectsComposer(_avatarEffects.Capture(session.GetHabbo())));

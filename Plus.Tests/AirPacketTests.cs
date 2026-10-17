@@ -69,7 +69,7 @@ public class AirPacketTests
             Assert.Equal(new uint[] { 4000, 1955 }, server.Headers);
             Assert.Same(revision, client.Revision);
 
-            client.Send(new AuthenticationOkComposer());
+            client.Send(new AuthenticationOkComposer(7));
             client.Send(new CreditBalanceComposer(123));
             Assert.Equal(2926, BinaryPrimitives.ReadUInt16BigEndian(sent[0].AsSpan(4)));
             Assert.Equal(2409, BinaryPrimitives.ReadUInt16BigEndian(sent[1].AsSpan(4)));

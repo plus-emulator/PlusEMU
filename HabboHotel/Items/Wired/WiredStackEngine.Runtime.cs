@@ -453,6 +453,7 @@ internal sealed partial class WiredStackEngine
         }
 
         _cycle++;
+        ReleaseHeldFlashes();
         RefreshStacks();
         DrainDueActions();
         RunRuntimeTimersAndSignals();
@@ -684,7 +685,7 @@ internal sealed partial class WiredStackEngine
                 SeedEvent(context);
 
                 if (RunRuntimeStack(timer, context, null)) {
-                    Flash(timer);
+                    HoldFlashes([timer.Item], _cycle + 1);
                 }
             }
             catch (Exception error) {

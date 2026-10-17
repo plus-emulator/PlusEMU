@@ -281,6 +281,8 @@ internal sealed partial class WiredStackEngine
             while (true) {
                 if (firing.Next == null) {
                     if (!firing.Steps.MoveNext()) {
+                        SettleFlashes(firing);
+
                         return true;
                     }
 
@@ -304,6 +306,8 @@ internal sealed partial class WiredStackEngine
                 }
 
                 if (firing.Cancelled) {
+                    SettleFlashes(firing);
+
                     return true;
                 }
             }
@@ -311,8 +315,38 @@ internal sealed partial class WiredStackEngine
         catch (Exception error) {
             _error(error);
             firing.Cancelled = true;
+            SettleFlashes(firing);
 
             return true;
+        }
+        finally {
+            _activeFiring = previous;
+        }
+    }
+
+    // An accepted firing's flashes go out with its effects on the next wired tick; a firing that stops short flashes at once.
+    private void SettleFlashes(RuntimeFiring firing)
+    {
+        if (firing.Flashes.Count == 0) {
+            return;
+        }
+
+        Item[] items = [.. firing.Flashes];
+        firing.Flashes.Clear();
+
+        if (firing.Accepted && firing.HasEffects && !firing.Cancelled) {
+            HoldFlashes(items, _cycle + 1);
+
+            return;
+        }
+
+        var previous = _activeFiring;
+        _activeFiring = null;
+
+        try {
+            foreach (var item in items) {
+                Flash(item);
+            }
         }
         finally {
             _activeFiring = previous;
@@ -495,6 +529,7 @@ internal sealed partial class WiredStackEngine
         yield return new(() =>
         {
             context.VariableChanges = context.Policy.Addons.ExecuteInOrder ? null : new WiredVariableChangeBatch();
+            firing.HasEffects = ready.Count > 0;
             firing.Accepted = ScheduleActions(firing.Source, stack, ready.ToArray(), legacy,
                 action => action is IWiredConfiguredItem configured ? WiredConfigurationLimits.DelayMilliseconds(context.ConfigurationOf(configured).Delay) : GetDelay(action),
                 firing.FiredAt, prepared: true);
@@ -578,7 +613,8 @@ internal sealed partial class WiredStackEngine
         public (IWiredItem Box, long Generation, int X, int Y, double Z)[] Positions { get; } = stack.Select(box => (box, box.Item.MovementGeneration, box.Item.GetX, box.Item.GetY, box.Item.GetZ)).ToArray();
         public IEnumerator<EvaluationStep> Steps { get; set; } = null!;
         public EvaluationStep? Next { get; set; }
-        public bool Accepted, Cancelled, ConditionsPassed;
+        public bool Accepted, Cancelled, ConditionsPassed, HasEffects;
+        public List<Item> Flashes { get; } = [];
         public void Dispose() => Steps.Dispose();
     }
 }

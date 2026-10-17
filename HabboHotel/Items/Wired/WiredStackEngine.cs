@@ -265,6 +265,7 @@ internal sealed partial class WiredStackEngine
     public void OnCycle() => Pass(() =>
     {
         _cycle++;
+        ReleaseHeldFlashes();
         RefreshStacks();
         DrainDueActions();
 
@@ -784,8 +785,39 @@ internal sealed partial class WiredStackEngine
 
     private void Flash(IWiredItem box) => Flash(box.Item);
 
+    // Observed on AIR WIN63-202610151745-318700621 (r97_projectile_kinds): a stack fired outside speech flashes in the same
+    // ObjectsDataUpdate as the furni state its effects write, one wired tick after the firing. Its flashes wait for that tick.
+    private readonly List<(long Cycle, Item Item)> _heldFlashes = [];
+
+    private void HoldFlashes(IEnumerable<Item> items, long cycle)
+    {
+        foreach (var item in items) {
+            _heldFlashes.Add((cycle, item));
+        }
+    }
+
+    private void ReleaseHeldFlashes()
+    {
+        if (_heldFlashes.Count == 0) {
+            return;
+        }
+
+        var due = _heldFlashes.Where(entry => entry.Cycle <= _cycle).ToArray();
+        _heldFlashes.RemoveAll(entry => entry.Cycle <= _cycle);
+
+        foreach (var (_, item) in due) {
+            Flash(item);
+        }
+    }
+
     private void Flash(Item item)
     {
+        if (_activeFiring is { } firing && !firing.Context.ResumeImmediately) {
+            firing.Flashes.Add(item);
+
+            return;
+        }
+
         try {
             _flash(item);
         }

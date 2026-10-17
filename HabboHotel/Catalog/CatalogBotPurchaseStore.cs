@@ -13,6 +13,12 @@ public interface ICatalogBotPurchaseStore
 
 public sealed class CatalogBotPurchaseStore : ICatalogBotPurchaseStore
 {
+    /// <summary>
+    /// Bought (rentable) bots talk with bubble 31, "Bot Rentable". Observed on hhus (AIR WIN63-202610131318-860371703): a bought
+    /// Robbie's Wired Bot Talk line arrives with bubble style 31.
+    /// </summary>
+    public const int RentableChatBubble = 31;
+
     public Bot Create(IDbConnection connection, IDbTransaction transaction, CatalogBot preset, int ownerId)
     {
         // The preset columns are NOT NULL; reject an incomplete preset before writing the bot.
@@ -21,8 +27,8 @@ public sealed class CatalogBotPurchaseStore : ICatalogBotPurchaseStore
         var figure = Required(preset, preset.Figure, "figure");
         var gender = Required(preset, preset.Gender, "gender");
         connection.Execute(
-            "INSERT INTO bots (user_id,name,motto,look,gender,ai_type) VALUES (@ownerId,@name,@motto,@look,@gender,@aiType)",
-            new { ownerId, name, motto, look = figure, gender, aiType = preset.AiType }, transaction);
+            "INSERT INTO bots (user_id,name,motto,look,gender,ai_type,chat_bubble) VALUES (@ownerId,@name,@motto,@look,@gender,@aiType,@chatBubble)",
+            new { ownerId, name, motto, look = figure, gender, aiType = preset.AiType, chatBubble = RentableChatBubble }, transaction);
         var id = connection.QuerySingle<int>("SELECT LAST_INSERT_ID()", transaction: transaction);
 
         return new(id, ownerId, name, motto, figure, gender);

@@ -30925,6 +30925,13 @@ WHERE c.link = 'wired_archive' AND t.slot = 0;
 -- Idempotent.
 
 UPDATE `achievements` SET `visible` = 1 WHERE `group_name` = 'ACH_Motto';
+-- 86_RentableBotChatBubble
+-- Rentable bots talk with chat bubble 31 ("Bot Rentable") on Habbo. Observed on hhus (AIR WIN63-202610131318-860371703): a bought
+-- Robbie bot's Wired Bot Talk line arrives with bubble style 31. Bought bots got the table default 2 ("Robot"). Pets keep theirs.
+-- Idempotent.
+
+UPDATE `bots` SET `chat_bubble` = 31 WHERE `chat_bubble` = 2 AND `ai_type` <> 'pet';
+
 -- 85_ColourTileStates
 -- The Colour Tile (wf_colortile) is an ordinary 7-state furni on Habbo, not a pressure pad: Wired "toggle state" cycles it
 -- 0..6 inside the flash ObjectsDataUpdate, a user's use cycles it with an ObjectDataUpdate, and walking on it changes nothing

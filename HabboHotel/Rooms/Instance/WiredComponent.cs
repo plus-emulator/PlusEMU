@@ -69,6 +69,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             OnEvent, ExceptionLogger.LogWiredException,
             WiredEngineLimits.FromSettings(settings.TryGetValue),
             CaptureActorVisit);
+        _engine.ActionDue = ArmWake;
         _targets = new(
             () => _room.GetRoomItemHandler().GetFloor,
             () => _room.GetRoomUserManager().GetUserList(),
@@ -192,6 +193,38 @@ public partial class WiredComponent : IWiredRuntimeOperations
         FlushVariableFx();
         FlushFlashes();
         FlushLeaderboards();
+    }
+
+    private readonly HashSet<long> _wakeDue = [];
+
+    private void ArmWake(long dueMs)
+    {
+        lock (_wakeDue) {
+            if (!_wakeDue.Add(dueMs)) {
+                return;
+            }
+        }
+
+        WiredWakeClock.Shared.After(dueMs - _engine.Now, () => Wake(dueMs, 0));
+    }
+
+    // A delayed effect's pass runs at its due time. When a pass is already running it may have started before the time fell due, so the
+    // wake-up retries each millisecond for a few, then leaves it to the next 50 ms step.
+    private void Wake(long dueMs, int attempt)
+    {
+        if (_room.MDisposed || _room.IsCrashed) {
+            return;
+        }
+
+        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly) || attempt >= 10) {
+            lock (_wakeDue) {
+                _wakeDue.Remove(dueMs);
+            }
+
+            return;
+        }
+
+        WiredWakeClock.Shared.After(1, () => Wake(dueMs, attempt + 1));
     }
 
     internal void OnFastCycle()

@@ -90,10 +90,36 @@ public static class WiredBotActions
             return false;
         }
 
-        validated = proposed with { FurniSources = f.ToImmutable(), UserSources = u.ToImmutable() };
+        validated = proposed with
+        {
+            FurniSources = f.ToImmutable(),
+            UserSources = u.ToImmutable(),
+            Text = name is "wf_act_bot_talk" or "wf_act_bot_talk_to_avatar" ? TalkText(proposed.Text) : proposed.Text
+        };
         error = "";
 
         return true;
+    }
+
+    /// <summary>
+    /// "bot TAB message", read the way the hotel splits it: trailing empty fields are dropped, and a single field is the message, not
+    /// the bot. Observed on AIR WIN63-202610151745-318700621 (r97_bot_empty_msg): a talk box saved with bot "Robbie" and no message
+    /// reads back as "\tRobbie".
+    /// </summary>
+    internal static string TalkText(string text)
+    {
+        var fields = text.Split('\t').ToList();
+
+        while (fields.Count > 0 && fields[^1].Length == 0) {
+            fields.RemoveAt(fields.Count - 1);
+        }
+
+        return fields.Count switch
+        {
+            0 => "\t",
+            1 => "\t" + fields[0],
+            _ => fields[0] + "\t" + string.Join('\t', fields.Skip(1))
+        };
     }
     public static bool Execute(string name, WiredRuntimeContext context, WiredConfiguration config,
         WiredRoomMovement movement, IBotManagementStore botStore, Func<RoomUser, Item, bool>? teleport = null)

@@ -574,6 +574,15 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     }
 
     [Fact]
+    public void PlantRowsCarryAValueExceptTheirFlags()
+    {
+        // Observed on hhus (AIR WIN63-202610151745-318700621): ~600, ~601, ~602 and ~615 to ~617 have a value; ~610 to ~614 do not.
+        var rows = WiredNativeCatalogProjection.Builtins.Where(variable => variable.Name.StartsWith("~plant.", StringComparison.Ordinal));
+        Assert.Equal(new[] { "~600", "~601", "~602", "~615", "~616", "~617" }, rows.Where(row => row.HasValue).Select(row => row.Id).Order());
+        Assert.All(rows, row => Assert.False(row.CanWriteValue || row.CanCreateAndDelete || row.CanInterceptChanges));
+    }
+
+    [Fact]
     public void UnauthorizedMembershipOmissionIsDistinctFromDecodeInconsistency()
     {
         var fixture = new Fixture();

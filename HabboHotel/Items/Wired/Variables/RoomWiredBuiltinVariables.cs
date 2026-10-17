@@ -41,7 +41,10 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 or "@room_entry.teleport_id" or "@sign" or "@team.type" or "@team.color" or "@team.score" or "@type" or "@user_id"
                 or "~horse.controller_user_id" or "~pet.creation_time" or "~pet.energy" or "~pet.experience"
                 or "~pet.experience_required" or "~pet.happiness" or "~pet.level" or "~pet.max_energy"
-                or "~pet.max_happiness" or "~pet.max_level" or "~pet.owner_id" or "~pet.scratches",
+                or "~pet.max_happiness" or "~pet.max_level" or "~pet.owner_id" or "~pet.scratches"
+                // Observed on hhus (AIR WIN63-202610151745-318700621): the plant's numeric parts carry a value; its can_/is_ flags do not.
+                or "~plant.color" or "~plant.max_wellbeing_seconds" or "~plant.rarity_level" or "~plant.remaining_growing_seconds"
+                or "~plant.remaining_wellbeing_seconds" or "~plant.shape",
             WiredVariableTarget.Global => key is "@furni_count" or "@room_id" or "@user_count" or "@wired_timer" or "@group_id"
                 or "@teams.red.score" or "@teams.red.size" or "@teams.green.score" or "@teams.green.size"
                 or "@teams.blue.score" or "@teams.blue.size" or "@teams.yellow.score" or "@teams.yellow.size"

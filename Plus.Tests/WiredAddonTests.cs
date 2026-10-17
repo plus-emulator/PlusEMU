@@ -9,6 +9,19 @@ public sealed class WiredAddonTests
 {
     private static WiredAddonInputs Input(long now = 0) => new(World(), Inputs(), now);
 
+    // Observed on AIR WIN63-202610151745-318700621 (r97_msg_rate): ten messages, then nothing at +1.5 s and +3 s, ten again at +7 s.
+    [Fact]
+    public void ShowMessageAllowsTenMessagesInAnyFiveSeconds()
+    {
+        var rate = new Plus.HabboHotel.Items.Wired.Modern.Actions.WiredChatRate();
+        Assert.All(Enumerable.Range(0, 10), _ => Assert.True(rate.TryAdmit(1000)));
+        Assert.False(rate.TryAdmit(2500));
+        Assert.False(rate.TryAdmit(4000));
+        Assert.All(Enumerable.Range(0, 10), _ => Assert.True(rate.TryAdmit(8000)));
+        Assert.False(rate.TryAdmit(12999));
+        Assert.True(rate.TryAdmit(13000));
+    }
+
     // Observed on AIR WIN63-202610151745-318700621 (wf_xtra_execution_limit.burst): 2 executions per 4 pulses let six says one second
     // apart all run; the window counts whole pulses, not milliseconds since the first execution.
     [Fact]

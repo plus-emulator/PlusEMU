@@ -93,20 +93,44 @@ public class FurnitureDirectionsTests
         Assert.Equal(expected, turns);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: on wf_antenna2 (0, 2) at 0, @rotation 1 stored 2 and 4 sent no update;
-    // bc_stairs_recolorable took 3.
+    // Observed on AIR WIN63-202610151745-318700621 on wf_antenna2 (0, 2): from 0, 1 stored 2 and 4 was refused; from 2, 4 was
+    // refused, 0 stored 0, then 6 and 4 were refused. bc_stairs_recolorable took 3.
     [Theory]
     [InlineData(new[] { 0, 2 }, 1, 2)]
-    [InlineData(new[] { 0, 2 }, 4, 0)]
+    [InlineData(new[] { 0, 2 }, 4, null)]
+    [InlineData(new[] { 0, 2 }, 0, 0)]
+    [InlineData(new[] { 0, 2 }, 6, null)]
     [InlineData(new[] { 0, 2 }, 2, 2)]
+    [InlineData(new[] { 0, 2 }, 7, 0)]
+    [InlineData(new[] { 0, 2 }, 3, 2)]
     [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 3, 3)]
-    [InlineData(new[] { 2, 6 }, 3, 6)]
+    [InlineData(new[] { 2, 6 }, 3, 2)]
+    [InlineData(new[] { 2, 6 }, 5, 6)]
     [InlineData(new[] { 0, 2 }, 8, null)]
     [InlineData(new int[0], 3, null)]
     [InlineData(new int[0], 4, 4)]
-    public void AWrittenRotationIsAlwaysADirectionTheFurniHas(int[] directions, int value, int? expected)
+    public void AWriteTakesTheNearestDirectionWithin45DegreesClockwiseFirst(int[] directions, int value, int? expected)
     {
         Assert.Equal(expected, FurnitureDirections.Write(Definition(2, directions), value));
+    }
+
+    // The observed r97_rot_assign4 sequence on wf_antenna2 (0, 2) starting at 2: 4, 0, 6, 4.
+    [Fact]
+    public void TheObservedAssignSequenceStoresOnlyTheZero()
+    {
+        var definition = Definition(2, [0, 2]);
+        var rotation = 2;
+        var updates = new List<int>();
+
+        foreach (var value in new[] { 4, 0, 6, 4 }) {
+            if (FurnitureDirections.Write(definition, value) is { } stored && stored != rotation) {
+                rotation = stored;
+                updates.Add(stored);
+            }
+        }
+
+        Assert.Equal(new[] { 0 }, updates);
+        Assert.Equal(0, rotation);
     }
 
     // Observed on AIR WIN63-202610151745-318700621: a client move of wf_antenna2 (0, 2, defaultdir 2) to direction 4 stored 2.
@@ -146,12 +170,14 @@ public class FurnitureDirectionsTests
     }
 
     [Theory]
-    [InlineData(1, 2)]
-    [InlineData(4, 0)]
-    [InlineData(2, 2)]
-    public void MatchToSnapshotStoresOnlyADirectionTheFurniHas(int snapshotRotation, int expected)
+    [InlineData(0, 1, 2)]
+    [InlineData(0, 4, 0)]
+    [InlineData(2, 4, 2)]
+    [InlineData(2, 6, 2)]
+    [InlineData(2, 0, 0)]
+    public void MatchToSnapshotStoresOnlyADirectionTheFurniHas(int start, int snapshotRotation, int expected)
     {
-        var item = new Item { Id = 1, Definition = Definition(2, [0, 2]) };
+        var item = new Item { Id = 1, Definition = Definition(2, [0, 2]), Rotation = start };
         item.Definition.Type = ItemType.Floor;
         var rotation = -1;
 

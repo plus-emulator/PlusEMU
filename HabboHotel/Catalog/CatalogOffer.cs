@@ -11,7 +11,11 @@ public enum CatalogProductType
     Badge,
     Bot,
     Pet,
-    Habbicon
+    Habbicon,
+    // Days of Builders Club membership.
+    BuildersClub,
+    // Furni added to a Builders Club member's furni limit.
+    BuildersClubAddon
 }
 
 // One thing an offer sells (catalog_offer_products).
@@ -35,8 +39,12 @@ public sealed record CatalogProduct
         CatalogProductType.Badge => "b",
         CatalogProductType.Bot => "r",
         CatalogProductType.Pet => "p",
-        _ => "habbicon"
+        CatalogProductType.Habbicon => "habbicon",
+        _ => ""
     };
+
+    // Builders Club membership and furni limit go out with no product, as hhus sends them.
+    public bool IsBuildersClub => Type is CatalogProductType.BuildersClub or CatalogProductType.BuildersClubAddon;
 
     public int ClassId => Type switch
     {

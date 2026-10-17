@@ -181,7 +181,11 @@ public partial class PlacedFurniRoomTests
         public int Standing { get; set; }
         public List<uint> Created { get; } = [];
         public List<uint> Deleted { get; } = [];
-        public DateTimeOffset? MembershipExpiry(int userId) => Expiry;
+        public BuildersClubMembership? Membership(int userId) => Expiry is { } expiry ? new(expiry, 0, 0) : null;
+        public void Extend(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int userId, int days, int furniLimit, DateTimeOffset now) =>
+            throw new NotSupportedException();
+        public bool AddFurni(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int userId, int furni, DateTimeOffset now) =>
+            throw new NotSupportedException();
         public int FurniCount(int userId) => Standing + Created.Count - Deleted.Count;
         public uint Create(uint definitionId, int userId, string extraData)
         {

@@ -190,6 +190,62 @@ public sealed class BuildersClubCatalogTests
         Assert.Equal((11, false, -1), ((int)entries[1]!["offerid"]!, (bool)entries[1]!["bc"]!, (int)entries[1]!["bcofferid"]!));
     }
 
+    [Fact]
+    public void BoughtPackagesRaiseTheLimitAndAddonsNeedARunningMembership()
+    {
+        var store = new Store();
+        var service = Service(store, []);
+        var habbo = EditorTestSupport.Player();
+        var month = new CatalogProduct { Type = CatalogProductType.BuildersClub, Amount = 31, ExtraParam = "1000" };
+        var addon = new CatalogProduct { Type = CatalogProductType.BuildersClubAddon, Amount = 45 };
+
+        Assert.True(service.CanBuy(habbo, month));
+        Assert.False(service.CanBuy(habbo, addon));
+        Assert.False(service.CanBuy(habbo, new CatalogProduct { Type = CatalogProductType.Furni }));
+        Assert.True(service.Deliver(null!, null!, habbo, month));
+        Assert.Equal([(31, 1000, Now)], store.Extended);
+
+        store.Expiry = Now.AddDays(31);
+        store.FurniLimit = 1000;
+        store.FurniAddon = 45;
+        Assert.True(service.CanBuy(habbo, addon));
+        Assert.True(service.Deliver(null!, null!, habbo, addon));
+        Assert.Equal([45], store.Added);
+        Assert.Equal(new BuildersClubStatus(31 * 86400, 1045, 2000000, 31 * 86400), service.Status(habbo));
+    }
+
+    [Fact]
+    public void MembershipOffersGoOutWithoutProducts()
+    {
+        var snapshot = CatalogSnapshotTestSupport.Snapshots().CaptureOffer(new CatalogOffer
+        {
+            Id = 13275,
+            LocalizationKey = "builders_club_31_days",
+            CostCredits = 100,
+            BulkPurchase = false,
+            Products = [new CatalogProduct { Type = CatalogProductType.BuildersClub, Amount = 31, ExtraParam = "1000" }]
+        });
+
+        Assert.Equal("builders_club_31_days", snapshot.LocalizationId);
+        Assert.Empty(snapshot.Products);
+        Assert.False(snapshot.CanSelectAmount);
+        Assert.False(snapshot.CanGift);
+    }
+
+    // Migration 91 mirrors hhus' BUILDERS_CLUB tree with Habbo's page ids; the fresh install carries it.
+    [Fact]
+    public void TheFreshInstallCarriesHabbosBuildersClubTree()
+    {
+        var migration = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/91_BuildersClubCatalogTree.sql"));
+        var fresh = File.ReadAllText(HabbiconPacketTests.Repo("Database/FreshInstall.sql"));
+
+        Assert.Contains("-- 173 pages (8 headings without a page), 4787 offers, 5665 page offers, 4711 furni.", migration);
+        Assert.Contains("(2129066,NULL,'Furni',2,NULL,0,'furni','default_3x3','BUILDERS_CLUB',1,1,0)", fresh);
+        Assert.Contains("(2129110,2129066,'Building Blocks',28,NULL,0,'bc_blocks_recolorable','recolorable_furniture','BUILDERS_CLUB',1,1,0)", fresh);
+        Assert.Contains("(2100000001,2129066,'Hot now',195,NULL,2,'2020_hotnow','default_3x3','BUILDERS_CLUB',1,0,0)", fresh);
+        Assert.Contains("'builders_club_loyalty','NORMAL',1,1,0)", fresh);
+    }
+
     private static CatalogOffer Offer(int id, ItemDefinition definition) => new()
     {
         Id = id,
@@ -215,7 +271,19 @@ public sealed class BuildersClubCatalogTests
     private sealed class Store : IBuildersClubStore
     {
         public DateTimeOffset? Expiry { get; set; }
-        public DateTimeOffset? MembershipExpiry(int userId) => Expiry;
+        public int FurniLimit { get; set; }
+        public int FurniAddon { get; set; }
+        public List<(int Days, int FurniLimit, DateTimeOffset Now)> Extended { get; } = [];
+        public List<int> Added { get; } = [];
+        public BuildersClubMembership? Membership(int userId) => Expiry is { } expiry ? new(expiry, FurniLimit, FurniAddon) : null;
+        public void Extend(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int userId, int days, int furniLimit, DateTimeOffset now) =>
+            Extended.Add((days, furniLimit, now));
+        public bool AddFurni(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int userId, int furni, DateTimeOffset now)
+        {
+            Added.Add(furni);
+
+            return Expiry > now;
+        }
         public int FurniCount(int userId) => 0;
         public uint Create(uint definitionId, int userId, string extraData) => throw new NotSupportedException();
         public void Delete(uint itemId) => throw new NotSupportedException();

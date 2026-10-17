@@ -186,6 +186,10 @@ public class CatalogManager : ICatalogManager, IStartable
                 return new() { Type = CatalogProductType.Pet, PetType = row.PetType ?? 0, Amount = row.Amount };
             case "habbicon":
                 return new() { Type = CatalogProductType.Habbicon, HabbiconId = row.HabbiconId ?? 0 };
+            case "builders_club":
+                return new() { Type = CatalogProductType.BuildersClub, Amount = row.Amount };
+            case "builders_club_addon":
+                return new() { Type = CatalogProductType.BuildersClubAddon, Amount = row.Amount };
             default:
                 return null;
         }

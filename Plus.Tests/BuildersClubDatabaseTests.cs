@@ -18,7 +18,7 @@ public sealed class BuildersClubDatabaseTests
             connection.Execute(migration);
             connection.Execute(migration);
 
-            Assert.Equal(["NORMAL", "NORMAL", "NORMAL"], connection.Query<string>("SELECT catalog_mode FROM catalog_pages WHERE id < 100 ORDER BY id"));
+            Assert.Equal(["NORMAL", "NORMAL", "NORMAL", "NORMAL"], connection.Query<string>("SELECT catalog_mode FROM catalog_pages WHERE id < 100 ORDER BY id"));
             Assert.Equal([("Furni", "furni", (int?)null), ("Building Blocks", "bc_blocks_recolorable", 1), ("Alphabet Blocks", "bc_alphabet_recolorable", 1)],
                 connection.Query<(string, string, int?)>("""
                     SELECT caption, link, IF(parent_id IS NULL, NULL, 1) FROM catalog_pages WHERE catalog_mode = 'BUILDERS_CLUB' ORDER BY id
@@ -41,17 +41,17 @@ public sealed class BuildersClubDatabaseTests
     {
         InSchema((connection, connectionString) =>
         {
-            connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/89_BuildersClubCatalog.sql")));
+            Migrate(connection);
             var store = new BuildersClubStore(new ProbeDatabase(connectionString));
             var expiry = new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero);
-            connection.Execute("INSERT INTO user_builders_club (user_id, expires_at) VALUES (7, @expiry)", new { expiry = expiry.UtcDateTime });
+            connection.Execute("INSERT INTO user_builders_club (user_id, expires_at, furni_limit, furni_addon) VALUES (7, @expiry, 1000, 45)", new { expiry = expiry.UtcDateTime });
 
             var placed = store.Create(19348, 7, "255,255,255");
             var stored = store.Create(19348, 7, "");
             connection.Execute("UPDATE items SET room_id = 42 WHERE id = @placed", new { placed });
 
-            Assert.Equal(expiry, store.MembershipExpiry(7));
-            Assert.Null(store.MembershipExpiry(8));
+            Assert.Equal(new BuildersClubMembership(expiry, 1000, 45), store.Membership(7));
+            Assert.Null(store.Membership(8));
             Assert.Equal(1, store.FurniCount(7));
             Assert.Equal(0, store.FurniCount(8));
             Assert.Equal("255,255,255", connection.QuerySingle<string>("SELECT extra_data FROM items WHERE id = @placed", new { placed }));
@@ -61,6 +61,68 @@ public sealed class BuildersClubDatabaseTests
             Assert.Equal(0, store.FurniCount(7));
             Assert.Equal([stored], connection.Query<uint>("SELECT item_id FROM items_builders_club"));
         });
+    }
+
+    [RoomComponentDatabaseFact]
+    public void APurchaseExtendsARunningMembershipStartsALapsedOneAndAddsFurniOnlyWhileItRuns()
+    {
+        InSchema((connection, connectionString) =>
+        {
+            Migrate(connection);
+            var store = new BuildersClubStore(new ProbeDatabase(connectionString));
+            var now = new DateTimeOffset(2040, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+            void InTransaction(Action<System.Data.IDbTransaction> write)
+            {
+                using var transaction = connection.BeginTransaction();
+                write(transaction);
+                transaction.Commit();
+            }
+
+            InTransaction(transaction => Assert.False(store.AddFurni(connection, transaction, 7, 45, now)));
+            InTransaction(transaction => store.Extend(connection, transaction, 7, 31, 1000, now));
+            InTransaction(transaction => store.Extend(connection, transaction, 7, 93, 500, now));
+            InTransaction(transaction => Assert.True(store.AddFurni(connection, transaction, 7, 45, now)));
+            Assert.Equal(new BuildersClubMembership(now.AddDays(124), 1000, 45), store.Membership(7));
+
+            // A lapsed membership starts again from now.
+            InTransaction(transaction => store.Extend(connection, transaction, 7, 31, 1500, now.AddDays(200)));
+            Assert.Equal(new BuildersClubMembership(now.AddDays(231), 1500, 45), store.Membership(7));
+        });
+    }
+
+    [RoomComponentDatabaseFact]
+    public void MembershipMigrationSeedsTheMembershipPagesAndOffersOnceAndTheyLoad()
+    {
+        InSchema((connection, _) =>
+        {
+            Migrate(connection);
+            var migration = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/90_BuildersClubMembership.sql"));
+            connection.Execute(migration);
+            connection.Execute(migration);
+
+            Assert.Equal([("Builders Club", "builders_club_frontpage", "builders_club_frontpage"), ("Builders Club Membership", "builders_club_membership", "builders_club_loyalty"),
+                ("Builders Club (Diamonds)", "loyalty_bc", "builders_club_loyalty"), ("BC Upgrades", "builders_upgrades", "builders_club_addons")],
+                connection.Query<(string, string, string)>("SELECT caption, link, layout FROM catalog_pages WHERE parent_id = 4 ORDER BY position"));
+            Assert.Equal([(13275, 100, 0, "builders_club", 31, "1000"), (1890000001, 250, 0, "builders_club", 93, "1500"), (13902, 0, 105, "builders_club", 31, "1000"),
+                (13212, 10, 0, "builders_club_addon", 45, ""), (13199, 50, 0, "builders_club_addon", 250, ""), (13211, 100, 0, "builders_club_addon", 600, "")],
+                connection.Query<(int, int, int, string, int, string)>("""
+                    SELECT offer.id, offer.cost_credits, offer.cost_points, product.product_type, product.amount, product.extra_param
+                    FROM catalog_page_offers page_offer
+                    JOIN catalog_pages page ON page.id = page_offer.page_id
+                    JOIN catalog_offers offer ON offer.id = page_offer.offer_id
+                    JOIN catalog_offer_products product ON product.offer_id = offer.id
+                    ORDER BY page.position, page_offer.position
+                    """));
+            Assert.Equal(6, connection.QuerySingle<int>("SELECT COUNT(*) FROM catalog_offer_products WHERE product_type LIKE 'builders_club%'"));
+        });
+    }
+
+    private static void Migrate(MySqlConnection connection)
+    {
+        connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/89_BuildersClubCatalog.sql")));
+        connection.Execute(System.Text.RegularExpressions.Regex.Match(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/90_BuildersClubMembership.sql")),
+            @"ALTER TABLE `user_builders_club`.*?;", System.Text.RegularExpressions.RegexOptions.Singleline).Value);
     }
 
     private static void InSchema(Action<MySqlConnection, string> run)
@@ -89,8 +151,15 @@ public sealed class BuildersClubDatabaseTests
                 CREATE TABLE catalog_page_offers (page_id INT NOT NULL, offer_id INT NOT NULL, position INT NOT NULL DEFAULT 0, PRIMARY KEY (page_id, offer_id)) ENGINE=InnoDB;
                 CREATE TABLE catalog_page_images (page_id INT NOT NULL, slot INT NOT NULL, image VARCHAR(255) NOT NULL, PRIMARY KEY (page_id, slot)) ENGINE=InnoDB;
                 CREATE TABLE catalog_page_texts (page_id INT NOT NULL, slot INT NOT NULL, text TEXT NOT NULL, PRIMARY KEY (page_id, slot)) ENGINE=InnoDB;
+                CREATE TABLE catalog_offers (id INT NOT NULL PRIMARY KEY, localization_key VARCHAR(100) NOT NULL, cost_credits INT UNSIGNED NOT NULL DEFAULT 0,
+                    cost_points INT UNSIGNED NOT NULL DEFAULT 0, points_type INT UNSIGNED NOT NULL DEFAULT 0, club_level TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                    bulk_purchase TINYINT(1) NOT NULL DEFAULT 1, enabled TINYINT(1) NOT NULL DEFAULT 1, preview_image VARCHAR(255) NOT NULL DEFAULT '') ENGINE=InnoDB;
+                CREATE TABLE catalog_offer_products (offer_id INT NOT NULL, position TINYINT UNSIGNED NOT NULL,
+                    product_type ENUM('furni','effect','badge','bot','pet','habbicon') NOT NULL, furniture_id INT UNSIGNED NULL, amount INT UNSIGNED NOT NULL DEFAULT 1,
+                    extra_param VARCHAR(1024) NOT NULL DEFAULT '', PRIMARY KEY (offer_id, position)) ENGINE=InnoDB;
                 INSERT INTO catalog_pages (id, parent_id, caption, link, layout) VALUES
                     (1, NULL, 'Furni', 'furni', 'default_3x3'),
+                    (4, NULL, 'Memberships', 'habbo_club_desktop', 'default_3x3'),
                     (2, 1, 'Recolorable Blocks', 'bc_blocks_recolorable', 'recolorable_furniture'),
                     (3, 1, 'Recolorable Alphabet Blocks', 'bc_alphabet_recolorable', 'recolorable_furniture');
                 INSERT INTO catalog_page_offers (page_id, offer_id, position) VALUES (2, 35203, 1), (2, 35202, 0), (3, 35175, 0);

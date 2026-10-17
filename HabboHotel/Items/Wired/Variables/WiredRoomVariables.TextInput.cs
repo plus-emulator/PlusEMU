@@ -28,6 +28,7 @@ public sealed partial class WiredRoomVariables
         }
 
         var capturers = new List<WiredVariableCapturer>();
+        var capturing = new List<(Item Box, uint Definition)>();
 
         foreach (var box in boxes) {
             if (!box.TryValidateConfiguration(context.ConfigurationOf(box), out var config, out _)) {
@@ -39,6 +40,7 @@ public sealed partial class WiredRoomVariables
             }
 
             capturers.Add(new(id, config.Text, config.IntParams[0] == 2 ? MetadataOn(id, "wf_xtra_var_text_connector")?.TextConnector : null));
+            capturing.Add((box.Item, id));
         }
 
         if (capturers.Count == 0) {
@@ -51,6 +53,17 @@ public sealed partial class WiredRoomVariables
 
         context.VariableFrame = WiredVariableRuntimeFrames.Create(context, context.VariableFrame);
 
-        return Module.CaptureContextValues(values, context.VariableFrame);
+        if (!Module.CaptureContextValues(values, context.VariableFrame)) {
+            return false;
+        }
+
+        // Observed on AIR WIN63-202610151745-318700621 (wf_xtra_var_text_connector.capture): a capture flashes the capturer, gives its
+        // variable (definition state 6, then 7) and flashes the add-ons on the definition's tile, with the say.
+        foreach (var (box, definition) in capturing.Where(entry => values.ContainsKey(entry.Definition))) {
+            _room.GetWired()?.OnEvent(box);
+            FlashDefinition(definition, WiredFlashStates.DefinitionGiven);
+        }
+
+        return true;
     }
 }

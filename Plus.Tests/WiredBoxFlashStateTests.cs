@@ -97,3 +97,17 @@ public sealed partial class WiredGlideConveyorTests
         VendingIds = []
     };
 }
+
+public class WiredDefinitionFlashStateTests
+{
+    // Observed on AIR WIN63-202610151745-318700621 and r90: give 6 then 7, change 2, remove 8 on a variable definition box.
+    [Fact]
+    public void ADefinitionShowsTheKindOfItsLastWriteAndAlternatesWithinIt()
+    {
+        Assert.Equal("6", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("0", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionGiven));
+        Assert.Equal("7", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("6", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionGiven));
+        Assert.Equal("6", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("7", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionGiven));
+        Assert.Equal("2", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("7", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionChanged));
+        Assert.Equal("8", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("2", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionRemoved));
+    }
+}

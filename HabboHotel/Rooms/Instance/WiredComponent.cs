@@ -500,6 +500,20 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
     }
 
+    /// <summary>A box shows a given state in the next flash batch (a variable definition shows the kind of its last write).</summary>
+    internal void FlashState(Item item, string state)
+    {
+        if (_room.HideWired) {
+            return;
+        }
+
+        item.LegacyDataString = state;
+
+        lock (_pendingFlashes) {
+            _pendingFlashes.Add(item);
+        }
+    }
+
     /// <summary>
     /// Observed on AIR WIN63-202610131318-860371703: a furni state written by wired goes out in the tick's data batch, with the antenna flips
     /// and any due box flashes, on every wired tick and ahead of that tick's movement packet. Other data formats keep the object update.

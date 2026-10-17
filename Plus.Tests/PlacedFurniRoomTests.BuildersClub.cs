@@ -27,7 +27,7 @@ public partial class PlacedFurniRoomTests
     {
         Viewer();
         var (service, store, _) = BuildersClub();
-        var packet = ClientPacket(BuildersClubPageId, BuildersClubOfferId, "", 1, 1, 2, false);
+        var packet = ClientPacket(BuildersClubPageId, BuildersClubOfferId, "", 1, 1, 2, true);
 
         await new BuildersClubPlaceRoomItemEvent(service).Parse(_room, _client, packet);
 
@@ -58,14 +58,14 @@ public partial class PlacedFurniRoomTests
         RoomUsers().TryAdd(2, visitor);
         var (service, store, _) = BuildersClub();
 
-        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);
 
         Assert.Empty(store.Created);
         Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
         Assert.Contains(ServerPacketHeader.RoomNotificationComposer, _client.Sent);
 
         store.Expiry = Clock.AddDays(1);
-        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);
 
         Assert.Single(store.Created);
         Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
@@ -78,7 +78,7 @@ public partial class PlacedFurniRoomTests
         _room.OwnerName = "someone else";
         var (service, store, _) = BuildersClub();
 
-        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);
 
         Assert.Empty(store.Created);
         Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
@@ -91,17 +91,17 @@ public partial class PlacedFurniRoomTests
         var (service, store, page) = BuildersClub(trialLimit: "1");
         store.Standing = 1;
 
-        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);
         Assert.Empty(store.Created);
 
         store.Standing = 0;
         page.CatalogMode = CatalogModes.Normal;
-        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);
         Assert.Empty(store.Created);
 
         page.CatalogMode = CatalogModes.BuildersClub;
         page.Offers[BuildersClubOfferId].Product.Definition!.InteractionType = InteractionType.Exchange;
-        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);
         Assert.Empty(store.Created);
         Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
     }
@@ -112,7 +112,7 @@ public partial class PlacedFurniRoomTests
         Viewer();
         var (service, store, _) = BuildersClub();
 
-        service.PlaceFloorItem(_room, _client, new(-1, BuildersClubOfferId, ""), 1, 1, 0);
+        service.PlaceFloorItem(_room, _client, new(-1, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);
 
         Assert.Single(store.Created);
         Assert.True(Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor).IsBuildersClub);
@@ -124,8 +124,8 @@ public partial class PlacedFurniRoomTests
         // AIR WIN63-202610151745-318700621 com/sulake/habbo/ui/handler/ChatInputWidgetHandler.as:325-327 says ":pickallbc" once confirmed.
         Viewer();
         var (service, store, _) = BuildersClub();
-        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0);
-        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 2, 1, 0);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 2, 1, 0, confirmed: true);
         Assert.Equal(2, _room.GetRoomItemHandler().GetWallAndFloor.Count(item => item.IsBuildersClub));
 
         new Plus.HabboHotel.Rooms.Chat.Commands.User.PickAllCommand(null!, Proxy<IRoomItemPickupService>((_, _) => throw new InvalidOperationException("no music")))
@@ -146,7 +146,7 @@ public partial class PlacedFurniRoomTests
         Viewer();
         var (service, store, _) = BuildersClub();
 
-        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);
 
         var placed = Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
         var wire = BuildersClubItemIds.ToWire(placed.Id);
@@ -173,12 +173,47 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
+    public void ATrialPlacementAsksBeforeItHidesTheRoomAndAMemberNeverHidesIt()
+    {
+        // AIR WIN63-202610151745-318700621 com/sulake/habbo/room/class_2005.as:366-397: BuildersClubPlacementWarning (2075) asks
+        // room.confirm.hide_room and the client sends the placement again confirmed.
+        Viewer();
+        var (service, store, _) = BuildersClub();
+
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, "x"), 1, 1, 2);
+
+        Assert.Empty(store.Created);
+        Assert.Contains(ServerPacketHeader.BuildersClubPlacementWarningComposer, _client.Sent);
+
+        using (var reader = new BinaryReader(new MemoryStream(TypedFurnitureStateTests.Payload(
+                   Plus.Communication.Packets.Outgoing.Catalog.BuildersClubPlacementWarningComposer.Floor(BuildersClubPageId, BuildersClubOfferId, "x", 1, 1, 2))))) {
+            Assert.Equal((0, BuildersClubPageId, BuildersClubOfferId, "x", 1, 1, 2), (TypedFurnitureStateTests.ReadInt(reader), TypedFurnitureStateTests.ReadInt(reader),
+                TypedFurnitureStateTests.ReadInt(reader), TypedFurnitureStateTests.ReadString(reader), TypedFurnitureStateTests.ReadInt(reader),
+                TypedFurnitureStateTests.ReadInt(reader), TypedFurnitureStateTests.ReadInt(reader)));
+        }
+
+        Assert.False(service.HidesRoom(_room));
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, "x"), 1, 1, 2, confirmed: true);
+        Assert.Single(store.Created);
+        Assert.True(service.HidesRoom(_room));
+
+        // Once hidden, a further trial placement asks nothing.
+        _client.Sent.Clear();
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, "x"), 2, 1, 2);
+        Assert.Equal(2, store.Created.Count);
+        Assert.DoesNotContain(ServerPacketHeader.BuildersClubPlacementWarningComposer, _client.Sent);
+
+        store.Expiry = Clock.AddDays(1);
+        Assert.False(service.HidesRoom(_room));
+    }
+
+    [Fact]
     public void AFailedPlacementDeletesTheStoredFurni()
     {
         Viewer();
         var (service, store, _) = BuildersClub();
 
-        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 40, 40, 0);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 40, 40, 0, confirmed: true);
 
         Assert.Single(store.Created);
         Assert.Equal(store.Created, store.Deleted);

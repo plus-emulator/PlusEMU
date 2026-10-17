@@ -5,6 +5,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users.Badges;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Achievements;
+using Plus.HabboHotel.Catalog.BuildersClub;
 
 namespace Plus.HabboHotel.Users.UserData;
 
@@ -21,8 +22,9 @@ public class UserDataFactory : IUserDataFactory
     private readonly IAchievementManager _achievements;
     private readonly IGameClientManager _clients;
     private readonly IRoomManager _rooms;
+    private readonly IBuildersClubService? _buildersClub;
 
-    public UserDataFactory(BadgeManager badgeManager, IDatabase database, IEnumerable<IUserDataLoadingTask> userDataLoadingTasks, IUserPersistenceService persistence, IUserComponentLoader components, Clothing.IClothingStore clothingStore, IRoomVisitRecorder roomVisits, TimeProvider time, IAchievementManager achievements, IGameClientManager clients, IRoomManager rooms)
+    public UserDataFactory(BadgeManager badgeManager, IDatabase database, IEnumerable<IUserDataLoadingTask> userDataLoadingTasks, IUserPersistenceService persistence, IUserComponentLoader components, Clothing.IClothingStore clothingStore, IRoomVisitRecorder roomVisits, TimeProvider time, IAchievementManager achievements, IGameClientManager clients, IRoomManager rooms, IBuildersClubService? buildersClub = null)
     {
         _badgeManager = badgeManager;
         _database = database;
@@ -35,6 +37,7 @@ public class UserDataFactory : IUserDataFactory
         _achievements = achievements;
         _clients = clients;
         _rooms = rooms;
+        _buildersClub = buildersClub;
     }
 
     public async Task<Habbo?> Create(int userId, CancellationToken cancellationToken = default)
@@ -103,7 +106,7 @@ public class UserDataFactory : IUserDataFactory
         var habbo = users.SingleOrDefault();
         habbo?.Currencies.Load(UserCurrencyStore.Load(connection, userId));
         habbo?.SetRoomVisitRecorder(_roomVisits, _achievements);
-        habbo?.SetHotelServices(_clients, _rooms);
+        habbo?.SetHotelServices(_clients, _rooms, _buildersClub);
 
         return habbo;
     }

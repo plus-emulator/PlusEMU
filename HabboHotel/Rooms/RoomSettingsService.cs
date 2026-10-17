@@ -10,6 +10,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Navigator;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Rooms.Chat.Filter;
+using Plus.HabboHotel.Catalog.BuildersClub;
 
 namespace Plus.HabboHotel.Rooms;
 
@@ -74,7 +75,7 @@ public interface IRoomSettingsService
 
 public sealed class RoomSettingsService(IRoomManager _roomManager, IWordFilterManager _wordFilterManager,
     INavigatorManager _navigationManager, IAchievementManager _achievementManager, IRoomSettingsStore store,
-    ISettingsManager _settings) : IRoomSettingsService
+    ISettingsManager _settings, IBuildersClubService? _buildersClub = null) : IRoomSettingsService
 {
     public void Show(GameClient session, uint roomId)
     {
@@ -89,9 +90,10 @@ public sealed class RoomSettingsService(IRoomManager _roomManager, IWordFilterMa
         }
 
         RoomSettingsSnapshot snapshot;
+        var hidden = _buildersClub?.HidesRoom(room) ?? false;
 
         lock (room.Data) {
-            snapshot = RoomSettingsSnapshot.Capture(room);
+            snapshot = RoomSettingsSnapshot.Capture(room, hidden);
         }
 
         session.Send(new RoomSettingsDataComposer(snapshot));

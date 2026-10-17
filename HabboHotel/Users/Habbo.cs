@@ -24,6 +24,7 @@ using Plus.Utilities;
 
 using Dapper;
 using Plus.HabboHotel.Users.Navigator;
+using Plus.HabboHotel.Catalog.BuildersClub;
 
 namespace Plus.HabboHotel.Users;
 
@@ -33,6 +34,7 @@ public class Habbo
     private IAchievementManager _roomAchievements = null!;
     private IGameClientManager? _clients;
     private IRoomManager? _rooms;
+    private IBuildersClubService? _buildersClub;
     internal uint WiredRoomNetworkDestination { get; set; }
     internal uint WiredRoomEntrySourceRoomId { get; set; }
     internal uint WiredRoomEntryDestinationRoomId { get; set; }
@@ -430,6 +432,15 @@ public class Habbo
         Client.Send(new OpenConnectionComposer(room.Id));
 
         if (!room.CheckRights(Client, true, true) && !Client.GetHabbo().IsTeleporting && !Client.GetHabbo().IsHopping) {
+            // A room hidden by Builders Club furni overrides its door mode (AIR WIN63-202610151745-318700621
+            // navigator/roomsettings/RoomSettingsCtrl.as:726, notification.builders_club.room_locked); staff still enter.
+            if (!Access.Can(PermissionKeys.RoomEnterLocked) && _buildersClub?.HidesRoom(room) == true) {
+                Client.Send(new FlatAccessDeniedComposer(room.Id, ""));
+                Client.Send(new CloseConnectionComposer());
+
+                return;
+            }
+
             if (room.Access == RoomAccess.Doorbell && !Access.Can(PermissionKeys.RoomEnterLocked)) {
                 if (room.UserCount > 0) {
                     Client.Send(new DoorbellComposer(""));
@@ -502,10 +513,11 @@ public class Habbo
     private IGameClientManager HotelClients => _clients ?? throw new InvalidOperationException("The user is not connected to the hotel services.");
     private IRoomManager HotelRooms => _rooms ?? throw new InvalidOperationException("The user is not connected to the hotel services.");
 
-    internal void SetHotelServices(IGameClientManager clients, IRoomManager rooms)
+    internal void SetHotelServices(IGameClientManager clients, IRoomManager rooms, IBuildersClubService? buildersClub = null)
     {
         _clients = clients;
         _rooms = rooms;
+        _buildersClub = buildersClub;
     }
 
     internal void SetRoomVisitRecorder(IRoomVisitRecorder roomVisits, IAchievementManager achievements)

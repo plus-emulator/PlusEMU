@@ -527,11 +527,12 @@ public sealed class CatalogPurchaseServiceTests
         public void SendStatus(GameClient session) => StatusSent++;
         public Plus.HabboHotel.Catalog.BuildersClub.BuildersClubStatus Status(Habbo habbo) => throw new NotSupportedException();
         public void SendFurniCount(GameClient session) => throw new NotSupportedException();
-        public void PlaceFloorItem(Plus.HabboHotel.Rooms.Room room, GameClient session, Plus.HabboHotel.Catalog.BuildersClub.BuildersClubPlacement request, int x, int y, int rotation) =>
+        public void PlaceFloorItem(Plus.HabboHotel.Rooms.Room room, GameClient session, Plus.HabboHotel.Catalog.BuildersClub.BuildersClubPlacement request, int x, int y, int rotation, bool confirmed) =>
             throw new NotSupportedException();
-        public void PlaceWallItem(Plus.HabboHotel.Rooms.Room room, GameClient session, Plus.HabboHotel.Catalog.BuildersClub.BuildersClubPlacement request, string wallLocation) =>
+        public void PlaceWallItem(Plus.HabboHotel.Rooms.Room room, GameClient session, Plus.HabboHotel.Catalog.BuildersClub.BuildersClubPlacement request, string wallLocation, bool confirmed) =>
             throw new NotSupportedException();
         public bool TryPickUp(GameClient session, Plus.HabboHotel.Rooms.Room room, Item item) => throw new NotSupportedException();
+        public bool HidesRoom(Plus.HabboHotel.Rooms.Room room) => throw new NotSupportedException();
     }
 
     private sealed record TestContext(

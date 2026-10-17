@@ -74,9 +74,9 @@ public static class FurnitureDirections
 
     /// <summary>
     /// The rotation an @rotation write or a snapshot match stores, or null to leave the furni as it is. A value the furni lacks
-    /// becomes its next direction at or after it, wrapping to the first: the lookup the client's rotate starts from
-    /// (AIR WIN63-202610151745-318700621, room/class_1854.as:2193-2208). Observed on that build on wf_antenna2 (0, 2) at 0:
-    /// assigning 1 stored 2 and assigning 4 sent no update (it wraps to 0, where the furni already was).
+    /// becomes the nearest direction within 45 degrees, clockwise first; anything further is refused. Observed on AIR
+    /// WIN63-202610151745-318700621 on wf_antenna2 (0, 2): from 0, 1 stored 2 and 4 was refused; from 2, 4 was refused, 0 stored
+    /// 0, and then 6 and 4 were refused.
     /// </summary>
     public static int? Write(ItemDefinition definition, int value)
     {
@@ -90,7 +90,13 @@ public static class FurnitureDirections
             return Allows(definition, value) ? value : null;
         }
 
-        return directions[IndexAtOrAfter(directions, value)];
+        foreach (var candidate in new[] { value, (value + 1) % 8, (value + 7) % 8 }) {
+            if (directions.Contains(candidate)) {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

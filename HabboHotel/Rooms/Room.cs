@@ -498,6 +498,13 @@ public class Room
                 return;
             }
 
+            try {
+                GetWired().OnRoomTick();
+            }
+            catch (Exception e) {
+                ExceptionLogger.LogException(e);
+            }
+
             CycleComponents();
 
             try {
@@ -560,6 +567,7 @@ public class Room
                 return;
             }
 
+            RunRoomPhase(() => GetWired().OnRoomTick());
             RunRoomPhase(CycleComponents);
             RunRoomPhase(CycleFurniture);
             RunRoomPhase(CycleActors);
@@ -846,6 +854,17 @@ public class Room
 
     public void SendObject(Item item)
     {
+        if (item is { IsTemporary: true, IsFloorItem: true }) {
+            // A Wired copy arrives as a single-object Objects (1991), not ObjectAdd (observed on hhus); AIR adds objects
+            // from either message the same way (room/class_1993.as:692-722, AIR WIN63-202610131318-860371703).
+            var copy = RoomFurnitureSnapshot.Capture([item], OwnerId, OwnerName);
+
+            SendPacket(new ObjectsComposer(copy), false, viewer => _wiredComponent?.ObjectEnqueued(viewer, item, null));
+            SendPacket(new FurnitureMetadataComposer(copy.Items));
+
+            return;
+        }
+
         var furniture = RoomItemSnapshot.Capture(item);
 
         SendPacket(item.IsWallItem ? new ItemAddComposer(furniture) : new ObjectAddComposer(furniture), false,
@@ -898,7 +917,8 @@ public class Room
     // Clients whose revision does not map the data composer get the full update instead; the mapping is checked before anything is sent to a client.
     internal void SendObjectData(Item item, string data, bool batch)
     {
-        IServerPacket packet = batch ? new ObjectsDataUpdateComposer([(item.Id, data)]) : new ObjectDataUpdateComposer(item.Id, data);
+        var wire = FurnitureWireData.ForState(item.ExtraData, data);
+        IServerPacket packet = batch ? new ObjectsDataUpdateComposer([(item.Id, wire)]) : new ObjectDataUpdateComposer(item.Id, wire);
 
         try {
             if (_roomUserManager == null) {
@@ -911,7 +931,7 @@ public class Room
             var fallback = clients.Where(client => !Maps(client, packet.MessageId) && Maps(client, Plus.Communication.Packets.Outgoing.ServerPacketHeader.ObjectUpdateComposer)).ToArray();
 
             if (fallback.Length > 0) {
-                var legacy = RoomItemSnapshot.Capture(item) with { Data = new FurnitureDataSnapshot.Legacy(data) };
+                var legacy = RoomItemSnapshot.Capture(item) with { Data = wire };
                 GameClient.SendBroadcast(new ObjectUpdateComposer(legacy), fallback);
                 GameClient.SendBroadcast(new FurnitureMetadataComposer([legacy]), fallback);
             }
@@ -929,7 +949,7 @@ public class Room
     /// The tick's box flashes go out before its Wired movement packet. Observed r92f (AIR WIN63-202610131318-860371703): the
     /// ObjectsDataUpdate with the fired boxes precedes the WiredMovements of the same firing (r92-chase, r92-u2f-targets, r92-room14-slow).
     /// </summary>
-    internal void FlushWiredFlashes() => _wiredComponent?.FlushFlashes(force: true);
+    internal void FlushWiredFlashes() => _wiredComponent?.FlushFlashes();
 
     internal void SendObjectsData(IReadOnlyList<Item> items)
     {
@@ -937,7 +957,7 @@ public class Room
             return;
         }
 
-        IServerPacket packet = new ObjectsDataUpdateComposer([.. items.Select(item => (item.Id, item.LegacyDataString))]);
+        IServerPacket packet = new ObjectsDataUpdateComposer([.. items.Select(item => (item.Id, FurnitureWireData.ForState(item.ExtraData, item.LegacyDataString)))]);
 
         try {
             if (_roomUserManager == null) {
@@ -964,8 +984,23 @@ public class Room
 
     public void SendPacket(List<IServerPacket> packets)
     {
-        foreach (var packet in packets) {
-            SendPacket(packet);
+        if (packets.Count <= 1) {
+            foreach (var packet in packets) {
+                SendPacket(packet);
+            }
+
+            return;
+        }
+
+        try {
+            if (_roomUserManager == null) {
+                return;
+            }
+
+            GameClient.SendBroadcast(packets, _roomUserManager.GetRoomUsers().Select(user => user?.GetClient()).OfType<GameClient>().ToList());
+        }
+        catch (Exception e) {
+            ExceptionLogger.LogException(e);
         }
     }
 

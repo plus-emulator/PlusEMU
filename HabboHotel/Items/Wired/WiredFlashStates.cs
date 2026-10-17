@@ -13,9 +13,7 @@ public static class WiredFlashStates
 
     public static string Next(string current, IWiredItem? box)
     {
-        if (box is IWiredConfiguredItem { Descriptor.Category: WiredBoxCategory.Selector } selector) {
-            var resting = selector.Configuration.Origin?.Native?.Filter == true ? 3 : 0;
-
+        if (RestingState(box) is { } resting) {
             return current == (resting + 1).ToString(System.Globalization.CultureInfo.InvariantCulture)
                 ? (resting + 2).ToString(System.Globalization.CultureInfo.InvariantCulture)
                 : (resting + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -23,4 +21,12 @@ public static class WiredFlashStates
 
         return current == "1" ? "0" : "1";
     }
+
+    /// <summary>
+    /// A selector's state while it is not flashing: 0 (orange), or 3 (green) with "Filter existing selection" ticked. A save switches
+    /// to it. Observed on AIR WIN63-202610131318-860371703. Other boxes have none.
+    /// </summary>
+    public static int? RestingState(IWiredItem? box) => box is IWiredConfiguredItem { Descriptor.Category: WiredBoxCategory.Selector } selector
+        ? selector.Configuration.Origin?.Native?.Filter == true ? 3 : 0
+        : null;
 }

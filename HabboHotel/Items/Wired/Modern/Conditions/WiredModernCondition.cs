@@ -165,12 +165,15 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_team_has_rank":
             case "wf_cnd_team_has_score":
                 var scores = context.Room.GetGameManager().Points;
-                var teams = Param(config, 0) == 0 ? Avatars().Select(user => (int)user.Team).Where(team => team is >= 1 and <= 4).Distinct().ToArray() : [Param(config, 0)];
-
-                return WiredRoomOperations.Quantify(teams.Select(team => name == "wf_cnd_team_has_score"
+                bool TeamMatches(int team) => team is >= 1 and <= 4 && (name == "wf_cnd_team_has_score"
                     ? WiredRoomOperations.Compare(scores[team], Param(config, 2), Param(config, 1))
-                    : 1 + Enumerable.Range(1, 4).Count(other => scores[other] > scores[team]) == Param(config, 1) + 1),
-                    Param(config, name == "wf_cnd_team_has_score" ? 4 : 3));
+                    : 1 + Enumerable.Range(1, 4).Count(other => scores[other] > scores[team]) == Param(config, 1) + 1);
+
+                // "The user's team": each selected user is checked through their own team, and a user in no team fails. Observed on hhus
+                // (AIR WIN63-202610131318-860371703): with the owner in a team and a bot in none, "all users" fails and "any user" passes.
+                return Param(config, 0) == 0
+                    ? Quantify(user => TeamMatches((int)user.Team), name == "wf_cnd_team_has_score" ? 4 : 3)
+                    : TeamMatches(Param(config, 0));
             default:
                 throw new InvalidOperationException("Condition has no evaluator.");
         }

@@ -20,8 +20,17 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         }
 
         return TryDecode(name, configuration, out var core, out _) && TryTokens(name, configuration, core, null, out var tokens)
-            && ValidateCore(name, configuration, core, tokens, out error);
+            && ValidateCore(name, configuration, core, tokens, out error, UnchosenDestination(name, configuration));
     }
+
+    /// <summary>
+    /// Observed on hhus (AIR WIN63-202610131318-860371703): Give Variable and Change Variable Value save with no destination variable
+    /// picked (the picker's "n"/"0"), with every other field checked as usual. Such a box changes nothing until a variable is chosen;
+    /// execution still requires a resolved destination.
+    /// </summary>
+    private static bool UnchosenDestination(string name, WiredConfiguration configuration) =>
+        name is "wf_act_give_var" or "wf_act_change_var_val" && configuration.VariableIds.Length > 0
+        && WiredVariableAbsent.Is(configuration.VariableIds[0]);
 
     /// <summary>
     /// The measured native has-var / not-has-var shape whose variable id is the literal "0": owned [1], F100, U0, quantifier 0, one id "0", no text,
@@ -153,7 +162,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
     }
 
     private static bool ValidateCore(string name, WiredConfiguration configuration, System.Collections.Immutable.ImmutableArray<int> p,
-        string[] tokens, out string error)
+        string[] tokens, out string error, bool unchosenDestination = false)
     {
         error = "Invalid scalar variable settings.";
 
@@ -161,13 +170,15 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
-        if (!ValidToken(tokens[0])) {
+        if (!unchosenDestination && !ValidToken(tokens[0])) {
             return false;
         }
 
         if (name is "wf_act_give_var" or "wf_act_remove_var") {
-            if ((!WiredVariableModule.TryDefinitionId(tokens[0], out _)
-                && !RoomWiredBuiltinVariables.SupportsPresenceMutation(new((WiredVariableTarget)p[0], tokens[0]))) || p[0] == 3) {
+            // Observed on hhus (AIR WIN63-202610131318-860371703): Give Variable saves with a global variable (and then gives nothing).
+            if ((!unchosenDestination && !WiredVariableModule.TryDefinitionId(tokens[0], out _)
+                && !RoomWiredBuiltinVariables.SupportsPresenceMutation(new((WiredVariableTarget)p[0], tokens[0])))
+                || p[0] == (int)WiredVariableTarget.Global && name == "wf_act_remove_var") {
                 return false;
             }
 
@@ -237,6 +248,12 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         return true;
     }
 
+    /// <summary>The variable a Give Variable or Change Variable Value box writes, resolved through the room's catalog.</summary>
+    public WiredVariableReference? Destination(string name, WiredConfiguration configuration) =>
+        name is "wf_act_give_var" or "wf_act_change_var_val" && TryDecode(name, configuration, out var p, out _)
+        && TryTokens(name, configuration, p, variables, out var tokens) && tokens[0].Length > 0
+            ? new WiredVariableReference((WiredVariableTarget)p[0], tokens[0]) : null;
+
     public bool Execute(string name, WiredConfiguration configuration, WiredVariableFrame frame)
     {
         string[] tokens = ["", ""];
@@ -260,6 +277,11 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         var operandReference = ReferenceSlot(name, p) is { } slot && p[slot.Option] == 1
             ? new WiredVariableReference((WiredVariableTarget)p[slot.Target], tokens[1]) : (WiredVariableReference?)null;
         var sameHolder = SameHolder(name, p);
+
+        // A global variable always exists: Give Variable on one changes nothing (observed on hhus: = 0 still passed after giving 7).
+        if (name == "wf_act_give_var" && reference.Target == WiredVariableTarget.Global) {
+            return false;
+        }
 
         if (name is "wf_act_give_var" or "wf_act_remove_var") {
             var mutation = name == "wf_act_remove_var" ? WiredVariableMutation.Remove : p[1] == 1 ? WiredVariableMutation.Replace : WiredVariableMutation.Give;

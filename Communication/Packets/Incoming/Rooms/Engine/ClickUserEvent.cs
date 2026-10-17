@@ -25,7 +25,8 @@ public sealed class ClickUserEvent : RoomPacketEvent
         var actor = room.GetRoomUserManager().GetRoomUserByHabbo(session.GetHabbo().Id);
         var target = room.GetRoomUserManager().GetRoomUserByVirtualId(virtualId);
 
-        if (actor == null || actor.IsBot || target == null || target.IsBot || target.GetClient()?.GetHabbo() == null) {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): clicking a bot fires Click User, with the clicker as the triggering user.
+        if (actor == null || actor.IsBot || target == null || target.IsPet || !target.IsBot && target.GetClient()?.GetHabbo() == null) {
             return Task.CompletedTask;
         }
 

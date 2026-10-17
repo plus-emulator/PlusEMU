@@ -18,7 +18,8 @@ public sealed partial class WiredNativeLifecycleTests
     [InlineData(0, 1, 223)]
     [InlineData(1, 1, 33)]
     [InlineData(2, 4, 43)]
-    [InlineData(0, 4, 226)]
+    [InlineData(0, 4, 225)]
+    [InlineData(0, 2, 226)]
     public void JoinTeamSavesMapToTheObservedEffectIds(int type, int team, int effect)
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_act_join_team", out var descriptor));
@@ -56,6 +57,10 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.True(WiredTimeConditions.MatchesRange(config, DateTimeOffset.FromUnixTimeSeconds(1798761600)));
         Assert.False(WiredTimeConditions.MatchesRange(config, DateTimeOffset.FromUnixTimeSeconds(1798761601)));
         Assert.False(WiredTimeConditions.MatchesRange(config, DateTimeOffset.FromUnixTimeSeconds(1767225599)));
+        // Observed on hhus (AIR WIN63-202610131318-860371703): an end of 0 never passes; a start of 0 is open.
+        var now = DateTimeOffset.FromUnixTimeSeconds(1792200000);
+        bool Range(int start, int end) => WiredTimeConditions.MatchesRange(config with { IntParams = [start, end] }, now);
+        Assert.Equal((false, true, false, false), (Range(0, 0), Range(0, 2000000000), Range(1700000000, 0), Range(0, 1700000000)));
     }
 
     // Show Message radio 0 arrived as a Whisper and radio 1 as a Chat, both to the owner; the saved ints were [radio, 202, -1].

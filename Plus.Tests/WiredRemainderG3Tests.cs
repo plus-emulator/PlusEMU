@@ -232,23 +232,24 @@ public sealed partial class WiredRemainderG3Tests
 
         public void Set(long value) => Assert.True(Module.Mutate(new(WiredVariableTarget.User, "custom:20"), Holder, WiredVariableMutation.Set, value, Frame));
 
-        // The parts are not catalogue variables (hhus r84, r90), so the add-on's reading is checked on the stored value itself.
-        public long? Read(int sub) => TimeUtil.TimeUtilities is { } time && time.Has(sub)
-            && Module.Read(new(WiredVariableTarget.User, "custom:20"), Holder, Frame) is { } value ? time.Read(value, sub, Variables.TimeZone()) : null;
-
-        public WiredVariableValue? ReadSynthetic(int sub) =>
-            Module.Read(new(WiredVariableTarget.User, $"custom:{WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, sub, true)!.Value}"), Holder, Frame);
+        // Each ticked part is its own catalogue variable "<parent>.<mode>.<part>" (observed on hhus, AIR WIN63-202610131318-860371703).
+        public WiredVariableReference Part(int sub) =>
+            new(WiredVariableTarget.User, $"custom:{WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, sub, true)!.Value}");
+        public long? Read(int sub) => Module.Read(Part(sub), Holder, Frame)?.Value;
+        public long? Parent() => Module.Read(new(WiredVariableTarget.User, "custom:20"), Holder, Frame)?.Value;
 
         public string[] Names() => Variables.Catalog().Variables.Select(variable => variable.Definition.Name).Order().ToArray();
     }
 
-    private const long Tuesday = 1_700_000_000; // 2023-11-14 22:13:20 UTC, a Tuesday in ISO week 46.
+    private const long Tuesday = 1_700_000_000; // 2023-11-14 22:13:20 UTC (GMT in London), a Tuesday in ISO week 46.
+    private const long TuesdayMs = Tuesday * 1000;
 
     [Fact]
-    public void TimeUtilitiesReadEveryCalendarFieldAndEveryElapsedUnitOfTheValueAsAUnixTimestamp()
+    public void TimeUtilitiesReadEveryCalendarFieldAndEveryElapsedUnitOfTheValueAsEpochMilliseconds()
     {
+        // A Value-mode parent holds epoch milliseconds, the unit of @current_time (observed on hhus, AIR WIN63-202610131318-860371703).
         var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
-        rig.Give(Tuesday);
+        rig.Give(TuesdayMs);
         var expected = new Dictionary<int, long>
         {
             [1] = 0,
@@ -261,7 +262,7 @@ public sealed partial class WiredRemainderG3Tests
             [8] = 46,
             [9] = 11,
             [10] = 2023,
-            [20] = Tuesday * 1000,
+            [20] = TuesdayMs,
             [21] = Tuesday,
             [22] = Tuesday / 60,
             [23] = Tuesday / 3600,
@@ -274,21 +275,35 @@ public sealed partial class WiredRemainderG3Tests
             Assert.Equal(value, rig.Read(sub));
         }
 
-        // Observed on hhus (r90 time-util, r84): the room catalogue lists only the parent, never the parts.
-        Assert.Equal(["stamp"], rig.Names());
+        Assert.Equal(17, rig.Names().Count(name => name.StartsWith("stamp.")));
     }
 
     [Fact]
-    public void OnlyTheTickedPartsAreReadAndNoneBecomesACatalogueVariable()
+    public void TheEditorsNamesNameTheSubVariablesAndOnlyTheTickedOnesExist()
     {
-        var rig = new G3TimeRig((1 << 10) | (1 << 21), 0);
-        rig.Give(Tuesday);
-        Assert.Equal(["stamp"], rig.Names());
+        // AIR VariableTimeUtilAddon.as:48-59 (WIN63-202610131318-860371703) SubVariableParam names.
+        // Observed on hhus: "<parent>.value.<part>", with the month part sent as "month_of_year " (trailing space).
+        var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
+        rig.Give(TuesdayMs);
+        Assert.Equal(new[]
+        {
+            "stamp", "stamp.value.day", "stamp.value.day_of_month", "stamp.value.day_of_week", "stamp.value.day_of_year", "stamp.value.hour",
+            "stamp.value.hour_of_day", "stamp.value.millisecond", "stamp.value.milliseconds_of_seconds", "stamp.value.minute",
+            "stamp.value.minute_of_hour", "stamp.value.month", "stamp.value.month_of_year ", "stamp.value.second", "stamp.value.seconds_of_minute",
+            "stamp.value.week", "stamp.value.week_of_year", "stamp.value.year"
+        }.Order().ToArray(), rig.Names());
+        rig.Configure((1 << 10) | (1 << 21), 0);
+        Assert.Equal(["stamp", "stamp.value.second", "stamp.value.year"], rig.Names());
+        rig.Configure((1 << 10) | (1 << 21), 1);
+        Assert.Equal(["stamp", "stamp.creation_time", "stamp.creation_time.second", "stamp.creation_time.year"], rig.Names());
+        rig.Configure((1 << 10) | (1 << 21), 2);
+        Assert.Equal(["stamp", "stamp.last_update_time", "stamp.last_update_time.second", "stamp.last_update_time.year"], rig.Names());
+        rig.Configure((1 << 10) | (1 << 21), 0);
         Assert.Equal(2023, rig.Read(10));
         Assert.Equal(Tuesday, rig.Read(21));
+        Assert.Null(rig.Read(0));
         Assert.Null(rig.Read(9));
         Assert.Null(rig.Read(22));
-        Assert.Null(rig.ReadSynthetic(10));
     }
 
     [Theory]
@@ -298,7 +313,7 @@ public sealed partial class WiredRemainderG3Tests
     {
         var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
         rig.Variables.TimeZone = () => TimeZoneInfo.CreateCustomTimeZone("g3", TimeSpan.FromHours(hours), "g3", "g3");
-        rig.Give(Tuesday);
+        rig.Give(TuesdayMs);
         Assert.Equal((hour, 2023, 11, day), (rig.Read(4), rig.Read(10), rig.Read(9), rig.Read(6)));
         Assert.Equal(Tuesday, rig.Read(21));
         Assert.Equal(Tuesday / 86400, rig.Read(24));
@@ -316,16 +331,20 @@ public sealed partial class WiredRemainderG3Tests
         Assert.Equal(1_700_000_000_123, rig.Read(20));
         Assert.Equal(Tuesday, rig.Read(21));
         Assert.Equal(22, rig.Read(4));
+        // The base row "<parent>.creation_time" is the raw timestamp.
+        Assert.Equal(1_700_000_000_123, rig.Read(0));
         rig.Configure(WiredVariableTimeUtilities.ValidMask, 2);
+        Assert.Equal(1_700_003_661_456, rig.Read(0));
         Assert.Equal(456, rig.Read(1));
         Assert.Equal(1_700_003_661_456, rig.Read(20));
         Assert.Equal(Tuesday + 3661, rig.Read(21));
         Assert.Equal(23, rig.Read(4));
         Assert.Equal(14, rig.Read(3));
         Assert.Equal(21, rig.Read(2));
-        // The value mode is a different reading of the same variable: the stored 6 is second six of 1970.
+        // The value mode is a different reading of the same variable: the stored 6 is millisecond six of 1970.
         rig.Configure(WiredVariableTimeUtilities.ValidMask, 0);
-        Assert.Equal(6, rig.Read(21));
+        Assert.Equal(6, rig.Read(20));
+        Assert.Equal(0, rig.Read(21));
         Assert.Equal(1970, rig.Read(10));
     }
 
@@ -333,17 +352,16 @@ public sealed partial class WiredRemainderG3Tests
     public void TwoElapsedUnitsSubtractToTheTimeBetweenTwoInstants()
     {
         var rig = new G3TimeRig(1 << 23, 0);
-        rig.Give(Tuesday);
+        rig.Give(TuesdayMs);
         var first = rig.Read(23)!.Value;
-        rig.Set(Tuesday + 7200 + 59);
+        rig.Set(TuesdayMs + (7200 + 59) * 1000);
         Assert.Equal(2, rig.Read(23)!.Value - first);
     }
 
     [Theory]
     [InlineData(-1L, 1970)]
-    [InlineData(long.MinValue, 1970)]
-    [InlineData(253402300799L, 9999)]
-    public void AnOutOfEraValueClampsAtTheEpochOrReadsAsNothingInsteadOfFailing(long value, int year)
+    [InlineData(253402300799999L, 9999)]
+    public void AValueAtTheEdgeOfTheCalendarReadsItsYear(long value, int year)
     {
         var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
         rig.Give(value);
@@ -351,9 +369,10 @@ public sealed partial class WiredRemainderG3Tests
     }
 
     [Theory]
-    [InlineData(253402300800L)]
+    [InlineData(long.MinValue)]
+    [InlineData(253402300800000L)]
     [InlineData(long.MaxValue)]
-    public void AValueBeyondTheLastCalendarYearHasNoCalendarOrElapsedReading(long value)
+    public void AValueOutsideTheCalendarYearsHasNoCalendarOrElapsedReading(long value)
     {
         var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
         rig.Give(value);
@@ -364,15 +383,77 @@ public sealed partial class WiredRemainderG3Tests
     }
 
     [Fact]
-    public void ATimePartIdNamesNoVariable()
+    public void WritingAValuePartMovesTheParentByThatPartAndKeepsEveryOtherField()
+    {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): year 2026 → 2025 moved 2026-10-16 to 2025-10-16, then day_of_week 1
+        // moved it to the Monday of that week.
+        var rig = new G3TimeRig((1 << 5) | (1 << 10) | (1 << 4) | (1 << 21), 0);
+        var friday = new DateTimeOffset(2026, 10, 16, 21, 26, 0, 123, TimeSpan.Zero).ToUnixTimeMilliseconds();
+        rig.Give(friday);
+        Assert.Equal((5, 2026, 22), (rig.Read(5), rig.Read(10), rig.Read(4)));
+        Assert.True(rig.Module.Mutate(rig.Part(10), rig.Holder, WiredVariableMutation.Set, 2025, rig.Frame));
+        Assert.Equal(new DateTimeOffset(2025, 10, 16, 21, 26, 0, 123, TimeSpan.Zero).ToUnixTimeMilliseconds(), rig.Parent());
+        Assert.Equal((4, 2025), (rig.Read(5), rig.Read(10)));
+        Assert.True(rig.Module.Mutate(rig.Part(5), rig.Holder, WiredVariableMutation.Set, 1, rig.Frame));
+        Assert.Equal(new DateTimeOffset(2025, 10, 13, 21, 26, 0, 123, TimeSpan.Zero).ToUnixTimeMilliseconds(), rig.Parent());
+        // Calendar parts are set on the room's wall clock: hour_of_day 9 in London summer time is 08:xx UTC.
+        Assert.True(rig.Module.Mutate(rig.Part(4), rig.Holder, WiredVariableMutation.Set, 9, rig.Frame));
+        Assert.Equal(new DateTimeOffset(2025, 10, 13, 8, 26, 0, 123, TimeSpan.Zero).ToUnixTimeMilliseconds(), rig.Parent());
+        // Elapsed parts move the parent by whole units and keep the remainder.
+        Assert.True(rig.Module.Mutate(rig.Part(21), rig.Holder, WiredVariableMutation.Set, 0, rig.Frame));
+        Assert.Equal(123, rig.Parent());
+        // A part is never given or removed on its own, and the parent is written as a whole, so a refused write keeps it.
+        Assert.False(rig.Module.Mutate(rig.Part(10), rig.Holder, WiredVariableMutation.Give, 2000, rig.Frame));
+        Assert.False(rig.Module.Mutate(rig.Part(10), rig.Holder, WiredVariableMutation.Set, 10000, rig.Frame));
+        Assert.Equal(123, rig.Parent());
+    }
+
+    [Fact]
+    public void AValuePartChangeIsInterceptedAsThePartsOwnChange()
     {
         var rig = new G3TimeRig(1 << 10, 0);
-        rig.Give(Tuesday);
-        var id = WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, 10, true)!.Value;
-        var part = new WiredVariableReference(WiredVariableTarget.User, $"custom:{id}");
-        Assert.False(rig.Module.Mutate(part, rig.Holder, WiredVariableMutation.Set, 1, rig.Frame));
-        Assert.Null(rig.ReadSynthetic(10));
-        Assert.Equal(2023, rig.Read(10));
+        rig.Give(TuesdayMs);
+        rig.Module.DrainChanges();
+        Assert.True(rig.Module.Mutate(rig.Part(10), rig.Holder, WiredVariableMutation.Set, 2024, rig.Frame));
+        var change = Assert.Single(rig.Module.DrainChanges());
+        Assert.Equal(20u, change.Key.DefinitionId);
+        var part = rig.Module.ProjectPartChange(rig.Part(10), change)!;
+        Assert.Equal((2023L, 2024L), (part.Before!.Value, part.After!.Value));
+        Assert.Equal(WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, 10, true), part.Key.DefinitionId);
+        var config = new WiredConfiguration { IntParams = [(int)WiredVariableTarget.User, 0, 1, 1, 0, 0, 0, -1], Text = rig.Part(10).Token };
+        Assert.True(WiredVariableChangedTrigger.Matches(config, part));
+        Assert.False(WiredVariableChangedTrigger.Matches(config with { IntParams = [(int)WiredVariableTarget.User, 0, 1, 0, 1, 0, 0, -1] }, part));
+    }
+
+    [Fact]
+    public void AParentChangeIsAnUnchangedChangeOfAPartThatKeptItsValue()
+    {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): +1 ms on the parent fired the year part's Variable Changed set to unchanged.
+        var rig = new G3TimeRig(1 << 10, 0);
+        rig.Give(TuesdayMs);
+        rig.Module.DrainChanges();
+        rig.Set(TuesdayMs + 1);
+        var part = rig.Module.ProjectPartChange(rig.Part(10), Assert.Single(rig.Module.DrainChanges()))!;
+        var config = new WiredConfiguration { IntParams = [(int)WiredVariableTarget.User, 0, 1, 0, 0, 1, 0, -1], Text = rig.Part(10).Token };
+        Assert.True(WiredVariableChangedTrigger.Matches(config, part));
+        Assert.False(WiredVariableChangedTrigger.Matches(config with { IntParams = [(int)WiredVariableTarget.User, 0, 1, 1, 0, 0, 0, -1] }, part));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void TimestampPartsAndTheirBaseRowAreReadOnly(int mode)
+    {
+        var rig = new G3TimeRig(1 << 10, mode);
+        rig.Give(TuesdayMs);
+        var year = rig.Read(10);
+        Assert.NotNull(year);
+        Assert.False(rig.Module.Mutate(rig.Part(10), rig.Holder, WiredVariableMutation.Set, 1999, rig.Frame));
+        Assert.False(rig.Module.Mutate(rig.Part(0), rig.Holder, WiredVariableMutation.Set, 1, rig.Frame));
+        Assert.Equal(year, rig.Read(10));
+        Assert.Equal(TuesdayMs, rig.Parent());
+        Assert.Null(rig.Module.ProjectPartChange(rig.Part(10), new(1, new(20, WiredVariableTarget.User, rig.Holder.StorageId),
+            WiredVariableChangeKind.Updated, new(1, null, null), new(2, null, null), 0, 0)));
     }
 
     [Theory]

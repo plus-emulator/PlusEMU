@@ -94,6 +94,35 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(TargetOccupancy.None, _room.GetGameMap().Navigation!.Executor.Context.Claims.OccupancyAt(5, 0));
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): freeze and unfreeze of a standing user send only the effect.
+    [Fact]
+    public void WiredFreezeAndThawOfAStandingUserSendNoUserUpdate()
+    {
+        var actor = ExecutorConfiguredActor(new() { Engine = PathfindingEngine.V2 });
+        ExecutorTick();
+        Assert.True(WiredAvatarState.For(_room).FreezeUser(actor, 0, cancelOnTeleport: true));
+        ExecutorTick();
+        Assert.True(actor.Frozen);
+        Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.UserUpdateComposer);
+        Assert.True(WiredAvatarState.For(_room).Thaw(actor));
+        ExecutorTick();
+        Assert.False(actor.Frozen);
+        Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.UserUpdateComposer);
+    }
+
+    [Fact]
+    public void WiredFreezeOfAWalkingUserSendsItsStop()
+    {
+        var actor = ExecutorConfiguredActor(new() { Engine = PathfindingEngine.V2 });
+        actor.MoveTo(3, 1);
+        ExecutorTick();
+        Assert.True(actor.HasStatus("mv"));
+        Assert.True(WiredAvatarState.For(_room).FreezeUser(actor, 0, cancelOnTeleport: true));
+        ExecutorTick();
+        Assert.False(actor.HasStatus("mv"));
+        Assert.DoesNotContain("mv", ExecutorUpdate(actor).Status);
+    }
+
     [Fact]
     public void RideHorseMountQueuesOneCoherentPlacementAndCancelsBothOldBatches()
     {
@@ -255,7 +284,7 @@ public partial class PlacedFurniRoomTests
         var destination = ExecutorFloor(11, 3, 2, z: .75);
         var actor = ExecutorActor(0, 1);
         long afterPlacement = -1;
-        ExecutorObserveLanding((user, item) =>
+        ExecutorObserveArrival((user, item) =>
         {
             if (item != landing) {
                 return;

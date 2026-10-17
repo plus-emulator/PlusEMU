@@ -83,6 +83,29 @@ public sealed partial class WiredConditionParityTests
         Assert.Equal((expected, expected), (RunEmpty(0), RunEmpty(1)));
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): both cards save quantifier 1 (any) and read it back as 1, although their editors
+    // show no quantifier; on an empty selection the result is the same as under quantifier 0.
+    [Theory]
+    [InlineData("wf_cnd_furnis_hv_avtrs", true)]
+    [InlineData("wf_cnd_has_furni_on", false)]
+    public void HiddenQuantifierOneSavesReadsBackAndKeepsTheEmptySelectionResult(string name, bool expected)
+    {
+        var (room, _, _) = World();
+        var box = Box(room, name, _ => null);
+        var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor) with { FurniSourceTypes = [200], Quantifier = 1 };
+
+        Assert.True(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native, out var proposed));
+        Assert.True(box.TryValidateConfiguration(proposed, out var config, out var error), error);
+        box.ApplyConfiguration(config);
+        Assert.Equal(1, config.Origin!.Native.Quantifier);
+        Assert.False(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native with { Quantifier = 2 }, out _));
+
+        var context = Context(room, [], []);
+        context.SelectorKinds = WiredSelectionKind.Furni;
+        context.Selected = new();
+        Assert.Equal(expected, box.Execute(context));
+    }
+
     [Theory]
     [InlineData(1, 101, "", true)]
     [InlineData(2, 101, "", false)]

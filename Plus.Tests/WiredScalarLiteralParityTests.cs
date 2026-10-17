@@ -69,6 +69,38 @@ public sealed class WiredScalarLiteralParityTests
         Assert.False(WiredVariableExecutors.TryValidate(name, WiredNativeTestSupport.Scalar(name, new() { IntParams = [.. fields], Text = "custom:10" }), out _));
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): Give Variable (value 5, override) and Change Variable Value (Minimum 40 / Maximum 41,
+    // constant operand) save with no destination variable picked.
+    [Theory]
+    [InlineData("wf_act_give_var", new[] { 1, 0, 5, 1, 0, -10, 0 }, true)]
+    [InlineData("wf_act_give_var", new[] { 0, 0, 0, 0, 0, -10, 0 }, true)]
+    [InlineData("wf_act_change_var_val", new[] { 1, 41, 0, 0, 3, -10, 0 }, true)]
+    [InlineData("wf_act_change_var_val", new[] { 1, 40, 0, 0, 8, -10, 0 }, true)]
+    [InlineData("wf_act_give_var", new[] { -10, 0, 5, 1, 0, -10, 0 }, true)] // a global target saves too (observed with a chosen global)
+    [InlineData("wf_act_change_var_val", new[] { 1, 41, 1, 0, 3, 1, 0 }, false)]
+    [InlineData("wf_act_change_var_val", new[] { 1, 999, 0, 0, 3, -10, 0 }, false)]
+    public void GiveAndChangeSaveWithoutAChosenDestinationAndChangeNothing(string name, int[] owned, bool saves)
+    {
+        Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
+
+        foreach (var absent in new[] { WiredVariableAbsent.Id, WiredVariableAbsent.WireId }) {
+            var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = [.. owned], VariableIds = [absent, absent] };
+            Assert.True(WiredNativeEditorProjection.TryCompile(7, descriptor, native, out var runtime));
+            Assert.Equal(saves, WiredVariableExecutors.TryValidate(name, runtime, out _));
+
+            if (!saves) {
+                continue;
+            }
+
+            var holder = new WiredVariableHolder(WiredVariableTarget.User, 1, 1);
+            var frame = new WiredVariableFrame(1, [holder]) { Trigger = [holder] };
+            var store = new MemoryWiredVariableStore();
+            var module = new WiredVariableModule(1, new Directory(WiredVariableTarget.User), store, TimeProvider.System);
+            Assert.False(new WiredVariableExecutors(module, TimeProvider.System).Execute(name, runtime, frame));
+            Assert.Null(module.Read(new(WiredVariableTarget.User, "custom:10"), holder, frame));
+        }
+    }
+
     private sealed class Directory(WiredVariableTarget target = WiredVariableTarget.Furni) : IWiredVariableDirectory
     {
         public WiredVariableDefinition? Find(uint id) => id is 10 or 11 ? new(id, 1, 5, "test" + id, target, WiredVariableAvailability.RoomActive, true) : null;

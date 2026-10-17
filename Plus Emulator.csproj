@@ -9,6 +9,7 @@
 		<AssemblyName>Plus Emulator</AssemblyName>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -34,6 +35,8 @@
 		<!-- The Web API docs page (Communication/Http/WebApiDocsEndpoints.cs) with swagger-ui-dist 5.32.4 (Apache-2.0, see its LICENSE). -->
 		<EmbeddedResource Include="Communication\Http\ApiDocs\index.html;Communication\Http\ApiDocs\swagger-ui-init.js;Communication\Http\ApiDocs\openapi.json" LogicalName="Plus.ApiDocs.%(Filename)%(Extension)" />
 		<EmbeddedResource Include="Communication\Http\ApiDocs\swagger-ui-dist\swagger-ui.css;Communication\Http\ApiDocs\swagger-ui-dist\swagger-ui-bundle.js;Communication\Http\ApiDocs\swagger-ui-dist\swagger-ui-standalone-preset.js;Communication\Http\ApiDocs\swagger-ui-dist\favicon-16x16.png;Communication\Http\ApiDocs\swagger-ui-dist\favicon-32x32.png" LogicalName="Plus.ApiDocs.swagger-ui-dist.%(Filename)%(Extension)" />
+		<!-- Habbo's metadata for the built-in (@) and smart (~) variable catalogue rows (WiredNativeCatalogProjection.Builtins). -->
+		<EmbeddedResource Include="HabboHotel\Items\Wired\Variables\WiredBuiltinCatalogue.json" LogicalName="Plus.Wired.BuiltinCatalogue.json" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -65,6 +68,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<None Update="LICENSE;README.md">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+		</None>
 		<None Update="Config\config.json">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>

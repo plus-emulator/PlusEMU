@@ -54,12 +54,13 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal(startX, actor.X);
         Assert.Contains("/mv 3,1,0/", ExecutorUpdate(actor).Status);
-        Assert.Empty(events);
-        ExecutorTick();
-        Assert.Equal((3, 1), (actor.X, actor.Y));
+        // The Wired walk events go out with the announcement, for its origin and its last step only.
         Assert.Equal(new[] { (WiredBoxType.TriggerWalkOffFurni, origin.Id),
             (WiredBoxType.TriggerWalkOnFurni, landing.Id) }, events.Select(e => (e.Kind, e.Item)).ToArray());
         Assert.All(events, e => Assert.Equal("3,1,0", e.Mv));
+        ExecutorTick();
+        Assert.Equal((3, 1), (actor.X, actor.Y));
+        Assert.Equal(2, events.Count);
         Assert.DoesNotContain("/mv ", ExecutorUpdate(actor).Status);
     }
 
@@ -100,7 +101,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void ExecutorLockedFirstPendingEdgeCorrectsAtOriginWithoutAnyHooks()
+    public void ExecutorLockedFirstPendingEdgeCorrectsAtOriginWithoutLandingHooks()
     {
         var origin = ExecutorFloor(10, 0, 1);
         ExecutorFloor(11, 1, 1);
@@ -113,7 +114,9 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((0, 1, 0d), (actor.X, actor.Y, actor.Z));
         Assert.Same(origin, actor.LastItem);
-        Assert.Empty(events);
+        // Only the Wired walk events of the announcement went out.
+        Assert.Equal(new[] { (WiredBoxType.TriggerWalkOffFurni, origin.Id), (WiredBoxType.TriggerWalkOnFurni, 11u) },
+            events.Select(e => (e.Kind, e.Item)).ToArray());
         var correction = ExecutorUpdate(actor);
         Assert.Equal((0, 1), (correction.X, correction.Y));
         Assert.DoesNotContain("/mv ", correction.Status);
@@ -133,9 +136,10 @@ public partial class PlacedFurniRoomTests
         _room.GetGameMap().SetFloorStatus(2, 1, 0);
         ExecutorTick();
         Assert.Equal((1, 1, 0d), (actor.X, actor.Y, actor.Z));
+        // The announcement raised the walk-off; the cut-short landing raises the walk-on of the tile it landed on.
         Assert.Equal(new[] { (WiredBoxType.TriggerWalkOffFurni, origin.Id),
-            (WiredBoxType.TriggerWalkOnFurni, landing.Id) }, events.Select(e => (e.Kind, e.Item)).ToArray());
-        Assert.All(events, e => Assert.Equal("3,1,0", e.Mv));
+            (WiredBoxType.TriggerWalkOnFurni, landing.Id) }, events.Take(2).Select(e => (e.Kind, e.Item)).ToArray());
+        Assert.All(events.Take(2), e => Assert.Equal("3,1,0", e.Mv));
         Assert.Equal((1, 1), (ExecutorUpdate(actor).X, ExecutorUpdate(actor).Y));
     }
 
@@ -236,7 +240,8 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((0, 1, 0d), (actor.X, actor.Y, actor.Z));
         Assert.False(actor.IsWalking);
         Assert.False(actor.HasStatus("mv"));
-        Assert.Empty(events);
+        // The walk-on went out with the announcement; the dropped step lands nowhere.
+        Assert.Equal(new[] { (WiredBoxType.TriggerWalkOnFurni, 10u) }, events.Select(e => (e.Kind, e.Item)).ToArray());
         Assert.Contains(actor, _room.GetGameMap().GetRoomUsers(new(0, 1)));
         Assert.DoesNotContain(actor, _room.GetGameMap().GetRoomUsers(new(1, 1)));
     }

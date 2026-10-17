@@ -433,6 +433,12 @@ internal sealed partial class WiredStackEngine
         }
 
         if (negative is { } requested && (requested ? conditionsPassed : !conditionsPassed)) {
+            // Observed on hhus (AIR WIN63-202610131318-860371703): a Receive Signal trigger whose condition fails still flashes, with the
+            // antenna and the sender in the same batch; its condition and actions stay at rest.
+            if (!requested && !called && context.Event.Kind == WiredEventKind.Signal) {
+                Flash(firing.Source);
+            }
+
             yield break;
         }
 

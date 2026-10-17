@@ -80,8 +80,18 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             return MatchesPickedBoxes(config, change, module, context.Room.Id);
         }
 
-        return module.TryResolveCatalogId(config.VariableIds[0], (WiredVariableTarget)config.IntParams[0], out var reference)
-            && Matches(config with { Text = reference.Token }, change, context.Room.Id);
+        if (!module.TryResolveCatalogId(config.VariableIds[0], (WiredVariableTarget)config.IntParams[0], out var reference)) {
+            return false;
+        }
+
+        // A Time Utilities Value part is interceptable. Observed on hhus (AIR WIN63-202610131318-860371703): every change of the parent
+        // is a change of each part, and the part's own values pick increased, decreased or unchanged (+1 ms on the parent fired
+        // year/unchanged and milliseconds_of_seconds/increased; +1 on the year part fired year/increased and milliseconds/unchanged).
+        if (module.ProjectPartChange(reference, change) is { } part) {
+            return Matches(config with { Text = reference.Token }, part, context.Room.Id);
+        }
+
+        return Matches(config with { Text = reference.Token }, change, context.Room.Id);
     }
     // Source-derived scalar support. Resolve only live definitions of this room through the module's ownership checks.
     // Echo/reference/derived-box identity is intentionally not guessed without a runtime observation.

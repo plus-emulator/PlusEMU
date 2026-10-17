@@ -125,6 +125,14 @@ public sealed class WiredConfigurationService(
 
             var error = "Invalid native Wired settings.";
 
+            // A pick of a temporary copy is refused with the official key, in every box including Place Furni.
+            if (native.PrimaryItems.Concat(native.SecondaryItems)
+                .Any(pick => room.GetRoomItemHandler().GetItem(pick.ItemId)?.IsTemporary == true)) {
+                session.Send(new WiredValidationErrorComposer(WiredConfigurationSave.TemporaryFurniNotAllowedKey));
+
+                return;
+            }
+
             // Place Furni refuses a template that cannot be cloned (observed r93a; see WiredPlaceTemplatePolicy).
             if (descriptor.CanonicalName == "wf_act_place_furni"
                 && Modern.Actions.WiredPlaceTemplatePolicy.RefusalKey(room, native.SavedState.Snapshots) is { } notCloneable) {

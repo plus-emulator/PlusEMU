@@ -67,10 +67,11 @@ public class WiredClickPacketHookTests
     [InlineData(10)]
     public async Task FloorClickReachesNativeClickFurniThroughTheRealDomain(int second)
     {
-        var world = new World("wf_trg_click_furni", [0]);
+        var world = new World(null, []);
         var item = new Item { Id = 77, ExtraData = new LegacyDataFormat { Data = "1" }, Definition = new() { ItemName = "bc_tile_1", Type = ItemType.Floor } };
         world.Items("_floorItems").TryAdd(item.Id, item);
         typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, world.Room);
+        world.AddBox("wf_trg_click_furni", [100], [item.Id]);
         await new ClickFurniEvent(new FurnitureUseService(null!, null!)).Parse(world.Room, world.Client, Packet((int)item.Id, second));
         world.FlushWired();
         var evt = Assert.Single(world.Capture.Events);
@@ -133,7 +134,7 @@ public class WiredClickPacketHookTests
     [Fact]
     public void ClickEnvironmentIsSentOnEntryAndOnlyWhenTriggerPresenceChanges()
     {
-        var world = new World("wf_trg_click_furni", [0]);
+        var world = new World("wf_trg_click_furni", [100]);
         Assert.Empty(world.Packets);
         world.Ready();
         var first = Assert.Single(world.Packets, p => p.Id == 3583).Payload;
@@ -184,21 +185,30 @@ public class WiredClickPacketHookTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task BotAndPetTargetsAreNotHumanAvatarClicks(bool pet)
+    public async Task ABotClickFiresClickUserAndAPetClickDoesNot(bool pet)
     {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): clicking the bot Robbie fires Click User.
         var world = new World("wf_trg_click_user", [1, 1]);
         world.Target.BotData = (RoomBot)RuntimeHelpers.GetUninitializedObject(typeof(RoomBot));
         world.Target.BotData.AiType = pet ? BotAiType.Pet : BotAiType.Generic;
         await new ClickUserEvent().Parse(world.Room, world.Client, Packet(world.Target.VirtualId));
         world.FlushWired(responseEvent: true);
-        Assert.Empty(world.Capture.Events);
-        Assert.Empty(world.Packets);
+
+        if (pet) {
+            Assert.Empty(world.Capture.Events);
+            Assert.Empty(world.Packets);
+        }
+        else {
+            var evt = Assert.Single(world.Capture.Events);
+            Assert.Same(world.Actor, evt.Actor);
+            Assert.Same(world.Target, evt.TargetUser);
+        }
     }
 
     [Fact]
     public async Task ActualRegistryTemporaryFloorClickDispatchesOnlyTheClickAndKeepsSameState()
     {
-        var world = new World("wf_trg_click_furni", [0]);
+        var world = new World("wf_trg_click_furni", [200]);
         var definition = new ItemDefinition
         {
             Id = 30,
@@ -212,6 +222,7 @@ public class WiredClickPacketHookTests
         };
         var item = world.Room.GetRoomItemHandler().PlaceTemporaryFloorItem(definition, 42, 1, 1, 0, 0, "unchanged")!;
         Assert.True(world.Room.GetRoomItemHandler().OwnsTemporary(item));
+        world.AddBox("wf_slc_furni_area", [1, 1, 1, 1, 0, 0]);
         world.Packets.Clear();
         await new ClickFurniEvent(new FurnitureUseService(null!, null!)).Parse(world.Room, world.Client, Packet(unchecked((int)item.Id), 10));
         world.FlushWired();
@@ -231,11 +242,59 @@ public class WiredClickPacketHookTests
     }
 
     [Fact]
+    public void ASpawnedCopyArrivesAsASingleObjectObjectsPacket()
+    {
+        // Observed on hhus: a Wired copy arrives as Objects (1991) holding one object, never ObjectAdd.
+        var world = new World("wf_trg_click_furni", [100]);
+        var definition = new ItemDefinition { Id = 30, ItemName = "template", Type = ItemType.Floor, Length = 1, Width = 1, Height = 0.1, Stackable = true };
+        world.Packets.Clear();
+        var item = world.Room.GetRoomItemHandler().PlaceTemporaryFloorItem(definition, 42, 1, 1, 0)!;
+        Assert.DoesNotContain(world.Packets, packet => packet.Id == 1534);
+        var objects = Assert.Single(world.Packets, packet => packet.Id == 1991).Payload;
+        var owners = objects.ReadInt();
+
+        for (var i = 0; i < owners; i++) {
+            objects.ReadInt();
+            objects.ReadString();
+        }
+
+        Assert.Equal(1, objects.ReadInt());
+        Assert.Equal(TemporaryItemIds.First, item.Id);
+        Assert.Equal(unchecked((int)TemporaryItemIds.First), objects.ReadInt());
+    }
+
+    [Fact]
+    public void RemoveTemporaryFurniSendsObjectRemoveMultipleAndAPickUpSendsObjectRemove()
+    {
+        // Observed on hhus: Wired removal is in 3589 [1, 2147401728, -1, false] (AIR package_71/class_2976.as:44-60), never ObjectRemove;
+        // the owner's pick-up of a copy is ObjectRemove.
+        var world = new World("wf_trg_click_furni", [100]);
+        var definition = new ItemDefinition { Id = 30, ItemName = "template", Type = ItemType.Floor, Length = 1, Width = 1, Height = 0.1, Stackable = true };
+        var handler = world.Room.GetRoomItemHandler();
+        var first = handler.PlaceTemporaryFloorItem(definition, 42, 1, 1, 0)!;
+        var second = handler.PlaceTemporaryFloorItem(definition, 42, 2, 1, 0)!;
+        world.Packets.Clear();
+        Assert.True(handler.RemoveTemporaryFloorItemsByWired([first]));
+        Assert.DoesNotContain(world.Packets, packet => packet.Id == 2703);
+        var removed = Assert.Single(world.Packets, packet => packet.Id == 3589).Payload;
+        Assert.Equal(1, removed.ReadInt());
+        Assert.Equal(unchecked((int)TemporaryItemIds.First), removed.ReadInt());
+        Assert.Equal(-1, removed.ReadInt());
+        Assert.False(removed.ReadBool());
+        Assert.Null(handler.GetItem(first.Id));
+        world.Packets.Clear();
+        Assert.True(handler.RemoveTemporaryFloorItem(second));
+        Assert.DoesNotContain(world.Packets, packet => packet.Id == 3589);
+        Assert.Single(world.Packets, packet => packet.Id == 2703);
+    }
+
+    [Fact]
     public async Task NegativeWallMagnitudeResolvesWallWhileSameFloorWireBitsStayDistinct()
     {
-        var world = new World("wf_trg_click_furni", [0]);
+        var world = new World(null, []);
         var wall = new Item { Id = 5, Definition = new() { Type = ItemType.Wall } };
         world.Items("_wallItems").TryAdd(5, wall);
+        world.AddBox("wf_trg_click_furni", [100], [wall.Id]);
         await new ClickFurniEvent(new FurnitureUseService(null!, null!)).Parse(world.Room, world.Client, Packet(-5, 20));
         world.FlushWired();
         Assert.Same(wall, Assert.Single(world.Capture.Events).EventItem);
@@ -245,6 +304,9 @@ public class WiredClickPacketHookTests
         Assert.Empty(world.Capture.Events);
         var highFloor = new Item { Id = unchecked((uint)-5), Definition = new() { Type = ItemType.Floor } };
         world.Items("_floorItems").TryAdd(highFloor.Id, highFloor);
+        // Picks are limited to ids up to int.MaxValue, so the selector holds this floor item.
+        world.AddBox("wf_trg_click_furni", [200]);
+        world.AddBox("wf_slc_furni_area", [0, 0, 1, 1, 0, 0]);
         await new ClickFurniEvent(new FurnitureUseService(null!, null!)).Parse(world.Room, world.Client, Packet(-5, 10));
         world.FlushWired();
         Assert.Same(highFloor, Assert.Single(world.Capture.Events).EventItem);
@@ -411,7 +473,7 @@ public class WiredClickPacketHookTests
         public void Ready() => _wired.SnapshotEnqueued(Client, Items("_floorItems").Values, [Actor, Target]);
         public bool Remove(uint id) => _wired.TryRemove(id);
         private uint _next = 10;
-        public World(string trigger, int[] parameters)
+        public World(string? trigger, int[] parameters)
         {
             Room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
             Room.Id = 1;
@@ -437,7 +499,9 @@ public class WiredClickPacketHookTests
                         [ServerPacketHeader.WiredClickUserResponseComposer] = 9460,
                         [ServerPacketHeader.InClientLinkComposer] = 2023,
                         [ServerPacketHeader.ObjectAddComposer] = 1534,
-                        [ServerPacketHeader.ObjectRemoveComposer] = 2703
+                        [ServerPacketHeader.ObjectsComposer] = 1991,
+                        [ServerPacketHeader.ObjectRemoveComposer] = 2703,
+                        [ServerPacketHeader.ObjectRemoveMultipleComposer] = 3589
                     }
                 },
                 SendCallback = args =>
@@ -453,7 +517,10 @@ public class WiredClickPacketHookTests
             Target = AddUser(43, 8, targetClient);
             Capture = new CaptureAction(Room, Item("wf_act_toggle_state"));
             Assert.True(_wired.AddBox(Capture));
-            AddBox(trigger, parameters);
+
+            if (trigger != null) {
+                AddBox(trigger, parameters);
+            }
         }
         private RoomUser AddUser(int habboId, int virtualId, FlashGameClient client)
         {

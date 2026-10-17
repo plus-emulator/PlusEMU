@@ -138,6 +138,11 @@ internal sealed record WiredNativeEndpoint(WiredVariableDescription Description,
 
 internal static class WiredNativeCatalogProjection
 {
+    private const string BuiltinCatalogueResource = "Plus.Wired.BuiltinCatalogue.json";
+
+    // Declared before Builtins: static fields initialise in textual order.
+    private static readonly Lazy<IReadOnlyDictionary<string, BuiltinListing>> BuiltinListings = new(LoadBuiltinListings);
+
     /// <summary>
     /// The built-in (@) and smart (~) variables every room catalogue lists, under Habbo's fixed ids. The AIR variable pickers
     /// (NewVariablePicker.filteredAllVariables, WIN63-202610131318) list only the room catalogue, so these rows are what puts
@@ -145,14 +150,51 @@ internal static class WiredNativeCatalogProjection
     /// </summary>
     internal static ImmutableArray<WiredNativeVariable> Builtins { get; } = [.. WiredHabboVariableIds.All.Select(Builtin)];
 
+    /// <summary>
+    /// Habbo's listing of each built-in row (WiredBuiltinCatalogue.json, decoded from hhus WiredAllVariablesDiffs on AIR
+    /// WIN63-202610131318-860371703): its type (3 for every ~ row), whether it is always available or invisible, and its text
+    /// connector. An empty connector is still a connector: the AIR client then renders @position as "x: 8, y: 8".
+    /// </summary>
+    private sealed record BuiltinListing(int Type, bool AlwaysAvailable, bool IsInvisible,
+        ImmutableArray<KeyValuePair<int, string>>? Connector, string? TextConnectorFallback);
+
     private static WiredNativeVariable Builtin((string Id, WiredVariableTarget Target, string Token) entry)
     {
         var reference = new WiredVariableReference(entry.Target, entry.Token);
         var hasValue = RoomWiredBuiltinVariables.HasNumericValue(reference);
+        var name = entry.Token["internal:".Length..];
+        var target = CatalogTarget(entry.Target);
 
-        return new(entry.Id, 1, entry.Token["internal:".Length..], 999, CatalogTarget(entry.Target), false,
+        if (!BuiltinListings.Value.TryGetValue(entry.Id, out var listing)) {
+            throw new InvalidOperationException($"Built-in variable {entry.Id} ({name}) has no row in {BuiltinCatalogueResource}.");
+        }
+
+        // The behaviour flags stay ours: they gate what this server can actually read, write or create.
+        return new(entry.Id, listing.Type, name, 999, target, listing.AlwaysAvailable,
             RoomWiredBuiltinVariables.SupportsPresenceMutation(reference), hasValue,
-            hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference), false, false, false, false, null);
+            hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference), false, listing.IsInvisible, false, false,
+            listing.Connector)
+        { TextConnectorFallback = listing.TextConnectorFallback };
+    }
+
+    private static IReadOnlyDictionary<string, BuiltinListing> LoadBuiltinListings()
+    {
+        using var stream = typeof(WiredNativeCatalogProjection).Assembly.GetManifestResourceStream(BuiltinCatalogueResource)
+            ?? throw new InvalidOperationException($"Embedded resource {BuiltinCatalogueResource} is missing.");
+        using var document = System.Text.Json.JsonDocument.Parse(stream);
+        var listings = new Dictionary<string, BuiltinListing>(StringComparer.Ordinal);
+
+        foreach (var row in document.RootElement.GetProperty("rows").EnumerateArray()) {
+            ImmutableArray<KeyValuePair<int, string>>? connector = row.TryGetProperty("textConnector", out var pairs)
+                ? [.. pairs.EnumerateArray().Select(pair => new KeyValuePair<int, string>(pair[0].GetInt32(), pair[1].GetString()!))]
+                : null;
+            var fallback = row.TryGetProperty("textConnectorFallback", out var text) ? text.GetString() : null;
+
+            listings.Add(row.GetProperty("id").GetString()!, new(row.GetProperty("type").GetInt32(),
+                row.GetProperty("alwaysAvailable").GetBoolean(), row.GetProperty("isInvisible").GetBoolean(), connector, fallback));
+        }
+
+        return listings;
     }
 
     private static int CatalogTarget(WiredVariableTarget target) => target switch
@@ -170,17 +212,22 @@ internal static class WiredNativeCatalogProjection
         var derived = description.IsDerived || endpoint.Converted;
         var builtin = endpoint.Builtin;
         var hasValue = description.HasValue;
-        var writable = !derived && endpoint.Writable;
-        var presence = writable && (builtin is { } reference ? RoomWiredBuiltinVariables.SupportsPresenceMutation(reference)
+        // A sub-variable is writable only when its derivation writes through to the parent (Time Utilities Value mode).
+        var writable = (!derived || description.IsDerived) && endpoint.Writable;
+        var presence = writable && !description.IsDerived && (builtin is { } reference ? RoomWiredBuiltinVariables.SupportsPresenceMutation(reference)
             : endpoint.Terminal?.Target is WiredVariableTarget.User or WiredVariableTarget.Furni or WiredVariableTarget.Context);
         var timestamps = !derived && builtin is null && endpoint.Terminal is not null;
         var target = CatalogTarget(definition.Target);
 
-        return new(description.CatalogId, description.IsDerived ? 3 : definition.Link is null ? 0 : 2,
-            definition.Name, builtin is not null || definition.Target == WiredVariableTarget.Context ? 999
+        // Observed on hhus: the lvlup sub-variable "<parent>.current_level" is listed with type 2 and availability 999.
+        // Observed on hhus (AIR WIN63-202610131318-860371703): a global lists canReadCreationTime false, canReadLastUpdateTime true;
+        // a Time Utilities Value part is writable and interceptable.
+        return new(description.CatalogId, description.IsDerived || definition.Link is not null ? 2 : 0,
+            definition.Name, builtin is not null || description.IsDerived || definition.Target == WiredVariableTarget.Context ? 999
                 : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
-            !derived && definition.Link is null && writable && builtin is null, false, timestamps, timestamps, connector);
+            definition.Link is null && writable && builtin is null, false,
+            timestamps && definition.Target != WiredVariableTarget.Global, timestamps, connector);
     }
 }

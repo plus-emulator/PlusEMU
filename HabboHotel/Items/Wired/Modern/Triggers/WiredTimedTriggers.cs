@@ -23,7 +23,8 @@ public sealed class WiredTimedTriggers
         }
 
         if (name is "wf_trg_at_given_time" or "wf_trg_at_time_long") {
-            // Both asset variants use the current one-shot editor in half-second units.
+            // Both asset variants use the current one-shot editor in half-second units. The caller measures elapsed time from the first
+            // room tick after the reset (see FirstRoomTickAfter), so the pulses land on the room's 500 ms grid.
             var targetMs = units * 500L;
 
             if (elapsedMs < targetMs || _firedEpoch.TryGetValue(boxId, out var fired) && fired == resetEpoch) {
@@ -49,8 +50,9 @@ public sealed class WiredTimedTriggers
 
         var intervalMs = units * stepMs;
         // Observed on AIR WIN63-202610131318-860371703: a 500 ms "Repeat every" timer first fires on the next 500 ms room boundary after it is
-        // armed (the save time does not set the phase) and then stays on that grid, the same ticks as the walk steps.
-        var onGrid = name == "wf_trg_periodically";
+        // armed (the save time does not set the phase) and then stays on that grid, the same ticks as the walk steps. The 5 s timer keeps
+        // the same grid (fires 4959.5 / 9959.6 ms into the run, 5000 ms apart). The 50 ms timer has its own cadence.
+        var onGrid = stepMs % StateUpdateMs == 0;
 
         if (!_nextPeriodicAt.TryGetValue(boxId, out var next)) {
             _nextPeriodicAt[boxId] = onGrid ? NextBoundary(nowMs) + intervalMs - StateUpdateMs : nowMs + intervalMs;
@@ -69,6 +71,12 @@ public sealed class WiredTimedTriggers
     }
 
     private static long NextBoundary(long nowMs) => (nowMs / StateUpdateMs + 1) * StateUpdateMs;
+
+    /// <summary>
+    /// The first 500 ms room tick strictly after the instant. Observed on AIR WIN63-202610131318-860371703: At Given Time with 4 pulses fires
+    /// 2.48 s after each reset (1128 to 3610, 7131 to 9611 ms), on the room grid: its pulses count from the next room tick after the reset.
+    /// </summary>
+    public static long FirstRoomTickAfter(long nowMs) => NextBoundary(nowMs);
 
     /// <summary>A room timer reset re-arms an armed repeater one fixed cooldown out; an unarmed one stays unarmed.</summary>
     public void ResetPeriodic(uint boxId, long nowMs)

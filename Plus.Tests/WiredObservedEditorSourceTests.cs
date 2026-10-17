@@ -65,15 +65,22 @@ public sealed class WiredObservedEditorSourceTests
         Assert.False(WiredNativeEditorProjection.TryCompile(7, descriptor, native, out _));
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): click_furni allows furni sources [100, 200], default 100. Saved rows with the
+    // earlier 0 or 201 still load.
     [Theory]
-    [InlineData(0)]
-    [InlineData(100)]
-    [InlineData(200)]
-    [InlineData(201)]
-    public void ClickFurnitureRetainsItsSeparateSourceContract(int source)
+    [InlineData(0, false)]
+    [InlineData(100, true)]
+    [InlineData(200, true)]
+    [InlineData(201, false)]
+    public void ClickFurnitureOffersPicksAndTheSelectorAndKeepsStoredSources(int source, bool fresh)
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_trg_click_furni", out var descriptor));
+        var metadata = WiredNativeEditorProjection.Metadata("wf_trg_click_furni");
+        Assert.Equal([100, 200], Assert.Single(metadata.FurniAllowed).ToArray());
+        Assert.Equal([100], metadata.FurniDefaults.ToArray());
         var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { FurniSourceTypes = [source] };
-        Assert.True(WiredNativeEditorProjection.TryCompile(7, descriptor, native, out _));
+        Assert.Equal(fresh, WiredNativeEditorProjection.TryCompile(7, descriptor, native, out _));
+        Assert.True(WiredNativeEditorProjection.TryCompile(7, descriptor, native, out var stored, storedRow: true));
+        Assert.Equal([source], stored.IntParams.ToArray());
     }
 }

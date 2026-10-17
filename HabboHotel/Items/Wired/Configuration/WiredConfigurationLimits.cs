@@ -6,7 +6,10 @@ public static class WiredConfigurationLimits
     // Neighborhood selectors save six fields followed by all 81 editor tile pairs.
     public const int NeighborhoodTiles = 81;
     public const int IntParams = 6 + NeighborhoodTiles * 2;
+    // The server keeps accepting up to 100 picks so boxes saved with more than the editor's limit still load and save.
     public const int SelectedItems = 100;
+    // The pick limit the editor frame advertises. Observed on hhus (AIR WIN63-202610131318-860371703): every box sends 20.
+    public const int EditorFurniLimit = 20;
     public const int TextCharacters = 32768;
     public const int DelayPulses = 3600;
     // The October action delay section's precise mode: 0 to 1200 steps of 50 ms, saved as minus the milliseconds.

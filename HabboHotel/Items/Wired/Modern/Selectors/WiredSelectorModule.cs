@@ -41,7 +41,9 @@ public static class WiredSelectorModule
 
         switch (name) {
             case "wf_slc_furni_picks":
-                selected.FurniIds.UnionWith(world.Furni.Where(x => (input.IncludeWired || !x.IsWired) && c.SelectedItems.Contains(x.Id)).Select(x => x.Id));
+                // Picked Wired boxes stay in the selection. Observed on hhus (AIR WIN63-202610131318-860371703): Call Stacks with the
+                // furni-picks selector picking another stack's trigger box runs that stack.
+                selected.FurniIds.UnionWith(world.Furni.Where(x => c.SelectedItems.Contains(x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_furni_signal":
                 selected.FurniIds.UnionWith(world.Furni.Where(x => (input.IncludeWired || !x.IsWired) && input.Signal.FurniIds.Contains(x.Id)).Select(x => x.Id));
@@ -187,10 +189,13 @@ public static class WiredSelectorModule
                         stacks = stacks.Take(P(3)).ToList();
                     }
 
+                    // Union or Intersection combines the picked stacks for furni and users alike. Observed on hhus (AIR
+                    // WIN63-202610131318-860371703): a furni-only stack intersected with a users-only stack selects neither kind, and a
+                    // picked stack without a selector is an empty operand.
                     var firstStack = true;
 
                     foreach (var stack in stacks) {
-                        if (visiting.Count >= 20 || !visiting.Add(stack[0])) {
+                        if (stack.Count > 0 && (visiting.Count >= 20 || !visiting.Add(stack[0]))) {
                             continue;
                         }
 
@@ -215,7 +220,9 @@ public static class WiredSelectorModule
                             }
                         }
                         finally {
-                            visiting.Remove(stack[0]);
+                            if (stack.Count > 0) {
+                                visiting.Remove(stack[0]);
+                            }
                         }
 
                         if (firstStack || P(2) == 0) {
@@ -264,9 +271,8 @@ public static class WiredSelectorModule
                 && world.RemoteSelectors?.ContainsKey(item.Id) == true)
                 .OrderBy(item => item.Z).ThenBy(item => item.Id).Select(item => item.Id).ToArray();
 
-            if (selectors.Length > 0) {
-                stacks.Add(selectors);
-            }
+            // A picked stack without a selector still counts, as an empty one.
+            stacks.Add(selectors);
         }
 
         return stacks;
@@ -277,7 +283,8 @@ public static class WiredSelectorModule
         var output = input.SelectorPool.Copy();
 
         if (result.Target is WiredSelectorTarget.Furni or WiredSelectorTarget.Both) {
-            var kept = result.Invert ? world.Furni.Where(x => x.IsFloor && (input.IncludeWired || !x.IsWired))
+            // Invert picks from every floor furni, Wired boxes and temporary copies included (observed on hhus).
+            var kept = result.Invert ? world.Furni.Where(x => x.IsFloor)
                 .Select(x => x.Id).Except(result.Selection.FurniIds) : result.Selection.FurniIds;
 
             if (result.FiltersExisting) {

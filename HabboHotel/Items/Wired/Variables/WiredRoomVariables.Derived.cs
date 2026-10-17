@@ -1,9 +1,11 @@
+using Plus.HabboHotel.Items.Wired.Settings;
+
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
 public sealed partial class WiredRoomVariables
 {
-    // The room adapter can provide its configured wired timezone; UTC is the upstream default.
-    public Func<TimeZoneInfo> TimeZone { get; set; } = () => TimeZoneInfo.Utc;
+    // The room adapter provides the room's Wired timezone; without one the hotel default (Europe/London, as hhus behaves) applies.
+    public Func<TimeZoneInfo> TimeZone { get; set; } = () => WiredRoomSettings.DefaultTimeZone;
     private WiredVariableMetadataBox? DerivedMetadataOn(uint definitionId) => MetadataOn(definitionId, "wf_xtra_var_lvlup_system");
 
     /// <summary>The quest or chain a published quest definition of this room reads, or none.</summary>
@@ -38,9 +40,36 @@ public sealed partial class WiredRoomVariables
             }
         }
 
-        // Time Utilities add no sub-variables to the room catalogue: observed on hhus in both modes (r84 creation time, r90 value), the
-        // catalogue lists only the parent. How the hotel exposes the parts, if at all, is not known.
+        // Time Utilities parts, named "<parent>.<mode>.<part>" as observed on hhus (AIR WIN63-202610131318-860371703); the creation-time
+        // and last-update modes also list the base row "<parent>.<mode>".
+        if (MetadataOn(definition.ItemId, "wf_xtra_var_time_util")?.TimeUtilities is { } time && TimeVisible(time, source)) {
+            foreach (var sub in time.Parts) {
+                if (SyntheticId(definition.Target, definition.ItemId, sub, true) is { } id && _room.GetRoomItemHandler().GetItem(id) is null) {
+                    yield return new(definition with { ItemId = id, Name = definition.Name + "." + time.CatalogKey(sub) }, true, !time.Writable)
+                    {
+                        IsDerived = true,
+                        TextConnector = WiredVariableTimeUtilities.Connector(sub)?.ToDictionary() ?? new Dictionary<int, string>()
+                    };
+                }
+            }
+        }
     }
+
+    /// <summary>
+    /// hhus gates each mode on the parent's own capability: Value needs a value, creation time needs canReadCreationTime (a global
+    /// has none) and last update needs canReadLastUpdateTime.
+    /// </summary>
+    private static bool TimeVisible(WiredVariableTimeUtilities time, WiredVariableDescription source) => time.Mode switch
+    {
+        1 => source.CanReadCreationTime,
+        2 => source.CanReadLastUpdateTime,
+        _ => source.HasValue
+    };
+
+    internal static WiredVariableDerivation TimeDerivation(WiredVariableReference source, WiredVariableTimeUtilities time, int sub, Func<TimeZoneInfo> zone) =>
+        new(source, value => time.Read(value, sub, zone()) is { } result ? new(result, null, null) : null, time.Mode == 0, time.Mode != 0,
+            time.Writable ? (parent, part) => time.Write(parent, sub, part, zone()) : null)
+        { RequiresCreationTime = time.Mode == 1 };
 
     private WiredVariableDerivation? ResolveDerived(WiredVariableReference reference)
     {
@@ -53,9 +82,10 @@ public sealed partial class WiredRoomVariables
 
         var source = new WiredVariableReference(reference.Target, $"custom:{baseId}");
 
-        // Time Utilities parts are not catalogue variables (see DerivedDescriptions), so their ids resolve to nothing.
         if (isTime) {
-            return null;
+            var time = MetadataOn(baseId, "wf_xtra_var_time_util")?.TimeUtilities;
+
+            return time is null || !time.HasPart(sub) ? null : TimeDerivation(source, time, sub, TimeZone);
         }
 
         if (QuestBinding(baseId) is { } quest && _quests is not null && sub < WiredQuestVariables.Keys(quest.Kind).Length) {
@@ -76,7 +106,7 @@ public sealed partial class WiredRoomVariables
     public static uint? SyntheticId(WiredVariableTarget target, uint baseId, int sub, bool time)
     {
         if (target is not (WiredVariableTarget.User or WiredVariableTarget.Furni or WiredVariableTarget.Global)
-            || baseId is 0 or >= 6250000 || (time ? sub is < 1 or > 26 : sub is < 0 or > 7)) {
+            || baseId is 0 or >= 6250000 || (time ? sub is < 0 or > 26 : sub is < 0 or > 7)) {
             return null;
         }
 
@@ -91,6 +121,30 @@ public sealed partial class WiredRoomVariables
         (_, true) => 1500000000,
         _ => 700000000
     };
+    /// <summary>Flashes the definition box of a written variable (the parent's for a sub-variable) and the variable add-ons on its tile.</summary>
+    internal void FlashDefinition(WiredVariableReference reference)
+    {
+        if (!WiredVariableModule.TryDefinitionId(reference.Token, out var id)) {
+            return;
+        }
+
+        if (TryDecode(reference.Target, id, out var baseId, out _, out _)) {
+            id = baseId;
+        }
+
+        if (_room.GetRoomItemHandler() is not { } items || _room.GetWired() is not { } wired
+            || items.GetItem(id) is not { IsFloorItem: true } definition || definition.Definition.WiredDescriptor is null) {
+            return;
+        }
+
+        wired.OnEvent(definition);
+
+        foreach (var addon in items.GetFloor.Where(item => item.Id != definition.Id && item.GetX == definition.GetX && item.GetY == definition.GetY
+                     && item.Definition.WiredDescriptor?.CanonicalName.StartsWith("wf_xtra_var_", StringComparison.Ordinal) == true)) {
+            wired.OnEvent(addon);
+        }
+    }
+
     private static bool TryDecode(WiredVariableTarget target, uint id, out uint baseId, out int sub, out bool time)
     {
         time = id >= 1500000000;

@@ -322,6 +322,26 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a Receive Signal trigger whose condition fails flashes with the antenna and the
+    // sender; its condition and action stay at rest.
+    [Fact]
+    public void AReceiverWhoseConditionFailsStillFlashesItsTrigger()
+    {
+        var f = new Fixture();
+        var antenna = f.Furni("antenna", x: 2);
+        f.Trigger();
+        var receiving = f.Trigger(WiredEventKind.Signal, x: 2);
+        var condition = f.Add(new Box(WiredBoxCategory.Condition) { Body = _ => false }, x: 2);
+        var receiver = f.Action(x: 2);
+        f.Action(ctx => ctx.Operations.SendSignal(ctx, [antenna], new()));
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.Advance(50);
+        Assert.Equal(0, receiver.Calls);
+        Assert.Contains(receiving.Item, f.Flashed);
+        Assert.DoesNotContain(condition.Item, f.Flashed);
+        Assert.Empty(f.Errors);
+    }
+
     [Fact]
     public void SignalsCopyPayloadRevalidateReceiversAndUseSameScheduler()
     {
@@ -439,8 +459,8 @@ public partial class WiredRuntimeEngineTests
 
             if (pass >= next) {
                 pending = true;
-                // The 500 ms timer rearms on the room's 500 ms grid; the others from the poll.
-                next = (name == "wf_trg_periodically" ? pass - pass % 500 : pass) + interval;
+                // The 500 ms and 5 s timers rearm on the room's 500 ms grid; the 50 ms timer from the poll.
+                next = (name == "wf_trg_period_short" ? pass : pass - pass % 500) + interval;
             }
         }
 

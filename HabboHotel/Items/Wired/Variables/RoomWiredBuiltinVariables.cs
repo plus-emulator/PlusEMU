@@ -33,6 +33,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 or "@projectile.animation.furni_collisions" or "@projectile.animation.user_collisions" or "@projectile.animation.tiles_traveled"
                 or "~area_hide.root_x" or "~area_hide.root_y" or "~area_hide.width" or "~area_hide.length"
                 or "~clock.state" or "~clock.pulse_count" or "~teleport.target_id" or "~background_color.hue" or "~background_color.saturation" or "~background_color.lightness"
+                or "~recolorable_furni.color.rgb" or "~recolorable_furni.color.rgb.red" or "~recolorable_furni.color.rgb.green" or "~recolorable_furni.color.rgb.blue"
                 or "@projectile.animation.position.x" or "@projectile.animation.position.y" or "@projectile.animation.position.altitude",
             WiredVariableTarget.User => WiredQuestVariables.TryParseKey(key, out _, out _) || key is "@achievement_score" or "@level" or "@altitude" or "@bot_id" or "@dance" or "@direction" or "@effect"
                 or "@gender" or "@handitem" or "@index" or "@pet_id" or "@pet_owner_id" or "@favourite_group_id" or "@position" or "@position.x" or "@position.y" or "@room_entry.method"
@@ -65,7 +66,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             WiredVariableTarget.Furni => key is "@position" or "@occupation" or "@position.x" or "@position.y"
                 or "@altitude" or "@rotation" or "@wallitem_offset" or "@state" or "~clock.pulse_count"
                 or "~area_hide.root_x" or "~area_hide.root_y" or "~area_hide.width" or "~area_hide.length"
-                or "~teleport.target_id" or "~background_color.hue" or "~background_color.saturation" or "~background_color.lightness",
+                or "~teleport.target_id" or "~background_color.hue" or "~background_color.saturation" or "~background_color.lightness"
+                or "~recolorable_furni.color.rgb",
             WiredVariableTarget.User => key is "@handitem" or "@team.score" or "@position" or "@position.x" or "@position.y" or "@direction",
             WiredVariableTarget.Global => key is "@teams.red.score" or "@teams.green.score" or "@teams.blue.score" or "@teams.yellow.score",
             _ => false
@@ -251,11 +253,27 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 key == "~background_color.lightness" ? value : room.TonerData.Lightness), metadataStore);
         }
 
+        // Observed on hhus (AIR WIN63-202610131318-860371703): ~recolorable_furni.color.rgb can be written, its red, green and blue parts
+        // only read. The new colour goes out as the furni's MapData.
+        if (holder.Target == WiredVariableTarget.Furni && key == "~recolorable_furni.color.rgb") {
+            var item = FindItem(holder, frame);
+
+            if (item is null || item.ExtraData is not Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat recolorable || !recolorable.SetColor(value)) {
+                return false;
+            }
+
+            room.GetRoomItemHandler().UpdateItem(item);
+            room.SendObjectData(item, item.LegacyDataString, false);
+
+            return true;
+        }
+
         if (holder.Target == WiredVariableTarget.Furni && key == "@state") {
             var item = FindItem(holder, frame);
 
+            // A furni placed from the inventory can carry no state text yet; it shows state 0, and any write sets it.
             if (item is null || value < 0 || item.Definition.Modes <= value
-                || !int.TryParse(item.LegacyDataString, out var previous) || previous == value) {
+                || item.LegacyDataString is { Length: > 0 } text && (!int.TryParse(text, out var previous) || previous == value)) {
                 return false;
             }
 
@@ -326,13 +344,18 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@owner_id" => checked((int)item.OwnerId),
             "@class_id" => item.IsWallItem ? WiredWallBuiltinValues.ReadIdentity(item.Id, item.Definition.SpriteId, key) : item.Definition.SpriteId,
             "@height" => Hundredths(item.TotalHeight - item.GetZ),
-            "@state" => int.TryParse(item.LegacyDataString, out var state) ? state : null,
+            // No state text yet (a furni placed from the inventory) is state 0, as the client shows it.
+            "@state" => int.TryParse(item.LegacyDataString, out var state) ? state : string.IsNullOrEmpty(item.LegacyDataString) ? 0 : null,
             "@position" => (item.GetX << 8) | item.GetY,
             "@occupation" => (item.GetX << 16) | (item.GetY << 8) | item.Rotation,
             "~teleport.target_id" when InteractionTypes.IsLinkedPair(item.Definition.InteractionType) => travelStore?.FindLinkedTeleporter(item.Id),
             "~background_color.hue" when IsToner(item) => room.TonerData.Hue,
             "~background_color.saturation" when IsToner(item) => room.TonerData.Saturation,
             "~background_color.lightness" when IsToner(item) => room.TonerData.Lightness,
+            "~recolorable_furni.color.rgb" when item.ExtraData is Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat color => color.Rgb,
+            "~recolorable_furni.color.rgb.red" when item.ExtraData is Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat color => color.Red,
+            "~recolorable_furni.color.rgb.green" when item.ExtraData is Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat color => color.Green,
+            "~recolorable_furni.color.rgb.blue" when item.ExtraData is Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat color => color.Blue,
             "@position.x" => item.GetX,
             "@position.y" => item.GetY,
             "@altitude" => Hundredths(item.GetZ),

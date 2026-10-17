@@ -29,7 +29,7 @@ Every push to `master` publishes self-contained builds on [GitHub Releases](http
 | `plusemu-linux-arm64.tar.gz` | Linux ARM64 |
 | `plusemu-win-x64.zip` | Windows x64 |
 
-Each archive contains the single-file executable, `Config/`, `Database/FreshInstall.sql` and `Database/Migrations/`. `SHA256SUMS` is attached to every release.
+Each archive contains the single-file executable, `Config/`, `Database/FreshInstall.sql`, `Database/Migrations/`, `LICENSE` and this README. `SHA256SUMS` is attached to every release.
 
 ### Option 2: build from source
 
@@ -140,4 +140,8 @@ dotnet test Plus.Tests
 
 ## Licence
 
-The repository does not contain a licence file.
+PlusEMU is licensed under the **GNU General Public License, version 3 only** (`GPL-3.0-only`). See [LICENSE](LICENSE) for the full terms.
+
+You may redistribute and modify this program under GPL version 3. It is provided without any warranty, including the implied warranties of merchantability or fitness for a particular purpose.
+
+Copyright remains with the respective PlusEMU authors and contributors. Third-party dependencies and assets retain their own copyrights and licence terms; this licence does not relicense them or grant rights to Habbo trademarks or assets.

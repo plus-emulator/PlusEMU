@@ -21,6 +21,7 @@ public abstract record FurnitureDataSnapshot(FurniDataStructure Structure)
     public static FurnitureDataSnapshot Capture(IFurniObjectData data) => data switch
     {
         EmptyDataFormat => new Empty(),
+        RecolorableDataFormat value => new Map(value.WireMap(value.Data)),
         LegacyDataFormat value => new Legacy(value.Data),
         MapDataFormat value => new Map(value.Data.ToImmutableArray()),
         StringArrayDataFormat value => new Strings(value.Data.ToImmutableArray()),
@@ -30,6 +31,17 @@ public abstract record FurnitureDataSnapshot(FurniDataStructure Structure)
         CrackableDataFormat value => new Crackable(value.State, value.Hits, value.Target),
         _ => throw new ArgumentOutOfRangeException(nameof(data), data.StructureType, "Unsupported furniture wire data.")
     };
+}
+
+public static class FurnitureWireData
+{
+    /// <summary>
+    /// The data an ObjectDataUpdate carries for a state: legacy for ordinary furni, the full map for a recolorable, whose AIR
+    /// logic paints legacy data white.
+    /// </summary>
+    public static FurnitureDataSnapshot ForState(IFurniObjectData data, string state) => data is RecolorableDataFormat recolorable
+        ? new FurnitureDataSnapshot.Map(recolorable.WireMap(state))
+        : new FurnitureDataSnapshot.Legacy(state);
 }
 
 public sealed record GuildFurnitureAppearance(int GroupId, string Badge, string Colour1, string Colour2);

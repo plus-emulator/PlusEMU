@@ -114,6 +114,23 @@ public sealed class CatalogPurchaseServiceTests
         Assert.Equal(stored, Assert.Single(context.Factory.ExtraData));
     }
 
+    // AIR WIN63-202610131318-860371703 RecolorableFurnitureCatalogWidget.as:93-121 only offers the class's palette
+    // (class_3492.as:13), so a colour outside it is bought in the palette's first colour.
+    [Theory]
+    [InlineData("bc_block_0_recolorable", "0,133,255", "0,133,255")]
+    [InlineData("bc_block_0_recolorable", "1,2,3", "255,255,255")]
+    [InlineData("bc_block_0_recolorable", "", "255,255,255")]
+    [InlineData("bc_block_grass_recolorable", "106,177,142", "106,177,142")]
+    [InlineData("bc_block_grass_recolorable", "255,255,255", "176,177,174")]
+    public async Task RecolorablePurchaseKeepsOnlyAColourFromTheClassPalette(string itemName, string clientData, string stored)
+    {
+        var context = Context(interaction: InteractionType.Recolorable, itemName: itemName);
+
+        await context.Service.Purchase(context.Client, new(1, 2, clientData, 1));
+
+        Assert.Equal(stored, Assert.Single(context.Factory.ExtraData));
+    }
+
     [Fact]
     public async Task SeasonalCurrencyOfferChargesItsOwnTypeAndPublishesThatBalance()
     {
@@ -366,12 +383,13 @@ public sealed class CatalogPurchaseServiceTests
     private static TestContext Context(bool enabled = true, bool chargeSucceeds = true,
         bool factorySucceeds = true, bool club = false, bool bot = false, bool botPreset = true,
         bool botStoreFails = false, int points = 0, int pointsType = 0, bool effect = false,
-        InteractionType interaction = InteractionType.None, string extraParam = "", IGroupManager? groups = null, IGroupForumStore? forums = null)
+        InteractionType interaction = InteractionType.None, string extraParam = "", IGroupManager? groups = null, IGroupForumStore? forums = null,
+        string itemName = "chair")
     {
         var definition = new ItemDefinition
         {
             Id = 50,
-            ItemName = "chair",
+            ItemName = itemName,
             ProductType = bot ? "r" : "s",
             Type = ItemType.Floor,
             InteractionType = interaction

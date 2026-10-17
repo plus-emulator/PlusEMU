@@ -28,7 +28,8 @@ internal class GiveCommand : ITargetChatCommand
             return Task.CompletedTask;
         }
 
-        var updateVal = parameters[1];
+        var updateVal = parameters[0];
+        var amountText = parameters.ElementAtOrDefault(1);
 
         switch (updateVal.ToLower()) {
             case "coins":
@@ -38,7 +39,7 @@ internal class GiveCommand : ITargetChatCommand
                         break;
                     }
 
-                    if (int.TryParse(parameters[2], out var amount)) {
+                    if (int.TryParse(amountText, out var amount)) {
                         lock (target.WalletSync) {
                             if (target.WalletClosed) {
                                 break;
@@ -66,7 +67,7 @@ internal class GiveCommand : ITargetChatCommand
                         break;
                     }
 
-                    if (int.TryParse(parameters[2], out var amount)) {
+                    if (int.TryParse(amountText, out var amount)) {
                         lock (target.WalletSync) {
                             if (target.WalletClosed) {
                                 break;
@@ -93,7 +94,7 @@ internal class GiveCommand : ITargetChatCommand
                         break;
                     }
 
-                    if (int.TryParse(parameters[2], out var amount)) {
+                    if (int.TryParse(amountText, out var amount)) {
                         lock (target.WalletSync) {
                             if (target.WalletClosed) {
                                 break;
@@ -121,7 +122,7 @@ internal class GiveCommand : ITargetChatCommand
                         break;
                     }
 
-                    if (int.TryParse(parameters[2], out var amount)) {
+                    if (int.TryParse(amountText, out var amount)) {
                         target.GotwPoints = target.GotwPoints + amount;
                         target.Client?.Send(new HabboActivityPointNotificationComposer(target.GotwPoints, amount, 103));
 
@@ -150,7 +151,7 @@ internal class GiveCommand : ITargetChatCommand
                         break;
                     }
 
-                    if (int.TryParse(parameters[2], out var amount)) {
+                    if (int.TryParse(amountText, out var amount)) {
                         lock (target.WalletSync) {
                             if (target.WalletClosed) {
                                 break;

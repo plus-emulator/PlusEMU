@@ -32,8 +32,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal([0, 0, 0, 2,
             0, 0, 0, 20, 0, 0, 0, 0, 0, 1, (byte)'7',
             0, 0, 1, 45, 0, 0, 0, 0, 0, 2, (byte)'1', (byte)'2'], batch);
-        Assert.Equal(1456u, ServerPacketHeader.ObjectDataUpdateComposer);
-        Assert.Equal(80u, ServerPacketHeader.ObjectsDataUpdateComposer);
+        Assert.Equal(3684u, ServerPacketHeader.ObjectDataUpdateComposer);
+        Assert.Equal(1330u, ServerPacketHeader.ObjectsDataUpdateComposer);
     }
 
     [Fact]
@@ -43,11 +43,11 @@ public sealed partial class WiredGlideConveyorTests
         using var example = JsonDocument.Parse(File.ReadAllText(HabbiconPacketTests.Repo("Resources/Revisions/example.json")));
         var outgoing = example.RootElement.GetProperty("OutgoingHeaders");
 
-        Assert.Equal("WIN63-202610121709-785561319", revision.Name);
-        Assert.Equal(1456u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectDataUpdateComposer]);
-        Assert.Equal(80u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectsDataUpdateComposer]);
-        Assert.Equal(1456u, outgoing.GetProperty("ObjectDataUpdateComposer").GetUInt32());
-        Assert.Equal(80u, outgoing.GetProperty("ObjectsDataUpdateComposer").GetUInt32());
+        Assert.Equal("WIN63-202610151745-318700621", revision.Name);
+        Assert.Equal(3684u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectDataUpdateComposer]);
+        Assert.Equal(1330u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectsDataUpdateComposer]);
+        Assert.Equal(3684u, outgoing.GetProperty("ObjectDataUpdateComposer").GetUInt32());
+        Assert.Equal(1330u, outgoing.GetProperty("ObjectsDataUpdateComposer").GetUInt32());
         Assert.NotEqual(714u, ServerPacketHeader.ObjectDataUpdateComposer);
         Assert.NotEqual(1211u, ServerPacketHeader.ObjectsDataUpdateComposer);
     }
@@ -157,12 +157,27 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Empty(frames.Where(frame => frame.Header is ServerPacketHeader.ObjectDataUpdateComposer or ServerPacketHeader.ObjectsDataUpdateComposer));
     }
 
-    [Theory]
-    [InlineData("wf_game_upcounter1")]
-    [InlineData("bb_counter")]
-    public void WiredControlOfGameCountersAndTimersKeepsTheObjectUpdate(string counter)
+    [Fact]
+    public void WiredStartedGameCounterTicksPublishSingleDataAndNoObjectUpdate()
     {
-        var f = ClockFixture(counter, "wf_act_control_clock", [0, 100]);
+        // Observed on AIR WIN63-202610131318-860371703: wf_game_upcounter1 started by control_clock sends "1", "2", ... as ObjectDataUpdate.
+        var f = ClockFixture("wf_game_upcounter1", "wf_act_control_clock", [0, 100]);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        var frames = CaptureFrames(rider);
+
+        f.Advance(2600);
+
+        var data = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectDataUpdateComposer).Select(ReadSingle).ToArray();
+        // The fixture counter starts with empty data, so its first half-second step publishes "0".
+        Assert.Equal(["0", "1", "2"], data.Select(entry => entry.Text).Take(3));
+        Assert.All(data, entry => Assert.Equal((uint)CounterId, entry.Id));
+        Assert.Empty(ObjectUpdates(frames));
+    }
+
+    [Fact]
+    public void WiredControlOfGameTimersKeepsTheObjectUpdate()
+    {
+        var f = ClockFixture("bb_counter", "wf_act_control_clock", [0, 100]);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var frames = CaptureFrames(rider);
 
@@ -255,7 +270,7 @@ public sealed partial class WiredGlideConveyorTests
         foreach (var (item, origin, expected) in new[]
         {
             (plain, WiredClockOrigin.ModernWired, WiredCounterPublication.SingleData),
-            (game, WiredClockOrigin.ModernWired, WiredCounterPublication.Object),
+            (game, WiredClockOrigin.ModernWired, WiredCounterPublication.SingleData),
             (timer, WiredClockOrigin.ModernWired, WiredCounterPublication.Object)
         }) {
             Assert.True(clocks.Control(item, 0, 0, origin));

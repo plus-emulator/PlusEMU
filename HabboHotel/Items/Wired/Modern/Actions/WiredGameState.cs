@@ -19,8 +19,9 @@ public sealed class WiredGameState
         _grants.Clear();
         _types.Clear();
     }
-    /// <summary>A Battle Banzai, Freeze or football game is in progress, the only time a team score exists.</summary>
-    public static bool GameRunning(Room room) => room.GetBanzai().IsBanzaiActive || room.GetFreeze().GameIsStarted || room.GetSoccer().GameIsStarted;
+    /// <summary>A Battle Banzai, Freeze or football game, or a Wired game counter, is in progress: the only time a team score exists.</summary>
+    public static bool GameRunning(Room room) => room.GetBanzai().IsBanzaiActive || room.GetFreeze().GameIsStarted || room.GetSoccer().GameIsStarted
+        || room.GetWired() is { GameCounterRunning: true };
     // Observed on hhus (build WIN63-202610131318), room without a running game: Give Score (team 0, 1 point) and Give Score To Team
     // (team 1, 1 point) both flashed their boxes, but the Score Achieved stacks (threshold 1, any team and team 1) never fired and the
     // hotel sent no score related packet. Outside a running game giving score is a no-op: no points, no quota use, no score event.
@@ -85,8 +86,7 @@ public sealed class WiredGameState
             applyEffect(user, team, TeamEffect(type, team));
         }
 
-        user.UpdateNeeded = true;
-
+        // Observed on hhus (AIR WIN63-202610131318-860371703): joining or leaving a Wired team sends only the AvatarEffect, no UserUpdate.
         return true;
     }
     public bool Leave(Room room, RoomUser user, Action<RoomUser, int>? clearEffect = null)
@@ -99,7 +99,6 @@ public sealed class WiredGameState
         RemoveFromManagers(room, user);
         user.Team = Team.None;
         _types.Remove(user);
-        user.UpdateNeeded = true;
 
         if (clearEffect != null) {
             clearEffect(user, effect);
@@ -126,11 +125,23 @@ public sealed class WiredGameState
 
         return _types.TryGetValue(user, out var joined) && joined.Team == user.Team && joined.Type == 0 ? 4 : null;
     }
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a user in a plain Wired team talks, shouts and whispers with the team bubble,
+    // 130 in Red and 133 in Green, and 0 outside a team. Blue 131 and Yellow 132 follow the @event.chat.style connector's team styles.
+    public static int? TeamChatStyle(Room room, RoomUser user) => For(room).ReadTeamType(room, user) == 4
+        ? user.Team switch { Team.Red => 130, Team.Blue => 131, Team.Yellow => 132, Team.Green => 133, _ => null }
+        : null;
     // Observed on hhus (build WIN63-202610131318): the effect is 222 + team for a plain wired team (type 0, team 1 gave 223), 32 + team for
     // a Battle Banzai team (team 2 gave 34) and 39 + team for a Freeze team (team 3 gave 42); leaving delivers effect 0. 224-226 for
     // plain teams 2-4 follow the observed 223 and are unobserved. The own avatar gets it 54 to 498 ms after the action's own stack effects
     // (join 54, 273, 420; leave 306, 498), so it rides the next 500 ms state update instead of a fixed delay.
-    internal static int TeamEffect(int type, Team team) => (int)team + type switch { 1 => 32, 2 => 39, _ => 222 };
+    // Battle Banzai and Freeze number their effects in team order; Wired teams use 223 Red, 224 Blue, 225 Yellow, 226 Green.
+    // Observed on hhus (AIR WIN63-202610131318-860371703): joining Blue, Yellow and Green gave 224, 225 and 226.
+    internal static int TeamEffect(int type, Team team) => type switch
+    {
+        1 => (int)team + 32,
+        2 => (int)team + 39,
+        _ => team switch { Team.Red => 223, Team.Blue => 224, Team.Yellow => 225, Team.Green => 226, _ => 222 + (int)team }
+    };
     private int TeamType(Room room, RoomUser user) => _types.TryGetValue(user, out var joined) && joined.Team == user.Team ? joined.Type
         : Contains(room.Teambanzai, user) ? 1 : Contains(room.Teamfreeze, user) ? 2 : 0;
     private static bool Contains(TeamManager? manager, RoomUser user) => manager != null

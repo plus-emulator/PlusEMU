@@ -12,6 +12,7 @@ public sealed partial class WiredRemainderG3Tests
 {
     // Observed r93a (AIR WIN63-202610131318-860371703, runtime receipts line 330): an owned, tradeable pura_mdl5 as the Place Furni
     // template is refused with wiredfurni.error.furni_can_not_be_cloned. The other value categories are inferred (WiredPlaceTemplatePolicy).
+    // Observed on hhus: a Wired box (wf_act_toggle_state) is refused the same way; a one-way gate, a gate and a roller are accepted.
     [Theory]
     [InlineData("trade", false)]
     [InlineData("market", false)]
@@ -20,6 +21,10 @@ public sealed partial class WiredRemainderG3Tests
     [InlineData("limited", false)]
     [InlineData("exchange", false)]
     [InlineData("chest", false)]
+    [InlineData("wired", false)]
+    [InlineData("gate", true)]
+    [InlineData("one_way_gate", true)]
+    [InlineData("roller", true)]
     [InlineData("plain", true)]
     [InlineData("clone", true)]
     public void PlaceFurniTemplatesThatCanCarryValueCannotBeCloned(string kind, bool cloneable)
@@ -34,6 +39,10 @@ public sealed partial class WiredRemainderG3Tests
         {
             "exchange" => InteractionType.Exchange,
             "chest" => InteractionType.WiredChestCoins,
+            "wired" => InteractionType.WiredEffect,
+            "gate" => InteractionType.Gate,
+            "one_way_gate" => InteractionType.OneWayGate,
+            "roller" => InteractionType.Roller,
             _ => InteractionType.None
         };
 

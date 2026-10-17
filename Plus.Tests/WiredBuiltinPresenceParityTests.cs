@@ -28,6 +28,18 @@ public sealed class WiredBuiltinPresenceParityTests
         Assert.False(module.Mutate(new(holder.Target, give.Text), holder, WiredVariableMutation.Give, 0, new(2, [holder])));
     }
 
+    [Fact]
+    public void GiveVariableSavesWithAGlobalAndGivesNothing()
+    {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): the save is accepted and "= 0" still passes after giving 7.
+        var give = WiredNativeTestSupport.Scalar("wf_act_give_var", new() { IntParams = [(int)WiredVariableTarget.Global, 1, 7, 0, 0], Text = "custom:42" });
+        Assert.True(WiredVariableExecutors.TryValidate("wf_act_give_var", give, out _));
+        var module = new WiredVariableModule(1, new Directory(), new MemoryWiredVariableStore(), TimeProvider.System, new Presence());
+        Assert.False(new WiredVariableExecutors(module, TimeProvider.System).Execute("wf_act_give_var", give, new(1, [])));
+        Assert.False(WiredVariableExecutors.TryValidate("wf_act_remove_var",
+            WiredNativeTestSupport.Scalar("wf_act_remove_var", new() { IntParams = [(int)WiredVariableTarget.Global, 0, 0], Text = "custom:42" }), out _));
+    }
+
     private sealed class Presence : IWiredBuiltinVariables
     {
         private bool _present;

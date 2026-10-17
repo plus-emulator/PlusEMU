@@ -62,8 +62,19 @@ public sealed class WiredVariableConfiguredBox : IWiredContextualItem
         }
 
         context.VariableFrame = WiredVariableRuntimeFrames.Create(context, context.VariableFrame);
+        var configuration = context.ConfigurationOf(this);
 
-        return _executors.Execute(Descriptor.CanonicalName, context.ConfigurationOf(this), context.VariableFrame);
+        if (!_executors.Execute(Descriptor.CanonicalName, configuration, context.VariableFrame)) {
+            return false;
+        }
+
+        // Observed on hhus (AIR WIN63-202610131318-860371703): a Give Variable or Change Variable Value that writes a variable flashes
+        // that variable's definition box, and the variable add-ons on its tile, with the action's own flash.
+        if (_executors.Destination(Descriptor.CanonicalName, configuration) is { } destination) {
+            Instance.GetWired()?.Variables.FlashDefinition(destination);
+        }
+
+        return true;
     }
     public void HandleSave(IIncomingPacket packet) => throw new InvalidOperationException("Configured boxes must use validated configuration persistence.");
 }

@@ -193,7 +193,7 @@ public sealed class WiredVariableExactWireTests
     public void CompiledCurrentRevisionRegistersExactExtensionsWithoutHeaderRemapping()
     {
         var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
-        Assert.Equal("WIN63-202610121709-785561319", revision.Name);
+        Assert.Equal("WIN63-202610151745-318700621", revision.Name);
         Assert.Equal(10110u, revision.IncomingHeaders["WiredUserVariableUpdate64Event"]);
         Assert.Equal(10111u, revision.IncomingHeaders["WiredUserVariableManage64Event"]);
         Assert.Equal(10113u, revision.IncomingHeaders["WiredUserVariablesRequest64Event"]);
@@ -232,6 +232,7 @@ public sealed class WiredVariableExactWireTests
         public void ShowCatalogDiff(Room room, GameClient session, IReadOnlyDictionary<string, int> known) { }
         public void ShowHolders(Room room, GameClient session, string id) { }
         public void ShowHolderPage(Room room, GameClient session, string id, int page, int size, int users, int sort) { }
+        public void WriteObject(Room room, GameClient session, WiredObjectVariableWrite request) { }
     }
     private static FlashIncomingPacket Packet(params object[] values)
     {

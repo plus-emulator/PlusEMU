@@ -71,7 +71,7 @@ public partial class PlacedFurniRoomTests
         var changed = Add(11, x, y, type: InteractionType.WalkMagicTile);
         var actor = ExecutorActor(0, 1);
         var observed = new List<long>();
-        ExecutorObserveLanding((user, item) =>
+        ExecutorObserveArrival((user, item) =>
         {
             if (item != landing) {
                 return;
@@ -150,7 +150,7 @@ public partial class PlacedFurniRoomTests
         var first = ExecutorActor(0, 1);
         var waiting = ExecutorAdditionalBot(2, 2, 2);
         ExecutorTick();
-        ExecutorObserveLanding((_, item) =>
+        ExecutorObserveArrival((_, item) =>
         {
             if (item == landing) {
                 change();
@@ -196,7 +196,7 @@ public partial class PlacedFurniRoomTests
     private void GeometryObserveRemoval(Item landing, Item removed, RoomUser waiting,
         List<(int Pending, TargetOccupancy Claims, bool Intent)> observed)
     {
-        ExecutorObserveLanding((_, item) =>
+        ExecutorObserveArrival((_, item) =>
         {
             if (item != landing) {
                 return;

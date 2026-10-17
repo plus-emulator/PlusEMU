@@ -839,8 +839,10 @@ public partial class ModernWiredRuntimeTests
         var attached = true;
         var first = effects.Acquire(user, () => current, value => current = value, () => attached);
         var second = effects.Acquire(user, () => current, value => current = value, () => attached);
+        // Observed on hhus (AIR WIN63-202610131318-860371703): a second lease of the same effect while the first is live adds nothing; the
+        // first one's end clears the effect.
         first();
-        Assert.Equal(4, current);
+        Assert.Equal(8, current);
         second();
         Assert.Equal(8, current);
         second();
@@ -1702,7 +1704,7 @@ public partial class ModernWiredRuntimeTests
 
     private static void AssertMovementOracleReply(MovementOracleReply reply, bool direction, int[] owned, int[] picks, int delay)
     {
-        Assert.Equal(100, reply.Limit);
+        Assert.Equal(20, reply.Limit);
         Assert.Equal(picks, reply.Primary);
         Assert.Empty(reply.Secondary);
         Assert.Equal(0, reply.Sprite);
@@ -1720,10 +1722,10 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(reply.UsersAllowed);
         Assert.Equal(new[] { 100 }, reply.FurniDefaults);
         Assert.Empty(reply.UserDefaults);
-        Assert.False(reply.AllowWall);
+        // Observed on hhus (AIR WIN63-202610131318-860371703): rotate allows wall picks and its defaults end with the hotel int 1.
+        Assert.Equal(!direction, reply.AllowWall);
         Assert.Equal(0, reply.ContextCount);
-        // Rotate's two-field/default/wall footer is the explicitly supported LOCAL subset.
-        Assert.Equal(direction ? new[] { 0, 0, 1 } : new[] { 0, 0 }, reply.OwnedDefaults);
+        Assert.Equal(new[] { 0, 0, 1 }, reply.OwnedDefaults);
     }
 
     private sealed class MovementOracleClient : GameClient
@@ -1931,6 +1933,26 @@ public partial class ModernWiredRuntimeTests
         await f.Save([5, 1], [8]);
         Assert.Single(f.Store.Saves);
         AssertMovementOracleReply(f.Open(), false, [5, 1], [8], 0);
+    }
+
+    [Fact]
+    public async Task PickingATemporaryCopyIsRefusedWithTheOfficialKey()
+    {
+        var f = new MovementOracleSession("wf_act_move_rotate");
+        var definition = MakeItem(60, "template").Definition;
+        definition.Stackable = true;
+        var copy = Assert.IsType<Item>(f.Room.GetRoomItemHandler().PlaceTemporaryFloorItem(definition, 7, 0, 0, 0));
+        f.Client.Packets.Clear();
+        await f.Save([5, 1], [8, unchecked((int)copy.Id)]);
+        Assert.Empty(f.Store.Saves);
+        var error = Assert.Single(f.Client.Packets, packet => packet.Header == ServerPacketHeader.WiredValidationErrorComposer).Body;
+        var length = (error[0] << 8) | error[1];
+        Assert.Equal(WiredConfigurationSave.TemporaryFurniNotAllowedKey, System.Text.Encoding.UTF8.GetString(error, 2, length));
+        Assert.Equal("wiredfurni.error.temp_furni_not_allowed", WiredConfigurationSave.TemporaryFurniNotAllowedKey);
+        Assert.DoesNotContain(f.Client.Packets, packet => packet.Header == ServerPacketHeader.HideWiredConfigComposer);
+        f.Client.Packets.Clear();
+        await f.Save([5, 1], [8]);
+        Assert.Single(f.Store.Saves);
     }
 
     [Fact]
@@ -2429,7 +2451,7 @@ public partial class ModernWiredRuntimeTests
         f.Use(1, 0);
         var replies = Capture(f.Habbo.Client);
         // Observed on AIR WIN63-202610131318-860371703: fast = effect 235, an on-boundary firing lands at +1000 ms and drops the
-        // effect at +1500 ms.
+        // effect at +1500 ms. The relocation runs at the start of the room tick that publishes it.
         f.Fire(land: false);
         Assert.Equal(235, f.User.CurrentEffect);
         f.Advance(950);
@@ -2446,6 +2468,25 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
+    // A firing after a 500 ms boundary whose room tick has not started yet counts that tick as its first, so a fast teleport lands on the
+    // tick after it rather than a tick late.
+    [Fact]
+    public void FastTeleportFiredBeforeADueRoomTickCountsThatTickAsTheFirst()
+    {
+        using var f = new TeleportFixture();
+        f.Use(1, 0);
+        f.Engine.OnRoomTick();
+        f.Skew(510);
+        f.Fire(land: false);
+        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        f.Advance(480);
+        Assert.Equal(new Point(0, 0), f.User.Coordinate);
+        f.Advance(10);
+        Assert.Equal(new Point(1, 1), f.User.Coordinate);
+        f.Advance(500);
+        Assert.Equal(8, f.User.CurrentEffect);
+    }
+
     [Fact]
     public void TeleportLandsOnTheStateUpdateAfterTheGlowAndPublishesNoMovementEntry()
     {
@@ -2455,7 +2496,8 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         Assert.Equal(4, f.User.CurrentEffect);
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
-        // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal firing lands at +2.0 s and drops the effect at +3.5 s.
+        // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal firing lands at +2.0 s and drops the effect at +3.5 s. The
+        // relocation runs at the start of the room tick that publishes it.
         f.Advance(1950);
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         f.Advance(50);
@@ -2839,8 +2881,9 @@ public partial class ModernWiredRuntimeTests
         using var f = new TeleportFixture();
         f.Fire();
         f.User.SetPos(0, 0, 0);
+        // The second teleport fires while the first still glows: the first one's end (1500 ms after its landing) clears the glow.
         f.Fire();
-        Assert.Equal(4, f.User.CurrentEffect);
+        Assert.Equal(8, f.User.CurrentEffect);
         f.Advance(1500);
         Assert.Equal(8, f.User.CurrentEffect);
         f.User.SetPos(0, 0, 0);
@@ -2969,9 +3012,19 @@ public partial class ModernWiredRuntimeTests
                 Advance(TeleportLandsAfterMilliseconds);
             }
         }
+        // Moves the clock without a room tick or pass, like a room tick that has not started yet.
+        public void Skew(int milliseconds) => _now += milliseconds;
+        // Room ticks start on every 500 ms boundary passed, as in the room manager; then one fast pass.
         public void Advance(int milliseconds)
         {
-            _now += milliseconds;
+            var end = _now + milliseconds;
+
+            for (var boundary = (_now / 500 + 1) * 500; boundary <= end; boundary += 500) {
+                _now = boundary;
+                Engine.OnRoomTick();
+            }
+
+            _now = end;
             Engine.OnFastCycle();
         }
         public RoomUser AddPlayer(int virtualId, int x, int y)
@@ -3270,11 +3323,12 @@ public partial class ModernWiredRuntimeTests
         WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [10] }, out var config, out _);
         box.ApplyConfiguration(config);
         box.Reset(1000);
-        Assert.Null(box.Poll(5999));
-        Assert.Equal(WiredEventKind.Elapsed, box.Poll(6000)!.Kind);
+        Assert.Null(box.Poll(6499));
+        Assert.Equal(WiredEventKind.Elapsed, box.Poll(6500)!.Kind);
         Assert.Null(box.Poll(11000));
         box.Reset(11000);
-        Assert.NotNull(box.Poll(16000));
+        Assert.Null(box.Poll(16499));
+        Assert.NotNull(box.Poll(16500));
     }
 
 
@@ -3301,7 +3355,7 @@ public partial class ModernWiredRuntimeTests
 
         engine.ResetTimers(items.Values.ToArray());
 
-        var firstFires = timers.Select(timer => Enumerable.Range(1400, 200).First(t => timer.Poll(t) != null)).ToArray();
+        var firstFires = timers.Select(timer => Enumerable.Range(1900, 200).First(t => timer.Poll(t) != null)).ToArray();
         Assert.Single(firstFires.Distinct());
     }
 
@@ -3484,7 +3538,7 @@ public partial class ModernWiredRuntimeTests
             var item = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 0, "1"));
             Assert.True(item.IsTemporary);
             Assert.True(handler.OwnsTemporary(item));
-            Assert.Equal(-1, unchecked((int)item.Id));
+            Assert.Equal(TemporaryItemIds.First, item.Id);
             Assert.Same(room, item.GetRoom());
             Assert.Same(item, items[item.Id]);
             Assert.Equal("1", item.LegacyDataString);
@@ -3498,7 +3552,7 @@ public partial class ModernWiredRuntimeTests
             Assert.DoesNotContain(item, map.GetCoordinatedItems(new(1, 1)));
             Assert.False(handler.RemoveTemporaryFloorItem(item));
             var replacement = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0));
-            Assert.Equal(-2, unchecked((int)replacement.Id));
+            Assert.Equal(TemporaryItemIds.First + 1, replacement.Id); // The freed id is not taken again while the room lives.
             Assert.False(handler.RemoveTemporaryFloorItem(MakeItem(replacement.Id, "test")));
             handler.UpdateItem(replacement);
             handler.Dispose(); // No temporary extra-data or coordinate SQL during unload.
@@ -3554,7 +3608,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void TemporaryPlacementChecksFullFootprintHeightAndRoomLimit()
+    public void TemporaryPlacementChecksFullFootprintAndAltitudeWithoutARoomCap()
     {
         var (room, map, _) = World();
         var handler = room.GetRoomItemHandler();
@@ -3570,14 +3624,16 @@ public partial class ModernWiredRuntimeTests
         definition.Stackable = true;
         definition.Height = 1;
         Assert.Null(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 80));
+        // Observed on hhus: copies stop at altitude 35, and there is no per-room cap (560 copies were placed).
+        Assert.Null(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 35.5));
+        Assert.NotNull(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 35));
         definition.Height = 0;
 
-        for (var i = 0; i < RoomItemHandling.TemporaryItemLimit; i++) {
+        for (var i = 0; i < 600; i++) {
             Assert.NotNull(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 0));
         }
 
-        Assert.Null(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0));
-        Assert.Equal(RoomItemHandling.TemporaryItemLimit, handler.GetFloor.Count);
+        Assert.Equal(601, handler.GetFloor.Count);
     }
 
     [Theory]
@@ -3589,10 +3645,10 @@ public partial class ModernWiredRuntimeTests
         var handler = f.Room.GetRoomItemHandler();
         var def = MakeItem(3, "test").Definition;
         def.Stackable = true;
-        var permanent = MakeItem(uint.MaxValue, "test");
+        var permanent = MakeItem(TemporaryItemIds.First, "test");
         f.Items[permanent.Id] = permanent;
         var item = Assert.IsType<Item>(handler.PlaceTemporaryFloorItem(def, 1, 2, 2, 0));
-        Assert.Equal(-2, unchecked((int)item.Id)); // A real permanent high-uint item owns the -1 bit pattern.
+        Assert.Equal(TemporaryItemIds.First + 1, item.Id); // An attached item already holds the band's first id.
         var action = ActionBox(f.Room, "wf_act_remove_furni");
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, new() { IntParams = [mode, 0] }, out var config, out _));
         action.ApplyConfiguration(config);
@@ -4302,6 +4358,26 @@ public partial class ModernWiredRuntimeTests
         context.Policy.Addons.Projectile = context.Policy.Addons.Projectile! with { VariableMask = 0 };
         Assert.True(new WiredRoomMovement(f.Room.GetWired().DispatchWalkTransition).MoveFurniture(context, f.Target, 1, 1, 0, null));
         Assert.All(keys, key => Assert.Null(flights.Read(f.Target, "@projectile.animation." + key, 1000)));
+    }
+
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a default projectile add-on moves a colortile diagonally one tile,
+    // keeps rotation 0 and only adds curveStrength 50 to the WiredMovements entry.
+    [Fact]
+    public void DefaultProjectileAddonMovesStackFurniDiagonallyWithItsCurve()
+    {
+        using var f = new TeleportFixture();
+        Assert.False(f.Target.Definition.ExtraRot);
+        var item = MakeItem(90, "wf_xtra_rotate_to_dir");
+        typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, f.Room);
+        f.Items[item.Id] = item;
+        var addon = Assert.IsType<WiredAddonBox>(f.Room.GetWired().CreateConfiguredBox(item));
+        var context = Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User]);
+        Assert.True(addon.Apply(context));
+        var projectile = Assert.IsType<Plus.HabboHotel.Items.Wired.Modern.Addons.WiredProjectilePolicy>(context.Policy.Addons.Projectile);
+        Assert.True(projectile.AppliesTo(f.Target.Id));
+        Assert.Equal(50, projectile.CurveStrength);
+        Assert.True(new WiredRoomMovement(f.Room.GetWired().DispatchWalkTransition).MoveFurniture(context, f.Target, 2, 2, f.Target.Rotation, null));
+        Assert.Equal((2, 2, 0), (f.Target.GetX, f.Target.GetY, f.Target.Rotation));
     }
 
     [Fact]

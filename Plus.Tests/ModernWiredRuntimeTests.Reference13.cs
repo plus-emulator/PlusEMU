@@ -86,6 +86,66 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(2, 2), present.Coordinate);
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a bot teleport has a normal teleport's effect 4 and timing.
+    [Fact]
+    public void BotTeleportGlowsAndLandsLikeATeleport()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_teleport", intParams: [100, 100], text: "Bobby");
+        var bot = AddNamedBot(f, 9, "Bobby", 2, 2);
+        MakeTargetWalkable(f);
+        var replies = Capture(f.Client);
+        f.Fire(land: false);
+        Assert.Equal(new Point(2, 2), bot.Coordinate);
+        Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
+        f.Advance(1950);
+        Assert.Equal(new Point(2, 2), bot.Coordinate);
+        f.Advance(50);
+        Assert.Equal(new Point(1, 1), bot.Coordinate);
+        Assert.Equal(4, bot.CurrentEffect);
+
+        // Observed on AIR WIN63-202610131318-860371703: the bot's glow ends 1500 ms after the landing, like a user's.
+        f.Advance(1450);
+        Assert.Equal(4, bot.CurrentEffect);
+        f.Advance(50);
+        Assert.Equal(0, bot.CurrentEffect);
+        Assert.Equal(2, replies.Count(reply => reply.Header == ServerPacketHeader.AvatarEffectComposer));
+    }
+
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a second Bot Teleport fired while the bot still glows sends no new effect 4,
+    // and the first teleport's end (1500 ms after its landing) clears the glow.
+    [Fact]
+    public void BotTeleportFiredWhileGlowingKeepsTheFirstGlowAndItsEnd()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_teleport", intParams: [100, 100], text: "Bobby");
+        var bot = AddNamedBot(f, 9, "Bobby", 2, 2);
+        MakeTargetWalkable(f);
+        var replies = Capture(f.Client);
+        f.Fire(land: false);
+        f.Advance(1000);
+        f.Fire(land: false);
+        Assert.Equal(1, replies.Count(reply => reply.Header == ServerPacketHeader.AvatarEffectComposer));
+        f.Advance(2450);
+        Assert.Equal(4, bot.CurrentEffect);
+        f.Advance(50);
+        Assert.Equal(0, bot.CurrentEffect);
+        f.Advance(3000);
+        Assert.Equal(2, replies.Count(reply => reply.Header == ServerPacketHeader.AvatarEffectComposer));
+    }
+
+    // Observed on hhus (AIR WIN63-202610131318-860371703): Show Message to everyone for a bot is said by the bot.
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(0, false)]
+    public void ShowMessageForABotIsSaidByTheBotWhenShownToEveryone(int visibility, bool said)
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_show_message", intParams: [0, visibility, 34, -1], text: "hello");
+        var bot = AddNamedBot(f, 9, "Bobby", 2, 2);
+        var replies = Capture(f.Client);
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = bot });
+        f.Advance(0);
+        Assert.Equal(said ? 1 : 0, Chats(replies).Count(chat => chat.Text == "hello"));
+    }
+
     [Fact]
     public void BotTeleportStaysPutWhenTheFurniTileIsTaken()
     {
@@ -411,6 +471,21 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): said aloud, Bot Talk To Avatar addresses the avatar by name.
+    [Fact]
+    public void BotTalkToAvatarAloudAddressesTheAvatarByName()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_talk_to_avatar", intParams: [0, 0, 100, -1], text: "Bobby\twelcome");
+        var bobby = AddNamedBot(f, 9, "Bobby", 2, 2);
+        AddStackTrigger(f, 104, "wf_trg_bot_reached_avtr", new() { IntParams = [100], Text = "Bobby" });
+        var replies = Capture(f.Client);
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.BotReachedUser) { Actor = bobby, TargetUser = f.User });
+        f.Advance(0);
+        var chat = Assert.Single(Chats(replies));
+        Assert.Equal(ServerPacketHeader.ChatComposer, chat.Header);
+        Assert.Equal(f.Habbo.Username + ": welcome", chat.Text);
+    }
+
     [Fact]
     public void BotReachedAvatarHandsTheReachedUserToTheActionsAsTheTriggeringUser()
     {
@@ -436,8 +511,9 @@ public partial class ModernWiredRuntimeTests
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [units] }, out var config, out _));
         box.ApplyConfiguration(config);
         box.Reset(0);
-        Assert.Null(box.Poll(milliseconds - 1));
-        Assert.Equal(WiredEventKind.Elapsed, box.Poll(milliseconds)!.Kind);
+        // The units count from the first 500 ms room tick after the reset (500 here).
+        Assert.Null(box.Poll(500 + milliseconds - 1));
+        Assert.Equal(WiredEventKind.Elapsed, box.Poll(500 + milliseconds)!.Kind);
         Assert.False(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [1201] }, out _, out _));
         Assert.False(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [0] }, out _, out _));
     }

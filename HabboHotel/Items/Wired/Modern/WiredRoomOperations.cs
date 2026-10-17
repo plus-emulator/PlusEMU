@@ -36,7 +36,8 @@ public static class WiredRoomOperations
         var handler = box.Instance.GetRoomItemHandler();
         var picked = proposed.SelectedItems.Distinct().Select(handler.GetItem)
             .Where(item => item is { IsFloorItem: true }
-                || box.Descriptor.CanonicalName == "wf_act_match_to_sshot" && item is { IsWallItem: true }
+                || box.Descriptor.CanonicalName is "wf_act_match_to_sshot" or "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap"
+                && item is { IsWallItem: true }
                 && WiredWallSnapshot.TryParse(item.WallCoordinates, out _)).ToArray();
         var templates = box.Descriptor.CanonicalName == "wf_act_place_furni" && proposed.TemporaryPlacement != null;
 
@@ -74,7 +75,7 @@ public static class WiredRoomOperations
     // A ridden horse moves only with its rider; a wired that selects the horse moves the rider.
     internal static RoomUser Rider(Room room, RoomUser user) =>
         user is { IsBot: true, RidingHorse: true } && room.GetRoomUserManager().GetRoomUserByVirtualId(user.HorseId) is
-            { IsBot: false, RidingHorse: true } rider && rider.HorseId == user.VirtualId ? rider : user;
+        { IsBot: false, RidingHorse: true } rider && rider.HorseId == user.VirtualId ? rider : user;
 
     internal static RoomUser? Horse(Room room, RoomUser user) =>
         user is { IsBot: false, RidingHorse: true } && room.GetRoomUserManager().GetRoomUserByVirtualId(user.HorseId) is { } horse
@@ -85,6 +86,14 @@ public static class WiredRoomOperations
 
     public static bool IsOnItem(RoomUser user, Item item) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(user.Coordinate);
+
+    /// <summary>
+    /// Whether the user stands on the item for a condition. A user whose step is announced counts on the tile it steps to: the Wired
+    /// walk events fire with that announcement, and observed on hhus (AIR WIN63-202610131318-860371703) a walk-on stack's "triggerer
+    /// is on furni" condition holds for the furni walked onto.
+    /// </summary>
+    public static bool IsStandingOn(RoomUser user, Item item) =>
+        Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(user.SetStep ? new(user.SetX, user.SetY) : user.Coordinate);
 
     public static bool HasStackedItem(Room room, Item item, IReadOnlySet<uint>? ignored = null) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation)
@@ -353,11 +362,47 @@ public static class WiredRoomOperations
 
     public static bool MatchesSnapshot(Item item, WiredFurniSnapshot snapshot,
         bool state, bool direction, bool position, bool altitude) =>
+        item.IsWallItem ? MatchesWallSnapshot(item, snapshot, state, position, altitude) :
         item.IsFloorItem && snapshot.Wall == null
         && (!state || string.Equals(item.LegacyDataString ?? string.Empty, snapshot.State, StringComparison.Ordinal))
         && (!direction || item.Rotation == snapshot.Rotation)
         && (!position || item.GetX == snapshot.X && item.GetY == snapshot.Y)
         && (!altitude || Math.Abs(item.GetZ - snapshot.Z) < 0.00001);
+
+    /// <summary>
+    /// Observed on hhus (AIR WIN63-202610131318-860371703): a picked wall torch takes part in the snapshot conditions, and with state
+    /// matching on, match passes at the saved state and fails once a Wired toggle changed it. A wall item has no rotation, so direction
+    /// never fails it; position is its wall tile, offset and side, altitude its saved height.
+    /// </summary>
+    private static bool MatchesWallSnapshot(Item item, WiredFurniSnapshot snapshot, bool state, bool position, bool altitude)
+    {
+        if (snapshot.Wall is not { } saved || snapshot.DefinitionId != item.Definition.Id
+            || state && !string.Equals(item.LegacyDataString ?? string.Empty, snapshot.State, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        if (!position && !altitude) {
+            return true;
+        }
+
+        if (!WiredWallSnapshot.TryParse(item.WallCoordinates, out var current)) {
+            return false;
+        }
+
+        if (position && (current!.TileX != saved.TileX || current.TileY != saved.TileY || current.LocalX != saved.LocalX || current.Left != saved.Left)) {
+            return false;
+        }
+
+        if (!altitude) {
+            return true;
+        }
+
+        if (item.GetRoom()?.GetGameMap().StaticModel is not { } model) {
+            return current!.PixelY == saved.PixelY && current.NativeAltitude == saved.NativeAltitude;
+        }
+
+        return Math.Abs(WiredWallGeometry.Altitude(model, current!) - WiredWallGeometry.SavedAltitude(model, saved)) < 0.005;
+    }
 
     public static bool TryAltitude(string text, out double height) =>
         double.TryParse(text, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out height)

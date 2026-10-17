@@ -2,6 +2,7 @@ using Plus.Communication.Packets.Outgoing.Moderation;
 using Plus.Communication.Packets.Outgoing.Rooms.Chat;
 using Plus.Core.Settings;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Moderation;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Quests;
@@ -32,6 +33,9 @@ public sealed class RoomChatService(
     IGameClientManager clientManager,
     TimeProvider clock) : IRoomChatService
 {
+    /// <summary>Characters of a room chat message the hotel keeps.</summary>
+    public const int MaxMessageLength = 200;
+
     public Task Chat(GameClient session, string message, int colour) => PublicChat(session, message, colour, false);
 
     public Task Shout(GameClient session, string message, int colour) => PublicChat(session, message, colour, true);
@@ -59,8 +63,9 @@ public sealed class RoomChatService(
         var now = clock.GetUtcNow();
         message = StringCharFilter.Escape(message);
 
-        if (message.Length > 100) {
-            message = message[..100];
+        // Observed on hhus (AIR WIN63-202610131318-860371703): talk of 250, 300 and 400 characters is echoed with its first 200.
+        if (message.Length > MaxMessageLength) {
+            message = message[..MaxMessageLength];
         }
 
         if (habbo.CustomBubbleId != 0) {
@@ -69,6 +74,10 @@ public sealed class RoomChatService(
 
         if (!chatStyleManager.TryGetStyle(colour, out var style) || !style.CanUse(habbo.Access)) {
             colour = 0;
+        }
+
+        if (WiredGameState.TeamChatStyle(room, user) is { } teamStyle) {
+            colour = teamStyle;
         }
 
         if (shout) {
@@ -214,6 +223,10 @@ public sealed class RoomChatService(
 
         if (!chatStyleManager.TryGetStyle(colour, out var style) || !style.CanUse(habbo.Access)) {
             colour = 0;
+        }
+
+        if (WiredGameState.TeamChatStyle(room, user) is { } teamStyle) {
+            colour = teamStyle;
         }
 
         user.LastBubble = colour;

@@ -27,7 +27,8 @@ internal static class WiredNativeActionEditor
 
     private static readonly Dictionary<string, WiredNativeEditorMetadata> Known = new(StringComparer.Ordinal)
     {
-        ["wf_act_toggle_state"] = Meta([Furni], [], [100], [], [0]),
+        // Observed on hhus (AIR WIN63-202610131318-860371703): allows wall picks; toggling only writes the item's state.
+        ["wf_act_toggle_state"] = Meta([Furni], [], [100], [], [0], true),
         ["wf_act_toggle_to_rnd"] = Meta([Furni], [], [100], [], [], true),
         ["wf_act_reset_timers"] = Meta([], [], [], [], []),
         ["wf_act_call_stacks"] = Meta([Furni], [], [100], [], []),
@@ -53,7 +54,8 @@ internal static class WiredNativeActionEditor
         ["wf_act_move_rotate_user"] = Meta([], [SignalUsers], [], [0], [-1, -1]),
         ["wf_act_rel_mov"] = Meta([Furni], [], [100], [], [0, 0], true),
         // Observed r92f r92-f2f-basic initial frame (pkt 4877): movers default to the triggering furni (0), targets to the picked furni (100).
-        ["wf_act_furni_to_furni"] = Meta([FurniAndSnapshot, FurniAndSnapshot], [], [0, 100], [], []),
+        // Observed on hhus (AIR WIN63-202610131318-860371703): wall picks are allowed; a wall target saves but nothing moves to it.
+        ["wf_act_furni_to_furni"] = Meta([FurniAndSnapshot, FurniAndSnapshot], [], [0, 100], [], [], true),
         ["wf_act_furni_to_user"] = Meta([Furni], [Users], [100], [0], []),
         ["wf_act_move_furni_to"] = Meta([Furni, FurniAndSnapshot], [], [100, 101], [], [0, 1]),
         // Observed on AIR WIN63-202610131318-860371703: furni 0/100/200/201, no snapshot source.

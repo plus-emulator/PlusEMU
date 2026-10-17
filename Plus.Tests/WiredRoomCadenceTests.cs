@@ -37,4 +37,17 @@ public class WiredRoomCadenceTests
         Assert.False(RoomCycle.IsDue(last, last.AddMilliseconds(50)));
         Assert.True(RoomCycle.IsDue(last, last.AddMilliseconds(500)));
     }
+
+    [Fact]
+    public void LatePassesStayOnTheWiredGrid()
+    {
+        // Each pass starts a little late; recording the boundary keeps the next one on the 500 ms grid of the Wired clock.
+        var start = DateTimeOffset.UnixEpoch.AddSeconds(100);
+        var last = RoomCycle.Boundary(start.AddMilliseconds(7), 1007);
+        Assert.Equal(start, last);
+        Assert.False(RoomCycle.IsDue(last, start.AddMilliseconds(499)));
+        var late = start.AddMilliseconds(504);
+        Assert.True(RoomCycle.IsDue(last, late));
+        Assert.Equal(start.AddMilliseconds(500), RoomCycle.Boundary(late, 1504));
+    }
 }

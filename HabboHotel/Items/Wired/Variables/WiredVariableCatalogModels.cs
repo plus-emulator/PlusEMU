@@ -11,9 +11,12 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
     public bool HasTextConnectorFallback => TextConnector.Count > 0 && TextConnectorFallback is not null;
     public bool IsBuiltin { get; init; }
     public bool IsDerived { get; init; }
-    public bool CanCreateAndDelete => !ReadOnly && !IsBuiltin && Definition.Target is WiredVariableTarget.User or WiredVariableTarget.Furni;
+    public bool CanCreateAndDelete => !ReadOnly && !IsBuiltin && !IsDerived && Definition.Target is WiredVariableTarget.User or WiredVariableTarget.Furni;
     public bool CanWriteValue => !ReadOnly && HasValue;
     public bool CanReadTimestamps => !IsBuiltin && !IsDerived;
+    /// <summary>Observed on hhus (AIR WIN63-202610131318-860371703): a global variable lists canReadCreationTime false and canReadLastUpdateTime true.</summary>
+    public bool CanReadCreationTime => CanReadTimestamps && Definition.Target != WiredVariableTarget.Global;
+    public bool CanReadLastUpdateTime => CanReadTimestamps;
     // Catalog target/type codes differ from scalar editor target codes.
     public int CatalogTarget => Definition.Target switch
     {

@@ -20,6 +20,7 @@ public sealed partial class WiredGlideConveyorTests
         f.Owned(() => rider.OnChat(0, "pulse", false));
         f.Advance(200);
         Assert.Equal((4, 11, 4), (rider.X, rider.Y, rider.CurrentEffect));
+        // The relocation runs at the start of the room tick that publishes it.
         f.Advance(1750);
         Assert.Equal((4, 11), (rider.X, rider.Y));
         Assert.Equal(4, rider.CurrentEffect);
@@ -70,11 +71,11 @@ public sealed partial class WiredGlideConveyorTests
         f.Advance(250);
 
         f.Owned(() => rider.OnChat(0, "pulse", false));
-        f.Advance(250);
+        // On the first tick the step being taken lands; the relocation runs on the next tick, which shows it.
+        f.Advance(750);
+        Assert.NotEqual(stepping, (8, 10));
 
-        Assert.Equal(stepping, (rider.X, rider.Y));
         Assert.False(rider.IsWalking);
-        f.Advance(500);
         Assert.Equal((8, 10), (rider.X, rider.Y));
     }
 
@@ -90,7 +91,7 @@ public sealed partial class WiredGlideConveyorTests
 
         Assert.True(rider.Y < 10);
         Assert.True(rider.IsWalking);
-        // The first boundary after the firing is 1000; the landing is 1500 ms after it.
+        // The first tick after the firing is 1000; the landing runs and shows on the tick 1500 ms after it.
         f.Advance(700);
         Assert.NotEqual((8, 10), (rider.X, rider.Y));
         f.Advance(50);

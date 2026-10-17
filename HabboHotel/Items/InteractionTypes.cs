@@ -28,6 +28,8 @@ public static class InteractionTypes
                 return InteractionType.InvisibleFurniControl;
             case "chooser_disable":
                 return InteractionType.ChooserDisabler;
+            case "recolorable":
+                return InteractionType.Recolorable;
             case "wired_chest_furni":
                 return InteractionType.WiredChestFurni;
             case "wired_chest_coins":

@@ -57,9 +57,29 @@ public sealed class ModeratorTargetHierarchyTests
         var actor = new Habbo { Id = 1, Access = EditorTestSupport.Access([PermissionKeys.CommandGiveCoins], 50) };
         var (session, sent) = HabbiconTestSupport.Client(actor);
         actor.Client = session;
-        await new GiveCommand().Execute(session, null!, actor, ["actor", "coins", "10"]);
+        await new GiveCommand().Execute(session, null!, actor, ["coins", "10"]);
         Assert.Equal(10, actor.Credits);
         Assert.Single(sent);
+    }
+
+    [Fact]
+    public async Task GiveReadsCurrencyAndAmountAfterTheDispatcherStripsTheUsername()
+    {
+        var actor = new Habbo { Id = 1, Access = EditorTestSupport.Access([PermissionKeys.CommandGiveDiamonds], 50) };
+        var (session, _) = HabbiconTestSupport.Client(actor);
+        actor.Client = session;
+        await new GiveCommand().Execute(session, null!, actor, ["diamonds", "100000"]);
+        Assert.Equal(100000, actor.Diamonds);
+    }
+
+    [Fact]
+    public async Task GiveWithoutAnAmountDoesNotThrow()
+    {
+        var actor = new Habbo { Id = 1, Access = EditorTestSupport.Access([PermissionKeys.CommandGiveDiamonds], 50) };
+        var (session, _) = HabbiconTestSupport.Client(actor);
+        actor.Client = session;
+        await new GiveCommand().Execute(session, null!, actor, ["diamonds"]);
+        Assert.Equal(0, actor.Diamonds);
     }
 
     [Fact]

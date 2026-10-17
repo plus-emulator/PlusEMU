@@ -114,6 +114,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.ConfigurationPublished = box =>
         {
             UpdateClickEnvironment(box.Item.Id, box);
+            ShowRestingState(box);
 
             if (_variables?.IsValueCreated == true) {
                 _variables.Value.ConfigurationSaved(box);
@@ -137,6 +138,17 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _highscoreClockAdmission++;
 
         try {
+            if (!WiredCounterController.IsGameTimer(item)) {
+                // A Wired game counter is the game itself: its Start resets the team scores and raises Game Starts, its Stop raises Game Ends.
+                if (start) {
+                    _room.GetGameManager().Reset();
+                }
+
+                TriggerEvent(start ? WiredBoxType.TriggerGameStarts : WiredBoxType.TriggerGameEnds, null);
+
+                return;
+            }
+
             if (start) {
                 _room.GetGameManager().Reset();
                 _highscores?.Start(transition);
@@ -192,9 +204,24 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
         FlushFlashes();
     }
+    /// <summary>A Wired game counter is running, which is a game in progress for scores and team games.</summary>
+    public bool GameCounterRunning => _counters.HasRunningGameCounter;
     internal bool NeedsFastCycle => _engine.NeedsFastCycle;
     internal void ObserveFastWork(Action<bool>? observer) => _engine.ObserveFastWork(observer);
-    public bool Dispatch(WiredRuntimeEvent @event) => WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() =>
+    public bool Dispatch(WiredRuntimeEvent @event)
+    {
+        var dispatched = DispatchCore(@event);
+
+        // Speech runs its stacks at once, outside the room's passes: send what they flashed and wrote now, with the chat. Observed on hhus
+        // (AIR WIN63-202610131318-860371703): the flash arrives in the same batch as the chat that fired it.
+        if (@event.Kind == WiredEventKind.Speech) {
+            FlushFlashes();
+        }
+
+        return dispatched;
+    }
+
+    private bool DispatchCore(WiredRuntimeEvent @event) => WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() =>
     {
         if (_highscoreClockAdmission == 0 && @event.Kind is WiredEventKind.GameStart or WiredEventKind.GameEnd) {
             _highscores?.Invalidate();
@@ -213,6 +240,13 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.CallStacks(context, targets, negative);
     public bool SendSignal(WiredRuntimeContext context, IEnumerable<Item> receivers, WiredSelection selection, bool negative = false) =>
         _engine.SendSignal(context, receivers, selection, negative);
+    public bool ScheduleOnRoomTick(WiredRuntimeContext context, long tickBoundary, Action callback, Action? onCancelled = null) =>
+        _engine.ScheduleOnRoomTick(context, tickBoundary, callback, onCancelled);
+    public long FirstRoomTickAfter(long firing) => _engine.FirstRoomTickAfter(firing);
+
+    /// <summary>Called at the start of every room tick's pass, before the room moves and serializes avatars.</summary>
+    public void OnRoomTick() => _engine.OnRoomTick();
+
     public bool ScheduleAux(WiredRuntimeContext context, int delayMilliseconds, Action callback, Action? onCancelled = null,
         bool alignToStateUpdate = false) =>
         _engine.ScheduleAux(context, delayMilliseconds, callback, onCancelled, alignToStateUpdate);
@@ -328,8 +362,17 @@ public partial class WiredComponent : IWiredRuntimeOperations
         return false;
     }
 
-    public bool TriggerEvent(WiredBoxType type, params object[] arguments) =>
-        WithHighscoreSpeechOwner(type == WiredBoxType.TriggerUserSays, () => TriggerEventCore(type, arguments));
+    public bool TriggerEvent(WiredBoxType type, params object[] arguments)
+    {
+        var triggered = WithHighscoreSpeechOwner(type == WiredBoxType.TriggerUserSays, () => TriggerEventCore(type, arguments));
+
+        // A chat runs its stacks at once, like Dispatch of speech: their flashes go out with the chat.
+        if (type == WiredBoxType.TriggerUserSays) {
+            FlushFlashes();
+        }
+
+        return triggered;
+    }
 
     private bool TriggerEventCore(WiredBoxType type, object[] arguments)
     {
@@ -453,11 +496,6 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
         lock (_pendingFlashes) {
             _pendingFlashes.Add(item);
-
-            // An antenna is not a box: its flip is not held to the state update.
-            if (box == null) {
-                _pendingImmediate.Add(item);
-            }
         }
     }
 
@@ -477,47 +515,63 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
         lock (_pendingFlashes) {
             _pendingFlashes.Add(item);
-            _pendingImmediate.Add(item);
+        }
+    }
+
+    /// <summary>
+    /// Every save of a selector sends its resting state: 3 (green) with "Filter existing selection", 0 (orange) without; Invert is not
+    /// a colour. Observed on hhus (AIR WIN63-202610131318-860371703): ObjectDataUpdate right after UpdateSelector. Room entry lists the
+    /// last state, flashes included.
+    /// </summary>
+    private void ShowRestingState(IWiredItem box)
+    {
+        var state = WiredFlashStates.RestingState(box)?.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        if (state == null) {
+            return;
+        }
+
+        box.Item.LegacyDataString = state;
+        box.Item.UpdateState(true, false);
+
+        // A single ObjectDataUpdate (AIR incoming 374, class_2387). Hidden boxes are not on the clients; they show the state when they
+        // come back.
+        if (!_room.HideWired) {
+            _room.SendObjectData(box.Item, state, false);
         }
     }
 
     private readonly HashSet<Item> _pendingFlashes = [];
-    private readonly HashSet<Item> _pendingImmediate = [];
     private readonly Dictionary<uint, long> _flashWindows = [];
-    private long _nextFlashUpdate;
 
-    /// <summary>Sends the flashed boxes' current states together, at most once per state update interval.</summary>
-    internal void FlushFlashes(bool force = false)
+    /// <summary>
+    /// Sends the flashed boxes' states and Wired's furni state writes together, at the end of the pass that made them. Each box flips at most
+    /// once per 500 ms window (see <see cref="OnEvent"/>); the room has no shared flash interval. Observed on hhus (AIR
+    /// WIN63-202610131318-860371703): a box flash goes out in the same batch as the chat that fired it, and two stacks fired 200 ms apart
+    /// flash 200 ms apart.
+    /// </summary>
+    internal void FlushFlashes()
     {
         Item[] items;
-        var now = (long)Stopwatch.GetElapsedTime(0).TotalMilliseconds;
 
         lock (_pendingFlashes) {
             if (_pendingFlashes.Count == 0) {
                 return;
             }
 
-            // Observed on AIR WIN63-202610131318-860371703: under a 50 ms timer the furni states go out on every wired tick while each box's
-            // flash stays on the 500 ms state updates.
-            if (!force && now < _nextFlashUpdate) {
-                if (_pendingImmediate.Count == 0) {
-                    return;
-                }
-
-                items = [.. _pendingImmediate.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
-                _pendingFlashes.ExceptWith(_pendingImmediate);
-                _pendingImmediate.Clear();
-            }
-            else {
-                _nextFlashUpdate = now - now % WiredFlashStates.StateUpdateMilliseconds + WiredFlashStates.StateUpdateMilliseconds;
-                items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
-                _pendingFlashes.Clear();
-                _pendingImmediate.Clear();
-            }
+            items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
+            _pendingFlashes.Clear();
         }
 
-        _room.SendObjectsData(items);
+        _room.SendObjectsData(FlashOrder(items));
     }
+
+    /// <summary>
+    /// Observed on hhus (AIR WIN63-202610131318-860371703): the tick's data batch lists the furni states written by Wired first, then the
+    /// trigger box, then the stack's other boxes (walks-on [trigger, show_message]; periodically [colour tile, trigger, toggle_state]).
+    /// </summary>
+    internal static Item[] FlashOrder(IEnumerable<Item> items) => [.. items.OrderBy(item => !item.IsWired ? 0
+        : item.Definition.InteractionType == InteractionType.WiredTrigger ? 1 : 2)];
 
     public bool AddBox(IWiredItem item) => _engine.Mutate(() =>
     {

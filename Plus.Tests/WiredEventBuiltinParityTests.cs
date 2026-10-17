@@ -81,7 +81,7 @@ public partial class PlacedFurniRoomTests
         _room.LastTimerResetAt = clock.Now;
         Assert.Equal(0, Read("@wired_timer"));
         Assert.Equal(clock.Now.ToUnixTimeMilliseconds(), Read("@current_time"));
-        var local = TimeZoneInfo.ConvertTime(clock.Now, wired.Settings.ExplicitTimeZone ?? TimeZoneInfo.Utc);
+        var local = TimeZoneInfo.ConvertTime(clock.Now, wired.Settings.ExplicitTimeZone ?? Plus.HabboHotel.Items.Wired.Settings.WiredRoomSettings.DefaultTimeZone);
 
         foreach (var (field, expected) in new (string, long)[] { ("milliseconds_of_seconds", local.Millisecond),
             ("seconds_of_minute", local.Second), ("minute_of_hour", local.Minute), ("hour_of_day", local.Hour),

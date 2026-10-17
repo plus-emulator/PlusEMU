@@ -10,6 +10,9 @@ internal static class WiredNativeConditionEditor
     internal static bool Supports(string name) => WiredConditionConfiguration.Supports(name)
         && name is not ("wf_cnd_furnis_hv_avtrs" or "wf_cnd_user_count_in");
 
+    /// <summary>Cards without a quantifier radio whose save still keeps a quantifier of 0 or 1.</summary>
+    internal static bool AcceptsHiddenQuantifier(string name) => name is "wf_cnd_has_furni_on" or "wf_cnd_furnis_hv_avtrs";
+
     internal static WiredNativeEditorMetadata Metadata(string name)
     {
         var positive = Positive(name);
@@ -29,7 +32,7 @@ internal static class WiredNativeConditionEditor
             "wf_cnd_team_has_rank" => [0, 0],
             "wf_cnd_team_has_score" => [0, 0, 0],
             "wf_cnd_counter_time_matches" => [0, 0, 0, 0],
-            "wf_cnd_time_less_than" or "wf_cnd_time_more_than" => [1],
+            "wf_cnd_time_less_than" or "wf_cnd_time_more_than" => [20],
             "wf_cnd_date_rng_active" => [0, 0],
             "wf_cnd_match_time" => [0, 0, 0, 0, 0, 0, 0, 0, 0],
             "wf_cnd_match_date" => [0, 0, 127, 1, 1, 4095, 0, 0],
@@ -49,10 +52,12 @@ internal static class WiredNativeConditionEditor
             "wf_cnd_trggrer_on_frn" => new([[0, 100, 200, 201]], [[0, 200, 201]], [100], [0], defaults, false),
             "wf_cnd_triggerer_match" => new([], [[0, 200, 201], [0, 101, 200, 201]], [], [0, 101], defaults, false),
             "wf_cnd_stuff_is" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [], [0, 100], [], defaults, true),
-            "wf_cnd_slc_quantity" => new([[0, 200, 201]], [[0, 200, 201]], [200], [200], defaults, true),
+            // Observed on hhus (AIR WIN63-202610131318-860371703): no wall picks (it has no pick source).
+            "wf_cnd_slc_quantity" => new([[0, 200, 201]], [[0, 200, 201]], [200], [200], defaults, false),
+            // Observed on hhus (AIR WIN63-202610131318-860371703): the snapshot conditions allow wall picks.
             "wf_cnd_furnis_hv_avtrs" or "wf_cnd_has_furni_on" or "wf_cnd_match_snapshot"
                 or "wf_cnd_has_altitude" or "wf_cnd_counter_time_matches" =>
-                new([[0, 100, 200, 201]], [], [100], [], defaults, positive == "wf_cnd_has_altitude"),
+                new([[0, 100, 200, 201]], [], [100], [], defaults, positive is "wf_cnd_has_altitude" or "wf_cnd_match_snapshot"),
             "wf_cnd_actor_dir" or "wf_cnd_actor_in_group" or "wf_cnd_actor_in_team" or "wf_cnd_has_handitem"
                 or "wf_cnd_wearing_effect" or "wf_cnd_wearing_badge" or "wf_cnd_user_performs_action"
                 or "wf_cnd_team_has_rank" or "wf_cnd_team_has_score" =>
@@ -70,7 +75,9 @@ internal static class WiredNativeConditionEditor
             _ => 0
         };
 
-        return metadata with { QuantifierType = quantifier, Invert = name != positive };
+        // The invert flag only picks the ".neg." quantifier labels (AIR WIN63-202610131318-860371703 UserDefinedRoomEventsCtrl.as:512-517);
+        // observed on hhus, Not Furni Has Furni sends it false. The condition still negates at runtime.
+        return metadata with { QuantifierType = quantifier, Invert = name != positive && name != "wf_cnd_not_furni_on" };
     }
 
     internal static bool TryCompile(string name, WiredNativeEditorConfiguration native, out WiredConfiguration runtime)
@@ -87,7 +94,9 @@ internal static class WiredNativeConditionEditor
         var q = native.Quantifier.Value;
         var positive = Positive(name);
 
-        if (Metadata(name).QuantifierType == 0 && q != 0) {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): Furni Has Furni On saves quantifier 1 and reads it back although its
+        // editor shows no quantifier; the runtime keeps reading its own all/any field.
+        if (Metadata(name).QuantifierType == 0 && q != 0 && !AcceptsHiddenQuantifier(name)) {
             return false;
         }
 
@@ -148,7 +157,7 @@ internal static class WiredNativeConditionEditor
                 break;
             case "wf_cnd_furnis_hv_avtrs":
             case "wf_cnd_has_furni_on":
-                if (p.Length != 1 || f.Length != 1 || q != 0) {
+                if (p.Length != 1 || f.Length != 1 || q != 0 && !AcceptsHiddenQuantifier(name)) {
                     return false;
                 }
 
@@ -222,7 +231,9 @@ internal static class WiredNativeConditionEditor
                 break;
             case "wf_cnd_time_less_than":
             case "wf_cnd_time_more_than":
-                if (p.Length != 1 || p[0] is < 1 or > 1200) {
+                // The AIR editor writes its 1..1200 pulses plus one (2..1201); observed on hhus (AIR WIN63-202610131318-860371703),
+                // 1201 saves on both conditions.
+                if (p.Length != 1 || p[0] is < 1 or > 1201) {
                     return false;
                 }
 

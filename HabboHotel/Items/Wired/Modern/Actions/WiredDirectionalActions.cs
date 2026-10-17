@@ -50,6 +50,7 @@ public sealed class WiredDirectionalActions
         return moved;
     }
     public int Heading(Item item, int initial) => _headings.GetValueOrDefault(item, initial);
+    public void Clear() => _headings.Clear();
     public void Retain(IEnumerable<Item> attached)
     {
         var live = attached.ToHashSet();

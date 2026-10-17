@@ -25,9 +25,9 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         _appendCarryPublication = append;
     }
 
-    // A pressure pad (colour tile) only acts through Wired walk triggers, which the engine already seals the segment for.
+    // A pressure pad only acts through Wired walk triggers, which the engine already seals the segment for.
     internal static bool PlainPublicationItem(Item item) => item.IsFloorItem
-        && item.Definition.InteractionType is InteractionType.None or InteractionType.PressurePad && !item.Definition.IsSeat;
+        && item.Definition.InteractionType is InteractionType.None or InteractionType.PressurePad or InteractionType.Recolorable && !item.Definition.IsSeat;
 
     public bool RestoreWallSnapshot(WiredRuntimeContext context, Item item, WiredFurniSnapshot snapshot,
         bool position = true, bool altitude = true)
@@ -151,6 +151,12 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var source = Furniture(item);
         var targetHeight = height ?? room.GetGameMap().Model.SqFloorHeight[Math.Clamp(x, 0, room.GetGameMap().Model.MapSizeX - 1), Math.Clamp(y, 0, room.GetGameMap().Model.MapSizeY - 1)];
         var options = WiredMovementPolicy.Resolve(policy, source, x, y, targetHeight, rotation, explicitHeight: height.HasValue);
+
+        // A projectile heading the furniture cannot take keeps its rotation instead of refusing the move. Observed on hhus
+        // (AIR WIN63-202610131318-860371703): a colortile moved diagonally by a default projectile add-on landed with rotation 0.
+        if (options.Rotation is { } turned && turned != rotation && !WiredRoomOperations.ValidRotation(item, turned)) {
+            options = options with { Rotation = rotation };
+        }
 
         // A turn on the spot is a plain ObjectUpdate. Observed r92g r92-move-rotate mrCw-w1/mrCcw-w1 (AIR WIN63-202610131318-860371703,
         // frames 39269/39535): no WiredMovements for a rotation without a move.

@@ -471,8 +471,8 @@ public sealed partial class WiredNativeLifecycleTests
         var f = new World();
         var store = new SettingsStore();
         Set(f.Wired, "<Settings>k__BackingField", new WiredRoomSettings(f.Room, store));
-        Assert.Equal(DateTimeOffset.Now.Offset, f.Wired.CalendarTime.Offset);
-        Assert.Equal(TimeProvider.System.LocalTimeZone, f.Wired.Variables.TimeZone());
+        Assert.Equal(WiredRoomSettings.DefaultTimeZone.GetUtcOffset(f.Wired.CalendarTime), f.Wired.CalendarTime.Offset);
+        Assert.Equal(WiredRoomSettings.DefaultTimeZone, f.Wired.Variables.TimeZone());
         f.Human();
         f.Room.Type = "private";
         f.Room.OwnerName = "viewer";
@@ -488,8 +488,8 @@ public sealed partial class WiredNativeLifecycleTests
         box.ApplyConfiguration(config);
         Assert.True(((IWiredContextualItem)box).Execute(f.Context()));
         Assert.True(f.Wired.Settings.TrySave(owner, 0, 0, "", out error), error);
-        Assert.Equal(DateTimeOffset.Now.Offset, f.Wired.CalendarTime.Offset);
-        Assert.Equal(TimeProvider.System.LocalTimeZone, f.Wired.Variables.TimeZone());
+        Assert.Equal(WiredRoomSettings.DefaultTimeZone.GetUtcOffset(f.Wired.CalendarTime), f.Wired.CalendarTime.Offset);
+        Assert.Equal(WiredRoomSettings.DefaultTimeZone, f.Wired.Variables.TimeZone());
     }
 
     private sealed class SettingsStore : IWiredRoomSettingsStore

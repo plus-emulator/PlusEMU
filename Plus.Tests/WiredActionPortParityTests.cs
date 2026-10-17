@@ -249,6 +249,27 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal((2, 3), (item.GetX, item.GetY));
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): each save of the box restarts the furni on the configured direction.
+    [Fact]
+    public void MoveToDirectionSaveRestartsTheRememberedHeading()
+    {
+        var (room, map, items) = World();
+        var item = Floor(1, 2, 2);
+        Place(map, items, item);
+        var user = Avatar(room, 1, 3, 2);
+        map.AddUserToMap(user, new(3, 2));
+        var action = Box(room, "wf_act_move_to_dir", [2, 2, 100, 0], [1], _ => { });
+        Assert.True(action.Execute(Context(room, [item], [user])));
+        Assert.Equal((2, 3), (item.GetX, item.GetY));
+        map.RemoveUserFromMap(user, new(3, 2));
+        Assert.True(action.Execute(Context(room, [item], [])));
+        Assert.Equal((2, 4), (item.GetX, item.GetY));
+        ModernWiredRuntimeTests.LoadStoredRuntime(action, "wf_act_move_to_dir",
+            new WiredConfiguration { IntParams = [2, 2, 100, 0], SelectedItems = [1] });
+        Assert.True(action.Execute(Context(room, [item], [])));
+        Assert.Equal((3, 4), (item.GetX, item.GetY));
+    }
+
     // Official AIR r92d r92-mtd-blocked: east stacks at z=1; NE passes between the two neighboring blocks at z=0.
     [Theory]
     [InlineData(2, 3, 2, 1.0)]

@@ -45,9 +45,9 @@ public static class WiredNativeEditorProjection
         "wf_trg_periodically" => new([], [], [], [], [1], false),
         "wf_cnd_user_count_in" => new([], [], [], [], [1, 50], false),
         "wf_act_teleport_to" => new([[0, 100, 200, 201]], [[0, 200, 201]], [100], [0], [0], false),
-        // Rotate's two owned fields/defaults and floor-only scope are the explicit local subset.
-        // The captured server third field and wall support have no proven executable mapping here.
-        "wf_act_move_rotate" => new([[0, 100, 200, 201]], [], [100], [], [0, 0], false),
+        // Rotate owns two fields; the frame adds the hotel's third (FrameDefaults, HotelFrame). Wall picks are allowed as on hhus
+        // (AIR WIN63-202610131318-860371703) and skipped by the mover, which only moves floor furni.
+        "wf_act_move_rotate" => new([[0, 100, 200, 201]], [], [100], [], [0, 0], true),
         "wf_act_move_to_dir" => new([[0, 100, 200, 201]], [], [100], [], [0, 0, 1], false),
         "wf_act_control_clock" => new([[0, 100, 200, 201]], [], [100], [], [0], false),
         "wf_act_join_team" => new([], [[0, 200, 201]], [], [0], [1, 0], false),
@@ -138,9 +138,30 @@ public static class WiredNativeEditorProjection
     /// furni with N for each part the saved options do not restore (r92l r92l-sshot-hidden: [0,0,0,0] gives "id,N,N,N,N,N",
     /// [1,1,1,1] gives "id,0,0,8,2,0").
     /// </summary>
+    /// <summary>
+    /// A save may echo the frame's trailing hotel-owned int (see <see cref="HotelFrame"/>); the hotel accepts it and keeps only the box's
+    /// own fields. Observed on hhus (AIR WIN63-202610131318-860371703): move_rotate saved with [0,0,1] and match_to_sshot with
+    /// [0,0,0,0,1] are accepted.
+    /// </summary>
+    public static WiredNativeEditorConfiguration WithoutHotelInt(string name, WiredNativeEditorConfiguration native)
+    {
+        if (name is not ("wf_act_move_rotate" or "wf_act_match_to_sshot") || !Supports(name)) {
+            return native;
+        }
+
+        var owned = Metadata(name).OwnedDefaults.Length;
+        var p = native.OwnedIntParams;
+
+        return p.Length == owned + 1 && p[^1] is 0 or 1 ? native with { OwnedIntParams = p[..owned] } : native;
+    }
+
     public static WiredNativeEditorConfiguration HotelFrame(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native)
     {
         var name = descriptor.CanonicalName;
+
+        if (name is "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap" && Supports(name)) {
+            return native.SavedState.Snapshots.IsDefaultOrEmpty ? native : native with { Text = SnapshotText(native.SavedState.Snapshots) };
+        }
 
         if (name is not ("wf_act_move_rotate" or "wf_act_match_to_sshot") || !Supports(name)) {
             return native;
@@ -169,6 +190,41 @@ public static class WiredNativeEditorProjection
 
         return frame;
     }
+
+    /// <summary>
+    /// The snapshot conditions' saved text. Observed on hhus (AIR WIN63-202610131318-860371703): a wall torch at `:w=5,0 l=8,40 r`
+    /// saved with state matching only is stored as `-2147418112,0,5,0,8,247,r`: the negated wall id, the state, the wall tile, the
+    /// offset along the wall, the altitude in hundredths and the side, with no part masked by the unticked options. Floor entries are
+    /// id,state,rotation,x,y,altitude in hundredths, highest id first: a colour tile at state 3 on (8,11), a block turned to 2 on (9,11)
+    /// and a block turned to 4 stacked on it saved `2147418155,0,4,9,11,100;2147418149,3,0,8,11,0;2147418148,0,2,9,11,0`. The AIR editor
+    /// never reads the text (class_4293.as:49-71 reads and writes only the four option ints).
+    /// </summary>
+    internal static string SnapshotText(IEnumerable<WiredFurniSnapshot> snapshots)
+    {
+        var invariant = System.Globalization.CultureInfo.InvariantCulture;
+
+        return string.Join(';', snapshots.Where(entry => entry.Wall == null).OrderByDescending(entry => entry.ItemId)
+            .Select(entry => string.Join(',', entry.ItemId.ToString(invariant), entry.State.Length == 0 ? "0" : entry.State,
+                entry.Rotation.ToString(invariant), entry.X.ToString(invariant), entry.Y.ToString(invariant),
+                ((long)Math.Round(entry.Z * 100, MidpointRounding.AwayFromZero)).ToString(invariant)))
+            .Concat(snapshots.Where(entry => entry.Wall != null).OrderBy(entry => entry.ItemId).Select(entry =>
+            {
+                var wall = entry.Wall!;
+                var altitude = wall.NativeAltitude ?? wall.CapturedAltitudeHundredths;
+
+                return string.Join(',', (-(long)entry.ItemId).ToString(invariant), entry.State.Length == 0 ? "0" : entry.State,
+                    wall.TileX.ToString(invariant), wall.TileY.ToString(invariant), wall.LocalX.ToString(invariant),
+                    altitude?.ToString(invariant) ?? wall.PixelY.ToString(invariant), wall.Left ? "l" : "r");
+            })));
+    }
+
+    /// <summary>
+    /// The default int list the frame advertises. move_rotate and match_to_sshot end it with the hotel-owned int at its unsaved value 1,
+    /// as observed on hhus (AIR WIN63-202610131318-860371703): [0,0,1] and [0,0,0,0,1]. The editors never read it (class_4131.as:29-38
+    /// reads two ints, class_4247.as:45-67 four), so resetting to these defaults saves the same fields as before.
+    /// </summary>
+    public static ImmutableArray<int> FrameDefaults(string name, WiredNativeEditorMetadata metadata) =>
+        name is "wf_act_move_rotate" or "wf_act_match_to_sshot" ? [.. metadata.OwnedDefaults, 1] : metadata.OwnedDefaults;
 
     public const string SourceCountKey = "wiredfurni.error.invalid_furni_source_count";
 
@@ -206,11 +262,15 @@ public static class WiredNativeEditorProjection
         return filled.FurniSourceTypes.Length == slots;
     }
 
+    /// <summary>Characters of a Says Something keyword the hotel keeps.</summary>
+    public const int SaysKeywordLength = 200;
+
     public static bool TryCompile(uint itemId, WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
         out WiredConfiguration runtime, ImmutableArray<int> triggerContext = default, bool storedRow = false)
     {
         runtime = new();
         var name = descriptor.CanonicalName;
+        native = WithoutHotelInt(name, native);
 
         if (itemId == 0 || !Supports(name) || native.Version != 2 || native.Category != descriptor.Category
             || native.NativeCode != Code(name) || !WithinBounds(native)) {
@@ -227,7 +287,8 @@ public static class WiredNativeEditorProjection
             // A stored row passed the source lists that applied when it was saved; the lists follow the official editors and may narrow later.
             || !storedRow && native.FurniSourceTypes.Where((source, index) => !metadata.FurniAllowed[index].Contains(source)).Any()
             || !storedRow && native.UserSourceTypes.Where((source, index) => !metadata.UsersAllowed[index].Contains(source)).Any()
-            || !metadata.AllowWall && native.PrimaryItems.Concat(native.SecondaryItems).Any(item => item.Wall)
+            // Likewise a stored row keeps the wall picks it was saved with when a card later stops allowing them.
+            || !storedRow && !metadata.AllowWall && native.PrimaryItems.Concat(native.SecondaryItems).Any(item => item.Wall)
             || BuiltIn.Contains(name) && native.VariableIds.Length != 0) {
             return false;
         }
@@ -254,6 +315,12 @@ public static class WiredNativeEditorProjection
                 if (p.Length != 3 || p[0] is < 0 or > 1 || p[1] is < 0 or > 2 || p[2] is < 0 or > 1
                     || native.Text.Length > 1000) {
                     return false;
+                }
+
+                // Observed on hhus (AIR WIN63-202610131318-860371703): a longer keyword saves, but only its first 200 characters are kept.
+                if (text.Length > SaysKeywordLength) {
+                    text = text[..SaysKeywordLength];
+                    native = native with { Text = text };
                 }
 
                 parameters = [p[1], p[2], p[0]];
@@ -301,7 +368,8 @@ public static class WiredNativeEditorProjection
                 users["users"] = native.UserSourceTypes[0];
                 break;
             case "wf_cnd_furnis_hv_avtrs":
-                if (p.Length != 1 || p[0] is < 0 or > 1 || native.Quantifier != 0 || native.Text != "") {
+                // Observed on hhus (AIR WIN63-202610131318-860371703): quantifier 1 saves and reads back, though the editor shows none.
+                if (p.Length != 1 || p[0] is < 0 or > 1 || native.Quantifier is not (0 or 1) || native.Text != "") {
                     return false;
                 }
 

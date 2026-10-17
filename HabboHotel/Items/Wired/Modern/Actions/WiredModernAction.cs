@@ -16,6 +16,8 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 {
+    /// <summary>The whisper a Kick User sends the room owner it cannot kick (hhus text).</summary>
+    internal const string KickOwnerException = "Wired kick exception: Room owner";
     private readonly WiredCounterController _clocks;
     private readonly Action<WiredRuntimeEvent> _publish;
     private Action<WiredRuntimeEvent>? _headingPublisher;
@@ -64,6 +66,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         _travelStore = travelStore;
         _movementRandom = movementRandom;
     }
+
+    // Saving move_to_dir restarts every furni from the configured direction; the heading is kept only across firings.
+    // Observed on hhus (AIR WIN63-202610131318-860371703): re-saves with direction 3, then 1, moved the same tile (+1,+1), then (+1,-1).
+    protected override void ConfigurationChanged() => _directions.Clear();
 
     internal void BindHeadingCollision(Func<WiredRuntimeContext, WiredRuntimeEvent, bool?> enqueue)
     {
@@ -374,7 +380,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
 
         if (WiredBotActions.Names.Contains(name)) {
-            return WiredBotActions.Execute(name, context, config, _movement, _botStore);
+            return WiredBotActions.Execute(name, context, config, _movement, _botStore, (bot, item) => Teleport(context, bot, item, false));
         }
 
         if (WiredMovementActions.Names.Contains(name)) {
@@ -392,6 +398,11 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 || name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6) : [];
 
             if (name is "wf_act_move_furni_as_group" or "wf_act_teleport_to" && config.Origin?.Native != null) {
+                targets = targets.Where(item => item.IsFloorItem).ToArray();
+            }
+
+            // Observed on hhus (AIR WIN63-202610131318-860371703): furni_to_furni with a wall item as its only target moves nothing.
+            if (name == "wf_act_furni_to_furni") {
                 targets = targets.Where(item => item.IsFloorItem).ToArray();
             }
 
@@ -528,7 +539,20 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     var client = user.GetClient();
                     var player = client?.GetHabbo();
 
-                    if (player == null || client == null || player.Id == context.Room.OwnerId || player.Access.Can(PermissionKeys.ModerationTool)) {
+                    if (player == null || client == null) {
+                        continue;
+                    }
+
+                    if (player.Id == context.Room.OwnerId) {
+                        // Observed on hhus (AIR WIN63-202610131318-860371703): the owner is not kicked and is whispered this notification.
+                        if (name == "wf_act_kick_user") {
+                            client.Send(new WiredChatComposer(user.VirtualId, KickOwnerException, 34, -1, true));
+                        }
+
+                        continue;
+                    }
+
+                    if (player.Access.Can(PermissionKeys.ModerationTool)) {
                         continue;
                     }
 
@@ -701,15 +725,18 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 foreach (var user in Users(context, config, "users")) {
                     var client = user.GetClient();
+                    var shownToRoom = Param(config, 1) != 0;
 
-                    if (client == null) {
+                    // Observed on hhus (AIR WIN63-202610131318-860371703): a message shown to everyone for a bot is said by the bot
+                    // (Bot Reached Furni/Avatar + Show Message). A private one has nobody to go to.
+                    if (client == null && !(user.IsBot && shownToRoom)) {
                         continue;
                     }
 
-                    var packet = new WiredChatComposer(user.VirtualId, FormatLegacyText(context, user, config.Text), Param(config, 2), Param(config, 3, -1), Param(config, 1) == 0);
+                    var packet = new WiredChatComposer(user.VirtualId, FormatLegacyText(context, user, config.Text), Param(config, 2), Param(config, 3, -1), !shownToRoom);
 
                     if (packet.Private) {
-                        client.Send(packet);
+                        client!.Send(packet);
                     }
                     else {
                         context.Room.SendPacket(packet);
@@ -820,33 +847,36 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
         var effects = user.GetClient()?.GetHabbo()?.Effects;
 
-        if (user.IsBot || effects == null) {
+        if (!user.IsBot && effects == null) {
             return Relocate();
         }
 
-        // Observed on AIR WIN63-202610131318-860371703: every step counts from the first 500 ms room boundary strictly after the firing.
-        // Normal: effect 4 at the firing, the avatar republished 1000 ms after that boundary, relocated 500 ms later and the effect
-        // dropped 1500 ms after the landing (an on-boundary firing lands at +2.0 s, effect 0 at +3.5 s); the walk is not stopped.
-        // Fast: effect 235, the walk ends on the tile being stepped onto, the landing is on the next boundary (+1000 ms for an
-        // on-boundary firing) and the effect drops 500 ms after it.
-        var firstBoundary = (int)(NextStateUpdate(context.NowMilliseconds) - context.NowMilliseconds);
-        var (republish, relocate, effectEnd) = fast
-            ? (firstBoundary, firstBoundary + FastTeleportRelocateMilliseconds, firstBoundary + FastTeleportEffectEndMilliseconds)
-            : (firstBoundary + TeleportRepublishMilliseconds, firstBoundary + TeleportRelocateMilliseconds, firstBoundary + TeleportEffectEndMilliseconds);
+        // Observed on AIR WIN63-202610131318-860371703: every step counts in room ticks from the first tick after the firing.
+        // Normal: effect 4 at the firing, the avatar republished on the 3rd tick, relocated on the 4th and the effect dropped on the 7th
+        // (1500 ms after the landing); the walk is not stopped. Fast: effect 235, the walk ends on the tile being stepped onto, the avatar
+        // is republished on the 1st tick, lands on the 2nd and the effect drops on the 3rd. A fast teleport from a walk-off stack fired
+        // with a step's announce arrives on the next tick and lands on the one after.
+        // Each step runs at the start of its tick's room pass, so it goes out with that tick's avatar updates, whatever the phase of the
+        // firing against the 500 ms Wired clock.
         var wired = room.GetWired();
+        var firstTick = wired.FirstRoomTickAfter(context.NowMilliseconds);
+        var tick = WiredFlashStates.StateUpdateMilliseconds;
+        var (republish, relocate, effectEnd) = fast
+            ? (firstTick, firstTick + tick, firstTick + 2 * tick)
+            : (firstTick + 2 * tick, firstTick + 3 * tick, firstTick + 6 * tick);
         var release = () => { };
 
         // Nothing is applied unless the firing can hold its three scheduled steps; the effect starts with the first one.
-        if (!wired.ScheduleAux(context, republish, () =>
+        if (!wired.ScheduleOnRoomTick(context, republish, () =>
             {
                 if (user.IsAttachedTo(room)) {
                     user.UpdateNeeded = true;
                 }
-            }, () => release(), alignToStateUpdate: true)) {
+            }, () => release())) {
             return Relocate();
         }
 
-        var restore = WiredTemporaryEffects.For(room).Acquire(user, () => effects.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room),
+        var restore = WiredTemporaryEffects.For(room).Acquire(user, () => user.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room),
             fast ? FastTeleportEffectId : TeleportEffectId);
         release = restore;
 
@@ -854,18 +884,18 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             StopAfterCurrentStep(user);
         }
 
-        if (!wired.ScheduleAux(context, relocate, () =>
+        if (!wired.ScheduleOnRoomTick(context, relocate, () =>
             {
                 if (user.IsAttachedTo(room)) {
                     Relocate();
                 }
-            }, alignToStateUpdate: true)) {
+            })) {
             restore();
 
             return Relocate();
         }
 
-        if (!wired.ScheduleAux(context, effectEnd, restore, restore, alignToStateUpdate: true)) {
+        if (!wired.ScheduleOnRoomTick(context, effectEnd, restore, restore)) {
             restore();
         }
 
@@ -897,9 +927,6 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
         return (x, y);
     }
-
-    private static long NextStateUpdate(long nowMilliseconds) =>
-        (nowMilliseconds / WiredFlashStates.StateUpdateMilliseconds + 1) * WiredFlashStates.StateUpdateMilliseconds;
 
     // The step in progress still lands; the walk ends there.
     private static void StopAfterCurrentStep(RoomUser user)
@@ -949,11 +976,6 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
     private const int KickRemoveMilliseconds = 2000;
     private const int TeleportEffectId = 4;
     private const int FastTeleportEffectId = 235;
-    private const int TeleportRepublishMilliseconds = 1000;
-    private const int TeleportRelocateMilliseconds = 1500;
-    private const int TeleportEffectEndMilliseconds = 3000;
-    private const int FastTeleportRelocateMilliseconds = 500;
-    private const int FastTeleportEffectEndMilliseconds = 1000;
 
     // Observed on hhus: a "<...>" segment of Show Message text is removed (brackets included) at output; the stored text is untouched.
     // Unknown $(name) placeholders are left literal by the text formatters.

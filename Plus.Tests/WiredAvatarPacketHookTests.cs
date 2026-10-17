@@ -135,6 +135,18 @@ public class WiredAvatarPacketHookTests
         Assert.Null(world.Actor.SignExpiresAt);
     }
 
+    // A standing avatar's sign expires in the v2 actor tick too; on our hotel it stayed until the avatar next walked.
+    [Fact]
+    public void TheActorTickExpiresASignWithoutAWalk()
+    {
+        var clock = new ManualClock(new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero));
+        var world = new World(9, 4, clock);
+        world.Actions.ApplySign(world.Room, world.Client, 4);
+        clock.Now = clock.Now.AddSeconds(5);
+        new Plus.HabboHotel.Rooms.PathFinding.ActorTickService(world.Room).BeforeMovement(world.Actor);
+        Assert.False(world.Actor.Statusses.ContainsKey("sign"));
+    }
+
     [Fact]
     public void ApplySignRejectsInvalidMissingActorAndForeignRoom()
     {
@@ -215,7 +227,9 @@ public class WiredAvatarPacketHookTests
         world.Actions.SetPosture(world.Client, 1);
         Assert.True(world.Actor.IsSitting);
         Assert.Equal(2, world.Actor.RotBody);
-        Assert.Equal(-0.35, world.Actor.Z);
+        // Observed on hhus (AIR WIN63-202610131318-860371703): "sit 0.55 1" with the Z unchanged.
+        Assert.Equal(0, world.Actor.Z);
+        Assert.Equal("0.55 1", world.Actor.Statusses["sit"]);
 
         world.Actor.UpdateNeeded = false;
         world.Actor.IsAsleep = true;

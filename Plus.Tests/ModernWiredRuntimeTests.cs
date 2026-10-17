@@ -839,8 +839,10 @@ public partial class ModernWiredRuntimeTests
         var attached = true;
         var first = effects.Acquire(user, () => current, value => current = value, () => attached);
         var second = effects.Acquire(user, () => current, value => current = value, () => attached);
+        // Observed on hhus (AIR WIN63-202610131318-860371703): a second lease of the same effect while the first is live adds nothing; the
+        // first one's end clears the effect.
         first();
-        Assert.Equal(4, current);
+        Assert.Equal(8, current);
         second();
         Assert.Equal(8, current);
         second();
@@ -2879,8 +2881,9 @@ public partial class ModernWiredRuntimeTests
         using var f = new TeleportFixture();
         f.Fire();
         f.User.SetPos(0, 0, 0);
+        // The second teleport fires while the first still glows: the first one's end (1500 ms after its landing) clears the glow.
         f.Fire();
-        Assert.Equal(4, f.User.CurrentEffect);
+        Assert.Equal(8, f.User.CurrentEffect);
         f.Advance(1500);
         Assert.Equal(8, f.User.CurrentEffect);
         f.User.SetPos(0, 0, 0);

@@ -111,6 +111,27 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(2, replies.Count(reply => reply.Header == ServerPacketHeader.AvatarEffectComposer));
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a second Bot Teleport fired while the bot still glows sends no new effect 4,
+    // and the first teleport's end (1500 ms after its landing) clears the glow.
+    [Fact]
+    public void BotTeleportFiredWhileGlowingKeepsTheFirstGlowAndItsEnd()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_teleport", intParams: [100, 100], text: "Bobby");
+        var bot = AddNamedBot(f, 9, "Bobby", 2, 2);
+        MakeTargetWalkable(f);
+        var replies = Capture(f.Client);
+        f.Fire(land: false);
+        f.Advance(1000);
+        f.Fire(land: false);
+        Assert.Equal(1, replies.Count(reply => reply.Header == ServerPacketHeader.AvatarEffectComposer));
+        f.Advance(2450);
+        Assert.Equal(4, bot.CurrentEffect);
+        f.Advance(50);
+        Assert.Equal(0, bot.CurrentEffect);
+        f.Advance(3000);
+        Assert.Equal(2, replies.Count(reply => reply.Header == ServerPacketHeader.AvatarEffectComposer));
+    }
+
     // Observed on hhus (AIR WIN63-202610131318-860371703): Show Message to everyone for a bot is said by the bot.
     [Theory]
     [InlineData(1, true)]

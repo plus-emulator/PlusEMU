@@ -15,14 +15,21 @@ public sealed class WiredTemporaryEffects
     public Action Acquire(RoomUser user, Func<int> readEffect, Action<int> writeEffect, Func<bool> stillAttached, int effect = 4)
     {
         var current = readEffect();
-        var original = _leases.TryGetValue(user, out var previous) && current == previous.Effect ? previous.Original : current;
+
+        // Observed on hhus (AIR WIN63-202610131318-860371703): a second teleport fired while the avatar still glows with the same effect
+        // sends no new effect, and the first teleport's end clears the glow. The live lease stays; this one has nothing to undo.
+        if (_leases.TryGetValue(user, out var live) && live.Effect == effect && current == effect) {
+            return () => { };
+        }
+
+        var original = live != null && current == live.Effect ? live.Original : current;
         var lease = new Lease(++_generation, original, effect, readEffect, writeEffect, stillAttached);
         _leases[user] = lease;
         writeEffect(effect);
 
         return () =>
         {
-            if (!_leases.TryGetValue(user, out var live) || live.Generation != lease.Generation) {
+            if (!_leases.TryGetValue(user, out var held) || held.Generation != lease.Generation) {
                 return;
             }
 

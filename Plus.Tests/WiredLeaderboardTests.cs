@@ -72,6 +72,23 @@ public sealed class WiredLeaderboardTests
         Assert.Null(first[0].Level);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: the row times are 0 unless the board shows a last-update (2) or creation (3) column.
+    [Fact]
+    public void RowTimesGoOutOnlyForShownTimeColumns()
+    {
+        var holders = Holders((1, 5, 1, 2));
+        var ranked = WiredLeaderboardRanking.Rank(Config(0), holders, null, null);
+        var choice = new WiredLeaderboardChoice(new(new(9, 1, 1, "coins", WiredVariableTarget.User, WiredVariableAvailability.Persistent, true), true, false),
+            null, new Dictionary<int, string>());
+        var plain = WiredLeaderboardRanking.Chunk(ranked, 0, choice, new Profiles(), Config(0))[0];
+        Assert.Equal((0L, 0L), (plain.CreationTime, plain.LastUpdateTime));
+        var timed = WiredLeaderboardRanking.Chunk(ranked, 0, choice, new Profiles(), Config(0) with
+        {
+            Columns = [new(0, "Name", 3), new(1, "Coins", 0), new(2, "Updated", 0), new(3, "Created", 0)]
+        })[0];
+        Assert.Equal((T0.AddMinutes(1).ToUnixTimeMilliseconds(), T0.AddMinutes(2).ToUnixTimeMilliseconds()), (timed.CreationTime, timed.LastUpdateTime));
+    }
+
     [Fact]
     public void SnapshotDescriptorFollowsClass2737()
     {

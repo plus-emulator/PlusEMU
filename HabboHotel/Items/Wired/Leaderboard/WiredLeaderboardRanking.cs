@@ -60,9 +60,13 @@ public static class WiredLeaderboardRanking
     }
 
     /// <summary>Chunk <paramref name="index"/> of the ranking: 50 rows, ranks counted from the top of the whole list.</summary>
+    // Observed on AIR WIN63-202610151745-318700621: a row carries its creation and last-update times only when the board shows a
+    // column of that kind; otherwise both are 0.
     public static IReadOnlyList<WiredLeaderboardRow> Chunk(IReadOnlyList<(long UserId, WiredVariableValue Value)> ranked, int index,
-        WiredLeaderboardChoice choice, IWiredLeaderboardProfiles profiles)
+        WiredLeaderboardChoice choice, IWiredLeaderboardProfiles profiles, WiredLeaderboardConfig? config = null)
     {
+        var showsUpdate = config == null || config.Columns.Any(column => column.Type == 2);
+        var showsCreation = config == null || config.Columns.Any(column => column.Type == 3);
         var slice = ranked.Skip(index * WiredLeaderboardChunk.Size).Take(WiredLeaderboardChunk.Size).ToArray();
         var names = profiles.Find([.. slice.Select(row => row.UserId)]);
 
@@ -73,7 +77,7 @@ public static class WiredLeaderboardRanking
 
             return new WiredLeaderboardRow(index * WiredLeaderboardChunk.Size + offset + 1, (int)row.UserId, username, figure,
                 choice.Description.HasValue ? value.ToString(CultureInfo.InvariantCulture) : "",
-                row.Value.CreatedAt?.ToUnixTimeMilliseconds() ?? 0, row.Value.UpdatedAt?.ToUnixTimeMilliseconds() ?? 0,
+                showsCreation ? row.Value.CreatedAt?.ToUnixTimeMilliseconds() ?? 0 : 0, showsUpdate ? row.Value.UpdatedAt?.ToUnixTimeMilliseconds() ?? 0 : 0,
                 choice.LevelSystem?.Level(value).Level.ToString(CultureInfo.InvariantCulture),
                 value is >= int.MinValue and <= int.MaxValue && choice.TextConnector.TryGetValue((int)value, out var text) ? text : null);
         })];

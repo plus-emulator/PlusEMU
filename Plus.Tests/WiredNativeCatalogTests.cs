@@ -87,7 +87,8 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [InlineData(WiredVariableTarget.Furni, "~area_hide.hiding_wallitems", false, true)]
     [InlineData(WiredVariableTarget.Furni, "@altitude", true, false)]
     [InlineData(WiredVariableTarget.Furni, "@id", false, false)]
-    [InlineData(WiredVariableTarget.User, "@handitem", true, false)]
+    // Observed on AIR WIN63-202610151745-318700621: @handitem can be given and removed (CarryObject), as well as written.
+    [InlineData(WiredVariableTarget.User, "@handitem", true, true)]
     [InlineData(WiredVariableTarget.User, "@achievement_score", false, false)]
     [InlineData(WiredVariableTarget.Global, "@teams.red.score", true, false)]
     [InlineData(WiredVariableTarget.Context, "@event.chat.style", false, false)]
@@ -427,6 +428,16 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
             Assert.Equal(mode == 0, row.CanInterceptChanges);
             Assert.Null(row.Connector);
         });
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: these built-ins are listed as creatable and deletable.
+    [Theory]
+    [InlineData("@handitem", 1)]
+    [InlineData("@can_move_freely", 0)]
+    [InlineData("~walk_helper.is_multi_walk", 0)]
+    public void PresenceBuiltinsAreListedCreatable(string name, int target)
+    {
+        Assert.True(Assert.Single(WiredNativeCatalogProjection.Builtins, row => row.Name == name && row.Target == target).CanCreateAndDelete);
     }
 
     // Observed on AIR WIN63-202610151745-318700621: every level-up part is interceptable, current_xp is writable and is_maxed has no value.

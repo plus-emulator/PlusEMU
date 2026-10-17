@@ -34,7 +34,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 or "~area_hide.root_x" or "~area_hide.root_y" or "~area_hide.width" or "~area_hide.length"
                 or "~clock.state" or "~clock.pulse_count" or "~teleport.target_id" or "~background_color.hue" or "~background_color.saturation" or "~background_color.lightness"
                 or "~recolorable_furni.color.rgb" or "~recolorable_furni.color.rgb.red" or "~recolorable_furni.color.rgb.green" or "~recolorable_furni.color.rgb.blue"
-                or "@projectile.animation.position.x" or "@projectile.animation.position.y" or "@projectile.animation.position.altitude",
+                or "@projectile.animation.position.x" or "@projectile.animation.position.y" or "@projectile.animation.position.altitude"
+                or "@can_move_freely",
             WiredVariableTarget.User => WiredQuestVariables.TryParseKey(key, out _, out _) || key is "@achievement_score" or "@level" or "@altitude" or "@bot_id" or "@dance" or "@direction" or "@effect"
                 or "@gender" or "@handitem" or "@index" or "@pet_id" or "@pet_owner_id" or "@favourite_group_id" or "@position" or "@position.x" or "@position.y" or "@room_entry.method"
                 or "@room_entry.teleport_id" or "@sign" or "@team.type" or "@team.color" or "@team.score" or "@type" or "@user_id"
@@ -157,7 +158,20 @@ public sealed class RoomWiredBuiltinVariables(Room room,
     }
 
     public static bool SupportsPresenceMutation(WiredVariableReference reference) => reference.Target == WiredVariableTarget.Furni
-        && AreaHideIndex(Normalize(reference.Token)) is >= 5 and <= 7;
+        && (AreaHideIndex(Normalize(reference.Token)) is >= 5 and <= 7 || Normalize(reference.Token) is "@can_move_freely" or "~walk_helper.is_multi_walk")
+        || CarriesPresenceValue(reference);
+
+    // Observed on AIR WIN63-202610151745-318700621: Give @can_move_freely to a floor furni makes Has Variable pass and Remove makes it fail;
+    // it did not let a Wired move pass an avatar standing on the next tile. ~walk_helper.is_multi_walk is listed creatable too, but a
+    // colour tile never takes it (Has Variable stayed false), so it needs a walk helper, which this hotel does not have.
+    private readonly HashSet<uint> _movesFreely = [];
+
+    /// <summary>
+    /// A built-in whose Give and Remove carry a value: @handitem. Observed on AIR WIN63-202610151745-318700621: Give @handitem 2 hands the
+    /// avatar item 2, Change Variable assign 5 swaps it for 5, and Remove drops it (CarryObject 2, 5, 0).
+    /// </summary>
+    public static bool CarriesPresenceValue(WiredVariableReference reference) => reference.Target == WiredVariableTarget.User
+        && Normalize(reference.Token) == "@handitem";
 
     public bool MutatePresence(WiredVariableReference reference, WiredVariableHolder holder, WiredVariableMutation mutation, WiredVariableFrame frame)
     {
@@ -167,12 +181,27 @@ public sealed class RoomWiredBuiltinVariables(Room room,
         }
 
         var item = FindItem(holder, frame);
+        var key = Normalize(reference.Token);
+
+        if (key == "~walk_helper.is_multi_walk") {
+            return false;
+        }
+
+        if (key == "@can_move_freely") {
+            if (item is null || item.IsWallItem) {
+                return false;
+            }
+
+            lock (_movesFreely) {
+                return mutation == WiredVariableMutation.Remove ? _movesFreely.Remove(item.Id) : _movesFreely.Add(item.Id);
+            }
+        }
 
         if (item is null || !Plus.HabboHotel.Items.AreaHide.AreaHideState.TryRead(item, out var state)) {
             return false;
         }
 
-        var index = AreaHideIndex(Normalize(reference.Token));
+        var index = AreaHideIndex(key);
         var value = mutation == WiredVariableMutation.Remove ? 0 : 1;
 
         return state[index] != value && Plus.HabboHotel.Items.AreaHide.AreaHideState.Set(room, item, index, value);
@@ -333,6 +362,12 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             return null;
         }
 
+        if (key == "@can_move_freely") {
+            lock (_movesFreely) {
+                return Flag(!item.IsWallItem && _movesFreely.Contains(item.Id));
+            }
+        }
+
         if (AreaHideIndex(key) is >= 1 and var areaIndex
             && Plus.HabboHotel.Items.AreaHide.AreaHideState.TryRead(item, out var area)) {
             return areaIndex >= 5 ? Flag(area[areaIndex] > 0) : area[areaIndex];
@@ -412,7 +447,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@altitude" => Hundredths(avatar.Z),
             "@direction" => avatar.RotBody,
             "@dance" => avatar.DanceId,
-            "@handitem" => avatar.CarryItemId,
+            // Observed on AIR WIN63-202610151745-318700621: an avatar carrying nothing has no @handitem (a placeholder shows "null").
+            "@handitem" => avatar.CarryItemId == 0 ? null : avatar.CarryItemId,
             "@sign" => avatar.Statusses.TryGetValue("sign", out var sign) && int.TryParse(sign, NumberStyles.None, CultureInfo.InvariantCulture, out var signId) ? signId : -1,
             "@effect" => habbo?.Effects?.CurrentEffect,
             "@gender" => habbo is null ? -1 : habbo.Gender.Equals("M", StringComparison.OrdinalIgnoreCase) ? 0 : 1,

@@ -250,6 +250,19 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         }
 
         if (resolved.Builtin is { } builtin) {
+            if (mutation != WiredVariableMutation.Set && RoomWiredBuiltinVariables.CarriesPresenceValue(builtin)) {
+                var held = builtins?.Read(builtin, holder, frame);
+
+                // Give keeps a present value; Replace sets it; Remove takes it away.
+                if (mutation == WiredVariableMutation.Give && held is not null || mutation == WiredVariableMutation.Remove && held is null) {
+                    return false;
+                }
+
+                var given = mutation == WiredVariableMutation.Remove ? 0 : transform(held?.Value ?? 0);
+
+                return given is >= int.MinValue and <= int.MaxValue && builtins!.Write(builtin, holder, (int)given, frame, out completed);
+            }
+
             if (mutation != WiredVariableMutation.Set) {
                 // Presence flags are not numeric operands; their dedicated source owns creation/removal.
                 // The supported area flags cannot be intercepted according to the native variable metadata.

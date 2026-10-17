@@ -86,17 +86,35 @@ public sealed class WiredAvatarState
             return false;
         }
 
+        // Observed on AIR WIN63-202610151745-318700621 (wf_act_freeze.cov_effect_sources): Unfreeze lands on the room tick, like Freeze
+        // (said at +0, effect 0 at +400 ms), and a teleport that cancels a freeze sends only the teleport effect, no effect 0 first.
+        if (!teleport && _executorRoom?.GetGameMap()?.Navigation is { UsesExecutor: true } navigation) {
+            navigation.RunOwner(user, (actor, _) =>
+            {
+                if (_frozen.TryGetValue(actor, out var current)) {
+                    ThawActor(actor, current, restoreEffect: true);
+                }
+            });
+
+            return true;
+        }
+
+        ThawActor(user, state, restoreEffect: !teleport);
+
+        return true;
+    }
+
+    private void ThawActor(RoomUser user, Freeze state, bool restoreEffect)
+    {
         _frozen.Remove(user);
         user.Frozen = state.Frozen;
         user.CanWalk = state.CanWalk;
 
         // Observed on hhus (AIR WIN63-202610131318-860371703): unfreeze sends only the restored effect and no UserUpdate;
         // a user in a Wired team gets the team effect (223) back on unfreeze, not 0.
-        if (!user.IsBot && state.Effect > 0 && user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == state.Effect) {
+        if (restoreEffect && !user.IsBot && state.Effect > 0 && user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == state.Effect) {
             user.ApplyEffect(state.Previous == state.Effect ? 0 : state.Previous);
         }
-
-        return true;
     }
     public void Forget(RoomUser user) => _frozen.Remove(user);
     public void Clear() => _frozen.Clear();

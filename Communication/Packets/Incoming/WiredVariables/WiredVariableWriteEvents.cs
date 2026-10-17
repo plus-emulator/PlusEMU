@@ -87,3 +87,44 @@ public sealed class WiredUserVariableManage64Event(IWiredVariableMenuService men
         return Task.CompletedTask;
     }
 }
+
+/// <summary>
+/// The AIR inspection tab's value edit, create and delete (AIR WIN63-202610131318-860371703
+/// outgoing/userdefinedroomevents/wiredmenu/class_3770.as:18): target, object id, variable id, value, operation.
+/// </summary>
+public sealed class WiredSetObjectVariableValueEvent(IWiredVariableMenuService menus) : RoomPacketEvent
+{
+    public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
+    {
+        if (TryRead(packet, out var request)) {
+            menus.WriteObject(room, session, request!);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public static bool TryRead(IIncomingPacket packet, out WiredObjectVariableWrite? request)
+    {
+        request = null;
+
+        try {
+            var target = packet.ReadInt();
+            var objectId = packet.ReadInt();
+            var variableId = packet.ReadString();
+            var value = packet.ReadInt();
+            var operation = packet.ReadInt();
+
+            if (operation is < 0 or > 2 || objectId < 0 || variableId.Length == 0 || Encoding.UTF8.GetByteCount(variableId) > 128
+                || packet.HasDataRemaining()) {
+                return false;
+            }
+
+            request = new(target, objectId, variableId, value, operation);
+
+            return true;
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException) {
+            return false;
+        }
+    }
+}

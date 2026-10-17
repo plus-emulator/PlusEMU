@@ -232,6 +232,7 @@ public sealed class WiredVariableExactWireTests
         public void ShowCatalogDiff(Room room, GameClient session, IReadOnlyDictionary<string, int> known) { }
         public void ShowHolders(Room room, GameClient session, string id) { }
         public void ShowHolderPage(Room room, GameClient session, string id, int page, int size, int users, int sort) { }
+        public void WriteObject(Room room, GameClient session, WiredObjectVariableWrite request) { }
     }
     private static FlashIncomingPacket Packet(params object[] values)
     {

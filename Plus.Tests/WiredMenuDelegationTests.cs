@@ -155,6 +155,12 @@ public sealed class WiredMenuDelegationTests
             Calls.Add("Manage");
             Manages.Add(request);
         }
+        public List<WiredObjectVariableWrite> ObjectWrites { get; } = [];
+        public void WriteObject(Room room, GameClient session, WiredObjectVariableWrite request)
+        {
+            Calls.Add("WriteObject");
+            ObjectWrites.Add(request);
+        }
     }
 
     private sealed class RecordingMonitor : IWiredMonitorService

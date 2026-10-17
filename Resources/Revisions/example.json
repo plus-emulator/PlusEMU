@@ -379,7 +379,8 @@
     "UpdateWiredContractEvent": 2559,
     "GetWiredRoomStatsEvent": 3738,
     "GetWiredErrorLogsEvent": 508,
-    "ClearWiredErrorLogsEvent": 1248
+    "ClearWiredErrorLogsEvent": 1248,
+    "WiredSetObjectVariableValueEvent": 2828
   },
   "OutgoingHeaders": {
     "SimplePollStartComposer": 1578,

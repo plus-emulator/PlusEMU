@@ -20,6 +20,7 @@ public interface IWiredVariableMenuService
     void ShowExactHolderPage(Room room, GameClient session, string id, int page, int size, int users, int sort);
     void WriteExact(Room room, GameClient session, WiredVariableMenuWrite request);
     void ManageExact(Room room, GameClient session, WiredVariableMenuWrite request);
+    void WriteObject(Room room, GameClient session, WiredObjectVariableWrite request);
 }
 
 /// <summary>Editor catalog, holder and write orchestration; owns the inspect and modify rights and every response it sends.</summary>
@@ -129,6 +130,41 @@ public sealed class WiredVariableMenuService : IWiredVariableMenuService
         }
 
         SendSnapshot(room, session, menu.Snapshot(), exact);
+    }
+
+    /// <summary>
+    /// The AIR inspection tab's edit. It sends no reply: the change reaches the room through the holder's own updates and the tab re-reads
+    /// the object. A request without modify rights, or naming a variable of another target, does nothing.
+    /// </summary>
+    public void WriteObject(Room room, GameClient session, WiredObjectVariableWrite request)
+    {
+        if (!ReferenceEquals(session.GetHabbo().CurrentRoom, room) || !room.GetWired().Settings.CanModify(session)
+            || !Configuration.WiredNativeAuxiliaryEditor.TryTarget(request.Target, out var scalar)
+            || !WiredVariableDescription.TryParseCatalogId(request.VariableId, out var target, out var token) || (int)target != scalar
+            || target is not (WiredVariableTarget.User or WiredVariableTarget.Furni or WiredVariableTarget.Global)) {
+            return;
+        }
+
+        var targetId = request.ObjectId;
+
+        if (target == WiredVariableTarget.User) {
+            if (room.GetRoomUserManager().GetRoomUserByVirtualId(request.ObjectId) is not { } user) {
+                return;
+            }
+
+            targetId = WiredVariableMenu.MenuEntityId(user);
+        }
+
+        var mutation = request.Operation switch
+        {
+            0 => WiredVariableMutation.Set,
+            1 => WiredVariableMutation.Replace,
+            _ => WiredVariableMutation.Remove
+        };
+        uint definitionId = 0;
+        var custom = token.StartsWith("custom:", StringComparison.Ordinal) && WiredVariableModule.TryDefinitionId(token, out definitionId);
+
+        Menu(room).Write(target, targetId, custom ? definitionId : 0, request.Value, mutation, custom ? "" : token);
     }
 
     // Clearing can reach offline holders and needs manage rights as well as modify rights.

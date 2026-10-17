@@ -157,7 +157,14 @@ public sealed class RoomWiredBuiltinVariables(Room room,
     }
 
     public static bool SupportsPresenceMutation(WiredVariableReference reference) => reference.Target == WiredVariableTarget.Furni
-        && AreaHideIndex(Normalize(reference.Token)) is >= 5 and <= 7;
+        && AreaHideIndex(Normalize(reference.Token)) is >= 5 and <= 7 || CarriesPresenceValue(reference);
+
+    /// <summary>
+    /// A built-in whose Give and Remove carry a value: @handitem. Observed on AIR WIN63-202610151745-318700621: Give @handitem 2 hands the
+    /// avatar item 2, Change Variable assign 5 swaps it for 5, and Remove drops it (CarryObject 2, 5, 0).
+    /// </summary>
+    public static bool CarriesPresenceValue(WiredVariableReference reference) => reference.Target == WiredVariableTarget.User
+        && Normalize(reference.Token) == "@handitem";
 
     public bool MutatePresence(WiredVariableReference reference, WiredVariableHolder holder, WiredVariableMutation mutation, WiredVariableFrame frame)
     {
@@ -412,7 +419,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@altitude" => Hundredths(avatar.Z),
             "@direction" => avatar.RotBody,
             "@dance" => avatar.DanceId,
-            "@handitem" => avatar.CarryItemId,
+            // Observed on AIR WIN63-202610151745-318700621: an avatar carrying nothing has no @handitem (a placeholder shows "null").
+            "@handitem" => avatar.CarryItemId == 0 ? null : avatar.CarryItemId,
             "@sign" => avatar.Statusses.TryGetValue("sign", out var sign) && int.TryParse(sign, NumberStyles.None, CultureInfo.InvariantCulture, out var signId) ? signId : -1,
             "@effect" => habbo?.Effects?.CurrentEffect,
             "@gender" => habbo is null ? -1 : habbo.Gender.Equals("M", StringComparison.OrdinalIgnoreCase) ? 0 : 1,

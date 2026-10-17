@@ -87,7 +87,8 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [InlineData(WiredVariableTarget.Furni, "~area_hide.hiding_wallitems", false, true)]
     [InlineData(WiredVariableTarget.Furni, "@altitude", true, false)]
     [InlineData(WiredVariableTarget.Furni, "@id", false, false)]
-    [InlineData(WiredVariableTarget.User, "@handitem", true, false)]
+    // Observed on AIR WIN63-202610151745-318700621: @handitem can be given and removed (CarryObject), as well as written.
+    [InlineData(WiredVariableTarget.User, "@handitem", true, true)]
     [InlineData(WiredVariableTarget.User, "@achievement_score", false, false)]
     [InlineData(WiredVariableTarget.Global, "@teams.red.score", true, false)]
     [InlineData(WiredVariableTarget.Context, "@event.chat.style", false, false)]

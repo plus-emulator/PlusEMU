@@ -199,12 +199,38 @@ public sealed partial class WiredNativeLifecycleTests
         var effect = f.Effect();
         var context = f.Context();
         var frame = WiredVariableRuntimeFrames.Create(context);
+        // An avatar carrying nothing has no @handitem to change; it carries something first.
+        actor.CarryItem(1);
         Assert.True(f.Wired.Variables.Module.Mutate(new(WiredVariableTarget.User, "internal:@handitem"),
             WiredVariableRuntimeFrames.UserHolder(actor), WiredVariableMutation.Set, 7, frame));
         f.Wired.OnCycle();
         f.Wired.OnFastCycle();
         f.Wired.OnFastCycle();
         Assert.Equal(1, effect.Calls);
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: Give @handitem 2 hands the avatar item 2, assign 5 swaps it, Remove drops it; carrying
+    // nothing reads as no @handitem.
+    [Fact]
+    public void HandItemIsGivenSwappedAndRemovedThroughItsVariable()
+    {
+        var f = new World();
+        var actor = f.Bot();
+        f.PrepareVariables();
+        var frame = WiredVariableRuntimeFrames.Create(f.Context());
+        var handItem = new WiredVariableReference(WiredVariableTarget.User, "internal:@handitem");
+        var holder = WiredVariableRuntimeFrames.UserHolder(actor);
+        var module = f.Wired.Variables.Module;
+
+        Assert.Null(module.Read(handItem, holder, frame));
+        Assert.True(module.Mutate(handItem, holder, WiredVariableMutation.Give, 2, frame));
+        Assert.Equal(2, actor.CarryItemId);
+        Assert.False(module.Mutate(handItem, holder, WiredVariableMutation.Give, 3, frame));
+        Assert.True(module.Mutate(handItem, holder, WiredVariableMutation.Set, 5, frame));
+        Assert.Equal(5, actor.CarryItemId);
+        Assert.True(module.Mutate(handItem, holder, WiredVariableMutation.Remove, 0, frame));
+        Assert.Equal(0, actor.CarryItemId);
+        Assert.Null(module.Read(handItem, holder, frame));
     }
 
     [Fact]

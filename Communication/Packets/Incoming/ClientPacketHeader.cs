@@ -482,4 +482,6 @@ public static class ClientPacketHeader
     public const uint ClearWiredErrorLogsEvent = 3246; // wiredmenu.class_3251
     // The inspection tab's value edit, create and delete (WiredMenuInspectionTab.as:193, 249, 265).
     public const uint WiredSetObjectVariableValueEvent = 3165; // wiredmenu.class_3782
+    // The inspection tab's read of one object's variables (WiredMenuInspectionTab.requestVariablesForObject).
+    public const uint WiredGetVariablesForObjectEvent = 2612; // wiredmenu.class_3018
 }

@@ -472,4 +472,6 @@ public static class ServerPacketHeader
     public const uint WiredErrorLogsComposer = 1345; // package_121.class_2831
     // Wired menu permissions, sent on room entry. Observed on AIR WIN63-202610131318-860371703 as package_121.class_3679, parser class_2713.
     public const uint WiredPermissionsComposer = 3966; // package_121.class_3691
+    // Answers WiredGetVariablesForObject (package_121.class_3373, parser wiredmenu.class_4057).
+    public const uint WiredVariablesForObjectComposer = 1478;
 }

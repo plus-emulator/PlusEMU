@@ -72,6 +72,84 @@ public sealed class WiredVariableMenu(Room room, WiredRoomVariables variables)
         return count;
     }
 
+    /// <summary>
+    /// One object's values for the inspection tab, keyed by the native catalogue id the client knows the variable by. Observed on AIR
+    /// WIN63-202610151745-318700621: a user lists its built-in values and its custom and derived ones; an absent part is left out.
+    /// A furni also lists the Wired boxes that pick it. Null for an unknown object or target.
+    /// </summary>
+    public (IReadOnlyList<(string Id, long Value)> Values, IReadOnlyList<uint> ConfiguredIn)? ReadObject(int type, int objectId)
+    {
+        WiredVariableTarget target;
+
+        switch (type) {
+            case 0:
+                target = WiredVariableTarget.Furni;
+                break;
+            case 1:
+                target = WiredVariableTarget.User;
+                break;
+            case -10:
+                target = WiredVariableTarget.Global;
+                break;
+            default:
+                return null;
+        }
+
+        if (!variables.TryCaptureNativeCatalog(out var catalog)) {
+            return null;
+        }
+
+        var (frame, _) = LiveHolders(target);
+        WiredVariableHolder holder;
+        Item? item = null;
+
+        if (target == WiredVariableTarget.User) {
+            if (room.GetRoomUserManager().GetRoomUserByVirtualId(objectId) is not { } user) {
+                return null;
+            }
+
+            holder = WiredVariableRuntimeFrames.UserHolder(user);
+        }
+        else if (target == WiredVariableTarget.Furni) {
+            item = room.GetRoomItemHandler().GetItem((uint)objectId);
+
+            if (item is null) {
+                return null;
+            }
+
+            holder = WiredVariableRuntimeFrames.FurniHolder(item);
+        }
+        else {
+            holder = new(WiredVariableTarget.Global, 0, 0);
+        }
+
+        var rows = catalog!.Variables.Where(row => row.Target == type)
+            .Select(row => (row.Id, Parsed: WiredVariableDescription.TryParseCatalogId(row.Id, out var parsed, out var token) && parsed == target
+                ? new WiredVariableReference(parsed, token) : (WiredVariableReference?)null))
+            .Where(row => row.Parsed is not null).ToArray();
+        using var reads = variables.Module.CaptureReads(rows.Select(row => row.Parsed!), frame);
+        var values = new List<(string, long)>();
+
+        foreach (var (id, reference) in rows) {
+            if (reads.Read(reference!, holder, frame) is { } value) {
+                values.Add((id, value.Value));
+            }
+        }
+
+        var configured = new List<uint>();
+
+        if (item is not null) {
+            foreach (var floor in room.GetRoomItemHandler().GetFloor) {
+                if (room.GetWired().TryGet(floor.Id, out var box) && box is Configuration.IWiredConfiguredItem boxConfig
+                    && (boxConfig.Configuration.SelectedItems.Contains(item.Id) || boxConfig.Configuration.SecondarySelectedItems.Contains(item.Id))) {
+                    configured.Add(floor.Id);
+                }
+            }
+        }
+
+        return (values, configured);
+    }
+
     public WiredVariableMenuSnapshot Snapshot()
     {
         var catalog = Catalog();

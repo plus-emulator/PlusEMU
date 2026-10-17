@@ -21,6 +21,7 @@ public interface IWiredVariableMenuService
     void WriteExact(Room room, GameClient session, WiredVariableMenuWrite request);
     void ManageExact(Room room, GameClient session, WiredVariableMenuWrite request);
     void WriteObject(Room room, GameClient session, WiredObjectVariableWrite request);
+    void ReadObject(Room room, GameClient session, int type, int objectId);
 }
 
 /// <summary>Editor catalog, holder and write orchestration; owns the inspect and modify rights and every response it sends.</summary>
@@ -165,6 +166,20 @@ public sealed class WiredVariableMenuService : IWiredVariableMenuService
         var custom = token.StartsWith("custom:", StringComparison.Ordinal) && WiredVariableModule.TryDefinitionId(token, out definitionId);
 
         Menu(room).Write(target, targetId, custom ? definitionId : 0, request.Value, mutation, custom ? "" : token);
+    }
+
+    /// <summary>
+    /// The AIR inspection tab's read of one object: a furni (0, item id), a user (1, room index) or the room (-10). Answered with every
+    /// variable value the object holds, by catalogue id. Nothing is sent without inspect rights or for an unknown object.
+    /// </summary>
+    public void ReadObject(Room room, GameClient session, int type, int objectId)
+    {
+        if (!CanInspect(room, session) || Menu(room).ReadObject(type, objectId) is not { } result) {
+            return;
+        }
+
+        session.Send(new Plus.Communication.Packets.Outgoing.WiredVariables.WiredVariablesForObjectComposer(type, objectId, result.Values,
+            result.ConfiguredIn));
     }
 
     // Clearing can reach offline holders and needs manage rights as well as modify rights.

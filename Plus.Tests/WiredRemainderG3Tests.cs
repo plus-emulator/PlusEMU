@@ -425,6 +425,20 @@ public sealed partial class WiredRemainderG3Tests
         Assert.False(WiredVariableChangedTrigger.Matches(config with { IntParams = [(int)WiredVariableTarget.User, 0, 1, 0, 1, 0, 0, -1] }, part));
     }
 
+    [Fact]
+    public void AParentChangeIsAnUnchangedChangeOfAPartThatKeptItsValue()
+    {
+        // Observed on hhus (AIR WIN63-202610131318-860371703): +1 ms on the parent fired the year part's Variable Changed set to unchanged.
+        var rig = new G3TimeRig(1 << 10, 0);
+        rig.Give(TuesdayMs);
+        rig.Module.DrainChanges();
+        rig.Set(TuesdayMs + 1);
+        var part = rig.Module.ProjectPartChange(rig.Part(10), Assert.Single(rig.Module.DrainChanges()))!;
+        var config = new WiredConfiguration { IntParams = [(int)WiredVariableTarget.User, 0, 1, 0, 0, 1, 0, -1], Text = rig.Part(10).Token };
+        Assert.True(WiredVariableChangedTrigger.Matches(config, part));
+        Assert.False(WiredVariableChangedTrigger.Matches(config with { IntParams = [(int)WiredVariableTarget.User, 0, 1, 1, 0, 0, 0, -1] }, part));
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(2)]

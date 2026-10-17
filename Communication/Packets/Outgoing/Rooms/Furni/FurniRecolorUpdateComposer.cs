@@ -6,7 +6,7 @@ namespace Plus.Communication.Packets.Outgoing.Rooms.Furni;
 public sealed record FurniRecolorUpdate(IReadOnlyList<uint> FurniIds, int Red, int Green, int Blue);
 
 /// <summary>
-/// AIR WIN63-202610131318-860371703 package_64/class_3777 (incoming 181 there, 3469 on WIN63-202610121709-785561319), parsed by
+/// AIR WIN63-202610131318-860371703 package_64/class_3777 (incoming 345 on WIN63-202610151745-318700621 as class_3789), parsed by
 /// package_71/class_4153.as:22 and RecolorUpdateData.as:16: int count, then per update int idCount, int ids, short r, g, b.
 /// The room engine rewrites each furni's r, g and b (room/class_1993.as:767).
 /// </summary>

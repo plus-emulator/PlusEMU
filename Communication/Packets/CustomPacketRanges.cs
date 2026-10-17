@@ -14,10 +14,10 @@ public sealed record CustomPacketRange(string Name, PacketRangeDirection Directi
 public sealed record ReservedClientPacket(string RendererConstant, uint Id, string Reason);
 
 /// <summary>
-/// Header ids that are not official in WIN63-202610121709-785561319. Every non-placeholder id below 65000 in
+/// Header ids that are not official in WIN63-202610151745-318700621. Every non-placeholder id below 65000 in
 /// <see cref="Incoming.ClientPacketHeader"/> and <see cref="Outgoing.ServerPacketHeader"/> that the client build does not
 /// register belongs to one of these ranges. The same ranges are the custom entries of Volt-Renderer
-/// protocol/packet-field-contracts.json (registry.ranges); none of them holds an official id of 202610121709 or 202610131318.
+/// protocol/packet-field-contracts.json (registry.ranges); none of them holds an official id of that build.
 /// </summary>
 public static class CustomPacketRanges
 {

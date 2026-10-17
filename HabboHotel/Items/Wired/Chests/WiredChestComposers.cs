@@ -5,7 +5,7 @@ using Plus.HabboHotel.Users.Inventory.Furniture;
 
 namespace Plus.HabboHotel.Items.Wired.Chests;
 
-// Official AIR grammar. Classes and field orders are WIN63-202610131318-860371703 (identical in 202610121709, whose ids
+// Official AIR grammar. Classes and field orders are WIN63-202610131318-860371703 (unchanged in WIN63-202610151745-318700621, whose ids
 // ServerPacketHeader carries); reviews/chest-protocol-map.md cites path and line per message.
 // Chest settings are not a packet: the client reads them from the chest's map stuff data (WiredChestRoom.Refresh).
 

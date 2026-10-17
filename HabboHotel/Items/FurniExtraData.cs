@@ -78,6 +78,14 @@ internal static class FurniExtraData
             return new LegacyDataFormat { Data = stored.Length == 0 ? "0" : stored };
         }
 
+        // A recolorable keeps its colour in the inventory too, so a picked up block is placed again in the same colour.
+        if (definition.InteractionType == InteractionType.Recolorable) {
+            var recolorable = new RecolorableDataFormat();
+            recolorable.Store(stored);
+
+            return recolorable;
+        }
+
         switch (definition.InteractionType) {
             case InteractionType.CrackableEgg: {
                     var data = definition.CreateData();

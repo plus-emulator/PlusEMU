@@ -27,7 +27,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
     // A pressure pad only acts through Wired walk triggers, which the engine already seals the segment for.
     internal static bool PlainPublicationItem(Item item) => item.IsFloorItem
-        && item.Definition.InteractionType is InteractionType.None or InteractionType.PressurePad && !item.Definition.IsSeat;
+        && item.Definition.InteractionType is InteractionType.None or InteractionType.PressurePad or InteractionType.Recolorable && !item.Definition.IsSeat;
 
     public bool RestoreWallSnapshot(WiredRuntimeContext context, Item item, WiredFurniSnapshot snapshot,
         bool position = true, bool altitude = true)

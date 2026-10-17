@@ -205,6 +205,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
 
             switch (definition.InteractionType) {
                 case InteractionType.None:
+                case InteractionType.Recolorable:
                     itemExtraData = "";
                     break;
                 case InteractionType.Pet:

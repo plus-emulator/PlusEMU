@@ -20,6 +20,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Groups.Forums;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Users.Effects;
 using Plus.HabboHotel.Habbicons;
@@ -398,6 +399,9 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                 }
 
                 return number.ToString(CultureInfo.InvariantCulture); // maintain extra data // todo: validate
+            case InteractionType.Recolorable:
+                // AIR RecolorableFurnitureCatalogWidget sends the chosen "r,g,b"; anything else is bought white.
+                return RecolorableDataFormat.TryParseCatalogueColor(extraData, out _) ? extraData : "";
             case InteractionType.Postit:
                 return "FFFF33";
             case InteractionType.Moodlight:

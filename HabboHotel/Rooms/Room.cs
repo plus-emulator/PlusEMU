@@ -909,7 +909,8 @@ public class Room
     // Clients whose revision does not map the data composer get the full update instead; the mapping is checked before anything is sent to a client.
     internal void SendObjectData(Item item, string data, bool batch)
     {
-        IServerPacket packet = batch ? new ObjectsDataUpdateComposer([(item.Id, data)]) : new ObjectDataUpdateComposer(item.Id, data);
+        var wire = FurnitureWireData.ForState(item.ExtraData, data);
+        IServerPacket packet = batch ? new ObjectsDataUpdateComposer([(item.Id, wire)]) : new ObjectDataUpdateComposer(item.Id, wire);
 
         try {
             if (_roomUserManager == null) {
@@ -922,7 +923,7 @@ public class Room
             var fallback = clients.Where(client => !Maps(client, packet.MessageId) && Maps(client, Plus.Communication.Packets.Outgoing.ServerPacketHeader.ObjectUpdateComposer)).ToArray();
 
             if (fallback.Length > 0) {
-                var legacy = RoomItemSnapshot.Capture(item) with { Data = new FurnitureDataSnapshot.Legacy(data) };
+                var legacy = RoomItemSnapshot.Capture(item) with { Data = wire };
                 GameClient.SendBroadcast(new ObjectUpdateComposer(legacy), fallback);
                 GameClient.SendBroadcast(new FurnitureMetadataComposer([legacy]), fallback);
             }
@@ -948,7 +949,7 @@ public class Room
             return;
         }
 
-        IServerPacket packet = new ObjectsDataUpdateComposer([.. items.Select(item => (item.Id, item.LegacyDataString))]);
+        IServerPacket packet = new ObjectsDataUpdateComposer([.. items.Select(item => (item.Id, FurnitureWireData.ForState(item.ExtraData, item.LegacyDataString)))]);
 
         try {
             if (_roomUserManager == null) {

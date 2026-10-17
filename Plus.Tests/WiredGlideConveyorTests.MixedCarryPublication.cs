@@ -761,7 +761,7 @@ public sealed partial class WiredGlideConveyorTests
     }
 
     [Fact]
-    public void OffOwnerFactoryCarryKeepsItsQueuedImmediatePublicationFallback()
+    public void SpeechFactoryCarryPublishesTheRiderOnceWithTheSay()
     {
         var layout = FastQueueLayout(2).Select(item => item.Id == 11
             ? item with { Name = "wf_trg_says_something", Json = JsonSerializer.Serialize(new WiredConfiguration { IntParams = [1, 0, 0], Text = "pulse" }) }
@@ -771,12 +771,12 @@ public sealed partial class WiredGlideConveyorTests
         var packets = CapturePublication(rider);
 
         rider.OnChat(0, "pulse", false);
-        Assert.Empty(ReadPublication(packets).Where(move => move.Type == 0));
-        Assert.Equal(4, rider.X);
+        Assert.Equal(5, rider.X);
         f.DrainMovement();
 
+        // The rider goes out once, in the same publication as the queue it rides.
         var avatar = Assert.Single(packets.Where(bytes => IsMovementBody(bytes) && ReadPublication([bytes]).Any(move => move.Type == 0)));
-        Assert.Single(ReadPublication([avatar]));
+        Assert.Single(ReadPublication([avatar]), move => move.Type == 0);
         Assert.Equal(5, rider.X);
     }
 

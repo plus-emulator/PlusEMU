@@ -289,8 +289,9 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: speech moves the avatar with the say, not on the next room tick.
     [Fact]
-    public void FastQueueSpeechAdmissionQueuesOneCarryUntilTheRoomOwnerDrains()
+    public void FastQueueSpeechCarriesTheRiderWithTheSay()
     {
         var layout = FastQueueLayout(2).Select(item => item.Id == 11
             ? item with
@@ -303,7 +304,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.False(RoomOwnerScope.IsOwner(f.MovementContext().Room));
 
         rider.OnChat(0, "pulse", false);
-        Assert.Equal((4, 11), (rider.X, rider.Y));
+        Assert.Equal((5, 11), (rider.X, rider.Y));
         f.DrainMovement();
 
         Assert.Equal((5, 11), (rider.X, rider.Y));

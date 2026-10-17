@@ -214,6 +214,9 @@ public static class WiredNativeEditorProjection
         return filled.FurniSourceTypes.Length == slots;
     }
 
+    /// <summary>Characters of a Says Something keyword the hotel keeps.</summary>
+    public const int SaysKeywordLength = 200;
+
     public static bool TryCompile(uint itemId, WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
         out WiredConfiguration runtime, ImmutableArray<int> triggerContext = default, bool storedRow = false)
     {
@@ -263,6 +266,12 @@ public static class WiredNativeEditorProjection
                 if (p.Length != 3 || p[0] is < 0 or > 1 || p[1] is < 0 or > 2 || p[2] is < 0 or > 1
                     || native.Text.Length > 1000) {
                     return false;
+                }
+
+                // Observed on hhus (AIR WIN63-202610131318-860371703): a longer keyword saves, but only its first 200 characters are kept.
+                if (text.Length > SaysKeywordLength) {
+                    text = text[..SaysKeywordLength];
+                    native = native with { Text = text };
                 }
 
                 parameters = [p[1], p[2], p[0]];

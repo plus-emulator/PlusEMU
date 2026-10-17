@@ -274,9 +274,11 @@ internal sealed partial class WiredStackEngine
         }
 
         var live = _targets!.AllFurni().ToDictionary(x => x.Id);
+        // Observed on AIR WIN63-202610151745-318700621 (r97_core_loop, r97_core_chain): a chain reaches each antenna once. A receiving
+        // stack that signals its own antenna, or a 3-antenna cycle back to the first, runs each stack once and stops.
         var antennas = receivers.DistinctBy(x => x.Id).Where(receiver =>
             live.TryGetValue(receiver.Id, out var attached) && ReferenceEquals(receiver, attached)
-            && IsSignalAntenna(receiver)).ToArray();
+            && IsSignalAntenna(receiver) && !parent.SignalPath.Contains(receiver.Id)).ToArray();
 
         if (antennas.Length == 0) {
             return false;
@@ -292,6 +294,7 @@ internal sealed partial class WiredStackEngine
                 Actor = parent.Event.Actor,
                 EventItem = parent.Event.EventItem
             }, parent.Depth + 1);
+            child.SignalPath = parent.SignalPath.Add(antenna.Id);
             child.Signal = new(selection, parent.Values);
             // Routing antennas and forwarded targets are independent from the original event's targets.
             child.Triggering = parent.Triggering.Copy();

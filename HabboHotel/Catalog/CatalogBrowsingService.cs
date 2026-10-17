@@ -51,7 +51,7 @@ public sealed class CatalogBrowsingService(IItemDataManager items, IPetRaceManag
         }
 
         session.Send(new CatalogPageComposer(snapshots.CapturePage(page,
-            page.Offers.ContainsKey(request.OfferId) ? request.OfferId : -1)));
+            page.Offers.TryGetValue(request.OfferId, out var preselected) && preselected.Enabled ? request.OfferId : -1)));
     }
 
     public void ShowIndex(GameClient session, string mode)
@@ -65,7 +65,7 @@ public sealed class CatalogBrowsingService(IItemDataManager items, IPetRaceManag
 
     public void ShowOffer(GameClient session, int offerId)
     {
-        if (catalog.TryGetOffer(offerId, session.GetHabbo(), out _, out var item)) {
+        if (catalog.TryGetOffer(offerId, session.GetHabbo(), out _, out var item) && item.Enabled) {
             session.Send(new CatalogOfferComposer(snapshots.CaptureOffer(item)));
         }
     }

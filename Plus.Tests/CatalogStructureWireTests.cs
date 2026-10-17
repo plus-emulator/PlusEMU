@@ -6,7 +6,10 @@ using Plus.Communication.Packets.Outgoing.Catalog;
 using Plus.Communication.Packets.Outgoing;
 using Plus.Communication.Packets.Outgoing.Handshake;
 using Plus.HabboHotel.Catalog;
+using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Subscriptions;
 using Plus.HabboHotel.Users;
+using Plus.HabboHotel.Users.Inventory.Furniture;
 using Xunit;
 
 namespace Plus.Tests;
@@ -127,6 +130,28 @@ public class CatalogStructureWireTests
 
         Assert.True(page.CanOpen(lowWeight));
         Assert.False(page.CanOpen(highWeight));
+    }
+
+    [Fact]
+    public void DisabledOffersAreLeftOutOfPagesIndexAndClubGifts()
+    {
+        var (client, _) = HabbiconTestSupport.Client(EditorTestSupport.Player());
+        var page = Page(1, -1, offerIds: [7, 8]);
+
+        foreach (var offer in page.Offers.Values) {
+            offer.Products = [new CatalogProduct { Type = CatalogProductType.Furni, Definition = new ItemDefinition { ItemName = "chair", SpriteId = 3, Type = ItemType.Floor } }];
+        }
+
+        page.Offers[8].Enabled = false;
+        var snapshots = new CatalogSnapshotService(CatalogSnapshotTestSupport.Proxy<ICatalogManager>((method, _) =>
+            method == "get_Promotions" ? Array.Empty<CatalogPromotion>() : throw new InvalidOperationException(method)), TimeProvider.System);
+
+        Assert.Equal([7], snapshots.CapturePage(page, -1).Offers.Select(offer => offer.OfferId));
+        Assert.Equal([7], Assert.Single(snapshots.CaptureIndex(client.GetHabbo(), [page]).Roots).OfferIds.ToArray());
+
+        var gifts = snapshots.CaptureClubGifts(new ClubGiftInfo(1, 1, 0, [new ClubGift(page.Offers[7], 0), new ClubGift(page.Offers[8], 0)]));
+        Assert.Equal([7], gifts.Offers.Select(offer => offer.OfferId));
+        Assert.Equal([7], gifts.Gifts.Select(gift => gift.OfferId));
     }
 
     [Fact]

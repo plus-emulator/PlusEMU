@@ -289,9 +289,12 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: speech moves the avatar with the say, not on the next room tick.
-    [Fact]
-    public void FastQueueSpeechCarriesTheRiderWithTheSay()
+    // Observed on AIR WIN63-202610151745-318700621: speech moves the avatar with the say, not on the next room tick. Effects of one firing
+    // run in a random order (also observed on hhus): seed 1 steps the queue before its signal restores it home, seed 2 signals first.
+    [Theory]
+    [InlineData(1, new[] { 4, 5, 6, 7, 8, 9, 10, 11 })]
+    [InlineData(2, new[] { 5, 6, 7, 8, 9, 10, 11, 11 })]
+    public void FastQueueSpeechCarriesTheRiderWithTheSay(int seed, int[] furniX)
     {
         var layout = FastQueueLayout(2).Select(item => item.Id == 11
             ? item with
@@ -300,6 +303,7 @@ public sealed partial class WiredGlideConveyorTests
                 Json = JsonSerializer.Serialize(new WiredConfiguration { IntParams = [1, 0, 0], Text = "pulse" })
             } : item).ToArray();
         var f = new Fixture(layout, live: true);
+        f.SetEngineCallback("_effectOrderRandom", new Random(seed));
         var rider = f.Walker(1, 4, 10, 4, 11);
         Assert.False(RoomOwnerScope.IsOwner(f.MovementContext().Room));
 
@@ -308,7 +312,7 @@ public sealed partial class WiredGlideConveyorTests
         f.DrainMovement();
 
         Assert.Equal((5, 11), (rider.X, rider.Y));
-        Assert.Equal(Enumerable.Range(4, 8), Enumerable.Range(1, 8).Select(id => f.Items[(uint)id].GetX));
+        Assert.Equal(furniX, Enumerable.Range(1, 8).Select(id => f.Items[(uint)id].GetX));
     }
 
     private static (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] FastQueueLayout(int direction, bool reverseCreation = false)

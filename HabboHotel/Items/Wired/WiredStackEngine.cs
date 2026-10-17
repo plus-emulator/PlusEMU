@@ -692,9 +692,8 @@ internal sealed partial class WiredStackEngine
                             _executingAction = previousAction;
                         }
 
-                        if (scheduled.Callback != null) {
-                            Flash(action);
-                        }
+                        // A later step of an action that already ran (a teleport's republish, landing and effect end) does not flash the
+                        // box again. Observed on hhus (AIR WIN63-202610131318-860371703): Teleport To flashes once, with its stack's firing.
                     }
                     finally {
                         if (--chain.Remaining == 0) {

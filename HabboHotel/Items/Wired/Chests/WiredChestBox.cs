@@ -64,6 +64,22 @@ public class WiredChestBox : WiredModernBox
     // upgrade the same saves are accepted. The chest conditions and the scan add-on accept normal chests.
     private bool GiveChestsAccepted(WiredConfiguration proposed, ref string error)
     {
+        // Observed on AIR WIN63-202610151745-318700621 (r97_chest_none): Chest Has Items with a picked furni that is not a chest is
+        // refused with "wiredfurni.error.require_chests"; any chest, upgraded or not, is accepted.
+        if (Descriptor.CanonicalName is "wf_cnd_chest_has_items" or "wf_cnd_chest_has_item_type") {
+            var slot = Descriptor.CanonicalName == "wf_cnd_chest_has_items" ? "f0" : "f1";
+            var chestSource = proposed.FurniSources.GetValueOrDefault(slot, 100);
+
+            if (chestSource is 100 or 101 && (chestSource == 101 ? proposed.SecondarySelectedItems : proposed.SelectedItems)
+                    .Any(id => Instance.GetRoomItemHandler().GetItem(id) is not { } item || Chests.Read(item) is null)) {
+                error = "wiredfurni.error.require_chests";
+
+                return false;
+            }
+
+            return true;
+        }
+
         if (Descriptor.CanonicalName is not ("wf_act_give_currency" or "wf_act_give_furni")) {
             return true;
         }
@@ -155,7 +171,13 @@ public class WiredChestBox : WiredModernBox
         var amount = types == null ? chests.Sum(chest => (long)chest.Amount)
             : chests.Sum(chest => (long)chest.Items.Count(item => types.Contains(WiredChestItemType.Of(item))));
 
-        return chests.Length > 0 && reference is { } value && c.IntParams[3] switch
+        // Observed on AIR WIN63-202610151745-318700621 (r97_chest_none2, r97_chest_type_keep): with no chest to check the condition
+        // passes whatever the comparison ("equal to 0" and "more than 1" both pass).
+        if (chests.Length == 0) {
+            return true;
+        }
+
+        return reference is { } value && c.IntParams[3] switch
         {
             0 => amount < value,
             1 => amount == value,

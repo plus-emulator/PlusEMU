@@ -34,7 +34,9 @@ public static class WiredTimeConditions
         var end = Param(config, 1);
         var seconds = now.ToUnixTimeSeconds();
 
-        return (start == 0 || seconds >= start) && (end == 0 || seconds <= end);
+        // Observed on hhus (AIR WIN63-202610131318-860371703): a start of 0 is open, an end of 0 never passes: (0, future) passed,
+        // (0, 0), (past, 0), (future, 0), (0, past) and (past, past) failed, (past, future) passed.
+        return (start == 0 || seconds >= start) && end != 0 && seconds <= end;
     }
 
     public static bool MatchesElapsed(WiredConfiguration config, long elapsedMs, bool moreThan)

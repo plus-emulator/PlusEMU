@@ -303,7 +303,9 @@ public partial class PlacedFurniRoomTests
 
     [Theory]
     [InlineData(0, 1, 223)]
-    [InlineData(0, 4, 226)]
+    [InlineData(0, 4, 225)]
+    [InlineData(0, 2, 226)]
+    [InlineData(0, 3, 224)]
     [InlineData(1, 1, 33)]
     [InlineData(1, 4, 36)]
     [InlineData(2, 1, 40)]

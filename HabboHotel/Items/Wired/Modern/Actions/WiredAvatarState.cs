@@ -7,7 +7,8 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// <summary>Tracks only Wired-owned freeze state; room lifecycle must forget departing avatars.</summary>
 public sealed class WiredAvatarState
 {
-    private sealed record Freeze(bool Frozen, bool CanWalk, int Effect, bool CancelOnTeleport);
+    // Previous: the avatar effect worn before the first freeze, put back by Thaw (hhus restores e.g. the Wired team effect).
+    private sealed record Freeze(bool Frozen, bool CanWalk, int Effect, bool CancelOnTeleport, int Previous);
     private readonly Dictionary<RoomUser, Freeze> _frozen = [];
     private Room? _executorRoom;
     private static readonly ConditionalWeakTable<Room, WiredAvatarState> Rooms = new();
@@ -27,7 +28,8 @@ public sealed class WiredAvatarState
         }
 
         var original = _frozen.GetValueOrDefault(user);
-        _frozen[user] = new(original?.Frozen ?? user.Frozen, original?.CanWalk ?? user.CanWalk, effect, cancelOnTeleport);
+        _frozen[user] = new(original?.Frozen ?? user.Frozen, original?.CanWalk ?? user.CanWalk, effect, cancelOnTeleport,
+            original?.Previous ?? user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect ?? 0);
         user.IsWalking = false;
         user.PathRecalcNeeded = false;
         user.RemoveStatus("mv");
@@ -47,7 +49,8 @@ public sealed class WiredAvatarState
     private void FreezeActor(RoomUser user, int effect, bool cancelOnTeleport)
     {
         var original = _frozen.GetValueOrDefault(user);
-        _frozen[user] = new(original?.Frozen ?? user.Frozen, original?.CanWalk ?? user.CanWalk, effect, cancelOnTeleport);
+        _frozen[user] = new(original?.Frozen ?? user.Frozen, original?.CanWalk ?? user.CanWalk, effect, cancelOnTeleport,
+            original?.Previous ?? user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect ?? 0);
         user.IsWalking = false;
         user.PathRecalcNeeded = false;
         user.RemoveStatus("mv");
@@ -74,8 +77,9 @@ public sealed class WiredAvatarState
         user.CanWalk = state.CanWalk;
         user.UpdateNeeded = true;
 
+        // Observed on hhus (AIR WIN63-202610131318-860371703): a user in a Wired team gets the team effect (223) back on unfreeze, not 0.
         if (!user.IsBot && state.Effect > 0 && user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == state.Effect) {
-            user.ApplyEffect(0);
+            user.ApplyEffect(state.Previous == state.Effect ? 0 : state.Previous);
         }
 
         return true;

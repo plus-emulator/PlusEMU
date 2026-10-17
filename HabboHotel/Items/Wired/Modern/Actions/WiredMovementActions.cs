@@ -359,7 +359,9 @@ public sealed class WiredMovementActions(Random? random = null)
     {
         >= 0 and <= 7 => movement,
         // Stored movement choices include fixed, random and no movement.
-        8 => _random.Next(8),
+        // Observed on AIR WIN63-202610151745-318700621 (wf_act_move_rotate.cov_either_random_sources and r96): Random moved a block
+        // diagonally on 6 of 6 fires, (9,11) -> (10,10) -> (11,9) -> (10,8), never along an axis.
+        8 => 1 + 2 * _random.Next(4),
         9 => _random.Next(2) == 0 ? 2 : 6,
         10 => _random.Next(2) == 0 ? 0 : 4,
         _ => -1

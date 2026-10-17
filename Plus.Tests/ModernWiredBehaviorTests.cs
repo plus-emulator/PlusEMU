@@ -400,6 +400,21 @@ public partial class ModernWiredBehaviorTests
         return (room, map, items);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: Move/Rotate Random moves diagonally only (6 of 6 fires).
+    [Fact]
+    public void RandomMovementGoesDiagonally()
+    {
+        var steps = new HashSet<(int, int)>();
+
+        for (var seed = 0; seed < 64; seed++) {
+            var mover = Item(1, 5, 5);
+            new WiredMovementActions(new Random(seed)).Execute("wf_act_move_rotate", new() { IntParams = [1, 0, 100] }, [mover], [], [],
+                (_, x, y, _, _) => { steps.Add((x - 5, y - 5)); return true; }, (_, _, _, _, _) => false, (_, _) => { });
+        }
+
+        Assert.Equal(new HashSet<(int, int)> { (1, -1), (1, 1), (-1, 1), (-1, -1) }, steps);
+    }
+
     private static bool Execute(string name, WiredConfiguration config, Item[] movers, Item[] targets,
         RoomUser[] users, WiredMovementActions.MoveFurniture move) =>
         new WiredMovementActions().Execute(name, config, movers, targets, users, move,

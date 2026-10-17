@@ -215,15 +215,14 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
                 user.RotBody--;
             }
 
-            user.Statusses.Add("sit", "1.0");
-            user.Z -= 0.35;
+            // Observed on hhus (AIR WIN63-202610131318-860371703): sitting on the floor sends "sit 0.55 1" (sit height, can stand up)
+            // and keeps the avatar's Z.
+            user.Statusses.Add("sit", "0.55 1");
             user.IsSitting = true;
             user.UpdateNeeded = true;
         }
         else if (posture == 0 && user.IsSitting) {
-            user.Z += 0.35;
             user.Statusses.Remove("sit");
-            user.Statusses.Remove("1.0");
             user.IsSitting = false;
             user.UpdateNeeded = true;
         }

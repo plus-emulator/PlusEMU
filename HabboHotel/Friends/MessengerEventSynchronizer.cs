@@ -62,7 +62,7 @@ internal class MessengerEventSynchronizer : IAuthenticationTask
 
     private void OnRoomInviteReceived(Habbo habbo, MessengerMessageEventArgs args) => habbo.Client?.Send(new RoomInviteComposer(args.Friend.Id, args.Message));
 
-    private void OnMessageReceived(Habbo habbo, MessengerMessageEventArgs args) => habbo.Client?.Send(new NewConsoleMessageComposer(args.Friend.Id, args.Message));
+    private void OnMessageReceived(Habbo habbo, MessengerMessageEventArgs args) => habbo.Client?.Send(new NewConsoleMessageComposer(args.Friend.Id, args.Message, 0, args.Friend.Username, args.Friend.Look));
 
     private async Task OnMessageSend(Habbo habbo, MessengerMessageEventArgs args)
     {

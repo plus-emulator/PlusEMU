@@ -40,6 +40,5 @@ public sealed class ManageGroupComposer(GroupManagementSnapshot data) : IServerP
 
         packet.WriteString(data.Badge);
         packet.WriteInteger(data.MemberCount);
-        packet.WriteBoolean(data.ForumEnabled);
     }
 }

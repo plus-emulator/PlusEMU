@@ -11,22 +11,7 @@ public sealed class ModeratorInitComposer(ModeratorInitSnapshot data) : IServerP
         packet.WriteInteger(data.Tickets.Length);
 
         foreach (var ticket in data.Tickets) {
-            packet.WriteInteger(ticket.Id);
-            packet.WriteInteger((int)ticket.Status);
-            packet.WriteInteger(ticket.Type);
-            packet.WriteInteger(ticket.Category);
-            packet.WriteInteger(ticket.AgeMilliseconds);
-            packet.WriteInteger(ticket.Priority);
-            packet.WriteInteger(ticket.SenderId);
-            packet.WriteInteger(1);
-            packet.WriteString(ticket.SenderName);
-            packet.WriteInteger(ticket.ReportedId);
-            packet.WriteString(ticket.ReportedName);
-            packet.WriteInteger(ticket.ModeratorId);
-            packet.WriteString(ticket.ModeratorName);
-            packet.WriteString(ticket.Issue);
-            packet.WriteUInteger(ticket.RoomId);
-            packet.WriteInteger(0);
+            ModeratorTicketWire.Write(packet, ticket);
         }
 
         packet.WriteInteger(data.UserPresets.Length);
@@ -35,7 +20,7 @@ public sealed class ModeratorInitComposer(ModeratorInitSnapshot data) : IServerP
             packet.WriteString(preset);
         }
 
-        packet.WriteInteger(0);
+        packet.WriteInteger(0); // AIR reads and drops this string list
 
         for (var index = 0; index < 7; index++) {
             packet.WriteBoolean(true);

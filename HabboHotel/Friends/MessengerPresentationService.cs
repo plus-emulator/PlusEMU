@@ -39,8 +39,10 @@ public sealed class MessengerPresentationService(IMessengerDataLoader messengerD
         var messages = await messengerDataLoader.GetAndDeleteOfflineMessages(habbo.Id);
 
         foreach (var (userId, report) in messages) {
+            var sender = friends.FirstOrDefault(friend => friend.Id == userId);
+
             foreach (var (message, secondsAgo) in report) {
-                session.Send(new NewConsoleMessageComposer(userId, message, secondsAgo));
+                session.Send(new NewConsoleMessageComposer(userId, message, secondsAgo, sender?.Username ?? string.Empty, sender?.Look ?? string.Empty));
             }
         }
     }

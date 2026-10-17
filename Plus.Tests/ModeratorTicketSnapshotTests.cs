@@ -36,7 +36,7 @@ public sealed class ModeratorTicketSnapshotTests
         ticket.Issue = "changed";
         ticket.Answered = true;
         var expectedSupport = new object[] { 10, 2, 5, 6, 4000, 4, 0, 1, "Sender", 2, "Target", 3, "Staff", "help", (uint)0, 0 };
-        var expectedInit = new object[] { 1, 10, 2, 5, 6, 4000, 4, 1, 1, "Sender", 2, "Target", 3, "Staff", "help", (uint)0, 0,
+        var expectedInit = new object[] { 1, 10, 2, 5, 6, 4000, 4, 0, 1, "Sender", 2, "Target", 3, "Staff", "help", (uint)0, 0,
             1, "warn", 0, true, true, true, true, true, true, true, 1, "room" };
         Assert.Equal(expectedSupport, Compose(support));
         Assert.Equal(expectedSupport, Compose(support));

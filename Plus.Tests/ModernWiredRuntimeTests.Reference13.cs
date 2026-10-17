@@ -436,8 +436,9 @@ public partial class ModernWiredRuntimeTests
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [units] }, out var config, out _));
         box.ApplyConfiguration(config);
         box.Reset(0);
-        Assert.Null(box.Poll(milliseconds - 1));
-        Assert.Equal(WiredEventKind.Elapsed, box.Poll(milliseconds)!.Kind);
+        // The units count from the first 500 ms room tick after the reset (500 here).
+        Assert.Null(box.Poll(500 + milliseconds - 1));
+        Assert.Equal(WiredEventKind.Elapsed, box.Poll(500 + milliseconds)!.Kind);
         Assert.False(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [1201] }, out _, out _));
         Assert.False(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [0] }, out _, out _));
     }

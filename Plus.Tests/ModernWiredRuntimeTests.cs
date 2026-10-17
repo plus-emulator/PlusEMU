@@ -3290,11 +3290,12 @@ public partial class ModernWiredRuntimeTests
         WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [10] }, out var config, out _);
         box.ApplyConfiguration(config);
         box.Reset(1000);
-        Assert.Null(box.Poll(5999));
-        Assert.Equal(WiredEventKind.Elapsed, box.Poll(6000)!.Kind);
+        Assert.Null(box.Poll(6499));
+        Assert.Equal(WiredEventKind.Elapsed, box.Poll(6500)!.Kind);
         Assert.Null(box.Poll(11000));
         box.Reset(11000);
-        Assert.NotNull(box.Poll(16000));
+        Assert.Null(box.Poll(16499));
+        Assert.NotNull(box.Poll(16500));
     }
 
 
@@ -3321,7 +3322,7 @@ public partial class ModernWiredRuntimeTests
 
         engine.ResetTimers(items.Values.ToArray());
 
-        var firstFires = timers.Select(timer => Enumerable.Range(1400, 200).First(t => timer.Poll(t) != null)).ToArray();
+        var firstFires = timers.Select(timer => Enumerable.Range(1900, 200).First(t => timer.Poll(t) != null)).ToArray();
         Assert.Single(firstFires.Distinct());
     }
 

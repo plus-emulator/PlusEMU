@@ -43,7 +43,7 @@ public partial class PlacedFurniRoomTests
         var box = PlaceSelector(wired, "wf_slc_users_bytype");
         // A box that fired before the save shows a flash state.
         box.Item.LegacyDataString = filter ? "2" : "5";
-        wired.FlushFlashes(force: true);
+        wired.FlushFlashes();
         _client.Packets.Clear();
 
         SaveSelector(box, filter, invert);

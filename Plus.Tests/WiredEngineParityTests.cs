@@ -469,11 +469,34 @@ public partial class WiredRuntimeEngineTests
         Assert.True(timers.TryFire("wf_trg_periodically", 1, configuration, 1000, 1000, 0));
         Assert.False(timers.TryFire("wf_trg_periodically", 1, configuration, 1250, 1250, 0));
         Assert.True(timers.TryFire("wf_trg_periodically", 1, configuration, 1500, 1500, 0));
-        // The longer and shorter repeaters keep their phase from the poll.
+        // The 5 s timer keeps the same grid: a late firing at 5750 waits for 10500.
         Assert.False(timers.TryFire("wf_trg_period_long", 2, configuration, 0, 0, 0));
         Assert.True(timers.TryFire("wf_trg_period_long", 2, configuration, 5750, 5750, 0));
-        Assert.False(timers.TryFire("wf_trg_period_long", 2, configuration, 10500, 10500, 0));
-        Assert.True(timers.TryFire("wf_trg_period_long", 2, configuration, 10750, 10750, 0));
+        Assert.False(timers.TryFire("wf_trg_period_long", 2, configuration, 10499, 10499, 0));
+        Assert.True(timers.TryFire("wf_trg_period_long", 2, configuration, 10500, 10500, 0));
+        // The 50 ms timer keeps its own cadence from the poll.
+        Assert.False(timers.TryFire("wf_trg_period_short", 3, configuration, 0, 0, 0));
+        Assert.True(timers.TryFire("wf_trg_period_short", 3, configuration, 73, 73, 0));
+        Assert.False(timers.TryFire("wf_trg_period_short", 3, configuration, 122, 122, 0));
+        Assert.True(timers.TryFire("wf_trg_period_short", 3, configuration, 123, 123, 0));
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703: the 5 s timer fires 5000 ms apart on the room's 500 ms grid (4959.5 / 9959.6 ms into
+    // the run), so like the 500 ms timer its first firing is set by the grid, not by the arming instant.
+    [Theory]
+    [InlineData(105, 5000)]
+    [InlineData(499, 5000)]
+    [InlineData(500, 5500)]
+    [InlineData(605, 5500)]
+    public void A5sTimerStaysOnTheRoomGrid(long armedAt, long firstAt)
+    {
+        var timers = new WiredTimedTriggers();
+        var configuration = new WiredConfiguration { IntParams = [1] };
+        Assert.False(timers.TryFire("wf_trg_period_long", 1, configuration, armedAt, 0, 0));
+        Assert.False(timers.TryFire("wf_trg_period_long", 1, configuration, firstAt - 1, 0, 0));
+        Assert.True(timers.TryFire("wf_trg_period_long", 1, configuration, firstAt + 20, 0, 0));
+        Assert.False(timers.TryFire("wf_trg_period_long", 1, configuration, firstAt + 4999, 0, 0));
+        Assert.True(timers.TryFire("wf_trg_period_long", 1, configuration, firstAt + 5000, 0, 0));
     }
 
     // Observed on AIR WIN63-202610131318-860371703: armed at an arbitrary phase (.605), the 500 ms timer first fires on the next boundary.

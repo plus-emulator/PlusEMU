@@ -181,7 +181,7 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
         }
 
         return _timers.TryFire(Descriptor.CanonicalName, Item.Id, config, nowMilliseconds,
-            Math.Max(0, nowMilliseconds - _started), _epoch)
+            Math.Max(0, nowMilliseconds - WiredTimedTriggers.FirstRoomTickAfter(_started)), _epoch)
             ? new(Events.Single()) { EventItem = Item } : null;
     }
     public void Reset(long nowMilliseconds)

@@ -439,8 +439,8 @@ public partial class WiredRuntimeEngineTests
 
             if (pass >= next) {
                 pending = true;
-                // The 500 ms timer rearms on the room's 500 ms grid; the others from the poll.
-                next = (name == "wf_trg_periodically" ? pass - pass % 500 : pass) + interval;
+                // The 500 ms and 5 s timers rearm on the room's 500 ms grid; the 50 ms timer from the poll.
+                next = (name == "wf_trg_period_short" ? pass : pass - pass % 500) + interval;
             }
         }
 

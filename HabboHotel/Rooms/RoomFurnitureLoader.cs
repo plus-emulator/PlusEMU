@@ -23,9 +23,10 @@ public sealed class RoomFurnitureLoader(IDatabase database, IItemDataManager def
                    COALESCE(items_groups.group_id, 0) AS GroupId,
                    items.extra_data AS ExtraData, items.x, items.y, items.z, items.rot AS Rotation,
                    items.limited_number AS LimitedNumber, items.limited_stack AS LimitedStack,
-                   items.wall_pos AS WallPosition
+                   items.wall_pos AS WallPosition, builders_club.item_id IS NOT NULL AS IsBuildersClub
             FROM items
             LEFT JOIN items_groups ON items_groups.id = items.id
+            LEFT JOIN items_builders_club AS builders_club ON builders_club.item_id = items.id
             LEFT JOIN users ON users.id = items.user_id
             WHERE items.room_id = @roomId
             """, new { roomId }).Select(row => Materialize(row, roomId)).Where(item => item != null).Select(item => item!).ToArray();
@@ -53,7 +54,8 @@ public sealed class RoomFurnitureLoader(IDatabase database, IItemDataManager def
             UniqueSeries = row.LimitedStack,
             WallCoordinates = row.WallPosition ?? "",
             GroupId = row.GroupId,
-            RoomId = roomId
+            RoomId = roomId,
+            IsBuildersClub = row.IsBuildersClub
         };
         MagicTileHeight.Sync(item);
 
@@ -75,5 +77,6 @@ public sealed class RoomFurnitureLoader(IDatabase database, IItemDataManager def
         public uint LimitedNumber { get; set; }
         public uint LimitedStack { get; set; }
         public string? WallPosition { get; set; }
+        public bool IsBuildersClub { get; set; }
     }
 }

@@ -186,7 +186,7 @@ public class CatalogSnapshotTests
 
         var client = HabbiconTestSupport.Client(EditorTestSupport.Player()).Client;
         var pages = new List<CatalogPage> { Tree(1, -1), Tree(2, 1, offerIds: 7), Tree(3, 2), Tree(4, 3, enabled: false) };
-        Add("index", new CatalogIndexComposer(snapshots.CaptureIndex(client.GetHabbo(), pages)));
+        Add("index", new CatalogIndexComposer(snapshots.CaptureIndex(client.GetHabbo(), pages, CatalogModes.Normal)));
 
         var gift1 = Offer(700, "club_a", Furni(Def(InteractionType.None, "i", sprite: 11, gift: true, type: ItemType.Floor)));
         gift1.ClubLevel = 2;

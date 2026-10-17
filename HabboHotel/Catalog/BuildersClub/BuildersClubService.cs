@@ -1,0 +1,262 @@
+using System.Globalization;
+using Microsoft.Extensions.Logging;
+using Plus.Communication.Packets.Outgoing.Catalog;
+using Plus.Communication.Packets.Outgoing.Rooms.Notifications;
+using Plus.Core.Settings;
+using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.DataFormat;
+using Plus.HabboHotel.Permissions;
+using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Users;
+using Plus.HabboHotel.Users.Inventory.Furniture;
+
+namespace Plus.HabboHotel.Catalog.BuildersClub;
+
+// What BuildersClubSubscriptionStatus carries. A user without a membership is on the trial: no seconds left.
+public sealed record BuildersClubStatus(int SecondsLeft, int FurniLimit, int MaxFurniLimit, int SecondsLeftWithGrace)
+{
+    public bool IsMember => SecondsLeft > 0;
+}
+
+// The Builders Club catalogue page and offer a placement names, and the colour or other parameter the catalogue chose.
+public readonly record struct BuildersClubPlacement(int PageId, int OfferId, string ExtraParam);
+
+public interface IBuildersClubService
+{
+    BuildersClubStatus Status(Habbo habbo);
+    void SendStatus(GameClient session);
+    void SendFurniCount(GameClient session);
+    void PlaceFloorItem(Room room, GameClient session, BuildersClubPlacement request, int x, int y, int rotation);
+    void PlaceWallItem(Room room, GameClient session, BuildersClubPlacement request, string wallLocation);
+    // Removes a Builders Club furni from its room and deletes it; it never goes to an inventory.
+    bool TryPickUp(GameClient session, Room room, Item item);
+}
+
+/// <summary>
+/// Builders Club furni are placed straight from the BUILDERS_CLUB catalogue into a room and count against the placer's furni
+/// limit. The rules mirror AIR's HabboCatalog.getBuilderFurniPlaceableStatus (WIN63-202610151745-318700621,
+/// com/sulake/habbo/catalog/HabboCatalog.as:2842-2889): the count must be under the limit, the placer must own the room or
+/// control it as a group admin (room controller level 3 or more), and without a membership (the trial) nobody else may be in
+/// the room.
+/// </summary>
+public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubStore store, ISettingsManager settings, IGameClientManager clients,
+    TimeProvider clock, ILogger<BuildersClubService> logger) : IBuildersClubService
+{
+    // Observed on hhus at login for a member: furni limit 500, max furni limit 2000000.
+    public const int DefaultMemberFurniLimit = 500;
+    public const int DefaultTrialFurniLimit = 50;
+    public const int DefaultMaxFurniLimit = 2_000_000;
+
+    public BuildersClubStatus Status(Habbo habbo)
+    {
+        var now = clock.GetUtcNow();
+        var expiry = store.MembershipExpiry(habbo.Id);
+        var grace = TimeSpan.FromSeconds(Setting("builders_club.grace_seconds", 0));
+        var secondsLeft = SecondsUntil(expiry, now);
+        var withGrace = expiry is { } end ? SecondsUntil(end + grace, now) : 0;
+        var limit = secondsLeft > 0 || withGrace > 0
+            ? Setting("builders_club.furni_limit", DefaultMemberFurniLimit)
+            : Setting("builders_club.trial_furni_limit", DefaultTrialFurniLimit);
+
+        return new(secondsLeft, limit, Math.Max(limit, Setting("builders_club.max_furni_limit", DefaultMaxFurniLimit)), Math.Max(secondsLeft, withGrace));
+    }
+
+    public void SendStatus(GameClient session) => session.Send(new BuildersClubSubscriptionStatusComposer(Status(session.GetHabbo())));
+
+    public void SendFurniCount(GameClient session) => session.Send(new BuildersClubFurniCountComposer(store.FurniCount(session.GetHabbo().Id)));
+
+    public void PlaceFloorItem(Room room, GameClient session, BuildersClubPlacement request, int x, int y, int rotation)
+    {
+        if (Prepare(room, session, request, ItemType.Floor) is not { } item) {
+            return;
+        }
+
+        bool placed;
+
+        try {
+            placed = room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true);
+        }
+        catch (Exception exception) {
+            logger.LogError(exception, "Failed to place Builders Club furni {ItemId} in room {RoomId}", item.Id, room.Id);
+            placed = false;
+        }
+
+        if (!placed) {
+            store.Delete(item.Id);
+            PlacementError(session);
+
+            return;
+        }
+
+        if (item.IsWired) {
+            try {
+                room.GetWired().LoadWiredBox(item);
+            }
+            catch (Exception exception) {
+                logger.LogError(exception, "Failed to load placed Builders Club Wired item {ItemId} in room {RoomId}", item.Id, room.Id);
+            }
+        }
+
+        SendFurniCount(session);
+    }
+
+    public void PlaceWallItem(Room room, GameClient session, BuildersClubPlacement request, string wallLocation)
+    {
+        if (Prepare(room, session, request, ItemType.Wall) is not { } item) {
+            return;
+        }
+
+        bool placed;
+
+        try {
+            var position = wallLocation.StartsWith(':') ? room.GetRoomItemHandler().WallPositionCheck(wallLocation) : null;
+
+            if (position == null) {
+                placed = false;
+            }
+            else {
+                item.WallCoordinates = position;
+                placed = room.GetRoomItemHandler().SetWallItem(session, item);
+            }
+        }
+        catch (Exception exception) {
+            logger.LogError(exception, "Failed to place Builders Club wall furni {ItemId} in room {RoomId}", item.Id, room.Id);
+            placed = false;
+        }
+
+        if (!placed) {
+            store.Delete(item.Id);
+            PlacementError(session);
+
+            return;
+        }
+
+        SendFurniCount(session);
+    }
+
+    public bool TryPickUp(GameClient session, Room room, Item item)
+    {
+        var habbo = session.GetHabbo();
+
+        if (habbo == null || habbo.AccessClosed || !item.IsBuildersClub || !ReferenceEquals(habbo.CurrentRoom, room) || item.RoomId != room.Id) {
+            return false;
+        }
+
+        if (item.UserId != habbo.Id && !habbo.Access.Can(PermissionKeys.RoomItemTake) && !room.CheckRights(session, false) &&
+            !(room.Group != null && room.CheckRights(session, false, true))) {
+            return false;
+        }
+
+        lock (item) {
+            if (!ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item) || !room.GetRoomItemHandler().RemoveFurniture(session, item)) {
+                return false;
+            }
+
+            item.RoomId = 0;
+        }
+
+        store.Delete(item.Id);
+
+        if (clients.GetClientByUserId(item.UserId) is { } placer && placer.GetHabbo() != null) {
+            SendFurniCount(placer);
+        }
+
+        return true;
+    }
+
+    // The furni a valid placement creates, stored but not yet in the room; null when the placement is refused.
+    private Item? Prepare(Room room, GameClient session, BuildersClubPlacement request, ItemType type)
+    {
+        var habbo = session.GetHabbo();
+
+        if (habbo == null || habbo.AccessClosed || !ReferenceEquals(habbo.CurrentRoom, room) || !TryGetOffer(habbo, request, out var offer)) {
+            return null;
+        }
+
+        if (offer.IsBundle || offer.IsLimited || offer.Products.Count != 1 || offer.Product.Type != CatalogProductType.Furni || offer.Product.Amount > 1 ||
+            offer.Product.Definition is not { } definition || definition.Type != type || !CanPlace(definition)) {
+            return null;
+        }
+
+        var status = Status(habbo);
+
+        if (!MayPlaceIn(room, session, status) || store.FurniCount(habbo.Id) >= status.FurniLimit ||
+            room.GetRoomItemHandler().GetWallAndFloor.Count() > Setting("room.item.placement_limit", int.MaxValue)) {
+            PlacementError(session);
+
+            return null;
+        }
+
+        var extraData = ExtraData(definition, request.ExtraParam);
+
+        return new Item
+        {
+            Id = store.Create(definition.Id, habbo.Id, extraData),
+            OwnerId = (uint)habbo.Id,
+            UserId = habbo.Id,
+            Username = habbo.Username,
+            Definition = definition,
+            ExtraData = FurniExtraData.Load(definition, extraData, keepLegacy: true),
+            IsBuildersClub = true
+        };
+    }
+
+    private bool TryGetOffer(Habbo habbo, BuildersClubPlacement request, out CatalogOffer offer)
+    {
+        // The info stand's copy and the search results name the offer without a page.
+        if (request.PageId < 0) {
+            return catalog.TryGetBuildersClubOffer(request.OfferId, habbo, out _, out offer!);
+        }
+
+        if (catalog.TryGetPage(request.PageId, out var page) && page.IsBuildersClub && page.CanOpen(habbo) &&
+            page.Offers.TryGetValue(request.OfferId, out offer!) && offer.Enabled) {
+            return true;
+        }
+
+        offer = null!;
+
+        return false;
+    }
+
+    // Room controller level 3 or more: the owner, or a group admin in a group room. Without a membership nobody else may be in
+    // the room (AIR status 6, "visitors in room"); the room user list never marks anyone as a moderator.
+    private static bool MayPlaceIn(Room room, GameClient session, BuildersClubStatus status)
+    {
+        var habbo = session.GetHabbo();
+
+        if (!room.CheckRights(session, true) && !(room.Group != null && room.CheckRights(session, false, true))) {
+            return false;
+        }
+
+        return status.IsMember || !room.GetRoomUserManager().GetUserList().Any(user => !user.IsBot && user.HabboId != habbo.Id);
+    }
+
+    // Furni that carry value or links of their own are never handed out by the Builders Club.
+    public static bool CanPlace(ItemDefinition definition) => definition.InteractionType is not (InteractionType.Exchange or InteractionType.CrackableEgg
+        or InteractionType.Gift or InteractionType.Teleport or InteractionType.GuildItem or InteractionType.GuildGate or InteractionType.GuildForum
+        or InteractionType.Wallpaper or InteractionType.Floor or InteractionType.Landscape or InteractionType.Postit or InteractionType.Trophy
+        or InteractionType.BadgeDisplay or InteractionType.Moodlight or InteractionType.Toner or InteractionType.Hopper or InteractionType.Tent
+        or InteractionType.TentSmall or InteractionType.Badge or InteractionType.Effect or InteractionType.Deal or InteractionType.Roomdeal
+        or InteractionType.Bot or InteractionType.Pet or InteractionType.PetBreedingBox or InteractionType.GnomeBox or InteractionType.MonsterplantSeed
+        or InteractionType.PurchasableClothing or InteractionType.HorseHairstyle or InteractionType.HorseBodyDye or InteractionType.HorseHairDye
+        or InteractionType.MusicDisc or InteractionType.Jukebox or InteractionType.CameraPicture or InteractionType.Mannequin
+        or InteractionType.WiredChestFurni or InteractionType.WiredChestCoins or InteractionType.WiredContractPayment
+        or InteractionType.WiredContractTrade or InteractionType.WiredContractReward);
+
+    // A recolorable starts in the colour the catalogue's palette chose (RecolorableFurnitureCatalogWidget); nothing else takes a
+    // parameter from the client.
+    private static string ExtraData(ItemDefinition definition, string extraParam) => definition.InteractionType == InteractionType.Recolorable
+        ? RecolorableDataFormat.FormatCatalogueColor(RecolorablePalette.PurchaseColor(definition.ItemName,
+            RecolorableDataFormat.TryParseCatalogueColor(extraParam, out var chosen) ? chosen : null))
+        : "";
+
+    private static void PlacementError(GameClient session) =>
+        session.Send(new RoomNotificationComposer("furni_placement_error", "message", "${room.error.cant_set_item}"));
+
+    private static int SecondsUntil(DateTimeOffset? end, DateTimeOffset now) =>
+        end is { } value && value > now ? (int)Math.Min(int.MaxValue, Math.Ceiling((value - now).TotalSeconds)) : 0;
+
+    private int Setting(string key, int fallback) =>
+        int.TryParse(settings.GetOptionalValue(key), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value >= 0 ? value : fallback;
+}

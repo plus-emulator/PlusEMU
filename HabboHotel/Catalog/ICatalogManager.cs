@@ -13,6 +13,8 @@ public interface ICatalogManager
     bool TryGetPage(int pageId, [NotNullWhen(true)] out CatalogPage? page);
     // First page the user can open that sells this offer.
     bool TryGetOffer(int offerId, Habbo habbo, [NotNullWhen(true)] out CatalogPage? page, [NotNullWhen(true)] out CatalogOffer? offer);
+    // First Builders Club page the user can open that shows this offer.
+    bool TryGetBuildersClubOffer(int offerId, Habbo habbo, [NotNullWhen(true)] out CatalogPage? page, [NotNullWhen(true)] out CatalogOffer? offer);
     ICollection<CatalogPage> Pages { get; }
     // Goes up by one each time the catalog is loaded.
     int Revision { get; }

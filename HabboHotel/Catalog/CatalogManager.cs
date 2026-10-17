@@ -61,7 +61,7 @@ public class CatalogManager : ICatalogManager, IStartable
 
         var offers = await LoadOffers(connection);
         var pages = await connection.QueryAsync<CatalogPage>("SELECT `id`, COALESCE(`parent_id`, -1) AS `ParentId`, `caption`, COALESCE(`link`, '') AS `Link`, `visible`, `enabled`, " +
-            "`required_permission` AS `RequiredPermission`, `required_club_level` AS `RequiredClubLevel`, `icon`, `layout` FROM `catalog_pages` ORDER BY `position`, `id`");
+            "`required_permission` AS `RequiredPermission`, `required_club_level` AS `RequiredClubLevel`, `icon`, `layout`, `catalog_mode` AS `CatalogMode` FROM `catalog_pages` ORDER BY `position`, `id`");
 
         foreach (CatalogPage page in pages) {
             pagesById.Add(page.Id, page);
@@ -234,6 +234,9 @@ public class CatalogManager : ICatalogManager, IStartable
     public bool TryGetPage(int pageId, [NotNullWhen(true)] out CatalogPage? page) => _pages.TryGetValue(pageId, out page);
 
     public bool TryGetOffer(int offerId, Habbo habbo, [NotNullWhen(true)] out CatalogPage? page, [NotNullWhen(true)] out CatalogOffer? offer) => _offers.TryGet(offerId, habbo, out page, out offer);
+
+    public bool TryGetBuildersClubOffer(int offerId, Habbo habbo, [NotNullWhen(true)] out CatalogPage? page, [NotNullWhen(true)] out CatalogOffer? offer) =>
+        _offers.TryGetBuildersClub(offerId, habbo, out page, out offer);
 
     public ICollection<CatalogPage> Pages => _pages.Values;
 

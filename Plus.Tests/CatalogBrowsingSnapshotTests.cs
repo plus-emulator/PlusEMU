@@ -140,7 +140,7 @@ public sealed class CatalogBrowsingSnapshotTests
     }
 
     [Fact]
-    public void IndexAndModeUseNormalSnapshotWithLegacyPublicationOrder()
+    public void IndexAndModeCaptureTheRequestedCatalogueWithLegacyPublicationOrder()
     {
         var pages = new List<CatalogPage>();
         var catalog = CatalogSnapshotTestSupport.Proxy<ICatalogManager>((method, _) => method switch
@@ -156,6 +156,7 @@ public sealed class CatalogBrowsingSnapshotTests
         service.ShowMode(client, "UNKNOWN");
 
         Assert.Equal(2, snapshots.IndexCaptures);
+        Assert.Equal(["BUILDERS_CLUB", "NORMAL"], snapshots.IndexModes);
         Assert.Equal(
             [ServerPacketHeader.CatalogIndexComposer, ServerPacketHeader.CatalogItemDiscountComposer, ServerPacketHeader.CatalogIndexComposer],
             sent.Select(packet => packet.Header));
@@ -278,11 +279,13 @@ public sealed class CatalogBrowsingSnapshotTests
 
             return inner.CapturePage(page, preselectOfferId);
         }
-        public CatalogIndexSnapshot CaptureIndex(Habbo habbo, ICollection<CatalogPage> pages)
+        public List<string> IndexModes { get; } = [];
+        public CatalogIndexSnapshot CaptureIndex(Habbo habbo, ICollection<CatalogPage> pages, string mode)
         {
             IndexCaptures++;
+            IndexModes.Add(mode);
 
-            return inner.CaptureIndex(habbo, pages);
+            return inner.CaptureIndex(habbo, pages, mode);
         }
         public ClubGiftsSnapshot CaptureClubGifts(ClubGiftInfo info) => inner.CaptureClubGifts(info);
     }

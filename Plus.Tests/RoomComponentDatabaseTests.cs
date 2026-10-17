@@ -53,6 +53,7 @@ public sealed class RoomComponentDatabaseTests
                     extra_data TEXT, wall_pos VARCHAR(100), base_item INT UNSIGNED NOT NULL DEFAULT 0,
                     limited_number INT UNSIGNED NOT NULL DEFAULT 0, limited_stack INT UNSIGNED NOT NULL DEFAULT 0);
                 CREATE TABLE items_groups (id INT UNSIGNED PRIMARY KEY, group_id INT NOT NULL);
+                CREATE TABLE items_builders_club (item_id INT UNSIGNED PRIMARY KEY, user_id INT NOT NULL);
                 CREATE TABLE users (id INT PRIMARY KEY, username VARCHAR(100));
                 CREATE TABLE logs_client_trade (
                     id INT AUTO_INCREMENT PRIMARY KEY, `1id` INT, `2id` INT, `1items` TEXT, `2items` TEXT, `timestamp` DATETIME(6) NULL);

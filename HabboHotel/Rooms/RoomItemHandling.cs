@@ -1396,7 +1396,11 @@ public partial class RoomItemHandling
                 _room.SendPacket(new ItemRemoveComposer(item.Id, item.UserId));
             }
 
-            session.Send(new FurniListAddComposer(InventoryItemSnapshot.Capture(item.ToInventoryItem())));
+            // A Builders Club furni goes nowhere: the inventory refuses it.
+            if (!item.IsBuildersClub) {
+                session.Send(new FurniListAddComposer(InventoryItemSnapshot.Capture(item.ToInventoryItem())));
+            }
+
             item.Detach(_room);
             CompleteTransfer(transfer!, item);
             removed.Add(item);

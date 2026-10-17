@@ -49,7 +49,7 @@ public class CatalogStructureWireTests
     }
 
     [Fact]
-    public void UnsupportedCatalogModeFallsBackToTheNormalIndex()
+    public void TheBuildersClubIndexHasOnlyBuildersClubPages()
     {
         var pages = new[] { Page(1, -1) };
         var catalog = CatalogSnapshotTestSupport.Proxy<ICatalogManager>((method, _) => method == "get_Pages" ? pages : throw new InvalidOperationException(method));
@@ -61,6 +61,7 @@ public class CatalogStructureWireTests
 
         Assert.False(packet.HasDataRemaining());
         Assert.Equal([ServerPacketHeader.CatalogIndexComposer, ServerPacketHeader.CatalogItemDiscountComposer], sent.Select(value => value.Header));
+        Assert.Equal(Encode(new CatalogIndexComposer(new CatalogIndexSnapshot(CatalogModes.BuildersClub, []))), sent[0].Payload);
     }
 
     [Fact]
@@ -95,7 +96,7 @@ public class CatalogStructureWireTests
         ];
         var packet = new HabbiconTestSupport.RecordingPacket();
 
-        new CatalogIndexComposer(CatalogSnapshotTestSupport.Snapshots().CaptureIndex(client.GetHabbo(), pages)).Compose(packet);
+        new CatalogIndexComposer(CatalogSnapshotTestSupport.Snapshots().CaptureIndex(client.GetHabbo(), pages, CatalogModes.Normal)).Compose(packet);
 
         Assert.Equal(new List<object>
         {
@@ -147,7 +148,7 @@ public class CatalogStructureWireTests
             method == "get_Promotions" ? Array.Empty<CatalogPromotion>() : throw new InvalidOperationException(method)), TimeProvider.System);
 
         Assert.Equal([7], snapshots.CapturePage(page, -1).Offers.Select(offer => offer.OfferId));
-        Assert.Equal([7], Assert.Single(snapshots.CaptureIndex(client.GetHabbo(), [page]).Roots).OfferIds.ToArray());
+        Assert.Equal([7], Assert.Single(snapshots.CaptureIndex(client.GetHabbo(), [page], CatalogModes.Normal).Roots).OfferIds.ToArray());
 
         var gifts = snapshots.CaptureClubGifts(new ClubGiftInfo(1, 1, 0, [new ClubGift(page.Offers[7], 0), new ClubGift(page.Offers[8], 0)]));
         Assert.Equal([7], gifts.Offers.Select(offer => offer.OfferId));

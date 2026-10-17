@@ -54,6 +54,9 @@ public class Item
 
     public uint Id { get; set; }
     public bool IsTemporary { get; internal init; }
+    // Placed from the Builders Club catalogue: it counts against the placer's Builders Club furni limit and is deleted,
+    // never stored, when it leaves the room.
+    public bool IsBuildersClub { get; init; }
     public uint OwnerId { get; set; }
     public uint RoomId { get; set; }
     public ItemDefinition Definition { get; set; }

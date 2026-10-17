@@ -70,10 +70,14 @@ public sealed class CatalogFurnidata(IDatabase database, ICatalogManager catalog
     }
 
     // Sets offerid to the offer that sells the entry's furni (-1 when none does) and buyout to whether that offer
-    // sells only this furni. Rent and Builders Club offers do not exist here.
+    // sells only this furni; bc and bcofferid name the Builders Club offer that places it, which the Builders Club search
+    // and the info stand's copy use (AIR WIN63-202610151745-318700621, HabboCatalog.as:1927-1950 and 2009-2013,
+    // InfoStandWidget.as:557-564). Rent offers do not exist here.
     public static void Overlay(JsonObject root, IEnumerable<CatalogPage> pages)
     {
-        var offers = OffersByFurni(pages);
+        var all = pages.ToList();
+        var offers = OffersByFurni(all, CatalogModes.Normal);
+        var buildersClubOffers = OffersByFurni(all, CatalogModes.BuildersClub);
 
         foreach (var (section, isWall) in new[] { ("roomitemtypes", false), ("wallitemtypes", true) }) {
             if (root[section]?["furnitype"] is not JsonArray types) {
@@ -87,7 +91,9 @@ public sealed class CatalogFurnidata(IDatabase database, ICatalogManager catalog
                 entry["buyout"] = offer is { IsBundle: false };
                 entry["rentofferid"] = -1;
                 entry["rentbuyout"] = false;
-                entry["bc"] = false;
+                var buildersClubOffer = buildersClubOffers.GetValueOrDefault((classname, isWall));
+                entry["bc"] = buildersClubOffer != null;
+                entry["bcofferid"] = buildersClubOffer?.Id ?? -1;
             }
         }
     }
@@ -95,13 +101,13 @@ public sealed class CatalogFurnidata(IDatabase database, ICatalogManager catalog
     // Per furni, the offer furnidata names, from pages a player without permissions finds in the catalog index:
     // one selling the furni alone and singly, then a multi-pack, then a bundle; an offer on a visible page with no
     // club requirement before one that is not; then the lowest id.
-    private static Dictionary<(string Classname, bool IsWall), CatalogOffer> OffersByFurni(IEnumerable<CatalogPage> pages)
+    private static Dictionary<(string Classname, bool IsWall), CatalogOffer> OffersByFurni(IEnumerable<CatalogPage> pages, string mode)
     {
         var byId = pages.ToDictionary(page => page.Id);
         var best = new Dictionary<(string, bool), (CatalogOffer Offer, (int, int, int) Rank)>();
 
         foreach (var page in byId.Values) {
-            if (!page.Enabled || Placement(page, byId) is not { } open) {
+            if (!page.Enabled || page.CatalogMode != mode || Placement(page, byId) is not { } open) {
                 continue;
             }
 

@@ -19,7 +19,8 @@ public sealed class FurnitureInventoryLoader(IDatabase database, IItemDataManage
             "SELECT items.id,items.base_item AS BaseItem,items.user_id AS UserId,items.extra_data AS ExtraData," +
             "items.limited_number AS LimitedNumber,items.limited_stack AS LimitedStack,COALESCE(items_groups.group_id,0) AS GroupId " +
             "FROM items LEFT JOIN items_groups ON items.id=items_groups.id WHERE items.room_id=0 AND items.user_id=@userId " +
-            "AND NOT EXISTS (SELECT 1 FROM room_music_playlist link WHERE link.disc_id=items.id)",
+            "AND NOT EXISTS (SELECT 1 FROM room_music_playlist link WHERE link.disc_id=items.id) " +
+            "AND NOT EXISTS (SELECT 1 FROM items_builders_club builders_club WHERE builders_club.item_id=items.id)",
             new { userId });
         var items = new List<InventoryItem>();
 

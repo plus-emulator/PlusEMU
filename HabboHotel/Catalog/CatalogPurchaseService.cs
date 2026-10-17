@@ -107,7 +107,8 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
             return;
         }
 
-        if (!page.CanOpen(session.GetHabbo())) {
+        // Builders Club pages are placed from, never bought from.
+        if (!page.CanOpen(session.GetHabbo()) || page.IsBuildersClub) {
             return;
         }
 

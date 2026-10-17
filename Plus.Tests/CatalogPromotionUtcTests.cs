@@ -142,7 +142,8 @@ public sealed class CatalogPromotionUtcTests
             CREATE TABLE catalog_pages (
                 id INT PRIMARY KEY, parent_id INT NULL, caption VARCHAR(128) NOT NULL, link VARCHAR(128) NULL, icon INT NOT NULL DEFAULT 0,
                 visible TINYINT(1) NOT NULL DEFAULT 1, enabled TINYINT(1) NOT NULL DEFAULT 1, required_permission VARCHAR(191) NULL,
-                required_club_level INT NOT NULL DEFAULT 0, position INT NOT NULL DEFAULT 0, layout VARCHAR(64) NOT NULL DEFAULT 'default_3x3');
+                required_club_level INT NOT NULL DEFAULT 0, position INT NOT NULL DEFAULT 0, layout VARCHAR(64) NOT NULL DEFAULT 'default_3x3',
+                catalog_mode ENUM('NORMAL','BUILDERS_CLUB') NOT NULL DEFAULT 'NORMAL');
             CREATE TABLE catalog_club_offers (
                 id INT PRIMARY KEY, name VARCHAR(64), days INT, credits INT, points INT, points_type INT,
                 giftable BOOL, enabled BOOL);

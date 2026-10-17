@@ -1,4 +1,5 @@
 using Plus.Communication.Packets.Outgoing.Inventory.Furni;
+using Plus.HabboHotel.Catalog.BuildersClub;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Permissions;
@@ -18,7 +19,8 @@ public interface IRoomItemPickupService
 public sealed class RoomItemPickupService(
     IGameClientManager clients,
     IQuestManager quests,
-    IRoomItemPickupStore store) : IRoomItemPickupService
+    IRoomItemPickupStore store,
+    IBuildersClubService? buildersClub = null) : IRoomItemPickupService
 {
     public Task PickUp(GameClient session, uint itemId)
     {
@@ -38,6 +40,11 @@ public sealed class RoomItemPickupService(
 
         if (item.IsTemporary) {
             return TryPickUpTemporary(session, room, item);
+        }
+
+        // A Builders Club furni is deleted rather than stored.
+        if (item.IsBuildersClub) {
+            return buildersClub?.TryPickUp(session, room, item) ?? false;
         }
 
         if (!room.GetRoomItemHandler().TryReserveTransfers([item], out var transfer)) {
@@ -89,7 +96,7 @@ public sealed class RoomItemPickupService(
 
         lock (item) {
             if (!ReferenceEquals(habbo.CurrentRoom, room) ||
-                !ReferenceEquals(room.GetRoomItemHandler().GetItem(itemId), item) || !handler.TransferIsCurrent(transfer, item) || item.IsTemporary ||
+                !ReferenceEquals(room.GetRoomItemHandler().GetItem(itemId), item) || !handler.TransferIsCurrent(transfer, item) || item.IsTemporary || item.IsBuildersClub ||
                 item.RoomId != room.Id || item.OwnerId is 0 or > int.MaxValue ||
                 item.Definition.InteractionType == InteractionType.Postit) {
                 handler.CancelUnstartedTransfer(transfer);

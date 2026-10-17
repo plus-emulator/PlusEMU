@@ -208,7 +208,20 @@ public partial class WiredComponent : IWiredRuntimeOperations
     public bool GameCounterRunning => _counters.HasRunningGameCounter;
     internal bool NeedsFastCycle => _engine.NeedsFastCycle;
     internal void ObserveFastWork(Action<bool>? observer) => _engine.ObserveFastWork(observer);
-    public bool Dispatch(WiredRuntimeEvent @event) => WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() =>
+    public bool Dispatch(WiredRuntimeEvent @event)
+    {
+        var dispatched = DispatchCore(@event);
+
+        // Speech runs its stacks at once, outside the room's passes: send what they flashed and wrote now, with the chat. Observed on hhus
+        // (AIR WIN63-202610131318-860371703): the flash arrives in the same batch as the chat that fired it.
+        if (@event.Kind == WiredEventKind.Speech) {
+            FlushFlashes();
+        }
+
+        return dispatched;
+    }
+
+    private bool DispatchCore(WiredRuntimeEvent @event) => WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() =>
     {
         if (_highscoreClockAdmission == 0 && @event.Kind is WiredEventKind.GameStart or WiredEventKind.GameEnd) {
             _highscores?.Invalidate();
@@ -349,8 +362,17 @@ public partial class WiredComponent : IWiredRuntimeOperations
         return false;
     }
 
-    public bool TriggerEvent(WiredBoxType type, params object[] arguments) =>
-        WithHighscoreSpeechOwner(type == WiredBoxType.TriggerUserSays, () => TriggerEventCore(type, arguments));
+    public bool TriggerEvent(WiredBoxType type, params object[] arguments)
+    {
+        var triggered = WithHighscoreSpeechOwner(type == WiredBoxType.TriggerUserSays, () => TriggerEventCore(type, arguments));
+
+        // A chat runs its stacks at once, like Dispatch of speech: their flashes go out with the chat.
+        if (type == WiredBoxType.TriggerUserSays) {
+            FlushFlashes();
+        }
+
+        return triggered;
+    }
 
     private bool TriggerEventCore(WiredBoxType type, object[] arguments)
     {

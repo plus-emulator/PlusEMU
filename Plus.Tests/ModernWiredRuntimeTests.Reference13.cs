@@ -101,6 +101,15 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(2, 2), bot.Coordinate);
         f.Advance(50);
         Assert.Equal(new Point(1, 1), bot.Coordinate);
+        Assert.Equal(4, bot.CurrentEffect);
+
+        // Observed on AIR WIN63-202610131318-860371703: the bot's glow ends 1500 ms after the landing shows, like a user's (the landing
+        // runs one tick before it shows).
+        f.Advance(1950);
+        Assert.Equal(4, bot.CurrentEffect);
+        f.Advance(50);
+        Assert.Equal(0, bot.CurrentEffect);
+        Assert.Equal(2, replies.Count(reply => reply.Header == ServerPacketHeader.AvatarEffectComposer));
     }
 
     // Observed on hhus (AIR WIN63-202610131318-860371703): Show Message to everyone for a bot is said by the bot.

@@ -227,7 +227,9 @@ public class WiredAvatarPacketHookTests
         world.Actions.SetPosture(world.Client, 1);
         Assert.True(world.Actor.IsSitting);
         Assert.Equal(2, world.Actor.RotBody);
-        Assert.Equal(-0.35, world.Actor.Z);
+        // Observed on hhus (AIR WIN63-202610131318-860371703): "sit 0.55 1" with the Z unchanged.
+        Assert.Equal(0, world.Actor.Z);
+        Assert.Equal("0.55 1", world.Actor.Statusses["sit"]);
 
         world.Actor.UpdateNeeded = false;
         world.Actor.IsAsleep = true;

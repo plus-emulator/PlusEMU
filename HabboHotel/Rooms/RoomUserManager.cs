@@ -1176,7 +1176,6 @@ public class RoomUserManager
                             if (!user.IsBot) {
                                 if (user.IsSitting) {
                                     user.Statusses.Remove("sit");
-                                    user.Z += 0.35;
                                     user.IsSitting = false;
                                     user.UpdateNeeded = true;
                                 }
@@ -1609,11 +1608,6 @@ public class RoomUserManager
                             break;
                         }
                 }
-            }
-
-            if (user.IsSitting && user.TeleportEnabled) {
-                user.Z -= 0.35;
-                user.UpdateNeeded = true;
             }
 
             if (cyclegameitems) {

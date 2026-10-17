@@ -36,8 +36,7 @@ internal class ForceSitCommand : ITargetChatCommand
                 }
 
                 try {
-                    user.Statusses.Add("sit", "1.0");
-                    user.Z -= 0.35;
+                    user.Statusses.Add("sit", "0.55 1");
                     user.IsSitting = true;
                     user.UpdateNeeded = true;
                 }
@@ -45,16 +44,13 @@ internal class ForceSitCommand : ITargetChatCommand
             }
             else {
                 user.RotBody--;
-                user.Statusses.Add("sit", "1.0");
-                user.Z -= 0.35;
+                user.Statusses.Add("sit", "0.55 1");
                 user.IsSitting = true;
                 user.UpdateNeeded = true;
             }
         }
         else if (user.IsSitting) {
-            user.Z += 0.35;
             user.Statusses.Remove("sit");
-            user.Statusses.Remove("1.0");
             user.IsSitting = false;
             user.UpdateNeeded = true;
         }

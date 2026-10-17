@@ -36,10 +36,24 @@ public partial class WiredComponent
         internal set => _leaderboardProfiles = value;
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a board's QueryRevision comes from one counter for the whole room (3, 4, ... 10 over
+    // successive saves of different boards), and the room's boards are numbered from 1 as overlays.
+    private int _leaderboardRoomRevision;
+    private readonly Dictionary<int, uint> _leaderboardOverlayItems = [];
+
     private int LeaderboardRevision(uint itemId)
     {
         lock (_leaderboardGate) {
-            return _leaderboardRevisions.TryGetValue(itemId, out var revision) ? revision : _leaderboardRevisions[itemId] = 1;
+            return _leaderboardRevisions.TryGetValue(itemId, out var revision) ? revision : _leaderboardRevisions[itemId] = ++_leaderboardRoomRevision;
+        }
+    }
+
+    private int LeaderboardOverlay(uint itemId)
+    {
+        LeaderboardDescriptors();
+
+        lock (_leaderboardGate) {
+            return _leaderboardOverlayItems.FirstOrDefault(pair => pair.Value == itemId).Key;
         }
     }
 
@@ -53,7 +67,7 @@ public partial class WiredComponent
         var candidates = Variables.LeaderboardChoices(box.Item.GetX, box.Item.GetY);
         var published = WiredLeaderboardConfig.Decode(box.Configuration.IntParams, box.Configuration.VariableIds, box.Configuration.Text)?.Published == true;
 
-        return new(published ? checked((int)box.Item.Id) : 0, box.Item.GetX, box.Item.GetY, candidates.Count, [.. candidates.Take(MaxLeaderboardChoices)]);
+        return new(published ? LeaderboardOverlay(box.Item.Id) : 0, box.Item.GetX, box.Item.GetY, candidates.Count, [.. candidates.Take(MaxLeaderboardChoices)]);
     }
 
     /// <summary>The room's leaderboard snapshot for one user, as on room entry.</summary>
@@ -63,8 +77,9 @@ public partial class WiredComponent
     public IReadOnlyList<WiredLeaderboardDescriptor> LeaderboardDescriptors(uint? leaving = null)
     {
         var descriptors = new List<WiredLeaderboardDescriptor>();
+        var overlays = new Dictionary<int, uint>();
 
-        foreach (var box in ConfiguredBoxes("wf_xtra_var_leaderboard").Where(box => box.Item.Id != leaving)) {
+        foreach (var box in ConfiguredBoxes("wf_xtra_var_leaderboard").Where(box => box.Item.Id != leaving).OrderBy(box => box.Item.Id)) {
             if (WiredLeaderboardConfig.Decode(box.Configuration.IntParams, box.Configuration.VariableIds, box.Configuration.Text) is not { Published: true } config) {
                 continue;
             }
@@ -78,10 +93,21 @@ public partial class WiredComponent
                 continue;
             }
 
-            descriptors.Add(new(checked((int)box.Item.Id), LeaderboardRevision(box.Item.Id), config, choices, choices[0].VariableId));
+            descriptors.Add(new(descriptors.Count + 1, LeaderboardRevision(box.Item.Id), config, choices, choices[0].VariableId));
+            overlays[descriptors.Count] = box.Item.Id;
 
             if (descriptors.Count == MaxLeaderboards) {
                 break;
+            }
+        }
+
+        if (leaving == null) {
+            lock (_leaderboardGate) {
+                _leaderboardOverlayItems.Clear();
+
+                foreach (var (overlay, item) in overlays) {
+                    _leaderboardOverlayItems[overlay] = item;
+                }
             }
         }
 
@@ -133,7 +159,13 @@ public partial class WiredComponent
 
     private WiredLeaderboardChunk? LeaderboardChunk(WiredLeaderboardDescriptor descriptor, string variableId, int index)
     {
-        if (!TryGet((uint)descriptor.OverlayInstanceId, out var found) || found is not IWiredConfiguredItem box
+        uint boardId;
+
+        lock (_leaderboardGate) {
+            boardId = _leaderboardOverlayItems.GetValueOrDefault(descriptor.OverlayInstanceId);
+        }
+
+        if (boardId == 0 || !TryGet(boardId, out var found) || found is not IWiredConfiguredItem box
             || BoardChoices(box).FirstOrDefault(choice => choice.VariableId == variableId) is not { } choice) {
             return null;
         }
@@ -157,7 +189,7 @@ public partial class WiredComponent
     private void LeaderboardSaved(IWiredConfiguredItem box)
     {
         lock (_leaderboardGate) {
-            _leaderboardRevisions[box.Item.Id] = LeaderboardRevisionUnlocked(box.Item.Id) + 1;
+            _leaderboardRevisions[box.Item.Id] = ++_leaderboardRoomRevision;
         }
 
         BroadcastLeaderboards(null);
@@ -175,7 +207,6 @@ public partial class WiredComponent
         }
     }
 
-    private int LeaderboardRevisionUnlocked(uint itemId) => _leaderboardRevisions.GetValueOrDefault(itemId, 1);
 
     private void LeaderboardValuesChanged(IReadOnlyList<WiredVariableChange> changes)
     {

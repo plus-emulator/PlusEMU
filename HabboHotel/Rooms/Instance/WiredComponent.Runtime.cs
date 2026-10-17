@@ -373,7 +373,33 @@ public partial class WiredComponent
             }
         }
 
+        PollProjectiles(now);
         FlushExternalChanges();
+    }
+
+    private void PollProjectiles(long now)
+    {
+        var flights = WiredProjectileFlights.For(_room);
+
+        if (!flights.HasPending) {
+            return;
+        }
+
+        foreach (var (item, key, before, after) in flights.Poll(now)) {
+            var change = new WiredVariableChange(_room.Id, new(0, WiredVariableTarget.Furni, item.Id),
+                before is null ? WiredVariableChangeKind.Created : after is null ? WiredVariableChangeKind.Removed : WiredVariableChangeKind.Updated,
+                before is { } old ? new(old, null, null) : null, after is { } value ? new(value, null, null) : null, (int)item.Id, 0)
+            { InternalKey = key };
+            QueueRuntimeEvent(new(WiredEventKind.Variable)
+            {
+                Code = 0,
+                Action = (int)change.Kind,
+                VariableChange = change,
+                PreviousValue = before ?? 0,
+                Value = after ?? 0,
+                EventItem = item
+            }, 1);
+        }
     }
 
     private void FlushExternalChanges()

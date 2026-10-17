@@ -555,6 +555,14 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     }
 
     [Fact]
+    public void OnlyTheFourProjectileCountsAreListedInterceptable()
+    {
+        // Observed on hhus (AIR WIN63-202610151745-318700621): -2100, -2101, -2102 and -2106 are the only interceptable built-ins.
+        var rows = WiredNativeCatalogProjection.Builtins.Where(variable => variable.CanInterceptChanges).Select(variable => variable.Id);
+        Assert.Equal(new[] { "-2100", "-2101", "-2102", "-2106" }, rows.Order());
+    }
+
+    [Fact]
     public void UnauthorizedMembershipOmissionIsDistinctFromDecodeInconsistency()
     {
         var fixture = new Fixture();

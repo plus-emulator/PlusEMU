@@ -11,6 +11,16 @@ public sealed class WiredProjectileFlights(Room room)
     private readonly Dictionary<uint, Flight> _flights = [];
     public static WiredProjectileFlights For(Room room) => Rooms.GetValue(room, current => new(current));
 
+    // Observed on hhus (AIR WIN63-202610151745-318700621): only these four are listed interceptable; a change fires on the room tick
+    // after the projectile crosses into a tile, never at launch.
+    internal static readonly string[] Intercepted =
+    [
+        "@projectile.animation.tiles_traveled", "@projectile.animation.user_collisions", "@projectile.animation.furni_collisions",
+        "@projectile.animation.is_traveling"
+    ];
+
+    public bool HasPending => _flights.Values.Any(flight => flight.Watched != null);
+
     public bool Begin(Item item, int sourceX, int sourceY, double sourceZ, int durationMs, long nowMs, int variableMask = 127,
         int? curveStrength = null)
     {
@@ -48,10 +58,12 @@ public sealed class WiredProjectileFlights(Room room)
         var altitudes = Enumerable.Range(0, cells.Count).Select(Altitude).ToArray();
 
         // Snapshot collisions at launch, excluding furniture below the sampled altitude.
-        _flights[item.Id] = new(item, cells, altitudes, sourceHundredths, targetHundredths, nowMs, durationMs, variableMask,
+        var flight = new Flight(item, cells, altitudes, sourceHundredths, targetHundredths, nowMs, durationMs, variableMask,
             cells.Select(cell => map.GetRoomUsers(new(cell.X, cell.Y)).DistinctBy(user => user.VirtualId).Count()).ToArray(),
             cells.Select((cell, index) => map.GetCoordinatedItems(new(cell.X, cell.Y)).Where(other => !ReferenceEquals(other, item)
                 && altitudes[index] / 100d <= other.TotalHeight).DistinctBy(other => other.Id).Count()).ToArray());
+        _flights[item.Id] = flight;
+        flight.Watched = Intercepted.Select(key => Read(item, key, nowMs)).ToArray();
 
         return true;
     }
@@ -116,6 +128,37 @@ public sealed class WiredProjectileFlights(Room room)
             _ => null
         };
     }
+    /// <summary>Interceptable values that moved since the last poll; a flight stops being watched once it has landed.</summary>
+    public IReadOnlyList<(Item Item, string Key, int? Before, int? After)> Poll(long nowMs)
+    {
+        var changes = new List<(Item, string, int?, int?)>();
+
+        foreach (var flight in _flights.Values.Where(flight => flight.Watched != null).ToArray()) {
+            var watched = flight.Watched!;
+
+            if (!ReferenceEquals(room.GetRoomItemHandler().GetItem(flight.Item.Id), flight.Item)) {
+                flight.Watched = null;
+
+                continue;
+            }
+
+            for (var index = 0; index < Intercepted.Length; index++) {
+                var after = Read(flight.Item, Intercepted[index], nowMs);
+
+                if (after != watched[index]) {
+                    changes.Add((flight.Item, Intercepted[index], watched[index], after));
+                    watched[index] = after;
+                }
+            }
+
+            if (flight.DurationMs <= 0 || nowMs - flight.StartedAtMs >= flight.DurationMs || !_flights.ContainsKey(flight.Item.Id)) {
+                flight.Watched = null;
+            }
+        }
+
+        return changes;
+    }
+
     public void Forget(Item item)
     {
         if (_flights.TryGetValue(item.Id, out var flight) && ReferenceEquals(flight.Item, item)) {
@@ -168,5 +211,8 @@ public sealed class WiredProjectileFlights(Room room)
     }
 
     private sealed record Flight(Item Item, IReadOnlyList<(int X, int Y, double Entry)> Cells, int[] Altitudes, int SourceZ, int TargetZ,
-        long StartedAtMs, int DurationMs, int VariableMask, int[] UserCounts, int[] FurniCounts);
+        long StartedAtMs, int DurationMs, int VariableMask, int[] UserCounts, int[] FurniCounts)
+    {
+        public int?[]? Watched { get; set; }
+    }
 }

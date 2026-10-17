@@ -75,7 +75,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
             id => _room.GetRoomUserManager().GetRoomUserByVirtualId(id),
             () => _room.GetRoomItemHandler().GetWallAndFloor);
         _engine.BindRuntime(_room, _targets, this,
-            () => _counters.HasRunning || WiredBotTargets.For(_room).HasTargets || _chests?.HasPending == true, PollCounters, FlushExternalChanges);
+            () => _counters.HasRunning || WiredBotTargets.For(_room).HasTargets || _chests?.HasPending == true
+                || WiredProjectileFlights.For(_room).HasPending, PollCounters, FlushExternalChanges);
         _engine.ObserveEvent = (evt, now) =>
         {
             _selectorState.Observe(evt, now);

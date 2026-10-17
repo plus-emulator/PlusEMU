@@ -23,11 +23,15 @@ public sealed class WiredConfigurationStore(IDatabase database) : IWiredConfigur
             throw new InvalidDataException($"Unsupported Wired configuration for item {itemId}: saved as {row.BoxName}.");
         }
 
-        // The native record is schema 2. A schema 1 row is read as the record its editor saves today where that is known;
-        // anything else is rejected and left to reset.
+        // The native record is schema 2. A schema 1 row is read as the record its editor saves today; one that cannot be read
+        // that way, or any other schema, is rejected and left to reset.
         WiredNativeEditorConfiguration? native;
 
-        if (row.Version == 1 && WiredLegacyConfigurationUpgrade.TryUpgrade(descriptor, row.Json, out var upgraded)) {
+        if (row.Version == 1) {
+            if (!WiredLegacyConfigurationUpgrade.TryUpgrade(itemId, descriptor, row.Json, out var upgraded, out var reason)) {
+                throw new InvalidDataException($"Cannot read schema 1 Wired configuration for item {itemId}: {reason}.");
+            }
+
             native = upgraded;
         }
         else if (row.Version == 2) {

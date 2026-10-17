@@ -86,8 +86,7 @@ public sealed class WiredGameState
             applyEffect(user, team, TeamEffect(type, team));
         }
 
-        user.UpdateNeeded = true;
-
+        // Observed on hhus (AIR WIN63-202610131318-860371703): joining or leaving a Wired team sends only the AvatarEffect, no UserUpdate.
         return true;
     }
     public bool Leave(Room room, RoomUser user, Action<RoomUser, int>? clearEffect = null)
@@ -100,7 +99,6 @@ public sealed class WiredGameState
         RemoveFromManagers(room, user);
         user.Team = Team.None;
         _types.Remove(user);
-        user.UpdateNeeded = true;
 
         if (clearEffect != null) {
             clearEffect(user, effect);

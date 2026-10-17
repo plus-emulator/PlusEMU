@@ -42,7 +42,7 @@ public sealed class RoomSettingsSnapshotTests
         Assert.Equal(new object[]
         {
             42u, "name", "description", 2, 36, 30, 50, 2, "one", "two", 2, 1, 0, 1, 0,
-            -1, 1, 1, 2, 0, 50, 2, true, 1, 2, 0
+            -1, 1, 2, false, false, 0, false, 0, false, 1, 2, 0, false
         }, before.Writes);
 
         room.Name = "changed";

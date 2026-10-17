@@ -41,7 +41,7 @@ public sealed class GuestRoomInfoSnapshotTests
             expected.AddRange(["promotion", "details", 2]);
         }
 
-        expected.AddRange([false, false, false, false, 1, 2, 3, true, 4, 5, 6, 7, 8]);
+        expected.AddRange([false, false, false, false, 1, 2, 3, true, 7, false]);
         Assert.Equal(expected, packet.Writes);
     }
 
@@ -67,7 +67,7 @@ public sealed class GuestRoomInfoSnapshotTests
         Assert.Contains("group", second.Writes);
         Assert.Contains("promotion", second.Writes);
         Assert.False((bool)second.Writes[0]);
-        Assert.True((bool)second.Writes[^13]);
+        Assert.True((bool)second.Writes[^3]);
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public sealed class GuestRoomInfoSnapshotTests
     }
 
     private static GuestRoomInfoSnapshot Snapshot() => new(false, 42, "room", 7, "owner", 0, 0, 25, "", 0, 0, 0,
-        [], null, null, false, 0, 0, 0, false, 0, 0, 0, 0, 0);
+        [], null, null, false, 0, 0, 0, false, 0);
 
     private sealed class RecordingService : IGuestRoomInfoService
     {

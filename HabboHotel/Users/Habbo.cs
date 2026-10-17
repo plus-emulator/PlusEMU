@@ -438,7 +438,7 @@ public class Habbo
                     return;
                 }
 
-                Client.Send(new FlatAccessDeniedComposer(""));
+                Client.Send(new FlatAccessDeniedComposer(room.Id, ""));
                 Client.Send(new CloseConnectionComposer());
 
                 return;

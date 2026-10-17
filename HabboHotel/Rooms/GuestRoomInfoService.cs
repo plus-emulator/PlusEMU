@@ -29,11 +29,7 @@ public sealed record GuestRoomInfoSnapshot(
     int WhoCanKick,
     int WhoCanBan,
     bool CanModify,
-    int ChatMode,
-    int ChatSize,
-    int ChatSpeed,
-    int ExtraFlood,
-    int ChatDistance);
+    int ExtraFlood);
 
 public interface IGuestRoomInfoService
 {
@@ -80,10 +76,6 @@ public sealed class GuestRoomInfoService(IRoomDataLoader rooms, TimeProvider clo
             data.WhoCanKick,
             data.WhoCanBan,
             viewer.Access.Can(PermissionKeys.ModerationTool) || data.OwnerName == viewer.Username,
-            data.ChatMode,
-            data.ChatSize,
-            data.ChatSpeed,
-            data.ExtraFlood,
-            data.ChatDistance);
+            data.ExtraFlood);
     }
 }

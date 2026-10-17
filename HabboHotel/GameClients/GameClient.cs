@@ -25,6 +25,9 @@ public abstract class GameClient
     private Arc4? _outgoingRc4;
     protected virtual bool SupportsLegacyCrypto => false;
 
+    /// <summary>Whether this connection RC4-encrypts what it sends once the Diffie-Hellman handshake completes.</summary>
+    public bool EncryptsOutgoingTraffic => SupportsLegacyCrypto;
+
     public bool IsAuthenticated { get; set; } = false;
 
     private string _machineId = string.Empty;

@@ -437,6 +437,7 @@ public class WiredClickPacketHookTests
         public void RollDice(Room room, GameClient session, FurnitureUseRequest request) => throw new NotSupportedException();
         public void UseOneWayGate(Room room, GameClient session, uint itemId) => throw new NotSupportedException();
         public void UseWall(Room room, GameClient session, FurnitureUseRequest request) => throw new NotSupportedException();
+        public void UseHabboWheel(Room room, GameClient session, uint itemId) => throw new NotSupportedException();
     }
 
     private static FlashIncomingPacket Packet(params int[] values)

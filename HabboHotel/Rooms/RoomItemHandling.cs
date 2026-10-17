@@ -769,6 +769,11 @@ public partial class RoomItemHandling
 
     private bool PlaceFloor(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses, double height, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision, (Plus.HabboHotel.Items.DataFormat.IFurniObjectData Data, Action Persist, RoomItemTransfer? Transfer)? commit, bool deferPositionSave = false)
     {
+        // A user's move or placement stores only a direction the furni has (FurnitureDirections.Place).
+        if (session != null) {
+            newRot = FurnitureDirections.Place(item.Definition, newRot);
+        }
+
         if (item.IsTemporary && (!OwnsTemporary(item) || session != null && newItem
             || !Plus.HabboHotel.Items.Wired.Modern.WiredRoomOperations.CanPlaceItem(_room, item, newX, newY, newRot,
                 height == -1 ? null : height, collision: wiredCollision))) {

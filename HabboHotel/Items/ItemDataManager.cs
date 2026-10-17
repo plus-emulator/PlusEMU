@@ -58,6 +58,8 @@ public class ItemDataManager : IItemDataManager, IStartable
     {
         var gifts = new Dictionary<int, uint>();
         var items = new Dictionary<uint, ItemDefinition>();
+        var furnidataDirections = new Dictionary<string, int>(StringComparer.Ordinal);
+        var withoutFurnidata = new List<ItemDefinition>();
 
         if (itemData != null) {
             foreach (DataRow row in itemData.Rows) {
@@ -97,8 +99,19 @@ public class ItemDataManager : IItemDataManager, IStartable
                         IsRare = FurnitureNumbers.BooleanFromCell(row["is_rare"]),
                         ExtraRot = FurnitureNumbers.BooleanFromCell(row["extra_rot"]),
                         Directions = FurnitureDirections.For(Convert.ToString(row["item_name"])),
+                        DefaultDirection = row.Table.Columns.Contains("default_dir") && row["default_dir"] is not DBNull ? Convert.ToInt32(row["default_dir"], CultureInfo.InvariantCulture) : 0,
                         FigureSetIds = ReadFigureSetIds(row.Table.Columns.Contains("custom_params") ? row["custom_params"] : null),
                     };
+
+                    // Rows sharing a classname take the defaultdir of its furnidata row.
+                    if (row.Table.Columns.Contains("has_furnidata")) {
+                        if (FurnitureNumbers.BooleanFromCell(row["has_furnidata"])) {
+                            furnidataDirections[definition.ItemName] = definition.DefaultDirection;
+                        }
+                        else {
+                            withoutFurnidata.Add(definition);
+                        }
+                    }
 
                     gifts.TryAdd(definition.SpriteId, definition.Id);
                     items.Add(definition.Id, definition);
@@ -107,6 +120,12 @@ public class ItemDataManager : IItemDataManager, IStartable
                 catch (Exception e) {
                     _logger.LogError(e, "Skipped furniture #{Id}: the row has invalid data", row["id"]);
                 }
+            }
+        }
+
+        foreach (var definition in withoutFurnidata) {
+            if (furnidataDirections.TryGetValue(definition.ItemName, out var direction)) {
+                definition.DefaultDirection = direction;
             }
         }
 

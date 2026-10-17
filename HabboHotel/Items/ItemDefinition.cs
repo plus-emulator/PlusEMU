@@ -53,4 +53,7 @@ public class ItemDefinition
 
     /// <summary>The directions the furni's asset has, in wired units (0-7), sorted; empty when unknown. See <see cref="FurnitureDirections"/>.</summary>
     public IReadOnlyList<int> Directions { get; set; } = [];
+
+    /// <summary>The furnidata defaultdir (furniture.default_dir of the classname's furnidata row), in wired units.</summary>
+    public int DefaultDirection { get; set; }
 }

@@ -63,8 +63,11 @@ public sealed class WiredVariableConfigurationPersistence(IDatabase database, Wi
             throw new InvalidOperationException("The variable configuration changed before saving.");
         }
 
+        // A definer picked up with its data (confirmed pickup) retires its definition. Placed again and saved, the same furni starts a
+        // new definition: the old values went with the pickup, and the box is back in this room (checked above under its row lock).
+        // Observed on hhus (AIR WIN63-202610151745-318700621): a permanent user variable box picked up and placed again saves as new.
         if (DatabaseWiredVariableStore.LockDefinition(connection, transaction, itemId)) {
-            throw new InvalidOperationException("The variable definition was deleted.");
+            connection.Execute("UPDATE wired_variable_locks SET retired=0 WHERE definition_id=@itemId", new { itemId }, transaction);
         }
 
         WiredVariableWrite? write = null;

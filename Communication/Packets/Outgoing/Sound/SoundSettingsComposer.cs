@@ -34,9 +34,11 @@ public class SoundSettingsComposer : IServerPacket
         packet.WriteBoolean(_focusPreference);
         packet.WriteInteger(_friendBarState);
         packet.WriteInteger(0);
-        packet.WriteBoolean(true);
-        packet.WriteBoolean(true);
-        packet.WriteBoolean(true);
+        // package_43/class_1951.as:170-172: wired menu button, wired inspect button, play test mode. Nothing stores
+        // them yet (the wired menu save, outgoing 3802, has no handler), so send AIR's defaults from flush (:141).
+        packet.WriteBoolean(false);
+        packet.WriteBoolean(false);
+        packet.WriteBoolean(false);
         packet.WriteInteger(0);
         packet.WriteBoolean(false); // wired whisper disabled
     }

@@ -36,7 +36,7 @@ public sealed class RoomSettingsDatabaseTests
             var database = new ProbeDatabase(options.ConnectionString);
             var settings = new RoomSettingsStore(database);
             var request = new RoomSettingsRequest(42, "Updated", "Description", 1, "", 25, 36, ["one"],
-                2, true, false, true, false, -1, 1, 1, 2, 0, 1, 2, 0, 50, 2);
+                2, true, false, true, false, -1, 1, 1, 2, 0, 2);
             settings.Save(request, 7, RoomAccess.Doorbell);
             Assert.Equal("2", connection.QuerySingle<string>("SELECT kick_settings FROM rooms"));
             Assert.Equal("locked", connection.QuerySingle<string>("SELECT state FROM rooms"));

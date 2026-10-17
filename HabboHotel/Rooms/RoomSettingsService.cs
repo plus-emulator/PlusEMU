@@ -16,7 +16,7 @@ namespace Plus.HabboHotel.Rooms;
 public sealed record RoomSettingsRequest(uint RoomId, string Name, string Description, int Access, string Password, int MaxUsers, int CategoryId,
     ImmutableArray<string> Tags, int TradeSettings, bool AllowPets, bool AllowPetsEat,
     bool RoomBlockingEnabled, bool Hidewall, int WallThickness, int FloorThickness, int WhoMute, int WhoKick, int WhoBan,
-    int ChatMode, int ChatSize, int ChatSpeed, int ChatDistance, int ExtraFlood);
+    int ExtraFlood);
 
 public interface IRoomSettingsStore
 {
@@ -34,8 +34,7 @@ public sealed class RoomSettingsStore(IDatabase database) : IRoomSettingsStore
                 state=@state, tags=@tags, users_max=@MaxUsers, allow_pets=@AllowPets, allow_pets_eat=@AllowPetsEat,
                 room_blocking_disabled=@RoomBlockingEnabled, allow_hidewall=@Hidewall, floorthick=@FloorThickness,
                 wallthick=@WallThickness, mute_settings=@WhoMute, kick_settings=@WhoKick, ban_settings=@WhoBan,
-                chat_mode=@ChatMode, chat_size=@ChatSize, chat_speed=@ChatSpeed, chat_extra_flood=@ExtraFlood,
-                chat_hearing_distance=@ChatDistance, trade_settings=@TradeSettings
+                chat_extra_flood=@ExtraFlood, trade_settings=@TradeSettings
             WHERE id=@RoomId AND owner=@ownerId LIMIT 1
             """, new
         {
@@ -56,11 +55,7 @@ public sealed class RoomSettingsStore(IDatabase database) : IRoomSettingsStore
             values.WhoMute,
             WhoKick = values.WhoKick.ToString(System.Globalization.CultureInfo.InvariantCulture),
             values.WhoBan,
-            values.ChatMode,
-            values.ChatSize,
-            values.ChatSpeed,
             values.ExtraFlood,
-            values.ChatDistance,
             values.TradeSettings,
             ownerId
         });
@@ -132,31 +127,7 @@ public sealed class RoomSettingsService(IRoomManager _roomManager, IWordFilterMa
             var whoMute = request.WhoMute;
             var whoKick = request.WhoKick;
             var whoBan = request.WhoBan;
-            var chatMode = request.ChatMode;
-            var chatSize = request.ChatSize;
-            var chatSpeed = request.ChatSpeed;
-            var chatDistance = request.ChatDistance;
             var extraFlood = request.ExtraFlood;
-
-            if (chatMode < 0 || chatMode > 1) {
-                chatMode = 0;
-            }
-
-            if (chatSize < 0 || chatSize > 2) {
-                chatSize = 0;
-            }
-
-            if (chatSpeed < 0 || chatSpeed > 2) {
-                chatSpeed = 0;
-            }
-
-            if (chatDistance < 0) {
-                chatDistance = 1;
-            }
-
-            if (chatDistance > 99) {
-                chatDistance = 100;
-            }
 
             if (extraFlood < 0 || extraFlood > 2) {
                 extraFlood = 0;
@@ -232,10 +203,6 @@ public sealed class RoomSettingsService(IRoomManager _roomManager, IWordFilterMa
                 WhoMute = whoMute,
                 WhoKick = whoKick,
                 WhoBan = whoBan,
-                ChatMode = chatMode,
-                ChatSize = chatSize,
-                ChatSpeed = chatSpeed,
-                ChatDistance = chatDistance,
                 ExtraFlood = extraFlood
             };
             store.Save(prepared, room.OwnerId, access);
@@ -256,10 +223,6 @@ public sealed class RoomSettingsService(IRoomManager _roomManager, IWordFilterMa
             room.UsersMax = maxUsers;
             room.WallThickness = wallThickness;
             room.FloorThickness = floorThickness;
-            room.ChatMode = chatMode;
-            room.ChatSize = chatSize;
-            room.ChatSpeed = chatSpeed;
-            room.ChatDistance = chatDistance;
             room.ExtraFlood = extraFlood;
             room.TradeSettings = tradeSettings;
             room.GetGameMap().GenerateMaps();

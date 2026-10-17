@@ -63,13 +63,12 @@ public sealed class RoomSettingsServiceTests
         var target = new RecordingService();
         var (client, _) = HabbiconTestSupport.Client(new Habbo());
         await new SaveRoomSettingsEvent(target).Parse(client, HabbiconTestSupport.Incoming(42, "Name", "Desc", 2, "secret", 25, 36,
-            2, "ONE", "two", 1, true, false, true, false, -1, 1, 1, 2, 0, 1, 2, 0, 50, 2));
+            2, "ONE", "two", 1, true, false, true, false, -1, 1, 1, 2, 0, 2, true, false, 0, false, 0, false));
         var request = Assert.IsType<RoomSettingsRequest>(target.Request);
         Assert.Equal((uint)42, request.RoomId);
         Assert.Equal("secret", request.Password);
         Assert.Equal(new[] { "ONE", "two" }, request.Tags.ToArray());
         Assert.Equal(2, request.WhoKick);
-        Assert.Equal(50, request.ChatDistance);
         Assert.Equal(2, request.ExtraFlood);
     }
 
@@ -97,7 +96,7 @@ public sealed class RoomSettingsServiceTests
     }
 
     private static RoomSettingsRequest Request() => new(42, "Updated", "Description", 2, "", 25, 36, ["ONE"],
-        1, true, false, true, true, 1, 1, 0, 2, 0, 0, 1, 2, 50, 1);
+        1, true, false, true, true, 1, 1, 0, 2, 0, 1);
     private static Room Room()
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));

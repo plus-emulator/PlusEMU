@@ -161,9 +161,11 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(accepted, target.GetHabbo().RoomAuthOk);
         Assert.Equal(header, Assert.Single(_client.Sent));
         var personal = new FlashIncomingPacket { Buffer = target.Packets.Single().Body };
+        Assert.Equal(_room.Id, personal.ReadUInt());
         Assert.Equal("", personal.ReadString());
         Assert.False(personal.HasDataRemaining());
         var broadcast = new FlashIncomingPacket { Buffer = _client.Packets.Single().Body };
+        Assert.Equal(_room.Id, broadcast.ReadUInt());
         Assert.Equal("target", broadcast.ReadString());
         Assert.False(broadcast.HasDataRemaining());
     }

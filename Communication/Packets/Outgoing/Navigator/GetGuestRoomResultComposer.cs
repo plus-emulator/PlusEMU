@@ -28,29 +28,21 @@ public sealed class GetGuestRoomResultComposer(GuestRoomInfoSnapshot snapshot) :
             packet.WriteString(tag);
         }
 
-        if (snapshot.Group != null && snapshot.Promotion != null) {
-            packet.WriteInteger(62);
-            packet.WriteInteger(snapshot.Group.Id);
-            packet.WriteString(snapshot.Group.Name);
-            packet.WriteString(snapshot.Group.Badge);
-            packet.WriteString(snapshot.Promotion.Name);
-            packet.WriteString(snapshot.Promotion.Description);
-            packet.WriteInteger(snapshot.Promotion.MinutesLeft);
-        }
-        else if (snapshot.Group != null) {
-            packet.WriteInteger(58);
+        // AIR WIN63-202610151745-318700621 package_52/class_2175.as:103: bit 2 adds the group, bit 4 the promotion;
+        // 8 | 16 | 32 are the show-owner, allow-pets and entry-ad flags.
+        var flags = 56 | (snapshot.Group != null ? 2 : 0) | (snapshot.Promotion != null ? 4 : 0);
+        packet.WriteInteger(flags);
+
+        if (snapshot.Group != null) {
             packet.WriteInteger(snapshot.Group.Id);
             packet.WriteString(snapshot.Group.Name);
             packet.WriteString(snapshot.Group.Badge);
         }
-        else if (snapshot.Promotion != null) {
-            packet.WriteInteger(60);
+
+        if (snapshot.Promotion != null) {
             packet.WriteString(snapshot.Promotion.Name);
             packet.WriteString(snapshot.Promotion.Description);
             packet.WriteInteger(snapshot.Promotion.MinutesLeft);
-        }
-        else {
-            packet.WriteInteger(56);
         }
 
         packet.WriteBoolean(snapshot.CheckEntry);
@@ -61,10 +53,9 @@ public sealed class GetGuestRoomResultComposer(GuestRoomInfoSnapshot snapshot) :
         packet.WriteInteger(snapshot.WhoCanKick);
         packet.WriteInteger(snapshot.WhoCanBan);
         packet.WriteBoolean(snapshot.CanModify);
-        packet.WriteInteger(snapshot.ChatMode);
-        packet.WriteInteger(snapshot.ChatSize);
-        packet.WriteInteger(snapshot.ChatSpeed);
+        // AIR WIN63-202610151745-318700621 package_60/class_2076.as:40 reads only the flood sensitivity as chat
+        // settings, then one more boolean that has no counterpart here.
         packet.WriteInteger(snapshot.ExtraFlood);
-        packet.WriteInteger(snapshot.ChatDistance);
+        packet.WriteBoolean(false);
     }
 }

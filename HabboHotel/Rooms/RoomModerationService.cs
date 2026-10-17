@@ -122,12 +122,12 @@ public sealed class RoomModerationService(IAchievementManager achievements, IGam
 
         if (accepted) {
             target.RoomAuthOk = true;
-            targetClient.Send(new FlatAccessibleComposer(""));
-            room.SendPacket(new FlatAccessibleComposer(name), true);
+            targetClient.Send(new FlatAccessibleComposer(room.Id, ""));
+            room.SendPacket(new FlatAccessibleComposer(room.Id, name), true);
         }
         else {
-            targetClient.Send(new FlatAccessDeniedComposer(""));
-            room.SendPacket(new FlatAccessDeniedComposer(name), true);
+            targetClient.Send(new FlatAccessDeniedComposer(room.Id, ""));
+            room.SendPacket(new FlatAccessDeniedComposer(room.Id, name), true);
         }
     }
 

@@ -121,6 +121,30 @@ public sealed partial class WiredRoomVariables
         (_, true) => 1500000000,
         _ => 700000000
     };
+    /// <summary>Flashes the definition box of a written variable (the parent's for a sub-variable) and the variable add-ons on its tile.</summary>
+    internal void FlashDefinition(WiredVariableReference reference)
+    {
+        if (!WiredVariableModule.TryDefinitionId(reference.Token, out var id)) {
+            return;
+        }
+
+        if (TryDecode(reference.Target, id, out var baseId, out _, out _)) {
+            id = baseId;
+        }
+
+        if (_room.GetRoomItemHandler() is not { } items || _room.GetWired() is not { } wired
+            || items.GetItem(id) is not { IsFloorItem: true } definition || definition.Definition.WiredDescriptor is null) {
+            return;
+        }
+
+        wired.OnEvent(definition);
+
+        foreach (var addon in items.GetFloor.Where(item => item.Id != definition.Id && item.GetX == definition.GetX && item.GetY == definition.GetY
+                     && item.Definition.WiredDescriptor?.CanonicalName.StartsWith("wf_xtra_var_", StringComparison.Ordinal) == true)) {
+            wired.OnEvent(addon);
+        }
+    }
+
     private static bool TryDecode(WiredVariableTarget target, uint id, out uint baseId, out int sub, out bool time)
     {
         time = id >= 1500000000;

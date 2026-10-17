@@ -1421,6 +1421,17 @@ public partial class ModernWiredRuntimeTests
         return action.Execute(context);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621 (r97_chase_tie): from an exact diagonal the chase steps along either axis.
+    [Fact]
+    public void ChaseFromAnExactDiagonalPicksEitherAxis()
+    {
+        var (room, _, _) = World();
+        var item = MakeItem(1, "test");
+        var diagonal = new RoomUser(1, 0, 7, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 1, Y = 1 };
+        var first = Enumerable.Range(0, 32).Select(seed => WiredDirectionalActions.Steps(item, diagonal, false, new Random(seed)).First()).ToHashSet();
+        Assert.Equal(new HashSet<Point> { new(1, 0), new(0, 1) }, first);
+    }
+
     [Fact]
     public void ChaseQueriesNearestWithinThreeAndOrdersLongAxisFirst()
     {

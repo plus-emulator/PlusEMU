@@ -73,7 +73,11 @@ public sealed class WiredDirectionalActions
     public static RoomUser? Nearest(Item item, IEnumerable<RoomUser> users, int? range = 3) => users.Where(user => !user.IsBot)
         .Select(user => (User: user, Distance: Math.Abs(user.X - item.GetX) + Math.Abs(user.Y - item.GetY)))
         .Where(pair => range == null || pair.Distance <= range).OrderBy(pair => pair.Distance).Select(pair => pair.User).FirstOrDefault();
-    public static IEnumerable<Point> Steps(Item item, RoomUser user, bool away)
+    public static IEnumerable<Point> Steps(Item item, RoomUser user, bool away) => Steps(item, user, away, Random.Shared);
+
+    // Observed on AIR WIN63-202610151745-318700621 (r97_chase_tie): chasing from an exact diagonal took the y step 6 times and the x step
+    // 2 times in 10 fires, so a tie between the axes is decided at random.
+    public static IEnumerable<Point> Steps(Item item, RoomUser user, bool away, Random random)
     {
         var dx = user.X - item.GetX;
         var dy = user.Y - item.GetY;
@@ -86,7 +90,9 @@ public sealed class WiredDirectionalActions
         var x = new Point(item.GetX + Math.Sign(dx), item.GetY);
         var y = new Point(item.GetX, item.GetY + Math.Sign(dy));
 
-        return (Math.Abs(dx) >= Math.Abs(dy) ? new[] { x, y } : [y, x])
+        var xFirst = Math.Abs(dx) == Math.Abs(dy) && !away ? random.Next(2) == 0 : Math.Abs(dx) >= Math.Abs(dy);
+
+        return (xFirst ? new[] { x, y } : [y, x])
             .Where(point => point.X != item.GetX || point.Y != item.GetY);
     }
     /// <summary>

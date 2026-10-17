@@ -41,7 +41,9 @@ public static class WiredSelectorModule
 
         switch (name) {
             case "wf_slc_furni_picks":
-                selected.FurniIds.UnionWith(world.Furni.Where(x => (input.IncludeWired || !x.IsWired) && c.SelectedItems.Contains(x.Id)).Select(x => x.Id));
+                // Picked Wired boxes stay in the selection. Observed on hhus (AIR WIN63-202610131318-860371703): Call Stacks with the
+                // furni-picks selector picking another stack's trigger box runs that stack.
+                selected.FurniIds.UnionWith(world.Furni.Where(x => c.SelectedItems.Contains(x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_furni_signal":
                 selected.FurniIds.UnionWith(world.Furni.Where(x => (input.IncludeWired || !x.IsWired) && input.Signal.FurniIds.Contains(x.Id)).Select(x => x.Id));

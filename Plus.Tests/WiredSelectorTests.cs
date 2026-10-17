@@ -116,6 +116,14 @@ public sealed class WiredSelectorTests
         Assert.Equal(new[] { 4 }, input.SelectorPool.UserIds);
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a picked Wired box stays in the picks selection (Call Stacks runs its stack).
+    [Fact]
+    public void APickedWiredBoxStaysSelected()
+    {
+        var result = WiredSelectorModule.SelectRaw("wf_slc_furni_picks", Config(picks: [5, 3]), World(), Inputs());
+        Assert.Equal(new uint[] { 3, 5 }, result.Selection.FurniIds.Order());
+    }
+
     [Fact]
     public void InversionIsAppliedOnceAndOnlyToFloorFurniture()
     {

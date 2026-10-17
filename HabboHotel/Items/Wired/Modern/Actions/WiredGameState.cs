@@ -126,6 +126,11 @@ public sealed class WiredGameState
 
         return _types.TryGetValue(user, out var joined) && joined.Team == user.Team && joined.Type == 0 ? 4 : null;
     }
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a user in a plain Wired team talks, shouts and whispers with the team bubble,
+    // 130 in Red and 133 in Green, and 0 outside a team. Blue 131 and Yellow 132 follow the @event.chat.style connector's team styles.
+    public static int? TeamChatStyle(Room room, RoomUser user) => For(room).ReadTeamType(room, user) == 4
+        ? user.Team switch { Team.Red => 130, Team.Blue => 131, Team.Yellow => 132, Team.Green => 133, _ => null }
+        : null;
     // Observed on hhus (build WIN63-202610131318): the effect is 222 + team for a plain wired team (type 0, team 1 gave 223), 32 + team for
     // a Battle Banzai team (team 2 gave 34) and 39 + team for a Freeze team (team 3 gave 42); leaving delivers effect 0. 224-226 for
     // plain teams 2-4 follow the observed 223 and are unobserved. The own avatar gets it 54 to 498 ms after the action's own stack effects

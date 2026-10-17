@@ -231,7 +231,9 @@ internal static class WiredNativeConditionEditor
                 break;
             case "wf_cnd_time_less_than":
             case "wf_cnd_time_more_than":
-                if (p.Length != 1 || p[0] is < 1 or > 1200) {
+                // The AIR editor writes its 1..1200 pulses plus one (2..1201); observed on hhus (AIR WIN63-202610131318-860371703),
+                // 1201 saves on both conditions.
+                if (p.Length != 1 || p[0] is < 1 or > 1201) {
                     return false;
                 }
 

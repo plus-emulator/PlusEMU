@@ -444,7 +444,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             _publish(new(WiredEventKind.StateChanged) { Actor = FurnitureStateEvents.Present(context.Room, context.Event.Actor), EventItem = item });
                         }
                     }) is GateTransition.Applied or GateTransition.Queued,
-                (movers, step) => _movement.MoveTogether(context, movers, step, passengers, WiredMovementActions.Steps.Contains(name)), context.Room.GetGameMap().ValidTile,
+                // Observed on AIR WIN63-202610151745-318700621 (r97_mv_collide): a Move/Rotate step onto a stackable block lands on top of it
+                // (z 1.0), also when that block arrived in the same firing; only furniture that cannot be stacked on blocks it.
+                (movers, step) => _movement.MoveTogether(context, movers, step, passengers, WiredMovementActions.Steps.Contains(name),
+                    stackableBlocks: name != "wf_act_move_rotate"), context.Room.GetGameMap().ValidTile,
                 (item, snapshot, position, altitude) => _movement.RestoreWallSnapshot(context, item, snapshot, position, altitude),
                 (item, operation, altitude) => _movement.SetWallAltitude(context, item, operation, altitude));
         }

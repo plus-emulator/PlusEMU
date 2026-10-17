@@ -7,7 +7,7 @@ using Plus.Utilities.DependencyInjection;
 
 namespace Plus.HabboHotel.Groups;
 
-public readonly record struct GroupSettingsRequest(int GroupId, int Type, int FurniOptions, bool ForumEnabled);
+public readonly record struct GroupSettingsRequest(int GroupId, int Type, int FurniOptions, bool? ForumEnabled);
 
 [Singleton]
 public interface IGroupSettingsService
@@ -43,7 +43,9 @@ public sealed class GroupSettingsService(
                 ? ImmutableArray<int>.Empty
                 : group.GetRequests.ToImmutableArray();
 
-            if (!store.Update(group.Id, type, request.FurniOptions == 1, request.ForumEnabled, requests)) {
+            var forumEnabled = request.ForumEnabled ?? group.ForumEnabled;
+
+            if (!store.Update(group.Id, type, request.FurniOptions == 1, forumEnabled, requests)) {
                 return Task.CompletedTask;
             }
 
@@ -54,8 +56,8 @@ public sealed class GroupSettingsService(
             }
 
             group.AdminOnlyDeco = request.FurniOptions;
-            group.ForumEnabled = request.ForumEnabled;
-            group.HasForum = request.ForumEnabled;
+            group.ForumEnabled = forumEnabled;
+            group.HasForum = forumEnabled;
             PublishRoomRights(group, request.FurniOptions);
             session.Send(new GroupInfoComposer(groupInfo.Capture(group, session.GetHabbo().Id)));
 

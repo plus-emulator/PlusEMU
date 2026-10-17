@@ -58,7 +58,7 @@ public class GroupManagementTests : IDisposable
     }
 
     [Fact]
-    public void SettingsPacketIncludesHomeroomAndForum()
+    public void SettingsPacketIncludesHomeroomAndEndsAtMemberCount()
     {
         var group = NewGroup(hasForum: true);
         var packet = new HabbiconTestSupport.RecordingPacket();
@@ -92,7 +92,6 @@ public class GroupManagementTests : IDisposable
 
         Assert.Equal(group.Badge, reader.ReadString());
         Assert.Equal(group.MemberCount, reader.ReadInt());
-        Assert.True(reader.ReadBool());
         Assert.True(reader.End);
     }
 

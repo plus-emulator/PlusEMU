@@ -112,11 +112,11 @@ public sealed class ModeratorActionServiceTests
         var service = new RecordingService();
         var (actor, _) = HabbiconTestSupport.Client(new Habbo());
         await new ModerationCautionEvent(service).Parse(actor, HabbiconTestSupport.Incoming(8, "warning"));
-        await new ModerationMuteEvent(service).Parse(actor, HabbiconTestSupport.Incoming(8, "discard", 10, "junk1", "junk2"));
+        await new ModerationMuteEvent(service).Parse(actor, HabbiconTestSupport.Incoming(8, "discard", 10));
         await new ModerationKickEvent(service).Parse(actor, HabbiconTestSupport.Incoming(8, "discard"));
         await new ModerateRoomEvent(service).Parse(actor, HabbiconTestSupport.Incoming(42, 1, 0, 1));
         Assert.Equal((8, "warning"), service.CautionRequest);
-        Assert.Equal((8, 10), service.MuteRequest);
+        Assert.Equal((8, ModerationMuteEvent.MuteMinutes), service.MuteRequest);
         Assert.Equal(8, service.KickId);
         Assert.Equal(new ModerateRoomRequest(42, true, false, true), service.RoomRequest);
     }

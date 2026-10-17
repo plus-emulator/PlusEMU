@@ -13,13 +13,13 @@ public sealed class ModerationSanctionServiceTests
     private static readonly DateTimeOffset Now = new(2040, 5, 6, 7, 8, 9, TimeSpan.Zero);
 
     [Fact]
-    public async Task HandlerDecodesAllSevenFieldsAndDelegatesOnlyTypedValues()
+    public async Task HandlerDecodesTheAirLayoutAndMapsTheSanctionTypeToHours()
     {
         var service = new RecordingSanctions();
         var (actor, _) = HabbiconTestSupport.Client(new Habbo());
         await new ModerationBanEvent(service).Parse(actor,
-            HabbiconTestSupport.Incoming(17, "reason", 12, "junk one", "junk two", true, false));
-        Assert.Equal(new ModerationBanRequest(17, "reason", 12, true, false), service.Request);
+            HabbiconTestSupport.Incoming(17, "reason", 9, 4, false, -1));
+        Assert.Equal(new ModerationBanRequest(17, "reason", 168, false, false), service.Request);
         Assert.Same(actor, service.Actor);
     }
 

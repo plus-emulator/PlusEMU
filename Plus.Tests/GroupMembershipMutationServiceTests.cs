@@ -42,6 +42,10 @@ public sealed class GroupMembershipMutationServiceTests
         await new UpdateGroupSettingsEvent(settings).Parse(null!, HabbiconTestSupport.Incoming(9, 2, 1, true));
 
         Assert.Equal(new(9, 2, 1, true), settings.Request);
+
+        await new UpdateGroupSettingsEvent(settings).Parse(null!, HabbiconTestSupport.Incoming(9, 2, 1));
+
+        Assert.Equal(new(9, 2, 1, null), settings.Request);
     }
 
     [Theory]

@@ -255,7 +255,7 @@ public partial class PlacedFurniRoomTests
         var destination = ExecutorFloor(11, 3, 2, z: .75);
         var actor = ExecutorActor(0, 1);
         long afterPlacement = -1;
-        ExecutorObserveLanding((user, item) =>
+        ExecutorObserveArrival((user, item) =>
         {
             if (item != landing) {
                 return;

@@ -86,6 +86,14 @@ public static class WiredRoomOperations
     public static bool IsOnItem(RoomUser user, Item item) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(user.Coordinate);
 
+    /// <summary>
+    /// Whether the user stands on the item for a condition. A user whose step is announced counts on the tile it steps to: the Wired
+    /// walk events fire with that announcement, and observed on hhus (AIR WIN63-202610131318-860371703) a walk-on stack's "triggerer
+    /// is on furni" condition holds for the furni walked onto.
+    /// </summary>
+    public static bool IsStandingOn(RoomUser user, Item item) =>
+        Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(user.SetStep ? new(user.SetX, user.SetY) : user.Coordinate);
+
     public static bool HasStackedItem(Room room, Item item, IReadOnlySet<uint>? ignored = null) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation)
             .SelectMany(point => room.GetGameMap().GetCoordinatedItems(point))

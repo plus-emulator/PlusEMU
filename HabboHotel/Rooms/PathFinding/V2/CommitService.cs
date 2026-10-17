@@ -28,7 +28,7 @@ internal sealed class CommitService(Room room, RoomNavigation navigation, Moveme
         actor.SetStep = false;
 
         if (accepted > 0) {
-            LandPending(actor, accepted);
+            LandPending(actor, accepted, count);
         }
 
         context.Claims.ReleaseBatch(actor);
@@ -50,12 +50,13 @@ internal sealed class CommitService(Room room, RoomNavigation navigation, Moveme
 
         return accepted > 0;
     }
-    private void LandPending(RoomUser actor, int accepted)
+    // The Wired walk events went out with the announcement, for its last step. A batch cut short lands elsewhere: that landing raises them.
+    private void LandPending(RoomUser actor, int accepted, int count)
     {
         actor.Movement.LandingInProgress = true;
 
         try {
-            _landing.Land(actor, actor.Movement.Pending[accepted - 1], actor.Movement.PendingView);
+            _landing.Land(actor, actor.Movement.Pending[accepted - 1], actor.Movement.PendingView, wiredOnArrival: accepted != count);
         }
         finally {
             actor.Movement.LandingInProgress = false;

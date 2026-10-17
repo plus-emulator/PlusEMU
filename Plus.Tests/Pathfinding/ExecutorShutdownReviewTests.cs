@@ -24,8 +24,8 @@ public partial class PlacedFurniRoomTests
                 race.BlockTick();
             }
         });
+        // The walk-off goes out when the step is announced, inside the owner's tick.
         actor.MoveTo(1, 1);
-        ExecutorTick();
         Assert.True(RoomCycle.TryStart(_room, _room.ProcessRoom));
 
         try {
@@ -62,7 +62,6 @@ public partial class PlacedFurniRoomTests
             }
         });
         actor.MoveTo(1, 1);
-        ExecutorTick();
         Assert.True(RoomCycle.TryStart(_room, _room.ProcessRoom));
         _room.ProcessTask.WaitAsync(TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
         Assert.True(_room.MDisposed);

@@ -3,64 +3,64 @@ namespace Plus.Communication.Packets.Incoming;
 public static class ClientPacketHeader
 {
     // Handshake
-    public const uint InitDiffieHandshakeEvent = 3799;
-    public const uint CompleteDiffieHandshakeEvent = 3072;
-    public const uint UniqueIdEvent = 483;
-    public const uint SSOTicketEvent = 1623;
-    public const uint InfoRetrieveEvent = 312;
+    public const uint InitDiffieHandshakeEvent = 580;
+    public const uint CompleteDiffieHandshakeEvent = 1830;
+    public const uint UniqueIdEvent = 1531;
+    public const uint SSOTicketEvent = 2405;
+    public const uint InfoRetrieveEvent = 1955;
 
     // Avatar
-    public const uint CheckUserNameEvent = 2155;
-    public const uint ChangeUserNameEvent = 1075;
-    public const uint GetWardrobeEvent = 1796;
-    public const uint SaveWardrobeOutfitEvent = 2775;
+    public const uint CheckUserNameEvent = 2726;
+    public const uint ChangeUserNameEvent = 1231;
+    public const uint GetWardrobeEvent = 1672;
+    public const uint SaveWardrobeOutfitEvent = 3540;
 
     //Preferences
-    public const uint SetChatStylePreferenceEvent = 3002;
+    public const uint SetChatStylePreferenceEvent = 2611;
     public const uint SetChatPreferenceEvent = 65476;
 
     // Catalog
-    public const uint GetCatalogPageEvent = 1972;
-    public const uint GetProductOfferEvent = 336;
-    public const uint GetKickbackInfoEvent = 84;
-    public const uint GetClubGiftInfoEvent = 3091;
-    public const uint PurchaseFromCatalogEvent = 2860;
-    public const uint PurchaseFromCatalogAsGiftEvent = 1950;
-    public const uint GetBundleDiscountRulesetEvent = 2529;
+    public const uint GetCatalogPageEvent = 2955;
+    public const uint GetProductOfferEvent = 2810;
+    public const uint GetKickbackInfoEvent = 3125;
+    public const uint GetClubGiftInfoEvent = 638;
+    public const uint PurchaseFromCatalogEvent = 1184;
+    public const uint PurchaseFromCatalogAsGiftEvent = 2809;
+    public const uint GetBundleDiscountRulesetEvent = 1238;
 
     // Polls
-    public const uint PollStartEvent = 1069;
-    public const uint PollRejectEvent = 2093;
-    public const uint PollAnswerEvent = 2007;
+    public const uint PollStartEvent = 3866;
+    public const uint PollRejectEvent = 1406;
+    public const uint PollAnswerEvent = 2761;
 
     // Navigator
 
     // Messenger
-    public const uint GetFriendRequestsEvent = 3080;
+    public const uint GetFriendRequestsEvent = 2798;
 
     // Quests
-    public const uint GetQuestListEvent = 2025;
-    public const uint StartQuestEvent = 1139;
-    public const uint GetCurrentQuestEvent = 2148;
-    public const uint CancelQuestEvent = 2022;
+    public const uint GetQuestListEvent = 1799;
+    public const uint StartQuestEvent = 1356;
+    public const uint GetCurrentQuestEvent = 1429;
+    public const uint CancelQuestEvent = 1783;
 
     // Room Avatar
-    public const uint ActionEvent = 2225;
-    public const uint ApplySignEvent = 2444;
-    public const uint DanceEvent = 883;
-    public const uint SitEvent = 2136;
-    public const uint ChangeMottoEvent = 2901;
-    public const uint LookToEvent = 981;
-    public const uint DropHandItemEvent = 3584;
+    public const uint ActionEvent = 256;
+    public const uint ApplySignEvent = 1785;
+    public const uint DanceEvent = 856;
+    public const uint SitEvent = 2544;
+    public const uint ChangeMottoEvent = 1234;
+    public const uint LookToEvent = 2652;
+    public const uint DropHandItemEvent = 128;
 
     // Room Connection
-    public const uint OpenFlatConnectionEvent = 2377;
+    public const uint OpenFlatConnectionEvent = 541;
     public const uint GoToFlatEvent = 65442;
 
     // Room Chat
-    public const uint ChatEvent = 1838;
-    public const uint ShoutEvent = 2054;
-    public const uint WhisperEvent = 286;
+    public const uint ChatEvent = 3708;
+    public const uint ShoutEvent = 2666;
+    public const uint WhisperEvent = 819;
 
     // Room Engine
 
@@ -69,283 +69,283 @@ public static class ClientPacketHeader
     // Room Action
 
     // Users
-    public const uint GetIgnoredUsersEvent = 2986;
+    public const uint GetIgnoredUsersEvent = 4;
 
     // Moderation
-    public const uint OpenHelpToolEvent = 3920;
-    public const uint CallForHelpPendingCallsDeletedEvent = 485;
-    public const uint ModeratorActionEvent = 474;
-    public const uint ModerationMsgEvent = 410;
-    public const uint ModerationMuteEvent = 1358;
-    public const uint ModerationTradeLockEvent = 3931;
-    public const uint GetModeratorUserRoomVisitsEvent = 3379;
-    public const uint ModerationKickEvent = 3370;
-    public const uint GetModeratorRoomInfoEvent = 2419;
-    public const uint GetModeratorUserInfoEvent = 2342;
-    public const uint GetModeratorRoomChatlogEvent = 1999;
-    public const uint ModerateRoomEvent = 1083;
-    public const uint GetModeratorUserChatlogEvent = 1320;
-    public const uint GetModeratorTicketChatlogsEvent = 1231;
-    public const uint ModerationCautionEvent = 2681;
-    public const uint ModerationBanEvent = 679;
-    public const uint SubmitNewTicketEvent = 3637;
-    public const uint CloseIssueDefaultActionEvent = 3781;
+    public const uint OpenHelpToolEvent = 3474;
+    public const uint CallForHelpPendingCallsDeletedEvent = 1512;
+    public const uint ModeratorActionEvent = 3828;
+    public const uint ModerationMsgEvent = 3071;
+    public const uint ModerationMuteEvent = 2681;
+    public const uint ModerationTradeLockEvent = 453;
+    public const uint GetModeratorUserRoomVisitsEvent = 1798;
+    public const uint ModerationKickEvent = 2252;
+    public const uint GetModeratorRoomInfoEvent = 415;
+    public const uint GetModeratorUserInfoEvent = 1745;
+    public const uint GetModeratorRoomChatlogEvent = 1280;
+    public const uint ModerateRoomEvent = 2166;
+    public const uint GetModeratorUserChatlogEvent = 250;
+    public const uint GetModeratorTicketChatlogsEvent = 2935;
+    public const uint ModerationCautionEvent = 610;
+    public const uint ModerationBanEvent = 1595;
+    public const uint SubmitNewTicketEvent = 652;
+    public const uint CloseIssueDefaultActionEvent = 107;
 
     // Inventory
-    public const uint GetCreditsInfoEvent = 1749;
-    public const uint GetAchievementsEvent = 707;
-    public const uint GetBadgesEvent = 2375;
-    public const uint RequestFurniInventoryEvent = 2536;
-    public const uint SetActivatedBadgesEvent = 3744;
-    public const uint AvatarEffectActivatedEvent = 1469;
-    public const uint AvatarEffectSelectedEvent = 2323;
+    public const uint GetCreditsInfoEvent = 962;
+    public const uint GetAchievementsEvent = 1817;
+    public const uint GetBadgesEvent = 2826;
+    public const uint RequestFurniInventoryEvent = 1558;
+    public const uint SetActivatedBadgesEvent = 2454;
+    public const uint AvatarEffectActivatedEvent = 2510;
+    public const uint AvatarEffectSelectedEvent = 3937;
 
-    public const uint InitTradeEvent = 1344;
-    public const uint TradingCancelConfirmEvent = 3456;
-    public const uint TradingModifyEvent = 1691;
-    public const uint TradingOfferItemEvent = 3133;
-    public const uint TradingCancelEvent = 1148;
-    public const uint TradingConfirmEvent = 2246;
-    public const uint TradingOfferItemsEvent = 1538;
-    public const uint TradingRemoveItemEvent = 301;
-    public const uint TradingAcceptEvent = 1515;
+    public const uint InitTradeEvent = 3013;
+    public const uint TradingCancelConfirmEvent = 383;
+    public const uint TradingModifyEvent = 3235;
+    public const uint TradingOfferItemEvent = 31;
+    public const uint TradingCancelEvent = 2028;
+    public const uint TradingConfirmEvent = 3541;
+    public const uint TradingOfferItemsEvent = 1353;
+    public const uint TradingRemoveItemEvent = 2206;
+    public const uint TradingAcceptEvent = 3544;
 
     // Register
-    public const uint UpdateFigureDataEvent = 3901;
+    public const uint UpdateFigureDataEvent = 1733;
 
     // Groups
-    public const uint GetBadgeEditorPartsEvent = 2502;
-    public const uint GetGroupCreationWindowEvent = 1255;
-    public const uint GetGroupFurniSettingsEvent = 2856;
-    public const uint DeclineGroupMembershipEvent = 3824;
-    public const uint JoinGroupEvent = 2109;
-    public const uint UpdateGroupColoursEvent = 3870;
-    public const uint SetGroupFavouriteEvent = 43;
-    public const uint GetGroupMembersEvent = 3927;
+    public const uint GetBadgeEditorPartsEvent = 1492;
+    public const uint GetGroupCreationWindowEvent = 2294;
+    public const uint GetGroupFurniSettingsEvent = 2001;
+    public const uint DeclineGroupMembershipEvent = 26;
+    public const uint JoinGroupEvent = 476;
+    public const uint UpdateGroupColoursEvent = 187;
+    public const uint SetGroupFavouriteEvent = 1679;
+    public const uint GetGroupMembersEvent = 3411;
 
     // Group Forums
-    public const uint PostGroupContentEvent = 1372;
-    public const uint GetForumStatsEvent = 1711;
-    public const uint GetForumThreadEvent = 379;
-    public const uint UpdateForumReadMarkersEvent = 1533;
-    public const uint GetForumsUnreadCountEvent = 1491;
+    public const uint PostGroupContentEvent = 1945;
+    public const uint GetForumStatsEvent = 3167;
+    public const uint GetForumThreadEvent = 1491;
+    public const uint UpdateForumReadMarkersEvent = 2296;
+    public const uint GetForumsUnreadCountEvent = 1525;
 
     // Sound
 
 
     // Ambassador
 
-    public const uint AmbassadorAlertEvent = 3032;
+    public const uint AmbassadorAlertEvent = 2253;
 
-    public const uint RemoveMyRightsEvent = 680;
-    public const uint GiveHandItemEvent = 45;
-    public const uint GoToHotelViewEvent = 1780;
-    public const uint GetRoomFilterListEvent = 980;
-    public const uint GetPromoArticlesEvent = 3129;
-    public const uint ModifyWhoCanRideHorseEvent = 429;
-    public const uint RemoveFriendEvent = 612;
-    public const uint RefreshCampaignEvent = 2523;
-    public const uint AcceptFriendEvent = 2483;
-    public const uint YouTubeVideoInformationEvent = 3734;
-    public const uint FollowFriendEvent = 3807;
-    public const uint SaveBotActionEvent = 3272;
-    public const uint LetUserInEvent = 1117;
-    public const uint GetMarketplaceItemStatsEvent = 3067;
-    public const uint GetSellablePetPalettesEvent = 1830;
-    public const uint OpenCampaignCalendarDoorAsStaffEvent = 2578;
-    public const uint SetUIFlagsEvent = 270;
-    public const uint DeleteRoomEvent = 1313;
-    public const uint SetSoundSettingsEvent = 1548;
+    public const uint RemoveMyRightsEvent = 506;
+    public const uint GiveHandItemEvent = 3719;
+    public const uint GoToHotelViewEvent = 76;
+    public const uint GetRoomFilterListEvent = 3791;
+    public const uint GetPromoArticlesEvent = 2766;
+    public const uint ModifyWhoCanRideHorseEvent = 3850;
+    public const uint RemoveFriendEvent = 2173;
+    public const uint RefreshCampaignEvent = 443;
+    public const uint AcceptFriendEvent = 2328;
+    public const uint YouTubeVideoInformationEvent = 2488;
+    public const uint FollowFriendEvent = 2669;
+    public const uint SaveBotActionEvent = 2361;
+    public const uint LetUserInEvent = 2207;
+    public const uint GetMarketplaceItemStatsEvent = 2214;
+    public const uint GetSellablePetPalettesEvent = 3648;
+    public const uint OpenCampaignCalendarDoorAsStaffEvent = 543;
+    public const uint SetUIFlagsEvent = 451;
+    public const uint DeleteRoomEvent = 3863;
+    public const uint SetSoundSettingsEvent = 3621;
     public const uint InitializeGameCenterEvent = 65468;
-    public const uint RedeemOfferCreditsEvent = 3420;
-    public const uint FriendListUpdateEvent = 2388;
-    public const uint FriendFurniConfirmLockEvent = 3629;
-    public const uint UseHabboWheelEvent = 732;
-    public const uint SaveRoomSettingsEvent = 956;
-    public const uint ToggleMoodlightEvent = 3450;
-    public const uint GetDailyQuestEvent = 3315;
-    public const uint SetMannequinNameEvent = 2495;
-    public const uint OneWayGateEvent = 269;
+    public const uint RedeemOfferCreditsEvent = 3418;
+    public const uint FriendListUpdateEvent = 2133;
+    public const uint FriendFurniConfirmLockEvent = 653;
+    public const uint UseHabboWheelEvent = 3847;
+    public const uint SaveRoomSettingsEvent = 2440;
+    public const uint ToggleMoodlightEvent = 2168;
+    public const uint GetDailyQuestEvent = 2152;
+    public const uint SetMannequinNameEvent = 1281;
+    public const uint OneWayGateEvent = 1288;
     public const uint EventTrackerEvent = 65429;
-    public const uint GetOccupiedTilesEvent = 2998;
-    public const uint PickUpPetEvent = 1426;
-    public const uint GetPetInventoryEvent = 2822;
-    public const uint GetRoomEntryTileEvent = 3665;
-    public const uint GetOwnOffersEvent = 2188;
-    public const uint CheckPetNameEvent = 3610;
-    public const uint SetUserFocusPreferenceEvent = 1303;
-    public const uint SubmitBullyReportEvent = 3073;
-    public const uint RemoveRightsEvent = 351;
-    public const uint MakeOfferEvent = 1010;
-    public const uint KickUserEvent = 2517;
-    public const uint GetRoomSettingsEvent = 53;
-    public const uint GetThreadsListDataEvent = 83;
-    public const uint GetForumUserProfileEvent = 510;
-    public const uint OpenWiredEvent = 1438;
+    public const uint GetOccupiedTilesEvent = 2900;
+    public const uint PickUpPetEvent = 505;
+    public const uint GetPetInventoryEvent = 3483;
+    public const uint GetRoomEntryTileEvent = 2476;
+    public const uint GetOwnOffersEvent = 1069;
+    public const uint CheckPetNameEvent = 3751;
+    public const uint SetUserFocusPreferenceEvent = 1239;
+    public const uint SubmitBullyReportEvent = 1078;
+    public const uint RemoveRightsEvent = 2002;
+    public const uint MakeOfferEvent = 1517;
+    public const uint KickUserEvent = 502;
+    public const uint GetRoomSettingsEvent = 2096;
+    public const uint GetThreadsListDataEvent = 655;
+    public const uint GetForumUserProfileEvent = 1597;
+    public const uint OpenWiredEvent = 1757;
     public const uint WiredMonitorRequestEvent = 10021;
-    public const uint WiredRoomLogsPageEvent = 324;
+    public const uint WiredRoomLogsPageEvent = 964;
     public const uint WiredRoomSettingsRequestEvent = 10022;
     public const uint WiredRoomSettingsSaveEvent = 10023;
     public const uint WiredMenuPermissionsSaveEvent = 65465;
-    public const uint ClickFurniEvent = 80;
+    public const uint ClickFurniEvent = 1405;
     public const uint ClickUserEvent = 10020;
     public const uint WiredUserVariablesRequestEvent = 10024;
     public const uint WiredUserVariableUpdateEvent = 10025;
     public const uint WiredUserVariableManageEvent = 10026;
     public const uint WiredVariableHoldersPageEvent = 65307;
     public const uint WiredVariableHoldersRequestEvent = 65441;
-    public const uint WiredVariableHashesEvent = 3150;
-    public const uint WiredAllVariablesRequestEvent = 1070;
-    public const uint SaveWiredEffectConfigEvent = 799;
-    public const uint ApplySnapshotEvent = 383; // class_3027, ApplySnapshot (new 3788)
-    public const uint SaveWiredSelectorConfigEvent = 1758;
-    public const uint SaveWiredAddonConfigEvent = 3371;
-    public const uint SaveWiredVariableConfigEvent = 218;
+    public const uint WiredVariableHashesEvent = 2090;
+    public const uint WiredAllVariablesRequestEvent = 2873;
+    public const uint SaveWiredEffectConfigEvent = 3006;
+    public const uint ApplySnapshotEvent = 564; // class_3039, ApplySnapshot
+    public const uint SaveWiredSelectorConfigEvent = 562;
+    public const uint SaveWiredAddonConfigEvent = 3596;
+    public const uint SaveWiredVariableConfigEvent = 3471;
     public const uint GetRoomEntryDataEvent = 65460;
     public const uint JoinQueueEvent = 65471;
-    public const uint CanCreateRoomEvent = 924;
-    public const uint SetTonerEvent = 2682;
-    public const uint RecolorFurnitureEvent = 3047; // package_100/class_2402 (2852 on WIN63-202610131318-860371703)
-    public const uint SaveWiredTriggerConfigEvent = 3842;
-    public const uint PlaceBotEvent = 1807;
-    public const uint MoveEntityInFlatEvent = 1528;
-    public const uint GetRelationshipsEvent = 2749;
-    public const uint SetMessengerInviteStatusEvent = 169;
-    public const uint UseFurnitureEvent = 2002;
-    public const uint GetUserFlatCatsEvent = 3845;
-    public const uint AssignRightsEvent = 3696;
-    public const uint GetRoomBannedUsersEvent = 1087;
-    public const uint ReleaseTicketEvent = 431;
-    public const uint OpenPlayerProfileEvent = 565;
+    public const uint CanCreateRoomEvent = 321;
+    public const uint SetTonerEvent = 3383;
+    public const uint RecolorFurnitureEvent = 569; // package_100/class_2414
+    public const uint SaveWiredTriggerConfigEvent = 3361;
+    public const uint PlaceBotEvent = 693;
+    public const uint MoveEntityInFlatEvent = 1;
+    public const uint GetRelationshipsEvent = 24;
+    public const uint SetMessengerInviteStatusEvent = 1342;
+    public const uint UseFurnitureEvent = 3416;
+    public const uint GetUserFlatCatsEvent = 335;
+    public const uint AssignRightsEvent = 1349;
+    public const uint GetRoomBannedUsersEvent = 1476;
+    public const uint ReleaseTicketEvent = 3764;
+    public const uint OpenPlayerProfileEvent = 708;
     public const uint GetSanctionStatusEvent = 65447;
-    public const uint CreditFurniRedeemEvent = 3651;
-    public const uint DisconnectEvent = 2585;
-    public const uint PickupObjectEvent = 58;
-    public const uint FindRandomFriendingRoomEvent = 2574;
-    public const uint UseSellableClothingEvent = 125;
-    public const uint MoveObjectEvent = 1054;
-    public const uint GetFurnitureAliasesEvent = 492;
-    public const uint TakeAdminRightsEvent = 1513;
-    public const uint ModifyRoomFilterListEvent = 2758;
-    public const uint MoodlightUpdateEvent = 2209;
-    public const uint GetPetTrainingPanelEvent = 252;
-    public const uint GetSongInfoEvent = 1800;
-    public const uint UseWallItemEvent = 2994;
-    public const uint GetTalentTrackEvent = 3496;
-    public const uint GiveAdminRightsEvent = 1443;
-    public const uint GetCatalogIndexEvent = 56;
-    public const uint GetGuideReportingStatusEvent = 1724; // class_2244, GetGuideReportingStatus (new 2428)
-    public const uint CancelOfferEvent = 938;
-    public const uint SaveWiredConditionConfigEvent = 2794;
-    public const uint RedeemVoucherEvent = 2728;
-    public const uint ThrowDiceEvent = 1882;
-    public const uint CraftSecretEvent = 2933;
+    public const uint CreditFurniRedeemEvent = 2960;
+    public const uint DisconnectEvent = 850;
+    public const uint PickupObjectEvent = 3593;
+    public const uint FindRandomFriendingRoomEvent = 1951;
+    public const uint UseSellableClothingEvent = 1329;
+    public const uint MoveObjectEvent = 2858;
+    public const uint GetFurnitureAliasesEvent = 1243;
+    public const uint TakeAdminRightsEvent = 1110;
+    public const uint ModifyRoomFilterListEvent = 3008;
+    public const uint MoodlightUpdateEvent = 1224;
+    public const uint GetPetTrainingPanelEvent = 2159;
+    public const uint GetSongInfoEvent = 2304;
+    public const uint UseWallItemEvent = 222;
+    public const uint GetTalentTrackEvent = 766;
+    public const uint GiveAdminRightsEvent = 2461;
+    public const uint GetCatalogIndexEvent = 2041;
+    public const uint GetGuideReportingStatusEvent = 2182; // class_2256, GetGuideReportingStatus
+    public const uint CancelOfferEvent = 511;
+    public const uint SaveWiredConditionConfigEvent = 2814;
+    public const uint RedeemVoucherEvent = 1563;
+    public const uint ThrowDiceEvent = 3342;
+    public const uint CraftSecretEvent = 3614;
     public const uint GetGameListEvent = 65391;
-    public const uint SetRelationshipEvent = 1366;
-    public const uint RequestFriendEvent = 3668;
-    public const uint MemoryPerformanceEvent = 1556;
-    public const uint ToggleYouTubeVideoEvent = 3911;
-    public const uint SetMannequinFigureEvent = 3064;
-    public const uint GetEventCategoriesEvent = 1899;
-    public const uint DeleteGroupThreadEvent = 319;
-    public const uint PurchaseGroupEvent = 538;
-    public const uint MessengerInitEvent = 249;
-    public const uint CancelTypingEvent = 2239;
-    public const uint GetMoodlightConfigEvent = 1204;
-    public const uint GetGroupInfoEvent = 216;
-    public const uint CreateFlatEvent = 1129;
-    public const uint LatencyPingRequestEvent = 1768;
-    public const uint GetSelectedBadgesEvent = 154;
-    public const uint AddStickyNoteEvent = 1633;
-    public const uint RideHorseEvent = 647;
-    public const uint InitializeNewNavigatorEvent = 2546;
-    public const uint GetForumsListDataEvent = 3033;
-    public const uint ToggleMuteToolEvent = 1773;
-    public const uint UpdateGroupIdentityEvent = 1872;
-    public const uint UpdateStickyNoteEvent = 210;
-    public const uint UnbanUserFromRoomEvent = 13;
-    public const uint UnignoreUserEvent = 2333;
-    public const uint OpenGiftEvent = 3313;
-    public const uint ApplyDecorationEvent = 503;
-    public const uint ScrGetUserInfoEvent = 174;
-    public const uint RemoveGroupMemberEvent = 3888;
-    public const uint ConfirmRemoveGroupMemberEvent = 3580;
-    public const uint DiceOffEvent = 3682;
-    public const uint YouTubeGetNextVideo = 3532;
-    public const uint RemoveFavouriteRoomEvent = 717;
-    public const uint RespectUserEvent = 3520;
-    public const uint AddFavouriteRoomEvent = 633;
-    public const uint DeclineFriendEvent = 1499;
-    public const uint StartTypingEvent = 729;
-    public const uint GetGroupFurniConfigEvent = 1179;
-    public const uint SendRoomInviteEvent = 733;
-    public const uint RemoveAllRightsEvent = 2735;
-    public const uint GetYouTubeTelevisionEvent = 748;
-    public const uint FindNewFriendsEvent = 3250;
-    public const uint GetPromotableRoomsEvent = 1395;
-    public const uint GetBotInventoryEvent = 3476;
-    public const uint GetRentableSpaceEvent = 693;
-    public const uint OpenBotActionEvent = 1363;
-    public const uint OpenCampaignCalendarDoorEvent = 2631;
-    public const uint DeleteGroupPostEvent = 1752;
-    public const uint UpdateGroupBadgeEvent = 3938;
-    public const uint PlaceObjectEvent = 2821;
-    public const uint RemoveGroupFavouriteEvent = 3461;
-    public const uint UpdateNavigatorSettingsEvent = 3285;
-    public const uint CheckGnomeNameEvent = 3241;
-    public const uint NavigatorSearchEvent = 318;
-    public const uint GetPetInformationEvent = 2923;
-    public const uint GetGuestRoomEvent = 2234;
-    public const uint UpdateThreadEvent = 136;
-    public const uint AcceptGroupMembershipEvent = 548;
-    public const uint GetMarketplaceConfigurationEvent = 3346;
-    public const uint Game2GetWeeklyLeaderboardEvent = 3638;
-    public const uint BuyOfferEvent = 3858;
-    public const uint RemoveSaddleFromHorseEvent = 1946;
-    public const uint GiveRoomScoreEvent = 3215;
-    public const uint GetHabboClubWindowEvent = 1042;
-    public const uint DeleteStickyNoteEvent = 1460;
-    public const uint MuteUserEvent = 3007;
-    public const uint ApplyHorseEffectEvent = 690;
+    public const uint SetRelationshipEvent = 1129;
+    public const uint RequestFriendEvent = 971;
+    public const uint MemoryPerformanceEvent = 3956;
+    public const uint ToggleYouTubeVideoEvent = 2442;
+    public const uint SetMannequinFigureEvent = 1361;
+    public const uint GetEventCategoriesEvent = 3413;
+    public const uint DeleteGroupThreadEvent = 3333;
+    public const uint PurchaseGroupEvent = 786;
+    public const uint MessengerInitEvent = 1755;
+    public const uint CancelTypingEvent = 3076;
+    public const uint GetMoodlightConfigEvent = 1671;
+    public const uint GetGroupInfoEvent = 3533;
+    public const uint CreateFlatEvent = 3409;
+    public const uint LatencyPingRequestEvent = 1235;
+    public const uint GetSelectedBadgesEvent = 500;
+    public const uint AddStickyNoteEvent = 215;
+    public const uint RideHorseEvent = 3920;
+    public const uint InitializeNewNavigatorEvent = 3637;
+    public const uint GetForumsListDataEvent = 409;
+    public const uint ToggleMuteToolEvent = 1793;
+    public const uint UpdateGroupIdentityEvent = 982;
+    public const uint UpdateStickyNoteEvent = 3085;
+    public const uint UnbanUserFromRoomEvent = 1328;
+    public const uint UnignoreUserEvent = 1650;
+    public const uint OpenGiftEvent = 29;
+    public const uint ApplyDecorationEvent = 2392;
+    public const uint ScrGetUserInfoEvent = 3073;
+    public const uint RemoveGroupMemberEvent = 1246;
+    public const uint ConfirmRemoveGroupMemberEvent = 43;
+    public const uint DiceOffEvent = 2795;
+    public const uint YouTubeGetNextVideo = 247;
+    public const uint RemoveFavouriteRoomEvent = 2463;
+    public const uint RespectUserEvent = 2993;
+    public const uint AddFavouriteRoomEvent = 147;
+    public const uint DeclineFriendEvent = 1055;
+    public const uint StartTypingEvent = 21;
+    public const uint GetGroupFurniConfigEvent = 2066;
+    public const uint SendRoomInviteEvent = 1093;
+    public const uint RemoveAllRightsEvent = 1435;
+    public const uint GetYouTubeTelevisionEvent = 3208;
+    public const uint FindNewFriendsEvent = 2493;
+    public const uint GetPromotableRoomsEvent = 2774;
+    public const uint GetBotInventoryEvent = 1420;
+    public const uint GetRentableSpaceEvent = 3427;
+    public const uint OpenBotActionEvent = 439;
+    public const uint OpenCampaignCalendarDoorEvent = 2585;
+    public const uint DeleteGroupPostEvent = 740;
+    public const uint UpdateGroupBadgeEvent = 1177;
+    public const uint PlaceObjectEvent = 3538;
+    public const uint RemoveGroupFavouriteEvent = 3845;
+    public const uint UpdateNavigatorSettingsEvent = 3126;
+    public const uint CheckGnomeNameEvent = 3051;
+    public const uint NavigatorSearchEvent = 2557;
+    public const uint GetPetInformationEvent = 2367;
+    public const uint GetGuestRoomEvent = 2918;
+    public const uint UpdateThreadEvent = 3139;
+    public const uint AcceptGroupMembershipEvent = 1439;
+    public const uint GetMarketplaceConfigurationEvent = 1624;
+    public const uint Game2GetWeeklyLeaderboardEvent = 1469;
+    public const uint BuyOfferEvent = 1619;
+    public const uint RemoveSaddleFromHorseEvent = 1481;
+    public const uint GiveRoomScoreEvent = 1876;
+    public const uint GetHabboClubWindowEvent = 1646;
+    public const uint DeleteStickyNoteEvent = 484;
+    public const uint MuteUserEvent = 3797;
+    public const uint ApplyHorseEffectEvent = 880;
     public const uint ClientHelloEvent = 4000; //4000
     public const uint OnBullyClickEvent = 65455;
-    public const uint HabboSearchEvent = 1592;
-    public const uint PickTicketEvent = 3113;
-    public const uint GetGiftWrappingConfigurationEvent = 2609;
-    public const uint GetCraftingRecipesAvailableEvent = 2194;
-    public const uint GetThreadDataEvent = 3818;
-    public const uint ManageGroupEvent = 1629;
-    public const uint PlacePetEvent = 304;
-    public const uint MovePetEvent = 2281;
-    public const uint EditRoomPromotionEvent = 2881;
-    public const uint UpdateFloorPropertiesEvent = 867;
-    public const uint MoveWallItemEvent = 491;
-    public const uint VersionCheckEvent = 155;
-    public const uint PongEvent = 3743;
-    public const uint DeleteGroupEvent = 3600;
-    public const uint UpdateGroupSettingsEvent = 669;
-    public const uint GetRecyclerPrizesEvent = 1526;
-    public const uint PurchaseRoomAdEvent = 589;
-    public const uint PickUpBotEvent = 433;
+    public const uint HabboSearchEvent = 790;
+    public const uint PickTicketEvent = 2631;
+    public const uint GetGiftWrappingConfigurationEvent = 775;
+    public const uint GetCraftingRecipesAvailableEvent = 1692;
+    public const uint GetThreadDataEvent = 2489;
+    public const uint ManageGroupEvent = 722;
+    public const uint PlacePetEvent = 3346;
+    public const uint MovePetEvent = 378;
+    public const uint EditRoomPromotionEvent = 1477;
+    public const uint UpdateFloorPropertiesEvent = 1044;
+    public const uint MoveWallItemEvent = 2481;
+    public const uint VersionCheckEvent = 2541;
+    public const uint PongEvent = 2653;
+    public const uint DeleteGroupEvent = 3966;
+    public const uint UpdateGroupSettingsEvent = 2636;
+    public const uint GetRecyclerPrizesEvent = 2393;
+    public const uint PurchaseRoomAdEvent = 1451;
+    public const uint PickUpBotEvent = 2589;
     public const uint GetOffersEvent = 2813;
-    public const uint GetHabboGroupBadgesEvent = 2934;
+    public const uint GetHabboGroupBadgesEvent = 2397;
     public const uint GetUserTagsEvent = 65382;
     public const uint GetGameAchievementsEvent = 65475;
-    public const uint GetCatalogRoomPromotionEvent = 3390;
-    public const uint MoveAvatarEvent = 2102;
-    public const uint SaveBrandingItemEvent = 181;
-    public const uint SaveEnforcedCategorySettingsEvent = 722;
-    public const uint RespectPetEvent = 3342;
-    public const uint GetMarketplaceCanMakeOfferEvent = 3097;
+    public const uint GetCatalogRoomPromotionEvent = 1444;
+    public const uint MoveAvatarEvent = 2348;
+    public const uint SaveBrandingItemEvent = 2787;
+    public const uint SaveEnforcedCategorySettingsEvent = 1848;
+    public const uint RespectPetEvent = 3068;
+    public const uint GetMarketplaceCanMakeOfferEvent = 150;
     public const uint UpdateMagicTileAdjacentEvent = 65449;
-    public const uint UpdateMagicTileEvent = 525;
-    public const uint GetStickyNoteEvent = 33;
-    public const uint IgnoreUserEvent = 2400;
-    public const uint BanUserEvent = 98;
-    public const uint UpdateForumSettingsEvent = 2104;
-    public const uint GetRoomRightsEvent = 211;
-    public const uint SendMsgEvent = 2180;
-    public const uint CloseTicketEvent = 239;
+    public const uint UpdateMagicTileEvent = 559;
+    public const uint GetStickyNoteEvent = 895;
+    public const uint IgnoreUserEvent = 2333;
+    public const uint BanUserEvent = 362;
+    public const uint UpdateForumSettingsEvent = 1381;
+    public const uint GetRoomRightsEvent = 111;
+    public const uint SendMsgEvent = 3489;
+    public const uint CloseTicketEvent = 1372;
 
     //NotImplemented
 
@@ -362,15 +362,15 @@ public static class ClientPacketHeader
     //public const uint OpenCampaignCalendarDoorEvent =;
 
     //catalog
-    public const uint GetHabboClubExtendOfferEvent = 1926;
-    public const uint PurchaseBasicMembershipExtensionEvent = 3881;
-    public const uint PurchaseVipMembershipExtensionEvent = 907;
-    public const uint SelectClubGiftEvent = 2524;
+    public const uint GetHabboClubExtendOfferEvent = 1317;
+    public const uint PurchaseBasicMembershipExtensionEvent = 308;
+    public const uint PurchaseVipMembershipExtensionEvent = 1889;
+    public const uint SelectClubGiftEvent = 194;
 
 
     //recycler
-    public const uint GetRecyclerStatusEvent = 293;
-    public const uint RecyclerRecycleEvent = 3164;
+    public const uint GetRecyclerStatusEvent = 998;
+    public const uint RecyclerRecycleEvent = 498;
 
 
     //FriendList
@@ -378,110 +378,108 @@ public static class ClientPacketHeader
     //public const uint VisitUserEvent =;
 
     //crafting
-    public const uint CraftEvent = 2100;
+    public const uint CraftEvent = 823;
     //public const uint CraftSecretEvent =;
-    public const uint GetCraftableProductsEvent = 822;
-    public const uint GetCraftingRecipeEvent = 1531;
+    public const uint GetCraftableProductsEvent = 2967;
+    public const uint GetCraftingRecipeEvent = 3576;
     //public const uint GetCraftingRecipesAvailableEvent =;
 
     // SnowStorm (AIR Game2 payloads); internal IDs match Volt's wire IDs.
-    public const uint Game2CheckGameDirectoryStatusEvent = 2064;
-    public const uint Game2GetAccountGameStatusEvent = 2040;
+    public const uint Game2CheckGameDirectoryStatusEvent = 1652;
+    public const uint Game2GetAccountGameStatusEvent = 3461;
     public const uint Game2QuickJoinEvent = 6012;
     public const uint Game2LeaveLobbyEvent = 6013;
-    public const uint Game2LoadStageReadyEvent = 832;
-    public const uint Game2ExitGameEvent = 2843;
-    public const uint Game2GameChatEvent = 1656;
-    public const uint Game2PlayAgainEvent = 3748;
+    public const uint Game2LoadStageReadyEvent = 3983;
+    public const uint Game2ExitGameEvent = 3101;
+    public const uint Game2GameChatEvent = 884;
+    public const uint Game2PlayAgainEvent = 1296;
     public const uint Game2SetUserMoveTargetEvent = 6003;
     public const uint Game2ThrowSnowballAtPositionEvent = 6004;
     public const uint Game2ThrowSnowballAtHumanEvent = 6005;
     public const uint Game2MakeSnowballEvent = 6006;
-    public const uint Game2RequestFullStatusUpdateEvent = 1288;
+    public const uint Game2RequestFullStatusUpdateEvent = 2922;
     public const uint Game2GetTotalLeaderboardEvent = 6027;
     public const uint Game2GetFriendsLeaderboardEvent = 6028;
-    public const uint Game2GetWeeklyFriendsLeaderboardEvent = 3228;
-    public const uint Game2GetTotalGroupLeaderboardEvent = 2533;
-    public const uint Game2GetWeeklyGroupLeaderboardEvent = 1977;
-    public const uint GetSnowWarGameTokensOfferEvent = 2138;
-    public const uint PurchaseSnowWarGameTokensOfferEvent = 3625;
+    public const uint Game2GetWeeklyFriendsLeaderboardEvent = 1051;
+    public const uint Game2GetTotalGroupLeaderboardEvent = 1318;
+    public const uint Game2GetWeeklyGroupLeaderboardEvent = 3578;
+    public const uint GetSnowWarGameTokensOfferEvent = 1205;
+    public const uint PurchaseSnowWarGameTokensOfferEvent = 1387;
 
 
 
 
-    public const uint TriggerHabbiconEvent = 3892;
-    public const uint GetHabbiconShopDataEvent = 206;
-    public const uint GetHabbiconInfoEvent = 1552;
-    public const uint BuyHabbiconEvent = 2084;
-    public const uint BuyHabbiconCollectionEvent = 315;
-    public const uint ClaimHabbiconEvent = 3477;
-    public const uint FavoriteHabbiconEvent = 1583;
-    public const uint UnfavoriteHabbiconEvent = 1331;
+    public const uint TriggerHabbiconEvent = 3244;
+    public const uint GetHabbiconShopDataEvent = 1739;
+    public const uint GetHabbiconInfoEvent = 1484;
+    public const uint BuyHabbiconEvent = 3434;
+    public const uint BuyHabbiconCollectionEvent = 1928;
+    public const uint ClaimHabbiconEvent = 1577;
+    public const uint FavoriteHabbiconEvent = 1427;
+    public const uint UnfavoriteHabbiconEvent = 3728;
     public const uint UnseenResetCategoryEvent = 65428;
     public const uint UnseenResetItemsEvent = 65459;
     public const uint SendMessengerMessageEvent = 4902;
     // Camera internal IDs; wire IDs are revision-specific.
-    public const uint InitCameraEvent = 949;
-    public const uint PhotoCompetitionEvent = 2911;
-    public const uint PublishPhotoEvent = 3506;
-    public const uint PurchasePhotoEvent = 3130;
-    public const uint RenderRoomEvent = 129;
-    public const uint RenderRoomThumbnailEvent = 3429;
+    public const uint InitCameraEvent = 1766;
+    public const uint PhotoCompetitionEvent = 1705;
+    public const uint PublishPhotoEvent = 2130;
+    public const uint PurchasePhotoEvent = 2872;
+    public const uint RenderRoomEvent = 2284;
+    public const uint RenderRoomThumbnailEvent = 2854;
     public const uint GetRewardTracksEvent = 9450;
-    public const uint ClaimRewardTrackPrizeEvent = 1784;
-    public const uint PurchaseRewardTrackPremiumEvent = 3162;
-    public const uint GetQuizQuestionsEvent = 2270;
-    public const uint PostQuizAnswersEvent = 2158;
+    public const uint ClaimRewardTrackPrizeEvent = 3959;
+    public const uint PurchaseRewardTrackPremiumEvent = 2482;
+    public const uint GetQuizQuestionsEvent = 640;
+    public const uint PostQuizAnswersEvent = 3024;
     // Room music
-    public const uint AddJukeboxDiskEvent = 1795;
-    public const uint RemoveJukeboxDiskEvent = 2630;
-    public const uint GetJukeboxPlaylistEvent = 3751;
-    public const uint GetSoundMachinePlaylistEvent = 359;
-    public const uint GetUserSongDisksEvent = 893;
-    public const uint GetNowPlayingEvent = 778;
-    public const uint GetOfficialSongIdEvent = 1428;
+    public const uint AddJukeboxDiskEvent = 3582;
+    public const uint RemoveJukeboxDiskEvent = 1360;
+    public const uint GetJukeboxPlaylistEvent = 3095;
+    public const uint GetSoundMachinePlaylistEvent = 3293;
+    public const uint GetUserSongDisksEvent = 1654;
+    public const uint GetNowPlayingEvent = 900;
+    public const uint GetOfficialSongIdEvent = 3214;
     public const uint WiredVariableInspectionRequestEvent = 10112;
     public const uint WiredUserVariableUpdate64Event = 10110;
     public const uint WiredUserVariableManage64Event = 10111;
     public const uint WiredUserVariablesRequest64Event = 10113;
     public const uint WiredVariableHoldersRequest64Event = 10114;
     public const uint WiredVariableHoldersPage64Event = 10115;
-    // Wired chests and wired trades. Ids are WIN63-202610121709 (registry class_2049) for the WIN63-202610131318-860371703
-    // classes named; see reviews/chest-protocol-map.md.
-    public const uint ChestOpenEvent = 1595; // package_95.class_2544 (new 1457)
-    public const uint ChestCloseEvent = 1154; // package_95.class_2979 (new 3568)
-    public const uint ChestStartDepositEvent = 3268; // package_95.class_3668 (new 3947)
-    public const uint ChestWithdrawAllEvent = 57; // package_95.class_3881 (new 2074)
-    public const uint ChestWithdrawFurniEvent = 715; // package_95.class_2388 (new 3992)
-    public const uint ChestWithdrawCoinsEvent = 3731; // package_95.class_3305 (new 1840)
-    public const uint ChestSaveOptionsEvent = 1211; // package_95.class_3275 (new 1786)
-    public const uint ChestSavePreferencesEvent = 3274; // package_95.class_3094 (new 3680)
-    public const uint ChestSaveNotificationsEvent = 3937; // package_95.class_2747 (new 2402)
-    public const uint WiredChestOfferItemsEvent = 1774; // package_186.class_2956 (new 1287)
-    public const uint WiredChestAcceptEvent = 609; // package_186.class_3394 (new 2276)
-    public const uint WiredChestCancelEvent = 1898; // package_186.class_3259 (new 1474)
-    public const uint ChestUpgradeEvent = 2964; // package_95.class_3721 (new 1940)
-    public const uint WiredChestLockEvent = 1323; // package_95.class_3508 (new 540)
+    // Wired chests and wired trades; see reviews/chest-protocol-map.md.
+    public const uint ChestOpenEvent = 3725; // package_95.class_2556
+    public const uint ChestCloseEvent = 2212; // package_95.class_2991
+    public const uint ChestStartDepositEvent = 1465; // package_95.class_3680
+    public const uint ChestWithdrawAllEvent = 625; // package_95.class_3893
+    public const uint ChestWithdrawFurniEvent = 2058; // package_95.class_2400
+    public const uint ChestWithdrawCoinsEvent = 1346; // package_95.class_3317
+    public const uint ChestSaveOptionsEvent = 668; // package_95.class_3287
+    public const uint ChestSavePreferencesEvent = 1241; // package_95.class_3106
+    public const uint ChestSaveNotificationsEvent = 1896; // package_95.class_2759
+    public const uint WiredChestOfferItemsEvent = 1549; // package_186.class_2968
+    public const uint WiredChestAcceptEvent = 403; // package_186.class_3406
+    public const uint WiredChestCancelEvent = 3365; // package_186.class_3271
+    public const uint ChestUpgradeEvent = 894; // package_95.class_3733
+    public const uint WiredChestLockEvent = 3745; // package_95.class_3520
 
-    // October wired boxes (r88). Ids are the WIN63-202610121709 equivalents of the WIN63-202610131318-860371703 classes named.
-    public const uint WiredWebApiKeyRequestEvent = 752; // class_2618 (new 2515)
-    public const uint WiredVariableShareSynchronizeEvent = 3631; // class_3048 (new 2144)
-    public const uint WiredVariableLeaderboardSubscribeEvent = 2438; // package_221.class_3707 (new 2833)
-    public const uint SaveWiredLabelTextEvent = 2839; // class_2797 (new 2638)
-    public const uint SaveWiredLabelSettingsEvent = 1436; // class_3219 (new 2970)
-    public const uint WiredLinkRequestConfigEvent = 2882; // package_129.class_2716 (new 3208)
-    public const uint WiredLinkSaveSelectionEvent = 2425; // package_129.class_2533 (new 385)
-    public const uint WiredLinkCreateNetworkEvent = 309; // package_129.class_3715 (new 2192)
-    public const uint WiredLinkRenameNetworkEvent = 3467; // package_129.class_3841 (new 2794)
-    public const uint WiredLinkDeleteNetworkEvent = 2978; // package_129.class_3622 (new 2731)
-    public const uint WiredLinkGetConnectionsEvent = 3197; // package_129.class_3524 (new 2300)
-    public const uint GetWiredContractContentsEvent = 3415; // AIR 202610121709; 202610131318: 3170.
-    public const uint UpdateWiredContractEvent = 2559; // AIR 202610121709; 202610131318: 413.
-    // Wired monitor. Ids are the WIN63-202610121709 equivalents of the WIN63-202610131318-860371703 wiredmenu composers named;
-    // the monitor tab sends both requests together (WiredMenuMonitorTab.requestData).
-    public const uint GetWiredRoomStatsEvent = 3738; // wiredmenu.class_3333 (new 56)
-    public const uint GetWiredErrorLogsEvent = 508; // wiredmenu.class_2575 (new 1759)
-    public const uint ClearWiredErrorLogsEvent = 1248; // wiredmenu.class_3239 (new 3951)
+    // October wired boxes (r88).
+    public const uint WiredWebApiKeyRequestEvent = 3497; // class_2630
+    public const uint WiredVariableShareSynchronizeEvent = 2698; // class_3060
+    public const uint WiredVariableLeaderboardSubscribeEvent = 3168; // package_221.class_3719
+    public const uint SaveWiredLabelTextEvent = 2968; // class_2809
+    public const uint SaveWiredLabelSettingsEvent = 2701; // class_3231
+    public const uint WiredLinkRequestConfigEvent = 1176; // package_129.class_2728
+    public const uint WiredLinkSaveSelectionEvent = 9; // package_129.class_2545
+    public const uint WiredLinkCreateNetworkEvent = 3220; // package_129.class_3727
+    public const uint WiredLinkRenameNetworkEvent = 1669; // package_129.class_3853
+    public const uint WiredLinkDeleteNetworkEvent = 2355; // package_129.class_3634
+    public const uint WiredLinkGetConnectionsEvent = 2950; // package_129.class_3536
+    public const uint GetWiredContractContentsEvent = 1373; // package_193.class_3900
+    public const uint UpdateWiredContractEvent = 3632; // package_193.class_3040
+    // Wired monitor (wiredmenu composers); the monitor tab sends both requests together (WiredMenuMonitorTab.requestData).
+    public const uint GetWiredRoomStatsEvent = 2860; // wiredmenu.class_3345
+    public const uint GetWiredErrorLogsEvent = 3216; // wiredmenu.class_2587
+    public const uint ClearWiredErrorLogsEvent = 3246; // wiredmenu.class_3251
     // The inspection tab's value edit, create and delete (WiredMenuInspectionTab.as:193, 249, 265).
-    public const uint WiredSetObjectVariableValueEvent = 2828; // wiredmenu.class_3770 (new 1533)
+    public const uint WiredSetObjectVariableValueEvent = 3165; // wiredmenu.class_3782
 }

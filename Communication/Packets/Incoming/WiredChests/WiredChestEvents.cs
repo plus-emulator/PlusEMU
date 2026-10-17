@@ -8,7 +8,7 @@ namespace Plus.Communication.Packets.Incoming.WiredChests;
 
 // Parse the complete bounded payload before entering the room engine; rejected packets never write.
 // Field orders are the official AIR composers of WIN63-202610131318-860371703 (package_95 / package_186), ids in
-// ClientPacketHeader are their WIN63-202610121709 equivalents; see reviews/chest-protocol-map.md.
+// ClientPacketHeader are the same messages on the current build; see reviews/chest-protocol-map.md.
 public abstract class WiredChestPacketEvent : RoomPacketEvent
 {
     protected abstract Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet);

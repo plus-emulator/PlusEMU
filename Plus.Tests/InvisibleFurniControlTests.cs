@@ -17,7 +17,7 @@ public sealed class InvisibleFurniControlTests
         var packet = new RecordingPacket();
         var composer = new ConfigurationItemStatesComposer(chooserDisabled, invisibleFurni);
         composer.Compose(packet);
-        Assert.Equal(3660u, composer.MessageId);
+        Assert.Equal(3847u, composer.MessageId);
         Assert.Equal(new object[] { false, chooserDisabled, false, invisibleFurni }, packet.Writes);
     }
 

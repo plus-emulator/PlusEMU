@@ -4,9 +4,9 @@ using Plus.HabboHotel.Items.Wired.Variables.Fx;
 namespace Plus.Communication.Packets.Outgoing.WiredVariables;
 
 /// <summary>
-/// Variable FX messages with their official WIN63-202610121709 ids (old registry; WIN63-202610131318-860371703 ids in brackets):
-/// configs 3340 (2205, class_2593 -> class_2815), configs removed 1418 (364, class_3245 -> class_3169), status 1943 (2372,
-/// class_2741 -> class_2548), status removed 2532 (214, class_2530 -> class_2887). Bodies follow those parsers' reads.
+/// Variable FX messages. Classes and parsers as named on WIN63-202610131318-860371703: configs class_2593 -> class_2815,
+/// configs removed class_3245 -> class_3169, status class_2741 -> class_2548, status removed class_2530 -> class_2887
+/// (ids in ServerPacketHeader). Bodies follow those parsers' reads.
 /// </summary>
 public sealed class WiredVariableFxComposer : IServerPacket
 {

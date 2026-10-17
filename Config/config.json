@@ -34,7 +34,18 @@
         "ExternalVariablesFiles": [],
         "ExternalTextsFiles": [],
         "ProductDataFile": "",
-        "Variables": {}
+        "Variables": {},
+        "Name": "PlusEMU",
+        "Environment": "en",
+        "GameHost": "",
+        "GamePorts": "30000",
+        "ClientVersion": "",
+        "ClientUrl": "",
+        "WebApi": "",
+        "PocketApi": "",
+        "Configuration": {},
+        "TicketLifetimeSeconds": 60,
+        "LauncherTokenLifetimeDays": 30
     },
     "WebServer": {
         "Hostname": "127.0.0.1",

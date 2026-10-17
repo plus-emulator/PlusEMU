@@ -23,6 +23,18 @@ public class SsoTicketStore : ISsoTicketStore
     // finds it gone and matches no row.
     public async Task<int?> Consume(string ticket) => (await ClaimFor(ticket, Cleared))?.UserId;
 
+    // 32 random bytes in URL-safe base64 without padding: the website's ticket format, within auth_ticket's varchar(60).
+    public async Task<string?> Issue(int userId, TimeSpan lifetime)
+    {
+        var ticket = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        using var connection = _database.Connection();
+        var updated = await connection.ExecuteAsync(
+            "UPDATE `users` SET `auth_ticket` = @ticket, `auth_ticket_expires_at` = @expiresAt, `auth_ticket_exchanged` = 0, `auth_ticket_session` = NULL WHERE `id` = @userId",
+            new { ticket, expiresAt = _time.GetUtcNow().Add(lifetime).UtcDateTime, userId });
+
+        return updated == 1 ? ticket : null;
+    }
+
     public async Task Revoke(int userId, CancellationToken cancellationToken = default)
     {
         using var connection = _database.Connection();

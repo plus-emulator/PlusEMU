@@ -154,6 +154,21 @@ After login the AIR client loads `${url.prefix}/gamedata/hashes` and the four fi
 
 Any hash returns the current file; only the current one is cached for good. Set `AirClient.UrlPrefix` to the hotel's public origin (for example `https://example.com`); when it is empty the origin of the request is used (`X-Forwarded-Proto` and `Host`). The client asset roots (`flash.dynamic.download.url` and the like) belong in an external variables file or in `AirClient.Variables`. Route `/gamedata/hashes`, `/gamedata/external_flash_texts/`, `/gamedata/external_variables/`, `/gamedata/furnidata_xml/` and `/gamedata/productdata/` from the public site to the web server.
 
+### Launcher contract and tickets
+
+The AIR launcher (custom hotel domain) reads `https://<domain>/api/client/air.json` and patches the client with it. The web server serves it once `AirClient.GameHost` is set and a handshake key is configured; otherwise it answers 404.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/client/air.json` | `environment`, `game.host`/`game.ports`, `urls`, `rsa.modulus` (the configured key), `ticket.url`, and `client` when `AirClient.ClientUrl` is set |
+| `POST /api/client/air-ticket` | `Authorization: Bearer <launcher token>` returns `{"ticket": "..."}`: a game ticket in `users.auth_ticket` that logs in once and expires after `AirClient.TicketLifetimeSeconds` (default 60) |
+| `POST /api/client/air-launcher-token` | `{"ticket": "<game ticket>"}` uses up a live game ticket, the kind the website issues to a signed-in user, and returns `{"token", "expiresAt"}` |
+| `DELETE /api/client/air-launcher-token` | revokes the Bearer token |
+
+Launcher tokens live in `user_launcher_tokens` (migration 88) as SHA-256 digests. They expire after `AirClient.LauncherTokenLifetimeDays` (default 30) and stop working when the user's `credential_generation` changes, which a password change does. The website can also skip tokens and link a signed-in user to `habbo://hab?server=<domain>&token=<game ticket>`.
+
+`AirClient.Environment` must be one of `en`, `pt`, `de`, `es`, `fi`, `fr`, `it`, `nl`, `tr` or `s2`; the client drops any other. Without `AirClient.ClientUrl` the launcher downloads Habbo's current client, whose build must match the emulator's packet headers.
+
 ## Branches and releases
 
 - `dev` is the integration branch; open pull requests against `dev`.

@@ -23,4 +23,36 @@ public class AirClientConfiguration
 
     /// <summary>external_variables entries that win over the files and the generated ones.</summary>
     public Dictionary<string, string> Variables { get; set; } = [];
+
+    // GET /api/client/air.json, the launcher's hotel contract. It is only served once GameHost is set.
+
+    public string Name { get; set; } = "PlusEMU";
+
+    /// <summary>The environment id the client runs as; it must be one of the client's live.environment.list
+    /// (en, pt, de, es, fi, fr, it, nl, tr, s2), or the client drops it (AIR WIN63-202610151745-318700621, class_64.as:200).</summary>
+    public string Environment { get; set; } = "en";
+
+    /// <summary>Public host of the Flash listener. It cannot sit behind an HTTP-only proxy.</summary>
+    public string GameHost { get; set; } = string.Empty;
+
+    /// <summary>Comma-separated ports the client tries in order.</summary>
+    public string GamePorts { get; set; } = "30000";
+
+    /// <summary>AIR client package version and zip URL. Empty: the launcher uses Habbo's current client, whose
+    /// build has to match the emulator's packet headers.</summary>
+    public string ClientVersion { get; set; } = string.Empty;
+    public string ClientUrl { get; set; } = string.Empty;
+
+    /// <summary>web.api and pocket.api; empty means UrlPrefix.</summary>
+    public string WebApi { get; set; } = string.Empty;
+    public string PocketApi { get; set; } = string.Empty;
+
+    /// <summary>Extra key: value lines for the client's embedded configuration.</summary>
+    public Dictionary<string, string> Configuration { get; set; } = [];
+
+    /// <summary>How long a ticket from POST /api/client/air-ticket stays usable. It is single use either way.</summary>
+    public int TicketLifetimeSeconds { get; set; } = 60;
+
+    /// <summary>How long a launcher token lives.</summary>
+    public int LauncherTokenLifetimeDays { get; set; } = 30;
 }

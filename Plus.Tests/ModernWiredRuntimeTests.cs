@@ -1049,10 +1049,11 @@ public partial class ModernWiredRuntimeTests
         var action = LineBox(room, name, 6, line);
 
         for (var pulse = 0; pulse < 3; pulse++) {
-            Assert.Equal(name == "wf_act_move_to_dir", Pulse(room, action, line, blockedBySelf: false));
+            Assert.True(Pulse(room, action, line, blockedBySelf: false));
         }
 
-        Assert.Equal(name == "wf_act_move_to_dir" ? new[] { 0, 0, 0, 0, 1, 2, 3 } : [0, 1, 2, 3, 4, 5, 6], line.Select(item => item.GetX));
+        // Move/Rotate stacks against the wall like Move To Direction (observed on AIR WIN63-202610151745-318700621, r97_mv_collide).
+        Assert.Equal(new[] { 0, 0, 0, 0, 1, 2, 3 }, line.Select(item => item.GetX));
 
         var (open, free) = TileLine(6, 1, 1, frontFirst);
         var east = LineBox(open, name, 2, free);
@@ -1062,13 +1063,15 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Theory]
-    [InlineData(InteractionType.None, true, false, false)]
+    [InlineData(InteractionType.None, true, false, true)]
     [InlineData(InteractionType.None, true, true, true)]
     [InlineData(InteractionType.None, false, false, false)]
     [InlineData(InteractionType.None, false, true, true)]
-    [InlineData(InteractionType.Stacktool, true, false, false)]
+    [InlineData(InteractionType.Stacktool, true, false, true)]
     [InlineData(InteractionType.Stacktool, true, true, true)]
-    public void StepIsBlockedByAnyFurnitureUnlessPhysicsMovesThroughIt(InteractionType type, bool stackable, bool through, bool moves)
+    // Observed on AIR WIN63-202610151745-318700621 (r97_mv_collide): Move/Rotate lands on stackable furniture; only furniture that
+    // cannot be stacked on blocks it, unless physics moves through it.
+    public void MoveRotateIsBlockedByNonStackableFurnitureUnlessPhysicsMovesThroughIt(InteractionType type, bool stackable, bool through, bool moves)
     {
         var (room, map, items) = World(new RecordingPlacementStore());
         var mover = MakeItem(1, "test");
@@ -1236,11 +1239,20 @@ public partial class ModernWiredRuntimeTests
         var ahead = StackItem(map, items, 9, "color_tile", 1, 0, 0.5, true);
         var action = StackBox(room, name, 2, stack);
 
-        var directional = name == "wf_act_move_to_dir";
+        // Move/Rotate lands on stackable furniture like Move To Direction (observed on AIR WIN63-202610151745-318700621, r97_mv_collide).
+        var directional = name is "wf_act_move_to_dir" or "wf_act_move_rotate";
         Assert.Equal(directional, StackPulse(room, action, stack, ahead));
 
-        Assert.Equal((directional && tileFirst ? 1 : 0, 1, directional && tileFirst ? 0.5 : 0.0), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
-        Assert.Equal((directional ? 1 : 0, 1, directional && tileFirst ? 1.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
+        if (name == "wf_act_move_rotate") {
+            // The tile and its chair move as one unit onto the stackable tile ahead.
+            Assert.Equal((1, 1, 0.5), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
+            Assert.Equal((1, 1, 1.0), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
+
+            return;
+        }
+
+        Assert.Equal((tileFirst ? 1 : 0, 1, tileFirst ? 0.5 : 0.0), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
+        Assert.Equal((1, 1, tileFirst ? 1.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
     }
 
     // wf_act_rel_mov stacks in pick order at a wall instead (observed r92k r92h-rel-wall; see WiredActionPortParityTests.ObservedR92k).

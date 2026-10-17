@@ -304,7 +304,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     /// a column picked m3, m2, m1 moving into the wall left m1, stacked m2 on m1 and m3 on m2 before m2 left (m3 kept z 1.0).
     /// </summary>
     public bool MoveTogether(WiredRuntimeContext context, IReadOnlyList<Item> movers, Func<Item, Func<int, int, int, bool>, bool> step,
-        PassengerSnapshot? passengers = null, bool stepRules = true)
+        PassengerSnapshot? passengers = null, bool stepRules = true, bool stackableBlocks = true)
     {
         var physics = context.Policy.Addons.Physics;
         var units = Units(movers);
@@ -332,7 +332,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 }
             }
 
-            return MoveUnit(context, unit, x, y, rotation, passengers, stepRules);
+            return MoveUnit(context, unit, x, y, rotation, passengers, stepRules && stackableBlocks);
         }
 
         foreach (var unit in units) {

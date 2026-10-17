@@ -401,6 +401,17 @@ public class RoomUser
         }
     }
 
+    public const int ChatBurst = 2;
+    public const long ChatRefillMilliseconds = 600;
+    private int _chatTokens = ChatBurst;
+    private long? _chatSlot;
+
+    /// <summary>
+    /// The chat budget: a bucket of <see cref="ChatBurst"/> lines that gains one line on every <see cref="ChatRefillMilliseconds"/> step of
+    /// the clock. A line over the budget is dropped without a mute. Observed on AIR WIN63-202610151745-318700621 (r97_flood_*): says 600 ms
+    /// apart all go out; 500 ms apart drop every sixth after the first eight; 400 ms apart drop every third after the first six; 150 ms apart
+    /// keep the first three and then one per 600 ms; no flood-control message comes in any of them.
+    /// </summary>
     public bool IncrementAndCheckFlood(DateTimeOffset now, out int muteTime)
     {
         muteTime = 0;
@@ -410,18 +421,19 @@ public class RoomUser
             return false;
         }
 
-        ChatSpamCount++;
+        var slot = now.ToUnixTimeMilliseconds() / ChatRefillMilliseconds;
 
-        if (ChatSpamTicks == -1) {
-            ChatSpamTicks = 8;
+        if (_chatSlot is { } last && slot > last) {
+            _chatTokens = (int)Math.Min(ChatBurst, _chatTokens + (slot - last));
         }
-        else if (ChatSpamCount >= 6) {
-            muteTime = Math.Clamp(21 - habbo.Access.Limit("limit.flood_tolerance", 1), 1, 20);
-            habbo.FloodUntil = now.AddSeconds(muteTime);
-            ChatSpamCount = 0;
 
+        _chatSlot = slot;
+
+        if (_chatTokens < 1) {
             return true;
         }
+
+        _chatTokens--;
 
         return false;
     }

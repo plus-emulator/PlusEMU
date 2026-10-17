@@ -127,7 +127,8 @@ public sealed class RoomChatServiceTests
     {
         // Observed on hhus (AIR WIN63-202610131318-860371703): own Talk echo carries 130 in Red, 133 in Green and 0 before joining.
         // The banned-phrase path echoes the sender's own chat packet without a full room, with the same resolved bubble.
-        var world = new World();
+        // Each line comes a chat step later, inside the chat budget.
+        var world = new World(new SteppingClock(Now, TimeSpan.FromMilliseconds(600)));
         world.Filter.Banned = true;
         await world.Service.Chat(world.Sender, "before", 2);
         Assert.Equal(2, Bubble(world.SenderPackets[^1]));
@@ -231,45 +232,41 @@ public sealed class RoomChatServiceTests
         Assert.Single(after.Logs.Entries);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621 (r97_flood_*): two lines in hand, one more on every 600 ms step, no mute.
     [Fact]
-    public void SixthMessageSetsAndRefreshesUtcFloodDeadline()
+    public void ChatSpendsATwoLineBudgetThatRefillsEverySixHundredMilliseconds()
     {
         var world = new World();
-        var first = Now.AddMilliseconds(125);
+        var start = DateTimeOffset.FromUnixTimeMilliseconds(1_800_000_000_000);
+        bool Drop(int ms) => world.SenderUser.IncrementAndCheckFlood(start.AddMilliseconds(ms), out _);
 
-        for (var i = 0; i < 5; i++) {
-            Assert.False(world.SenderUser.IncrementAndCheckFlood(first, out _));
-        }
-
-        Assert.True(world.SenderUser.IncrementAndCheckFlood(first, out var firstMute));
-        Assert.Equal(first.AddSeconds(firstMute), world.Sender.GetHabbo().FloodUntil);
-
-        var refreshed = first.AddMinutes(1);
-
-        for (var i = 0; i < 5; i++) {
-            Assert.False(world.SenderUser.IncrementAndCheckFlood(refreshed, out _));
-        }
-
-        Assert.True(world.SenderUser.IncrementAndCheckFlood(refreshed, out var refreshedMute));
-        Assert.Equal(refreshed.AddSeconds(refreshedMute), world.Sender.GetHabbo().FloodUntil);
+        Assert.False(Drop(0));
+        Assert.False(Drop(100));
+        Assert.True(Drop(200));
+        Assert.False(Drop(600));
+        Assert.True(Drop(700));
+        Assert.False(Drop(1800));
+        Assert.False(Drop(1850));
+        Assert.True(Drop(1900));
+        Assert.Null(world.Sender.GetHabbo().FloodUntil);
     }
 
     [Fact]
-    public async Task HabbiconTriggerUsesOneUtcInstantForSixthMessageDeadline()
+    public async Task HabbiconOverTheChatBudgetIsDroppedWithoutAMute()
     {
         var now = Now.AddMilliseconds(375);
         var clock = new ZonedClock(now, TimeZoneInfo.CreateCustomTimeZone("habbicon-plus-nine", TimeSpan.FromHours(9), "test", "test"));
         var world = new World(clock);
-        world.SenderUser.ChatSpamCount = 5;
+        world.SenderUser.IncrementAndCheckFlood(now, out _);
+        world.SenderUser.IncrementAndCheckFlood(now, out _);
         world.Sender.GetHabbo().LastHabbiconTriggeredAt = now.AddSeconds(-2);
-        clock.Calls = 0;
+        var store = new HabbiconTestSupport.Service();
 
-        await new TriggerHabbiconEvent(new RoomHabbiconService(new HabbiconTestSupport.Service(), world.Rewards, clock))
+        await new TriggerHabbiconEvent(new RoomHabbiconService(store, world.Rewards, clock))
             .Parse(world.Sender, HabbiconTestSupport.Incoming(61));
 
-        Assert.Equal(1, clock.Calls);
-        Assert.NotNull(world.Sender.GetHabbo().FloodUntil);
-        Assert.Equal(now, world.Sender.GetHabbo().FloodUntil!.Value.AddSeconds(-20));
+        Assert.Empty(store.Used);
+        Assert.Null(world.Sender.GetHabbo().FloodUntil);
     }
 
     [Theory]
@@ -627,6 +624,12 @@ public sealed class RoomChatServiceTests
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class SteppingClock(DateTimeOffset start, TimeSpan step) : TimeProvider
+    {
+        private DateTimeOffset _now = start;
+        public override DateTimeOffset GetUtcNow() => _now += step;
     }
 
     private sealed class ZonedClock(DateTimeOffset now, TimeZoneInfo zone) : TimeProvider

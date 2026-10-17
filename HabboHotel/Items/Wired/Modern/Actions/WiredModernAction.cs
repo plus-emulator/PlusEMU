@@ -851,34 +851,28 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return Relocate();
         }
 
-        // Observed on AIR WIN63-202610131318-860371703: every step counts from the first 500 ms room boundary strictly after the firing.
-        // Normal: effect 4 at the firing, the avatar republished 1000 ms after that boundary, relocated 500 ms later and the effect
-        // dropped 1500 ms after the landing (an on-boundary firing lands at +2.0 s, effect 0 at +3.5 s); the walk is not stopped.
-        // Fast: effect 235, the walk ends on the tile being stepped onto, the landing is on the next boundary (+1000 ms for an
-        // on-boundary firing) and the effect drops 500 ms after it.
-        var firstBoundary = (int)(NextStateUpdate(context.NowMilliseconds) - context.NowMilliseconds);
-        var (republish, relocate, effectEnd) = fast
-            ? (firstBoundary, firstBoundary + FastTeleportRelocateMilliseconds, firstBoundary + FastTeleportEffectEndMilliseconds)
-            : (firstBoundary + TeleportRepublishMilliseconds, firstBoundary + TeleportRelocateMilliseconds, firstBoundary + TeleportEffectEndMilliseconds);
+        // Observed on AIR WIN63-202610131318-860371703: every step counts in room ticks from the first tick after the firing.
+        // Normal: effect 4 at the firing, the avatar republished on the 3rd tick, relocated on the 4th and the effect dropped on the 7th
+        // (1500 ms after the landing); the walk is not stopped. Fast: effect 235, the walk ends on the tile being stepped onto, the avatar
+        // is republished on the 1st tick, lands on the 2nd and the effect drops on the 3rd. A fast teleport from a walk-off stack fired
+        // with a step's announce arrives on the next tick and lands on the one after.
+        // Each step runs at the start of its tick's room pass, so it goes out with that tick's avatar updates, whatever the phase of the
+        // firing against the 500 ms Wired clock.
         var wired = room.GetWired();
-        var release = () => { };
-        // The steps are scheduled from the engine's clock now, which can be a few ms past the firing's time; without this a step due
-        // on a boundary rounded up to the next one, so fast teleports landed a tick late on our hotel.
-        var lag = (int)Math.Max(0, wired.NowMilliseconds - context.NowMilliseconds);
-        republish -= lag;
-        relocate -= lag;
-        effectEnd -= lag;
-        // The avatar's update goes out with the room tick after the step runs (the room serializes users before Wired runs), so the
-        // republish and the landing run one tick ahead of the tick they show on. A fast republish due on the first boundary runs now.
+        var firstTick = wired.FirstRoomTickAfter(context.NowMilliseconds);
         var tick = WiredFlashStates.StateUpdateMilliseconds;
+        var (republish, relocate, effectEnd) = fast
+            ? (firstTick, firstTick + tick, firstTick + 2 * tick)
+            : (firstTick + 2 * tick, firstTick + 3 * tick, firstTick + 6 * tick);
+        var release = () => { };
 
         // Nothing is applied unless the firing can hold its three scheduled steps; the effect starts with the first one.
-        if (!wired.ScheduleAux(context, Math.Max(0, republish - tick), () =>
+        if (!wired.ScheduleOnRoomTick(context, republish, () =>
             {
                 if (user.IsAttachedTo(room)) {
                     user.UpdateNeeded = true;
                 }
-            }, () => release(), alignToStateUpdate: republish > tick)) {
+            }, () => release())) {
             return Relocate();
         }
 
@@ -890,18 +884,18 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             StopAfterCurrentStep(user);
         }
 
-        if (!wired.ScheduleAux(context, relocate - tick, () =>
+        if (!wired.ScheduleOnRoomTick(context, relocate, () =>
             {
                 if (user.IsAttachedTo(room)) {
                     Relocate();
                 }
-            }, alignToStateUpdate: true)) {
+            })) {
             restore();
 
             return Relocate();
         }
 
-        if (!wired.ScheduleAux(context, effectEnd, restore, restore, alignToStateUpdate: true)) {
+        if (!wired.ScheduleOnRoomTick(context, effectEnd, restore, restore)) {
             restore();
         }
 
@@ -933,9 +927,6 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
         return (x, y);
     }
-
-    private static long NextStateUpdate(long nowMilliseconds) =>
-        (nowMilliseconds / WiredFlashStates.StateUpdateMilliseconds + 1) * WiredFlashStates.StateUpdateMilliseconds;
 
     // The step in progress still lands; the walk ends there.
     private static void StopAfterCurrentStep(RoomUser user)
@@ -985,11 +976,6 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
     private const int KickRemoveMilliseconds = 2000;
     private const int TeleportEffectId = 4;
     private const int FastTeleportEffectId = 235;
-    private const int TeleportRepublishMilliseconds = 1000;
-    private const int TeleportRelocateMilliseconds = 1500;
-    private const int TeleportEffectEndMilliseconds = 3000;
-    private const int FastTeleportRelocateMilliseconds = 500;
-    private const int FastTeleportEffectEndMilliseconds = 1000;
 
     // Observed on hhus: a "<...>" segment of Show Message text is removed (brackets included) at output; the stored text is untouched.
     // Unknown $(name) placeholders are left literal by the text formatters.

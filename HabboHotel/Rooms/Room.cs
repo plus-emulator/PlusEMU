@@ -498,6 +498,13 @@ public class Room
                 return;
             }
 
+            try {
+                GetWired().OnRoomTick();
+            }
+            catch (Exception e) {
+                ExceptionLogger.LogException(e);
+            }
+
             CycleComponents();
 
             try {
@@ -560,6 +567,7 @@ public class Room
                 return;
             }
 
+            RunRoomPhase(() => GetWired().OnRoomTick());
             RunRoomPhase(CycleComponents);
             RunRoomPhase(CycleFurniture);
             RunRoomPhase(CycleActors);

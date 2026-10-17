@@ -475,6 +475,7 @@ public sealed partial class WiredGlideConveyorTests
 
         private void Full() => _room.RunFastPass(() =>
         {
+            _wired.OnRoomTick();
             _map.Navigation?.ApplyDirty();
 
             if (_room.UsesV2Movement) {
@@ -508,6 +509,10 @@ public sealed partial class WiredGlideConveyorTests
                 _now += 50;
 
                 if (!_live) {
+                    if (_now % 500 == 0) {
+                        _wired.OnRoomTick();
+                    }
+
                     _wired.OnCycle();
                     _wired.OnFastCycle();
                 }

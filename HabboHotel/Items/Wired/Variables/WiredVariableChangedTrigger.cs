@@ -84,11 +84,11 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             return false;
         }
 
-        // A Time Utilities Value part is interceptable (observed on hhus): its parent's change counts when the part's own value moved.
+        // A Time Utilities Value part is interceptable. Observed on hhus (AIR WIN63-202610131318-860371703): every change of the parent
+        // is a change of each part, and the part's own values pick increased, decreased or unchanged (+1 ms on the parent fired
+        // year/unchanged and milliseconds_of_seconds/increased; +1 on the year part fired year/increased and milliseconds/unchanged).
         if (module.ProjectPartChange(reference, change) is { } part) {
-            return (part.Kind != WiredVariableChangeKind.Updated || part.Before?.Value != part.After?.Value
-                    || change.Before?.Value == change.After?.Value)
-                && Matches(config with { Text = reference.Token }, part, context.Room.Id);
+            return Matches(config with { Text = reference.Token }, part, context.Room.Id);
         }
 
         return Matches(config with { Text = reference.Token }, change, context.Room.Id);

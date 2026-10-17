@@ -20,7 +20,15 @@ public sealed class WiredAvatarState
         if (_executorRoom?.GetGameMap()?.Navigation is { UsesExecutor: true } navigation) {
             navigation.RunOwner(user, (actor, sequence) =>
             {
+                // The cancel always flags a status update; a standing user has nothing to stop, so keep its flag as it was.
+                var moving = IsMoving(actor);
+                var updateNeeded = actor.UpdateNeeded;
                 navigation.CancelThrough(actor, sequence);
+
+                if (!moving) {
+                    actor.UpdateNeeded = updateNeeded;
+                }
+
                 FreezeActor(actor, effect, cancelOnTeleport);
             });
 
@@ -30,6 +38,7 @@ public sealed class WiredAvatarState
         var original = _frozen.GetValueOrDefault(user);
         _frozen[user] = new(original?.Frozen ?? user.Frozen, original?.CanWalk ?? user.CanWalk, effect, cancelOnTeleport,
             original?.Previous ?? user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect ?? 0);
+        var moving = IsMoving(user);
         user.IsWalking = false;
         user.PathRecalcNeeded = false;
         user.RemoveStatus("mv");
@@ -37,7 +46,12 @@ public sealed class WiredAvatarState
         user.GoalY = user.Y;
         user.Frozen = true;
         user.CanWalk = false;
-        user.UpdateNeeded = true;
+
+        // Observed on hhus (AIR WIN63-202610131318-860371703): freezing a standing user sends only the effect, no UserUpdate.
+        // A walking user still needs one so its stop (mv removed) reaches the clients.
+        if (moving) {
+            user.UpdateNeeded = true;
+        }
 
         // Plus bots have no stored effect/version to restore safely. Their actual movement freeze still applies.
         if (!user.IsBot && effect > 0) {
@@ -58,13 +72,13 @@ public sealed class WiredAvatarState
         user.GoalY = user.Y;
         user.Frozen = true;
         user.CanWalk = false;
-        user.UpdateNeeded = true;
 
         // Plus bots have no stored effect/version to restore safely. Their actual movement freeze still applies.
         if (!user.IsBot && effect > 0) {
             user.ApplyEffect(effect);
         }
     }
+    private static bool IsMoving(RoomUser user) => user.IsWalking || user.HasStatus("mv");
 
     public bool Thaw(RoomUser user, bool teleport = false)
     {
@@ -75,9 +89,9 @@ public sealed class WiredAvatarState
         _frozen.Remove(user);
         user.Frozen = state.Frozen;
         user.CanWalk = state.CanWalk;
-        user.UpdateNeeded = true;
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): a user in a Wired team gets the team effect (223) back on unfreeze, not 0.
+        // Observed on hhus (AIR WIN63-202610131318-860371703): unfreeze sends only the restored effect and no UserUpdate;
+        // a user in a Wired team gets the team effect (223) back on unfreeze, not 0.
         if (!user.IsBot && state.Effect > 0 && user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == state.Effect) {
             user.ApplyEffect(state.Previous == state.Effect ? 0 : state.Previous);
         }

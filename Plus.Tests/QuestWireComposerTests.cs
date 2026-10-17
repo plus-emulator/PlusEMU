@@ -16,7 +16,7 @@ public sealed class QuestWireComposerTests
 
         new QuestStartedComposer(data).Compose(packet);
 
-        Assert.Equal(new object[] { "social", 2, 7, 3, 42, true, "CHAT", "bit", 10, "talk", 4, 5, 6, "", "", true }, packet.Writes);
+        Assert.Equal(new object[] { "social", 2, 7, 3, 42, true, "CHAT", "bit", 10, "talk", 4, 5, 6, "", "", true, false }, packet.Writes);
     }
 
     [Fact]
@@ -27,8 +27,19 @@ public sealed class QuestWireComposerTests
 
         new QuestCompletedComposer(data).Compose(packet);
 
-        Assert.Equal(17, packet.Writes.Count);
+        Assert.Equal(18, packet.Writes.Count);
         Assert.Equal(true, packet.Writes[^1]);
+    }
+
+    [Fact]
+    public void AbortedComposerWritesExpiredFlagThenQuestBlock()
+    {
+        QuestWireData data = new("social", 2, 7, 3, 42, false, "CHAT", "bit", 10, "talk", 4, 5, 6);
+        var packet = new HabbiconTestSupport.RecordingPacket();
+
+        new QuestAbortedComposer(data).Compose(packet);
+
+        Assert.Equal(new object[] { false, "social", 2, 7, 3, 42, false, "CHAT", "bit", 10, "talk", 4, 5, 6, "", "", true, false }, packet.Writes);
     }
 
     [Fact]
@@ -63,7 +74,7 @@ public sealed class QuestWireComposerTests
 
         Assert.Equal(2, packet.Writes[0]);
         Assert.Equal("a", packet.Writes[1]);
-        Assert.Equal("b", packet.Writes[17]);
+        Assert.Equal("b", packet.Writes[18]);
         Assert.Equal(true, packet.Writes[^1]);
     }
 

@@ -91,7 +91,7 @@ public sealed class QuestProgressService(IQuestProgressStore store, IQuestManage
 
         store.Cancel(habbo.Id, quest.Id);
         stats.QuestId = 0;
-        session.Send(new QuestAbortedComposer());
+        session.Send(new QuestAbortedComposer(QuestWireDataFactory.Create(session, quest, quests.GetAmountOfQuestsInCategory(quest.Category))));
         quests.GetList(session, null);
     }
 

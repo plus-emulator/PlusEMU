@@ -258,8 +258,8 @@ public class HabbiconPacketTests
         };
         var packet = new RecordingPacket();
         new CatalogOfferComposer(CatalogSnapshotTestSupport.Snapshots().CaptureOffer(item)).Compose(packet);
-        Assert.Equal(new object[] { 12, "toast_toast", false, 5, 0, 0, false, 1,
-            "habbicon", 61, "61", 1, false, 0, false, false, "", "", haveOffer }, packet.Writes);
+        Assert.Equal(new object[] { 12, "toast_toast", false, 5, 0, 0, 0, false, 1,
+            "habbicon", 61, "61", 1, false, 0, false, false, "" }, packet.Writes);
         Assert.False(ItemUtility.CanGiftItem(item));
         Assert.False(ItemUtility.CanSelectAmount(item));
     }

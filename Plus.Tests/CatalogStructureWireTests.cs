@@ -96,12 +96,12 @@ public class CatalogStructureWireTests
 
         Assert.Equal(new List<object>
         {
-            true, 0, -1, -1, "root", "", 0, 1,
-            true, 1, 1, -1, "page1", "Page 1", 0, 1,
-            true, 2, 2, 1, "page2", "Page 2", 1, 7, 1,
-            true, 3, 3, 2, "page3", "Page 3", 0, 1,
-            true, 4, -1, 3, "page4", "Page 4", 0, 1,
-            true, 5, 5, 4, "page5", "Page 5", 0, 0,
+            true, 0, -1, "root", "", 0, 1,
+            true, 1, 1, "page1", "Page 1", 0, 1,
+            true, 2, 2, "page2", "Page 2", 1, 7, 1,
+            true, 3, 3, "page3", "Page 3", 0, 1,
+            true, 4, -1, "page4", "Page 4", 0, 1,
+            true, 5, 5, "page5", "Page 5", 0, 0,
             false, "NORMAL"
         }, packet.Writes);
     }

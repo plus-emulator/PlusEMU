@@ -31,19 +31,18 @@ public class CatalogIndexComposer : IServerPacket
         packet.WriteBoolean(true);
         packet.WriteInteger(0);
         packet.WriteInteger(-1);
-        packet.WriteInteger(-1);
         packet.WriteString("root");
         packet.WriteString(string.Empty);
         packet.WriteInteger(0);
         packet.WriteInteger(_index.Roots.Length);
     }
 
+    // AIR WIN63-202610151745-318700621 package_5/class_3470.as:23 has no parent id per node.
     private static void WriteNode(IOutgoingPacket packet, CatalogIndexNode node)
     {
         packet.WriteBoolean(node.Visible);
         packet.WriteInteger(node.Icon);
         packet.WriteInteger(node.WireId);
-        packet.WriteInteger(node.ParentId);
         packet.WriteString(node.Link ?? string.Empty);
         packet.WriteString(node.Caption ?? string.Empty);
         packet.WriteInteger(node.OfferIds.Length);

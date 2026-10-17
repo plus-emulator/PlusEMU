@@ -781,8 +781,10 @@ public partial class RoomItemHandling
             session = null!;
         }
 
+        // Observed on hhus (AIR WIN63-202610131318-860371703): the owner places a floor item (walkable or not) on the tile they stand on,
+        // and moves one onto it. Avatars only block server-side and Wired moves, never a user's own placement or move.
         bool HasBlockingUsers(int x, int y) => wiredCollision == null
-            ? _room.GetGameMap().SquareHasUsers(x, y)
+            ? session == null && _room.GetGameMap().SquareHasUsers(x, y)
             : wiredCollision.BlocksUsers(_room.GetGameMap().GetRoomUsers(new(x, y)));
         var magic = MagicTileHeight.IsMagicTile(item.Definition.InteractionType);
 

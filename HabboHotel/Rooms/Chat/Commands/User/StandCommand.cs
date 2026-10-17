@@ -20,7 +20,6 @@ internal class StandCommand : IChatCommand
 
         if (user.IsSitting) {
             user.Statusses.Remove("sit");
-            user.Z += 0.35;
             user.IsSitting = false;
             user.UpdateNeeded = true;
         }

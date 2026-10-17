@@ -509,7 +509,11 @@ internal sealed partial class WiredStackEngine
     private static readonly Dictionary<string, string[]> DefaultRunsAfter = new()
     {
         ["wf_act_match_to_sshot"] = ["wf_act_toggle_state", "wf_act_rel_mov"],
-        ["wf_act_show_message"] = ["wf_act_change_var_val", "wf_act_toggle_state"]
+        ["wf_act_show_message"] = ["wf_act_change_var_val", "wf_act_toggle_state"],
+        // Observed on AIR WIN63-202610151745-318700621: Control Clock (Start) and Give Score To Team in one stack give the score in the
+        // game they start, with the give above or below the clock (6 of 6); a score given with no game running is lost.
+        ["wf_act_give_score"] = ["wf_act_control_clock"],
+        ["wf_act_give_score_tm"] = ["wf_act_control_clock"]
     };
 
     // Moves each constrained effect just behind the last effect it must follow; all other effects keep their relative order.

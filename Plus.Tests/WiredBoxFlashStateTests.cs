@@ -109,5 +109,8 @@ public class WiredDefinitionFlashStateTests
         Assert.Equal("6", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("7", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionGiven));
         Assert.Equal("2", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("7", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionChanged));
         Assert.Equal("8", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("2", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionRemoved));
+        // Observed on AIR WIN63-202610151745-318700621 (r97_definer_same): an unchanged change flips 6 to 0, then 0 to 1.
+        Assert.Equal("0", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("6", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionUnchanged));
+        Assert.Equal("1", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("0", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionUnchanged));
     }
 }

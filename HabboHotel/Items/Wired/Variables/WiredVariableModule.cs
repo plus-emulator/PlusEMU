@@ -13,6 +13,10 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     private readonly MemoryWiredVariableStore _active = new();
     private readonly Queue<WiredVariableChange> _changes = new();
     private readonly object _gate = new();
+    private long _valueChanges;
+
+    /// <summary>Counts the writes that changed a stored value or its presence; unchanged accepted writes do not count.</summary>
+    internal long ValueChanges => Interlocked.Read(ref _valueChanges);
     public uint RoomId => roomId;
 
     // The database callback commits before any active value or change event becomes visible.
@@ -362,6 +366,10 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
         if (!write.Changed && !acceptedUnchangedWrite) {
             return false;
+        }
+
+        if (write.Before?.Value != write.After?.Value || (write.Before is null) != (write.After is null)) {
+            Interlocked.Increment(ref _valueChanges);
         }
 
         // Observed on AIR WIN63-202610131318-860371703: every successful Give, including an override of an existing value,

@@ -118,6 +118,26 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
+    public void PickAllBuildersClubDeletesEveryBuildersClubFurniAndPickAllLeavesThem()
+    {
+        // AIR WIN63-202610151745-318700621 com/sulake/habbo/ui/handler/ChatInputWidgetHandler.as:325-327 says ":pickallbc" once confirmed.
+        Viewer();
+        var (service, store, _) = BuildersClub();
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0);
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 2, 1, 0);
+        Assert.Equal(2, _room.GetRoomItemHandler().GetWallAndFloor.Count(item => item.IsBuildersClub));
+
+        new Plus.HabboHotel.Rooms.Chat.Commands.User.PickAllCommand(null!, Proxy<IRoomItemPickupService>((_, _) => throw new InvalidOperationException("no music")))
+            .Execute(_client, _room, []);
+        Assert.Equal(2, _room.GetRoomItemHandler().GetWallAndFloor.Count(item => item.IsBuildersClub));
+
+        new Plus.HabboHotel.Rooms.Chat.Commands.User.PickAllBuildersClubCommand(service).Execute(_client, _room, []);
+
+        Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
+        Assert.Equal(store.Created, store.Deleted);
+    }
+
+    [Fact]
     public void AFailedPlacementDeletesTheStoredFurni()
     {
         Viewer();

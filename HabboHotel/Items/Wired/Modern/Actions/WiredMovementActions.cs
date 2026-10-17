@@ -122,12 +122,10 @@ public sealed class WiredMovementActions(Random? random = null)
                         return false;
                     }
 
+                    // Observed on AIR WIN63-202610151745-318700621 (r97_group_user_clk): a member whose landing tile holds a user stays
+                    // put and the rest of the group still moves.
                     foreach (var item in movers.OrderByDescending(item => item.GetX * Math.Sign(groupDx) + item.GetY * Math.Sign(groupDy))) {
-                        if (!move(item, item.GetX + groupDx, item.GetY + groupDy, item.Rotation, null)) {
-                            break;
-                        }
-
-                        affected = true;
+                        affected |= move(item, item.GetX + groupDx, item.GetY + groupDy, item.Rotation, null);
                     }
 
                     break;

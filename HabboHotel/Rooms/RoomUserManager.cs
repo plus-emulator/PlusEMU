@@ -544,6 +544,10 @@ public class RoomUserManager
 
                         if (session.GetHabbo().Effects is { CurrentEffect: not 0 } teamEffects) {
                             teamEffects.ApplyEffect(0);
+                            // ApplyEffect is skipped when the session already moved on (re-entering the room); the team effect must
+                            // still not come back with the next room entry. Observed on AIR WIN63-202610151745-318700621
+                            // (wf_act_kick_user.cov_selector): a teamed owner re-entering gets no avatar effect.
+                            teamEffects.CurrentEffect = 0;
                         }
                     }
                 }

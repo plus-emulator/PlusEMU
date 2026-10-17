@@ -283,6 +283,11 @@ public static class WiredNativeEditorProjection
             native = native with { Text = Leaderboard.WiredLeaderboardConfig.Normalize(native.Text, native.OwnedIntParams) };
         }
 
+        // "bot TAB message" is split the hotel's way: a lone field is the message (see WiredBotActions.TalkText).
+        if (name is "wf_act_bot_talk" or "wf_act_bot_talk_to_avatar") {
+            native = native with { Text = WiredBotActions.TalkText(native.Text) };
+        }
+
         if (itemId == 0 || !Supports(name) || native.Version != 2 || native.Category != descriptor.Category
             || native.NativeCode != Code(name) || !WithinBounds(native)) {
             return false;

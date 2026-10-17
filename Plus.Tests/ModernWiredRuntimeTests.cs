@@ -2294,6 +2294,11 @@ public partial class ModernWiredRuntimeTests
     public void BotTalkKeepsTheOctoberHideNameFieldAndOlderSaves()
     {
         // WIN63-202610121709 bot talk editors save [mode, bubble width, hide bot name].
+        // Observed on AIR WIN63-202610151745-318700621: a bot name with no message is read as a message with no bot.
+        Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk", new() { IntParams = [0, 100, -1], Text = "Robbie\t" }, out var empty, out _));
+        Assert.Equal("\tRobbie", empty.Text);
+        Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk_to_avatar", new() { IntParams = [0, 0, 100, -1], Text = "Robbie" }, out var bare, out _));
+        Assert.Equal("\tRobbie", bare.Text);
         Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk", new() { IntParams = [0, 100, -1, 1], Text = "Alice\tHello" }, out var talk, out _));
         Assert.Equal(1, talk.IntParams[3]);
         Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk", new() { IntParams = [0, 100, -1], Text = "Alice\tHello" }, out _, out _));

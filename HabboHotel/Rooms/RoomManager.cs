@@ -54,7 +54,7 @@ public class RoomManager : IRoomManager, IStartable
             var fullPass = RoomCycle.IsDue(_cycleLastExecution, now);
 
             if (fullPass) {
-                _cycleLastExecution = now;
+                _cycleLastExecution = RoomCycle.Boundary(now, (long)_clock.GetElapsedTime(0).TotalMilliseconds);
 
                 foreach (var room in _rooms.Values.ToList()) {
                     if (room.IsCrashed) {

@@ -2450,16 +2450,17 @@ public partial class ModernWiredRuntimeTests
         var replies = Capture(f.Habbo.Client);
         // Observed on AIR WIN63-202610131318-860371703: fast = effect 235, an on-boundary firing lands at +1000 ms and drops the
         // effect at +1500 ms.
+        // The relocation runs on the tick before (at +500 ms): the room publishes the avatar on the tick after a Wired step.
         f.Fire(land: false);
         Assert.Equal(235, f.User.CurrentEffect);
-        f.Advance(950);
+        f.Advance(450);
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         f.Advance(50);
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(235, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
-        f.Advance(450);
+        f.Advance(950);
         Assert.Equal(235, f.User.CurrentEffect);
         f.Advance(50);
         Assert.Equal(8, f.User.CurrentEffect);
@@ -2475,14 +2476,15 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         Assert.Equal(4, f.User.CurrentEffect);
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
-        // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal firing lands at +2.0 s and drops the effect at +3.5 s.
-        f.Advance(1950);
+        // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal firing lands at +2.0 s and drops the effect at +3.5 s. The
+        // relocation runs on the tick before (+1.5 s): the room publishes the avatar on the tick after a Wired step.
+        f.Advance(1450);
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         f.Advance(50);
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Equal(4, f.User.CurrentEffect);
         Assert.Empty(MovementDurations(replies));
-        f.Advance(1400);
+        f.Advance(1900);
         Assert.Equal(4, f.User.CurrentEffect);
         f.Advance(100);
         Assert.Equal(8, f.User.CurrentEffect);

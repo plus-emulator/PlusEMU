@@ -11,7 +11,7 @@ public interface ICatalogSnapshotService
 {
     CatalogOfferSnapshot CaptureOffer(CatalogOffer offer);
     CatalogPageSnapshot CapturePage(CatalogPage page, int preselectOfferId);
-    CatalogIndexSnapshot CaptureIndex(Habbo habbo, ICollection<CatalogPage> pages);
+    CatalogIndexSnapshot CaptureIndex(Habbo habbo, ICollection<CatalogPage> pages, string mode);
     ClubGiftsSnapshot CaptureClubGifts(ClubGiftInfo info);
 }
 
@@ -39,15 +39,17 @@ public sealed class CatalogSnapshotService(ICatalogManager catalog, TimeProvider
                 promotion.OfferId, promotion.ProductCode, promotion.PageLink, (int)Math.Clamp(promotion.RemainingAt(now).Ticks / TimeSpan.TicksPerSecond, 0, int.MaxValue)))
             .ToImmutableArray();
 
-        return new CatalogPageSnapshot(page.Id, CatalogModes.Normal, page.Layout, page.Images.ToImmutableArray(), page.Texts.ToImmutableArray(),
+        return new CatalogPageSnapshot(page.Id, page.CatalogMode, page.Layout, page.Images.ToImmutableArray(), page.Texts.ToImmutableArray(),
             offers, preselectOfferId, promotions);
     }
 
-    public CatalogIndexSnapshot CaptureIndex(Habbo habbo, ICollection<CatalogPage> pages)
+    // The tree of one catalogue mode, ending with that mode so the client builds it in the matching window.
+    public CatalogIndexSnapshot CaptureIndex(Habbo habbo, ICollection<CatalogPage> pages, string mode)
     {
-        var children = pages.Where(page => page.IsAvailableTo(habbo)).ToLookup(page => page.ParentId);
+        mode = CatalogModes.FromClient(mode);
+        var children = pages.Where(page => page.CatalogMode == mode && page.IsAvailableTo(habbo)).ToLookup(page => page.ParentId);
 
-        return new CatalogIndexSnapshot(CatalogModes.Normal, children[-1].Select(page => IndexNode(children, page, 1)).ToImmutableArray());
+        return new CatalogIndexSnapshot(mode, children[-1].Select(page => IndexNode(children, page, 1)).ToImmutableArray());
     }
 
     public ClubGiftsSnapshot CaptureClubGifts(ClubGiftInfo info) => new(

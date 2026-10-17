@@ -20,6 +20,7 @@ public sealed class CatalogMigrationDatabaseTests
         {
             CreateLegacyCatalog(connection);
             connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/52_NormalizeCatalog.sql")));
+            AddCatalogModes(connection);
 
             // Pages a root cannot reach are gone; NULL is the root and an empty link is no link.
             Assert.Equal([(1, (int?)null, "root"), (2, 1, null), (5, null, "staff")],
@@ -78,6 +79,11 @@ public sealed class CatalogMigrationDatabaseTests
         });
     }
 
+    // The catalog_pages part of migration 89, which every later catalog load reads.
+    private static void AddCatalogModes(MySqlConnection connection) => connection.Execute(System.Text.RegularExpressions.Regex.Match(
+        File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/89_BuildersClubCatalog.sql")), @"ALTER TABLE `catalog_pages`\s+ADD COLUMN.*?;",
+        System.Text.RegularExpressions.RegexOptions.Singleline).Value);
+
     [RoomComponentDatabaseFact]
     public async Task OffersPricedInAnyActivityPointTypeLoad()
     {
@@ -85,6 +91,7 @@ public sealed class CatalogMigrationDatabaseTests
         {
             CreateLegacyCatalog(connection);
             connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/52_NormalizeCatalog.sql")));
+            AddCatalogModes(connection);
             connection.Execute("UPDATE catalog_offers SET cost_points = 12, points_type = 101 WHERE id = 500");
 
             var catalog = new CatalogManager(null!, null!, null!, database, TestLogging.For<CatalogManager>(), Items());

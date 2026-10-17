@@ -107,7 +107,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
             return Reject(session, "catalogue page {PageId} not found", pageId);
         }
 
-        if (!page.CanOpen(session.GetHabbo())) {
+        if (!page.CanOpen(session.GetHabbo()) || page.IsBuildersClub) {
             return Reject(session, "catalogue page {PageId} is not available to the user", pageId);
         }
 

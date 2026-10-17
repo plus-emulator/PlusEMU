@@ -188,6 +188,7 @@ public sealed class FurnitureInventoryPersistenceTests
                     base_item INT UNSIGNED NOT NULL, extra_data TEXT NOT NULL, limited_number INT UNSIGNED NOT NULL,
                     limited_stack INT UNSIGNED NOT NULL);
                 CREATE TABLE items_groups (id INT UNSIGNED PRIMARY KEY, group_id INT NOT NULL);
+                CREATE TABLE items_builders_club (item_id INT UNSIGNED PRIMARY KEY, user_id INT NOT NULL);
                 INSERT INTO users VALUES (1),(2);
                 INSERT INTO items VALUES
                     (10,1,0,100,'legacy-a',4,40),(11,1,0,999,'unknown',5,50),(12,1,0,101,'legacy-b',6,60),

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Plus.Communication.Packets.Outgoing.Catalog;
+using Plus.HabboHotel.Catalog.BuildersClub;
 using Plus.HabboHotel.Catalog.Pets;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
@@ -27,7 +28,7 @@ public interface ICatalogBrowsingService
 }
 
 public sealed class CatalogBrowsingService(IItemDataManager items, IPetRaceManager races, IRoomDataLoader rooms,
-    TimeProvider clock, ICatalogManager catalog, ICatalogSnapshotService snapshots) : ICatalogBrowsingService
+    TimeProvider clock, ICatalogManager catalog, ICatalogSnapshotService snapshots, IBuildersClubService? buildersClub = null) : ICatalogBrowsingService
 {
     public void ShowPetPalettes(GameClient session, string type)
     {
@@ -46,7 +47,8 @@ public sealed class CatalogBrowsingService(IItemDataManager items, IPetRaceManag
 
     public void ShowPage(GameClient session, CatalogPageRequest request)
     {
-        if (!catalog.TryGetPage(request.PageId, out var page) || !page.CanOpen(session.GetHabbo())) {
+        // A page opens only in its own catalogue: the client shows it in the window of the mode it carries.
+        if (!catalog.TryGetPage(request.PageId, out var page) || page.CatalogMode != CatalogModes.FromClient(request.Mode) || !page.CanOpen(session.GetHabbo())) {
             return;
         }
 
@@ -56,12 +58,20 @@ public sealed class CatalogBrowsingService(IItemDataManager items, IPetRaceManag
 
     public void ShowIndex(GameClient session, string mode)
     {
-        session.Send(new CatalogIndexComposer(snapshots.CaptureIndex(session.GetHabbo(), catalog.Pages)));
+        ShowMode(session, mode);
         session.Send(new CatalogItemDiscountComposer());
     }
 
-    public void ShowMode(GameClient session, string mode) =>
-        session.Send(new CatalogIndexComposer(snapshots.CaptureIndex(session.GetHabbo(), catalog.Pages)));
+    // The index of the requested catalogue. Observed on hhus: the BUILDERS_CLUB index is followed by the Builders Club furni count.
+    public void ShowMode(GameClient session, string mode)
+    {
+        mode = CatalogModes.FromClient(mode);
+        session.Send(new CatalogIndexComposer(snapshots.CaptureIndex(session.GetHabbo(), catalog.Pages, mode)));
+
+        if (mode == CatalogModes.BuildersClub) {
+            buildersClub?.SendFurniCount(session);
+        }
+    }
 
     public void ShowOffer(GameClient session, int offerId)
     {

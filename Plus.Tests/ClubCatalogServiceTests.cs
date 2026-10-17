@@ -293,6 +293,6 @@ public sealed class ClubCatalogServiceTests
 
         public CatalogOfferSnapshot CaptureOffer(CatalogOffer offer) => throw new NotSupportedException();
         public CatalogPageSnapshot CapturePage(CatalogPage page, int preselectOfferId) => throw new NotSupportedException();
-        public CatalogIndexSnapshot CaptureIndex(Habbo habbo, ICollection<CatalogPage> pages) => throw new NotSupportedException();
+        public CatalogIndexSnapshot CaptureIndex(Habbo habbo, ICollection<CatalogPage> pages, string mode) => throw new NotSupportedException();
     }
 }

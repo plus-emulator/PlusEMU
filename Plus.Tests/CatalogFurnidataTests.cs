@@ -134,11 +134,11 @@ public sealed class CatalogFurnidataTests
         var root = JsonNode.Parse(file.Content)!.AsObject();
 
         Assert.Equal("""
-            {"id":13,"classname":"chair","revision":61856,"category":"chair","defaultdir":2,"xdim":1,"ydim":2,"partcolors":{"color":["#ffffff","#0"]},"name":"Chair","description":"Sit","adurl":null,"offerid":7,"buyout":true,"rentofferid":-1,"rentbuyout":false,"bc":false,"excludeddynamic":false,"customparams":"","specialtype":1,"canstandon":false,"cansiton":true,"canlayon":false,"height":0.9,"furniline":"iced","environment":null,"rare":true,"tradeable":false}
+            {"id":13,"classname":"chair","revision":61856,"category":"chair","defaultdir":2,"xdim":1,"ydim":2,"partcolors":{"color":["#ffffff","#0"]},"name":"Chair","description":"Sit","adurl":null,"offerid":7,"buyout":true,"rentofferid":-1,"rentbuyout":false,"bc":false,"excludeddynamic":false,"bcofferid":-1,"customparams":"","specialtype":1,"canstandon":false,"cansiton":true,"canlayon":false,"height":0.9,"furniline":"iced","environment":null,"rare":true,"tradeable":false}
             """, Entry(root, "chair").ToJsonString());
         // Wall entries have no floor fields.
         Assert.Equal("""
-            {"id":4001,"classname":"poster","revision":0,"category":"unknown","name":"Poster","description":null,"adurl":null,"offerid":-1,"buyout":false,"rentofferid":-1,"rentbuyout":false,"bc":false,"excludeddynamic":false,"customparams":null,"specialtype":1,"furniline":null,"environment":null,"rare":false}
+            {"id":4001,"classname":"poster","revision":0,"category":"unknown","name":"Poster","description":null,"adurl":null,"offerid":-1,"buyout":false,"rentofferid":-1,"rentbuyout":false,"bc":false,"excludeddynamic":false,"bcofferid":-1,"customparams":null,"specialtype":1,"furniline":null,"environment":null,"rare":false}
             """, root["wallitemtypes"]!["furnitype"]![0]!.ToJsonString());
         Assert.Matches("^\"[0-9a-f]{40}\"$", file.ETag);
     }

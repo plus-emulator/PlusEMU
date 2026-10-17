@@ -12,7 +12,7 @@ public sealed class FurnidataEntry
     public const string WallSection = "wallitemtypes";
 
     // Fields the catalog fills in when furnidata is generated; definitions do not store them.
-    public static readonly string[] CatalogFields = ["offerid", "buyout", "rentofferid", "rentbuyout", "bc"];
+    public static readonly string[] CatalogFields = ["offerid", "buyout", "rentofferid", "rentbuyout", "bc", "bcofferid"];
 
     public uint FurnitureId { get; set; }
     public int Id { get; set; }
@@ -75,6 +75,11 @@ public sealed class FurnidataEntry
         }
 
         entry["excludeddynamic"] = ExcludedDynamic;
+
+        if (catalog) {
+            entry["bcofferid"] = -1;
+        }
+
         entry["customparams"] = CustomParams;
         entry["specialtype"] = SpecialType;
 

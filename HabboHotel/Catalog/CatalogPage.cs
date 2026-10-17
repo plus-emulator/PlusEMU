@@ -25,6 +25,11 @@ public class CatalogPage
 
     public string Layout { get; set; } = string.Empty;
 
+    // NORMAL or BUILDERS_CLUB; each mode has its own page tree.
+    public string CatalogMode { get; set; } = CatalogModes.Normal;
+
+    public bool IsBuildersClub => CatalogMode == CatalogModes.BuildersClub;
+
     public List<string> Images { get; set; } = new();
 
     public List<string> Texts { get; set; } = new();

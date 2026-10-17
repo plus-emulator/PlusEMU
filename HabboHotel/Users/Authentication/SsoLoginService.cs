@@ -1,4 +1,5 @@
 using Plus.HabboHotel.Campaigns;
+using Plus.HabboHotel.Catalog.BuildersClub;
 using Plus.HabboHotel.Subscriptions;
 using Plus.Communication.Packets;
 using Plus.Communication.Packets.Outgoing.Handshake;
@@ -47,6 +48,7 @@ public sealed class SsoLoginService : ISsoLoginService
     private readonly IUserProcessFactory _processFactory;
     private readonly IAvatarEffectService _avatarEffects;
     private readonly ICampaignCalendarService _calendars;
+    private readonly IBuildersClubService? _buildersClub;
 
     public SsoLoginService(IAuthenticator authenticate,
         IBadgeManager badgeManager,
@@ -56,8 +58,10 @@ public sealed class SsoLoginService : ISsoLoginService
         ILanguageManager languageManager,
         ISettingsManager settingsManager,
         IRewardManager rewardManager, ClubLifecycle clubLifecycle, ClientAccessLists clientAccessLists,
-        IUserProcessFactory processFactory, IModeratorTicketService tickets, IAvatarEffectService avatarEffects, IRewardTrackManager rewardTracks, ICampaignCalendarService calendars)
+        IUserProcessFactory processFactory, IModeratorTicketService tickets, IAvatarEffectService avatarEffects, IRewardTrackManager rewardTracks, ICampaignCalendarService calendars,
+        IBuildersClubService? buildersClub = null)
     {
+        _buildersClub = buildersClub;
         _authenticate = authenticate;
         _calendars = calendars;
         _rewardTracks = rewardTracks;
@@ -97,6 +101,8 @@ public sealed class SsoLoginService : ISsoLoginService
                 session.GetHabbo().FocusPreference,
                 FriendBarStateUtility.GetInt(session.GetHabbo().FriendbarState)));
             //SendMessage(new TalentTrackLevelComposer());
+            // Observed on hhus: the Builders Club status follows the login unasked.
+            _buildersClub?.SendStatus(session);
 
 
             foreach (var role in session.GetHabbo().Access.Roles) {

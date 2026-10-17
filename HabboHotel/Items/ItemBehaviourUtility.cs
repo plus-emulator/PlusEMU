@@ -41,7 +41,8 @@ internal static class ItemBehaviourUtility
         Definition = item.Definition,
         ExtraData = item.ExtraData,
         UniqueNumber = item.UniqueNumber,
-        UniqueSeries = item.UniqueSeries
+        UniqueSeries = item.UniqueSeries,
+        IsBuildersClub = item.IsBuildersClub
     };
 
 }

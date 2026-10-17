@@ -234,6 +234,8 @@ public static class ClientPacketHeader
     public const uint GetTalentTrackEvent = 766;
     public const uint GiveAdminRightsEvent = 2461;
     public const uint GetCatalogIndexEvent = 2041;
+    public const uint BuildersClubPlaceRoomItemEvent = 141; // package_16/class_2016
+    public const uint BuildersClubPlaceWallItemEvent = 3269; // package_16/class_1795
     public const uint GetGuideReportingStatusEvent = 2182; // class_2256, GetGuideReportingStatus
     public const uint CancelOfferEvent = 511;
     public const uint SaveWiredConditionConfigEvent = 2814;

@@ -135,8 +135,10 @@ public class RecolorableFurniTests
 
         var fresh = File.ReadAllText(HabbiconPacketTests.Repo("Database/FreshInstall.sql"));
         Assert.Matches(@"\(\d+,'bc_block_0_recolorable','Small Block','s',1,1,1,1,0,1,19348,1,0,0,0,0,'recolorable',0,5,", fresh);
-        Assert.Contains("'bc_blocks_recolorable','recolorable_furniture',1,1,0)", fresh);
-        Assert.Contains("'bc_alphabet_recolorable','recolorable_furniture',1,1,0)", fresh);
+        Assert.Contains("'bc_blocks_recolorable','recolorable_furniture','NORMAL',1,1,0)", fresh);
+        Assert.Contains("'bc_alphabet_recolorable','recolorable_furniture','NORMAL',1,1,0)", fresh);
+        Assert.Contains("'bc_blocks_recolorable','recolorable_furniture','BUILDERS_CLUB',1,1,0)", fresh);
+        Assert.Contains("'bc_alphabet_recolorable','recolorable_furniture','BUILDERS_CLUB',1,1,0)", fresh);
         Assert.DoesNotContain("_recolorable','default_3x3'", fresh);
         Assert.Contains("(35202,'bc_block_0_recolorable',1,0,0,0,1,1,'')", fresh);
         Assert.Equal(69, Regex.Matches(fresh, @"^\(\d+,'bc_[a-z0-9_]+_recolorable','[^']+','s',(?:[^,]+,){11}0,'recolorable',", RegexOptions.Multiline).Count);

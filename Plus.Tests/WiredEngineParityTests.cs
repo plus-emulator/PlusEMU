@@ -373,14 +373,17 @@ public partial class WiredRuntimeEngineTests
     [Theory]
     [InlineData(WiredVariableTarget.User)]
     [InlineData(WiredVariableTarget.Furni)]
-    public void VariableChangeAddsItsHolderAfterSelectorsAndConditions(WiredVariableTarget target)
+    public void VariableChangeTriggersAsItsUserHolderAndAddsAFurniHolderAfterConditions(WiredVariableTarget target)
     {
         var f = new Fixture();
         var holder = f.User(2);
         var furni = f.Furni();
         // The typed trigger's own matching is covered by WiredVariableChangedTriggerTests; this checks the engine's holder timing.
         f.Trigger(WiredEventKind.Variable);
-        f.Add(new Selector { SelectBody = ctx => { Assert.Empty(ctx.Triggering.UserIds); Assert.Empty(ctx.Triggering.FurniIds); return new(new(), WiredSelectionKind.Both); } });
+        // A user holder is the triggering user (observed on hhus, AIR WIN63-202610131318-860371703); a furni holder joins after conditions.
+        var triggering = target == WiredVariableTarget.User ? new[] { holder.VirtualId } : [];
+        f.Add(new Selector { SelectBody = ctx => { Assert.Equal(triggering, ctx.Triggering.UserIds); Assert.Empty(ctx.Triggering.FurniIds); return new(new(), WiredSelectionKind.Both); } });
+        // The selector (both kinds, empty) replaces the selection; the holder joins it again after the conditions.
         f.Add(new Box(WiredBoxCategory.Condition) { Body = ctx => { Assert.Empty(ctx.Selected.UserIds); Assert.Empty(ctx.Selected.FurniIds); return true; } });
         var action = f.Action(ctx =>
         {

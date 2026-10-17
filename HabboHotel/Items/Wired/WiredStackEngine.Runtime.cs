@@ -412,10 +412,12 @@ internal sealed partial class WiredStackEngine
             context.Triggering.FurniIds.Add(context.Event.EventItem.Id);
         }
 
+        // Observed on hhus (AIR WIN63-202610131318-860371703): Variable Changed on a user variable shows a triggering-user message from
+        // that user; on a global it fires with no triggering user (the message is not shown), whoever ran the change.
         var user = context.Event.Kind switch
         {
             WiredEventKind.BotReachedUser => context.Event.TargetUser,
-            WiredEventKind.Variable => null,
+            WiredEventKind.Variable => context.Event.TargetUser,
             WiredEventKind.BotReachedFurni => null,
             WiredEventKind.StateChanged => null,
             _ => context.Event.Actor

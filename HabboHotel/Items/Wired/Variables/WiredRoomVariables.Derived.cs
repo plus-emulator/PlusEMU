@@ -145,6 +145,16 @@ public sealed partial class WiredRoomVariables
             return;
         }
 
+        // A write through an echo shows on its source's definition; the echo box only flashes. Observed on AIR WIN63-202610151745-318700621
+        // (wf_var_echo.runtime): assigning through the echo put the global's box in state 2 and flipped the echo box 0/1.
+        if (Module.DescribeDefinitions([id]).FirstOrDefault()?.Definition.Link is { } link && link.SourceRoomId == _room.Id
+            && WiredVariableModule.TryDefinitionId(link.Source.Token, out var source) && source != id) {
+            wired.OnEvent(definition);
+            FlashDefinition(source, kind);
+
+            return;
+        }
+
         wired.FlashState(definition, WiredFlashStates.NextDefinition(definition.LegacyDataString, kind));
 
         foreach (var addon in items.GetFloor.Where(item => item.Id != definition.Id && item.GetX == definition.GetX && item.GetY == definition.GetY

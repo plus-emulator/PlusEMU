@@ -9,6 +9,7 @@
 		<AssemblyName>Plus Emulator</AssemblyName>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -67,6 +68,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<None Update="LICENSE;README.md">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+		</None>
 		<None Update="Config\config.json">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>

@@ -1,3 +1,4 @@
+using Plus.Core.FigureData;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Permissions;
 
@@ -5,6 +6,13 @@ namespace Plus.HabboHotel.Rooms.Chat.Commands.Moderator;
 
 public class StressCommand : IChatCommand
 {
+    private readonly IFigureDataManager _figureDataManager;
+
+    public StressCommand(IFigureDataManager figureDataManager)
+    {
+        _figureDataManager = figureDataManager;
+    }
+
     public string Key => "stress";
     public string Parameters => "bots <amount|clear>";
     public string Description => "Creates temporary walking and talking bots for room stress testing.";
@@ -41,7 +49,8 @@ public class StressCommand : IChatCommand
             return;
         }
 
-        if (!room.GetRoomUserManager().QueueStressBots(amount, session.GetHabbo().Id, message => session.SendWhisper(message))) {
+        if (!room.GetRoomUserManager().QueueStressBots(amount, session.GetHabbo().Id, message => session.SendWhisper(message),
+                gender => _figureDataManager.GenerateRandomFigure(gender, Random.Shared))) {
             session.SendWhisper("Stress request unavailable: the room is closing or its request queue is full. Try again shortly.");
         }
     }

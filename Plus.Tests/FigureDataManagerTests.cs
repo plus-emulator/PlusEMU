@@ -65,4 +65,29 @@ public class FigureDataManagerTests
 
         Assert.Equal("hr-100.hd-180-1.ch-210-66.lg-270-82.sh-290-80.", processed);
     }
+
+    [Theory]
+    [InlineData("M")]
+    [InlineData("F")]
+    public void RandomFiguresAreWearableAndVaried(string gender)
+    {
+        var manager = Manager();
+        var random = new Random(7);
+        var figures = Enumerable.Range(0, 200).Select(_ => manager.GenerateRandomFigure(gender, random)).ToList();
+
+        Assert.True(figures.Distinct().Count() > 190);
+        Assert.All(figures, figure =>
+        {
+            var types = figure.Split('.').Select(part => part.Split('-')[0]).ToList();
+            Assert.Contains("hd", types);
+            Assert.Contains("ch", types);
+            Assert.Contains("lg", types);
+
+            // Validation keeps every generated set, so the client gets the outfit as generated.
+            var kept = manager.ProcessFigure(figure, gender, null, 2).TrimEnd('.').Split('.').Select(SetOf).ToHashSet();
+            Assert.All(figure.Split('.'), part => Assert.Contains(SetOf(part), kept));
+        });
+    }
+
+    private static string SetOf(string part) => string.Join('-', part.Split('-').Take(2));
 }

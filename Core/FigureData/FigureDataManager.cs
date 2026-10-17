@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Xml;
 using Microsoft.Extensions.Logging;
 using Plus.Core.FigureData.Types;
@@ -13,6 +14,16 @@ public class FigureDataManager : IFigureDataManager, IStartable
 
     private readonly List<string> _requirements;
     private readonly Dictionary<string, FigureSet> _setTypes; //type (hr, ch, etc), Set
+
+    // Set types a random outfit may wear, with the chance each is worn.
+    private static readonly (string Type, double Chance)[] RandomOutfitTypes =
+    [
+        ("hd", 1), ("hr", 0.95), ("ch", 1), ("lg", 1), ("sh", 0.9), ("ha", 0.25),
+        ("ea", 0.2), ("fa", 0.1), ("cc", 0.25), ("ca", 0.15), ("wa", 0.15)
+    ];
+
+    private readonly ConcurrentDictionary<(string Type, string Gender), Set[]> _randomSets = new();
+    private readonly ConcurrentDictionary<int, int[]> _randomColors = new();
 
     public FigureDataManager(ILogger<FigureDataManager> logger)
     {
@@ -44,6 +55,9 @@ public class FigureDataManager : IFigureDataManager, IStartable
         if (_setTypes.Count > 0) {
             _setTypes.Clear();
         }
+
+        _randomSets.Clear();
+        _randomColors.Clear();
 
         var projectSolutionPath = Directory.GetCurrentDirectory();
         var xDoc = new XmlDocument();
@@ -184,6 +198,46 @@ public class FigureDataManager : IFigureDataManager, IStartable
     public bool TryGetPalette(int palletId, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Palette? palette) => _palettes.TryGetValue(palletId, out palette);
 
     public int GetRandomColor(int palletId, int clubLevel = 0) => _palettes[palletId].Colors.Values.FirstOrDefault(color => color.Selectable && color.ClubLevel <= clubLevel)?.Id ?? 0;
+
+    public string GenerateRandomFigure(string gender, Random random)
+    {
+        gender = gender.ToUpperInvariant();
+        var parts = new List<string>();
+
+        foreach (var (type, chance) in RandomOutfitTypes) {
+            if (!_setTypes.TryGetValue(type, out var setType) || random.NextDouble() >= chance) {
+                continue;
+            }
+
+            // Only sets anyone can pick in the wardrobe: selectable and not sold as clothing furni.
+            var sets = _randomSets.GetOrAdd((type, gender), key => setType.Sets.Values
+                .Where(set => set.Selectable && !set.Sellable && set.Parts.Count > 0 && (set.Gender == key.Gender || set.Gender == "U"))
+                .ToArray());
+
+            if (sets.Length == 0) {
+                continue;
+            }
+
+            var chosen = sets[random.Next(sets.Length)];
+            var part = $"{type}-{chosen.Id}";
+
+            if (chosen.Colorable) {
+                var colors = _randomColors.GetOrAdd(setType.PalletId, id => _palettes.TryGetValue(id, out var palette)
+                    ? palette.Colors.Values.Where(color => color.Selectable).Select(color => color.Id).ToArray()
+                    : []);
+                // Two-colour sets have parts with colorindex 2.
+                var slots = chosen.Parts.Values.Where(p => p.Colorable).Select(p => p.ColorIndex).DefaultIfEmpty(1).Max();
+
+                for (var slot = 0; slot < Math.Max(slots, 1) && colors.Length > 0; slot++) {
+                    part += $"-{colors[random.Next(colors.Length)]}";
+                }
+            }
+
+            parts.Add(part);
+        }
+
+        return parts.Count > 0 ? string.Join('.', parts) : IFigureDataManager.DefaultFigure;
+    }
 
     public string FilterFigure(string figure)
     {

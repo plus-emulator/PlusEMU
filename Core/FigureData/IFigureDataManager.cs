@@ -17,4 +17,7 @@ public interface IFigureDataManager
     bool TryGetPalette(int palletId, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Palette? palette);
     int GetRandomColor(int palletId, int clubLevel = 0);
     public string FilterFigure(string figure);
+
+    // A random wearable outfit for temporary bots.
+    string GenerateRandomFigure(string gender, Random random) => DefaultFigure;
 }

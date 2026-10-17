@@ -43,7 +43,7 @@ public class InteractorGenericSwitch(IQuestManager quests, IRewardTrackManager r
         }
 
         item.LegacyDataString = newMode.ToString();
-        item.UpdateState();
+        item.UpdateUsedState();
 
         if (!string.Equals(before, item.LegacyDataString, StringComparison.Ordinal)) {
             rewards.Progress(session, RewardTrackActions.SwitchItemState);

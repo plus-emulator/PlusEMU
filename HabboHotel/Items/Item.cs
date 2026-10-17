@@ -1534,6 +1534,25 @@ public class Item
         UpdateState(true, true);
     }
 
+    /// <summary>
+    /// A state a user switched by using the furni. Observed on hhus (AIR WIN63-202610131318-860371703): using a wf_colortile sends one
+    /// ObjectDataUpdate (374) with the new state, not a full ObjectUpdate. Furni whose height depends on the state keep the full update.
+    /// </summary>
+    public void UpdateUsedState()
+    {
+        var room = GetRoom();
+
+        if (room == null || !IsFloorItem || Definition.AdjustableHeights.Count > 1) {
+            UpdateState();
+
+            return;
+        }
+
+        UpdateState(true, false);
+        room.SendObjectData(this, LegacyDataString, false);
+        room.SendPacket(new FurnitureMetadataComposer([RoomItemSnapshot.Capture(this)]));
+    }
+
     public void UpdateState(bool inDb, bool inRoom)
     {
         var room = GetRoom();

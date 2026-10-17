@@ -145,7 +145,8 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
         }
 
         // Observed on AIR WIN63-202610131318-860371703: a Start keeps a value adjusted after the last stop, and restarts from 0 otherwise.
-        if (operation == 0 && origin == WiredClockOrigin.ModernWired && !clock.Running && !clock.Countdown && !clock.GameAware
+        // Observed on AIR WIN63-202610131318-860371703 (wf_game_upcounter1, 8/8): game counters reset the same way, the "0" in the Start's batch.
+        if (operation == 0 && origin == WiredClockOrigin.ModernWired && !clock.Running && !clock.Countdown
             && clock.Value != 0 && !clock.AdjustedSinceStop) {
             var previous = clock.Value;
             clock.Value = 0;
@@ -341,7 +342,7 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             }
         }
 
-        if (clock.Countdown || clock.GameAware) {
+        if (clock.Countdown || clock.GameAware && publication != WiredCounterPublication.BatchData) {
             publication = WiredCounterPublication.Object;
             force = false;
         }

@@ -67,4 +67,32 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal([WiredClockReason.Start, WiredClockReason.Stop], starts.Select(transition => transition.Reason));
         Assert.False(clocks.HasRunningGameCounter);
     }
+
+    [Fact]
+    public void WiredStartOfAStoppedNonZeroGameCounterBatchesItsZeroAndCountsFromOne()
+    {
+        // Observed on AIR WIN63-202610131318-860371703 (wf_game_upcounter1, 8/8): a Start on a stopped non-zero counter puts its "0" in the
+        // Start's own batch and counts from 1; a Start on a counter already at 0 has no counter entry.
+        var item = ClockItem("wf_game_upcounter1", 203);
+        var clocks = new WiredCounterController();
+        clocks.Attach(item);
+        Assert.True(clocks.Control(item, 0, 0, WiredClockOrigin.ModernWired));
+        Assert.Empty(clocks.TakeChanges());
+
+        for (var now = 500; now <= 4000; now += 500) {
+            clocks.Poll(now);
+        }
+
+        Assert.Equal("4", item.LegacyDataString);
+        Assert.True(clocks.Control(item, 1, 4000, WiredClockOrigin.ModernWired));
+        clocks.TakeChanges();
+
+        Assert.True(clocks.Control(item, 0, 6000, WiredClockOrigin.ModernWired));
+        var zero = Assert.Single(clocks.TakeChanges());
+        Assert.Equal((WiredCounterPublication.BatchData, "0"), (zero.Publication, zero.Text));
+        Assert.Equal(0, clocks.ReadMilliseconds(item));
+        clocks.Poll(6500);
+        var first = clocks.Poll(7000).Single(change => change.DisplayChanged);
+        Assert.Equal("1", first.Text);
+    }
 }

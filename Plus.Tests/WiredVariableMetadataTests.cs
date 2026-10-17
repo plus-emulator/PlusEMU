@@ -37,7 +37,8 @@ public sealed class WiredVariableMetadataTests
         Assert.Empty(box.TextConnector);
         box.ApplyConfiguration(validated);
         Assert.Equal("two", box.TextConnector[2]);
-        Assert.False(WiredNativeEditorProjection.TryCompile(10, box.Descriptor, connector with { Text = "not-an-integer=value" }, out _));
+        // Observed on AIR WIN63-202610151745-318700621: a line that is not "number=text" is dropped and the save succeeds.
+        Assert.True(WiredNativeEditorProjection.TryCompile(10, box.Descriptor, connector with { Text = "not-an-integer=value" }, out _));
         Assert.Equal("two", box.TextConnector[2]);
         var level = Box("wf_xtra_var_lvlup_system");
         Assert.NotNull(level.LevelSystem);

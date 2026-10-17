@@ -104,21 +104,24 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
         }
 
         var result = new Dictionary<int, string>();
-        var lines = text.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
         if (lines.Length > 30) {
             throw new ArgumentException("Text connector has too many entries.");
         }
 
-        foreach (var line in lines) {
+        // Observed on AIR WIN63-202610151745-318700621 (the stored connector, read back from the room's variables): every line is
+        // "number=text"; a line that is not is dropped and the save still succeeds ("bad", "x=1", "Seven=7" and " 3 = z " all dropped).
+        // The text may be empty ("5=" keeps ""), the number may be negative, and a repeated number keeps its last text.
+        foreach (var raw in lines) {
+            var line = raw.TrimEnd('\r');
             var separator = line.IndexOf('=');
 
-            if (separator <= 0 || !int.TryParse(line[..separator].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var key)
-                || string.IsNullOrWhiteSpace(line[(separator + 1)..])) {
-                throw new ArgumentException("Invalid text connector entry.");
+            if (separator <= 0 || !int.TryParse(line[..separator], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var key)) {
+                continue;
             }
 
-            result[key] = line[(separator + 1)..].Trim();
+            result[key] = line[(separator + 1)..];
         }
 
         return result;

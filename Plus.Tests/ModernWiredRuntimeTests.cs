@@ -2424,6 +2424,20 @@ public partial class ModernWiredRuntimeTests
         return bot;
     }
 
+    // Observed on AIR WIN63-202610151745-318700621 (wf_xtra_filter_users.area_teleport): a user already standing on the target is
+    // teleported all the same.
+    [Fact]
+    public void TeleportRunsForAUserAlreadyOnTheTarget()
+    {
+        using var f = new TeleportFixture();
+        f.Target.Definition.Walkable = true;
+        f.Room.GetGameMap().AddToMap(f.Target);
+        f.User.SetPos(f.Target.GetX, f.Target.GetY, 0);
+        f.Fire(land: false);
+        Assert.Equal(4, f.User.CurrentEffect);
+        Assert.Empty(f.Errors);
+    }
+
     [Fact]
     public void FastTeleportKeepsWhoeverIsAlreadyThereAndStillBringsTheOthers()
     {

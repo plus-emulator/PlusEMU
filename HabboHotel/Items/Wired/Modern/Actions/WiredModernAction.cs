@@ -832,10 +832,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return false;
         }
 
-        if (user.X == target.GetX && user.Y == target.GetY) {
-            return true;
-        }
-
+        // A user already on the target is teleported all the same. Observed on AIR WIN63-202610151745-318700621
+        // (wf_xtra_filter_users.area_teleport): the owner standing on T is republished at +1.5 s and relocated onto T at +2.0 s.
         var room = context.Room;
 
         bool Relocate()

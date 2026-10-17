@@ -36,8 +36,16 @@ public sealed class WiredBuiltinPresenceParityTests
         Assert.True(WiredVariableExecutors.TryValidate("wf_act_give_var", give, out _));
         var module = new WiredVariableModule(1, new Directory(), new MemoryWiredVariableStore(), TimeProvider.System, new Presence());
         Assert.False(new WiredVariableExecutors(module, TimeProvider.System).Execute("wf_act_give_var", give, new(1, [])));
-        Assert.False(WiredVariableExecutors.TryValidate("wf_act_remove_var",
-            WiredNativeTestSupport.Scalar("wf_act_remove_var", new() { IntParams = [(int)WiredVariableTarget.Global, 0, 0], Text = "custom:42" }), out _));
+    }
+
+    [Fact]
+    public void RemoveVariableSavesWithAGlobalAndRemovesNothing()
+    {
+        // Observed on hhus (AIR WIN63-202610151745-318700621): the save is accepted, and the global kept its value (3, then 6 after +3).
+        var remove = WiredNativeTestSupport.Scalar("wf_act_remove_var", new() { IntParams = [(int)WiredVariableTarget.Global, 0, 0], Text = "custom:42" });
+        Assert.True(WiredVariableExecutors.TryValidate("wf_act_remove_var", remove, out _));
+        var module = new WiredVariableModule(1, new Directory(), new MemoryWiredVariableStore(), TimeProvider.System, new Presence());
+        Assert.False(new WiredVariableExecutors(module, TimeProvider.System).Execute("wf_act_remove_var", remove, new(1, [])));
     }
 
     private sealed class Presence : IWiredBuiltinVariables

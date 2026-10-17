@@ -29,6 +29,13 @@
     "Encryption": {
         "RsaPrivateKeyFile": ""
     },
+    "AirClient": {
+        "UrlPrefix": "",
+        "ExternalVariablesFiles": [],
+        "ExternalTextsFiles": [],
+        "ProductDataFile": "",
+        "Variables": {}
+    },
     "WebServer": {
         "Hostname": "127.0.0.1",
         "Port": 8080

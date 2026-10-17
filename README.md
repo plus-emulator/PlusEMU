@@ -65,6 +65,7 @@ Settings are read from `Config/config.json` relative to the working directory. L
 | `Rcon` | RCON listener and the addresses allowed to use it | `127.0.0.1:30001` |
 | `WebServer` | HTTP endpoints (Wired variables API, furnidata, badge leaderboard); see [Generating furnidata](#generating-furnidata) | `127.0.0.1:8080` |
 | `Camera` | Camera renderer URL and bearer, photo output directory, timeouts, effect allowlist | renderer at `127.0.0.1:3921` |
+| `AirClient` | What the web server serves the AIR client: `UrlPrefix`, gamedata source files and variable overrides; see [Flash gamedata](#flash-gamedata) | origin of the request, generated files |
 | `Encryption` | `RsaPrivateKeyFile`: the PEM key of the Flash/AIR handshake; see [AIR client](#air-client) | built-in legacy key |
 
 Set your own database password and camera bearer; do not commit them.
@@ -138,6 +139,20 @@ The command writes the key (mode 0600) and prints the public modulus, which the 
 Without a key the emulator falls back to the old built-in 1024-bit key with exponent 3 and logs a warning. The AIR client cannot log in with it. Volt on the `Nitro` listener does not run this handshake, so no current client relies on the old key.
 
 The `Flash` listener binds `Flash.Hostname` (default `127.0.0.1`). For players outside the host it has to listen on a public address (for example `0.0.0.0`) behind a hostname that is not proxied over HTTP.
+
+### Flash gamedata
+
+After login the AIR client loads `${url.prefix}/gamedata/hashes` and the four files it lists, each from `<url>/<hash>`. The web server serves them from the hotel's own data:
+
+| Endpoint | Content |
+|----------|---------|
+| `GET /gamedata/hashes` | `{"hashes":[{name,url,hash}]}` for `external_texts`, `external_variables`, `furnidata` and `productdata` |
+| `GET /gamedata/external_flash_texts/<hash>` | `key=value` texts merged from `AirClient.ExternalTextsFiles` (`key=value` files, or JSON objects such as Volt's `ExternalTexts.json`) |
+| `GET /gamedata/external_variables/<hash>` | `key=value` variables merged from `AirClient.ExternalVariablesFiles`, then `furnidata.load.url` and `productdata.load.url`, then `AirClient.Variables` |
+| `GET /gamedata/furnidata_xml/<hash>` | the generated furnidata (see [Generating furnidata](#generating-furnidata)) as Habbo's XML |
+| `GET /gamedata/productdata/<hash>` | `AirClient.ProductDataFile` (XML or text as is, `ProductData.json` converted to XML), or the furnidata names |
+
+Any hash returns the current file; only the current one is cached for good. Set `AirClient.UrlPrefix` to the hotel's public origin (for example `https://example.com`); when it is empty the origin of the request is used (`X-Forwarded-Proto` and `Host`). The client asset roots (`flash.dynamic.download.url` and the like) belong in an external variables file or in `AirClient.Variables`. Route `/gamedata/hashes`, `/gamedata/external_flash_texts/`, `/gamedata/external_variables/`, `/gamedata/furnidata_xml/` and `/gamedata/productdata/` from the public site to the web server.
 
 ## Branches and releases
 

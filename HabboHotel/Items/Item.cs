@@ -1087,7 +1087,8 @@ public class Item
                         }
                         break;
                     case InteractionType.HabboWheel:
-                        LegacyDataString = Random.Shared.Next(1, 10).ToString();
+                        // AIR WIN63-202610151745-318700621 FurnitureHabboWheelVisualization.as:37 stops on results 1 to 10.
+                        LegacyDataString = Random.Shared.Next(1, 11).ToString();
                         UpdateState();
                         break;
                     case InteractionType.LoveShuffler:

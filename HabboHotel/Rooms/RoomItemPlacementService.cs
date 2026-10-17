@@ -26,9 +26,11 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
 {
     public void Place(Room room, GameClient session, string rawData)
     {
-        var data = rawData.Split(' ');
+        // AIR WIN63-202610151745-318700621 package_66/class_2142.as:37 joins the fields with single spaces; a trailing
+        // separator (":w=1,1 l=0,0 l ") must not turn into an extra empty field that fails the wall position check.
+        var data = rawData.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        if (!uint.TryParse(data[0], out var itemId)) {
+        if (data.Length == 0 || !uint.TryParse(data[0], out var itemId)) {
             return;
         }
 

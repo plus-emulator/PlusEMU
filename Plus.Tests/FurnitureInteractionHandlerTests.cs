@@ -17,6 +17,7 @@ public class FurnitureInteractionHandlerTests
     [InlineData("roll", false, 0)]
     [InlineData("gate", false, -1)]
     [InlineData("wall", true, 17)]
+    [InlineData("wheel", false, -1)]
     public async Task CompleteFrameDelegatesOnceWithoutLookingUpRoomOrSession(string action, bool parameter, int expected)
     {
         var service = new RecordingFurniture();
@@ -31,6 +32,7 @@ public class FurnitureInteractionHandlerTests
     [InlineData("roll", false)]
     [InlineData("gate", false)]
     [InlineData("wall", true)]
+    [InlineData("wheel", false)]
     public async Task TruncatedFrameNeverDelegates(string action, bool parameter)
     {
         var service = new RecordingFurniture();
@@ -45,6 +47,7 @@ public class FurnitureInteractionHandlerTests
         "roll" => new ThrowDiceEvent(service),
         "gate" => new OneWayGateEvent(service),
         "wall" => new UseWallItemEvent(service),
+        "wheel" => new UseHabboWheelEvent(service),
         _ => throw new ArgumentException(nameof(action))
     };
 
@@ -67,6 +70,7 @@ public class FurnitureInteractionHandlerTests
         public void RollDice(Room room, GameClient session, FurnitureUseRequest request) => Calls.Add(("roll", request.ItemId, request.Parameter));
         public void UseOneWayGate(Room room, GameClient session, uint itemId) => Calls.Add(("gate", itemId, -1));
         public void UseWall(Room room, GameClient session, FurnitureUseRequest request) => Calls.Add(("wall", request.ItemId, request.Parameter));
+        public void UseHabboWheel(Room room, GameClient session, uint itemId) => Calls.Add(("wheel", itemId, -1));
         public void Use(Room room, GameClient session, FurnitureUseRequest request) => throw new NotSupportedException();
         public void Click(Room room, GameClient session, FurnitureClickRequest request) => throw new NotSupportedException();
     }

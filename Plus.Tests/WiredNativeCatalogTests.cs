@@ -430,6 +430,16 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         });
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: these built-ins are listed as creatable and deletable.
+    [Theory]
+    [InlineData("@handitem", 1)]
+    [InlineData("@can_move_freely", 0)]
+    [InlineData("~walk_helper.is_multi_walk", 0)]
+    public void PresenceBuiltinsAreListedCreatable(string name, int target)
+    {
+        Assert.True(Assert.Single(WiredNativeCatalogProjection.Builtins, row => row.Name == name && row.Target == target).CanCreateAndDelete);
+    }
+
     // Observed on AIR WIN63-202610151745-318700621: every level-up part is interceptable, current_xp is writable and is_maxed has no value.
     [Fact]
     public void LevelPartsAreInterceptableWithAWritableXpAndAPresenceMaxed()

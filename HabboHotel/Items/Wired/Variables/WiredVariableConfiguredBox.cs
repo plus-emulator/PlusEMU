@@ -64,17 +64,25 @@ public sealed class WiredVariableConfiguredBox : IWiredContextualItem
         context.VariableFrame = WiredVariableRuntimeFrames.Create(context, context.VariableFrame);
         var configuration = context.ConfigurationOf(this);
 
+        var variables = Instance.GetWired()?.Variables;
+        var changesBefore = variables?.Module.ValueChanges ?? 0;
+
         if (!_executors.Execute(Descriptor.CanonicalName, configuration, context.VariableFrame)) {
             return false;
         }
 
+        var valueChanged = (variables?.Module.ValueChanges ?? 0) != changesBefore;
+
         // Observed on hhus (AIR WIN63-202610131318-860371703): a Give Variable or Change Variable Value that writes a variable flashes
         // that variable's definition box, and the variable add-ons on its tile, with the action's own flash.
         if (_executors.Destination(Descriptor.CanonicalName, configuration) is { } destination) {
+            // Observed on AIR WIN63-202610151745-318700621 (r97_definer_same): a change that leaves the value as it was only flips the
+            // definition between 0 and 1 (6 then 0, then 1).
             Instance.GetWired()?.Variables.FlashDefinition(destination, Descriptor.CanonicalName switch
             {
                 "wf_act_give_var" => WiredFlashStates.DefinitionGiven,
                 "wf_act_remove_var" => WiredFlashStates.DefinitionRemoved,
+                _ when !valueChanged => WiredFlashStates.DefinitionUnchanged,
                 _ => WiredFlashStates.DefinitionChanged
             });
         }

@@ -17,7 +17,9 @@ public static class WiredFlashStates
     public const int DefinitionGiven = 6;
     public const int DefinitionRemoved = 8;
 
-    public static string NextDefinition(string current, int kind) =>
+    public const int DefinitionUnchanged = 0;
+
+    public static string NextDefinition(string current, int kind) => kind == DefinitionUnchanged ? current == "0" ? "1" : "0" :
         (current == kind.ToString(System.Globalization.CultureInfo.InvariantCulture) ? kind + 1 : kind)
         .ToString(System.Globalization.CultureInfo.InvariantCulture);
 

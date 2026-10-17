@@ -95,6 +95,20 @@ public sealed class WiredObservedR82VariableTests
         Assert.False(executors.Execute("wf_cnd_var_age_match", older, frame));
     }
 
+    // A write that leaves the value as it was is not a value change (r97_definer_same).
+    [Fact]
+    public void OnlyWritesThatMoveTheValueCountAsValueChanges()
+    {
+        var (module, frame, furni, _) = Vars(TimeProvider.System);
+        var reference = new WiredVariableReference(WiredVariableTarget.Furni, "custom:10");
+        Assert.True(module.Mutate(reference, furni, WiredVariableMutation.Give, 5, frame));
+        var afterGive = module.ValueChanges;
+        module.Mutate(reference, furni, WiredVariableMutation.Set, 5, frame);
+        Assert.Equal(afterGive, module.ValueChanges);
+        Assert.True(module.Mutate(reference, furni, WiredVariableMutation.Set, 6, frame));
+        Assert.Equal(afterGive + 1, module.ValueChanges);
+    }
+
     // Official: a user variable without a value, given to the own user, was selected by With Variable (the teleport followed).
     [Fact]
     public void UserSelectorFindsAValuelessUserVariableAfterTheGive()

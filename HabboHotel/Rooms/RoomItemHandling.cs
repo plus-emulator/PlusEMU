@@ -405,8 +405,11 @@ public partial class RoomItemHandling
         return toner;
     }
 
+    // Accepts the id the client knows a furni by (a Builders Club furni's band id) as well as the stored id.
     public Item? GetItem(uint pId)
     {
+        pId = BuildersClubItemIds.FromWire(pId);
+
         if (_floorItems != null && _floorItems.ContainsKey(pId)) {
             Item? item = null;
 

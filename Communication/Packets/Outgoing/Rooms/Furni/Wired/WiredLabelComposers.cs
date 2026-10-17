@@ -1,5 +1,6 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Labels;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 
@@ -17,7 +18,7 @@ public sealed class WiredLabelsComposer(IReadOnlyList<WiredLabel> labels) : ISer
 
         foreach (var label in labels) {
             packet.WriteInteger(0);
-            packet.WriteUInteger(label.FurniId);
+            packet.WriteUInteger(BuildersClubItemIds.ToWire(label.FurniId));
             packet.WriteString(label.Text);
             packet.WriteInteger(label.BubbleColor);
             packet.WriteInteger(label.Visibility);
@@ -37,7 +38,7 @@ public sealed class WiredLabelsUpdateComposer(IReadOnlyList<WiredLabel> changed,
         packet.WriteInteger(removed.Count);
 
         foreach (var id in removed) {
-            packet.WriteUInteger(id);
+            packet.WriteUInteger(BuildersClubItemIds.ToWire(id));
         }
     }
 }

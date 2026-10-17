@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni.YouTubeTelevisions;
 
@@ -17,7 +18,7 @@ public class GetYouTubeVideoComposer : IServerPacket
 
     public void Compose(IOutgoingPacket packet)
     {
-        packet.WriteInteger(_itemId);
+        packet.WriteInteger(BuildersClubItemIds.ToWire(_itemId));
         packet.WriteString(_youTubeVideo); //"dQw4w9WgXcQ");
         packet.WriteInteger(0); //Start seconds
         packet.WriteInteger(0); //End seconds

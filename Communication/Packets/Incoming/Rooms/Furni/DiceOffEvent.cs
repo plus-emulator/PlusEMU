@@ -8,7 +8,7 @@ internal sealed class DiceOffEvent(IFurnitureUseService furniture) : RoomPacketE
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
-        furniture.TurnOffDice(room, session, packet.ReadUInt());
+        furniture.TurnOffDice(room, session, BuildersClubItemIds.FromWire(packet.ReadUInt()));
 
         return Task.CompletedTask;
     }

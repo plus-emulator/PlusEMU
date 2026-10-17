@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.WiredVariables;
 
@@ -19,7 +20,7 @@ public sealed class WiredVariablesForObjectComposer(int type, int objectId, IRea
         packet.WriteInt(type);
 
         if (type is 0 or 1) {
-            packet.WriteInt(objectId);
+            packet.WriteInt(type == 0 ? BuildersClubItemIds.ToWire(objectId) : objectId);
         }
 
         packet.WriteInt(_values.Length);
@@ -33,7 +34,7 @@ public sealed class WiredVariablesForObjectComposer(int type, int objectId, IRea
             packet.WriteInt(_configuredIn.Length);
 
             foreach (var id in _configuredIn) {
-                packet.WriteUInteger(id);
+                packet.WriteUInteger(BuildersClubItemIds.ToWire(id));
             }
         }
     }

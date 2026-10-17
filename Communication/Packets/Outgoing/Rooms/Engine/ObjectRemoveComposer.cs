@@ -1,5 +1,6 @@
 using System.Globalization;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Engine;
 
@@ -14,7 +15,7 @@ public class ObjectRemoveComposer : IServerPacket
     {
         _itemId = isTemporary
             ? unchecked((int)itemId).ToString(CultureInfo.InvariantCulture)
-            : itemId.ToString(CultureInfo.InvariantCulture);
+            : BuildersClubItemIds.ToWire(itemId).ToString(CultureInfo.InvariantCulture);
         _userId = userId;
     }
 

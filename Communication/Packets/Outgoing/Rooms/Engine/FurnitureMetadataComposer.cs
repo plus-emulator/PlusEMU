@@ -19,7 +19,7 @@ public class FurnitureMetadataComposer(IReadOnlyCollection<RoomItemSnapshot> ite
         foreach (var item in items) {
             var metadata = item.Metadata;
 
-            packet.WriteInteger(unchecked((int)item.Id));
+            packet.WriteInteger(unchecked((int)BuildersClubItemIds.ToWire(item.Id)));
             packet.WriteInteger(metadata.Stackable ? 1 : 0);
             packet.WriteInteger(metadata.IsSeat ? 1 : 0);
             packet.WriteInteger(metadata.IsBed ? 1 : 0);

@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Engine;
 
@@ -18,7 +19,7 @@ public sealed class ObjectRemoveConfirmComposer(uint itemId, bool wall, string t
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteInteger(wall ? 1 : 2);
-        packet.WriteUInteger(itemId);
+        packet.WriteUInteger(BuildersClubItemIds.ToWire(itemId));
         packet.WriteString(title);
         packet.WriteString(body);
     }

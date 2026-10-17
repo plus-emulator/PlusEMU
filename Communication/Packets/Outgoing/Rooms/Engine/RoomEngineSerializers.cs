@@ -7,7 +7,7 @@ public static class RoomEngineSerializers
 {
     public static void Serialize(this IOutgoingPacket packet, RoomItemSnapshot item)
     {
-        packet.WriteUInteger(item.Id);
+        packet.WriteUInteger(BuildersClubItemIds.ToWire(item.Id));
         packet.WriteInteger(item.SpriteId);
         packet.WriteInteger(item.X);
         packet.WriteInteger(item.Y);
@@ -23,7 +23,7 @@ public static class RoomEngineSerializers
 
     internal static void WriteWallItem(IOutgoingPacket packet, RoomItemSnapshot item)
     {
-        packet.WriteString(item.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        packet.WriteString(BuildersClubItemIds.ToWire(item.Id).ToString(System.Globalization.CultureInfo.InvariantCulture));
         packet.WriteInteger(item.SpriteId);
         packet.WriteString(item.WallCoordinates);
         packet.WriteString(item.WallData);

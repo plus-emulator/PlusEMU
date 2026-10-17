@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Engine;
 
@@ -34,7 +35,7 @@ public class FloorHeightMapComposer : IServerPacket
         packet.WriteInteger(_hides.Count);
 
         foreach (var hide in _hides) {
-            packet.WriteInteger(hide.FurniId);
+            packet.WriteInteger(BuildersClubItemIds.ToWire(hide.FurniId));
             packet.WriteBoolean(hide.On);
             packet.WriteInteger(hide.RootX);
             packet.WriteInteger(hide.RootY);

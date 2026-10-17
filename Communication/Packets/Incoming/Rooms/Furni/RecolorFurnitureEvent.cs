@@ -1,6 +1,7 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Recolor;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni;
 
@@ -12,7 +13,7 @@ internal sealed class RecolorFurnitureEvent : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
-        var itemId = (uint)packet.ReadInt();
+        var itemId = BuildersClubItemIds.FromWire((uint)packet.ReadInt());
         var scope = packet.ReadInt();
         var red = packet.ReadInt();
         var green = packet.ReadInt();

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Televisions;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni.YouTubeTelevisions;
 
@@ -10,7 +11,7 @@ public class GetYouTubePlaylistComposer(int itemId, ImmutableArray<TelevisionVid
 
     public void Compose(IOutgoingPacket packet)
     {
-        packet.WriteInteger(itemId);
+        packet.WriteInteger(BuildersClubItemIds.ToWire(itemId));
         packet.WriteInteger(videos.Length);
 
         foreach (var video in videos) {

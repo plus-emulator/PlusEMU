@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni;
 
@@ -17,7 +18,7 @@ public class UpdateMagicTileComposer : IServerPacket
 
     public void Compose(IOutgoingPacket packet)
     {
-        packet.WriteUInteger(_itemId);
+        packet.WriteUInteger(BuildersClubItemIds.ToWire(_itemId));
         packet.WriteInteger(_height);
     }
 }

@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Collections.Immutable;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Variables;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.WiredVariables;
 
@@ -52,7 +53,7 @@ public sealed class WiredUserVariablesDataComposer(WiredVariableMenuSnapshot sna
             packet.WriteInteger(selected.Length);
 
             foreach (var variable in selected) {
-                packet.WriteUInteger(variable.Definition.ItemId);
+                packet.WriteUInteger(BuildersClubItemIds.ToWire(variable.Definition.ItemId));
                 packet.WriteString(variable.Definition.Name);
                 packet.WriteBoolean(variable.HasValue);
                 packet.WriteInteger((int)variable.Definition.Availability);

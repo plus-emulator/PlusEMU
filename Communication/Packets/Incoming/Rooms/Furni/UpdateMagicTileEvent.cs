@@ -7,7 +7,7 @@ internal class UpdateMagicTileEvent(IMagicTileService tiles) : IPacketEvent
 {
     public Task Parse(GameClient session, IIncomingPacket packet)
     {
-        var itemId = packet.ReadUInt();
+        var itemId = BuildersClubItemIds.FromWire(packet.ReadUInt());
         var requestedHeight = packet.ReadInt();
         bool? multiWalk = packet.HasDataRemaining() ? packet.ReadBool() : null;
         tiles.Update(session, itemId, requestedHeight, multiWalk);

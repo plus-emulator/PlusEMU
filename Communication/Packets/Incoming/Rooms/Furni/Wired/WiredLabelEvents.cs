@@ -1,6 +1,7 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms.Chat.Filter;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 
@@ -10,7 +11,7 @@ public sealed class SaveWiredLabelTextEvent(IWordFilterManager wordFilter) : Roo
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
         try {
-            var furniId = packet.ReadUInt();
+            var furniId = BuildersClubItemIds.FromWire(packet.ReadUInt());
             var text = packet.ReadString();
 
             if (!packet.HasDataRemaining()) {
@@ -31,7 +32,7 @@ public sealed class SaveWiredLabelSettingsEvent : RoomPacketEvent
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
         try {
-            var furniId = packet.ReadUInt();
+            var furniId = BuildersClubItemIds.FromWire(packet.ReadUInt());
             var color = packet.ReadInt();
             var visibility = packet.ReadInt();
             var alwaysOpen = packet.ReadBool();

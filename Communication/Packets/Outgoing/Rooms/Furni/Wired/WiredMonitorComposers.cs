@@ -4,6 +4,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Rooms.Instance;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 
@@ -45,7 +46,7 @@ public sealed class WiredMonitorDataComposer(WiredMonitorSnapshot snapshot) : IS
             packet.WriteInteger(latest == null ? 0 : Seconds(latest));
             packet.WriteString(latest?.Reason ?? "");
             packet.WriteString(latest?.Label ?? "");
-            packet.WriteInteger(unchecked((int)(latest?.BoxId ?? 0)));
+            packet.WriteInteger(unchecked((int)BuildersClubItemIds.ToWire(latest?.BoxId ?? 0)));
         }
 
         packet.WriteInteger(_captured.Logs.Recent.Count);
@@ -56,7 +57,7 @@ public sealed class WiredMonitorDataComposer(WiredMonitorSnapshot snapshot) : IS
             packet.WriteInteger(Seconds(entry));
             packet.WriteString(entry.Reason);
             packet.WriteString(entry.Label);
-            packet.WriteInteger(unchecked((int)entry.BoxId));
+            packet.WriteInteger(unchecked((int)BuildersClubItemIds.ToWire(entry.BoxId)));
         }
     }
     private static int Seconds(WiredRoomLogEntry entry) => (int)Math.Clamp(entry.Timestamp.ToUnixTimeSeconds(), 0, int.MaxValue);

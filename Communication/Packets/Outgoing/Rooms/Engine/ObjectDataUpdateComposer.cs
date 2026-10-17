@@ -12,7 +12,7 @@ public class ObjectDataUpdateComposer(uint itemId, FurnitureDataSnapshot data) :
     public uint MessageId => ServerPacketHeader.ObjectDataUpdateComposer;
     public void Compose(IOutgoingPacket packet)
     {
-        packet.WriteString(itemId.ToString(CultureInfo.InvariantCulture));
+        packet.WriteString(BuildersClubItemIds.ToWire(itemId).ToString(CultureInfo.InvariantCulture));
         FurnitureDataSerializer.Write(packet, data, 0, 0);
     }
 }

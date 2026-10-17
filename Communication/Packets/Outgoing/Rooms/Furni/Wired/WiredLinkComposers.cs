@@ -1,5 +1,6 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Links;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 
@@ -8,7 +9,7 @@ public sealed class WiredLinkOpenComposer(uint furniId) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.WiredLinkOpenComposer;
 
-    public void Compose(IOutgoingPacket packet) => packet.WriteUInteger(furniId);
+    public void Compose(IOutgoingPacket packet) => packet.WriteUInteger(BuildersClubItemIds.ToWire(furniId));
 }
 
 /// <summary>package_82/class_3192 -> package_113/class_3325: [room, furni, selected network, receive local, networks].</summary>
@@ -20,7 +21,7 @@ public sealed class WiredLinkConfigurationComposer(uint roomId, uint furniId, st
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteUInteger(roomId);
-        packet.WriteUInteger(furniId);
+        packet.WriteUInteger(BuildersClubItemIds.ToWire(furniId));
         packet.WriteString(selectedNetworkId);
         packet.WriteBoolean(receiveLocal);
         WriteNetworks(packet, networks);
@@ -52,7 +53,7 @@ public sealed class WiredLinkOperationResultComposer(uint roomId, uint furniId, 
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteUInteger(roomId);
-        packet.WriteUInteger(furniId);
+        packet.WriteUInteger(BuildersClubItemIds.ToWire(furniId));
         packet.WriteInteger(operation);
         packet.WriteInteger((int)result);
         packet.WriteBoolean(configuration != null);
@@ -75,16 +76,16 @@ public sealed class WiredLinkConnectionsComposer(uint roomId, uint furniId, stri
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteUInteger(roomId);
-        packet.WriteUInteger(furniId);
+        packet.WriteUInteger(BuildersClubItemIds.ToWire(furniId));
         packet.WriteString(networkId);
         packet.WriteInteger(connections.Count);
 
         foreach (var connection in connections) {
             packet.WriteUInteger(connection.RoomId);
             packet.WriteString(connection.RoomName);
-            packet.WriteUInteger(connection.ItemId);
-            // PlusEMU has no Builders Club furni.
-            packet.WriteBoolean(false);
+            var wireId = BuildersClubItemIds.ToWire(connection.ItemId);
+            packet.WriteUInteger(wireId);
+            packet.WriteBoolean(BuildersClubItemIds.Contains(wireId));
             packet.WriteBoolean(connection.ReceiveLocal);
         }
     }
@@ -98,7 +99,7 @@ public sealed class WiredLinkNetworkInvalidatedComposer(uint roomId, uint furniI
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteUInteger(roomId);
-        packet.WriteUInteger(furniId);
+        packet.WriteUInteger(BuildersClubItemIds.ToWire(furniId));
         packet.WriteString(deletedNetworkId);
     }
 }

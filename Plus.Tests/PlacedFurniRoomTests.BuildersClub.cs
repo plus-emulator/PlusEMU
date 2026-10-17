@@ -1,6 +1,7 @@
 using Plus.Communication.Packets.Incoming.Catalog;
 using Plus.Communication.Packets.Incoming.Rooms.Engine;
 using Plus.Communication.Packets.Outgoing;
+using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.Catalog.BuildersClub;
@@ -138,6 +139,40 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
+    public async Task BuildersClubFurniTravelsByItsBandIdAndIsPickedUpByIt()
+    {
+        // AIR WIN63-202610151745-318700621 com/sulake/habbo/utils/class_1858.as:21-24: the infostand knows a Builders Club furni only
+        // by an object id in this band (InfoStandFurniView.as:598-635).
+        Viewer();
+        var (service, store, _) = BuildersClub();
+
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0);
+
+        var placed = Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
+        var wire = BuildersClubItemIds.ToWire(placed.Id);
+        Assert.True(BuildersClubItemIds.Contains(wire));
+        Assert.Same(placed, _room.GetRoomItemHandler().GetItem(wire));
+        // Ordinary and temporary furni keep their ids both ways.
+        Assert.Equal(42u, BuildersClubItemIds.ToWire(42u));
+        Assert.Equal(42u, BuildersClubItemIds.FromWire(42u));
+        Assert.Equal(TemporaryItemIds.First, BuildersClubItemIds.ToWire(TemporaryItemIds.First));
+        Assert.Equal(TemporaryItemIds.First, BuildersClubItemIds.FromWire(TemporaryItemIds.First));
+
+        using (var reader = new BinaryReader(new MemoryStream(TypedFurnitureStateTests.Payload(new ObjectAddComposer(RoomItemSnapshot.Capture(placed)))))) {
+            Assert.Equal(unchecked((int)wire), TypedFurnitureStateTests.ReadInt(reader));
+        }
+
+        var pickup = new RoomItemPickupService(Proxy<IGameClientManager>((method, args) => method == "GetClientByUserId" && (int)args[0]! == 7 ? _client : null),
+            Proxy<IQuestManager>((_, _) => throw new InvalidOperationException("A Builders Club pickup is no quest pickup")),
+            new PickupStore(_ => throw new InvalidOperationException("A Builders Club furni is never stored in an inventory")), service);
+        await new PickupObjectEvent(pickup).Parse(_client, ClientPacket(2, unchecked((int)wire)));
+
+        Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
+        Assert.Equal(store.Created, store.Deleted);
+        Assert.Equal(placed.Id, BuildersClubItemIds.ToWire(placed.Id));
+    }
+
+    [Fact]
     public void AFailedPlacementDeletesTheStoredFurni()
     {
         Viewer();
@@ -196,7 +231,8 @@ public partial class PlacedFurniRoomTests
 
     private sealed class BuildersClubTestStore : IBuildersClubStore
     {
-        private uint _nextId = 5000;
+        // Far from the ids other tests give ordinary furni: a Builders Club furni's band id is process-wide.
+        private uint _nextId = 1_950_000_000;
         public DateTimeOffset? Expiry { get; set; }
         public int Standing { get; set; }
         public List<uint> Created { get; } = [];

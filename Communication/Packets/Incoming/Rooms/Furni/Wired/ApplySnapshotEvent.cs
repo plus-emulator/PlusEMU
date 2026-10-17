@@ -1,6 +1,7 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 
@@ -13,7 +14,7 @@ public sealed class ApplySnapshotEvent(IWiredRequestGateService gates) : RoomPac
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
         try {
-            var boxId = packet.ReadUInt();
+            var boxId = BuildersClubItemIds.FromWire(packet.ReadUInt());
 
             if (!packet.HasDataRemaining() && gates.TryPass(session, WiredRequestKind.ApplySnapshot)) {
                 room.GetWired().ApplySnapshot(session, boxId);

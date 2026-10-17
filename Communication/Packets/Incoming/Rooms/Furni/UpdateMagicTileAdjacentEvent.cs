@@ -7,7 +7,7 @@ internal class UpdateMagicTileAdjacentEvent(IMagicTileService tiles) : IPacketEv
 {
     public Task Parse(GameClient session, IIncomingPacket packet)
     {
-        var itemId = packet.ReadUInt();
+        var itemId = BuildersClubItemIds.FromWire(packet.ReadUInt());
         var moveDown = packet.ReadBool();
         tiles.UpdateAdjacent(session, itemId, moveDown);
 

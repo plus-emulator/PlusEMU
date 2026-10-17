@@ -1,6 +1,7 @@
 using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Engine;
 
@@ -13,7 +14,7 @@ internal class PickupObjectEvent(IRoomItemPickupService pickup) : IPacketEvent
     public Task Parse(GameClient session, IIncomingPacket packet)
     {
         packet.ReadInt(); // Furniture category; pickup resolves the item by its ID.
-        var itemId = packet.ReadUInt();
+        var itemId = BuildersClubItemIds.FromWire(packet.ReadUInt());
         var confirmed = packet.HasDataRemaining() && packet.ReadBool();
         var room = session.GetHabbo()?.CurrentRoom;
         var stored = room?.GetRoomItemHandler().GetItem(itemId) is { } item && room.GetWired().StoresVariableData(item);

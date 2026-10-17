@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Engine;
 
@@ -29,7 +30,7 @@ public class ObjectRemoveMultipleComposer : IServerPacket
         packet.WriteInteger(_ids.Length);
 
         foreach (var id in _ids) {
-            packet.WriteInteger(unchecked((int)id));
+            packet.WriteInteger(unchecked((int)BuildersClubItemIds.ToWire(id)));
         }
 
         packet.WriteInteger(_pickerId);

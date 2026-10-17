@@ -15,7 +15,7 @@ public class ObjectsDataUpdateComposer(IReadOnlyList<(uint ItemId, FurnitureData
         packet.WriteInteger(updates.Count);
 
         foreach (var (itemId, data) in updates) {
-            packet.WriteUInteger(itemId);
+            packet.WriteUInteger(BuildersClubItemIds.ToWire(itemId));
             FurnitureDataSerializer.Write(packet, data, 0, 0);
         }
     }

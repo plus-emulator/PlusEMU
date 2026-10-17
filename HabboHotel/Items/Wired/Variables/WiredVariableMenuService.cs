@@ -174,6 +174,8 @@ public sealed class WiredVariableMenuService : IWiredVariableMenuService
     /// </summary>
     public void ReadObject(Room room, GameClient session, int type, int objectId)
     {
+        objectId = type == 0 ? BuildersClubItemIds.FromWire(objectId) : objectId;
+
         if (!CanInspect(room, session) || Menu(room).ReadObject(type, objectId) is not { } result) {
             return;
         }

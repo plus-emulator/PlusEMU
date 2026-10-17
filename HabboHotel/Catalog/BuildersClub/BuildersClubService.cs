@@ -112,7 +112,7 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         }
 
         if (!placed) {
-            store.Delete(item.Id);
+            Delete(item.Id);
             PlacementError(session);
 
             return;
@@ -155,7 +155,7 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         }
 
         if (!placed) {
-            store.Delete(item.Id);
+            Delete(item.Id);
             PlacementError(session);
 
             return;
@@ -185,7 +185,7 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
             item.RoomId = 0;
         }
 
-        store.Delete(item.Id);
+        Delete(item.Id);
 
         if (clients.GetClientByUserId(item.UserId) is { } placer && placer.GetHabbo() != null) {
             SendFurniCount(placer);
@@ -218,8 +218,7 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         }
 
         var extraData = ExtraData(definition, request.ExtraParam);
-
-        return new Item
+        var item = new Item
         {
             Id = store.Create(definition.Id, habbo.Id, extraData),
             OwnerId = (uint)habbo.Id,
@@ -229,6 +228,15 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
             ExtraData = FurniExtraData.Load(definition, extraData, keepLegacy: true),
             IsBuildersClub = true
         };
+        BuildersClubItemIds.Assign(item.Id);
+
+        return item;
+    }
+
+    private void Delete(uint itemId)
+    {
+        store.Delete(itemId);
+        BuildersClubItemIds.Release(itemId);
     }
 
     private bool TryGetOffer(Habbo habbo, BuildersClubPlacement request, out CatalogOffer offer)

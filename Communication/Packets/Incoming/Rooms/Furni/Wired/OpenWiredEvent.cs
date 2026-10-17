@@ -1,6 +1,7 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Settings;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 
@@ -16,7 +17,7 @@ internal sealed class OpenWiredEvent : RoomPacketEvent
         uint id;
 
         try {
-            id = packet.ReadUInt();
+            id = BuildersClubItemIds.FromWire(packet.ReadUInt());
         }
         catch (ArgumentException) {
             return Task.CompletedTask;

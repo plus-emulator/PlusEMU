@@ -56,4 +56,18 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(218, f.Habbo.Effects!.CurrentEffect);
         Assert.False(f.User.Frozen);
     }
+
+    // Observed on AIR WIN63-202610151745-318700621 (wf_act_kick_user.cov_selector): a teamed user re-entering the room gets no avatar
+    // effect back, also when the session left before the room let go of it.
+    [Fact]
+    public void LeavingTheRoomDropsTheTeamEffectEvenWhenTheSessionMovedOn()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_kick_user", intParams: [], text: "");
+        GiveUserAccess(f);
+        f.User.ApplyEffect(226);
+        f.User.Team = Plus.HabboHotel.Rooms.Games.Teams.Team.Green;
+        f.Habbo.CurrentRoom = null;
+        f.Room.GetRoomUserManager().RemoveUserFromRoom(f.Client, false, false);
+        Assert.Equal(0, f.Habbo.Effects!.CurrentEffect);
+    }
 }

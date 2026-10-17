@@ -2282,7 +2282,12 @@ public partial class ModernWiredRuntimeTests
         Assert.False(targets.HasTargets);
         var user = new RoomUser(1, 0, 8, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 1, Y = 0 };
         RoomUsers(room)[8] = user;
+        // Starting next to the user is no arrival (observed on AIR WIN63-202610151745-318700621); stepping away and back is one.
         targets.Follow(bot, user);
+        Assert.Empty(targets.Poll(room));
+        bot.SetPos(3, 3, 0);
+        targets.Poll(room);
+        bot.SetPos(0, 0, 0);
         Assert.Same(user, Assert.Single(targets.Poll(room)).TargetUser);
         Assert.Empty(targets.Poll(room));
         RoomUsers(room)[8] = new RoomUser(1, 0, 8, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused);

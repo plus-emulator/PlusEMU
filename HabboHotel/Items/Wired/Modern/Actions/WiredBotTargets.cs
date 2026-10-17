@@ -16,7 +16,12 @@ public sealed class WiredBotTargets
     public static WiredBotTargets For(Room room) => Rooms.GetValue(room, _ => new());
     public bool HasTargets => _targets.Count != 0;
     public void Walk(RoomUser bot, Item item) => _targets[bot] = new(item, null);
-    public void Follow(RoomUser bot, RoomUser user) => _targets[bot] = new(null, user);
+    // A bot told to follow a user it already stands next to has not reached anyone yet. Observed on AIR WIN63-202610151745-318700621
+    // (wf_trg_bot_reached_avtr.bot): with the bot adjacent to the owner, Follow Avatar fired no Bot Reached Avatar.
+    public void Follow(RoomUser bot, RoomUser user) => _targets[bot] = new(null, user)
+    {
+        Reached = Math.Max(Math.Abs(user.X - bot.X), Math.Abs(user.Y - bot.Y)) <= 1
+    };
     public void Forget(RoomUser user)
     {
         _targets.Remove(user);

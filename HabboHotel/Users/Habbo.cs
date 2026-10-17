@@ -38,6 +38,9 @@ public class Habbo
     internal uint WiredRoomNetworkDestination { get; set; }
     internal uint WiredRoomEntrySourceRoomId { get; set; }
     internal uint WiredRoomEntryDestinationRoomId { get; set; }
+
+    /// <summary>Set by a Teleport to Room forward: the effect the user wore before the teleport glow, given back after arriving.</summary>
+    internal int? ForwardArrivalRestoreEffect { get; set; }
     public HabboStats? HabboStats { get; set; }
 
     private readonly DateTimeOffset? _cachedAt;

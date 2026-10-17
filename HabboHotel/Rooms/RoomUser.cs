@@ -28,6 +28,9 @@ public class RoomUser
 
     public WiredRoomEntrySnapshot WiredRoomEntry { get; internal set; }
 
+    /// <summary>A user forwarded by Teleport to Room glows until EndsAt (Unix ms), then wears Restore again.</summary>
+    internal (long EndsAt, int Restore)? ForwardArrivalEffect { get; set; }
+
     /// <summary>The look a football gate put on, kept only while the user's own look is still the one it was made from.</summary>
     public FootballGateOutfit? FootballGateOutfit { get; set; }
 

@@ -11,6 +11,7 @@ using Plus.Communication.Packets.Outgoing.Rooms.Session;
 using Plus.Core;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Rooms.AI;
@@ -419,6 +420,13 @@ public class RoomUserManager
         }
 
         _room.SendUser(user);
+
+        // A user forwarded by Teleport to Room arrives still glowing and loses the glow as an in-room teleport does after landing.
+        if (session.GetHabbo().ForwardArrivalRestoreEffect is { } restore) {
+            session.GetHabbo().ForwardArrivalRestoreEffect = null;
+            user.ForwardArrivalEffect = (_clock.GetUtcNow().ToUnixTimeMilliseconds() + WiredRoomForwarding.ArrivalEffectMilliseconds, restore);
+            user.ApplyEffect(WiredRoomForwarding.TeleportEffectId);
+        }
 
         if (_room.CheckRights(session, true)) {
             user.SetStatus("flatctrl", "4");
@@ -970,6 +978,7 @@ public class RoomUserManager
             }
 
             ProcessStressBots();
+            ExpireForwardArrivalEffects();
 
             if (UsesV2Movement) {
                 _room.GetGameMap().Navigation!.Executor.Tick();
@@ -977,6 +986,23 @@ public class RoomUserManager
             }
             else {
                 CycleUsers();
+            }
+        }
+    }
+
+    private void ExpireForwardArrivalEffects()
+    {
+        var now = _clock.GetUtcNow().ToUnixTimeMilliseconds();
+
+        foreach (var user in GetUserList()) {
+            if (user?.ForwardArrivalEffect is not { } arrival || now < arrival.EndsAt) {
+                continue;
+            }
+
+            user.ForwardArrivalEffect = null;
+
+            if (user.CurrentEffect == WiredRoomForwarding.TeleportEffectId) {
+                user.ApplyEffect(arrival.Restore);
             }
         }
     }

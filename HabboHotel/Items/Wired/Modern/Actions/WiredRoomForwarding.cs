@@ -88,6 +88,15 @@ public static class WiredRoomForwarding
         return PositiveId(roomText, out var fallback) ? new(fallback) : null;
     }
 
+    /// <summary>The teleport glow a forwarded user wears before leaving and for a moment after arriving.</summary>
+    public const int TeleportEffectId = 4;
+
+    /// <summary>How long the glow stays on a forwarded user after arriving, as an in-room teleport keeps it after landing.</summary>
+    public const int ArrivalEffectMilliseconds = 1500;
+
+    // A forwarded user glows with the teleport effect from the firing and leaves on the room tick an in-room teleport would land on
+    // (the 4th tick after the firing), keeping the glow into the next room. Observed on AIR WIN63-202610151745-318700621: the client
+    // follows the forward at once (navigator onRoomForward), so the wait is the server's.
     public static bool Execute(WiredRuntimeContext context, WiredConfiguration config, ILogger logger, IItemTravelStore travelStore)
     {
         var items = context.Targets.ResolveFurni(context, config.SelectedItems, config.FurniSources["links"]);
@@ -97,21 +106,52 @@ public static class WiredRoomForwarding
             return false;
         }
 
+        var room = context.Room;
+        var wired = room.GetWired();
+        var firstTick = wired.FirstRoomTickAfter(context.NowMilliseconds);
+        var tick = WiredFlashStates.StateUpdateMilliseconds;
         var forwarded = false;
 
         foreach (var user in context.Targets.ResolveUsers(context, [], config.UserSources["users"]).Where(user => !user.IsBot)) {
             var client = user.GetClient();
             var habbo = client?.GetHabbo();
 
-            if (client == null || habbo == null || !ReferenceEquals(habbo.CurrentRoom, context.Room)) {
+            if (client == null || habbo == null || !ReferenceEquals(habbo.CurrentRoom, room)) {
                 continue;
             }
 
-            habbo.IsTeleporting = target.TeleporterId != 0;
-            habbo.TeleportingRoomId = target.TeleporterId == 0 ? 0 : target.RoomId;
-            habbo.TeleporterId = target.TeleporterId;
-            client.Send(new RoomForwardComposer(target.RoomId));
-            context.Room.GetWired().RecordRoomNetworkForward(user, target.RoomId);
+            var original = user.CurrentEffect == TeleportEffectId ? 0 : user.CurrentEffect;
+
+            void Forward()
+            {
+                if (!user.IsAttachedTo(room) || !ReferenceEquals(habbo.CurrentRoom, room)) {
+                    return;
+                }
+
+                habbo.IsTeleporting = target.TeleporterId != 0;
+                habbo.TeleportingRoomId = target.TeleporterId == 0 ? 0 : target.RoomId;
+                habbo.TeleporterId = target.TeleporterId;
+                habbo.ForwardArrivalRestoreEffect = original;
+                client.Send(new RoomForwardComposer(target.RoomId));
+                room.GetWired().RecordRoomNetworkForward(user, target.RoomId);
+            }
+
+            if (!wired.ScheduleOnRoomTick(context, firstTick + 3 * tick, Forward)) {
+                Forward();
+                forwarded = true;
+
+                continue;
+            }
+
+            // The glow is dropped on the tick an in-room teleport drops it; a user still in the room (the forward was not sent) gets
+            // the previous effect back, one who left keeps the glow for the arrival.
+            var restore = WiredTemporaryEffects.For(room).Acquire(user, () => user.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room),
+                TeleportEffectId);
+
+            if (!wired.ScheduleOnRoomTick(context, firstTick + 6 * tick, restore, restore)) {
+                restore();
+            }
+
             forwarded = true;
         }
 

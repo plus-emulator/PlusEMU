@@ -71,6 +71,13 @@ internal static class FurniExtraData
             return board;
         }
 
+        // Observed on hhus (AIR WIN63-202610131318-860371703): every firing flips a box's legacy state between "1" and "0" (says something,
+        // periodically, long periodically and walks on alike), and a box that never fired rests at "0". A box keeps legacy data in the
+        // inventory too, so a placed box can always flash.
+        if (IsWiredBox(definition)) {
+            return new LegacyDataFormat { Data = stored.Length == 0 ? "0" : stored };
+        }
+
         switch (definition.InteractionType) {
             case InteractionType.CrackableEgg: {
                     var data = definition.CreateData();
@@ -96,6 +103,10 @@ internal static class FurniExtraData
                 return keepLegacy ? new LegacyDataFormat { Data = stored } : FurniObjectData.Empty;
         }
     }
+
+    private static bool IsWiredBox(ItemDefinition definition) => definition.InteractionType is InteractionType.WiredTrigger
+        or InteractionType.WiredCondition or InteractionType.WiredEffect or InteractionType.WiredSelector or InteractionType.WiredAddon
+        or InteractionType.WiredVariable;
 
     public static string BackgroundPairs(string stored)
     {

@@ -161,6 +161,22 @@ public sealed class RoomChatServiceTests
         Assert.Equal(2, Bubble(world.SenderPackets[^1]));
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): talk is kept up to 200 characters.
+    [Theory]
+    [InlineData(150, 150)]
+    [InlineData(200, 200)]
+    [InlineData(300, 200)]
+    public async Task TalkKeepsUpTo200Characters(int said, int kept)
+    {
+        var world = new World();
+        world.Filter.Banned = true;
+
+        await world.Service.Chat(world.Sender, new string('x', said), 0);
+
+        var payload = world.SenderPackets[^1].Payload;
+        Assert.Equal(kept, System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(payload.AsSpan(4, 2)));
+    }
+
     // Room chat packets: i32 virtual id, string message, i32 gesture, i32 bubble style.
     private static int Bubble((uint Header, byte[] Payload) packet)
     {

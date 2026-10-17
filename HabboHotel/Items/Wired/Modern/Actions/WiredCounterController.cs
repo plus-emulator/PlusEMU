@@ -325,7 +325,7 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             FurnitureStateEvents.Record(room, clock.Item);
         }
     }
-    // Only Wired-driven plain counters publish the data-only frames; game timers, game counters and GUI/unknown writers keep the object update.
+    // Only Wired-driven counters publish the data-only frames; game timers and GUI/unknown writers keep the object update.
     private static WiredCounterPublication ModernBatch(WiredClockOrigin origin) =>
         origin == WiredClockOrigin.ModernWired ? WiredCounterPublication.BatchData : WiredCounterPublication.Object;
     private void PublishClock(Clock clock, long previous, WiredCounterPublication publication = WiredCounterPublication.Object, bool force = false) => PublishDisplay(clock,
@@ -342,7 +342,9 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             }
         }
 
-        if (clock.Countdown || clock.GameAware && publication != WiredCounterPublication.BatchData) {
+        // Observed on AIR WIN63-202610131318-860371703: a Wired-started game counter sends each second as ObjectDataUpdate like a plain counter;
+        // only the native game timers keep the object update.
+        if (clock.Countdown) {
             publication = WiredCounterPublication.Object;
             force = false;
         }

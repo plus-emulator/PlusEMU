@@ -43,7 +43,7 @@ public class NitroClientFactory : IGameClientFactory<WsSessionProxy, WsServer>
     {
         var flashClient = new FlashGameClient((NitroServer)server, _packetFactory, _logger)
         { Revision = _revisionsCache.InternalRevision };
-        var wsSession = new WsSessionProxy((NitroServer)server, flashClient);
+        var wsSession = new WsSessionProxy((NitroServer)server, flashClient, _logger);
 
         return wsSession;
     }

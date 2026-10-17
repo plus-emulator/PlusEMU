@@ -147,7 +147,28 @@ public abstract class GameClient
     }
 
     internal abstract (bool Complete, bool Malformed, uint MessageId, int HeaderLength, int Length) GetMessageIdAndPacketLength(ReadOnlyMemory<byte> buffer);
+    /// <summary>
+    /// Runs on a transport thread as async void, where an escaping exception ends the process. A receive that
+    /// fails closes this connection only.
+    /// </summary>
     internal virtual async void OnReceived(byte[] buffer, long offset, long size)
+    {
+        try {
+            await ReceiveAsync(buffer, offset, size);
+        }
+        catch (Exception exception) {
+            _logger.LogError(exception, "Receive failed for connection {ConnectionId}; closing it", Id);
+
+            try {
+                Disconnect();
+            }
+            catch (Exception disconnectException) {
+                _logger.LogError(disconnectException, "Failed to close connection {ConnectionId}", Id);
+            }
+        }
+    }
+
+    private async Task ReceiveAsync(byte[] buffer, long offset, long size)
     {
         if (size > int.MaxValue) {
             throw new InvalidOperationException("");

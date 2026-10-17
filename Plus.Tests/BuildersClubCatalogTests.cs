@@ -232,6 +232,20 @@ public sealed class BuildersClubCatalogTests
         Assert.False(snapshot.CanGift);
     }
 
+    // Migration 91 mirrors hhus' BUILDERS_CLUB tree with Habbo's page ids; the fresh install carries it.
+    [Fact]
+    public void TheFreshInstallCarriesHabbosBuildersClubTree()
+    {
+        var migration = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/91_BuildersClubCatalogTree.sql"));
+        var fresh = File.ReadAllText(HabbiconPacketTests.Repo("Database/FreshInstall.sql"));
+
+        Assert.Contains("-- 173 pages (8 headings without a page), 4787 offers, 5665 page offers, 4711 furni.", migration);
+        Assert.Contains("(2129066,NULL,'Furni',2,NULL,0,'furni','default_3x3','BUILDERS_CLUB',1,1,0)", fresh);
+        Assert.Contains("(2129110,2129066,'Building Blocks',28,NULL,0,'bc_blocks_recolorable','recolorable_furniture','BUILDERS_CLUB',1,1,0)", fresh);
+        Assert.Contains("(2100000001,2129066,'Hot now',195,NULL,2,'2020_hotnow','default_3x3','BUILDERS_CLUB',1,0,0)", fresh);
+        Assert.Contains("'builders_club_loyalty','NORMAL',1,1,0)", fresh);
+    }
+
     private static CatalogOffer Offer(int id, ItemDefinition definition) => new()
     {
         Id = id,

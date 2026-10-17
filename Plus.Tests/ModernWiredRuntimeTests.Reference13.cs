@@ -86,6 +86,23 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(2, 2), present.Coordinate);
     }
 
+    // Observed on hhus (AIR WIN63-202610131318-860371703): a bot teleport has a normal teleport's effect 4 and timing.
+    [Fact]
+    public void BotTeleportGlowsAndLandsLikeATeleport()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_teleport", intParams: [100, 100], text: "Bobby");
+        var bot = AddNamedBot(f, 9, "Bobby", 2, 2);
+        MakeTargetWalkable(f);
+        var replies = Capture(f.Client);
+        f.Fire(land: false);
+        Assert.Equal(new Point(2, 2), bot.Coordinate);
+        Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
+        f.Advance(1450);
+        Assert.Equal(new Point(2, 2), bot.Coordinate);
+        f.Advance(50);
+        Assert.Equal(new Point(1, 1), bot.Coordinate);
+    }
+
     [Fact]
     public void BotTeleportStaysPutWhenTheFurniTileIsTaken()
     {

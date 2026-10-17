@@ -380,7 +380,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
 
         if (WiredBotActions.Names.Contains(name)) {
-            return WiredBotActions.Execute(name, context, config, _movement, _botStore);
+            return WiredBotActions.Execute(name, context, config, _movement, _botStore, (bot, item) => Teleport(context, bot, item, false));
         }
 
         if (WiredMovementActions.Names.Contains(name)) {
@@ -844,7 +844,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
         var effects = user.GetClient()?.GetHabbo()?.Effects;
 
-        if (user.IsBot || effects == null) {
+        if (!user.IsBot && effects == null) {
             return Relocate();
         }
 
@@ -873,7 +873,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return Relocate();
         }
 
-        var restore = WiredTemporaryEffects.For(room).Acquire(user, () => effects.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room),
+        var restore = WiredTemporaryEffects.For(room).Acquire(user, () => user.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room),
             fast ? FastTeleportEffectId : TeleportEffectId);
         release = restore;
 

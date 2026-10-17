@@ -63,11 +63,11 @@ public partial class PlacedFurniRoomTests
         var actor = ExecutorConfiguredActor(new() { Engine = PathfindingEngine.V2, MaxExpansionsPerRoomTick = 0 });
         actor.MoveTo(2, 2);
         ExecutorTick();
-        Assert.Equal((1, 1), (actor.GoalX, actor.GoalY));
+        Assert.Equal((2, 1), (actor.GoalX, actor.GoalY));
         Assert.True(actor.Movement.HasIntent);
         Assert.False(actor.HasStatus("mv"));
-        ExecutorAdditionalBot(1, 1, 2);
+        ExecutorAdditionalBot(2, 1, 2);
         ExecutorTick();
-        Assert.Equal((1, 1), (actor.GoalX, actor.GoalY));
+        Assert.Equal((2, 1), (actor.GoalX, actor.GoalY));
     }
 }

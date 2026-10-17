@@ -551,7 +551,7 @@ DROP TABLE IF EXISTS `catalog_offer_products`;
 CREATE TABLE `catalog_offer_products` (
   `offer_id` int(11) NOT NULL,
   `position` tinyint(3) unsigned NOT NULL,
-  `product_type` enum('furni','effect','badge','bot','pet','habbicon') NOT NULL,
+  `product_type` enum('furni','effect','badge','bot','pet','habbicon','builders_club','builders_club_addon') NOT NULL,
   `furniture_id` int(10) unsigned DEFAULT NULL,
   `effect_id` int(11) DEFAULT NULL,
   `badge_code` varchar(35) DEFAULT NULL,
@@ -2549,6 +2549,8 @@ DROP TABLE IF EXISTS `user_builders_club`;
 CREATE TABLE `user_builders_club` (
   `user_id` int(11) NOT NULL,
   `expires_at` datetime(6) NOT NULL,
+  `furni_limit` int(10) unsigned NOT NULL DEFAULT 0,
+  `furni_addon` int(10) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`user_id`),
   CONSTRAINT `fk_user_builders_club_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -15107,10 +15109,13 @@ INSERT INTO `catalog_offer_products` VALUES
 (13194,0,'furni',65025,NULL,NULL,NULL,NULL,NULL,1,''),
 (13195,0,'furni',65026,NULL,NULL,NULL,NULL,NULL,1,''),
 (13196,0,'furni',65027,NULL,NULL,NULL,NULL,NULL,1,''),
+(13199,0,'builders_club_addon',NULL,NULL,NULL,NULL,NULL,NULL,250,''),
 (13203,0,'furni',1000000717,NULL,NULL,NULL,NULL,NULL,1,''),
 (13204,0,'furni',5491,NULL,NULL,NULL,NULL,NULL,1,''),
 (13205,0,'furni',5492,NULL,NULL,NULL,NULL,NULL,1,''),
 (13207,0,'furni',5494,NULL,NULL,NULL,NULL,NULL,1,''),
+(13211,0,'builders_club_addon',NULL,NULL,NULL,NULL,NULL,NULL,600,''),
+(13212,0,'builders_club_addon',NULL,NULL,NULL,NULL,NULL,NULL,45,''),
 (13213,0,'furni',5495,NULL,NULL,NULL,NULL,NULL,1,''),
 (13214,0,'furni',5496,NULL,NULL,NULL,NULL,NULL,1,''),
 (13215,0,'furni',5497,NULL,NULL,NULL,NULL,NULL,1,''),
@@ -15130,6 +15135,7 @@ INSERT INTO `catalog_offer_products` VALUES
 (13245,0,'furni',55253,NULL,NULL,NULL,NULL,NULL,1,''),
 (13246,0,'furni',45313,NULL,NULL,NULL,NULL,NULL,1,'20'),
 (13248,0,'furni',55273,NULL,NULL,NULL,NULL,NULL,1,''),
+(13275,0,'builders_club',NULL,NULL,NULL,NULL,NULL,NULL,31,'1000'),
 (13276,0,'furni',5539,NULL,NULL,NULL,NULL,NULL,1,''),
 (13277,0,'furni',65028,NULL,NULL,NULL,NULL,NULL,1,''),
 (13278,0,'furni',65029,NULL,NULL,NULL,NULL,NULL,1,''),
@@ -15412,6 +15418,7 @@ INSERT INTO `catalog_offer_products` VALUES
 (13882,0,'furni',5956,NULL,NULL,NULL,NULL,NULL,1,''),
 (13884,0,'furni',5958,NULL,NULL,NULL,NULL,NULL,1,''),
 (13885,0,'furni',5959,NULL,NULL,NULL,NULL,NULL,1,''),
+(13902,0,'builders_club',NULL,NULL,NULL,NULL,NULL,NULL,31,'1000'),
 (13904,0,'furni',20296,NULL,NULL,NULL,NULL,NULL,1,'523'),
 (13911,0,'furni',4557,NULL,NULL,NULL,NULL,NULL,1,'20'),
 (13934,0,'furni',900229,NULL,NULL,NULL,NULL,NULL,1,''),
@@ -30028,13 +30035,13 @@ INSERT INTO `catalog_offer_products` VALUES
 (1800017782,0,'furni',1000010511,NULL,NULL,NULL,NULL,NULL,1,''),
 (1800017783,0,'furni',1000010512,NULL,NULL,NULL,NULL,NULL,1,''),
 (1800017784,0,'furni',1000010513,NULL,NULL,NULL,NULL,NULL,1,''),
-(1800017785,0,'furni',1000010514,NULL,NULL,NULL,NULL,NULL,1,''),
+(1800017785,0,'furni',1000010514,NULL,NULL,NULL,NULL,NULL,1,'');
+INSERT INTO `catalog_offer_products` VALUES
 (1800017786,0,'furni',1000010515,NULL,NULL,NULL,NULL,NULL,1,''),
 (1800017789,0,'furni',1000010381,NULL,NULL,NULL,NULL,NULL,1,''),
 (1800017790,0,'furni',1000010382,NULL,NULL,NULL,NULL,NULL,1,''),
 (1800017791,0,'furni',1000010383,NULL,NULL,NULL,NULL,NULL,1,''),
-(1800017792,0,'furni',1000010384,NULL,NULL,NULL,NULL,NULL,1,'');
-INSERT INTO `catalog_offer_products` VALUES
+(1800017792,0,'furni',1000010384,NULL,NULL,NULL,NULL,NULL,1,''),
 (1800017793,0,'furni',1000010385,NULL,NULL,NULL,NULL,NULL,1,''),
 (1800017794,0,'furni',1000010386,NULL,NULL,NULL,NULL,NULL,1,''),
 (1800017795,0,'furni',1000010387,NULL,NULL,NULL,NULL,NULL,1,''),
@@ -31787,6 +31794,7 @@ INSERT INTO `catalog_offer_products` VALUES
 (1850004935,0,'furni',1000008560,NULL,NULL,NULL,NULL,NULL,1,''),
 (1850004936,0,'furni',1000008553,NULL,NULL,NULL,NULL,NULL,1,''),
 (1850004937,0,'furni',1000008465,NULL,NULL,NULL,NULL,NULL,1,''),
+(1890000001,0,'builders_club',NULL,NULL,NULL,NULL,NULL,NULL,93,'1500'),
 (1900000001,0,'furni',300,NULL,NULL,NULL,NULL,NULL,1,''),
 (1900000002,0,'furni',307,NULL,NULL,NULL,NULL,NULL,1,''),
 (1900000003,0,'furni',335,NULL,NULL,NULL,NULL,NULL,1,''),
@@ -34473,10 +34481,13 @@ INSERT INTO `catalog_offers` VALUES
 (13194,'bc_block_1_7',1,0,0,0,1,1,''),
 (13195,'bc_block_1_8',1,0,0,0,1,1,''),
 (13196,'bc_block_1_9',1,0,0,0,1,1,''),
+(13199,'builders_club_addon_250furnis',50,0,0,0,0,1,''),
 (13203,'xmas13_rug',3,0,0,0,1,1,''),
 (13204,'xmas13_shelves',1,150,0,0,1,1,''),
 (13205,'xmas13_pillar',2,0,0,0,1,1,''),
 (13207,'xmas13_tools1',1,0,0,0,1,1,''),
+(13211,'builders_club_addon_600furnis',100,0,0,0,0,1,''),
+(13212,'builders_club_addon_45furnis',10,0,0,0,0,1,''),
 (13213,'xmas13_paintsplat1',0,75,0,0,1,1,''),
 (13214,'xmas13_gingerbread',2,0,0,0,1,1,''),
 (13215,'xmas13_light',3,0,0,0,1,1,''),
@@ -34496,6 +34507,7 @@ INSERT INTO `catalog_offers` VALUES
 (13245,'xmas13_jack',2,0,0,0,1,1,''),
 (13246,'post_it_xmas',3,0,0,0,1,1,''),
 (13248,'xmas13_toolbox',1,0,0,0,1,1,''),
+(13275,'builders_club_31_days',100,0,0,0,0,1,''),
 (13276,'bc_block_redbrick_1',1,0,0,0,1,1,''),
 (13277,'bc_block_redbrick_10',1,0,0,0,1,1,''),
 (13278,'bc_block_redbrick_11',1,0,0,0,1,1,''),
@@ -34778,6 +34790,7 @@ INSERT INTO `catalog_offers` VALUES
 (13882,'fball_grp_cote',6,0,0,0,0,1,''),
 (13884,'fball_grp_fnc3',5,0,0,0,0,1,''),
 (13885,'fball_audbench2',6,0,0,0,1,1,''),
+(13902,'loyalty_bc_31_days',0,105,5,0,0,1,''),
 (13904,'poster_523',3,0,0,0,1,1,''),
 (13911,'post_it_juninas',3,0,0,0,1,1,''),
 (13934,'hblooza14_shotgall',20,0,0,0,1,1,''),
@@ -51070,6 +51083,7 @@ INSERT INTO `catalog_offers` VALUES
 (1850004935,'survival_c26_walltarget',0,0,0,0,1,1,''),
 (1850004936,'rec26_paintwallart',0,0,0,0,1,1,''),
 (1850004937,'nft_diamond_painting18',0,0,0,0,1,1,''),
+(1890000001,'builders_club_3_months',250,0,0,0,0,1,''),
 (1900000001,'a0 prizetrophy2_g',0,0,0,0,1,1,''),
 (1900000002,'a0 prizetrophy3_s',0,0,0,0,1,1,''),
 (1900000003,'a0 prizetrophy7_b',0,0,0,0,1,1,''),
@@ -72874,7 +72888,13 @@ INSERT INTO `catalog_page_offers` VALUES
 (2000000022,35198,24),
 (2000000022,35199,25),
 (2000000022,35200,26),
-(2000000022,35201,27);
+(2000000022,35201,27),
+(2000000024,13275,0),
+(2000000024,1890000001,1),
+(2000000025,13902,0),
+(2000000026,13212,0),
+(2000000026,13199,1),
+(2000000026,13211,2);
 /*!40000 ALTER TABLE `catalog_page_offers` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -73972,7 +73992,11 @@ INSERT INTO `catalog_page_texts` VALUES
 (2000000021,2,''),
 (2000000022,0,''),
 (2000000022,1,''),
-(2000000022,2,'');
+(2000000022,2,''),
+(2000000023,0,'<b><font color=\"#cc6600\" size=\"16\">What is Builders Club?</font></b><br><br>Have you ever wanted to build a room with huge collection of furni? Tired of counting your credits to finish a room? Or do you simply want to let your creativity flow? Builders Club is your ultimate solution!<br><br><b><font color=\"#cc6600\" size=\"16\">It\'s as easy as 1-2- Free</font></b><br><img src=\"https://images.habbo.com/c_images/catalogue/bc_instr_1.png\"/><br><br><br><br><br><br><br><br><ul><li>Select one of <a href=\"event:navigator/tab/me\">your rooms</a> (or make a new one).</li><li>Open the Builders Club Warehouse</li><li>Drag and drop items into your room</li></ul><br><br><i>Hint: If you want to pick up all the builders club furni from a room, type \":pickallbc\" into the chat and hit enter.</i><br><br>Click here to learn more about <a href=\"event:habbopages/builders-club/info\">builders club member benefits.</a> If you have specific questions, you can also check out our <a href=\"event:habbopages/builders-club/faq\">FAQs</a> page!'),
+(2000000024,0,'<b><font color=\"#cc6600\" size=\"16\">What is Builders Club?</font></b><br><br>Have you always dreamed of building a room with tons of furni? Builders Club is your ultimate solution! Click <a href=\"event:habbopages/builders-club/info\">here</a> to learn more.'),
+(2000000025,0,'<b><font color=\"#cc6600\" size=\"16\">What is Builders Club?</font></b><br><br>Have you always dreamed of building a room with tons of furni? Builders Club is your ultimate solution! Click <a href=\"event:habbopages/builders-club/info\">here</a> to learn more.'),
+(2000000026,0,'<b><font color=\"#d85b00\" size=\"16\">Builders Club Upgrades</font></b><br><br><font align=\"justify\">Have you reached your <b> Furni Limit </b> but want to <b> keep building? </b> No problem! Simply increase your furni limits and creative possibilities!');
 /*!40000 ALTER TABLE `catalog_page_texts` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -74403,7 +74427,11 @@ INSERT INTO `catalog_pages` VALUES
 (2000000019,2123951,'Recolorable Alphabet Blocks',101,NULL,17,'bc_alphabet_recolorable','recolorable_furniture','NORMAL',1,1,0),
 (2000000020,NULL,'Furni',2,NULL,1,'furni','default_3x3','BUILDERS_CLUB',1,1,0),
 (2000000021,2000000020,'Building Blocks',28,NULL,1,'bc_blocks_recolorable','recolorable_furniture','BUILDERS_CLUB',1,1,0),
-(2000000022,2000000020,'Alphabet Blocks',101,NULL,2,'bc_alphabet_recolorable','recolorable_furniture','BUILDERS_CLUB',1,1,0);
+(2000000022,2000000020,'Alphabet Blocks',101,NULL,2,'bc_alphabet_recolorable','recolorable_furniture','BUILDERS_CLUB',1,1,0),
+(2000000023,2000000015,'Builders Club',193,NULL,2,'builders_club_frontpage','builders_club_frontpage','NORMAL',1,1,0),
+(2000000024,2000000015,'Builders Club Membership',193,NULL,3,'builders_club_membership','builders_club_loyalty','NORMAL',1,1,0),
+(2000000025,2000000015,'Builders Club (Diamonds)',193,NULL,4,'loyalty_bc','builders_club_loyalty','NORMAL',1,1,0),
+(2000000026,2000000015,'BC Upgrades',194,NULL,5,'builders_upgrades','builders_club_addons','NORMAL',1,1,0);
 /*!40000 ALTER TABLE `catalog_pages` ENABLE KEYS */;
 UNLOCK TABLES;
 

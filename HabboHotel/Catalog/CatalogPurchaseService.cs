@@ -15,6 +15,7 @@ using Plus.Core;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
+using Plus.HabboHotel.Catalog.BuildersClub;
 using Plus.HabboHotel.Catalog.Utilities;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Groups;
@@ -57,6 +58,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
     private readonly IGroupForumStore _forums;
     private readonly TimeProvider _clock;
     private readonly ILogger<CatalogPurchaseService> _logger;
+    private readonly IBuildersClubService? _buildersClub;
     // Window id the client's club purchase page requests offers for.
     private const int ClubWindow = 1;
 
@@ -70,8 +72,9 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         IHabbiconService habbicons,
         IClubMembershipService clubMemberships, IClubRewards clubRewards, IRewardTrackManager rewardTracks, IAvatarEffectStore avatarEffects,
         IGroupManager groups, IGroupForumStore forums,
-        TimeProvider clock, ILogger<CatalogPurchaseService> logger)
+        TimeProvider clock, ILogger<CatalogPurchaseService> logger, IBuildersClubService? buildersClub = null)
     {
+        _buildersClub = buildersClub;
         _catalogManager = catalogManager;
         _habbicons = habbicons;
         _settingsManager = settingsManager;
@@ -316,6 +319,25 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                     inventory.Bots.AddBot(bot!);
                     session.Send(new BotInventoryComposer(BotInventorySnapshot.Capture(inventory.Bots.Bots.Values)));
                     session.Send(new FurniListNotificationComposer((uint)bot!.Id, 5));
+                    break;
+                }
+            // Builders Club membership days and furni limit, bought from the Memberships pages like Habbo Club. The status goes out at once,
+            // which is how the client learns the new expiry and limit (AIR HabboCatalog.onBuildersClubSubscriptionStatus, HabboCatalog.as:3694).
+            case CatalogProductType.BuildersClub:
+            case CatalogProductType.BuildersClubAddon: {
+                    var habbo = session.GetHabbo();
+
+                    if (_buildersClub is not { } buildersClub || !buildersClub.CanBuy(habbo, product)) {
+                        session.Send(new PurchaseErrorComposer(PurchaseError.Unavailable));
+
+                        return;
+                    }
+
+                    if (!ChargePurchase((connection, transaction) => buildersClub.Deliver(connection, transaction, habbo, product))) {
+                        return;
+                    }
+
+                    buildersClub.SendStatus(session);
                     break;
                 }
             case CatalogProductType.Badge: {

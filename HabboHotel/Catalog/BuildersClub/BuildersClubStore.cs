@@ -1,12 +1,21 @@
+using System.Data;
 using Dapper;
 using Plus.Database;
 
 namespace Plus.HabboHotel.Catalog.BuildersClub;
 
+// A user's Builders Club membership: when it ends and the furni bought on top of the furni limit.
+// FurniLimit is the highest limit a bought package gave (0 for none).
+public sealed record BuildersClubMembership(DateTimeOffset ExpiresAt, int FurniLimit, int FurniAddon);
+
 public interface IBuildersClubStore
 {
-    // When the user's Builders Club membership ends; null when the user never had one.
-    DateTimeOffset? MembershipExpiry(int userId);
+    // The user's membership; null when the user never had one.
+    BuildersClubMembership? Membership(int userId);
+    // Adds days to a running membership or starts one now, raising its furni limit to the package's; part of the purchase's transaction.
+    void Extend(IDbConnection connection, IDbTransaction transaction, int userId, int days, int furniLimit, DateTimeOffset now);
+    // Adds furni to a running membership's limit; false without one. Part of the purchase's transaction.
+    bool AddFurni(IDbConnection connection, IDbTransaction transaction, int userId, int furni, DateTimeOffset now);
     // Builders Club furni the user has standing in rooms.
     int FurniCount(int userId);
     // Stores a new Builders Club furni for the user, not yet in a room, and returns its id.
@@ -16,12 +25,35 @@ public interface IBuildersClubStore
 
 public sealed class BuildersClubStore(IDatabase database) : IBuildersClubStore
 {
-    public DateTimeOffset? MembershipExpiry(int userId)
+    public BuildersClubMembership? Membership(int userId)
     {
         using var connection = database.Connection();
 
-        return connection.ExecuteScalar<DateTimeOffset?>("SELECT expires_at FROM user_builders_club WHERE user_id = @userId", new { userId });
+        var row = connection.QuerySingleOrDefault<MembershipRow>(
+            "SELECT expires_at AS ExpiresAt, furni_limit AS FurniLimit, furni_addon AS FurniAddon FROM user_builders_club WHERE user_id = @userId", new { userId });
+
+        return row == null ? null : new(row.ExpiresAt, row.FurniLimit, row.FurniAddon);
     }
+
+    private sealed class MembershipRow
+    {
+        public DateTimeOffset ExpiresAt { get; set; }
+        public int FurniLimit { get; set; }
+        public int FurniAddon { get; set; }
+    }
+
+    public void Extend(IDbConnection connection, IDbTransaction transaction, int userId, int days, int furniLimit, DateTimeOffset now)
+    {
+        var current = connection.ExecuteScalar<DateTimeOffset?>("SELECT expires_at FROM user_builders_club WHERE user_id = @userId FOR UPDATE",
+            new { userId }, transaction);
+        var expiry = (current is { } end && end > now ? end : now).AddDays(days).UtcDateTime;
+        connection.Execute("INSERT INTO user_builders_club (user_id, expires_at, furni_limit) VALUES (@userId, @expiry, @furniLimit) " +
+            "ON DUPLICATE KEY UPDATE expires_at = @expiry, furni_limit = GREATEST(furni_limit, @furniLimit)", new { userId, expiry, furniLimit }, transaction);
+    }
+
+    public bool AddFurni(IDbConnection connection, IDbTransaction transaction, int userId, int furni, DateTimeOffset now) =>
+        connection.Execute("UPDATE user_builders_club SET furni_addon = furni_addon + @furni WHERE user_id = @userId AND expires_at > @now",
+            new { userId, furni, now = now.UtcDateTime }, transaction) == 1;
 
     public int FurniCount(int userId)
     {

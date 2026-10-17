@@ -1,3 +1,4 @@
+using System.Data;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Plus.Communication.Packets.Outgoing.Catalog;
@@ -31,6 +32,10 @@ public interface IBuildersClubService
     void PlaceWallItem(Room room, GameClient session, BuildersClubPlacement request, string wallLocation);
     // Removes a Builders Club furni from its room and deletes it; it never goes to an inventory.
     bool TryPickUp(GameClient session, Room room, Item item);
+    // Whether the user may buy the product now: furni for the limit need a running membership.
+    bool CanBuy(Habbo habbo, CatalogProduct product);
+    // Delivers a bought membership or furni limit inside the purchase's transaction; false refuses the purchase.
+    bool Deliver(IDbConnection connection, IDbTransaction transaction, Habbo habbo, CatalogProduct product);
 }
 
 /// <summary>
@@ -51,15 +56,39 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
     public BuildersClubStatus Status(Habbo habbo)
     {
         var now = clock.GetUtcNow();
-        var expiry = store.MembershipExpiry(habbo.Id);
+        var membership = store.Membership(habbo.Id);
         var grace = TimeSpan.FromSeconds(Setting("builders_club.grace_seconds", 0));
-        var secondsLeft = SecondsUntil(expiry, now);
-        var withGrace = expiry is { } end ? SecondsUntil(end + grace, now) : 0;
+        var secondsLeft = SecondsUntil(membership?.ExpiresAt, now);
+        var withGrace = membership is { } running ? SecondsUntil(running.ExpiresAt + grace, now) : 0;
+        var max = Setting("builders_club.max_furni_limit", DefaultMaxFurniLimit);
+        // Bought furni (builders_club_addon offers) count while the membership or its grace runs.
         var limit = secondsLeft > 0 || withGrace > 0
-            ? Setting("builders_club.furni_limit", DefaultMemberFurniLimit)
+            ? (int)Math.Min((long)Math.Max(Setting("builders_club.furni_limit", DefaultMemberFurniLimit), membership!.FurniLimit) + membership.FurniAddon, max)
             : Setting("builders_club.trial_furni_limit", DefaultTrialFurniLimit);
 
-        return new(secondsLeft, limit, Math.Max(limit, Setting("builders_club.max_furni_limit", DefaultMaxFurniLimit)), Math.Max(secondsLeft, withGrace));
+        return new(secondsLeft, limit, Math.Max(limit, max), Math.Max(secondsLeft, withGrace));
+    }
+
+    public bool CanBuy(Habbo habbo, CatalogProduct product) => product.Type switch
+    {
+        CatalogProductType.BuildersClub => product.Amount > 0,
+        CatalogProductType.BuildersClubAddon => product.Amount > 0 && Status(habbo).IsMember,
+        _ => false
+    };
+
+    public bool Deliver(IDbConnection connection, IDbTransaction transaction, Habbo habbo, CatalogProduct product)
+    {
+        switch (product.Type) {
+            case CatalogProductType.BuildersClub when product.Amount > 0:
+                store.Extend(connection, transaction, habbo.Id, product.Amount,
+                    int.TryParse(product.ExtraParam, NumberStyles.None, CultureInfo.InvariantCulture, out var furniLimit) ? furniLimit : 0, clock.GetUtcNow());
+
+                return true;
+            case CatalogProductType.BuildersClubAddon when product.Amount > 0:
+                return store.AddFurni(connection, transaction, habbo.Id, product.Amount, clock.GetUtcNow());
+            default:
+                return false;
+        }
     }
 
     public void SendStatus(GameClient session) => session.Send(new BuildersClubSubscriptionStatusComposer(Status(session.GetHabbo())));

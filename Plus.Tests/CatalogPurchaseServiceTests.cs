@@ -384,7 +384,7 @@ public sealed class CatalogPurchaseServiceTests
         bool factorySucceeds = true, bool club = false, bool bot = false, bool botPreset = true,
         bool botStoreFails = false, int points = 0, int pointsType = 0, bool effect = false,
         InteractionType interaction = InteractionType.None, string extraParam = "", IGroupManager? groups = null, IGroupForumStore? forums = null,
-        string itemName = "chair")
+        string itemName = "chair", CatalogProduct? product = null, Plus.HabboHotel.Catalog.BuildersClub.IBuildersClubService? buildersClub = null)
     {
         var definition = new ItemDefinition
         {
@@ -401,7 +401,9 @@ public sealed class CatalogPurchaseServiceTests
             CostPoints = points,
             PointsType = pointsType,
             LocalizationKey = "chair",
-            Products = [effect
+            Products = [product != null
+                ? product
+                : effect
                 ? new CatalogProduct { Type = CatalogProductType.Effect, EffectId = 108 }
                 : bot
                 ? new CatalogProduct { Type = CatalogProductType.Bot, BotPresetId = (int)definition.Id }
@@ -454,7 +456,8 @@ public sealed class CatalogPurchaseServiceTests
             groups ?? Proxy<IGroupManager, EmptyProxy>(),
             forums ?? Proxy<IGroupForumStore, EmptyProxy>(),
             new FixedClock(new DateTimeOffset(2040, 2, 3, 4, 5, 6, TimeSpan.Zero)),
-            NullLogger<CatalogPurchaseService>.Instance);
+            NullLogger<CatalogPurchaseService>.Instance,
+            buildersClub);
 
         return new(service, client, habbo, sent, rewards, factory, botStore, tracks);
     }
@@ -476,6 +479,60 @@ public sealed class CatalogPurchaseServiceTests
     private static TInterface Proxy<TInterface, TProxy>()
         where TInterface : class
         where TProxy : DispatchProxy => DispatchProxy.Create<TInterface, TProxy>();
+
+    // Builders Club membership and furni limit are bought from the Memberships pages and delivered inside the charge.
+    [Fact]
+    public async Task BuildersClubMembershipIsDeliveredInTheChargeAndItsStatusGoesOutAtOnce()
+    {
+        var buildersClub = new RecordingBuildersClub(canBuy: true);
+        var membership = new CatalogProduct { Type = CatalogProductType.BuildersClub, Amount = 31, ExtraParam = "1000" };
+        var context = Context(product: membership, buildersClub: buildersClub);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "", 5));
+
+        Assert.Equal(1, context.Rewards.Charges);
+        Assert.Equal(90, context.Habbo.Credits);
+        Assert.Same(membership, Assert.Single(buildersClub.Delivered).Product);
+        Assert.Same(context.Rewards.Transaction, buildersClub.Delivered[0].Transaction);
+        Assert.Equal(1, buildersClub.StatusSent);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+        Assert.Empty(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.AllItems);
+    }
+
+    [Fact]
+    public async Task ABuildersClubPurchaseTheUserMayNotMakeIsRefusedBeforeCharging()
+    {
+        var buildersClub = new RecordingBuildersClub(canBuy: false);
+        var context = Context(product: new CatalogProduct { Type = CatalogProductType.BuildersClubAddon, Amount = 45 }, buildersClub: buildersClub);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "", 1));
+
+        Assert.Equal(0, context.Rewards.Charges);
+        Assert.Empty(buildersClub.Delivered);
+        Assert.Equal(0, buildersClub.StatusSent);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
+    }
+
+    private sealed class RecordingBuildersClub(bool canBuy) : Plus.HabboHotel.Catalog.BuildersClub.IBuildersClubService
+    {
+        public List<(CatalogProduct Product, IDbTransaction Transaction)> Delivered { get; } = [];
+        public int StatusSent { get; private set; }
+        public bool CanBuy(Habbo habbo, CatalogProduct product) => canBuy;
+        public bool Deliver(IDbConnection connection, IDbTransaction transaction, Habbo habbo, CatalogProduct product)
+        {
+            Delivered.Add((product, transaction));
+
+            return true;
+        }
+        public void SendStatus(GameClient session) => StatusSent++;
+        public Plus.HabboHotel.Catalog.BuildersClub.BuildersClubStatus Status(Habbo habbo) => throw new NotSupportedException();
+        public void SendFurniCount(GameClient session) => throw new NotSupportedException();
+        public void PlaceFloorItem(Plus.HabboHotel.Rooms.Room room, GameClient session, Plus.HabboHotel.Catalog.BuildersClub.BuildersClubPlacement request, int x, int y, int rotation) =>
+            throw new NotSupportedException();
+        public void PlaceWallItem(Plus.HabboHotel.Rooms.Room room, GameClient session, Plus.HabboHotel.Catalog.BuildersClub.BuildersClubPlacement request, string wallLocation) =>
+            throw new NotSupportedException();
+        public bool TryPickUp(GameClient session, Plus.HabboHotel.Rooms.Room room, Item item) => throw new NotSupportedException();
+    }
 
     private sealed record TestContext(
         CatalogPurchaseService Service,

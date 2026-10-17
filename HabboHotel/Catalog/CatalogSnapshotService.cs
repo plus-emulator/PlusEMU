@@ -79,7 +79,7 @@ public sealed class CatalogSnapshotService(ICatalogManager catalog, TimeProvider
             offer.CostPoints,
             offer.PointsType,
             ItemUtility.CanGiftItem(offer),
-            offer.Products.Select(product => CaptureProduct(offer, product)).ToImmutableArray(),
+            offer.Products.Where(product => !product.IsBuildersClub).Select(product => CaptureProduct(offer, product)).ToImmutableArray(),
             offer.ClubLevel,
             ItemUtility.CanSelectAmount(offer),
             offer.PreviewImage,

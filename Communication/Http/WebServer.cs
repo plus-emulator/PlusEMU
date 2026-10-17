@@ -8,7 +8,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NLog.Extensions.Logging;
 using Plus.HabboHotel.Badges.Rarity;
+using Plus.Communication.Encryption.Keys;
 using Plus.Communication.Http.Air;
+using Plus.HabboHotel.Users.Authentication;
 using Plus.HabboHotel.Catalog;
 
 namespace Plus.Communication.Http;
@@ -35,7 +37,7 @@ public static class WebErrors
 /// <summary>
 /// Kestrel host for the badge leaderboard (/api/badges/leaderboard), furnidata (/api/gamedata/furnidata) and Habbo's public
 /// Wired Variables Web API (/api/public/rooms/{roomId}/variables...) with its docs page (/api/public/api-docs/), and the AIR client's
-/// Flash gamedata (/gamedata/hashes and the files it lists). TLS is terminated
+/// Flash gamedata (/gamedata/hashes and the files it lists) and launcher contract (/api/client/air.json, /api/client/air-ticket). TLS is terminated
 /// by the reverse proxy in front of it.
 /// </summary>
 public class WebServer : IWebServer
@@ -47,17 +49,22 @@ public class WebServer : IWebServer
     private readonly FurnidataEndpoints _furnidata;
     private readonly WiredWebApiEndpoints? _wiredWebApi;
     private readonly FlashGamedataEndpoints? _flashGamedata;
+    private readonly AirClientEndpoints? _airClient;
     private WebApplication? _app;
 
     public WebServer(IOptions<WebServerConfiguration> options, IBadgeRarityManager badgeRarity, ICatalogFurnidata furnidata,
         Plus.HabboHotel.Items.Wired.WebApi.IWiredWebApiService? wiredWebApi = null, IFlashGamedata? flashGamedata = null,
-        IOptions<AirClientConfiguration>? airClient = null)
+        IOptions<AirClientConfiguration>? airClient = null, IHandshakeRsaKeyProvider? handshakeKey = null, ISsoTicketStore? tickets = null,
+        ILauncherTokenStore? launcherTokens = null, TimeProvider? time = null)
     {
         _configuration = options.Value;
         _badgeLeaderboard = new(badgeRarity);
         _furnidata = new(furnidata);
         _wiredWebApi = wiredWebApi == null ? null : new(wiredWebApi);
         _flashGamedata = flashGamedata == null ? null : new(flashGamedata, airClient?.Value ?? new());
+        _airClient = handshakeKey == null || tickets == null || launcherTokens == null
+            ? null
+            : new(airClient?.Value ?? new(), handshakeKey, tickets, launcherTokens, time ?? TimeProvider.System);
     }
 
     public IReadOnlyCollection<string> Urls => _app?.Urls.ToList() ?? [];
@@ -82,6 +89,7 @@ public class WebServer : IWebServer
         _badgeLeaderboard.Map(app);
         _furnidata.Map(app);
         _flashGamedata?.Map(app);
+        _airClient?.Map(app);
 
         if (_wiredWebApi != null) {
             _wiredWebApi.Map(app);

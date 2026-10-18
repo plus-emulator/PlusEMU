@@ -487,4 +487,9 @@ public static class ClientPacketHeader
     public const uint WiredSetObjectVariableValueEvent = 3165; // wiredmenu.class_3782
     // The inspection tab's read of one object's variables (WiredMenuInspectionTab.requestVariablesForObject).
     public const uint WiredGetVariablesForObjectEvent = 2612; // wiredmenu.class_3018
+
+    // Free product claims (cursed dragon adoption) and the new-feature promo expiry, AIR WIN63-202610151745-318700621.
+    public const uint HasClaimedProductEvent = 628; // package_143.class_3538
+    public const uint ClaimProductEvent = 152; // package_143.class_2610
+    public const uint GetSecondsUntilEvent = 903; // package_146.class_3739
 }

@@ -2579,6 +2579,24 @@ CREATE TABLE `user_calendar_claims` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `user_claimed_products`
+--
+
+DROP TABLE IF EXISTS `user_claimed_products`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_claimed_products` (
+  `user_id` int(11) NOT NULL,
+  `claim_id` varchar(64) NOT NULL,
+  `choice` int(11) NOT NULL DEFAULT -1,
+  `claimed_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`user_id`,`claim_id`),
+  KEY `claim_id` (`claim_id`),
+  CONSTRAINT `fk_user_claimed_products_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `user_clothing`
 --
 
@@ -12683,6 +12701,7 @@ INSERT INTO `bots_pet_responses` VALUES
 ('speech.pet29','Grrr;'),
 ('speech.pet3','woof woof woof!!!;hooooowl;wooooof!;Woof Woof!;sit;lay;snf;Woof;'),
 ('speech.pet30','Grrr;'),
+('speech.pet37','Grrr;'),
 ('speech.pet4','*pack of fresh salmon please*;Rawrrr!;*sniff sniff*;Yawnnnn..;Rawr! ... Rawrrrrr?;snf;'),
 ('speech.pet5','Oink Oink..;*Mellow*;Sniff... Sniff..;snf;Oink!;snf;lay;oink;'),
 ('speech.pet6','Grrr;'),

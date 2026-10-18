@@ -32,7 +32,7 @@ public sealed class WiredSelectorTests
         new(2, 100, "High chair", "1", 2, 1, 1, 1, [(2, 1)]),
         new(3, 200, "Lamp", "0", 4, 4, 0, 1, [(4, 4)]),
         new(4, 100, "Wall", "0", 1, 1, 0, 1, [(1, 1)], false),
-        new(5, 100, "Wired", "0", 1, 2, 0, 1, [(1, 2)], IsWired: true)
+        new(5, 300, "Wired", "0", 1, 2, 0, 1, [(1, 2)], IsWired: true)
     ],
     [
         new(1, "Ada", WiredSelectorEntityKind.Player, 2, 1, 1, new HashSet<int> { 9 }, 7, Sitting: true, Sign: 3, Dance: 2, EquippedGroupId: 9),
@@ -159,6 +159,16 @@ public sealed class WiredSelectorTests
         Assert.Single(WiredSelectorModule.SelectRaw("wf_slc_users_byaction", Config([10, 0, 0, 1, 2]), world, Inputs()).Selection.UserIds);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: Furni In Area and Furni On Furni select the Wired boxes in their scope.
+    [Fact]
+    public void AreaAndOnFurniSelectorsIncludeWiredBoxes()
+    {
+        Assert.Equal(new uint[] { 1, 5 }, WiredSelectorModule.SelectRaw("wf_slc_furni_area", Config([1, 1, 1, 2]), World(), Inputs())
+            .Selection.FurniIds.Order());
+        Assert.Equal(new uint[] { 5 }, WiredSelectorModule.SelectRaw("wf_slc_furni_onfurni", Config([3, 100], [5]), World(), Inputs())
+            .Selection.FurniIds.Order());
+    }
+
     [Fact]
     public void EmptyNeighborhoodSelectsNothingAndTheFullEditorGridIsAccepted()
     {
@@ -174,7 +184,8 @@ public sealed class WiredSelectorTests
             var selected = WiredSelectorModule.SelectRaw(name, full, World(), Inputs()).Selection;
 
             if (name == "wf_slc_furni_neighborhood") {
-                Assert.Equal(new uint[] { 1, 2, 3 }, selected.FurniIds.Order());
+                // The Wired box in the grid is selected like any other floor furni.
+                Assert.Equal(new uint[] { 1, 2, 3, 5 }, selected.FurniIds.Order());
             }
             else {
                 Assert.Equal(new[] { 1, 2, 3, 4 }, selected.UserIds.Order());

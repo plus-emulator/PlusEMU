@@ -28,7 +28,9 @@ public static class WiredSelectorModule
 
         c = WiredSelectorConfiguration.Normalize(name, c);
 
-        var available = world.Furni.Where(x => x.IsFloor && (input.IncludeWired || !x.IsWired)).ToList();
+        // Observed on AIR WIN63-202610151745-318700621: Furni In Area and Furni On Furni select the Wired boxes in their scope like any
+        // other floor furni (the box stack itself, a variable definition box).
+        var available = world.Furni.Where(x => x.IsFloor).ToList();
         var selected = new WiredSelectedIds();
         var target = name == "wf_slc_remote" ? WiredSelectorTarget.Both
             : name.StartsWith("wf_slc_users_", StringComparison.Ordinal) ? WiredSelectorTarget.User : WiredSelectorTarget.Furni;

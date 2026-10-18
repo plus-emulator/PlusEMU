@@ -86,6 +86,20 @@ public class WiredRoomCadenceTests
     }
 
     [Fact]
+    public async Task ADedicatedPassRunsOffTheSharedPool()
+    {
+        var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
+        bool? pooled = null;
+
+        Assert.True(RoomCycle.TryStart(room, () => pooled = Thread.CurrentThread.IsThreadPoolThread, dedicated: true));
+        await room.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.False(pooled);
+        Assert.True(RoomCycle.TryStart(room, () => { }));
+        await room.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public void FastCadenceDoesNotChangeLegacyTickOrCrashDuration()
     {
         Assert.Equal(TimeSpan.FromMilliseconds(50), RoomCycle.WiredInterval);

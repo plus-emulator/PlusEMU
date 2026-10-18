@@ -692,7 +692,7 @@ public class RoomUser
         var client = GetClient();
 
         if (item > 0 && item != previous && !IsBot && client != null) {
-            _rewards.Progress(client, RewardTrackActions.FindHandItem);
+            _rewards.Progress(client, RewardTrackActions.FindHandItem, 1, item.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
     }
 

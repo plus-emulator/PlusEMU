@@ -11,6 +11,7 @@ using Plus.Core;
 using Plus.Database;
 using Plus.HabboHotel.Badges;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Quests.DailyTasks;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Badges;
 
@@ -24,6 +25,7 @@ public sealed class RewardTrackManager : IRewardTrackManager, IStartable
     private readonly IDatabase _database;
     private readonly IBadgeManager _badgeManager;
     private readonly TimeProvider _clock;
+    private readonly IDailyTaskManager? _dailyTasks;
     private readonly object _definitions = new();
     private readonly object _gates = new();
     private readonly Dictionary<int, object> _userGates = new();
@@ -31,12 +33,20 @@ public sealed class RewardTrackManager : IRewardTrackManager, IStartable
     private readonly HashSet<int> _loaded = new();
     private List<RewardTrack> _tracks = new();
 
-    public RewardTrackManager(ILogger<RewardTrackManager> logger, IDatabase database, IBadgeManager badgeManager, TimeProvider clock)
+    public RewardTrackManager(ILogger<RewardTrackManager> logger, IDatabase database, IBadgeManager badgeManager, TimeProvider clock,
+        IDailyTaskManager? dailyTasks = null)
     {
         _logger = logger;
         _database = database;
         _badgeManager = badgeManager;
         _clock = clock;
+        // Every progress action also reaches the daily tasks, and a claimed daily task is an action of its own.
+        _dailyTasks = dailyTasks;
+
+        if (dailyTasks != null) {
+            dailyTasks.TaskClaimed += session => Progress(session, RewardTrackActions.ClaimDailyTask);
+        }
+
         Current = this;
     }
 
@@ -62,11 +72,15 @@ public sealed class RewardTrackManager : IRewardTrackManager, IStartable
         }
     }
 
-    public void Progress(GameClient session, string actionType, int amount = 1)
+    public void Progress(GameClient session, string actionType, int amount = 1) => Progress(session, actionType, amount, null);
+
+    public void Progress(GameClient session, string actionType, int amount, string? parameter)
     {
         if (session == null) {
             return;
         }
+
+        _dailyTasks?.Progress(session, actionType, amount, parameter);
 
         var habbo = session.GetHabbo();
 

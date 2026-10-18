@@ -434,6 +434,9 @@ public static class ClientPacketHeader
     public const uint GetRewardTracksEvent = 9450;
     public const uint ClaimRewardTrackPrizeEvent = 3959;
     public const uint PurchaseRewardTrackPremiumEvent = 2482;
+    // Daily tasks, AIR WIN63-202610151745-318700621 (quest/dailytasks/DailyTasksController.as).
+    public const uint GetDailyTasksEvent = 4100; // package_24.class_1820
+    public const uint ClaimDailyTaskEvent = 4101; // package_24.class_2568
     public const uint GetQuizQuestionsEvent = 640;
     public const uint PostQuizAnswersEvent = 3024;
     // Room music

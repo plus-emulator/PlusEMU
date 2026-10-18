@@ -3,6 +3,7 @@ using Plus.Communication.Packets.Outgoing.Rooms.Chat;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Quests;
+using Plus.HabboHotel.Quests.DailyTasks;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Subscriptions;
@@ -303,5 +304,6 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
         user.SignExpiresAt = now + SignDuration;
         room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)
         { Actor = user, Action = (int)WiredAvatarAction.Sign, Code = signId });
+        rewards.Progress(session, DailyTaskActions.ShowSign, 1, signId.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 }

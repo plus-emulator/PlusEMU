@@ -98,7 +98,15 @@ public static class WiredRoomForwarding
             return;
         }
 
-        Task.Run(action);
+        Task.Run(() =>
+        {
+            try {
+                action();
+            }
+            catch (Exception error) {
+                Plus.Core.ExceptionLogger.LogException(error);
+            }
+        });
     }
 
     /// <summary>Replaces the room switch for the calling test flow.</summary>
@@ -163,6 +171,8 @@ public static class WiredRoomForwarding
                 habbo.TeleporterId = target.TeleporterId;
                 habbo.ForwardArrivalRestoreEffect = original;
                 room.GetWired().RecordRoomNetworkForward(user, target.RoomId);
+                // The glow goes along to the linked room (AIR WIN63-202610151745-318700621): leaving must not put the old effect back.
+                WiredTemporaryEffects.For(room).Drop(user);
                 // Observed on AIR WIN63-202610151745-318700621: no RoomForward and no OpenConnection; the server takes the user out of the
                 // room (YouArePlayingGame) and sends the linked room's data starting with RoomReady. Run outside this room's Wired pass so
                 // two rooms forwarding into each other cannot hold each other's locks.

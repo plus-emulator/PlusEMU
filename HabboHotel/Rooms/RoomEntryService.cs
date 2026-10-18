@@ -56,6 +56,11 @@ public sealed class RoomEntryService(IQuestManager quests, TimeProvider clock, I
         room.GetWired()?.SendVisualizationState(session);
         room.GetRoomUserManager().SendEntryRights(session);
         session.Send(new Plus.Communication.Packets.Outgoing.Navigator.RoomRatingComposer(room.Score, !(habbo.RatedRooms.Contains(room.RoomId) || room.OwnerId == habbo.Id)));
+
+        if (room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id) is { CurrentEffect: > 0 } entrant) {
+            session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Avatar.AvatarEffectComposer(entrant.VirtualId, entrant.CurrentEffect));
+        }
+
         session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Session.RaidProtectionCapabilityComposer(room.RoomId, room.OwnerId == habbo.Id));
         room.GetWired()?.TriggerEvent(WiredBoxType.TriggerRoomEnter, habbo);
         var now = clock.GetUtcNow();

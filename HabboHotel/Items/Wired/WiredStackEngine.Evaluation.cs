@@ -530,10 +530,9 @@ internal sealed partial class WiredStackEngine
         {
             context.VariableChanges = context.Policy.Addons.ExecuteInOrder ? null : new WiredVariableChangeBatch();
             firing.HasEffects = ready.Count > 0;
-            var flashFirst = context.ResumeImmediately;
             firing.Accepted = ScheduleActions(firing.Source, stack, ready.ToArray(), legacy,
                 action => action is IWiredConfiguredItem configured ? WiredConfigurationLimits.DelayMilliseconds(context.ConfigurationOf(configured).Delay) : GetDelay(action),
-                firing.FiredAt, prepared: true, drain: !flashFirst);
+                firing.FiredAt, prepared: true);
 
             if (firing.Accepted) {
                 foreach (var addon in addons) {
@@ -544,10 +543,6 @@ internal sealed partial class WiredStackEngine
                 if (!called) {
                     Flash(firing.Source);
                 }
-            }
-
-            if (flashFirst) {
-                FlushThenDrain();
             }
         }, CostsExecution: false, TransfersReservation: true);
     }

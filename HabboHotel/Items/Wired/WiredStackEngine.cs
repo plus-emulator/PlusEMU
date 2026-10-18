@@ -22,16 +22,6 @@ internal sealed partial class WiredStackEngine
 
     /// <summary>Told the engine time a delayed effect falls due, so the room can run a pass right then instead of on its next 50 ms step.</summary>
     internal Action<long>? ActionDue { get; set; }
-    /// <summary>Sends the flashes collected so far; set by the room.</summary>
-    internal Action? FlushFlashes { get; set; }
-
-    // Observed on AIR WIN63-202610151745-318700621: a speech or Enter Room stack's flash (trigger, add-ons and effects in one batch)
-    // goes out before anything its effects send.
-    private void FlushThenDrain()
-    {
-        FlushFlashes?.Invoke();
-        DrainDueActions();
-    }
     private readonly Random _effectOrderRandom;
     private readonly Func<IWiredItem, bool> _attached;
     private readonly Func<object[], bool> _actorPresent;
@@ -433,8 +423,7 @@ internal sealed partial class WiredStackEngine
 
     // Shared by stack pipelines inside a room-engine pass. Delay is captured per firing.
     internal bool ScheduleActions(IWiredItem source, IWiredItem[] capturedStack, IWiredItem[] actions,
-        WiredExecutionContext context, Func<IWiredItem, long>? delayMilliseconds = null, long? firedAt = null, bool prepared = false,
-        bool drain = true)
+        WiredExecutionContext context, Func<IWiredItem, long>? delayMilliseconds = null, long? firedAt = null, bool prepared = false)
     {
         if (!CanSchedule(actions, prepared)) {
             return false;
@@ -519,9 +508,7 @@ internal sealed partial class WiredStackEngine
             }
         }
 
-        if (drain) {
-            DrainDueActions();
-        }
+        DrainDueActions();
 
         return true;
     }

@@ -70,7 +70,6 @@ public partial class WiredComponent : IWiredRuntimeOperations
             WiredEngineLimits.FromSettings(settings.TryGetValue),
             CaptureActorVisit);
         _engine.ActionDue = ArmWake;
-        _engine.FlushFlashes = FlushFlashes;
         _targets = new(
             () => _room.GetRoomItemHandler().GetFloor,
             () => _room.GetRoomUserManager().GetUserList(),
@@ -639,17 +638,39 @@ public partial class WiredComponent : IWiredRuntimeOperations
     internal void FlushFlashes()
     {
         Item[] items;
+        Action[] messages;
 
         lock (_pendingFlashes) {
-            if (_pendingFlashes.Count == 0) {
+            if (_pendingFlashes.Count == 0 && _afterFlash.Count == 0) {
                 return;
             }
 
             items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
             _pendingFlashes.Clear();
+            messages = [.. _afterFlash];
+            _afterFlash.Clear();
         }
 
-        _room.SendObjectsData(FlashOrder(items));
+        if (items.Length > 0) {
+            _room.SendObjectsData(FlashOrder(items));
+        }
+
+        foreach (var send in messages) {
+            send();
+        }
+    }
+
+    private readonly List<Action> _afterFlash = [];
+
+    /// <summary>
+    /// Sends a stack's chat output after the pass's flash. Observed on AIR WIN63-202610151745-318700621: the flash comes before the
+    /// message a stack shows (and before the speaker's chat), while packets such as YouArePlayingGame or AvatarEffect go out at once.
+    /// </summary>
+    internal void AfterFlash(Action send)
+    {
+        lock (_pendingFlashes) {
+            _afterFlash.Add(send);
+        }
     }
 
     /// <summary>

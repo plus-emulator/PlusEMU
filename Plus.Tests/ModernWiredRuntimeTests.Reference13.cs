@@ -143,6 +143,8 @@ public partial class ModernWiredRuntimeTests
         var replies = Capture(f.Client);
         f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = bot });
         f.Advance(0);
+        // The message goes out after the pass's flash.
+        f.Room.FlushWiredFlashes();
         Assert.Equal(said ? 1 : 0, Chats(replies).Count(chat => chat.Text == "hello"));
     }
 

@@ -101,11 +101,27 @@ public sealed class SchemaMigrationDatabaseTests : IDisposable
         var broken = Script("1_Broken.sql", "CREATE TABLE IF NOT EXISTS half (id INT PRIMARY KEY);\nINSERT INTO missing_table VALUES (1);", null);
 
         Assert.False(await Migrator(new[] { broken }).Run(MigrationMode.Startup));
-        Assert.Equal(0, Db().ExecuteScalar<int>("SELECT COUNT(*) FROM schema_migrations"));
+        Assert.Equal("running", Db().ExecuteScalar<string>("SELECT source FROM schema_migrations WHERE migration = '1_Broken.sql'"));
 
         var fixedScript = Script("1_Broken.sql", "CREATE TABLE IF NOT EXISTS half (id INT PRIMARY KEY);\nINSERT INTO half VALUES (1);", null);
         Assert.True(await Migrator(new[] { fixedScript }).Run(MigrationMode.Startup));
         Assert.Equal(1, Db().ExecuteScalar<int>("SELECT COUNT(*) FROM half"));
+        Assert.Equal("applied", Db().ExecuteScalar<string>("SELECT source FROM schema_migrations WHERE migration = '1_Broken.sql'"));
+    }
+
+    [SchemaMigrationDatabaseFact]
+    public async Task MigrationInterruptedMidwayIsNotTakenAsAppliedAndRunsAgain()
+    {
+        Db().Execute("CREATE TABLE existing (id INT PRIMARY KEY)");
+        var scripts = new[] { Script("1_First.sql", "CREATE TABLE IF NOT EXISTS first (id INT PRIMARY KEY);", null), Script("2_Second.sql", "CREATE TABLE IF NOT EXISTS second (id INT PRIMARY KEY);", null) };
+        Assert.True(await Migrator(scripts[..1]).Run(MigrationMode.Startup));
+
+        // What a crash during 2_Second leaves behind: its row at running and part of its work done.
+        Db().Execute("INSERT INTO schema_migrations VALUES ('2_Second.sql', @checksum, 'running', UTC_TIMESTAMP(6)); CREATE TABLE second (id INT PRIMARY KEY);",
+            new { checksum = scripts[1].Checksum });
+
+        Assert.True(await Migrator(scripts).Run(MigrationMode.Startup));
+        Assert.Equal("1_First.sql applied,2_Second.sql applied", Db().ExecuteScalar<string>("SELECT GROUP_CONCAT(migration, ' ', source ORDER BY migration) FROM schema_migrations"));
     }
 
     [SchemaMigrationDatabaseFact]

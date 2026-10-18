@@ -42,6 +42,7 @@ public sealed class SchemaMigrator : ISchemaMigrator
     private readonly ILogger<SchemaMigrator> _logger;
     private readonly IReadOnlyList<MigrationScript> _scripts;
     private readonly Func<string?> _freshInstall;
+    private string? _restorePoint;
 
     public SchemaMigrator(IOptions<DatabaseConfiguration> configuration, ILogger<SchemaMigrator> logger)
         : this(configuration.Value, logger, MigrationScripts.Load(), () => MigrationScripts.FreshInstall(typeof(SchemaMigrator).Assembly)) { }
@@ -114,6 +115,12 @@ public sealed class SchemaMigrator : ISchemaMigrator
             }
         }
 
+        foreach (var (id, at) in plan.Interrupted) {
+            _restorePoint ??= BackupBefore(at);
+            _logger.LogWarning("{Migration} was interrupted at {At:u} (the emulator stopped while applying it) and runs again from the top. " +
+                               "If that fails, restore {Backup} and start again.", id, at, _restorePoint ?? "the backup taken before it");
+        }
+
         if (plan.Pending.Count > 0 && mode == MigrationMode.Startup && !Settings.AutoMigrate) {
             _logger.LogError("{Count} database migrations are pending ({First} first). Start once with --migrate, or turn Database.Migrations.AutoMigrate on.",
                 plan.Pending.Count, plan.Pending[0].Id);
@@ -123,6 +130,17 @@ public sealed class SchemaMigrator : ISchemaMigrator
 
         if (plan.Pending.Any(s => s.Id == FurnidataMigration) && LoadFurnidata() == null) {
             return false;
+        }
+
+        if (plan.Pending.Count > 0) {
+            _logger.LogWarning("Applying {Count} database migrations: {Names}", plan.Pending.Count, string.Join(", ", plan.Pending.Select(s => s.Id)));
+
+            // Before anything is written, so the backup is the database exactly as it was.
+            if (Settings.Backup && !plan.FreshInstall && !await Backup()) {
+                _logger.LogError("No migrations were applied because the backup failed. Fix the backup or set Database.Migrations.Backup to false.");
+
+                return false;
+            }
         }
 
         EnsureLedger(connection);
@@ -135,15 +153,10 @@ public sealed class SchemaMigrator : ISchemaMigrator
             return true;
         }
 
-        _logger.LogWarning("Applying {Count} database migrations: {Names}", plan.Pending.Count, string.Join(", ", plan.Pending.Select(s => s.Id)));
-
-        if (Settings.Backup && !plan.FreshInstall && !await Backup()) {
-            _logger.LogError("No migrations were applied because the backup failed. Fix the backup or set Database.Migrations.Backup to false.");
-
-            return false;
-        }
-
         foreach (var script in plan.Pending) {
+            // A crash leaves the row at running, so the next start knows this migration may be half-applied.
+            Record(connection, new[] { script }, "running");
+
             if (!Apply(script)) {
                 return false;
             }
@@ -172,6 +185,7 @@ public sealed class SchemaMigrator : ISchemaMigrator
 
         foreach (var script in _scripts) {
             var state = plan.Ledger.Contains(script.Id) ? "applied" :
+                plan.Interrupted.Any(i => i.Id == script.Id) ? "PENDING (interrupted while applying)" :
                 plan.Detected.Contains(script) ? "already in the database (will be recorded)" :
                 plan.Pending.Contains(script) ? "PENDING" : "?";
             Console.WriteLine($"{script.Id,-55} {state}");
@@ -194,16 +208,24 @@ public sealed class SchemaMigrator : ISchemaMigrator
         string DetectedSource,
         List<MigrationScript> Marked,
         List<MigrationScript> Gaps,
-        List<MigrationScript> Pending);
+        List<MigrationScript> Pending,
+        List<(string Id, DateTime At)> Interrupted);
 
     private MigrationPlan? Plan(MySqlConnection connection, MigrationRunOptions options, bool freshInstall = false)
     {
         var schema = new SchemaSnapshot(connection);
         var ledger = new Dictionary<string, string>(StringComparer.Ordinal);
+        var interrupted = new List<(string Id, DateTime At)>();
 
         if (schema.HasTable(LedgerTable)) {
-            foreach (var row in connection.Query<(string Migration, string Checksum)>($"SELECT migration, checksum FROM `{LedgerTable}`")) {
-                ledger[row.Migration] = row.Checksum;
+            foreach (var row in connection.Query<(string Migration, string Checksum, string Source, DateTime AppliedAt)>(
+                         $"SELECT migration, checksum, source, applied_at FROM `{LedgerTable}`")) {
+                if (row.Source == "running") {
+                    interrupted.Add((row.Migration, DateTime.SpecifyKind(row.AppliedAt, DateTimeKind.Utc)));
+                }
+                else {
+                    ledger[row.Migration] = row.Checksum;
+                }
             }
         }
 
@@ -255,7 +277,7 @@ public sealed class SchemaMigrator : ISchemaMigrator
         var pending = _scripts.Where(s => !ledger.ContainsKey(s.Id) && !detected.Contains(s) && !marked.Contains(s)).ToList();
 
         return new MigrationPlan(empty, freshInstall, ledger.Keys.ToHashSet(StringComparer.Ordinal), detected,
-            freshInstall ? "fresh_install" : "detected", marked, gaps, pending);
+            freshInstall ? "fresh_install" : "detected", marked, gaps, pending, interrupted);
     }
 
     private bool ImportFreshInstall()
@@ -296,9 +318,9 @@ public sealed class SchemaMigrator : ISchemaMigrator
             catch (MySqlException e) {
                 var statement = statements[i].Length > 400 ? statements[i][..400] + "..." : statements[i];
                 _logger.LogError("Migration {Migration} failed at statement {Index} of {Count}: {Message}\n{Statement}\n" +
-                                 "The emulator did not start. Statements before this one were applied; restore the backup or fix the cause " +
+                                 "The emulator did not start. Statements before this one were applied; restore {Backup} or fix the cause " +
                                  "and start again (the migration runs again from the top).",
-                    script.Id, i + 1, statements.Count, e.Message, statement);
+                    script.Id, i + 1, statements.Count, e.Message, statement, _restorePoint ?? "your backup");
 
                 return false;
             }
@@ -335,9 +357,24 @@ public sealed class SchemaMigrator : ISchemaMigrator
 
         if (ok) {
             _logger.LogInformation("Backup written in {Seconds:0.0} s.", watch.Elapsed.TotalSeconds);
+            // After an interrupted run this backup holds the half-applied state; the one from before it stays the one to restore.
+            _restorePoint ??= path;
         }
 
         return ok;
+    }
+
+    /// <summary>The newest backup written before an interrupted migration started.</summary>
+    private string? BackupBefore(DateTime startedUtc)
+    {
+        if (!Directory.Exists(Settings.BackupDirectory)) {
+            return null;
+        }
+
+        return new DirectoryInfo(Settings.BackupDirectory).GetFiles($"{_configuration.Name}-*-before-migrations.sql")
+            .Where(f => f.LastWriteTimeUtc <= startedUtc.AddSeconds(1))
+            .OrderByDescending(f => f.LastWriteTimeUtc)
+            .FirstOrDefault()?.FullName;
     }
 
     private string? DumpTool()
@@ -357,7 +394,7 @@ public sealed class SchemaMigrator : ISchemaMigrator
             CREATE TABLE IF NOT EXISTS `{LedgerTable}` (
                 `migration` VARCHAR(191) NOT NULL,
                 `checksum` CHAR(64) NOT NULL,
-                `source` ENUM('applied', 'detected', 'fresh_install', 'marked') NOT NULL,
+                `source` ENUM('applied', 'detected', 'fresh_install', 'marked', 'running') NOT NULL,
                 `applied_at` DATETIME(6) NOT NULL,
                 PRIMARY KEY (`migration`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -366,7 +403,8 @@ public sealed class SchemaMigrator : ISchemaMigrator
     private static void Record(MySqlConnection connection, IEnumerable<MigrationScript> scripts, string source)
     {
         foreach (var script in scripts) {
-            connection.Execute($"INSERT IGNORE INTO `{LedgerTable}` (migration, checksum, source, applied_at) VALUES (@Id, @Checksum, @source, UTC_TIMESTAMP(6))",
+            connection.Execute($"INSERT INTO `{LedgerTable}` (migration, checksum, source, applied_at) VALUES (@Id, @Checksum, @source, UTC_TIMESTAMP(6)) " +
+                               "ON DUPLICATE KEY UPDATE checksum = VALUES(checksum), source = VALUES(source), applied_at = VALUES(applied_at)",
                 new { script.Id, script.Checksum, source });
         }
     }

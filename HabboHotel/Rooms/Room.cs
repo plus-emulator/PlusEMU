@@ -738,7 +738,14 @@ public class Room
             }
         }
 
-        session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(_roomUserManager.GetUserList())));
+        // Users with a pending update (the one entering) get their status from the next room tick, which reaches this session too.
+        // Observed on AIR WIN63-202610151745-318700621: a plain room entry receives that status once.
+        var settledUsers = _roomUserManager.GetUserList().Where(user => user is { UpdateNeeded: false }).ToArray();
+
+        if (settledUsers.Length > 0) {
+            session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(settledUsers)));
+        }
+
         var snapshotFurniture = VisibleFloorItems.ToArray();
         var furnitureSnapshot = RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName);
         session.Send(new ObjectsComposer(furnitureSnapshot));

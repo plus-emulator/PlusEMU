@@ -4,21 +4,21 @@
 -- 173 pages (8 headings without a page), 4787 offers, 5665 page offers, 4711 furni.
 -- Replaces the starter tree of migration 89. Idempotent: reruns end in the same state.
 
-CREATE TEMPORARY TABLE `bc_pages_91` (
+CREATE TEMPORARY TABLE `bc_import_pages` (
     `ord` INT NOT NULL, `id` INT NOT NULL PRIMARY KEY, `parent_id` INT NULL, `caption` VARCHAR(128) NOT NULL, `icon` INT NOT NULL, `position` INT NOT NULL,
     `link` VARCHAR(128) NOT NULL, `layout` VARCHAR(64) NOT NULL, `visible` TINYINT(1) NOT NULL, `enabled` TINYINT(1) NOT NULL
 );
-CREATE TEMPORARY TABLE `bc_page_images_91` (`page_id` INT NOT NULL, `slot` INT NOT NULL, `image` VARCHAR(255) NOT NULL, PRIMARY KEY (`page_id`, `slot`));
-CREATE TEMPORARY TABLE `bc_page_texts_91` (`page_id` INT NOT NULL, `slot` INT NOT NULL, `text` TEXT NOT NULL, PRIMARY KEY (`page_id`, `slot`));
-CREATE TEMPORARY TABLE `bc_offers_91` (
+CREATE TEMPORARY TABLE `bc_import_page_images` (`page_id` INT NOT NULL, `slot` INT NOT NULL, `image` VARCHAR(255) NOT NULL, PRIMARY KEY (`page_id`, `slot`));
+CREATE TEMPORARY TABLE `bc_import_page_texts` (`page_id` INT NOT NULL, `slot` INT NOT NULL, `text` TEXT NOT NULL, PRIMARY KEY (`page_id`, `slot`));
+CREATE TEMPORARY TABLE `bc_import_offers` (
     `habbo_id` INT NOT NULL PRIMARY KEY, `localization_key` VARCHAR(100) NOT NULL, `cost_credits` INT UNSIGNED NOT NULL, `cost_points` INT UNSIGNED NOT NULL,
     `points_type` INT UNSIGNED NOT NULL, `club_level` TINYINT UNSIGNED NOT NULL, `bulk_purchase` TINYINT(1) NOT NULL, `preview_image` VARCHAR(255) NOT NULL,
     `classname` VARCHAR(100) NOT NULL, `product_type` CHAR(1) NOT NULL, `extra_param` VARCHAR(1024) NOT NULL,
     `furniture_id` INT UNSIGNED NULL, `offer_id` INT NULL, KEY (`localization_key`)
 );
-CREATE TEMPORARY TABLE `bc_page_offers_91` (`page_id` INT NOT NULL, `habbo_id` INT NOT NULL, `position` INT NOT NULL, PRIMARY KEY (`page_id`, `habbo_id`));
+CREATE TEMPORARY TABLE `bc_import_page_offers` (`page_id` INT NOT NULL, `habbo_id` INT NOT NULL, `position` INT NOT NULL, PRIMARY KEY (`page_id`, `habbo_id`));
 
-INSERT INTO `bc_pages_91` (`ord`, `id`, `parent_id`, `caption`, `icon`, `position`, `link`, `layout`, `visible`, `enabled`) VALUES
+INSERT INTO `bc_import_pages` (`ord`, `id`, `parent_id`, `caption`, `icon`, `position`, `link`, `layout`, `visible`, `enabled`) VALUES
     (0, 2129066, NULL, 'Furni', 2, 0, 'furni', 'default_3x3', 1, 1),
     (1, 2129110, 2129066, 'Building Blocks', 28, 0, 'bc_blocks_recolorable', 'recolorable_furniture', 1, 1),
     (2, 2129112, 2129066, 'Alphabet Blocks', 101, 1, 'bc_alphabet_recolorable', 'recolorable_furniture', 1, 1),
@@ -193,7 +193,7 @@ INSERT INTO `bc_pages_91` (`ord`, `id`, `parent_id`, `caption`, `icon`, `positio
     (171, 2129325, 2100000008, 'Invisible Furnis', 326, 1, 'invisiblefurni', 'default_3x3', 1, 1),
     (172, 2129326, 2100000008, 'Configuration Items', 325, 2, 'configitems', 'default_3x3', 1, 1);
 
-INSERT INTO `bc_page_images_91` (`page_id`, `slot`, `image`) VALUES
+INSERT INTO `bc_import_page_images` (`page_id`, `slot`, `image`) VALUES
     (2129066, 0, 'Stars_header'),
     (2129066, 1, 'spromo_prizedguitar_sept24'),
     (2129066, 2, ''),
@@ -683,7 +683,7 @@ INSERT INTO `bc_page_images_91` (`page_id`, `slot`, `image`) VALUES
     (2129326, 1, ''),
     (2129326, 2, '');
 
-INSERT INTO `bc_page_texts_91` (`page_id`, `slot`, `text`) VALUES
+INSERT INTO `bc_import_page_texts` (`page_id`, `slot`, `text`) VALUES
     (2129066, 0, ''),
     (2129066, 1, ''),
     (2129066, 2, ''),
@@ -1175,7 +1175,7 @@ INSERT INTO `bc_page_texts_91` (`page_id`, `slot`, `text`) VALUES
     (2129326, 1, ''),
     (2129326, 2, '');
 
-INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
+INSERT INTO `bc_import_offers` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
     (5, 'A1 HYN', 3, 0, 0, 0, 1, '', 'shelves_norja', 's', ''),
     (6, 'A2 KHP', 4, 0, 0, 0, 1, '', 'shelves_polyfon', 's', ''),
     (7, 'A1 KHS', 3, 0, 0, 0, 1, '', 'shelves_silo', 's', ''),
@@ -1677,7 +1677,7 @@ INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cos
     (2245, 'jp_sheet3', 3, 0, 0, 0, 1, '', 'jp_sheet3', 'i', ''),
     (2246, 'arabian_wndw', 3, 0, 0, 0, 1, '', 'arabian_wndw', 'i', '');
 
-INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
+INSERT INTO `bc_import_offers` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
     (2248, 'jp_sheet1', 3, 0, 0, 0, 1, '', 'jp_sheet1', 'i', ''),
     (2250, 'jp_sheet2', 3, 0, 0, 0, 1, '', 'jp_sheet2', 'i', ''),
     (2309, 'jp_table', 5, 0, 0, 0, 1, '', 'jp_table', 's', ''),
@@ -2179,7 +2179,7 @@ INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cos
     (9098, 'wf_act_move_rotate', 4, 0, 0, 0, 1, '', 'wf_act_move_rotate', 's', ''),
     (9099, 'wf_wire2', 1, 0, 0, 0, 1, '', 'wf_wire2', 's', '');
 
-INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
+INSERT INTO `bc_import_offers` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
     (9100, 'wf_cnd_time_more_than', 5, 0, 0, 0, 1, '', 'wf_cnd_time_more_than', 's', ''),
     (9101, 'wf_colortile', 2, 0, 0, 0, 1, '', 'wf_colortile', 's', ''),
     (9102, 'wf_floor_switch2', 3, 0, 0, 0, 1, '', 'wf_floor_switch2', 's', ''),
@@ -2681,7 +2681,7 @@ INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cos
     (11961, 'pixel_clock_green', 3, 0, 0, 0, 1, '', 'pixel_clock_green', 'i', ''),
     (11962, 'pixel_clock_blue', 3, 0, 0, 0, 1, '', 'pixel_clock_blue', 'i', '');
 
-INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
+INSERT INTO `bc_import_offers` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
     (11969, 'pixel_table_red', 3, 0, 0, 0, 1, '', 'pixel_table_red', 's', ''),
     (11971, 'pixel_floor_pink', 4, 0, 0, 0, 1, '', 'pixel_floor_pink', 's', ''),
     (11972, 'pixel_floor_brown', 4, 0, 0, 0, 1, '', 'pixel_floor_brown', 's', ''),
@@ -3183,7 +3183,7 @@ INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cos
     (15931, 'attic15_paintingfloor', 5, 0, 0, 0, 1, '', 'attic15_paintingfloor', 's', ''),
     (15933, 'attic15_cradle', 6, 0, 0, 0, 1, '', 'attic15_cradle', 's', '');
 
-INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
+INSERT INTO `bc_import_offers` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
     (15935, 'attic15_gate', 4, 0, 0, 0, 1, '', 'attic15_gate', 's', ''),
     (15937, 'attic15_mousetrap', 3, 0, 0, 0, 1, '', 'attic15_mousetrap', 's', ''),
     (15940, 'attic15_shelf', 3, 0, 0, 0, 1, '', 'attic15_shelf', 's', ''),
@@ -3685,7 +3685,7 @@ INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cos
     (17980, 'bathroom_shampoo', 0, 150, 0, 0, 1, '', 'bathroom_shampoo', 's', ''),
     (17981, 'fball_bench', 1, 150, 0, 0, 1, '', 'fball_bench', 's', '');
 
-INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
+INSERT INTO `bc_import_offers` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
     (17984, 'cubie_chair_b', 0, 75, 0, 0, 1, '', 'cubie_chair_b', 's', ''),
     (17985, 'anna_chair_red', 0, 150, 0, 0, 1, '', 'anna_chair*2', 's', ''),
     (17986, 'cubie_chair_p', 0, 75, 0, 0, 1, '', 'cubie_chair_p', 's', ''),
@@ -4187,7 +4187,7 @@ INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cos
     (18600, 'wildwest_saloondr', 2, 150, 0, 0, 1, '', 'wildwest_saloondr', 's', ''),
     (18601, 'wildwest_roofr', 3, 250, 0, 0, 1, '', 'wildwest_roofr', 's', '');
 
-INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
+INSERT INTO `bc_import_offers` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
     (18602, 'wildwest_roofw', 3, 250, 0, 0, 1, '', 'wildwest_roofw', 's', ''),
     (18603, 'wildwest_roofb', 3, 250, 0, 0, 1, '', 'wildwest_roofb', 's', ''),
     (18604, 'wildwest_cabinet', 13, 20, 5, 0, 1, '', 'wildwest_cabinet', 's', ''),
@@ -4689,7 +4689,7 @@ INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cos
     (21365, 'suncity_c19_divider', 4, 0, 0, 0, 1, '', 'suncity_c19_divider', 's', ''),
     (21368, 'suncity_c19_flora', 3, 0, 0, 0, 1, '', 'suncity_c19_flora', 's', '');
 
-INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
+INSERT INTO `bc_import_offers` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
     (21370, 'suncity_c19_plantpillar', 3, 0, 0, 0, 1, '', 'suncity_c19_plantpillar', 's', ''),
     (21371, 'suncity_c19_awning', 4, 0, 0, 0, 1, '', 'suncity_c19_awning', 's', ''),
     (21379, 'suncity_c19_munchling', 3, 10, 5, 0, 1, '', 'suncity_c19_munchling', 's', ''),
@@ -5191,7 +5191,7 @@ INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cos
     (28432, 'wf_slc_users_team', 5, 0, 0, 0, 1, '', 'wf_slc_users_team', 's', ''),
     (28433, 'wf_slc_users_neighborhood', 5, 0, 0, 0, 1, '', 'wf_slc_users_neighborhood', 's', '');
 
-INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
+INSERT INTO `bc_import_offers` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
     (28713, 'hween_c23_ancientweb', 3, 0, 0, 0, 1, '', 'hween_c23_ancientweb', 's', ''),
     (28716, 'hween_c23_darksand', 4, 0, 0, 0, 1, '', 'hween_c23_darksand', 's', ''),
     (28733, 'hween_c23_tombslab', 4, 0, 0, 0, 1, '', 'hween_c23_tombslab', 's', ''),
@@ -5693,7 +5693,7 @@ INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cos
     (33170, 'wf_button_blue', 4, 0, 0, 0, 1, '', 'wf_button_blue', 's', ''),
     (33171, 'wf_token2', 3, 0, 0, 0, 1, '', 'wf_token2', 's', '');
 
-INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
+INSERT INTO `bc_import_offers` (`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, `classname`, `product_type`, `extra_param`) VALUES
     (33172, 'wf_button_x', 4, 0, 0, 0, 1, '', 'wf_button_x', 's', ''),
     (33173, 'wf_token9', 3, 0, 0, 0, 1, '', 'wf_token9', 's', ''),
     (33174, 'wf_token8', 3, 0, 0, 0, 1, '', 'wf_token8', 's', ''),
@@ -5982,7 +5982,7 @@ INSERT INTO `bc_offers_91` (`habbo_id`, `localization_key`, `cost_credits`, `cos
     (35253, 'wf_label', 3, 0, 0, 0, 1, '', 'wf_label', 's', ''),
     (35263, 'wf_xtra_var_leaderboard', 15, 0, 0, 0, 1, '', 'wf_xtra_var_leaderboard', 's', '');
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129110, 35202, 0),
     (2129110, 35203, 1),
     (2129110, 35212, 2),
@@ -6484,7 +6484,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129150, 17516, 30),
     (2129150, 17517, 31);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129150, 17518, 32),
     (2129150, 17519, 33),
     (2129150, 17520, 34),
@@ -6986,7 +6986,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129155, 17605, 85),
     (2129155, 26228, 86);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129155, 33057, 87),
     (2129155, 33076, 88),
     (2129155, 33202, 89),
@@ -7488,7 +7488,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129177, 10065, 33),
     (2129177, 10062, 34);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129177, 10069, 35),
     (2129177, 10068, 36),
     (2129177, 10066, 37),
@@ -7990,7 +7990,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129197, 18669, 36),
     (2129197, 18670, 37);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129197, 18715, 38),
     (2129197, 18677, 39),
     (2129197, 18678, 40),
@@ -8492,7 +8492,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129211, 947, 29),
     (2129211, 948, 30);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129211, 949, 31),
     (2129211, 950, 32),
     (2129211, 951, 33),
@@ -8994,7 +8994,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129222, 2233, 18),
     (2129222, 2232, 19);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129222, 2224, 20),
     (2129222, 2227, 21),
     (2129222, 11133, 22),
@@ -9496,7 +9496,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129243, 12648, 52),
     (2129243, 12641, 53);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129243, 12628, 54),
     (2129243, 12636, 55),
     (2129243, 12659, 56),
@@ -9998,7 +9998,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129255, 1276, 38),
     (2129255, 1274, 39);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129255, 1307, 40),
     (2129255, 1306, 41),
     (2129255, 2461, 42),
@@ -10500,7 +10500,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129275, 10319, 26),
     (2129275, 10336, 27);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129275, 10313, 28),
     (2129275, 10348, 29),
     (2129275, 10353, 30),
@@ -11002,7 +11002,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129283, 4563, 325),
     (2129283, 4583, 326);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129283, 4556, 327),
     (2129283, 4562, 328),
     (2129283, 4559, 329),
@@ -11504,7 +11504,7 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129308, 12513, 23),
     (2129308, 9132, 24);
 
-INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
+INSERT INTO `bc_import_page_offers` (`page_id`, `habbo_id`, `position`) VALUES
     (2129308, 12507, 25),
     (2129308, 28193, 26),
     (2129308, 28197, 27),
@@ -11673,23 +11673,23 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
 
 -- Each furni by classname: the row that carries its furnidata, else the first. furniture.item_name has no index, so the
 -- pick per classname goes through a keyed table instead of one furniture scan per offer.
-CREATE TEMPORARY TABLE `bc_furniture_91` (
+CREATE TEMPORARY TABLE `bc_furniture_by_name` (
     `item_name` VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, `type` CHAR(1) NOT NULL, `id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`item_name`, `type`)
 );
-INSERT INTO `bc_furniture_91` (`item_name`, `type`, `id`)
+INSERT INTO `bc_furniture_by_name` (`item_name`, `type`, `id`)
 SELECT `item_name`, `type`, `id` FROM (
     SELECT `item_name`, `type`, `id`, ROW_NUMBER() OVER (PARTITION BY `item_name`, `type` ORDER BY `has_furnidata` DESC, `id`) AS `pick`
     FROM `furniture`
 ) AS `candidate`
 WHERE `pick` = 1;
-UPDATE `bc_offers_91` AS `offer`
-LEFT JOIN `bc_furniture_91` AS `furni` ON `furni`.`item_name` = `offer`.`classname` AND `furni`.`type` = `offer`.`product_type`
+UPDATE `bc_import_offers` AS `offer`
+LEFT JOIN `bc_furniture_by_name` AS `furni` ON `furni`.`item_name` = `offer`.`classname` AND `furni`.`type` = `offer`.`product_type`
 SET `offer`.`furniture_id` = `furni`.`id`;
-DROP TEMPORARY TABLE `bc_furniture_91`;
+DROP TEMPORARY TABLE `bc_furniture_by_name`;
 
 -- Habbo's offer id when our offer of that id sells the same furni once.
-UPDATE `bc_offers_91` AS `offer`
+UPDATE `bc_import_offers` AS `offer`
 SET `offer`.`offer_id` = `offer`.`habbo_id`
 WHERE `offer`.`furniture_id` IS NOT NULL
     AND (SELECT COUNT(*) FROM `catalog_offer_products` AS `product` WHERE `product`.`offer_id` = `offer`.`habbo_id`) = 1
@@ -11698,7 +11698,7 @@ WHERE `offer`.`furniture_id` IS NOT NULL
             AND `product`.`furniture_id` = `offer`.`furniture_id` AND `product`.`amount` = 1);
 
 -- Otherwise an offer with the same localization key selling the same furni once (also what an earlier run created).
-UPDATE `bc_offers_91` AS `offer`
+UPDATE `bc_import_offers` AS `offer`
 SET `offer`.`offer_id` = (
     SELECT MIN(`existing`.`id`) FROM `catalog_offers` AS `existing`
     INNER JOIN `catalog_offer_products` AS `product` ON `product`.`offer_id` = `existing`.`id`
@@ -11712,19 +11712,19 @@ INSERT INTO `catalog_offers` (`id`, `localization_key`, `cost_credits`, `cost_po
 SELECT IF(EXISTS (SELECT 1 FROM `catalog_offers` AS `taken` WHERE `taken`.`id` = `offer`.`habbo_id`), NULL, `offer`.`habbo_id`),
     `offer`.`localization_key`, `offer`.`cost_credits`, `offer`.`cost_points`, `offer`.`points_type`, `offer`.`club_level`, `offer`.`bulk_purchase`, 1,
     `offer`.`preview_image`
-FROM `bc_offers_91` AS `offer`
+FROM `bc_import_offers` AS `offer`
 WHERE `offer`.`offer_id` IS NULL AND `offer`.`furniture_id` IS NOT NULL
 ORDER BY `offer`.`habbo_id`;
 
 -- The new offers, the only ones of their key without a product, get their furni.
 INSERT IGNORE INTO `catalog_offer_products` (`offer_id`, `position`, `product_type`, `furniture_id`, `amount`, `extra_param`)
 SELECT `created`.`id`, 0, 'furni', `offer`.`furniture_id`, 1, `offer`.`extra_param`
-FROM `bc_offers_91` AS `offer`
+FROM `bc_import_offers` AS `offer`
 INNER JOIN `catalog_offers` AS `created` ON `created`.`localization_key` = `offer`.`localization_key`
 WHERE `offer`.`offer_id` IS NULL AND `offer`.`furniture_id` IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM `catalog_offer_products` AS `product` WHERE `product`.`offer_id` = `created`.`id`);
 
-UPDATE `bc_offers_91` AS `offer`
+UPDATE `bc_import_offers` AS `offer`
 SET `offer`.`offer_id` = (
     SELECT MIN(`existing`.`id`) FROM `catalog_offers` AS `existing`
     INNER JOIN `catalog_offer_products` AS `product` ON `product`.`offer_id` = `existing`.`id`
@@ -11734,32 +11734,32 @@ WHERE `offer`.`offer_id` IS NULL AND `offer`.`furniture_id` IS NOT NULL;
 
 -- Builders Club pages not in Habbo's tree (the starter tree of migration 89) go.
 UPDATE `catalog_pages` SET `parent_id` = NULL
-WHERE `catalog_mode` = 'BUILDERS_CLUB' AND `id` NOT IN (SELECT `id` FROM `bc_pages_91`);
+WHERE `catalog_mode` = 'BUILDERS_CLUB' AND `id` NOT IN (SELECT `id` FROM `bc_import_pages`);
 DELETE FROM `catalog_pages`
-WHERE `catalog_mode` = 'BUILDERS_CLUB' AND `id` NOT IN (SELECT `id` FROM `bc_pages_91`);
+WHERE `catalog_mode` = 'BUILDERS_CLUB' AND `id` NOT IN (SELECT `id` FROM `bc_import_pages`);
 
--- Parents come first in bc_pages_91, as in the tree.
+-- Parents come first in bc_import_pages, as in the tree.
 INSERT INTO `catalog_pages` (`id`, `parent_id`, `caption`, `icon`, `position`, `link`, `layout`, `catalog_mode`, `visible`, `enabled`, `required_club_level`)
 SELECT `id`, `parent_id`, `caption`, `icon`, `position`, `link`, `layout`, 'BUILDERS_CLUB', `visible`, `enabled`, 0
-FROM `bc_pages_91`
+FROM `bc_import_pages`
 ORDER BY `ord`
 ON DUPLICATE KEY UPDATE `parent_id` = VALUES(`parent_id`), `caption` = VALUES(`caption`), `icon` = VALUES(`icon`), `position` = VALUES(`position`),
     `link` = VALUES(`link`), `layout` = VALUES(`layout`), `catalog_mode` = 'BUILDERS_CLUB', `visible` = VALUES(`visible`), `enabled` = VALUES(`enabled`);
 
-DELETE FROM `catalog_page_images` WHERE `page_id` IN (SELECT `id` FROM `bc_pages_91`);
-INSERT INTO `catalog_page_images` (`page_id`, `slot`, `image`) SELECT `page_id`, `slot`, `image` FROM `bc_page_images_91`;
-DELETE FROM `catalog_page_texts` WHERE `page_id` IN (SELECT `id` FROM `bc_pages_91`);
-INSERT INTO `catalog_page_texts` (`page_id`, `slot`, `text`) SELECT `page_id`, `slot`, `text` FROM `bc_page_texts_91`;
+DELETE FROM `catalog_page_images` WHERE `page_id` IN (SELECT `id` FROM `bc_import_pages`);
+INSERT INTO `catalog_page_images` (`page_id`, `slot`, `image`) SELECT `page_id`, `slot`, `image` FROM `bc_import_page_images`;
+DELETE FROM `catalog_page_texts` WHERE `page_id` IN (SELECT `id` FROM `bc_import_pages`);
+INSERT INTO `catalog_page_texts` (`page_id`, `slot`, `text`) SELECT `page_id`, `slot`, `text` FROM `bc_import_page_texts`;
 
-DELETE FROM `catalog_page_offers` WHERE `page_id` IN (SELECT `id` FROM `bc_pages_91`);
+DELETE FROM `catalog_page_offers` WHERE `page_id` IN (SELECT `id` FROM `bc_import_pages`);
 INSERT IGNORE INTO `catalog_page_offers` (`page_id`, `offer_id`, `position`)
 SELECT `page`.`page_id`, `offer`.`offer_id`, `page`.`position`
-FROM `bc_page_offers_91` AS `page`
-INNER JOIN `bc_offers_91` AS `offer` ON `offer`.`habbo_id` = `page`.`habbo_id`
+FROM `bc_import_page_offers` AS `page`
+INNER JOIN `bc_import_offers` AS `offer` ON `offer`.`habbo_id` = `page`.`habbo_id`
 WHERE `offer`.`offer_id` IS NOT NULL;
 
-DROP TEMPORARY TABLE `bc_pages_91`;
-DROP TEMPORARY TABLE `bc_page_images_91`;
-DROP TEMPORARY TABLE `bc_page_texts_91`;
-DROP TEMPORARY TABLE `bc_offers_91`;
-DROP TEMPORARY TABLE `bc_page_offers_91`;
+DROP TEMPORARY TABLE `bc_import_pages`;
+DROP TEMPORARY TABLE `bc_import_page_images`;
+DROP TEMPORARY TABLE `bc_import_page_texts`;
+DROP TEMPORARY TABLE `bc_import_offers`;
+DROP TEMPORARY TABLE `bc_import_page_offers`;

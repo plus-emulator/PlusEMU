@@ -54,7 +54,7 @@ def main():
 -- An offer reuses our offer of Habbo's id when it sells the same furni once, else one with the furni's key that does, else it is
 -- created with Habbo's id when that id is free. Idempotent: reruns end in the same state.
 
-CREATE TEMPORARY TABLE `bc_furnidata_offers_92` (
+CREATE TEMPORARY TABLE `bc_import_furnidata_offers` (
     `habbo_id` INT NOT NULL PRIMARY KEY, `classname` VARCHAR(100) NOT NULL, `product_type` CHAR(1) NOT NULL,
     `furniture_id` INT UNSIGNED NULL, `offer_id` INT NULL, `position` INT NOT NULL, KEY (`classname`)
 );
@@ -62,28 +62,28 @@ CREATE TEMPORARY TABLE `bc_furnidata_offers_92` (
 
     for start in range(0, len(offers), 500):
         part = offers[start:start + 500]
-        out.append('INSERT INTO `bc_furnidata_offers_92` (`habbo_id`, `classname`, `product_type`, `position`) VALUES\n' +
+        out.append('INSERT INTO `bc_import_furnidata_offers` (`habbo_id`, `classname`, `product_type`, `position`) VALUES\n' +
                    ',\n'.join(f'    ({sql(o)}, {sql(c)}, {sql(t)}, {start + i})' for i, (o, c, t) in enumerate(part)) + ';\n')
 
     out.append(f"""-- Each furni by classname: the row that carries its furnidata, else the first. furniture.item_name has no index, so the
 -- pick per classname goes through a keyed table instead of one furniture scan per offer.
-CREATE TEMPORARY TABLE `bc_furniture_92` (
+CREATE TEMPORARY TABLE `bc_furniture_by_name` (
     `item_name` VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, `type` CHAR(1) NOT NULL, `id` INT UNSIGNED NOT NULL,
     PRIMARY KEY (`item_name`, `type`)
 );
-INSERT INTO `bc_furniture_92` (`item_name`, `type`, `id`)
+INSERT INTO `bc_furniture_by_name` (`item_name`, `type`, `id`)
 SELECT `item_name`, `type`, `id` FROM (
     SELECT `item_name`, `type`, `id`, ROW_NUMBER() OVER (PARTITION BY `item_name`, `type` ORDER BY `has_furnidata` DESC, `id`) AS `pick`
     FROM `furniture`
 ) AS `candidate`
 WHERE `pick` = 1;
-UPDATE `bc_furnidata_offers_92` AS `offer`
-LEFT JOIN `bc_furniture_92` AS `furni` ON `furni`.`item_name` = `offer`.`classname` AND `furni`.`type` = `offer`.`product_type`
+UPDATE `bc_import_furnidata_offers` AS `offer`
+LEFT JOIN `bc_furniture_by_name` AS `furni` ON `furni`.`item_name` = `offer`.`classname` AND `furni`.`type` = `offer`.`product_type`
 SET `offer`.`furniture_id` = `furni`.`id`;
-DROP TEMPORARY TABLE `bc_furniture_92`;
+DROP TEMPORARY TABLE `bc_furniture_by_name`;
 
 -- Habbo's offer id when our offer of that id sells the same furni once.
-UPDATE `bc_furnidata_offers_92` AS `offer`
+UPDATE `bc_import_furnidata_offers` AS `offer`
 SET `offer`.`offer_id` = `offer`.`habbo_id`
 WHERE `offer`.`furniture_id` IS NOT NULL
     AND (SELECT COUNT(*) FROM `catalog_offer_products` AS `product` WHERE `product`.`offer_id` = `offer`.`habbo_id`) = 1
@@ -92,7 +92,7 @@ WHERE `offer`.`furniture_id` IS NOT NULL
             AND `product`.`furniture_id` = `offer`.`furniture_id` AND `product`.`amount` = 1);
 
 -- Otherwise an offer with the furni's key selling it once (also what an earlier run created).
-UPDATE `bc_furnidata_offers_92` AS `offer`
+UPDATE `bc_import_furnidata_offers` AS `offer`
 SET `offer`.`offer_id` = (
     SELECT MIN(`existing`.`id`) FROM `catalog_offers` AS `existing`
     INNER JOIN `catalog_offer_products` AS `product` ON `product`.`offer_id` = `existing`.`id`
@@ -105,19 +105,19 @@ WHERE `offer`.`offer_id` IS NULL AND `offer`.`furniture_id` IS NOT NULL;
 INSERT INTO `catalog_offers` (`id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `enabled`, `preview_image`)
 SELECT IF(EXISTS (SELECT 1 FROM `catalog_offers` AS `taken` WHERE `taken`.`id` = `offer`.`habbo_id`), NULL, `offer`.`habbo_id`),
     `offer`.`classname`, 0, 0, 0, 0, 0, 1, ''
-FROM `bc_furnidata_offers_92` AS `offer`
+FROM `bc_import_furnidata_offers` AS `offer`
 WHERE `offer`.`offer_id` IS NULL AND `offer`.`furniture_id` IS NOT NULL
 ORDER BY `offer`.`habbo_id`;
 
 -- The new offers, the only ones of their key without a product, get their furni.
 INSERT IGNORE INTO `catalog_offer_products` (`offer_id`, `position`, `product_type`, `furniture_id`, `amount`, `extra_param`)
 SELECT `created`.`id`, 0, 'furni', `offer`.`furniture_id`, 1, ''
-FROM `bc_furnidata_offers_92` AS `offer`
+FROM `bc_import_furnidata_offers` AS `offer`
 INNER JOIN `catalog_offers` AS `created` ON `created`.`localization_key` = `offer`.`classname`
 WHERE `offer`.`offer_id` IS NULL AND `offer`.`furniture_id` IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM `catalog_offer_products` AS `product` WHERE `product`.`offer_id` = `created`.`id`);
 
-UPDATE `bc_furnidata_offers_92` AS `offer`
+UPDATE `bc_import_furnidata_offers` AS `offer`
 SET `offer`.`offer_id` = (
     SELECT MIN(`existing`.`id`) FROM `catalog_offers` AS `existing`
     INNER JOIN `catalog_offer_products` AS `product` ON `product`.`offer_id` = `existing`.`id`
@@ -133,9 +133,9 @@ ON DUPLICATE KEY UPDATE `parent_id` = NULL, `caption` = VALUES(`caption`), `icon
 
 DELETE FROM `catalog_page_offers` WHERE `page_id` = {HIDDEN_PAGE_ID};
 INSERT IGNORE INTO `catalog_page_offers` (`page_id`, `offer_id`, `position`)
-SELECT {HIDDEN_PAGE_ID}, `offer_id`, `position` FROM `bc_furnidata_offers_92` WHERE `offer_id` IS NOT NULL;
+SELECT {HIDDEN_PAGE_ID}, `offer_id`, `position` FROM `bc_import_furnidata_offers` WHERE `offer_id` IS NOT NULL;
 
-DROP TEMPORARY TABLE `bc_furnidata_offers_92`;
+DROP TEMPORARY TABLE `bc_import_furnidata_offers`;
 """)
 
     open(args.out, 'w', encoding='utf-8', newline='\n').write('\n'.join(out))

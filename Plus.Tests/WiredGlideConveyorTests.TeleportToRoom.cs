@@ -3,6 +3,7 @@ using System.Text.Json;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Xunit;
 
 namespace Plus.Tests;
@@ -33,8 +34,10 @@ public sealed partial class WiredGlideConveyorTests
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
         var wakes = new List<long>();
+        var switches = 0;
+        using var switchRoom = WiredRoomForwarding.UseRoomSwitch(_ => switches++);
         f.SetEngineCallback("<ActionDue>k__BackingField", (Action<long>)wakes.Add);
-        bool Forwarded() => packets.Any(bytes => BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.RoomForwardComposer);
+        bool Forwarded() => switches > 0;
 
         var firedAt = f.Engine.Now;
         f.Owned(() => rider.OnChat(0, "pulse", false));
@@ -49,6 +52,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.False(Forwarded());
         f.Advance(150);
         Assert.True(Forwarded());
+        Assert.DoesNotContain(packets, bytes => BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.RoomForwardComposer);
         Assert.Equal(0, rider.GetClient()!.GetHabbo()!.ForwardArrivalRestoreEffect);
 
         // A user the client did not take away loses the glow later.

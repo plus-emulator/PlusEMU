@@ -2194,30 +2194,36 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void ConfiguredRoomForwardingSendsActualClientPacketAndLeavesRoomChecksToEntry()
+    // Observed on AIR WIN63-202610151745-318700621: the forward sends no RoomForward; the server switches the room itself.
+    public void ConfiguredRoomForwardingSwitchesTheRoomServerSideAndLeavesRoomChecksToEntry()
     {
         using var fixture = new TeleportFixture();
         var sent = 0;
+        var switches = 0;
         fixture.Client.SendCallback = _ => { sent++; return true; };
+        using var switchRoom = WiredRoomForwarding.UseRoomSwitch(_ => switches++);
         var action = ActionBox(fixture.Room, "wf_act_teleport_to_room");
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, new() { IntParams = [0, 100], Text = "42" }, out var config, out _));
         action.ApplyConfiguration(config);
         var context = Context(fixture.Room, new(WiredEventKind.Enter) { Actor = fixture.User }, [], [fixture.User]);
         context.Triggering.UserIds.Add(fixture.User.VirtualId);
         Assert.True(action.Execute(context));
-        Assert.Equal(1, sent);
+        Assert.Equal(0, sent);
+        Assert.Equal(1, switches);
         Assert.Same(fixture.Room, fixture.Habbo.CurrentRoom);
         Assert.False(fixture.Habbo.IsTeleporting);
         Assert.Equal(42u, fixture.Habbo.WiredRoomNetworkDestination);
         fixture.Habbo.CurrentRoom = null;
         Assert.False(action.Execute(context));
-        Assert.Equal(1, sent);
+        Assert.Equal(1, switches);
     }
 
     [Fact]
-    public void ActualForwardingRecordsNetworkEntryOnlyAfterPacketSendAndDestinationConsumesIt()
+    public void ActualForwardingRecordsNetworkEntryBeforeTheSwitchAndDestinationConsumesIt()
     {
         using var f = new TeleportFixture();
+        var switches = 0;
+        using var switchRoom = WiredRoomForwarding.UseRoomSwitch(_ => switches++);
         var action = ActionBox(f.Room, "wf_act_teleport_to_room");
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, new() { IntParams = [0, 100], Text = "42" }, out var config, out _));
         action.ApplyConfiguration(config);
@@ -2226,12 +2232,10 @@ public partial class ModernWiredRuntimeTests
         f.Habbo.CurrentRoom = null;
         Assert.False(action.Execute(context));
         Assert.Equal(0u, f.Habbo.WiredRoomNetworkDestination);
+        Assert.Equal(0, switches);
         f.Habbo.CurrentRoom = f.Room;
-        f.Client.SendCallback = _ => throw new IOException("forward enqueue failed");
-        Assert.Throws<IOException>(() => action.Execute(context));
-        Assert.Equal(0u, f.Habbo.WiredRoomNetworkDestination);
-        f.Client.SendCallback = _ => true;
         Assert.True(action.Execute(context));
+        Assert.Equal(1, switches);
         Assert.Equal(42u, f.Habbo.WiredRoomNetworkDestination);
         var (destination, _, _) = World();
         destination.Id = 42;

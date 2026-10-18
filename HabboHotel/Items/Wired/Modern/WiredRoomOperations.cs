@@ -93,7 +93,14 @@ public static class WiredRoomOperations
     /// is on furni" condition holds for the furni walked onto.
     /// </summary>
     public static bool IsStandingOn(RoomUser user, Item item) =>
-        Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(user.SetStep ? new(user.SetX, user.SetY) : user.Coordinate);
+        Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(StandingTile(user));
+
+    /// <summary>
+    /// The tile Wired reads for a user: the tile an announced step goes to, otherwise the user's tile. Observed on AIR
+    /// WIN63-202610151745-318700621: a users-in-area selector picks a user whose step into the area was announced (mv) before the
+    /// step completes, and no longer picks one whose step out of it was announced.
+    /// </summary>
+    public static Point StandingTile(RoomUser user) => user.SetStep ? new(user.SetX, user.SetY) : user.Coordinate;
 
     public static bool HasStackedItem(Room room, Item item, IReadOnlySet<uint>? ignored = null) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation)

@@ -1,6 +1,7 @@
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Modern;
+using Plus.HabboHotel.Items.Wired.Modern.Selectors;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.Instance;
@@ -83,6 +84,44 @@ public partial class PlacedFurniRoomTests
 
         Assert.False(actor.SetStep);
         Assert.True(WiredRoomOperations.IsStandingOn(actor, landing));
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: a users-in-area selector picks a user as soon as the step into the area is
+    // announced, and stops picking one whose step out of it is announced.
+    [Fact]
+    public void SelectorsReadTheTileAnAnnouncedStepGoesTo()
+    {
+        ExecutorFloor(10, 0, 1);
+        ExecutorFloor(11, 1, 1);
+        var actor = WalkActor(WalkActorKind.Habbo, 0, 1, v2: true);
+
+        actor.MoveTo(1, 1);
+        AnnounceTick();
+
+        Assert.True(actor.SetStep);
+        Assert.Equal((0, 1), (actor.X, actor.Y));
+        Assert.Equal((1, 1), SelectorTile(actor));
+
+        ExecutorTick();
+
+        Assert.False(actor.SetStep);
+        Assert.Equal((1, 1), SelectorTile(actor));
+    }
+
+    private (int X, int Y) SelectorTile(RoomUser actor)
+    {
+        var context = new WiredRuntimeContext(_room, new(WiredEventKind.ClickFurni), new(() => [], () => [actor]), new NoOperations());
+        var avatar = Assert.Single(WiredSelectorRuntimeInput.Capture(context, new(), TestGroupManager.Empty).World.Users);
+
+        return (avatar.X, avatar.Y);
+    }
+
+    private sealed class NoOperations : IWiredRuntimeOperations
+    {
+        public bool CallStacks(WiredRuntimeContext context, IEnumerable<Item> targets, bool negative = false) => throw new NotSupportedException();
+        public bool SendSignal(WiredRuntimeContext context, IEnumerable<Item> receivers, WiredSelection selection, bool negative = false) =>
+            throw new NotSupportedException();
+        public void ResetTimers(IEnumerable<Item> targets) => throw new NotSupportedException();
     }
 
     [Fact]

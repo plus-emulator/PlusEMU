@@ -88,10 +88,11 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
             var action = state.Read(user);
             var name = user.IsBot ? user.BotData.Name : user.GetClient()?.GetHabbo()?.Username ?? "";
             var equippedGroupId = user.IsBot ? 0 : user.GetClient()?.GetHabbo()?.HabboStats?.FavouriteGroupId ?? 0;
+            var tile = WiredRoomOperations.StandingTile(user);
 
             return new WiredSelectorAvatar(user.VirtualId, name,
                 user.IsPet ? WiredSelectorEntityKind.Pet : user.IsBot ? WiredSelectorEntityKind.Bot : WiredSelectorEntityKind.Player,
-                user.X, user.Y, (int)user.Team, HandItem: user.CarryItemId,
+                tile.X, tile.Y, (int)user.Team, HandItem: user.CarryItemId,
                 Sitting: user.IsSitting || user.HasStatus("sit"), Lying: user.IsLying || user.HasStatus("lay"), Idle: user.IsAsleep,
                 Sign: user.Statusses.TryGetValue("sign", out var signText) && int.TryParse(signText, out var sign) ? sign : null,
                 Dance: user.DanceId, LastAction: action?.Action, LastActionParameter: action?.Parameter ?? 0,

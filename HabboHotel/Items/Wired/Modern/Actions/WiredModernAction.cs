@@ -758,12 +758,18 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                     var packet = new WiredChatComposer(user.VirtualId, user.VirtualId, FormatLegacyText(context, user, config.Text), Param(config, 2), Param(config, 3, -1), !shownToRoom);
 
-                    if (packet.Private) {
-                        client!.Send(packet);
-                    }
-                    else {
-                        context.Room.SendChat(receiver => packet with { ReceiverVirtualId = receiver });
-                    }
+                    var room = context.Room;
+                    var target = client;
+
+                    room.GetWired().AfterFlash(() =>
+                    {
+                        if (packet.Private) {
+                            target!.Send(packet);
+                        }
+                        else {
+                            room.SendChat(receiver => packet with { ReceiverVirtualId = receiver });
+                        }
+                    });
 
                     changed = true;
                 }

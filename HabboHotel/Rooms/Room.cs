@@ -706,41 +706,19 @@ public class Room
         session.Send(new FloorHeightMapComposer(GetGameMap().Model.GetRelativeHeightmap(), GetGameMap().StaticModel.WallHeight,
             presentation.HalfScale, cameraX: presentation.CameraX, cameraY: presentation.CameraY, cameraZ: presentation.CameraZ));
         var snapshotUsers = _roomUserManager.GetUserList().Where(user => user != null).ToArray();
+        // Observed on AIR WIN63-202610151745-318700621: the entrant gets the users already in the room as one Users packet (empty
+        // when nobody is there) before the furni, and its own Users entry after the wall items. It gets no status update for itself
+        // here; that follows in the next room cycle.
+        var entrant = snapshotUsers.FirstOrDefault(user => !user.IsBot && ReferenceEquals(user.GetClient(), session));
+        var present = snapshotUsers.Where(user => !ReferenceEquals(user, entrant)).ToArray();
+        session.Send(new UsersComposer(_userSnapshots.Capture(present)));
 
-        foreach (var user in snapshotUsers) {
-            if (user == null) {
-                continue;
-            }
-
-            var userSnapshot = _userSnapshots.Capture(user);
-
-            if (userSnapshot != null) {
-                session.Send(new UsersComposer(userSnapshot));
-            }
-
-            if (user.IsBot && user.BotData.DanceId > 0) {
-                session.Send(new DanceComposer(user.VirtualId, user.BotData.DanceId));
-            }
-            else if (!user.IsBot && !user.IsPet && user.IsDancing) {
-                session.Send(new DanceComposer(user.VirtualId, user.DanceId));
-            }
-
-            if (user.IsAsleep) {
-                session.Send(new SleepComposer(user.VirtualId, true));
-            }
-
-            if (user.CarryItemId > 0 && user.CarryTimer > 0) {
-                session.Send(new CarryObjectComposer(user.VirtualId, user.CarryItemId));
-            }
-
-            if (!user.IsBot && !user.IsPet && user.CurrentEffect > 0) {
-                session.Send(new AvatarEffectComposer(user.VirtualId, user.CurrentEffect));
-            }
+        foreach (var user in present) {
+            SendUserExtras(session, user);
         }
 
-        // Users with a pending update (the one entering) get their status from the next room tick, which reaches this session too.
-        // Observed on AIR WIN63-202610151745-318700621: a plain room entry receives that status once.
-        var settledUsers = _roomUserManager.GetUserList().Where(user => user is { UpdateNeeded: false }).ToArray();
+        // Users with a pending update get their status from the next room tick, which reaches this session too.
+        var settledUsers = present.Where(user => !user.UpdateNeeded).ToArray();
 
         if (settledUsers.Length > 0) {
             session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(settledUsers)));
@@ -756,7 +734,37 @@ public class Room
         var wallSnapshot = RoomFurnitureSnapshot.Capture(snapshotWalls, OwnerId, OwnerName);
         session.Send(new ItemsComposer(wallSnapshot));
         session.Send(new FurnitureMetadataComposer(wallSnapshot.Items));
+
+        if (entrant != null && _userSnapshots.Capture(entrant) is { } entrantSnapshot) {
+            session.Send(new UsersComposer(entrantSnapshot));
+            SendUserExtras(session, entrant);
+            // A cycle that ran during admission sent the status before the client knew the avatar.
+            entrant.UpdateNeeded = true;
+        }
+
         _wiredComponent?.SnapshotEnqueued(session, snapshotFurniture.Concat(snapshotWalls), snapshotUsers);
+    }
+
+    private static void SendUserExtras(GameClient session, RoomUser user)
+    {
+        if (user.IsBot && user.BotData.DanceId > 0) {
+            session.Send(new DanceComposer(user.VirtualId, user.BotData.DanceId));
+        }
+        else if (!user.IsBot && !user.IsPet && user.IsDancing) {
+            session.Send(new DanceComposer(user.VirtualId, user.DanceId));
+        }
+
+        if (user.IsAsleep) {
+            session.Send(new SleepComposer(user.VirtualId, true));
+        }
+
+        if (user.CarryItemId > 0 && user.CarryTimer > 0) {
+            session.Send(new CarryObjectComposer(user.VirtualId, user.CarryItemId));
+        }
+
+        if (!user.IsBot && !user.IsPet && user.CurrentEffect > 0) {
+            session.Send(new AvatarEffectComposer(user.VirtualId, user.CurrentEffect));
+        }
     }
 
     public void AddTent(uint tentId)
@@ -911,7 +919,17 @@ public class Room
         }
     }
 
-    private void SendPacket(IServerPacket packet, bool withRightsOnly, Action<RoomUser>? enqueued)
+    // The admitted user's own client gets its Users entry with the room snapshot instead (SendObjects).
+    public void SendUserToOthers(RoomUser user)
+    {
+        var snapshot = _userSnapshots.Capture(user);
+
+        if (snapshot != null) {
+            SendPacket(new UsersComposer(snapshot), false, viewer => _wiredComponent?.ObjectEnqueued(viewer, null, user), user.GetClient());
+        }
+    }
+
+    private void SendPacket(IServerPacket packet, bool withRightsOnly, Action<RoomUser>? enqueued, GameClient? except = null)
     {
         if (packet == null) {
             return;
@@ -929,7 +947,7 @@ public class Room
                 foreach (var user in _roomUserManager.GetRoomUsers()) {
                     var client = user?.GetClient();
 
-                    if (client == null || withRightsOnly && !CheckRights(client)) {
+                    if (client == null || ReferenceEquals(client, except) || withRightsOnly && !CheckRights(client)) {
                         continue;
                     }
 

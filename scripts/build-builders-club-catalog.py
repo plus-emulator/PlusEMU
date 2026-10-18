@@ -119,41 +119,51 @@ def main():
 -- {len(pages)} pages ({next_folder[0] - FOLDER_ID_BASE} headings without a page), {len(offers)} offers, {len(page_offers)} page offers, {len(classnames)} furni.
 -- Replaces the starter tree of migration 89. Idempotent: reruns end in the same state.
 
-CREATE TEMPORARY TABLE `bc_pages_91` (
+CREATE TEMPORARY TABLE `bc_import_pages` (
     `ord` INT NOT NULL, `id` INT NOT NULL PRIMARY KEY, `parent_id` INT NULL, `caption` VARCHAR(128) NOT NULL, `icon` INT NOT NULL, `position` INT NOT NULL,
     `link` VARCHAR(128) NOT NULL, `layout` VARCHAR(64) NOT NULL, `visible` TINYINT(1) NOT NULL, `enabled` TINYINT(1) NOT NULL
 );
-CREATE TEMPORARY TABLE `bc_page_images_91` (`page_id` INT NOT NULL, `slot` INT NOT NULL, `image` VARCHAR(255) NOT NULL, PRIMARY KEY (`page_id`, `slot`));
-CREATE TEMPORARY TABLE `bc_page_texts_91` (`page_id` INT NOT NULL, `slot` INT NOT NULL, `text` TEXT NOT NULL, PRIMARY KEY (`page_id`, `slot`));
-CREATE TEMPORARY TABLE `bc_offers_91` (
+CREATE TEMPORARY TABLE `bc_import_page_images` (`page_id` INT NOT NULL, `slot` INT NOT NULL, `image` VARCHAR(255) NOT NULL, PRIMARY KEY (`page_id`, `slot`));
+CREATE TEMPORARY TABLE `bc_import_page_texts` (`page_id` INT NOT NULL, `slot` INT NOT NULL, `text` TEXT NOT NULL, PRIMARY KEY (`page_id`, `slot`));
+CREATE TEMPORARY TABLE `bc_import_offers` (
     `habbo_id` INT NOT NULL PRIMARY KEY, `localization_key` VARCHAR(100) NOT NULL, `cost_credits` INT UNSIGNED NOT NULL, `cost_points` INT UNSIGNED NOT NULL,
     `points_type` INT UNSIGNED NOT NULL, `club_level` TINYINT UNSIGNED NOT NULL, `bulk_purchase` TINYINT(1) NOT NULL, `preview_image` VARCHAR(255) NOT NULL,
     `classname` VARCHAR(100) NOT NULL, `product_type` CHAR(1) NOT NULL, `extra_param` VARCHAR(1024) NOT NULL,
     `furniture_id` INT UNSIGNED NULL, `offer_id` INT NULL, KEY (`localization_key`)
 );
-CREATE TEMPORARY TABLE `bc_page_offers_91` (`page_id` INT NOT NULL, `habbo_id` INT NOT NULL, `position` INT NOT NULL, PRIMARY KEY (`page_id`, `habbo_id`));
+CREATE TEMPORARY TABLE `bc_import_page_offers` (`page_id` INT NOT NULL, `habbo_id` INT NOT NULL, `position` INT NOT NULL, PRIMARY KEY (`page_id`, `habbo_id`));
 """)
 
     for table, columns, values in (
-        ('bc_pages_91', '`ord`, `id`, `parent_id`, `caption`, `icon`, `position`, `link`, `layout`, `visible`, `enabled`', pages),
-        ('bc_page_images_91', '`page_id`, `slot`, `image`', images),
-        ('bc_page_texts_91', '`page_id`, `slot`, `text`', texts),
-        ('bc_offers_91', '`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, '
+        ('bc_import_pages', '`ord`, `id`, `parent_id`, `caption`, `icon`, `position`, `link`, `layout`, `visible`, `enabled`', pages),
+        ('bc_import_page_images', '`page_id`, `slot`, `image`', images),
+        ('bc_import_page_texts', '`page_id`, `slot`, `text`', texts),
+        ('bc_import_offers', '`habbo_id`, `localization_key`, `cost_credits`, `cost_points`, `points_type`, `club_level`, `bulk_purchase`, `preview_image`, '
                          '`classname`, `product_type`, `extra_param`', sorted(offers.values())),
-        ('bc_page_offers_91', '`page_id`, `habbo_id`, `position`', page_offers),
+        ('bc_import_page_offers', '`page_id`, `habbo_id`, `position`', page_offers),
     ):
         for part in chunks(values):
             out.append(f'INSERT INTO `{table}` ({columns}) VALUES\n{rows(part)};\n')
 
-    out.append("""-- Each furni by classname: the row that carries its furnidata, else the first.
-UPDATE `bc_offers_91` AS `offer`
-SET `offer`.`furniture_id` = (
-    SELECT `furniture`.`id` FROM `furniture`
-    WHERE `furniture`.`item_name` = `offer`.`classname` AND `furniture`.`type` = `offer`.`product_type`
-    ORDER BY `furniture`.`has_furnidata` DESC, `furniture`.`id` LIMIT 1);
+    out.append("""-- Each furni by classname: the row that carries its furnidata, else the first. furniture.item_name has no index, so the
+-- pick per classname goes through a keyed table instead of one furniture scan per offer.
+CREATE TEMPORARY TABLE `bc_furniture_by_name` (
+    `item_name` VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, `type` CHAR(1) NOT NULL, `id` INT UNSIGNED NOT NULL,
+    PRIMARY KEY (`item_name`, `type`)
+);
+INSERT INTO `bc_furniture_by_name` (`item_name`, `type`, `id`)
+SELECT `item_name`, `type`, `id` FROM (
+    SELECT `item_name`, `type`, `id`, ROW_NUMBER() OVER (PARTITION BY `item_name`, `type` ORDER BY `has_furnidata` DESC, `id`) AS `pick`
+    FROM `furniture`
+) AS `candidate`
+WHERE `pick` = 1;
+UPDATE `bc_import_offers` AS `offer`
+LEFT JOIN `bc_furniture_by_name` AS `furni` ON `furni`.`item_name` = `offer`.`classname` AND `furni`.`type` = `offer`.`product_type`
+SET `offer`.`furniture_id` = `furni`.`id`;
+DROP TEMPORARY TABLE `bc_furniture_by_name`;
 
 -- Habbo's offer id when our offer of that id sells the same furni once.
-UPDATE `bc_offers_91` AS `offer`
+UPDATE `bc_import_offers` AS `offer`
 SET `offer`.`offer_id` = `offer`.`habbo_id`
 WHERE `offer`.`furniture_id` IS NOT NULL
     AND (SELECT COUNT(*) FROM `catalog_offer_products` AS `product` WHERE `product`.`offer_id` = `offer`.`habbo_id`) = 1
@@ -162,7 +172,7 @@ WHERE `offer`.`furniture_id` IS NOT NULL
             AND `product`.`furniture_id` = `offer`.`furniture_id` AND `product`.`amount` = 1);
 
 -- Otherwise an offer with the same localization key selling the same furni once (also what an earlier run created).
-UPDATE `bc_offers_91` AS `offer`
+UPDATE `bc_import_offers` AS `offer`
 SET `offer`.`offer_id` = (
     SELECT MIN(`existing`.`id`) FROM `catalog_offers` AS `existing`
     INNER JOIN `catalog_offer_products` AS `product` ON `product`.`offer_id` = `existing`.`id`
@@ -176,19 +186,19 @@ INSERT INTO `catalog_offers` (`id`, `localization_key`, `cost_credits`, `cost_po
 SELECT IF(EXISTS (SELECT 1 FROM `catalog_offers` AS `taken` WHERE `taken`.`id` = `offer`.`habbo_id`), NULL, `offer`.`habbo_id`),
     `offer`.`localization_key`, `offer`.`cost_credits`, `offer`.`cost_points`, `offer`.`points_type`, `offer`.`club_level`, `offer`.`bulk_purchase`, 1,
     `offer`.`preview_image`
-FROM `bc_offers_91` AS `offer`
+FROM `bc_import_offers` AS `offer`
 WHERE `offer`.`offer_id` IS NULL AND `offer`.`furniture_id` IS NOT NULL
 ORDER BY `offer`.`habbo_id`;
 
 -- The new offers, the only ones of their key without a product, get their furni.
 INSERT IGNORE INTO `catalog_offer_products` (`offer_id`, `position`, `product_type`, `furniture_id`, `amount`, `extra_param`)
 SELECT `created`.`id`, 0, 'furni', `offer`.`furniture_id`, 1, `offer`.`extra_param`
-FROM `bc_offers_91` AS `offer`
+FROM `bc_import_offers` AS `offer`
 INNER JOIN `catalog_offers` AS `created` ON `created`.`localization_key` = `offer`.`localization_key`
 WHERE `offer`.`offer_id` IS NULL AND `offer`.`furniture_id` IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM `catalog_offer_products` AS `product` WHERE `product`.`offer_id` = `created`.`id`);
 
-UPDATE `bc_offers_91` AS `offer`
+UPDATE `bc_import_offers` AS `offer`
 SET `offer`.`offer_id` = (
     SELECT MIN(`existing`.`id`) FROM `catalog_offers` AS `existing`
     INNER JOIN `catalog_offer_products` AS `product` ON `product`.`offer_id` = `existing`.`id`
@@ -198,35 +208,35 @@ WHERE `offer`.`offer_id` IS NULL AND `offer`.`furniture_id` IS NOT NULL;
 
 -- Builders Club pages not in Habbo's tree (the starter tree of migration 89) go.
 UPDATE `catalog_pages` SET `parent_id` = NULL
-WHERE `catalog_mode` = 'BUILDERS_CLUB' AND `id` NOT IN (SELECT `id` FROM `bc_pages_91`);
+WHERE `catalog_mode` = 'BUILDERS_CLUB' AND `id` NOT IN (SELECT `id` FROM `bc_import_pages`);
 DELETE FROM `catalog_pages`
-WHERE `catalog_mode` = 'BUILDERS_CLUB' AND `id` NOT IN (SELECT `id` FROM `bc_pages_91`);
+WHERE `catalog_mode` = 'BUILDERS_CLUB' AND `id` NOT IN (SELECT `id` FROM `bc_import_pages`);
 
--- Parents come first in bc_pages_91, as in the tree.
+-- Parents come first in bc_import_pages, as in the tree.
 INSERT INTO `catalog_pages` (`id`, `parent_id`, `caption`, `icon`, `position`, `link`, `layout`, `catalog_mode`, `visible`, `enabled`, `required_club_level`)
 SELECT `id`, `parent_id`, `caption`, `icon`, `position`, `link`, `layout`, 'BUILDERS_CLUB', `visible`, `enabled`, 0
-FROM `bc_pages_91`
+FROM `bc_import_pages`
 ORDER BY `ord`
 ON DUPLICATE KEY UPDATE `parent_id` = VALUES(`parent_id`), `caption` = VALUES(`caption`), `icon` = VALUES(`icon`), `position` = VALUES(`position`),
     `link` = VALUES(`link`), `layout` = VALUES(`layout`), `catalog_mode` = 'BUILDERS_CLUB', `visible` = VALUES(`visible`), `enabled` = VALUES(`enabled`);
 
-DELETE FROM `catalog_page_images` WHERE `page_id` IN (SELECT `id` FROM `bc_pages_91`);
-INSERT INTO `catalog_page_images` (`page_id`, `slot`, `image`) SELECT `page_id`, `slot`, `image` FROM `bc_page_images_91`;
-DELETE FROM `catalog_page_texts` WHERE `page_id` IN (SELECT `id` FROM `bc_pages_91`);
-INSERT INTO `catalog_page_texts` (`page_id`, `slot`, `text`) SELECT `page_id`, `slot`, `text` FROM `bc_page_texts_91`;
+DELETE FROM `catalog_page_images` WHERE `page_id` IN (SELECT `id` FROM `bc_import_pages`);
+INSERT INTO `catalog_page_images` (`page_id`, `slot`, `image`) SELECT `page_id`, `slot`, `image` FROM `bc_import_page_images`;
+DELETE FROM `catalog_page_texts` WHERE `page_id` IN (SELECT `id` FROM `bc_import_pages`);
+INSERT INTO `catalog_page_texts` (`page_id`, `slot`, `text`) SELECT `page_id`, `slot`, `text` FROM `bc_import_page_texts`;
 
-DELETE FROM `catalog_page_offers` WHERE `page_id` IN (SELECT `id` FROM `bc_pages_91`);
+DELETE FROM `catalog_page_offers` WHERE `page_id` IN (SELECT `id` FROM `bc_import_pages`);
 INSERT IGNORE INTO `catalog_page_offers` (`page_id`, `offer_id`, `position`)
 SELECT `page`.`page_id`, `offer`.`offer_id`, `page`.`position`
-FROM `bc_page_offers_91` AS `page`
-INNER JOIN `bc_offers_91` AS `offer` ON `offer`.`habbo_id` = `page`.`habbo_id`
+FROM `bc_import_page_offers` AS `page`
+INNER JOIN `bc_import_offers` AS `offer` ON `offer`.`habbo_id` = `page`.`habbo_id`
 WHERE `offer`.`offer_id` IS NOT NULL;
 
-DROP TEMPORARY TABLE `bc_pages_91`;
-DROP TEMPORARY TABLE `bc_page_images_91`;
-DROP TEMPORARY TABLE `bc_page_texts_91`;
-DROP TEMPORARY TABLE `bc_offers_91`;
-DROP TEMPORARY TABLE `bc_page_offers_91`;
+DROP TEMPORARY TABLE `bc_import_pages`;
+DROP TEMPORARY TABLE `bc_import_page_images`;
+DROP TEMPORARY TABLE `bc_import_page_texts`;
+DROP TEMPORARY TABLE `bc_import_offers`;
+DROP TEMPORARY TABLE `bc_import_page_offers`;
 """)
 
     with open(args.out, 'w', encoding='utf-8', newline='\n') as handle:

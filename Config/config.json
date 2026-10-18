@@ -6,7 +6,14 @@
         "Password": "",
         "Name": "plus",
         "MinimumPoolSize": 5,
-        "MaximumPoolSize": 65
+        "MaximumPoolSize": 65,
+        "Migrations": {
+            "AutoMigrate": true,
+            "Backup": true,
+            "BackupDirectory": "backups",
+            "DumpCommand": "",
+            "FurnidataFile": ""
+        }
     },
     "Flash": {
         "Hostname": "127.0.0.1",

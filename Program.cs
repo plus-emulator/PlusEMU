@@ -14,6 +14,7 @@ using Plus.Communication.Http.Air;
 using Plus.Communication.Nitro;
 using Plus.Communication.RCON;
 using Plus.Database;
+using Plus.Database.Migrator;
 using Plus.HabboHotel.Camera;
 using Plus.HabboHotel.GameClients;
 using Plus.Plugins;
@@ -30,6 +31,12 @@ public static class Program
     {
         if (args is ["--generate-rsa-key", .. var keyArgs]) {
             Environment.Exit(GenerateRsaKey(keyArgs));
+
+            return;
+        }
+
+        if (!TryParseMigrationArguments(args, out var migrationMode, out var migrationOptions)) {
+            Environment.Exit(2);
 
             return;
         }
@@ -64,6 +71,7 @@ public static class Program
         // Dependency Injection
         services.AddDefaultRules(typeof(Program).Assembly);
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(migrationOptions);
 
         foreach (var plugin in pluginDefinitions) {
             plugin.OnServicesConfigured();
@@ -91,6 +99,14 @@ public static class Program
         Console.ForegroundColor = ConsoleColor.White;
         ConsoleWindow.HideCursor();
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+
+        if (migrationMode != MigrationMode.Startup) {
+            var migrated = await serviceProvider.GetRequiredService<ISchemaMigrator>().Run(migrationMode, migrationOptions);
+            LogManager.Shutdown();
+            Environment.Exit(migrated ? 0 : 1);
+
+            return;
+        }
 
         // Start
         var environment = serviceProvider.GetRequiredService<IPlusEnvironment>();
@@ -185,6 +201,41 @@ public static class Program
 
         return pluginDefinitions;
     }
+    // --migrate applies pending database migrations and exits, --migrate-status lists them; --migrate-allow-gaps and
+    // --migrate-mark-applied <name> settle legacy migrations the startup check could not place (Database/Migrator).
+    private static bool TryParseMigrationArguments(string[] args, out MigrationMode mode, out MigrationRunOptions options)
+    {
+        mode = MigrationMode.Startup;
+        options = new MigrationRunOptions();
+        var allowGaps = false;
+        var markApplied = new List<string>();
+
+        for (var i = 0; i < args.Length; i++) {
+            switch (args[i]) {
+                case "--migrate":
+                    mode = MigrationMode.Apply;
+                    break;
+                case "--migrate-status":
+                    mode = MigrationMode.Status;
+                    break;
+                case "--migrate-allow-gaps":
+                    allowGaps = true;
+                    break;
+                case "--migrate-mark-applied" when i + 1 < args.Length:
+                    markApplied.Add(args[++i]);
+                    break;
+                case "--migrate-mark-applied":
+                    Console.Error.WriteLine("Usage: --migrate-mark-applied <migration file name>");
+
+                    return false;
+            }
+        }
+
+        options = new MigrationRunOptions(allowGaps, markApplied);
+
+        return true;
+    }
+
     // Writes a new 2048-bit handshake key (exponent 65537, what the AIR client uses) and prints its public modulus.
     private static int GenerateRsaKey(string[] args)
     {

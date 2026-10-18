@@ -21,7 +21,7 @@ moderation_preset_action_messages moderation_topics moderation_topic_actions nav
 quests recycler_levels recycler_prizes recycler_settings reward_tracks reward_track_prizes
 reward_track_tasks reward_track_task_levels roles role_limits role_permissions room_chat_styles
 room_models room_music_disc_definitions room_music_songs safety_quiz_questions safety_quizzes
-server_landing server_locale server_rewards server_settings snowwar_token_offers talents
+schema_migrations server_landing server_locale server_rewards server_settings snowwar_token_offers talents
 talents_sub_levels wordfilter"
 
 dump() {

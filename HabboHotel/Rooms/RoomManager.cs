@@ -104,8 +104,7 @@ public class RoomManager : IRoomManager, IStartable
 
                 if (!fullPass && !_fastWiredRooms.IsEmpty) {
                     foreach (var room in _fastWiredRooms.Values) {
-                        // A delayed effect about to fall due gets the room's pass at its own time instead.
-                        if (_pendingFullRooms.ContainsKey(room.Id) || room.GetWired().WakeDueWithin(RoomCycle.WakePriorityMs)) {
+                        if (_pendingFullRooms.ContainsKey(room.Id)) {
                             continue;
                         }
 

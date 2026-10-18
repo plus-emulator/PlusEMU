@@ -314,6 +314,9 @@ public partial class RoomItemHandling
                     continue;
                 }
 
+                // A row from the database carries only its anchor tile; the map reads the rest of the footprint from here.
+                item.SetState(item.GetX, item.GetY, item.GetZ,
+                    Gamemap.GetAffectedTiles(item.Definition.Length, item.Definition.Width, item.GetX, item.GetY, item.Rotation));
                 AdmitFloorItem(item);
             }
             else if (item.IsWallItem) {

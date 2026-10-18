@@ -176,6 +176,19 @@ public sealed class AccessControlTests
         Assert.Equal(typeof(PermissionDefinition), parameter.ParameterType);
     }
 
+    [Fact]
+    public void EveryChatCommandPermissionIsARegisteredKey()
+    {
+        // UserAccess drops role grants outside the registry, so an unregistered command key can never be used.
+        var keys = typeof(Plus.HabboHotel.Rooms.Chat.Commands.IChatCommand).Assembly.GetTypes()
+            .Where(type => type is { IsClass: true, IsAbstract: false } && typeof(Plus.HabboHotel.Rooms.Chat.Commands.IChatCommand).IsAssignableFrom(type))
+            .Select(type => "command." + ((Plus.HabboHotel.Rooms.Chat.Commands.IChatCommand)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(type)).Key)
+            .ToArray();
+
+        Assert.Contains("command.pickallbc", keys);
+        Assert.Empty(keys.Except(PermissionKeys.All.Select(permission => permission.Key)));
+    }
+
     private sealed class TestClock : TimeProvider
     {
         public DateTimeOffset Now { get; set; } = new(2026, 10, 4, 0, 0, 0, TimeSpan.Zero);

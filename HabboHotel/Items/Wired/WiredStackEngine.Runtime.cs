@@ -146,7 +146,7 @@ internal sealed partial class WiredStackEngine
         return DispatchCore(new(WiredEventKind.ClickUser) { Actor = actor, TargetUser = target }).Click;
     });
 
-    private (bool Accepted, WiredClickResult Click) DispatchCore(WiredRuntimeEvent @event)
+    private (bool Accepted, WiredClickResult Click) DispatchCore(WiredRuntimeEvent @event, bool resumeImmediately = false)
     {
         if (_runtimeRoom == null) {
             return default;
@@ -160,7 +160,7 @@ internal sealed partial class WiredStackEngine
         }
 
         RefreshStacks();
-        var dispatch = new PendingDispatch(@event, depth) { IncludeLegacy = false, ResumeImmediately = @event.Kind == WiredEventKind.Speech };
+        var dispatch = new PendingDispatch(@event, depth) { IncludeLegacy = false, ResumeImmediately = @event.Kind == WiredEventKind.Speech || resumeImmediately };
         var complete = AdvanceDispatch(dispatch);
 
         if (!complete) {
@@ -198,7 +198,13 @@ internal sealed partial class WiredStackEngine
 
             if (typed != null) {
                 _queuedDepth = queuedDepth;
-                accepted |= typed.Kind == WiredEventKind.Speech ? DispatchSynchronously(typed) : Enqueue(typed, _queuedDepth);
+                // Observed on AIR WIN63-202610151745-318700621: an Enter Room stack runs inside the room entry, like a speech stack with its chat.
+                accepted |= typed.Kind switch
+                {
+                    WiredEventKind.Speech => DispatchSynchronously(typed),
+                    WiredEventKind.Enter => DispatchCore(typed, resumeImmediately: true).Accepted,
+                    _ => Enqueue(typed, _queuedDepth)
+                };
             }
 
             return accepted;

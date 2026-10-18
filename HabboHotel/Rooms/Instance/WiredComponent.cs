@@ -436,8 +436,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         var triggered = WithHighscoreSpeechOwner(type == WiredBoxType.TriggerUserSays, () => TriggerEventCore(type, arguments));
 
-        // A chat runs its stacks at once, like Dispatch of speech: their flashes go out with the chat.
-        if (type == WiredBoxType.TriggerUserSays) {
+        // A chat runs its stacks at once, like Dispatch of speech: their flashes go out with the chat. Enter Room stacks run inside the
+        // room entry, so their flashes go out with it.
+        if (type is WiredBoxType.TriggerUserSays or WiredBoxType.TriggerRoomEnter) {
             FlushFlashes();
         }
 

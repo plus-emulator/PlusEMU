@@ -14,6 +14,7 @@ public static class ClientPacketHeader
     public const uint ChangeUserNameEvent = 1231;
     public const uint GetWardrobeEvent = 1672;
     public const uint SaveWardrobeOutfitEvent = 3540;
+    public const uint GetUserNftWardrobeEvent = 3375; // package_34/GetUserNftWardrobeMessageComposer
 
     //Preferences
     public const uint SetChatStylePreferenceEvent = 2611;

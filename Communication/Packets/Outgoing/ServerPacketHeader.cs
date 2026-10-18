@@ -20,6 +20,7 @@ public static class ServerPacketHeader
 
     // Avatar
     public const uint WardrobeComposer = 3894;
+    public const uint UserNftWardrobeComposer = 3493; // package_210/class_3851
 
     // Catalog
     public const uint CatalogIndexComposer = 3453;

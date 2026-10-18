@@ -6,6 +6,9 @@ internal static class RoomCycle
     public static readonly TimeSpan WiredInterval = TimeSpan.FromMilliseconds(50);
     public const int MissesUntilCrash = 30;
 
+    /// <summary>How close a wired wake-up may be for the 50 ms step to leave the room to it.</summary>
+    public const long WakePriorityMs = 25;
+
     public readonly record struct RoomTick(bool Start, int Lag, bool Crashed);
 
     public static bool IsDue(DateTimeOffset lastRun, DateTimeOffset now) =>

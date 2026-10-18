@@ -242,7 +242,7 @@ public partial class PlacedFurniRoomTests
             packet.ReadInt();
             packet.ReadInt();
             packet.ReadInt();
-            Assert.Equal("3", packet.ReadString());
+            Assert.Equal("3.0", packet.ReadString());
             packet.ReadString();
             Assert.Equal(1, packet.ReadInt());
             Assert.Equal(0, packet.ReadInt());

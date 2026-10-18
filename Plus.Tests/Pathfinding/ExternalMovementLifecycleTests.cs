@@ -304,7 +304,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(actor.Movement.Commands.Read()!.Sequence > actor.Movement.ConsumedSequence);
         ExecutorTick();
         Assert.Equal((3, 1), (actor.GoalX, actor.GoalY));
-        Assert.Contains("/mv 3,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 3,1,0.0/", ExecutorUpdate(actor).Status);
     }
 
     private RoomUser ExternalLifecycleHorse(int x, int y)

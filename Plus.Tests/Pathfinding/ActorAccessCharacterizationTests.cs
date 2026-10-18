@@ -78,7 +78,7 @@ public partial class PlacedFurniRoomTests
         var actor = ExecutorActor(0, 1);
         actor.MoveTo(1, 1);
         ExecutorTick();
-        Assert.Equal("1,1,0", actor.Statusses["mv"]);
+        Assert.Equal("1,1,0.0", actor.Statusses["mv"]);
         var version = actor.Movement.Profile.CapabilityVersion;
         RoomPerformanceFixture.SetField(group, "_members", new List<int>());
         ExecutorTick();

@@ -90,7 +90,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(MoveOrigin.Interaction, actor.Movement.Origin);
         Assert.Equal(new InteractionAuthorization(1, 0, 1, 1), actor.Movement.Profile.Interaction);
         Assert.False(actor.Movement.Profile.LegacyOverride);
-        Assert.Contains("/mv 1,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(actor).Status);
         Assert.Equal("1", item.LegacyDataString);
         Assert.True(ownerUpdates > 0);
         ExecutorTick();
@@ -114,7 +114,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(actor.AllowOverride);
         Assert.Equal(MoveOrigin.Interaction, actor.Movement.Origin);
         Assert.Equal(new InteractionAuthorization(1, 1, 1, 0), actor.Movement.Profile.Interaction);
-        Assert.Contains("/mv 1,0,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,0,0.0/", ExecutorUpdate(actor).Status);
         Assert.Equal("1", item.LegacyDataString);
         ExecutorTick();
         Assert.Equal((1, 0), (actor.X, actor.Y));
@@ -133,7 +133,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(actor.AllowOverride);
         ExecutorTick();
         Assert.Equal(MoveOrigin.Interaction, actor.Movement.Origin);
-        Assert.Contains("/mv 1,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(actor).Status);
         Assert.Equal(3, gate.UpdateCounter);
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
@@ -145,7 +145,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(actor.CanWalk);
         ExecutorTick();
         Assert.Equal("1", gate.LegacyDataString);
-        Assert.Contains("/mv 1,2,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,2,0.0/", ExecutorUpdate(actor).Status);
         Assert.Equal(new InteractionAuthorization(1, 1, 1, 2), actor.Movement.Profile.Interaction);
         ExecutorTick();
         Assert.Equal((1, 2), (actor.X, actor.Y));
@@ -173,7 +173,7 @@ public partial class PlacedFurniRoomTests
         item.Interactor.OnTrigger(_client, item, 0, true);
         ExecutorTick();
         Assert.Equal("1", item.LegacyDataString);
-        Assert.Contains("/mv 1,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(actor).Status);
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0, target.InteractingUser2);
         Assert.Equal(MoveOrigin.Interaction, actor.Movement.Origin);
         Assert.Equal(new InteractionAuthorization(2, 2, 2, 1), actor.Movement.Profile.Interaction);
-        Assert.Contains("/mv 2,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
         Assert.True(actor.CanWalk);
         Assert.False(actor.AllowOverride);
         ExecutorTick();
@@ -216,7 +216,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal(MoveOrigin.User, actor.Movement.Origin);
         Assert.Null(actor.Movement.Profile.Interaction);
-        Assert.Contains("/mv 1,0,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,0,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal(item.SquareInFront, actor.Coordinate);
         Assert.Equal(0, item.InteractingUser);
@@ -261,7 +261,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 0), (actor.X, actor.Y));
         actor.Freezed = false;
         ExecutorTick();
-        Assert.Contains("/mv 1,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
         Assert.False(actor.AllowOverride);

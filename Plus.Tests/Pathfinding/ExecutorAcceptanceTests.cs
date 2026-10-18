@@ -34,8 +34,8 @@ public partial class PlacedFurniRoomTests
         };
         ExecutorTick();
         Assert.Equal(new[] { (1, 1, 1, 0) }, observed);
-        Assert.Equal("2,1,0", first.Statusses["mv"]);
-        Assert.Equal("2,2,0", second.Statusses["mv"]);
+        Assert.Equal("2,1,0.0", first.Statusses["mv"]);
+        Assert.Equal("2,2,0.0", second.Statusses["mv"]);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(high.HasStatus("mv"));
         first.MoveTo(3, 1);
         ExecutorTick();
-        Assert.Equal("1,3,0", high.Statusses["mv"]);
+        Assert.Equal("1,3,0.0", high.Statusses["mv"]);
         Assert.Equal((0, 3), (high.X, high.Y));
         ExecutorTick();
         Assert.Equal((1, 3), (high.X, high.Y));
@@ -121,7 +121,7 @@ public partial class PlacedFurniRoomTests
         first.MoveTo(3, 1);
         second.MoveTo(3, 2);
         ExecutorTick();
-        Assert.Equal("1,1,0", first.Statusses["mv"]);
+        Assert.Equal("1,1,0.0", first.Statusses["mv"]);
         first.MoveTo(3, 1);
         ExecutorTick();
         Assert.Equal((1, 1), (first.X, first.Y));
@@ -153,7 +153,7 @@ public partial class PlacedFurniRoomTests
         _room.GetGameMap().Navigation!.Admit(pending);
         ExecutorTick();
         Assert.Equal(NavState.Active, pending.Movement.State);
-        Assert.Equal("1,2,0", pending.Statusses["mv"]);
+        Assert.Equal("1,2,0.0", pending.Statusses["mv"]);
         Assert.Equal(pending.Movement.Commands.Read()!.Sequence, pending.Movement.ConsumedSequence);
         ExecutorTick();
         Assert.Equal((1, 2), (pending.X, pending.Y));
@@ -182,7 +182,7 @@ public partial class PlacedFurniRoomTests
         actor.MoveTo(3, 1);
         ExecutorTick();
         Assert.Equal(3, actor.Movement.PendingCount);
-        Assert.Equal("3,1,0", actor.Statusses["mv"]);
+        Assert.Equal("3,1,0.0", actor.Statusses["mv"]);
         ExecutorTick();
         Assert.Equal((3, 1, 0d), (actor.X, actor.Y, actor.Z));
         Assert.Equal(new[] { (Plus.HabboHotel.Items.Wired.WiredBoxType.TriggerWalkOffFurni, source.Id),
@@ -220,7 +220,7 @@ public partial class PlacedFurniRoomTests
         actor.MoveTo(1, 1);
         ExecutorTick();
         Assert.False((navigation.Grid.Flags[5] & NavFlags.FloorLocked) != 0);
-        Assert.Equal("1,1,0", actor.Statusses["mv"]);
+        Assert.Equal("1,1,0.0", actor.Statusses["mv"]);
     }
 
     [Fact]
@@ -243,7 +243,7 @@ public partial class PlacedFurniRoomTests
         actor.MoveTo(1, 1);
         ExecutorTick();
         Assert.False((navigation.Grid.Flags[5] & NavFlags.FloorLocked) != 0);
-        Assert.Equal("1,1,0", actor.Statusses["mv"]);
+        Assert.Equal("1,1,0.0", actor.Statusses["mv"]);
     }
 
     [Fact]
@@ -265,7 +265,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(TargetOccupancy.Stationary, occupancy);
         stress.MoveTo(1, 1);
         ExecutorTick();
-        Assert.Equal("1,1,0", stress.Statusses["mv"]);
+        Assert.Equal("1,1,0.0", stress.Statusses["mv"]);
         ExecutorTick();
         Assert.Equal((1, 1), (stress.X, stress.Y));
     }

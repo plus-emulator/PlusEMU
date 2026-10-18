@@ -168,7 +168,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal(0, actor.Z);
         Assert.Equal(new SurfaceRef(LayeredTile(2, 1), 22, SurfaceKind.Top), actor.Movement.CurrentRef);
-        Assert.Equal((2, 1, "0"), (ExecutorUpdate(actor).X, ExecutorUpdate(actor).Y, ExecutorUpdate(actor).Z));
+        Assert.Equal((2, 1, "0.0"), (ExecutorUpdate(actor).X, ExecutorUpdate(actor).Y, ExecutorUpdate(actor).Z));
     }
 
     [Fact]
@@ -307,7 +307,7 @@ public partial class PlacedFurniRoomTests
 
         actor.MoveTo(2, 1);
         ExecutorTick();
-        Assert.Contains($"/mv 2,1,{(under ? "0" : "2")}/", ExecutorUpdate(actor).Status);
+        Assert.Contains($"/mv 2,1,{(under ? "0.0" : "2.0")}/", ExecutorUpdate(actor).Status);
         Assert.Equal(expected, Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).CurrentEffect);
     }
 

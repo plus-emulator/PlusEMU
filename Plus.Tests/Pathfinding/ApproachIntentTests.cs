@@ -164,7 +164,7 @@ public partial class PlacedFurniRoomTests
         else {
             Assert.Equal(2, actor.TeleDelay);
             ExecutorTick();
-            Assert.Contains("/mv 1,1,0/", ExecutorUpdate(actor).Status);
+            Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(actor).Status);
             ExecutorTick();
             Assert.Equal((1, 1), (actor.X, actor.Y));
         }
@@ -180,7 +180,7 @@ public partial class PlacedFurniRoomTests
         item.Interactor.OnTrigger(_client, item, 0, true);
         WalkToLanding(actor, 3);
         ExecutorTick();
-        Assert.Contains("/mv 1,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(actor).Status);
         Assert.Equal(MoveOrigin.Interaction, actor.Movement.Origin);
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));

@@ -1,3 +1,4 @@
+using Plus.Utilities;
 using System.Collections.Immutable;
 using System.Globalization;
 using Plus.HabboHotel.Items.DataFormat;
@@ -103,7 +104,7 @@ public sealed record RoomItemSnapshot(
             : guildData ?? FurnitureDataSnapshot.Capture(item.ExtraData);
 
         return new(item.Id, definition.SpriteId, item.GetX, item.GetY, item.Rotation,
-            z.ToString(CultureInfo.InvariantCulture), definition.Height.ToString(CultureInfo.InvariantCulture), extra,
+            TextHandling.GetString(z), TextHandling.GetString(definition.Height), extra,
             data, item.UniqueNumber, item.UniqueSeries, item.WallCoordinates ?? "",
             type == InteractionType.Postit ? legacy.Split(' ')[0] : legacy,
             UsagePolicy(definition), item.UserId, item.Username ?? "",

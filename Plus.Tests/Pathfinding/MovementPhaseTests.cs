@@ -28,7 +28,7 @@ public partial class PlacedFurniRoomTests
         // Only the walk-on announced with the seat step went out; the replaced landing runs no hooks.
         Assert.Equal(new[] { (WiredBoxType.TriggerWalkOnFurni, 10u) }, events.Select(e => (e.Kind, e.Item)).ToArray());
         Assert.False(actor.HasStatus("sit"));
-        Assert.Contains("/mv 0,2,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 0,2,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((0, 2), (actor.X, actor.Y));
     }
@@ -102,8 +102,8 @@ public partial class PlacedFurniRoomTests
         await new Plus.Communication.Packets.Incoming.Rooms.Engine.MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!))
             .Parse(_client, ClientPacket(3, 1));
         ExecutorTick();
-        Assert.Equal("2,1,1", rider.Statusses["mv"]);
-        Assert.Equal("2,1,0", horse.Statusses["mv"]);
+        Assert.Equal("2,1,1.0", rider.Statusses["mv"]);
+        Assert.Equal("2,1,0.0", horse.Statusses["mv"]);
         Assert.Equal(0, horse.Movement.PendingCount);
         Assert.False(horse.Movement.HasIntent);
         ExecutorTick();
@@ -122,8 +122,8 @@ public partial class PlacedFurniRoomTests
         horse.HorseId = rider.VirtualId;
         rider.MoveTo(2, 1);
         ExecutorTick();
-        Assert.Equal("1,1,1", rider.Statusses["mv"]);
-        Assert.Equal("1,1,0", horse.Statusses["mv"]);
+        Assert.Equal("1,1,1.0", rider.Statusses["mv"]);
+        Assert.Equal("1,1,0.0", horse.Statusses["mv"]);
         ExecutorTick();
         Assert.Equal((1, 1, 1d), (rider.X, rider.Y, rider.Z));
         Assert.Equal((1, 1, 0d), (horse.X, horse.Y, horse.Z));

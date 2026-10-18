@@ -1,3 +1,4 @@
+using Plus.Utilities;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
@@ -26,7 +27,7 @@ public sealed record RoomUserStatusSnapshot(int VirtualId, int X, int Y, string 
 
         statusText.Append('/');
 
-        return new(user.VirtualId, user.X, user.Y, user.Z.ToString(CultureInfo.InvariantCulture),
+        return new(user.VirtualId, user.X, user.Y, TextHandling.GetString(user.Z),
             user.RotHead, user.RotBody, statusText.ToString());
     }
 }

@@ -158,10 +158,10 @@ public partial class PlacedFurniRoomTests
         actor.MoveTo(2, 1, MoveOrigin.Wired);
         ExecutorTick();
         Assert.Equal((2, 1), (actor.GoalX, actor.GoalY));
-        Assert.Contains("/mv 1,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
-        Assert.Contains("/mv 2,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
     }
 
     [Fact]
@@ -172,11 +172,11 @@ public partial class PlacedFurniRoomTests
         _room.GetGameMap().AddUserToMap(actor, new(0, 1));
         actor.MoveTo(2, 1);
         ExecutorTick();
-        Assert.Contains("/mv 1,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(actor).Status);
         actor.CanWalk = false;
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
-        Assert.Contains("/mv 2,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((2, 1), (actor.X, actor.Y));
         Assert.False(actor.HasStatus("mv"));
@@ -231,7 +231,7 @@ public partial class PlacedFurniRoomTests
         actor.CanWalk = false;
         _room.GetGameMap().Navigation!.InteractionStep(actor, entry.GetX, entry.GetY);
         ExecutorTick();
-        Assert.Contains("/mv 1,1,4/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,1,4.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
         Assert.False(actor.AllowOverride);

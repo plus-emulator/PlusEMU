@@ -174,6 +174,7 @@ internal sealed partial class WiredStackEngine
         }
 
         DrainReadySignals();
+        DrainSamePassCollisions();
         UpdateFastWork();
 
         if (dispatch.ConsumedChat) {
@@ -461,6 +462,7 @@ internal sealed partial class WiredStackEngine
         DrainDueActions();
         RunRuntimeTimersAndSignals();
         DrainDueActions();
+        DrainSamePassCollisions();
         UpdateFastWork();
 
         return true;
@@ -713,6 +715,39 @@ internal sealed partial class WiredStackEngine
     }
 
     private bool _drainingSignals;
+    private bool _drainingCollisions;
+
+    // Observed on AIR WIN63-202610151745-318700621 (r97_chase_collide_clk, r97_flee_corner_clk): User Stuff Collision raised by an effect
+    // runs in the same pulse as that effect, its flashes and chat in the same batch. A Collision at the head of the queue therefore runs
+    // before the pass ends, with the effects it schedules; the pass budget and the event depth still bound a chain of them.
+    private void DrainSamePassCollisions()
+    {
+        if (_drainingCollisions || _draining || _dispatchAdvanceDepth != 0 || _activeFiring != null) {
+            return;
+        }
+
+        _drainingCollisions = true;
+
+        try {
+            while (_dispatches.TryPeek(out var pending) && pending.Event.Kind == WiredEventKind.Collision && !OutOfBudget()) {
+                // Its stacks run in this cycle instead of waiting for the next one.
+                pending.ResumeImmediately = true;
+
+                if (!AdvanceDispatch(pending)) {
+                    break;
+                }
+
+                if (_dispatches.TryPeek(out var head) && ReferenceEquals(head, pending)) {
+                    RemoveDispatchHead();
+                }
+
+                DrainDueActions();
+            }
+        }
+        finally {
+            _drainingCollisions = false;
+        }
+    }
 
     private void DrainReadySignals()
     {

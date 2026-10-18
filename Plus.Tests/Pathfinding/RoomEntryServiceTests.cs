@@ -73,14 +73,17 @@ public partial class PlacedFurniRoomTests
         var tail = _client.Sent.SkipWhile(id => id != ServerPacketHeader.RoomEntryInfoComposer).ToArray();
         var expected = new List<uint>
         {
+            // Observed on AIR WIN63-202610151745-318700621.
             ServerPacketHeader.RoomEntryInfoComposer,
-            // Observed on hhus (r90): labels, the playing-game flag and the leaderboard snapshot come with every room entry.
+            ServerPacketHeader.RoomEventComposer,
+            ServerPacketHeader.ConfigurationItemStatesComposer,
+            ServerPacketHeader.WiredEnvironmentComposer,
             ServerPacketHeader.WiredLabelsComposer,
-            ServerPacketHeader.YouArePlayingGameComposer,
-            ServerPacketHeader.WiredVariableLeaderboardSnapshotComposer,
-            ServerPacketHeader.RoomVisualizationSettingsComposer,
-            ServerPacketHeader.UserChangeComposer,
-            ServerPacketHeader.RoomEventComposer
+            ServerPacketHeader.YouAreControllerComposer,
+            ServerPacketHeader.WiredPermissionsComposer,
+            ServerPacketHeader.YouAreOwnerComposer,
+            ServerPacketHeader.RoomRatingComposer,
+            ServerPacketHeader.RaidProtectionCapabilityComposer
         };
 
         if (activeFlood) {

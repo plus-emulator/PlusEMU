@@ -471,7 +471,12 @@ public class WiredClickPacketHookTests
             }
         }
 
-        public void Ready() => _wired.SnapshotEnqueued(Client, Items("_floorItems").Values, [Actor, Target]);
+        public void Ready()
+        {
+            _wired.SnapshotEnqueued(Client, Items("_floorItems").Values, [Actor, Target]);
+            _wired.SendEnvironment(Client);
+        }
+
         public bool Remove(uint id) => _wired.TryRemove(id);
         private uint _next = 10;
         public World(string? trigger, int[] parameters)

@@ -429,6 +429,8 @@ public static class ServerPacketHeader
     public const uint WiredEnvironmentComposer = 3594;
     public const uint AreaHideComposer = 2373;
     public const uint ConfigurationItemStatesComposer = 3847;
+    public const uint UserNftChatStylesComposer = 2233; // package_170/class_2869
+    public const uint RaidProtectionCapabilityComposer = 3134; // package_236/class_4123
     public const uint WiredUserVariablesData64Composer = 9480;
     public const uint WiredVariableHolders64Composer = 9481;
     public const uint WiredVariableHoldersPage64Composer = 9482;

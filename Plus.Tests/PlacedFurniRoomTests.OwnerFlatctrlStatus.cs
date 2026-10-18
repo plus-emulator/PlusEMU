@@ -20,7 +20,8 @@ public partial class PlacedFurniRoomTests
         var actor = AdmitOwner();
 
         Assert.NotNull(actor);
-        Assert.Contains(ServerPacketHeader.YouAreOwnerComposer, _client.Sent);
+        Assert.Equal([ServerPacketHeader.YouAreControllerComposer, ServerPacketHeader.YouAreOwnerComposer],
+            _client.Sent.Where(id => id is ServerPacketHeader.YouAreControllerComposer or ServerPacketHeader.YouAreOwnerComposer));
         var controller = Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.YouAreControllerComposer);
         var body = new FlashIncomingPacket { Buffer = controller.Body };
         Assert.Equal(RoomId, body.ReadUInt());
@@ -96,6 +97,8 @@ public partial class PlacedFurniRoomTests
         client.Sent.Clear();
         client.Packets.Clear();
         Assert.True(manager.AddAvatarToRoom(client));
+        // Room entry sends the controller packets after the room data (AIR WIN63-202610151745-318700621).
+        manager.SendEntryRights(client);
 
         return Assert.IsType<RoomUser>(manager.GetRoomUserByHabbo(habboId));
     }

@@ -119,8 +119,8 @@ public sealed class UserNameServiceTests
         Assert.Equal(new[] { ("Dennis", "Renamed") }, context.ClientNames.Updates);
         Assert.Equal(new uint[]
         {
+            ServerPacketHeader.YouArePlayingGameComposer,
             ServerPacketHeader.CloseConnectionComposer,
-            ServerPacketHeader.UserRemoveComposer,
             ServerPacketHeader.UpdateUsernameComposer,
             ServerPacketHeader.RoomForwardComposer
         }, context.Sent.Select(packet => packet.Header));

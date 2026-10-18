@@ -29,7 +29,7 @@ public partial class PlacedFurniRoomTests
         EnterForNotice();
 
         var tail = _client.Sent.SkipWhile(id => id != ServerPacketHeader.RoomEntryInfoComposer).Take(3).ToArray();
-        Assert.Equal([ServerPacketHeader.RoomEntryInfoComposer, ServerPacketHeader.RoomNotificationComposer, ServerPacketHeader.WiredLabelsComposer], tail);
+        Assert.Equal([ServerPacketHeader.RoomEntryInfoComposer, ServerPacketHeader.RoomNotificationComposer, ServerPacketHeader.RoomEventComposer], tail);
         var notice = new FlashIncomingPacket { Buffer = Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.RoomNotificationComposer).Body };
         Assert.Equal("wired.error", notice.ReadString());
         Assert.Equal(2, notice.ReadInt());

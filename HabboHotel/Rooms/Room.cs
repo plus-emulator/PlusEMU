@@ -705,6 +705,7 @@ public class Room
         var presentation = GetGameMap().StaticModel.Presentation;
         session.Send(new FloorHeightMapComposer(GetGameMap().Model.GetRelativeHeightmap(), GetGameMap().StaticModel.WallHeight,
             presentation.HalfScale, cameraX: presentation.CameraX, cameraY: presentation.CameraY, cameraZ: presentation.CameraZ));
+        session.Send(new RoomVisualizationSettingsComposer(WallThickness, FloorThickness, Convert.ToBoolean(Hidewall)));
         var snapshotUsers = _roomUserManager.GetUserList().Where(user => user != null).ToArray();
         // Observed on AIR WIN63-202610151745-318700621: the entrant gets the users already in the room as one Users packet (empty
         // when nobody is there) before the furni, and its own Users entry after the wall items. It gets no status update for itself
@@ -729,7 +730,6 @@ public class Room
         session.Send(new ObjectsComposer(furnitureSnapshot));
         session.Send(new FurnitureMetadataComposer(furnitureSnapshot.Items));
         Plus.HabboHotel.Items.AreaHide.AreaHideState.SendSnapshot(session, snapshotFurniture);
-        Plus.HabboHotel.Items.ConfigurationItemStates.SendTo(session, this);
         var snapshotWalls = GetRoomItemHandler().GetWall.ToArray();
         var wallSnapshot = RoomFurnitureSnapshot.Capture(snapshotWalls, OwnerId, OwnerName);
         session.Send(new ItemsComposer(wallSnapshot));

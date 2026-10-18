@@ -216,8 +216,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
             return;
         }
 
-        // A queued pool item can wait several ms on a busy server, which the effect would land late by; the wake-up gets its own thread.
-        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, dedicated: true) || attempt >= 10) {
+        // A queued pool item, or a new thread, can wait several ms to start on a busy server, which the effect would land late by; the
+        // wake-up runs the pass on the wake clock's own thread.
+        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, inline: true) || attempt >= 10) {
             lock (_wakeDue) {
                 _wakeDue.Remove(dueMs);
             }

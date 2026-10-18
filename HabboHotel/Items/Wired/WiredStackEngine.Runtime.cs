@@ -339,8 +339,14 @@ internal sealed partial class WiredStackEngine
 
         var chain = new ActionChain(active.Chain.Source, active.Chain.Stack, active.Chain.Context, 1);
         _pending.Add(chain);
-        _schedule.Enqueue(new(chain, active.Box, callback, onCancelled),
-            (DueAt(_now() + Math.Max(0, delayMilliseconds), alignToStateUpdate), active.Box.Item.GetZ, active.Box.Item.Id, ++_sequence, 0));
+        var due = DueAt(_now() + Math.Max(0, delayMilliseconds), alignToStateUpdate);
+        _schedule.Enqueue(new(chain, active.Box, callback, onCancelled), (due, active.Box.Item.GetZ, active.Box.Item.Id, ++_sequence, 0));
+
+        // Like a delayed effect, a timed step wakes the room at its due time instead of waiting for the next 50 ms step.
+        if (due > _now()) {
+            ActionDue?.Invoke(due);
+        }
+
         UpdateFastWork();
 
         return true;

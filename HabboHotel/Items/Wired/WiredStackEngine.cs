@@ -496,7 +496,8 @@ internal sealed partial class WiredStackEngine
                 _schedule.Enqueue(scheduled, (due, scheduled.PriorityHeight, scheduled.PriorityId,
                     scheduled.PriorityFiring, scheduled.PriorityOrder));
 
-                if (delay > 0) {
+                // A queued firing's delays are counted from the pass it first runs in; that wake-up is armed when the delay starts.
+                if (delay > 0 && chain.FirstResumeAt != null) {
                     ActionDue?.Invoke(due + delay);
                 }
 
@@ -665,6 +666,9 @@ internal sealed partial class WiredStackEngine
                         scheduled.DelayElapsed = true;
                         _schedule.Enqueue(scheduled, (chain.FirstResumeAt.Value + scheduled.DelayMilliseconds,
                             scheduled.PriorityHeight, scheduled.PriorityId, scheduled.PriorityFiring, scheduled.PriorityOrder));
+                        // A queued firing's delays count from the pass its stack first ran in, not from when it was queued, so the
+                        // wake-up is armed for that time.
+                        ActionDue?.Invoke(chain.FirstResumeAt.Value + scheduled.DelayMilliseconds);
                         continue;
                     }
 

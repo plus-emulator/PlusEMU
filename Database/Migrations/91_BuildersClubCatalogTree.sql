@@ -11671,12 +11671,22 @@ INSERT INTO `bc_page_offers_91` (`page_id`, `habbo_id`, `position`) VALUES
     (2129326, 29681, 4),
     (2129326, 35246, 5);
 
--- Each furni by classname: the row that carries its furnidata, else the first.
+-- Each furni by classname: the row that carries its furnidata, else the first. furniture.item_name has no index, so the
+-- pick per classname goes through a keyed table instead of one furniture scan per offer.
+CREATE TEMPORARY TABLE `bc_furniture_91` (
+    `item_name` VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, `type` CHAR(1) NOT NULL, `id` INT UNSIGNED NOT NULL,
+    PRIMARY KEY (`item_name`, `type`)
+);
+INSERT INTO `bc_furniture_91` (`item_name`, `type`, `id`)
+SELECT `item_name`, `type`, `id` FROM (
+    SELECT `item_name`, `type`, `id`, ROW_NUMBER() OVER (PARTITION BY `item_name`, `type` ORDER BY `has_furnidata` DESC, `id`) AS `pick`
+    FROM `furniture`
+) AS `candidate`
+WHERE `pick` = 1;
 UPDATE `bc_offers_91` AS `offer`
-SET `offer`.`furniture_id` = (
-    SELECT `furniture`.`id` FROM `furniture`
-    WHERE `furniture`.`item_name` = `offer`.`classname` AND `furniture`.`type` = `offer`.`product_type`
-    ORDER BY `furniture`.`has_furnidata` DESC, `furniture`.`id` LIMIT 1);
+LEFT JOIN `bc_furniture_91` AS `furni` ON `furni`.`item_name` = `offer`.`classname` AND `furni`.`type` = `offer`.`product_type`
+SET `offer`.`furniture_id` = `furni`.`id`;
+DROP TEMPORARY TABLE `bc_furniture_91`;
 
 -- Habbo's offer id when our offer of that id sells the same furni once.
 UPDATE `bc_offers_91` AS `offer`

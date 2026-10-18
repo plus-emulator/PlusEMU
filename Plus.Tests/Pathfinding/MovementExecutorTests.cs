@@ -294,8 +294,8 @@ public partial class PlacedFurniRoomTests
         Assert.Contains("/mv 1,1,0.25/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((1, 1, 0.25), (actor.X, actor.Y, actor.Z));
-        Assert.Equal("0.5", actor.Statusses["sit"]);
-        Assert.Contains("/sit 0.5/", ExecutorUpdate(actor).Status);
+        Assert.Equal("0.5 0", actor.Statusses["sit"]);
+        Assert.Contains("/sit 0.5 0/", ExecutorUpdate(actor).Status);
         Assert.DoesNotContain("/mv ", ExecutorUpdate(actor).Status);
     }
 

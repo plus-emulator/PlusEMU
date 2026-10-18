@@ -1453,7 +1453,7 @@ public class RoomUserManager
                 if (walkMagic == null && item.Definition.IsSeat) {
                     if (!user.Statusses.ContainsKey("sit")) {
                         if (!user.Statusses.ContainsKey("sit")) {
-                            user.Statusses.Add("sit", TextHandling.GetString(item.Definition.Height));
+                            user.Statusses.Add("sit", TextHandling.GetString(item.Definition.Height) + " 0");
                         }
                     }
 

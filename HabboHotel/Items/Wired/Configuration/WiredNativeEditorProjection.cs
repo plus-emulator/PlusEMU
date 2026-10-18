@@ -7,6 +7,7 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// <summary>Native records own editor data; runtime fields are checked immutable projections.</summary>
 public static class WiredNativeEditorProjection
 {
+    private const int MaxSelectorAreaCoordinate = 64;
     // The October Show Message editor: TextAreaParam(40, -1, 8, -1, 400), eight lines of at most 400 characters.
     private const int ShowMessageMaxCharacters = 400;
     private static readonly int[] ShowStyles = [34, 200, 201, 202, 210, 211, 212, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 250, 251, 252];
@@ -284,6 +285,12 @@ public static class WiredNativeEditorProjection
         // minute ranges keep an inverted order.
         if (name == "wf_cnd_match_date" && native.OwnedIntParams.Length == 8 && native.OwnedIntParams[7] < native.OwnedIntParams[6]) {
             native = native with { OwnedIntParams = native.OwnedIntParams.SetItem(7, native.OwnedIntParams[6]) };
+        }
+
+        // Observed on AIR WIN63-202610151745-318700621: the area selectors store each of x, y, width and height clamped to 0..64
+        // (-5 reads back 0, 500 reads back 64) instead of refusing the save.
+        if (name is "wf_slc_furni_area" or "wf_slc_users_area" && native.OwnedIntParams.Length == 4) {
+            native = native with { OwnedIntParams = [.. native.OwnedIntParams.Select(value => Math.Clamp(value, 0, MaxSelectorAreaCoordinate))] };
         }
 
         if (name == "wf_xtra_var_leaderboard") {

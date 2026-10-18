@@ -57,6 +57,18 @@ internal sealed class WiredFurniturePublication(Room room, object root, long dea
         return true;
     }
 
+    /// <summary>Puts the given furni's entries in the given order, in the slots they already hold.</summary>
+    internal void Reorder(IReadOnlyList<Item> order)
+    {
+        var wanted = order.Where(_entries.ContainsKey).Distinct(ReferenceEqualityComparer.Instance).Cast<Item>().ToArray();
+        var slots = _order.Select((item, index) => (item, index)).Where(pair => wanted.Contains(pair.item, ReferenceEqualityComparer.Instance))
+            .Select(pair => pair.index).ToArray();
+
+        for (var i = 0; i < slots.Length && i < wanted.Length; i++) {
+            _order[slots[i]] = wanted[i];
+        }
+    }
+
     internal bool HasAvatarEntries => _avatars.Count != 0;
     internal bool ContainsActor(RoomUser actor) => _avatars.Any(entry => ReferenceEquals(entry.Actor, actor));
 

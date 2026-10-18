@@ -419,7 +419,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             IReadOnlySet<int>? landingUsers = name == "wf_act_furni_to_user" && movementUsers.Length > 0
                 ? new HashSet<int> { movementUsers[0].VirtualId } : null;
 
-            return new WiredMovementActions(_movementRandom).Execute(name, config, movers, targets, movementUsers,
+            var movedAny = new WiredMovementActions(_movementRandom).Execute(name, config, movers, targets, movementUsers,
                 (item, x, y, rotation, height) => _movement.MoveFurniture(context, item, x, y, rotation, height,
                     WiredMovementActions.Steps.Contains(name)
                     && !(name == "wf_act_move_furni_to" && config.IntParams.Length == 4
@@ -454,6 +454,14 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     stackableBlocks: name != "wf_act_move_rotate"), context.Room.GetGameMap().ValidTile,
                 (item, snapshot, position, altitude) => _movement.RestoreWallSnapshot(context, item, snapshot, position, altitude),
                 (item, operation, altitude) => _movement.SetWallAltitude(context, item, operation, altitude));
+
+            // Observed on AIR WIN63-202610151745-318700621 (r97_group_furni_clk): a group's moves are listed in pick order, though the
+            // landings are worked out leading edge first so members do not stack on each other.
+            if (name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6) {
+                context.Publication?.Reorder(movers);
+            }
+
+            return movedAny;
         }
 
         // Reset timers always covers the whole room, unlimited, so it resolves its own targets.

@@ -264,8 +264,15 @@ public abstract class GameClient
         IsAuthenticated = true;
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: the official hotel sends no such message; a Flash/AIR socket session gets none.
+    internal bool SkipsClientExtensions => _server is Plus.Communication.Flash.FlashServer;
+
     public void Send(IServerPacket composer)
     {
+        if (composer is Plus.Communication.Packets.Outgoing.IClientExtensionPacket && SkipsClientExtensions) {
+            return;
+        }
+
         var outgoingMessageId = RequiredRevision.InternalIdToOutgoingIdMapping[composer.MessageId];
         var encoded = EncodePacket(composer, outgoingMessageId);
 
@@ -284,7 +291,7 @@ public abstract class GameClient
 
         foreach (var client in clients) {
             // A client without a revision cannot receive packets; it is skipped rather than aborting everyone else's copy.
-            if (client.Revision is not { } revision) {
+            if (client.Revision is not { } revision || composer is Plus.Communication.Packets.Outgoing.IClientExtensionPacket && client.SkipsClientExtensions) {
                 continue;
             }
 
@@ -321,6 +328,10 @@ public abstract class GameClient
             var buffers = new List<(IServerPacket Composer, uint MessageId, byte[] Buffer)>(composers.Count);
 
             foreach (var composer in composers) {
+                if (composer is Plus.Communication.Packets.Outgoing.IClientExtensionPacket && client.SkipsClientExtensions) {
+                    continue;
+                }
+
                 var outgoingMessageId = revision.InternalIdToOutgoingIdMapping[composer.MessageId];
 
                 if (client.EncodePacket(composer, outgoingMessageId) is { } buffer) {

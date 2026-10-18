@@ -348,6 +348,9 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
             room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
             room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
 
+            // Observed on AIR WIN63-202610151745-318700621: a refused move or rotation also shows the mover the placement error.
+            session.Send(new RoomNotificationComposer("furni_placement_error", "message", "${room.error.cant_set_item}"));
+
             return;
         }
 

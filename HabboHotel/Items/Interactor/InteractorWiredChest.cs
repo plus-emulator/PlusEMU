@@ -9,7 +9,8 @@ public sealed class InteractorWiredChest : IFurniInteractor
     {
         var room = item.GetRoom();
 
-        if (room == null) {
+        // A chest is locked and published when it is placed; moving it changes neither (the move sends its one ObjectUpdate).
+        if (room == null || item.Moving) {
             return;
         }
 

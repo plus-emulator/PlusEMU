@@ -17,6 +17,7 @@ using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.Instance;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Inventory.Furniture;
+using Plus.HabboHotel.Items.Interactor;
 using Xunit;
 using static Plus.Tests.HabbiconTestSupport;
 
@@ -141,6 +142,20 @@ public sealed class WiredChestProtocolTests
         Assert.Equal(WiredEventKind.TransactionFail, failure.Kind);
         Assert.Equal((int)WiredChestFailure.UserCantTrade, failure.Code);
         Assert.False(world.Actor.IsTrading);
+    }
+
+    // Moving a chest neither locks nor republishes it; only placing it does.
+    [Fact]
+    public void ChestPlacementHookLeavesAMovedChestAlone()
+    {
+        var world = new World();
+        typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(world.Chest, world.Room);
+        world.Chest.Moving = true;
+        new InteractorWiredChest().OnPlace(world.Client, world.Chest);
+        Assert.Null(world.Store.Saved);
+        world.Chest.Moving = false;
+        new InteractorWiredChest().OnPlace(world.Client, world.Chest);
+        Assert.NotNull(world.Store.Saved);
     }
 
     [Fact]

@@ -54,6 +54,8 @@ public class Item
 
     public uint Id { get; set; }
     public bool IsTemporary { get; internal init; }
+    /// <summary>True while a room move (not a new placement) runs the interactor's placement hook.</summary>
+    internal bool Moving { get; set; }
     // Placed from the Builders Club catalogue: it counts against the placer's Builders Club furni limit and is deleted,
     // never stored, when it leaves the room.
     public bool IsBuildersClub { get; init; }

@@ -951,7 +951,14 @@ public partial class RoomItemHandling
         // A newly admitted item's placement normalization is its initial state; a moved item's is a change.
         if (!onRoller && session != null) {
             using (newItem ? FurnitureStateEvents.Placing(_room, item) : null) {
-                item.Interactor.OnPlace(session, item);
+                item.Moving = !newItem;
+
+                try {
+                    item.Interactor.OnPlace(session, item);
+                }
+                finally {
+                    item.Moving = false;
+                }
             }
         }
 

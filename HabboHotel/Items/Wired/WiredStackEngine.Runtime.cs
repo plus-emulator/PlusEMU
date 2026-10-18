@@ -73,7 +73,8 @@ internal sealed partial class WiredStackEngine
         }
 
         RefreshStacks();
-        var dispatch = new PendingDispatch(@event, eventDepth) { CollisionProof = collision };
+        // A Collision's stacks run in the cycle that raised it (see DrainSamePassCollisions).
+        var dispatch = new PendingDispatch(@event, eventDepth) { CollisionProof = collision, ResumeImmediately = @event.Kind == WiredEventKind.Collision };
         SnapshotDispatch(dispatch);
 
         if (sealOnRejection && PendingCount + dispatch.Slots > _limits.MaxPendingStacks) {

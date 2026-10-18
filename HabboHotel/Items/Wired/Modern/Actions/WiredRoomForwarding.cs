@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Plus.Communication.Packets.Outgoing.Rooms.Session;
 using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Runtime;
@@ -88,6 +87,33 @@ public static class WiredRoomForwarding
         return PositiveId(roomText, out var fallback) ? new(fallback) : null;
     }
 
+    private static readonly AsyncLocal<Action<Action>?> SwitchOverride = new();
+
+    /// <summary>Runs the server-side room switch of a forward off the firing room's Wired pass.</summary>
+    private static void SwitchRoom(Action action)
+    {
+        if (SwitchOverride.Value is { } switchRoom) {
+            switchRoom(action);
+
+            return;
+        }
+
+        Task.Run(action);
+    }
+
+    /// <summary>Replaces the room switch for the calling test flow.</summary>
+    internal static IDisposable UseRoomSwitch(Action<Action> switchRoom)
+    {
+        SwitchOverride.Value = switchRoom;
+
+        return new RoomSwitchScope();
+    }
+
+    private sealed class RoomSwitchScope : IDisposable
+    {
+        public void Dispose() => SwitchOverride.Value = null;
+    }
+
     /// <summary>The glow a forwarded user wears from the firing until it is taken into the next room, and for a moment after.</summary>
     public const int TeleportEffectId = 234;
 
@@ -136,8 +162,11 @@ public static class WiredRoomForwarding
                 habbo.TeleportingRoomId = target.TeleporterId == 0 ? 0 : target.RoomId;
                 habbo.TeleporterId = target.TeleporterId;
                 habbo.ForwardArrivalRestoreEffect = original;
-                client.Send(new RoomForwardComposer(target.RoomId));
                 room.GetWired().RecordRoomNetworkForward(user, target.RoomId);
+                // Observed on AIR WIN63-202610151745-318700621: no RoomForward and no OpenConnection; the server takes the user out of the
+                // room (YouArePlayingGame) and sends the linked room's data starting with RoomReady. Run outside this room's Wired pass so
+                // two rooms forwarding into each other cannot hold each other's locks.
+                SwitchRoom(() => habbo.PrepareRoom(target.RoomId, "", openConnection: false));
             }
 
             if (!wired.ScheduleAux(context, ForwardDelayMilliseconds, Forward)) {

@@ -373,7 +373,7 @@ public class Habbo
         Persistence.SetProfileValue(Id, key, value);
     }
 
-    public void PrepareRoom(uint id, string password)
+    public void PrepareRoom(uint id, string password, bool openConnection = true)
     {
         var networkDestination = WiredRoomNetworkDestination;
         var sourceRoomId = (IsTeleporting || IsHopping || networkDestination == id) ? CurrentRoom?.Id ?? 0 : 0;
@@ -433,7 +433,10 @@ public class Habbo
             return;
         }
 
-        Client.Send(new OpenConnectionComposer(room.Id));
+        // A WIRED room forward opens the room without OpenConnection (AIR WIN63-202610151745-318700621).
+        if (openConnection) {
+            Client.Send(new OpenConnectionComposer(room.Id));
+        }
 
         if (!room.CheckRights(Client, true, true) && !Client.GetHabbo().IsTeleporting && !Client.GetHabbo().IsHopping) {
             // A room hidden by Builders Club furni overrides its door mode (AIR WIN63-202610151745-318700621

@@ -233,19 +233,6 @@ public partial class WiredComponent : IWiredRuntimeOperations
         WiredWakeClock.Shared.After(1, () => Wake(dueMs, attempt + 1));
     }
 
-    /// <summary>
-    /// Whether a wake-up falls due within <paramref name="windowMs"/>. The room loop then leaves the 50 ms step to the wake-up: a step
-    /// started just before the due time would hold the room until it ends and push the delayed effect back by the step's length.
-    /// </summary>
-    internal bool WakeDueWithin(long windowMs)
-    {
-        var now = _engine.Now;
-
-        lock (_wakeDue) {
-            return _wakeDue.Any(due => due >= now && due - now <= windowMs);
-        }
-    }
-
     internal void OnFastCycle()
     {
         _highscores?.OnOwnedPass();

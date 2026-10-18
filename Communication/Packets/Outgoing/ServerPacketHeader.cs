@@ -373,6 +373,10 @@ public static class ServerPacketHeader
     public const uint RewardTrackClaimResultComposer = 763;
     public const uint RewardTrackProgressComposer = 3631;
     public const uint RewardTrackPremiumPurchaseResultComposer = 1830;
+    // Daily tasks, AIR WIN63-202610151745-318700621 (quest/dailytasks/DailyTasksController.as).
+    public const uint ActiveDailyTasksComposer = 1699; // package_162.class_3100, parser package_180.class_3130
+    public const uint DailyTasksAddedComposer = 3276; // package_162.class_2799, parser package_180.class_3531
+    public const uint DailyTaskUpdatedComposer = 82; // package_162.class_3370, parser package_180.class_3495
     public const uint HabboClubExtendOfferComposer = 3176;
     public const uint ClubGiftReceivedComposer = 3400;
     public const uint PickMonthlyClubGiftComposer = 2835;

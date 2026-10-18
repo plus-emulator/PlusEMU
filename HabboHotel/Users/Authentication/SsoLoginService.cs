@@ -19,6 +19,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Moderation;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Quests;
+using Plus.HabboHotel.Quests.DailyTasks;
 using Plus.HabboHotel.Rewards;
 using Plus.HabboHotel.Users.Effects;
 using Plus.HabboHotel.Users.Messenger.FriendBar;
@@ -49,6 +50,7 @@ public sealed class SsoLoginService : ISsoLoginService
     private readonly IAvatarEffectService _avatarEffects;
     private readonly ICampaignCalendarService _calendars;
     private readonly IBuildersClubService? _buildersClub;
+    private readonly IDailyTaskManager? _dailyTasks;
 
     public SsoLoginService(IAuthenticator authenticate,
         IBadgeManager badgeManager,
@@ -59,9 +61,10 @@ public sealed class SsoLoginService : ISsoLoginService
         ISettingsManager settingsManager,
         IRewardManager rewardManager, ClubLifecycle clubLifecycle, ClientAccessLists clientAccessLists,
         IUserProcessFactory processFactory, IModeratorTicketService tickets, IAvatarEffectService avatarEffects, IRewardTrackManager rewardTracks, ICampaignCalendarService calendars,
-        IBuildersClubService? buildersClub = null)
+        IBuildersClubService? buildersClub = null, IDailyTaskManager? dailyTasks = null)
     {
         _buildersClub = buildersClub;
+        _dailyTasks = dailyTasks;
         _authenticate = authenticate;
         _calendars = calendars;
         _rewardTracks = rewardTracks;
@@ -128,6 +131,8 @@ public sealed class SsoLoginService : ISsoLoginService
 
             await _rewardManager.CheckRewards(session);
             _rewardTracks.SendTracks(session);
+            // The client never asks for its daily tasks at login, yet the toolbar counts the claimable ones (DailyTasksController.updateUnseenTasks).
+            _dailyTasks?.SendActive(session);
             _calendars.Present(session);
         }
         else {

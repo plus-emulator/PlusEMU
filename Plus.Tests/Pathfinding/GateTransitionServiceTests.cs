@@ -873,6 +873,25 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(1, service.PendingCount);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a gate Toggle State write goes out in the wired data batch with the
+    // box flashes, not as a full object update.
+    [Fact]
+    public void AWiredGateWriteGoesOutInTheWiredDataBatch()
+    {
+        var clicked = ClosableGate();
+        ActorOn(new Point(0, 2));
+        var headers = new List<uint>();
+        _client.BeforeCapture = headers.Add;
+        Assert.Equal(GateTransition.Applied, CloseOnOwner(clicked));
+        Assert.Contains(ServerPacketHeader.ObjectUpdateComposer, headers);
+
+        var wired = ClosableGate(id: 21);
+        headers.Clear();
+        Assert.Equal(GateTransition.Applied, CloseOnOwner(wired, GateCloseReason.Wired));
+        Assert.Equal("0", wired.LegacyDataString);
+        Assert.DoesNotContain(ServerPacketHeader.ObjectUpdateComposer, headers);
+    }
+
     [Fact]
     public void GateOperationDrainNeverOvertakesAnImmediateOpeningStillPublishing()
     {
@@ -900,9 +919,9 @@ public partial class PlacedFurniRoomTests
         };
 
         try {
-            var opening = Task.Run(() => GateTransitionService.Apply(gate, "1", GateCloseReason.Wired, persist: false));
+            var opening = Task.Run(() => GateTransitionService.Apply(gate, "1", GateCloseReason.Click, persist: false));
             Assert.True(published.Wait(TimeSpan.FromSeconds(5)));
-            Assert.Equal(GateTransition.Queued, Task.Run(() => GateTransitionService.Apply(gate, "0", GateCloseReason.Wired, persist: false)).Result);
+            Assert.Equal(GateTransition.Queued, Task.Run(() => GateTransitionService.Apply(gate, "0", GateCloseReason.Click, persist: false)).Result);
             DrainOnOwner();
             Assert.Equal("1", gate.LegacyDataString);
             Assert.Equal(1, Gates.PendingCount);

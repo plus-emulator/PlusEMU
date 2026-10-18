@@ -8,7 +8,7 @@ namespace Plus.Communication.Packets.Outgoing.Rooms.Engine;
 /// width, length and a teleport target id that is always 0. Sent right after each Objects, ObjectAdd, ObjectUpdate, Items,
 /// ItemAdd or ItemUpdate send, to the same recipients.
 /// </summary>
-public class FurnitureMetadataComposer(IReadOnlyCollection<RoomItemSnapshot> items) : IServerPacket
+public class FurnitureMetadataComposer(IReadOnlyCollection<RoomItemSnapshot> items) : IServerPacket, IClientExtensionPacket
 {
     public uint MessageId => ServerPacketHeader.FurnitureMetadataComposer;
 

@@ -121,10 +121,10 @@ public sealed partial class WiredRemainderG3Tests
         definition.Stackable = true;
         var primary = ModernWiredRuntimeTests.MakeItemForG3(10, "lamp");
         primary.Definition = definition;
-        primary.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        primary.SetState(1, 1, 0);
         var secondary = ModernWiredRuntimeTests.MakeItemForG3(11, "lamp");
         secondary.Definition = definition;
-        secondary.SetState(2, 2, 0, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+        secondary.SetState(2, 2, 0);
         items[primary.Id] = primary;
         items[secondary.Id] = secondary;
         Assert.True(WiredBoxRegistry.TryGet("wf_act_place_furni", out var descriptor));

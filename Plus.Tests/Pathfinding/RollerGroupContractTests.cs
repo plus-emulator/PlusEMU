@@ -195,7 +195,7 @@ public partial class PlacedFurniRoomTests
             fired = true;
 
             if (rotate) {
-                later.SetPlacementState(later.GetX, later.GetY, later.GetZ, later.GetAffectedTiles, 0);
+                later.SetPlacementState(later.GetX, later.GetY, later.GetZ, 0);
             }
             else {
                 second.SetPos(0, 3, 1.5);

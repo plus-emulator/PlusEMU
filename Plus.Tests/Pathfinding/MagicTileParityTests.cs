@@ -81,7 +81,7 @@ public class MagicTileParityTests
 
             void Add(Item item, double z)
             {
-                item.SetState(1, 1, z, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+                item.SetState(1, 1, z);
                 Assert.True(handler.AdmitFloorItem(item));
             }
         });
@@ -97,7 +97,7 @@ public class MagicTileParityTests
                 "0000\r00x0\r0000\r0000", 0, 0, false), TestLogging.Navigation, settings, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
             typeof(Room).GetField("_gamemap", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(fixture.Room, map);
             var item = Helper(1, InteractionType.WalkMagicTile);
-            item.SetState(2, 1, 0.75, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
+            item.SetState(2, 1, 0.75);
             Assert.True(fixture.Room.GetRoomItemHandler().AdmitFloorItem(item));
             var navigation = map.Navigation!;
             Check(true);

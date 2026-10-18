@@ -106,7 +106,7 @@ public class NavGridCompilerTests
             item.Definition.Walkable = walk;
             item.Definition.InteractionType = interaction;
             item.ExtraData = FurniExtraData.Load(item.Definition, state, true);
-            item.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+            item.SetState(1, 1, 0);
             floor[item.Id] = item;
             map.GenerateMaps();
             var (grid, inputs, compiler) = NavTest.Create(3, 3, door: 0);

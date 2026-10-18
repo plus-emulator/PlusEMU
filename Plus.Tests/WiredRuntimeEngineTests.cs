@@ -368,8 +368,8 @@ public partial class WiredRuntimeEngineTests
             ctx.Values["value"] = 99;
 
             if (moveReceiverAfterSend) {
-                antenna.SetState(3, 0, 0, []);
-                antenna.SetState(2, 0, 0, []);
+                antenna.SetState(3, 0, 0);
+                antenna.SetState(2, 0, 0);
             }
 
             return accepted;

@@ -341,7 +341,7 @@ public sealed partial class WiredGlideConveyorTests
                     }
                 };
                 Set(item, "_room", _room);
-                item.SetState(entry.X, entry.Y, entry.Z, Gamemap.GetAffectedTiles(1, 1, entry.X, entry.Y, entry.Rot));
+                item.SetState(entry.X, entry.Y, entry.Z);
                 item.Rotation = entry.Rot;
                 Items[item.Id] = item;
                 _map.AddToMap(item);
@@ -386,7 +386,7 @@ public sealed partial class WiredGlideConveyorTests
                 }
             };
             Set(item, "_room", _room);
-            item.SetState(x, y, z, Gamemap.GetAffectedTiles(1, 1, x, y, 0));
+            item.SetState(x, y, z);
             Items[item.Id] = item;
             _room.RunFastPass(() =>
             {

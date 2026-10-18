@@ -63,7 +63,7 @@ public class WiredTemporaryPacketGuardTests
                 InteractionType = Interaction(name)
             }
         };
-        item.SetState(1, 2, 3.5, new());
+        item.SetState(1, 2, 3.5);
         Floor(room).TryAdd(7, item);
         var permanent = new Item { Id = 8, Definition = new() { Type = ItemType.Floor } };
         Floor(room).TryAdd(8, permanent);

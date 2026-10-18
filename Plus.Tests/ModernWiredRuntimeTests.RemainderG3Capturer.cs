@@ -68,7 +68,7 @@ public partial class ModernWiredRuntimeTests
     private static WiredVariableTextInputBox G3Capturer(TeleportFixture f, WiredRoomVariables variables, uint id, string name, string variable, int display = 1, int x = 0, int y = 0)
     {
         var item = new Item { Id = id, Definition = new() { InteractionName = "wf_xtra_text_input_variable", Width = 1, Length = 1, Type = ItemType.Floor } };
-        item.SetState(x, y, 0, Gamemap.GetAffectedTiles(1, 1, x, y, 0));
+        item.SetState(x, y, 0);
         f.Items[id] = item;
         f.Room.GetGameMap().AddToMap(item);
         var box = Assert.IsType<WiredVariableTextInputBox>(variables.CreateBox(item));
@@ -122,13 +122,13 @@ public partial class ModernWiredRuntimeTests
     {
         var f = rig.F;
         var definitionItem = new Item { Id = definition, RoomId = 1, OwnerId = 5, Definition = new() { Id = definition, InteractionName = "wf_var_context", Width = 1, Length = 1, Type = ItemType.Floor } };
-        definitionItem.SetState(3, 3, 0, Gamemap.GetAffectedTiles(1, 1, 3, 3, 0));
+        definitionItem.SetState(3, 3, 0);
         f.Items[definition] = definitionItem;
         var definitionBox = new WiredVariableDefinitionBox(f.Room, definitionItem, Descriptor("wf_var_context"));
         WiredNativeTestSupport.InstallLegacyVariableDraft(definitionBox, new() { IntParams = [1], Text = "count" });
         rig.Variables.ConfigurationLoaded(definitionBox);
         var connectorItem = new Item { Id = 170, RoomId = 1, OwnerId = 5, Definition = new() { Id = 170, InteractionName = "wf_xtra_var_text_connector", Width = 1, Length = 1, Type = ItemType.Floor } };
-        connectorItem.SetState(3, 3, 0, Gamemap.GetAffectedTiles(1, 1, 3, 3, 0));
+        connectorItem.SetState(3, 3, 0);
         f.Items[170] = connectorItem;
         var connector = Assert.IsType<WiredVariableMetadataBox>(rig.Variables.CreateBox(connectorItem));
         WiredNativeTestSupport.InstallLegacyVariableDraft(connector, new() { Text = text });
@@ -253,7 +253,7 @@ public partial class ModernWiredRuntimeTests
         string? Error(string name, string variable, uint id, int x)
         {
             var item = new Item { Id = id, Definition = new() { InteractionName = "wf_xtra_text_input_variable", Width = 1, Length = 1, Type = ItemType.Floor } };
-            item.SetState(x, 0, 0, Gamemap.GetAffectedTiles(1, 1, x, 0, 0));
+            item.SetState(x, 0, 0);
             f.Items[id] = item;
             var box = Assert.IsType<WiredVariableTextInputBox>(rig.Variables.CreateBox(item));
             var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = [0], VariableIds = [variable], Text = name };

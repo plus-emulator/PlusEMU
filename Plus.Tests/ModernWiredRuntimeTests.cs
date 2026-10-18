@@ -182,14 +182,14 @@ public partial class ModernWiredRuntimeTests
             new(() => new[] { antenna, forwarded }, () => new[] { clicked }), operations);
         context.Triggering.UserIds.Add(clicked.VirtualId);
         var call = ActionBox(room, "wf_act_neg_call_stacks");
-        call.Item.SetState(2, 2, 0, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+        call.Item.SetState(2, 2, 0);
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(call, new() { IntParams = [100], SelectedItems = [1] }, out var callConfig, out _));
         call.ApplyConfiguration(callConfig);
         Assert.True(call.IsNegative);
         Assert.True(call.Execute(context));
         Assert.True(operations.CallNegative);
         Assert.Equal(new uint[] { 1 }, operations.Called);
-        call.Item.SetState(0, 0, 0, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+        call.Item.SetState(0, 0, 0);
         Assert.False(call.Execute(context));
         Assert.Empty(operations.Called);
         var signal = ActionBox(room, "wf_act_neg_send_signal");
@@ -1075,14 +1075,14 @@ public partial class ModernWiredRuntimeTests
     {
         var (room, map, items) = World(new RecordingPlacementStore());
         var mover = MakeItem(1, "test");
-        mover.SetState(0, 1, 0, Gamemap.GetAffectedTiles(1, 1, 0, 1, 0));
+        mover.SetState(0, 1, 0);
         items[1] = mover;
         map.AddToMap(mover);
         var obstacle = MakeItem(2, "obstacle");
         obstacle.Definition.InteractionType = type;
         obstacle.Definition.Stackable = stackable;
         obstacle.Definition.Height = 0.5;
-        obstacle.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        obstacle.SetState(1, 1, 0);
         items[2] = obstacle;
         map.AddToMap(obstacle);
         var action = ActionBox(room, "wf_act_move_rotate");
@@ -1107,12 +1107,12 @@ public partial class ModernWiredRuntimeTests
     {
         var (room, map, items) = World(new RecordingPlacementStore());
         var mover = MakeItem(1, "test");
-        mover.SetState(0, 1, 0, Gamemap.GetAffectedTiles(1, 1, 0, 1, 0));
+        mover.SetState(0, 1, 0);
         items[1] = mover;
         map.AddToMap(mover);
         var tile = MakeItem(2, "color_tile");
         tile.Definition.Stackable = true;
-        tile.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        tile.SetState(1, 1, 0);
         items[2] = tile;
         map.AddToMap(tile);
         var through = new Plus.HabboHotel.Items.Wired.Modern.Addons.WiredPhysicsPolicy(false, new HashSet<uint> { 2 }, new HashSet<int>(), new HashSet<uint>());
@@ -1129,16 +1129,16 @@ public partial class ModernWiredRuntimeTests
         var (room, map, items) = World(new RecordingPlacementStore());
         var below = MakeItem(2, "color_tile");
         below.Definition.Stackable = true;
-        below.SetState(0, 1, 0, Gamemap.GetAffectedTiles(1, 1, 0, 1, 0));
+        below.SetState(0, 1, 0);
         items[2] = below;
         map.AddToMap(below);
         var ahead = MakeItem(3, "color_tile");
         ahead.Definition.Stackable = true;
-        ahead.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        ahead.SetState(1, 1, 0);
         items[3] = ahead;
         map.AddToMap(ahead);
         var mover = MakeItem(1, "test");
-        mover.SetState(0, 1, 0, Gamemap.GetAffectedTiles(1, 1, 0, 1, 0));
+        mover.SetState(0, 1, 0);
         items[1] = mover;
         map.AddToMap(mover);
         var action = ActionBox(room, name);
@@ -1185,13 +1185,13 @@ public partial class ModernWiredRuntimeTests
     {
         var (room, map, items) = World(new RecordingPlacementStore());
         var mover = MakeItem(1, "test");
-        mover.SetState(0, 0, 0, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+        mover.SetState(0, 0, 0);
         items[1] = mover;
         map.AddToMap(mover);
         var target = MakeItem(2, "color_tile");
         target.Definition.Stackable = true;
         target.Definition.Height = 0.5;
-        target.SetState(2, 2, 0, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+        target.SetState(2, 2, 0);
         items[2] = target;
         map.AddToMap(target);
         var action = ActionBox(room, "wf_act_furni_to_furni");
@@ -1332,7 +1332,7 @@ public partial class ModernWiredRuntimeTests
         var item = MakeItem(id, name);
         item.Definition.Stackable = stackable;
         item.Definition.Height = height;
-        item.SetState(x, 1, z, Gamemap.GetAffectedTiles(1, 1, x, 1, 0));
+        item.SetState(x, 1, z);
         items[id] = item;
         map.AddToMap(item);
 
@@ -1401,7 +1401,7 @@ public partial class ModernWiredRuntimeTests
             var x = frontX - dx * spacing * i;
             var item = MakeItem((uint)(frontFirst ? i + 1 : line.Length - i), "color_tile");
             item.Definition.Stackable = true;
-            item.SetState(x, 1, 0, Gamemap.GetAffectedTiles(1, 1, x, 1, 0));
+            item.SetState(x, 1, 0);
             items[item.Id] = item;
             map.AddToMap(item);
             line[i] = item;
@@ -1618,7 +1618,7 @@ public partial class ModernWiredRuntimeTests
         var (room, map, items) = World(new RecordingPlacementStore());
         var mover = MakeItem(1, "test");
         mover.Definition.ExtraRot = extraRot;
-        mover.SetState(0, 1, 0, Gamemap.GetAffectedTiles(1, 1, 0, 1, start));
+        mover.SetState(0, 1, 0);
         mover.Rotation = start;
         items[1] = mover;
         map.AddToMap(mover);
@@ -1884,7 +1884,7 @@ public partial class ModernWiredRuntimeTests
             item.RoomId = Room.Id;
             item.Definition.InteractionType = InteractionType.WiredEffect;
             item.Definition.WiredType = name == "wf_act_move_rotate" ? WiredBoxType.EffectMoveAndRotate : WiredBoxType.None;
-            item.SetState(2, 2, 0, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+            item.SetState(2, 2, 0);
             var picks = new[] { MakeItem(8, "test"), MakeItem(9, "test") };
 
             for (var i = 0; i < picks.Length; i++) {
@@ -1892,7 +1892,7 @@ public partial class ModernWiredRuntimeTests
                 picks[i].RoomId = Room.Id;
                 picks[i].Definition.Stackable = true;
                 picks[i].Definition.Walkable = true;
-                picks[i].SetState(1, 1 + i, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1 + i, 0));
+                picks[i].SetState(1, 1 + i, 0);
             }
 
             Room.GetRoomItemHandler().LoadFurniture([item, .. picks]);
@@ -1921,7 +1921,7 @@ public partial class ModernWiredRuntimeTests
         {
             var item = MakeItem(101, "wf_trg_game_starts");
             item.RoomId = Room.Id;
-            item.SetState(2, 2, 1, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+            item.SetState(2, 2, 1);
             typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, Room);
             Items[item.Id] = item;
             var trigger = new WiredModernTrigger(Room, item, Descriptor("wf_trg_game_starts"));
@@ -3029,7 +3029,7 @@ public partial class ModernWiredRuntimeTests
             typeof(WiredComponent).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(wired, Engine);
             typeof(Room).GetField("_wiredComponent", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(Room, wired);
             Target = MakeItem(1, "test");
-            Target.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+            Target.SetState(1, 1, 0);
             Items[1] = Target;
             Trigger = new(Room, MakeItem(101, "wf_trg_enter_room"), Descriptor("wf_trg_enter_room"));
             WiredNativeTestSupport.InstallRuntime(Trigger, WiredTriggerConfiguration.Defaults("wf_trg_enter_room"));
@@ -3389,7 +3389,7 @@ public partial class ModernWiredRuntimeTests
         var timers = Enumerable.Range(1, 3).Select(i =>
         {
             var item = MakeItem((uint)i, "wf_trg_at_given_time");
-            item.SetState(i - 1, 0, 0, Gamemap.GetAffectedTiles(1, 1, i - 1, 0, 0));
+            item.SetState(i - 1, 0, 0);
             items[item.Id] = item;
             var box = new WiredModernTimedTrigger(room, item, Descriptor("wf_trg_at_given_time"));
             Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [1] }, out var config, out _));
@@ -3428,7 +3428,7 @@ public partial class ModernWiredRuntimeTests
         var store = new RecordingPlacementStore();
         var (room, map, items) = World(store);
         var mover = MakeItem(1, "test");
-        mover.SetState(0, 0, 0, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+        mover.SetState(0, 0, 0);
         items[1] = mover;
         map.AddToMap(mover);
         var occupant = new RoomUser(1, 0, 7, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 1, Y = 1 };
@@ -3454,7 +3454,7 @@ public partial class ModernWiredRuntimeTests
         var mover = MakeItem(1, "test");
         items[1] = mover;
         var obstacle = MakeItem(2, "test");
-        obstacle.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        obstacle.SetState(1, 1, 0);
         items[2] = obstacle;
         map.AddToMap(obstacle);
         var blocked = new WiredCollisionPolicy(new HashSet<uint> { 2 }, new HashSet<int>(), new HashSet<uint> { 2 });
@@ -3490,7 +3490,7 @@ public partial class ModernWiredRuntimeTests
         Assert.False(action.Execute(wrong));
         Assert.Equal(0, actor.X);
         var blocked = MakeItem(10, "test");
-        blocked.SetState(1, 0, 0, Gamemap.GetAffectedTiles(1, 1, 1, 0, 0));
+        blocked.SetState(1, 0, 0);
         fixture.Items[10] = blocked;
         room.GetGameMap().AddToMap(blocked);
         var context = Firing();
@@ -3817,7 +3817,7 @@ public partial class ModernWiredRuntimeTests
         var source = MakeItem(8, "source");
         source.Definition = definition;
         source.LegacyDataString = "3";
-        source.SetState(2, 1, 0, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
+        source.SetState(2, 1, 0);
         var transient = Assert.IsType<Item>(room.GetRoomItemHandler().PlaceTemporaryFloorItem(definition, 1, 0, 1, 0));
         var box = MakeItem(100, "wf_act_place_furni");
         var config = new WiredConfiguration
@@ -3867,9 +3867,9 @@ public partial class ModernWiredRuntimeTests
         Assert.True(room.GetRoomItemHandler().RemoveTemporaryFloorItem(saved));
 
         var primary = MakeItem(11, "anchor");
-        primary.SetState(1, 0, 0, Gamemap.GetAffectedTiles(1, 1, 1, 0, 0));
+        primary.SetState(1, 0, 0);
         var secondaryAnchor = MakeItem(12, "anchor");
-        secondaryAnchor.SetState(0, 2, 0, Gamemap.GetAffectedTiles(1, 1, 0, 2, 0));
+        secondaryAnchor.SetState(0, 2, 0);
         var aimed = Context(room, new(WiredEventKind.Use), [primary, secondaryAnchor], []);
         var aimedConfig = new WiredConfiguration
         {
@@ -3914,7 +3914,7 @@ public partial class ModernWiredRuntimeTests
         var source = MakeItem(8, "source");
         source.Definition = definition;
         source.LegacyDataString = "3";
-        source.SetState(2, 1, 0, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
+        source.SetState(2, 1, 0);
         var wired = new WiredComponent(room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance,
             TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance,
             TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
@@ -3966,11 +3966,11 @@ public partial class ModernWiredRuntimeTests
         f.DefinitionManager = manager;
         var firstInserted = MakeItem(10, "test");
         firstInserted.Definition = definition;
-        firstInserted.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        firstInserted.SetState(1, 1, 0);
         f.Items[10] = firstInserted;
         var firstPicked = MakeItem(20, "test");
         firstPicked.Definition = definition;
-        firstPicked.SetState(2, 1, 0, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
+        firstPicked.SetState(2, 1, 0);
         f.Items[20] = firstPicked;
         var action = ActionBox(f.Room, "wf_act_place_furni", definitions: f.DefinitionManager);
         var proposed = WiredTemporaryFurnitureActions.Defaults("wf_act_place_furni") with { SelectedItems = [20, 10], SecondarySelectedItems = [1], FurniSources = ImmutableDictionary<string, int>.Empty.Add("target", 101), TemporaryPlacement = new(Location: WiredPlaceLocationType.CustomLocation) };
@@ -3996,7 +3996,7 @@ public partial class ModernWiredRuntimeTests
         var floor = MakeItem(10, "floor-template");
         floor.Definition.Id = 5;
         floor.Definition.Stackable = true;
-        floor.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        floor.SetState(1, 1, 0);
         f.Items[floor.Id] = floor;
         var wall = MakeItem(20, "wall-template");
         wall.Definition.Id = 6;
@@ -4476,7 +4476,7 @@ public partial class ModernWiredRuntimeTests
         var obstacle = MakeItem(2, "obstacle");
         obstacle.Definition.Stackable = true;
         obstacle.Definition.Height = 3;
-        obstacle.SetState(2, 1, 0, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
+        obstacle.SetState(2, 1, 0);
         f.Items[2] = obstacle;
         map.AddToMap(obstacle);
         var user = Bot(room, 8);

@@ -223,7 +223,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
                         WiredNativeTestSupport.InstallLegacyVariableDraft(definition, new() { IntParams = [1, 10], Text = "changed" });
                         break;
                     case "unselected_pose":
-                        unselected.Item.SetState(1, 0, 0, []);
+                        unselected.Item.SetState(1, 0, 0);
                         break;
                     case "replacement":
                         fixture.Floor[10] = new() { Id = 10, RoomId = 42 };

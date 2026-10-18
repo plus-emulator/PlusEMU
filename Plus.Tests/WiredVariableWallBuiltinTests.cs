@@ -100,7 +100,7 @@ public sealed class WiredVariableWallBuiltinTests
     {
         var f = new Fixture();
         var floor = new Item { Id = 3, OwnerId = 5, Rotation = 2, Definition = new() { Type = ItemType.Floor } };
-        floor.SetState(2, 3, 4.5, []);
+        floor.SetState(2, 3, 4.5);
         f.Floors[floor.Id] = floor;
         var holder = WiredVariableRuntimeFrames.FurniHolder(floor);
         var frame = new WiredVariableFrame(1, [holder]);

@@ -42,7 +42,7 @@ public sealed class WiredVariableBuiltinDerivedTests
         Assert.Null(fixture.Read(derived));
         Assert.Empty(fixture.Variables.Catalog().Variables);
         fixture.Directory.Owner = 5;
-        level.Item.SetState(1, 0, 0, []);
+        level.Item.SetState(1, 0, 0);
         Assert.Null(fixture.Read(derived));
     }
 

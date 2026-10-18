@@ -880,7 +880,7 @@ public partial class RoomItemHandling
 
                 if (newItem) {
                     // Initialize private geometry before membership or navigation publication.
-                    item.SetPlacementState(newX, newY, newZ, affectedTiles, newRot);
+                    item.SetPlacementState(newX, newY, newZ, newRot);
                     item.RoomId = _room.RoomId;
 
                     if (item.IsFloorItem) {
@@ -925,7 +925,7 @@ public partial class RoomItemHandling
                 if (!duplicate) {
                     if (!newItem) {
                         map.RemoveFromMap(item, false);
-                        item.SetPlacementState(newX, newY, newZ, affectedTiles, newRot);
+                        item.SetPlacementState(newX, newY, newZ, newRot);
                     }
 
                     map.AddItemToMap(item, false, newItem);
@@ -1038,7 +1038,7 @@ public partial class RoomItemHandling
             }
 
             map.RemoveFromMap(item, false);
-            item.SetState(newX, newY, newZ, Gamemap.GetAffectedTiles(item.Definition.Length, item.Definition.Width, newX, newY, item.Rotation));
+            item.SetState(newX, newY, newZ);
             map.AddItemToMap(item, false);
         }
 
@@ -1129,7 +1129,7 @@ public partial class RoomItemHandling
 
             foreach (var move in moves) {
                 var item = move.Item;
-                item.SetState(move.X, move.Y, move.Z, Gamemap.GetAffectedTiles(item.Definition.Length, item.Definition.Width, move.X, move.Y, item.Rotation));
+                item.SetState(move.X, move.Y, move.Z);
                 map.AddItemToMap(item, false);
             }
         }

@@ -100,21 +100,19 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void FailedAdmissionRemovesExistingActorAndDoesNotPresentOrReadEntryClock()
+    // The server sends the room data itself when it opens the room; a repeated or legacy request must neither admit again nor remove the user.
+    public void RepeatedEntryRequestForAnAdmittedUserChangesNothing()
     {
         var user = Viewer();
         user.UserId = 7;
         user.InternalRoomId = user.VirtualId;
         var clock = new EntryClock();
         var service = new RoomEntryService(null!, clock, null!, EntryWordQuiz);
-        service.Enter(_client);
-        Assert.Null(_client.GetHabbo().CurrentRoom);
-        Assert.DoesNotContain(user, _room.GetRoomUserManager().GetRoomUsers());
-        Assert.DoesNotContain(ServerPacketHeader.RoomEntryInfoComposer, _client.Sent);
-        Assert.DoesNotContain(ServerPacketHeader.RoomEventComposer, _client.Sent);
-        Assert.Equal(0, clock.Reads);
         _client.Sent.Clear();
         service.Enter(_client);
+        service.Enter(_client);
+        Assert.Same(_room, _client.GetHabbo().CurrentRoom);
+        Assert.Contains(user, _room.GetRoomUserManager().GetRoomUsers());
         Assert.Empty(_client.Sent);
         Assert.Equal(0, clock.Reads);
     }

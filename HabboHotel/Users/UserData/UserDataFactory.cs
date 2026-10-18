@@ -23,8 +23,9 @@ public class UserDataFactory : IUserDataFactory
     private readonly IGameClientManager _clients;
     private readonly IRoomManager _rooms;
     private readonly IBuildersClubService? _buildersClub;
+    private readonly IRoomEntryService? _roomEntry;
 
-    public UserDataFactory(BadgeManager badgeManager, IDatabase database, IEnumerable<IUserDataLoadingTask> userDataLoadingTasks, IUserPersistenceService persistence, IUserComponentLoader components, Clothing.IClothingStore clothingStore, IRoomVisitRecorder roomVisits, TimeProvider time, IAchievementManager achievements, IGameClientManager clients, IRoomManager rooms, IBuildersClubService? buildersClub = null)
+    public UserDataFactory(BadgeManager badgeManager, IDatabase database, IEnumerable<IUserDataLoadingTask> userDataLoadingTasks, IUserPersistenceService persistence, IUserComponentLoader components, Clothing.IClothingStore clothingStore, IRoomVisitRecorder roomVisits, TimeProvider time, IAchievementManager achievements, IGameClientManager clients, IRoomManager rooms, IBuildersClubService? buildersClub = null, IRoomEntryService? roomEntry = null)
     {
         _badgeManager = badgeManager;
         _database = database;
@@ -38,6 +39,7 @@ public class UserDataFactory : IUserDataFactory
         _clients = clients;
         _rooms = rooms;
         _buildersClub = buildersClub;
+        _roomEntry = roomEntry;
     }
 
     public async Task<Habbo?> Create(int userId, CancellationToken cancellationToken = default)
@@ -106,7 +108,7 @@ public class UserDataFactory : IUserDataFactory
         var habbo = users.SingleOrDefault();
         habbo?.Currencies.Load(UserCurrencyStore.Load(connection, userId));
         habbo?.SetRoomVisitRecorder(_roomVisits, _achievements);
-        habbo?.SetHotelServices(_clients, _rooms, _buildersClub);
+        habbo?.SetHotelServices(_clients, _rooms, _buildersClub, _roomEntry);
 
         return habbo;
     }

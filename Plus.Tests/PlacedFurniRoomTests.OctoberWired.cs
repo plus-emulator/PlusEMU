@@ -77,6 +77,22 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(2, _client.Packets.Count(packet => packet.Header == ServerPacketHeader.ObjectsDataUpdateComposer));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a hidden chat is echoed to its speaker after the stack's flash and message.
+    [Fact]
+    public void HiddenSpeechEchoFollowsTheFlashAndTheStackMessage()
+    {
+        var (wired, actor) = PrepareSpeech(new SpeechClock());
+        AddSpeechBox(301, "wf_trg_says_something", new() { IntParams = [0, 1, 1], Text = "one" }, 0);
+        AddSpeechBox(302, "wf_act_show_message", new() { IntParams = [0, 1, 202, -1], Text = "A" }, 1);
+        wired.FlushFlashes();
+        _client.Packets.Clear();
+
+        actor.OnChat(0, "one", false);
+
+        Assert.Equal([ServerPacketHeader.ObjectsDataUpdateComposer, ServerPacketHeader.ChatComposer, ServerPacketHeader.WhisperComposer],
+            _client.Packets.Select(packet => packet.Header));
+    }
+
     // Speech runs its stacks outside the room's passes; the flash goes out with the chat, not on the next pass.
     [Fact]
     public void SpeechFlashesGoOutWithTheChat()

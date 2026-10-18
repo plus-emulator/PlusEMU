@@ -419,7 +419,7 @@ public class RoomUserManager
             AdmitSpawn(user);
         }
 
-        _room.SendUser(user);
+        _room.SendUserToOthers(user);
 
         // A user forwarded by Teleport to Room arrives still glowing and loses the glow as an in-room teleport does after landing.
         if (session.GetHabbo().ForwardArrivalRestoreEffect is { } restore) {

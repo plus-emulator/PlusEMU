@@ -1,3 +1,5 @@
+using Plus.HabboHotel.Rooms.Instance;
+
 namespace Plus.HabboHotel.Rooms;
 
 internal static class RoomCycle
@@ -29,9 +31,9 @@ internal static class RoomCycle
 
     // Both passes share the room's task slot, claimed atomically: the room loop and the wired wake clock start passes from different
     // threads. Fast misses do not change legacy lag counters.
-    /// <param name="inline">Run on the calling thread, for a pass that must start at a set time: a pool item waits behind a busy pool and
-    /// a new thread takes as long to start on a loaded server.</param>
-    public static bool TryStart(Room room, Action pass, bool full = false, bool inline = false)
+    /// <param name="workers">Run on these pre-started threads, for a pass that must start at a set time: a pool item waits behind a busy
+    /// pool and a new thread takes as long to start on a loaded server.</param>
+    public static bool TryStart(Room room, Action pass, bool full = false, WiredWakeWorkers? workers = null, double startAtMs = 0)
     {
         if (room.IsCrashed || room.MDisposed || Interlocked.CompareExchange(ref room.CycleSlot, full ? FullPass : FastPass, Idle) != Idle) {
             return false;
@@ -48,8 +50,18 @@ internal static class RoomCycle
                 }
             }
 
-            if (inline) {
-                Run();
+            if (workers != null) {
+                var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                room.ProcessTask = done.Task;
+                workers.Enqueue(() =>
+                {
+                    try {
+                        Run();
+                    }
+                    finally {
+                        done.TrySetResult();
+                    }
+                }, startAtMs);
             }
             else {
                 room.ProcessTask = Task.Run(Run);

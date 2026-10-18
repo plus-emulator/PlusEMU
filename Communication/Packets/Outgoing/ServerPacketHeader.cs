@@ -289,7 +289,7 @@ public static class ServerPacketHeader
     public const uint FlatAccessDeniedComposer = 1764;
     public const uint LatencyPingResponseComposer = 3742;
     public const uint HabboUserBadgesComposer = 2014;
-    public const uint HeightMapUpdateComposer = 65424;
+    public const uint HeightMapUpdateComposer = 853; // package_71/class_3258
     public const uint HeightMapComposer = 2099;
 
     public const uint CanCreateRoomComposer = 119;

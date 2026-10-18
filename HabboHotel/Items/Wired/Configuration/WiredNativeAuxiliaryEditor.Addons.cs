@@ -9,7 +9,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         ImmutableArray<int> owned, int variables = 0) => new(furni, users, [.. furni.Select(group => group[0])],
         [.. users.Select(group => group[0])], owned, false)
         {
-            VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Id, variables)]
+            VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId, variables)]
         };
 
     // Observed r92d/r92e initial frames of carry users and physics (AIR WIN63-202610131318-860371703): trigger, selector, signal, all users.

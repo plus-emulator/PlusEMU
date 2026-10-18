@@ -16,8 +16,8 @@ public sealed class WiredOctoberVariableBoxTests
         Assert.Equal([1, 0, 0, 0, 0, -10, 0], Defaults("wf_act_give_var"));
         Assert.Equal([1, 0, 0, 0, 0, -10, 0], Defaults("wf_act_change_var_val"));
         Assert.Equal([1, 0, 0, 0, 0, 1, 0, -10], Defaults("wf_cnd_var_age_match"));
-        Assert.Equal(["n", "n"], WiredNativeEditorProjection.Metadata("wf_act_give_var").VariableDefaults.ToArray());
-        Assert.Equal(["n", "n"], WiredNativeEditorProjection.Metadata("wf_cnd_var_age_match").VariableDefaults.ToArray());
+        Assert.Equal(["0", "0"], WiredNativeEditorProjection.Metadata("wf_act_give_var").VariableDefaults.ToArray());
+        Assert.Equal(["0", "0"], WiredNativeEditorProjection.Metadata("wf_cnd_var_age_match").VariableDefaults.ToArray());
     }
 
     [Fact]

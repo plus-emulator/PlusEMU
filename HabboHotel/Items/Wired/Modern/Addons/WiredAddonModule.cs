@@ -209,9 +209,9 @@ public sealed class WiredAddonModule
         return true;
     }
 
-    // Projectile variable slots accept "0" as an unpicked value.
+    // An unpicked projectile variable slot is "0" (the hotel's editor frames) or "n" (older saves); both read as no variable.
     private static string ProjectileVariable(WiredConfiguration c, int slot) =>
-        c.VariableIds.ElementAtOrDefault(slot) is { } id && id != "0" ? id : "";
+        c.VariableIds.ElementAtOrDefault(slot) is { } id && !Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Is(id) ? id : "";
 
     private static long? ReadVariable(WiredAddonInputs input, int target, string token, int users, int furni,
         WiredConfiguration c)

@@ -487,6 +487,7 @@ public class RoomUserManager
     public void SendEntryRights(GameClient session)
     {
         var level = ControllerLevel(session);
+
         if (level > 0) {
             session.Send(new YouAreControllerComposer(_room.Id, level));
         }

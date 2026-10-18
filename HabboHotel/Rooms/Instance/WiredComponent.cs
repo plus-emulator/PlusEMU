@@ -216,7 +216,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
             return;
         }
 
-        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly) || attempt >= 10) {
+        // A queued pool item can wait several ms on a busy server, which the effect would land late by; the wake-up gets its own thread.
+        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, dedicated: true) || attempt >= 10) {
             lock (_wakeDue) {
                 _wakeDue.Remove(dueMs);
             }

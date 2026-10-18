@@ -29,14 +29,15 @@ internal static class RoomCycle
 
     // Both passes share the room's task slot, claimed atomically: the room loop and the wired wake clock start passes from different
     // threads. Fast misses do not change legacy lag counters.
-    public static bool TryStart(Room room, Action pass, bool full = false)
+    /// <param name="dedicated">Run on a thread of its own instead of the busy shared pool, for a pass that must start at a set time.</param>
+    public static bool TryStart(Room room, Action pass, bool full = false, bool dedicated = false)
     {
         if (room.IsCrashed || room.MDisposed || Interlocked.CompareExchange(ref room.CycleSlot, full ? FullPass : FastPass, Idle) != Idle) {
             return false;
         }
 
         try {
-            room.ProcessTask = Task.Run(() =>
+            void Run()
             {
                 try {
                     pass();
@@ -44,7 +45,11 @@ internal static class RoomCycle
                 finally {
                     Volatile.Write(ref room.CycleSlot, Idle);
                 }
-            });
+            }
+
+            room.ProcessTask = dedicated
+                ? Task.Factory.StartNew(Run, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)
+                : Task.Run(Run);
         }
         catch {
             Volatile.Write(ref room.CycleSlot, Idle);

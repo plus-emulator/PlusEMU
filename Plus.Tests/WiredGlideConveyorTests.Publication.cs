@@ -55,7 +55,7 @@ public sealed partial class WiredGlideConveyorTests
         });
         var carried = Assert.Single(moves.Where(move => move.Type == 0));
         Assert.Equal(strength, carried.Strength);
-        Assert.Equal((4, 5, "1", "1", 200), (carried.FromX, carried.ToX, carried.FromZ, carried.ToZ, carried.Duration));
+        Assert.Equal((4, 5, "1.0", "1.0", 200), (carried.FromX, carried.ToX, carried.FromZ, carried.ToZ, carried.Duration));
         Assert.Equal((5, 11, 1.0), (rider.X, rider.Y, rider.Z));
         Assert.Equal(0, f.Engine.ReadStats().Pending);
     }
@@ -218,8 +218,8 @@ public sealed partial class WiredGlideConveyorTests
             var carried = Assert.Single(ReadPublication(packets).Where(move => move.Type == 0));
             Assert.Equal(startX + (pulse - 1) * step, carried.FromX);
             Assert.Equal(startX + pulse * step, carried.ToX);
-            Assert.Equal("1", carried.FromZ);
-            Assert.Equal("1", carried.ToZ);
+            Assert.Equal("1.0", carried.FromZ);
+            Assert.Equal("1.0", carried.ToZ);
             Assert.Equal(200, carried.Duration);
             Assert.Equal(1.0, rider.Z);
         }
@@ -243,9 +243,9 @@ public sealed partial class WiredGlideConveyorTests
         f.DrainMovement();
 
         var carried = Assert.Single(ReadPublication(packets).Where(move => move.Type == 0));
-        Assert.Equal("1", carried.FromZ);
+        Assert.Equal("1.0", carried.FromZ);
         // Only the first tile moves in this queued control: its live destination is stacked.
-        Assert.Equal("2", carried.ToZ);
+        Assert.Equal("2.0", carried.ToZ);
         Assert.Equal((5, 11, 2.0), (rider.X, rider.Y, rider.Z));
     }
 

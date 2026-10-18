@@ -111,7 +111,7 @@ public partial class PlacedFurniRoomTests
             for (var index = 0; index < cargo.Length; index++) {
                 Assert.Equal((index + cycle, 1, 1d), (cargo[index].GetX, cargo[index].GetY, cargo[index].GetZ));
                 var slide = ExecutorCargoSlide(cargo[index]);
-                Assert.Equal((index + cycle - 1, index + cycle, "1", "1"), (slide.FromX, slide.ToX, slide.FromZ, slide.ToZ));
+                Assert.Equal((index + cycle - 1, index + cycle, "1.0", "1.0"), (slide.FromX, slide.ToX, slide.FromZ, slide.ToZ));
             }
 
             Assert.Equal(3, _client.Packets.Count(packet => packet.Header == ServerPacketHeader.SlideObjectBundleComposer));
@@ -151,7 +151,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 1, startZ - .5), (actor.X, actor.Y, actor.Z));
         var slide = ExecutorAvatarSlide(actor);
         Assert.Equal(startZ.ToString(System.Globalization.CultureInfo.InvariantCulture), slide.FromZ);
-        Assert.Equal((startZ - .5).ToString(System.Globalization.CultureInfo.InvariantCulture), slide.ToZ);
+        Assert.Equal(Plus.Utilities.TextHandling.GetString(startZ - .5), slide.ToZ);
 
         if (engine == PathfindingEngine.V2 && startZ != .5) {
             Assert.Null(actor.Movement.CurrentRef);

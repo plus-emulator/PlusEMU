@@ -57,7 +57,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(await commands.Parse(_client, ":disablediagonal"));
         actor.MoveTo(1, 2);
         ExecutorTick();
-        Assert.Contains("/mv 1,2,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,2,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((1, 2), (actor.X, actor.Y));
 

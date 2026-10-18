@@ -17,16 +17,16 @@ public partial class PlacedFurniRoomTests
         var move = new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!));
         await move.Parse(_client, ClientPacket(2, 1));
         ExecutorTick();
-        Assert.Equal("2,1,0", actor.Statusses["mv"]);
+        Assert.Equal("2,1,0.0", actor.Statusses["mv"]);
         await move.Parse(_client, ClientPacket(1, 1)); // mid-step: the server still has X = 1
         ExecutorTick();
         Assert.Equal((2, 1), (actor.X, actor.Y));
-        Assert.Equal("1,1,0", actor.Statusses.GetValueOrDefault("mv"));
+        Assert.Equal("1,1,0.0", actor.Statusses.GetValueOrDefault("mv"));
         Assert.Equal(6, actor.RotBody);
         await move.Parse(_client, ClientPacket(2, 1));
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
-        Assert.Equal("2,1,0", actor.Statusses.GetValueOrDefault("mv"));
+        Assert.Equal("2,1,0.0", actor.Statusses.GetValueOrDefault("mv"));
         ExecutorTick();
         Assert.Equal((2, 1), (actor.X, actor.Y));
         Assert.False(actor.HasStatus("mv"));

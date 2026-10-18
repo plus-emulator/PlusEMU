@@ -56,8 +56,8 @@ public sealed partial class WiredGlideConveyorTests
 
             Assert.Equal(3 + pulse, carry.FromX);
             Assert.Equal(4 + pulse, carry.ToX);
-            Assert.Equal("1", carry.FromZ);
-            Assert.Equal("1", carry.ToZ);
+            Assert.Equal("1.0", carry.FromZ);
+            Assert.Equal("1.0", carry.ToZ);
             Assert.Equal(200, carry.Duration);
             Assert.Equal((4 + pulse, 11, 1.0), (rider.X, rider.Y, rider.Z));
             Assert.Equal(0, f.Engine.ReadStats().Pending);
@@ -104,12 +104,12 @@ public sealed partial class WiredGlideConveyorTests
             {
                 Assert.Equal(move.FromX, move.ToX);
                 Assert.Equal(11, move.ToY);
-                Assert.Equal("0", move.FromZ);
-                Assert.Equal("0", move.ToZ);
+                Assert.Equal("0.0", move.FromZ);
+                Assert.Equal("0.0", move.ToZ);
                 Assert.Equal(500, move.Duration);
             });
             var carry = Assert.Single(groups.SelectMany(group => group).Where(move => move.Type == 0));
-            Assert.Equal((3 + pulse, 4 + pulse, 11, 200, "1", "1"),
+            Assert.Equal((3 + pulse, 4 + pulse, 11, 200, "1.0", "1.0"),
                 (carry.FromX, carry.ToX, carry.ToY, carry.Duration, carry.FromZ, carry.ToZ));
             Assert.Equal((4 + pulse, 11, 1.0), (rider.X, rider.Y, rider.Z));
             Assert.Equal(0, f.Engine.ReadStats().Pending);
@@ -851,7 +851,7 @@ public sealed partial class WiredGlideConveyorTests
             Assert.Equal(500, move.Duration);
         });
         var carry = Assert.Single(moves, move => move.Type == 0);
-        Assert.Equal((4, 5, 200, "1", "1"), (carry.FromX, carry.ToX, carry.Duration, carry.FromZ, carry.ToZ));
+        Assert.Equal((4, 5, 200, "1.0", "1.0"), (carry.FromX, carry.ToX, carry.Duration, carry.FromZ, carry.ToZ));
         Assert.Equal(0, f.Engine.ReadStats().Pending);
     }
 
@@ -952,8 +952,8 @@ public sealed partial class WiredGlideConveyorTests
             Assert.Equal(11, packet.ReadInt());
             Assert.Equal(avatar ? fromX + 1 : sourceX, packet.ReadInt());
             Assert.Equal(11, packet.ReadInt());
-            Assert.Equal(avatar ? "1" : "0", packet.ReadString());
-            Assert.Equal(avatar ? "1" : "0", packet.ReadString());
+            Assert.Equal(avatar ? "1.0" : "0.0", packet.ReadString());
+            Assert.Equal(avatar ? "1.0" : "0.0", packet.ReadString());
             var id = packet.ReadInt();
 
             if (avatar) {

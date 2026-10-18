@@ -1,3 +1,4 @@
+using Plus.Utilities;
 using System.Globalization;
 using Dapper;
 using Plus.Database;
@@ -43,7 +44,7 @@ public sealed class RoomUserSnapshotService(IGroupManager groups, IGameClientMan
             }
 
             return new(habbo.Id, habbo.Username, habbo.Motto, user.LookFor(habbo), user.VirtualId, user.X, user.Y,
-                user.Z.ToString(CultureInfo.InvariantCulture), user.RotBody, 1, habbo.Gender.ToLowerInvariant(),
+                TextHandling.GetString(user.Z), user.RotBody, 1, habbo.Gender.ToLowerInvariant(),
                 group?.Id ?? 0, group?.Name ?? "", habbo.HabboStats?.AchievementPoints ?? 0,
                 false, 0, 0, "", false, false);
         }
@@ -56,13 +57,13 @@ public sealed class RoomUserSnapshotService(IGroupManager groups, IGameClientMan
             var pet = user.PetData ?? throw new InvalidOperationException("A placed pet has no pet data.");
 
             return new(ai.BaseId, user.BotData.Name, user.BotData.Motto, pet.Look.ToLowerInvariant(),
-                user.VirtualId, user.X, user.Y, user.Z.ToString(CultureInfo.InvariantCulture), 0, kind, "", 0, "", 0,
+                user.VirtualId, user.X, user.Y, TextHandling.GetString(user.Z), 0, kind, "", 0, "", 0,
                 true, pet.Type, pet.OwnerId, pet.OwnerName, pet.Saddle > 0,
                 user.RidingHorse, pet.Level);
         }
 
         return new(ai.BaseId, user.BotData.Name, user.BotData.Motto, user.BotData.Look.ToLowerInvariant(),
-            user.VirtualId, user.X, user.Y, user.Z.ToString(CultureInfo.InvariantCulture), 0, kind,
+            user.VirtualId, user.X, user.Y, TextHandling.GetString(user.Z), 0, kind,
             user.BotData.Gender.ToLowerInvariant(), 0, "", 0, false, 0, user.BotData.OwnerId,
             ResolveUsername(user.BotData.OwnerId), false, false);
     }

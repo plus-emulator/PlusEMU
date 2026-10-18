@@ -188,7 +188,7 @@ public partial class PlacedFurniRoomTests
 
         ReviewCurvedRoute(actor, v2);
         ExecutorTick();
-        Assert.Equal("1,1,0", actor.Statusses["mv"]);
+        Assert.Equal("1,1,0.0", actor.Statusses["mv"]);
         Assert.Equal(2, actor.RotHead);
         Assert.Equal(2, actor.RotBody);
         Assert.Equal((2, 2), ReviewPacketFacing(actor));

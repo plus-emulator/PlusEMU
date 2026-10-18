@@ -91,7 +91,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 1), (actor.X, actor.Y));
         Assert.Same(landing, actor.LastItem);
         Assert.True(actor.Movement.HasIntent);
-        Assert.Contains("/mv 2,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
     }
 
     [Fact]

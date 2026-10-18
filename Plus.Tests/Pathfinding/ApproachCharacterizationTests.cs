@@ -32,7 +32,7 @@ public partial class PlacedFurniRoomTests
         var actor = ApproachActor(3, 0, autoInteract: false);
         item.Interactor.OnTrigger(_client, item, 0, true);
         ExecutorTick();
-        Assert.Contains("/mv 2,0,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,0,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         ExecutorTick();
         Assert.Equal(item.SquareInFront, actor.Coordinate);
@@ -146,7 +146,7 @@ public partial class PlacedFurniRoomTests
         item.Interactor.OnTrigger(_client, item, 0, true);
         Assert.Equal(99, item.InteractingUser);
         ExecutorTick();
-        Assert.Contains("/mv 1,0,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,0,0.0/", ExecutorUpdate(actor).Status);
     }
 
     [Fact]

@@ -208,7 +208,7 @@ public partial class PlacedFurniRoomTests
         actor.MoveTo(6, 1);
         ExecutorTick();
         var blocked = superFast ? 3 : 2;
-        Assert.Contains($"/mv {blocked},1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains($"/mv {blocked},1,0.0/", ExecutorUpdate(actor).Status);
         _room.GetGameMap().SetFloorStatus(blocked, 1, 0);
         ExecutorTick();
         Assert.Equal((blocked - 1, 1), (actor.X, actor.Y));
@@ -306,7 +306,7 @@ public partial class PlacedFurniRoomTests
         var scheduler = _room.GetGameMap().Navigation!.Executor.Context.Scheduler;
         actor.MoveTo(7, 1);
         ExecutorTick();
-        Assert.Contains("/mv 1,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(actor).Status);
         Assert.True(_room.GetGameMap().Navigation!.Executor.Claims.TryClaim(owner, 1 * 8 + 2, ClaimKind.Exclusive, TargetOccupancy.None));
         ExecutorTick();
         Assert.Equal(1, actor.Movement.WaitTicks);

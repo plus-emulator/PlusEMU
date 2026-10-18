@@ -428,25 +428,8 @@ public class RoomUserManager
             user.ApplyEffect(WiredRoomForwarding.TeleportEffectId);
         }
 
-        if (_room.CheckRights(session, true)) {
-            user.SetStatus("flatctrl", "4");
-            session.Send(new YouAreOwnerComposer(_room.Id));
-            session.Send(new YouAreControllerComposer(_room.Id, 4));
-        }
-        else if (_room.CheckRights(session, false) && _room.Group == null) {
-            user.SetStatus("flatctrl", "1");
-            session.Send(new YouAreControllerComposer(_room.Id, 1));
-        }
-        else if (_room.Group != null && _room.CheckRights(session, false, true)) {
-            user.SetStatus("flatctrl", "3");
-            session.Send(new YouAreControllerComposer(_room.Id, 3));
-        }
-        else {
-            session.Send(new YouAreNotControllerComposer(_room.Id));
-        }
-
-        if (_room.GetWired() is { } wired) {
-            wired.SendPermissions(session);
+        if (ControllerLevel(session) is > 0 and var level) {
+            user.SetStatus("flatctrl", level.ToString());
         }
 
         user.UpdateNeeded = true;
@@ -486,6 +469,38 @@ public class RoomUserManager
         return true;
     }
 
+    private int ControllerLevel(GameClient session)
+    {
+        if (_room.CheckRights(session, true)) {
+            return 4;
+        }
+
+        if (_room.CheckRights(session, false) && _room.Group == null) {
+            return 1;
+        }
+
+        return _room.Group != null && _room.CheckRights(session, false, true) ? 3 : 0;
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: the entrant's controller level and Wired permissions follow the room's labels,
+    // then YouAreOwner for the owner.
+    public void SendEntryRights(GameClient session)
+    {
+        var level = ControllerLevel(session);
+        if (level > 0) {
+            session.Send(new YouAreControllerComposer(_room.Id, level));
+        }
+        else {
+            session.Send(new YouAreNotControllerComposer(_room.Id));
+        }
+
+        _room.GetWired()?.SendPermissions(session);
+
+        if (level == 4) {
+            session.Send(new YouAreOwnerComposer(_room.Id));
+        }
+    }
+
     public void RemoveUserFromRoom(GameClient? session, bool nofityUser, bool notifyKick = false)
     {
         RoomUser? removedUser = null;
@@ -509,6 +524,11 @@ public class RoomUserManager
 
             if (notifyKick) {
                 session.Send(new GenericErrorComposer(GenericError.KickedFromRoom));
+            }
+
+            // Observed on AIR WIN63-202610151745-318700621: leaving a room, for the hotel view or another room, starts with YouArePlayingGame(false).
+            if (user != null) {
+                session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.YouArePlayingGameComposer(false));
             }
 
             if (nofityUser) {
@@ -667,7 +687,9 @@ public class RoomUserManager
             return false;
         }
 
-        var recipients = GetRoomUsers().Select(roomUser => roomUser.GetClient()).Where(client => client != null)
+        // The leaver itself gets no UserRemove (AIR WIN63-202610151745-318700621); its client drops the whole room.
+        var leaver = user.IsBot ? null : user.GetClient();
+        var recipients = GetRoomUsers().Select(roomUser => roomUser.GetClient()).Where(client => client != null && !ReferenceEquals(client, leaver))
             .Cast<GameClient>().ToArray();
 
         if (!_users.TryRemove(new KeyValuePair<int, RoomUser>(user.InternalRoomId, user))) {

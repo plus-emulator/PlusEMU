@@ -119,7 +119,7 @@ public partial class PlacedFurniRoomTests
             Assert.Equal(1, amount);
             Assert.Equal(["visit"], events);
             Assert.Equal(1, habbo.HabboStats.RoomVisits);
-            Assert.Equal(ServerPacketHeader.RoomRatingComposer, _client.Sent.Last());
+            Assert.Equal(ServerPacketHeader.RoomPropertyComposer, _client.Sent.Last());
             events.Add("achievement");
         }));
         WithUnavailableRoomGame(() => Assert.True(habbo.EnterRoom(_room)));

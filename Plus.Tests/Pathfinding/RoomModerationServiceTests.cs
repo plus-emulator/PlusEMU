@@ -50,7 +50,7 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(achievements);
         service.Kick(_client, 8);
         Assert.Equal(new[] { "ACH_SelfModKickSeen" }, achievements);
-        Assert.Equal(new[] { ServerPacketHeader.GenericErrorComposer, ServerPacketHeader.CloseConnectionComposer }, target.Sent.Take(2));
+        Assert.Equal(new[] { ServerPacketHeader.GenericErrorComposer, ServerPacketHeader.YouArePlayingGameComposer, ServerPacketHeader.CloseConnectionComposer }, target.Sent.Take(3));
     }
 
     [Theory]

@@ -18,11 +18,8 @@ public static class ConfigurationItemStates
     /// <summary>Room entry: the client starts with every switch off, so only a room with a switch on needs the packet.</summary>
     public static void SendTo(GameClient session, Room room)
     {
-        var states = Compose(room);
-
-        if (states.ChooserDisabled || states.InvisibleFurni) {
-            session.Send(states);
-        }
+        // Observed on AIR WIN63-202610151745-318700621: every room entry carries the states, all off included.
+        session.Send(Compose(room));
     }
     public static void Announce(Room room, Item? except = null) => room.SendPacket(Compose(room, except));
     private static bool IsOn(Room room, InteractionType type, Item? except) => room.GetRoomItemHandler().GetFloor.Any(item =>

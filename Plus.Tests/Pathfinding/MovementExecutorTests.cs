@@ -331,7 +331,8 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Null(_room.GetRoomUserManager().GetRoomUserByVirtualId(actor.VirtualId));
         Assert.Null(_client.GetHabbo().CurrentRoom);
-        Assert.Contains(ServerPacketHeader.UserRemoveComposer, _client.Sent);
+        Assert.Contains(ServerPacketHeader.CloseConnectionComposer, _client.Sent);
+        Assert.DoesNotContain(ServerPacketHeader.UserRemoveComposer, _client.Sent);
         Assert.Equal(new[] { (WiredBoxType.TriggerWalkOffFurni, origin.Id) },
             events.Select(e => (e.Kind, e.Item)).ToArray());
         Assert.False(actor.HasStatus("mv"));

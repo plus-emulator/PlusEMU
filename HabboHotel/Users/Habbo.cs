@@ -487,7 +487,13 @@ public class Habbo
         }
 
         Client.GetHabbo().CurrentRoom = room;
+        // Observed on AIR WIN63-202610151745-318700621: the NFT chat styles come before RoomReady, the entry tile right after it.
+        Client.Send(new Plus.Communication.Packets.Outgoing.Rooms.Session.UserNftChatStylesComposer());
         Client.Send(new RoomReadyComposer(room.RoomId, room.ModelName));
+
+        if (room.GetGameMap()?.Model is { } model) {
+            Client.Send(new Plus.Communication.Packets.Outgoing.Rooms.FloorPlan.RoomEntryTileComposer(model.DoorX, model.DoorY, model.DoorOrientation));
+        }
 
         if (room.Wallpaper != "0.0") {
             Client.Send(new RoomPropertyComposer("wallpaper", room.Wallpaper));
@@ -498,7 +504,6 @@ public class Habbo
         }
 
         Client.Send(new RoomPropertyComposer("landscape", room.Landscape));
-        Client.Send(new RoomRatingComposer(room.Score, !(Client.GetHabbo().RatedRooms.Contains(room.RoomId) || room.OwnerId == Client.GetHabbo().Id)));
         _roomVisits.RecordEntry(Client.GetHabbo().Id, room.RoomId);
 
         if (room.OwnerId != Id) {

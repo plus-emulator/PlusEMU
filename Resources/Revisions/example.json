@@ -631,7 +631,7 @@
     "FlatAccessDeniedComposer": 1764,
     "LatencyPingResponseComposer": 3742,
     "HabboUserBadgesComposer": 2014,
-    "HeightMapUpdateComposer": 65424,
+    "HeightMapUpdateComposer": 853,
     "HeightMapComposer": 2099,
     "CanCreateRoomComposer": 119,
     "InstantMessageErrorComposer": 1465,

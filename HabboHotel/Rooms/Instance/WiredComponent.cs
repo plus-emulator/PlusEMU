@@ -196,6 +196,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     private readonly HashSet<long> _wakeDue = [];
+    private const long WakeLeadMs = 3;
 
     private void ArmWake(long dueMs)
     {
@@ -205,7 +206,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
             }
         }
 
-        WiredWakeClock.Shared.After(dueMs - _engine.Now, () => Wake(dueMs, 0));
+        // Handed over a little early; the worker holds the pass until the due time.
+        WiredWakeClock.Shared.After(dueMs - _engine.Now - WakeLeadMs, () => Wake(dueMs, 0));
     }
 
     // A delayed effect's pass runs at its due time. When a pass is already running it may have started before the time fell due, so the
@@ -216,8 +218,11 @@ public partial class WiredComponent : IWiredRuntimeOperations
             return;
         }
 
-        // A queued pool item can wait several ms on a busy server, which the effect would land late by; the wake-up gets its own thread.
-        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, dedicated: true) || attempt >= 10) {
+        // A queued pool item, or a new thread, can wait several ms to start on a busy server, which the effect would land late by; the
+        // wake-up hands the pass to a pre-started worker and the clock stays free.
+        var startAt = WiredWakeClock.Now + Math.Max(0, dueMs - _engine.Now);
+
+        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, workers: WiredWakeWorkers.Shared, startAtMs: startAt) || attempt >= 10) {
             lock (_wakeDue) {
                 _wakeDue.Remove(dueMs);
             }

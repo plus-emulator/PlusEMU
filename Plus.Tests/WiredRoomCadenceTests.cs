@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.Instance;
 using Xunit;
 
 namespace Plus.Tests;
@@ -86,17 +87,42 @@ public class WiredRoomCadenceTests
     }
 
     [Fact]
-    public async Task ADedicatedPassRunsOffTheSharedPool()
+    public async Task AWorkerPassRunsOffTheSharedPoolAndCompletesTheRoomTask()
     {
+        using var workers = new WiredWakeWorkers(2);
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         bool? pooled = null;
 
-        Assert.True(RoomCycle.TryStart(room, () => pooled = Thread.CurrentThread.IsThreadPoolThread, dedicated: true));
+        Assert.True(RoomCycle.TryStart(room, () => pooled = Thread.CurrentThread.IsThreadPoolThread, workers: workers));
         await room.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.False(pooled);
-        Assert.True(RoomCycle.TryStart(room, () => { }));
+        Assert.True(RoomCycle.TryStart(room, () => { }, workers: workers));
         await room.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    // One room's long pass holds one worker; another room's wake-up pass still starts at once on the next.
+    [Fact]
+    public async Task AHeavyRoomDoesNotHoldBackAnotherRoomsWakeUp()
+    {
+        using var workers = new WiredWakeWorkers(2);
+        var heavy = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
+        var light = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
+        using var release = new ManualResetEventSlim();
+        using var heavyStarted = new ManualResetEventSlim();
+
+        Assert.True(RoomCycle.TryStart(heavy, () => { heavyStarted.Set(); release.Wait(TimeSpan.FromSeconds(5)); }, workers: workers));
+        Assert.True(heavyStarted.Wait(TimeSpan.FromSeconds(5)));
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        Assert.True(RoomCycle.TryStart(light, () => { }, workers: workers));
+        await light.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
+        var lightMs = clock.ElapsedMilliseconds;
+
+        Assert.False(heavy.ProcessTask.IsCompleted);
+        Assert.InRange(lightMs, 0, 100);
+        release.Set();
+        await heavy.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
     }
 
     [Fact]

@@ -1,3 +1,5 @@
+using Plus.HabboHotel.Rooms.Instance;
+
 namespace Plus.HabboHotel.Rooms;
 
 internal static class RoomCycle
@@ -29,8 +31,9 @@ internal static class RoomCycle
 
     // Both passes share the room's task slot, claimed atomically: the room loop and the wired wake clock start passes from different
     // threads. Fast misses do not change legacy lag counters.
-    /// <param name="dedicated">Run on a thread of its own instead of the busy shared pool, for a pass that must start at a set time.</param>
-    public static bool TryStart(Room room, Action pass, bool full = false, bool dedicated = false)
+    /// <param name="workers">Run on these pre-started threads, for a pass that must start at a set time: a pool item waits behind a busy
+    /// pool and a new thread takes as long to start on a loaded server.</param>
+    public static bool TryStart(Room room, Action pass, bool full = false, WiredWakeWorkers? workers = null, double startAtMs = 0)
     {
         if (room.IsCrashed || room.MDisposed || Interlocked.CompareExchange(ref room.CycleSlot, full ? FullPass : FastPass, Idle) != Idle) {
             return false;
@@ -47,9 +50,22 @@ internal static class RoomCycle
                 }
             }
 
-            room.ProcessTask = dedicated
-                ? Task.Factory.StartNew(Run, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)
-                : Task.Run(Run);
+            if (workers != null) {
+                var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                room.ProcessTask = done.Task;
+                workers.Enqueue(() =>
+                {
+                    try {
+                        Run();
+                    }
+                    finally {
+                        done.TrySetResult();
+                    }
+                }, startAtMs);
+            }
+            else {
+                room.ProcessTask = Task.Run(Run);
+            }
         }
         catch {
             Volatile.Write(ref room.CycleSlot, Idle);

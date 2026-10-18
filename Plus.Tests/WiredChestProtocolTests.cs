@@ -129,6 +129,20 @@ public sealed class WiredChestProtocolTests
         Assert.Equal((int)WiredChestFailure.Invalid, failure.Code);
     }
 
+    // Observed on AIR WIN63-202610131318-860371703: a deposit by a user who may not trade is refused with WiredTransactionFail reason 8.
+    [Fact]
+    public void TradeLockedUserCannotDepositIntoAChest()
+    {
+        var world = new World();
+        world.Habbo.Inventory = new();
+        world.Habbo.TradingLockExpiresAt = DateTimeOffset.MaxValue;
+        Assert.False(world.Module.Start(world.Client, 80, [world.Chest], null));
+        var failure = Assert.Single(world.Events);
+        Assert.Equal(WiredEventKind.TransactionFail, failure.Kind);
+        Assert.Equal((int)WiredChestFailure.UserCantTrade, failure.Code);
+        Assert.False(world.Actor.IsTrading);
+    }
+
     [Fact]
     public void ValidEmptyLoadedInventoryRemainsAUsableUnacceptedSession()
     {

@@ -54,10 +54,11 @@ public sealed class RoomEntryService(IQuestManager quests, TimeProvider clock, I
         room.GetWired()?.SendLabels(session);
         // Transparency and highlight shown to the whole room (class_3560 furni, class_3459 users), so late joiners see them too.
         room.GetWired()?.SendVisualizationState(session);
+        // Observed on AIR WIN63-202610151745-318700621: Enter Room stacks run here, and their flashes come before the controller packets.
+        room.GetWired()?.TriggerEvent(WiredBoxType.TriggerRoomEnter, habbo);
         room.GetRoomUserManager().SendEntryRights(session);
         session.Send(new Plus.Communication.Packets.Outgoing.Navigator.RoomRatingComposer(room.Score, !(habbo.RatedRooms.Contains(room.RoomId) || room.OwnerId == habbo.Id)));
         session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Session.RaidProtectionCapabilityComposer(room.RoomId, room.OwnerId == habbo.Id));
-        room.GetWired()?.TriggerEvent(WiredBoxType.TriggerRoomEnter, habbo);
         var now = clock.GetUtcNow();
 
         if (habbo.FloodUntil is { } floodUntil && now < floodUntil) {

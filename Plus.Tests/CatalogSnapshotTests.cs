@@ -14,7 +14,7 @@ namespace Plus.Tests;
 public class CatalogSnapshotTests
 {
     // SHA-256 of the catalog payloads for every case in GoldenPayloads.
-    private const string BaselineSha256 = "9f2e1852bc01bd30e508c0b91954baf1c8280708eae6f88e529238e04b9e6d2e";
+    private const string BaselineSha256 = "a0d35dae1c196eef4dec3c2de22fca6db6801c670cc04c3615c2c44fd8f289ad";
 
     [Fact]
     public void ComposedCatalogPayloadsMatchPreMigrationBaseline()

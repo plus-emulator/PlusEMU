@@ -23,6 +23,11 @@ public sealed class RoomEntryService(IQuestManager quests, TimeProvider clock, I
             return;
         }
 
+        // The server sends the room data when it opens the room; a repeated or legacy request for it changes nothing.
+        if (room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id) is { } admitted && ReferenceEquals(admitted.GetClient(), session)) {
+            return;
+        }
+
         if (!room.GetRoomUserManager().AddAvatarToRoom(session)) {
             room.GetRoomUserManager().RemoveUserFromRoom(session, false);
 

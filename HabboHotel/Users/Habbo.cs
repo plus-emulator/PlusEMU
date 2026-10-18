@@ -35,6 +35,7 @@ public class Habbo
     private IGameClientManager? _clients;
     private IRoomManager? _rooms;
     private IBuildersClubService? _buildersClub;
+    private IRoomEntryService? _roomEntry;
     internal uint WiredRoomNetworkDestination { get; set; }
     internal uint WiredRoomEntrySourceRoomId { get; set; }
     internal uint WiredRoomEntryDestinationRoomId { get; set; }
@@ -514,6 +515,9 @@ public class Habbo
             _roomAchievements.ProgressAchievement(Client, "ACH_RoomEntry", 1);
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: the server sends the room data right after opening it; the client asks for nothing.
+        _roomEntry?.Enter(Client);
+
         return true;
     }
 
@@ -521,11 +525,12 @@ public class Habbo
     private IGameClientManager HotelClients => _clients ?? throw new InvalidOperationException("The user is not connected to the hotel services.");
     private IRoomManager HotelRooms => _rooms ?? throw new InvalidOperationException("The user is not connected to the hotel services.");
 
-    internal void SetHotelServices(IGameClientManager clients, IRoomManager rooms, IBuildersClubService? buildersClub = null)
+    internal void SetHotelServices(IGameClientManager clients, IRoomManager rooms, IBuildersClubService? buildersClub = null, IRoomEntryService? roomEntry = null)
     {
         _clients = clients;
         _rooms = rooms;
         _buildersClub = buildersClub;
+        _roomEntry = roomEntry;
     }
 
     internal void SetRoomVisitRecorder(IRoomVisitRecorder roomVisits, IAchievementManager achievements)

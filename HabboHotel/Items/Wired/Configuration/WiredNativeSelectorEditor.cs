@@ -126,7 +126,7 @@ internal static class WiredNativeSelectorEditor
                 break;
             case "wf_slc_furni_area":
             case "wf_slc_users_area":
-                if (p.Length != 4 || p.Any(value => value < 0)) {
+                if (p.Length != 4) {
                     return false;
                 }
 

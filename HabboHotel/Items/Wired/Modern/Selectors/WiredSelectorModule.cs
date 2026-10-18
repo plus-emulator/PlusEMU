@@ -74,8 +74,9 @@ public static class WiredSelectorModule
                     && x.Team != 0 && (P(0) == 0 || x.Team == P(0))).Select(x => x.Id));
                 break;
             case "wf_slc_users_byname": {
-                    var names = c.Text.Split(['\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    // Observed on AIR WIN63-202610151745-318700621: only a tab separates names (the editors turn line breaks into tabs), and
+                    // a name keeps its spaces, so " Robbie" or "Robbie " matches nobody.
+                    var names = c.Text.Split('\t', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
                     selected.UserIds.UnionWith(world.Users.Where(x => names.Contains(x.Name)).Select(x => x.Id));
                     break;
                 }

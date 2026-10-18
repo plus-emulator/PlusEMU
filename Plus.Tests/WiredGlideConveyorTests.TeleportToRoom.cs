@@ -55,9 +55,9 @@ public sealed partial class WiredGlideConveyorTests
         Assert.DoesNotContain(packets, bytes => BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.RoomForwardComposer);
         Assert.Equal(0, rider.GetClient()!.GetHabbo()!.ForwardArrivalRestoreEffect);
 
-        // A user the client did not take away loses the glow later.
+        // The server takes the user away with the glow on: leaving does not put the old effect back.
         Assert.Equal(234, rider.CurrentEffect);
         f.Advance(2500);
-        Assert.Equal(0, rider.CurrentEffect);
+        Assert.Equal(234, rider.CurrentEffect);
     }
 }

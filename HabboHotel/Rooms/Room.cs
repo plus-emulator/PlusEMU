@@ -737,7 +737,7 @@ public class Room
 
         if (entrant != null && _userSnapshots.Capture(entrant) is { } entrantSnapshot) {
             session.Send(new UsersComposer(entrantSnapshot));
-            SendUserExtras(session, entrant);
+            SendUserExtras(session, entrant, includeEffect: false);
             // A cycle that ran during admission sent the status before the client knew the avatar.
             entrant.UpdateNeeded = true;
         }
@@ -745,7 +745,7 @@ public class Room
         _wiredComponent?.SnapshotEnqueued(session, snapshotFurniture.Concat(snapshotWalls), snapshotUsers);
     }
 
-    private static void SendUserExtras(GameClient session, RoomUser user)
+    private static void SendUserExtras(GameClient session, RoomUser user, bool includeEffect = true)
     {
         if (user.IsBot && user.BotData.DanceId > 0) {
             session.Send(new DanceComposer(user.VirtualId, user.BotData.DanceId));
@@ -762,7 +762,7 @@ public class Room
             session.Send(new CarryObjectComposer(user.VirtualId, user.CarryItemId));
         }
 
-        if (!user.IsBot && !user.IsPet && user.CurrentEffect > 0) {
+        if (includeEffect && !user.IsBot && !user.IsPet && user.CurrentEffect > 0) {
             session.Send(new AvatarEffectComposer(user.VirtualId, user.CurrentEffect));
         }
     }
@@ -918,6 +918,8 @@ public class Room
             SendPacket(new UsersComposer(snapshot), false, viewer => _wiredComponent?.ObjectEnqueued(viewer, null, user));
         }
     }
+
+    internal void SendPacketToOthers(IServerPacket packet, GameClient except) => SendPacket(packet, false, null, except);
 
     // The admitted user's own client gets its Users entry with the room snapshot instead (SendObjects).
     public void SendUserToOthers(RoomUser user)

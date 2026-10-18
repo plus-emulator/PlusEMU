@@ -425,7 +425,7 @@ public class RoomUserManager
         if (session.GetHabbo().ForwardArrivalRestoreEffect is { } restore) {
             session.GetHabbo().ForwardArrivalRestoreEffect = null;
             user.ForwardArrivalEffect = (WiredRoomForwarding.ArrivalEffectTicks, restore);
-            user.ApplyEffect(WiredRoomForwarding.TeleportEffectId);
+            ApplyArrivalEffect(session, user, WiredRoomForwarding.TeleportEffectId);
         }
 
         if (ControllerLevel(session) is > 0 and var level) {
@@ -437,11 +437,11 @@ public class RoomUserManager
         var forcedEffects = session.GetHabbo().Effects;
 
         if (forcedEffects != null && session.GetHabbo().Access.Can(PermissionKeys.ModerationTool) && !session.GetHabbo().DisableForcedEffects) {
-            forcedEffects.ApplyEffect(102);
+            ApplyArrivalEffect(session, user, 102);
         }
 
         if (forcedEffects != null && session.GetHabbo().IsAmbassador && !session.GetHabbo().DisableForcedEffects && !session.GetHabbo().Access.Can(PermissionKeys.ModerationTool)) {
-            forcedEffects.ApplyEffect(178);
+            ApplyArrivalEffect(session, user, 178);
         }
 
         foreach (var bot in _bots.Values.ToList()) {
@@ -467,6 +467,17 @@ public class RoomUserManager
         }
 
         return true;
+    }
+
+    // The room sees the effect now; the entrant gets its own effect with the room entry, after the room rating (AIR WIN63-202610151745-318700621).
+    private void ApplyArrivalEffect(GameClient session, RoomUser user, int effectId)
+    {
+        if (session.GetHabbo().Effects is not { } effects) {
+            return;
+        }
+
+        effects.CurrentEffect = effectId;
+        _room.SendPacketToOthers(new AvatarEffectComposer(user.VirtualId, effectId), session);
     }
 
     private int ControllerLevel(GameClient session)

@@ -70,6 +70,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             WiredEngineLimits.FromSettings(settings.TryGetValue),
             CaptureActorVisit);
         _engine.ActionDue = ArmWake;
+        _engine.FlushFlashes = FlushFlashes;
         _targets = new(
             () => _room.GetRoomItemHandler().GetFloor,
             () => _room.GetRoomUserManager().GetUserList(),

@@ -90,5 +90,7 @@ public partial class PlacedFurniRoomTests
         actor.OnChat(0, "one", false);
 
         Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectsDataUpdateComposer);
+        // Observed on AIR WIN63-202610151745-318700621: the flash comes before the message the stack sends and before the chat.
+        Assert.Equal(ServerPacketHeader.ObjectsDataUpdateComposer, _client.Packets[0].Header);
     }
 }

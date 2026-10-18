@@ -479,4 +479,9 @@ public static class ServerPacketHeader
     public const uint WiredPermissionsComposer = 3966; // package_121.class_3691
     // Answers WiredGetVariablesForObject (package_121.class_3373, parser wiredmenu.class_4057).
     public const uint WiredVariablesForObjectComposer = 1478;
+
+    // Free product claims (cursed dragon adoption) and the new-feature promo expiry, AIR WIN63-202610151745-318700621.
+    public const uint HasClaimedProductResponseComposer = 2980; // parser package_174.class_2885
+    public const uint ClaimProductResultComposer = 3734; // parser package_174.class_3882
+    public const uint SecondsUntilComposer = 1715; // parser package_205.class_3987
 }

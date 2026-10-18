@@ -44,6 +44,6 @@ internal static partial class WiredNativeAuxiliaryEditor
             [.. Enumerable.Range(0, userSelections).Select(_ => UserSources)],
             [.. Enumerable.Repeat(0, furniSelections)], [.. Enumerable.Repeat(0, userSelections)], owned, false)
         {
-            VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Id, variables)]
+            VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId, variables)]
         };
 }

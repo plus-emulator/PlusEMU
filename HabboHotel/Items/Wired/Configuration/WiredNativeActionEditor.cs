@@ -64,7 +64,7 @@ internal static class WiredNativeActionEditor
         ["wf_act_user_to_furni"] = Meta([Furni], [SignalUsers], [100], [0], [0]),
         ["wf_act_place_furni"] = Meta([PlaceTemplateSources, FurniAndSnapshot, FurniAndSnapshot], [SignalUsers, SignalUsers], [110, 0, 200], [0, 200], [0, 0, 0, 0, 0, 0, 0, 0, 0, -20], true) with
         {
-            VariableDefaults = [WiredVariableAbsent.Id, WiredVariableAbsent.Id]
+            VariableDefaults = [WiredVariableAbsent.WireId, WiredVariableAbsent.WireId]
         },
         ["wf_act_remove_furni"] = Meta([RemoveFurniSources], [], [200], [], []),
         ["wf_act_adjust_clock"] = Meta([Furni], [], [100], [], [0, 0, 0, 0]),

@@ -16,7 +16,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             [.. Enumerable.Repeat(furniSources, furniSelections)], [.. Enumerable.Repeat(TransactionUsers, userSelections)],
             furniDefaults, userDefaults, owned, true)
         {
-            VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Id, variables)]
+            VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId, variables)]
         };
 
     /// <summary>Selections become indexed role sources ("f0", "u1", ...) the chest boxes read.</summary>

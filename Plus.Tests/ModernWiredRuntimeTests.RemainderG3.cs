@@ -95,7 +95,7 @@ public partial class ModernWiredRuntimeTests
         var stack = G3PlaceStack(G3Place(null, G3Snap(77, G3Lamp, 2, 1, 0, 0, "0")));
         using var f = stack.F;
         original.Definition = stack.Lamp;
-        original.SetState(2, 1, 0, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
+        original.SetState(2, 1, 0);
         f.Items[original.Id] = original;
         f.Fire(land: false);
         // The picked furni is still where it was, and the copy sits on the same tile on top of it.
@@ -438,7 +438,7 @@ public partial class ModernWiredRuntimeTests
         var stack = G3RemoveStack(0);
         using var f = stack.F;
         var forged = new Item { Id = unchecked((uint)-9), IsTemporary = true, ExtraData = new LegacyDataFormat { Data = "0" }, Definition = G3Definition(G3Lamp) };
-        forged.SetState(2, 2, 0, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+        forged.SetState(2, 2, 0);
         f.Items[forged.Id] = forged;
         var context = Context(f.Room, new(WiredEventKind.Use) { EventItem = forged }, f.Items.Values.ToArray(), [f.User]);
         context.Triggering.FurniIds.Add(forged.Id);

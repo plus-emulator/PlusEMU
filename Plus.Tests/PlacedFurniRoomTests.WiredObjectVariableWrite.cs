@@ -19,7 +19,7 @@ public partial class PlacedFurniRoomTests
         floor.RoomId = RoomId;
         floor.Definition.Modes = 2;
         floor.ExtraData = new LegacyDataFormat { Data = "1" };
-        floor.SetState(2, 2, 0, []);
+        floor.SetState(2, 2, 0);
         _room.GetRoomItemHandler().LoadFurniture([floor]);
         var module = InspectionInstallModule();
 
@@ -41,7 +41,7 @@ public partial class PlacedFurniRoomTests
         floor.RoomId = RoomId;
         floor.Definition.Modes = 3;
         floor.ExtraData = new LegacyDataFormat { Data = "" };
-        floor.SetState(2, 2, 0, []);
+        floor.SetState(2, 2, 0);
         _room.GetRoomItemHandler().LoadFurniture([floor]);
         var module = InspectionInstallModule();
 
@@ -58,7 +58,7 @@ public partial class PlacedFurniRoomTests
         floor.RoomId = RoomId;
         floor.Definition.Modes = 2;
         floor.ExtraData = new LegacyDataFormat { Data = "1" };
-        floor.SetState(2, 2, 0, []);
+        floor.SetState(2, 2, 0);
         _room.GetRoomItemHandler().LoadFurniture([floor]);
         var module = InspectionInstallModule();
 
@@ -92,7 +92,7 @@ public partial class PlacedFurniRoomTests
         floor.RoomId = RoomId;
         floor.Definition.Modes = 2;
         floor.ExtraData = new LegacyDataFormat { Data = "1" };
-        floor.SetState(2, 2, 0, []);
+        floor.SetState(2, 2, 0);
         _room.GetRoomItemHandler().LoadFurniture([floor]);
         InspectionInstallModule();
         _client.Packets.Clear();

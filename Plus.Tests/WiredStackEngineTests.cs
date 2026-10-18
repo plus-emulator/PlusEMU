@@ -701,8 +701,8 @@ public class WiredStackEngineTests
         var trigger = fixture.Trigger();
         var effect = fixture.Effect(delay: 4);
         fixture.Engine.RunStack(trigger, []);
-        trigger.Item.SetState(7, 0, trigger.Item.GetZ, []);
-        trigger.Item.SetState(0, 0, trigger.Item.GetZ, []);
+        trigger.Item.SetState(7, 0, trigger.Item.GetZ);
+        trigger.Item.SetState(0, 0, trigger.Item.GetZ);
         Assert.Equal(2, trigger.Item.MovementGeneration);
         Assert.Same(effect, Assert.Single(fixture.Engine.GetBoxes(trigger, InteractionType.WiredEffect)));
 
@@ -720,8 +720,8 @@ public class WiredStackEngineTests
         var trigger = fixture.Trigger();
         var effect = fixture.Effect(delay: 4);
         Assert.True(fixture.Engine.RunStack(trigger, ["old"]));
-        trigger.Item.SetState(7, 0, trigger.Item.GetZ, []);
-        trigger.Item.SetState(0, 0, trigger.Item.GetZ, []);
+        trigger.Item.SetState(7, 0, trigger.Item.GetZ);
+        trigger.Item.SetState(0, 0, trigger.Item.GetZ);
         Assert.True(fixture.Engine.RunStack(trigger, ["new"]));
         fixture.Advance(2000);
         Assert.Equal("new", Assert.Single(effect.Calls)[0]);
@@ -734,8 +734,8 @@ public class WiredStackEngineTests
         var trigger = fixture.Trigger();
         var effect = fixture.Effect(delay: 1);
         fixture.Engine.RunStack(trigger, []);
-        trigger.Item.SetState(0, 0, trigger.Item.GetZ, []);
-        trigger.Item.SetState(0, 0, double.PositiveInfinity, []);
+        trigger.Item.SetState(0, 0, trigger.Item.GetZ);
+        trigger.Item.SetState(0, 0, double.PositiveInfinity);
         Assert.Equal(0, trigger.Item.MovementGeneration);
         fixture.Advance(500);
         Assert.Single(effect.Calls);

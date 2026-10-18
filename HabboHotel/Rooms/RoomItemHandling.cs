@@ -314,9 +314,6 @@ public partial class RoomItemHandling
                     continue;
                 }
 
-                // A row from the database carries only its anchor tile; the map reads the rest of the footprint from here.
-                item.SetState(item.GetX, item.GetY, item.GetZ,
-                    Gamemap.GetAffectedTiles(item.Definition.Length, item.Definition.Width, item.GetX, item.GetY, item.Rotation));
                 AdmitFloorItem(item);
             }
             else if (item.IsWallItem) {
@@ -883,7 +880,7 @@ public partial class RoomItemHandling
 
                 if (newItem) {
                     // Initialize private geometry before membership or navigation publication.
-                    item.SetPlacementState(newX, newY, newZ, affectedTiles, newRot);
+                    item.SetPlacementState(newX, newY, newZ, newRot);
                     item.RoomId = _room.RoomId;
 
                     if (item.IsFloorItem) {
@@ -928,7 +925,7 @@ public partial class RoomItemHandling
                 if (!duplicate) {
                     if (!newItem) {
                         map.RemoveFromMap(item, false);
-                        item.SetPlacementState(newX, newY, newZ, affectedTiles, newRot);
+                        item.SetPlacementState(newX, newY, newZ, newRot);
                     }
 
                     map.AddItemToMap(item, false, newItem);
@@ -1041,7 +1038,7 @@ public partial class RoomItemHandling
             }
 
             map.RemoveFromMap(item, false);
-            item.SetState(newX, newY, newZ, Gamemap.GetAffectedTiles(item.Definition.Length, item.Definition.Width, newX, newY, item.Rotation));
+            item.SetState(newX, newY, newZ);
             map.AddItemToMap(item, false);
         }
 
@@ -1132,7 +1129,7 @@ public partial class RoomItemHandling
 
             foreach (var move in moves) {
                 var item = move.Item;
-                item.SetState(move.X, move.Y, move.Z, Gamemap.GetAffectedTiles(item.Definition.Length, item.Definition.Width, move.X, move.Y, item.Rotation));
+                item.SetState(move.X, move.Y, move.Z);
                 map.AddItemToMap(item, false);
             }
         }

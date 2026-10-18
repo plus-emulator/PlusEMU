@@ -54,7 +54,7 @@ public sealed partial class WiredRemainderG3Tests
             template = new Item { Id = 10, IsTemporary = true, Definition = template.Definition, ExtraData = template.ExtraData };
         }
 
-        template.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        template.SetState(1, 1, 0);
         items[template.Id] = template;
 
         Assert.Equal(cloneable, WiredPlaceTemplatePolicy.CanClone(template));

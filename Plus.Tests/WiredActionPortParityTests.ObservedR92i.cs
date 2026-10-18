@@ -88,7 +88,7 @@ public sealed partial class WiredActionPortParityTests
         var mover = StackableMarker(1, 0, 0);
         var block = StackableMarker(2, 3, 1);
         var target = StackableMarker(3, 3, 1);
-        target.SetState(3, 1, 1.0, Plus.HabboHotel.Rooms.Gamemap.GetAffectedTiles(1, 1, 3, 1, 0));
+        target.SetState(3, 1, 1.0);
         Place(map, items, mover);
         Place(map, items, block);
         Place(map, items, target);

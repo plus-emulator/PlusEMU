@@ -445,8 +445,7 @@ public class NavInputsTests
         var placement = new Thread(() =>
         {
             try {
-                item.SetPlacementState(2, 2, 1.5004,
-                Plus.HabboHotel.Rooms.Gamemap.GetAffectedTiles(1, 2, 2, 2, 2), 2);
+                item.SetPlacementState(2, 2, 1.5004, 2);
             }
             catch (Exception e) {
                 placementError = e;

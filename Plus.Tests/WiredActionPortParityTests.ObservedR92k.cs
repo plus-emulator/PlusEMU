@@ -83,7 +83,7 @@ public sealed partial class WiredActionPortParityTests
     {
         var (room, map, items) = World();
         var mover = Floor(1, 1, 2);
-        mover.SetState(1, 2, 1.0, Gamemap.GetAffectedTiles(1, 1, 1, 2, 0));
+        mover.SetState(1, 2, 1.0);
         var magic = Floor(2, 2, 2);
         magic.Definition.InteractionType = InteractionType.Stacktool;
         magic.Definition.Stackable = true;

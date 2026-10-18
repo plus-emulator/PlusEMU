@@ -290,7 +290,7 @@ public partial class PlacedFurniRoomTests
         WallGeometryModel();
         var floor = Furni(302, InteractionType.None, WiredBoxType.None);
         floor.RoomId = RoomId;
-        floor.SetState(2, 3, 0, []);
+        floor.SetState(2, 3, 0);
         _room.GetRoomItemHandler().LoadFurniture([floor]);
         var module = WallBuiltinModule();
         var frame = WallBuiltinFrame(floor);

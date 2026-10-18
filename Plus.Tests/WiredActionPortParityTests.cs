@@ -185,7 +185,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         bottom.Definition.Stackable = true;
         bottom.Definition.Height = 0.5;
         var top = Floor(1, 2, 2);
-        top.SetState(2, 2, 0.5, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+        top.SetState(2, 2, 0.5);
         Place(map, items, bottom);
         Place(map, items, top);
         var user = Avatar(room, 1, name == "wf_act_flee" ? 0 : 4, 2);
@@ -586,7 +586,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     {
         var (room, map, items) = World();
         var item = Floor(1, 1, 1);
-        item.SetState(1, 1, 30, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        item.SetState(1, 1, 30);
         Place(map, items, item);
         var action = Box(room, "wf_act_set_altitude", [0, 100], [1], text: "20");
         Assert.True(action.Execute(Context(room, [item], [])));
@@ -635,7 +635,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal((0, 0), (nav.Height, nav.Top));
         var next = Floor(2, 4, 4);
         next.Definition.Stackable = true;
-        next.SetState(4, 4, 3, Gamemap.GetAffectedTiles(1, 1, 4, 4, 0));
+        next.SetState(4, 4, 3);
         Place(map, items, next);
         Assert.True(WiredRoomOperations.MoveItem(room, next, 2, 2, 0, null, animate: false));
         Assert.Equal(0, next.GetZ);
@@ -903,7 +903,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
                 PublicName = "test"
             }
         };
-        item.SetState(x, y, 0, Gamemap.GetAffectedTiles(1, 1, x, y, 0));
+        item.SetState(x, y, 0);
 
         return item;
     }

@@ -426,7 +426,7 @@ public partial class ModernWiredRuntimeTests
         var other = AddNamedBot(f, 10, "Carl", 2, 1);
         var bobby = f.Room.GetRoomUserManager().GetRoomUserByVirtualId(9)!;
         var second = MakeItem(2, "test");
-        second.SetState(2, 0, 0, Gamemap.GetAffectedTiles(1, 1, 2, 0, 0));
+        second.SetState(2, 0, 0);
         f.Items[2] = second;
         AddStackTrigger(f, 104, "wf_trg_bot_reached_stf", new() { IntParams = [100, 100], SelectedItems = [1], Text = "Bobby" });
         var replies = Capture(f.Client);

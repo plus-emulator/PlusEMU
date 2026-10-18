@@ -63,7 +63,7 @@ public partial class PlacedFurniRoomTests
         goal.Definition.ItemName = "fball_goal_blue";
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(_client, goal, 1, 1, 0, true, false, false));
         var ball = Furni(97, InteractionType.None, WiredBoxType.None);
-        ball.SetState(1, 1, 0, new());
+        ball.SetState(1, 1, 0);
         _client.Sent.Clear();
         var calls = new List<string>();
         Set("_achievements", new TestRoomAchievements((session, group, amount) =>

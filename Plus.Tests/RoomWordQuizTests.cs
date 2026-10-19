@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
 using System.Reflection;
 using Plus.Communication.Flash;
@@ -44,7 +45,7 @@ public partial class PlacedFurniRoomTests
     public async Task WordQuizPublicCommandRequiresPermissionAndOwnershipAndSendsMilliseconds()
     {
         var (_, service) = WordQuiz();
-        var commands = new CommandManager([new WordQuizCommand(service)], TestGameClientManager.Empty, _database, _interactionClock);
+        var commands = new CommandManager([new WordQuizCommand(service)], TestGameClientManager.Empty, _database, _interactionClock, NullLogger<CommandManager>.Instance);
         _client.GetHabbo().Access = UserAccess.Empty;
         Assert.False(await commands.Parse(_client, ":wordquiz 2 First?"));
         Assert.Empty(_client.Sent);

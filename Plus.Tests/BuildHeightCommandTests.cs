@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
 using System.Reflection;
 using Plus.HabboHotel.Items;
@@ -18,7 +19,7 @@ public partial class PlacedFurniRoomTests
     public async Task BuildHeightPlacesAndMovesFurnitureAtTheChosenHeightUntilReset()
     {
         var user = EnterAsOwner();
-        var commands = new CommandManager([new BuildHeightCommand()], TestGameClientManager.Empty, _database, _interactionClock);
+        var commands = new CommandManager([new BuildHeightCommand()], TestGameClientManager.Empty, _database, _interactionClock, NullLogger<CommandManager>.Instance);
         var blocker = Furni(40, InteractionType.None, WiredBoxType.None);
         blocker.Definition.Stackable = false;
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(null, blocker, 1, 1, 0, true, false, false));

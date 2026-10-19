@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Data.Common;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets.Outgoing;
@@ -93,7 +94,7 @@ public partial class PlacedFurniRoomTests
             })
             : throw new InvalidOperationException(method));
 
-        return new CommandManager([new DisableDiagonalCommand(database)], TestGameClientManager.Empty, _database, _interactionClock);
+        return new CommandManager([new DisableDiagonalCommand(database)], TestGameClientManager.Empty, _database, _interactionClock, NullLogger<CommandManager>.Instance);
     }
 
     private string LastWhisper()

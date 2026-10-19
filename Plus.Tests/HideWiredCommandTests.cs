@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Data.Common;
 using Plus.Communication.Packets.Outgoing;
 using Plus.Database;
@@ -21,7 +22,7 @@ public partial class PlacedFurniRoomTests
         var database = Proxy<IDatabase>((method, _) => method == "Connection"
             ? new NoOpConnection(write: (_, parameters) => persisted.Add(parameters.Cast<DbParameter>().Single(p => p.ParameterName.TrimStart('@') == "hidden").Value))
             : throw new InvalidOperationException(method));
-        var commands = new CommandManager([new HideWiredCommand(database)], TestGameClientManager.Empty, _database, _interactionClock);
+        var commands = new CommandManager([new HideWiredCommand(database)], TestGameClientManager.Empty, _database, _interactionClock, NullLogger<CommandManager>.Instance);
         var wired = Furni(50, InteractionType.WiredTrigger, WiredBoxType.TriggerWalkOnFurni);
         var chair = Furni(51, InteractionType.None, WiredBoxType.None);
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(null, wired, 1, 1, 0, true, false, false));

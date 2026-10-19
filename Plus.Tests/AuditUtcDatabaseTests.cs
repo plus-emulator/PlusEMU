@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Dapper;
 using MySqlConnector;
 using Plus.HabboHotel.Rooms.Chat.Commands;
@@ -17,7 +18,7 @@ public class AuditUtcDatabaseTests
             CreateLegacyTables(connectionString);
             RunFile(connectionString, "Database/Migrations/36_UseUtcAuditLogTimes.sql");
 
-            new CommandManager([], null!, new HabbiconDatabaseTests.TestDatabase(connectionString), new FixedTimeProvider(Captured)).LogCommand(7, ":test", "machine");
+            new CommandManager([], null!, new HabbiconDatabaseTests.TestDatabase(connectionString), new FixedTimeProvider(Captured), NullLogger<CommandManager>.Instance).LogCommand(7, ":test", "machine");
 
             using var connection = new MySqlConnection(connectionString);
             connection.Open();

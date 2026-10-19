@@ -7,6 +7,7 @@ using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Database;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired;
+using Microsoft.Extensions.Logging;
 
 namespace Plus.HabboHotel.Rooms.Chat.Commands;
 
@@ -15,6 +16,7 @@ public class CommandManager : ICommandManager
     private readonly IGameClientManager _gameClientManager;
     private readonly IDatabase _database;
     private readonly TimeProvider _clock;
+    private readonly ILogger<CommandManager> _logger;
     /// <summary>
     /// Commands registered for use.
     /// </summary>
@@ -27,11 +29,12 @@ public class CommandManager : ICommandManager
     /// <summary>
     /// The default initializer for the CommandManager
     /// </summary>
-    public CommandManager(IEnumerable<ICommandBase> commands, IGameClientManager gameClientManager, IDatabase database, TimeProvider clock)
+    public CommandManager(IEnumerable<ICommandBase> commands, IGameClientManager gameClientManager, IDatabase database, TimeProvider clock, ILogger<CommandManager> logger)
     {
         _gameClientManager = gameClientManager;
         _database = database;
         _clock = clock;
+        _logger = logger;
         _commands = new(commands.ToDictionary(command => command.Key));
     }
 

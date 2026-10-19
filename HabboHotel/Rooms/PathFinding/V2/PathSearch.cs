@@ -6,7 +6,7 @@ public enum PathOutcome
 }
 // Complete searches (blocked-route fallback) ignore the operator per-search cap.
 public readonly record struct SearchRequest(ActorProfile Actor, NavPosition Start, int GoalX, int GoalY,
-    PlanningOccupancy? Occupancy = null, AcceptedGoal? Goals = null, bool Complete = false);
+    PlanningOccupancy? Occupancy = null, AcceptedGoal? Goals = null, bool Complete = false, PathExclusions? Exclusions = null);
 
 public sealed class PathSearch(NavGrid grid, PathfindingSettings settings)
 {
@@ -24,6 +24,7 @@ public sealed class PathSearch(NavGrid grid, PathfindingSettings settings)
         into.View = legacy ? GraphView.LegacyTile : GraphView.Surface;
         EnsureWorkspaceFits(ws, legacy);
         var goal = req.Goals ?? GoalResolver.Resolve(grid, req.Actor, req.GoalX, req.GoalY, req.Occupancy);
+        goal = ExcludeBlockedGoals(goal, req.Exclusions, legacy);
         var startSlot = StartSlot(req.Start, legacy);
 
         if (Precheck(req.Actor, goal, startSlot, legacy) is { } early) {
@@ -31,6 +32,26 @@ public sealed class PathSearch(NavGrid grid, PathfindingSettings settings)
         }
 
         return new PathSearchRun(grid, _rules, settings, req, ws, goal).Execute(startSlot, into);
+    }
+
+    private AcceptedGoal ExcludeBlockedGoals(AcceptedGoal goal, PathExclusions? exclusions, bool legacy)
+    {
+        if (exclusions == null) {
+            return goal;
+        }
+
+        var accepted = new AcceptedGoal(goal.X, goal.Y, -1);
+
+        for (var index = 0; index < goal.Count; index++) {
+            var slot = goal[index];
+            var surface = legacy ? new SurfaceRef(slot, 0, SurfaceKind.Floor) : grid.Reference(slot);
+
+            if (exclusions.Allows(surface)) {
+                accepted = accepted.With(slot);
+            }
+        }
+
+        return accepted;
     }
 
     private void EnsureWorkspaceFits(PathWorkspace ws, bool legacy)

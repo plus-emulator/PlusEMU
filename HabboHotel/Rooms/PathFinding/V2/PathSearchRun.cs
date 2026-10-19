@@ -127,6 +127,11 @@ internal readonly struct PathSearchRun
             return;
         }
 
+        if (_req.Exclusions != null && !_req.Exclusions.Allows(from,
+            _legacy ? new(next, 0, SurfaceKind.Floor) : _grid.Reference(next))) {
+            return;
+        }
+
         var purpose = _goal.Contains(next) ? StepPurpose.Goal : StepPurpose.Transit;
         var to = new NavPosition(x, y, _heights[next], next);
         _ws.CanStepCalls++;

@@ -41,7 +41,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(-1, packet.ReadInt());
         Assert.Equal(actor.VirtualId, packet.ReadInt());
         Assert.Equal(-1, packet.ReadInt());
-        Assert.False(packet.ReadBool());
         Assert.False(packet.HasDataRemaining());
         Assert.Equal(["happy"], emotions.Messages);
     }

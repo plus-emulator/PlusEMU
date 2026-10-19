@@ -10,6 +10,9 @@ public sealed class WiredAvatarState
     // Previous: the avatar effect worn before the first freeze, put back by Thaw (hhus restores e.g. the Wired team effect).
     private sealed record Freeze(bool Frozen, bool CanWalk, int Effect, bool CancelOnTeleport, int Previous);
     private readonly Dictionary<RoomUser, Freeze> _frozen = [];
+    // Observed on AIR WIN63-202610151745-318700621: the freeze and unfreeze effects arrive with the next room tick (in the same batch as
+    // a repeater's flash on that tick, 150-500 ms after the Wired flash), not with the Wired flash itself.
+    private readonly List<Action> _tickEffects = [];
     private Room? _executorRoom;
     private static readonly ConditionalWeakTable<Room, WiredAvatarState> Rooms = new();
     public static WiredAvatarState For(Room room) => room.UsesV2Movement
@@ -62,7 +65,7 @@ public sealed class WiredAvatarState
 
         // Plus bots have no stored effect/version to restore safely. Their actual movement freeze still applies.
         if (!user.IsBot && effect > 0) {
-            user.ApplyEffect(effect);
+            OnNextTick(() => user.ApplyEffect(effect));
         }
 
         return true;
@@ -86,7 +89,7 @@ public sealed class WiredAvatarState
 
         // Plus bots have no stored effect/version to restore safely. Their actual movement freeze still applies.
         if (!user.IsBot && effect > 0) {
-            user.ApplyEffect(effect);
+            OnNextTick(() => user.ApplyEffect(effect));
         }
     }
     private static bool IsMoving(RoomUser user) => user.IsWalking || user.HasStatus("mv");
@@ -123,10 +126,39 @@ public sealed class WiredAvatarState
 
         // Observed on hhus (AIR WIN63-202610131318-860371703): unfreeze sends only the restored effect and no UserUpdate;
         // a user in a Wired team gets the team effect (223) back on unfreeze, not 0.
-        if (restoreEffect && !user.IsBot && state.Effect > 0 && user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == state.Effect) {
-            user.ApplyEffect(state.Previous == state.Effect ? 0 : state.Previous);
+        if (restoreEffect && !user.IsBot && state.Effect > 0) {
+            OnNextTick(() =>
+            {
+                if (user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == state.Effect) {
+                    user.ApplyEffect(state.Previous == state.Effect ? 0 : state.Previous);
+                }
+            });
         }
     }
     public void Forget(RoomUser user) => _frozen.Remove(user);
+    private void OnNextTick(Action apply)
+    {
+        lock (_tickEffects) {
+            _tickEffects.Add(apply);
+        }
+    }
+    /// <summary>Applies the freeze and unfreeze effects queued since the last room tick; called once per room tick.</summary>
+    public void FlushTickEffects()
+    {
+        Action[] due;
+
+        lock (_tickEffects) {
+            if (_tickEffects.Count == 0) {
+                return;
+            }
+
+            due = [.. _tickEffects];
+            _tickEffects.Clear();
+        }
+
+        foreach (var apply in due) {
+            apply();
+        }
+    }
     public void Clear() => _frozen.Clear();
 }

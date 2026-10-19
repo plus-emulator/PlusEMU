@@ -40,14 +40,15 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((expectedX, expectedY), (mover.GetX, mover.GetY));
     }
 
-    // r92f r92-chase near-w1/w2: Manhattan 3 (dx -2, dy +1) steps x; far-w1..w3: Manhattan 10 still takes one random cardinal step.
+    // r92f r92-chase far-w1..w3: Manhattan 10 still takes one random cardinal step. Observed on AIR WIN63-202610151745-318700621: an
+    // owner two tiles along the row is followed every time.
     [Fact]
     public void ChaseStepsTowardsANearOwnerAndWandersOneTileWhenNoneIsInRange()
     {
         var (room, map, items) = World();
         var near = Floor(1, 3, 1);
         Place(map, items, near);
-        var owner = Avatar(room, 1, 1, 2);
+        var owner = Avatar(room, 1, 1, 1);
         Assert.True(Box(room, "wf_act_chase", [100], [near.Id]).Execute(Context(room, [near], [owner])));
         Assert.Equal((2, 1), (near.GetX, near.GetY));
 
@@ -57,6 +58,33 @@ public sealed partial class WiredActionPortParityTests
         var distant = Avatar(farRoom, 1, 5, 5);
         Assert.True(Box(farRoom, "wf_act_chase", [100], [far.Id]).Execute(Context(farRoom, [far], [distant])));
         Assert.Equal(1, Math.Abs(far.GetX - 2) + Math.Abs(far.GetY - 2));
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: with nobody to follow, the chase's random step never goes straight back (no reversal
+    // in 54 steps).
+    [Fact]
+    public void ChaseRandomStepNeverReversesTheLastStep()
+    {
+        var (room, map, items) = World();
+        var mover = Floor(1, 4, 4);
+        Place(map, items, mover);
+        var action = Box(room, "wf_act_chase", [100], [mover.Id]);
+        (int X, int Y)? last = null;
+
+        for (var fire = 0; fire < 40; fire++) {
+            var (x, y) = (mover.GetX, mover.GetY);
+            action.Execute(Context(room, [mover], []));
+            var step = (mover.GetX - x, mover.GetY - y);
+
+            if (step == (0, 0)) {
+                continue;
+            }
+
+            Assert.NotEqual((-last?.X, -last?.Y), (step.Item1, step.Item2));
+            last = step;
+        }
+
+        Assert.NotNull(last);
     }
 
     // r92f r92-move-addons nophys-w1 and phys-w1: rel_mov +1x onto an own stackable marker lands on top of it (z 2.0 on a marker

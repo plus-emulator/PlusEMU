@@ -601,6 +601,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 return changed;
             case "wf_act_chase":
             case "wf_act_flee":
+                _directions.Retain(context.Targets.AllFurni());
+
                 foreach (var item in items) {
                     changed |= ChaseOrFlee(item);
                 }
@@ -612,7 +614,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     bool Move(int x, int y) => _movement.MoveFurniture(context, item, x, y, item.Rotation, null, passengers: carry);
                     var flee = name == "wf_act_flee";
                     // Observed r92f r92-flee: flee has no range (Manhattan 10 still moves away on all three fires); chase keeps its range.
-                    var nearest = WiredDirectionalActions.Nearest(item, context.Targets.AllUsers(), flee ? null : 3);
+                    // Observed on AIR WIN63-202610151745-318700621: chase only follows a user in its own row or column (2 and 3 tiles away it
+                    // stepped towards the user 10 times in 10; at offsets (1,1), (2,1), (2,2) and (3,1) it took a random step).
+                    var users = flee ? context.Targets.AllUsers() : context.Targets.AllUsers().Where(user => user.X == item.GetX || user.Y == item.GetY);
+                    var nearest = WiredDirectionalActions.Nearest(item, users, flee ? null : 3);
 
                     if (nearest == null) {
                         if (flee) {
@@ -621,10 +626,22 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                         // Observed r92j r92h-chase-retry (AIR WIN63-202610131318-860371703): from the corner (4,1), with north and west
                         // void, the out-of-range marker moved on all six trials (east 3, south 3), so a blocked random direction is retried.
+                        // Observed on AIR WIN63-202610151745-318700621: the random step never goes straight back (no reversal in 54 steps).
                         int[] headings = [0, 2, 4, 6];
                         Random.Shared.Shuffle(headings);
+                        var back = _directions.LastChaseStep(item) is { } last ? (last + 4) % 8 : -1;
 
-                        return headings.Select(WiredRoomOperations.Offset).Any(step => Move(item.GetX + step.X, item.GetY + step.Y));
+                        foreach (var heading in headings.OrderBy(heading => heading == back)) {
+                            var step = WiredRoomOperations.Offset(heading);
+
+                            if (Move(item.GetX + step.X, item.GetY + step.Y)) {
+                                _directions.RememberChaseStep(item, heading);
+
+                                return true;
+                            }
+                        }
+
+                        return false;
                     }
 
                     if (Math.Abs(nearest.X - item.GetX) + Math.Abs(nearest.Y - item.GetY) <= 1) {
@@ -635,8 +652,20 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                     var candidates = flee ? WiredDirectionalActions.FleeSteps(item, nearest).ToArray()
                         : WiredDirectionalActions.Steps(item, nearest, false).Take(1).ToArray();
+                    var (fromX, fromY) = (item.GetX, item.GetY);
 
-                    return candidates.Any(candidate => Move(candidate.X, candidate.Y));
+                    foreach (var candidate in candidates) {
+                        if (Move(candidate.X, candidate.Y)) {
+                            if (!flee) {
+                                _directions.RememberChaseStep(item, Enumerable.Range(0, 4).Select(index => index * 2)
+                                    .First(heading => WiredRoomOperations.Offset(heading) == new System.Drawing.Point(candidate.X - fromX, candidate.Y - fromY)));
+                            }
+
+                            return true;
+                        }
+                    }
+
+                    return false;
                 }
             case "wf_act_move_to_dir":
                 _directions.Retain(context.Targets.AllFurni());

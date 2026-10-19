@@ -230,6 +230,31 @@ public partial class PlacedFurniRoomTests
         Assert.True(WiredRoomOperations.CanMoveItem(_room, block, 0, 1, 0));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a user frozen while walking finishes the step that was announced and stops there.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FreezeLetsTheAnnouncedStepFinish(bool v2)
+    {
+        var actor = WalkActor(WalkActorKind.Habbo, 0, 1, v2);
+
+        actor.MoveTo(3, 1);
+        AnnounceTick();
+
+        Assert.True(actor.SetStep);
+        Assert.Equal((1, 1), (actor.SetX, actor.SetY));
+
+        WiredAvatarState.For(_room).FreezeUser(actor, 0, false);
+
+        for (var tick = 0; tick < 4; tick++) {
+            AnnounceTick();
+        }
+
+        Assert.Equal((1, 1), (actor.X, actor.Y));
+        Assert.False(actor.SetStep);
+        Assert.False(actor.HasStatus("mv"));
+    }
+
     private (int X, int Y) SelectorTile(RoomUser actor)
     {
         var context = new WiredRuntimeContext(_room, new(WiredEventKind.ClickFurni), new(() => [], () => [actor]), new NoOperations());

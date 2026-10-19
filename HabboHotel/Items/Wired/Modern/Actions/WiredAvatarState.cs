@@ -20,6 +20,13 @@ public sealed class WiredAvatarState
         if (_executorRoom?.GetGameMap()?.Navigation is { UsesExecutor: true } navigation) {
             navigation.RunOwner(user, (actor, sequence) =>
             {
+                // Observed on AIR WIN63-202610151745-318700621: a user frozen while walking finishes the announced step and stops there.
+                if (navigation.StopAfterStep(actor)) {
+                    FreezeActor(actor, effect, cancelOnTeleport, stopWalk: false);
+
+                    return;
+                }
+
                 // The cancel always flags a status update; a standing user has nothing to stop, so keep its flag as it was.
                 var moving = IsMoving(actor);
                 var updateNeeded = actor.UpdateNeeded;
@@ -60,16 +67,20 @@ public sealed class WiredAvatarState
 
         return true;
     }
-    private void FreezeActor(RoomUser user, int effect, bool cancelOnTeleport)
+    private void FreezeActor(RoomUser user, int effect, bool cancelOnTeleport, bool stopWalk = true)
     {
         var original = _frozen.GetValueOrDefault(user);
         _frozen[user] = new(original?.Frozen ?? user.Frozen, original?.CanWalk ?? user.CanWalk, effect, cancelOnTeleport,
             original?.Previous ?? user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect ?? 0);
-        user.IsWalking = false;
-        user.PathRecalcNeeded = false;
-        user.RemoveStatus("mv");
-        user.GoalX = user.X;
-        user.GoalY = user.Y;
+
+        if (stopWalk) {
+            user.IsWalking = false;
+            user.PathRecalcNeeded = false;
+            user.RemoveStatus("mv");
+            user.GoalX = user.X;
+            user.GoalY = user.Y;
+        }
+
         user.Frozen = true;
         user.CanWalk = false;
 

@@ -12,8 +12,10 @@ public static class WiredFlashStates
     public const int StateUpdateMilliseconds = 500;
 
     // Observed on AIR WIN63-202610151745-318700621 (and r90): a variable definition box shows the kind of the last write, 6/7 for a
-    // give, 2/3 for a change and 8/9 for a remove, alternating within the pair on repeated writes of that kind (6 then 7).
+    // give, 2/3 for a change that raises the value, 4/5 for one that lowers it and 8/9 for a remove, alternating within the pair on
+    // repeated writes of that kind (6 then 7).
     public const int DefinitionChanged = 2;
+    public const int DefinitionDecreased = 4;
     public const int DefinitionGiven = 6;
     public const int DefinitionRemoved = 8;
 

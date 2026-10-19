@@ -147,6 +147,42 @@ public partial class PlacedFurniRoomTests
         Assert.False(targets.HasTargets);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: when the user leaves while the bot walks the item over, the bot keeps walking to
+    // where the user stood and lets the item go there.
+    [Fact]
+    public void GiveHandItemBotFinishesTheWalkAndDropsTheItemWhenTheUserLeft()
+    {
+        var user = Viewer(3, 1);
+        var bot = WalkActor(WalkActorKind.Bot, 0, 1, v2: true);
+        var targets = WiredBotTargets.For(_room);
+
+        targets.Give(_room, bot, user, 2, 0);
+        targets.Forget(user);
+
+        Assert.True(targets.HasTargets);
+        Assert.Equal(2, bot.CarryItemId);
+
+        var announced = false;
+
+        for (var tick = 0; tick < 12 && !announced; tick++) {
+            ExecutorTick();
+
+            if (WiredRoomOperations.StandingTile(bot) == new System.Drawing.Point(2, 1)) {
+                announced = true;
+                targets.Poll(_room, targets.HandOverAnnouncedAt(bot) ?? 0);
+                var at = Assert.NotNull(targets.HandOverAnnouncedAt(bot));
+                targets.Poll(_room, at + WiredBotTargets.HandOverDelayMilliseconds - 1);
+                Assert.Equal(2, bot.CarryItemId);
+                targets.Poll(_room, at + WiredBotTargets.HandOverDelayMilliseconds);
+            }
+        }
+
+        Assert.True(announced);
+        Assert.Equal(0, bot.CarryItemId);
+        Assert.Equal(0, user.CarryItemId);
+        Assert.False(targets.HasTargets);
+    }
+
     private (int X, int Y) SelectorTile(RoomUser actor)
     {
         var context = new WiredRuntimeContext(_room, new(WiredEventKind.ClickFurni), new(() => [], () => [actor]), new NoOperations());

@@ -11,7 +11,7 @@ public sealed class WiredBotTargets
     {
         public Item? Item = item; public RoomUser? User = user; public bool Reached;
         // A bot carrying a hand item to User (Bot Give Handitem), and when its step next to the user was announced.
-        public int HandItem; public long? AnnouncedAt; public (int X, int Y)? Goal;
+        public int HandItem; public long? AnnouncedAt; public (int X, int Y)? Goal; public (int X, int Y)? LeftFrom;
     }
     /// <summary>
     /// Observed on AIR WIN63-202610151745-318700621: the user gets the item 300 ms after the bot's step next to them is announced.
@@ -52,7 +52,15 @@ public sealed class WiredBotTargets
     {
         _targets.Remove(user);
 
-        foreach (var bot in _targets.Where(entry => ReferenceEquals(entry.Value.User, user)).Select(entry => entry.Key).ToArray()) {
+        foreach (var (bot, target) in _targets.Where(entry => ReferenceEquals(entry.Value.User, user)).ToArray()) {
+            // Observed on AIR WIN63-202610151745-318700621: a bot carrying a hand item to a user who left keeps walking to where they
+            // stood and lets the item go there.
+            if (target.HandItem != 0) {
+                target.User = null;
+                target.LeftFrom = (user.X, user.Y);
+                continue;
+            }
+
             Stop(bot);
         }
     }
@@ -93,6 +101,9 @@ public sealed class WiredBotTargets
 
                 result.Add(new(WiredEventKind.BotReachedFurni) { Actor = bot, EventItem = item });
                 Stop(bot);
+            }
+            else if (target is { HandItem: not 0, LeftFrom: { } left }) {
+                PollDeparted(bot, left, target, now);
             }
             else if (target.User is { } user) {
                 if (!attached.Contains(user)) {
@@ -157,6 +168,28 @@ public sealed class WiredBotTargets
         if (now - announced >= HandOverDelayMilliseconds) {
             _targets.Remove(bot);
             HandOver(bot, user, target.HandItem);
+        }
+    }
+
+    private void PollDeparted(RoomUser bot, (int X, int Y) left, Target target, long now)
+    {
+        var step = WiredRoomOperations.StandingTile(bot);
+
+        if (Math.Max(Math.Abs(left.X - step.X), Math.Abs(left.Y - step.Y)) > 1) {
+            // Lost its way to the empty spot: stop holding it there.
+            if (!bot.IsWalking && !bot.SetStep) {
+                _targets.Remove(bot);
+                bot.CarryItem(0);
+            }
+
+            return;
+        }
+
+        target.AnnouncedAt ??= now;
+
+        if (now - target.AnnouncedAt >= HandOverDelayMilliseconds) {
+            _targets.Remove(bot);
+            bot.CarryItem(0);
         }
     }
 

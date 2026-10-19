@@ -404,7 +404,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@can_stand_on" => Flag(item.IsFloorItem && item.Definition.Walkable),
             "@can_sit_on" => Flag(item.IsFloorItem && item.Definition.IsSeat),
             "@can_lay_on" => Flag(item.IsFloorItem && item.Definition.InteractionType == InteractionType.Bed),
-            "@type" => item.IsTemporary ? 2 : item.OwnerId > 0 ? 0 : null,
+            // Observed on AIR WIN63-202610151745-318700621: the connector reads 0 Normal, 1 BC, 2 Temp, and a Builders Club block reads 1.
+            "@type" => item.IsTemporary ? 2 : item.IsBuildersClub ? 1 : item.OwnerId > 0 ? 0 : null,
             _ => null
         };
     }

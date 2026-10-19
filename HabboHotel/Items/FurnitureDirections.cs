@@ -73,10 +73,9 @@ public static class FurnitureDirections
     }
 
     /// <summary>
-    /// The rotation an @rotation write or a snapshot match stores, or null to leave the furni as it is. A value the furni lacks
-    /// becomes the nearest direction within 45 degrees, clockwise first; anything further is refused. Observed on AIR
-    /// WIN63-202610151745-318700621 on wf_antenna2 (0, 2): from 0, 1 stored 2 and 4 was refused; from 2, 4 was refused, 0 stored
-    /// 0, and then 6 and 4 were refused.
+    /// The rotation a snapshot match stores, or null to leave the furni as it is. A value the furni lacks becomes the nearest
+    /// direction within 45 degrees, clockwise first; anything further is refused. (@rotation writes a position in the list instead,
+    /// see <see cref="RotationAt"/>; the wf_antenna2 writes once read as this rule fit that one too.)
     /// </summary>
     public static int? Write(ItemDefinition definition, int value)
     {
@@ -118,6 +117,34 @@ public static class FurnitureDirections
 
         return directions.Contains(definition.DefaultDirection) ? definition.DefaultDirection : directions[0];
     }
+
+    /// <summary>
+    /// The value @rotation reads: the position of the furni's rotation in its list of directions. Observed on AIR
+    /// WIN63-202610151745-318700621: bc_block_0_recolorable (0, 2, 4, 6) facing 4 reads 2 and ktchn_fridge (2, 4) facing 4 reads 1.
+    /// Furni without asset directions count even directions, or all eight with extra_rot.
+    /// </summary>
+    public static int RotationIndex(ItemDefinition definition, int rotation)
+    {
+        var directions = WiredDirections(definition);
+        var index = directions.IndexOf(rotation);
+
+        return index >= 0 ? index : IndexAtOrAfter(directions, rotation);
+    }
+
+    /// <summary>
+    /// The rotation an @rotation write stores, or null to leave the furni as it is: the direction at that position of the furni's
+    /// list. Observed on AIR WIN63-202610151745-318700621: bc_block_0_recolorable took 1, 2 and 3 as 2, 4 and 6 and refused 4 to 7;
+    /// ktchn_fridge (2, 4) took 0 as 2 and 1 as 4 and refused 2 and 3.
+    /// </summary>
+    public static int? RotationAt(ItemDefinition definition, int index)
+    {
+        var directions = WiredDirections(definition);
+
+        return index >= 0 && index < directions.Count ? directions[index] : null;
+    }
+
+    private static List<int> WiredDirections(ItemDefinition definition) => definition.Directions.Count > 0 ? [.. definition.Directions]
+        : definition.ExtraRot ? [0, 1, 2, 3, 4, 5, 6, 7] : [0, 2, 4, 6];
 
     // The first direction at or after a rotation, wrapping to the first direction.
     private static int IndexAtOrAfter(IReadOnlyList<int> directions, int rotation)

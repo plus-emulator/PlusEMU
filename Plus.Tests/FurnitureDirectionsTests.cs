@@ -14,6 +14,25 @@ public class FurnitureDirectionsTests
         new() { ItemName = "test", Directions = directions, DefaultDirection = defaultDirection };
 
     [Theory]
+    [InlineData("bc_block_0_recolorable", 1, 2)]
+    [InlineData("bc_block_0_recolorable", 3, 6)]
+    [InlineData("bc_block_0_recolorable", 4, null)]
+    [InlineData("ktchn_fridge", 0, 2)]
+    [InlineData("ktchn_fridge", 1, 4)]
+    [InlineData("ktchn_fridge", 2, null)]
+    public void RotationIsAPositionInTheFurnisDirections(string name, int value, int? stored)
+    {
+        // Observed on AIR WIN63-202610151745-318700621: @rotation writes and reads the position in the furni's list of directions.
+        var definition = new ItemDefinition { ItemName = name, Directions = FurnitureDirections.For(name) };
+
+        Assert.Equal(stored, FurnitureDirections.RotationAt(definition, value));
+
+        if (stored is { } rotation) {
+            Assert.Equal(value, FurnitureDirections.RotationIndex(definition, rotation));
+        }
+    }
+
+    [Theory]
     [InlineData("wf_colortile", new[] { 0 })]
     [InlineData("wf_antenna2", new[] { 0, 2 })]
     [InlineData("throne", new[] { 0, 2, 4, 6 })]

@@ -10,20 +10,20 @@ public sealed class WiredGameState
 {
     private readonly Dictionary<(uint Box, int Player), int> _grants = [];
     private readonly Dictionary<RoomUser, (int Type, Team Team)> _types = [];
-    private readonly Dictionary<uint, (int Threshold, int Team)> _scoreFirings = [];
+    private readonly HashSet<uint> _spentScoreTriggers = [];
     private static readonly ConditionalWeakTable<Room, WiredGameState> Rooms = new();
     public static WiredGameState For(Room room) => Rooms.GetValue(room, _ => new());
     public void ResetQuotas()
     {
         _grants.Clear();
-        _scoreFirings.Clear();
+        _spentScoreTriggers.Clear();
     }
     public void Forget(RoomUser user) => _types.Remove(user);
     public void Clear()
     {
         _grants.Clear();
         _types.Clear();
-        _scoreFirings.Clear();
+        _spentScoreTriggers.Clear();
     }
     /// <summary>A Battle Banzai, Freeze or football game, or a Wired game counter, is in progress: the only time a team score exists.</summary>
     public static bool GameRunning(Room room) => room.GetBanzai().IsBanzaiActive || room.GetFreeze().GameIsStarted || room.GetSoccer().GameIsStarted
@@ -56,17 +56,9 @@ public sealed class WiredGameState
         return true;
     }
     // Observed on AIR WIN63-202610151745-318700621: a Score Achieved box fires once per game round, for the first team that crosses,
-    // and a firing stopped by a false condition still counts. Saving the same settings keeps it spent; new settings or a new game rearm it.
-    public bool TryFireScoreTrigger(uint boxId, int threshold, int team)
-    {
-        if (_scoreFirings.TryGetValue(boxId, out var spent) && spent == (threshold, team)) {
-            return false;
-        }
-
-        _scoreFirings[boxId] = (threshold, team);
-
-        return true;
-    }
+    // and a firing stopped by a false condition still counts. A new game or a save that changes its settings rearms it.
+    public bool TryFireScoreTrigger(uint boxId) => _spentScoreTriggers.Add(boxId);
+    public void RearmScoreTrigger(uint boxId) => _spentScoreTriggers.Remove(boxId);
     public bool Join(Room room, RoomUser user, int type, Team chosen, int mode, IEnumerable<RoomUser> allUsers,
         Action<RoomUser, Team, int>? applyEffect = null)
     {

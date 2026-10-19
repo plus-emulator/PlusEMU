@@ -126,8 +126,16 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
             return false;
         }
 
-        if (operation == 0 && !clock.Running && canBegin?.Invoke(item, origin, actor) == false) {
+        var restartGame = operation == 0 && clock.Running && clock.GameAware && !clock.Countdown
+            && origin == WiredClockOrigin.ModernWired;
+
+        if (operation == 0 && (!clock.Running || restartGame) && canBegin?.Invoke(item, origin, actor) == false) {
             return false;
+        }
+
+        // Observed on AIR WIN63-202610151745-318700621: Start restarts a running Wired game counter and fires both game triggers.
+        if (restartGame) {
+            Stop(clock, WiredClockReason.Stop, origin, actor);
         }
 
         if (operation == 2) {

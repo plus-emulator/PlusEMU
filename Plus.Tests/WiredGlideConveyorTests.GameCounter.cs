@@ -24,7 +24,9 @@ public sealed partial class WiredGlideConveyorTests
         var counter = f.Items[CounterId];
         Assert.False(WiredGameState.GameRunning(f.Room));
 
-        f.Advance(1600);
+        f.Advance(250);
+        Assert.True(f.Engine.Remove(21));
+        f.Advance(1350);
 
         Assert.True(Counters(f).IsRunning(counter));
         Assert.True(WiredGameState.GameRunning(f.Room));
@@ -33,14 +35,97 @@ public sealed partial class WiredGlideConveyorTests
         Assert.True(WiredGameState.For(f.Room).GiveScore(f.Room, 22, 1, Team.Red, 1, null, scores.Add));
         Assert.Equal((1, 0L, 1L), (scores.Single().Team, scores.Single().PreviousValue, scores.Single().Value));
 
-        // Drop the periodic Start so the Stop is the last word.
-        Assert.True(f.Engine.Remove(21));
         Assert.True(Counters(f).Control(counter, 1, 1600, WiredClockOrigin.ModernWired));
         f.Advance(500);
 
         Assert.False(WiredGameState.GameRunning(f.Room));
         Assert.Equal([WiredEventKind.GameStart, WiredEventKind.GameEnd], events);
         Assert.False(WiredGameState.For(f.Room).GiveScore(f.Room, 22, 1, Team.Red, 1, null, scores.Add));
+    }
+
+    [Fact]
+    public void WiredStartOfARunningGameCounterRestartsItsGameAndElapsedTime()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: another Start resets the running counter and fires both game triggers.
+        var f = ClockFixture("wf_game_upcounter1", "wf_act_control_clock", [0, 100]);
+        f.Walker(1, 4, 10, 4, 11);
+        var events = new List<WiredEventKind>();
+        f.Engine.ObserveEvent = (evt, _) =>
+        {
+            if (evt.Kind is WiredEventKind.GameStart or WiredEventKind.GameEnd) {
+                events.Add(evt.Kind);
+            }
+        };
+        f.Advance(250);
+        Assert.True(f.Engine.Remove(21));
+        f.Advance(1350);
+        var counter = f.Items[CounterId];
+        var clocks = Counters(f);
+        f.Advance(2000);
+        Assert.True(clocks.ReadMilliseconds(counter) > 0);
+        Assert.True(WiredGameState.For(f.Room).GiveScore(f.Room, 22, 1, Team.Red, 7, null, _ => { }));
+        Assert.Equal(7, f.Room.GetGameManager().Points[(int)Team.Red]);
+
+        f.Owned(() => Assert.True(clocks.Control(counter, 0, 3600, WiredClockOrigin.ModernWired)));
+        f.Advance(50);
+
+        Assert.Equal([WiredEventKind.GameStart, WiredEventKind.GameEnd, WiredEventKind.GameStart], events);
+        Assert.True(clocks.IsRunning(counter));
+        Assert.True(WiredGameState.GameRunning(f.Room));
+        Assert.Equal(0, clocks.ReadMilliseconds(counter));
+        Assert.Equal(0, f.Room.GetGameManager().Points[(int)Team.Red]);
+        f.Advance(1000);
+        Assert.Equal("1", counter.LegacyDataString);
+        f.Owned(() => Assert.True(clocks.Control(counter, 1, 4600, WiredClockOrigin.ModernWired)));
+        f.Owned(() => Assert.True(clocks.Control(counter, 1, 4600, WiredClockOrigin.ModernWired)));
+        f.Advance(50);
+        Assert.Equal(2, events.Count(kind => kind == WiredEventKind.GameEnd));
+        Assert.False(clocks.IsRunning(counter));
+    }
+
+    [Theory]
+    [InlineData("wf_game_upcounter1")]
+    [InlineData("wf_game_upcounter2")]
+    public void RepeatedGameCounterStartPublishesZeroAndReschedulesItsFirstTick(string name)
+    {
+        var item = ClockItem(name, 204);
+        var transitions = new List<WiredClockTransition>();
+        var clocks = new WiredCounterController(gameTransition: transitions.Add);
+        clocks.Attach(item);
+        Assert.True(clocks.Control(item, 0, 0, WiredClockOrigin.ModernWired));
+
+        for (var now = 500; now <= 4000; now += 500) {
+            clocks.Poll(now);
+        }
+
+        Assert.Equal("4", item.LegacyDataString);
+        Assert.True(clocks.Control(item, 0, 4200, WiredClockOrigin.ModernWired));
+        Assert.Equal([WiredClockReason.Start, WiredClockReason.Stop, WiredClockReason.Start], transitions.Select(t => t.Reason));
+        var zero = Assert.Single(clocks.TakeChanges());
+        Assert.Equal((WiredCounterPublication.BatchData, "0"), (zero.Publication, zero.Text));
+        Assert.Equal(0, clocks.ReadMilliseconds(item));
+        clocks.Poll(4500);
+        Assert.Equal("0", item.LegacyDataString);
+        Assert.Equal("1", Assert.Single(clocks.Poll(5000), change => change.DisplayChanged).Text);
+    }
+
+    [Fact]
+    public void DeniedRepeatedGameCounterStartKeepsTheCurrentRoundRunning()
+    {
+        var item = ClockItem("wf_game_upcounter1", 205);
+        var allowed = true;
+        var transitions = new List<WiredClockTransition>();
+        var clocks = new WiredCounterController(gameTransition: transitions.Add, canBegin: (_, _, _) => allowed);
+        clocks.Attach(item);
+        Assert.True(clocks.Control(item, 0, 0, WiredClockOrigin.ModernWired));
+        clocks.Poll(500);
+        clocks.Poll(1000);
+        allowed = false;
+
+        Assert.False(clocks.Control(item, 0, 1200, WiredClockOrigin.ModernWired));
+        Assert.True(clocks.IsRunning(item));
+        Assert.Equal(1000, clocks.ReadMilliseconds(item));
+        Assert.Equal([WiredClockReason.Start], transitions.Select(t => t.Reason));
     }
 
     [Fact]

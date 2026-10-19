@@ -90,8 +90,10 @@ public static class WiredSelectorModule
                     var groupId = P(0) == 0 ? world.RoomGroupId : P(1);
 
                     if (groupId > 0) {
+                        // Observed on AIR WIN63-202610151745-318700621: every member of the group is selected, whether or not it is
+                        // their favourite group.
                         selected.UserIds.UnionWith(world.Users.Where(x => x.Kind == WiredSelectorEntityKind.Player
-                        && x.EquippedGroupId == groupId).Select(x => x.Id));
+                            && (world.IsGroupMember?.Invoke(x.Id, groupId) ?? x.GroupIds?.Contains(groupId) == true)).Select(x => x.Id));
                     }
 
                     break;

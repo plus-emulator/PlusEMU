@@ -100,6 +100,18 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
         }).ToArray();
         var model = context.Room.GetGameMap().Model;
 
-        return new(model.MapSizeX, model.MapSizeY, furni, avatars, context.Room.Group?.Id ?? 0, remotes);
+        var habbos = users.Where(user => !user.IsBot).ToDictionary(user => user.VirtualId, user => user.HabboId);
+        // Memberships are read once per firing, like the rest of the world.
+        var memberships = new Dictionary<(int Avatar, int Group), bool>();
+
+        return new(model.MapSizeX, model.MapSizeY, furni, avatars, context.Room.Group?.Id ?? 0, remotes, (avatar, groupId) =>
+        {
+            if (!memberships.TryGetValue((avatar, groupId), out var member)) {
+                member = habbos.TryGetValue(avatar, out var habboId) && groupManager.TryGetGroup(groupId, out var group) && group.IsMember(habboId);
+                memberships[(avatar, groupId)] = member;
+            }
+
+            return member;
+        });
     }
 }

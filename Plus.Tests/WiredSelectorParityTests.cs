@@ -6,15 +6,16 @@ namespace Plus.Tests;
 
 public sealed class WiredSelectorParityTests
 {
+    // Observed on AIR WIN63-202610151745-318700621: every member is selected, whether or not the group is their favourite.
     [Fact]
-    public void GroupSelectorMatchesEquippedGroupRatherThanAllMemberships()
+    public void GroupSelectorMatchesEveryMemberWhateverTheirFavouriteGroup()
     {
         var world = new WiredSelectorWorld(2, 2, [],
         [new(1, "equipped", WiredSelectorEntityKind.Player, 0, 0, GroupIds: new HashSet<int> { 9, 10 }, EquippedGroupId: 9),
          new(2, "member with different badge", WiredSelectorEntityKind.Player, 0, 0, GroupIds: new HashSet<int> { 9, 10 }, EquippedGroupId: 10)], RoomGroupId: 9);
         var selected = WiredSelectorModule.SelectRaw("wf_slc_users_group", new() { IntParams = [0, 0, 0, 0] },
             world, new(new(), new(), new()));
-        Assert.Equal(new[] { 1 }, selected.Selection.UserIds);
+        Assert.Equal(new[] { 1, 2 }, selected.Selection.UserIds.Order());
     }
 
     [Theory]

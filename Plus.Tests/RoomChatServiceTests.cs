@@ -208,6 +208,34 @@ public sealed class RoomChatServiceTests
         Assert.False(world.Sender.GetHabbo().HasSpoken);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: exact matching ignores case but preserves message whitespace.
+    [Theory]
+    [InlineData("hello", true)]
+    [InlineData("HELLO", true)]
+    [InlineData(" hello", false)]
+    [InlineData("hello ", false)]
+    [InlineData(" hello ", false)]
+    [InlineData("hello world", false)]
+    public async Task ExactWiredSpeechPreservesTheReceivedMessageWhitespace(string message, bool hidden)
+    {
+        var world = new World();
+        world.AddHiddenSpeechTrigger("hello");
+        Set(world.SenderUser, "_chatEmotions", new TestChatEmotions());
+
+        await world.Service.Chat(world.Sender, message, 0);
+
+        if (hidden) {
+            Assert.Empty(world.RecipientPackets);
+            Assert.Equal(ServerPacketHeader.WhisperComposer, Assert.Single(world.SenderPackets).Header);
+        }
+        else {
+            Assert.Equal(ServerPacketHeader.ChatComposer, Assert.Single(world.RecipientPackets).Header);
+            var payload = Assert.Single(world.RecipientPackets).Payload;
+            var length = System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(payload.AsSpan(4, 2));
+            Assert.Equal(message, Encoding.UTF8.GetString(payload, 6, length));
+        }
+    }
+
     [Fact]
     public async Task UtcFloodDeadlinePreservesBeforeExactAndAfterBoundariesInNonUtcZone()
     {

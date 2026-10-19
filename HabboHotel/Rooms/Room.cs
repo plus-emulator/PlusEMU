@@ -893,12 +893,7 @@ public class Room
     public void SendObject(Item item)
     {
         if (item is { IsTemporary: true, IsFloorItem: true }) {
-            // A Wired copy arrives as a single-object Objects (1991), not ObjectAdd (observed on hhus); AIR adds objects
-            // from either message the same way (room/class_1993.as:692-722, AIR WIN63-202610131318-860371703).
-            var copy = RoomFurnitureSnapshot.Capture([item], OwnerId, OwnerName);
-
-            SendPacket(new ObjectsComposer(copy), false, viewer => _wiredComponent?.ObjectEnqueued(viewer, item, null));
-            SendPacket(new FurnitureMetadataComposer(copy.Items));
+            SendTemporaryFloorItems([item]);
 
             return;
         }
@@ -908,6 +903,23 @@ public class Room
         SendPacket(item.IsWallItem ? new ItemAddComposer(furniture) : new ObjectAddComposer(furniture), false,
             viewer => _wiredComponent?.ObjectEnqueued(viewer, item, null));
         SendPacket(new FurnitureMetadataComposer([furniture]));
+    }
+
+    internal void SendTemporaryFloorItems(IReadOnlyList<Item> items)
+    {
+        if (items.Count == 0) {
+            return;
+        }
+
+        // Observed on AIR WIN63-202610151745-318700621: two templates arrive together in one Objects message.
+        var snapshot = RoomFurnitureSnapshot.Capture(items, OwnerId, OwnerName);
+        SendPacket(new ObjectsComposer(snapshot), false, viewer =>
+        {
+            foreach (var item in items) {
+                _wiredComponent?.ObjectEnqueued(viewer, item, null);
+            }
+        });
+        SendPacket(new FurnitureMetadataComposer(snapshot.Items));
     }
 
     public void SendUser(RoomUser user)

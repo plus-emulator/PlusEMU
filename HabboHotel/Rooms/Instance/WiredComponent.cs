@@ -195,6 +195,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     public void OnCycle()
     {
+        WiredAvatarState.For(_room).FlushTickEffects();
         _highscores?.OnOwnedPass();
         PublishStateWrites();
         _engine.OnCycle();

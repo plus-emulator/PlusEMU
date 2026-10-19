@@ -267,6 +267,23 @@ public sealed class WiredVariableTests
     }
 
     [Fact]
+    public void AnOlderStoredValueOfAVariableWithoutAValueReadsMinusOne()
+    {
+        // A value saved before no-value variables were held as -1 reads -1 too, without rewriting the row.
+        var directory = new Directory();
+        directory.Definitions[10] = User();
+        var holder = Holder(1, 1);
+        var frame = Frame(holder);
+        var module = new WiredVariableModule(1, directory, new MemoryWiredVariableStore(), new FixedTimeProvider(DateTimeOffset.FromUnixTimeMilliseconds(1)));
+        Assert.True(module.Mutate(UserRef, holder, WiredVariableMutation.Give, 1, frame));
+
+        directory.Definitions[10] = User() with { HasValue = false };
+
+        Assert.Equal(-1, module.Read(UserRef, holder, frame)!.Value);
+        Assert.Equal(-1, Assert.Single(module.GetStoredHolders(10)).Value.Value);
+    }
+
+    [Fact]
     public void RoomVariableStartsAvailableAndFirstUpdatePersistsAcrossReload()
     {
         var directory = new Directory();

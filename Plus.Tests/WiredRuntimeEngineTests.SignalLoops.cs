@@ -111,6 +111,23 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a receiving stack that signals its own antenna after a 0.5 s delay kept running past
+    // 100 runs (88, 107, 126, 144 at 9 s steps), about two runs a second.
+    [Fact]
+    public void ASignalLoopWithADelayKeepsRunningPastAHundredRuns()
+    {
+        var f = new Fixture();
+        var (say, receivers, _) = SignalStacks(f, 1, loop: true, delay: 1);
+        Say(f, say);
+
+        for (var i = 0; i < 1400; i++) {
+            f.Advance(50);
+        }
+
+        Assert.InRange(receivers[0].Calls, 120, 160);
+        Assert.Empty(f.Errors);
+    }
+
     [Fact]
     public void AStraightSignalChainLongerThanTheDepthLimitRunsEveryStackOnce()
     {
@@ -143,7 +160,7 @@ public partial class WiredRuntimeEngineTests
 
     // An Enter stack signals A1. Receiving stack Ri picks Ai and signals A(i+1); the last one signals A1 in a loop, or else an antenna
     // that no stack picks.
-    private static (Box Say, Box[] Receivers, Item[] Antennas) SignalStacks(Fixture f, int count, bool loop)
+    private static (Box Say, Box[] Receivers, Item[] Antennas) SignalStacks(Fixture f, int count, bool loop, int delay = 0)
     {
         var antennas = Enumerable.Range(0, count + 1).Select(i => f.Furni("antenna", x: 40 + i)).ToArray();
         var receivers = new Box[count];
@@ -151,7 +168,7 @@ public partial class WiredRuntimeEngineTests
         for (var i = 0; i < count; i++) {
             var target = loop && i == count - 1 ? antennas[0] : antennas[i + 1];
             ModernTrigger(f, "wf_trg_recv_signal", new() { IntParams = [0, 100], SelectedItems = [antennas[i].Id] }, x: 1 + i);
-            receivers[i] = f.Action(ctx => f.Engine.SendSignal(ctx, [target], new()), x: 1 + i);
+            receivers[i] = f.Action(ctx => f.Engine.SendSignal(ctx, [target], new()), delay: delay, x: 1 + i);
         }
 
         f.Trigger();

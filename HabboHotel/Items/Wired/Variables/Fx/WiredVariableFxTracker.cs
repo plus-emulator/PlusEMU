@@ -68,8 +68,9 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
             state = new();
         }
 
-        var configs = bindings.ToDictionary(x => x.Config.Id);
-        var changedConfigs = bindings.Where(x => !state.Configs.TryGetValue(x.Config.Id, out var old) || old != Signature(x.Config))
+        // A box binds once per variable on its tile; its config is sent once.
+        var configs = bindings.DistinctBy(x => x.Config.Id).ToDictionary(x => x.Config.Id);
+        var changedConfigs = configs.Values.Where(x => !state.Configs.TryGetValue(x.Config.Id, out var old) || old != Signature(x.Config))
             .Select(x => x.Config).ToArray();
         var removedConfigs = state.Configs.Keys.Where(x => !configs.ContainsKey(x)).ToArray();
         var wanted = new Dictionary<WiredVariableFxKey, WiredVariableFxStatus>();
@@ -139,7 +140,7 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
         var batch = new WiredVariableFxBatch(!state.Synced, changedConfigs, removedConfigs, statuses, removedStatuses);
         _pending[viewer.StableId] = (batch, new Viewer
         {
-            Configs = bindings.ToDictionary(x => x.Config.Id, x => Signature(x.Config)),
+            Configs = configs.ToDictionary(x => x.Key, x => Signature(x.Value.Config)),
             Statuses = wanted.ToDictionary(x => x.Key, x => Signature(x.Value with { Initialize = false })),
             Holders = identities,
             Synced = true

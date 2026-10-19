@@ -1,3 +1,4 @@
+using Plus.Core.FigureData;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Permissions;
 
@@ -5,12 +6,20 @@ namespace Plus.HabboHotel.Rooms.Chat.Commands.Moderator;
 
 public class StressCommand : IChatCommand
 {
+    private readonly IFigureDataManager _figureDataManager;
+
+    public StressCommand(IFigureDataManager figureDataManager)
+    {
+        _figureDataManager = figureDataManager;
+    }
+
     public string Key => "stress";
     public string Parameters => "bots <amount|clear>";
     public string Description => "Creates temporary walking and talking bots for room stress testing.";
 
+    // A permission alone is not enough: grants and wildcards can reach any user, and only hotel owners may spawn this many bots.
     internal static bool CanExecute(UserAccess permissions) =>
-        permissions.Can(PermissionKeys.ModerationTool) && permissions.Can("command.stress");
+        permissions.Roles.Any(role => role.Slug == "owner") && permissions.Can(PermissionKeys.ModerationTool) && permissions.Can(PermissionKeys.CommandStress);
 
     internal static bool TryParse(string[] parameters, out int amount)
     {
@@ -30,7 +39,7 @@ public class StressCommand : IChatCommand
     public void Execute(GameClient session, Room room, string[] parameters)
     {
         if (!CanExecute(session.GetHabbo().Access)) {
-            session.SendWhisper("Only staff with moderator tools can use :stress.");
+            session.SendWhisper("Only hotel owners can use :stress.");
 
             return;
         }
@@ -41,7 +50,8 @@ public class StressCommand : IChatCommand
             return;
         }
 
-        if (!room.GetRoomUserManager().QueueStressBots(amount, session.GetHabbo().Id, message => session.SendWhisper(message))) {
+        if (!room.GetRoomUserManager().QueueStressBots(amount, session.GetHabbo().Id, message => session.SendWhisper(message),
+                gender => _figureDataManager.GenerateRandomFigure(gender, Random.Shared))) {
             session.SendWhisper("Stress request unavailable: the room is closing or its request queue is full. Try again shortly.");
         }
     }

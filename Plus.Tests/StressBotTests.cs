@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Plus.Core.FigureData;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.AI.Types;
 using Plus.HabboHotel.Rooms.Chat.Commands;
@@ -16,8 +18,8 @@ public class StressBotTests
     [Theory]
     [InlineData("bots", "500", true, 500)]
     [InlineData("BOTS", "clear", true, 0)]
-    [InlineData("bots", "1000", true, 1000)]
-    [InlineData("bots", "1001", false, 1001)]
+    [InlineData("bots", "2000", true, 2000)]
+    [InlineData("bots", "2001", false, 2001)]
     [InlineData("bots", "0", false, 0)]
     [InlineData("bots", "-1", false, -1)]
     [InlineData("bots", "2147483648", false, 0)]
@@ -38,21 +40,36 @@ public class StressBotTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, false, false)]
-    [InlineData(true, true, true)]
-    public void RequiresModeratorRightAndEstablishedStaffPermission(bool modTool, bool staffCommand, bool allowed)
+    [InlineData("owner", true, true)]
+    [InlineData("owner", false, false)]
+    [InlineData("developer", true, false)]
+    [InlineData("administrator", true, false)]
+    [InlineData(null, true, false)]
+    public void OnlyTheOwnerRoleWithTheStressPermissionMayRunIt(string? role, bool stressGrant, bool allowed)
     {
-        var permissions = UserAccess.Create([], [.. (modTool ? new[] { new UserPermissionOverride(PermissionKeys.ModerationTool, false) } : []),
-            .. (staffCommand ? new[] { new UserPermissionOverride(PermissionKeys.CommandStress, false) } : [])]);
-        Assert.Equal(allowed, StressCommand.CanExecute(permissions));
+        var roles = role == null ? Array.Empty<RoleAssignment>()
+            : [new RoleAssignment(new AccessRole(9, role, role, 90, 7, "", true, [PermissionKeys.ModerationTool], new Dictionary<string, int>()))];
+        var overrides = stressGrant ? new[] { new UserPermissionOverride(PermissionKeys.ModerationTool, false), new UserPermissionOverride(PermissionKeys.CommandStress, false) }
+            : [new UserPermissionOverride(PermissionKeys.CommandStress, true)];
+
+        Assert.Equal(allowed, StressCommand.CanExecute(UserAccess.Create(roles, overrides)));
+    }
+
+    [Fact]
+    public void AnExpiredOwnerRoleDoesNotAllowIt()
+    {
+        var owner = new AccessRole(9, "owner", "Owner", 90, 7, "", true, [PermissionKeys.ModerationTool, PermissionKeys.CommandStress], new Dictionary<string, int>());
+        var expired = UserAccess.Create([new RoleAssignment(owner, DateTimeOffset.UtcNow.AddDays(-1))],
+            [new UserPermissionOverride(PermissionKeys.ModerationTool, false), new UserPermissionOverride(PermissionKeys.CommandStress, false)]);
+
+        Assert.False(StressCommand.CanExecute(expired));
     }
 
     [Fact]
     public void ExistingCommandRegistrationDiscoversStressCommand()
     {
         var services = new ServiceCollection();
+        services.AddSingleton<IFigureDataManager>(new FigureDataManager(NullLogger<FigureDataManager>.Instance));
         Plus.Program.AddAssignableTo<ICommandBase>(services, typeof(StressCommand).Assembly);
         using var provider = services.BuildServiceProvider();
         Assert.IsType<StressCommand>(provider.GetRequiredService<StressCommand>());
@@ -103,12 +120,12 @@ public class StressBotTests
         });
         Assert.Contains("Created 500", replies.Single());
 
-        Assert.True(manager.QueueStressBots(500, 7, replies.Add));
+        Assert.True(manager.QueueStressBots(1500, 7, replies.Add));
         manager.ProcessStressBots();
         Assert.True(manager.QueueStressBots(1, 7, replies.Add));
         manager.ProcessStressBots();
-        Assert.Equal(1000, manager.GetUserList().Count);
-        Assert.Contains("limit is 1000", replies.Last());
+        Assert.Equal(2000, manager.GetUserList().Count);
+        Assert.Contains("limit is 2000", replies.Last());
 
         // Use an ordinary bot as a control; clearing must preserve it.
         var regularData = Assert.IsType<Plus.HabboHotel.Rooms.AI.RoomBot>(bots[0].BotData);
@@ -124,7 +141,21 @@ public class StressBotTests
         manager.ProcessStressBots();
         Assert.Same(regular, Assert.Single(manager.GetUserList()));
         Assert.Same(regular, Assert.Single(map.GetRoomUsers(regular.Coordinate)));
-        Assert.Contains("Cleared 1000", replies.Last());
+        Assert.Contains("Cleared 2000", replies.Last());
+    }
+
+    [Fact]
+    public void EachStressBotWearsItsOwnGeneratedOutfit()
+    {
+        var (manager, _) = CreateRoom();
+        var generated = 0;
+        Assert.True(manager.QueueStressBots(50, 7, _ => { }, gender => $"hd-180-1.ch-{Interlocked.Increment(ref generated)}-1.{gender}"));
+        manager.ProcessStressBots();
+
+        var bots = manager.GetUserList().Select(user => Assert.IsType<Plus.HabboHotel.Rooms.AI.RoomBot>(user.BotData)).ToList();
+        Assert.Equal(50, generated);
+        Assert.Equal(50, bots.Select(bot => bot.Look).Distinct().Count());
+        Assert.All(bots, bot => Assert.EndsWith($".{bot.Gender}", bot.Look));
     }
 
     [Fact]
@@ -145,7 +176,7 @@ public class StressBotTests
             manager.ProcessStressBots();
         }
 
-        Assert.Equal(1000, manager.GetUserList().Count);
+        Assert.Equal(2000, manager.GetUserList().Count);
     }
 
     [Fact]
@@ -229,6 +260,6 @@ public class StressBotTests
 
     private sealed class StressOnlyProvider : IServiceProvider
     {
-        public object? GetService(Type serviceType) => serviceType == typeof(StressCommand) ? new StressCommand() : new object();
+        public object? GetService(Type serviceType) => serviceType == typeof(StressCommand) ? new StressCommand(new FigureDataManager(NullLogger<FigureDataManager>.Instance)) : new object();
     }
 }

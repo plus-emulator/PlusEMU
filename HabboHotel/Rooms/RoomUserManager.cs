@@ -27,9 +27,9 @@ namespace Plus.HabboHotel.Rooms;
 
 public class RoomUserManager
 {
-    public const int MaxStressBots = 1000;
+    public const int MaxStressBots = 2000;
     private readonly object _stressSync = new();
-    private readonly Queue<(int Amount, int OwnerId, Action<string> Reply)> _stressRequests = new();
+    private readonly Queue<(int Amount, int OwnerId, Action<string> Reply, Func<string, string>? Outfit)> _stressRequests = new();
     private bool _disposed;
     private int _nextStressBotId;
 
@@ -72,7 +72,8 @@ public class RoomUserManager
     public int PetCount { get; private set; }
 
     // Requests are bounded and applied on the cycle thread, before its user snapshot.
-    public bool QueueStressBots(int amount, int ownerId, Action<string> reply)
+    // outfit maps a gender to a look; without it every bot wears the default figure.
+    public bool QueueStressBots(int amount, int ownerId, Action<string> reply, Func<string, string>? outfit = null)
     {
         if (amount < 0 || amount > MaxStressBots) {
             return false;
@@ -83,7 +84,7 @@ public class RoomUserManager
                 return false;
             }
 
-            _stressRequests.Enqueue((amount, ownerId, reply));
+            _stressRequests.Enqueue((amount, ownerId, reply, outfit));
 
             return true;
         }
@@ -121,9 +122,11 @@ public class RoomUserManager
                 // Negative IDs cannot collide with database/inventory bots.
                 var id = --_nextStressBotId;
                 var speeches = new List<RandomSpeech> { new($"Stress bot {-id} checking room traffic.", id) };
+                var gender = request.Outfit == null || Random.Shared.Next(2) == 0 ? "M" : "F";
+                var look = request.Outfit?.Invoke(gender) ?? IFigureDataManager.DefaultFigure;
                 var bot = new RoomBot(id, _room.RoomId, "generic", "freeroam", $"Stress {-id}", "Temporary stress bot",
-                    IFigureDataManager.DefaultFigure, model.DoorX, model.DoorY, model.DoorZ, model.DoorOrientation,
-                    0, 0, 0, 0, ref speeches, "M", 0, request.OwnerId, true, 60, false, 0)
+                    look, model.DoorX, model.DoorY, model.DoorZ, model.DoorOrientation,
+                    0, 0, 0, 0, ref speeches, gender, 0, request.OwnerId, true, 60, false, 0)
                 { IsTemporary = true };
                 var user = DeployBot(bot, null);
                 user.AllowOverride = true;

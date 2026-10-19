@@ -30,7 +30,7 @@ public sealed class ModeratorActionDatabaseTests
                 INSERT INTO users VALUES (7, 0);
                 INSERT INTO user_info VALUES (7, 2);
                 """);
-            var options = new MySqlConnectionStringBuilder(connection.ConnectionString) { Database = schema };
+            var options = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")) { Database = schema };
             var store = new ModeratorActionStore(new ProbeDatabase(options.ConnectionString));
 
             foreach (var (rename, locked, expectedCaption, expectedState) in new[]

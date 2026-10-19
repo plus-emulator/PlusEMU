@@ -32,7 +32,7 @@ public sealed class RoomSettingsDatabaseTests
                 CREATE TABLE room_items_toner (id INT PRIMARY KEY, enabled BOOL, data1 INT, data2 INT, data3 INT);
                 INSERT INTO room_items_toner VALUES (92,FALSE,0,0,0);
                 """);
-            var options = new MySqlConnectionStringBuilder(connection.ConnectionString) { Database = schema };
+            var options = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")) { Database = schema };
             var database = new ProbeDatabase(options.ConnectionString);
             var settings = new RoomSettingsStore(database);
             var request = new RoomSettingsRequest(42, "Updated", "Description", 1, "", 25, 36, ["one"],

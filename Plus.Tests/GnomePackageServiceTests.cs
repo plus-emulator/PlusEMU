@@ -124,7 +124,7 @@ public sealed class GnomePackageServiceTests
         root.Execute($"CREATE DATABASE `{schema}`");
 
         try {
-            var cs = new MySqlConnectionStringBuilder(root.ConnectionString)
+            var cs = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE"))
             {
                 Database = schema,
                 AllowZeroDateTime = true,

@@ -27,7 +27,7 @@ public sealed class UserMaintenanceDatabaseTests
             connection.Execute("""
                 CREATE TRIGGER user_maintenance_fail BEFORE UPDATE ON user_currencies FOR EACH ROW BEGIN IF NEW.user_id = 10 AND NEW.amount = 77 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'forced failure'; END IF; END;
                 """);
-            var options = new MySqlConnectionStringBuilder(connection.ConnectionString) { Database = schema, Pooling = false, AllowZeroDateTime = true, ConvertZeroDateTime = true };
+            var options = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")) { Database = schema, Pooling = false, AllowZeroDateTime = true, ConvertZeroDateTime = true };
             var store = new UserMaintenanceStore(new ProbeDatabase(options.ConnectionString));
 
             Assert.Equal(100, store.ReadCurrency(9, UserCurrency.Credits));

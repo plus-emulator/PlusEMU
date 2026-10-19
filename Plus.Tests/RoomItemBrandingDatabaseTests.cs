@@ -22,7 +22,7 @@ public sealed class RoomItemBrandingDatabaseTests
         try {
             connection.Execute($"USE `{schema}`");
             connection.Execute("CREATE TABLE items (id INT UNSIGNED PRIMARY KEY, room_id INT UNSIGNED, extra_data TEXT); INSERT INTO items VALUES (92,42,'original'),(93,43,'other'),(2147483648,42,'unsigned');");
-            var options = new MySqlConnectionStringBuilder(connection.ConnectionString) { Database = schema, Pooling = false };
+            var options = new MySqlConnectionStringBuilder(serverOptions.ConnectionString) { Database = schema, Pooling = false };
             var store = new RoomItemMetadataStore(new ProbeDatabase(options.ConnectionString));
 
             store.SetBrandingData(2147483648u, 42, "unsigned-saved");

@@ -73,6 +73,44 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
+    // A loop too large to finish in one pass still stops: the 100 runs count for the whole signal chain, not only the window.
+    [Fact]
+    public void ALargeSignalLoopStopsAfterAHundredRunsPerStack()
+    {
+        var f = new Fixture();
+        var (say, receivers, _) = SignalStacks(f, 50, loop: true);
+        Say(f, say);
+
+        for (var i = 0; i < 400; i++) {
+            f.Advance(50);
+        }
+
+        Assert.All(receivers, receiver => Assert.Equal(100, receiver.Calls));
+        Assert.False(f.Engine.NeedsFastCycle);
+        Assert.Empty(f.Errors);
+    }
+
+    [Fact]
+    public void ASignalLoopThatCrossesAWindowStillRunsAHundredTimesPerStack()
+    {
+        var f = new Fixture();
+        var (say, receivers, _) = SignalStacks(f, 20, loop: true);
+
+        while (f.Now % 500 != 400) {
+            f.Advance(50);
+        }
+
+        Say(f, say);
+
+        for (var i = 0; i < 200; i++) {
+            f.Advance(50);
+        }
+
+        Assert.All(receivers, receiver => Assert.Equal(100, receiver.Calls));
+        Assert.False(f.Engine.NeedsFastCycle);
+        Assert.Empty(f.Errors);
+    }
+
     [Fact]
     public void AStraightSignalChainLongerThanTheDepthLimitRunsEveryStackOnce()
     {

@@ -202,7 +202,7 @@ public sealed class WiredConfigurationService(
         var handler = room.GetRoomItemHandler();
         var picks = name == "wf_act_place_furni" && native.FurniSourceTypes is [101, ..] ? native.SecondaryItems : native.PrimaryItems;
 
-        var allowWall = name != "wf_act_place_furni" && WiredNativeEditorProjection.Metadata(name).AllowWall;
+        var allowWall = WiredNativeEditorProjection.Metadata(name).AllowWall;
 
         // Only cards whose editor admits wall picks capture them, and only with a parseable wall position.
         return picks.Select(reference => reference.ItemId).Distinct().Select(handler.GetItem)

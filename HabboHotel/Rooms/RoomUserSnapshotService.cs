@@ -62,8 +62,9 @@ public sealed class RoomUserSnapshotService(IGroupManager groups, IGameClientMan
                 user.RidingHorse, pet.Level);
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: a bot's entry carries the direction it faces.
         return new(ai.BaseId, user.BotData.Name, user.BotData.Motto, user.BotData.Look.ToLowerInvariant(),
-            user.VirtualId, user.X, user.Y, TextHandling.GetString(user.Z), 0, kind,
+            user.VirtualId, user.X, user.Y, TextHandling.GetString(user.Z), user.RotBody, kind,
             user.BotData.Gender.ToLowerInvariant(), 0, "", 0, false, 0, user.BotData.OwnerId,
             ResolveUsername(user.BotData.OwnerId), false, false);
     }

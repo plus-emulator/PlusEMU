@@ -1536,8 +1536,8 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(dx, dy), moved);
     }
 
+    // Turn 0 without a move is a restack, not a move on the spot (StillMoveRotateRestacksPickedFurniOnTopOfTheirStack).
     [Theory]
-    [InlineData(0, 0)]
     [InlineData(2, 2)]
     [InlineData(4, 6)]
     public void StoredMoveTurnsRotateAsTheEditorLabels(int turn, int expected)

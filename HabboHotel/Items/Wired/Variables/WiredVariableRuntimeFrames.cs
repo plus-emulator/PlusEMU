@@ -16,9 +16,9 @@ public static class WiredVariableRuntimeFrames
     {
         IEnumerable<WiredVariableHolder> Furni(IEnumerable<Item> items) => items.Select(FurniHolder);
         IEnumerable<WiredVariableHolder> Users(IEnumerable<RoomUser> users) => users.Select(UserHolder);
-        // AllRoom is deliberately floor-only. Captured trigger/signal furniture can also be wall items.
-        // Resolve both through the same live identity guards, without applying operand quantity caps.
+        // AllRoom remains floor-only; captured wall targets also need live variable holders.
         var holders = Furni(context.Targets.ResolveFurni(context, [], WiredSources.AllRoom, raw: true))
+            .Concat(Furni(context.FurniIdentity.Values.Where(context.Targets.IsAttached)))
             .Concat(Furni(context.Targets.ResolveFurni(context, [], WiredSources.Trigger, raw: true)))
             .Concat(Furni(context.Targets.ResolveFurni(context, [], WiredSources.Signal, raw: true)))
             .Concat(Users(context.Targets.ResolveUsers(context, [], WiredSources.AllRoom, raw: true))).Distinct().ToArray();

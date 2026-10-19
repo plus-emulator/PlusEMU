@@ -67,6 +67,7 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
                 return;
             }
 
+            plan.DiscoverNeighbours(navigation.Grid, _rules, context.Profiles.Refresh(actor), failure.From);
             fallback.OnRouteBlocked(actor);
             search.Recover(actor);
         }

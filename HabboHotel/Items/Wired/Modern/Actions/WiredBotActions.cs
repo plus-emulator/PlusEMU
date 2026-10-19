@@ -217,18 +217,30 @@ public static class WiredBotActions
                     targets.Follow(bot, user);
                 }
 
-                foreach (var arrived in targets.Poll(context.Room)) {
+                foreach (var arrived in targets.Poll(context.Room, context.NowMilliseconds)) {
                     context.Room.GetWired().Dispatch(arrived);
                 }
 
                 return true;
             case "wf_act_bot_give_handitem":
-                // The executable body grants immediately after resolving the named bot.
-                foreach (var user in users) {
-                    user.CarryItem(p[0]);
+                if (users.Length == 0) {
+                    return false;
                 }
 
-                return users.Length > 0;
+                // Without a bot (its "use bot" box unticked) the users get the item at once.
+                if (bots.Length == 0) {
+                    foreach (var user in users) {
+                        user.CarryItem(p[0]);
+                    }
+
+                    return true;
+                }
+
+                for (var index = 0; index < bots.Length; index++) {
+                    targets.Give(context.Room, bots[index], users[index % users.Length], p[0], context.NowMilliseconds);
+                }
+
+                return true;
             case "wf_act_bot_clothes":
                 if (!FigureWellFormed(text)) {
                     return false;

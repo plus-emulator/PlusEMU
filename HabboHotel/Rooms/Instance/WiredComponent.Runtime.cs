@@ -411,7 +411,7 @@ public partial class WiredComponent
         PublishCounterChanges(_counters.Poll(now), mark);
 
         if (WiredBotTargets.For(_room).HasTargets) {
-            foreach (var arrival in WiredBotTargets.For(_room).Poll(_room)) {
+            foreach (var arrival in WiredBotTargets.For(_room).Poll(_room, now)) {
                 QueueRuntimeEvent(arrival);
             }
         }

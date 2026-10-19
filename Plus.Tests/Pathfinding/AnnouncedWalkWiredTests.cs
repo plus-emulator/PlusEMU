@@ -1,6 +1,7 @@
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Modern;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Modern.Selectors;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Rooms;
@@ -106,6 +107,44 @@ public partial class PlacedFurniRoomTests
 
         Assert.False(actor.SetStep);
         Assert.Equal((1, 1), SelectorTile(actor));
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: Bot Give Handitem's bot takes the item, walks next to the user and hands it over
+    // 300 ms after that step is announced.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GiveHandItemBotWalksNextToTheUserAndHandsOverAfterTheAnnouncedStep(bool v2)
+    {
+        var user = Viewer(3, 1);
+        var bot = WalkActor(WalkActorKind.Bot, 0, 1, v2);
+        var targets = WiredBotTargets.For(_room);
+
+        targets.Give(_room, bot, user, 2, 0);
+
+        Assert.Equal(2, bot.CarryItemId);
+        Assert.Equal(0, user.CarryItemId);
+
+        // The room's own pass polls the bot targets on its Wired clock; the hand-over follows the announcement by 300 ms.
+        var announced = false;
+
+        for (var tick = 0; tick < 12 && !announced; tick++) {
+            ExecutorTick();
+
+            if (WiredRoomOperations.StandingTile(bot) == new System.Drawing.Point(2, 1)) {
+                announced = true;
+                targets.Poll(_room, targets.HandOverAnnouncedAt(bot) ?? 0);
+                var at = Assert.NotNull(targets.HandOverAnnouncedAt(bot));
+                targets.Poll(_room, at + WiredBotTargets.HandOverDelayMilliseconds - 1);
+                Assert.Equal(0, user.CarryItemId);
+                targets.Poll(_room, at + WiredBotTargets.HandOverDelayMilliseconds);
+            }
+        }
+
+        Assert.True(announced);
+        Assert.Equal(2, user.CarryItemId);
+        Assert.Equal(0, bot.CarryItemId);
+        Assert.False(targets.HasTargets);
     }
 
     private (int X, int Y) SelectorTile(RoomUser actor)

@@ -507,8 +507,9 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         }));
 
                     // Observed on hhus (r90 game-b): YouArePlayingGame goes out with the join (true) and the leave (false), in the same
-                    // tick and ahead of the team effect (223 on join, 0 on leave) of the next state update.
-                    if (moved) {
+                    // tick and ahead of the team effect (223 on join, 0 on leave) of the next state update. Observed on AIR
+                    // WIN63-202610151745-318700621: a leave sends it even outside a team, a join into the user's own team sends nothing.
+                    if (moved || name == "wf_act_leave_team") {
                         user.GetClient()?.Send(new YouArePlayingGameComposer(name == "wf_act_join_team"));
                     }
 

@@ -311,7 +311,7 @@ public class Gamemap
         var pathfindingSettings = PathfindingSettings.Load(settings);
 
         if (pathfindingSettings.Engine is PathfindingEngine.Shadow or PathfindingEngine.V2
-            && model.MapSizeX is > 0 and <= 256 && model.MapSizeY is > 0 and <= 256) {
+            && model.MapSizeX > 0 && model.MapSizeY > 0) {
             Navigation = new(room, model, pathfindingSettings, navigationLogger, groups, database, rewards);
         }
 

@@ -44,9 +44,9 @@ public sealed partial class NavGrid
     public NavGrid(int width, int height, double[] baseZ, SquareState[] baseState,
         int doorTile = -1, double doorZ = 0)
     {
-        if (width is < 1 or > 256 || height is < 1 or > 256
-            || baseZ.Length != width * height || baseState.Length != width * height) {
-            throw new ArgumentOutOfRangeException(nameof(width), "V2 requires a 1..256 tile map on each axis.");
+        if (width < 1 || height < 1
+            || baseZ.LongLength != (long)width * height || baseState.LongLength != (long)width * height) {
+            throw new ArgumentOutOfRangeException(nameof(width), "Navigation requires positive dimensions matching the floor arrays.");
         }
 
         Width = width;

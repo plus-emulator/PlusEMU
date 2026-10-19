@@ -143,7 +143,7 @@ internal readonly struct PathSearchRun
             _sequences[next] = _ws.NextSequence++;
         }
 
-        var key = PathTieBreak.Key(g + PathTieBreak.Heuristic(x, y, _goal.X, _goal.Y), x, y,
+        var key = PathTieBreak.Key((long)g + PathTieBreak.Heuristic(x, y, _goal.X, _goal.Y), x, y,
             _goal.X, _goal.Y, _legacy ? (byte)0 : _grid.Ordinal[next], _sequences[next]);
 
         if (seen) {

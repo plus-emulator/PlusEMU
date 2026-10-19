@@ -78,7 +78,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             foreach (var (reference, holder, resolution) in requests) {
                 var definition = resolution.Definition;
                 var value = resolution.Builtin is { } builtin ? builtins?.Read(builtin, holder, frame)
-                    : values.GetValueOrDefault(Key(definition!, holder))
+                    : Held(definition!, values.GetValueOrDefault(Key(definition!, holder)))
                         ?? (definition!.Target == WiredVariableTarget.Global ? new(definition.InitialValue, null, null) : null);
 
                 if (value is not null && resolution.Convert is { } convert) {
@@ -119,7 +119,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                     return null;
                 }
 
-                var stored = Store(definition, frame).Read(Key(definition, holder));
+                var stored = Held(definition, Store(definition, frame).Read(Key(definition, holder)));
                 value = stored ?? (definition.Target == WiredVariableTarget.Global ? new(definition.InitialValue, null, null) : null);
             }
 
@@ -351,7 +351,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return null;
             }
 
-            var next = definition.HasValue ? transform(current?.Value ?? 0) : 1;
+            // Observed on AIR WIN63-202610151745-318700621: a variable without a value is held as -1 (it reads -1, and after the box is
+            // switched to having a value, +1 gives 0).
+            var next = definition.HasValue ? transform(current?.Value ?? 0) : -1;
 
             if (mutation == WiredVariableMutation.Set && !notifyUnchanged && previous is not null && previous.Value == next) {
                 return previous;
@@ -575,9 +577,13 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
             var values = definition.IsDurable ? durable.GetHolders(definition.ItemId) : _active.GetHolders(definition.ItemId);
 
-            return values.ToDictionary(x => x.Key with { DefinitionId = definitionId }, x => x.Value);
+            return values.ToDictionary(x => x.Key with { DefinitionId = definitionId }, x => Held(definition, x.Value)!);
         }
     }
+
+    // A variable without a value reads -1 whatever an older save stored for it (see Change).
+    private static WiredVariableValue? Held(WiredVariableDefinition definition, WiredVariableValue? value) =>
+        value is not null && !definition.HasValue ? value with { Value = -1 } : value;
 
     public IReadOnlyList<WiredVariableDescription> DescribeDefinitions(IEnumerable<uint> definitionIds)
     {

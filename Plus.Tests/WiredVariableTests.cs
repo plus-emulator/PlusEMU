@@ -260,9 +260,27 @@ public sealed class WiredVariableTests
         var frame = Frame(holder);
         var module = new WiredVariableModule(1, directory, new MemoryWiredVariableStore(), new FixedTimeProvider(DateTimeOffset.FromUnixTimeMilliseconds(1)));
         Assert.True(module.Mutate(UserRef, holder, WiredVariableMutation.Give, 444, frame));
-        Assert.Equal(1, module.Read(UserRef, holder, frame)!.Value);
+        // Observed on AIR WIN63-202610151745-318700621: a variable without a value is held as -1.
+        Assert.Equal(-1, module.Read(UserRef, holder, frame)!.Value);
         Assert.False(module.Mutate(UserRef, holder, WiredVariableMutation.Set, 6, frame));
         Assert.Null(module.Read(new(WiredVariableTarget.User, "custom:11"), holder, frame));
+    }
+
+    [Fact]
+    public void AnOlderStoredValueOfAVariableWithoutAValueReadsMinusOne()
+    {
+        // A value saved before no-value variables were held as -1 reads -1 too, without rewriting the row.
+        var directory = new Directory();
+        directory.Definitions[10] = User();
+        var holder = Holder(1, 1);
+        var frame = Frame(holder);
+        var module = new WiredVariableModule(1, directory, new MemoryWiredVariableStore(), new FixedTimeProvider(DateTimeOffset.FromUnixTimeMilliseconds(1)));
+        Assert.True(module.Mutate(UserRef, holder, WiredVariableMutation.Give, 1, frame));
+
+        directory.Definitions[10] = User() with { HasValue = false };
+
+        Assert.Equal(-1, module.Read(UserRef, holder, frame)!.Value);
+        Assert.Equal(-1, Assert.Single(module.GetStoredHolders(10)).Value.Value);
     }
 
     [Fact]

@@ -125,8 +125,8 @@ public partial class PlacedFurniRoomTests
         horse.PetData.Saddle = 1;
         horse.RidingHorse = true;
         horse.HorseId = rider.VirtualId;
-        Assert.Equal(1, Read("~horse.has_saddle")?.Value);
-        Assert.Equal(1, Read("~horse.is_riding")?.Value);
+        Assert.Equal(-1, Read("~horse.has_saddle")?.Value);
+        Assert.Equal(-1, Read("~horse.is_riding")?.Value);
         Assert.Equal(7, Read("~horse.controller_user_id")?.Value);
         Assert.False(RoomWiredBuiltinVariables.HasNumericValue(new(holder.Target, "internal:~horse.has_saddle")));
         Assert.False(RoomWiredBuiltinVariables.HasNumericValue(new(holder.Target, "internal:~horse.is_riding")));
@@ -233,11 +233,11 @@ public partial class PlacedFurniRoomTests
         Assert.Null(Read("@is_group_admin"));
         _room.Group = new(20, "group", "", "", RoomId, 9, null, 0, 1, 1, 0, false,
             new Plus.HabboHotel.Groups.GroupMembershipSnapshot([], [7], []));
-        Assert.Equal(1, Read("@is_group_admin")?.Value);
+        Assert.Equal(-1, Read("@is_group_admin")?.Value);
         _room.Group.TakeAdmin(7);
         Assert.Null(Read("@is_group_admin"));
         _room.Group.CreatorId = 7;
-        Assert.Equal(1, Read("@is_group_admin")?.Value);
+        Assert.Equal(-1, Read("@is_group_admin")?.Value);
         Assert.False(RoomWiredBuiltinVariables.HasNumericValue(new(holder.Target, "internal:@is_group_admin")));
     }
 

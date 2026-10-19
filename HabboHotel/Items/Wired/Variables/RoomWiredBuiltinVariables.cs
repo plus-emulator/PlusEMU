@@ -449,11 +449,13 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@position.y" => avatar.Y,
             "@altitude" => Hundredths(avatar.Z),
             "@direction" => avatar.RotBody,
-            "@dance" => avatar.DanceId,
+            // Observed on AIR WIN63-202610151745-318700621: @dance, @sign and @effect exist only while the avatar dances, holds a sign or wears an
+            // effect, and @team.color and @team.score only while it is in a team.
+            "@dance" => avatar.DanceId > 0 ? avatar.DanceId : null,
             // Observed on AIR WIN63-202610151745-318700621: an avatar carrying nothing has no @handitem (a placeholder shows "null").
             "@handitem" => avatar.CarryItemId == 0 ? null : avatar.CarryItemId,
-            "@sign" => avatar.Statusses.TryGetValue("sign", out var sign) && int.TryParse(sign, NumberStyles.None, CultureInfo.InvariantCulture, out var signId) ? signId : -1,
-            "@effect" => habbo?.Effects?.CurrentEffect,
+            "@sign" => avatar.Statusses.TryGetValue("sign", out var sign) && int.TryParse(sign, NumberStyles.None, CultureInfo.InvariantCulture, out var signId) ? signId : null,
+            "@effect" => habbo?.Effects?.CurrentEffect is > 0 and var effect ? effect : null,
             "@gender" => habbo is null ? -1 : habbo.Gender.Equals("M", StringComparison.OrdinalIgnoreCase) ? 0 : 1,
             "@achievement_score" => habbo?.HabboStats?.AchievementPoints,
             // Observed on AIR WIN63-202610131318-860371703: @level is the account level the extended profile shows as Level
@@ -471,8 +473,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@is_owner" => Flag(habbo is not null && habbo.Id == room.OwnerId),
             "@has_rights" => Flag(habbo is not null && room.CheckRights(habbo.Client)),
             "@team.type" => Plus.HabboHotel.Items.Wired.Modern.Actions.WiredGameState.For(room).ReadTeamType(room, avatar),
-            "@team.color" => !avatar.IsBot ? (int)avatar.Team : null,
-            "@team.score" => !avatar.IsBot ? room.GetGameManager().Points[(int)avatar.Team] : null,
+            "@team.color" => !avatar.IsBot && avatar.Team != Team.None ? (int)avatar.Team : null,
+            "@team.score" => !avatar.IsBot && avatar.Team != Team.None ? room.GetGameManager().Points[(int)avatar.Team] : null,
             _ => null
         };
     }

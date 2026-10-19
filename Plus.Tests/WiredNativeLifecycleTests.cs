@@ -420,7 +420,8 @@ public sealed partial class WiredNativeLifecycleTests
             var frame = WiredVariableRuntimeFrames.Create(f.Context());
             var holder = WiredVariableRuntimeFrames.UserHolder(joined);
             Assert.Equal(method, f.Wired.ReadBuiltin(new(WiredVariableTarget.User, "internal:@room_entry.method"), holder, frame));
-            Assert.Equal(teleporterId, f.Wired.ReadBuiltin(new(WiredVariableTarget.User, "internal:@room_entry.teleport_id"), holder, frame));
+            // A visit without a teleporter has no @room_entry.teleport_id.
+            Assert.Equal(teleporterId == 0 ? null : teleporterId, f.Wired.ReadBuiltin(new(WiredVariableTarget.User, "internal:@room_entry.teleport_id"), holder, frame));
             Assert.Equal(0u, player.WiredRoomNetworkDestination);
         }
         finally {

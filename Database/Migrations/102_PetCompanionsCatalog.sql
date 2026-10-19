@@ -1,0 +1,1 @@
+-- Sells every named pet companion (the "pt" figure sets) on a Companions page under Clothing.

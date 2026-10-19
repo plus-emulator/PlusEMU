@@ -217,7 +217,11 @@ namespace Plus.Tests
             var replacement = _room.GetRoomItemHandler().GetItem(30)!;
             Assert.NotSame(first, replacement);
             Assert.Null(first.GetRoom());
-            replacement.Interactor.OnTrigger(_client, replacement, 0, true);
+
+            using (Plus.HabboHotel.Rooms.PathFinding.RoomOwnerScope.Enter(_room)) {
+                replacement.Interactor.OnTrigger(_client, replacement, 0, true);
+            }
+
             Assert.Null(store.Load(30).StartedAt);
             Assert.Equal("0", replacement.LegacyDataString);
         }

@@ -1,6 +1,7 @@
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Addons;
 using Plus.HabboHotel.Items.Wired.Modern.Selectors;
+using Plus.HabboHotel.Items.Wired.Modern.Triggers;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Rooms;
@@ -32,8 +33,11 @@ internal sealed partial class WiredStackEngine
 
         // Observed r92g r92-signals two-w1..w3 (AIR WIN63-202610131318-860371703): two say stacks on one message ran stack two first
         // once and stack one first twice, so stacks of one event are not run in id order. They run in a per-event random order.
+        // A signal skips the receivers that pick other antennas before their stacks are captured, so a large loop stays cheap per hop.
+        var antenna = pending.Signal != null ? unchecked((uint)pending.Event.Code) : 0;
         var triggers = _items.Values.OfType<IWiredContextualTrigger>()
-            .Where(trigger => RuntimeSupported(trigger) && trigger.Events.Contains(pending.Event.Kind))
+            .Where(trigger => RuntimeSupported(trigger) && trigger.Events.Contains(pending.Event.Kind)
+                && !(pending.Signal != null && trigger is WiredModernTrigger receiver && receiver.CannotReceiveSignal(antenna)))
             .OrderBy(trigger => trigger.Item.GetZ).ThenBy(trigger => trigger.Item.Id).ToArray();
         _effectOrderRandom.Shuffle(triggers);
         pending.Triggers = triggers;
@@ -228,7 +232,7 @@ internal sealed partial class WiredStackEngine
                 continue;
             }
 
-            if (pending.Signal != null && SignalRunCapReached(trigger)) {
+            if (pending.Signal is { } delivered && SignalRunCapReached(trigger, delivered.Context.SignalChainRuns)) {
                 CompleteDispatchSlot(pending);
                 continue;
             }
@@ -250,8 +254,12 @@ internal sealed partial class WiredStackEngine
 
             if (InvokeRuntime(trigger, context, () => context.Event.Kind == WiredEventKind.Speech
                     ? CaptureSpeech?.Invoke(context, trigger) ?? trigger.Execute(context) : trigger.Execute(context))) {
-                if (pending.Signal != null) {
+                if (pending.Signal is { } received) {
                     _signalRuns[trigger] = _signalRuns.GetValueOrDefault(trigger) + 1;
+
+                    if (received.Context.SignalChainRuns is { } chain) {
+                        chain[trigger] = chain.GetValueOrDefault(trigger) + 1;
+                    }
                 }
 
                 pending.Current = BeginFiring(trigger, context, pending.Signal == null ? null : false, trigger: trigger);
@@ -265,12 +273,17 @@ internal sealed partial class WiredStackEngine
     // Observed on AIR WIN63-202610151745-318700621: a receiving stack runs at most 100 times in one 500 ms wired window, a 1, 2 or
     // 3-stack loop 100 times each in one tick. Signals past that are dropped, not deferred, and the client gets no notice. The sending
     // antenna still flips.
+    // The chain count is this engine's own bound: it holds a loop too large for one pass to the same 100 runs per stack across windows.
     private const int MaxSignalRunsPerWindow = 100;
     private readonly Dictionary<IWiredItem, int> _signalRuns = [];
     private long _signalRunWindow = -1;
 
-    private bool SignalRunCapReached(IWiredItem trigger)
+    private bool SignalRunCapReached(IWiredItem trigger, Dictionary<IWiredItem, int>? chain)
     {
+        if (chain?.GetValueOrDefault(trigger) >= MaxSignalRunsPerWindow) {
+            return true;
+        }
+
         var window = _now() / WiredFlashStates.StateUpdateMilliseconds;
 
         if (window != _signalRunWindow) {

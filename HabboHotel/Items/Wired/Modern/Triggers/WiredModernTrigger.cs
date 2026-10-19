@@ -89,6 +89,11 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
         }
     }
 
+    /// <summary>A Receive Signal that picks its antennas cannot take a signal addressed to another one.</summary>
+    internal bool CannotReceiveSignal(uint antenna) => Descriptor.CanonicalName == "wf_trg_recv_signal"
+        && Configuration.FurniSources.TryGetValue("items", out var source) && source == WiredSources.Selected
+        && !Configuration.SelectedItems.Contains(antenna);
+
     private bool Matches(WiredRuntimeContext context, bool afterSelectors)
     {
         if (!Events.Contains(context.Event.Kind)) {

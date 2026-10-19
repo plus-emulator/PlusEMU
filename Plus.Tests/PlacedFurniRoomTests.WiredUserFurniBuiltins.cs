@@ -146,7 +146,8 @@ public partial class PlacedFurniRoomTests
         var builtins = new RoomWiredBuiltinVariables(_room);
         WiredVariableValue? Read(string key) => builtins.Read(new(holder.Target, "internal:" + key), holder, frame);
         Assert.Equal(258, Read("@position")?.Value);
-        Assert.Equal(66052, Read("@occupation")?.Value);
+        // Facing 4 is position 2 in the furni's directions (0, 2, 4, 6).
+        Assert.Equal(66050, Read("@occupation")?.Value);
         item.Definition.InteractionType = InteractionType.Toner;
         _room.TonerData = new(item.Id, new TonerRecord { Hue = 22, Saturation = 33, Lightness = 44 });
         Assert.Equal(22, Read("~background_color.hue")?.Value);

@@ -34,7 +34,7 @@ public sealed class RoomItemSnapshotTests
     {
         var item = Item(data);
         var composer = new ObjectUpdateComposer(RoomItemSnapshot.Capture(item));
-        var fields = new object[] { 17u, 31, 0, 0, 0, "1.5", "0.25", 1 }
+        var fields = new object[] { 17u, 31, 0, 0, 0, "1.5", "0.25", 0 }
             .Concat(dataFields).Concat(new object[] { -1, 1, 7 }).ToArray();
         Assert.Equal(Encode(fields), Encode(composer));
     }
@@ -48,7 +48,7 @@ public sealed class RoomItemSnapshotTests
         item.UniqueSeries = 20;
         var snapshot = RoomItemSnapshot.Capture(item);
         var composer = new ObjectAddComposer(snapshot);
-        var expected = Encode(new object[] { 17u, 31, 0, 0, 0, "1.5", "0.25", 1,
+        var expected = Encode(new object[] { 17u, 31, 0, 0, 0, "1.5", "0.25", 0,
             0xFF01, 1, "state", "before", 4u, 20u, -1, 1, 7, "Alice" });
         data.Data["state"] = "after";
         data.Data["new"] = "entry";

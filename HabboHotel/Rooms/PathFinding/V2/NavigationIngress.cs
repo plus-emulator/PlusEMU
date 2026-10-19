@@ -28,6 +28,24 @@ public sealed partial class RoomNavigation
 
     internal void ItemStateChanged(uint itemId) => _executor?.Context.Approaches.CancelItem(itemId);
 
+    /// <summary>
+    /// Lets the announced step finish and ends the walk there, dropping any approach it was on. Run as the actor's owner.
+    /// Returns false when no step is pending.
+    /// </summary>
+    internal bool StopAfterStep(RoomUser actor)
+    {
+        var state = actor.Movement;
+
+        if (!actor.SetStep || state.PendingCount <= 0) {
+            return false;
+        }
+
+        _executor?.Context.Approaches.Cancel(actor);
+        state.Route.Count = Math.Min(state.Route.Count, state.Cursor + state.PendingCount);
+
+        return true;
+    }
+
     public void InteractionStep(RoomUser actor, int x, int y)
     {
         Move(actor, x, y, MoveOrigin.Interaction);

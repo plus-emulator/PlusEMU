@@ -48,7 +48,8 @@ public static class WiredSelectorModule
                 selected.FurniIds.UnionWith(world.Furni.Where(x => c.SelectedItems.Contains(x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_furni_signal":
-                selected.FurniIds.UnionWith(world.Furni.Where(x => (input.IncludeWired || !x.IsWired) && input.Signal.FurniIds.Contains(x.Id)).Select(x => x.Id));
+                // Observed on AIR WIN63-202610151745-318700621: a Wired box sent with a signal arrives in Furni From Signal.
+                selected.FurniIds.UnionWith(world.Furni.Where(x => input.Signal.FurniIds.Contains(x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_users_signal":
                 selected.UserIds.UnionWith(world.Users.Where(x => input.Signal.UserIds.Contains(x.Id)).Select(x => x.Id));

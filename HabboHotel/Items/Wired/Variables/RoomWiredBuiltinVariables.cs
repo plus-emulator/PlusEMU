@@ -385,7 +385,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             // No state text yet (a furni placed from the inventory) is state 0, as the client shows it.
             "@state" => int.TryParse(item.LegacyDataString, out var state) ? state : string.IsNullOrEmpty(item.LegacyDataString) ? 0 : null,
             "@position" => (item.GetX << 8) | item.GetY,
-            "@occupation" => (item.GetX << 16) | (item.GetY << 8) | item.Rotation,
+            "@occupation" => (item.GetX << 16) | (item.GetY << 8) | FurnitureDirections.RotationIndex(item.Definition, item.Rotation),
             "~teleport.target_id" when InteractionTypes.IsLinkedPair(item.Definition.InteractionType) => travelStore?.FindLinkedTeleporter(item.Id),
             "~background_color.hue" when IsToner(item) => room.TonerData.Hue,
             "~background_color.saturation" when IsToner(item) => room.TonerData.Saturation,

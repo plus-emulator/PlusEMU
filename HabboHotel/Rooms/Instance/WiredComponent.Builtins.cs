@@ -230,7 +230,7 @@ public partial class WiredComponent
             {
                 "@position" => movement.MoveFurniture(context, item, (value >> 8) & 255, value & 255, item.Rotation, null),
                 "@occupation" => movement.MoveFurniture(context, item, (value >> 16) & 255, (value >> 8) & 255,
-                    FurnitureDirections.Write(item.Definition, value & 255) ?? item.Rotation, null),
+                    FurnitureDirections.RotationAt(item.Definition, value & 255) ?? item.Rotation, null),
                 "@position.x" => movement.MoveFurniture(context, item, value, item.GetY, item.Rotation, null),
                 "@position.y" => movement.MoveFurniture(context, item, item.GetX, value, item.Rotation, null),
                 // The value is a position in the furni's list of directions; one past its end is never stored.

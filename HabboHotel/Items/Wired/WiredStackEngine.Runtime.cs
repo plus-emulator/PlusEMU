@@ -295,6 +295,12 @@ internal sealed partial class WiredStackEngine
             // Official delivery fires once per addressed antenna matching a receiving stack's picks.
             // Observed on AIR WIN63-202610151745-318700621: a straight chain of signals runs every stack, and each receiving stack in a
             // loop runs 100 times. A hop therefore keeps the sender's depth; the run cap (SignalRunCapReached) bounds a loop instead.
+            // Observed on AIR WIN63-202610151745-318700621: a loop that waits before it signals again keeps running past 100 runs, so a
+            // delayed Send Signal starts a new count.
+            if (_executingAction is { DelayMilliseconds: > 0 }) {
+                parent.SignalChainRuns = [];
+            }
+
             parent.SignalChainRuns ??= [];
             var child = parent.Fork(new(WiredEventKind.Signal)
             {

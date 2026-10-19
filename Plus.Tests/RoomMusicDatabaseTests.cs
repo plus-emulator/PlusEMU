@@ -114,11 +114,11 @@ namespace Plus.Tests
             Assert.True(new RoomItemPickupStore(fixture.Database).PickUp(new(30, 42, 8, 8, InteractionType.Jukebox, true)));
             var clear = new InventoryClearStore(fixture.Database, fixture.Definitions);
             await fixture.Connection.ExecuteAsync("CREATE TRIGGER fail_clear BEFORE DELETE ON items FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='forced clear failure'");
-            await Assert.ThrowsAsync<MySqlException>(() => Task.Run(() => clear.DeleteAll(8)));
+            await Assert.ThrowsAsync<MySqlException>(() => Task.Run(() => clear.DeleteAll(8, 0)));
             Assert.Equal(2, store.Load(30).Tracks.Length);
             Assert.Equal(1, await fixture.Connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM items WHERE id=30"));
             await fixture.Connection.ExecuteAsync("DROP TRIGGER fail_clear");
-            var returned = clear.DeleteAll(8);
+            var returned = clear.DeleteAll(8, 0).ReleasedDiscs;
             Assert.Equal(new uint[] { 31, 33 }, returned.OrderBy(item => item.Id).Select(item => item.Id));
             Assert.Equal(new uint[] { 7, 8 }, returned.OrderBy(item => item.Id).Select(item => item.OwnerId));
             Assert.Equal(0, await fixture.Connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM room_music_playlist"));
@@ -178,7 +178,7 @@ namespace Plus.Tests
 
                 try {
                     await connection.OpenAsync();
-                    await connection.ExecuteAsync("CREATE TABLE users(id INT PRIMARY KEY,username VARCHAR(25)); INSERT INTO users VALUES(7,'owner'),(8,'other'); CREATE TABLE items_groups(id INT UNSIGNED PRIMARY KEY,group_id INT)");
+                    await connection.ExecuteAsync("CREATE TABLE users(id INT PRIMARY KEY,username VARCHAR(25)); INSERT INTO users VALUES(7,'owner'),(8,'other'); CREATE TABLE items_groups(id INT UNSIGNED PRIMARY KEY,group_id INT); CREATE TABLE items_builders_club(item_id INT UNSIGNED PRIMARY KEY,user_id INT NOT NULL); CREATE TABLE wired_chests(item_id INT UNSIGNED PRIMARY KEY,coins INT UNSIGNED NOT NULL DEFAULT 0)");
                     var dump = File.ReadAllText(Path.Combine(Root(), "Resources", "SQLs", "Original Database.sql"));
                     var start = dump.IndexOf("CREATE TABLE `items`", StringComparison.Ordinal);
                     await connection.ExecuteAsync(dump[start..(dump.IndexOf(';', start) + 1)]);
@@ -212,7 +212,7 @@ namespace Plus.Tests
                     await _server.DisposeAsync();
                 }
             }
-            private static string Root()
+            internal static string Root()
             {
                 var directory = new DirectoryInfo(AppContext.BaseDirectory);
 

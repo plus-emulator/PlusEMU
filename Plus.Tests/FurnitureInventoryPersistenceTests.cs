@@ -56,6 +56,51 @@ public sealed class FurnitureInventoryPersistenceTests
     }
 
     [Fact]
+    public void ClearAddsRefundedChestCoinsToTheWalletAndExplainsWhy()
+    {
+        var context = Context();
+        context.Habbo.Credits = 100;
+        var store = new RecordingStore { Result = new([7], [], 600, 500, 2, 0) };
+
+        Assert.True(new InventoryClearService(store, context.Gate, TestGameClientManager.Empty).TryClear(context.Client, context.Room));
+
+        Assert.Equal(100, store.LiveCredits);
+        Assert.Equal(600, context.Habbo.Credits);
+        Assert.Null(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.GetItem(7));
+        Assert.Equal(new uint[] { ServerPacketHeader.FurniListUpdateComposer, ServerPacketHeader.CreditBalanceComposer,
+            ServerPacketHeader.BroadcastMessageAlertComposer, ServerPacketHeader.BroadcastMessageAlertComposer }, context.Sent.Select(packet => packet.Header));
+        Assert.Equal("600.0", new Plus.Communication.Flash.FlashIncomingPacket { Buffer = context.Sent[1].Payload }.ReadString());
+        Assert.Equal("Your inventory has been cleared!", Alert(context.Sent[2].Payload));
+        Assert.Equal("500 credits were added to your wallet.\n\nThey were the coins inside the 2 chests that were deleted from your inventory.",
+            Alert(context.Sent[3].Payload));
+    }
+
+    [Fact]
+    public void ClearKeepsChestsThatWouldOverflowTheWalletAndExplainsWhy()
+    {
+        var context = Context();
+        context.Habbo.Credits = int.MaxValue;
+        var chest = new InventoryItem { Id = 8, OwnerId = 1, Definition = new ItemDefinition { Id = 100, Type = ItemType.Floor } };
+        Assert.True(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.AddItem(chest));
+        var store = new RecordingStore { Result = new([7], [], int.MaxValue, 0, 0, 1) };
+
+        Assert.True(new InventoryClearService(store, context.Gate, TestGameClientManager.Empty).TryClear(context.Client, context.Room));
+
+        var furniture = Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture;
+        Assert.Null(furniture.GetItem(7));
+        Assert.Same(chest, furniture.GetItem(8));
+        Assert.Equal(int.MaxValue, context.Habbo.Credits);
+        Assert.Equal(new uint[] { ServerPacketHeader.FurniListUpdateComposer, ServerPacketHeader.BroadcastMessageAlertComposer,
+            ServerPacketHeader.BroadcastMessageAlertComposer }, context.Sent.Select(packet => packet.Header));
+        Assert.Equal("Your inventory has been cleared!", Alert(context.Sent[1].Payload));
+        Assert.Equal("1 chest was kept in your inventory.\n\nThe coins inside it would take your credits above the maximum of 2147483647, " +
+            "so they could not be added to your wallet. Spend some credits or take coins out of the chest, then type :emptyitems yes again.",
+            Alert(context.Sent[2].Payload));
+    }
+
+    private static string Alert(byte[] payload) => new Plus.Communication.Flash.FlashIncomingPacket { Buffer = payload }.ReadString();
+
+    [Fact]
     public void ActiveTradeIsRefusedWithoutPersistenceOrPublication()
     {
         var context = Context();
@@ -189,6 +234,7 @@ public sealed class FurnitureInventoryPersistenceTests
                     limited_stack INT UNSIGNED NOT NULL);
                 CREATE TABLE items_groups (id INT UNSIGNED PRIMARY KEY, group_id INT NOT NULL);
                 CREATE TABLE items_builders_club (item_id INT UNSIGNED PRIMARY KEY, user_id INT NOT NULL);
+                CREATE TABLE wired_chests (item_id INT UNSIGNED PRIMARY KEY, coins INT UNSIGNED NOT NULL DEFAULT 0);
                 INSERT INTO users VALUES (1),(2);
                 INSERT INTO items VALUES
                     (10,1,0,100,'legacy-a',4,40),(11,1,0,999,'unknown',5,50),(12,1,0,101,'legacy-b',6,60),
@@ -228,9 +274,9 @@ public sealed class FurnitureInventoryPersistenceTests
             Assert.Empty(failedClear.Sent);
             await connection.ExecuteAsync("DROP TRIGGER fail_inventory_clear");
 
-            store.DeleteAll(1);
+            store.DeleteAll(1, 0);
             Assert.Equal(new uint[] { 13, 14 }, await connection.QueryAsync<uint>("SELECT id FROM items ORDER BY id"));
-            store.DeleteAll(1);
+            store.DeleteAll(1, 0);
             Assert.Equal(new uint[] { 13, 14 }, await connection.QueryAsync<uint>("SELECT id FROM items ORDER BY id"));
 
             await connection.ExecuteAsync("DELETE FROM users WHERE id=2");
@@ -249,6 +295,77 @@ public sealed class FurnitureInventoryPersistenceTests
             // A floor pattern keeps its pattern too, or it can never be applied to a room.
             await connection.ExecuteAsync("INSERT INTO items VALUES (16,1,0,103,'104',0,0)");
             Assert.Equal("104", (await new FurnitureInventoryLoader(database, definitions).Load(1)).Single(item => item.Id == 16).ExtraData.Serialize());
+        }
+        finally {
+            await server.ExecuteAsync($"DROP DATABASE IF EXISTS `{schema}`");
+        }
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task ClearStoreRefundsChestCoinsAndKeepsChestsThatWouldOverflowTheWallet()
+    {
+        var root = Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!;
+        var schema = "task_refactor_tests_inventory_" + Guid.NewGuid().ToString("N");
+        var builder = new MySqlConnectionStringBuilder(root)
+        {
+            Database = "",
+            Pooling = false,
+            AllowZeroDateTime = true,
+            ConvertZeroDateTime = true,
+            AllowUserVariables = true
+        };
+        await using var server = new MySqlConnection(builder.ConnectionString);
+        await server.OpenAsync();
+        await server.ExecuteAsync($"CREATE DATABASE `{schema}` CHARACTER SET utf8mb4");
+
+        try {
+            builder.Database = schema;
+            await using var connection = new MySqlConnection(builder.ConnectionString);
+            await connection.OpenAsync();
+            await connection.ExecuteAsync("""
+                CREATE TABLE users (id INT PRIMARY KEY, credits INT NOT NULL);
+                CREATE TABLE items (id INT UNSIGNED PRIMARY KEY, user_id INT NOT NULL, room_id INT UNSIGNED NOT NULL,
+                    base_item INT UNSIGNED NOT NULL, extra_data TEXT NOT NULL, limited_number INT UNSIGNED NOT NULL,
+                    limited_stack INT UNSIGNED NOT NULL);
+                CREATE TABLE furniture (item_name VARCHAR(70) NOT NULL, interaction_type VARCHAR(64) NOT NULL);
+                CREATE TABLE items_groups (id INT UNSIGNED PRIMARY KEY, group_id INT NOT NULL);
+                CREATE TABLE items_builders_club (item_id INT UNSIGNED PRIMARY KEY, user_id INT NOT NULL);
+                """);
+            await connection.ExecuteAsync(RoomMusicDatabaseTests.Fixture.SchemaSql);
+            await connection.ExecuteAsync(File.ReadAllText(Path.Combine(RoomMusicDatabaseTests.Fixture.Root(), "Database", "Migrations", "65_WiredChests.sql")));
+            await connection.ExecuteAsync("""
+                INSERT INTO users VALUES (1,100),(2,0),(3,2147483547);
+                INSERT INTO items (id,user_id,room_id,base_item,extra_data,limited_number,limited_stack) VALUES
+                    (10,1,0,100,'',0,0),(20,1,0,100,'',0,0),(21,1,0,100,'',0,0),(22,1,0,100,'',0,0),
+                    (40,2,0,100,'',0,0),(50,3,0,100,'',0,0),(51,3,0,100,'',0,0),(52,3,0,100,'',0,0);
+                INSERT INTO wired_chests (item_id,kind,coins,capacity_level,settings) VALUES
+                    (20,1,0,0,'{}'),(21,1,250,0,'{}'),(22,0,0,0,'{}'),(40,1,5,0,'{}'),(50,1,100,0,'{}'),(51,1,101,0,'{}');
+                INSERT INTO items (id,user_id,room_id,base_item,extra_data,limited_number,limited_stack,chest_item_id) VALUES
+                    (30,0,0,100,'',0,0,22),(31,0,0,100,'',0,0,22),(41,0,0,100,'',0,0,40);
+                """);
+            var store = new InventoryClearStore(new TestDatabase(builder.ConnectionString), new Definitions(new ItemDefinition { Id = 100, Type = ItemType.Floor }));
+
+            // The live wallet is authoritative, as for a chest withdrawal: 120 live plus 250 refunded.
+            var cleared = store.DeleteAll(1, 120);
+
+            Assert.Equal(new uint[] { 10, 20, 21, 22 }, cleared.Deleted.Order());
+            Assert.Equal((370, 250L, 3, 0), (cleared.Credits, cleared.RefundedCredits, cleared.RefundedChests, cleared.KeptChests));
+            Assert.Equal(370, await connection.ExecuteScalarAsync<int>("SELECT credits FROM users WHERE id=1"));
+            Assert.Equal(new uint[] { 40, 41, 50, 51, 52 }, await connection.QueryAsync<uint>("SELECT id FROM items ORDER BY id"));
+            Assert.Equal(new uint[] { 40, 50, 51 }, await connection.QueryAsync<uint>("SELECT item_id FROM wired_chests ORDER BY item_id"));
+            Assert.Equal(1, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM wired_chest_transactions WHERE user_id=1"));
+            var entry = Assert.Single(await connection.QueryAsync<(uint Chest, uint? Item, bool Deposit, long Coins)>(
+                "SELECT chest_id,item_id,is_deposit,coins FROM wired_chest_transaction_entries"));
+            Assert.Equal((21u, (uint?)null, false, 250L), entry);
+
+            var overflow = store.DeleteAll(3, int.MaxValue - 100);
+
+            Assert.Equal(new uint[] { 50, 52 }, overflow.Deleted.Order());
+            Assert.Equal((int.MaxValue, 100L, 1, 1), (overflow.Credits, overflow.RefundedCredits, overflow.RefundedChests, overflow.KeptChests));
+            Assert.Equal(int.MaxValue, await connection.ExecuteScalarAsync<int>("SELECT credits FROM users WHERE id=3"));
+            Assert.Equal(new uint[] { 51 }, await connection.QueryAsync<uint>("SELECT id FROM items WHERE user_id=3"));
+            Assert.Equal(101, await connection.ExecuteScalarAsync<int>("SELECT coins FROM wired_chests WHERE item_id=51"));
+            Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT credits FROM users WHERE id=2"));
         }
         finally {
             await server.ExecuteAsync($"DROP DATABASE IF EXISTS `{schema}`");
@@ -291,19 +408,23 @@ public sealed class FurnitureInventoryPersistenceTests
     {
         public int Calls { get; private set; }
         public Exception? Failure { get; init; }
+        public InventoryClearResult? Result { get; init; }
+        public int LiveCredits { get; private set; }
 
         public InventoryItem? AvailableDisc(uint discId, uint ownerId) => null;
 
-        public IReadOnlyList<InventoryItem> DeleteAll(int userId)
+        public InventoryClearResult DeleteAll(int userId, int liveCredits)
         {
             Calls++;
+            LiveCredits = liveCredits;
             before?.Invoke();
 
             if (Failure != null) {
                 throw Failure;
             }
 
-            return [];
+            // The fixture inventory holds item 7 only.
+            return Result ?? new([7], [], liveCredits, 0, 0, 0);
         }
     }
 

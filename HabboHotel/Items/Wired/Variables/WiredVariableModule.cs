@@ -351,7 +351,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return null;
             }
 
-            var next = definition.HasValue ? transform(current?.Value ?? 0) : 1;
+            // Observed on AIR WIN63-202610151745-318700621: a variable without a value is held as -1 (it reads -1, and after the box is
+            // switched to having a value, +1 gives 0).
+            var next = definition.HasValue ? transform(current?.Value ?? 0) : -1;
 
             if (mutation == WiredVariableMutation.Set && !notifyUnchanged && previous is not null && previous.Value == next) {
                 return previous;

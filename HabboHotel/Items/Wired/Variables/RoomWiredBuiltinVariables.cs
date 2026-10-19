@@ -520,7 +520,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
     private static bool Matches(RoomUser avatar, WiredVariableHolder holder) => avatar.IsBot
         ? !holder.CanPersist && holder.StableId == -(long)avatar.VirtualId - 1
         : holder.CanPersist && holder.StableId == avatar.HabboId;
-    private static int? Flag(bool flag) => flag ? 1 : null;
+    // Observed on AIR WIN63-202610151745-318700621: a builtin flag that is set reads -1 (@is_owner, @has_rights, @is_stackable).
+    private static int? Flag(bool flag) => flag ? -1 : null;
     private static int Hundredths(double value) => (int)Math.Clamp(Math.Round(value * 100), int.MinValue, int.MaxValue);
     private static int AreaHideIndex(string key) => key switch
     {

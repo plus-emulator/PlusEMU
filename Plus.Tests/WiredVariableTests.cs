@@ -260,7 +260,8 @@ public sealed class WiredVariableTests
         var frame = Frame(holder);
         var module = new WiredVariableModule(1, directory, new MemoryWiredVariableStore(), new FixedTimeProvider(DateTimeOffset.FromUnixTimeMilliseconds(1)));
         Assert.True(module.Mutate(UserRef, holder, WiredVariableMutation.Give, 444, frame));
-        Assert.Equal(1, module.Read(UserRef, holder, frame)!.Value);
+        // Observed on AIR WIN63-202610151745-318700621: a variable without a value is held as -1.
+        Assert.Equal(-1, module.Read(UserRef, holder, frame)!.Value);
         Assert.False(module.Mutate(UserRef, holder, WiredVariableMutation.Set, 6, frame));
         Assert.Null(module.Read(new(WiredVariableTarget.User, "custom:11"), holder, frame));
     }

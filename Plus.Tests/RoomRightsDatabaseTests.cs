@@ -24,7 +24,8 @@ public sealed class RoomRightsDatabaseTests
                 INSERT INTO room_rights VALUES (42, 8), (42, 9), (43, 10);
                 """);
             var database = new ProbeDatabase(new MySqlConnectionStringBuilder(
-                Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!) { Database = schema }.ConnectionString);
+                Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!)
+            { Database = schema }.ConnectionString);
             var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
             room.Id = 42;
             room.Group = new(20, "group", "", "", 42, 7, null, 0, 1, 1, 0, false, GroupMembershipSnapshot.ForOwner(7));

@@ -178,7 +178,7 @@ namespace Plus.Tests
 
                 try {
                     await connection.OpenAsync();
-                    await connection.ExecuteAsync("CREATE TABLE users(id INT PRIMARY KEY,username VARCHAR(25)); INSERT INTO users VALUES(7,'owner'),(8,'other'); CREATE TABLE items_groups(id INT UNSIGNED PRIMARY KEY,group_id INT); CREATE TABLE items_builders_club(item_id INT UNSIGNED PRIMARY KEY,user_id INT NOT NULL)");
+                    await connection.ExecuteAsync("CREATE TABLE users(id INT PRIMARY KEY,username VARCHAR(25)); INSERT INTO users VALUES(7,'owner'),(8,'other'); CREATE TABLE items_groups(id INT UNSIGNED PRIMARY KEY,group_id INT); CREATE TABLE items_builders_club(item_id INT UNSIGNED PRIMARY KEY,user_id INT NOT NULL); CREATE TABLE wired_chests(item_id INT UNSIGNED PRIMARY KEY,coins INT UNSIGNED NOT NULL DEFAULT 0)");
                     var dump = File.ReadAllText(Path.Combine(Root(), "Resources", "SQLs", "Original Database.sql"));
                     var start = dump.IndexOf("CREATE TABLE `items`", StringComparison.Ordinal);
                     await connection.ExecuteAsync(dump[start..(dump.IndexOf(';', start) + 1)]);
@@ -212,7 +212,7 @@ namespace Plus.Tests
                     await _server.DisposeAsync();
                 }
             }
-            private static string Root()
+            internal static string Root()
             {
                 var directory = new DirectoryInfo(AppContext.BaseDirectory);
 

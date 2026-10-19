@@ -98,7 +98,8 @@ public partial class WiredComponent
             return key switch
             {
                 "@room_entry.method" => (int)user.WiredRoomEntry.Method,
-                "@room_entry.teleport_id" => unchecked((int)user.WiredRoomEntry.TeleporterId),
+                // Observed on AIR WIN63-202610151745-318700621: a user who did not come in by teleport has no @room_entry.teleport_id.
+                "@room_entry.teleport_id" => user.WiredRoomEntry.TeleporterId == 0 ? null : unchecked((int)user.WiredRoomEntry.TeleporterId),
                 _ => null
             };
         }

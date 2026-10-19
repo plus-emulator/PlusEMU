@@ -102,6 +102,21 @@ public static class WiredRoomOperations
     /// </summary>
     public static Point StandingTile(RoomUser user) => user.SetStep ? new(user.SetX, user.SetY) : user.Coordinate;
 
+    /// <summary>
+    /// The users a Wired furni move onto the tile meets. Observed on AIR WIN63-202610151745-318700621: a Move/Rotate into a tile is
+    /// blocked by a user whose step onto it was announced, and not by one whose step off it was.
+    /// </summary>
+    public static List<RoomUser> UsersStandingOn(Room room, Point point)
+    {
+        var standing = room.GetGameMap().GetRoomUsers(point).Where(user => user != null && !(user.SetStep && StandingTile(user) != point)).ToList();
+        var arriving = room.GetRoomUserManager()?.GetUserList().Where(user => user is { SetStep: true } && StandingTile(user) == point
+            && !standing.Contains(user)) ?? [];
+
+        standing.AddRange(arriving);
+
+        return standing;
+    }
+
     public static bool HasStackedItem(Room room, Item item, IReadOnlySet<uint>? ignored = null) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation)
             .SelectMany(point => room.GetGameMap().GetCoordinatedItems(point))
@@ -140,7 +155,8 @@ public static class WiredRoomOperations
                 return false;
             }
 
-            if (!magic && !placement.HasHelper && !throughUsers && !item.Definition.IsSeat && (collision?.BlocksUsers(map.GetRoomUsers(point)) ?? map.GetRoomUsers(point).Count != 0)) {
+            if (!magic && !placement.HasHelper && !throughUsers && !item.Definition.IsSeat && UsersStandingOn(room, point) is var standing
+                && (collision?.BlocksUsers(standing) ?? standing.Count != 0)) {
                 return false;
             }
 

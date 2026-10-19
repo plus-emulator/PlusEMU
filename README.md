@@ -21,7 +21,7 @@ PlusEMU is a Habbo Hotel server emulator written in C# (.NET 10). It is a commun
 
 ### Option 1: download a release
 
-Every push to `master` publishes self-contained builds on [GitHub Releases](https://github.com/plus-emulator/PlusEMU/releases), so no .NET install is needed:
+Download self-contained builds from [GitHub Releases](https://github.com/plus-emulator/PlusEMU/releases). No .NET install is needed:
 
 | Asset | Platform |
 |-------|----------|
@@ -197,9 +197,17 @@ Launcher tokens live in `user_launcher_tokens` (migration 88) as SHA-256 digests
 ## Branches and releases
 
 - `dev` is the integration branch; open pull requests against `dev`.
-- `dev` is merged into `master` for a release. Each push to `master` builds, tests and publishes a release tagged `v<yyyy.mm.dd>-<short sha>`. The date comes from the commit timestamp in UTC, so retries keep the same tag.
+- Merge `dev` into `master` when a batch of changes is ready. Publishing is manual through **Actions > Release > Run workflow** on `master`.
 
-Release runs queue instead of replacing pending merges (up to GitHub's 100-run queue limit). Assets upload to a draft before publication; rerunning a failed workflow resumes the draft, and an already published tag is left unchanged. To retry manually, run **Release** on `master`, or rerun the original failed workflow for an older commit.
+Choose the version change when you run the workflow. The first semantic release is `v1.0.0`, and later releases increase the highest stable version:
+
+- `patch` for fixes, such as `v1.2.3` to `v1.2.4`. This is the default.
+- `minor` for compatible features, such as `v1.2.3` to `v1.3.0`.
+- `major` for breaking changes, such as `v1.2.3` to `v2.0.0`.
+
+Existing date-based tags stay available and do not affect the next version. Prereleases do not affect it either. The workflow builds and tests before publishing.
+
+Release runs queue instead of replacing pending requests. Assets upload to a draft before publication. A retry for the same commit reuses its version and resumes its draft, or leaves an already published release unchanged. If an unfinished draft belongs to another commit, rerun that draft's original workflow before releasing newer changes. A new release must descend from the highest stable release.
 
 ## Contributing
 

@@ -213,6 +213,23 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((0, 0), (bot.X, bot.Y));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a Move/Rotate into a tile is blocked by a user whose step onto it was announced, and
+    // not by one whose step off it was.
+    [Fact]
+    public void WiredFurniMovesMeetUsersOnTheTileTheirStepGoesTo()
+    {
+        var block = ExecutorFloor(60, 3, 3, 0, 1);
+        var actor = WalkActor(WalkActorKind.Habbo, 0, 1, v2: true);
+
+        actor.MoveTo(1, 1);
+        ExecutorTick();
+
+        Assert.True(actor.SetStep);
+        Assert.Equal((0, 1), (actor.X, actor.Y));
+        Assert.False(WiredRoomOperations.CanMoveItem(_room, block, 1, 1, 0));
+        Assert.True(WiredRoomOperations.CanMoveItem(_room, block, 0, 1, 0));
+    }
+
     private (int X, int Y) SelectorTile(RoomUser actor)
     {
         var context = new WiredRuntimeContext(_room, new(WiredEventKind.ClickFurni), new(() => [], () => [actor]), new NoOperations());

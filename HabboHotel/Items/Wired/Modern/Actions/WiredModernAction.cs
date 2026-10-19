@@ -745,8 +745,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             case "wf_act_neg_send_signal":
                 var forwarded = Furni(context, config, "forwarded", true).Select(item => item.Id).ToArray();
                 var users = Users(context, config, "users").Select(user => user.VirtualId).ToArray();
-                var furniBatches = Param(config, 3) == 1 && forwarded.Length != 0 ? forwarded.Select(id => new[] { id }).ToArray() : [forwarded];
-                var userBatches = Param(config, 4) == 1 && users.Length != 0 ? users.Select(id => new[] { id }).ToArray() : [users];
+                var furniBatches = Param(config, 3) == 1 ? forwarded.Select(id => new[] { id }).ToArray() : [forwarded];
+                var userBatches = Param(config, 4) == 1 ? users.Select(id => new[] { id }).ToArray() : [users];
 
                 foreach (var furni in furniBatches) {
                     foreach (var avatars in userBatches) {

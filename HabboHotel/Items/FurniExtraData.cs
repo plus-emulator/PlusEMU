@@ -19,6 +19,32 @@ internal static class FurniExtraData
         "\"(?:w|url|id|imageUrl|href|src|clickUrl)\"\\s*:",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    private static readonly HashSet<string> BackgroundAddressKeys = new(StringComparer.Ordinal) { "imageUrl", "clickUrl" };
+
+    // A room background shows the image a branding staff member typed and opens its click address (AIR RoomBrandingLogic).
+    // Only plain http(s) addresses pass; every other key keeps the client image rules.
+    public static bool RejectsBackground(IReadOnlyList<string> values)
+    {
+        var rest = new List<string>();
+
+        for (var index = 0; index + 1 < values.Count; index += 2) {
+            if (!BackgroundAddressKeys.Contains(values[index])) {
+                rest.Add(values[index]);
+                rest.Add(values[index + 1]);
+            }
+            else if (!IsWebAddress(values[index + 1] ?? "")) {
+                return true;
+            }
+        }
+
+        return values.Count % 2 != 0 || RejectsClientImage(rest);
+    }
+
+    private static bool IsWebAddress(string value) => value.Length == 0
+        || (!value.Any(character => char.IsWhiteSpace(character) || char.IsControl(character) || character == '\\')
+            && Uri.TryCreate(value, UriKind.Absolute, out var address)
+            && (address.Scheme == Uri.UriSchemeHttp || address.Scheme == Uri.UriSchemeHttps));
+
     public static bool RejectsClientImage(IReadOnlyList<string> values)
     {
         for (var index = 0; index < values.Count; index++) {

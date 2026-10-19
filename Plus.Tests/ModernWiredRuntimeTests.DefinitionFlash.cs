@@ -46,6 +46,22 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(("0", 5L), stack.Run("wf_act_change_var_val", [1, 0, 0, 0, 5, -10, 0]));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: give 5 shows 6, subtract 1 shows 4, subtract 1 again 5, add 1 shows 2, add 1
+    // again 3, subtract 1 shows 4.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ADefinitionShowsTheDecreaseStateWhenAStacksChangeLowersTheValue(bool ordered)
+    {
+        using var stack = new DefinitionFlashStack(ordered);
+        Assert.Equal(("6", 5L), stack.Run("wf_act_give_var", [1, 0, 5, 1, 0, -10, 0]));
+        Assert.Equal(("4", 4L), stack.Run("wf_act_change_var_val", [1, 2, 0, 0, 1, -10, 0]));
+        Assert.Equal(("5", 3L), stack.Run("wf_act_change_var_val", [1, 2, 0, 0, 1, -10, 0]));
+        Assert.Equal(("2", 4L), stack.Run("wf_act_change_var_val", [1, 1, 0, 0, 1, -10, 0]));
+        Assert.Equal(("3", 5L), stack.Run("wf_act_change_var_val", [1, 1, 0, 0, 1, -10, 0]));
+        Assert.Equal(("4", 4L), stack.Run("wf_act_change_var_val", [1, 2, 0, 0, 1, -10, 0]));
+    }
+
     private sealed class DefinitionFlashCatalog : IWiredVariableDirectory
     {
         public uint? GetRoomOwner(uint roomId) => 5;

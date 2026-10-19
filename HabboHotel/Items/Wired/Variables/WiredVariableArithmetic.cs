@@ -20,9 +20,12 @@ public static class WiredVariableArithmetic
             1 => unchecked(current + operand),
             2 => unchecked(current - operand),
             3 => unchecked(current * operand),
-            4 => operand == 0 ? current : current == long.MinValue && operand == -1 ? long.MinValue : current / operand,
+            // Observed on AIR WIN63-202610151745-318700621: a division by 0 saturates by the sign of the value (7/0 reads back 2147483647,
+            // -7/0 -2147483648, 0/0 0) and a modulo by 0 gives 0.
+            4 => operand == 0 ? current switch { > 0 => long.MaxValue, < 0 => long.MinValue, _ => 0 }
+                : current == long.MinValue && operand == -1 ? long.MinValue : current / operand,
             5 => Power(current, operand),
-            6 => operand == 0 ? current : current == long.MinValue && operand == -1 ? 0 : current % operand,
+            6 => operand == 0 || current == long.MinValue && operand == -1 ? 0 : current % operand,
             // Observed r92g r92g-minmax (AIR WIN63-202610131318-860371703, value 5): "set minimum" 40 is a floor (8 -> 8, 3 -> 5),
             // "set maximum" 41 a cap (8 -> 5, 3 -> 3).
             40 => Math.Max(current, operand),
@@ -68,14 +71,8 @@ public static class WiredVariableArithmetic
             return 0;
         }
 
-        if (operand < long.MaxValue) {
-            return random.NextInt64(operand + 1);
-        }
-
-        Span<byte> bytes = stackalloc byte[sizeof(long)];
-        random.NextBytes(bytes);
-
-        return BitConverter.ToInt64(bytes) & long.MaxValue;
+        // Observed on AIR WIN63-202610151745-318700621: the bound is exclusive (bound 1 always gives 0, bound 5 gives 0 to 4).
+        return random.NextInt64(operand);
     }
     private static int Scan(int operation, long current, long operand)
     {

@@ -21,7 +21,7 @@ public static class WiredTriggerPredicates
         return Param(config, 0) switch
         {
             2 => text.Length != 0,
-            1 => keyword.Length != 0 && string.Equals(text, keyword, StringComparison.OrdinalIgnoreCase),
+            1 => keyword.Length != 0 && string.Equals(message, keyword, StringComparison.OrdinalIgnoreCase),
             _ => keyword.Length != 0 && text.Contains(keyword, StringComparison.OrdinalIgnoreCase)
         };
     }

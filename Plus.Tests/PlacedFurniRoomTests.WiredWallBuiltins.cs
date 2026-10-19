@@ -298,7 +298,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(302, module.Read(WallBuiltinReference("@id"), holder, frame)!.Value);
         Assert.Equal(10, module.Read(WallBuiltinReference("@class_id"), holder, frame)!.Value);
         Assert.Equal(0, module.Read(WallBuiltinReference("@rotation"), holder, frame)!.Value);
-        Assert.True(WallBuiltinWrite(module, floor, frame, "@rotation", 2));
+        Assert.True(WallBuiltinWrite(module, floor, frame, "@rotation", 1));
         Assert.Equal(2, floor.Rotation);
         Assert.Single(module.DrainChanges());
     }

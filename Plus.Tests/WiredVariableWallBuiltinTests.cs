@@ -108,7 +108,8 @@ public sealed class WiredVariableWallBuiltinTests
         Assert.Equal(2, builtins.Read(Reference("@position.x"), holder, frame)!.Value);
         Assert.Equal(3, builtins.Read(Reference("@position.y"), holder, frame)!.Value);
         Assert.Equal(450, builtins.Read(Reference("@altitude"), holder, frame)!.Value);
-        Assert.Equal(2, builtins.Read(Reference("@rotation"), holder, frame)!.Value);
+        // @rotation reads the position in the furni's directions (0, 2, 4, 6 here): facing 2 reads 1.
+        Assert.Equal(1, builtins.Read(Reference("@rotation"), holder, frame)!.Value);
     }
 
     private static WiredVariableReference Reference(string key) => new(WiredVariableTarget.Furni, "internal:" + key);

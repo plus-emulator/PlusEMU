@@ -33,8 +33,10 @@ public sealed record WiredEditorSnapshot(
             throw new InvalidDataException("The saved settings have no supported native editor projection.");
         }
 
-        // Pickers need the catalog hash; a failed capture sends the zero request hint, never a successful empty catalog.
-        int? hash = WiredNativeEditorProjection.Metadata(box.Descriptor.CanonicalName).VariableDefaults.Length == 0 ? null
+        // Pickers need the catalog hash; a failed capture sends the zero request hint, never a successful empty catalog. A reference picks
+        // from the shared list only and gets no hash (observed on AIR WIN63-202610151745-318700621; ReferenceVariable.as:76-90).
+        int? hash = WiredNativeEditorProjection.Metadata(box.Descriptor.CanonicalName).VariableDefaults.Length == 0
+            || box.Descriptor.CanonicalName == "wf_var_reference" ? null
             : box.Instance.GetWired().Variables.TryCaptureNativeCatalog(out var catalog) && catalog is not null ? catalog.Hash : 0;
 
         return new(box.Item.Id, box.Item.Definition.SpriteId, box.Descriptor, configuration,

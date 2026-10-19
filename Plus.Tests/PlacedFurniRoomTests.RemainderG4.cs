@@ -8,6 +8,24 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
+    // Observed on AIR WIN63-202610151745-318700621: the reference editor context holds only the shared variables, with no variable
+    // catalog hash; the editor picks from that list (ReferenceVariable.as:76-90).
+    [Fact]
+    public void AReferenceEditorCarriesTheSharedListButNoVariableCatalogHash()
+    {
+        var item = Furni(601, InteractionType.WiredVariable, WiredBoxType.None);
+        item.RoomId = RoomId;
+        item.Definition.InteractionName = "wf_var_reference";
+        item.Definition.ItemName = "wf_var_reference";
+        _room.GetRoomItemHandler().LoadFurniture([item]);
+        Assert.True(_room.GetWired().TryGet(item.Id, out var loaded));
+
+        var snapshot = WiredEditorSnapshot.Capture(Assert.IsAssignableFrom<IWiredConfiguredItem>(loaded));
+
+        Assert.Null(snapshot.CatalogHash);
+        Assert.NotNull(snapshot.SharedVariables);
+    }
+
     // wf_var_reference reads and writes variables of the owner's other rooms, so only the room's owner may save one.
     // WiredVariableReference.ApplyWiredUpdateAsync refuses everyone else; a perfectly valid frame from a rights holder changes nothing.
     [Fact]

@@ -183,6 +183,36 @@ public partial class PlacedFurniRoomTests
         Assert.False(targets.HasTargets);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: with the user boxed in by furni the bot takes the item but cannot walk it over, and
+    // when the user then leaves it keeps holding it.
+    [Fact]
+    public void GiveHandItemBotKeepsTheItemWhenItCannotReachTheUser()
+    {
+        foreach (var (id, x, y) in new (uint, int, int)[] { (50, 2, 2), (51, 2, 3), (52, 3, 2) }) {
+            var block = Furni(id, InteractionType.None, WiredBoxType.None);
+            block.Definition.Walkable = false;
+            block.Definition.Height = 1;
+            block.Definition.Width = block.Definition.Length = 1;
+            Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, block, x, y, 0, true, false, false));
+        }
+
+        var user = Viewer(3, 3);
+        var bot = WalkActor(WalkActorKind.Bot, 0, 0, v2: true);
+        var targets = WiredBotTargets.For(_room);
+
+        targets.Give(_room, bot, user, 2, 0);
+        targets.Forget(user);
+
+        for (var tick = 0; tick < 8; tick++) {
+            ExecutorTick();
+            targets.Poll(_room, (tick + 1) * 500);
+        }
+
+        Assert.Equal(2, bot.CarryItemId);
+        Assert.Equal(0, user.CarryItemId);
+        Assert.Equal((0, 0), (bot.X, bot.Y));
+    }
+
     private (int X, int Y) SelectorTile(RoomUser actor)
     {
         var context = new WiredRuntimeContext(_room, new(WiredEventKind.ClickFurni), new(() => [], () => [actor]), new NoOperations());

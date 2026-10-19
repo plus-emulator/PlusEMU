@@ -37,12 +37,10 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("2,1,0.0", first.Statusses["mv"]);
         Assert.Equal("2,2,0.0", second.Statusses["mv"]);
     }
-
     [Fact]
     public void ExecutorHeadOnCorridorWaitsReplansAndStopsWithoutOverlapping()
     {
-        Set("_gamemap", new Gamemap(_room, new RoomModel("corridor", 0, 0, 0, 0,
-            "xxxx\r0000\rxxxx\rxxxx", 0, 0, false), TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance));
+        Set("_gamemap", new Gamemap(_room, new RoomModel("corridor", 0, 0, 0, 0, "xxxx\r0000\rxxxx\rxxxx", 0, 0, false), TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance));
         _room.GetGameMap().GenerateMaps();
         var first = ExecutorActor(0, 1);
         var second = AcceptanceBot(3, 1, 2);
@@ -61,10 +59,8 @@ public partial class PlacedFurniRoomTests
         Assert.False(first.HasStatus("mv"));
         Assert.False(second.HasStatus("mv"));
         ExecutorTick();
-        Assert.Equal(RouteState.Suspect, first.Movement.Fallback.State);
-        Assert.Equal(RouteState.Suspect, second.Movement.Fallback.State);
-        Assert.Equal(0, first.Movement.BlockReplans);
-        Assert.Equal(0, second.Movement.BlockReplans);
+        Assert.False(first.Movement.HasIntent);
+        Assert.False(second.Movement.HasIntent);
 
         for (var tick = 0; tick < 12; tick++) {
             ExecutorTick();
@@ -76,13 +72,11 @@ public partial class PlacedFurniRoomTests
         Assert.False(first.HasStatus("mv"));
         Assert.False(second.HasStatus("mv"));
     }
-
     [Fact]
     public void ExecutorSaturatedSearchBudgetKeepsHighIdAheadOfNewLowIdRequests()
     {
         var first = ExecutorConfiguredActor(new()
         {
-            Engine = PathfindingEngine.V2,
             MaxExpansionsPerRoomTick = 1
         });
         var second = AcceptanceBot(0, 2, 2);
@@ -107,13 +101,11 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((1, 3), (high.X, high.Y));
     }
-
     [Fact]
     public void ExecutorDeferredReplacementRemovesTheCommittedMvWhileItsSearchWaits()
     {
         var first = ExecutorConfiguredActor(new()
         {
-            Engine = PathfindingEngine.V2,
             MaxExpansionsPerRoomTick = 1
         });
         var second = AcceptanceBot(0, 2, 2);
@@ -131,7 +123,6 @@ public partial class PlacedFurniRoomTests
         Assert.False(first.HasStatus("mv"));
         Assert.DoesNotContain("/mv ", ExecutorUpdate(first).Status);
     }
-
     [Fact]
     public void ExecutorPendingAdmissionActorInTheRosterIsSkippedUntilAdmissionDrains()
     {
@@ -158,7 +149,6 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((1, 2), (pending.X, pending.Y));
     }
-
     [Theory]
     [InlineData(InteractionType.Banzaigateblue)]
     [InlineData(InteractionType.Banzaitele)]
@@ -185,15 +175,12 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("3,1,0.0", actor.Statusses["mv"]);
         ExecutorTick();
         Assert.Equal((3, 1, 0d), (actor.X, actor.Y, actor.Z));
-        Assert.Equal(new[] { (Plus.HabboHotel.Items.Wired.WiredBoxType.TriggerWalkOffFurni, source.Id),
-            (Plus.HabboHotel.Items.Wired.WiredBoxType.TriggerWalkOnFurni, target.Id) },
-            events.Select(e => (e.Kind, e.Item)).ToArray());
+        Assert.Equal(new[] { (Plus.HabboHotel.Items.Wired.WiredBoxType.TriggerWalkOffFurni, source.Id), (Plus.HabboHotel.Items.Wired.WiredBoxType.TriggerWalkOnFurni, target.Id) }, events.Select(e => (e.Kind, e.Item)).ToArray());
         Assert.Equal(Team.None, actor.Team);
         Assert.Equal(0, skipped.InteractingUser);
         Assert.Equal("0", skipped.LegacyDataString);
         Assert.False(actor.HasStatus("mv"));
     }
-
     [Fact]
     public void ExecutorFullBanzaiTeamClosesTheGateAndDepartureReopensIt()
     {
@@ -222,7 +209,6 @@ public partial class PlacedFurniRoomTests
         Assert.False((navigation.Grid.Flags[5] & NavFlags.FloorLocked) != 0);
         Assert.Equal("1,1,0.0", actor.Statusses["mv"]);
     }
-
     [Fact]
     public void ExecutorFreezeGameManagerLocksAndUnlocksRegisteredTeamGates()
     {
@@ -245,7 +231,6 @@ public partial class PlacedFurniRoomTests
         Assert.False((navigation.Grid.Flags[5] & NavFlags.FloorLocked) != 0);
         Assert.Equal("1,1,0.0", actor.Statusses["mv"]);
     }
-
     [Fact]
     public void ExecutorRollerClaimBlocksStressIgnoreUsersUntilTheNextTick()
     {

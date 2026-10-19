@@ -948,9 +948,8 @@ public partial class ModernWiredRuntimeTests
         for (var direction = 0; direction < 8; direction++) {
             var offset = WiredRoomOperations.Offset(direction);
             var user = new RoomUser(direction + 1, f.Room.Id, direction + 20, f.Room, null, TestChatEmotions.Unused, TestRewardProgress.Unused);
-            user.SetPos(1 + offset.X, 1 + offset.Y, 0);
-            RoomUsers(f.Room)[user.VirtualId] = user;
-            f.Map.AddUserToMap(user, user.Coordinate);
+            user.InitializePosition(1 + offset.X, 1 + offset.Y, 0);
+            Admit(f.Room, user);
             users.Add(user);
         }
 
@@ -2279,7 +2278,8 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void BotArrivalUsesActualRoomIdentityAndOnlyFiresOnce()
     {
-        var (room, _, items) = World();
+        var (room, _, items) = World(heightmap: "0000\r0000\r0000\r0000");
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var bot = Bot(room, 7);
         var target = MakeItem(1, "test");
         items[1] = target;
@@ -2455,8 +2455,7 @@ public partial class ModernWiredRuntimeTests
             X = x,
             Y = y
         };
-        RoomUsers(f.Room)[virtualId] = bot;
-        f.Room.GetGameMap().AddUserToMap(bot, new(x, y));
+        Admit(f.Room, bot);
 
         return bot;
     }
@@ -2615,6 +2614,7 @@ public partial class ModernWiredRuntimeTests
     public void TeleportThawsOnlyAFreezeThatEndsOnTeleport(bool cancelOnTeleport)
     {
         using var f = new TeleportFixture();
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
         Assert.True(WiredAvatarState.For(f.Room).FreezeUser(f.User, 0, cancelOnTeleport));
         Assert.True(f.User.Frozen);
         f.Fire();
@@ -2645,7 +2645,6 @@ public partial class ModernWiredRuntimeTests
         f.SelectPlayers();
         f.Use(0, 200);
         f.UseExecutor();
-        Assert.True(f.Room.UsesV2Movement);
         Assert.False(WiredRoomOperations.RelocateAvatar(f.Room, f.User, 1, 1, false));
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         Assert.Equal(new Point(1, 1), resident.Coordinate);
@@ -2722,7 +2721,7 @@ public partial class ModernWiredRuntimeTests
         f.UseExecutor();
         var replies = Capture(f.Habbo.Client);
         Assert.False(RoomOwnerScope.IsOwner(f.Room));
-        f.Fire();
+        f.Fire(owned: false);
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         Assert.Null(f.User.LastItem);
         Assert.Empty(MovementEndpoints(replies));
@@ -2741,7 +2740,7 @@ public partial class ModernWiredRuntimeTests
         using var f = new TeleportFixture();
         f.UseExecutor();
         var replies = Capture(f.Habbo.Client);
-        f.Fire();
+        f.Fire(owned: false);
         f.Room.GetGameMap().Model.SqState[1, 1] = SquareState.Blocked;
         f.DrainOwned();
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
@@ -2757,7 +2756,7 @@ public partial class ModernWiredRuntimeTests
         f.BlockDestination();
         f.UseExecutor();
         var replies = Capture(f.Habbo.Client);
-        f.Fire();
+        f.Fire(owned: false);
         f.Room.GetGameMap().AddToMap(f.Target);
         f.DrainOwned();
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
@@ -2779,7 +2778,7 @@ public partial class ModernWiredRuntimeTests
         f.User.GoalY = 0;
         f.User.MoveTo(1, 0);
         var before = f.User.Movement.Commands.Read()!.Sequence;
-        f.Fire();
+        f.Fire(owned: false);
         f.User.MoveTo(0, 1);
         var after = f.User.Movement.Commands.Read()!.Sequence;
         f.DrainOwned();
@@ -2796,7 +2795,7 @@ public partial class ModernWiredRuntimeTests
         using var f = new TeleportFixture();
         f.UseExecutor();
         var replies = Capture(f.Habbo.Client);
-        f.Fire();
+        f.Fire(owned: false);
         f.Room.GetGameMap().Navigation!.Remove(f.User);
         f.DrainOwned();
         Assert.NotEqual(new Point(1, 1), f.User.Coordinate);
@@ -2810,7 +2809,7 @@ public partial class ModernWiredRuntimeTests
         using var f = new TeleportFixture();
         f.UseExecutor();
         var replies = Capture(f.Habbo.Client);
-        f.Fire();
+        f.Fire(owned: false);
         typeof(RoomUser).GetField("_movement", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(f.User, new ActorMovementState());
         f.DrainOwned();
@@ -2971,12 +2970,20 @@ public partial class ModernWiredRuntimeTests
 
     private static ConcurrentDictionary<int, RoomUser> RoomUsers(Room room) =>
         (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(room.GetRoomUserManager())!;
+    private static void Admit(Room room, RoomUser user)
+    {
+        RoomUsers(room)[user.VirtualId] = user;
+        using var owner = RoomOwnerScope.Enter(room);
+        room.GetGameMap().Navigation.Admit(user);
+    }
+
     private static RoomUser Bot(Room room, int virtualId)
     {
         var bot = new RoomUser(0, 0, virtualId, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { BotData = (RoomBot)RuntimeHelpers.GetUninitializedObject(typeof(RoomBot)) };
         bot.BotData.Name = "Alice";
         bot.BotData.Look = "hd-180-1";
         bot.BotData.Gender = "M";
+        Admit(room, bot);
 
         return bot;
     }
@@ -2990,9 +2997,10 @@ public partial class ModernWiredRuntimeTests
         public readonly TestRewardProgress HandRewards = new();
         private readonly object? _originalGame; private long _now;
         public TeleportFixture(int cap = 100, IDatabase? database = null, IGameClientManager? clientsForText = null,
-            string actionName = "wf_act_teleport_to", int[]? intParams = null, string text = "")
+            string actionName = "wf_act_teleport_to", int[]? intParams = null, string text = "",
+            string heightmap = "000\r000\r000")
         {
-            (Room, _, Items) = World();
+            (Room, _, Items) = World(heightmap: heightmap);
             var gameField = typeof(PlusEnvironment).GetField("_game", BindingFlags.Static | BindingFlags.NonPublic)!;
             _originalGame = gameField.GetValue(null);
             var clients = new GameClientManager(null!, null!);
@@ -3020,8 +3028,7 @@ public partial class ModernWiredRuntimeTests
             client.SetHabbo(Habbo);
             clients.RegisterClient(client, 1, "Alice");
             User = new(1, 0, 7, Room, client, TestChatEmotions.Unused, HandRewards);
-            RoomUsers(Room)[7] = User;
-            Room.GetGameMap().AddUserToMap(User, new(0, 0));
+            Admit(Room, User);
             var wired = new WiredComponent(Room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance,
                 database == null ? TestWiredConfigurationStore.Instance : new WiredConfigurationStore(database),
                 database ?? TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance,
@@ -3054,20 +3061,27 @@ public partial class ModernWiredRuntimeTests
         }
         // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal teleport lands 2000 ms after the firing (a fast one at 1000 ms).
         public const int TeleportLandsAfterMilliseconds = 2000;
-        public void Fire(bool land = true)
+        public void Fire(bool land = true, bool owned = true)
         {
+            using var owner = owned ? RoomOwnerScope.Enter(Room) : null;
+
+            if (owned) {
+                Room.GetGameMap().Navigation.DrainCommands();
+            }
+
             Assert.True(Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = User }));
             Engine.OnFastCycle();
 
             if (land) {
-                Advance(TeleportLandsAfterMilliseconds);
+                Advance(TeleportLandsAfterMilliseconds, owned);
             }
         }
         // Moves the clock without a room tick or pass, like a room tick that has not started yet.
         public void Skew(int milliseconds) => _now += milliseconds;
         // Room ticks start on every 500 ms boundary passed, as in the room manager; then one fast pass.
-        public void Advance(int milliseconds)
+        public void Advance(int milliseconds, bool owned = true)
         {
+            using var owner = owned ? RoomOwnerScope.Enter(Room) : null;
             var end = _now + milliseconds;
 
             for (var boundary = (_now / 500 + 1) * 500; boundary <= end; boundary += 500) {
@@ -3081,8 +3095,7 @@ public partial class ModernWiredRuntimeTests
         public RoomUser AddPlayer(int virtualId, int x, int y)
         {
             var player = new RoomUser(virtualId, 0, virtualId, Room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = x, Y = y };
-            RoomUsers(Room)[virtualId] = player;
-            Room.GetGameMap().AddUserToMap(player, new(x, y));
+            Admit(Room, player);
 
             return player;
         }
@@ -3103,17 +3116,10 @@ public partial class ModernWiredRuntimeTests
         }
         public void UseExecutor()
         {
-            var map = Room.GetGameMap();
-            var navigation = new RoomNavigation(Room, map.StaticModel, new() { Engine = PathfindingEngine.V2 },
-                TestLogging.Navigation, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
-            typeof(Gamemap).GetField("<Navigation>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(map, navigation);
+            using var owner = RoomOwnerScope.Enter(Room);
 
-            using (RoomOwnerScope.Enter(Room)) {
-                foreach (var user in RoomUsers(Room).Values.ToArray()) {
-                    map.RemoveUserFromMap(user, new(user.X, user.Y));
-                    navigation.Admit(user);
-                }
+            foreach (var user in RoomUsers(Room).Values) {
+                Room.GetGameMap().Navigation.Admit(user);
             }
         }
         public void FireOwned()
@@ -3471,11 +3477,11 @@ public partial class ModernWiredRuntimeTests
     {
         using var fixture = new TeleportFixture();
         var room = fixture.Room;
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var actor = fixture.User;
         var occupant = new RoomUser(2, 0, 8, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused);
-        occupant.SetPos(1, 0, 0);
-        RoomUsers(room)[8] = occupant;
-        room.GetGameMap().AddUserToMap(occupant, new(1, 0));
+        occupant.InitializePosition(1, 0, 0);
+        Admit(room, occupant);
         var action = ActionBox(room, "wf_act_move_rotate_user");
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, new() { IntParams = [2, -1, 0] }, out var config, out _));
         action.ApplyConfiguration(config);
@@ -4495,6 +4501,7 @@ public partial class ModernWiredRuntimeTests
     {
         using var f = new TeleportFixture();
         var room = f.Room;
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var map = room.GetGameMap();
         var definition = MakeItem(5, "projectile").Definition;
         definition.Stackable = true;
@@ -4633,8 +4640,7 @@ public partial class ModernWiredRuntimeTests
         typeof(Room).GetField("_roomItemHandling", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, handler);
         typeof(Room).GetField("_roomUserManager", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
         TestRoomUserSnapshots.Install(room);
-        typeof(Gamemap).GetProperty("GameMap")!.SetValue(map, new byte[map.Model.MapSizeX, map.Model.MapSizeY]);
-        typeof(Gamemap).GetProperty("EffectMap")!.SetValue(map, new byte[map.Model.MapSizeX, map.Model.MapSizeY]);
+        map.GenerateMaps();
 
         return (room, map, (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling).GetField("_floorItems", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(handler)!);
     }

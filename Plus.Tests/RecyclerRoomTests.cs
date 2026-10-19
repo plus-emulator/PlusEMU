@@ -144,10 +144,8 @@ public partial class PlacedFurniRoomTests
         };
         Assert.True(service.TryOpen(_client, box.Id));
 
-        if (v2) {
-            Assert.Equal(0, store.Opens);
-            ExecutorTick();
-        }
+        Assert.Equal(0, store.Opens);
+        ExecutorTick();
 
         Assert.Equal(1, store.Opens);
         Assert.Null(_room.GetRoomItemHandler().GetItem(box.Id));
@@ -302,6 +300,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(_room.CheckRights(_client));
         Assert.True(_room.CheckRights(_client, false, true));
         Assert.True(service.TryOpen(_client, box.Id));
+        ExecutorTick();
         Assert.Equal(1, store.Opens);
         Assert.Null(_room.GetRoomItemHandler().GetItem(box.Id));
         Assert.NotNull(Assert.IsType<InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(100));
@@ -313,12 +312,7 @@ public partial class PlacedFurniRoomTests
         habbo.Client = _client;
         habbo.Inventory = new InventoryComponent { Furniture = new FurnitureInventoryComponent([], []) };
 
-        if (v2) {
-            ExecutorActor(0, 1);
-        }
-        else {
-            Assert.True(_room.GetRoomUserManager().AddAvatarToRoom(_client));
-        }
+        ExecutorActor(0, 1);
 
         var box = Furni(10, InteractionType.None, WiredBoxType.None);
         box.Definition.Id = 100;

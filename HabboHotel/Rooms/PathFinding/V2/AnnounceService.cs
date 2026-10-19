@@ -3,10 +3,11 @@ using Plus.Utilities;
 namespace Plus.HabboHotel.Rooms.PathFinding;
 
 internal sealed class AnnounceService(Room room, RoomNavigation navigation, MovementContext context,
-    MovementCancellation cancellation, RouteFallbackService fallback)
+    MovementCancellation cancellation, RouteFallbackService fallback, MovementSearch search)
 {
     private readonly BlockedStepPolicy _blocked = new(navigation.Settings, cancellation, fallback);
     private readonly MovementRules _rules = new(navigation.Grid, navigation.Settings);
+    private readonly WalkSurfaceResolver _surfaces = new(context);
     public void Announce(RoomUser actor, bool committed)
     {
         var state = actor.Movement;
@@ -27,16 +28,50 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
             return;
         }
 
-        var target = BuildBatch(actor, out var temporaryBlock);
+        while (state.HasIntent) {
+            var target = BuildBatch(actor, out var temporaryBlock, out var rejected);
 
-        if (state.PendingCount == 0) {
-            _blocked.Handle(actor, temporaryBlock);
-            ApplyIdleEffects(actor, committed);
+            if (state.PendingCount != 0) {
+                Publish(actor, target);
 
-            return;
+                return;
+            }
+
+            if (temporaryBlock && state.WaitTicks++ < navigation.Settings.BlockWaitTicks) {
+                actor.RemoveStatus("mv");
+                actor.UpdateNeeded = true;
+
+                break;
+            }
+
+            if (state.Plan is not { } plan || rejected is not { } failure) {
+                cancellation.Cancel(actor);
+
+                break;
+            }
+
+            var discovered = Remember(plan, failure);
+            var retry = plan.RetryRecovery;
+            plan.RetryRecovery = false;
+
+            if (!discovered && !retry) {
+                cancellation.Cancel(actor);
+
+                break;
+            }
+
+            if (TryRecoveryStep(actor, failure, out target)) {
+                plan.PendingRecovery = true;
+                Publish(actor, target);
+
+                return;
+            }
+
+            fallback.OnRouteBlocked(actor);
+            search.Recover(actor);
         }
 
-        Publish(actor, target);
+        ApplyIdleEffects(actor, committed);
     }
     private static void ClearCompletedAnnouncement(RoomUser actor)
     {
@@ -51,9 +86,10 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
         actor.RemoveStatus("mv");
         actor.UpdateNeeded = true;
     }
-    private NavPosition BuildBatch(RoomUser actor, out bool temporaryBlock)
+    private NavPosition BuildBatch(RoomUser actor, out bool temporaryBlock, out RejectedStep? rejected)
     {
         temporaryBlock = false;
+        rejected = null;
         var state = actor.Movement;
         var profile = context.Profiles.Refresh(actor);
         state.PendingView = state.Route.View;
@@ -63,46 +99,130 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
         for (var i = state.Cursor; i < state.Route.Count && state.PendingCount < limit; i++) {
             var surface = state.Route.Steps[i];
 
-            if (!context.Graph.IsValid(surface, state.Route.View)) {
-                break;
-            }
-
-            var target = context.Graph.Position(surface, state.Route.View);
             var purpose = state.Route.PurposeAt(i, state.Origin);
+            var landing = _surfaces.Resolve(actor, i, from, surface, state.Route.View, state.Route.AdvisoryZ(i), purpose);
+            var target = landing.Position;
+            var reason = StepReason.NotStandable;
 
-            if (!ClaimStep(actor, profile, from, target, purpose, out temporaryBlock)) {
+            if (landing.Support == null && !profile.LegacyOverride && purpose != StepPurpose.Interaction
+                || !ClaimStep(actor, profile, from, target, purpose, out temporaryBlock, out reason)) {
+                rejected = new(from, surface, reason);
+
                 break;
             }
 
             state.PendingPurpose[state.PendingCount] = purpose;
-            state.Pending[state.PendingCount++] = surface;
+            state.PendingZ[state.PendingCount] = target.Z;
+            state.Pending[state.PendingCount++] = landing.Support ?? surface;
             from = target;
         }
 
         return from;
     }
     private bool ClaimStep(RoomUser actor, ActorProfile profile, NavPosition from, NavPosition target,
-        StepPurpose purpose, out bool temporaryBlock)
+        StepPurpose purpose, out bool temporaryBlock, out StepReason reason)
     {
         temporaryBlock = false;
+        reason = StepReason.Ok;
         var slot = target.Slot;
         var occupancy = context.OccupancyAt(actor, slot);
         var mask = ClaimMatrix.BlockingMask(profile, navigation.Grid.Flags[slot], purpose, OccupancyView.Execution);
         var result = _rules.CanStep(profile, from, target, purpose, OccupancyView.Execution, occupancy);
 
         if (!result.Ok) {
+            reason = result.Reason;
             var blockers = occupancy.Targets[slot] & mask;
-            var transient = TargetOccupancy.Walking | TargetOccupancy.ExclusiveClaim | TargetOccupancy.GoalClaim | TargetOccupancy.SharedClaim;
+            var transient = TargetOccupancy.Walking | TargetOccupancy.ExclusiveClaim | TargetOccupancy.GoalClaim | TargetOccupancy.SharedClaim | TargetOccupancy.RollerClaim;
             temporaryBlock = result.Reason == StepReason.Occupied && (blockers & ~transient) == 0;
 
             return false;
         }
 
         if (!context.Claims.TryClaim(actor, slot, ClaimMatrix.KindFor(profile, navigation.Grid.Flags[slot], purpose), mask)) {
+            reason = StepReason.Occupied;
+            temporaryBlock = true;
+
             return false;
         }
 
         context.GuildGates.Accept(actor, profile, slot, purpose);
+
+        return true;
+    }
+    private readonly record struct RejectedStep(NavPosition From, SurfaceRef Target, StepReason Reason);
+
+    private static bool Remember(WalkPlan plan, RejectedStep failure)
+        => failure.Reason is StepReason.TooHigh or StepReason.TooLow or StepReason.CornerBlocked or StepReason.CornerVoid
+            ? plan.Exclusions.Block(failure.From, failure.Target)
+            : plan.Exclusions.Block(failure.Target);
+
+    private bool TryRecoveryStep(RoomUser actor, RejectedStep failure, out NavPosition target)
+    {
+        target = failure.From;
+        var grid = navigation.Grid;
+        var tx = failure.Target.Tile % grid.Width;
+        var ty = failure.Target.Tile / grid.Width;
+
+        if (tx == failure.From.X || ty == failure.From.Y || actor.Movement.Origin == MoveOrigin.Interaction) {
+            return false;
+        }
+
+        // Observed on AIR WIN63-202610151745-318700621: try the Y component, then X.
+        return TryRecoveryTile(actor, failure.From, failure.From.X, ty, out target)
+            || TryRecoveryTile(actor, failure.From, tx, failure.From.Y, out target);
+    }
+
+    private bool TryRecoveryTile(RoomUser actor, NavPosition from, int x, int y, out NavPosition target)
+    {
+        target = from;
+        var grid = navigation.Grid;
+        var tile = grid.Tile(x, y);
+        var profile = context.Profiles.Refresh(actor);
+
+        // Prefer the original level; a separate deck at this XY is not an escape from a floor blocker.
+        var slot = SurfaceSelection.Resting(grid, tile, from.Z);
+
+        if (slot < 0) {
+            return false;
+        }
+
+        if (actor.Movement.Plan is { } plan) {
+            var originalSlot = plan.Grid.SlotOf(grid.Reference(slot));
+
+            if (originalSlot < 0 || !plan.Grid.Active(originalSlot)) {
+                originalSlot = SurfaceSelection.Resting(plan.Grid, tile, from.Z);
+            }
+
+            if (originalSlot < 0) {
+                return false;
+            }
+
+            var original = plan.Grid.Position(originalSlot);
+            var originalFrom = new NavPosition(from.X, from.Y, original.Z);
+            var originalRules = new MovementRules(plan.Grid, navigation.Settings);
+
+            // Preserve the original tile's eligibility. Height comes from the live step below,
+            // so lowering two supports together cannot create a height mismatch across versions.
+            if (!plan.Exclusions.Allows(from, plan.Grid.Reference(originalSlot))
+                || !originalRules.CanStep(profile, originalFrom, original,
+                    StepPurpose.Transit, OccupancyView.Planning).Ok) {
+                return false;
+            }
+        }
+
+        var candidate = grid.Position(slot);
+
+        if (!ClaimStep(actor, profile, from, candidate, StepPurpose.Transit, out _, out _)) {
+            return false;
+        }
+
+        var state = actor.Movement;
+        state.PendingView = GraphView.Surface;
+        state.Pending[0] = grid.Reference(slot);
+        state.PendingZ[0] = candidate.Z;
+        state.PendingPurpose[0] = StepPurpose.Transit;
+        state.PendingCount = 1;
+        target = candidate;
 
         return true;
     }

@@ -18,7 +18,6 @@ public readonly record struct AcceptedGoal(int X, int Y, int Slot, int Slot1 = -
 
 public static class GoalResolver
 {
-    // Click resolution is separate from Find: shadow searches must use legacy GoalX/Y.
     // P2 calls this at command consumption, then passes the resolved accepted identity.
     public static AcceptedGoal ResolveClick(NavGrid grid, ActorProfile actor, in NavPosition start,
         int x, int y, PlanningOccupancy? occupancy, ActorAccessResolver? access = null)

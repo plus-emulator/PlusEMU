@@ -58,9 +58,6 @@ public class Room
 
     // RoomCycle's task slot: 0 idle, else the kind of pass holding it.
     internal int CycleSlot;
-    private bool _usesV2Movement;
-    internal bool UsesV2Movement => _usesV2Movement;
-    internal void EnableV2Movement() => _usesV2Movement = true;
     private object? _navigationSync;
     internal object NavigationSync => LazyInitializer.EnsureInitialized(ref _navigationSync);
     public bool RoomMuted;
@@ -409,152 +406,45 @@ public class Room
 
     internal void ProcessWiredOnly()
     {
-        if (UsesV2Movement) {
-            try {
-                lock (NavigationSync) {
-                    ProcessWiredOwned();
-                }
-            }
-            finally {
-                _music?.PublishPending();
-            }
-
-            return;
-        }
-
-        if (IsCrashed || MDisposed) {
-            return;
-        }
-
         try {
-            GetWired().OnFastCycle();
-            _iceTag?.Cycle();
+            lock (NavigationSync) {
+                ProcessWiredOwned();
+            }
         }
-        catch (Exception e) {
-            ExceptionLogger.LogException(e);
+        finally {
+            _music?.PublishPending();
         }
+
+        return;
     }
 
-    // v2 fast pass: serialized with ProcessRoom (one process task at a time), so it owns the room just like a
-    // full tick. Legacy and shadow rooms keep the original pass, with no owner scope.
+    // Serialized with ProcessRoom (one process task at a time), so it owns the room just like a full tick.
     internal void RunFastPass(Action pass)
     {
-        if (UsesV2Movement) {
-            try {
-                lock (NavigationSync) {
-                    RunOwnedPass(pass);
-                }
-            }
-            finally {
-                _music?.PublishPending();
-            }
-
-            return;
-        }
-
-        if (IsCrashed || MDisposed) {
-            return;
-        }
-
         try {
-            pass();
+            lock (NavigationSync) {
+                RunOwnedPass(pass);
+            }
         }
-        catch (Exception e) {
-            ExceptionLogger.LogException(e);
+        finally {
+            _music?.PublishPending();
         }
+
+        return;
     }
 
     public void ProcessRoom()
     {
-        if (UsesV2Movement) {
-            try {
-                lock (NavigationSync) {
-                    ProcessRoomOwned();
-                }
-            }
-            finally {
-                _music?.PublishPending();
-            }
-
-            return;
-        }
-
-        if (IsCrashed || MDisposed) {
-            return;
-        }
-
         try {
-            if (GetRoomUserManager().GetRoomUsers().Count == 0) {
-                IdleTime++;
-            }
-            else if (IdleTime > 0) {
-                IdleTime = 0;
-            }
-
-            if (HasActivePromotion && Promotion.HasExpired) {
-                EndPromotion();
-            }
-
-            if (IdleTime >= 60 && !HasActivePromotion) {
-                _rooms.UnloadRoom(Id);
-
-                return;
-            }
-
-            try {
-                GetWired().OnRoomTick();
-            }
-            catch (Exception e) {
-                ExceptionLogger.LogException(e);
-            }
-
-            CycleComponents();
-
-            try {
-                GetGameMap().Navigation?.ApplyDirty();
-                GetRoomItemHandler().OnCycle();
-                _music?.Cycle();
-            }
-            catch (Exception e) {
-                ExceptionLogger.LogException(e);
-            }
-
-            try {
-                GetGameMap().Navigation?.ApplyDirty();
-                GetRoomUserManager().OnCycle();
-            }
-            catch (Exception e) {
-                ExceptionLogger.LogException(e);
-            }
-
-            try {
-                GetRoomUserManager().SerializeStatusUpdates();
-            }
-            catch (Exception e) {
-                ExceptionLogger.LogException(e);
-            }
-
-            try {
-                if (_gameItemHandler != null) {
-                    _gameItemHandler.OnCycle();
-                }
-            }
-            catch (Exception e) {
-                ExceptionLogger.LogException(e);
-            }
-
-            try {
-                GetWired().OnCycle();
-                GetGameMap().FlushPlacementUpdates();
-            }
-            catch (Exception e) {
-                ExceptionLogger.LogException(e);
+            lock (NavigationSync) {
+                ProcessRoomOwned();
             }
         }
-        catch (Exception e) {
-            ExceptionLogger.LogException(e);
-            OnRoomCrash(e);
+        finally {
+            _music?.PublishPending();
         }
+
+        return;
     }
 
     private void ProcessRoomOwned()
@@ -631,10 +521,7 @@ public class Room
     {
         GetGameMap().Navigation?.ApplyDirty();
         GetGameMap().Navigation?.DrainCommands();
-
-        if (UsesV2Movement) {
-            GetGameMap().Gates.Drain();
-        }
+        GetGameMap().Gates.Drain();
 
         GetRoomItemHandler().OnCycle();
         _music?.Cycle();
@@ -1084,127 +971,9 @@ public class Room
 
     public void Dispose()
     {
-        if (UsesV2Movement) {
-            DisposeExecutorRoom();
+        DisposeExecutorRoom();
 
-            return;
-        }
-
-        if (MDisposed) {
-            return;
-        }
-
-        IsCrashed = false;
-        MDisposed = true;
-        _gamemap?.ClosePlacementUpdates();
-
-        // Drop every user before the managers are destroyed. A habbo left
-        // pointing at this room makes the next enter throw and disconnect.
-        if (_roomUserManager != null) {
-            foreach (var user in _roomUserManager.GetRoomUsers().ToList()) {
-                var client = user?.GetClient();
-
-                if (client == null) {
-                    continue;
-                }
-
-                _roomUserManager.RemoveUserFromRoom(client, true);
-            }
-        }
-
-        /* TODO: Needs reviewing */
-        try {
-            if (ProcessTask != null && ProcessTask.IsCompleted) {
-                ProcessTask.Dispose();
-            }
-        }
-        catch { }
-
-        TonerData = null;
-        MoodlightData = null;
-
-        if (MutedUsers.Count > 0) {
-            MutedUsers.Clear();
-        }
-
-        if (_tents.Count > 0) {
-            _tents.Clear();
-        }
-
-        if (UsersWithRights.Count > 0) {
-            UsersWithRights.Clear();
-        }
-
-        if (_gameManager != null) {
-            _gameManager.Dispose();
-            _gameManager = null;
-        }
-
-        if (_freeze != null) {
-            _freeze.Dispose();
-            _freeze = null;
-        }
-
-        if (_soccer != null) {
-            _soccer.Dispose();
-            _soccer = null;
-        }
-
-        if (_banzai != null) {
-            _banzai.Dispose();
-            _banzai = null;
-        }
-
-        if (_gamemap != null) {
-            _gamemap.Dispose();
-            _gamemap = null;
-        }
-
-        if (_gameItemHandler != null) {
-            _gameItemHandler.Dispose();
-            _gameItemHandler = null;
-        }
-
-        // Room Data?
-        if (Teambanzai != null) {
-            Teambanzai.Dispose();
-            Teambanzai = null;
-        }
-
-        if (Teamfreeze != null) {
-            Teamfreeze.Dispose();
-            Teamfreeze = null;
-        }
-
-        if (_roomUserManager != null) {
-            _roomUserManager.Dispose();
-            _roomUserManager = null;
-        }
-
-        if (_roomItemHandling != null) {
-            _roomItemHandling.Dispose();
-            _roomItemHandling = null;
-        }
-
-        if (WordFilterList.Count > 0) {
-            WordFilterList.Clear();
-        }
-
-        if (_filterComponent != null) {
-            _filterComponent.Cleanup();
-        }
-
-        if (_wiredComponent != null) {
-            _wiredComponent.Cleanup();
-        }
-
-        if (_bansComponent != null) {
-            _bansComponent.Cleanup();
-        }
-
-        if (_tradingComponent != null) {
-            _tradingComponent.Cleanup();
-        }
+        return;
     }
 
     private void ProcessWiredOwned() => RunOwnedPass(() =>
@@ -1233,6 +1002,7 @@ public class Room
     private void DisposeExecutorRoom()
     {
         lock (NavigationSync) {
+
             if (MDisposed) {
                 return;
             }
@@ -1261,6 +1031,7 @@ public class Room
             var client = user?.GetClient();
 
             if (client != null) {
+
                 _roomUserManager.RemoveUserFromRoom(client, true);
             }
         }
@@ -1278,6 +1049,7 @@ public class Room
 
     private void ClearRoomCollections()
     {
+
         TonerData = null;
         MoodlightData = null;
 
@@ -1296,6 +1068,7 @@ public class Room
 
     private void DisposeGames()
     {
+
         if (_gameManager != null) {
             _gameManager.Dispose();
             _gameManager = null;
@@ -1319,6 +1092,7 @@ public class Room
 
     private void DisposeMapAndTeams()
     {
+
         if (_gamemap != null) {
             _gamemap.Dispose();
             _gamemap = null;
@@ -1342,6 +1116,7 @@ public class Room
 
     private void DisposeRoomManagers()
     {
+
         if (_roomUserManager != null) {
             _roomUserManager.Dispose();
             _roomUserManager = null;
@@ -1355,6 +1130,7 @@ public class Room
 
     private void ClearRoomComponents()
     {
+
         if (WordFilterList.Count > 0) {
             WordFilterList.Clear();
         }

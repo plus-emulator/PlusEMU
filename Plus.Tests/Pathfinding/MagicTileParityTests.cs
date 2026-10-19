@@ -22,7 +22,7 @@ public class MagicTileParityTests
     [InlineData(InteractionType.None, false, false, false)]
     [InlineData(InteractionType.None, true, true, false)]
     [InlineData(InteractionType.None, true, false, false)]
-    public void WalkMagicAndRaisedStacktoolAgreeWithLegacyHeightStateAndSearch(
+    public void WalkMagicAndRaisedStacktoolPreserveHeightStateAndSearch(
         InteractionType underlyingInteraction, bool voidTile, bool collision, bool walkMagic)
     {
         WithSettings(collision, settings =>
@@ -68,15 +68,13 @@ public class MagicTileParityTests
                 Assert.Same(handler.GetItem(11), map.WalkMagicAt(1, 1));
             }
 
-            var actor = new RoomUser(0, 0, 1, fixture.Room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 0, Y = 1 };
-            var legacy = PathFinder.FindPath(actor, true, map, new(0, 1), new(1, 1));
             var route = new Route();
             var outcome = new PathSearch(grid, navigation.Settings).Find(new(new(), grid.Position(4), 1, 1),
                 new PathWorkspace(grid.SlotCapacity, grid.ActiveNodeCount), route);
-            Assert.Equal(legacy.Count > 0, outcome == PathOutcome.Found);
+            Assert.Equal(walkMagic || !collision, outcome == PathOutcome.Found);
 
-            if (legacy.Count > 0) {
-                Assert.Equal(legacy.Count - 1, route.Count);
+            if (outcome == PathOutcome.Found) {
+                Assert.Equal(1, route.Count);
             }
 
             void Add(Item item, double z)
@@ -137,8 +135,8 @@ public class MagicTileParityTests
         public string TryGetValue(string key, string defaultValue) => GetOptionalValue(key) ?? defaultValue;
         public string? GetOptionalValue(string key) => key switch
         {
-            "pathfinding.engine" => "shadow",
             "pathfinding.stacktool_legacy_collision" => collision ? "1" : "0",
+            "pathfinding.layering_enabled" => "0",
             _ => null
         };
         public Task Reload() => Task.CompletedTask;

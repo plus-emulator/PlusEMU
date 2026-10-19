@@ -293,7 +293,6 @@ public class Gamemap
 
     private Room _room;
     private readonly ISettingsManager _settings;
-    private readonly IGroupManager _groups;
     private byte[,] _structuralMap;
     private Point[] _roamTargets;
     private ConcurrentDictionary<Point, List<RoomUser>> _userMap;
@@ -303,20 +302,11 @@ public class Gamemap
     {
         _room = room;
         _settings = settings;
-        _groups = groups;
         _placementRoom = room;
         StaticModel = model;
-        // Settings are fixed at room load. Legacy never allocates navigation state or
-        // attaches items, so its setters and update cycles take the original fast path.
         var pathfindingSettings = PathfindingSettings.Load(settings);
-
-        if (pathfindingSettings.Engine is PathfindingEngine.Shadow or PathfindingEngine.V2
-            && model.MapSizeX > 0 && model.MapSizeY > 0) {
-            Navigation = new(room, model, pathfindingSettings, navigationLogger, groups, database, rewards);
-        }
-
-        var legacyOccupancy = new LegacyGateOccupancy(this);
-        Gates = new(room, () => Navigation is { UsesExecutor: true } navigation ? navigation.GateOccupancy : legacyOccupancy);
+        Navigation = new(room, model, pathfindingSettings, navigationLogger, groups, database, rewards);
+        Gates = new(room, () => Navigation.GateOccupancy);
         DiagonalEnabled = true;
         Model = new(StaticModel);
         _placementWidth = Model.MapSizeX;
@@ -330,7 +320,7 @@ public class Gamemap
         _structuralMap = (byte[,])GameMap.Clone();
     }
 
-    public RoomNavigation? Navigation { get; }
+    public RoomNavigation Navigation { get; }
 
     public GateTransitionService Gates { get; }
 
@@ -346,13 +336,11 @@ public class Gamemap
 
     public void AddUserToMap(RoomUser user, Point coord)
     {
-        if (Navigation?.UsesExecutor == true) {
-            if (user.Movement.RegisteredMapCoordinate is { } previous) {
-                RemoveUserFromMap(user, previous);
-            }
-
-            user.Movement.RegisteredMapCoordinate = coord;
+        if (user.Movement.RegisteredMapCoordinate is { } previous) {
+            RemoveUserFromMap(user, previous);
         }
+
+        user.Movement.RegisteredMapCoordinate = coord;
 
         if (_userMap.ContainsKey(coord)) {
             _userMap[coord].Add(user);
@@ -372,53 +360,7 @@ public class Gamemap
             return;
         }
 
-        if (Navigation is { UsesExecutor: true } navigation) {
-            navigation.ForcePlace(user, item.GetX, item.GetY, item.GetZ, ForceResolution.ExactZ);
-
-            return;
-        }
-
-        GameMap[user.X, user.Y] = user.SqState;
-        UpdateUserMovement(new(user.Coordinate.X, user.Coordinate.Y), new(item.Coordinate.X, item.Coordinate.Y), user);
-        user.X = item.GetX;
-        user.Y = item.GetY;
-        user.Z = item.GetZ;
-        user.SqState = GameMap[item.GetX, item.GetY];
-        GameMap[user.X, user.Y] = 1;
-        user.RotBody = item.Rotation;
-        user.RotHead = item.Rotation;
-        user.GoalX = user.X;
-        user.GoalY = user.Y;
-        user.SetStep = false;
-        user.IsWalking = false;
-        user.UpdateNeeded = true;
-
-        if (!user.RidingHorse || user.IsBot) {
-            return;
-        }
-
-        // A rider takes the horse along and sits one unit above it.
-        var horse = _room.GetRoomUserManager().GetRoomUserByVirtualId(user.HorseId);
-
-        if (horse == null || horse == user) {
-            return;
-        }
-
-        GameMap[horse.X, horse.Y] = horse.SqState;
-        UpdateUserMovement(new(horse.Coordinate.X, horse.Coordinate.Y), new(item.Coordinate.X, item.Coordinate.Y), horse);
-        horse.X = user.X;
-        horse.Y = user.Y;
-        horse.Z = user.Z;
-        horse.SqState = user.SqState;
-        horse.RotBody = user.RotBody;
-        horse.RotHead = user.RotHead;
-        horse.GoalX = user.X;
-        horse.GoalY = user.Y;
-        horse.RemoveStatus("mv");
-        horse.SetStep = false;
-        horse.IsWalking = false;
-        horse.UpdateNeeded = true;
-        user.Z = horse.Z + 1;
+        Navigation.ForcePlace(user, item.GetX, item.GetY, item.GetZ, ForceResolution.ExactZ);
     }
 
     public void UpdateUserMovement(Point oldCoord, Point newCoord, RoomUser user)
@@ -429,20 +371,11 @@ public class Gamemap
 
     public void RemoveUserFromMap(RoomUser user, Point coord)
     {
-        if (Navigation?.UsesExecutor == true) {
-            // Walk-off callbacks run after map movement but before physical X/Y changes.
-            coord = user.Movement.RegisteredMapCoordinate ?? coord;
-            user.Movement.RegisteredMapCoordinate = null;
+        coord = user.Movement.RegisteredMapCoordinate ?? coord;
+        user.Movement.RegisteredMapCoordinate = null;
 
-            if (_userMap.TryGetValue(coord, out var registered)) {
-                registered.RemoveAll(other => ReferenceEquals(other, user));
-            }
-
-            return;
-        }
-
-        if (_userMap.ContainsKey(coord)) {
-            _userMap[coord].RemoveAll(x => x != null && x.VirtualId == user.VirtualId);
+        if (_userMap.TryGetValue(coord, out var registered)) {
+            registered.RemoveAll(other => ReferenceEquals(other, user));
         }
     }
 
@@ -621,28 +554,6 @@ public class Gamemap
 
         return map[x, y];
     }
-
-    public bool IsValidBotStep(Vector2D from, Vector2D to, bool endOfPath)
-    {
-        if (!ValidTile(to.X, to.Y)) {
-            return false;
-        }
-
-        var state = StructuralTile(to.X, to.Y);
-
-        if (state != 1 && !(endOfPath && state is 2 or 3)) {
-            return false;
-        }
-
-        var heightDiff = SqAbsoluteHeight(to.X, to.Y) - SqAbsoluteHeight(from.X, from.Y);
-
-        if (heightDiff > 1.5) {
-            return false;
-        }
-
-        return true;
-    }
-
 
     public bool IsInMap(int x, int y)
     {
@@ -837,24 +748,8 @@ public class Gamemap
 
         Array.Clear(tmpItems, 0, tmpItems.Length);
         tmpItems = null;
-        // Snapshot before standing users zero their tiles. Later steps must not rebuild roam targets.
+        // Later steps must not rebuild roam targets.
         CopyStructural();
-
-        if (!_room.RoomBlockingEnabled) {
-            foreach (var user in _room.GetRoomUserManager().GetUserList().ToList()) {
-                if (user == null) {
-                    continue;
-                }
-
-                // Temporary bots never restore a walkability reservation, so a regen must not freeze their tile.
-                if (user.BotData?.IsTemporary == true) {
-                    continue;
-                }
-
-                user.SqState = GameMap[user.X, user.Y];
-                GameMap[user.X, user.Y] = 0;
-            }
-        }
 
         try {
             GameMap[Model.DoorX, Model.DoorY] = 3;
@@ -1477,164 +1372,6 @@ public class Gamemap
         }
 
         return item.Coordinate;
-    }
-
-    public bool IsValidStep2(RoomUser user, Vector2D from, Vector2D to, bool endOfPath, bool @override)
-    {
-        if (user == null) {
-            return false;
-        }
-
-        if (!ValidTile(to.X, to.Y)) {
-            return false;
-        }
-
-        // Execution, not only path search. Temporary stress bots keep AllowOverride so
-        // crowded tiles stay usable. Walls and height still apply; only occupancy is ignored.
-        if (@override && user.BotData?.IsTemporary == true) {
-            return IsValidBotStep(from, to, endOfPath);
-        }
-
-        if (@override) {
-            return true;
-        }
-
-        /*
-* 0 = blocked
-* 1 = open
-* 2 = last step
-* 3 = door
-* */
-        var items = _room.GetGameMap().GetAllRoomItemForSquare(to.X, to.Y);
-
-        if (items.Count > 0 && WalkMagicAt(to.X, to.Y) == null) {
-            var hasGroupGate = items.ToList().Count(x => x.Definition.InteractionType == InteractionType.GuildGate) > 0;
-
-            if (hasGroupGate) {
-                var I = items.FirstOrDefault(x => x.Definition.InteractionType == InteractionType.GuildGate);
-
-                if (I != null) {
-                    if (!_groups.TryGetGroup(I.GroupId, out var group)) {
-                        return false;
-                    }
-
-                    if (user.GetClient() == null || user.GetClient().GetHabbo() == null) {
-                        return false;
-                    }
-
-                    if (group.IsMember(user.GetClient().GetHabbo().Id)) {
-                        I.InteractingUser = user.GetClient().GetHabbo().Id;
-                        I.LegacyDataString = "1";
-                        I.UpdateState(false, true);
-                        I.RequestUpdate(4, true);
-
-                        return true;
-                    }
-
-                    if (user.Path.Count > 0) {
-                        user.Path.Clear();
-                    }
-
-                    user.PathRecalcNeeded = false;
-
-                    return false;
-                }
-            }
-        }
-
-        var chair = false;
-        double highestZ = -1;
-
-        foreach (var item in items.ToList()) {
-            if (item == null) {
-                continue;
-            }
-
-            if (item.GetZ < highestZ) {
-                chair = false;
-                continue;
-            }
-
-            highestZ = item.GetZ;
-
-            if (item.Definition.IsSeat) {
-                chair = true;
-            }
-        }
-
-        if (GameMap[to.X, to.Y] == 3 && !endOfPath && !chair || GameMap[to.X, to.Y] == 0 || GameMap[to.X, to.Y] == 2 && !endOfPath) {
-            if (user.Path.Count > 0) {
-                user.Path.Clear();
-            }
-
-            user.PathRecalcNeeded = true;
-        }
-
-        var heightDiff = SqAbsoluteHeight(to.X, to.Y) - SqAbsoluteHeight(from.X, from.Y);
-
-        if (heightDiff > 1.5 && !user.RidingHorse) {
-            return false;
-        }
-
-        //Check this last, because ya.
-        var userx = _room.GetRoomUserManager().GetUserForSquare(to.X, to.Y);
-
-        if (userx != null) {
-            if (!userx.IsWalking && endOfPath) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    public bool IsValidStep(Vector2D from, Vector2D to, bool endOfPath, bool overriding, bool roller = false, RoomUser? user = null)
-    {
-        if (!ValidTile(to.X, to.Y)) {
-            return false;
-        }
-
-        if (overriding) {
-            if (user?.BotData?.IsTemporary == true) {
-                return IsValidBotStep(from, to, endOfPath);
-            }
-
-            return true;
-        }
-
-        /*
-         * 0 = blocked
-         * 1 = open
-         * 2 = last step
-         * 3 = door
-         * */
-        if (!_room.RoomBlockingEnabled && SquareHasUsers(to.X, to.Y)) {
-            return false;
-        }
-
-        var items = _room.GetGameMap().GetAllRoomItemForSquare(to.X, to.Y);
-
-        if (items.Count > 0 && WalkMagicAt(to.X, to.Y) == null) {
-            var hasGroupGate = items.ToList().Count(x => x != null && x.Definition.InteractionType == InteractionType.GuildGate) > 0;
-
-            if (hasGroupGate) {
-                return true;
-            }
-        }
-
-        if (GameMap[to.X, to.Y] == 3 && !endOfPath || GameMap[to.X, to.Y] == 0 || GameMap[to.X, to.Y] == 2 && !endOfPath) {
-            return false;
-        }
-
-        if (!roller) {
-            var heightDiff = SqAbsoluteHeight(to.X, to.Y) - SqAbsoluteHeight(from.X, from.Y);
-
-            if (heightDiff > 1.5) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     public static bool CanWalk(byte state, bool overriding)

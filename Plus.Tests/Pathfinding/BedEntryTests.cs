@@ -7,23 +7,15 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    [Theory]
-    [InlineData(PathfindingEngine.Legacy)]
-    [InlineData(PathfindingEngine.Shadow)]
-    [InlineData(PathfindingEngine.V2)]
-    public void DoubleBedClickSelectsTheRequestedSide(PathfindingEngine engine)
+    [Fact]
+    public void DoubleBedClickSelectsTheRequestedSide()
     {
         var bed = Furni(10, InteractionType.Bed, WiredBoxType.None);
         bed.Definition.Length = 3;
         bed.Definition.Width = 2;
         bed.Definition.Height = 1.8;
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, bed, 1, 1, 0, true, false, false));
-        var actor = engine == PathfindingEngine.V2 ? ExecutorActor(1, 0) : Viewer(1, 0);
-
-        if (engine != PathfindingEngine.V2) {
-            ReplayNavigation(engine, true);
-            _room.GetGameMap().AddUserToMap(actor, actor.Coordinate);
-        }
+        var actor = ExecutorActor(1, 0);
 
         actor.MoveTo(2, 1);
 

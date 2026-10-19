@@ -129,7 +129,7 @@ namespace Plus.HabboHotel.Rooms.Music
                 return;
             }
 
-            if (_room.UsesV2Movement && !RoomOwnerScope.IsOwner(_room)) {
+            if (!RoomOwnerScope.IsOwner(_room)) {
                 _room.GetGameMap().Navigation!.RunOwner(actor, (_, _) => action());
             }
             else {
@@ -209,7 +209,7 @@ namespace Plus.HabboHotel.Rooms.Music
             }
 
             InventoryItem disc;
-            var ownerPass = _room.UsesV2Movement && RoomOwnerScope.IsOwner(_room);
+            var ownerPass = RoomOwnerScope.IsOwner(_room);
 
             lock (habbo.WalletSync) {
                 if (habbo.AccessClosed || !Admitted(session, out var current, out actor) || !ReferenceEquals(current, habbo) || actor.IsTrading) {

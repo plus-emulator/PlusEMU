@@ -10,7 +10,7 @@ namespace Plus.Tests.Performance;
 public class PathfindingBenchmarks
 {
     [Fact]
-    public void MeasureSearchAndLegacyMovement()
+    public void MeasureSearchAndMovement()
     {
         var output = Environment.GetEnvironmentVariable("PLUSEMU_PATHFINDING_BENCHMARK");
 
@@ -18,7 +18,7 @@ public class PathfindingBenchmarks
             return;
         }
 
-        var results = new List<string> { $"Runtime={Environment.Version}; Release/AnyCPU; µs/search; no database/sockets; warmed; legacy counters instrumented in benchmark overload" };
+        var results = new List<string> { $"Runtime={Environment.Version}; Release/AnyCPU; µs/search; no database/sockets; warmed; navigation executor" };
         Run("64² open (~30 steps), target p99 <30µs", Open(64), 1, 1, 31, 21, 5000, 500);
         var maze = Open(64);
 
@@ -61,7 +61,7 @@ public class PathfindingBenchmarks
         }
 
         bytes = (GC.GetAllocatedBytesForCurrentThread() - bytes) / movementSamples.Length;
-        results.Add(Report("100 legacy walkers, two real movement cycles + fixture setup (P2 executor excluded), target <1000µs", movementSamples, bytes));
+        results.Add(Report("100 walkers, two movement cycles + fixture setup, target <1000µs", movementSamples, bytes));
         File.WriteAllLines(output, results);
 
         void Move()
@@ -80,34 +80,25 @@ public class PathfindingBenchmarks
             Set(room, "_roomItemHandling", new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards));
             Set(room, "_roomUserManager", new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
             map.GenerateMaps();
-            var navigation = map.Navigation ?? new RoomNavigation(room, model, new() { Engine = PathfindingEngine.Shadow }, TestLogging.Navigation, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
+            var navigation = map.Navigation ?? new RoomNavigation(room, model, new() { }, TestLogging.Navigation, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
             navigation.Compiler.RebuildAll();
             var grid = navigation.Grid;
             var settings = new PathfindingSettings();
             var search = new PathSearch(grid, settings);
             var route = new Route();
             var actor = new ActorProfile { IgnoreUsers = true };
-            var legacyActor = new RoomUser(0, 0, 1, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { AllowOverride = false, X = sx, Y = sy };
             var request = new SearchRequest(actor, grid.Position(grid.Tile(sx, sy)), gx, gy);
             using var lease = PathWorkspacePool.Rent(grid.SlotCapacity, grid.ActiveNodeCount);
             var ws = lease.Workspace;
-            var metrics = new PathFinderMetrics();
-            var from = new Vector2D(sx, sy);
-            var to = new Vector2D(gx, gy);
 
             for (var i = 0; i < 30; i++) {
                 search.Find(request, ws, route);
-            }
-
-            for (var i = 0; i < 5; i++) {
-                PathFinder.FindPath(legacyActor, true, map, from, to, metrics);
             }
 
             var oracle = Plus.Tests.Pathfinding.PathSearchTests.Bfs(grid, settings, request);
             Assert.Equal(oracle.Outcome, search.Find(request, ws, route));
             Assert.Equal(oracle.Length, route.Count);
             var v2Samples = new double[v2Iterations];
-            var legacySamples = new double[legacyIterations];
             using var process = Process.GetCurrentProcess();
             var v2CpuStart = process.TotalProcessorTime;
             var allocated = GC.GetAllocatedBytesForCurrentThread();
@@ -120,19 +111,7 @@ public class PathfindingBenchmarks
 
             var v2Bytes = (GC.GetAllocatedBytesForCurrentThread() - allocated) / v2Iterations;
             var v2CpuMean = (process.TotalProcessorTime - v2CpuStart).TotalMicroseconds / v2Iterations;
-            var legacyCpuStart = process.TotalProcessorTime;
-            allocated = GC.GetAllocatedBytesForCurrentThread();
-
-            for (var i = 0; i < legacyIterations; i++) {
-                var start = Stopwatch.GetTimestamp();
-                PathFinder.FindPath(legacyActor, true, map, from, to, metrics);
-                legacySamples[i] = Microseconds(start);
-            }
-
-            var legacyBytes = (GC.GetAllocatedBytesForCurrentThread() - allocated) / legacyIterations;
-            var legacyCpuMean = (process.TotalProcessorTime - legacyCpuStart).TotalMicroseconds / legacyIterations;
             results.Add(Report(name + " v2", v2Samples, v2Bytes) + $"; expansions={ws.Expansions}; CanStep={ws.CanStepCalls}; heap_ops={ws.HeapOperations}; route_steps={route.Count}; process_cpu_mean={v2CpuMean:F2}µs");
-            results.Add(Report(name + " legacy", legacySamples, legacyBytes) + $"; expansions={metrics.Expansions}; CanStep={metrics.CanStepCalls}; heap_ops={metrics.HeapOperations}; process_cpu_mean={legacyCpuMean:F2}µs");
             results.Add($"  retained array payload: grid+connectivity={grid.RetainedBytes:N0}B; planning occupancy={grid.SlotCapacity:N0}B; workspace={ws.RetainedBytes:N0}B; slots={grid.SlotCapacity}; active_nodes={grid.ActiveNodeCount}");
         }
     }

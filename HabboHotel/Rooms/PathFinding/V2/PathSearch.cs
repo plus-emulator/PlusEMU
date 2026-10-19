@@ -6,7 +6,8 @@ public enum PathOutcome
 }
 // Complete searches (blocked-route fallback) ignore the operator per-search cap.
 public readonly record struct SearchRequest(ActorProfile Actor, NavPosition Start, int GoalX, int GoalY,
-    PlanningOccupancy? Occupancy = null, AcceptedGoal? Goals = null, bool Complete = false, PathExclusions? Exclusions = null);
+    PlanningOccupancy? Occupancy = null, AcceptedGoal? Goals = null, bool Complete = false, PathExclusions? Exclusions = null,
+    OccupancyView View = OccupancyView.Planning);
 
 public sealed class PathSearch(NavGrid grid, PathfindingSettings settings)
 {

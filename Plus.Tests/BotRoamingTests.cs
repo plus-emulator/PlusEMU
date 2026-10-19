@@ -121,25 +121,22 @@ public class BotRoamingTests
         var gate = new Vector2D(2, 2);
 
         Assert.Contains(new Point(2, 2), map.WalkableSquares());
-        Assert.True(map.IsValidStep(from, gate, true, true, false, stress));
-        Assert.True(map.IsValidStep2(stress, from, gate, true, true));
+        Assert.True(Plus.Tests.Pathfinding.NavTest.CanEnter(stress, map, from, gate, true));
 
         map.SetFloorStatus(2, 2, 0);
         Assert.Equal(0, map.GameMap[2, 2]);
         Assert.DoesNotContain(new Point(2, 2), map.WalkableSquares());
-        Assert.False(map.IsValidStep(from, gate, true, true, false, stress));
-        Assert.False(map.IsValidStep2(stress, from, gate, true, true));
-        Assert.True(map.IsValidStep2(placed, from, gate, true, true));
+        Assert.False(Plus.Tests.Pathfinding.NavTest.CanEnter(stress, map, from, gate, true));
+        Assert.True(Plus.Tests.Pathfinding.NavTest.CanEnter(placed, map, from, gate, true));
 
         map.SetFloorStatus(2, 2, 1);
         Assert.Equal(1, map.GameMap[2, 2]);
         Assert.Contains(new Point(2, 2), map.WalkableSquares());
-        Assert.True(map.IsValidStep(from, gate, true, true, false, stress));
-        Assert.True(map.IsValidStep2(stress, from, gate, true, true));
+        Assert.True(Plus.Tests.Pathfinding.NavTest.CanEnter(stress, map, from, gate, true));
 
         map.GameMap[2, 2] = 0;
         Assert.Contains(new Point(2, 2), map.WalkableSquares());
-        Assert.True(map.IsValidStep2(stress, from, gate, true, true));
+        Assert.True(Plus.Tests.Pathfinding.NavTest.CanEnter(stress, map, from, gate, true));
         var seenStress = false;
 
         for (var i = 0; i < 200; i++) {
@@ -161,7 +158,7 @@ public class BotRoamingTests
         var (room, map) = Create("000\r000\r000", 1, 1);
         map.GameMap[0, 0] = 0;
         var user = Bot(room, allowOverride: false, temporary: false);
-        user.SetPos(1, 2, 0);
+        user.InitializePosition(1, 2, 0);
         user.GoalX = -1;
         user.GoalY = -1;
         var ai = new GenericBot(user.VirtualId, new FakeWordFilter());
@@ -172,7 +169,8 @@ public class BotRoamingTests
         for (var i = 0; i < 200; i++) {
             timer.SetValue(ai, 0);
             ai.OnTimerTick();
-            var goal = new Point(user.GoalX, user.GoalY);
+            var command = Assert.IsType<MoveCommand>(user.Movement.Commands.Read());
+            var goal = new Point(command.X, command.Y);
             Assert.NotEqual(new Point(0, 0), goal);
             Assert.Equal(1, map.GameMap[goal.X, goal.Y]);
         }
@@ -184,7 +182,7 @@ public class BotRoamingTests
         // wf_act_bot_move marks the bot as force-walking to the furni; the arrival must not send it on to the corner tile.
         var (room, _) = Create("000\r000\r000", 1, 1);
         var user = Bot(room, allowOverride: false, temporary: false);
-        user.SetPos(1, 2, 0);
+        user.InitializePosition(1, 2, 0);
         user.GoalX = -1;
         user.GoalY = -1;
         var data = Assert.IsType<RoomBot>(user.BotData);
@@ -247,7 +245,7 @@ public class BotRoamingTests
     }
 
     [Fact]
-    public void GenerateMapsLeavesTemporaryTilesOpenAndReservesOrdinaryUsers()
+    public void GenerateMapsLeavesTilesUnderUsersOpen()
     {
         var (room, map) = Create("000\r000\r000", 1, 1);
         typeof(Room).GetField("_roomItemHandling", BindingFlags.Instance | BindingFlags.NonPublic)!
@@ -259,34 +257,28 @@ public class BotRoamingTests
             .GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(users)!;
 
         var stress = Bot(room, allowOverride: true);
-        stress.SetPos(0, 0, 0);
+        stress.InitializePosition(0, 0, 0);
         stress.InternalRoomId = 1;
-        stress.SqState = 3;
         roster.TryAdd(stress.InternalRoomId, stress);
 
         var ordinary = new RoomUser(0, 1, 2, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused);
-        ordinary.SetPos(2, 2, 0);
+        ordinary.InitializePosition(2, 2, 0);
         ordinary.InternalRoomId = 2;
-        ordinary.SqState = 3;
         roster.TryAdd(ordinary.InternalRoomId, ordinary);
 
         var placed = Bot(room, allowOverride: false, temporary: false);
-        placed.SetPos(0, 2, 0);
+        placed.InitializePosition(0, 2, 0);
         placed.InternalRoomId = 3;
-        placed.SqState = 3;
         roster.TryAdd(placed.InternalRoomId, placed);
 
         map.GenerateMaps();
 
         Assert.Equal(1, map.GameMap[0, 0]);
-        Assert.Equal(3, stress.SqState);
-        Assert.Equal(0, map.GameMap[2, 2]);
-        Assert.Equal(1, ordinary.SqState);
-        Assert.Equal(0, map.GameMap[0, 2]);
-        Assert.Equal(1, placed.SqState);
+        Assert.Equal(1, map.GameMap[2, 2]);
+        Assert.Equal(1, map.GameMap[0, 2]);
         Assert.Contains(new Point(0, 0), map.WalkableSquares());
         Assert.Contains(new Point(2, 2), map.WalkableSquares());
-        Assert.True(map.IsValidStep2(stress, new(2, 0), new(0, 0), true, true));
+        Assert.True(Plus.Tests.Pathfinding.NavTest.CanEnter(stress, map, new(1, 0), new(0, 0), true));
     }
 
     [Fact]
@@ -294,14 +286,13 @@ public class BotRoamingTests
     {
         var (room, map) = Create("xxxxx\rx0x0x\rxxxxx", 1, 1);
         var placed = Bot(room, allowOverride: true, temporary: false);
-        Assert.True(map.IsValidStep2(placed, new(1, 1), new(2, 1), false, true));
-        Assert.True(map.IsValidStep(new(1, 1), new(2, 1), false, true, false, placed));
-        var through = PathFinder.FindPath(placed, true, map, new(1, 1), new(3, 1));
+        Assert.True(Plus.Tests.Pathfinding.NavTest.CanEnter(placed, map, new(1, 1), new(2, 1), false));
+        var through = Plus.Tests.Pathfinding.NavTest.FindRoomPath(placed, true, map, new(1, 1), new(3, 1));
         Assert.Contains(through, step => step.X == 2 && step.Y == 1);
 
         var stress = Bot(room, allowOverride: true, temporary: true);
-        Assert.False(map.IsValidStep2(stress, new(1, 1), new(2, 1), false, true));
-        var around = PathFinder.FindPath(stress, true, map, new(1, 1), new(3, 1));
+        Assert.False(Plus.Tests.Pathfinding.NavTest.CanEnter(stress, map, new(1, 1), new(2, 1), false));
+        var around = Plus.Tests.Pathfinding.NavTest.FindRoomPath(stress, true, map, new(1, 1), new(3, 1));
         Assert.DoesNotContain(around, step => step.X == 2 && step.Y == 1);
     }
 
@@ -310,8 +301,8 @@ public class BotRoamingTests
     {
         var (room, map) = Create("xxxxx\rx000x\rx0x0x\rx000x\rxxxxx", 1, 1);
         var stress = Bot(room, allowOverride: true);
-        stress.SetPos(1, 2, 0);
-        var around = PathFinder.FindPath(stress, true, map, new(1, 2), new(3, 2));
+        stress.InitializePosition(1, 2, 0);
+        var around = Plus.Tests.Pathfinding.NavTest.FindRoomPath(stress, true, map, new(1, 2), new(3, 2));
         Assert.Contains(around, step => step.X == 3 && step.Y == 2);
         Assert.DoesNotContain(around, step => step.X == 2 && step.Y == 2);
 
@@ -322,13 +313,13 @@ public class BotRoamingTests
             }
         }
 
-        var crowded = PathFinder.FindPath(stress, true, map, new(1, 2), new(3, 2));
+        var crowded = Plus.Tests.Pathfinding.NavTest.FindRoomPath(stress, true, map, new(1, 2), new(3, 2));
         Assert.Contains(crowded, step => step.X == 3 && step.Y == 2);
         Assert.DoesNotContain(crowded, step => step.X == 2 && step.Y == 2);
 
         var staff = new RoomUser(0, 1, 2, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { AllowOverride = true };
-        staff.SetPos(1, 2, 0);
-        var through = PathFinder.FindPath(staff, true, map, new(1, 2), new(3, 2));
+        staff.InitializePosition(1, 2, 0);
+        var through = Plus.Tests.Pathfinding.NavTest.FindRoomPath(staff, true, map, new(1, 2), new(3, 2));
         Assert.Contains(through, step => step.X == 2 && step.Y == 2);
     }
 
@@ -337,18 +328,15 @@ public class BotRoamingTests
     {
         var (room, map) = Create("xxxxx\rx0x0x\rx020x\rxxxxx", 1, 1);
         var bot = Bot(room, allowOverride: true);
-        Assert.False(map.IsValidStep2(bot, new(1, 1), new(2, 1), false, true));
-        Assert.False(map.IsValidStep(new(1, 1), new(2, 1), false, true, false, bot));
-        Assert.False(map.IsValidStep2(bot, new(1, 2), new(2, 2), true, true));
+        Assert.False(Plus.Tests.Pathfinding.NavTest.CanEnter(bot, map, new(1, 1), new(2, 1), false));
+        Assert.False(Plus.Tests.Pathfinding.NavTest.CanEnter(bot, map, new(1, 2), new(2, 2), true));
 
         map.GameMap[3, 1] = 0;
         map.AddUserToMap(Bot(room, allowOverride: false), new(3, 1));
-        Assert.True(map.IsValidStep2(bot, new(1, 1), new(3, 1), true, true));
-        Assert.True(map.IsValidStep(new(1, 1), new(3, 1), true, true, false, bot));
+        Assert.True(Plus.Tests.Pathfinding.NavTest.CanEnter(bot, map, new(3, 2), new(3, 1), true));
 
         var staff = new RoomUser(0, 1, 3, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { AllowOverride = true };
-        Assert.True(map.IsValidStep2(staff, new(1, 1), new(2, 1), false, true));
-        Assert.True(map.IsValidStep(new(1, 1), new(2, 1), false, true, false, staff));
+        Assert.True(Plus.Tests.Pathfinding.NavTest.CanEnter(staff, map, new(1, 1), new(2, 1), false));
     }
 
     [Fact]
@@ -356,8 +344,8 @@ public class BotRoamingTests
     {
         var (room, map) = Create("xxxxx\rx020x\rxxxxx", 1, 1);
         var stress = Bot(room, allowOverride: true);
-        stress.SetPos(1, 1, 0);
-        Assert.Empty(PathFinder.FindPath(stress, true, map, new(1, 1), new(3, 1)));
+        stress.InitializePosition(1, 1, 0);
+        Assert.Empty(Plus.Tests.Pathfinding.NavTest.FindRoomPath(stress, true, map, new(1, 1), new(3, 1)));
     }
 
     [Fact]
@@ -365,14 +353,15 @@ public class BotRoamingTests
     {
         var (room, map) = Create("x00\rx00\rx00", 1, 1);
         var user = Bot(room, allowOverride: true);
-        user.SetPos(1, 2, 0);
+        user.InitializePosition(1, 2, 0);
         user.GoalX = -1;
         user.GoalY = -1;
         var ai = new GenericBot(user.VirtualId, new FakeWordFilter());
         ai.Init(Assert.IsType<RoomBot>(user.BotData).BotId, user.VirtualId, 1, user, room);
         ai.OnTimerTick();
-        Assert.Contains(new Point(user.GoalX, user.GoalY), map.WalkableSquares());
-        Assert.NotEqual(new Point(0, 0), new Point(user.GoalX, user.GoalY));
+        var request = Assert.IsType<MoveCommand>(user.Movement.Commands.Read());
+        Assert.Contains(new Point(request.X, request.Y), map.WalkableSquares());
+        Assert.NotEqual(new Point(0, 0), new Point(request.X, request.Y));
 
         var (blockedRoom, blockedMap) = Create("xxx\rxxx\rxxx", 1, 1);
         var stuck = Bot(blockedRoom, allowOverride: true);

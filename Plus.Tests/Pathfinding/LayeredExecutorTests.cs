@@ -420,7 +420,7 @@ public partial class PlacedFurniRoomTests
     public void LayeredDeferredGoalIsReResolvedWhenItsSurfaceSlotIsReused()
     {
         var deck = ExecutorFloor(21, 3, 1, z: 1);
-        var actor = LayeredActor(0, 1, new() { Engine = PathfindingEngine.V2, LayeringEnabled = true, MaxExpansionsPerRoomTick = 0 });
+        var actor = LayeredActor(0, 1, new() { LayeringEnabled = true, MaxExpansionsPerRoomTick = 0 });
         var slot = LayeredNavigation.Grid.SlotOf(new SurfaceRef(LayeredTile(3, 1), 21, SurfaceKind.Top));
         ExecutorAdditionalBot(3, 1, 5);
         ExecutorTick();
@@ -512,7 +512,7 @@ public partial class PlacedFurniRoomTests
     private RoomUser LayeredActor(int x, int y, PathfindingSettings? settings = null)
     {
         var map = _room.GetGameMap();
-        var navigation = new RoomNavigation(_room, map.StaticModel, settings ?? new() { Engine = PathfindingEngine.V2, LayeringEnabled = true }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
+        var navigation = new RoomNavigation(_room, map.StaticModel, settings ?? new() { LayeringEnabled = true }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
         typeof(Gamemap).GetField("<Navigation>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(map, navigation);
 

@@ -12,7 +12,7 @@ public sealed class ActorTickService(Room room)
 
         actor.IdleTime++;
         actor.HandleSpamTicks();
-        // A sign lasts its own time while the avatar stands still too (the legacy cycle expires it in UpdateUserStatus).
+        // A sign lasts its own time while the avatar stands still too.
         room.GetRoomUserManager().UpdateSignStatus(actor);
 
         if (!actor.IsBot && !actor.IsAsleep && actor.IdleTime >= 600) {

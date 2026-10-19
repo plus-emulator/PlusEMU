@@ -9,6 +9,7 @@ using Plus.HabboHotel.Items.Wired.Modern.Triggers;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Rooms.AI;
 using Xunit;
 
@@ -19,13 +20,12 @@ public partial class ModernWiredRuntimeTests
 {
     private static RoomUser AddNamedBot(TeleportFixture f, int virtualId, string name, int x, int y)
     {
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
         var bot = Bot(f.Room, virtualId);
         bot.BotData!.Name = name;
         bot.BotData.ChatBubble = 31;
         bot.BotData.AiType = BotAiType.Generic;
         bot.SetPos(x, y, 0);
-        RoomUsers(f.Room)[virtualId] = bot;
-        f.Room.GetGameMap().AddUserToMap(bot, new(x, y));
 
         return bot;
     }
@@ -176,6 +176,7 @@ public partial class ModernWiredRuntimeTests
     {
         using var f = new TeleportFixture(actionName: "wf_act_bot_move", intParams: [100, 100], text: "Bobby");
         var bot = AddNamedBot(f, 9, "Bobby", 2, 2);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
         f.Fire();
         var targets = WiredBotTargets.For(f.Room);
         Assert.True(targets.HasTargets);
@@ -309,6 +310,7 @@ public partial class ModernWiredRuntimeTests
     {
         using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby");
         var bot = AddNamedBot(f, 9, "Bobby", 2, 2);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
         f.Fire();
         var targets = WiredBotTargets.For(f.Room);
         Assert.Empty(targets.Poll(f.Room));
@@ -340,7 +342,8 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(0, adjacent.CarryItemId);
 
         // Further away the bot takes the item and walks it over; the user has nothing yet.
-        using var far = new TeleportFixture(actionName: "wf_act_bot_give_handitem", intParams: [8, 0, 100], text: "Bobby");
+        using var far = new TeleportFixture(actionName: "wf_act_bot_give_handitem", intParams: [8, 0, 100], text: "Bobby",
+            heightmap: "0000\r0000\r0000\r0000");
         var walker = AddNamedBot(far, 9, "Bobby", 3, 3);
         far.Fire();
         Assert.Equal(0, far.User.CarryItemId);

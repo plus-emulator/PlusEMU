@@ -127,7 +127,7 @@ public sealed partial class WiredConditionParityTests
         var client = new FlashGameClient(TestGameServer.Instance, new FlashPacketFactory(), TestLogging.GameClient);
         client.SetHabbo(new Habbo { Id = 1, Username = "Objecto", CurrentRoom = room, Client = client });
         var user = new RoomUser(1, 0, 1, room, client, TestChatEmotions.Unused, TestRewardProgress.Unused);
-        user.SetPos(1, 1, 0);
+        user.InitializePosition(1, 1, 0);
         var box = Box(room, name, _ => null);
         var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor) with
         {
@@ -305,7 +305,7 @@ public sealed partial class WiredConditionParityTests
     private static RoomUser Avatar(Room room, int id, int x, int y)
     {
         var user = new RoomUser(id, 0, id, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused);
-        user.SetPos(x, y, 0);
+        user.InitializePosition(x, y, 0);
 
         return user;
     }

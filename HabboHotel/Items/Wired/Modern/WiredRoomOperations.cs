@@ -215,54 +215,7 @@ public static class WiredRoomOperations
     public static bool RelocateAvatar(Room room, RoomUser avatar, int x, int y,
         bool slide, bool throughUsers = false, bool ignoreOccupants = false, long? discardThrough = null, bool inPlace = false)
     {
-        if (room.UsesV2Movement) {
-            return RelocateExecutorAvatar(room, avatar, x, y, slide, throughUsers, ignoreOccupants, discardThrough, inPlace);
-        }
-
-        var map = room.GetGameMap();
-
-        if (room.GetRoomUserManager().GetRoomUserByVirtualId(avatar.VirtualId) != avatar
-            || !map.ValidTile(x, y) || map.Model.SqState[x, y] != SquareState.Open) {
-            return false;
-        }
-
-        if (avatar.X == x && avatar.Y == y && !inPlace) {
-            return false;
-        }
-
-        // throughUsers also skips CanWalk, which is the user-occupancy check. Teleport must not use it:
-        // other users are ignored, but a furni that cannot be stood on still refuses.
-        if (ignoreOccupants) {
-            if (!AvatarCanStand(map, x, y)) {
-                return false;
-            }
-        }
-        else if (!throughUsers && (!map.CanWalk(x, y, false)
-                             || map.GetRoomUsers(new(x, y)).Any(other => other != avatar))) {
-            return false;
-        }
-
-        avatar.ClearMovement(true);
-        var source = avatar.Coordinate;
-        var oldZ = avatar.Z;
-        var z = map.SqAbsoluteHeight(x, y);
-        // Relocation changes both occupancy indexes before statuses are rebuilt.
-        map.UpdateUserMovement(source, new(x, y), avatar);
-        map.GameMap[source.X, source.Y] = avatar.SqState;
-        avatar.SqState = map.GameMap[x, y];
-        avatar.SetPos(x, y, z);
-        map.GameMap[x, y] = 1;
-        avatar.GoalX = x;
-        avatar.GoalY = y;
-        avatar.UpdateNeeded = true;
-        room.GetRoomUserManager().UpdateUserStatus(avatar, true);
-
-        if (slide) {
-            room.SendPacket(new SlideObjectBundleComposer(source.X, source.Y, oldZ, x, y,
-                avatar.Z, 0, avatar.VirtualId, 0));
-        }
-
-        return true;
+        return RelocateExecutorAvatar(room, avatar, x, y, slide, throughUsers, ignoreOccupants, discardThrough, inPlace);
     }
 
     private static bool CanRelocateAvatar(Room room, RoomUser avatar, int x, int y, bool throughUsers, bool ignoreOccupants, bool inPlace = false)

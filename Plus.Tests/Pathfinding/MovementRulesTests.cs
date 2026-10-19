@@ -145,10 +145,10 @@ public class MovementRulesTests
         foreach (var row in rows) {
             foreach (var view in Enum.GetValues<OccupancyView>()) {
                 var mask = ClaimMatrix.BlockingMask(row.Actor, row.Flags, row.Purpose, view);
-                Assert.Equal(view == OccupancyView.Planning ? row.Planning : row.Execution, (int)mask);
+                Assert.Equal(view == OccupancyView.Execution ? row.Execution : row.Planning, (int)mask);
 
                 for (var bit = 1; bit <= 64; bit <<= 1) {
-                    Assert.Equal(((view == OccupancyView.Planning ? row.Planning : row.Execution) & bit) != 0, (mask & (TargetOccupancy)bit) != 0);
+                    Assert.Equal(((view == OccupancyView.Execution ? row.Execution : row.Planning) & bit) != 0, (mask & (TargetOccupancy)bit) != 0);
                 }
             }
         }

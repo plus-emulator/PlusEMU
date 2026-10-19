@@ -181,23 +181,9 @@ public sealed class PetPlacementService(
             return;
         }
 
-        if (room.UsesV2Movement) {
-            room.GetGameMap().Navigation!.Mounts.DetachPickedUpHorse(pet);
+        room.GetGameMap().Navigation!.Mounts.DetachPickedUpHorse(pet);
 
-            return;
-        }
-
-        var rider = room.GetRoomUserManager().GetRoomUserByVirtualId(pet.HorseId);
-
-        if (rider == null) {
-            pet.RidingHorse = false;
-
-            return;
-        }
-
-        rider.RidingHorse = false;
-        rider.ApplyEffect(-1);
-        rider.MoveTo(new(rider.X + 1, rider.Y + 1));
+        return;
     }
 
     private static void RestoreAvatarPet(Room room, GameClient session, int petId)

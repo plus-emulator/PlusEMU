@@ -1,3 +1,4 @@
+using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Rooms;
 using Xunit;
@@ -13,6 +14,7 @@ public sealed partial class WiredActionPortParityTests
     public void RelativeMoveOntoAStackMagicTileLandsAtItsHeight()
     {
         var (room, map, items) = World();
+        using var roomOwnerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 1, 2);
         var magic = Floor(2, 2, 2);
         magic.Definition.InteractionType = InteractionType.Stacktool;
@@ -34,6 +36,7 @@ public sealed partial class WiredActionPortParityTests
     public void RelativeMoveIntoTheVoidStays()
     {
         var (room, map, items) = World();
+        using var roomOwnerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 2, 1);
         Place(map, items, mover);
         var action = Box(room, "wf_act_rel_mov", [1, 0, 0, 2, 100], [mover.Id]);
@@ -47,6 +50,7 @@ public sealed partial class WiredActionPortParityTests
     public void MoveRotateUserMoveTwoStepsEast()
     {
         var (room, map, _) = World();
+        using var roomOwnerScope = RoomOwnerScope.Enter(room);
         var owner = Avatar(room, 1, 2, 2);
         owner.RotBody = owner.RotHead = 7;
         Register(room, map, owner);

@@ -23,21 +23,23 @@ internal sealed class CommandIntake(MovementContext context, ForcePlacementServi
             return;
         }
 
-        state.Fallback.Begin(command.Sequence);
         context.Approaches.Bind(actor, command, context.ApproachGoals.Surface(command));
         state.GoalRevision++;
         state.Origin = command.Origin;
         state.Flags = command.Flags;
         state.Route.Clear();
+        state.StopAfterPending = false;
         state.Cursor = 0;
         state.HasIntent = true;
-        state.WaitTicks = state.BlockReplans = state.StallTicks = 0;
+        state.WaitTicks = state.StallTicks = 0;
         actor.GoalX = command.X;
         actor.GoalY = command.Y;
         state.Profile.Interaction = command.Origin == MoveOrigin.Interaction
             ? new(actor.X, actor.Y, command.X, command.Y) : null;
         actor.UnIdle();
         actor.FreezeInteracting = false;
+        state.Plan = command.Origin == MoveOrigin.Interaction ? null
+            : new(context.PlanningGrids.Capture(), context.Occupancy(actor));
         ResolveGoal(actor);
         context.Replan(actor);
         context.RefreshMembership(actor);

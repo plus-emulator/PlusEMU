@@ -135,13 +135,8 @@ public class RoomUserManager
         }
     }
 
-    private bool UsesV2Movement => _room.UsesV2Movement;
-
     private void PublishSpawn(RoomUser actor)
     {
-        if (!UsesV2Movement) {
-            return;
-        }
 
         _users.TryAdd(actor.InternalRoomId, actor);
         AdmitSpawn(actor);
@@ -149,9 +144,7 @@ public class RoomUserManager
 
     private void AdmitSpawn(RoomUser actor)
     {
-        if (UsesV2Movement) {
-            _room.GetGameMap().Navigation!.Admit(actor);
-        }
+        _room.GetGameMap().Navigation!.Admit(actor);
     }
 
     public RoomUser DeployBot(RoomBot bot, Pet pet)
@@ -161,32 +154,17 @@ public class RoomUserManager
         var personalId = user.VirtualId;
         user.InternalRoomId = personalId;
 
-        if (!UsesV2Movement) {
-            _users.TryAdd(personalId, user);
-        }
-
         var model = _room.GetGameMap().Model;
 
         if (bot.X > 0 && bot.Y > 0 && bot.X < model.MapSizeX && bot.Y < model.MapSizeY) {
-            if (UsesV2Movement) {
-                user.InitializePosition(bot.X, bot.Y, bot.Z);
-            }
-            else {
-                user.SetPos(bot.X, bot.Y, bot.Z);
-            }
+            user.InitializePosition(bot.X, bot.Y, bot.Z);
 
             user.SetRot(bot.Rot, false);
         }
         else {
             bot.X = model.DoorX;
             bot.Y = model.DoorY;
-
-            if (UsesV2Movement) {
-                user.InitializePosition(model.DoorX, model.DoorY, model.DoorZ);
-            }
-            else {
-                user.SetPos(model.DoorX, model.DoorY, model.DoorZ);
-            }
+            user.InitializePosition(model.DoorX, model.DoorY, model.DoorZ);
 
             user.SetRot(model.DoorOrientation, false);
         }
@@ -205,10 +183,7 @@ public class RoomUserManager
         }
 
         user.UpdateNeeded = true;
-
-        if (UsesV2Movement) {
-            PublishSpawn(user);
-        }
+        PublishSpawn(user);
 
         _room.SendUser(user);
 
@@ -249,9 +224,7 @@ public class RoomUserManager
         }
 
         try {
-            if (_room.GetGameMap().Navigation is { UsesExecutor: true } navigation) {
-                navigation.Remove(user);
-            }
+            _room.GetGameMap().Navigation.Remove(user);
 
             if (user.IsPet) {
                 if (user.PetData is { } petData && _pets.TryRemove(new KeyValuePair<int, RoomUser>(petData.PetId, user))) {
@@ -303,10 +276,6 @@ public class RoomUserManager
         user.InternalRoomId = personalId;
         session.GetHabbo().CurrentRoom = _room;
 
-        if (!UsesV2Movement && !_users.TryAdd(personalId, user)) {
-            return false;
-        }
-
         user.WiredRoomEntry = WiredRoomEntrySnapshot.Capture(_room, session.GetHabbo());
         var model = _room.GetGameMap().Model;
 
@@ -326,12 +295,7 @@ public class RoomUserManager
                 model.DoorZ = (int)_room.GetGameMap().GetHeightForSquareFromData(square);
             }
 
-            if (UsesV2Movement) {
-                user.InitializePosition(model.DoorX, model.DoorY, model.DoorZ);
-            }
-            else {
-                user.SetPos(model.DoorX, model.DoorY, model.DoorZ);
-            }
+            user.InitializePosition(model.DoorX, model.DoorY, model.DoorZ);
 
             user.SetRot(model.DoorOrientation, false);
         }
@@ -347,13 +311,7 @@ public class RoomUserManager
 
             if (item != null) {
                 if (session.GetHabbo().IsTeleporting && item.Definition.InteractionType == InteractionType.WiredRoomLinker) {
-                    // Forwarded through a WIRED Room Linker: the user arrives standing on it; it has no door to flash.
-                    if (UsesV2Movement) {
-                        user.InitializePosition(item.GetX, item.GetY, item.GetZ);
-                    }
-                    else {
-                        user.SetPos(item.GetX, item.GetY, item.GetZ);
-                    }
+                    user.InitializePosition(item.GetX, item.GetY, item.GetZ);
 
                     user.SetRot(item.Rotation, false);
                     // Nothing walks the user out of a linker, so the entry ends here (the wired entry snapshot was taken above).
@@ -363,13 +321,7 @@ public class RoomUserManager
                 else if (session.GetHabbo().IsTeleporting) {
                     item.LegacyDataString = "2";
                     item.UpdateState(false, true);
-
-                    if (UsesV2Movement) {
-                        user.InitializePosition(item.GetX, item.GetY, item.GetZ);
-                    }
-                    else {
-                        user.SetPos(item.GetX, item.GetY, item.GetZ);
-                    }
+                    user.InitializePosition(item.GetX, item.GetY, item.GetZ);
 
                     user.SetRot(item.Rotation, false);
 
@@ -384,13 +336,7 @@ public class RoomUserManager
                 else if (session.GetHabbo().IsHopping) {
                     item.LegacyDataString = "1";
                     item.UpdateState(false, true);
-
-                    if (UsesV2Movement) {
-                        user.InitializePosition(item.GetX, item.GetY, item.GetZ);
-                    }
-                    else {
-                        user.SetPos(item.GetX, item.GetY, item.GetZ);
-                    }
+                    user.InitializePosition(item.GetX, item.GetY, item.GetZ);
 
                     user.SetRot(item.Rotation, false);
                     user.AllowOverride = false;
@@ -400,24 +346,17 @@ public class RoomUserManager
                 }
             }
             else {
-                if (UsesV2Movement) {
-                    user.InitializePosition(model.DoorX, model.DoorY, model.DoorZ - 1);
-                }
-                else {
-                    user.SetPos(model.DoorX, model.DoorY, model.DoorZ - 1);
-                }
+                user.InitializePosition(model.DoorX, model.DoorY, model.DoorZ - 1);
 
                 user.SetRot(model.DoorOrientation, false);
             }
         }
 
-        if (UsesV2Movement && !_users.TryAdd(personalId, user)) {
+        if (!_users.TryAdd(personalId, user)) {
             return false;
         }
 
-        if (UsesV2Movement) {
-            AdmitSpawn(user);
-        }
+        AdmitSpawn(user);
 
         _room.SendUserToOthers(user);
 
@@ -553,7 +492,7 @@ public class RoomUserManager
 
             session.EndCameraContext();
 
-            if (user != null && UsesV2Movement) {
+            if (user != null) {
                 _room.GetGameMap().Navigation!.Remove(user);
             }
 
@@ -709,22 +648,13 @@ public class RoomUserManager
         }
 
         try {
-            if (!actorLeavePrepared && _room.GetGameMap().Navigation is { UsesExecutor: true } navigation) {
-                navigation.Remove(user);
+            if (!actorLeavePrepared) {
+                _room.GetGameMap().Navigation.Remove(user);
             }
 
             if (!actorLeavePrepared) {
                 _room.IceTagLeave(user);
                 _room.GetWired()?.BeforeActorLeaves(user);
-            }
-
-            if (!user.IsBot || !user.BotData.IsTemporary) {
-                if (user.SetStep) {
-                    _room.GetGameMap().GameMap[user.SetX, user.SetY] = user.SqState;
-                }
-                else {
-                    _room.GetGameMap().GameMap[user.X, user.Y] = user.SqState;
-                }
             }
 
             _room.GetGameMap().RemoveUserFromMap(user, new(user.X, user.Y));
@@ -937,19 +867,9 @@ public class RoomUserManager
 
     public void UpdateUserStatusses()
     {
-        if (UsesV2Movement) {
-            _room.GetGameMap().Navigation!.RefreshPostures();
+        _room.GetGameMap().Navigation!.RefreshPostures();
 
-            return;
-        }
-
-        foreach (var user in GetUserList()) {
-            if (user == null) {
-                continue;
-            }
-
-            UpdateUserStatus(user, false);
-        }
+        return;
     }
 
     private bool IsValid(RoomUser? user)
@@ -987,23 +907,6 @@ public class RoomUserManager
         return false;
     }
 
-    /// <summary>
-    /// Observed on hhus (AIR WIN63-202610131318-860371703): Wired walk-off and walk-on fire in the tick whose UserUpdate announces the
-    /// step (mv towards the next tile), one walk tick before the arrival. Furni interactions still run when the step is committed.
-    /// </summary>
-    private void AnnounceWiredWalk(RoomUser walker, int fromX, int fromY, int toX, int toY)
-    {
-        var map = _room.GetGameMap();
-
-        foreach (var item in map.GetCoordinatedItems(new(fromX, fromY)).ToList()) {
-            item.WiredWalksOffFurni(walker);
-        }
-
-        foreach (var item in map.GetCoordinatedItems(new(toX, toY)).ToList()) {
-            item.WiredWalksOnFurni(walker);
-        }
-    }
-
     public void OnCycle()
     {
         lock (_stressSync) {
@@ -1013,14 +916,8 @@ public class RoomUserManager
 
             ProcessStressBots();
             ExpireForwardArrivalEffects();
-
-            if (UsesV2Movement) {
-                _room.GetGameMap().Navigation!.Executor.Tick();
-                _room.GetGameMap().Navigation!.TickMounts();
-            }
-            else {
-                CycleUsers();
-            }
+            _room.GetGameMap().Navigation!.Executor.Tick();
+            _room.GetGameMap().Navigation!.TickMounts();
         }
     }
 
@@ -1042,355 +939,6 @@ public class RoomUserManager
             if (user.CurrentEffect == WiredRoomForwarding.TeleportEffectId) {
                 user.ApplyEffect(arrival.Restore);
             }
-        }
-    }
-
-    private void CycleUsers()
-    {
-        var userCounter = 0;
-
-        try {
-            var toRemove = new List<RoomUser>();
-
-            foreach (var user in GetUserList()) {
-                if (user == null) {
-                    continue;
-                }
-
-                if (!IsValid(user)) {
-                    if (user.GetClient() != null) {
-                        RemoveUserFromRoom(user.GetClient(), false);
-                    }
-                    else {
-                        RemoveAbandonedRoomUser(user);
-                    }
-                }
-
-                if (user.NeedsAutokick && !toRemove.Contains(user)) {
-                    toRemove.Add(user);
-                    continue;
-                }
-
-                var updated = false;
-                user.IdleTime++;
-                user.HandleSpamTicks();
-
-                if (!user.IsBot && !user.IsAsleep && user.IdleTime >= 600) {
-                    user.IsAsleep = true;
-                    _room.SendPacket(new SleepComposer(user.VirtualId, true));
-                }
-
-                if (user.CarryItemId > 0) {
-                    user.CarryTimer--;
-
-                    if (user.CarryTimer <= 0) {
-                        user.CarryItem(0);
-                    }
-                }
-
-                if (_room.GotFreeze()) {
-                    _room.GetFreeze().CycleUser(user);
-                }
-
-                var invalidStep = false;
-
-                if (user.IsRolling) {
-                    if (user.RollerDelay <= 0) {
-                        UpdateUserStatus(user, false);
-                        user.IsRolling = false;
-                    }
-                    else {
-                        user.RollerDelay--;
-                    }
-                }
-
-                if (user.SetStep) {
-                    if (_room.GetGameMap().IsValidStep2(user, new(user.X, user.Y), new(user.SetX, user.SetY), user.GoalX == user.SetX && user.GoalY == user.SetY, user.AllowOverride)) {
-                        if (!user.RidingHorse) {
-                            _room.GetGameMap().UpdateUserMovement(new(user.Coordinate.X, user.Coordinate.Y), new(user.SetX, user.SetY), user);
-                        }
-
-                        var coordinatedItems = _room.GetGameMap().GetCoordinatedItems(new(user.X, user.Y));
-
-                        // The Wired walk events went out when this step was announced.
-                        foreach (var item in coordinatedItems.ToList()) {
-                            item.UserWalksOffFurni(user, false);
-                        }
-
-                        if (!user.IsBot) {
-                            user.X = user.SetX;
-                            user.Y = user.SetY;
-                            user.Z = user.SetZ;
-                        }
-                        else if (user.IsBot && !user.RidingHorse) {
-                            user.X = user.SetX;
-                            user.Y = user.SetY;
-                            user.Z = user.SetZ;
-                        }
-
-                        if (!user.IsBot && user.RidingHorse) {
-                            var horse = GetRoomUserByVirtualId(user.HorseId);
-
-                            if (horse != null) {
-                                horse.X = user.SetX;
-                                horse.Y = user.SetY;
-                            }
-                        }
-
-                        if (user.X == _room.GetGameMap().Model.DoorX && user.Y == _room.GetGameMap().Model.DoorY && !toRemove.Contains(user) && !user.IsBot) {
-                            toRemove.Add(user);
-                            continue;
-                        }
-
-                        var items = _room.GetGameMap().GetCoordinatedItems(new(user.X, user.Y));
-
-                        foreach (var item in items.ToList()) {
-                            item.Interactor.OnWalkOn(user);
-                        }
-
-                        foreach (var item in items.ToList()) {
-                            item.UserWalksOnFurni(user, false);
-                        }
-
-                        UpdateUserStatus(user, true);
-                    }
-                    else {
-                        invalidStep = true;
-                    }
-
-                    user.SetStep = false;
-                }
-
-                if (user.PathRecalcNeeded) {
-                    if (user.Path.Count > 1) {
-                        user.Path.Clear();
-                    }
-
-                    var shadow = _room.GetGameMap().Navigation;
-                    var legacyStarted = shadow?.Enabled == true ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
-                    user.Path = PathFinder.FindPath(user, _room.GetGameMap().DiagonalEnabled, _room.GetGameMap(), new(user.X, user.Y), new(user.GoalX, user.GoalY));
-
-                    if (shadow?.Enabled == true) {
-                        shadow.Compare(user, user.Path, System.Diagnostics.Stopwatch.GetTimestamp() - legacyStarted);
-                    }
-
-                    if (user.Path.Count > 1) {
-                        user.PathStep = 1;
-                        user.IsWalking = true;
-                        user.PathRecalcNeeded = false;
-                    }
-                    else {
-                        user.PathRecalcNeeded = false;
-
-                        if (user.Path.Count > 1) {
-                            user.Path.Clear();
-                        }
-                    }
-                }
-
-                if (user.IsWalking && !user.Freezed) {
-                    if (invalidStep || user.PathStep >= user.Path.Count || user.GoalX == user.X && user.GoalY == user.Y) //No path found, or reached goal (:
-                    {
-                        user.IsWalking = false;
-                        user.RemoveStatus("mv");
-
-                        if (user.Statusses.ContainsKey("sign")) {
-                            user.RemoveStatus("sign");
-                        }
-
-                        if (user.IsBot && user.BotData.TargetUser > 0) {
-                            if (user.CarryItemId > 0) {
-                                var target = _room.GetRoomUserManager().GetRoomUserByHabbo(user.BotData.TargetUser);
-
-                                if (target != null && Gamemap.TilesTouching(user.X, user.Y, target.X, target.Y)) {
-                                    user.SetRot(Rotation.Calculate(user.X, user.Y, target.X, target.Y), false);
-                                    target.SetRot(Rotation.Calculate(target.X, target.Y, user.X, user.Y), false);
-                                    target.CarryItem(user.CarryItemId);
-                                }
-                            }
-
-                            user.CarryItem(0);
-                            user.BotData.TargetUser = 0;
-                        }
-
-                        if (user.RidingHorse && user.IsPet == false && !user.IsBot) {
-                            var mascotaVinculada = GetRoomUserByVirtualId(user.HorseId);
-
-                            if (mascotaVinculada != null) {
-                                mascotaVinculada.IsWalking = false;
-                                mascotaVinculada.RemoveStatus("mv");
-                                mascotaVinculada.UpdateNeeded = true;
-                            }
-                        }
-                    }
-                    else {
-                        var nextStep = user.Path[user.Path.Count - user.PathStep - 1];
-                        user.PathStep++;
-
-                        if (user.FastWalking && user.PathStep < user.Path.Count) {
-                            var s2 = user.Path.Count - user.PathStep - 1;
-                            nextStep = user.Path[s2];
-                            user.PathStep++;
-                        }
-
-                        if (user.SuperFastWalking && user.PathStep < user.Path.Count) {
-                            var s2 = user.Path.Count - user.PathStep - 1;
-                            nextStep = user.Path[s2];
-                            user.PathStep++;
-                            user.PathStep++;
-                        }
-
-                        var nextX = nextStep.X;
-                        var nextY = nextStep.Y;
-                        user.RemoveStatus("mv");
-
-                        if (_room.GetGameMap().IsValidStep2(user, new(user.X, user.Y), new(nextX, nextY), user.GoalX == nextX && user.GoalY == nextY, user.AllowOverride)) {
-                            var nextZ = _room.GetGameMap().SqAbsoluteHeight(nextX, nextY);
-
-                            if (!user.IsBot) {
-                                if (user.IsSitting) {
-                                    user.Statusses.Remove("sit");
-                                    user.IsSitting = false;
-                                    user.UpdateNeeded = true;
-                                }
-                                else if (user.IsLying) {
-                                    user.Statusses.Remove("sit");
-                                    user.Z += 0.35;
-                                    user.IsLying = false;
-                                    user.UpdateNeeded = true;
-                                }
-                            }
-
-                            if (!user.IsBot) {
-                                user.Statusses.Remove("lay");
-                                user.Statusses.Remove("sit");
-                            }
-
-                            if (!user.IsBot && !user.IsPet && user.GetClient() != null) {
-                                if (user.GetClient().GetHabbo().IsTeleporting) {
-                                    user.GetClient().GetHabbo().IsTeleporting = false;
-                                    user.GetClient().GetHabbo().TeleporterId = 0;
-                                }
-                                else if (user.GetClient().GetHabbo().IsHopping) {
-                                    user.GetClient().GetHabbo().IsHopping = false;
-                                    user.GetClient().GetHabbo().HopperId = 0;
-                                }
-                            }
-
-                            if (!user.IsBot && user.RidingHorse && user.IsPet == false) {
-                                var horse = GetRoomUserByVirtualId(user.HorseId);
-
-                                if (horse != null) {
-                                    horse.SetStatus("mv", $"{nextX},{nextY},{TextHandling.GetString(nextZ)}");
-                                }
-
-                                var riderZ = _room.GetGameMap().WalkMagicAt(nextX, nextY) == null ? nextZ + 1 : nextZ;
-                                user.SetStatus("mv", $"{nextX},{nextY},{TextHandling.GetString(riderZ)}");
-                                user.UpdateNeeded = true;
-                                horse.UpdateNeeded = true;
-                            }
-                            else {
-                                user.SetStatus("mv", $"{nextX},{nextY},{TextHandling.GetString(nextZ)}");
-                            }
-
-                            var newRot = Rotation.Calculate(user.X, user.Y, nextX, nextY, user.MoonwalkEnabled);
-                            user.RotBody = newRot;
-                            user.RotHead = newRot;
-                            user.SetStep = true;
-                            user.SetX = nextX;
-                            user.SetY = nextY;
-                            user.SetZ = nextZ;
-                            UpdateUserEffect(user, user.SetX, user.SetY);
-                            updated = true;
-
-                            if (user.RidingHorse && user.IsPet == false && !user.IsBot) {
-                                var horse = GetRoomUserByVirtualId(user.HorseId);
-
-                                if (horse != null) {
-                                    horse.RotBody = newRot;
-                                    horse.RotHead = newRot;
-                                    horse.SetStep = true;
-                                    horse.SetX = nextX;
-                                    horse.SetY = nextY;
-                                    horse.SetZ = nextZ;
-                                    AnnounceWiredWalk(horse, horse.X, horse.Y, nextX, nextY);
-                                }
-                            }
-
-                            AnnounceWiredWalk(user, user.X, user.Y, nextX, nextY);
-
-                            // Stress bots overlap without owning a walkability-grid reservation.
-                            if (!user.IsBot || !user.BotData.IsTemporary) {
-                                _room.GetGameMap().GameMap[user.X, user.Y] = user.SqState; // REstore the old one
-                                user.SqState = _room.GetGameMap().GameMap[user.SetX, user.SetY]; //Backup the new one
-
-                                if (!_room.RoomBlockingEnabled) {
-                                    var users = _room.GetRoomUserManager().GetUserForSquare(nextX, nextY);
-
-                                    if (users != null) {
-                                        _room.GetGameMap().GameMap[nextX, nextY] = 0;
-                                    }
-                                }
-                                else {
-                                    _room.GetGameMap().GameMap[nextX, nextY] = 1;
-                                }
-                            }
-                        }
-                    }
-
-                    if (!user.RidingHorse) {
-                        user.UpdateNeeded = true;
-                    }
-                }
-                else {
-                    if (user.Statusses.ContainsKey("mv")) {
-                        user.RemoveStatus("mv");
-                        user.UpdateNeeded = true;
-
-                        if (user.RidingHorse) {
-                            var horse = GetRoomUserByVirtualId(user.HorseId);
-
-                            if (horse != null) {
-                                horse.RemoveStatus("mv");
-                                horse.UpdateNeeded = true;
-                            }
-                        }
-                    }
-                }
-
-                if (user.RidingHorse) {
-                    user.ApplyEffect(77);
-                }
-
-                if (user.IsBot && user.BotAi != null) {
-                    user.BotAi.OnTimerTick();
-                }
-                else {
-                    userCounter++;
-                }
-
-                if (!updated) {
-                    UpdateUserEffect(user, user.X, user.Y);
-                }
-            }
-
-            foreach (var userToRemove in toRemove.ToList()) {
-                var client = userToRemove.GetClient();
-
-                if (client != null) {
-                    RemoveUserFromRoom(client, true);
-                }
-                else {
-                    RemoveAbandonedRoomUser(userToRemove);
-                }
-            }
-
-            if (UserCount != userCounter) {
-                UpdateUserCount(userCounter);
-            }
-        }
-        catch (Exception e) {
-            ExceptionLogger.LogCriticalException(e);
         }
     }
 
@@ -1725,104 +1273,9 @@ public class RoomUserManager
         user.UpdateNeeded = true;
     }
 
-    private void UpdateUserEffect(RoomUser user, int x, int y)
-    {
-        // A rider keeps the riding effect: water and skates do not replace it.
-        if (user == null || user.IsBot || user.RidingHorse) {
-            return;
-        }
-
-        var client = user.GetClient();
-        var habbo = client?.GetHabbo();
-
-        if (habbo == null) {
-            return;
-        }
-
-        try {
-            var newCurrentUserItemEffect = _room.GetGameMap().EffectMap[x, y];
-            var currentRoom = habbo.CurrentRoom;
-            var iceEffect = _room.UpdateIceTag(user, newCurrentUserItemEffect == 3
-                ? _room.GetGameMap().GetCoordinatedItems(new(x, y)).OrderByDescending(item => item.TotalHeight).FirstOrDefault(item => item.Definition.InteractionType == InteractionType.IceSkates) : null);
-
-            // Tile effects need the loaded effects; the ice tag above does not.
-            if (!ReferenceEquals(habbo.CurrentRoom, currentRoom) || habbo.Effects is not { } effects) {
-                return;
-            }
-
-            if (newCurrentUserItemEffect > 0) {
-                if (effects.CurrentEffect == 0) {
-                    user.CurrentItemEffect = ItemEffectType.None;
-                }
-
-                var type = ByteToItemEffectEnum.Parse(newCurrentUserItemEffect);
-
-                if (type != user.CurrentItemEffect || type == ItemEffectType.Iceskates && iceEffect >= 0 && effects.CurrentEffect != iceEffect) {
-                    switch (type) {
-                        case ItemEffectType.Iceskates: {
-                                effects.ApplyEffect(iceEffect >= 0 ? iceEffect : habbo.Gender == "M" ? 38 : 39);
-                                user.CurrentItemEffect = ItemEffectType.Iceskates;
-                                break;
-                            }
-                        case ItemEffectType.Normalskates: {
-                                effects.ApplyEffect(habbo.Gender == "M" ? 55 : 56);
-                                user.CurrentItemEffect = type;
-                                break;
-                            }
-                        case ItemEffectType.Swim: {
-                                effects.ApplyEffect(29);
-                                user.CurrentItemEffect = type;
-                                _rewards.Progress(client, RewardTrackActions.Swim);
-                                break;
-                            }
-                        case ItemEffectType.SwimLow: {
-                                effects.ApplyEffect(30);
-                                user.CurrentItemEffect = type;
-                                break;
-                            }
-                        case ItemEffectType.SwimHalloween: {
-                                effects.ApplyEffect(37);
-                                user.CurrentItemEffect = type;
-                                break;
-                            }
-                        case ItemEffectType.None: {
-                                effects.ApplyEffect(-1);
-                                user.CurrentItemEffect = type;
-                                break;
-                            }
-                    }
-                }
-            }
-            else if (user.CurrentItemEffect != ItemEffectType.None && newCurrentUserItemEffect == 0) {
-                effects.ApplyEffect(-1);
-                user.CurrentItemEffect = ItemEffectType.None;
-            }
-        }
-        catch { }
-    }
-
     public ICollection<RoomUser> GetUserList() => _users.Values;
 
     public void Dispose()
-    {
-        if (_room?.UsesV2Movement == true) {
-            DisposeExecutorUsers();
-
-            return;
-        }
-
-        lock (_stressSync) {
-            if (_disposed) {
-                return;
-            }
-
-            _disposed = true;
-            _stressRequests.Clear();
-            DisposeUsers();
-        }
-    }
-
-    private void DisposeExecutorUsers()
     {
         var room = _room;
 
@@ -1848,9 +1301,7 @@ public class RoomUserManager
         var users = _users.Values.ToArray();
 
         try {
-            if (UsesV2Movement) {
-                _room.GetGameMap()?.Navigation?.Shutdown();
-            }
+            _room.GetGameMap()?.Navigation?.Shutdown();
 
             foreach (var user in users) {
                 _room.IceTagLeave(user);

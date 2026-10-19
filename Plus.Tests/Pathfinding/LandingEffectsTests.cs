@@ -90,10 +90,14 @@ public partial class PlacedFurniRoomTests
     [InlineData(true)]
     public void LandingBanzaiTeleportRequiresVisibleMv(bool moving)
     {
+        using var owner = RoomOwnerScope.Enter(_room);
         Add(10, 1, 1, type: InteractionType.Banzaitele);
         var target = Add(11, 3, 1, z: 0.75, type: InteractionType.Banzaitele);
         InitializeNativeState(target);
         var actor = LandingActor();
+        var navigation = _room.GetGameMap().Navigation;
+        navigation.ApplyDirty();
+        navigation.Admit(actor);
 
         if (moving) {
             actor.Statusses.Add("mv", "1,1,0");
@@ -135,11 +139,15 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void LandingArrowTeleportsOnlyAtTheRequestedGoalAndSkipsGameWalk()
     {
+        using var owner = RoomOwnerScope.Enter(_room);
         Add(10, 1, 1, type: InteractionType.Arrow);
         Add(11, 3, 2, z: 0.75, type: InteractionType.Teleport);
         var ball = Add(12, 1, 1);
         _room.GetSoccer().AddBall(ball);
         var actor = LandingActor();
+        var navigation = _room.GetGameMap().Navigation;
+        navigation.ApplyDirty();
+        navigation.Admit(actor);
         actor.RotBody = 2;
         actor.GoalX = 2;
         var effects = new LandingEffects(_room, LandingDatabase(11, RoomId));

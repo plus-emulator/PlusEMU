@@ -111,7 +111,7 @@ internal sealed class NearestGoalSearch(NavGrid grid, PathfindingSettings settin
         _workspace.CanStepCalls++;
 
         if (!_rules.CanStep(_request.Actor, from, grid.Position(slot, legacy), purpose,
-            OccupancyView.Planning, _request.Occupancy).Ok) {
+            _request.View, _request.Occupancy).Ok) {
             return;
         }
 

@@ -23,16 +23,15 @@ public class MovementExecutorBenchmarks
             "Movement includes intake/commit/search scheduler/announce and landing hooks; excludes path setup, AI and status serialization.",
             "Shared-target workloads are synthetic equal-distance search batches; no flow-field caching is implemented."
         };
-        MeasureMovement(PathfindingEngine.Legacy, reports);
-        MeasureMovement(PathfindingEngine.V2, reports);
+        MeasureMovement(reports);
         MeasureTargets(shared: true, reports);
         MeasureTargets(shared: false, reports);
         File.WriteAllLines(output, reports);
     }
 
-    private static void MeasureMovement(PathfindingEngine engine, List<string> reports)
+    private static void MeasureMovement(List<string> reports)
     {
-        var fixture = new MovementBenchmarkFixture(engine);
+        var fixture = new MovementBenchmarkFixture();
         var samples = new double[600];
 
         for (var warmup = 0; warmup < 30; warmup++) {
@@ -57,7 +56,7 @@ public class MovementExecutorBenchmarks
             fixture.VerifyLanding();
         }
 
-        reports.Add(Report($"100 {engine} walkers movement phases, target <1000µs/tick", samples, allocated / samples.Length));
+        reports.Add(Report($"100 navigation walkers movement phases, target <1000µs/tick", samples, allocated / samples.Length));
     }
 
     private static void MeasureTargets(bool shared, List<string> reports)
@@ -144,16 +143,14 @@ public class MovementExecutorBenchmarks
     private sealed class MovementBenchmarkFixture
     {
         private readonly RoomPerformanceFixture _fixture = RoomPerformanceFixture.Create(100, 0, 64);
-        private readonly PathfindingEngine _engine;
         private readonly RoomNavigation _navigation;
         private readonly int[] _landing = new int[100];
 
-        internal MovementBenchmarkFixture(PathfindingEngine engine)
+        internal MovementBenchmarkFixture()
         {
-            _engine = engine;
             RoomPerformanceFixture.SetField(_fixture.Room, "_roomItemHandling", new RoomItemHandling(_fixture.Room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards));
             _fixture.Map.GenerateMaps();
-            _navigation = new(_fixture.Room, _fixture.Map.StaticModel, new() { Engine = engine }, TestLogging.Navigation,
+            _navigation = new(_fixture.Room, _fixture.Map.StaticModel, new() { }, TestLogging.Navigation,
                 TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
             typeof(Gamemap).GetField("<Navigation>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .SetValue(_fixture.Map, _navigation);
@@ -163,7 +160,7 @@ public class MovementExecutorBenchmarks
 
         private void InitializeActors()
         {
-            using var owner = _engine == PathfindingEngine.V2 ? RoomOwnerScope.Enter(_fixture.Room) : null;
+            using var owner = RoomOwnerScope.Enter(_fixture.Room);
 
             for (var index = 0; index < _fixture.Bots.Count; index++) {
                 var actor = _fixture.Bots[index];
@@ -172,14 +169,7 @@ public class MovementExecutorBenchmarks
                 actor.Y = index / 2 + 1;
                 actor.Statusses.Clear();
                 actor.AllowOverride = false;
-                actor.Path.Clear();
-
-                if (_engine == PathfindingEngine.V2) {
-                    _navigation.Admit(actor);
-                }
-                else {
-                    _fixture.Map.AddUserToMap(actor, actor.Coordinate);
-                }
+                _navigation.Admit(actor);
             }
         }
 
@@ -194,13 +184,7 @@ public class MovementExecutorBenchmarks
                 actor.IsWalking = true;
                 actor.PathRecalcNeeded = false;
                 actor.SetStep = false;
-
-                if (_engine == PathfindingEngine.V2) {
-                    PrepareV2(actor);
-                }
-                else {
-                    PrepareLegacy(actor);
-                }
+                PrepareV2(actor);
             }
         }
 
@@ -216,17 +200,9 @@ public class MovementExecutorBenchmarks
             state.Origin = MoveOrigin.Bot;
         }
 
-        private static void PrepareLegacy(RoomUser actor)
-        {
-            actor.Path.Clear();
-            actor.Path.Add(new(actor.GoalX, actor.GoalY));
-            actor.Path.Add(new(actor.X, actor.Y));
-            actor.PathStep = 1;
-        }
-
         internal void Tick()
         {
-            using var owner = _engine == PathfindingEngine.V2 ? RoomOwnerScope.Enter(_fixture.Room) : null;
+            using var owner = RoomOwnerScope.Enter(_fixture.Room);
             _navigation.DrainCommands();
             _fixture.Manager.OnCycle();
         }

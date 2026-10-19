@@ -15,12 +15,11 @@ public sealed class WiredAvatarState
     private readonly List<Action> _tickEffects = [];
     private Room? _executorRoom;
     private static readonly ConditionalWeakTable<Room, WiredAvatarState> Rooms = new();
-    public static WiredAvatarState For(Room room) => room.UsesV2Movement
-        ? Rooms.GetValue(room, value => new() { _executorRoom = value })
-        : Rooms.GetValue(room, _ => new());
+    public static WiredAvatarState For(Room room) => Rooms.GetValue(room, value => new() { _executorRoom = value })
+;
     public bool FreezeUser(RoomUser user, int effect, bool cancelOnTeleport)
     {
-        if (_executorRoom?.GetGameMap()?.Navigation is { UsesExecutor: true } navigation) {
+        if (_executorRoom?.GetGameMap()?.Navigation is { } navigation) {
             // The tile the freeze stops the user on: the step announced when it fired, otherwise where the user stands.
             var stopAt = WiredRoomOperations.StandingTile(user);
 
@@ -106,7 +105,7 @@ public sealed class WiredAvatarState
 
         // Observed on AIR WIN63-202610151745-318700621 (wf_act_freeze.cov_effect_sources): Unfreeze lands on the room tick, like Freeze
         // (said at +0, effect 0 at +400 ms), and a teleport that cancels a freeze sends only the teleport effect, no effect 0 first.
-        if (!teleport && _executorRoom?.GetGameMap()?.Navigation is { UsesExecutor: true } navigation) {
+        if (!teleport && _executorRoom?.GetGameMap()?.Navigation is { } navigation) {
             navigation.RunOwner(user, (actor, _) =>
             {
                 if (_frozen.TryGetValue(actor, out var current)) {

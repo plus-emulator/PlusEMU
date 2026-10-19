@@ -100,13 +100,12 @@ public sealed class RoomScopeCleanupTests
 
             if (v2) {
                 typeof(Gamemap).GetField("<Navigation>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
-                    .SetValue(map, new RoomNavigation(room, map.StaticModel, new() { Engine = PathfindingEngine.V2 }, TestLogging.Navigation, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance));
+                    .SetValue(map, new RoomNavigation(room, map.StaticModel, new() { }, TestLogging.Navigation, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance));
             }
 
             map.GenerateMaps();
         });
         var room = fixture.Create(1);
-        Assert.Equal(v2, room.UsesV2Movement);
         var handler = room.GetRoomItemHandler();
         var wall = new Item
         {

@@ -6,6 +6,7 @@ internal sealed class MovementContext(Room room, RoomNavigation navigation, Land
     internal RoomNavigation Navigation { get; } = navigation;
     internal NavGrid Grid => Navigation.Grid;
     internal RouteGraph Graph { get; } = new(navigation.Grid);
+    internal PlanningGridCache PlanningGrids { get; } = new(navigation.Grid);
     internal GuildGateExecution GuildGates { get; } = new(room, navigation.Grid);
     internal LandingEffects LandingEffects { get; } = landingEffects;
     internal FloorEffectService FloorEffects { get; } = floorEffects;
@@ -85,6 +86,36 @@ internal sealed class MovementContext(Room room, RoomNavigation navigation, Land
         Claims.EnsureCapacity(Grid.SlotCapacity);
 
         return Claims.Snapshot(Group(actor));
+    }
+    // Furniture stays frozen for the command; avatar occupancy is refreshed for each repair.
+    // Stable surfaces, not mutable slot numbers, carry occupancy between the two grid versions.
+    internal PlanningOccupancy Occupancy(RoomUser actor, NavGrid planningGrid)
+    {
+        if (!planningGrid.Layered) {
+            return Occupancy(actor);
+        }
+
+        Claims.EnsureCapacity(Grid.SlotCapacity);
+        var result = new PlanningOccupancy(planningGrid.SlotCapacity);
+        var group = Group(actor);
+
+        for (var slot = 0; slot < planningGrid.SlotCapacity; slot++) {
+            if (!planningGrid.Active(slot)) {
+                continue;
+            }
+
+            var reference = planningGrid.Reference(slot);
+            var liveSlot = Grid.SlotOf(reference);
+
+            if (liveSlot < 0 || !Grid.Active(liveSlot)) {
+                liveSlot = SurfaceSelection.Select(Grid, reference.Tile, planningGrid.WalkZ[slot], ForceResolution.ExactZ);
+            }
+
+            result.Targets[slot] = liveSlot >= 0 ? Claims.OccupancyAt(liveSlot, group)
+                : Claims.OccupancyAt(reference.Tile, group) & TargetOccupancy.OffGraph;
+        }
+
+        return result;
     }
     internal PlanningOccupancy OccupancyAt(RoomUser actor, int slot, IReadOnlySet<RoomUser>? departing = null)
     {

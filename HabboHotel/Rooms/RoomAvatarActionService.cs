@@ -49,29 +49,13 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             return;
         }
 
-        if (room.UsesV2Movement) {
-            if (!user.SetStep && x == user.X && y == user.Y) {
-                return;
-            }
-
-            user.MoveTo(x, y);
-
+        if (!user.SetStep && x == user.X && y == user.Y) {
             return;
-        }
-
-        if (x == user.X && y == user.Y) {
-            return;
-        }
-
-        if (user.RidingHorse) {
-            var horse = room.GetRoomUserManager().GetRoomUserByVirtualId(user.HorseId);
-
-            if (horse != null) {
-                horse.MoveTo(x, y);
-            }
         }
 
         user.MoveTo(x, y);
+
+        return;
     }
 
     public void GiveHandItem(Room room, GameClient session, int userId)

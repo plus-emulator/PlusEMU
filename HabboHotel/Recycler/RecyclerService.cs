@@ -186,13 +186,7 @@ public sealed class RecyclerService(IRecyclerStore store, IItemDataManager defin
         }
 
         var placement = item.Placement;
-
-        if (room.UsesV2Movement) {
-            room.GetGameMap().Navigation!.RunOwner(actor, (_, _) => Open(session, habbo!, room, handler!, item, placement));
-        }
-        else {
-            Open(session, habbo!, room, handler!, item, placement);
-        }
+        room.GetGameMap().Navigation!.RunOwner(actor, (_, _) => Open(session, habbo!, room, handler!, item, placement));
 
         return true;
     }

@@ -11,23 +11,15 @@ namespace Plus.Tests;
 public partial class PlacedFurniRoomTests
 {
     [Theory]
-    [InlineData(PathfindingEngine.Legacy, false, 32)]
-    [InlineData(PathfindingEngine.Legacy, false, 64)]
-    [InlineData(PathfindingEngine.Legacy, false, 128)]
-    [InlineData(PathfindingEngine.Legacy, false, 250)]
-    [InlineData(PathfindingEngine.Legacy, true, 8)]
-    [InlineData(PathfindingEngine.Legacy, true, 16)]
-    [InlineData(PathfindingEngine.Legacy, true, 32)]
-    [InlineData(PathfindingEngine.Legacy, true, 64)]
-    [InlineData(PathfindingEngine.V2, false, 32)]
-    [InlineData(PathfindingEngine.V2, false, 64)]
-    [InlineData(PathfindingEngine.V2, false, 128)]
-    [InlineData(PathfindingEngine.V2, false, 250)]
-    [InlineData(PathfindingEngine.V2, true, 8)]
-    [InlineData(PathfindingEngine.V2, true, 16)]
-    [InlineData(PathfindingEngine.V2, true, 32)]
-    [InlineData(PathfindingEngine.V2, true, 64)]
-    public void MeasureRollerPlannerScaling(PathfindingEngine engine, bool loop, int size)
+    [InlineData(false, 32)]
+    [InlineData(false, 64)]
+    [InlineData(false, 128)]
+    [InlineData(false, 250)]
+    [InlineData(true, 8)]
+    [InlineData(true, 16)]
+    [InlineData(true, 32)]
+    [InlineData(true, 64)]
+    public void MeasureRollerPlannerScaling(bool loop, int size)
     {
         var output = Environment.GetEnvironmentVariable("PLUSEMU_ROLLER_BENCHMARK");
 
@@ -36,16 +28,13 @@ public partial class PlacedFurniRoomTests
         }
 
         var tiles = loop ? BenchmarkLoop(size) : BenchmarkChain(size);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         PlannerActor(1, 0, 0, 0);
         ExecutorTick();
         ExecutorTick();
         var planning = "plan_us=n/a";
-
-        if (engine == PathfindingEngine.V2) {
-            var us = MinimumPlanningMicroseconds();
-            planning = FormattableString.Invariant($"plan_us={us:F0} plan_us_per_roller={us / tiles:F2}");
-        }
+        var us = MinimumPlanningMicroseconds();
+        planning = FormattableString.Invariant($"plan_us={us:F0} plan_us_per_roller={us / tiles:F2}");
 
         EnableExecutorRollers();
         ExecutorTick();
@@ -53,7 +42,7 @@ public partial class PlacedFurniRoomTests
 
         lock (typeof(PlacedFurniRoomTests)) {
             File.AppendAllLines(output, [FormattableString.Invariant(
-                $"{engine} {(loop ? "full loop" : "loaded chain")} rollers={tiles} {planning} cycle_median_us={cycle:F0}")]);
+                $"navigation {(loop ? "full loop" : "loaded chain")} rollers={tiles} {planning} cycle_median_us={cycle:F0}")]);
         }
     }
 

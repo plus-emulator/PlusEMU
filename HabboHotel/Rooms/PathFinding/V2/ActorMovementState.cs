@@ -18,18 +18,18 @@ public sealed class ActorMovementState
     internal Point? RegisteredMapCoordinate { get; set; }
     public double SupportZ { get; internal set; }
     public Route Route { get; } = new();
-    public RouteStateMachine Fallback { get; } = new();
+    internal WalkPlan? Plan { get; set; }
     public int Cursor { get; internal set; }
     public SurfaceRef[] Pending { get; } = new SurfaceRef[3];
+    internal double[] PendingZ { get; } = new double[3];
     public int PendingCount { get; internal set; }
+    internal bool StopAfterPending { get; set; }
     // Purpose each pending edge was claimed with; commit re-validates with the same purpose.
     public StepPurpose[] PendingPurpose { get; } = new StepPurpose[3];
     internal GraphView PendingView { get; set; }
     public bool HasIntent { get; internal set; }
-    internal bool RouteInvalidated { get; set; }
     internal bool LandingInProgress { get; set; }
     public int WaitTicks { get; internal set; }
-    public int BlockReplans { get; internal set; }
     public int StallTicks { get; internal set; }
     public int BoundVersion { get; internal set; } = -1;
     public MoveOrigin Origin { get; internal set; }

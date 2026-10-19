@@ -14,6 +14,7 @@ using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.Instance;
+using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Inventory.Furniture;
@@ -119,9 +120,6 @@ public sealed partial class WiredGlideConveyorTests
     private static readonly (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] LiveRoom14 =
         Configure(Room14, (110, [1, 1, 0, 0, 900, 0, 0]), (109, [0, 0, 1, 1, 100]), (121, [0, 0, 1, 0, 0, 0, 900]))
             .Select(entry => entry.Id == 107 ? entry with { Json = Source(entry.Json!, 201) } : entry).ToArray();
-
-    // Normal independent placements can move onto stackable tile 120. Restore source 0 is the antenna,
-    // which has no snapshot, so four completed pulses translate the picked line four tiles.
     [Fact]
     public void Room14IndependentLineMovesOntoItsStackableUnpickedEndTile()
     {
@@ -134,10 +132,6 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(new[] { 8, 9, 10, 11, 12, 13 }, Line.Select(id => f.Items[id].GetX));
         Assert.Equal(10, f.Items[120].GetX);
     }
-
-    // The same room once stack A moves through all furni, the restore uses its picked furni and stack B moves through all users:
-    // each repeater pulse carries an initially supported rider once, regardless of mover order.
-    // The signal puts the tiles back after each pulse.
     [Fact]
     public void Room14GlidesTheRiderAcrossTheLineWithRoomWideSources()
     {
@@ -154,8 +148,6 @@ public sealed partial class WiredGlideConveyorTests
             AssertLineAtSnapshot(f);
         }
     }
-
-    // Live: a repeater stack has no signal, so a signal-sourced mover selects nothing and the line never moves.
     [Fact]
     public void LiveRoom14SignalSourcedMoverSelectsNothingFromItsRepeater()
     {
@@ -169,9 +161,6 @@ public sealed partial class WiredGlideConveyorTests
             AssertLineAtSnapshot(f);
         }
     }
-
-    // The live room on its real heightmap with v2 movement: once 107 takes its picked furni again, each repeater pulse carries
-    // a rider one tile per pulse. Later movers cannot acquire that rider during the same action.
     [Fact]
     public void LiveRoom14GlidesAWalkedOnRiderWithPickedFurni()
     {
@@ -190,8 +179,6 @@ public sealed partial class WiredGlideConveyorTests
             AssertLineAtSnapshot(f);
         }
     }
-
-    // A user standing on the end tile is not carried, so the front tile cannot step under them and the rider is not pushed onto them.
     [Fact]
     public void LiveRoom14UserOnTheEndTileBlocksTheFrontTile()
     {
@@ -205,9 +192,6 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal((10, 13), (idle.X, idle.Y));
         Assert.Equal(9, f.Items[119].GetX);
     }
-
-    // Live: a user beside the line clicks the front tile while the conveyor runs. Its tile leaves and returns between room
-    // ticks, so the target height flips between the tile top and the floor; the step must still land on the walkable tile.
     [Fact]
     public void LiveRoom14UserStepsOntoTheFrontTileWhileTheLineMoves()
     {
@@ -220,8 +204,6 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(13, user.Y);
         Assert.InRange(user.X, 4, 10);
     }
-
-    // Once landed, the conveyor carries the user who stepped on to the unpicked end tile.
     [Fact]
     public void LiveRoom14UserWhoStepsOntoTheMovingLineGlidesToTheEndTile()
     {
@@ -346,15 +328,13 @@ public sealed partial class WiredGlideConveyorTests
                 Items[item.Id] = item;
                 _map.AddToMap(item);
 
-                if (live && _map.Navigation != null) {
+                if (_map.Navigation != null) {
                     item.EnableNavigationSynchronization();
                     _map.Navigation.Inputs.Attach(item);
                 }
             }
 
-            if (live) {
-                _map.GenerateMaps();
-            }
+            _map.GenerateMaps();
 
             foreach (var item in Items.Values.Where(item => item.IsWired)) {
                 Assert.NotNull(_wired.LoadWiredBox(item));
@@ -392,7 +372,7 @@ public sealed partial class WiredGlideConveyorTests
             {
                 _map.AddToMap(item);
 
-                if (_live && _map.Navigation != null) {
+                if (_map.Navigation != null) {
                     item.EnableNavigationSynchronization();
                     _map.Navigation.Inputs.Attach(item);
                 }
@@ -419,9 +399,8 @@ public sealed partial class WiredGlideConveyorTests
         {
             var user = new RoomUser(1, 14, 1, _room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { InternalRoomId = 1 };
             _users[user.VirtualId] = user;
-            _map.AddUserToMap(user, new(x, y));
-            user.SetPos(x, y, _map.SqAbsoluteHeight(x, y));
-            _map.GameMap[x, y] = 1;
+            user.InitializePosition(x, y, _map.SqAbsoluteHeight(x, y));
+            _room.RunFastPass(() => _map.Navigation.Admit(user));
 
             return user;
         }
@@ -454,15 +433,6 @@ public sealed partial class WiredGlideConveyorTests
             };
             _users[user.VirtualId] = user;
 
-            if (!_room.UsesV2Movement) {
-                _map.AddUserToMap(user, new(fromX, fromY));
-                _map.GameMap[fromX, fromY] = 1;
-                Assert.True(Plus.HabboHotel.Items.Wired.Modern.WiredRoomOperations.RelocateAvatar(_room, user, x, y, false));
-                Full();
-
-                return user;
-            }
-
             _room.RunFastPass(() => _map.Navigation!.Admit(user));
             user.MoveTo(x, y);
 
@@ -477,10 +447,7 @@ public sealed partial class WiredGlideConveyorTests
         {
             _wired.OnRoomTick();
             _map.Navigation?.ApplyDirty();
-
-            if (_room.UsesV2Movement) {
-                _map.Navigation!.DrainCommands();
-            }
+            _map.Navigation!.DrainCommands();
 
             _map.Gates.Drain();
             _room.GetRoomUserManager().OnCycle();
@@ -509,6 +476,8 @@ public sealed partial class WiredGlideConveyorTests
                 _now += 50;
 
                 if (!_live) {
+                    using var owner = RoomOwnerScope.Enter(_room);
+
                     if (_now % 500 == 0) {
                         _wired.OnRoomTick();
                     }

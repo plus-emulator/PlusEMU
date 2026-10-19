@@ -20,7 +20,6 @@ public partial class PlacedFurniRoomTests
         Set("_rooms", TestRoomOwners.Create(unloaded.Add));
 
         if (v2) {
-            _room.EnableV2Movement();
         }
 
         _room.IdleTime = 58;
@@ -43,7 +42,6 @@ public partial class PlacedFurniRoomTests
         Set("_rooms", TestRoomOwners.Create(unloaded.Add));
 
         if (v2) {
-            _room.EnableV2Movement();
         }
 
         _room.IdleTime = 59;

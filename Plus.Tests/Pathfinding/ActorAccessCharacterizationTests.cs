@@ -103,11 +103,10 @@ public partial class PlacedFurniRoomTests
     [InlineData(InteractionType.GateVip)]
     [InlineData(InteractionType.PetBreedingBox)]
     [InlineData(InteractionType.FootballGate)]
-    public void AccessGatesWithoutGuildRulesAdmitEveryActorInBothEngines(InteractionType kind)
+    public void AccessGatesWithoutGuildRulesAdmitEveryActorWithNavigation(InteractionType kind)
     {
         var gate = AccessGate(kind, walkable: true);
         var actor = ExecutorActor(0, 1);
-        Assert.True(_room.GetGameMap().IsValidStep2(actor, new(0, 1), new(1, 1), true, false));
         Assert.Equal("0", gate.LegacyDataString);
         actor.MoveTo(1, 1);
         ExecutorTick();
@@ -117,18 +116,19 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void AccessLegacyGuildGateStillOpensForMembersAtExecutionOnly()
+    public void AccessGuildGateOpensForMembersAtExecutionOnly()
     {
         var gate = AccessGate(InteractionType.GuildGate);
         _groupLookup = id => id == 7 ? GuildGroup(7) : null;
         var previous = (IGame)_gameField.GetValue(null)!;
         _gameField.SetValue(null, Proxy<IGame>((method, args) => method == "get_GroupManager"
-            ? throw new InvalidOperationException("Legacy guild gate must not use the global group manager.")
+            ? throw new InvalidOperationException("Guild gate must not use the global group manager.")
             : typeof(IGame).GetMethod(method)!.Invoke(previous, args)));
-        var user = Viewer(0, 1);
-        Assert.True(_room.GetGameMap().IsValidStep(new(0, 1), new(1, 1), true, false));
+        var user = ExecutorActor(0, 1);
         Assert.Equal("0", gate.LegacyDataString);
-        Assert.True(_room.GetGameMap().IsValidStep2(user, new(0, 1), new(1, 1), true, false));
+        user.MoveTo(1, 1);
+        ExecutorTick();
+        ExecutorTick();
         Assert.Equal("1", gate.LegacyDataString);
         Assert.Equal(7, gate.InteractingUser);
         Assert.Equal(4, gate.UpdateCounter);

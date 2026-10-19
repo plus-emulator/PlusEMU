@@ -11,41 +11,13 @@ internal static class RoomUnitPlacement
 {
     /// <summary>
     /// Checks the tile, lets <paramref name="commit"/> store the new position (given its height) before the room
-    /// sees it, then snaps the unit. A false commit leaves the unit as it was. Under v2 all three run on the room
+    /// sees it, then snaps the unit. A false commit leaves the unit as it was. All three run on the room
     /// owner's next tick.
     /// </summary>
     public static void Place(Room room, RoomUser unit, int x, int y, int rotation, Func<double, bool> commit)
     {
-        var map = room.GetGameMap();
-
-        if (map.Navigation is { UsesExecutor: true } navigation) {
-            navigation.RunOwner(unit, (actor, sequence) => PlaceOwned(room, navigation, actor, x, y, rotation, commit, sequence));
-
-            return;
-        }
-
-        if (!CanPlace(room, unit, x, y) || !commit(HeightAt(room, unit, x, y))) {
-            return;
-        }
-
-        unit.ClearMovement(true);
-        // The facing is set first so a seat or bed on the tile still turns the unit, as walking onto it would.
-        unit.RotBody = rotation;
-        unit.RotHead = rotation;
-
-        if (unit.X != x || unit.Y != y) {
-            var source = unit.Coordinate;
-            map.UpdateUserMovement(source, new(x, y), unit);
-            map.GameMap[source.X, source.Y] = unit.SqState;
-            unit.SqState = map.GameMap[x, y];
-            unit.SetPos(x, y, map.SqAbsoluteHeight(x, y));
-            map.GameMap[x, y] = 1;
-        }
-
-        unit.GoalX = x;
-        unit.GoalY = y;
-        unit.UpdateNeeded = true;
-        room.GetRoomUserManager().UpdateUserStatus(unit, false);
+        var navigation = room.GetGameMap().Navigation;
+        navigation.RunOwner(unit, (actor, sequence) => PlaceOwned(room, navigation, actor, x, y, rotation, commit, sequence));
     }
 
     // A rotation keeps the unit's own tile; a move needs an open floor tile no other unit stands on.

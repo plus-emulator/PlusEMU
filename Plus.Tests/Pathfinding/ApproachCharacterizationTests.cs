@@ -165,13 +165,13 @@ public partial class PlacedFurniRoomTests
     [InlineData(InteractionType.VendingMachine)]
     [InlineData(InteractionType.Teleport)]
     [InlineData(InteractionType.Hopper)]
-    public void LegacyEngineDistantClickOnlySetsTheWalkGoal(InteractionType kind)
+    public void DistantClickQueuesTheWalkGoalBeforeTheOwnerTick(InteractionType kind)
     {
         var item = ApproachFixture(kind);
         var actor = Viewer(3, 0);
         item.Interactor.OnTrigger(_client, item, 0, true);
-        Assert.Equal((1, 0), (actor.GoalX, actor.GoalY));
-        Assert.True(actor.PathRecalcNeeded);
+        var command = Assert.IsType<MoveCommand>(actor.Movement.Commands.Read());
+        Assert.Equal((1, 0), (command.X, command.Y));
         Assert.Equal(0, item.InteractingUser);
         Assert.Equal("0", item.LegacyDataString);
         Assert.True(actor.CanWalk);
@@ -182,7 +182,7 @@ public partial class PlacedFurniRoomTests
     [InlineData(InteractionType.VendingMachine)]
     [InlineData(InteractionType.Teleport)]
     [InlineData(InteractionType.Hopper)]
-    public void LegacyEngineNearClickStartsTheInteractionWithoutSettingAWalkGoal(InteractionType kind)
+    public void NearClickStartsTheInteractionWithoutSettingAWalkGoal(InteractionType kind)
     {
         var item = ApproachFixture(kind);
         var actor = Viewer(1, 0);

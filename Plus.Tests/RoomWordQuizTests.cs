@@ -86,7 +86,6 @@ public partial class PlacedFurniRoomTests
         Assert.Single(_client.Sent, header => header == ServerPacketHeader.SimplePollAnswerComposer);
 
         if (v2) {
-            _room.EnableV2Movement();
         }
 
         _interactionClock.Now = _interactionClock.Now.AddMilliseconds(1999);

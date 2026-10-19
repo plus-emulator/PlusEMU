@@ -78,7 +78,9 @@ public partial class PlacedFurniRoomTests
         // Adding furniture after the helper must not restore collision.
         Add(12, 1, 1, z: 7, height: 2, stackable: false, type: InteractionType.Bed, seat: true);
         Assert.Equal((byte)1, _room.GetGameMap().GameMap[1, 1]);
-        var user = Viewer(1, 1);
+        var user = ExecutorActor(1, 1);
+        user.SetPos(1, 1, 0.75);
+        ExecutorTick();
         user.Statusses["sit"] = "1";
         user.Statusses["lay"] = "1 null";
         user.IsSitting = user.IsLying = true;
@@ -87,8 +89,9 @@ public partial class PlacedFurniRoomTests
         Assert.False(user.Statusses.ContainsKey("sit"));
         Assert.False(user.Statusses.ContainsKey("lay"));
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(tile, 1, 1, 10));
+        ExecutorTick();
         Assert.Equal(10, user.Z);
-        Assert.True(user.UpdateNeeded);
+        Assert.Equal("10.0", ExecutorUpdate(user).Z);
         Assert.Equal((byte)3, _room.GetGameMap().GameMap[0, 0]);
     }
 
@@ -370,16 +373,13 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void LegacyMovementEmitsWalkTileZInMvUnderRaisedTable()
+    public void MovementEmitsWalkTileZInMvUnderRaisedTable()
     {
         Add(10, 1, 1, z: 5, height: 1, stackable: false);
         Add(11, 1, 1, z: 0.75, type: InteractionType.WalkMagicTile);
-        var user = Viewer(1, 0);
-        user.Path = [new(1, 1), new(1, 0)];
-        user.PathStep = 1;
-        user.GoalX = user.GoalY = 1;
-        user.IsWalking = true;
-        _room.GetRoomUserManager().OnCycle();
+        var user = ExecutorActor(1, 0);
+        user.MoveTo(1, 1);
+        ExecutorTick();
         Assert.Equal("1,1,0.75", user.Statusses["mv"]);
         Assert.Equal(0.75, user.SetZ);
         var status = Body(new UserUpdateComposer(RoomUserStatusSnapshot.Capture([user])));
@@ -401,8 +401,8 @@ public partial class PlacedFurniRoomTests
         Viewer();
         var tile = Add(10, 1, 1, z: 2, type: InteractionType.WalkMagicTile);
         tile.ExtraData = new LegacyDataFormat { Data = "200;1" };
-        // Invoke the same relocation path used by CycleRollers.
-        _room.GetRoomItemHandler().UpdateItemOnRoller(tile, new(1, 2), 42, 1.75);
+        // Relocation publishes both the old and new tile projections.
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(tile, 1, 2, 1.75));
         Assert.Equal("175;1", tile.LegacyDataString);
         Assert.Equal((short)0, DeltaAt(1, 1));
         Assert.Equal((short)448, DeltaAt(1, 2));
@@ -445,14 +445,17 @@ public partial class PlacedFurniRoomTests
         effect.Definition.EffectId = 7;
         effect.ExtraData = new LegacyDataFormat { Data = "0" };
         var tile = Add(11, 1, 1, z: 0.75, type: InteractionType.WalkMagicTile);
-        var user = Viewer(1, 1);
+        var user = ExecutorActor(1, 0);
         Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).Init(_client.GetHabbo());
-        _room.GetRoomUserManager().UpdateUserStatus(user, true);
+        user.MoveTo(1, 1);
+        ExecutorTick();
+        ExecutorTick();
         Assert.Equal(7, Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).CurrentEffect);
         Assert.Equal("1", effect.LegacyDataString);
         effect.LegacyDataString = "0";
         Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).CurrentEffect = 0;
         _room.GetRoomItemHandler().SetFloorItem(tile, 1, 1, 1);
+        ExecutorTick();
         Assert.Equal(1, user.Z);
         Assert.Equal("0", effect.LegacyDataString);
         Assert.Equal(0, Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).CurrentEffect);
@@ -507,7 +510,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(map.CanRollItemHere(1, 1));
         Assert.Equal(2.5, map.SqAbsoluteHeight(1, 1));
         var passenger = Add(11, 2, 1, z: 3);
-        _room.GetRoomItemHandler().UpdateItemOnRoller(passenger, new(1, 1), 42, 2.5);
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(passenger, 1, 1, 2.5));
         Assert.Equal(1, passenger.GetX);
         Assert.Equal(2.5, passenger.GetZ);
     }
@@ -570,7 +573,7 @@ public partial class PlacedFurniRoomTests
             _room.GetGameMap().UpdateMapForItem(support);
         }
 
-        var rider = Viewer(1, 0);
+        var rider = ExecutorActor(1, 0);
         var horse = new RoomUser(0, RoomId, 0, _room, null, TestChatEmotions.Unused, TestRewardProgress.Unused)
         {
             X = 1,
@@ -582,14 +585,13 @@ public partial class PlacedFurniRoomTests
         roster[0] = horse;
         rider.RidingHorse = true;
         rider.HorseId = horse.VirtualId;
-        rider.Path = [new(1, 1), new(1, 0)];
-        rider.PathStep = 1;
-        rider.GoalX = rider.GoalY = 1;
-        rider.IsWalking = true;
-        _room.GetRoomUserManager().OnCycle();
+        _room.GetGameMap().Navigation.Admit(horse);
+        ExecutorTick();
+        rider.MoveTo(1, 1);
+        ExecutorTick();
         Assert.Equal(riderMv, rider.Statusses["mv"]);
         Assert.Equal("1,1,0.75", horse.Statusses["mv"]);
-        Assert.True(horse.UpdateNeeded);
+        Assert.Contains("/mv 1,1,0.75/", ExecutorUpdate(horse).Status);
     }
 
     [Fact]
@@ -694,7 +696,7 @@ public partial class PlacedFurniRoomTests
                     map.GenerateMaps();
                 }
                 else {
-                    _room.GetRoomItemHandler().UpdateItemOnRoller(bridge, new(1, 1), 42, 2);
+                    Assert.True(_room.GetRoomItemHandler().SetFloorItem(bridge, 1, 1, 2));
                 }
 
                 map.FlushPlacementUpdates();

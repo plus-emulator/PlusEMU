@@ -2,7 +2,7 @@ namespace Plus.HabboHotel.Rooms.PathFinding;
 
 public static class PathTieBreak
 {
-    private static readonly (int X, int Y)[] Offsets = [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)];
+    private static readonly (int X, int Y)[] Offsets = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)];
     public static ReadOnlySpan<(int X, int Y)> Neighbours => Offsets;
     public static int Heuristic(int x, int y, int goalX, int goalY) => Math.Max(Math.Abs(x - goalX), Math.Abs(y - goalY));
     public static UInt128 Key(long f, int x, int y, int goalX, int goalY, byte ordinal, int sequence)

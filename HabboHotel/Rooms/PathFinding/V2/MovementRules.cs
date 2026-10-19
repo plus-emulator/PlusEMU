@@ -8,7 +8,7 @@ public enum StepPurpose
 }
 public enum OccupancyView
 {
-    Planning, Execution
+    Planning, Execution, InitialPlanning
 }
 public enum StepReason
 {
@@ -60,6 +60,13 @@ public static class ClaimMatrix
             ? TargetOccupancy.Stationary | TargetOccupancy.GoalClaim | TargetOccupancy.RollerClaim | TargetOccupancy.OffGraph
             : TargetOccupancy.Stationary | TargetOccupancy.OffGraph;
     }
+
+    // In a walk-through room a standing avatar adds two steps of cost to a first plan: a short detour wins,
+    // but its tile stays usable.
+    // Inferred from routes observed on AIR `WIN63-202610151745-318700621`.
+    public static int StepCost(ActorProfile actor, StepPurpose purpose, OccupancyView view, TargetOccupancy target)
+        => view == OccupancyView.InitialPlanning && purpose == StepPurpose.Transit && !actor.LegacyOverride && !actor.IgnoreUsers
+            && (target & (TargetOccupancy.Stationary | TargetOccupancy.OffGraph)) != 0 ? 3 : 1;
 
     // The claim an announced step takes on its target (§6.4).
     public static ClaimKind KindFor(ActorProfile actor, NavFlags target, StepPurpose purpose)
@@ -134,7 +141,7 @@ public sealed class MovementRules(NavGrid grid, PathfindingSettings settings, Ac
             return new(actor.Interaction?.Allows(from, to) == true ? StepReason.Ok : StepReason.InteractionDenied);
         }
 
-        if (!IsStandable(flags, slot, purpose)) {
+        if (!IsStandable(flags, slot, purpose, view)) {
             return new(StepReason.NotStandable);
         }
 
@@ -170,9 +177,9 @@ public sealed class MovementRules(NavGrid grid, PathfindingSettings settings, Ac
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool IsStandable(NavFlags flags, int slot, StepPurpose purpose)
+    private bool IsStandable(NavFlags flags, int slot, StepPurpose purpose, OccupancyView view)
     {
-        var required = purpose == StepPurpose.Transit ? NavFlags.Transit
+        var required = purpose == StepPurpose.Transit && view != OccupancyView.Execution ? NavFlags.Transit
             : NavFlags.Transit | NavFlags.GoalOnlySeat | NavFlags.GoalOnlyBed | NavFlags.Door;
 
         return purpose == StepPurpose.Roller

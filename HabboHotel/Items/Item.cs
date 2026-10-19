@@ -702,13 +702,7 @@ public class Item
 
                         if (user != null && user.X == GetX && user.Y == GetY) {
                             LegacyDataString = "1";
-
-                            if (room.UsesV2Movement) {
-                                user.RequestInteractionStep(room, SquareBehind);
-                            }
-                            else {
-                                user.MoveTo(SquareBehind);
-                            }
+                            user.RequestInteractionStep(room, SquareBehind);
 
                             user.InteractingGate = false;
                             user.GateId = 0;
@@ -814,10 +808,7 @@ public class Item
                                                 hoppingClient.GetHabbo() != null) {
                                                 hoppingClient.GetHabbo().IsHopping = true;
                                                 hoppingClient.GetHabbo().HopperId = nextHopperId;
-
-                                                if (room.UsesV2Movement) {
-                                                    room.GetGameMap().Navigation!.Remove(user);
-                                                }
+                                                room.GetGameMap().Navigation!.Remove(user);
 
                                                 hoppingClient.GetHabbo().PrepareRoom(roomHopId, "");
                                                 //User.GetClient().SendMessage(new RoomForwardComposer(RoomHopId));
@@ -831,12 +822,7 @@ public class Item
                                     }
                                     // Is he in front of the tele?
                                     else if (user.Coordinate == SquareInFront) {
-                                        if (room.UsesV2Movement) {
-                                            user.AllowOverride = false;
-                                        }
-                                        else {
-                                            user.AllowOverride = true;
-                                        }
+                                        user.AllowOverride = false;
 
                                         keepDoorOpen = true;
 
@@ -846,21 +832,8 @@ public class Item
                                         }
 
                                         user.CanWalk = false;
-
-                                        if (room.UsesV2Movement) {
-                                            user.AllowOverride = false;
-                                        }
-                                        else {
-                                            user.AllowOverride = true;
-                                        }
-
-                                        // Move into the tele
-                                        if (room.UsesV2Movement) {
-                                            user.RequestInteractionStep(room, Coordinate, true);
-                                        }
-                                        else {
-                                            user.MoveTo(Coordinate.X, Coordinate.Y, true);
-                                        }
+                                        user.AllowOverride = false;
+                                        user.RequestInteractionStep(room, Coordinate);
                                     }
                                     // Not even near, do nothing and move on for the next user.
                                     else {
@@ -881,13 +854,7 @@ public class Item
                                     // If so, open the door, unlock the user's walking, and try to push him out in the right direction. We're done with him!
                                     keepDoorOpen = true;
                                     user2.UnlockWalking();
-
-                                    if (room.UsesV2Movement) {
-                                        user2.RequestInteractionStep(room, SquareInFront);
-                                    }
-                                    else {
-                                        user2.MoveTo(SquareInFront);
-                                    }
+                                    user2.RequestInteractionStep(room, SquareInFront);
                                 }
 
                                 // This is a one time thing, whether the user's valid or not.
@@ -943,66 +910,58 @@ public class Item
 
                                         if (ItemTeleporterFinder.IsTeleLinked(Id, room, TravelStore())) {
                                             showTeleEffect = true;
+                                            // Woop! No more delay.
+                                            var teleId = TravelStore().FindLinkedTeleporter(Id);
+                                            var roomId = ItemTeleporterFinder.GetTeleRoomId(teleId, room, TravelStore());
 
-                                            if (true) {
-                                                // Woop! No more delay.
-                                                var teleId = TravelStore().FindLinkedTeleporter(Id);
-                                                var roomId = ItemTeleporterFinder.GetTeleRoomId(teleId, room, TravelStore());
+                                            // Do we need to tele to the same room or gtf to another?
+                                            if (roomId == RoomId) {
+                                                var item = room.GetRoomItemHandler().GetItem(teleId);
 
-                                                // Do we need to tele to the same room or gtf to another?
-                                                if (roomId == RoomId) {
-                                                    var item = room.GetRoomItemHandler().GetItem(teleId);
+                                                if (item == null) {
+                                                    user.UnlockWalking();
+                                                }
+                                                else {
+                                                    // Set pos
+                                                    user.SetPos(item.GetX, item.GetY, item.GetZ);
+                                                    user.SetRot(item.Rotation, false);
 
-                                                    if (item == null) {
-                                                        user.UnlockWalking();
+                                                    if (!user.IsBot) {
+                                                        _rewards!.Progress(user.GetClient(), RewardTrackActions.Teleport);
                                                     }
-                                                    else {
-                                                        // Set pos
-                                                        user.SetPos(item.GetX, item.GetY, item.GetZ);
-                                                        user.SetRot(item.Rotation, false);
 
-                                                        if (!user.IsBot) {
-                                                            _rewards!.Progress(user.GetClient(), RewardTrackActions.Teleport);
-                                                        }
+                                                    // Force tele effect update (dirty)
+                                                    item.LegacyDataString = "2";
+                                                    item.UpdateState(false, true);
 
-                                                        // Force tele effect update (dirty)
-                                                        item.LegacyDataString = "2";
-                                                        item.UpdateState(false, true);
+                                                    // Set secondary interacting user
+                                                    item.InteractingUser2 = InteractingUser;
+                                                    InteractingUser = 0;
+                                                }
+                                            }
+                                            else {
+                                                if (user.TeleDelay == 0) {
+                                                    // Let's run the teleport delegate to take futher care of this.. WHY DARIO?!
+                                                    if (!user.IsBot && user.GetClient() is { } teleportClient &&
+                                                        teleportClient.GetHabbo() != null) {
+                                                        teleportClient.GetHabbo().IsTeleporting = true;
+                                                        teleportClient.GetHabbo().TeleportingRoomId = roomId;
+                                                        teleportClient.GetHabbo().TeleporterId = teleId;
+                                                        room.GetGameMap().Navigation!.Remove(user);
 
-                                                        // Set secondary interacting user
-                                                        item.InteractingUser2 = InteractingUser;
-                                                        room.GetGameMap().RemoveUserFromMap(user, new(GetX, GetY));
+                                                        teleportClient.GetHabbo().PrepareRoom(roomId, "");
+                                                        //User.GetClient().SendMessage(new RoomForwardComposer(RoomId));
                                                         InteractingUser = 0;
                                                     }
                                                 }
                                                 else {
-                                                    if (user.TeleDelay == 0) {
-                                                        // Let's run the teleport delegate to take futher care of this.. WHY DARIO?!
-                                                        if (!user.IsBot && user.GetClient() is { } teleportClient &&
-                                                            teleportClient.GetHabbo() != null) {
-                                                            teleportClient.GetHabbo().IsTeleporting = true;
-                                                            teleportClient.GetHabbo().TeleportingRoomId = roomId;
-                                                            teleportClient.GetHabbo().TeleporterId = teleId;
-
-                                                            if (room.UsesV2Movement) {
-                                                                room.GetGameMap().Navigation!.Remove(user);
-                                                            }
-
-                                                            teleportClient.GetHabbo().PrepareRoom(roomId, "");
-                                                            //User.GetClient().SendMessage(new RoomForwardComposer(RoomId));
-                                                            InteractingUser = 0;
-                                                        }
-                                                    }
-                                                    else {
-                                                        user.TeleDelay--;
-                                                        showTeleEffect = true;
-                                                    }
-                                                    //PlusEnvironment.GetGame().GetRoomManager().AddTeleAction(new TeleUserData(User.GetClient().GetMessageHandler(), User.GetClient().GetHabbo(), RoomId, TeleId));
+                                                    user.TeleDelay--;
+                                                    showTeleEffect = true;
                                                 }
-
-                                                room.GetGameMap().GenerateMaps();
-                                                // We're done with this tele. We have another one to bother.
+                                                //PlusEnvironment.GetGame().GetRoomManager().AddTeleAction(new TeleUserData(User.GetClient().GetMessageHandler(), User.GetClient().GetHabbo(), RoomId, TeleId));
                                             }
+
+                                            room.GetGameMap().GenerateMaps();
                                         }
                                         else {
                                             // This tele is not linked, so let's gtfo.
@@ -1012,12 +971,7 @@ public class Item
                                     }
                                     // Is he in front of the tele?
                                     else if (user.Coordinate == SquareInFront) {
-                                        if (room.UsesV2Movement) {
-                                            user.AllowOverride = false;
-                                        }
-                                        else {
-                                            user.AllowOverride = true;
-                                        }
+                                        user.AllowOverride = false;
 
                                         // Open the door
                                         keepDoorOpen = true;
@@ -1028,21 +982,8 @@ public class Item
                                         }
 
                                         user.CanWalk = false;
-
-                                        if (room.UsesV2Movement) {
-                                            user.AllowOverride = false;
-                                        }
-                                        else {
-                                            user.AllowOverride = true;
-                                        }
-
-                                        // Move into the tele
-                                        if (room.UsesV2Movement) {
-                                            user.RequestInteractionStep(room, Coordinate, true);
-                                        }
-                                        else {
-                                            user.MoveTo(Coordinate.X, Coordinate.Y, true);
-                                        }
+                                        user.AllowOverride = false;
+                                        user.RequestInteractionStep(room, Coordinate);
                                     }
                                     // Not even near, do nothing and move on for the next user.
                                     else {
@@ -1064,13 +1005,7 @@ public class Item
                                     // If so, open the door, unlock the user's walking, and try to push him out in the right direction. We're done with him!
                                     keepDoorOpen = true;
                                     user2.UnlockWalking();
-
-                                    if (room.UsesV2Movement) {
-                                        user2.RequestInteractionStep(room, SquareInFront);
-                                    }
-                                    else {
-                                        user2.MoveTo(SquareInFront);
-                                    }
+                                    user2.RequestInteractionStep(room, SquareInFront);
                                 }
 
                                 // This is a one time thing, whether the user's valid or not.

@@ -12,7 +12,7 @@ public sealed partial class RoomNavigation
     public void Move(RoomUser actor, int x, int y, MoveOrigin origin, MoveFlags flags = MoveFlags.None,
         ApproachDescriptor? approach = null)
     {
-        if (!UsesExecutor || actor.Movement.State == NavState.Removing) {
+        if (actor.Movement.State == NavState.Removing) {
             return;
         }
 
@@ -41,6 +41,7 @@ public sealed partial class RoomNavigation
         }
 
         _executor?.Context.Approaches.Cancel(actor);
+        state.StopAfterPending = true;
         state.Route.Count = Math.Min(state.Route.Count, state.Cursor + state.PendingCount);
 
         return true;
@@ -60,9 +61,6 @@ public sealed partial class RoomNavigation
         => Post(new(RoomCommandKind.ForcePlace, actor, actor.Movement.LifetimeId, x, y, z, resolution, sequence));
     public void Shutdown()
     {
-        if (!UsesExecutor) {
-            return;
-        }
 
         lock (_room.NavigationSync) {
             var manager = _room.GetRoomUserManager();
@@ -87,7 +85,7 @@ public sealed partial class RoomNavigation
         => Post(new(RoomCommandKind.ForcePlace, actor, actor.Movement.LifetimeId, x, y, z, resolution, actor.Movement.Commands.Read()?.Sequence ?? 0));
     public void Remove(RoomUser actor)
     {
-        if (!UsesExecutor || actor.Movement.State == NavState.Removing) {
+        if (actor.Movement.State == NavState.Removing) {
             return;
         }
 
@@ -97,10 +95,6 @@ public sealed partial class RoomNavigation
 
     private void Post(RoomCommand command)
     {
-        if (!UsesExecutor) {
-            return;
-        }
-
         if (RoomOwnerScope.IsOwner(_room)) {
             Executor.Handle(command);
         }
@@ -113,13 +107,11 @@ public sealed partial class RoomNavigation
     internal V2MovementEngine Executor => _executor ??= new(_room, this, _database, _rewards, _access);
     public void DrainCommands()
     {
-        if (UsesExecutor) {
-            _commands.Drain(Executor.Handle);
-        }
+        _commands.Drain(Executor.Handle);
     }
     public void RefreshPostures()
     {
-        if (UsesExecutor && RoomOwnerScope.IsOwner(_room)) {
+        if (RoomOwnerScope.IsOwner(_room)) {
             ApplyDirty();
             Executor.RefreshPostures();
         }

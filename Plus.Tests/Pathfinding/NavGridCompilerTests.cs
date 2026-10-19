@@ -176,7 +176,7 @@ public class NavGridCompilerTests
     public void StacktoolCompatibilitySwitchIsExplicit()
     {
         foreach (var collision in new[] { true, false }) {
-            var settings = new PathfindingSettings { StacktoolLegacyCollision = collision };
+            var settings = new PathfindingSettings { LayeringEnabled = false, StacktoolLegacyCollision = collision };
             var (grid, inputs, compiler) = NavTest.Create(2, 1, settings);
             inputs.Publish(NavTest.Record(1, 1, [1], z: 3, h: 1, walkable: false, interaction: InteractionType.Stacktool));
             compiler.ApplyNow();

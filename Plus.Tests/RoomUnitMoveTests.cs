@@ -12,6 +12,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.AI;
+using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Rooms.AI.Speech;
 using Plus.HabboHotel.Users;
 using Xunit;
@@ -71,7 +72,7 @@ public sealed class RoomUnitMoveTests
         world.Pet.UpdateNeeded = false;
 
         // Directions are 45-degree steps, so 10 turns the pet to 2.
-        world.Pets.Move(world.Room, owner, PetId, 1, 1, 10);
+        world.MovePet(owner, PetId, 1, 1, 10);
 
         Assert.Equal((1, 1, 2, 2), (world.Pet.X, world.Pet.Y, world.Pet.RotHead, world.Pet.RotBody));
         Assert.Empty(world.PetStore.Moves);
@@ -90,7 +91,7 @@ public sealed class RoomUnitMoveTests
             Assert.Equal((1, 1), (world.Pet.X, world.Pet.Y));
         };
 
-        world.Pets.Move(world.Room, builder, PetId, 1, 3, 4);
+        world.MovePet(builder, PetId, 1, 3, 4);
 
         Assert.Single(world.PetStore.Moves);
         Assert.Equal((1, 3, 4, 4), (world.Pet.X, world.Pet.Y, world.Pet.RotHead, world.Pet.RotBody));
@@ -110,7 +111,7 @@ public sealed class RoomUnitMoveTests
         var world = new World();
         var (actor, _) = world.Client(id, username);
 
-        world.Pets.Move(world.Room, actor, PetId, 0, 3, 6);
+        world.MovePet(actor, PetId, 0, 3, 6);
 
         Assert.Equal(allowed ? (0, 3, 6) : (1, 1, 0), (world.Pet.X, world.Pet.Y, world.Pet.RotBody));
         Assert.Equal(allowed ? 1 : 0, world.PetStore.Moves.Count);
@@ -129,7 +130,7 @@ public sealed class RoomUnitMoveTests
         var world = new World();
         var (owner, _) = world.Client(RoomOwnerId, "owner");
 
-        world.Pets.Move(world.Room, owner, PetId, x, y, direction);
+        world.MovePet(owner, PetId, x, y, direction);
 
         Assert.Equal((1, 1, 0, 0), (world.Pet.X, world.Pet.Y, world.Pet.RotHead, world.Pet.RotBody));
         Assert.Empty(world.PetStore.Moves);
@@ -141,10 +142,10 @@ public sealed class RoomUnitMoveTests
         var world = new World();
         var (owner, _) = world.Client(RoomOwnerId, "owner");
 
-        world.Pets.Move(world.Room, owner, 99, 0, 3, 2);
-        world.Pets.Move(world.Room, owner, world.Pet.VirtualId, 0, 3, 2);
+        world.MovePet(owner, 99, 0, 3, 2);
+        world.MovePet(owner, world.Pet.VirtualId, 0, 3, 2);
         owner.GetHabbo().CurrentRoom = null;
-        world.Pets.Move(world.Room, owner, PetId, 0, 3, 2);
+        world.MovePet(owner, PetId, 0, 3, 2);
 
         Assert.Equal((1, 1, 0), (world.Pet.X, world.Pet.Y, world.Pet.RotBody));
         Assert.Empty(world.PetStore.Moves);
@@ -157,7 +158,7 @@ public sealed class RoomUnitMoveTests
         var (owner, _) = world.Client(RoomOwnerId, "owner");
         world.PetStore.Result = false;
 
-        world.Pets.Move(world.Room, owner, PetId, 0, 3, 2);
+        world.MovePet(owner, PetId, 0, 3, 2);
 
         Assert.Equal((1, 1, 0), (world.Pet.X, world.Pet.Y, world.Pet.RotBody));
         Assert.Contains(world.Pet, world.Room.GetGameMap().GetRoomUsers(new(1, 1)));
@@ -172,7 +173,7 @@ public sealed class RoomUnitMoveTests
         var bot = world.Bot.BotData!;
         world.BotStore.BeforeSave = () => Assert.Equal((2, 1, 4), (world.Bot.X, world.Bot.Y, bot.Rot));
 
-        world.Bots.Move(world.Room, builder, world.Bot.VirtualId, 3, 0, 6);
+        world.MoveBot(builder, world.Bot.VirtualId, 3, 0, 6);
 
         Assert.Equal((BotId, 42u, 3, 0, 0d, 6), Assert.Single(world.BotStore.Positions));
         Assert.Equal((3, 0, 6, 6), (world.Bot.X, world.Bot.Y, world.Bot.RotHead, world.Bot.RotBody));
@@ -182,7 +183,7 @@ public sealed class RoomUnitMoveTests
         Assert.Equal((3, 0, 6, 6, false), world.BroadcastFor(world.Bot));
         world.BotStore.BeforeSave = null;
 
-        world.Bots.Move(world.Room, builder, world.Bot.VirtualId, 3, 0, 1);
+        world.MoveBot(builder, world.Bot.VirtualId, 3, 0, 1);
 
         Assert.Equal((BotId, 42u, 3, 0, 0d, 1), world.BotStore.Positions[^1]);
         Assert.Equal((3, 0, 1, 1), (world.Bot.X, world.Bot.Y, world.Bot.RotHead, world.Bot.RotBody));
@@ -202,7 +203,7 @@ public sealed class RoomUnitMoveTests
 
         // An avatar's or pet's room index, the bot's database id and a temporary stress bot are all refused.
         foreach (var index in new[] { world.Avatar.VirtualId, world.Pet.VirtualId, BotId, stress.VirtualId }) {
-            world.Bots.Move(world.Room, owner, index, 0, 3, 2);
+            world.MoveBot(owner, index, 0, 3, 2);
         }
 
         Assert.Empty(world.BotStore.Positions);
@@ -223,7 +224,7 @@ public sealed class RoomUnitMoveTests
         var world = new World();
         var (actor, _) = world.Client(id, username, botOverride ? [PermissionKeys.BotPlaceAnyOverride] : []);
 
-        world.Bots.Move(world.Room, actor, world.Bot.VirtualId, 0, 3, 2);
+        world.MoveBot(actor, world.Bot.VirtualId, 0, 3, 2);
 
         Assert.Equal(allowed ? (0, 3, 2) : (2, 1, 4), (world.Bot.X, world.Bot.Y, world.Bot.RotBody));
         Assert.Equal(allowed ? 1 : 0, world.BotStore.Positions.Count);
@@ -240,7 +241,7 @@ public sealed class RoomUnitMoveTests
         var world = new World();
         var (owner, _) = world.Client(RoomOwnerId, "owner");
 
-        world.Bots.Move(world.Room, owner, world.Bot.VirtualId, x, y, direction);
+        world.MoveBot(owner, world.Bot.VirtualId, x, y, direction);
 
         Assert.Equal((2, 1, 4), (world.Bot.X, world.Bot.Y, world.Bot.RotBody));
         Assert.Equal(4, world.Bot.BotData!.Rot);
@@ -254,7 +255,7 @@ public sealed class RoomUnitMoveTests
         var (owner, _) = world.Client(RoomOwnerId, "owner");
         world.BotStore.Fail = true;
 
-        Assert.Throws<InvalidOperationException>(() => world.Bots.Move(world.Room, owner, world.Bot.VirtualId, 0, 3, 2));
+        world.MoveBot(owner, world.Bot.VirtualId, 0, 3, 2);
 
         Assert.Equal((2, 1, 4), (world.Bot.X, world.Bot.Y, world.Bot.RotBody));
         Assert.Equal((2, 1, 4), (world.Bot.BotData!.X, world.Bot.BotData.Y, world.Bot.BotData.Rot));
@@ -274,6 +275,7 @@ public sealed class RoomUnitMoveTests
             Set(Room, "_roomUserManager", new RoomUserManager(Room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
             Set(Room, "_userSnapshots", CatalogSnapshotTestSupport.Proxy<IRoomUserSnapshotService>((_, _) => null));
             Room.UsersWithRights = [RightsHolderId];
+            using var owner = RoomOwnerScope.Enter(Room);
             var manager = Room.GetRoomUserManager();
 
             var pet = NewPet();
@@ -282,8 +284,7 @@ public sealed class RoomUnitMoveTests
                 UnitOwnerId, false, 0, false, 0), pet);
             Bot = manager.DeployBot(new(BotId, 42, "generic", "stand", "Helper", "", "hr-100", 2, 1, 0, 4, 0, 0, 0, 0, ref speech, "M", 0,
                 UnitOwnerId, false, 7, false, 0), null!);
-            Room.GetGameMap().UpdateUserMovement(new(1, 1), new(1, 1), Pet);
-            Room.GetGameMap().UpdateUserMovement(new(2, 1), new(2, 1), Bot);
+
 
             var (viewer, packets) = HabbiconTestSupport.Client(new Habbo { Id = VisitorId, Username = "visitor", CurrentRoom = Room });
             _viewerPackets = packets;
@@ -291,10 +292,24 @@ public sealed class RoomUnitMoveTests
             var users = (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager)
                 .GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(manager)!;
             Assert.True(users.TryAdd(Avatar.VirtualId, Avatar));
-            Room.GetGameMap().AddUserToMap(Avatar, new(3, 3));
+            Room.GetGameMap().Navigation.Admit(Avatar);
 
             Pets = new(PetStore, TestGameClientManager.Empty, CatalogSnapshotTestSupport.Proxy<ISettingsManager>((_, _) => null));
             Bots = new(BotStore, null!);
+        }
+
+        public void MovePet(GameClient client, int id, int x, int y, int direction)
+        {
+            Pets.Move(Room, client, id, x, y, direction);
+            using var owner = RoomOwnerScope.Enter(Room);
+            Room.GetGameMap().Navigation.DrainCommands();
+        }
+
+        public void MoveBot(GameClient client, int id, int x, int y, int direction)
+        {
+            Bots.Move(Room, client, id, x, y, direction);
+            using var owner = RoomOwnerScope.Enter(Room);
+            Room.GetGameMap().Navigation.DrainCommands();
         }
 
         public Room Room { get; }

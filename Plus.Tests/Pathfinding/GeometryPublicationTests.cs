@@ -62,10 +62,10 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
-    [InlineData(3, 1, true)]
-    [InlineData(3, 0, true)]
-    [InlineData(0, 3, false)]
-    public void OwnerGeometryPublicationInvalidatesOnlyTheRemainingRouteNeighborhood(int x, int y, bool invalidates)
+    [InlineData(3, 1)]
+    [InlineData(3, 0)]
+    [InlineData(0, 3)]
+    public void OwnerGeometryPublicationKeepsTheCommandUntilTheChangedStepIsAttempted(int x, int y)
     {
         var landing = ExecutorFloor(10, 1, 1);
         var changed = Add(11, x, y, type: InteractionType.WalkMagicTile);
@@ -86,7 +86,7 @@ public partial class PlacedFurniRoomTests
         var goalRevision = actor.Movement.GoalRevision;
         var locationRevision = actor.Movement.LocationRevision;
         ExecutorTick();
-        Assert.Equal(invalidates, Assert.Single(observed) > goalRevision);
+        Assert.Equal(goalRevision, Assert.Single(observed));
         Assert.Equal(locationRevision, actor.Movement.LocationRevision);
         Assert.Equal((1, 1), (actor.X, actor.Y));
         Assert.Same(landing, actor.LastItem);

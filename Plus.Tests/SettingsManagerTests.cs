@@ -28,8 +28,6 @@ public sealed class SettingsManagerTests
         var settings = PathfindingSettings.Load(await Load(("pathfinding.engine", engine), ("pathfinding.profile", profile),
             ("pathfinding.max_step_down", down), ("pathfinding.corner_rule", corner), ("pathfinding.unreachable_policy", unreachable),
             ("pathfinding.layering_enabled", "1"), ("pathfinding.stacktool_legacy_collision", "0")));
-
-        Assert.Equal(PathfindingEngine.V2, settings.Engine);
         Assert.Equal("habbo2013", settings.Profile);
         Assert.True(settings.UnlimitedDown);
         Assert.Equal(CornerRule.Strict, settings.CornerRule);

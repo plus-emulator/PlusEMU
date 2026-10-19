@@ -91,14 +91,9 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(kind != WalkActorKind.Habbo, actor.IsBot);
         Assert.Equal(kind == WalkActorKind.Pet, actor.IsPet);
 
-        if (!v2) {
-            _room.GetGameMap().AddUserToMap(actor, actor.Coordinate);
-
-            return actor;
-        }
 
         var map = _room.GetGameMap();
-        var navigation = new RoomNavigation(_room, map.StaticModel, new() { Engine = PathfindingEngine.V2 },
+        var navigation = new RoomNavigation(_room, map.StaticModel, new() { },
             TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
         typeof(Gamemap).GetField("<Navigation>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(map, navigation);

@@ -38,7 +38,6 @@ public partial class PlacedFurniRoomTests
     {
         var actor = ExecutorConfiguredActor(new()
         {
-            Engine = PathfindingEngine.V2,
             MaxExpansionsPerRoomTick = 0,
             MaxWalkStallTicks = 3
         });

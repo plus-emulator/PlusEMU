@@ -1,3 +1,4 @@
+using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Rooms;
 using Xunit;
@@ -15,6 +16,7 @@ public sealed partial class WiredActionPortParityTests
     public void FleeHasNoRangeAndStepsAwayAlongTheLargerAxis()
     {
         var (room, map, items) = World();
+        using var roomOwnerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 1, 1);
         Place(map, items, mover);
         var owner = Avatar(room, 1, 5, 4);
@@ -31,6 +33,7 @@ public sealed partial class WiredActionPortParityTests
     public void FleeStepsAwayOrSidestepsToTheRightAlongAWall(int fromX, int fromY, int expectedX, int expectedY)
     {
         var (room, map, items) = World();
+        using var roomOwnerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, fromX, fromY);
         Place(map, items, mover);
         var owner = Avatar(room, 1, 2, 3);
@@ -46,6 +49,7 @@ public sealed partial class WiredActionPortParityTests
     public void ChaseStepsTowardsANearOwnerAndWandersOneTileWhenNoneIsInRange()
     {
         var (room, map, items) = World();
+        using var roomOwnerScope = RoomOwnerScope.Enter(room);
         var near = Floor(1, 3, 1);
         Place(map, items, near);
         var owner = Avatar(room, 1, 1, 1);
@@ -66,6 +70,7 @@ public sealed partial class WiredActionPortParityTests
     public void ChaseRandomStepNeverReversesTheLastStep()
     {
         var (room, map, items) = World();
+        using var roomOwnerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 4, 4);
         Place(map, items, mover);
         var action = Box(room, "wf_act_chase", [100], [mover.Id]);
@@ -93,6 +98,7 @@ public sealed partial class WiredActionPortParityTests
     public void RelativeMoveStacksOntoStackableFurnitureInTheWay()
     {
         var (room, map, items) = World();
+        using var roomOwnerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 1, 1);
         var block = Floor(2, 2, 1);
         block.Definition.Stackable = true;
@@ -110,6 +116,7 @@ public sealed partial class WiredActionPortParityTests
     public void UserToFurniStandsTheUserOnTopOfASolidTarget()
     {
         var (room, map, items) = World();
+        using var roomOwnerScope = RoomOwnerScope.Enter(room);
         var block = Floor(1, 3, 3);
         block.Definition.Stackable = true;
         block.Definition.Walkable = false;

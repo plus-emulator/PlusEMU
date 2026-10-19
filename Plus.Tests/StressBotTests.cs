@@ -162,10 +162,9 @@ public class StressBotTests
 
         var walking = bots[0];
         walking.MoveTo(2, 2, Assert.IsType<Plus.HabboHotel.Rooms.AI.RoomBot>(walking.BotData).IsTemporary);
-        Assert.Equal(2, walking.GoalX);
-        Assert.Equal(2, walking.GoalY);
-        Assert.True(walking.PathRecalcNeeded);
-        Assert.NotEmpty(PathFinder.FindPath(walking, true, map, new(walking.X, walking.Y), new(2, 2)));
+        var command = Assert.IsType<Plus.HabboHotel.Rooms.PathFinding.MoveCommand>(walking.Movement.Commands.Read());
+        Assert.Equal((2, 2), (command.X, command.Y));
+        Assert.NotEmpty(Plus.Tests.Pathfinding.NavTest.FindRoomPath(walking, true, map, new(walking.X, walking.Y), new(2, 2)));
     }
 
     [Fact]

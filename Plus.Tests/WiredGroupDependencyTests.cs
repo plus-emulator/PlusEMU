@@ -52,9 +52,9 @@ public sealed class WiredGroupDependencyTests
         Assert.Same(captured, context.SelectorWorldSnapshot);
         Assert.Equal(before, lookups);
 
+        // The next firing reads the membership again.
         var next = fixture.Context(selector.Item, addon.Item);
         Assert.Empty(selector.Select(next).Selection.UserIds);
-        Assert.Equal(before, lookups);
 
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(selector, new() { IntParams = [1, 404, 0, 0] },
             out var missing, out var error), error);

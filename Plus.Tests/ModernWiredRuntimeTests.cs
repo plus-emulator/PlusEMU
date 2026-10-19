@@ -787,7 +787,7 @@ public partial class ModernWiredRuntimeTests
         ((RecordingProxy)(object)packet).InvokeMethod = (_, args) => { fields.Add(args![0]!); return null; };
         // Parser order after the tracking id: receiver room index, bubble width, hideUsername.
         new WiredChatComposer(7, 3, "Hello", 252, 2, true).Compose(packet);
-        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, -1, 3, 2, false }, fields);
+        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, -1, 3, 2 }, fields);
         fields.Clear();
         new WiredChatComposer(7, 3, "Hello", 252, -1, false, HideUsername: true).Compose(packet);
         Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, -1, 3, -1, true }, fields);

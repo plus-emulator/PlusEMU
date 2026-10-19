@@ -112,8 +112,8 @@ public class OfficialUserWireTests
         var whisper = Compose(new WhisperComposer(4, "hello", 0, 34, 9));
 
         // AIR WIN63-202610151745-318700621 package_167/class_2856.as:101-140: tracking id -1, then the viewer's own room index,
-        // no bubble width and hideUsername false; the location is left out.
-        Assert.Equal(new object[] { 4, "hello", 0, 34, 0, -1, 9, -1, false }, chat);
+        // and no bubble width; an unset hideUsername and the location are left out, as on the official wire.
+        Assert.Equal(new object[] { 4, "hello", 0, 34, 0, -1, 9, -1 }, chat);
         Assert.Equal(chat, shout);
         Assert.Equal(chat, whisper);
     }

@@ -79,9 +79,10 @@ public sealed class WiredVariableWidthDatabaseTests
                     var low = unchecked((int)number);
                     var scalar = WiredNativeEditorProjection.DefaultNative(descriptor) with
                     {
-                        OwnedIntParams = name == "wf_act_give_var" ? [0, high, low, 0]
+                        // Give Variable: target, value (high, low), override, literal value mode and the unused reference.
+                        OwnedIntParams = name == "wf_act_give_var" ? [0, high, low, 0, 0, -10, 0]
                             : [0, name == "wf_cnd_var_val_match" ? 1 : 0, 0, high, low, 0],
-                        VariableIds = name == "wf_act_give_var" ? ["furni:10"] : ["furni:10", "n"]
+                        VariableIds = ["furni:10", "n"]
                     };
                     Assert.True(WiredNativeEditorProjection.TryCompile(20, descriptor, scalar, out var compiled));
                     saved.Save(20, descriptor, compiled);

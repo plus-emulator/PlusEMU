@@ -177,11 +177,11 @@ public sealed partial class WiredRemainderG3Tests
         public override DateTimeOffset GetUtcNow() => Now;
     }
 
-    private sealed class G3Directory : IWiredVariableDirectory
+    private sealed class G3Directory(WiredVariableTarget target = WiredVariableTarget.User) : IWiredVariableDirectory
     {
         public uint? GetRoomOwner(uint roomId) => roomId == 1 ? 5u : null;
         public WiredVariableDefinition? Find(uint id) => id == 20
-            ? new(20, 1, 5, "stamp", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true) : null;
+            ? new(20, 1, 5, "stamp", target, WiredVariableAvailability.RoomActive, true) : null;
     }
 
     private sealed class G3TimeRig
@@ -191,11 +191,11 @@ public sealed partial class WiredRemainderG3Tests
         public G3Clock Clock { get; } = new(DateTimeOffset.FromUnixTimeMilliseconds(1_000_000));
         public WiredRoomVariables Variables { get; }
         public WiredVariableModule Module { get; }
-        public WiredVariableHolder Holder { get; } = new(WiredVariableTarget.User, 7, 1);
+        public WiredVariableHolder Holder { get; }
         public WiredVariableFrame Frame { get; }
         public WiredVariableMetadataBox TimeUtil { get; }
 
-        public G3TimeRig(int mask, int mode)
+        public G3TimeRig(int mask, int mode, WiredVariableTarget target = WiredVariableTarget.User)
         {
             var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
             room.Id = 1;
@@ -207,13 +207,14 @@ public sealed partial class WiredRemainderG3Tests
             ((ModernWiredRuntimeTests.RecordingProxy)(object)database).InvokeMethod = (method, _) => throw new InvalidOperationException("Unexpected database access: " + method.Name);
             Variables = new(room, database, Clock);
             var resolve = typeof(WiredRoomVariables).GetMethod("ResolveDerived", Private)!.CreateDelegate<Func<WiredVariableReference, WiredVariableDerivation?>>(Variables);
-            Module = new(1, new G3Directory(), new MemoryWiredVariableStore(), Clock, null, resolve);
+            Module = new(1, new G3Directory(target), new MemoryWiredVariableStore(), Clock, null, resolve);
             typeof(WiredRoomVariables).GetField("<Module>k__BackingField", Private)!.SetValue(Variables, Module);
+            Holder = target == WiredVariableTarget.Context ? new(target, 0, 0) : new(target, 7, 1);
             Frame = new(1, [Holder]);
-            var baseItem = new Item { Id = 20, OwnerId = 5, RoomId = 1, Definition = new() { Id = 20, InteractionName = "wf_var_user" } };
+            var baseItem = new Item { Id = 20, OwnerId = 5, RoomId = 1, Definition = new() { Id = 20, InteractionName = target == WiredVariableTarget.Context ? "wf_var_context" : "wf_var_user" } };
             _floor[baseItem.Id] = baseItem;
             var definition = Assert.IsType<WiredVariableDefinitionBox>(Variables.CreateBox(baseItem));
-            WiredNativeTestSupport.InstallLegacyVariableDraft(definition, new() { IntParams = [1, 0], Text = "stamp" });
+            WiredNativeTestSupport.InstallLegacyVariableDraft(definition, new() { IntParams = target == WiredVariableTarget.Context ? [1] : [1, 0], Text = "stamp" });
             Variables.ConfigurationLoaded(definition);
             var item = new Item { Id = 21, Definition = new() { InteractionName = "wf_xtra_var_time_util" } };
             _floor[item.Id] = item;
@@ -226,19 +227,37 @@ public sealed partial class WiredRemainderG3Tests
 
         public void Give(long value, Action? later = null)
         {
-            Assert.True(Module.Mutate(new(WiredVariableTarget.User, "custom:20"), Holder, WiredVariableMutation.Give, value, Frame));
+            Assert.True(Module.Mutate(new(Holder.Target, "custom:20"), Holder, WiredVariableMutation.Give, value, Frame));
             later?.Invoke();
         }
 
-        public void Set(long value) => Assert.True(Module.Mutate(new(WiredVariableTarget.User, "custom:20"), Holder, WiredVariableMutation.Set, value, Frame));
+        public void Set(long value) => Assert.True(Module.Mutate(new(Holder.Target, "custom:20"), Holder, WiredVariableMutation.Set, value, Frame));
 
         // Each ticked part is its own catalogue variable "<parent>.<mode>.<part>" (observed on hhus, AIR WIN63-202610131318-860371703).
         public WiredVariableReference Part(int sub) =>
-            new(WiredVariableTarget.User, $"custom:{WiredRoomVariables.SyntheticId(WiredVariableTarget.User, 20, sub, true)!.Value}");
+            new(Holder.Target, $"custom:{WiredRoomVariables.SyntheticId(Holder.Target, 20, sub, true)!.Value}");
         public long? Read(int sub) => Module.Read(Part(sub), Holder, Frame)?.Value;
-        public long? Parent() => Module.Read(new(WiredVariableTarget.User, "custom:20"), Holder, Frame)?.Value;
+        public long? Parent() => Module.Read(new(Holder.Target, "custom:20"), Holder, Frame)?.Value;
 
         public string[] Names() => Variables.Catalog().Variables.Select(variable => variable.Definition.Name).Order().ToArray();
+    }
+
+    [Fact]
+    public void ContextTimePartReadsOnlyFromItsExecutionAndTarget()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: 1700000000 milliseconds gives the context value's year as 1970.
+        var rig = new G3TimeRig(1 << 10, 0, WiredVariableTarget.Context);
+        var part = rig.Part(10);
+        Assert.Null(rig.Read(10));
+        rig.Give(1_700_000_000);
+        Assert.Equal(1970, rig.Read(10));
+        Assert.Null(rig.Module.Read(part, rig.Holder, new(1, [rig.Holder])));
+
+        var user = new WiredVariableHolder(WiredVariableTarget.User, 7, 1);
+        var wrongTarget = new WiredVariableReference(WiredVariableTarget.User, part.Token);
+        Assert.Null(rig.Module.Read(wrongTarget, user, new(1, [user])));
+        Assert.False(rig.Module.Mutate(wrongTarget, user, WiredVariableMutation.Set, 2024, new(1, [user])));
+        Assert.Equal(1970, rig.Read(10));
     }
 
     private const long Tuesday = 1_700_000_000; // 2023-11-14 22:13:20 UTC (GMT in London), a Tuesday in ISO week 46.

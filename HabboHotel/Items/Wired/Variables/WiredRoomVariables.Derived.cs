@@ -18,11 +18,11 @@ public sealed partial class WiredRoomVariables
     {
         var definition = source.Definition;
 
-        if (definition.Target == WiredVariableTarget.Context) {
-            yield break;
-        }
+        // Observed on AIR WIN63-202610151745-318700621: a context variable gets Time Utilities parts too (cxv.value.year read 1970 for
+        // 1700000000 in the same run); its other derivations are not offered.
+        var context = definition.Target == WiredVariableTarget.Context;
 
-        if (source.HasValue && DerivedMetadataOn(definition.ItemId) is { } level) {
+        if (!context && source.HasValue && DerivedMetadataOn(definition.ItemId) is { } level) {
             foreach (var sub in Enumerable.Range(0, level.DerivedKeys.Length).Where(level.HasDerived)) {
                 if (SyntheticId(definition.Target, definition.ItemId, sub, false) is { } id && _room.GetRoomItemHandler().GetItem(id) is null) {
                     yield return new(definition with { ItemId = id, Name = definition.Name + "." + level.DerivedKeys[sub] }, true, true) { IsDerived = true };
@@ -30,7 +30,7 @@ public sealed partial class WiredRoomVariables
             }
         }
 
-        if (source.HasValue && QuestBinding(definition.ItemId) is { } quest) {
+        if (!context && source.HasValue && QuestBinding(definition.ItemId) is { } quest) {
             var keys = WiredQuestVariables.Keys(quest.Kind);
 
             foreach (var sub in Enumerable.Range(0, keys.Length)) {
@@ -73,7 +73,7 @@ public sealed partial class WiredRoomVariables
 
     private WiredVariableDerivation? ResolveDerived(WiredVariableReference reference)
     {
-        if (!WiredVariableModule.TryDefinitionId(reference.Token, out var id) || reference.Target == WiredVariableTarget.Context
+        if (!WiredVariableModule.TryDefinitionId(reference.Token, out var id)
             || !TryDecode(reference.Target, id, out var baseId, out var sub, out var isTime)
             || !_definitions.TryGetValue(baseId, out var definition) || !definition.HasPersistedConfiguration
             || _room.GetRoomItemHandler().GetItem(id) is not null) {
@@ -108,7 +108,8 @@ public sealed partial class WiredRoomVariables
 
     public static uint? SyntheticId(WiredVariableTarget target, uint baseId, int sub, bool time)
     {
-        if (target is not (WiredVariableTarget.User or WiredVariableTarget.Furni or WiredVariableTarget.Global)
+        // A context variable has Time Utilities parts only; they share the user range, the target keeps them apart.
+        if (target is not (WiredVariableTarget.User or WiredVariableTarget.Furni or WiredVariableTarget.Global) && !(time && target == WiredVariableTarget.Context)
             || baseId is 0 or >= 6250000 || (time ? sub is < 0 or > 26 : sub is < 0 or > 7)) {
             return null;
         }

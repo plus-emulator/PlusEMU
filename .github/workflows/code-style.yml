@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Test release publication
-        run: python3 .github/scripts/test_publish_release.py
+      - name: Test release scripts
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json

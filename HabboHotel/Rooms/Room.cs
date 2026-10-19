@@ -922,6 +922,22 @@ public class Room
         SendPacket(new FurnitureMetadataComposer(snapshot.Items));
     }
 
+    internal void SendTemporaryWallItems(IReadOnlyList<Item> items)
+    {
+        if (items.Count == 0) {
+            return;
+        }
+
+        var snapshot = RoomFurnitureSnapshot.Capture(items, OwnerId, OwnerName);
+        SendPacket(new ItemsComposer(snapshot), false, viewer =>
+        {
+            foreach (var item in items) {
+                _wiredComponent?.ObjectEnqueued(viewer, item, null);
+            }
+        });
+        SendPacket(new FurnitureMetadataComposer(snapshot.Items));
+    }
+
     public void SendUser(RoomUser user)
     {
         var snapshot = _userSnapshots.Capture(user);

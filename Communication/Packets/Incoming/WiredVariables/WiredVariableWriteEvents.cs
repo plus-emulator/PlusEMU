@@ -43,7 +43,7 @@ public sealed class WiredUserVariableUpdateEvent(IWiredVariableMenuService menus
             }
 
             // A Builders Club furni and a Wired box placed from the Builders Club arrive by their band id.
-            request = new(action, (WiredVariableTarget)target, target == (int)WiredVariableTarget.Furni ? BuildersClubItemIds.FromWire(targetId) : targetId,
+            request = new(action, (WiredVariableTarget)target, target == (int)WiredVariableTarget.Furni ? TemporaryItemIds.FromWiredEntityId(targetId) : targetId,
                 BuildersClubItemIds.FromWire((uint)definitionId), value, token);
 
             return true;
@@ -117,12 +117,12 @@ public sealed class WiredSetObjectVariableValueEvent(IWiredVariableMenuService m
             var value = packet.ReadInt();
             var operation = packet.ReadInt();
 
-            if (operation is < 0 or > 2 || objectId < 0 || variableId.Length == 0 || Encoding.UTF8.GetByteCount(variableId) > 128
+            if (operation is < 0 or > 2 || objectId < 0 && !(target == 0 && TemporaryItemIds.IsWallWireId(objectId)) || variableId.Length == 0 || Encoding.UTF8.GetByteCount(variableId) > 128
                 || packet.HasDataRemaining()) {
                 return false;
             }
 
-            request = new(target, target == 0 ? BuildersClubItemIds.FromWire(objectId) : objectId, variableId, value, operation);
+            request = new(target, target == 0 ? TemporaryItemIds.FromWiredEntityId(objectId) : objectId, variableId, value, operation);
 
             return true;
         }
@@ -156,7 +156,14 @@ public sealed class WiredGetVariablesForObjectEvent(IWiredVariableMenuService me
             type = packet.ReadInt();
             objectId = packet.ReadInt();
 
-            return type is 0 or 1 or -10 && objectId >= 0 && !packet.HasDataRemaining();
+            if (type is not (0 or 1 or -10) || objectId < 0 && !(type == 0 && TemporaryItemIds.IsWallWireId(objectId))
+                || packet.HasDataRemaining()) {
+                return false;
+            }
+
+            objectId = type == 0 ? TemporaryItemIds.FromWiredEntityId(objectId) : objectId;
+
+            return true;
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException) {
             return false;

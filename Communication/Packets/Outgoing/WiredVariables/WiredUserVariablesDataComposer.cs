@@ -67,7 +67,7 @@ public sealed class WiredUserVariablesDataComposer(WiredVariableMenuSnapshot sna
             packet.WriteInteger(groups.Length);
 
             foreach (var group in groups) {
-                packet.WriteInteger(checked((int)group.Key));
+                packet.WriteInteger(target == WiredVariableTarget.Furni ? TemporaryItemIds.ToWiredEntityId(checked((int)group.Key)) : checked((int)group.Key));
                 packet.WriteInteger(group.Count());
 
                 foreach (var value in group.OrderBy(x => x.Key.DefinitionId)) {

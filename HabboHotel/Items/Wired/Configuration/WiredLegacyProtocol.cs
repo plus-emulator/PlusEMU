@@ -116,7 +116,7 @@ public static class WiredLegacyProtocol
                 throw new InvalidDataException("Invalid native furniture identity.");
             }
 
-            items.Add(new(BuildersClubItemIds.FromWire((uint)Math.Abs(id)), id < 0));
+            items.Add(new(TemporaryItemIds.FromWire(BuildersClubItemIds.FromWire((uint)Math.Abs(id)), id < 0), id < 0));
         }
 
         return items.MoveToImmutable();

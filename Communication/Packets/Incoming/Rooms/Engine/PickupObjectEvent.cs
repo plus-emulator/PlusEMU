@@ -13,8 +13,8 @@ internal class PickupObjectEvent(IRoomItemPickupService pickup) : IPacketEvent
 {
     public Task Parse(GameClient session, IIncomingPacket packet)
     {
-        packet.ReadInt(); // Furniture category; pickup resolves the item by its ID.
-        var itemId = BuildersClubItemIds.FromWire(packet.ReadUInt());
+        var category = packet.ReadInt();
+        var itemId = TemporaryItemIds.FromWire(BuildersClubItemIds.FromWire(packet.ReadUInt()), category == 1);
         var confirmed = packet.HasDataRemaining() && packet.ReadBool();
         var room = session.GetHabbo()?.CurrentRoom;
         var stored = room?.GetRoomItemHandler().GetItem(itemId) is { } item && room.GetWired().StoresVariableData(item);

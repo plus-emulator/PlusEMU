@@ -227,7 +227,13 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
 
         var item = room.GetRoomItemHandler().GetItem(itemId);
 
-        if (item == null || item.IsTemporary) {
+        if (item == null || !item.IsWallItem) {
+            return;
+        }
+
+        if (item.IsTemporary) {
+            room.GetRoomItemHandler().MoveWallItem(item, location);
+
             return;
         }
 

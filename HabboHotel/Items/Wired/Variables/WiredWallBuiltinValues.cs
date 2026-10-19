@@ -40,7 +40,7 @@ internal static class WiredWallBuiltinValues
     internal static bool Supports(string key) => Tokens.Contains(key);
     internal static long? ReadIdentity(uint itemId, int spriteId, string key) => key switch
     {
-        "@id" => -(long)itemId,
+        "@id" => -(long)TemporaryItemIds.ToWire(itemId),
         "@class_id" => -(long)spriteId,
         _ => null
     };

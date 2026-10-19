@@ -32,6 +32,9 @@ public sealed class WiredRuntimeContext
 
     /// <summary>How often each receiving stack has run in this context's signal chain; shared by every context of one chain.</summary>
     internal Dictionary<IWiredItem, int>? SignalChainRuns { get; set; }
+
+    /// <summary>The delayed step that last started this context's signal count, so its later batches keep that count.</summary>
+    internal object? SignalChainStep { get; set; }
     public Dictionary<string, long> Values { get; } = [];
     public WiredSelectorWorld? SelectorWorldSnapshot { get; set; }
     public WiredVariableFrame? VariableFrame { get; set; }

@@ -582,10 +582,10 @@ internal sealed partial class WiredStackEngine
 
             context.SelectorKinds |= kind;
         }
-        // Selectors deliver temporary copies like any other floor furni; only a manual pick of a copy is refused. Observed on hhus
-        // (AIR WIN63-202610131318-860371703): area and by-type selectors fed Remove Temporary Furni, and Invert selected a copy.
+        // Selectors include temporary copies; manual picks still refuse them. The inversion universe also includes wall furniture
+        // (observed on AIR WIN63-202610151745-318700621).
         Apply(context.SelectorPool.FurniIds, context.SelectorFurniOrder, result.Selection.FurniIds,
-            context.FurniIdentity.Where(pair => pair.Value.IsFloorItem).Select(pair => pair.Key), WiredSelectionKind.Furni);
+            context.FurniIdentity.Keys, WiredSelectionKind.Furni);
         Apply(context.SelectorPool.UserIds, context.SelectorUserOrder, result.Selection.UserIds,
             context.UserIdentity.Keys, WiredSelectionKind.Users);
     }

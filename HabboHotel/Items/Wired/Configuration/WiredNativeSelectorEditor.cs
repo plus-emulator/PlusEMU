@@ -39,7 +39,7 @@ internal static class WiredNativeSelectorEditor
             _ => throw new InvalidDataException("Unknown native selector.")
         };
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): Furni By Type and Picked Furni allow wall picks. A wall type selects nothing yet, as candidates are floor furni.
+        // Observed on hhus (AIR WIN63-202610131318-860371703): Furni By Type and Picked Furni allow wall picks.
         return name is "wf_slc_furni_bytype" or "wf_slc_furni_picks" ? metadata with { AllowWall = true } : metadata;
     }
 

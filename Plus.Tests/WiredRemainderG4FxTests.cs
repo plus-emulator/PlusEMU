@@ -688,6 +688,24 @@ public sealed class WiredRemainderG4FxTests
     }
 
     [Fact]
+    public void TheEditorReadsBackTheStoredFormOfABossBar()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: saved with -1/-1/-1 and the user targets on a furni source, it reads back
+        // 5/4/100 and furni targets.
+        var configuration = Compile("wf_xtra_var_fx_boss", ints =>
+        {
+            ints[0] = 0;
+            ints[1] = 2;
+            ints[7] = ints[8] = ints[9] = -1;
+            ints[16] = ints[17] = 1;
+
+            return ints;
+        })!;
+
+        Assert.Equal("0,2,0,7,0,3000,0,5,4,100,0,0,0,100,0,0,0,0,0,0,0,0,0", string.Join(",", configuration.Origin!.Native!.OwnedIntParams));
+    }
+
+    [Fact]
     public void ABossBarStoresStaleRangeTargetsAsItsOwnSource()
     {
         // Observed on AIR WIN63-202610151745-318700621: a switched source with the old targets saves, and only -10 survives.

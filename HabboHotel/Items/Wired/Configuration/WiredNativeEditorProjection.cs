@@ -293,6 +293,12 @@ public static class WiredNativeEditorProjection
             native = native with { OwnedIntParams = [.. native.OwnedIntParams.Select(value => Math.Clamp(value, 0, MaxSelectorAreaCoordinate))] };
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: a variable FX box reads back its stored form, not what the editor sent (a boss bar
+        // saved with colour, width and renderer -1 and a stale range target reads back 5/4/100 and its own source).
+        if (Variables.Fx.WiredVariableFxSettings.Category(name) >= 0) {
+            native = native with { OwnedIntParams = Variables.Fx.WiredVariableFxSettings.Normalize(name, native.OwnedIntParams) };
+        }
+
         // Observed on AIR WIN63-202610151745-318700621: Users By Name stores its names lowercased ("Robbie" reads back "robbie").
         if (name == "wf_slc_users_byname") {
             native = native with { Text = native.Text.ToLowerInvariant() };

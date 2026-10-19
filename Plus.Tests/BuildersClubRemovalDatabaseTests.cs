@@ -9,7 +9,7 @@ public sealed class BuildersClubRemovalDatabaseTests
     [RoomComponentDatabaseFact]
     public void MigrationRemovesOnlyBuildersClubConfiguration()
     {
-        using var connection = new MySqlConnection(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE"));
+        using var connection = new MySqlConnection(new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")) { AllowUserVariables = true }.ConnectionString);
         connection.Open();
         var schema = "builders_club_removal_" + Guid.NewGuid().ToString("N");
         connection.Execute($"CREATE DATABASE `{schema}` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
@@ -84,7 +84,7 @@ public sealed class BuildersClubRemovalDatabaseTests
     [RoomComponentDatabaseFact]
     public void PristineSchemaContainsNoBuildersClubConfiguration()
     {
-        using var connection = new MySqlConnection(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE"));
+        using var connection = new MySqlConnection(new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")) { AllowUserVariables = true }.ConnectionString);
         connection.Open();
         var schema = "builders_club_pristine_" + Guid.NewGuid().ToString("N");
         connection.Execute($"CREATE DATABASE `{schema}` CHARACTER SET utf8mb4");

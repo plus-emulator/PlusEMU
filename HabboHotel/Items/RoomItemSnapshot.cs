@@ -70,8 +70,18 @@ public sealed record RoomItemSnapshot(
             : null;
 
     // AIR usage policy: 0 nobody, 1 room controllers, 2 everybody. Wired boxes are always used (their editor opened) by
-    // those with rights, whatever states their furni definition declares.
-    private static int UsagePolicy(ItemDefinition definition) => definition.WiredDescriptor != null || definition.Modes > 1 ? 1 : 0;
+    // those with rights, whatever states their furni definition declares. Observed on AIR WIN63-202610151745-318700621: a fridge
+    // (vending machine) and Floor Switch are usable by anyone, a football score board by nobody, and a game counter and a
+    // one-state recolorable block by room controllers.
+    private static int UsagePolicy(ItemDefinition definition) => definition.WiredDescriptor != null ? 1 : definition.InteractionType switch
+    {
+        // The other score board colours and Floor Switch 2 share the observed furni's server behaviour.
+        InteractionType.VendingMachine or InteractionType.WfFloorSwitch1 or InteractionType.WfFloorSwitch2 => 2,
+        InteractionType.Footballcounterred or InteractionType.Footballcounterblue or InteractionType.Footballcountergreen
+            or InteractionType.Footballcounteryellow => 0,
+        InteractionType.Counter or InteractionType.Recolorable => 1,
+        _ => definition.Modes > 1 ? 1 : 0
+    };
 
     private static RoomItemSnapshot CaptureLocked(Item item, GuildFurnitureAppearance? guild)
     {
@@ -79,7 +89,8 @@ public sealed record RoomItemSnapshot(
         var type = definition.InteractionType;
         var z = item.GetZ;
         var legacy = item.LegacyDataString;
-        var extra = 1;
+        // Observed on AIR WIN63-202610151745-318700621: plain floor items carry extra 0.
+        var extra = 0;
 
         if (type == InteractionType.WalkMagicTile) {
             extra = legacy.Split(';').Skip(1).FirstOrDefault() == "1" ? 1 : 0;

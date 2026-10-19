@@ -63,10 +63,31 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void WritingTheRgbVariableRecoloursTheFurniAndSendsItsMap()
+    public void ABuildersClubRecolorableRefusesAnRgbWriteSilentlyAndKeepsItsColour()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: bc_block_0_recolorable refused 0xFF8000, +1, -1, 0x1000000, 0 and 0x00FF00 without
+        // an error, kept white and still read rgb 0xFFFFFF with its parts.
+        Viewer();
+        var item = PlacedRecolorable(221);
+        var holder = WiredVariableRuntimeFrames.FurniHolder(item);
+        var frame = new WiredVariableFrame(RoomId, [holder]);
+        var builtins = new RoomWiredBuiltinVariables(_room);
+        var rgb = new WiredVariableReference(holder.Target, "internal:~recolorable_furni.color.rgb");
+        var before = builtins.Read(rgb, holder, frame)?.Value;
+        _client.Packets.Clear();
+
+        Assert.False(builtins.Write(rgb, holder, 0x3366CC, frame));
+        Assert.Equal(before, builtins.Read(rgb, holder, frame)?.Value);
+        Assert.Empty(_client.Packets);
+    }
+
+    [Fact]
+    public void WritingTheRgbVariableRecoloursANonClubFurniAndSendsItsMap()
     {
         Viewer();
-        var item = PlacedRecolorable(222);
+        var definition = RecolorableFurniTests.Block();
+        definition.ItemName = "test_block_recolorable";
+        var item = PlacedRecolorable(222, definition: definition);
         item.LegacyDataString = "3";
         var holder = WiredVariableRuntimeFrames.FurniHolder(item);
         var frame = new WiredVariableFrame(RoomId, [holder]);

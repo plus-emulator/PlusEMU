@@ -285,12 +285,14 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 key == "~background_color.lightness" ? value : room.TonerData.Lightness), metadataStore);
         }
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): ~recolorable_furni.color.rgb can be written, its red, green and blue parts
-        // only read. The new colour goes out as the furni's MapData.
+        // ~recolorable_furni.color.rgb is listed as writable and its red, green and blue parts only read. Observed on AIR
+        // WIN63-202610151745-318700621: a write to a Builders Club class (bc_block_0_recolorable; every recolourable class is one) is
+        // refused without an error and leaves the colour, however the furni was placed; the colour still reads.
         if (holder.Target == WiredVariableTarget.Furni && key == "~recolorable_furni.color.rgb") {
             var item = FindItem(holder, frame);
 
-            if (item is null || item.ExtraData is not Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat recolorable || !recolorable.SetColor(value)) {
+            if (item is null || item.Definition.ItemName.StartsWith("bc_", StringComparison.Ordinal)
+                || item.ExtraData is not Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat recolorable || !recolorable.SetColor(value)) {
                 return false;
             }
 

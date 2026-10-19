@@ -27,7 +27,7 @@ public interface IRoomRightsStore
 public sealed class RoomRightsStore(IDatabase database) : IRoomRightsStore
 {
     public void Assign(uint roomId, int userId) => Execute((connection, transaction) =>
-        connection.Execute("INSERT INTO room_rights (room_id, user_id) VALUES (@roomId, @userId)",
+        connection.Execute("INSERT IGNORE INTO room_rights (room_id, user_id) VALUES (@roomId, @userId)",
             new { roomId, userId }, transaction));
 
     public void Remove(uint roomId, IReadOnlyList<int> userIds) => Execute((connection, transaction) =>

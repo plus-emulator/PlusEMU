@@ -121,7 +121,8 @@ public sealed class FurnidataMigrationDatabaseTests
         using var admin = new MySqlConnection(options.ConnectionString);
         admin.Open();
         var schema = "task_furnidata_migration_" + Guid.NewGuid().ToString("N");
-        admin.Execute($"CREATE DATABASE `{schema}`");
+        // Hotel databases are utf8mb4; the migration's JSON columns take the schema default.
+        admin.Execute($"CREATE DATABASE `{schema}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
         try {
             options.Database = schema;

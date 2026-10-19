@@ -35,9 +35,13 @@ public class Habbo
     private IGameClientManager? _clients;
     private IRoomManager? _rooms;
     private IBuildersClubService? _buildersClub;
+    private IRoomEntryService? _roomEntry;
     internal uint WiredRoomNetworkDestination { get; set; }
     internal uint WiredRoomEntrySourceRoomId { get; set; }
     internal uint WiredRoomEntryDestinationRoomId { get; set; }
+
+    /// <summary>Set by a Teleport to Room forward: the effect the user wore before the teleport glow, given back after arriving.</summary>
+    internal int? ForwardArrivalRestoreEffect { get; set; }
     public HabboStats? HabboStats { get; set; }
 
     private readonly DateTimeOffset? _cachedAt;
@@ -369,7 +373,7 @@ public class Habbo
         Persistence.SetProfileValue(Id, key, value);
     }
 
-    public void PrepareRoom(uint id, string password)
+    public void PrepareRoom(uint id, string password, bool openConnection = true)
     {
         var networkDestination = WiredRoomNetworkDestination;
         var sourceRoomId = (IsTeleporting || IsHopping || networkDestination == id) ? CurrentRoom?.Id ?? 0 : 0;
@@ -429,7 +433,10 @@ public class Habbo
             return;
         }
 
-        Client.Send(new OpenConnectionComposer(room.Id));
+        // A WIRED room forward opens the room without OpenConnection (AIR WIN63-202610151745-318700621).
+        if (openConnection) {
+            Client.Send(new OpenConnectionComposer(room.Id));
+        }
 
         if (!room.CheckRights(Client, true, true) && !Client.GetHabbo().IsTeleporting && !Client.GetHabbo().IsHopping) {
             // A room hidden by Builders Club furni overrides its door mode (AIR WIN63-202610151745-318700621
@@ -484,7 +491,13 @@ public class Habbo
         }
 
         Client.GetHabbo().CurrentRoom = room;
+        // Observed on AIR WIN63-202610151745-318700621: the NFT chat styles come before RoomReady, the entry tile right after it.
+        Client.Send(new Plus.Communication.Packets.Outgoing.Rooms.Session.UserNftChatStylesComposer());
         Client.Send(new RoomReadyComposer(room.RoomId, room.ModelName));
+
+        if (room.GetGameMap()?.Model is { } model) {
+            Client.Send(new Plus.Communication.Packets.Outgoing.Rooms.FloorPlan.RoomEntryTileComposer(model.DoorX, model.DoorY, model.DoorOrientation));
+        }
 
         if (room.Wallpaper != "0.0") {
             Client.Send(new RoomPropertyComposer("wallpaper", room.Wallpaper));
@@ -495,7 +508,6 @@ public class Habbo
         }
 
         Client.Send(new RoomPropertyComposer("landscape", room.Landscape));
-        Client.Send(new RoomRatingComposer(room.Score, !(Client.GetHabbo().RatedRooms.Contains(room.RoomId) || room.OwnerId == Client.GetHabbo().Id)));
         _roomVisits.RecordEntry(Client.GetHabbo().Id, room.RoomId);
 
         if (room.OwnerId != Id) {
@@ -506,6 +518,9 @@ public class Habbo
             _roomAchievements.ProgressAchievement(Client, "ACH_RoomEntry", 1);
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: the server sends the room data right after opening it; the client asks for nothing.
+        _roomEntry?.Enter(Client);
+
         return true;
     }
 
@@ -513,11 +528,12 @@ public class Habbo
     private IGameClientManager HotelClients => _clients ?? throw new InvalidOperationException("The user is not connected to the hotel services.");
     private IRoomManager HotelRooms => _rooms ?? throw new InvalidOperationException("The user is not connected to the hotel services.");
 
-    internal void SetHotelServices(IGameClientManager clients, IRoomManager rooms, IBuildersClubService? buildersClub = null)
+    internal void SetHotelServices(IGameClientManager clients, IRoomManager rooms, IBuildersClubService? buildersClub = null, IRoomEntryService? roomEntry = null)
     {
         _clients = clients;
         _rooms = rooms;
         _buildersClub = buildersClub;
+        _roomEntry = roomEntry;
     }
 
     internal void SetRoomVisitRecorder(IRoomVisitRecorder roomVisits, IAchievementManager achievements)

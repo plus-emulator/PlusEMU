@@ -90,7 +90,7 @@ public class ClubMembershipTests
         var membership = new ClubMembership(now.AddDays(32), now.AddDays(-5), now.AddDays(-40), 35 * ClubMembership.Day, now.AddSeconds(-120));
         var packet = new HabbiconTestSupport.RecordingPacket();
         new ScrSendUserInfoComposer(ClubStatusSnapshot.Capture(UserAccess.Create([], clock: clock, membership: membership), ClubStatusSnapshot.PurchaseResponse)).Compose(packet);
-        Assert.Equal(new object[] { "habbo_club", 1, 1, 1, 2, true, false, 40, 0, 46080, 2 }, packet.Writes);
+        Assert.Equal(new object[] { "habbo_club", 1, 1, 1, 2, true, false, 0, 40, 46080, 2 }, packet.Writes);
         var complimentary = new HabbiconTestSupport.RecordingPacket();
         new ScrSendUserInfoComposer(ClubStatusSnapshot.Capture(UserAccess.Create([], [new(PermissionKeys.ClubAccess, false)], clock: clock))).Compose(complimentary);
         Assert.Equal(new object[] { "habbo_club", 0, 0, 0, 1, false, false, 0, 0, 0, 0 }, complimentary.Writes);

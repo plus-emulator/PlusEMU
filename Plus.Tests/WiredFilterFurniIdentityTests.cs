@@ -378,7 +378,7 @@ public sealed class WiredFilterFurniIdentityTests
                 PublicName = "test"
             }
         };
-        item.SetState(x, y, 0, Gamemap.GetAffectedTiles(1, 1, x, y, 0));
+        item.SetState(x, y, 0);
 
         return item;
     }

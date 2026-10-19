@@ -21,7 +21,7 @@ PlusEMU is a Habbo Hotel server emulator written in C# (.NET 10). It is a commun
 
 ### Option 1: download a release
 
-Every push to `master` publishes self-contained builds on [GitHub Releases](https://github.com/plus-emulator/PlusEMU/releases), so no .NET install is needed:
+Download self-contained builds from [GitHub Releases](https://github.com/plus-emulator/PlusEMU/releases). No .NET install is needed:
 
 | Asset | Platform |
 |-------|----------|
@@ -29,7 +29,7 @@ Every push to `master` publishes self-contained builds on [GitHub Releases](http
 | `plusemu-linux-arm64.tar.gz` | Linux ARM64 |
 | `plusemu-win-x64.zip` | Windows x64 |
 
-Each archive contains the single-file executable, `Config/`, `Database/FreshInstall.sql`, `Database/Migrations/`, `LICENSE` and this README. `SHA256SUMS` is attached to every release.
+Each archive contains the single-file executable, `Config/`, `Database/FreshInstall.sql`, `Database/Migrations/` (for reference: both are compiled into the executable), `LICENSE` and this README. `SHA256SUMS` is attached to every release.
 
 ### Option 2: build from source
 
@@ -44,14 +44,39 @@ Some integration tests read a database connection string from an environment var
 
 ### Database
 
-1. Create an empty database (default name `plus`, utf8mb4).
-2. Import `Database/FreshInstall.sql` (schema plus game content such as catalogue, furniture and achievements; no users or rooms). It already contains every migration in `Database/Migrations/`; `scripts/build-fresh-install-sql.sh` regenerates it from a fully migrated database whenever a migration is added.
-3. When upgrading an existing database instead, apply the files in `Database/Migrations/` that are newer than your database, in numeric order (for example `mysql -u root -p plus < Database/Migrations/81_WiredOctoberBoxes.sql`).
+Create an empty database (default name `plus`, utf8mb4) and start the emulator. On an empty database it imports `Database/FreshInstall.sql` (schema plus game content such as catalogue, furniture and achievements; no users or rooms) by itself. Importing it by hand first works too:
 
 ```sh
 mysql -u root -p -e "CREATE DATABASE plus CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-mysql -u root -p plus < Database/FreshInstall.sql
+mysql -u root -p plus < Database/FreshInstall.sql   # optional: the emulator does this on an empty database
 ```
+
+### Updating
+
+Replace the executable and start it. The emulator keeps the database schema in step with itself:
+
+- Every migration in `Database/Migrations/` is compiled into the executable. At startup, before anything loads, the emulator applies the ones the database does not have yet, in order, and records each one in the `schema_migrations` table. When nothing is pending, startup continues straight away.
+- The first time it meets a database from before `schema_migrations` existed (any earlier release, or migrations applied by hand), it checks the database for the changes of every earlier migration, records the ones it finds and applies only the rest.
+- Before it applies anything it writes a full backup to `backups/` (with `mariadb-dump`/`mysqldump` when one is on `PATH`, otherwise with its own dump). Apply only happens when the backup succeeded.
+- If a migration fails, the emulator logs the file and statement and does not start. Restore the backup or fix the cause, then start it again.
+
+Settings live in `Database.Migrations` in `Config/config.json`:
+
+| Key | Purpose | Default |
+|-----|---------|---------|
+| `AutoMigrate` | Apply pending migrations at startup. When `false`, the emulator refuses to start while migrations are pending. | `true` |
+| `Backup` | Back up the database before applying migrations. | `true` |
+| `BackupDirectory` | Where backups go. | `backups` |
+| `DumpCommand` | Path to `mariadb-dump`/`mysqldump`; empty looks on `PATH`. | `""` |
+| `FurnidataFile` | Your hotel's current `FurnitureData.json`. Only needed when updating a database from before migration 60 (releases before 8 October 2026): that migration moves furnidata into the `furniture` table, and the emulator stops and asks for this file rather than run it without. | `""` |
+
+Command-line options:
+
+- `--migrate-status` lists every migration and whether it is applied, already in the database or pending. It changes nothing.
+- `--migrate` applies pending migrations and exits without starting the hotel. Stop the running emulator first: the old build must not run on the new schema.
+- `--migrate-mark-applied <file>` records a migration as applied without running it, and `--migrate-allow-gaps` applies migrations that look unapplied while later ones look applied. Both are only for a database whose history the startup check cannot place; the emulator says when that happens.
+
+A new migration is a file `Database/Migrations/<next number>_<Name>.sql` (MariaDB, `DELIMITER` lines allowed). Write it so that running it again after a partial run is safe (`IF NOT EXISTS`, `INSERT IGNORE`, guarded updates), because MariaDB commits schema changes immediately and a failed migration runs again from the top. Regenerate `Database/FreshInstall.sql` with `scripts/build-fresh-install-sql.sh` afterwards.
 
 ### Configuration
 
@@ -116,7 +141,7 @@ The web server has no TLS. To use it from Volt, either:
 Check it with `curl http://127.0.0.1:8080/api/gamedata/furnidata`. If the client gets a 404:
 
 - If curl returns JSON, the client's request does not reach the emulator: `furnidata.url` points at a host or port without the `/api/` proxy (for example `https://localhost/...` goes to port 443, not the emulator).
-- If curl also returns a 404 (`{"error":"Not found.","code":"not_found"}`), no furniture row has furnidata. `Database/FreshInstall.sql` ships with it filled in. An upgraded database gets it from `Database/Migrations/60_FurnitureFurnidata.sql` only when that migration runs with the hotel's current `FurnitureData.json` in `@furnidata`; without it the migration only adds the columns. Run it again with the file, then restart the emulator:
+- If curl also returns a 404 (`{"error":"Not found.","code":"not_found"}`), no furniture row has furnidata. `Database/FreshInstall.sql` ships with it filled in. An upgraded database gets it from migration 60 (see `FurnidataFile` under [Updating](#updating)). If it ran without your `FurnitureData.json`, run it again with the file, then restart the emulator:
 
   ```sh
   { printf "SET @furnidata = FROM_BASE64('%s');\n" "$(base64 -w0 FurnitureData.json)"; cat Database/Migrations/60_FurnitureFurnidata.sql; } | mysql -u root -p plus
@@ -172,9 +197,17 @@ Launcher tokens live in `user_launcher_tokens` (migration 88) as SHA-256 digests
 ## Branches and releases
 
 - `dev` is the integration branch; open pull requests against `dev`.
-- `dev` is merged into `master` for a release. Each push to `master` builds, tests and publishes a release tagged `v<yyyy.mm.dd>-<short sha>`. The date comes from the commit timestamp in UTC, so retries keep the same tag.
+- Merge `dev` into `master` when a batch of changes is ready. Publishing is manual through **Actions > Release > Run workflow** on `master`.
 
-Release runs queue instead of replacing pending merges (up to GitHub's 100-run queue limit). Assets upload to a draft before publication; rerunning a failed workflow resumes the draft, and an already published tag is left unchanged. To retry manually, run **Release** on `master`, or rerun the original failed workflow for an older commit.
+Choose the version change when you run the workflow. The first semantic release is `v1.0.0`, and later releases increase the highest stable version:
+
+- `patch` for fixes, such as `v1.2.3` to `v1.2.4`. This is the default.
+- `minor` for compatible features, such as `v1.2.3` to `v1.3.0`.
+- `major` for breaking changes, such as `v1.2.3` to `v2.0.0`.
+
+Existing date-based tags stay available and do not affect the next version. Prereleases do not affect it either. The workflow builds and tests before publishing.
+
+Release runs queue instead of replacing pending requests. Assets upload to a draft before publication. A retry for the same commit reuses its version and resumes its draft, or leaves an already published release unchanged. If an unfinished draft belongs to another commit, rerun that draft's original workflow before releasing newer changes. A new release must descend from the highest stable release.
 
 ## Contributing
 

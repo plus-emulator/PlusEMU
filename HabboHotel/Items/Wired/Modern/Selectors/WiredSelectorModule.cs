@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Plus.HabboHotel.Items.Wired.Configuration;
 
 namespace Plus.HabboHotel.Items.Wired.Modern.Selectors;
@@ -28,7 +29,9 @@ public static class WiredSelectorModule
 
         c = WiredSelectorConfiguration.Normalize(name, c);
 
-        var available = world.Furni.Where(x => x.IsFloor && (input.IncludeWired || !x.IsWired)).ToList();
+        // Observed on AIR WIN63-202610151745-318700621: Furni In Area and Furni On Furni select the Wired boxes in their scope like any
+        // other floor furni (the box stack itself, a variable definition box).
+        var available = world.Furni.Where(x => x.IsFloor).ToList();
         var selected = new WiredSelectedIds();
         var target = name == "wf_slc_remote" ? WiredSelectorTarget.Both
             : name.StartsWith("wf_slc_users_", StringComparison.Ordinal) ? WiredSelectorTarget.User : WiredSelectorTarget.Furni;
@@ -46,7 +49,8 @@ public static class WiredSelectorModule
                 selected.FurniIds.UnionWith(world.Furni.Where(x => c.SelectedItems.Contains(x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_furni_signal":
-                selected.FurniIds.UnionWith(world.Furni.Where(x => (input.IncludeWired || !x.IsWired) && input.Signal.FurniIds.Contains(x.Id)).Select(x => x.Id));
+                // Observed on AIR WIN63-202610151745-318700621: a Wired box sent with a signal arrives in Furni From Signal.
+                selected.FurniIds.UnionWith(world.Furni.Where(x => input.Signal.FurniIds.Contains(x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_users_signal":
                 selected.UserIds.UnionWith(world.Users.Where(x => input.Signal.UserIds.Contains(x.Id)).Select(x => x.Id));
@@ -56,7 +60,7 @@ public static class WiredSelectorModule
                     var matchState = P(1) != 0;
                     var kinds = Furni(source).Select(x => (x.DefinitionId, State: matchState ? x.State : "")).ToHashSet();
 
-                    foreach (var item in available) {
+                    foreach (var item in world.Furni) {
                         if (kinds.Contains((item.DefinitionId, matchState ? item.State : ""))) {
                             selected.FurniIds.Add(item.Id);
                         }
@@ -72,20 +76,25 @@ public static class WiredSelectorModule
                     && x.Team != 0 && (P(0) == 0 || x.Team == P(0))).Select(x => x.Id));
                 break;
             case "wf_slc_users_byname": {
-                    var names = c.Text.Split(['\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    // Observed on AIR WIN63-202610151745-318700621: only a tab separates names (the editors turn line breaks into tabs), and
+                    // a name keeps its spaces, so " Robbie" or "Robbie " matches nobody.
+                    var names = c.Text.Split('\t', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
                     selected.UserIds.UnionWith(world.Users.Where(x => names.Contains(x.Name)).Select(x => x.Id));
                     break;
                 }
             case "wf_slc_users_handitem":
-                selected.UserIds.UnionWith(world.Users.Where(x => x.HandItem == P(0)).Select(x => x.Id));
+                // Observed on AIR WIN63-202610151745-318700621: hand item 0 selects the Habbos holding nothing but not a bot standing next
+                // to them; the selector only looks at Habbos.
+                selected.UserIds.UnionWith(world.Users.Where(x => x.Kind == WiredSelectorEntityKind.Player && x.HandItem == P(0)).Select(x => x.Id));
                 break;
             case "wf_slc_users_group": {
                     var groupId = P(0) == 0 ? world.RoomGroupId : P(1);
 
                     if (groupId > 0) {
+                        // Observed on AIR WIN63-202610151745-318700621: every member of the group is selected, whether or not it is
+                        // their favourite group.
                         selected.UserIds.UnionWith(world.Users.Where(x => x.Kind == WiredSelectorEntityKind.Player
-                        && x.EquippedGroupId == groupId).Select(x => x.Id));
+                            && (world.IsGroupMember?.Invoke(x.Id, groupId) ?? x.GroupIds?.Contains(groupId) == true)).Select(x => x.Id));
                     }
 
                     break;
@@ -195,7 +204,9 @@ public static class WiredSelectorModule
                     var firstStack = true;
 
                     foreach (var stack in stacks) {
-                        if (stack.Count > 0 && (visiting.Count >= 20 || !visiting.Add(stack[0]))) {
+                        // Observed on AIR WIN63-202610151745-318700621: 61 nested stacks still select, so only a stack already on the
+                        // path is skipped. The stack check only stops a chain too deep for the thread.
+                        if (stack.Count > 0 && (!RuntimeHelpers.TryEnsureSufficientExecutionStack() || !visiting.Add(stack[0]))) {
                             continue;
                         }
 
@@ -283,8 +294,8 @@ public static class WiredSelectorModule
         var output = input.SelectorPool.Copy();
 
         if (result.Target is WiredSelectorTarget.Furni or WiredSelectorTarget.Both) {
-            // Invert picks from every floor furni, Wired boxes and temporary copies included (observed on hhus).
-            var kept = result.Invert ? world.Furni.Where(x => x.IsFloor)
+            // Observed on AIR WIN63-202610151745-318700621: inversion includes wall furniture and the executing Wired stack.
+            var kept = result.Invert ? world.Furni
                 .Select(x => x.Id).Except(result.Selection.FurniIds) : result.Selection.FurniIds;
 
             if (result.FiltersExisting) {

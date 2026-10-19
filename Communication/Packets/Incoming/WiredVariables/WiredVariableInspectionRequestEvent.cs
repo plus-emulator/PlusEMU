@@ -37,7 +37,7 @@ public sealed class WiredVariableInspectionRequestEvent(IWiredVariableInspection
             }
 
             // A Builders Club wall furni (target 1) arrives by its band id.
-            request = new(requestId, (uint)roomId, target, target == 1 ? BuildersClubItemIds.FromWire(entityId) : entityId, domain);
+            request = new(requestId, (uint)roomId, target, target == 1 ? unchecked((int)TemporaryItemIds.FromWire(BuildersClubItemIds.FromWire((uint)entityId), true)) : entityId, domain);
 
             return true;
         }

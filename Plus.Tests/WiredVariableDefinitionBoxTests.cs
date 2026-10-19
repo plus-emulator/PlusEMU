@@ -15,8 +15,9 @@ public sealed class WiredVariableDefinitionBoxTests
     [InlineData("wf_act_give_var", 8, true)]
     [InlineData("wf_act_remove_var", 3, false)]
     [InlineData("wf_act_change_var_val", 10, true)]
-    [InlineData("wf_cnd_has_var", 4, false)]
-    [InlineData("wf_cnd_neg_has_var", 4, false)]
+    // A fresh Has Variable opens on the hotel's literal "0" slot, the measured shape that saves but never resolves (IsUnresolvedLiteralZero).
+    [InlineData("wf_cnd_has_var", 4, true)]
+    [InlineData("wf_cnd_neg_has_var", 4, true)]
     [InlineData("wf_cnd_var_val_match", 11, false)]
     [InlineData("wf_cnd_var_age_match", 10, false)]
     public void ScalarDraftOpensWithClientShapeButCannotExecuteWithoutSelection(string name, int count, bool saves)

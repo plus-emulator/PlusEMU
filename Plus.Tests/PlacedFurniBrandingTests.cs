@@ -46,7 +46,7 @@ public partial class PlacedFurniRoomTests
         var item = PlacedBranding(21, InteractionType.Background);
         Recipient();
         item.ExtraData = new MapDataFormat(new() { ["old"] = "value" });
-        item.SetState(99, 99, 0, new());
+        item.SetState(99, 99, 0);
         var store = new BrandingStore();
 
         new RoomItemMetadataService(store, null!).SetBranding(_client, new(21, Pairs("a", "1")));

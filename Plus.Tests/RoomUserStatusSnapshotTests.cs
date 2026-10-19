@@ -92,7 +92,7 @@ public sealed class RoomUserStatusSnapshotTests
             Assert.Equal(bot.VirtualId, incoming.ReadInt());
             Assert.Equal(1, incoming.ReadInt());
             Assert.Equal(1, incoming.ReadInt());
-            Assert.Equal("0", incoming.ReadString());
+            Assert.Equal("0.0", incoming.ReadString());
             Assert.Equal(bot.RotHead, incoming.ReadInt());
             Assert.Equal(bot.RotBody, incoming.ReadInt());
             Assert.Equal(0, incoming.ReadInt());

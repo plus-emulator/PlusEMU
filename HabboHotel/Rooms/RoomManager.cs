@@ -61,12 +61,17 @@ public class RoomManager : IRoomManager, IStartable
                         continue;
                     }
 
-                    var tick = RoomCycle.Next(room.ProcessTask is { IsCompleted: false }, room.IsLagging);
+                    // Only a full pass still running is a missed tick; a wired pass holding the slot defers the tick without counting.
+                    var tick = RoomCycle.Next(RoomCycle.FullPassRunning(room), room.IsLagging);
 
                     if (tick.Start) {
-                        RoomCycle.TryStart(room, room.ProcessRoom);
-                        room.IsLagging = 0;
-                        _pendingFullRooms.TryRemove(new KeyValuePair<uint, Room>(room.Id, room));
+                        if (RoomCycle.TryStart(room, room.ProcessRoom, full: true)) {
+                            room.IsLagging = 0;
+                            _pendingFullRooms.TryRemove(new KeyValuePair<uint, Room>(room.Id, room));
+                        }
+                        else {
+                            _pendingFullRooms[room.Id] = room;
+                        }
                     }
                     else {
                         room.IsLagging = tick.Lag;
@@ -88,7 +93,7 @@ public class RoomManager : IRoomManager, IStartable
                 if (room.IsCrashed || room.MDisposed) {
                     _pendingFullRooms.TryRemove(pair);
                 }
-                else if (RoomCycle.TryStart(room, room.ProcessRoom)) {
+                else if (RoomCycle.TryStart(room, room.ProcessRoom, full: true)) {
                     room.IsLagging = 0;
                     _pendingFullRooms.TryRemove(pair);
                 }

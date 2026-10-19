@@ -23,6 +23,11 @@ public sealed class RoomEntryService(IQuestManager quests, TimeProvider clock, I
             return;
         }
 
+        // The server sends the room data when it opens the room; a repeated or legacy request for it changes nothing.
+        if (room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id) is { } admitted && ReferenceEquals(admitted.GetClient(), session)) {
+            return;
+        }
+
         if (!room.GetRoomUserManager().AddAvatarToRoom(session)) {
             room.GetRoomUserManager().RemoveUserFromRoom(session, false);
 
@@ -36,26 +41,29 @@ public sealed class RoomEntryService(IQuestManager quests, TimeProvider clock, I
             quests.QuestReminder(session, stats.QuestId);
         }
 
+        // Observed on AIR WIN63-202610151745-318700621 (owner, rights holder and visitor alike): after the entrant's own Users entry come
+        // RoomEntryInfo, RoomEvent, the configuration item states, the Wired environment and the labels, then the controller level, Wired
+        // permissions, YouAreOwner, the room rating and the raid protection capability. The trigger-text notice follows the room-enter
+        // packet in the same tick (AIR WIN63-202610131318-860371703).
         session.Send(new RoomEntryInfoComposer(room.RoomId, room.CheckRights(session, true)));
-        // Observed on AIR WIN63-202610131318-860371703: the trigger-text notice follows the room-enter packet in the same tick.
         room.GetWired()?.SendTriggerTextNotice(session);
+        session.Send(new RoomEventComposer(RoomEventSnapshot.Capture(room.Data, room.Promotion)));
+        Plus.HabboHotel.Items.ConfigurationItemStates.SendTo(session, room);
+        room.GetWired()?.SendEnvironment(session);
         // WIRED Label bubbles (class_3043): the full list this user may see, once the room is entered.
         room.GetWired()?.SendLabels(session);
         // Transparency and highlight shown to the whole room (class_3560 furni, class_3459 users), so late joiners see them too.
         room.GetWired()?.SendVisualizationState(session);
-        // Observed on hhus (r90): room entry carries YouArePlayingGame and the room's leaderboard snapshot (empty when none is published).
-        session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.YouArePlayingGameComposer(
-            room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id) is { Team: not Plus.HabboHotel.Rooms.Games.Teams.Team.None }));
-        room.GetWired()?.SendLeaderboardSnapshot(session);
-        session.Send(new RoomVisualizationSettingsComposer(room.WallThickness, room.FloorThickness, Convert.ToBoolean(room.Hidewall)));
-        var user = room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Username);
+        // Observed on AIR WIN63-202610151745-318700621: Enter Room stacks run here, and their flashes come before the controller packets.
+        room.GetWired()?.TriggerEvent(WiredBoxType.TriggerRoomEnter, habbo);
+        room.GetRoomUserManager().SendEntryRights(session);
+        session.Send(new Plus.Communication.Packets.Outgoing.Navigator.RoomRatingComposer(room.Score, !(habbo.RatedRooms.Contains(room.RoomId) || room.OwnerId == habbo.Id)));
 
-        if (user != null && habbo.PetId == 0) {
-            room.SendPacket(new UserChangeComposer(AvatarChangeSnapshot.Capture(user, false)));
+        if (room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id) is { CurrentEffect: > 0 } entrant) {
+            session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Avatar.AvatarEffectComposer(entrant.VirtualId, entrant.CurrentEffect));
         }
 
-        session.Send(new RoomEventComposer(RoomEventSnapshot.Capture(room.Data, room.Promotion)));
-        room.GetWired()?.TriggerEvent(WiredBoxType.TriggerRoomEnter, habbo);
+        session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Session.RaidProtectionCapabilityComposer(room.RoomId, room.OwnerId == habbo.Id));
         var now = clock.GetUtcNow();
 
         if (habbo.FloodUntil is { } floodUntil && now < floodUntil) {

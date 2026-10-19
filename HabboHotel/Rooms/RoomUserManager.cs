@@ -11,6 +11,7 @@ using Plus.Communication.Packets.Outgoing.Rooms.Session;
 using Plus.Core;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Rooms.AI;
@@ -421,27 +422,17 @@ public class RoomUserManager
             AdmitSpawn(user);
         }
 
-        _room.SendUser(user);
+        _room.SendUserToOthers(user);
 
-        if (_room.CheckRights(session, true)) {
-            user.SetStatus("flatctrl", "4");
-            session.Send(new YouAreOwnerComposer(_room.Id));
-            session.Send(new YouAreControllerComposer(_room.Id, 4));
-        }
-        else if (_room.CheckRights(session, false) && _room.Group == null) {
-            user.SetStatus("flatctrl", "1");
-            session.Send(new YouAreControllerComposer(_room.Id, 1));
-        }
-        else if (_room.Group != null && _room.CheckRights(session, false, true)) {
-            user.SetStatus("flatctrl", "3");
-            session.Send(new YouAreControllerComposer(_room.Id, 3));
-        }
-        else {
-            session.Send(new YouAreNotControllerComposer(_room.Id));
+        // A user forwarded by Teleport to Room arrives still glowing and loses the glow as an in-room teleport does after landing.
+        if (session.GetHabbo().ForwardArrivalRestoreEffect is { } restore) {
+            session.GetHabbo().ForwardArrivalRestoreEffect = null;
+            user.ForwardArrivalEffect = (WiredRoomForwarding.ArrivalEffectTicks, restore);
+            ApplyArrivalEffect(session, user, WiredRoomForwarding.TeleportEffectId);
         }
 
-        if (_room.GetWired() is { } wired) {
-            wired.SendPermissions(session);
+        if (ControllerLevel(session) is > 0 and var level) {
+            user.SetStatus("flatctrl", level.ToString());
         }
 
         user.UpdateNeeded = true;
@@ -449,11 +440,11 @@ public class RoomUserManager
         var forcedEffects = session.GetHabbo().Effects;
 
         if (forcedEffects != null && session.GetHabbo().Access.Can(PermissionKeys.ModerationTool) && !session.GetHabbo().DisableForcedEffects) {
-            forcedEffects.ApplyEffect(102);
+            ApplyArrivalEffect(session, user, 102);
         }
 
         if (forcedEffects != null && session.GetHabbo().IsAmbassador && !session.GetHabbo().DisableForcedEffects && !session.GetHabbo().Access.Can(PermissionKeys.ModerationTool)) {
-            forcedEffects.ApplyEffect(178);
+            ApplyArrivalEffect(session, user, 178);
         }
 
         foreach (var bot in _bots.Values.ToList()) {
@@ -481,6 +472,50 @@ public class RoomUserManager
         return true;
     }
 
+    // The room sees the effect now; the entrant gets its own effect with the room entry, after the room rating (AIR WIN63-202610151745-318700621).
+    private void ApplyArrivalEffect(GameClient session, RoomUser user, int effectId)
+    {
+        if (session.GetHabbo().Effects is not { } effects) {
+            return;
+        }
+
+        effects.CurrentEffect = effectId;
+        _room.SendPacketToOthers(new AvatarEffectComposer(user.VirtualId, effectId), session);
+    }
+
+    private int ControllerLevel(GameClient session)
+    {
+        if (_room.CheckRights(session, true)) {
+            return 4;
+        }
+
+        if (_room.CheckRights(session, false) && _room.Group == null) {
+            return 1;
+        }
+
+        return _room.Group != null && _room.CheckRights(session, false, true) ? 3 : 0;
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: the entrant's controller level and Wired permissions follow the room's labels,
+    // then YouAreOwner for the owner.
+    public void SendEntryRights(GameClient session)
+    {
+        var level = ControllerLevel(session);
+
+        if (level > 0) {
+            session.Send(new YouAreControllerComposer(_room.Id, level));
+        }
+        else {
+            session.Send(new YouAreNotControllerComposer(_room.Id));
+        }
+
+        _room.GetWired()?.SendPermissions(session);
+
+        if (level == 4) {
+            session.Send(new YouAreOwnerComposer(_room.Id));
+        }
+    }
+
     public void RemoveUserFromRoom(GameClient? session, bool nofityUser, bool notifyKick = false)
     {
         RoomUser? removedUser = null;
@@ -504,6 +539,11 @@ public class RoomUserManager
 
             if (notifyKick) {
                 session.Send(new GenericErrorComposer(GenericError.KickedFromRoom));
+            }
+
+            // Observed on AIR WIN63-202610151745-318700621: leaving a room, for the hotel view or another room, starts with YouArePlayingGame(false).
+            if (user != null) {
+                session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.YouArePlayingGameComposer(false));
             }
 
             if (nofityUser) {
@@ -553,6 +593,12 @@ public class RoomUserManager
                             teamEffects.CurrentEffect = 0;
                         }
                     }
+                }
+
+                // A football gate outfit belongs to its room: the user's own figure is given back on leaving.
+                if (user.FootballGateOutfit is { } outfit && outfit.BaseLook == session.GetHabbo().Look) {
+                    user.FootballGateOutfit = null;
+                    session.Send(new UserChangeComposer(AvatarChangeSnapshot.Capture(user, true)));
                 }
 
                 removedUser = user;
@@ -656,7 +702,9 @@ public class RoomUserManager
             return false;
         }
 
-        var recipients = GetRoomUsers().Select(roomUser => roomUser.GetClient()).Where(client => client != null)
+        // The leaver itself gets no UserRemove (AIR WIN63-202610151745-318700621); its client drops the whole room.
+        var leaver = user.IsBot ? null : user.GetClient();
+        var recipients = GetRoomUsers().Select(roomUser => roomUser.GetClient()).Where(client => client != null && !ReferenceEquals(client, leaver))
             .Cast<GameClient>().ToArray();
 
         if (!_users.TryRemove(new KeyValuePair<int, RoomUser>(user.InternalRoomId, user))) {
@@ -967,6 +1015,7 @@ public class RoomUserManager
             }
 
             ProcessStressBots();
+            ExpireForwardArrivalEffects();
 
             if (UsesV2Movement) {
                 _room.GetGameMap().Navigation!.Executor.Tick();
@@ -974,6 +1023,27 @@ public class RoomUserManager
             }
             else {
                 CycleUsers();
+            }
+        }
+    }
+
+    private void ExpireForwardArrivalEffects()
+    {
+        foreach (var user in GetUserList()) {
+            if (user?.ForwardArrivalEffect is not { } arrival) {
+                continue;
+            }
+
+            if (arrival.TicksLeft > 1) {
+                user.ForwardArrivalEffect = (arrival.TicksLeft - 1, arrival.Restore);
+
+                continue;
+            }
+
+            user.ForwardArrivalEffect = null;
+
+            if (user.CurrentEffect == WiredRoomForwarding.TeleportEffectId) {
+                user.ApplyEffect(arrival.Restore);
             }
         }
     }
@@ -1420,7 +1490,7 @@ public class RoomUserManager
                 if (walkMagic == null && item.Definition.IsSeat) {
                     if (!user.Statusses.ContainsKey("sit")) {
                         if (!user.Statusses.ContainsKey("sit")) {
-                            user.Statusses.Add("sit", TextHandling.GetString(item.Definition.Height));
+                            user.Statusses.Add("sit", TextHandling.GetString(item.Definition.Height) + " 0");
                         }
                     }
 

@@ -9,8 +9,9 @@ namespace Plus.Tests;
 
 public class FurnitureWireTests
 {
+    // Observed on AIR WIN63-202610151745-318700621: every plain floor item in room loads and updates carries extra 0.
     [Fact]
-    public void FloorItemExtraIsOneUnlessGiftOrDisc()
+    public void FloorItemExtraIsZeroUnlessGiftOrDisc()
     {
         var plain = Floor(InteractionType.None, userId: 4);
         var gift = Floor(InteractionType.Gift, userId: 4, legacy: Gift("4", "4"));
@@ -18,11 +19,11 @@ public class FurnitureWireTests
         var disc = Floor(InteractionType.MusicDisc, userId: 4, legacy: "a\nb\nc\nd\ne\nf\n77");
         var brokenDisc = Floor(InteractionType.MusicDisc, userId: 4, legacy: "no-song");
 
-        Assert.Equal(1, Extra(plain));
+        Assert.Equal(0, Extra(plain));
         Assert.Equal(4004, Extra(gift));
         Assert.Equal(3007, Extra(mixedGift));
         Assert.Equal(77, Extra(disc));
-        Assert.Equal(1, Extra(brokenDisc));
+        Assert.Equal(0, Extra(brokenDisc));
     }
 
     [Fact]
@@ -155,6 +156,28 @@ public class FurnitureWireTests
         public void WriteBoolean(bool value) => Writes.Add(value);
         public void WriteString(string value) => Writes.Add(value ?? "");
         public void WriteDouble(double value) => Writes.Add(value);
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: a fridge (vending machine) and Floor Switch are usable by anyone, a football
+    // score board by nobody, and a game counter and a one-state recolorable block by room controllers.
+    [Theory]
+    [InlineData(InteractionType.VendingMachine, 2, 2)]
+    [InlineData(InteractionType.WfFloorSwitch1, 3, 2)]
+    [InlineData(InteractionType.Footballcounterred, 100, 0)]
+    [InlineData(InteractionType.Footballcounterblue, 100, 0)]
+    [InlineData(InteractionType.Footballcountergreen, 100, 0)]
+    [InlineData(InteractionType.Footballcounteryellow, 100, 0)]
+    [InlineData(InteractionType.WfFloorSwitch2, 4, 2)]
+    [InlineData(InteractionType.Counter, 1, 1)]
+    [InlineData(InteractionType.Recolorable, 1, 1)]
+    [InlineData(InteractionType.None, 1, 0)]
+    [InlineData(InteractionType.None, 5, 1)]
+    public void FloorItemsCarryHabbosUsagePolicy(InteractionType type, int modes, int usage)
+    {
+        var item = Floor(type, userId: 4);
+        item.Definition.Modes = modes;
+
+        Assert.Equal(usage, RoomItemSnapshot.Capture(item).UseButton);
     }
 
     [Theory]

@@ -395,7 +395,8 @@ public sealed class WiredRemainderG4FxTests
         Assert.Empty(changed.Configs);
         Assert.Equal([30L, 1L], changed.Statuses.OrderBy(entry => entry.Key.EntityId == 7 ? 0 : 1).Select(entry => entry.Value));
         Assert.False(changed.Statuses.Single(entry => entry.Key.EntityId == 7).Initialize);
-        Assert.True(changed.Statuses.Single(entry => entry.Key.EntityId == 9).Initialize);
+        // Observed on AIR WIN63-202610151745-318700621: a variable given at runtime to a holder the viewer already has is not initialized.
+        Assert.False(changed.Statuses.Single(entry => entry.Key.EntityId == 9).Initialize);
 
         // Nothing moved: nothing to send.
         var quiet = world.Update(binding, Viewer, Holder, Third);
@@ -685,6 +686,84 @@ public sealed class WiredRemainderG4FxTests
         var configuration = Compile("wf_xtra_var_fx_health", ints => { ints[7] = ints[8] = ints[9] = -1; return ints; })!;
 
         Assert.Equal([1000, 2, 10], configuration.IntParams.Skip(7).Take(3));
+    }
+
+    [Fact]
+    public void TheEditorReadsBackTheStoredFormOfABossBar()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: saved with -1/-1/-1 and the user targets on a furni source, it reads back
+        // 5/4/100 and furni targets.
+        var configuration = Compile("wf_xtra_var_fx_boss", ints =>
+        {
+            ints[0] = 0;
+            ints[1] = 2;
+            ints[7] = ints[8] = ints[9] = -1;
+            ints[16] = ints[17] = 1;
+
+            return ints;
+        })!;
+
+        Assert.Equal("0,2,0,7,0,3000,0,5,4,100,0,0,0,100,0,0,0,0,0,0,0,0,0", string.Join(",", configuration.Origin!.Native!.OwnedIntParams));
+    }
+
+    [Fact]
+    public void ABossBarStoresStaleRangeTargetsAsItsOwnSource()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: a switched source with the old targets saves, and only -10 survives.
+        int[] Targets(int source, int target, bool overrides = false, string[]? variables = null)
+        {
+            var configuration = Compile("wf_xtra_var_fx_boss", ints =>
+            {
+                ints[0] = source;
+                ints[1] = 2;
+                ints[14] = ints[15] = overrides ? 1 : 0;
+                ints[16] = ints[17] = target;
+
+                return ints;
+            }, variables: variables);
+
+            Assert.NotNull(configuration);
+
+            return [.. configuration!.IntParams.Skip(16).Take(2)];
+        }
+
+        Assert.Equal([0, 0], Targets(0, 1));
+        Assert.Equal([1, 1], Targets(1, 0));
+        Assert.Equal([0, 0], Targets(0, 2));
+        Assert.Equal([-10, -10], Targets(0, -10));
+        Assert.Equal([0, 0], Targets(0, 1, overrides: true, variables: ["furni:20", "furni:20", "0"]));
+    }
+
+    [Fact]
+    public void OneBoxDrawsEveryVariableOfItsKindOnItsTileUnderOneConfig()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: two user variables on the tile of one boss bar each got their own status.
+        var world = new World();
+        world.Give(10, Holder, 25);
+        world.Give(11, Holder, 7);
+        var first = Bind("wf_xtra_var_fx_boss")!;
+        var second = Bind("wf_xtra_var_fx_boss", shown: new(WiredVariableTarget.User, "custom:11"))!;
+
+        var batch = world.Update([first, second], Viewer, _ => 0, Holder);
+
+        Assert.Single(batch.Configs);
+        Assert.Equal([("user:10", 25L), ("user:11", 7L)], batch.Statuses.Select(x => (x.Key.VariableId, x.Value)).OrderBy(x => x.Item1));
+    }
+
+    [Fact]
+    public void ASavedBoxSendsAllItsStatusesAgainAsInitialized()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: saving a boss bar sent its config, then every status with initialize true.
+        var world = new World();
+        world.Give(10, Holder, 25);
+        var binding = Bind("wf_xtra_var_fx_boss")!;
+        world.Update(binding, Viewer, Holder);
+
+        var saved = world.Update(binding with { Config = binding.Config with { DurationMs = 5000 } }, Viewer, Holder);
+
+        Assert.True(saved.InitializeAll);
+        Assert.Single(saved.Configs);
+        Assert.True(Assert.Single(saved.Statuses).Initialize);
     }
 
     [Fact]

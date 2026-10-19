@@ -45,6 +45,29 @@ public class AvatarWardrobeTests
     }
 
     [Fact]
+    public async Task NftWardrobeRequestAnswersWithAnEmptyCollectiblesList()
+    {
+        var (client, sent) = HabbiconTestSupport.Client(new Habbo { Id = 7 });
+
+        await new GetUserNftWardrobeEvent().Parse(client, HabbiconTestSupport.Incoming());
+
+        var (header, payload) = Assert.Single(sent);
+        Assert.Equal(3375u, ClientPacketHeader.GetUserNftWardrobeEvent);
+        Assert.Equal(3493u, header);
+        Assert.Equal(new byte[] { 0, 0, 0, 0 }, payload);
+    }
+
+    [Fact]
+    public void NftWardrobeComposerWritesTheAirItemOrder()
+    {
+        var packet = new HabbiconTestSupport.RecordingPacket();
+
+        new UserNftWardrobeComposer([new NftWardrobeItem("42", "hd-180-1", "M", "token", "habbo:avatar")]).Compose(packet);
+
+        Assert.Equal(new object[] { 1, "42", "hd-180-1", "M", "token", "habbo:avatar" }, packet.Writes);
+    }
+
+    [Fact]
     public void ComposerWritesTheExactWardrobeOrder()
     {
         var snapshot = new WardrobeSnapshot(ImmutableArray.Create(new WardrobeSlot(1, "a", "F"), new WardrobeSlot(2, "b", "M")));

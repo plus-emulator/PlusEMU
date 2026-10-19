@@ -76,6 +76,7 @@ public static class PermissionKeys
     public const string CommandOverrideMassenable = "command.override_massenable";
     public const string CommandPet = "command.pet";
     public const string CommandPickall = "command.pickall";
+    public const string CommandPickallbc = "command.pickallbc";
     public const string CommandPull = "command.pull";
     public const string CommandPush = "command.push";
     public const string CommandRegenmaps = "command.regenmaps";

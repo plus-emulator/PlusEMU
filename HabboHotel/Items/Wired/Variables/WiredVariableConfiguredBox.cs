@@ -66,28 +66,40 @@ public sealed class WiredVariableConfiguredBox : IWiredContextualItem
 
         var variables = Instance.GetWired()?.Variables;
         var changesBefore = variables?.Module.ValueChanges ?? 0;
+        var decreasesBefore = variables?.Module.ValueDecreases ?? 0;
 
         if (!_executors.Execute(Descriptor.CanonicalName, configuration, context.VariableFrame)) {
             return false;
         }
 
-        var valueChanged = (variables?.Module.ValueChanges ?? 0) != changesBefore;
+        var changes = (variables?.Module.ValueChanges ?? 0) - changesBefore;
+        var lowered = changes > 0 && (variables?.Module.ValueDecreases ?? 0) - decreasesBefore == changes;
 
         // Observed on hhus (AIR WIN63-202610131318-860371703): a Give Variable or Change Variable Value that writes a variable flashes
         // that variable's definition box, and the variable add-ons on its tile, with the action's own flash.
         if (_executors.Destination(Descriptor.CanonicalName, configuration) is { } destination) {
-            // Observed on AIR WIN63-202610151745-318700621 (r97_definer_same): a change that leaves the value as it was only flips the
-            // definition between 0 and 1 (6 then 0, then 1).
-            Instance.GetWired()?.Variables.FlashDefinition(destination, Descriptor.CanonicalName switch
-            {
-                "wf_act_give_var" => WiredFlashStates.DefinitionGiven,
-                "wf_act_remove_var" => WiredFlashStates.DefinitionRemoved,
-                _ when !valueChanged => WiredFlashStates.DefinitionUnchanged,
-                _ => WiredFlashStates.DefinitionChanged
-            });
+            // A batched Change Variable Value is written when its stack's batch flushes, so the kind is picked then, in the same pass.
+            // Observed on AIR WIN63-202610151745-318700621: add 1 after give 5 shows 2, another add 1 shows 3, subtract 1 shows 4.
+            if (Descriptor.CanonicalName == "wf_act_change_var_val" && context.VariableFrame.VariableChanges is { } batch && variables != null) {
+                batch.AfterFlush(variables.Module, destination, (moved, down) => variables.FlashDefinition(destination, DefinitionKind(moved, down)));
+            }
+            else {
+                Instance.GetWired()?.Variables.FlashDefinition(destination, DefinitionKind(changes > 0, lowered));
+            }
         }
 
         return true;
     }
+
+    // Observed on AIR WIN63-202610151745-318700621 (r97_definer_same): a change that leaves the value as it was only flips the
+    // definition between 0 and 1 (6 then 0, then 1); one that lowers the value shows 4/5 instead of 2/3.
+    private int DefinitionKind(bool valueChanged, bool lowered) => Descriptor.CanonicalName switch
+    {
+        "wf_act_give_var" => WiredFlashStates.DefinitionGiven,
+        "wf_act_remove_var" => WiredFlashStates.DefinitionRemoved,
+        _ when !valueChanged => WiredFlashStates.DefinitionUnchanged,
+        _ when lowered => WiredFlashStates.DefinitionDecreased,
+        _ => WiredFlashStates.DefinitionChanged
+    };
     public void HandleSave(IIncomingPacket packet) => throw new InvalidOperationException("Configured boxes must use validated configuration persistence.");
 }

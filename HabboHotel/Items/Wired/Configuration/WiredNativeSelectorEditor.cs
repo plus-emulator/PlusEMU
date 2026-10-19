@@ -39,7 +39,7 @@ internal static class WiredNativeSelectorEditor
             _ => throw new InvalidDataException("Unknown native selector.")
         };
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): Furni By Type and Picked Furni allow wall picks. A wall type selects nothing yet, as candidates are floor furni.
+        // Observed on hhus (AIR WIN63-202610131318-860371703): Furni By Type and Picked Furni allow wall picks.
         return name is "wf_slc_furni_bytype" or "wf_slc_furni_picks" ? metadata with { AllowWall = true } : metadata;
     }
 
@@ -83,7 +83,8 @@ internal static class WiredNativeSelectorEditor
                 break;
             case "wf_slc_users_team":
             case "wf_slc_users_handitem":
-                if (p.Length != 1 || p[0] < 0 || name == "wf_slc_users_team" && p[0] > 4) {
+                // Observed on AIR WIN63-202610151745-318700621: Users With Handitem stores any int (-5 and 2147483647 read back as sent).
+                if (p.Length != 1 || name == "wf_slc_users_team" && p[0] is < 0 or > 4) {
                     return false;
                 }
 
@@ -126,7 +127,7 @@ internal static class WiredNativeSelectorEditor
                 break;
             case "wf_slc_furni_area":
             case "wf_slc_users_area":
-                if (p.Length != 4 || p.Any(value => value < 0)) {
+                if (p.Length != 4) {
                     return false;
                 }
 

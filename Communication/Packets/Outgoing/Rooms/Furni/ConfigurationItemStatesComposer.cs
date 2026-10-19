@@ -15,5 +15,7 @@ public sealed class ConfigurationItemStatesComposer(bool chooserDisabled, bool i
         packet.WriteBool(chooserDisabled);
         packet.WriteBool(false); // free furni movements
         packet.WriteBool(invisibleFurni);
+        // Observed on AIR WIN63-202610151745-318700621: room entry carries five bytes; the client reads the first four.
+        packet.WriteBool(false);
     }
 }

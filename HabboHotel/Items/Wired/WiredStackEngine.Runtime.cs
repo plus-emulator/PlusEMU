@@ -73,7 +73,8 @@ internal sealed partial class WiredStackEngine
         }
 
         RefreshStacks();
-        var dispatch = new PendingDispatch(@event, eventDepth) { CollisionProof = collision };
+        // A Collision's stacks run in the cycle that raised it (see DrainSamePassCollisions).
+        var dispatch = new PendingDispatch(@event, eventDepth) { CollisionProof = collision, ResumeImmediately = @event.Kind == WiredEventKind.Collision };
         SnapshotDispatch(dispatch);
 
         if (sealOnRejection && PendingCount + dispatch.Slots > _limits.MaxPendingStacks) {
@@ -145,7 +146,7 @@ internal sealed partial class WiredStackEngine
         return DispatchCore(new(WiredEventKind.ClickUser) { Actor = actor, TargetUser = target }).Click;
     });
 
-    private (bool Accepted, WiredClickResult Click) DispatchCore(WiredRuntimeEvent @event)
+    private (bool Accepted, WiredClickResult Click) DispatchCore(WiredRuntimeEvent @event, bool resumeImmediately = false)
     {
         if (_runtimeRoom == null) {
             return default;
@@ -159,7 +160,7 @@ internal sealed partial class WiredStackEngine
         }
 
         RefreshStacks();
-        var dispatch = new PendingDispatch(@event, depth) { IncludeLegacy = false, ResumeImmediately = @event.Kind == WiredEventKind.Speech };
+        var dispatch = new PendingDispatch(@event, depth) { IncludeLegacy = false, ResumeImmediately = @event.Kind == WiredEventKind.Speech || resumeImmediately };
         var complete = AdvanceDispatch(dispatch);
 
         if (!complete) {
@@ -174,6 +175,7 @@ internal sealed partial class WiredStackEngine
         }
 
         DrainReadySignals();
+        DrainSamePassCollisions();
         UpdateFastWork();
 
         if (dispatch.ConsumedChat) {
@@ -196,7 +198,13 @@ internal sealed partial class WiredStackEngine
 
             if (typed != null) {
                 _queuedDepth = queuedDepth;
-                accepted |= typed.Kind == WiredEventKind.Speech ? DispatchSynchronously(typed) : Enqueue(typed, _queuedDepth);
+                // Observed on AIR WIN63-202610151745-318700621: an Enter Room stack runs inside the room entry, like a speech stack with its chat.
+                accepted |= typed.Kind switch
+                {
+                    WiredEventKind.Speech => DispatchSynchronously(typed),
+                    WiredEventKind.Enter => DispatchCore(typed, resumeImmediately: true).Accepted,
+                    _ => Enqueue(typed, _queuedDepth)
+                };
             }
 
             return accepted;
@@ -269,16 +277,13 @@ internal sealed partial class WiredStackEngine
     public bool SendSignal(WiredRuntimeContext parent, IEnumerable<Item> receivers,
         WiredSelection selection, bool negative = false) => Pass(() =>
     {
-        if (!ReferenceEquals(parent.Room, _runtimeRoom) || TooDeep(parent.Depth + 1)) {
+        if (!ReferenceEquals(parent.Room, _runtimeRoom)) {
             return false;
         }
 
         var live = _targets!.AllFurni().ToDictionary(x => x.Id);
-        // Observed on AIR WIN63-202610151745-318700621 (r97_core_loop, r97_core_chain): a chain reaches each antenna once. A receiving
-        // stack that signals its own antenna, or a 3-antenna cycle back to the first, runs each stack once and stops.
         var antennas = receivers.DistinctBy(x => x.Id).Where(receiver =>
-            live.TryGetValue(receiver.Id, out var attached) && ReferenceEquals(receiver, attached)
-            && IsSignalAntenna(receiver) && !parent.SignalPath.Contains(receiver.Id)).ToArray();
+            live.TryGetValue(receiver.Id, out var attached) && ReferenceEquals(receiver, attached) && IsSignalAntenna(receiver)).ToArray();
 
         if (antennas.Length == 0) {
             return false;
@@ -286,15 +291,24 @@ internal sealed partial class WiredStackEngine
 
         var accepted = false;
 
+        // Observed on AIR WIN63-202610151745-318700621: a loop that waits before it signals again keeps running past 100 runs, so a
+        // delayed Send Signal starts one new count for all its antennas and batches.
+        if (_executingAction is { DelayMilliseconds: > 0 } step && !ReferenceEquals(parent.SignalChainStep, step)) {
+            parent.SignalChainRuns = [];
+            parent.SignalChainStep = step;
+        }
+
         foreach (var antenna in antennas) {
             // Official delivery fires once per addressed antenna matching a receiving stack's picks.
+            // Observed on AIR WIN63-202610151745-318700621: a straight chain of signals runs every stack, and each receiving stack in a
+            // loop runs 100 times. A hop therefore keeps the sender's depth; the run cap (SignalRunCapReached) bounds a loop instead.
+            parent.SignalChainRuns ??= [];
             var child = parent.Fork(new(WiredEventKind.Signal)
             {
                 Code = unchecked((int)antenna.Id),
                 Actor = parent.Event.Actor,
                 EventItem = parent.Event.EventItem
-            }, parent.Depth + 1);
-            child.SignalPath = parent.SignalPath.Add(antenna.Id);
+            }, parent.Depth);
             child.Signal = new(selection, parent.Values);
             // Routing antennas and forwarded targets are independent from the original event's targets.
             child.Triggering = parent.Triggering.Copy();
@@ -338,8 +352,14 @@ internal sealed partial class WiredStackEngine
 
         var chain = new ActionChain(active.Chain.Source, active.Chain.Stack, active.Chain.Context, 1);
         _pending.Add(chain);
-        _schedule.Enqueue(new(chain, active.Box, callback, onCancelled),
-            (DueAt(_now() + Math.Max(0, delayMilliseconds), alignToStateUpdate), active.Box.Item.GetZ, active.Box.Item.Id, ++_sequence, 0));
+        var due = DueAt(_now() + Math.Max(0, delayMilliseconds), alignToStateUpdate);
+        _schedule.Enqueue(new(chain, active.Box, callback, onCancelled), (due, active.Box.Item.GetZ, active.Box.Item.Id, ++_sequence, 0));
+
+        // Like a delayed effect, a timed step wakes the room at its due time instead of waiting for the next 50 ms step.
+        if (due > _now()) {
+            ActionDue?.Invoke(due);
+        }
+
         UpdateFastWork();
 
         return true;
@@ -461,6 +481,7 @@ internal sealed partial class WiredStackEngine
         DrainDueActions();
         RunRuntimeTimersAndSignals();
         DrainDueActions();
+        DrainSamePassCollisions();
         UpdateFastWork();
 
         return true;
@@ -567,10 +588,10 @@ internal sealed partial class WiredStackEngine
 
             context.SelectorKinds |= kind;
         }
-        // Selectors deliver temporary copies like any other floor furni; only a manual pick of a copy is refused. Observed on hhus
-        // (AIR WIN63-202610131318-860371703): area and by-type selectors fed Remove Temporary Furni, and Invert selected a copy.
+        // Selectors include temporary copies; manual picks still refuse them. The inversion universe also includes wall furniture
+        // (observed on AIR WIN63-202610151745-318700621).
         Apply(context.SelectorPool.FurniIds, context.SelectorFurniOrder, result.Selection.FurniIds,
-            context.FurniIdentity.Where(pair => pair.Value.IsFloorItem).Select(pair => pair.Key), WiredSelectionKind.Furni);
+            context.FurniIdentity.Keys, WiredSelectionKind.Furni);
         Apply(context.SelectorPool.UserIds, context.SelectorUserOrder, result.Selection.UserIds,
             context.UserIdentity.Keys, WiredSelectionKind.Users);
     }
@@ -713,6 +734,39 @@ internal sealed partial class WiredStackEngine
     }
 
     private bool _drainingSignals;
+    private bool _drainingCollisions;
+
+    // Observed on AIR WIN63-202610151745-318700621 (r97_chase_collide_clk, r97_flee_corner_clk): User Stuff Collision raised by an effect
+    // runs in the same pulse as that effect, its flashes and chat in the same batch. A Collision at the head of the queue therefore runs
+    // before the pass ends, with the effects it schedules; the pass budget and the event depth still bound a chain of them.
+    private void DrainSamePassCollisions()
+    {
+        if (_drainingCollisions || _draining || _dispatchAdvanceDepth != 0 || _activeFiring != null) {
+            return;
+        }
+
+        _drainingCollisions = true;
+
+        try {
+            while (_dispatches.TryPeek(out var pending) && pending.Event.Kind == WiredEventKind.Collision && !OutOfBudget()) {
+                // Its stacks run in this cycle instead of waiting for the next one.
+                pending.ResumeImmediately = true;
+
+                if (!AdvanceDispatch(pending)) {
+                    break;
+                }
+
+                if (_dispatches.TryPeek(out var head) && ReferenceEquals(head, pending)) {
+                    RemoveDispatchHead();
+                }
+
+                DrainDueActions();
+            }
+        }
+        finally {
+            _drainingCollisions = false;
+        }
+    }
 
     private void DrainReadySignals()
     {

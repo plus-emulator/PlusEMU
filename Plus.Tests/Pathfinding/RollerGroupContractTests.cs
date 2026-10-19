@@ -84,7 +84,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         walker.MoveTo(1, 1);
         ExecutorTick();
-        Assert.Contains("/mv 1,1,0/", ExecutorUpdate(walker).Status);
+        Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(walker).Status);
         EnableExecutorRollers();
         ExecutorTick();
         Assert.Equal((0, 1, .5), (cargo.GetX, cargo.GetY, cargo.GetZ));
@@ -195,7 +195,7 @@ public partial class PlacedFurniRoomTests
             fired = true;
 
             if (rotate) {
-                later.SetPlacementState(later.GetX, later.GetY, later.GetZ, later.GetAffectedTiles, 0);
+                later.SetPlacementState(later.GetX, later.GetY, later.GetZ, 0);
             }
             else {
                 second.SetPos(0, 3, 1.5);

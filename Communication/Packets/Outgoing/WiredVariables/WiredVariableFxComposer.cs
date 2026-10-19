@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired.Variables.Fx;
 
 namespace Plus.Communication.Packets.Outgoing.WiredVariables;
@@ -83,7 +84,7 @@ public sealed class WiredVariableFxComposer : IServerPacket
                     packet.WriteString($"{status.Key.ConfigId}|{status.Key.VariableId}");
                     packet.WriteBoolean(status.Initialize);
                     packet.WriteBoolean(status.Key.UserEntity);
-                    packet.WriteInteger(status.Key.EntityId);
+                    packet.WriteInteger(status.Key.UserEntity ? status.Key.EntityId : TemporaryItemIds.ToWiredEntityId(status.Key.EntityId));
                     WriteLong(packet, status.Value);
                     packet.WriteBoolean(status.Min is not null && status.Max is not null);
 
@@ -100,7 +101,7 @@ public sealed class WiredVariableFxComposer : IServerPacket
                 packet.WriteInteger(_batch.RemovedStatuses.Count);
 
                 foreach (var key in _batch.RemovedStatuses) {
-                    packet.WriteString(key.ToString());
+                    packet.WriteString((key.UserEntity ? key : key with { EntityId = TemporaryItemIds.ToWiredEntityId(key.EntityId) }).ToString());
                 }
 
                 break;

@@ -47,8 +47,8 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         var events = new List<WiredRuntimeEvent>();
         var action = Box(room, "wf_act_chase", [100], [mover.Id], events.Add);
         Assert.True(action.Execute(Context(room, [mover], [user])));
-        // From an exact diagonal the step goes along either axis (observed on AIR WIN63-202610151745-318700621, r97_chase_tie).
-        Assert.Contains((mover.GetX, mover.GetY), new[] { (2, 1), (1, 2) });
+        // Observed on AIR WIN63-202610151745-318700621: a user on a diagonal is not followed; the chase takes a random step instead.
+        Assert.Equal(1, Math.Abs(mover.GetX - 1) + Math.Abs(mover.GetY - 1));
         Assert.Empty(events);
     }
 
@@ -185,7 +185,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         bottom.Definition.Stackable = true;
         bottom.Definition.Height = 0.5;
         var top = Floor(1, 2, 2);
-        top.SetState(2, 2, 0.5, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+        top.SetState(2, 2, 0.5);
         Place(map, items, bottom);
         Place(map, items, top);
         var user = Avatar(room, 1, name == "wf_act_flee" ? 0 : 4, 2);
@@ -586,7 +586,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     {
         var (room, map, items) = World();
         var item = Floor(1, 1, 1);
-        item.SetState(1, 1, 30, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        item.SetState(1, 1, 30);
         Place(map, items, item);
         var action = Box(room, "wf_act_set_altitude", [0, 100], [1], text: "20");
         Assert.True(action.Execute(Context(room, [item], [])));
@@ -635,7 +635,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal((0, 0), (nav.Height, nav.Top));
         var next = Floor(2, 4, 4);
         next.Definition.Stackable = true;
-        next.SetState(4, 4, 3, Gamemap.GetAffectedTiles(1, 1, 4, 4, 0));
+        next.SetState(4, 4, 3);
         Place(map, items, next);
         Assert.True(WiredRoomOperations.MoveItem(room, next, 2, 2, 0, null, animate: false));
         Assert.Equal(0, next.GetZ);
@@ -903,7 +903,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
                 PublicName = "test"
             }
         };
-        item.SetState(x, y, 0, Gamemap.GetAffectedTiles(1, 1, x, y, 0));
+        item.SetState(x, y, 0);
 
         return item;
     }

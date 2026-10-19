@@ -937,6 +937,51 @@ CREATE TABLE `crafting_recipes_ingredients` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `daily_task_rewards`
+--
+
+DROP TABLE IF EXISTS `daily_task_rewards`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `daily_task_rewards` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `task_id` int(11) NOT NULL,
+  `product_item_type_id` smallint(6) NOT NULL DEFAULT 8,
+  `reward_type_id` varchar(64) NOT NULL,
+  `extra_params` varchar(255) NOT NULL DEFAULT '',
+  `amount` int(11) NOT NULL DEFAULT 1,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `task_id` (`task_id`),
+  CONSTRAINT `fk_daily_task_rewards_task_id` FOREIGN KEY (`task_id`) REFERENCES `daily_tasks` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `daily_tasks`
+--
+
+DROP TABLE IF EXISTS `daily_tasks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `daily_tasks` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `code` varchar(64) NOT NULL,
+  `action_type` varchar(64) NOT NULL,
+  `parameters` varchar(512) NOT NULL DEFAULT '',
+  `quest_type_code` varchar(64) NOT NULL DEFAULT '',
+  `required_repeats` int(11) NOT NULL DEFAULT 1,
+  `image_version` varchar(32) NOT NULL DEFAULT '',
+  `catalog_name` varchar(100) NOT NULL DEFAULT '',
+  `bonus` tinyint(1) NOT NULL DEFAULT 0,
+  `weight` int(11) NOT NULL DEFAULT 1,
+  `enabled` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `furni_editor_log`
 --
 
@@ -2579,6 +2624,24 @@ CREATE TABLE `user_calendar_claims` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `user_claimed_products`
+--
+
+DROP TABLE IF EXISTS `user_claimed_products`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_claimed_products` (
+  `user_id` int(11) NOT NULL,
+  `claim_id` varchar(64) NOT NULL,
+  `choice` int(11) NOT NULL DEFAULT -1,
+  `claimed_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`user_id`,`claim_id`),
+  KEY `claim_id` (`claim_id`),
+  CONSTRAINT `fk_user_claimed_products_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `user_clothing`
 --
 
@@ -2648,6 +2711,32 @@ CREATE TABLE `user_currencies` (
   KEY `type_amount` (`type`,`amount`),
   CONSTRAINT `fk_user_currencies_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `chk_user_currencies_type` CHECK (`type` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_daily_tasks`
+--
+
+DROP TABLE IF EXISTS `user_daily_tasks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_daily_tasks` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `task_id` int(11) NOT NULL,
+  `day` date NOT NULL,
+  `expires_at` datetime(6) NOT NULL,
+  `progress` int(11) NOT NULL DEFAULT 0,
+  `status` tinyint(4) NOT NULL DEFAULT 0,
+  `completed_at` datetime(6) DEFAULT NULL,
+  `claimed_at` datetime(6) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_day_task` (`user_id`,`day`,`task_id`),
+  KEY `user_status_day` (`user_id`,`status`,`day`),
+  KEY `task_id` (`task_id`),
+  CONSTRAINT `fk_user_daily_tasks_task_id` FOREIGN KEY (`task_id`) REFERENCES `daily_tasks` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_user_daily_tasks_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -12683,6 +12772,7 @@ INSERT INTO `bots_pet_responses` VALUES
 ('speech.pet29','Grrr;'),
 ('speech.pet3','woof woof woof!!!;hooooowl;wooooof!;Woof Woof!;sit;lay;snf;Woof;'),
 ('speech.pet30','Grrr;'),
+('speech.pet37','Grrr;'),
 ('speech.pet4','*pack of fresh salmon please*;Rawrrr!;*sniff sniff*;Yawnnnn..;Rawr! ... Rawrrrrr?;snf;'),
 ('speech.pet5','Oink Oink..;*Mellow*;Sniff... Sniff..;snf;Oink!;snf;lay;oink;'),
 ('speech.pet6','Grrr;'),
@@ -83915,6 +84005,62 @@ INSERT INTO `crafting_recipes_ingredients` VALUES
 UNLOCK TABLES;
 
 --
+-- Dumping data for table `daily_task_rewards`
+--
+
+LOCK TABLES `daily_task_rewards` WRITE;
+/*!40000 ALTER TABLE `daily_task_rewards` DISABLE KEYS */;
+INSERT INTO `daily_task_rewards` VALUES
+(1,1,8,'0','',25,0),
+(2,2,8,'0','',25,0),
+(3,3,8,'0','',25,0),
+(4,4,8,'0','',25,0),
+(5,5,8,'0','',25,0),
+(6,6,8,'0','',25,0),
+(7,7,8,'0','',25,0),
+(8,8,8,'0','',25,0),
+(9,9,8,'0','',25,0),
+(10,10,8,'0','',25,0),
+(11,11,8,'0','',25,0),
+(12,12,8,'0','',25,0),
+(13,13,8,'0','',25,0),
+(14,14,8,'0','',25,0),
+(15,15,8,'0','',25,0),
+(16,16,8,'0','',25,0),
+(17,17,8,'0','',25,0),
+(18,18,8,'0','',100,0);
+/*!40000 ALTER TABLE `daily_task_rewards` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Dumping data for table `daily_tasks`
+--
+
+LOCK TABLES `daily_tasks` WRITE;
+/*!40000 ALTER TABLE `daily_tasks` DISABLE KEYS */;
+INSERT INTO `daily_tasks` VALUES
+(1,'1741850663726_G','chat_with_someone','','chat_with_someone',10,'','',0,1,1),
+(2,'1741855402906_G','dance','','dance',5,'','',0,1,1),
+(3,'1741855705682_G','dance','','dance',3,'','',0,1,1),
+(4,'1741863086174_G','switch_item_state','','switch_item_state',10,'','',0,1,1),
+(5,'1741864304637_G','swim','','swim',1,'','',0,1,1),
+(6,'1741864788753_G','wave','','wave',3,'','',0,1,1),
+(7,'1742193348839_G','find_hand_item','1,8,10,11,12,13,14,15,16,17,27,53,91,146,149','find_hand_item',1,'','',0,1,1),
+(8,'1742194750225_G','find_hand_item','66,106,113,114,115','find_hand_item',1,'','',0,1,1),
+(9,'1742195901294_G','find_hand_item','4,26,75,76,77,120,121,127,128,137,160,161,162,163,167,180','find_hand_item',1,'','',0,1,1),
+(10,'1742198483809_G','pet_respect','','pet_respect',3,'','',0,1,1),
+(11,'1742199338599_G','find_hand_item','2,24,29,40,42,50,64,101,107,157,158,159','find_hand_item',1,'','',0,1,1),
+(12,'1742369952117_G','teleport','','teleport',3,'','',0,1,1),
+(13,'1742372923261_G','change_motto','','change_motto',1,'','',0,1,1),
+(14,'1742376992244_G','place_item','','place_item',5,'','',0,1,1),
+(15,'1742377579479_G','move_item','','move_item',10,'','',0,1,1),
+(16,'1742378786317_G','request_friend','','request_friend',3,'','',0,1,1),
+(17,'1734011389107_G','enter_other_users_room','','enter_other_users_room',5,'','',0,1,1),
+(18,'1742375669365_G','show_sign','10','show_sign',1,'','',1,1,1);
+/*!40000 ALTER TABLE `daily_tasks` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Dumping data for table `furniture`
 --
 
@@ -87349,7 +87495,7 @@ INSERT INTO `furniture` VALUES
 (29314,'wf_wire1','Floor Wiring','s',1,1,0,1,0,1,3696,1,1,1,1,1,'default',0,4,'0','0',0,0,0,0,1,50950,'wired_add_on',0,1,1,NULL,'Floor Wiring','Wires that can be laid down in a room',NULL,0,NULL,1,1,0,0,1,0,'','',0,1,1,3696,'wf_wire1'),
 (29315,'wf_act_give_score','WIRED Effect: Give Points','s',1,1,0.65,1,0,1,3697,1,1,1,1,1,'wf_act_give_score',0,1,'0','0',0,0,0,0,1,50950,'wired_effect',2,1,1,NULL,'WIRED Effect: Give Points','This Effect gives the set amount of points to the team that triggers the Effect. You can also choose how many times in a game the amount can be given.',NULL,0,'6',1,1,0,0,1,0.65,'','',0,1,1,3697,'wf_act_give_score'),
 (29316,'wf_wire3','Wire Corner','s',1,1,0,1,0,1,3698,1,1,1,1,1,'default',0,4,'0','0',0,0,0,0,1,50950,'wired_add_on',0,1,1,NULL,'Wire Corner','Wires that can be laid down in a room.',NULL,0,NULL,1,1,0,0,1,0,'','',0,1,1,3698,'wf_wire3'),
-(29317,'wf_glassdoor','Glass Door','s',1,1,0.2,0,0,1,3699,1,1,1,1,1,'gate',0,4,'0','0',0,0,0,0,1,50950,'wired_add_on',0,1,1,NULL,'Glass Door','When Effect is triggered Glass Door goes up or down.',NULL,0,NULL,1,1,0,0,0,0.2,'','',0,1,1,3699,'wf_glassdoor'),
+(29317,'wf_glassdoor','Glass Door','s',1,1,0.2,0,0,1,3699,1,1,1,1,1,'gate',0,2,'0','0',0,0,0,0,1,50950,'wired_add_on',0,1,1,NULL,'Glass Door','When Effect is triggered Glass Door goes up or down.',NULL,0,NULL,1,1,0,0,0,0.2,'','',0,1,1,3699,'wf_glassdoor'),
 (29318,'wf_act_match_to_sshot','WIRED Effect: Match Furni to Position & State','s',1,1,0.65,1,0,1,3700,1,1,1,1,1,'wired_effect',0,2,'0','0',0,14,0,0,1,50950,'wired_effect',2,1,1,NULL,'WIRED Effect: Match Furni to Position & State','This Effect returns the selected Furni to its set conditions.',NULL,0,'3',1,1,0,0,1,0.65,'','',0,1,1,3700,'wf_act_match_to_sshot'),
 (29319,'wf_floor_switch1','Floor Switch 1','s',1,1,1,0,0,0,3701,1,1,1,1,1,'wf_floor_switch1',0,3,'0','0',0,0,0,0,1,50950,'wired_add_on',2,1,1,NULL,'Floor Switch 1','Two states- Switch can be turned on/off. Can only be operated from an adjacent tile.',NULL,0,NULL,1,0,0,0,0,1,'','',0,1,1,3701,'wf_floor_switch1'),
 (29320,'wf_trg_game_starts','WIRED Trigger: Game Starts','s',1,1,0.65,1,0,1,3702,1,1,1,1,1,'wired_trigger',0,1,'0','0',0,42,0,0,1,50950,'wired_trigger',0,1,1,NULL,'WIRED Trigger: Game Starts','Effects are triggered when a game starts in the room',NULL,0,'8',1,1,0,0,1,0.65,'','',0,1,1,3702,'wf_trg_game_starts'),
@@ -104980,7 +105126,7 @@ INSERT INTO `room_chat_styles` VALUES
 (15,'',NULL,1,1),
 (16,'',NULL,1,1),
 (17,'',NULL,1,1),
-(18,'',NULL,1,1),
+(18,'','chat.style.staff',0,1),
 (19,'piglet',NULL,1,1),
 (20,'sausagedog',NULL,1,1),
 (21,'firingmylazer',NULL,1,1),
@@ -104990,17 +105136,17 @@ INSERT INTO `room_chat_styles` VALUES
 (25,'console',NULL,1,1),
 (26,'',NULL,1,1),
 (27,'storm',NULL,1,1),
-(28,'parrot',NULL,1,1),
+(28,'parrot','chat.style.staff',0,1),
 (29,'pirate',NULL,1,1),
 (30,'bot_guide','chat.style.staff',0,1),
 (31,'bot_rentable','chat.style.staff',0,1),
-(32,'skelestock',NULL,1,1),
+(32,'skelestock','chat.style.staff',0,1),
 (33,'bot_frank','chat.style.staff',0,1),
 (34,'notification','chat.style.staff',0,1),
-(35,'goat',NULL,1,1),
-(36,'santa',NULL,1,1),
+(35,'goat','chat.style.staff',0,1),
+(36,'santa','chat.style.staff',0,1),
 (37,'','chat.style.staff',0,1),
-(38,'',NULL,1,1),
+(38,'','chat.style.staff',0,1),
 (39,'','chat.style.staff',0,1),
 (40,'','chat.style.staff',0,1),
 (41,'','chat.style.staff',0,1),

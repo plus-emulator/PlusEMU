@@ -54,6 +54,8 @@ public class Item
 
     public uint Id { get; set; }
     public bool IsTemporary { get; internal init; }
+    /// <summary>True while a room move (not a new placement) runs the interactor's placement hook.</summary>
+    internal bool Moving { get; set; }
     // Placed from the Builders Club catalogue: it counts against the placer's Builders Club furni limit and is deleted,
     // never stored, when it leaves the room.
     public bool IsBuildersClub { get; init; }
@@ -228,9 +230,7 @@ public class Item
     private bool _updateNeeded;
     [Obsolete]
     public int BaseItem;
-    public string Figure = string.Empty;
     public FreezePowerUp FreezePowerUp;
-    public string Gender;
     private int _groupId;
     public int GroupId
     {
@@ -291,7 +291,37 @@ public class Item
 
     public int Value;
 
-    public Dictionary<int, ThreeDCoord> GetAffectedTiles { get; private set; } = new();
+    private sealed record Footprint(int Length, int Width, int X, int Y, int Rotation, IReadOnlyDictionary<int, ThreeDCoord> Tiles);
+    private Footprint? _footprint;
+
+    /// <summary>
+    /// The tiles past the anchor that the furni covers. Always derived from its definition, position and rotation, so no load, move or
+    /// rotate path can leave it stale.
+    /// </summary>
+    public IReadOnlyDictionary<int, ThreeDCoord> GetAffectedTiles
+    {
+        get
+        {
+            if (Definition is not { } definition) {
+                return EmptyFootprint;
+            }
+
+            var (x, y, rotation) = (_getX, _getY, _rotation);
+            var cached = Volatile.Read(ref _footprint);
+
+            if (cached is not null && cached.Length == definition.Length && cached.Width == definition.Width && cached.X == x && cached.Y == y &&
+                cached.Rotation == rotation) {
+                return cached.Tiles;
+            }
+
+            var tiles = Gamemap.GetAffectedTiles(definition.Length, definition.Width, x, y, rotation);
+            Volatile.Write(ref _footprint, new(definition.Length, definition.Width, x, y, rotation, tiles));
+
+            return tiles;
+        }
+    }
+
+    private static readonly IReadOnlyDictionary<int, ThreeDCoord> EmptyFootprint = new Dictionary<int, ThreeDCoord>();
 
     private int _getX;
     public int GetX
@@ -566,25 +596,25 @@ public class Item
     private long _movementGeneration;
     internal long MovementGeneration => Interlocked.Read(ref _movementGeneration);
 
-    public void SetState(int pX, int pY, double pZ, Dictionary<int, ThreeDCoord> tiles)
-        => SetPlacementState(pX, pY, pZ, tiles, null);
+    public void SetState(int pX, int pY, double pZ)
+        => SetPlacementState(pX, pY, pZ, null);
 
-    internal void SetPlacementState(int pX, int pY, double pZ, Dictionary<int, ThreeDCoord> tiles, int? rotation)
+    internal void SetPlacementState(int pX, int pY, double pZ, int? rotation)
     {
         if (!Volatile.Read(ref _navigationSynchronized)) {
-            WritePlacement(pX, pY, pZ, tiles, rotation);
+            WritePlacement(pX, pY, pZ, rotation);
 
             return;
         }
 
         lock (NavSync) {
-            WritePlacement(pX, pY, pZ, tiles, rotation);
+            WritePlacement(pX, pY, pZ, rotation);
             NavigationInputs?.PublishCurrent(this);
         }
     }
 
     // Field writes only: no room, Wired, map, database or network callbacks under NavSync.
-    private void WritePlacement(int pX, int pY, double pZ, Dictionary<int, ThreeDCoord> tiles, int? rotation)
+    private void WritePlacement(int pX, int pY, double pZ, int? rotation)
     {
         if (_getX != pX || _getY != pY || !double.IsInfinity(pZ) && _getZ != pZ) {
             Interlocked.Increment(ref _movementGeneration);
@@ -601,7 +631,6 @@ public class Item
             _rotation = direction;
         }
 
-        GetAffectedTiles = tiles;
         MagicTileHeight.Sync(this);
     }
 
@@ -1087,7 +1116,8 @@ public class Item
                         }
                         break;
                     case InteractionType.HabboWheel:
-                        LegacyDataString = Random.Shared.Next(1, 10).ToString();
+                        // AIR WIN63-202610151745-318700621 FurnitureHabboWheelVisualization.as:37 stops on results 1 to 10.
+                        LegacyDataString = Random.Shared.Next(1, 11).ToString();
                         UpdateState();
                         break;
                     case InteractionType.LoveShuffler:
@@ -1743,6 +1773,5 @@ public class Item
         }
 
         Definition = null;
-        GetAffectedTiles.Clear();
     }
 }

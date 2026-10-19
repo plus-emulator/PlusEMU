@@ -32,7 +32,7 @@ public sealed class WiredSelectorTests
         new(2, 100, "High chair", "1", 2, 1, 1, 1, [(2, 1)]),
         new(3, 200, "Lamp", "0", 4, 4, 0, 1, [(4, 4)]),
         new(4, 100, "Wall", "0", 1, 1, 0, 1, [(1, 1)], false),
-        new(5, 100, "Wired", "0", 1, 2, 0, 1, [(1, 2)], IsWired: true)
+        new(5, 300, "Wired", "0", 1, 2, 0, 1, [(1, 2)], IsWired: true)
     ],
     [
         new(1, "Ada", WiredSelectorEntityKind.Player, 2, 1, 1, new HashSet<int> { 9 }, 7, Sitting: true, Sign: 3, Dance: 2, EquippedGroupId: 9),
@@ -57,7 +57,7 @@ public sealed class WiredSelectorTests
 
     public static IEnumerable<object[]> AllSelectors()
     {
-        yield return ["wf_slc_furni_bytype", Config([0, 0], [1]), new uint[] { 1, 2 }, Array.Empty<int>()];
+        yield return ["wf_slc_furni_bytype", Config([0, 0], [1]), new uint[] { 1, 2, 4 }, Array.Empty<int>()];
         yield return ["wf_slc_furni_picks", Config(picks: [3]), new uint[] { 3 }, Array.Empty<int>()];
         yield return ["wf_slc_users_bytype", Config([2]), Array.Empty<uint>(), new[] { 3 }];
         yield return ["wf_slc_users_team", Config([1]), Array.Empty<uint>(), new[] { 1 }];
@@ -68,10 +68,11 @@ public sealed class WiredSelectorTests
         yield return ["wf_slc_users_onfurni", Config([100], [1]), Array.Empty<uint>(), new[] { 1 }];
         yield return ["wf_slc_users_byaction", Config([6]), Array.Empty<uint>(), new[] { 1 }];
         yield return ["wf_slc_users_signal", Config(), Array.Empty<uint>(), new[] { 2 }];
-        yield return ["wf_slc_users_byname", Config(text: " ADA \nana"), Array.Empty<uint>(), new[] { 1, 4 }];
+        yield return ["wf_slc_users_byname", Config(text: "ADA\tana"), Array.Empty<uint>(), new[] { 1, 4 }];
         yield return ["wf_slc_users_neighborhood", Hood(1, 1, -1, WiredSources.Trigger, 0), Array.Empty<uint>(), new[] { 4 }];
         yield return ["wf_slc_users_area", Config([1, 1, 2, 1]), Array.Empty<uint>(), new[] { 1 }];
-        yield return ["wf_slc_users_handitem", Config([0]), Array.Empty<uint>(), new[] { 2, 3, 4 }];
+        // Only Habbos count: the bot and the pet hold nothing but are not selected.
+        yield return ["wf_slc_users_handitem", Config([0]), Array.Empty<uint>(), new[] { 4 }];
         yield return ["wf_slc_users_group", Config([0]), Array.Empty<uint>(), new[] { 1 }];
         yield return ["wf_slc_furni_altitude", Config([1], text: "1.004"), Array.Empty<uint>(), Array.Empty<int>()];
         yield return ["wf_slc_furni_with_var", Config(text: "custom:77"), new uint[] { 3 }, Array.Empty<int>()];
@@ -93,6 +94,19 @@ public sealed class WiredSelectorTests
         ], 0, new Dictionary<uint, WiredRemoteSelector>());
         var result = WiredSelectorModule.SelectRaw("wf_slc_users_handitem", Config([code]), world, Inputs());
         Assert.Equal(expected.Order(), result.Selection.UserIds.Order());
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: the hotel stores a negative hand item as sent.
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(-5)]
+    public void HandItemSelectorSavesANegativeCode(int code)
+    {
+        Assert.True(WiredBoxRegistry.TryGet("wf_slc_users_handitem", out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = [code] };
+
+        Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native, out var runtime));
+        Assert.Equal(code, runtime.IntParams[0]);
     }
 
     [Theory]
@@ -125,12 +139,12 @@ public sealed class WiredSelectorTests
     }
 
     [Fact]
-    public void InversionIsAppliedOnceAndOnlyToFloorFurniture()
+    public void InversionIncludesWallFurnitureAndIsAppliedOnce()
     {
         var result = WiredSelectorModule.Compose(WiredSelectorModule.SelectRaw("wf_slc_furni_picks",
             Config([0, 1], [1]), World(), Inputs()), World(), Inputs());
-        // Wall items stay out; Wired boxes are inverted like any other floor furni (observed on hhus).
-        Assert.Equal(new uint[] { 2, 3, 5 }, result.FurniIds.Order());
+        // Observed on AIR WIN63-202610151745-318700621: the complement includes wall and Wired furniture.
+        Assert.Equal(new uint[] { 2, 3, 4, 5 }, result.FurniIds.Order());
     }
 
     [Fact]
@@ -149,6 +163,37 @@ public sealed class WiredSelectorTests
         Assert.Empty(result.Selection.FurniIds);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a chain of 61 nested Remote Selection stacks still reaches the last stack.
+    [Theory]
+    [InlineData(21)]
+    [InlineData(61)]
+    public void NestedRemoteSelectionHasNoDepthLimit(int stacks) =>
+        Assert.Equal(new uint[] { 3 }, SelectRemoteChain(stacks, new("wf_slc_furni_picks", Config(picks: [3]))).Selection.FurniIds);
+
+    [Fact]
+    public void NestedRemoteSelectionReadsVariablesAtAnyDepth() =>
+        Assert.True(WiredSelectorVariableBridge.RequiresQueries("wf_slc_remote", Config([0, 0, 0, 0, 100], [1060]),
+            RemoteChain(61, new("wf_slc_furni_with_var", Config()))));
+
+    [Fact]
+    public void AVeryDeepRemoteChainStopsWithoutOverflowingTheStack() =>
+        Assert.Empty(SelectRemoteChain(100_000, new("wf_slc_furni_picks", Config(picks: [3]))).Selection.FurniIds);
+
+    private static WiredSelectorResult SelectRemoteChain(int stacks, WiredRemoteSelector last) =>
+        WiredSelectorModule.SelectRaw("wf_slc_remote", Config([0, 0, 0, 0, 100], [(uint)(999 + stacks)]), RemoteChain(stacks, last), Inputs());
+
+    // Stack 1000 holds the last selector; every next stack only has a Remote Selection picking the one before it.
+    private static WiredSelectorWorld RemoteChain(int stacks, WiredRemoteSelector last)
+    {
+        var remotes = new Dictionary<uint, WiredRemoteSelector> { [1000] = last };
+
+        for (var id = 1001u; id < 1000 + stacks; id++) {
+            remotes[id] = new("wf_slc_remote", Config([0, 0, 0, 0, 100], [id - 1]));
+        }
+
+        return World() with { RemoteSelectors = remotes };
+    }
+
     [Fact]
     public void TransientActionsExpireButCurrentSignAndDanceUseParameterFilters()
     {
@@ -157,6 +202,27 @@ public sealed class WiredSelectorTests
         Assert.Empty(WiredSelectorModule.SelectRaw("wf_slc_users_byaction", Config([1]), world, Inputs() with { NowMs = 5101 }).Selection.UserIds);
         Assert.Empty(WiredSelectorModule.SelectRaw("wf_slc_users_byaction", Config([9, 1, 4]), world, Inputs()).Selection.UserIds);
         Assert.Single(WiredSelectorModule.SelectRaw("wf_slc_users_byaction", Config([10, 0, 0, 1, 2]), world, Inputs()).Selection.UserIds);
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: Furni In Area and Furni On Furni select the Wired boxes in their scope.
+    [Fact]
+    public void AreaAndOnFurniSelectorsIncludeWiredBoxes()
+    {
+        Assert.Equal(new uint[] { 1, 5 }, WiredSelectorModule.SelectRaw("wf_slc_furni_area", Config([1, 1, 1, 2]), World(), Inputs())
+            .Selection.FurniIds.Order());
+        Assert.Equal(new uint[] { 5 }, WiredSelectorModule.SelectRaw("wf_slc_furni_onfurni", Config([3, 100], [5]), World(), Inputs())
+            .Selection.FurniIds.Order());
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: a Wired box sent with a signal arrives in Furni From Signal.
+    [Fact]
+    public void FurniFromSignalKeepsWiredBoxes()
+    {
+        var signal = new WiredSelectedIds();
+        signal.FurniIds.UnionWith([3u, 5u]);
+        var inputs = Inputs() with { Signal = signal };
+
+        Assert.Equal(new uint[] { 3, 5 }, WiredSelectorModule.SelectRaw("wf_slc_furni_signal", Config(), World(), inputs).Selection.FurniIds.Order());
     }
 
     [Fact]
@@ -174,7 +240,8 @@ public sealed class WiredSelectorTests
             var selected = WiredSelectorModule.SelectRaw(name, full, World(), Inputs()).Selection;
 
             if (name == "wf_slc_furni_neighborhood") {
-                Assert.Equal(new uint[] { 1, 2, 3 }, selected.FurniIds.Order());
+                // The Wired box in the grid is selected like any other floor furni.
+                Assert.Equal(new uint[] { 1, 2, 3, 5 }, selected.FurniIds.Order());
             }
             else {
                 Assert.Equal(new[] { 1, 2, 3, 4 }, selected.UserIds.Order());

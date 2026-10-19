@@ -96,11 +96,32 @@ public sealed class WiredVariableWallBuiltinTests
     }
 
     [Fact]
+    public void AFurnisTypeTellsNormalBuildersClubAndTemporaryApart()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: the @type connector reads 0 Normal, 1 BC, 2 Temp; a Builders Club block reads 1.
+        var f = new Fixture();
+        var normal = new Item { Id = 3, OwnerId = 5, Definition = new() { Type = ItemType.Floor } };
+        var club = new Item { Id = 4, OwnerId = 5, IsBuildersClub = true, Definition = new() { Type = ItemType.Floor } };
+        f.Floors[normal.Id] = normal;
+        f.Floors[club.Id] = club;
+        var builtins = new RoomWiredBuiltinVariables(f.Room, engineRead: (_, _, _) => throw new InvalidOperationException("Unexpected wall delegation"));
+        long? Type(Item item)
+        {
+            var holder = WiredVariableRuntimeFrames.FurniHolder(item);
+
+            return builtins.Read(Reference("@type"), holder, new WiredVariableFrame(1, [holder]))?.Value;
+        }
+
+        Assert.Equal(0, Type(normal));
+        Assert.Equal(1, Type(club));
+    }
+
+    [Fact]
     public void FloorCoordinatesKeepExistingNativeReadsWithoutWallDelegation()
     {
         var f = new Fixture();
         var floor = new Item { Id = 3, OwnerId = 5, Rotation = 2, Definition = new() { Type = ItemType.Floor } };
-        floor.SetState(2, 3, 4.5, []);
+        floor.SetState(2, 3, 4.5);
         f.Floors[floor.Id] = floor;
         var holder = WiredVariableRuntimeFrames.FurniHolder(floor);
         var frame = new WiredVariableFrame(1, [holder]);
@@ -108,7 +129,8 @@ public sealed class WiredVariableWallBuiltinTests
         Assert.Equal(2, builtins.Read(Reference("@position.x"), holder, frame)!.Value);
         Assert.Equal(3, builtins.Read(Reference("@position.y"), holder, frame)!.Value);
         Assert.Equal(450, builtins.Read(Reference("@altitude"), holder, frame)!.Value);
-        Assert.Equal(2, builtins.Read(Reference("@rotation"), holder, frame)!.Value);
+        // @rotation reads the position in the furni's directions (0, 2, 4, 6 here): facing 2 reads 1.
+        Assert.Equal(1, builtins.Read(Reference("@rotation"), holder, frame)!.Value);
     }
 
     private static WiredVariableReference Reference(string key) => new(WiredVariableTarget.Furni, "internal:" + key);

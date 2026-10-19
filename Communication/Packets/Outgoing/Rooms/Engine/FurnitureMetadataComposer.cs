@@ -8,15 +8,18 @@ namespace Plus.Communication.Packets.Outgoing.Rooms.Engine;
 /// width, length and a teleport target id that is always 0. Sent right after each Objects, ObjectAdd, ObjectUpdate, Items,
 /// ItemAdd or ItemUpdate send, to the same recipients.
 /// </summary>
-public class FurnitureMetadataComposer(IReadOnlyCollection<RoomItemSnapshot> items) : IServerPacket
+public class FurnitureMetadataComposer(IReadOnlyCollection<RoomItemSnapshot> items) : IServerPacket, IClientExtensionPacket
 {
+    // This floor metadata extension has no category field; a same-number wall copy must not overwrite the floor entry.
+    private readonly RoomItemSnapshot[] _items = items.Where(item => !TemporaryItemIds.IsWallIdentity(item.Id)).ToArray();
+
     public uint MessageId => ServerPacketHeader.FurnitureMetadataComposer;
 
     public void Compose(IOutgoingPacket packet)
     {
-        packet.WriteInteger(items.Count);
+        packet.WriteInteger(_items.Length);
 
-        foreach (var item in items) {
+        foreach (var item in _items) {
             var metadata = item.Metadata;
 
             packet.WriteInteger(unchecked((int)BuildersClubItemIds.ToWire(item.Id)));

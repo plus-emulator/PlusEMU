@@ -43,7 +43,7 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
             context.NowMilliseconds, context.Event.Kind == WiredEventKind.AvatarAction ? context.Event.Actor?.VirtualId : null,
             context.Event.Kind == WiredEventKind.AvatarAction ? context.Event.Action : null, context.Event.Code,
             variables?.FurniPredicate, variables?.UserPredicate,
-            (context.SelectorKinds & WiredSelectionKind.Furni) != 0, (context.SelectorKinds & WiredSelectionKind.Users) != 0, world.IncludeWired, variables?.ScopedFurniPredicate, variables?.ScopedUserPredicate,
+            (context.SelectorKinds & WiredSelectionKind.Furni) != 0, (context.SelectorKinds & WiredSelectionKind.Users) != 0, variables?.ScopedFurniPredicate, variables?.ScopedUserPredicate,
             context.Event.Kind == WiredEventKind.BotReachedUser ? context.Event.TargetUser?.VirtualId : null);
 
         return new(world, input, variables?.ReadOperand,
@@ -68,7 +68,13 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
     private static WiredSelectorWorld CaptureWorld(WiredRuntimeContext context, WiredSelectorRoomState state,
         IGroupManager groupManager)
     {
-        var items = context.Targets.ResolveFurni(context, [], RuntimeSources.AllRoom, raw: true);
+        var items = context.Targets.AttachedFurni();
+
+        foreach (var item in items) {
+            context.FurniIdentity.TryAdd(item.Id, item);
+        }
+
+        items = items.Where(item => ReferenceEquals(context.FurniIdentity[item.Id], item)).ToArray();
         var users = context.Targets.ResolveUsers(context, [], RuntimeSources.AllRoom, raw: true);
         var remotes = new Dictionary<uint, WiredRemoteSelector>();
 
@@ -88,21 +94,30 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
             var action = state.Read(user);
             var name = user.IsBot ? user.BotData.Name : user.GetClient()?.GetHabbo()?.Username ?? "";
             var equippedGroupId = user.IsBot ? 0 : user.GetClient()?.GetHabbo()?.HabboStats?.FavouriteGroupId ?? 0;
+            var tile = WiredRoomOperations.StandingTile(user);
 
             return new WiredSelectorAvatar(user.VirtualId, name,
                 user.IsPet ? WiredSelectorEntityKind.Pet : user.IsBot ? WiredSelectorEntityKind.Bot : WiredSelectorEntityKind.Player,
-                user.X, user.Y, (int)user.Team, HandItem: user.CarryItemId,
+                tile.X, tile.Y, (int)user.Team, HandItem: user.CarryItemId,
                 Sitting: user.IsSitting || user.HasStatus("sit"), Lying: user.IsLying || user.HasStatus("lay"), Idle: user.IsAsleep,
                 Sign: user.Statusses.TryGetValue("sign", out var signText) && int.TryParse(signText, out var sign) ? sign : null,
                 Dance: user.DanceId, LastAction: action?.Action, LastActionParameter: action?.Parameter ?? 0,
                 LastActionAtMs: action?.At ?? 0, EquippedGroupId: equippedGroupId);
         }).ToArray();
         var model = context.Room.GetGameMap().Model;
-        var includeWired = context.Trigger is { } trigger && items.Any(item => item.GetX == trigger.Item.GetX
-            && item.GetY == trigger.Item.GetY && context.Room.GetWired().TryGet(item.Id, out var candidate)
-            && candidate is IWiredConfiguredItem configured && configured.Descriptor.CanonicalName == "wf_xtra_or_eval"
-            && WiredSelectorSources.Param(context.ConfigurationOf(configured), 1) == RuntimeSources.Selector);
 
-        return new(model.MapSizeX, model.MapSizeY, furni, avatars, context.Room.Group?.Id ?? 0, remotes, includeWired);
+        var habbos = users.Where(user => !user.IsBot).ToDictionary(user => user.VirtualId, user => user.HabboId);
+        // Memberships are read once per firing, like the rest of the world.
+        var memberships = new Dictionary<(int Avatar, int Group), bool>();
+
+        return new(model.MapSizeX, model.MapSizeY, furni, avatars, context.Room.Group?.Id ?? 0, remotes, (avatar, groupId) =>
+        {
+            if (!memberships.TryGetValue((avatar, groupId), out var member)) {
+                member = habbos.TryGetValue(avatar, out var habboId) && groupManager.TryGetGroup(groupId, out var group) && group.IsMember(habboId);
+                memberships[(avatar, groupId)] = member;
+            }
+
+            return member;
+        });
     }
 }

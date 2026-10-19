@@ -33,7 +33,7 @@ public class WiredTemporaryPacketGuardTests
         "Rooms.Engine.UseFurnitureEvent", "Rooms.Engine.UseWallItemEvent", "Rooms.Furni.CreditFurniRedeemEvent",
         "Rooms.Furni.OpenGiftEvent", "Rooms.Furni.UseSellableClothingEvent", "Rooms.Furni.SaveBrandingItemEvent",
         "Rooms.Furni.SetMannequinFigureEvent", "Rooms.Furni.SetMannequinNameEvent", "Rooms.Furni.UpdateMagicTileEvent",
-        "Rooms.Furni.SetTonerEvent", "Rooms.Furni.DiceOffEvent", "Rooms.Furni.ThrowDiceEvent", "Rooms.Furni.OneWayGateEvent",
+        "Rooms.Furni.SetTonerEvent", "Rooms.Furni.DiceOffEvent", "Rooms.Furni.ThrowDiceEvent", "Rooms.Furni.OneWayGateEvent", "Rooms.Furni.UseHabboWheelEvent",
         "Rooms.Furni.GetGroupFurniSettingsEvent", "FriendFurni.FriendFurniConfirmLockEvent", "Catalog.CheckGnomeNameEvent",
         "Rooms.Furni.Moodlight.MoodlightUpdateEvent", "Rooms.Furni.Moodlight.ToggleMoodlightEvent",
         "Rooms.Furni.Stickys.DeleteStickyNoteEvent", "Rooms.Furni.Stickys.GetStickyNoteEvent", "Rooms.Furni.Stickys.UpdateStickyNoteEvent",
@@ -63,7 +63,7 @@ public class WiredTemporaryPacketGuardTests
                 InteractionType = Interaction(name)
             }
         };
-        item.SetState(1, 2, 3.5, new());
+        item.SetState(1, 2, 3.5);
         Floor(room).TryAdd(7, item);
         var permanent = new Item { Id = 8, Definition = new() { Type = ItemType.Floor } };
         Floor(room).TryAdd(8, permanent);

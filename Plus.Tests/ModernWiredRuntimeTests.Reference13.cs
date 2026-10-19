@@ -143,6 +143,8 @@ public partial class ModernWiredRuntimeTests
         var replies = Capture(f.Client);
         f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = bot });
         f.Advance(0);
+        // The message goes out after the pass's flash.
+        f.Room.FlushWiredFlashes();
         Assert.Equal(said ? 1 : 0, Chats(replies).Count(chat => chat.Text == "hello"));
     }
 
@@ -330,10 +332,20 @@ public partial class ModernWiredRuntimeTests
         optional.Fire();
         Assert.Equal(5, optional.User.CarryItemId);
 
+        // Observed on AIR WIN63-202610151745-318700621: a bot next to the user (diagonals count) hands the item over at once.
         using var named = new TeleportFixture(actionName: "wf_act_bot_give_handitem", intParams: [8, 0, 100], text: "Bobby");
-        AddNamedBot(named, 9, "Bobby", 2, 2);
+        var adjacent = AddNamedBot(named, 9, "Bobby", 1, 1);
         named.Fire();
         Assert.Equal(8, named.User.CarryItemId);
+        Assert.Equal(0, adjacent.CarryItemId);
+
+        // Further away the bot takes the item and walks it over; the user has nothing yet.
+        using var far = new TeleportFixture(actionName: "wf_act_bot_give_handitem", intParams: [8, 0, 100], text: "Bobby");
+        var walker = AddNamedBot(far, 9, "Bobby", 3, 3);
+        far.Fire();
+        Assert.Equal(0, far.User.CarryItemId);
+        Assert.Equal(8, walker.CarryItemId);
+        Assert.True(WiredBotTargets.For(far.Room).HasTargets);
 
         using var missing = new TeleportFixture(actionName: "wf_act_bot_give_handitem", intParams: [8, 0, 100], text: "Nobody");
         AddNamedBot(missing, 9, "Bobby", 2, 2);
@@ -426,7 +438,7 @@ public partial class ModernWiredRuntimeTests
         var other = AddNamedBot(f, 10, "Carl", 2, 1);
         var bobby = f.Room.GetRoomUserManager().GetRoomUserByVirtualId(9)!;
         var second = MakeItem(2, "test");
-        second.SetState(2, 0, 0, Gamemap.GetAffectedTiles(1, 1, 2, 0, 0));
+        second.SetState(2, 0, 0);
         f.Items[2] = second;
         AddStackTrigger(f, 104, "wf_trg_bot_reached_stf", new() { IntParams = [100, 100], SelectedItems = [1], Text = "Bobby" });
         var replies = Capture(f.Client);

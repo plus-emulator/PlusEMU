@@ -33,12 +33,13 @@ public static class WiredTemporaryFurnitureActions
             ? DynamicTemplates(context, templateSource)
             : config.Snapshots;
 
-        // Wall and unavailable definitions cannot be floor templates or the placement pivot.
-        // A value-carrying definition or a Wired box is never cloned, also from an older saved row or a dynamic source.
+        // A snapshot retains geometry and state, but its Builders Club template must still be in the room.
+        // Observed on AIR WIN63-202610151745-318700621: picking up one of two saved templates leaves only one copy on the next firing.
         var eligibleTemplates = templates.Select(snapshot => (Snapshot: snapshot,
-            Definition: definitions.Items.GetValueOrDefault(snapshot.DefinitionId)))
-            .Where(template => template.Definition?.Type == Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor
-                && !WiredPlaceTemplatePolicy.CarriesValue(template.Definition) && !WiredPlaceTemplatePolicy.IsWiredBox(template.Definition)).ToArray();
+            Definition: definitions.Items.GetValueOrDefault(snapshot.DefinitionId), Item: handler.GetItem(snapshot.ItemId)))
+            .Where(template => template.Definition?.Type is Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor or Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Wall
+                && template.Item is { } item && item.Definition.Id == template.Snapshot.DefinitionId && WiredPlaceTemplatePolicy.CanClone(item))
+            .Select(template => (template.Snapshot, template.Definition)).ToArray();
 
         if (eligibleTemplates.Length == 0) {
             return false;
@@ -75,8 +76,8 @@ public static class WiredTemporaryFurnitureActions
         var dy = policy.OffsetY;
 
         if (policy.Location == WiredPlaceLocationType.CustomLocation) {
-            dx += targetX - eligibleTemplates[0].Snapshot.X;
-            dy += targetY - eligibleTemplates[0].Snapshot.Y;
+            dx += targetX - (eligibleTemplates[0].Snapshot.Wall?.TileX ?? eligibleTemplates[0].Snapshot.X);
+            dy += targetY - (eligibleTemplates[0].Snapshot.Wall?.TileY ?? eligibleTemplates[0].Snapshot.Y);
         }
 
         long spawnValue = policy.Value;
@@ -95,10 +96,44 @@ public static class WiredTemporaryFurnitureActions
             }
         }
 
-        var placedAny = false;
+        var placed = new List<Item>();
         var failedAny = false;
 
         foreach (var (snapshot, definition) in eligibleTemplates) {
+            if (definition!.Type == Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Wall) {
+                if (snapshot.Wall is not { } wall) {
+                    failedAny = true;
+
+                    continue;
+                }
+
+                var model = context.Room.GetGameMap().StaticModel;
+                var position = wall with { TileX = wall.TileX + dx, TileY = wall.TileY + dy };
+                var wallHeight = policy.Altitude switch
+                {
+                    WiredPlaceAltitudeType.SourceAltitude => WiredWallGeometry.SavedAltitude(model, wall),
+                    WiredPlaceAltitudeType.CustomAltitude => targetZ,
+                    _ => context.Room.GetGameMap().ValidTile(position.TileX, position.TileY)
+                        ? context.Room.GetGameMap().SqAbsoluteHeight(position.TileX, position.TileY) : 0
+                };
+                var altitude = Math.Max(0, wallHeight + policy.OffsetAltitudeHundredths / 100d);
+
+                if (Plus.HabboHotel.Rooms.RoomItemHandling.AboveTemporaryLimit(altitude)) {
+                    continue;
+                }
+
+                if (!WiredWallGeometry.TryProject(model, position, altitude, out var projected)
+                    || handler.PlaceTemporaryWallItem(definition, box.OwnerId, projected.ToString(), snapshot.State) is not { } copy) {
+                    failedAny = true;
+
+                    continue;
+                }
+
+                placed.Add(copy);
+
+                continue;
+            }
+
             var x = snapshot.X + dx;
             var y = snapshot.Y + dy;
 
@@ -123,7 +158,7 @@ public static class WiredTemporaryFurnitureActions
 
             var item = handler.BlocksTemporaryCopy(definition!, x, y, snapshot.Rotation)
                 ? null
-                : handler.PlaceTemporaryFloorItem(definition!, box.OwnerId, x, y, snapshot.Rotation, z, snapshot.State);
+                : handler.PlaceTemporaryFloorItem(definition!, box.OwnerId, x, y, snapshot.Rotation, z, snapshot.State, sendMessage: false);
 
             if (item == null) {
                 failedAny = true;
@@ -131,8 +166,14 @@ public static class WiredTemporaryFurnitureActions
                 continue;
             }
 
-            placedAny = true;
+            placed.Add(item);
+        }
 
+        // One Objects packet contains all successful copies from this firing, before their variable updates.
+        context.Room.SendTemporaryFloorItems(placed.Where(item => item.IsFloorItem).ToArray());
+        context.Room.SendTemporaryWallItems(placed.Where(item => item.IsWallItem).ToArray());
+
+        foreach (var item in placed) {
             // A newly attached item is explicitly added to the child variable frame, never the firing's captured target sets.
             if (module != null && config.VariableIds.Length != 0 && context.VariableFrame is { } parent
                 && module.TryResolveCatalogId(config.VariableIds[0], WiredVariableTarget.Furni, out var spawnVariable)) {
@@ -156,13 +197,13 @@ public static class WiredTemporaryFurnitureActions
             context.Room.GetWired()?.ReportPlacementFailure(box);
         }
 
-        return placedAny;
+        return placed.Count != 0;
     }
 
     // Sources 0, 200 and 201 are read when the effect fires. Source 100 keeps the saved snapshots.
     private static IReadOnlyList<WiredFurniSnapshot> DynamicTemplates(WiredRuntimeContext context, int source) =>
         context.Targets.ResolveFurni(context, [], source)
-            .Where(item => item.IsFloorItem && !item.IsTemporary && WiredPlaceTemplatePolicy.CanClone(item))
+            .Where(WiredPlaceTemplatePolicy.CanClone)
             .Select(WiredRoomOperations.Capture)
             .ToArray();
 }

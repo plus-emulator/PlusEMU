@@ -32,4 +32,5 @@ public static class RewardTrackActions
     public const string PetEat = "pet_eat";
     public const string FollowFriend = "follow_friend";
     public const string Teleport = "teleport";
+    public const string ClaimDailyTask = "claim_daily_task";
 }

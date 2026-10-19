@@ -41,6 +41,7 @@ public interface IFurnitureUseService
     void RollDice(Room room, GameClient session, FurnitureUseRequest request);
     void UseOneWayGate(Room room, GameClient session, uint itemId);
     void UseWall(Room room, GameClient session, FurnitureUseRequest request);
+    void UseHabboWheel(Room room, GameClient session, uint itemId);
 }
 
 public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager quests) : IFurnitureUseService
@@ -80,9 +81,19 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
 
     public void UseWall(Room room, GameClient session, FurnitureUseRequest request)
     {
-        var item = FindPermanent(room, session, request.ItemId);
+        if (!ReferenceEquals(session.GetHabbo().CurrentRoom, room)) {
+            return;
+        }
 
-        if (item == null) {
+        var item = room.GetRoomItemHandler().GetItem(request.ItemId);
+
+        if (item == null || !item.IsWallItem) {
+            return;
+        }
+
+        if (item.IsTemporary) {
+            Use(room, session, request);
+
             return;
         }
 
@@ -90,6 +101,16 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
         Trigger(room, session, item, request.Parameter, room.CheckRights(session, false, true));
         room.GetWired().TriggerEvent(WiredBoxType.TriggerStateChanges, session.GetHabbo(), item);
         quests.ProgressUserQuest(session, QuestType.ExploreFindItem, (int)item.Definition.Id);
+    }
+
+    // AIR WIN63-202610151745-318700621 class_1854.as:2598 sends ROFCAE_USE_HABBOWHEEL as its own message with only the id.
+    public void UseHabboWheel(Room room, GameClient session, uint itemId)
+    {
+        if (FindPermanent(room, session, itemId)?.Definition.InteractionType != InteractionType.HabboWheel) {
+            return;
+        }
+
+        UseWall(room, session, new(itemId, 0));
     }
 
     // The state writes the interactor makes for this request are the user's, reported once each, in order,

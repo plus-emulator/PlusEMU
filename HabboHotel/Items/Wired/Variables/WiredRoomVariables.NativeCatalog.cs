@@ -79,11 +79,9 @@ public sealed partial class WiredRoomVariables
                     .OrderBy(box => box.Input.Z).ThenBy(box => box.Input.Key).ToArray();
                 connectors[definition.ItemId] = associated.FirstOrDefault(box => box.Input.Name == "wf_xtra_var_text_connector")?.Connector;
 
-                if (definition.Target == WiredVariableTarget.Context) {
-                    continue;
-                }
+                var context = definition.Target == WiredVariableTarget.Context;
 
-                if (owning.Name is "wf_var_quest" or "wf_var_quest_chain" && _quests is not null
+                if (!context && owning.Name is "wf_var_quest" or "wf_var_quest_chain" && _quests is not null
                     && WiredQuestVariables.Binding(owning.Name, owning.Configuration.Text) is { } quest) {
                     var questKeys = WiredQuestVariables.Keys(quest.Kind);
 
@@ -97,7 +95,7 @@ public sealed partial class WiredRoomVariables
 
                 var level = associated.FirstOrDefault(box => box.Keys.Length != 0);
 
-                if (level is not null) {
+                if (!context && level is not null) {
                     foreach (var sub in level.Subs) {
                         // Observed on AIR WIN63-202610151745-318700621: every part is interceptable, current_xp is writable (to the parent,
                         // capped at the last level) and is_maxed is a presence part without a value.

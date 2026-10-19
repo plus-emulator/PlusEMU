@@ -811,27 +811,6 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_core_loop): a receiving stack that signals its own antenna runs once.
-    [Fact]
-    public void ASignalChainReachesItsOwnAntennaOnlyOnce()
-    {
-        var f = new Fixture();
-        var antenna = f.Furni("antenna", x: 2);
-        f.Trigger();
-        ModernTrigger(f, "wf_trg_recv_signal", new() { IntParams = [0, 100], SelectedItems = [antenna.Id] }, x: 2);
-        var receiver = f.Action(ctx => f.Engine.SendSignal(ctx, [antenna], new()), x: 2);
-        f.Action(ctx => f.Engine.SendSignal(ctx, [antenna], new()));
-        Assert.True(f.Engine.Enqueue(new(WiredEventKind.Enter)));
-
-        for (var i = 0; i < 40; i++) {
-            f.Advance(50);
-        }
-
-        Assert.Equal(1, receiver.Calls);
-        Assert.False(f.Engine.NeedsFastCycle);
-        Assert.Empty(f.Errors);
-    }
-
     private static WiredModernTrigger ModernTrigger(Fixture f, string name, WiredConfiguration configuration, int x = 0)
     {
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));

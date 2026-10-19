@@ -223,7 +223,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
                         WiredNativeTestSupport.InstallLegacyVariableDraft(definition, new() { IntParams = [1, 10], Text = "changed" });
                         break;
                     case "unselected_pose":
-                        unselected.Item.SetState(1, 0, 0, []);
+                        unselected.Item.SetState(1, 0, 0);
                         break;
                     case "replacement":
                         fixture.Floor[10] = new() { Id = 10, RoomId = 42 };
@@ -478,6 +478,23 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.Equal([], Parts(presence));
         WiredNativeTestSupport.InstallLegacyVariableDraft(time, new() { IntParams = [1 << 10, 1] });
         Assert.Equal(["flag.creation_time", "flag.creation_time.year"], Parts(presence));
+    }
+
+    [Fact]
+    public void ContextTimePartsAreListedWithoutLevelParts()
+    {
+        var fixture = new Fixture();
+        fixture.AddDefinition(10, "wf_var_context", new() { IntParams = [1], Text = "stamp" });
+        fixture.AddMetadata(20, "wf_xtra_var_time_util", new() { IntParams = [1 << 10, 0] });
+        fixture.AddMetadata(21, "wf_xtra_var_lvlup_system", new() { Text = "{\"mode\":1,\"stepSize\":100,\"maxLevel\":3,\"subvariables\":[0,1,6]}" });
+        Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
+        var part = Assert.Single(Own(catalog!).Where(row => row.Name.Contains('.')));
+
+        Assert.Equal("stamp.value.year", part.Name);
+        Assert.Equal(-20, part.Target);
+        Assert.False(part.RequiresExecutionContext);
+        Assert.Equal($"ctx:{WiredRoomVariables.SyntheticId(WiredVariableTarget.Context, 10, 10, true)}", part.Id);
+        Assert.Null(WiredRoomVariables.SyntheticId(WiredVariableTarget.Context, 10, 0, false));
     }
 
     private static string[] Parts(Fixture fixture)

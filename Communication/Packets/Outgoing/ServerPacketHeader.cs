@@ -20,6 +20,7 @@ public static class ServerPacketHeader
 
     // Avatar
     public const uint WardrobeComposer = 3894;
+    public const uint UserNftWardrobeComposer = 3493; // package_210/class_3851
 
     // Catalog
     public const uint CatalogIndexComposer = 3453;
@@ -289,7 +290,7 @@ public static class ServerPacketHeader
     public const uint FlatAccessDeniedComposer = 1764;
     public const uint LatencyPingResponseComposer = 3742;
     public const uint HabboUserBadgesComposer = 2014;
-    public const uint HeightMapUpdateComposer = 65424;
+    public const uint HeightMapUpdateComposer = 853; // package_71/class_3258
     public const uint HeightMapComposer = 2099;
 
     public const uint CanCreateRoomComposer = 119;
@@ -372,6 +373,10 @@ public static class ServerPacketHeader
     public const uint RewardTrackClaimResultComposer = 763;
     public const uint RewardTrackProgressComposer = 3631;
     public const uint RewardTrackPremiumPurchaseResultComposer = 1830;
+    // Daily tasks, AIR WIN63-202610151745-318700621 (quest/dailytasks/DailyTasksController.as).
+    public const uint ActiveDailyTasksComposer = 1699; // package_162.class_3100, parser package_180.class_3130
+    public const uint DailyTasksAddedComposer = 3276; // package_162.class_2799, parser package_180.class_3531
+    public const uint DailyTaskUpdatedComposer = 82; // package_162.class_3370, parser package_180.class_3495
     public const uint HabboClubExtendOfferComposer = 3176;
     public const uint ClubGiftReceivedComposer = 3400;
     public const uint PickMonthlyClubGiftComposer = 2835;
@@ -429,6 +434,8 @@ public static class ServerPacketHeader
     public const uint WiredEnvironmentComposer = 3594;
     public const uint AreaHideComposer = 2373;
     public const uint ConfigurationItemStatesComposer = 3847;
+    public const uint UserNftChatStylesComposer = 2233; // package_170/class_2869
+    public const uint RaidProtectionCapabilityComposer = 3134; // package_236/class_4123
     public const uint WiredUserVariablesData64Composer = 9480;
     public const uint WiredVariableHolders64Composer = 9481;
     public const uint WiredVariableHoldersPage64Composer = 9482;
@@ -477,4 +484,9 @@ public static class ServerPacketHeader
     public const uint WiredPermissionsComposer = 3966; // package_121.class_3691
     // Answers WiredGetVariablesForObject (package_121.class_3373, parser wiredmenu.class_4057).
     public const uint WiredVariablesForObjectComposer = 1478;
+
+    // Free product claims (cursed dragon adoption) and the new-feature promo expiry, AIR WIN63-202610151745-318700621.
+    public const uint HasClaimedProductResponseComposer = 2980; // parser package_174.class_2885
+    public const uint ClaimProductResultComposer = 3734; // parser package_174.class_3882
+    public const uint SecondsUntilComposer = 1715; // parser package_205.class_3987
 }

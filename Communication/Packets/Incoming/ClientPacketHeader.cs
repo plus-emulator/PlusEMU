@@ -14,6 +14,7 @@ public static class ClientPacketHeader
     public const uint ChangeUserNameEvent = 1231;
     public const uint GetWardrobeEvent = 1672;
     public const uint SaveWardrobeOutfitEvent = 3540;
+    public const uint GetUserNftWardrobeEvent = 3375; // package_34/GetUserNftWardrobeMessageComposer
 
     //Preferences
     public const uint SetChatStylePreferenceEvent = 2611;
@@ -248,6 +249,7 @@ public static class ClientPacketHeader
     public const uint MemoryPerformanceEvent = 3956;
     public const uint ToggleYouTubeVideoEvent = 2442;
     public const uint SetMannequinFigureEvent = 1361;
+    public const uint SetClothingChangeDataEvent = 2545; // package_66.class_3476
     public const uint GetEventCategoriesEvent = 3413;
     public const uint DeleteGroupThreadEvent = 3333;
     public const uint PurchaseGroupEvent = 786;
@@ -432,6 +434,9 @@ public static class ClientPacketHeader
     public const uint GetRewardTracksEvent = 9450;
     public const uint ClaimRewardTrackPrizeEvent = 3959;
     public const uint PurchaseRewardTrackPremiumEvent = 2482;
+    // Daily tasks, AIR WIN63-202610151745-318700621 (quest/dailytasks/DailyTasksController.as).
+    public const uint GetDailyTasksEvent = 4100; // package_24.class_1820
+    public const uint ClaimDailyTaskEvent = 4101; // package_24.class_2568
     public const uint GetQuizQuestionsEvent = 640;
     public const uint PostQuizAnswersEvent = 3024;
     // Room music
@@ -486,4 +491,9 @@ public static class ClientPacketHeader
     public const uint WiredSetObjectVariableValueEvent = 3165; // wiredmenu.class_3782
     // The inspection tab's read of one object's variables (WiredMenuInspectionTab.requestVariablesForObject).
     public const uint WiredGetVariablesForObjectEvent = 2612; // wiredmenu.class_3018
+
+    // Free product claims (cursed dragon adoption) and the new-feature promo expiry, AIR WIN63-202610151745-318700621.
+    public const uint HasClaimedProductEvent = 628; // package_143.class_3538
+    public const uint ClaimProductEvent = 152; // package_143.class_2610
+    public const uint GetSecondsUntilEvent = 903; // package_146.class_3739
 }

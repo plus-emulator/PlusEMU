@@ -165,7 +165,9 @@ public sealed partial class WiredGlideConveyorTests
         var rider = f.Walker(1, 4, 10, 4, 11);
         var frames = CaptureFrames(rider);
 
-        f.Advance(2600);
+        f.Advance(250);
+        Assert.True(f.Engine.Remove(21));
+        f.Advance(2350);
 
         var data = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectDataUpdateComposer).Select(ReadSingle).ToArray();
         // The fixture counter starts with empty data, so its first half-second step publishes "0".

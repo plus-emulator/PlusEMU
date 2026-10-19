@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Variables;
@@ -26,7 +27,7 @@ public static class WiredSelectorVariableBridge
         }
 
         foreach (var stack in WiredSelectorModule.RemoteStacks(configuration, world)) {
-            if (stack.Count == 0 || visiting.Count >= 20 || !visiting.Add(stack[0])) {
+            if (stack.Count == 0 || !RuntimeHelpers.TryEnsureSufficientExecutionStack() || !visiting.Add(stack[0])) {
                 continue;
             }
 

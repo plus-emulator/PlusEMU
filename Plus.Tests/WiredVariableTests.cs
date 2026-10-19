@@ -260,9 +260,27 @@ public sealed class WiredVariableTests
         var frame = Frame(holder);
         var module = new WiredVariableModule(1, directory, new MemoryWiredVariableStore(), new FixedTimeProvider(DateTimeOffset.FromUnixTimeMilliseconds(1)));
         Assert.True(module.Mutate(UserRef, holder, WiredVariableMutation.Give, 444, frame));
-        Assert.Equal(1, module.Read(UserRef, holder, frame)!.Value);
+        // Observed on AIR WIN63-202610151745-318700621: a variable without a value is held as -1.
+        Assert.Equal(-1, module.Read(UserRef, holder, frame)!.Value);
         Assert.False(module.Mutate(UserRef, holder, WiredVariableMutation.Set, 6, frame));
         Assert.Null(module.Read(new(WiredVariableTarget.User, "custom:11"), holder, frame));
+    }
+
+    [Fact]
+    public void AnOlderStoredValueOfAVariableWithoutAValueReadsMinusOne()
+    {
+        // A value saved before no-value variables were held as -1 reads -1 too, without rewriting the row.
+        var directory = new Directory();
+        directory.Definitions[10] = User();
+        var holder = Holder(1, 1);
+        var frame = Frame(holder);
+        var module = new WiredVariableModule(1, directory, new MemoryWiredVariableStore(), new FixedTimeProvider(DateTimeOffset.FromUnixTimeMilliseconds(1)));
+        Assert.True(module.Mutate(UserRef, holder, WiredVariableMutation.Give, 1, frame));
+
+        directory.Definitions[10] = User() with { HasValue = false };
+
+        Assert.Equal(-1, module.Read(UserRef, holder, frame)!.Value);
+        Assert.Equal(-1, Assert.Single(module.GetStoredHolders(10)).Value.Value);
     }
 
     [Fact]
@@ -348,7 +366,11 @@ public sealed class WiredVariableTests
     [Theory]
     [InlineData(1, int.MaxValue, 1, 2147483648L)]
     [InlineData(4, int.MinValue, -1, 2147483648L)]
-    [InlineData(4, 42, 0, 42)]
+    // Observed on AIR WIN63-202610151745-318700621: division by 0 saturates by sign, 0/0 and modulo by 0 give 0.
+    [InlineData(4, 42, 0, long.MaxValue)]
+    [InlineData(4, -42, 0, long.MinValue)]
+    [InlineData(4, 0, 0, 0)]
+    [InlineData(6, 42, 0, 0)]
     // Observed r92g r92g-minmax: set minimum (40) floors, set maximum (41) caps.
     [InlineData(40, 8, 3, 8)]
     [InlineData(41, 8, 3, 3)]
@@ -365,6 +387,17 @@ public sealed class WiredVariableTests
         Assert.True(definition!.HasValue);
         Assert.True(definition.IsDurable);
         Assert.False(WiredVariableDefinitions.TryDecode("wf_var_user", 10, 1, 5, new() { IntParams = [10, 1], Text = "score" }, out _, out _));
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: the random bound is exclusive (bound 1 always gives 0, bound 5 gives 0 to 4).
+    [Fact]
+    public void RandomUpperBoundIsExclusive()
+    {
+        var random = new Random(7);
+
+        Assert.All(Enumerable.Range(0, 50), _ => Assert.Equal(0, WiredVariableArithmetic.Apply(50, 9, 1, random)));
+        Assert.All(Enumerable.Range(0, 200), _ => Assert.InRange(WiredVariableArithmetic.Apply(50, 9, 5, random), 0, 4));
+        Assert.Equal(0, WiredVariableArithmetic.Apply(50, 9, 0, random));
     }
 
     [Theory]

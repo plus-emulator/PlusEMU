@@ -20,7 +20,7 @@ public class ClubGiftsComposer(ClubGiftsSnapshot gifts) : IServerPacket
 
         foreach (var gift in gifts.Gifts) {
             packet.WriteInteger(gift.OfferId);
-            packet.WriteBoolean(false); // one HC membership
+            packet.WriteBoolean(true); // Habbo flags every gift as VIP since HC and VIP merged
             packet.WriteInteger(gift.DaysRequired);
             packet.WriteBoolean(gift.Unlocked);
         }

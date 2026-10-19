@@ -25,8 +25,8 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((0, 1, 0d), (actor.X, actor.Y, actor.Z));
         var announced = ExecutorUpdate(actor);
-        Assert.Equal((0, 1, "0"), (announced.X, announced.Y, announced.Z));
-        Assert.Contains("/mv 1,1,0/", announced.Status);
+        Assert.Equal((0, 1, "0.0"), (announced.X, announced.Y, announced.Z));
+        Assert.Contains("/mv 1,1,0.0/", announced.Status);
         ExecutorTick();
         Assert.Equal((1, 1, 0d), (actor.X, actor.Y, actor.Z));
         Assert.False(actor.IsWalking);
@@ -53,11 +53,11 @@ public partial class PlacedFurniRoomTests
         actor.MoveTo(3, 1);
         ExecutorTick();
         Assert.Equal(startX, actor.X);
-        Assert.Contains("/mv 3,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 3,1,0.0/", ExecutorUpdate(actor).Status);
         // The Wired walk events go out with the announcement, for its origin and its last step only.
         Assert.Equal(new[] { (WiredBoxType.TriggerWalkOffFurni, origin.Id),
             (WiredBoxType.TriggerWalkOnFurni, landing.Id) }, events.Select(e => (e.Kind, e.Item)).ToArray());
-        Assert.All(events, e => Assert.Equal("3,1,0", e.Mv));
+        Assert.All(events, e => Assert.Equal("3,1,0.0", e.Mv));
         ExecutorTick();
         Assert.Equal((3, 1), (actor.X, actor.Y));
         Assert.Equal(2, events.Count);
@@ -139,7 +139,7 @@ public partial class PlacedFurniRoomTests
         // The announcement raised the walk-off; the cut-short landing raises the walk-on of the tile it landed on.
         Assert.Equal(new[] { (WiredBoxType.TriggerWalkOffFurni, origin.Id),
             (WiredBoxType.TriggerWalkOnFurni, landing.Id) }, events.Take(2).Select(e => (e.Kind, e.Item)).ToArray());
-        Assert.All(events.Take(2), e => Assert.Equal("3,1,0", e.Mv));
+        Assert.All(events.Take(2), e => Assert.Equal("3,1,0.0", e.Mv));
         Assert.Equal((1, 1), (ExecutorUpdate(actor).X, ExecutorUpdate(actor).Y));
     }
 
@@ -166,7 +166,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((3, 1), (actor.GoalX, actor.GoalY));
         ExecutorTick();
         Assert.False(actor.Freezed);
-        Assert.Contains("/mv 2,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((2, 1), (actor.X, actor.Y));
     }
@@ -182,7 +182,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
         Assert.Equal((3, 1), (actor.GoalX, actor.GoalY));
-        Assert.Contains("/mv 2,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         ExecutorTick();
         Assert.Equal((3, 1), (actor.X, actor.Y));
@@ -218,7 +218,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
         Assert.Equal((1, 2), (actor.GoalX, actor.GoalY));
-        Assert.Contains("/mv 1,2,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 1,2,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((1, 2), (actor.X, actor.Y));
         Assert.False(actor.IsWalking);
@@ -263,7 +263,7 @@ public partial class PlacedFurniRoomTests
         Assert.Contains(actor, _room.GetGameMap().GetRoomUsers(new(2, 2)));
         actor.MoveTo(3, 2);
         ExecutorTick();
-        Assert.Contains("/mv 3,2,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 3,2,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((3, 2, 0d), (actor.X, actor.Y, actor.Z));
     }
@@ -294,8 +294,8 @@ public partial class PlacedFurniRoomTests
         Assert.Contains("/mv 1,1,0.25/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((1, 1, 0.25), (actor.X, actor.Y, actor.Z));
-        Assert.Equal("0.5", actor.Statusses["sit"]);
-        Assert.Contains("/sit 0.5/", ExecutorUpdate(actor).Status);
+        Assert.Equal("0.5 0", actor.Statusses["sit"]);
+        Assert.Contains("/sit 0.5 0/", ExecutorUpdate(actor).Status);
         Assert.DoesNotContain("/mv ", ExecutorUpdate(actor).Status);
     }
 
@@ -312,7 +312,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(actor.HasStatus("lay"));
         actor.MoveTo(2, 2);
         ExecutorTick();
-        Assert.Contains("/mv 2,2,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,2,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((2, 2, 0d), (actor.X, actor.Y, actor.Z));
         Assert.False(actor.IsWalking);
@@ -331,7 +331,8 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Null(_room.GetRoomUserManager().GetRoomUserByVirtualId(actor.VirtualId));
         Assert.Null(_client.GetHabbo().CurrentRoom);
-        Assert.Contains(ServerPacketHeader.UserRemoveComposer, _client.Sent);
+        Assert.Contains(ServerPacketHeader.CloseConnectionComposer, _client.Sent);
+        Assert.DoesNotContain(ServerPacketHeader.UserRemoveComposer, _client.Sent);
         Assert.Equal(new[] { (WiredBoxType.TriggerWalkOffFurni, origin.Id) },
             events.Select(e => (e.Kind, e.Item)).ToArray());
         Assert.False(actor.HasStatus("mv"));

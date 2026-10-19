@@ -59,9 +59,9 @@ public static class BuildersClubItemIds
     }
 
     // The id the client knows the furni by.
-    public static uint ToWire(uint itemId) => !WireByItem.IsEmpty && WireByItem.TryGetValue(itemId, out var wire) ? wire : itemId;
+    public static uint ToWire(uint itemId) => TemporaryItemIds.IsWallIdentity(itemId) ? TemporaryItemIds.ToWire(itemId) : !WireByItem.IsEmpty && WireByItem.TryGetValue(itemId, out var wire) ? wire : itemId;
 
-    public static int ToWire(int itemId) => itemId > 0 ? unchecked((int)ToWire((uint)itemId)) : itemId;
+    public static int ToWire(int itemId) => TemporaryItemIds.IsWallIdentity(unchecked((uint)itemId)) ? unchecked((int)TemporaryItemIds.ToWire(unchecked((uint)itemId))) : itemId > 0 ? unchecked((int)ToWire((uint)itemId)) : itemId;
 
     // The stored id behind an id the client sent.
     public static uint FromWire(uint id) => Contains(id) && ItemByWire.TryGetValue(id, out var itemId) ? itemId : id;

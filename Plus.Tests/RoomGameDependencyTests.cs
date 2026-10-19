@@ -63,7 +63,7 @@ public partial class PlacedFurniRoomTests
         goal.Definition.ItemName = "fball_goal_blue";
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(_client, goal, 1, 1, 0, true, false, false));
         var ball = Furni(97, InteractionType.None, WiredBoxType.None);
-        ball.SetState(1, 1, 0, new());
+        ball.SetState(1, 1, 0);
         _client.Sent.Clear();
         var calls = new List<string>();
         Set("_achievements", new TestRoomAchievements((session, group, amount) =>
@@ -102,6 +102,24 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(awarded ? [("ACH_BattleBallTilesLocked", 4), ("ACH_BattleBallPlayer", 1), ("ACH_BattleBallWinner", 1)] : [], calls);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: the server sends the room data right after RoomReady without a client request.
+    [Fact]
+    public void OpeningARoomSendsItsEntryDataWithoutAClientRequest()
+    {
+        _room.OwnerId = 7;
+        var habbo = _client.GetHabbo();
+        habbo.Client = _client;
+        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        var entry = new RecordingRoomEntry();
+        habbo.SetHotelServices(TestGameClientManager.Empty, null!, null, entry);
+        habbo.SetRoomVisitRecorder(new RecordingEntry([]), TestRoomAchievements.Unused);
+        WithUnavailableRoomGame(() => Assert.True(habbo.EnterRoom(_room)));
+        Assert.Same(_client, entry.Session);
+        Assert.Equal(1, entry.Calls);
+        Assert.Equal([ServerPacketHeader.UserNftChatStylesComposer, ServerPacketHeader.RoomReadyComposer, ServerPacketHeader.RoomEntryTileComposer],
+            _client.Sent.Take(3));
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -119,7 +137,7 @@ public partial class PlacedFurniRoomTests
             Assert.Equal(1, amount);
             Assert.Equal(["visit"], events);
             Assert.Equal(1, habbo.HabboStats.RoomVisits);
-            Assert.Equal(ServerPacketHeader.RoomRatingComposer, _client.Sent.Last());
+            Assert.Equal(ServerPacketHeader.RoomPropertyComposer, _client.Sent.Last());
             events.Add("achievement");
         }));
         WithUnavailableRoomGame(() => Assert.True(habbo.EnterRoom(_room)));

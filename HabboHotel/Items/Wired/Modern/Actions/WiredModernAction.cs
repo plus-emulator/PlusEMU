@@ -117,6 +117,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         else if (name == "wf_act_furni_to_furni") {
             slot = "movers";
         }
+        // Observed on AIR WIN63-202610151745-318700621 (r97_group_furni_clk): a group's moves also go out in one WiredMovements.
+        else if (name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6) {
+            slot = "movers";
+        }
         else if (name == "wf_act_match_to_sshot" && config.IntParams.Length == 5
             && config.IntParams.Take(4).SequenceEqual(new[] { 0, 0, 1, 1 })
             && config.Snapshots.All(snapshot => snapshot.Wall == null)) {
@@ -415,7 +419,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             IReadOnlySet<int>? landingUsers = name == "wf_act_furni_to_user" && movementUsers.Length > 0
                 ? new HashSet<int> { movementUsers[0].VirtualId } : null;
 
-            return new WiredMovementActions(_movementRandom).Execute(name, config, movers, targets, movementUsers,
+            var movedAny = new WiredMovementActions(_movementRandom).Execute(name, config, movers, targets, movementUsers,
                 (item, x, y, rotation, height) => _movement.MoveFurniture(context, item, x, y, rotation, height,
                     WiredMovementActions.Steps.Contains(name)
                     && !(name == "wf_act_move_furni_to" && config.IntParams.Length == 4
@@ -444,9 +448,20 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             _publish(new(WiredEventKind.StateChanged) { Actor = FurnitureStateEvents.Present(context.Room, context.Event.Actor), EventItem = item });
                         }
                     }) is GateTransition.Applied or GateTransition.Queued,
-                (movers, step) => _movement.MoveTogether(context, movers, step, passengers, WiredMovementActions.Steps.Contains(name)), context.Room.GetGameMap().ValidTile,
+                // Observed on AIR WIN63-202610151745-318700621 (r97_mv_collide): a Move/Rotate step onto a stackable block lands on top of it
+                // (z 1.0), also when that block arrived in the same firing; only furniture that cannot be stacked on blocks it.
+                (movers, step) => _movement.MoveTogether(context, movers, step, passengers, WiredMovementActions.Steps.Contains(name),
+                    stackableBlocks: name != "wf_act_move_rotate"), context.Room.GetGameMap().ValidTile,
                 (item, snapshot, position, altitude) => _movement.RestoreWallSnapshot(context, item, snapshot, position, altitude),
                 (item, operation, altitude) => _movement.SetWallAltitude(context, item, operation, altitude));
+
+            // Observed on AIR WIN63-202610151745-318700621 (r97_group_furni_clk): a group's moves are listed in pick order, though the
+            // landings are worked out leading edge first so members do not stack on each other.
+            if (name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6) {
+                context.Publication?.Reorder(movers);
+            }
+
+            return movedAny;
         }
 
         // Reset timers always covers the whole room, unlimited, so it resolves its own targets.
@@ -492,8 +507,9 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         }));
 
                     // Observed on hhus (r90 game-b): YouArePlayingGame goes out with the join (true) and the leave (false), in the same
-                    // tick and ahead of the team effect (223 on join, 0 on leave) of the next state update.
-                    if (moved) {
+                    // tick and ahead of the team effect (223 on join, 0 on leave) of the next state update. Observed on AIR
+                    // WIN63-202610151745-318700621: a leave sends it even outside a team, a join into the user's own team sends nothing.
+                    if (moved || name == "wf_act_leave_team") {
                         user.GetClient()?.Send(new YouArePlayingGameComposer(name == "wf_act_join_team"));
                     }
 
@@ -586,6 +602,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 return changed;
             case "wf_act_chase":
             case "wf_act_flee":
+                _directions.Retain(context.Targets.AllFurni());
+
                 foreach (var item in items) {
                     changed |= ChaseOrFlee(item);
                 }
@@ -597,7 +615,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     bool Move(int x, int y) => _movement.MoveFurniture(context, item, x, y, item.Rotation, null, passengers: carry);
                     var flee = name == "wf_act_flee";
                     // Observed r92f r92-flee: flee has no range (Manhattan 10 still moves away on all three fires); chase keeps its range.
-                    var nearest = WiredDirectionalActions.Nearest(item, context.Targets.AllUsers(), flee ? null : 3);
+                    // Observed on AIR WIN63-202610151745-318700621: chase only follows a user in its own row or column (2 and 3 tiles away it
+                    // stepped towards the user 10 times in 10; at offsets (1,1), (2,1), (2,2) and (3,1) it took a random step).
+                    var users = flee ? context.Targets.AllUsers() : context.Targets.AllUsers().Where(user => user.X == item.GetX || user.Y == item.GetY);
+                    var nearest = WiredDirectionalActions.Nearest(item, users, flee ? null : 3);
 
                     if (nearest == null) {
                         if (flee) {
@@ -606,10 +627,22 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                         // Observed r92j r92h-chase-retry (AIR WIN63-202610131318-860371703): from the corner (4,1), with north and west
                         // void, the out-of-range marker moved on all six trials (east 3, south 3), so a blocked random direction is retried.
+                        // Observed on AIR WIN63-202610151745-318700621: the random step never goes straight back (no reversal in 54 steps).
                         int[] headings = [0, 2, 4, 6];
                         Random.Shared.Shuffle(headings);
+                        var back = _directions.LastChaseStep(item) is { } last ? (last + 4) % 8 : -1;
 
-                        return headings.Select(WiredRoomOperations.Offset).Any(step => Move(item.GetX + step.X, item.GetY + step.Y));
+                        foreach (var heading in headings.OrderBy(heading => heading == back)) {
+                            var step = WiredRoomOperations.Offset(heading);
+
+                            if (Move(item.GetX + step.X, item.GetY + step.Y)) {
+                                _directions.RememberChaseStep(item, heading);
+
+                                return true;
+                            }
+                        }
+
+                        return false;
                     }
 
                     if (Math.Abs(nearest.X - item.GetX) + Math.Abs(nearest.Y - item.GetY) <= 1) {
@@ -620,8 +653,20 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                     var candidates = flee ? WiredDirectionalActions.FleeSteps(item, nearest).ToArray()
                         : WiredDirectionalActions.Steps(item, nearest, false).Take(1).ToArray();
+                    var (fromX, fromY) = (item.GetX, item.GetY);
 
-                    return candidates.Any(candidate => Move(candidate.X, candidate.Y));
+                    foreach (var candidate in candidates) {
+                        if (Move(candidate.X, candidate.Y)) {
+                            if (!flee) {
+                                _directions.RememberChaseStep(item, Enumerable.Range(0, 4).Select(index => index * 2)
+                                    .First(heading => WiredRoomOperations.Offset(heading) == new System.Drawing.Point(candidate.X - fromX, candidate.Y - fromY)));
+                            }
+
+                            return true;
+                        }
+                    }
+
+                    return false;
                 }
             case "wf_act_move_to_dir":
                 _directions.Retain(context.Targets.AllFurni());
@@ -701,8 +746,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             case "wf_act_neg_send_signal":
                 var forwarded = Furni(context, config, "forwarded", true).Select(item => item.Id).ToArray();
                 var users = Users(context, config, "users").Select(user => user.VirtualId).ToArray();
-                var furniBatches = Param(config, 3) == 1 && forwarded.Length != 0 ? forwarded.Select(id => new[] { id }).ToArray() : [forwarded];
-                var userBatches = Param(config, 4) == 1 && users.Length != 0 ? users.Select(id => new[] { id }).ToArray() : [users];
+                var furniBatches = Param(config, 3) == 1 ? forwarded.Select(id => new[] { id }).ToArray() : [forwarded];
+                var userBatches = Param(config, 4) == 1 ? users.Select(id => new[] { id }).ToArray() : [users];
 
                 foreach (var furni in furniBatches) {
                     foreach (var avatars in userBatches) {
@@ -743,12 +788,18 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                     var packet = new WiredChatComposer(user.VirtualId, user.VirtualId, FormatLegacyText(context, user, config.Text), Param(config, 2), Param(config, 3, -1), !shownToRoom);
 
-                    if (packet.Private) {
-                        client!.Send(packet);
-                    }
-                    else {
-                        context.Room.SendChat(receiver => packet with { ReceiverVirtualId = receiver });
-                    }
+                    var room = context.Room;
+                    var target = client;
+
+                    room.GetWired().AfterFlash(() =>
+                    {
+                        if (packet.Private) {
+                            target!.Send(packet);
+                        }
+                        else {
+                            room.SendChat(receiver => packet with { ReceiverVirtualId = receiver });
+                        }
+                    });
 
                     changed = true;
                 }

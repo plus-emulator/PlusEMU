@@ -227,7 +227,7 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
             roomVariables.FlushFx(fxFrame, viewers, (client, packet) => client.Send(packet), exception => throw exception);
             Assert.Equal(new uint[] { 3340, 1943 }, sentFx);
             sentFx.Clear();
-            fxItem.SetState(1, 1, 0, []);
+            fxItem.SetState(1, 1, 0);
             roomVariables.FlushFx(fxFrame, viewers, (client, packet) => client.Send(packet), exception => throw exception);
             Assert.Equal(new uint[] { 2532 }, sentFx);
             output.WriteLine("Actual room FX binding/composition: initial configs/status, unchanged flush zero SQL, enqueue-failure retry, and moved-off-variable removal passed.");
@@ -271,7 +271,7 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
 
                 return true;
             };
-            fxItem.SetState(0, 0, 0, []);
+            fxItem.SetState(0, 0, 0);
             roomVariables.InvalidateFx();
             sentFx.Clear();
             atomicDb.Commands = 0;
@@ -330,7 +330,7 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
             liveRoom.SendObjects(fxClient);
             nativeWired.OnCycle();
             sentFx.Clear();
-            fxItem.SetState(1, 1, 0, []);
+            fxItem.SetState(1, 1, 0);
             nativeWired.OnCycle();
             Assert.Equal(new uint[] { 2532 }, sentFx);
             sentFx.Clear();
@@ -435,7 +435,7 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
             admin.Execute("UPDATE rooms SET owner=@changed WHERE id=@room", new { changed = "0", room });
             Assert.Null(roomVariables.Module.Read(levelRef, holders[0], frame));
             admin.Execute("UPDATE rooms SET owner=@owner WHERE id=@room", new { owner = owner.ToString(), room });
-            levelItem.SetState(1, 0, 0, []);
+            levelItem.SetState(1, 0, 0);
             Assert.Null(roomVariables.Module.Read(levelRef, holders[0], frame));
             var questItem = new Item { Id = 1100000002, Definition = new() { InteractionName = "wf_var_quest" } };
             floor[questItem.Id] = questItem;

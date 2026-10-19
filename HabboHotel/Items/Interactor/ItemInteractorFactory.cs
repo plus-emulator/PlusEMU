@@ -42,6 +42,7 @@ public sealed class ItemInteractorFactory(
             InteractionType.WiredLabel => new InteractorWiredLabel(),
             InteractionType.InvisibleFurniControl or InteractionType.ChooserDisabler => new InteractorConfigurationSwitch(),
             InteractionType.Gate => new InteractorGate(),
+            InteractionType.FootballGate => new InteractorFootballGate(item),
             InteractionType.Teleport => new InteractorTeleport(timeProvider),
             InteractionType.Hopper => new InteractorHopper(travelStore),
             InteractionType.Bottle => new InteractorSpinningBottle(),

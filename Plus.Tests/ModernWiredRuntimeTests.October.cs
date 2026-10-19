@@ -148,7 +148,7 @@ public partial class ModernWiredRuntimeTests
 
     private static Item Placed(TeleportFixture f, Item item, int x, int y)
     {
-        item.SetState(x, y, 0, Gamemap.GetAffectedTiles(1, 1, x, y, 0));
+        item.SetState(x, y, 0);
         typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, f.Room);
         item.RoomId = f.Room.Id;
         f.Items[item.Id] = item;

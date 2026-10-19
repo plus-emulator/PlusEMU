@@ -55,8 +55,8 @@ public sealed partial class WiredGlideConveyorTests
             var carry = Assert.Single(ReadPublication(packets).Where(move => move.Type == 0));
             Assert.Equal(startX + (pulse - 1) * step, carry.FromX);
             Assert.Equal(startX + pulse * step, carry.ToX);
-            Assert.Equal("1", carry.FromZ);
-            Assert.Equal("1", carry.ToZ);
+            Assert.Equal("1.0", carry.FromZ);
+            Assert.Equal("1.0", carry.ToZ);
             Assert.Equal(startX + pulse * step, rider.X);
             Assert.Equal(0, f.Engine.ReadStats().Pending);
         }

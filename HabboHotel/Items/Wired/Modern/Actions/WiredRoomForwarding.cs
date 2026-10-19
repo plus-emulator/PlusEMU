@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Plus.Communication.Packets.Outgoing.Rooms.Session;
 using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Runtime;
@@ -88,6 +87,54 @@ public static class WiredRoomForwarding
         return PositiveId(roomText, out var fallback) ? new(fallback) : null;
     }
 
+    private static readonly AsyncLocal<Action<Action>?> SwitchOverride = new();
+
+    /// <summary>Runs the server-side room switch of a forward off the firing room's Wired pass.</summary>
+    private static void SwitchRoom(Action action)
+    {
+        if (SwitchOverride.Value is { } switchRoom) {
+            switchRoom(action);
+
+            return;
+        }
+
+        Task.Run(() =>
+        {
+            try {
+                action();
+            }
+            catch (Exception error) {
+                Plus.Core.ExceptionLogger.LogException(error);
+            }
+        });
+    }
+
+    /// <summary>Replaces the room switch for the calling test flow.</summary>
+    internal static IDisposable UseRoomSwitch(Action<Action> switchRoom)
+    {
+        SwitchOverride.Value = switchRoom;
+
+        return new RoomSwitchScope();
+    }
+
+    private sealed class RoomSwitchScope : IDisposable
+    {
+        public void Dispose() => SwitchOverride.Value = null;
+    }
+
+    /// <summary>The glow a forwarded user wears from the firing until it is taken into the next room, and for a moment after.</summary>
+    public const int TeleportEffectId = 234;
+
+    /// <summary>How long after the firing the user is taken into the linked room.</summary>
+    public const int ForwardDelayMilliseconds = 950;
+
+    /// <summary>The arriving user loses the glow on this room tick after entering.</summary>
+    public const int ArrivalEffectTicks = 3;
+
+    // Observed on AIR WIN63-202610151745-318700621 (Furni Clicked and Walks On firings, room linker pair): the firing puts effect 234 on
+    // the user (2517) at once; the user keeps walking, and 951-953 ms later (not on a room tick) the room switch starts. The user enters
+    // on the other linker's tile facing its rotation, still with effect 234, which is cleared on the linked room's third tick after the
+    // entry (1.1-1.4 s). With the other linker picked up nothing happens.
     public static bool Execute(WiredRuntimeContext context, WiredConfiguration config, ILogger logger, IItemTravelStore travelStore)
     {
         var items = context.Targets.ResolveFurni(context, config.SelectedItems, config.FurniSources["links"]);
@@ -97,21 +144,57 @@ public static class WiredRoomForwarding
             return false;
         }
 
+        var room = context.Room;
+        var wired = room.GetWired();
+        var firstTick = wired.FirstRoomTickAfter(context.NowMilliseconds);
+        var tick = WiredFlashStates.StateUpdateMilliseconds;
         var forwarded = false;
 
         foreach (var user in context.Targets.ResolveUsers(context, [], config.UserSources["users"]).Where(user => !user.IsBot)) {
             var client = user.GetClient();
             var habbo = client?.GetHabbo();
 
-            if (client == null || habbo == null || !ReferenceEquals(habbo.CurrentRoom, context.Room)) {
+            if (client == null || habbo == null || !ReferenceEquals(habbo.CurrentRoom, room)) {
                 continue;
             }
 
-            habbo.IsTeleporting = target.TeleporterId != 0;
-            habbo.TeleportingRoomId = target.TeleporterId == 0 ? 0 : target.RoomId;
-            habbo.TeleporterId = target.TeleporterId;
-            client.Send(new RoomForwardComposer(target.RoomId));
-            context.Room.GetWired().RecordRoomNetworkForward(user, target.RoomId);
+            var original = user.CurrentEffect == TeleportEffectId ? 0 : user.CurrentEffect;
+
+            void Forward()
+            {
+                if (!user.IsAttachedTo(room) || !ReferenceEquals(habbo.CurrentRoom, room)) {
+                    return;
+                }
+
+                habbo.IsTeleporting = target.TeleporterId != 0;
+                habbo.TeleportingRoomId = target.TeleporterId == 0 ? 0 : target.RoomId;
+                habbo.TeleporterId = target.TeleporterId;
+                habbo.ForwardArrivalRestoreEffect = original;
+                room.GetWired().RecordRoomNetworkForward(user, target.RoomId);
+                // The glow goes along to the linked room (AIR WIN63-202610151745-318700621): leaving must not put the old effect back.
+                WiredTemporaryEffects.For(room).Drop(user);
+                // Observed on AIR WIN63-202610151745-318700621: no RoomForward and no OpenConnection; the server takes the user out of the
+                // room (YouArePlayingGame) and sends the linked room's data starting with RoomReady. Run outside this room's Wired pass so
+                // two rooms forwarding into each other cannot hold each other's locks.
+                SwitchRoom(() => habbo.PrepareRoom(target.RoomId, "", openConnection: false));
+            }
+
+            if (!wired.ScheduleAux(context, ForwardDelayMilliseconds, Forward)) {
+                Forward();
+                forwarded = true;
+
+                continue;
+            }
+
+            // The glow is dropped on the tick an in-room teleport drops it; a user still in the room (the forward was not sent) gets
+            // the previous effect back, one who left keeps the glow for the arrival.
+            var restore = WiredTemporaryEffects.For(room).Acquire(user, () => user.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room),
+                TeleportEffectId);
+
+            if (!wired.ScheduleOnRoomTick(context, firstTick + 6 * tick, restore, restore)) {
+                restore();
+            }
+
             forwarded = true;
         }
 

@@ -137,11 +137,11 @@ public partial class PlacedFurniRoomTests
         WallGeometryModel();
         var floor = Furni(302, InteractionType.None, WiredBoxType.None);
         floor.RoomId = RoomId;
-        floor.SetState(2, 3, 0, []);
+        floor.SetState(2, 3, 0);
         _room.GetRoomItemHandler().LoadFurniture([floor]);
         var module = InspectionInstallModule();
         _client.Packets.Clear();
-        await InspectionWrite(floor.Id, "@rotation", 2);
+        await InspectionWrite(floor.Id, "@rotation", 1);
         Assert.Equal(2, floor.Rotation);
         Assert.Contains(_client.Packets, packet => packet.Header == 9480);
         Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.BroadcastMessageAlertComposer);

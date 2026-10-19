@@ -1,3 +1,4 @@
+using Plus.Utilities;
 using System.Globalization;
 using Plus.Communication.Packets;
 using Plus.Communication.Packets.Outgoing;
@@ -30,8 +31,8 @@ public sealed record WiredMovementComposer(int Type, int Id, int FromX, int From
         packet.WriteInteger(FromY);
         packet.WriteInteger(ToX);
         packet.WriteInteger(ToY);
-        packet.WriteString(FromZ.ToString(CultureInfo.InvariantCulture));
-        packet.WriteString(ToZ.ToString(CultureInfo.InvariantCulture));
+        packet.WriteString(TextHandling.GetString(FromZ));
+        packet.WriteString(TextHandling.GetString(ToZ));
         packet.WriteInteger(Type == 1 ? BuildersClubItemIds.ToWire(Id) : Id);
 
         if (Type == 1) {

@@ -8,8 +8,9 @@ public sealed record AvatarChangeSnapshot(int VirtualId, string Look, string Gen
     {
         var habbo = user.GetClient()?.GetHabbo() ?? throw new InvalidOperationException("Room user has no active account.");
 
-        return new(self ? -1 : user.VirtualId, habbo.Look, habbo.Gender, habbo.Motto, habbo.HabboStats?.AchievementPoints ?? 0);
+        return new(self ? -1 : user.VirtualId, user.LookFor(habbo), habbo.Gender, habbo.Motto, habbo.HabboStats?.AchievementPoints ?? 0);
     }
 
-    public static AvatarChangeSnapshot Capture(RoomBot bot) => new(bot.VirtualId, bot.Look, bot.Gender, bot.Motto, 0);
+    // Observed on AIR WIN63-202610151745-318700621: a bot's UserChange carries its gender in lower case ("m"), as in Users.
+    public static AvatarChangeSnapshot Capture(RoomBot bot) => new(bot.VirtualId, bot.Look, bot.Gender.ToLowerInvariant(), bot.Motto, 0);
 }

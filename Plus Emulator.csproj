@@ -39,6 +39,10 @@
 		<EmbeddedResource Include="HabboHotel\Items\Wired\Variables\WiredBuiltinCatalogue.json" LogicalName="Plus.Wired.BuiltinCatalogue.json" />
 		<!-- Each floor furni's directions from its .hab asset (scripts/build-furniture-directions.py). -->
 		<EmbeddedResource Include="HabboHotel\Items\FurnitureDirections.tsv" LogicalName="Plus.Items.FurnitureDirections.tsv" />
+		<!-- Schema migrations the emulator applies at startup (Database/Migrator), and the schema for an empty database. -->
+		<EmbeddedResource Include="Database\Migrations\*.sql" LogicalName="Plus.Migrations.%(Filename)%(Extension)" />
+		<EmbeddedResource Include="Resources\SQLs\Updates\*.sql" LogicalName="Plus.Migrations.Updates.%(Filename)%(Extension)" />
+		<EmbeddedResource Include="Database\FreshInstall.sql" LogicalName="Plus.Database.FreshInstall.sql" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -162,15 +162,15 @@ public sealed partial class WiredConditionParityTests
         var first = Floor(1, "subject", 0, 0);
         var second = Floor(2, "subject", 0, 0);
         first.Definition.Height = second.Definition.Height = 1;
-        first.SetState(0, 0, firstZ, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
-        second.SetState(0, 0, secondZ, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+        first.SetState(0, 0, firstZ);
+        second.SetState(0, 0, secondZ);
         Place(map, items, first);
         Place(map, items, second);
 
         if (externalZ >= 0) {
             var external = Floor(3, "external", 0, 0);
             external.Definition.Height = 1;
-            external.SetState(0, 0, externalZ, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+            external.SetState(0, 0, externalZ);
             Place(map, items, external);
         }
 
@@ -329,7 +329,7 @@ public sealed partial class WiredConditionParityTests
                 PublicName = name
             }
         };
-        item.SetState(x, y, 0, Gamemap.GetAffectedTiles(1, 1, x, y, 0));
+        item.SetState(x, y, 0);
 
         return item;
     }

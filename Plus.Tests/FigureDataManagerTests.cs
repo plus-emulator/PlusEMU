@@ -90,4 +90,15 @@ public class FigureDataManagerTests
     }
 
     private static string SetOf(string part) => string.Join('-', part.Split('-').Take(2));
+
+    // Observed on AIR WIN63-202610151745-318700621 (Bot Clothes saved by a male user, read back from the bot's UserChange).
+    [Theory]
+    [InlineData("hd-180-1", "hd-180-1.ch-210-1408.lg-270-1408.")]
+    [InlineData("hr-100-61.hd-180-1.ch-210-66.lg-270-82.sh-290-80", "hr-100.hd-180-1.ch-210-66.lg-270-82.sh-290-80.")]
+    [InlineData("zz-1-1.hd-180-1", "hd-180-1.ch-210-1408.lg-270-1408.")]
+    [InlineData("lg-270-82.hd-180-1.hr-100-61", "hr-100.hd-180-1.ch-210-1408.lg-270-82.")]
+    public void CanonicalFiguresFillMissingPartsAndDropColoursOfUncolourableSets(string figure, string stored)
+    {
+        Assert.Equal(stored, Manager().ProcessFigureCanonical(figure, "M", null!, 2));
+    }
 }

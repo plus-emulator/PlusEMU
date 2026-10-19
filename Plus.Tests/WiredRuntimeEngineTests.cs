@@ -354,7 +354,8 @@ public partial class WiredRuntimeEngineTests
         {
             Assert.Equal(new[] { item }, ctx.Targets.ResolveFurni(ctx, [], WiredSources.Signal));
             Assert.Equal(17, ctx.Values["value"]);
-            Assert.Equal(1, ctx.Depth);
+            // A signal hop keeps the sender's depth, so a long signal chain is not cut by the depth limit.
+            Assert.Equal(0, ctx.Depth);
 
             return true;
         }, x: 2);
@@ -368,8 +369,8 @@ public partial class WiredRuntimeEngineTests
             ctx.Values["value"] = 99;
 
             if (moveReceiverAfterSend) {
-                antenna.SetState(3, 0, 0, []);
-                antenna.SetState(2, 0, 0, []);
+                antenna.SetState(3, 0, 0);
+                antenna.SetState(2, 0, 0);
             }
 
             return accepted;

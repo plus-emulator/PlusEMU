@@ -44,6 +44,29 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
+    public void DanceSignAndTeamExistOnlyWhileTheAvatarHasThem()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: an avatar that does not dance, holds no sign and is in no team has none of these.
+        var avatar = Viewer();
+        avatar.BotData = null;
+        var holder = WiredVariableRuntimeFrames.UserHolder(avatar);
+        var frame = new WiredVariableFrame(RoomId, [holder]);
+        var builtins = new RoomWiredBuiltinVariables(_room);
+        WiredVariableValue? Read(string key) => builtins.Read(new(holder.Target, "internal:" + key), holder, frame);
+
+        Assert.Null(Read("@dance"));
+        Assert.Null(Read("@sign"));
+        Assert.Null(Read("@team.color"));
+        Assert.Null(Read("@team.score"));
+
+        avatar.DanceId = 1;
+        avatar.Statusses["sign"] = "5";
+
+        Assert.Equal(1, Read("@dance")?.Value);
+        Assert.Equal(5, Read("@sign")?.Value);
+    }
+
+    [Fact]
     public void MissingPetDataDoesNotInventPetIdsStatsOrHorseDefaults()
     {
         var avatar = BuiltinPet(15);
@@ -125,8 +148,8 @@ public partial class PlacedFurniRoomTests
         horse.PetData.Saddle = 1;
         horse.RidingHorse = true;
         horse.HorseId = rider.VirtualId;
-        Assert.Equal(1, Read("~horse.has_saddle")?.Value);
-        Assert.Equal(1, Read("~horse.is_riding")?.Value);
+        Assert.Equal(-1, Read("~horse.has_saddle")?.Value);
+        Assert.Equal(-1, Read("~horse.is_riding")?.Value);
         Assert.Equal(7, Read("~horse.controller_user_id")?.Value);
         Assert.False(RoomWiredBuiltinVariables.HasNumericValue(new(holder.Target, "internal:~horse.has_saddle")));
         Assert.False(RoomWiredBuiltinVariables.HasNumericValue(new(holder.Target, "internal:~horse.is_riding")));
@@ -146,7 +169,8 @@ public partial class PlacedFurniRoomTests
         var builtins = new RoomWiredBuiltinVariables(_room);
         WiredVariableValue? Read(string key) => builtins.Read(new(holder.Target, "internal:" + key), holder, frame);
         Assert.Equal(258, Read("@position")?.Value);
-        Assert.Equal(66052, Read("@occupation")?.Value);
+        // Facing 4 is position 2 in the furni's directions (0, 2, 4, 6).
+        Assert.Equal(66050, Read("@occupation")?.Value);
         item.Definition.InteractionType = InteractionType.Toner;
         _room.TonerData = new(item.Id, new TonerRecord { Hue = 22, Saturation = 33, Lightness = 44 });
         Assert.Equal(22, Read("~background_color.hue")?.Value);
@@ -232,11 +256,11 @@ public partial class PlacedFurniRoomTests
         Assert.Null(Read("@is_group_admin"));
         _room.Group = new(20, "group", "", "", RoomId, 9, null, 0, 1, 1, 0, false,
             new Plus.HabboHotel.Groups.GroupMembershipSnapshot([], [7], []));
-        Assert.Equal(1, Read("@is_group_admin")?.Value);
+        Assert.Equal(-1, Read("@is_group_admin")?.Value);
         _room.Group.TakeAdmin(7);
         Assert.Null(Read("@is_group_admin"));
         _room.Group.CreatorId = 7;
-        Assert.Equal(1, Read("@is_group_admin")?.Value);
+        Assert.Equal(-1, Read("@is_group_admin")?.Value);
         Assert.False(RoomWiredBuiltinVariables.HasNumericValue(new(holder.Target, "internal:@is_group_admin")));
     }
 

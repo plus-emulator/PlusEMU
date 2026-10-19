@@ -179,7 +179,7 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
 
         try {
             if (outcome.Result == GateTransition.Applied) {
-                Publish(item, outcome, persist, afterWrite, mark);
+                Publish(item, outcome, persist, afterWrite, mark, reason);
             }
         }
         finally {
@@ -417,7 +417,7 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
             _retained[item.Id] = write;
         }
         else if (outcome.Result == GateTransition.Applied) {
-            Publish(item, outcome, write.Persist, write.After, mark);
+            Publish(item, outcome, write.Persist, write.After, mark, write.Reason);
         }
     }
 
@@ -482,10 +482,18 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
 
     // Notifications, persistence, broadcast, ApplyDirty and follow-ups: never under a lock. The follow-up runs on
     // the writing thread and can report the write made after the mark taken just before the commit.
-    private void Publish(Item item, Outcome outcome, bool persist, Action<Item>? after, long mark)
+    private void Publish(Item item, Outcome outcome, bool persist, Action<Item>? after, long mark, GateCloseReason reason = GateCloseReason.Automatic)
     {
         outcome.Data?.NotifyDataUpdated();
-        item.UpdateState(persist, true);
+
+        // Observed on AIR WIN63-202610151745-318700621: a gate Toggle State write goes out in the tick's data batch with
+        // the box flashes, like any other wired state write, not as a full object update.
+        if (reason == GateCloseReason.Wired) {
+            room.GetWired().PublishState(item, persist);
+        }
+        else {
+            item.UpdateState(persist, true);
+        }
 
         if (outcome.Closed) {
             room.GetGameMap().Navigation?.ApplyDirty();

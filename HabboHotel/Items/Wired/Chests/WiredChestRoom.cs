@@ -75,7 +75,9 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
 
         // A wired transaction works with the usable chests among the picked ones and fails only when none is;
         // a user's own deposit needs every chest to take it.
+        // Observed on AIR WIN63-202610131318-860371703: a deposit by a user who may not trade is refused with reason 8.
         var failure = contract != null ? usable.Length == 0 ? WiredChestFailure.NoOrLockedChests : (WiredChestFailure?)null
+            : habbo.TradingLockExpiresAt is { } lockedUntil && lockedUntil > clock.GetUtcNow() ? WiredChestFailure.UserCantTrade
             : snapshots.Length != chests.Length || snapshots.Length == 0 ? WiredChestFailure.ChestNotInRoom
             : snapshots.Any(chest => !chest.CanDeposit((uint)habbo.Id, room.GetWired().Settings.CanModify(client))) ? WiredChestFailure.NoOrLockedChests
             : (WiredChestFailure?)null;
@@ -611,10 +613,14 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             Fail(actor, sourceId, result.Failure!.Value, notifyFailure);
         }
     }
-    public void Fail(RoomUser actor, uint sourceId, WiredChestFailure reason, bool notify = true, bool cancelledByWired = false)
+    public void Fail(RoomUser actor, uint sourceId, WiredChestFailure reason, bool notify = true, bool cancelledByWired = false, bool fireTrigger = true)
     {
         if (notify) {
             actor.GetClient()?.Send(new WiredTransactionFailComposer(reason));
+        }
+
+        if (!fireTrigger) {
+            return;
         }
 
         publish(new(WiredEventKind.TransactionFail) { Actor = actor, EventItem = room.GetRoomItemHandler().GetItem(sourceId), SourceId = sourceId, Code = (int)reason, CancelledByWired = cancelledByWired });

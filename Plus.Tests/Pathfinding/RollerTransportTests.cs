@@ -26,7 +26,7 @@ public partial class PlacedFurniRoomTests
         Assert.Contains(actor, _room.GetGameMap().GetRoomUsers(new(1, 1)));
         Assert.DoesNotContain(actor, _room.GetGameMap().GetRoomUsers(new(0, 1)));
         var slide = ExecutorAvatarSlide(actor);
-        Assert.Equal((0, 1, 1, 1, roller.Id, "0.5", "0"), slide);
+        Assert.Equal((0, 1, 1, 1, roller.Id, "0.5", "0.0"), slide);
         Assert.False(actor.HasStatus("mv"));
     }
 
@@ -42,7 +42,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(ExecutorHasUpdate(actor));
         ExecutorTick();
         var update = ExecutorUpdate(actor);
-        Assert.Equal((1, 1, "0"), (update.X, update.Y, update.Z));
+        Assert.Equal((1, 1, "0.0"), (update.X, update.Y, update.Z));
         Assert.DoesNotContain("/mv ", update.Status);
     }
 
@@ -61,7 +61,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(ExecutorHasUpdate(actor));
         ExecutorTick();
         var update = ExecutorUpdate(actor);
-        Assert.Equal((2, 1, "0"), (update.X, update.Y, update.Z));
+        Assert.Equal((2, 1, "0.0"), (update.X, update.Y, update.Z));
         Assert.DoesNotContain("/mv ", update.Status);
     }
 
@@ -97,7 +97,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(TargetOccupancy.OffGraph, claims.OccupancyAt(5, 0));
         actor.MoveTo(2, 1);
         ExecutorTick();
-        Assert.Contains("/mv 2,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((2, 1, 0d), (actor.X, actor.Y, actor.Z));
     }
@@ -132,7 +132,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((1, 1, 0d), (actor.X, actor.Y, actor.Z));
         Assert.DoesNotContain(_client.Sent, header => header == ServerPacketHeader.SlideObjectBundleComposer);
-        Assert.Contains("/mv 2,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
     }
 
     [Theory]
@@ -172,7 +172,7 @@ public partial class PlacedFurniRoomTests
         Assert.Single(_client.Packets, packet => ExecutorIsAvatarSlide(packet, actor.VirtualId));
         Assert.Equal((0, 1, 1, 1, 10u, "0.5", "0.5"), ExecutorAvatarSlide(actor));
         Assert.Equal((2, 1, 0.5), (cargo.GetX, cargo.GetY, cargo.GetZ));
-        Assert.Equal((1, 1, 2, 1, "1", "0.5", 11u), ExecutorCargoSlide(cargo));
+        Assert.Equal((1, 1, 2, 1, "1.0", "0.5", 11u), ExecutorCargoSlide(cargo));
     }
 
     [Fact]
@@ -192,7 +192,7 @@ public partial class PlacedFurniRoomTests
         Assert.Single(_client.Packets, packet => ExecutorIsAvatarSlide(packet, actor.VirtualId));
         Assert.Equal((0, 1, 1, 1, 10u, "0.5", "0.5"), ExecutorAvatarSlide(actor));
         Assert.Equal((2, 1, 0.5), (cargo.GetX, cargo.GetY, cargo.GetZ));
-        Assert.Equal((1, 1, 2, 1, "1", "0.5", 11u), ExecutorCargoSlide(cargo));
+        Assert.Equal((1, 1, 2, 1, "1.0", "0.5", 11u), ExecutorCargoSlide(cargo));
     }
 
     [Fact]
@@ -206,7 +206,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 1, 0d), (actor.X, actor.Y, actor.Z));
         Assert.Null(actor.Movement.CurrentRef);
         Assert.Equal(20, _room.GetGameMap().Navigation!.Grid.WalkZ[5]);
-        Assert.Equal("0", ExecutorAvatarSlide(actor).ToZ);
+        Assert.Equal("0.0", ExecutorAvatarSlide(actor).ToZ);
     }
 
     [Fact]

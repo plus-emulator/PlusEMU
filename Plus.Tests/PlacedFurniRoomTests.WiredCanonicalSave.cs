@@ -176,6 +176,28 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(expectedX, mover.GetX);
     }
 
+    [Fact]
+    public void CanonicalGroupMemberBlockedByAUserStaysAndTheRestMoves()
+    {
+        var (_, actor) = PrepareSpeech(new SpeechClock());
+        var (box, _) = CanonicalBox("wf_act_move_furni_as_group", new() { IntParams = [0, 1, 0, 100, 101, 0] });
+        var trailing = CanonicalPlace(602, 0, 0);
+        var leading = CanonicalPlace(605, 1, 0);
+        CanonicalPlace(603, 0, 2);
+        _room.GetGameMap().UpdateUserMovement(new(actor.X, actor.Y), new(2, 2), actor);
+        actor.SetPos(2, 2, 0);
+        var native = CanonicalNativeGroup(100, 101) with { PrimaryItems = [new(602, false), new(605, false)] };
+        Assert.True(WiredNativeEditorProjection.TryCompile(601, box.Descriptor, native, out var configuration));
+        box.ApplyConfiguration(configuration);
+        var context = _room.GetWired().CaptureVariableInspectionFrame().RuntimeContext!;
+        var changed = false;
+        _room.RunFastPass(() => changed = ((IWiredContextualAction)box).Execute(context));
+        // The group lands one tile east of the target: the trailing member on (1,2), the leading one would land on the user at (2,2).
+        Assert.True(changed);
+        Assert.Equal((1, 2), (trailing.GetX, trailing.GetY));
+        Assert.Equal((1, 0), (leading.GetX, leading.GetY));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(200)]

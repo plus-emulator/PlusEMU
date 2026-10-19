@@ -28,7 +28,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal(NavState.Active, actor.Movement.State);
         Assert.Contains(actor, _room.GetGameMap().GetRoomUsers(new(2, 2)));
-        Assert.Contains("/mv 3,2,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 3,2,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((3, 2), (actor.X, actor.Y));
     }

@@ -17,6 +17,7 @@ using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.Instance;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Inventory.Furniture;
+using Plus.HabboHotel.Items.Interactor;
 using Xunit;
 using static Plus.Tests.HabbiconTestSupport;
 
@@ -127,6 +128,34 @@ public sealed class WiredChestProtocolTests
         var failure = Assert.Single(world.Events);
         Assert.Equal(WiredEventKind.TransactionFail, failure.Kind);
         Assert.Equal((int)WiredChestFailure.Invalid, failure.Code);
+    }
+
+    // Observed on AIR WIN63-202610131318-860371703: a deposit by a user who may not trade is refused with WiredTransactionFail reason 8.
+    [Fact]
+    public void TradeLockedUserCannotDepositIntoAChest()
+    {
+        var world = new World();
+        world.Habbo.Inventory = new();
+        world.Habbo.TradingLockExpiresAt = DateTimeOffset.MaxValue;
+        Assert.False(world.Module.Start(world.Client, 80, [world.Chest], null));
+        var failure = Assert.Single(world.Events);
+        Assert.Equal(WiredEventKind.TransactionFail, failure.Kind);
+        Assert.Equal((int)WiredChestFailure.UserCantTrade, failure.Code);
+        Assert.False(world.Actor.IsTrading);
+    }
+
+    // Moving a chest neither locks nor republishes it; only placing it does.
+    [Fact]
+    public void ChestPlacementHookLeavesAMovedChestAlone()
+    {
+        var world = new World();
+        typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(world.Chest, world.Room);
+        world.Chest.Moving = true;
+        new InteractorWiredChest().OnPlace(world.Client, world.Chest);
+        Assert.Null(world.Store.Saved);
+        world.Chest.Moving = false;
+        new InteractorWiredChest().OnPlace(world.Client, world.Chest);
+        Assert.NotNull(world.Store.Saved);
     }
 
     [Fact]
@@ -417,8 +446,14 @@ public sealed class WiredChestProtocolTests
         context.Triggering.UserIds.Add(world.Actor.VirtualId);
 
         Assert.False(effect.Execute(context));
+        Assert.False(effect.Execute(context));
         Assert.Empty(world.Store.Requests);
-        Assert.Equal(WiredChestFailure.NoOrLockedChests, (WiredChestFailure)Assert.Single(world.Events, e => e.Kind == WiredEventKind.TransactionFail).Code);
+
+        // Observed on AIR WIN63-202610151745-318700621: each give answers 560, fires no Transaction Failed and shows the wired.error
+        // dialog at most once per 20 s.
+        Assert.Equal(2, world.Packets.Count(packet => packet.Header == ServerPacketHeader.WiredTransactionFailComposer));
+        Assert.DoesNotContain(world.Events, e => e.Kind == WiredEventKind.TransactionFail);
+        Assert.Single(world.Packets, packet => packet.Header == ServerPacketHeader.RoomNotificationComposer);
     }
     [WiredChestDatabaseFact]
     public void WideGiveCurrencyOperandCannotWrapOrPayOutsideSupportedDomain()

@@ -48,6 +48,9 @@ public sealed class WiredTemporaryEffects
         }
     }
 
+    /// <summary>Ends the user's lease without restoring the original effect.</summary>
+    public void Drop(RoomUser user) => _leases.Remove(user);
+
     public void Clear()
     {
         foreach (var user in _leases.Keys.ToArray()) {

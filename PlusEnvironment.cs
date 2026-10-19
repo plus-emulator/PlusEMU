@@ -18,6 +18,7 @@ using Plus.Core.FigureData;
 using Plus.Core.Language;
 using Plus.Core.Settings;
 using Plus.Database;
+using Plus.Database.Migrator;
 using Plus.HabboHotel;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Catalog;
@@ -66,6 +67,8 @@ public class PlusEnvironment : IPlusEnvironment
     private readonly IEnumerable<IStartable> _startableTasks;
     private readonly RconConfiguration _rconConfiguration;
     private readonly IHandshakeRsaKeyProvider _handshakeKey;
+    private readonly ISchemaMigrator _migrator;
+    private readonly MigrationRunOptions _migrationOptions;
 
     public PlusEnvironment(IDatabase database,
         ILanguageManager languageManager,
@@ -81,8 +84,12 @@ public class PlusEnvironment : IPlusEnvironment
         INitroServer nitroServer,
         IWebServer webServer,
         ILogger<PlusEnvironment> logger, IServerUptime uptime,
-        IHandshakeRsaKeyProvider handshakeKey)
+        IHandshakeRsaKeyProvider handshakeKey,
+        ISchemaMigrator migrator,
+        MigrationRunOptions migrationOptions)
     {
+        _migrator = migrator;
+        _migrationOptions = migrationOptions;
         _handshakeKey = handshakeKey;
         _database = database;
         _languageManager = languageManager;
@@ -128,6 +135,13 @@ public class PlusEnvironment : IPlusEnvironment
             }
 
             Logger.LogInformation("Connected to Database!");
+
+            // The schema must match this build before anything reads it.
+            if (!await _migrator.Run(MigrationMode.Startup, _migrationOptions)) {
+                ConsoleWindow.WaitForKey();
+
+                return false;
+            }
 
             //Reset our statistics first.
             await ResetStatistics();

@@ -285,12 +285,14 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 key == "~background_color.lightness" ? value : room.TonerData.Lightness), metadataStore);
         }
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): ~recolorable_furni.color.rgb can be written, its red, green and blue parts
-        // only read. The new colour goes out as the furni's MapData.
+        // ~recolorable_furni.color.rgb is listed as writable and its red, green and blue parts only read. Observed on AIR
+        // WIN63-202610151745-318700621: a write to a Builders Club class (bc_block_0_recolorable; every recolourable class is one) is
+        // refused without an error and leaves the colour, however the furni was placed; the colour still reads.
         if (holder.Target == WiredVariableTarget.Furni && key == "~recolorable_furni.color.rgb") {
             var item = FindItem(holder, frame);
 
-            if (item is null || item.ExtraData is not Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat recolorable || !recolorable.SetColor(value)) {
+            if (item is null || item.Definition.ItemName.StartsWith("bc_", StringComparison.Ordinal)
+                || item.ExtraData is not Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat recolorable || !recolorable.SetColor(value)) {
                 return false;
             }
 
@@ -385,7 +387,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             // No state text yet (a furni placed from the inventory) is state 0, as the client shows it.
             "@state" => int.TryParse(item.LegacyDataString, out var state) ? state : string.IsNullOrEmpty(item.LegacyDataString) ? 0 : null,
             "@position" => (item.GetX << 8) | item.GetY,
-            "@occupation" => (item.GetX << 16) | (item.GetY << 8) | item.Rotation,
+            "@occupation" => (item.GetX << 16) | (item.GetY << 8) | FurnitureDirections.RotationIndex(item.Definition, item.Rotation),
             "~teleport.target_id" when InteractionTypes.IsLinkedPair(item.Definition.InteractionType) => travelStore?.FindLinkedTeleporter(item.Id),
             "~background_color.hue" when IsToner(item) => room.TonerData.Hue,
             "~background_color.saturation" when IsToner(item) => room.TonerData.Saturation,
@@ -397,14 +399,15 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@position.x" => item.GetX,
             "@position.y" => item.GetY,
             "@altitude" => Hundredths(item.GetZ),
-            "@rotation" => item.Rotation,
+            "@rotation" => FurnitureDirections.RotationIndex(item.Definition, item.Rotation),
             "@dimensions.x" => item.Definition.Width,
             "@dimensions.y" => item.Definition.Length,
             "@is_stackable" => Flag(item.IsFloorItem && item.Definition.Stackable),
             "@can_stand_on" => Flag(item.IsFloorItem && item.Definition.Walkable),
             "@can_sit_on" => Flag(item.IsFloorItem && item.Definition.IsSeat),
             "@can_lay_on" => Flag(item.IsFloorItem && item.Definition.InteractionType == InteractionType.Bed),
-            "@type" => item.IsTemporary ? 2 : item.OwnerId > 0 ? 0 : null,
+            // Observed on AIR WIN63-202610151745-318700621: the connector reads 0 Normal, 1 BC, 2 Temp, and a Builders Club block reads 1.
+            "@type" => item.IsTemporary ? 2 : item.IsBuildersClub ? 1 : item.OwnerId > 0 ? 0 : null,
             _ => null
         };
     }
@@ -449,11 +452,13 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@position.y" => avatar.Y,
             "@altitude" => Hundredths(avatar.Z),
             "@direction" => avatar.RotBody,
-            "@dance" => avatar.DanceId,
+            // Observed on AIR WIN63-202610151745-318700621: @dance, @sign and @effect exist only while the avatar dances, holds a sign or wears an
+            // effect, and @team.color and @team.score only while it is in a team.
+            "@dance" => avatar.DanceId > 0 ? avatar.DanceId : null,
             // Observed on AIR WIN63-202610151745-318700621: an avatar carrying nothing has no @handitem (a placeholder shows "null").
             "@handitem" => avatar.CarryItemId == 0 ? null : avatar.CarryItemId,
-            "@sign" => avatar.Statusses.TryGetValue("sign", out var sign) && int.TryParse(sign, NumberStyles.None, CultureInfo.InvariantCulture, out var signId) ? signId : -1,
-            "@effect" => habbo?.Effects?.CurrentEffect,
+            "@sign" => avatar.Statusses.TryGetValue("sign", out var sign) && int.TryParse(sign, NumberStyles.None, CultureInfo.InvariantCulture, out var signId) ? signId : null,
+            "@effect" => habbo?.Effects?.CurrentEffect is > 0 and var effect ? effect : null,
             "@gender" => habbo is null ? -1 : habbo.Gender.Equals("M", StringComparison.OrdinalIgnoreCase) ? 0 : 1,
             "@achievement_score" => habbo?.HabboStats?.AchievementPoints,
             // Observed on AIR WIN63-202610131318-860371703: @level is the account level the extended profile shows as Level
@@ -471,8 +476,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@is_owner" => Flag(habbo is not null && habbo.Id == room.OwnerId),
             "@has_rights" => Flag(habbo is not null && room.CheckRights(habbo.Client)),
             "@team.type" => Plus.HabboHotel.Items.Wired.Modern.Actions.WiredGameState.For(room).ReadTeamType(room, avatar),
-            "@team.color" => !avatar.IsBot ? (int)avatar.Team : null,
-            "@team.score" => !avatar.IsBot ? room.GetGameManager().Points[(int)avatar.Team] : null,
+            "@team.color" => !avatar.IsBot && avatar.Team != Team.None ? (int)avatar.Team : null,
+            "@team.score" => !avatar.IsBot && avatar.Team != Team.None ? room.GetGameManager().Points[(int)avatar.Team] : null,
             _ => null
         };
     }
@@ -520,7 +525,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
     private static bool Matches(RoomUser avatar, WiredVariableHolder holder) => avatar.IsBot
         ? !holder.CanPersist && holder.StableId == -(long)avatar.VirtualId - 1
         : holder.CanPersist && holder.StableId == avatar.HabboId;
-    private static int? Flag(bool flag) => flag ? 1 : null;
+    // Observed on AIR WIN63-202610151745-318700621: a builtin flag that is set reads -1 (@is_owner, @has_rights, @is_stackable).
+    private static int? Flag(bool flag) => flag ? -1 : null;
     private static int Hundredths(double value) => (int)Math.Clamp(Math.Round(value * 100), int.MinValue, int.MaxValue);
     private static int AreaHideIndex(string key) => key switch
     {

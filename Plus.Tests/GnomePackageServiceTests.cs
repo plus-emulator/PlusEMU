@@ -192,7 +192,7 @@ public sealed class GnomePackageServiceTests
             Definition = new() { Id = 100, Type = ItemType.Floor, InteractionType = InteractionType.GnomeBox },
             ExtraData = new LegacyDataFormat { Data = "" }
         };
-        item.SetState(1, 1, 0, new());
+        item.SetState(1, 1, 0);
         item.Attach(room, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
         var floor = (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling).GetField("_floorItems", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(room.GetRoomItemHandler())!;
         floor.AddOrUpdate(7, item, (_, _) => item);

@@ -22,7 +22,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(7, gate.InteractingUser);
         Assert.Equal(4, gate.UpdateCounter);
         Assert.True(gate.UpdateNeeded);
-        Assert.Equal("1,1,0", actor.Statusses["mv"]);
+        Assert.Equal("1,1,0.0", actor.Statusses["mv"]);
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
         actor.MoveTo(2, 1);
@@ -73,7 +73,7 @@ public partial class PlacedFurniRoomTests
         // Only the walk-on announced with the seat step went out; the replaced landing runs no hooks.
         Assert.Equal(new[] { (WiredBoxType.TriggerWalkOnFurni, 10u) }, events.Select(e => (e.Kind, e.Item)).ToArray());
         Assert.False(actor.HasStatus("sit"));
-        Assert.Contains("/mv 0,2,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 0,2,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((0, 2), (actor.X, actor.Y));
     }

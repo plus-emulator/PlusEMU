@@ -35,11 +35,18 @@ public partial class WiredComponent
         }
 
         _fxViewers[viewer] = ready;
-        session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.WiredEnvironmentComposer(_clickUserTriggers.Count != 0, EnabledAchievements()));
 
         if (_variables?.IsValueCreated == true) {
             _variables.Value.InvalidateFx();
         }
+
+        return true;
+    });
+
+    // Observed on AIR WIN63-202610151745-318700621: room entry sends the Wired environment after the configuration item states.
+    internal void SendEnvironment(GameClient session) => _engine.Mutate(() =>
+    {
+        session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.WiredEnvironmentComposer(_clickUserTriggers.Count != 0, EnabledAchievements()));
 
         return true;
     });

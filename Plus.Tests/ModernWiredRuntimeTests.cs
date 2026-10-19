@@ -182,14 +182,14 @@ public partial class ModernWiredRuntimeTests
             new(() => new[] { antenna, forwarded }, () => new[] { clicked }), operations);
         context.Triggering.UserIds.Add(clicked.VirtualId);
         var call = ActionBox(room, "wf_act_neg_call_stacks");
-        call.Item.SetState(2, 2, 0, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+        call.Item.SetState(2, 2, 0);
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(call, new() { IntParams = [100], SelectedItems = [1] }, out var callConfig, out _));
         call.ApplyConfiguration(callConfig);
         Assert.True(call.IsNegative);
         Assert.True(call.Execute(context));
         Assert.True(operations.CallNegative);
         Assert.Equal(new uint[] { 1 }, operations.Called);
-        call.Item.SetState(0, 0, 0, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+        call.Item.SetState(0, 0, 0);
         Assert.False(call.Execute(context));
         Assert.Empty(operations.Called);
         var signal = ActionBox(room, "wf_act_neg_send_signal");
@@ -787,7 +787,7 @@ public partial class ModernWiredRuntimeTests
         ((RecordingProxy)(object)packet).InvokeMethod = (_, args) => { fields.Add(args![0]!); return null; };
         // Parser order after the tracking id: receiver room index, bubble width, hideUsername.
         new WiredChatComposer(7, 3, "Hello", 252, 2, true).Compose(packet);
-        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, -1, 3, 2, false }, fields);
+        Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, -1, 3, 2 }, fields);
         fields.Clear();
         new WiredChatComposer(7, 3, "Hello", 252, -1, false, HideUsername: true).Compose(packet);
         Assert.Equal(new object[] { 7, "Hello", 0, 252, 0, -1, 3, -1, true }, fields);
@@ -1049,10 +1049,11 @@ public partial class ModernWiredRuntimeTests
         var action = LineBox(room, name, 6, line);
 
         for (var pulse = 0; pulse < 3; pulse++) {
-            Assert.Equal(name == "wf_act_move_to_dir", Pulse(room, action, line, blockedBySelf: false));
+            Assert.True(Pulse(room, action, line, blockedBySelf: false));
         }
 
-        Assert.Equal(name == "wf_act_move_to_dir" ? new[] { 0, 0, 0, 0, 1, 2, 3 } : [0, 1, 2, 3, 4, 5, 6], line.Select(item => item.GetX));
+        // Move/Rotate stacks against the wall like Move To Direction (observed on AIR WIN63-202610151745-318700621, r97_mv_collide).
+        Assert.Equal(new[] { 0, 0, 0, 0, 1, 2, 3 }, line.Select(item => item.GetX));
 
         var (open, free) = TileLine(6, 1, 1, frontFirst);
         var east = LineBox(open, name, 2, free);
@@ -1062,24 +1063,26 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Theory]
-    [InlineData(InteractionType.None, true, false, false)]
+    [InlineData(InteractionType.None, true, false, true)]
     [InlineData(InteractionType.None, true, true, true)]
     [InlineData(InteractionType.None, false, false, false)]
     [InlineData(InteractionType.None, false, true, true)]
-    [InlineData(InteractionType.Stacktool, true, false, false)]
+    [InlineData(InteractionType.Stacktool, true, false, true)]
     [InlineData(InteractionType.Stacktool, true, true, true)]
-    public void StepIsBlockedByAnyFurnitureUnlessPhysicsMovesThroughIt(InteractionType type, bool stackable, bool through, bool moves)
+    // Observed on AIR WIN63-202610151745-318700621 (r97_mv_collide): Move/Rotate lands on stackable furniture; only furniture that
+    // cannot be stacked on blocks it, unless physics moves through it.
+    public void MoveRotateIsBlockedByNonStackableFurnitureUnlessPhysicsMovesThroughIt(InteractionType type, bool stackable, bool through, bool moves)
     {
         var (room, map, items) = World(new RecordingPlacementStore());
         var mover = MakeItem(1, "test");
-        mover.SetState(0, 1, 0, Gamemap.GetAffectedTiles(1, 1, 0, 1, 0));
+        mover.SetState(0, 1, 0);
         items[1] = mover;
         map.AddToMap(mover);
         var obstacle = MakeItem(2, "obstacle");
         obstacle.Definition.InteractionType = type;
         obstacle.Definition.Stackable = stackable;
         obstacle.Definition.Height = 0.5;
-        obstacle.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        obstacle.SetState(1, 1, 0);
         items[2] = obstacle;
         map.AddToMap(obstacle);
         var action = ActionBox(room, "wf_act_move_rotate");
@@ -1104,12 +1107,12 @@ public partial class ModernWiredRuntimeTests
     {
         var (room, map, items) = World(new RecordingPlacementStore());
         var mover = MakeItem(1, "test");
-        mover.SetState(0, 1, 0, Gamemap.GetAffectedTiles(1, 1, 0, 1, 0));
+        mover.SetState(0, 1, 0);
         items[1] = mover;
         map.AddToMap(mover);
         var tile = MakeItem(2, "color_tile");
         tile.Definition.Stackable = true;
-        tile.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        tile.SetState(1, 1, 0);
         items[2] = tile;
         map.AddToMap(tile);
         var through = new Plus.HabboHotel.Items.Wired.Modern.Addons.WiredPhysicsPolicy(false, new HashSet<uint> { 2 }, new HashSet<int>(), new HashSet<uint>());
@@ -1126,16 +1129,16 @@ public partial class ModernWiredRuntimeTests
         var (room, map, items) = World(new RecordingPlacementStore());
         var below = MakeItem(2, "color_tile");
         below.Definition.Stackable = true;
-        below.SetState(0, 1, 0, Gamemap.GetAffectedTiles(1, 1, 0, 1, 0));
+        below.SetState(0, 1, 0);
         items[2] = below;
         map.AddToMap(below);
         var ahead = MakeItem(3, "color_tile");
         ahead.Definition.Stackable = true;
-        ahead.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        ahead.SetState(1, 1, 0);
         items[3] = ahead;
         map.AddToMap(ahead);
         var mover = MakeItem(1, "test");
-        mover.SetState(0, 1, 0, Gamemap.GetAffectedTiles(1, 1, 0, 1, 0));
+        mover.SetState(0, 1, 0);
         items[1] = mover;
         map.AddToMap(mover);
         var action = ActionBox(room, name);
@@ -1182,13 +1185,13 @@ public partial class ModernWiredRuntimeTests
     {
         var (room, map, items) = World(new RecordingPlacementStore());
         var mover = MakeItem(1, "test");
-        mover.SetState(0, 0, 0, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+        mover.SetState(0, 0, 0);
         items[1] = mover;
         map.AddToMap(mover);
         var target = MakeItem(2, "color_tile");
         target.Definition.Stackable = true;
         target.Definition.Height = 0.5;
-        target.SetState(2, 2, 0, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+        target.SetState(2, 2, 0);
         items[2] = target;
         map.AddToMap(target);
         var action = ActionBox(room, "wf_act_furni_to_furni");
@@ -1236,11 +1239,20 @@ public partial class ModernWiredRuntimeTests
         var ahead = StackItem(map, items, 9, "color_tile", 1, 0, 0.5, true);
         var action = StackBox(room, name, 2, stack);
 
-        var directional = name == "wf_act_move_to_dir";
+        // Move/Rotate lands on stackable furniture like Move To Direction (observed on AIR WIN63-202610151745-318700621, r97_mv_collide).
+        var directional = name is "wf_act_move_to_dir" or "wf_act_move_rotate";
         Assert.Equal(directional, StackPulse(room, action, stack, ahead));
 
-        Assert.Equal((directional && tileFirst ? 1 : 0, 1, directional && tileFirst ? 0.5 : 0.0), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
-        Assert.Equal((directional ? 1 : 0, 1, directional && tileFirst ? 1.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
+        if (name == "wf_act_move_rotate") {
+            // The tile and its chair move as one unit onto the stackable tile ahead.
+            Assert.Equal((1, 1, 0.5), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
+            Assert.Equal((1, 1, 1.0), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
+
+            return;
+        }
+
+        Assert.Equal((tileFirst ? 1 : 0, 1, tileFirst ? 0.5 : 0.0), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
+        Assert.Equal((1, 1, tileFirst ? 1.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
     }
 
     // wf_act_rel_mov stacks in pick order at a wall instead (observed r92k r92h-rel-wall; see WiredActionPortParityTests.ObservedR92k).
@@ -1320,7 +1332,7 @@ public partial class ModernWiredRuntimeTests
         var item = MakeItem(id, name);
         item.Definition.Stackable = stackable;
         item.Definition.Height = height;
-        item.SetState(x, 1, z, Gamemap.GetAffectedTiles(1, 1, x, 1, 0));
+        item.SetState(x, 1, z);
         items[id] = item;
         map.AddToMap(item);
 
@@ -1389,7 +1401,7 @@ public partial class ModernWiredRuntimeTests
             var x = frontX - dx * spacing * i;
             var item = MakeItem((uint)(frontFirst ? i + 1 : line.Length - i), "color_tile");
             item.Definition.Stackable = true;
-            item.SetState(x, 1, 0, Gamemap.GetAffectedTiles(1, 1, x, 1, 0));
+            item.SetState(x, 1, 0);
             items[item.Id] = item;
             map.AddToMap(item);
             line[i] = item;
@@ -1524,8 +1536,8 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(dx, dy), moved);
     }
 
+    // Turn 0 without a move is a restack, not a move on the spot (StillMoveRotateRestacksPickedFurniOnTopOfTheirStack).
     [Theory]
-    [InlineData(0, 0)]
     [InlineData(2, 2)]
     [InlineData(4, 6)]
     public void StoredMoveTurnsRotateAsTheEditorLabels(int turn, int expected)
@@ -1606,7 +1618,7 @@ public partial class ModernWiredRuntimeTests
         var (room, map, items) = World(new RecordingPlacementStore());
         var mover = MakeItem(1, "test");
         mover.Definition.ExtraRot = extraRot;
-        mover.SetState(0, 1, 0, Gamemap.GetAffectedTiles(1, 1, 0, 1, start));
+        mover.SetState(0, 1, 0);
         mover.Rotation = start;
         items[1] = mover;
         map.AddToMap(mover);
@@ -1872,7 +1884,7 @@ public partial class ModernWiredRuntimeTests
             item.RoomId = Room.Id;
             item.Definition.InteractionType = InteractionType.WiredEffect;
             item.Definition.WiredType = name == "wf_act_move_rotate" ? WiredBoxType.EffectMoveAndRotate : WiredBoxType.None;
-            item.SetState(2, 2, 0, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+            item.SetState(2, 2, 0);
             var picks = new[] { MakeItem(8, "test"), MakeItem(9, "test") };
 
             for (var i = 0; i < picks.Length; i++) {
@@ -1880,7 +1892,7 @@ public partial class ModernWiredRuntimeTests
                 picks[i].RoomId = Room.Id;
                 picks[i].Definition.Stackable = true;
                 picks[i].Definition.Walkable = true;
-                picks[i].SetState(1, 1 + i, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1 + i, 0));
+                picks[i].SetState(1, 1 + i, 0);
             }
 
             Room.GetRoomItemHandler().LoadFurniture([item, .. picks]);
@@ -1909,7 +1921,7 @@ public partial class ModernWiredRuntimeTests
         {
             var item = MakeItem(101, "wf_trg_game_starts");
             item.RoomId = Room.Id;
-            item.SetState(2, 2, 1, Gamemap.GetAffectedTiles(1, 1, 2, 2, 0));
+            item.SetState(2, 2, 1);
             typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, Room);
             Items[item.Id] = item;
             var trigger = new WiredModernTrigger(Room, item, Descriptor("wf_trg_game_starts"));
@@ -2182,30 +2194,36 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void ConfiguredRoomForwardingSendsActualClientPacketAndLeavesRoomChecksToEntry()
+    // Observed on AIR WIN63-202610151745-318700621: the forward sends no RoomForward; the server switches the room itself.
+    public void ConfiguredRoomForwardingSwitchesTheRoomServerSideAndLeavesRoomChecksToEntry()
     {
         using var fixture = new TeleportFixture();
         var sent = 0;
+        var switches = 0;
         fixture.Client.SendCallback = _ => { sent++; return true; };
+        using var switchRoom = WiredRoomForwarding.UseRoomSwitch(_ => switches++);
         var action = ActionBox(fixture.Room, "wf_act_teleport_to_room");
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, new() { IntParams = [0, 100], Text = "42" }, out var config, out _));
         action.ApplyConfiguration(config);
         var context = Context(fixture.Room, new(WiredEventKind.Enter) { Actor = fixture.User }, [], [fixture.User]);
         context.Triggering.UserIds.Add(fixture.User.VirtualId);
         Assert.True(action.Execute(context));
-        Assert.Equal(1, sent);
+        Assert.Equal(0, sent);
+        Assert.Equal(1, switches);
         Assert.Same(fixture.Room, fixture.Habbo.CurrentRoom);
         Assert.False(fixture.Habbo.IsTeleporting);
         Assert.Equal(42u, fixture.Habbo.WiredRoomNetworkDestination);
         fixture.Habbo.CurrentRoom = null;
         Assert.False(action.Execute(context));
-        Assert.Equal(1, sent);
+        Assert.Equal(1, switches);
     }
 
     [Fact]
-    public void ActualForwardingRecordsNetworkEntryOnlyAfterPacketSendAndDestinationConsumesIt()
+    public void ActualForwardingRecordsNetworkEntryBeforeTheSwitchAndDestinationConsumesIt()
     {
         using var f = new TeleportFixture();
+        var switches = 0;
+        using var switchRoom = WiredRoomForwarding.UseRoomSwitch(_ => switches++);
         var action = ActionBox(f.Room, "wf_act_teleport_to_room");
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, new() { IntParams = [0, 100], Text = "42" }, out var config, out _));
         action.ApplyConfiguration(config);
@@ -2214,12 +2232,10 @@ public partial class ModernWiredRuntimeTests
         f.Habbo.CurrentRoom = null;
         Assert.False(action.Execute(context));
         Assert.Equal(0u, f.Habbo.WiredRoomNetworkDestination);
+        Assert.Equal(0, switches);
         f.Habbo.CurrentRoom = f.Room;
-        f.Client.SendCallback = _ => throw new IOException("forward enqueue failed");
-        Assert.Throws<IOException>(() => action.Execute(context));
-        Assert.Equal(0u, f.Habbo.WiredRoomNetworkDestination);
-        f.Client.SendCallback = _ => true;
         Assert.True(action.Execute(context));
+        Assert.Equal(1, switches);
         Assert.Equal(42u, f.Habbo.WiredRoomNetworkDestination);
         var (destination, _, _) = World();
         destination.Id = 42;
@@ -3017,7 +3033,7 @@ public partial class ModernWiredRuntimeTests
             typeof(WiredComponent).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(wired, Engine);
             typeof(Room).GetField("_wiredComponent", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(Room, wired);
             Target = MakeItem(1, "test");
-            Target.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+            Target.SetState(1, 1, 0);
             Items[1] = Target;
             Trigger = new(Room, MakeItem(101, "wf_trg_enter_room"), Descriptor("wf_trg_enter_room"));
             WiredNativeTestSupport.InstallRuntime(Trigger, WiredTriggerConfiguration.Defaults("wf_trg_enter_room"));
@@ -3377,7 +3393,7 @@ public partial class ModernWiredRuntimeTests
         var timers = Enumerable.Range(1, 3).Select(i =>
         {
             var item = MakeItem((uint)i, "wf_trg_at_given_time");
-            item.SetState(i - 1, 0, 0, Gamemap.GetAffectedTiles(1, 1, i - 1, 0, 0));
+            item.SetState(i - 1, 0, 0);
             items[item.Id] = item;
             var box = new WiredModernTimedTrigger(room, item, Descriptor("wf_trg_at_given_time"));
             Assert.True(WiredNativeTestSupport.TryValidateRuntime(box, new() { IntParams = [1] }, out var config, out _));
@@ -3416,7 +3432,7 @@ public partial class ModernWiredRuntimeTests
         var store = new RecordingPlacementStore();
         var (room, map, items) = World(store);
         var mover = MakeItem(1, "test");
-        mover.SetState(0, 0, 0, Gamemap.GetAffectedTiles(1, 1, 0, 0, 0));
+        mover.SetState(0, 0, 0);
         items[1] = mover;
         map.AddToMap(mover);
         var occupant = new RoomUser(1, 0, 7, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 1, Y = 1 };
@@ -3442,7 +3458,7 @@ public partial class ModernWiredRuntimeTests
         var mover = MakeItem(1, "test");
         items[1] = mover;
         var obstacle = MakeItem(2, "test");
-        obstacle.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        obstacle.SetState(1, 1, 0);
         items[2] = obstacle;
         map.AddToMap(obstacle);
         var blocked = new WiredCollisionPolicy(new HashSet<uint> { 2 }, new HashSet<int>(), new HashSet<uint> { 2 });
@@ -3478,7 +3494,7 @@ public partial class ModernWiredRuntimeTests
         Assert.False(action.Execute(wrong));
         Assert.Equal(0, actor.X);
         var blocked = MakeItem(10, "test");
-        blocked.SetState(1, 0, 0, Gamemap.GetAffectedTiles(1, 1, 1, 0, 0));
+        blocked.SetState(1, 0, 0);
         fixture.Items[10] = blocked;
         room.GetGameMap().AddToMap(blocked);
         var context = Firing();
@@ -3710,6 +3726,9 @@ public partial class ModernWiredRuntimeTests
 
             return new Dictionary<uint, ItemDefinition> { [55] = definition };
         });
+        var template = MakeItem(900, "injected-template", buildersClub: true);
+        template.Definition = definition;
+        fixture.Items[template.Id] = template;
         var action = Assert.IsType<WiredModernAction>(fixture.Room.GetWired().CreateConfiguredBox(
             MakeItem(102, "wf_act_place_furni"), Descriptor("wf_act_place_furni")));
         Assert.Equal(0, reads);
@@ -3754,7 +3773,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void SnapshotPlacementCopiesDetachedTemplatesWithRelativeGeometryAndAltitude()
+    public void SnapshotPlacementCopiesExistingTemplatesWithSavedGeometryAndAltitude()
     {
         using var f = new TeleportFixture();
         var manager = DispatchProxy.Create<IItemDataManager, RecordingProxy>();
@@ -3764,6 +3783,13 @@ public partial class ModernWiredRuntimeTests
         ((RecordingProxy)(object)manager).InvokeMethod = (m, _) => m.Name == "get_Items" ? new Dictionary<uint, ItemDefinition> { [5] = def } : null;
         f.DefinitionManager = manager;
         f.Target.Definition.Stackable = true;
+
+        foreach (var id in new uint[] { 900, 901 }) {
+            var original = MakeItem(id, "template", buildersClub: true);
+            original.Definition = def;
+            f.Items[id] = original;
+        }
+
         var action = ActionBox(f.Room, "wf_act_place_furni", definitions: f.DefinitionManager);
         var proposed = WiredTemporaryFurnitureActions.Defaults("wf_act_place_furni") with
         {
@@ -3790,22 +3816,23 @@ public partial class ModernWiredRuntimeTests
         Assert.True(f.Room.GetRoomItemHandler().RemoveTemporaryFloorItem(copies[0]));
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, prepared with { TemporaryPlacement = new(Altitude: WiredPlaceAltitudeType.SourceAltitude) }, out config, out _));
         action.ApplyConfiguration(config);
-        Assert.True(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
+        Assert.False(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
     }
 
     [Fact]
     public void DynamicPlaceSourcesCaptureCurrentFloorTemplatesAndLeaveSavedSnapshotsFrozen()
     {
-        var (room, _, _) = World();
+        var (room, _, items) = World();
         var definition = MakeItem(5, "source").Definition;
         definition.Id = 5;
         definition.Stackable = true;
         var manager = DispatchProxy.Create<IItemDataManager, RecordingProxy>();
         ((RecordingProxy)(object)manager).InvokeMethod = (method, _) => method.Name == "get_Items" ? new Dictionary<uint, ItemDefinition> { [5] = definition } : null;
-        var source = MakeItem(8, "source");
+        var source = MakeItem(8, "source", buildersClub: true);
         source.Definition = definition;
+        items[source.Id] = source;
         source.LegacyDataString = "3";
-        source.SetState(2, 1, 0, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
+        source.SetState(2, 1, 0);
         var transient = Assert.IsType<Item>(room.GetRoomItemHandler().PlaceTemporaryFloorItem(definition, 1, 0, 1, 0));
         var box = MakeItem(100, "wf_act_place_furni");
         var config = new WiredConfiguration
@@ -3839,6 +3866,9 @@ public partial class ModernWiredRuntimeTests
         }, manager));
         Assert.True(room.GetRoomItemHandler().RemoveTemporaryFloorItem(Assert.Single(room.GetRoomItemHandler().GetFloor.Where(item => item.IsTemporary && item.Id != transient.Id))));
 
+        var savedTemplate = MakeItem(900, "saved-template", buildersClub: true);
+        savedTemplate.Definition = definition;
+        items[savedTemplate.Id] = savedTemplate;
         var frozen = Context(room, new(WiredEventKind.Use), present, []);
         frozen.Triggering.FurniIds.Add(source.Id);
         Assert.False(WiredTemporaryFurnitureActions.Execute("wf_act_place_furni", box, frozen, config with
@@ -3855,9 +3885,9 @@ public partial class ModernWiredRuntimeTests
         Assert.True(room.GetRoomItemHandler().RemoveTemporaryFloorItem(saved));
 
         var primary = MakeItem(11, "anchor");
-        primary.SetState(1, 0, 0, Gamemap.GetAffectedTiles(1, 1, 1, 0, 0));
+        primary.SetState(1, 0, 0);
         var secondaryAnchor = MakeItem(12, "anchor");
-        secondaryAnchor.SetState(0, 2, 0, Gamemap.GetAffectedTiles(1, 1, 0, 2, 0));
+        secondaryAnchor.SetState(0, 2, 0);
         var aimed = Context(room, new(WiredEventKind.Use), [primary, secondaryAnchor], []);
         var aimedConfig = new WiredConfiguration
         {
@@ -3892,17 +3922,18 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void DynamicPlaceSpawnResolvesOpaqueCatalogIdsAndLeavesLiveTokensUnread()
     {
-        var (room, _, _) = World();
+        var (room, _, items) = World();
         room.Id = 1;
         var definition = MakeItem(5, "source").Definition;
         definition.Id = 5;
         definition.Stackable = true;
         var manager = DispatchProxy.Create<IItemDataManager, RecordingProxy>();
         ((RecordingProxy)(object)manager).InvokeMethod = (method, _) => method.Name == "get_Items" ? new Dictionary<uint, ItemDefinition> { [5] = definition } : null;
-        var source = MakeItem(8, "source");
+        var source = MakeItem(8, "source", buildersClub: true);
         source.Definition = definition;
+        items[source.Id] = source;
         source.LegacyDataString = "3";
-        source.SetState(2, 1, 0, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
+        source.SetState(2, 1, 0);
         var wired = new WiredComponent(room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance,
             TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance,
             TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
@@ -3942,7 +3973,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void SnapshotPreparationPreservesSelectedPivotOrderAfterOriginalsDetach()
+    public void SnapshotPreparationPreservesSelectedPivotOrderAndSkipsDetachedOriginals()
     {
         using var f = new TeleportFixture();
         f.Target.Definition.Stackable = true;
@@ -3952,20 +3983,18 @@ public partial class ModernWiredRuntimeTests
         var manager = DispatchProxy.Create<IItemDataManager, RecordingProxy>();
         ((RecordingProxy)(object)manager).InvokeMethod = (method, _) => method.Name == "get_Items" ? new Dictionary<uint, ItemDefinition> { [5] = definition } : null;
         f.DefinitionManager = manager;
-        var firstInserted = MakeItem(10, "test");
+        var firstInserted = MakeItem(10, "test", buildersClub: true);
         firstInserted.Definition = definition;
-        firstInserted.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        firstInserted.SetState(1, 1, 0);
         f.Items[10] = firstInserted;
-        var firstPicked = MakeItem(20, "test");
+        var firstPicked = MakeItem(20, "test", buildersClub: true);
         firstPicked.Definition = definition;
-        firstPicked.SetState(2, 1, 0, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
+        firstPicked.SetState(2, 1, 0);
         f.Items[20] = firstPicked;
         var action = ActionBox(f.Room, "wf_act_place_furni", definitions: f.DefinitionManager);
         var proposed = WiredTemporaryFurnitureActions.Defaults("wf_act_place_furni") with { SelectedItems = [20, 10], SecondarySelectedItems = [1], FurniSources = ImmutableDictionary<string, int>.Empty.Add("target", 101), TemporaryPlacement = new(Location: WiredPlaceLocationType.CustomLocation) };
         var captured = WiredRoomOperations.PrepareSnapshots(action, proposed);
         Assert.Equal(new uint[] { 20, 10 }, captured.Snapshots.Select(snapshot => snapshot.ItemId));
-        f.Items.TryRemove(10, out _);
-        f.Items.TryRemove(20, out _);
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, captured, out var config, out _));
         action.ApplyConfiguration(config);
         Assert.True(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
@@ -3974,17 +4003,26 @@ public partial class ModernWiredRuntimeTests
         Assert.Contains(copies, item => item.GetX == 1 && item.GetY == 1);
         Assert.Contains(copies, item => item.GetX == 0 && item.GetY == 1);
         Assert.DoesNotContain(copies, item => item.GetX == 2);
+
+        foreach (var copy in copies) {
+            Assert.True(f.Room.GetRoomItemHandler().RemoveTemporaryFloorItem(copy));
+        }
+
+        f.Items.TryRemove(10, out _);
+        f.Items.TryRemove(20, out _);
+        Assert.False(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
+        Assert.DoesNotContain(f.Items.Values, item => item.IsTemporary);
     }
 
     [Fact]
-    public void NativePlaceSkipsWallTemplatesBeforeChoosingTheFloorAnchor()
+    public void NativePlaceCapturesWallsAndSkipsIneligibleTemplatesBeforeChoosingTheFloorAnchor()
     {
         using var f = new TeleportFixture();
         f.Target.Definition.Stackable = true;
-        var floor = MakeItem(10, "floor-template");
+        var floor = MakeItem(10, "floor-template", buildersClub: true);
         floor.Definition.Id = 5;
         floor.Definition.Stackable = true;
-        floor.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        floor.SetState(1, 1, 0);
         f.Items[floor.Id] = floor;
         var wall = MakeItem(20, "wall-template");
         wall.Definition.Id = 6;
@@ -4004,14 +4042,16 @@ public partial class ModernWiredRuntimeTests
         var snapshots = (ImmutableArray<WiredFurniSnapshot>)typeof(WiredConfigurationService)
             .GetMethod("CaptureSnapshots", BindingFlags.Static | BindingFlags.NonPublic)!
             .Invoke(null, [f.Room, "wf_act_place_furni", native])!;
-        Assert.Equal(floor.Id, Assert.Single(snapshots).ItemId);
-        // The runtime also filters admitted native snapshot records before choosing the pivot.
-        native = native with { SavedState = new() { Snapshots = [WiredRoomOperations.Capture(wall), .. snapshots] } };
+        Assert.Equal(new[] { wall.Id, floor.Id }, snapshots.Select(snapshot => snapshot.ItemId));
+        Assert.NotNull(snapshots[0].Wall);
+        native = native with { SavedState = new() { Snapshots = snapshots } };
         Assert.True(WiredNativeEditorProjection.TryCompile(action.Item.Id, action.Descriptor, native, out var compiled));
         Assert.True(WiredConfigurationSave.TrySave(action, compiled, TestWiredConfigurationStore.Instance, out var error), error);
         Assert.True(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
         var copy = Assert.Single(f.Room.GetRoomItemHandler().GetFloor.Where(item => item.IsTemporary));
         Assert.Equal((f.Target.GetX, f.Target.GetY), (copy.GetX, copy.GetY));
+        Assert.DoesNotContain(f.Room.GetRoomItemHandler().GetWall, item => item.IsTemporary);
+        Assert.Same(wall, f.Room.GetRoomItemHandler().GetItem(wall.Id));
     }
 
     [Fact]
@@ -4268,6 +4308,9 @@ public partial class ModernWiredRuntimeTests
             action.Item = ItemLoader.ReadRoomItem(Assert.Single(loadedRows.Rows.Cast<DataRow>()), roomId, action.Item.Definition);
             typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(action.Item, f.Room);
             f.Items[spawnId] = action.Item;
+            var template = MakeItem(900, "template", buildersClub: true);
+            template.Definition = f.DefinitionManager.Items[baseId];
+            f.Items[template.Id] = template;
             var removals = new List<byte[]>();
             f.Client.SendCallback = args =>
             {
@@ -4282,7 +4325,7 @@ public partial class ModernWiredRuntimeTests
             Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, new()
             {
                 TemporaryPlacement = new(Altitude: WiredPlaceAltitudeType.SourceAltitude),
-                Snapshots = [new(0, baseId, 1, 1, 0, 2, "0")]
+                Snapshots = [new(900, baseId, 1, 1, 0, 2, "0")]
             }, out var raw, out _));
             action.ApplyConfiguration(raw);
             Assert.True(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
@@ -4464,7 +4507,7 @@ public partial class ModernWiredRuntimeTests
         var obstacle = MakeItem(2, "obstacle");
         obstacle.Definition.Stackable = true;
         obstacle.Definition.Height = 3;
-        obstacle.SetState(2, 1, 0, Gamemap.GetAffectedTiles(1, 1, 2, 1, 0));
+        obstacle.SetState(2, 1, 0);
         f.Items[2] = obstacle;
         map.AddToMap(obstacle);
         var user = Bot(room, 8);
@@ -4562,9 +4605,10 @@ public partial class ModernWiredRuntimeTests
 
         return descriptor;
     }
-    private static Item MakeItem(uint id, string name) => new()
+    private static Item MakeItem(uint id, string name, bool buildersClub = false) => new()
     {
         Id = id,
+        IsBuildersClub = buildersClub,
         ExtraData = new LegacyDataFormat { Data = "0" },
         Definition = new()
         {

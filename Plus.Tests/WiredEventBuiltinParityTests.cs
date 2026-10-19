@@ -146,7 +146,8 @@ public partial class PlacedFurniRoomTests
         var intermediate = Furni(72, InteractionType.None, WiredBoxType.None);
         intermediate.Definition.Stackable = false;
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(null, intermediate, 1, 1, 0, true, false, false));
-        Assert.True(wired.WriteBuiltin(new(WiredVariableTarget.Furni, "@occupation"), furni, (1 << 16) | (2 << 8) | 4, frame));
+        // The low byte is a position in the furni's directions (0, 2, 4, 6 here): 2 faces 4.
+        Assert.True(wired.WriteBuiltin(new(WiredVariableTarget.Furni, "@occupation"), furni, (1 << 16) | (2 << 8) | 2, frame));
         Assert.Equal((1, 2, 4), (item.GetX, item.GetY, item.Rotation));
         Assert.True(wired.WriteBuiltin(new(WiredVariableTarget.Furni, "@occupation"), furni, (2 << 16) | (2 << 8) | 99, frame));
         Assert.Equal((2, 2, 4), (item.GetX, item.GetY, item.Rotation));

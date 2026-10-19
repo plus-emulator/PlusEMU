@@ -166,7 +166,7 @@ public partial class PlacedFurniRoomTests
     {
         // The source is at the left edge, with the terminal door above it and blockers to its right/below.
         // Original legacy cuts between those blockers; v2 cannot transit through the door to detour.
-        Assert.Equal("mv 1,2,0", legacy[0].Status);
+        Assert.Equal("mv 1,2,0.0", legacy[0].Status);
         Assert.Equal((1, 2, 0d), legacy[1].Location);
         Assert.All(v2, frame => Assert.Equal((0, 1, 0d), frame.Location));
         Assert.All(v2, frame => Assert.DoesNotContain("mv ", frame.Status));

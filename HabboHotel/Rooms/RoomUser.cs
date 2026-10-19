@@ -18,6 +18,8 @@ using Plus.Utilities;
 
 namespace Plus.HabboHotel.Rooms;
 
+public sealed record FootballGateOutfit(string BaseLook, string Look);
+
 public class RoomUser
 {
     internal ActorProfile? NavigationProfile { get; set; }
@@ -25,6 +27,15 @@ public class RoomUser
     public ActorMovementState Movement => LazyInitializer.EnsureInitialized(ref _movement)!;
 
     public WiredRoomEntrySnapshot WiredRoomEntry { get; internal set; }
+
+    /// <summary>A user forwarded by Teleport to Room glows for TicksLeft more room ticks, then wears Restore again.</summary>
+    internal (int TicksLeft, int Restore)? ForwardArrivalEffect { get; set; }
+
+    /// <summary>The look a football gate put on, kept only while the user's own look is still the one it was made from.</summary>
+    public FootballGateOutfit? FootballGateOutfit { get; set; }
+
+    /// <summary>The look shown in this room: a football gate's outfit, or the user's own look.</summary>
+    public string LookFor(Users.Habbo habbo) => FootballGateOutfit is { } outfit && outfit.BaseLook == habbo.Look ? outfit.Look : habbo.Look;
     private GameClient? _mClient;
     private Room? _mRoom;
     private readonly IChatEmotionsManager _chatEmotions;
@@ -681,7 +692,7 @@ public class RoomUser
         var client = GetClient();
 
         if (item > 0 && item != previous && !IsBot && client != null) {
-            _rewards.Progress(client, RewardTrackActions.FindHandItem);
+            _rewards.Progress(client, RewardTrackActions.FindHandItem, 1, item.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
     }
 

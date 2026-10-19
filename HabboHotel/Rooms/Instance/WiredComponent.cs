@@ -69,6 +69,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             OnEvent, ExceptionLogger.LogWiredException,
             WiredEngineLimits.FromSettings(settings.TryGetValue),
             CaptureActorVisit);
+        _engine.ActionDue = ArmWake;
         _targets = new(
             () => _room.GetRoomItemHandler().GetFloor,
             () => _room.GetRoomUserManager().GetUserList(),
@@ -108,9 +109,17 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.PublicationPollIsSilent = () => _counterItems.Count == 0 && _chests?.HasPending != true
             && !WiredBotTargets.For(_room).HasTargets;
         _engine.LimitReached = NoteLimit;
-        // The hidden message is echoed to its speaker as a whisper.
-        _engine.SpeechHidden = evt => evt.Actor?.GetClient()?.Send(
-            new Plus.HabboHotel.Items.Wired.Modern.Actions.WiredChatComposer(evt.Actor.VirtualId, evt.Actor.VirtualId, evt.Message, evt.ChatStyle, -1, true));
+        // The hidden message is echoed to its speaker as a whisper, after the stack's flash and its messages (AIR
+        // WIN63-202610151745-318700621).
+        _engine.SpeechHidden = evt =>
+        {
+            if (evt.Actor?.GetClient() is not { } client) {
+                return;
+            }
+
+            var echo = new Plus.HabboHotel.Items.Wired.Modern.Actions.WiredChatComposer(evt.Actor.VirtualId, evt.Actor.VirtualId, evt.Message, evt.ChatStyle, -1, true);
+            AfterFlash(() => client.Send(echo));
+        };
         _engine.CaptureSpeech = (context, trigger) => _variables?.IsValueCreated == true
             ? _variables.Value.CaptureSpeech(context, trigger) : null;
         _engine.ConfigurationPublished = box =>
@@ -186,12 +195,51 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     public void OnCycle()
     {
+        WiredAvatarState.For(_room).FlushTickEffects();
         _highscores?.OnOwnedPass();
         PublishStateWrites();
         _engine.OnCycle();
         FlushVariableFx();
         FlushFlashes();
         FlushLeaderboards();
+    }
+
+    private readonly HashSet<long> _wakeDue = [];
+    private const long WakeLeadMs = 3;
+
+    private void ArmWake(long dueMs)
+    {
+        lock (_wakeDue) {
+            if (!_wakeDue.Add(dueMs)) {
+                return;
+            }
+        }
+
+        // Handed over a little early; the worker holds the pass until the due time.
+        WiredWakeClock.Shared.After(dueMs - _engine.Now - WakeLeadMs, () => Wake(dueMs, 0));
+    }
+
+    // A delayed effect's pass runs at its due time. When a pass is already running it may have started before the time fell due, so the
+    // wake-up retries each millisecond for a few, then leaves it to the next 50 ms step.
+    private void Wake(long dueMs, int attempt)
+    {
+        if (_room.MDisposed || _room.IsCrashed) {
+            return;
+        }
+
+        // A queued pool item, or a new thread, can wait several ms to start on a busy server, which the effect would land late by; the
+        // wake-up hands the pass to a pre-started worker and the clock stays free.
+        var startAt = WiredWakeClock.Now + Math.Max(0, dueMs - _engine.Now);
+
+        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, workers: WiredWakeWorkers.Shared, startAtMs: startAt) || attempt >= 10) {
+            lock (_wakeDue) {
+                _wakeDue.Remove(dueMs);
+            }
+
+            return;
+        }
+
+        WiredWakeClock.Shared.After(1, () => Wake(dueMs, attempt + 1));
     }
 
     internal void OnFastCycle()
@@ -397,8 +445,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         var triggered = WithHighscoreSpeechOwner(type == WiredBoxType.TriggerUserSays, () => TriggerEventCore(type, arguments));
 
-        // A chat runs its stacks at once, like Dispatch of speech: their flashes go out with the chat.
-        if (type == WiredBoxType.TriggerUserSays) {
+        // A chat runs its stacks at once, like Dispatch of speech: their flashes go out with the chat. Enter Room stacks run inside the
+        // room entry, so their flashes go out with it.
+        if (type is WiredBoxType.TriggerUserSays or WiredBoxType.TriggerRoomEnter) {
             FlushFlashes();
         }
 
@@ -598,17 +647,39 @@ public partial class WiredComponent : IWiredRuntimeOperations
     internal void FlushFlashes()
     {
         Item[] items;
+        Action[] messages;
 
         lock (_pendingFlashes) {
-            if (_pendingFlashes.Count == 0) {
+            if (_pendingFlashes.Count == 0 && _afterFlash.Count == 0) {
                 return;
             }
 
             items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
             _pendingFlashes.Clear();
+            messages = [.. _afterFlash];
+            _afterFlash.Clear();
         }
 
-        _room.SendObjectsData(FlashOrder(items));
+        if (items.Length > 0) {
+            _room.SendObjectsData(FlashOrder(items));
+        }
+
+        foreach (var send in messages) {
+            send();
+        }
+    }
+
+    private readonly List<Action> _afterFlash = [];
+
+    /// <summary>
+    /// Sends a stack's chat output after the pass's flash. Observed on AIR WIN63-202610151745-318700621: the flash comes before the
+    /// message a stack shows (and before the speaker's chat), while packets such as YouArePlayingGame or AvatarEffect go out at once.
+    /// </summary>
+    internal void AfterFlash(Action send)
+    {
+        lock (_pendingFlashes) {
+            _afterFlash.Add(send);
+        }
     }
 
     /// <summary>

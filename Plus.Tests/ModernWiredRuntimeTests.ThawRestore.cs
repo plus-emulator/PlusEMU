@@ -17,9 +17,14 @@ public partial class ModernWiredRuntimeTests
         f.User.ApplyEffect(before);
         var state = new WiredAvatarState();
         Assert.True(state.FreezeUser(f.User, 218, false));
+        // Observed on AIR WIN63-202610151745-318700621: the effect arrives with the next room tick.
+        Assert.Equal(before, f.Habbo.Effects!.CurrentEffect);
+        state.FlushTickEffects();
         Assert.Equal(218, f.Habbo.Effects!.CurrentEffect);
         Assert.True(state.FreezeUser(f.User, 218, false)); // A second freeze keeps the effect worn before the first one.
+        state.FlushTickEffects();
         Assert.True(state.Thaw(f.User));
+        state.FlushTickEffects();
         Assert.Equal(after, f.Habbo.Effects!.CurrentEffect);
     }
 
@@ -53,6 +58,7 @@ public partial class ModernWiredRuntimeTests
         var state = new WiredAvatarState();
         Assert.True(state.FreezeUser(f.User, 218, true));
         Assert.True(state.Thaw(f.User, teleport: true));
+        state.FlushTickEffects();
         Assert.Equal(218, f.Habbo.Effects!.CurrentEffect);
         Assert.False(f.User.Frozen);
     }

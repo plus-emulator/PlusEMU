@@ -21,7 +21,7 @@ public sealed record WiredRemoteSelector(string Name, WiredConfiguration Configu
 /// <summary>A single room read supplies every selector; IDs remain furniture IDs and avatar room indexes.</summary>
 public sealed record WiredSelectorWorld(int Width, int Height, IReadOnlyList<WiredSelectorFurniture> Furni,
     IReadOnlyList<WiredSelectorAvatar> Users, int RoomGroupId = 0,
-    IReadOnlyDictionary<uint, WiredRemoteSelector>? RemoteSelectors = null, bool IncludeWired = false);
+    IReadOnlyDictionary<uint, WiredRemoteSelector>? RemoteSelectors = null, Func<int, int, bool>? IsGroupMember = null);
 
 public sealed class WiredSelectedIds
 {
@@ -43,7 +43,7 @@ public sealed record WiredSelectorInputs(WiredSelectedIds Triggering, WiredSelec
     int? ActionUserId = null, int? Action = null, int ActionParameter = 0,
     Func<string, WiredConfiguration, uint, bool>? FurniVariablePredicate = null,
     Func<string, WiredConfiguration, int, bool>? UserVariablePredicate = null,
-    bool FurniModified = false, bool UsersModified = false, bool IncludeWired = false,
+    bool FurniModified = false, bool UsersModified = false,
     Func<string, WiredConfiguration, uint, WiredSelectorInputs, bool>? ScopedFurniVariablePredicate = null,
     Func<string, WiredConfiguration, int, WiredSelectorInputs, bool>? ScopedUserVariablePredicate = null,
     int? ReachedUserId = null);

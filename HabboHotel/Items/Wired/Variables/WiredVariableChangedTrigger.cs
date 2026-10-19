@@ -59,7 +59,8 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
 
         p = p.SetItem(7, p[7] < 0 ? -1 : p[7] & 15);
 
-        if (p[1] == 0 && p[6] == 0 && (p[2] == 0 || p[3] + p[4] + p[5] == 0)) {
+        // A value-changed trigger with no change types still saves and simply never fires (AIR WIN63-202610151745-318700621).
+        if (p[1] == 0 && p[6] == 0 && p[2] == 0) {
             return false;
         }
 

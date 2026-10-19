@@ -10,14 +10,12 @@ namespace Plus.Tests;
 
 public sealed partial class WiredRemainderG3Tests
 {
-    // Observed r93a (AIR WIN63-202610131318-860371703, runtime receipts line 330): an owned, tradeable pura_mdl5 as the Place Furni
-    // template is refused with wiredfurni.error.furni_can_not_be_cloned. The other value categories are inferred (WiredPlaceTemplatePolicy).
-    // Observed on hhus: a Wired box (wf_act_toggle_state) is refused the same way; a one-way gate, a gate and a roller are accepted.
+    // Observed on AIR WIN63-202610151745-318700621: BC templates save, while an owned Pura template is refused.
     [Theory]
-    [InlineData("trade", false)]
-    [InlineData("market", false)]
-    [InlineData("recycle", false)]
-    [InlineData("rare", false)]
+    [InlineData("trade", true)]
+    [InlineData("market", true)]
+    [InlineData("recycle", true)]
+    [InlineData("rare", true)]
     [InlineData("limited", false)]
     [InlineData("exchange", false)]
     [InlineData("chest", false)]
@@ -26,11 +24,12 @@ public sealed partial class WiredRemainderG3Tests
     [InlineData("one_way_gate", true)]
     [InlineData("roller", true)]
     [InlineData("plain", true)]
-    [InlineData("clone", true)]
-    public void PlaceFurniTemplatesThatCanCarryValueCannotBeCloned(string kind, bool cloneable)
+    [InlineData("clone", false)]
+    [InlineData("owned", false)]
+    public void PlaceFurniTemplatesRequireAnEligibleBuildersClubInstance(string kind, bool cloneable)
     {
         var (room, map, items) = ModernWiredRuntimeTests.WorldForG3();
-        var template = ModernWiredRuntimeTests.MakeItemForG3(10, "pura_mdl5");
+        var template = ModernWiredRuntimeTests.MakeItemForG3(10, "pura_mdl5", buildersClub: kind != "owned");
         template.Definition.AllowTrade = kind == "trade";
         template.Definition.AllowMarketplaceSell = kind == "market";
         template.Definition.AllowEcotronRecycle = kind == "recycle";
@@ -51,10 +50,10 @@ public sealed partial class WiredRemainderG3Tests
         }
 
         if (kind == "clone") {
-            template = new Item { Id = 10, IsTemporary = true, Definition = template.Definition, ExtraData = template.ExtraData };
+            template = new Item { Id = 10, IsBuildersClub = true, IsTemporary = true, Definition = template.Definition, ExtraData = template.ExtraData };
         }
 
-        template.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        template.SetState(1, 1, 0);
         items[template.Id] = template;
 
         Assert.Equal(cloneable, WiredPlaceTemplatePolicy.CanClone(template));
@@ -62,15 +61,13 @@ public sealed partial class WiredRemainderG3Tests
             WiredPlaceTemplatePolicy.RefusalKey(room, [WiredRoomOperations.Capture(template)]));
     }
 
-    // A saved row whose template definition carries value never places a clone.
     [Fact]
-    public void PlaceFurniNeverClonesAValueCarryingDefinitionFromASavedRow()
+    public void PlaceFurniNeverClonesAMissingTemplateFromASavedRow()
     {
         var (room, _, items) = ModernWiredRuntimeTests.WorldForG3();
         var definition = ModernWiredRuntimeTests.MakeItemForG3(5, "pura_mdl5").Definition;
         definition.Id = 5;
         definition.Stackable = true;
-        definition.AllowTrade = true;
         var manager = new TestWiredDefinitions(() => new() { [5] = definition });
         var action = ModernWiredRuntimeTests.ActionBoxForG3(room, "wf_act_place_furni", manager);
         Assert.True(WiredBoxRegistry.TryGet("wf_act_place_furni", out var descriptor));

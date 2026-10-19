@@ -256,10 +256,12 @@ public sealed class WiredChestAction(Room room, Item item, WiredBoxDescriptor de
         var snapshots = Chests.Read(picked).Where(chest => chest.Kind == kind && chest.Usable).ToArray();
 
         // Observed r93j r93-p2-chests-empty (hhus, WIN63-202610131318): a give from upgraded but locked (and empty) chests answers each
-        // triggering user with WiredTransactionFail reason 15 (pkts 96608, 97045) instead of failing silently.
+        // triggering user with WiredTransactionFail reason 15 (pkts 96608, 97045) instead of failing silently. Observed on AIR
+        // WIN63-202610151745-318700621: a give is no transaction, so its failure does not fire Transaction Failed.
         if (snapshots.Length == 0) {
             foreach (var actor in actors) {
-                Chests.Fail(actor, Item.Id, WiredChestFailure.NoOrLockedChests);
+                Chests.Fail(actor, Item.Id, WiredChestFailure.NoOrLockedChests, fireTrigger: false);
+                Instance.GetWired().ReportTransactionFailure(actor, Item.Id);
             }
 
             return false;

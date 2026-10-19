@@ -14,7 +14,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
         Assert.Equal((2, 1), (actor.GoalX, actor.GoalY));
-        Assert.Contains("/mv 2,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((2, 1), (actor.X, actor.Y));
     }
@@ -30,7 +30,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((0, 1), (actor.X, actor.Y));
         Assert.Equal((0, 2), (actor.GoalX, actor.GoalY));
-        Assert.Contains("/mv 0,2,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 0,2,0.0/", ExecutorUpdate(actor).Status);
         ExecutorTick();
         Assert.Equal((0, 2), (actor.X, actor.Y));
     }

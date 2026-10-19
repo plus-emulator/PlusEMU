@@ -17,7 +17,7 @@ public partial class PlacedFurniRoomTests
         tile.RoomId = RoomId;
         tile.Definition.Modes = 7;
         tile.ExtraData = new LegacyDataFormat { Data = "1" };
-        tile.SetState(2, 2, 0, []);
+        tile.SetState(2, 2, 0);
         _room.GetRoomItemHandler().LoadFurniture([tile]);
         _client.Packets.Clear();
 

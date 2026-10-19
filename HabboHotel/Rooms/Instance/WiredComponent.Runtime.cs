@@ -255,6 +255,46 @@ public partial class WiredComponent
             "room.error.wired.placement_failure", _clock.GetUtcNow());
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a give from picked chests none of which is usable (518 reason 15) writes a DEBUG
+    // line to the room log each time. The triggering user also gets NotificationDialog wired.error transaction_failure, at most once
+    // per 20 s (none 19.0 s after the last one, one 20.5 s after), and each dialog adds one TRANSACTION_FAILURE to the monitor and an
+    // ERROR line before that failure's DEBUG line. A failure inside the window does not restart it.
+    private const long TransactionFailureCooldownMs = 20000;
+    private readonly Dictionary<int, long> _lastTransactionFailureMs = [];
+
+    internal void ReportTransactionFailure(RoomUser actor, uint sourceId)
+    {
+        if (actor.GetClient() is not { } client || client.GetHabbo() is not { } habbo) {
+            return;
+        }
+
+        var now = _engine.NowMilliseconds;
+        var at = _clock.GetUtcNow();
+        bool show;
+
+        lock (_lastTransactionFailureMs) {
+            show = !_lastTransactionFailureMs.TryGetValue(habbo.Id, out var last) || now - last >= TransactionFailureCooldownMs;
+
+            if (show) {
+                _lastTransactionFailureMs[habbo.Id] = now;
+            }
+        }
+
+        if (show) {
+            client.Send(new Plus.Communication.Packets.Outgoing.Rooms.Notifications.RoomNotificationComposer("wired.error", new Dictionary<string, string>
+            {
+                ["image"] = "${image.library.url}album1584/WIRD2.png",
+                ["message"] = "${room.error.wired.transaction_failure}"
+            }));
+            RecordError(WiredErrorKind.TransactionFailure);
+            _roomLog.Append(WiredRoomLog.ErrorLevel, WiredLogSource.TransactionFailure, sourceId, "",
+                "Wired error: TRANSACTION_FAILURE. (usage=1, users=1)", at);
+        }
+
+        _roomLog.Append(WiredRoomLog.DebugLevel, WiredLogSource.TransactionFailure, sourceId, "",
+            $"Transaction failure: NO_WIRED_CHESTS_OR_LOCKED. (userId={habbo.Id}, userName={habbo.Username})", at);
+    }
+
     public void AttachRoomItem(Item item) => _engine.Mutate(() =>
     {
         _highscores?.Invalidate();
@@ -371,7 +411,7 @@ public partial class WiredComponent
         PublishCounterChanges(_counters.Poll(now), mark);
 
         if (WiredBotTargets.For(_room).HasTargets) {
-            foreach (var arrival in WiredBotTargets.For(_room).Poll(_room)) {
+            foreach (var arrival in WiredBotTargets.For(_room).Poll(_room, now)) {
                 QueueRuntimeEvent(arrival);
             }
         }

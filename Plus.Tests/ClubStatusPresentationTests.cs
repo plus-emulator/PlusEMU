@@ -50,7 +50,7 @@ public sealed class ClubStatusPresentationTests
         var before = clock.Reads;
         var composer = new ScrSendUserInfoComposer(ClubStatusSnapshot.Capture(access, ClubStatusSnapshot.PurchaseResponse));
         Assert.Equal(1, clock.Reads - before);
-        var expected = new object[] { "habbo_club", 1, 1, 1, 2, true, false, 40, 0, 46080, 2 };
+        var expected = new object[] { "habbo_club", 1, 1, 1, 2, true, false, 0, 40, 46080, 2 };
         Assert.Equal(expected, Write(composer));
 
         clock.Now = now.AddDays(33);
@@ -107,8 +107,8 @@ public sealed class ClubStatusPresentationTests
         Assert.Equal(1, packet.ReadInt());
         Assert.True(packet.ReadBool());
         Assert.False(packet.ReadBool());
-        Assert.Equal(40, packet.ReadInt());
         Assert.Equal(0, packet.ReadInt());
+        Assert.Equal(40, packet.ReadInt());
         Assert.Equal(46080, packet.ReadInt());
         Assert.Equal(2, packet.ReadInt());
         Assert.False(packet.HasDataRemaining());

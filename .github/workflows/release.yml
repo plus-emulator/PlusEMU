@@ -1,18 +1,27 @@
 name: Release
 
-# Every push to master publishes ready-to-run emulator builds. The hotel
-# installers download them from the latest release, so servers need no .NET.
+# Publishes ready-to-run emulator builds. The hotel installers download them
+# from the latest release, so servers need no .NET.
+# Releases are cut by hand once a batch of changes is ready (Actions > Release > Run workflow).
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Version change
+        type: choice
+        required: true
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
 
 concurrency:
   group: release
-  # Keep queued merges instead of replacing the previous pending release.
+  # Keep queued requests instead of replacing the previous pending release.
   queue: max
   cancel-in-progress: false
 
@@ -22,6 +31,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Select release version
+        id: version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUMP: ${{ inputs.bump }}
+        run: |
+          commit=$(git rev-parse HEAD)
+          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate | jq -s '.' | python3 .github/scripts/release-version.py "$BUMP" "$commit")
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
@@ -54,9 +75,7 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           commit=$(git rev-parse HEAD)
-          # Commit time keeps the tag stable when a failed run is retried another day.
-          date=$(date -u -d "@$(git show -s --format=%ct HEAD)" +%Y.%m.%d)
-          tag="v$date-${commit::7}"
-          bash .github/scripts/publish-release.sh "$tag" "PlusEMU $tag" "$commit" dist/*
+          bash .github/scripts/publish-release.sh "$TAG" "PlusEMU $TAG" "$commit" dist/*

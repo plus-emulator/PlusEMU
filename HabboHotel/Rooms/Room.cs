@@ -55,6 +55,9 @@ public class Room
     public Dictionary<int, DateTimeOffset> MutedUsers;
 
     public Task ProcessTask;
+
+    // RoomCycle's task slot: 0 idle, else the kind of pass holding it.
+    internal int CycleSlot;
     private bool _usesV2Movement;
     internal bool UsesV2Movement => _usesV2Movement;
     internal void EnableV2Movement() => _usesV2Movement = true;
@@ -653,7 +656,8 @@ public class Room
     private void OnRoomCrash(Exception e)
     {
         try {
-            foreach (var user in _roomUserManager.GetRoomUsers().ToList()) {
+            // A crash while unloading comes after the users were dropped.
+            foreach (var user in _roomUserManager?.GetRoomUsers().ToList() ?? []) {
                 if (user == null || user.GetClient() == null) {
                     continue;
                 }
@@ -701,51 +705,66 @@ public class Room
         var presentation = GetGameMap().StaticModel.Presentation;
         session.Send(new FloorHeightMapComposer(GetGameMap().Model.GetRelativeHeightmap(), GetGameMap().StaticModel.WallHeight,
             presentation.HalfScale, cameraX: presentation.CameraX, cameraY: presentation.CameraY, cameraZ: presentation.CameraZ));
+        session.Send(new RoomVisualizationSettingsComposer(WallThickness, FloorThickness, Convert.ToBoolean(Hidewall)));
         var snapshotUsers = _roomUserManager.GetUserList().Where(user => user != null).ToArray();
+        // Observed on AIR WIN63-202610151745-318700621: the entrant gets the users already in the room as one Users packet (empty
+        // when nobody is there) before the furni, and its own Users entry after the wall items. It gets no status update for itself
+        // here; that follows in the next room cycle.
+        var entrant = snapshotUsers.FirstOrDefault(user => !user.IsBot && ReferenceEquals(user.GetClient(), session));
+        var present = snapshotUsers.Where(user => !ReferenceEquals(user, entrant)).ToArray();
+        session.Send(new UsersComposer(_userSnapshots.Capture(present)));
 
-        foreach (var user in snapshotUsers) {
-            if (user == null) {
-                continue;
-            }
-
-            var userSnapshot = _userSnapshots.Capture(user);
-
-            if (userSnapshot != null) {
-                session.Send(new UsersComposer(userSnapshot));
-            }
-
-            if (user.IsBot && user.BotData.DanceId > 0) {
-                session.Send(new DanceComposer(user.VirtualId, user.BotData.DanceId));
-            }
-            else if (!user.IsBot && !user.IsPet && user.IsDancing) {
-                session.Send(new DanceComposer(user.VirtualId, user.DanceId));
-            }
-
-            if (user.IsAsleep) {
-                session.Send(new SleepComposer(user.VirtualId, true));
-            }
-
-            if (user.CarryItemId > 0 && user.CarryTimer > 0) {
-                session.Send(new CarryObjectComposer(user.VirtualId, user.CarryItemId));
-            }
-
-            if (!user.IsBot && !user.IsPet && user.CurrentEffect > 0) {
-                session.Send(new AvatarEffectComposer(user.VirtualId, user.CurrentEffect));
-            }
+        foreach (var user in present) {
+            SendUserExtras(session, user);
         }
 
-        session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(_roomUserManager.GetUserList())));
+        // Users with a pending update get their status from the next room tick, which reaches this session too.
+        var settledUsers = present.Where(user => !user.UpdateNeeded).ToArray();
+
+        if (settledUsers.Length > 0) {
+            session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(settledUsers)));
+        }
+
         var snapshotFurniture = VisibleFloorItems.ToArray();
         var furnitureSnapshot = RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName);
         session.Send(new ObjectsComposer(furnitureSnapshot));
         session.Send(new FurnitureMetadataComposer(furnitureSnapshot.Items));
         Plus.HabboHotel.Items.AreaHide.AreaHideState.SendSnapshot(session, snapshotFurniture);
-        Plus.HabboHotel.Items.ConfigurationItemStates.SendTo(session, this);
         var snapshotWalls = GetRoomItemHandler().GetWall.ToArray();
         var wallSnapshot = RoomFurnitureSnapshot.Capture(snapshotWalls, OwnerId, OwnerName);
         session.Send(new ItemsComposer(wallSnapshot));
         session.Send(new FurnitureMetadataComposer(wallSnapshot.Items));
+
+        if (entrant != null && _userSnapshots.Capture(entrant) is { } entrantSnapshot) {
+            session.Send(new UsersComposer(entrantSnapshot));
+            SendUserExtras(session, entrant, includeEffect: false);
+            // A cycle that ran during admission sent the status before the client knew the avatar.
+            entrant.UpdateNeeded = true;
+        }
+
         _wiredComponent?.SnapshotEnqueued(session, snapshotFurniture.Concat(snapshotWalls), snapshotUsers);
+    }
+
+    private static void SendUserExtras(GameClient session, RoomUser user, bool includeEffect = true)
+    {
+        if (user.IsBot && user.BotData.DanceId > 0) {
+            session.Send(new DanceComposer(user.VirtualId, user.BotData.DanceId));
+        }
+        else if (!user.IsBot && !user.IsPet && user.IsDancing) {
+            session.Send(new DanceComposer(user.VirtualId, user.DanceId));
+        }
+
+        if (user.IsAsleep) {
+            session.Send(new SleepComposer(user.VirtualId, true));
+        }
+
+        if (user.CarryItemId > 0 && user.CarryTimer > 0) {
+            session.Send(new CarryObjectComposer(user.VirtualId, user.CarryItemId));
+        }
+
+        if (includeEffect && !user.IsBot && !user.IsPet && user.CurrentEffect > 0) {
+            session.Send(new AvatarEffectComposer(user.VirtualId, user.CurrentEffect));
+        }
     }
 
     public void AddTent(uint tentId)
@@ -874,12 +893,7 @@ public class Room
     public void SendObject(Item item)
     {
         if (item is { IsTemporary: true, IsFloorItem: true }) {
-            // A Wired copy arrives as a single-object Objects (1991), not ObjectAdd (observed on hhus); AIR adds objects
-            // from either message the same way (room/class_1993.as:692-722, AIR WIN63-202610131318-860371703).
-            var copy = RoomFurnitureSnapshot.Capture([item], OwnerId, OwnerName);
-
-            SendPacket(new ObjectsComposer(copy), false, viewer => _wiredComponent?.ObjectEnqueued(viewer, item, null));
-            SendPacket(new FurnitureMetadataComposer(copy.Items));
+            SendTemporaryFloorItems([item]);
 
             return;
         }
@@ -891,6 +905,39 @@ public class Room
         SendPacket(new FurnitureMetadataComposer([furniture]));
     }
 
+    internal void SendTemporaryFloorItems(IReadOnlyList<Item> items)
+    {
+        if (items.Count == 0) {
+            return;
+        }
+
+        // Observed on AIR WIN63-202610151745-318700621: two templates arrive together in one Objects message.
+        var snapshot = RoomFurnitureSnapshot.Capture(items, OwnerId, OwnerName);
+        SendPacket(new ObjectsComposer(snapshot), false, viewer =>
+        {
+            foreach (var item in items) {
+                _wiredComponent?.ObjectEnqueued(viewer, item, null);
+            }
+        });
+        SendPacket(new FurnitureMetadataComposer(snapshot.Items));
+    }
+
+    internal void SendTemporaryWallItems(IReadOnlyList<Item> items)
+    {
+        if (items.Count == 0) {
+            return;
+        }
+
+        var snapshot = RoomFurnitureSnapshot.Capture(items, OwnerId, OwnerName);
+        SendPacket(new ItemsComposer(snapshot), false, viewer =>
+        {
+            foreach (var item in items) {
+                _wiredComponent?.ObjectEnqueued(viewer, item, null);
+            }
+        });
+        SendPacket(new FurnitureMetadataComposer(snapshot.Items));
+    }
+
     public void SendUser(RoomUser user)
     {
         var snapshot = _userSnapshots.Capture(user);
@@ -900,7 +947,19 @@ public class Room
         }
     }
 
-    private void SendPacket(IServerPacket packet, bool withRightsOnly, Action<RoomUser>? enqueued)
+    internal void SendPacketToOthers(IServerPacket packet, GameClient except) => SendPacket(packet, false, null, except);
+
+    // The admitted user's own client gets its Users entry with the room snapshot instead (SendObjects).
+    public void SendUserToOthers(RoomUser user)
+    {
+        var snapshot = _userSnapshots.Capture(user);
+
+        if (snapshot != null) {
+            SendPacket(new UsersComposer(snapshot), false, viewer => _wiredComponent?.ObjectEnqueued(viewer, null, user), user.GetClient());
+        }
+    }
+
+    private void SendPacket(IServerPacket packet, bool withRightsOnly, Action<RoomUser>? enqueued, GameClient? except = null)
     {
         if (packet == null) {
             return;
@@ -918,7 +977,7 @@ public class Room
                 foreach (var user in _roomUserManager.GetRoomUsers()) {
                     var client = user?.GetClient();
 
-                    if (client == null || withRightsOnly && !CheckRights(client)) {
+                    if (client == null || ReferenceEquals(client, except) || withRightsOnly && !CheckRights(client)) {
                         continue;
                     }
 

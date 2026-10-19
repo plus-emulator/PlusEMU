@@ -9,7 +9,7 @@ internal class MoveWallItemEvent(IRoomItemPlacementService placement) : RoomPack
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
-        var itemId = BuildersClubItemIds.FromWire(packet.ReadUInt());
+        var itemId = TemporaryItemIds.FromWire(BuildersClubItemIds.FromWire(packet.ReadUInt()), true);
         var location = packet.ReadString();
         placement.MoveWall(room, session, itemId, location);
 

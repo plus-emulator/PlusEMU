@@ -27,7 +27,7 @@ public sealed class ClickFurniEvent(IFurnitureUseService furniture) : RoomPacket
 
         // WALL uses a negative magnitude; FLOOR uses the id's uint bits, including temporary ids.
         var id = BuildersClubItemIds.FromWire(category == 20 ? (uint)Math.Abs((long)wireId) : unchecked((uint)wireId));
-        furniture.Click(room, session, new(id, category == 20));
+        furniture.Click(room, session, new(TemporaryItemIds.FromWire(id, category == 20), category == 20));
 
         return Task.CompletedTask;
     }

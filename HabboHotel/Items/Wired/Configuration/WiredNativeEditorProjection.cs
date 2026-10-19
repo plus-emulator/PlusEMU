@@ -7,6 +7,7 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// <summary>Native records own editor data; runtime fields are checked immutable projections.</summary>
 public static class WiredNativeEditorProjection
 {
+    private const int MaxSelectorAreaCoordinate = 64;
     // The October Show Message editor: TextAreaParam(40, -1, 8, -1, 400), eight lines of at most 400 characters.
     private const int ShowMessageMaxCharacters = 400;
     private static readonly int[] ShowStyles = [34, 200, 201, 202, 210, 211, 212, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 250, 251, 252];
@@ -286,6 +287,23 @@ public static class WiredNativeEditorProjection
             native = native with { OwnedIntParams = native.OwnedIntParams.SetItem(7, native.OwnedIntParams[6]) };
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: the area selectors store each of x, y, width and height clamped to 0..64
+        // (-5 reads back 0, 500 reads back 64) instead of refusing the save.
+        if (name is "wf_slc_furni_area" or "wf_slc_users_area" && native.OwnedIntParams.Length == 4) {
+            native = native with { OwnedIntParams = [.. native.OwnedIntParams.Select(value => Math.Clamp(value, 0, MaxSelectorAreaCoordinate))] };
+        }
+
+        // Observed on AIR WIN63-202610151745-318700621: a variable FX box reads back its stored form, not what the editor sent (a boss bar
+        // saved with colour, width and renderer -1 and a stale range target reads back 5/4/100 and its own source).
+        if (Variables.Fx.WiredVariableFxSettings.Category(name) >= 0) {
+            native = native with { OwnedIntParams = Variables.Fx.WiredVariableFxSettings.Normalize(name, native.OwnedIntParams) };
+        }
+
+        // Observed on AIR WIN63-202610151745-318700621: Users By Name stores its names lowercased ("Robbie" reads back "robbie").
+        if (name == "wf_slc_users_byname") {
+            native = native with { Text = native.Text.ToLowerInvariant() };
+        }
+
         if (name == "wf_xtra_var_leaderboard") {
             native = native with { Text = Leaderboard.WiredLeaderboardConfig.Normalize(native.Text, native.OwnedIntParams) };
         }
@@ -523,7 +541,8 @@ public static class WiredNativeEditorProjection
         && System.Text.Encoding.UTF8.GetByteCount(native.Text) <= ushort.MaxValue
         && !native.PrimaryItems.IsDefault && !native.SecondaryItems.IsDefault
         && native.PrimaryItems.Length <= WiredConfigurationLimits.SelectedItems && native.SecondaryItems.Length <= WiredConfigurationLimits.SelectedItems
-        && native.PrimaryItems.Concat(native.SecondaryItems).All(item => item != null && item.ItemId is > 0 and <= int.MaxValue)
+        && native.PrimaryItems.Concat(native.SecondaryItems).All(item => item != null && (item.ItemId is > 0 and <= int.MaxValue
+            || item.Wall && TemporaryItemIds.IsWallIdentity(item.ItemId)))
         && native.PrimaryItems.Distinct().Count() == native.PrimaryItems.Length
         && native.SecondaryItems.Distinct().Count() == native.SecondaryItems.Length
         && !native.FurniSourceTypes.IsDefault && native.FurniSourceTypes.Length <= WiredConfigurationLimits.IntParams

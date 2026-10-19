@@ -58,7 +58,7 @@ public sealed partial class WiredNativeLifecycleTests
         var action = f.Action(WiredAvatarAction.Lay);
         var bed = f.Item(3);
         bed.Definition.InteractionType = InteractionType.Bed;
-        bed.SetState(1, 1, 0, Gamemap.GetAffectedTiles(1, 1, 1, 1, 0));
+        bed.SetState(1, 1, 0);
         f.Map.AddToMap(bed);
         actor.X = 1;
         actor.Y = 1;
@@ -308,7 +308,7 @@ public sealed partial class WiredNativeLifecycleTests
         f.Remove(template);
         var mover = Assert.IsType<Item>(f.Room.GetRoomItemHandler().PlaceTemporaryFloorItem(template.Definition, 1, 0, 0, 0));
         var blocker = f.Item(4);
-        blocker.SetState(1, 0, 0, Gamemap.GetAffectedTiles(1, 1, 1, 0, 0));
+        blocker.SetState(1, 0, 0);
         f.Map.AddToMap(blocker);
         var context = f.Context();
         var frame = WiredVariableRuntimeFrames.Create(context);
@@ -336,7 +336,7 @@ public sealed partial class WiredNativeLifecycleTests
         var frame = new WiredVariableFrame(1, [holder]); // Menus and FX need the real clock without a firing context.
         var reference = new WiredVariableReference(WiredVariableTarget.Furni, "internal:@projectile.animation.position.x");
         Assert.Null(f.Wired.Variables.Module.Read(reference, holder, frame));
-        item.SetState(2, 0, 0, Gamemap.GetAffectedTiles(1, 1, 2, 0, 0));
+        item.SetState(2, 0, 0);
         Assert.True(WiredProjectileFlights.For(f.Room).Begin(item, 0, 0, 0, 0, 0));
         Assert.Equal(2, f.Wired.Variables.Module.Read(reference, holder, frame)!.Value);
         f.Wired.DetachRoomItem(item);
@@ -420,7 +420,8 @@ public sealed partial class WiredNativeLifecycleTests
             var frame = WiredVariableRuntimeFrames.Create(f.Context());
             var holder = WiredVariableRuntimeFrames.UserHolder(joined);
             Assert.Equal(method, f.Wired.ReadBuiltin(new(WiredVariableTarget.User, "internal:@room_entry.method"), holder, frame));
-            Assert.Equal(teleporterId, f.Wired.ReadBuiltin(new(WiredVariableTarget.User, "internal:@room_entry.teleport_id"), holder, frame));
+            // A visit without a teleporter has no @room_entry.teleport_id.
+            Assert.Equal(teleporterId == 0 ? null : teleporterId, f.Wired.ReadBuiltin(new(WiredVariableTarget.User, "internal:@room_entry.teleport_id"), holder, frame));
             Assert.Equal(0u, player.WiredRoomNetworkDestination);
         }
         finally {

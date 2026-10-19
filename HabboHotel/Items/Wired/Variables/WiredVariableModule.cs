@@ -14,9 +14,11 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     private readonly Queue<WiredVariableChange> _changes = new();
     private readonly object _gate = new();
     private long _valueChanges;
+    private long _valueDecreases;
 
     /// <summary>Counts the writes that changed a stored value or its presence; unchanged accepted writes do not count.</summary>
     internal long ValueChanges => Interlocked.Read(ref _valueChanges);
+    internal long ValueDecreases => Interlocked.Read(ref _valueDecreases);
     public uint RoomId => roomId;
 
     // The database callback commits before any active value or change event becomes visible.
@@ -78,7 +80,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             foreach (var (reference, holder, resolution) in requests) {
                 var definition = resolution.Definition;
                 var value = resolution.Builtin is { } builtin ? builtins?.Read(builtin, holder, frame)
-                    : values.GetValueOrDefault(Key(definition!, holder))
+                    : Held(definition!, values.GetValueOrDefault(Key(definition!, holder)))
                         ?? (definition!.Target == WiredVariableTarget.Global ? new(definition.InitialValue, null, null) : null);
 
                 if (value is not null && resolution.Convert is { } convert) {
@@ -119,7 +121,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                     return null;
                 }
 
-                var stored = Store(definition, frame).Read(Key(definition, holder));
+                var stored = Held(definition, Store(definition, frame).Read(Key(definition, holder)));
                 value = stored ?? (definition.Target == WiredVariableTarget.Global ? new(definition.InitialValue, null, null) : null);
             }
 
@@ -351,7 +353,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return null;
             }
 
-            var next = definition.HasValue ? transform(current?.Value ?? 0) : 1;
+            // Observed on AIR WIN63-202610151745-318700621: a variable without a value is held as -1 (it reads -1, and after the box is
+            // switched to having a value, +1 gives 0).
+            var next = definition.HasValue ? transform(current?.Value ?? 0) : -1;
 
             if (mutation == WiredVariableMutation.Set && !notifyUnchanged && previous is not null && previous.Value == next) {
                 return previous;
@@ -370,6 +374,10 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
         if (write.Before?.Value != write.After?.Value || (write.Before is null) != (write.After is null)) {
             Interlocked.Increment(ref _valueChanges);
+
+            if (write.Before is { } before && write.After is { } after && after.Value < before.Value) {
+                Interlocked.Increment(ref _valueDecreases);
+            }
         }
 
         // Observed on AIR WIN63-202610131318-860371703: every successful Give, including an override of an existing value,
@@ -575,9 +583,13 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
             var values = definition.IsDurable ? durable.GetHolders(definition.ItemId) : _active.GetHolders(definition.ItemId);
 
-            return values.ToDictionary(x => x.Key with { DefinitionId = definitionId }, x => x.Value);
+            return values.ToDictionary(x => x.Key with { DefinitionId = definitionId }, x => Held(definition, x.Value)!);
         }
     }
+
+    // A variable without a value reads -1 whatever an older save stored for it (see Change).
+    private static WiredVariableValue? Held(WiredVariableDefinition definition, WiredVariableValue? value) =>
+        value is not null && !definition.HasValue ? value with { Value = -1 } : value;
 
     public IReadOnlyList<WiredVariableDescription> DescribeDefinitions(IEnumerable<uint> definitionIds)
     {

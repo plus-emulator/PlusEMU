@@ -115,6 +115,9 @@ public interface IBotManagementService
 
 public sealed class BotManagementService(IBotManagementStore store, IFigureDataManager figures) : IBotManagementService
 {
+    /// <summary>Observed on AIR WIN63-202610151745-318700621: a bot placed from the inventory faces direction 2.</summary>
+    private const int PlacedBotRotation = 2;
+
     public void ShowAction(GameClient session, int botId, int actionId)
     {
         var room = session.GetHabbo().CurrentRoom;
@@ -156,8 +159,10 @@ public sealed class BotManagementService(IBotManagementStore store, IFigureDataM
 
         var data = store.Place(bot.Id, bot.OwnerId, room.RoomId, x, y);
         var speeches = data.Speech.Select(text => new RandomSpeech(text, bot.Id)).ToList();
-        var botUser = room.GetRoomUserManager().DeployBot(new(bot.Id, room.RoomId, data.AiType, data.WalkMode, bot.Name, "", bot.Figure, x, y, 0,
-            4, 0, 0, 0, 0, ref speeches, "", 0, bot.OwnerId, data.AutomaticChat, data.SpeakingInterval, data.MixSentences, data.ChatBubble), null);
+        // Observed on AIR WIN63-202610151745-318700621: a placed bot shows its motto and gender ("m") in Users and UserChange.
+        var botUser = room.GetRoomUserManager().DeployBot(new(bot.Id, room.RoomId, data.AiType, data.WalkMode, bot.Name, bot.Motto ?? "", bot.Figure, x, y, 0,
+            PlacedBotRotation, 0, 0, 0, 0, ref speeches, string.IsNullOrEmpty(bot.Gender) ? "M" : bot.Gender, 0, bot.OwnerId, data.AutomaticChat, data.SpeakingInterval,
+            data.MixSentences, data.ChatBubble), null);
         botUser.Chat("Hello!");
         room.GetGameMap().UpdateUserMovement(new(x, y), new(x, y), botUser);
 

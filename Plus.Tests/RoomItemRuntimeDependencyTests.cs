@@ -225,7 +225,7 @@ public partial class PlacedFurniRoomTests
     {
         var item = Furni(id, InteractionType.None, WiredBoxType.None);
         item.UserId = 7;
-        item.SetState(99, 99, 0, new Dictionary<int, ThreeDCoord>());
+        item.SetState(99, 99, 0);
 
         return item;
     }

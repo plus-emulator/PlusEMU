@@ -18,6 +18,7 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
 
         Events = [kind];
     }
+    private (int Threshold, int Team)? _scoreSettings;
     public IReadOnlyCollection<WiredEventKind> Events { get; }
     public override bool TryValidateConfiguration(WiredConfiguration proposed, out WiredConfiguration validated, out string error)
     {
@@ -52,6 +53,22 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
 
     public override bool Execute(WiredRuntimeContext context) => Matches(context, afterSelectors: false);
 
+    // Observed on AIR WIN63-202610151745-318700621: saving the same score settings keeps a spent box spent.
+    protected override void ConfigurationChanged()
+    {
+        if (Descriptor.CanonicalName != "wf_trg_score_achieved" || !TryValidateConfiguration(Configuration, out var config, out _)) {
+            return;
+        }
+
+        var settings = (Param(config, 0, 1), Param(config, 1));
+
+        if (_scoreSettings is { } previous && previous != settings) {
+            WiredGameState.For(Instance).RearmScoreTrigger(Item.Id);
+        }
+
+        _scoreSettings = settings;
+    }
+
     public bool CanTrigger(WiredRuntimeContext context)
     {
         if (!TryValidateConfiguration(context.ConfigurationOf(this), out var config, out _)
@@ -71,6 +88,11 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
                 .Where(user => !user.IsBot && (int)user.Team == context.Event.Team).Select(user => user.VirtualId));
         }
     }
+
+    /// <summary>A Receive Signal that picks its antennas cannot take a signal addressed to another one.</summary>
+    internal bool CannotReceiveSignal(uint antenna) => Descriptor.CanonicalName == "wf_trg_recv_signal"
+        && Configuration.FurniSources.TryGetValue("items", out var source) && source == WiredSources.Selected
+        && !Configuration.SelectedItems.Contains(antenna);
 
     private bool Matches(WiredRuntimeContext context, bool afterSelectors)
     {
@@ -110,7 +132,8 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
             "wf_trg_bot_reached_avtr" => evt.TargetUser != null && BotMatches(),
             "wf_trg_bot_reached_stf" => BotMatches() && (config.SelectedItems.IsEmpty && config.FurniSources["items"] == 100 || ItemMatches()),
             "wf_trg_clock_counter" => ItemMatches() && WiredTriggerPredicates.MatchesCounter(config, evt.PreviousValue, evt.Value),
-            "wf_trg_score_achieved" => WiredTriggerPredicates.MatchesScore(config, evt.Team, (int)evt.PreviousValue, (int)evt.Value),
+            "wf_trg_score_achieved" => WiredTriggerPredicates.MatchesScore(config, evt.Team, (int)evt.PreviousValue, (int)evt.Value)
+                && WiredGameState.For(Instance).TryFireScoreTrigger(Item.Id),
             "wf_trg_user_performs_action" => evt.Actor != null && WiredTriggerPredicates.MatchesAction(config, evt.Action, evt.Code),
             "wf_trg_recv_signal" => context.Signal != null && (deferItems || Items().Any(item => item.Id == unchecked((uint)evt.Code))),
             "wf_trg_game_starts" or "wf_trg_game_ends" => true,

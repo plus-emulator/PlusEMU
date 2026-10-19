@@ -72,6 +72,7 @@ public partial class PlacedFurniRoomTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    // Observed on AIR WIN63-202610151745-318700621: a pending (announced) step still lands, then the walk ends; a queued search is dropped.
     public void WiredFreezeCancelsThePendingBatchOrQueuedSearchAtTheOwnerBoundary(bool queuedSearch)
     {
         var actor = ExecutorConfiguredActor(new()
@@ -84,14 +85,15 @@ public partial class PlacedFurniRoomTests
         Assert.True(WiredAvatarState.For(_room).FreezeUser(actor, 0, cancelOnTeleport: true));
         Assert.Equal(!queuedSearch, actor.HasStatus("mv"));
         ExecutorTick();
-        Assert.Equal((0, 1, 0d), (actor.X, actor.Y, actor.Z));
+        Assert.Equal(queuedSearch ? (0, 1, 0d) : (1, 1, 0d), (actor.X, actor.Y, actor.Z));
         Assert.Equal(0, actor.Movement.PendingCount);
         Assert.False(actor.Movement.HasIntent);
         Assert.True(actor.Frozen);
         Assert.False(actor.CanWalk);
         Assert.False(actor.HasStatus("mv"));
         Assert.Equal(0, DrainRemainingSearches(_room.GetGameMap().Navigation!));
-        Assert.Equal(TargetOccupancy.None, _room.GetGameMap().Navigation!.Executor.Context.Claims.OccupancyAt(5, 0));
+        // Slot 5 is (1,1), where the landed step now stands.
+        Assert.Equal(queuedSearch ? TargetOccupancy.None : TargetOccupancy.Stationary, _room.GetGameMap().Navigation!.Executor.Context.Claims.OccupancyAt(5, 0));
     }
 
     // Observed on hhus (AIR WIN63-202610131318-860371703): freeze and unfreeze of a standing user send only the effect.
@@ -304,7 +306,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(actor.Movement.Commands.Read()!.Sequence > actor.Movement.ConsumedSequence);
         ExecutorTick();
         Assert.Equal((3, 1), (actor.GoalX, actor.GoalY));
-        Assert.Contains("/mv 3,1,0/", ExecutorUpdate(actor).Status);
+        Assert.Contains("/mv 3,1,0.0/", ExecutorUpdate(actor).Status);
     }
 
     private RoomUser ExternalLifecycleHorse(int x, int y)

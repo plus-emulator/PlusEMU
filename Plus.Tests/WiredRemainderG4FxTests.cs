@@ -716,6 +716,22 @@ public sealed class WiredRemainderG4FxTests
     }
 
     [Fact]
+    public void OneBoxDrawsEveryVariableOfItsKindOnItsTileUnderOneConfig()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: two user variables on the tile of one boss bar each got their own status.
+        var world = new World();
+        world.Give(10, Holder, 25);
+        world.Give(11, Holder, 7);
+        var first = Bind("wf_xtra_var_fx_boss")!;
+        var second = Bind("wf_xtra_var_fx_boss", shown: new(WiredVariableTarget.User, "custom:11"))!;
+
+        var batch = world.Update([first, second], Viewer, _ => 0, Holder);
+
+        Assert.Single(batch.Configs);
+        Assert.Equal([("user:10", 25L), ("user:11", 7L)], batch.Statuses.Select(x => (x.Key.VariableId, x.Value)).OrderBy(x => x.Item1));
+    }
+
+    [Fact]
     public void FxWithTheSameIdsInTwoRoomsKeepsEachRoomsBindingsApart()
     {
         // Config ids are item ids, so two cards never collide in a viewer's state; replacing a card with the same id replaces its config.

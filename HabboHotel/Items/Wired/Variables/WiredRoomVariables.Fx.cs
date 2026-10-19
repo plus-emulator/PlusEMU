@@ -35,23 +35,29 @@ public sealed partial class WiredRoomVariables
     {
         var authorized = Module.DescribeDefinitions(_definitions.Keys).ToDictionary(x => x.Definition.ItemId);
         var result = new List<WiredVariableFxBinding>();
+        var boxes = 0;
 
         foreach (var box in _metadata.Values.Where(x => WiredVariableMetadataBox.IsFx(x.Descriptor.CanonicalName) && IsAttached(x.Item)).OrderBy(x => x.Item.Id)) {
             var target = WiredVariableFxSettings.UsesUserSource(box.Configuration) ? WiredVariableTarget.User : WiredVariableTarget.Furni;
-            var definition = _definitions.Values.Where(x => x.Descriptor.CanonicalName == (target == WiredVariableTarget.User ? "wf_var_user" : "wf_var_furni")
+            // Observed on AIR WIN63-202610151745-318700621: one box draws every variable of its kind on its tile (two furni variables, or
+            // two user variables, each got its own statuses under the same config).
+            var definitions = _definitions.Values.Where(x => x.Descriptor.CanonicalName == (target == WiredVariableTarget.User ? "wf_var_user" : "wf_var_furni")
                 && authorized.ContainsKey(x.Item.Id) && IsAttached(x.Item) && x.Item.GetX == box.Item.GetX && x.Item.GetY == box.Item.GetY)
-                .OrderBy(x => x.Item.GetZ).ThenBy(x => x.Item.Id).FirstOrDefault();
-            var reference = new WiredVariableReference(target, definition is null ? "" : $"custom:{definition.Item.Id}");
+                .OrderBy(x => x.Item.GetZ).ThenBy(x => x.Item.Id).Cast<WiredVariableDefinitionBox?>().DefaultIfEmpty();
 
-            if (!WiredVariableFxSettings.TryDecode(box.Descriptor.CanonicalName, checked((int)box.Item.Id), box.Configuration, reference,
-                (id, expected) => Module.TryResolveCatalogId(id, expected, out var resolved) ? resolved : null, out var binding, out _)) {
-                continue;
+            foreach (var definition in definitions) {
+                var reference = new WiredVariableReference(target, definition is null ? "" : $"custom:{definition.Item.Id}");
+
+                if (!WiredVariableFxSettings.TryDecode(box.Descriptor.CanonicalName, checked((int)box.Item.Id), box.Configuration, reference,
+                    (id, expected) => Module.TryResolveCatalogId(id, expected, out var resolved) ? resolved : null, out var binding, out _)) {
+                    break;
+                }
+
+                var level = definition is null ? null : MetadataOn(definition.Item.Id, "wf_xtra_var_lvlup_system")?.LevelSystem;
+                result.Add(binding! with { Level = level is null ? null : level.Level });
             }
 
-            var level = definition is null ? null : MetadataOn(definition.Item.Id, "wf_xtra_var_lvlup_system")?.LevelSystem;
-            result.Add(binding! with { Level = level is null ? null : level.Level });
-
-            if (result.Count >= MaxFxBoxes) {
+            if (++boxes >= MaxFxBoxes) {
                 break;
             }
         }

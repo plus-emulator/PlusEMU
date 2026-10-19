@@ -40,15 +40,29 @@ public class StressBotTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, false, false)]
-    [InlineData(true, true, true)]
-    public void RequiresModeratorRightAndEstablishedStaffPermission(bool modTool, bool staffCommand, bool allowed)
+    [InlineData("owner", true, true)]
+    [InlineData("owner", false, false)]
+    [InlineData("developer", true, false)]
+    [InlineData("administrator", true, false)]
+    [InlineData(null, true, false)]
+    public void OnlyTheOwnerRoleWithTheStressPermissionMayRunIt(string? role, bool stressGrant, bool allowed)
     {
-        var permissions = UserAccess.Create([], [.. (modTool ? new[] { new UserPermissionOverride(PermissionKeys.ModerationTool, false) } : []),
-            .. (staffCommand ? new[] { new UserPermissionOverride(PermissionKeys.CommandStress, false) } : [])]);
-        Assert.Equal(allowed, StressCommand.CanExecute(permissions));
+        var roles = role == null ? Array.Empty<RoleAssignment>()
+            : [new RoleAssignment(new AccessRole(9, role, role, 90, 7, "", true, [PermissionKeys.ModerationTool], new Dictionary<string, int>()))];
+        var overrides = stressGrant ? new[] { new UserPermissionOverride(PermissionKeys.ModerationTool, false), new UserPermissionOverride(PermissionKeys.CommandStress, false) }
+            : [new UserPermissionOverride(PermissionKeys.CommandStress, true)];
+
+        Assert.Equal(allowed, StressCommand.CanExecute(UserAccess.Create(roles, overrides)));
+    }
+
+    [Fact]
+    public void AnExpiredOwnerRoleDoesNotAllowIt()
+    {
+        var owner = new AccessRole(9, "owner", "Owner", 90, 7, "", true, [PermissionKeys.ModerationTool, PermissionKeys.CommandStress], new Dictionary<string, int>());
+        var expired = UserAccess.Create([new RoleAssignment(owner, DateTimeOffset.UtcNow.AddDays(-1))],
+            [new UserPermissionOverride(PermissionKeys.ModerationTool, false), new UserPermissionOverride(PermissionKeys.CommandStress, false)]);
+
+        Assert.False(StressCommand.CanExecute(expired));
     }
 
     [Fact]

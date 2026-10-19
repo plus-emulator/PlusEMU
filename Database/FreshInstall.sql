@@ -32237,7 +32237,40 @@ INSERT INTO `catalog_offer_products` VALUES
 (1900000352,0,'furni',1000007637,NULL,NULL,NULL,NULL,NULL,1,''),
 (1900000353,0,'furni',1000007635,NULL,NULL,NULL,NULL,NULL,1,''),
 (1900000354,0,'furni',1000007634,NULL,NULL,NULL,NULL,NULL,1,''),
-(1900000355,0,'furni',1000007636,NULL,NULL,NULL,NULL,NULL,1,'');
+(1900000355,0,'furni',1000007636,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000356,0,'furni',1000009023,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000357,0,'furni',1000010077,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000358,0,'furni',1000010073,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000359,0,'furni',1000010069,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000360,0,'furni',1000010067,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000361,0,'furni',1000010063,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000362,0,'furni',1000010061,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000363,0,'furni',1000009481,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000364,0,'furni',1000009437,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000365,0,'furni',1000008766,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000366,0,'furni',1000009150,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000367,0,'furni',1000009429,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000368,0,'furni',1000009256,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000369,0,'furni',1000009430,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000370,0,'furni',1000009422,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000371,0,'furni',1000009425,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000372,0,'furni',1000009420,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000373,0,'furni',1000009235,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000374,0,'furni',1000009409,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000375,0,'furni',1000009404,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000376,0,'furni',1000008789,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000377,0,'furni',1000009406,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000378,0,'furni',1000009172,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000379,0,'furni',1000009244,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000380,0,'furni',1000009374,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000381,0,'furni',1000009057,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000382,0,'furni',1000009476,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000383,0,'furni',1000009378,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000384,0,'furni',1000009021,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000385,0,'furni',1000009020,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000386,0,'furni',1000009352,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000387,0,'furni',1000009266,NULL,NULL,NULL,NULL,NULL,1,''),
+(1900000388,0,'furni',1000009234,NULL,NULL,NULL,NULL,NULL,1,'');
 /*!40000 ALTER TABLE `catalog_offer_products` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -51532,7 +51565,40 @@ INSERT INTO `catalog_offers` VALUES
 (1900000352,'football12_pt',0,0,0,0,0,1,''),
 (1900000353,'football12_it',0,0,0,0,0,1,''),
 (1900000354,'football12_es',0,0,0,0,0,1,''),
-(1900000355,'football12_de',0,0,0,0,0,1,'');
+(1900000355,'football12_de',0,0,0,0,0,1,''),
+(1900000356,'clothing_nftballoonbuddy',25,0,0,0,1,1,''),
+(1900000357,'hween_cloth_r26_possessedpumpkin',25,0,0,0,1,1,''),
+(1900000358,'hween_cloth_c26_tinyowl',25,0,0,0,1,1,''),
+(1900000359,'hween_cloth_c26_raven',25,0,0,0,1,1,''),
+(1900000360,'hween_cloth_c26_hauntedpuppet',25,0,0,0,1,1,''),
+(1900000361,'hween_cloth_c26_cat',25,0,0,0,1,1,''),
+(1900000362,'hween_cloth_c26_batfriend',25,0,0,0,1,1,''),
+(1900000363,'clothing_toastfriend',25,0,0,0,1,1,''),
+(1900000364,'clothing_scallywagseagull',25,0,0,0,1,1,''),
+(1900000365,'clothing_adorablepetshark',25,0,0,0,1,1,''),
+(1900000366,'clothing_nftlittlemonkey',25,0,0,0,1,1,''),
+(1900000367,'clothing_r26_toucancompanion',25,0,0,0,1,1,''),
+(1900000368,'clothing_nftsquirrel',25,0,0,0,1,1,''),
+(1900000369,'clothing_r26_wisp',25,0,0,0,1,1,''),
+(1900000370,'clothing_r26_mysticdragon',25,0,0,0,1,1,''),
+(1900000371,'clothing_r26_robotcompanion',25,0,0,0,1,1,''),
+(1900000372,'clothing_r26_minielephant',25,0,0,0,1,1,''),
+(1900000373,'clothing_nftshoulderdragon1',25,0,0,0,1,1,''),
+(1900000374,'clothing_r25_yellowaisha',25,0,0,0,1,1,''),
+(1900000375,'clothing_r25_shroomie',25,0,0,0,1,1,''),
+(1900000376,'clothing_blessingofhades',25,0,0,0,1,1,''),
+(1900000377,'clothing_r25_unicorncompanion',25,0,0,0,1,1,''),
+(1900000378,'clothing_nftmonkeyfriend',25,0,0,0,1,1,''),
+(1900000379,'clothing_nftsnake',25,0,0,0,1,1,''),
+(1900000380,'clothing_r25_bunnycompanion',25,0,0,0,1,1,''),
+(1900000381,'clothing_nftcat',25,0,0,0,1,1,''),
+(1900000382,'clothing_teddycompanion',25,0,0,0,1,1,''),
+(1900000383,'clothing_r25_goosefriend',25,0,0,0,1,1,''),
+(1900000384,'clothing_nftbabysnowman',25,0,0,0,1,1,''),
+(1900000385,'clothing_nftbabyrudolf',25,0,0,0,1,1,''),
+(1900000386,'clothing_r24_ghostfriend',25,0,0,0,1,1,''),
+(1900000387,'clothing_nftsummerbird',25,0,0,0,1,1,''),
+(1900000388,'clothing_nftshiba',25,0,0,0,1,1,'');
 /*!40000 ALTER TABLE `catalog_offers` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -53193,7 +53259,10 @@ INSERT INTO `catalog_page_images` VALUES
 (2000000018,2,''),
 (2000000019,0,'catalog_header_alpha1'),
 (2000000019,1,'catalog_teaser_alpha1'),
-(2000000019,2,'');
+(2000000019,2,''),
+(2100000101,0,'clothing_catalog_header'),
+(2100000101,1,''),
+(2100000101,2,'');
 /*!40000 ALTER TABLE `catalog_page_images` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -81430,7 +81499,40 @@ INSERT INTO `catalog_page_offers` VALUES
 (2100000100,1800018710,2330),
 (2100000100,1800018711,2331),
 (2100000100,1800018717,2332),
-(2100000100,1800018948,2333);
+(2100000100,1800018948,2333),
+(2100000101,1900000356,0),
+(2100000101,1900000357,1),
+(2100000101,1900000358,2),
+(2100000101,1900000359,3),
+(2100000101,1900000360,4),
+(2100000101,1900000361,5),
+(2100000101,1900000362,6),
+(2100000101,1900000363,7),
+(2100000101,1900000364,8),
+(2100000101,1900000365,9),
+(2100000101,1900000366,10),
+(2100000101,1900000367,11),
+(2100000101,1900000368,12),
+(2100000101,1900000369,13),
+(2100000101,1900000370,14),
+(2100000101,1900000371,15),
+(2100000101,1900000372,16),
+(2100000101,1900000373,17),
+(2100000101,1900000374,18),
+(2100000101,1900000375,19),
+(2100000101,1900000376,20),
+(2100000101,1900000377,21),
+(2100000101,1900000378,22),
+(2100000101,1900000379,23),
+(2100000101,1900000380,24),
+(2100000101,1900000381,25),
+(2100000101,1900000382,26),
+(2100000101,1900000383,27),
+(2100000101,1900000384,28),
+(2100000101,1900000385,29),
+(2100000101,1900000386,30),
+(2100000101,1900000387,31),
+(2100000101,1900000388,32);
 /*!40000 ALTER TABLE `catalog_page_offers` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -83019,7 +83121,10 @@ INSERT INTO `catalog_page_texts` VALUES
 (2000000023,0,'<b><font color=\"#cc6600\" size=\"16\">What is Builders Club?</font></b><br><br>Have you ever wanted to build a room with huge collection of furni? Tired of counting your credits to finish a room? Or do you simply want to let your creativity flow? Builders Club is your ultimate solution!<br><br><b><font color=\"#cc6600\" size=\"16\">It\'s as easy as 1-2- Free</font></b><br><img src=\"https://images.habbo.com/c_images/catalogue/bc_instr_1.png\"/><br><br><br><br><br><br><br><br><ul><li>Select one of <a href=\"event:navigator/tab/me\">your rooms</a> (or make a new one).</li><li>Open the Builders Club Warehouse</li><li>Drag and drop items into your room</li></ul><br><br><i>Hint: If you want to pick up all the builders club furni from a room, type \":pickallbc\" into the chat and hit enter.</i><br><br>Click here to learn more about <a href=\"event:habbopages/builders-club/info\">builders club member benefits.</a> If you have specific questions, you can also check out our <a href=\"event:habbopages/builders-club/faq\">FAQs</a> page!'),
 (2000000024,0,'<b><font color=\"#cc6600\" size=\"16\">What is Builders Club?</font></b><br><br>Have you always dreamed of building a room with tons of furni? Builders Club is your ultimate solution! Click <a href=\"event:habbopages/builders-club/info\">here</a> to learn more.'),
 (2000000025,0,'<b><font color=\"#cc6600\" size=\"16\">What is Builders Club?</font></b><br><br>Have you always dreamed of building a room with tons of furni? Builders Club is your ultimate solution! Click <a href=\"event:habbopages/builders-club/info\">here</a> to learn more.'),
-(2000000026,0,'<b><font color=\"#d85b00\" size=\"16\">Builders Club Upgrades</font></b><br><br><font align=\"justify\">Have you reached your <b> Furni Limit </b> but want to <b> keep building? </b> No problem! Simply increase your furni limits and creative possibilities!');
+(2000000026,0,'<b><font color=\"#d85b00\" size=\"16\">Builders Club Upgrades</font></b><br><br><font align=\"justify\">Have you reached your <b> Furni Limit </b> but want to <b> keep building? </b> No problem! Simply increase your furni limits and creative possibilities!'),
+(2100000101,0,'Pick a little friend to keep you company. To wear one, place it in your room and double click it to add it to your wardrobe.'),
+(2100000101,1,''),
+(2100000101,2,'');
 /*!40000 ALTER TABLE `catalog_page_texts` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -83238,15 +83343,15 @@ INSERT INTO `catalog_pages` VALUES
 (2124215,2000000012,'Hairdos',74,NULL,2,'clothing_hairstyles','default_3x3','NORMAL',1,1,0),
 (2124216,2000000012,'Hats',74,NULL,3,'clothing_hats','default_3x3','NORMAL',1,1,0),
 (2124217,2000000012,'Accessories',74,NULL,4,'clothing_accessories','default_3x3','NORMAL',1,1,0),
-(2124218,2000000012,'Dresses',74,NULL,5,'clothing_dresses','default_3x3','NORMAL',1,1,0),
-(2124219,2000000012,'Shirts',74,NULL,6,'clothing_shirts','default_3x3','NORMAL',1,1,0),
-(2124220,2000000012,'Jackets',74,NULL,7,'clothing_jackets','default_3x3','NORMAL',1,1,0),
-(2124221,2000000012,'Trousers',74,NULL,8,'clothing_trousers','default_3x3','NORMAL',1,1,0),
-(2124222,2000000012,'Skirts',74,NULL,9,'clothing_skirts','default_3x3','NORMAL',1,1,0),
-(2124223,2000000012,'Shoes',74,NULL,10,'clothing_shoes','default_3x3','NORMAL',1,1,0),
-(2124224,2000000012,'Effects',61,NULL,11,'ny2015_permeffects','default_3x3_extrainfo','NORMAL',1,1,0),
-(2124225,2000000012,'Temporary Effects',263,NULL,12,'temp_effects','default_3x3','NORMAL',1,1,0),
-(2124226,2000000012,'Temporary Effects Hween',263,NULL,13,'history16effect','default_3x3','NORMAL',1,1,0),
+(2124218,2000000012,'Dresses',74,NULL,6,'clothing_dresses','default_3x3','NORMAL',1,1,0),
+(2124219,2000000012,'Shirts',74,NULL,7,'clothing_shirts','default_3x3','NORMAL',1,1,0),
+(2124220,2000000012,'Jackets',74,NULL,8,'clothing_jackets','default_3x3','NORMAL',1,1,0),
+(2124221,2000000012,'Trousers',74,NULL,9,'clothing_trousers','default_3x3','NORMAL',1,1,0),
+(2124222,2000000012,'Skirts',74,NULL,10,'clothing_skirts','default_3x3','NORMAL',1,1,0),
+(2124223,2000000012,'Shoes',74,NULL,11,'clothing_shoes','default_3x3','NORMAL',1,1,0),
+(2124224,2000000012,'Effects',61,NULL,12,'ny2015_permeffects','default_3x3_extrainfo','NORMAL',1,1,0),
+(2124225,2000000012,'Temporary Effects',263,NULL,13,'temp_effects','default_3x3','NORMAL',1,1,0),
+(2124226,2000000012,'Temporary Effects Hween',263,NULL,14,'history16effect','default_3x3','NORMAL',1,1,0),
 (2124228,2000000013,'Pet Animals',8,NULL,0,'pets_info','pets3','NORMAL',1,1,0),
 (2124229,2124228,'Manic Pixie Bunny',149,NULL,0,'pet_bunnypink','pets','NORMAL',0,1,0),
 (2124230,2124228,'Bored Bunny',150,NULL,1,'pet_bunnybrown','pets','NORMAL',0,1,0),
@@ -83626,7 +83731,8 @@ INSERT INTO `catalog_pages` VALUES
 (2100000006,2129066,'Wired',80,NULL,7,'wired2','default_3x3','BUILDERS_CLUB',1,0,0),
 (2100000007,2100000006,'Wired Chests',360,NULL,7,'wired_chests_parent','default_3x3','BUILDERS_CLUB',1,0,0),
 (2100000008,2129066,'Room Building',323,NULL,8,'roombuild','default_3x3','BUILDERS_CLUB',1,0,0),
-(2100000100,NULL,'Builders Club furni',1,NULL,99,'bc_furnidata_offers','default_3x3','BUILDERS_CLUB',0,1,0);
+(2100000100,NULL,'Builders Club furni',1,NULL,99,'bc_furnidata_offers','default_3x3','BUILDERS_CLUB',0,1,0),
+(2100000101,2000000012,'Companions',74,NULL,5,'clothing_companions','default_3x3','NORMAL',1,1,0);
 /*!40000 ALTER TABLE `catalog_pages` ENABLE KEYS */;
 UNLOCK TABLES;
 

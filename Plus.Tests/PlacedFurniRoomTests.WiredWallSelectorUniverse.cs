@@ -12,15 +12,17 @@ namespace Plus.Tests;
 public partial class PlacedFurniRoomTests
 {
     [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    public void WallIdentitiesDoNotExpandDirectOrNestedFloorSelectorInversion(int remoteDepth)
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(0, true)]
+    public void WallIdentitiesReachDirectAndNestedSelectorsWithoutChangingAllRoomSource(int remoteDepth, bool byType)
     {
         WallSnapshotInstallStore();
         var picked = Furni(301, InteractionType.None, WiredBoxType.None);
         var other = Furni(302, InteractionType.None, WiredBoxType.None);
         var wall = WallSnapshotItem(303, ":w=1,2 l=11,53 l");
+        wall.Definition.Id = 303;
         var items = new List<Item> { picked, other, wall };
         var boxes = new List<IWiredConfiguredItem>();
         picked.RoomId = other.RoomId = RoomId;
@@ -45,7 +47,8 @@ public partial class PlacedFurniRoomTests
         }
 
         Box(400, "wf_trg_game_starts", new(), 0);
-        var selector = Box(401, "wf_slc_furni_picks", new() { IntParams = [0, 1], SelectedItems = [picked.Id] }, remoteDepth);
+        var selector = Box(401, byType ? "wf_slc_furni_bytype" : "wf_slc_furni_picks",
+            new() { IntParams = [0, byType ? 0 : 1], SelectedItems = [byType ? wall.Id : picked.Id] }, remoteDepth);
 
         for (var depth = remoteDepth - 1; depth >= 0; depth--) {
             selector = Box((uint)(402 + depth), "wf_slc_remote",
@@ -71,10 +74,17 @@ public partial class PlacedFurniRoomTests
         Assert.True(engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.GameStart)));
         engine.OnFastCycle();
         var context = Assert.Single(capture.Contexts);
-        var floorIds = _room.GetRoomItemHandler().GetFloor.Select(item => item.Id).ToHashSet();
-        Assert.All(context.Selected.FurniIds, id => Assert.Contains(id, floorIds));
-        Assert.Equal(new[] { other.Id }, context.Selected.FurniIds.Where(id => id is 301 or 302));
-        Assert.DoesNotContain(wall.Id, context.Selected.FurniIds);
+        Assert.Contains(wall.Id, context.Selected.FurniIds);
+        Assert.DoesNotContain(picked.Id, context.Selected.FurniIds);
+
+        if (byType) {
+            Assert.Equal(new[] { wall.Id }, context.Selected.FurniIds);
+        }
+        else {
+            Assert.Contains(other.Id, context.Selected.FurniIds);
+        }
+
+        Assert.DoesNotContain(wall, context.Targets.ResolveFurni(context, [], WiredSources.AllRoom));
         Assert.Same(wall, Assert.Single(context.Targets.ResolveFurni(context, [wall.Id], WiredSources.Selected)));
     }
 

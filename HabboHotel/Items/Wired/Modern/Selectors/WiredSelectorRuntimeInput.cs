@@ -68,7 +68,13 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
     private static WiredSelectorWorld CaptureWorld(WiredRuntimeContext context, WiredSelectorRoomState state,
         IGroupManager groupManager)
     {
-        var items = context.Targets.ResolveFurni(context, [], RuntimeSources.AllRoom, raw: true);
+        var items = context.Targets.AttachedFurni();
+
+        foreach (var item in items) {
+            context.FurniIdentity.TryAdd(item.Id, item);
+        }
+
+        items = items.Where(item => ReferenceEquals(context.FurniIdentity[item.Id], item)).ToArray();
         var users = context.Targets.ResolveUsers(context, [], RuntimeSources.AllRoom, raw: true);
         var remotes = new Dictionary<uint, WiredRemoteSelector>();
 

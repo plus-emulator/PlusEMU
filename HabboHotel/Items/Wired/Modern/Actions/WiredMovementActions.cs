@@ -89,6 +89,18 @@ public sealed class WiredMovementActions(Random? random = null)
 
                 break;
             case "wf_act_move_rotate":
+                // Observed on AIR WIN63-202610151745-318700621: with no movement and no rotation each picked furni not already on top is
+                // placed again on its own tile, on top of the rest of its stack (bottom first); the furni above it stay where they are.
+                if (Param(0) is < 0 or > 10 && Param(1) is not (2 or 4 or 6)) {
+                    foreach (var item in movers.OrderBy(item => item.GetZ).ThenBy(item => item.Id)) {
+                        if (!OnTopOfItsTile(item)) {
+                            affected |= move(item, item.GetX, item.GetY, item.Rotation, RestackHeight(item));
+                        }
+                    }
+
+                    break;
+                }
+
                 affected = together(movers, (item, step) =>
                 {
                     var direction = MovementDirection(Param(0));

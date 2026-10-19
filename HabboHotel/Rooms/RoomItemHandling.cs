@@ -20,6 +20,7 @@ public partial class RoomItemHandling
     private readonly ConcurrentDictionary<uint, Item> _floorItems;
     private readonly Dictionary<uint, Item> _temporaryItems = new();
     private uint _nextTemporaryId = TemporaryItemIds.First;
+    private uint _nextTemporaryWallId = TemporaryItemIds.First;
 
     /// <summary>
     /// The highest altitude a Wired copy is placed at. Observed on hhus (AIR WIN63-202610131318-860371703): 560 copies stacked "On top"
@@ -64,6 +65,41 @@ public partial class RoomItemHandling
         return item;
     }
 
+    public Item? PlaceTemporaryWallItem(ItemDefinition definition, uint ownerId, string position, string state)
+    {
+        if (definition.Type != ItemType.Wall || WallPositionCheck(position) is not { } validated) {
+            return null;
+        }
+
+        while (_nextTemporaryWallId <= TemporaryItemIds.Last) {
+            var id = TemporaryItemIds.FromWire(_nextTemporaryWallId++, true);
+
+            if (GetItem(id) != null) {
+                continue;
+            }
+
+            var item = new Item
+            {
+                Id = id,
+                IsTemporary = true,
+                RoomId = _room.Id,
+                OwnerId = ownerId,
+                UserId = unchecked((int)ownerId),
+                Definition = definition,
+                ExtraData = FurniExtraData.Load(definition, state, true),
+                Username = _room.OwnerName,
+                WallCoordinates = validated
+            };
+            item.Attach(_room, _interactors, _travelStore, _rewards);
+            _temporaryItems.Add(id, item);
+            _wallItems.TryAdd(id, item);
+
+            return item;
+        }
+
+        return null;
+    }
+
     public static bool AboveTemporaryLimit(double? height) => height is { } z && z - TemporaryItemMaxAltitude > 1e-6;
 
     private uint? NextTemporaryId()
@@ -94,7 +130,7 @@ public partial class RoomItemHandling
     /// </summary>
     public bool RemoveTemporaryFloorItemsByWired(IEnumerable<Item> items)
     {
-        var removed = items.Where(item => RemoveTemporary(item, false)).Select(item => item.Id).ToArray();
+        var removed = items.Where(item => item.IsFloorItem && RemoveTemporary(item, false)).Select(item => item.Id).ToArray();
 
         if (removed.Length == 0) {
             return false;
@@ -261,7 +297,12 @@ public partial class RoomItemHandling
 
         if (_wallItems.Count > 0) {
             foreach (var previous in _wallItems.Values) {
+                if (previous.IsTemporary) {
+                    _room.GetWired()?.DetachRoomItem(previous);
+                }
+
                 previous.Detach(_room);
+                detached.Add(previous);
             }
 
             _wallItems.Clear();
@@ -275,6 +316,7 @@ public partial class RoomItemHandling
 
         _temporaryItems.Clear();
         _nextTemporaryId = TemporaryItemIds.First;
+        _nextTemporaryWallId = TemporaryItemIds.First;
 
         foreach (var item in items.ToList()) {
             if (item == null) {
@@ -524,10 +566,12 @@ public partial class RoomItemHandling
             _room.SendPacket(new ItemRemoveComposer(item.Id, item.UserId));
         }
 
+        if (item.IsFloorItem || item.IsTemporary) {
+            _room.GetWired()?.DetachRoomItem(item);
+        }
+
         //TODO: Recode this specific part
         if (item.IsFloorItem) {
-            _room.GetWired()?.DetachRoomItem(item);
-
             //mFloorItems.OnCycle();
             _room.GetGameMap().RemoveFromMap(item);
         }
@@ -1219,7 +1263,7 @@ public partial class RoomItemHandling
         RoomItemSnapshot snapshot;
 
         lock (item.NavSync) {
-            if (!item.IsWallItem || item.IsTemporary || item.RoomId != _room.Id
+            if (!item.IsWallItem || item.IsTemporary && !OwnsTemporary(item) || item.RoomId != _room.Id
                 || !ReferenceEquals(GetItem(item.Id), item)) {
                 return false;
             }
@@ -1230,7 +1274,10 @@ public partial class RoomItemHandling
                 return false;
             }
 
-            _store.MoveWall(item.Id, _room.Id, validated);
+            if (!item.IsTemporary) {
+                _store.MoveWall(item.Id, _room.Id, validated);
+            }
+
             item.WallCoordinates = validated;
             snapshot = RoomItemSnapshot.Capture(item);
         }
@@ -1525,7 +1572,7 @@ public partial class RoomItemHandling
                 continue;
             }
 
-            if (item.IsFloorItem) {
+            if (item.IsFloorItem || item.IsTemporary) {
                 _room.GetWired()?.DetachRoomItem(item);
             }
 

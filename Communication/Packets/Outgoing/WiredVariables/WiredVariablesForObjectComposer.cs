@@ -20,7 +20,7 @@ public sealed class WiredVariablesForObjectComposer(int type, int objectId, IRea
         packet.WriteInt(type);
 
         if (type is 0 or 1) {
-            packet.WriteInt(type == 0 ? BuildersClubItemIds.ToWire(objectId) : objectId);
+            packet.WriteInt(type == 0 ? TemporaryItemIds.ToWiredEntityId(objectId) : objectId);
         }
 
         packet.WriteInt(_values.Length);

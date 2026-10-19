@@ -81,9 +81,19 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
 
     public void UseWall(Room room, GameClient session, FurnitureUseRequest request)
     {
-        var item = FindPermanent(room, session, request.ItemId);
+        if (!ReferenceEquals(session.GetHabbo().CurrentRoom, room)) {
+            return;
+        }
 
-        if (item == null) {
+        var item = room.GetRoomItemHandler().GetItem(request.ItemId);
+
+        if (item == null || !item.IsWallItem) {
+            return;
+        }
+
+        if (item.IsTemporary) {
+            Use(room, session, request);
+
             return;
         }
 

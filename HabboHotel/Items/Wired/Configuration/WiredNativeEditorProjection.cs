@@ -541,7 +541,8 @@ public static class WiredNativeEditorProjection
         && System.Text.Encoding.UTF8.GetByteCount(native.Text) <= ushort.MaxValue
         && !native.PrimaryItems.IsDefault && !native.SecondaryItems.IsDefault
         && native.PrimaryItems.Length <= WiredConfigurationLimits.SelectedItems && native.SecondaryItems.Length <= WiredConfigurationLimits.SelectedItems
-        && native.PrimaryItems.Concat(native.SecondaryItems).All(item => item != null && item.ItemId is > 0 and <= int.MaxValue)
+        && native.PrimaryItems.Concat(native.SecondaryItems).All(item => item != null && (item.ItemId is > 0 and <= int.MaxValue
+            || item.Wall && TemporaryItemIds.IsWallIdentity(item.ItemId)))
         && native.PrimaryItems.Distinct().Count() == native.PrimaryItems.Length
         && native.SecondaryItems.Distinct().Count() == native.SecondaryItems.Length
         && !native.FurniSourceTypes.IsDefault && native.FurniSourceTypes.Length <= WiredConfigurationLimits.IntParams

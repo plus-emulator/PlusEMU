@@ -29,9 +29,6 @@ public sealed class WiredRuntimeContext
     public WiredSelection Selected { get; internal set; } = new();
     public WiredSelectionKind SelectorKinds { get; internal set; }
     public WiredSignalPayload? Signal { get; internal set; }
-
-    /// <summary>The antennas this signal chain has already gone through; a chain reaches each antenna once.</summary>
-    internal System.Collections.Immutable.ImmutableHashSet<uint> SignalPath { get; set; } = [];
     public Dictionary<string, long> Values { get; } = [];
     public WiredSelectorWorld? SelectorWorldSnapshot { get; set; }
     public WiredVariableFrame? VariableFrame { get; set; }
@@ -120,7 +117,6 @@ public sealed class WiredRuntimeContext
             Selected = Selected.Copy(),
             SelectorKinds = SelectorKinds,
             Signal = Signal,
-            SignalPath = SignalPath,
             VariableFrame = VariableFrame,
             SelectorWorldSnapshot = SelectorWorldSnapshot
         };
@@ -138,7 +134,7 @@ public sealed class WiredRuntimeContext
     internal WiredRuntimeContext Fork(WiredRuntimeEvent @event, int depth)
     {
         // One identity snapshot per dispatch; children share it and revalidate only targets.
-        var child = new WiredRuntimeContext(this, @event) { Depth = depth, NowMilliseconds = NowMilliseconds, SignalPath = SignalPath };
+        var child = new WiredRuntimeContext(this, @event) { Depth = depth, NowMilliseconds = NowMilliseconds };
         child.VariableFrame = VariableFrame;
         child.InheritedPublication = Publication ?? InheritedPublication;
 

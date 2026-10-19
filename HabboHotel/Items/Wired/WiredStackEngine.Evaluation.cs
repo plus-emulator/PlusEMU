@@ -228,6 +228,11 @@ internal sealed partial class WiredStackEngine
                 continue;
             }
 
+            if (pending.Signal != null && SignalRunCapReached(trigger)) {
+                CompleteDispatchSlot(pending);
+                continue;
+            }
+
             var context = pending.Root!.Fork(pending.Event, pending.Depth);
             context.Trigger = trigger;
             context.ResumeImmediately = pending.ResumeImmediately;
@@ -245,12 +250,35 @@ internal sealed partial class WiredStackEngine
 
             if (InvokeRuntime(trigger, context, () => context.Event.Kind == WiredEventKind.Speech
                     ? CaptureSpeech?.Invoke(context, trigger) ?? trigger.Execute(context) : trigger.Execute(context))) {
+                if (pending.Signal != null) {
+                    _signalRuns[trigger] = _signalRuns.GetValueOrDefault(trigger) + 1;
+                }
+
                 pending.Current = BeginFiring(trigger, context, pending.Signal == null ? null : false, trigger: trigger);
             }
             else {
                 CompleteDispatchSlot(pending);
             }
         }
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: a receiving stack runs at most 100 times in one 500 ms wired window, a 1, 2 or
+    // 3-stack loop 100 times each in one tick. Signals past that are dropped, not deferred, and the client gets no notice. The sending
+    // antenna still flips.
+    private const int MaxSignalRunsPerWindow = 100;
+    private readonly Dictionary<IWiredItem, int> _signalRuns = [];
+    private long _signalRunWindow = -1;
+
+    private bool SignalRunCapReached(IWiredItem trigger)
+    {
+        var window = _now() / WiredFlashStates.StateUpdateMilliseconds;
+
+        if (window != _signalRunWindow) {
+            _signalRunWindow = window;
+            _signalRuns.Clear();
+        }
+
+        return _signalRuns.GetValueOrDefault(trigger) >= MaxSignalRunsPerWindow;
     }
 
     private RuntimeFiring BeginFiring(IWiredItem source, WiredRuntimeContext context, bool? negative, object[][]? actors = null,

@@ -277,16 +277,13 @@ internal sealed partial class WiredStackEngine
     public bool SendSignal(WiredRuntimeContext parent, IEnumerable<Item> receivers,
         WiredSelection selection, bool negative = false) => Pass(() =>
     {
-        if (!ReferenceEquals(parent.Room, _runtimeRoom) || TooDeep(parent.Depth + 1)) {
+        if (!ReferenceEquals(parent.Room, _runtimeRoom)) {
             return false;
         }
 
         var live = _targets!.AllFurni().ToDictionary(x => x.Id);
-        // Observed on AIR WIN63-202610151745-318700621 (r97_core_loop, r97_core_chain): a chain reaches each antenna once. A receiving
-        // stack that signals its own antenna, or a 3-antenna cycle back to the first, runs each stack once and stops.
         var antennas = receivers.DistinctBy(x => x.Id).Where(receiver =>
-            live.TryGetValue(receiver.Id, out var attached) && ReferenceEquals(receiver, attached)
-            && IsSignalAntenna(receiver) && !parent.SignalPath.Contains(receiver.Id)).ToArray();
+            live.TryGetValue(receiver.Id, out var attached) && ReferenceEquals(receiver, attached) && IsSignalAntenna(receiver)).ToArray();
 
         if (antennas.Length == 0) {
             return false;
@@ -296,13 +293,14 @@ internal sealed partial class WiredStackEngine
 
         foreach (var antenna in antennas) {
             // Official delivery fires once per addressed antenna matching a receiving stack's picks.
+            // Observed on AIR WIN63-202610151745-318700621: a straight chain of signals runs every stack, and a loop runs 100 or more hops.
+            // A hop therefore keeps the sender's depth; the per-window run cap (SignalRunCapReached) bounds a loop instead.
             var child = parent.Fork(new(WiredEventKind.Signal)
             {
                 Code = unchecked((int)antenna.Id),
                 Actor = parent.Event.Actor,
                 EventItem = parent.Event.EventItem
-            }, parent.Depth + 1);
-            child.SignalPath = parent.SignalPath.Add(antenna.Id);
+            }, parent.Depth);
             child.Signal = new(selection, parent.Values);
             // Routing antennas and forwarded targets are independent from the original event's targets.
             child.Triggering = parent.Triggering.Copy();

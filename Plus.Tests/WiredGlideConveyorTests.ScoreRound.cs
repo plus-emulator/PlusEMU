@@ -104,6 +104,24 @@ public sealed partial class WiredGlideConveyorTests
     }
 
     [Fact]
+    public void ScoreAchievedFiresAgainAfterItsSettingsChangeAndChangeBack()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: after Red fired, saving Any and then Red again let a Red recross fire.
+        var (f, speaker, marker) = ScoreRoundRoom();
+        var start = marker.GetY;
+        GiveRoundScore(f, speaker, 7);
+        Assert.Equal(start + 1, marker.GetY);
+
+        SaveRoundBox(f, 43, [6, 0]);
+        SaveRoundBox(f, 43, [6, 1]);
+        GiveRoundScore(f, speaker, -3);
+        GiveRoundScore(f, speaker, 2);
+
+        Assert.Equal(6, Points(f, Team.Red));
+        Assert.Equal(start + 2, marker.GetY);
+    }
+
+    [Fact]
     public void ScoreAchievedBlockedByAConditionStillUsesItsOneFiring()
     {
         // Observed on AIR WIN63-202610151745-318700621: a crossing stopped by a false condition was not retried by a later recross.

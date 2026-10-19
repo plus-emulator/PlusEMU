@@ -163,6 +163,37 @@ public sealed class WiredSelectorTests
         Assert.Empty(result.Selection.FurniIds);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a chain of 61 nested Remote Selection stacks still reaches the last stack.
+    [Theory]
+    [InlineData(21)]
+    [InlineData(61)]
+    public void NestedRemoteSelectionHasNoDepthLimit(int stacks) =>
+        Assert.Equal(new uint[] { 3 }, SelectRemoteChain(stacks, new("wf_slc_furni_picks", Config(picks: [3]))).Selection.FurniIds);
+
+    [Fact]
+    public void NestedRemoteSelectionReadsVariablesAtAnyDepth() =>
+        Assert.True(WiredSelectorVariableBridge.RequiresQueries("wf_slc_remote", Config([0, 0, 0, 0, 100], [1060]),
+            RemoteChain(61, new("wf_slc_furni_with_var", Config()))));
+
+    [Fact]
+    public void AVeryDeepRemoteChainStopsWithoutOverflowingTheStack() =>
+        Assert.Empty(SelectRemoteChain(100_000, new("wf_slc_furni_picks", Config(picks: [3]))).Selection.FurniIds);
+
+    private static WiredSelectorResult SelectRemoteChain(int stacks, WiredRemoteSelector last) =>
+        WiredSelectorModule.SelectRaw("wf_slc_remote", Config([0, 0, 0, 0, 100], [(uint)(999 + stacks)]), RemoteChain(stacks, last), Inputs());
+
+    // Stack 1000 holds the last selector; every next stack only has a Remote Selection picking the one before it.
+    private static WiredSelectorWorld RemoteChain(int stacks, WiredRemoteSelector last)
+    {
+        var remotes = new Dictionary<uint, WiredRemoteSelector> { [1000] = last };
+
+        for (var id = 1001u; id < 1000 + stacks; id++) {
+            remotes[id] = new("wf_slc_remote", Config([0, 0, 0, 0, 100], [id - 1]));
+        }
+
+        return World() with { RemoteSelectors = remotes };
+    }
+
     [Fact]
     public void TransientActionsExpireButCurrentSignAndDanceUseParameterFilters()
     {

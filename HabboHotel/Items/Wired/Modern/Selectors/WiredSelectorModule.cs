@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Plus.HabboHotel.Items.Wired.Configuration;
 
 namespace Plus.HabboHotel.Items.Wired.Modern.Selectors;
@@ -203,7 +204,9 @@ public static class WiredSelectorModule
                     var firstStack = true;
 
                     foreach (var stack in stacks) {
-                        if (stack.Count > 0 && (visiting.Count >= 20 || !visiting.Add(stack[0]))) {
+                        // Observed on AIR WIN63-202610151745-318700621: 61 nested stacks still select, so only a stack already on the
+                        // path is skipped. The stack check only stops a chain too deep for the thread.
+                        if (stack.Count > 0 && (!RuntimeHelpers.TryEnsureSufficientExecutionStack() || !visiting.Add(stack[0]))) {
                             continue;
                         }
 

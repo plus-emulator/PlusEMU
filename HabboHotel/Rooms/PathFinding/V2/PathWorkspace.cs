@@ -3,14 +3,14 @@ namespace Plus.HabboHotel.Rooms.PathFinding;
 public sealed class PathWorkspace
 {
     internal readonly int[] G, Parent, Stamp, HeapPos, Sequence, HeapNode;
-    internal readonly ulong[] HeapKey;
+    internal readonly UInt128[] HeapKey;
     internal int Generation, Count, NextSequence;
     public int AddressRange { get; }
     public int NodeCapacity { get; }
     public int HeapOperations { get; internal set; }
     public int Expansions { get; internal set; }
     public int CanStepCalls { get; internal set; }
-    public long RetainedBytes => G.Length * 20L + HeapNode.Length * 12L;
+    public long RetainedBytes => G.Length * 20L + HeapNode.Length * 20L;
     private long _leaseToken;
     private long _nextLeaseToken;
 
@@ -24,7 +24,7 @@ public sealed class PathWorkspace
         HeapPos = new int[addressRange + 1];
         Sequence = new int[addressRange + 1];
         HeapNode = new int[NodeCapacity];
-        HeapKey = new ulong[NodeCapacity];
+        HeapKey = new UInt128[NodeCapacity];
     }
     internal void Begin()
     {
@@ -47,7 +47,7 @@ public sealed class PathWorkspace
     }
     internal bool Release(long token) => Interlocked.CompareExchange(ref _leaseToken, 0, token) == token;
 
-    internal void Insert(int node, ulong key)
+    internal void Insert(int node, UInt128 key)
     {
         var p = Count++;
         HeapNode[p] = node;
@@ -56,7 +56,7 @@ public sealed class PathWorkspace
         SiftUp(p);
         HeapOperations++;
     }
-    internal void Decrease(int node, ulong key)
+    internal void Decrease(int node, UInt128 key)
     {
         var p = HeapPos[node];
         HeapKey[p] = key;

@@ -24,7 +24,7 @@ public partial class PlacedFurniRoomTests
     {
         var map = _room.GetGameMap();
         var navigation = new RoomNavigation(_room, map.StaticModel,
-            new() { Engine = PathfindingEngine.V2, ApproachAutoInteract = autoInteract }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
+            new() { ApproachAutoInteract = autoInteract }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
         typeof(Gamemap).GetField("<Navigation>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(map, navigation);
 
@@ -207,14 +207,13 @@ public partial class PlacedFurniRoomTests
     public void TemporaryBlockThenReplanToTheSameApproachStillFiresExactlyOnce()
     {
         var item = ApproachFixture(InteractionType.VendingMachine);
-        var actor = ApproachActor(3, 0);
+        var actor = ApproachActor(3, 2);
         item.Interactor.OnTrigger(_client, item, 0, true);
         ExecutorTick();
         var bound = Approaches.Peek(actor)!;
-        var goalRevision = actor.Movement.GoalRevision;
-        Add(12, 3, 1, height: 4, stackable: false);
+        Add(12, 2, 1, height: 4, stackable: false);
         ExecutorTick();
-        Assert.True(actor.Movement.GoalRevision > goalRevision);
+        Assert.Contains("/mv 3,1,0.0/", ExecutorUpdate(actor).Status);
         Assert.Same(bound, Approaches.Peek(actor));
 
         for (var i = 0; i < 6 && item.InteractingUser == 0; i++) {

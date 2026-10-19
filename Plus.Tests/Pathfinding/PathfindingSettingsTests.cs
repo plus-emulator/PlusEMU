@@ -13,11 +13,9 @@ public class PathfindingSettingsTests
     {
         var manager = new Settings(new());
         var defaults = PathfindingSettings.Load(manager);
-        Assert.Equal(PathfindingEngine.Legacy, defaults.Engine);
         Assert.Equal(1.5, defaults.EffectiveMaxUp);
         Assert.Null(defaults.EffectiveMaxDown);
         Assert.True(defaults.StacktoolLegacyCollision);
-        Assert.Equal(0.05, defaults.ShadowLogSample);
         Assert.Null(defaults.MaxExpansionsPerSearch);
         manager.Values["pathfinding.profile"] = "habbo2013";
         var historical = PathfindingSettings.Load(manager);
@@ -32,8 +30,6 @@ public class PathfindingSettingsTests
         Assert.Equal(0, overrides.EffectiveMaxUp);
         Assert.Null(overrides.EffectiveMaxDown);
         Assert.False(overrides.StacktoolLegacyCollision);
-        Assert.Equal(0, overrides.ShadowLogSample);
-        Assert.Equal(PathfindingEngine.Shadow, overrides.Engine);
         Assert.Equal(1.25, historical.EffectiveMaxUp); // Room snapshots don't follow reloads.
     }
 
@@ -50,7 +46,6 @@ public class PathfindingSettingsTests
         Assert.Equal(1.5, settings.EffectiveMaxUp);
         Assert.Null(settings.EffectiveMaxDown);
         Assert.Null(settings.MaxExpansionsPerSearch);
-        Assert.Equal(1, settings.ShadowLogSample);
     }
 
     [Fact]
@@ -70,7 +65,6 @@ public class PathfindingSettingsTests
         values["pathfinding.max_step_up"] = "9";
 
         Assert.NotNull(map.Navigation);
-        Assert.True(map.Navigation.UsesExecutor);
         Assert.Equal(2.25, map.Navigation.Settings.MaxStepUp);
     }
 
@@ -84,7 +78,7 @@ public class PathfindingSettingsTests
     {
         var settings = PathfindingSettings.Load(new Settings(new() { ["pathfinding.max_surfaces_per_tile"] = value }));
         Assert.Equal(expected, settings.MaxSurfacesPerTile);
-        Assert.False(settings.LayeringEnabled);
+        Assert.True(settings.LayeringEnabled);
     }
 
     private sealed class Settings(Dictionary<string, string> values) : ISettingsManager

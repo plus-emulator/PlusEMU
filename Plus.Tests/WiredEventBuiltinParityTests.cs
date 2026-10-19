@@ -5,6 +5,7 @@ using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Rooms.Games;
+using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Rooms.Games.Teams;
 using Xunit;
 
@@ -136,6 +137,8 @@ public partial class PlacedFurniRoomTests
     public void PackedBuiltinWritesMoveBothCoordinatesAtomicallyAndPreserveRotationForInvalidOccupation()
     {
         var (wired, actor) = PrepareSpeech(new SpeechClock());
+        using var owner = RoomOwnerScope.Enter(_room);
+        _room.GetGameMap().Navigation.DrainCommands();
         var item = Furni(71, InteractionType.None, WiredBoxType.None);
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(null, item, 1, 1, 0, true, false, false));
         var frame = WiredVariableRuntimeFrames.Create(BuiltinContext(new(WiredEventKind.Enter) { Actor = actor }));

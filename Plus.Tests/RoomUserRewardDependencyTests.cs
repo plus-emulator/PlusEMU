@@ -82,31 +82,35 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void LegacyCycleRewardsOnlyEachNewSwimTransitionWithGlobalUnavailable()
+    public void MovementRewardsOnlyEachNewSwimTransitionWithGlobalUnavailable()
     {
         var rewards = new TestRewardProgress();
-        var manager = InstallRewardManager(rewards);
         _client.GetHabbo().Effects = new(_interactionClock);
         InitializeClientEffects();
         WithUnavailableRewardManager(() =>
         {
-            Assert.True(manager.AddAvatarToRoom(_client));
-            var actor = Assert.IsType<RoomUser>(manager.GetRoomUserByHabbo(7));
+            var actor = ExecutorActor(0, 1, rewards: rewards);
+            InitializeClientEffects();
             var effects = _room.GetGameMap().EffectMap;
             effects[1, 1] = effects[2, 1] = 1;
-            actor.SetPos(1, 1, 0);
-            manager.OnCycle();
+            actor.MoveTo(1, 1);
+            ExecutorTick();
+            ExecutorTick();
             Assert.Equal(29, Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).CurrentEffect);
             Assert.Equal([(_client, RewardTrackActions.Swim, 1)], rewards.Calls);
-            manager.OnCycle();
-            actor.SetPos(2, 1, 0);
-            manager.OnCycle();
+            ExecutorTick();
+            ExecutorTick();
+            actor.MoveTo(2, 1);
+            ExecutorTick();
+            ExecutorTick();
             Assert.Single(rewards.Calls);
-            actor.SetPos(3, 1, 0);
-            manager.OnCycle();
+            actor.MoveTo(3, 1);
+            ExecutorTick();
+            ExecutorTick();
             Assert.Equal(-1, Assert.IsType<Plus.HabboHotel.Users.Effects.EffectsComponent>(_client.GetHabbo().Effects).CurrentEffect);
-            actor.SetPos(2, 1, 0);
-            manager.OnCycle();
+            actor.MoveTo(2, 1);
+            ExecutorTick();
+            ExecutorTick();
             Assert.Equal([(_client, RewardTrackActions.Swim, 1), (_client, RewardTrackActions.Swim, 1)], rewards.Calls);
         });
     }

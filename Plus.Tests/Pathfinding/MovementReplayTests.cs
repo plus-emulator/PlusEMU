@@ -21,38 +21,23 @@ public partial class PlacedFurniRoomTests
     [InlineData("cancel", 0, 1, 0d)]
     [InlineData("walk magic", 1, 1, .75)]
     [InlineData("magic height", 1, 1, 2.125)]
-    public void ExecutorReplayKeepsShadowPacketsIdenticalAndClassifiesEveryV2Difference(
+    public void ExecutorReplayReachesTheExpectedDestination(
         string scenario, int finalX, int finalY, double finalZ)
     {
         var stream = RecordMovementScenario(scenario);
-        var legacy = ReplayMovement(stream, PathfindingEngine.Legacy);
-        var shadow = ReplayMovement(stream, PathfindingEngine.Shadow);
-        var v2 = ReplayMovement(stream, PathfindingEngine.V2);
-        Assert.Equal(legacy.Select(FrameBytes), shadow.Select(FrameBytes));
+        var v2 = ReplayMovement(stream);
         Assert.Equal((finalX, finalY, finalZ), v2[^1].Location);
-        var legacyGoal = scenario switch
-        {
-            "superfast" => (2, 1, 0d),
-            "locked pending" => (1, 1, 0d),
-            "sealed corner" => (1, 2, 0d),
-            _ => (finalX, finalY, finalZ)
-        };
-        Assert.Equal(legacyGoal, legacy[^1].Location);
-        var differences = ClassifyReplayDifferences(legacy, v2, ReplayTrajectoryClass(scenario));
-        AssertReplayScenarioDifferences(scenario, differences);
-        AssertReplayExactBytes(scenario, legacy, v2, differences);
 
         if (scenario == "sealed corner") {
-            AssertReplaySealedCorner(legacy, v2);
+            Assert.All(v2, frame => Assert.Equal((0, 1, 0d), frame.Location));
+            Assert.All(v2, frame => Assert.DoesNotContain("mv ", frame.Status));
         }
-
-        ReportReplay(scenario, stream, differences);
     }
 
     [Theory]
     [InlineData(true, 0, 0d)]
     [InlineData(false, 1, 1d)]
-    public void ExecutorReplayStacktoolCollisionSettingMatchesLegacyPackets(bool collision, int finalX, double finalZ)
+    public void ExecutorReplayRespectsStacktoolCollisionSetting(bool collision, int finalX, double finalZ)
     {
         var stream = new ReplayInput[]
         {
@@ -61,15 +46,8 @@ public partial class PlacedFurniRoomTests
             new(ReplayInputKind.Admit), new(ReplayInputKind.Move, 1, 1),
             new(ReplayInputKind.Tick), new(ReplayInputKind.Tick), new(ReplayInputKind.Tick), new(ReplayInputKind.Tick)
         };
-        var legacy = ReplayMovement(stream, PathfindingEngine.Legacy, collision);
-        var shadow = ReplayMovement(stream, PathfindingEngine.Shadow, collision);
-        var v2 = ReplayMovement(stream, PathfindingEngine.V2, collision);
-        Assert.Equal(legacy.Select(FrameBytes), shadow.Select(FrameBytes));
-        Assert.Equal((finalX, 1, finalZ), legacy[^1].Location);
+        var v2 = ReplayMovement(stream, collision);
         Assert.Equal((finalX, 1, finalZ), v2[^1].Location);
-        var differences = ClassifyReplayDifferences(legacy, v2);
-        Assert.All(differences, difference => Assert.Equal(ReplayDifference.TimingPhaseChange, difference));
-        ReportReplay($"stacktool collision={collision}", stream, differences);
     }
 
     [Theory]
@@ -151,45 +129,6 @@ public partial class PlacedFurniRoomTests
         _ => null
     };
 
-    private static void AssertReplayExactBytes(string scenario, List<ReplayFrame> legacy, List<ReplayFrame> v2,
-        List<ReplayDifference> differences)
-    {
-        if (scenario is not ("normal" or "fast")) {
-            return;
-        }
-
-        Assert.Empty(differences);
-        Assert.Equal(legacy.Select(FrameBytes), v2.Select(FrameBytes));
-    }
-
-    private static void AssertReplaySealedCorner(List<ReplayFrame> legacy, List<ReplayFrame> v2)
-    {
-        // The source is at the left edge, with the terminal door above it and blockers to its right/below.
-        // Original legacy cuts between those blockers; v2 cannot transit through the door to detour.
-        Assert.Equal("mv 1,2,0.0", legacy[0].Status);
-        Assert.Equal((1, 2, 0d), legacy[1].Location);
-        Assert.All(v2, frame => Assert.Equal((0, 1, 0d), frame.Location));
-        Assert.All(v2, frame => Assert.DoesNotContain("mv ", frame.Status));
-    }
-
-    private static void AssertReplayScenarioDifferences(string scenario, List<ReplayDifference> differences)
-    {
-        var trajectory = ReplayTrajectoryClass(scenario);
-
-        if (trajectory == null) {
-            Assert.All(differences, difference => Assert.Equal(ReplayDifference.TimingPhaseChange, difference));
-
-            return;
-        }
-
-        Assert.Contains(trajectory.Value, differences);
-        Assert.All(differences, difference => Assert.True(difference == trajectory || difference == ReplayDifference.TimingPhaseChange));
-
-        if (scenario is "superfast" or "locked pending") {
-            Assert.Equal(1, differences.Count(difference => difference == trajectory));
-        }
-    }
-
     private static ReplayInput ReplayFurniture(uint id, int x, int y, double z, double height,
         InteractionType interaction, bool walkable = true)
     {
@@ -199,16 +138,16 @@ public partial class PlacedFurniRoomTests
         return new(ReplayInputKind.Furniture, ItemRecord: record);
     }
 
-    private static List<ReplayFrame> ReplayMovement(IReadOnlyList<ReplayInput> stream, PathfindingEngine engine, bool collision = true)
+    private static List<ReplayFrame> ReplayMovement(IReadOnlyList<ReplayInput> stream, bool collision = true)
     {
         using var fixture = new PlacedFurniRoomTests();
-        fixture.ReplayNavigation(engine, collision);
+        fixture.ReplayNavigation(collision);
         RoomUser? actor = null;
         var frames = new List<ReplayFrame>();
 
         foreach (var input in stream) {
             if (input.Kind == ReplayInputKind.Admit) {
-                actor = fixture.ReplayAdmission(engine);
+                actor = fixture.ReplayAdmission();
             }
             else if (input.Kind == ReplayInputKind.Tick) {
                 frames.Add(fixture.ReplayTick(actor!));
@@ -218,32 +157,26 @@ public partial class PlacedFurniRoomTests
             }
         }
 
-        ReportReplayFrames(engine, frames);
+        ReportReplayFrames(frames);
 
         return frames;
     }
 
-    private void ReplayNavigation(PathfindingEngine engine, bool collision)
+    private void ReplayNavigation(bool collision)
     {
         _roomSettings.Values["pathfinding.stacktool_legacy_collision"] = collision ? "1" : "0";
         var map = _room.GetGameMap();
-        var navigation = new RoomNavigation(_room, map.StaticModel, new() { Engine = engine, StacktoolLegacyCollision = collision }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
+        var navigation = new RoomNavigation(_room, map.StaticModel, new() { LayeringEnabled = false, StacktoolLegacyCollision = collision }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
         typeof(Gamemap).GetField("<Navigation>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(map, navigation);
     }
 
-    private RoomUser ReplayAdmission(PathfindingEngine engine)
+    private RoomUser ReplayAdmission()
     {
         var actor = Viewer(0, 1);
         actor.InternalRoomId = actor.VirtualId;
         actor.UserId = 7;
-
-        if (engine == PathfindingEngine.V2) {
-            _room.GetGameMap().Navigation!.Admit(actor);
-        }
-        else {
-            _room.GetGameMap().AddUserToMap(actor, actor.Coordinate);
-        }
+        _room.GetGameMap().Navigation!.Admit(actor);
 
         _room.ProcessRoom();
         _client.Packets.Clear();
@@ -347,12 +280,12 @@ public partial class PlacedFurniRoomTests
         return result;
     }
 
-    private static void ReportReplayFrames(PathfindingEngine engine, List<ReplayFrame> frames)
+    private static void ReportReplayFrames(List<ReplayFrame> frames)
     {
         var output = Environment.GetEnvironmentVariable("PLUSEMU_REPLAY_FRAMES");
 
         if (!string.IsNullOrEmpty(output)) {
-            File.AppendAllLines(output, new[] { System.Text.Json.JsonSerializer.Serialize(new { engine, frames }, new System.Text.Json.JsonSerializerOptions { IncludeFields = true }) });
+            File.AppendAllLines(output, new[] { System.Text.Json.JsonSerializer.Serialize(new { frames }, new System.Text.Json.JsonSerializerOptions { IncludeFields = true }) });
         }
     }
 

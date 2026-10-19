@@ -176,16 +176,12 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void LegacyRollerLoopCharacterizesDormantClearanceAndRetainedCarryZ()
+    public void DefaultRollerLoopPreservesClearanceAndRetainedCarryZ()
     {
         ExecutorRoller(10, 0, 1);
         ExecutorRoller(11, 1, 1);
         var cargo = ExecutorFloor(12, 1, 1, z: 1, height: 1);
-        var actor = Viewer(0, 1);
-        actor.InternalRoomId = actor.VirtualId;
-        actor.SetPos(0, 1, 0.5);
-        _room.GetGameMap().AddUserToMap(actor, new(0, 1));
-        Assert.Null(_room.GetGameMap().Navigation);
+        var actor = ExecutorRollerActor(0, 1, 0.5);
         EnableExecutorRollers();
         ExecutorTick();
         Assert.Equal((1, 1, 0.5), (actor.X, actor.Y, actor.Z));

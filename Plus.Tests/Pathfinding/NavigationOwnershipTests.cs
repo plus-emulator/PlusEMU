@@ -6,10 +6,10 @@ namespace Plus.Tests;
 public partial class PlacedFurniRoomTests
 {
     [Fact]
-    public void OriginalLegacyTickNeverOwnsTheV2RoomScope()
+    public void RoomTickOwnsTheNavigationScope()
     {
         var source = ExecutorFloor(10, 0, 1);
-        var actor = Viewer(0, 1);
+        var actor = ExecutorActor(0, 1);
         actor.UserId = 7;
         _room.GetGameMap().AddUserToMap(actor, actor.Coordinate);
         bool? owned = null;
@@ -24,19 +24,20 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
-        Assert.Equal(false, owned);
+        Assert.Equal(true, owned);
     }
 
     [Fact]
-    public void OriginalLegacyFastWiredTickDoesNotAcquireTheV2Monitor()
+    public void FastWiredTickWaitsForTheNavigationMonitor()
     {
         Task tick;
 
         lock (_room.NavigationSync) {
             tick = Task.Run(_room.ProcessWiredOnly);
-            Assert.True(tick.Wait(TimeSpan.FromSeconds(3)));
+            Assert.False(tick.Wait(TimeSpan.FromMilliseconds(50)));
         }
 
+        Assert.True(tick.Wait(TimeSpan.FromSeconds(3)));
         Assert.True(tick.IsCompletedSuccessfully);
     }
 }

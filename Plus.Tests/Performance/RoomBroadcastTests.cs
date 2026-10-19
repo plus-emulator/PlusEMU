@@ -250,7 +250,7 @@ public class RoomBroadcastTests
     [InlineData(true, true)]
     [InlineData(false, false)]
     [InlineData(false, true)]
-    public void FallbackRemovalRestoresReservationsOnlyForOrdinaryBots(bool temporary, bool pendingStep)
+    public void RemovingABotLeavesTheMapUnchanged(bool temporary, bool pendingStep)
     {
         var fixture = RoomPerformanceFixture.Create(1, 0);
         var bot = fixture.Bots[0];
@@ -262,21 +262,25 @@ public class RoomBroadcastTests
             .Invoke(fixture.Manager, new object[] { bot, false, false });
         Assert.Empty(fixture.Manager.GetUserList());
         Assert.Empty(fixture.Map.GetRoomUsers(new(1, 1)));
-        Assert.Equal(temporary ? (byte)1 : bot.SqState, fixture.Map.GameMap[pendingStep ? 2 : 1, 1]);
+        Assert.Equal(1, fixture.Map.GameMap[1, 1]);
+        Assert.Equal(1, fixture.Map.GameMap[2, 1]);
     }
 
     [Fact]
-    public void OrdinaryBotStillUsesExistingFloorReservationRules()
+    public void OrdinaryBotReservesTheAnnouncedDestinationWithoutChangingTerrain()
     {
         var fixture = RoomPerformanceFixture.Create(1, 0);
         var bot = fixture.Bots[0];
         typeof(RoomBot).GetProperty(nameof(RoomBot.IsTemporary))!.SetValue(bot.BotData, false);
-        bot.SqState = 2;
+        bot.AllowOverride = false;
         fixture.PrepareWalking();
         fixture.Manager.OnCycle();
         Assert.True(bot.SetStep);
-        Assert.Equal(2, fixture.Map.GameMap[1, 1]);
-        Assert.Equal(1, bot.SqState);
+        Assert.Equal(1, fixture.Map.GameMap[1, 1]);
+        var navigation = fixture.Map.Navigation;
+        var occupancy = navigation.Executor.Claims.OccupancyAt(navigation.Grid.Tile(2, 1), long.MinValue);
+        Assert.NotEqual(Plus.HabboHotel.Rooms.PathFinding.TargetOccupancy.None,
+            occupancy & Plus.HabboHotel.Rooms.PathFinding.TargetOccupancy.ExclusiveClaim);
     }
 
     private static byte[] Encode(FlashGameClient client, IServerPacket composer)

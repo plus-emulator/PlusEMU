@@ -24,15 +24,15 @@ internal sealed class V2MovementEngine : IMovementEngine
         _placement = new(room, navigation, Context, _cancellation);
         _admission = new(room, Context, _placement);
         _rebind = new RebindService(room, navigation.Grid);
-        var fallback = new RouteFallbackService(navigation, Context, _cancellation);
-        Context.Geometry = new(Context, _rebind, fallback);
+        var fallback = new RouteFallbackService(Context, _cancellation);
+        Context.Geometry = new(Context, _rebind);
         Rollers = new(room, new RollerTransport(navigation, Context, _placement));
         navigation.Inputs.ItemPublished = Context.Approaches.CancelItem;
         var approaches = new ApproachCompletion(room, navigation, Context.Approaches);
         var commit = new CommitService(room, navigation, Context, _cancellation, fallback, approaches);
         var intake = new CommandIntake(Context, _placement);
         var search = new MovementSearch(room, navigation, Context, _cancellation, fallback, approaches);
-        var announce = new AnnounceService(room, navigation, Context, _cancellation, fallback);
+        var announce = new AnnounceService(room, navigation, Context, _cancellation, fallback, search);
         _executor = new(room, Context, _rebind, commit, intake, search, announce, new(room));
     }
     internal void RefreshPostures()

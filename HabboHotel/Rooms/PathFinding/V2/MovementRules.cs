@@ -8,7 +8,7 @@ public enum StepPurpose
 }
 public enum OccupancyView
 {
-    Planning, Execution
+    Planning, Execution, InitialPlanning
 }
 public enum StepReason
 {
@@ -48,6 +48,12 @@ public static class ClaimMatrix
             return TargetOccupancy.RollerClaim;
         }
 
+        // With or without walkthrough, the first plan crosses standing avatars at a cost (StepCost);
+        // execution still blocks them where the room does.
+        if (view == OccupancyView.InitialPlanning && purpose == StepPurpose.Transit) {
+            return TargetOccupancy.RollerClaim;
+        }
+
         if (!actor.Walkthrough) {
             return view == OccupancyView.Execution ? (TargetOccupancy)127 : TargetOccupancy.Stationary | TargetOccupancy.OffGraph;
         }
@@ -60,6 +66,17 @@ public static class ClaimMatrix
             ? TargetOccupancy.Stationary | TargetOccupancy.GoalClaim | TargetOccupancy.RollerClaim | TargetOccupancy.OffGraph
             : TargetOccupancy.Stationary | TargetOccupancy.OffGraph;
     }
+
+    // Path costs count half steps.
+    public const int Step = 2;
+
+    // The first plan steps straight onto a standing avatar only when no route of the same length avoids it,
+    // and does not step onto one diagonally while a straight entry or a short detour exists.
+    // Inferred from routes observed on AIR `WIN63-202610151745-318700621`.
+    public static int StepCost(ActorProfile actor, StepPurpose purpose, OccupancyView view, TargetOccupancy target, bool diagonal)
+        => view != OccupancyView.InitialPlanning || purpose != StepPurpose.Transit || actor.LegacyOverride || actor.IgnoreUsers
+            || (target & (TargetOccupancy.Stationary | TargetOccupancy.OffGraph)) == 0 ? Step
+            : diagonal ? 3 * Step : Step + 1;
 
     // The claim an announced step takes on its target (§6.4).
     public static ClaimKind KindFor(ActorProfile actor, NavFlags target, StepPurpose purpose)
@@ -134,7 +151,7 @@ public sealed class MovementRules(NavGrid grid, PathfindingSettings settings, Ac
             return new(actor.Interaction?.Allows(from, to) == true ? StepReason.Ok : StepReason.InteractionDenied);
         }
 
-        if (!IsStandable(flags, slot, purpose)) {
+        if (!IsStandable(flags, slot, purpose, view)) {
             return new(StepReason.NotStandable);
         }
 
@@ -170,9 +187,9 @@ public sealed class MovementRules(NavGrid grid, PathfindingSettings settings, Ac
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool IsStandable(NavFlags flags, int slot, StepPurpose purpose)
+    private bool IsStandable(NavFlags flags, int slot, StepPurpose purpose, OccupancyView view)
     {
-        var required = purpose == StepPurpose.Transit ? NavFlags.Transit
+        var required = purpose == StepPurpose.Transit && view != OccupancyView.Execution ? NavFlags.Transit
             : NavFlags.Transit | NavFlags.GoalOnlySeat | NavFlags.GoalOnlyBed | NavFlags.Door;
 
         return purpose == StepPurpose.Roller

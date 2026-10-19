@@ -35,7 +35,6 @@ public partial class PlacedFurniRoomTests
         Plus.HabboHotel.Rooms.Instance.WiredComponent wired = null!;
         RoomUser actor = null!;
         _room.RunFastPass(() => (wired, actor) = PrepareSpeech(clock));
-        Assert.True(_room.UsesV2Movement);
         Assert.NotNull(map.Navigation);
         Assert.False(RoomOwnerScope.IsOwner(_room));
         var fastest = HighscoreBoard(501, 3);

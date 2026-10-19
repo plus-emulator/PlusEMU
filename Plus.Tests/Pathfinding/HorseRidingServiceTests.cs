@@ -51,13 +51,15 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void LegacyMountAndDismountFlipBothRidersAndPublishTheHorse()
+    public void MountAndDismountFlipBothRidersAndPublishTheHorse()
     {
-        var rider = LegacyRider();
-        var horse = LegacyHorse(2, 1);
+        var rider = ExecutorActor(1, 1);
+        var horse = ExternalLifecycleHorse(2, 1);
+        ExecutorTick();
         var service = new HorseRidingService(Locale());
 
         service.Ride(_room, _client, 50, true);
+        ExecutorTick();
 
         Assert.True(rider.RidingHorse);
         Assert.True(horse.RidingHorse);
@@ -66,6 +68,7 @@ public partial class PlacedFurniRoomTests
         Assert.Contains(ServerPacketHeader.PetHorseFigureInformationComposer, _client.Sent);
 
         service.Ride(_room, _client, 50, false);
+        ExecutorTick();
 
         Assert.False(rider.RidingHorse);
         Assert.False(horse.RidingHorse);
@@ -89,14 +92,16 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void LegacyOwnerMountsTheirOwnPetWhenAnyoneCanRideIsOff()
+    public void OwnerMountsTheirOwnPetWhenAnyoneCanRideIsOff()
     {
-        var rider = LegacyRider();
-        var horse = LegacyHorse(2, 1);
+        var rider = ExecutorActor(1, 1);
+        var horse = ExternalLifecycleHorse(2, 1);
+        ExecutorTick();
         Assert.IsType<Pet>(horse.PetData).AnyoneCanRide = 0;
         horse.PetData.OwnerId = rider.UserId;
 
         new HorseRidingService(Locale()).Ride(_room, _client, 50, true);
+        ExecutorTick();
 
         Assert.True(rider.RidingHorse);
         Assert.True(horse.RidingHorse);
@@ -105,7 +110,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void V2OwnerOnlyPetRefusesAnotherRider()
     {
-        var rider = ExecutorActor(0, 1);
+        var rider = ExecutorActor(1, 1);
         var horse = ExternalLifecycleHorse(2, 1);
         ExecutorTick();
         Assert.IsType<Pet>(horse.PetData).AnyoneCanRide = 0;

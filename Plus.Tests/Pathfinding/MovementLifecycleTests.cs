@@ -18,16 +18,13 @@ public partial class PlacedFurniRoomTests
         actor.TeleportEnabled = true;
         actor.MoveTo(3, 2);
         ExecutorTick();
-        Assert.Equal(new[] { (Plus.HabboHotel.Items.Wired.WiredBoxType.TriggerWalkOnFurni, target.Id) },
-            events.Select(entry => (entry.Kind, entry.Item)).ToArray());
+        Assert.Equal(new[] { (Plus.HabboHotel.Items.Wired.WiredBoxType.TriggerWalkOnFurni, target.Id) }, events.Select(entry => (entry.Kind, entry.Item)).ToArray());
         Assert.Equal((3, 2, .75), (actor.X, actor.Y, actor.Z));
     }
-
     [Fact]
     public void RoomNavigationRetriesEveryDirtyTileAfterARejectedPublication()
     {
-        var navigation = new RoomNavigation(_room, _room.GetGameMap().StaticModel,
-            new() { Engine = PathfindingEngine.V2 }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
+        var navigation = new RoomNavigation(_room, _room.GetGameMap().StaticModel, new() { }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
         navigation.Compiler.BeforePublish = _ => throw new InvalidOperationException("publication rejected");
         Assert.Throws<InvalidOperationException>((Action)navigation.ApplyDirty);
         var publishedTiles = 0;
@@ -36,24 +33,14 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(navigation.Grid.SlotCapacity, publishedTiles);
         Assert.Equal(1, navigation.Grid.Version);
     }
-
-    [Theory]
-    [InlineData(PathfindingEngine.Shadow)]
-    [InlineData(PathfindingEngine.V2)]
-    public void RoomNavigationOnlyIsolatesShadowCompilerFailures(PathfindingEngine engine)
+    [Fact]
+    public void RoomNavigationOnlyIsolatesShadowCompilerFailures()
     {
-        var navigation = new RoomNavigation(_room, _room.GetGameMap().StaticModel, new() { Engine = engine }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
+        var navigation = new RoomNavigation(_room, _room.GetGameMap().StaticModel, new() { }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
         var failure = new InvalidOperationException("publication rejected");
         navigation.Compiler.BeforePublish = _ => throw failure;
-
-        if (engine == PathfindingEngine.V2) {
-            Assert.Same(failure, Assert.Throws<InvalidOperationException>((Action)navigation.ApplyDirty));
-        }
-        else {
-            navigation.ApplyDirty();
-        }
+        Assert.Same(failure, Assert.Throws<InvalidOperationException>((Action)navigation.ApplyDirty));
     }
-
     [Fact]
     public void CommandIntakeStaffTeleportModeUsesRoomOwnedForcedPlacement()
     {
@@ -72,7 +59,6 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(actor, _room.GetGameMap().GetRoomUsers(new(0, 1)));
         Assert.Contains(_client.Packets, packet => packet.Header == ServerPacketHeader.SlideObjectBundleComposer);
     }
-
     [Fact]
     public void BlockedStepPolicyReplansStaticBlockersWithoutWaiting()
     {
@@ -83,16 +69,13 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
         Assert.False(blocker.Movement.HasIntent);
-        Assert.Equal(RouteState.Suspect, actor.Movement.Fallback.State);
-        Assert.Equal(0, actor.Movement.BlockReplans);
-        Assert.False(actor.HasStatus("mv"));
-        ExecutorTick();
         Assert.True(actor.HasStatus("mv"));
-        Assert.NotEqual("2,1,0", actor.Statusses["mv"]);
-        Assert.Equal(RouteState.Normal, actor.Movement.Fallback.State);
-        Assert.Equal(0, actor.Movement.BlockReplans);
+        Assert.NotEqual("2,1,0.0", actor.Statusses["mv"]);
+        ExecutorTick();
+        Assert.NotEqual(blocker.Coordinate, actor.Coordinate);
+        FallbackRun(actor, 10);
+        FallbackAssertStopped(actor, 3, 1);
     }
-
     [Fact]
     public void ForcePlacementServiceOffGraphPlacementClearsThePreviousSupportPosture()
     {
@@ -116,7 +99,6 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain("/lay ", ExecutorUpdate(actor).Status);
         Assert.Empty(events);
     }
-
     [Fact]
     public void AdmissionServiceKeepsPendingActorsOutOfTheMapUntilOwnerDrain()
     {
@@ -131,7 +113,6 @@ public partial class PlacedFurniRoomTests
         Assert.Contains(newcomer, _room.GetGameMap().GetRoomUsers(new(2, 2)));
         Assert.Equal(NavState.Active, actor.Movement.State);
     }
-
     [Fact]
     public void AdmissionServiceIgnoresCommandsForAnActorMarkedRemovingBeforeDrain()
     {
@@ -146,7 +127,6 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(actor, _room.GetGameMap().GetRoomUsers(new(2, 2)));
         Assert.False(actor.HasStatus("mv"));
     }
-
     [Fact]
     public void CommandIntakeCanWalkRejectsUserButAllowsWiredOrigin()
     {
@@ -163,13 +143,10 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 1), (actor.X, actor.Y));
         Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
     }
-
     [Fact]
-    public void LegacyExistingRouteContinuesAfterCanWalkIsDisabled()
+    public void ExistingRouteContinuesAfterCanWalkIsDisabled()
     {
-        var actor = Viewer(0, 1);
-        actor.UserId = 7;
-        _room.GetGameMap().AddUserToMap(actor, new(0, 1));
+        var actor = ExecutorActor(0, 1);
         actor.MoveTo(2, 1);
         ExecutorTick();
         Assert.Contains("/mv 1,1,0.0/", ExecutorUpdate(actor).Status);
@@ -181,7 +158,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((2, 1), (actor.X, actor.Y));
         Assert.False(actor.HasStatus("mv"));
     }
-
     [Fact]
     public void ForcePlacementServiceExactZReleasesClaimsAndRejectsStaleRoomCommands()
     {
@@ -201,7 +177,6 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((3, 2), (actor.X, actor.Y));
     }
-
     [Fact]
     public void RebindServiceRemovedSupportFallsBackWithoutFabricatingWalkEvents()
     {
@@ -218,7 +193,6 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(events);
         Assert.Equal(SurfaceKind.Floor, actor.Movement.CurrentRef!.Value.Kind);
     }
-
     [Theory]
     [InlineData(InteractionType.Teleport)]
     [InlineData(InteractionType.Hopper)]

@@ -22,6 +22,26 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(actor, _room.GetGameMap().GetRoomUsers(new(0, 1)));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExecutorEndsATeleportOrHopperArrivalOnTheFirstStep(bool hopping)
+    {
+        var actor = ExecutorActor(0, 1);
+        var habbo = _client.GetHabbo();
+        habbo.Client = _client;
+        habbo.IsTeleporting = !hopping;
+        habbo.TeleporterId = hopping ? 0u : 11u;
+        habbo.IsHopping = hopping;
+        habbo.HopperId = hopping ? 12u : 0u;
+        ExecutorTick();
+        Assert.Equal((!hopping, hopping), (habbo.IsTeleporting, habbo.IsHopping));
+        actor.MoveTo(3, 1);
+        ExecutorTick();
+        Assert.True(actor.HasStatus("mv"));
+        Assert.Equal((false, 0u, false, 0u), (habbo.IsTeleporting, habbo.TeleporterId, habbo.IsHopping, habbo.HopperId));
+    }
+
     [Fact]
     public void ExecutorAutokickRemovesTheActorBeforeItsPendingLanding()
     {

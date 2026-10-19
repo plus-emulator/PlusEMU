@@ -205,13 +205,6 @@ public partial class PlacedFurniRoomTests
         actor.IsWalking = true;
         actor.PathRecalcNeeded = false;
 
-        if (!v2) {
-            actor.Path = [new(1, 1), new(1, 2), new(0, 2), new(0, 1)];
-            actor.PathStep = 1;
-
-            return;
-        }
-
         var grid = _room.GetGameMap().Navigation!.Grid;
         var state = actor.Movement;
         state.HasIntent = true;

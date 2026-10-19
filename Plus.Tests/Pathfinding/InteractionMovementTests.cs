@@ -192,6 +192,8 @@ public partial class PlacedFurniRoomTests
         Assert.False(actor.CanWalk);
         ExecutorTick();
         Assert.Equal((2, 2), (actor.X, actor.Y));
+        Assert.Contains(actor, _room.GetGameMap().GetRoomUsers(new(2, 2)));
+        Assert.DoesNotContain(actor, _room.GetGameMap().GetRoomUsers(new(1, 1)));
         Assert.Equal(0, source.InteractingUser);
         Assert.Equal(0, target.InteractingUser2);
         Assert.Equal(MoveOrigin.Interaction, actor.Movement.Origin);
@@ -202,6 +204,33 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((2, 1), (actor.X, actor.Y));
         Assert.False(actor.AllowOverride);
+    }
+
+    [Fact]
+    public void SameRoomTeleporterKeepsDestinationOccupancyWhenItsExitIsOutsideTheRoom()
+    {
+        var database = LandingDatabase(11, RoomId);
+        _databaseField.SetValue(null, database);
+        Handler(new(), travel: new ItemTravelStore(database));
+        var source = InteractionItem(10, 1, 1, InteractionType.Teleport);
+        var target = InteractionItem(11, 3, 3, InteractionType.Teleport);
+        target.Rotation = 4;
+        Assert.False(_room.GetGameMap().ValidTile(target.SquareInFront.X, target.SquareInFront.Y));
+        var actor = ExecutorActor(1, 0);
+        source.Interactor.OnTrigger(_client, source, 0, true);
+
+        ExecutorTick();
+        ExecutorTick();
+        ExecutorTick();
+
+        Assert.Equal((3, 3), (actor.X, actor.Y));
+        Assert.Contains(actor, _room.GetGameMap().GetRoomUsers(new(3, 3)));
+        Assert.DoesNotContain(actor, _room.GetGameMap().GetRoomUsers(new(1, 1)));
+        ExecutorTick();
+        ExecutorTick();
+        Assert.Equal((3, 3), (actor.X, actor.Y));
+        Assert.False(actor.HasStatus("mv"));
+        Assert.Contains(actor, _room.GetGameMap().GetRoomUsers(new(3, 3)));
     }
 
     [Theory]

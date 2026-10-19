@@ -22,7 +22,6 @@ public sealed record FootballGateOutfit(string BaseLook, string Look);
 
 public class RoomUser
 {
-    internal ActorProfile? NavigationProfile { get; set; }
     private ActorMovementState? _movement;
     public ActorMovementState Movement => LazyInitializer.EnsureInitialized(ref _movement)!;
 
@@ -83,9 +82,7 @@ public class RoomUser
     public int LockedTilesCount;
     public bool MoonwalkEnabled = false;
 
-    public List<Vector2D> Path = new();
     public bool PathRecalcNeeded;
-    public int PathStep = 1;
     public Pet? PetData;
 
     public int PrevTime;
@@ -108,7 +105,6 @@ public class RoomUser
     public bool ShieldActive;
     public int ShieldCounter;
     public DateTimeOffset? SignExpiresAt;
-    public byte SqState;
     public bool SuperFastWalking = false;
     private sealed record TeamMembership(Team Value, long Revision);
     private TeamMembership? _teamMembership;
@@ -166,7 +162,6 @@ public class RoomUser
         _rewards = rewards;
         AllowOverride = false;
         CanWalk = true;
-        SqState = 3;
         InternalRoomId = 0;
         CurrentItemEffect = ItemEffectType.None;
         FreezeLives = 0;
@@ -526,30 +521,7 @@ public class RoomUser
 
     public void ClearMovement(bool update)
     {
-        var room = GetRoom();
-
-        if (room == null) {
-            return;
-        }
-
-        if (room.GetGameMap()?.Navigation is { UsesExecutor: true } navigation) {
-            navigation.Cancel(this);
-
-            return;
-        }
-
-        IsWalking = false;
-        Statusses.Remove("mv");
-        GoalX = 0;
-        GoalY = 0;
-        SetStep = false;
-        SetX = 0;
-        SetY = 0;
-        SetZ = 0;
-
-        if (update) {
-            UpdateNeeded = true;
-        }
+        GetRoom()?.GetGameMap().Navigation.Cancel(this);
     }
 
     public void MoveTo(Point c)
@@ -559,41 +531,8 @@ public class RoomUser
 
     public void MoveTo(int pX, int pY, bool pOverride)
     {
-        var room = GetRoom();
-
-        if (room == null) {
-            return;
-        }
-
-        if (room.GetGameMap()?.Navigation is { UsesExecutor: true } navigation) {
-            navigation.Move(this, pX, pY, IsBot ? MoveOrigin.Bot : MoveOrigin.User,
-                TeleportEnabled ? MoveFlags.Teleport : MoveFlags.None);
-
-            return;
-        }
-
-        if (TeleportEnabled) {
-            UnIdle();
-            room.SendPacket(room.GetRoomItemHandler().UpdateUserOnRoller(this, new(pX, pY), 0, room.GetGameMap().SqAbsoluteHeight(GoalX, GoalY)));
-
-            if (Statusses.ContainsKey("sit")) {
-                Z -= 0.35;
-            }
-
-            UpdateNeeded = true;
-
-            return;
-        }
-
-        if (room.GetGameMap().SquareHasUsers(pX, pY) && !pOverride || Frozen) {
-            return;
-        }
-
-        UnIdle();
-        GoalX = pX;
-        GoalY = pY;
-        PathRecalcNeeded = true;
-        FreezeInteracting = false;
+        GetRoom()?.GetGameMap().Navigation.Move(this, pX, pY, IsBot ? MoveOrigin.Bot : MoveOrigin.User,
+                        TeleportEnabled ? MoveFlags.Teleport : MoveFlags.None);
     }
 
     public void MoveTo(int pX, int pY)
@@ -612,7 +551,7 @@ public class RoomUser
 
         var front = item.SquareInFront;
 
-        if (!IsBot && !TeleportEnabled && room.GetGameMap()?.Navigation is { UsesExecutor: true, Settings.ApproachAutoInteract: true } navigation
+        if (!IsBot && !TeleportEnabled && room.GetGameMap()?.Navigation is { Settings.ApproachAutoInteract: true } navigation
             && navigation.DescribeApproach(item, actionKind) is { } approach) {
             navigation.Move(this, front.X, front.Y, MoveOrigin.User, MoveFlags.None, approach);
         }
@@ -623,18 +562,7 @@ public class RoomUser
 
     public void MoveTo(int x, int y, MoveOrigin origin, MoveFlags flags = MoveFlags.None)
     {
-        var room = GetRoom();
-
-        if (room == null) {
-            return;
-        }
-
-        if (room.GetGameMap()?.Navigation is { UsesExecutor: true } navigation) {
-            navigation.Move(this, x, y, origin, flags);
-        }
-        else {
-            MoveTo(x, y);
-        }
+        GetRoom()?.GetGameMap().Navigation.Move(this, x, y, origin, flags);
     }
 
     internal void InitializePosition(int x, int y, double z)
@@ -653,21 +581,7 @@ public class RoomUser
 
     public void SetPos(int pX, int pY, double pZ)
     {
-        var room = GetRoom();
-
-        if (room == null) {
-            return;
-        }
-
-        if (room.GetGameMap()?.Navigation is { UsesExecutor: true } navigation) {
-            navigation.ForcePlace(this, pX, pY, pZ, ForceResolution.ExactZ);
-
-            return;
-        }
-
-        X = pX;
-        Y = pY;
-        Z = pZ;
+        GetRoom()?.GetGameMap().Navigation.ForcePlace(this, pX, pY, pZ, ForceResolution.ExactZ);
     }
 
     public void CarryItem(int item)

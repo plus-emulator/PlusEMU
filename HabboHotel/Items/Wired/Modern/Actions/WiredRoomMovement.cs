@@ -485,7 +485,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             return moved;
         }
 
-        if (room.UsesV2Movement && !RoomOwnerScope.IsOwner(room)) {
+        if (!RoomOwnerScope.IsOwner(room)) {
             // Placement, walk hooks and packets must observe the same owner-side move.
             room.GetGameMap().Navigation!.RunOwner(user, (actor, sequence) => Move(actor, sequence));
 
@@ -532,7 +532,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var horse = WiredRoomOperations.Horse(room, user);
         var horseSeat = horse == null ? 0 : oldZ - horse.Z;
         var wasWalking = user.IsWalking;
-        var resumeThrough = discardThrough ?? (room.UsesV2Movement ? user.Movement.Commands.Read()?.Sequence ?? 0 : (long?)null);
+        var resumeThrough = discardThrough ?? (user.Movement.Commands.Read()?.Sequence ?? 0);
         var goalX = user.GoalX;
         var goalY = user.GoalY;
         var oldItems = room.GetGameMap().GetCoordinatedItems(user.Coordinate).DistinctBy(item => item.Id).ToArray();
@@ -586,8 +586,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         }
 
         // A newer walk request takes precedence over restoring the route captured by this move.
-        if (wasWalking && (!resumeThrough.HasValue || (user.Movement.Commands.Read()?.Sequence ?? 0) <= resumeThrough.Value)
-            && (walkMode == 1 || walkMode == 0
+        if (wasWalking && (user.Movement.Commands.Read()?.Sequence ?? 0) <= resumeThrough && (walkMode == 1 || walkMode == 0
             && Math.Max(Math.Abs(goalX - x), Math.Abs(goalY - y)) < Math.Max(Math.Abs(goalX - oldX), Math.Abs(goalY - oldY)))) {
             user.MoveTo(goalX, goalY);
         }

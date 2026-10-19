@@ -129,26 +129,32 @@ public class MovementRulesTests
     [Fact]
     public void EveryConflictMatrixRowInBothViews()
     {
-        var rows = new (ActorProfile Actor, NavFlags Flags, StepPurpose Purpose, int Planning, int Execution)[]
+        var rows = new (ActorProfile Actor, NavFlags Flags, StepPurpose Purpose, int Planning, int Initial, int Execution)[]
         {
-            (new(), NavFlags.Transit, StepPurpose.Transit, 65, 127),
-            (new(), NavFlags.Transit, StepPurpose.Goal, 65, 127),
-            (new() { Walkthrough = true }, NavFlags.Transit, StepPurpose.Transit, 32, 32),
-            (new() { Walkthrough = true }, NavFlags.Transit, StepPurpose.Goal, 65, 105),
-            (new(), NavFlags.Door, StepPurpose.Goal, 32, 32),
-            (new(), NavFlags.Transit, StepPurpose.Roller, 127, 127),
-            (new() { IgnoreUsers = true }, NavFlags.Transit, StepPurpose.Goal, 32, 32),
-            (new() { LegacyOverride = true }, NavFlags.Transit, StepPurpose.Goal, 0, 0),
-            (new(), NavFlags.Transit, StepPurpose.Interaction, 0, 0)
+            (new(), NavFlags.Transit, StepPurpose.Transit, 65, 32, 127),
+            (new(), NavFlags.Transit, StepPurpose.Goal, 65, 65, 127),
+            (new() { Walkthrough = true }, NavFlags.Transit, StepPurpose.Transit, 32, 32, 32),
+            (new() { Walkthrough = true }, NavFlags.Transit, StepPurpose.Goal, 65, 65, 105),
+            (new(), NavFlags.Door, StepPurpose.Goal, 32, 32, 32),
+            (new(), NavFlags.Transit, StepPurpose.Roller, 127, 127, 127),
+            (new() { IgnoreUsers = true }, NavFlags.Transit, StepPurpose.Goal, 32, 32, 32),
+            (new() { LegacyOverride = true }, NavFlags.Transit, StepPurpose.Goal, 0, 0, 0),
+            (new(), NavFlags.Transit, StepPurpose.Interaction, 0, 0, 0)
         };
 
         foreach (var row in rows) {
             foreach (var view in Enum.GetValues<OccupancyView>()) {
                 var mask = ClaimMatrix.BlockingMask(row.Actor, row.Flags, row.Purpose, view);
-                Assert.Equal(view == OccupancyView.Planning ? row.Planning : row.Execution, (int)mask);
+                var expected = view switch
+                {
+                    OccupancyView.Execution => row.Execution,
+                    OccupancyView.InitialPlanning => row.Initial,
+                    _ => row.Planning
+                };
+                Assert.Equal(expected, (int)mask);
 
                 for (var bit = 1; bit <= 64; bit <<= 1) {
-                    Assert.Equal(((view == OccupancyView.Planning ? row.Planning : row.Execution) & bit) != 0, (mask & (TargetOccupancy)bit) != 0);
+                    Assert.Equal((expected & bit) != 0, (mask & (TargetOccupancy)bit) != 0);
                 }
             }
         }

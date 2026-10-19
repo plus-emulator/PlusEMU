@@ -193,10 +193,6 @@ public class GameManager
             type == InteractionType.FreezeRedGate || type == InteractionType.FreezeYellowGate
             || type == InteractionType.Banzaigateblue || type == InteractionType.Banzaigatered ||
             type == InteractionType.Banzaigategreen || type == InteractionType.Banzaigateyellow) {
-            foreach (var user in _room.GetGameMap().GetRoomUsers(new(item.GetX, item.GetY))) {
-                user.SqState = 0;
-            }
-
             _room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 0);
         }
     }
@@ -209,10 +205,6 @@ public class GameManager
             type == InteractionType.FreezeRedGate || type == InteractionType.FreezeYellowGate
             || type == InteractionType.Banzaigateblue || type == InteractionType.Banzaigatered ||
             type == InteractionType.Banzaigategreen || type == InteractionType.Banzaigateyellow) {
-            foreach (var user in _room.GetGameMap().GetRoomUsers(new(item.GetX, item.GetY))) {
-                user.SqState = 1;
-            }
-
             _room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 1);
         }
     }

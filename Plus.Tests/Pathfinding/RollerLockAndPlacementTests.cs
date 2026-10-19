@@ -13,11 +13,10 @@ namespace Plus.Tests;
 // multi-tile cargo validates and reserves its whole destination footprint.
 public partial class PlacedFurniRoomTests
 {
-    // V2 follows the legacy lock lifetime: the cell rebuild releases the floor-status override too.
     [Fact]
     public void V2SolidCargoDepartureErasesTheLockLikeLegacy()
     {
-        var tail = PlannerLockedSolidCargoChain(PathfindingEngine.V2);
+        var tail = PlannerLockedSolidCargoChain();
         ExecutorTick();
         Assert.Equal((1, 1, .5), (tail.X, tail.Y, tail.Z));
     }
@@ -26,7 +25,7 @@ public partial class PlacedFurniRoomTests
     public void RegeneratedV2MapReleasesALockTheTeamNeverUnlocked()
     {
         PlannerRoller(10, 0, 1, 2);
-        InstallRollerChainEngine(PathfindingEngine.V2);
+        InstallRollerChainEngine();
         var actor = PlannerActor(1, 0, 1, .5);
         _room.GetGameMap().SetFloorStatus(1, 1, 0);
         _room.GetGameMap().GenerateMaps();
@@ -42,7 +41,7 @@ public partial class PlacedFurniRoomTests
     {
         PlannerRoller(10, 0, 1, 2);
         var gate = remove ? PlannerTemporaryWalkable(1, 1) : ExecutorFloor(20, 1, 1);
-        InstallRollerChainEngine(PathfindingEngine.V2);
+        InstallRollerChainEngine();
         var actor = PlannerActor(1, 0, 1, .5);
         _room.GetGameMap().SetFloorStatus(1, 1, 0);
         var handler = _room.GetRoomItemHandler();
@@ -52,12 +51,11 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 1, 0d), (actor.X, actor.Y, actor.Z));
     }
 
-    [Theory]
-    [InlineData(PathfindingEngine.V2)]
-    public void FurnitureArrivingOnTopOfALockedTileRebuildsItsCell(PathfindingEngine engine)
+    [Fact]
+    public void FurnitureArrivingOnTopOfALockedTileRebuildsItsCell()
     {
         PlannerRoller(10, 0, 1, 2);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var actor = PlannerActor(1, 0, 1, .5);
         _room.GetGameMap().SetFloorStatus(1, 1, 0);
         ExecutorFloor(20, 1, 1);
@@ -72,7 +70,7 @@ public partial class PlacedFurniRoomTests
         var underLock = new List<bool>();
         PlannerObserveMembership(() => underLock.Add(Monitor.IsEntered(_room.GetGameMap().PlacementSync)));
         PlannerRoller(10, 0, 1, 2);
-        InstallRollerChainEngine(PathfindingEngine.V2);
+        InstallRollerChainEngine();
         var actor = PlannerActor(1, 0, 1, .5);
         StartPlannerRollers();
         underLock.Clear();
@@ -82,9 +80,8 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(true, underLock);
     }
 
-    [Theory]
-    [InlineData(PathfindingEngine.V2)]
-    public void EarlierHookRotatingAHelperOntoAHigherFloorRejectsItsStaleGroup(PathfindingEngine engine)
+    [Fact]
+    public void EarlierHookRotatingAHelperOntoAHigherFloorRejectsItsStaleGroup()
     {
         Set("_gamemap", new Gamemap(_room, new RoomModel("roller-floor", 0, 0, 0, 0, "0000\r0002\r0000\r0000", 0, 0, false), TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance));
         _room.GetGameMap().GenerateMaps();
@@ -92,7 +89,7 @@ public partial class PlacedFurniRoomTests
         ExecutorFloor(40, 1, 3);
         PlannerRoller(10, 1, 1, 2);
         var helper = Add(20, 1, 1, z: .5, type: InteractionType.WalkMagicTile, length: 2);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var rider = PlannerActor(1, 0, 3, .5);
         var fired = false;
         PlannerObserveWalkOn(() =>
@@ -149,14 +146,11 @@ public partial class PlacedFurniRoomTests
         Assert.False(moved);
         Assert.Equal((0, 2, 2), (helper.GetX, helper.GetY, helper.Rotation));
     }
-
-    // Under v2 the in-place setter validates a temporary item's destination under the same placement
-    // lock as its commit, so a placement that lands first is seen by the validation.
     [Fact]
     public void V2InPlaceSetterRevalidatesATemporaryMoveUnderThePlacementLock()
     {
         var temporary = PlannerTemporaryWalkable(1, 1);
-        InstallRollerChainEngine(PathfindingEngine.V2);
+        InstallRollerChainEngine();
         var handler = _room.GetRoomItemHandler();
         var moved = true;
         PlannerInterleaveRotation(() => moved = handler.SetFloorItem(temporary, 2, 2, 0),
@@ -165,13 +159,12 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 1), (temporary.GetX, temporary.GetY));
     }
 
-    [Theory]
-    [InlineData(PathfindingEngine.V2)]
-    public void RollerGroupValidatesTheFootprintItCommitsUnderOnePlacementLock(PathfindingEngine engine)
+    [Fact]
+    public void RollerGroupValidatesTheFootprintItCommitsUnderOnePlacementLock()
     {
         PlannerRoller(10, 2, 1, 2);
         var helper = Add(20, 2, 1, z: .5, type: InteractionType.WalkMagicTile, length: 2);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         PlannerActor(1, 0, 3, 0);
         StartPlannerRollers();
         _client.Packets.Clear();
@@ -187,7 +180,7 @@ public partial class PlacedFurniRoomTests
     {
         PlannerRoller(10, 0, 1, 2);
         var cargo = PlannerLongCargo(20, 0, 1, walkable: false);
-        InstallRollerChainEngine(PathfindingEngine.V2);
+        InstallRollerChainEngine();
         var observer = PlannerActor(1, 3, 3, 0);
         StartPlannerRollers();
         var navigation = _room.GetGameMap().Navigation!;
@@ -202,7 +195,7 @@ public partial class PlacedFurniRoomTests
     {
         PlannerRoller(10, 0, 1, 2);
         var cargo = PlannerLongCargo(20, 0, 1, walkable: true);
-        InstallRollerChainEngine(PathfindingEngine.V2);
+        InstallRollerChainEngine();
         var walker = PlannerActor(1, 2, 2, 0);
         StartPlannerRollers();
         walker.MoveTo(1, 2);
@@ -213,11 +206,11 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(TargetOccupancy.None, PlannerOccupancy(1, 2));
     }
 
-    private RoomUser PlannerLockedSolidCargoChain(PathfindingEngine engine)
+    private RoomUser PlannerLockedSolidCargoChain()
     {
         PrepareRollerChain(8, false);
         PlannerCargo(300, 1, 1);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var tail = PlannerActor(1, 0, 1, .5);
         _room.GetGameMap().SetFloorStatus(1, 1, 0);
         StartPlannerRollers();

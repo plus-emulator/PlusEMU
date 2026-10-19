@@ -18,13 +18,13 @@ namespace Plus.Tests;
 public partial class PlacedFurniRoomTests
 {
     [Theory]
-    [InlineData(PathfindingEngine.V2, false)]
-    [InlineData(PathfindingEngine.V2, true)]
-    public void LoadedChainOfUsersAndSolidCargoAdvancesAsOneSegment(PathfindingEngine engine, bool reverseIds)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LoadedChainOfUsersAndSolidCargoAdvancesAsOneSegment(bool reverseIds)
     {
         PrepareRollerChain(8, reverseIds);
         var cargo = PlannerCargo(300, 1, 1);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var head = PlannerActor(1, 2, 1, .5);
         var tail = PlannerActor(2, 0, 1, .5);
         StartPlannerRollers();
@@ -35,9 +35,8 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(3, PlannerSlides());
     }
 
-    [Theory]
-    [InlineData(PathfindingEngine.V2)]
-    public void StationaryElevatedCargoHoldsEveryUpstreamLoad(PathfindingEngine engine)
+    [Fact]
+    public void StationaryElevatedCargoHoldsEveryUpstreamLoad()
     {
         foreach (var x in new[] { 1, 2, 3 }) {
             PlannerRoller((uint)(10 + x), x, 1, 2);
@@ -45,7 +44,7 @@ public partial class PlacedFurniRoomTests
 
         var elevated = ExecutorFloor(20, 3, 1, z: .5, height: 1);
         var cargo = PlannerCargo(21, 1, 1);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var actor = PlannerActor(1, 2, 1, .5);
         StartPlannerRollers();
         ExecutorTick();
@@ -56,17 +55,17 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
-    [InlineData(PathfindingEngine.V2, false, false)]
-    [InlineData(PathfindingEngine.V2, true, false)]
-    [InlineData(PathfindingEngine.V2, false, true)]
-    [InlineData(PathfindingEngine.V2, true, true)]
-    public void CompetingFeedsAdmitOnlyTheLowerRollerId(PathfindingEngine engine, bool westWins, bool cargo)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void CompetingFeedsAdmitOnlyTheLowerRollerId(bool westWins, bool cargo)
     {
         PlannerRoller(westWins ? 10u : 11u, 0, 1, 2);
         PlannerRoller(westWins ? 11u : 10u, 1, 0, 4);
         var westCargo = cargo ? PlannerCargo(30, 0, 1) : null;
         var northCargo = cargo ? PlannerCargo(31, 1, 0) : null;
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var observer = PlannerActor(1, 3, 3, 0);
         var west = cargo ? null : PlannerActor(2, 0, 1, .5);
         var north = cargo ? null : PlannerActor(3, 1, 0, .5);
@@ -81,11 +80,11 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
-    [InlineData(PathfindingEngine.V2, false)]
-    [InlineData(PathfindingEngine.V2, true)]
-    public void FullLoopRotatesUsersAndFurnitureTogetherEveryCycle(PathfindingEngine engine, bool reverseIds)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FullLoopRotatesUsersAndFurnitureTogetherEveryCycle(bool reverseIds)
     {
-        var loop = PlannerFullLoop(engine, reverseIds);
+        var loop = PlannerFullLoop(reverseIds);
         StartPlannerRollers();
 
         for (var cycle = 1; cycle <= 4; cycle++) {
@@ -97,13 +96,13 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
-    [InlineData(PathfindingEngine.V2, false)]
-    [InlineData(PathfindingEngine.V2, true)]
-    public void PartiallyOccupiedLoopAdvancesDownstreamFirstIntoItsVacancy(PathfindingEngine engine, bool reverseIds)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PartiallyOccupiedLoopAdvancesDownstreamFirstIntoItsVacancy(bool reverseIds)
     {
         PlannerLoopRollers(reverseIds);
         var cargo = PlannerCargo(30, 2, 1);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var first = PlannerActor(1, 1, 1, .5);
         var second = PlannerActor(2, 2, 2, .5);
         StartPlannerRollers();
@@ -114,11 +113,10 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(3, PlannerSlides());
     }
 
-    [Theory]
-    [InlineData(PathfindingEngine.V2)]
-    public void LoopWithOneExternallyBlockedExitStaysUnchanged(PathfindingEngine engine)
+    [Fact]
+    public void LoopWithOneExternallyBlockedExitStaysUnchanged()
     {
-        var loop = PlannerFullLoop(engine, false, () => Add(40, 0, 2, z: 1, height: 3, stackable: false, width: 2));
+        var loop = PlannerFullLoop(false, () => Add(40, 0, 2, z: 1, height: 3, stackable: false, width: 2));
         StartPlannerRollers();
         ExecutorTick();
         Assert.Equal(loop.Expected(0), loop.Positions());
@@ -128,7 +126,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void ExternalClaimOnOneLoopTileLeavesTheWholeLoopUnchanged()
     {
-        var loop = PlannerFullLoop(PathfindingEngine.V2, false);
+        var loop = PlannerFullLoop(false);
         var outsider = PlannerActor(3, 0, 0, 0);
         StartPlannerRollers();
         var navigation = _room.GetGameMap().Navigation!;
@@ -138,11 +136,10 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0, PlannerSlides());
     }
 
-    [Theory]
-    [InlineData(PathfindingEngine.V2)]
-    public void FailedLoopParticipantLeavesTheWholeLoopUnchanged(PathfindingEngine engine)
+    [Fact]
+    public void FailedLoopParticipantLeavesTheWholeLoopUnchanged()
     {
-        var loop = PlannerFullLoop(engine, false);
+        var loop = PlannerFullLoop(false);
         StartPlannerRollers();
         var walking = loop.Users[1];
         walking.IsWalking = true;
@@ -153,11 +150,10 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0, PlannerSlides());
     }
 
-    [Theory]
-    [InlineData(PathfindingEngine.V2)]
-    public void LoopHooksObserveOnlyTheFullyCommittedRotation(PathfindingEngine engine)
+    [Fact]
+    public void LoopHooksObserveOnlyTheFullyCommittedRotation()
     {
-        var loop = PlannerFullLoop(engine, false);
+        var loop = PlannerFullLoop(false);
         var observed = new List<string>();
         PlannerObserveWalkOn(() => observed.Add(loop.Positions()));
         StartPlannerRollers();
@@ -168,11 +164,11 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
-    [InlineData(PathfindingEngine.V2, false)]
-    [InlineData(PathfindingEngine.V2, true)]
-    public void FullLoopRotatesWhileItsExternalFeederWaits(PathfindingEngine engine, bool feederHasLowerId)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FullLoopRotatesWhileItsExternalFeederWaits(bool feederHasLowerId)
     {
-        var loop = PlannerFullLoop(engine, false, () => PlannerRoller(feederHasLowerId ? 5u : 50u, 0, 1, 2));
+        var loop = PlannerFullLoop(false, () => PlannerRoller(feederHasLowerId ? 5u : 50u, 0, 1, 2));
         var feeder = PlannerActor(3, 0, 1, .5);
         StartPlannerRollers();
 
@@ -202,14 +198,14 @@ public partial class PlacedFurniRoomTests
 
     private static readonly Point[] PlannerLoopTiles = [new(1, 1), new(2, 1), new(2, 2), new(1, 2)];
 
-    private PlannerLoopFixture PlannerFullLoop(PathfindingEngine engine, bool reverseIds, Action? arrange = null,
+    private PlannerLoopFixture PlannerFullLoop(bool reverseIds, Action? arrange = null,
         bool walkableFirstCargo = false)
     {
         PlannerLoopRollers(reverseIds);
         var first = walkableFirstCargo ? ExecutorFloor(30, 2, 1, z: .5, height: .5) : PlannerCargo(30, 2, 1);
         var cargo = new[] { first, PlannerCargo(31, 1, 2) };
         arrange?.Invoke();
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
 
         return new([PlannerActor(1, 1, 1, .5), PlannerActor(2, 2, 2, .5)], cargo);
     }
@@ -259,7 +255,7 @@ public partial class PlacedFurniRoomTests
             .GetValue(_room.GetRoomUserManager())!;
         Assert.True(roster.TryAdd(id, actor));
 
-        if (_room.GetGameMap().Navigation is { UsesExecutor: true } navigation) {
+        if (_room.GetGameMap().Navigation is { } navigation) {
             navigation.Admit(actor);
         }
         else {

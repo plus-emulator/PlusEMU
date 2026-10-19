@@ -48,7 +48,6 @@ public partial class PlacedFurniRoomTests
         Assert.Contains(actor, _room.GetGameMap().GetRoomUsers(new(2, 2)));
         Assert.Contains(ServerPacketHeader.SlideObjectBundleComposer, _client.Sent);
     }
-
     [Fact]
     public void WiredRelocationInsideOwnerUsesForcePlacementAndReleasesTheOldPendingClaim()
     {
@@ -68,7 +67,6 @@ public partial class PlacedFurniRoomTests
         Assert.False(actor.Movement.HasIntent);
         Assert.Equal(TargetOccupancy.None, _room.GetGameMap().Navigation!.Executor.Context.Claims.OccupancyAt(5, 0));
     }
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -77,7 +75,6 @@ public partial class PlacedFurniRoomTests
     {
         var actor = ExecutorConfiguredActor(new()
         {
-            Engine = PathfindingEngine.V2,
             MaxExpansionsPerRoomTick = queuedSearch ? 0 : 200000
         });
         actor.MoveTo(3, 1);
@@ -95,12 +92,10 @@ public partial class PlacedFurniRoomTests
         // Slot 5 is (1,1), where the landed step now stands.
         Assert.Equal(queuedSearch ? TargetOccupancy.None : TargetOccupancy.Stationary, _room.GetGameMap().Navigation!.Executor.Context.Claims.OccupancyAt(5, 0));
     }
-
-    // Observed on hhus (AIR WIN63-202610131318-860371703): freeze and unfreeze of a standing user send only the effect.
     [Fact]
     public void WiredFreezeAndThawOfAStandingUserSendNoUserUpdate()
     {
-        var actor = ExecutorConfiguredActor(new() { Engine = PathfindingEngine.V2 });
+        var actor = ExecutorConfiguredActor(new() { });
         ExecutorTick();
         Assert.True(WiredAvatarState.For(_room).FreezeUser(actor, 0, cancelOnTeleport: true));
         ExecutorTick();
@@ -111,11 +106,10 @@ public partial class PlacedFurniRoomTests
         Assert.False(actor.Frozen);
         Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.UserUpdateComposer);
     }
-
     [Fact]
     public void WiredFreezeOfAWalkingUserSendsItsStop()
     {
-        var actor = ExecutorConfiguredActor(new() { Engine = PathfindingEngine.V2 });
+        var actor = ExecutorConfiguredActor(new() { });
         actor.MoveTo(3, 1);
         ExecutorTick();
         Assert.True(actor.HasStatus("mv"));
@@ -124,7 +118,6 @@ public partial class PlacedFurniRoomTests
         Assert.False(actor.HasStatus("mv"));
         Assert.DoesNotContain("mv", ExecutorUpdate(actor).Status);
     }
-
     [Fact]
     public void RideHorseMountQueuesOneCoherentPlacementAndCancelsBothOldBatches()
     {
@@ -154,7 +147,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((2, 1), (rider.X, rider.Y));
         Assert.Equal((2, 1), (horse.X, horse.Y));
     }
-
     [Fact]
     public void RideHorseFromADistanceWalksUpBeforeMounting()
     {
@@ -172,7 +164,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((2, 1, 1d), (rider.X, rider.Y, rider.Z));
         Assert.Equal((2, 1, 0d), (horse.X, horse.Y, horse.Z));
     }
-
     [Fact]
     public void RideHorseDismountCancelsTheOldGroupBatchBeforeTheLegacyDismountMove()
     {
@@ -199,7 +190,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(2, rider.Y);
         Assert.Equal((0, 1), (horse.X, horse.Y));
     }
-
     [Fact]
     public void PickUpPetCancelsTheMountedGroupBeforeAnyPendingHorseLanding()
     {
@@ -213,9 +203,7 @@ public partial class PlacedFurniRoomTests
         _client.GetHabbo().Inventory = new InventoryComponent { Furniture = inventory.Furniture, Pets = new([]) };
         var database = Proxy<IDatabase>((method, _) => method == "Connection" ? new PetPickupConnection() : throw new NotSupportedException(method));
         var service = new PetPlacementService(
-            new PetRoomStore(database, NullLogger<PetRoomStore>.Instance),
-            Proxy<IGameClientManager>((_, _) => _client),
-            Proxy<ISettingsManager>((method, _) => throw new NotSupportedException(method)));
+            new PetRoomStore(database, NullLogger<PetRoomStore>.Instance), Proxy<IGameClientManager>((_, _) => _client), Proxy<ISettingsManager>((method, _) => throw new NotSupportedException(method)));
         new PickUpPetEvent(service)
             .Parse(_room, _client, ClientPacket(Assert.IsType<Pet>(horse.PetData).PetId)).GetAwaiter().GetResult();
         Assert.Equal(NavState.Removing, horse.Movement.State);
@@ -230,7 +218,6 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(horse, _room.GetGameMap().GetRoomUsers(new(0, 1)));
         Assert.Contains(horse.PetData.PetId, Assert.IsType<InventoryComponent>(_client.GetHabbo().Inventory).Pets.Pets.Keys);
     }
-
     [Fact]
     public void RoomUnloadCleansEveryLifetimeBeforeDestroyingTheMapWithoutAnotherTick()
     {
@@ -260,7 +247,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0, DrainRemainingSearches(navigation));
         Assert.Null(_client.GetHabbo().CurrentRoom);
     }
-
     [Fact]
     public void ManagerDisposalCancelsBotPendingMovementWithoutWaitingForAnUnavailableTick()
     {
@@ -278,7 +264,6 @@ public partial class PlacedFurniRoomTests
         Assert.False(horse.Movement.HasIntent);
         Assert.All(navigation.Executor.Context.Claims.TileCount, count => Assert.Equal(0, count));
     }
-
     [Fact]
     public void LocationRevisionAbortsOldCommitBookkeepingAndLeavesANewerHookCommandForNextTick()
     {
@@ -357,8 +342,7 @@ public partial class PlacedFurniRoomTests
     private static int DrainRemainingSearches(RoomNavigation navigation)
     {
         var calls = 0;
-        navigation.Executor.Context.Scheduler.Run(int.MaxValue, _ => true,
-            _ => { calls++; return new(PathOutcome.BudgetCancelled, 0); }, (_, _) => { });
+        navigation.Executor.Context.Scheduler.Run(int.MaxValue, _ => true, _ => { calls++; return new(PathOutcome.BudgetCancelled, 0); }, (_, _) => { });
 
         return calls;
     }

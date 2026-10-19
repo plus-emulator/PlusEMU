@@ -319,7 +319,7 @@ public partial class PlacedFurniRoomTests
 
         if (v2) {
             var map = _room.GetGameMap();
-            var navigation = new RoomNavigation(_room, map.StaticModel, new() { Engine = PathfindingEngine.V2 }, TestLogging.Navigation,
+            var navigation = new RoomNavigation(_room, map.StaticModel, new() { }, TestLogging.Navigation,
                 TestGroupManager.Empty, _database, TestNavigationRewards.Instance);
             typeof(Gamemap).GetField("<Navigation>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(map, navigation);
         }
@@ -348,10 +348,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(_room.GetRoomUserManager().AddAvatarToRoom(client));
         var actor = Assert.IsType<RoomUser>(_room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id));
         actor.SetPos(x, y, 0);
-
-        if (_room.UsesV2Movement) {
-            _room.ProcessRoom();
-        }
+        _room.ProcessRoom();
 
         return actor;
     }
@@ -381,12 +378,7 @@ public partial class PlacedFurniRoomTests
 
     private void IceContact(RoomUser actor, bool v2)
     {
-        if (v2) {
-            _room.ProcessRoom();
-            new FloorEffectService(_room, _ => { }).Apply(actor, actor.X, actor.Y);
-        }
-        else {
-            _room.GetRoomUserManager().OnCycle();
-        }
+        _room.ProcessRoom();
+        new FloorEffectService(_room, _ => { }).Apply(actor, actor.X, actor.Y);
     }
 }

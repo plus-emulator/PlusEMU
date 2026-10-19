@@ -12,83 +12,92 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// r17: under pathfinding.engine=legacy every gate writer runs its original code. The per-gate sequencer,
-// occupancy guard and variable admission exist for the v2 engine only.
 public partial class PlacedFurniRoomTests
 {
-    private Item LegacyGate(InteractionType kind = InteractionType.Gate, string state = "1")
+    private Item OccupiedGate(InteractionType kind = InteractionType.Gate, string state = "1")
     {
         var gate = ClosableGate(kind, width: 2, state: state);
-        Assert.Null(_room.GetGameMap().Navigation);
-        var occupant = Viewer(NonAnchor(gate).X, NonAnchor(gate).Y);
+        var occupant = ExecutorActor(NonAnchor(gate).X, NonAnchor(gate).Y);
         _room.GetGameMap().AddUserToMap(occupant, NonAnchor(gate));
 
         return gate;
     }
 
     [Fact]
-    public void LegacyGateClickClosesImmediatelyThroughANonAnchorOccupant()
+    public void GateClickKeepsOpenANonAnchorOccupiedFootprint()
     {
-        var gate = LegacyGate();
+        var gate = OccupiedGate();
         Task.Run(() => new InteractorGate().OnTrigger(_client, gate, 0, true)).Wait();
-        Assert.Equal("0", gate.LegacyDataString);
+        Assert.Equal("1", gate.LegacyDataString);
+        Assert.Equal(1, Gates.PendingCount);
+        ExecutorTick();
+        Assert.Equal("1", gate.LegacyDataString);
         Assert.Equal(0, Gates.PendingCount);
     }
 
     [Fact]
-    public void LegacyGateWiredToggleWritesImmediatelyOffTheOwner()
+    public void GateWiredToggleQueuesOffTheOwner()
     {
-        var gate = LegacyGate();
+        var gate = OccupiedGate();
         Task.Run(() => new InteractorGate().OnWiredTrigger(gate)).Wait();
-        Assert.Equal("0", gate.LegacyDataString);
+        Assert.Equal("1", gate.LegacyDataString);
+        Assert.Equal(1, Gates.PendingCount);
+        ExecutorTick();
+        Assert.Equal("1", gate.LegacyDataString);
         Assert.Equal(0, Gates.PendingCount);
     }
 
     [Fact]
-    public void LegacyGenericSwitchTogglesAGateDirectly()
+    public void GenericSwitchKeepsOccupiedGateOpen()
     {
         UseGameService("get_QuestManager", Proxy<IQuestManager>((_, _) => null));
-        var gate = LegacyGate();
+        var gate = OccupiedGate();
         Task.Run(() => new InteractorGenericSwitch(TestItemRuntime.Quests, TestItemRuntime.Rewards).OnTrigger(_client, gate, 0, true)).Wait();
-        Assert.Equal("0", gate.LegacyDataString);
+        Assert.Equal("1", gate.LegacyDataString);
+        Assert.Equal(1, Gates.PendingCount);
+        ExecutorTick();
+        Assert.Equal("1", gate.LegacyDataString);
         Assert.Equal(0, Gates.PendingCount);
     }
 
     [Fact]
-    public void LegacyGuildGateAutoCloseChecksOnlyTheAnchorTile()
+    public void GuildGateAutoCloseChecksTheWholeFootprint()
     {
-        var gate = LegacyGate(InteractionType.GuildGate);
+        var gate = OccupiedGate(InteractionType.GuildGate);
         gate.RequestUpdate(1, true);
         gate.ProcessUpdates();
-        Assert.Equal("0", gate.LegacyDataString);
+        Assert.Equal("1", gate.LegacyDataString);
         Assert.Equal(0, gate.UpdateCounter);
     }
 
     [Fact]
-    public void LegacyVipGateClosesWithoutAnOccupancyCheck()
+    public void VipGateAutoCloseChecksOccupancy()
     {
-        var gate = LegacyGate(InteractionType.GateVip);
+        var gate = OccupiedGate(InteractionType.GateVip);
         gate.RequestUpdate(1, true);
         gate.ProcessUpdates();
-        Assert.Equal("0", gate.LegacyDataString);
+        Assert.Equal("1", gate.LegacyDataString);
         Assert.Equal(0, gate.UpdateCounter);
     }
 
 
     [Fact]
-    public void LegacyModernToggleWritesAClosingStateDirectly()
+    public void ModernToggleKeepsOccupiedGateOpen()
     {
-        var gate = LegacyGate();
+        var gate = OccupiedGate();
         var action = ToggleAction(gate, out var context);
         Assert.True(action.Execute(context));
-        Assert.Equal("0", gate.LegacyDataString);
+        Assert.Equal("1", gate.LegacyDataString);
+        Assert.Equal(1, Gates.PendingCount);
+        ExecutorTick();
+        Assert.Equal("1", gate.LegacyDataString);
         Assert.Equal(0, Gates.PendingCount);
     }
 
     [Fact]
-    public void LegacyVariableStateWriteIsDirectAndNeverEntersTheSequencer()
+    public void VariableStateWriteQueuesAnOccupiedGateClose()
     {
-        var gate = LegacyGate();
+        var gate = OccupiedGate();
         var notices = new List<(Item, WiredVariableFrame, string)>();
         var module = GateVariables(notices);
         var holder = WiredVariableRuntimeFrames.FurniHolder(gate);
@@ -96,16 +105,20 @@ public partial class PlacedFurniRoomTests
         var resolutions = 0;
         module.ResolutionHook = _ => resolutions++;
         Assert.True(Task.Run(() => module.Mutate(StateReference, holder, WiredVariableMutation.Set, 0, frame)).Result);
-        Assert.Equal("0", gate.LegacyDataString);
-        Assert.Single(notices);
+        Assert.Equal("1", gate.LegacyDataString);
+        Assert.Empty(notices);
+        Assert.Equal(1, Gates.PendingCount);
+        ExecutorTick();
+        Assert.Equal("1", gate.LegacyDataString);
         Assert.Equal(0, Gates.PendingCount);
-        Assert.Equal(0, resolutions);
+        Assert.Equal(2, resolutions);
+        Assert.Empty(notices);
     }
 
     [Fact]
-    public void LegacyMannequinPacketsRejectNonMannequinItems()
+    public void MannequinPacketsRejectNonMannequinItems()
     {
-        var gate = LegacyGate();
+        var gate = OccupiedGate();
         _client.GetHabbo().Gender = "M";
         _client.GetHabbo().Look = "hd-180-1.ch-210-66";
         _client.GetHabbo().Clothing = new();
@@ -114,10 +127,10 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void LegacyFastWiredPassDoesNotEnterTheRoomOwnerScope()
+    public void FastWiredPassEntersTheRoomOwnerScope()
     {
         var owned = true;
         _room.RunFastPass(() => owned = RoomOwnerScope.IsOwner(_room));
-        Assert.False(owned);
+        Assert.True(owned);
     }
 }

@@ -106,19 +106,8 @@ public class InteractorOneWayGate(TimeProvider clock) : IFurniInteractor
                     user.ClearMovement(true);
                 }
 
-                if (itemRoom.UsesV2Movement) {
-                    user.AllowOverride = false;
-                }
-                else {
-                    user.AllowOverride = true;
-                }
-
-                if (itemRoom.UsesV2Movement) {
-                    user.RequestInteractionStep(itemRoom, item.Coordinate);
-                }
-                else {
-                    user.MoveTo(item.Coordinate);
-                }
+                user.AllowOverride = false;
+                user.RequestInteractionStep(itemRoom, item.Coordinate);
 
                 item.RequestUpdate(4, true);
             }

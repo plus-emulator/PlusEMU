@@ -342,7 +342,7 @@ public partial class PlacedFurniRoomTests
         IRewardTrackManager? rewards = null, IGroupManager? groups = null)
     {
         var map = _room.GetGameMap();
-        var navigation = new RoomNavigation(_room, map.StaticModel, new() { Engine = PathfindingEngine.V2 },
+        var navigation = new RoomNavigation(_room, map.StaticModel, new() { LayeringEnabled = false },
             TestLogging.Navigation, groups ?? new TestGroupManager(id => _groupLookup(id)),
             database ?? _database, rewards ?? TestNavigationRewards.Instance);
         typeof(Gamemap).GetField("<Navigation>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!

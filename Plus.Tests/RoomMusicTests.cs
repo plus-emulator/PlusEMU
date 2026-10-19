@@ -17,9 +17,10 @@ namespace Plus.Tests
     public partial class PlacedFurniRoomTests
     {
         [Fact]
-        public async Task MusicPacketsTransferAtExactSlotAndPublishOnlyAfterCommit()
+        public void MusicPacketsTransferAtExactSlotAndPublishOnlyAfterCommit()
         {
             var (music, store, _, _) = Music();
+            using var owner = Plus.HabboHotel.Rooms.PathFinding.RoomOwnerScope.Enter(_room);
             var disc = MusicDisc(31);
             Inventory(disc);
             store.BeforeAdd = () =>
@@ -27,7 +28,7 @@ namespace Plus.Tests
                 Assert.Same(disc, Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(31));
                 Assert.Empty(_client.Sent);
             };
-            await new AddJukeboxDiskEvent().Parse(_room, _client, ClientPacket(31, 0));
+            new AddJukeboxDiskEvent().Parse(_room, _client, ClientPacket(31, 0)).GetAwaiter().GetResult();
             Assert.Equal((31u, 0), Assert.Single(store.Adds));
             Assert.Null(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(31));
             var body = new FlashIncomingPacket { Buffer = _client.Packets.Last(entry => entry.Header == ServerPacketHeader.JukeboxPlaylistComposer).Body };
@@ -39,15 +40,16 @@ namespace Plus.Tests
             Assert.True(disc.TryReserve());
             disc.ReleaseReservation();
             _client.Sent.Clear();
-            await new AddJukeboxDiskEvent().Parse(_room, _client, ClientPacket(31, 0));
+            new AddJukeboxDiskEvent().Parse(_room, _client, ClientPacket(31, 0)).GetAwaiter().GetResult();
             Assert.Single(store.Adds);
             Assert.Empty(_client.Sent);
         }
 
         [Fact]
-        public async Task MusicReservedStaleTradingAndFailedWritesKeepInventoryAndPackets()
+        public void MusicReservedStaleTradingAndFailedWritesKeepInventoryAndPackets()
         {
             var (music, store, _, _) = Music();
+            using var owner = Plus.HabboHotel.Rooms.PathFinding.RoomOwnerScope.Enter(_room);
             var disc = MusicDisc(31);
             Inventory(disc);
             Assert.True(disc.TryReserve());
@@ -70,7 +72,6 @@ namespace Plus.Tests
             music.Add(_client, 31, 0);
             Assert.Single(store.Adds);
             Assert.Empty(_client.Sent);
-            await Task.CompletedTask;
         }
 
         [Fact]
@@ -78,6 +79,7 @@ namespace Plus.Tests
         {
             var tracks = ImmutableArray.Create(new MusicTrack(31, 7, Song(71, 1000)), new MusicTrack(32, 7, Song(72, 2000)));
             var (music, store, clock, player) = Music(new(tracks, 0, null, 3, true));
+            using var owner = Plus.HabboHotel.Rooms.PathFinding.RoomOwnerScope.Enter(_room);
             player.Interactor.OnTrigger(_client, player, 0, true);
             Assert.Equal("1", player.LegacyDataString);
             _client.Packets.Clear();
@@ -177,6 +179,7 @@ namespace Plus.Tests
         public void MusicSelectedTrackControllerToggleAndInvalidRequestsMatchNativeEditor()
         {
             var (music, store, _, player) = Music(new([new(31, 7, Song(71, 1000)), new(32, 7, Song(72, 2000))], 0, null, 0, true));
+            using var owner = Plus.HabboHotel.Rooms.PathFinding.RoomOwnerScope.Enter(_room);
             player.Interactor.OnTrigger(_client, player, -1, true);
             player.Interactor.OnTrigger(_client, player, 2, true);
             player.Interactor.OnTrigger(_client, player, 0, false);
@@ -214,7 +217,11 @@ namespace Plus.Tests
             var replacement = _room.GetRoomItemHandler().GetItem(30)!;
             Assert.NotSame(first, replacement);
             Assert.Null(first.GetRoom());
-            replacement.Interactor.OnTrigger(_client, replacement, 0, true);
+
+            using (Plus.HabboHotel.Rooms.PathFinding.RoomOwnerScope.Enter(_room)) {
+                replacement.Interactor.OnTrigger(_client, replacement, 0, true);
+            }
+
             Assert.Null(store.Load(30).StartedAt);
             Assert.Equal("0", replacement.LegacyDataString);
         }
@@ -360,13 +367,7 @@ namespace Plus.Tests
 
         private (RoomMusicComponent Music, MusicStore Store, MusicClock Clock, Item Player) Music(MusicPlayerState? state = null, bool v2 = false, AccountSessionGate? accounts = null)
         {
-            if (v2) {
-                _room.EnableV2Movement();
-                ExecutorActor(3, 3);
-            }
-            else {
-                Viewer();
-            }
+            ExecutorActor(3, 3);
 
             _client.GetHabbo().Client = _client;
             var clock = new MusicClock();

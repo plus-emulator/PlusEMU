@@ -74,9 +74,8 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
         }
     }
 
-    // The sequencer exists for v2 only: legacy and shadow rooms keep every original gate code path.
     public static GateTransitionService? For(Room? room)
-        => room is { UsesV2Movement: true } ? room.GetGameMap()?.Gates : null;
+        => room is { } ? room.GetGameMap()?.Gates : null;
 
     public static GateTransitionService? For(Item item) => For(item.GetRoom());
 

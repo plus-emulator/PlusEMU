@@ -275,10 +275,8 @@ public class NavInputsTests
     }
 
     [Fact]
-    public void DisabledRoomsHaveNoAdapterLockOrSetterAllocations()
+    public void DetachedItemsHaveNoAdapterLockOrSetterAllocations()
     {
-        var fixture = Plus.Tests.Performance.RoomPerformanceFixture.Create(0, 0);
-        Assert.Null(fixture.Map.Navigation);
         var item = NavTest.Item();
         item.ExtraData = new Plus.HabboHotel.Items.DataFormat.LegacyDataFormat();
 

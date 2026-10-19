@@ -16,6 +16,7 @@ using Plus.HabboHotel.Items.Wired.Modern.Addons;
 using Plus.HabboHotel.Items.Wired.Modern.Triggers;
 using Plus.HabboHotel.Items.Wired.Modern.Selectors;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Rooms.Instance;
 using Plus.HabboHotel.Rooms.Games.Teams;
@@ -30,6 +31,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void NearestPlayerUsesManhattanRangeAndOrdering()
     {
         var (room, _, _) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var item = Floor(1, 0, 0);
         var diagonal = Avatar(room, 1, 2, 2);
         var cardinal = Avatar(room, 2, 3, 0);
@@ -41,6 +43,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void ChaseStepsTowardADiagonalPlayerInsteadOfPublishingCollision()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 1, 1);
         Place(map, items, mover);
         var user = Avatar(room, 1, 2, 2);
@@ -56,6 +59,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void FurniToUserStillBlocksWhenAnotherHumanSharesTheTargetTile()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = StackableMover(map, items);
         var owner = Avatar(room, 1, 4, 4);
         Register(room, map, owner);
@@ -70,6 +74,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void FurniToUserKeepsPhysicsThroughUsersForOtherOccupants()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = StackableMover(map, items);
         var owner = Avatar(room, 1, 4, 4);
         var other = Avatar(room, 2, 4, 4);
@@ -87,6 +92,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void OrdinaryMovementStillBlocksATileHoldingAUser()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = StackableMover(map, items);
         var owner = Avatar(room, 1, 4, 4);
         Register(room, map, owner);
@@ -110,6 +116,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void FurniToUserOnlyFailsOntoAnOccupiedTargetNotForTheCardItself()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 1, 1);
         mover.Definition.Height = 1;
         mover.Definition.Walkable = true;
@@ -128,6 +135,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void FurniToUserMovesTheSelectedItemOntoTheStandingHumanAndLiftsThem(int ownerX, int ownerY)
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 1, 1);
         mover.Definition.Height = 1;
         mover.Definition.Walkable = true;
@@ -152,6 +160,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         int expectedX, int expectedY, bool collision)
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 2, 2);
         Place(map, items, mover);
         var user = Avatar(room, 1, userX, userY);
@@ -181,6 +190,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void DirectionalActionsAttemptEveryStackedItemIndependently(string name, bool topFirst)
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var bottom = Floor(2, 2, 2);
         bottom.Definition.Stackable = true;
         bottom.Definition.Height = 0.5;
@@ -204,6 +214,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void MoveToDirectionDispatchesCollisionAndLetsPhysicsThroughUsersPass(int blockUsers, bool throughUser, bool moves)
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var item = Floor(1, 2, 2);
         Place(map, items, item);
         var user = Avatar(room, 1, 3, 2);
@@ -223,6 +234,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void MoveToDirectionStaysOnItsHeadingWhileAUserBlocksAndMovesOnceTheyLeave()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var item = Floor(1, 2, 2);
         Place(map, items, item);
         var user = Avatar(room, 1, 3, 2);
@@ -241,6 +253,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void MoveToDirectionWithoutBlockingUsersTurnsAndRetriesInTheSameExecution()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var item = Floor(1, 2, 2);
         Place(map, items, item);
         var user = Avatar(room, 1, 3, 2);
@@ -255,6 +268,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void MoveToDirectionSaveRestartsTheRememberedHeading()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var item = Floor(1, 2, 2);
         Place(map, items, item);
         var user = Avatar(room, 1, 3, 2);
@@ -278,6 +292,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void MoveToDirectionMatchesObservedStackingAndDiagonalPassage(int heading, int x, int y, double z)
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 2, 2);
         var east = Floor(2, 3, 2);
         var north = Floor(3, 2, 1);
@@ -304,15 +319,18 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void SlideKeepsWalkingWhenDiagonalStepDistanceDecreases(int mode, int x, int y, bool resumes)
     {
         var (room, map, _) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var user = Avatar(room, 1, 0, 0);
         var users = (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(room.GetRoomUserManager())!;
         users[user.VirtualId] = user;
-        map.AddUserToMap(user, new(0, 0));
-        user.IsWalking = true;
-        user.GoalX = 5;
-        user.GoalY = 0;
+        map.Navigation.Admit(user);
+        user.MoveTo(5, 0);
+        map.Navigation.ApplyDirty();
+        map.Navigation.CycleUsers();
+        Assert.True(user.IsWalking, "The fixture must have an active walk before the wired slide.");
         Assert.True(new WiredRoomMovement((_, _, _) => { }).MoveAvatar(Context(room, [], [user]), user, x, y, false, mode));
-        Assert.Equal(resumes, user.PathRecalcNeeded);
+        map.Navigation.CycleUsers();
+        Assert.Equal(resumes, user.IsWalking);
     }
 
     [Theory]
@@ -336,6 +354,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void GroupTargetEditorTranslatesTheLayoutOntoItsChosenFurnitureOrUser(int targetIsUser)
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var first = Floor(1, 0, 1);
         var second = Floor(2, 1, 1);
         var target = Floor(3, 3, 3);
@@ -355,6 +374,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void GroupRejectsTheWholeTranslationWhenOneMemberWouldLeaveTheRoom()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var first = Floor(1, 0, 1);
         var second = Floor(2, 1, 1);
         var target = Floor(3, 5, 3);
@@ -371,6 +391,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void MoveToEditorResolvesMoversSeparatelyFromItsPickedTarget()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 0, 1);
         var target = Floor(3, 3, 3);
         Place(map, items, mover);
@@ -390,6 +411,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     {
         // wf_act_move_furni_to: radio N/E/S/W (0/2/4/6) and "Space placed furnis N tiles apart" (1..5), measured from the target furni.
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 0, 0);
         var target = Floor(3, 3, 3);
         Place(map, items, mover);
@@ -404,6 +426,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void MoveToUsesOnlyTheFirstTargetAndDoesNothingWithoutOne()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 0, 0);
         var first = Floor(3, 3, 3);
         var second = Floor(4, 5, 5);
@@ -422,6 +445,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void MoveToLeavesTheTargetWhereItIsWhenItIsAlsoAMover()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var mover = Floor(1, 0, 0);
         var target = Floor(3, 3, 3);
         Place(map, items, mover);
@@ -440,6 +464,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void MoveToRefusesDirectionsAndTileCountsTheEditorDoesNotOffer(int direction, int tiles)
     {
         var (room, _, _) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var action = CreateBox(room, "wf_act_move_furni_to");
         Assert.False(WiredNativeTestSupport.TryValidateRuntime(action, new() { IntParams = [direction, tiles, 100, 100], SelectedItems = [1], Text = "3" }, out _, out _));
     }
@@ -456,6 +481,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void VariableSortAndQuantityAddonsFilterTheActualSelectorPoolInStackOrder(bool sortFirst, bool variableQuantity, int? variableCount, int expectedCount)
     {
         var (room, _, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         room.Id = 1;
         room.OwnerId = 5;
         var movers = Enumerable.Range(1, 3).Select(id => Floor((uint)id, id, 1)).ToArray();
@@ -552,6 +578,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     {
         // Room 79874981 (WIN63-202610121709): area selectors rest at 0 and alternate 1/2; filter-mode selectors rest at 3 and alternate 4/5.
         var (room, _, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var flashed = new List<Item>();
         var world = new WiredSelectorWorld(6, 6, [], []);
         var engine = new WiredStackEngine(() => 0, _ => true, _ => true, flashed.Add, error => throw error);
@@ -585,6 +612,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void AltitudeAdditionCanPassFortyWithinThePlatformTopLimit()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var item = Floor(1, 1, 1);
         item.SetState(1, 1, 30);
         Place(map, items, item);
@@ -609,6 +637,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         string adjustableHeights = "", string state = "0")
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var item = Floor(1, 1, 1);
         item.Definition.Height = height;
         item.Definition.AdjustableHeights = adjustableHeights.Length == 0 ? new List<double>()
@@ -624,6 +653,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void ZeroHeightStateAtTheFloorStacksTheNextItemAtTheFloorAndNavSeesNoHeight()
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var support = Floor(1, 2, 2);
         support.Definition.Stackable = true;
         support.Definition.Height = 4;
@@ -667,6 +697,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void ScoreQuotaEditorCountsPerPlayerAndResetsPerGame(string name)
     {
         var (room, _, _) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var user = Avatar(room, 1, 1, 1);
         user.Team = Team.Red;
         room.GetSoccer().StartGame();
@@ -713,6 +744,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void RealScalarActionsBatchWithinAStackUnlessOrderedOrSeparatedByADelay(bool ordered, int addDelay, int multiplyDelay, int firstValue, int expected, int notifications)
     {
         var (room, _, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         room.Id = 1;
         room.OwnerId = 5;
         var target = Floor(1, 0, 1);
@@ -784,6 +816,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     public void NativeTimerClicksAndWiredControlsDriveActualRoomGames(string name, InteractionType type)
     {
         var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
         var wired = new WiredComponent(room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance,
             TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance,
             TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
@@ -873,13 +906,15 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     {
         var users = (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(room.GetRoomUserManager())!;
         users[user.VirtualId] = user;
-        map.AddUserToMap(user, new(user.X, user.Y));
+        using var owner = RoomOwnerScope.Enter(room);
+        map.Navigation.Admit(user);
     }
 
     private static RoomUser Avatar(Room room, int id, int x, int y)
     {
-        var user = new RoomUser(id, 0, id, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused);
-        user.SetPos(x, y, 0);
+        var (client, _) = HabbiconTestSupport.Client(new Habbo { Id = id, Username = $"user{id}", CurrentRoom = room });
+        var user = new RoomUser(id, 0, id, room, client, TestChatEmotions.Unused, TestRewardProgress.Unused);
+        user.InitializePosition(x, y, 0);
 
         return user;
     }
@@ -912,6 +947,9 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     {
         items[item.Id] = item;
         map.AddToMap(item);
+        item.EnableNavigationSynchronization();
+        map.Navigation.Inputs.Attach(item);
+        map.Navigation.ApplyDirty();
     }
 
     private static (Room Room, Gamemap Map, ConcurrentDictionary<uint, Item> Items) World()
@@ -928,14 +966,19 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
             new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(),
                 TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
         TestRoomUserSnapshots.Install(room);
-        typeof(Gamemap).GetProperty("GameMap")!.SetValue(map, new byte[6, 6]);
-        typeof(Gamemap).GetProperty("EffectMap")!.SetValue(map, new byte[6, 6]);
+        map.GenerateMaps();
 
         return (room, map, (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling).GetField("_floorItems", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(handler)!);
     }
 
     private static WiredRuntimeContext Context(Room room, Item[] items, RoomUser[] users, RoomUser? eventActor = null)
     {
+        foreach (var user in users) {
+            if (room.GetRoomUserManager().GetRoomUserByVirtualId(user.VirtualId) == null) {
+                Register(room, room.GetGameMap(), user);
+            }
+        }
+
         var context = new WiredRuntimeContext(room, new(WiredEventKind.Use) { Actor = eventActor }, new(() => items, () => users), new UnusedOperations());
 
         if (users.FirstOrDefault() is { } actor) {

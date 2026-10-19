@@ -34,7 +34,7 @@ internal sealed class RoomHighscores(Room room, TimeProvider time)
 
     private void Enroll()
     {
-        if (_enrolled || !room.UsesV2Movement || _store == null) {
+        if (_enrolled || _store == null) {
             return;
         }
 

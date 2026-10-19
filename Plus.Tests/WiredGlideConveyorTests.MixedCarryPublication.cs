@@ -76,13 +76,12 @@ public sealed partial class WiredGlideConveyorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task LegacyOwnerVariablePollingKeepsImmediateCarryAndBaselineFurniture(bool full)
+    public async Task ObsoleteEngineSettingStillPublishesCombinedCarryDuringVariablePolling(bool full)
     {
         var f = new Fixture(FastQueueLayout(2), live: true, movementEngine: "legacy");
         var rider = f.Walker(1, 4, 10, 4, 11);
         var room = f.MovementContext().Room;
-        Assert.False(room.UsesV2Movement);
-        Assert.Null(room.GetGameMap().Navigation);
+        Assert.NotNull(room.GetGameMap().Navigation);
         Assert.False(RoomOwnerScope.IsOwner(room));
         room.Type = "private";
         room.OwnerName = rider.GetUsername();
@@ -117,28 +116,26 @@ public sealed partial class WiredGlideConveyorTests
 
         Assert.All(observations, groups =>
         {
-            Assert.Equal(2, groups.Count);
-            Assert.Equal(0, Assert.Single(groups[0]).Type); // Prior Legacy avatar body remains immediate.
-            Assert.All(groups[1], move => Assert.Equal(1, move.Type));
+            var body = Assert.Single(groups);
+            Assert.Equal(0, body[^1].Type);
+            Assert.All(body[..^1], move => Assert.Equal(1, move.Type));
         });
     }
 
     [Fact]
-    public void LegacyFallbackRejectsShadowDespiteItsImmediateAvatarPath()
+    public void ObsoleteShadowSettingStillPublishesCombinedCarry()
     {
         var f = new Fixture(FastQueueLayout(2), live: true, movementEngine: "shadow");
         var rider = f.Walker(1, 4, 10, 4, 11);
         var room = f.MovementContext().Room;
-        Assert.False(room.UsesV2Movement);
         Assert.NotNull(room.GetGameMap().Navigation);
         var packets = CapturePublication(rider);
 
         f.AdvanceWiredPass(250, false);
 
-        Assert.Equal(14, ReadPublication(packets).Count(move => move.Type == 1));
+        Assert.Equal(7, ReadPublication(packets).Count(move => move.Type == 1));
         Assert.Single(ReadPublication(packets), move => move.Type == 0);
-        Assert.All(packets.Where(IsMovementBody), bytes =>
-            Assert.True(ReadPublication([bytes]).All(move => move.Type == 1) || ReadPublication([bytes]).Count == 1));
+        Assert.Equal(8, ReadPublication([Assert.Single(packets.Where(IsMovementBody))]).Count);
         Assert.Equal((5, 11, 1.0), (rider.X, rider.Y, rider.Z));
     }
 
@@ -176,7 +173,7 @@ public sealed partial class WiredGlideConveyorTests
     [Theory]
     [InlineData("wf_trg_walks_on_furni")]
     [InlineData("wf_trg_collision")]
-    public void LegacyFallbackRejectsKnownWalkOrCollisionRegistryWork(string trigger)
+    public void CarryCoalescesFurnitureWithRegisteredWalkOrCollisionObservers(string trigger)
     {
         var layout = FastQueueLayout(2).Append((20u, 7, 12, 0.0, 0, trigger,
             JsonSerializer.Serialize(new WiredConfiguration { IntParams = trigger == "wf_trg_collision" ? [] : [100], SelectedItems = [1, 2, 3, 4, 5, 6, 7] }))).ToArray();
@@ -186,7 +183,7 @@ public sealed partial class WiredGlideConveyorTests
 
         f.AdvanceWiredPass(250, false);
 
-        Assert.Equal(14, ReadPublication(packets).Count(move => move.Type == 1));
+        Assert.Equal(7, ReadPublication(packets).Count(move => move.Type == 1));
         Assert.Single(ReadPublication(packets), move => move.Type == 0);
         Assert.Equal(5, rider.X);
         f.AdvanceWiredPass(100, false);
@@ -196,7 +193,7 @@ public sealed partial class WiredGlideConveyorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void LegacyImmediateHintRetainsExactlyOneBodyAcrossLoggedFailure(bool throws)
+    public void CarryHintRetainsExactlyOneCombinedBodyAcrossLoggedFailure(bool throws)
     {
         var f = new Fixture(FastQueueLayout(2), live: true, movementEngine: "legacy");
         var rider = f.Walker(1, 4, 10, 4, 11);
@@ -226,7 +223,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(0, movementsAtHint);
         Assert.Equal(7, ReadPublication(packets).Count(move => move.Type == 1));
         Assert.Single(ReadPublication(packets), move => move.Type == 0);
-        Assert.Equal(0, ReadPublication([packets.First(IsMovementBody)])[0].Type);
+        Assert.Equal(0, ReadPublication([Assert.Single(packets.Where(IsMovementBody))])[^1].Type);
     }
 
     [Fact]
@@ -268,7 +265,7 @@ public sealed partial class WiredGlideConveyorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void LegacyPreparedActorCannotSurviveASecondFailedPreparation(bool staleActor)
+    public void RepeatedPreparationStillPublishesEachCarryOnce(bool staleActor)
     {
         var f = new Fixture(FastQueueLayout(2), live: true, movementEngine: "legacy");
         var rider = f.Walker(1, 4, 10, 4, 11);
@@ -296,13 +293,13 @@ public sealed partial class WiredGlideConveyorTests
         f.AdvanceWiredPass(250, false);
 
         Assert.True(reset);
-        Assert.Equal(14, ReadPublication(packets).Count(move => move.Type == 1));
+        Assert.Equal(7, ReadPublication(packets).Count(move => move.Type == 1));
         Assert.Single(ReadPublication(packets), move => move.Type == 0);
         Assert.Equal(5, rider.X);
     }
 
     [Fact]
-    public void LegacyDifferentPassengersKeepTheirImmediateBodiesSeparate()
+    public void DifferentPassengersShareTheirFurniturePublication()
     {
         var f = new Fixture(FastQueueLayout(2), live: true, movementEngine: "legacy");
         var first = f.Walker(1, 4, 10, 4, 11);
@@ -312,18 +309,16 @@ public sealed partial class WiredGlideConveyorTests
         f.AdvanceWiredPass(250, false);
 
         var groups = packets.Where(IsMovementBody).Select(bytes => ReadPublication([bytes]).ToArray()).ToArray();
-        Assert.Equal(3, groups.Length);
-        Assert.Equal((0, 1), (Assert.Single(groups[0]).Type, groups[0][0].Id));
-        Assert.Equal((0, 2), (Assert.Single(groups[1]).Type, groups[1][0].Id));
-        Assert.Equal(new[] { 1, 2, 4, 5, 6, 7 }, groups[2].Select(move => move.Id));
-        Assert.All(groups[2], move => Assert.Equal((1, move.FromX, 500), (move.Type, move.ToX, move.Duration)));
+        var body = Assert.Single(groups);
+        var furniture = body.Where(move => move.Type == 1).ToArray();
+        Assert.Equal(new[] { 1, 2, 4, 5, 6, 7 }, furniture.Select(move => move.Id));
+        Assert.All(furniture, move => Assert.Equal((move.FromX, 500), (move.ToX, move.Duration)));
+        Assert.Equal(new[] { 1, 2 }, body.Where(move => move.Type == 0).Select(move => move.Id));
         Assert.Equal((5, 8), (first.X, second.X));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LegacyPreparedAppendRejectsChangedActorOrCapturedConfiguration(bool actorReuse)
+    [Fact]
+    public void PreparedAppendRejectsAReplacedActor()
     {
         var f = new Fixture(FastQueueLayout(2), live: true, movementEngine: "legacy");
         var rider = f.Walker(1, 4, 10, 4, 11);
@@ -340,15 +335,12 @@ public sealed partial class WiredGlideConveyorTests
                 changed = true;
                 var action = (WiredModernAction)f.Box(12);
 
-                if (actorReuse) {
+                {
                     var replacement = new RoomUser(99, context.Room.Id, rider.VirtualId, context.Room, rider.GetClient(),
                         TestChatEmotions.Unused, TestRewardProgress.Unused)
                     { X = rider.X, Y = rider.Y, Z = rider.Z };
                     Assert.NotEqual(rider.Movement.LifetimeId, replacement.Movement.LifetimeId);
                     f.ReplaceUser(replacement);
-                }
-                else {
-                    f.ReplaceUser(rider);
                 }
 
                 var movement = (WiredRoomMovement)typeof(WiredModernAction).GetField("_movement", BindingFlags.Instance | BindingFlags.NonPublic)!
@@ -369,13 +361,13 @@ public sealed partial class WiredGlideConveyorTests
         Assert.False(handled);
         var floors = ReadPublication(packets).Where(move => move.Type == 1).ToArray();
         Assert.Equal(Enumerable.Range(1, 7), floors.Where(move => move.ToX > move.FromX).Select(move => move.Id));
-        Assert.Equal(Enumerable.Range(actorReuse ? 2 : 1, actorReuse ? 6 : 7),
+        Assert.Equal(Enumerable.Range(2, 6),
             floors.Where(move => move.ToX < move.FromX).Select(move => move.Id));
         // The replacement stays at X4: existing occupancy prevents tile1 resetting to that tile.
-        Assert.Equal(actorReuse ? 5 : 4, f.Items[1].GetX);
-        Assert.Equal(actorReuse ? 13 : 14, floors.Length);
-        Assert.Equal(actorReuse ? 0 : 1, ReadPublication(packets).Count(move => move.Type == 0));
-        Assert.Equal(actorReuse ? 4 : 5, rider.X);
+        Assert.Equal(5, f.Items[1].GetX);
+        Assert.Equal(13, floors.Length);
+        Assert.Equal(0, ReadPublication(packets).Count(move => move.Type == 0));
+        Assert.Equal(4, rider.X);
         Assert.Equal(0, f.Engine.ReadStats().Pending);
     }
 
@@ -645,7 +637,7 @@ public sealed partial class WiredGlideConveyorTests
                 Assert.Null(move.Overshoot);
             });
             Assert.Equal(100, Assert.Single(moves.Where(move => move.Type == 0)).Strength);
-            Assert.Equal(movementEngine == "v2" ? 1 : 2, bodies.Length);
+            Assert.Single(bodies);
             Assert.Equal((4 + pulse, 11, 1.0), (rider.X, rider.Y, rider.Z));
             Assert.Equal(0, f.Engine.ReadStats().Pending);
         }

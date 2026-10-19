@@ -122,7 +122,6 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void QueuedModernGateEffectStillReportsItsWriteAfterTheUserLeft()
     {
-        _room.EnableV2Movement();
         var gate = ClosableGate();
         WatchState(gate);
         var button = ToggleAt(31, 3, 3);
@@ -143,7 +142,6 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void QueuedGateClickReportsItsChangeWithoutATriggeringUserWhenItLands()
     {
-        _room.EnableV2Movement();
         var gate = ClosableGate();
         WatchState(gate);
         WhisperOnChange(104, gate);
@@ -165,7 +163,6 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void SynchronousGateInsideAUseCannotTakeAnOlderQueuedWrite()
     {
-        _room.EnableV2Movement();
         var gate = ClosableGate(state: "0");
         WatchState(gate);
         WhisperOnChange(104, gate);
@@ -333,7 +330,6 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void QueuedBuiltinGateStateWriteIsReportedOnceAfterItsUserLeft()
     {
-        _room.EnableV2Movement();
         var gate = ClosableGate();
         WatchState(gate);
         WhisperOnChange(104, gate);

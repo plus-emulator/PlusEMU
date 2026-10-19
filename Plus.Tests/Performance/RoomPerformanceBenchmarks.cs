@@ -151,6 +151,9 @@ internal sealed class RoomPerformanceFixture
         SetField(room, "_roomItemHandling", new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards));
         SetField(room, "_gamemap", map);
         SetField(room, "_roomUserManager", manager);
+        TestRoomUserSnapshots.Install(room);
+        using var owner = RoomOwnerScope.Enter(room);
+        map.Navigation.ApplyDirty();
         var fixture = new RoomPerformanceFixture { Room = room, Manager = manager, Map = map };
         var dictionary = (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(manager)!;
         var revision = new Revision
@@ -171,13 +174,13 @@ internal sealed class RoomPerformanceFixture
                 user = new RoomUser(i + 1, 0, i, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 1, Y = 1, InternalRoomId = i, AllowOverride = true };
                 user.BotData = (RoomBot)RuntimeHelpers.GetUninitializedObject(typeof(RoomBot));
                 typeof(RoomBot).GetProperty(nameof(RoomBot.IsTemporary))!.SetValue(user.BotData, true);
-                user.Path.AddRange(new[] { new Vector2D(3, 1), new Vector2D(2, 1), new Vector2D(1, 1) });
                 fixture.Bots.Add(user);
             }
             else {
                 var client = new FlashGameClient(TestGameServer.Instance, factory, TestLogging.GameClient) { Revision = revision, SendCallback = _ => false };
                 var habbo = (Habbo)RuntimeHelpers.GetUninitializedObject(typeof(Habbo));
                 habbo.CurrentRoom = room;
+                habbo.Access = Plus.HabboHotel.Permissions.UserAccess.Empty;
                 client.SetHabbo(habbo);
                 user = new RoomUser(i + 1, 0, i, room, client, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 1, Y = 1, InternalRoomId = i, AllowOverride = true };
                 fixture.Clients.Add(client);
@@ -186,7 +189,7 @@ internal sealed class RoomPerformanceFixture
 
             user.Statusses.Add("mv", "2,1,0");
             dictionary.TryAdd(i, user);
-            map.AddUserToMap(user, user.Coordinate);
+            map.Navigation.Admit(user);
         }
 
         // Null AI deliberately avoids bot timer/pathfinding work. Cycle counts those entries.
@@ -202,8 +205,7 @@ internal sealed class RoomPerformanceFixture
             bot.Y = 1;
             bot.GoalX = 3;
             bot.GoalY = 1;
-            bot.IsWalking = true;
-            bot.PathStep = 1;
+            bot.MoveTo(bot.GoalX, bot.GoalY);
             bot.SetStep = false;
         }
     }
@@ -212,13 +214,9 @@ internal sealed class RoomPerformanceFixture
     {
         foreach (var bot in Bots) {
             var forward = bot.X == 1;
-            bot.GoalX = forward ? 3 : 0;
+            bot.GoalX = forward ? 2 : 1;
             bot.GoalY = 1;
-            bot.Path[0].X = bot.GoalX;
-            bot.Path[1].X = forward ? 2 : 1;
-            bot.Path[2].X = bot.X;
-            bot.IsWalking = true;
-            bot.PathStep = 1;
+            bot.MoveTo(bot.GoalX, bot.GoalY);
             bot.SetStep = false;
         }
     }

@@ -21,6 +21,7 @@ public sealed class LargeRoomTests(ITestOutputHelper output)
         };
 
         foreach (var observer in fixture.Users) {
+            observer.RemoveStatus("mv");
             observer.UpdateNeeded = false;
         }
 
@@ -56,6 +57,6 @@ public sealed class LargeRoomTests(ITestOutputHelper output)
         }
 
         samples.Sort();
-        output.WriteLine($"1044 tiles / 1000 bots: two movement cycles + status broadcast; p50={samples[15]:F3}ms, p95={samples[28]:F3}ms. In-memory transport, precomputed paths, no AI or sockets.");
+        output.WriteLine($"1044 tiles / 1000 bots: two movement cycles + status broadcast; p50={samples[15]:F3}ms, p95={samples[28]:F3}ms. In-memory transport, owner-scheduled paths, no AI or sockets.");
     }
 }

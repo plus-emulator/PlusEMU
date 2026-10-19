@@ -13,8 +13,6 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // V2 roller identity follows the current interaction type (the legacy Item.IsRoller is never set):
-    // a destination that is a roller keeps the carried Z, any other destination drops by the roller height.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -22,7 +20,7 @@ public partial class PlacedFurniRoomTests
     {
         ExecutorRoller(10, 0, 1);
         var destination = ExecutorFloor(11, 1, 1, height: .5);
-        InstallRollerChainEngine(PathfindingEngine.V2);
+        InstallRollerChainEngine();
         var actor = RollerChainActor(1, 0, .5);
         destination.Definition.InteractionType = destinationIsRoller ? InteractionType.Roller : InteractionType.None;
         ExecutorTick();
@@ -30,13 +28,11 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((1, 1, destinationIsRoller ? .5 : 0d), (actor.X, actor.Y, actor.Z));
     }
-
-    // V2 cycles registered rollers on its own; it does not depend on the legacy GotRollers flag.
     [Fact]
     public void V2RollersCycleWithoutTheLegacyGotRollersFlag()
     {
         ExecutorRoller(10, 0, 1);
-        InstallRollerChainEngine(PathfindingEngine.V2);
+        InstallRollerChainEngine();
         var actor = RollerChainActor(1, 0, .5);
         ExecutorTick();
         _room.GetRoomItemHandler().SetSpeed(0);
@@ -46,17 +42,17 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
-    [InlineData(PathfindingEngine.V2, false)]
-    [InlineData(PathfindingEngine.V2, true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public void RollerChainBlocksUpstreamActorWhenStaticFurniturePreventsCargoExit(
-        PathfindingEngine engine, bool reverseIds)
+bool reverseIds)
     {
         ExecutorRoller(reverseIds ? 11u : 10u, 0, 1);
         ExecutorRoller(reverseIds ? 10u : 11u, 1, 1);
         ExecutorRoller(20, 2, 1);
         var cargo = ExecutorFloor(12, 1, 1, z: 1, height: 1);
         var blocker = Add(13, 2, 0, z: 1, height: 3, stackable: false, length: 2);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var actor = RollerChainActor(1, 0, .5);
         ExecutorTick();
         EnableExecutorRollers();
@@ -69,13 +65,13 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
-    [InlineData(PathfindingEngine.V2, false)]
-    [InlineData(PathfindingEngine.V2, true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public void RollerChainAdvancesEveryIdleActorEveryCycleWithoutRequiringAnEmptyTileBetweenActors(
-        PathfindingEngine engine, bool reverseIds)
+bool reverseIds)
     {
         PrepareRollerChain(8, reverseIds);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var actors = new[] { RollerChainActor(1, 0, .5), RollerChainActor(2, 1, .5), RollerChainActor(3, 2, .5) };
         ExecutorTick();
         EnableExecutorRollers();
@@ -93,14 +89,14 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
-    [InlineData(PathfindingEngine.V2, false)]
-    [InlineData(PathfindingEngine.V2, true)]
+    [InlineData(false)]
+    [InlineData(true)]
     public void RollerChainAdvancesEveryCargoEveryCycleWithoutRequiringAnEmptyTileBetweenItems(
-        PathfindingEngine engine, bool reverseIds)
+bool reverseIds)
     {
         PrepareRollerChain(8, reverseIds);
         var cargo = Enumerable.Range(0, 3).Select(x => ExecutorFloor((uint)(200 + x), x, 1, z: 1, height: .25)).ToArray();
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         RollerChainActor(1, 7, 0);
         ExecutorTick();
         EnableExecutorRollers();
@@ -118,12 +114,11 @@ public partial class PlacedFurniRoomTests
         }
     }
 
-    [Theory]
-    [InlineData(PathfindingEngine.V2)]
-    public void EmptyRollerChainKeepsPositionsAndProducesNoTransportPackets(PathfindingEngine engine)
+    [Fact]
+    public void EmptyRollerChainKeepsPositionsAndProducesNoTransportPackets()
     {
         PrepareRollerChain(8, false);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var observer = RollerChainActor(1, 7, 0);
         ExecutorTick();
         EnableExecutorRollers();
@@ -138,12 +133,12 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
-    [InlineData(PathfindingEngine.V2, .5)]
-    [InlineData(PathfindingEngine.V2, 1.1234)]
-    public void RollerChainExitOntoFloorPreservesTheExactCarriedZFormula(PathfindingEngine engine, double startZ)
+    [InlineData(.5)]
+    [InlineData(1.1234)]
+    public void RollerChainExitOntoFloorPreservesTheExactCarriedZFormula(double startZ)
     {
         ExecutorRoller(10, 0, 1);
-        InstallRollerChainEngine(engine);
+        InstallRollerChainEngine();
         var actor = RollerChainActor(1, 0, startZ);
         ExecutorTick();
         EnableExecutorRollers();
@@ -153,7 +148,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(startZ.ToString(System.Globalization.CultureInfo.InvariantCulture), slide.FromZ);
         Assert.Equal(Plus.Utilities.TextHandling.GetString(startZ - .5), slide.ToZ);
 
-        if (engine == PathfindingEngine.V2 && startZ != .5) {
+        if (startZ != .5) {
             Assert.Null(actor.Movement.CurrentRef);
         }
     }
@@ -169,14 +164,11 @@ public partial class PlacedFurniRoomTests
         }
     }
 
-    private void InstallRollerChainEngine(PathfindingEngine engine)
+    private void InstallRollerChainEngine()
     {
-        if (engine == PathfindingEngine.Legacy) {
-            return;
-        }
 
         var map = _room.GetGameMap();
-        var navigation = new RoomNavigation(_room, map.StaticModel, new() { Engine = engine }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
+        var navigation = new RoomNavigation(_room, map.StaticModel, new() { LayeringEnabled = false }, TestLogging.Navigation, new TestGroupManager(id => _groupLookup(id)), _database, TestNavigationRewards.Instance);
         typeof(Gamemap).GetField("<Navigation>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(map, navigation);
 
         foreach (var item in _room.GetRoomItemHandler().GetFloor) {
@@ -206,7 +198,7 @@ public partial class PlacedFurniRoomTests
             .GetValue(_room.GetRoomUserManager())!;
         Assert.True(roster.TryAdd(id, actor));
 
-        if (_room.GetGameMap().Navigation is { UsesExecutor: true } navigation) {
+        if (_room.GetGameMap().Navigation is { } navigation) {
             navigation.Admit(actor);
         }
         else {

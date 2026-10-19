@@ -32,7 +32,8 @@ public sealed class Route
     internal void CaptureAdvisory(NavGrid grid)
     {
         for (var i = 0; i < Count; i++) {
-            _advisoryZ[i] = grid.Position(_steps[i].Tile, View == GraphView.LegacyTile).Z;
+            var slot = View == GraphView.LegacyTile ? _steps[i].Tile : grid.SlotOf(_steps[i]);
+            _advisoryZ[i] = grid.Position(slot < 0 ? _steps[i].Tile : slot, View == GraphView.LegacyTile).Z;
         }
     }
     internal void CopyFrom(Route source)

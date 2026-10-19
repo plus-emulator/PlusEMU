@@ -1,3 +1,4 @@
+using Plus.HabboHotel.Rooms.PathFinding;
 using Xunit;
 
 namespace Plus.Tests;
@@ -11,6 +12,7 @@ public sealed partial class WiredActionPortParityTests
     public void WiredUserMovesMarkTheWfStatusAndKeepTheFacing()
     {
         var (room, map, items) = World();
+        using var roomOwnerScope = RoomOwnerScope.Enter(room);
         var owner = Avatar(room, 1, 2, 2);
         owner.RotBody = owner.RotHead = 4;
         Register(room, map, owner);
@@ -20,6 +22,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((4, 4), (owner.RotBody, owner.RotHead));
 
         var (otherRoom, otherMap, otherItems) = World();
+        using var otherRoomOwnerScope = RoomOwnerScope.Enter(otherRoom);
         var lifted = Avatar(otherRoom, 1, 3, 3);
         Register(otherRoom, otherMap, lifted);
         var mover = Floor(1, 1, 1);

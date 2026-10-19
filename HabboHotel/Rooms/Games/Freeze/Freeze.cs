@@ -97,7 +97,6 @@ public class Freeze
                     var exitTle = GetRandomExitTile();
 
                     if (exitTle != null) {
-                        _room.GetGameMap().UpdateUserMovement(user.Coordinate, exitTle.Coordinate, user);
                         user.SetPos(exitTle.GetX, exitTle.GetY, exitTle.GetZ);
                         user.UpdateNeeded = true;
 

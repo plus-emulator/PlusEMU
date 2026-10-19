@@ -334,17 +334,16 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void GateLegacyAutomaticCloseKeepsItsRetryWhileAUserStandsOnTheGate()
+    public void GateAutomaticCloseKeepsItsRetryWhileAUserStandsOnTheGate()
     {
         var gate = ClosableGate(InteractionType.GuildGate);
-        var user = Viewer(1, 1);
-        _room.GetGameMap().AddUserToMap(user, gate.Coordinate);
+        var user = ExecutorActor(1, 1);
         using var owner = RoomOwnerScope.Enter(_room);
         gate.RequestUpdate(1, true);
         gate.ProcessUpdates();
         Assert.Equal("1", gate.LegacyDataString);
         Assert.Equal(2, gate.UpdateCounter);
-        _room.GetGameMap().RemoveUserFromMap(user, gate.Coordinate);
+        _room.GetGameMap().Navigation.Remove(user);
         gate.ProcessUpdates();
         gate.ProcessUpdates();
         Assert.Equal("0", gate.LegacyDataString);

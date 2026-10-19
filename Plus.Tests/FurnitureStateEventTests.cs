@@ -93,7 +93,6 @@ public partial class PlacedFurniRoomTests
     [InlineData(InteractionType.GateVip)]
     public void SequencedGateOpenReportsItsStateChangeOnce(InteractionType kind)
     {
-        _room.EnableV2Movement();
         var gate = ClosableGate(kind, state: "0");
         WatchState(gate);
         ExecutorActor(0, 2);
@@ -110,7 +109,6 @@ public partial class PlacedFurniRoomTests
     [InlineData(InteractionType.GateVip)]
     public void SequencedGateCloseReportsItsStateChangeOnlyWhenTheQueuedWriteLands(InteractionType kind)
     {
-        _room.EnableV2Movement();
         var gate = ClosableGate(kind);
         WatchState(gate);
         ExecutorActor(0, 2);
@@ -129,7 +127,6 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void SequencedGateCloseStillReportsItsChangeAfterTheUserLeft()
     {
-        _room.EnableV2Movement();
         var gate = ClosableGate();
         WatchState(gate);
         var actor = ExecutorActor(0, 2);

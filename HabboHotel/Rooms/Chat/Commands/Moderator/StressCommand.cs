@@ -38,7 +38,7 @@ public class StressCommand : IChatCommand
     public void Execute(GameClient session, Room room, string[] parameters)
     {
         if (!CanExecute(session.GetHabbo().Access)) {
-            session.SendWhisper("Only staff with moderator tools can use :stress.");
+            session.SendWhisper("Only hotel owners can use :stress.");
 
             return;
         }

@@ -248,6 +248,7 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
         actor.Statusses.Remove("sit");
         actor.Statusses.Remove("lay");
         actor.IsSitting = actor.IsLying = false;
+        EndArrival(actor);
         var z = target.Z + context.Graph.RiderOffset(actor, target.Slot);
         actor.SetStatus("mv", $"{target.X},{target.Y},{TextHandling.GetString(z)}");
         actor.RotBody = actor.RotHead = Rotation.Calculate(actor.X, actor.Y, target.X, target.Y, actor.MoonwalkEnabled);
@@ -259,6 +260,22 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
         actor.UpdateNeeded = true;
         context.FloorEffects.Apply(actor, target.X, target.Y, state.Pending[state.PendingCount - 1]);
         AnnounceWiredWalk(actor, target);
+    }
+    // A teleport or hopper arrival ends with the first step out; until then the teleporters and doorbell treat the user as arriving.
+    private static void EndArrival(RoomUser actor)
+    {
+        if (actor.IsBot || actor.IsPet || actor.GetClient()?.GetHabbo() is not { } habbo) {
+            return;
+        }
+
+        if (habbo.IsTeleporting) {
+            habbo.IsTeleporting = false;
+            habbo.TeleporterId = 0;
+        }
+        else if (habbo.IsHopping) {
+            habbo.IsHopping = false;
+            habbo.HopperId = 0;
+        }
     }
     // Observed on hhus (AIR WIN63-202610131318-860371703): Wired walk-off and walk-on fire in the tick whose UserUpdate announces the
     // step (mv towards the next tile), one walk tick before the landing. The landing still runs the furni interactions.

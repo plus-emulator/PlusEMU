@@ -79,6 +79,13 @@ public static class WiredVariableFxSettings
         builder[8] = style.Widths.Contains(ints[8]) ? ints[8] : style.DefaultWidth;
         builder[9] = style.Renderers.Contains(ints[9]) ? ints[9] : style.DefaultRenderer;
 
+        // Observed on AIR WIN63-202610151745-318700621: a boss bar keeps a range-override target of -10 (room) and stores any other
+        // value as its own source, so switching the source with stale targets still saves, with or without the overrides ticked.
+        if (category == 4 && ints[0] is 0 or 1) {
+            builder[16] = ints[16] == -10 ? -10 : ints[0];
+            builder[17] = ints[17] == -10 ? -10 : ints[0];
+        }
+
         if (category == 2) {
             builder[10] = builder[11] = builder[12] = builder[13] = -1;
         }

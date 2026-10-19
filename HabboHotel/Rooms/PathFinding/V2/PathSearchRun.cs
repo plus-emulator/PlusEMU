@@ -81,7 +81,7 @@ internal readonly struct PathSearchRun
         _costs[first] = 0;
         _parents[first] = -1;
         _sequences[first] = _ws.NextSequence++;
-        _ws.Insert(first, PathTieBreak.Key(PathTieBreak.Heuristic(start.X, start.Y, _goal.X, _goal.Y),
+        _ws.Insert(first, PathTieBreak.Key(ClaimMatrix.Step * PathTieBreak.Heuristic(start.X, start.Y, _goal.X, _goal.Y),
             start.X, start.Y, _goal.X, _goal.Y, 0, _sequences[first]));
 
         return first;
@@ -124,7 +124,7 @@ internal readonly struct PathSearchRun
         var seen = stamp == _generation;
         var purpose = _goal.Contains(next) ? StepPurpose.Goal : StepPurpose.Transit;
         var g = parentCost + ClaimMatrix.StepCost(_req.Actor, purpose, _req.View,
-            _req.Occupancy?.Targets[next] ?? TargetOccupancy.None);
+            _req.Occupancy?.Targets[next] ?? TargetOccupancy.None, x != from.X && y != from.Y);
 
         if (seen && g >= _costs[next] || !_legacy && (_flags[next] & ~NavFlags.FloorLocked) == 0) {
             return;
@@ -150,7 +150,7 @@ internal readonly struct PathSearchRun
             _sequences[next] = _ws.NextSequence++;
         }
 
-        var key = PathTieBreak.Key((long)g + PathTieBreak.Heuristic(x, y, _goal.X, _goal.Y), x, y,
+        var key = PathTieBreak.Key((long)g + ClaimMatrix.Step * PathTieBreak.Heuristic(x, y, _goal.X, _goal.Y), x, y,
             _goal.X, _goal.Y, _legacy ? (byte)0 : _grid.Ordinal[next], _sequences[next]);
 
         if (seen) {

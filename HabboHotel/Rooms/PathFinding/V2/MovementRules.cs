@@ -48,6 +48,12 @@ public static class ClaimMatrix
             return TargetOccupancy.RollerClaim;
         }
 
+        // With or without walkthrough, the first plan crosses standing avatars at a cost (StepCost);
+        // execution still blocks them where the room does.
+        if (view == OccupancyView.InitialPlanning && purpose == StepPurpose.Transit) {
+            return TargetOccupancy.RollerClaim;
+        }
+
         if (!actor.Walkthrough) {
             return view == OccupancyView.Execution ? (TargetOccupancy)127 : TargetOccupancy.Stationary | TargetOccupancy.OffGraph;
         }
@@ -61,12 +67,16 @@ public static class ClaimMatrix
             : TargetOccupancy.Stationary | TargetOccupancy.OffGraph;
     }
 
-    // In a walk-through room a standing avatar adds two steps of cost to a first plan: a short detour wins,
-    // but its tile stays usable.
+    // Path costs count half steps.
+    public const int Step = 2;
+
+    // The first plan steps straight onto a standing avatar only when no route of the same length avoids it,
+    // and does not step onto one diagonally while a straight entry or a short detour exists.
     // Inferred from routes observed on AIR `WIN63-202610151745-318700621`.
-    public static int StepCost(ActorProfile actor, StepPurpose purpose, OccupancyView view, TargetOccupancy target)
-        => view == OccupancyView.InitialPlanning && purpose == StepPurpose.Transit && !actor.LegacyOverride && !actor.IgnoreUsers
-            && (target & (TargetOccupancy.Stationary | TargetOccupancy.OffGraph)) != 0 ? 3 : 1;
+    public static int StepCost(ActorProfile actor, StepPurpose purpose, OccupancyView view, TargetOccupancy target, bool diagonal)
+        => view != OccupancyView.InitialPlanning || purpose != StepPurpose.Transit || actor.LegacyOverride || actor.IgnoreUsers
+            || (target & (TargetOccupancy.Stationary | TargetOccupancy.OffGraph)) == 0 ? Step
+            : diagonal ? 3 * Step : Step + 1;
 
     // The claim an announced step takes on its target (§6.4).
     public static ClaimKind KindFor(ActorProfile actor, NavFlags target, StepPurpose purpose)

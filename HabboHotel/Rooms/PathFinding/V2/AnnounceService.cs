@@ -151,10 +151,13 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
     }
     private readonly record struct RejectedStep(NavPosition From, SurfaceRef Target, StepReason Reason);
 
-    private static bool Remember(WalkPlan plan, RejectedStep failure)
-        => failure.Reason is StepReason.TooHigh or StepReason.TooLow or StepReason.CornerBlocked or StepReason.CornerVoid
-            ? plan.Exclusions.Block(failure.From, failure.Target)
-            : plan.Exclusions.Block(failure.Target);
+    private static bool Remember(WalkPlan plan, RejectedStep failure) => failure.Reason switch
+    {
+        StepReason.TooHigh or StepReason.TooLow or StepReason.CornerBlocked or StepReason.CornerVoid
+            => plan.Exclusions.Block(failure.From, failure.Target),
+        StepReason.Occupied => plan.Exclusions.BlockUntilNextStep(failure.Target),
+        _ => plan.Exclusions.Block(failure.Target)
+    };
 
     private bool TryRecoveryStep(RoomUser actor, RejectedStep failure, out NavPosition target)
     {
@@ -181,13 +184,10 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
 
         // Prefer the original level; a separate deck at this XY is not an escape from a floor blocker.
         var slot = SurfaceSelection.Resting(grid, tile, from.Z);
-
-        if (slot < 0) {
-            return false;
-        }
+        SurfaceRef? planned = null;
 
         if (actor.Movement.Plan is { } plan) {
-            var originalSlot = plan.Grid.SlotOf(grid.Reference(slot));
+            var originalSlot = slot < 0 ? -1 : plan.Grid.SlotOf(grid.Reference(slot));
 
             if (originalSlot < 0 || !plan.Grid.Active(originalSlot)) {
                 originalSlot = SurfaceSelection.Resting(plan.Grid, tile, from.Z);
@@ -208,14 +208,22 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
                     StepPurpose.Transit, OccupancyView.Planning).Ok) {
                 return false;
             }
+
+            planned = plan.Grid.Reference(originalSlot);
         }
 
-        var candidate = grid.Position(slot);
+        var reason = StepReason.NotStandable;
 
-        if (!ClaimStep(actor, profile, from, candidate, StepPurpose.Transit, out _, out _)) {
+        if (slot < 0 || !ClaimStep(actor, profile, from, grid.Position(slot), StepPurpose.Transit, out _, out reason)) {
+            // Inferred from routes observed on AIR WIN63-202610151745-318700621: later repairs avoid a fallback tile found blocked.
+            if (actor.Movement.Plan is { } known && planned is { } surface) {
+                Remember(known, new(from, surface, reason));
+            }
+
             return false;
         }
 
+        var candidate = grid.Position(slot);
         var state = actor.Movement;
         state.PendingView = GraphView.Surface;
         state.Pending[0] = grid.Reference(slot);
@@ -235,6 +243,7 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
     private void Publish(RoomUser actor, NavPosition target)
     {
         var state = actor.Movement;
+        state.Plan?.Exclusions.NextStep();
         actor.Statusses.Remove("sit");
         actor.Statusses.Remove("lay");
         actor.IsSitting = actor.IsLying = false;

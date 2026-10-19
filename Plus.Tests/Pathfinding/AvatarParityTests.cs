@@ -156,4 +156,30 @@ public partial class PlacedFurniRoomTests
         HabboParityAssertStopped(actor, path, (7, 7), (7, 8), (7, 9));
         Assert.True(_room.GetGameMap().SquareIsOpen(7, 7, false));
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HabboRecoveryStepsOntoATileAnAvatarBlockedEarlierAndLeft(bool layered)
+    {
+        HabboParityRoom();
+        _room.RoomBlockingEnabled = false;
+        var actor = LayeredActor(7, 7, new() { LayeringEnabled = layered });
+        var occupant = ExecutorAdditionalBot(8, 10, 5);
+        ExecutorTick();
+        var path = HabboParityWalk(actor, 7, 12, next =>
+        {
+            if (next == (7, 9)) {
+                occupant.SetPos(7, 10, 0);
+            }
+
+            if (next == (6, 10)) {
+                occupant.SetPos(8, 10, 0);
+                HabboParityMove(100, 7, 11);
+                HabboParityMove(101, 6, 11);
+            }
+        });
+
+        HabboParityAssertStopped(actor, path, (7, 7), (7, 8), (7, 9), (6, 10), (7, 10), (8, 11), (7, 12));
+    }
 }

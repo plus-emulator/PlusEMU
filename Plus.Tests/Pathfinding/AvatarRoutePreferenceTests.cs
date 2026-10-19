@@ -53,4 +53,85 @@ public partial class PlacedFurniRoomTests
         HabboParityAssertStopped(actor, path, (5, 7), (6, 7), (7, 8), (7, 9));
         Assert.Equal((6, 8), (occupant.X, occupant.Y));
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HabboInitialPlanCrossesAStandingAvatarWithoutWalkthroughAndStopsAtIt(bool layered)
+    {
+        HabboParityRoom();
+        HabboParityMove(100, 6, 7);
+        HabboParityMove(101, 6, 9);
+        _room.RoomBlockingEnabled = false;
+        var actor = LayeredActor(5, 8, new() { LayeringEnabled = layered });
+        var occupant = ExecutorAdditionalBot(6, 8, 5);
+        ExecutorTick();
+        var path = HabboParityWalk(actor, 7, 8);
+
+        HabboParityAssertStopped(actor, path, (5, 8));
+        Assert.Equal((6, 8), (occupant.X, occupant.Y));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HabboInitialPlanWithoutWalkthroughStillPrefersAShortDetourAroundAStandingAvatar(bool layered)
+    {
+        HabboParityRoom();
+        HabboParityMove(100, 5, 8);
+        HabboParityMove(101, 6, 9);
+        _room.RoomBlockingEnabled = false;
+        var actor = LayeredActor(5, 7, new() { LayeringEnabled = layered });
+        ExecutorAdditionalBot(6, 8, 5);
+        ExecutorTick();
+        var path = HabboParityWalk(actor, 7, 9);
+
+        HabboParityAssertStopped(actor, path, (5, 7), (6, 7), (7, 8), (7, 9));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HabboInitialPlanEntersAStandingAvatarStraightRatherThanDiagonally(bool layered)
+    {
+        HabboParityRoom();
+        HabboParityMove(100, 6, 7);
+        HabboParityMove(101, 6, 9);
+        var actor = LayeredActor(7, 7, new() { LayeringEnabled = layered });
+        ExecutorAdditionalBot(6, 8, 5);
+        ExecutorTick();
+        var path = HabboParityWalk(actor, 4, 9);
+
+        HabboParityAssertStopped(actor, path, (7, 7), (7, 8), (6, 8), (5, 9), (4, 9));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HabboInitialPlanCutsTheSameCornersWhenNoAvatarStandsOnTheRoute(bool layered)
+    {
+        HabboParityRoom();
+        HabboParityMove(100, 6, 7);
+        HabboParityMove(101, 6, 9);
+        var actor = LayeredActor(7, 7, new() { LayeringEnabled = layered });
+        ExecutorAdditionalBot(10, 8, 5);
+        ExecutorTick();
+        var path = HabboParityWalk(actor, 4, 9);
+
+        HabboParityAssertStopped(actor, path, (7, 7), (6, 8), (5, 9), (4, 9));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HabboInitialPlanTakesAFreeStepAroundADiagonalStandingAvatar(bool layered)
+    {
+        HabboParityRoom();
+        var actor = LayeredActor(7, 7, new() { LayeringEnabled = layered });
+        ExecutorAdditionalBot(6, 8, 5);
+        ExecutorTick();
+        var path = HabboParityWalk(actor, 5, 9);
+
+        HabboParityAssertStopped(actor, path, (7, 7), (6, 7), (5, 8), (5, 9));
+    }
 }

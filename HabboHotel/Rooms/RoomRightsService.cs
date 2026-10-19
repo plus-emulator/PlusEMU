@@ -84,7 +84,7 @@ public sealed class RoomRightsService(IRoomRightsStore store, ILanguageManager l
         var roomUser = room.GetRoomUserManager().GetRoomUserByHabbo(userId);
 
         if (roomUser != null && !roomUser.IsBot) {
-            roomUser.SetStatus("flatctrl 1");
+            roomUser.SetStatus("flatctrl", "1");
             roomUser.UpdateNeeded = true;
             roomUser.GetClient()?.Send(new YouAreControllerComposer(room.Id, 1));
             ResendWiredPermissions(room, userId);
@@ -188,7 +188,7 @@ public sealed class RoomRightsService(IRoomRightsStore store, ILanguageManager l
             return;
         }
 
-        user.RemoveStatus("flatctrl 1");
+        user.RemoveStatus("flatctrl");
         user.UpdateNeeded = true;
 
         if (own) {

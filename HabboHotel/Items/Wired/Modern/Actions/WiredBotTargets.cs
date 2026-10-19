@@ -176,10 +176,10 @@ public sealed class WiredBotTargets
         var step = WiredRoomOperations.StandingTile(bot);
 
         if (Math.Max(Math.Abs(left.X - step.X), Math.Abs(left.Y - step.Y)) > 1) {
-            // Lost its way to the empty spot: stop holding it there.
+            // Observed on AIR WIN63-202610151745-318700621: a bot that cannot get next to the spot (the user stood boxed in) keeps
+            // holding the item.
             if (!bot.IsWalking && !bot.SetStep) {
                 _targets.Remove(bot);
-                bot.CarryItem(0);
             }
 
             return;

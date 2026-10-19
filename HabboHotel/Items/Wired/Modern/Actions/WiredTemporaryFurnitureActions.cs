@@ -33,12 +33,13 @@ public static class WiredTemporaryFurnitureActions
             ? DynamicTemplates(context, templateSource)
             : config.Snapshots;
 
-        // Wall and unavailable definitions cannot be floor templates or the placement pivot.
-        // A value-carrying definition or a Wired box is never cloned, also from an older saved row or a dynamic source.
+        // A snapshot retains geometry and state, but its Builders Club template must still be in the room.
+        // Observed on AIR WIN63-202610151745-318700621: picking up one of two saved templates leaves only one copy on the next firing.
         var eligibleTemplates = templates.Select(snapshot => (Snapshot: snapshot,
-            Definition: definitions.Items.GetValueOrDefault(snapshot.DefinitionId)))
+            Definition: definitions.Items.GetValueOrDefault(snapshot.DefinitionId), Item: handler.GetItem(snapshot.ItemId)))
             .Where(template => template.Definition?.Type == Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor
-                && !WiredPlaceTemplatePolicy.CarriesValue(template.Definition) && !WiredPlaceTemplatePolicy.IsWiredBox(template.Definition)).ToArray();
+                && template.Item is { } item && item.Definition.Id == template.Snapshot.DefinitionId && WiredPlaceTemplatePolicy.CanClone(item))
+            .Select(template => (template.Snapshot, template.Definition)).ToArray();
 
         if (eligibleTemplates.Length == 0) {
             return false;
@@ -95,7 +96,7 @@ public static class WiredTemporaryFurnitureActions
             }
         }
 
-        var placedAny = false;
+        var placed = new List<Item>();
         var failedAny = false;
 
         foreach (var (snapshot, definition) in eligibleTemplates) {
@@ -123,7 +124,7 @@ public static class WiredTemporaryFurnitureActions
 
             var item = handler.BlocksTemporaryCopy(definition!, x, y, snapshot.Rotation)
                 ? null
-                : handler.PlaceTemporaryFloorItem(definition!, box.OwnerId, x, y, snapshot.Rotation, z, snapshot.State);
+                : handler.PlaceTemporaryFloorItem(definition!, box.OwnerId, x, y, snapshot.Rotation, z, snapshot.State, sendMessage: false);
 
             if (item == null) {
                 failedAny = true;
@@ -131,8 +132,13 @@ public static class WiredTemporaryFurnitureActions
                 continue;
             }
 
-            placedAny = true;
+            placed.Add(item);
+        }
 
+        // One Objects packet contains all successful copies from this firing, before their variable updates.
+        context.Room.SendTemporaryFloorItems(placed);
+
+        foreach (var item in placed) {
             // A newly attached item is explicitly added to the child variable frame, never the firing's captured target sets.
             if (module != null && config.VariableIds.Length != 0 && context.VariableFrame is { } parent
                 && module.TryResolveCatalogId(config.VariableIds[0], WiredVariableTarget.Furni, out var spawnVariable)) {
@@ -156,7 +162,7 @@ public static class WiredTemporaryFurnitureActions
             context.Room.GetWired()?.ReportPlacementFailure(box);
         }
 
-        return placedAny;
+        return placed.Count != 0;
     }
 
     // Sources 0, 200 and 201 are read when the effect fires. Source 100 keeps the saved snapshots.

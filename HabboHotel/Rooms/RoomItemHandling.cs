@@ -33,7 +33,7 @@ public partial class RoomItemHandling
     // Copies take the next id of the client's temporary band. A removed copy's id is not reused while the room stays loaded; a reload
     // starts the band again (observed on hhus: 2147401728, 1729, 1730 after Wired removals, and 2147401728 again after an unload).
     public Item? PlaceTemporaryFloorItem(ItemDefinition definition, uint ownerId, int x, int y,
-        int rotation, double? height = null, string state = "")
+        int rotation, double? height = null, string state = "", bool sendMessage = true)
     {
         if (definition.Type != Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor
             || AboveTemporaryLimit(height) || NextTemporaryId() is not { } id) {
@@ -53,7 +53,7 @@ public partial class RoomItemHandling
         };
         _temporaryItems.Add(id, item);
 
-        if (!SetFloorItem(null!, item, x, y, rotation, true, false, true, true, height ?? -1)) {
+        if (!SetFloorItem(null!, item, x, y, rotation, true, false, sendMessage, true, height ?? -1)) {
             _temporaryItems.Remove(id);
 
             return null;

@@ -148,6 +148,9 @@ public sealed partial class WiredRemainderG3Tests
         var definition = ModernWiredRuntimeTests.MakeItemForG3(5, "lamp").Definition;
         definition.Id = 5;
         definition.Stackable = true;
+        var template = ModernWiredRuntimeTests.MakeItemForG3(900, "lamp", buildersClub: true);
+        template.Definition = definition;
+        items[template.Id] = template;
         var manager = new TestWiredDefinitions(() => new() { [5] = definition });
         var action = ModernWiredRuntimeTests.ActionBoxForG3(room, "wf_act_place_furni", manager);
         Assert.True(WiredBoxRegistry.TryGet("wf_act_place_furni", out var descriptor));

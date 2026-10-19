@@ -47,6 +47,16 @@ public sealed partial class WiredGlideConveyorTests
         var f = new Fixture(layout, live: true, definitions: new TestWiredDefinitions(() => new() { [5] = template }));
         f.Room.OwnerId = 1;
 
+        foreach (var id in new uint[] { 900, 901 }) {
+            f.Items[id] = new Item
+            {
+                Id = id,
+                IsBuildersClub = true,
+                Definition = template,
+                ExtraData = new Plus.HabboHotel.Items.DataFormat.LegacyDataFormat { Data = "0" }
+            };
+        }
+
         return f;
     }
 

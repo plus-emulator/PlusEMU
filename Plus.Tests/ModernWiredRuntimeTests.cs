@@ -3726,6 +3726,9 @@ public partial class ModernWiredRuntimeTests
 
             return new Dictionary<uint, ItemDefinition> { [55] = definition };
         });
+        var template = MakeItem(900, "injected-template", buildersClub: true);
+        template.Definition = definition;
+        fixture.Items[template.Id] = template;
         var action = Assert.IsType<WiredModernAction>(fixture.Room.GetWired().CreateConfiguredBox(
             MakeItem(102, "wf_act_place_furni"), Descriptor("wf_act_place_furni")));
         Assert.Equal(0, reads);
@@ -3770,7 +3773,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void SnapshotPlacementCopiesDetachedTemplatesWithRelativeGeometryAndAltitude()
+    public void SnapshotPlacementCopiesExistingTemplatesWithSavedGeometryAndAltitude()
     {
         using var f = new TeleportFixture();
         var manager = DispatchProxy.Create<IItemDataManager, RecordingProxy>();
@@ -3780,6 +3783,13 @@ public partial class ModernWiredRuntimeTests
         ((RecordingProxy)(object)manager).InvokeMethod = (m, _) => m.Name == "get_Items" ? new Dictionary<uint, ItemDefinition> { [5] = def } : null;
         f.DefinitionManager = manager;
         f.Target.Definition.Stackable = true;
+
+        foreach (var id in new uint[] { 900, 901 }) {
+            var original = MakeItem(id, "template", buildersClub: true);
+            original.Definition = def;
+            f.Items[id] = original;
+        }
+
         var action = ActionBox(f.Room, "wf_act_place_furni", definitions: f.DefinitionManager);
         var proposed = WiredTemporaryFurnitureActions.Defaults("wf_act_place_furni") with
         {
@@ -3806,20 +3816,21 @@ public partial class ModernWiredRuntimeTests
         Assert.True(f.Room.GetRoomItemHandler().RemoveTemporaryFloorItem(copies[0]));
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, prepared with { TemporaryPlacement = new(Altitude: WiredPlaceAltitudeType.SourceAltitude) }, out config, out _));
         action.ApplyConfiguration(config);
-        Assert.True(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
+        Assert.False(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
     }
 
     [Fact]
     public void DynamicPlaceSourcesCaptureCurrentFloorTemplatesAndLeaveSavedSnapshotsFrozen()
     {
-        var (room, _, _) = World();
+        var (room, _, items) = World();
         var definition = MakeItem(5, "source").Definition;
         definition.Id = 5;
         definition.Stackable = true;
         var manager = DispatchProxy.Create<IItemDataManager, RecordingProxy>();
         ((RecordingProxy)(object)manager).InvokeMethod = (method, _) => method.Name == "get_Items" ? new Dictionary<uint, ItemDefinition> { [5] = definition } : null;
-        var source = MakeItem(8, "source");
+        var source = MakeItem(8, "source", buildersClub: true);
         source.Definition = definition;
+        items[source.Id] = source;
         source.LegacyDataString = "3";
         source.SetState(2, 1, 0);
         var transient = Assert.IsType<Item>(room.GetRoomItemHandler().PlaceTemporaryFloorItem(definition, 1, 0, 1, 0));
@@ -3855,6 +3866,9 @@ public partial class ModernWiredRuntimeTests
         }, manager));
         Assert.True(room.GetRoomItemHandler().RemoveTemporaryFloorItem(Assert.Single(room.GetRoomItemHandler().GetFloor.Where(item => item.IsTemporary && item.Id != transient.Id))));
 
+        var savedTemplate = MakeItem(900, "saved-template", buildersClub: true);
+        savedTemplate.Definition = definition;
+        items[savedTemplate.Id] = savedTemplate;
         var frozen = Context(room, new(WiredEventKind.Use), present, []);
         frozen.Triggering.FurniIds.Add(source.Id);
         Assert.False(WiredTemporaryFurnitureActions.Execute("wf_act_place_furni", box, frozen, config with
@@ -3908,15 +3922,16 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void DynamicPlaceSpawnResolvesOpaqueCatalogIdsAndLeavesLiveTokensUnread()
     {
-        var (room, _, _) = World();
+        var (room, _, items) = World();
         room.Id = 1;
         var definition = MakeItem(5, "source").Definition;
         definition.Id = 5;
         definition.Stackable = true;
         var manager = DispatchProxy.Create<IItemDataManager, RecordingProxy>();
         ((RecordingProxy)(object)manager).InvokeMethod = (method, _) => method.Name == "get_Items" ? new Dictionary<uint, ItemDefinition> { [5] = definition } : null;
-        var source = MakeItem(8, "source");
+        var source = MakeItem(8, "source", buildersClub: true);
         source.Definition = definition;
+        items[source.Id] = source;
         source.LegacyDataString = "3";
         source.SetState(2, 1, 0);
         var wired = new WiredComponent(room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance,
@@ -3958,7 +3973,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void SnapshotPreparationPreservesSelectedPivotOrderAfterOriginalsDetach()
+    public void SnapshotPreparationPreservesSelectedPivotOrderAndSkipsDetachedOriginals()
     {
         using var f = new TeleportFixture();
         f.Target.Definition.Stackable = true;
@@ -3968,11 +3983,11 @@ public partial class ModernWiredRuntimeTests
         var manager = DispatchProxy.Create<IItemDataManager, RecordingProxy>();
         ((RecordingProxy)(object)manager).InvokeMethod = (method, _) => method.Name == "get_Items" ? new Dictionary<uint, ItemDefinition> { [5] = definition } : null;
         f.DefinitionManager = manager;
-        var firstInserted = MakeItem(10, "test");
+        var firstInserted = MakeItem(10, "test", buildersClub: true);
         firstInserted.Definition = definition;
         firstInserted.SetState(1, 1, 0);
         f.Items[10] = firstInserted;
-        var firstPicked = MakeItem(20, "test");
+        var firstPicked = MakeItem(20, "test", buildersClub: true);
         firstPicked.Definition = definition;
         firstPicked.SetState(2, 1, 0);
         f.Items[20] = firstPicked;
@@ -3980,8 +3995,6 @@ public partial class ModernWiredRuntimeTests
         var proposed = WiredTemporaryFurnitureActions.Defaults("wf_act_place_furni") with { SelectedItems = [20, 10], SecondarySelectedItems = [1], FurniSources = ImmutableDictionary<string, int>.Empty.Add("target", 101), TemporaryPlacement = new(Location: WiredPlaceLocationType.CustomLocation) };
         var captured = WiredRoomOperations.PrepareSnapshots(action, proposed);
         Assert.Equal(new uint[] { 20, 10 }, captured.Snapshots.Select(snapshot => snapshot.ItemId));
-        f.Items.TryRemove(10, out _);
-        f.Items.TryRemove(20, out _);
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, captured, out var config, out _));
         action.ApplyConfiguration(config);
         Assert.True(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
@@ -3990,6 +4003,15 @@ public partial class ModernWiredRuntimeTests
         Assert.Contains(copies, item => item.GetX == 1 && item.GetY == 1);
         Assert.Contains(copies, item => item.GetX == 0 && item.GetY == 1);
         Assert.DoesNotContain(copies, item => item.GetX == 2);
+
+        foreach (var copy in copies) {
+            Assert.True(f.Room.GetRoomItemHandler().RemoveTemporaryFloorItem(copy));
+        }
+
+        f.Items.TryRemove(10, out _);
+        f.Items.TryRemove(20, out _);
+        Assert.False(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
+        Assert.DoesNotContain(f.Items.Values, item => item.IsTemporary);
     }
 
     [Fact]
@@ -3997,7 +4019,7 @@ public partial class ModernWiredRuntimeTests
     {
         using var f = new TeleportFixture();
         f.Target.Definition.Stackable = true;
-        var floor = MakeItem(10, "floor-template");
+        var floor = MakeItem(10, "floor-template", buildersClub: true);
         floor.Definition.Id = 5;
         floor.Definition.Stackable = true;
         floor.SetState(1, 1, 0);
@@ -4284,6 +4306,9 @@ public partial class ModernWiredRuntimeTests
             action.Item = ItemLoader.ReadRoomItem(Assert.Single(loadedRows.Rows.Cast<DataRow>()), roomId, action.Item.Definition);
             typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(action.Item, f.Room);
             f.Items[spawnId] = action.Item;
+            var template = MakeItem(900, "template", buildersClub: true);
+            template.Definition = f.DefinitionManager.Items[baseId];
+            f.Items[template.Id] = template;
             var removals = new List<byte[]>();
             f.Client.SendCallback = args =>
             {
@@ -4298,7 +4323,7 @@ public partial class ModernWiredRuntimeTests
             Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, new()
             {
                 TemporaryPlacement = new(Altitude: WiredPlaceAltitudeType.SourceAltitude),
-                Snapshots = [new(0, baseId, 1, 1, 0, 2, "0")]
+                Snapshots = [new(900, baseId, 1, 1, 0, 2, "0")]
             }, out var raw, out _));
             action.ApplyConfiguration(raw);
             Assert.True(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
@@ -4578,9 +4603,10 @@ public partial class ModernWiredRuntimeTests
 
         return descriptor;
     }
-    private static Item MakeItem(uint id, string name) => new()
+    private static Item MakeItem(uint id, string name, bool buildersClub = false) => new()
     {
         Id = id,
+        IsBuildersClub = buildersClub,
         ExtraData = new LegacyDataFormat { Data = "0" },
         Definition = new()
         {

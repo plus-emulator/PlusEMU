@@ -23,7 +23,7 @@ public partial class ModernWiredRuntimeTests
 
     internal static (Room Room, Gamemap Map, ConcurrentDictionary<uint, Item> Items) WorldForG3() => World();
 
-    internal static Item MakeItemForG3(uint id, string name) => MakeItem(id, name);
+    internal static Item MakeItemForG3(uint id, string name, bool buildersClub = false) => MakeItem(id, name, buildersClub);
 
     internal static WiredModernAction ActionBoxForG3(Room room, string name, IItemDataManager definitions) => ActionBox(room, name, definitions: definitions);
 
@@ -47,6 +47,15 @@ public partial class ModernWiredRuntimeTests
         var definitions = new Dictionary<uint, ItemDefinition> { [G3Lamp] = lamp };
         more?.Invoke(definitions);
         f.DefinitionManager = new TestWiredDefinitions(() => definitions);
+
+        foreach (var snapshot in proposed.Snapshots) {
+            if (definitions.TryGetValue(snapshot.DefinitionId, out var definition)) {
+                var template = MakeItem(snapshot.ItemId, "g3-template", buildersClub: true);
+                template.Definition = definition;
+                f.Items[template.Id] = template;
+            }
+        }
+
         f.Engine.Remove(f.Action.Item.Id);
         f.Items.TryRemove(f.Action.Item.Id, out _);
         var action = ActionBox(f.Room, "wf_act_place_furni", definitions: f.DefinitionManager);
@@ -68,6 +77,41 @@ public partial class ModernWiredRuntimeTests
     private static WiredFurniSnapshot G3Snap(uint item, uint definition, int x, int y, double z, int rotation, string state) => new(item, definition, x, y, z, rotation, state);
 
     private static Item[] G3Temporaries(Room room) => room.GetRoomItemHandler().GetFloor.Where(item => item.IsTemporary).OrderBy(item => item.GetX).ThenBy(item => item.GetY).ToArray();
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void G3SavedTemplatesMustStillExistAndCopiesArriveInOnePacket(int remaining)
+    {
+        var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 2, 0, 0, 0, "0"), G3Snap(901, G3Lamp, 2, 2, 0, 0, "1")));
+        using var f = stack.F;
+
+        for (var i = remaining; i < 2; i++) {
+            f.Items.TryRemove((uint)(900 + i), out _);
+        }
+
+        var packets = Capture(f.Client);
+        f.Fire(land: false);
+        Assert.Equal(remaining, G3Temporaries(f.Room).Length);
+        Assert.DoesNotContain(packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.ObjectAddComposer);
+        var objects = packets.Where(packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.ObjectsComposer).ToArray();
+
+        if (remaining == 0) {
+            Assert.Empty(objects);
+        }
+        else {
+            var packet = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = Assert.Single(objects).Body };
+            var owners = packet.ReadInt();
+
+            for (var i = 0; i < owners; i++) {
+                packet.ReadInt();
+                packet.ReadString();
+            }
+
+            Assert.Equal(remaining, packet.ReadInt());
+        }
+    }
 
     [Fact]
     public void G3PlaceFiresOnTheStackAndAddsTemporaryCopiesNobodyOwnsInTheRoom()
@@ -91,7 +135,7 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void G3PlaceCopiesTheSnapshotNotTheOriginalSoTheOriginalStaysAndNothingMoves()
     {
-        var original = MakeItem(77, "g3-original");
+        var original = MakeItem(77, "g3-original", buildersClub: true);
         var stack = G3PlaceStack(G3Place(null, G3Snap(77, G3Lamp, 2, 1, 0, 0, "0")));
         using var f = stack.F;
         original.Definition = stack.Lamp;

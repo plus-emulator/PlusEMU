@@ -10,6 +10,8 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 public sealed class WiredDirectionalActions
 {
     private readonly Dictionary<Item, int> _headings = [];
+    // The last step each Chase took (0, 2, 4 or 6); its random step never goes straight back.
+    private readonly Dictionary<Item, int> _chaseSteps = [];
     public bool MoveHeading(Item item, int initial, int turn, bool blockUsers,
         Func<int, int, bool> move, Func<int, int, RoomUser[]> usersAt, Action<Item, RoomUser> collision,
         IReadOnlySet<int>? throughUsers = null)
@@ -50,13 +52,23 @@ public sealed class WiredDirectionalActions
         return moved;
     }
     public int Heading(Item item, int initial) => _headings.GetValueOrDefault(item, initial);
-    public void Clear() => _headings.Clear();
+    public void Clear()
+    {
+        _headings.Clear();
+        _chaseSteps.Clear();
+    }
+    public int? LastChaseStep(Item item) => _chaseSteps.TryGetValue(item, out var step) ? step : null;
+    public void RememberChaseStep(Item item, int direction) => _chaseSteps[item] = direction;
     public void Retain(IEnumerable<Item> attached)
     {
         var live = attached.ToHashSet();
 
         foreach (var item in _headings.Keys.Where(item => !live.Contains(item)).ToArray()) {
             _headings.Remove(item);
+        }
+
+        foreach (var item in _chaseSteps.Keys.Where(item => !live.Contains(item)).ToArray()) {
+            _chaseSteps.Remove(item);
         }
     }
     public static int Turn(int direction, int mode) => mode switch

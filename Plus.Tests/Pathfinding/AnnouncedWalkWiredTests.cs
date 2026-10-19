@@ -255,6 +255,24 @@ public partial class PlacedFurniRoomTests
         Assert.False(actor.HasStatus("mv"));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: the freeze stops the user on the step announced when it fired; a step announced
+    // later is not taken.
+    [Fact]
+    public void FreezeBeforeAnyStepIsAnnouncedKeepsTheUserInPlace()
+    {
+        var actor = WalkActor(WalkActorKind.Habbo, 0, 1, v2: true);
+
+        actor.MoveTo(3, 1);
+        WiredAvatarState.For(_room).FreezeUser(actor, 0, false);
+
+        for (var tick = 0; tick < 4; tick++) {
+            AnnounceTick();
+        }
+
+        Assert.Equal((0, 1), (actor.X, actor.Y));
+        Assert.False(actor.SetStep);
+    }
+
     private (int X, int Y) SelectorTile(RoomUser actor)
     {
         var context = new WiredRuntimeContext(_room, new(WiredEventKind.ClickFurni), new(() => [], () => [actor]), new NoOperations());

@@ -18,10 +18,14 @@ public sealed class WiredAvatarState
     public bool FreezeUser(RoomUser user, int effect, bool cancelOnTeleport)
     {
         if (_executorRoom?.GetGameMap()?.Navigation is { UsesExecutor: true } navigation) {
+            // The tile the freeze stops the user on: the step announced when it fired, otherwise where the user stands.
+            var stopAt = WiredRoomOperations.StandingTile(user);
+
             navigation.RunOwner(user, (actor, sequence) =>
             {
-                // Observed on AIR WIN63-202610151745-318700621: a user frozen while walking finishes the announced step and stops there.
-                if (navigation.StopAfterStep(actor)) {
+                // Observed on AIR WIN63-202610151745-318700621: a user frozen while walking finishes the step announced when the freeze
+                // fired and stops there; a step announced after it is not taken.
+                if (actor.SetStep && new System.Drawing.Point(actor.SetX, actor.SetY) == stopAt && navigation.StopAfterStep(actor)) {
                     FreezeActor(actor, effect, cancelOnTeleport, stopWalk: false);
 
                     return;

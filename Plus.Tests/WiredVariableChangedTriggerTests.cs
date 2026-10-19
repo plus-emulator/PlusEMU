@@ -91,6 +91,35 @@ public sealed class WiredVariableChangedTriggerTests
         var config = new WiredConfiguration { IntParams = [0, 0, 1, 1, 1, 1, 0, -1], Text = "internal:@position.x" };
         Assert.True(WiredVariableChangedTrigger.Matches(config, change));
     }
+    [Fact]
+    public void ValueChangedWithNoChangeTypesSavesAndNeverFires()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: Value changed ticked with none of increased, decreased or unchanged saves,
+        // and the trigger then never fires on +1, -1, a same-value write or +0.
+        var config = new WiredConfiguration { Version = 1, IntParams = [0, 0, 1, 0, 0, 0, 0, -1], VariableIds = ["user:10"] };
+        Assert.True(WiredVariableChangedTrigger.TryNormalize(config, out var validated, out _));
+        Assert.False(WiredVariableChangedTrigger.TryNormalize(config with { IntParams = [0, 0, 0, 0, 0, 0, 0, -1] }, out _, out _));
+
+        var module = new WiredVariableModule(1, new Directory(), new MemoryWiredVariableStore(), new FixedTimeProvider(DateTimeOffset.FromUnixTimeMilliseconds(1)));
+        var holder = new WiredVariableHolder(WiredVariableTarget.User, 7, 1);
+        var frame = new WiredVariableFrame(1, [holder]);
+        var reference = new WiredVariableReference(WiredVariableTarget.User, "custom:10");
+        Assert.True(module.Mutate(reference, holder, WiredVariableMutation.Give, 5, frame));
+        module.DrainChanges();
+
+        var seen = 0;
+
+        foreach (var value in new long[] { 6, 4, 4 }) {
+            module.Mutate(reference, holder, WiredVariableMutation.Set, value, frame);
+
+            foreach (var change in module.DrainChanges()) {
+                Assert.False(WiredVariableChangedTrigger.Matches(validated with { Text = "custom:10" }, change));
+                seen++;
+            }
+        }
+
+        Assert.Equal(2, seen);
+    }
     private sealed class Builtin : IWiredBuiltinVariables
     {
         public bool Accept = true; private int _value;

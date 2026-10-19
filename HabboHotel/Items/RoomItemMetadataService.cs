@@ -272,7 +272,7 @@ public sealed class RoomItemMetadataService(IRoomItemMetadataStore store, IFigur
             return;
         }
 
-        if (request.Values is not { } values || FurniExtraData.RejectsClientImage(values)) {
+        if (request.Values is not { } values || FurniExtraData.RejectsBackground(values)) {
             return;
         }
 

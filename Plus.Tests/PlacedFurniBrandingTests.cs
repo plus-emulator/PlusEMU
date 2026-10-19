@@ -113,6 +113,64 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
+    [InlineData("https://images.example/room.png", "")]
+    [InlineData("http://images.example/room.png?v=2", "https://example.com/")]
+    [InlineData("", "")]
+    public void BackgroundSavesWebImageAndClickAddresses(string imageUrl, string clickUrl)
+    {
+        var item = PlacedBranding(25, InteractionType.Background);
+        Recipient();
+        var store = new BrandingStore();
+
+        new RoomItemMetadataService(store, null!).SetBranding(_client, new(25, Pairs("imageUrl", imageUrl, "clickUrl", clickUrl, "offsetX", "-120", "offsetY", "40", "offsetZ", "3")));
+
+        var expected = new Dictionary<string, string>
+        {
+            ["state"] = "0",
+            ["imageUrl"] = imageUrl,
+            ["clickUrl"] = clickUrl,
+            ["offsetX"] = "-120",
+            ["offsetY"] = "40",
+            ["offsetZ"] = "3"
+        };
+        Assert.Equal(1, store.Writes);
+        Assert.Equal(expected, Assert.IsType<MapDataFormat>(item.ExtraData).Data);
+        var reloaded = FurniExtraData.Load(item.Definition, store.Data!, keepLegacy: true);
+        Assert.Equal(expected, Assert.IsType<MapDataFormat>(reloaded).Data);
+        var update = Assert.Single(ObjectUpdates());
+        Assert.True(update.Body.AsSpan().IndexOf(Encode("imageUrl", imageUrl)) >= 0);
+    }
+
+    [Theory]
+    [InlineData("imageUrl", "javascript:alert(1)")]
+    [InlineData("imageUrl", "data:image/png;base64,AAAA")]
+    [InlineData("imageUrl", "file:///etc/passwd")]
+    [InlineData("imageUrl", "ftp://images.example/room.png")]
+    [InlineData("imageUrl", "//images.example/room.png")]
+    [InlineData("imageUrl", "/camera/room.png")]
+    [InlineData("imageUrl", "https://images.example/a.png\nclickUrl\tjavascript:alert(1)")]
+    [InlineData("imageUrl", "https://images.example/a.png\toffsetX")]
+    [InlineData("imageUrl", @"https://images.example/\u0009a.png")]
+    [InlineData("imageUrl", "https://images.example/a b.png")]
+    [InlineData("clickUrl", "javascript:alert(1)")]
+    [InlineData("offsetX", "https://images.example/a.png")]
+    [InlineData("url", "https://images.example/a.png")]
+    [InlineData("ImageUrl", "https://images.example/a.png")]
+    public void BackgroundRejectsUnsafeAddresses(string key, string value)
+    {
+        var item = PlacedBranding(26, InteractionType.Background);
+        Recipient();
+        item.ExtraData = new MapDataFormat(new() { ["old"] = "value" });
+        var store = new BrandingStore();
+
+        new RoomItemMetadataService(store, null!).SetBranding(_client, new(26, Pairs(key, value, "offsetX", "0")));
+
+        Assert.Equal(0, store.Writes);
+        Assert.Equal("old\tvalue", item.ExtraData.Serialize());
+        Assert.Empty(ObjectUpdates());
+    }
+
+    [Theory]
     [InlineData(InteractionType.Gate)]
     [InlineData(InteractionType.FxProvider)]
     public void IdOnlyAndNonBackgroundFramesKeepThePlacementOnlyRepublish(InteractionType type)

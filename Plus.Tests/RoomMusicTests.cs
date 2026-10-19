@@ -245,7 +245,7 @@ namespace Plus.Tests
                         await fixture.Connection.ExecuteAsync("UPDATE items SET user_id=7 WHERE id=33");
                     }
                     else {
-                        new InventoryClearStore(fixture.Database, fixture.Definitions).DeleteAll(7);
+                        new InventoryClearStore(fixture.Database, fixture.Definitions).DeleteAll(7, 0);
                     }
 
                     Assert.Empty(habbo.Inventory.Furniture.GetItems);

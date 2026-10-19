@@ -9,9 +9,16 @@ using Plus.HabboHotel.Users.Authentication;
 
 namespace Plus.HabboHotel.Users.Inventory.Furniture;
 
+/// <summary>
+/// What a clear did: the deleted items, the foreign discs it released, the wallet after chest coins were refunded,
+/// and the chests it kept because their coins would overflow the wallet.
+/// </summary>
+public sealed record InventoryClearResult(IReadOnlyList<uint> Deleted, IReadOnlyList<InventoryItem> ReleasedDiscs, int Credits,
+    long RefundedCredits, int RefundedChests, int KeptChests);
+
 public interface IInventoryClearStore
 {
-    IReadOnlyList<InventoryItem> DeleteAll(int userId);
+    InventoryClearResult DeleteAll(int userId, int liveCredits);
     InventoryItem? AvailableDisc(uint discId, uint ownerId);
 }
 
@@ -24,7 +31,7 @@ public sealed class InventoryClearStore(IDatabase database, IItemDataManager def
         return RoomMusicStore.ReadAvailableDisc(connection, definitions, discId, ownerId);
     }
 
-    public IReadOnlyList<InventoryItem> DeleteAll(int userId)
+    public InventoryClearResult DeleteAll(int userId, int liveCredits)
     {
         using var connection = database.Connection();
         connection.Open();
@@ -42,7 +49,7 @@ public sealed class InventoryClearStore(IDatabase database, IItemDataManager def
             """, new { userId }, transaction).ToArray();
 
         if (ids.Length == 0) {
-            return [];
+            return new([], [], liveCredits, 0, 0, 0);
         }
 
         var discs = connection.Query<DiscRow>("""
@@ -58,7 +65,7 @@ public sealed class InventoryClearStore(IDatabase database, IItemDataManager def
             .Select(disc => RoomMusicDefinition.Inventory(disc.Id, disc.OwnerId, map[disc.BaseItem], disc.ExtraData, disc.LimitedNumber, disc.LimitedStack)).ToArray();
         transaction.Commit();
 
-        return released;
+        return new(ids, released, liveCredits, 0, 0, 0);
     }
     private sealed class DiscRow
     {
@@ -82,7 +89,7 @@ public sealed class InventoryClearService(IInventoryClearStore store, IAccountSe
     public bool TryClear(GameClient session, Room room)
     {
         var habbo = session.GetHabbo();
-        IReadOnlyList<InventoryItem> released;
+        InventoryClearResult cleared;
 
         using (accounts.Enter(habbo.Id)) {
             lock (habbo.WalletSync) {
@@ -98,13 +105,13 @@ public sealed class InventoryClearService(IInventoryClearStore store, IAccountSe
                     return false;
                 }
 
-                released = store.DeleteAll(habbo.Id);
+                cleared = store.DeleteAll(habbo.Id, habbo.Credits);
                 inventory.Furniture.ClearItems();
             }
         }
 
         // A foreign disc keeps its original owner; resolve the current session after taking that owner's gate.
-        foreach (var disc in released) {
+        foreach (var disc in cleared.ReleasedDiscs) {
             RoomMusicComponent.PublishReturned(disc, accounts, clients, store.AvailableDisc);
         }
 

@@ -228,9 +228,9 @@ public sealed class FurnitureInventoryPersistenceTests
             Assert.Empty(failedClear.Sent);
             await connection.ExecuteAsync("DROP TRIGGER fail_inventory_clear");
 
-            store.DeleteAll(1);
+            store.DeleteAll(1, 0);
             Assert.Equal(new uint[] { 13, 14 }, await connection.QueryAsync<uint>("SELECT id FROM items ORDER BY id"));
-            store.DeleteAll(1);
+            store.DeleteAll(1, 0);
             Assert.Equal(new uint[] { 13, 14 }, await connection.QueryAsync<uint>("SELECT id FROM items ORDER BY id"));
 
             await connection.ExecuteAsync("DELETE FROM users WHERE id=2");
@@ -294,7 +294,7 @@ public sealed class FurnitureInventoryPersistenceTests
 
         public InventoryItem? AvailableDisc(uint discId, uint ownerId) => null;
 
-        public IReadOnlyList<InventoryItem> DeleteAll(int userId)
+        public InventoryClearResult DeleteAll(int userId, int liveCredits)
         {
             Calls++;
             before?.Invoke();
@@ -303,7 +303,8 @@ public sealed class FurnitureInventoryPersistenceTests
                 throw Failure;
             }
 
-            return [];
+            // The fixture inventory holds item 7 only.
+            return new([7], [], liveCredits, 0, 0, 0);
         }
     }
 

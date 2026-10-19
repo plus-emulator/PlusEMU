@@ -395,7 +395,8 @@ public sealed class WiredRemainderG4FxTests
         Assert.Empty(changed.Configs);
         Assert.Equal([30L, 1L], changed.Statuses.OrderBy(entry => entry.Key.EntityId == 7 ? 0 : 1).Select(entry => entry.Value));
         Assert.False(changed.Statuses.Single(entry => entry.Key.EntityId == 7).Initialize);
-        Assert.True(changed.Statuses.Single(entry => entry.Key.EntityId == 9).Initialize);
+        // Observed on AIR WIN63-202610151745-318700621: a variable given at runtime to a holder the viewer already has is not initialized.
+        Assert.False(changed.Statuses.Single(entry => entry.Key.EntityId == 9).Initialize);
 
         // Nothing moved: nothing to send.
         var quiet = world.Update(binding, Viewer, Holder, Third);
@@ -747,6 +748,22 @@ public sealed class WiredRemainderG4FxTests
 
         Assert.Single(batch.Configs);
         Assert.Equal([("user:10", 25L), ("user:11", 7L)], batch.Statuses.Select(x => (x.Key.VariableId, x.Value)).OrderBy(x => x.Item1));
+    }
+
+    [Fact]
+    public void ASavedBoxSendsAllItsStatusesAgainAsInitialized()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: saving a boss bar sent its config, then every status with initialize true.
+        var world = new World();
+        world.Give(10, Holder, 25);
+        var binding = Bind("wf_xtra_var_fx_boss")!;
+        world.Update(binding, Viewer, Holder);
+
+        var saved = world.Update(binding with { Config = binding.Config with { DurationMs = 5000 } }, Viewer, Holder);
+
+        Assert.True(saved.InitializeAll);
+        Assert.Single(saved.Configs);
+        Assert.True(Assert.Single(saved.Statuses).Initialize);
     }
 
     [Fact]

@@ -32,6 +32,8 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
                 viewer.Statuses.Remove(key);
                 viewer.Holders.Remove(key);
             }
+
+            viewer.Ready.RemoveWhere(x => x.Target == holder.Target && x.EntityId == holder.EntityId);
         }
 
         // A previously composed batch may still contain the detached object. It must not become acknowledged state.
@@ -73,6 +75,7 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
         var changedConfigs = configs.Values.Where(x => !state.Configs.TryGetValue(x.Config.Id, out var old) || old != Signature(x.Config))
             .Select(x => x.Config).ToArray();
         var removedConfigs = state.Configs.Keys.Where(x => !configs.ContainsKey(x)).ToArray();
+        var resent = changedConfigs.Select(x => x.Id).ToHashSet();
         var wanted = new Dictionary<WiredVariableFxKey, WiredVariableFxStatus>();
         var identities = new Dictionary<WiredVariableFxKey, WiredVariableHolder>();
 
@@ -130,19 +133,25 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
                     ? (binding.Config.UserFx ? "user:" : "furni:") + definitionId : binding.Variable.Token;
                 var key = new WiredVariableFxKey(binding.Config.Id, wireVariable, binding.Config.UserFx, holder.EntityId);
                 identities[key] = holder;
-                wanted[key] = new(key, !state.Holders.TryGetValue(key, out var previousHolder) || previousHolder != holder, value.Value, min, max, extra.ToImmutable());
+                // Observed on AIR WIN63-202610151745-318700621: a variable given at runtime to a user or furni the viewer already has is sent
+                // with initialize false; a first sync or a saved box sends all its statuses again, each with initialize true. A holder the
+                // viewer did not have before still starts initialized.
+                var initialize = !state.Synced || resent.Contains(binding.Config.Id) || !state.Ready.Contains(holder)
+                    || state.Holders.TryGetValue(key, out var previousHolder) && previousHolder != holder;
+                wanted[key] = new(key, initialize, value.Value, min, max, extra.ToImmutable());
             }
         }
 
         var removedStatuses = state.Statuses.Keys.Where(key => !wanted.ContainsKey(key)).ToArray();
         var statuses = wanted.Where(x => x.Value.Initialize || !state.Statuses.TryGetValue(x.Key, out var old) || old != Signature(x.Value with { Initialize = false }))
             .Select(x => x.Value).ToArray();
-        var batch = new WiredVariableFxBatch(!state.Synced, changedConfigs, removedConfigs, statuses, removedStatuses);
+        var batch = new WiredVariableFxBatch(!state.Synced || changedConfigs.Length > 0, changedConfigs, removedConfigs, statuses, removedStatuses);
         _pending[viewer.StableId] = (batch, new Viewer
         {
             Configs = configs.ToDictionary(x => x.Key, x => Signature(x.Value.Config)),
             Statuses = wanted.ToDictionary(x => x.Key, x => Signature(x.Value with { Initialize = false })),
             Holders = identities,
+            Ready = [.. readyHolders],
             Synced = true
         });
 
@@ -181,5 +190,6 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
         public Dictionary<int, string> Configs { get; set; } = [];
         public Dictionary<WiredVariableFxKey, string> Statuses { get; set; } = [];
         public Dictionary<WiredVariableFxKey, WiredVariableHolder> Holders { get; set; } = [];
+        public HashSet<WiredVariableHolder> Ready { get; set; } = [];
     }
 }

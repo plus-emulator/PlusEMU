@@ -688,6 +688,34 @@ public sealed class WiredRemainderG4FxTests
     }
 
     [Fact]
+    public void ABossBarStoresStaleRangeTargetsAsItsOwnSource()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: a switched source with the old targets saves, and only -10 survives.
+        int[] Targets(int source, int target, bool overrides = false, string[]? variables = null)
+        {
+            var configuration = Compile("wf_xtra_var_fx_boss", ints =>
+            {
+                ints[0] = source;
+                ints[1] = 2;
+                ints[14] = ints[15] = overrides ? 1 : 0;
+                ints[16] = ints[17] = target;
+
+                return ints;
+            }, variables: variables);
+
+            Assert.NotNull(configuration);
+
+            return [.. configuration!.IntParams.Skip(16).Take(2)];
+        }
+
+        Assert.Equal([0, 0], Targets(0, 1));
+        Assert.Equal([1, 1], Targets(1, 0));
+        Assert.Equal([0, 0], Targets(0, 2));
+        Assert.Equal([-10, -10], Targets(0, -10));
+        Assert.Equal([0, 0], Targets(0, 1, overrides: true, variables: ["furni:20", "furni:20", "0"]));
+    }
+
+    [Fact]
     public void FxWithTheSameIdsInTwoRoomsKeepsEachRoomsBindingsApart()
     {
         // Config ids are item ids, so two cards never collide in a viewer's state; replacing a card with the same id replaces its config.

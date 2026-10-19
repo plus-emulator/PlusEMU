@@ -144,6 +144,13 @@ public class FigureDataManager : IFigureDataManager, IStartable
                 continue;
             }
 
+            // Observed on AIR WIN63-202610151745-318700621: Bot Clothes stores a part that takes no colour without one ("hr-100-61" reads
+            // back "hr-100").
+            if (canonical && !set.Colorable && pieces[0] is not ("ca" or "wa")) {
+                rebuilt[pieces[0]] = $"{pieces[0]}-{set.Id}";
+                continue;
+            }
+
             if (set.Colorable) {
                 color = ValidateColor(color);
 
@@ -159,12 +166,15 @@ public class FigureDataManager : IFigureDataManager, IStartable
         }
 
         foreach (var requirement in _requirements) {
-            if (rebuilt.ContainsKey(requirement) || requirement == "ch" && gender == "M" || !_setTypes.TryGetValue(requirement, out var type)) {
+            // Observed on AIR WIN63-202610151745-318700621: Bot Clothes fills a missing chest and legs for a male figure too, with the
+            // lowest selectable set and the first colour ("hd-180-1" stored as "hd-180-1.ch-210-1408.lg-270-1408").
+            if (rebuilt.ContainsKey(requirement) || !canonical && requirement == "ch" && gender == "M" || !_setTypes.TryGetValue(requirement, out var type)) {
                 continue;
             }
 
-            var set = type.Sets.Values.FirstOrDefault(candidate => candidate.Selectable && (candidate.Gender == gender || candidate.Gender == "U") &&
+            var candidates = type.Sets.Values.Where(candidate => candidate.Selectable && (candidate.Gender == gender || candidate.Gender == "U") &&
                 candidate.ClubLevel <= clubLevel && Owns(candidate));
+            var set = canonical ? candidates.OrderBy(candidate => candidate.Id).FirstOrDefault() : candidates.FirstOrDefault();
 
             if (set != null) {
                 rebuilt[requirement] = $"{requirement}-{set.Id}-{GetRandomColor(type.PalletId, clubLevel)}";

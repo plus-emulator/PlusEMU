@@ -57,7 +57,7 @@ public sealed class WiredSelectorTests
 
     public static IEnumerable<object[]> AllSelectors()
     {
-        yield return ["wf_slc_furni_bytype", Config([0, 0], [1]), new uint[] { 1, 2 }, Array.Empty<int>()];
+        yield return ["wf_slc_furni_bytype", Config([0, 0], [1]), new uint[] { 1, 2, 4 }, Array.Empty<int>()];
         yield return ["wf_slc_furni_picks", Config(picks: [3]), new uint[] { 3 }, Array.Empty<int>()];
         yield return ["wf_slc_users_bytype", Config([2]), Array.Empty<uint>(), new[] { 3 }];
         yield return ["wf_slc_users_team", Config([1]), Array.Empty<uint>(), new[] { 1 }];
@@ -139,12 +139,12 @@ public sealed class WiredSelectorTests
     }
 
     [Fact]
-    public void InversionIsAppliedOnceAndOnlyToFloorFurniture()
+    public void InversionIncludesWallFurnitureAndIsAppliedOnce()
     {
         var result = WiredSelectorModule.Compose(WiredSelectorModule.SelectRaw("wf_slc_furni_picks",
             Config([0, 1], [1]), World(), Inputs()), World(), Inputs());
-        // Wall items stay out; Wired boxes are inverted like any other floor furni (observed on hhus).
-        Assert.Equal(new uint[] { 2, 3, 5 }, result.FurniIds.Order());
+        // Observed on AIR WIN63-202610151745-318700621: the complement includes wall and Wired furniture.
+        Assert.Equal(new uint[] { 2, 3, 4, 5 }, result.FurniIds.Order());
     }
 
     [Fact]

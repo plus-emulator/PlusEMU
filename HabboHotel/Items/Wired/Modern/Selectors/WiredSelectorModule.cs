@@ -59,7 +59,7 @@ public static class WiredSelectorModule
                     var matchState = P(1) != 0;
                     var kinds = Furni(source).Select(x => (x.DefinitionId, State: matchState ? x.State : "")).ToHashSet();
 
-                    foreach (var item in available) {
+                    foreach (var item in world.Furni) {
                         if (kinds.Contains((item.DefinitionId, matchState ? item.State : ""))) {
                             selected.FurniIds.Add(item.Id);
                         }
@@ -291,8 +291,8 @@ public static class WiredSelectorModule
         var output = input.SelectorPool.Copy();
 
         if (result.Target is WiredSelectorTarget.Furni or WiredSelectorTarget.Both) {
-            // Invert picks from every floor furni, Wired boxes and temporary copies included (observed on hhus).
-            var kept = result.Invert ? world.Furni.Where(x => x.IsFloor)
+            // Observed on AIR WIN63-202610151745-318700621: inversion includes wall furniture and the executing Wired stack.
+            var kept = result.Invert ? world.Furni
                 .Select(x => x.Id).Except(result.Selection.FurniIds) : result.Selection.FurniIds;
 
             if (result.FiltersExisting) {

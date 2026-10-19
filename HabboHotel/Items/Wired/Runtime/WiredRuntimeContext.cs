@@ -30,8 +30,11 @@ public sealed class WiredRuntimeContext
     public WiredSelectionKind SelectorKinds { get; internal set; }
     public WiredSignalPayload? Signal { get; internal set; }
 
-    /// <summary>The antennas this signal chain has already gone through; a chain reaches each antenna once.</summary>
-    internal System.Collections.Immutable.ImmutableHashSet<uint> SignalPath { get; set; } = [];
+    /// <summary>How often each receiving stack has run in this context's signal chain; shared by every context of one chain.</summary>
+    internal Dictionary<IWiredItem, int>? SignalChainRuns { get; set; }
+
+    /// <summary>The delayed step that last started this context's signal count, so its later batches keep that count.</summary>
+    internal object? SignalChainStep { get; set; }
     public Dictionary<string, long> Values { get; } = [];
     public WiredSelectorWorld? SelectorWorldSnapshot { get; set; }
     public WiredVariableFrame? VariableFrame { get; set; }
@@ -120,7 +123,7 @@ public sealed class WiredRuntimeContext
             Selected = Selected.Copy(),
             SelectorKinds = SelectorKinds,
             Signal = Signal,
-            SignalPath = SignalPath,
+            SignalChainRuns = SignalChainRuns,
             VariableFrame = VariableFrame,
             SelectorWorldSnapshot = SelectorWorldSnapshot
         };
@@ -138,7 +141,7 @@ public sealed class WiredRuntimeContext
     internal WiredRuntimeContext Fork(WiredRuntimeEvent @event, int depth)
     {
         // One identity snapshot per dispatch; children share it and revalidate only targets.
-        var child = new WiredRuntimeContext(this, @event) { Depth = depth, NowMilliseconds = NowMilliseconds, SignalPath = SignalPath };
+        var child = new WiredRuntimeContext(this, @event) { Depth = depth, NowMilliseconds = NowMilliseconds, SignalChainRuns = SignalChainRuns };
         child.VariableFrame = VariableFrame;
         child.InheritedPublication = Publication ?? InheritedPublication;
 

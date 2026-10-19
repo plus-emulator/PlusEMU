@@ -51,4 +51,25 @@ public partial class PlacedFurniRoomTests
 
         HabboParityAssertStopped(actor, path, (5, 6), (6, 7), (7, 8), (8, 8));
     }
+
+    [Theory]
+    [InlineData(false, 6, 8, 11)]
+    [InlineData(true, 6, 8, 11)]
+    [InlineData(false, 8, 6, 11)]
+    [InlineData(true, 8, 6, 11)]
+    public void HabboRepairSeesNewFurnitureNextToTheWalker(bool layered, int blockedX, int freeX, int y)
+    {
+        HabboParityRoom();
+        var actor = LayeredActor(7, 7, new() { LayeringEnabled = layered });
+        ExecutorTick();
+        var path = HabboParityWalk(actor, 7, 12, next =>
+        {
+            if (next == (7, 10)) {
+                HabboParityMove(100, 7, 11);
+                HabboParityMove(101, blockedX, y);
+            }
+        });
+
+        HabboParityAssertStopped(actor, path, (7, 7), (7, 8), (7, 9), (7, 10), (freeX, y), (7, 12));
+    }
 }

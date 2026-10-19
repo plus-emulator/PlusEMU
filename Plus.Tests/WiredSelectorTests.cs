@@ -71,7 +71,8 @@ public sealed class WiredSelectorTests
         yield return ["wf_slc_users_byname", Config(text: "ADA\tana"), Array.Empty<uint>(), new[] { 1, 4 }];
         yield return ["wf_slc_users_neighborhood", Hood(1, 1, -1, WiredSources.Trigger, 0), Array.Empty<uint>(), new[] { 4 }];
         yield return ["wf_slc_users_area", Config([1, 1, 2, 1]), Array.Empty<uint>(), new[] { 1 }];
-        yield return ["wf_slc_users_handitem", Config([0]), Array.Empty<uint>(), new[] { 2, 3, 4 }];
+        // Only Habbos count: the bot and the pet hold nothing but are not selected.
+        yield return ["wf_slc_users_handitem", Config([0]), Array.Empty<uint>(), new[] { 4 }];
         yield return ["wf_slc_users_group", Config([0]), Array.Empty<uint>(), new[] { 1 }];
         yield return ["wf_slc_furni_altitude", Config([1], text: "1.004"), Array.Empty<uint>(), Array.Empty<int>()];
         yield return ["wf_slc_furni_with_var", Config(text: "custom:77"), new uint[] { 3 }, Array.Empty<int>()];
@@ -93,6 +94,19 @@ public sealed class WiredSelectorTests
         ], 0, new Dictionary<uint, WiredRemoteSelector>());
         var result = WiredSelectorModule.SelectRaw("wf_slc_users_handitem", Config([code]), world, Inputs());
         Assert.Equal(expected.Order(), result.Selection.UserIds.Order());
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: the hotel stores a negative hand item as sent.
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(-5)]
+    public void HandItemSelectorSavesANegativeCode(int code)
+    {
+        Assert.True(WiredBoxRegistry.TryGet("wf_slc_users_handitem", out var descriptor));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = [code] };
+
+        Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native, out var runtime));
+        Assert.Equal(code, runtime.IntParams[0]);
     }
 
     [Theory]

@@ -83,7 +83,8 @@ internal static class WiredNativeSelectorEditor
                 break;
             case "wf_slc_users_team":
             case "wf_slc_users_handitem":
-                if (p.Length != 1 || p[0] < 0 || name == "wf_slc_users_team" && p[0] > 4) {
+                // Observed on AIR WIN63-202610151745-318700621: Users With Handitem stores any int (-5 and 2147483647 read back as sent).
+                if (p.Length != 1 || name == "wf_slc_users_team" && p[0] is < 0 or > 4) {
                     return false;
                 }
 

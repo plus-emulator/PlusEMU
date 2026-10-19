@@ -81,7 +81,9 @@ public static class WiredSelectorModule
                     break;
                 }
             case "wf_slc_users_handitem":
-                selected.UserIds.UnionWith(world.Users.Where(x => x.HandItem == P(0)).Select(x => x.Id));
+                // Observed on AIR WIN63-202610151745-318700621: hand item 0 selects the Habbos holding nothing but not a bot standing next
+                // to them; the selector only looks at Habbos.
+                selected.UserIds.UnionWith(world.Users.Where(x => x.Kind == WiredSelectorEntityKind.Player && x.HandItem == P(0)).Select(x => x.Id));
                 break;
             case "wf_slc_users_group": {
                     var groupId = P(0) == 0 ? world.RoomGroupId : P(1);

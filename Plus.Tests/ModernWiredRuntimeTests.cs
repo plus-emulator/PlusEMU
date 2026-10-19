@@ -4015,7 +4015,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void NativePlaceSkipsWallTemplatesBeforeChoosingTheFloorAnchor()
+    public void NativePlaceCapturesWallsAndSkipsIneligibleTemplatesBeforeChoosingTheFloorAnchor()
     {
         using var f = new TeleportFixture();
         f.Target.Definition.Stackable = true;
@@ -4042,14 +4042,16 @@ public partial class ModernWiredRuntimeTests
         var snapshots = (ImmutableArray<WiredFurniSnapshot>)typeof(WiredConfigurationService)
             .GetMethod("CaptureSnapshots", BindingFlags.Static | BindingFlags.NonPublic)!
             .Invoke(null, [f.Room, "wf_act_place_furni", native])!;
-        Assert.Equal(floor.Id, Assert.Single(snapshots).ItemId);
-        // The runtime also filters admitted native snapshot records before choosing the pivot.
-        native = native with { SavedState = new() { Snapshots = [WiredRoomOperations.Capture(wall), .. snapshots] } };
+        Assert.Equal(new[] { wall.Id, floor.Id }, snapshots.Select(snapshot => snapshot.ItemId));
+        Assert.NotNull(snapshots[0].Wall);
+        native = native with { SavedState = new() { Snapshots = snapshots } };
         Assert.True(WiredNativeEditorProjection.TryCompile(action.Item.Id, action.Descriptor, native, out var compiled));
         Assert.True(WiredConfigurationSave.TrySave(action, compiled, TestWiredConfigurationStore.Instance, out var error), error);
         Assert.True(action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
         var copy = Assert.Single(f.Room.GetRoomItemHandler().GetFloor.Where(item => item.IsTemporary));
         Assert.Equal((f.Target.GetX, f.Target.GetY), (copy.GetX, copy.GetY));
+        Assert.DoesNotContain(f.Room.GetRoomItemHandler().GetWall, item => item.IsTemporary);
+        Assert.Same(wall, f.Room.GetRoomItemHandler().GetItem(wall.Id));
     }
 
     [Fact]

@@ -43,7 +43,7 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
             context.NowMilliseconds, context.Event.Kind == WiredEventKind.AvatarAction ? context.Event.Actor?.VirtualId : null,
             context.Event.Kind == WiredEventKind.AvatarAction ? context.Event.Action : null, context.Event.Code,
             variables?.FurniPredicate, variables?.UserPredicate,
-            (context.SelectorKinds & WiredSelectionKind.Furni) != 0, (context.SelectorKinds & WiredSelectionKind.Users) != 0, world.IncludeWired, variables?.ScopedFurniPredicate, variables?.ScopedUserPredicate,
+            (context.SelectorKinds & WiredSelectionKind.Furni) != 0, (context.SelectorKinds & WiredSelectionKind.Users) != 0, variables?.ScopedFurniPredicate, variables?.ScopedUserPredicate,
             context.Event.Kind == WiredEventKind.BotReachedUser ? context.Event.TargetUser?.VirtualId : null);
 
         return new(world, input, variables?.ReadOperand,
@@ -99,11 +99,7 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
                 LastActionAtMs: action?.At ?? 0, EquippedGroupId: equippedGroupId);
         }).ToArray();
         var model = context.Room.GetGameMap().Model;
-        var includeWired = context.Trigger is { } trigger && items.Any(item => item.GetX == trigger.Item.GetX
-            && item.GetY == trigger.Item.GetY && context.Room.GetWired().TryGet(item.Id, out var candidate)
-            && candidate is IWiredConfiguredItem configured && configured.Descriptor.CanonicalName == "wf_xtra_or_eval"
-            && WiredSelectorSources.Param(context.ConfigurationOf(configured), 1) == RuntimeSources.Selector);
 
-        return new(model.MapSizeX, model.MapSizeY, furni, avatars, context.Room.Group?.Id ?? 0, remotes, includeWired);
+        return new(model.MapSizeX, model.MapSizeY, furni, avatars, context.Room.Group?.Id ?? 0, remotes);
     }
 }

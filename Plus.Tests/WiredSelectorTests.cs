@@ -183,6 +183,17 @@ public sealed class WiredSelectorTests
             .Selection.FurniIds.Order());
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a Wired box sent with a signal arrives in Furni From Signal.
+    [Fact]
+    public void FurniFromSignalKeepsWiredBoxes()
+    {
+        var signal = new WiredSelectedIds();
+        signal.FurniIds.UnionWith([3u, 5u]);
+        var inputs = Inputs() with { Signal = signal };
+
+        Assert.Equal(new uint[] { 3, 5 }, WiredSelectorModule.SelectRaw("wf_slc_furni_signal", Config(), World(), inputs).Selection.FurniIds.Order());
+    }
+
     [Fact]
     public void EmptyNeighborhoodSelectsNothingAndTheFullEditorGridIsAccepted()
     {

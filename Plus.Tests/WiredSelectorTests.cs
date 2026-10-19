@@ -68,7 +68,7 @@ public sealed class WiredSelectorTests
         yield return ["wf_slc_users_onfurni", Config([100], [1]), Array.Empty<uint>(), new[] { 1 }];
         yield return ["wf_slc_users_byaction", Config([6]), Array.Empty<uint>(), new[] { 1 }];
         yield return ["wf_slc_users_signal", Config(), Array.Empty<uint>(), new[] { 2 }];
-        yield return ["wf_slc_users_byname", Config(text: " ADA \nana"), Array.Empty<uint>(), new[] { 1, 4 }];
+        yield return ["wf_slc_users_byname", Config(text: "ADA\tana"), Array.Empty<uint>(), new[] { 1, 4 }];
         yield return ["wf_slc_users_neighborhood", Hood(1, 1, -1, WiredSources.Trigger, 0), Array.Empty<uint>(), new[] { 4 }];
         yield return ["wf_slc_users_area", Config([1, 1, 2, 1]), Array.Empty<uint>(), new[] { 1 }];
         yield return ["wf_slc_users_handitem", Config([0]), Array.Empty<uint>(), new[] { 2, 3, 4 }];

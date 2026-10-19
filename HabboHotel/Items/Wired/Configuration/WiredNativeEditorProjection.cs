@@ -293,6 +293,11 @@ public static class WiredNativeEditorProjection
             native = native with { OwnedIntParams = [.. native.OwnedIntParams.Select(value => Math.Clamp(value, 0, MaxSelectorAreaCoordinate))] };
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: Users By Name stores its names lowercased ("Robbie" reads back "robbie").
+        if (name == "wf_slc_users_byname") {
+            native = native with { Text = native.Text.ToLowerInvariant() };
+        }
+
         if (name == "wf_xtra_var_leaderboard") {
             native = native with { Text = Leaderboard.WiredLeaderboardConfig.Normalize(native.Text, native.OwnedIntParams) };
         }

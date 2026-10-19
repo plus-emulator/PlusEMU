@@ -17,8 +17,9 @@ public class StressCommand : IChatCommand
     public string Parameters => "bots <amount|clear>";
     public string Description => "Creates temporary walking and talking bots for room stress testing.";
 
+    // A permission alone is not enough: grants and wildcards can reach any user, and only hotel owners may spawn this many bots.
     internal static bool CanExecute(UserAccess permissions) =>
-        permissions.Can(PermissionKeys.ModerationTool) && permissions.Can("command.stress");
+        permissions.Roles.Any(role => role.Slug == "owner") && permissions.Can(PermissionKeys.ModerationTool) && permissions.Can(PermissionKeys.CommandStress);
 
     internal static bool TryParse(string[] parameters, out int amount)
     {

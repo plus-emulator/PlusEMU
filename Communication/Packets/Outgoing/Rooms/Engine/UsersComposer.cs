@@ -14,6 +14,8 @@ public sealed class UsersComposer : IServerPacket
 {
     /// <summary>No rank; class_2587.flush L63 defaults to it and a negative rank is hidden.</summary>
     private const int BadgesRankUnknown = -1;
+    /// <summary>The skills of a bot type without a list of its own.</summary>
+    private static readonly short[] DefaultBotSkills = [1, 2, 3, 4, 5];
 
     private readonly ImmutableArray<RoomUserSnapshot> _users;
 
@@ -65,12 +67,12 @@ public sealed class UsersComposer : IServerPacket
                 packet.WriteString(user.Gender);
                 packet.WriteInteger(user.OwnerId);
                 packet.WriteString(user.OwnerName);
-                packet.WriteInteger(5);
-                packet.WriteShort(1);
-                packet.WriteShort(2);
-                packet.WriteShort(3);
-                packet.WriteShort(4);
-                packet.WriteShort(5);
+                var skills = user.BotSkills ?? DefaultBotSkills;
+                packet.WriteInteger(skills.Count);
+
+                foreach (var skill in skills) {
+                    packet.WriteShort(skill);
+                }
             }
         }
     }

@@ -82,8 +82,9 @@ public class RoomEntryPacketLayoutTests
             false, 0, 0, "", false, false);
         var pet = new RoomUserSnapshot(10, "Rex", "", "0 0 ffffff", 2, 4, 5, "0", 0, 2, "", 0, "", 0,
             true, 13, 7, "Dennis", true, false, 6);
+        // Observed on AIR WIN63-202610151745-318700621: a generic bot lists skills 1-5 and 19-23.
         var bot = new RoomUserSnapshot(11, "Frank", "hello", "hd-180-1", 3, 6, 7, "0", 0, 4, "f", 0, "", 0,
-            false, 0, 7, "Dennis", false, false);
+            false, 0, 7, "Dennis", false, false, BotSkills: [1, 2, 3, 4, 5, 19, 20, 21, 22, 23]);
         var packet = Read(new UsersComposer([habbo, pet, bot]));
 
         Assert.Equal(3, packet.ReadInt());
@@ -116,11 +117,13 @@ public class RoomEntryPacketLayoutTests
         Assert.Equal("f", packet.ReadString());
         Assert.Equal(7, packet.ReadInt());
         Assert.Equal("Dennis", packet.ReadString());
-        var skills = packet.ReadInt();
+        var skills = new short[packet.ReadInt()];
 
-        for (var skill = 0; skill < skills; skill++) {
-            packet.ReadShort();
+        for (var skill = 0; skill < skills.Length; skill++) {
+            skills[skill] = packet.ReadShort();
         }
+
+        Assert.Equal(new short[] { 1, 2, 3, 4, 5, 19, 20, 21, 22, 23 }, skills);
 
         Assert.False(packet.HasDataRemaining());
     }

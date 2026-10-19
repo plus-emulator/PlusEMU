@@ -37,6 +37,16 @@ public class HabbiconDatabaseTests
                 return;
             }
 
+            // The dump only imports into an empty schema; the disposable schema is recreated so a rerun starts clean.
+            var options = new MySqlConnectionStringBuilder(connectionString);
+            var schema = options.Database;
+            options.Database = "";
+
+            using (var server = new MySqlConnection(options.ConnectionString)) {
+                server.Open();
+                server.Execute($"DROP DATABASE IF EXISTS `{schema}`; CREATE DATABASE `{schema}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            }
+
             using var connection = new MySqlConnection(connectionString);
             connection.Open();
             connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Resources/SQLs/Original Database.sql")), commandTimeout: 900);
@@ -46,7 +56,8 @@ public class HabbiconDatabaseTests
 
     public HabbiconDatabaseTests()
     {
-        string connectionString = Environment.GetEnvironmentVariable("PLUS_HABBICONS_TEST_CONNECTION_STRING")!;
+        // The shipped dump and the Habbicons update use @variables, as the migrator allows.
+        string connectionString = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("PLUS_HABBICONS_TEST_CONNECTION_STRING")!) { AllowUserVariables = true }.ConnectionString;
         _database = new(connectionString);
         var builder = new MySqlConnectionStringBuilder(connectionString);
 

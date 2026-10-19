@@ -21,7 +21,7 @@ public sealed class AchievementMigrationDatabaseTests
         admin.Execute($"CREATE DATABASE `{schema}`");
 
         try {
-            var database = new HabbiconDatabaseTests.TestDatabase(new MySqlConnectionStringBuilder(root) { Database = schema }.ConnectionString);
+            var database = new HabbiconDatabaseTests.TestDatabase(new MySqlConnectionStringBuilder(root) { Database = schema, AllowUserVariables = true }.ConnectionString);
             using var connection = database.Connection();
             var pristine = File.ReadAllText(HabbiconPacketTests.Repo("Resources/SQLs/Original Database.sql"));
 
@@ -100,7 +100,7 @@ public sealed class AchievementMigrationDatabaseTests
         admin.Execute($"CREATE DATABASE `{schema}`");
 
         try {
-            var database = new HabbiconDatabaseTests.TestDatabase(new MySqlConnectionStringBuilder(root) { Database = schema }.ConnectionString);
+            var database = new HabbiconDatabaseTests.TestDatabase(new MySqlConnectionStringBuilder(root) { Database = schema, AllowUserVariables = true }.ConnectionString);
             using var connection = database.Connection();
             var pristine = File.ReadAllText(HabbiconPacketTests.Repo("Resources/SQLs/Original Database.sql"));
 

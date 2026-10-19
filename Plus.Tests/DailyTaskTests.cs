@@ -359,7 +359,7 @@ public sealed class DailyTaskTests
         root.Execute($"CREATE DATABASE `{schema}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
         try {
-            var cs = new MySqlConnectionStringBuilder(root.ConnectionString) { Database = schema }.ConnectionString;
+            var cs = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("DAILY_TASKS_DATABASE")) { Database = schema }.ConnectionString;
             using var connection = new MySqlConnection(cs);
             connection.Open();
             connection.Execute("""

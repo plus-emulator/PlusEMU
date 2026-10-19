@@ -165,7 +165,7 @@ public sealed class RecyclerDatabaseTests
         fixture.Connection.Execute("INSERT INTO items(id,user_id,room_id,base_item,extra_data) VALUES(25,8,0,101,'')");
         var config = fixture.Store.Load();
         var prize = config.Levels[0].Prizes[0];
-        using var holder = new MySqlConnection(fixture.Connection.ConnectionString);
+        using var holder = new MySqlConnection(fixture.ConnectionString);
         holder.Open();
         using var held = holder.BeginTransaction();
         holder.ExecuteScalar<uint>("SELECT id FROM items WHERE id=20 FOR UPDATE", transaction: held);
@@ -228,6 +228,8 @@ public sealed class RecyclerDatabaseTests
         private readonly MySqlConnection _admin;
         private readonly string _schema = "task_recycler_" + Guid.NewGuid().ToString("N");
         public MySqlConnection Connection { get; }
+        // An open connection drops its password from ConnectionString, so keep the original.
+        public string ConnectionString { get; }
         public RecyclerStore Store { get; }
         public IDatabase Source { get; }
         public Action<int>? ConnectionOpened { get; set; }
@@ -240,6 +242,7 @@ public sealed class RecyclerDatabaseTests
             _admin.Open();
             _admin.Execute($"CREATE DATABASE `{_schema}`");
             options.Database = _schema;
+            ConnectionString = options.ConnectionString;
             Connection = new MySqlConnection(options.ConnectionString);
             Source = new Database(options.ConnectionString, thread => ConnectionOpened?.Invoke(thread));
             Store = new RecyclerStore(Source);
@@ -254,6 +257,9 @@ public sealed class RecyclerDatabaseTests
                 }
 
                 Connection.Execute("CREATE TABLE users(id INT PRIMARY KEY); INSERT INTO users VALUES(7),(8)");
+                // The inventory loader also reads linked discs and Builders Club placements.
+                Connection.Execute(RoomMusicDatabaseTests.Fixture.SchemaSql);
+                Connection.Execute("CREATE TABLE items_builders_club(item_id INT UNSIGNED PRIMARY KEY,user_id INT NOT NULL)");
                 Connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/51_Recycler.sql")));
                 Assert.False(Store.Load().Enabled);
                 Assert.Empty(Store.Load().Levels);

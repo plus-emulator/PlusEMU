@@ -218,7 +218,7 @@ public sealed class ClaimProductServiceTests
         root.Execute($"CREATE DATABASE `{schema}`");
 
         try {
-            var cs = new MySqlConnectionStringBuilder(root.ConnectionString) { Database = schema }.ConnectionString;
+            var cs = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")) { Database = schema }.ConnectionString;
             using var connection = new MySqlConnection(cs);
             connection.Open();
             connection.Execute("""

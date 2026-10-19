@@ -82,7 +82,8 @@ public sealed class WiredVariableUtcDatabaseTests
             }.ConnectionString;
             using var connection = new MySqlConnection(connectionString);
             connection.Open();
-            var current = new WiredConfiguration { IntParams = [10, 5], Text = "legacy" };
+            // The form edits availability only; the starting value is always 0 (WiredVariableDefinitions).
+            var current = new WiredConfiguration { IntParams = [10, 0], Text = "legacy" };
             connection.Execute("""
                 CREATE TABLE rooms (id INT UNSIGNED PRIMARY KEY,owner VARCHAR(32) NOT NULL) ENGINE=InnoDB;
                 CREATE TABLE items (id INT UNSIGNED PRIMARY KEY,room_id INT UNSIGNED NOT NULL) ENGINE=InnoDB;
@@ -108,17 +109,23 @@ public sealed class WiredVariableUtcDatabaseTests
             Assert.True(WiredBoxRegistry.TryGet("wf_var_room", out var descriptor));
             var box = new WiredVariableDefinitionBox(room, new Item { Id = 10 }, descriptor,
                 new WiredVariableConfigurationPersistence(database, module, clock), new(module));
-            box.ApplyConfiguration(current);
-            var changed = current with { IntParams = [10, 6] };
+            WiredNativeTestSupport.InstallLegacyVariableDraft(box, current);
+            // Saved rows hold the native editor record.
+            connection.Execute("UPDATE wired_item_configurations SET schema_version=2,configuration=@configuration WHERE item_id=10",
+                new { configuration = JsonSerializer.Serialize(box.Configuration.Origin!.Native) });
+            Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor,
+                WiredNativeTestSupport.FromLegacyVariableDraft(descriptor, current with { IntParams = [11, 0] }), out var changed));
 
+            // Live values survive a definition save: the legacy row keeps its value and its unknown creation time.
             Assert.True(WiredConfigurationSave.TrySave(box, changed, new RejectConfigurationStore(), out var error), error);
             var value = new DatabaseWiredVariableStore(database).Read(new(10, WiredVariableTarget.Global, 0))!;
+            Assert.Equal(5, value.Value);
             Assert.Null(value.CreatedAt);
-            Assert.Equal(clock.Now, value.UpdatedAt);
-            Assert.Equal(1, clock.Reads);
-            Assert.Single(module.DrainChanges());
+            Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1), value.UpdatedAt);
+            var reads = clock.Reads;
+            module.DrainChanges();
             Assert.True(WiredConfigurationSave.TrySave(box, changed, new RejectConfigurationStore(), out error), error);
-            Assert.Equal(1, clock.Reads);
+            Assert.Equal(reads, clock.Reads);
             Assert.Empty(module.DrainChanges());
         }
         finally {

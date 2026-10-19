@@ -27,7 +27,7 @@ internal static class FoundationRuntimeDatabase
             options.Database = schema;
             using var connection = new MySqlConnection(options.ConnectionString);
             connection.Open();
-            // Includes the corrected update sequence appended to the shipped dump.
+            // The schema a new hotel imports (README: Database/FreshInstall.sql).
             await ImportPristine(options);
             AssertShippedShapes(connection);
             await test(new HabbiconDatabaseTests.TestDatabase(options.ConnectionString), connection);
@@ -64,7 +64,7 @@ internal static class FoundationRuntimeDatabase
         var stderr = import.StandardError.ReadToEndAsync();
 
         try {
-            await using (var pristine = File.OpenRead(HabbiconPacketTests.Repo("Resources/SQLs/Original Database.sql"))) {
+            await using (var pristine = File.OpenRead(HabbiconPacketTests.Repo("Database/FreshInstall.sql"))) {
                 await pristine.CopyToAsync(import.StandardInput.BaseStream);
             }
 

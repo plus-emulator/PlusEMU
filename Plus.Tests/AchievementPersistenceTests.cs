@@ -305,8 +305,9 @@ public sealed class AchievementPersistenceTests
         Assert.Equal(2, inventory.GetBadge("ACH_Test2")!.Slot);
         // The unlock makes AIR stop wearing the new badge, so the worn badges are sent after it.
         var headers = fixture.Sent.Select(packet => packet.Header).ToList();
-        Assert.True(headers.IndexOf(ServerPacketHeader.HabboUserBadgesComposer) > headers.IndexOf(ServerPacketHeader.AchievementUnlockedComposer));
-        var worn = new FlashIncomingPacket { Buffer = fixture.Sent[headers.IndexOf(ServerPacketHeader.HabboUserBadgesComposer)].Payload };
+        // Every badge list is also followed by the worn badges (AIR resets worn markers on each list), so check the last one.
+        Assert.True(headers.LastIndexOf(ServerPacketHeader.HabboUserBadgesComposer) > headers.IndexOf(ServerPacketHeader.AchievementUnlockedComposer));
+        var worn = new FlashIncomingPacket { Buffer = fixture.Sent[headers.LastIndexOf(ServerPacketHeader.HabboUserBadgesComposer)].Payload };
         Assert.Equal((7, 2), (worn.ReadInt(), worn.ReadInt()));
         Assert.Equal((1, "OTHER"), (worn.ReadInt(), worn.ReadString()));
         worn.ReadInt();

@@ -151,7 +151,7 @@ public class Room
     {
         // Each restart falls on the first tick after its reset, so an earlier pending tick has already passed.
         if (_timerRestartAt is { } earlier && earlier < tickAt) {
-            LastTimerResetAt = earlier;
+            RestartTimer(earlier);
         }
 
         _timerRestartAt = tickAt;
@@ -160,12 +160,15 @@ public class Room
     internal long TimerElapsedMilliseconds(DateTimeOffset now)
     {
         if (_timerRestartAt is { } restartAt && now >= restartAt) {
-            LastTimerResetAt = restartAt;
+            RestartTimer(restartAt);
             _timerRestartAt = null;
         }
 
         return Math.Max(0, (now - LastTimerResetAt).Ticks / TimeSpan.TicksPerMillisecond);
     }
+
+    // A game stop restarts the timer at once, so a pending restart only counts when it comes later.
+    private void RestartTimer(DateTimeOffset at) => LastTimerResetAt = at > LastTimerResetAt ? at : LastTimerResetAt;
 
     private Music.RoomMusicComponent? _music;
     public Music.RoomMusicComponent Music => _music ?? throw new InvalidOperationException("The room music component has not been initialized.");

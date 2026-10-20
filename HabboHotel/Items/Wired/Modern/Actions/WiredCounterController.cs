@@ -72,6 +72,12 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
     public static bool IsGameTimer(Item item) => item.Definition.ItemName is "bb_counter" or "fball_counter" or "es_counter"
         || Name(item) == "game_timer" || item.Definition.InteractionType is InteractionType.Banzaicounter or InteractionType.Freezetimer
         || item.Definition.InteractionType == InteractionType.Counter && !Name(item).StartsWith("wf_", StringComparison.Ordinal);
+    /// <summary>The state a native game timer saves: its saved duration in seconds. Null for every other item.</summary>
+    public static string? StoredState(Item item) => null;
+    /// <summary>A newly placed native game timer starts again at 30 seconds.</summary>
+    public static void PlacedNew(Item item)
+    {
+    }
     private static string Name(Item item) => Name(item.Definition);
     private static string Name(ItemDefinition definition) => string.IsNullOrEmpty(definition.InteractionName) ? definition.ItemName : definition.InteractionName;
     public bool Attach(Item item)

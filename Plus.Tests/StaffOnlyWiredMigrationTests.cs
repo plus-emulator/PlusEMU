@@ -20,11 +20,11 @@ public sealed class StaffOnlyWiredMigrationTests
         "wf_xtra_achievement_enabler", "wf_xtra_link_speaker", "wf_xtra_var_import", "wf_xtra_var_share"
     ];
 
+    // Offers still unreleased after Habbo began selling Set Highlight, Set Visibility, Room Initialized, Pointer Variable, Import and Share.
     private static readonly int[] UnreleasedOffers =
     [
         1900000318, 1900000319, 1900000320, 1900000321, 1900000322, 1900000324, 1900000325, 1900000326, 1900000327, 1900000328, 1900000333,
-        1900000334, 1900000335, 1900000336, 1900000337, 1900000338, 1900000339, 1900000341, 1900000342, 1900000343, 1900000344, 1900000345,
-        1900000346, 1900000347, 1900000348
+        1900000334, 1900000335, 1900000338, 1900000339, 1900000341, 1900000343, 1900000344, 1900000345
     ];
 
     [RoomComponentDatabaseFact]

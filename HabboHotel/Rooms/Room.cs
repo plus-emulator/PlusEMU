@@ -120,6 +120,15 @@ public class Room
         foreach (var component in _components) {
             component.Initiated();
         }
+
+        // Room Initialized (wf_trg_room_initializes) fires once the furniture, bots and pets are all loaded. A stack that fails must
+        // not stop the room from loading.
+        try {
+            GetWired().RoomInitialized();
+        }
+        catch (Exception error) {
+            _wiredLogger?.LogError(error, "Room Initialized failed while loading room {RoomId}.", Data.Id);
+        }
     }
 
     internal void SetRuntime(Gamemap gamemap, RoomItemHandling items, RoomUserManager users,

@@ -164,6 +164,27 @@ public partial class ModernWiredBehaviorTests
         Assert.Equal(new[] { 2, 2, 3 }, requests.GroupBy(request => request.Target).Select(group => group.Count()).Order());
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: with two users selected, Furni To User moves to a random one of them each firing.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(17)]
+    public void FurniToUserPicksARandomSelectedUserEachFiring(int seed)
+    {
+        var users = new[] { (RoomUser)RuntimeHelpers.GetUninitializedObject(typeof(RoomUser)), (RoomUser)RuntimeHelpers.GetUninitializedObject(typeof(RoomUser)) };
+        (users[0].X, users[0].Y) = (3, 4);
+        (users[1].X, users[1].Y) = (8, 9);
+        var action = new WiredMovementActions(new Random(seed));
+        var requests = new List<(int X, int Y)>();
+
+        for (var firing = 0; firing < 20; firing++) {
+            action.Execute("wf_act_furni_to_user", new() { IntParams = [100, 0] }, [Item(1, 0, 0)], [], users,
+                (_, x, y, _, _) => { requests.Add((x, y)); return true; }, (_, _, _, _, _) => false, (_, _) => { });
+        }
+
+        Assert.Equal(20, requests.Count);
+        Assert.Equal(new[] { (3, 4), (8, 9) }, requests.Distinct().Order());
+    }
+
     [Fact]
     public void AltitudeUsesDecimalTextAndLegacyOperatorOrdering()
     {

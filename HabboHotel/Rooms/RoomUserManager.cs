@@ -932,6 +932,8 @@ public class RoomUserManager
         }
     }
 
+    internal void CycleHeadTurns() => throw new NotImplementedException();
+
     internal void TurnHeadsToward(RoomUser speaker)
     {
         foreach (var user in GetUserList()) {

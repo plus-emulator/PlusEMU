@@ -29,4 +29,19 @@ public sealed class RoleChatCommandTests
         Assert.Contains(PermissionKeys.All, definition => definition.Key == PermissionKeys.CommandGiverole);
         Assert.Contains(PermissionKeys.All, definition => definition.Key == PermissionKeys.CommandTakerole);
     }
+
+    // CommandManager lets a user run a command only with "command.<key>"; AccessControl marks keys missing here as orphans.
+    [Fact]
+    public void EveryChatCommandHasARegisteredPermission()
+    {
+        var registered = PermissionKeys.All.Select(definition => definition.Key).ToHashSet();
+        var missing = typeof(ICommandBase).Assembly.GetTypes()
+            .Where(type => type is { IsClass: true, IsAbstract: false } && typeof(ICommandBase).IsAssignableFrom(type))
+            .Select(type => "command." + ((ICommandBase)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(type)).Key)
+            .Where(key => !registered.Contains(key))
+            .Order()
+            .ToArray();
+
+        Assert.Empty(missing);
+    }
 }

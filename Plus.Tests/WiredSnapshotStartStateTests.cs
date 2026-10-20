@@ -68,8 +68,16 @@ public sealed class WiredSnapshotStartStateTests
     {
         var definition = new ItemDefinition
         {
-            Id = 9, Type = ItemType.Floor, ItemName = "wf_colortile", InteractionName = "default", InteractionType = InteractionType.None,
-            Modes = 7, Width = 1, Length = 1, VendingIds = [], AdjustableHeights = []
+            Id = 9,
+            Type = ItemType.Floor,
+            ItemName = "wf_colortile",
+            InteractionName = "default",
+            InteractionType = InteractionType.None,
+            Modes = 7,
+            Width = 1,
+            Length = 1,
+            VendingIds = [],
+            AdjustableHeights = []
         };
 
         return new() { Id = 1, Definition = definition, ExtraData = FurniExtraData.Load(definition, stored, keepLegacy: true) };

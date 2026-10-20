@@ -77,7 +77,7 @@ internal static partial class WiredNativeAuxiliaryEditor
                 ? Roles(Draft(n, [], n.Text), [], [("users", n.UserSourceTypes[0])]) : null));
         // class_4285.as:79 [audience (1 everyone), visibility 0/100, click through, easing 0..4, target users]; merged [[0,1],[-1,0]]:
         // furni 0 with user 1 are the targets, user 0 the audience.
-        yield return new("wf_act_set_visibility", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [0, 100, 0, 0, 0]) with
+        yield return new("wf_act_set_visibility", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [0, 100, 0, 4, 0]) with
         {
             FurniDefaults = [100]
         }, n =>
@@ -89,7 +89,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         }));
         // class_4214.as:112 [audience, type 0..5, strength, colour, animation 0/1, easing 0..4, target users]; strength 0..100 (Brighten
         // stores 0 or 38), colour 24-bit.
-        yield return new("wf_act_set_highlight", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [0, 0, 100, 16777215, 0, 0, 0]) with
+        yield return new("wf_act_set_highlight", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [0, 0, 100, 16771584, 0, 4, 0]) with
         {
             FurniDefaults = [100]
         }, n =>

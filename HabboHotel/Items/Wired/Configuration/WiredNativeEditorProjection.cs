@@ -296,6 +296,11 @@ public static class WiredNativeEditorProjection
         var name = descriptor.CanonicalName;
         native = WithoutHotelInt(name, native);
 
+        // Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight and Set Furni Visibility store their ints in a normal form.
+        if (WiredFurniVisualRules.Applies(name) && Supports(name)) {
+            native = WiredFurniVisualRules.Normalize(name, native, Metadata(name).OwnedDefaults);
+        }
+
         // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).
         // Observed on AIR WIN63-202610151745-318700621 (r97_mdate_store, r97_inverted_store): Date Matches stores a year range whose end
         // is before its start with the end raised to the start (9999..0 reads back 9999..9999); its day range and Time Matches' hour and

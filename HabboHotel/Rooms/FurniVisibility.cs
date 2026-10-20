@@ -21,6 +21,11 @@ public static class FurniVisibility
     }
 
     private static readonly ConditionalWeakTable<Room, Concealed> Rooms = new();
+    private static int _scans;
+
+    /// <summary>How often the room was scanned for hiders. Tests read it to check that one call scans once.</summary>
+    internal static int Scans => Volatile.Read(ref _scans);
+
     private const string InvisiblePrefix = "room_invisible_";
 
     public static bool IsInvisibleClass(Item item) => item.Definition.ItemName.StartsWith(InvisiblePrefix, StringComparison.Ordinal)
@@ -40,6 +45,7 @@ public static class FurniVisibility
             return false;
         }
 
+        Interlocked.Increment(ref _scans);
         var hides = AreaHideState.On(room, except).Select(pair => pair.State).ToList();
 
         return hides.Count > 0 && item.GetCoords.Any(tile => hides.Any(state => AreaHideState.Covers(state, tile.X, tile.Y)));

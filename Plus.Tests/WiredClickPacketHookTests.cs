@@ -115,6 +115,44 @@ public class WiredClickPacketHookTests
         Assert.Equal(blockMenu, links.Contains("avatar-info/block-menu"));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: after a click on a user the clicker turns to face them in the next status
+    // update, also in a room without a Click User trigger. The client sends no separate look-at message with this click.
+    [Theory]
+    [InlineData("wf_trg_click_user", 0, 1, 6)]
+    [InlineData("wf_trg_click_user", 2, 1, 2)]
+    [InlineData(null, 2, 1, 2)]
+    public async Task ClickingAUserTurnsTheClickerTowardThem(string? trigger, int x, int y, int rotation)
+    {
+        var world = new World(trigger, trigger == null ? [] : [1, 0]);
+        Place(world.Actor, 1, 1, 4);
+        Place(world.Target, x, y, 0);
+
+        await new ClickUserEvent().Parse(world.Room, world.Client, Packet(world.Target.VirtualId));
+
+        Assert.Equal((rotation, rotation), (world.Actor.RotBody, world.Actor.RotHead));
+        Assert.True(world.Actor.UpdateNeeded);
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: with "do not rotate" set on Click User the clicker keeps facing the same way.
+    [Fact]
+    public async Task ClickUserDoNotRotateKeepsTheClickerFacingTheSameWay()
+    {
+        var world = new World("wf_trg_click_user", [0, 1]);
+        Place(world.Actor, 1, 1, 4);
+        Place(world.Target, 0, 1, 0);
+
+        await new ClickUserEvent().Parse(world.Room, world.Client, Packet(world.Target.VirtualId));
+
+        Assert.Equal((4, 4), (world.Actor.RotBody, world.Actor.RotHead));
+        Assert.False(world.Actor.UpdateNeeded);
+    }
+
+    private static void Place(RoomUser user, int x, int y, int rotation)
+    {
+        (user.X, user.Y, user.RotBody, user.RotHead) = (x, y, rotation, rotation);
+        user.UpdateNeeded = false;
+    }
+
     [Fact]
     public async Task TrailingClickFieldsNeverEnterWiredOrProduceAResponse()
     {

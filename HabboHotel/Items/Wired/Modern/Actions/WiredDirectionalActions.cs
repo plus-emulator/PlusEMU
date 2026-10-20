@@ -82,10 +82,25 @@ public sealed class WiredDirectionalActions
         _ => (direction + 4) % 8
     };
     // Observed r92f r92-chase: from Manhattan 3 the mover steps towards the owner; from Manhattan 10 it wanders (12,1), (11,2), (10,1).
-    public static RoomUser? Nearest(Item item, IEnumerable<RoomUser> users, int? range = 3) => users.Where(user => !user.IsBot)
-        .Select(user => (User: user, Distance: Math.Abs(user.X - item.GetX) + Math.Abs(user.Y - item.GetY)))
-        .Where(pair => range == null || pair.Distance <= range).OrderBy(pair => pair.Distance).Select(pair => pair.User).FirstOrDefault();
-    public static RoomUser? Nearest(Item item, IEnumerable<RoomUser> users, int? range, Random random) => throw new NotImplementedException();
+    public static RoomUser? Nearest(Item item, IEnumerable<RoomUser> users, int? range = 3) => Nearest(item, users, range, Random.Shared);
+
+    // Observed on AIR WIN63-202610151745-318700621: chase with two users at the same distance went towards each about half the time, on
+    // one axis and across axes. Flee uses the same pick; its tie is inferred from chase, not observed.
+    public static RoomUser? Nearest(Item item, IEnumerable<RoomUser> users, int? range, Random random)
+    {
+        var inRange = users.Where(user => !user.IsBot)
+            .Select(user => (User: user, Distance: Math.Abs(user.X - item.GetX) + Math.Abs(user.Y - item.GetY)))
+            .Where(pair => range == null || pair.Distance <= range).ToArray();
+
+        if (inRange.Length == 0) {
+            return null;
+        }
+
+        var closest = inRange.Min(pair => pair.Distance);
+        var tied = inRange.Where(pair => pair.Distance == closest).ToArray();
+
+        return tied[random.Next(tied.Length)].User;
+    }
     public static IEnumerable<Point> Steps(Item item, RoomUser user, bool away) => Steps(item, user, away, Random.Shared);
 
     // Observed on AIR WIN63-202610151745-318700621 (r97_chase_tie): chasing from an exact diagonal took the y step 6 times and the x step

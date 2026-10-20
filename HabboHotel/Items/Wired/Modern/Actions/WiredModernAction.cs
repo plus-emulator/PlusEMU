@@ -632,8 +632,9 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     // Observed on AIR WIN63-202610151745-318700621: chase only follows a user in its own row or column (2 and 3 tiles away it
                     // stepped towards the user 10 times in 10; at offsets (1,1), (2,1), (2,2) and (3,1) it took a random step). Flee
                     // steps straight away only from such a user, too.
-                    var inLine = WiredDirectionalActions.Nearest(item, context.Targets.AllUsers().Where(user => user.X == item.GetX || user.Y == item.GetY));
-                    var nearest = flee ? WiredDirectionalActions.Nearest(item, context.Targets.AllUsers(), null) : inLine;
+                    var random = _random ?? Random.Shared;
+                    var inLine = WiredDirectionalActions.Nearest(item, context.Targets.AllUsers().Where(user => user.X == item.GetX || user.Y == item.GetY), 3, random);
+                    var nearest = flee ? WiredDirectionalActions.Nearest(item, context.Targets.AllUsers(), null, random) : inLine;
 
                     if (nearest == null) {
                         if (flee) {

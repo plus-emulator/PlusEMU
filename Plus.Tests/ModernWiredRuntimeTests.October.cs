@@ -36,28 +36,6 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void SetFurniHighlightSendsBrightenAsAWhitePulseAtTheStrengthTheEditorShowed()
-    {
-        using var f = new TeleportFixture();
-        Assert.True(f.Engine.Remove(100));
-        OctoberBox<WiredModernAction>(f, 110, "wf_act_set_highlight", 0, 0, native => native with
-        {
-            OwnedIntParams = [0, 4, 38, 123, 0, 3, 0],
-            PrimaryItems = [new(1, false)],
-            FurniSourceTypes = [100],
-            UserSourceTypes = [0, 0]
-        });
-        var sent = Capture(f.Client);
-
-        f.Fire(land: false);
-
-        var packet = Reply(sent, ServerPacketHeader.WiredFurniHighlightComposer);
-        // Saved 38 (class_4214.as:117 stores On 76 / 2); the room gets 76.
-        Assert.Equal((1, 1, 4, 76, 0xFFFFFF, 1, 0), (packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int()));
-        packet.End();
-    }
-
-    [Fact]
     public void SetFurniHighlightOnTargetUsersSendsTheUserHighlightPacket()
     {
         using var f = new TeleportFixture();

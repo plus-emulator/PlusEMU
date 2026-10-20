@@ -134,12 +134,14 @@ internal static class FurniExtraData
                     return data;
                 }
             default:
-                return keepLegacy ? new LegacyDataFormat { Data = stored.Length == 0 && StartsAtZero(definition) ? "0" : stored } : FurniObjectData.Empty;
+                return keepLegacy ? new LegacyDataFormat { Data = LegacyState(definition, stored) } : FurniObjectData.Empty;
         }
     }
 
     // Observed on AIR WIN63-202610151745-318700621: a new Wired counter, floor switch, antenna or colour tile has state "0", never "".
     // Game furni such as freeze blocks, scoreboards and game timers use an empty state for their own meaning, so they keep it.
+    internal static string LegacyState(ItemDefinition definition, string stored) => stored.Length == 0 && StartsAtZero(definition) ? "0" : stored;
+
     private static bool StartsAtZero(ItemDefinition definition) => definition.Type == ItemType.Floor
         && (Wired.Modern.Actions.WiredCounterController.IsWiredCounter(definition)
             || definition.Modes > 1 && definition.InteractionType is InteractionType.None or InteractionType.WfFloorSwitch1 or InteractionType.WfFloorSwitch2);

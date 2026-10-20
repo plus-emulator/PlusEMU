@@ -48,7 +48,7 @@ public partial class WiredComponent
                 continue;
             }
 
-            changed |= RestoreState(item, snapshot.State, actor);
+            changed |= RestoreState(item, snapshot.StateFor(item.Definition), actor);
             changed |= WiredRoomOperations.MoveItem(_room, item, snapshot.X, snapshot.Y, snapshot.Rotation, snapshot.Z, animate: false);
         }
 

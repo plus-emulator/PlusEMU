@@ -340,7 +340,7 @@ public static class WiredRoomOperations
         bool state, bool direction, bool position, bool altitude) =>
         item.IsWallItem ? MatchesWallSnapshot(item, snapshot, state, position, altitude) :
         item.IsFloorItem && snapshot.Wall == null
-        && (!state || string.Equals(item.LegacyDataString ?? string.Empty, snapshot.State, StringComparison.Ordinal))
+        && (!state || string.Equals(item.LegacyDataString ?? string.Empty, snapshot.StateFor(item.Definition), StringComparison.Ordinal))
         && (!direction || item.Rotation == snapshot.Rotation)
         && (!position || item.GetX == snapshot.X && item.GetY == snapshot.Y)
         && (!altitude || Math.Abs(item.GetZ - snapshot.Z) < 0.00001);
@@ -353,7 +353,7 @@ public static class WiredRoomOperations
     private static bool MatchesWallSnapshot(Item item, WiredFurniSnapshot snapshot, bool state, bool position, bool altitude)
     {
         if (snapshot.Wall is not { } saved || snapshot.DefinitionId != item.Definition.Id
-            || state && !string.Equals(item.LegacyDataString ?? string.Empty, snapshot.State, StringComparison.Ordinal)) {
+            || state && !string.Equals(item.LegacyDataString ?? string.Empty, snapshot.StateFor(item.Definition), StringComparison.Ordinal)) {
             return false;
         }
 

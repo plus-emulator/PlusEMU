@@ -182,6 +182,8 @@ public class Gamemap
 
     internal void SendPlacementHeightMap(GameClient session)
     {
+        var hiddenTiles = FurniVisibility.HiddenTiles(_placementRoom);
+
         lock (_placementLock) {
             if (_placementClosed) {
                 return;
@@ -193,7 +195,14 @@ public class Gamemap
                 return;
             }
 
-            _placementOutbound.Enqueue(new(++_placementVersion, PlacementHeightMap(), null, visits, session));
+            var heights = PlacementHeightMap();
+
+            // Observed on AIR WIN63-202610201032-107964540: the entry marks the tiles of a hider that is on as 0xFFFF.
+            foreach (var (x, y) in hiddenTiles) {
+                heights[x, y] = -1;
+            }
+
+            _placementOutbound.Enqueue(new(++_placementVersion, heights, null, visits, session));
         }
 
         DrainPlacementUpdates();

@@ -798,7 +798,15 @@ public class Room
         }
     }
 
-    public IEnumerable<Item> VisibleFloorItems => GetRoomItemHandler().GetFloor.Where(item => (!HideWired || !item.IsWired) && !FurniVisibility.ShouldHide(this, item));
+    public IEnumerable<Item> VisibleFloorItems
+    {
+        get
+        {
+            var hiding = FurniVisibility.Capture(this);
+
+            return GetRoomItemHandler().GetFloor.Where(item => (!HideWired || !item.IsWired) && !FurniVisibility.Hides(hiding, item));
+        }
+    }
 
     public void SetWiredHidden(bool hidden)
     {
@@ -812,6 +820,9 @@ public class Room
 
             return;
         }
+
+        // A box inside a hidden area is not on the clients and stays off them.
+        wired = wired.Where(item => !FurniVisibility.IsConcealed(this, item)).ToArray();
 
         var wiredSnapshot = RoomFurnitureSnapshot.Capture(wired, OwnerId, OwnerName);
 

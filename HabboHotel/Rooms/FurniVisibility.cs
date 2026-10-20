@@ -31,29 +31,45 @@ public static class FurniVisibility
     public static bool IsInvisibleClass(Item item) => item.Definition.ItemName.StartsWith(InvisiblePrefix, StringComparison.Ordinal)
         || AreaHideState.TryRead(item, out var area) && area[5] == 1;
 
+    /// <summary>What hides furni right now: the Invisible Furni Controller and the hiders that are on. One scan of the room.</summary>
+    internal readonly record struct Hiding(bool InvisibleOn, IReadOnlyList<AreaHideValues> Areas)
+    {
+        public bool Any => InvisibleOn || Areas.Count > 0;
+    }
+
+    /// <summary><paramref name="except"/> is an item being taken out.</summary>
+    internal static Hiding Capture(Room room, Item? except = null)
+    {
+        Interlocked.Increment(ref _scans);
+
+        return new(ConfigurationItemStates.InvisibleFurni(room, except), AreaHideState.On(room, except).Select(pair => pair.State).ToList());
+    }
+
+    /// <summary>Whether the clients should not have this floor item now.</summary>
+    internal static bool Hides(Hiding hiding, Item item) => item.IsFloorItem
+        && (hiding.InvisibleOn && IsInvisibleClass(item) || InHiddenArea(hiding, item));
+
     /// <summary>Whether the clients should not have this floor item now. <paramref name="except"/> is an item being taken out.</summary>
-    public static bool ShouldHide(Room room, Item item, Item? except = null) => item.IsFloorItem
-        && (IsInvisibleClass(item) && ConfigurationItemStates.InvisibleFurni(room, except) || InHiddenArea(room, item, except));
+    public static bool ShouldHide(Room room, Item item, Item? except = null) => Hides(Capture(room, except), item);
 
     /// <summary>
     /// Observed on AIR WIN63-202610201032-107964540: a hider that is on removes the floor furni on its tiles from the clients (outside its
     /// rectangle with invert). The hider itself and the avatars stay.
     /// </summary>
-    private static bool InHiddenArea(Room room, Item item, Item? except)
+    private static bool InHiddenArea(Hiding hiding, Item item)
     {
-        if (AreaHideState.IsAreaHide(item)) {
+        if (hiding.Areas.Count == 0 || AreaHideState.IsAreaHide(item)) {
             return false;
         }
 
-        Interlocked.Increment(ref _scans);
-        var hides = AreaHideState.On(room, except).Select(pair => pair.State).ToList();
-
-        return hides.Count > 0 && item.GetCoords.Any(tile => hides.Any(state => AreaHideState.Covers(state, tile.X, tile.Y)));
+        return item.GetCoords.Any(tile => hiding.Areas.Any(state => AreaHideState.Covers(state, tile.X, tile.Y)));
     }
 
-    private static HashSet<(int X, int Y)> HiddenTiles(Room room, Item? except)
+    /// <summary>The tiles the hiders that are on take from the clients.</summary>
+    internal static HashSet<(int X, int Y)> HiddenTiles(Room room, Item? except = null) => HiddenTiles(room, Capture(room, except).Areas);
+
+    private static HashSet<(int X, int Y)> HiddenTiles(Room room, IReadOnlyList<AreaHideValues> hides)
     {
-        var hides = AreaHideState.On(room, except).Select(pair => pair.State).ToList();
         var tiles = new HashSet<(int X, int Y)>();
 
         if (hides.Count == 0) {
@@ -109,14 +125,18 @@ public static class FurniVisibility
         }
     }
 
-    /// <summary>A room entry lists no hidden furni, so the room counts them as told. Nothing is sent.</summary>
+    /// <summary>A room entry lists no hidden furni and marks the hidden tiles, so the room counts them as told. Nothing is sent.</summary>
     public static void Seed(Room room)
     {
         var state = Rooms.GetValue(room, _ => new());
-        var hidden = room.GetRoomItemHandler().GetFloor.Where(item => ShouldHide(room, item)).Select(item => item.Id).ToList();
+        var hiding = Capture(room);
+        var hidden = hiding.Any ? room.GetRoomItemHandler().GetFloor.Where(item => Hides(hiding, item)).Select(item => item.Id).ToList() : [];
+        var tiles = HiddenTiles(room, hiding.Areas);
 
         lock (state) {
             state.Ids.UnionWith(hidden);
+            state.Tiles.Clear();
+            state.Tiles.UnionWith(tiles);
         }
     }
 
@@ -157,14 +177,16 @@ public static class FurniVisibility
     {
         var state = Rooms.GetValue(room, _ => new());
         var floor = room.GetRoomItemHandler().GetFloor.Where(item => !ReferenceEquals(item, except)).ToList();
-        var hidden = floor.Where(item => ShouldHide(room, item, except)).ToList();
+        var hiding = Capture(room, except);
+        var hidden = hiding.Any ? floor.Where(item => Hides(hiding, item)).ToList() : [];
         List<uint> removed;
         List<Item> added;
 
         lock (state) {
             removed = hidden.Select(item => item.Id).Where(state.Ids.Add).Order().ToList();
             var now = hidden.Select(item => item.Id).ToHashSet();
-            added = floor.Where(item => state.Ids.Contains(item.Id) && !now.Contains(item.Id)).ToList();
+            // A wired box that the room keeps hidden stays hidden when its area goes off.
+            added = floor.Where(item => state.Ids.Contains(item.Id) && !now.Contains(item.Id) && !(room.HideWired && item.IsWired)).ToList();
             state.Ids.RemoveWhere(id => !now.Contains(id));
         }
 
@@ -177,5 +199,53 @@ public static class FurniVisibility
             room.SendPacket(new ObjectsComposer(snapshot));
             room.SendPacket(new FurnitureMetadataComposer(snapshot.Items));
         }
+    }
+
+    /// <summary>
+    /// Brings the clients in line after floor furni moved: one that moved into a hidden area is removed, one that left it is added.
+    /// Returns the ids that need no ObjectUpdate, because they are hidden now or were just sent whole.
+    /// </summary>
+    internal static HashSet<uint> Reconcile(Room room, IReadOnlyCollection<Item> moved)
+    {
+        var state = Rooms.GetValue(room, _ => new());
+        var settled = new HashSet<uint>();
+        var hiding = Capture(room);
+        var removed = new List<uint>();
+        var added = new List<Item>();
+
+        lock (state) {
+            foreach (var item in moved.Where(item => item.IsFloorItem)) {
+                var hidden = Hides(hiding, item);
+                var told = state.Ids.Contains(item.Id);
+
+                if (hidden && !told) {
+                    state.Ids.Add(item.Id);
+                    removed.Add(item.Id);
+                }
+                else if (!hidden && told) {
+                    state.Ids.Remove(item.Id);
+                    added.Add(item);
+                }
+                else if (!hidden) {
+                    continue;
+                }
+
+                settled.Add(item.Id);
+            }
+        }
+
+        if (removed.Count > 0) {
+            room.SendPacket(new ObjectRemoveMultipleComposer(removed.Order().ToList(), -1, true));
+        }
+
+        added = added.Where(item => !(room.HideWired && item.IsWired)).ToList();
+
+        if (added.Count > 0) {
+            var snapshot = RoomFurnitureSnapshot.Capture(added, room.OwnerId, room.OwnerName);
+            room.SendPacket(new ObjectsComposer(snapshot));
+            room.SendPacket(new FurnitureMetadataComposer(snapshot.Items));
+        }
+
+        return settled;
     }
 }

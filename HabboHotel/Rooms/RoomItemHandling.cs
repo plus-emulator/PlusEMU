@@ -884,11 +884,14 @@ public partial class RoomItemHandling
             _room.GetIceTag().Placed(session, item);
         }
 
+        // A move across the edge of a hidden area adds or removes the furni for the clients instead of updating it.
+        var settled = newItem ? [] : FurniVisibility.Reconcile(_room, [item]);
+
         if (sendMessage) {
             if (newItem) {
                 _room.SendObject(item);
             }
-            else if (!onRoller && !FurniVisibility.IsConcealed(_room, item)) {
+            else if (!onRoller && !settled.Contains(item.Id)) {
                 var furnitureSnapshot = RoomItemSnapshot.Capture(item);
                 _room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
                 _room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
@@ -1030,6 +1033,7 @@ public partial class RoomItemHandling
             UpdateItem(item);
         }
 
+        FurniVisibility.Reconcile(_room, moves.Select(move => move.Item).ToList());
         map.FlushPlacementUpdates();
 
         if (moves.Any(move => move.Item.Definition.InteractionType == InteractionType.WalkMagicTile)) {

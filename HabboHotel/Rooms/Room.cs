@@ -143,18 +143,15 @@ public class Room
     }
 
     /// <summary>
-    /// Reset Timers restarts the room timer at <paramref name="tickAt"/>, the next 500 ms room tick; until then the timer keeps counting.
-    /// Observed on AIR WIN63-202610151745-318700621: a Less Than check 150 or 300 ms after the reset still sees the old timer, and one
-    /// 450 ms or more after it sees the new one.
+    /// Reset Timers at <paramref name="now"/> restarts the room timer at <paramref name="tickAt"/>, the next 500 ms room tick; until then
+    /// the timer keeps counting. Observed on AIR WIN63-202610151745-318700621: a Less Than check 150 or 300 ms after the reset still sees
+    /// the old timer, and one 450 ms or more after it sees the new one.
     /// </summary>
-    internal void RestartTimerAt(DateTimeOffset tickAt)
+    internal void RestartTimerAt(DateTimeOffset now, DateTimeOffset tickAt)
     {
-        // Each restart falls on the first tick after its reset, so an earlier pending tick has already passed.
-        if (_timerRestartAt is { } earlier && earlier < tickAt) {
-            RestartTimer(earlier);
-        }
-
-        _timerRestartAt = tickAt;
+        TimerElapsedMilliseconds(now);
+        // A restart still pending is for the same tick, so a second reset before that tick changes nothing.
+        _timerRestartAt ??= tickAt;
     }
 
     internal long TimerElapsedMilliseconds(DateTimeOffset now)

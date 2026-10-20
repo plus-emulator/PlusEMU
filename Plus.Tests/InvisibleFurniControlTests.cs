@@ -17,7 +17,7 @@ public sealed class InvisibleFurniControlTests
         var packet = new RecordingPacket();
         var composer = new ConfigurationItemStatesComposer(chooserDisabled, invisibleFurni);
         composer.Compose(packet);
-        Assert.Equal(3847u, composer.MessageId);
+        Assert.Equal(3946u, composer.MessageId);
         // Observed on AIR WIN63-202610151745-318700621: a fifth, unread flag follows.
         Assert.Equal(new object[] { false, chooserDisabled, false, invisibleFurni, false }, packet.Writes);
     }

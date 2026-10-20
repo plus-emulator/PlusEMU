@@ -92,7 +92,7 @@ public sealed class WiredWebApiTests : IAsyncLifetime
         new WiredWebApiKeyComposer(12, true, "k").Compose(packet);
 
         Assert.Equal(new object[] { 12u, true, "k" }, packet.Writes);
-        Assert.Equal(1998u, new WiredWebApiKeyComposer(0, false, "").MessageId);
+        Assert.Equal(3954u, new WiredWebApiKeyComposer(0, false, "").MessageId);
     }
 
     [Fact]

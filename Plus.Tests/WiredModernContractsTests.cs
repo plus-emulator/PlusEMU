@@ -89,7 +89,7 @@ public class WiredModernContractsTests
     public void NativeConfigurationComposersKeepTheirOwnHeaders()
     {
         Assert.NotEqual(ServerPacketHeader.TradingCompleteComposer, ServerPacketHeader.WiredClickSettingsComposer);
-        Assert.Equal(3814u, ServerPacketHeader.WiredClickSettingsComposer);
+        Assert.Equal(1494u, ServerPacketHeader.WiredClickSettingsComposer);
     }
 
     [Fact]

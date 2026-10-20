@@ -125,10 +125,10 @@ public sealed class BuildersClubCatalogTests
 
         Assert.Equal(new object[] { 617961, 500, 2000000, 617961 }, status.Writes);
         Assert.Equal(new object[] { 162 }, count.Writes);
-        Assert.Equal(1910u, ServerPacketHeader.BuildersClubSubscriptionStatusComposer);
-        Assert.Equal(3928u, ServerPacketHeader.BuildersClubFurniCountComposer);
-        Assert.Equal(141u, Communication.Packets.Incoming.ClientPacketHeader.BuildersClubPlaceRoomItemEvent);
-        Assert.Equal(3269u, Communication.Packets.Incoming.ClientPacketHeader.BuildersClubPlaceWallItemEvent);
+        Assert.Equal(228u, ServerPacketHeader.BuildersClubSubscriptionStatusComposer);
+        Assert.Equal(738u, ServerPacketHeader.BuildersClubFurniCountComposer);
+        Assert.Equal(3501u, Communication.Packets.Incoming.ClientPacketHeader.BuildersClubPlaceRoomItemEvent);
+        Assert.Equal(428u, Communication.Packets.Incoming.ClientPacketHeader.BuildersClubPlaceWallItemEvent);
     }
 
     [Fact]

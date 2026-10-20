@@ -180,4 +180,44 @@ public sealed partial class WiredGlideConveyorTests
         var first = clocks.Poll(7000).Single(change => change.DisplayChanged);
         Assert.Equal("1", first.Text);
     }
+
+    [Fact]
+    public void GameCountersKeepCountingPastNinetyNineMinutesWithoutEndingTheGame()
+    {
+        // Observed on AIR WIN63-202610151745-318700621: a game counter set to 99:59.5 and started shows 6000, 6001 and 6002, and the other
+        // started game counters keep counting. No upper limit is visible.
+        var transitions = new List<WiredClockTransition>();
+        var clocks = new WiredCounterController(gameTransition: transitions.Add);
+        var high = ClockItem("wf_game_upcounter1", 206);
+        var other = ClockItem("wf_game_upcounter1", 207);
+        clocks.Attach(high);
+        clocks.Attach(other);
+        Assert.True(clocks.Adjust(high, 0, 99, 119, WiredClockOrigin.ModernWired));
+        Assert.Equal("5999", high.LegacyDataString);
+        Assert.True(clocks.Control(high, 0, 0, WiredClockOrigin.ModernWired));
+        Assert.True(clocks.Control(other, 0, 0, WiredClockOrigin.ModernWired));
+
+        for (var now = 500; now <= 6000; now += 500) {
+            clocks.Poll(now);
+        }
+
+        Assert.Equal("6005", high.LegacyDataString);
+        Assert.Equal("6", other.LegacyDataString);
+        Assert.True(clocks.IsRunning(high));
+        Assert.True(clocks.IsRunning(other));
+        Assert.All(transitions, transition => Assert.Equal(WiredClockReason.Start, transition.Reason));
+        Assert.True(clocks.Adjust(high, 0, 0, 10, WiredClockOrigin.ModernWired));
+        Assert.Equal("6010", high.LegacyDataString);
+    }
+
+    [Fact]
+    public void ARestoredCounterPastNinetyNineMinutesKeepsItsValue()
+    {
+        var item = ClockItem("wf_upcounter1", 208);
+        item.LegacyDataString = "6002";
+        var clocks = new WiredCounterController();
+        clocks.Attach(item);
+
+        Assert.Equal(6002000, clocks.ReadMilliseconds(item));
+    }
 }

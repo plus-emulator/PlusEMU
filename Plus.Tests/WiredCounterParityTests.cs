@@ -58,7 +58,7 @@ public sealed class WiredCounterParityTests
     }
 
     [Theory]
-    [InlineData("wf_upcounter1", 2, 11999L)]
+    [InlineData("wf_upcounter1", 2, 2147483647L)]
     [InlineData("bb_counter", 0, 2147483646L)]
     public void RestoredClockStateAndPulseWritesPreserveStartLifecycleAndNativeLimits(string name, int restoredState, long maximum)
     {

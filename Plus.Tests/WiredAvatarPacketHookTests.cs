@@ -166,6 +166,55 @@ public class WiredAvatarPacketHookTests
         Assert.False(world.Actor.Statusses.ContainsKey("sign"));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: the "sign" status is in one status update and gone from the next one,
+    // about 500 ms later. A new sign shows again for one update.
+    [Fact]
+    public void SignStatusLastsOneStatusUpdate()
+    {
+        var world = new World(9, 3);
+        List<bool> Updates()
+        {
+            world.Users.SerializeStatusUpdates();
+
+            return world.SentPackets.Where(packet => Header(packet) == 6)
+                .Select(packet => System.Text.Encoding.UTF8.GetString(packet).Contains("/sign ")).ToList();
+        }
+
+        world.Actions.ApplySign(world.Room, world.Client, 3);
+        Assert.Equal([true], Updates());
+        Assert.Equal([true, false], Updates());
+        Assert.Equal([true, false], Updates());
+
+        world.Actions.ApplySign(world.Room, world.Client, 5);
+        Assert.Equal([true, false, true], Updates());
+        Assert.Equal([true, false, true, false], Updates());
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: "user performs action: sign" still passes 3.4 s after the sign, when its status
+    // is long gone from the status updates.
+    [Fact]
+    public void PerformsActionConditionSeesTheSignAfterItsStatusIsGone()
+    {
+        var clock = new ManualClock(new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero));
+        var world = new World(9, 3, clock);
+        var speech = new WiredRuntimeEvent(WiredEventKind.Speech) { Actor = world.Actor };
+        bool Performs(int sign) => Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredModernCondition.IsPerforming(world.Actor,
+            new() { IntParams = [9, 1, sign, 0, 1] }, speech);
+
+        world.Actions.ApplySign(world.Room, world.Client, 3);
+        world.Users.SerializeStatusUpdates();
+        world.Users.SerializeStatusUpdates();
+        clock.Now = clock.Now.AddMilliseconds(3400);
+        world.Users.UpdateSignStatus(world.Actor);
+        Assert.False(world.Actor.HasStatus("sign"));
+        Assert.True(Performs(3));
+        Assert.False(Performs(4));
+
+        clock.Now = clock.Now.AddMilliseconds(1600);
+        world.Users.UpdateSignStatus(world.Actor);
+        Assert.False(Performs(3));
+    }
+
     [Fact]
     public void ApplySignRejectsInvalidMissingActorAndForeignRoom()
     {
@@ -369,7 +418,8 @@ public class WiredAvatarPacketHookTests
                         [ServerPacketHeader.DanceComposer] = 2,
                         [ServerPacketHeader.SleepComposer] = 3,
                         [ServerPacketHeader.AvatarEffectComposer] = 4,
-                        [ServerPacketHeader.UserTypingComposer] = 5
+                        [ServerPacketHeader.UserTypingComposer] = 5,
+                        [ServerPacketHeader.UserUpdateComposer] = 6
                     }
                 },
                 SendCallback = packet =>

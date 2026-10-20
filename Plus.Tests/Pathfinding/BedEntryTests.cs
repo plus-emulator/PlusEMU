@@ -56,6 +56,39 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
+    [InlineData(1, 1, 2, false)]
+    [InlineData(2, 1, 2, false)]
+    [InlineData(1, 1, 4, false)]
+    [InlineData(2, 1, 6, false)]
+    [InlineData(1, 1, 2, true)]
+    [InlineData(2, 1, 2, true)]
+    [InlineData(1, 1, 4, true)]
+    [InlineData(2, 1, 6, true)]
+    public void RotatingAnOccupiedDoubleBedTurnsItsOccupant(int x, int y, int rotation, bool layered)
+    {
+        var bed = Furni(10, InteractionType.Bed, WiredBoxType.None);
+        bed.Definition.Length = 3;
+        bed.Definition.Width = 2;
+        bed.Definition.Height = 1.8;
+        bed.Definition.Stackable = false;
+        bed.Definition.Walkable = false;
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, bed, 1, 1, 0, true, false, false));
+        var actor = layered ? LayeredActor(x, y) : ExecutorActor(x, y);
+        Assert.Equal(0, actor.RotBody);
+        Assert.True(actor.HasStatus("lay"));
+        _client.Packets.Clear();
+
+        PlacementService(() => { }).Move(_room, _client, bed.Id, 1, 1, rotation);
+        ExecutorTick();
+
+        Assert.Equal(rotation, bed.Rotation);
+        Assert.Equal((x, y), (actor.X, actor.Y));
+        Assert.Equal("1.8 null", actor.Statusses["lay"]);
+        Assert.Equal((rotation, rotation), (actor.RotHead, actor.RotBody));
+        Assert.Contains("/lay 1.8 null/", ExecutorUpdate(actor).Status);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(2)]
     [InlineData(4)]

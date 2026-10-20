@@ -906,7 +906,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.True(Active());
         interactor.OnTrigger(null, timer, 2, true);
         Assert.False(Active());
-        Assert.Equal(30000, clocks.ReadMilliseconds(timer));
+        Assert.Equal(8000, clocks.ReadMilliseconds(timer));
 
         bool Active() => type switch
         {

@@ -33,6 +33,61 @@ public sealed class WiredGameTimerPortTests
         Assert.Equal(6_058_000, clocks.ReadMilliseconds(item));
         Assert.True(clocks.Control(item, 2, 3000));
         Assert.False(clocks.IsRunning(item));
+        Assert.Equal(10000, clocks.ReadMilliseconds(item));
+    }
+
+    [Theory]
+    [InlineData("bb_counter", InteractionType.Banzaicounter)]
+    [InlineData("fball_counter", InteractionType.Counter)]
+    [InlineData("es_counter", InteractionType.Freezetimer)]
+    public void NativeGameTimersRestartAtTheirSavedDurationAfterRunningOut(string name, InteractionType type)
+    {
+        var item = Timer(name, type, "2");
+        var clocks = new WiredCounterController();
+        Assert.True(clocks.Attach(item));
+        Assert.True(clocks.Control(item, 0, 0));
+        clocks.Poll(1000);
+        clocks.Poll(2000);
+        Assert.False(clocks.IsRunning(item));
+        Assert.Equal(0, clocks.ReadMilliseconds(item));
+
+        Assert.True(clocks.Control(item, 0, 3000));
+
+        Assert.True(clocks.IsRunning(item));
+        Assert.Equal(2000, clocks.ReadMilliseconds(item));
+        Assert.Equal("2", item.LegacyDataString);
+    }
+
+    [Fact]
+    public void ResetReturnsANativeGameTimerToItsSavedDuration()
+    {
+        var item = Timer("bb_counter", InteractionType.Banzaicounter, "180");
+        var clocks = new WiredCounterController();
+        Assert.True(clocks.Attach(item));
+        clocks.Control(item, 0, 0);
+        clocks.Poll(1000);
+        clocks.Poll(2000);
+        Assert.Equal(178000, clocks.ReadMilliseconds(item));
+
+        Assert.True(clocks.Control(item, 2, 2500));
+
+        Assert.False(clocks.IsRunning(item));
+        Assert.Equal(180000, clocks.ReadMilliseconds(item));
+        Assert.Equal("180", item.LegacyDataString);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("")]
+    public void NativeGameTimersWithoutASavedDurationUseThirtySeconds(string state)
+    {
+        var item = Timer("bb_counter", InteractionType.Banzaicounter, state);
+        var clocks = new WiredCounterController();
+        Assert.True(clocks.Attach(item));
+
+        Assert.True(clocks.Control(item, 0, 0));
+        Assert.Equal(30000, clocks.ReadMilliseconds(item));
+        Assert.True(clocks.Control(item, 2, 500));
         Assert.Equal(30000, clocks.ReadMilliseconds(item));
     }
 

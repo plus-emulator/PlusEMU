@@ -142,8 +142,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         _highscores?.Observe(transition);
 
-        // A reset of a paused game timer sends no stop of its own, so the gates open here.
-        if (transition.Reason == WiredClockReason.Reset && IsBanzaiOrFreezeTimer(transition.Item)) {
+        // A reset of a paused game timer sends no stop of its own, so the gates open here. Observed on AIR WIN63-202610201032-107964540:
+        // the gates stay locked while another Banzai or Freeze timer is started, and a reset of a timer that was never started does nothing.
+        if (transition.Reason == WiredClockReason.Reset && transition.WasStarted && IsBanzaiOrFreezeTimer(transition.Item)
+            && !OtherGameTimerActive(transition.Item)) {
             _room.GetGameManager().UnlockGates();
         }
     }
@@ -154,7 +156,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     // Observed on AIR WIN63-202610201032-107964540: the Banzai and Freeze gates lock when the timer starts and stay locked while it is
     // paused. They open when the countdown ends or the timer is reset.
-    private static bool KeepsGatesLocked(WiredClockTransition transition) => transition.Reason is WiredClockReason.Stop or WiredClockReason.Pause;
+    private bool KeepsGatesLocked(WiredClockTransition transition) =>
+        transition.Reason is WiredClockReason.Stop or WiredClockReason.Pause || OtherGameTimerActive(transition.Item);
+
+    private bool OtherGameTimerActive(Item item) => _counters.HasOtherActiveCountdown(item, IsBanzaiOrFreezeTimer);
 
     private void ControlGameTimer(WiredClockTransition transition)
     {
@@ -179,7 +184,14 @@ public partial class WiredComponent : IWiredRuntimeOperations
             }
 
             if (start) {
-                _room.GetGameManager().Reset();
+                // Banzai and Freeze zero the scores in their own start, in one update with the field. A second reset would send it twice.
+                if (banzai || freeze) {
+                    _room.GetGameManager().Highscores.Invalidate();
+                }
+                else {
+                    _room.GetGameManager().Reset();
+                }
+
                 _highscores?.Start(transition);
 
                 if (banzai) {

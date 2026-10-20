@@ -24,48 +24,27 @@ public class TeamManager
 
     public bool CanEnterOnTeam(Team t)
     {
-        if (t.Equals(Team.Blue)) {
-            return BlueTeam.Count < 5;
-        }
-
-        if (t.Equals(Team.Red)) {
-            return RedTeam.Count < 5;
-        }
-
-        if (t.Equals(Team.Yellow)) {
-            return YellowTeam.Count < 5;
-        }
-
-        if (t.Equals(Team.Green)) {
-            return GreenTeam.Count < 5;
-        }
-
-        return false;
+        return t is Team.Blue or Team.Red or Team.Yellow or Team.Green && Count(Members(t)) < 5;
     }
 
     public void AddUser(RoomUser user)
     {
-        if (user.Team.Equals(Team.Blue) && !BlueTeam.Contains(user)) {
-            BlueTeam.Add(user);
-        }
-        else if (user.Team.Equals(Team.Red) && !RedTeam.Contains(user)) {
-            RedTeam.Add(user);
-        }
-        else if (user.Team.Equals(Team.Yellow) && !YellowTeam.Contains(user)) {
-            YellowTeam.Add(user);
-        }
-        else if (user.Team.Equals(Team.Green) && !GreenTeam.Contains(user)) {
-            GreenTeam.Add(user);
+        var members = Members(user.Team);
+
+        lock (members) {
+            if (!members.Contains(user)) {
+                members.Add(user);
+            }
         }
 
-        if (user.GetClient()?.GetHabbo()?.CurrentRoom is not { } room) {
+        if (RoomOf(user) is not { } room) {
             return;
         }
 
         ShowGateCounts(room, user.Team);
 
         // A full Banzai team locks its Banzai gate.
-        if (Game.Equals("banzai", StringComparison.OrdinalIgnoreCase) && Members(user.Team).Count == 5) {
+        if (Game.Equals("banzai", StringComparison.OrdinalIgnoreCase) && Count(members) == 5) {
             foreach (var gate in BanzaiGates(room, user.Team)) {
                 room.GetGameMap().SetFloorStatus(gate.GetX, gate.GetY, 0);
             }
@@ -76,11 +55,14 @@ public class TeamManager
     {
         var team = user.Team;
 
-        if (Members(team).Contains(user)) {
-            Members(team).Remove(user);
+        var members = Members(team);
+
+        lock (members) {
+            members.Remove(user);
         }
 
-        if (user.GetClient()?.GetHabbo()?.CurrentRoom is not { } room) {
+        // The session has already left the room when this runs on leaving, so the room comes from the user.
+        if (RoomOf(user) is not { } room) {
             return;
         }
 
@@ -95,7 +77,30 @@ public class TeamManager
         }
     }
 
-    public bool Has(RoomUser user) => Members(user.Team).Contains(user);
+    public bool Has(RoomUser user) => Contains(Members(user.Team), user);
+
+    private static Room? RoomOf(RoomUser user) => user.AttachedRoom ?? user.GetClient()?.GetHabbo()?.CurrentRoom;
+
+    private static int Count(List<RoomUser> members)
+    {
+        lock (members) {
+            return members.Count;
+        }
+    }
+
+    private static bool Contains(List<RoomUser> members, RoomUser user)
+    {
+        lock (members) {
+            return members.Contains(user);
+        }
+    }
+
+    private static RoomUser[] Snapshot(List<RoomUser> members)
+    {
+        lock (members) {
+            return [.. members];
+        }
+    }
 
     private List<RoomUser> Members(Team team) => team switch
     {
@@ -116,7 +121,7 @@ public class TeamManager
     /// </summary>
     private static void ShowGateCounts(Room room, Team team)
     {
-        var players = room.GetTeamManagerForBanzai().Members(team).Concat(room.GetTeamManagerForFreeze().Members(team)).Distinct().Count();
+        var players = Snapshot(room.GetTeamManagerForBanzai().Members(team)).Concat(Snapshot(room.GetTeamManagerForFreeze().Members(team))).Distinct().Count();
         var gates = room.GetGameManager().Gates(team);
 
         foreach (var gate in gates) {

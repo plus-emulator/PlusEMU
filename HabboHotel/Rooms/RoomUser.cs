@@ -783,4 +783,7 @@ public class RoomUser
     internal bool IsAttachedTo(Room room) => ReferenceEquals(_mRoom, room);
 
     private Room? GetRoom() => _mRoom;
+
+    // The room stays set until Dispose, also after the session left it.
+    internal Room? AttachedRoom => _mRoom;
 }

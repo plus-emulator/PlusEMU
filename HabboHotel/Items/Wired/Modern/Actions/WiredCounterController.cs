@@ -113,6 +113,12 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         return true;
     }
     public long? ReadMilliseconds(Item item) => Find(item) is { } clock ? clock.Value * 500L : null;
+    /// <summary>
+    /// True when another matching countdown timer is running or paused with time left. A countdown that ended no longer counts.
+    /// </summary>
+    public bool HasOtherActiveCountdown(Item item, Func<Item, bool> match) =>
+        _clocks.Values.Any(clock => clock.Item.Id != item.Id && clock.Countdown && match(clock.Item) && (clock.Running || clock.Started && clock.Value > 0));
+
     public bool IsRunning(Item item) => Find(item)?.Running == true;
     public int? ReadState(Item item) => Find(item) is { } clock ? clock.Running ? 1 : clock.Started ? 2 : 0 : null;
     public long? ReadPulseCount(Item item) => Find(item)?.Value;

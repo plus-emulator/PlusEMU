@@ -114,6 +114,42 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal(new[] { (2, 4), (4, 4) }, landings.Order());
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: an Enters Room stack's Furni To User moves the furni onto the entrant, who still
+    // stands on the door tile.
+    [Fact]
+    public void FurniToUserMovesTheFurniOntoAUserStandingOnTheDoorTile()
+    {
+        var (room, map, items) = World(DoorRoom, 3, 5);
+        using var ownerScope = RoomOwnerScope.Enter(room);
+        var mover = Floor(1, 8, 10);
+        mover.Definition.Height = 1;
+        mover.Definition.Walkable = true;
+        mover.Definition.Stackable = true;
+        Place(map, items, mover);
+        var entrant = Avatar(room, 1, 3, 5);
+        Register(room, map, entrant);
+        var action = Box(room, "wf_act_furni_to_user", [100, 0], [mover.Id]);
+        Assert.True(action.Execute(Context(room, [mover], [entrant], entrant)));
+        Assert.Equal((3, 5, 0.0), (mover.GetX, mover.GetY, mover.GetZ));
+        Assert.Equal(1.0, entrant.Z);
+    }
+
+    [Fact]
+    public void APlacementOutsideWiredStillCannotUseTheDoorTile()
+    {
+        var (room, map, items) = World(DoorRoom, 3, 5);
+        using var ownerScope = RoomOwnerScope.Enter(room);
+        var mover = Floor(1, 8, 10);
+        mover.Definition.Stackable = true;
+        Place(map, items, mover);
+        Assert.True(room.GetRoomItemHandler().SetFloorItem(null!, mover, 4, 5, 0, false, false, false));
+        Assert.False(room.GetRoomItemHandler().SetFloorItem(null!, mover, 3, 5, 0, false, false, false));
+        Assert.Equal((4, 5), (mover.GetX, mover.GetY));
+    }
+
+    // model_a: the door tile (3, 5) lies outside the floor, as an 'x' in the heightmap.
+    private static readonly string DoorRoom = string.Join('\r', Enumerable.Range(0, 12).Select(row => row == 0 ? "xxxxxxxxxxxx" : "xxxx00000000"));
+
     [Fact]
     public void OrdinaryMovementStillBlocksATileHoldingAUser()
     {
@@ -979,11 +1015,11 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         map.Navigation.ApplyDirty();
     }
 
-    private static (Room Room, Gamemap Map, ConcurrentDictionary<uint, Item> Items) World(string? heightmap = null)
+    private static (Room Room, Gamemap Map, ConcurrentDictionary<uint, Item> Items) World(string? heightmap = null, int doorX = 0, int doorY = 0)
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         typeof(Room).GetField("_interactionClock", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, TimeProvider.System);
-        var map = new Gamemap(room, new RoomModel("wired-parity", 0, 0, 0, 0, heightmap ?? string.Join('\r', Enumerable.Repeat("000000", 6)), 0, 0, true),
+        var map = new Gamemap(room, new RoomModel("wired-parity", doorX, doorY, 0, 0, heightmap ?? string.Join('\r', Enumerable.Repeat("000000", 6)), 0, 0, true),
             TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
         var handler = new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance,
             TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);

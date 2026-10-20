@@ -293,7 +293,8 @@ public class LayeredNavGridCompilerTests
         var (grid, inputs, compiler) = Layered(door: 1);
         inputs.Publish(NavTest.Record(10, 1, [1], z: 2));
         compiler.ApplyNow();
-        Assert.Equal([(0d, NavFlags.Door, 0u, SurfaceKind.Door)], Surfaces(grid, 1));
+        // Observed on AIR WIN63-202610151745-318700621: the door stays one surface, raised to walkable furni placed on it.
+        Assert.Equal([(2d, NavFlags.Door, 0u, SurfaceKind.Door)], Surfaces(grid, 1));
     }
 
     [Fact]

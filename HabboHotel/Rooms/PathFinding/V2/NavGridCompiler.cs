@@ -179,7 +179,11 @@ internal readonly record struct CompatSurface(double Z, NavFlags Flags, uint Sup
         var legacyZ = top?.Top ?? floorZ;
 
         if (t == grid.DoorTile) {
-            return new(grid.DoorZ, NavFlags.Door, 0, SurfaceKind.Door, 0, [], legacyZ);
+            // Observed on AIR WIN63-202610151745-318700621: a user on the door tile stands on walkable furni that Wired moves there.
+            var doorZ = top is { } onDoor && SurfaceRules.ItemCandidate(onDoor) is { Standable: true } standable
+                ? Math.Max(grid.DoorZ, standable.Z) : grid.DoorZ;
+
+            return new(doorZ, NavFlags.Door, 0, SurfaceKind.Door, 0, [], legacyZ);
         }
 
         var walkMagic = records?.Where(r => r.Interaction == InteractionType.WalkMagicTile).MaxBy(r => (r.Z, r.ItemId));

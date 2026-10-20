@@ -169,7 +169,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         if (landingUsers is { Count: > 0 }) {
             var through = collision?.ThroughUsers.Union(landingUsers).ToHashSet() ?? [.. landingUsers];
-            collision = (collision ?? new(new HashSet<uint>(), new HashSet<int>(), new HashSet<uint>())) with { ThroughUsers = through };
+            collision = (collision ?? new(new HashSet<uint>(), new HashSet<int>(), new HashSet<uint>())) with { ThroughUsers = through, OntoDoor = true };
         }
 
         var carried = passengers?.For(context, item) ?? Carried(context, item);

@@ -177,8 +177,10 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         if (name is "wf_act_give_var" or "wf_act_remove_var") {
             // Observed on hhus (AIR WIN63-202610131318-860371703): Give Variable saves with a global variable (and then gives nothing).
             // Observed on hhus (AIR WIN63-202610151745-318700621): so does Remove Variable, and it then removes nothing.
+            var destination = new WiredVariableReference((WiredVariableTarget)p[0], tokens[0]);
+
             if (!unchosenDestination && !WiredVariableModule.TryDefinitionId(tokens[0], out _)
-                && !RoomWiredBuiltinVariables.SupportsPresenceMutation(new((WiredVariableTarget)p[0], tokens[0]))) {
+                && !RoomWiredBuiltinVariables.SupportsPresenceMutation(destination) && !RoomWiredBuiltinVariables.SavesWithoutEffect(destination)) {
                 return false;
             }
 

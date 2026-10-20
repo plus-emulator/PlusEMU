@@ -176,6 +176,13 @@ public sealed class RoomWiredBuiltinVariables(Room room,
     public static bool CarriesPresenceValue(WiredVariableReference reference) => reference.Target == WiredVariableTarget.User
         && Normalize(reference.Token) == "@handitem";
 
+    /// <summary>
+    /// A built-in that Give and Remove Variable save on but never change: @habbicon. Observed on AIR WIN63-202610151745-318700621: Give
+    /// (initial 32, override), Change Variable Value (assign 33) and Remove all save on it, and a placeholder reads null after each.
+    /// </summary>
+    public static bool SavesWithoutEffect(WiredVariableReference reference) => reference.Target == WiredVariableTarget.User
+        && Normalize(reference.Token) == "@habbicon";
+
     public bool MutatePresence(WiredVariableReference reference, WiredVariableHolder holder, WiredVariableMutation mutation, WiredVariableFrame frame)
     {
         if (!SupportsPresenceMutation(reference) || reference.Target != holder.Target || frame.RoomId != room.Id || !frame.Contains(holder)

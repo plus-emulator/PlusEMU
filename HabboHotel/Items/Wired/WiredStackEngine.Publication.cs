@@ -54,8 +54,9 @@ internal sealed partial class WiredStackEngine
             return inherited;
         }
 
-        if (_activePublication is { Open: true } active && ReferenceEquals(active.Root, scheduled.Chain)
-            && active.Deadline == deadline && active.Epoch == _publicationEpoch) {
+        // Observed on AIR WIN63-202610151745-318700621: stacks that fire in the same tick share one WiredMovements, so an open
+        // publication is kept for every action due at the same time, whichever stack fired it.
+        if (_activePublication is { Open: true } active && active.Deadline == deadline && active.Epoch == _publicationEpoch) {
             return active;
         }
 

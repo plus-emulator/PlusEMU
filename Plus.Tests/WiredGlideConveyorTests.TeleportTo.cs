@@ -1,4 +1,6 @@
+using System.Buffers.Binary;
 using System.Text.Json;
+using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Rooms;
@@ -35,6 +37,29 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal((6, 6), (rider.RotBody, rider.RotHead));
         var own = ReadMovementEntries(packets).Where(entry => entry.Type is 0 or 3 && entry.Id == rider.VirtualId).ToArray();
         Assert.Empty(own);
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: when the teleport glow ends on a tick that also sends the avatar's status update, the
+    // status update goes first and the effect change follows it.
+    [Theory]
+    [InlineData(0, 3450)]
+    [InlineData(1, 1450)]
+    public void TeleportToEffectEndFollowsTheStatusUpdateOfTheSameTick(int flag, int beforeEnd)
+    {
+        var (f, rider, packets) = TeleportToRoom(flag);
+
+        f.Owned(() => rider.OnChat(0, "pulse", false));
+        f.Advance(beforeEnd);
+        f.Owned(() => rider.UpdateNeeded = true);
+        var mark = packets.Count;
+        f.Advance(50);
+
+        Assert.Equal(0, rider.CurrentEffect);
+        var sent = packets.Skip(mark).Select(bytes => BinaryPrimitives.ReadUInt32BigEndian(bytes)).ToList();
+        var update = sent.IndexOf(ServerPacketHeader.UserUpdateComposer);
+        var effect = sent.IndexOf(ServerPacketHeader.AvatarEffectComposer);
+        Assert.True(update >= 0 && effect >= 0, "the tick sends both packets");
+        Assert.True(update < effect, "the status update goes before the effect change");
     }
 
     // Observed on AIR WIN63-202610131318-860371703: fast = effect 235; an on-boundary firing lands at +1.0 s and drops the effect at +1.5 s.

@@ -215,6 +215,27 @@ public class WiredAvatarPacketHookTests
         Assert.False(Performs(3));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: Wired keeps the sign for about 5 s, long after its status is gone.
+    [Fact]
+    public void UsersByActionSelectorStillReadsTheSignAfterItsStatusIsGone()
+    {
+        var clock = new ManualClock(new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero));
+        var world = new World(9, 3, clock);
+        int? SelectorSign() => Plus.HabboHotel.Items.Wired.Modern.Selectors.WiredSelectorRuntimeInput.Avatar(world.Actor, null).Sign;
+
+        world.Actions.ApplySign(world.Room, world.Client, 3);
+        world.Users.SerializeStatusUpdates();
+        world.Users.SerializeStatusUpdates();
+        clock.Now = clock.Now.AddMilliseconds(4600);
+        world.Users.UpdateSignStatus(world.Actor);
+        Assert.False(world.Actor.HasStatus("sign"));
+        Assert.Equal(3, SelectorSign());
+
+        clock.Now = clock.Now.AddMilliseconds(400);
+        world.Users.UpdateSignStatus(world.Actor);
+        Assert.Null(SelectorSign());
+    }
+
     [Fact]
     public void ApplySignRejectsInvalidMissingActorAndForeignRoom()
     {

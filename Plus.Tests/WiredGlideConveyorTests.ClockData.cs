@@ -80,7 +80,7 @@ public sealed partial class WiredGlideConveyorTests
 
         var ordered = frames.Where(frame => frame.Header is ServerPacketHeader.ObjectDataUpdateComposer or ServerPacketHeader.ObjectsDataUpdateComposer).ToArray();
         Assert.Equal(ServerPacketHeader.ObjectsDataUpdateComposer, ordered[0].Header);
-        Assert.Equal([((uint)CounterId, "0")], ReadBatch(ordered[0]));
+        Assert.Equal([((uint)CounterId, "0")], CounterEntries(ordered[0]));
         Assert.All(ordered.Skip(1), frame => Assert.Equal(ServerPacketHeader.ObjectDataUpdateComposer, frame.Header));
         Assert.Equal(["1", "2"], ordered.Skip(1).Select(frame => ReadSingle(frame).Text).Take(2));
         Assert.Empty(ObjectUpdates(frames));
@@ -98,9 +98,42 @@ public sealed partial class WiredGlideConveyorTests
 
         // The first firing resets 5 -> 0; the later firings find the display already 0 and publish nothing.
         var batch = Assert.Single(frames, frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer);
-        Assert.Equal([((uint)CounterId, "0")], ReadBatch(batch));
+        Assert.Equal([((uint)CounterId, "0")], CounterEntries(batch));
         Assert.Empty(frames.Where(frame => frame.Header == ServerPacketHeader.ObjectDataUpdateComposer));
         Assert.Empty(ObjectUpdates(frames));
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: a counter value written by Wired (Start reset, Reset, Adjust Clock) goes out in the
+    // same ObjectsDataUpdate as the flashes of the event that wrote it, with each item once.
+    [Theory]
+    [InlineData(0, 10)]
+    [InlineData(2, 10)]
+    public void WiredCounterWritesShareTheBatchOfTheEventsFlashes(int operation, int preset)
+    {
+        var f = ClockFixture("wf_upcounter1", "wf_act_control_clock", [operation, 100]);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        PresetCounter(f, preset);
+        var batches = new List<(uint Id, string Text)[]>();
+        rider.GetClient()!.SendCallback = args =>
+        {
+            var bytes = args.MemoryBuffer.ToArray();
+            var frame = (BinaryPrimitives.ReadUInt32BigEndian(bytes), bytes[6..]);
+
+            if (frame.Item1 == ServerPacketHeader.ObjectsDataUpdateComposer) {
+                batches.Add(ReadBatch(frame));
+            }
+
+            return false;
+        };
+
+        f.Advance(1000);
+
+        var withCounter = batches.Where(batch => batch.Any(entry => entry.Id == CounterId)).ToArray();
+        var first = withCounter[0];
+        Assert.Equal([((uint)CounterId, "0")], first.Where(entry => entry.Id == CounterId));
+        Assert.Contains(first, entry => entry.Id == 21u);
+        Assert.Contains(first, entry => entry.Id == 22u);
+        Assert.Equal(first.Length, first.Select(entry => entry.Id).Distinct().Count());
     }
 
     [Fact]
@@ -131,7 +164,7 @@ public sealed partial class WiredGlideConveyorTests
 
         f.Advance(1000);
 
-        var batches = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer).Select(ReadBatch).ToArray();
+        var batches = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer).Select(CounterEntries).ToArray();
         Assert.True(batches.Length >= 3);
         Assert.All(batches, batch => Assert.Equal([((uint)CounterId, "1")], batch));
         // Only the first Set changed the display; the repeated unchanged Sets did no state, DB or navigation work.
@@ -155,7 +188,7 @@ public sealed partial class WiredGlideConveyorTests
 
         f.Advance(250);
 
-        var batches = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer).Select(ReadBatch).ToArray();
+        var batches = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer).Select(CounterEntries).ToArray();
         Assert.NotEmpty(batches);
         Assert.Equal(operation == 0 ? "6" : "4", batches[0].Single(entry => entry.Id == CounterId).Text);
         Assert.Empty(ObjectUpdates(frames));
@@ -255,9 +288,10 @@ public sealed partial class WiredGlideConveyorTests
 
         f.Advance(500);
 
-        Assert.Equal(["5", "10"], mappedFrames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer).Select(frame => ReadBatch(frame).Single().Text));
+        // Observed on AIR WIN63-202610151745-318700621: two writes of one counter in one event go out once, with the last value.
+        Assert.Equal(["10"], mappedFrames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer).Select(frame => CounterEntries(frame).Single().Text));
         Assert.Empty(ObjectUpdates(mappedFrames));
-        Assert.Equal(["5", "10"], ObjectUpdates(legacyFrames).Select(ReadObjectUpdateData));
+        Assert.Equal(["10"], ObjectUpdates(legacyFrames).Select(ReadObjectUpdateData));
         Assert.Empty(legacyFrames.Where(frame => frame.Header is ServerPacketHeader.ObjectDataUpdateComposer or ServerPacketHeader.ObjectsDataUpdateComposer));
         Assert.Equal("10", item.LegacyDataString);
     }
@@ -478,6 +512,8 @@ public sealed partial class WiredGlideConveyorTests
     // The boxes' own flash states go out in batches of their own; these tests follow the counter's data.
     private static bool IsBoxFlashBatch((uint Header, byte[] Payload) frame) =>
         frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer && ReadBatch(frame).All(entry => entry.Id != CounterId);
+
+    private static (uint Id, string Text)[] CounterEntries((uint Header, byte[] Payload) frame) => [.. ReadBatch(frame).Where(entry => entry.Id == CounterId)];
 
     private static (uint Header, byte[] Payload)[] ObjectUpdates(List<(uint Header, byte[] Payload)> frames) => frames
         .Where(frame => frame.Header == ServerPacketHeader.ObjectUpdateComposer && BinaryPrimitives.ReadInt32BigEndian(frame.Payload) == CounterId).ToArray();

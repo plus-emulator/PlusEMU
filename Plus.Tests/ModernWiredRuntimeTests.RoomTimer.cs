@@ -29,7 +29,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(1321, timer.WiredTimer());
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (two rounds): a Less Than 2 check 150 or 300 ms after Reset Timers still sees the old
+    // Observed on AIR WIN63-202610151745-318700621: a Less Than 2 check 150 or 300 ms after Reset Timers still sees the old
     // timer and fails; 450 ms and later it passes. The reset takes effect on the next 500 ms room tick.
     [Fact]
     public void ResetTimersRestartsTheRoomTimerOnTheNextRoomTick()
@@ -86,6 +86,23 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(1320, timer.WiredTimer());
         timer.Now = first.AddMilliseconds(950);
         Assert.Equal(1, timer.WiredTimer());
+    }
+
+    [Fact]
+    public void TwoResetsInOneFiringRestartTheTimerOnlyAtTheRealTick()
+    {
+        var timer = new RoomTimerWorld();
+        var first = RoomLoadedAt.AddMinutes(11);
+        timer.Reset(first, monotonicMilliseconds: 10_150);
+        timer.Reset(first.AddMilliseconds(2), monotonicMilliseconds: 10_150);
+
+        timer.Now = first.AddMilliseconds(349);
+        Assert.False(timer.Check("wf_cnd_time_less_than", 2));
+        Assert.True(timer.Check("wf_cnd_time_more_than", 1201));
+        Assert.Equal(1320, timer.WiredTimer());
+
+        timer.Now = first.AddMilliseconds(350);
+        Assert.Equal(0, timer.WiredTimer());
     }
 
     [Fact]

@@ -770,7 +770,9 @@ internal sealed partial class WiredStackEngine
 
     private void DrainReadySignals()
     {
-        // Continue only ready signal envelopes. An earlier external event retains its FIFO position.
+        // Continue only ready signal envelopes. An earlier external event retains its FIFO position, but the state change of a toggled
+        // furni that no stack listens to is passed in order. Observed on AIR WIN63-202610151745-318700621: a signal loop whose stacks
+        // toggle furni runs and flashes in the tick of its first signal, in one ObjectsDataUpdate.
         // An active evaluation may still own the head reservation, so admission must never re-enter it.
         if (_drainingSignals || _draining || _dispatchAdvanceDepth != 0 || _activeFiring != null) {
             return;
@@ -779,7 +781,7 @@ internal sealed partial class WiredStackEngine
         _drainingSignals = true;
 
         try {
-            while (_dispatches.TryPeek(out var pending) && pending.Signal != null && !OutOfBudget()) {
+            while (_dispatches.TryPeek(out var pending) && (pending.Signal != null || IdleStateChange(pending)) && !OutOfBudget()) {
                 if (!AdvanceDispatch(pending)) {
                     break;
                 }
@@ -794,6 +796,11 @@ internal sealed partial class WiredStackEngine
             UpdateFastWork();
         }
     }
+
+    private static bool RunsNoStack(PendingDispatch pending) => pending.Call == null && pending.Signal == null && pending.Current == null
+        && pending.Triggers is { Length: 0 } && pending.LegacyTriggers.Length == 0;
+
+    private static bool IdleStateChange(PendingDispatch pending) => pending.Event.Kind == WiredEventKind.StateChanged && RunsNoStack(pending);
 
     private static bool RuntimeSupported(IWiredConfiguredItem box) => box.Descriptor.Support == WiredBoxSupport.Implemented;
 

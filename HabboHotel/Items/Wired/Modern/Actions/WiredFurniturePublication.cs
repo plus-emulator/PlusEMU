@@ -9,6 +9,7 @@ internal sealed class WiredFurniturePublication(Room room, object root, long dea
     private readonly Dictionary<Item, (WiredMovementComposer Movement, WiredMoveStyleComposer Style, long Placement, ItemDefinition Definition)> _entries = new(ReferenceEqualityComparer.Instance);
     private readonly List<Item> _order = [];
     private readonly List<(RoomUser Actor, long Lifetime, WiredMovementComposer Movement)> _avatars = [];
+    private readonly List<(RoomUser Actor, long Lifetime, WiredUserDirectionComposer Turn)> _directions = [];
     // Firings that moved each furni, and furni whose firing ran with Execute in Order.
     private readonly Dictionary<Item, HashSet<object?>> _firings = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<Item> _ordered = new(ReferenceEqualityComparer.Instance);
@@ -87,6 +88,14 @@ internal sealed class WiredFurniturePublication(Room room, object root, long dea
         return true;
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: with the projectile add-on, the shooter's direction is the last entry of the
+    // firing's WiredMovements.
+    internal void AppendDirection(RoomUser shooter, long lifetime, WiredUserDirectionComposer turn)
+    {
+        _directions.RemoveAll(entry => ReferenceEquals(entry.Actor, shooter));
+        _directions.Add((shooter, lifetime, turn));
+    }
+
     private bool LiveActor(RoomUser actor, long lifetime) => actor.Movement.State != NavState.Removing
         && actor.Movement.LifetimeId == lifetime
         && ReferenceEquals(room.GetRoomUserManager().GetRoomUserByVirtualId(actor.VirtualId), actor);
@@ -111,9 +120,11 @@ internal sealed class WiredFurniturePublication(Room room, object root, long dea
         var furniMoves = live.Where(entry => !NetZeroInOneFiring(entry.Item, entry.Entry.Movement))
             .Select(entry => entry.Entry.Movement).ToArray();
         var avatars = _avatars.ToArray();
+        var directions = _directions.ToArray();
         _entries.Clear();
         _order.Clear();
         _avatars.Clear();
+        _directions.Clear();
         _firings.Clear();
         _ordered.Clear();
 
@@ -128,9 +139,10 @@ internal sealed class WiredFurniturePublication(Room room, object root, long dea
         // A style callback can remove/reuse an actor; validate again immediately before the batch.
         var movements = furniMoves
             .Concat(avatars.Where(entry => LiveActor(entry.Actor, entry.Lifetime)).Select(entry => entry.Movement)).ToArray();
+        var turns = directions.Where(entry => LiveActor(entry.Actor, entry.Lifetime)).Select(entry => entry.Turn).ToArray();
 
-        if (movements.Length > 0) {
-            room.SendPacket(new WiredMovementBatchComposer(movements));
+        if (movements.Length > 0 || turns.Length > 0) {
+            room.SendPacket(new WiredMovementBatchComposer(movements, turns));
         }
     }
 }

@@ -1,4 +1,5 @@
 using Dapper;
+using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.HabboHotel.GameClients;
 using Plus.Core;
 using Plus.Database;
@@ -86,6 +87,8 @@ public sealed class LandingEffects
         }
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a user in no team joins the colour of the gate. A user in any team leaves it, also on
+    // a gate of another colour, and never switches. Both send YouArePlayingGame, the gate counts and the avatar effect in that order.
     private static void ToggleTeam(RoomUser actor, Item item, TeamManager teams, int offset)
     {
         // Team membership is shown through the effect, so a user without loaded effects does not change team.
@@ -101,6 +104,7 @@ public sealed class LandingEffects
             }
 
             actor.Team = item.Team;
+            actor.GetClient().Send(new YouArePlayingGameComposer(true));
             teams.AddUser(actor);
 
             if (effects.CurrentEffect != effect) {
@@ -110,13 +114,13 @@ public sealed class LandingEffects
             return;
         }
 
-        var otherTeam = actor.Team != item.Team;
-        teams.OnUserLeave(actor);
+        actor.GetClient().Send(new YouArePlayingGameComposer(false));
+        var room = actor.GetClient().GetHabbo().CurrentRoom;
+        var joined = room?.GetTeamManagerForBanzai() is { } banzai && banzai.Has(actor) ? banzai
+            : room?.GetTeamManagerForFreeze() is { } freeze && freeze.Has(actor) ? freeze : teams;
+        joined.OnUserLeave(actor);
         actor.Team = Team.None;
-
-        if (otherTeam || effects.CurrentEffect == effect) {
-            effects.ApplyEffect(0);
-        }
+        effects.ApplyEffect(0);
     }
 
     private static bool ApplyEffect(RoomUser actor, Item item)

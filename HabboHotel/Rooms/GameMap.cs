@@ -8,6 +8,7 @@ using Plus.Database;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Rooms.Games;
 using Plus.HabboHotel.Rooms.Games.Teams;
 using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Quests;
@@ -1014,6 +1015,10 @@ public class Gamemap
     {
         RemoveSpecialItem(item);
 
+        if (GameManager.TeamOf(item.Definition.InteractionType) is var team and not Team.None) {
+            _room.GetGameManager().RemoveFurnitureFromTeam(item, team);
+        }
+
         if (_room.GotSoccer()) {
             _room.GetSoccer().OnGateRemove(item);
         }
@@ -1086,55 +1091,11 @@ public class Gamemap
     {
         AddSpecialItems(item);
 
+        if (GameManager.TeamOf(item.Definition.InteractionType) is var team and not Team.None) {
+            _room.GetGameManager().AddFurnitureToTeam(item, team);
+        }
+
         switch (item.Definition.InteractionType) {
-            case InteractionType.FootballGoalRed:
-            case InteractionType.Footballcounterred:
-            case InteractionType.Banzaiscorered:
-            case InteractionType.Banzaigatered:
-            case InteractionType.Freezeredcounter:
-            case InteractionType.FreezeRedGate: {
-                    if (!_room.GetRoomItemHandler().GetFloor.Contains(item)) {
-                        _room.GetGameManager().AddFurnitureToTeam(item, Team.Red);
-                    }
-
-                    break;
-                }
-            case InteractionType.FootballGoalGreen:
-            case InteractionType.Footballcountergreen:
-            case InteractionType.Banzaiscoregreen:
-            case InteractionType.Banzaigategreen:
-            case InteractionType.Freezegreencounter:
-            case InteractionType.FreezeGreenGate: {
-                    if (!_room.GetRoomItemHandler().GetFloor.Contains(item)) {
-                        _room.GetGameManager().AddFurnitureToTeam(item, Team.Green);
-                    }
-
-                    break;
-                }
-            case InteractionType.FootballGoalBlue:
-            case InteractionType.Footballcounterblue:
-            case InteractionType.Banzaiscoreblue:
-            case InteractionType.Banzaigateblue:
-            case InteractionType.Freezebluecounter:
-            case InteractionType.FreezeBlueGate: {
-                    if (!_room.GetRoomItemHandler().GetFloor.Contains(item)) {
-                        _room.GetGameManager().AddFurnitureToTeam(item, Team.Blue);
-                    }
-
-                    break;
-                }
-            case InteractionType.FootballGoalYellow:
-            case InteractionType.Footballcounteryellow:
-            case InteractionType.Banzaiscoreyellow:
-            case InteractionType.Banzaigateyellow:
-            case InteractionType.Freezeyellowcounter:
-            case InteractionType.FreezeYellowGate: {
-                    if (!_room.GetRoomItemHandler().GetFloor.Contains(item)) {
-                        _room.GetGameManager().AddFurnitureToTeam(item, Team.Yellow);
-                    }
-
-                    break;
-                }
             case InteractionType.Freezeexit: {
                     _room.GetFreeze().AddExitTile(item);
                     break;

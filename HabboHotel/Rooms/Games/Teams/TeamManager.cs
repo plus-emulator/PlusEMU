@@ -24,222 +24,112 @@ public class TeamManager
 
     public bool CanEnterOnTeam(Team t)
     {
-        if (t.Equals(Team.Blue)) {
-            return BlueTeam.Count < 5;
-        }
-
-        if (t.Equals(Team.Red)) {
-            return RedTeam.Count < 5;
-        }
-
-        if (t.Equals(Team.Yellow)) {
-            return YellowTeam.Count < 5;
-        }
-
-        if (t.Equals(Team.Green)) {
-            return GreenTeam.Count < 5;
-        }
-
-        return false;
+        return t is Team.Blue or Team.Red or Team.Yellow or Team.Green && Count(Members(t)) < 5;
     }
 
     public void AddUser(RoomUser user)
     {
-        if (user.Team.Equals(Team.Blue) && !BlueTeam.Contains(user)) {
-            BlueTeam.Add(user);
-        }
-        else if (user.Team.Equals(Team.Red) && !RedTeam.Contains(user)) {
-            RedTeam.Add(user);
-        }
-        else if (user.Team.Equals(Team.Yellow) && !YellowTeam.Contains(user)) {
-            YellowTeam.Add(user);
-        }
-        else if (user.Team.Equals(Team.Green) && !GreenTeam.Contains(user)) {
-            GreenTeam.Add(user);
+        var members = Members(user.Team);
+
+        lock (members) {
+            if (!members.Contains(user)) {
+                members.Add(user);
+            }
         }
 
-        switch (Game.ToLower()) {
-            case "banzai": {
-                    var room = user.GetClient().GetHabbo().CurrentRoom;
+        if (RoomOf(user) is not { } room) {
+            return;
+        }
 
-                    if (room == null) {
-                        return;
-                    }
+        ShowGateCounts(room, user.Team);
 
-                    foreach (var item in room.GetRoomItemHandler().GetFloor.ToList()) {
-                        if (item == null) {
-                            continue;
-                        }
-
-                        if (item.Definition.InteractionType.Equals(InteractionType.Banzaigateblue)) {
-                            item.LegacyDataString = BlueTeam.Count.ToString();
-                            item.UpdateState();
-
-                            if (BlueTeam.Count == 5) {
-                                room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 0);
-                            }
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.Banzaigatered)) {
-                            item.LegacyDataString = RedTeam.Count.ToString();
-                            item.UpdateState();
-
-                            if (RedTeam.Count == 5) {
-                                room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 0);
-                            }
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.Banzaigategreen)) {
-                            item.LegacyDataString = GreenTeam.Count.ToString();
-                            item.UpdateState();
-
-                            if (GreenTeam.Count == 5) {
-                                room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 0);
-                            }
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.Banzaigateyellow)) {
-                            item.LegacyDataString = YellowTeam.Count.ToString();
-                            item.UpdateState();
-
-                            if (YellowTeam.Count == 5) {
-                                room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 0);
-                            }
-                        }
-                    }
-
-                    break;
-                }
-            case "freeze": {
-                    var room = user.GetClient().GetHabbo().CurrentRoom;
-
-                    if (room == null) {
-                        return;
-                    }
-
-                    foreach (var item in room.GetRoomItemHandler().GetFloor.ToList()) {
-                        if (item == null) {
-                            continue;
-                        }
-
-                        if (item.Definition.InteractionType.Equals(InteractionType.FreezeBlueGate)) {
-                            item.LegacyDataString = BlueTeam.Count.ToString();
-                            item.UpdateState();
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.FreezeRedGate)) {
-                            item.LegacyDataString = RedTeam.Count.ToString();
-                            item.UpdateState();
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.FreezeGreenGate)) {
-                            item.LegacyDataString = GreenTeam.Count.ToString();
-                            item.UpdateState();
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.FreezeYellowGate)) {
-                            item.LegacyDataString = YellowTeam.Count.ToString();
-                            item.UpdateState();
-                        }
-                    }
-
-                    break;
-                }
+        // A full Banzai team locks its Banzai gate.
+        if (Game.Equals("banzai", StringComparison.OrdinalIgnoreCase) && Count(members) == 5) {
+            foreach (var gate in BanzaiGates(room, user.Team)) {
+                room.GetGameMap().SetFloorStatus(gate.GetX, gate.GetY, 0);
+            }
         }
     }
 
     public void OnUserLeave(RoomUser user)
     {
-        //Console.WriteLine("remove user from team! (" + Game + ")");
-        if (user.Team.Equals(Team.Blue) && BlueTeam.Contains(user)) {
-            BlueTeam.Remove(user);
-        }
-        else if (user.Team.Equals(Team.Red) && RedTeam.Contains(user)) {
-            RedTeam.Remove(user);
-        }
-        else if (user.Team.Equals(Team.Yellow) && YellowTeam.Contains(user)) {
-            YellowTeam.Remove(user);
-        }
-        else if (user.Team.Equals(Team.Green) && GreenTeam.Contains(user)) {
-            GreenTeam.Remove(user);
+        var team = user.Team;
+
+        var members = Members(team);
+
+        lock (members) {
+            members.Remove(user);
         }
 
-        switch (Game.ToLower()) {
-            case "banzai": {
-                    var room = user.GetClient().GetHabbo().CurrentRoom;
+        // The session has already left the room when this runs on leaving, so the room comes from the user.
+        if (RoomOf(user) is not { } room) {
+            return;
+        }
 
-                    if (room == null) {
-                        return;
-                    }
+        ShowGateCounts(room, team);
 
-                    foreach (var item in room.GetRoomItemHandler().GetFloor.ToList()) {
-                        if (item == null) {
-                            continue;
-                        }
-
-                        if (item.Definition.InteractionType.Equals(InteractionType.Banzaigateblue)) {
-                            item.LegacyDataString = BlueTeam.Count.ToString();
-                            item.UpdateState();
-
-                            if (room.GetGameMap().GameMap[item.GetX, item.GetY] == 0) {
-                                room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 1);
-                            }
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.Banzaigatered)) {
-                            item.LegacyDataString = RedTeam.Count.ToString();
-                            item.UpdateState();
-
-                            if (room.GetGameMap().GameMap[item.GetX, item.GetY] == 0) {
-                                room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 1);
-                            }
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.Banzaigategreen)) {
-                            item.LegacyDataString = GreenTeam.Count.ToString();
-                            item.UpdateState();
-
-                            if (room.GetGameMap().GameMap[item.GetX, item.GetY] == 0) {
-                                room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 1);
-                            }
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.Banzaigateyellow)) {
-                            item.LegacyDataString = YellowTeam.Count.ToString();
-                            item.UpdateState();
-
-                            if (room.GetGameMap().GameMap[item.GetX, item.GetY] == 0) {
-                                room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 1);
-                            }
-                        }
-                    }
-
-                    break;
+        if (Game.Equals("banzai", StringComparison.OrdinalIgnoreCase)) {
+            foreach (var gate in BanzaiGates(room, team)) {
+                if (room.GetGameMap().GameMap[gate.GetX, gate.GetY] == 0) {
+                    room.GetGameMap().SetFloorStatus(gate.GetX, gate.GetY, 1);
                 }
-            case "freeze": {
-                    var room = user.GetClient().GetHabbo().CurrentRoom;
-
-                    if (room == null) {
-                        return;
-                    }
-
-                    foreach (var item in room.GetRoomItemHandler().GetFloor.ToList()) {
-                        if (item == null) {
-                            continue;
-                        }
-
-                        if (item.Definition.InteractionType.Equals(InteractionType.FreezeBlueGate)) {
-                            item.LegacyDataString = BlueTeam.Count.ToString();
-                            item.UpdateState();
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.FreezeRedGate)) {
-                            item.LegacyDataString = RedTeam.Count.ToString();
-                            item.UpdateState();
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.FreezeGreenGate)) {
-                            item.LegacyDataString = GreenTeam.Count.ToString();
-                            item.UpdateState();
-                        }
-                        else if (item.Definition.InteractionType.Equals(InteractionType.FreezeYellowGate)) {
-                            item.LegacyDataString = YellowTeam.Count.ToString();
-                            item.UpdateState();
-                        }
-                    }
-
-                    break;
-                }
+            }
         }
+    }
+
+    public bool Has(RoomUser user) => Contains(Members(user.Team), user);
+
+    private static Room? RoomOf(RoomUser user) => user.AttachedRoom ?? user.GetClient()?.GetHabbo()?.CurrentRoom;
+
+    private static int Count(List<RoomUser> members)
+    {
+        lock (members) {
+            return members.Count;
+        }
+    }
+
+    private static bool Contains(List<RoomUser> members, RoomUser user)
+    {
+        lock (members) {
+            return members.Contains(user);
+        }
+    }
+
+    private static RoomUser[] Snapshot(List<RoomUser> members)
+    {
+        lock (members) {
+            return [.. members];
+        }
+    }
+
+    private List<RoomUser> Members(Team team) => team switch
+    {
+        Team.Blue => BlueTeam,
+        Team.Red => RedTeam,
+        Team.Yellow => YellowTeam,
+        Team.Green => GreenTeam,
+        _ => []
+    };
+
+    private static IEnumerable<Item> BanzaiGates(Room room, Team team) => room.GetGameManager().Gates(team).Where(gate =>
+        gate.Definition.InteractionType is InteractionType.Banzaigateblue or InteractionType.Banzaigatered or InteractionType.Banzaigategreen
+            or InteractionType.Banzaigateyellow);
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a Banzai gate and a Freeze gate of one colour are one team. Both show the number of
+    /// players in it and change in one ObjectsDataUpdate when a player joins or leaves.
+    /// </summary>
+    private static void ShowGateCounts(Room room, Team team)
+    {
+        var players = Snapshot(room.GetTeamManagerForBanzai().Members(team)).Concat(Snapshot(room.GetTeamManagerForFreeze().Members(team))).Distinct().Count();
+        var gates = room.GetGameManager().Gates(team);
+
+        foreach (var gate in gates) {
+            gate.LegacyDataString = players.ToString();
+            gate.UpdateState(true, false);
+        }
+
+        room.SendObjectsData(gates);
     }
 
     public void Dispose()

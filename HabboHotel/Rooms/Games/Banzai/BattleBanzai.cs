@@ -172,9 +172,7 @@ public class BattleBanzai
         _startedAt = _clock.GetUtcNow();
         _room.GetGameManager().LockGates();
 
-        for (var i = 1; i < 5; i++) {
-            _room.GetGameManager().Points[i] = 0;
-        }
+        _room.GetGameManager().ZeroScores();
 
         foreach (var tile in _banzaiTiles.Values) {
             tile.LegacyDataString = "1";
@@ -210,7 +208,7 @@ public class BattleBanzai
         }
     }
 
-    public void BanzaiEnd(bool triggeredByUser = false)
+    public void BanzaiEnd(bool triggeredByUser = false, bool keepGatesLocked = false)
     {
         var now = _clock.GetUtcNow();
         var awardsProgress = HasMinimumPlayTimeAt(now);
@@ -223,7 +221,10 @@ public class BattleBanzai
         }
 
         var winners = _room.GetGameManager().GetWinningTeam();
-        _room.GetGameManager().UnlockGates();
+
+        if (!keepGatesLocked) {
+            _room.GetGameManager().UnlockGates();
+        }
 
         foreach (var tile in _banzaiTiles.Values) {
             if (tile.Team == winners) {

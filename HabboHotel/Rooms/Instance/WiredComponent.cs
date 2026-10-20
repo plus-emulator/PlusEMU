@@ -45,7 +45,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         ICommandManager commands, IAccessControl access, IItemTravelStore travelStore, Plus.HabboHotel.Quests.IQuestManager? quests = null) //, RoomItem Items)
     {
         _room = instance;
-        _counters = new(observeTransition: transition => _highscores?.Observe(transition), gameTransition: ControlGameTimer,
+        _counters = new(observeTransition: ObserveClock, gameTransition: ControlGameTimer,
             canBegin: (item, origin, actor) => _highscores?.CanBeginOwned(item, origin, actor) ?? true);
         _logger = logger;
         _clock = clock;
@@ -138,6 +138,29 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     private int _highscoreClockAdmission;
 
+    private void ObserveClock(WiredClockTransition transition)
+    {
+        _highscores?.Observe(transition);
+
+        // A reset of a paused game timer sends no stop of its own, so the gates open here. Observed on AIR WIN63-202610201032-107964540:
+        // the gates stay locked while another Banzai or Freeze timer is started, and a reset of a timer that was never started does nothing.
+        if (transition.Reason == WiredClockReason.Reset && transition.WasStarted && IsBanzaiOrFreezeTimer(transition.Item)
+            && !OtherGameTimerActive(transition.Item)) {
+            _room.GetGameManager().UnlockGates();
+        }
+    }
+
+    private static bool IsBanzaiOrFreezeTimer(Item item) => WiredCounterController.IsGameTimer(item)
+        && (item.Definition.InteractionType is InteractionType.Banzaicounter or InteractionType.Freezetimer
+            || item.Definition.ItemName is "bb_counter" or "es_counter");
+
+    // Observed on AIR WIN63-202610201032-107964540: the Banzai and Freeze gates lock when the timer starts and stay locked while it is
+    // paused. They open when the countdown ends or the timer is reset.
+    private bool KeepsGatesLocked(WiredClockTransition transition) =>
+        transition.Reason is WiredClockReason.Stop or WiredClockReason.Pause || OtherGameTimerActive(transition.Item);
+
+    private bool OtherGameTimerActive(Item item) => _counters.HasOtherActiveCountdown(item, IsBanzaiOrFreezeTimer);
+
     private void ControlGameTimer(WiredClockTransition transition)
     {
         var item = transition.Item;
@@ -161,7 +184,14 @@ public partial class WiredComponent : IWiredRuntimeOperations
             }
 
             if (start) {
-                _room.GetGameManager().Reset();
+                // Banzai and Freeze zero the scores in their own start, in one update with the field. A second reset would send it twice.
+                if (banzai || freeze) {
+                    _room.GetGameManager().Highscores.Invalidate();
+                }
+                else {
+                    _room.GetGameManager().Reset();
+                }
+
                 _highscores?.Start(transition);
 
                 if (banzai) {
@@ -179,10 +209,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
                 }
             }
             else if (banzai) {
-                _room.GetBanzai().BanzaiEnd();
+                _room.GetBanzai().BanzaiEnd(keepGatesLocked: KeepsGatesLocked(transition));
             }
             else if (freeze) {
-                _room.GetFreeze().StopGame();
+                _room.GetFreeze().StopGame(keepGatesLocked: KeepsGatesLocked(transition));
             }
             else {
                 _room.GetSoccer().StopGame();

@@ -37,29 +37,35 @@ public class CatalogStructureWireTests
         return stream.ToArray()[6..];
     }
 
-    [Fact]
-    public void UserPerksDoNotAdvertiseBuildersClub()
-    {
-        var packet = new HabbiconTestSupport.RecordingPacket();
-
-        new UserPerksComposer(false).Compose(packet);
-
-        Assert.Equal(15, packet.Writes[0]);
-        Assert.DoesNotContain("BUILDER_AT_WORK", packet.Writes);
-    }
-
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void UserPerksCountEveryPerkAndOfferTheRoomThumbnailCameraWithTheCamera(bool cameraAllowed)
+    public void UserPerksListTheHabboPerksInOrderWithTheirDenialKeys(bool cameraAllowed)
     {
         var packet = new HabbiconTestSupport.RecordingPacket();
 
         new UserPerksComposer(cameraAllowed).Compose(packet);
 
-        var perks = packet.Writes.Skip(1).Chunk(3).ToArray();
-        Assert.Equal(perks.Length, packet.Writes[0]);
-        Assert.Equal(new object[] { "NAVIGATOR_ROOM_THUMBNAIL_CAMERA", "", cameraAllowed }, perks.Single(perk => (string)perk[0] == "NAVIGATOR_ROOM_THUMBNAIL_CAMERA"));
+        // Observed on AIR WIN63-202610201032-107964540: 12 perks, and the denial key is sent even when the perk is denied.
+        var perks = packet.Writes.Skip(1).Chunk(3).Select(perk => ((string)perk[0], (string)perk[1], (bool)perk[2])).ToArray();
+        Assert.Equal(12, packet.Writes[0]);
+        Assert.Equal(1 + 12 * 3, packet.Writes.Count);
+        Assert.Equal(
+            [
+                ("JUDGE_CHAT_REVIEWS", "requirement.unfulfilled.helper_level_6", true),
+                ("NAVIGATOR_PHASE_TWO_2014", "", true),
+                ("TRADE", "requirement.unfulfilled.citizenship_level_3", true),
+                ("CALL_ON_HELPERS", "", false),
+                ("CITIZEN", "", true),
+                ("BUILDER_AT_WORK", "requirement.unfulfilled.group_membership", false),
+                ("HABBO_CLUB_OFFER_BETA", "", false),
+                ("USE_GUIDE_TOOL", "requirement.unfulfilled.helper_level_4", false),
+                ("MOUSE_ZOOM", "", true),
+                ("NAVIGATOR_ROOM_THUMBNAIL_CAMERA", "", cameraAllowed),
+                ("VOTE_IN_COMPETITIONS", "requirement.unfulfilled.helper_level_2", true),
+                ("CAMERA", "", cameraAllowed)
+            ],
+            perks);
     }
 
     [Fact]

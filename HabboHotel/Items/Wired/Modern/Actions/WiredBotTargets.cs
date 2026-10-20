@@ -12,6 +12,8 @@ public sealed class WiredBotTargets
         public Item? Item = item; public RoomUser? User = user; public bool Reached;
         // A bot carrying a hand item to User (Bot Give Handitem), and when its step next to the user was announced.
         public int HandItem; public long? AnnouncedAt; public (int X, int Y)? Goal; public (int X, int Y)? LeftFrom;
+        // When a following bot reached its tile, on the room's Wired clock.
+        public long? ArrivedAt;
     }
     /// <summary>
     /// Observed on AIR WIN63-202610151745-318700621: the user gets the item 300 ms after the bot's step next to them is announced.
@@ -136,23 +138,52 @@ public sealed class WiredBotTargets
                 }
 
                 target.Reached = near;
-
-                if (near) {
-                    continue;
-                }
-
-                var destinations = Enumerable.Range(0, 4).Select(direction => WiredRoomOperations.Offset(direction * 2))
-                    .Select(offset => (X: user.X + offset.X, Y: user.Y + offset.Y))
-                    .Where(point => room.GetGameMap().ValidTile(point.X, point.Y) && room.GetGameMap().CanWalk(point.X, point.Y, false))
-                    .OrderBy(point => Math.Abs(point.X - bot.X) + Math.Abs(point.Y - bot.Y)).ToArray();
-
-                if (destinations.Length != 0) {
-                    bot.MoveTo(destinations[0].X, destinations[0].Y);
-                }
+                PollFollow(room, bot, user, target, now);
             }
         }
 
         return result;
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: a following bot picks a random free tile among the 8 around the tile the user stands on
+    // or steps onto. It walks all the way there, past other tiles next to the user and while the user moves on. Next to the user it
+    // does not move.
+    private void PollFollow(Room room, RoomUser bot, RoomUser user, Target target, long now)
+    {
+        if (target.Goal is { } goal) {
+            var arrived = !bot.SetStep && bot.X == goal.X && bot.Y == goal.Y;
+
+            if (!arrived && IsMoving(bot)) {
+                return;
+            }
+
+            target.Goal = null;
+            target.ArrivedAt = arrived ? now : null;
+        }
+
+        if (target.ArrivedAt is { } at && now - at < FollowRestMilliseconds) {
+            return;
+        }
+
+        var tile = WiredRoomOperations.StandingTile(user);
+
+        if (Math.Max(Math.Abs(tile.X - bot.X), Math.Abs(tile.Y - bot.Y)) <= 1) {
+            return;
+        }
+
+        var map = room.GetGameMap();
+        var free = Enumerable.Range(0, 8).Select(WiredRoomOperations.Offset).Select(offset => (X: tile.X + offset.X, Y: tile.Y + offset.Y))
+            .Where(point => map.ValidTile(point.X, point.Y) && map.SquareIsOpen(point.X, point.Y, false)
+                && WiredRoomOperations.UsersStandingOn(room, new(point.X, point.Y)).All(other => ReferenceEquals(other, bot)))
+            .ToArray();
+
+        if (free.Length == 0) {
+            return;
+        }
+
+        var pick = free[Random.Next(free.Length)];
+        target.Goal = pick;
+        bot.MoveTo(pick.X, pick.Y);
     }
 
     private void PollGive(Room room, RoomUser bot, RoomUser user, Target target, long now)

@@ -223,6 +223,10 @@ public sealed partial class WiredRoomVariables
 
         return changes;
     }
-    public void InvalidateFx() => FxDirty = true;
+    public void InvalidateFx()
+    {
+        ForgetPublished();
+        FxDirty = true;
+    }
     public void FxFlushed() => FxDirty = false;
 }

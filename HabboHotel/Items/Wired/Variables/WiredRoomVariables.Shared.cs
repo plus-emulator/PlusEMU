@@ -69,8 +69,59 @@ public sealed partial class WiredRoomVariables
     /// </summary>
     private WiredSharedAddons? ImportedAddons(WiredVariableDefinition reference) =>
         reference.Link is { } link && link.SourceRoomId != _room.Id && MetadataOn(reference.ItemId, ImportName) is { } import
-        && SharedAddons.Load(reference.ItemId) is { } published
+        && PublishedTo(reference.ItemId) is { } published
             ? published.Pick(import.Category(0), import.Category(1), import.Category(2)) : null;
+
+    private readonly object _publishedGate = new();
+    private readonly Dictionary<uint, WiredSharedAddons?> _published = [];
+    private long _publishedEpoch = -1;
+    private long _publishedGeneration;
+
+    /// <summary>
+    /// What the store holds for a reference, read once and kept. It is read again after a Refresh from another room or after a box was
+    /// loaded, saved or removed in this room, so a tick never waits on the database.
+    /// </summary>
+    private WiredSharedAddons? PublishedTo(uint referenceItemId)
+    {
+        long epoch;
+        long generation;
+
+        lock (_membershipGate) {
+            epoch = _membershipEpoch;
+        }
+
+        lock (_publishedGate) {
+            if (_publishedEpoch != epoch) {
+                _published.Clear();
+                _publishedEpoch = epoch;
+            }
+
+            if (_published.TryGetValue(referenceItemId, out var kept)) {
+                return kept;
+            }
+
+            generation = _publishedGeneration;
+        }
+
+        var loaded = SharedAddons.Load(referenceItemId);
+
+        lock (_publishedGate) {
+            // A Refresh that arrived during the read leaves this answer out, so the next read asks again.
+            if (generation == _publishedGeneration && _publishedEpoch == epoch) {
+                _published[referenceItemId] = loaded;
+            }
+        }
+
+        return loaded;
+    }
+
+    private void ForgetPublished()
+    {
+        lock (_publishedGate) {
+            _published.Clear();
+            _publishedGeneration++;
+        }
+    }
 
     private WiredVariableDefinition? ReferenceOf(uint definitionId) => _definitions.TryGetValue(definitionId, out var box) && box.HasPersistedConfiguration
         && box.Descriptor.CanonicalName == "wf_var_reference" && IsAttached(box.Item)
@@ -94,7 +145,8 @@ public sealed partial class WiredRoomVariables
 
     /// <summary>
     /// The imported Variable FX of the references that show them, at most <see cref="MaxFxBoxes"/>. Their configuration ids count down
-    /// from -1 over the whole room, so two references never share one.
+    /// from -1 over the whole room, so two references never share one. Observed on AIR WIN63-202610201032-107964540: only the id -1
+    /// was seen. Ids of -2 and lower, and the count over the whole room, were not checked.
     /// </summary>
     private IEnumerable<(WiredVariableDefinition Reference, WiredSharedFx Fx, int ConfigId)> ImportedFx(IReadOnlyDictionary<uint, WiredVariableDescription> authorized) =>
         _definitions.Keys.Order().Where(authorized.ContainsKey).Select(ReferenceOf).OfType<WiredVariableDefinition>()

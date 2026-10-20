@@ -40,6 +40,12 @@ public static class WiredVariableDefinitions
     internal const string MissingVariableKey = "wiredfurni.error.variables.missing_variable";
     internal const string NeedsExecutionContextKey = "wiredfurni.error.variables.requires_execution_context";
 
+    /// <summary>
+    /// The key a proposed variable name is refused with, or null. Observed on AIR WIN63-202610201032-107964540: a pointer name outside
+    /// 1 to 40 characters, or with a character other than a letter, digit or underscore, is refused with these keys and no parameters.
+    /// </summary>
+    internal static string? RefuseName(string text) => text.Length is < 1 or > 40 ? NameLengthKey : ValidName(text) ? null : NameSyntaxKey;
+
     private static bool ValidName(string text) => text.Length is >= 1 and <= 40 && Regex.IsMatch(text, "^[A-Za-z0-9_]+$", RegexOptions.CultureInvariant);
 
     /// <summary>
@@ -166,20 +172,7 @@ public static class WiredVariableDefinitions
                     return false;
                 }
 
-                // Observed on AIR WIN63-202610201032-107964540: a pointer name outside 1 to 40 characters, or with a character other
-                // than a letter, digit or underscore, is refused with these keys and no parameters.
-                if (text.Length is < 1 or > 40) {
-                    error = NameLengthKey;
-
-                    return false;
-                }
-
-                if (!ValidName(text)) {
-                    error = NameSyntaxKey;
-
-                    return false;
-                }
-
+                // The name rules are checked when a pointer is saved (WiredVariableModule.RefusePointer), so an older stored pointer still loads.
                 target = ints[0] switch { 0 => WiredVariableTarget.Furni, 1 => WiredVariableTarget.User, -10 => WiredVariableTarget.Global, _ => WiredVariableTarget.Context };
                 availability = target == WiredVariableTarget.User ? WiredVariableAvailability.UserActive : WiredVariableAvailability.RoomActive;
                 hasValue = true;
@@ -191,7 +184,7 @@ public static class WiredVariableDefinitions
                 return false;
         }
 
-        if (!ValidName(text)) {
+        if (!ValidName(text) && name != "wf_var_pointer") {
             return false;
         }
 

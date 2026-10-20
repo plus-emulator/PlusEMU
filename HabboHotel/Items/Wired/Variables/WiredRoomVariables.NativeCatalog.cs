@@ -80,7 +80,7 @@ public sealed partial class WiredRoomVariables
                 // The add-ons a reference imports come from what its stack's Import add-on had on in this capture.
                 var imported = definition.Link is { } link && link.SourceRoomId != _room.Id
                     && associated.FirstOrDefault(box => box.Input.Name == "wf_xtra_var_import")?.Input.Configuration.IntParams is { Length: 3 } flags
-                    && SharedAddons.Load(definition.ItemId) is { } published
+                    && PublishedTo(definition.ItemId) is { } published
                         ? published.Pick(flags[0] != 0, flags[1] != 0, flags[2] != 0) : null;
                 connectors[definition.ItemId] = associated.FirstOrDefault(box => box.Input.Name == "wf_xtra_var_text_connector")?.Connector
                     ?? (imported is { TextConnector.IsEmpty: false } ? imported.TextConnector.OrderBy(pair => pair.Key).ToImmutableArray() : null);

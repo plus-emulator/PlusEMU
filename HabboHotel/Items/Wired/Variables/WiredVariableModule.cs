@@ -887,6 +887,10 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     /// </summary>
     public string? RefusePointer(WiredVariableDefinition proposed)
     {
+        if (WiredVariableDefinitions.RefuseName(proposed.Name) is { } badName) {
+            return badName;
+        }
+
         lock (_gate) {
             if (!TryDefinitionId(proposed.PointerAccessor ?? "", out var accessorId) || directory.Find(accessorId) is not { } accessor || accessor.RoomId != roomId) {
                 return WiredVariableDefinitions.MissingVariableKey;

@@ -39,6 +39,18 @@ public partial class PlacedFurniRoomTests
         Assert.False(_room.GetWired().ApplySnapshot(_client, 400));
     }
 
+    // A snapshot saved while a switch still held "" restores it to "0", the state such furni now load with.
+    [Fact]
+    public void ApplySnapshotRestoresAnEmptySavedStateAsZero()
+    {
+        var (floor, wall, _) = ApplySnapshotRoom(out _, floorState: "");
+        ApplySnapshotDisturb(floor, wall);
+
+        Assert.True(_room.GetWired().ApplySnapshot(_client, 400));
+
+        Assert.Equal("0", floor.LegacyDataString);
+    }
+
     [Fact]
     public async Task ApplySnapshotEventDecodesTheBoxIdAndDelegates()
     {
@@ -118,14 +130,14 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(("0", 3, 3), (floor.LegacyDataString, floor.GetX, floor.GetY));
     }
 
-    private (Item Floor, Item Wall, WallSnapshotStore Store) ApplySnapshotRoom(out WiredModernAction action)
+    private (Item Floor, Item Wall, WallSnapshotStore Store) ApplySnapshotRoom(out WiredModernAction action, string floorState = "0")
     {
         var store = WallSnapshotInstallStore();
         var wall = WallSnapshotItem(301, ApplyWallBaseline);
         var floor = Furni(302, InteractionType.None, WiredBoxType.None);
         floor.Definition.Modes = 2;
         floor.RoomId = RoomId;
-        floor.ExtraData = new LegacyDataFormat { Data = "0" };
+        floor.ExtraData = new LegacyDataFormat { Data = floorState };
         _room.GetRoomItemHandler().LoadFurniture([wall]);
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, floor, 1, 1, 0, true, false, false));
         action = WallSnapshotAction();

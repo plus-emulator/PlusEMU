@@ -51,6 +51,7 @@ public class Room
     // The room's Wired timer, read by the elapsed-time conditions and @wired_timer. It starts when the room loads. Observed on AIR
     // WIN63-202610151745-318700621: @wired_timer reads 26 in a room nobody reset, and More Than 1201 passes in a room loaded long ago.
     public DateTimeOffset LastTimerResetAt;
+    private DateTimeOffset? _timerRestartAt;
     public bool MDisposed;
     public MoodlightData MoodlightData;
 
@@ -141,7 +142,30 @@ public class Room
         LastTimerResetAt = loadedAt;
     }
 
-    internal long TimerElapsedMilliseconds(DateTimeOffset now) => Math.Max(0, (now - LastTimerResetAt).Ticks / TimeSpan.TicksPerMillisecond);
+    /// <summary>
+    /// Reset Timers restarts the room timer at <paramref name="tickAt"/>, the next 500 ms room tick; until then the timer keeps counting.
+    /// Observed on AIR WIN63-202610151745-318700621: a Less Than check 150 or 300 ms after the reset still sees the old timer, and one
+    /// 450 ms or more after it sees the new one.
+    /// </summary>
+    internal void RestartTimerAt(DateTimeOffset tickAt)
+    {
+        // Each restart falls on the first tick after its reset, so an earlier pending tick has already passed.
+        if (_timerRestartAt is { } earlier && earlier < tickAt) {
+            LastTimerResetAt = earlier;
+        }
+
+        _timerRestartAt = tickAt;
+    }
+
+    internal long TimerElapsedMilliseconds(DateTimeOffset now)
+    {
+        if (_timerRestartAt is { } restartAt && now >= restartAt) {
+            LastTimerResetAt = restartAt;
+            _timerRestartAt = null;
+        }
+
+        return Math.Max(0, (now - LastTimerResetAt).Ticks / TimeSpan.TicksPerMillisecond);
+    }
 
     private Music.RoomMusicComponent? _music;
     public Music.RoomMusicComponent Music => _music ?? throw new InvalidOperationException("The room music component has not been initialized.");

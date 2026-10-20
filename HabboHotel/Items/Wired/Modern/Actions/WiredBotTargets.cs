@@ -17,6 +17,13 @@ public sealed class WiredBotTargets
     /// Observed on AIR WIN63-202610151745-318700621: the user gets the item 300 ms after the bot's step next to them is announced.
     /// </summary>
     public const int HandOverDelayMilliseconds = 300;
+    /// <summary>
+    /// Observed on AIR WIN63-202610151745-318700621: a following bot that reached its tile waits one room tick before it looks for the user
+    /// again.
+    /// </summary>
+    public const int FollowRestMilliseconds = 500;
+    // Picks the tile around the user that a following bot walks to.
+    internal Random Random { get; set; } = Random.Shared;
     private readonly Dictionary<RoomUser, Target> _targets = [];
     private static readonly ConditionalWeakTable<Room, WiredBotTargets> Rooms = new();
     public static WiredBotTargets For(Room room) => Rooms.GetValue(room, _ => new());

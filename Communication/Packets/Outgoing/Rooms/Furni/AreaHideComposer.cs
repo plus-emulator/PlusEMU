@@ -4,7 +4,7 @@ using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni;
 
-// Volt's existing nine-field adapter includes wallItems/invisibility after native AreaHideData.
+// Observed on AIR WIN63-202610201032-107964540: seven fields. The invisibility and wall item options are not in the message.
 public sealed class AreaHideComposer(uint itemId, AreaHideValues state, bool removed = false) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.AreaHideComposer;
@@ -17,7 +17,5 @@ public sealed class AreaHideComposer(uint itemId, AreaHideValues state, bool rem
         packet.WriteInt(state[3]);
         packet.WriteInt(state[4]);
         packet.WriteBool(state[7] == 1);
-        packet.WriteBool(state[6] == 1);
-        packet.WriteBool(state[5] == 1);
     }
 }

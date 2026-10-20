@@ -1,5 +1,6 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.AreaHide;
+using Plus.HabboHotel.Rooms;
 
 namespace Plus.HabboHotel.Items.Interactor;
 
@@ -15,6 +16,8 @@ public sealed class InteractorAreaHide : IFurniInteractor
     {
         if (item.GetRoom() is { } room) {
             AreaHideState.Announce(room, item, removed: true);
+            FurniVisibility.RefreshFurni(room, item);
+            FurniVisibility.RefreshTiles(room, item);
         }
     }
     public void OnTrigger(GameClient? session, Item item, int request, bool hasRights)

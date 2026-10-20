@@ -17,6 +17,7 @@ public static class FurniVisibility
     private sealed class Concealed
     {
         public readonly HashSet<uint> Ids = [];
+        public readonly HashSet<(int X, int Y)> Tiles = [];
     }
 
     private static readonly ConditionalWeakTable<Room, Concealed> Rooms = new();
@@ -26,8 +27,45 @@ public static class FurniVisibility
         || AreaHideState.TryRead(item, out var area) && area[5] == 1;
 
     /// <summary>Whether the clients should not have this floor item now. <paramref name="except"/> is an item being taken out.</summary>
-    public static bool ShouldHide(Room room, Item item, Item? except = null) => item.IsFloorItem && IsInvisibleClass(item)
-        && ConfigurationItemStates.InvisibleFurni(room, except);
+    public static bool ShouldHide(Room room, Item item, Item? except = null) => item.IsFloorItem
+        && (IsInvisibleClass(item) && ConfigurationItemStates.InvisibleFurni(room, except) || InHiddenArea(room, item, except));
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a hider that is on removes the floor furni on its tiles from the clients (outside its
+    /// rectangle with invert). The hider itself and the avatars stay.
+    /// </summary>
+    private static bool InHiddenArea(Room room, Item item, Item? except)
+    {
+        if (AreaHideState.IsAreaHide(item)) {
+            return false;
+        }
+
+        var hides = AreaHideState.On(room, except).Select(pair => pair.State).ToList();
+
+        return hides.Count > 0 && item.GetCoords.Any(tile => hides.Any(state => AreaHideState.Covers(state, tile.X, tile.Y)));
+    }
+
+    private static HashSet<(int X, int Y)> HiddenTiles(Room room, Item? except)
+    {
+        var hides = AreaHideState.On(room, except).Select(pair => pair.State).ToList();
+        var tiles = new HashSet<(int X, int Y)>();
+
+        if (hides.Count == 0) {
+            return tiles;
+        }
+
+        var map = room.GetGameMap();
+
+        for (var y = 0; y < map.StaticModel.MapSizeY; y++) {
+            for (var x = 0; x < map.StaticModel.MapSizeX; x++) {
+                if (map.StaticModel.SqState[x, y] != SquareState.Blocked && hides.Any(state => AreaHideState.Covers(state, x, y))) {
+                    tiles.Add((x, y));
+                }
+            }
+        }
+
+        return tiles;
+    }
 
     /// <summary>Whether the clients were told to drop this item (or never got it).</summary>
     public static bool IsConcealed(Room room, Item item)
@@ -77,6 +115,39 @@ public static class FurniVisibility
     }
 
     public static void Refresh(Room room, Item? except = null)
+    {
+        RefreshFurni(room, except);
+        RefreshTiles(room, except);
+    }
+
+    /// <summary>
+    /// Sends the height map update for the tiles that the hiders took or gave back: 0xFFFF for a hidden tile, the real value otherwise.
+    /// </summary>
+    public static void RefreshTiles(Room room, Item? except = null)
+    {
+        var state = Rooms.GetValue(room, _ => new());
+        var desired = HiddenTiles(room, except);
+        List<(int X, int Y)> taken;
+        List<(int X, int Y)> given;
+
+        lock (state) {
+            taken = desired.Except(state.Tiles).ToList();
+            given = state.Tiles.Except(desired).ToList();
+            state.Tiles.Clear();
+            state.Tiles.UnionWith(desired);
+        }
+
+        var map = room.GetGameMap();
+        var updates = taken.Select(tile => new HeightMapUpdateComposer.Tile(tile.X, tile.Y, -1))
+            .Concat(given.Select(tile => new HeightMapUpdateComposer.Tile(tile.X, tile.Y, map.ClientTileValue(tile.X, tile.Y))))
+            .OrderBy(tile => tile.Y).ThenBy(tile => tile.X).ToList();
+
+        for (var start = 0; start < updates.Count; start += 255) {
+            room.SendPacket(new HeightMapUpdateComposer(updates.Skip(start).Take(255).ToList()));
+        }
+    }
+
+    public static void RefreshFurni(Room room, Item? except = null)
     {
         var state = Rooms.GetValue(room, _ => new());
         var floor = room.GetRoomItemHandler().GetFloor.Where(item => !ReferenceEquals(item, except)).ToList();

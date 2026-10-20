@@ -633,7 +633,7 @@ public partial class RoomItemHandling
     public bool SetFloorItem(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses = false, double height = -1, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision = null, bool deferPositionSave = false) =>
         PlaceFloor(session, item, newX, newY, newRot, newItem, onRoller, sendMessage, updateRoomUserStatuses, height, wiredCollision, null, deferPositionSave);
 
-    public bool PersistFurnitureData(Item item, Plus.HabboHotel.Items.DataFormat.IFurniObjectData data)
+    public bool PersistFurnitureData(Item item, Plus.HabboHotel.Items.DataFormat.IFurniObjectData data, bool dataUpdateOnly = false)
     {
         RoomItemSnapshot snapshot;
 
@@ -649,10 +649,18 @@ public partial class RoomItemHandling
             }
         }
 
-        if (!FurniVisibility.IsConcealed(_room, item)) {
-            _room.SendPacket(new ObjectUpdateComposer(snapshot));
-            _room.SendPacket(new FurnitureMetadataComposer([snapshot]));
+        if (FurniVisibility.IsConcealed(_room, item)) {
+            return true;
         }
+
+        if (dataUpdateOnly) {
+            _room.SendPacket(new ObjectDataUpdateComposer(item.Id, snapshot.Data));
+
+            return true;
+        }
+
+        _room.SendPacket(new ObjectUpdateComposer(snapshot));
+        _room.SendPacket(new FurnitureMetadataComposer([snapshot]));
 
         return true;
     }

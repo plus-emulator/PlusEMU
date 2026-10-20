@@ -69,6 +69,9 @@ public class Gamemap
     internal static short EncodePlacement(PlacementTile tile) => (short)(Math.Clamp((int)Math.Round(tile.PlacementZ * 256), 0, 0x3fff)
         | (tile.CanStack ? 0 : 0x4000));
 
+    /// <summary>The height map value of a tile as the clients have it.</summary>
+    internal short ClientTileValue(int x, int y) => EncodePlacement(ResolvePlacement(x, y));
+
     public short[,] PlacementHeightMap()
     {
         lock (_placementLock) {

@@ -212,6 +212,7 @@ public sealed class BotSpeechHeadTurnTests
                     packet.ReadInt();
                     packet.ReadString();
                     var (head, body) = (packet.ReadInt(), packet.ReadInt());
+                    packet.ReadInt();
                     packet.ReadString();
 
                     if (id == unit.VirtualId) {

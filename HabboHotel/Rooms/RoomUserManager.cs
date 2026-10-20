@@ -927,6 +927,39 @@ public class RoomUserManager
             ExpireForwardArrivalEffects();
             _room.GetGameMap().Navigation!.Executor.Tick();
             _room.GetGameMap().Navigation!.TickMounts();
+            // After the actor tick, so a bot line said in this tick counts this tick.
+            ExpireHeadTurns();
+        }
+    }
+
+    internal void TurnHeadsToward(RoomUser speaker)
+    {
+        foreach (var user in GetUserList()) {
+            if (user is { IsBot: false }) {
+                user.LookToward(speaker);
+            }
+        }
+    }
+
+    private void ExpireHeadTurns()
+    {
+        foreach (var user in GetUserList()) {
+            if (user?.HeadTurn is not { } turn) {
+                continue;
+            }
+
+            if (turn.TicksLeft > 1) {
+                user.HeadTurn = (turn.TicksLeft - 1, turn.Head);
+
+                continue;
+            }
+
+            user.HeadTurn = null;
+
+            if (user.RotHead == turn.Head && user.RotHead != user.RotBody) {
+                user.RotHead = user.RotBody;
+                user.UpdateNeeded = true;
+            }
         }
     }
 

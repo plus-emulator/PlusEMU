@@ -30,6 +30,12 @@ public class RoomUser
     /// <summary>A user forwarded by Teleport to Room glows for TicksLeft more room ticks, then wears Restore again.</summary>
     internal (int TicksLeft, int Restore)? ForwardArrivalEffect { get; set; }
 
+    /// <summary>A head turned toward a speaking bot goes back to the body after TicksLeft more room ticks, if it is still Head.</summary>
+    internal (int TicksLeft, int Head)? HeadTurn { get; set; }
+
+    // The turn shows on the next status update and the head goes back 5000 ms after it.
+    internal static readonly int HeadTurnTicks = 1 + (int)(TimeSpan.FromSeconds(5) / RoomCycle.Interval);
+
     /// <summary>The look a football gate put on, kept only while the user's own look is still the one it was made from.</summary>
     public FootballGateOutfit? FootballGateOutfit { get; set; }
 
@@ -394,6 +400,35 @@ public class RoomUser
 
         room.SendChat(receiver => new ChatComposer(VirtualId, message, 0, style, receiver),
             user => user.GetClient()?.GetHabbo() is { } habbo && !(IsPet ? habbo.AllowPetSpeech : habbo.AllowBotSpeech));
+
+        if (!IsPet) {
+            room.GetRoomUserManager().TurnHeadsToward(this);
+        }
+    }
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610151745-318700621: a standing avatar turns its head one step toward a speaking bot that is at
+    /// most two steps from where its body faces, or straight to it when it is one step away.
+    /// </summary>
+    internal void LookToward(RoomUser speaker)
+    {
+        if (IsWalking || Statusses.ContainsKey("sit") || Statusses.ContainsKey("lay")) {
+            return;
+        }
+
+        var steps = (Rotation.Calculate(X, Y, speaker.X, speaker.Y) - RotBody + 12) % 8 - 4;
+
+        if (Math.Abs(steps) > 2) {
+            return;
+        }
+
+        var head = (RotBody + Math.Sign(steps) + 8) % 8;
+        HeadTurn = (HeadTurnTicks, head);
+
+        if (RotHead != head) {
+            RotHead = head;
+            UpdateNeeded = true;
+        }
     }
 
     public void HandleSpamTicks()

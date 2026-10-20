@@ -302,11 +302,13 @@ public static class WiredBotActions
                             }
 
                             context.Room.SendChat(receiver => new WiredChatComposer(bot.VirtualId, receiver, $"{username}: {formatted}", botData.ChatBubble, width, false, false, hideName));
+                            context.Room.GetRoomUserManager().TurnHeadsToward(bot);
                             changed = true;
                         }
                     }
                     else {
                         context.Room.SendChat(receiver => new WiredChatComposer(bot.VirtualId, receiver, formatted, botData.ChatBubble, width, false, p[0] == 1, hideName));
+                        context.Room.GetRoomUserManager().TurnHeadsToward(bot);
                         changed = true;
                     }
                 }

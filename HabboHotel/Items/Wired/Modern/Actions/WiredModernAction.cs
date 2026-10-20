@@ -490,26 +490,22 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         }
                     }
 
-                    // Observed on AIR WIN63-202610151745-318700621: a frozen user keeps the freeze effect when it joins or leaves a Wired
-                    // team, and unfreeze then shows the effect of its team at that time, or 0 without a team. Battle Banzai and Freeze game
-                    // teams are not observed while frozen, so they keep replacing the effect.
-                    var wiredTeam = name == "wf_act_join_team"
-                        ? Param(config, 0) == 0
-                        : WiredGameState.For(context.Room).ReadTeamType(context.Room, user) == 4;
+                    // Observed on AIR WIN63-202610151745-318700621: a frozen user keeps the freeze effect when it joins or leaves a Wired,
+                    // Battle Banzai or Freeze team, and unfreeze then shows the effect of its team at that time, or 0 without a team.
                     var frozen = WiredAvatarState.For(context.Room);
                     var moved = name == "wf_act_join_team"
                         ? WiredGameState.For(context.Room).Join(context.Room, user, Param(config, 0), (Team)Param(config, 1), Param(config, 3), context.Targets.AllUsers(),
                             (member, team, effect) => Deliver(() =>
                             {
                                 if (member.IsAttachedTo(context.Room) && member.Team == team
-                                    && !(wiredTeam && frozen.SetEffectAfterThaw(member, _ => effect))) {
+                                    && !frozen.SetEffectAfterThaw(member, _ => effect)) {
                                     member.ApplyEffect(effect);
                                 }
                             }))
                         : WiredGameState.For(context.Room).Leave(context.Room, user, (member, effect) => Deliver(() =>
                         {
                             if (!member.IsAttachedTo(context.Room) || member.Team != Team.None
-                                || wiredTeam && frozen.SetEffectAfterThaw(member, previous => previous == effect ? 0 : previous)) {
+                                || frozen.SetEffectAfterThaw(member, previous => previous == effect ? 0 : previous)) {
                                 return;
                             }
 

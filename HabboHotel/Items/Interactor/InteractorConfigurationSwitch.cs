@@ -3,30 +3,29 @@ using Plus.HabboHotel.GameClients;
 namespace Plus.HabboHotel.Items.Interactor;
 
 /// <summary>
-/// Room-wide configuration switches (Invisible Furni Controller, :chooser disabler): a rights holder or a wired toggle flips the
-/// state between "0" and "1", and every change re-announces the room's ConfigurationItemStates.
+/// Room-wide configuration switches (Invisible Furni Controller, :chooser disabler, hand item blocker, wired disabler): a rights holder
+/// or a wired toggle flips the state between "0" and "1". The first three are room flags, so every change re-announces the flags.
 /// </summary>
 public sealed class InteractorConfigurationSwitch : IFurniInteractor
 {
-    public void OnPlace(GameClient? session, Item item) => Announce(item);
+    public void OnPlace(GameClient? session, Item item)
+    {
+        // Observed on AIR WIN63-202610201032-107964540: placing the Invisible Furni Controller sends the flags; the other furni send nothing.
+        if (item.Definition.InteractionType == InteractionType.InvisibleFurniControl) {
+            Announce(item);
+        }
+    }
     public void OnRemove(GameClient? session, Item item)
     {
-        if (item.GetRoom() is not { } room) {
+        if (item.GetRoom() is not { } room || !ConfigurationItemStates.IsFlag(item.Definition.InteractionType)) {
             return;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a :chooser disabler taken up while on sends the flag still on, so the client
-        // keeps it until the next room entry; taken up while off it sends nothing.
-        if (item.Definition.InteractionType == InteractionType.ChooserDisabler) {
-            if (item.LegacyDataString == "1") {
-                ConfigurationItemStates.Announce(room);
-            }
-
-            return;
+        // Observed on AIR WIN63-202610201032-107964540: a flag furni taken up while on sends the flag still on, so the client keeps it
+        // until the next room entry; taken up while off it sends nothing.
+        if (item.LegacyDataString == "1") {
+            ConfigurationItemStates.Announce(room);
         }
-
-        // The switch is still listed while it is being taken out; leave it out of the answer.
-        ConfigurationItemStates.Announce(room, item);
     }
     public void OnTrigger(GameClient? session, Item item, int request, bool hasRights)
     {
@@ -39,7 +38,10 @@ public sealed class InteractorConfigurationSwitch : IFurniInteractor
     {
         item.LegacyDataString = item.LegacyDataString == "1" ? "0" : "1";
         item.UpdateState();
-        Announce(item);
+
+        if (ConfigurationItemStates.IsFlag(item.Definition.InteractionType)) {
+            Announce(item);
+        }
     }
     private static void Announce(Item item)
     {

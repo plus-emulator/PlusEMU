@@ -65,6 +65,21 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
             ReadVariable = variables.ReadOperand
         };
 
+    internal static WiredSelectorAvatar Avatar(RoomUser user, (int Action, int Parameter, long At)? action)
+    {
+        var name = user.IsBot ? user.BotData.Name : user.GetClient()?.GetHabbo()?.Username ?? "";
+        var equippedGroupId = user.IsBot ? 0 : user.GetClient()?.GetHabbo()?.HabboStats?.FavouriteGroupId ?? 0;
+        var tile = WiredRoomOperations.StandingTile(user);
+
+        return new WiredSelectorAvatar(user.VirtualId, name,
+            user.IsPet ? WiredSelectorEntityKind.Pet : user.IsBot ? WiredSelectorEntityKind.Bot : WiredSelectorEntityKind.Player,
+            tile.X, tile.Y, (int)user.Team, HandItem: user.CarryItemId,
+            Sitting: user.IsSitting || user.HasStatus("sit"), Lying: user.IsLying || user.HasStatus("lay"), Idle: user.IsAsleep,
+            Sign: user.Statusses.TryGetValue("sign", out var signText) && int.TryParse(signText, out var sign) ? sign : null,
+            Dance: user.DanceId, LastAction: action?.Action, LastActionParameter: action?.Parameter ?? 0,
+            LastActionAtMs: action?.At ?? 0, EquippedGroupId: equippedGroupId);
+    }
+
     private static WiredSelectorWorld CaptureWorld(WiredRuntimeContext context, WiredSelectorRoomState state,
         IGroupManager groupManager)
     {
@@ -89,21 +104,7 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
             item.Definition.PublicName, item.LegacyDataString, item.GetX, item.GetY, item.GetZ,
             item.TotalHeight - item.GetZ, item.GetAffectedTiles.Values.Select(t => (t.X, t.Y))
                 .Append((item.GetX, item.GetY)).Distinct().ToArray(), item.IsFloorItem, item.IsWired)).ToArray();
-        var avatars = users.Select(user =>
-        {
-            var action = state.Read(user);
-            var name = user.IsBot ? user.BotData.Name : user.GetClient()?.GetHabbo()?.Username ?? "";
-            var equippedGroupId = user.IsBot ? 0 : user.GetClient()?.GetHabbo()?.HabboStats?.FavouriteGroupId ?? 0;
-            var tile = WiredRoomOperations.StandingTile(user);
-
-            return new WiredSelectorAvatar(user.VirtualId, name,
-                user.IsPet ? WiredSelectorEntityKind.Pet : user.IsBot ? WiredSelectorEntityKind.Bot : WiredSelectorEntityKind.Player,
-                tile.X, tile.Y, (int)user.Team, HandItem: user.CarryItemId,
-                Sitting: user.IsSitting || user.HasStatus("sit"), Lying: user.IsLying || user.HasStatus("lay"), Idle: user.IsAsleep,
-                Sign: user.Statusses.TryGetValue("sign", out var signText) && int.TryParse(signText, out var sign) ? sign : null,
-                Dance: user.DanceId, LastAction: action?.Action, LastActionParameter: action?.Parameter ?? 0,
-                LastActionAtMs: action?.At ?? 0, EquippedGroupId: equippedGroupId);
-        }).ToArray();
+        var avatars = users.Select(user => Avatar(user, state.Read(user))).ToArray();
         var model = context.Room.GetGameMap().Model;
 
         var habbos = users.Where(user => !user.IsBot).ToDictionary(user => user.VirtualId, user => user.HabboId);

@@ -4,6 +4,7 @@ using Plus.HabboHotel.Items.Wired.Modern.Conditions;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.Games;
 using Plus.HabboHotel.Rooms.Instance;
 using Xunit;
 
@@ -85,6 +86,18 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(1320, timer.WiredTimer());
         timer.Now = first.AddMilliseconds(950);
         Assert.Equal(1, timer.WiredTimer());
+    }
+
+    [Fact]
+    public void AGameStopAfterAPendingResetTickKeepsTheGameStop()
+    {
+        var timer = new RoomTimerWorld();
+        var first = RoomLoadedAt.AddMinutes(11);
+        timer.Reset(first, monotonicMilliseconds: 10_150);
+        new GameManager(timer.Room, timer.Clock).StopGame(first.AddMilliseconds(600));
+
+        timer.Now = first.AddMilliseconds(1000);
+        Assert.Equal(0, timer.WiredTimer());
     }
 
     private sealed class RoomTimerWorld

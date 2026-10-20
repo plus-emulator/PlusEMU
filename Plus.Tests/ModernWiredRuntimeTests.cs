@@ -1445,6 +1445,34 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new HashSet<Point> { new(1, 0), new(0, 1) }, first);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621 (wf_act_chase.two_users_*): from (8,11) with users 2 west and 2 east the block went
+    // east 5 and west 5 times in 10; with users 2 north and 2 east it went east 5 and north 5 times. With users 2 west and 3 east it
+    // went west 10 times in 10.
+    [Theory]
+    [InlineData(6, 11, 10, 11)]
+    [InlineData(8, 9, 10, 11)]
+    public void ChasePicksAtRandomAmongUsersAtTheSameDistance(int firstX, int firstY, int secondX, int secondY)
+    {
+        var (room, _, _) = World();
+        var item = MakeItem(1, "test");
+        item.SetState(8, 11, 0);
+        var first = new RoomUser(1, 0, 7, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = firstX, Y = firstY };
+        var second = new RoomUser(2, 0, 8, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = secondX, Y = secondY };
+        var picked = Enumerable.Range(0, 32).Select(seed => WiredDirectionalActions.Nearest(item, [first, second], 3, new Random(seed))).ToHashSet();
+        Assert.Equal(new HashSet<RoomUser?> { first, second }, picked);
+    }
+
+    [Fact]
+    public void ChaseAlwaysPicksTheNearerUser()
+    {
+        var (room, _, _) = World();
+        var item = MakeItem(1, "test");
+        item.SetState(8, 11, 0);
+        var near = new RoomUser(1, 0, 7, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 6, Y = 11 };
+        var far = new RoomUser(2, 0, 8, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 11, Y = 11 };
+        Assert.All(Enumerable.Range(0, 32), seed => Assert.Same(near, WiredDirectionalActions.Nearest(item, [far, near], 3, new Random(seed))));
+    }
+
     [Fact]
     public void ChaseQueriesNearestWithinThreeAndOrdersLongAxisFirst()
     {

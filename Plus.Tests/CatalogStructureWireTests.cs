@@ -44,8 +44,22 @@ public class CatalogStructureWireTests
 
         new UserPerksComposer(false).Compose(packet);
 
-        Assert.Equal(14, packet.Writes[0]);
+        Assert.Equal(15, packet.Writes[0]);
         Assert.DoesNotContain("BUILDER_AT_WORK", packet.Writes);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void UserPerksCountEveryPerkAndOfferTheRoomThumbnailCameraWithTheCamera(bool cameraAllowed)
+    {
+        var packet = new HabbiconTestSupport.RecordingPacket();
+
+        new UserPerksComposer(cameraAllowed).Compose(packet);
+
+        var perks = packet.Writes.Skip(1).Chunk(3).ToArray();
+        Assert.Equal(perks.Length, packet.Writes[0]);
+        Assert.Equal(new object[] { "NAVIGATOR_ROOM_THUMBNAIL_CAMERA", "", cameraAllowed }, perks.Single(perk => (string)perk[0] == "NAVIGATOR_ROOM_THUMBNAIL_CAMERA"));
     }
 
     [Fact]

@@ -65,7 +65,8 @@ public sealed class WiredOctoberEditorTests
     [InlineData("wf_xtra_link_speaker", new[] { 1, 0 }, true)]
     [InlineData("wf_xtra_link_speaker", new[] { 1, 2 }, false)]
     [InlineData("wf_var_pointer", new[] { -20 }, true)]
-    [InlineData("wf_var_pointer", new[] { 2 }, false)]
+    // Observed on AIR WIN63-202610201032-107964540: a target the form does not offer saves and is stored as furni.
+    [InlineData("wf_var_pointer", new[] { 2 }, true)]
     public void IntFieldsFollowTheEditorRanges(string name, int[] ints, bool accepted) =>
         Assert.Equal(accepted, WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [.. ints] }));
 

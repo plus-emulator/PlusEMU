@@ -141,7 +141,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Empty(ObjectUpdates(frames));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (wf_act_adjust_clock): a Wired increase or decrease sends the new value in an
+    // Observed on AIR WIN63-202610151745-318700621: a Wired increase or decrease sends the new value in an
     // ObjectsDataUpdate, like a Wired set, and never a full object update.
     [Theory]
     [InlineData(0)]

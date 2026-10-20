@@ -12,7 +12,7 @@ public sealed partial class WiredGlideConveyorTests
 {
     private const uint SpeakerId = 1;
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_mv_collide): the moves of all Move/Rotate boxes of one firing go out in one
+    // Observed on AIR WIN63-202610151745-318700621: the moves of all Move/Rotate boxes of one firing go out in one
     // WiredMovements. Two boxes move two blocks into the same tile; the block that moves second still lands on top.
     [Fact]
     public void MoveRotateBoxesOfOneFiringShareOneWiredMovements()
@@ -39,7 +39,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal([(7, 12, 0.0), (7, 12, 1.0)], new[] { f.Items[80], f.Items[81] }.Select(item => (item.GetX, item.GetY, item.GetZ)).Order());
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_projectile_samedir, r97_projectile_turn): with the projectile add-on, one firing
+    // Observed on AIR WIN63-202610151745-318700621: with the projectile add-on, one firing
     // sends one WiredMovements with every flying furni, and the shooter's direction is the last entry of that packet.
     [Fact]
     public void ProjectileMovesAndTheShooterDirectionShareOneWiredMovements()

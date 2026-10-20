@@ -20,7 +20,7 @@ public class InteractorGenericSwitch(IQuestManager quests, IRewardTrackManager r
 
         quests.ProgressUserQuest(session, QuestType.FurniSwitch);
 
-        if (GateTransitionService.For(item) != null) {
+        if (GateTransitionService.IsGate(item) && GateTransitionService.For(item) != null) {
             ToggleSequenced(session, item, modes);
 
             return;

@@ -63,12 +63,14 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
     public bool HasRunning => _clocks.Values.Any(clock => clock.Running);
     /// <summary>A Wired game counter (wf_game_upcounter*) is counting: the room has a running game.</summary>
     public bool HasRunningGameCounter => _clocks.Values.Any(clock => clock.Running && clock.GameAware && !clock.Countdown);
-    public static bool Recognizes(Item item) => Name(item) is "wf_upcounter1" or "wf_upcounter2" or "wf_game_upcounter1" or "wf_game_upcounter2"
-        || IsGameTimer(item);
+    public static bool Recognizes(Item item) => IsWiredCounter(item.Definition) || IsGameTimer(item);
+    public static bool IsWiredCounter(ItemDefinition definition) => Name(definition) is "wf_upcounter1" or "wf_upcounter2" or "wf_game_upcounter1"
+        or "wf_game_upcounter2";
     public static bool IsGameTimer(Item item) => item.Definition.ItemName is "bb_counter" or "fball_counter" or "es_counter"
         || Name(item) == "game_timer" || item.Definition.InteractionType is InteractionType.Banzaicounter or InteractionType.Freezetimer
         || item.Definition.InteractionType == InteractionType.Counter && !Name(item).StartsWith("wf_", StringComparison.Ordinal);
-    private static string Name(Item item) => string.IsNullOrEmpty(item.Definition.InteractionName) ? item.Definition.ItemName : item.Definition.InteractionName;
+    private static string Name(Item item) => Name(item.Definition);
+    private static string Name(ItemDefinition definition) => string.IsNullOrEmpty(definition.InteractionName) ? definition.ItemName : definition.InteractionName;
     public bool Attach(Item item)
     {
         if (!Recognizes(item)) {

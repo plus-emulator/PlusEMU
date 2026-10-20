@@ -130,12 +130,24 @@ public static class WiredNativeEditorProjection
             return "wiredfurni.error.variable_leaderboard.invalid_configuration";
         }
 
+        // Observed on AIR WIN63-202610131318-860371703: Freeze User with effect 5 is refused with this key and no parameters.
+        if (descriptor.CanonicalName == "wf_act_freeze" && native.OwnedIntParams is [< 0 or > 4, _]) {
+            return "wiredfurni.error.invalid_freeze_effect";
+        }
+
         var allowed = Metadata(descriptor.CanonicalName).FurniAllowed;
 
         return native.FurniSourceTypes.Length == allowed.Length
             && native.FurniSourceTypes.Where((source, index) => !allowed[index].Contains(source)).Any()
             ? "wiredfurni.error.invalid_furni_source" : null;
     }
+
+    /// <summary>
+    /// A save the hotel drops without any reply: no error and no save success. Observed on AIR WIN63-202610151745-318700621:
+    /// Join Team with team 9.
+    /// </summary>
+    public static bool DroppedWithoutReply(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native) =>
+        descriptor.CanonicalName == "wf_act_join_team" && native.OwnedIntParams is [< 1 or > 4, _];
 
     /// <summary>
     /// The frame as the hotel sends it. move_rotate ends with a hotel-owned int that is 1 until the first save and 0 after it,

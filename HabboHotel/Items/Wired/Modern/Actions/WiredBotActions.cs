@@ -116,7 +116,8 @@ public static class WiredBotActions
 
         return fields.Count switch
         {
-            0 => "\t",
+            // Observed on AIR WIN63-202610131318-860371703: a fresh talk box has an empty text, not "\t".
+            0 => "",
             1 => "\t" + fields[0],
             _ => fields[0] + "\t" + string.Join('\t', fields.Skip(1))
         };
@@ -319,7 +320,8 @@ public static class WiredBotActions
     {
         var fields = part.Split('-');
 
-        return fields.Length >= 2 && fields[0].Length == 2 && fields[0].All(c => c is >= 'a' and <= 'z')
-            && fields.Skip(1).All(field => field.Length > 0 && field.All(c => c is >= '0' and <= '9'));
+        // A colour field may be empty ("hr-100-"). Observed on AIR WIN63-202610131318-860371703: Habbo saves it and drops the empty colour.
+        return fields.Length >= 2 && fields[0].Length == 2 && fields[0].All(c => c is >= 'a' and <= 'z') && fields[1].Length > 0
+            && fields.Skip(1).All(field => field.All(c => c is >= '0' and <= '9'));
     });
 }

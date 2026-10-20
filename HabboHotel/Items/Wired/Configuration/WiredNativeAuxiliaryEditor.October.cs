@@ -133,9 +133,15 @@ internal static partial class WiredNativeAuxiliaryEditor
         }));
 
         // class_3963.as (base of the share and import add-ons): [text connectors, subvariable creators, variable FX], each 0/1.
+        // Observed on AIR WIN63-202610201032-107964540: any non-zero flag is stored as 1, a missing flag stays on, a fourth int is dropped
+        // and a string is accepted and not kept.
         foreach (var name in new[] { "wf_xtra_var_share", "wf_xtra_var_import" }) {
-            yield return new(name, new(Meta(0, 0, [1, 1, 1]), n => Shape(n, 3, 0, 0, 0) && n.Text.Length == 0
-                && n.OwnedIntParams.All(flag => flag is 0 or 1) ? Draft(n, n.OwnedIntParams) : null));
+            yield return new(name, new(Meta(0, 0, [1, 1, 1]), n =>
+            {
+                var flags = Enumerable.Range(0, 3).Select(index => index < n.OwnedIntParams.Length ? (n.OwnedIntParams[index] != 0 ? 1 : 0) : 1).ToImmutableArray();
+
+                return n.FurniSourceTypes.Length == 0 && n.UserSourceTypes.Length == 0 && n.VariableIds.Length == 0 ? Draft(n, flags) : null;
+            }));
         }
 
         // VariableLeaderboardConfigCodec.as:182-222: 19 ints, 12 variable ids, 17 TAB-joined fields (empty while unpublished).

@@ -106,4 +106,24 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("message", notice.ReadString());
         Assert.Equal(TypeLimit, notice.ReadString());
     }
+
+    [Fact]
+    public void ASecondBuildersClubChooserDisablerForAVisitorGetsTheRightsErrorNotTheTypeLimit()
+    {
+        Viewer();
+        var (service, store, page) = BuildersClub();
+        page.Offers[BuildersClubOfferId].Product.Definition!.InteractionType = InteractionType.ChooserDisabler;
+        PlaceChooserDisabler(45, on: false);
+        _room.OwnerId = 99;
+        _room.OwnerName = "someone";
+
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 2, 1, 0, confirmed: true);
+
+        Assert.Empty(store.Created);
+        var notice = new FlashIncomingPacket { Buffer = Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.RoomNotificationComposer).Body };
+        Assert.Equal("furni_placement_error", notice.ReadString());
+        Assert.Equal(1, notice.ReadInt());
+        Assert.Equal("message", notice.ReadString());
+        Assert.Equal("${room.error.cant_set_item}", notice.ReadString());
+    }
 }

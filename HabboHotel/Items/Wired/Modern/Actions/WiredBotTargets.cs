@@ -9,11 +9,11 @@ public sealed class WiredBotTargets
 {
     private sealed class Target(Item? item, RoomUser? user)
     {
-        public Item? Item = item; public RoomUser? User = user; public bool Reached;
+        public Item? Item = item; public RoomUser? User = user;
         // A bot carrying a hand item to User (Bot Give Handitem), and when its step next to the user was announced.
         public int HandItem; public long? AnnouncedAt; public (int X, int Y)? Goal; public (int X, int Y)? LeftFrom;
-        // When a following bot reached its tile, on the room's Wired clock.
-        public long? ArrivedAt;
+        // A following bot rests from this time on the room's Wired clock; Arrived when the rest follows a stop on its tile.
+        public long? RestFrom; public bool Arrived;
     }
     /// <summary>
     /// Observed on AIR WIN63-202610151745-318700621: the user gets the item 300 ms after the bot's step next to them is announced.
@@ -31,12 +31,7 @@ public sealed class WiredBotTargets
     public static WiredBotTargets For(Room room) => Rooms.GetValue(room, _ => new());
     public bool HasTargets => _targets.Count != 0;
     public void Walk(RoomUser bot, Item item) => _targets[bot] = new(item, null);
-    // A bot told to follow a user it already stands next to has not reached anyone yet. Observed on AIR WIN63-202610151745-318700621
-    // (wf_trg_bot_reached_avtr.bot): with the bot adjacent to the owner, Follow Avatar fired no Bot Reached Avatar.
-    public void Follow(RoomUser bot, RoomUser user) => _targets[bot] = new(null, user)
-    {
-        Reached = Math.Max(Math.Abs(user.X - bot.X), Math.Abs(user.Y - bot.Y)) <= 1
-    };
+    public void Follow(RoomUser bot, RoomUser user) => _targets[bot] = new(null, user);
     /// <summary>
     /// Bot Give Handitem. Observed on AIR WIN63-202610151745-318700621: the bot takes the item at once; standing next to the user
     /// (diagonals count) it hands it over in the same instant, otherwise it walks to the user's nearest free neighbouring tile first.
@@ -131,14 +126,9 @@ public sealed class WiredBotTargets
                     continue;
                 }
 
-                var near = Math.Max(Math.Abs(user.X - bot.X), Math.Abs(user.Y - bot.Y)) <= 1;
-
-                if (near && !target.Reached) {
+                if (PollFollow(room, bot, user, target, now)) {
                     result.Add(new(WiredEventKind.BotReachedUser) { Actor = bot, TargetUser = user });
                 }
-
-                target.Reached = near;
-                PollFollow(room, bot, user, target, now);
             }
         }
 
@@ -147,28 +137,33 @@ public sealed class WiredBotTargets
 
     // Observed on AIR WIN63-202610151745-318700621: a following bot picks a random free tile among the 8 around the tile the user stands on
     // or steps onto. It walks all the way there, past other tiles next to the user and while the user moves on. Next to the user it
-    // does not move.
-    private void PollFollow(Room room, RoomUser bot, RoomUser user, Target target, long now)
+    // does not move. Bot Reached Avatar fires one room tick after the bot stops on its tile next to the user, and only then: a bot told
+    // to follow a user it already stands next to, or one the user walks up to, raises none.
+    // Returns whether the bot reached the user.
+    private bool PollFollow(Room room, RoomUser bot, RoomUser user, Target target, long now)
     {
         if (target.Goal is { } goal) {
             var arrived = !bot.SetStep && bot.X == goal.X && bot.Y == goal.Y;
 
             if (!arrived && IsMoving(bot)) {
-                return;
+                return false;
             }
 
             target.Goal = null;
-            target.ArrivedAt = arrived ? now : null;
+            target.Arrived = arrived;
+            target.RestFrom = now;
         }
 
-        if (target.ArrivedAt is { } at && now - at < FollowRestMilliseconds) {
-            return;
+        if (target.RestFrom is { } rest && now - rest < FollowRestMilliseconds) {
+            return false;
         }
 
+        var arrival = target.Arrived;
+        target.Arrived = false;
         var tile = WiredRoomOperations.StandingTile(user);
 
         if (Math.Max(Math.Abs(tile.X - bot.X), Math.Abs(tile.Y - bot.Y)) <= 1) {
-            return;
+            return arrival;
         }
 
         var map = room.GetGameMap();
@@ -178,12 +173,16 @@ public sealed class WiredBotTargets
             .ToArray();
 
         if (free.Length == 0) {
-            return;
+            target.RestFrom = now;
+
+            return false;
         }
 
         var pick = free[Random.Next(free.Length)];
         target.Goal = pick;
         bot.MoveTo(pick.X, pick.Y);
+
+        return false;
     }
 
     private void PollGive(Room room, RoomUser bot, RoomUser user, Target target, long now)

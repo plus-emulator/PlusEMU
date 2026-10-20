@@ -30,9 +30,11 @@ public class RoomUserManager
     public const int MaxStressBots = 2000;
     private readonly object _stressSync = new();
     private readonly Queue<(int Amount, int OwnerId, Action<string> Reply, Func<string, string>? Outfit)> _stressRequests = new();
-    private readonly ConcurrentQueue<(int X, int Y)> _headTurnRequests = new();
-    // Owned by the room tick: each turned head goes back to the body after TicksLeft more ticks, if it is still Head.
-    private readonly Dictionary<RoomUser, (int TicksLeft, int Head)> _headTurns = new();
+    private readonly ConcurrentQueue<(int X, int Y, RoomUser Speaker)> _headTurnRequests = new();
+    // Owned by the room tick: each turned head goes back to the body at ResetTick, if it is still Head.
+    private readonly List<(int X, int Y, RoomUser Speaker)> _headTurnBatch = [];
+    private readonly Dictionary<RoomUser, (long ResetTick, int Head)> _headTurns = new();
+    private long _headTurnTick;
     // The head goes back 5000 ms after the status update that showed the turn.
     private static readonly int HeadTurnTicks = (int)(TimeSpan.FromSeconds(5) / RoomCycle.Interval);
     private bool _disposed;
@@ -936,9 +938,9 @@ public class RoomUserManager
         }
     }
 
-    // A bot can speak from a packet thread or from inside the actor tick, so its line is queued and the room tick turns the heads
+    // A unit can speak from a packet thread or from inside the actor tick, so its line is queued and the room tick turns the heads
     // before the actors move. A line said during the tick then shows on the following status update, as on Habbo.
-    internal void TurnHeadsToward(RoomUser speaker) => _headTurnRequests.Enqueue((speaker.X, speaker.Y));
+    internal void TurnHeadsToward(RoomUser speaker) => _headTurnRequests.Enqueue((speaker.X, speaker.Y, speaker));
 
     internal void CycleHeadTurns()
     {
@@ -946,10 +948,10 @@ public class RoomUserManager
             return;
         }
 
-        foreach (var (user, turn) in _headTurns.ToList()) {
-            if (turn.TicksLeft > 1 && user.IsAttachedTo(_room)) {
-                _headTurns[user] = (turn.TicksLeft - 1, turn.Head);
+        _headTurnTick++;
 
+        foreach (var (user, turn) in _headTurns) {
+            if (turn.ResetTick > _headTurnTick && user.IsAttachedTo(_room)) {
                 continue;
             }
 
@@ -961,13 +963,28 @@ public class RoomUserManager
             }
         }
 
-        while (_headTurnRequests.TryDequeue(out var speaker)) {
-            foreach (var user in GetUserList()) {
-                if (user is { IsBot: false } && user.LookToward(speaker.X, speaker.Y) is { } head) {
-                    _headTurns[user] = (HeadTurnTicks, head);
+        while (_headTurnRequests.TryDequeue(out var request)) {
+            _headTurnBatch.Add(request);
+        }
+
+        if (_headTurnBatch.Count == 0) {
+            return;
+        }
+
+        // One pass over the room for every line said since the last tick; a later line wins.
+        foreach (var (_, user) in _users) {
+            if (user.IsBot) {
+                continue;
+            }
+
+            foreach (var (x, y, speaker) in _headTurnBatch) {
+                if (!ReferenceEquals(user, speaker) && user.LookToward(x, y) is { } head) {
+                    _headTurns[user] = (_headTurnTick + HeadTurnTicks, head);
                 }
             }
         }
+
+        _headTurnBatch.Clear();
     }
 
     private void ExpireForwardArrivalEffects()

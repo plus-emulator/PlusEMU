@@ -16,8 +16,16 @@ public static class ConfigurationItemStates
     public static bool ChooserDisabled(Room room, Item? except = null) => IsOn(room, InteractionType.ChooserDisabler, except);
     public static bool HandItemBlocked(Room room, Item? except = null) => IsOn(room, InteractionType.HandItemBlocker, except);
     public static bool WiredDisabled(Room room) => IsOn(room, InteractionType.WiredDisabler, null);
-    /// <summary>The time between two roller steps in the room, in milliseconds.</summary>
-    public static int RollerStepMilliseconds(Room room) => throw new NotImplementedException();
+    public const int DefaultRollerStepMilliseconds = 2000;
+    public static Item? RollerSpeedController(Room room) => room.GetRoomItemHandler()?.GetFloor
+        .FirstOrDefault(item => item.Definition.InteractionType == InteractionType.RollerSpeedController);
+    /// <summary>
+    /// The time between two roller steps in the room, in milliseconds. Observed on AIR WIN63-202610201032-107964540: a room without the
+    /// speed controller steps every 2000 ms. The controller has 12 states in four groups of three: 500, 1000, 1500 and 2000 ms.
+    /// </summary>
+    public static int RollerStepMilliseconds(Room room) => RollerSpeedController(room) is { } controller
+        ? (int.TryParse(controller.LegacyDataString, out var state) ? Math.Clamp(state, 0, 11) / 3 + 1 : 1) * 500
+        : DefaultRollerStepMilliseconds;
     public static ConfigurationItemStatesComposer Compose(Room room, Item? except = null) =>
         new(ChooserDisabled(room, except), InvisibleFurni(room, except), HandItemBlocked(room, except));
     /// <summary>Room entry: every entry carries the states, all off included.</summary>

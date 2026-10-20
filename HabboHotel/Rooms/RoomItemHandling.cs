@@ -195,7 +195,8 @@ public partial class RoomItemHandling
         _rewards = rewards;
         HopperCount = 0;
         GotRollers = false;
-        _mRollerSpeed = 4;
+        // Observed on AIR WIN63-202610201032-107964540: a room without a speed controller steps its rollers every 2000 ms, which is 4 room ticks.
+        _mRollerSpeed = 3;
         _mRollerCycle = 0;
         _movedItems = new();
         _rollers = new();
@@ -223,7 +224,9 @@ public partial class RoomItemHandling
     }
 
     /// <summary>The number of room ticks (500 ms each) between two roller steps.</summary>
-    public int RollerStepTicks => throw new NotImplementedException();
+    public int RollerStepTicks => ConfigurationItemStates.RollerSpeedController(_room) != null
+        ? ConfigurationItemStates.RollerStepMilliseconds(_room) / 500
+        : _mRollerSpeed + 1;
 
     public void SetSpeed(int p)
     {
@@ -585,18 +588,29 @@ public partial class RoomItemHandling
 
     private void CycleRollers()
     {
-        if (_rollers.IsEmpty) {
+        var controller = ConfigurationItemStates.RollerSpeedController(_room);
+
+        if (_rollers.IsEmpty && controller == null) {
             return;
         }
 
-        if (_mRollerCycle < _mRollerSpeed && _mRollerSpeed != 0) {
+        var speed = RollerStepTicks - 1;
+
+        if (_mRollerCycle < speed) {
             _mRollerCycle++;
 
             return;
         }
 
-        _room.GetGameMap().Navigation.Executor.Rollers.Run(_rollers.Values.ToList());
+        if (!_rollers.IsEmpty) {
+            _room.GetGameMap().Navigation.Executor.Rollers.Run(_rollers.Values.ToList());
+        }
+
         _mRollerCycle = 0;
+
+        if (controller != null) {
+            InteractorRollerSpeed.AnimateStep(_room, controller);
+        }
     }
 
     private void SaveFurniture()
@@ -1119,7 +1133,7 @@ public partial class RoomItemHandling
 
     public void OnCycle()
     {
-        if (GotRollers || !_rollers.IsEmpty) {
+        if (GotRollers || !_rollers.IsEmpty || ConfigurationItemStates.RollerSpeedController(_room) != null) {
             try {
                 CycleRollers();
             }

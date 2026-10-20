@@ -39,7 +39,9 @@ public sealed record WiredCounterChange(Item Item, WiredRuntimeEvent Event, bool
     WiredCounterPublication Publication = WiredCounterPublication.Object, bool ForceDisplay = false, string Text = "");
 
 /// <summary>Room-owned clock state. The room drains changes and publishes packets/events once.</summary>
-public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<Item, bool>? gameControl = null, int defaultGameSeconds = 30,
+/// <remarks>Observed on AIR WIN63-202610151745-318700621: a game counter started at 99:59.5 goes on to 6000, 6001 and 6002 seconds.
+/// No upper limit is visible, so the default limit only keeps the saved seconds inside an int.</remarks>
+public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 2L, Action<Item, bool>? gameControl = null, int defaultGameSeconds = 30,
     Action<WiredClockTransition>? observeTransition = null, Action<WiredClockTransition>? gameTransition = null,
     Func<Item, WiredClockOrigin, RoomUser?, bool>? canBegin = null)
 {

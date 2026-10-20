@@ -506,7 +506,9 @@ public partial class WiredComponent
             }
 
             if (change.Publication != WiredCounterPublication.Object && (change.DisplayChanged || change.ForceDisplay)) {
-                _room.SendObjectData(change.Item, change.Text, change.Publication == WiredCounterPublication.BatchData);
+                if (change.Publication != WiredCounterPublication.BatchData || !TryQueueBatchData(change.Item)) {
+                    _room.SendObjectData(change.Item, change.Text, change.Publication == WiredCounterPublication.BatchData);
+                }
             }
 
             if (change.Event.Kind == WiredEventKind.StateChanged

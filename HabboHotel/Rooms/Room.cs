@@ -512,6 +512,10 @@ public class Room
         }
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: an empty room was never unloaded after 32.45 seconds or less and always after
+    // 35.2 seconds or more. 66 cycles of 500 ms is 33 seconds.
+    private const int IdleCyclesBeforeUnload = 66;
+
     private bool KeepRoomActive()
     {
         if (GetRoomUserManager().GetRoomUsers().Count == 0) {
@@ -525,7 +529,7 @@ public class Room
             EndPromotion();
         }
 
-        if (IdleTime < 60 || HasActivePromotion) {
+        if (IdleTime < IdleCyclesBeforeUnload || HasActivePromotion) {
             return true;
         }
 
@@ -643,6 +647,9 @@ public class Room
             session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(settledUsers)));
         }
 
+        // Transparency and highlight shown to the whole room (class_3560 furni, class_3459 users), so late joiners see them too.
+        // Observed on AIR WIN63-202610201032-107964540: they come after the Users packet and before the floor items.
+        _wiredComponent?.SendVisualizationState(session);
         var snapshotFurniture = VisibleFloorItems.ToArray();
         var furnitureSnapshot = RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName);
         session.Send(new ObjectsComposer(furnitureSnapshot));

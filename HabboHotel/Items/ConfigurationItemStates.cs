@@ -1,4 +1,5 @@
 using Plus.Communication.Packets.Outgoing.Rooms.Furni;
+using Plus.Communication.Packets.Outgoing.Rooms.Notifications;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms;
 
@@ -21,6 +22,14 @@ public static class ConfigurationItemStates
         // Observed on AIR WIN63-202610151745-318700621: every room entry carries the states, all off included.
         session.Send(Compose(room));
     }
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a room holds one :chooser disabler. A second placement is refused with the
+    /// type limit text.
+    /// </summary>
+    public static bool TypeLimitReached(Room room, ItemDefinition definition) => definition.InteractionType == InteractionType.ChooserDisabler
+        && room.GetRoomItemHandler().GetFloor.Any(item => item.Definition.InteractionType == InteractionType.ChooserDisabler);
+    public static void SendTypeLimit(GameClient session) =>
+        session.Send(new RoomNotificationComposer("furni_placement_error", "message", "${room.error.type_limit}"));
     public static void Announce(Room room, Item? except = null) => room.SendPacket(Compose(room, except));
     private static bool IsOn(Room room, InteractionType type, Item? except) => room.GetRoomItemHandler().GetFloor.Any(item =>
         !ReferenceEquals(item, except) && item.Definition.InteractionType == type && item.LegacyDataString == "1");

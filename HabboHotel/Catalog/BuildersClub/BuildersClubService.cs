@@ -224,6 +224,12 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
             return null;
         }
 
+        if (ConfigurationItemStates.TypeLimitReached(room, definition)) {
+            ConfigurationItemStates.SendTypeLimit(session);
+
+            return null;
+        }
+
         var status = Status(habbo);
 
         if (!MayPlaceIn(room, session, status) || store.FurniCount(habbo.Id) >= status.FurniLimit ||

@@ -11,10 +11,22 @@ public sealed class InteractorConfigurationSwitch : IFurniInteractor
     public void OnPlace(GameClient? session, Item item) => Announce(item);
     public void OnRemove(GameClient? session, Item item)
     {
-        // The switch is still listed while it is being taken out; leave it out of the answer.
-        if (item.GetRoom() is { } room) {
-            ConfigurationItemStates.Announce(room, item);
+        if (item.GetRoom() is not { } room) {
+            return;
         }
+
+        // Observed on AIR WIN63-202610201032-107964540: a :chooser disabler taken up while on sends the flag still on, so the client
+        // keeps it until the next room entry; taken up while off it sends nothing.
+        if (item.Definition.InteractionType == InteractionType.ChooserDisabler) {
+            if (item.LegacyDataString == "1") {
+                ConfigurationItemStates.Announce(room);
+            }
+
+            return;
+        }
+
+        // The switch is still listed while it is being taken out; leave it out of the answer.
+        ConfigurationItemStates.Announce(room, item);
     }
     public void OnTrigger(GameClient? session, Item item, int request, bool hasRights)
     {

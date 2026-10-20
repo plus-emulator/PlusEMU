@@ -571,20 +571,21 @@ internal sealed partial class WiredStackEngine
         {
             context.VariableChanges = context.Policy.Addons.ExecuteInOrder ? null : new WiredVariableChangeBatch();
             firing.HasEffects = ready.Count > 0;
+            // The add-ons and the trigger flash before the actions run, so a flash an action sends early (before a movement) carries the
+            // whole stack. Observed on AIR WIN63-202610151745-318700621: a moving stack flashes trigger, mover and add-on in one batch.
             firing.Accepted = ScheduleActions(firing.Source, stack, ready.ToArray(), legacy,
                 action => action is IWiredConfiguredItem configured ? WiredConfigurationLimits.DelayMilliseconds(context.ConfigurationOf(configured).Delay) : GetDelay(action),
-                firing.FiredAt, prepared: true);
+                firing.FiredAt, prepared: true, accepted: () =>
+                {
+                    foreach (var addon in addons) {
+                        Flash(addon);
+                    }
 
-            if (firing.Accepted) {
-                foreach (var addon in addons) {
-                    Flash(addon);
-                }
-
-                // Observed r92g r92-signals call-w1/w2: a called stack flashes its actions, not its own trigger.
-                if (!called) {
-                    Flash(firing.Source);
-                }
-            }
+                    // Observed r92g r92-signals call-w1/w2: a called stack flashes its actions, not its own trigger.
+                    if (!called) {
+                        Flash(firing.Source);
+                    }
+                });
         }, CostsExecution: false, TransfersReservation: true);
     }
 

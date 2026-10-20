@@ -140,6 +140,7 @@
     "WiredRoomSettingsSaveEvent": 10023,
     "WiredGetRoomSettingsEvent": 3215,
     "WiredSetRoomSettingsEvent": 2035,
+    "WiredMenuPermissionsSaveEvent": 65465,
     "ClickFurniEvent": 1405,
     "ClickUserEvent": 10020,
     "WiredUserVariablesRequestEvent": 10024,

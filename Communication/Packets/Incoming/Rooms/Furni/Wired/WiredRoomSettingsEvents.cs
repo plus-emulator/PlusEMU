@@ -61,6 +61,28 @@ public sealed class WiredSetRoomSettingsEvent(IWiredRoomSettingsService settings
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
+        WiredRoomSettingsSaveFrame.Save(settings, room, session, packet, WiredRoomSettingsReply.Native);
+
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Volt's own settings save. It has the same fields as WiredSetRoomSettings but gets the custom settings frame back.</summary>
+public sealed class WiredMenuPermissionsSaveEvent(IWiredRoomSettingsService settings) : RoomPacketEvent
+{
+    public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
+    {
+        WiredRoomSettingsSaveFrame.Save(settings, room, session, packet, WiredRoomSettingsReply.Custom);
+
+        return Task.CompletedTask;
+    }
+}
+
+internal static class WiredRoomSettingsSaveFrame
+{
+    /// <summary>Reads modify mask, read mask and timezone; a short or longer frame is dropped.</summary>
+    public static void Save(IWiredRoomSettingsService settings, Room room, GameClient session, IIncomingPacket packet, WiredRoomSettingsReply reply)
+    {
         int modify, inspect;
         string timezone;
 
@@ -70,20 +92,13 @@ public sealed class WiredSetRoomSettingsEvent(IWiredRoomSettingsService settings
             timezone = packet.ReadString();
         }
         catch (ArgumentException) {
-            return Task.CompletedTask;
+            return;
         }
 
         if (packet.HasDataRemaining()) {
-            return Task.CompletedTask;
+            return;
         }
 
-        settings.Save(room, session, inspect, modify, timezone, WiredRoomSettingsReply.Native);
-
-        return Task.CompletedTask;
+        settings.Save(room, session, inspect, modify, timezone, reply);
     }
-}
-
-public sealed class WiredMenuPermissionsSaveEvent(IWiredRoomSettingsService settings) : RoomPacketEvent
-{
-    public override Task Parse(Room room, GameClient session, IIncomingPacket packet) => throw new NotImplementedException();
 }

@@ -7,6 +7,7 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 public static class WiredVariableDefinitions
 {
     internal const string InvalidReferenceKey = "wiredfurni.error.variables.reference.valid";
+    internal const string ReferenceExistsKey = "wiredfurni.error.variables.reference.already_exists";
     internal const string EchoSelfReferenceKey = "wiredfurni.error.echo.self_reference";
     public static bool Supports(string name) => name is "wf_var_user" or "wf_var_furni" or "wf_var_room"
         or "wf_var_context" or "wf_var_echo" or "wf_var_reference" or "wf_var_quest" or "wf_var_quest_chain"

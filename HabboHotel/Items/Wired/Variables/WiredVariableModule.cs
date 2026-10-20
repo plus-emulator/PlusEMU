@@ -834,6 +834,18 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         return true;
     }
 
+    /// <summary>
+    /// The key a proposed reference is refused with, or null. Observed on AIR WIN63-202610201032-107964540: a room holds one reference
+    /// to a shared variable, a second one is refused.
+    /// </summary>
+    public string? RefuseReference(WiredVariableDefinition proposed)
+    {
+        lock (_gate) {
+            return proposed.Link is { } link && directory.ListRoom(roomId).Any(other => other.ItemId != proposed.ItemId && other.Link is { } existing
+                && existing.SourceRoomId == link.SourceRoomId && existing.Source == link.Source) ? WiredVariableDefinitions.ReferenceExistsKey : null;
+        }
+    }
+
     private static bool IsUserPointer(WiredVariableDefinition? definition) => definition is { IsPointer: true, Target: WiredVariableTarget.User };
 
     /// <summary>

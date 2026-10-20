@@ -10,4 +10,7 @@ public sealed class WiredVariableEditor(WiredVariableModule variables)
 
     /// <summary>The refusal key for a pointer the room's variables do not allow, or null.</summary>
     public string? RefusePointer(WiredVariableDefinition proposed) => variables.RefusePointer(proposed);
+
+    /// <summary>The refusal key for a second reference to a shared variable a room already references, or null.</summary>
+    public string? RefuseReference(WiredVariableDefinition proposed) => variables.RefuseReference(proposed);
 }

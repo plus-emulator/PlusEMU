@@ -63,6 +63,12 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
             return false;
         }
 
+        if (definition is { Link: not null } && Descriptor.CanonicalName == "wf_var_reference" && _editor?.RefuseReference(definition) is { } duplicate) {
+            error = duplicate;
+
+            return false;
+        }
+
         // Observed r92g r92-echo-capture (AIR WIN63-202610131318-860371703, frame 50108): an echo of another echo is refused with
         // this key and no parameters.
         if (definition?.Link is { } link && Descriptor.CanonicalName == "wf_var_echo"

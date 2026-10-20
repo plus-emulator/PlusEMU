@@ -55,25 +55,6 @@ public sealed class DatabaseWiredVariableDirectory(IDatabase database) : IWiredV
 
         return shared;
     }
-    public IReadOnlyList<WiredVariableDefinition> ListRoom(uint roomId)
-    {
-        using var connection = database.Connection();
-        var rows = connection.Query<ListRow>("""
-            SELECT i.id AS ItemId,r.owner AS Owner,c.box_name AS BoxName,c.configuration AS Configuration
-            FROM items i JOIN rooms r ON r.id=i.room_id JOIN wired_item_configurations c ON c.item_id=i.id
-            WHERE i.room_id=@roomId AND c.box_name LIKE 'wf\\_var\\_%' LIMIT 2000
-            """, new { roomId });
-        var found = new List<WiredVariableDefinition>();
-
-        foreach (var row in rows) {
-            if (ParseOwner(row.Owner) is { } ownerId && WiredConfigurationStore.DecodeRow(row.ItemId, row.BoxName, row.Configuration) is { } config
-                && WiredVariableDefinitions.TryDecode(row.BoxName, row.ItemId, roomId, ownerId, config, out var definition, out _)) {
-                found.Add(definition!);
-            }
-        }
-
-        return found;
-    }
     // Plus stores numeric user IDs in this varchar column. Reject MySQL's loose numeric-prefix coercion.
     internal static uint? ParseOwner(string? owner) => uint.TryParse(owner, NumberStyles.None, CultureInfo.InvariantCulture, out var id) && id > 0 ? id : null;
     private sealed class SharedRow
@@ -81,13 +62,6 @@ public sealed class DatabaseWiredVariableDirectory(IDatabase database) : IWiredV
         public uint ItemId { get; set; }
         public uint RoomId { get; set; }
         public string RoomName { get; set; } = "";
-        public string BoxName { get; set; } = "";
-        public string Configuration { get; set; } = "";
-    }
-    private sealed class ListRow
-    {
-        public uint ItemId { get; set; }
-        public string Owner { get; set; } = "";
         public string BoxName { get; set; } = "";
         public string Configuration { get; set; } = "";
     }

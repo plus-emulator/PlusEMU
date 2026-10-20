@@ -112,7 +112,7 @@ public sealed class WiredDirectionalActions
     /// taken, it steps east, even towards the user. When east is taken it steps away from the nearest user on y (south when level),
     /// then the other way on y.
     /// Observed on AIR WIN63-202610151745-318700621 in a model_a room, 10 of 10 fires for each start: offsets (-3,0) and (0,-2) went
-    /// straight away; (-4,0), (0,-4), every diagonal offset, and (0,2) on the south edge went east; at the east wall (3,0) and (3,1)
+    /// straight away; (-4,0), (0,-4), every off-axis offset, and (0,2) on the south edge went east; at the east wall (3,0) and (3,1)
     /// went south and (3,-1) went north. Observed r92f r92-flee: (0,-3) against the north wall went east.
     /// </summary>
     public static IEnumerable<Point> FleeSteps(Item item, RoomUser? inLine, RoomUser nearest)

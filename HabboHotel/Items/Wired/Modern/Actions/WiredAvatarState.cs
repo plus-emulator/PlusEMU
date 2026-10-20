@@ -7,7 +7,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// <summary>Tracks only Wired-owned freeze state; room lifecycle must forget departing avatars.</summary>
 public sealed class WiredAvatarState
 {
-    // Previous: the avatar effect worn before the first freeze, put back by Thaw (hhus restores e.g. the Wired team effect).
+    // Previous: the avatar effect worn before the first freeze, or the team effect set by Join/Leave Team while frozen; Thaw puts it back (hhus restores e.g. the Wired team effect).
     private sealed record Freeze(bool Frozen, bool CanWalk, int Effect, bool CancelOnTeleport, int Previous);
     private readonly Dictionary<RoomUser, Freeze> _frozen = [];
     // Observed on AIR WIN63-202610151745-318700621: the freeze and unfreeze effects arrive with the next room tick (in the same batch as

@@ -51,6 +51,7 @@ public static class PermissionKeys
     public const string CommandFreeze = "command.freeze";
     public const string CommandGive = "command.give";
     public const string CommandGivebadge = "command.givebadge";
+    public const string CommandGivecollectible = "command.givecollectible";
     public const string CommandGiverole = "command.giverole";
     public const string CommandGoto = "command.goto";
     public const string CommandHa = "command.ha";

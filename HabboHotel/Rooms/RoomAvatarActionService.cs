@@ -5,7 +5,6 @@ using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Quests.DailyTasks;
 using Plus.HabboHotel.Permissions;
-using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Subscriptions;
 
 namespace Plus.HabboHotel.Rooms;
@@ -232,14 +231,9 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
         user.UnIdle();
 
-        if (x == user.X && y == user.Y || user.IsWalking || user.RidingHorse) {
-            return;
+        if (user.TurnToward(x, y)) {
+            room.IceTagLookTo(user, x, y);
         }
-
-        var rot = Rotation.Calculate(user.X, user.Y, x, y);
-        user.SetRot(rot, false);
-        user.UpdateNeeded = true;
-        room.IceTagLookTo(user, x, y);
     }
 
     public void SetTyping(GameClient session, bool typing)

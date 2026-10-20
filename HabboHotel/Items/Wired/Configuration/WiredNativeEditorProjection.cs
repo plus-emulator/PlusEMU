@@ -144,10 +144,15 @@ public static class WiredNativeEditorProjection
 
     /// <summary>
     /// A save the hotel drops without any reply: no error and no save success. Observed on AIR WIN63-202610131318-860371703:
-    /// Join Team with team 9.
+    /// Join Team with team 9, and Give Score To Team with team 9 (observed on AIR WIN63-202610151745-318700621).
     /// </summary>
     public static bool DroppedWithoutReply(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native) =>
-        descriptor.CanonicalName == "wf_act_join_team" && native.OwnedIntParams is [< 1 or > 4, _];
+        descriptor.CanonicalName switch
+        {
+            "wf_act_join_team" => native.OwnedIntParams is [< 1 or > 4, _],
+            "wf_act_give_score_tm" => native.OwnedIntParams is [_, _, < 1 or > 4],
+            _ => false
+        };
 
     /// <summary>
     /// The frame as the hotel sends it. move_rotate ends with a hotel-owned int that is 1 until the first save and 0 after it,
@@ -480,6 +485,13 @@ public static class WiredNativeEditorProjection
                 users["users"] = native.UserSourceTypes[0];
                 break;
             case "wf_act_give_score":
+                // Observed on AIR WIN63-202610151745-318700621: a per-game limit of 99 saves. The slider and the run time stop at 10,
+                // so a higher limit is stored as 10.
+                if (p.Length == 2 && p[1] > 10) {
+                    p = p.SetItem(1, 10);
+                    native = native with { OwnedIntParams = p };
+                }
+
                 // The slider runs 1 to 1000 and the radio flips the sign (GiveScore.as), so zero points cannot come from the editor.
                 if (p.Length != 2 || p[0] is < -1000 or > 1000 or 0 || p[1] is < 0 or > 10) {
                     return false;

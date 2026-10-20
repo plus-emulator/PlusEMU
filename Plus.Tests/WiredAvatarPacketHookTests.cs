@@ -54,6 +54,25 @@ public class WiredAvatarPacketHookTests
         Assert.Equal(new[] { RewardTrackActions.Wave, RewardTrackActions.Dance }, world.Rewards.Progresses);
     }
 
+    [Fact]
+    public void ExpressionsAndDancesKeepTheWornEffect()
+    {
+        var world = new World(1);
+        var effects = world.Client.GetHabbo().Effects;
+        effects.CurrentEffect = 223;
+
+        world.Actions.PerformAction(world.Room, world.Client, 1);
+        world.Actions.PerformAction(world.Room, world.Client, 2);
+        world.Actions.PerformAction(world.Room, world.Client, 3);
+        world.Actions.PerformAction(world.Room, world.Client, 5);
+        world.Actions.Dance(world.Room, world.Client, 1);
+        world.Actions.Dance(world.Room, world.Client, 0);
+
+        Assert.NotEmpty(world.SentPackets);
+        Assert.DoesNotContain(world.SentPackets, packet => Header(packet) == 4);
+        Assert.Equal(223, effects.CurrentEffect);
+    }
+
     [Theory]
     [InlineData(1, 1)]
     [InlineData(2, 2)]
@@ -295,6 +314,8 @@ public class WiredAvatarPacketHookTests
         Assert.Equal(new object[] { 7, true }, sleepFirst.Writes);
         Assert.Equal(sleepFirst.Writes, sleepSecond.Writes);
     }
+
+    private static int Header(byte[] packet) => packet[4] << 8 | packet[5];
 
     private static FlashIncomingPacket Packet(params int[] values)
     {

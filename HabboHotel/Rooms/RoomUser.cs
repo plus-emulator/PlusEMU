@@ -104,6 +104,8 @@ public class RoomUser
     public double? BuildHeight;
     public bool ShieldActive;
     public int ShieldCounter;
+    // The sign Wired still sees until SignExpiresAt; its "sign" status goes out in one status update only.
+    public int? HeldSign;
     public DateTimeOffset? SignExpiresAt;
     public bool SuperFastWalking = false;
     private sealed record TeamMembership(Team Value, long Revision);
@@ -706,6 +708,21 @@ public class RoomUser
     {
         SetStatus("wf");
         WiredMoveStatusSent = false;
+        UpdateNeeded = true;
+    }
+
+    /// <summary>
+    /// Set when the "sign" status has gone out once; the next status update clears it. Observed on AIR WIN63-202610151745-318700621:
+    /// the sign is in one status update and gone from the next one, about 500 ms later.
+    /// </summary>
+    internal bool SignStatusSent { get; set; }
+
+    internal void ShowSign(int signId, DateTimeOffset expiresAt)
+    {
+        SetStatus("sign", signId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        SignStatusSent = false;
+        HeldSign = signId;
+        SignExpiresAt = expiresAt;
         UpdateNeeded = true;
     }
 

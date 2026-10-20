@@ -60,7 +60,7 @@ public partial class PlacedFurniRoomTests
         Assert.Null(Read("@team.score"));
 
         avatar.DanceId = 1;
-        avatar.Statusses["sign"] = "5";
+        avatar.HeldSign = 5;
 
         Assert.Equal(1, Read("@dance")?.Value);
         Assert.Equal(5, Read("@sign")?.Value);

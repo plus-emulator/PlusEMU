@@ -857,12 +857,21 @@ public class RoomUserManager
 
             hasViewer |= !user.IsBot && user.GetClient() != null;
 
-            // A wired move's "wf" status lasts one status update.
+            // A wired move's "wf" status and a sign's "sign" status last one status update.
             if (user.WiredMoveStatusSent) {
                 user.WiredMoveStatusSent = false;
 
                 if (user.HasStatus("wf")) {
                     user.RemoveStatus("wf");
+                    user.UpdateNeeded = true;
+                }
+            }
+
+            if (user.SignStatusSent) {
+                user.SignStatusSent = false;
+
+                if (user.HasStatus("sign")) {
+                    user.RemoveStatus("sign");
                     user.UpdateNeeded = true;
                 }
             }
@@ -873,6 +882,7 @@ public class RoomUserManager
 
             user.UpdateNeeded = false;
             user.WiredMoveStatusSent = user.HasStatus("wf");
+            user.SignStatusSent = user.HasStatus("sign");
             users.Add(user);
         }
 
@@ -1335,8 +1345,12 @@ public class RoomUserManager
         }
 
         user.SignExpiresAt = null;
-        user.Statusses.Remove("sign");
-        user.UpdateNeeded = true;
+        user.HeldSign = null;
+
+        if (user.HasStatus("sign")) {
+            user.RemoveStatus("sign");
+            user.UpdateNeeded = true;
+        }
     }
 
     public ICollection<RoomUser> GetUserList() => _users.Values;

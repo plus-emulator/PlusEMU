@@ -269,9 +269,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
         var now = clock.GetUtcNow();
         user.UnIdle();
-        user.SetStatus("sign", Convert.ToString(signId));
-        user.UpdateNeeded = true;
-        user.SignExpiresAt = now + SignDuration;
+        user.ShowSign(signId, now + SignDuration);
         room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)
         { Actor = user, Action = (int)WiredAvatarAction.Sign, Code = signId });
         rewards.Progress(session, DailyTaskActions.ShowSign, 1, signId.ToString(System.Globalization.CultureInfo.InvariantCulture));

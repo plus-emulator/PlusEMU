@@ -101,6 +101,11 @@ public sealed partial class WiredRoomVariables
 
                 var level = associated.FirstOrDefault(box => box.Keys.Length != 0);
 
+                if (level is null && imported?.Level is { } importedLevel && WiredVariableLevelSystem.TryParse(importedLevel, out var importedSystem)) {
+                    level = new(owning, null, null, importedSystem, WiredVariableMetadataBox.LevelKeys,
+                        [.. Enumerable.Range(0, 8).Where(sub => (importedSystem!.SubvariableMask & (1 << sub)) != 0)]);
+                }
+
                 if (!context && level is not null) {
                     foreach (var sub in level.Subs) {
                         // Observed on AIR WIN63-202610151745-318700621: every part is interceptable, current_xp is writable (to the parent,

@@ -42,10 +42,12 @@ public sealed partial class WiredRoomVariables
     private WiredSharedAddons Publication(WiredVariableDefinition definition, WiredVariableMetadataBox share)
     {
         var connector = share.Category(0) ? MetadataOn(definition.ItemId, "wf_xtra_var_text_connector")?.TextConnector : null;
+        var level = share.Category(1) ? MetadataOn(definition.ItemId, "wf_xtra_var_lvlup_system")?.Configuration.Text : null;
 
         return new()
         {
-            TextConnector = [.. (connector ?? new Dictionary<int, string>()).OrderBy(pair => pair.Key).Select(pair => new KeyValuePair<int, string>(pair.Key, pair.Value))]
+            TextConnector = [.. (connector ?? new Dictionary<int, string>()).OrderBy(pair => pair.Key).Select(pair => new KeyValuePair<int, string>(pair.Key, pair.Value))],
+            Level = level
         };
     }
 
@@ -58,7 +60,23 @@ public sealed partial class WiredRoomVariables
         && SharedAddons.Load(reference.ItemId) is { } published
             ? published.Pick(import.Category(0), import.Category(1), import.Category(2)) : null;
 
+    private WiredVariableDefinition? ReferenceOf(uint definitionId) => _definitions.TryGetValue(definitionId, out var box) && box.HasPersistedConfiguration
+        && box.Descriptor.CanonicalName == "wf_var_reference" && IsAttached(box.Item)
+        && WiredVariableDefinitions.TryDecode("wf_var_reference", definitionId, _room.Id, _room.OwnerId > 0 ? (uint)_room.OwnerId : 0, box.Configuration, out var definition, out _)
+            ? definition : null;
+
     private IReadOnlyDictionary<int, string> TextConnectorOf(WiredVariableDefinition definition) =>
         MetadataOn(definition.ItemId, "wf_xtra_var_text_connector")?.TextConnector
         ?? (ImportedAddons(definition) is { TextConnector.IsEmpty: false } imported ? imported.TextConnector.ToDictionary() : new Dictionary<int, string>());
+
+    /// <summary>The level-up system that adds sub-variables to a variable: the one stacked with it, or one a reference imports.</summary>
+    private WiredVariableLevelSystem? LevelOf(uint definitionId)
+    {
+        if (DerivedMetadataOn(definitionId)?.LevelSystem is { } own) {
+            return own;
+        }
+
+        return ReferenceOf(definitionId) is { } reference && ImportedAddons(reference)?.Level is { } text
+            && WiredVariableLevelSystem.TryParse(text, out var imported) ? imported : null;
+    }
 }

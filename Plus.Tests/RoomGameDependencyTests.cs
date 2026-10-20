@@ -14,7 +14,7 @@ public partial class PlacedFurniRoomTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void IdleRoomUsesItsInjectedOwnerAtSixtyCycles(bool v2)
+    public void IdleRoomUsesItsInjectedOwnerAtSixtySixCycles(bool v2)
     {
         var unloaded = new List<uint>();
         Set("_rooms", TestRoomOwners.Create(unloaded.Add));
@@ -22,7 +22,8 @@ public partial class PlacedFurniRoomTests
         if (v2) {
         }
 
-        _room.IdleTime = 58;
+        // Observed on AIR WIN63-202610201032-107964540: an empty room stays loaded for at least 32.5 seconds and is gone after 35.
+        _room.IdleTime = 64;
         WithUnavailableRoomGame(() =>
         {
             _room.ProcessRoom();
@@ -30,7 +31,7 @@ public partial class PlacedFurniRoomTests
             _room.ProcessRoom();
         });
         Assert.Equal([RoomId], unloaded);
-        Assert.Equal(60, _room.IdleTime);
+        Assert.Equal(66, _room.IdleTime);
     }
 
     [Theory]
@@ -44,12 +45,12 @@ public partial class PlacedFurniRoomTests
         if (v2) {
         }
 
-        _room.IdleTime = 59;
+        _room.IdleTime = 65;
         var now = _interactionClock.GetUtcNow();
         _room.Promotion = new RoomPromotion("test", "", 1, now, now.AddHours(1), _interactionClock);
         WithUnavailableRoomGame(_room.ProcessRoom);
         Assert.Empty(unloaded);
-        Assert.Equal(60, _room.IdleTime);
+        Assert.Equal(66, _room.IdleTime);
     }
 
     [Fact]

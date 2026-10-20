@@ -75,7 +75,7 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
             user.IsPet ? WiredSelectorEntityKind.Pet : user.IsBot ? WiredSelectorEntityKind.Bot : WiredSelectorEntityKind.Player,
             tile.X, tile.Y, (int)user.Team, HandItem: user.CarryItemId,
             Sitting: user.IsSitting || user.HasStatus("sit"), Lying: user.IsLying || user.HasStatus("lay"), Idle: user.IsAsleep,
-            Sign: user.Statusses.TryGetValue("sign", out var signText) && int.TryParse(signText, out var sign) ? sign : null,
+            Sign: user.HeldSign,
             Dance: user.DanceId, LastAction: action?.Action, LastActionParameter: action?.Parameter ?? 0,
             LastActionAtMs: action?.At ?? 0, EquippedGroupId: equippedGroupId);
     }

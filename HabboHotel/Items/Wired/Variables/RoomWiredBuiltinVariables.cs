@@ -457,7 +457,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@dance" => avatar.DanceId > 0 ? avatar.DanceId : null,
             // Observed on AIR WIN63-202610151745-318700621: an avatar carrying nothing has no @handitem (a placeholder shows "null").
             "@handitem" => avatar.CarryItemId == 0 ? null : avatar.CarryItemId,
-            "@sign" => avatar.Statusses.TryGetValue("sign", out var sign) && int.TryParse(sign, NumberStyles.None, CultureInfo.InvariantCulture, out var signId) ? signId : null,
+            // Observed on AIR WIN63-202610151745-318700621: @sign keeps the sign for about 5 s, long after its status is gone.
+            "@sign" => avatar.HeldSign,
             "@effect" => habbo?.Effects?.CurrentEffect is > 0 and var effect ? effect : null,
             "@gender" => habbo is null ? -1 : habbo.Gender.Equals("M", StringComparison.OrdinalIgnoreCase) ? 0 : 1,
             "@achievement_score" => habbo?.HabboStats?.AchievementPoints,

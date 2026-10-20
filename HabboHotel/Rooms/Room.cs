@@ -644,6 +644,9 @@ public class Room
         var entrant = snapshotUsers.FirstOrDefault(user => !user.IsBot && ReferenceEquals(user.GetClient(), session));
         var present = snapshotUsers.Where(user => !ReferenceEquals(user, entrant)).ToArray();
         session.Send(new UsersComposer(_userSnapshots.Capture(present)));
+        // Observed on AIR WIN63-202610201032-107964540: the transparency and highlight state comes right after that Users packet,
+        // before the floor items.
+        GetWired()?.SendVisualizationState(session);
 
         foreach (var user in present) {
             SendUserExtras(session, user);

@@ -823,6 +823,33 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         return true;
     }
 
+    /// <summary>
+    /// The key a proposed pointer is refused with, or null when it may be saved. Observed on AIR WIN63-202610201032-107964540: the accessor
+    /// must be a context variable that holds a value (anything else, or nothing, is a missing variable), a pointer is never an accessor, and a
+    /// name is taken by another variable of the pointer's target or by its accessor.
+    /// </summary>
+    public string? RefusePointer(WiredVariableDefinition proposed)
+    {
+        lock (_gate) {
+            if (!TryDefinitionId(proposed.PointerAccessor ?? "", out var accessorId) || directory.Find(accessorId) is not { } accessor || accessor.RoomId != roomId) {
+                return WiredVariableDefinitions.MissingVariableKey;
+            }
+
+            if (accessor.IsPointer) {
+                return WiredVariableDefinitions.NeedsExecutionContextKey;
+            }
+
+            if (accessor.Target != WiredVariableTarget.Context || !accessor.HasValue) {
+                return WiredVariableDefinitions.MissingVariableKey;
+            }
+
+            var taken = accessor.Name == proposed.Name || directory.ListRoom(roomId).Any(other => other.ItemId != proposed.ItemId
+                && other.Target == proposed.Target && other.Name == proposed.Name);
+
+            return taken ? WiredVariableDefinitions.NameTakenKey : null;
+        }
+    }
+
     /// <summary>The shared variables this room's owner offers from their other rooms, in directory order.</summary>
     public IReadOnlyList<WiredSharedVariable> ListShared() => directory.GetRoomOwner(roomId) is { } owner ? directory.ListShared(owner, roomId) : [];
 

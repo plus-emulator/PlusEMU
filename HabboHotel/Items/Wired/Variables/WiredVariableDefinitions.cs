@@ -33,6 +33,12 @@ public static class WiredVariableDefinitions
         return true;
     }
 
+    internal const string NameLengthKey = "wiredfurni.error.variables.name_length";
+    internal const string NameSyntaxKey = "wiredfurni.error.variables.name_syntax";
+    internal const string NameTakenKey = "wiredfurni.error.variables.name_uniq";
+    internal const string MissingVariableKey = "wiredfurni.error.variables.missing_variable";
+    internal const string NeedsExecutionContextKey = "wiredfurni.error.variables.requires_execution_context";
+
     private static bool ValidName(string text) => text.Length is >= 1 and <= 40 && Regex.IsMatch(text, "^[A-Za-z0-9_]+$", RegexOptions.CultureInvariant);
 
     /// <summary>
@@ -60,6 +66,7 @@ public static class WiredVariableDefinitions
         bool hasValue;
         var initial = 0L;
         WiredVariableLink? link = null;
+        string? pointerAccessor = null;
 
         switch (name) {
             case "wf_var_user":
@@ -152,16 +159,30 @@ public static class WiredVariableDefinitions
                 break;
             case "wf_var_pointer":
                 // AirSourceOnly (PointerVariable.as): the variable lives on its source type (0 furni, 1 user, -10 global, -20 context);
-                // its accessor is a context variable with a value, or none yet.
+                // its accessor is a context variable with a value. A box saved without one still loads, it just resolves nothing.
                 if (ints.Length != 1 || configuration.VariableIds.Length != 1 || ints[0] is not (0 or 1 or -10 or -20)
-                    || !WiredVariableAbsent.Is(configuration.VariableIds[0])
-                    && !(WiredVariableDescription.TryParseCatalogId(configuration.VariableIds[0], out var accessor, out _) && accessor == WiredVariableTarget.Context)) {
+                    || !WiredVariableAbsent.Is(configuration.VariableIds[0]) && !WiredVariableDescription.TryParseCatalogId(configuration.VariableIds[0], out _, out _)) {
+                    return false;
+                }
+
+                // Observed on AIR WIN63-202610201032-107964540: a pointer name outside 1 to 40 characters, or with a character other
+                // than a letter, digit or underscore, is refused with these keys and no parameters.
+                if (text.Length is < 1 or > 40) {
+                    error = NameLengthKey;
+
+                    return false;
+                }
+
+                if (!ValidName(text)) {
+                    error = NameSyntaxKey;
+
                     return false;
                 }
 
                 target = ints[0] switch { 0 => WiredVariableTarget.Furni, 1 => WiredVariableTarget.User, -10 => WiredVariableTarget.Global, _ => WiredVariableTarget.Context };
                 availability = target == WiredVariableTarget.User ? WiredVariableAvailability.UserActive : WiredVariableAvailability.RoomActive;
                 hasValue = true;
+                pointerAccessor = WiredVariableAbsent.Is(configuration.VariableIds[0]) ? "" : WiredVariableDescription.TryParseCatalogId(configuration.VariableIds[0], out _, out var accessorToken) ? accessorToken : "";
                 break;
             default:
                 error = "This variable definition has no executable implementation.";
@@ -173,7 +194,7 @@ public static class WiredVariableDefinitions
             return false;
         }
 
-        definition = new(itemId, roomId, ownerId, text, target, availability, hasValue, initial, link);
+        definition = new(itemId, roomId, ownerId, text, target, availability, hasValue, initial, link, pointerAccessor);
         error = "";
 
         return true;

@@ -23,9 +23,11 @@ public sealed record WiredVariableLink(uint SourceRoomId, WiredVariableReference
 
 public sealed record WiredVariableDefinition(uint ItemId, uint RoomId, uint OwnerId, string Name,
     WiredVariableTarget Target, WiredVariableAvailability Availability, bool HasValue, long InitialValue = 0,
-    WiredVariableLink? Link = null)
+    WiredVariableLink? Link = null, string? PointerAccessor = null)
 {
     public string Token => $"custom:{ItemId}";
+    /// <summary>A pointer variable: the token of the context variable whose value names the variable it stands for.</summary>
+    public bool IsPointer => PointerAccessor is not null;
     public bool IsDurable => Availability is WiredVariableAvailability.Persistent or WiredVariableAvailability.Shared;
 }
 
@@ -37,6 +39,9 @@ public interface IWiredVariableDirectory
 
     /// <summary>Variables other rooms of this owner currently share; directories that cannot enumerate share nothing.</summary>
     IReadOnlyList<WiredSharedVariable> ListShared(uint ownerId, uint exceptRoomId) => [];
+
+    /// <summary>The variables defined in one room, for rules that compare names; directories that cannot enumerate list none.</summary>
+    IReadOnlyList<WiredVariableDefinition> ListRoom(uint roomId) => [];
 }
 
 public sealed record WiredSharedVariable(uint RoomId, string RoomName, WiredVariableDefinition Definition);

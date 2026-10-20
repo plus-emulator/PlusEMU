@@ -143,6 +143,16 @@ public static class WiredNativeEditorProjection
             return refusal;
         }
 
+        if (WiredFurniVisualRules.Applies(descriptor.CanonicalName)) {
+            if (!WiredFurniVisualRules.DelayAccepted(native.Delay)) {
+                return WiredFurniVisualRules.DelayKey;
+            }
+
+            if (WiredFurniVisualRules.UserSourceRefusal(native, Metadata(descriptor.CanonicalName)) is { } userSource) {
+                return userSource;
+            }
+        }
+
         var allowed = Metadata(descriptor.CanonicalName).FurniAllowed;
 
         return native.FurniSourceTypes.Length == allowed.Length
@@ -159,6 +169,8 @@ public static class WiredNativeEditorProjection
         {
             "wf_act_join_team" => native.OwnedIntParams is [< 1 or > 4, _],
             "wf_act_give_score_tm" => native.OwnedIntParams is [_, _, < 1 or > 4],
+            // Observed on AIR WIN63-202610201032-107964540: an unknown user source, or more than 20 picked furni.
+            WiredFurniVisualRules.Highlight or WiredFurniVisualRules.Visibility => WiredFurniVisualRules.DroppedWithoutReply(native),
             _ => false
         };
 
@@ -276,6 +288,20 @@ public static class WiredNativeEditorProjection
         }
 
         var metadata = Metadata(descriptor.CanonicalName);
+
+        // Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight and Set Furni Visibility keep the default for a user
+        // source slot that is left out, and refuse a third slot with its own key.
+        if (WiredFurniVisualRules.Applies(descriptor.CanonicalName) && native.UserSourceTypes.Length != metadata.UsersAllowed.Length) {
+            if (native.UserSourceTypes.Length > metadata.UsersAllowed.Length) {
+                error = WiredFurniVisualRules.UserSourceCountKey;
+
+                return false;
+            }
+
+            filled = native with { UserSourceTypes = [.. native.UserSourceTypes, .. metadata.UserDefaults.Skip(native.UserSourceTypes.Length)] };
+            native = filled;
+        }
+
         var slots = metadata.FurniAllowed.Length;
         var given = native.FurniSourceTypes.Length;
 

@@ -28,6 +28,19 @@ internal static class WiredFurniVisualRules
     // The strengths of each type: Outline, Soft glow, Darken, Color tint, Brighten and Neon aura.
     private static readonly int[][] Strengths = [[0, 100], [0, 100], [0], [0, 25, 50, 75, 100], [0, 38], [0, 100]];
 
+    /// <summary>Observed on AIR WIN63-202610201032-107964540: at most 120 pulses of delay and 20 picked furni.</summary>
+    public const int MaxDelayPulses = 120;
+    public const int MaxPicks = 20;
+    public const string DelayKey = "wiredfurni.error.invalid_delay";
+    public const string UserSourceKey = "wiredfurni.error.invalid_user_source";
+    public const string UserSourceCountKey = "wiredfurni.error.invalid_user_source_count";
+
+    private static readonly FrozenSet<int> KnownSources = new[]
+    {
+        WiredSources.Trigger, WiredSources.ReachedUser, WiredSources.ClickedUser, WiredSources.Selected, WiredSources.Snapshot,
+        WiredSources.Selector, WiredSources.Signal, WiredSources.AllRoom
+    }.ToFrozenSet();
+
     private const int ColourTint = 3;
     private const int Brighten = 4;
 
@@ -100,4 +113,15 @@ internal static class WiredFurniVisualRules
         name == Highlight && saved.IntParams is [_, ColourTint, _, _, 0, _, 0] && saved.FurniSources.GetValueOrDefault("items") == WiredSources.Selected
             && saved.SelectedItems.Any(id => !isBuildersClub(id))
             ? HighlightKeyPrefix + "normal_furni" : null;
+
+    public static bool DelayAccepted(int? delay) => delay is not { } pulses || pulses <= MaxDelayPulses && WiredConfigurationLimits.IsDelay(pulses);
+
+    /// <summary>A save the hotel drops without a reply: an unknown user source, or more than 20 picked furni.</summary>
+    public static bool DroppedWithoutReply(WiredNativeEditorConfiguration native) =>
+        native.UserSourceTypes.Any(source => !KnownSources.Contains(source)) || native.PrimaryItems.Distinct().Count() > MaxPicks;
+
+    /// <summary>The key for a user source slot list that does not fit the two slots, or a source the slot does not offer.</summary>
+    public static string? UserSourceRefusal(WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
+        native.UserSourceTypes.Length > metadata.UsersAllowed.Length ? UserSourceCountKey
+        : native.UserSourceTypes.Where((source, index) => !metadata.UsersAllowed[index].Contains(source)).Any() ? UserSourceKey : null;
 }

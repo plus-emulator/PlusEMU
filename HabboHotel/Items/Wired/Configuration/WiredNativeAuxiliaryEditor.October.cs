@@ -84,7 +84,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         {
             var p = n.OwnedIntParams;
 
-            return Shape(n, 5, 1, 2, 0) && n.Text.Length == 0 && WiredFurniVisualRules.VisibilityRefusal(p) is null
+            return Shape(n, 5, 1, 2, 0) && n.Text.Length == 0 && WiredFurniVisualRules.DelayAccepted(n.Delay) && WiredFurniVisualRules.VisibilityRefusal(p) is null
                 ? Roles(Draft(n, p), [("items", n.FurniSourceTypes[0])], [("audience", n.UserSourceTypes[0]), ("targets", n.UserSourceTypes[1])]) : null;
         }));
         // class_4214.as:112 [audience, type 0..5, strength, colour, animation 0/1, easing 0..4, target users]; the strengths and colours
@@ -96,7 +96,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         {
             var p = n.OwnedIntParams;
 
-            return Shape(n, 7, 1, 2, 0) && n.Text.Length == 0 && WiredFurniVisualRules.HighlightRefusal(p) is null
+            return Shape(n, 7, 1, 2, 0) && n.Text.Length == 0 && WiredFurniVisualRules.DelayAccepted(n.Delay) && WiredFurniVisualRules.HighlightRefusal(p) is null
                 ? Roles(Draft(n, p), [("items", n.FurniSourceTypes[0])], [("audience", n.UserSourceTypes[0]), ("targets", n.UserSourceTypes[1])]) : null;
         }));
         // SendLinkMessage.as:95 [source (0 the trigger's text, 1 custom)]; :100 the message, at most 1000 UTF-8 bytes (:105). Furni 0 picks the endpoints.

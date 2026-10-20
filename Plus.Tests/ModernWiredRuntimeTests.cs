@@ -49,14 +49,16 @@ public sealed class ModernWiredDatabaseCollection;
 public partial class ModernWiredRuntimeTests
 {
     private static WiredModernAction ActionBox(Room room, string name, WiredCounterController? clocks = null, WiredRoomLog? log = null,
-        TimeProvider? clock = null, IWiredRewardService? rewards = null, IItemDataManager? definitions = null, Action<WiredRuntimeEvent>? publish = null)
+        TimeProvider? clock = null, IWiredRewardService? rewards = null, IItemDataManager? definitions = null, Action<WiredRuntimeEvent>? publish = null,
+        Random? random = null)
     {
         var item = MakeItem(100, name);
         typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, room);
         item.RoomId = room.Id;
 
         return new(room, item, Descriptor(name), clocks ?? new(), publish ?? (_ => { }), (_, _, _) => { }, log ?? new(), TestLogging.Logger,
-            clock ?? TimeProvider.System, rewards ?? TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, definitions ?? TestWiredDefinitions.Unused, TestItemRuntime.Travel);
+            clock ?? TimeProvider.System, rewards ?? TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, definitions ?? TestWiredDefinitions.Unused, TestItemRuntime.Travel,
+            movementRandom: random);
     }
 
     [Fact]

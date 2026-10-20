@@ -88,6 +88,32 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal(new HashSet<int> { other.VirtualId }, context.Policy.Addons.Physics.ThroughUsers);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: with two users selected, the furni lands on whichever user was picked.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(17)]
+    public void FurniToUserLandsOnEitherSelectedUser(int seed)
+    {
+        var (room, map, items) = World();
+        using var ownerScope = RoomOwnerScope.Enter(room);
+        var mover = StackableMover(map, items);
+        var first = Avatar(room, 1, 4, 4);
+        var second = Avatar(room, 2, 2, 4);
+        Register(room, map, first);
+        Register(room, map, second);
+        var action = Box(room, "wf_act_furni_to_user", [100, WiredSources.Selector], [mover.Id], random: new Random(seed));
+        var landings = new HashSet<(int X, int Y)>();
+
+        for (var firing = 0; firing < 20; firing++) {
+            var context = Context(room, [mover], [first, second], first);
+            context.SelectorPool.UserIds.UnionWith([first.VirtualId, second.VirtualId]);
+            action.Execute(context);
+            landings.Add((mover.GetX, mover.GetY));
+        }
+
+        Assert.Equal(new[] { (2, 4), (4, 4) }, landings.Order());
+    }
+
     [Fact]
     public void OrdinaryMovementStillBlocksATileHoldingAUser()
     {
@@ -863,9 +889,9 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         return item;
     }
 
-    private static WiredModernAction Box(Room room, string name, int[] parameters, uint[] selected, Action<WiredRuntimeEvent>? publish = null, string text = "", WiredCounterController? clocks = null, uint[]? secondary = null)
+    private static WiredModernAction Box(Room room, string name, int[] parameters, uint[] selected, Action<WiredRuntimeEvent>? publish = null, string text = "", WiredCounterController? clocks = null, uint[]? secondary = null, Random? random = null)
     {
-        var action = CreateBox(room, name, publish, clocks: clocks);
+        var action = CreateBox(room, name, publish, clocks: clocks, random: random);
         var proposed = new WiredConfiguration { IntParams = [.. parameters], SelectedItems = [.. selected], SecondarySelectedItems = [.. secondary ?? []], Text = text };
 
         if (name is "wf_act_move_to_dir" or "wf_act_set_altitude" or "wf_act_move_furni_as_group"
@@ -881,7 +907,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     }
 
     private static WiredModernAction CreateBox(Room room, string name, Action<WiredRuntimeEvent>? publish = null,
-        WiredCounterController? clocks = null, IItemDataManager? definitions = null)
+        WiredCounterController? clocks = null, IItemDataManager? definitions = null, Random? random = null)
     {
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
 
@@ -891,7 +917,8 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
 
         return new(room, item, descriptor, clocks ?? new(), publish ?? (_ => { }),
             (_, _, _) => { }, new(), TestLogging.Logger, TimeProvider.System, TestWiredRewardService.Instance,
-            TestBotManagementStore.Instance, TestWiredClients.Empty, definitions ?? TestWiredDefinitions.Unused, TestItemRuntime.Travel);
+            TestBotManagementStore.Instance, TestWiredClients.Empty, definitions ?? TestWiredDefinitions.Unused, TestItemRuntime.Travel,
+            movementRandom: random);
     }
 
     private sealed class ItemDefinitions(ItemDefinition definition) : IItemDataManager

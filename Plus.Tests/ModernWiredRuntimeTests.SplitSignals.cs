@@ -52,4 +52,40 @@ public partial class ModernWiredRuntimeTests
             Assert.Equal(splitUsers ? 1 : userCount, signal.Selection.UserIds.Count);
         });
     }
+
+    // Observed on AIR WIN63-202610151745-318700621: with two users split into signals, the user whose signal runs last changes from
+    // firing to firing, whatever the order of the selectors.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(17)]
+    public void SplitUserSignalsGoOutInARandomOrderEachFiring(int seed)
+    {
+        var (room, _, items) = World();
+        var antenna = MakeItem(1, "antenna");
+        items[antenna.Id] = antenna;
+        var users = Enumerable.Range(0, 3).Select(i =>
+            new RoomUser(i + 1, 0, i + 7, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused)).ToArray();
+        var operations = new RecordingOperations();
+        var action = ActionBox(room, "wf_act_send_signal", random: new Random(seed));
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(action, new()
+        {
+            IntParams = [0, WiredSources.Selector, WiredSources.Selector, 0, 1, 0],
+            SelectedItems = [antenna.Id]
+        }, out var config, out var error), error);
+        action.ApplyConfiguration(config);
+        var orders = new HashSet<string>();
+
+        for (var firing = 0; firing < 20; firing++) {
+            operations.Signals.Clear();
+            var context = new WiredRuntimeContext(room, new(WiredEventKind.Use), new(() => items.Values.ToArray(), () => users), operations);
+            context.SelectorPool.UserIds.UnionWith(users.Select(user => user.VirtualId));
+
+            Assert.True(action.Execute(context));
+            var order = operations.Signals.Select(signal => Assert.Single(signal.Selection.UserIds)).ToArray();
+            Assert.Equal(users.Select(user => user.VirtualId).Order(), order.Order());
+            orders.Add(string.Join(",", order));
+        }
+
+        Assert.True(orders.Count > 1, "every firing sent the split signals in the same order");
+    }
 }

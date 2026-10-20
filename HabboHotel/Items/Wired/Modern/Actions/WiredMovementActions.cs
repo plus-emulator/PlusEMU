@@ -213,8 +213,10 @@ public sealed class WiredMovementActions(Random? random = null)
                     return false;
                 }
 
+                // Observed on AIR WIN63-202610151745-318700621: with two users selected, the furni went to a random one of them each firing.
                 foreach (var item in movers) {
-                    affected |= move(item, users[0].X, users[0].Y, item.Rotation, null);
+                    var user = users[_random.Next(users.Count)];
+                    affected |= move(item, user.X, user.Y, item.Rotation, null);
                 }
 
                 break;

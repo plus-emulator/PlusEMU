@@ -14,7 +14,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern;
 /// Unit: furniture moving along as one stack, which is not in the way of its own move.
 /// </summary>
 public sealed record WiredCollisionPolicy(IReadOnlySet<uint> ThroughFurni, IReadOnlySet<int> ThroughUsers,
-    IReadOnlySet<uint> BlockingFurni, bool Step = false, IReadOnlySet<uint>? Unit = null)
+    IReadOnlySet<uint> BlockingFurni, bool Step = false, IReadOnlySet<uint>? Unit = null, bool OntoDoor = false)
 {
     public bool MovesWith(Item item) => Unit?.Contains(item.Id) == true;
     public bool BlocksUsers(IEnumerable<RoomUser> users) => users.Any(user => !ThroughUsers.Contains(user.VirtualId));
@@ -151,7 +151,7 @@ public static class WiredRoomOperations
 
             var placement = map.ResolvePlacement(point.X, point.Y, item.Id, collision);
 
-            if (!magic && !placement.HasHelper && map.Model.SqState[point.X, point.Y] != SquareState.Open) {
+            if (!magic && !placement.HasHelper && map.Model.SqState[point.X, point.Y] != SquareState.Open && !map.IsWiredDoorLanding(point, collision)) {
                 return false;
             }
 

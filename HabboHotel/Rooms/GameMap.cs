@@ -54,11 +54,16 @@ public class Gamemap
         }
 
         var height = Math.Max(Model.SqFloorHeight[x, y], items.Select(item => item.TotalHeight).DefaultIfEmpty(0).Max());
-        var canStack = Model.SqState[x, y] != SquareState.Blocked
+        var canStack = (Model.SqState[x, y] != SquareState.Blocked || IsWiredDoorLanding(new(x, y), collision))
             && !items.Any(item => !item.Definition.Stackable && (collision == null || !collision.ThroughFurni.Contains(item.Id)));
 
         return new(height, canStack, false);
     }
+
+    // Observed on AIR WIN63-202610151745-318700621: Furni To User moves the furni onto a user on the door tile, even where the
+    // heightmap marks that tile 'x'. Other placement keeps the door tile closed.
+    internal bool IsWiredDoorLanding(Point point, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? collision) =>
+        collision?.OntoDoor == true && point.X == Model.DoorX && point.Y == Model.DoorY;
 
     internal static short EncodePlacement(PlacementTile tile) => (short)(Math.Clamp((int)Math.Round(tile.PlacementZ * 256), 0, 0x3fff)
         | (tile.CanStack ? 0 : 0x4000));

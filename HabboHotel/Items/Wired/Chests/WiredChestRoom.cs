@@ -4,6 +4,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Inventory.Furniture;
 
 namespace Plus.HabboHotel.Items.Wired.Chests;
@@ -21,6 +22,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
     public WiredChestSnapshot? Read(Item item) => item.IsTemporary || item.RoomId != room.Id
         || !ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item) ? null : store.Load(item);
     public WiredChestSnapshot[] Read(IEnumerable<Item> items) => items.Select(Read).OfType<WiredChestSnapshot>().ToArray();
+    public bool CannotTrade(Habbo habbo) => habbo.TradingLockExpiresAt is { } lockedUntil && lockedUntil > clock.GetUtcNow();
 
     public bool Start(GameClient client, uint sourceId, Item[] chests, WiredChestContract? contract, int mode = 0, int multiplier = 1, int timeout = 0)
     {
@@ -77,7 +79,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         // a user's own deposit needs every chest to take it.
         // Observed on AIR WIN63-202610131318-860371703: a deposit by a user who may not trade is refused with reason 8.
         var failure = contract != null ? usable.Length == 0 ? WiredChestFailure.NoOrLockedChests : (WiredChestFailure?)null
-            : habbo.TradingLockExpiresAt is { } lockedUntil && lockedUntil > clock.GetUtcNow() ? WiredChestFailure.UserCantTrade
+            : CannotTrade(habbo) ? WiredChestFailure.UserCantTrade
             : snapshots.Length != chests.Length || snapshots.Length == 0 ? WiredChestFailure.ChestNotInRoom
             : snapshots.Any(chest => !chest.CanDeposit((uint)habbo.Id, room.GetWired().Settings.CanModify(client))) ? WiredChestFailure.NoOrLockedChests
             : (WiredChestFailure?)null;

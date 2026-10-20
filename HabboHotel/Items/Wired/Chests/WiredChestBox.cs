@@ -267,6 +267,14 @@ public sealed class WiredChestAction(Room room, Item item, WiredBoxDescriptor de
             return false;
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: after the chest check, a user who may not trade gets reason 8,
+        // with no wired.error dialog and no Transaction Failed. The order against invalid settings is not proven on Habbo.
+        var traders = actors.Where(actor => !Chests.CannotTrade(actor.GetClient()!.GetHabbo())).ToArray();
+
+        foreach (var actor in actors.Except(traders)) {
+            Chests.Fail(actor, Item.Id, WiredChestFailure.UserCantTrade, fireTrigger: false);
+        }
+
         var amount = c.IntParams[0] == 1 ? snapshots.Sum(chest => (long)chest.Amount) : Operand(context, c, 1, 2, 3, 0, 1, 1);
 
         if (snapshots.Length == 0 || amount is null or <= 0 or > int.MaxValue || c.IntParams[0] == 1 && actors.Length > 1) {
@@ -275,7 +283,7 @@ public sealed class WiredChestAction(Room room, Item item, WiredBoxDescriptor de
 
         var gave = false;
 
-        foreach (var actor in actors) {
+        foreach (var actor in traders) {
             var current = Chests.Read(picked).Where(chest => chest.Kind == kind && chest.Usable).ToArray();
             var boundedTake = Math.Min(amount.Value, current.Sum(chest => (long)chest.Amount));
 

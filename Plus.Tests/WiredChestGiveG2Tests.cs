@@ -278,6 +278,81 @@ public sealed class WiredChestGiveG2Tests
         Assert.Equal(20, world.Store.Chests[FirstChest].Coins);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a give to a user who may not trade answers WiredTransactionFail reason 8,
+    // with no wired.error dialog and no Transaction Failed. A locked chest is checked first and answers reason 15.
+    [Theory]
+    [InlineData("wf_act_give_currency")]
+    [InlineData("wf_act_give_furni")]
+    public void GiveToATradeLockedUserFailsWithUserCantTradeAndGivesNothing(string name)
+    {
+        using var world = new Scene();
+        var box = world.GiveFromStockedChest(name);
+        world.Habbo.TradingLockExpiresAt = world.Inner.Clock.Now.AddMinutes(1);
+
+        Assert.False(box.Execute(world.Context()));
+        Assert.Empty(world.Store.Requests);
+        Assert.Equal(100, world.Habbo.Credits);
+        Assert.Empty(world.Store.Received);
+        var fail = Assert.Single(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionFailComposer);
+        Assert.Equal(new byte[] { 0, 0, 0, (byte)WiredChestFailure.UserCantTrade }, fail.Payload);
+        Assert.DoesNotContain(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.RoomNotificationComposer);
+        Assert.DoesNotContain(world.Inner.Events, e => e.Kind == WiredEventKind.TransactionFail);
+
+        // The give did not start the dialog cooldown: a locked chest failure right after still shows the dialog.
+        world.Store.Chests[FirstChest].Locked = true;
+        Assert.False(box.Execute(world.Context()));
+        var fails = world.Packets.Where(packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionFailComposer).ToArray();
+        Assert.Equal(new byte[] { 0, 0, 0, (byte)WiredChestFailure.NoOrLockedChests }, fails[^1].Payload);
+        Assert.Single(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.RoomNotificationComposer);
+    }
+
+    [Fact]
+    public void GiveChecksTheTradeLockOnlyForTheUserWhoHasIt()
+    {
+        using var world = new Scene();
+        var box = world.GiveFromStockedChest("wf_act_give_currency");
+        var second = world.AddUser(2, 8);
+        second.Habbo.TradingLockExpiresAt = world.Inner.Clock.Now.AddMinutes(1);
+
+        Assert.True(box.Execute(world.Context(world.Actor, second.Actor)));
+        Assert.Equal(105, world.Habbo.Credits);
+        Assert.Equal(100, second.Habbo.Credits);
+        Assert.Single(world.Store.Requests);
+        var fail = Assert.Single(second.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionFailComposer);
+        Assert.Equal(new byte[] { 0, 0, 0, (byte)WiredChestFailure.UserCantTrade }, fail.Payload);
+    }
+
+    [Fact]
+    public void GiveAllStillRefusesSeveralUsersWhenOneOfThemIsTradeLocked()
+    {
+        using var world = new Scene();
+        world.Coins(FirstChest, 20);
+        var box = world.Box("wf_act_give_currency", Currency(mode: 1, amount: 1, show: 0), [FirstChest]);
+        var second = world.AddUser(2, 8);
+        second.Habbo.TradingLockExpiresAt = world.Inner.Clock.Now.AddMinutes(1);
+
+        Assert.False(box.Execute(world.Context(world.Actor, second.Actor)));
+        Assert.Empty(world.Store.Requests);
+        Assert.Equal(20, world.Store.Chests[FirstChest].Coins);
+        Assert.Equal(100, world.Habbo.Credits);
+        Assert.Equal(100, second.Habbo.Credits);
+        Assert.DoesNotContain(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionFailComposer);
+        var fail = Assert.Single(second.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionFailComposer);
+        Assert.Equal(new byte[] { 0, 0, 0, (byte)WiredChestFailure.UserCantTrade }, fail.Payload);
+    }
+
+    [Fact]
+    public void GiveIgnoresATradeLockThatHasExpired()
+    {
+        using var world = new Scene();
+        var box = world.GiveFromStockedChest("wf_act_give_currency");
+        world.Habbo.TradingLockExpiresAt = world.Inner.Clock.Now;
+
+        Assert.True(box.Execute(world.Context()));
+        Assert.Equal(105, world.Habbo.Credits);
+        Assert.DoesNotContain(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionFailComposer);
+    }
+
     [Theory]
     [InlineData("wf_act_give_currency", new[] { 0, 1, 0, 1, 1, 11 }, true)]
     [InlineData("wf_act_give_currency", new[] { 0, 1, 0, 1, 1, 13 }, true)]
@@ -449,7 +524,6 @@ public sealed class WiredChestGiveG2Tests
         public Habbo Habbo => Inner.Habbo;
         public RoomUser Actor => Inner.Actor;
         public List<(uint Header, byte[] Payload)> Packets => Inner.Packets;
-        public readonly List<(Habbo Habbo, RoomUser Actor)> Others = [];
         private uint _nextItem = 1000;
 
         public Scene()
@@ -486,16 +560,15 @@ public sealed class WiredChestGiveG2Tests
             Store.Chests[id] = chest;
         }
 
-        public (Habbo Habbo, RoomUser Actor) AddUser(int id, int virtualId)
+        public (Habbo Habbo, RoomUser Actor, List<(uint Header, byte[] Payload)> Packets) AddUser(int id, int virtualId)
         {
             var habbo = new Habbo { Id = id, Credits = 100, CurrentRoom = Room, Inventory = new() { Furniture = new([], []) } };
-            var (client, _) = HabbiconTestSupport.Client(habbo);
+            var (client, packets) = HabbiconTestSupport.Client(habbo);
             habbo.Client = client;
             var actor = new RoomUser(id, 1, virtualId, Room, client, TestChatEmotions.Unused, TestRewardProgress.Unused);
             ((ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Room.GetRoomUserManager())!).TryAdd(virtualId, actor);
-            Others.Add((habbo, actor));
 
-            return (habbo, actor);
+            return (habbo, actor, packets);
         }
 
         public WiredNativeEditorConfiguration Native(string name, int[] owned, uint[] chests, string text)
@@ -518,6 +591,19 @@ public sealed class WiredChestGiveG2Tests
             WiredNativeTestSupport.Install(box, Native(name, owned, chests, text));
 
             return box;
+        }
+
+        public WiredChestAction GiveFromStockedChest(string name)
+        {
+            if (name == "wf_act_give_currency") {
+                Coins(FirstChest, 20);
+
+                return Box(name, Currency(0, 5, 0), [FirstChest]);
+            }
+
+            Furni(FirstChest, 2);
+
+            return Box(name, FurniGive(0, 1, order: 1), [FirstChest]);
         }
 
         public WiredRuntimeContext Context(params RoomUser[] actors) => ContextOf(actors.Length == 0 ? [Actor] : actors);

@@ -144,10 +144,15 @@ public static class WiredNativeEditorProjection
 
     /// <summary>
     /// A save the hotel drops without any reply: no error and no save success. Observed on AIR WIN63-202610131318-860371703:
-    /// Join Team with team 9.
+    /// Join Team with team 9, and Give Score To Team with team 9 (observed on AIR WIN63-202610151745-318700621).
     /// </summary>
     public static bool DroppedWithoutReply(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native) =>
-        descriptor.CanonicalName == "wf_act_join_team" && native.OwnedIntParams is [< 1 or > 4, _];
+        descriptor.CanonicalName switch
+        {
+            "wf_act_join_team" => native.OwnedIntParams is [< 1 or > 4, _],
+            "wf_act_give_score_tm" => native.OwnedIntParams is [_, _, < 1 or > 4],
+            _ => false
+        };
 
     /// <summary>
     /// The frame as the hotel sends it. move_rotate ends with a hotel-owned int that is 1 until the first save and 0 after it,
@@ -303,6 +308,13 @@ public static class WiredNativeEditorProjection
         // (-5 reads back 0, 500 reads back 64) instead of refusing the save.
         if (name is "wf_slc_furni_area" or "wf_slc_users_area" && native.OwnedIntParams.Length == 4) {
             native = native with { OwnedIntParams = [.. native.OwnedIntParams.Select(value => Math.Clamp(value, 0, MaxSelectorAreaCoordinate))] };
+        }
+
+        // Observed on AIR WIN63-202610151745-318700621: Give Score and Give Score To Team save a per-game limit above 10 and read it
+        // back as 10 ([5, 99] and [5, 11] read back [5, 10]; [5, 99, 1] reads back [5, 10, 1]). The Give Score editor never sends more
+        // than 10: its limit slider runs 1 to 11, and 11 means unlimited and is sent as 0 (GiveScore.as in AIR WIN63-202610131318-860371703).
+        if (name is "wf_act_give_score" or "wf_act_give_score_tm" && native.OwnedIntParams.Length >= 2 && native.OwnedIntParams[1] > 10) {
+            native = native with { OwnedIntParams = native.OwnedIntParams.SetItem(1, 10) };
         }
 
         // Observed on AIR WIN63-202610151745-318700621: a variable FX box reads back its stored form, not what the editor sent (a boss bar
@@ -480,7 +492,7 @@ public static class WiredNativeEditorProjection
                 users["users"] = native.UserSourceTypes[0];
                 break;
             case "wf_act_give_score":
-                // The slider runs 1 to 1000 and the radio flips the sign (GiveScore.as), so zero points cannot come from the editor.
+                // The points slider runs 1 to 1000 and the radio flips the sign (GiveScore.as), so zero points cannot come from the editor.
                 if (p.Length != 2 || p[0] is < -1000 or > 1000 or 0 || p[1] is < 0 or > 10) {
                     return false;
                 }

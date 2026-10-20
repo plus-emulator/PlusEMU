@@ -148,7 +148,8 @@ public sealed partial class WiredGlideConveyorTests
     [InlineData("wf_act_give_score", new[] { 0, 0 }, false)]
     [InlineData("wf_act_give_score", new[] { 1001, 0 }, false)]
     [InlineData("wf_act_give_score", new[] { -1001, 0 }, false)]
-    [InlineData("wf_act_give_score", new[] { 5, 11 }, false)]
+    // Observed on AIR WIN63-202610151745-318700621: a per-game limit above 10 saves and reads back as 10.
+    [InlineData("wf_act_give_score", new[] { 5, 11 }, true)]
     [InlineData("wf_act_give_score", new[] { 5, -1 }, false)]
     [InlineData("wf_act_give_score", new[] { 5 }, false)]
     [InlineData("wf_act_give_score_tm", new[] { 5, 0, 1 }, true)]
@@ -156,7 +157,8 @@ public sealed partial class WiredGlideConveyorTests
     [InlineData("wf_act_give_score_tm", new[] { 5, 0, 0 }, false)]
     [InlineData("wf_act_give_score_tm", new[] { 5, 0, 5 }, false)]
     [InlineData("wf_act_give_score_tm", new[] { 0, 0, 1 }, false)]
-    [InlineData("wf_act_give_score_tm", new[] { 5, 11, 1 }, false)]
+    // Observed on AIR WIN63-202610151745-318700621: a per-game limit above 10 saves and reads back as 10.
+    [InlineData("wf_act_give_score_tm", new[] { 5, 11, 1 }, true)]
     [InlineData("wf_act_give_score_tm", new[] { 5, 0 }, false)]
     [InlineData("wf_trg_score_achieved", new[] { 1, 0 }, true)]
     [InlineData("wf_trg_score_achieved", new[] { 1000, 4 }, true)]

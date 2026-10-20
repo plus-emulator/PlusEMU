@@ -57,6 +57,53 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(0, f.Habbo.Effects!.CurrentEffect);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a frozen user joining a Battle Banzai or Freeze game team, and leaving it, gets only
+    // YouArePlayingGame and keeps the freeze effect, like a Wired team.
+    [Theory]
+    [InlineData(4, 1)]
+    [InlineData(1, 2)]
+    public void JoinAndLeaveAGameTeamWhileFrozenKeepTheFreezeEffect(int team, int type)
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_kick_user", intParams: [], text: "");
+        GiveUserAccess(f);
+        f.User.ApplyEffect(0);
+        var sent = Capture(f.Client);
+
+        Run(f, "wf_act_freeze");
+        sent.Clear();
+
+        Run(f, "wf_act_join_team", [team, type]);
+        Assert.Equal([ServerPacketHeader.YouArePlayingGameComposer], sent.Select(packet => packet.Header));
+        Assert.True(Reply(sent, ServerPacketHeader.YouArePlayingGameComposer).Bool());
+        Assert.Equal((Team)team, f.User.Team);
+        Assert.Equal(218, f.Habbo.Effects!.CurrentEffect);
+
+        Run(f, "wf_act_leave_team");
+        Assert.Equal([ServerPacketHeader.YouArePlayingGameComposer], sent.Select(packet => packet.Header));
+        Assert.False(Reply(sent, ServerPacketHeader.YouArePlayingGameComposer).Bool());
+        Assert.Equal(218, f.Habbo.Effects!.CurrentEffect);
+
+        Run(f, "wf_act_unfreeze");
+        Assert.Equal(0, f.Habbo.Effects!.CurrentEffect);
+    }
+
+    [Theory]
+    [InlineData(4, 1, 36)]
+    [InlineData(1, 2, 40)]
+    public void UnfreezeShowsTheGameTeamJoinedWhileFrozen(int team, int type, int effect)
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_kick_user", intParams: [], text: "");
+        GiveUserAccess(f);
+        f.User.ApplyEffect(0);
+
+        Run(f, "wf_act_freeze");
+        Run(f, "wf_act_join_team", [team, type]);
+        Assert.Equal(218, f.Habbo.Effects!.CurrentEffect);
+
+        Run(f, "wf_act_unfreeze");
+        Assert.Equal(effect, f.Habbo.Effects!.CurrentEffect);
+    }
+
     private static void Run(TeleportFixture f, string name, int[]? ints = null)
     {
         var box = ActionBox(f.Room, name);

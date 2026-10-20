@@ -111,6 +111,9 @@ internal sealed partial class WiredStackEngine
     private bool AdvanceDispatchCore(PendingDispatch pending)
     {
         var queued = pending.IsQueued;
+        // Observed on AIR WIN63-202610151745-318700621: the stacks one event fires share one WiredMovements. The clock moves on while
+        // a stack runs, so every stack this call starts gets the same firing time, and with it the same publication deadline.
+        var firedAt = _now();
 
         if (pending.Signal == null && pending.CapturedPositions.Any(position => !IsAttached(position.Box)
             || (position.Box.Item.GetX, position.Box.Item.GetY, position.Box.Item.GetZ, position.Box.Item.MovementGeneration)
@@ -149,7 +152,7 @@ internal sealed partial class WiredStackEngine
                 pending.Root.Triggering = called.Selection.Copy();
                 pending.Root.Selected = pending.Root.Triggering.Copy();
                 pending.Root.ResumeImmediately = pending.ResumeImmediately;
-                pending.Current = BeginFiring(called.Source, pending.Root, false, called: true);
+                pending.Current = BeginFiring(called.Source, pending.Root, false, called: true, firedAt: firedAt);
             }
 
             if (!IsActorPresent(new([], pending.Depth, Runtime: pending.Root))) {
@@ -262,7 +265,7 @@ internal sealed partial class WiredStackEngine
                     }
                 }
 
-                pending.Current = BeginFiring(trigger, context, pending.Signal == null ? null : false, trigger: trigger);
+                pending.Current = BeginFiring(trigger, context, pending.Signal == null ? null : false, trigger: trigger, firedAt: firedAt);
             }
             else {
                 CompleteDispatchSlot(pending);
@@ -295,10 +298,10 @@ internal sealed partial class WiredStackEngine
     }
 
     private RuntimeFiring BeginFiring(IWiredItem source, WiredRuntimeContext context, bool? negative, object[][]? actors = null,
-        IWiredContextualTrigger? trigger = null, bool called = false)
+        IWiredContextualTrigger? trigger = null, bool called = false, long? firedAt = null)
     {
         context.Trigger ??= source;
-        var firing = new RuntimeFiring(source, GetStack(source), context, _now());
+        var firing = new RuntimeFiring(source, GetStack(source), context, firedAt ?? _now());
         context.Capture(firing.Stack);
         firing.Steps = EvaluateFiring(firing, negative, actors, trigger, called).GetEnumerator();
 

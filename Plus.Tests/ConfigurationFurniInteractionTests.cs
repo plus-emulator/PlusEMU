@@ -15,7 +15,7 @@ public sealed class ConfigurationFurniInteractionTests
     [Fact]
     public void TheMigrationOnlyRepairsDefaultRows()
     {
-        var sql = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/104_ConfigurationFurniInteractions.sql"));
+        var sql = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/105_ConfigurationFurniInteractions.sql"));
 
         foreach (var name in new[] { "conf_wired_disable", "conf_queue_speed", "conf_handitem_block" }) {
             Assert.Contains($"item_name = '{name}'", sql);

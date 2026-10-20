@@ -71,17 +71,18 @@ public partial class ModernWiredRuntimeTests
         WiredNativeTestSupport.InstallRuntime(action, WiredActionConfiguration.Defaults("wf_act_reset_timers"));
         var operations = new ResetOperations();
 
+        // At monotonic time 0 the next room tick, where the reset takes effect, is 500 ms later.
         Assert.True(action.Execute(new WiredRuntimeContext(room, new(WiredEventKind.Use), new(() => [], () => []), operations)));
-        Assert.Equal(instant, room.LastTimerResetAt);
         Assert.Equal(1, clock.Calls);
         Assert.Equal(1, operations.Resets);
+        var restartedAt = instant.AddMilliseconds(500);
 
-        AssertBoundary("wf_cnd_time_less_than", instant.AddMilliseconds(999).ToOffset(TimeSpan.FromHours(9)), true);
-        AssertBoundary("wf_cnd_time_less_than", instant.AddSeconds(1).ToOffset(TimeSpan.FromHours(9)), false);
-        AssertBoundary("wf_cnd_time_more_than", instant.AddSeconds(1).ToOffset(TimeSpan.FromHours(-7)), false);
-        AssertBoundary("wf_cnd_time_more_than", instant.AddMilliseconds(1001).ToOffset(TimeSpan.FromHours(-7)), false);
-        AssertBoundary("wf_cnd_time_more_than", instant.AddMilliseconds(1499).ToOffset(TimeSpan.FromHours(-7)), false);
-        AssertBoundary("wf_cnd_time_more_than", instant.AddMilliseconds(1500).ToOffset(TimeSpan.FromHours(-7)), true);
+        AssertBoundary("wf_cnd_time_less_than", restartedAt.AddMilliseconds(999).ToOffset(TimeSpan.FromHours(9)), true);
+        AssertBoundary("wf_cnd_time_less_than", restartedAt.AddSeconds(1).ToOffset(TimeSpan.FromHours(9)), false);
+        AssertBoundary("wf_cnd_time_more_than", restartedAt.AddSeconds(1).ToOffset(TimeSpan.FromHours(-7)), false);
+        AssertBoundary("wf_cnd_time_more_than", restartedAt.AddMilliseconds(1001).ToOffset(TimeSpan.FromHours(-7)), false);
+        AssertBoundary("wf_cnd_time_more_than", restartedAt.AddMilliseconds(1499).ToOffset(TimeSpan.FromHours(-7)), false);
+        AssertBoundary("wf_cnd_time_more_than", restartedAt.AddMilliseconds(1500).ToOffset(TimeSpan.FromHours(-7)), true);
 
         void AssertBoundary(string name, DateTimeOffset now, bool expected)
         {

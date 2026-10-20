@@ -240,11 +240,13 @@ public sealed class WiredMovementActions(Random? random = null)
 
                     if (snapshot == null) {
                         if (only != null && Param(0) == 1 && item.IsFloorItem) {
+                            var onlyState = only.StateFor(item.Definition);
+
                             if (toggleState != null) {
-                                affected |= toggleState(item, current => string.Equals(current, only.State, StringComparison.Ordinal) ? null : only.State);
+                                affected |= toggleState(item, current => string.Equals(current, onlyState, StringComparison.Ordinal) ? null : onlyState);
                             }
-                            else if (!string.Equals(item.LegacyDataString, only.State, StringComparison.Ordinal)) {
-                                setState(item, only.State);
+                            else if (!string.Equals(item.LegacyDataString, onlyState, StringComparison.Ordinal)) {
+                                setState(item, onlyState);
                                 affected = true;
                             }
                         }
@@ -266,12 +268,13 @@ public sealed class WiredMovementActions(Random? random = null)
 
                     // A dealt spot of another furni carries no state for this one.
                     var ownState = snapshot.ItemId == item.Id;
+                    var savedState = snapshot.StateFor(item.Definition);
 
                     if (Param(0) == 1 && ownState && toggleState != null) {
-                        affected |= toggleState(item, current => string.Equals(current, snapshot.State, StringComparison.Ordinal) ? null : snapshot.State);
+                        affected |= toggleState(item, current => string.Equals(current, savedState, StringComparison.Ordinal) ? null : savedState);
                     }
-                    else if (Param(0) == 1 && ownState && !string.Equals(item.LegacyDataString, snapshot.State, StringComparison.Ordinal)) {
-                        setState(item, snapshot.State);
+                    else if (Param(0) == 1 && ownState && !string.Equals(item.LegacyDataString, savedState, StringComparison.Ordinal)) {
+                        setState(item, savedState);
                         affected = true;
                     }
 

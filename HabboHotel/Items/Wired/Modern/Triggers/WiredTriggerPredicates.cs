@@ -63,7 +63,7 @@ public static class WiredTriggerPredicates
 
         var snapshot = config.Snapshots.FirstOrDefault(entry => entry.ItemId == eventItem.Id);
 
-        return snapshot != null && string.Equals(snapshot.State, eventItem.LegacyDataString ?? string.Empty,
+        return snapshot != null && string.Equals(snapshot.StateFor(eventItem.Definition), eventItem.LegacyDataString ?? string.Empty,
             StringComparison.Ordinal);
     }
 

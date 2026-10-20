@@ -49,7 +49,7 @@ public class ColourTileStateTests
         var placed = inventory.ToRoomObject(new Habbo { Id = 7, Username = "johndoe" });
 
         var legacy = Assert.IsType<LegacyDataFormat>(placed.ExtraData);
-        Assert.Equal("", legacy.Data);
+        Assert.Equal("0", legacy.Data);
         Assert.Equal(InteractionType.None, placed.Definition.InteractionType);
 
         var seen = new List<string>();

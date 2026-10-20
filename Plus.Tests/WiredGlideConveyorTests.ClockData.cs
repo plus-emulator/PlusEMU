@@ -141,10 +141,12 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Empty(ObjectUpdates(frames));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a Wired increase or decrease sends the new value in an
+    // ObjectsDataUpdate, like a Wired set, and never a full object update.
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    public void WiredIncreaseAndDecreaseKeepTheObjectUpdate(int operation)
+    public void WiredIncreaseAndDecreasePublishADataBatch(int operation)
     {
         var f = ClockFixture("wf_upcounter1", "wf_act_adjust_clock", [operation, 100, 0, 2]);
         var rider = f.Walker(1, 4, 10, 4, 11);
@@ -153,8 +155,11 @@ public sealed partial class WiredGlideConveyorTests
 
         f.Advance(250);
 
-        Assert.NotEmpty(ObjectUpdates(frames));
-        Assert.Empty(frames.Where(frame => frame.Header is ServerPacketHeader.ObjectDataUpdateComposer or ServerPacketHeader.ObjectsDataUpdateComposer));
+        var batches = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer).Select(ReadBatch).ToArray();
+        Assert.NotEmpty(batches);
+        Assert.Equal(operation == 0 ? "6" : "4", batches[0].Single(entry => entry.Id == CounterId).Text);
+        Assert.Empty(ObjectUpdates(frames));
+        Assert.Empty(frames.Where(frame => frame.Header == ServerPacketHeader.ObjectDataUpdateComposer));
     }
 
     [Fact]
@@ -328,10 +333,17 @@ public sealed partial class WiredGlideConveyorTests
         foreach (var change in new[]
         {
             Single(clocks, c => c.Adjust(item, 0, 0, 2)), Single(clocks, c => c.Adjust(item, 1, 0, 2)),
-            Single(clocks, c => c.Adjust(item, 2, 0, 2)), Single(clocks, c => c.SetPulseCount(item, 4)),
-            Single(clocks, c => c.Adjust(item, 0, 0, 2, WiredClockOrigin.ModernWired))
+            Single(clocks, c => c.Adjust(item, 2, 0, 2)), Single(clocks, c => c.SetPulseCount(item, 4))
         }) {
             Assert.Equal((WiredCounterPublication.Object, false), (change.Publication, change.ForceDisplay));
+        }
+
+        foreach (var change in new[]
+        {
+            Single(clocks, c => c.Adjust(item, 0, 0, 2, WiredClockOrigin.ModernWired)),
+            Single(clocks, c => c.Adjust(item, 1, 0, 4, WiredClockOrigin.ModernWired))
+        }) {
+            Assert.Equal((WiredCounterPublication.BatchData, false), (change.Publication, change.ForceDisplay));
         }
 
         // A Start right after an adjust keeps the value; the Start after a Stop restarts from zero.

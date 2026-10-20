@@ -100,7 +100,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return true;
         }
 
-        if (context.Policy.Addons.Projectile != null || context.Policy.Addons.DisableAnimation) {
+        if (context.Policy.Addons.DisableAnimation) {
             return false;
         }
 
@@ -115,6 +115,11 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
         // Observed on AIR WIN63-202610151745-318700621 (wf_act_furni_to_furni.spread): one firing's movers share one WiredMovements.
         else if (name == "wf_act_furni_to_furni") {
+            slot = "movers";
+        }
+        // Observed on AIR WIN63-202610151745-318700621: all Move/Rotate boxes of one firing, with or without the projectile add-on,
+        // share one WiredMovements.
+        else if (name == "wf_act_move_rotate") {
             slot = "movers";
         }
         // Observed on AIR WIN63-202610151745-318700621 (r97_group_furni_clk): a group's moves also go out in one WiredMovements.
@@ -737,8 +742,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 return changed;
             case "wf_act_adjust_clock":
                 foreach (var item in items) {
-                    changed |= _clocks.Adjust(item, Param(config, 0), Param(config, 2), Param(config, 3),
-                        Param(config, 0) == 2 ? WiredClockOrigin.ModernWired : WiredClockOrigin.Unknown);
+                    changed |= _clocks.Adjust(item, Param(config, 0), Param(config, 2), Param(config, 3), WiredClockOrigin.ModernWired);
                 }
 
                 return changed;

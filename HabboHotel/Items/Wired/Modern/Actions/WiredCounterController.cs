@@ -220,8 +220,8 @@ public sealed class WiredCounterController(int maxHalfSeconds = 11999, Action<It
         var previous = clock.Value;
         clock.Value = Math.Clamp(operation switch { 0 => previous + amount, 1 => previous - amount, _ => amount }, 0,
             clock.Countdown ? int.MaxValue * 2L : maxHalfSeconds);
-        var set = operation == 2 && origin == WiredClockOrigin.ModernWired;
-        PublishClock(clock, previous, set ? WiredCounterPublication.BatchData : WiredCounterPublication.Object, set);
+        // Observed on AIR WIN63-202610151745-318700621: a Wired increase, decrease or set sends the value as data in an ObjectsDataUpdate.
+        PublishClock(clock, previous, ModernBatch(origin), operation == 2 && origin == WiredClockOrigin.ModernWired);
 
         return true;
     }

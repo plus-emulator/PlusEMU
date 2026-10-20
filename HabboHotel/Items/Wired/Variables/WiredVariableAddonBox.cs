@@ -188,6 +188,12 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
         context.VariableFrame = WiredVariableRuntimeFrames.Create(context, context.VariableFrame);
         var frame = context.VariableFrame;
         var reference = new WiredVariableReference((WiredVariableTarget)p[0], variable);
+
+        // Observed on AIR WIN63-202610201032-107964540: a pointer that points at no user variable leaves its placeholder as written.
+        if (!_variables.PointerResolves(reference, frame)) {
+            return text;
+        }
+
         using var reads = _variables.CaptureReads([reference], frame);
         var labels = p[1] == 2 && WiredVariableModule.TryDefinitionId(variable, out var id) ? _textConnector(id) : null;
         // Observed on AIR WIN63-202610151745-318700621: a placeholder for is_maxed shows "null" also while the part exists.

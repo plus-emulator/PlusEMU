@@ -122,6 +122,11 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         else if (name == "wf_act_move_rotate") {
             slot = "movers";
         }
+        // Observed on AIR WIN63-202610151745-318700621: a receiver that fires twice in one tick sends one WiredMovements with one
+        // entry per furni, from its tile at the start of the tick to where it ends, also when it ends where it started.
+        else if (name == "wf_act_furni_to_user") {
+            slot = "movers";
+        }
         // Observed on AIR WIN63-202610151745-318700621 (r97_group_furni_clk): a group's moves also go out in one WiredMovements.
         else if (name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6) {
             slot = "movers";

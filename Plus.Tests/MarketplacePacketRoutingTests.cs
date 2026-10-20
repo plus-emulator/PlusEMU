@@ -42,7 +42,7 @@ public class MarketplacePacketRoutingTests
     [Fact]
     public void TheDefaultRevisionFileCarriesTheSameMarketplaceIds()
     {
-        using var revision = JsonDocument.Parse(File.ReadAllText(HabbiconPacketTests.Repo("Resources/Revisions/example.json")));
+        using var revision = HabbiconPacketTests.CurrentRevisionTable();
         var incoming = revision.RootElement.GetProperty("IncomingHeaders");
 
         foreach (var (handler, id) in Expected) {

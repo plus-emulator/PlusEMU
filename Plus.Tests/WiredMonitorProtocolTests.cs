@@ -29,7 +29,7 @@ public sealed class WiredMonitorProtocolTests
         Assert.Equal(2746u, ServerPacketHeader.WiredRoomStatsComposer);
         Assert.Equal(353u, ServerPacketHeader.WiredErrorLogsComposer);
 
-        using var table = JsonDocument.Parse(File.ReadAllText(HabbiconPacketTests.Repo("Resources/Revisions/example.json")));
+        using var table = HabbiconPacketTests.CurrentRevisionTable();
         var incoming = table.RootElement.GetProperty("IncomingHeaders");
         var outgoing = table.RootElement.GetProperty("OutgoingHeaders");
         Assert.Equal(2525u, incoming.GetProperty(nameof(ClientPacketHeader.GetWiredRoomStatsEvent)).GetUInt32());

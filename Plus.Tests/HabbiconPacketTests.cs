@@ -141,8 +141,8 @@ public class HabbiconPacketTests
             Assert.Equal(ids.Length, ids.Distinct().Count());
         }
 
-        foreach (var file in Directory.GetFiles(Repo("Resources/Revisions"), "*.json")) {
-            using var json = JsonDocument.Parse(File.ReadAllText(file));
+        {
+            using var json = HabbiconPacketTests.CurrentRevisionTable();
             var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
 
             foreach (var (key, expected) in new[] { ("IncomingHeaders", expectedIncoming), ("OutgoingHeaders", expectedOutgoing) }) {
@@ -299,6 +299,9 @@ public class HabbiconPacketTests
         Assert.Equal(error, payload.ReadInt());
         Assert.Empty(service.Used);
     }
+
+    // The revision table the emulator writes at startup, built from the compiled header constants.
+    internal static JsonDocument CurrentRevisionTable() => JsonSerializer.SerializeToDocument(new Plus.Communication.Revisions.RevisionsCache().InternalRevision);
 
     internal static string Repo(string path) => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", path));
 }

@@ -4,31 +4,34 @@
 Header ids are reshuffled by Habbo on every AIR build, and the opaque class names are renumbered,
 so neither carries over on its own. This tool maps every header constant through its AIR identity:
 
-    our id -> class in the current build (habbo-intelligence index)
-           -> same class in the identity map's source build (only when both builds register the
-              same direction/class/path set, i.e. the class names are identical)
-           -> identity map pair -> class in the target build
-           -> header id of that class in the target build (habbo-intelligence index)
+    our id -> same id in the identity map (old build -> new build, matched by class body)
+           -> header id of the paired class in the target build (habbo-intelligence index)
+
+The identity map is generated data and is never committed. By default it is read from
+$HABBO_IDENTITY or ~/dev/habbo-intelligence/identity/<from>__<to>.json, which the habbo-intelligence
+update step writes before it removes the old build from the index. If that file is missing and both builds
+are still indexed, the map is computed with `habbo-pair diff <from> <to> --json --full`.
 
 Ids the current build does not register (custom ranges, 65000+ placeholders, -1 unsupported) are
 left alone, but the run fails if one of them is an official id of the target build. A constant whose
 class is unmatched or in an unresolved tie of the identity map also fails the run.
 
 Inputs
-  --index DIR   habbo-intelligence index (default $HABBO_INDEX or ~/dev/habbo-intelligence/index).
-                Each build directory has messages.jsonl and manifest.json.
-  --map FILE    identity map JSON: {"schema": 1, "fromBuild", "toBuild",
-                "pairs": [{"direction", "fromHeader", "fromClass", "toHeader", "toClass", ...}],
-                "unresolved": [{"direction", "fromCandidates": [[id, class], ...], ...}]}.
-                Directions are the AIR client's: incoming = server to client.
-  --to BUILD    target build (default: the map's toBuild).
-  --from BUILD  current build (default: read from the repository, see TARGETS).
+  --index DIR     habbo-intelligence index (default $HABBO_INDEX or ~/dev/habbo-intelligence/index).
+                  Only the target build must be indexed (messages.jsonl and manifest.json).
+  --identity DIR  folder of identity maps (default $HABBO_IDENTITY or ~/dev/habbo-intelligence/identity)
+  --map FILE      identity map JSON, used instead of the folder lookup: {"schema": 1, "fromBuild", "toBuild",
+                  "pairs": [{"direction", "fromHeader", "fromClass", "toHeader", "toClass", ...}],
+                  "unresolved": [{"direction", "fromCandidates": [[id, class], ...], ...}]}.
+                  Directions are the AIR client's: incoming = server to client.
+  --to BUILD      target build (default: the map's toBuild, else the newest WIN63 build in the index).
+  --from BUILD    current build (default: read from the repository, see TARGETS).
 
-  --check       exit 1 if the repository is not on --to (no writes)
-  --dry-run     print what would change
+  --check         exit 1 if the repository is not on --to (no writes)
+  --dry-run       print what would change
 
 Usage (repository root):
-  python3 tools/protocol/sync_air_headers.py --map tools/protocol/air-identity/<from>__<to>.json
+  python3 tools/protocol/sync_air_headers.py
 """
 from __future__ import annotations
 
@@ -37,6 +40,8 @@ import hashlib
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -72,58 +77,86 @@ class Build:
             self.by_header[key] = row
             self.by_class[(row['direction'], row['class_name'])] = row
 
-    def signature(self) -> set:
-        return {(d, c, tuple(r['class_paths'])) for (d, c), r in self.by_class.items()}
+
+def newest_build(index: Path) -> str:
+    builds = sorted(p.name for p in index.glob('WIN63-*') if (p / 'messages.jsonl').is_file())
+    if not builds:
+        sys.exit(f'no WIN63 build in the habbo-intelligence index at {index}')
+    return builds[-1]
+
+
+def compute_identity(index: Path, current: str, target: str) -> dict:
+    """The identity map from `habbo-pair diff`, for when both builds are still indexed."""
+    tool = shutil.which('habbo-pair') or str(Path('~/dev/habbo-intelligence/pair/target/release/habbo-pair').expanduser())
+    result = subprocess.run([tool, '--index', str(index), 'diff', current, target, '--json', '--full'],
+                            capture_output=True, text=True)
+    if result.returncode != 0:
+        sys.exit(f'no identity map {current}__{target}.json and habbo-pair diff failed:\n{result.stderr.strip()}')
+    diff = json.loads(result.stdout)
+    if diff['fuzzy']:
+        sys.exit(f'habbo-pair diff {current} {target} has {len(diff["fuzzy"])} fuzzy matches; '
+                 f'review them and write the identity map by hand')
+    return {
+        'schema': 1, 'fromBuild': current, 'toBuild': target,
+        'source': 'habbo-pair diff',
+        'pairs': [{'direction': p['dir'], 'fromHeader': p['old_header'], 'fromClass': p['old_class'],
+                   'toHeader': p['new_header'], 'toClass': p['new_class'], 'evidence': p['how']}
+                  for p in diff['pairs']],
+        'unresolved': [],
+    }
+
+
+def load_identity(args, current: str, target: str) -> tuple[dict, bytes]:
+    """The identity map for current -> target and its bytes (for the manifest audit hash)."""
+    path = args.map or args.identity / f'{current}__{target}.json'
+    if path.is_file():
+        raw = path.read_bytes()
+        identity = json.loads(raw)
+    elif args.map:
+        sys.exit(f'{path}: not found')
+    else:
+        identity = compute_identity(args.index, current, target)
+        raw = (json.dumps(identity, indent=1, sort_keys=True) + '\n').encode()
+    if identity['fromBuild'] != current or identity['toBuild'] != target:
+        sys.exit(f'identity map goes {identity["fromBuild"]} -> {identity["toBuild"]}, '
+                 f'need {current} -> {target}')
+    return identity, raw
 
 
 class Resolver:
     """Maps (direction, id in the current build) to the id in the target build."""
 
     def __init__(self, index: Path, current: str, identity: dict, target: str):
-        self.current = Build(index, current)
+        self.current_id = current
         self.target = Build(index, target)
-        if identity['toBuild'] != target:
-            sys.exit(f'identity map goes to {identity["toBuild"]}, not {target}')
-        source = identity['fromBuild']
-        if source != current:
-            # Only bridge builds whose message classes are the same names at the same paths.
-            if Build(index, source).signature() != self.current.signature():
-                sys.exit(f'{current} and {source} do not register the same message classes; '
-                         f'need an identity map from {current}')
         self.pairs = {}
+        self.by_header = {}
         for p in identity['pairs']:
             t = self.target.by_class.get((p['direction'], p['toClass']))
             if t is None or t['header'] != p['toHeader']:
                 sys.exit(f'identity map pair {p} does not match the {target} index')
             self.pairs[(p['direction'], p['fromClass'])] = p
-        self.unresolved = {(u['direction'], cls): u for u in identity.get('unresolved', [])
-                           for _, cls in u['fromCandidates']}
-
-    def official(self, direction: str, header: int) -> dict | None:
-        return self.current.by_header.get((direction, header))
+            self.by_header[(p['direction'], p['fromHeader'])] = p
+        self.unresolved = {(u['direction'], header): u for u in identity.get('unresolved', [])
+                           for header, _ in u['fromCandidates']}
 
     def resolve(self, direction: str, header: int, symbol: str, foreign: bool = False) -> int | None:
         """New id, or None for a non-official id. Raises on an unmatched official id, and on a custom id
         that is official in the target build unless it is another program's id (foreign)."""
-        row = self.official(direction, header)
-        if row is None:
-            hit = None if foreign else self.target.by_header.get((direction, header))
+        key = (direction, header)
+        if key in self.unresolved:
+            raise LookupError(f'{symbol} = {header} is in an unresolved tie: {self.unresolved[key]}')
+        pair = self.by_header.get(key)
+        if pair is None:
+            hit = None if foreign else self.target.by_header.get(key)
             if hit is not None:
-                raise LookupError(f'{symbol} = {header} is not official in {self.current.id} but is '
+                raise LookupError(f'{symbol} = {header} has no identity from {self.current_id} but is '
                                   f'{direction} {hit["class_name"]} in {self.target.id}')
             return None
-        key = (direction, row['class_name'])
-        if key in self.unresolved:
-            raise LookupError(f'{symbol} = {header} ({row["class_name"]}) is in an unresolved tie: '
-                              f'{self.unresolved[key]}')
-        pair = self.pairs.get(key)
-        if pair is None:
-            raise LookupError(f'{symbol} = {header} ({row["class_name"]}) has no identity in the map')
         return pair['toHeader']
 
     def pair(self, direction: str, header: int) -> dict | None:
-        row = self.official(direction, header)
-        return None if row is None else self.pairs.get((direction, row['class_name']))
+        return self.by_header.get((direction, header))
 
 
 # ---------------------------------------------------------------- constant files
@@ -186,16 +219,10 @@ def plusemu(root: Path):
     cache = root / 'Communication/Revisions/RevisionsCache.cs'
     current = re.search(r'Name = "(WIN63-[\w-]+)"', read(cache)).group(1)
 
-    def finish(resolver: Resolver, writes: dict):
+    def finish(resolver: Resolver, writes: dict, identity_raw: bytes):
         writes[cache] = replace_build(cache, current, resolver.target.id, r'Name = "{build}"')
         ranges = root / 'Communication/Packets/CustomPacketRanges.cs'
         writes[ranges] = replace_build(ranges, current, resolver.target.id, r'not official in {build}')
-        # Same content RevisionsCache writes at start: the compiled ids in declaration order.
-        example = root / 'Resources/Revisions/example.json'
-        body = {'Name': resolver.target.id,
-                'IncomingHeaders': dict(headers[0].constants()),
-                'OutgoingHeaders': dict(headers[1].constants())}
-        writes[example] = (read(example), json.dumps(body, indent=2) + '\n')
 
     return current, headers, finish
 
@@ -212,7 +239,7 @@ def renderer(root: Path):
     current = re.search(r"BUILD = '(WIN63-[\w-]+)'", read(hello)).group(1)
     manifest_path = root / 'protocol/packet-field-contracts.json'
 
-    def finish(resolver: Resolver, writes: dict, identity_path: Path):
+    def finish(resolver: Resolver, writes: dict, identity_raw: bytes):
         writes[hello] = replace_build(hello, current, resolver.target.id, r"BUILD = '{build}'")
         before = read(manifest_path)
         manifest = json.loads(before)
@@ -238,7 +265,7 @@ def renderer(root: Path):
                 errors.append(str(error))
         if errors:
             sys.exit('packet-field-contracts.json:\n  ' + '\n  '.join(errors))
-        manifest['nativeAir'] = native_air(manifest['nativeAir'], resolver, identity_path)
+        manifest['nativeAir'] = native_air(manifest['nativeAir'], resolver, identity_raw)
         writes[manifest_path] = (before, format_manifest(before, manifest))
 
     return current, headers, finish
@@ -276,7 +303,7 @@ def format_manifest(before: str, manifest: dict) -> str:
     return ''.join(head) + '\n  "nativeAir": ' + meta + '\n  ,\n    "packets": [\n' + packets + '\n    ]\n  }\n}\n'
 
 
-def native_air(old: dict, resolver: Resolver, identity_path: Path) -> dict:
+def native_air(old: dict, resolver: Resolver, identity_raw: bytes) -> dict:
     """The AIR message identities of the target build, carrying names and bindings by identity."""
     side = {'incoming': 'server_to_client', 'outgoing': 'client_to_server'}
     carried = {}
@@ -309,7 +336,7 @@ def native_air(old: dict, resolver: Resolver, identity_path: Path) -> dict:
         'build': resolver.target.id,
         'swfSha256': manifest['assets_swf_sha256'],
         'messageMapSha256': manifest['message_map_sha256'],
-        'auditSha256': hashlib.sha256(identity_path.read_bytes()).hexdigest(),
+        'auditSha256': hashlib.sha256(identity_raw).hexdigest(),
         'namingScope': old['namingScope'],
         'semanticScope': old['semanticScope'],
         'packets': packets,
@@ -322,7 +349,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('--index', type=Path,
                         default=Path(os.environ.get('HABBO_INDEX', '~/dev/habbo-intelligence/index')).expanduser())
-    parser.add_argument('--map', type=Path, required=True)
+    parser.add_argument('--identity', type=Path,
+                        default=Path(os.environ.get('HABBO_IDENTITY', '~/dev/habbo-intelligence/identity')).expanduser())
+    parser.add_argument('--map', type=Path)
     parser.add_argument('--to')
     parser.add_argument('--from', dest='current')
     parser.add_argument('--root', type=Path, default=Path.cwd())
@@ -331,14 +360,11 @@ def main() -> int:
     args = parser.parse_args()
 
     root = args.root.resolve()
-    identity = json.loads(args.map.read_text())
-    target = args.to or identity['toBuild']
+    target = args.to or (json.loads(args.map.read_text())['toBuild'] if args.map else newest_build(args.index))
     if (root / 'Communication/Revisions/RevisionsCache.cs').is_file():
         current, headers, finish = plusemu(root)
-        finish_args = ()
     elif (root / 'packages/communication/src/messages/incoming/IncomingHeader.ts').is_file():
         current, headers, finish = renderer(root)
-        finish_args = (args.map,)
     else:
         sys.exit(f'{root}: neither PlusEMU nor Volt-Renderer')
     current = args.current or current
@@ -350,6 +376,7 @@ def main() -> int:
         print(f'on {current}, not {target}')
         return 1
 
+    identity, identity_raw = load_identity(args, current, target)
     resolver = Resolver(args.index, current, identity, target)
     errors, stats = [], {'changed': 0, 'kept': 0, 'custom': 0}
     for file in headers:
@@ -358,7 +385,7 @@ def main() -> int:
         print('cannot map:\n  ' + '\n  '.join(errors), file=sys.stderr)
         return 2
     writes = {file.path: (read(file.path), file.text) for file in headers}
-    finish(resolver, writes, *finish_args)
+    finish(resolver, writes, identity_raw)
     for path, (before, after) in writes.items():
         if before != after and not args.dry_run:
             write(path, after)

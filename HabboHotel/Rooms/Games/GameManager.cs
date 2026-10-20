@@ -55,26 +55,7 @@ public class GameManager
         Points[Convert.ToInt32(team)] = newPoints;
 
         foreach (var item in GetFurniItems(team).Values.ToList()) {
-            if (!IsFootballGoal(item.Definition.InteractionType)) {
-                item.LegacyDataString = Points[Convert.ToInt32(team)].ToString();
-                item.UpdateState();
-            }
-        }
-
-        foreach (var item in _room.GetRoomItemHandler().GetFloor.ToList()) {
-            if (team == Team.Blue && item.Definition.InteractionType == InteractionType.Banzaiscoreblue) {
-                item.LegacyDataString = Points[Convert.ToInt32(team)].ToString();
-                item.UpdateState();
-            }
-            else if (team == Team.Red && item.Definition.InteractionType == InteractionType.Banzaiscorered) {
-                item.LegacyDataString = Points[Convert.ToInt32(team)].ToString();
-                item.UpdateState();
-            }
-            else if (team == Team.Green && item.Definition.InteractionType == InteractionType.Banzaiscoregreen) {
-                item.LegacyDataString = Points[Convert.ToInt32(team)].ToString();
-                item.UpdateState();
-            }
-            else if (team == Team.Yellow && item.Definition.InteractionType == InteractionType.Banzaiscoreyellow) {
+            if (!IsFootballGoal(item.Definition.InteractionType) && !IsTeamGate(item.Definition.InteractionType)) {
                 item.LegacyDataString = Points[Convert.ToInt32(team)].ToString();
                 item.UpdateState();
             }
@@ -111,8 +92,27 @@ public class GameManager
     private static bool IsFootballGoal(InteractionType type) => type == InteractionType.FootballGoalBlue || type == InteractionType.FootballGoalGreen || type == InteractionType.FootballGoalRed ||
                                                                 type == InteractionType.FootballGoalYellow;
 
+    private static bool IsTeamGate(InteractionType type) => type is InteractionType.FreezeBlueGate or InteractionType.FreezeGreenGate
+        or InteractionType.FreezeRedGate or InteractionType.FreezeYellowGate or InteractionType.Banzaigateblue or InteractionType.Banzaigatered
+        or InteractionType.Banzaigategreen or InteractionType.Banzaigateyellow;
+
+    public static Team TeamOf(InteractionType type) => type switch
+    {
+        InteractionType.FootballGoalRed or InteractionType.Footballcounterred or InteractionType.Banzaiscorered or InteractionType.Banzaigatered
+            or InteractionType.Freezeredcounter or InteractionType.FreezeRedGate => Team.Red,
+        InteractionType.FootballGoalGreen or InteractionType.Footballcountergreen or InteractionType.Banzaiscoregreen or InteractionType.Banzaigategreen
+            or InteractionType.Freezegreencounter or InteractionType.FreezeGreenGate => Team.Green,
+        InteractionType.FootballGoalBlue or InteractionType.Footballcounterblue or InteractionType.Banzaiscoreblue or InteractionType.Banzaigateblue
+            or InteractionType.Freezebluecounter or InteractionType.FreezeBlueGate => Team.Blue,
+        InteractionType.FootballGoalYellow or InteractionType.Footballcounteryellow or InteractionType.Banzaiscoreyellow or InteractionType.Banzaigateyellow
+            or InteractionType.Freezeyellowcounter or InteractionType.FreezeYellowGate => Team.Yellow,
+        _ => Team.None
+    };
+
     public void AddFurnitureToTeam(Item item, Team team)
     {
+        item.Team = team;
+
         switch (team) {
             case Team.Blue:
                 _blueTeamItems.TryAdd(item.Id, item);
@@ -187,24 +187,14 @@ public class GameManager
 
     private void LockGate(Item item)
     {
-        var type = item.Definition.InteractionType;
-
-        if (type == InteractionType.FreezeBlueGate || type == InteractionType.FreezeGreenGate ||
-            type == InteractionType.FreezeRedGate || type == InteractionType.FreezeYellowGate
-            || type == InteractionType.Banzaigateblue || type == InteractionType.Banzaigatered ||
-            type == InteractionType.Banzaigategreen || type == InteractionType.Banzaigateyellow) {
+        if (IsTeamGate(item.Definition.InteractionType)) {
             _room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 0);
         }
     }
 
     private void UnlockGate(Item item)
     {
-        var type = item.Definition.InteractionType;
-
-        if (type == InteractionType.FreezeBlueGate || type == InteractionType.FreezeGreenGate ||
-            type == InteractionType.FreezeRedGate || type == InteractionType.FreezeYellowGate
-            || type == InteractionType.Banzaigateblue || type == InteractionType.Banzaigatered ||
-            type == InteractionType.Banzaigategreen || type == InteractionType.Banzaigateyellow) {
+        if (IsTeamGate(item.Definition.InteractionType)) {
             _room.GetGameMap().SetFloorStatus(item.GetX, item.GetY, 1);
         }
     }

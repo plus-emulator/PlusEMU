@@ -394,6 +394,36 @@ public class RoomUser
 
         room.SendChat(receiver => new ChatComposer(VirtualId, message, 0, style, receiver),
             user => user.GetClient()?.GetHabbo() is { } habbo && !(IsPet ? habbo.AllowPetSpeech : habbo.AllowBotSpeech));
+
+        if (!IsPet) {
+            room.GetRoomUserManager().TurnHeadsToward(this);
+        }
+    }
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610151745-318700621: a standing avatar turns its head one step toward a speaking bot that is at
+    /// most two steps from where its body faces, or straight to it when it is one step away.
+    /// </summary>
+    internal int? LookToward(int x, int y)
+    {
+        if (IsWalking || Statusses.ContainsKey("sit") || Statusses.ContainsKey("lay")) {
+            return null;
+        }
+
+        var steps = (Rotation.Calculate(X, Y, x, y) - RotBody + 12) % 8 - 4;
+
+        if (Math.Abs(steps) > 2) {
+            return null;
+        }
+
+        var head = (RotBody + Math.Sign(steps) + 8) % 8;
+
+        if (RotHead != head) {
+            RotHead = head;
+            UpdateNeeded = true;
+        }
+
+        return head;
     }
 
     public void HandleSpamTicks()

@@ -30,6 +30,11 @@ public class RoomUserManager
     public const int MaxStressBots = 2000;
     private readonly object _stressSync = new();
     private readonly Queue<(int Amount, int OwnerId, Action<string> Reply, Func<string, string>? Outfit)> _stressRequests = new();
+    private readonly ConcurrentQueue<(int X, int Y)> _headTurnRequests = new();
+    // Owned by the room tick: each turned head goes back to the body after TicksLeft more ticks, if it is still Head.
+    private readonly Dictionary<RoomUser, (int TicksLeft, int Head)> _headTurns = new();
+    // The head goes back 5000 ms after the status update that showed the turn.
+    private static readonly int HeadTurnTicks = (int)(TimeSpan.FromSeconds(5) / RoomCycle.Interval);
     private bool _disposed;
     private int _nextStressBotId;
 
@@ -925,8 +930,43 @@ public class RoomUserManager
 
             ProcessStressBots();
             ExpireForwardArrivalEffects();
+            CycleHeadTurns();
             _room.GetGameMap().Navigation!.Executor.Tick();
             _room.GetGameMap().Navigation!.TickMounts();
+        }
+    }
+
+    // A bot can speak from a packet thread or from inside the actor tick, so its line is queued and the room tick turns the heads
+    // before the actors move. A line said during the tick then shows on the following status update, as on Habbo.
+    internal void TurnHeadsToward(RoomUser speaker) => _headTurnRequests.Enqueue((speaker.X, speaker.Y));
+
+    internal void CycleHeadTurns()
+    {
+        if (_headTurns.Count == 0 && _headTurnRequests.IsEmpty) {
+            return;
+        }
+
+        foreach (var (user, turn) in _headTurns.ToList()) {
+            if (turn.TicksLeft > 1 && user.IsAttachedTo(_room)) {
+                _headTurns[user] = (turn.TicksLeft - 1, turn.Head);
+
+                continue;
+            }
+
+            _headTurns.Remove(user);
+
+            if (user.RotHead == turn.Head && user.RotHead != user.RotBody) {
+                user.RotHead = user.RotBody;
+                user.UpdateNeeded = true;
+            }
+        }
+
+        while (_headTurnRequests.TryDequeue(out var speaker)) {
+            foreach (var user in GetUserList()) {
+                if (user is { IsBot: false } && user.LookToward(speaker.X, speaker.Y) is { } head) {
+                    _headTurns[user] = (HeadTurnTicks, head);
+                }
+            }
         }
     }
 

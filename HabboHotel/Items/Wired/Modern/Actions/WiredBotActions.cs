@@ -294,6 +294,8 @@ public static class WiredBotActions
                     else if (name == "wf_act_bot_talk_to_avatar") {
                         // Observed on hhus (AIR WIN63-202610131318-860371703): said aloud, the bot addresses the avatar by name
                         // ("Objecto: hello you"), once per avatar.
+                        var said = false;
+
                         foreach (var user in users) {
                             var username = user.GetClient()?.GetHabbo()?.Username;
 
@@ -302,11 +304,17 @@ public static class WiredBotActions
                             }
 
                             context.Room.SendChat(receiver => new WiredChatComposer(bot.VirtualId, receiver, $"{username}: {formatted}", botData.ChatBubble, width, false, false, hideName));
+                            said = true;
+                        }
+
+                        if (said) {
+                            context.Room.GetRoomUserManager().TurnHeadsToward(bot);
                             changed = true;
                         }
                     }
                     else {
                         context.Room.SendChat(receiver => new WiredChatComposer(bot.VirtualId, receiver, formatted, botData.ChatBubble, width, false, p[0] == 1, hideName));
+                        context.Room.GetRoomUserManager().TurnHeadsToward(bot);
                         changed = true;
                     }
                 }

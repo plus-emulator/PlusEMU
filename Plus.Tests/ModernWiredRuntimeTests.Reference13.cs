@@ -266,6 +266,24 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(talk.User.VirtualId, open.Receiver);
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a bot line said by wired turns a standing avatar's head toward the bot.
+    [Theory]
+    [InlineData("wf_act_bot_talk", new[] { 0, 100, -1, 0 })]
+    [InlineData("wf_act_bot_talk", new[] { 1, 100, -1, 0 })]
+    [InlineData("wf_act_bot_talk_to_avatar", new[] { 0, 0, 100, -1 })]
+    public void ABotLineFromWiredTurnsAStandingAvatarsHeadTowardTheBot(string action, int[] intParams)
+    {
+        using var f = new TeleportFixture(actionName: action, intParams: intParams, text: "Bobby\tHello");
+        AddNamedBot(f, 9, "Bobby", 2, 2);
+        f.User.RotBody = f.User.RotHead = 4;
+
+        f.Fire();
+
+        f.Room.GetRoomUserManager().CycleHeadTurns();
+
+        Assert.Equal((3, 4), (f.User.RotHead, f.User.RotBody));
+    }
+
     [Fact]
     public void BotTalkToAvatarNeedsAUserToAddress()
     {

@@ -157,11 +157,7 @@ public sealed class WiredModernCondition : WiredModernBox
                 return WiredTimeConditions.MatchesRange(config, now);
             case "wf_cnd_time_less_than":
             case "wf_cnd_time_more_than":
-                // The room timer's first elapsed check starts a shared epoch.
-                var resetAt = context.Room.LastTimerResetAt ??= now.ToUniversalTime();
-                var elapsed = now.ToUniversalTime() - resetAt;
-
-                return WiredTimeConditions.MatchesElapsed(config, Math.Max(0, (long)elapsed.TotalMilliseconds), name == "wf_cnd_time_more_than");
+                return WiredTimeConditions.MatchesElapsed(config, context.Room.TimerElapsedMilliseconds(now), name == "wf_cnd_time_more_than");
             case "wf_cnd_team_has_rank":
             case "wf_cnd_team_has_score":
                 var scores = context.Room.GetGameManager().Points;

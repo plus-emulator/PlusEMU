@@ -48,7 +48,9 @@ public class Room
 
     public bool IsCrashed;
     public DateTimeOffset? LastRegenerationAt;
-    public DateTimeOffset? LastTimerResetAt;
+    // The room's Wired timer, read by the elapsed-time conditions and @wired_timer. It starts when the room loads. Observed on AIR
+    // WIN63-202610151745-318700621: @wired_timer reads 26 in a room nobody reset, and More Than 1201 passes in a room loaded long ago.
+    public DateTimeOffset LastTimerResetAt;
     public bool MDisposed;
     public MoodlightData MoodlightData;
 
@@ -134,8 +136,12 @@ public class Room
         _wiredComponent = wired;
         _userSnapshots = userSnapshots;
         _interactionClock = interactionClock;
-        LastRegenerationAt = interactionClock.GetUtcNow();
+        var loadedAt = interactionClock.GetUtcNow();
+        LastRegenerationAt = loadedAt;
+        LastTimerResetAt = loadedAt;
     }
+
+    internal long TimerElapsedMilliseconds(DateTimeOffset now) => Math.Max(0, (now - LastTimerResetAt).Ticks / TimeSpan.TicksPerMillisecond);
 
     private Music.RoomMusicComponent? _music;
     public Music.RoomMusicComponent Music => _music ?? throw new InvalidOperationException("The room music component has not been initialized.");

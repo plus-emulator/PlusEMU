@@ -82,3 +82,8 @@ public sealed class WiredSetRoomSettingsEvent(IWiredRoomSettingsService settings
         return Task.CompletedTask;
     }
 }
+
+public sealed class WiredMenuPermissionsSaveEvent(IWiredRoomSettingsService settings) : RoomPacketEvent
+{
+    public override Task Parse(Room room, GameClient session, IIncomingPacket packet) => throw new NotImplementedException();
+}

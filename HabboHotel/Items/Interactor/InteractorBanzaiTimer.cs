@@ -8,6 +8,10 @@ public class InteractorBanzaiTimer : IFurniInteractor
     public void OnPlace(GameClient? session, Item item)
     {
         if (WiredCounterController.Recognizes(item)) {
+            if (!item.Moving) {
+                WiredCounterController.PlacedNew(item);
+            }
+
             item.GetRoom()?.GetWired().AttachRoomItem(item);
         }
     }

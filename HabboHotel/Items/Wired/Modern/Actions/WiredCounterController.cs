@@ -45,9 +45,11 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
     Action<WiredClockTransition>? observeTransition = null, Action<WiredClockTransition>? gameTransition = null,
     Func<Item, WiredClockOrigin, RoomUser?, bool>? canBegin = null)
 {
-    private sealed class Clock(Item item, bool game, bool countdown, long value)
+    private static readonly int[] DurationCycle = [30, 60, 120, 180, 300, 600];
+    private sealed class Clock(Item item, bool game, bool countdown, long value, long duration)
     {
         public Item Item { get; } = item;
+        public long Duration { get; set; } = duration; // Half seconds a native game timer restarts and resets to.
         public bool GameAware { get; } = game;
         public bool Countdown { get; } = countdown;
         public long Value = value; // Half seconds: elapsed for Wired counters, remaining for native game timers.
@@ -71,6 +73,18 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
     public static bool IsGameTimer(Item item) => item.Definition.ItemName is "bb_counter" or "fball_counter" or "es_counter"
         || Name(item) == "game_timer" || item.Definition.InteractionType is InteractionType.Banzaicounter or InteractionType.Freezetimer
         || item.Definition.InteractionType == InteractionType.Counter && !Name(item).StartsWith("wf_", StringComparison.Ordinal);
+    /// <summary>The state a native game timer saves: its saved duration in seconds. Null for every other item.</summary>
+    public static string? StoredState(Item item) => IsGameTimer(item) && item.TimerDurationSeconds > 0
+        ? item.TimerDurationSeconds.ToString(CultureInfo.InvariantCulture) : null;
+    /// <summary>A newly placed native game timer starts again at 30 seconds.</summary>
+    /// <remarks>Observed on AIR WIN63-202610201032-107964540: a timer picked up and placed again shows 30, not its old saved duration.</remarks>
+    public static void PlacedNew(Item item)
+    {
+        if (IsGameTimer(item)) {
+            item.TimerDurationSeconds = 30;
+            item.LegacyDataString = "30";
+        }
+    }
     private static string Name(Item item) => Name(item.Definition);
     private static string Name(ItemDefinition definition) => string.IsNullOrEmpty(definition.InteractionName) ? definition.ItemName : definition.InteractionName;
     public bool Attach(Item item)
@@ -82,7 +96,19 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         var countdown = IsGameTimer(item);
         var game = countdown || Name(item).StartsWith("wf_game_", StringComparison.Ordinal);
         var seconds = int.TryParse(item.LegacyDataString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var saved) ? Math.Max(0, saved) : 0;
-        _clocks[item.Id] = new(item, game, countdown, countdown ? seconds * 2L : Math.Min(maxHalfSeconds, seconds * 2L));
+        var value = countdown ? seconds * 2L : Math.Min(maxHalfSeconds, seconds * 2L);
+        var duration = countdown && value > 0 ? value : defaultGameSeconds * 2L;
+        _clocks[item.Id] = new(item, game, countdown, countdown ? duration : value, duration);
+
+        // Observed on AIR WIN63-202610201032-107964540: a timer that loads again, also from the middle of a game, is stopped and
+        // shows its saved duration.
+        if (countdown) {
+            item.TimerDurationSeconds = (int)(duration / 2);
+
+            if (item.LegacyDataString != item.TimerDurationSeconds.ToString(CultureInfo.InvariantCulture)) {
+                item.LegacyDataString = item.TimerDurationSeconds.ToString(CultureInfo.InvariantCulture);
+            }
+        }
 
         return true;
     }
@@ -142,6 +168,11 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             Stop(clock, WiredClockReason.Stop, origin, actor);
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: the reset button does nothing while the clock runs.
+        if (operation == 2 && clock.Countdown && origin == WiredClockOrigin.Gui && clock.Running) {
+            return true;
+        }
+
         if (operation == 2) {
             Stop(clock, WiredClockReason.Reset, origin, actor);
 
@@ -149,9 +180,15 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
                 Evidence(clock, WiredClockReason.Reset, origin, actor);
             }
 
+            // Observed on AIR WIN63-202610201032-107964540: the reset button of a clock that has not run since its last reset moves the
+            // saved duration to the next of 30, 60, 120, 180, 300, 600 and back to 30. After a run it only returns to the saved duration.
+            if (clock.Countdown && origin == WiredClockOrigin.Gui && !clock.Started) {
+                SaveDuration(clock, DurationCycle.FirstOrDefault(seconds => seconds * 2L > clock.Duration, 30) * 2L);
+            }
+
             clock.Started = false;
             var previous = clock.Value;
-            clock.Value = clock.Countdown ? defaultGameSeconds * 2L : 0;
+            clock.Value = clock.Countdown ? clock.Duration : 0;
             PublishClock(clock, previous, ModernBatch(origin));
             ReportState(clock);
         }
@@ -168,7 +205,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         if (operation is 0 or 4 && !clock.Running) {
             if (clock.Countdown && clock.Value <= 0) {
                 var previous = clock.Value;
-                clock.Value = defaultGameSeconds * 2L;
+                clock.Value = clock.Duration;
                 PublishClock(clock, previous);
             }
 
@@ -235,7 +272,18 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             return false;
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: a game timer reacts only to use states 1 (start or stop) and 2 (reset).
+        if (clock.Countdown && parameter is not (1 or 2)) {
+            return false;
+        }
+
         return Control(item, parameter == 2 ? 2 : clock.Running ? 1 : 0, nowMilliseconds, WiredClockOrigin.Gui);
+    }
+    private static void SaveDuration(Clock clock, long halfSeconds)
+    {
+        clock.Duration = halfSeconds;
+        clock.Item.TimerDurationSeconds = (int)(halfSeconds / 2);
+        clock.Item.GetRoom()?.GetRoomItemHandler().UpdateItem(clock.Item);
     }
     public void OnGameEnded()
     {

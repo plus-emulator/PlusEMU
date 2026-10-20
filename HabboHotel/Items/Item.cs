@@ -83,6 +83,8 @@ public class Item
             }
         }
     }
+    /// <summary>Seconds a native game timer restarts and resets to. 0 until the timer is attached.</summary>
+    public int TimerDurationSeconds { get; set; }
     public uint UniqueNumber { get; set; }
     public uint UniqueSeries { get; set; }
     public string WallCoordinates = string.Empty;

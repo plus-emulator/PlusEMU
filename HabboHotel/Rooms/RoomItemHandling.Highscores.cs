@@ -1,5 +1,6 @@
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.DataFormat;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Rooms.Games;
 using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 
@@ -240,7 +241,7 @@ public partial class RoomItemHandling
     private bool PayloadBlocked(uint id) => _pendingHighscores.ContainsKey(id) || _payloadTransfers.ContainsKey(id);
     private string? SavePayload(Item item) => PayloadBlocked(item.Id) || item.ExtraData is HighscoreDataFormat
         && (!ReferenceEquals(GetItem(item.Id), item) || !ReferenceEquals(item.GetRoom(), _room) || item.RoomId != _room.Id)
-        ? null : item.ExtraData?.Serialize();
+        ? null : WiredCounterController.StoredState(item) ?? item.ExtraData?.Serialize();
 
     internal bool TryReserveTransfers(IReadOnlyList<Item> items, out RoomItemTransfer? transfer)
     {

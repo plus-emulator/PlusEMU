@@ -14,6 +14,10 @@ internal class InteractorCounter : IFurniInteractor
         }
 
         if (WiredCounterController.Recognizes(item)) {
+            if (!item.Moving) {
+                WiredCounterController.PlacedNew(item);
+            }
+
             itemRoom.GetWired().AttachRoomItem(item);
 
             return;

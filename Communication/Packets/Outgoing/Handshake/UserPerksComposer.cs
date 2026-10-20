@@ -10,53 +10,30 @@ public class UserPerksComposer(bool cameraAllowed) : IServerPacket
     {
         // TODO @80O: Pass perks via constructor.
         // TODO @80O: Store perks in the database.
-        packet.WriteInteger(14); // Count
+        (string Code, string DenialKey, bool Allowed)[] perks =
+        [
+            ("USE_GUIDE_TOOL", "", false),
+            ("GIVE_GUIDE_TOURS", "requirement.unfulfilled.helper_le", false),
+            ("JUDGE_CHAT_REVIEWS", "", true),
+            ("VOTE_IN_COMPETITIONS", "", true),
+            ("CALL_ON_HELPERS", "", false),
+            ("CITIZEN", "", true),
+            ("TRADE", "", true),
+            ("HEIGHTMAP_EDITOR_BETA", "", false),
+            ("EXPERIMENTAL_CHAT_BETA", "requirement.unfulfilled.helper_level_2", true),
+            ("EXPERIMENTAL_TOOLBAR", "", true),
+            ("NAVIGATOR_PHASE_ONE_2014", "", false),
+            ("CAMERA", "", cameraAllowed),
+            ("NAVIGATOR_PHASE_TWO_2014", "", true),
+            ("MOUSE_ZOOM", "", true),
+            ("NAVIGATOR_ROOM_THUMBNAIL_CAMERA", "", cameraAllowed),
+        ];
+        packet.WriteInteger(perks.Length);
         // Each perk contains its code, optional denial-message localization key, and allowed flag.
-        packet.WriteString("USE_GUIDE_TOOL");
-        packet.WriteString("");
-        packet.WriteBoolean(false);
-        packet.WriteString("GIVE_GUIDE_TOURS");
-        packet.WriteString("requirement.unfulfilled.helper_le");
-        packet.WriteBoolean(false);
-        packet.WriteString("JUDGE_CHAT_REVIEWS");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("VOTE_IN_COMPETITIONS");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("CALL_ON_HELPERS");
-        packet.WriteString("");
-        packet.WriteBoolean(false);
-        packet.WriteString("CITIZEN");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("TRADE");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("HEIGHTMAP_EDITOR_BETA");
-        packet.WriteString("");
-        packet.WriteBoolean(false);
-        packet.WriteString("EXPERIMENTAL_CHAT_BETA");
-        packet.WriteString("requirement.unfulfilled.helper_level_2");
-        packet.WriteBoolean(true);
-        packet.WriteString("EXPERIMENTAL_TOOLBAR");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("NAVIGATOR_PHASE_ONE_2014");
-        packet.WriteString("");
-        packet.WriteBoolean(false);
-        packet.WriteString("CAMERA");
-        packet.WriteString("");
-        packet.WriteBoolean(cameraAllowed);
-        packet.WriteString("NAVIGATOR_PHASE_TWO_2014");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("MOUSE_ZOOM");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("NAVIGATOR_ROOM_THUMBNAIL_CAMERA");
-        packet.WriteString("");
-        packet.WriteBoolean(false);
-
+        foreach (var (code, denialKey, allowed) in perks) {
+            packet.WriteString(code);
+            packet.WriteString(denialKey);
+            packet.WriteBoolean(allowed);
+        }
     }
 }

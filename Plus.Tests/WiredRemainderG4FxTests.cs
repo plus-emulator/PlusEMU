@@ -597,31 +597,29 @@ public sealed class WiredRemainderG4FxTests
         Assert.Equal((200L, 200L), (top.Min!.Value, top.Max!.Value));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a levelling FX box on a variable without a level-up system sends its status with
+    // empty extras and no range.
     [Fact]
-    public void ALevelBadgeWithoutALevelSystemIsLevelOneOfOneOverTheConfigsRange()
+    public void ALevelBadgeWithoutALevelSystemSendsNoLevelExtras()
     {
         var world = new World();
         world.Give(10, Holder, 150);
 
         var status = Assert.Single(world.Update(Bind("wf_xtra_var_fx_level")!, Viewer, Holder).Statuses);
 
-        Assert.Equal(("1", "1", "false"), (status.Extra["current_level"], status.Extra["max_level"], status.Extra["is_maxed"]));
+        Assert.Empty(status.Extra);
         Assert.Null(status.Min);
         Assert.Null(status.Max);
     }
 
     [Fact]
-    public void ALevelBadgeInTheLevellingColourCarriesTheLevelExtras()
+    public void ALevelBadgeInTheLevellingColourWithoutALevelSystemSendsNoLevelExtras()
     {
         var world = new World();
         world.Give(10, Holder, 150);
-        // Progress style 0 offers the team colour only; the levelling colour belongs to levelling styles, so a level badge style
-        // with the levelling colour is the one that may carry the extras. A level badge reads them on every status.
         var badge = Bind("wf_xtra_var_fx_level", ints => { ints[7] = 1001; return ints; })!;
 
-        var extra = Assert.Single(world.Update(badge, Viewer, Holder).Statuses).Extra;
-
-        Assert.Contains("current_level", extra.Keys);
+        Assert.Empty(Assert.Single(world.Update(badge, Viewer, Holder).Statuses).Extra);
     }
 
     [Fact]

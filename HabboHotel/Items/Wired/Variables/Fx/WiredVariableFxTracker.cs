@@ -117,16 +117,13 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
                     }
                 }
 
-                if (binding.Config.Category == 2 || binding.Config.ColorId == 1001) {
-                    var level = binding.Level?.Invoke(value.Value) ?? new(1, 1, binding.Config.Min, binding.Config.Max, false);
+                // Observed on AIR WIN63-202610151745-318700621: a levelling box on a variable without a level-up system sends empty extras.
+                if ((binding.Config.Category == 2 || binding.Config.ColorId == 1001) && binding.Level?.Invoke(value.Value) is { } level) {
                     extra["current_level"] = level.Level.ToString(CultureInfo.InvariantCulture);
                     extra["max_level"] = level.MaxLevel.ToString(CultureInfo.InvariantCulture);
                     extra["is_maxed"] = level.IsMaxed ? "true" : "false";
-
-                    if (binding.Level is not null) {
-                        min = level.Start;
-                        max = level.Next;
-                    }
+                    min = level.Start;
+                    max = level.Next;
                 }
 
                 var wireVariable = WiredVariableModule.TryDefinitionId(binding.Variable.Token, out var definitionId)

@@ -579,16 +579,22 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
     }
 
-    /// <summary>A box shows a given state in the next flash batch (a variable definition shows the kind of its last write).</summary>
-    internal void FlashState(Item item, string state)
+    /// <summary>
+    /// A variable definition shows the kind of its write in the next flash batch. Within one stack firing only the first write in the batch
+    /// counts. Observed on AIR WIN63-202610151745-318700621: give 5 and then add 3 in one firing shows 6 (7 on the next firing), not 2.
+    /// </summary>
+    internal void FlashDefinition(Item item, int kind, object? firing)
     {
         if (_room.HideWired) {
             return;
         }
 
-        item.LegacyDataString = state;
-
         lock (_pendingFlashes) {
+            if (firing != null && !_definitionFirings.Add((item.Id, firing))) {
+                return;
+            }
+
+            item.LegacyDataString = WiredFlashStates.NextDefinition(item.LegacyDataString, kind);
             _pendingFlashes.Add(item);
         }
     }
@@ -636,6 +642,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     private readonly HashSet<Item> _pendingFlashes = [];
+    private readonly HashSet<(uint ItemId, object Firing)> _definitionFirings = [];
     private readonly Dictionary<uint, long> _flashWindows = [];
 
     /// <summary>
@@ -656,6 +663,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
             items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
             _pendingFlashes.Clear();
+            // The first-write rule of FlashDefinition covers one batch, so a flush in the middle of a firing (such as before a
+            // movement) lets that firing's next write show again.
+            _definitionFirings.Clear();
             messages = [.. _afterFlash];
             _afterFlash.Clear();
         }

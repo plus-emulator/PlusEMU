@@ -421,13 +421,17 @@ internal sealed partial class WiredStackEngine
         && (chain.Source.Item.GetX, chain.Source.Item.GetY) == chain.Tile
         && IsActorPresent(chain.Context);
 
-    // Shared by stack pipelines inside a room-engine pass. Delay is captured per firing.
+    // Shared by stack pipelines inside a room-engine pass. Delay is captured per firing. `accepted` runs once the firing is accepted,
+    // before any of its actions run.
     internal bool ScheduleActions(IWiredItem source, IWiredItem[] capturedStack, IWiredItem[] actions,
-        WiredExecutionContext context, Func<IWiredItem, long>? delayMilliseconds = null, long? firedAt = null, bool prepared = false)
+        WiredExecutionContext context, Func<IWiredItem, long>? delayMilliseconds = null, long? firedAt = null, bool prepared = false,
+        Action? accepted = null)
     {
         if (!CanSchedule(actions, prepared)) {
             return false;
         }
+
+        accepted?.Invoke();
 
         if (actions.Length == 0) {
             return true;

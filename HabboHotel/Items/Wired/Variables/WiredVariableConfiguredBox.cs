@@ -78,13 +78,15 @@ public sealed class WiredVariableConfiguredBox : IWiredContextualItem
         // Observed on hhus (AIR WIN63-202610131318-860371703): a Give Variable or Change Variable Value that writes a variable flashes
         // that variable's definition box, and the variable add-ons on its tile, with the action's own flash.
         if (_executors.Destination(Descriptor.CanonicalName, configuration) is { } destination) {
+            var firing = context.Firing ?? context;
+
             // A batched Change Variable Value is written when its stack's batch flushes, so the kind is picked then, in the same pass.
             // Observed on AIR WIN63-202610151745-318700621: add 1 after give 5 shows 2, another add 1 shows 3, subtract 1 shows 4.
             if (Descriptor.CanonicalName == "wf_act_change_var_val" && context.VariableFrame.VariableChanges is { } batch && variables != null) {
-                batch.AfterFlush(variables.Module, destination, (moved, down) => variables.FlashDefinition(destination, DefinitionKind(moved, down)));
+                batch.AfterFlush(variables.Module, destination, (moved, down) => variables.FlashDefinition(destination, DefinitionKind(moved, down), firing));
             }
             else {
-                Instance.GetWired()?.Variables.FlashDefinition(destination, DefinitionKind(changes > 0, lowered));
+                Instance.GetWired()?.Variables.FlashDefinition(destination, DefinitionKind(changes > 0, lowered), firing);
             }
         }
 

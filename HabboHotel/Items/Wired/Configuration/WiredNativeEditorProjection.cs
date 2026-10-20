@@ -143,7 +143,7 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>
-    /// A save the hotel drops without any reply: no error and no save success. Observed on AIR WIN63-202610151745-318700621:
+    /// A save the hotel drops without any reply: no error and no save success. Observed on AIR WIN63-202610131318-860371703:
     /// Join Team with team 9.
     /// </summary>
     public static bool DroppedWithoutReply(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native) =>

@@ -137,6 +137,9 @@ internal sealed partial class WiredStackEngine
     // Production events otherwise enter through Enqueue and evaluate on the next room boundary.
     public bool DispatchSynchronously(WiredRuntimeEvent @event) => Pass(() => DispatchCore(@event).Accepted);
 
+    /// <summary>Runs the stacks of an event at once, for the room load that happens before any room tick.</summary>
+    public bool DispatchOnLoad(WiredRuntimeEvent @event) => Pass(() => DispatchCore(@event, resumeImmediately: true).Accepted);
+
     public WiredClickResult DispatchClickUser(RoomUser actor, RoomUser target) => Pass(() =>
     {
         if (_targets == null || !_targets.AllUsers().Contains(actor) || !_targets.AllUsers().Contains(target)) {

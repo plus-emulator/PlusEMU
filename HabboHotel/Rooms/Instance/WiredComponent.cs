@@ -284,7 +284,13 @@ public partial class WiredComponent : IWiredRuntimeOperations
             _counters.OnGameEnded();
         }
 
-        return @event.Kind == WiredEventKind.Speech ? _engine.DispatchSynchronously(@event) : _engine.Enqueue(@event);
+        return @event.Kind switch
+        {
+            WiredEventKind.Speech => _engine.DispatchSynchronously(@event),
+            // Observed on AIR WIN63-202610201032-107964540: the Room Initialized stacks have run before the first entrant is sent the room.
+            WiredEventKind.RoomInitialized => _engine.DispatchOnLoad(@event),
+            _ => _engine.Enqueue(@event)
+        };
     }));
     public bool CallStacks(WiredRuntimeContext context, IEnumerable<Item> targets, bool negative = false) =>
         _engine.CallStacks(context, targets, negative);

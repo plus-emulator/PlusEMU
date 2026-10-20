@@ -226,7 +226,19 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
 
         var status = Status(habbo);
 
-        if (!MayPlaceIn(room, session, status) || store.FurniCount(habbo.Id) >= status.FurniLimit ||
+        if (!MayPlaceIn(room, session, status)) {
+            PlacementError(session);
+
+            return null;
+        }
+
+        if (ConfigurationItemStates.TypeLimitReached(room, definition)) {
+            ConfigurationItemStates.SendTypeLimit(session);
+
+            return null;
+        }
+
+        if (store.FurniCount(habbo.Id) >= status.FurniLimit ||
             room.GetRoomItemHandler().GetWallAndFloor.Count() > Setting("room.item.placement_limit", int.MaxValue)) {
             PlacementError(session);
 

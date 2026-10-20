@@ -129,6 +129,15 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
 
                     break;
                 }
+            case InteractionType.ChooserDisabler: {
+                    if (ConfigurationItemStates.TypeLimitReached(room, item.Definition)) {
+                        ConfigurationItemStates.SendTypeLimit(session);
+
+                        return;
+                    }
+
+                    break;
+                }
             case InteractionType.Hopper: {
                     if (room.GetRoomItemHandler().HopperCount > 0) {
                         session.SendNotification("You can only have one hopper per room!");

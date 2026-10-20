@@ -52,8 +52,6 @@ public sealed class RoomEntryService(IQuestManager quests, TimeProvider clock, I
         room.GetWired()?.SendEnvironment(session);
         // WIRED Label bubbles (class_3043): the full list this user may see, once the room is entered.
         room.GetWired()?.SendLabels(session);
-        // Transparency and highlight shown to the whole room (class_3560 furni, class_3459 users), so late joiners see them too.
-        room.GetWired()?.SendVisualizationState(session);
         // Observed on AIR WIN63-202610151745-318700621: Enter Room stacks run here, and their flashes come before the controller packets.
         room.GetWired()?.TriggerEvent(WiredBoxType.TriggerRoomEnter, habbo);
         room.GetRoomUserManager().SendEntryRights(session);

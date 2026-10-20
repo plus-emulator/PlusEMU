@@ -87,7 +87,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(0, f.Habbo.Effects!.CurrentEffect);
     }
 
-    // Inferred from the observed Wired team case; no Habbo trace shows unfreeze inside a Battle Banzai or Freeze team yet.
+    // Observed on AIR WIN63-202610151745-318700621: unfreeze inside a Battle Banzai Yellow team showed 36 and inside a Freeze Red team 40.
     [Theory]
     [InlineData(4, 1, 36)]
     [InlineData(1, 2, 40)]

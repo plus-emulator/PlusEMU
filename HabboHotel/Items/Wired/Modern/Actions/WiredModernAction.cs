@@ -496,8 +496,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     }
 
                     // Observed on AIR WIN63-202610151745-318700621: a frozen user keeps the freeze effect when it joins or leaves a Wired,
-                    // Battle Banzai or Freeze team (wf_act_join_team.cov_teams_sources), and unfreeze then shows the Wired team's effect,
-                    // or 0 without a team. For Battle Banzai and Freeze teams the restore after unfreeze follows the Wired case; not observed.
+                    // Battle Banzai or Freeze team, and unfreeze then shows the effect of its team at that time (223 Wired Red, 36 Battle
+                    // Banzai Yellow, 40 Freeze Red), or 0 without a team.
                     var frozen = WiredAvatarState.For(context.Room);
                     var moved = name == "wf_act_join_team"
                         ? WiredGameState.For(context.Room).Join(context.Room, user, Param(config, 0), (Team)Param(config, 1), Param(config, 3), context.Targets.AllUsers(),

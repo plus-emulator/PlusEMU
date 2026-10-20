@@ -279,6 +279,8 @@ public partial class ModernWiredRuntimeTests
 
         f.Fire();
 
+        f.Room.GetRoomUserManager().CycleHeadTurns();
+
         Assert.Equal((3, 4), (f.User.RotHead, f.User.RotBody));
     }
 

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets.Outgoing;
+using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.AI;
 using Plus.HabboHotel.Rooms.AI.Speech;
@@ -70,6 +71,31 @@ public sealed class BotSpeechHeadTurnTests
     }
 
     [Fact]
+    public void ABotLineSaidDuringTheRoomTickShowsOnTheFollowingStatusUpdate()
+    {
+        var world = new World(4, 5, 2);
+        world.Ai.OnTick = () => world.Bot.Chat("Yo!");
+
+        Assert.Null(world.NextStatusOf(world.Avatar));
+        world.Ai.OnTick = null;
+        Assert.Equal((3, 4), world.NextStatusOf(world.Avatar));
+    }
+
+    [Fact]
+    public void ABotStraightAheadPutsAnAlreadyTurnedHeadBackOnTheBody()
+    {
+        var world = new World(1, 5, 2);
+        world.Bot.Chat("Yo!");
+        Assert.Equal((2, 1), world.NextStatusOf(world.Avatar));
+
+        world.Bot.X = 3;
+        world.Bot.Y = 1;
+        world.Bot.Chat("bra sel");
+
+        Assert.Equal((1, 1), world.NextStatusOf(world.Avatar));
+    }
+
+    [Fact]
     public void ABotStraightAheadSendsNoStatusAtAll()
     {
         var world = new World(2, 5, 2);
@@ -135,7 +161,8 @@ public sealed class BotSpeechHeadTurnTests
             Room = new Room(new RoomData { Id = 42, OwnerId = 1, OwnerName = "owner", Type = "private", Model = model }, [],
                 TestLogging.Navigation, TestLogging.Logger, TestRoomAchievements.Unused, TestRoomOwners.Unused);
             Set(Room, "_gamemap", new Gamemap(Room, model, TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance));
-            Set(Room, "_roomUserManager", new RoomUserManager(Room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
+            Set(Room, "_roomUserManager", new RoomUserManager(Room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused,
+                new TestBotAiFactory((_, _) => Ai), TestGameClientManager.Empty, TestItemRuntime.Travel));
             Set(Room, "_userSnapshots", CatalogSnapshotTestSupport.Proxy<IRoomUserSnapshotService>((_, _) => null));
             using var owner = RoomOwnerScope.Enter(Room);
             var manager = Room.GetRoomUserManager();
@@ -161,6 +188,7 @@ public sealed class BotSpeechHeadTurnTests
         }
 
         public Room Room { get; }
+        public TickingBotAi Ai { get; } = new();
         public RoomUser Bot { get; }
         public RoomUser Avatar { get; }
 
@@ -197,5 +225,18 @@ public sealed class BotSpeechHeadTurnTests
 
         private static void Set(Room room, string field, object value) =>
             typeof(Room).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, value);
+    }
+
+    // Runs OnTick from inside the room's actor tick, where bot auto chat is said.
+    private sealed class TickingBotAi : BotAi
+    {
+        public Action? OnTick { get; set; }
+        public override void OnSelfEnterRoom() { }
+        public override void OnSelfLeaveRoom(bool kicked) { }
+        public override void OnUserEnterRoom(RoomUser user) { }
+        public override void OnUserLeaveRoom(GameClient client) { }
+        public override void OnUserSay(RoomUser user, string message) { }
+        public override void OnUserShout(RoomUser user, string message) { }
+        public override void OnTimerTick() => OnTick?.Invoke();
     }
 }

@@ -344,6 +344,142 @@ public partial class ModernWiredRuntimeTests
         Assert.Single(targets.Poll(f.Room));
     }
 
+    private const string FollowRoom = "00000\r00000\r00000\r00000\r00000";
+
+    private static HashSet<Point> Around(int x, int y) =>
+        Enumerable.Range(0, 8).Select(WiredRoomOperations.Offset).Select(offset => new Point(x + offset.X, y + offset.Y)).ToHashSet();
+
+    private static Point? WalkGoal(RoomUser bot) => bot.Movement.Commands.Read() is { } command ? new Point(command.X, command.Y) : null;
+
+    private static HashSet<Point> FollowGoals(TeleportFixture f, RoomUser bot)
+    {
+        var targets = WiredBotTargets.For(f.Room);
+        var goals = new HashSet<Point>();
+
+        foreach (var seed in Enumerable.Range(0, 64)) {
+            targets.Random = new Random(seed);
+            targets.Follow(bot, f.User);
+            targets.Poll(f.Room, 0);
+            goals.Add(Assert.NotNull(WalkGoal(bot)));
+        }
+
+        return goals;
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621 (wf_act_bot_follow_avatar.probe_*): over 8 runs from the same corner the bot ended east,
+    // north, south, north-east, north, west, west and south of the user, and later stops took the diagonals too.
+    [Fact]
+    public void BotFollowWalksToARandomTileAroundTheUser()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby", heightmap: FollowRoom);
+        var bot = AddNamedBot(f, 9, "Bobby", 0, 0);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
+        f.User.SetPos(2, 2, 0);
+
+        Assert.Equal(Around(2, 2), FollowGoals(f, bot));
+    }
+
+    [Fact]
+    public void BotFollowSkipsTakenAndClosedTilesAroundTheUser()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby",
+            heightmap: "00000\r0x000\r00000\r00000\r00000");
+        var bot = AddNamedBot(f, 9, "Bobby", 0, 4);
+        AddNamedBot(f, 10, "Other", 3, 3);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
+        f.User.SetPos(2, 2, 0);
+
+        var expected = Around(2, 2);
+        expected.Remove(new(1, 1));
+        expected.Remove(new(3, 3));
+        Assert.Equal(expected, FollowGoals(f, bot));
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: the bot aims around the tile the user is stepping onto, and the tile the user steps
+    // off counts as free.
+    [Fact]
+    public void BotFollowAimsAroundTheTileTheUserStepsOnto()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby", heightmap: FollowRoom);
+        var bot = AddNamedBot(f, 9, "Bobby", 0, 4);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
+        f.User.SetPos(2, 2, 0);
+        f.User.SetX = 3;
+        f.User.SetY = 2;
+        f.User.SetStep = true;
+
+        Assert.Equal(Around(3, 2), FollowGoals(f, bot));
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: a bot on any of the 8 tiles around the user, diagonals included, does not move.
+    [Fact]
+    public void BotFollowNextToTheUserStaysWhereItIs()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby", heightmap: FollowRoom);
+        var bot = AddNamedBot(f, 9, "Bobby", 0, 0);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
+        f.User.SetPos(2, 2, 0);
+        var targets = WiredBotTargets.For(f.Room);
+
+        foreach (var tile in Around(2, 2)) {
+            bot.SetPos(tile.X, tile.Y, 0);
+            var before = bot.Movement.Commands.Read()?.Sequence;
+            targets.Follow(bot, f.User);
+            targets.Poll(f.Room, 0);
+            Assert.Equal(before, bot.Movement.Commands.Read()?.Sequence);
+        }
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: a bot walks on to the tile it picked, past other tiles next to the user, and does not
+    // turn while the user moves on.
+    [Fact]
+    public void BotFollowKeepsWalkingToThePickedTileWhileTheUserMoves()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby", heightmap: FollowRoom);
+        var bot = AddNamedBot(f, 9, "Bobby", 0, 0);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
+        f.User.SetPos(2, 2, 0);
+        var targets = WiredBotTargets.For(f.Room);
+        targets.Random = new Random(1);
+        targets.Follow(bot, f.User);
+        targets.Poll(f.Room, 0);
+        var walk = bot.Movement.Commands.Read();
+        Assert.NotNull(walk);
+
+        f.User.SetPos(4, 4, 0);
+        targets.Poll(f.Room, 500);
+        targets.Poll(f.Room, 1000);
+
+        Assert.Same(walk, bot.Movement.Commands.Read());
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: a bot that reached its tile after the user walked away stood one room tick, then picked
+    // a new tile around the user and walked there.
+    [Fact]
+    public void BotFollowRestsOneTickAfterArrivingThenFollowsTheUserAgain()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby", heightmap: FollowRoom);
+        var bot = AddNamedBot(f, 9, "Bobby", 0, 0);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
+        f.User.SetPos(2, 2, 0);
+        var targets = WiredBotTargets.For(f.Room);
+        targets.Random = new Random(3);
+        targets.Follow(bot, f.User);
+        targets.Poll(f.Room, 0);
+        var goal = Assert.NotNull(WalkGoal(bot));
+        var corner = new Point(goal.X <= 2 ? 4 : 0, goal.Y <= 2 ? 4 : 0);
+        f.User.SetPos(corner.X, corner.Y, 0);
+        bot.SetPos(goal.X, goal.Y, 0);
+        var arrived = bot.Movement.Commands.Read();
+
+        targets.Poll(f.Room, 1000);
+        targets.Poll(f.Room, 999 + WiredBotTargets.FollowRestMilliseconds);
+        Assert.Same(arrived, bot.Movement.Commands.Read());
+
+        targets.Poll(f.Room, 1000 + WiredBotTargets.FollowRestMilliseconds);
+        Assert.Contains(Assert.NotNull(WalkGoal(bot)), Around(corner.X, corner.Y));
+    }
+
     [Fact]
     public void BotHandItemGivesTheItemToTheUserWithOrWithoutABot()
     {

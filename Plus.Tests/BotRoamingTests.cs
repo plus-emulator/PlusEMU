@@ -197,6 +197,39 @@ public class BotRoamingTests
         Assert.Equal(-1, user.GoalY);
     }
 
+    // Wired Bot Follow Avatar picks the follow tile; a free-roaming bot's own timer must not send it to the tile in front of the user.
+    [Theory]
+    [InlineData(BotAiType.Generic)]
+    [InlineData(BotAiType.Bartender)]
+    public void FreeRoamingBotFollowedByWiredLeavesTheWalkToWired(BotAiType type)
+    {
+        var (room, _) = Create("00000\r00000\r00000", 0, 0);
+        var manager = new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused,
+            TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+        typeof(Room).GetField("_roomUserManager", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, manager);
+        var users = (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(manager)!;
+        var owner = new RoomUser(7, 1, 2, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { RotBody = 2 };
+        owner.InitializePosition(2, 1, 0);
+        users[owner.VirtualId] = owner;
+        var bot = Bot(room, allowOverride: false, temporary: false);
+        bot.InitializePosition(4, 2, 0);
+        users[bot.VirtualId] = bot;
+        var data = Assert.IsType<RoomBot>(bot.BotData);
+        data.ForcedUserTargetMovement = 7;
+        BotAi ai = type == BotAiType.Generic ? new GenericBot(bot.VirtualId, new FakeWordFilter()) : new BartenderBot(bot.VirtualId, null!, new FakeWordFilter());
+        ai.Init(data.BotId, bot.VirtualId, 1, bot, room);
+        var timer = ai.GetType().GetField("_actionTimer", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        for (var i = 0; i < 20; i++) {
+            timer.SetValue(ai, 0);
+            ai.OnTimerTick();
+        }
+
+        Assert.Null(bot.Movement.Commands.Read());
+        Assert.Equal(7, data.ForcedUserTargetMovement);
+    }
+
     [Fact]
     public void FloorStatusChangesInvalidateTheCachedTargets()
     {

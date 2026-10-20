@@ -1,4 +1,3 @@
-using System.Drawing;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms.Chat.Filter;
 
@@ -101,30 +100,7 @@ public class GenericBot : BotAi
                         }
                     }
                     else if (botData.ForcedUserTargetMovement > 0) {
-                        var target = botRoom.GetRoomUserManager().GetRoomUserByHabbo(botData.ForcedUserTargetMovement);
-
-                        if (target == null) {
-                            botData.ForcedUserTargetMovement = 0;
-                            botUser.ClearMovement(true);
-                        }
-                        else {
-                            var sq = new Point(target.X, target.Y);
-
-                            if (target.RotBody == 0) {
-                                sq.Y--;
-                            }
-                            else if (target.RotBody == 2) {
-                                sq.X++;
-                            }
-                            else if (target.RotBody == 4) {
-                                sq.Y++;
-                            }
-                            else if (target.RotBody == 6) {
-                                sq.X--;
-                            }
-
-                            botUser.MoveTo(sq);
-                        }
+                        // Wired Bot Follow Avatar walks this bot (WiredBotTargets).
                     }
                     else if (botData.TargetUser == 0) {
                         if (botRoom.GetGameMap().TryGetRandomWalkableSquare(botData.IsTemporary, out var nextCoord)) {

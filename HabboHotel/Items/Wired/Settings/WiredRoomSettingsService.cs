@@ -27,7 +27,7 @@ public sealed class WiredRoomSettingsService(ILogger<WiredRoomSettingsService> l
 
         try {
             settings.Reload();
-            Reply(session, settings);
+            Reply(session, settings, reply);
         }
         catch (Exception exception) when (exception is DbException or InvalidOperationException or InvalidDataException) {
             logger.LogError(exception, "Unable to reload Wired settings for room {RoomId}", room.Id);
@@ -42,18 +42,18 @@ public sealed class WiredRoomSettingsService(ILogger<WiredRoomSettingsService> l
         try {
             if (!settings.TrySave(session, inspect, modify, timezone ?? settings.Snapshot.TimeZoneId, out var error)) {
                 session.Send(new WiredValidationErrorComposer(error));
-                Reply(session, settings);
+                Reply(session, settings, reply);
 
                 return;
             }
 
-            Reply(session, settings);
+            Reply(session, settings, reply);
             room.GetWired().SendPermissions(session);
 
             // Publish permissions only after the transaction, room snapshot and actor reply have succeeded.
             foreach (var user in room.GetRoomUserManager().GetUserList()) {
                 if (!user.IsBot && user.GetClient() is { } client && !ReferenceEquals(client, session)) {
-                    Reply(client, settings);
+                    Reply(client, settings, WiredRoomSettingsReply.Custom);
                     room.GetWired().SendPermissions(client);
                 }
             }
@@ -64,7 +64,7 @@ public sealed class WiredRoomSettingsService(ILogger<WiredRoomSettingsService> l
 
             // Restore the active client's optimistic settings without broadcasting rejected changes.
             try {
-                Reply(session, settings);
+                Reply(session, settings, reply);
             }
             catch (Exception readError) when (readError is DbException or InvalidOperationException or InvalidDataException) {
                 logger.LogError(readError, "Unable to read Wired settings for room {RoomId}", room.Id);
@@ -72,6 +72,8 @@ public sealed class WiredRoomSettingsService(ILogger<WiredRoomSettingsService> l
         }
     }
 
-    private static void Reply(GameClient session, WiredRoomSettings settings) =>
-        session.Send(new WiredRoomSettingsDataComposer(settings.View(session)));
+    private static void Reply(GameClient session, WiredRoomSettings settings, WiredRoomSettingsReply reply) =>
+        session.Send(reply == WiredRoomSettingsReply.Native
+            ? new WiredRoomSettingsComposer(settings.View(session))
+            : new WiredRoomSettingsDataComposer(settings.View(session)));
 }

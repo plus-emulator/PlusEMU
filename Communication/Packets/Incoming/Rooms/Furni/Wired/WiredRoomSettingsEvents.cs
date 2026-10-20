@@ -40,11 +40,23 @@ public sealed class WiredRoomSettingsSaveEvent(IWiredRoomSettingsService setting
     }
 }
 
+/// <summary>Habbo's own settings request. Observed on AIR WIN63-202610151745-318700621: it has no fields and gets WiredRoomSettings back.</summary>
 public sealed class WiredGetRoomSettingsEvent(IWiredRoomSettingsService settings) : RoomPacketEvent
 {
-    public override Task Parse(Room room, GameClient session, IIncomingPacket packet) => throw new NotImplementedException();
+    public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
+    {
+        if (!packet.HasDataRemaining()) {
+            settings.Reload(room, session, WiredRoomSettingsReply.Native);
+        }
+
+        return Task.CompletedTask;
+    }
 }
 
+/// <summary>
+/// Habbo's own settings save. Observed on AIR WIN63-202610151745-318700621: modify mask, read mask, then the timezone.
+/// It gets WiredRoomSettings back, also when the save is rejected.
+/// </summary>
 public sealed class WiredSetRoomSettingsEvent(IWiredRoomSettingsService settings) : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
@@ -65,7 +77,7 @@ public sealed class WiredSetRoomSettingsEvent(IWiredRoomSettingsService settings
             return Task.CompletedTask;
         }
 
-        settings.Save(room, session, inspect, modify, timezone, WiredRoomSettingsReply.Custom);
+        settings.Save(room, session, inspect, modify, timezone, WiredRoomSettingsReply.Native);
 
         return Task.CompletedTask;
     }

@@ -187,7 +187,8 @@ public static class ClientPacketHeader
     public const uint WiredRoomLogsPageEvent = 964;
     public const uint WiredRoomSettingsRequestEvent = 10022;
     public const uint WiredRoomSettingsSaveEvent = 10023;
-    public const uint WiredSetRoomSettingsEvent = 65465;
+    public const uint WiredGetRoomSettingsEvent = 3215;
+    public const uint WiredSetRoomSettingsEvent = 2035;
     public const uint ClickFurniEvent = 1405;
     public const uint ClickUserEvent = 10020;
     public const uint WiredUserVariablesRequestEvent = 10024;

@@ -19,11 +19,13 @@ namespace Plus.Tests;
 // Observed on AIR WIN63-202610151745-318700621: WiredGetRoomSettings (3215, no fields) and WiredSetRoomSettings
 // (2035: int modify mask, int read mask, string timezone) are both answered with WiredRoomSettings
 // (3319: int modify mask, int read mask, string timezone; an empty timezone means the room has no own timezone).
+// Volt keeps its own save (65465, same fields) and its own settings frame (5102).
 public partial class WiredRoomSettingsTests
 {
     private const uint NativeGetId = 3215;
     private const uint NativeSetId = 2035;
     private const uint NativeSettingsId = 3319;
+    private const uint VoltSaveId = 65465;
 
     [Fact]
     public void NativeSettingsFrameCarriesModifyMaskReadMaskAndTimezone()
@@ -131,17 +133,43 @@ public partial class WiredRoomSettingsTests
 
         await new WiredRoomSettingsRequestEvent(service).Parse(room, session, HabbiconTestSupport.Incoming());
         await new WiredRoomSettingsSaveEvent(service).Parse(room, session, HabbiconTestSupport.Incoming(3, 4));
+        await new WiredMenuPermissionsSaveEvent(service).Parse(room, session, HabbiconTestSupport.Incoming(5, 6, "Europe/Berlin"));
+        await new WiredMenuPermissionsSaveEvent(service).Parse(room, session, HabbiconTestSupport.Incoming(5, 6));
 
-        Assert.Equal([WiredRoomSettingsReply.Custom, WiredRoomSettingsReply.Custom], service.Replies);
+        Assert.Equal([(room, session, 3, 4, null), (room, session, 6, 5, "Europe/Berlin")], service.Saves);
+        Assert.Equal([WiredRoomSettingsReply.Custom, WiredRoomSettingsReply.Custom, WiredRoomSettingsReply.Custom], service.Replies);
     }
 
     [Fact]
-    public void NativeSettingsHeadersAreRegisteredOnceAndThePlaceholderIsGone()
+    public async Task VoltMenuSaveSharesTheSettingsRulesAndAnswersWithTheCustomFrame()
+    {
+        var room = Room();
+        var store = new MemoryStore { Saved = new(2, 2, "") };
+        var settings = Register(room, store);
+        var users = Users(room);
+        var (owner, ownerPackets) = NativeClient(room, 1, users, 1);
+        var (guest, guestPackets) = NativeClient(room, 4, users, 2);
+
+        await new WiredMenuPermissionsSaveEvent(Service()).Parse(room, owner, HabbiconTestSupport.Incoming(4, 1, "UTC"));
+        Assert.Equal(new(13, 12, "UTC"), store.Saved);
+        Assert.Equal((13, 12, "UTC"), CustomFrame(ownerPackets[0]));
+        Assert.DoesNotContain(ownerPackets, packet => packet.Id == NativeSettingsId);
+
+        var saved = settings.Snapshot;
+        guestPackets.Clear();
+        await new WiredMenuPermissionsSaveEvent(Service()).Parse(room, guest, HabbiconTestSupport.Incoming(8, 8, ""));
+        Assert.Same(saved, settings.Snapshot);
+        Assert.Equal((13, 12, "UTC"), CustomFrame(Assert.Single(guestPackets, packet => packet.Id == ServerPacketHeader.WiredRoomSettingsDataComposer)));
+        Assert.DoesNotContain(guestPackets, packet => packet.Id == NativeSettingsId);
+    }
+
+    [Fact]
+    public void NativeAndVoltSettingsHeadersAreEachRegisteredOnce()
     {
         IPacketEvent[] handlers =
         [
             new WiredGetRoomSettingsEvent(Service()), new WiredSetRoomSettingsEvent(Service()),
-            new WiredRoomSettingsRequestEvent(Service()), new WiredRoomSettingsSaveEvent(Service())
+            new WiredRoomSettingsRequestEvent(Service()), new WiredRoomSettingsSaveEvent(Service()), new WiredMenuPermissionsSaveEvent(Service())
         ];
         using var manager = new PacketManager(handlers, NullLogger<PacketManager>.Instance);
         var registered = (Dictionary<uint, IPacketEvent>)typeof(PacketManager).GetField("_incomingPackets", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(manager)!;
@@ -150,7 +178,7 @@ public partial class WiredRoomSettingsTests
         var incoming = table.RootElement.GetProperty("IncomingHeaders");
         var outgoing = table.RootElement.GetProperty("OutgoingHeaders");
 
-        foreach (var (handler, wire) in new[] { (handlers[0], NativeGetId), (handlers[1], NativeSetId), (handlers[2], 10022u), (handlers[3], 10023u) }) {
+        foreach (var (handler, wire) in new[] { (handlers[0], NativeGetId), (handlers[1], NativeSetId), (handlers[2], 10022u), (handlers[3], 10023u), (handlers[4], VoltSaveId) }) {
             var name = handler.GetType().Name;
             Assert.True(revision.IncomingIdToInternalIdMapping.TryGetValue(wire, out var internalId), $"no incoming header {wire} for {name}");
             Assert.Same(handler, registered[internalId]);
@@ -166,8 +194,8 @@ public partial class WiredRoomSettingsTests
             Assert.Single(outgoing.EnumerateObject(), property => property.Value.GetUInt32() == wire);
         }
 
-        Assert.DoesNotContain(revision.IncomingHeaders, entry => entry.Value == 65465);
-        Assert.DoesNotContain(incoming.EnumerateObject(), property => property.Value.GetUInt32() == 65465);
+        // Volt's save is not in the client build, so it stays a placeholder id instead of a custom range.
+        Assert.True(VoltSaveId >= CustomPacketRanges.PlaceholderStart);
     }
 
     private static (int Modify, int Read, string Timezone) NativeFields(IServerPacket frame)
@@ -183,6 +211,22 @@ public partial class WiredRoomSettingsTests
         Assert.Equal(NativeSettingsId, packet.Id);
 
         return Read(packet.Payload);
+    }
+
+    // Volt's frame: room id, inspect mask, modify mask, three permission flags, timezone.
+    private static (int Inspect, int Modify, string Timezone) CustomFrame((uint Id, FlashIncomingPacket Payload) packet)
+    {
+        Assert.Equal(ServerPacketHeader.WiredRoomSettingsDataComposer, packet.Id);
+        var payload = packet.Payload;
+        Assert.Equal(77, payload.ReadInt());
+        var masks = (payload.ReadInt(), payload.ReadInt());
+        payload.ReadBool();
+        payload.ReadBool();
+        payload.ReadBool();
+        var timezone = payload.ReadString();
+        Assert.False(payload.HasDataRemaining());
+
+        return (masks.Item1, masks.Item2, timezone);
     }
 
     private static (int Modify, int Read, string Timezone) Read(FlashIncomingPacket payload)

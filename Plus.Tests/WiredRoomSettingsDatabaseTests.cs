@@ -206,7 +206,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             Assert.Same(accepted, settings.Snapshot);
             Assert.Equal(accepted, new DatabaseWiredRoomSettingsStore(database).Load(roomId));
             Assert.Equal(156u, owner.Packets[0].Id);
-            Assert.Equal(5102u, owner.Packets[1].Id);
+            Assert.Equal(3319u, owner.Packets[1].Id);
             Assert.Equal(2, owner.Packets.Count);
             Assert.Empty(guest.Packets);
             connection.Execute($"DROP TRIGGER `{trigger}`");
@@ -217,7 +217,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "UTC"));
             Assert.Same(accepted, settings.Snapshot);
             Assert.Equal(156u, owner.Packets[0].Id);
-            Assert.Equal(5102u, owner.Packets[1].Id);
+            Assert.Equal(3319u, owner.Packets[1].Id);
             connection.Execute("UPDATE rooms SET owner=@Owner WHERE id=@Id", new { Owner = ownerId.ToString(), Id = roomId });
 
             var stale = new DatabaseWiredRoomSettingsStore(database).Load(roomId);
@@ -231,7 +231,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(2, 2, "Europe/Berlin"));
             Assert.Same(accepted, settings.Snapshot);
             Assert.Equal(156u, owner.Packets[0].Id);
-            Assert.Equal(5102u, owner.Packets[1].Id);
+            Assert.Equal(3319u, owner.Packets[1].Id);
             Assert.Empty(guest.Packets);
             owner.Packets.Clear();
             await new WiredRoomSettingsRequestEvent(settingsService).Parse(room, owner.Client, Packet());
@@ -245,7 +245,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(2, 2, "Europe/Berlin"));
             Assert.Equal(new(2, 2, "Europe/Berlin"), settings.Snapshot);
             Assert.Equal(settings.Snapshot, store.Load(roomId));
-            Assert.Equal(5102u, Assert.Single(owner.Packets).Id);
+            Assert.Equal(3319u, Assert.Single(owner.Packets).Id);
             Assert.Equal(5102u, Assert.Single(guest.Packets).Id);
             output.WriteLine("Actual 10022/10023/1936 routes, 5102 fields, guest denial, invalid input, reload, UPDATE rollback, owner-row authorization and expected-row concurrency passed.");
         }
@@ -286,6 +286,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
                 InternalIdToOutgoingIdMapping = new Dictionary<uint, uint>
                 {
                     [ServerPacketHeader.WiredRoomSettingsDataComposer] = 5102,
+                    [3319] = 3319,
                     [ServerPacketHeader.WiredEffectConfigComposer] = 1428,
                     [ServerPacketHeader.WiredValidationErrorComposer] = 156,
                     [ServerPacketHeader.WiredAllVariablesHashComposer] = 1646,

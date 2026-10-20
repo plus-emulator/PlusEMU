@@ -450,11 +450,19 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
         // A chat runs its stacks at once, like Dispatch of speech: their flashes go out with the chat. Enter Room stacks run inside the
         // room entry, so their flashes go out with it.
-        if (type is WiredBoxType.TriggerUserSays or WiredBoxType.TriggerRoomEnter) {
+        // The flashes of a say with Variable Changed stacks wait for them (see FinishSpeech), so the whole cascade is one batch.
+        if (type is WiredBoxType.TriggerUserSays && !_engine.HasHeldVariableStacks || type is WiredBoxType.TriggerRoomEnter) {
             FlushFlashes();
         }
 
         return triggered;
+    }
+
+    // Variable Changed stacks raised by a say run after its echo (AIR WIN63-202610151745-318700621).
+    public void FinishSpeech()
+    {
+        _engine.DrainVariableStacks();
+        FlushFlashes();
     }
 
     private bool TriggerEventCore(WiredBoxType type, object[] arguments)

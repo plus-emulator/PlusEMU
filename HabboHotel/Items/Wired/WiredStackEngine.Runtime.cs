@@ -148,6 +148,19 @@ internal sealed partial class WiredStackEngine
 
     private (bool Accepted, WiredClickResult Click) DispatchCore(WiredRuntimeEvent @event, bool resumeImmediately = false)
     {
+        var previousHold = _holdVariableStacks;
+        _holdVariableStacks = previousHold || @event.Kind == WiredEventKind.Speech;
+
+        try {
+            return DispatchCoreUnheld(@event, resumeImmediately);
+        }
+        finally {
+            _holdVariableStacks = previousHold;
+        }
+    }
+
+    private (bool Accepted, WiredClickResult Click) DispatchCoreUnheld(WiredRuntimeEvent @event, bool resumeImmediately)
+    {
         if (_runtimeRoom == null) {
             return default;
         }
@@ -657,6 +670,19 @@ internal sealed partial class WiredStackEngine
         }
     }
 
+    private void FlushExternal()
+    {
+        if (_flushExternal == null) {
+            return;
+        }
+
+        if (PublicationFlushIsSilent?.Invoke() != true) {
+            SealPublication();
+        }
+
+        _flushExternal();
+    }
+
     private bool ExecuteRuntimeBody(IWiredItem box, WiredRuntimeContext context)
     {
         if (box is IWiredContextualItem contextual) {
@@ -664,13 +690,7 @@ internal sealed partial class WiredStackEngine
                 return RuntimeSupported(contextual) && contextual.Execute(context);
             }
             finally {
-                if (_flushExternal != null) {
-                    if (PublicationFlushIsSilent?.Invoke() != true) {
-                        SealPublication();
-                    }
-
-                    _flushExternal();
-                }
+                FlushExternal();
             }
         }
 
@@ -765,8 +785,34 @@ internal sealed partial class WiredStackEngine
     }
 
     private bool _drainingSignals;
+    private bool _holdVariableStacks;
+
+    /// <summary>True when a say left Variable Changed stacks for <see cref="DrainVariableStacks"/>.</summary>
+    public bool HasHeldVariableStacks
+    {
+        get
+        {
+            // Chat runs on a network thread while the room's fast cycle dequeues on its own thread.
+            lock (_sync) {
+                return _dispatches.TryPeek(out var pending) && pending.Event.Kind == WiredEventKind.Variable;
+            }
+        }
+    }
+
+    /// <summary>Runs the Variable Changed stacks that a say raised. The caller sends the echo of the say first.</summary>
+    public void DrainVariableStacks() => Pass(() =>
+    {
+        DrainSamePassCollisions();
+        UpdateFastWork();
+
+        return true;
+    });
+
     private bool _drainingCollisions;
 
+    // Observed on AIR WIN63-202610151745-318700621 (wf_trg_var_changed.give, .subvar_parent): Variable Changed stacks run in the pass of the
+    // change, so their messages share its millisecond. After a say they follow the echo of the say, which DrainVariableStacks runs.
+    //
     // Observed on AIR WIN63-202610151745-318700621 (r97_chase_collide_clk, r97_flee_corner_clk): User Stuff Collision raised by an effect
     // runs in the same pulse as that effect, its flashes and chat in the same batch. A Collision at the head of the queue therefore runs
     // before the pass ends, with the effects it schedules; the pass budget and the event depth still bound a chain of them.
@@ -779,7 +825,7 @@ internal sealed partial class WiredStackEngine
         _drainingCollisions = true;
 
         try {
-            while (_dispatches.TryPeek(out var pending) && pending.Event.Kind == WiredEventKind.Collision && !OutOfBudget()) {
+            while (_dispatches.TryPeek(out var pending) && (pending.Event.Kind == WiredEventKind.Collision || pending.Event.Kind == WiredEventKind.Variable && !_holdVariableStacks) && !OutOfBudget()) {
                 // Its stacks run in this cycle instead of waiting for the next one.
                 pending.ResumeImmediately = true;
 
@@ -792,6 +838,8 @@ internal sealed partial class WiredStackEngine
                 }
 
                 DrainDueActions();
+                // A batched change reaches the module when its stack ends; its Variable Changed stacks follow in this pass.
+                FlushExternal();
             }
         }
         finally {

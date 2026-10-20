@@ -369,7 +369,8 @@ internal sealed partial class WiredStackEngine
     /// Schedules a step of the running action for the room tick whose 500 ms boundary is <paramref name="tickBoundary"/>. It runs at the
     /// start of that tick's room pass (<see cref="OnRoomTick"/>), so what it changes goes out with that tick's avatar updates.
     /// </summary>
-    public bool ScheduleOnRoomTick(WiredRuntimeContext context, long tickBoundary, Action callback, Action? onCancelled = null) => Pass(() =>
+    public bool ScheduleOnRoomTick(WiredRuntimeContext context, long tickBoundary, Action callback, Action? onCancelled = null,
+        bool afterAvatarUpdates = false) => Pass(() =>
     {
         var active = _executingAction;
 
@@ -404,7 +405,11 @@ internal sealed partial class WiredStackEngine
     }
 
     /// <summary>Starts a room tick: records its boundary and runs the steps scheduled for it, before the room moves and serializes avatars.</summary>
-    public void OnRoomTick() => Pass(() =>
+    public void OnRoomTickEnd()
+    {
+    }
+
+    public void OnRoomTick(bool splitEnd = false) => Pass(() =>
     {
         var now = _now();
         LastRoomTick = now - now % WiredFlashStates.StateUpdateMilliseconds;

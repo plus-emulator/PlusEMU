@@ -401,8 +401,8 @@ public class RoomUser
     }
 
     /// <summary>
-    /// Observed on AIR WIN63-202610151745-318700621: a standing avatar turns its head one step toward a speaking bot that is at
-    /// most two steps from where its body faces, or straight to it when it is one step away.
+    /// Observed on AIR WIN63-202610151745-318700621: a standing avatar turns its head one step toward a speaking bot or user that
+    /// is at most two steps from where its body faces, or straight to it when it is one step away.
     /// </summary>
     internal int? LookToward(int x, int y)
     {
@@ -526,6 +526,8 @@ public class RoomUser
 
                 user.GetClient().Send(Packet(user.VirtualId));
             }
+
+            room.GetRoomUserManager().TurnHeadsToward(this);
         }
 
         if (shout) {

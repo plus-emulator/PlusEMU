@@ -895,16 +895,18 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         var interactor = TestItemRuntime.Interactors.Create(timer, TimeProvider.System);
         interactor.OnTrigger(null, timer, 0, false);
         Assert.False(Active());
-        interactor.OnTrigger(null, timer, 0, true);
+        interactor.OnTrigger(null, timer, 1, true);
         Assert.True(Active());
         Assert.True(clocks.IsRunning(timer));
         var pause = Box(room, "wf_act_control_clock", [3, 100], [1], clocks: clocks);
         Assert.True(pause.Execute(Context(room, [timer], [])));
         Assert.False(Active());
         Assert.Equal(8000, clocks.ReadMilliseconds(timer));
-        interactor.OnTrigger(null, timer, 0, true);
+        interactor.OnTrigger(null, timer, 1, true);
         Assert.True(Active());
         interactor.OnTrigger(null, timer, 2, true);
+        Assert.True(Active());
+        interactor.OnTrigger(null, timer, 1, true);
         Assert.False(Active());
         Assert.Equal(8000, clocks.ReadMilliseconds(timer));
 

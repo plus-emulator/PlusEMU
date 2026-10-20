@@ -310,6 +310,13 @@ public static class WiredNativeEditorProjection
             native = native with { OwnedIntParams = [.. native.OwnedIntParams.Select(value => Math.Clamp(value, 0, MaxSelectorAreaCoordinate))] };
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: Give Score and Give Score To Team save a per-game limit above 10 and read it
+        // back as 10 ([5, 99] and [5, 11] read back [5, 10]; [5, 99, 1] reads back [5, 10, 1]). The Give Score editor never sends more
+        // than 10: its limit slider runs 1 to 11, and 11 means unlimited and is sent as 0 (GiveScore.as in AIR WIN63-202609161723-93809945).
+        if (name is "wf_act_give_score" or "wf_act_give_score_tm" && native.OwnedIntParams.Length >= 2 && native.OwnedIntParams[1] > 10) {
+            native = native with { OwnedIntParams = native.OwnedIntParams.SetItem(1, 10) };
+        }
+
         // Observed on AIR WIN63-202610151745-318700621: a variable FX box reads back its stored form, not what the editor sent (a boss bar
         // saved with colour, width and renderer -1 and a stale range target reads back 5/4/100 and its own source).
         if (Variables.Fx.WiredVariableFxSettings.Category(name) >= 0) {
@@ -485,14 +492,7 @@ public static class WiredNativeEditorProjection
                 users["users"] = native.UserSourceTypes[0];
                 break;
             case "wf_act_give_score":
-                // Observed on AIR WIN63-202610151745-318700621: a per-game limit of 99 saves. The slider and the run time stop at 10,
-                // so a higher limit is stored as 10.
-                if (p.Length == 2 && p[1] > 10) {
-                    p = p.SetItem(1, 10);
-                    native = native with { OwnedIntParams = p };
-                }
-
-                // The slider runs 1 to 1000 and the radio flips the sign (GiveScore.as), so zero points cannot come from the editor.
+                // The points slider runs 1 to 1000 and the radio flips the sign (GiveScore.as), so zero points cannot come from the editor.
                 if (p.Length != 2 || p[0] is < -1000 or > 1000 or 0 || p[1] is < 0 or > 10) {
                     return false;
                 }

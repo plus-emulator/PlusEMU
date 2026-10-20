@@ -224,6 +224,9 @@ public class Habbo
 
     public bool SessionClothingBlocked { get; set; }
 
+    /// <summary>The client appends each collectibles list it gets, so after the first list only new collectibles are sent.</summary>
+    public bool NftWardrobeListed { get; set; }
+
     [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(CurrentRoom))]
     public bool InRoom => CurrentRoom != null;
 

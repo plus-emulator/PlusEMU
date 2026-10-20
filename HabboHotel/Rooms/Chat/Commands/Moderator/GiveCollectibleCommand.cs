@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Collectibles;
@@ -6,6 +7,13 @@ namespace Plus.HabboHotel.Rooms.Chat.Commands.Moderator;
 
 internal class GiveCollectibleCommand(INftWardrobeService collectibles) : ITargetChatCommand
 {
+    private static readonly ImmutableDictionary<string, string> ContractKeys = new Dictionary<string, string>
+    {
+        ["avatar"] = "habbo:avatar",
+        ["clothes"] = "habbo:clothes",
+        ["genesis"] = "habbo:avatar_genesis",
+    }.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase);
+
     public string Key => "givecollectible";
 
     public string Parameters => "%username% %collection%";
@@ -14,5 +22,26 @@ internal class GiveCollectibleCommand(INftWardrobeService collectibles) : ITarge
 
     public bool MustBeInSameRoom => false;
 
-    public Task Execute(GameClient session, Room room, Habbo target, string[] parameters) => throw new NotImplementedException();
+    public async Task Execute(GameClient session, Room room, Habbo target, string[] parameters)
+    {
+        var actor = session.GetHabbo();
+
+        if (target.Id != actor.Id && !actor.Access.Outranks(target.Access)) {
+            return;
+        }
+
+        if (!ContractKeys.TryGetValue(parameters.FirstOrDefault() ?? "avatar", out var contractKey)) {
+            session.SendWhisper("Usage: :givecollectible <username> [avatar|clothes|genesis]");
+
+            return;
+        }
+
+        await collectibles.Give(target, actor.Look, actor.Gender.ToUpper(), contractKey);
+
+        if (target.Id != actor.Id) {
+            target.Client?.SendNotification("You have just been given a collectible avatar!");
+        }
+
+        session.SendWhisper($"You gave {target.Username} a collectible avatar of your look.");
+    }
 }

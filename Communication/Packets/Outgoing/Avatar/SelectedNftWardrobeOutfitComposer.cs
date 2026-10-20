@@ -7,5 +7,10 @@ public class SelectedNftWardrobeOutfitComposer(string tokenId, string fallbackFi
 {
     public uint MessageId => ServerPacketHeader.SelectedNftWardrobeOutfitComposer;
 
-    public void Compose(IOutgoingPacket packet) => throw new NotImplementedException();
+    public void Compose(IOutgoingPacket packet)
+    {
+        packet.WriteString(tokenId);
+        packet.WriteString(fallbackFigure);
+        packet.WriteString(fallbackGender);
+    }
 }

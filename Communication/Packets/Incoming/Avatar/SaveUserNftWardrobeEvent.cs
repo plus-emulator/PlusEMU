@@ -6,5 +6,5 @@ namespace Plus.Communication.Packets.Incoming.Avatar;
 /// <summary>The avatar editor saves a collectible as the user's look (AIR HabboAvatarEditor.as:374-378): the wardrobe item id.</summary>
 internal class SaveUserNftWardrobeEvent(INftWardrobeService collectibles) : IPacketEvent
 {
-    public Task Parse(GameClient session, IIncomingPacket packet) => throw new NotImplementedException();
+    public Task Parse(GameClient session, IIncomingPacket packet) => collectibles.Wear(session, packet.ReadString());
 }

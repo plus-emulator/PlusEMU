@@ -27,7 +27,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
     private readonly WiredDirectionalActions _directions = new();
     private readonly ILogger _logger;
     private readonly TimeProvider _clock;
-    private readonly Random? _movementRandom;
+    private readonly Random? _random;
     private readonly IWiredRewardService _rewards;
     private readonly IBotManagementStore _botStore;
     private readonly IGameClientManager _clients;
@@ -64,7 +64,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         _clients = clients;
         _definitions = definitions;
         _travelStore = travelStore;
-        _movementRandom = movementRandom;
+        _random = movementRandom;
     }
 
     // Saving move_to_dir restarts every furni from the configured direction; the heading is kept only across firings.
@@ -415,11 +415,11 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             }
 
             var movementUsers = config.UserSources.ContainsKey("users") ? Users(context, config, "users") : [];
-            // Furniture sent to a user lands on that user's own tile; no other occupant is let through.
+            // Furniture sent to a user lands on that user's own tile, whichever selected user was picked; no other occupant is let through.
             IReadOnlySet<int>? landingUsers = name == "wf_act_furni_to_user" && movementUsers.Length > 0
-                ? new HashSet<int> { movementUsers[0].VirtualId } : null;
+                ? movementUsers.Select(user => user.VirtualId).ToHashSet() : null;
 
-            var movedAny = new WiredMovementActions(_movementRandom).Execute(name, config, movers, targets, movementUsers,
+            var movedAny = new WiredMovementActions(_random).Execute(name, config, movers, targets, movementUsers,
                 (item, x, y, rotation, height) => _movement.MoveFurniture(context, item, x, y, rotation, height,
                     WiredMovementActions.Steps.Contains(name)
                     && !(name == "wf_act_move_furni_to" && config.IntParams.Length == 4
@@ -759,7 +759,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 var forwarded = Furni(context, config, "forwarded", true).Select(item => item.Id).ToArray();
                 var users = Users(context, config, "users").Select(user => user.VirtualId).ToArray();
                 var furniBatches = Param(config, 3) == 1 ? forwarded.Select(id => new[] { id }).ToArray() : [forwarded];
+                // Observed on AIR WIN63-202610151745-318700621: split user signals run in a new random order each firing, whatever
+                // the selection order.
                 var userBatches = Param(config, 4) == 1 ? users.Select(id => new[] { id }).ToArray() : [users];
+                (_random ?? Random.Shared).Shuffle(userBatches);
 
                 foreach (var furni in furniBatches) {
                     foreach (var avatars in userBatches) {

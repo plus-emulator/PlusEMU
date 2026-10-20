@@ -32,8 +32,13 @@ public sealed class ClickUserEvent : RoomPacketEvent
 
         var result = room.GetWired().DispatchClickUser(actor, target);
 
+        // Observed on AIR WIN63-202610151745-318700621: the server turns the clicker toward the clicked user. The client sends this
+        // click instead of a look-at message, so without this turn the clicker would never face them.
         if (result.DoNotRotate) {
             session.Send(new InClientLinkComposer("avatar-info/block-rotate"));
+        }
+        else {
+            actor.TurnToward(target.X, target.Y);
         }
 
         if (result.BlockMenu) {

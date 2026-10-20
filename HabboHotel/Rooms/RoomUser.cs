@@ -643,6 +643,19 @@ public class RoomUser
     }
 
 
+    /// <summary>Turns a standing avatar to face a tile, the way a look-at does. Returns false when it cannot turn.</summary>
+    internal bool TurnToward(int x, int y)
+    {
+        if (x == X && y == Y || IsWalking || RidingHorse) {
+            return false;
+        }
+
+        SetRot(Rotation.Calculate(X, Y, x, y), false);
+        UpdateNeeded = true;
+
+        return true;
+    }
+
     public void SetRot(int rotation, bool headOnly)
     {
         if (Statusses.ContainsKey("lay") || IsWalking) {

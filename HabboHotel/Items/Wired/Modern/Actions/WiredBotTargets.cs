@@ -75,8 +75,14 @@ public sealed class WiredBotTargets
             botData.ForcedUserTargetMovement = 0;
         }
 
-        bot.ClearMovement(true);
+        // Observed on AIR WIN63-202610151745-318700621: a bot that arrived, or that already stands still, sends no extra status.
+        if (IsMoving(bot)) {
+            bot.ClearMovement(true);
+        }
     }
+
+    private static bool IsMoving(RoomUser bot) => bot.IsWalking || bot.SetStep || bot.Movement.HasIntent
+        || bot.Movement.Commands.Read()?.Sequence > bot.Movement.ConsumedSequence;
     public IReadOnlyList<WiredRuntimeEvent> Poll(Room room) => Poll(room, Environment.TickCount64);
     public IReadOnlyList<WiredRuntimeEvent> Poll(Room room, long now)
     {

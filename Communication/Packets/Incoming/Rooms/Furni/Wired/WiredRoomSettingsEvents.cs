@@ -9,7 +9,7 @@ public sealed class WiredRoomSettingsRequestEvent(IWiredRoomSettingsService sett
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
         if (!packet.HasDataRemaining()) {
-            settings.Reload(room, session);
+            settings.Reload(room, session, WiredRoomSettingsReply.Custom);
         }
 
         return Task.CompletedTask;
@@ -34,13 +34,18 @@ public sealed class WiredRoomSettingsSaveEvent(IWiredRoomSettingsService setting
             return Task.CompletedTask;
         }
 
-        settings.Save(room, session, inspect, modify, null);
+        settings.Save(room, session, inspect, modify, null, WiredRoomSettingsReply.Custom);
 
         return Task.CompletedTask;
     }
 }
 
-public sealed class WiredMenuPermissionsSaveEvent(IWiredRoomSettingsService settings) : RoomPacketEvent
+public sealed class WiredGetRoomSettingsEvent(IWiredRoomSettingsService settings) : RoomPacketEvent
+{
+    public override Task Parse(Room room, GameClient session, IIncomingPacket packet) => throw new NotImplementedException();
+}
+
+public sealed class WiredSetRoomSettingsEvent(IWiredRoomSettingsService settings) : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
@@ -60,7 +65,7 @@ public sealed class WiredMenuPermissionsSaveEvent(IWiredRoomSettingsService sett
             return Task.CompletedTask;
         }
 
-        settings.Save(room, session, inspect, modify, timezone);
+        settings.Save(room, session, inspect, modify, timezone, WiredRoomSettingsReply.Custom);
 
         return Task.CompletedTask;
     }

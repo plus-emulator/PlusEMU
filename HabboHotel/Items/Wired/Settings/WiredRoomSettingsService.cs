@@ -8,13 +8,20 @@ namespace Plus.HabboHotel.Items.Wired.Settings;
 
 public interface IWiredRoomSettingsService
 {
-    void Reload(Room room, GameClient session);
-    void Save(Room room, GameClient session, int inspect, int modify, string? timezone);
+    void Reload(Room room, GameClient session, WiredRoomSettingsReply reply);
+    void Save(Room room, GameClient session, int inspect, int modify, string? timezone, WiredRoomSettingsReply reply);
+}
+
+/// <summary>The settings frame the requesting client reads.</summary>
+public enum WiredRoomSettingsReply
+{
+    Custom,
+    Native
 }
 
 public sealed class WiredRoomSettingsService(ILogger<WiredRoomSettingsService> logger) : IWiredRoomSettingsService
 {
-    public void Reload(Room room, GameClient session)
+    public void Reload(Room room, GameClient session, WiredRoomSettingsReply reply)
     {
         var settings = room.GetWired().Settings;
 
@@ -28,7 +35,7 @@ public sealed class WiredRoomSettingsService(ILogger<WiredRoomSettingsService> l
         }
     }
 
-    public void Save(Room room, GameClient session, int inspect, int modify, string? timezone)
+    public void Save(Room room, GameClient session, int inspect, int modify, string? timezone, WiredRoomSettingsReply reply)
     {
         var settings = room.GetWired().Settings;
 

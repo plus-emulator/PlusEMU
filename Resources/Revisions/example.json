@@ -138,7 +138,7 @@
     "WiredRoomLogsPageEvent": 964,
     "WiredRoomSettingsRequestEvent": 10022,
     "WiredRoomSettingsSaveEvent": 10023,
-    "WiredMenuPermissionsSaveEvent": 65465,
+    "WiredSetRoomSettingsEvent": 65465,
     "ClickFurniEvent": 1405,
     "ClickUserEvent": 10020,
     "WiredUserVariablesRequestEvent": 10024,

@@ -91,7 +91,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             guest.Packets.Clear();
             owner.Packets.Clear();
 
-            await new WiredMenuPermissionsSaveEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "Europe/Berlin"));
+            await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "Europe/Berlin"));
             Assert.Equal(new(1, 0, "Europe/Berlin"), settings.Snapshot);
             Assert.Equal(settings.Snapshot, new DatabaseWiredRoomSettingsStore(database).Load(roomId));
             Assert.Equal("Europe/Berlin", settings.ExplicitTimeZone!.Id);
@@ -102,7 +102,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             var saved = settings.Snapshot;
             owner.Packets.Clear();
             guest.Packets.Clear();
-            await new WiredMenuPermissionsSaveEvent(settingsService).Parse(room, guest.Client, Packet(2, 2, "UTC"));
+            await new WiredSetRoomSettingsEvent(settingsService).Parse(room, guest.Client, Packet(2, 2, "UTC"));
             Assert.Same(saved, settings.Snapshot);
             Assert.Equal(saved, new DatabaseWiredRoomSettingsStore(database).Load(roomId));
             Assert.Contains(guest.Packets, p => p.Id == 156);
@@ -135,7 +135,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             var box = wired.CreateConfiguredBox(item)!;
             Assert.True(wired.AddBox(box));
             var original = box.Configuration;
-            await new WiredMenuPermissionsSaveEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "Europe/Berlin"));
+            await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "Europe/Berlin"));
             guest.Packets.Clear();
             await new OpenWiredEvent().Parse(room, guest.Client, ItemPacket(itemId, false));
             Assert.Equal(1428u, Assert.Single(guest.Packets).Id);
@@ -192,9 +192,9 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             var accepted = settings.Snapshot;
             owner.Packets.Clear();
             guest.Packets.Clear();
-            await new WiredMenuPermissionsSaveEvent(settingsService).Parse(room, owner.Client, Packet(1, 1, "UTC"));
-            await new WiredMenuPermissionsSaveEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "Invalid/Timezone"));
-            await new WiredMenuPermissionsSaveEvent(settingsService).Parse(room, owner.Client, Packet(0, 1));
+            await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(1, 1, "UTC"));
+            await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "Invalid/Timezone"));
+            await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(0, 1));
             Assert.Same(accepted, settings.Snapshot);
             Assert.Equal(accepted, new DatabaseWiredRoomSettingsStore(database).Load(roomId));
 
@@ -202,7 +202,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             connection.Execute($"CREATE TRIGGER `{trigger}` BEFORE UPDATE ON room_wired_settings FOR EACH ROW BEGIN IF NEW.room_id={roomId} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Disposable Wired settings rollback probe'; END IF; END");
             owner.Packets.Clear();
             guest.Packets.Clear();
-            await new WiredMenuPermissionsSaveEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "UTC"));
+            await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "UTC"));
             Assert.Same(accepted, settings.Snapshot);
             Assert.Equal(accepted, new DatabaseWiredRoomSettingsStore(database).Load(roomId));
             Assert.Equal(156u, owner.Packets[0].Id);
@@ -214,7 +214,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             // Ownership changed in storage while the room still has its previous owner snapshot.
             connection.Execute("UPDATE rooms SET owner=@Owner WHERE id=@Id", new { Owner = guestId.ToString(), Id = roomId });
             owner.Packets.Clear();
-            await new WiredMenuPermissionsSaveEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "UTC"));
+            await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(0, 1, "UTC"));
             Assert.Same(accepted, settings.Snapshot);
             Assert.Equal(156u, owner.Packets[0].Id);
             Assert.Equal(5102u, owner.Packets[1].Id);
@@ -228,7 +228,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             // The live room still holds the old expected row. Its actual client reload must recover the CAS conflict.
             owner.Packets.Clear();
             guest.Packets.Clear();
-            await new WiredMenuPermissionsSaveEvent(settingsService).Parse(room, owner.Client, Packet(2, 2, "Europe/Berlin"));
+            await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(2, 2, "Europe/Berlin"));
             Assert.Same(accepted, settings.Snapshot);
             Assert.Equal(156u, owner.Packets[0].Id);
             Assert.Equal(5102u, owner.Packets[1].Id);
@@ -242,7 +242,7 @@ public class WiredRoomSettingsDatabaseTests(ITestOutputHelper output)
             Assert.Equal(new(1, 0, "UTC"), settings.Snapshot);
             Assert.Empty(guest.Packets);
             owner.Packets.Clear();
-            await new WiredMenuPermissionsSaveEvent(settingsService).Parse(room, owner.Client, Packet(2, 2, "Europe/Berlin"));
+            await new WiredSetRoomSettingsEvent(settingsService).Parse(room, owner.Client, Packet(2, 2, "Europe/Berlin"));
             Assert.Equal(new(2, 2, "Europe/Berlin"), settings.Snapshot);
             Assert.Equal(settings.Snapshot, store.Load(roomId));
             Assert.Equal(5102u, Assert.Single(owner.Packets).Id);

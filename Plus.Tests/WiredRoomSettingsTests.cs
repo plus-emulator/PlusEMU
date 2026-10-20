@@ -18,7 +18,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-public class WiredRoomSettingsTests
+public partial class WiredRoomSettingsTests
 {
     [Theory]
     [InlineData(16, 2, "UTC")]
@@ -185,21 +185,21 @@ public class WiredRoomSettingsTests
 
         await new WiredRoomSettingsRequestEvent(service).Parse(room, session, HabbiconTestSupport.Incoming());
         await new WiredRoomSettingsSaveEvent(service).Parse(room, session, HabbiconTestSupport.Incoming(3, 4));
-        await new WiredMenuPermissionsSaveEvent(service).Parse(room, session, HabbiconTestSupport.Incoming(5, 6, "Europe/Berlin"));
+        await new WiredSetRoomSettingsEvent(service).Parse(room, session, HabbiconTestSupport.Incoming(5, 6, "Europe/Berlin"));
 
         Assert.Equal((room, session), service.Reloaded);
         Assert.Equal((room, session, 3, 4, null), service.Saves[0]);
         Assert.Equal((room, session, 6, 5, "Europe/Berlin"), service.Saves[1]);
 
         await new WiredRoomSettingsSaveEvent(service).Parse(room, session, HabbiconTestSupport.Incoming(3, 4, 9));
-        await new WiredMenuPermissionsSaveEvent(service).Parse(room, session, HabbiconTestSupport.Incoming(5, 6));
+        await new WiredSetRoomSettingsEvent(service).Parse(room, session, HabbiconTestSupport.Incoming(5, 6));
         Assert.Equal(2, service.Saves.Count);
     }
 
     [Fact]
     public void ActualRoomSettingsHandlersHaveUniqueActiveProfileMappings()
     {
-        IPacketEvent[] handlers = [new WiredRoomSettingsRequestEvent(Service()), new WiredRoomSettingsSaveEvent(Service()), new WiredMenuPermissionsSaveEvent(Service())];
+        IPacketEvent[] handlers = [new WiredRoomSettingsRequestEvent(Service()), new WiredRoomSettingsSaveEvent(Service()), new WiredSetRoomSettingsEvent(Service())];
         using var manager = new PacketManager(handlers, NullLogger<PacketManager>.Instance);
         var registered = (Dictionary<uint, IPacketEvent>)typeof(PacketManager).GetField("_incomingPackets", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(manager)!;
         var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
@@ -308,8 +308,16 @@ public class WiredRoomSettingsTests
     {
         public (Room Room, GameClient Session)? Reloaded { get; private set; }
         public List<(Room Room, GameClient Session, int Inspect, int Modify, string? Timezone)> Saves { get; } = [];
-        public void Reload(Room room, GameClient session) => Reloaded = (room, session);
-        public void Save(Room room, GameClient session, int inspect, int modify, string? timezone) =>
+        public List<WiredRoomSettingsReply> Replies { get; } = [];
+        public void Reload(Room room, GameClient session, WiredRoomSettingsReply reply)
+        {
+            Reloaded = (room, session);
+            Replies.Add(reply);
+        }
+        public void Save(Room room, GameClient session, int inspect, int modify, string? timezone, WiredRoomSettingsReply reply)
+        {
             Saves.Add((room, session, inspect, modify, timezone));
+            Replies.Add(reply);
+        }
     }
 }

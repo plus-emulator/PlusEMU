@@ -161,6 +161,13 @@ public sealed class WiredConfigurationService(
                 error = WiredNativeEditorProjection.SourceRejectionKey(descriptor, native) ?? error;
             }
 
+            if (compiled && WiredFurniVisualRules.PickRefusal(descriptor.CanonicalName, runtime,
+                id => room.GetRoomItemHandler().GetItem(id)?.IsBuildersClub == true) is { } pickRefusal) {
+                session.Send(new WiredValidationErrorComposer(pickRefusal));
+
+                return;
+            }
+
             if (!compiled
                 || !WiredConfigurationSave.TrySave(configured, runtime, store, out error,
                     id => room.GetRoomItemHandler().GetItem(id) != null,

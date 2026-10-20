@@ -135,6 +135,13 @@ public static class WiredNativeEditorProjection
             return "wiredfurni.error.invalid_freeze_effect";
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight answers each refused value with its own key.
+        if (descriptor.CanonicalName == WiredFurniVisualRules.Highlight
+            && WiredFurniVisualRules.HighlightRefusal(WiredFurniVisualRules.Normalize(descriptor.CanonicalName, native,
+                Metadata(descriptor.CanonicalName).OwnedDefaults).OwnedIntParams) is { } refusal) {
+            return refusal;
+        }
+
         var allowed = Metadata(descriptor.CanonicalName).FurniAllowed;
 
         return native.FurniSourceTypes.Length == allowed.Length

@@ -77,6 +77,22 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("2", stack.Run(add).State);
     }
 
+    // Only the first write of each firing counts in a flash batch, also when another firing writes in between.
+    [Fact]
+    public void AFiringsLaterWriteDoesNotCountAgainAfterAnotherFiringWritesInTheSameBatch()
+    {
+        using var f = new TeleportFixture();
+        var definition = MakeItem(10, "wf_var_user");
+        object first = new(), second = new();
+        var wired = f.Room.GetWired();
+
+        wired.FlashDefinition(definition, Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionGiven, first);
+        wired.FlashDefinition(definition, Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionChanged, second);
+        wired.FlashDefinition(definition, Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionChanged, first);
+
+        Assert.Equal("2", definition.LegacyDataString);
+    }
+
     private sealed class DefinitionFlashCatalog : IWiredVariableDirectory
     {
         public uint? GetRoomOwner(uint roomId) => 5;

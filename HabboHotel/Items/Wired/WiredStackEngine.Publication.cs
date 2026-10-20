@@ -81,10 +81,8 @@ internal sealed partial class WiredStackEngine
 
         var inherited = pending.Publication;
         var silentObserver = ObserveEvent == null || PublicationObserverIsSilent?.Invoke(pending.Event) == true;
-        var empty = pending.Call == null && pending.Signal == null && pending.Current == null
-            && pending.Triggers is { Length: 0 } && pending.LegacyTriggers.Length == 0;
 
-        if (silentObserver && (empty || inherited is { Open: true } && ReferenceEquals(inherited, _activePublication))) {
+        if (silentObserver && (RunsNoStack(pending) || inherited is { Open: true } && ReferenceEquals(inherited, _activePublication))) {
             return;
         }
 

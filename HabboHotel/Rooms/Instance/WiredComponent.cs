@@ -619,6 +619,23 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     /// <summary>
+    /// Observed on AIR WIN63-202610151745-318700621: a counter value written by Wired (Start reset, Reset, Adjust Clock) goes out in the
+    /// same ObjectsDataUpdate as the event's flashes, each counter once with its last value. Other data formats keep their own frame.
+    /// </summary>
+    private bool TryQueueBatchData(Item item)
+    {
+        if (!item.IsFloorItem || item.ExtraData is not Plus.HabboHotel.Items.DataFormat.LegacyDataFormat) {
+            return false;
+        }
+
+        lock (_pendingFlashes) {
+            _pendingFlashes.Add(item);
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Every save of a selector sends its resting state: 3 (green) with "Filter existing selection", 0 (orange) without; Invert is not
     /// a colour. Observed on hhus (AIR WIN63-202610131318-860371703): ObjectDataUpdate right after UpdateSelector. Room entry lists the
     /// last state, flashes included.

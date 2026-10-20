@@ -136,6 +136,32 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(first.Length, first.Select(entry => entry.Id).Distinct().Count());
     }
 
+    // A counter value that joins the event's data batch still raises its Counter event, so a counter-time trigger reacts to it as before.
+    [Fact]
+    public void WiredAdjustClockSetKeepsFeedingCounterTimeTriggersWhenTheWriteJoinsTheBatch()
+    {
+        string Config(int[] parameters, params uint[] selected) => JsonSerializer.Serialize(new WiredConfiguration
+        {
+            IntParams = [.. parameters],
+            SelectedItems = [.. selected]
+        });
+        var f = new Fixture(
+        [
+            (CounterId, 8, 12, 0.0, 0, "wf_upcounter1", null),
+            (21, 4, 12, 0.0, 0, "wf_trg_period_short", Config([4])),
+            (22, 4, 12, 0.65, 0, "wf_act_adjust_clock", Config([2, 100, 0, 10], CounterId)),
+            (23, 6, 12, 0.0, 0, "wf_trg_clock_counter", Config([0, 5, 100], CounterId)),
+            (24, 6, 12, 0.65, 0, "wf_act_toggle_state", ObservedNative("wf_act_toggle_state", [0], [ObservedSubjectId], 100)),
+            (ObservedSubjectId, 9, 9, 0.0, 0, "wf_colortile", null)
+        ], live: true);
+        f.MovementContext().Room.GetWired().AttachRoomItem(f.Items[CounterId]);
+        f.Walker(1, 4, 10, 4, 11);
+
+        f.Advance(1000);
+
+        Assert.Equal("1", f.Items[ObservedSubjectId].LegacyDataString);
+    }
+
     [Fact]
     public void WiredSetPublishesABatchEvenWhenTheDisplayIsUnchangedWithoutStateWork()
     {

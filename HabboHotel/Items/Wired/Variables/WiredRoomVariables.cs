@@ -46,7 +46,7 @@ public sealed partial class WiredRoomVariables
         _persistence = new(database, Module, clock);
         SharedAddons = new DatabaseWiredSharedAddonStore(database);
         _broadcast = new(Module, playerId => playerId is > 0 and <= int.MaxValue
-            ? room.GetRoomUserManager()?.GetRoomUserByHabbo((int)playerId)?.VirtualId ?? 0 : 0);
+            ? room.GetRoomUserManager()?.GetRoomUserByHabbo((int)playerId)?.VirtualId ?? 0 : 0, InvalidateFx);
         WiredSharedVariableBroadcast.Register(_broadcast);
     }
 

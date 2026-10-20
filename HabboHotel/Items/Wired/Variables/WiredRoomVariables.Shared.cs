@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using Plus.HabboHotel.Items.Wired.Variables.Fx;
 
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
@@ -33,6 +35,7 @@ public sealed partial class WiredRoomVariables
 
             foreach (var reference in Module.ListReferences(definition.ItemId)) {
                 SharedAddons.Save(reference.ItemId, published);
+                WiredSharedVariableBroadcast.Refresh(reference.RoomId);
             }
         }
 
@@ -43,11 +46,20 @@ public sealed partial class WiredRoomVariables
     {
         var connector = share.Category(0) ? MetadataOn(definition.ItemId, "wf_xtra_var_text_connector")?.TextConnector : null;
         var level = share.Category(1) ? MetadataOn(definition.ItemId, "wf_xtra_var_lvlup_system")?.Configuration.Text : null;
+        var tile = _definitions[definition.ItemId].Item;
+        // Variable FX draw on a user variable's holders only.
+        var effects = share.Category(2) && definition.Target == WiredVariableTarget.User
+            ? _metadata.Values.Where(box => WiredVariableMetadataBox.IsFx(box.Descriptor.CanonicalName) && IsAttached(box.Item)
+                && box.Item.GetX == tile.GetX && box.Item.GetY == tile.GetY && WiredVariableFxSettings.UsesUserSource(box.Configuration))
+                .OrderBy(box => box.Item.GetZ).ThenBy(box => box.Item.Id)
+                .Select(box => new WiredSharedFx(box.Descriptor.CanonicalName, box.Configuration.IntParams, box.Configuration.VariableIds, box.Configuration.Text))
+            : [];
 
         return new()
         {
             TextConnector = [.. (connector ?? new Dictionary<int, string>()).OrderBy(pair => pair.Key).Select(pair => new KeyValuePair<int, string>(pair.Key, pair.Value))],
-            Level = level
+            Level = level,
+            Fx = [.. effects]
         };
     }
 
@@ -79,4 +91,13 @@ public sealed partial class WiredRoomVariables
         return ReferenceOf(definitionId) is { } reference && ImportedAddons(reference)?.Level is { } text
             && WiredVariableLevelSystem.TryParse(text, out var imported) ? imported : null;
     }
+
+    /// <summary>
+    /// The imported Variable FX of the references that show them, at most <see cref="MaxFxBoxes"/>. Their configuration ids count down
+    /// from -1 over the whole room, so two references never share one.
+    /// </summary>
+    private IEnumerable<(WiredVariableDefinition Reference, WiredSharedFx Fx, int ConfigId)> ImportedFx(IReadOnlyDictionary<uint, WiredVariableDescription> authorized) =>
+        _definitions.Keys.Order().Where(authorized.ContainsKey).Select(ReferenceOf).OfType<WiredVariableDefinition>()
+            .SelectMany(reference => (ImportedAddons(reference)?.Fx ?? []).Select(fx => (reference, fx)))
+            .Take(MaxFxBoxes).Select((pair, index) => (pair.reference, pair.fx, -(index + 1)));
 }

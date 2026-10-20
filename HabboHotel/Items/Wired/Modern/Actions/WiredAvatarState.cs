@@ -138,6 +138,17 @@ public sealed class WiredAvatarState
             });
         }
     }
+    /// <summary>Sets the effect Thaw puts back, while the user wears a freeze effect. False when that is not the case.</summary>
+    public bool SetEffectAfterThaw(RoomUser user, Func<int, int> effect)
+    {
+        if (!_frozen.TryGetValue(user, out var state) || state.Effect <= 0) {
+            return false;
+        }
+
+        _frozen[user] = state with { Previous = effect(state.Previous) };
+
+        return true;
+    }
     public void Forget(RoomUser user) => _frozen.Remove(user);
     private void OnNextTick(Action apply)
     {

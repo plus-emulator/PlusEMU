@@ -428,11 +428,17 @@ public class RoomUserManager
             return 4;
         }
 
-        if (_room.CheckRights(session, false) && _room.Group == null) {
+        if (_room.Group == null) {
+            return _room.CheckRights(session, false) ? 1 : 0;
+        }
+
+        var habboId = session.GetHabbo().Id;
+
+        if (!_room.Group.IsAdmin(habboId) && _room.UsersWithRights.Contains(habboId)) {
             return 1;
         }
 
-        return _room.Group != null && _room.CheckRights(session, false, true) ? 3 : 0;
+        return _room.CheckRights(session, false, true) ? 3 : 0;
     }
 
     // Observed on AIR WIN63-202610151745-318700621: the entrant's controller level and Wired permissions follow the room's labels,

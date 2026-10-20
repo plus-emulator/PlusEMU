@@ -11,11 +11,6 @@ public sealed class RoomRightsComponent(IDatabase database) : IRoomComponent
     public void Initiated()
     {
         _room.UsersWithRights = [];
-
-        if (_room.Group != null) {
-            return;
-        }
-
         using var connection = database.Connection();
         _room.UsersWithRights.AddRange(connection.Query<int>(
             "SELECT user_id FROM room_rights WHERE room_id = @roomId", new { roomId = _room.Id }));

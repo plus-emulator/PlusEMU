@@ -307,8 +307,8 @@ namespace Plus.Tests
                 Assert.All(headers.Keys, name => Assert.NotNull(type.GetField(name)));
             }
 
-            foreach (var file in Directory.GetFiles(Path.Combine(GroupForumDatabaseTests.RepositoryRoot(), "Resources", "Revisions"), "*.json")) {
-                using var json = JsonDocument.Parse(File.ReadAllText(file));
+            {
+                using var json = HabbiconPacketTests.CurrentRevisionTable();
                 var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
 
                 foreach (var (key, headers, type) in new[] { ("IncomingHeaders", incoming, typeof(ClientPacketHeader)), ("OutgoingHeaders", outgoing, typeof(ServerPacketHeader)) }) {

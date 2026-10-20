@@ -59,7 +59,7 @@ public class WiredRoomLogHeaderCompatibilityTests
     [Fact]
     public void TheRevisionExampleTableAndHeaderConstantsAgreeOnTheClientIdsAndTheyAreUnique()
     {
-        using var table = JsonDocument.Parse(File.ReadAllText(HabbiconPacketTests.Repo("Resources/Revisions/example.json")));
+        using var table = HabbiconPacketTests.CurrentRevisionTable();
         var incoming = table.RootElement.GetProperty("IncomingHeaders");
         var outgoing = table.RootElement.GetProperty("OutgoingHeaders");
 

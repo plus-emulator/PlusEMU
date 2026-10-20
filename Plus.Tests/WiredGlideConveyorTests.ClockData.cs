@@ -40,7 +40,7 @@ public sealed partial class WiredGlideConveyorTests
     public void ObjectDataUpdateHeadersAreMappedByTheCurrentRevisionAndItsExampleTable()
     {
         var revision = new RevisionsCache().InternalRevision;
-        using var example = JsonDocument.Parse(File.ReadAllText(HabbiconPacketTests.Repo("Resources/Revisions/example.json")));
+        using var example = HabbiconPacketTests.CurrentRevisionTable();
         var outgoing = example.RootElement.GetProperty("OutgoingHeaders");
 
         Assert.Equal("WIN63-202610201032-107964540", revision.Name);

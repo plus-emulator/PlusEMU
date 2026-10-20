@@ -174,7 +174,7 @@ public partial class WiredRoomSettingsTests
         using var manager = new PacketManager(handlers, NullLogger<PacketManager>.Instance);
         var registered = (Dictionary<uint, IPacketEvent>)typeof(PacketManager).GetField("_incomingPackets", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(manager)!;
         var revision = new RevisionsCache().InternalRevision;
-        using var table = JsonDocument.Parse(File.ReadAllText(HabbiconPacketTests.Repo("Resources/Revisions/example.json")));
+        using var table = HabbiconPacketTests.CurrentRevisionTable();
         var incoming = table.RootElement.GetProperty("IncomingHeaders");
         var outgoing = table.RootElement.GetProperty("OutgoingHeaders");
 

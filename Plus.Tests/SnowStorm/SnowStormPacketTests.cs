@@ -92,8 +92,8 @@ public class SnowStormPacketTests
     [Fact]
     public void EveryHeaderIsMappedToItsVoltIdInEveryRevisionWithoutCollisions()
     {
-        foreach (var file in Directory.GetFiles(HabbiconPacketTests.Repo("Resources/Revisions"), "*.json")) {
-            using var json = JsonDocument.Parse(File.ReadAllText(file));
+        {
+            using var json = HabbiconPacketTests.CurrentRevisionTable();
             var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
 
             foreach (var (key, expected, type) in new[] { ("IncomingHeaders", Incoming, typeof(ClientPacketHeader)), ("OutgoingHeaders", Outgoing, typeof(ServerPacketHeader)) }) {

@@ -659,6 +659,7 @@ public class Room
             session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(settledUsers)));
         }
 
+        FurniVisibility.Seed(this);
         var snapshotFurniture = VisibleFloorItems.ToArray();
         var furnitureSnapshot = RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName);
         session.Send(new ObjectsComposer(furnitureSnapshot));
@@ -798,7 +799,7 @@ public class Room
         }
     }
 
-    public IEnumerable<Item> VisibleFloorItems => GetRoomItemHandler().GetFloor.Where(item => !HideWired || !item.IsWired);
+    public IEnumerable<Item> VisibleFloorItems => GetRoomItemHandler().GetFloor.Where(item => (!HideWired || !item.IsWired) && !FurniVisibility.ShouldHide(this, item));
 
     public void SetWiredHidden(bool hidden)
     {
@@ -826,6 +827,10 @@ public class Room
 
     public void SendObject(Item item)
     {
+        if (FurniVisibility.ConcealOnArrival(this, item)) {
+            return;
+        }
+
         if (item is { IsTemporary: true, IsFloorItem: true }) {
             SendTemporaryFloorItems([item]);
 

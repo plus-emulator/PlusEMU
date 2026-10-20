@@ -552,7 +552,9 @@ public partial class RoomItemHandling
             return false;
         }
 
-        if (announce && item.IsFloorItem) {
+        var neverSent = item.IsFloorItem && FurniVisibility.ForgetRemoved(_room, item);
+
+        if (announce && item.IsFloorItem && !neverSent) {
             _room.SendPacket(new ObjectRemoveComposer(item.Id, item.IsTemporary, item.UserId));
         }
         else if (announce && item.IsWallItem) {
@@ -630,8 +632,10 @@ public partial class RoomItemHandling
             }
         }
 
-        _room.SendPacket(new ObjectUpdateComposer(snapshot));
-        _room.SendPacket(new FurnitureMetadataComposer([snapshot]));
+        if (!FurniVisibility.IsConcealed(_room, item)) {
+            _room.SendPacket(new ObjectUpdateComposer(snapshot));
+            _room.SendPacket(new FurnitureMetadataComposer([snapshot]));
+        }
 
         return true;
     }
@@ -859,7 +863,7 @@ public partial class RoomItemHandling
             if (newItem) {
                 _room.SendObject(item);
             }
-            else if (!onRoller) {
+            else if (!onRoller && !FurniVisibility.IsConcealed(_room, item)) {
                 var furnitureSnapshot = RoomItemSnapshot.Capture(item);
                 _room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
                 _room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));

@@ -318,6 +318,27 @@ public sealed class WiredChestGiveG2Tests
         Assert.Equal(105, world.Habbo.Credits);
         Assert.Equal(100, second.Habbo.Credits);
         Assert.Single(world.Store.Requests);
+        var fail = Assert.Single(second.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionFailComposer);
+        Assert.Equal(new byte[] { 0, 0, 0, (byte)WiredChestFailure.UserCantTrade }, fail.Payload);
+    }
+
+    [Fact]
+    public void GiveAllStillRefusesSeveralUsersWhenOneOfThemIsTradeLocked()
+    {
+        using var world = new Scene();
+        world.Coins(FirstChest, 20);
+        var box = world.Box("wf_act_give_currency", Currency(mode: 1, amount: 1, show: 0), [FirstChest]);
+        var second = world.AddUser(2, 8);
+        second.Habbo.TradingLockExpiresAt = world.Inner.Clock.Now.AddMinutes(1);
+
+        Assert.False(box.Execute(world.Context(world.Actor, second.Actor)));
+        Assert.Empty(world.Store.Requests);
+        Assert.Equal(20, world.Store.Chests[FirstChest].Coins);
+        Assert.Equal(100, world.Habbo.Credits);
+        Assert.Equal(100, second.Habbo.Credits);
+        Assert.DoesNotContain(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionFailComposer);
+        var fail = Assert.Single(second.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionFailComposer);
+        Assert.Equal(new byte[] { 0, 0, 0, (byte)WiredChestFailure.UserCantTrade }, fail.Payload);
     }
 
     [Fact]
@@ -503,7 +524,6 @@ public sealed class WiredChestGiveG2Tests
         public Habbo Habbo => Inner.Habbo;
         public RoomUser Actor => Inner.Actor;
         public List<(uint Header, byte[] Payload)> Packets => Inner.Packets;
-        public readonly List<(Habbo Habbo, RoomUser Actor)> Others = [];
         private uint _nextItem = 1000;
 
         public Scene()
@@ -540,16 +560,15 @@ public sealed class WiredChestGiveG2Tests
             Store.Chests[id] = chest;
         }
 
-        public (Habbo Habbo, RoomUser Actor) AddUser(int id, int virtualId)
+        public (Habbo Habbo, RoomUser Actor, List<(uint Header, byte[] Payload)> Packets) AddUser(int id, int virtualId)
         {
             var habbo = new Habbo { Id = id, Credits = 100, CurrentRoom = Room, Inventory = new() { Furniture = new([], []) } };
-            var (client, _) = HabbiconTestSupport.Client(habbo);
+            var (client, packets) = HabbiconTestSupport.Client(habbo);
             habbo.Client = client;
             var actor = new RoomUser(id, 1, virtualId, Room, client, TestChatEmotions.Unused, TestRewardProgress.Unused);
             ((ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Room.GetRoomUserManager())!).TryAdd(virtualId, actor);
-            Others.Add((habbo, actor));
 
-            return (habbo, actor);
+            return (habbo, actor, packets);
         }
 
         public WiredNativeEditorConfiguration Native(string name, int[] owned, uint[] chests, string text)

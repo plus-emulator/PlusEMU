@@ -782,7 +782,7 @@ public sealed partial class WiredGlideConveyorTests
         var f = new Fixture(FastQueueLayout(2), live: true, movementEngine: movementEngine);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var context = f.MovementContext();
-        var publication = new WiredFurniturePublication(context.Room, new object(), 0, 0);
+        var publication = new WiredFurniturePublication(context.Room, 0, 0);
         context.Publication = publication;
         var packets = new List<byte[]>();
         (int X, int Y)? poseAtSeal = null;

@@ -61,7 +61,7 @@ internal sealed partial class WiredStackEngine
         }
 
         SealPublication();
-        _activePublication = new(context.Room, scheduled.Chain, deadline, _publicationEpoch);
+        _activePublication = new(context.Room, deadline, _publicationEpoch);
 
         return _activePublication;
     }

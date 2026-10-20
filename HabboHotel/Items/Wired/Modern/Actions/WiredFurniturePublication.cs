@@ -4,7 +4,7 @@ using Plus.HabboHotel.Rooms.PathFinding;
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>Output only, for one engine-owned continuous movement segment. Room commits remain immediate.</summary>
-internal sealed class WiredFurniturePublication(Room room, object root, long deadline, long epoch)
+internal sealed class WiredFurniturePublication(Room room, long deadline, long epoch)
 {
     private readonly Dictionary<Item, (WiredMovementComposer Movement, WiredMoveStyleComposer Style, long Placement, ItemDefinition Definition)> _entries = new(ReferenceEqualityComparer.Instance);
     private readonly List<Item> _order = [];
@@ -13,7 +13,6 @@ internal sealed class WiredFurniturePublication(Room room, object root, long dea
     // Firings that moved each furni, and furni whose firing ran with Execute in Order.
     private readonly Dictionary<Item, HashSet<object?>> _firings = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<Item> _ordered = new(ReferenceEqualityComparer.Instance);
-    internal object Root { get; } = root;
     internal long Deadline { get; } = deadline;
     internal long Epoch { get; } = epoch;
     internal bool Open { get; private set; } = true;

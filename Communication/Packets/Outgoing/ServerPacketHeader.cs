@@ -102,6 +102,7 @@ public static class ServerPacketHeader
     public const uint WiredMonitorDataComposer = 5101;
     public const uint WiredRoomLogPageComposer = 3267;
     public const uint WiredRoomSettingsDataComposer = 5102;
+    public const uint WiredRoomSettingsComposer = 3319;
     public const uint WiredRewardResultComposer = 2281;
     public const uint WiredMovementsComposer = 203;
     public const uint WiredFurniMoveStyleComposer = 5110;

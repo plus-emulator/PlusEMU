@@ -116,7 +116,8 @@ public class WiredClickPacketHookTests
     }
 
     // Observed on AIR WIN63-202610151745-318700621: after a click on a user the clicker turns to face them in the next status
-    // update, also in a room without a Click User trigger. The client sends no separate look-at message with this click.
+    // update. In a room with a Click User trigger the AIR client sends only the click packet, so the server turns the clicker; without
+    // one it sends only a look-at message. The case without a trigger here only checks that a click alone still turns the clicker.
     [Theory]
     [InlineData("wf_trg_click_user", 0, 1, 6)]
     [InlineData("wf_trg_click_user", 2, 1, 2)]

@@ -10,53 +10,31 @@ public class UserPerksComposer(bool cameraAllowed) : IServerPacket
     {
         // TODO @80O: Pass perks via constructor.
         // TODO @80O: Store perks in the database.
-        packet.WriteInteger(14); // Count
-        // Each perk contains its code, optional denial-message localization key, and allowed flag.
-        packet.WriteString("USE_GUIDE_TOOL");
-        packet.WriteString("");
-        packet.WriteBoolean(false);
-        packet.WriteString("GIVE_GUIDE_TOURS");
-        packet.WriteString("requirement.unfulfilled.helper_le");
-        packet.WriteBoolean(false);
-        packet.WriteString("JUDGE_CHAT_REVIEWS");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("VOTE_IN_COMPETITIONS");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("CALL_ON_HELPERS");
-        packet.WriteString("");
-        packet.WriteBoolean(false);
-        packet.WriteString("CITIZEN");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("TRADE");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("HEIGHTMAP_EDITOR_BETA");
-        packet.WriteString("");
-        packet.WriteBoolean(false);
-        packet.WriteString("EXPERIMENTAL_CHAT_BETA");
-        packet.WriteString("requirement.unfulfilled.helper_level_2");
-        packet.WriteBoolean(true);
-        packet.WriteString("EXPERIMENTAL_TOOLBAR");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("NAVIGATOR_PHASE_ONE_2014");
-        packet.WriteString("");
-        packet.WriteBoolean(false);
-        packet.WriteString("CAMERA");
-        packet.WriteString("");
-        packet.WriteBoolean(cameraAllowed);
-        packet.WriteString("NAVIGATOR_PHASE_TWO_2014");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("MOUSE_ZOOM");
-        packet.WriteString("");
-        packet.WriteBoolean(true);
-        packet.WriteString("NAVIGATOR_ROOM_THUMBNAIL_CAMERA");
-        packet.WriteString("");
-        packet.WriteBoolean(false);
+        // Observed on AIR WIN63-202610201032-107964540: Habbo sends these 12 perks in this order.
+        // BUILDER_AT_WORK stays denied so floor plans keep the normal size limit.
+        // HABBO_CLUB_OFFER_BETA stays denied because this hotel has no Habbo Club offer.
+        (string Code, string DenialKey, bool Allowed)[] perks =
+        [
+            ("JUDGE_CHAT_REVIEWS", "requirement.unfulfilled.helper_level_6", true),
+            ("NAVIGATOR_PHASE_TWO_2014", "", true),
+            ("TRADE", "requirement.unfulfilled.citizenship_level_3", true),
+            ("CALL_ON_HELPERS", "", false),
+            ("CITIZEN", "", true),
+            ("BUILDER_AT_WORK", "requirement.unfulfilled.group_membership", false),
+            ("HABBO_CLUB_OFFER_BETA", "", false),
+            ("USE_GUIDE_TOOL", "requirement.unfulfilled.helper_level_4", false),
+            ("MOUSE_ZOOM", "", true),
+            ("NAVIGATOR_ROOM_THUMBNAIL_CAMERA", "", cameraAllowed),
+            ("VOTE_IN_COMPETITIONS", "requirement.unfulfilled.helper_level_2", true),
+            ("CAMERA", "", cameraAllowed),
+        ];
+        packet.WriteInteger(perks.Length);
 
+        // Each perk contains its code, optional denial-message localization key, and allowed flag.
+        foreach (var (code, denialKey, allowed) in perks) {
+            packet.WriteString(code);
+            packet.WriteString(denialKey);
+            packet.WriteBoolean(allowed);
+        }
     }
 }

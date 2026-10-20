@@ -824,7 +824,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         else {
                             room.SendChat(receiver => packet with { ReceiverVirtualId = receiver });
                         }
-                    });
+                    }, context);
 
                     changed = true;
                 }

@@ -461,6 +461,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     // Variable Changed stacks raised by a say run after its echo (AIR WIN63-202610151745-318700621).
     public void FinishSpeech()
     {
+        ReleaseAfterEcho();
         _engine.DrainVariableStacks();
         FlushFlashes();
     }
@@ -708,6 +709,33 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     private readonly List<Action> _afterFlash = [];
+    private readonly List<Action> _afterEcho = [];
+
+    /// <summary>
+    /// Like <see cref="AfterFlash(Action)"/>, but a message from a stack that a Send Signal reached during a say waits for the echo of the
+    /// say. Observed on AIR WIN63-202610151745-318700621: it comes after the echo, in the same millisecond. <see cref="FinishSpeech"/> sends it.
+    /// </summary>
+    internal void AfterFlash(Action send, WiredRuntimeContext context)
+    {
+        if (!_engine.OutputFollowsEcho(context)) {
+            AfterFlash(send);
+
+            return;
+        }
+
+        lock (_pendingFlashes) {
+            _afterEcho.Add(send);
+        }
+    }
+
+    // The held messages join the pass's flash, so they still follow the flash batch like every other stack message.
+    private void ReleaseAfterEcho()
+    {
+        lock (_pendingFlashes) {
+            _afterFlash.AddRange(_afterEcho);
+            _afterEcho.Clear();
+        }
+    }
 
     /// <summary>
     /// Sends a stack's chat output after the pass's flash. Observed on AIR WIN63-202610151745-318700621: the flash comes before the

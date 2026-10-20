@@ -148,14 +148,14 @@ internal sealed partial class WiredStackEngine
 
     private (bool Accepted, WiredClickResult Click) DispatchCore(WiredRuntimeEvent @event, bool resumeImmediately = false)
     {
-        var previousHold = _holdVariableStacks;
-        _holdVariableStacks = previousHold || @event.Kind == WiredEventKind.Speech;
+        var previousHold = _speechPass;
+        _speechPass = previousHold || @event.Kind == WiredEventKind.Speech;
 
         try {
             return DispatchCoreUnheld(@event, resumeImmediately);
         }
         finally {
-            _holdVariableStacks = previousHold;
+            _speechPass = previousHold;
         }
     }
 
@@ -785,7 +785,13 @@ internal sealed partial class WiredStackEngine
     }
 
     private bool _drainingSignals;
-    private bool _holdVariableStacks;
+    private bool _speechPass;
+
+    /// <summary>
+    /// True when the chat that this context shows must wait for the echo of the say: the say is still running its stacks and the context
+    /// belongs to a stack that a Send Signal reached. A delayed action runs after the say and is not held.
+    /// </summary>
+    internal bool OutputFollowsEcho(WiredRuntimeContext context) => _speechPass && context.Event.Kind == WiredEventKind.Signal;
 
     /// <summary>True when a say left Variable Changed stacks for <see cref="DrainVariableStacks"/>.</summary>
     public bool HasHeldVariableStacks
@@ -825,7 +831,7 @@ internal sealed partial class WiredStackEngine
         _drainingCollisions = true;
 
         try {
-            while (_dispatches.TryPeek(out var pending) && (pending.Event.Kind == WiredEventKind.Collision || pending.Event.Kind == WiredEventKind.Variable && !_holdVariableStacks) && !OutOfBudget()) {
+            while (_dispatches.TryPeek(out var pending) && (pending.Event.Kind == WiredEventKind.Collision || pending.Event.Kind == WiredEventKind.Variable && !_speechPass) && !OutOfBudget()) {
                 // Its stacks run in this cycle instead of waiting for the next one.
                 pending.ResumeImmediately = true;
 

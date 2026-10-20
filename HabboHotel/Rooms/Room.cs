@@ -644,6 +644,9 @@ public class Room
         var entrant = snapshotUsers.FirstOrDefault(user => !user.IsBot && ReferenceEquals(user.GetClient(), session));
         var present = snapshotUsers.Where(user => !ReferenceEquals(user, entrant)).ToArray();
         session.Send(new UsersComposer(_userSnapshots.Capture(present)));
+        // Observed on AIR WIN63-202610201032-107964540: the transparency and highlight state comes right after that Users packet,
+        // before the floor items.
+        GetWired()?.SendVisualizationState(session);
 
         foreach (var user in present) {
             SendUserExtras(session, user);
@@ -656,9 +659,6 @@ public class Room
             session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(settledUsers)));
         }
 
-        // Transparency and highlight shown to the whole room (class_3560 furni, class_3459 users), so late joiners see them too.
-        // Observed on AIR WIN63-202610201032-107964540: they come after the Users packet and before the floor items.
-        _wiredComponent?.SendVisualizationState(session);
         var snapshotFurniture = VisibleFloorItems.ToArray();
         var furnitureSnapshot = RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName);
         session.Send(new ObjectsComposer(furnitureSnapshot));

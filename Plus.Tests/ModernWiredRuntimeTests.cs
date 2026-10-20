@@ -1855,7 +1855,7 @@ public partial class ModernWiredRuntimeTests
         public int Published;
         public IWiredItem Box => Wired.TryGet(100, out var box) ? box : throw new InvalidOperationException("Missing registered box.");
         public WiredModernAction Action => Assert.IsType<WiredModernAction>(Box);
-        public MovementOracleSession(string name, IWiredConfigurationStore? durable = null, StoredRuntimeRow? row = null)
+        public MovementOracleSession(string name, IWiredConfigurationStore? durable = null, StoredRuntimeRow? row = null, uint[]? buildersClubPicks = null)
         {
             (Room, Map, Items) = World();
             Room.Id = 42;
@@ -1881,14 +1881,14 @@ public partial class ModernWiredRuntimeTests
             item.Definition.InteractionType = InteractionType.WiredEffect;
             item.Definition.WiredType = name == "wf_act_move_rotate" ? WiredBoxType.EffectMoveAndRotate : WiredBoxType.None;
             item.SetState(2, 2, 0);
-            var picks = new[] { MakeItem(8, "test"), MakeItem(9, "test") };
+            Item[] picks = [MakeItem(8, "test"), MakeItem(9, "test"), .. (buildersClubPicks ?? []).Select(id => MakeItem(id, "test", buildersClub: true))];
 
             for (var i = 0; i < picks.Length; i++) {
                 picks[i].UserId = 7;
                 picks[i].RoomId = Room.Id;
                 picks[i].Definition.Stackable = true;
                 picks[i].Definition.Walkable = true;
-                picks[i].SetState(1, 1 + i, 0);
+                picks[i].SetState(i < 2 ? 1 : 0, i < 2 ? 1 + i : 0, 0);
             }
 
             Room.GetRoomItemHandler().LoadFurniture([item, .. picks]);

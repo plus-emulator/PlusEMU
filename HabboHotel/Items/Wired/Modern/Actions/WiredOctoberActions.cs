@@ -175,8 +175,9 @@ public static class WiredOctoberActions
             ? new WiredUserTransparencyComposer(targets, transparency, clickThrough, easing)
             : new WiredFurniTransparencyComposer(targets, transparency, clickThrough, easing));
 
-        if (P(config, 0) == 1) {
-            context.Room.GetWired().RememberTransparency(targetUsers, targets, transparency, clickThrough, easing);
+        // Observed on AIR WIN63-202610201032-107964540: only an effect for everyone on furni is part of the room entry state.
+        if (P(config, 0) == 1 && !targetUsers) {
+            context.Room.GetWired().RememberTransparency(targets, transparency, clickThrough, easing);
         }
 
         return true;
@@ -200,17 +201,16 @@ public static class WiredOctoberActions
         var type = P(config, 1);
         var color = type == 2 ? 0 : type == 4 ? 0xFFFFFF : P(config, 3);
         var animation = type == 4 ? 1 : P(config, 4);
-        // The editor offers Brighten On as 76 but saves half of it (class_4214.as:117 selectedId / 2, :183 option 76), and the room
-        // applies the packet's strength as a plain percentage (WiredFurnitureEffectState.setHighlight L132 clampPercentage). The saved
-        // 38 stays as the editor wrote it; the room is sent the 76 the editor showed. Inferred: the official packet is not observed.
-        var strength = type == 4 ? P(config, 2) * 2 : P(config, 2);
-        var easing = animation == 0 ? P(config, 5) : 0;
+        // Observed on AIR WIN63-202610201032-107964540: the packet carries the saved strength (Brighten On stays 38) and the saved
+        // easing, also for a pulsing highlight.
+        var strength = P(config, 2);
+        var easing = P(config, 5);
         Show(context, config, users, targetUsers
             ? new WiredUserHighlightComposer(targets, type, strength, color, animation, easing)
             : new WiredFurniHighlightComposer(targets, type, strength, color, animation, easing));
 
-        if (P(config, 0) == 1) {
-            context.Room.GetWired().RememberHighlight(targetUsers, targets, type, strength, color, animation, easing);
+        if (P(config, 0) == 1 && !targetUsers) {
+            context.Room.GetWired().RememberHighlight(targets, type, strength, color, animation, easing);
         }
 
         return true;

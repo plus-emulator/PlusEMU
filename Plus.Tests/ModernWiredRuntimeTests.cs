@@ -1888,7 +1888,7 @@ public partial class ModernWiredRuntimeTests
                 picks[i].RoomId = Room.Id;
                 picks[i].Definition.Stackable = true;
                 picks[i].Definition.Walkable = true;
-                picks[i].SetState(i < 2 ? 1 : 2, i < 2 ? 1 + i : i - 2, 0);
+                picks[i].SetState(i < 2 ? 1 : 0, i < 2 ? 1 + i : 0, 0);
             }
 
             Room.GetRoomItemHandler().LoadFurniture([item, .. picks]);

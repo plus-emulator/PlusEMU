@@ -979,11 +979,11 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         map.Navigation.ApplyDirty();
     }
 
-    private static (Room Room, Gamemap Map, ConcurrentDictionary<uint, Item> Items) World()
+    private static (Room Room, Gamemap Map, ConcurrentDictionary<uint, Item> Items) World(string? heightmap = null)
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         typeof(Room).GetField("_interactionClock", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, TimeProvider.System);
-        var map = new Gamemap(room, new RoomModel("wired-parity", 0, 0, 0, 0, string.Join('\r', Enumerable.Repeat("000000", 6)), 0, 0, true),
+        var map = new Gamemap(room, new RoomModel("wired-parity", 0, 0, 0, 0, heightmap ?? string.Join('\r', Enumerable.Repeat("000000", 6)), 0, 0, true),
             TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
         var handler = new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance,
             TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);

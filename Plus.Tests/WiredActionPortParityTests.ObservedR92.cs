@@ -13,17 +13,17 @@ public sealed partial class WiredActionPortParityTests
 {
     // r92f r92-flee far-w1..w3: from (11,1) with the owner on (4,4) (Manhattan 10) the marker moved +x on all three fires.
     [Fact]
-    public void FleeHasNoRangeAndStepsAwayAlongTheLargerAxis()
+    public void FleeHasNoRangeAndStepsEastFromAFarOwner()
     {
         var (room, map, items) = World();
         using var roomOwnerScope = RoomOwnerScope.Enter(room);
-        var mover = Floor(1, 1, 1);
+        var mover = Floor(1, 4, 1);
         Place(map, items, mover);
-        var owner = Avatar(room, 1, 5, 4);
+        var owner = Avatar(room, 1, 0, 4);
         var action = Box(room, "wf_act_flee", [100], [mover.Id]);
 
         Assert.True(action.Execute(Context(room, [mover], [owner])));
-        Assert.Equal((0, 1), (mover.GetX, mover.GetY));
+        Assert.Equal((5, 1), (mover.GetX, mover.GetY));
     }
 
     // r92f r92-flee away-w1: (4,2) -> (4,1); wall-w1/w2: (4,1) against the north wall with the owner straight south -> (5,1).

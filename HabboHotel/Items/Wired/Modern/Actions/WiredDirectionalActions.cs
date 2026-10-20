@@ -108,27 +108,25 @@ public sealed class WiredDirectionalActions
             .Where(point => point.X != item.GetX || point.Y != item.GetY);
     }
     /// <summary>
-    /// Flee: away along the larger axis, then the other axis; when neither leads away (a wall behind), a sidestep to the
-    /// mover's right of the away heading, then its left.
-    /// Observed r92f r92-flee: (4,2) with the owner on (4,4) moves to (4,1); (4,1) against the north wall moves to (5,1) on both fires.
-    /// Observed r92j r92h-flee-sides: from (8,1) with the owner straight south on (8,3) and both sides free, the sidestep went east
-    /// (the right of the away heading) on all six trials.
+    /// Flee: from a user in its own row or column within three tiles the block steps straight away. Otherwise, or when that tile is
+    /// taken, it steps east, even towards the user. When east is taken it steps away from the nearest user on y (south when level),
+    /// then the other way on y.
+    /// Observed on AIR WIN63-202610151745-318700621 in a model_a room, 10 of 10 fires for each start: offsets (-3,0) and (0,-2) went
+    /// straight away; (-4,0), (0,-4), every diagonal offset, and (0,2) on the south edge went east; at the east wall (3,0) and (3,1)
+    /// went south and (3,-1) went north. Observed r92f r92-flee: (0,-3) against the north wall went east.
     /// </summary>
-    public static IEnumerable<Point> FleeSteps(Item item, RoomUser user)
+    public static IEnumerable<Point> FleeSteps(Item item, RoomUser? inLine, RoomUser nearest)
     {
-        foreach (var step in Steps(item, user, true)) {
-            yield return step;
+        if (inLine != null) {
+            yield return new(item.GetX + Math.Sign(item.GetX - inLine.X), item.GetY + Math.Sign(item.GetY - inLine.Y));
         }
 
-        var dx = item.GetX - user.X;
-        var dy = item.GetY - user.Y;
-        var away = Math.Abs(dx) >= Math.Abs(dy) ? (dx >= 0 ? 2 : 6) : (dy >= 0 ? 4 : 0);
+        yield return new(item.GetX + 1, item.GetY);
 
-        foreach (var side in new[] { (away + 2) % 8, (away + 6) % 8 }) {
-            var offset = WiredRoomOperations.Offset(side);
+        var south = item.GetY >= nearest.Y ? 1 : -1;
 
-            yield return new(item.GetX + offset.X, item.GetY + offset.Y);
-        }
+        yield return new(item.GetX, item.GetY + south);
+        yield return new(item.GetX, item.GetY - south);
     }
     public static int AvatarRotation(int body, int raw) => raw switch
     { 8 => (body + 1) % 8, 9 => (body + 7) % 8, _ => raw };

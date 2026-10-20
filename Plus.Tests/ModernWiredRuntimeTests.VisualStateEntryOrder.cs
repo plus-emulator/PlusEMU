@@ -14,7 +14,7 @@ public partial class ModernWiredRuntimeTests
         f.Habbo.Motto = "";
         f.Habbo.Look = "test";
         f.Habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
-        f.Room.GetWired().RememberHighlight(false, [1], 0, 100, 0xFFEA00, 0, 4);
+        f.Room.GetWired().RememberHighlight([1], 0, 100, 0xFFEA00, 0, 4);
         var sent = Capture(f.Client);
 
         f.Room.SendObjects(f.Client);

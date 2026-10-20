@@ -61,9 +61,9 @@ public partial class ModernWiredRuntimeTests
     {
         using var f = new TeleportFixture();
         var wired = f.Room.GetWired();
-        wired.RememberTransparency(false, [1, 2], 100, true, 3);
-        wired.RememberTransparency(false, [2], 0, false, 0);
-        wired.RememberHighlight(false, [1], 4, 38, 0xFFFFFF, 1, 0);
+        wired.RememberTransparency([1, 2], 100, true, 3);
+        wired.RememberTransparency([2], 0, false, 0);
+        wired.RememberHighlight([1], 4, 38, 0xFFFFFF, 1, 0);
         var sent = Capture(f.Client);
 
         wired.SendVisualizationState(f.Client);

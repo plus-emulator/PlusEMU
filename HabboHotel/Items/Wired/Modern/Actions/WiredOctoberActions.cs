@@ -177,7 +177,7 @@ public static class WiredOctoberActions
 
         // Observed on AIR WIN63-202610201032-107964540: only an effect for everyone on furni is part of the room entry state.
         if (P(config, 0) == 1 && !targetUsers) {
-            context.Room.GetWired().RememberTransparency(false, targets, transparency, clickThrough, easing);
+            context.Room.GetWired().RememberTransparency(targets, transparency, clickThrough, easing);
         }
 
         return true;
@@ -210,7 +210,7 @@ public static class WiredOctoberActions
             : new WiredFurniHighlightComposer(targets, type, strength, color, animation, easing));
 
         if (P(config, 0) == 1 && !targetUsers) {
-            context.Room.GetWired().RememberHighlight(false, targets, type, strength, color, animation, easing);
+            context.Room.GetWired().RememberHighlight(targets, type, strength, color, animation, easing);
         }
 
         return true;

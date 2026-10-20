@@ -404,7 +404,6 @@ internal sealed partial class WiredStackEngine
             : (firing / interval + 1) * interval;
     }
 
-    /// <summary>Starts a room tick: records its boundary and runs the steps scheduled for it, before the room moves and serializes avatars.</summary>
     /// <summary>
     /// Runs the steps that were scheduled with <c>afterAvatarUpdates</c> for this tick, once the room has sent the avatars' status
     /// updates. Only has work after <see cref="OnRoomTick"/> was told to split the end.
@@ -432,6 +431,7 @@ internal sealed partial class WiredStackEngine
         return true;
     });
 
+    /// <summary>Starts a room tick: records its boundary and runs the steps scheduled for it, before the room moves and serializes avatars.</summary>
     public void OnRoomTick(bool splitEnd = false) => Pass(() =>
     {
         var now = _now();

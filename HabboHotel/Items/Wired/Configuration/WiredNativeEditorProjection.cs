@@ -312,7 +312,7 @@ public static class WiredNativeEditorProjection
 
         // Observed on AIR WIN63-202610151745-318700621: Give Score and Give Score To Team save a per-game limit above 10 and read it
         // back as 10 ([5, 99] and [5, 11] read back [5, 10]; [5, 99, 1] reads back [5, 10, 1]). The Give Score editor never sends more
-        // than 10: its limit slider runs 1 to 11, and 11 means unlimited and is sent as 0 (GiveScore.as in AIR WIN63-202609161723-93809945).
+        // than 10: its limit slider runs 1 to 11, and 11 means unlimited and is sent as 0 (GiveScore.as in AIR WIN63-202610131318-860371703).
         if (name is "wf_act_give_score" or "wf_act_give_score_tm" && native.OwnedIntParams.Length >= 2 && native.OwnedIntParams[1] > 10) {
             native = native with { OwnedIntParams = native.OwnedIntParams.SetItem(1, 10) };
         }

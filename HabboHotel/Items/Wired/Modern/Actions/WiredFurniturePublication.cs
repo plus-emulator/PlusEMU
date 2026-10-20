@@ -4,7 +4,7 @@ using Plus.HabboHotel.Rooms.PathFinding;
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>Output only, for one engine-owned continuous movement segment. Room commits remain immediate.</summary>
-internal sealed class WiredFurniturePublication(Room room, object root, long deadline, long epoch)
+internal sealed class WiredFurniturePublication(Room room, long deadline, long epoch)
 {
     private readonly Dictionary<Item, (WiredMovementComposer Movement, WiredMoveStyleComposer Style, long Placement, ItemDefinition Definition)> _entries = new(ReferenceEqualityComparer.Instance);
     private readonly List<Item> _order = [];
@@ -13,7 +13,6 @@ internal sealed class WiredFurniturePublication(Room room, object root, long dea
     // Firings that moved each furni, and furni whose firing ran with Execute in Order.
     private readonly Dictionary<Item, HashSet<object?>> _firings = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<Item> _ordered = new(ReferenceEqualityComparer.Instance);
-    internal object Root { get; } = root;
     internal long Deadline { get; } = deadline;
     internal long Epoch { get; } = epoch;
     internal bool Open { get; private set; } = true;
@@ -39,8 +38,11 @@ internal sealed class WiredFurniturePublication(Room room, object root, long dea
             };
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: the entry order does not follow which stack ran first, and no rule matched every
+        // capture, so entries go in item id order. A group move puts its own entries back in pick order (see Reorder).
         if (!_entries.ContainsKey(item)) {
-            _order.Add(item);
+            var slot = _order.FindIndex(listed => listed.Id > item.Id);
+            _order.Insert(slot < 0 ? _order.Count : slot, item);
         }
 
         _entries[item] = (movement, style, item.Placement, item.Definition);

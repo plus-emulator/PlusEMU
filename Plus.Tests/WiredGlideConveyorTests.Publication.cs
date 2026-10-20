@@ -696,7 +696,7 @@ public sealed partial class WiredGlideConveyorTests
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
         var context = f.MovementContext();
-        var publication = new WiredFurniturePublication(context.Room, new object(), 0, 0);
+        var publication = new WiredFurniturePublication(context.Room, 0, 0);
         context.Publication = publication;
         var movement = new WiredRoomMovement((_, _, _) => { });
         var original = f.Items[1];

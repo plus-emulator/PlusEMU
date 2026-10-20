@@ -103,10 +103,6 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             user.DanceId = 0;
         }
 
-        if ((session.GetHabbo().Effects?.CurrentEffect ?? 0) > 0) {
-            room.SendPacket(new AvatarEffectComposer(user.VirtualId, 0));
-        }
-
         user.UnIdle();
         room.SendPacket(new ActionComposer(user.VirtualId, action));
 
@@ -153,10 +149,6 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
         if (danceId > 0 && user.CarryItemId > 0) {
             user.CarryItem(0);
-        }
-
-        if ((session.GetHabbo().Effects?.CurrentEffect ?? 0) > 0) {
-            room.SendPacket(new AvatarEffectComposer(user.VirtualId, 0));
         }
 
         var previousDance = user.DanceId;

@@ -907,7 +907,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
     private bool Teleport(WiredRuntimeContext context, RoomUser user, Item target, bool fast)
     {
         // A freeze that ends on teleport ends before the move, including when the user is already there.
-        WiredAvatarState.For(context.Room).Thaw(user, teleport: true);
+        WiredAvatarState.For(context.Room).Thaw(user, true, out var effectAfterFreeze);
 
         if (!context.Targets.ResolveFurni(context, [target.Id], 100, raw: true).Any(attached => ReferenceEquals(attached, target))) {
             return false;
@@ -956,7 +956,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
 
         var restore = WiredTemporaryEffects.For(room).Acquire(user, () => user.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room),
-            fast ? FastTeleportEffectId : TeleportEffectId);
+            fast ? FastTeleportEffectId : TeleportEffectId, effectAfterFreeze);
         release = restore;
 
         if (fast) {

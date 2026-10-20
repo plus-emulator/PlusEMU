@@ -1,5 +1,6 @@
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.PathFinding;
 using Xunit;
 
 namespace Plus.Tests;
@@ -61,6 +62,33 @@ public partial class ModernWiredRuntimeTests
         state.FlushTickEffects();
         Assert.Equal(218, f.Habbo.Effects!.CurrentEffect);
         Assert.False(f.User.Frozen);
+    }
+
+    // Observed on AIR WIN63-202610151745-318700621: when the teleport that cancelled a freeze ends, the user gets back the effect worn
+    // before the freeze (223 in a Wired team, otherwise 0), not the freeze effect.
+    [Theory]
+    [InlineData(223)]
+    [InlineData(0)]
+    public void ATeleportThatCancelsAFreezeEndsWithTheEffectWornBeforeTheFreeze(int before)
+    {
+        using var f = new TeleportFixture();
+        GiveUserAccess(f);
+        f.User.ApplyEffect(before);
+        var state = WiredAvatarState.For(f.Room);
+
+        using (RoomOwnerScope.Enter(f.Room)) {
+            Assert.True(state.FreezeUser(f.User, 163, true));
+        }
+
+        state.FlushTickEffects();
+        Assert.Equal(163, f.Habbo.Effects!.CurrentEffect);
+        f.Fire();
+        Assert.Equal(4, f.Habbo.Effects!.CurrentEffect);
+        f.Advance(2000);
+        state.FlushTickEffects();
+        Assert.Equal(before, f.Habbo.Effects!.CurrentEffect);
+        Assert.False(f.User.Frozen);
+        Assert.Empty(f.Errors);
     }
 
     // Observed on AIR WIN63-202610151745-318700621 (wf_act_kick_user.cov_selector): a teamed user re-entering the room gets no avatar

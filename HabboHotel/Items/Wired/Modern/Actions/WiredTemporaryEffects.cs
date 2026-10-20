@@ -12,7 +12,9 @@ public sealed class WiredTemporaryEffects
     private static readonly ConditionalWeakTable<Room, WiredTemporaryEffects> Rooms = new();
     public static WiredTemporaryEffects For(Room room) => Rooms.GetValue(room, _ => new());
 
-    public Action Acquire(RoomUser user, Func<int> readEffect, Action<int> writeEffect, Func<bool> stillAttached, int effect = 4)
+    /// <param name="restoreTo">The effect to put back at the end, when it is not the effect worn now.</param>
+    public Action Acquire(RoomUser user, Func<int> readEffect, Action<int> writeEffect, Func<bool> stillAttached, int effect = 4,
+        int? restoreTo = null)
     {
         var current = readEffect();
 
@@ -22,7 +24,7 @@ public sealed class WiredTemporaryEffects
             return () => { };
         }
 
-        var original = live != null && current == live.Effect ? live.Original : current;
+        var original = restoreTo ?? (live != null && current == live.Effect ? live.Original : current);
         var lease = new Lease(++_generation, original, effect, readEffect, writeEffect, stillAttached);
         _leases[user] = lease;
         writeEffect(effect);

@@ -97,8 +97,13 @@ public sealed class WiredAvatarState
     }
     private static bool IsMoving(RoomUser user) => user.IsWalking || user.HasStatus("mv");
 
-    public bool Thaw(RoomUser user, bool teleport = false)
+    public bool Thaw(RoomUser user, bool teleport = false) => Thaw(user, teleport, out _);
+
+    /// <param name="effectAfterTeleport">The effect a cancelling teleport puts back when it ends, while the user wears the freeze effect.</param>
+    public bool Thaw(RoomUser user, bool teleport, out int? effectAfterTeleport)
     {
+        effectAfterTeleport = null;
+
         if (!_frozen.TryGetValue(user, out var state) || teleport && !state.CancelOnTeleport) {
             return false;
         }
@@ -118,8 +123,18 @@ public sealed class WiredAvatarState
 
         ThawActor(user, state, restoreEffect: !teleport);
 
+        // Observed on AIR WIN63-202610151745-318700621: the teleport that cancels a freeze ends with the effect worn before the freeze.
+        if (teleport && WearsFreezeEffect(user, state)) {
+            effectAfterTeleport = EffectAfterThaw(state);
+        }
+
         return true;
     }
+
+    private static bool WearsFreezeEffect(RoomUser user, Freeze state)
+        => !user.IsBot && state.Effect > 0 && user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == state.Effect;
+
+    private static int EffectAfterThaw(Freeze state) => state.Previous == state.Effect ? 0 : state.Previous;
 
     private void ThawActor(RoomUser user, Freeze state, bool restoreEffect)
     {
@@ -132,8 +147,8 @@ public sealed class WiredAvatarState
         if (restoreEffect && !user.IsBot && state.Effect > 0) {
             OnNextTick(() =>
             {
-                if (user.GetClient()?.GetHabbo()?.Effects?.CurrentEffect == state.Effect) {
-                    user.ApplyEffect(state.Previous == state.Effect ? 0 : state.Previous);
+                if (WearsFreezeEffect(user, state)) {
+                    user.ApplyEffect(EffectAfterThaw(state));
                 }
             });
         }

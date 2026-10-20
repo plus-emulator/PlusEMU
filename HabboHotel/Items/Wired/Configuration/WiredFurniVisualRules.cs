@@ -13,6 +13,7 @@ internal static class WiredFurniVisualRules
     public const string Highlight = "wf_act_set_highlight";
     public const string Visibility = "wf_act_set_visibility";
     public const string HighlightKeyPrefix = "wiredfurni.error.set_furni_highlight.";
+    public const string VisibilityKeyPrefix = "wiredfurni.error.set_furni_transparency.";
 
     private const int Yellow = 0xFFEA00;
     private const int White = 0xFFFFFF;
@@ -61,6 +62,8 @@ internal static class WiredFurniVisualRules
     // Any value but 0 is 1.
     private static int Flag(int value) => value == 0 ? 0 : 1;
 
+    public static string? ValueRefusal(string name, ImmutableArray<int> ints) => name == Highlight ? HighlightRefusal(ints) : VisibilityRefusal(ints);
+
     /// <summary>The key of the first thing wrong with a normalised Set Furni Highlight save: type, strength, pulse, then colour.</summary>
     public static string? HighlightRefusal(ImmutableArray<int> ints)
     {
@@ -88,6 +91,9 @@ internal static class WiredFurniVisualRules
         2 or Brighten => color == 0 || Palette.Contains(color),
         _ => Palette.Contains(color)
     };
+
+    /// <summary>The key of the one thing a normalised Set Furni Visibility save can get wrong: a value between visible and invisible.</summary>
+    public static string? VisibilityRefusal(ImmutableArray<int> ints) => ints[1] is 0 or 100 ? null : VisibilityKeyPrefix + "invalid_transparency";
 
     /// <summary>A steady colour tint of furni picked one by one is refused when one of them is not from the Builders Club.</summary>
     public static string? PickRefusal(string name, WiredConfiguration saved, Func<uint, bool> isBuildersClub) =>

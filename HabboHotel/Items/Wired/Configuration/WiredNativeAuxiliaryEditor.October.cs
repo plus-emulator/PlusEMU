@@ -84,7 +84,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         {
             var p = n.OwnedIntParams;
 
-            return Shape(n, 5, 1, 2, 0) && n.Text.Length == 0 && p[0] is 0 or 1 && p[1] is 0 or 100 && p[2] is 0 or 1 && In(p[3], 0, 4) && p[4] is 0 or 1
+            return Shape(n, 5, 1, 2, 0) && n.Text.Length == 0 && WiredFurniVisualRules.VisibilityRefusal(p) is null
                 ? Roles(Draft(n, p), [("items", n.FurniSourceTypes[0])], [("audience", n.UserSourceTypes[0]), ("targets", n.UserSourceTypes[1])]) : null;
         }));
         // class_4214.as:112 [audience, type 0..5, strength, colour, animation 0/1, easing 0..4, target users]; the strengths and colours

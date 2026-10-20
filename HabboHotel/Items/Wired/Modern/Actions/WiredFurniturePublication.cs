@@ -38,8 +38,11 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
             };
         }
 
+        // Observed on AIR WIN63-202610151745-318700621: the entry order does not follow which stack ran first, and no rule matched every
+        // capture, so entries go in item id order. A group move puts its own entries back in pick order (see Reorder).
         if (!_entries.ContainsKey(item)) {
-            _order.Add(item);
+            var slot = _order.FindIndex(listed => listed.Id > item.Id);
+            _order.Insert(slot < 0 ? _order.Count : slot, item);
         }
 
         _entries[item] = (movement, style, item.Placement, item.Definition);

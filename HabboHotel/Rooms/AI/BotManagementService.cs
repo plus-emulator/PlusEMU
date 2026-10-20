@@ -163,7 +163,7 @@ public sealed class BotManagementService(IBotManagementStore store, IFigureDataM
         var botUser = room.GetRoomUserManager().DeployBot(new(bot.Id, room.RoomId, data.AiType, data.WalkMode, bot.Name, bot.Motto ?? "", bot.Figure, x, y, 0,
             PlacedBotRotation, 0, 0, 0, 0, ref speeches, string.IsNullOrEmpty(bot.Gender) ? "M" : bot.Gender, 0, bot.OwnerId, data.AutomaticChat, data.SpeakingInterval,
             data.MixSentences, data.ChatBubble), null);
-        botUser.Chat("Hello!");
+        botUser.Chat("Hello!", data.ChatBubble);
         room.GetGameMap().UpdateUserMovement(new(x, y), new(x, y), botUser);
 
         if (inventory.Bots.RemoveBot(botId)) {

@@ -490,11 +490,12 @@ public class Room
                 return;
             }
 
-            RunRoomPhase(() => GetWired().OnRoomTick());
+            RunRoomPhase(() => GetWired().OnRoomTick(splitEnd: true));
             RunRoomPhase(CycleComponents);
             RunRoomPhase(CycleFurniture);
             RunRoomPhase(CycleActors);
             RunRoomPhase(() => GetRoomUserManager().SerializeStatusUpdates());
+            RunRoomPhase(() => GetWired().OnRoomTickEnd());
             RunRoomPhase(() => _gameItemHandler?.OnCycle());
             RunRoomPhase(CycleWired);
         }

@@ -664,6 +664,12 @@ internal sealed partial class WiredStackEngine
                         continue;
                     }
 
+                    // With the end split off, steps that go after the status updates wait for the end of the tick, and only they run then.
+                    if (_roomTickDrain && (scheduled.AfterAvatarUpdates ? _splitEnd && !_endPhase : _endPhase)) {
+                        deferred.Add((scheduled, priority));
+                        continue;
+                    }
+
                     chain.FirstResumeAt ??= resumeAt;
 
                     if (scheduled.Callback == null && !scheduled.DelayElapsed && scheduled.DelayMilliseconds > 0) {
@@ -1079,6 +1085,7 @@ internal sealed partial class WiredStackEngine
         public bool DelayElapsed { get; set; }
         public bool ReadReleased { get; set; }
         public bool OnRoomTick { get; init; }
+        public bool AfterAvatarUpdates { get; init; }
     }
 
     private sealed class ActionChain(IWiredItem source, IWiredItem[] stack,

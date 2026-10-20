@@ -445,12 +445,14 @@ public sealed partial class WiredGlideConveyorTests
 
         private void Full() => _room.RunFastPass(() =>
         {
-            _wired.OnRoomTick();
+            _wired.OnRoomTick(splitEnd: true);
             _map.Navigation?.ApplyDirty();
             _map.Navigation!.DrainCommands();
 
             _map.Gates.Drain();
             _room.GetRoomUserManager().OnCycle();
+            _room.GetRoomUserManager().SerializeStatusUpdates();
+            _wired.OnRoomTickEnd();
             _wired.OnCycle();
             _map.FlushPlacementUpdates();
         });

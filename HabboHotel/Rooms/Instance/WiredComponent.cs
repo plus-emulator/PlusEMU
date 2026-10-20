@@ -290,12 +290,15 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.CallStacks(context, targets, negative);
     public bool SendSignal(WiredRuntimeContext context, IEnumerable<Item> receivers, WiredSelection selection, bool negative = false) =>
         _engine.SendSignal(context, receivers, selection, negative);
-    public bool ScheduleOnRoomTick(WiredRuntimeContext context, long tickBoundary, Action callback, Action? onCancelled = null) =>
-        _engine.ScheduleOnRoomTick(context, tickBoundary, callback, onCancelled);
+    public bool ScheduleOnRoomTick(WiredRuntimeContext context, long tickBoundary, Action callback, Action? onCancelled = null,
+        bool afterAvatarUpdates = false) =>
+        _engine.ScheduleOnRoomTick(context, tickBoundary, callback, onCancelled, afterAvatarUpdates);
     public long FirstRoomTickAfter(long firing) => _engine.FirstRoomTickAfter(firing);
 
     /// <summary>Called at the start of every room tick's pass, before the room moves and serializes avatars.</summary>
-    public void OnRoomTick() => _engine.OnRoomTick();
+    public void OnRoomTick(bool splitEnd = false) => _engine.OnRoomTick(splitEnd);
+
+    public void OnRoomTickEnd() => _engine.OnRoomTickEnd();
 
     public bool ScheduleAux(WiredRuntimeContext context, int delayMilliseconds, Action callback, Action? onCancelled = null,
         bool alignToStateUpdate = false) =>

@@ -369,7 +369,8 @@ internal sealed partial class WiredStackEngine
     /// Schedules a step of the running action for the room tick whose 500 ms boundary is <paramref name="tickBoundary"/>. It runs at the
     /// start of that tick's room pass (<see cref="OnRoomTick"/>), so what it changes goes out with that tick's avatar updates.
     /// </summary>
-    public bool ScheduleOnRoomTick(WiredRuntimeContext context, long tickBoundary, Action callback, Action? onCancelled = null) => Pass(() =>
+    public bool ScheduleOnRoomTick(WiredRuntimeContext context, long tickBoundary, Action callback, Action? onCancelled = null,
+        bool afterAvatarUpdates = false) => Pass(() =>
     {
         var active = _executingAction;
 
@@ -380,7 +381,7 @@ internal sealed partial class WiredStackEngine
 
         var chain = new ActionChain(active.Chain.Source, active.Chain.Stack, active.Chain.Context, 1);
         _pending.Add(chain);
-        _schedule.Enqueue(new(chain, active.Box, callback, onCancelled) { OnRoomTick = true },
+        _schedule.Enqueue(new(chain, active.Box, callback, onCancelled) { OnRoomTick = true, AfterAvatarUpdates = afterAvatarUpdates },
             (tickBoundary, active.Box.Item.GetZ, active.Box.Item.Id, ++_sequence, 0));
         UpdateFastWork();
 
@@ -403,12 +404,40 @@ internal sealed partial class WiredStackEngine
             : (firing / interval + 1) * interval;
     }
 
+    /// <summary>
+    /// Runs the steps that were scheduled with <c>afterAvatarUpdates</c> for this tick, once the room has sent the avatars' status
+    /// updates. Only has work after <see cref="OnRoomTick"/> was told to split the end.
+    /// </summary>
+    public void OnRoomTickEnd() => Pass(() =>
+    {
+        if (!_splitEnd) {
+            return false;
+        }
+
+        _splitEnd = false;
+        _roomTickDrain = true;
+        _endPhase = true;
+
+        try {
+            DrainDueActions();
+        }
+        finally {
+            _roomTickDrain = false;
+            _endPhase = false;
+        }
+
+        UpdateFastWork();
+
+        return true;
+    });
+
     /// <summary>Starts a room tick: records its boundary and runs the steps scheduled for it, before the room moves and serializes avatars.</summary>
-    public void OnRoomTick() => Pass(() =>
+    public void OnRoomTick(bool splitEnd = false) => Pass(() =>
     {
         var now = _now();
         LastRoomTick = now - now % WiredFlashStates.StateUpdateMilliseconds;
         _roomTickDrain = true;
+        _splitEnd = splitEnd;
 
         try {
             DrainDueActions();
@@ -423,6 +452,8 @@ internal sealed partial class WiredStackEngine
     });
 
     private bool _roomTickDrain;
+    private bool _splitEnd;
+    private bool _endPhase;
 
     private static long DueAt(long due, bool alignToStateUpdate) => alignToStateUpdate
         ? (due + WiredFlashStates.StateUpdateMilliseconds - 1) / WiredFlashStates.StateUpdateMilliseconds * WiredFlashStates.StateUpdateMilliseconds

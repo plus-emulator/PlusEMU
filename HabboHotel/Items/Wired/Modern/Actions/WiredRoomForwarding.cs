@@ -191,7 +191,7 @@ public static class WiredRoomForwarding
             var restore = WiredTemporaryEffects.For(room).Acquire(user, () => user.CurrentEffect, user.ApplyEffect, () => user.IsAttachedTo(room),
                 TeleportEffectId);
 
-            if (!wired.ScheduleOnRoomTick(context, firstTick + 6 * tick, restore, restore)) {
+            if (!wired.ScheduleOnRoomTick(context, firstTick + 6 * tick, restore, restore, afterAvatarUpdates: true)) {
                 restore();
             }
 

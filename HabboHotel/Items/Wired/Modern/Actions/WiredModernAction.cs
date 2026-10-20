@@ -977,7 +977,9 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return Relocate();
         }
 
-        if (!wired.ScheduleOnRoomTick(context, effectEnd, restore, restore)) {
+        // Observed on AIR WIN63-202610151745-318700621: when the glow ends on a tick that also sends the avatar's status update, the
+        // status update goes first and the effect change follows it.
+        if (!wired.ScheduleOnRoomTick(context, effectEnd, restore, restore, afterAvatarUpdates: true)) {
             restore();
         }
 

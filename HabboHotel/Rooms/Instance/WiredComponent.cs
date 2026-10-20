@@ -45,7 +45,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         ICommandManager commands, IAccessControl access, IItemTravelStore travelStore, Plus.HabboHotel.Quests.IQuestManager? quests = null) //, RoomItem Items)
     {
         _room = instance;
-        _counters = new(observeTransition: transition => _highscores?.Observe(transition), gameTransition: ControlGameTimer,
+        _counters = new(observeTransition: ObserveClock, gameTransition: ControlGameTimer,
             canBegin: (item, origin, actor) => _highscores?.CanBeginOwned(item, origin, actor) ?? true);
         _logger = logger;
         _clock = clock;
@@ -138,6 +138,24 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     private int _highscoreClockAdmission;
 
+    private void ObserveClock(WiredClockTransition transition)
+    {
+        _highscores?.Observe(transition);
+
+        // A reset of a paused game timer sends no stop of its own, so the gates open here.
+        if (transition.Reason == WiredClockReason.Reset && IsBanzaiOrFreezeTimer(transition.Item)) {
+            _room.GetGameManager().UnlockGates();
+        }
+    }
+
+    private static bool IsBanzaiOrFreezeTimer(Item item) => WiredCounterController.IsGameTimer(item)
+        && (item.Definition.InteractionType is InteractionType.Banzaicounter or InteractionType.Freezetimer
+            || item.Definition.ItemName is "bb_counter" or "es_counter");
+
+    // Observed on AIR WIN63-202610201032-107964540: the Banzai and Freeze gates lock when the timer starts and stay locked while it is
+    // paused. They open when the countdown ends or the timer is reset.
+    private static bool KeepsGatesLocked(WiredClockTransition transition) => transition.Reason is WiredClockReason.Stop or WiredClockReason.Pause;
+
     private void ControlGameTimer(WiredClockTransition transition)
     {
         var item = transition.Item;
@@ -179,10 +197,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
                 }
             }
             else if (banzai) {
-                _room.GetBanzai().BanzaiEnd();
+                _room.GetBanzai().BanzaiEnd(keepGatesLocked: KeepsGatesLocked(transition));
             }
             else if (freeze) {
-                _room.GetFreeze().StopGame();
+                _room.GetFreeze().StopGame(keepGatesLocked: KeepsGatesLocked(transition));
             }
             else {
                 _room.GetSoccer().StopGame();

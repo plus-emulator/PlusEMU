@@ -534,7 +534,9 @@ public class RoomUserManager
                     var team = _room.GetTeamManagerForFreeze();
 
                     if (team != null) {
-                        team.OnUserLeave(user);
+                        // The user may be in the Banzai team list instead.
+                        var banzai = _room.GetTeamManagerForBanzai();
+                        (banzai.Has(user) ? banzai : team).OnUserLeave(user);
                         user.Team = Team.None;
 
                         if (session.GetHabbo().Effects is { CurrentEffect: not 0 } teamEffects) {

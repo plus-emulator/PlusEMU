@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Drawing;
 using Plus.Communication.Packets.Outgoing.Rooms.Avatar;
 using Plus.Communication.Packets.Outgoing.Rooms.Freeze;
+using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Rooms.Games.Teams;
@@ -60,12 +61,36 @@ public class Freeze
         }
 
         _room.GetGameManager().LockGates();
+        RemoveSoloPlayer();
     }
 
-    public void StopGame(bool userTriggered = false)
+    // Observed on AIR WIN63-202610201032-107964540: a Freeze game started by a single player in a team takes that player out of the
+    // team. The effect goes, the gate counts go to 0 and YouArePlayingGame is false. A team size cap, lives and a start with more
+    // players were not observed and stay as they are.
+    private void RemoveSoloPlayer()
+    {
+        var teams = _room.GetTeamManagerForFreeze();
+        var players = teams.BlueTeam.Concat(teams.RedTeam).Concat(teams.GreenTeam).Concat(teams.YellowTeam).ToList();
+
+        if (players.Count != 1 || players[0].GetClient() is not { } client) {
+            return;
+        }
+
+        var player = players[0];
+        client.Send(new YouArePlayingGameComposer(false));
+        teams.OnUserLeave(player);
+        player.Team = Team.None;
+        player.ApplyEffect(0);
+    }
+
+    public void StopGame(bool userTriggered = false, bool keepGatesLocked = false)
     {
         GameIsStarted = false;
-        _room.GetGameManager().UnlockGates();
+
+        if (!keepGatesLocked) {
+            _room.GetGameManager().UnlockGates();
+        }
+
         _room.GetGameManager().StopGame();
         ResetGame();
 

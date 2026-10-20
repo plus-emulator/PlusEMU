@@ -199,7 +199,8 @@ public sealed class WiredModernCondition : WiredModernBox
             6 => user.HasStatus("sit"),
             7 => !user.HasStatus("sit") && !user.HasStatus("lay"),
             8 => user.HasStatus("lay"),
-            9 => user.Statusses.TryGetValue("sign", out var sign) && (Param(config, 1) == 0 || sign == Param(config, 2).ToString()),
+            // Observed on AIR WIN63-202610151745-318700621: the condition still sees a sign 3.4 s after it, long after its status is gone.
+            9 => user.HeldSign is int sign && (Param(config, 1) == 0 || sign == Param(config, 2)),
             10 => user.DanceId != 0 && (Param(config, 3) == 0 || user.DanceId == Param(config, 4)),
             _ => false
         };

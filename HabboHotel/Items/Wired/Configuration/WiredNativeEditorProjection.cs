@@ -333,6 +333,12 @@ public static class WiredNativeEditorProjection
         // Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight and Set Furni Visibility store their ints in a normal form.
         if (WiredFurniVisualRules.Applies(name) && Supports(name)) {
             native = WiredFurniVisualRules.Normalize(name, native, Metadata(name).OwnedDefaults);
+
+            // Only a new save is held to the values and the delay the editor offers. A stored row keeps loading with the wider bounds
+            // it was saved under.
+            if (!storedRow && SourceRejectionKey(descriptor, native) is not null) {
+                return false;
+            }
         }
 
         // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).

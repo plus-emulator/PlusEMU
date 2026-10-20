@@ -75,6 +75,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_act_reset_reward_track", new(Sources([], [TargetUsers], []), n =>
             Shape(n, 0, 0, 1, 0) && (n.Text.Length == 0 || TrackId(n.Text))
                 ? Roles(Draft(n, [], n.Text), [], [("users", n.UserSourceTypes[0])]) : null));
+        // A stored row keeps the wider bounds it was saved under; the stricter value rules are checked on a new save only (WiredFurniVisualRules).
         // class_4285.as:79 [audience (1 everyone), visibility 0/100, click through, easing 0..4, target users]; merged [[0,1],[-1,0]]:
         // furni 0 with user 1 are the targets, user 0 the audience.
         yield return new("wf_act_set_visibility", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [0, 100, 0, 4, 0]) with
@@ -84,7 +85,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         {
             var p = n.OwnedIntParams;
 
-            return Shape(n, 5, 1, 2, 0) && n.Text.Length == 0 && WiredFurniVisualRules.DelayAccepted(n.Delay) && WiredFurniVisualRules.VisibilityRefusal(p) is null
+            return Shape(n, 5, 1, 2, 0) && n.Text.Length == 0
                 ? Roles(Draft(n, p), [("items", n.FurniSourceTypes[0])], [("audience", n.UserSourceTypes[0]), ("targets", n.UserSourceTypes[1])]) : null;
         }));
         // class_4214.as:112 [audience, type 0..5, strength, colour, animation 0/1, easing 0..4, target users]; the strengths and colours
@@ -96,7 +97,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         {
             var p = n.OwnedIntParams;
 
-            return Shape(n, 7, 1, 2, 0) && n.Text.Length == 0 && WiredFurniVisualRules.DelayAccepted(n.Delay) && WiredFurniVisualRules.HighlightRefusal(p) is null
+            return Shape(n, 7, 1, 2, 0) && n.Text.Length == 0
                 ? Roles(Draft(n, p), [("items", n.FurniSourceTypes[0])], [("audience", n.UserSourceTypes[0]), ("targets", n.UserSourceTypes[1])]) : null;
         }));
         // SendLinkMessage.as:95 [source (0 the trigger's text, 1 custom)]; :100 the message, at most 1000 UTF-8 bytes (:105). Furni 0 picks the endpoints.

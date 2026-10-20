@@ -25,7 +25,7 @@ public partial class ModernWiredRuntimeTests
         f.Room.GetWired().SendVisualizationState(f.Client);
 
         var state = Reply(sent, ServerPacketHeader.WiredFurniVisualizationStateComposer);
-        Assert.Equal((0, 1, 1, 1, 100, 0x123456), (state.Int(), state.Int(), state.Int(), state.Int(), state.Int(), state.Int()));
+        Assert.Equal((0, 1, 1, 1, 100, 0xFFB700), (state.Int(), state.Int(), state.Int(), state.Int(), state.Int(), state.Int()));
     }
 
     // Observed on AIR WIN63-202610201032-107964540: Room Initialized has no triggering user, so an effect for the selected users
@@ -64,10 +64,10 @@ public partial class ModernWiredRuntimeTests
     private static void RoomInitializedStack(TeleportFixture f, int audience, int targetUsers)
     {
         OctoberBox<WiredModernTrigger>(f, 120, "wf_trg_room_initializes", 2, 2, native => native);
-        // [audience, type, strength, colour, animation, easing, target users]: a 100 percent glow of colour 0x123456 on furni 1.
+        // [audience, type, strength, colour, animation, easing, target users]: a 100 percent glow of colour 0xFFB700 on furni 1.
         OctoberBox<WiredModernAction>(f, 121, "wf_act_set_highlight", 2, 2, native => native with
         {
-            OwnedIntParams = [audience, 1, 100, 0x123456, 0, 0, targetUsers],
+            OwnedIntParams = [audience, 1, 100, 0xFFB700, 0, 0, targetUsers],
             PrimaryItems = [new(1, false)],
             FurniSourceTypes = [100],
             UserSourceTypes = [0, 0]

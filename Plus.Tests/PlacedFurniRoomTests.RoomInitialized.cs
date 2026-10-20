@@ -10,7 +10,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void RoomEntrySendsTheWiredVisualStateBeforeTheFloorItems()
     {
-        _room.GetWired().RememberHighlight(false, [1], 1, 100, 0x123456, 0, 0);
+        _room.GetWired().RememberHighlight([1], 1, 100, 0x123456, 0, 0);
 
         EnterForNotice();
 

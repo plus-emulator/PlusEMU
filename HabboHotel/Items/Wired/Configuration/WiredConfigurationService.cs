@@ -147,8 +147,15 @@ public sealed class WiredConfigurationService(
                 return;
             }
 
+            if (WiredNativeEditorProjection.DroppedWithoutReply(descriptor, native)) {
+                return;
+            }
+
+            // Sources 10 and 11 save in any stack, even when its trigger does not offer them. Show Message with 11 saves without a
+            // Click User trigger (observed on AIR WIN63-202610151745-318700621), and Furni To User with 10 saves without a Bot Reaches
+            // User trigger (observed on AIR WIN63-202610131318-860371703).
             var compiled = WiredNativeEditorProjection.TryCompile(selectedItem.Id, descriptor, native, out var runtime,
-                WiredEditorSnapshot.TriggerContext(configured));
+                WiredNativeEditorProjection.AnyTriggerContext);
 
             if (!compiled) {
                 error = WiredNativeEditorProjection.SourceRejectionKey(descriptor, native) ?? error;

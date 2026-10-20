@@ -264,7 +264,7 @@ public sealed class WiredOctoberEditorTests
     public void EditorRecordsRoundTripThroughTheSaveAndLoadPackets()
     {
         // A client save of Set Furni Highlight (out 1789 envelope: ints, text, picks, delay, furni sources, user sources, variables, picks 2).
-        var packet = EditorTestSupport.Incoming(7, 1, 3, 50, 0xFF0000, 0, 2, 0, "", 1, 55, 0, 1, 100, 2, 200, 0, 0, 0);
+        var packet = EditorTestSupport.Incoming(7, 1, 3, 50, 0xFF3030, 0, 2, 0, "", 1, 55, 0, 1, 100, 2, 200, 0, 0, 0);
         Assert.True(WiredLegacyProtocol.TryReadNative(packet, WiredBoxCategory.Action, out var native));
         Assert.True(WiredBoxRegistry.TryGet("wf_act_set_highlight", out var descriptor));
         native = native with { NativeCode = descriptor.EditorCode };
@@ -274,7 +274,7 @@ public sealed class WiredOctoberEditorTests
         WiredLegacyProtocol.Write(written, 9, 19396, descriptor, runtime, 100, []);
 
         // furni limit, picks, picks 2, sprite, id, text, the seven ints, no variables, sources, code then the delay.
-        Assert.Equal(new object[] { 100, 1, 55, 0, 19396, 9u, "", 7, 1, 3, 50, 0xFF0000, 0, 2, 0, 0, 1, 100, 2, 200, 0, 62, 0 },
+        Assert.Equal(new object[] { 100, 1, 55, 0, 19396, 9u, "", 7, 1, 3, 50, 0xFF3030, 0, 2, 0, 0, 1, 100, 2, 200, 0, 62, 0 },
             written.Writes.Take(23).ToArray());
     }
 

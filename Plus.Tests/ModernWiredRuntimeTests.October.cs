@@ -43,7 +43,7 @@ public partial class ModernWiredRuntimeTests
         // Target users (the triggering user, room index 7), audience the triggering user; colour tint 50.
         OctoberBox<WiredModernAction>(f, 110, "wf_act_set_highlight", 0, 0, native => native with
         {
-            OwnedIntParams = [0, 3, 50, 0xFF0000, 0, 2, 1],
+            OwnedIntParams = [0, 3, 50, 0xFF3030, 0, 2, 1],
             FurniSourceTypes = [100],
             UserSourceTypes = [0, 0]
         });
@@ -52,7 +52,7 @@ public partial class ModernWiredRuntimeTests
         f.Fire(land: false);
 
         var packet = Reply(sent, ServerPacketHeader.WiredUserHighlightComposer);
-        Assert.Equal((1, 7, 3, 50, 0xFF0000, 0, 2), (packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int()));
+        Assert.Equal((1, 7, 3, 50, 0xFF3030, 0, 2), (packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int(), packet.Int()));
         packet.End();
     }
 

@@ -133,9 +133,15 @@ internal static partial class WiredNativeAuxiliaryEditor
         }));
 
         // class_3963.as (base of the share and import add-ons): [text connectors, subvariable creators, variable FX], each 0/1.
+        // Observed on AIR WIN63-202610201032-107964540: any non-zero flag is stored as 1, a missing flag stays on, a fourth int is dropped
+        // and a string is accepted and not kept.
         foreach (var name in new[] { "wf_xtra_var_share", "wf_xtra_var_import" }) {
-            yield return new(name, new(Meta(0, 0, [1, 1, 1]), n => Shape(n, 3, 0, 0, 0) && n.Text.Length == 0
-                && n.OwnedIntParams.All(flag => flag is 0 or 1) ? Draft(n, n.OwnedIntParams) : null));
+            yield return new(name, new(Meta(0, 0, [1, 1, 1]), n =>
+            {
+                var flags = Enumerable.Range(0, 3).Select(index => index < n.OwnedIntParams.Length ? (n.OwnedIntParams[index] != 0 ? 1 : 0) : 1).ToImmutableArray();
+
+                return n.FurniSourceTypes.Length == 0 && n.UserSourceTypes.Length == 0 && n.VariableIds.Length == 0 ? Draft(n, flags) : null;
+            }));
         }
 
         // VariableLeaderboardConfigCodec.as:182-222: 19 ints, 12 variable ids, 17 TAB-joined fields (empty while unpublished).
@@ -179,8 +185,17 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Shape(n, 0, 0, 0, 0) && parts.Length <= 2 && (parts.Length == 1 || parts[1].Length <= 100) ? Draft(n, [], n.Text) : null;
         }));
         // PointerVariable.as: [source type (0 furni, 1 user, -10 global, -20 context)], the accessor (a context variable) and the name.
-        yield return new("wf_var_pointer", new(Meta(0, 0, [0], 1), n => Shape(n, 1, 0, 0, 1) && n.OwnedIntParams[0] is 0 or 1 or -10 or -20
-            ? Draft(n, n.OwnedIntParams, n.Text) : null));
+        // Observed on AIR WIN63-202610201032-107964540: a fresh pointer opens on the user target; a target the form does not offer is
+        // stored as furni, missing ints give the user target and extra ints are dropped; a space in the name becomes an underscore.
+        // The accessor is checked against the room's variables when the box validates the save.
+        yield return new("wf_var_pointer", new(Meta(0, 0, [1], 1), n =>
+        {
+            var requested = n.OwnedIntParams.IsEmpty ? 1 : n.OwnedIntParams[0];
+
+            return n.FurniSourceTypes.Length == 0 && n.UserSourceTypes.Length == 0
+                ? Draft(n with { VariableIds = [n.VariableIds.IsEmpty ? Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId : n.VariableIds[0]] },
+                    [requested is 1 or -10 or -20 ? requested : 0], n.Text.Replace(' ', '_')) : null;
+        }));
     }
 
     // NamedTextInput a-zA-Z0-9_, at most 100 characters.

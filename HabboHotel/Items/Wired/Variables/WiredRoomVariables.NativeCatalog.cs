@@ -77,7 +77,13 @@ public sealed partial class WiredRoomVariables
                 var owning = captured.Single(box => box.Key == definition.ItemId && box.Box is WiredVariableDefinitionBox);
                 var associated = passive.Where(box => box.Input.X == owning.X && box.Input.Y == owning.Y)
                     .OrderBy(box => box.Input.Z).ThenBy(box => box.Input.Key).ToArray();
-                connectors[definition.ItemId] = associated.FirstOrDefault(box => box.Input.Name == "wf_xtra_var_text_connector")?.Connector;
+                // The add-ons a reference imports come from what its stack's Import add-on had on in this capture.
+                var imported = definition.Link is { } link && link.SourceRoomId != _room.Id
+                    && associated.FirstOrDefault(box => box.Input.Name == "wf_xtra_var_import")?.Input.Configuration.IntParams is { Length: 3 } flags
+                    && PublishedTo(definition.ItemId) is { } published
+                        ? published.Pick(flags[0] != 0, flags[1] != 0, flags[2] != 0) : null;
+                connectors[definition.ItemId] = associated.FirstOrDefault(box => box.Input.Name == "wf_xtra_var_text_connector")?.Connector
+                    ?? (imported is { TextConnector.IsEmpty: false } ? imported.TextConnector.OrderBy(pair => pair.Key).ToImmutableArray() : null);
 
                 var context = definition.Target == WiredVariableTarget.Context;
 
@@ -94,6 +100,11 @@ public sealed partial class WiredRoomVariables
                 }
 
                 var level = associated.FirstOrDefault(box => box.Keys.Length != 0);
+
+                if (level is null && imported?.Level is { } importedLevel && WiredVariableLevelSystem.TryParse(importedLevel, out var importedSystem)) {
+                    level = new(owning, null, null, importedSystem, WiredVariableMetadataBox.LevelKeys,
+                        [.. Enumerable.Range(0, 8).Where(sub => (importedSystem!.SubvariableMask & (1 << sub)) != 0)]);
+                }
 
                 if (!context && level is not null) {
                     foreach (var sub in level.Subs) {

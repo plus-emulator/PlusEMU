@@ -25,7 +25,7 @@ public sealed class WiredWebApiKeyRequestEvent : RoomPacketEvent
     }
 }
 
-/// <summary>class_3048 [wired id]: the Share add-on's Synchronize button.</summary>
+/// <summary>Header 397 [wired id]: the Share add-on's Synchronize button. The hotel answers with the save-success packet.</summary>
 public sealed class WiredVariableShareSynchronizeEvent : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
@@ -34,7 +34,9 @@ public sealed class WiredVariableShareSynchronizeEvent : RoomPacketEvent
             var wiredId = BuildersClubItemIds.FromWire(packet.ReadUInt());
 
             if (!packet.HasDataRemaining()) {
-                room.GetWired().SynchronizeShare(session, wiredId);
+                if (room.GetWired().SynchronizeShare(session, wiredId)) {
+                    session.Send(new HideWiredConfigComposer());
+                }
             }
         }
         catch (Exception error) when (error is ArgumentException or IndexOutOfRangeException) {

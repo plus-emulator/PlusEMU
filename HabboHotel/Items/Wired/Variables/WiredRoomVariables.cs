@@ -21,11 +21,14 @@ public sealed partial class WiredRoomVariables
     public WiredVariableCatalog Catalog()
     {
         var definitions = Module.DescribeDefinitions(_definitions.Keys).Select(description => description with
-        { TextConnector = MetadataOn(description.Definition.ItemId, "wf_xtra_var_text_connector")?.TextConnector ?? new Dictionary<int, string>() }).ToArray();
+        { TextConnector = TextConnectorOf(description.Definition) }).ToArray();
 
         return new(definitions.Concat(definitions.SelectMany(DerivedDescriptions)).ToArray());
     }
     public bool FxDirty { get; private set; } = true;
+
+    /// <summary>What Share add-ons published to the references of this room.</summary>
+    internal IWiredSharedAddonStore SharedAddons { get; set; }
 
     public WiredRoomVariables(Room room, IDatabase database, TimeProvider clock,
         Func<WiredVariableReference, WiredVariableHolder, WiredVariableFrame, long?>? builtinRead = null,
@@ -36,14 +39,45 @@ public sealed partial class WiredRoomVariables
         _room = room;
         _clock = clock;
         _quests = quests;
-        Module = new(room.Id, new DatabaseWiredVariableDirectory(database), new DatabaseWiredVariableStore(database), clock,
+        Module = new(room.Id, new RoomDirectory(new DatabaseWiredVariableDirectory(database), this), new DatabaseWiredVariableStore(database), clock,
             new RoomWiredBuiltinVariables(room, builtinRead, builtinWrite, stateChanged, new RoomItemMetadataStore(database), travelStore, quests, QuestBinding), ResolveDerived);
         Editor = new(Module);
         Fx = new(Module);
         _persistence = new(database, Module, clock);
+        SharedAddons = new DatabaseWiredSharedAddonStore(database);
         _broadcast = new(Module, playerId => playerId is > 0 and <= int.MaxValue
-            ? room.GetRoomUserManager()?.GetRoomUserByHabbo((int)playerId)?.VirtualId ?? 0 : 0);
+            ? room.GetRoomUserManager()?.GetRoomUserByHabbo((int)playerId)?.VirtualId ?? 0 : 0, InvalidateFx);
         WiredSharedVariableBroadcast.Register(_broadcast);
+    }
+
+    /// <summary>The room's own variables come from its loaded boxes; every other question goes to the database.</summary>
+    private sealed class RoomDirectory(IWiredVariableDirectory inner, WiredRoomVariables owner) : IWiredVariableDirectory
+    {
+        public WiredVariableDefinition? Find(uint itemId) => inner.Find(itemId);
+        public uint? GetRoomOwner(uint roomId) => inner.GetRoomOwner(roomId);
+        public IReadOnlyList<WiredSharedVariable> ListShared(uint ownerId, uint exceptRoomId) => inner.ListShared(ownerId, exceptRoomId);
+        public IReadOnlyList<WiredVariableDefinition> ListRoom(uint roomId) => roomId == owner._room.Id ? owner.LoadedDefinitions() : inner.ListRoom(roomId);
+        public IReadOnlyList<WiredVariableDefinition> ListReferences(uint sourceRoomId, uint sourceItemId) => inner.ListReferences(sourceRoomId, sourceItemId);
+    }
+
+    private IReadOnlyList<WiredVariableDefinition> LoadedDefinitions()
+    {
+        KeyValuePair<uint, WiredVariableDefinitionBox>[] loaded;
+
+        lock (_membershipGate) {
+            loaded = [.. _definitions];
+        }
+
+        var found = new List<WiredVariableDefinition>();
+
+        foreach (var (id, box) in loaded) {
+            if (box.HasPersistedConfiguration && WiredVariableDefinitions.TryDecode(box.Descriptor.CanonicalName, id, _room.Id,
+                _room.OwnerId > 0 ? (uint)_room.OwnerId : 0, box.Configuration, out var definition, out _)) {
+                found.Add(definition!);
+            }
+        }
+
+        return found;
     }
 
     public IWiredConfiguredItem? CreateBox(Item item)
@@ -189,6 +223,10 @@ public sealed partial class WiredRoomVariables
 
         return changes;
     }
-    public void InvalidateFx() => FxDirty = true;
+    public void InvalidateFx()
+    {
+        ForgetPublished();
+        FxDirty = true;
+    }
     public void FxFlushed() => FxDirty = false;
 }

@@ -92,19 +92,13 @@ public partial class WiredComponent
     }
 
     /// <summary>
-    /// The Share add-on's Synchronize button (class_3048 [wired id], VariableAddonShareAddon.as:31, write permission only): the room's
-    /// variable displays are redrawn from the current shared values. What else the official server does here is not known.
+    /// The Share add-on's Synchronize button (header 397, VariableAddonShareAddon.as:31, write permission only): the add-ons of the shared
+    /// variables stacked with it are published to their references. Observed on AIR WIN63-202610201032-107964540.
     /// </summary>
     public bool SynchronizeShare(Plus.HabboHotel.GameClients.GameClient session, uint itemId)
     {
-        if (!ReferenceEquals(session.GetHabbo()?.CurrentRoom, _room) || !Settings.CanModify(session)
-            || !TryGet(itemId, out var box) || box is not IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_var_share" }) {
-            return false;
-        }
-
-        Variables.InvalidateFx();
-
-        return true;
+        return ReferenceEquals(session.GetHabbo()?.CurrentRoom, _room) && Settings.CanModify(session)
+            && _room.GetRoomItemHandler().GetItem(itemId) is { } item && Variables.Synchronize(item);
     }
 
     /// <summary>

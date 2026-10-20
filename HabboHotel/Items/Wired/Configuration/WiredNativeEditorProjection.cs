@@ -271,6 +271,7 @@ public static class WiredNativeEditorProjection
         name is "wf_act_move_rotate" or "wf_act_match_to_sshot" ? [.. metadata.OwnedDefaults, 1] : metadata.OwnedDefaults;
 
     public const string SourceCountKey = "wiredfurni.error.invalid_furni_source_count";
+    public const string UserSourceCountKey = "wiredfurni.error.invalid_user_source_count";
 
     /// <summary>
     /// Furni source slots as the hotel stores them. Observed (AIR WIN63-202610131318-860371703): r92g r92-signals saved send_signal
@@ -304,6 +305,13 @@ public static class WiredNativeEditorProjection
 
         var slots = metadata.FurniAllowed.Length;
         var given = native.FurniSourceTypes.Length;
+
+        // Observed on AIR WIN63-202610201032-107964540: a user source on a box without a user selector is refused with this key.
+        if (metadata.UsersAllowed.Length == 0 && !native.UserSourceTypes.IsDefaultOrEmpty) {
+            error = UserSourceCountKey;
+
+            return false;
+        }
 
         if (metadata.LegacySlots > 0 && given == metadata.LegacySlots || given == slots) {
             return true;

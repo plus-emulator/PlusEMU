@@ -80,6 +80,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             foreach (var (reference, holder, resolution) in requests) {
                 var definition = resolution.Definition;
                 var value = resolution.Builtin is { } builtin ? builtins?.Read(builtin, holder, frame)
+                    : IsUserPointer(definition) ? ReadPointer(definition!, holder, frame)
                     : Held(definition!, values.GetValueOrDefault(Key(definition!, holder)))
                         ?? (definition!.Target == WiredVariableTarget.Global ? new(definition.InitialValue, null, null) : null);
 
@@ -119,6 +120,10 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
                 if (definition.IsDurable && !holder.CanPersist) {
                     return null;
+                }
+
+                if (IsUserPointer(definition)) {
+                    return ReadPointer(definition, holder, frame);
                 }
 
                 var stored = Held(definition, Store(definition, frame).Read(Key(definition, holder)));
@@ -766,6 +771,12 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return null;
             }
 
+            // Observed on AIR WIN63-202610201032-107964540: Give Variable and Change Variable on a user pointer changed nothing and gave
+            // no error.
+            if (writing && IsUserPointer(definition)) {
+                return null;
+            }
+
             lineage.Add(definition);
 
             if (definition.Link is not { } link) {
@@ -822,6 +833,86 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
         return true;
     }
+
+    /// <summary>
+    /// The key a proposed reference is refused with, or null. Observed on AIR WIN63-202610201032-107964540: a room holds one reference
+    /// to a shared variable, a second one is refused.
+    /// </summary>
+    public string? RefuseReference(WiredVariableDefinition proposed)
+    {
+        lock (_gate) {
+            return proposed.Link is { } link && directory.ListRoom(roomId).Any(other => other.ItemId != proposed.ItemId && other.Link is { } existing
+                && existing.SourceRoomId == link.SourceRoomId && existing.Source == link.Source) ? WiredVariableDefinitions.ReferenceExistsKey : null;
+        }
+    }
+
+    private static bool IsUserPointer(WiredVariableDefinition? definition) => definition is { IsPointer: true, Target: WiredVariableTarget.User };
+
+    /// <summary>
+    /// The user variable a pointer stands for in this firing: the one whose box id its accessor context variable holds, read for the
+    /// same holder. Observed on AIR WIN63-202610201032-107964540: an id that is not a user variable's box (nothing, 0, a missing id,
+    /// the pointer itself, a furni, room or context variable) reads nothing.
+    /// </summary>
+    private WiredVariableReference? PointedAt(WiredVariableDefinition pointer, WiredVariableFrame frame)
+    {
+        if (!TryDefinitionId(pointer.PointerAccessor ?? "", out var accessorId)
+            || Resolve(new(WiredVariableTarget.Context, $"custom:{accessorId}"), false)?.Definition is not { Target: WiredVariableTarget.Context, IsPointer: false }
+            || frame.Context.Read(new(accessorId, WiredVariableTarget.Context, 0)) is not { Value: > 0 and <= uint.MaxValue } held) {
+            return null;
+        }
+
+        var target = new WiredVariableReference(WiredVariableTarget.User, $"custom:{held.Value}");
+
+        return Resolve(target, false)?.Definition is { Target: WiredVariableTarget.User, IsPointer: false } ? target : null;
+    }
+
+    private WiredVariableValue? ReadPointer(WiredVariableDefinition pointer, WiredVariableHolder holder, WiredVariableFrame frame) =>
+        PointedAt(pointer, frame) is { } target ? Read(target, holder, frame) : null;
+
+    /// <summary>
+    /// False when the reference is a user pointer that points at no user variable in this firing, so a text placeholder for it stays as
+    /// written (observed on AIR WIN63-202610201032-107964540). Every other variable resolves, even when its holder has no value.
+    /// </summary>
+    public bool PointerResolves(WiredVariableReference reference, WiredVariableFrame frame)
+    {
+        lock (_gate) {
+            return Resolve(reference, false)?.Definition is not { IsPointer: true, Target: WiredVariableTarget.User } pointer || PointedAt(pointer, frame) is not null;
+        }
+    }
+
+    /// <summary>
+    /// The key a proposed pointer is refused with, or null when it may be saved. Observed on AIR WIN63-202610201032-107964540: the accessor
+    /// must be a context variable that holds a value (anything else, or nothing, is a missing variable), a pointer is never an accessor, and a
+    /// name is taken by another variable of the pointer's target or by its accessor.
+    /// </summary>
+    public string? RefusePointer(WiredVariableDefinition proposed)
+    {
+        if (WiredVariableDefinitions.RefuseName(proposed.Name) is { } badName) {
+            return badName;
+        }
+
+        lock (_gate) {
+            if (!TryDefinitionId(proposed.PointerAccessor ?? "", out var accessorId) || directory.Find(accessorId) is not { } accessor || accessor.RoomId != roomId) {
+                return WiredVariableDefinitions.MissingVariableKey;
+            }
+
+            if (accessor.IsPointer) {
+                return WiredVariableDefinitions.NeedsExecutionContextKey;
+            }
+
+            if (accessor.Target != WiredVariableTarget.Context || !accessor.HasValue) {
+                return WiredVariableDefinitions.MissingVariableKey;
+            }
+
+            var taken = accessor.Name == proposed.Name || directory.ListRoom(roomId).Any(other => other.ItemId != proposed.ItemId
+                && other.Target == proposed.Target && other.Name == proposed.Name);
+
+            return taken ? WiredVariableDefinitions.NameTakenKey : null;
+        }
+    }
+
+    /// <summary>The reference variables in the owner's rooms that read one shared variable of this room.</summary>
+    public IReadOnlyList<WiredVariableDefinition> ListReferences(uint sharedItemId) => directory.ListReferences(roomId, sharedItemId);
 
     /// <summary>The shared variables this room's owner offers from their other rooms, in directory order.</summary>
     public IReadOnlyList<WiredSharedVariable> ListShared() => directory.GetRoomOwner(roomId) is { } owner ? directory.ListShared(owner, roomId) : [];

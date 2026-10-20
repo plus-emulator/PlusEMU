@@ -10,10 +10,13 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 public static class WiredSharedVariableBroadcast
 {
     /// <summary>A loaded room's end of the broadcast: its module and how it finds a player (by id) among its own units.</summary>
-    public sealed class Endpoint(WiredVariableModule module, Func<long, int> unitOf)
+    public sealed class Endpoint(WiredVariableModule module, Func<long, int> unitOf, Action? refresh = null)
     {
         public WiredVariableModule Module { get; } = module;
         public Func<long, int> UnitOf { get; } = unitOf;
+
+        /// <summary>Asks the room to draw its variables again, for example after a Share add-on published new add-ons to it.</summary>
+        public Action? Refresh { get; } = refresh;
     }
 
     private static readonly ConcurrentDictionary<uint, WeakReference<Endpoint>> Rooms = new();
@@ -22,6 +25,9 @@ public static class WiredSharedVariableBroadcast
     public static void Register(Endpoint endpoint) => Rooms[endpoint.Module.RoomId] = new(endpoint);
 
     private static Endpoint? Find(uint roomId) => Rooms.TryGetValue(roomId, out var weak) && weak.TryGetTarget(out var endpoint) ? endpoint : null;
+
+    /// <summary>Tells a loaded room that what a reference of it imports has changed; a room that is not loaded reads it when it loads.</summary>
+    public static void Refresh(uint roomId) => Find(roomId)?.Refresh?.Invoke();
 
     /// <summary>
     /// Hands each change a room drained to the room its variable lives in, when that is another room. A user's value was named by

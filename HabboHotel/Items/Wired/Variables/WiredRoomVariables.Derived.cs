@@ -22,10 +22,10 @@ public sealed partial class WiredRoomVariables
         // 1700000000 in the same run); its other derivations are not offered.
         var context = definition.Target == WiredVariableTarget.Context;
 
-        if (!context && source.HasValue && DerivedMetadataOn(definition.ItemId) is { } level) {
-            foreach (var sub in Enumerable.Range(0, level.DerivedKeys.Length).Where(level.HasDerived)) {
+        if (!context && source.HasValue && LevelOf(definition.ItemId) is { } level) {
+            foreach (var sub in Enumerable.Range(0, WiredVariableMetadataBox.LevelKeys.Length).Where(sub => (level.SubvariableMask & (1 << sub)) != 0)) {
                 if (SyntheticId(definition.Target, definition.ItemId, sub, false) is { } id && _room.GetRoomItemHandler().GetItem(id) is null) {
-                    yield return new(definition with { ItemId = id, Name = definition.Name + "." + level.DerivedKeys[sub] }, true, true) { IsDerived = true };
+                    yield return new(definition with { ItemId = id, Name = definition.Name + "." + WiredVariableMetadataBox.LevelKeys[sub] }, true, true) { IsDerived = true };
                 }
             }
         }
@@ -97,11 +97,11 @@ public sealed partial class WiredRoomVariables
             return new(source, value => WiredQuestVariables.Derive(_quests, quest, value.Value, sub) is { } derived ? new(derived, null, null) : null);
         }
 
-        var level = DerivedMetadataOn(baseId);
+        var level = LevelOf(baseId);
 
-        return level is not null && level.HasDerived(sub)
-            ? new(source, value => level.ReadDerived(value.Value, sub) is { } part ? new(part, null, null) : null,
-                Write: sub == 1 ? (_, xp) => level.LevelSystem!.ClampXp(xp) : null)
+        return level is not null && sub is >= 0 and < 8 && (level.SubvariableMask & (1 << sub)) != 0
+            ? new(source, value => level.Read(value.Value, sub) is { } part ? new(part, null, null) : null,
+                Write: sub == 1 ? (_, xp) => level.ClampXp(xp) : null)
             { Interceptable = true, HasValue = sub != 6 }
             : null;
     }

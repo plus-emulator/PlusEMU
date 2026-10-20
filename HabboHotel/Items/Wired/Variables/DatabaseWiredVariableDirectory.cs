@@ -55,6 +55,27 @@ public sealed class DatabaseWiredVariableDirectory(IDatabase database) : IWiredV
 
         return shared;
     }
+    public IReadOnlyList<WiredVariableDefinition> ListReferences(uint sourceRoomId, uint sourceItemId)
+    {
+        using var connection = database.Connection();
+        var rows = connection.Query<SharedRow>("""
+            SELECT i.id AS ItemId,i.room_id AS RoomId,r.caption AS RoomName,c.box_name AS BoxName,c.configuration AS Configuration
+            FROM items i JOIN rooms r ON r.id=i.room_id JOIN wired_item_configurations c ON c.item_id=i.id
+            WHERE c.box_name='wf_var_reference' AND i.room_id>0 AND c.configuration LIKE @pattern
+              AND r.owner=(SELECT owner FROM rooms WHERE id=@sourceRoomId) LIMIT 500
+            """, new { sourceRoomId, pattern = $"%\"shared:{sourceRoomId}:%:{sourceItemId}\"%" });
+        var found = new List<WiredVariableDefinition>();
+
+        foreach (var row in rows) {
+            if (GetRoomOwner(row.RoomId) is { } ownerId && WiredConfigurationStore.DecodeRow(row.ItemId, row.BoxName, row.Configuration) is { } config
+                && WiredVariableDefinitions.TryDecode(row.BoxName, row.ItemId, row.RoomId, ownerId, config, out var definition, out _)
+                && definition!.Link is { } link && link.SourceRoomId == sourceRoomId && link.Source.Token == $"custom:{sourceItemId}") {
+                found.Add(definition);
+            }
+        }
+
+        return found;
+    }
     // Plus stores numeric user IDs in this varchar column. Reject MySQL's loose numeric-prefix coercion.
     internal static uint? ParseOwner(string? owner) => uint.TryParse(owner, NumberStyles.None, CultureInfo.InvariantCulture, out var id) && id > 0 ? id : null;
     private sealed class SharedRow

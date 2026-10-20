@@ -224,12 +224,18 @@ internal static class WiredNativeCatalogProjection
         // Observed on hhus: the lvlup sub-variable "<parent>.current_level" is listed with type 2 and availability 999.
         // Observed on hhus (AIR WIN63-202610131318-860371703): a global lists canReadCreationTime false, canReadLastUpdateTime true;
         // a Time Utilities Value part is writable and interceptable.
-        return new(description.CatalogId, description.IsDerived || definition.Link is not null ? 2 : 0,
+        var variable = new WiredNativeVariable(description.CatalogId, description.IsDerived || definition.Link is not null ? 2 : 0,
             definition.Name, builtin is not null || description.IsDerived || definition.Target == WiredVariableTarget.Context ? 999
                 : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
             definition.Link is null && (writable || description.Interceptable) && builtin is null, false,
             timestamps && definition.Target != WiredVariableTarget.Global, timestamps, connector);
+
+        // Observed on AIR WIN63-202610201032-107964540: a pointer is listed as a normal variable of availability 999 that can be created,
+        // deleted and written but not intercepted, with an empty text connector, and it requires an execution context.
+        return definition.IsPointer
+            ? variable with { Availability = 999, CanCreateAndDelete = true, CanWriteValue = true, CanInterceptChanges = false, Connector = [], RequiresExecutionContext = true }
+            : variable;
     }
 }

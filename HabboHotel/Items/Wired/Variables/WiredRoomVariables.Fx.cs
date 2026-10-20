@@ -62,6 +62,23 @@ public sealed partial class WiredRoomVariables
             }
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: the Variable FX a reference imports are drawn over the reference, with the settings
+        // of the shared variable's own FX. Only the id -1 was seen. Ids of -2 and lower, and a count over the whole room, were not checked,
+        // so the ids below -1 follow the same count by assumption.
+        foreach (var (reference, fx, configId) in ImportedFx(authorized)) {
+            var configuration = new WiredConfiguration { IntParams = fx.Ints, VariableIds = fx.VariableIds, Text = fx.Text };
+            var target = WiredVariableFxSettings.UsesUserSource(configuration) ? WiredVariableTarget.User : WiredVariableTarget.Furni;
+
+            if (reference.Target != target
+                || !WiredVariableFxSettings.TryDecode(fx.Box, 1, configuration, new(target, reference.Token), (id, expected) => Module.TryResolveCatalogId(id, expected, out var resolved) ? resolved : null,
+                    out var binding, out _)) {
+                continue;
+            }
+
+            var level = LevelOf(reference.ItemId);
+            result.Add(binding! with { Config = binding.Config with { Id = configId }, Level = level is null ? null : level.Level });
+        }
+
         return result;
     }
 

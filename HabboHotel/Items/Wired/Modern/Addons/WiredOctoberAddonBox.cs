@@ -8,14 +8,14 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Addons;
 /// <summary>
 /// The October add-ons of the r88 dossier (WIN63-202610131318-860371703). Most of them are room-wide settings read where they apply:
 /// Achievement Enabler by Progress Achievement, Global Placeholder by message text, Web API by the HTTP variable API, Leaderboard by
-/// the room's overlays, Share and Import by the variable sharing. Only the Link Speaker joins its stack's firing.
+/// the room's overlays, Only the Link Speaker joins its stack's firing.
 /// </summary>
 public sealed class WiredOctoberAddonBox(Room room, Item item, WiredBoxDescriptor descriptor)
     : WiredConfiguredBehaviorBox(room, item, descriptor, configuration => configuration), IWiredContextualAddon
 {
     public static readonly IReadOnlySet<string> Names = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "wf_xtra_var_share", "wf_xtra_var_import", "wf_xtra_var_leaderboard", "wf_xtra_global_placeholder",
+        "wf_xtra_var_leaderboard", "wf_xtra_global_placeholder",
         "wf_xtra_achievement_enabler", "wf_xtra_var_web_api", "wf_xtra_link_speaker"
     };
 

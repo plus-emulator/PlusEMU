@@ -16,19 +16,15 @@ public partial class WiredComponent
     private readonly Dictionary<int, WiredTransparencyState> _userTransparency = [];
     private readonly Dictionary<int, WiredHighlightState> _userHighlight = [];
 
-    // Fully visible and not click-through, or a highlight of no strength, is the furni's own look again.
+    // Observed on AIR WIN63-202610201032-107964540: a furni made visible again and a highlight at strength 0 stay as entries; only
+    // picking the furni up removes them.
     internal void RememberTransparency(bool users, IEnumerable<int> ids, int transparency, bool clickThrough, int easing)
     {
         lock (_visualizationGate) {
             var states = users ? _userTransparency : _furniTransparency;
 
             foreach (var id in ids) {
-                if (transparency == 0 && !clickThrough) {
-                    states.Remove(id);
-                }
-                else {
-                    states[id] = new(id, transparency, clickThrough, easing);
-                }
+                states[id] = new(id, transparency, clickThrough, easing);
             }
         }
     }
@@ -39,12 +35,7 @@ public partial class WiredComponent
             var states = users ? _userHighlight : _furniHighlight;
 
             foreach (var id in ids) {
-                if (strength == 0) {
-                    states.Remove(id);
-                }
-                else {
-                    states[id] = new(id, type, strength, color, animation, easing);
-                }
+                states[id] = new(id, type, strength, color, animation, easing);
             }
         }
     }

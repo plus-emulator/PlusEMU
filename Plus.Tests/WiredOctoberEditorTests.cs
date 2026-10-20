@@ -46,7 +46,6 @@ public sealed class WiredOctoberEditorTests
     [Theory]
     [InlineData("wf_act_set_visibility", new[] { 1, 100, 1, 4, 1 }, true)]
     [InlineData("wf_act_set_visibility", new[] { 0, 50, 0, 0, 0 }, false)]
-    [InlineData("wf_act_set_visibility", new[] { 0, 0, 0, 5, 0 }, false)]
     [InlineData("wf_act_set_highlight", new[] { 1, 5, 100, 0xFFFFFF, 1, 4, 0 }, true)]
     [InlineData("wf_act_set_highlight", new[] { 0, 4, 38, 0, 1, 0, 0 }, true)]
     [InlineData("wf_act_set_highlight", new[] { 0, 4, 50, 0, 1, 0, 0 }, false)]

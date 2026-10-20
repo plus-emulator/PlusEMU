@@ -15,6 +15,8 @@ using Plus.HabboHotel.Rooms.AI;
 using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Rooms.AI.Speech;
 using Plus.HabboHotel.Users;
+using Plus.HabboHotel.Users.Inventory;
+using Plus.HabboHotel.Users.Inventory.Bots;
 using Xunit;
 
 namespace Plus.Tests;
@@ -262,6 +264,35 @@ public sealed class RoomUnitMoveTests
         Assert.Contains(world.Bot, world.Room.GetGameMap().GetRoomUsers(new(2, 1)));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: a bot placed from the inventory says "Hello!" in its own chat bubble (31 for a
+    // rentable bot), the same bubble its Wired Bot Talk lines use.
+    [Fact]
+    public void APlacedBotGreetsTheRoomInItsOwnChatBubble()
+    {
+        const int placedBotId = 32;
+        var world = new World();
+        world.BotStore.Placement = new("generic", "stand", false, 7, false, 31, []);
+        var (owner, _) = HabbiconTestSupport.Client(new Habbo
+        {
+            Id = RoomOwnerId,
+            Username = "owner",
+            CurrentRoom = world.Room,
+            Access = EditorTestSupport.Access([]),
+            Inventory = new InventoryComponent { Bots = new([new Bot(placedBotId, RoomOwnerId, "Robbie", "", "hr-100", "M")]) }
+        });
+        world.ViewerPackets.Clear();
+
+        using (RoomOwnerScope.Enter(world.Room)) {
+            world.Bots.Place(world.Room, owner, placedBotId, 0, 3);
+        }
+
+        var chat = new FlashIncomingPacket { Buffer = world.ViewerPackets.Single(sent => sent.Header == ServerPacketHeader.ChatComposer).Payload };
+        chat.ReadInt();
+        Assert.Equal("Hello!", chat.ReadString());
+        chat.ReadInt();
+        Assert.Equal(31, chat.ReadInt());
+    }
+
     private sealed class World
     {
         private readonly List<(uint Header, byte[] Payload)> _viewerPackets;
@@ -313,6 +344,7 @@ public sealed class RoomUnitMoveTests
         }
 
         public Room Room { get; }
+        public List<(uint Header, byte[] Payload)> ViewerPackets => _viewerPackets;
         public RoomUser Pet { get; }
         public RoomUser Bot { get; }
         public RoomUser Avatar { get; }
@@ -399,7 +431,8 @@ public sealed class RoomUnitMoveTests
 
             Positions.Add((botId, roomId, x, y, z, rotation));
         }
-        public BotPlacementData Place(int botId, int ownerId, uint roomId, int x, int y) => throw new NotSupportedException();
+        public BotPlacementData? Placement { get; set; }
+        public BotPlacementData Place(int botId, int ownerId, uint roomId, int x, int y) => Placement ?? throw new NotSupportedException();
         public void PickUp(int botId, uint roomId) => throw new NotSupportedException();
         public void SaveAppearance(int botId, uint roomId, string look, string gender) => throw new NotSupportedException();
         public IReadOnlyList<string> SaveSpeech(int botId, uint roomId, IReadOnlyList<string> speech, bool automatic, int interval, bool mix) =>

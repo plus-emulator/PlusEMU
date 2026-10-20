@@ -754,7 +754,9 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 return changed;
             case "wf_act_reset_timers":
-                context.Room.LastTimerResetAt = _clock.GetUtcNow();
+                var resetAt = _clock.GetUtcNow();
+                context.Room.RestartTimerAt(resetAt,
+                    resetAt.AddMilliseconds(Triggers.WiredTimedTriggers.FirstRoomTickAfter(context.NowMilliseconds) - context.NowMilliseconds));
                 // The room timer belongs to the whole room; a furni limit add-on must not pick which timers restart.
                 context.Operations.ResetTimers(context.Targets.ResolveFurni(context, [], WiredSources.AllRoom, raw: true));
 

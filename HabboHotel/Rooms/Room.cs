@@ -48,7 +48,10 @@ public class Room
 
     public bool IsCrashed;
     public DateTimeOffset? LastRegenerationAt;
-    public DateTimeOffset? LastTimerResetAt;
+    // The room's Wired timer, read by the elapsed-time conditions and @wired_timer. It starts when the room loads. Observed on AIR
+    // WIN63-202610151745-318700621: @wired_timer reads 26 in a room nobody reset, and More Than 1201 passes in a room loaded long ago.
+    public DateTimeOffset LastTimerResetAt;
+    private DateTimeOffset? _timerRestartAt;
     public bool MDisposed;
     public MoodlightData MoodlightData;
 
@@ -134,8 +137,35 @@ public class Room
         _wiredComponent = wired;
         _userSnapshots = userSnapshots;
         _interactionClock = interactionClock;
-        LastRegenerationAt = interactionClock.GetUtcNow();
+        var loadedAt = interactionClock.GetUtcNow();
+        LastRegenerationAt = loadedAt;
+        LastTimerResetAt = loadedAt;
     }
+
+    /// <summary>
+    /// Reset Timers at <paramref name="now"/> restarts the room timer at <paramref name="tickAt"/>, the next 500 ms room tick; until then
+    /// the timer keeps counting. Observed on AIR WIN63-202610151745-318700621: a Less Than check 150 or 300 ms after the reset still sees
+    /// the old timer, and one 450 ms or more after it sees the new one.
+    /// </summary>
+    internal void RestartTimerAt(DateTimeOffset now, DateTimeOffset tickAt)
+    {
+        TimerElapsedMilliseconds(now);
+        // A restart still pending is for the same tick, so a second reset before that tick changes nothing.
+        _timerRestartAt ??= tickAt;
+    }
+
+    internal long TimerElapsedMilliseconds(DateTimeOffset now)
+    {
+        if (_timerRestartAt is { } restartAt && now >= restartAt) {
+            RestartTimer(restartAt);
+            _timerRestartAt = null;
+        }
+
+        return Math.Max(0, (now - LastTimerResetAt).Ticks / TimeSpan.TicksPerMillisecond);
+    }
+
+    // A game stop restarts the timer at once, so a pending restart only counts when it comes later.
+    private void RestartTimer(DateTimeOffset at) => LastTimerResetAt = at > LastTimerResetAt ? at : LastTimerResetAt;
 
     private Music.RoomMusicComponent? _music;
     public Music.RoomMusicComponent Music => _music ?? throw new InvalidOperationException("The room music component has not been initialized.");

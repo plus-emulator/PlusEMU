@@ -61,9 +61,7 @@ public partial class WiredComponent
             var instant = _clock.GetUtcNow();
 
             if (key == "@wired_timer") {
-                _room.LastTimerResetAt ??= instant;
-
-                return Math.Max(0, (instant - _room.LastTimerResetAt.Value).Ticks / TimeSpan.TicksPerMillisecond / 500);
+                return _room.TimerElapsedMilliseconds(instant) / 500;
             }
 
             var local = TimeZoneInfo.ConvertTime(instant, EffectiveTimeZone);

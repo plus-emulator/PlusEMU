@@ -45,9 +45,10 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
     Action<WiredClockTransition>? observeTransition = null, Action<WiredClockTransition>? gameTransition = null,
     Func<Item, WiredClockOrigin, RoomUser?, bool>? canBegin = null)
 {
-    private sealed class Clock(Item item, bool game, bool countdown, long value)
+    private sealed class Clock(Item item, bool game, bool countdown, long value, long duration)
     {
         public Item Item { get; } = item;
+        public long Duration { get; } = duration; // Half seconds a native game timer restarts and resets to.
         public bool GameAware { get; } = game;
         public bool Countdown { get; } = countdown;
         public long Value = value; // Half seconds: elapsed for Wired counters, remaining for native game timers.
@@ -82,7 +83,8 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         var countdown = IsGameTimer(item);
         var game = countdown || Name(item).StartsWith("wf_game_", StringComparison.Ordinal);
         var seconds = int.TryParse(item.LegacyDataString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var saved) ? Math.Max(0, saved) : 0;
-        _clocks[item.Id] = new(item, game, countdown, countdown ? seconds * 2L : Math.Min(maxHalfSeconds, seconds * 2L));
+        var value = countdown ? seconds * 2L : Math.Min(maxHalfSeconds, seconds * 2L);
+        _clocks[item.Id] = new(item, game, countdown, value, countdown && value > 0 ? value : defaultGameSeconds * 2L);
 
         return true;
     }
@@ -151,7 +153,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
 
             clock.Started = false;
             var previous = clock.Value;
-            clock.Value = clock.Countdown ? defaultGameSeconds * 2L : 0;
+            clock.Value = clock.Countdown ? clock.Duration : 0;
             PublishClock(clock, previous, ModernBatch(origin));
             ReportState(clock);
         }
@@ -168,7 +170,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         if (operation is 0 or 4 && !clock.Running) {
             if (clock.Countdown && clock.Value <= 0) {
                 var previous = clock.Value;
-                clock.Value = defaultGameSeconds * 2L;
+                clock.Value = clock.Duration;
                 PublishClock(clock, previous);
             }
 

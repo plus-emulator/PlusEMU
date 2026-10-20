@@ -2328,14 +2328,17 @@ public partial class ModernWiredRuntimeTests
         Assert.False(targets.HasTargets);
         var user = new RoomUser(1, 0, 8, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 1, Y = 0 };
         RoomUsers(room)[8] = user;
-        // Starting next to the user is no arrival (observed on AIR WIN63-202610151745-318700621); stepping away and back is one.
+        // Starting next to the user is no arrival (observed on AIR WIN63-202610151745-318700621); walking away and stopping on a tile next
+        // to the user again is one, a room tick later.
         targets.Follow(bot, user);
-        Assert.Empty(targets.Poll(room));
+        Assert.Empty(targets.Poll(room, 0));
         bot.SetPos(3, 3, 0);
-        targets.Poll(room);
-        bot.SetPos(0, 0, 0);
-        Assert.Same(user, Assert.Single(targets.Poll(room)).TargetUser);
-        Assert.Empty(targets.Poll(room));
+        Assert.Empty(targets.Poll(room, 0));
+        var goal = Assert.IsType<MoveCommand>(bot.Movement.Commands.Read());
+        bot.SetPos(goal.X, goal.Y, 0);
+        Assert.Empty(targets.Poll(room, 100));
+        Assert.Same(user, Assert.Single(targets.Poll(room, 100 + WiredBotTargets.FollowRestMilliseconds)).TargetUser);
+        Assert.Empty(targets.Poll(room, 1000));
         RoomUsers(room)[8] = new RoomUser(1, 0, 8, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused);
         Assert.Empty(targets.Poll(room));
         Assert.False(targets.HasTargets);

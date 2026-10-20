@@ -312,8 +312,7 @@ public partial class ModernWiredRuntimeTests
         Assert.False(WiredBotTargets.For(stop.Room).HasTargets);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (wf_trg_bot_reached_avtr.bot): a bot that already stands next to the user it is told to
-    // follow raises no arrival.
+    // Observed on AIR WIN63-202610151745-318700621: a bot that already stands next to the user it is told to follow raises no arrival.
     [Fact]
     public void BotFollowFromNextToTheUserRaisesNoArrival()
     {
@@ -323,25 +322,104 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(WiredBotTargets.For(f.Room).Poll(f.Room));
     }
 
+    // Observed on AIR WIN63-202610151745-318700621: Bot Reached Avatar fired one room tick after the bot stopped on its tile next to the
+    // user, not while it walked past other tiles next to the user. It fires again after the next walk.
     [Fact]
-    public void BotFollowRaisesOneArrivalPerApproachOnceNextToTheUser()
+    public void BotFollowRaisesOneArrivalOneTickAfterTheBotStopsNextToTheUser()
     {
-        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby");
-        var bot = AddNamedBot(f, 9, "Bobby", 2, 2);
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby", heightmap: FollowRoom);
+        var bot = AddNamedBot(f, 9, "Bobby", 0, 0);
         using var ownerScope = RoomOwnerScope.Enter(f.Room);
-        f.Fire();
+        f.User.SetPos(2, 2, 0);
         var targets = WiredBotTargets.For(f.Room);
-        Assert.Empty(targets.Poll(f.Room));
-        bot.SetPos(1, 0, 0);
-        var arrival = Assert.Single(targets.Poll(f.Room));
+        targets.Random = new Random(5);
+        targets.Follow(bot, f.User);
+        Assert.Empty(targets.Poll(f.Room, 0));
+        var goal = Assert.NotNull(WalkGoal(bot));
+        var passing = Around(2, 2).First(tile => tile != goal);
+        bot.X = passing.X;
+        bot.Y = passing.Y;
+        Assert.Empty(targets.Poll(f.Room, 100));
+
+        bot.SetPos(goal.X, goal.Y, 0);
+        Assert.Empty(targets.Poll(f.Room, 1000));
+        Assert.Empty(targets.Poll(f.Room, 999 + WiredBotTargets.FollowRestMilliseconds));
+        var arrival = Assert.Single(targets.Poll(f.Room, 1000 + WiredBotTargets.FollowRestMilliseconds));
         Assert.Equal(WiredEventKind.BotReachedUser, arrival.Kind);
         Assert.Same(bot, arrival.Actor);
         Assert.Same(f.User, arrival.TargetUser);
-        Assert.Empty(targets.Poll(f.Room));
-        bot.SetPos(2, 2, 0);
-        Assert.Empty(targets.Poll(f.Room));
-        bot.SetPos(0, 1, 0);
-        Assert.Single(targets.Poll(f.Room));
+        Assert.Empty(targets.Poll(f.Room, 2000));
+
+        var corner = new Point(goal.X <= 2 ? 4 : 0, goal.Y <= 2 ? 4 : 0);
+        f.User.SetPos(corner.X, corner.Y, 0);
+        Assert.Empty(targets.Poll(f.Room, 3000));
+        var next = Assert.NotNull(WalkGoal(bot));
+        bot.SetPos(next.X, next.Y, 0);
+        Assert.Empty(targets.Poll(f.Room, 3100));
+        Assert.Single(targets.Poll(f.Room, 3100 + WiredBotTargets.FollowRestMilliseconds));
+    }
+
+    [Fact]
+    public void BotFollowRaisesNoArrivalWhenTheUserWalksUpToTheBot()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby", heightmap: FollowRoom);
+        var bot = AddNamedBot(f, 9, "Bobby", 0, 0);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
+        f.User.SetPos(4, 4, 0);
+        var targets = WiredBotTargets.For(f.Room);
+        targets.Follow(bot, f.User);
+        bot.SetPos(1, 1, 0);
+        bot.ClearMovement(true);
+        f.User.SetPos(2, 2, 0);
+
+        Assert.All(new[] { 100, 1000, 2000 }, now => Assert.Empty(targets.Poll(f.Room, now)));
+    }
+
+    // A walk that ends short of the picked tile, or a user with no free tile around them, also gets one room tick of rest before the next
+    // look, so the bot does not search again on every Wired pass.
+    [Fact]
+    public void BotFollowRestsAfterAWalkThatEndsShort()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby", heightmap: FollowRoom);
+        var bot = AddNamedBot(f, 9, "Bobby", 0, 0);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
+        f.User.SetPos(2, 2, 0);
+        var targets = WiredBotTargets.For(f.Room);
+        targets.Follow(bot, f.User);
+        targets.Poll(f.Room, 0);
+        bot.ClearMovement(true);
+        var failed = bot.Movement.Commands.Read();
+
+        targets.Poll(f.Room, 100);
+        targets.Poll(f.Room, 99 + WiredBotTargets.FollowRestMilliseconds);
+        Assert.Same(failed, bot.Movement.Commands.Read());
+
+        targets.Poll(f.Room, 100 + WiredBotTargets.FollowRestMilliseconds);
+        Assert.NotSame(failed, bot.Movement.Commands.Read());
+        Assert.Contains(Assert.NotNull(WalkGoal(bot)), Around(2, 2));
+    }
+
+    [Fact]
+    public void BotFollowRestsWhenNoTileAroundTheUserIsFree()
+    {
+        using var f = new TeleportFixture(actionName: "wf_act_bot_follow_avatar", intParams: [1, 0, 100], text: "Bobby",
+            heightmap: "00000\r0xxx0\r0x000\r0xxx0\r00000");
+        var bot = AddNamedBot(f, 9, "Bobby", 0, 0);
+        var other = AddNamedBot(f, 10, "Other", 3, 2);
+        using var ownerScope = RoomOwnerScope.Enter(f.Room);
+        f.User.SetPos(2, 2, 0);
+        var targets = WiredBotTargets.For(f.Room);
+        targets.Follow(bot, f.User);
+        targets.Poll(f.Room, 0);
+        Assert.Null(bot.Movement.Commands.Read());
+
+        other.SetPos(4, 4, 0);
+        targets.Poll(f.Room, 100);
+        targets.Poll(f.Room, WiredBotTargets.FollowRestMilliseconds - 1);
+        Assert.Null(bot.Movement.Commands.Read());
+
+        targets.Poll(f.Room, WiredBotTargets.FollowRestMilliseconds);
+        Assert.Equal(new Point(3, 2), WalkGoal(bot));
     }
 
     private const string FollowRoom = "00000\r00000\r00000\r00000\r00000";
@@ -366,8 +444,8 @@ public partial class ModernWiredRuntimeTests
         return goals;
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (wf_act_bot_follow_avatar.probe_*): over 8 runs from the same corner the bot ended east,
-    // north, south, north-east, north, west, west and south of the user, and later stops took the diagonals too.
+    // Observed on AIR WIN63-202610151745-318700621: from the same corner the bot ended east, north, south, north-east and west of the user
+    // on different tries, and later stops took the other diagonals too.
     [Fact]
     public void BotFollowWalksToARandomTileAroundTheUser()
     {

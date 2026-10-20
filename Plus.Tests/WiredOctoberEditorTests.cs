@@ -61,7 +61,8 @@ public sealed class WiredOctoberEditorTests
     [InlineData("wf_cnd_user_level", new[] { 31, 0 }, false)]
     [InlineData("wf_cnd_user_level", new[] { 1, 3 }, false)]
     [InlineData("wf_xtra_var_share", new[] { 0, 1, 0 }, true)]
-    [InlineData("wf_xtra_var_import", new[] { 2, 0, 0 }, false)]
+    // Observed on AIR WIN63-202610201032-107964540: any non-zero flag saves and is stored as 1.
+    [InlineData("wf_xtra_var_import", new[] { 2, 0, 0 }, true)]
     [InlineData("wf_xtra_link_speaker", new[] { 1, 0 }, true)]
     [InlineData("wf_xtra_link_speaker", new[] { 1, 2 }, false)]
     [InlineData("wf_var_pointer", new[] { -20 }, true)]

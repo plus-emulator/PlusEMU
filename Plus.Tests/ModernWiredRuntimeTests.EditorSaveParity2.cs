@@ -7,7 +7,7 @@ namespace Plus.Tests;
 // Team) and AIR WIN63-202610131318-860371703 (Chase).
 public partial class ModernWiredRuntimeTests
 {
-    // Habbo saves a per-game limit of 99. The editor slider and the run time both stop at 10, so the limit is stored as 10.
+    // Habbo saves a per-game limit of 11 or 99 and reads it back as 10.
     [Fact]
     public async Task GiveScoreSavesAPerGameLimitAboveTenAsTen()
     {
@@ -18,6 +18,22 @@ public partial class ModernWiredRuntimeTests
         Assert.Contains(f.Client.Packets, packet => packet.Header == ServerPacketHeader.HideWiredConfigComposer);
         var saved = Assert.Single(f.Store.Saves);
         Assert.Equal([5, 10], saved.Origin!.Native.OwnedIntParams.ToArray());
+        Assert.Equal(10, saved.ScoreQuotaPerGame);
+        Assert.Equal(10, f.Action.Configuration.ScoreQuotaPerGame);
+    }
+
+    [Theory]
+    [InlineData(11)]
+    [InlineData(99)]
+    public async Task GiveScoreToTeamSavesAPerGameLimitAboveTenAsTen(int limit)
+    {
+        var f = new MovementOracleSession("wf_act_give_score_tm");
+
+        await SaveEffect(f, [100, 3, 5, limit, 1, "", 0, 0, 0, 0, 0, 0]);
+
+        Assert.Contains(f.Client.Packets, packet => packet.Header == ServerPacketHeader.HideWiredConfigComposer);
+        var saved = Assert.Single(f.Store.Saves);
+        Assert.Equal([5, 10, 1], saved.Origin!.Native.OwnedIntParams.ToArray());
         Assert.Equal(10, saved.ScoreQuotaPerGame);
         Assert.Equal(10, f.Action.Configuration.ScoreQuotaPerGame);
     }

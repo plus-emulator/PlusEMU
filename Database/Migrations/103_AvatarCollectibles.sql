@@ -1,0 +1,1 @@
+-- Avatar collectibles: looks staff give with :givecollectible, listed in the avatar editor's Avatar Collectibles tab.

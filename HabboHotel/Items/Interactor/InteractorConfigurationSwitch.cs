@@ -41,7 +41,15 @@ public sealed class InteractorConfigurationSwitch : IFurniInteractor
             Toggle(item);
         }
     }
-    public void OnWiredTrigger(Item item) => Toggle(item);
+    public void OnWiredTrigger(Item item)
+    {
+        // Observed on AIR WIN63-202610201032-107964540: wired cannot switch the wired disabler back off.
+        if (item.Definition.InteractionType == InteractionType.WiredDisabler && item.LegacyDataString == "1") {
+            return;
+        }
+
+        Toggle(item);
+    }
     private static void Toggle(Item item)
     {
         item.LegacyDataString = item.LegacyDataString == "1" ? "0" : "1";

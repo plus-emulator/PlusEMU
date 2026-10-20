@@ -58,7 +58,13 @@ internal sealed partial class WiredStackEngine
         }
     });
 
-    public bool Enqueue(WiredRuntimeEvent @event, int? depth = null) => Pass(() => EnqueueCore(@event, depth));
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: while a wired disabler is on, no wired runs in the room: no trigger fires and
+    /// the repeaters and timers stand still. Placing and saving boxes still works.
+    /// </summary>
+    private bool Disabled => _runtimeRoom is { } room && ConfigurationItemStates.WiredDisabled(room);
+
+    public bool Enqueue(WiredRuntimeEvent @event, int? depth = null) => Pass(() => !Disabled && EnqueueCore(@event, depth));
 
     private bool EnqueueCore(WiredRuntimeEvent @event, int? depth = null, HeadingCollisionProof? collision = null, bool sealOnRejection = false)
     {
@@ -164,7 +170,7 @@ internal sealed partial class WiredStackEngine
 
     private (bool Accepted, WiredClickResult Click) DispatchCoreUnheld(WiredRuntimeEvent @event, bool resumeImmediately)
     {
-        if (_runtimeRoom == null) {
+        if (_runtimeRoom == null || Disabled) {
             return default;
         }
 
@@ -233,7 +239,7 @@ internal sealed partial class WiredStackEngine
 
     public bool CallStacks(WiredRuntimeContext parent, IEnumerable<Item> targets, bool negative = false) => Pass(() =>
     {
-        if (!ReferenceEquals(parent.Room, _runtimeRoom) || TooDeep(parent.Depth + 1)) {
+        if (!ReferenceEquals(parent.Room, _runtimeRoom) || Disabled || TooDeep(parent.Depth + 1)) {
             return false;
         }
 
@@ -293,7 +299,7 @@ internal sealed partial class WiredStackEngine
     public bool SendSignal(WiredRuntimeContext parent, IEnumerable<Item> receivers,
         WiredSelection selection, bool negative = false) => Pass(() =>
     {
-        if (!ReferenceEquals(parent.Room, _runtimeRoom)) {
+        if (!ReferenceEquals(parent.Room, _runtimeRoom) || Disabled) {
             return false;
         }
 
@@ -426,7 +432,7 @@ internal sealed partial class WiredStackEngine
     /// </summary>
     public void OnRoomTickEnd() => Pass(() =>
     {
-        if (!_splitEnd) {
+        if (!_splitEnd || Disabled) {
             return false;
         }
 
@@ -450,6 +456,10 @@ internal sealed partial class WiredStackEngine
     /// <summary>Starts a room tick: records its boundary and runs the steps scheduled for it, before the room moves and serializes avatars.</summary>
     public void OnRoomTick(bool splitEnd = false) => Pass(() =>
     {
+        if (Disabled) {
+            return false;
+        }
+
         var now = _now();
         LastRoomTick = now - now % WiredFlashStates.StateUpdateMilliseconds;
         _roomTickDrain = true;
@@ -518,7 +528,7 @@ internal sealed partial class WiredStackEngine
 
     public void OnFastCycle() => Pass(() =>
     {
-        if (_runtimeRoom == null || !NeedsFastCycle) {
+        if (_runtimeRoom == null || !NeedsFastCycle || Disabled) {
             return false;
         }
 

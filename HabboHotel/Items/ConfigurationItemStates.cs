@@ -15,6 +15,7 @@ public static class ConfigurationItemStates
     public static bool InvisibleFurni(Room room, Item? except = null) => IsOn(room, InteractionType.InvisibleFurniControl, except);
     public static bool ChooserDisabled(Room room, Item? except = null) => IsOn(room, InteractionType.ChooserDisabler, except);
     public static bool HandItemBlocked(Room room, Item? except = null) => IsOn(room, InteractionType.HandItemBlocker, except);
+    public static bool WiredDisabled(Room room) => IsOn(room, InteractionType.WiredDisabler, null);
     public static ConfigurationItemStatesComposer Compose(Room room, Item? except = null) =>
         new(ChooserDisabled(room, except), InvisibleFurni(room, except), HandItemBlocked(room, except));
     /// <summary>Room entry: every entry carries the states, all off included.</summary>
@@ -36,6 +37,6 @@ public static class ConfigurationItemStates
     public static void SendTypeLimit(GameClient session) =>
         session.Send(new RoomNotificationComposer("furni_placement_error", "message", "${room.error.type_limit}"));
     public static void Announce(Room room, Item? except = null) => room.SendPacket(Compose(room, except));
-    private static bool IsOn(Room room, InteractionType type, Item? except) => room.GetRoomItemHandler().GetFloor.Any(item =>
-        !ReferenceEquals(item, except) && item.Definition.InteractionType == type && item.LegacyDataString == "1");
+    private static bool IsOn(Room room, InteractionType type, Item? except) => room.GetRoomItemHandler()?.GetFloor.Any(item =>
+        !ReferenceEquals(item, except) && item.Definition.InteractionType == type && item.LegacyDataString == "1") == true;
 }

@@ -16,6 +16,8 @@ public static class ConfigurationItemStates
     public static bool ChooserDisabled(Room room, Item? except = null) => IsOn(room, InteractionType.ChooserDisabler, except);
     public static bool HandItemBlocked(Room room, Item? except = null) => IsOn(room, InteractionType.HandItemBlocker, except);
     public static bool WiredDisabled(Room room) => IsOn(room, InteractionType.WiredDisabler, null);
+    /// <summary>The time between two roller steps in the room, in milliseconds.</summary>
+    public static int RollerStepMilliseconds(Room room) => throw new NotImplementedException();
     public static ConfigurationItemStatesComposer Compose(Room room, Item? except = null) =>
         new(ChooserDisabled(room, except), InvisibleFurni(room, except), HandItemBlocked(room, except));
     /// <summary>Room entry: every entry carries the states, all off included.</summary>

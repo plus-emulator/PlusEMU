@@ -222,6 +222,9 @@ public partial class RoomItemHandling
         _roomItemUpdateQueue.Enqueue(item);
     }
 
+    /// <summary>The number of room ticks (500 ms each) between two roller steps.</summary>
+    public int RollerStepTicks => throw new NotImplementedException();
+
     public void SetSpeed(int p)
     {
         _mRollerSpeed = p;

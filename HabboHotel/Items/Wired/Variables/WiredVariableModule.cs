@@ -907,6 +907,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         }
     }
 
+    /// <summary>The reference variables in the owner's rooms that read one shared variable of this room.</summary>
+    public IReadOnlyList<WiredVariableDefinition> ListReferences(uint sharedItemId) => directory.ListReferences(roomId, sharedItemId);
+
     /// <summary>The shared variables this room's owner offers from their other rooms, in directory order.</summary>
     public IReadOnlyList<WiredSharedVariable> ListShared() => directory.GetRoomOwner(roomId) is { } owner ? directory.ListShared(owner, roomId) : [];
 

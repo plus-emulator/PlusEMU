@@ -21,20 +21,14 @@ public sealed partial class WiredRoomVariables
     public WiredVariableCatalog Catalog()
     {
         var definitions = Module.DescribeDefinitions(_definitions.Keys).Select(description => description with
-        { TextConnector = MetadataOn(description.Definition.ItemId, "wf_xtra_var_text_connector")?.TextConnector ?? new Dictionary<int, string>() }).ToArray();
+        { TextConnector = TextConnectorOf(description.Definition) }).ToArray();
 
         return new(definitions.Concat(definitions.SelectMany(DerivedDescriptions)).ToArray());
     }
     public bool FxDirty { get; private set; } = true;
 
     /// <summary>What Share add-ons published to the references of this room.</summary>
-    internal IWiredSharedAddonStore SharedAddons { get; set; } = new MemoryWiredSharedAddonStore();
-
-    /// <summary>
-    /// The Share add-on's Synchronize button: publishes the add-ons of the shared variables stacked with the add-on to every reference
-    /// of those variables, and tells the rooms that hold them. Observed on AIR WIN63-202610201032-107964540.
-    /// </summary>
-    public bool Synchronize(Item share) => throw new NotImplementedException();
+    internal IWiredSharedAddonStore SharedAddons { get; set; }
 
     public WiredRoomVariables(Room room, IDatabase database, TimeProvider clock,
         Func<WiredVariableReference, WiredVariableHolder, WiredVariableFrame, long?>? builtinRead = null,
@@ -50,6 +44,7 @@ public sealed partial class WiredRoomVariables
         Editor = new(Module);
         Fx = new(Module);
         _persistence = new(database, Module, clock);
+        SharedAddons = new DatabaseWiredSharedAddonStore(database);
         _broadcast = new(Module, playerId => playerId is > 0 and <= int.MaxValue
             ? room.GetRoomUserManager()?.GetRoomUserByHabbo((int)playerId)?.VirtualId ?? 0 : 0);
         WiredSharedVariableBroadcast.Register(_broadcast);
@@ -62,6 +57,7 @@ public sealed partial class WiredRoomVariables
         public uint? GetRoomOwner(uint roomId) => inner.GetRoomOwner(roomId);
         public IReadOnlyList<WiredSharedVariable> ListShared(uint ownerId, uint exceptRoomId) => inner.ListShared(ownerId, exceptRoomId);
         public IReadOnlyList<WiredVariableDefinition> ListRoom(uint roomId) => roomId == owner._room.Id ? owner.LoadedDefinitions() : inner.ListRoom(roomId);
+        public IReadOnlyList<WiredVariableDefinition> ListReferences(uint sourceRoomId, uint sourceItemId) => inner.ListReferences(sourceRoomId, sourceItemId);
     }
 
     private IReadOnlyList<WiredVariableDefinition> LoadedDefinitions()

@@ -3489,6 +3489,21 @@ CREATE TABLE `wired_reward_state` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `wired_shared_variable_addons`
+--
+
+DROP TABLE IF EXISTS `wired_shared_variable_addons`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `wired_shared_variable_addons` (
+  `reference_item_id` int(10) unsigned NOT NULL,
+  `addons` longtext NOT NULL,
+  PRIMARY KEY (`reference_item_id`),
+  CONSTRAINT `fk_wired_shared_variable_addons_item_id` FOREIGN KEY (`reference_item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `wired_variable_locks`
 --
 

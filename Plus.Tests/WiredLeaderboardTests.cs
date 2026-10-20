@@ -98,7 +98,7 @@ public sealed class WiredLeaderboardTests
 
         Assert.Equal(new object[] { 1, 77, 2, "Top", "Best", 4, 6, -3, 120, 5, 2, 0, "Name", 3, 1, "Coins", 0, 1, "user:9", "Coins", "user:9", 1 },
             packet.Writes);
-        Assert.Equal(2974u, new WiredVariableLeaderboardSnapshotComposer([]).MessageId);
+        Assert.Equal(3516u, new WiredVariableLeaderboardSnapshotComposer([]).MessageId);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public sealed class WiredLeaderboardTests
 
         Assert.Equal(new object[] { 77, 2, "user:9", 0, 1, 1, 1, 5, "alice", "hd-180", "1,000",
             (int)(time >> 32), unchecked((int)time), 0, 0, true, "3", false }, packet.Writes);
-        Assert.Equal(63u, new WiredVariableLeaderboardChunkComposer(new(0, 0, "", 0, 0, [])).MessageId);
+        Assert.Equal(3948u, new WiredVariableLeaderboardChunkComposer(new(0, 0, "", 0, 0, [])).MessageId);
     }
 
     [Fact]

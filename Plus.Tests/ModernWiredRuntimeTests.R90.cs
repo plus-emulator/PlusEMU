@@ -24,7 +24,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new object[] { 2, 42u, "wiredfurni.variables.pickup.title", "wiredfurni.variables.pickup.body" }, packet.Writes);
         // Observed: 83 bytes with the 6-byte frame head (length and header): 4 + 4 + (2 + 33) + (2 + 32) = 77.
         Assert.Equal(77, 4 + 4 + 2 + ObjectRemoveConfirmComposer.VariableTitle.Length + 2 + ObjectRemoveConfirmComposer.VariableBody.Length);
-        Assert.Equal(2784u, new ObjectRemoveConfirmComposer(0, false, "", "").MessageId);
+        Assert.Equal(3589u, new ObjectRemoveConfirmComposer(0, false, "", "").MessageId);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public partial class ModernWiredRuntimeTests
         new YouArePlayingGameComposer(true).Compose(packet);
 
         Assert.Equal(new object[] { true }, packet.Writes);
-        Assert.Equal(3915u, new YouArePlayingGameComposer(false).MessageId);
+        Assert.Equal(1784u, new YouArePlayingGameComposer(false).MessageId);
     }
 
     [Theory]
@@ -112,7 +112,7 @@ public partial class ModernWiredRuntimeTests
     public void VariableFxPacketsUseTheOfficialIds()
     {
         // WIN63-202610151745-318700621: class_2605, class_3257, class_2753, class_2542.
-        Assert.Equal((2589u, 3749u, 447u, 218u), (ServerPacketHeader.WiredVariableFxConfigsComposer, ServerPacketHeader.WiredVariableFxConfigsRemovedComposer,
+        Assert.Equal((739u, 2588u, 754u, 236u), (ServerPacketHeader.WiredVariableFxConfigsComposer, ServerPacketHeader.WiredVariableFxConfigsRemovedComposer,
             ServerPacketHeader.WiredVariableFxStatusComposer, ServerPacketHeader.WiredVariableFxStatusRemovedComposer));
     }
 

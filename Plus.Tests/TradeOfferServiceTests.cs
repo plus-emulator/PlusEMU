@@ -48,20 +48,20 @@ public sealed class TradeOfferServiceTests
     public void CurrentHeaderDispatchesTheSelectedIdsAndDropsAMalformedList()
     {
         var air = new RevisionsCache().InternalRevision;
-        var offered = Dispatch(OfferFrame(1353, 2, 4000000000u, 7u), air);
+        var offered = Dispatch(OfferFrame(3642, 2, 4000000000u, 7u), air);
         Assert.Equal(new[] { "OfferItems 4000000000,7" }, offered.Calls);
         Assert.Equal(0, offered.Disconnects);
-        Assert.Equal(1353u, ClientPacketHeader.TradingOfferItemsEvent);
+        Assert.Equal(3642u, ClientPacketHeader.TradingOfferItemsEvent);
 
-        var shortList = Dispatch(OfferFrame(1353, 2, 7u), air);
+        var shortList = Dispatch(OfferFrame(3642, 2, 7u), air);
         Assert.Empty(shortList.Calls);
         Assert.Equal(0, shortList.Disconnects);
 
-        var trailing = Dispatch(OfferFrame(1353, 1, 11u, 12u), air);
+        var trailing = Dispatch(OfferFrame(3642, 1, 11u, 12u), air);
         Assert.Empty(trailing.Calls);
         Assert.Equal(0, trailing.Disconnects);
 
-        var single = Dispatch(OfferFrame(1353, 1, 11u), air);
+        var single = Dispatch(OfferFrame(3642, 1, 11u), air);
         Assert.Equal(new[] { "OfferItems 11" }, single.Calls);
         Assert.Equal(0, single.Disconnects);
     }

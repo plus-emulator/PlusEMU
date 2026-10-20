@@ -52,8 +52,8 @@ public class AvatarWardrobeTests
         await new GetUserNftWardrobeEvent().Parse(client, HabbiconTestSupport.Incoming());
 
         var (header, payload) = Assert.Single(sent);
-        Assert.Equal(3375u, ClientPacketHeader.GetUserNftWardrobeEvent);
-        Assert.Equal(3493u, header);
+        Assert.Equal(1320u, ClientPacketHeader.GetUserNftWardrobeEvent);
+        Assert.Equal(1345u, header);
         Assert.Equal(new byte[] { 0, 0, 0, 0 }, payload);
     }
 

@@ -108,13 +108,13 @@ public sealed class WiredVariableExactWireTests
         service.ManageExact(world.Room, world.Client, new(0, WiredVariableTarget.Global, 0, 10, long.MinValue, ""));
         Assert.Equal(2, world.Packets.Count);
         Assert.NotEqual(9480u, world.Packets[0].Header);
-        Assert.Equal(9480u, world.Packets[1].Header);
+        Assert.Equal(9480u, world.Packets[2508].Header);
         Assert.Equal(long.MinValue, Assert.Single(new WiredVariableMenu(world.Room, variables).Snapshot().Assignments).Value.Value);
         world.Packets.Clear();
         service.WriteExact(world.Room, world.Client, new(0, WiredVariableTarget.Global, 0, 999, 123, ""));
         Assert.Equal(2, world.Packets.Count);
         Assert.NotEqual(9480u, world.Packets[0].Header); // Visible failure precedes the authoritative refresh.
-        Assert.Equal(9480u, world.Packets[1].Header);
+        Assert.Equal(9480u, world.Packets[2508].Header);
         Assert.Equal(long.MinValue, Assert.Single(new WiredVariableMenu(world.Room, variables).Snapshot().Assignments).Value.Value);
         var (legacy, packets) = Client(new Habbo { Id = 1, Username = "Owner", CurrentRoom = world.Room });
         service.ShowSnapshot(world.Room, legacy);
@@ -130,14 +130,14 @@ public sealed class WiredVariableExactWireTests
         service.WriteExact(world.Room, guest, new(0, WiredVariableTarget.Global, 0, 10, 123, ""));
         Assert.Equal(2, guestPackets.Count);
         Assert.NotEqual(9480u, guestPackets[0].Header);
-        Assert.Equal(9480u, guestPackets[1].Header);
+        Assert.Equal(9480u, guestPackets[2508].Header);
         Assert.Equal(long.MinValue, Assert.Single(new WiredVariableMenu(world.Room, variables).Snapshot().Assignments).Value.Value);
         guest.GetHabbo().Access = EditorTestSupport.Access([PermissionKeys.RoomRightsAny]);
         guestPackets.Clear();
         service.ManageExact(world.Room, guest, new(2, WiredVariableTarget.Global, 0, 10, 0, ""));
         Assert.Equal(2, guestPackets.Count);
         Assert.NotEqual(9480u, guestPackets[0].Header);
-        Assert.Equal(9480u, guestPackets[1].Header);
+        Assert.Equal(9480u, guestPackets[2508].Header);
         Assert.Equal(long.MinValue, Assert.Single(new WiredVariableMenu(world.Room, variables).Snapshot().Assignments).Value.Value);
     }
 
@@ -193,7 +193,7 @@ public sealed class WiredVariableExactWireTests
     public void CompiledCurrentRevisionRegistersExactExtensionsWithoutHeaderRemapping()
     {
         var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
-        Assert.Equal("WIN63-202610151745-318700621", revision.Name);
+        Assert.Equal("WIN63-202610201032-107964540", revision.Name);
         Assert.Equal(10110u, revision.IncomingHeaders["WiredUserVariableUpdate64Event"]);
         Assert.Equal(10111u, revision.IncomingHeaders["WiredUserVariableManage64Event"]);
         Assert.Equal(10113u, revision.IncomingHeaders["WiredUserVariablesRequest64Event"]);

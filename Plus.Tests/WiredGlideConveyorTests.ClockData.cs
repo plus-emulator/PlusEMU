@@ -32,8 +32,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal([0, 0, 0, 2,
             0, 0, 0, 20, 0, 0, 0, 0, 0, 1, (byte)'7',
             0, 0, 1, 45, 0, 0, 0, 0, 0, 2, (byte)'1', (byte)'2'], batch);
-        Assert.Equal(3684u, ServerPacketHeader.ObjectDataUpdateComposer);
-        Assert.Equal(1330u, ServerPacketHeader.ObjectsDataUpdateComposer);
+        Assert.Equal(1200u, ServerPacketHeader.ObjectDataUpdateComposer);
+        Assert.Equal(3151u, ServerPacketHeader.ObjectsDataUpdateComposer);
     }
 
     [Fact]
@@ -43,11 +43,11 @@ public sealed partial class WiredGlideConveyorTests
         using var example = JsonDocument.Parse(File.ReadAllText(HabbiconPacketTests.Repo("Resources/Revisions/example.json")));
         var outgoing = example.RootElement.GetProperty("OutgoingHeaders");
 
-        Assert.Equal("WIN63-202610151745-318700621", revision.Name);
-        Assert.Equal(3684u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectDataUpdateComposer]);
-        Assert.Equal(1330u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectsDataUpdateComposer]);
-        Assert.Equal(3684u, outgoing.GetProperty("ObjectDataUpdateComposer").GetUInt32());
-        Assert.Equal(1330u, outgoing.GetProperty("ObjectsDataUpdateComposer").GetUInt32());
+        Assert.Equal("WIN63-202610201032-107964540", revision.Name);
+        Assert.Equal(1200u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectDataUpdateComposer]);
+        Assert.Equal(3151u, revision.InternalIdToOutgoingIdMapping[ServerPacketHeader.ObjectsDataUpdateComposer]);
+        Assert.Equal(1200u, outgoing.GetProperty("ObjectDataUpdateComposer").GetUInt32());
+        Assert.Equal(3151u, outgoing.GetProperty("ObjectsDataUpdateComposer").GetUInt32());
         Assert.NotEqual(714u, ServerPacketHeader.ObjectDataUpdateComposer);
         Assert.NotEqual(1211u, ServerPacketHeader.ObjectsDataUpdateComposer);
     }

@@ -206,46 +206,46 @@ public sealed class WiredChestProtocolTests
         Assert.Equal(new object[] { 100u, 20, false }, coins.Writes);
 
         var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
-        Assert.Equal("WIN63-202610151745-318700621", revision.Name);
-        Assert.Equal(3725u, revision.IncomingHeaders["ChestOpenEvent"]);
-        Assert.Equal(2921u, revision.OutgoingHeaders["WiredChestTradeOpenComposer"]);
-        Assert.Equal(3725u, revision.IncomingIdToInternalIdMapping[3725]);
-        Assert.Equal(2921u, revision.InternalIdToOutgoingIdMapping[2921]);
+        Assert.Equal("WIN63-202610201032-107964540", revision.Name);
+        Assert.Equal(1606u, revision.IncomingHeaders["ChestOpenEvent"]);
+        Assert.Equal(2881u, revision.OutgoingHeaders["WiredChestTradeOpenComposer"]);
+        Assert.Equal(1606u, revision.IncomingIdToInternalIdMapping[1606]);
+        Assert.Equal(2881u, revision.InternalIdToOutgoingIdMapping[2881]);
     }
 
     [Theory]
-    // Client -> server ids of WIN63-202610151745-318700621; classes as named on WIN63-202610131318-860371703 (reviews/chest-protocol-map.md).
-    [InlineData(nameof(ClientPacketHeader.ChestOpenEvent), 3725u)] // package_95.class_2544
-    [InlineData(nameof(ClientPacketHeader.ChestCloseEvent), 2212u)] // package_95.class_2979
-    [InlineData(nameof(ClientPacketHeader.ChestStartDepositEvent), 1465u)] // package_95.class_3668
-    [InlineData(nameof(ClientPacketHeader.ChestWithdrawAllEvent), 625u)] // package_95.class_3881
-    [InlineData(nameof(ClientPacketHeader.ChestWithdrawFurniEvent), 2058u)] // package_95.class_2388
-    [InlineData(nameof(ClientPacketHeader.ChestWithdrawCoinsEvent), 1346u)] // package_95.class_3305
-    [InlineData(nameof(ClientPacketHeader.ChestSavePreferencesEvent), 1241u)] // package_95.class_3094
-    [InlineData(nameof(ClientPacketHeader.ChestSaveOptionsEvent), 668u)] // package_95.class_3275
-    [InlineData(nameof(ClientPacketHeader.ChestSaveNotificationsEvent), 1896u)] // package_95.class_2747
-    [InlineData(nameof(ClientPacketHeader.ChestUpgradeEvent), 894u)] // package_95.class_3721
-    [InlineData(nameof(ClientPacketHeader.WiredChestLockEvent), 3745u)] // package_95.class_3508
-    [InlineData(nameof(ClientPacketHeader.WiredChestOfferItemsEvent), 1549u)] // package_186.class_2956
-    [InlineData(nameof(ClientPacketHeader.WiredChestAcceptEvent), 403u)] // package_186.class_3394
-    [InlineData(nameof(ClientPacketHeader.WiredChestCancelEvent), 3365u)] // package_186.class_3259
+    // Client -> server ids of WIN63-202610201032-107964540; classes as named on WIN63-202610131318-860371703 (reviews/chest-protocol-map.md).
+    [InlineData(nameof(ClientPacketHeader.ChestOpenEvent), 1606u)] // package_95.class_2544
+    [InlineData(nameof(ClientPacketHeader.ChestCloseEvent), 3929u)] // package_95.class_2979
+    [InlineData(nameof(ClientPacketHeader.ChestStartDepositEvent), 1850u)] // package_95.class_3668
+    [InlineData(nameof(ClientPacketHeader.ChestWithdrawAllEvent), 1344u)] // package_95.class_3881
+    [InlineData(nameof(ClientPacketHeader.ChestWithdrawFurniEvent), 3782u)] // package_95.class_2388
+    [InlineData(nameof(ClientPacketHeader.ChestWithdrawCoinsEvent), 2836u)] // package_95.class_3305
+    [InlineData(nameof(ClientPacketHeader.ChestSavePreferencesEvent), 782u)] // package_95.class_3094
+    [InlineData(nameof(ClientPacketHeader.ChestSaveOptionsEvent), 2622u)] // package_95.class_3275
+    [InlineData(nameof(ClientPacketHeader.ChestSaveNotificationsEvent), 1762u)] // package_95.class_2747
+    [InlineData(nameof(ClientPacketHeader.ChestUpgradeEvent), 1795u)] // package_95.class_3721
+    [InlineData(nameof(ClientPacketHeader.WiredChestLockEvent), 414u)] // package_95.class_3508
+    [InlineData(nameof(ClientPacketHeader.WiredChestOfferItemsEvent), 3890u)] // package_186.class_2956
+    [InlineData(nameof(ClientPacketHeader.WiredChestAcceptEvent), 1683u)] // package_186.class_3394
+    [InlineData(nameof(ClientPacketHeader.WiredChestCancelEvent), 1711u)] // package_186.class_3259
     public void ChestRequestsUseTheOfficialIds(string name, uint id) =>
         Assert.Equal(id, (uint)typeof(ClientPacketHeader).GetField(name)!.GetRawConstantValue()!);
 
     [Theory]
-    [InlineData(nameof(ServerPacketHeader.WiredChestOpenComposer), 126u)] // package_112.class_3066
-    [InlineData(nameof(ServerPacketHeader.WiredChestSettingsUpdatedComposer), 1821u)] // package_112.class_2436
-    [InlineData(nameof(ServerPacketHeader.WiredChestUpgradeComposer), 1164u)] // package_112.class_3153
-    [InlineData(nameof(ServerPacketHeader.WiredChestCoinsComposer), 2097u)] // package_112.class_3799
-    [InlineData(nameof(ServerPacketHeader.WiredChestFurniChunkComposer), 1130u)] // package_112.class_2610
-    [InlineData(nameof(ServerPacketHeader.WiredChestFurniUpdateComposer), 53u)] // package_112.class_3289
-    [InlineData(nameof(ServerPacketHeader.WiredTransactionFailComposer), 560u)] // package_196.class_3447
-    [InlineData(nameof(ServerPacketHeader.WiredTransactionSuccessComposer), 1412u)] // package_196.class_3152
-    [InlineData(nameof(ServerPacketHeader.WiredTradeErrorComposer), 546u)] // package_192.class_3890
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeOpenComposer), 2921u)] // package_192.class_3295
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeItemsComposer), 1494u)] // package_192.class_3020
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCancelledComposer), 1956u)] // package_192.class_3825
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCompletedComposer), 1771u)] // package_192.class_3864
+    [InlineData(nameof(ServerPacketHeader.WiredChestOpenComposer), 2598u)] // package_112.class_3066
+    [InlineData(nameof(ServerPacketHeader.WiredChestSettingsUpdatedComposer), 2149u)] // package_112.class_2436
+    [InlineData(nameof(ServerPacketHeader.WiredChestUpgradeComposer), 3314u)] // package_112.class_3153
+    [InlineData(nameof(ServerPacketHeader.WiredChestCoinsComposer), 3978u)] // package_112.class_3799
+    [InlineData(nameof(ServerPacketHeader.WiredChestFurniChunkComposer), 3704u)] // package_112.class_2610
+    [InlineData(nameof(ServerPacketHeader.WiredChestFurniUpdateComposer), 3731u)] // package_112.class_3289
+    [InlineData(nameof(ServerPacketHeader.WiredTransactionFailComposer), 2729u)] // package_196.class_3447
+    [InlineData(nameof(ServerPacketHeader.WiredTransactionSuccessComposer), 470u)] // package_196.class_3152
+    [InlineData(nameof(ServerPacketHeader.WiredTradeErrorComposer), 1961u)] // package_192.class_3890
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeOpenComposer), 2881u)] // package_192.class_3295
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeItemsComposer), 1716u)] // package_192.class_3020
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCancelledComposer), 3834u)] // package_192.class_3825
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCompletedComposer), 2367u)] // package_192.class_3864
     public void ChestResponsesUseTheOfficialIds(string name, uint id) =>
         Assert.Equal(id, (uint)typeof(ServerPacketHeader).GetField(name)!.GetRawConstantValue()!);
 

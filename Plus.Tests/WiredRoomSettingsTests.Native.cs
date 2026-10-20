@@ -22,9 +22,9 @@ namespace Plus.Tests;
 // Volt keeps its own save (65465, same fields) and its own settings frame (5102).
 public partial class WiredRoomSettingsTests
 {
-    private const uint NativeGetId = 3215;
-    private const uint NativeSetId = 2035;
-    private const uint NativeSettingsId = 3319;
+    private const uint NativeGetId = 3320;
+    private const uint NativeSetId = 2172;
+    private const uint NativeSettingsId = 2114;
     private const uint VoltSaveId = 65465;
 
     [Fact]

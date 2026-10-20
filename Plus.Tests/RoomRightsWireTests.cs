@@ -17,7 +17,7 @@ public sealed class RoomRightsWireTests
         composer.Compose(new FlashOutgoingPacket(stream));
         var packet = new FlashIncomingPacket { Buffer = stream.ToArray()[6..] };
 
-        Assert.Equal(2045u, composer.MessageId);
+        Assert.Equal(2872u, composer.MessageId);
         Assert.Equal(roomId, packet.ReadUInt());
         Assert.Equal(level, packet.ReadInt());
         Assert.False(packet.HasDataRemaining());
@@ -33,7 +33,7 @@ public sealed class RoomRightsWireTests
         composer.Compose(new FlashOutgoingPacket(stream));
         var packet = new FlashIncomingPacket { Buffer = stream.ToArray()[6..] };
 
-        Assert.Equal(2704u, composer.MessageId);
+        Assert.Equal(1760u, composer.MessageId);
         Assert.Equal(roomId, packet.ReadUInt());
         Assert.False(packet.HasDataRemaining());
     }

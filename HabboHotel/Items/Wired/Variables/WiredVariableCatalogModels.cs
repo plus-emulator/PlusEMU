@@ -6,8 +6,9 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
     public bool Interceptable { get; init; }
     // The AIR client only reads this flag to keep a variable out of pickers used outside a running stack (Echo,
     // Variable Changed, FX override/audience, overview holder actions, leaderboard, pointer). Habbo sends it false
-    // for every variable, context ones included, so context variables stay pickable there.
-    public bool RequiresExecutionContext => false;
+    // for every variable, context ones included, so context variables stay pickable there. Only a pointer sets it (observed on
+    // AIR WIN63-202610201032-107964540).
+    public bool RequiresExecutionContext => Definition.IsPointer;
     public string? TextConnectorFallback { get; init; }
     public bool HasTextConnectorFallback => TextConnector.Count > 0 && TextConnectorFallback is not null;
     public bool IsBuiltin { get; init; }

@@ -53,11 +53,13 @@ public sealed class RoomRespectService(IAchievementManager achievements, IQuestM
         stats.RespectGiven++;
         target.HabboStats.Respect++;
 
+        // Observed on AIR WIN63-202610151745-318700621: the giver's thumbs-up goes out before the respect notification.
+        room.SendPacket(new ActionComposer(actor.VirtualId, 7));
+
         if (room.RespectNotificationsEnabled) {
             room.SendPacket(new RespectNotificationComposer(target.Id, target.HabboStats.Respect));
         }
 
-        room.SendPacket(new ActionComposer(actor.VirtualId, 7));
         room.GetWired().Dispatch(new(WiredEventKind.AvatarAction) { Actor = actor, Action = (int)WiredAvatarAction.Respect });
     }
 }

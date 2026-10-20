@@ -42,6 +42,9 @@ public interface IWiredVariableDirectory
 
     /// <summary>The variables defined in one room, for rules that compare names; directories that cannot enumerate list none.</summary>
     IReadOnlyList<WiredVariableDefinition> ListRoom(uint roomId) => [];
+
+    /// <summary>The reference variables, in any room, that read one shared variable; directories that cannot enumerate list none.</summary>
+    IReadOnlyList<WiredVariableDefinition> ListReferences(uint sourceRoomId, uint sourceItemId) => [];
 }
 
 public sealed record WiredSharedVariable(uint RoomId, string RoomName, WiredVariableDefinition Definition);

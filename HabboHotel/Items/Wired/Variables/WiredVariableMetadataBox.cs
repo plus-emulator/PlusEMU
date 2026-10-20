@@ -17,7 +17,10 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
     public WiredVariableTimeUtilities? TimeUtilities { get; private set; }
     public WiredVariableLevelSystem? LevelSystem { get; private set; }
     public IReadOnlyDictionary<int, string> TextConnector { get; private set; } = new Dictionary<int, string>();
-    public static bool Supports(string name) => IsFx(name) || name is "wf_xtra_var_lvlup_system" or "wf_xtra_var_text_connector" or "wf_xtra_var_time_util";
+    public static bool Supports(string name) => IsFx(name) || name is "wf_xtra_var_lvlup_system" or "wf_xtra_var_text_connector" or "wf_xtra_var_time_util"
+        or "wf_xtra_var_share" or "wf_xtra_var_import";
+    /// <summary>Whether a Share or Import add-on has its category on: 0 text connectors, 1 subvariable creators, 2 variable FX.</summary>
+    public bool Category(int index) => Configuration.IntParams.Length > index && Configuration.IntParams[index] != 0;
     // AIR VariableLvlUpAddon.as:95 SubVariableParam names (WIN63-202610131318-860371703); the sub-variable is "<parent>.<name>".
     public static readonly string[] LevelKeys = ["current_level", "current_xp", "progress", "progress_percentage", "xp_required", "xp_remaining", "is_maxed", "max_level"];
     public string[] DerivedKeys => LevelKeys;
@@ -90,6 +93,11 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
         }
         else if (name == "wf_xtra_var_text_connector") {
             ParseConnector(configuration.Text);
+        }
+        else if (name is "wf_xtra_var_share" or "wf_xtra_var_import") {
+            if (configuration.IntParams.Length != 3 || configuration.IntParams.Any(flag => flag is not (0 or 1)) || configuration.Text.Length != 0) {
+                throw new ArgumentException("Invalid share or import configuration.");
+            }
         }
         else {
             throw new ArgumentException("Unsupported variable metadata.");

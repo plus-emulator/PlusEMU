@@ -27,6 +27,15 @@ public sealed partial class WiredRoomVariables
     }
     public bool FxDirty { get; private set; } = true;
 
+    /// <summary>What Share add-ons published to the references of this room.</summary>
+    internal IWiredSharedAddonStore SharedAddons { get; set; } = new MemoryWiredSharedAddonStore();
+
+    /// <summary>
+    /// The Share add-on's Synchronize button: publishes the add-ons of the shared variables stacked with the add-on to every reference
+    /// of those variables, and tells the rooms that hold them. Observed on AIR WIN63-202610201032-107964540.
+    /// </summary>
+    public bool Synchronize(Item share) => throw new NotImplementedException();
+
     public WiredRoomVariables(Room room, IDatabase database, TimeProvider clock,
         Func<WiredVariableReference, WiredVariableHolder, WiredVariableFrame, long?>? builtinRead = null,
         Func<WiredVariableReference, WiredVariableHolder, int, WiredVariableFrame, bool>? builtinWrite = null,

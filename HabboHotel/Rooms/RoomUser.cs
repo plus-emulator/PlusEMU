@@ -487,6 +487,8 @@ public class RoomUser
         }
 
         if (room.GetWired().TriggerEvent(WiredBoxType.TriggerUserSays, habbo, message, colour, shout)) {
+            room.GetWired().FinishSpeech();
+
             return;
         }
 
@@ -551,6 +553,8 @@ public class RoomUser
                 user.BotAi?.OnUserSay(this, message);
             }
         }
+
+        room.GetWired().FinishSpeech();
     }
 
     public void ClearMovement(bool update)

@@ -579,16 +579,26 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
     }
 
-    /// <summary>A box shows a given state in the next flash batch (a variable definition shows the kind of its last write).</summary>
-    internal void FlashState(Item item, string state)
+    /// <summary>
+    /// A variable definition shows the kind of its write in the next flash batch. Within one stack firing only the first write in the batch
+    /// counts. Observed on AIR WIN63-202610151745-318700621: give 5 and then add 3 in one firing shows 6 (7 on the next firing), not 2.
+    /// </summary>
+    internal void FlashDefinition(Item item, int kind, object? firing)
     {
         if (_room.HideWired) {
             return;
         }
 
-        item.LegacyDataString = state;
-
         lock (_pendingFlashes) {
+            if (firing != null) {
+                if (_definitionFirings.TryGetValue(item.Id, out var shown) && ReferenceEquals(shown, firing)) {
+                    return;
+                }
+
+                _definitionFirings[item.Id] = firing;
+            }
+
+            item.LegacyDataString = WiredFlashStates.NextDefinition(item.LegacyDataString, kind);
             _pendingFlashes.Add(item);
         }
     }
@@ -636,6 +646,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     private readonly HashSet<Item> _pendingFlashes = [];
+    private readonly Dictionary<uint, object> _definitionFirings = [];
     private readonly Dictionary<uint, long> _flashWindows = [];
 
     /// <summary>
@@ -656,6 +667,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
             items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
             _pendingFlashes.Clear();
+            _definitionFirings.Clear();
             messages = [.. _afterFlash];
             _afterFlash.Clear();
         }

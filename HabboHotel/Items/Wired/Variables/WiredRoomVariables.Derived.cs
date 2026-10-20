@@ -126,7 +126,7 @@ public sealed partial class WiredRoomVariables
         _ => 700000000
     };
     /// <summary>Flashes the definition box of a written variable (the parent's for a sub-variable) and the variable add-ons on its tile.</summary>
-    internal void FlashDefinition(WiredVariableReference reference, int kind)
+    internal void FlashDefinition(WiredVariableReference reference, int kind, object? firing = null)
     {
         if (!WiredVariableModule.TryDefinitionId(reference.Token, out var id)) {
             return;
@@ -136,10 +136,10 @@ public sealed partial class WiredRoomVariables
             id = baseId;
         }
 
-        FlashDefinition(id, kind);
+        FlashDefinition(id, kind, firing);
     }
 
-    internal void FlashDefinition(uint id, int kind)
+    internal void FlashDefinition(uint id, int kind, object? firing = null)
     {
         if (_room.GetRoomItemHandler() is not { } items || _room.GetWired() is not { } wired
             || items.GetItem(id) is not { IsFloorItem: true } definition || definition.Definition.WiredDescriptor is null) {
@@ -151,12 +151,12 @@ public sealed partial class WiredRoomVariables
         if (Module.DescribeDefinitions([id]).FirstOrDefault()?.Definition.Link is { } link && link.SourceRoomId == _room.Id
             && WiredVariableModule.TryDefinitionId(link.Source.Token, out var source) && source != id) {
             wired.OnEvent(definition);
-            FlashDefinition(source, kind);
+            FlashDefinition(source, kind, firing);
 
             return;
         }
 
-        wired.FlashState(definition, WiredFlashStates.NextDefinition(definition.LegacyDataString, kind));
+        wired.FlashDefinition(definition, kind, firing);
 
         foreach (var addon in items.GetFloor.Where(item => item.Id != definition.Id && item.GetX == definition.GetX && item.GetY == definition.GetY
                      && item.Definition.WiredDescriptor?.CanonicalName.StartsWith("wf_xtra_var_", StringComparison.Ordinal) == true)) {

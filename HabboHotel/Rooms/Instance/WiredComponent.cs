@@ -590,12 +590,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
 
         lock (_pendingFlashes) {
-            if (firing != null) {
-                if (_definitionFirings.TryGetValue(item.Id, out var shown) && ReferenceEquals(shown, firing)) {
-                    return;
-                }
-
-                _definitionFirings[item.Id] = firing;
+            if (firing != null && !_definitionFirings.Add((item.Id, firing))) {
+                return;
             }
 
             item.LegacyDataString = WiredFlashStates.NextDefinition(item.LegacyDataString, kind);
@@ -646,7 +642,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     private readonly HashSet<Item> _pendingFlashes = [];
-    private readonly Dictionary<uint, object> _definitionFirings = [];
+    private readonly HashSet<(uint ItemId, object Firing)> _definitionFirings = [];
     private readonly Dictionary<uint, long> _flashWindows = [];
 
     /// <summary>
@@ -667,6 +663,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
             items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
             _pendingFlashes.Clear();
+            // The first-write rule of FlashDefinition covers one batch, so a flush in the middle of a firing (such as before a
+            // movement) lets that firing's next write show again.
             _definitionFirings.Clear();
             messages = [.. _afterFlash];
             _afterFlash.Clear();

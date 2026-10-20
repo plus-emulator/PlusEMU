@@ -45,19 +45,6 @@ public class AvatarWardrobeTests
     }
 
     [Fact]
-    public async Task NftWardrobeRequestAnswersWithAnEmptyCollectiblesList()
-    {
-        var (client, sent) = HabbiconTestSupport.Client(new Habbo { Id = 7 });
-
-        await new GetUserNftWardrobeEvent().Parse(client, HabbiconTestSupport.Incoming());
-
-        var (header, payload) = Assert.Single(sent);
-        Assert.Equal(1320u, ClientPacketHeader.GetUserNftWardrobeEvent);
-        Assert.Equal(1345u, header);
-        Assert.Equal(new byte[] { 0, 0, 0, 0 }, payload);
-    }
-
-    [Fact]
     public void NftWardrobeComposerWritesTheAirItemOrder()
     {
         var packet = new HabbiconTestSupport.RecordingPacket();

@@ -2840,6 +2840,45 @@ CREATE TABLE `user_launcher_tokens` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `user_nft_outfits`
+--
+
+DROP TABLE IF EXISTS `user_nft_outfits`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_nft_outfits` (
+  `user_id` int(11) NOT NULL,
+  `nft_id` int(11) NOT NULL,
+  `fallback_figure` varchar(255) NOT NULL,
+  `fallback_gender` enum('M','F') NOT NULL,
+  PRIMARY KEY (`user_id`),
+  KEY `user_nft_outfits_nft_id` (`nft_id`),
+  CONSTRAINT `user_nft_outfits_nft_fk` FOREIGN KEY (`nft_id`) REFERENCES `user_nft_wardrobe` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `user_nft_outfits_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_nft_wardrobe`
+--
+
+DROP TABLE IF EXISTS `user_nft_wardrobe`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_nft_wardrobe` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `figure` varchar(255) NOT NULL,
+  `gender` enum('M','F') NOT NULL,
+  `contract_key` varchar(64) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `user_nft_wardrobe_user_id` (`user_id`),
+  CONSTRAINT `user_nft_wardrobe_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `user_permissions`
 --
 
@@ -5613,6 +5652,7 @@ INSERT INTO `acl_permissions` VALUES
 ('command.give_gotw','command','Migrated chat command.',1),
 ('command.give_pixels','command','Migrated chat command.',1),
 ('command.givebadge','command','Migrated chat command.',1),
+('command.givecollectible','command','Give a user a collectible avatar of your look.',0),
 ('command.giverole','command','Allows command giverole.',0),
 ('command.goto','command','Migrated chat command.',1),
 ('command.ha','command','Can hotel alert (via command).',1),
@@ -104358,6 +104398,7 @@ INSERT INTO `role_permissions` VALUES
 (4,'command.give'),
 (4,'command.give_gotw'),
 (4,'command.givebadge'),
+(4,'command.givecollectible'),
 (4,'command.goto'),
 (4,'command.ignorewhispers'),
 (4,'command.ipban'),
@@ -104468,6 +104509,7 @@ INSERT INTO `role_permissions` VALUES
 (5,'command.give_gotw'),
 (5,'command.give_pixels'),
 (5,'command.givebadge'),
+(5,'command.givecollectible'),
 (5,'command.goto'),
 (5,'command.ignorewhispers'),
 (5,'command.ipban'),
@@ -104588,6 +104630,7 @@ INSERT INTO `role_permissions` VALUES
 (6,'command.give_gotw'),
 (6,'command.give_pixels'),
 (6,'command.givebadge'),
+(6,'command.givecollectible'),
 (6,'command.goto'),
 (6,'command.hal'),
 (6,'command.ignorewhispers'),
@@ -104718,6 +104761,7 @@ INSERT INTO `role_permissions` VALUES
 (7,'command.give_gotw'),
 (7,'command.give_pixels'),
 (7,'command.givebadge'),
+(7,'command.givecollectible'),
 (7,'command.goto'),
 (7,'command.hal'),
 (7,'command.ignorewhispers'),
@@ -104861,6 +104905,7 @@ INSERT INTO `role_permissions` VALUES
 (8,'command.give_gotw'),
 (8,'command.give_pixels'),
 (8,'command.givebadge'),
+(8,'command.givecollectible'),
 (8,'command.giverole'),
 (8,'command.goto'),
 (8,'command.ha'),
@@ -105056,6 +105101,7 @@ INSERT INTO `role_permissions` VALUES
 (9,'command.give_gotw'),
 (9,'command.give_pixels'),
 (9,'command.givebadge'),
+(9,'command.givecollectible'),
 (9,'command.giverole'),
 (9,'command.goto'),
 (9,'command.ha'),

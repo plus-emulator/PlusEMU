@@ -26,7 +26,7 @@ public static class ConsoleCommands
         }
 
         try {
-            var parameters = inputData.Split(' ');
+            var parameters = inputData.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
             switch (parameters[0].ToLower()) {
                 case "stop":
@@ -66,7 +66,8 @@ public static class ConsoleCommands
         }
 
         if (_plannedShutdown?.TrySchedule(minutes, durationMinutes) != true) {
-            Logger.LogError("The shutdown was not scheduled. The minutes must be 1 or more, and only one shutdown can be pending.");
+            Logger.LogError("The shutdown was not scheduled. Use 1 to {Max} minutes and a duration of 0 or more. Only one shutdown can be pending.",
+                PlannedShutdown.MaxMinutes);
 
             return;
         }

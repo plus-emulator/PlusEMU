@@ -192,6 +192,24 @@ public class WiredClickPacketHookTests
     }
 
     [Fact]
+    public void UnloadingRoomWithClickUserTriggerAndReadyViewerDisposesCleanly()
+    {
+        var world = new World("wf_trg_click_user", [1, 1]);
+        world.Ready();
+        world.Packets.Clear();
+        world.Room.MutedUsers = [];
+        world.Room.UsersWithRights = [];
+        world.Room.WordFilterList = [];
+        Set(world.Room, "_tents", new Dictionary<uint, List<RoomUser>>());
+
+        world.Room.Dispose();
+
+        Assert.True(world.Room.MDisposed);
+        Assert.Null(world.Room.GetRoomItemHandler());
+        Assert.DoesNotContain(world.Packets, p => p.Id == 3583);
+    }
+
+    [Fact]
     public void ClickEnvironmentIncludesExistingTriggerOnEntryWithoutPrematurePublication()
     {
         var world = new World("wf_trg_click_user", [1, 0]);

@@ -21,10 +21,10 @@ public sealed class WiredTimedTriggers
             return false;
         }
 
-        if (name is "wf_trg_at_given_time" or "wf_trg_at_time_long") {
+        if (IsAtTime(name)) {
             // Both asset variants use the current one-shot editor in half-second units. The caller measures elapsed time from the first
             // room tick after the reset (see FirstRoomTickAfter), so the pulses land on the room's 500 ms grid.
-            var targetMs = units * 500L;
+            var targetMs = AtTimeMilliseconds(config);
 
             if (elapsedMs < targetMs || _firedEpoch.TryGetValue(boxId, out var fired) && fired == resetEpoch) {
                 return false;
@@ -68,6 +68,22 @@ public sealed class WiredTimedTriggers
 
         return true;
     }
+
+    /// <summary>
+    /// A box placed, saved or moved when the room timer has already passed its time counts as fired until the next timer reset.
+    /// Observed on AIR WIN63-202610151745-318700621: a box with 1 pulse placed and saved long after the last reset did not fire; it fired
+    /// one pulse after the next reset.
+    /// </summary>
+    public void Join(string name, uint boxId, WiredConfiguration config, long roomTimerMs, long resetEpoch)
+    {
+        if (IsAtTime(name) && roomTimerMs >= AtTimeMilliseconds(config)) {
+            _firedEpoch[boxId] = resetEpoch;
+        }
+    }
+
+    private static bool IsAtTime(string name) => name is "wf_trg_at_given_time" or "wf_trg_at_time_long";
+
+    private static long AtTimeMilliseconds(WiredConfiguration config) => (config.IntParams.IsDefaultOrEmpty ? 1 : config.IntParams[0]) * 500L;
 
     private static long NextBoundary(long nowMs) => (nowMs / StateUpdateMs + 1) * StateUpdateMs;
 

@@ -36,7 +36,8 @@ internal static class WiredEditorStoreRules
     private static readonly FrozenSet<string> UserSourceKeyed = new[]
     {
         "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var", "wf_xtra_rotate_to_dir",
-        "wf_act_teleport_to_room", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action", TextVariable
+        "wf_act_teleport_to_room", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action", TextVariable,
+        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type"
     }.ToFrozenSet();
 
     // The action codes the hotel keeps: the ones the client offers, the unoffered 9 and the client expression 67.
@@ -48,6 +49,7 @@ internal static class WiredEditorStoreRules
     {
         var ints = Fit(native.OwnedIntParams, defaults).ToBuilder();
         var text = native.Text;
+        var quantifier = native.Quantifier;
 
         switch (name) {
             case "wf_xtra_execution_limit":
@@ -100,6 +102,8 @@ internal static class WiredEditorStoreRules
                 ints[1] = Math.Clamp(ints[1], 0, 1);
                 ints[2] = Target(ints[2]);
                 ints[3] = ints[3] is >= 0 and <= 5 ? ints[3] : 0;
+                // Observed on AIR WIN63-202610201032-107964540: a quantifier outside 0 to 2 is stored as 0.
+                quantifier = quantifier is { } value ? value is 1 or 2 ? value : 0 : null;
                 break;
             // Observed on AIR WIN63-202610201032-107964540: the text output boxes store any non-zero flag as 1, and a target the editor
             // does not offer as 0.
@@ -133,7 +137,7 @@ internal static class WiredEditorStoreRules
                 break;
         }
 
-        return native with { OwnedIntParams = name is "wf_xtra_unseen" or "wf_act_teleport_to_room" ? [] : ints.ToImmutable(), Text = text };
+        return native with { OwnedIntParams = name is "wf_xtra_unseen" or "wf_act_teleport_to_room" ? [] : ints.ToImmutable(), Text = text, Quantifier = quantifier };
     }
 
     /// <summary>

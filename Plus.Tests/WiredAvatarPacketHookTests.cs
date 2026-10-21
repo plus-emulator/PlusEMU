@@ -22,7 +22,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-public class WiredAvatarPacketHookTests
+public partial class WiredAvatarPacketHookTests
 {
     [Fact]
     public async Task MovementAndHandHandlersDecodeAllFieldsBeforeDelegating()

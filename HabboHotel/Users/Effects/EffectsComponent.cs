@@ -99,6 +99,12 @@ public sealed class EffectsComponent
 
             effect.HandleExpiration(habbo);
 
+            // The client does not take an expired effect off, so the room sees it go here and the next room entry does not bring it back.
+            if (CurrentEffect == effect.SpriteId) {
+                ApplyEffect(0);
+                CurrentEffect = 0;
+            }
+
             // A consumed last quantity is gone from the store, so it leaves the component too; a failed expiry keeps it.
             if (effect.Quantity <= 0) {
                 _effects.TryRemove(effect.Id, out _);

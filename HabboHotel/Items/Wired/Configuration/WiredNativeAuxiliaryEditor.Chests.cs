@@ -77,10 +77,11 @@ internal static partial class WiredNativeAuxiliaryEditor
     private static readonly FrozenDictionary<string, Func<ImmutableArray<int>, ImmutableArray<int>>> StoredInts =
         new Dictionary<string, Func<ImmutableArray<int>, ImmutableArray<int>>>
         {
-            // A timeout from 0 to 29 seconds is stored as 30.
-            { "wf_act_init_transaction", p => p.SetItem(5, p[5] is >= 0 and < 30 ? 30 : p[5]) },
-            // An amount of 0 is stored as 1.
-            { "wf_act_give_furni", p => p.SetItem(1, p[1] == 0 ? 1 : p[1]) }
+            // The timeout is clamped to 30..3600 seconds, also when the timeout is off.
+            { "wf_act_init_transaction", p => p.SetItem(5, Math.Clamp(p[5], 30, 3600)) },
+            // An amount below 1 is stored as 1.
+            { "wf_act_give_currency", p => p.SetItem(1, Math.Max(p[1], 1)) },
+            { "wf_act_give_furni", p => p.SetItem(1, Math.Max(p[1], 1)) }
         }.ToFrozenDictionary();
 
     private const int ChestIntCount = 6;
@@ -98,10 +99,9 @@ internal static partial class WiredNativeAuxiliaryEditor
     {
         var p = n.OwnedIntParams;
 
-        // Observed on AIR WIN63-202610201032-107964540: a raw save with amount 0 is accepted. The box gives 1; Give Furni also reopens
-        // with 1 (see StoredInts).
+        // Observed on AIR WIN63-202610201032-107964540: a raw save with an amount below 1 is accepted and gives 1 (see StoredInts).
         return Shape(n, 6, 2, 2, 1) && TryTarget(p[3], out var target) && p[5] >= lowest && p[5] <= highest
-            ? ChestDraft(n, [p[0], p[1] == 0 ? 1 : p[1], p[2], target, p[4], p[5]], n.Text) : null;
+            ? ChestDraft(n, [p[0], Math.Max(p[1], 1), p[2], target, p[4], p[5]], n.Text) : null;
     }
 
     private static Func<WiredNativeEditorConfiguration, WiredConfiguration?> HasChest(int furni) => n =>

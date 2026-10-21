@@ -168,5 +168,111 @@ public sealed class WiredTransactionEditorSaveTests
         Assert.Equal([0, 1, 0, -20, 0, 1], save.Stored().Ints);
     }
 
+    // Initiate Transaction: each timeout was saved on a fresh box with the timeout switch on, then the editor was opened again.
+    [Theory]
+    [InlineData(0, 30)]
+    [InlineData(1, 30)]
+    [InlineData(15, 30)]
+    [InlineData(29, 30)]
+    [InlineData(30, 30)]
+    [InlineData(31, 31)]
+    [InlineData(3600, 3600)]
+    [InlineData(3601, 3600)]
+    [InlineData(int.MaxValue, 3600)]
+    [InlineData(-1, 30)]
+    public void InitiateTransactionClampsTheTimeoutBetweenThirtySecondsAndOneHour(int sent, int stored)
+    {
+        using var save = new WiredRawSave("wf_act_init_transaction");
+
+        var result = save.Save(ints: [0, 10, 0, -20, 1, sent], furni: [100, 101, 200], users: [0, 200], picks: [save.FurniChest()]);
+
+        Assert.True(result.Accepted, result.ToString());
+        Assert.Equal([0, 10, 0, -20, 1, stored], save.Stored().Ints);
+    }
+
+    [Fact]
+    public void InitiateTransactionClampsTheTimeoutWhenTheTimeoutIsOff()
+    {
+        using var save = new WiredRawSave("wf_act_init_transaction");
+
+        var result = save.Save(ints: [0, 10, 0, -20, 0, 29], furni: [100, 101, 200], users: [0, 200], picks: [save.FurniChest()]);
+
+        Assert.True(result.Accepted, result.ToString());
+        Assert.Equal([0, 10, 0, -20, 0, 30], save.Stored().Ints);
+    }
+
+    [Fact]
+    public void InitiateTransactionClampsATimeoutSavedOverAnotherOne()
+    {
+        using var save = new WiredRawSave("wf_act_init_transaction");
+        var chest = save.FurniChest();
+
+        Assert.True(save.Save(ints: [0, 10, 0, -20, 1, 100], furni: [100, 101, 200], users: [0, 200], picks: [chest]).Accepted);
+        Assert.Equal([0, 10, 0, -20, 1, 100], save.Stored().Ints);
+        Assert.True(save.Save(ints: [0, 10, 0, -20, 1, 29], furni: [100, 101, 200], users: [0, 200], picks: [chest]).Accepted);
+        Assert.Equal([0, 10, 0, -20, 1, 30], save.Stored().Ints);
+    }
+
+    // The three boxes that pick transactions accept the three contracts and the Custom Contract add-on, and refuse the Initiate
+    // Transaction box, other furni and any mix with one of them. A refused save keeps the previous picks.
+    [Theory]
+    [InlineData("wf_act_cancel_transaction", RequireContracts)]
+    [InlineData("wf_trg_transaction_complete", RequireContractsOrTradeWired)]
+    [InlineData("wf_trg_transaction_fail", RequireContractsOrTradeWired)]
+    public void ATransactionBoxPicksContractsAndTheCustomContract(string name, string key)
+    {
+        using var save = new WiredRawSave(name);
+        var colortile = save.Furni("wf_colortile", InteractionType.None);
+        var trade = save.Furni("wired_contract_trade", InteractionType.WiredContractTrade);
+        var payment = save.Furni("wired_contract_payment", InteractionType.WiredContractPayment);
+        var reward = save.Furni("wired_contract_reward", InteractionType.WiredContractReward);
+        var tradeWired = save.Furni("wf_act_init_transaction", InteractionType.WiredEffect);
+        var custom = save.Furni("wf_xtra_custom_contract", InteractionType.WiredAddon);
+        (uint[] Picks, bool Accepted)[] steps =
+        [
+            ([colortile], false), ([trade], true), ([payment], true), ([reward], true), ([tradeWired], false), ([custom], true),
+            ([trade, tradeWired], false), ([trade, colortile], false)
+        ];
+        uint[] kept = [];
+
+        foreach (var (picks, accepted) in steps) {
+            var result = save.Save(furni: [100], picks: picks);
+            var label = $"{name} [{string.Join(',', picks)}]";
+
+            if (accepted) {
+                Assert.True(result.Accepted, $"{label}: {result}");
+                kept = picks;
+            }
+            else {
+                Assert.Equal(("error", key), Answer(result));
+            }
+
+            Assert.Equal(kept, save.Picks());
+        }
+    }
+
+    // Give Currency and Give Furni: each list of amounts was saved in this order on a fresh box, and the editor opened again after each.
+    [Theory]
+    [InlineData("wf_act_give_currency", 11, new[] { 0 }, new[] { 1 })]
+    [InlineData("wf_act_give_currency", 11, new[] { 5, 0 }, new[] { 5, 1 })]
+    [InlineData("wf_act_give_currency", 11, new[] { 5 }, new[] { 5 })]
+    [InlineData("wf_act_give_currency", 11, new[] { -1 }, new[] { 1 })]
+    [InlineData("wf_act_give_furni", 1, new[] { 0 }, new[] { 1 })]
+    [InlineData("wf_act_give_furni", 1, new[] { 5, 0 }, new[] { 5, 1 })]
+    [InlineData("wf_act_give_furni", 1, new[] { 5 }, new[] { 5 })]
+    [InlineData("wf_act_give_furni", 1, new[] { -1 }, new[] { 1 })]
+    public void AGiveBoxStoresAnAmountBelowOneAsOne(string name, int last, int[] sent, int[] stored)
+    {
+        using var save = new WiredRawSave(name);
+        var chest = name == "wf_act_give_currency" ? save.CoinChest() : save.FurniChest();
+
+        for (var index = 0; index < sent.Length; index++) {
+            var result = save.Save(ints: [0, sent[index], 0, -20, 0, last], furni: [100, 200], users: [0, 200], picks: [chest]);
+
+            Assert.True(result.Accepted, $"{sent[index]}: {result}");
+            Assert.Equal([0, stored[index], 0, -20, 0, last], save.Stored().Ints);
+        }
+    }
+
     private static (string Answer, string? Key) Answer(WiredRawSave.Result result) => (result.Answer, result.Key);
 }

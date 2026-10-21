@@ -283,14 +283,16 @@ public sealed class WiredR106EditorSaveTests
     }
 
     [Fact]
-    public void TransactionFailedAcceptsContractsAndTheTradeWiredAsPicks()
+    public void TransactionFailedAcceptsContractsAndTheCustomContractAsPicks()
     {
         using var save = new WiredRawSave("wf_trg_transaction_fail");
 
         Assert.True(save.Save(furni: [100], picks: [save.Furni("wired_contract_payment", Plus.HabboHotel.Items.InteractionType.WiredContractPayment)]).Accepted);
         Assert.True(save.Save(furni: [100], picks: [save.Furni("wired_contract_trade", Plus.HabboHotel.Items.InteractionType.WiredContractTrade)]).Accepted);
         Assert.True(save.Save(furni: [100], picks: [save.Furni("wired_contract_reward", Plus.HabboHotel.Items.InteractionType.WiredContractReward)]).Accepted);
-        Assert.True(save.Save(furni: [100], picks: [save.Furni("wf_act_init_transaction", Plus.HabboHotel.Items.InteractionType.None)]).Accepted);
+        Assert.True(save.Save(furni: [100], picks: [save.Furni("wf_xtra_custom_contract", Plus.HabboHotel.Items.InteractionType.WiredAddon)]).Accepted);
+        Assert.Equal("wiredfurni.error.require_contracts_or_trade_wired",
+            save.Save(furni: [100], picks: [save.Furni("wf_act_init_transaction", Plus.HabboHotel.Items.InteractionType.None)]).Key);
     }
 
     // Filter Users: the amount is held to 1..1000, the operand kind to 0..1 and the reference target to the four offered values (other

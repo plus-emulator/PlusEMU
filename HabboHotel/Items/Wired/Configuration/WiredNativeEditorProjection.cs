@@ -355,8 +355,11 @@ public static class WiredNativeEditorProjection
         native = WithoutHotelInt(name, native);
 
         // Observed on AIR WIN63-202610201032-107964540: these boxes store a save in a normal form instead of refusing most odd values.
-        if (WiredEditorStoreRules.Applies(name) && Supports(name)) {
+        if (Supports(name)) {
             native = WiredEditorStoreRules.PadVariables(name, native, Metadata(name));
+        }
+
+        if (WiredEditorStoreRules.Applies(name) && Supports(name)) {
             native = WiredEditorStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
 
             if (!storedRow && (WiredEditorStoreRules.ChestSlotRefused(name, native)

@@ -75,7 +75,7 @@ public static class WiredAddonConfiguration
                         token = token[2..^1].Trim();
                     }
 
-                    token = token[..Math.Min(32, token.Length)];
+                    token = token[..Math.Min(WiredTextAddonRules.MaxNameLength, token.Length)];
                     var delimiter = parts.Length > 1 ? parts[1] : ", ";
                     text = token + "\t" + delimiter[..Math.Min(16, delimiter.Length)];
                     break;

@@ -157,6 +157,11 @@ public sealed class WiredAddonModule
                                 .Where(byId.ContainsKey).Select(id => byId[id].Name);
                         }
 
+                        // Observed on AIR WIN63-202610201032-107964540: with no furni the placeholder stays as written.
+                        if (Name == "wf_xtra_text_output_furni_name" && !names.Any()) {
+                            return text;
+                        }
+
                         var value = P(0) == 2 ? string.Join(parts[1], names) : names.FirstOrDefault() ?? "";
 
                         return text.Replace(token, value, StringComparison.Ordinal);

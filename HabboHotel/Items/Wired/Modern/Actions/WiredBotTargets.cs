@@ -105,12 +105,10 @@ public sealed class WiredBotTargets
                     continue;
                 }
 
-                if (!WiredRoomOperations.IsOnItem(bot, item)) {
-                    continue;
+                // Bot Reaches Furni was raised when the step onto the furni was announced.
+                if (WiredRoomOperations.IsOnItem(bot, item)) {
+                    Stop(bot);
                 }
-
-                result.Add(new(WiredEventKind.BotReachedFurni) { Actor = bot, EventItem = item });
-                Stop(bot);
             }
             else if (target is { HandItem: not 0, LeftFrom: { } left }) {
                 PollDeparted(bot, left, target, now);

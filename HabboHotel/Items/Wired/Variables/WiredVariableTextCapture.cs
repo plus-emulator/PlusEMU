@@ -14,7 +14,8 @@ public sealed record WiredVariableCapturer(uint DefinitionId, string Name, IRead
                 .Select(pair => (long?)pair.Key).LastOrDefault();
         }
 
-        return long.TryParse(text.Trim(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value) ? value : null;
+        // Observed on AIR WIN63-202610201032-107964540: a space before or after the number is not read ("k 5 " and "k  5" do not fire).
+        return long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value) ? value : null;
     }
 }
 

@@ -93,7 +93,14 @@ internal sealed partial class WiredStackEngine
 
         RefreshStacks();
         var samePass = RunsInPassOfChange(@event.Kind);
-        var dispatch = new PendingDispatch(@event, eventDepth) { CollisionProof = collision, SamePass = samePass, ResumeImmediately = samePass };
+        // Observed on AIR WIN63-202610201032-107964540: the stacks of a Bot Reaches Furni also run at once, because a Bot Teleport raises it
+        // in the tick that republishes the bot.
+        var dispatch = new PendingDispatch(@event, eventDepth)
+        {
+            CollisionProof = collision,
+            SamePass = samePass,
+            ResumeImmediately = samePass || @event.Kind == WiredEventKind.BotReachedFurni
+        };
         SnapshotDispatch(dispatch);
 
         if (sealOnRejection && PendingCount + dispatch.Slots > _limits.MaxPendingStacks) {

@@ -130,7 +130,12 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
                 || Items().Any(item => WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(new(evt.X, evt.Y)))),
             "wf_trg_click_user" => evt.Actor != null && evt.TargetUser != null,
             "wf_trg_bot_reached_avtr" => evt.TargetUser != null && BotMatches(),
-            "wf_trg_bot_reached_stf" => BotMatches() && (config.SelectedItems.IsEmpty && config.FurniSources["items"] == 100 || ItemMatches()),
+            // Observed on AIR WIN63-202610201032-107964540: with user source 100 the name must match exactly, ignoring case, so an empty
+            // name matches no bot. With user source 200 only the user selection decides.
+            "wf_trg_bot_reached_stf" => evt.Actor is { IsBot: true, IsPet: false } && ItemMatches()
+                && (config.UserSources["bots"] == WiredSources.Selector
+                    ? deferBots || Users(context, config, "bots").Contains(evt.Actor)
+                    : config.Text.Length != 0 && Users(context, config, "bots", config.Text).Contains(evt.Actor)),
             "wf_trg_clock_counter" => ItemMatches() && WiredTriggerPredicates.MatchesCounter(config, evt.PreviousValue, evt.Value),
             "wf_trg_score_achieved" => WiredTriggerPredicates.MatchesScore(config, evt.Team, (int)evt.PreviousValue, (int)evt.Value)
                 && WiredGameState.For(Instance).TryFireScoreTrigger(Item.Id),

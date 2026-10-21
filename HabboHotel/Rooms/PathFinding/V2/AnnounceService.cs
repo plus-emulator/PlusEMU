@@ -308,6 +308,12 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
         foreach (var item in landing) {
             item.WiredWalksOnFurni(actor);
 
+            // Observed on AIR WIN63-202610201032-107964540: Bot Reaches Furni fires with the announce of every step onto the furni,
+            // also one the bot only walks over.
+            if (actor is { IsBot: true, IsPet: false }) {
+                room.GetWired().Dispatch(new(WiredEventKind.BotReachedFurni) { Actor = actor, EventItem = item });
+            }
+
             if (state.LocationRevision != revision || state.State != NavState.Active) {
                 return;
             }

@@ -2287,7 +2287,6 @@ public partial class ModernWiredRuntimeTests
         bot.SetPos(2, 2, 0);
         Assert.Empty(targets.Poll(room));
         bot.SetPos(0, 0, 0);
-        Assert.Equal(WiredEventKind.BotReachedFurni, Assert.Single(targets.Poll(room)).Kind);
         Assert.Empty(targets.Poll(room));
         Assert.False(targets.HasTargets);
         targets.Walk(bot, target);

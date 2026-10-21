@@ -19,13 +19,8 @@ internal static partial class WiredNativeAuxiliaryEditor
     private static IEnumerable<KeyValuePair<string, Spec>> VariableAddons()
     {
         // Variable and capturer name, plain-text or text-connector mode, over the context variable the capture writes.
-        yield return new("wf_xtra_text_input_variable", new(Meta(0, 0, [0], 1), n =>
-        {
-            var name = WiredVariableTextInputBox.NormalizeName(n.Text);
-
-            return Shape(n, 1, 0, 0, 1) && n.OwnedIntParams[0] is 0 or 1
-                ? Draft(n, [n.OwnedIntParams[0] == 1 ? 2 : 1], name ?? n.Text) : null;
-        }));
+        yield return new("wf_xtra_text_input_variable", new(Meta(0, 0, [0], 1), n => Shape(n, 1, 0, 0, 1) && n.OwnedIntParams[0] is 0 or 1
+            ? Draft(n, [n.OwnedIntParams[0] == 1 ? 2 : 1], n.Text) : null));
         // Placeholder name with an optional separator, the picked variable's target and display mode, over one merged source.
         // Observed on hhus (WIN63-202610131318): picked furni (100) and the triggering user (0) by default, no clicked-user or
         // second pick source, wall furniture allowed.

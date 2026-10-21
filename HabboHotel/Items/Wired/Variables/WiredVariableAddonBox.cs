@@ -204,12 +204,19 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
         var labels = p[1] == 2 && WiredVariableModule.TryDefinitionId(variable, out var id) ? _textConnector(id) : null;
         // Observed on AIR WIN63-202610151745-318700621: a placeholder for is_maxed shows "null" also while the part exists.
         var valueless = _variables.IsValuelessPart(reference);
+        string Shown(WiredVariableHolder holder) => !valueless && reads.Read(reference, holder, frame) is { } value
+            ? value.Value is >= int.MinValue and <= int.MaxValue && labels?.GetValueOrDefault((int)value.Value) is { } label ? label : value.Value.ToString(CultureInfo.InvariantCulture)
+            : "null";
+        // Observed on AIR WIN63-202610201032-107964540: a furni or user without the variable shows "null" and a bot is left out. With
+        // nobody to show, the placeholder stays as written.
         var values = WiredVariableExecutors.Select(frame, reference.Target, p[3], p[4], WiredVariableExecutors.Picks(configuration, p[4]))
-            .Select(holder => valueless ? null : reads.Read(reference, holder, frame)).OfType<WiredVariableValue>()
-            .Select(value => value.Value is >= int.MinValue and <= int.MaxValue && labels?.GetValueOrDefault((int)value.Value) is { } label ? label : value.Value.ToString(CultureInfo.InvariantCulture));
-        var replacement = p[2] == 2 ? string.Join(tokens[2], values) : values.FirstOrDefault() ?? "null";
+            .Where(holder => !WiredVariableRuntimeFrames.IsBot(holder)).Select(Shown).ToArray();
 
-        return text.Replace(placeholder, replacement, StringComparison.Ordinal);
+        if (values.Length == 0) {
+            return text;
+        }
+
+        return text.Replace(placeholder, p[2] == 2 ? string.Join(tokens[2], values) : values[0], StringComparison.Ordinal);
     }
     private static bool Source(int source) => source is 0 or 10 or 11 or 100 or 101 or 200 or 201;
 }

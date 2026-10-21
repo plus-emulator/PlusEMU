@@ -17,13 +17,15 @@ internal static class WiredEditorStoreRules
     private const string TextFurniName = "wf_xtra_text_output_furni_name";
     private const string PlaceholderKey = "wiredfurni.error.placeholder.";
     public const string VariableCountKey = "wiredfurni.error.invalid_variable_count";
+    private const string BotReachedFurni = "wf_trg_bot_reached_stf";
 
     private static readonly FrozenSet<string> Boxes = new[]
     {
         "wf_xtra_execution_limit", "wf_xtra_unseen", "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var",
         "wf_xtra_or_eval", "wf_xtra_rotate_to_dir", ScanChest, "wf_act_teleport_to_room", "wf_trg_at_given_time", "wf_trg_period_long",
         "wf_trg_user_performs_action", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action", "wf_act_match_to_sshot",
-        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type", TextVariable, TextFurniName
+        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type", TextVariable, TextFurniName,
+        BotReachedFurni
     }.ToFrozenSet();
 
     // Boxes with one picked variable (or two for the filters by variable): a save with no variable takes the empty slots.
@@ -37,7 +39,7 @@ internal static class WiredEditorStoreRules
     {
         "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var", "wf_xtra_rotate_to_dir",
         "wf_act_teleport_to_room", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action", TextVariable,
-        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type"
+        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type", BotReachedFurni
     }.ToFrozenSet();
 
     // The action codes the hotel keeps: the ones the client offers, the unoffered 9 and the client expression 67.
@@ -131,6 +133,9 @@ internal static class WiredEditorStoreRules
                 ints[0] = Math.Max(ints[0], 1);
                 text = "";
                 break;
+            // Observed on AIR WIN63-202610201032-107964540: the bot name is kept as sent, of any length.
+            case BotReachedFurni:
+                break;
             default:
                 // The user action boxes keep any filter text. An action code outside the stored set reads as 0.
                 ints[0] = IsStoredAction(ints[0]) ? ints[0] : 0;
@@ -218,9 +223,10 @@ internal static class WiredEditorStoreRules
             return placeholder;
         }
 
+        // A trigger has no trigger context, so it refuses the context sources too.
         if (UserSourceKeyed.Contains(name)
-            && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length
-                && !metadata.UsersAllowed[index].Contains(source) && !WiredNativeEditorProjection.AnyTriggerContext.Contains(source)).Any()) {
+            && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length && !metadata.UsersAllowed[index].Contains(source)
+                && (name == BotReachedFurni || !WiredNativeEditorProjection.AnyTriggerContext.Contains(source))).Any()) {
             return UserSourceKey;
         }
 

@@ -19,8 +19,18 @@ public partial class WiredComponent
         internal set => _linkStore = value;
     }
 
+    private bool _roomLoaded;
+
+    /// <summary>The room timer, once the room has loaded; boxes loading with the room join before it counts.</summary>
+    private long? RoomTimerAfterLoad() => _roomLoaded ? _room.TimerElapsedMilliseconds(_clock.GetUtcNow()) : null;
+
     /// <summary>The room has loaded its furniture: Room Initialized triggers fire once.</summary>
-    public bool RoomInitialized() => Dispatch(new(WiredEventKind.RoomInitialized));
+    public bool RoomInitialized()
+    {
+        _roomLoaded = true;
+
+        return Dispatch(new(WiredEventKind.RoomInitialized));
+    }
 
     /// <summary>The placed, configured boxes of one canonical name, bottom of the room first.</summary>
     internal IEnumerable<IWiredConfiguredItem> ConfiguredBoxes(string canonicalName) => _room.GetRoomItemHandler() is not { } handler ? [] : handler.GetFloor

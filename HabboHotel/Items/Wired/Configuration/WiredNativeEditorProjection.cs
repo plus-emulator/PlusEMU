@@ -713,7 +713,10 @@ public static class WiredNativeEditorProjection
 
         // Observed on hhus (WIN63-202610131318): saving a click-tile trigger that picks a furni which is not an invisible click tile
         // is refused with wiredfurni.error.require_click_tiles and no parameters.
-        if (descriptor.CanonicalName == "wf_trg_click_tile" && references.Any(reference =>
+        // Observed on AIR WIN63-202610201032-107964540: the picks are only checked when they are the source; with the selector as source
+        // a plain furni pick saves.
+        if (descriptor.CanonicalName == "wf_trg_click_tile" && (native.FurniSourceTypes.IsDefaultOrEmpty || native.FurniSourceTypes[0] == 100)
+            && references.Any(reference =>
             room.GetRoomItemHandler().GetItem(reference.ItemId)?.Definition.InteractionName != ClickTileInteraction)) {
             error = "wiredfurni.error.require_click_tiles";
 

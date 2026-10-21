@@ -21,7 +21,8 @@ internal static class WiredSaveLeniency
         "wf_cnd_time_less_than", "wf_cnd_time_more_than", "wf_cnd_has_handitem", "wf_cnd_not_has_handitem",
         "wf_trg_collision", "wf_trg_state_changed", "wf_trg_walks_off_furni", "wf_trg_click_tile", "wf_trg_click_user", "wf_trg_clock_counter",
         "wf_slc_users_onfurni", "wf_slc_furni_signal", "wf_slc_furni_altitude", "wf_slc_furni_area", "wf_slc_furni_bytype",
-        "wf_slc_furni_neighborhood", "wf_slc_remote", "wf_slc_users_bytype", "wf_slc_users_handitem", "wf_trg_stuff_state"
+        "wf_slc_furni_neighborhood", "wf_slc_remote", "wf_slc_users_bytype", "wf_slc_users_handitem", "wf_trg_stuff_state",
+        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type"
     }.ToFrozenSet();
 
     // Boxes without int fields, whose ints are all dropped. The ints of the other boxes are cut and padded by their own store rules.

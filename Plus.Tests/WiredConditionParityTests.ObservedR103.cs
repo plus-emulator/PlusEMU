@@ -34,17 +34,19 @@ public sealed partial class WiredConditionParityTests
         Assert.Equal(expected, box.Execute(Context(room, [counter], [])));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (a block at 1.50 and one on the floor): comparison 3 is stored and always passes.
+    // Observed on AIR WIN63-202610201032-107964540 (a block at 1.50 and one on the floor): comparison 3 is stored and passes when the
+    // altitude is at most the value.
     [Theory]
     [InlineData(100, 3, 0.0, true)]
     [InlineData(0, 3, 0.0, true)]
+    [InlineData(100, 3, 1.5, false)]
     [InlineData(200, 3, 1.5, true)]
     [InlineData(150, 3, 1.5, true)]
     [InlineData(150, 1, 1.5, true)]
     [InlineData(149, 1, 1.5, false)]
     [InlineData(200, 2, 1.5, false)]
     [InlineData(200, 0, 1.5, true)]
-    public void AltitudeComparisonThreeAlwaysPasses(int altitude, int comparison, double height, bool expected)
+    public void AltitudeComparisonThreeMeansAtMost(int altitude, int comparison, double height, bool expected)
     {
         var (room, _, _) = World();
         var block = Floor(7, "block", 0, 0);

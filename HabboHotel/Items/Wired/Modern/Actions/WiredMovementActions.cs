@@ -1,4 +1,5 @@
 using System.Drawing;
+using Plus.HabboHotel.Items.Interactor;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Rooms;
 
@@ -296,22 +297,21 @@ public sealed class WiredMovementActions(Random? random = null)
                         continue;
                     }
 
+                    var random = name.Equals("wf_act_toggle_to_rnd", StringComparison.OrdinalIgnoreCase);
+                    Func<string, string?> nextState = !random && Param(0) != 1 && item.Definition.InteractionType == InteractionType.RollerSpeedController
+                        ? current => InteractorRollerSpeed.WiredToggle(item, current)
+                        : current => NextToggleState(current, states, random, Param(0) == 1);
+
                     if (toggleState != null) {
-                        var random = name.Equals("wf_act_toggle_to_rnd", StringComparison.OrdinalIgnoreCase);
-                        affected |= toggleState(item, current => NextToggleState(current, states, random, Param(0) == 1));
+                        affected |= toggleState(item, nextState);
                         continue;
                     }
 
-                    _ = int.TryParse(item.LegacyDataString, out var oldState);
-                    var next = name.Equals("wf_act_toggle_to_rnd", StringComparison.OrdinalIgnoreCase)
-                        ? Random.Shared.Next(states)
-                        : ((oldState + (Param(0) == 1 ? -1 : 1)) % states + states) % states;
-
-                    if (next == oldState) {
+                    if (nextState(item.LegacyDataString) is not { } next) {
                         continue;
                     }
 
-                    setState(item, next.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    setState(item, next);
                     affected = true;
                 }
 

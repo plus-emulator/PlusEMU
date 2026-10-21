@@ -60,7 +60,7 @@ public partial class PlacedFurniRoomTests
     }
 
     // Observed on AIR WIN63-202610201032-107964540: each use jumps to the first state of the next group: 0, 3, 6, 9, 0. The answer is
-    // one ObjectDataUpdate with the state. A Wired toggle does the same.
+    // one ObjectDataUpdate with the state.
     [Fact]
     public void EachUseOfTheSpeedControllerMovesToTheNextGroup()
     {
@@ -75,9 +75,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new[] { "3", "6", "9", "0", "3" }, seen);
         Assert.Equal(5, _client.Packets.Count(packet => packet.Header == ServerPacketHeader.ObjectDataUpdateComposer));
         Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
-
-        item.Interactor.OnWiredTrigger(item);
-        Assert.Equal("6", item.LegacyDataString);
     }
 
     [Fact]

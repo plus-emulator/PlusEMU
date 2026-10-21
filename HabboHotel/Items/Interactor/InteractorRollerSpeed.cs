@@ -31,17 +31,18 @@ public sealed class InteractorRollerSpeed : IFurniInteractor
             SpeedGroups.Remove(item);
         }
     }
-    public void OnWiredTrigger(Item item)
+    /// <summary>The state a Wired Toggle State writes. The rollers keep the step time of the group they had.</summary>
+    public static string WiredToggle(Item item, string current)
     {
         SpeedGroups.GetValue(item, _ => new(Group(item)));
-        NextGroup(item);
+        Steps.GetValue(item, _ => new()).Value = 0;
+
+        return NextGroupState(current);
     }
     public static void AnimateStep(Room room, Item item)
     {
-        if (!int.TryParse(item.LegacyDataString, out var state)) {
-            return;
-        }
-
+        // A controller fresh from the inventory holds no state; it shows the frames of the first group.
+        var state = int.TryParse(item.LegacyDataString, out var stored) ? Math.Clamp(stored, 0, 11) : 0;
         var step = Steps.GetValue(item, _ => new());
         step.Value++;
         var frame = state / 3 * 3 + 1 + (step.Value % 2 == 0 ? 1 : 0);
@@ -49,9 +50,14 @@ public sealed class InteractorRollerSpeed : IFurniInteractor
     }
     private static void NextGroup(Item item)
     {
-        var state = int.TryParse(item.LegacyDataString, out var current) ? Math.Clamp(current, 0, 11) : 0;
-        item.LegacyDataString = ((state / 3 + 1) % 4 * 3).ToString();
+        item.LegacyDataString = NextGroupState(item.LegacyDataString);
         Steps.GetValue(item, _ => new()).Value = 0;
         item.UpdateUsedState();
+    }
+    private static string NextGroupState(string current)
+    {
+        var state = int.TryParse(current, out var parsed) ? Math.Clamp(parsed, 0, 11) : 0;
+
+        return ((state / 3 + 1) % 4 * 3).ToString();
     }
 }

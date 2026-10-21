@@ -45,6 +45,84 @@ internal static class FurniExtraData
             && Uri.TryCreate(value, UriKind.Absolute, out var address)
             && (address.Scheme == Uri.UriSchemeHttp || address.Scheme == Uri.UriSchemeHttps));
 
+    public const string BackgroundAllowedHostsSetting = "room.background.allowed_hosts";
+
+    private const int MaxBackgroundAddressLength = 500;
+
+    // Observed on AIR WIN63-202610201032-107964540: a room background keeps imageUrl, offsetX, offsetY and offsetZ
+    // (FurnitureRoomBrandingLogic.as:13-21); scale and alpha are the Volt image position editor's own settings.
+    private static readonly Dictionary<string, (int Min, int Max)> BackgroundNumbers = new(StringComparer.Ordinal)
+    {
+        ["offsetX"] = (-10000, 10000),
+        ["offsetY"] = (-10000, 10000),
+        ["offsetZ"] = (-1000, 1000),
+        ["scale"] = (10, 500),
+        ["alpha"] = (0, 100)
+    };
+
+    /// <summary>
+    /// Turns the client's flat key,value list into the data a background keeps: the known keys only, numbers clamped to their range
+    /// and the image address checked against the host list. Returns null when a value cannot be kept. Run after <see cref="RejectsBackground"/>.
+    /// </summary>
+    public static Dictionary<string, string>? NormalizeBackground(IReadOnlyList<string> values, IReadOnlyCollection<string> allowedHosts)
+    {
+        var pairs = new Dictionary<string, string> { ["state"] = "0" };
+
+        for (var index = 0; index + 1 < values.Count; index += 2) {
+            var key = values[index];
+            var value = (values[index + 1] ?? "").Trim();
+
+            if (key is "imageUrl" or "clickUrl") {
+                if (value.Length > MaxBackgroundAddressLength || key == "imageUrl" && !IsAllowedHost(value, allowedHosts)) {
+                    return null;
+                }
+
+                pairs[key] = value;
+            }
+            else if (BackgroundNumbers.TryGetValue(key, out var range)) {
+                if (value.Length == 0) {
+                    if (key.StartsWith("offset", StringComparison.Ordinal)) {
+                        pairs[key] = "0";
+                    }
+
+                    continue;
+                }
+
+                if (!long.TryParse(value, System.Globalization.NumberStyles.AllowLeadingSign, System.Globalization.CultureInfo.InvariantCulture, out var number)) {
+                    return null;
+                }
+
+                pairs[key] = Math.Clamp(number, range.Min, range.Max).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+
+        return pairs;
+    }
+
+    /// <summary>Splits the host list setting: comma separated, a leading "*." is optional and case is ignored. An absent setting reads "0" and means no list.</summary>
+    public static IReadOnlyCollection<string> ParseAllowedHosts(string? setting) =>
+        (setting ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(entry => entry != "0")
+            .Select(entry => entry.TrimStart('*').Trim('.').ToLowerInvariant())
+            .Where(entry => entry.Length > 0)
+            .Distinct()
+            .ToArray();
+
+    private static bool IsAllowedHost(string address, IReadOnlyCollection<string> allowedHosts)
+    {
+        if (address.Length == 0 || allowedHosts.Count == 0) {
+            return true;
+        }
+
+        if (!Uri.TryCreate(address, UriKind.Absolute, out var uri) || uri.UserInfo.Length > 0) {
+            return false;
+        }
+
+        var host = uri.IdnHost.ToLowerInvariant();
+
+        return allowedHosts.Any(allowed => host == allowed || host.EndsWith("." + allowed, StringComparison.Ordinal));
+    }
+
     public static bool RejectsClientImage(IReadOnlyList<string> values)
     {
         for (var index = 0; index < values.Count; index++) {

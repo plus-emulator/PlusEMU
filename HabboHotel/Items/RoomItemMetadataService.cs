@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Dapper;
 using Plus.Core.FigureData;
+using Plus.Core.Settings;
 using Plus.HabboHotel.Items.Data.Moodlight;
 using Plus.HabboHotel.Items.Data.Toner;
 using Plus.HabboHotel.Items.DataFormat;
@@ -180,7 +181,7 @@ public interface IRoomItemMetadataService
     void SetBranding(GameClient session, BrandingRequest request);
 }
 
-public sealed class RoomItemMetadataService(IRoomItemMetadataStore store, IFigureDataManager figures) : IRoomItemMetadataService
+public sealed class RoomItemMetadataService(IRoomItemMetadataStore store, IFigureDataManager figures, ISettingsManager? settings = null) : IRoomItemMetadataService
 {
     public void SetMannequinFigure(GameClient session, uint itemId)
     {
@@ -242,6 +243,9 @@ public sealed class RoomItemMetadataService(IRoomItemMetadataStore store, IFigur
         item.UpdateState(true, true);
     }
 
+    private const string BackgroundRejectedMessage =
+        "These background settings were not saved. Use an http or https image address from an allowed website, and whole numbers for the offsets.";
+
     public void SetBranding(GameClient session, BrandingRequest request)
     {
         var habbo = session.GetHabbo();
@@ -272,14 +276,17 @@ public sealed class RoomItemMetadataService(IRoomItemMetadataStore store, IFigur
             return;
         }
 
-        if (request.Values is not { } values || FurniExtraData.RejectsBackground(values)) {
+        if (request.Values is not { } values) {
             return;
         }
 
-        var pairs = new Dictionary<string, string> { ["state"] = "0" };
+        var hosts = FurniExtraData.ParseAllowedHosts(settings?.TryGetValue(FurniExtraData.BackgroundAllowedHostsSetting));
+        var pairs = FurniExtraData.RejectsBackground(values) ? null : FurniExtraData.NormalizeBackground(values, hosts);
 
-        for (var index = 0; index < values.Length; index += 2) {
-            pairs[values[index]] = values[index + 1];
+        if (pairs == null) {
+            session.SendNotification(BackgroundRejectedMessage);
+
+            return;
         }
 
         var data = new MapDataFormat(pairs);

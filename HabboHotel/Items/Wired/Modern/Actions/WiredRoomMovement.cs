@@ -12,6 +12,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// <summary>Mutates the actual room and emits the active renderer's animation format.</summary>
 public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnumerable<Item>> walkTransition, bool transparentWalkTransition = false)
 {
+    private const int ProjectileOvershootMs = 800;
     private Action<WiredRuntimeContext, IReadOnlyList<RoomUser>>? _prepareCarryPublication;
     private Func<WiredRuntimeContext, RoomUser, WiredMovementComposer, WiredMoveStyleComposer, bool>? _appendCarryPublication;
 
@@ -212,6 +213,12 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         if (projectile != null) {
             var duration = projectile.Duration((long)item.GetX - source.X,
                 (long)item.GetY - source.Y, item.GetZ - source.Z, options.AnimationTimeMs);
+
+            // Observed on AIR WIN63-202610201032-107964540: always shooting a negative number of tiles moves the furni at once.
+            if (projectile.Distance == WiredProjectileDistance.Fixed && projectile.DistanceTiles < 0) {
+                duration = 0;
+            }
+
             var publishImmediate = options.Animate && duration == 0;
             options = options with
             {
@@ -237,7 +244,9 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             var movement = new WiredMovementComposer(1, (int)item.Id, source.X, source.Y, source.Z,
                 item.GetX, item.GetY, item.GetZ, item.Rotation, item.Rotation, options.AnimationTimeMs)
             {
-                CurveStrength = options.CurveType == 7 && options.CurveStrength != 0 ? options.CurveStrength : null
+                CurveStrength = options.CurveType == 7 && options.CurveStrength != 0 ? options.CurveStrength : null,
+                // Observed on AIR WIN63-202610201032-107964540: the overshoot modes send an overshoot value of 800, whatever the distance.
+                OvershootTimeMs = projectile?.Distance is WiredProjectileDistance.Overshoot or WiredProjectileDistance.Fixed ? ProjectileOvershootMs : null
             };
 
             // The shooter faces the exact heading, diagonals included, on every fire, also when the furni lands on the rotation

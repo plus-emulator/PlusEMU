@@ -16,7 +16,7 @@ public sealed class WiredVariableFxTests
         Assert.True(WiredBoxRegistry.TryGet("wf_xtra_var_fx_progress", out var descriptor));
         var native = WiredNativeEditorProjection.DefaultNative(descriptor);
         var owned = native.OwnedIntParams.ToArray();
-        owned[2] = 1;
+        owned[2] = 2;
         owned[3] = 15;
         owned[4] = 1;
         native = native with { OwnedIntParams = [.. owned] };
@@ -27,7 +27,7 @@ public sealed class WiredVariableFxTests
         Assert.True(binding.Config.ShowOnMouseHover);
         var packet = new Packet();
         WiredVariableFxComposer.ComposeBatch(new(false, [binding.Config], [], [], [])).Single().Compose(packet);
-        Assert.Equal(new object[] { 1, 50, true, 1, 15, true }, packet.Values.Take(6).ToArray());
+        Assert.Equal(new object[] { 1, 50, true, 2, 15, true }, packet.Values.Take(6).ToArray());
     }
 
     // Official hhus WIN63-202610131318 (r78 batch): the reopened ints of each card saved from its defaults, all 23 of them: the category

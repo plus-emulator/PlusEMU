@@ -62,7 +62,7 @@ public partial class WiredComponent
     /// reads UTC, not the zone that @current_time uses.
     /// </summary>
     internal DateTimeOffset ConditionCalendarTime =>
-        throw new NotImplementedException();
+        TimeZoneInfo.ConvertTime(_clock.GetUtcNow(), Settings.ExplicitTimeZone ?? TimeZoneInfo.Utc);
     private IWiredConfigurationStore ConfigurationStore => _configurationStore;
     public WiredRoomVariables Variables => (_variables ??= new(() => new(_room,
         _database, _clock, builtinRead: ReadBuiltin, builtinWrite: WriteBuiltin, stateChanged: PublishBuiltinStateChanged, travelStore: _travelStore, quests: _quests)
@@ -109,8 +109,8 @@ public partial class WiredComponent
         else if (descriptor.Category == WiredBoxCategory.Condition && WiredConditionConfiguration.Supports(descriptor.CanonicalName)) {
             // Calendar predicates use the configured zone; elapsed durations use the shared UTC room clock.
             box = new WiredModernCondition(_room, item, descriptor, _groups, ReadCounterMilliseconds,
-                descriptor.CanonicalName is "wf_cnd_match_time" or "wf_cnd_match_date" or "wf_cnd_date_rng_active"
-                    ? () => CalendarTime : () => _clock.GetUtcNow());
+                descriptor.CanonicalName is "wf_cnd_match_time" or "wf_cnd_match_date" ? () => ConditionCalendarTime
+                    : descriptor.CanonicalName == "wf_cnd_date_rng_active" ? () => CalendarTime : () => _clock.GetUtcNow());
             defaults = WiredConditionConfiguration.Defaults(descriptor.CanonicalName,
                 calendarYear ?? 0);
         }

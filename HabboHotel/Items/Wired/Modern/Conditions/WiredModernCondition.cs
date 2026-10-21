@@ -147,8 +147,9 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_counter_time_matches":
                 var targetMs = Param(config, 1) * 60_000L + Param(config, 2) * 500L;
 
+                // Observed on AIR WIN63-202610201032-107964540: a stored comparison of 3 passes when the counter is at most the value.
                 return WiredRoomOperations.Quantify(Items().Select(item => _counterTime(item) is { } time
-                    && WiredRoomOperations.Compare(time, targetMs, Param(config, 0))), Param(config, 4));
+                    && (Param(config, 0) == 3 ? time <= targetMs : WiredRoomOperations.Compare(time, targetMs, Param(config, 0)))), Param(config, 4));
             case "wf_cnd_match_time":
                 return WiredTimeConditions.MatchesTime(config, now);
             case "wf_cnd_match_date":

@@ -141,6 +141,18 @@ public sealed class WiredConfigurationService(
                 return;
             }
 
+            var sources = WiredSourceRules.Check(descriptor, native, WiredNativeEditorProjection.Metadata(descriptor.CanonicalName));
+
+            if (sources.Dropped) {
+                return;
+            }
+
+            if (sources.Key is { } sourceKey) {
+                session.Send(new WiredValidationErrorComposer(sourceKey));
+
+                return;
+            }
+
             if (!WiredNativeEditorProjection.TryFillSourceSlots(descriptor, native, out native, out var countError)) {
                 session.Send(new WiredValidationErrorComposer(countError ?? error));
 

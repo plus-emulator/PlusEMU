@@ -362,7 +362,7 @@ public static class WiredNativeEditorProjection
             }
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: these conditions store a save in a normal form instead of refusing odd values.
+        // Observed on AIR WIN63-202610201032-107964540: these boxes store a save in a normal form instead of refusing odd values.
         if (WiredConditionStoreRules.Applies(name) && Supports(name)) {
             native = WiredConditionStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }

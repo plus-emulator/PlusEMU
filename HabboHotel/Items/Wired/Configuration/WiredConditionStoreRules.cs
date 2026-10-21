@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
-/// The normal form Habbo stores for these conditions. A save with an odd value is not refused: the value is clamped, switched to the
+/// The normal form Habbo stores for these boxes. A save with an odd value is not refused: the value is clamped, switched to the
 /// nearest flag value, or filled from the frame default, and the box reads back the stored form.
 /// Observed on AIR WIN63-202610201032-107964540.
 /// </summary>
@@ -11,7 +11,8 @@ internal static class WiredConditionStoreRules
 {
     public static bool Applies(string name) => name is "wf_cnd_actor_dir" or "wf_cnd_actor_in_team" or "wf_cnd_not_in_team"
         or "wf_cnd_counter_time_matches" or "wf_cnd_furnis_hv_avtrs" or "wf_cnd_not_furni_on" or "wf_cnd_not_hv_avtrs"
-        or "wf_cnd_has_altitude" or "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap" or "wf_cnd_not_user_count" or "wf_cnd_match_date" or "wf_cnd_match_time";
+        or "wf_cnd_has_altitude" or "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap" or "wf_cnd_not_user_count" or "wf_cnd_match_date" or "wf_cnd_match_time"
+        or "wf_act_move_furni_as_group" or "wf_act_neg_send_signal";
 
     public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native, ImmutableArray<int> defaults)
     {
@@ -51,6 +52,14 @@ internal static class WiredConditionStoreRules
                 var yearStart = Math.Clamp(p[6], 0, 9999);
                 p = [Flag(p[0]), Flag(p[1]), Math.Clamp(p[2], 0, 127), Math.Clamp(p[3], 1, 31), Math.Clamp(p[4], 1, 31),
                     Math.Clamp(p[5], 0, 4095), yearStart, Math.Max(Math.Clamp(p[7], 0, 9999), yearStart)];
+                break;
+            // Move Furni As Group: the target flag is 0 or 1 and each offset is clamped to the editor's -64..64.
+            case "wf_act_move_furni_as_group":
+                p = [Flag(p[0]), Math.Clamp(p[1], -64, 64), Math.Clamp(p[2], -64, 64)];
+                break;
+            // The two split flags of a signal count only when they are exactly 1.
+            case "wf_act_neg_send_signal":
+                p = [.. p.Select(flag => flag == 1 ? 1 : 0)];
                 break;
             case "wf_cnd_match_time":
                 p = [Flag(p[0]), Flag(p[1]), Flag(p[2]), .. p.Skip(3).Take(4).Select(value => Math.Clamp(value, 0, 59)),

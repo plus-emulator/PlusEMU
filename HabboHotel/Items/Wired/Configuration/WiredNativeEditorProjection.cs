@@ -572,7 +572,7 @@ public static class WiredNativeEditorProjection
                 break;
             case "wf_cnd_user_count_in":
                 if (p.Length != 2 || p.Any(value => value is < 0 or > 125) || p[0] > p[1]
-                    || native.Text != "" || native.Quantifier != 0) {
+                    || native.Text != "" || native.Quantifier is not (0 or 1 or 2)) {
                     return false;
                 }
 

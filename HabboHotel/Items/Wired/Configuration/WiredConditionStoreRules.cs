@@ -32,6 +32,8 @@ internal static class WiredConditionStoreRules
         { "wf_cnd_match_snapshot", new(OnlyOne) },
         { "wf_cnd_not_match_snap", new(OnlyOne) },
         { "wf_cnd_not_user_count", new(UserCount) },
+        // User Count In also keeps a quantifier of 1 or 2 although its editor shows none.
+        { "wf_cnd_user_count_in", new(UserCount, KeepsQuantifierTwo: true) },
         { "wf_cnd_match_date", new(MatchDate, ZoneOrEmpty) },
         { "wf_cnd_match_time", new(MatchTime, ZoneOrEmpty) },
         // Move Furni As Group: the target flag is 0 or 1 and each offset is clamped to the editor's -64..64.

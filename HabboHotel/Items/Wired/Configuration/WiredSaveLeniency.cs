@@ -60,6 +60,7 @@ internal static class WiredSaveLeniency
         { "wf_cnd_not_hv_avtrs", Textless },
         { "wf_cnd_has_altitude", Textless },
         { "wf_cnd_not_user_count", Textless },
+        { "wf_cnd_user_count_in", Textless },
         { "wf_cnd_slc_quantity", Textless },
         { "wf_cnd_team_has_rank", Textless },
         { "wf_cnd_team_has_score", Textless },

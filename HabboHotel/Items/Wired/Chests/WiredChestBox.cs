@@ -61,13 +61,14 @@ public class WiredChestBox : WiredModernBox
 
     /// <summary>
     /// The pick rule of a new save that a stored row is not held to. Observed on AIR WIN63-202610201032-107964540: Chest Has Item Type
-    /// accepts only a Furni Chest and answers a Credit Chest, a mix of both or any other furni with the furni chest key.
+    /// accepts only a Furni Chest and answers a Credit Chest, a mix of both or any other furni with the furni chest key. The chest
+    /// scanner follows the same rule.
     /// </summary>
     internal bool TryValidateSavedPicks(WiredConfiguration proposed, out string error)
     {
         error = "";
 
-        if (Descriptor.CanonicalName != "wf_cnd_chest_has_item_type") {
+        if (Descriptor.CanonicalName is not ("wf_cnd_chest_has_item_type" or "wf_xtra_scan_chest_furni_by_type")) {
             return true;
         }
 

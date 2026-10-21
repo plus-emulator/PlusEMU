@@ -69,7 +69,9 @@ public sealed class InteractorConfigurationSwitch(TimeProvider? clock = null) : 
     private static void Toggle(Item item)
     {
         item.LegacyDataString = item.LegacyDataString == "1" ? "0" : "1";
-        item.UpdateState();
+
+        // Observed on AIR WIN63-202610201032-107964540: a switch of the chooser disabler sends only the room flags, no ObjectUpdate.
+        item.UpdateState(true, item.Definition.InteractionType != InteractionType.ChooserDisabler);
         ConfigurationItemStates.StateChanged(item);
     }
     private static void Refresh(Item item)

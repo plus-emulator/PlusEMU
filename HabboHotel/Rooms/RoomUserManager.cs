@@ -1336,6 +1336,10 @@ public class RoomUserManager
 
     internal void UpdateSignStatus(RoomUser user)
     {
+        if (user.RecentExpression is { } expression && _clock.GetUtcNow() >= expression.ExpiresAt) {
+            user.RecentExpression = null;
+        }
+
         if (user.SignExpiresAt is not { } deadline) {
             return;
         }

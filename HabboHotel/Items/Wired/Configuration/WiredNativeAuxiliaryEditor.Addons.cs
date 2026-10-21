@@ -132,7 +132,7 @@ internal static partial class WiredNativeAuxiliaryEditor
     {
         var parts = n.Text.Split('\t');
 
-        return n.Text.Length == 0 || parts.Length <= 2 && parts[0].Trim().Length is >= 1 and <= 32 && parts[0].IndexOfAny(['\r', '\n']) < 0
+        return n.Text.Length == 0 || parts.Length <= 2 && parts[0].Trim().Length is >= 1 and <= 40 && parts[0].IndexOfAny(['\r', '\n']) < 0
             && (parts.Length == 1 || parts[1].Length <= 16 && parts[1].IndexOfAny(['\r', '\n']) < 0);
     }
 }

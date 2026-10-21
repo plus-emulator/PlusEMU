@@ -39,12 +39,14 @@ internal static partial class WiredNativeAuxiliaryEditor
         // Mode, multiplier, option, target, timeout flag and seconds; chests, contracts and the merged reference.
         // Observed on hhus: mode 0 stores a multiplier below 2 as 2. The editor frames open the chests on 100, the contracts on 101,
         // the users on 0 and the merged reference on the selector (furni 200, users 200).
-        yield return new("wf_act_init_transaction", new(TransactionMeta(TwoPickLists, 3, 2, [0, 10, 0, -20, 0, 300], 1, [100, 101, 200], [0, 200]), n =>
+        // Observed on AIR WIN63-202610201032-107964540: the editor frame has three variable slots. A row stored with the first slot only
+        // keeps loading, because a missing slot is filled before the box reads it.
+        yield return new("wf_act_init_transaction", new(TransactionMeta(TwoPickLists, 3, 2, [0, 10, 0, -20, 0, 300], 3, [100, 101, 200], [0, 200]), n =>
         {
             var p = n.OwnedIntParams;
 
             // Observed on AIR WIN63-202610201032-107964540: a raw save of a timeout from 0 to 29 seconds is accepted and read back as 30.
-            return Shape(n, 6, 3, 2, 1) && TryTarget(p[3], out var target)
+            return Shape(n, 6, 3, 2, 3) && TryTarget(p[3], out var target)
                 ? ChestDraft(n, [p[0], p[0] == 0 && p[1] == 1 ? 2 : p[1], p[2], target, p[4], p[5] is >= 0 and < 30 ? 30 : p[5]], n.Text) : null;
         }));
         // Observed on hhus (AIR WIN63-202610131318-860371703): the only chest card without wall picks.

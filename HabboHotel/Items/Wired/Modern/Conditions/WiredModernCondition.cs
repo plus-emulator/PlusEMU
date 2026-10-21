@@ -190,7 +190,8 @@ public sealed class WiredModernCondition : WiredModernBox
 
         return action switch
         {
-            1 => user.HasStatus("wav"),
+            // Observed on AIR WIN63-202610201032-107964540: Wave and Respect pass for a short time after the expression.
+            1 or 12 => user.RecentExpression?.Action == action,
             4 => !user.IsAsleep,
             5 => user.IsAsleep,
             6 => user.HasStatus("sit"),

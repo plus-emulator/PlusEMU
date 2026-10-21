@@ -4,7 +4,7 @@ using System.Collections.Immutable;
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
-/// How the hotel stores a save of the add-ons, the two long timers, the User Performs Action boxes, Teleport to Room and Scan Chest.
+/// How the hotel stores a save of the add-ons, the two long timers, the User Performs Action boxes, Teleport to Room, Scan Chest and Match To Snapshot.
 /// Observed on AIR WIN63-202610201032-107964540: a save with missing ints takes the frame default for each, extra ints and a text the box
 /// does not read are dropped, and most out-of-range numbers are clamped or reset instead of refused.
 /// </summary>
@@ -18,7 +18,7 @@ internal static class WiredEditorStoreRules
     {
         "wf_xtra_execution_limit", "wf_xtra_unseen", "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var",
         "wf_xtra_or_eval", "wf_xtra_rotate_to_dir", ScanChest, "wf_act_teleport_to_room", "wf_trg_at_given_time", "wf_trg_period_long",
-        "wf_trg_user_performs_action", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action"
+        "wf_trg_user_performs_action", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action", "wf_act_match_to_sshot"
     }.ToFrozenSet();
 
     // Boxes that answer a user source they do not offer with its own key.
@@ -73,6 +73,13 @@ internal static class WiredEditorStoreRules
                 ints[16] = Math.Clamp(ints[16], -64, 64);
                 ints[17] = Target(ints[17]);
                 ints[18] = Math.Clamp(ints[18], -1000, 1000);
+                break;
+            // Observed on AIR WIN63-202610201032-107964540: Match To Snapshot switches an option on only for the exact value 1.
+            case "wf_act_match_to_sshot":
+                for (var index = 0; index < ints.Count; index++) {
+                    ints[index] = ints[index] == 1 ? 1 : 0;
+                }
+
                 break;
             case ScanChest:
                 ints[0] = ints[0] == 0 ? 0 : 1;

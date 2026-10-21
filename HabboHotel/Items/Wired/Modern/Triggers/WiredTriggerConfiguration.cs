@@ -36,13 +36,17 @@ public static class WiredTriggerConfiguration
         ["wf_trg_receive_message"] = WiredEventKind.LinkMessage,
         ["wf_trg_receive_dataframe"] = WiredEventKind.LinkDataframe
     };
+    /// <summary>The saved action 9 that no avatar action matches: the hotel stores it, but the client does not offer it.</summary>
+    public const int UnofferedAction = 13;
+
     public static bool IsTimed(string name) => name is "wf_trg_at_given_time" or "wf_trg_at_time_long"
         or "wf_trg_periodically" or "wf_trg_period_short" or "wf_trg_period_long";
-    // The most units each timed editor offers (Volt sliders); the least is 1.
+    // The most units each timed editor offers (Volt sliders); the least is 1. At Given Time and Periodically Long keep what was sent
+    // instead (observed on AIR WIN63-202610201032-107964540: 1201 pulses and 121 units are stored as sent).
     public static int MaxTimedUnits(string name) => name switch
     {
         "wf_trg_period_short" => 10,
-        "wf_trg_at_given_time" or "wf_trg_at_time_long" => 1200,
+        "wf_trg_at_time_long" => 1200,
         _ => 120
     };
 
@@ -163,16 +167,27 @@ public static class WiredTriggerConfiguration
 
                 break;
             case "wf_trg_user_performs_action":
-                if (p.Length != 5 || p[0] is < 1 or > 12 || !Bit(1) || p[2] is < 0 or > 17 || !Bit(3) || p[4] is < 0 or > 4) {
+                if (p.Length != 5 || p[0] is < 1 or > UnofferedAction || !Bit(1) || p[2] is < 0 or > 17 || !Bit(3) || p[4] is < 0 or > 4) {
                     return false;
                 }
 
                 break;
             case "wf_trg_at_given_time":
+                // 0 pulses is kept and fires on the first room tick after a timer reset.
+                if (p.Length != 1 || p[0] < 0) {
+                    return false;
+                }
+
+                break;
+            case "wf_trg_period_long":
+                if (p.Length != 1 || p[0] < 1) {
+                    return false;
+                }
+
+                break;
             case "wf_trg_at_time_long":
             case "wf_trg_periodically":
             case "wf_trg_period_short":
-            case "wf_trg_period_long":
                 if (p.Length != 1 || p[0] < 1 || p[0] > MaxTimedUnits(name)) {
                     return false;
                 }

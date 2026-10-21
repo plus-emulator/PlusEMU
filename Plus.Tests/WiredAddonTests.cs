@@ -69,7 +69,8 @@ public sealed class WiredAddonTests
         Assert.Equal(new[] { 100, 10000 }, new WiredAddonModule("wf_xtra_execution_limit", Config([250, 20])).Configuration.IntParams);
         Assert.Equal(new[] { 1, 2000 }, new WiredAddonModule("wf_xtra_execution_limit", Config([-4, 4])).Configuration.IntParams);
         Assert.Equal(new[] { 2, 500 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 0])).Configuration.IntParams);
-        Assert.Equal(new[] { 2, 500 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 21])).Configuration.IntParams);
+        Assert.Equal(new[] { 2, 10500 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 21])).Configuration.IntParams);
+        Assert.Equal(new[] { 2, 60000 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 120])).Configuration.IntParams);
         Assert.Equal(new[] { 2, 500 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 499])).Configuration.IntParams);
         Assert.Equal(new[] { 2, 500 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 500])).Configuration.IntParams);
         Assert.Equal(new[] { 2, 1000 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 750])).Configuration.IntParams);
@@ -77,7 +78,8 @@ public sealed class WiredAddonTests
         Assert.Equal(new[] { 2, 1500 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 1250])).Configuration.IntParams);
         Assert.Equal(new[] { 2, 1500 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 1500])).Configuration.IntParams);
         Assert.Equal(new[] { 2, 5000 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 5000])).Configuration.IntParams);
-        Assert.Equal(new[] { 2, 10000 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 20000])).Configuration.IntParams);
+        Assert.Equal(new[] { 2, 20000 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 20000])).Configuration.IntParams);
+        Assert.Equal(new[] { 2, 60000 }, new WiredAddonModule("wf_xtra_execution_limit", Config([2, 90000])).Configuration.IntParams);
 
         var pulses = WiredAddonConfiguration.Normalize("wf_xtra_execution_limit", Config([2, 3]));
         Assert.Equal(new[] { 2, 1500 }, pulses.IntParams);

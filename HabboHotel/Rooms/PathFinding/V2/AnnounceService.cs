@@ -1,3 +1,4 @@
+using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.Utilities;
 
 namespace Plus.HabboHotel.Rooms.PathFinding;
@@ -245,6 +246,7 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
     {
         var state = actor.Movement;
         state.Plan?.Exclusions.NextStep();
+        var wasPosed = actor.Statusses.ContainsKey("sit") || actor.Statusses.ContainsKey("lay");
         actor.Statusses.Remove("sit");
         actor.Statusses.Remove("lay");
         actor.IsSitting = actor.IsLying = false;
@@ -259,6 +261,12 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
         actor.IsWalking = true;
         actor.UpdateNeeded = true;
         context.FloorEffects.Apply(actor, target.X, target.Y, state.Pending[state.PendingCount - 1]);
+
+        // Observed on AIR WIN63-202610201032-107964540: the first step off a sit or lay tile fires User Performs Action - Stand.
+        if (wasPosed) {
+            room.GetWired().Dispatch(new(WiredEventKind.AvatarAction) { Actor = actor, Action = (int)WiredAvatarAction.Stand, Code = -1 });
+        }
+
         AnnounceWiredWalk(actor, target);
     }
     // A teleport or hopper arrival ends with the first step out; until then the teleporters and doorbell treat the user as arriving.

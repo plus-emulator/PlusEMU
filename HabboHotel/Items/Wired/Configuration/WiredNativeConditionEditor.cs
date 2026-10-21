@@ -135,7 +135,7 @@ internal static class WiredNativeConditionEditor
                 parameters = [u[0], q];
                 break;
             case "wf_cnd_user_performs_action":
-                if (p.Length != 1 || u.Length != 1 || !WiredNativeTriggerEditor.TryAvatarAction(p[0], text, out var action)) {
+                if (p.Length != 1 || u.Length != 1 || !WiredNativeTriggerEditor.TryStoredAvatarAction(p[0], text, out var action)) {
                     return false;
                 }
 

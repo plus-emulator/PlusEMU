@@ -7,6 +7,7 @@ internal sealed class LandingService(Room room, RoomNavigation navigation, Movem
         var state = actor.Movement;
         var revision = state.LocationRevision;
         var wasLaying = actor.HasStatus("lay");
+        var wasSitting = actor.HasStatus("sit");
         var initial = context.Graph.Position(surface, view);
         room.GetGameMap().UpdateUserMovement(new(actor.X, actor.Y), new(initial.X, initial.Y), actor);
 
@@ -24,7 +25,7 @@ internal sealed class LandingService(Room room, RoomNavigation navigation, Movem
             return;
         }
 
-        Arrive(actor, revision, wasLaying, wiredOnArrival);
+        Arrive(actor, revision, wasLaying, wasSitting, wiredOnArrival);
     }
     private bool LeaveOrigin(RoomUser actor, long revision)
     {
@@ -50,7 +51,7 @@ internal sealed class LandingService(Room room, RoomNavigation navigation, Movem
         MirrorHorse(actor, target);
         context.RefreshMembership(actor);
     }
-    private void Arrive(RoomUser actor, long revision, bool wasLaying, bool wired)
+    private void Arrive(RoomUser actor, long revision, bool wasLaying, bool wasSitting, bool wired)
     {
         var items = SurfaceContacts.Of(room, actor, room.GetGameMap().GetCoordinatedItems(new(actor.X, actor.Y)));
 
@@ -71,7 +72,7 @@ internal sealed class LandingService(Room room, RoomNavigation navigation, Movem
         }
 
         PostureService.Apply(room, navigation.Grid, actor);
-        context.LandingEffects.Apply(actor, wasLaying);
+        context.LandingEffects.Apply(actor, wasLaying, wasSitting);
         actor.UpdateNeeded = true;
     }
     private void MirrorHorse(RoomUser actor, NavPosition target)

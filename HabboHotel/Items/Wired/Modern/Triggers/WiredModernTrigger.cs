@@ -191,6 +191,8 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
     private readonly WiredTimedTriggers _timers = new();
     private long _started;
     private long _epoch;
+    // At Given Time with 0 pulses starts only from a room timer reset, not from being added to the room.
+    private bool _resetByAction;
     public WiredModernTimedTrigger(Room room, Item item, WiredBoxDescriptor descriptor) : base(room, item, descriptor)
     {
         if (!WiredTriggerConfiguration.IsTimed(descriptor.CanonicalName)) {
@@ -203,6 +205,13 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
             return null;
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: a box with 0 pulses did not fire when saved, and fired on the first room tick
+        // after each timer reset.
+        if (Descriptor.CanonicalName == "wf_trg_at_given_time" && config.IntParams is [0]
+            && (!_resetByAction || nowMilliseconds < WiredTimedTriggers.FirstRoomTickAfter(_started))) {
+            return null;
+        }
+
         return _timers.TryFire(Descriptor.CanonicalName, Item.Id, config, nowMilliseconds,
             Math.Max(0, nowMilliseconds - WiredTimedTriggers.FirstRoomTickAfter(_started)), _epoch)
             ? new(Events.Single()) { EventItem = Item } : null;
@@ -210,10 +219,12 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
     public void Reset(long nowMilliseconds)
     {
         ResetElapsed(nowMilliseconds);
+        _resetByAction = false;
         _timers.Forget(Item.Id);
     }
     public void ResetElapsed(long nowMilliseconds)
     {
+        _resetByAction = true;
         _started = nowMilliseconds;
         _epoch++;
         _timers.ResetPeriodic(Item.Id, nowMilliseconds);

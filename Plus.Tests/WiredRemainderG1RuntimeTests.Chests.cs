@@ -270,8 +270,8 @@ public sealed partial class WiredRemainderG1RuntimeTests
     {
         var module = world.UseVariables(ContextCount);
         world.AddBox("wf_trg_enter_room", null, x, 0);
-        world.AddBox("wf_xtra_scan_chest_furni_by_type", _ => G1World.Chest("wf_xtra_scan_chest_furni_by_type", [mode], [], [100, 101], [], ["ctx:10"],
-            [.. samples.Select(sample => sample.Id)], [.. chests.Select(chest => chest.Id)]), x, 0, z);
+        world.AddBox("wf_xtra_scan_chest_furni_by_type", _ => G1World.Chest("wf_xtra_scan_chest_furni_by_type", [mode], [], [101, 100], [], ["ctx:10"],
+            [.. chests.Select(chest => chest.Id)], [.. samples.Select(sample => sample.Id)]), x, 0, z);
         var witness = world.AddWitness(x, 0);
         long? scanned = null;
         witness.Probe = context => scanned = module.Read(new(WiredVariableTarget.Context, "custom:10"), new(WiredVariableTarget.Context, 0, 0), context.VariableFrame!)?.Value;
@@ -360,8 +360,8 @@ public sealed partial class WiredRemainderG1RuntimeTests
         var chest = world.AddChest(WiredChestKind.Furni, 0, 3, 3, G1World.Furni(1, 44));
         var module = world.UseVariables(ContextCount, new(11, G1World.RoomId, 1, "per_user", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true));
         world.AddBox("wf_trg_enter_room");
-        var box = world.AddBox("wf_xtra_scan_chest_furni_by_type", _ => G1World.Chest("wf_xtra_scan_chest_furni_by_type", [0], [], [100, 101], [], ["user:11"],
-            [chair.Id], [chest.Id]));
+        var box = world.AddBox("wf_xtra_scan_chest_furni_by_type", _ => G1World.Chest("wf_xtra_scan_chest_furni_by_type", [0], [], [101, 100], [], ["user:11"],
+            [chest.Id], [chair.Id]));
         var witness = world.AddWitness(0, 0);
         long? seen = -1;
         witness.Probe = context => seen = module.Read(new(WiredVariableTarget.Context, "custom:10"), new(WiredVariableTarget.Context, 0, 0), context.VariableFrame ?? WiredVariableRuntimeFrames.Create(context))?.Value;

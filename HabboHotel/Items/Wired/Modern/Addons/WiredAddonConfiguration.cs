@@ -44,10 +44,10 @@ public static class WiredAddonConfiguration
                 fields = [Range(0, 0, 10000), P(1), P(2), P(3), P(4)];
                 break;
             case "wf_xtra_execution_limit": {
-                    // Official and Volt sliders save raw pulses 1..20. A larger value is milliseconds,
-                    // snapped to the same half-second grid the editor uses; 1250 becomes 1500 and 5000 stays 5000.
+                    // The editor saves raw pulses 1..120 (observed on AIR WIN63-202610201032-107964540). A larger value is milliseconds,
+                    // snapped to the same half-second grid and at most 60000; 1250 becomes 1500 and 5000 stays 5000.
                     var window = P(1, 1);
-                    window = window is >= 1 and <= 20 ? window * 500 : (Math.Clamp(window, 500, 10000) + 250) / 500 * 500;
+                    window = window is >= 1 and <= 120 ? window * 500 : (Math.Clamp(window, 500, 60000) + 250) / 500 * 500;
                     fields = [Range(0, 1, 100, 1), window];
                     break;
                 }
@@ -86,7 +86,7 @@ public static class WiredAddonConfiguration
                 break;
             case "wf_xtra_rotate_to_dir":
                 fields = [B(0), Range(1, 0, 3), B(2), B(3), Range(4, 1, 100000, 1), Range(5, 0, 3),
-                    B(6), B(7), B(8), Range(9, 0, 100000), Range(10, 0, 7), Range(11, 0, 127), B(12), B(13),
+                    B(6), B(7), B(8), Range(9, 0, 100000), Range(10, 0, 7), P(11), B(12), B(13),
                     Range(14, 0, 2), B(15), Range(16, -64, 64), Range(17, 0, 3), Range(18, -1000, 1000),
                     Source(19, true), Source(20), Source(21, true), Source(22), Source(23, true), ProjectileSource(P(24, 100))];
                 break;

@@ -113,7 +113,7 @@ internal static class WiredNativeTriggerEditor
                 parameters = p;
                 break;
             case "wf_trg_user_performs_action":
-                if (p.Length != 1 || !TryAvatarAction(p[0], native.Text, out parameters)) {
+                if (p.Length != 1 || !TryStoredAvatarAction(p[0], native.Text, out parameters)) {
                     return false;
                 }
 
@@ -146,6 +146,22 @@ internal static class WiredNativeTriggerEditor
         };
 
         return WiredTriggerConfiguration.TryValidate(name, proposed, out runtime, out _);
+    }
+
+    /// <summary>
+    /// The action of a trigger or condition save. Observed on AIR WIN63-202610201032-107964540: the hotel stores action 9, which the client
+    /// does not offer, and any filter text for every action. No avatar action matches 9, and a filter this server cannot read leaves the
+    /// action unfiltered.
+    /// </summary>
+    internal static bool TryStoredAvatarAction(int code, string text, out ImmutableArray<int> parameters)
+    {
+        if (code == 9) {
+            parameters = [WiredTriggerConfiguration.UnofferedAction, 0, 0, 0, 1];
+
+            return true;
+        }
+
+        return TryAvatarAction(code, text, out parameters) || TryAvatarAction(code, "", out parameters);
     }
 
     internal static bool TryAvatarAction(int code, string text, out ImmutableArray<int> parameters)

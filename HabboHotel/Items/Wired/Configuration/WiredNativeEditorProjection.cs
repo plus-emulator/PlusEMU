@@ -373,6 +373,11 @@ public static class WiredNativeEditorProjection
             native = WiredConditionStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: a text and ints a box does not read are accepted and dropped.
+        if (WiredSaveLeniency.Applies(name) && Supports(name)) {
+            native = WiredSaveLeniency.Normalize(name, native);
+        }
+
         // Observed on AIR WIN63-202610201032-107964540: Room Initialized has no fields; ints and a text in a save are accepted and dropped.
         if (name == "wf_trg_room_initializes" && Supports(name)) {
             native = native with { OwnedIntParams = [], Text = "" };

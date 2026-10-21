@@ -19,7 +19,7 @@ internal static class WiredConditionStoreRules
     // These conditions keep a quantifier of 2 as sent, also the ones whose editor shows no quantifier.
     public static bool KeepsQuantifierTwo(string name) => name is "wf_cnd_slc_quantity" or "wf_cnd_team_has_rank" or "wf_cnd_team_has_score"
         or "wf_cnd_time_less_than" or "wf_cnd_time_more_than" or "wf_cnd_trggrer_on_frn" or "wf_cnd_actor_in_group" or "wf_cnd_not_in_group"
-        or "wf_cnd_stuff_is" or "wf_cnd_not_stuff_is";
+        or "wf_cnd_stuff_is" or "wf_cnd_not_stuff_is" or "wf_cnd_has_handitem" or "wf_cnd_not_has_handitem";
 
     public const string UserSourceKey = "wiredfurni.error.invalid_user_source";
 

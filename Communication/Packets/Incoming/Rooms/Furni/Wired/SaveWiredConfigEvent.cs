@@ -23,6 +23,11 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
             // Two boxes have their own bounds: the others drop a save that is out of bounds without a reply.
             var visual = VisualBoxName(session, itemId);
 
+            // Observed on AIR WIN63-202610201032-107964540: a condition save with a quantifier outside 0..2 is answered and stored as 0.
+            if (native.Quantifier is { } quantifier and not (0 or 1 or 2)) {
+                native = native with { Quantifier = 0 };
+            }
+
             if (visual != null) {
                 native = WiredFurniVisualRules.ReadSave(visual, native);
             }

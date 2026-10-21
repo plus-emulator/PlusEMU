@@ -1,6 +1,7 @@
 using Plus.Communication.Packets.Outgoing.Rooms.Furni;
 using Plus.Communication.Packets.Outgoing.Rooms.Notifications;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.Interactor;
 using Plus.HabboHotel.Rooms;
 
 namespace Plus.HabboHotel.Items;
@@ -24,7 +25,7 @@ public static class ConfigurationItemStates
     /// speed controller steps every 2000 ms. The controller has 12 states in four groups of three: 500, 1000, 1500 and 2000 ms.
     /// </summary>
     public static int RollerStepMilliseconds(Room room) => RollerSpeedController(room) is { } controller
-        ? (int.TryParse(controller.LegacyDataString, out var state) ? Math.Clamp(state, 0, 11) / 3 + 1 : 1) * 500
+        ? InteractorRollerSpeed.StepMilliseconds(controller)
         : DefaultRollerStepMilliseconds;
     public static ConfigurationItemStatesComposer Compose(Room room, Item? except = null) =>
         new(ChooserDisabled(room, except), InvisibleFurni(room, except), HandItemBlocked(room, except));

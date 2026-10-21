@@ -94,10 +94,7 @@ public partial class WiredComponent
 
         // The editors of Progress Achievement list the enabled achievements from the environment packet.
         if (box is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_achievement_enabler" }) {
-            foreach (var viewer in _fxViewers.Keys.Where(viewer => ReferenceEquals(_room.GetRoomUserManager().GetRoomUserByVirtualId(viewer.VirtualId), viewer))) {
-                viewer.GetClient()?.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.WiredEnvironmentComposer(
-                    _clickUserTriggers.Count != 0, EnabledAchievements()));
-            }
+            PublishEnvironment();
         }
     }
 

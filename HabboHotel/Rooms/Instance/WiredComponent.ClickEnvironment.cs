@@ -23,10 +23,18 @@ public partial class WiredComponent
             return;
         }
 
-        foreach (var viewer in _fxViewers.Keys) {
-            if (ReferenceEquals(_room.GetRoomUserManager().GetRoomUserByVirtualId(viewer.VirtualId), viewer)) {
-                viewer.GetClient()?.Send(new WiredEnvironmentComposer(_clickUserTriggers.Count != 0, EnabledAchievements()));
-            }
+        PublishEnvironment();
+    }
+
+    private void PublishEnvironment()
+    {
+        // Room unload drops the user manager before it detaches the furni, so nobody is left to tell.
+        if (_room.GetRoomUserManager() is not { } users) {
+            return;
+        }
+
+        foreach (var viewer in _fxViewers.Keys.Where(viewer => ReferenceEquals(users.GetRoomUserByVirtualId(viewer.VirtualId), viewer))) {
+            viewer.GetClient()?.Send(new WiredEnvironmentComposer(_clickUserTriggers.Count != 0, EnabledAchievements()));
         }
     }
 }

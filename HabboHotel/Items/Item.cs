@@ -1499,6 +1499,9 @@ public class Item
         }
     }
 
+    /// <summary>When a user last switched this room flag furni (see InteractorConfigurationSwitch).</summary>
+    internal DateTimeOffset? LastSwitchUse { get; set; }
+
     public void UpdateState()
     {
         UpdateState(true, true);

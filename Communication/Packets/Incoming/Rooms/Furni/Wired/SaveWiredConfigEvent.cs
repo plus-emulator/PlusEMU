@@ -19,12 +19,25 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
             return Task.CompletedTask;
         }
 
-        if (itemId is > 0 and <= int.MaxValue && WiredLegacyProtocol.TryReadNative(packet, Envelope, out var native)) {
-            service.Save(session, new(itemId, Envelope, WiredLegacyProtocol.WireDraft(native), native));
+        if (itemId is > 0 and <= int.MaxValue && WiredLegacyProtocol.TryReadNativeUnbounded(packet, Envelope, out var native)) {
+            // Two boxes have their own bounds: the others drop a save that is out of bounds without a reply.
+            var visual = VisualBoxName(session, itemId);
+
+            if (visual != null) {
+                native = WiredFurniVisualRules.ReadSave(visual, native);
+            }
+
+            if (WiredNativeEditorProjection.WithinBounds(visual == null ? native : WiredFurniVisualRules.WithoutNegativeDelay(native))) {
+                service.Save(session, new(itemId, Envelope, WiredLegacyProtocol.WireDraft(native), native));
+            }
         }
 
         return Task.CompletedTask;
     }
+
+    private static string? VisualBoxName(GameClient? session, uint itemId) =>
+        session?.GetHabbo()?.CurrentRoom?.GetWired()?.TryGet(itemId, out var box) == true && box is IWiredConfiguredItem configured
+            && WiredFurniVisualRules.Applies(configured.Descriptor.CanonicalName) ? configured.Descriptor.CanonicalName : null;
 }
 
 internal sealed class SaveWiredSelectorConfigEvent(IWiredConfigurationService service) : SaveWiredConfigEvent(service)

@@ -7,8 +7,15 @@ namespace Plus.HabboHotel.Items.Interactor;
 /// Room-wide configuration switches (Invisible Furni Controller, :chooser disabler, hand item blocker, wired disabler): a rights holder
 /// or a wired toggle flips the state between "0" and "1". The first three are room flags, so every change re-announces the flags.
 /// </summary>
-public sealed class InteractorConfigurationSwitch : IFurniInteractor
+public sealed class InteractorConfigurationSwitch(TimeProvider? clock = null) : IFurniInteractor
 {
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: four uses of one switch within the same millisecond switch it once, while uses
+    /// 100 ms apart each count. The first use counts; the window is one room tick.
+    /// </summary>
+    private static readonly TimeSpan UseWindow = TimeSpan.FromMilliseconds(50);
+    private readonly TimeProvider _clock = clock ?? TimeProvider.System;
+
     public void OnPlace(GameClient? session, Item item)
     {
         // Observed on AIR WIN63-202610201032-107964540: placing the Invisible Furni Controller sends the flags; the other furni send nothing.
@@ -37,9 +44,18 @@ public sealed class InteractorConfigurationSwitch : IFurniInteractor
     }
     public void OnTrigger(GameClient? session, Item item, int request, bool hasRights)
     {
-        if (session != null && hasRights) {
-            Toggle(item);
+        if (session == null || !hasRights) {
+            return;
         }
+
+        var now = _clock.GetUtcNow();
+
+        if (item.LastSwitchUse is { } last && now - last < UseWindow) {
+            return;
+        }
+
+        item.LastSwitchUse = now;
+        Toggle(item);
     }
     public void OnWiredTrigger(Item item)
     {
@@ -54,14 +70,7 @@ public sealed class InteractorConfigurationSwitch : IFurniInteractor
     {
         item.LegacyDataString = item.LegacyDataString == "1" ? "0" : "1";
         item.UpdateState();
-
-        if (ConfigurationItemStates.IsFlag(item.Definition.InteractionType)) {
-            Announce(item);
-        }
-
-        if (item.Definition.InteractionType == InteractionType.InvisibleFurniControl) {
-            Refresh(item);
-        }
+        ConfigurationItemStates.StateChanged(item);
     }
     private static void Refresh(Item item)
     {

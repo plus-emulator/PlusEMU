@@ -69,8 +69,22 @@ internal static class WiredFurniVisualRules
             ints[4] = Flag(ints[4]);
         }
 
-        return native with { OwnedIntParams = ints.MoveToImmutable() };
+        // The editors have no text field; a text in the save is accepted and dropped.
+        return native with { OwnedIntParams = ints.MoveToImmutable(), Text = "" };
     }
+
+    /// <summary>
+    /// A save as the hotel reads it. Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight saves a furni picked twice once.
+    /// </summary>
+    public static WiredNativeEditorConfiguration ReadSave(string name, WiredNativeEditorConfiguration native) =>
+        name == Highlight ? native with { PrimaryItems = [.. native.PrimaryItems.Distinct()] } : native;
+
+    /// <summary>
+    /// The save with a negative delay set to 0, for the packet bounds check only. Observed on AIR WIN63-202610201032-107964540: a delay
+    /// of -1 is answered with the delay key and not dropped, so the delay check is left to <see cref="DelayAccepted"/>.
+    /// </summary>
+    public static WiredNativeEditorConfiguration WithoutNegativeDelay(WiredNativeEditorConfiguration native) =>
+        native.Delay is < 0 ? native with { Delay = 0 } : native;
 
     // Any value but 0 is 1.
     private static int Flag(int value) => value == 0 ? 0 : 1;

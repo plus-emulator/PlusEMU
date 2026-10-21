@@ -26,7 +26,11 @@ public static class WiredLegacyProtocol
         Delay = native.Delay ?? 0
     };
 
-    public static bool TryReadNative(IIncomingPacket packet, WiredBoxCategory category, out WiredNativeEditorConfiguration native)
+    public static bool TryReadNative(IIncomingPacket packet, WiredBoxCategory category, out WiredNativeEditorConfiguration native) =>
+        TryReadNativeUnbounded(packet, category, out native) && WiredNativeEditorProjection.WithinBounds(native);
+
+    /// <summary>Reads a whole save body and leaves the bounds check to the caller, which may know the box and relax a rule for it.</summary>
+    public static bool TryReadNativeUnbounded(IIncomingPacket packet, WiredBoxCategory category, out WiredNativeEditorConfiguration native)
     {
         native = new();
 
@@ -64,7 +68,7 @@ public static class WiredLegacyProtocol
                 Inverse = inverse
             };
 
-            return !packet.HasDataRemaining() && WiredNativeEditorProjection.WithinBounds(native);
+            return !packet.HasDataRemaining();
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or InvalidDataException or OverflowException) {
             return false;

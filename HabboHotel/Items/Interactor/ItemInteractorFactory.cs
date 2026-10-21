@@ -41,7 +41,7 @@ public sealed class ItemInteractorFactory(
             InteractionType.WiredLink => new InteractorWiredLink(),
             InteractionType.WiredLabel => new InteractorWiredLabel(),
             InteractionType.InvisibleFurniControl or InteractionType.ChooserDisabler or InteractionType.HandItemBlocker
-                or InteractionType.WiredDisabler => new InteractorConfigurationSwitch(),
+                or InteractionType.WiredDisabler => new InteractorConfigurationSwitch(timeProvider),
             InteractionType.RollerSpeedController => new InteractorRollerSpeed(),
             InteractionType.Gate => new InteractorGate(),
             InteractionType.FootballGate => new InteractorFootballGate(item),

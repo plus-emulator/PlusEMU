@@ -637,7 +637,9 @@ public static class WiredNativeEditorProjection
                 furni["items"] = native.FurniSourceTypes[0];
                 break;
             case "wf_act_control_clock":
-                if (p.Length != 1 || p[0] is < 0 or > 4) {
+                // Observed on AIR WIN63-202610151745-318700621: an operation the editor does not offer (5) saves. Its stored form is not
+                // observed, so it is kept as sent and the clock ignores it at run time.
+                if (p.Length != 1) {
                     return false;
                 }
 

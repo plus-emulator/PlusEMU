@@ -951,8 +951,19 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         // Nothing is applied unless the firing can hold its three scheduled steps; the effect starts with the first one.
         if (!wired.ScheduleOnRoomTick(context, republish, () =>
             {
-                if (user.IsAttachedTo(room)) {
-                    user.UpdateNeeded = true;
+                if (!user.IsAttachedTo(room)) {
+                    return;
+                }
+
+                user.UpdateNeeded = true;
+
+                // Observed on AIR WIN63-202610201032-107964540: Bot Teleport fires Bot Reaches Furni with the republish, before the landing.
+                if (user is { IsBot: true, IsPet: false }) {
+                    var (x, y) = TeleportLanding(room, user, target);
+
+                    foreach (var item in room.GetGameMap().GetCoordinatedItems(new(x, y))) {
+                        wired.Dispatch(new(WiredEventKind.BotReachedFurni) { Actor = user, EventItem = item });
+                    }
                 }
             }, () => release())) {
             return Relocate();

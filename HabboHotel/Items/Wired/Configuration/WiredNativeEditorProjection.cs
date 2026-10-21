@@ -368,7 +368,7 @@ public static class WiredNativeEditorProjection
     public const int SaysKeywordLength = 200;
 
     public static bool TryCompile(uint itemId, WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
-        out WiredConfiguration runtime, ImmutableArray<int> triggerContext = default, bool storedRow = false)
+        out WiredConfiguration runtime, ImmutableArray<int> triggerContext = default, bool storedRow = false, bool fresh = false)
     {
         runtime = new();
         var name = descriptor.CanonicalName;
@@ -446,8 +446,17 @@ public static class WiredNativeEditorProjection
 
         // Observed on AIR WIN63-202610151745-318700621: a variable FX box reads back its stored form, not what the editor sent (a boss bar
         // saved with colour, width and renderer -1 and a stale range target reads back 5/4/100 and its own source).
+        // Observed on AIR WIN63-202610201032-107964540: a save is fitted, never refused for its numbers. A stored row keeps the form it was
+        // saved in, and a fresh card shows its frame unfitted until its first save.
         if (Variables.Fx.WiredVariableFxSettings.Category(name) >= 0) {
-            native = native with { OwnedIntParams = Variables.Fx.WiredVariableFxSettings.Normalize(name, native.OwnedIntParams) };
+            native = storedRow
+                ? native with { OwnedIntParams = Variables.Fx.WiredVariableFxSettings.Upgrade(Variables.Fx.WiredVariableFxSettings.Category(name), native.OwnedIntParams) }
+                : fresh ? native
+                : native with
+                {
+                    OwnedIntParams = Variables.Fx.WiredVariableFxSettings.Normalize(name, native.OwnedIntParams, native.VariableIds),
+                    Text = Variables.Fx.WiredVariableFxSettings.FitText(name, native.Text)
+                };
         }
 
         // Observed on AIR WIN63-202610151745-318700621: Users By Name stores its names lowercased ("Robbie" reads back "robbie").
@@ -456,7 +465,13 @@ public static class WiredNativeEditorProjection
         }
 
         if (name == "wf_xtra_var_leaderboard") {
-            native = native with { Text = Leaderboard.WiredLeaderboardConfig.Normalize(native.Text, native.OwnedIntParams) };
+            // Observed on AIR WIN63-202610201032-107964540: a save without text is refused; only a fresh card holds no text.
+            if (!storedRow && !fresh && native.Text.Length == 0) {
+                return false;
+            }
+
+            var fitted = Leaderboard.WiredLeaderboardConfig.Fit(native.OwnedIntParams);
+            native = native with { OwnedIntParams = fitted, Text = Leaderboard.WiredLeaderboardConfig.Normalize(native.Text, fitted) };
         }
 
         // The snapshot boxes' text is the hotel's listing of the saved snapshot (see HotelFrame); an editor saves it back unchanged and the
@@ -861,7 +876,7 @@ public static class WiredNativeEditorProjection
 
     /// <summary>The compiled default runtime for a fresh card, or null when the name has no native mapping yet.</summary>
     public static WiredConfiguration? DefaultRuntime(uint itemId, WiredBoxDescriptor descriptor, int? calendarYear = null) =>
-        Supports(descriptor.CanonicalName) && TryCompile(itemId, descriptor, DefaultNative(descriptor, calendarYear), out var runtime) ? runtime : null;
+        Supports(descriptor.CanonicalName) && TryCompile(itemId, descriptor, DefaultNative(descriptor, calendarYear), out var runtime, fresh: true) ? runtime : null;
 
     /// <summary>The editor record behind a bound runtime; an unbound runtime has no editor representation.</summary>
     public static bool TryProject(Item item, WiredBoxDescriptor descriptor, WiredConfiguration runtime,

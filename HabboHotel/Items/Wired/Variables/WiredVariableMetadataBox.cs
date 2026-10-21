@@ -64,7 +64,7 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
 
             var target = WiredVariableFxSettings.UsesUserSource(configuration) ? WiredVariableTarget.User : WiredVariableTarget.Furni;
 
-            if (!WiredVariableFxSettings.TryDecode(name, 1, configuration, new(target, ""), null, out _, out var error)) {
+            if (!WiredVariableFxSettings.TryDecode(name, 1, configuration, new(target, ""), null, out _, out var error, saving: true)) {
                 throw new ArgumentException(error);
             }
         }

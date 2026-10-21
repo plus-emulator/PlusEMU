@@ -54,6 +54,38 @@ public sealed record WiredLeaderboardConfig
     public static int DefaultWidth(int type) => type switch { 0 => 3, 2 or 3 => 1, 5 => 2, _ => 0 };
 
     /// <summary>
+    /// The numbers of a save as the hotel keeps them. Observed on AIR WIN63-202610201032-107964540: a sort mode above 5 or below 0 is
+    /// stored as 0; a column count below 1 is stored as 1; a column the count does not reach stores type -1 and width 0; a column width
+    /// outside 0 to 3 is stored as 0; a negative override count is stored as 0; the comparison and operand switches stay 0 while the
+    /// filter is off. Other values are refused by <see cref="Decode"/>.
+    /// </summary>
+    public static ImmutableArray<int> Fit(ImmutableArray<int> p)
+    {
+        if (p.Length != IntCount) {
+            return p;
+        }
+
+        var fitted = p.ToBuilder();
+        fitted[0] = p[0] is >= 0 and <= 5 ? p[0] : 0;
+        fitted[1] = Math.Max(1, p[1]);
+        fitted[7] = p[6] == 1 && p[7] == 1 ? 1 : 0;
+        fitted[8] = fitted[7] == 1 && p[8] == 1 ? 1 : 0;
+        fitted[9] = Math.Max(0, p[9]);
+
+        for (var slot = 0; slot < MaxColumns; slot++) {
+            if (slot >= fitted[1]) {
+                fitted[2 + slot] = -1;
+                fitted[14 + slot] = 0;
+            }
+            else if (p[14 + slot] is < 0 or > 3) {
+                fitted[14 + slot] = 0;
+            }
+        }
+
+        return fitted.ToImmutable();
+    }
+
+    /// <summary>
     /// The board's text as the hotel keeps it: 17 TAB fields, with the fields of unused slots emptied. Observed on AIR
     /// WIN63-202610151745-318700621: "lb probe\t\tValue\t\t\t\t\tOwner" (one column, no override) is accepted and reads back as
     /// "lb probe\t\tValue" and 14 empty fields; the override name in an unused slot is dropped. Fields past the 17th are dropped.
@@ -66,7 +98,7 @@ public sealed record WiredLeaderboardConfig
 
         var fields = text.Split('\t').Concat(Enumerable.Repeat("", TextFields)).Take(TextFields).ToArray();
 
-        for (var slot = p[1]; slot < MaxColumns; slot++) {
+        for (var slot = Math.Max(0, p[1]); slot < MaxColumns; slot++) {
             fields[2 + slot] = "";
         }
 
@@ -122,7 +154,8 @@ public sealed record WiredLeaderboardConfig
         string Id(int index) => ids[index] is "" ? NoVariable : ids[index];
         bool Absent(int index) => Id(index) == NoVariable;
 
-        if (filter == Absent(0) || (comparison && p[8] == 1) == Absent(1)) {
+        // Observed on AIR WIN63-202610201032-107964540: a variable in a section that is switched off is stored as sent.
+        if (filter && Absent(0) || comparison && p[8] == 1 && Absent(1)) {
             return null;
         }
 

@@ -58,8 +58,14 @@ internal static class WiredEditorStoreRules
         { "wf_act_init_transaction", new(VariableSlots: true) },
         { "wf_trg_transaction_complete", new(VariableSlots: true) },
         { "wf_trg_transaction_fail", new(VariableSlots: true) },
+        // Observed on AIR WIN63-202610201032-107964540: the room triggers have no variable slot either, so a variable gets the count key.
+        { "wf_trg_enter_room", new(VariableSlots: true) },
+        { "wf_trg_leave_room", new(VariableSlots: true) },
         // Observed on AIR WIN63-202610201032-107964540: any non-zero match criteria is stored as 1, and the box has no text.
-        { "wf_act_cancel_transaction", new(FlagWithoutText, VariableSlots: true) }
+        { "wf_act_cancel_transaction", new(FlagWithoutText, VariableSlots: true) },
+        // Observed on AIR WIN63-202610201032-107964540: a save with one variable is stored with the second slot empty. The ints have
+        // their own store rule (see WiredSelectorStoreRules).
+        { "wf_slc_users_with_var", new(VariableSlots: true) }
     }.ToFrozenDictionary();
 
     // The action codes the hotel keeps: the ones the client offers, the unoffered 9 and the client expression 67.
@@ -219,12 +225,18 @@ internal static class WiredEditorStoreRules
 
     /// <summary>
     /// Observed on AIR WIN63-202610201032-107964540: a save that names fewer variables than the box has slots keeps the empty slot for
-    /// each one it leaves out.
+    /// each one it leaves out, and an empty variable id is stored as the empty slot.
     /// </summary>
-    public static WiredNativeEditorConfiguration PadVariables(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
-        Rules.TryGetValue(name, out var rule) && rule.VariableSlots && !native.VariableIds.IsDefault && native.VariableIds.Length < metadata.VariableDefaults.Length
-            ? native with { VariableIds = [.. native.VariableIds, .. metadata.VariableDefaults.Skip(native.VariableIds.Length)] }
-            : native;
+    public static WiredNativeEditorConfiguration PadVariables(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata)
+    {
+        if (!Rules.TryGetValue(name, out var rule) || !rule.VariableSlots || native.VariableIds.IsDefault) {
+            return native;
+        }
+
+        var ids = native.VariableIds.Select(id => id.Length == 0 ? Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId : id);
+
+        return native with { VariableIds = [.. ids, .. metadata.VariableDefaults.Skip(native.VariableIds.Length)] };
+    }
 
     /// <summary>
     /// The text of a new Text Output save in its stored form. Observed on AIR WIN63-202610201032-107964540: the name is lower case, a

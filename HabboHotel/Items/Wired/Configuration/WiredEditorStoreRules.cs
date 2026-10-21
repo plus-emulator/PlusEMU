@@ -25,13 +25,14 @@ internal static class WiredEditorStoreRules
         "wf_xtra_or_eval", "wf_xtra_rotate_to_dir", ScanChest, "wf_act_teleport_to_room", "wf_trg_at_given_time", "wf_trg_period_long",
         "wf_trg_user_performs_action", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action", "wf_act_match_to_sshot",
         "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type", TextVariable, TextFurniName,
-        BotReachedFurni
+        BotReachedFurni, "wf_cnd_has_var", "wf_cnd_neg_has_var"
     }.ToFrozenSet();
 
     // Boxes with one picked variable (or two for the filters by variable): a save with no variable takes the empty slots.
     private static readonly FrozenSet<string> VariableBoxes = new[]
     {
-        "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var", ScanChest, TextVariable, "wf_act_init_transaction", "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type"
+        "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var", ScanChest, TextVariable, "wf_act_init_transaction", "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type",
+        "wf_cnd_has_var", "wf_cnd_neg_has_var"
     }.ToFrozenSet();
 
     // Boxes that answer a user source they do not offer with its own key.
@@ -106,6 +107,11 @@ internal static class WiredEditorStoreRules
                 ints[3] = ints[3] is >= 0 and <= 5 ? ints[3] : 0;
                 // Observed on AIR WIN63-202610201032-107964540: a quantifier outside 0 to 2 is stored as 0.
                 quantifier = quantifier is { } value ? value is 1 or 2 ? value : 0 : null;
+                break;
+            // Observed on AIR WIN63-202610201032-107964540: Has Variable stores a target the editor does not offer as 0.
+            case "wf_cnd_has_var":
+            case "wf_cnd_neg_has_var":
+                ints[0] = Target(ints[0]);
                 break;
             // Observed on AIR WIN63-202610201032-107964540: the text output boxes store any non-zero flag as 1, and a target the editor
             // does not offer as 0.

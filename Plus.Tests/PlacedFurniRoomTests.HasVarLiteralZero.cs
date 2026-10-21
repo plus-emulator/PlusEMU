@@ -150,31 +150,19 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain("ran", wired.ReadLogs(0, 100).Entries.Select(entry => entry.Message));
     }
 
-    // Guard: only the exact measured has-var shape is admitted. Other targets, sources, quantifier, picks and other ids stay rejected by the real load.
+    // Guard: an id that is not the empty slot or a catalog id stays rejected by the real load.
     [Theory]
-    [InlineData("wf_cnd_has_var", "target-furni")]
-    [InlineData("wf_cnd_neg_has_var", "target-context")]
-    [InlineData("wf_cnd_has_var", "furni-source-200")]
-    [InlineData("wf_cnd_neg_has_var", "user-source-200")]
-    [InlineData("wf_cnd_has_var", "quantifier-1")]
-    [InlineData("wf_cnd_neg_has_var", "pick")]
     [InlineData("wf_cnd_has_var", "id-1")]
     [InlineData("wf_cnd_neg_has_var", "id-00")]
     [InlineData("wf_cnd_has_var", "id-minus-0")]
     [InlineData("wf_cnd_neg_has_var", "id-0-space")]
     [InlineData("wf_cnd_has_var", "id-0x0")]
     [InlineData("wf_cnd_neg_has_var", "id-empty-second")]
-    public void OnlyTheExactMeasuredHasVarLiteralZeroShapeIsAdmittedByTheRealLoad(string name, string change)
+    public void OnlyTheEmptySlotOrACatalogVariableIdIsAdmittedByTheRealLoad(string name, string change)
     {
         var native = HasVarNative(name);
         native = change switch
         {
-            "target-furni" => native with { OwnedIntParams = [0] },
-            "target-context" => native with { OwnedIntParams = [-20] },
-            "furni-source-200" => native with { FurniSourceTypes = [200] },
-            "user-source-200" => native with { UserSourceTypes = [200] },
-            "quantifier-1" => native with { Quantifier = 1 },
-            "pick" => native with { PrimaryItems = [new(601, false)] },
             "id-1" => native with { VariableIds = ["1"] },
             "id-00" => native with { VariableIds = ["00"] },
             "id-minus-0" => native with { VariableIds = ["-0"] },
@@ -187,13 +175,43 @@ public partial class PlacedFurniRoomTests
         SetStore(wired, new(HasVarId, name, 2, JsonSerializer.Serialize(native)));
         var item = HasVarItem(name, 1, 1);
 
+        Assert.Null(wired.LoadWiredBox(item));
+        Assert.False(wired.TryGet(HasVarId, out _));
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: a Has Variable box with no variable is saved with any target, source, quantifier
+    // and pick, so the real load admits what the save stores. This replaces the old guard that admitted one measured shape only.
+    [Theory]
+    [InlineData("wf_cnd_has_var", "target-furni")]
+    [InlineData("wf_cnd_neg_has_var", "target-context")]
+    [InlineData("wf_cnd_has_var", "furni-source-200")]
+    [InlineData("wf_cnd_neg_has_var", "user-source-200")]
+    [InlineData("wf_cnd_has_var", "quantifier-1")]
+    [InlineData("wf_cnd_neg_has_var", "pick")]
+    public void AHasVarRowWithNoVariableIsAdmittedWhateverItsTargetSourcesQuantifierOrPicks(string name, string change)
+    {
+        var native = HasVarNative(name);
+        native = change switch
+        {
+            "target-furni" => native with { OwnedIntParams = [0] },
+            "target-context" => native with { OwnedIntParams = [-20] },
+            "furni-source-200" => native with { FurniSourceTypes = [200] },
+            "user-source-200" => native with { UserSourceTypes = [200] },
+            "quantifier-1" => native with { Quantifier = 1 },
+            "pick" => native with { PrimaryItems = [new(601, false)] },
+            _ => throw new ArgumentException(change)
+        };
+        var (wired, _) = PrepareSpeech(new SpeechClock());
+        SetStore(wired, new(HasVarId, name, 2, JsonSerializer.Serialize(native)));
+        var item = HasVarItem(name, 1, 1);
+
         // A pick of furni that left the room is dropped on load, so the picked furni stays in the room here.
         if (change == "pick") {
             Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, Furni(601, InteractionType.None, WiredBoxType.None), 2, 2, 0, true, false, false));
         }
 
-        Assert.Null(wired.LoadWiredBox(item));
-        Assert.False(wired.TryGet(HasVarId, out _));
+        Assert.NotNull(wired.LoadWiredBox(item));
+        Assert.True(wired.TryGet(HasVarId, out _));
     }
 
     // Guard: another variable card carrying the same literal 0 is not admitted.

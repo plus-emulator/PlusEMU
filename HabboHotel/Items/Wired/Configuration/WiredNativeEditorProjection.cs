@@ -155,15 +155,6 @@ public static class WiredNativeEditorProjection
 
         var metadata = Metadata(descriptor.CanonicalName);
 
-        // Observed on AIR WIN63-202610201032-107964540: a user source the box does not offer is refused with its own key.
-        if (WiredConditionStoreRules.UserSourceRefusal(descriptor.CanonicalName, native, metadata) is { } unofferedUserSource) {
-            return unofferedUserSource;
-        }
-
-        if (WiredSelectorStoreRules.UserSourceRefusal(descriptor.CanonicalName, native, metadata) is { } unofferedSelectorUser) {
-            return unofferedSelectorUser;
-        }
-
         var allowed = metadata.FurniAllowed;
 
         if (native.FurniSourceTypes.Length == allowed.Length

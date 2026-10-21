@@ -11,45 +11,97 @@ internal static class WiredSaveLeniency
 {
     private const string FurniNameOutput = "wf_xtra_text_output_furni_name";
 
-    // Boxes without a text field.
-    private static readonly FrozenSet<string> NoText = new[]
+    private enum IntsMode
     {
-        "wf_act_chase", "wf_act_flee", "wf_act_neg_call_stacks", "wf_act_toggle_to_rnd", "wf_act_reset_timers", "wf_act_unfreeze",
-        "wf_act_move_furni_as_group", "wf_act_neg_send_signal",
-        "wf_cnd_stuff_is", "wf_cnd_not_stuff_is", "wf_cnd_trggrer_on_frn", "wf_cnd_not_trggrer_on", "wf_cnd_actor_dir", "wf_cnd_actor_in_team",
-        "wf_cnd_not_in_team", "wf_cnd_counter_time_matches", "wf_cnd_furnis_hv_avtrs", "wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs",
-        "wf_cnd_has_altitude", "wf_cnd_not_user_count", "wf_cnd_slc_quantity", "wf_cnd_team_has_rank", "wf_cnd_team_has_score",
-        "wf_cnd_time_less_than", "wf_cnd_time_more_than", "wf_cnd_has_handitem", "wf_cnd_not_has_handitem",
-        "wf_trg_collision", "wf_trg_state_changed", "wf_trg_walks_off_furni", "wf_trg_click_tile", "wf_trg_click_user", "wf_trg_clock_counter",
-        "wf_slc_users_onfurni", "wf_slc_furni_signal", "wf_slc_furni_altitude", "wf_slc_furni_area", "wf_slc_furni_bytype",
-        "wf_slc_furni_neighborhood", "wf_slc_remote", "wf_slc_users_bytype", "wf_slc_users_handitem", "wf_trg_stuff_state",
-        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type"
-    }.ToFrozenSet();
+        /// <summary>The ints are cut and padded by the box's own store rule.</summary>
+        Keep,
+        /// <summary>The box has no int fields: all ints are dropped.</summary>
+        None,
+        /// <summary>The show-multiple flag reads 1 for any value but 0, and 0 when the save leaves it out.</summary>
+        ShowMultipleFlag
+    }
 
-    // Boxes without int fields, whose ints are all dropped. The ints of the other boxes are cut and padded by their own store rules.
-    private static readonly FrozenSet<string> NoInts = new[]
+    /// <param name="NoText">The box has no text field.</param>
+    /// <param name="FillsEmptyUserSources">The box reads an empty user source list as the frame default.</param>
+    private sealed record Rule(bool NoText = false, IntsMode Ints = IntsMode.Keep, bool FillsEmptyUserSources = false);
+
+    private static readonly Rule Bare = new(NoText: true, Ints: IntsMode.None);
+    private static readonly Rule Textless = new(NoText: true);
+    private static readonly Rule TextlessSources = new(NoText: true, FillsEmptyUserSources: true);
+    private static readonly Rule IntlessSources = new(Ints: IntsMode.None, FillsEmptyUserSources: true);
+
+    // Each box is named once, with what its save drops.
+    private static readonly FrozenDictionary<string, Rule> Rules = new Dictionary<string, Rule>
     {
-        "wf_act_chase", "wf_act_flee", "wf_act_neg_call_stacks", "wf_act_toggle_to_rnd", "wf_act_reset_timers", "wf_act_unfreeze",
-        "wf_cnd_stuff_is", "wf_cnd_not_stuff_is", "wf_cnd_trggrer_on_frn", "wf_cnd_not_trggrer_on",
-        "wf_trg_collision", "wf_trg_state_changed", "wf_trg_walks_off_furni", "wf_trg_click_tile", "wf_slc_users_onfurni", "wf_slc_furni_signal",
-        "wf_trg_bot_reached_avtr", "wf_trg_bot_reached_stf"
-    }.ToFrozenSet();
+        // Boxes without a text field or int fields.
+        { "wf_act_chase", Bare },
+        { "wf_act_flee", Bare },
+        { "wf_act_neg_call_stacks", Bare },
+        { "wf_act_toggle_to_rnd", Bare },
+        { "wf_act_reset_timers", Bare },
+        { "wf_act_unfreeze", Bare },
+        { "wf_cnd_stuff_is", Bare },
+        { "wf_cnd_not_stuff_is", Bare },
+        { "wf_cnd_trggrer_on_frn", Bare },
+        { "wf_cnd_not_trggrer_on", Bare },
+        { "wf_trg_collision", Bare },
+        { "wf_trg_state_changed", Bare },
+        { "wf_trg_walks_off_furni", Bare },
+        { "wf_trg_click_tile", Bare },
+        { "wf_slc_users_onfurni", Bare },
+        { "wf_slc_furni_signal", Bare },
+        // Boxes without a text field. The ints of these boxes are cut and padded by their own store rules.
+        { "wf_cnd_actor_dir", Textless },
+        { "wf_cnd_actor_in_team", Textless },
+        { "wf_cnd_not_in_team", Textless },
+        { "wf_cnd_counter_time_matches", Textless },
+        { "wf_cnd_furnis_hv_avtrs", Textless },
+        { "wf_cnd_not_furni_on", Textless },
+        { "wf_cnd_not_hv_avtrs", Textless },
+        { "wf_cnd_has_altitude", Textless },
+        { "wf_cnd_not_user_count", Textless },
+        { "wf_cnd_slc_quantity", Textless },
+        { "wf_cnd_team_has_rank", Textless },
+        { "wf_cnd_team_has_score", Textless },
+        { "wf_cnd_time_less_than", Textless },
+        { "wf_cnd_time_more_than", Textless },
+        { "wf_cnd_has_handitem", Textless },
+        { "wf_cnd_not_has_handitem", Textless },
+        { "wf_trg_click_user", Textless },
+        { "wf_trg_clock_counter", Textless },
+        { "wf_slc_furni_altitude", Textless },
+        { "wf_slc_furni_area", Textless },
+        { "wf_slc_furni_bytype", Textless },
+        { "wf_slc_furni_neighborhood", Textless },
+        { "wf_slc_remote", Textless },
+        { "wf_slc_users_bytype", Textless },
+        { "wf_slc_users_handitem", Textless },
+        { "wf_trg_stuff_state", Textless },
+        { "wf_cnd_chest_has_items", Textless },
+        { "wf_cnd_chest_has_item_type", Textless },
+        // Boxes that also read an empty user source list as the frame default.
+        { "wf_act_move_furni_as_group", TextlessSources },
+        { "wf_act_neg_send_signal", TextlessSources },
+        { "wf_trg_bot_reached_avtr", IntlessSources },
+        { "wf_trg_bot_reached_stf", IntlessSources },
+        { FurniNameOutput, new(Ints: IntsMode.ShowMultipleFlag) }
+    }.ToFrozenDictionary();
 
-    // Boxes that read an empty user source list as the frame default.
-    private static readonly FrozenSet<string> EmptyUserSourcesTakeDefault = new[]
-    {
-        "wf_act_move_furni_as_group", "wf_act_neg_send_signal", "wf_trg_bot_reached_avtr", "wf_trg_bot_reached_stf"
-    }.ToFrozenSet();
+    public static bool FillsEmptyUserSources(string name) => Rules.TryGetValue(name, out var rule) && rule.FillsEmptyUserSources;
 
-    public static bool FillsEmptyUserSources(string name) => EmptyUserSourcesTakeDefault.Contains(name);
+    public static bool Applies(string name) => Rules.ContainsKey(name);
 
-    public static bool Applies(string name) => NoText.Contains(name) || NoInts.Contains(name) || name == FurniNameOutput;
-
-    public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native) => native with
-    {
-        Text = NoText.Contains(name) ? "" : native.Text,
-        // The show-multiple flag of the furni name output reads 1 for any value but 0, and 0 when the save leaves it out.
-        OwnedIntParams = NoInts.Contains(name) ? [] : name == FurniNameOutput ? [native.OwnedIntParams is [var flag, ..] && flag != 0 ? 1 : 0]
-            : native.OwnedIntParams
-    };
+    public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native) =>
+        Rules.TryGetValue(name, out var rule)
+            ? native with
+            {
+                Text = rule.NoText ? "" : native.Text,
+                OwnedIntParams = rule.Ints switch
+                {
+                    IntsMode.None => [],
+                    IntsMode.ShowMultipleFlag => [native.OwnedIntParams is [var flag, ..] && flag != 0 ? 1 : 0],
+                    _ => native.OwnedIntParams
+                }
+            }
+            : native;
 }

@@ -25,6 +25,16 @@ internal static class WiredR102EditorSave
             Delay = delay ?? native.Delay
         };
 
+        var sources = WiredSourceRules.Check(descriptor, native, WiredNativeEditorProjection.Metadata(name));
+
+        if (sources.Dropped) {
+            return new(false, true, null, [], [], [], "", [], []);
+        }
+
+        if (sources.Key is { } sourceKey) {
+            return new(false, false, sourceKey, [], [], [], "", [], []);
+        }
+
         if (!WiredNativeEditorProjection.TryFillSourceSlots(descriptor, native, out native, out var countError)) {
             return new(false, false, countError, [], [], [], "", [], []);
         }

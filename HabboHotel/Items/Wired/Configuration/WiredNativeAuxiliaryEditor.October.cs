@@ -76,11 +76,13 @@ internal static partial class WiredNativeAuxiliaryEditor
             Shape(n, 0, 0, 1, 0) && (n.Text.Length == 0 || TrackId(n.Text))
                 ? Roles(Draft(n, [], n.Text), [], [("users", n.UserSourceTypes[0])]) : null));
         // A stored row keeps the wider bounds it was saved under; the stricter value rules are checked on a new save only (WiredFurniVisualRules).
+        // Observed on AIR WIN63-202610201032-107964540: both editors offer wall furni.
         // class_4285.as:79 [audience (1 everyone), visibility 0/100, click through, easing 0..4, target users]; merged [[0,1],[-1,0]]:
         // furni 0 with user 1 are the targets, user 0 the audience.
         yield return new("wf_act_set_visibility", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [0, 100, 0, 4, 0]) with
         {
-            FurniDefaults = [100]
+            FurniDefaults = [100],
+            AllowWall = true
         }, n =>
         {
             var p = n.OwnedIntParams;
@@ -92,7 +94,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         // of each type are WiredFurniVisualRules.
         yield return new("wf_act_set_highlight", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [0, 0, 100, 16771584, 0, 4, 0]) with
         {
-            FurniDefaults = [100]
+            FurniDefaults = [100],
+            AllowWall = true
         }, n =>
         {
             var p = n.OwnedIntParams;

@@ -47,6 +47,23 @@ public static class ConfigurationItemStates
     public static void SendTypeLimit(GameClient session) =>
         session.Send(new RoomNotificationComposer("furni_placement_error", "message", "${room.error.type_limit}"));
     public static void Announce(Room room, Item? except = null) => room.SendPacket(Compose(room, except));
+
+    /// <summary>
+    /// A flag furni has a new state: the room flags go out, and the invisible furni are hidden or shown again. Observed on AIR
+    /// WIN63-202610201032-107964540: a switch by Wired does the same as a use.
+    /// </summary>
+    public static void StateChanged(Item item)
+    {
+        if (!IsFlag(item.Definition.InteractionType) || item.GetRoom() is not { } room) {
+            return;
+        }
+
+        Announce(room);
+
+        if (item.Definition.InteractionType == InteractionType.InvisibleFurniControl) {
+            FurniVisibility.Refresh(room);
+        }
+    }
     private static bool IsOn(Room room, InteractionType type, Item? except) => room.GetRoomItemHandler()?.GetFloor.Any(item =>
         !ReferenceEquals(item, except) && item.Definition.InteractionType == type && item.LegacyDataString == "1") == true;
 }

@@ -660,6 +660,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
 
         item.UpdateState(persist, false);
+        Plus.HabboHotel.Items.ConfigurationItemStates.StateChanged(item);
 
         lock (_pendingFlashes) {
             _pendingFlashes.Add(item);

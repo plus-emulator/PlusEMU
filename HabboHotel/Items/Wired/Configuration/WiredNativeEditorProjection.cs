@@ -373,6 +373,11 @@ public static class WiredNativeEditorProjection
             native = WiredConditionStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: Room Initialized has no fields; ints and a text in a save are accepted and dropped.
+        if (name == "wf_trg_room_initializes" && Supports(name)) {
+            native = native with { OwnedIntParams = [], Text = "" };
+        }
+
         // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).
         // Observed on AIR WIN63-202610151745-318700621: the area selectors store each of x, y, width and height clamped to 0..64
         // (-5 reads back 0, 500 reads back 64) instead of refusing the save.

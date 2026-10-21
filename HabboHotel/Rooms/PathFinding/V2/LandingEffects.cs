@@ -23,7 +23,7 @@ public sealed class LandingEffects
         _prepareRoom = prepareRoom ?? ((habbo, id) => habbo.PrepareRoom(id, ""));
     }
 
-    public void Apply(RoomUser actor, bool wasLaying)
+    public void Apply(RoomUser actor, bool wasLaying, bool wasSitting = false)
     {
         var location = new Location(actor.X, actor.Y, actor.Z, actor.Movement.LocationRevision);
 
@@ -47,6 +47,11 @@ public sealed class LandingEffects
             if (!wasLaying && actor.HasStatus("lay") && IsHere(actor, location)) {
                 _room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)
                 { Actor = actor, Action = (int)WiredAvatarAction.Lay });
+            }
+            // Observed on AIR WIN63-202610201032-107964540: stepping onto a sit tile fires User Performs Action - Sit in the same tick.
+            else if (!wasSitting && actor.HasStatus("sit") && IsHere(actor, location)) {
+                _room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)
+                { Actor = actor, Action = (int)WiredAvatarAction.Sit, Code = -1 });
             }
         }
     }

@@ -117,7 +117,8 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             2 => WiredAvatarAction.Kiss,
             3 => WiredAvatarAction.Laugh,
             5 => WiredAvatarAction.Relax,
-            7 => WiredAvatarAction.ThumbUp,
+            // Observed on AIR WIN63-202610201032-107964540: the respect expression fires User Performs Action - Respect. Expression 67 fires nothing.
+            7 => WiredAvatarAction.Respect,
             _ => (WiredAvatarAction)0
         };
 

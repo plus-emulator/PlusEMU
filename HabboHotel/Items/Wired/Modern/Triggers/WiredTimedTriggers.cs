@@ -18,7 +18,7 @@ public sealed class WiredTimedTriggers
     {
         var units = config.IntParams.IsDefaultOrEmpty ? 1 : config.IntParams[0];
 
-        if (units < 1) {
+        if (units < (name == "wf_trg_at_given_time" ? 0 : 1)) {
             return false;
         }
 

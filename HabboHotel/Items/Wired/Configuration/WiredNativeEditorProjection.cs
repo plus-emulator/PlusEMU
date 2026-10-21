@@ -154,6 +154,12 @@ public static class WiredNativeEditorProjection
         }
 
         var metadata = Metadata(descriptor.CanonicalName);
+
+        // Observed on AIR WIN63-202610201032-107964540: a user source the box does not offer is refused with its own key.
+        if (WiredConditionStoreRules.UserSourceRefusal(descriptor.CanonicalName, native, metadata) is { } unofferedUserSource) {
+            return unofferedUserSource;
+        }
+
         var allowed = metadata.FurniAllowed;
 
         if (native.FurniSourceTypes.Length == allowed.Length
@@ -362,14 +368,12 @@ public static class WiredNativeEditorProjection
             }
         }
 
-        // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).
-        // Observed on AIR WIN63-202610151745-318700621 (r97_mdate_store, r97_inverted_store): Date Matches stores a year range whose end
-        // is before its start with the end raised to the start (9999..0 reads back 9999..9999); its day range and Time Matches' hour and
-        // minute ranges keep an inverted order.
-        if (name == "wf_cnd_match_date" && native.OwnedIntParams.Length == 8 && native.OwnedIntParams[7] < native.OwnedIntParams[6]) {
-            native = native with { OwnedIntParams = native.OwnedIntParams.SetItem(7, native.OwnedIntParams[6]) };
+        // Observed on AIR WIN63-202610201032-107964540: these boxes store a save in a normal form instead of refusing odd values.
+        if (WiredConditionStoreRules.Applies(name) && Supports(name)) {
+            native = WiredConditionStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 
+        // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).
         // Observed on AIR WIN63-202610151745-318700621: the area selectors store each of x, y, width and height clamped to 0..64
         // (-5 reads back 0, 500 reads back 64) instead of refusing the save.
         if (name is "wf_slc_furni_area" or "wf_slc_users_area" && native.OwnedIntParams.Length == 4) {

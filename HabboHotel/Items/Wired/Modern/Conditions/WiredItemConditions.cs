@@ -62,7 +62,8 @@ public static class WiredItemConditions
 
         var targetHundredths = (long)Math.Round(target * 100, MidpointRounding.AwayFromZero);
 
-        return WiredRoomOperations.Quantify(items.Select(item => WiredRoomOperations.Compare(
+        // Observed on AIR WIN63-202610201032-107964540: a stored comparison of 3 always passes.
+        return WiredRoomOperations.Quantify(items.Select(item => Param(config, 0, 1) == 3 || WiredRoomOperations.Compare(
             (long)Math.Round(item.GetZ * 100, MidpointRounding.AwayFromZero), targetHundredths,
             Param(config, 0, 1))), Param(config, 2));
     }

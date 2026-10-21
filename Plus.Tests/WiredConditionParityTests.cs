@@ -19,11 +19,12 @@ namespace Plus.Tests;
 public sealed partial class WiredConditionParityTests
 {
     [Fact]
-    public void CounterTimeKeepsMinuteZeroAndRejectsValuesOutsideTheEditor()
+    public void CounterTimeKeepsMinuteZeroAndStoresValuesOutsideTheEditorClamped()
     {
+        // Observed on AIR WIN63-202610201032-107964540: minutes above 99 and seconds above 59 are stored as 99 and 59, not refused.
         Assert.True(Validates(0, 0));
-        Assert.False(Validates(100, 0));
-        Assert.False(Validates(99, 120));
+        Assert.True(Validates(100, 0));
+        Assert.True(Validates(99, 120));
         Assert.Equal((true, false), (Executes(0, 0, 0), Executes(0, 0, 500)));
     }
 

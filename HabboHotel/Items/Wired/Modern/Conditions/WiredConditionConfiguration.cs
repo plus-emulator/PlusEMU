@@ -191,7 +191,7 @@ public static class WiredConditionConfiguration
                 furni["comparison"] = p[1];
                 break;
             case "wf_cnd_has_altitude":
-                if (p.Length != 3 || !Range(0, 0, 2) || !F(1) || !Q(2)
+                if (p.Length != 3 || !Range(0, 0, 3) || !F(1) || !Q(2)
                     || !WiredRoomOperations.TryAltitude(proposed.Text, out _)) {
                     return false;
                 }
@@ -240,7 +240,7 @@ public static class WiredConditionConfiguration
                 users["users"] = p[3];
                 break;
             case "wf_cnd_counter_time_matches":
-                if (p.Length != 5 || !Range(0, 0, 2) || !Range(1, 0, 99) || !Range(2, 0, 119) || !F(3) || !Q(4)) {
+                if (p.Length != 5 || !Range(0, 0, 3) || !Range(1, 0, 99) || !Range(2, 0, 119) || !F(3) || !Q(4)) {
                     return false;
                 }
 

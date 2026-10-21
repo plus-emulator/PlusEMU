@@ -18,7 +18,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The Collectibles hub on a fresh install with Database/Migrations/108_CollectiblesHub.sql applied twice, driven through the packet
+// The Collectibles hub on a fresh install with Database/Migrations/109_CollectiblesHub.sql applied twice, driven through the packet
 // handlers. Layouts follow AIR WIN63-202610201032-107964540 (communication/messages/parser/collectibles).
 // Choices for details the spec leaves open:
 // - Reading a wallet that is not the user's (score, collections, mint tokens) sends nothing. Actions on such a wallet answer with
@@ -1121,7 +1121,7 @@ public sealed class CollectiblesHubTests
             await using var connection = new MySqlConnection(options.ConnectionString);
             await connection.OpenAsync();
 
-            foreach (var file in new[] { "Database/FreshInstall.sql", "Database/Migrations/108_CollectiblesHub.sql", "Database/Migrations/108_CollectiblesHub.sql" }) {
+            foreach (var file in new[] { "Database/FreshInstall.sql", "Database/Migrations/109_CollectiblesHub.sql", "Database/Migrations/109_CollectiblesHub.sql" }) {
                 foreach (var statement in SqlScript.Split(await File.ReadAllTextAsync(HabbiconPacketTests.Repo(file)))) {
                     await connection.ExecuteAsync(statement, commandTimeout: 300);
                 }

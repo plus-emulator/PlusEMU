@@ -306,6 +306,36 @@ public sealed class WiredChestGiveG2Tests
         Assert.Single(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.RoomNotificationComposer);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a give from a locked chest answers the triggering user with WiredTransactionFail 15.
+    // The wired.error dialog goes to every user in the room, at most once per 20 s for the whole room.
+    [Fact]
+    public void TheTransactionFailureDialogGoesToEveryUserOnceForTheWholeRoom()
+    {
+        using var world = new Scene();
+        var now = 100000L;
+        var engine = typeof(WiredComponent).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(world.Room.GetWired())!;
+        engine.GetType().GetField("_now", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(engine, new Func<long>(() => now));
+        var box = world.GiveFromStockedChest("wf_act_give_currency");
+        world.Store.Chests[FirstChest].Locked = true;
+        var visitor = world.AddUser(2, 8);
+        int Dialogs(List<(uint Header, byte[] Payload)> packets) => packets.Count(packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.RoomNotificationComposer);
+        int Failures(List<(uint Header, byte[] Payload)> packets) => packets.Count(packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.WiredTransactionFailComposer);
+
+        Assert.False(box.Execute(world.Context(visitor.Actor)));
+        Assert.Equal((1, 0), (Failures(visitor.Packets), Failures(world.Packets)));
+        Assert.Equal((1, 1), (Dialogs(visitor.Packets), Dialogs(world.Packets)));
+
+        // The window is shared: the owner's failure 19 s later shows no dialog, one 21 s after the first shows it to both again.
+        now += 19000;
+        Assert.False(box.Execute(world.Context(world.Actor)));
+        Assert.Equal((1, 1), (Failures(world.Packets), Dialogs(world.Packets)));
+        Assert.Equal(1, Dialogs(visitor.Packets));
+        now += 2000;
+        Assert.False(box.Execute(world.Context(world.Actor)));
+        Assert.Equal((2, 2), (Failures(world.Packets), Dialogs(world.Packets)));
+        Assert.Equal(2, Dialogs(visitor.Packets));
+    }
+
     [Fact]
     public void GiveChecksTheTradeLockOnlyForTheUserWhoHasIt()
     {

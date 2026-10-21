@@ -1,0 +1,1 @@
+-- Habbo's Collectibles hub content.

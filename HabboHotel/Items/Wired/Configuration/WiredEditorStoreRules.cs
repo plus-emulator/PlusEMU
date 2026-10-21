@@ -29,7 +29,7 @@ internal static class WiredEditorStoreRules
     // Boxes with one picked variable (or two for the filters by variable): a save with no variable takes the empty slots.
     private static readonly FrozenSet<string> VariableBoxes = new[]
     {
-        "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var", ScanChest, TextVariable, "wf_act_init_transaction"
+        "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var", ScanChest, TextVariable, "wf_act_init_transaction", "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type"
     }.ToFrozenSet();
 
     // Boxes that answer a user source they do not offer with its own key.

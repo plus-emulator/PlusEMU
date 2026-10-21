@@ -125,7 +125,8 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             _ => (WiredAvatarAction)0
         };
 
-        if (wiredAction is WiredAvatarAction.Wave or WiredAvatarAction.Respect) {
+        // Observed on AIR WIN63-202610151745-318700621: the sleep expression also counts for 2 s only, though the avatar stays asleep.
+        if (wiredAction is WiredAvatarAction.Wave or WiredAvatarAction.Relax or WiredAvatarAction.Respect) {
             user.RecentExpression = ((int)wiredAction, clock.GetUtcNow() + RecentExpressionWindow);
         }
 

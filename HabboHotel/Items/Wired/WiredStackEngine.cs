@@ -539,8 +539,13 @@ internal sealed partial class WiredStackEngine
         // Observed on AIR WIN63-202610151745-318700621: Control Clock (Start) and Give Score To Team in one stack give the score in the
         // game they start, with the give above or below the clock (6 of 6); a score given with no game running is lost.
         ["wf_act_give_score"] = ["wf_act_control_clock"],
-        ["wf_act_give_score_tm"] = ["wf_act_control_clock"]
+        ["wf_act_give_score_tm"] = ["wf_act_control_clock"],
+        // Observed on AIR WIN63-202610201032-107964540: an Adjust Clock Set runs after the Increase and Decrease of the same firing,
+        // whatever the box order (18 of 18). Two Sets still run in a random order.
+        [AdjustClockSet] = ["wf_act_adjust_clock"]
     };
+
+    private const string AdjustClockSet = "wf_act_adjust_clock:set";
 
     // Moves each constrained effect just behind the last effect it must follow; all other effects keep their relative order.
     private static void ApplyDefaultPrecedence((IWiredItem Box, long Delay)[] effects, int[] ranks)
@@ -548,11 +553,11 @@ internal sealed partial class WiredStackEngine
         var order = Enumerable.Range(0, effects.Length).OrderBy(index => ranks[index]).ToList();
 
         foreach (var later in order.ToArray()) {
-            if (!DefaultRunsAfter.TryGetValue(EffectName(effects[later].Box), out var earlier)) {
+            if (!DefaultRunsAfter.TryGetValue(PrecedenceKey(effects[later].Box), out var earlier)) {
                 continue;
             }
 
-            var last = order.FindLastIndex(index => earlier.Contains(EffectName(effects[index].Box)));
+            var last = order.FindLastIndex(index => earlier.Contains(PrecedenceKey(effects[index].Box)));
             var at = order.IndexOf(later);
 
             if (last > at) {
@@ -566,7 +571,9 @@ internal sealed partial class WiredStackEngine
         }
     }
 
-    private static string EffectName(IWiredItem box) => box is IWiredConfiguredItem configured ? configured.Descriptor.CanonicalName
+    private static string PrecedenceKey(IWiredItem box) => box is IWiredConfiguredItem configured
+        ? configured.Descriptor.CanonicalName == "wf_act_adjust_clock" && configured.Configuration.IntParams is [2, ..] ? AdjustClockSet
+            : configured.Descriptor.CanonicalName
         : WiredBoxRegistry.TryGetByLegacyType(box.Type, out var descriptor) ? descriptor.CanonicalName : "";
 
     // Legacy-only extensions retain their existing synchronous/parallel delay contract.

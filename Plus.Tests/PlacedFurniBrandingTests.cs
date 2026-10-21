@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text;
+using Plus.Core.Settings;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Items.Wired;
@@ -31,12 +32,12 @@ public partial class PlacedFurniRoomTests
             Assert.Empty(ObjectUpdates());
         });
 
-        new RoomItemMetadataService(store, null!).SetBranding(_client, new(20, Pairs("a", "1", "b", "2")));
+        new RoomItemMetadataService(store, null!).SetBranding(_client, new(20, Pairs("offsetX", "1", "offsetY", "2")));
 
-        Assert.Equal((1, 20u, RoomId, "state\t0\na\t1\nb\t2"), (store.Writes, store.ItemId, store.RoomId, store.Data));
-        Assert.Equal("state\t0\na\t1\nb\t2", item.ExtraData.Serialize());
+        Assert.Equal((1, 20u, RoomId, "state\t0\noffsetX\t1\noffsetY\t2"), (store.Writes, store.ItemId, store.RoomId, store.Data));
+        Assert.Equal("state\t0\noffsetX\t1\noffsetY\t2", item.ExtraData.Serialize());
         var update = Assert.Single(ObjectUpdates());
-        Assert.True(update.Body.AsSpan().IndexOf(Encode("state", "0", "a", "1", "b", "2")) >= 0);
+        Assert.True(update.Body.AsSpan().IndexOf(Encode("state", "0", "offsetX", "1", "offsetY", "2")) >= 0);
         Assert.True(MovedItems().ContainsKey(20));
     }
 
@@ -49,7 +50,7 @@ public partial class PlacedFurniRoomTests
         item.SetState(99, 99, 0);
         var store = new BrandingStore();
 
-        new RoomItemMetadataService(store, null!).SetBranding(_client, new(21, Pairs("a", "1")));
+        new RoomItemMetadataService(store, null!).SetBranding(_client, new(21, Pairs("offsetX", "1")));
 
         Assert.Equal(0, store.Writes);
         Assert.Equal("old\tvalue", item.ExtraData.Serialize());
@@ -67,7 +68,7 @@ public partial class PlacedFurniRoomTests
         var before = (item.GetX, item.GetY, item.GetZ, item.Rotation);
         var store = new BrandingStore { Fail = true };
 
-        Assert.Throws<InvalidOperationException>(() => new RoomItemMetadataService(store, null!).SetBranding(_client, new(22, Pairs("a", "1"))));
+        Assert.Throws<InvalidOperationException>(() => new RoomItemMetadataService(store, null!).SetBranding(_client, new(22, Pairs("offsetX", "1"))));
 
         Assert.Equal(1, store.Writes);
         Assert.Equal("old\tvalue", item.ExtraData.Serialize());
@@ -101,7 +102,7 @@ public partial class PlacedFurniRoomTests
         {
             "image" => Pairs("url", "https://example.invalid/x.png"),
             "missing-map" => null,
-            _ => Pairs("a", "1"),
+            _ => Pairs("offsetX", "1"),
         };
         var store = new BrandingStore();
 
@@ -168,6 +169,131 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0, store.Writes);
         Assert.Equal("old\tvalue", item.ExtraData.Serialize());
         Assert.Empty(ObjectUpdates());
+    }
+
+    [Fact]
+    public void BackgroundClampsNumbersAndDropsUnknownKeys()
+    {
+        var item = PlacedBranding(27, InteractionType.Background);
+        Recipient();
+        var store = new BrandingStore();
+
+        new RoomItemMetadataService(store, null!).SetBranding(_client, new(27, Pairs(
+            "imageUrl", "", "offsetX", "99999", "offsetY", "-99999", "offsetZ", "5000", "scale", "9999", "alpha", "-5", "extra", "1", "state", "7")));
+
+        Assert.Equal(new Dictionary<string, string>
+        {
+            ["state"] = "0",
+            ["imageUrl"] = "",
+            ["offsetX"] = "10000",
+            ["offsetY"] = "-10000",
+            ["offsetZ"] = "1000",
+            ["scale"] = "500",
+            ["alpha"] = "0"
+        }, Assert.IsType<MapDataFormat>(item.ExtraData).Data);
+        Assert.Equal(1, store.Writes);
+    }
+
+    [Fact]
+    public void BackgroundTreatsAnEmptyOffsetAsZero()
+    {
+        var item = PlacedBranding(28, InteractionType.Background);
+        Recipient();
+
+        new RoomItemMetadataService(new BrandingStore(), null!).SetBranding(_client, new(28, Pairs("offsetX", "", "offsetY", " 4 ")));
+
+        var data = Assert.IsType<MapDataFormat>(item.ExtraData).Data;
+        Assert.Equal(("0", "4"), (data["offsetX"], data["offsetY"]));
+    }
+
+    [Theory]
+    [InlineData("offsetX", "abc")]
+    [InlineData("offsetY", "1.5")]
+    [InlineData("offsetZ", "99999999999999999999")]
+    [InlineData("scale", "big")]
+    [InlineData("alpha", "50%")]
+    public void BackgroundRejectsNumbersThatAreNotWholeNumbersAndTellsTheUser(string key, string value)
+    {
+        var item = PlacedBranding(29, InteractionType.Background);
+        Recipient();
+        item.ExtraData = new MapDataFormat(new() { ["old"] = "value" });
+        var store = new BrandingStore();
+
+        new RoomItemMetadataService(store, null!).SetBranding(_client, new(29, Pairs(key, value)));
+
+        Assert.Equal(0, store.Writes);
+        Assert.Equal("old\tvalue", item.ExtraData.Serialize());
+        Assert.Empty(ObjectUpdates());
+        Assert.Contains(ServerPacketHeader.BroadcastMessageAlertComposer, _client.Sent);
+    }
+
+    [Theory]
+    [InlineData("https://images.example/a.png", true)]
+    [InlineData("https://IMAGES.example/a.png", true)]
+    [InlineData("https://cdn.test/a.png", true)]
+    [InlineData("https://eu.cdn.test/path/a.png", true)]
+    [InlineData("https://evil.example/a.png", false)]
+    [InlineData("https://notimages.example/a.png", false)]
+    [InlineData("https://images.example.evil.test/a.png", false)]
+    [InlineData("https://images.example@evil.test/a.png", false)]
+    [InlineData("https://user:pw@images.example/a.png", false)]
+    public void BackgroundImageHostMustBeOnTheConfiguredList(string imageUrl, bool allowed)
+    {
+        PlacedBranding(30, InteractionType.Background);
+        Recipient();
+        var store = new BrandingStore();
+        var service = new RoomItemMetadataService(store, null!, new Settings(" images.example , *.cdn.test,cdn.test "));
+
+        service.SetBranding(_client, new(30, Pairs("imageUrl", imageUrl)));
+
+        Assert.Equal(allowed ? 1 : 0, store.Writes);
+        Assert.Equal(!allowed, _client.Sent.Contains(ServerPacketHeader.BroadcastMessageAlertComposer));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("0")]
+    [InlineData("  , ")]
+    public void BackgroundImageHostIsFreeWhenTheListIsEmpty(string setting)
+    {
+        PlacedBranding(31, InteractionType.Background);
+        Recipient();
+        var store = new BrandingStore();
+
+        new RoomItemMetadataService(store, null!, new Settings(setting)).SetBranding(_client, new(31, Pairs("imageUrl", "https://any.example/a.png")));
+
+        Assert.Equal(1, store.Writes);
+    }
+
+    [Fact]
+    public void BackgroundClickAddressIsNotHeldToTheImageHostList()
+    {
+        PlacedBranding(32, InteractionType.Background);
+        Recipient();
+        var store = new BrandingStore();
+
+        new RoomItemMetadataService(store, null!, new Settings("images.example")).SetBranding(_client, new(32, Pairs("clickUrl", "https://elsewhere.example/")));
+
+        Assert.Equal(1, store.Writes);
+    }
+
+    [Fact]
+    public void BackgroundRejectsAnImageAddressThatIsTooLong()
+    {
+        PlacedBranding(33, InteractionType.Background);
+        Recipient();
+        var store = new BrandingStore();
+
+        new RoomItemMetadataService(store, null!).SetBranding(_client, new(33, Pairs("imageUrl", "https://images.example/" + new string('a', 600))));
+
+        Assert.Equal(0, store.Writes);
+    }
+
+    private sealed class Settings(string allowedHosts) : ISettingsManager
+    {
+        public string TryGetValue(string value) => value == FurniExtraData.BackgroundAllowedHostsSetting ? allowedHosts : "0";
+        public string? GetOptionalValue(string key) => TryGetValue(key);
+        public Task Reload() => Task.CompletedTask;
     }
 
     [Theory]

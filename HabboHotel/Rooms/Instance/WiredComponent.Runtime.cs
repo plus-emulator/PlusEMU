@@ -260,15 +260,17 @@ public partial class WiredComponent
     }
 
     // Observed on AIR WIN63-202610151745-318700621: a give from picked chests none of which is usable (518 reason 15) writes a DEBUG
-    // line to the room log each time. The triggering user also gets NotificationDialog wired.error transaction_failure, at most once
-    // per 20 s (none 19.0 s after the last one, one 20.5 s after), and each dialog adds one TRANSACTION_FAILURE to the monitor and an
-    // ERROR line before that failure's DEBUG line. A failure inside the window does not restart it.
+    // line to the room log each time. The wired.error dialog TRANSACTION_FAILURE shows at most once per 20 s (none 19.0 s after the last
+    // one, one 20.5 s after), and each dialog adds one TRANSACTION_FAILURE to the monitor and an ERROR line before that failure's DEBUG
+    // line. A failure inside the window does not restart it. Observed on AIR WIN63-202610201032-107964540: the dialog goes to every user
+    // in the room, whoever triggered the failure, and the 20 s window is shared by the whole room.
     private const long TransactionFailureCooldownMs = 20000;
-    private readonly Dictionary<int, long> _lastTransactionFailureMs = [];
+    private long? _lastTransactionFailureMs;
+    private readonly object _transactionFailureGate = new();
 
     internal void ReportTransactionFailure(RoomUser actor, uint sourceId)
     {
-        if (actor.GetClient() is not { } client || client.GetHabbo() is not { } habbo) {
+        if (actor.GetClient()?.GetHabbo() is not { } habbo) {
             return;
         }
 
@@ -276,16 +278,16 @@ public partial class WiredComponent
         var at = _clock.GetUtcNow();
         bool show;
 
-        lock (_lastTransactionFailureMs) {
-            show = !_lastTransactionFailureMs.TryGetValue(habbo.Id, out var last) || now - last >= TransactionFailureCooldownMs;
+        lock (_transactionFailureGate) {
+            show = _lastTransactionFailureMs is not { } last || now - last >= TransactionFailureCooldownMs;
 
             if (show) {
-                _lastTransactionFailureMs[habbo.Id] = now;
+                _lastTransactionFailureMs = now;
             }
         }
 
         if (show) {
-            client.Send(new Plus.Communication.Packets.Outgoing.Rooms.Notifications.RoomNotificationComposer("wired.error", new Dictionary<string, string>
+            _room.SendPacket(new Plus.Communication.Packets.Outgoing.Rooms.Notifications.RoomNotificationComposer("wired.error", new Dictionary<string, string>
             {
                 ["image"] = "${image.library.url}album1584/WIRD2.png",
                 ["message"] = "${room.error.wired.transaction_failure}"

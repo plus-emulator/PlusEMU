@@ -78,6 +78,15 @@ public class WiredChestBox : WiredModernBox
             return false;
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: Initiate Transaction picks its chests from the first pick list, and a save with no
+        // chest there is refused with the chest key.
+        if (Descriptor.CanonicalName == "wf_act_init_transaction" && proposed.FurniSources.GetValueOrDefault("f0", 100) == 100
+            && !proposed.SelectedItems.Any(id => Instance.GetRoomItemHandler().GetItem(id) is { } item && Chests.Read(item) is not null)) {
+            error = "wiredfurni.error.require_chests";
+
+            return false;
+        }
+
         if (Descriptor.CanonicalName is not ("wf_cnd_chest_has_item_type" or "wf_xtra_scan_chest_furni_by_type")) {
             return true;
         }

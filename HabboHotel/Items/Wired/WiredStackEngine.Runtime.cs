@@ -62,7 +62,54 @@ internal sealed partial class WiredStackEngine
     /// Observed on AIR WIN63-202610201032-107964540: while a wired disabler is on, no wired runs in the room: no trigger fires and
     /// the repeaters and timers stand still. Placing and saving boxes still works.
     /// </summary>
-    private bool Disabled => _runtimeRoom is { } room && ConfigurationItemStates.WiredDisabled(room);
+    private bool Disabled
+    {
+        get
+        {
+            var disabled = _runtimeRoom is { } room && ConfigurationItemStates.WiredDisabled(room);
+            TrackDisabled(disabled);
+
+            return disabled;
+        }
+    }
+
+    private long? _disabledSince;
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a delay that is running when the disabler goes on is paused and goes on with the time
+    /// it had left once the disabler is off. Time stands still in whole room ticks: every waiting step moves later by the ticks that passed.
+    /// </summary>
+    private void TrackDisabled(bool disabled)
+    {
+        if (disabled) {
+            _disabledSince ??= _now();
+
+            return;
+        }
+
+        if (_disabledSince is not { } since) {
+            return;
+        }
+
+        _disabledSince = null;
+        const long Tick = WiredFlashStates.StateUpdateMilliseconds;
+        var paused = (_now() / Tick - since / Tick) * Tick;
+
+        if (paused <= 0) {
+            return;
+        }
+
+        var waiting = _schedule.UnorderedItems.ToArray();
+        _schedule.Clear();
+
+        foreach (var (element, priority) in waiting) {
+            _schedule.Enqueue(element, (priority.Due + paused, priority.Height, priority.Id, priority.Firing, priority.Order));
+        }
+
+        foreach (var chain in _pending.Where(chain => chain.FirstResumeAt != null)) {
+            chain.FirstResumeAt += paused;
+        }
+    }
 
     public bool Enqueue(WiredRuntimeEvent @event, int? depth = null) => Pass(() => !Disabled && EnqueueCore(@event, depth));
 

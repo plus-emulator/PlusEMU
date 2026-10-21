@@ -107,7 +107,7 @@ public partial class ModernWiredRuntimeTests
         }
 
         foreach (var name in WiredConditionConfiguration.PositiveNames.Concat(WiredConditionConfiguration.NegativeNames.Keys)) {
-            Assert.True(WiredConditionConfiguration.TryValidate(name, WiredConditionConfiguration.Defaults(name, 2040), out _, out _), name);
+            Assert.True(WiredConditionConfiguration.TryValidate(name, WiredConditionConfiguration.Defaults(name), out _, out _), name);
         }
 
         uint mappedItemId = 100;

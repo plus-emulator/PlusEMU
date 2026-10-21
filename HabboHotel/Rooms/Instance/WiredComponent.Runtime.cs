@@ -111,8 +111,7 @@ public partial class WiredComponent
             box = new WiredModernCondition(_room, item, descriptor, _groups, ReadCounterMilliseconds,
                 descriptor.CanonicalName is "wf_cnd_match_time" or "wf_cnd_match_date" ? () => ConditionCalendarTime
                     : descriptor.CanonicalName == "wf_cnd_date_rng_active" ? () => CalendarTime : () => _clock.GetUtcNow());
-            defaults = WiredConditionConfiguration.Defaults(descriptor.CanonicalName,
-                calendarYear ?? 0);
+            defaults = WiredConditionConfiguration.Defaults(descriptor.CanonicalName);
         }
         else if (descriptor.Category == WiredBoxCategory.Action && WiredModernAction.Supports(descriptor.CanonicalName)) {
             var action = new WiredModernAction(_room, item, descriptor, _counters, @event => Dispatch(@event),

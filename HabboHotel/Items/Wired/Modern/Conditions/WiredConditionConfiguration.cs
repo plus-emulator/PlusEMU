@@ -34,7 +34,7 @@ public static class WiredConditionConfiguration
     };
     public static bool Supports(string name) => PositiveNames.Contains(name) || NegativeNames.ContainsKey(name);
 
-    public static WiredConfiguration Defaults(string name, int calendarYear)
+    public static WiredConfiguration Defaults(string name)
     {
         var positive = NegativeNames.GetValueOrDefault(name, name);
         ImmutableArray<int> parameters = positive switch
@@ -59,7 +59,7 @@ public static class WiredConditionConfiguration
             "wf_cnd_time_less_than" or "wf_cnd_time_more_than" => [0],
             "wf_cnd_date_rng_active" => [0, 0],
             "wf_cnd_match_time" => [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            "wf_cnd_match_date" => [127, 0, 1, 31, 4095, 0, calendarYear, calendarYear],
+            "wf_cnd_match_date" => [127, 0, 1, 31, 4095, 0, 0, 0],
             "wf_cnd_user_level" => [1, 1, 0],
             _ => throw new ArgumentException("Unknown condition.", nameof(name))
         };

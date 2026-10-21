@@ -125,6 +125,20 @@ public sealed class MessengerFriendMutationDatabaseTests(MessengerFriendSchema s
     }
 
     [MessengerFriendDatabaseFact]
+    public async Task FriendCountCountsEachMirroredFriendshipOnce()
+    {
+        Account(9151);
+        Account(9152);
+        Execute("INSERT INTO messenger_requests (from_id, to_id) VALUES (9152, 9151)");
+        var loader = Loader();
+
+        Assert.Null((await loader.AcceptFriendRequest(9151, 9152)).Error);
+
+        Assert.Equal(1, await loader.GetFriendCount(9151));
+        Assert.Equal(1, await loader.GetFriendCount(9152));
+    }
+
+    [MessengerFriendDatabaseFact]
     public async Task ConcurrentAcceptsOfOnePairCommitExactlyOnce()
     {
         Account(9201);

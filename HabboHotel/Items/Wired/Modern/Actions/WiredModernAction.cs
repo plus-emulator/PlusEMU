@@ -1066,6 +1066,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
     }
 
     // Observed on hhus: the kick applies avatar effect 4 on the next 500 ms state update and removes the user 2000 ms after the firing.
+    // Observed on AIR WIN63-202610201032-107964540: the removal sends no GenericError and closes with the short 2.
     private void Kick(WiredRuntimeContext context, RoomUser user, GameClient client)
     {
         var room = context.Room;
@@ -1074,7 +1075,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         void Remove()
         {
             if (user.IsAttachedTo(room)) {
-                room.GetRoomUserManager().RemoveUserFromRoom(client, true, true);
+                room.GetRoomUserManager().RemoveUserFromRoom(client, true, closeReason: KickCloseReason);
             }
         }
 
@@ -1096,6 +1097,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
     private const int KickEffectId = 4;
     private const int KickRemoveMilliseconds = 2000;
+    private const short KickCloseReason = 2;
     private const int TeleportEffectId = 4;
     private const int FastTeleportEffectId = 235;
 

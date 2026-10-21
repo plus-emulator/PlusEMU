@@ -161,7 +161,9 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         // A turn on the spot is a plain ObjectUpdate. Observed r92g r92-move-rotate mrCw-w1/mrCcw-w1 (AIR WIN63-202610131318-860371703,
         // frames 39269/39535): no WiredMovements for a rotation without a move.
-        if (x == item.GetX && y == item.GetY && height == null && rotation != item.Rotation) {
+        // Observed on AIR WIN63-202610201032-107964540: furni stacked on one tile that turn together also send ObjectUpdate, although
+        // the ones above the bottom one land on a new height.
+        if (x == item.GetX && y == item.GetY && rotation != item.Rotation) {
             options = options with { Animate = false };
         }
 

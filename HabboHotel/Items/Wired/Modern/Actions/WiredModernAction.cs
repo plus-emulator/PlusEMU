@@ -409,6 +409,12 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 movers = movers.Where(item => item.IsFloorItem).ToArray();
             }
 
+            var flashedBox = false;
+
+            if (name == "wf_act_toggle_state") {
+                movers = WiredToggleStateTargets.Resolve(movers, box => context.Room.GetWired().OnEvent(box), out flashedBox);
+            }
+
             var passengers = WiredRoomMovement.CapturePassengers(context, movers);
 
             var targets = config.FurniSources.ContainsKey("targets") ? Furni(context, config, "targets", name == "wf_act_furni_to_furni"
@@ -471,7 +477,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 context.Publication?.Reorder(movers);
             }
 
-            return movedAny;
+            return movedAny || flashedBox;
         }
 
         // Reset timers always covers the whole room, unlimited, so it resolves its own targets.
@@ -711,6 +717,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 return changed;
             case "wf_act_move_rotate_user":
+                var turns = new List<WiredUserDirectionComposer>();
+
                 foreach (var user in Users(context, config, "users")) {
                     if (Param(config, 0) >= 0) {
                         var offset = WiredRoomOperations.Offset(Param(config, 0));
@@ -736,8 +744,22 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         user.UpdateNeeded = true;
                     }
 
-                    context.Room.SendPacket(new WiredUserDirectionComposer(user.VirtualId, rotation, rotation));
+                    var turn = new WiredUserDirectionComposer(user.VirtualId, rotation, rotation);
+
+                    // Observed on AIR WIN63-202610201032-107964540: a turn without a move of every user of one box goes out in one
+                    // WiredMovements. A turn that follows a move keeps its own packet.
+                    if (Param(config, 0) < 0) {
+                        turns.Add(turn);
+                    }
+                    else {
+                        context.Room.SendPacket(turn);
+                    }
+
                     changed = true;
+                }
+
+                if (turns.Count != 0) {
+                    context.Room.SendPacket(new WiredMovementBatchComposer([], turns));
                 }
 
                 return changed;

@@ -15,7 +15,8 @@ namespace Plus.Tests;
 /// </summary>
 internal sealed class WiredRawSave : IDisposable
 {
-    internal sealed record Result(string Answer, string? Key, int[] Ints, string Text, int[] Furni, int[] Users, int? Quantifier, int? Delay)
+    internal sealed record Result(string Answer, string? Key, int[] Ints, string Text, int[] Furni, int[] Users, int? Quantifier, int? Delay,
+        string[]? Variables = null)
     {
         public bool Accepted => Answer == "ok";
 
@@ -115,7 +116,7 @@ internal sealed class WiredRawSave : IDisposable
         var metadata = WiredNativeEditorProjection.Metadata(_descriptor.CanonicalName);
 
         return new(answer, key, [.. native.OwnedIntParams], native.Text, [.. Padded(native.FurniSourceTypes, metadata.FurniDefaults)],
-            [.. Padded(native.UserSourceTypes, metadata.UserDefaults)], native.Quantifier, native.Delay);
+            [.. Padded(native.UserSourceTypes, metadata.UserDefaults)], native.Quantifier, native.Delay, [.. native.VariableIds]);
     }
 
     // The frame pads a short source list with the defaults, as WiredLegacyProtocol.Write does.

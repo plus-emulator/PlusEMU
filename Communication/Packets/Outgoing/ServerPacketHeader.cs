@@ -23,6 +23,26 @@ public static class ServerPacketHeader
     public const uint UserNftWardrobeComposer = 1345; // package_210/class_3851
     public const uint SelectedNftWardrobeOutfitComposer = 3758; // package_210/class_3356
 
+    // Collectibles hub
+    public const uint CollectibleWalletAddressesComposer = 2681; // package_65/class_2945
+    public const uint CollectorScoreComposer = 1598; // package_65/class_2689
+    public const uint NftCollectionsComposer = 3181; // package_65/class_3665
+    public const uint NftCollectionBonusClaimResultComposer = 3325; // package_65/class_3852
+    public const uint NftCollectionRewardClaimResultComposer = 352; // package_65/class_3012
+    public const uint NftStoreOffersComposer = 3287; // package_65/class_3532
+    public const uint NftStorePurchaseResultComposer = 358; // package_65/class_2220
+    public const uint CollectibleMintableItemTypesComposer = 749; // package_65/class_3177
+    public const uint CollectibleMintingEnabledComposer = 2689; // package_65/class_2619
+    public const uint MintTokenOffersComposer = 2636; // package_65/class_3284
+    public const uint CollectibleMintTokensComposer = 768; // package_65/class_3021
+    public const uint MintCollectibleResultComposer = 1072; // package_65/class_3081
+    public const uint NftTransferFeeComposer = 682; // package_65/class_3560
+    public const uint NftTransferResultComposer = 2056; // package_65/class_2461
+    public const uint NftClaimsComposer = 3065; // package_65/class_3805
+    public const uint NftClaimResultComposer = 3539; // package_65/class_2793
+    public const uint SilverBalanceComposer = 2182; // package_65/class_2288
+    public const uint EmeraldBalanceComposer = 2789; // package_65/class_2134
+
     // Catalog
     public const uint CatalogIndexComposer = 1462;
     public const uint CatalogItemDiscountComposer = 853;

@@ -877,6 +877,175 @@ CREATE TABLE `club_paydays` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `collectible_collections`
+--
+
+DROP TABLE IF EXISTS `collectible_collections`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collectible_collections` (
+  `id` varchar(64) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `boost_score` int(11) NOT NULL DEFAULT 0,
+  `bonus_product_code` varchar(64) DEFAULT NULL,
+  `reward_product_code` varchar(64) DEFAULT NULL,
+  `released_at` datetime DEFAULT NULL,
+  `snapshot_at` datetime DEFAULT NULL,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `enabled` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `collectible_levels`
+--
+
+DROP TABLE IF EXISTS `collectible_levels`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collectible_levels` (
+  `level` int(11) NOT NULL,
+  `min_score` int(11) NOT NULL,
+  PRIMARY KEY (`level`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `collectible_mint_token_offers`
+--
+
+DROP TABLE IF EXISTS `collectible_mint_token_offers`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collectible_mint_token_offers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_code` varchar(64) NOT NULL,
+  `silver_price` int(11) NOT NULL,
+  `amount_tokens` int(11) NOT NULL,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `enabled` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `collectible_mintable_items`
+--
+
+DROP TABLE IF EXISTS `collectible_mintable_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collectible_mintable_items` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `item_type` enum('s','i') NOT NULL,
+  `sprite_id` int(11) NOT NULL,
+  `product_code` varchar(64) NOT NULL,
+  `token_price` int(11) NOT NULL,
+  `starts_at` datetime DEFAULT NULL,
+  `ends_at` datetime DEFAULT NULL,
+  `region_locked` tinyint(1) NOT NULL DEFAULT 0,
+  `limited_edition` tinyint(1) NOT NULL DEFAULT 0,
+  `enabled` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `collectible_mintable_items_sprite` (`item_type`,`sprite_id`),
+  KEY `collectible_mintable_items_product_fk` (`product_code`),
+  CONSTRAINT `collectible_mintable_items_product_fk` FOREIGN KEY (`product_code`) REFERENCES `collectible_products` (`product_code`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `collectible_products`
+--
+
+DROP TABLE IF EXISTS `collectible_products`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collectible_products` (
+  `product_code` varchar(64) NOT NULL,
+  `collection_id` varchar(64) DEFAULT NULL,
+  `product_type` smallint(6) NOT NULL,
+  `item_type_id` varchar(64) NOT NULL,
+  `score` int(11) NOT NULL DEFAULT 0,
+  `rarity` varchar(32) NOT NULL DEFAULT '',
+  `pet_figure` varchar(255) NOT NULL DEFAULT '',
+  `figure_set_ids` varchar(255) NOT NULL DEFAULT '',
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`product_code`),
+  KEY `collectible_products_collection` (`collection_id`),
+  CONSTRAINT `collectible_products_collection_fk` FOREIGN KEY (`collection_id`) REFERENCES `collectible_collections` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `collectible_reward_claims`
+--
+
+DROP TABLE IF EXISTS `collectible_reward_claims`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collectible_reward_claims` (
+  `claim_id` varchar(64) NOT NULL,
+  `product_code` varchar(64) NOT NULL,
+  `set_id` varchar(64) NOT NULL,
+  `set_name` varchar(100) NOT NULL,
+  `min_level` int(11) NOT NULL DEFAULT 1,
+  `claim_limit` int(11) NOT NULL DEFAULT 1,
+  `valid_from` datetime NOT NULL,
+  `valid_to` datetime NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`claim_id`),
+  KEY `collectible_reward_claims_product_fk` (`product_code`),
+  CONSTRAINT `collectible_reward_claims_product_fk` FOREIGN KEY (`product_code`) REFERENCES `collectible_products` (`product_code`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `collectible_shop_offers`
+--
+
+DROP TABLE IF EXISTS `collectible_shop_offers`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collectible_shop_offers` (
+  `product_code` varchar(64) NOT NULL,
+  `emerald_price` int(11) NOT NULL,
+  `is_featured` tinyint(1) NOT NULL DEFAULT 0,
+  `is_limited` tinyint(1) NOT NULL DEFAULT 0,
+  `mint_limit` int(11) NOT NULL DEFAULT -1,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `enabled` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`product_code`),
+  CONSTRAINT `collectible_shop_offers_product_fk` FOREIGN KEY (`product_code`) REFERENCES `collectible_products` (`product_code`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `collectible_wallets`
+--
+
+DROP TABLE IF EXISTS `collectible_wallets`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collectible_wallets` (
+  `address` varchar(42) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `is_collector` tinyint(1) NOT NULL DEFAULT 0,
+  `collector_user_id` int(11) GENERATED ALWAYS AS (if(`is_collector` = 1,`user_id`,NULL)) STORED,
+  `mint_tokens` int(11) NOT NULL DEFAULT 0,
+  `highest_score` int(11) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`address`),
+  UNIQUE KEY `collectible_wallets_id` (`id`),
+  UNIQUE KEY `collectible_wallets_one_collector` (`collector_user_id`),
+  KEY `collectible_wallets_user` (`user_id`),
+  CONSTRAINT `collectible_wallets_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `crafting_altars_recipes`
 --
 
@@ -2676,6 +2845,65 @@ CREATE TABLE `user_club_memberships` (
   `gifts_claimed` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`user_id`),
   CONSTRAINT `fk_user_club_memberships_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_collectible_collection_claims`
+--
+
+DROP TABLE IF EXISTS `user_collectible_collection_claims`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_collectible_collection_claims` (
+  `wallet_address` varchar(42) NOT NULL,
+  `collection_id` varchar(64) NOT NULL,
+  `kind` enum('bonus','reward') NOT NULL,
+  `claimed_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`wallet_address`,`collection_id`,`kind`),
+  KEY `user_collectible_collection_claims_collection` (`collection_id`),
+  CONSTRAINT `user_collectible_collection_claims_collection_fk` FOREIGN KEY (`collection_id`) REFERENCES `collectible_collections` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `user_collectible_collection_claims_wallet_fk` FOREIGN KEY (`wallet_address`) REFERENCES `collectible_wallets` (`address`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_collectible_reward_claims`
+--
+
+DROP TABLE IF EXISTS `user_collectible_reward_claims`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_collectible_reward_claims` (
+  `wallet_address` varchar(42) NOT NULL,
+  `claim_id` varchar(64) NOT NULL,
+  `claimed_amount` int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`wallet_address`,`claim_id`),
+  KEY `user_collectible_reward_claims_claim` (`claim_id`),
+  CONSTRAINT `user_collectible_reward_claims_claim_fk` FOREIGN KEY (`claim_id`) REFERENCES `collectible_reward_claims` (`claim_id`) ON DELETE CASCADE,
+  CONSTRAINT `user_collectible_reward_claims_wallet_fk` FOREIGN KEY (`wallet_address`) REFERENCES `collectible_wallets` (`address`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_collectibles`
+--
+
+DROP TABLE IF EXISTS `user_collectibles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_collectibles` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `wallet_address` varchar(42) NOT NULL,
+  `product_code` varchar(64) NOT NULL,
+  `serial_number` int(11) NOT NULL,
+  `source` enum('shop','mint','collection_reward','collection_bonus','reward_claim','staff') NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_collectibles_serial` (`product_code`,`serial_number`),
+  KEY `user_collectibles_wallet` (`wallet_address`),
+  CONSTRAINT `user_collectibles_product_fk` FOREIGN KEY (`product_code`) REFERENCES `collectible_products` (`product_code`),
+  CONSTRAINT `user_collectibles_wallet_fk` FOREIGN KEY (`wallet_address`) REFERENCES `collectible_wallets` (`address`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -84084,6 +84312,36 @@ INSERT INTO `club_gift_offers` VALUES
 UNLOCK TABLES;
 
 --
+-- Dumping data for table `collectible_levels`
+--
+
+LOCK TABLES `collectible_levels` WRITE;
+/*!40000 ALTER TABLE `collectible_levels` DISABLE KEYS */;
+INSERT INTO `collectible_levels` VALUES
+(1,0),
+(2,100),
+(3,250),
+(4,500),
+(5,1000),
+(6,1750),
+(7,2750),
+(8,4000),
+(9,5500),
+(10,7500),
+(11,10000),
+(12,13000),
+(13,16500),
+(14,20500),
+(15,25000),
+(16,30000),
+(17,36000),
+(18,43000),
+(19,51000),
+(20,60000);
+/*!40000 ALTER TABLE `collectible_levels` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Dumping data for table `crafting_altars_recipes`
 --
 
@@ -105550,6 +105808,8 @@ INSERT INTO `server_settings` VALUES
 ('club.limit.visitors.member','75'),
 ('club.limit.visitors.normal','50'),
 ('club.payday.percentage','10'),
+('collectibles.minting.enabled','1'),
+('collectibles.transfer.fee','0'),
 ('gamecenter.game.leave.block.seconds','180'),
 ('gamecenter.games.free.daily','10'),
 ('gamecenter.snowwar.arenas','8,9,11'),

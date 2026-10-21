@@ -18,6 +18,25 @@ public static class ClientPacketHeader
     public const uint GetSelectedNftWardrobeOutfitEvent = 3707; // package_34/class_3910
     public const uint SaveUserNftWardrobeEvent = 2036; // package_34/SaveUserNftWardrobeMessageComposer
 
+    // Collectibles hub
+    public const uint GetCollectibleWalletAddressesEvent = 3112; // package_13/class_3119
+    public const uint GetCollectorScoreEvent = 3283; // package_13/class_2800
+    public const uint GetNftCollectionsEvent = 2267; // package_13/class_3300
+    public const uint ClaimNftCollectionBonusEvent = 2709; // package_13/class_3745
+    public const uint ClaimNftCollectionRewardEvent = 1471; // package_13/class_3681
+    public const uint GetNftStoreOffersEvent = 1112; // package_13/class_2974
+    public const uint PurchaseNftStoreOfferEvent = 2065; // package_13/class_1790
+    public const uint GetCollectibleMintableItemTypesEvent = 446; // package_13/class_3377
+    public const uint GetCollectibleMintingEnabledEvent = 264; // package_13/class_3511
+    public const uint GetMintTokenOffersEvent = 3070; // package_13/class_2755
+    public const uint GetCollectibleMintTokensEvent = 2050; // package_13/class_3835
+    public const uint PurchaseMintTokensEvent = 3760; // package_13/class_2093
+    public const uint MintCollectibleEvent = 1663; // package_13/class_3662
+    public const uint GetNftTransferFeeEvent = 3678; // package_13/class_3686
+    public const uint TransferNftsEvent = 1589; // package_13/class_2699
+    public const uint GetNftClaimsEvent = 1590; // package_13/class_3567
+    public const uint ClaimNftRewardsEvent = 2855; // package_13/class_2817
+
     //Preferences
     public const uint SetChatStylePreferenceEvent = 1615;
     public const uint SetChatPreferenceEvent = 65476;

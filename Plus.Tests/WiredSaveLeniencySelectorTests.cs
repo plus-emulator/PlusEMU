@@ -23,7 +23,7 @@ public sealed class WiredSaveLeniencySelectorTests
     }
 
     [Fact]
-    public void FurniAltitudeClampsTheAltitudeToZeroTo8000AndKeepsComparisonsZeroToFour()
+    public void FurniAltitudeClampsTheAltitudeToZeroTo8000AndKeepsComparisonsZeroToFive()
     {
         const string name = "wf_slc_furni_altitude";
 
@@ -31,11 +31,11 @@ public sealed class WiredSaveLeniencySelectorTests
             Expect(name, [sent, 0], [stored, 0]);
         }
 
-        foreach (var comparison in new[] { 0, 1, 2, 3, 4 }) {
+        foreach (var comparison in new[] { 0, 1, 2, 3, 4, 5 }) {
             Expect(name, [100, comparison], [100, comparison]);
         }
 
-        foreach (var comparison in new[] { -1, 5, 100, int.MaxValue }) {
+        foreach (var comparison in new[] { -1, 6, 100, int.MaxValue }) {
             Expect(name, [100, comparison], [100, 0]);
         }
 

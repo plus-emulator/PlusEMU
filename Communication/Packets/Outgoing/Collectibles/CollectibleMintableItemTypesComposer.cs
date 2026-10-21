@@ -3,13 +3,13 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.Collectibles;
 
-/// <summary>A furni that can be minted: its type ("s" floor, "i" wall), sprite, the product it becomes, price in mint tokens and window.</summary>
-public sealed record MintableItem(int Id, string ItemType, int SpriteId, string ProductCode, int TokenPrice, DateTimeOffset? StartsAt,
+/// <summary>A furni that can be minted: its type ("s" floor, "i" wall), sprite, the product it becomes, price in Emeralds and window.</summary>
+public sealed record MintableItem(int Id, string ItemType, int SpriteId, string ProductCode, int EmeraldPrice, DateTimeOffset? StartsAt,
     DateTimeOffset? EndsAt, bool RegionLocked, bool LimitedEdition);
 
 /// <summary>
 /// AIR collectibles/class_4328.as:26-30 and class_4398.as:23-47: per item its sprite, start and end in unix seconds (0 = none), region lock,
-/// price, limited edition and type (0 floor, 1 wall, 2 clothing).
+/// price, limited edition and type (0 floor, 1 wall, 2 clothing). AIR reads the price as mint tokens; this hotel sends Emeralds.
 /// </summary>
 public sealed class CollectibleMintableItemTypesComposer(ImmutableArray<MintableItem> items) : IServerPacket
 {
@@ -24,7 +24,7 @@ public sealed class CollectibleMintableItemTypesComposer(ImmutableArray<Mintable
             packet.WriteInteger(UnixSeconds(item.StartsAt));
             packet.WriteInteger(UnixSeconds(item.EndsAt));
             packet.WriteBoolean(item.RegionLocked);
-            packet.WriteInteger(item.TokenPrice);
+            packet.WriteInteger(item.EmeraldPrice);
             packet.WriteBoolean(item.LimitedEdition);
             packet.WriteShort((short)(item.ItemType == "i" ? 1 : 0));
         }

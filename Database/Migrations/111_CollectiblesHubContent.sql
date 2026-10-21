@@ -317,8 +317,7 @@ INSERT INTO collectible_mintables_111 (item_type, item_name, product_code, token
 ('s', 'paris15_poodle', 'nft_paris15_poodle', 1, '2026-08-06 06:00:00', '2026-11-10 10:00:00', 0, 0, 71), ('s', 'bonusrare16_1*1', 'nft_bonusrare16_1*1', 1, '2026-08-06 06:00:00', '2026-11-10 10:00:00', 0, 0, 72),
 ('s', 'bonusrare16_2*2', 'nft_bonusrare16_2*2', 1, '2026-08-06 06:00:00', '2026-11-10 10:00:00', 0, 0, 73), ('s', 'rare_r24_htuberchair', 'nft_rare_r24_htuberchair', 1, '2026-08-06 06:00:00', '2026-11-10 10:00:00', 0, 0, 74);
 
--- A FreshInstall.sql rebuilt after 113 has emerald_price instead of token_price. Those relics get 50 Emeralds per Curator Stamp, the
--- price 113 gives every other hotel.
+-- A FreshInstall.sql rebuilt after 113 has emerald_price instead of token_price, so those relics get 50 Emeralds per Curator Stamp.
 SET @collectibles_111_token_price = EXISTS(SELECT 1 FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'collectible_mintable_items' AND COLUMN_NAME = 'token_price');
 SET @collectibles_111_mintables_sql = CONCAT(

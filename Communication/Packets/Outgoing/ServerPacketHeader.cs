@@ -33,7 +33,6 @@ public static class ServerPacketHeader
     public const uint NftStorePurchaseResultComposer = 358; // package_65/class_2220
     public const uint CollectibleMintableItemTypesComposer = 749; // package_65/class_3177
     public const uint CollectibleMintingEnabledComposer = 2689; // package_65/class_2619
-    public const uint CollectibleMintTokensComposer = 768; // package_65/class_3021
     public const uint MintCollectibleResultComposer = 1072; // package_65/class_3081
     public const uint NftClaimsComposer = 3065; // package_65/class_3805
     public const uint NftClaimResultComposer = 3539; // package_65/class_2793

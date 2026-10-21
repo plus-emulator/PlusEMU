@@ -160,19 +160,20 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(1, 1), resident.Coordinate);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a Bot Move to the furni the bot already stands on raises no Bot Reaches Furni.
     [Fact]
-    public void BotMoveOnAFurniTheBotAlreadyStandsOnArrivesOnTheNextPoll()
+    public void BotMoveOnAFurniTheBotAlreadyStandsOnRaisesNoArrival()
     {
         using var f = new TeleportFixture(actionName: "wf_act_bot_move", intParams: [100, 100], text: "Bobby");
-        var bot = AddNamedBot(f, 9, "Bobby", 1, 1);
+        AddNamedBot(f, 9, "Bobby", 1, 1);
         f.Fire();
-        var arrival = Assert.Single(WiredBotTargets.For(f.Room).Poll(f.Room));
-        Assert.Equal(WiredEventKind.BotReachedFurni, arrival.Kind);
-        Assert.Same(bot, arrival.Actor);
+        Assert.Empty(WiredBotTargets.For(f.Room).Poll(f.Room));
+        Assert.False(WiredBotTargets.For(f.Room).HasTargets);
     }
 
+    // The arrival is raised when the step onto the furni is announced, not by the poll.
     [Fact]
-    public void BotMoveSendsTheBotWalkingAndRaisesOneArrivalOnTheFurni()
+    public void BotMoveSendsTheBotWalkingAndStopsItOnTheFurni()
     {
         using var f = new TeleportFixture(actionName: "wf_act_bot_move", intParams: [100, 100], text: "Bobby");
         var bot = AddNamedBot(f, 9, "Bobby", 2, 2);
@@ -184,10 +185,6 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(1, 1), bot.BotData.TargetCoordinate);
         Assert.Empty(targets.Poll(f.Room));
         bot.SetPos(1, 1, 0);
-        var arrival = Assert.Single(targets.Poll(f.Room));
-        Assert.Equal(WiredEventKind.BotReachedFurni, arrival.Kind);
-        Assert.Same(bot, arrival.Actor);
-        Assert.Same(f.Target, arrival.EventItem);
         Assert.Empty(targets.Poll(f.Room));
         Assert.False(bot.BotData.ForcedMovement);
         Assert.False(targets.HasTargets);

@@ -106,6 +106,42 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: the three contracts place from the Builders Club "Contracts" page.
+    [Theory]
+    [InlineData(InteractionType.WiredContractPayment)]
+    [InlineData(InteractionType.WiredContractTrade)]
+    [InlineData(InteractionType.WiredContractReward)]
+    public async Task AContractIsPlacedFromTheBuildersClub(InteractionType contract)
+    {
+        Viewer();
+        var (service, store, page) = BuildersClub();
+        page.Offers[BuildersClubOfferId].Product.Definition!.InteractionType = contract;
+
+        await new BuildersClubPlaceRoomItemEvent(service).Parse(_room, _client, ClientPacket(BuildersClubPageId, BuildersClubOfferId, "", 1, 1, 0, true));
+
+        Assert.Single(store.Created);
+        Assert.True(Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor).IsBuildersClub);
+        Assert.Contains(ServerPacketHeader.ObjectAddComposer, _client.Sent);
+        Assert.Contains(ServerPacketHeader.BuildersClubFurniCountComposer, _client.Sent);
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: a Builders Club placement of a chest gets no answer at all.
+    [Theory]
+    [InlineData(InteractionType.WiredChestFurni)]
+    [InlineData(InteractionType.WiredChestCoins)]
+    public async Task AChestIsRefusedSilentlyByTheBuildersClub(InteractionType chest)
+    {
+        Viewer();
+        var (service, store, page) = BuildersClub();
+        page.Offers[BuildersClubOfferId].Product.Definition!.InteractionType = chest;
+
+        await new BuildersClubPlaceRoomItemEvent(service).Parse(_room, _client, ClientPacket(BuildersClubPageId, BuildersClubOfferId, "", 1, 1, 0, true));
+
+        Assert.Empty(store.Created);
+        Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
+        Assert.Empty(_client.Sent);
+    }
+
     [Fact]
     public void TheInfoStandCopyNamesTheBuildersClubOfferWithoutAPage()
     {

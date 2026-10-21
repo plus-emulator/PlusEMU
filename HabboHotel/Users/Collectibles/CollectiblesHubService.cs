@@ -2,6 +2,8 @@ using System.Collections.Immutable;
 using System.Data;
 using System.Security.Cryptography;
 using Dapper;
+using Plus.Communication.Packets;
+using Plus.Communication.Packets.Outgoing.Catalog;
 using Plus.Communication.Packets.Outgoing.Collectibles;
 using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.Core.Settings;
@@ -70,7 +72,8 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
     {
         Moved = 0,
         NotALinkedWallet = 1,
-        NotEnoughSilver = 2
+        NotEnoughSilver = 2,
+        NothingToTransfer = 3
     }
 
     public Task SendWallets(GameClient session) => Run(session, habbo =>
@@ -175,10 +178,16 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
             bought = habbo.WalletClosed ? null : TryBuyMintTokens(habbo, offerId, wallet);
         }
 
-        if (bought is { } result) {
-            session.Send(new SilverBalanceComposer(result.Silver));
-            session.Send(new CollectibleMintTokensComposer(result.Tokens));
+        // AIR HabboCatalog.as onPurchaseOK and onPurchaseError close the purchase dialog the token offer opened.
+        if (bought is not { } result) {
+            session.Send(new PurchaseErrorComposer(PurchaseError.Rejected));
+
+            return;
         }
+
+        session.Send(new SilverBalanceComposer(result.Silver));
+        session.Send(new CollectibleMintTokensComposer(result.Tokens));
+        session.Send(new PurchaseOKComposer());
     });
 
     public Task Mint(GameClient session, int itemId, string wallet) => Run(session, habbo =>
@@ -256,12 +265,16 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
             var open = ReachableClaims(connection, transaction, collector.Address, Book(connection, transaction, collector.Address).Level)
                 .Where(claim => claim.Open).ToList();
 
+            // AIR RewardCollectibleItemRenderer.as:41 shows the remaining amount (limit - claimed), and claiming gives all of it.
             foreach (var claim in open) {
                 connection.Execute("""
-                    INSERT INTO user_collectible_reward_claims (wallet_address, claim_id, claimed_amount) VALUES (@address, @claimId, 1)
-                    ON DUPLICATE KEY UPDATE claimed_amount = claimed_amount + 1
-                    """, new { address = collector.Address, claimId = claim.ClaimId }, transaction);
-                Grant(connection, transaction, collector.Address, claim.ProductCode, "reward_claim");
+                    INSERT INTO user_collectible_reward_claims (wallet_address, claim_id, claimed_amount) VALUES (@address, @claimId, @limit)
+                    ON DUPLICATE KEY UPDATE claimed_amount = @limit
+                    """, new { address = collector.Address, claimId = claim.ClaimId, limit = claim.ClaimLimit }, transaction);
+
+                for (var i = claim.Claimed; i < claim.ClaimLimit; i++) {
+                    Grant(connection, transaction, collector.Address, claim.ProductCode, "reward_claim");
+                }
             }
 
             transaction.Commit();
@@ -397,11 +410,17 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
 
         var collector = CollectorWallet(connection, transaction, habbo.Id, forUpdate: true);
 
+        if (connection.ExecuteScalar<long>("SELECT COUNT(*) FROM user_collectibles WHERE wallet_address = @collector FOR UPDATE",
+                new { collector = collector.Address }, transaction) == 0) {
+            return (TransferResult.NothingToTransfer, 0);
+        }
+
         if (Spend(connection, transaction, habbo, ActivityPointType.Silver, TransferFee) is not { } silver) {
             return (TransferResult.NotEnoughSilver, 0);
         }
 
-        connection.Execute("UPDATE user_collectibles SET wallet_address = @collector WHERE wallet_address = @linked",
+        // collectibles.transfer.description: "Transfer all of your collectibles from your Collector Wallet to your selected Metamask wallet".
+        connection.Execute("UPDATE user_collectibles SET wallet_address = @linked WHERE wallet_address = @collector",
             new { collector = collector.Address, linked = linked.Address }, transaction);
         transaction.Commit();
         habbo.Currencies[ActivityPointType.Silver] = silver;

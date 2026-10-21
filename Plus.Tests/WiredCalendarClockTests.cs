@@ -82,7 +82,9 @@ public class WiredCalendarClockTests
         };
         Assert.True(WiredNativeEditorProjection.TryCompile(1, date, dateNative, out var dateConfig));
         Assert.True(WiredTimeConditions.MatchesDate(dateConfig, instant));
-        Assert.False(WiredNativeEditorProjection.TryCompile(1, time, timeNative with { Text = "Not/AZone" }, out _));
+        // Observed on AIR WIN63-202610201032-107964540: a timezone the hotel does not know is stored as empty, not refused.
+        Assert.True(WiredNativeEditorProjection.TryCompile(1, time, timeNative with { Text = "Not/AZone" }, out var invalidZone));
+        Assert.Equal("", invalidZone.Text);
     }
 
     private sealed class CountingClock : TimeProvider

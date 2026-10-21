@@ -16,7 +16,7 @@ namespace Plus.Tests;
 internal sealed class WiredRawSave : IDisposable
 {
     internal sealed record Result(string Answer, string? Key, int[] Ints, string Text, int[] Furni, int[] Users, int? Quantifier, int? Delay,
-        string[]? Variables = null)
+        string[]? Variables = null, IReadOnlyDictionary<string, string>? ErrorParameters = null)
     {
         public bool Accepted => Answer == "ok";
 
@@ -98,6 +98,7 @@ internal sealed class WiredRawSave : IDisposable
         _handler.Parse(_player.Client, EditorTestSupport.Incoming([.. body])).GetAwaiter().GetResult();
         var answer = "none";
         string? key = null;
+        Dictionary<string, string>? parameters = null;
 
         foreach (var packet in _player.Packets) {
             if (packet.Header == ServerPacketHeader.HideWiredConfigComposer) {
@@ -105,11 +106,37 @@ internal sealed class WiredRawSave : IDisposable
             }
             else if (packet.Header == ServerPacketHeader.WiredValidationErrorComposer) {
                 answer = "error";
-                key = Encoding.UTF8.GetString(packet.Payload, 2, (packet.Payload[0] << 8) | packet.Payload[1]);
+                (key, parameters) = ReadError(packet.Payload);
             }
         }
 
-        return Stored(answer, key);
+        return Stored(answer, key) with { ErrorParameters = parameters };
+    }
+
+    // A key, then a count of (placeholder, value) string pairs, as WiredValidationErrorComposer writes them.
+    private static (string Key, Dictionary<string, string> Parameters) ReadError(byte[] payload)
+    {
+        var offset = 0;
+
+        string ReadString()
+        {
+            var length = (payload[offset] << 8) | payload[offset + 1];
+            var text = Encoding.UTF8.GetString(payload, offset + 2, length);
+            offset += 2 + length;
+
+            return text;
+        }
+
+        var key = ReadString();
+        var count = (payload[offset] << 24) | (payload[offset + 1] << 16) | (payload[offset + 2] << 8) | payload[offset + 3];
+        offset += 4;
+        var parameters = new Dictionary<string, string>();
+
+        for (var index = 0; index < count; index++) {
+            parameters[ReadString()] = ReadString();
+        }
+
+        return (key, parameters);
     }
 
     /// <summary>What the editor shows now: the stored form, as the open-editor frame carries it.</summary>

@@ -379,8 +379,9 @@ public static class WiredNativeEditorProjection
             native = WiredConditionStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a text and ints a box does not read are accepted and dropped.
-        if (WiredSaveLeniency.Applies(name) && Supports(name)) {
+        // Observed on AIR WIN63-202610201032-107964540: a text and ints a box does not read are accepted and dropped. Only a new save is
+        // fitted; a stored row loads in the form it was saved in.
+        if (!storedRow && WiredSaveLeniency.Applies(name) && Supports(name)) {
             native = WiredSaveLeniency.Normalize(name, native);
         }
 
@@ -395,7 +396,7 @@ public static class WiredNativeEditorProjection
         }
 
         // Observed on AIR WIN63-202610201032-107964540: these selectors store a save in a normal form instead of refusing odd values.
-        if (WiredSelectorStoreRules.Applies(name) && Supports(name)) {
+        if (!storedRow && WiredSelectorStoreRules.Applies(name) && Supports(name)) {
             native = WiredSelectorStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 

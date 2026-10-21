@@ -36,8 +36,10 @@ public static class WiredAddonConfiguration
                 break;
             case "wf_xtra_filter_furni":
             case "wf_xtra_filter_users":
+                // Observed on AIR WIN63-202610201032-107964540: Filter Users also stores the trigger context user sources 10 and 11.
                 if (c.IntParams.Length != 5 || P(1) is not (0 or 1) || P(2) is < 0 or > 3
-                    || P(3) is not (0 or 200 or 201) || P(4) is not (0 or 100 or 101 or 200 or 201)) {
+                    || P(3) is not (0 or 200 or 201) && !(name == "wf_xtra_filter_users" && P(3) is 10 or 11)
+                    || P(4) is not (0 or 100 or 101 or 200 or 201)) {
                     throw new ArgumentException("Invalid quantity filter operand configuration");
                 }
 

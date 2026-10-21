@@ -40,21 +40,21 @@ public class CatalogStructureWireTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void UserPerksListTheHabboPerksInOrderWithTheirDenialKeys(bool cameraAllowed)
+    public void UserPerksListTheHabboPerksInOrderWithADenialKeyOnlyWhenDenied(bool cameraAllowed)
     {
         var packet = new HabbiconTestSupport.RecordingPacket();
 
         new UserPerksComposer(cameraAllowed).Compose(packet);
 
-        // Observed on AIR WIN63-202610201032-107964540: 12 perks, and the denial key is sent even when the perk is denied.
+        // Observed on AIR WIN63-202610201032-107964540: 12 perks, and the denial key is empty for an allowed perk.
         var perks = packet.Writes.Skip(1).Chunk(3).Select(perk => ((string)perk[0], (string)perk[1], (bool)perk[2])).ToArray();
         Assert.Equal(12, packet.Writes[0]);
         Assert.Equal(1 + 12 * 3, packet.Writes.Count);
         Assert.Equal(
             [
-                ("JUDGE_CHAT_REVIEWS", "requirement.unfulfilled.helper_level_6", true),
+                ("JUDGE_CHAT_REVIEWS", "", true),
                 ("NAVIGATOR_PHASE_TWO_2014", "", true),
-                ("TRADE", "requirement.unfulfilled.citizenship_level_3", true),
+                ("TRADE", "", true),
                 ("CALL_ON_HELPERS", "", false),
                 ("CITIZEN", "", true),
                 ("BUILDER_AT_WORK", "requirement.unfulfilled.group_membership", false),
@@ -62,7 +62,7 @@ public class CatalogStructureWireTests
                 ("USE_GUIDE_TOOL", "requirement.unfulfilled.helper_level_4", false),
                 ("MOUSE_ZOOM", "", true),
                 ("NAVIGATOR_ROOM_THUMBNAIL_CAMERA", "", cameraAllowed),
-                ("VOTE_IN_COMPETITIONS", "requirement.unfulfilled.helper_level_2", true),
+                ("VOTE_IN_COMPETITIONS", "", true),
                 ("CAMERA", "", cameraAllowed)
             ],
             perks);

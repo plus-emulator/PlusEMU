@@ -29,6 +29,25 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("Robbie\thr-100.hd-180-1.ch-210-66.lg-270-82.sh-290-80", Assert.Single(f.Store.Saves).Text);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: Bot Clothes saves an empty figure and reads it back as an empty figure.
+    [Theory]
+    [InlineData("Robbie\t")]
+    [InlineData("\t")]
+    public async Task BotClothesSavesAnEmptyFigure(string text)
+    {
+        var f = new MovementOracleSession("wf_act_bot_clothes");
+        f.Client.GetHabbo().Gender = "M";
+        f.Client.GetHabbo().Clothing = new ClothingComponent();
+        var figures = new FigureDataManager(NullLogger<FigureDataManager>.Instance);
+        figures.Init();
+
+        await new SaveWiredEffectConfigEvent(new WiredConfigurationService(f.Store, figures, null!, TestLogging.For<WiredConfigurationService>()))
+            .Parse(f.Client, Request(100, 0, text, 0, 0, 0, 1, 100, 0, 0));
+
+        Assert.Contains(f.Client.Packets, packet => packet.Header == ServerPacketHeader.HideWiredConfigComposer);
+        Assert.Equal(text, Assert.Single(f.Store.Saves).Text);
+    }
+
     [Theory]
     [InlineData("wf_act_show_message", 11)]
     [InlineData("wf_act_furni_to_user", 10)]

@@ -13,20 +13,30 @@ internal static class WiredEditorStoreRules
     public const string UserSourceKey = "wiredfurni.error.invalid_user_source";
     public const string ChestSourceKey = "wiredfurni.error.require_furni_chests";
     private const string ScanChest = "wf_xtra_scan_chest_furni_by_type";
+    private const string TextVariable = "wf_xtra_text_output_variable";
+    private const string TextFurniName = "wf_xtra_text_output_furni_name";
+    private const string PlaceholderKey = "wiredfurni.error.placeholder.";
+    public const string VariableCountKey = "wiredfurni.error.invalid_variable_count";
 
     private static readonly FrozenSet<string> Boxes = new[]
     {
         "wf_xtra_execution_limit", "wf_xtra_unseen", "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var",
         "wf_xtra_or_eval", "wf_xtra_rotate_to_dir", ScanChest, "wf_act_teleport_to_room", "wf_trg_at_given_time", "wf_trg_period_long",
         "wf_trg_user_performs_action", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action", "wf_act_match_to_sshot",
-        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type"
+        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type", TextVariable, TextFurniName
+    }.ToFrozenSet();
+
+    // Boxes with one picked variable (or two for the filters by variable): a save with no variable takes the empty slots.
+    private static readonly FrozenSet<string> VariableBoxes = new[]
+    {
+        "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var", ScanChest, TextVariable
     }.ToFrozenSet();
 
     // Boxes that answer a user source they do not offer with its own key.
     private static readonly FrozenSet<string> UserSourceKeyed = new[]
     {
         "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var", "wf_xtra_rotate_to_dir",
-        "wf_act_teleport_to_room", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action"
+        "wf_act_teleport_to_room", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action", TextVariable
     }.ToFrozenSet();
 
     // The action codes the hotel keeps: the ones the client offers, the unoffered 9 and the client expression 67.
@@ -91,6 +101,16 @@ internal static class WiredEditorStoreRules
                 ints[2] = Target(ints[2]);
                 ints[3] = ints[3] is >= 0 and <= 5 ? ints[3] : 0;
                 break;
+            // Observed on AIR WIN63-202610201032-107964540: the text output boxes store any non-zero flag as 1, and a target the editor
+            // does not offer as 0.
+            case TextVariable:
+                ints[0] = ints[0] == 0 ? 0 : 1;
+                ints[1] = Target(ints[1]);
+                ints[2] = ints[2] == 0 ? 0 : 1;
+                break;
+            case TextFurniName:
+                ints[0] = ints[0] == 0 ? 0 : 1;
+                break;
             case ScanChest:
                 ints[0] = ints[0] == 0 ? 0 : 1;
                 text = "";
@@ -116,9 +136,84 @@ internal static class WiredEditorStoreRules
         return native with { OwnedIntParams = name is "wf_xtra_unseen" or "wf_act_teleport_to_room" ? [] : ints.ToImmutable(), Text = text };
     }
 
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a save that names fewer variables than the box has slots keeps the empty slot for
+    /// each one it leaves out.
+    /// </summary>
+    public static WiredNativeEditorConfiguration PadVariables(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
+        VariableBoxes.Contains(name) && !native.VariableIds.IsDefault && native.VariableIds.Length < metadata.VariableDefaults.Length
+            ? native with { VariableIds = [.. native.VariableIds, .. metadata.VariableDefaults.Skip(native.VariableIds.Length)] }
+            : native;
+
+    /// <summary>
+    /// The text of a new Text Output save in its stored form. Observed on AIR WIN63-202610201032-107964540: the name is lower case, a
+    /// single placeholder keeps the name only and a placeholder for several values keeps the name and the delimiter. Text after a second
+    /// tab is cut. A stored row is read as it is.
+    /// </summary>
+    public static WiredNativeEditorConfiguration NormalizeNewSave(string name, WiredNativeEditorConfiguration native)
+    {
+        if (name is not (TextVariable or TextFurniName) || native.OwnedIntParams.IsDefaultOrEmpty) {
+            return native;
+        }
+
+        var parts = native.Text.Split('\t');
+        var placeholder = parts[0].ToLowerInvariant();
+
+        return native with { Text = native.OwnedIntParams[0] == 0 ? placeholder : placeholder + "\t" + (parts.Length > 1 ? parts[1] : "") };
+    }
+
+    /// <summary>
+    /// The key of a Text Output name or delimiter the hotel refuses on a new save, or null. Observed on AIR WIN63-202610201032-107964540:
+    /// the name has 1 to 40 characters of a-z, 0-9 and _ in lower case (capitals are lowered first) and is not "trigger_text"; the
+    /// delimiter of a placeholder for several values has 1 to 5 characters.
+    /// </summary>
+    public static string? PlaceholderRefusal(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata)
+    {
+        if (name is not (TextVariable or TextFurniName) || native.OwnedIntParams.IsDefaultOrEmpty) {
+            return null;
+        }
+
+        // A box left on its frame (no name, the default ints, no variable) is not a save: a new box starts there.
+        if (native.Text.Length == 0 && native.OwnedIntParams.SequenceEqual(metadata.OwnedDefaults)
+            && native.VariableIds.All(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Is)) {
+            return null;
+        }
+
+        var parts = native.Text.Split('\t');
+        var placeholder = parts[0].ToLowerInvariant();
+
+        if (placeholder.Length is 0 or > 40) {
+            return PlaceholderKey + "name_length";
+        }
+
+        if (!placeholder.All(c => c is >= 'a' and <= 'z' or >= '0' and <= '9' or '_')) {
+            return PlaceholderKey + "name_syntax";
+        }
+
+        if (placeholder == "trigger_text") {
+            return PlaceholderKey + "reserved";
+        }
+
+        if (native.OwnedIntParams[0] == 0) {
+            return null;
+        }
+
+        var delimiter = parts.Length > 1 ? parts[1] : "";
+
+        return delimiter.Length == 0 ? PlaceholderKey + "delimiter_empty" : delimiter.Length > 5 ? PlaceholderKey + "delimiter_length" : null;
+    }
+
     /// <summary>The key of a source the hotel refuses with its own wording, or null.</summary>
     public static string? SourceRefusal(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata)
     {
+        if (VariableBoxes.Contains(name) && !native.VariableIds.IsDefault && native.VariableIds.Length > metadata.VariableDefaults.Length) {
+            return VariableCountKey;
+        }
+
+        if (PlaceholderRefusal(name, Normalized(name, native, metadata), metadata) is { } placeholder) {
+            return placeholder;
+        }
+
         if (UserSourceKeyed.Contains(name)
             && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length
                 && !metadata.UsersAllowed[index].Contains(source) && !WiredNativeEditorProjection.AnyTriggerContext.Contains(source)).Any()) {
@@ -135,6 +230,9 @@ internal static class WiredEditorStoreRules
     /// <summary>A save the hotel answers with nothing: Scan Chest with the source value 1 for its item types.</summary>
     public static bool DroppedWithoutReply(string name, WiredNativeEditorConfiguration native) =>
         name == ScanChest && native.FurniSourceTypes is [1, ..];
+
+    private static WiredNativeEditorConfiguration Normalized(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
+        Applies(name) ? Normalize(name, native, metadata.OwnedDefaults) : native;
 
     // Missing ints take the frame default, extra ints are dropped.
     private static ImmutableArray<int> Fit(ImmutableArray<int> ints, ImmutableArray<int> defaults) =>

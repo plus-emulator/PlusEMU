@@ -356,10 +356,17 @@ public static class WiredNativeEditorProjection
 
         // Observed on AIR WIN63-202610201032-107964540: these boxes store a save in a normal form instead of refusing most odd values.
         if (WiredEditorStoreRules.Applies(name) && Supports(name)) {
+            native = WiredEditorStoreRules.PadVariables(name, native, Metadata(name));
             native = WiredEditorStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
 
-            if (!storedRow && WiredEditorStoreRules.ChestSlotRefused(name, native)) {
+            if (!storedRow && (WiredEditorStoreRules.ChestSlotRefused(name, native)
+                || WiredEditorStoreRules.PlaceholderRefusal(name, native, Metadata(name)) is not null)) {
                 return false;
+            }
+
+            // A new save keeps its text in the stored form; a stored row is read as it is.
+            if (!storedRow) {
+                native = WiredEditorStoreRules.NormalizeNewSave(name, native);
             }
         }
 

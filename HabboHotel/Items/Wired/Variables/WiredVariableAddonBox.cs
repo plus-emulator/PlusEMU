@@ -84,8 +84,14 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
                 return true;
             }
 
-            if (!WiredVariableDescription.TryParseCatalogId(id, out var parsed, out var parsedToken) || (int)parsed != target) {
+            if (!WiredVariableDescription.TryParseCatalogId(id, out var parsed, out var parsedToken)) {
                 return false;
+            }
+
+            // Observed on AIR WIN63-202610201032-107964540: a variable of another domain than the target is accepted. It reads as no
+            // variable.
+            if ((int)parsed != target) {
+                return true;
             }
 
             token = authority is null ? parsedToken : authority.TryResolveCatalogId(id, parsed, out var reference) ? reference.Token : "";
@@ -95,7 +101,7 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
 
         if (output) {
             if (p.Length != 5 || !Enum.IsDefined((WiredVariableTarget)p[0]) || p[1] is not (1 or 2) || p[2] is not (1 or 2)
-                || !Source(p[3]) || !Source(p[4]) || text.Length != 3 || text[0].Length != 0 || text[1].Length is < 1 or > 32 || text[2].Length > 16
+                || !Source(p[3]) || !Source(p[4]) || text.Length != 3 || text[0].Length != 0 || text[1].Length is < 1 or > 40 || text[2].Length > 16
                 || text[1].Contains('\n') || text[1].Contains('\r') || text[2].Contains('\n') || text[2].Contains('\r')) {
                 return false;
             }
@@ -205,5 +211,5 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
 
         return text.Replace(placeholder, replacement, StringComparison.Ordinal);
     }
-    private static bool Source(int source) => source is 0 or 11 or 100 or 101 or 200 or 201;
+    private static bool Source(int source) => source is 0 or 10 or 11 or 100 or 101 or 200 or 201;
 }

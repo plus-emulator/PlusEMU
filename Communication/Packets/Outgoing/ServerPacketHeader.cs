@@ -33,14 +33,10 @@ public static class ServerPacketHeader
     public const uint NftStorePurchaseResultComposer = 358; // package_65/class_2220
     public const uint CollectibleMintableItemTypesComposer = 749; // package_65/class_3177
     public const uint CollectibleMintingEnabledComposer = 2689; // package_65/class_2619
-    public const uint MintTokenOffersComposer = 2636; // package_65/class_3284
     public const uint CollectibleMintTokensComposer = 768; // package_65/class_3021
     public const uint MintCollectibleResultComposer = 1072; // package_65/class_3081
-    public const uint NftTransferFeeComposer = 682; // package_65/class_3560
-    public const uint NftTransferResultComposer = 2056; // package_65/class_2461
     public const uint NftClaimsComposer = 3065; // package_65/class_3805
     public const uint NftClaimResultComposer = 3539; // package_65/class_2793
-    public const uint SilverBalanceComposer = 2182; // package_65/class_2288
     public const uint EmeraldBalanceComposer = 2789; // package_65/class_2134
 
     // Catalog

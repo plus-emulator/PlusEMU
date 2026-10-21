@@ -77,11 +77,12 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(1, operations.Resets);
         var restartedAt = instant.AddMilliseconds(500);
 
-        AssertBoundary("wf_cnd_time_less_than", restartedAt.AddMilliseconds(999).ToOffset(TimeSpan.FromHours(9)), true);
-        AssertBoundary("wf_cnd_time_less_than", restartedAt.AddSeconds(1).ToOffset(TimeSpan.FromHours(9)), false);
-        AssertBoundary("wf_cnd_time_more_than", restartedAt.AddSeconds(1).ToOffset(TimeSpan.FromHours(-7)), false);
-        AssertBoundary("wf_cnd_time_more_than", restartedAt.AddMilliseconds(1001).ToOffset(TimeSpan.FromHours(-7)), false);
-        AssertBoundary("wf_cnd_time_more_than", restartedAt.AddMilliseconds(1499).ToOffset(TimeSpan.FromHours(-7)), false);
+        // Observed on AIR WIN63-202610201032-107964540: Less Than 2 passes through pulse 2 (up to 1499 ms) and More Than 2 from pulse 2 (1000 ms).
+        AssertBoundary("wf_cnd_time_less_than", restartedAt.AddMilliseconds(1499).ToOffset(TimeSpan.FromHours(9)), true);
+        AssertBoundary("wf_cnd_time_less_than", restartedAt.AddMilliseconds(1500).ToOffset(TimeSpan.FromHours(9)), false);
+        AssertBoundary("wf_cnd_time_more_than", restartedAt.AddMilliseconds(999).ToOffset(TimeSpan.FromHours(-7)), false);
+        AssertBoundary("wf_cnd_time_more_than", restartedAt.AddSeconds(1).ToOffset(TimeSpan.FromHours(-7)), true);
+        AssertBoundary("wf_cnd_time_more_than", restartedAt.AddMilliseconds(1499).ToOffset(TimeSpan.FromHours(-7)), true);
         AssertBoundary("wf_cnd_time_more_than", restartedAt.AddMilliseconds(1500).ToOffset(TimeSpan.FromHours(-7)), true);
 
         void AssertBoundary(string name, DateTimeOffset now, bool expected)

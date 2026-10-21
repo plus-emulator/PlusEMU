@@ -113,8 +113,10 @@ public interface IBotManagementService
     void ShowAction(GameClient session, int botId, int actionId);
 }
 
-public sealed class BotManagementService(IBotManagementStore store, IFigureDataManager figures) : IBotManagementService
+public sealed class BotManagementService(IBotManagementStore store, IFigureDataManager figures, Random? random = null) : IBotManagementService
 {
+    private readonly Random _random = random ?? Random.Shared;
+
     /// <summary>Observed on AIR WIN63-202610151745-318700621: a bot placed from the inventory faces direction 2.</summary>
     private const int PlacedBotRotation = 2;
 
@@ -269,7 +271,7 @@ public sealed class BotManagementService(IBotManagementStore store, IFigureDataM
                 botData.WalkingMode = mode;
                 break;
             case BotAction.Dance:
-                botData.DanceId = botData.DanceId > 0 ? 0 : Random.Shared.Next(1, 4);
+                botData.DanceId = botData.DanceId > 0 ? 0 : _random.Next(1, 4);
                 room.SendPacket(new DanceComposer(bot.VirtualId, botData.DanceId));
                 break;
             case BotAction.Rename:

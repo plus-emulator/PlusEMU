@@ -30,14 +30,13 @@ public sealed class WiredOctoberEditorParityTests
     }
 
     [Fact]
-    public void UsersByNameTakesTwentyNamesAndAThousandCharacters()
+    public void UsersByNameTakesTwentyNames()
     {
-        // The Users By Name editor is TextAreaParam(140, -1, 20, -1, 1000): one name per line, tab-saved.
+        // The Users By Name editor is TextAreaParam(140, -1, 20, -1, 1000): one name per line, tab-saved. The limits are answered by the
+        // save service (see WiredUsersByNameEditorTests).
         var twenty = string.Join('\t', Enumerable.Range(1, 20).Select(i => $"user{i}"));
         Assert.True(TryCompile("wf_slc_users_byname", native => native with { Text = twenty }));
         Assert.True(TryCompile("wf_slc_users_byname", native => native with { Text = string.Join("\r\n", Enumerable.Range(1, 20).Select(i => $"user{i}")) }));
-        Assert.False(TryCompile("wf_slc_users_byname", native => native with { Text = twenty + "\tuser21" }));
-        Assert.False(TryCompile("wf_slc_users_byname", native => native with { Text = new string('a', 1001) }));
     }
 
     [Theory]

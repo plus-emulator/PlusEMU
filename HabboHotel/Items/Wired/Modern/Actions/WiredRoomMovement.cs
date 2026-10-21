@@ -211,10 +211,18 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         }
 
         var projectile = policy.Projectile?.AppliesTo(item.Id) == true ? policy.Projectile : null;
+        var overshootMs = ProjectileOvershootMs;
 
         if (projectile != null) {
             var duration = projectile.Duration((long)item.GetX - source.X,
                 (long)item.GetY - source.Y, item.GetZ - source.Z, options.AnimationTimeMs);
+
+            // A shot that flies on sends the first step and the rest of the flight in one packet.
+            if (projectile.Distance is WiredProjectileDistance.Overshoot or WiredProjectileDistance.Fixed
+                && projectile.Flight((long)item.GetX - source.X, (long)item.GetY - source.Y, item.GetZ - source.Z, options.AnimationDistanceOffset) is { } flight) {
+                duration = flight.AnimationMs;
+                overshootMs = flight.OvershootMs;
+            }
 
             // Observed on AIR WIN63-202610201032-107964540: always shooting a negative number of tiles moves the furni at once.
             if (projectile.Distance == WiredProjectileDistance.Fixed && projectile.DistanceTiles < 0) {
@@ -247,8 +255,9 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 item.GetX, item.GetY, item.GetZ, item.Rotation, item.Rotation, options.AnimationTimeMs)
             {
                 CurveStrength = options.CurveType == 7 && options.CurveStrength != 0 ? options.CurveStrength : null,
-                // Observed on AIR WIN63-202610201032-107964540: the overshoot modes send an overshoot value of 800, whatever the distance.
-                OvershootTimeMs = projectile?.Distance is WiredProjectileDistance.Overshoot or WiredProjectileDistance.Fixed ? ProjectileOvershootMs : null
+                // Observed on AIR WIN63-202610201032-107964540: the overshoot modes send the time of the rest of the flight. A shot with no
+                // time per tile keeps the value 800.
+                OvershootTimeMs = projectile?.Distance is WiredProjectileDistance.Overshoot or WiredProjectileDistance.Fixed ? overshootMs : null
             };
 
             // The shooter faces the exact heading, diagonals included, on every fire, also when the furni lands on the rotation

@@ -42,17 +42,43 @@ public sealed record WiredProjectilePolicy(IReadOnlySet<uint> ItemIds, int? Dire
     public bool BunnyHop { get; init; }
     internal bool ShooterAimed { get; set; }
 
-    internal int Duration(long dx, long dy, double dz, int stackDuration)
+    internal int Duration(long dx, long dy, double dz, int stackDuration) =>
+        TimePerTileMs is null ? stackDuration : Total(Length(dx, dy, dz));
+
+    /// <summary>
+    /// The packet times of a shot that flies on past its move step. Observed on AIR WIN63-202610201032-107964540: the whole flight
+    /// takes the time per tile for every tile, less the speed increase. The packet holds the share of the first step as its animation
+    /// time and the rest of the flight as the overshoot. Null when the shot has no time per tile or no tiles to fly on.
+    /// </summary>
+    internal (int AnimationMs, int OvershootMs)? Flight(long dx, long dy, double dz, int extraTiles)
     {
-        if (TimePerTileMs is not { } time) {
-            return stackDuration;
+        var moved = Length(dx, dy, dz);
+
+        if (TimePerTileMs is null || extraTiles <= 0 || moved <= 0) {
+            return null;
         }
 
-        // Enabled-axis Euclidean distance, with separately truncated time and acceleration.
+        var tiles = moved + extraTiles;
+        var total = Total(tiles);
+        var animation = (int)Math.Round(total * moved / tiles, MidpointRounding.AwayFromZero);
+
+        return (animation, total - animation);
+    }
+
+    // Enabled-axis Euclidean distance.
+    private double Length(long dx, long dy, double dz)
+    {
         var x = MeasureX ? (double)dx : 0;
         var y = MeasureY ? (double)dy : 0;
         var z = MeasureAltitude ? dz : 0;
-        var distance = Math.Sqrt(x * x + y * y + z * z);
+
+        return Math.Sqrt(x * x + y * y + z * z);
+    }
+
+    // Separately truncated time and acceleration.
+    private int Total(double distance)
+    {
+        var time = TimePerTileMs!.Value;
         var total = Math.Floor(time * distance);
 
         if (distance >= 2 && SpeedIncrease > 0 && SpeedIncrease < time) {

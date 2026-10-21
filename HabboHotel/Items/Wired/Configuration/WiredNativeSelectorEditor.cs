@@ -114,7 +114,7 @@ internal static class WiredNativeSelectorEditor
                 fields = [text.Length == 0 ? 0 : 1, group, filter, invert];
                 break;
             case "wf_slc_users_byname":
-                if (!p.IsEmpty || !WithinUsernameLimits(text)) {
+                if (!p.IsEmpty) {
                     return false;
                 }
 
@@ -183,8 +183,4 @@ internal static class WiredNativeSelectorEditor
 
         return true;
     }
-
-    // The Users By Name editor is TextAreaParam(140, -1, 20, -1, 1000): at most 20 names and 1000 characters.
-    private static bool WithinUsernameLimits(string text) => text.Length <= 1000
-        && text.Split(['\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length <= 20;
 }

@@ -29,11 +29,14 @@ namespace Plus.Tests;
 //   now, else 1. A collection's status is always 0.
 // - A shop offer's minted count is every collectible of its product, whatever the source.
 // - Mintable items: enabled rows whose window has not ended, by id; a row that starts later is listed with its start time.
-// - Buying mint tokens that fails sends nothing. Minting sends FurniListRemove, CollectibleMintTokens and MintCollectibleResult(1) on
+// - The test connection uses the emulator's own settings (Database/Database.cs: AllowZeroDateTime, ConvertZeroDateTime).
+// - Buying mint tokens answers like a catalog purchase: PurchaseOK with the balances on success, PurchaseError and no change on failure. Minting sends FurniListRemove, CollectibleMintTokens and MintCollectibleResult(1) on
 //   success, and MintCollectibleResult(0) without FurniListRemove on any failure.
-// - Transfer result 1 = not one of the user's linked wallets, 2 = not enough silver. Success sends NftTransferResult(0) and SilverBalance.
+// - Transfer moves every collectible of the Collector Wallet to the chosen linked wallet (collectibles.transfer.description). Result 1 =
+//   not one of the user's linked wallets, 2 = not enough silver, 3 = nothing to transfer. Success sends NftTransferResult(0) and SilverBalance.
 // - Reward claims are listed by claim id, status 0 while claimed < limit else 1, collection = set id. Other wallets get an empty list.
-//   Claim all answers 0 when it gave at least one collectible and 1 when nothing was left.
+//   Claim all gives every remaining amount of a claim (claimLimit - claimedAmount, RewardCollectibleItemRenderer.as:41) and answers 0
+//   when it gave at least one collectible and 1 when nothing was left.
 // - The level comes from the current score, not the highest score.
 // - DATETIME columns hold UTC. The hotel clock is fixed at Now.
 public sealed class CollectiblesHubTests
@@ -468,6 +471,7 @@ public sealed class CollectiblesHubTests
 
             Assert.Equal(400, Read(replies, ServerPacketHeader.SilverBalanceComposer).Int());
             Assert.Equal(10, Read(replies, ServerPacketHeader.CollectibleMintTokensComposer).Int());
+            Assert.Single(replies, p => p.Header == ServerPacketHeader.PurchaseOKComposer);
             Assert.Equal((400, 400), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
             Assert.Equal(10, await hotel.Tokens(hotel.JohnDoe, wallet));
             Assert.Equal(10, hotel.Db.QuerySingle<int>("SELECT mint_tokens FROM collectible_wallets WHERE address = @wallet", new { wallet }));
@@ -483,12 +487,12 @@ public sealed class CollectiblesHubTests
             var hers = await hotel.CollectorWallet(hotel.JaneDoe);
             hotel.SetBalance(hotel.JohnDoe, Silver, 99);
 
-            Assert.Empty(await hotel.BuyTokens(hotel.JohnDoe, 11, mine));
+            AssertOnlyPurchaseError(await hotel.BuyTokens(hotel.JohnDoe, 11, mine));
 
             hotel.SetBalance(hotel.JohnDoe, Silver, 500);
-            Assert.Empty(await hotel.BuyTokens(hotel.JohnDoe, 11, hers));
-            Assert.Empty(await hotel.BuyTokens(hotel.JohnDoe, 13, mine));
-            Assert.Empty(await hotel.BuyTokens(hotel.JohnDoe, 999, mine));
+            AssertOnlyPurchaseError(await hotel.BuyTokens(hotel.JohnDoe, 11, hers));
+            AssertOnlyPurchaseError(await hotel.BuyTokens(hotel.JohnDoe, 13, mine));
+            AssertOnlyPurchaseError(await hotel.BuyTokens(hotel.JohnDoe, 999, mine));
 
             Assert.Equal((500, 500), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
             Assert.Equal(0, hotel.Db.QuerySingle<int>("SELECT COALESCE(SUM(mint_tokens), 0) FROM collectible_wallets"));
@@ -629,16 +633,16 @@ public sealed class CollectiblesHubTests
     }
 
     [RoomComponentDatabaseFact]
-    public async Task TransferMovesEveryCollectibleOfALinkedWalletToTheCollectorWalletForTheFee()
+    public async Task TransferMovesEveryCollectibleOfTheCollectorWalletToTheLinkedWalletForTheFee()
     {
         await InHotel(async hotel =>
         {
             await hotel.Setting("collectibles.transfer.fee", "25");
             var collector = await hotel.CollectorWallet(hotel.JohnDoe);
             var linked = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('2', 40));
-            hotel.Own(collector, "spring_lamp");
-            hotel.Own(linked, "spring_chair");
-            hotel.Own(linked, "winter_badge");
+            hotel.Own(linked, "spring_lamp");
+            hotel.Own(collector, "spring_chair");
+            hotel.Own(collector, "winter_badge");
             hotel.SetBalance(hotel.JohnDoe, Silver, 500);
 
             var replies = await hotel.Transfer(hotel.JohnDoe, linked);
@@ -646,8 +650,28 @@ public sealed class CollectiblesHubTests
             Assert.Equal(0, Read(replies, ServerPacketHeader.NftTransferResultComposer).Short());
             Assert.Equal(475, Read(replies, ServerPacketHeader.SilverBalanceComposer).Int());
             Assert.Equal((475, 475), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
-            Assert.Equal([("spring_chair", 1, "staff"), ("spring_lamp", 1, "staff"), ("winter_badge", 1, "staff")], hotel.Collectibles(collector).Order());
-            Assert.Empty(hotel.Collectibles(linked));
+            Assert.Equal([("spring_chair", 1, "staff"), ("spring_lamp", 1, "staff"), ("winter_badge", 1, "staff")], hotel.Collectibles(linked).Order());
+            Assert.Empty(hotel.Collectibles(collector));
+        });
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task TransferWithAnEmptyCollectorWalletIsRefusedAndCostsNothing()
+    {
+        await InHotel(async hotel =>
+        {
+            await hotel.Setting("collectibles.transfer.fee", "25");
+            await hotel.CollectorWallet(hotel.JohnDoe);
+            var linked = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('5', 40));
+            hotel.Own(linked, "spring_lamp");
+            hotel.SetBalance(hotel.JohnDoe, Silver, 500);
+
+            var replies = await hotel.Transfer(hotel.JohnDoe, linked);
+
+            Assert.Equal(3, Read(replies, ServerPacketHeader.NftTransferResultComposer).Short());
+            Assert.DoesNotContain(replies, p => p.Header == ServerPacketHeader.SilverBalanceComposer);
+            Assert.Equal([("spring_lamp", 1, "staff")], hotel.Collectibles(linked));
+            Assert.Equal((500, 500), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
         });
     }
 
@@ -680,15 +704,15 @@ public sealed class CollectiblesHubTests
             await hotel.Setting("collectibles.transfer.fee", "25");
             var collector = await hotel.CollectorWallet(hotel.JohnDoe);
             var linked = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('4', 40));
-            hotel.Own(linked, "spring_chair");
+            hotel.Own(collector, "spring_chair");
             hotel.SetBalance(hotel.JohnDoe, Silver, 24);
 
             var replies = await hotel.Transfer(hotel.JohnDoe, linked);
 
             Assert.Equal(2, Read(replies, ServerPacketHeader.NftTransferResultComposer).Short());
             Assert.DoesNotContain(replies, p => p.Header == ServerPacketHeader.SilverBalanceComposer);
-            Assert.Equal([("spring_chair", 1, "staff")], hotel.Collectibles(linked));
-            Assert.Empty(hotel.Collectibles(collector));
+            Assert.Equal([("spring_chair", 1, "staff")], hotel.Collectibles(collector));
+            Assert.Empty(hotel.Collectibles(linked));
             Assert.Equal((24, 24), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
         });
     }
@@ -729,24 +753,26 @@ public sealed class CollectiblesHubTests
     }
 
     [RoomComponentDatabaseFact]
-    public async Task ClaimAllGivesOneOfEachClaimableRewardUntilNothingIsLeft()
+    public async Task ClaimAllGivesEveryRemainingRewardThenNothingIsLeft()
     {
         await InHotel(async hotel =>
         {
             var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
 
             Assert.Equal(0, Read(await hotel.ClaimAll(hotel.JohnDoe), ServerPacketHeader.NftClaimResultComposer).Short());
-            Assert.Equal([("spring_chair", 1, "reward_claim"), ("winter_badge", 1, "reward_claim")], hotel.Collectibles(wallet).Order());
-            Assert.Equal([("oct_badge", 1, 1), ("oct_double", 1, 0)], (await hotel.Claims(hotel.JohnDoe, wallet)).Select(c => (c.ClaimId, c.Claimed, c.Status)));
+            Assert.Equal([("spring_chair", 1, "reward_claim"), ("spring_chair", 2, "reward_claim"), ("winter_badge", 1, "reward_claim")], hotel.Collectibles(wallet).Order());
+            Assert.Equal([("oct_badge", 1, 1), ("oct_double", 2, 1)], (await hotel.Claims(hotel.JohnDoe, wallet)).Select(c => (c.ClaimId, c.Claimed, c.Status)));
 
-            Assert.Equal(0, Read(await hotel.ClaimAll(hotel.JohnDoe), ServerPacketHeader.NftClaimResultComposer).Short());
             Assert.Equal(1, Read(await hotel.ClaimAll(hotel.JohnDoe), ServerPacketHeader.NftClaimResultComposer).Short());
 
-            Assert.Equal([("spring_chair", 1, "reward_claim"), ("spring_chair", 2, "reward_claim"), ("winter_badge", 1, "reward_claim")], hotel.Collectibles(wallet).Order());
+            Assert.Equal(3, hotel.Collectibles(wallet).Count);
             Assert.Equal([("oct_badge", 1), ("oct_double", 2)],
                 hotel.Db.Query<(string, int)>("SELECT claim_id, claimed_amount FROM user_collectible_reward_claims WHERE wallet_address = @wallet ORDER BY claim_id", new { wallet }));
         });
     }
+
+    private static void AssertOnlyPurchaseError(List<(uint Header, byte[] Payload)> replies) =>
+        Assert.Equal([ServerPacketHeader.PurchaseErrorComposer], replies.Select(p => p.Header));
 
     private static async Task AssertMintFails(Hotel hotel, Habbo habbo, InventoryItem item, string wallet, int tokens)
     {
@@ -1084,7 +1110,7 @@ public sealed class CollectiblesHubTests
 
     private static async Task InHotel(Func<Hotel, Task> run)
     {
-        var options = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!) { AllowUserVariables = true, Pooling = false };
+        var options = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!) { AllowUserVariables = true, Pooling = false, AllowZeroDateTime = true, ConvertZeroDateTime = true };
         await using var admin = new MySqlConnection(options.ConnectionString);
         await admin.OpenAsync();
         var schema = "collectibles_hub_" + Guid.NewGuid().ToString("N");

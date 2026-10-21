@@ -80,9 +80,20 @@ public static class WiredItemConditions
             return canMove(item, item.GetX + offset.X, item.GetY + offset.Y);
         })), 0);
 
-    public static bool SelectionQuantity(WiredConfiguration config, int furniCount, int avatarCount) =>
-        WiredRoomOperations.Compare(Param(config, 2) == 0 ? avatarCount : furniCount,
-            Param(config, 1), Param(config, 0, 1));
+    public static bool SelectionQuantity(WiredConfiguration config, int furniCount, int avatarCount)
+    {
+        var count = Param(config, 2) == 0 ? avatarCount : furniCount;
+        var amount = Param(config, 1);
+
+        // Observed on AIR WIN63-202610201032-107964540: a stored comparison of 3 passes when the count is at most the amount and a
+        // stored comparison of 4 passes when it differs from the amount.
+        return Param(config, 0, 1) switch
+        {
+            3 => count <= amount,
+            4 => count != amount,
+            var comparison => WiredRoomOperations.Compare(count, amount, comparison)
+        };
+    }
 
     private static int Param(WiredConfiguration config, int index, int fallback = 0) =>
         index < config.IntParams.Length ? config.IntParams[index] : fallback;

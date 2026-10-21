@@ -50,4 +50,5 @@ public static class WiredVariableRuntimeFrames
         : new(WiredVariableTarget.Furni, item.Id, unchecked((int)item.Id), item.Id > 0 && item.OwnerId > 0);
     public static WiredVariableHolder UserHolder(RoomUser user) => new(WiredVariableTarget.User,
         user.IsBot ? -(long)user.VirtualId - 1 : user.HabboId, user.VirtualId, !user.IsBot);
+    public static bool IsBot(WiredVariableHolder holder) => holder.Target == WiredVariableTarget.User && holder.StableId < 0;
 }

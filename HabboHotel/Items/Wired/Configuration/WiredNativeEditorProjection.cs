@@ -174,8 +174,13 @@ public static class WiredNativeEditorProjection
         return WiredEditorStoreRules.SourceRefusal(descriptor.CanonicalName, native, metadata);
     }
 
-    /// <summary>The key a client save is refused with before it is compiled, or null.</summary>
-    public static string? SaveRefusal(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native) => null;
+    /// <summary>
+    /// The key a client save is refused with before it is compiled, or null. Observed on AIR WIN63-202610201032-107964540: the capturer
+    /// refuses an odd name or a second variable with its own key, and a Says text may not capture one name twice. A fresh capturer opens
+    /// with an empty name, which only a save is refused for.
+    /// </summary>
+    public static string? SaveRefusal(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native) =>
+        Supports(descriptor.CanonicalName) ? WiredTextAddonRules.Refusal(descriptor.CanonicalName, native) : null;
 
     /// <summary>
     /// A save the hotel drops without any reply: no error and no save success. Observed on AIR WIN63-202610131318-860371703:
@@ -470,6 +475,15 @@ public static class WiredNativeEditorProjection
         // number with its last text, in ascending number order ("9=a 3=b -2=neg 20=c" reads back "-2=neg 3=b 9=a 20=c").
         if (name == "wf_xtra_var_text_connector") {
             native = native with { Text = Variables.WiredVariableMetadataBox.NormalizeConnector(native.Text) };
+        }
+
+        // Observed on AIR WIN63-202610201032-107964540: the capturer stores a save in a normal form. A stored row keeps the form it was
+        // saved in.
+        if (storedRow) {
+            native = WiredTextAddonRules.StoredRow(name, native);
+        }
+        else if (WiredTextAddonRules.Applies(name) && Supports(name)) {
+            native = WiredTextAddonRules.StoredForm(name, native, Metadata(name).OwnedDefaults);
         }
 
         native = WiredNativeAuxiliaryEditor.StoredForm(name, native);

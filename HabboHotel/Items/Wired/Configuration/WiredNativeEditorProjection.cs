@@ -362,6 +362,11 @@ public static class WiredNativeEditorProjection
             }
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: these conditions store a save in a normal form instead of refusing odd values.
+        if (WiredConditionStoreRules.Applies(name) && Supports(name)) {
+            native = WiredConditionStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
+        }
+
         // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).
         // Observed on AIR WIN63-202610151745-318700621 (r97_mdate_store, r97_inverted_store): Date Matches stores a year range whose end
         // is before its start with the end raised to the start (9999..0 reads back 9999..9999); its day range and Time Matches' hour and

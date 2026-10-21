@@ -167,6 +167,12 @@ public sealed class WiredConfigurationService(
                 return;
             }
 
+            if (WiredSelectorStoreRules.UsernameRefusal(descriptor.CanonicalName, native) is var (usernameKey, usernameLimits)) {
+                session.Send(new WiredValidationErrorComposer(usernameKey, usernameLimits));
+
+                return;
+            }
+
             if (WiredNativeEditorProjection.SaveRefusal(descriptor, native) is { } refusal) {
                 session.Send(new WiredValidationErrorComposer(refusal));
 

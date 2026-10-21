@@ -54,11 +54,36 @@ internal static class WiredSelectorStoreRules
         { "wf_slc_users_neighborhood", Neighborhood },
         // The box has no ints and no text, and its sources are fixed.
         { "wf_slc_users_signal", _ => { } },
+        // The box has no ints. The names are cut at their trailing tabs; the editor lowers their case (see WiredNativeEditorProjection).
+        { "wf_slc_users_byname", draft => draft.Text = draft.Text.TrimEnd('\t') },
         // The comparison keeps 0 to 5 and reads any other value as 0. The value filter keeps 0 to 2: a larger value reads 2 and a
         // negative value reads 0. The two reference value ints are stored as sent. The reference target keeps -20, -10, 0 and 1, and
         // the same-holder flag reads 1 for any value but 0.
         { "wf_slc_users_with_var", WithVariable }
     }.ToFrozenDictionary();
+
+    private const int MaxUsernameLength = 30;
+    private const int MaxUsernames = 20;
+
+    /// <summary>
+    /// The refusal of a Users By Name save, or null. Observed on AIR WIN63-202610201032-107964540: a name of more than 30 characters
+    /// and more than 20 names are refused with their own key and limit. Only the tab separates names.
+    /// </summary>
+    public static (string Key, IReadOnlyList<KeyValuePair<string, string>> Parameters)? UsernameRefusal(string name, WiredNativeEditorConfiguration native)
+    {
+        if (name != "wf_slc_users_byname") {
+            return null;
+        }
+
+        var names = native.Text.TrimEnd('\t').Split('\t');
+
+        if (names.Any(entry => entry.Length > MaxUsernameLength)) {
+            return ("wiredfurni.error.username_length", [new("max_username_length", MaxUsernameLength.ToString(CultureInfo.InvariantCulture))]);
+        }
+
+        return names.Length > MaxUsernames
+            ? ("wiredfurni.error.usernames_count", [new("max_usernames", MaxUsernames.ToString(CultureInfo.InvariantCulture))]) : null;
+    }
 
     public static bool Applies(string name) => Rules.ContainsKey(name);
 

@@ -45,6 +45,34 @@ public partial class WiredAvatarPacketHookTests
         Assert.False(PerformsAt(failsAt));
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a wave counts 4.90 s after the expression but not 5.27 s after it, respect
+    // 1.69 s but not 1.87 s, and sleep 2.50 s. Observed on AIR WIN63-202610151745-318700621: sleep ends before 2.77 s.
+    // The condition must see the end at that time, not at the next room cycle.
+    [Theory]
+    [InlineData(WaveExpression, WaveCondition, 4900, true)]
+    [InlineData(WaveExpression, WaveCondition, 5270, false)]
+    [InlineData(RespectExpression, RespectCondition, 1690, true)]
+    [InlineData(RespectExpression, RespectCondition, 1870, false)]
+    [InlineData(SleepExpression, SleepCondition, 2500, true)]
+    [InlineData(SleepExpression, SleepCondition, 2770, false)]
+    [InlineData(SleepExpression, AwakeCondition, 2500, false)]
+    [InlineData(SleepExpression, AwakeCondition, 2770, true)]
+    public async Task PerformsActionConditionEndsTheWindowWithoutARoomCycle(int expression, int condition, int milliseconds, bool passes)
+    {
+        var clock = new ManualClock(new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero));
+        var world = new World(9, 3, clock);
+        world.AddCondition(condition);
+        var start = clock.Now;
+
+        await new ActionEvent(world.Actions).Parse(world.Room, world.Client, Packet(expression));
+        world.FlushWired();
+        clock.Now = start.AddMilliseconds(milliseconds);
+        await new ApplySignEvent(world.Actions).Parse(world.Room, world.Client, Packet(3));
+        world.FlushWired();
+
+        Assert.Equal(passes ? 1 : 0, world.Capture.Events.Count);
+    }
+
     // Observed on AIR WIN63-202610201032-107964540: without Habbo Club, these expressions reach nobody, the sender included,
     // fire no Wired and leave a dancing, sleeping avatar as it was.
     [Theory]
@@ -150,7 +178,7 @@ public partial class WiredAvatarPacketHookTests
         Assert.False(WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [condition, 0, 0, 0, 1] }, speech, clock.Now));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: Sleep passes 1.78 s after the sleep expression and Awake passes from 2.22 s on,
+    // Observed on AIR WIN63-202610151745-318700621: Sleep passes 1.78 s after the sleep expression and Awake passes 2.77 s after it,
     // while the avatar still shows as asleep until its next action.
     [Fact]
     public void PerformsActionConditionSeesTheSleepExpressionForAShortTimeOnly()
@@ -166,7 +194,7 @@ public partial class WiredAvatarPacketHookTests
         Assert.True(Performs(SleepCondition));
         Assert.False(Performs(AwakeCondition));
 
-        clock.Now = clock.Now.AddMilliseconds(440);
+        clock.Now = clock.Now.AddMilliseconds(990);
         world.Users.UpdateSignStatus(world.Actor);
         Assert.True(world.Actor.IsAsleep);
         Assert.False(Performs(SleepCondition));

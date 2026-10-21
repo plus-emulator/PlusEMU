@@ -82,6 +82,7 @@ public partial class WiredAvatarPacketHookTests
     public async Task ExpressionPacketRunsActualConfiguredTriggerOnceWithActorIdentity(int expression, int editorAction)
     {
         var world = new World(editorAction);
+        GrantClub(world);
         await new ActionEvent(world.Actions).Parse(world.Room, world.Client, Packet(expression));
         world.FlushWired();
         var observed = Assert.Single(world.Capture.Events);

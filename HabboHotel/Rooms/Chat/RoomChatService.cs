@@ -140,7 +140,9 @@ public sealed class RoomChatService(
         }
 
         if (!habbo.Access.Can(PermissionKeys.ChatFilterBypass)) {
-            message = wordFilterManager.CheckMessage(message);
+            // The filter trims the end of the line, but the Says trigger still reads the trailing spaces.
+            var end = message.TrimEnd(' ').Length;
+            message = wordFilterManager.CheckMessage(message[..end]) + message[end..];
         }
 
         questManager.ProgressUserQuest(session, QuestType.SocialChat);

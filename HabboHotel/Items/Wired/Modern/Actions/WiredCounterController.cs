@@ -209,7 +209,8 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             PublishClock(clock, previous, WiredCounterPublication.BatchData);
         }
 
-        if (operation is 0 or 4 && !clock.Running) {
+        // Observed on AIR WIN63-202610201032-107964540: a resume fired on a game counter that never ran leaves it at 0.
+        if ((operation == 0 || operation == 4 && clock.Started) && !clock.Running) {
             if (clock.Countdown && clock.Value <= 0) {
                 var previous = clock.Value;
                 clock.Value = clock.Duration;

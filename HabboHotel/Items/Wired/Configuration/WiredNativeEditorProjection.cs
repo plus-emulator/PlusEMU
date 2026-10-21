@@ -636,7 +636,7 @@ public static class WiredNativeEditorProjection
                 break;
             case "wf_act_control_clock":
                 // Observed on AIR WIN63-202610201032-107964540: any operation saves and is stored clamped to 0..4 (5, 100 and int max
-                // reopen as 4, -1 as 0). A stored row loads as it was saved.
+                // reopen as 4, -1 as 0). Older rows saved with 5 did nothing at run time; clamping them on load would change existing rooms.
                 if (p.Length != 1) {
                     return false;
                 }

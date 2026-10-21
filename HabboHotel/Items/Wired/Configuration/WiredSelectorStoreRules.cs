@@ -11,74 +11,89 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// </summary>
 internal static class WiredSelectorStoreRules
 {
-    private static readonly FrozenSet<string> Boxes = new[]
-    {
-        "wf_slc_furni_altitude", "wf_slc_furni_area", "wf_slc_furni_bytype", "wf_slc_furni_neighborhood", "wf_slc_remote",
-        "wf_slc_users_bytype", "wf_slc_users_byaction", "wf_slc_users_group", "wf_slc_users_handitem"
-    }.ToFrozenSet();
+    private sealed record Rule(Action<WiredStoreDraft> Store, bool UserSourceKeyed = false);
 
     private const int FilterTextLength = 200;
 
     // The last of the 14 mask words of the neighborhood covers 25 tiles.
     private const int LastMaskWordBits = 0x1ffffff;
 
-    public static bool Applies(string name) => Boxes.Contains(name);
+    // Each selector is named once, with its stored form. The ints are cut and padded to the frame before the rule runs.
+    private static readonly FrozenDictionary<string, Rule> Rules = new Dictionary<string, Rule>
+    {
+        // The altitude is 0..8000. The comparison keeps 3, 4 and 5, which the editor never offers, and resets any other value to 0.
+        {
+            "wf_slc_furni_altitude", new(draft =>
+            {
+                draft.Ints[0] = Math.Clamp(draft.Ints[0], 0, 8000);
+                draft.Ints[1] = draft.Ints[1] is >= 0 and <= 5 ? draft.Ints[1] : 0;
+            })
+        },
+        { "wf_slc_furni_area", new(_ => { }) },
+        // The state flag is on only for the exact value 1.
+        { "wf_slc_furni_bytype", new(draft => draft.Ints[0] = draft.Ints[0] == 1 ? 1 : 0) },
+        // The reference reads 0 or 1, the root offset is -64..64, the last mask word keeps its 25 tile bits and the 18th int is always 0.
+        // The reference users come only from the trigger or a signal; another user source has its own key.
+        { "wf_slc_furni_neighborhood", new(Neighborhood, UserSourceKeyed: true) },
+        // Union or intersection reads 1 for any positive value and 0 otherwise; a negative stack count reads 0.
+        {
+            "wf_slc_remote", new(draft =>
+            {
+                draft.Ints[0] = draft.Ints[0] > 0 ? 1 : 0;
+                draft.Ints[1] = Math.Max(draft.Ints[1], 0);
+            })
+        },
+        // 1 to 4 are kept, a value below 1 reads 1 and a value above 4 reads 4.
+        { "wf_slc_users_bytype", new(draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], 1, 4)) },
+        // The actions the editor offers, the unoffered 9 and the client expression 67 are kept; anything else reads 0. The filter text
+        // is kept as sent, up to its first 200 characters.
+        { "wf_slc_users_byaction", new(ByAction) },
+        // The group id is kept as a plain number or cleared; the box has no ints.
+        { "wf_slc_users_group", new(Group) },
+        { "wf_slc_users_handitem", new(_ => { }) }
+    }.ToFrozenDictionary();
+
+    public static bool Applies(string name) => Rules.ContainsKey(name);
 
     public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native, ImmutableArray<int> defaults)
     {
-        var p = Fit(native.OwnedIntParams, defaults).ToBuilder();
-        var text = native.Text;
-
-        switch (name) {
-            // The altitude is 0..8000. The comparison keeps 3, 4 and 5, which the editor never offers, and resets any other value to 0.
-            case "wf_slc_furni_altitude":
-                p[0] = Math.Clamp(p[0], 0, 8000);
-                p[1] = p[1] is >= 0 and <= 5 ? p[1] : 0;
-                break;
-            // The state flag is on only for the exact value 1.
-            case "wf_slc_furni_bytype":
-                p[0] = p[0] == 1 ? 1 : 0;
-                break;
-            // Union or intersection reads 1 for any positive value and 0 otherwise; a negative stack count reads 0.
-            case "wf_slc_remote":
-                p[0] = p[0] > 0 ? 1 : 0;
-                p[1] = Math.Max(p[1], 0);
-                break;
-            // 1 to 4 are kept, a value below 1 reads 1 and a value above 4 reads 4.
-            case "wf_slc_users_bytype":
-                p[0] = Math.Clamp(p[0], 1, 4);
-                break;
-            // The actions the editor offers, the unoffered 9 and the client expression 67 are kept; anything else reads 0. The filter text
-            // is kept as sent, up to its first 200 characters.
-            case "wf_slc_users_byaction":
-                p[0] = p[0] is >= 0 and <= 11 or 67 ? p[0] : 0;
-                text = text.Length > FilterTextLength ? text[..FilterTextLength] : text;
-                break;
-            // The group id is kept as a plain number or cleared; the box has no ints.
-            case "wf_slc_users_group":
-                p.Clear();
-                text = long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var group)
-                    ? group.ToString(CultureInfo.InvariantCulture) : "";
-                break;
-            // The reference reads 0 or 1, the root offset is -64..64, the last mask word keeps its 25 tile bits and the 18th int is always 0.
-            case "wf_slc_furni_neighborhood":
-                p[0] = p[0] is 0 or 1 ? p[0] : 0;
-                p[1] = Math.Clamp(p[1], -64, 64);
-                p[2] = Math.Clamp(p[2], -64, 64);
-                p[16] &= LastMaskWordBits;
-                p[17] = 0;
-                break;
+        if (!Rules.TryGetValue(name, out var rule)) {
+            return native;
         }
 
-        return native with { OwnedIntParams = p.ToImmutable(), Text = text };
+        var draft = new WiredStoreDraft(native, defaults);
+        rule.Store(draft);
+
+        return draft.ToNative();
     }
 
     /// <summary>The neighborhood reference users come only from the trigger or a signal; another user source has its own key.</summary>
     public static string? UserSourceRefusal(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
-        name == "wf_slc_furni_neighborhood" && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length
+        Rules.TryGetValue(name, out var rule) && rule.UserSourceKeyed && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length
             && !metadata.UsersAllowed[index].Contains(source) && !WiredNativeEditorProjection.AnyTriggerContext.Contains(source)).Any()
             ? WiredEditorStoreRules.UserSourceKey : null;
 
-    private static ImmutableArray<int> Fit(ImmutableArray<int> ints, ImmutableArray<int> defaults) =>
-        [.. Enumerable.Range(0, defaults.Length).Select(index => index < ints.Length ? ints[index] : defaults[index])];
+    private static void Neighborhood(WiredStoreDraft draft)
+    {
+        var p = draft.Ints;
+
+        p[0] = p[0] is 0 or 1 ? p[0] : 0;
+        p[1] = Math.Clamp(p[1], -64, 64);
+        p[2] = Math.Clamp(p[2], -64, 64);
+        p[16] &= LastMaskWordBits;
+        p[17] = 0;
+    }
+
+    private static void ByAction(WiredStoreDraft draft)
+    {
+        draft.Ints[0] = draft.Ints[0] is >= 0 and <= 11 or 67 ? draft.Ints[0] : 0;
+        draft.Text = draft.Text.Length > FilterTextLength ? draft.Text[..FilterTextLength] : draft.Text;
+    }
+
+    private static void Group(WiredStoreDraft draft)
+    {
+        draft.Ints.Clear();
+        draft.Text = long.TryParse(draft.Text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var group)
+            ? group.ToString(CultureInfo.InvariantCulture) : "";
+    }
 }

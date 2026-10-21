@@ -19,144 +19,171 @@ internal static class WiredEditorStoreRules
     public const string VariableCountKey = "wiredfurni.error.invalid_variable_count";
     private const string BotReachedFurni = "wf_trg_bot_reached_stf";
 
-    private static readonly FrozenSet<string> Boxes = new[]
-    {
-        "wf_xtra_execution_limit", "wf_xtra_unseen", "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var",
-        "wf_xtra_or_eval", "wf_xtra_rotate_to_dir", ScanChest, "wf_act_teleport_to_room", "wf_trg_at_given_time", "wf_trg_period_long",
-        "wf_trg_user_performs_action", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action", "wf_act_match_to_sshot",
-        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type", TextVariable, TextFurniName,
-        BotReachedFurni, "wf_cnd_has_var", "wf_cnd_neg_has_var"
-    }.ToFrozenSet();
+    /// <param name="Store">The stored form of a save, or null for a box that only has a variable or user source check here.</param>
+    /// <param name="VariableSlots">The box has one picked variable (or two for the filters by variable): a save with no variable takes the empty slots.</param>
+    /// <param name="UserSourceKeyed">The box answers a user source it does not offer with <see cref="UserSourceKey"/>.</param>
+    private sealed record Rule(Action<WiredStoreDraft>? Store = null, bool VariableSlots = false, bool UserSourceKeyed = false);
 
-    // Boxes with one picked variable (or two for the filters by variable): a save with no variable takes the empty slots.
-    private static readonly FrozenSet<string> VariableBoxes = new[]
+    // Each box is named once, with its stored form and flags. The ints are cut and padded to the frame before the rule runs.
+    private static readonly FrozenDictionary<string, Rule> Rules = new Dictionary<string, Rule>
     {
-        "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var", ScanChest, TextVariable, "wf_act_init_transaction", "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type",
-        "wf_cnd_has_var", "wf_cnd_neg_has_var"
-    }.ToFrozenSet();
-
-    // Boxes that answer a user source they do not offer with its own key.
-    private static readonly FrozenSet<string> UserSourceKeyed = new[]
-    {
-        "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users_by_var", "wf_xtra_rotate_to_dir",
-        "wf_act_teleport_to_room", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action", TextVariable,
-        "wf_cnd_chest_has_items", "wf_cnd_chest_has_item_type", BotReachedFurni
-    }.ToFrozenSet();
+        { "wf_xtra_execution_limit", new(ExecutionLimit) },
+        { "wf_xtra_unseen", new(Unseen) },
+        { "wf_xtra_filter_furni", new(FilterFurni, VariableSlots: true, UserSourceKeyed: true) },
+        { "wf_xtra_filter_furni_by_var", new(FilterByVariable, VariableSlots: true, UserSourceKeyed: true) },
+        { "wf_xtra_filter_users_by_var", new(FilterByVariable, VariableSlots: true, UserSourceKeyed: true) },
+        { "wf_xtra_or_eval", new(draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], -1, 3)) },
+        { "wf_xtra_rotate_to_dir", new(RotateToDirection, UserSourceKeyed: true) },
+        { ScanChest, new(Scan, VariableSlots: true) },
+        { "wf_act_teleport_to_room", new(TeleportToRoom, UserSourceKeyed: true) },
+        { "wf_trg_at_given_time", new(AtLeast(0)) },
+        { "wf_trg_period_long", new(AtLeast(1)) },
+        // The user action boxes keep any filter text. An action code outside the stored set reads as 0.
+        { "wf_trg_user_performs_action", new(UserAction) },
+        { "wf_cnd_user_performs_action", new(UserAction, UserSourceKeyed: true) },
+        { "wf_cnd_not_user_performs_action", new(UserAction, UserSourceKeyed: true) },
+        { "wf_act_match_to_sshot", new(MatchToSnapshot) },
+        { "wf_cnd_has_var", new(HasVariable, VariableSlots: true) },
+        { "wf_cnd_neg_has_var", new(HasVariable, VariableSlots: true) },
+        { "wf_cnd_chest_has_items", new(ChestCondition, VariableSlots: true, UserSourceKeyed: true) },
+        { "wf_cnd_chest_has_item_type", new(ChestCondition, VariableSlots: true, UserSourceKeyed: true) },
+        { TextVariable, new(TextOutputVariable, VariableSlots: true, UserSourceKeyed: true) },
+        { TextFurniName, new(draft => draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1) },
+        // Observed on AIR WIN63-202610201032-107964540: the bot name is kept as sent, of any length.
+        { BotReachedFurni, new(_ => { }, UserSourceKeyed: true) },
+        // Only the variable slots are checked.
+        { "wf_act_init_transaction", new(VariableSlots: true) }
+    }.ToFrozenDictionary();
 
     // The action codes the hotel keeps: the ones the client offers, the unoffered 9 and the client expression 67.
     private static bool IsStoredAction(int code) => code is >= 0 and <= 11 or 67;
 
-    public static bool Applies(string name) => Boxes.Contains(name);
+    public static bool Applies(string name) => Rules.TryGetValue(name, out var rule) && rule.Store is not null;
 
     public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native, ImmutableArray<int> defaults)
     {
-        var ints = Fit(native.OwnedIntParams, defaults).ToBuilder();
-        var text = native.Text;
-        var quantifier = native.Quantifier;
-
-        switch (name) {
-            case "wf_xtra_execution_limit":
-                ints[0] = Math.Clamp(ints[0], 1, 100);
-                ints[1] = Math.Clamp(ints[1], 1, 120);
-                text = "";
-                break;
-            case "wf_xtra_unseen":
-                text = "";
-                break;
-            case "wf_xtra_filter_furni":
-                ints[0] = Math.Clamp(ints[0], 1, 1000);
-                ints[1] = ints[1] == 2 ? 1 : ints[1];
-                ints[2] = Target(ints[2]);
-                break;
-            case "wf_xtra_filter_furni_by_var":
-            case "wf_xtra_filter_users_by_var":
-                ints[0] = Math.Clamp(ints[0], 1, 1000);
-                ints[1] = ints[1] is >= 0 and <= 5 ? ints[1] : 0;
-                ints[2] = ints[2] == 2 ? 1 : ints[2];
-                ints[3] = Target(ints[3]);
-                break;
-            case "wf_xtra_or_eval":
-                ints[0] = Math.Clamp(ints[0], -1, 3);
-                break;
-            case "wf_xtra_rotate_to_dir":
-                ints[0] = ints[0] == 2 ? 1 : ints[0];
-                ints[1] = ints[1] is >= 0 and <= 3 ? ints[1] : 0;
-                ints[4] = Math.Clamp(ints[4], 1, 100000);
-                ints[5] = Target(ints[5]);
-                ints[9] = Math.Clamp(ints[9], 0, 100000);
-                ints[10] = Math.Clamp(ints[10], 0, 7);
-                ints[14] = Math.Clamp(ints[14], 0, 2);
-                ints[16] = Math.Clamp(ints[16], -64, 64);
-                ints[17] = Target(ints[17]);
-                ints[18] = Math.Clamp(ints[18], -1000, 1000);
-                break;
-            // Observed on AIR WIN63-202610201032-107964540: Match To Snapshot switches an option on only for the exact value 1.
-            case "wf_act_match_to_sshot":
-                for (var index = 0; index < ints.Count; index++) {
-                    ints[index] = ints[index] == 1 ? 1 : 0;
-                }
-
-                break;
-            // Observed on AIR WIN63-202610201032-107964540: the chest conditions clamp the amount to 0..1000000, the option to 0..1, reset
-            // an unoffered target to 0 and reset a comparison above 5 or below 0 to 0.
-            case "wf_cnd_chest_has_items":
-            case "wf_cnd_chest_has_item_type":
-                ints[0] = Math.Clamp(ints[0], 0, 1000000);
-                ints[1] = Math.Clamp(ints[1], 0, 1);
-                ints[2] = Target(ints[2]);
-                ints[3] = ints[3] is >= 0 and <= 5 ? ints[3] : 0;
-                // Observed on AIR WIN63-202610201032-107964540: a quantifier outside 0 to 2 is stored as 0.
-                quantifier = quantifier is { } value ? value is 1 or 2 ? value : 0 : null;
-                break;
-            // Observed on AIR WIN63-202610201032-107964540: Has Variable stores a target the editor does not offer as 0.
-            case "wf_cnd_has_var":
-            case "wf_cnd_neg_has_var":
-                ints[0] = Target(ints[0]);
-                break;
-            // Observed on AIR WIN63-202610201032-107964540: the text output boxes store any non-zero flag as 1, and a target the editor
-            // does not offer as 0.
-            case TextVariable:
-                ints[0] = ints[0] == 0 ? 0 : 1;
-                ints[1] = Target(ints[1]);
-                ints[2] = ints[2] == 0 ? 0 : 1;
-                break;
-            case TextFurniName:
-                ints[0] = ints[0] == 0 ? 0 : 1;
-                break;
-            case ScanChest:
-                ints[0] = ints[0] == 0 ? 0 : 1;
-                text = "";
-                break;
-            case "wf_act_teleport_to_room":
-                // The box has no text field. A text that is not a room id is dropped; a room id is the extension the runtime reads.
-                text = uint.TryParse(text, out var roomId) && roomId is not 0 and <= int.MaxValue ? text : "";
-                break;
-            case "wf_trg_at_given_time":
-                ints[0] = Math.Max(ints[0], 0);
-                text = "";
-                break;
-            case "wf_trg_period_long":
-                ints[0] = Math.Max(ints[0], 1);
-                text = "";
-                break;
-            // Observed on AIR WIN63-202610201032-107964540: the bot name is kept as sent, of any length.
-            case BotReachedFurni:
-                break;
-            default:
-                // The user action boxes keep any filter text. An action code outside the stored set reads as 0.
-                ints[0] = IsStoredAction(ints[0]) ? ints[0] : 0;
-                break;
+        if (!Rules.TryGetValue(name, out var rule) || rule.Store is not { } store) {
+            return native;
         }
 
-        return native with { OwnedIntParams = name is "wf_xtra_unseen" or "wf_act_teleport_to_room" ? [] : ints.ToImmutable(), Text = text, Quantifier = quantifier };
+        var draft = new WiredStoreDraft(native, defaults);
+        store(draft);
+
+        return draft.ToNative();
     }
+
+    private static void ExecutionLimit(WiredStoreDraft draft)
+    {
+        draft.Ints[0] = Math.Clamp(draft.Ints[0], 1, 100);
+        draft.Ints[1] = Math.Clamp(draft.Ints[1], 1, 120);
+        draft.Text = "";
+    }
+
+    // The first int has a lower bound and the box has no text.
+    private static Action<WiredStoreDraft> AtLeast(int minimum) => draft =>
+    {
+        draft.Ints[0] = Math.Max(draft.Ints[0], minimum);
+        draft.Text = "";
+    };
+
+    private static void Unseen(WiredStoreDraft draft)
+    {
+        draft.Ints.Clear();
+        draft.Text = "";
+    }
+
+    private static void FilterFurni(WiredStoreDraft draft)
+    {
+        var ints = draft.Ints;
+
+        ints[0] = Math.Clamp(ints[0], 1, 1000);
+        ints[1] = ints[1] == 2 ? 1 : ints[1];
+        ints[2] = Target(ints[2]);
+    }
+
+    private static void FilterByVariable(WiredStoreDraft draft)
+    {
+        var ints = draft.Ints;
+
+        ints[0] = Math.Clamp(ints[0], 1, 1000);
+        ints[1] = ints[1] is >= 0 and <= 5 ? ints[1] : 0;
+        ints[2] = ints[2] == 2 ? 1 : ints[2];
+        ints[3] = Target(ints[3]);
+    }
+
+    private static void RotateToDirection(WiredStoreDraft draft)
+    {
+        var ints = draft.Ints;
+
+        ints[0] = ints[0] == 2 ? 1 : ints[0];
+        ints[1] = ints[1] is >= 0 and <= 3 ? ints[1] : 0;
+        ints[4] = Math.Clamp(ints[4], 1, 100000);
+        ints[5] = Target(ints[5]);
+        ints[9] = Math.Clamp(ints[9], 0, 100000);
+        ints[10] = Math.Clamp(ints[10], 0, 7);
+        ints[14] = Math.Clamp(ints[14], 0, 2);
+        ints[16] = Math.Clamp(ints[16], -64, 64);
+        ints[17] = Target(ints[17]);
+        ints[18] = Math.Clamp(ints[18], -1000, 1000);
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: Match To Snapshot switches an option on only for the exact value 1.
+    private static void MatchToSnapshot(WiredStoreDraft draft)
+    {
+        for (var index = 0; index < draft.Ints.Count; index++) {
+            draft.Ints[index] = draft.Ints[index] == 1 ? 1 : 0;
+        }
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: the chest conditions clamp the amount to 0..1000000, the option to 0..1, reset
+    // an unoffered target to 0 and reset a comparison above 5 or below 0 to 0.
+    private static void ChestCondition(WiredStoreDraft draft)
+    {
+        var ints = draft.Ints;
+
+        ints[0] = Math.Clamp(ints[0], 0, 1000000);
+        ints[1] = Math.Clamp(ints[1], 0, 1);
+        ints[2] = Target(ints[2]);
+        ints[3] = ints[3] is >= 0 and <= 5 ? ints[3] : 0;
+        // Observed on AIR WIN63-202610201032-107964540: a quantifier outside 0 to 2 is stored as 0.
+        draft.Quantifier = draft.Quantifier is { } value ? value is 1 or 2 ? value : 0 : null;
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: Has Variable stores a target the editor does not offer as 0.
+    private static void HasVariable(WiredStoreDraft draft) => draft.Ints[0] = Target(draft.Ints[0]);
+
+    // Observed on AIR WIN63-202610201032-107964540: the text output boxes store any non-zero flag as 1, and a target the editor
+    // does not offer as 0.
+    private static void TextOutputVariable(WiredStoreDraft draft)
+    {
+        var ints = draft.Ints;
+
+        ints[0] = ints[0] == 0 ? 0 : 1;
+        ints[1] = Target(ints[1]);
+        ints[2] = ints[2] == 0 ? 0 : 1;
+    }
+
+    private static void Scan(WiredStoreDraft draft)
+    {
+        draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1;
+        draft.Text = "";
+    }
+
+    // The box has no text field. A text that is not a room id is dropped; a room id is the extension the runtime reads.
+    private static void TeleportToRoom(WiredStoreDraft draft)
+    {
+        draft.Ints.Clear();
+        draft.Text = uint.TryParse(draft.Text, out var roomId) && roomId is not 0 and <= int.MaxValue ? draft.Text : "";
+    }
+
+    private static void UserAction(WiredStoreDraft draft) => draft.Ints[0] = IsStoredAction(draft.Ints[0]) ? draft.Ints[0] : 0;
 
     /// <summary>
     /// Observed on AIR WIN63-202610201032-107964540: a save that names fewer variables than the box has slots keeps the empty slot for
     /// each one it leaves out.
     /// </summary>
     public static WiredNativeEditorConfiguration PadVariables(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
-        VariableBoxes.Contains(name) && !native.VariableIds.IsDefault && native.VariableIds.Length < metadata.VariableDefaults.Length
+        Rules.TryGetValue(name, out var rule) && rule.VariableSlots && !native.VariableIds.IsDefault && native.VariableIds.Length < metadata.VariableDefaults.Length
             ? native with { VariableIds = [.. native.VariableIds, .. metadata.VariableDefaults.Skip(native.VariableIds.Length)] }
             : native;
 
@@ -221,7 +248,9 @@ internal static class WiredEditorStoreRules
     /// <summary>The key of a source the hotel refuses with its own wording, or null.</summary>
     public static string? SourceRefusal(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata)
     {
-        if (VariableBoxes.Contains(name) && !native.VariableIds.IsDefault && native.VariableIds.Length > metadata.VariableDefaults.Length) {
+        var rule = Rules.GetValueOrDefault(name);
+
+        if (rule is { VariableSlots: true } && !native.VariableIds.IsDefault && native.VariableIds.Length > metadata.VariableDefaults.Length) {
             return VariableCountKey;
         }
 
@@ -230,7 +259,7 @@ internal static class WiredEditorStoreRules
         }
 
         // A trigger has no trigger context, so it refuses the context sources too.
-        if (UserSourceKeyed.Contains(name)
+        if (rule is { UserSourceKeyed: true }
             && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length && !metadata.UsersAllowed[index].Contains(source)
                 && (name == BotReachedFurni || !WiredNativeEditorProjection.AnyTriggerContext.Contains(source))).Any()) {
             return UserSourceKey;
@@ -249,10 +278,6 @@ internal static class WiredEditorStoreRules
 
     private static WiredNativeEditorConfiguration Normalized(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
         Applies(name) ? Normalize(name, native, metadata.OwnedDefaults) : native;
-
-    // Missing ints take the frame default, extra ints are dropped.
-    private static ImmutableArray<int> Fit(ImmutableArray<int> ints, ImmutableArray<int> defaults) =>
-        [.. Enumerable.Range(0, defaults.Length).Select(index => index < ints.Length ? ints[index] : defaults[index])];
 
     // An AIR reference target the editor does not offer reads as 0.
     private static int Target(int value) => value is 0 or 1 or -10 or -20 ? value : 0;

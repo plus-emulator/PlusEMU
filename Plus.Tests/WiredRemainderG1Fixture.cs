@@ -458,7 +458,9 @@ internal sealed class G1World : IDisposable
     }
 
     /// <summary>The native save path of a fresh box: compile the edited record, then let the box validate it.</summary>
-    public bool TrySave(string name, Func<WiredNativeEditorConfiguration, WiredNativeEditorConfiguration> edit)
+    public bool TrySave(string name, Func<WiredNativeEditorConfiguration, WiredNativeEditorConfiguration> edit) => TrySave(name, edit, out _);
+
+    public bool TrySave(string name, Func<WiredNativeEditorConfiguration, WiredNativeEditorConfiguration> edit, out WiredConfiguration stored)
     {
         var item = AddItem(name, name.StartsWith("wf_trg", StringComparison.Ordinal) ? InteractionType.WiredTrigger
             : name.StartsWith("wf_cnd", StringComparison.Ordinal) ? InteractionType.WiredCondition
@@ -466,8 +468,10 @@ internal sealed class G1World : IDisposable
         var box = Wired.CreateConfiguredBox(item) ?? throw new InvalidOperationException(name);
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
 
+        stored = new();
+
         return WiredNativeEditorProjection.TryCompile(item.Id, descriptor, edit(WiredNativeEditorProjection.DefaultNative(descriptor)), out var runtime)
-            && box.TryValidateConfiguration(runtime, out _, out _);
+            && box.TryValidateConfiguration(runtime, out stored, out _);
     }
 
     public G1Witness AddWitness(int x, int y)

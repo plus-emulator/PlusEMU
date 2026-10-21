@@ -33,7 +33,8 @@ public sealed class WiredRemainderG1EditorTests
         Assert.Equal(furniAllowed, metadata.FurniAllowed.Select(slot => slot.ToArray()).ToArray());
         Assert.Equal(usersAllowed, metadata.UsersAllowed.Select(slot => slot.ToArray()).ToArray());
         Assert.Equal(wall, metadata.AllowWall);
-        Assert.Equal(0, metadata.QuantifierType);
+        // Observed on AIR WIN63-202610201032-107964540: the two chest conditions open with the quantifier selector, the scanner does not.
+        Assert.Equal(name.StartsWith("wf_cnd", StringComparison.Ordinal) ? 1 : 0, metadata.QuantifierType);
         Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native, out _));
     }
 
@@ -103,7 +104,7 @@ public sealed class WiredRemainderG1EditorTests
     [InlineData("wf_act_init_transaction", new[] { 0, 1, 2, 0, 0, 300 }, false)]
     [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 4, 0, 300 }, false)]
     [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 0, 2, 300 }, false)]
-    [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 0, 1, 29 }, false)]
+    [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 0, 1, 29 }, true)]
     [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 0, 1, 3601 }, false)]
     [InlineData("wf_act_cancel_transaction", new[] { 0 }, true)]
     [InlineData("wf_act_cancel_transaction", new[] { 1 }, true)]
@@ -139,6 +140,20 @@ public sealed class WiredRemainderG1EditorTests
         }
 
         Assert.Equal(saved, world.TrySave(name, native => native with { OwnedIntParams = [.. air] }));
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: a raw save of 29 seconds is accepted and read back as 30.
+    [Theory]
+    [InlineData(29, 30)]
+    [InlineData(0, 30)]
+    [InlineData(30, 30)]
+    [InlineData(300, 300)]
+    public void ATimeoutBelowThirtySecondsIsSavedAsThirty(int seconds, int stored)
+    {
+        using var world = new G1World();
+
+        Assert.True(world.TrySave("wf_act_init_transaction", native => native with { OwnedIntParams = [0, 2, 0, WiredNativeAuxiliaryEditor.AirTarget(0), 1, seconds] }, out var runtime));
+        Assert.Equal([0, 2, 0, 0, 1, stored], runtime.IntParams.ToArray());
     }
 
     [Theory]

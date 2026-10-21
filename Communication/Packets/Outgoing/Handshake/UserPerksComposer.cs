@@ -30,10 +30,11 @@ public class UserPerksComposer(bool cameraAllowed) : IServerPacket
         ];
         packet.WriteInteger(perks.Length);
 
-        // Each perk contains its code, optional denial-message localization key, and allowed flag.
+        // Each perk contains its code, denial-message localization key, and allowed flag.
+        // Observed on AIR WIN63-202610201032-107964540: only a denied perk carries its key.
         foreach (var (code, denialKey, allowed) in perks) {
             packet.WriteString(code);
-            packet.WriteString(denialKey);
+            packet.WriteString(allowed ? "" : denialKey);
             packet.WriteBoolean(allowed);
         }
     }

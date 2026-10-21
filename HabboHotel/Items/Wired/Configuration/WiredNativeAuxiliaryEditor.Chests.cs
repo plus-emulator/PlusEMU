@@ -43,14 +43,17 @@ internal static partial class WiredNativeAuxiliaryEditor
         {
             var p = n.OwnedIntParams;
 
-            return Shape(n, 6, 3, 2, 1) && TryTarget(p[3], out var target) ? ChestDraft(n, [p[0], p[0] == 0 && p[1] == 1 ? 2 : p[1], p[2], target, p[4], p[5]], n.Text) : null;
+            // Observed on AIR WIN63-202610201032-107964540: a raw save of a timeout from 0 to 29 seconds is accepted and read back as 30.
+            return Shape(n, 6, 3, 2, 1) && TryTarget(p[3], out var target)
+                ? ChestDraft(n, [p[0], p[0] == 0 && p[1] == 1 ? 2 : p[1], p[2], target, p[4], p[5] is >= 0 and < 30 ? 30 : p[5]], n.Text) : null;
         }));
         // Observed on hhus (AIR WIN63-202610131318-860371703): the only chest card without wall picks.
         yield return new("wf_act_cancel_transaction", new(TransactionMeta(OnePickList, 1, 1, [0], 0, [100], [0]) with { AllowWall = false }, n =>
             Shape(n, 1, 1, 1, 0) ? ChestDraft(n, [.. n.OwnedIntParams]) : null));
         // Compared amount, its option and target, comparison (the form's own codes).
-        yield return new("wf_cnd_chest_has_items", new(TransactionMeta(OnePickList, 2, 1, [0, 0, -20, 2], 1, [100, 200], [200]) with { QuantifierType = 0 }, HasChest(2)));
-        yield return new("wf_cnd_chest_has_item_type", new(TransactionMeta(TwoPickLists, 3, 1, [0, 0, -20, 2], 1, [100, 101, 0], [0]) with { QuantifierType = 0 }, HasChest(3)));
+        // Observed on AIR WIN63-202610201032-107964540: both conditions open with the quantifier selector (quantifier type 1).
+        yield return new("wf_cnd_chest_has_items", new(TransactionMeta(OnePickList, 2, 1, [0, 0, -20, 2], 1, [100, 200], [200]) with { QuantifierType = 1 }, HasChest(2)));
+        yield return new("wf_cnd_chest_has_item_type", new(TransactionMeta(TwoPickLists, 3, 1, [0, 0, -20, 2], 1, [100, 101, 0], [0]) with { QuantifierType = 1 }, HasChest(3)));
         yield return new("wf_trg_transaction_complete", new(TransactionTrigger, n => Shape(n, 0, 1, 0, 0) && n.FurniSourceTypes[0] == 100 ? ChestDraft(n, []) : null));
         yield return new("wf_trg_transaction_fail", new(TransactionTrigger, n => Shape(n, 0, 1, 0, 0) && n.FurniSourceTypes[0] == 100 ? ChestDraft(n, []) : null));
         // Scanning mode; item types and chests, writing into a context variable.
@@ -72,8 +75,9 @@ internal static partial class WiredNativeAuxiliaryEditor
     {
         var p = n.OwnedIntParams;
 
+        // Observed on AIR WIN63-202610201032-107964540: a raw save with amount 0 is accepted and read back as 1.
         return Shape(n, 6, 2, 2, 1) && TryTarget(p[3], out var target) && p[5] >= lowest && p[5] <= highest
-            ? ChestDraft(n, [p[0], p[1], p[2], target, p[4], p[5]], n.Text) : null;
+            ? ChestDraft(n, [p[0], p[1] == 0 ? 1 : p[1], p[2], target, p[4], p[5]], n.Text) : null;
     }
 
     private static Func<WiredNativeEditorConfiguration, WiredConfiguration?> HasChest(int furni) => n =>

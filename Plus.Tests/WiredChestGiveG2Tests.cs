@@ -363,7 +363,7 @@ public sealed class WiredChestGiveG2Tests
     [InlineData("wf_act_give_furni", new[] { 0, 1, 0, 1, 1, 3 }, false)]
     [InlineData("wf_act_give_furni", new[] { 0, 1, 0, 1, 1, -1 }, false)]
     [InlineData("wf_act_give_furni", new[] { 2, 1, 0, 1, 1, 1 }, false)]
-    [InlineData("wf_act_give_furni", new[] { 0, 0, 0, 1, 1, 1 }, false)]
+    [InlineData("wf_act_give_furni", new[] { 0, 0, 0, 1, 1, 1 }, true)]
     [InlineData("wf_act_give_furni", new[] { 0, -5, 0, 1, 1, 1 }, false)]
     [InlineData("wf_act_give_furni", new[] { 0, 1, 2, 1, 1, 1 }, false)]
     [InlineData("wf_act_give_furni", new[] { 0, 1, 0, 1, 2, 1 }, false)]
@@ -382,6 +382,29 @@ public sealed class WiredChestGiveG2Tests
         var native = world.Native(name, owned, [FirstChest], "");
         Assert.Equal(accepted, WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native, out var runtime)
             && box.TryValidateConfiguration(runtime, out _, out _));
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: a raw save with amount 0 is accepted and read back as 1.
+    [Theory]
+    [InlineData("wf_act_give_currency", 11)]
+    [InlineData("wf_act_give_furni", 1)]
+    public void AnAmountOfZeroIsSavedAsOne(string name, int category)
+    {
+        using var world = new Scene();
+
+        if (name == "wf_act_give_currency") {
+            world.Coins(FirstChest, 0);
+        }
+        else {
+            world.Furni(FirstChest, 0);
+        }
+
+        var box = (WiredChestAction)WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(entry => entry.CanonicalName == name), world.Module);
+        var native = world.Native(name, [0, 0, 0, 1, 0, category], [FirstChest], "");
+
+        Assert.True(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, native, out var runtime));
+        Assert.True(box.TryValidateConfiguration(runtime, out var validated, out _));
+        Assert.Equal([0, 1, 0, 1, 0, category], validated.IntParams.ToArray());
     }
 
     [Fact]

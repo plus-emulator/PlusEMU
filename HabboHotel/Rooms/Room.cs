@@ -978,7 +978,24 @@ public class Room
     /// </summary>
     internal void FlushWiredFlashes() => _wiredComponent?.FlushFlashes();
 
-    internal void SendObjectsData(IReadOnlyList<Item> items)
+    /// <param name="visits">Items a user sees only when its <see cref="RoomUser.Visit"/> is at most this (<see cref="RoomUserManager.Visits"/>).</param>
+    internal void SendObjectsData(IReadOnlyList<Item> items, IReadOnlyDictionary<Item, int>? visits = null)
+    {
+        if (_roomUserManager == null) {
+            return;
+        }
+
+        var users = _roomUserManager.GetRoomUsers().Where(user => user?.GetClient() != null);
+
+        // Users who are past the same number of visit limits see the same items.
+        foreach (var audience in users.GroupBy(user => visits?.Values.Count(limit => user.Visit > limit) ?? 0)) {
+            var user = audience.First();
+            SendObjectsData([.. items.Where(item => visits?.TryGetValue(item, out var limit) != true || user.Visit <= limit)],
+                [.. audience.Select(member => member.GetClient()!)]);
+        }
+    }
+
+    private static void SendObjectsData(IReadOnlyList<Item> items, GameClient[] clients)
     {
         if (items.Count == 0) {
             return;
@@ -987,11 +1004,6 @@ public class Room
         IServerPacket packet = new ObjectsDataUpdateComposer([.. items.Select(item => (item.Id, FurnitureWireData.ForState(item.ExtraData, item.LegacyDataString)))]);
 
         try {
-            if (_roomUserManager == null) {
-                return;
-            }
-
-            var clients = _roomUserManager.GetRoomUsers().Select(user => user?.GetClient()).OfType<GameClient>().ToArray();
             bool Maps(GameClient client, uint id) => client.Revision?.InternalIdToOutgoingIdMapping.ContainsKey(id) == true;
             GameClient.SendBroadcast(packet, clients.Where(client => Maps(client, packet.MessageId)));
             var fallback = clients.Where(client => !Maps(client, packet.MessageId) && Maps(client, Plus.Communication.Packets.Outgoing.ServerPacketHeader.ObjectUpdateComposer)).ToArray();

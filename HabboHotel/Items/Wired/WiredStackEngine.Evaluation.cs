@@ -378,8 +378,10 @@ internal sealed partial class WiredStackEngine
         Item[] items = [.. firing.Flashes];
         firing.Flashes.Clear();
 
+        var visits = firing.Context.Event.Visits;
+
         if (firing.Accepted && firing.HasEffects && !firing.Cancelled) {
-            HoldFlashes(items, _cycle + 1);
+            HoldFlashes(items, _cycle + 1, visits);
 
             return;
         }
@@ -389,7 +391,7 @@ internal sealed partial class WiredStackEngine
 
         try {
             foreach (var item in items) {
-                Flash(item);
+                Flash(item, visits);
             }
         }
         finally {

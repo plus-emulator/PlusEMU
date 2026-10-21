@@ -34,6 +34,8 @@ public sealed record WiredRuntimeEvent(WiredEventKind Kind)
     public int Y { get; init; }
     /// <summary>A link message or dataframe received by <see cref="EventItem"/>, a WIRED Link endpoint of this room.</summary>
     public Plus.HabboHotel.Items.Wired.Links.WiredLinkPayload? Link { get; init; }
+    /// <summary>The room's <see cref="RoomUserManager.Visits"/> when the event happened; a user whose visit started later did not see it.</summary>
+    public int Visits { get; init; } = int.MaxValue;
 }
 
 public readonly record struct WiredClickResult(bool Triggered, bool BlockMenu, bool DoNotRotate);

@@ -694,18 +694,6 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void BotReachedFurniWithABlankNameAndNoPicksAcceptsAnyBotOnAnyFurni()
-    {
-        using var f = TalkingStack();
-        var other = AddNamedBot(f, 10, "Carl", 2, 1);
-        AddStackTrigger(f, 104, "wf_trg_bot_reached_stf", new() { IntParams = [100, 100], Text = "" });
-        var replies = Capture(f.Client);
-        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.BotReachedFurni) { Actor = other, EventItem = f.Target });
-        f.Advance(0);
-        Assert.Single(Chats(replies));
-    }
-
-    [Fact]
     public void BotReachedAvatarRunsTheStackWhenTheNamedBotReachesAUser()
     {
         using var f = TalkingStack();

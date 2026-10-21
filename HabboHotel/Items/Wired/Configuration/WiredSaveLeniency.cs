@@ -23,12 +23,14 @@ internal static class WiredSaveLeniency
 
     /// <param name="NoText">The box has no text field.</param>
     /// <param name="FillsEmptyUserSources">The box reads an empty user source list as the frame default.</param>
-    private sealed record Rule(bool NoText = false, IntsMode Ints = IntsMode.Keep, bool FillsEmptyUserSources = false);
+    /// <param name="PadsUserSources">The box keeps the frame default for each user source slot a save leaves out.</param>
+    private sealed record Rule(bool NoText = false, IntsMode Ints = IntsMode.Keep, bool FillsEmptyUserSources = false, bool PadsUserSources = false);
 
     private static readonly Rule Bare = new(NoText: true, Ints: IntsMode.None);
     private static readonly Rule Textless = new(NoText: true);
     private static readonly Rule TextlessSources = new(NoText: true, FillsEmptyUserSources: true);
     private static readonly Rule IntlessSources = new(Ints: IntsMode.None, FillsEmptyUserSources: true);
+    private static readonly Rule PaddedSources = new(PadsUserSources: true);
 
     // Each box is named once, with what its save drops.
     private static readonly FrozenDictionary<string, Rule> Rules = new Dictionary<string, Rule>
@@ -85,10 +87,15 @@ internal static class WiredSaveLeniency
         { "wf_act_neg_send_signal", TextlessSources },
         { "wf_trg_bot_reached_avtr", IntlessSources },
         { "wf_trg_bot_reached_stf", IntlessSources },
+        // Triggerer Matches keeps its default comparison slot when a save names fewer user sources.
+        { "wf_cnd_triggerer_match", PaddedSources },
+        { "wf_cnd_not_triggerer_match", PaddedSources },
         { FurniNameOutput, new(Ints: IntsMode.ShowMultipleFlag) }
     }.ToFrozenDictionary();
 
     public static bool FillsEmptyUserSources(string name) => Rules.TryGetValue(name, out var rule) && rule.FillsEmptyUserSources;
+
+    public static bool PadsUserSources(string name) => Rules.TryGetValue(name, out var rule) && rule.PadsUserSources;
 
     public static bool Applies(string name) => Rules.ContainsKey(name);
 

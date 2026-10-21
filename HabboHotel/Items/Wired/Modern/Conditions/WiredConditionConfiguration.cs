@@ -142,7 +142,7 @@ public static class WiredConditionConfiguration
                 break;
             case "wf_cnd_triggerer_match":
                 if (p.Length != 5 || !Range(0, 1, 7) || !Q(1) || !U(2)
-                    || !(U(3) || p[3] == 101) || !Q(4) || proposed.Text.Length > 64) {
+                    || !(U(3) || p[3] == 101) || !Q(4)) {
                     return false;
                 }
 

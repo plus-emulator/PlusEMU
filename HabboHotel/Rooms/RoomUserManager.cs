@@ -468,7 +468,7 @@ public class RoomUserManager
         }
     }
 
-    public void RemoveUserFromRoom(GameClient? session, bool nofityUser, bool notifyKick = false)
+    public void RemoveUserFromRoom(GameClient? session, bool nofityUser, bool notifyKick = false, short? closeReason = null)
     {
         RoomUser? removedUser = null;
 
@@ -499,7 +499,7 @@ public class RoomUserManager
             }
 
             if (nofityUser) {
-                session.Send(new CloseConnectionComposer());
+                session.Send(new CloseConnectionComposer(closeReason));
             }
 
             if (session.GetHabbo().TentId > 0) {

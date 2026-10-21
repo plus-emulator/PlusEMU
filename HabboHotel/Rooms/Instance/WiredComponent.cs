@@ -700,7 +700,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     /// Observed on AIR WIN63-202610151745-318700621: a counter value written by Wired (Start reset, Reset, Adjust Clock) goes out in the
     /// same ObjectsDataUpdate as the event's flashes, each counter once with its last value. Other data formats keep their own frame.
     /// </summary>
-    private bool TryQueueBatchData(Item item)
+    internal bool TryQueueBatchData(Item item)
     {
         if (!item.IsFloorItem || item.ExtraData is not Plus.HabboHotel.Items.DataFormat.LegacyDataFormat) {
             return false;

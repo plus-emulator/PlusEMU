@@ -415,7 +415,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 // Observed on AIR WIN63-202610201032-107964540: a box of the stack that is running has flashed already, and the toggle
                 // flips it again, so it ends in the toggled state.
                 var own = context.CapturedStack.Select(x => x.Item.Id).ToHashSet();
-                movers = WiredToggleStateTargets.Resolve(movers, box => context.Room.GetWired().Flash(box, own.Contains(box.Id)), out flashedBox);
+                movers = WiredToggleStateTargets.Resolve(movers, box => context.Room.GetWired().Flash(box, own.Contains(box.Id)),
+                    item => context.Room.GetWired().TryQueueBatchData(item), out flashedBox);
             }
 
             var passengers = WiredRoomMovement.CapturePassengers(context, movers);

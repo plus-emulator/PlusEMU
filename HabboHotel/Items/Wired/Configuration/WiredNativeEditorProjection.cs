@@ -388,6 +388,11 @@ public static class WiredNativeEditorProjection
             native = WiredTriggerStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: these selectors store a save in a normal form instead of refusing odd values.
+        if (WiredSelectorStoreRules.Applies(name) && Supports(name)) {
+            native = WiredSelectorStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
+        }
+
         // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).
         // Observed on AIR WIN63-202610151745-318700621: the area selectors store each of x, y, width and height clamped to 0..64
         // (-5 reads back 0, 500 reads back 64) instead of refusing the save.

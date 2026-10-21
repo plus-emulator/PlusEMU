@@ -168,7 +168,8 @@ internal static class WiredNativeActionEditor
                 break;
             case "wf_act_bot_teleport":
             case "wf_act_bot_move":
-                if (p.Length != 0 || !BotName(text)) {
+                // Observed on AIR WIN63-202610151745-318700621: Bot Move keeps a bot name longer than the editor field.
+                if (p.Length != 0 || name == "wf_act_bot_teleport" && !BotName(text)) {
                     return false;
                 }
 

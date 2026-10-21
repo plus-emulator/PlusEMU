@@ -199,6 +199,10 @@ internal sealed partial class WiredStackEngine
 
     public bool Dispatch(WiredBoxType type, params object[] arguments) => Pass(() =>
     {
+        if (Disabled) {
+            return false;
+        }
+
         RefreshStacks();
         var context = CreateContext((arguments ?? []).ToArray(), _queuedDepth ?? (_runtimeContext?.Depth ?? _context?.Depth ?? -1) + 1);
         _queuedDepth = null;
@@ -232,15 +236,19 @@ internal sealed partial class WiredStackEngine
     });
 
     public bool RunStack(IWiredItem source, object[] arguments, Action? onAccepted = null) => Pass(() =>
-        RunStackCore(source, CreateContext(arguments.ToArray(), _context?.Depth ?? 0), null, onAccepted));
+        !Disabled && RunStackCore(source, CreateContext(arguments.ToArray(), _context?.Depth ?? 0), null, onAccepted));
 
     // Legacy repeaters gate each condition on any room actor independently, then run actorless
     // room actions once. This quantifier is intentional and covered separately from actor events.
     public bool RunPeriodicStack(IWiredItem source, object[][] actors) => Pass(() =>
-        RunStackCore(source, CreateContext([], 0), actors, null));
+        !Disabled && RunStackCore(source, CreateContext([], 0), actors, null));
 
     public bool CallStacks(IEnumerable<Item> targets, object[] arguments) => Pass(() =>
     {
+        if (Disabled) {
+            return false;
+        }
+
         var depth = (_context?.Depth ?? 0) + 1;
 
         if (TooDeep(depth)) {
@@ -267,6 +275,10 @@ internal sealed partial class WiredStackEngine
 
     public void OnCycle() => Pass(() =>
     {
+        if (Disabled) {
+            return false;
+        }
+
         _cycle++;
         ReleaseHeldFlashes();
         RefreshStacks();

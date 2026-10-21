@@ -28,6 +28,12 @@ public static class InteractionTypes
                 return InteractionType.InvisibleFurniControl;
             case "chooser_disable":
                 return InteractionType.ChooserDisabler;
+            case "handitem_block":
+                return InteractionType.HandItemBlocker;
+            case "wired_disable":
+                return InteractionType.WiredDisabler;
+            case "queue_speed":
+                return InteractionType.RollerSpeedController;
             case "recolorable":
                 return InteractionType.Recolorable;
             case "wired_chest_furni":

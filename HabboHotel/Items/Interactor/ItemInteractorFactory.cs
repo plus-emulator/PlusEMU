@@ -40,7 +40,9 @@ public sealed class ItemInteractorFactory(
             InteractionType.AreaHide => new InteractorAreaHide(),
             InteractionType.WiredLink => new InteractorWiredLink(),
             InteractionType.WiredLabel => new InteractorWiredLabel(),
-            InteractionType.InvisibleFurniControl or InteractionType.ChooserDisabler => new InteractorConfigurationSwitch(),
+            InteractionType.InvisibleFurniControl or InteractionType.ChooserDisabler or InteractionType.HandItemBlocker
+                or InteractionType.WiredDisabler => new InteractorConfigurationSwitch(),
+            InteractionType.RollerSpeedController => new InteractorRollerSpeed(),
             InteractionType.Gate => new InteractorGate(),
             InteractionType.FootballGate => new InteractorFootballGate(item),
             InteractionType.Teleport => new InteractorTeleport(timeProvider),

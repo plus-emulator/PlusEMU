@@ -342,6 +342,7 @@ public static class ClientPacketHeader
     public const uint GetCatalogRoomPromotionEvent = 3894;
     public const uint MoveAvatarEvent = 1859;
     public const uint SaveBrandingItemEvent = 2955;
+    public const uint SetAreaHideEvent = 3831;
     public const uint SaveEnforcedCategorySettingsEvent = 3740;
     public const uint RespectPetEvent = 958;
     public const uint GetMarketplaceCanMakeOfferEvent = 3684;

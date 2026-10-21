@@ -195,7 +195,8 @@ public partial class RoomItemHandling
         _rewards = rewards;
         HopperCount = 0;
         GotRollers = false;
-        _mRollerSpeed = 4;
+        // Observed on AIR WIN63-202610201032-107964540: a room without a speed controller steps its rollers every 2000 ms, which is 4 room ticks.
+        _mRollerSpeed = 3;
         _mRollerCycle = 0;
         _movedItems = new();
         _rollers = new();
@@ -221,6 +222,11 @@ public partial class RoomItemHandling
     {
         _roomItemUpdateQueue.Enqueue(item);
     }
+
+    /// <summary>The number of room ticks (500 ms each) between two roller steps.</summary>
+    public int RollerStepTicks => ConfigurationItemStates.RollerSpeedController(_room) != null
+        ? ConfigurationItemStates.RollerStepMilliseconds(_room) / 500
+        : _mRollerSpeed + 1;
 
     public void SetSpeed(int p)
     {
@@ -552,7 +558,9 @@ public partial class RoomItemHandling
             return false;
         }
 
-        if (announce && item.IsFloorItem) {
+        var neverSent = item.IsFloorItem && FurniVisibility.ForgetRemoved(_room, item);
+
+        if (announce && item.IsFloorItem && !neverSent) {
             _room.SendPacket(new ObjectRemoveComposer(item.Id, item.IsTemporary, item.UserId));
         }
         else if (announce && item.IsWallItem) {
@@ -580,18 +588,29 @@ public partial class RoomItemHandling
 
     private void CycleRollers()
     {
-        if (_rollers.IsEmpty) {
+        var controller = ConfigurationItemStates.RollerSpeedController(_room);
+
+        if (_rollers.IsEmpty && controller == null) {
             return;
         }
 
-        if (_mRollerCycle < _mRollerSpeed && _mRollerSpeed != 0) {
+        var speed = RollerStepTicks - 1;
+
+        if (_mRollerCycle < speed) {
             _mRollerCycle++;
 
             return;
         }
 
-        _room.GetGameMap().Navigation.Executor.Rollers.Run(_rollers.Values.ToList());
+        if (!_rollers.IsEmpty) {
+            _room.GetGameMap().Navigation.Executor.Rollers.Run(_rollers.Values.ToList());
+        }
+
         _mRollerCycle = 0;
+
+        if (controller != null) {
+            InteractorRollerSpeed.AnimateStep(_room, controller);
+        }
     }
 
     private void SaveFurniture()
@@ -614,7 +633,7 @@ public partial class RoomItemHandling
     public bool SetFloorItem(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses = false, double height = -1, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision = null, bool deferPositionSave = false) =>
         PlaceFloor(session, item, newX, newY, newRot, newItem, onRoller, sendMessage, updateRoomUserStatuses, height, wiredCollision, null, deferPositionSave);
 
-    public bool PersistFurnitureData(Item item, Plus.HabboHotel.Items.DataFormat.IFurniObjectData data)
+    public bool PersistFurnitureData(Item item, Plus.HabboHotel.Items.DataFormat.IFurniObjectData data, bool dataUpdateOnly = false)
     {
         RoomItemSnapshot snapshot;
 
@@ -628,6 +647,16 @@ public partial class RoomItemHandling
                 item.ExtraData = data;
                 snapshot = RoomItemSnapshot.Capture(item);
             }
+        }
+
+        if (FurniVisibility.IsConcealed(_room, item)) {
+            return true;
+        }
+
+        if (dataUpdateOnly) {
+            _room.SendPacket(new ObjectDataUpdateComposer(item.Id, snapshot.Data));
+
+            return true;
         }
 
         _room.SendPacket(new ObjectUpdateComposer(snapshot));
@@ -855,11 +884,14 @@ public partial class RoomItemHandling
             _room.GetIceTag().Placed(session, item);
         }
 
+        // A move across the edge of a hidden area adds or removes the furni for the clients instead of updating it.
+        var settled = newItem ? [] : FurniVisibility.Reconcile(_room, [item]);
+
         if (sendMessage) {
             if (newItem) {
                 _room.SendObject(item);
             }
-            else if (!onRoller) {
+            else if (!onRoller && !settled.Contains(item.Id)) {
                 var furnitureSnapshot = RoomItemSnapshot.Capture(item);
                 _room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
                 _room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
@@ -1001,6 +1033,7 @@ public partial class RoomItemHandling
             UpdateItem(item);
         }
 
+        FurniVisibility.Reconcile(_room, moves.Select(move => move.Item).ToList());
         map.FlushPlacementUpdates();
 
         if (moves.Any(move => move.Item.Definition.InteractionType == InteractionType.WalkMagicTile)) {
@@ -1112,7 +1145,7 @@ public partial class RoomItemHandling
 
     public void OnCycle()
     {
-        if (GotRollers || !_rollers.IsEmpty) {
+        if (GotRollers || !_rollers.IsEmpty || ConfigurationItemStates.RollerSpeedController(_room) != null) {
             try {
                 CycleRollers();
             }

@@ -129,7 +129,7 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
 
                     break;
                 }
-            case InteractionType.ChooserDisabler: {
+            case var type when ConfigurationItemStates.IsLimitedToOne(type): {
                     if (ConfigurationItemStates.TypeLimitReached(room, item.Definition)) {
                         ConfigurationItemStates.SendTypeLimit(session);
 

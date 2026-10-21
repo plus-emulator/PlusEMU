@@ -6,31 +6,47 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items;
 
 /// <summary>
-/// The room-wide switches of ConfigurationItemStates. Invisible furniture are shown while any Invisible Furni Controller is
-/// switched on; the :chooser command is disabled for visitors without rights while any :chooser disabler is switched on
-/// (AIR ChatInputWidgetHandler ":chooser" checks activeRoomHasChooserDisabled and roomControllerLevel).
+/// The room-wide switches of ConfigurationItemStates. Observed on AIR WIN63-202610201032-107964540: invisible furniture are hidden
+/// from the clients while an Invisible Furni Controller is switched on, the hand item drop is blocked while a hand item blocker is
+/// switched on, and the :chooser command is disabled for visitors without rights while a :chooser disabler is switched on.
 /// </summary>
 public static class ConfigurationItemStates
 {
     public static bool InvisibleFurni(Room room, Item? except = null) => IsOn(room, InteractionType.InvisibleFurniControl, except);
     public static bool ChooserDisabled(Room room, Item? except = null) => IsOn(room, InteractionType.ChooserDisabler, except);
+    public static bool HandItemBlocked(Room room, Item? except = null) => IsOn(room, InteractionType.HandItemBlocker, except);
+    public static bool WiredDisabled(Room room) => IsOn(room, InteractionType.WiredDisabler, null);
+    public const int DefaultRollerStepMilliseconds = 2000;
+    public static Item? RollerSpeedController(Room room) => room.GetRoomItemHandler()?.GetFloor
+        .FirstOrDefault(item => item.Definition.InteractionType == InteractionType.RollerSpeedController);
+    /// <summary>
+    /// The time between two roller steps in the room, in milliseconds. Observed on AIR WIN63-202610201032-107964540: a room without the
+    /// speed controller steps every 2000 ms. The controller has 12 states in four groups of three: 500, 1000, 1500 and 2000 ms.
+    /// </summary>
+    public static int RollerStepMilliseconds(Room room) => RollerSpeedController(room) is { } controller
+        ? (int.TryParse(controller.LegacyDataString, out var state) ? Math.Clamp(state, 0, 11) / 3 + 1 : 1) * 500
+        : DefaultRollerStepMilliseconds;
     public static ConfigurationItemStatesComposer Compose(Room room, Item? except = null) =>
-        new(ChooserDisabled(room, except), InvisibleFurni(room, except));
-    /// <summary>Room entry: the client starts with every switch off, so only a room with a switch on needs the packet.</summary>
+        new(ChooserDisabled(room, except), InvisibleFurni(room, except), HandItemBlocked(room, except));
+    /// <summary>Room entry: every entry carries the states, all off included.</summary>
     public static void SendTo(GameClient session, Room room)
     {
         // Observed on AIR WIN63-202610151745-318700621: every room entry carries the states, all off included.
         session.Send(Compose(room));
     }
+    /// <summary>The furni whose state is one of the room flags in the flags packet.</summary>
+    public static bool IsFlag(InteractionType type) => type is InteractionType.InvisibleFurniControl or InteractionType.ChooserDisabler
+        or InteractionType.HandItemBlocker;
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: a room holds one :chooser disabler. A second placement is refused with the
-    /// type limit text.
+    /// Observed on AIR WIN63-202610201032-107964540: a room holds one of each configuration furni. A second placement is refused with
+    /// the type limit text.
     /// </summary>
-    public static bool TypeLimitReached(Room room, ItemDefinition definition) => definition.InteractionType == InteractionType.ChooserDisabler
-        && room.GetRoomItemHandler().GetFloor.Any(item => item.Definition.InteractionType == InteractionType.ChooserDisabler);
+    public static bool IsLimitedToOne(InteractionType type) => IsFlag(type) || type is InteractionType.WiredDisabler or InteractionType.RollerSpeedController;
+    public static bool TypeLimitReached(Room room, ItemDefinition definition) => IsLimitedToOne(definition.InteractionType)
+        && room.GetRoomItemHandler().GetFloor.Any(item => item.Definition.InteractionType == definition.InteractionType);
     public static void SendTypeLimit(GameClient session) =>
         session.Send(new RoomNotificationComposer("furni_placement_error", "message", "${room.error.type_limit}"));
     public static void Announce(Room room, Item? except = null) => room.SendPacket(Compose(room, except));
-    private static bool IsOn(Room room, InteractionType type, Item? except) => room.GetRoomItemHandler().GetFloor.Any(item =>
-        !ReferenceEquals(item, except) && item.Definition.InteractionType == type && item.LegacyDataString == "1");
+    private static bool IsOn(Room room, InteractionType type, Item? except) => room.GetRoomItemHandler()?.GetFloor.Any(item =>
+        !ReferenceEquals(item, except) && item.Definition.InteractionType == type && item.LegacyDataString == "1") == true;
 }

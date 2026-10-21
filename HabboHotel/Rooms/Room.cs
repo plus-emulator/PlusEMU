@@ -635,7 +635,7 @@ public class Room
         GetGameMap().SendPlacementHeightMap(session);
         var presentation = GetGameMap().StaticModel.Presentation;
         session.Send(new FloorHeightMapComposer(GetGameMap().Model.GetRelativeHeightmap(), GetGameMap().StaticModel.WallHeight,
-            presentation.HalfScale, cameraX: presentation.CameraX, cameraY: presentation.CameraY, cameraZ: presentation.CameraZ));
+            presentation.HalfScale, Plus.HabboHotel.Items.AreaHide.AreaHideState.EntryHides(this), cameraX: presentation.CameraX, cameraY: presentation.CameraY, cameraZ: presentation.CameraZ));
         session.Send(new RoomVisualizationSettingsComposer(WallThickness, FloorThickness, Convert.ToBoolean(Hidewall)));
         var snapshotUsers = _roomUserManager.GetUserList().Where(user => user != null).ToArray();
         // Observed on AIR WIN63-202610151745-318700621: the entrant gets the users already in the room as one Users packet (empty
@@ -659,11 +659,11 @@ public class Room
             session.Send(new UserUpdateComposer(RoomUserStatusSnapshot.Capture(settledUsers)));
         }
 
+        FurniVisibility.Seed(this);
         var snapshotFurniture = VisibleFloorItems.ToArray();
         var furnitureSnapshot = RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName);
         session.Send(new ObjectsComposer(furnitureSnapshot));
         session.Send(new FurnitureMetadataComposer(furnitureSnapshot.Items));
-        Plus.HabboHotel.Items.AreaHide.AreaHideState.SendSnapshot(session, snapshotFurniture);
         var snapshotWalls = GetRoomItemHandler().GetWall.ToArray();
         var wallSnapshot = RoomFurnitureSnapshot.Capture(snapshotWalls, OwnerId, OwnerName);
         session.Send(new ItemsComposer(wallSnapshot));
@@ -798,7 +798,15 @@ public class Room
         }
     }
 
-    public IEnumerable<Item> VisibleFloorItems => GetRoomItemHandler().GetFloor.Where(item => !HideWired || !item.IsWired);
+    public IEnumerable<Item> VisibleFloorItems
+    {
+        get
+        {
+            var hiding = FurniVisibility.Capture(this);
+
+            return GetRoomItemHandler().GetFloor.Where(item => (!HideWired || !item.IsWired) && !FurniVisibility.Hides(hiding, item));
+        }
+    }
 
     public void SetWiredHidden(bool hidden)
     {
@@ -813,6 +821,9 @@ public class Room
             return;
         }
 
+        // A box inside a hidden area is not on the clients and stays off them.
+        wired = wired.Where(item => !FurniVisibility.IsConcealed(this, item)).ToArray();
+
         var wiredSnapshot = RoomFurnitureSnapshot.Capture(wired, OwnerId, OwnerName);
 
         SendPacket(new ObjectsComposer(wiredSnapshot), false, viewer =>
@@ -826,6 +837,10 @@ public class Room
 
     public void SendObject(Item item)
     {
+        if (FurniVisibility.ConcealOnArrival(this, item)) {
+            return;
+        }
+
         if (item is { IsTemporary: true, IsFloorItem: true }) {
             SendTemporaryFloorItems([item]);
 

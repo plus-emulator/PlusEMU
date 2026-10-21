@@ -147,7 +147,7 @@ internal sealed class TestRoomItemMetadataStore : IRoomItemMetadataStore
     internal static TestRoomItemMetadataStore Instance { get; } = new();
     public void SetMannequinData(uint itemId, uint roomId, string data) => throw new NotSupportedException();
     public void SetToner(uint itemId, uint roomId, int hue, int saturation, int lightness) => throw new NotSupportedException();
-    public void SetBrandingData(uint itemId, uint roomId, string data) => throw new NotSupportedException();
+    public void SetBrandingData(uint itemId, uint roomId, string data) { }
     public MoodlightRecord? LoadMoodlight(uint itemId) => throw new NotSupportedException();
     public void SetMoodlightEnabled(uint itemId, uint roomId, bool enabled) => throw new NotSupportedException();
     public void UpdateMoodlightPreset(uint itemId, uint roomId, int preset, string value) => throw new NotSupportedException();

@@ -50,7 +50,7 @@ public sealed class PlannedShutdown : IPlannedShutdown
 
     public bool TrySchedule(int minutes, int durationMinutes)
     {
-        if (minutes < 1 || durationMinutes < 0 || Interlocked.Exchange(ref _scheduled, 1) == 1) {
+        if (minutes is < 1 or > MaxMinutes || durationMinutes < 0 || Interlocked.Exchange(ref _scheduled, 1) == 1) {
             return false;
         }
 

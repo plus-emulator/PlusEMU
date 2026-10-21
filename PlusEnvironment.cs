@@ -37,6 +37,7 @@ public class PlusEnvironment : IPlusEnvironment
     private static ILogger<PlusEnvironment> Logger => Constructed(_logger);
 
     private static Encoding _defaultEncoding = Encoding.Default;
+    private static int _shuttingDown;
     public static CultureInfo CultureInfo = CultureInfo.InvariantCulture;
 
     // The static services are set by the DI-built instance; reading one earlier is a startup bug.
@@ -289,6 +290,11 @@ public class PlusEnvironment : IPlusEnvironment
 
     public static void PerformShutDown()
     {
+        // A planned shutdown timer, a stop signal and a crash can all ask at once; only the first one runs.
+        if (Interlocked.Exchange(ref _shuttingDown, 1) == 1) {
+            return;
+        }
+
         ConsoleWindow.Clear();
         Logger.LogInformation("Server shutting down...");
         ConsoleWindow.SetTitle("PLUS EMULATOR: SHUTTING DOWN!");

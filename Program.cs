@@ -142,7 +142,7 @@ public static class Program
                 continue;
             }
 
-            ConsoleCommands.InvokeCommand(input.Split(' ')[0]);
+            ConsoleCommands.InvokeCommand(input);
         }
     }
 

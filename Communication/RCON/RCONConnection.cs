@@ -20,7 +20,8 @@ public sealed class RconConnection : IDisposable
     private static readonly HashSet<string> AcknowledgedCommands = new(StringComparer.Ordinal)
     {
         "alert_user", "disconnect_user", "give_user_badge", "give_user_currency", "grant_user_bundle",
-        "reload_catalog", "reload_filter", "reload_user_motto", "reload_user_rank", "take_user_badge", "take_user_currency", "update_user_settings",
+        "reload_catalog", "reload_filter", "reload_user_motto", "reload_user_rank", "shutdown", "take_user_badge", "take_user_currency",
+        "update_user_settings",
     };
 
     private readonly ILogger<RconConnection> _logger;

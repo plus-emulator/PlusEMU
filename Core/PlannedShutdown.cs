@@ -18,6 +18,7 @@ public sealed class PlannedShutdown : IPlannedShutdown
 {
     // AIR reads 15 when the packet has no duration (class_3083.as:41-49).
     public const int DefaultDurationMinutes = 15;
+    public const int MaxMinutes = 24 * 60;
 
     private readonly IGameClientManager _clients;
     private readonly TimeProvider _clock;

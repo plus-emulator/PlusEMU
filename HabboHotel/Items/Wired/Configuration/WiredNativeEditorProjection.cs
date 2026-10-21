@@ -652,7 +652,7 @@ public static class WiredNativeEditorProjection
         && native.VariableIds.All(token => token != null && token.Length <= 1024)
         && native.SavedState != null && !native.SavedState.Snapshots.IsDefault
         && (native.Category == WiredBoxCategory.Action ? native.Delay is int delay && WiredConfigurationLimits.IsDelay(delay) : native.Delay == null)
-        && (native.Category == WiredBoxCategory.Condition ? native.Quantifier is 0 or 1 : native.Quantifier == null)
+        && (native.Category == WiredBoxCategory.Condition ? native.Quantifier is 0 or 1 or 2 : native.Quantifier == null)
         && (native.Category == WiredBoxCategory.Selector ? native.Filter != null && native.Inverse != null : native.Filter == null && native.Inverse == null);
 
     internal static bool Matches(WiredConfiguration actual, WiredConfiguration expected) => actual.Version == expected.Version

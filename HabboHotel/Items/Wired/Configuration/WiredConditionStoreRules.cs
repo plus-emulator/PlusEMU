@@ -12,7 +12,14 @@ internal static class WiredConditionStoreRules
     public static bool Applies(string name) => name is "wf_cnd_actor_dir" or "wf_cnd_actor_in_team" or "wf_cnd_not_in_team"
         or "wf_cnd_counter_time_matches" or "wf_cnd_furnis_hv_avtrs" or "wf_cnd_not_furni_on" or "wf_cnd_not_hv_avtrs"
         or "wf_cnd_has_altitude" or "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap" or "wf_cnd_not_user_count" or "wf_cnd_match_date" or "wf_cnd_match_time"
-        or "wf_act_move_furni_as_group" or "wf_act_neg_send_signal";
+        or "wf_act_move_furni_as_group" or "wf_act_neg_send_signal" or "wf_cnd_slc_quantity" or "wf_cnd_team_has_rank" or "wf_cnd_team_has_score"
+        or "wf_cnd_time_less_than" or "wf_cnd_time_more_than" or "wf_cnd_trggrer_on_frn" or "wf_cnd_actor_in_group" or "wf_cnd_not_in_group"
+        or "wf_cnd_stuff_is" or "wf_cnd_not_stuff_is";
+
+    // These conditions keep a quantifier of 2 as sent, also the ones whose editor shows no quantifier.
+    public static bool KeepsQuantifierTwo(string name) => name is "wf_cnd_slc_quantity" or "wf_cnd_team_has_rank" or "wf_cnd_team_has_score"
+        or "wf_cnd_time_less_than" or "wf_cnd_time_more_than" or "wf_cnd_trggrer_on_frn" or "wf_cnd_actor_in_group" or "wf_cnd_not_in_group"
+        or "wf_cnd_stuff_is" or "wf_cnd_not_stuff_is";
 
     public const string UserSourceKey = "wiredfurni.error.invalid_user_source";
 
@@ -27,7 +34,7 @@ internal static class WiredConditionStoreRules
 
     public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native, ImmutableArray<int> defaults)
     {
-        var p = Fit(native.OwnedIntParams, defaults);
+        var p = name is "wf_cnd_stuff_is" or "wf_cnd_not_stuff_is" ? native.OwnedIntParams : Fit(native.OwnedIntParams, defaults);
 
         switch (name) {
             case "wf_cnd_actor_dir":
@@ -72,6 +79,20 @@ internal static class WiredConditionStoreRules
             case "wf_act_neg_send_signal":
                 p = [.. p.Select(flag => flag == 1 ? 1 : 0)];
                 break;
+            // Selection Quantity: the user or furni flag is 0 or 1, the amount 0..100, and the comparison keeps 3 and 4.
+            case "wf_cnd_slc_quantity":
+                p = [p[0] is 0 or 1 ? p[0] : 0, Math.Clamp(p[1], 0, 100), Math.Max(p[2], 0)];
+                break;
+            case "wf_cnd_team_has_rank":
+                p = [Math.Clamp(p[0], 0, 4), Math.Clamp(p[1], 0, 3)];
+                break;
+            case "wf_cnd_team_has_score":
+                p = [Math.Clamp(p[0], 0, 4), Math.Clamp(p[1], 0, 1000), Math.Max(p[2], 0)];
+                break;
+            // The time conditions keep any threshold, negative ones too.
+            case "wf_cnd_time_less_than":
+            case "wf_cnd_time_more_than":
+                break;
             case "wf_cnd_match_time":
                 p = [Flag(p[0]), Flag(p[1]), Flag(p[2]), .. p.Skip(3).Take(4).Select(value => Math.Clamp(value, 0, 59)),
                     .. p.Skip(7).Take(2).Select(value => Math.Clamp(value, 0, 23))];
@@ -84,8 +105,21 @@ internal static class WiredConditionStoreRules
             text = "";
         }
 
-        return native with { OwnedIntParams = p, Text = text };
+        // The group conditions keep the id text only when it is a decimal number.
+        if (name is "wf_cnd_actor_in_group" or "wf_cnd_not_in_group" && !IsDecimalNumber(text)) {
+            text = "";
+        }
+
+        return native with { OwnedIntParams = p, Text = text, Quantifier = StoredQuantifier(name, native.Quantifier) };
     }
+
+    private static int? StoredQuantifier(string name, int? quantifier) => KeepsQuantifierTwo(name) && quantifier is { } value
+        ? value is 1 or 2 ? value : 0 : quantifier;
+
+    /// <summary>An optional minus sign and digits that fit a 64-bit number.</summary>
+    internal static bool IsDecimalNumber(string text) => text.Length == 0
+        || long.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out _)
+        || text[0] == '-' && long.TryParse(text.AsSpan(1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out _);
 
     private static int Flag(int value) => value == 0 ? 0 : 1;
 

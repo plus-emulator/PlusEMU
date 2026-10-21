@@ -84,19 +84,23 @@ internal static class WiredNativeConditionEditor
     {
         runtime = new();
 
-        if (!Supports(name) || native.Delay != null || native.Quantifier is not (0 or 1) || !native.VariableIds.IsEmpty) {
+        if (!Supports(name) || native.Delay != null || !native.VariableIds.IsEmpty
+            || native.Quantifier is not (0 or 1) && !(native.Quantifier == 2 && WiredConditionStoreRules.KeepsQuantifierTwo(name))) {
             return false;
         }
 
         var p = native.OwnedIntParams;
         var f = native.FurniSourceTypes;
         var u = native.UserSourceTypes;
-        var q = native.Quantifier.Value;
         var positive = Positive(name);
+        var keepsQuantifier = WiredConditionStoreRules.KeepsQuantifierTwo(name);
+
+        // A quantifier of 2 is kept in the frame; the evaluation reads it as "any" like 1.
+        var q = Math.Min(native.Quantifier.Value, 1);
 
         // Observed on hhus (AIR WIN63-202610131318-860371703): Furni Has Furni On saves quantifier 1 and reads it back although its
         // editor shows no quantifier; the runtime keeps reading its own all/any field.
-        if (Metadata(name).QuantifierType == 0 && q != 0 && !AcceptsHiddenQuantifier(name)) {
+        if (Metadata(name).QuantifierType == 0 && q != 0 && !AcceptsHiddenQuantifier(name) && !keepsQuantifier) {
             return false;
         }
 
@@ -119,9 +123,10 @@ internal static class WiredNativeConditionEditor
                     return false;
                 }
 
-                var groupId = 0;
+                // A stored id that is not a positive number fitting 32 bits names no group.
+                var groupId = int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
 
-                if (text.Length != 0 && (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out groupId) || groupId <= 0)) {
+                if (text.Length != 0 && !WiredConditionStoreRules.IsDecimalNumber(text)) {
                     return false;
                 }
 
@@ -195,7 +200,7 @@ internal static class WiredNativeConditionEditor
                 parameters = [];
                 break;
             case "wf_cnd_slc_quantity":
-                if (p.Length != 3 || f.Length != 1 || u.Length != 1 || p[0] is not (0 or 1) || p[1] is < 0 or > 100) {
+                if (p.Length != 3 || f.Length != 1 || u.Length != 1 || p[0] is not (0 or 1) || p[1] is < 0 or > 100 || p[2] < 0) {
                     return false;
                 }
 
@@ -231,9 +236,8 @@ internal static class WiredNativeConditionEditor
                 break;
             case "wf_cnd_time_less_than":
             case "wf_cnd_time_more_than":
-                // The AIR editor writes its 1..1200 pulses plus one (2..1201); observed on hhus (AIR WIN63-202610131318-860371703),
-                // 1201 saves on both conditions.
-                if (p.Length != 1 || p[0] is < 1 or > 1201) {
+                // Observed on AIR WIN63-202610201032-107964540: any threshold is stored, also 0 and negative ones.
+                if (p.Length != 1) {
                     return false;
                 }
 

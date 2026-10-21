@@ -564,7 +564,7 @@ internal sealed partial class WiredStackEngine
                 continue;
             }
 
-            // Room timer reset restarts at-time elapsed and re-arms armed repeaters after the fixed cooldown.
+            // Room timer reset restarts at-time elapsed and armed repeaters from the first room tick after it.
             foreach (var box in GetStack(source)) {
                 if (box is IWiredTimedTrigger timer) {
                     timer.ResetElapsed(now);

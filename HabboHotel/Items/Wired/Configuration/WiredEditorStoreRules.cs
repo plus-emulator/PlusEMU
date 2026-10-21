@@ -10,7 +10,6 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// </summary>
 internal static class WiredEditorStoreRules
 {
-    public const string UserSourceKey = "wiredfurni.error.invalid_user_source";
     public const string ChestSourceKey = "wiredfurni.error.require_furni_chests";
     private const string ScanChest = "wf_xtra_scan_chest_furni_by_type";
     private const string TextVariable = "wf_xtra_text_output_variable";
@@ -21,36 +20,35 @@ internal static class WiredEditorStoreRules
 
     /// <param name="Store">The stored form of a save, or null for a box that only has a variable or user source check here.</param>
     /// <param name="VariableSlots">The box has one picked variable (or two for the filters by variable): a save with no variable takes the empty slots.</param>
-    /// <param name="UserSourceKeyed">The box answers a user source it does not offer with <see cref="UserSourceKey"/>.</param>
-    private sealed record Rule(Action<WiredStoreDraft>? Store = null, bool VariableSlots = false, bool UserSourceKeyed = false);
+    private sealed record Rule(Action<WiredStoreDraft>? Store = null, bool VariableSlots = false);
 
     // Each box is named once, with its stored form and flags. The ints are cut and padded to the frame before the rule runs.
     private static readonly FrozenDictionary<string, Rule> Rules = new Dictionary<string, Rule>
     {
         { "wf_xtra_execution_limit", new(ExecutionLimit) },
         { "wf_xtra_unseen", new(Unseen) },
-        { "wf_xtra_filter_furni", new(FilterFurni, VariableSlots: true, UserSourceKeyed: true) },
-        { "wf_xtra_filter_furni_by_var", new(FilterByVariable, VariableSlots: true, UserSourceKeyed: true) },
-        { "wf_xtra_filter_users_by_var", new(FilterByVariable, VariableSlots: true, UserSourceKeyed: true) },
+        { "wf_xtra_filter_furni", new(FilterFurni, VariableSlots: true) },
+        { "wf_xtra_filter_furni_by_var", new(FilterByVariable, VariableSlots: true) },
+        { "wf_xtra_filter_users_by_var", new(FilterByVariable, VariableSlots: true) },
         { "wf_xtra_or_eval", new(draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], -1, 3)) },
-        { "wf_xtra_rotate_to_dir", new(RotateToDirection, UserSourceKeyed: true) },
+        { "wf_xtra_rotate_to_dir", new(RotateToDirection) },
         { ScanChest, new(Scan, VariableSlots: true) },
-        { "wf_act_teleport_to_room", new(TeleportToRoom, UserSourceKeyed: true) },
+        { "wf_act_teleport_to_room", new(TeleportToRoom) },
         { "wf_trg_at_given_time", new(AtLeast(0)) },
         { "wf_trg_period_long", new(AtLeast(1)) },
         // The user action boxes keep any filter text. An action code outside the stored set reads as 0.
         { "wf_trg_user_performs_action", new(UserAction) },
-        { "wf_cnd_user_performs_action", new(UserAction, UserSourceKeyed: true) },
-        { "wf_cnd_not_user_performs_action", new(UserAction, UserSourceKeyed: true) },
+        { "wf_cnd_user_performs_action", new(UserAction) },
+        { "wf_cnd_not_user_performs_action", new(UserAction) },
         { "wf_act_match_to_sshot", new(MatchToSnapshot) },
         { "wf_cnd_has_var", new(HasVariable, VariableSlots: true) },
         { "wf_cnd_neg_has_var", new(HasVariable, VariableSlots: true) },
-        { "wf_cnd_chest_has_items", new(ChestCondition, VariableSlots: true, UserSourceKeyed: true) },
-        { "wf_cnd_chest_has_item_type", new(ChestCondition, VariableSlots: true, UserSourceKeyed: true) },
-        { TextVariable, new(TextOutputVariable, VariableSlots: true, UserSourceKeyed: true) },
+        { "wf_cnd_chest_has_items", new(ChestCondition, VariableSlots: true) },
+        { "wf_cnd_chest_has_item_type", new(ChestCondition, VariableSlots: true) },
+        { TextVariable, new(TextOutputVariable, VariableSlots: true) },
         { TextFurniName, new(draft => draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1) },
         // Observed on AIR WIN63-202610201032-107964540: the bot name is kept as sent, of any length.
-        { BotReachedFurni, new(_ => { }, UserSourceKeyed: true) },
+        { BotReachedFurni, new(_ => { }) },
         // Only the variable slots are checked.
         { "wf_act_init_transaction", new(VariableSlots: true) }
     }.ToFrozenDictionary();
@@ -256,13 +254,6 @@ internal static class WiredEditorStoreRules
 
         if (PlaceholderRefusal(name, Normalized(name, native, metadata), metadata) is { } placeholder) {
             return placeholder;
-        }
-
-        // A trigger has no trigger context, so it refuses the context sources too.
-        if (rule is { UserSourceKeyed: true }
-            && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length && !metadata.UsersAllowed[index].Contains(source)
-                && (name == BotReachedFurni || !WiredNativeEditorProjection.AnyTriggerContext.Contains(source))).Any()) {
-            return UserSourceKey;
         }
 
         return ChestSlotRefused(name, native) ? ChestSourceKey : null;

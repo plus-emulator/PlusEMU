@@ -11,67 +11,58 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// </summary>
 internal static class WiredSelectorStoreRules
 {
-    private sealed record Rule(Action<WiredStoreDraft> Store, bool UserSourceKeyed = false);
-
     private const int FilterTextLength = 200;
 
     // The last of the 14 mask words of the neighborhood covers 25 tiles.
     private const int LastMaskWordBits = 0x1ffffff;
 
     // Each selector is named once, with its stored form. The ints are cut and padded to the frame before the rule runs.
-    private static readonly FrozenDictionary<string, Rule> Rules = new Dictionary<string, Rule>
+    private static readonly FrozenDictionary<string, Action<WiredStoreDraft>> Rules = new Dictionary<string, Action<WiredStoreDraft>>
     {
         // The altitude is 0..8000. The comparison keeps 3, 4 and 5, which the editor never offers, and resets any other value to 0.
         {
-            "wf_slc_furni_altitude", new(draft =>
+            "wf_slc_furni_altitude", draft =>
             {
                 draft.Ints[0] = Math.Clamp(draft.Ints[0], 0, 8000);
                 draft.Ints[1] = draft.Ints[1] is >= 0 and <= 5 ? draft.Ints[1] : 0;
-            })
+            }
         },
-        { "wf_slc_furni_area", new(_ => { }) },
+        { "wf_slc_furni_area", _ => { } },
         // The state flag is on only for the exact value 1.
-        { "wf_slc_furni_bytype", new(draft => draft.Ints[0] = draft.Ints[0] == 1 ? 1 : 0) },
+        { "wf_slc_furni_bytype", draft => draft.Ints[0] = draft.Ints[0] == 1 ? 1 : 0 },
         // The reference reads 0 or 1, the root offset is -64..64, the last mask word keeps its 25 tile bits and the 18th int is always 0.
-        // The reference users come only from the trigger or a signal; another user source has its own key.
-        { "wf_slc_furni_neighborhood", new(Neighborhood, UserSourceKeyed: true) },
+        { "wf_slc_furni_neighborhood", Neighborhood },
         // Union or intersection reads 1 for any positive value and 0 otherwise; a negative stack count reads 0.
         {
-            "wf_slc_remote", new(draft =>
+            "wf_slc_remote", draft =>
             {
                 draft.Ints[0] = draft.Ints[0] > 0 ? 1 : 0;
                 draft.Ints[1] = Math.Max(draft.Ints[1], 0);
-            })
+            }
         },
         // 1 to 4 are kept, a value below 1 reads 1 and a value above 4 reads 4.
-        { "wf_slc_users_bytype", new(draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], 1, 4)) },
+        { "wf_slc_users_bytype", draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], 1, 4) },
         // The actions the editor offers, the unoffered 9 and the client expression 67 are kept; anything else reads 0. The filter text
         // is kept as sent, up to its first 200 characters.
-        { "wf_slc_users_byaction", new(ByAction) },
+        { "wf_slc_users_byaction", ByAction },
         // The group id is kept as a plain number or cleared; the box has no ints.
-        { "wf_slc_users_group", new(Group) },
-        { "wf_slc_users_handitem", new(_ => { }) }
+        { "wf_slc_users_group", Group },
+        { "wf_slc_users_handitem", _ => { } }
     }.ToFrozenDictionary();
 
     public static bool Applies(string name) => Rules.ContainsKey(name);
 
     public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native, ImmutableArray<int> defaults)
     {
-        if (!Rules.TryGetValue(name, out var rule)) {
+        if (!Rules.TryGetValue(name, out var store)) {
             return native;
         }
 
         var draft = new WiredStoreDraft(native, defaults);
-        rule.Store(draft);
+        store(draft);
 
         return draft.ToNative();
     }
-
-    /// <summary>The neighborhood reference users come only from the trigger or a signal; another user source has its own key.</summary>
-    public static string? UserSourceRefusal(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
-        Rules.TryGetValue(name, out var rule) && rule.UserSourceKeyed && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length
-            && !metadata.UsersAllowed[index].Contains(source) && !WiredNativeEditorProjection.AnyTriggerContext.Contains(source)).Any()
-            ? WiredEditorStoreRules.UserSourceKey : null;
 
     private static void Neighborhood(WiredStoreDraft draft)
     {

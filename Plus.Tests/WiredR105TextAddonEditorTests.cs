@@ -35,6 +35,16 @@ public sealed class WiredR105TextAddonEditorTests
             UserSourceTypes = users is null ? native.UserSourceTypes : [.. users]
         };
 
+        var sources = WiredSourceRules.Check(descriptor, native, WiredNativeEditorProjection.Metadata(name));
+
+        if (sources.Dropped) {
+            return new(false, null, [], [], "", []);
+        }
+
+        if (sources.Key is { } sourceKey) {
+            return new(false, sourceKey, [], [], "", []);
+        }
+
         if (!WiredNativeEditorProjection.TryFillSourceSlots(descriptor, native, out native, out var countError)) {
             return new(false, countError, [], [], "", []);
         }

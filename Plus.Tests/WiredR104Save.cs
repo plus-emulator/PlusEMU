@@ -37,6 +37,10 @@ internal static class WiredR104Save
             SecondaryItems = [.. (secondary ?? []).Select(id => new WiredNativeItemReference(id, false))]
         };
 
+        if (WiredSourceRules.Check(descriptor, native, WiredNativeEditorProjection.Metadata(name)).Key is { } sourceKey) {
+            return Refused(sourceKey);
+        }
+
         if (!WiredNativeEditorProjection.TryFillSourceSlots(descriptor, native, out native, out var countError)) {
             return Refused(countError);
         }

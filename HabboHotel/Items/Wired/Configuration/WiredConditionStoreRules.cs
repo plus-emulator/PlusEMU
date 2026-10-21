@@ -10,22 +10,19 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// </summary>
 internal static class WiredConditionStoreRules
 {
-    public const string UserSourceKey = "wiredfurni.error.invalid_user_source";
-
-    /// <param name="Ints">The stored form of the ints, or null for a box that only has a user source check here.</param>
+    /// <param name="Ints">The stored form of the ints.</param>
     /// <param name="Text">The stored form of the text, or null to keep it as sent.</param>
     /// <param name="FitsToFrame">False when the ints are normalised as sent, without the frame default fill.</param>
     /// <param name="KeepsQuantifierTwo">The condition keeps a quantifier of 2 as sent, also when its editor shows no quantifier.</param>
-    /// <param name="UserSourceKeyed">The box answers a user source it does not offer with <see cref="UserSourceKey"/>.</param>
-    private sealed record Rule(Func<ImmutableArray<int>, ImmutableArray<int>>? Ints = null, Func<string, string>? Text = null,
-        bool FitsToFrame = true, bool KeepsQuantifierTwo = false, bool UserSourceKeyed = false);
+    private sealed record Rule(Func<ImmutableArray<int>, ImmutableArray<int>> Ints, Func<string, string>? Text = null,
+        bool FitsToFrame = true, bool KeepsQuantifierTwo = false);
 
     // Each box is named once, with its normal form and flags. The ints are cut and padded to the frame before the rule runs.
     private static readonly FrozenDictionary<string, Rule> Rules = new Dictionary<string, Rule>
     {
-        { "wf_cnd_actor_dir", new(p => [Math.Clamp(p[0], 0, 255)], UserSourceKeyed: true) },
-        { "wf_cnd_actor_in_team", new(Team, UserSourceKeyed: true) },
-        { "wf_cnd_not_in_team", new(Team, UserSourceKeyed: true) },
+        { "wf_cnd_actor_dir", new(p => [Math.Clamp(p[0], 0, 255)]) },
+        { "wf_cnd_actor_in_team", new(Team) },
+        { "wf_cnd_not_in_team", new(Team) },
         // Only the comparison keeps values the editor never offers: 3 is stored (the upper end of the comparison is not clamped).
         { "wf_cnd_counter_time_matches", new(p => [Math.Clamp(p[0], 0, 59), Math.Clamp(p[1], 0, 99), Math.Clamp(p[2], 0, 1), Math.Max(p[3], 0)]) },
         { "wf_cnd_furnis_hv_avtrs", new(OnOff) },
@@ -38,9 +35,9 @@ internal static class WiredConditionStoreRules
         { "wf_cnd_match_date", new(MatchDate, ZoneOrEmpty) },
         { "wf_cnd_match_time", new(MatchTime, ZoneOrEmpty) },
         // Move Furni As Group: the target flag is 0 or 1 and each offset is clamped to the editor's -64..64.
-        { "wf_act_move_furni_as_group", new(p => [Flag(p[0]), Math.Clamp(p[1], -64, 64), Math.Clamp(p[2], -64, 64)], UserSourceKeyed: true) },
+        { "wf_act_move_furni_as_group", new(p => [Flag(p[0]), Math.Clamp(p[1], -64, 64), Math.Clamp(p[2], -64, 64)]) },
         // The two split flags of a signal count only when they are exactly 1.
-        { "wf_act_neg_send_signal", new(OnlyOne, UserSourceKeyed: true) },
+        { "wf_act_neg_send_signal", new(OnlyOne) },
         // Selection Quantity: the user or furni flag is 0 or 1, the amount 0..100, and the comparison keeps 3 and 4.
         { "wf_cnd_slc_quantity", new(p => [p[0] is 0 or 1 ? p[0] : 0, Math.Clamp(p[1], 0, 100), Math.Max(p[2], 0)], KeepsQuantifierTwo: true) },
         { "wf_cnd_team_has_rank", new(p => [Math.Clamp(p[0], 0, 4), Math.Clamp(p[1], 0, 3)], KeepsQuantifierTwo: true) },
@@ -55,29 +52,20 @@ internal static class WiredConditionStoreRules
         { "wf_cnd_stuff_is", new(Unchanged, FitsToFrame: false, KeepsQuantifierTwo: true) },
         { "wf_cnd_not_stuff_is", new(Unchanged, FitsToFrame: false, KeepsQuantifierTwo: true) },
         { "wf_cnd_has_handitem", new(Unchanged, KeepsQuantifierTwo: true) },
-        { "wf_cnd_not_has_handitem", new(Unchanged, KeepsQuantifierTwo: true) },
-        // These two have no stored form to normalise, only the user source check.
-        { "wf_cnd_not_trggrer_on", new(UserSourceKeyed: true) },
-        { "wf_act_unfreeze", new(UserSourceKeyed: true) }
+        { "wf_cnd_not_has_handitem", new(Unchanged, KeepsQuantifierTwo: true) }
     }.ToFrozenDictionary();
 
-    public static bool Applies(string name) => Rules.TryGetValue(name, out var rule) && rule.Ints is not null;
+    public static bool Applies(string name) => Rules.ContainsKey(name);
 
     public static bool KeepsQuantifierTwo(string name) => Rules.TryGetValue(name, out var rule) && rule.KeepsQuantifierTwo;
 
-    /// <summary>The key of a user source these boxes refuse with their own wording, or null. Sources 10 and 11 come from the trigger.</summary>
-    public static string? UserSourceRefusal(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
-        Rules.TryGetValue(name, out var rule) && rule.UserSourceKeyed && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length
-            && !metadata.UsersAllowed[index].Contains(source) && !WiredNativeEditorProjection.AnyTriggerContext.Contains(source)).Any()
-            ? UserSourceKey : null;
-
     public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native, ImmutableArray<int> defaults)
     {
-        if (!Rules.TryGetValue(name, out var rule) || rule.Ints is not { } normalizeInts) {
+        if (!Rules.TryGetValue(name, out var rule)) {
             return native;
         }
 
-        var ints = normalizeInts(rule.FitsToFrame ? WiredStoreDraft.Fit(native.OwnedIntParams, defaults) : native.OwnedIntParams);
+        var ints = rule.Ints(rule.FitsToFrame ? WiredStoreDraft.Fit(native.OwnedIntParams, defaults) : native.OwnedIntParams);
         var text = rule.Text is { } normalizeText ? normalizeText(native.Text) : native.Text;
 
         return native with { OwnedIntParams = ints, Text = text, Quantifier = StoredQuantifier(rule, native.Quantifier) };

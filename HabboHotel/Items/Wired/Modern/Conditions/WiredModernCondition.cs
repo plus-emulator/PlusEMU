@@ -193,11 +193,14 @@ public sealed class WiredModernCondition : WiredModernBox
             return true;
         }
 
+        // The room cycle clears an old expression only every 500 ms, so the condition checks the end time itself.
+        var recent = user.RecentExpression is { } expression && now < expression.ExpiresAt ? expression.Action : 0;
+
         return action switch
         {
             // Observed on AIR WIN63-202610201032-107964540: Wave and Respect pass for a short time after the expression.
-            1 or 5 or 12 => user.RecentExpression?.Action == action,
-            4 => user.RecentExpression?.Action != (int)WiredAvatarAction.Relax,
+            1 or 5 or 12 => recent == action,
+            4 => recent != (int)WiredAvatarAction.Relax,
             6 => user.HasStatus("sit"),
             7 => !user.HasStatus("sit") && !user.HasStatus("lay"),
             8 => user.HasStatus("lay"),

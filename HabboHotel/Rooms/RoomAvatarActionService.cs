@@ -94,18 +94,19 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
     private sealed record ExpressionRule(WiredAvatarAction? Wired = null, TimeSpan? CountsFor = null, bool ClubOnly = false);
 
     // Observed on AIR WIN63-202610201032-107964540: without Habbo Club, expressions 2, 3, 4, 6 and 67 reach nobody. User Performs
-    // Action still sees a wave 4.76 s after it but not 5.27 s after it, and respect 1.56 s after it but not 1.87 s after it.
+    // Action still sees a wave 4.90 s after it but not 5.27 s after it, and respect 1.69 s after it but not 1.87 s after it.
     private static readonly Dictionary<int, ExpressionRule> Expressions = new()
     {
         [1] = new(WiredAvatarAction.Wave, TimeSpan.FromSeconds(5)),
         [2] = new(WiredAvatarAction.Kiss, ClubOnly: true),
         [3] = new(WiredAvatarAction.Laugh, ClubOnly: true),
         [4] = new(ClubOnly: true),
-        // Observed on AIR WIN63-202610151745-318700621: the sleep expression also counts for 2 s only, though the avatar stays asleep.
-        [5] = new(WiredAvatarAction.Relax, TimeSpan.FromSeconds(2)),
+        // Observed on AIR WIN63-202610201032-107964540: the sleep expression still counts 2.50 s after it, though the avatar stays asleep.
+        // Observed on AIR WIN63-202610151745-318700621: it no longer counts 2.77 s after it.
+        [5] = new(WiredAvatarAction.Relax, TimeSpan.FromMilliseconds(2600)),
         [6] = new(ClubOnly: true),
         // Observed on AIR WIN63-202610201032-107964540: the respect expression fires User Performs Action - Respect. Expression 67 fires nothing.
-        [7] = new(WiredAvatarAction.Respect, TimeSpan.FromMilliseconds(1700)),
+        [7] = new(WiredAvatarAction.Respect, TimeSpan.FromMilliseconds(1800)),
         [67] = new(ClubOnly: true)
     };
 

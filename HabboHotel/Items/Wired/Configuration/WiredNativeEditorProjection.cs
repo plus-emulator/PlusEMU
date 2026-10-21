@@ -635,13 +635,17 @@ public static class WiredNativeEditorProjection
                 furni["items"] = native.FurniSourceTypes[0];
                 break;
             case "wf_act_control_clock":
-                // Observed on AIR WIN63-202610151745-318700621: an operation the editor does not offer (5) saves. Its stored form is not
-                // observed, so it is kept as sent and the clock ignores it at run time.
+                // Observed on AIR WIN63-202610201032-107964540: any operation saves and is stored clamped to 0..4 (5, 100 and int max
+                // reopen as 4, -1 as 0). A stored row loads as it was saved.
                 if (p.Length != 1) {
                     return false;
                 }
 
-                parameters = [p[0], native.FurniSourceTypes[0]];
+                if (!storedRow) {
+                    native = native with { OwnedIntParams = [Math.Clamp(p[0], 0, 4)] };
+                }
+
+                parameters = [native.OwnedIntParams[0], native.FurniSourceTypes[0]];
                 furni["items"] = native.FurniSourceTypes[0];
                 break;
             case "wf_act_join_team":

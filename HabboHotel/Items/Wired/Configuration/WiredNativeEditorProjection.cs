@@ -174,6 +174,9 @@ public static class WiredNativeEditorProjection
         return WiredEditorStoreRules.SourceRefusal(descriptor.CanonicalName, native, metadata);
     }
 
+    /// <summary>The key a client save is refused with before it is compiled, or null.</summary>
+    public static string? SaveRefusal(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native) => null;
+
     /// <summary>
     /// A save the hotel drops without any reply: no error and no save success. Observed on AIR WIN63-202610131318-860371703:
     /// Join Team with team 9, and Give Score To Team with team 9 (observed on AIR WIN63-202610151745-318700621).

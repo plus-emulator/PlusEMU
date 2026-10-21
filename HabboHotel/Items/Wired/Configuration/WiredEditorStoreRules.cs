@@ -58,6 +58,9 @@ internal static class WiredEditorStoreRules
         { "wf_act_init_transaction", new(VariableSlots: true) },
         { "wf_trg_transaction_complete", new(VariableSlots: true) },
         { "wf_trg_transaction_fail", new(VariableSlots: true) },
+        // Observed on AIR WIN63-202610201032-107964540: the room triggers have no variable slot either, so a variable gets the count key.
+        { "wf_trg_enter_room", new(VariableSlots: true) },
+        { "wf_trg_leave_room", new(VariableSlots: true) },
         // Observed on AIR WIN63-202610201032-107964540: any non-zero match criteria is stored as 1, and the box has no text.
         { "wf_act_cancel_transaction", new(FlagWithoutText, VariableSlots: true) },
         // Observed on AIR WIN63-202610201032-107964540: a save with one variable is stored with the second slot empty. The ints have

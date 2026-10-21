@@ -290,8 +290,9 @@ public static class WiredRoomOperations
         var horse = Horse(room, actor);
         var horseSource = horse == null ? default : (horse.X, horse.Y, horse.Z);
         var wasLaying = actor.HasStatus("lay");
+        var wasSitting = actor.HasStatus("sit");
         navigation.ForcePlaceThrough(actor, x, y, room.GetGameMap().SqAbsoluteHeight(x, y), ForceResolution.ExactZ, discardThrough);
-        navigation.Executor.Context.LandingEffects.Apply(actor, wasLaying);
+        navigation.Executor.Context.LandingEffects.Apply(actor, wasLaying, wasSitting);
 
         if (slide && horse != null) {
             room.SendPacket(new SlideObjectBundleComposer(horseSource.X, horseSource.Y, horseSource.Z,

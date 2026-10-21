@@ -13,12 +13,6 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
     {
         error = "Invalid scalar variable settings.";
 
-        if (IsUnresolvedLiteralZero(name, configuration)) {
-            error = "";
-
-            return true;
-        }
-
         return TryDecode(name, configuration, out var core, out _) && TryTokens(name, configuration, core, null, out var tokens)
             && ValidateCore(name, configuration, core, tokens, out error, UnchosenDestination(name, configuration));
     }
@@ -33,18 +27,10 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         && WiredVariableAbsent.Is(configuration.VariableIds[0]);
 
     /// <summary>
-    /// The measured native has-var / not-has-var shape whose variable id is the literal "0": owned [1], F100, U0, quantifier 0, one id "0", no text,
-    /// picks or secondary picks, with its native record. It names no definition, so it is admitted as a reference that never resolves;
-    /// it is not read as any variable or sentinel. Every other shape and id still goes through the normal token rules.
+    /// Observed on AIR WIN63-202610201032-107964540: Has Variable and Not Has Variable save with no variable, or with a variable of another
+    /// domain than their target, and read it as no variable: the first never passes and the second always does.
     /// </summary>
-    internal static bool IsUnresolvedLiteralZero(string name, WiredConfiguration configuration) =>
-        name is "wf_cnd_has_var" or "wf_cnd_neg_has_var" && configuration.Version == 1
-        && configuration.Origin?.Native is { } native
-        && configuration.IntParams.SequenceEqual([0, 0, 100, 0]) && configuration.VariableIds.SequenceEqual(["0"])
-        && configuration.Text == "" && configuration.SelectedItems.IsEmpty && configuration.SecondarySelectedItems.IsEmpty
-        && native.OwnedIntParams.SequenceEqual([1]) && native.FurniSourceTypes.SequenceEqual([100]) && native.UserSourceTypes.SequenceEqual([0])
-        && native.Quantifier == 0 && native.VariableIds.SequenceEqual(["0"]) && native.Text == ""
-        && native.PrimaryItems.IsEmpty && native.SecondaryItems.IsEmpty;
+    private static bool ReadsPresence(string name) => name is "wf_cnd_has_var" or "wf_cnd_neg_has_var";
 
     /// <summary>
     /// The native picker saves opaque catalog ids. Without an authority they only have to be well formed for their target;
@@ -71,8 +57,12 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
                 return true;
             }
 
-            if (!WiredVariableDescription.TryParseCatalogId(id, out var parsed, out var parsedToken) || (int)parsed != target) {
+            if (!WiredVariableDescription.TryParseCatalogId(id, out var parsed, out var parsedToken)) {
                 return false;
+            }
+
+            if ((int)parsed != target) {
+                return ReadsPresence(name);
             }
 
             token = authority is null ? parsedToken : authority.TryResolveCatalogId(id, parsed, out var reference) ? reference.Token : "";
@@ -170,7 +160,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
-        if (!unchosenDestination && !ValidToken(tokens[0])) {
+        if (!unchosenDestination && !(ReadsPresence(name) && tokens[0].Length == 0) && !ValidToken(tokens[0])) {
             return false;
         }
 
@@ -260,9 +250,8 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
     {
         string[] tokens = ["", ""];
 
-        if (!TryDecode(name, configuration, out var p, out var literal)
-            || !IsUnresolvedLiteralZero(name, configuration) && (!TryTokens(name, configuration, p, variables, out tokens)
-                || !ValidateCore(name, configuration, p, tokens, out _))) {
+        if (!TryDecode(name, configuration, out var p, out var literal) || !TryTokens(name, configuration, p, variables, out tokens)
+            || !ValidateCore(name, configuration, p, tokens, out _)) {
             return false;
         }
 

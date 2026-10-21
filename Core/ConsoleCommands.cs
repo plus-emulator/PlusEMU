@@ -10,11 +10,13 @@ public static class ConsoleCommands
     private static ILogger Logger => _logger ?? throw new InvalidOperationException("Configure logging before use.");
     private static IGameClientManager? _clients;
     private static IGameClientManager Clients => _clients ?? throw new InvalidOperationException("Configure console commands before use.");
+    private static IPlannedShutdown? _plannedShutdown;
 
-    public static void Configure(ILoggerFactory loggerFactory, IGameClientManager clients)
+    public static void Configure(ILoggerFactory loggerFactory, IGameClientManager clients, IPlannedShutdown? plannedShutdown = null)
     {
         _logger = loggerFactory.CreateLogger(typeof(ConsoleCommands).FullName!);
         _clients = clients;
+        _plannedShutdown = plannedShutdown;
     }
 
     public static void InvokeCommand(string inputData)
@@ -24,11 +26,16 @@ public static class ConsoleCommands
         }
 
         try {
-            var parameters = inputData.Split(' ');
+            var parameters = inputData.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
             switch (parameters[0].ToLower()) {
                 case "stop":
                 case "shutdown": {
+                        if (parameters.Length > 1) {
+                            SchedulePlannedShutdown(parameters[1..]);
+                            break;
+                        }
+
                         Logger.LogWarning("The server is saving users furniture, rooms, etc. WAIT FOR THE SERVER TO CLOSE, DO NOT EXIT THE PROCESS IN TASK MANAGER!!");
                         PlusEnvironment.PerformShutDown();
                         break;
@@ -48,5 +55,23 @@ public static class ConsoleCommands
         catch (Exception e) {
             Logger.LogError(e, "Error in command [{Input}]", inputData);
         }
+    }
+
+    private static void SchedulePlannedShutdown(string[] arguments)
+    {
+        if (!PlannedShutdown.TryParse(arguments, out var minutes, out var durationMinutes)) {
+            Logger.LogError("Usage: shutdown <minutes> [duration in minutes]");
+
+            return;
+        }
+
+        if (_plannedShutdown?.TrySchedule(minutes, durationMinutes) != true) {
+            Logger.LogError("The shutdown was not scheduled. Use 1 to {Max} minutes and a duration of 0 or more. Only one shutdown can be pending.",
+                PlannedShutdown.MaxMinutes);
+
+            return;
+        }
+
+        Logger.LogWarning("Every user was warned. The server shuts down in {Minutes} minutes.", minutes);
     }
 }

@@ -97,7 +97,7 @@ internal static class TestRoomManager
     internal static IRoomManager Unused { get; } = CatalogSnapshotTestSupport.Proxy<IRoomManager>((method, _) => throw new NotSupportedException(method));
 }
 
-internal sealed class TestGameClientManager(Func<int, GameClient?> lookup) : IGameClientManager
+internal sealed class TestGameClientManager(Func<int, GameClient?> lookup, List<IServerPacket>? broadcasts = null) : IGameClientManager
 {
     internal static TestGameClientManager Empty { get; } = new(_ => null);
     public GameClient? GetClientByUserId(int userId) => lookup(userId);
@@ -113,7 +113,14 @@ internal sealed class TestGameClientManager(Func<int, GameClient?> lookup) : IGa
     public void StaffAlert(IServerPacket message, int exclude = 0) => throw new NotSupportedException();
     public void ModAlert(string message) => throw new NotSupportedException();
     public void DoAdvertisingReport(GameClient reporter, GameClient target) => throw new NotSupportedException();
-    public void SendPacket(IServerPacket packet, PermissionDefinition? permission = null) => throw new NotSupportedException();
+    public void SendPacket(IServerPacket packet, PermissionDefinition? permission = null)
+    {
+        if (broadcasts == null || permission != null) {
+            throw new NotSupportedException();
+        }
+
+        broadcasts.Add(packet);
+    }
     public void LogClonesOut(int userId) => throw new NotSupportedException();
     public void RegisterClient(GameClient client, int userId, string username) => throw new NotSupportedException();
     public void UnregisterClient(GameClient? client, int userId, string username) => throw new NotSupportedException();

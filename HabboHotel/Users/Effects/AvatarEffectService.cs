@@ -16,7 +16,7 @@ public interface IAvatarEffectService
     // Looks up, checks and activates against one captured instant; the activation persists before the packet is sent.
     void Activate(GameClient session, int effectId);
 
-    // Looks up against one captured instant; a negative id selects nothing, and only an owned, active effect in the room is applied.
+    // A negative id or 0 takes the effect off; any other id must be an owned, active effect. Outside a room the choice is kept for the next room entry.
     void Select(GameClient session, int effectId);
 
     // The full effects list at one captured instant, with remaining time measured against that instant.
@@ -43,26 +43,16 @@ public sealed class AvatarEffectService(TimeProvider time) : IAvatarEffectServic
         var selected = effectId < 0 ? 0 : effectId;
         var habbo = session.GetHabbo();
 
-        if (!habbo.InRoom) {
+        if (habbo.Effects is not { } effects || selected != 0 && !effects.HasEffectAt(selected, time.GetUtcNow(), true)) {
             return;
         }
 
-        var room = habbo.CurrentRoom;
-
-        if (room == null) {
-            return;
-        }
-
-        var user = room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id);
-
-        if (user == null) {
-            return;
-        }
-
-        var now = time.GetUtcNow();
-
-        if (selected != 0 && habbo.Effects?.HasEffectAt(selected, now, true) == true) {
+        if (habbo.CurrentRoom?.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id) is { } user) {
             user.ApplyEffect(selected);
+        }
+        else {
+            // The room entry puts the kept effect on.
+            effects.CurrentEffect = selected;
         }
     }
 

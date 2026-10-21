@@ -173,7 +173,7 @@ public class AvatarEffectServiceTests
     {
         var clock = new FixedTimeProvider(Now);
         var (habbo, _) = Owner(sprite: 42, duration: 3600, activated: true, activatedAt: Now.AddSeconds(-10), clock: clock);
-        var (client, _) = InRoom(habbo);
+        var (client, _, _) = InRoom(habbo);
 
         await new AvatarEffectSelectedEvent(new AvatarEffectService(clock)).Parse(client, Packet(42));
 
@@ -185,7 +185,7 @@ public class AvatarEffectServiceTests
     {
         var clock = new FixedTimeProvider(Now);
         var (habbo, _) = Owner(sprite: 42, duration: 10, activated: true, activatedAt: Now.AddSeconds(-10), clock: clock);
-        var (client, _) = InRoom(habbo);
+        var (client, _, _) = InRoom(habbo);
 
         await new AvatarEffectSelectedEvent(new AvatarEffectService(clock)).Parse(client, Packet(42));
 
@@ -197,11 +197,120 @@ public class AvatarEffectServiceTests
     {
         var clock = new FixedTimeProvider(Now);
         var (habbo, _) = Owner(sprite: 42, duration: 3600, activated: true, activatedAt: Now.AddSeconds(-10), clock: clock);
-        var (client, _) = InRoom(habbo);
+        var (client, _, _) = InRoom(habbo);
 
         await new AvatarEffectSelectedEvent(new AvatarEffectService(clock)).Parse(client, Packet(-5));
 
         Assert.Equal(0, Assert.IsType<EffectsComponent>(habbo.Effects).CurrentEffect);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    public async Task RoomClearTakesTheWornEffectOffForTheRoom(int cleared)
+    {
+        var clock = new FixedTimeProvider(Now);
+        var (habbo, _) = Owner(sprite: 42, duration: 3600, activated: true, activatedAt: Now.AddSeconds(-10), clock: clock);
+        var (client, user, sent) = InRoom(habbo);
+        var selection = new AvatarEffectSelectedEvent(new AvatarEffectService(clock));
+        await selection.Parse(client, Packet(42));
+        sent.Clear();
+
+        await selection.Parse(client, Packet(cleared));
+
+        Assert.Equal(0, Assert.IsType<EffectsComponent>(habbo.Effects).CurrentEffect);
+        Assert.Equal(new[] { (user.VirtualId, 0) }, RoomEffects(sent));
+    }
+
+    [Fact]
+    public async Task SelectionOutsideARoomIsWornOnTheNextRoomEntry()
+    {
+        var clock = new FixedTimeProvider(Now);
+        var (habbo, _) = Owner(sprite: 42, duration: 3600, activated: true, activatedAt: Now.AddSeconds(-10), clock: clock);
+        var (client, _) = HabbiconTestSupport.Client(habbo);
+
+        await new AvatarEffectSelectedEvent(new AvatarEffectService(clock)).Parse(client, Packet(42));
+
+        var (_, user, _) = InRoom(habbo);
+        Assert.Equal(42, user.CurrentEffect);
+    }
+
+    [Theory]
+    [InlineData("not-owned")]
+    [InlineData("not-activated")]
+    [InlineData("expired")]
+    public async Task SelectionOutsideARoomIgnoresAnEffectThatCannotBeWorn(string reason)
+    {
+        var clock = new FixedTimeProvider(Now);
+        var (habbo, _) = Owner(sprite: 42, duration: 10, activated: reason != "not-activated",
+            activatedAt: reason == "expired" ? Now.AddSeconds(-10) : Now.AddSeconds(-1), clock: clock);
+        var (client, _) = HabbiconTestSupport.Client(habbo);
+
+        await new AvatarEffectSelectedEvent(new AvatarEffectService(clock)).Parse(client, Packet(reason == "not-owned" ? 99 : 42));
+
+        Assert.Equal(0, Assert.IsType<EffectsComponent>(habbo.Effects).CurrentEffect);
+    }
+
+    [Fact]
+    public async Task ClearOutsideARoomIsNotWornOnTheNextRoomEntry()
+    {
+        var clock = new FixedTimeProvider(Now);
+        var (habbo, _) = Owner(sprite: 42, duration: 3600, activated: true, activatedAt: Now.AddSeconds(-10), clock: clock);
+        var (client, _) = HabbiconTestSupport.Client(habbo);
+        var selection = new AvatarEffectSelectedEvent(new AvatarEffectService(clock));
+        await selection.Parse(client, Packet(42));
+
+        await selection.Parse(client, Packet(-1));
+
+        var (_, user, _) = InRoom(habbo);
+        Assert.Equal(0, user.CurrentEffect);
+    }
+
+    [Fact]
+    public void ExpiryTakesTheWornEffectOffForTheRoomAfterTheExpiredPacket()
+    {
+        var (habbo, _) = Owner(sprite: 42, duration: 10, activated: true, activatedAt: Now.AddSeconds(-20), quantity: 2, clock: new FixedTimeProvider(Now));
+        var (client, user, sent) = InRoom(habbo);
+        habbo.Client = client;
+        var effects = Assert.IsType<EffectsComponent>(habbo.Effects);
+        effects.CurrentEffect = 42;
+
+        effects.CheckEffectExpiry(habbo);
+
+        Assert.Equal(0, effects.CurrentEffect);
+        Assert.Equal(new[] { ServerPacketHeader.AvatarEffectExpiredComposer, ServerPacketHeader.AvatarEffectComposer }, sent.Select(message => message.Header).ToArray());
+        Assert.Equal(new[] { (user.VirtualId, 0) }, RoomEffects(sent));
+    }
+
+    [Fact]
+    public void ExpiryOutsideARoomIsNotWornOnTheNextRoomEntry()
+    {
+        var (habbo, _) = Owner(sprite: 42, duration: 10, activated: true, activatedAt: Now.AddSeconds(-20), clock: new FixedTimeProvider(Now));
+        var (client, _) = HabbiconTestSupport.Client(habbo);
+        habbo.Client = client;
+        var effects = Assert.IsType<EffectsComponent>(habbo.Effects);
+        effects.CurrentEffect = 42;
+
+        effects.CheckEffectExpiry(habbo);
+
+        var (_, user, _) = InRoom(habbo);
+        Assert.Equal(0, user.CurrentEffect);
+    }
+
+    [Fact]
+    public void ExpiryOfAnotherEffectKeepsTheWornEffect()
+    {
+        var (habbo, _) = Owner(sprite: 43, duration: 10, activated: true, activatedAt: Now.AddSeconds(-20), clock: new FixedTimeProvider(Now));
+        var effects = Assert.IsType<EffectsComponent>(habbo.Effects);
+        effects.TryAdd(new AvatarEffect(502, 7, 42, 3600, true, Now.AddSeconds(-10), 1, new RecordingStore()));
+        var (client, _, sent) = InRoom(habbo);
+        habbo.Client = client;
+        effects.CurrentEffect = 42;
+
+        effects.CheckEffectExpiry(habbo);
+
+        Assert.Equal(42, effects.CurrentEffect);
+        Assert.Empty(RoomEffects(sent));
     }
 
     [Fact]
@@ -298,21 +407,26 @@ public class AvatarEffectServiceTests
     }
 
     // A room with one registered user whose client is the owner, so selection reaches the effect component.
-    private static (GameClient Client, RoomUser User) InRoom(Habbo habbo)
+    private static (GameClient Client, RoomUser User, List<(uint Header, byte[] Payload)> Sent) InRoom(Habbo habbo)
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 42;
         typeof(Room).GetField("_roomUserManager", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(room, new RoomUserManager(room, TestRoomUserStore.Instance, new FixedTimeProvider(Now), new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
-        var (client, _) = HabbiconTestSupport.Client(habbo);
+        var (client, sent) = HabbiconTestSupport.Client(habbo);
         habbo.CurrentRoom = room;
         var user = new RoomUser(7, room.Id, 1, room, client, TestChatEmotions.Unused, TestRewardProgress.Unused);
         var users = (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(room.GetRoomUserManager())!;
         users.TryAdd(7, user);
 
-        return (client, user);
+        return (client, user, sent);
     }
+
+    private static (int VirtualId, int Effect)[] RoomEffects(List<(uint Header, byte[] Payload)> sent) => sent
+        .Where(message => message.Header == ServerPacketHeader.AvatarEffectComposer)
+        .Select(message => (BinaryPrimitives.ReadInt32BigEndian(message.Payload), BinaryPrimitives.ReadInt32BigEndian(message.Payload.AsSpan(4))))
+        .ToArray();
 
     private static List<object> Writes(IServerPacket composer)
     {

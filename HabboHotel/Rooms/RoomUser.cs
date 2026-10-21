@@ -498,6 +498,8 @@ public class RoomUser
             return;
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: "k105a 5 " does not fire "k105a #(a)" and is echoed as "k105a 5".
+        message = message.TrimEnd(' ');
         habbo.HasSpoken = true;
 
         if (room.WordFilterList.Count > 0 && !habbo.Access.Can(PermissionKeys.ChatFilterBypass)) {

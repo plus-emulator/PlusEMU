@@ -232,7 +232,32 @@ public sealed class RoomChatServiceTests
             Assert.Equal(ServerPacketHeader.ChatComposer, Assert.Single(world.RecipientPackets).Header);
             var payload = Assert.Single(world.RecipientPackets).Payload;
             var length = System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(payload.AsSpan(4, 2));
-            Assert.Equal(message, Encoding.UTF8.GetString(payload, 6, length));
+            Assert.Equal(message.TrimEnd(' '), Encoding.UTF8.GetString(payload, 6, length));
+        }
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: "k105a 5 " does not fire the exact keyword "k105a #(a)", and its echo reads "k105a 5".
+    [Theory]
+    [InlineData("k105a 5", true)]
+    [InlineData("k105a 5 ", false)]
+    [InlineData("k105a 5  ", false)]
+    public async Task ExactWiredSpeechSeesTrailingSpacesThatTheWordFilterDropsFromTheEcho(string said, bool hidden)
+    {
+        var world = new World(filter: new WordFilterManager(DefaultProxy<Plus.Database.IDatabase>.Create()));
+        world.AddHiddenSpeechTrigger("k105a 5");
+        Set(world.SenderUser, "_chatEmotions", new TestChatEmotions());
+
+        await new ChatEvent(world.Service).Parse(world.Sender, HabbiconTestSupport.Incoming(said, 0));
+
+        if (hidden) {
+            Assert.Empty(world.RecipientPackets);
+            Assert.Equal(ServerPacketHeader.WhisperComposer, Assert.Single(world.SenderPackets).Header);
+        }
+        else {
+            var packet = Assert.Single(world.RecipientPackets);
+            Assert.Equal(ServerPacketHeader.ChatComposer, packet.Header);
+            var length = System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(packet.Payload.AsSpan(4, 2));
+            Assert.Equal("k105a 5", Encoding.UTF8.GetString(packet.Payload, 6, length));
         }
     }
 
@@ -452,7 +477,7 @@ public sealed class RoomChatServiceTests
         private readonly ConcurrentDictionary<uint, Item> _floorItems;
         private uint _nextItemId = 1;
 
-        public World(TimeProvider? clock = null, IModerationManager? moderation = null)
+        public World(TimeProvider? clock = null, IModerationManager? moderation = null, IWordFilterManager? filter = null)
         {
             clock ??= new FixedClock(Now);
             _room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
@@ -495,7 +520,7 @@ public sealed class RoomChatServiceTests
             Clients.ByUserId[7] = Sender;
             Clients.ByUserId[8] = Recipient;
 
-            Service = new RoomChatService(new Styles(), Logs, Filter, Commands,
+            Service = new RoomChatService(new Styles(), Logs, filter ?? Filter, Commands,
                 moderation ?? DefaultProxy<IModerationManager>.Create(), Settings, Quests, Rewards, clientManager, clock);
         }
 

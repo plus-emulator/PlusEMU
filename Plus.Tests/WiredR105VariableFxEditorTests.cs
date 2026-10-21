@@ -82,6 +82,10 @@ public sealed class WiredR105VariableFxEditorTests
         // Show mode: 0, 1 and 2 stay and mode 2 switches the hover flag on; anything else is 0.
         Assert.Equal([2, 1], Stored(card, p => p[2] = 2).Skip(2).Where((_, index) => index is 0 or 2));
         Assert.Equal([0, 0], Stored(card, p => { p[2] = 3; p[4] = 1; }).Skip(2).Where((_, index) => index is 0 or 2));
+        // Observed on AIR WIN63-202610201032-107964540: show mode 1 keeps the hover flag as sent, and show mode 0 stores it off.
+        Assert.Equal(1, Stored(card, p => { p[2] = 1; p[4] = 1; })[4]);
+        Assert.Equal(0, Stored(card, p => { p[2] = 1; p[4] = 0; })[4]);
+        Assert.Equal(0, Stored(card, p => { p[2] = 0; p[4] = 1; })[4]);
         // The update mask is kept as sent.
         Assert.Equal(-2147483648, Stored(card, p => p[3] = int.MinValue)[3]);
         // The duration runs from 1500 to 20000.
@@ -291,5 +295,28 @@ public sealed class WiredR105VariableFxEditorTests
         Assert.True(WiredConfigurationSave.TrySave(box, runtime, TestWiredConfigurationStore.Instance, out _, id => world.Floor.ContainsKey(id)));
 
         Assert.Equal(1, world.Wired.LeaderboardContext(box).OverlayInstanceId);
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: a published board whose stack has no user variable is sent in the snapshot with no
+    // choices and the default variable "0".
+    [Fact]
+    public void APublishedBoardWithoutAUserVariableIsInTheSnapshotWithTheDefaultVariableZero()
+    {
+        using var world = new G1World();
+        Assert.True(WiredBoxRegistry.TryGet(Board, out var descriptor));
+        var item = world.AddItem(Board, InteractionType.WiredEffect);
+        var box = world.Wired.CreateConfiguredBox(item) ?? throw new InvalidOperationException(Board);
+        Assert.True(world.Wired.AddBox((Plus.HabboHotel.Items.Wired.IWiredItem)box));
+        Assert.Empty(world.Wired.LeaderboardDescriptors());
+
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { Text = Text };
+        Assert.True(WiredNativeEditorProjection.TryCompile(item.Id, descriptor, native, out var runtime, WiredNativeEditorProjection.AnyTriggerContext));
+        Assert.True(WiredConfigurationSave.TrySave(box, runtime, TestWiredConfigurationStore.Instance, out _, id => world.Floor.ContainsKey(id)));
+
+        var sent = Assert.Single(world.Wired.LeaderboardDescriptors());
+        Assert.Equal(1, sent.OverlayInstanceId);
+        Assert.Empty(sent.Choices);
+        Assert.Equal("0", sent.DefaultVariableId);
+        Assert.Equal("probe board", sent.Config.Title);
     }
 }

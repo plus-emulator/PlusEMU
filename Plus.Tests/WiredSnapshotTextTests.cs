@@ -73,6 +73,19 @@ public sealed class WiredSnapshotTextTests
         Assert.Matches(new Regex(pattern), result.Text);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a save without ints stores the frame default, but its snapshot keeps no state.
+    [Fact]
+    public void StuffStateSavedWithoutIntsDropsTheSnapshotState()
+    {
+        using var save = new WiredRawSave("wf_trg_stuff_state");
+        var result = save.Save(ints: [], picks: [save.Furni()]);
+
+        Assert.True(result.Accepted, result.ToString());
+        Assert.Equal([1], result.Ints);
+        Assert.Matches(new Regex(@"^\d+,N,N,N,N,N$"), result.Text);
+        Assert.Matches(new Regex(@"^\d+,[^,N]+,N,N,N,N$"), save.Save(ints: [1], picks: [save.Furni()]).Text);
+    }
+
     [Fact]
     public void StuffStateWithNoPickHasNoSnapshotText()
     {

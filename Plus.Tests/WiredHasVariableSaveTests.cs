@@ -72,4 +72,40 @@ public sealed class WiredHasVariableSaveTests
         Assert.Equal("error", result.Answer);
         Assert.Equal("wiredfurni.error.invalid_variable_count", result.Key);
     }
+
+    // Observed on AIR WIN63-202610201032-107964540: the boxes have no text field, so a text in a save is dropped.
+    [Theory]
+    [MemberData(nameof(Boxes))]
+    public void ATextInASaveIsDropped(string name)
+    {
+        using var save = new WiredRawSave(name);
+        var result = save.Save(ints: [1], variables: ["user:5"], text: "abc");
+
+        Assert.True(result.Accepted, result.ToString());
+        Assert.Equal("", result.Text);
+        Assert.Equal("", save.Stored().Text);
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: the trigger user source 10 is stored next to 11, 0, 200 and 201.
+    [Theory]
+    [MemberData(nameof(Boxes))]
+    public void UserSourceTenIsStored(string name)
+    {
+        using var save = new WiredRawSave(name);
+        var result = save.Save(ints: [1], variables: ["user:5"], users: [10]);
+
+        Assert.True(result.Accepted, result.ToString());
+        Assert.Equal([10], result.Users);
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: Not Has Variable stores a quantifier of 2.
+    [Fact]
+    public void NotHasVariableStoresAQuantifierOfTwo()
+    {
+        using var save = new WiredRawSave("wf_cnd_neg_has_var");
+        var result = save.Save(ints: [1], variables: ["user:5"], quantifier: 2);
+
+        Assert.True(result.Accepted, result.ToString());
+        Assert.Equal(2, result.Quantifier);
+    }
 }

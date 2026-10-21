@@ -682,6 +682,14 @@ public class Item
 
                             break;
                         }
+                    case InteractionType.EffectBox: {
+                            // An opened effect box (ItemRedemptionService.OpenEffectBox) is already gone from storage.
+                            if (InteractingUser != 0) {
+                                room.GetRoomItemHandler().RemoveFurniture(null!, this);
+                            }
+
+                            break;
+                        }
                     case InteractionType.Effect: {
                             if (LegacyDataString == "1") {
                                 if (room.GetRoomUserManager().GetUserForSquare(GetX, GetY) == null) {

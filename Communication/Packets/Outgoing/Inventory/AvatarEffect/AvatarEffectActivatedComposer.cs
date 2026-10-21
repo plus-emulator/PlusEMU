@@ -11,6 +11,6 @@ public class AvatarEffectActivatedComposer(AvatarEffectActivation activation) : 
     {
         packet.WriteInteger(activation.SpriteId);
         packet.WriteInteger(activation.Duration);
-        packet.WriteBoolean(false); //Permanent
+        packet.WriteBoolean(activation.Permanent);
     }
 }

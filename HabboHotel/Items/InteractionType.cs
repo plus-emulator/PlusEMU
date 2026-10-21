@@ -137,5 +137,6 @@ public enum InteractionType
     WiredRoomLinker,
     WiredLabel,
     WiredLink,
-    Recolorable
+    Recolorable,
+    EffectBox
 }

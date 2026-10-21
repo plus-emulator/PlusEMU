@@ -180,6 +180,7 @@ public sealed class ItemRedemptionServiceTests
 
             return ids.Select(id => new ClothingParts(id, id, name)).ToArray();
         }
+        public Plus.HabboHotel.Users.Effects.AvatarEffect ConsumeEffectBox(uint itemId, int ownerId, uint roomId, int spriteId, DateTimeOffset now) => throw new NotSupportedException();
     }
 
     private static (Room Room, Plus.HabboHotel.GameClients.GameClient Client, List<(uint Header, byte[] Payload)> Sent, Item Item) Context(InteractionType type, int value, bool temporary = false, int[]? figureSetIds = null)

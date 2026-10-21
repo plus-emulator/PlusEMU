@@ -18,7 +18,7 @@ public class AvatarEffectsComposer(ImmutableArray<AvatarEffectEntry> effects) : 
             packet.WriteInteger(effect.Duration);
             packet.WriteInteger(effect.Quantity);
             packet.WriteInteger(effect.RemainingSeconds);
-            packet.WriteBoolean(false); //Permanent
+            packet.WriteBoolean(effect.Permanent);
         }
     }
 }

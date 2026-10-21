@@ -5,11 +5,11 @@ using Plus.HabboHotel.GameClients;
 namespace Plus.HabboHotel.Users.Effects;
 
 // Prepared scalars for the outgoing effect packets; composers only write these values.
-public sealed record AvatarEffectActivation(int SpriteId, int Duration);
+public sealed record AvatarEffectActivation(int SpriteId, int Duration, bool Permanent = false);
 
 public sealed record AvatarEffectExpiry(int SpriteId);
 
-public sealed record AvatarEffectEntry(int SpriteId, int Duration, int Quantity, bool Activated, int RemainingSeconds);
+public sealed record AvatarEffectEntry(int SpriteId, int Duration, int Quantity, bool Activated, int RemainingSeconds, bool Permanent = false);
 
 public interface IAvatarEffectService
 {
@@ -35,7 +35,7 @@ public sealed class AvatarEffectService(TimeProvider time) : IAvatarEffectServic
         }
 
         effect.Activate(now);
-        session.Send(new AvatarEffectActivatedComposer(new AvatarEffectActivation(effect.SpriteId, ToWire(effect.Duration))));
+        session.Send(new AvatarEffectActivatedComposer(new AvatarEffectActivation(effect.SpriteId, WireDuration(effect), effect.IsPermanent)));
     }
 
     public void Select(GameClient session, int effectId)
@@ -65,11 +65,14 @@ public sealed class AvatarEffectService(TimeProvider time) : IAvatarEffectServic
         var now = time.GetUtcNow();
 
         return effects.GetAllEffects
-            .Select(effect => new AvatarEffectEntry(effect.SpriteId, ToWire(effect.Duration), effect.Activated ? effect.Quantity - 1 : effect.Quantity,
-                effect.Activated, effect.Activated ? ToWire(effect.TimeLeftAt(now)) : -1))
+            .Select(effect => new AvatarEffectEntry(effect.SpriteId, WireDuration(effect), effect.Activated ? effect.Quantity - 1 : effect.Quantity,
+                effect.Activated, !effect.Activated ? -1 : effect.IsPermanent ? int.MaxValue : ToWire(effect.TimeLeftAt(now)), effect.IsPermanent))
             .ToImmutableArray();
     }
 
     // Wire fields are 32-bit: values are truncated like the original casts, then held inside [0, int.MaxValue].
     private static int ToWire(double value) => (int)Math.Clamp(value, 0, int.MaxValue);
+
+    // AIR draws a permanent effect's time bar as duration / duration, so it gets the largest duration instead of 0.
+    public static int WireDuration(AvatarEffect effect) => effect.IsPermanent ? int.MaxValue : ToWire(effect.Duration);
 }

@@ -20,7 +20,8 @@ internal static class WiredEditorStoreRules
     private const int KickMessageLength = 200;
 
     /// <param name="Store">The stored form of a save, or null for a box that only has a variable or user source check here.</param>
-    /// <param name="VariableSlots">The box has one picked variable (or two for the filters by variable): a save with no variable takes the empty slots.</param>
+    /// <param name="VariableSlots">The box has a fixed number of variable slots: a missing slot takes the empty variable and an extra
+    /// variable is refused with the count key.</param>
     private sealed record Rule(Action<WiredStoreDraft>? Store = null, bool VariableSlots = false);
 
     // Each box is named once, with its stored form and flags. The ints are cut and padded to the frame before the rule runs.
@@ -53,7 +54,7 @@ internal static class WiredEditorStoreRules
         { TextFurniName, new(draft => draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1) },
         // Observed on AIR WIN63-202610201032-107964540: the bot name is kept as sent, of any length.
         { BotReachedFurni, new(_ => { }) },
-        // Only the variable slots are checked.
+        // Only the variable slots are checked. The transaction triggers have none.
         { "wf_act_init_transaction", new(VariableSlots: true) },
         { "wf_trg_transaction_complete", new(VariableSlots: true) },
         { "wf_trg_transaction_fail", new(VariableSlots: true) },

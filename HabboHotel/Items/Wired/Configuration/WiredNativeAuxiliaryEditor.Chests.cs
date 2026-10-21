@@ -98,7 +98,8 @@ internal static partial class WiredNativeAuxiliaryEditor
     {
         var p = n.OwnedIntParams;
 
-        // Observed on AIR WIN63-202610201032-107964540: a raw save with amount 0 is accepted and read back as 1.
+        // Observed on AIR WIN63-202610201032-107964540: a raw save with amount 0 is accepted. The box gives 1; Give Furni also reopens
+        // with 1 (see StoredInts).
         return Shape(n, 6, 2, 2, 1) && TryTarget(p[3], out var target) && p[5] >= lowest && p[5] <= highest
             ? ChestDraft(n, [p[0], p[1] == 0 ? 1 : p[1], p[2], target, p[4], p[5]], n.Text) : null;
     }

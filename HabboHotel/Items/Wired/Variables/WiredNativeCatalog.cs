@@ -207,6 +207,8 @@ internal static class WiredNativeCatalogProjection
         _ => -20
     };
 
+    private const int ReferenceAvailability = 20;
+
     internal static WiredNativeVariable Project(WiredNativeEndpoint endpoint, ImmutableArray<KeyValuePair<int, string>>? connector)
     {
         var description = endpoint.Description;
@@ -224,12 +226,15 @@ internal static class WiredNativeCatalogProjection
         // Observed on hhus: the lvlup sub-variable "<parent>.current_level" is listed with type 2 and availability 999.
         // Observed on hhus (AIR WIN63-202610131318-860371703): a global lists canReadCreationTime false, canReadLastUpdateTime true;
         // a Time Utilities Value part is writable and interceptable.
-        var variable = new WiredNativeVariable(description.CatalogId, description.IsDerived || definition.Link is not null ? 2 : 0,
+        // Observed on AIR WIN63-202610201032-107964540: a reference to a shared variable of another room is listed as a normal variable
+        // (type 0) of availability 20 whose changes can be intercepted. An echo or alias of a variable of this room stays type 2.
+        var crossRoom = definition.Link is { } link && link.SourceRoomId != definition.RoomId;
+        var variable = new WiredNativeVariable(description.CatalogId, description.IsDerived || definition.Link is not null && !crossRoom ? 2 : 0,
             definition.Name, builtin is not null || description.IsDerived || definition.Target == WiredVariableTarget.Context ? 999
-                : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
+                : crossRoom ? ReferenceAvailability : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
-            definition.Link is null && (writable || description.Interceptable) && builtin is null, false,
+            (definition.Link is null || crossRoom) && (writable || description.Interceptable) && builtin is null, false,
             timestamps && definition.Target != WiredVariableTarget.Global, timestamps, connector);
 
         // Observed on AIR WIN63-202610201032-107964540: a pointer is listed as a normal variable of availability 999 that can be created,

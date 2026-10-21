@@ -84,6 +84,7 @@ public sealed partial class WiredNativeLifecycleTests
     {
         var f = new World();
         f.Room.OwnerId = 5;
+        f.PrepareVariables();
         var item = f.Item(4);
         item.Definition.InteractionName = "wf_var_reference";
         var box = f.Wired.CreateConfiguredBox(item)!;
@@ -96,9 +97,12 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.True(WiredNativeEditorProjection.TryCompile(item.Id, box.Descriptor, unchosen, out var runtime));
         Assert.False(WiredConfigurationSave.TrySave(box, runtime, TestWiredConfigurationStore.Instance, out var error));
         Assert.Equal("wiredfurni.error.variables.reference.valid", error);
+        // Observed on AIR WIN63-202610201032-107964540: a reference to a variable that is not shared in the room it names is refused with
+        // the same key (a reference to a shared variable of the owner saves, see PlacedFurniRoomTests.ReferenceOwner).
         var chosen = unchosen with { VariableIds = ["shared:2:room:4"] };
         Assert.True(WiredNativeEditorProjection.TryCompile(item.Id, box.Descriptor, chosen, out runtime));
-        Assert.True(box.TryValidateConfiguration(runtime, out _, out error), error);
+        Assert.False(box.TryValidateConfiguration(runtime, out _, out error));
+        Assert.Equal("wiredfurni.error.variables.reference.valid", error);
     }
 
     // The unchanged-form save (empty name, owned [0], id "0") was refused with the placeholder length key and no parameters.

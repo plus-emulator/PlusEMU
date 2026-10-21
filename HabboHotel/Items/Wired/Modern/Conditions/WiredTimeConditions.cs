@@ -44,7 +44,9 @@ public static class WiredTimeConditions
         var elapsedPulses = Math.Max(0, elapsedMs) / 500;
         var targetPulses = Param(config, 0, 1);
 
-        return moreThan ? elapsedPulses > targetPulses : elapsedPulses < targetPulses;
+        // Observed on AIR WIN63-202610201032-107964540: both conditions pass during the pulse of their threshold. Less Than passes
+        // through it and More Than from it.
+        return moreThan ? elapsedPulses >= targetPulses : elapsedPulses <= targetPulses;
     }
 
     public static bool MatchesCounter(WiredConfiguration config, IEnumerable<long> currentTimesMs)

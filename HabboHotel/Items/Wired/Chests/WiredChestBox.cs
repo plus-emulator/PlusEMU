@@ -59,6 +59,30 @@ public class WiredChestBox : WiredModernBox
         } && proposed.Text.Length <= 200 && GiveChestsAccepted(proposed, ref error);
     }
 
+    /// <summary>
+    /// The pick rule of a new save that a stored row is not held to. Observed on AIR WIN63-202610201032-107964540: Chest Has Item Type
+    /// accepts only a Furni Chest and answers a Credit Chest, a mix of both or any other furni with the furni chest key.
+    /// </summary>
+    internal bool TryValidateSavedPicks(WiredConfiguration proposed, out string error)
+    {
+        error = "";
+
+        if (Descriptor.CanonicalName != "wf_cnd_chest_has_item_type") {
+            return true;
+        }
+
+        var source = proposed.FurniSources.GetValueOrDefault("f1", 100);
+
+        if (source is 100 or 101 && (source == 101 ? proposed.SecondarySelectedItems : proposed.SelectedItems)
+                .Any(id => Instance.GetRoomItemHandler().GetItem(id) is not { } item || Chests.Read(item) is not { Kind: WiredChestKind.Furni })) {
+            error = "wiredfurni.error.require_furni_chests";
+
+            return false;
+        }
+
+        return true;
+    }
+
     // Observed r93h/r93j r93-p2-chests-empty (hhus, WIN63-202610131318): give_currency and give_furni refuse a picked chest that is not
     // an upgraded Wired chest of their kind ("wiredfurni.error.require_coin_chests" / "require_furni_chests"); after the free Wired
     // upgrade the same saves are accepted. The chest conditions and the scan add-on accept normal chests.

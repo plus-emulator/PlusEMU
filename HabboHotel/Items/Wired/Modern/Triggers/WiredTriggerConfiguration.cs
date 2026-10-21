@@ -125,7 +125,7 @@ public static class WiredTriggerConfiguration
                 furni["items"] = p[1];
                 break;
             case "wf_trg_bot_reached_avtr":
-                if (p.Length != 1 || !B(0) || proposed.Text.Length > 64) {
+                if (p.Length != 1 || !B(0)) {
                     return false;
                 }
 

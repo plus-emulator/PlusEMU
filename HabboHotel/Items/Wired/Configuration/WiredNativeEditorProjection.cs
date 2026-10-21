@@ -378,6 +378,11 @@ public static class WiredNativeEditorProjection
             native = native with { OwnedIntParams = [], Text = "" };
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: these triggers store a save in a normal form instead of refusing odd values.
+        if (WiredTriggerStoreRules.Applies(name) && Supports(name)) {
+            native = WiredTriggerStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
+        }
+
         // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).
         // Observed on AIR WIN63-202610151745-318700621: the area selectors store each of x, y, width and height clamped to 0..64
         // (-5 reads back 0, 500 reads back 64) instead of refusing the save.
@@ -652,7 +657,7 @@ public static class WiredNativeEditorProjection
         && native.VariableIds.All(token => token != null && token.Length <= 1024)
         && native.SavedState != null && !native.SavedState.Snapshots.IsDefault
         && (native.Category == WiredBoxCategory.Action ? native.Delay is int delay && WiredConfigurationLimits.IsDelay(delay) : native.Delay == null)
-        && (native.Category == WiredBoxCategory.Condition ? native.Quantifier is 0 or 1 : native.Quantifier == null)
+        && (native.Category == WiredBoxCategory.Condition ? native.Quantifier is 0 or 1 or 2 : native.Quantifier == null)
         && (native.Category == WiredBoxCategory.Selector ? native.Filter != null && native.Inverse != null : native.Filter == null && native.Inverse == null);
 
     internal static bool Matches(WiredConfiguration actual, WiredConfiguration expected) => actual.Version == expected.Version
@@ -708,7 +713,10 @@ public static class WiredNativeEditorProjection
 
         // Observed on hhus (WIN63-202610131318): saving a click-tile trigger that picks a furni which is not an invisible click tile
         // is refused with wiredfurni.error.require_click_tiles and no parameters.
-        if (descriptor.CanonicalName == "wf_trg_click_tile" && references.Any(reference =>
+        // Observed on AIR WIN63-202610201032-107964540: the picks are only checked when they are the source; with the selector as source
+        // a plain furni pick saves.
+        if (descriptor.CanonicalName == "wf_trg_click_tile" && (native.FurniSourceTypes.IsDefaultOrEmpty || native.FurniSourceTypes[0] == 100)
+            && references.Any(reference =>
             room.GetRoomItemHandler().GetItem(reference.ItemId)?.Definition.InteractionName != ClickTileInteraction)) {
             error = "wiredfurni.error.require_click_tiles";
 

@@ -206,7 +206,7 @@ public static class WiredConditionConfiguration
                 furni["items"] = proposed.SelectedItems.Length > 0 ? 100 : 0;
                 break;
             case "wf_cnd_slc_quantity":
-                if (p.Length != 4 || !Range(0, 0, 2) || p[1] < 0 || !Q(2) || (p[2] == 0 ? !U(3) : !F(3))) {
+                if (p.Length != 4 || p[0] < 0 || p[1] < 0 || !Q(2) || (p[2] == 0 ? !U(3) : !F(3))) {
                     return false;
                 }
 
@@ -233,7 +233,7 @@ public static class WiredConditionConfiguration
                 users["users"] = p[2];
                 break;
             case "wf_cnd_team_has_score":
-                if (p.Length != 5 || !Range(0, 0, 4) || !Range(1, 0, 2) || p[2] is < 0 or > 1000 || !U(3) || !Q(4)) {
+                if (p.Length != 5 || !Range(0, 0, 4) || p[1] < 0 || p[2] is < 0 or > 1000 || !U(3) || !Q(4)) {
                     return false;
                 }
 
@@ -248,7 +248,7 @@ public static class WiredConditionConfiguration
                 break;
             case "wf_cnd_time_less_than":
             case "wf_cnd_time_more_than":
-                if (p.Length != 1 || p[0] < 0) {
+                if (p.Length != 1) {
                     return false;
                 }
 

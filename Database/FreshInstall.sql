@@ -148,7 +148,7 @@ CREATE TABLE `bots` (
   `look` text NOT NULL,
   `x` int(11) NOT NULL DEFAULT 0,
   `y` int(11) NOT NULL DEFAULT 0,
-  `z` int(11) NOT NULL DEFAULT 0,
+  `z` double NOT NULL DEFAULT 0,
   `rotation` int(11) NOT NULL DEFAULT 0,
   `walk_mode` enum('stand','freeroam','specified_range') NOT NULL DEFAULT 'freeroam',
   `gender` varchar(5) NOT NULL DEFAULT 'M',

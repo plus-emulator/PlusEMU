@@ -90,7 +90,8 @@ public static class Program
         var serviceProvider = services.BuildServiceProvider();
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
         ExceptionLogger.Configure(loggerFactory);
-        ConsoleCommands.Configure(loggerFactory, serviceProvider.GetRequiredService<IGameClientManager>());
+        ConsoleCommands.Configure(loggerFactory, serviceProvider.GetRequiredService<IGameClientManager>(),
+            serviceProvider.GetRequiredService<IPlannedShutdown>());
 
         foreach (var plugin in pluginDefinitions) {
             plugin.OnServiceProviderBuild(serviceProvider);

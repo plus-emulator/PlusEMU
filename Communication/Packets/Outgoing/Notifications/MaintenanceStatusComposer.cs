@@ -6,5 +6,10 @@ public class MaintenanceStatusComposer(bool isInMaintenance, int minutesUntilMai
 {
     public uint MessageId => ServerPacketHeader.MaintenanceStatusComposer;
 
-    public void Compose(IOutgoingPacket packet) => throw new NotImplementedException();
+    public void Compose(IOutgoingPacket packet)
+    {
+        packet.WriteBoolean(isInMaintenance);
+        packet.WriteInteger(minutesUntilMaintenance);
+        packet.WriteInteger(durationMinutes);
+    }
 }

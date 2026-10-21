@@ -1,3 +1,4 @@
+using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.HabboHotel.GameClients;
 using Plus.Utilities.DependencyInjection;
 
@@ -9,15 +10,61 @@ public interface IPlannedShutdown
     bool TrySchedule(int minutes, int durationMinutes);
 }
 
+/// <summary>
+/// Warns every user with Habbo's maintenance alert (AIR WIN63-202610201032-107964540, HabboAlertDialogManager.as:76-81, text
+/// maintenance.shutdown), again when one minute is left, and then shuts the server down.
+/// </summary>
 public sealed class PlannedShutdown : IPlannedShutdown
 {
+    // AIR reads 15 when the packet has no duration (class_3083.as:41-49).
     public const int DefaultDurationMinutes = 15;
+
+    private readonly IGameClientManager _clients;
+    private readonly TimeProvider _clock;
+    private readonly Action _shutdown;
+    private readonly List<ITimer> _timers = [];
+    private int _scheduled;
 
     public PlannedShutdown(IGameClientManager clients, TimeProvider clock) : this(clients, clock, PlusEnvironment.PerformShutDown) { }
 
-    internal PlannedShutdown(IGameClientManager clients, TimeProvider clock, Action shutdown) { }
+    internal PlannedShutdown(IGameClientManager clients, TimeProvider clock, Action shutdown)
+    {
+        _clients = clients;
+        _clock = clock;
+        _shutdown = shutdown;
+    }
 
-    public static bool TryParse(IReadOnlyList<string> arguments, out int minutes, out int durationMinutes) => throw new NotImplementedException();
+    public static bool TryParse(IReadOnlyList<string> arguments, out int minutes, out int durationMinutes)
+    {
+        durationMinutes = DefaultDurationMinutes;
 
-    public bool TrySchedule(int minutes, int durationMinutes) => throw new NotImplementedException();
+        if (arguments.Count == 0 || !int.TryParse(arguments[0], out minutes)) {
+            minutes = 0;
+
+            return false;
+        }
+
+        return arguments.Count < 2 || string.IsNullOrEmpty(arguments[1]) || int.TryParse(arguments[1], out durationMinutes);
+    }
+
+    public bool TrySchedule(int minutes, int durationMinutes)
+    {
+        if (minutes < 1 || durationMinutes < 0 || Interlocked.Exchange(ref _scheduled, 1) == 1) {
+            return false;
+        }
+
+        Warn(minutes, durationMinutes);
+
+        if (minutes > 1) {
+            Start(TimeSpan.FromMinutes(minutes - 1), () => Warn(1, durationMinutes));
+        }
+
+        Start(TimeSpan.FromMinutes(minutes), _shutdown);
+
+        return true;
+    }
+
+    private void Warn(int minutes, int durationMinutes) => _clients.SendPacket(new MaintenanceStatusComposer(true, minutes, durationMinutes));
+
+    private void Start(TimeSpan due, Action action) => _timers.Add(_clock.CreateTimer(_ => action(), null, due, Timeout.InfiniteTimeSpan));
 }

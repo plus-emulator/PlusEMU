@@ -66,6 +66,19 @@ internal sealed partial class WiredStackEngine
 
     public bool Enqueue(WiredRuntimeEvent @event, int? depth = null) => Pass(() => !Disabled && EnqueueCore(@event, depth));
 
+    // The events that report a change: a collision, a variable, a score, a furni state or a clock value. Their stacks run in the pass of
+    // the change (see DrainSamePassEvents), not one tick later like those of a click or a walk.
+    private static bool RunsInPassOfChange(WiredEventKind kind) => kind is WiredEventKind.Collision or WiredEventKind.Variable
+        or WiredEventKind.Score or WiredEventKind.StateChanged or WiredEventKind.Counter;
+
+    /// <summary>
+    /// Runs the stacks of a furni state change at once. A change that a running stack made waits in the queue of its pass instead.
+    /// Returns whether the stacks ran at once and whether the event was accepted.
+    /// </summary>
+    public (bool RanAtOnce, bool Accepted) DispatchStateChange(WiredRuntimeEvent @event) => Pass(() => _runtimeContext != null
+        ? (false, !Disabled && EnqueueCore(@event))
+        : (true, DispatchCore(@event, resumeImmediately: true).Accepted));
+
     private bool EnqueueCore(WiredRuntimeEvent @event, int? depth = null, HeadingCollisionProof? collision = null, bool sealOnRejection = false)
     {
         var eventDepth = depth ?? (_runtimeContext?.Depth ?? -1) + 1;
@@ -79,8 +92,8 @@ internal sealed partial class WiredStackEngine
         }
 
         RefreshStacks();
-        // A Collision's stacks run in the cycle that raised it (see DrainSamePassCollisions).
-        var dispatch = new PendingDispatch(@event, eventDepth) { CollisionProof = collision, ResumeImmediately = @event.Kind == WiredEventKind.Collision };
+        var samePass = RunsInPassOfChange(@event.Kind);
+        var dispatch = new PendingDispatch(@event, eventDepth) { CollisionProof = collision, SamePass = samePass, ResumeImmediately = samePass };
         SnapshotDispatch(dispatch);
 
         if (sealOnRejection && PendingCount + dispatch.Slots > _limits.MaxPendingStacks) {
@@ -197,7 +210,7 @@ internal sealed partial class WiredStackEngine
         }
 
         DrainReadySignals();
-        DrainSamePassCollisions();
+        DrainSamePassEvents();
         UpdateFastWork();
 
         if (dispatch.ConsumedChat) {
@@ -538,7 +551,7 @@ internal sealed partial class WiredStackEngine
         DrainDueActions();
         RunRuntimeTimersAndSignals();
         DrainDueActions();
-        DrainSamePassCollisions();
+        DrainSamePassEvents();
         UpdateFastWork();
 
         return true;
@@ -806,50 +819,51 @@ internal sealed partial class WiredStackEngine
     /// </summary>
     internal bool OutputFollowsEcho(WiredRuntimeContext context) => _speechPass && context.Event.Kind == WiredEventKind.Signal;
 
-    /// <summary>True when a say left Variable Changed or Score Achieved stacks for <see cref="DrainVariableStacks"/>.</summary>
+    /// <summary>True when a say left stacks of events it raised, such as Variable Changed or Score Achieved, for <see cref="DrainVariableStacks"/>.</summary>
     public bool HasHeldVariableStacks
     {
         get
         {
             // Chat runs on a network thread while the room's fast cycle dequeues on its own thread.
             lock (_sync) {
-                return _dispatches.TryPeek(out var pending) && pending.Event.Kind is WiredEventKind.Variable or WiredEventKind.Score;
+                return _dispatches.TryPeek(out var pending) && pending.SamePass && pending.Event.Kind != WiredEventKind.Collision;
             }
         }
     }
 
-    /// <summary>Runs the Variable Changed and Score Achieved stacks that a say raised. The caller sends the echo of the say first.</summary>
+    /// <summary>Runs the stacks of the events that a say raised. The caller sends the echo of the say first.</summary>
     public void DrainVariableStacks() => Pass(() =>
     {
-        DrainSamePassCollisions();
+        DrainSamePassEvents();
         UpdateFastWork();
 
         return true;
     });
 
-    private bool _drainingCollisions;
+    private bool _drainingSamePass;
 
     // Observed on AIR WIN63-202610151745-318700621 (wf_trg_var_changed.give, .subvar_parent): Variable Changed stacks run in the pass of the
     // change, so their messages share its millisecond. After a say they follow the echo of the say, which DrainVariableStacks runs.
     // Observed on AIR WIN63-202610201032-107964540 (wf_trg_score_achieved.game): a Score Achieved stack runs the same way, in the pass of the
     // score change.
+    // Observed on AIR WIN63-202610201032-107964540 (wf_trg_score_achieved.cov_teams_max, wf_trg_stuff_state.cov_wired_toggle,
+    // wf_trg_clock_counter.cov_control): the same holds when a click fired the Give Score or Toggle State, and for a clock tick. The
+    // watching stack flashes in the millisecond of the change, not one tick later.
     //
     // Observed on AIR WIN63-202610151745-318700621 (r97_chase_collide_clk, r97_flee_corner_clk): User Stuff Collision raised by an effect
     // runs in the same pulse as that effect, its flashes and chat in the same batch. A Collision at the head of the queue therefore runs
     // before the pass ends, with the effects it schedules; the pass budget and the event depth still bound a chain of them.
-    private void DrainSamePassCollisions()
+    private void DrainSamePassEvents()
     {
-        if (_drainingCollisions || _draining || _dispatchAdvanceDepth != 0 || _activeFiring != null) {
+        if (_drainingSamePass || _draining || _dispatchAdvanceDepth != 0 || _activeFiring != null) {
             return;
         }
 
-        _drainingCollisions = true;
+        _drainingSamePass = true;
 
         try {
-            while (_dispatches.TryPeek(out var pending) && (pending.Event.Kind == WiredEventKind.Collision || (pending.Event.Kind is WiredEventKind.Variable or WiredEventKind.Score) && !_speechPass) && !OutOfBudget()) {
-                // Its stacks run in this cycle instead of waiting for the next one.
-                pending.ResumeImmediately = true;
-
+            while (_dispatches.TryPeek(out var pending) && pending.SamePass && (pending.Event.Kind == WiredEventKind.Collision || !_speechPass)
+                && !OutOfBudget()) {
                 if (!AdvanceDispatch(pending)) {
                     break;
                 }
@@ -864,7 +878,7 @@ internal sealed partial class WiredStackEngine
             }
         }
         finally {
-            _drainingCollisions = false;
+            _drainingSamePass = false;
         }
     }
 
@@ -987,6 +1001,7 @@ internal sealed partial class WiredStackEngine
         public bool Initialized, IsQueued;
         public bool IncludeLegacy = true;
         public bool ResumeImmediately;
+        public bool SamePass;
         public Modern.Actions.WiredFurniturePublication? Publication;
         public HeadingCollisionProof? CollisionProof;
         public bool Accepted, ConsumedChat;

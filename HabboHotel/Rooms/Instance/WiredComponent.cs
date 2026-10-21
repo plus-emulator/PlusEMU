@@ -290,18 +290,30 @@ public partial class WiredComponent : IWiredRuntimeOperations
     internal void ObserveFastWork(Action<bool>? observer) => _engine.ObserveFastWork(observer);
     public bool Dispatch(WiredRuntimeEvent @event)
     {
-        var dispatched = DispatchCore(@event);
+        var ranAtOnce = @event.Kind == WiredEventKind.Speech;
+        var dispatched = WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() =>
+        {
+            if (@event.Kind != WiredEventKind.StateChanged) {
+                return DispatchCore(@event);
+            }
+
+            (ranAtOnce, var accepted) = _engine.DispatchStateChange(@event);
+
+            return accepted;
+        }));
 
         // Speech runs its stacks at once, outside the room's passes: send what they flashed and wrote now, with the chat. Observed on hhus
         // (AIR WIN63-202610131318-860371703): the flash arrives in the same batch as the chat that fired it.
-        if (@event.Kind == WiredEventKind.Speech) {
+        // Observed on AIR WIN63-202610201032-107964540 (wf_trg_stuff_state.cov_snapshot): a furni a user switches flashes its Stuff State
+        // stack in the millisecond of its new state, right after it.
+        if (ranAtOnce) {
             FlushFlashes();
         }
 
         return dispatched;
     }
 
-    private bool DispatchCore(WiredRuntimeEvent @event) => WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() =>
+    private bool DispatchCore(WiredRuntimeEvent @event)
     {
         if (_highscoreClockAdmission == 0 && @event.Kind is WiredEventKind.GameStart or WiredEventKind.GameEnd) {
             _highscores?.Invalidate();
@@ -321,7 +333,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             WiredEventKind.RoomInitialized => _engine.DispatchOnLoad(@event),
             _ => _engine.Enqueue(@event)
         };
-    }));
+    }
     public bool CallStacks(WiredRuntimeContext context, IEnumerable<Item> targets, bool negative = false) =>
         _engine.CallStacks(context, targets, negative);
     public bool SendSignal(WiredRuntimeContext context, IEnumerable<Item> receivers, WiredSelection selection, bool negative = false) =>

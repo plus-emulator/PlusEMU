@@ -8,21 +8,26 @@ public sealed class WiredActionEditorSaveParityTests
 {
     private static readonly string LongName = new('x', 33);
 
-    // Observed on AIR WIN63-202610151745-318700621: Control Clock saves the five offered operations and also an operation the editor
-    // does not offer, and refuses a pick that is not a counter.
+    // Observed on AIR WIN63-202610201032-107964540: Control Clock saves any operation for a counter pick, stores it clamped to the five
+    // offered operations and reopens with the stored one. It refuses a pick that is not a counter.
     [Theory]
-    [InlineData(0)]
-    [InlineData(2)]
-    [InlineData(5)]
-    public void ControlClockSavesAnyOperationForACounterPick(int operation)
+    [InlineData(0, 0)]
+    [InlineData(1, 1)]
+    [InlineData(2, 2)]
+    [InlineData(5, 4)]
+    [InlineData(6, 4)]
+    [InlineData(100, 4)]
+    [InlineData(int.MaxValue, 4)]
+    [InlineData(-1, 0)]
+    public void ControlClockStoresTheOperationClampedForACounterPick(int sent, int stored)
     {
         using var raw = new WiredRawSave("wf_act_control_clock");
         var counter = raw.Furni("wf_upcounter1");
 
-        var result = raw.Save(ints: [operation], picks: [counter], furni: [100]);
+        var result = raw.Save(ints: [sent], picks: [counter], furni: [100]);
 
         Assert.True(result.Accepted, result.ToString());
-        Assert.Equal([operation], result.Ints);
+        Assert.Equal([stored], result.Ints);
         Assert.Equal([100], result.Furni);
     }
 
@@ -80,13 +85,17 @@ public sealed class WiredActionEditorSaveParityTests
         Assert.Equal(text, runtime.Text);
     }
 
-    [Fact]
-    public void AControlClockRowStoredBeforeKeepsLoading()
+    // A row saved before the clamp keeps loading as it was stored and reopens with that operation.
+    [Theory]
+    [InlineData(3)]
+    [InlineData(5)]
+    public void AControlClockRowStoredBeforeKeepsLoading(int operation)
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_act_control_clock", out var descriptor));
-        var stored = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = [3] };
+        var stored = WiredNativeEditorProjection.DefaultNative(descriptor) with { OwnedIntParams = [operation] };
 
         Assert.True(WiredNativeEditorProjection.TryCompile(1, descriptor, stored, out var runtime, storedRow: true));
-        Assert.Equal([3, 100], runtime.IntParams.ToArray());
+        Assert.Equal([operation, 100], runtime.IntParams.ToArray());
+        Assert.Equal([operation], WiredNativeEditorProjection.HotelFrame(descriptor, runtime.Origin!.Native!).OwnedIntParams.ToArray());
     }
 }

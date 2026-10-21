@@ -9,6 +9,7 @@ using Plus.Database;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Users.Clothing.Parts;
+using Plus.HabboHotel.Users.Effects;
 
 namespace Plus.HabboHotel.Items;
 
@@ -16,6 +17,7 @@ public interface IItemRedemptionStore
 {
     void DeleteExchange(uint itemId, int ownerId, uint roomId);
     IReadOnlyList<ClothingParts> ConsumeClothing(uint itemId, int ownerId, uint roomId, string name, IReadOnlyCollection<int> partIds);
+    AvatarEffect ConsumeEffectBox(uint itemId, int ownerId, uint roomId, int spriteId, DateTimeOffset now);
 }
 
 public sealed class ItemRedemptionStore(IDatabase database) : IItemRedemptionStore
@@ -72,6 +74,8 @@ public sealed class ItemRedemptionStore(IDatabase database) : IItemRedemptionSto
         return result;
     }
 
+    public AvatarEffect ConsumeEffectBox(uint itemId, int ownerId, uint roomId, int spriteId, DateTimeOffset now) => throw new NotImplementedException();
+
     private sealed class ClothingRow
     {
         public int Id { get; set; }
@@ -84,6 +88,7 @@ public interface IItemRedemptionService
 {
     void RedeemCredits(Room room, GameClient session, uint itemId);
     void RedeemClothing(GameClient session, uint itemId);
+    void OpenEffectBox(GameClient session, Item item, DateTimeOffset now);
 }
 
 public sealed class ItemRedemptionService(IItemRedemptionStore store, ISettingsManager settings) : IItemRedemptionService
@@ -179,4 +184,6 @@ public sealed class ItemRedemptionService(IItemRedemptionStore store, ISettingsM
             session.Send(new RoomNotificationComposer("figureset.redeemed.success"));
         }
     }
+
+    public void OpenEffectBox(GameClient session, Item item, DateTimeOffset now) => throw new NotImplementedException();
 }

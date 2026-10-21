@@ -68,7 +68,7 @@ public partial class PlacedFurniRoomTests
     {
         var travel = new FailingTravelStore();
         var interactors = new ItemInteractorFactory(travel, TestItemRuntime.Profiles,
-            TestItemRuntime.Quests, TestItemRuntime.Rewards, TestItemRuntime.Achievements);
+            TestItemRuntime.Quests, TestItemRuntime.Rewards, TestItemRuntime.Achievements, TestItemRuntime.Redemptions);
         var handler = new RoomItemHandling(_room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance,
             TestGameClientManager.Empty, TestLanguageManager.RoomItems, interactors, travel, TestItemRuntime.Rewards);
         typeof(Room).GetField("_roomItemHandling", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(_room, handler);
@@ -208,7 +208,7 @@ public partial class PlacedFurniRoomTests
         travel ??= TestItemRuntime.Travel;
         var interactors = ReferenceEquals(travel, TestItemRuntime.Travel) ? TestItemRuntime.Interactors
             : new ItemInteractorFactory(travel, TestItemRuntime.Profiles, TestItemRuntime.Quests,
-                TestItemRuntime.Rewards, TestItemRuntime.Achievements);
+                TestItemRuntime.Rewards, TestItemRuntime.Achievements, TestItemRuntime.Redemptions);
         var handler = new RoomItemHandling(_room, store, TestRoomItemMetadataStore.Instance,
             clients ?? TestGameClientManager.Empty,
             new TestLanguageManager(new Dictionary<string, string>

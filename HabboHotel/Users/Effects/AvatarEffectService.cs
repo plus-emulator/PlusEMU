@@ -5,11 +5,11 @@ using Plus.HabboHotel.GameClients;
 namespace Plus.HabboHotel.Users.Effects;
 
 // Prepared scalars for the outgoing effect packets; composers only write these values.
-public sealed record AvatarEffectActivation(int SpriteId, int Duration);
+public sealed record AvatarEffectActivation(int SpriteId, int Duration, bool Permanent = false);
 
 public sealed record AvatarEffectExpiry(int SpriteId);
 
-public sealed record AvatarEffectEntry(int SpriteId, int Duration, int Quantity, bool Activated, int RemainingSeconds);
+public sealed record AvatarEffectEntry(int SpriteId, int Duration, int Quantity, bool Activated, int RemainingSeconds, bool Permanent = false);
 
 public interface IAvatarEffectService
 {

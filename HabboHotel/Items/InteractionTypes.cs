@@ -36,6 +36,8 @@ public static class InteractionTypes
                 return InteractionType.RollerSpeedController;
             case "recolorable":
                 return InteractionType.Recolorable;
+            case "effect_box":
+                return InteractionType.EffectBox;
             case "wired_chest_furni":
                 return InteractionType.WiredChestFurni;
             case "wired_chest_coins":

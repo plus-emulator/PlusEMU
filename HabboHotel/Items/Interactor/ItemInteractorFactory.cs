@@ -14,7 +14,8 @@ public sealed class ItemInteractorFactory(
     IUserProfileService profiles,
     IQuestManager quests,
     IRewardTrackManager rewards,
-    IAchievementManager achievements) : IItemInteractorFactory
+    IAchievementManager achievements,
+    IItemRedemptionService redemptions) : IItemInteractorFactory
 {
     public IFurniInteractor Create(Item item, TimeProvider timeProvider)
     {
@@ -71,6 +72,7 @@ public sealed class ItemInteractorFactory(
             InteractionType.CrackableEgg => new InteractorCrackable(achievements),
             InteractionType.Skateboard => new InteractorSkateboard(achievements),
             InteractionType.CameraPicture => new InteractorCameraPicture(),
+            InteractionType.EffectBox => new InteractorEffectBox(redemptions, timeProvider),
             _ => new InteractorGenericSwitch(quests, rewards)
         };
     }

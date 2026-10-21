@@ -8,7 +8,7 @@ public class AvatarEffectAddedComposer : IServerPacket
     private readonly int _duration;
     public uint MessageId => ServerPacketHeader.AvatarEffectAddedComposer;
 
-    public AvatarEffectAddedComposer(int spriteId, int duration)
+    public AvatarEffectAddedComposer(int spriteId, int duration, bool permanent = false)
     {
         _spriteId = spriteId;
         _duration = duration;

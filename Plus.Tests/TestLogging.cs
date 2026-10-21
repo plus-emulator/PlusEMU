@@ -45,8 +45,9 @@ internal static class TestItemRuntime
     internal static IRewardTrackManager Rewards { get; } = Empty<IRewardTrackManager>();
     internal static IAchievementManager Achievements { get; } = Empty<IAchievementManager>();
     internal static IUserProfileService Profiles { get; } = Empty<IUserProfileService>();
+    internal static IItemRedemptionService Redemptions { get; } = Empty<IItemRedemptionService>();
     internal static IItemInteractorFactory Interactors { get; } =
-        new ItemInteractorFactory(Travel, Profiles, Quests, Rewards, Achievements);
+        new ItemInteractorFactory(Travel, Profiles, Quests, Rewards, Achievements, Redemptions);
 
     private static T Empty<T>() where T : class => DispatchProxy.Create<T, EmptyProxy>();
 

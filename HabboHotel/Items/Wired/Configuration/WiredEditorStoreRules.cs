@@ -20,7 +20,8 @@ internal static class WiredEditorStoreRules
     private const int KickMessageLength = 200;
 
     /// <param name="Store">The stored form of a save, or null for a box that only has a variable or user source check here.</param>
-    /// <param name="VariableSlots">The box has one picked variable (or two for the filters by variable): a save with no variable takes the empty slots.</param>
+    /// <param name="VariableSlots">The box has a fixed number of variable slots: a missing slot takes the empty variable and an extra
+    /// variable is refused with the count key.</param>
     private sealed record Rule(Action<WiredStoreDraft>? Store = null, bool VariableSlots = false);
 
     // Each box is named once, with its stored form and flags. The ints are cut and padded to the frame before the rule runs.
@@ -32,7 +33,7 @@ internal static class WiredEditorStoreRules
         { "wf_xtra_filter_furni_by_var", new(FilterByVariable, VariableSlots: true) },
         { "wf_xtra_filter_users_by_var", new(FilterByVariable, VariableSlots: true) },
         { "wf_xtra_filter_users", new(FilterUsers, VariableSlots: true) },
-        { "wf_act_teleport_to", new(TeleportTo) },
+        { "wf_act_teleport_to", new(FlagWithoutText) },
         { "wf_act_kick_user", new(KickUser) },
         { "wf_xtra_or_eval", new(draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], -1, 3)) },
         { "wf_xtra_rotate_to_dir", new(RotateToDirection) },
@@ -53,8 +54,12 @@ internal static class WiredEditorStoreRules
         { TextFurniName, new(draft => draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1) },
         // Observed on AIR WIN63-202610201032-107964540: the bot name is kept as sent, of any length.
         { BotReachedFurni, new(_ => { }) },
-        // Only the variable slots are checked.
-        { "wf_act_init_transaction", new(VariableSlots: true) }
+        // Only the variable slots are checked. The transaction triggers have none.
+        { "wf_act_init_transaction", new(VariableSlots: true) },
+        { "wf_trg_transaction_complete", new(VariableSlots: true) },
+        { "wf_trg_transaction_fail", new(VariableSlots: true) },
+        // Observed on AIR WIN63-202610201032-107964540: any non-zero match criteria is stored as 1, and the box has no text.
+        { "wf_act_cancel_transaction", new(FlagWithoutText, VariableSlots: true) }
     }.ToFrozenDictionary();
 
     // The action codes the hotel keeps: the ones the client offers, the unoffered 9 and the client expression 67.
@@ -115,8 +120,9 @@ internal static class WiredEditorStoreRules
         draft.Text = "";
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the fast flag is 1 for any value but 0, and the box has no text.
-    private static void TeleportTo(WiredStoreDraft draft)
+    // Observed on AIR WIN63-202610201032-107964540: the flag (Teleport To's fast flag, Cancel Transaction's match criteria) is 1 for any
+    // value but 0, and the box has no text.
+    private static void FlagWithoutText(WiredStoreDraft draft)
     {
         draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1;
         draft.Text = "";

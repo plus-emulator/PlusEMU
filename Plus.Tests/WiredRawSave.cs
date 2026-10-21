@@ -41,7 +41,7 @@ internal sealed class WiredRawSave : IDisposable
         _item = _world.AddItem(name, InteractionTypes.GetTypeFromString(name));
         _box = _world.Wired.CreateConfiguredBox(_item) ?? throw new InvalidOperationException(name);
         Assert.True(_world.Wired.AddBox((IWiredItem)_box));
-        var service = new WiredConfigurationService(TestWiredConfigurationStore.Instance, null!, null!, TestLogging.For<WiredConfigurationService>());
+        var service = new WiredConfigurationService(TestWiredConfigurationStore.Instance, null!, new FakeWordFilter(), TestLogging.For<WiredConfigurationService>());
         _handler = _descriptor.Category switch
         {
             WiredBoxCategory.Action => new SaveWiredEffectConfigEvent(service),

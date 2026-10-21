@@ -217,7 +217,7 @@ internal static partial class WiredNativeAuxiliaryEditor
                     Text = native.Text.Replace(' ', '_')
                 };
             default:
-                return native;
+                return ChestStoredForm(name, native);
         }
     }
 

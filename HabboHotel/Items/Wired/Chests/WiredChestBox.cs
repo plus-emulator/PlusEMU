@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -68,12 +69,10 @@ public class WiredChestBox : WiredModernBox
     {
         error = "";
 
-        // Observed on AIR WIN63-202610201032-107964540: Transaction Failed accepts only contracts and the trade wired as picks, from either
-        // pick list.
-        if (Descriptor.CanonicalName == "wf_trg_transaction_fail"
+        if (PickRules.TryGetValue(Descriptor.CanonicalName, out var rule)
             && proposed.SelectedItems.Concat(proposed.SecondarySelectedItems).Any(id => Instance.GetRoomItemHandler().GetItem(id) is not { } item
-                || !IsTransactionSource(item))) {
-            error = "wiredfurni.error.require_contracts_or_trade_wired";
+                || !rule.Accepts(item))) {
+            error = rule.Key;
 
             return false;
         }
@@ -103,8 +102,19 @@ public class WiredChestBox : WiredModernBox
         return true;
     }
 
-    private static bool IsTransactionSource(Item item) => item.Definition.InteractionType is InteractionType.WiredContractPayment
-        or InteractionType.WiredContractTrade or InteractionType.WiredContractReward || item.Definition.ItemName == "wf_act_init_transaction";
+    private static bool IsTransactionSource(Item item) => WiredChestFurniture.IsContract(item.Definition) || item.Definition.ItemName == "wf_act_init_transaction";
+
+    private sealed record PickRule(Func<Item, bool> Accepts, string Key);
+
+    private static readonly PickRule ContractsOrTradeWired = new(IsTransactionSource, "wiredfurni.error.require_contracts_or_trade_wired");
+
+    // Observed on AIR WIN63-202610201032-107964540: these boxes refuse a pick of any other furni, from either pick list, with the key.
+    private static readonly FrozenDictionary<string, PickRule> PickRules = new Dictionary<string, PickRule>
+    {
+        { "wf_act_cancel_transaction", new(item => WiredChestFurniture.IsContract(item.Definition), "wiredfurni.error.require_contracts") },
+        { "wf_trg_transaction_complete", ContractsOrTradeWired },
+        { "wf_trg_transaction_fail", ContractsOrTradeWired }
+    }.ToFrozenDictionary();
 
     // Observed r93h/r93j r93-p2-chests-empty (hhus, WIN63-202610131318): give_currency and give_furni refuse a picked chest that is not
     // an upgraded Wired chest of their kind ("wiredfurni.error.require_coin_chests" / "require_furni_chests"); after the free Wired

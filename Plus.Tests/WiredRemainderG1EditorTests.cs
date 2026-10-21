@@ -62,7 +62,7 @@ public sealed class WiredRemainderG1EditorTests
         // Payment then reward: enabled, furni, option, amount, target; payment and reward furni and their merged references, then their users.
         { "wf_xtra_custom_contract", [0, 0, 0, 1, -20, 0, 0, 0, 1, -20], [0, 0, 200, 200], [200, 200], [[0, 100, 101, 200, 201], [0, 100, 101, 200, 201], [0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201], [0, 200, 201]] },
         // The triggers only pick the contracts they listen for.
-        { "wf_trg_transaction_complete", [], [100], [], [[100]], [] },
+        { "wf_trg_transaction_complete", [], [100], [], [[100, 200]], [] },
         { "wf_trg_transaction_fail", [], [100], [], [[100, 200]], [] }
     };
 
@@ -108,7 +108,7 @@ public sealed class WiredRemainderG1EditorTests
     [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 0, 1, 3601 }, false)]
     [InlineData("wf_act_cancel_transaction", new[] { 0 }, true)]
     [InlineData("wf_act_cancel_transaction", new[] { 1 }, true)]
-    [InlineData("wf_act_cancel_transaction", new[] { 2 }, false)]
+    [InlineData("wf_act_cancel_transaction", new[] { 2 }, true)]
     // Observed on AIR WIN63-202610201032-107964540: the chest conditions clamp or reset the amount, option and comparison instead of refusing.
     [InlineData("wf_cnd_chest_has_items", new[] { 0, 0, 2, 0 }, true)]
     [InlineData("wf_cnd_chest_has_items", new[] { 1000000, 1, 2, 5 }, true)]
@@ -171,7 +171,7 @@ public sealed class WiredRemainderG1EditorTests
     [InlineData("wf_xtra_scan_chest_furni_by_type", 0, 101, true)]
     [InlineData("wf_xtra_scan_chest_furni_by_type", 1, 0, true)]
     [InlineData("wf_xtra_custom_contract", 3, 101, true)]
-    [InlineData("wf_trg_transaction_complete", 0, 200, false)]
+    [InlineData("wf_trg_transaction_complete", 0, 200, true)]
     [InlineData("wf_trg_transaction_fail", 0, 0, false)]
     public void EachFurniSlotAcceptsOnlyTheSourcesOfItsCard(string name, int slot, int source, bool saved)
     {
@@ -210,13 +210,14 @@ public sealed class WiredRemainderG1EditorTests
     }
 
     [Fact]
-    public void TheCardsThatTakeNoSettingsRefuseExtraValues()
+    public void TheTransactionCardsDropExtraValues()
     {
         using var world = new G1World();
 
+        // Observed on AIR WIN63-202610201032-107964540: Transaction Completed accepts ints [1, 2] and Cancel Transaction ints [1, 2].
         Assert.True(world.TrySave("wf_trg_transaction_complete", native => native));
-        Assert.False(world.TrySave("wf_trg_transaction_complete", native => native with { OwnedIntParams = [1] }));
-        Assert.False(world.TrySave("wf_act_cancel_transaction", native => native with { OwnedIntParams = [0, 1] }));
+        Assert.True(world.TrySave("wf_trg_transaction_complete", native => native with { OwnedIntParams = [1] }));
+        Assert.True(world.TrySave("wf_act_cancel_transaction", native => native with { OwnedIntParams = [0, 1] }));
         // Observed on AIR WIN63-202610201032-107964540: Scan Chest takes the frame default for a missing mode.
         Assert.True(world.TrySave("wf_xtra_scan_chest_furni_by_type", native => native with { OwnedIntParams = [] }));
     }

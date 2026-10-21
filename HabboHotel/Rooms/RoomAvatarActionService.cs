@@ -91,11 +91,32 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
         target.DanceId = 0;
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a condition 0.45 s after the expression passes, one 3.0 s after it does not.
-    private static readonly TimeSpan RecentExpressionWindow = TimeSpan.FromSeconds(2);
+    private sealed record ExpressionRule(WiredAvatarAction? Wired = null, TimeSpan? CountsFor = null, bool ClubOnly = false);
+
+    // Observed on AIR WIN63-202610201032-107964540: without Habbo Club, expressions 2, 3, 4, 6 and 67 reach nobody. User Performs
+    // Action still sees a wave 4.76 s after it but not 5.27 s after it, and respect 1.56 s after it but not 1.87 s after it.
+    private static readonly Dictionary<int, ExpressionRule> Expressions = new()
+    {
+        [1] = new(WiredAvatarAction.Wave, TimeSpan.FromSeconds(5)),
+        [2] = new(WiredAvatarAction.Kiss, ClubOnly: true),
+        [3] = new(WiredAvatarAction.Laugh, ClubOnly: true),
+        [4] = new(ClubOnly: true),
+        // Observed on AIR WIN63-202610151745-318700621: the sleep expression also counts for 2 s only, though the avatar stays asleep.
+        [5] = new(WiredAvatarAction.Relax, TimeSpan.FromSeconds(2)),
+        [6] = new(ClubOnly: true),
+        // Observed on AIR WIN63-202610201032-107964540: the respect expression fires User Performs Action - Respect. Expression 67 fires nothing.
+        [7] = new(WiredAvatarAction.Respect, TimeSpan.FromMilliseconds(1700)),
+        [67] = new(ClubOnly: true)
+    };
 
     public void PerformAction(Room room, GameClient session, int action)
     {
+        var rule = Expressions.GetValueOrDefault(action) ?? new();
+
+        if (rule.ClubOnly && ClubAccess.LevelFor(session.GetHabbo().Access) == 0) {
+            return;
+        }
+
         var user = room.GetRoomUserManager().GetRoomUserByHabbo(session.GetHabbo().Id);
 
         if (user == null) {
@@ -114,23 +135,11 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             room.SendPacket(new SleepComposer(user.VirtualId, true));
         }
 
-        var wiredAction = action switch
-        {
-            1 => WiredAvatarAction.Wave,
-            2 => WiredAvatarAction.Kiss,
-            3 => WiredAvatarAction.Laugh,
-            5 => WiredAvatarAction.Relax,
-            // Observed on AIR WIN63-202610201032-107964540: the respect expression fires User Performs Action - Respect. Expression 67 fires nothing.
-            7 => WiredAvatarAction.Respect,
-            _ => (WiredAvatarAction)0
-        };
-
-        // Observed on AIR WIN63-202610151745-318700621: the sleep expression also counts for 2 s only, though the avatar stays asleep.
-        if (wiredAction is WiredAvatarAction.Wave or WiredAvatarAction.Relax or WiredAvatarAction.Respect) {
-            user.RecentExpression = ((int)wiredAction, clock.GetUtcNow() + RecentExpressionWindow);
+        if (rule is { Wired: { } remembered, CountsFor: { } window }) {
+            user.RecentExpression = ((int)remembered, clock.GetUtcNow() + window);
         }
 
-        if (wiredAction != 0) {
+        if (rule.Wired is { } wiredAction) {
             room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)
             { Actor = user, Action = (int)wiredAction, Code = -1 });
         }
@@ -144,6 +153,11 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
     public void Dance(Room room, GameClient session, int danceId)
     {
+        // Observed on AIR WIN63-202610201032-107964540: without Habbo Club, dance 2 to 4 sends nothing and the current dance stays.
+        if (danceId is > 1 and <= 4 && ClubAccess.LevelFor(session.GetHabbo().Access) == 0) {
+            return;
+        }
+
         var user = room.GetRoomUserManager().GetRoomUserByHabbo(session.GetHabbo().Id);
 
         if (user == null) {
@@ -152,7 +166,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
         user.UnIdle();
 
-        if (danceId < 0 || danceId > 4 || danceId > 1 && ClubAccess.LevelFor(session.GetHabbo().Access) == 0) {
+        if (danceId < 0 || danceId > 4) {
             danceId = 0;
         }
 

@@ -145,6 +145,77 @@ public sealed class WiredUserSelectorEditorTests
         Expect(name, [1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]);
     }
 
+    // A save with one variable keeps it in the first slot and leaves the second one empty; its ints are stored as with two variables.
+    [Fact]
+    public void UsersWithVariableStoresASaveWithOneVariable()
+    {
+        const string name = "wf_slc_users_with_var";
+
+        foreach (var (sent, stored) in new (int[], int[])[]
+        {
+            ([0, 0, 0, 0, -10, 0], [0, 0, 0, 0, -10, 0]),
+            ([5, 0, 0, 0, -10, 0], [5, 0, 0, 0, -10, 0]),
+            ([6, 0, 0, 0, -10, 0], [0, 0, 0, 0, -10, 0]),
+            ([int.MinValue, 0, 0, 0, -10, 0], [0, 0, 0, 0, -10, 0]),
+            ([2, -1, 0, 0, -10, 0], [2, 0, 0, 0, -10, 0]),
+            ([2, 1, 0, 0, -10, 0], [2, 1, 0, 0, -10, 0]),
+            ([2, 3, 0, 0, -10, 0], [2, 2, 0, 0, -10, 0]),
+            ([2, int.MaxValue, 0, 0, -10, 0], [2, 2, 0, 0, -10, 0]),
+            ([2, 0, -1, 0, -10, 0], [2, 0, -1, 0, -10, 0]),
+            ([2, 0, int.MinValue, 0, -10, 0], [2, 0, int.MinValue, 0, -10, 0]),
+            ([2, 0, 0, int.MaxValue, -10, 0], [2, 0, 0, int.MaxValue, -10, 0]),
+            ([2, 0, 0, 0, -30, 0], [2, 0, 0, 0, 0, 0]),
+            ([2, 0, 0, 0, -20, 0], [2, 0, 0, 0, -20, 0]),
+            ([2, 0, 0, 0, 1, 0], [2, 0, 0, 0, 1, 0]),
+            ([2, 0, 0, 0, 5, 0], [2, 0, 0, 0, 0, 0]),
+            ([2, 0, 0, 0, -10, -1], [2, 0, 0, 0, -10, 1]),
+            ([2, 0, 0, 0, -10, 1], [2, 0, 0, 0, -10, 1]),
+            ([2, 0, 0, 0, -10, 100], [2, 0, 0, 0, -10, 1]),
+            ([], [2, 0, 0, 0, -10, 0]),
+            ([1], [1, 0, 0, 0, -10, 0]),
+            ([1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]),
+            ([2, 1, 5, 0, 0, 0], [2, 1, 5, 0, 0, 0]),
+            ([2, 2, 0, 0, -20, 0], [2, 2, 0, 0, -20, 0])
+        }) {
+            using var save = new WiredRawSave(name);
+            var result = save.Save(ints: sent, variables: ["user:11"]);
+
+            Assert.True(result.Accepted, $"[{string.Join(',', sent)}]: {result}");
+            Assert.Equal(stored, result.Ints);
+            Assert.Equal(["user:11", "0"], result.Variables);
+        }
+    }
+
+    [Fact]
+    public void UsersWithVariableStoresAnEmptyVariableAsTwoEmptySlots()
+    {
+        foreach (var variable in new[] { "0", "" }) {
+            using var save = new WiredRawSave("wf_slc_users_with_var");
+            var result = save.Save(ints: [2, 1, 5, 0, 0, 0], variables: [variable]);
+
+            Assert.True(result.Accepted, $"'{variable}': {result}");
+            Assert.Equal([2, 1, 5, 0, 0, 0], result.Ints);
+            Assert.Equal(["0", "0"], result.Variables);
+        }
+    }
+
+    [Fact]
+    public void UsersWithVariableKeepsTheUserSourceOfASaveWithOneVariable()
+    {
+        foreach (var source in new[] { 0, 201, 11, 10 }) {
+            using var save = new WiredRawSave("wf_slc_users_with_var");
+            var result = save.Save(users: [source], variables: ["user:11"]);
+
+            Assert.True(result.Accepted, $"{source}: {result}");
+            Assert.Equal([source], result.Users);
+        }
+
+        foreach (var source in new[] { 100, 200 }) {
+            using var save = new WiredRawSave("wf_slc_users_with_var");
+            Assert.Equal("wiredfurni.error.invalid_user_source", save.Save(users: [source], variables: ["user:11"]).Key);
+        }
+    }
+
     [Fact]
     public void StoredRowsOfTheseBoxesKeepLoading()
     {
@@ -163,6 +234,21 @@ public sealed class WiredUserSelectorEditorTests
             Assert.True(Plus.HabboHotel.Items.Wired.Configuration.WiredNativeEditorProjection.TryCompile(1, descriptor, native, out var runtime, storedRow: true), name);
             Assert.True(ints.SequenceEqual(runtime.Origin!.Native.OwnedIntParams), name);
         }
+    }
+
+    [Fact]
+    public void AStoredUsersWithVariableRowWithTwoVariablesKeepsLoading()
+    {
+        Assert.True(Plus.HabboHotel.Items.Wired.Configuration.WiredBoxRegistry.TryGet("wf_slc_users_with_var", out var descriptor));
+        var native = Plus.HabboHotel.Items.Wired.Configuration.WiredNativeEditorProjection.DefaultNative(descriptor) with
+        {
+            OwnedIntParams = [1, 1, 0, 8, -10, 0],
+            VariableIds = ["user:11", "n"]
+        };
+
+        Assert.True(Plus.HabboHotel.Items.Wired.Configuration.WiredNativeEditorProjection.TryCompile(1, descriptor, native, out var runtime, storedRow: true));
+        Assert.Equal([1, 1, 0, 8, -10, 0], runtime.Origin!.Native.OwnedIntParams.ToArray());
+        Assert.Equal(["user:11", "n"], runtime.Origin.Native.VariableIds.ToArray());
     }
 
     [Fact]

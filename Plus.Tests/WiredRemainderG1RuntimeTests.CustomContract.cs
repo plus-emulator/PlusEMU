@@ -210,7 +210,7 @@ public sealed partial class WiredRemainderG1RuntimeTests
         var coins = world.AddChest(WiredChestKind.Coins, 50, 3, 4);
         var module = world.UseVariables(ContextCount);
         world.AddBox("wf_trg_enter_room", null, 6, 0);
-        world.AddBox("wf_xtra_scan_chest_furni_by_type", _ => G1World.Chest("wf_xtra_scan_chest_furni_by_type", [0], [], [100, 101], [], ["ctx:10"], [chair.Id], [stock.Id]), 6, 0, scannerZ);
+        world.AddBox("wf_xtra_scan_chest_furni_by_type", _ => G1World.Chest("wf_xtra_scan_chest_furni_by_type", [0], [], [101, 100], [], ["ctx:10"], [stock.Id], [chair.Id]), 6, 0, scannerZ);
         // The reward is as many credits as the scanner counted chairs.
         world.AddBox("wf_xtra_custom_contract", _ => G1World.Chest("wf_xtra_custom_contract", [0, 0, 0, 1, 0, 1, 0, 1, 1, 2], [4, 9], [100, 101, 0, 0], [0, 0], ["n", "ctx:10"], [], []), 6, 0, customZ);
         world.AddBox("wf_act_init_transaction", _ => G1World.Chest("wf_act_init_transaction", [0, 1, 0, 0, 0, 300], [3], [100, 101, 0], [0, 0], ["n"], [coins.Id], []), 6, 0, 5);

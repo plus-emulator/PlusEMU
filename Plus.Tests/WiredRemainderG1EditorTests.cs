@@ -118,7 +118,7 @@ public sealed class WiredRemainderG1EditorTests
     [InlineData("wf_cnd_chest_has_item_type", new[] { 1000001, 0, 2, 3 }, false)]
     [InlineData("wf_xtra_scan_chest_furni_by_type", new[] { 0 }, true)]
     [InlineData("wf_xtra_scan_chest_furni_by_type", new[] { 1 }, true)]
-    [InlineData("wf_xtra_scan_chest_furni_by_type", new[] { 2 }, false)]
+    [InlineData("wf_xtra_scan_chest_furni_by_type", new[] { 2 }, true)]
     [InlineData("wf_xtra_custom_contract", new[] { 1, 1, 0, 100000, 2, 1, 0, 1, 1, 2 }, true)]
     [InlineData("wf_xtra_custom_contract", new[] { 0, 0, 0, 1, 2, 0, 0, 0, 1, 2 }, true)]
     [InlineData("wf_xtra_custom_contract", new[] { 1, 2, 0, 5, 2, 0, 0, 0, 1, 2 }, false)]
@@ -201,7 +201,8 @@ public sealed class WiredRemainderG1EditorTests
         Assert.True(world.TrySave("wf_trg_transaction_complete", native => native));
         Assert.False(world.TrySave("wf_trg_transaction_complete", native => native with { OwnedIntParams = [1] }));
         Assert.False(world.TrySave("wf_act_cancel_transaction", native => native with { OwnedIntParams = [0, 1] }));
-        Assert.False(world.TrySave("wf_xtra_scan_chest_furni_by_type", native => native with { OwnedIntParams = [] }));
+        // Observed on AIR WIN63-202610201032-107964540: Scan Chest takes the frame default for a missing mode.
+        Assert.True(world.TrySave("wf_xtra_scan_chest_furni_by_type", native => native with { OwnedIntParams = [] }));
     }
 
     [Fact]

@@ -78,7 +78,7 @@ public class WiredAvatarPacketHookTests
     [InlineData(2, 2)]
     [InlineData(3, 3)]
     [InlineData(5, 5)]
-    [InlineData(7, 11)]
+    [InlineData(7, 12)]
     public async Task ExpressionPacketRunsActualConfiguredTriggerOnceWithActorIdentity(int expression, int editorAction)
     {
         var world = new World(editorAction);

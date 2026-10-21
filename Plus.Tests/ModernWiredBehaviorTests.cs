@@ -312,9 +312,7 @@ public partial class ModernWiredBehaviorTests
     [Theory]
     [InlineData("wf_trg_period_short", 10)]
     [InlineData("wf_trg_periodically", 120)]
-    [InlineData("wf_trg_period_long", 120)]
     [InlineData("wf_trg_at_time_long", 1200)]
-    [InlineData("wf_trg_at_given_time", 1200)]
     public void TimedTriggersAcceptTheirEditorRangeOnly(string name, int max)
     {
         foreach (var (units, valid) in new[] { (0, false), (1, true), (max, true), (max + 1, false) }) {

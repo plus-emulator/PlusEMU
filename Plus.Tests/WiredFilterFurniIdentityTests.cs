@@ -213,13 +213,14 @@ public sealed class WiredFilterFurniIdentityTests
 
     private static WiredAddonInputs Inputs() => new(WiredSelectorTests.World(), WiredSelectorTests.Inputs(), 0, _ => null);
 
-    // Boundary, not an admission request: the native compile rejects an amount of 0.
+    // Observed on AIR WIN63-202610201032-107964540: an amount of 0 is stored as 1.
     [Fact]
-    public void NativeFilterFurniAmountZeroDoesNotCompile()
+    public void NativeFilterFurniAmountZeroIsStoredAsOne()
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_xtra_filter_furni", out var descriptor));
 
-        Assert.False(WiredNativeEditorProjection.TryCompile(52, descriptor, FilterNative(descriptor, 0), out _));
+        Assert.True(WiredNativeEditorProjection.TryCompile(52, descriptor, FilterNative(descriptor, 0), out var runtime));
+        Assert.Equal(1, runtime.Origin!.Native.OwnedIntParams[0]);
     }
 
     private static WiredNativeEditorConfiguration FilterNative(WiredBoxDescriptor descriptor, int amount) =>

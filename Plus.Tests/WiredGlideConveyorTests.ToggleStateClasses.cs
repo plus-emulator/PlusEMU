@@ -119,6 +119,60 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
+    // A one-state furni keeps its listing when its definition has a height list (as the brick blocks have) and furni stand on it.
+    [Fact]
+    public void ToggleStateListsACoveredOneStateFurniWithAHeightList()
+    {
+        const uint block = 51, brick = 52, tileOnTop = 53, say = 45, action = 46;
+        var layout = new (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[]
+        {
+            (block, 5, 12, 0.0, 0, "bc_block_0_recolorable", null),
+            (brick, 7, 12, 0.0, 0, "bc_block_redbrick*10", null),
+            (tileOnTop, 7, 12, 1.0, 0, "wf_colortile", null),
+            (say, 4, 9, 0.0, 0, "wf_trg_says_something", System.Text.Json.JsonSerializer.Serialize(
+                new Plus.HabboHotel.Items.Wired.Configuration.WiredConfiguration { IntParams = [1, 0, 0], Text = "tg" })),
+            (action, 4, 9, 0.65, 0, "wf_act_toggle_state", ObservedNative("wf_act_toggle_state", [0], [block, brick], 100))
+        };
+        var f = new Fixture(layout, live: true);
+
+        var blockDefinition = f.Items[block].Definition;
+        blockDefinition.Height = 1.0;
+        blockDefinition.Modes = 5;
+        blockDefinition.AdjustableHeights = [1.0, 0.75, 0.5, 0.25, 0.0];
+        blockDefinition.InteractionName = "recolorable";
+        blockDefinition.InteractionType = InteractionType.Recolorable;
+        f.Items[block].ExtraData = new RecolorableDataFormat();
+
+        // As the furniture table defines the brick block: one state, with the same height list as the small block.
+        var brickDefinition = f.Items[brick].Definition;
+        brickDefinition.Height = 1.0;
+        brickDefinition.Modes = 1;
+        brickDefinition.AdjustableHeights = [1.0, 0.75, 0.5, 0.25, 0.0];
+        f.Items[brick].ExtraData = new LegacyDataFormat { Data = "0" };
+        f.Items[tileOnTop].ExtraData = new LegacyDataFormat { Data = "0" };
+
+        var rider = f.Walker(1, 6, 10, 6, 11);
+        var frames = new List<(uint Header, byte[] Payload)>();
+        rider.GetClient()!.SendCallback = args =>
+        {
+            var bytes = args.MemoryBuffer.ToArray();
+            frames.Add((BinaryPrimitives.ReadUInt32BigEndian(bytes), bytes[6..]));
+
+            return false;
+        };
+
+        foreach (var state in new[] { "1", "2" }) {
+            frames.Clear();
+            f.Owned(() => rider.OnChat(0, "tg", false));
+            f.Advance(1000);
+
+            var batch = Assert.Single(frames, frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer);
+            var states = ReadStateBatch(batch.Payload).Where(entry => entry.Id is >= block and <= tileOnTop).ToDictionary(entry => entry.Id, entry => entry.State);
+            Assert.Equal(new Dictionary<uint, string> { [block] = state, [brick] = "0" }, states);
+            Assert.Equal("0", f.Items[brick].LegacyDataString);
+        }
+    }
+
     private static (uint Id, string Z, string Height) ReadFloorUpdate(byte[] payload)
     {
         var id = BinaryPrimitives.ReadUInt32BigEndian(payload);

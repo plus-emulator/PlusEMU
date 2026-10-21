@@ -742,8 +742,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                     var rotation = WiredDirectionalActions.AvatarRotation(user.RotBody, Param(config, 1));
 
+                    // Observed on AIR WIN63-202610201032-107964540: a user on a seat or bed keeps the furni direction. The turn is still
+                    // sent, and the status update that follows shows the old direction again. A user who sits on the floor turns.
+                    if (user.Statusses.ContainsKey("lay") || user.Statusses.ContainsKey("sit") && !user.IsSitting) {
+                        user.UpdateNeeded = true;
+                    }
                     // The direction entry is sent even when the avatar already faces that way; only a real change needs a status update.
-                    if (user.RotBody != rotation || user.RotHead != rotation) {
+                    else if (user.RotBody != rotation || user.RotHead != rotation) {
                         user.RotBody = rotation;
                         user.RotHead = rotation;
                         user.UpdateNeeded = true;

@@ -85,8 +85,8 @@ public sealed class WiredRemainderG1EditorTests
     [Fact]
     public void TheNumberOfVariablePickersFollowsTheAirForms()
     {
-        // ValueOrVariableSection: one in the condition and in Initiate Transaction, two in the custom contract, the scanner's context variable.
-        foreach (var (name, variables) in new[] { ("wf_act_init_transaction", 1), ("wf_act_cancel_transaction", 0), ("wf_cnd_chest_has_items", 1), ("wf_cnd_chest_has_item_type", 1),
+        // ValueOrVariableSection: one in the conditions, three in Initiate Transaction (observed on AIR WIN63-202610201032-107964540), two in the custom contract, the scanner's context variable.
+        foreach (var (name, variables) in new[] { ("wf_act_init_transaction", 3), ("wf_act_cancel_transaction", 0), ("wf_cnd_chest_has_items", 1), ("wf_cnd_chest_has_item_type", 1),
             ("wf_xtra_scan_chest_furni_by_type", 1), ("wf_xtra_custom_contract", 2), ("wf_trg_transaction_complete", 0), ("wf_trg_transaction_fail", 0) }) {
             Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
             Assert.Equal(variables, WiredNativeEditorProjection.DefaultNative(descriptor).VariableIds.Length);

@@ -50,6 +50,8 @@ internal static class WiredSelectorStoreRules
         { "wf_slc_users_handitem", _ => { } },
         // Team numbers run 0 (any team) to 4 (Yellow). A number above 4 reads 4 and a number below 0 reads 0.
         { "wf_slc_users_team", draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], 0, 4) },
+        // The four ints are fitted to the frame; the clamp to 0..64 is applied when the save is projected.
+        { "wf_slc_users_area", _ => { } },
         // Same stored form as the furni neighborhood.
         { "wf_slc_users_neighborhood", Neighborhood },
         // The box has no ints and no text, and its sources are fixed.

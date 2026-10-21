@@ -412,7 +412,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             var flashedBox = false;
 
             if (name == "wf_act_toggle_state") {
-                movers = WiredToggleStateTargets.Resolve(movers, box => context.Room.GetWired().OnEvent(box), out flashedBox);
+                // Observed on AIR WIN63-202610201032-107964540: a box of the stack that is running has flashed already, and the toggle
+                // flips it again, so it ends in the toggled state.
+                var own = context.CapturedStack.Select(x => x.Item.Id).ToHashSet();
+                movers = WiredToggleStateTargets.Resolve(movers, box => context.Room.GetWired().Flash(box, own.Contains(box.Id)), out flashedBox);
             }
 
             var passengers = WiredRoomMovement.CapturePassengers(context, movers);
@@ -771,7 +774,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 return changed;
             case "wf_act_adjust_clock":
                 foreach (var item in items) {
-                    changed |= _clocks.Adjust(item, Param(config, 0), Param(config, 2), Param(config, 3), WiredClockOrigin.ModernWired);
+                    changed |= _clocks.Adjust(item, Param(config, 0), Param(config, 2), Param(config, 3), WiredClockOrigin.ModernWired,
+                        context.NowMilliseconds);
                 }
 
                 return changed;

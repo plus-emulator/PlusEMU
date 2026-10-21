@@ -59,7 +59,7 @@ public partial class WiredComponent
         }
 
         // Observed on AIR WIN63-202610201032-107964540: a published board is overlay 1 in its own editor even when its stack has no user
-        // variable yet, so no descriptor is sent. Published boards are numbered in furni id order.
+        // variable yet. Published boards are numbered in furni id order.
         var published = ConfiguredBoxes("wf_xtra_var_leaderboard")
             .Where(box => WiredLeaderboardConfig.Decode(box.Configuration.IntParams, box.Configuration.VariableIds, box.Configuration.Text)?.Published == true)
             .Select(box => box.Item.Id);
@@ -98,12 +98,9 @@ public partial class WiredComponent
                 config.Overrides.FirstOrDefault(entry => entry.VariableId == choice.VariableId)?.Name
                 ?? WiredLeaderboardConfig.SuggestName(choice.Description.Definition.Name))).ToArray();
 
-            // A board without a user variable has no default choice, which the client refuses (isDescriptorStructurallyValid).
-            if (choices.Length == 0) {
-                continue;
-            }
-
-            descriptors.Add(new(descriptors.Count + 1, LeaderboardRevision(box.Item.Id), config, choices, choices[0].VariableId));
+            // Observed on AIR WIN63-202610201032-107964540: a published board whose stack has no user variable is still sent, with no
+            // choices and the default variable "0" (the client accepts exactly that, isDescriptorStructurallyValid).
+            descriptors.Add(new(descriptors.Count + 1, LeaderboardRevision(box.Item.Id), config, choices, choices.Length == 0 ? "0" : choices[0].VariableId));
             overlays[descriptors.Count] = box.Item.Id;
 
             if (descriptors.Count == MaxLeaderboards) {

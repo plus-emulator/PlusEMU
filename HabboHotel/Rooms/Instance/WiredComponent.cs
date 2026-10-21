@@ -307,7 +307,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         // Observed on AIR WIN63-202610201032-107964540 (wf_trg_stuff_state.cov_snapshot): a furni a user switches flashes its Stuff State
         // stack in the millisecond of its new state, right after it.
         if (ranAtOnce) {
-            FlushFlashes();
+            FlushSpeechOutput();
         }
 
         return dispatched;
@@ -499,7 +499,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
         // A chat runs its stacks at once, like Dispatch of speech: their flashes go out with the chat. Enter Room stacks run inside the
         // room entry, so their flashes go out with it.
         // The flashes of a say with Variable Changed stacks wait for them (see FinishSpeech), so the whole cascade is one batch.
-        if (type is WiredBoxType.TriggerUserSays && !_engine.HasHeldVariableStacks || type is WiredBoxType.TriggerRoomEnter) {
+        if (type is WiredBoxType.TriggerUserSays && !_engine.HasHeldVariableStacks) {
+            FlushSpeechOutput();
+        }
+        else if (type is WiredBoxType.TriggerRoomEnter) {
             FlushFlashes();
         }
 
@@ -511,6 +514,17 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         ReleaseAfterEcho();
         _engine.DrainVariableStacks();
+        FlushSpeechOutput();
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: a variable a say gave goes out as its Variable FX status in the same tick, before the
+    // packet that flashes the boxes of the stack.
+    private void FlushSpeechOutput()
+    {
+        if (_variables?.IsValueCreated == true && _variables.Value.FxDirty) {
+            FlushVariableFx();
+        }
+
         FlushFlashes();
     }
 
@@ -611,7 +625,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
     /// Observed r92e r92-room14-def (AIR WIN63-202610131318-860371703): under a 200 ms repeater every box of both stacks flips
     /// 600, 400, 600, 400 ms apart while the antenna flips every 200 ms; the flips share one ObjectsDataUpdate per tick.
     /// </summary>
-    public void OnEvent(Item item)
+    public void OnEvent(Item item) => Flash(item, false);
+
+    /// <param name="flipAgain">The box flips again although it flashed in this half second (Toggle State on a box of its own stack).</param>
+    internal void Flash(Item item, bool flipAgain)
     {
         // Hidden wired boxes are not on the clients, so they do not flash.
         if (_room.HideWired) {
@@ -624,7 +641,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             var window = _engine.Now / WiredFlashStates.StateUpdateMilliseconds;
 
             lock (_flashWindows) {
-                if (_flashWindows.TryGetValue(item.Id, out var last) && last == window) {
+                if (!flipAgain && _flashWindows.TryGetValue(item.Id, out var last) && last == window) {
                     return;
                 }
 

@@ -58,11 +58,11 @@ public static class WiredVariableFxSettings
     /// <summary>
     /// The hotel's stored form of a saved variable FX form. Observed on AIR WIN63-202610201032-107964540: a save is never refused for its
     /// numbers; the hotel fits each one and reads the fitted form back. The source is furni (0) or user (1); the audience is 0, 1, 3 or 4,
-    /// else 2; the show mode is 0, 1 or 2, else 0, and mode 2 also switches the hover flag on (the hover int sent is ignored); the
-    /// duration runs from 1500 to 20000; an unknown style is style 0; a colour, width or renderer the style does not offer takes the
-    /// style's default; the value range is read as two 64-bit numbers and a maximum not above the minimum becomes the minimum plus 1;
-    /// the range overrides stay off without their variable; a range target is -10 (room) or the source; the audience value is kept only
-    /// with an audience variable; segments run from 0 to 100; the category slot is fitted per card. Levelling progress keeps no range.
+    /// else 2; the show mode is 0, 1 or 2, else 0; mode 2 also switches the hover flag on (the hover int sent is ignored), mode 1 keeps the
+    /// hover flag as sent and mode 0 stores it off; the duration runs from 1500 to 20000; an unknown style is style 0; a colour, width or
+    /// renderer the style does not offer takes the style's default; the value range is read as two 64-bit numbers and a maximum not above
+    /// the minimum becomes the minimum plus 1; the range overrides stay off without their variable; a range target is -10 (room) or the
+    /// source; the audience value is kept only with an audience variable; segments run from 0 to 100; the category slot is fitted per card. Levelling progress keeps no range.
     /// Forms with a wrong number of ints are filled from the card's defaults or cut. Only a fresh card is shown unfitted.
     /// </summary>
     public static ImmutableArray<int> Normalize(string name, ImmutableArray<int> ints, ImmutableArray<string> variableIds = default)
@@ -84,7 +84,7 @@ public static class WiredVariableFxSettings
         p[0] = ints[0] == 0 ? 0 : 1;
         p[1] = ints[1] is 0 or 1 or 3 or 4 ? ints[1] : 2;
         p[2] = ints[2] is 0 or 1 or 2 ? ints[2] : 0;
-        p[4] = p[2] == 2 ? 1 : 0;
+        p[4] = p[2] == 2 || p[2] == 1 && ints[4] == 1 ? 1 : 0;
         p[5] = Math.Clamp(ints[5], 1500, 20000);
 
         if (!WiredVariableFxStyles.TryGet(category, ints[6], out var style)) {

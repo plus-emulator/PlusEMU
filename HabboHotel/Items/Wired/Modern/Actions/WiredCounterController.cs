@@ -56,6 +56,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         public bool Running;
         public bool Started = !countdown && value > 0;
         public long NextTick;
+        public long GridOffset; // Where the 500 ms steps of a Wired counter fall inside a second; 0 is the room's own grid.
         public long Sequence;
         public WiredClockReason? LastReason;
         public WiredClockOrigin? LastOrigin;
@@ -221,7 +222,8 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             clock.AdjustedSinceStop = false;
             // Observed on AIR WIN63-202610131318-860371703: a started counter shows its first "1" on the 2nd 500 ms room boundary strictly after
             // the firing (501-1000 ms later, exactly 1000 ms for an on-boundary firing), then every 1000 ms on that grid.
-            clock.NextTick = clock.Countdown ? nowMilliseconds + 1000 : NextBoundary(nowMilliseconds);
+            clock.GridOffset = 0;
+            clock.NextTick = clock.Countdown ? nowMilliseconds + 1000 : NextBoundary(nowMilliseconds, clock.GridOffset);
             ReportState(clock);
 
             if (clock.Countdown) {
@@ -246,7 +248,8 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         return true;
     }
     // Volt operators: 0 increase, 1 decrease, 2 set.
-    public bool Adjust(Item item, int operation, int minutes, int halfSecondSteps, WiredClockOrigin origin = WiredClockOrigin.Unknown)
+    public bool Adjust(Item item, int operation, int minutes, int halfSecondSteps, WiredClockOrigin origin = WiredClockOrigin.Unknown,
+        long? nowMilliseconds = null)
     {
         var clock = Find(item);
 
@@ -265,6 +268,14 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         var previous = clock.Value;
         clock.Value = Math.Clamp(operation switch { 0 => previous + amount, 1 => previous - amount, _ => amount }, 0,
             clock.Countdown ? int.MaxValue * 2L : maxHalfSeconds);
+
+        // Observed on AIR WIN63-202610201032-107964540: a Wired set of a running counter restarts its tick. The next second shows 1000 ms
+        // after the set, whatever the room grid is. A step that was due at that moment is not taken.
+        if (operation == 2 && clock.Running && !clock.Countdown && origin == WiredClockOrigin.ModernWired && nowMilliseconds is { } now) {
+            clock.GridOffset = now % WiredFlashStates.StateUpdateMilliseconds;
+            clock.NextTick = NextBoundary(now, clock.GridOffset);
+        }
+
         // Observed on AIR WIN63-202610151745-318700621: a Wired increase, decrease or set sends the value as data in an ObjectsDataUpdate.
         PublishClock(clock, previous, ModernBatch(origin), operation == 2 && origin == WiredClockOrigin.ModernWired);
 
@@ -314,7 +325,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
 
             var previous = clock.Value;
             clock.Value = clock.Countdown ? Math.Max(0, clock.Value - 2) : clock.Value + 1;
-            clock.NextTick = clock.Countdown ? nowMilliseconds + 1000 : NextBoundary(nowMilliseconds);
+            clock.NextTick = clock.Countdown ? nowMilliseconds + 1000 : NextBoundary(nowMilliseconds, clock.GridOffset);
             PublishClock(clock, previous, clock.LastOrigin == WiredClockOrigin.ModernWired ? WiredCounterPublication.SingleData : WiredCounterPublication.Object);
 
             if (clock.Countdown && clock.Value == 0) {
@@ -325,8 +336,8 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         return TakeChanges();
     }
     // The first 500 ms room boundary strictly after the instant: the half-second steps of a counter sit on the room's state update grid.
-    private static long NextBoundary(long nowMilliseconds) =>
-        (nowMilliseconds / WiredFlashStates.StateUpdateMilliseconds + 1) * WiredFlashStates.StateUpdateMilliseconds;
+    private static long NextBoundary(long nowMilliseconds, long offset = 0) =>
+        ((nowMilliseconds - offset) / WiredFlashStates.StateUpdateMilliseconds + 1) * WiredFlashStates.StateUpdateMilliseconds + offset;
     public IReadOnlyList<WiredCounterChange> TakeChanges()
     {
         var result = new List<WiredCounterChange>();

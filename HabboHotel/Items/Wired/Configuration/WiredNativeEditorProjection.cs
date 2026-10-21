@@ -220,11 +220,12 @@ public static class WiredNativeEditorProjection
             var p = native.OwnedIntParams;
             bool Ticked(int index) => index < p.Length && p[index] == 1;
 
-            // Observed on AIR WIN63-202610201032-107964540: Stuff State lists the state when its one option is 1 and nothing else.
+            // Observed on AIR WIN63-202610201032-107964540: Stuff State lists the state when its one option is 1 and nothing else. A save
+            // without ints stores the option as 1 and still lists no state.
             return native.SavedState.Snapshots.IsDefaultOrEmpty ? native : native with
             {
                 Text = SnapshotText(native.SavedState.Snapshots, name == "wf_trg_stuff_state"
-                    ? new(Ticked(0), false, false, false) : new(Ticked(0), Ticked(1), Ticked(2), Ticked(3)))
+                    ? new(Ticked(0) && !native.SavedState.StateDropped, false, false, false) : new(Ticked(0), Ticked(1), Ticked(2), Ticked(3)))
             };
         }
 

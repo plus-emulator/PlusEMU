@@ -147,8 +147,12 @@ internal static class WiredEditorStoreRules
         draft.Quantifier = draft.Quantifier is { } value ? value is 1 or 2 ? value : 0 : null;
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Has Variable stores a target the editor does not offer as 0.
-    private static void HasVariable(WiredStoreDraft draft) => draft.Ints[0] = Target(draft.Ints[0]);
+    // Observed on AIR WIN63-202610201032-107964540: Has Variable stores a target the editor does not offer as 0, and has no text field.
+    private static void HasVariable(WiredStoreDraft draft)
+    {
+        draft.Ints[0] = Target(draft.Ints[0]);
+        draft.Text = "";
+    }
 
     // Observed on AIR WIN63-202610201032-107964540: the text output boxes store any non-zero flag as 1, and a target the editor
     // does not offer as 0.

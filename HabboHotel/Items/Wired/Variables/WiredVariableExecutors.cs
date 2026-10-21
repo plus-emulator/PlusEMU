@@ -62,7 +62,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             }
 
             if ((int)parsed != target) {
-                return ReadsPresence(name);
+                return ReadsPresence(name) || name == "wf_act_change_var_val";
             }
 
             token = authority is null ? parsedToken : authority.TryResolveCatalogId(id, parsed, out var reference) ? reference.Token : "";
@@ -160,6 +160,10 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: Change Variable Value saves with a variable of another domain than its target
+        // (a furni variable on a user target) and then changes nothing, like a box with no variable picked.
+        unchosenDestination |= name == "wf_act_change_var_val" && tokens[0].Length == 0;
+
         if (!unchosenDestination && !(ReadsPresence(name) && tokens[0].Length == 0) && !ValidToken(tokens[0])) {
             return false;
         }
@@ -218,7 +222,8 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
-        if (name.StartsWith("wf_cnd_", StringComparison.Ordinal) && p[^1] is not (0 or 1)) {
+        // Observed on AIR WIN63-202610201032-107964540: Not Has Variable stores a quantifier of 2.
+        if (name.StartsWith("wf_cnd_", StringComparison.Ordinal) && p[^1] is not (0 or 1) && !(name == "wf_cnd_neg_has_var" && p[^1] == 2)) {
             return false;
         }
 
@@ -231,7 +236,8 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             _ => [1, 2]
         };
 
-        if (sourceIndices.Any(i => p[i] is not (0 or 11 or 100 or 101 or 200 or 201))) {
+        // Observed on AIR WIN63-202610201032-107964540: Has Variable and Not Has Variable store the trigger user source 10 in the user slot.
+        if (sourceIndices.Any(i => p[i] is not (0 or 11 or 100 or 101 or 200 or 201) && !(ReadsPresence(name) && i == 1 && p[i] == 10))) {
             return false;
         }
 

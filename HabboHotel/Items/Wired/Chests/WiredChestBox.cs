@@ -229,9 +229,9 @@ public class WiredChestBox : WiredModernBox
         var amount = types == null ? chests.Sum(chest => (long)chest.Amount)
             : chests.Sum(chest => (long)chest.Items.Count(item => types.Contains(WiredChestItemType.Of(item))));
 
-        // Observed on AIR WIN63-202610151745-318700621 (r97_chest_none2, r97_chest_type_keep): with no chest to check the condition
-        // passes whatever the comparison ("equal to 0" and "more than 1" both pass).
-        if (chests.Length == 0) {
+        // Observed on AIR WIN63-202610151745-318700621: with no chest to check, Chest Has Items passes whatever the comparison.
+        // Observed on AIR WIN63-202610201032-107964540: Chest Has Item Type with no chest counts 0 and compares.
+        if (chests.Length == 0 && types == null) {
             return true;
         }
 

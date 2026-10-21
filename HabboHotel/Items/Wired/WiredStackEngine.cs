@@ -805,6 +805,8 @@ internal sealed partial class WiredStackEngine
             if (chain.Context.Runtime?.VariableChanges is { IsEmpty: false } batch) {
                 SealPublication();
                 batch.Flush();
+                // The Variable Changed stacks of a batched change run in this pass, like those of a change made at once.
+                FlushExternal();
             }
         }
         catch (Exception error) {

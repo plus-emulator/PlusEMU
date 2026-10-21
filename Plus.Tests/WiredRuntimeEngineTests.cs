@@ -342,6 +342,26 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a Receive Signal stack whose condition fails runs its negative actions, so a
+    // negative Send Signal in it passes the signal on to the next hop.
+    [Fact]
+    public void AReceiverWhoseConditionFailsRunsItsNegativeActions()
+    {
+        var f = new Fixture();
+        var antenna = f.Furni("antenna", x: 2);
+        f.Trigger();
+        f.Trigger(WiredEventKind.Signal, x: 2);
+        f.Add(new Box(WiredBoxCategory.Condition) { Body = _ => false }, x: 2);
+        var positive = f.Action(x: 2);
+        var negative = f.Action(negative: true, x: 2);
+        f.Action(ctx => ctx.Operations.SendSignal(ctx, [antenna], new()));
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter));
+        f.Advance(50);
+        Assert.Equal(0, positive.Calls);
+        Assert.Equal(1, negative.Calls);
+        Assert.Empty(f.Errors);
+    }
+
     [Fact]
     public void SignalsCopyPayloadRevalidateReceiversAndUseSameScheduler()
     {

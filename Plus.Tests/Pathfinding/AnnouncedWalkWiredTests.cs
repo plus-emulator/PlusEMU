@@ -147,6 +147,35 @@ public partial class PlacedFurniRoomTests
         Assert.False(targets.HasTargets);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: Bot Give Handitem's bot takes the item and always walks to a tile next to the
+    // user and hands it over there, also when the closest tile next to the user cannot be entered.
+    [Fact]
+    public void GiveHandItemBotWalksToAFreeTileWhenTheClosestOneIsBlocked()
+    {
+        var block = Furni(70, InteractionType.None, WiredBoxType.None);
+        block.Definition.Walkable = false;
+        block.Definition.Height = 1;
+        block.Definition.Width = block.Definition.Length = 1;
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, block, 2, 1, 0, true, false, false));
+        var user = Viewer(3, 1);
+        var bot = WalkActor(WalkActorKind.Bot, 0, 1, v2: true);
+        var targets = WiredBotTargets.For(_room);
+
+        targets.Give(_room, bot, user, 2, 0);
+
+        for (var tick = 0; tick < 40 && user.CarryItemId == 0; tick++) {
+            ExecutorTick();
+
+            if (targets.HandOverAnnouncedAt(bot) is { } at) {
+                targets.Poll(_room, at + WiredBotTargets.HandOverDelayMilliseconds);
+            }
+        }
+
+        Assert.Equal(2, user.CarryItemId);
+        Assert.Equal(0, bot.CarryItemId);
+        Assert.NotEqual((0, 1), (bot.X, bot.Y));
+    }
+
     // Observed on AIR WIN63-202610151745-318700621: when the user leaves while the bot walks the item over, the bot keeps walking to
     // where the user stood and lets the item go there.
     [Fact]

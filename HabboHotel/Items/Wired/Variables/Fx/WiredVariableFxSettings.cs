@@ -56,11 +56,16 @@ public static class WiredVariableFxSettings
     }
 
     /// <summary>
-    /// The hotel's stored form of a saved variable FX form: a colour, width or renderer id that the selected style does not offer is
-    /// replaced by that style's default (-1 survives only where it is itself an option), and levelling progress keeps no value range.
-    /// Forms with an unknown style or the wrong shape are returned untouched for the validator to refuse.
+    /// The hotel's stored form of a saved variable FX form. Observed on AIR WIN63-202610201032-107964540: a save is never refused for its
+    /// numbers; the hotel fits each one and reads the fitted form back. The source is furni (0) or user (1); the audience is 0, 1, 3 or 4,
+    /// else 2; the show mode is 0, 1 or 2, else 0, and mode 2 also switches the hover flag on (the hover int sent is ignored); the
+    /// duration runs from 1500 to 20000; an unknown style is style 0; a colour, width or renderer the style does not offer takes the
+    /// style's default; the value range is read as two 64-bit numbers and a maximum not above the minimum becomes the minimum plus 1;
+    /// the range overrides stay off without their variable; a range target is -10 (room) or the source; the audience value is kept only
+    /// with an audience variable; segments run from 0 to 100; the category slot is fitted per card. Levelling progress keeps no range.
+    /// Forms with a wrong number of ints are filled from the card's defaults or cut. Only a fresh card is shown unfitted.
     /// </summary>
-    public static ImmutableArray<int> Normalize(string name, ImmutableArray<int> ints)
+    public static ImmutableArray<int> Normalize(string name, ImmutableArray<int> ints, ImmutableArray<string> variableIds = default)
     {
         var category = Category(name);
 
@@ -70,28 +75,78 @@ public static class WiredVariableFxSettings
 
         ints = Upgrade(category, ints);
 
+        if (ints.Length != IntCount) {
+            var defaults = Defaults(category);
+            ints = [.. ints.Take(IntCount), .. defaults.Skip(ints.Length)];
+        }
+
+        var p = ints.ToBuilder();
+        p[0] = ints[0] == 0 ? 0 : 1;
+        p[1] = ints[1] is 0 or 1 or 3 or 4 ? ints[1] : 2;
+        p[2] = ints[2] is 0 or 1 or 2 ? ints[2] : 0;
+        p[4] = p[2] == 2 ? 1 : 0;
+        p[5] = Math.Clamp(ints[5], 1500, 20000);
+
+        if (!WiredVariableFxStyles.TryGet(category, ints[6], out var style)) {
+            p[6] = 0;
+            style = WiredVariableFxStyles.All[(category, 0)];
+        }
+
+        p[7] = style.Colors.Contains(ints[7]) ? ints[7] : style.DefaultColor;
+        p[8] = style.Widths.Contains(ints[8]) ? ints[8] : style.DefaultWidth;
+        p[9] = style.Renderers.Contains(ints[9]) ? ints[9] : style.DefaultRenderer;
+
+        if (category == 2) {
+            p[10] = p[11] = p[12] = p[13] = -1;
+        }
+        else {
+            var min = ((long)ints[10] << 32) | (uint)ints[11];
+            var max = ((long)ints[12] << 32) | (uint)ints[13];
+
+            if (max <= min) {
+                max = min + 1;
+            }
+
+            p[12] = (int)(max >> 32);
+            p[13] = (int)(uint)max;
+        }
+
+        bool Present(int index) => !variableIds.IsDefault && variableIds.Length > index && !WiredVariableAbsent.Is(variableIds[index]);
+
+        p[14] = ints[14] == 1 && Present(0) ? 1 : 0;
+        p[15] = ints[15] == 1 && Present(1) ? 1 : 0;
+        p[16] = ints[16] == -10 ? -10 : p[0];
+        p[17] = ints[17] == -10 ? -10 : p[0];
+
+        if (p[1] < 3) {
+            p[18] = p[19] = 0;
+        }
+
+        p[20] = Math.Clamp(ints[20], 0, 100);
+        p[CategorySlot] = category switch
+        {
+            2 => style.SubRenderers.IsEmpty ? 0 : Math.Clamp(ints[CategorySlot], style.SubRenderers.Min(), style.SubRenderers.Max()),
+            5 => ints[CategorySlot] is >= 0 and <= 2 ? ints[CategorySlot] : 0,
+            _ => 0
+        };
+
+        return p.ToImmutable();
+    }
+
+    /// <summary>A fresh card shows -1 for its colour, width and renderer; the renderer reads them as the style's defaults.</summary>
+    private static ImmutableArray<int> WithStyleDefaults(int category, ImmutableArray<int> ints)
+    {
         if (ints.Length != IntCount || !WiredVariableFxStyles.TryGet(category, ints[6], out var style)) {
             return ints;
         }
 
-        var builder = ints.ToBuilder();
-        builder[7] = style.Colors.Contains(ints[7]) ? ints[7] : style.DefaultColor;
-        builder[8] = style.Widths.Contains(ints[8]) ? ints[8] : style.DefaultWidth;
-        builder[9] = style.Renderers.Contains(ints[9]) ? ints[9] : style.DefaultRenderer;
-
-        // Observed on AIR WIN63-202610151745-318700621: a boss bar keeps a range-override target of -10 (room) and stores any other
-        // value as its own source, so switching the source with stale targets still saves, with or without the overrides ticked.
-        if (category == 4 && ints[0] is 0 or 1) {
-            builder[16] = ints[16] == -10 ? -10 : ints[0];
-            builder[17] = ints[17] == -10 ? -10 : ints[0];
-        }
-
-        if (category == 2) {
-            builder[10] = builder[11] = builder[12] = builder[13] = -1;
-        }
-
-        return builder.ToImmutable();
+        return ints.SetItem(7, style.Colors.Contains(ints[7]) ? ints[7] : style.DefaultColor)
+            .SetItem(8, style.Widths.Contains(ints[8]) ? ints[8] : style.DefaultWidth)
+            .SetItem(9, style.Renderers.Contains(ints[9]) ? ints[9] : style.DefaultRenderer);
     }
+
+    /// <summary>The icon a number display stores; any other text is dropped.</summary>
+    public static string FitText(string name, string text) => Category(name) == 5 && Icons.Contains(text) ? text : "";
 
     /// <summary>
     /// A form saved before the stack order existed (21 ints, 22 for levelling and number displays) keeps its settings and takes order 0;
@@ -111,12 +166,13 @@ public static class WiredVariableFxSettings
     public static bool UsesUserSource(WiredConfiguration configuration) => configuration.IntParams.Length > 0 && configuration.IntParams[0] == 1;
 
     public static bool TryDecode(string name, int itemId, WiredConfiguration configuration, WiredVariableReference shownVariable,
-        Func<string, WiredVariableTarget, WiredVariableReference?>? resolve, out WiredVariableFxBinding? binding, out string error)
+        Func<string, WiredVariableTarget, WiredVariableReference?>? resolve, out WiredVariableFxBinding? binding, out string error,
+        bool saving = false)
     {
         binding = null;
         error = "Invalid variable FX settings.";
         var category = Category(name);
-        var p = configuration.IntParams;
+        var p = WithStyleDefaults(category, configuration.IntParams);
 
         if (category < 0 || itemId <= 0 || p.Length != IntCount || p[0] is not (0 or 1) || configuration.VariableIds.Length != 3) {
             return false;
@@ -129,14 +185,15 @@ public static class WiredVariableFxSettings
         var max = ((long)p[12] << 32) | (uint)p[13];
         var audienceValue = ((long)p[18] << 32) | (uint)p[19];
 
-        if (shownVariable.Target != target || visibility is < 0 or > 4 || !user && visibility < 2 || p[2] is < 0 or > 2 || p[3] is < 0 or > 15
+        // A save is stored as fitted; only the room draws by the stricter rules. The update mask is kept as sent.
+        if (shownVariable.Target != target || visibility is < 0 or > 4 || !saving && !user && visibility < 2 || p[2] is < 0 or > 2
             || p[4] is not (0 or 1) || p[5] is < 1500 or > 20000 || !WiredVariableFxStyles.TryGet(category, p[6], out var style)) {
             return false;
         }
 
         // Number displays always span 0..100 and levelling progress stores no range (-1/-1, read as 0..100); the others need a real range.
         var unranged = category == 2 && min == -1 && max == -1;
-        var range = category switch { 2 => unranged || min == 0 && max == 100, 5 => min == 0 && max == 100, _ => max > min };
+        var range = category == 2 ? unranged || min == 0 && max == 100 : max > min;
 
         if (unranged) {
             (min, max) = (0, 100);
@@ -151,7 +208,7 @@ public static class WiredVariableFxSettings
         var subRenderer = category == 2 ? p[CategorySlot] : 0;
         var segmentRenderer = category == 2 && p[9] == 20 ? subRenderer : p[9];
 
-        if (p[20] > 0 && segmentRenderer is not (2 or 4 or 13) || category == 2 && !style.SubRenderers.Contains(subRenderer)
+        if (category == 2 && !style.SubRenderers.Contains(subRenderer)
             || category == 5 && p[CategorySlot] is < 0 or > 2 || category is not (2 or 5) && p[CategorySlot] != 0 || category != 5 && configuration.Text.Length != 0
             || category == 5 && configuration.Text.Length != 0 && !Icons.Contains(configuration.Text)) {
             return false;
@@ -160,8 +217,17 @@ public static class WiredVariableFxSettings
         var ids = configuration.VariableIds;
         bool Present(int index) => !WiredVariableAbsent.Is(ids[index]);
 
-        if (p[14] == 1 && !Present(0) || p[15] == 1 && !Present(1) || visibility >= 3 != Present(2) || visibility < 3 && audienceValue != 0) {
+        if (p[14] == 1 && !Present(0) || p[15] == 1 && !Present(1) || visibility < 3 && audienceValue != 0
+            || !saving && visibility >= 3 != Present(2)) {
             return false;
+        }
+
+        if (saving) {
+            binding = new(new WiredVariableFxConfig(itemId, user, p[2], p[5], category, p[6], p[7], p[8], p[9], min, max, style.Extra), shownVariable, visibility, null,
+                (int)audienceValue, null, null);
+            error = "";
+
+            return true;
         }
 
         WiredVariableReference? Reference(int index, WiredVariableTarget expected)
@@ -187,7 +253,7 @@ public static class WiredVariableFxSettings
 
         var extra = style.Extra.ToBuilder();
 
-        if (p[20] > 0) {
+        if (p[20] > 0 && segmentRenderer is 2 or 4 or 13) {
             extra["segments"] = p[20].ToString(CultureInfo.InvariantCulture);
         }
 

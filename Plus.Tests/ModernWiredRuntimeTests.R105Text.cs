@@ -119,6 +119,18 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("v13 [$(fn)] [$(all)]", Shown(s, "v13 [$(fn)] [$(all)]"));
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: Furni Name prints the name of the furnidata ("Colour Tile"), not the shop name.
+    [Fact]
+    public void TextOutputFurniNamePrintsTheFurnidataName()
+    {
+        using var s = new SelectorStack();
+        s.Blocks[0].Definition.PublicName = "Block 1";
+        s.Blocks[0].Definition.FurniName = "Block";
+        TextAddon(s, 400, "wf_xtra_text_output_furni_name", [0], "fn", [], furni: [100], picks: [s.Blocks[0].Id]);
+
+        Assert.Equal("Block", Shown(s, "$(fn)"));
+    }
+
     [Fact]
     public void ATextOutputNameOfFortyCharactersIsReplaced()
     {

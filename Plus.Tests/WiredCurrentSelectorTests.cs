@@ -14,7 +14,7 @@ public sealed class WiredCurrentSelectorTests
         foreach (var descriptor in WiredBoxRegistry.All.Where(d => WiredNativeEditorProjection.Supports(d.CanonicalName))) {
             var native = WiredNativeEditorProjection.DefaultNative(descriptor);
             var reloaded = JsonSerializer.Deserialize<WiredNativeEditorConfiguration>(JsonSerializer.Serialize(native))!;
-            Assert.True(WiredNativeEditorProjection.TryCompile(1, descriptor, reloaded, out var runtime), descriptor.CanonicalName);
+            Assert.True(WiredNativeEditorProjection.TryCompile(1, descriptor, reloaded, out var runtime, fresh: true), descriptor.CanonicalName);
             Assert.True(WiredNativeEditorProjection.IsBound(1, descriptor, runtime), descriptor.CanonicalName);
         }
     }

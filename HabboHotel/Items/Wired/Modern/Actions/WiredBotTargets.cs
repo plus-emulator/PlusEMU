@@ -243,13 +243,13 @@ public sealed class WiredBotTargets
     private static bool Near(System.Drawing.Point tile, RoomUser user) => Math.Max(Math.Abs(user.X - tile.X), Math.Abs(user.Y - tile.Y)) <= 1;
 
     // Observed on AIR WIN63-202610151745-318700621: the bot ends on the free tile around the user closest to it (diagonals count),
-    // nearer in straight-line distance on a tie.
+    // nearer in straight-line distance on a tie. Observed on AIR WIN63-202610201032-107964540: a tile the bot cannot enter is never the goal.
     private static void Approach(Room room, RoomUser bot, RoomUser user, Target target)
     {
         var map = room.GetGameMap();
         var goal = Enumerable.Range(0, 8).Select(WiredRoomOperations.Offset)
             .Select(offset => (X: user.X + offset.X, Y: user.Y + offset.Y))
-            .Where(point => map.ValidTile(point.X, point.Y) && map.CanWalk(point.X, point.Y, false))
+            .Where(point => map.ValidTile(point.X, point.Y) && map.SquareIsOpen(point.X, point.Y, false) && map.CanWalk(point.X, point.Y, false))
             .OrderBy(point => Math.Max(Math.Abs(point.X - bot.X), Math.Abs(point.Y - bot.Y)))
             .ThenBy(point => (point.X - bot.X) * (point.X - bot.X) + (point.Y - bot.Y) * (point.Y - bot.Y))
             .Select(point => ((int X, int Y)?)point).FirstOrDefault();

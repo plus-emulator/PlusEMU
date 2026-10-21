@@ -510,7 +510,12 @@ internal sealed partial class WiredStackEngine
             }
         }
 
-        if (negative is { } requested && (requested ? conditionsPassed : !conditionsPassed)) {
+        // Observed on AIR WIN63-202610201032-107964540: a Receive Signal stack whose condition fails runs its negative actions, so a
+        // negative Send Signal in it carries the signal on to the next hop.
+        var negativeSignal = negative == false && !called && !conditionsPassed && context.Event.Kind == WiredEventKind.Signal
+            && stack.Any(x => IsKind(x, InteractionType.WiredEffect) && x is IWiredContextualAction { IsNegative: true });
+
+        if (!negativeSignal && negative is { } requested && (requested ? conditionsPassed : !conditionsPassed)) {
             // Observed on hhus (AIR WIN63-202610131318-860371703): a Receive Signal trigger whose condition fails still flashes, with the
             // antenna and the sender in the same batch; its condition and actions stay at rest.
             if (!requested && !called && context.Event.Kind == WiredEventKind.Signal) {
@@ -521,7 +526,7 @@ internal sealed partial class WiredStackEngine
         }
 
         var actions = stack.Where(x => IsKind(x, InteractionType.WiredEffect) && x.Type != WiredBoxType.AddonRandomEffect
-            && (x is IWiredContextualAction action && action.IsNegative) == (negative == null && !conditionsPassed)).ToArray();
+            && (x is IWiredContextualAction action && action.IsNegative) == (!conditionsPassed && (negative == null || negativeSignal))).ToArray();
 
         if (negative == null && !conditionsPassed && actions.Length == 0) {
             // Observed on hhus (WIN63-202610131318): a click trigger flips even when its date condition fails; the failed condition

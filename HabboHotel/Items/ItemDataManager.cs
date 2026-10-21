@@ -71,6 +71,7 @@ public class ItemDataManager : IItemDataManager, IStartable
                         SpriteId = Convert.ToInt32(row["sprite_id"]),
                         ItemName = Convert.ToString(row["item_name"]),
                         PublicName = Convert.ToString(row["public_name"]),
+                        FurniName = itemData.Columns.Contains("name") ? Convert.ToString(row["name"]) ?? "" : "",
                         ProductType = productType,
                         Type = productType == "s" ? ItemType.Floor : ItemType.Wall,
                         Width = Convert.ToInt32(row["width"]),

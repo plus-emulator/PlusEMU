@@ -53,8 +53,18 @@ public partial class WiredComponent
         LeaderboardDescriptors();
 
         lock (_leaderboardGate) {
-            return _leaderboardOverlayItems.FirstOrDefault(pair => pair.Value == itemId).Key;
+            if (_leaderboardOverlayItems.FirstOrDefault(pair => pair.Value == itemId) is { Key: > 0 } found) {
+                return found.Key;
+            }
         }
+
+        // Observed on AIR WIN63-202610201032-107964540: a published board is overlay 1 in its own editor even when its stack has no user
+        // variable yet, so no descriptor is sent. Published boards are numbered in furni id order.
+        var published = ConfiguredBoxes("wf_xtra_var_leaderboard")
+            .Where(box => WiredLeaderboardConfig.Decode(box.Configuration.IntParams, box.Configuration.VariableIds, box.Configuration.Text)?.Published == true)
+            .Select(box => box.Item.Id);
+
+        return published.Count(id => id < itemId) + 1;
     }
 
     // Observed on AIR WIN63-202610151745-318700621: a "while in room" user variable is offered too, but ranks nobody.

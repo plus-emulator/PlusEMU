@@ -10,6 +10,12 @@ public class ItemDefinition
     public int SpriteId { get; set; }
     public string ItemName { get; set; } = string.Empty;
     public string PublicName { get; set; } = string.Empty;
+
+    /// <summary>The name Habbo's furnidata gives the furni; empty when the row has none.</summary>
+    public string FurniName { get; set; } = string.Empty;
+
+    /// <summary>The name a player sees: the furnidata name, or the public name when there is none.</summary>
+    public string DisplayName => FurniName.Length > 0 ? FurniName : PublicName;
     public ItemType Type { get; set; }
 
     /// <summary>The furniture row's type letter: s, i, p, e, r or b. Purchase reads this; <see cref="Type"/> only distinguishes floor and wall.</summary>

@@ -32,7 +32,7 @@ public sealed class WiredRemainderG4FxTests
     }
 
     private static WiredConfiguration? Compile(string card, Func<int[], int[]>? edit = null, string text = "", string[]? variables = null,
-        int[]? replace = null)
+        int[]? replace = null, bool save = false)
     {
         var descriptor = Descriptor(card);
         var native = WiredNativeEditorProjection.DefaultNative(descriptor);
@@ -44,7 +44,7 @@ public sealed class WiredRemainderG4FxTests
             VariableIds = variables is null ? native.VariableIds : [.. variables]
         };
 
-        return WiredNativeEditorProjection.TryCompile(50, descriptor, proposed, out var configuration) ? configuration : null;
+        return WiredNativeEditorProjection.TryCompile(50, descriptor, proposed, out var configuration, storedRow: !save) ? configuration : null;
     }
 
     /// <summary>The editor switching to furni source retargets both range overrides to the holder kind (sanitizeOverrideTarget).</summary>
@@ -198,9 +198,9 @@ public sealed class WiredRemainderG4FxTests
 
         Assert.Equal((0L, 100L), (number!.Config.Min, number.Config.Max));
         Assert.Equal((0L, 100L), (level!.Config.Min, level.Config.Max));
-        // A number display accepts no other range; a levelling badge stores none (-1/-1, read as 0..100).
-        Assert.Null(Bind("wf_xtra_var_fx_number", ints => { ints[13] = 50; return ints; }));
-        Assert.NotNull(Bind("wf_xtra_var_fx_level", ints => { ints[10] = ints[11] = ints[12] = ints[13] = 7; return ints; }));
+        // A levelling badge stores none (-1/-1, read as 0..100); a number display stores the range it is saved with.
+        Assert.Equal(50L, Bind("wf_xtra_var_fx_number", ints => { ints[13] = 50; return ints; })!.Config.Max);
+        Assert.NotNull(Compile("wf_xtra_var_fx_level", ints => { ints[10] = ints[11] = ints[12] = ints[13] = 7; return ints; }, save: true));
     }
 
     [Theory]
@@ -262,9 +262,9 @@ public sealed class WiredRemainderG4FxTests
 
         Assert.Equal("4", binding!.Config.Extra["sub_renderer"]);
         Assert.Equal("6", binding.Config.Extra["segments"]);
-        // Segments belong to block, arrow and thermometer bars only.
-        Assert.Null(Bind("wf_xtra_var_fx_level", ints => { ints[21] = 3; ints[20] = 6; return ints; }));
-        Assert.Null(Bind("wf_xtra_var_fx_progress", ints => { ints[20] = 6; return ints; }));
+        // Segments are stored for every bar but only block, arrow and thermometer bars draw them.
+        Assert.DoesNotContain("segments", Bind("wf_xtra_var_fx_level", ints => { ints[21] = 3; ints[20] = 6; return ints; })!.Config.Extra.Keys);
+        Assert.DoesNotContain("segments", Bind("wf_xtra_var_fx_progress", ints => { ints[20] = 6; return ints; })!.Config.Extra.Keys);
         Assert.Equal("6", Bind("wf_xtra_var_fx_progress", ints => { ints[6] = 1; ints[7] = 1; ints[9] = 2; ints[20] = 6; return ints; })!.Config.Extra["segments"]);
     }
 
@@ -272,7 +272,8 @@ public sealed class WiredRemainderG4FxTests
     public void ShowDurationShowModeAndMaskStayInTheEditorsBounds()
     {
         Assert.Null(Bind("wf_xtra_var_fx_health", ints => { ints[2] = 3; return ints; }));
-        Assert.Null(Bind("wf_xtra_var_fx_health", ints => { ints[3] = 16; return ints; }));
+        // Observed on AIR WIN63-202610201032-107964540: the update mask is stored as sent.
+        Assert.Equal(16, Bind("wf_xtra_var_fx_health", ints => { ints[3] = 16; return ints; })!.Config.UpdateMask);
         Assert.Null(Bind("wf_xtra_var_fx_health", ints => { ints[5] = 1499; return ints; }));
         Assert.Null(Bind("wf_xtra_var_fx_health", ints => { ints[5] = 20001; return ints; }));
         Assert.Null(Bind("wf_xtra_var_fx_health", ints => { ints[4] = 2; return ints; }));
@@ -681,7 +682,7 @@ public sealed class WiredRemainderG4FxTests
     public void TheNormalisedStoredFormIsWhatTheRuntimeDecodes()
     {
         // The official editor opens with the style options unset (-1,-1,-1); the stored form has the style's own defaults.
-        var configuration = Compile("wf_xtra_var_fx_health", ints => { ints[7] = ints[8] = ints[9] = -1; return ints; })!;
+        var configuration = Compile("wf_xtra_var_fx_health", ints => { ints[7] = ints[8] = ints[9] = -1; return ints; }, save: true)!;
 
         Assert.Equal([1000, 2, 10], configuration.IntParams.Skip(7).Take(3));
     }
@@ -699,7 +700,7 @@ public sealed class WiredRemainderG4FxTests
             ints[16] = ints[17] = 1;
 
             return ints;
-        })!;
+        }, save: true)!;
 
         Assert.Equal("0,2,0,7,0,3000,0,5,4,100,0,0,0,100,0,0,0,0,0,0,0,0,0", string.Join(",", configuration.Origin!.Native!.OwnedIntParams));
     }
@@ -718,7 +719,7 @@ public sealed class WiredRemainderG4FxTests
                 ints[16] = ints[17] = target;
 
                 return ints;
-            }, variables: variables);
+            }, variables: variables, save: true);
 
             Assert.NotNull(configuration);
 

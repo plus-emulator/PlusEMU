@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Variables;
+using Plus.HabboHotel.Items.Wired.Variables.Fx;
 using Plus.HabboHotel.Rooms;
 using Xunit;
 
@@ -22,9 +23,12 @@ public sealed class WiredVariableMetadataTests
         var initial = box.Configuration;
         Assert.True(box.TryValidateConfiguration(initial, out _, out _));
         Assert.False(box.Execute());
-        // An audience-restricted display without an audience variable has no valid runtime at all.
+        // Observed on AIR WIN63-202610201032-107964540: an audience-restricted display without an audience variable is saved as sent, and
+        // the room draws nothing for it.
         var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor);
-        Assert.False(WiredNativeEditorProjection.TryCompile(10, box.Descriptor, native with { OwnedIntParams = native.OwnedIntParams.SetItem(1, 3) }, out _));
+        Assert.True(WiredNativeEditorProjection.TryCompile(10, box.Descriptor, native with { OwnedIntParams = native.OwnedIntParams.SetItem(1, 3) }, out var saved));
+        Assert.Equal(3, saved.IntParams[1]);
+        Assert.False(WiredVariableFxSettings.TryDecode(name, 10, saved, new(WiredVariableTarget.User, "custom:10"), null, out _, out _));
         Assert.Equal(initial, box.Configuration);
     }
     [Fact]

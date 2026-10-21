@@ -225,8 +225,16 @@ public static class WiredNativeEditorProjection
     {
         var name = descriptor.CanonicalName;
 
-        if (name is "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap" && Supports(name)) {
-            return native.SavedState.Snapshots.IsDefaultOrEmpty ? native : native with { Text = SnapshotText(native.SavedState.Snapshots) };
+        if (name is "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap" or "wf_trg_stuff_state" && Supports(name)) {
+            var p = native.OwnedIntParams;
+            bool Ticked(int index) => index < p.Length && p[index] == 1;
+
+            // Observed on AIR WIN63-202610201032-107964540: Stuff State lists the state when its one option is 1 and nothing else.
+            return native.SavedState.Snapshots.IsDefaultOrEmpty ? native : native with
+            {
+                Text = SnapshotText(native.SavedState.Snapshots, name == "wf_trg_stuff_state"
+                    ? new(Ticked(0), false, false, false) : new(Ticked(0), Ticked(1), Ticked(2), Ticked(3)))
+            };
         }
 
         if (name is not ("wf_act_move_rotate" or "wf_act_match_to_sshot") || !Supports(name)) {
@@ -265,14 +273,21 @@ public static class WiredNativeEditorProjection
     /// and a block turned to 4 stacked on it saved `2147418155,0,4,9,11,100;2147418149,3,0,8,11,0;2147418148,0,2,9,11,0`. The AIR editor
     /// never reads the text (class_4293.as:49-71 reads and writes only the four option ints).
     /// </summary>
-    internal static string SnapshotText(IEnumerable<WiredFurniSnapshot> snapshots)
+    internal static string SnapshotText(IEnumerable<WiredFurniSnapshot> snapshots) => SnapshotText(snapshots, new(true, true, true, true));
+
+    /// <summary>The fields of a snapshot entry an option keeps. Observed on AIR WIN63-202610201032-107964540: a floor entry writes N for each field its option leaves unticked.</summary>
+    internal readonly record struct SnapshotFields(bool State, bool Rotation, bool Position, bool Altitude);
+
+    internal static string SnapshotText(IEnumerable<WiredFurniSnapshot> snapshots, SnapshotFields kept)
     {
         var invariant = System.Globalization.CultureInfo.InvariantCulture;
+        string Part(bool keep, string value) => keep ? value : "N";
 
         return string.Join(';', snapshots.Where(entry => entry.Wall == null).OrderByDescending(entry => entry.ItemId)
-            .Select(entry => string.Join(',', entry.ItemId.ToString(invariant), entry.State.Length == 0 ? "0" : entry.State,
-                entry.Rotation.ToString(invariant), entry.X.ToString(invariant), entry.Y.ToString(invariant),
-                ((long)Math.Round(entry.Z * 100, MidpointRounding.AwayFromZero)).ToString(invariant)))
+            .Select(entry => string.Join(',', entry.ItemId.ToString(invariant), Part(kept.State, entry.State.Length == 0 ? "0" : entry.State),
+                Part(kept.Rotation, entry.Rotation.ToString(invariant)), Part(kept.Position, entry.X.ToString(invariant)),
+                Part(kept.Position, entry.Y.ToString(invariant)),
+                Part(kept.Altitude, ((long)Math.Round(entry.Z * 100, MidpointRounding.AwayFromZero)).ToString(invariant))))
             .Concat(snapshots.Where(entry => entry.Wall != null).OrderBy(entry => entry.ItemId).Select(entry =>
             {
                 var wall = entry.Wall!;

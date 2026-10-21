@@ -91,6 +91,9 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
         target.DanceId = 0;
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a condition 0.45 s after the expression passes, one 3.0 s after it does not.
+    private static readonly TimeSpan RecentExpressionWindow = TimeSpan.FromSeconds(2);
+
     public void PerformAction(Room room, GameClient session, int action)
     {
         var user = room.GetRoomUserManager().GetRoomUserByHabbo(session.GetHabbo().Id);
@@ -121,6 +124,10 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             7 => WiredAvatarAction.Respect,
             _ => (WiredAvatarAction)0
         };
+
+        if (wiredAction is WiredAvatarAction.Wave or WiredAvatarAction.Respect) {
+            user.RecentExpression = ((int)wiredAction, clock.GetUtcNow() + RecentExpressionWindow);
+        }
 
         if (wiredAction != 0) {
             room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)

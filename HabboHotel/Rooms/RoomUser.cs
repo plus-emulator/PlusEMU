@@ -106,6 +106,12 @@ public class RoomUser
     public int ShieldCounter;
     // The sign Wired still sees until SignExpiresAt; its "sign" status goes out in one status update only.
     public int? HeldSign;
+
+    /// <summary>
+    /// The last Wave or Respect expression and when Wired stops seeing it. Observed on AIR WIN63-202610201032-107964540: the condition
+    /// "user performs action" passes for these two shortly after the expression, though no status of them is left.
+    /// </summary>
+    internal (int Action, DateTimeOffset ExpiresAt)? RecentExpression { get; set; }
     public DateTimeOffset? SignExpiresAt;
     public bool SuperFastWalking = false;
     private sealed record TeamMembership(Team Value, long Revision);

@@ -34,6 +34,10 @@ public sealed record WiredNativeItemReference(uint ItemId, bool Wall)
 public sealed record WiredNativeSavedState
 {
     public ImmutableArray<WiredFurniSnapshot> Snapshots { get; init; } = [];
+
+    /// <summary>The save named no ints, so its snapshot keeps no state although the stored int is the frame default.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool StateDropped { get; init; }
 }
 
 /// <summary>The single authority behind an executable runtime: the native editor record it was compiled from.</summary>

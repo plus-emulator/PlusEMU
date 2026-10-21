@@ -119,7 +119,11 @@ public sealed class WiredConfigurationService(
             native = native with
             {
                 SavedState = capturesSnapshots
-                    ? new() { Snapshots = CaptureSnapshots(room, descriptor.CanonicalName, native) }
+                    ? new()
+                    {
+                        Snapshots = CaptureSnapshots(room, descriptor.CanonicalName, native),
+                        StateDropped = descriptor.CanonicalName == "wf_trg_stuff_state" && native.OwnedIntParams.IsDefaultOrEmpty
+                    }
                     : projected.SavedState
             };
 

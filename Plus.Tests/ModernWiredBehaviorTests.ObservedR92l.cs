@@ -63,8 +63,8 @@ public partial class ModernWiredBehaviorTests
     }
 
     // r92l r92l-sshot-hidden ms0..ms5 and r92l-sshot-perm: the reopened frame of a saved snapshot carries the snapshot text with N
-    // for each part the options leave out; a fresh box opens with the four option ints [0,0,0,0] and no text. AIR reads four ints
-    // (class_4247.as:37-67), so the frame sends no fifth int.
+    // for each part the options leave out; a fresh box opens with [0,0,0,0,1] and no text. Observed on AIR WIN63-202610201032-107964540:
+    // the reopened frame ends with the hotel int at 0.
     [Theory]
     [InlineData(0, 0, 0, 0, "2147418170,N,N,N,N,N")]
     [InlineData(1, 0, 0, 0, "2147418170,0,N,N,N,N")]
@@ -76,7 +76,7 @@ public partial class ModernWiredBehaviorTests
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_act_match_to_sshot", out var descriptor));
         var fresh = WiredNativeEditorProjection.HotelFrame(descriptor, WiredNativeEditorProjection.DefaultNative(descriptor));
-        Assert.Equal([0, 0, 0, 0], fresh.OwnedIntParams.ToArray());
+        Assert.Equal([0, 0, 0, 0, 1], fresh.OwnedIntParams.ToArray());
         Assert.Equal("", fresh.Text);
 
         var saved = WiredNativeEditorProjection.DefaultNative(descriptor) with
@@ -87,7 +87,7 @@ public partial class ModernWiredBehaviorTests
         };
         var frame = WiredNativeEditorProjection.HotelFrame(descriptor, saved);
 
-        Assert.Equal([state, rotation, position, altitude], frame.OwnedIntParams.ToArray());
+        Assert.Equal([state, rotation, position, altitude, 0], frame.OwnedIntParams.ToArray());
         Assert.Equal(text, frame.Text);
     }
 

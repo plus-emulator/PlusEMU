@@ -20,16 +20,16 @@ public sealed class WiredR104ActionEditorTests
     {
         const string name = "wf_act_match_to_sshot";
 
-        Assert.Equal([1, 1, 1, 1], Saved(name, [1, 1, 1, 1]).Ints);
-        Assert.Equal([0, 0, 0, 0], Saved(name, [0, 0, 0, 0]).Ints);
+        Assert.Equal([1, 1, 1, 1], Saved(name, [1, 1, 1, 1]).Ints[..4]);
+        Assert.Equal([0, 0, 0, 0], Saved(name, [0, 0, 0, 0]).Ints[..4]);
 
         foreach (var option in new[] { 2, -1, 100, int.MinValue }) {
-            Assert.Equal([0, 0, 0, 0], Saved(name, [option, option, option, option]).Ints);
+            Assert.Equal([0, 0, 0, 0], Saved(name, [option, option, option, option]).Ints[..4]);
         }
 
-        Assert.Equal([1, 0, 0, 0], Saved(name, [1]).Ints);
-        Assert.Equal([0, 0, 0, 0], Saved(name, []).Ints);
-        Assert.Equal([1, 1, 1, 1], Saved(name, [1, 1, 1, 1, 1]).Ints);
-        Assert.Equal([1, 0, 0, 0], Saved(name, [1, 0, 0, 0, 0, 7]).Ints);
+        Assert.Equal([1, 0, 0, 0], Saved(name, [1]).Ints[..4]);
+        Assert.Equal([0, 0, 0, 0], Saved(name, []).Ints[..4]);
+        Assert.Equal([1, 1, 1, 1], Saved(name, [1, 1, 1, 1, 1]).Ints[..4]);
+        Assert.Equal([1, 0, 0, 0], Saved(name, [1, 0, 0, 0, 0, 7]).Ints[..4]);
     }
 }

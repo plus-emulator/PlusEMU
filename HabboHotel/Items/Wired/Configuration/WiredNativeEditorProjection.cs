@@ -188,10 +188,10 @@ public static class WiredNativeEditorProjection
         };
 
     /// <summary>
-    /// The frame as the hotel sends it. move_rotate ends with a hotel-owned int that is 1 until the first save and 0 after it,
-    /// whatever was saved (r92k r92h-hidden-ints: [0,0,1] initially, every reopen ...,0). match_to_sshot sends only its four
-    /// option ints: AIR WIN63-202610131318-860371703 wired_setup/actiontypes/class_4247.as:37-67 (code 3) reads and returns exactly
-    /// four. A saved match_to_sshot frame carries its snapshot as text, one "id,state,rotation,x,y,altitude" entry per
+    /// The frame as the hotel sends it. move_rotate and match_to_sshot end with a hotel-owned int that is 1 until the first save and 0
+    /// after it, whatever was saved (r92k r92h-hidden-ints: [0,0,1] initially, every reopen ...,0). Observed on AIR
+    /// WIN63-202610201032-107964540: match_to_sshot saved with [1,0,0,0] or [1,1,1,1,1] reopens with [1,0,0,0,0] or [1,1,1,1,0].
+    /// A saved match_to_sshot frame carries its snapshot as text, one "id,state,rotation,x,y,altitude" entry per
     /// furni with N for each part the saved options do not restore (r92l r92l-sshot-hidden: [0,0,0,0] gives "id,N,N,N,N,N",
     /// [1,1,1,1] gives "id,0,0,8,2,0").
     /// </summary>
@@ -235,9 +235,7 @@ public static class WiredNativeEditorProjection
 
         var defaults = Metadata(name).OwnedDefaults;
         var fresh = native.PrimaryItems.IsEmpty && native.SavedState.Snapshots.IsEmpty && native.OwnedIntParams.SequenceEqual(defaults);
-        var frame = name == "wf_act_match_to_sshot"
-            ? native
-            : native with { OwnedIntParams = [.. native.OwnedIntParams, fresh ? 1 : 0] };
+        var frame = native with { OwnedIntParams = [.. native.OwnedIntParams, fresh ? 1 : 0] };
 
         if (name == "wf_act_match_to_sshot" && !fresh && native.OwnedIntParams.Length == 4) {
             var p = native.OwnedIntParams;
@@ -859,21 +857,15 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>The editor record every card starts from: category metadata defaults, valid by construction.</summary>
-    public static WiredNativeEditorConfiguration DefaultNative(WiredBoxDescriptor descriptor, int? calendarYear = null)
+    public static WiredNativeEditorConfiguration DefaultNative(WiredBoxDescriptor descriptor)
     {
         var metadata = Metadata(descriptor.CanonicalName);
-        var owned = metadata.OwnedDefaults;
-
-        // The date condition's default window is the room clock's current year; the caller reads that clock once.
-        if (calendarYear is { } year && descriptor.CanonicalName == "wf_cnd_match_date" && owned.Length >= 2) {
-            owned = owned.SetItem(owned.Length - 2, year).SetItem(owned.Length - 1, year);
-        }
 
         return new()
         {
             Category = descriptor.Category,
             NativeCode = descriptor.EditorCode,
-            OwnedIntParams = owned,
+            OwnedIntParams = metadata.OwnedDefaults,
             FurniSourceTypes = metadata.FurniDefaults,
             UserSourceTypes = metadata.UserDefaults,
             VariableIds = metadata.VariableDefaults,
@@ -885,8 +877,8 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>The compiled default runtime for a fresh card, or null when the name has no native mapping yet.</summary>
-    public static WiredConfiguration? DefaultRuntime(uint itemId, WiredBoxDescriptor descriptor, int? calendarYear = null) =>
-        Supports(descriptor.CanonicalName) && TryCompile(itemId, descriptor, DefaultNative(descriptor, calendarYear), out var runtime, fresh: true) ? runtime : null;
+    public static WiredConfiguration? DefaultRuntime(uint itemId, WiredBoxDescriptor descriptor) =>
+        Supports(descriptor.CanonicalName) && TryCompile(itemId, descriptor, DefaultNative(descriptor), out var runtime, fresh: true) ? runtime : null;
 
     /// <summary>The editor record behind a bound runtime; an unbound runtime has no editor representation.</summary>
     public static bool TryProject(Item item, WiredBoxDescriptor descriptor, WiredConfiguration runtime,

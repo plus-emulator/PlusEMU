@@ -319,4 +319,27 @@ public sealed class WiredR105VariableFxEditorTests
         Assert.Equal("0", sent.DefaultVariableId);
         Assert.Equal("probe board", sent.Config.Title);
     }
+
+    // Observed on AIR WIN63-202610201032-107964540: the room's board revision counter starts at 1, so the first save of a board shows
+    // revision 2 and every later save of any board adds one.
+    [Fact]
+    public void TheQueryRevisionOfABoardStartsAtTwoAndGrowsWithEverySave()
+    {
+        using var world = new G1World();
+        Assert.True(WiredBoxRegistry.TryGet(Board, out var descriptor));
+        var item = world.AddItem(Board, InteractionType.WiredEffect);
+        var box = world.Wired.CreateConfiguredBox(item) ?? throw new InvalidOperationException(Board);
+        Assert.True(world.Wired.AddBox((Plus.HabboHotel.Items.Wired.IWiredItem)box));
+        var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { Text = Text };
+        Assert.True(WiredNativeEditorProjection.TryCompile(item.Id, descriptor, native, out var runtime, WiredNativeEditorProjection.AnyTriggerContext));
+        var revisions = new List<int>();
+
+        for (var save = 0; save < 3; save++) {
+            Assert.True(WiredConfigurationSave.TrySave(box, runtime, TestWiredConfigurationStore.Instance, out _, id => world.Floor.ContainsKey(id),
+                world.Wired.PublishConfigured));
+            revisions.Add(Assert.Single(world.Wired.LeaderboardDescriptors()).QueryRevision);
+        }
+
+        Assert.Equal([2, 3, 4], revisions);
+    }
 }

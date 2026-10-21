@@ -1,5 +1,6 @@
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Rooms.PathFinding;
 using Xunit;
 
@@ -50,6 +51,23 @@ public partial class PlacedFurniRoomTests
 
         WiredToggle(item);
 
+        Assert.Empty(StatesPackets());
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: using the wired disabler sends one ObjectDataUpdate with the new state, no
+    // ObjectUpdate and no room flags.
+    [Theory]
+    [InlineData(false, "1")]
+    [InlineData(true, "0")]
+    public void UsingTheWiredDisablerSendsOnlyADataUpdate(bool on, string expected)
+    {
+        var item = PlaceConfiguration(86, InteractionType.WiredDisabler, on);
+
+        new FurnitureUseService(new FurnitureUseStore(_database), Proxy<IQuestManager>((_, _) => null)).Use(_room, _client, new(item.Id, 0));
+
+        Assert.Equal(expected, item.LegacyDataString);
+        Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectDataUpdateComposer);
+        Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
         Assert.Empty(StatesPackets());
     }
 

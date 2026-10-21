@@ -20,6 +20,22 @@ namespace Plus.Tests;
 public partial class PlacedFurniRoomTests
 {
     [Fact]
+    public void SavingABackgroundKeepsARotationItsAssetLacks()
+    {
+        // ads_background has directions 1, 3, 4, 5 and 7. A background stored at 2 (an old placement) must stay at 2 when its settings are saved.
+        var item = PlacedBranding(27, InteractionType.Background);
+        Recipient();
+        item.Definition.Directions = [1, 3, 4, 5, 7];
+        item.Definition.DefaultDirection = 4;
+        item.Rotation = 2;
+
+        new RoomItemMetadataService(new BrandingStore(), null!).SetBranding(_client, new(27, Pairs("offsetZ", "5")));
+
+        Assert.Equal(2, item.Rotation);
+        Assert.Equal("5", Assert.IsType<MapDataFormat>(item.ExtraData).Data["offsetZ"]);
+    }
+
+    [Fact]
     public void BrandingIsWrittenBeforePublicationAndTheSnapshotIsAttachedAfterCommit()
     {
         var item = PlacedBranding(20, InteractionType.Background);

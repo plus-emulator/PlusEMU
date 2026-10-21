@@ -18,22 +18,22 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The Collectibles hub on a fresh install with Database/Migrations/109_CollectiblesHub.sql applied twice, driven through the packet
-// handlers. Layouts follow AIR WIN63-202610201032-107964540 (communication/messages/parser/collectibles).
+// The Collectibles hub on a fresh install with Database/Migrations/109_CollectiblesHub.sql and 113_CollectiblesEmeraldsOnly.sql each
+// applied twice, driven through the packet handlers. Layouts follow AIR WIN63-202610201032-107964540
+// (communication/messages/parser/collectibles), except NftStoreOffers, which carries this hotel's min level per offer.
 // Choices for details the spec leaves open:
-// - Reading a wallet that is not the user's (score, collections, mint tokens) sends nothing. Actions on such a wallet answer with
-//   their failure result and change nothing.
-// - The wallet reply is CollectibleWalletAddresses (Collector Wallet, then linked wallets in the order staff added them), SilverBalance
-//   and EmeraldBalance. No test checks the order of replies, only which packets came and what they hold.
+// - Reading a wallet that is not the user's (score, collections) sends nothing. Actions on such a wallet answer with their failure
+//   result and change nothing.
+// - The wallet reply is CollectibleWalletAddresses (the Collector Wallet and no linked wallets) and EmeraldBalance. No test checks the
+//   order of replies, only which packets came and what they hold.
 // - Set claims: claim id "<collection id>.bonus" or "<collection id>.reward", limit 1, status 0 only while the claim would succeed
 //   now, else 1. A collection's status is always 0.
 // - A shop offer's minted count is every collectible of its product, whatever the source.
+// - A shop offer's min level is compared with the level of the wallet that gets the collectible.
 // - Mintable items: enabled rows whose window has not ended, by id; a row that starts later is listed with its start time.
 // - The test connection uses the emulator's own settings (Database/Database.cs: AllowZeroDateTime, ConvertZeroDateTime).
-// - Buying mint tokens answers like a catalog purchase: PurchaseOK with the balances on success, PurchaseError and no change on failure. Minting sends FurniListRemove, CollectibleMintTokens and MintCollectibleResult(1) on
-//   success, and MintCollectibleResult(0) without FurniListRemove on any failure.
-// - Transfer moves every collectible of the Collector Wallet to the chosen linked wallet (collectibles.transfer.description). Result 1 =
-//   not one of the user's linked wallets, 2 = not enough silver, 3 = nothing to transfer. Success sends NftTransferResult(0) and SilverBalance.
+// - Minting costs the mintable row's Emerald price. It sends FurniListRemove, EmeraldBalance and MintCollectibleResult(1) on success,
+//   and only MintCollectibleResult(0) on any failure.
 // - Reward claims are listed by claim id, status 0 while claimed < limit else 1, collection = set id. Other wallets get an empty list.
 //   Claim all gives every remaining amount of a claim (claimLimit - claimedAmount, RewardCollectibleItemRenderer.as:41) and answers 0
 //   when it gave at least one collectible and 1 when nothing was left.
@@ -41,8 +41,10 @@ namespace Plus.Tests;
 // - DATETIME columns hold UTC. The hotel clock is fixed at Now.
 public sealed class CollectiblesHubTests
 {
-    private const int Silver = 1000;
     private const int Emerald = 1001;
+    // AIR's SilverBalance message. The hotel has no Silver, so it has no composer for it either.
+    private const uint SilverBalanceHeader = 2182;
+    private const string EmeraldsOnlyMigration = "Database/Migrations/113_CollectiblesEmeraldsOnly.sql";
     private static readonly DateTimeOffset Now = new(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Created = new(2026, 10, 1, 0, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Updated = new(2026, 10, 2, 8, 30, 0, TimeSpan.Zero);
@@ -58,26 +60,23 @@ public sealed class CollectiblesHubTests
     public void HeadersMatchAir()
     {
         Assert.Equal(
-            new uint[] { 3112, 3283, 2267, 2709, 1471, 1112, 2065, 446, 264, 3070, 2050, 3760, 1663, 3678, 1589, 1590, 2855 },
+            new uint[] { 3112, 3283, 2267, 2709, 1471, 1112, 2065, 446, 264, 1663, 1590, 2855 },
             new[]
             {
                 ClientPacketHeader.GetCollectibleWalletAddressesEvent, ClientPacketHeader.GetCollectorScoreEvent, ClientPacketHeader.GetNftCollectionsEvent,
                 ClientPacketHeader.ClaimNftCollectionBonusEvent, ClientPacketHeader.ClaimNftCollectionRewardEvent, ClientPacketHeader.GetNftStoreOffersEvent,
                 ClientPacketHeader.PurchaseNftStoreOfferEvent, ClientPacketHeader.GetCollectibleMintableItemTypesEvent, ClientPacketHeader.GetCollectibleMintingEnabledEvent,
-                ClientPacketHeader.GetMintTokenOffersEvent, ClientPacketHeader.GetCollectibleMintTokensEvent, ClientPacketHeader.PurchaseMintTokensEvent,
-                ClientPacketHeader.MintCollectibleEvent, ClientPacketHeader.GetNftTransferFeeEvent, ClientPacketHeader.TransferNftsEvent,
-                ClientPacketHeader.GetNftClaimsEvent, ClientPacketHeader.ClaimNftRewardsEvent,
+                ClientPacketHeader.MintCollectibleEvent, ClientPacketHeader.GetNftClaimsEvent, ClientPacketHeader.ClaimNftRewardsEvent,
             });
         Assert.Equal(
-            new uint[] { 2681, 1598, 3181, 3325, 352, 3287, 358, 749, 2689, 2636, 768, 1072, 682, 2056, 3065, 3539, 2182, 2789 },
+            new uint[] { 2681, 1598, 3181, 3325, 352, 3287, 358, 749, 2689, 1072, 3065, 3539, 2789 },
             new[]
             {
                 ServerPacketHeader.CollectibleWalletAddressesComposer, ServerPacketHeader.CollectorScoreComposer, ServerPacketHeader.NftCollectionsComposer,
                 ServerPacketHeader.NftCollectionBonusClaimResultComposer, ServerPacketHeader.NftCollectionRewardClaimResultComposer, ServerPacketHeader.NftStoreOffersComposer,
                 ServerPacketHeader.NftStorePurchaseResultComposer, ServerPacketHeader.CollectibleMintableItemTypesComposer, ServerPacketHeader.CollectibleMintingEnabledComposer,
-                ServerPacketHeader.MintTokenOffersComposer, ServerPacketHeader.CollectibleMintTokensComposer, ServerPacketHeader.MintCollectibleResultComposer,
-                ServerPacketHeader.NftTransferFeeComposer, ServerPacketHeader.NftTransferResultComposer, ServerPacketHeader.NftClaimsComposer,
-                ServerPacketHeader.NftClaimResultComposer, ServerPacketHeader.SilverBalanceComposer, ServerPacketHeader.EmeraldBalanceComposer,
+                ServerPacketHeader.MintCollectibleResultComposer, ServerPacketHeader.NftClaimsComposer, ServerPacketHeader.NftClaimResultComposer,
+                ServerPacketHeader.EmeraldBalanceComposer,
             });
     }
 
@@ -92,9 +91,11 @@ public sealed class CollectiblesHubTests
 
         var manager = new PacketManager(handlers, NullLogger<PacketManager>.Instance);
 
-        Assert.Equal(17, handlers.Count);
-        Assert.All(new uint[] { 3112, 3283, 2267, 2709, 1471, 1112, 2065, 446, 264, 3070, 2050, 3760, 1663, 3678, 1589, 1590, 2855 },
+        Assert.Equal(12, handlers.Count);
+        Assert.All(new uint[] { 3112, 3283, 2267, 2709, 1471, 1112, 2065, 446, 264, 1663, 1590, 2855 },
             header => Assert.True(manager.IsRegistered(header), $"{header} has no handler"));
+        // AIR's mint token, transfer fee and transfer requests.
+        Assert.All(new uint[] { 3070, 2050, 3760, 3678, 1589 }, header => Assert.False(manager.IsRegistered(header), $"{header} still has a handler"));
     }
 
     [RoomComponentDatabaseFact]
@@ -114,22 +115,20 @@ public sealed class CollectiblesHubTests
     }
 
     [RoomComponentDatabaseFact]
-    public async Task TheWalletListIsTheCollectorWalletThenTheLinkedWalletsInTheOrderTheyWereAdded()
+    public async Task TheWalletReplyIsOnlyTheCollectorWalletAndTheEmeraldBalance()
     {
         await InHotel(async hotel =>
         {
             var collector = await hotel.CollectorWallet(hotel.JohnDoe);
-            var later = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('b', 40));
-            var earlier = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('a', 40));
-            hotel.LinkWallet(hotel.JaneDoe, "0x" + new string('c', 40));
-            hotel.SetBalance(hotel.JohnDoe, Silver, 640);
+            hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('b', 40));
             hotel.SetBalance(hotel.JohnDoe, Emerald, 75);
 
+            var replies = await hotel.Send(hotel.JohnDoe, new GetCollectibleWalletAddressesEvent(hotel.Hub));
             var wallets = await hotel.Wallets(hotel.JohnDoe);
 
-            Assert.Equal(collector, wallets.Collector);
-            Assert.Equal([later, earlier], wallets.Linked);
-            Assert.Equal((640, 75), (wallets.Silver, wallets.Emeralds));
+            Assert.DoesNotContain(replies, p => p.Header == SilverBalanceHeader);
+            Assert.Equal((collector, 75), (wallets.Collector, wallets.Emeralds));
+            Assert.Empty(wallets.Linked);
         });
     }
 
@@ -178,13 +177,13 @@ public sealed class CollectiblesHubTests
         await InHotel(async hotel =>
         {
             hotel.Db.Execute("INSERT INTO collectible_products (product_code, product_type, item_type_id, score) VALUES ('trophy_249', 1, '9001', 249), ('trophy_250', 1, '9002', 250)");
-            var collector = await hotel.CollectorWallet(hotel.JohnDoe);
-            var linked = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('d', 40));
-            hotel.Own(linked, "trophy_249");
-            hotel.Own(collector, "trophy_250");
+            var hers = await hotel.CollectorWallet(hotel.JaneDoe);
+            var mine = await hotel.CollectorWallet(hotel.JohnDoe);
+            hotel.Own(hers, "trophy_249");
+            hotel.Own(mine, "trophy_250");
 
-            Assert.Equal((249, 249, 2), await hotel.Score(hotel.JohnDoe, linked));
-            Assert.Equal((250, 250, 3), await hotel.Score(hotel.JohnDoe, collector));
+            Assert.Equal((249, 249, 2), await hotel.Score(hotel.JaneDoe, hers));
+            Assert.Equal((250, 250, 3), await hotel.Score(hotel.JohnDoe, mine));
         });
     }
 
@@ -200,7 +199,6 @@ public sealed class CollectiblesHubTests
             foreach (var wallet in new[] { hers, unknown }) {
                 Assert.Empty(await hotel.Send(hotel.JohnDoe, new GetCollectorScoreEvent(hotel.Hub), wallet));
                 Assert.Empty(await hotel.Send(hotel.JohnDoe, new GetNftCollectionsEvent(hotel.Hub), wallet));
-                Assert.Empty(await hotel.Send(hotel.JohnDoe, new GetCollectibleMintTokensEvent(hotel.Hub), wallet));
             }
         });
     }
@@ -314,10 +312,10 @@ public sealed class CollectiblesHubTests
             hotel.Own(complete, "spring_chair");
             hotel.Own(complete, "spring_lamp");
             hotel.Own(complete, "spring_pet");
-            var incomplete = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('f', 40));
+            var incomplete = await hotel.CollectorWallet(hotel.JaneDoe);
             hotel.Own(incomplete, "spring_chair");
 
-            Assert.False((await hotel.ClaimBonus(hotel.JohnDoe, "spring_set", incomplete)).Success);
+            Assert.False((await hotel.ClaimBonus(hotel.JaneDoe, "spring_set", incomplete)).Success);
 
             hotel.Db.Execute("UPDATE collectible_collections SET released_at = @released WHERE id = 'spring_set'", new { released = Now.AddHours(1).UtcDateTime });
             Assert.False((await hotel.ClaimBonus(hotel.JohnDoe, "spring_set", complete)).Success);
@@ -331,7 +329,7 @@ public sealed class CollectiblesHubTests
     }
 
     [RoomComponentDatabaseFact]
-    public async Task TheShopListsEnabledOffersWithHowManyWereMinted()
+    public async Task TheShopListsEnabledOffersWithHowManyWereMintedAndTheLevelTheyNeed()
     {
         await InHotel(async hotel =>
         {
@@ -339,7 +337,7 @@ public sealed class CollectiblesHubTests
             hotel.Own(hers, "spring_chair", 2);
 
             Assert.Equal(
-                [new StoreOffer("spring_chair", 20, true, true, 3, 2, Chair), new StoreOffer("winter_badge", 5, false, false, -1, 0, Badge)],
+                [new StoreOffer("spring_chair", 20, true, true, 3, 2, 1, Chair), new StoreOffer("winter_badge", 5, false, false, -1, 0, 0, Badge)],
                 await hotel.StoreOffers(hotel.JohnDoe));
         });
     }
@@ -350,19 +348,17 @@ public sealed class CollectiblesHubTests
         await InHotel(async hotel =>
         {
             var collector = await hotel.CollectorWallet(hotel.JohnDoe);
-            var linked = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('1', 40));
             hotel.SetBalance(hotel.JohnDoe, Emerald, 300);
 
             var first = await hotel.Buy(hotel.JohnDoe, "winter_badge", collector);
-            var second = await hotel.Buy(hotel.JohnDoe, "winter_badge", linked);
+            var second = await hotel.Buy(hotel.JohnDoe, "winter_badge", collector);
 
             Assert.Equal(0, Read(first, ServerPacketHeader.NftStorePurchaseResultComposer).Short());
             Assert.Equal(295, Read(first, ServerPacketHeader.EmeraldBalanceComposer).Int());
             Assert.Equal(0, Read(second, ServerPacketHeader.NftStorePurchaseResultComposer).Short());
             Assert.Equal(290, Read(second, ServerPacketHeader.EmeraldBalanceComposer).Int());
             Assert.Equal((290, 290), (hotel.DbBalance(hotel.JohnDoe, Emerald), hotel.JohnDoe.Currencies[Emerald]));
-            Assert.Equal([("winter_badge", 1, "shop")], hotel.Collectibles(collector));
-            Assert.Equal([("winter_badge", 2, "shop")], hotel.Collectibles(linked));
+            Assert.Equal([("winter_badge", 1, "shop"), ("winter_badge", 2, "shop")], hotel.Collectibles(collector));
         });
     }
 
@@ -380,6 +376,63 @@ public sealed class CollectiblesHubTests
             Assert.DoesNotContain(replies, p => p.Header == ServerPacketHeader.EmeraldBalanceComposer);
             Assert.Equal((4, 4), (hotel.DbBalance(hotel.JohnDoe, Emerald), hotel.JohnDoe.Currencies[Emerald]));
             Assert.Empty(hotel.Collectibles(wallet));
+        });
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task BuyingAnOfferBelowItsCollectorLevelIsRefused()
+    {
+        await InHotel(async hotel =>
+        {
+            hotel.Db.Execute("UPDATE collectible_shop_offers SET min_level = 2 WHERE product_code = 'winter_badge'");
+            var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
+            Assert.Equal(1, (await hotel.Score(hotel.JohnDoe, wallet)).Level);
+
+            var replies = await hotel.Buy(hotel.JohnDoe, "winter_badge", wallet);
+
+            Assert.Equal(1, Read(replies, ServerPacketHeader.NftStorePurchaseResultComposer).Short());
+            Assert.DoesNotContain(replies, p => p.Header == ServerPacketHeader.EmeraldBalanceComposer);
+            Assert.Equal((300, 300), (hotel.DbBalance(hotel.JohnDoe, Emerald), hotel.JohnDoe.Currencies[Emerald]));
+            Assert.Empty(hotel.Collectibles(wallet));
+        });
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task BuyingAnOfferAtOrAboveItsCollectorLevelSucceeds()
+    {
+        await InHotel(async hotel =>
+        {
+            hotel.Db.Execute("UPDATE collectible_shop_offers SET min_level = 2 WHERE product_code = 'winter_badge'");
+            hotel.Db.Execute("INSERT INTO collectible_products (product_code, product_type, item_type_id, score) VALUES ('trophy_100', 1, '9004', 100)");
+            var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
+            hotel.Own(wallet, "trophy_100");
+            Assert.Equal(2, (await hotel.Score(hotel.JohnDoe, wallet)).Level);
+
+            var atLevel = await hotel.Buy(hotel.JohnDoe, "winter_badge", wallet);
+            hotel.Db.Execute("UPDATE collectible_shop_offers SET min_level = 1 WHERE product_code = 'winter_badge'");
+            var aboveLevel = await hotel.Buy(hotel.JohnDoe, "winter_badge", wallet);
+
+            Assert.Equal(0, Read(atLevel, ServerPacketHeader.NftStorePurchaseResultComposer).Short());
+            Assert.Equal(295, Read(atLevel, ServerPacketHeader.EmeraldBalanceComposer).Int());
+            Assert.Equal(0, Read(aboveLevel, ServerPacketHeader.NftStorePurchaseResultComposer).Short());
+            Assert.Equal(290, Read(aboveLevel, ServerPacketHeader.EmeraldBalanceComposer).Int());
+            Assert.Equal((290, 290), (hotel.DbBalance(hotel.JohnDoe, Emerald), hotel.JohnDoe.Currencies[Emerald]));
+            Assert.Equal([("trophy_100", 1, "staff"), ("winter_badge", 1, "shop"), ("winter_badge", 2, "shop")], hotel.Collectibles(wallet));
+        });
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task AnOfferWithoutALevelIsSoldEvenToAWalletWithoutALevel()
+    {
+        await InHotel(async hotel =>
+        {
+            hotel.Db.Execute("DELETE FROM collectible_levels");
+            var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
+            Assert.Equal(0, (await hotel.Score(hotel.JohnDoe, wallet)).Level);
+
+            Assert.Equal(0, Read(await hotel.Buy(hotel.JohnDoe, "winter_badge", wallet), ServerPacketHeader.NftStorePurchaseResultComposer).Short());
+
+            Assert.Equal([("winter_badge", 1, "shop")], hotel.Collectibles(wallet));
         });
     }
 
@@ -441,81 +494,34 @@ public sealed class CollectiblesHubTests
         {
             Assert.Equal(
                 [
-                    new Mintable(5001, 0, 0, false, 3, true, 0),
-                    new Mintable(5002, Seconds(Now.AddDays(-1)), Seconds(Now.AddDays(1)), true, 2, false, 1),
-                    new Mintable(5005, Seconds(Now.AddHours(1)), 0, false, 1, false, 0),
+                    new Mintable(5001, 0, 0, false, 150, true, 0),
+                    new Mintable(5002, Seconds(Now.AddDays(-1)), Seconds(Now.AddDays(1)), true, 100, false, 1),
+                    new Mintable(5005, Seconds(Now.AddHours(1)), 0, false, 50, false, 0),
                 ],
                 await hotel.MintableItems(hotel.JohnDoe));
         });
     }
 
     [RoomComponentDatabaseFact]
-    public async Task TheMintTokenOffersListShowsEnabledOffers()
-    {
-        await InHotel(async hotel =>
-        {
-            Assert.Equal([(12, "mint_tokens_50", 400, 50), (11, "mint_tokens_10", 100, 10)], await hotel.TokenOffers(hotel.JohnDoe));
-        });
-    }
-
-    [RoomComponentDatabaseFact]
-    public async Task MintTokensAreBoughtWithSilver()
+    public async Task MintingTakesTheEmeraldPriceConsumesTheFurniAndGivesTheCollectible()
     {
         await InHotel(async hotel =>
         {
             var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
-            hotel.SetBalance(hotel.JohnDoe, Silver, 500);
-            Assert.Equal(0, await hotel.Tokens(hotel.JohnDoe, wallet));
-
-            var replies = await hotel.BuyTokens(hotel.JohnDoe, 11, wallet);
-
-            Assert.Equal(400, Read(replies, ServerPacketHeader.SilverBalanceComposer).Int());
-            Assert.Equal(10, Read(replies, ServerPacketHeader.CollectibleMintTokensComposer).Int());
-            Assert.Single(replies, p => p.Header == ServerPacketHeader.PurchaseOKComposer);
-            Assert.Equal((400, 400), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
-            Assert.Equal(10, await hotel.Tokens(hotel.JohnDoe, wallet));
-            Assert.Equal(10, hotel.Db.QuerySingle<int>("SELECT mint_tokens FROM collectible_wallets WHERE address = @wallet", new { wallet }));
-        });
-    }
-
-    [RoomComponentDatabaseFact]
-    public async Task BuyingMintTokensIsRefusedWithTooLittleSilverOrForAnotherUsersWallet()
-    {
-        await InHotel(async hotel =>
-        {
-            var mine = await hotel.CollectorWallet(hotel.JohnDoe);
-            var hers = await hotel.CollectorWallet(hotel.JaneDoe);
-            hotel.SetBalance(hotel.JohnDoe, Silver, 99);
-
-            AssertOnlyPurchaseError(await hotel.BuyTokens(hotel.JohnDoe, 11, mine));
-
-            hotel.SetBalance(hotel.JohnDoe, Silver, 500);
-            AssertOnlyPurchaseError(await hotel.BuyTokens(hotel.JohnDoe, 11, hers));
-            AssertOnlyPurchaseError(await hotel.BuyTokens(hotel.JohnDoe, 13, mine));
-            AssertOnlyPurchaseError(await hotel.BuyTokens(hotel.JohnDoe, 999, mine));
-
-            Assert.Equal((500, 500), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
-            Assert.Equal(0, hotel.Db.QuerySingle<int>("SELECT COALESCE(SUM(mint_tokens), 0) FROM collectible_wallets"));
-        });
-    }
-
-    [RoomComponentDatabaseFact]
-    public async Task MintingConsumesTheFurniAndGivesTheCollectible()
-    {
-        await InHotel(async hotel =>
-        {
-            var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
-            hotel.SetTokens(wallet, 5);
+            hotel.SetBalance(hotel.JohnDoe, Emerald, 200);
             var item = hotel.GiveFurni(hotel.JohnDoe, 5001, ItemType.Floor);
 
             var replies = await hotel.Mint(hotel.JohnDoe, item, wallet);
 
+            Assert.Equal(
+                new[] { ServerPacketHeader.FurniListRemoveComposer, ServerPacketHeader.EmeraldBalanceComposer, ServerPacketHeader.MintCollectibleResultComposer }.Order(),
+                replies.Select(p => p.Header).Order());
             Assert.Equal(1, Read(replies, ServerPacketHeader.MintCollectibleResultComposer).Short());
             Assert.Equal((int)item.Id, Read(replies, ServerPacketHeader.FurniListRemoveComposer).Int());
-            Assert.Equal(2, Read(replies, ServerPacketHeader.CollectibleMintTokensComposer).Int());
+            Assert.Equal(50, Read(replies, ServerPacketHeader.EmeraldBalanceComposer).Int());
+            Assert.Equal((50, 50), (hotel.DbBalance(hotel.JohnDoe, Emerald), hotel.JohnDoe.Currencies[Emerald]));
             Assert.Null(hotel.JohnDoe.Inventory!.Furniture.GetItem(item.Id));
             Assert.Equal(0, hotel.Db.QuerySingle<int>("SELECT COUNT(*) FROM items WHERE id = @id", new { id = item.Id }));
-            Assert.Equal(2, hotel.Db.QuerySingle<int>("SELECT mint_tokens FROM collectible_wallets WHERE address = @wallet", new { wallet }));
             Assert.Equal([("spring_pet", 1, "mint")], hotel.Collectibles(wallet));
         });
     }
@@ -526,25 +532,26 @@ public sealed class CollectiblesHubTests
         await InHotel(async hotel =>
         {
             var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
-            hotel.SetTokens(wallet, 2);
             var item = hotel.GiveFurni(hotel.JohnDoe, 5002, ItemType.Wall);
 
-            Assert.Equal(1, Read(await hotel.Mint(hotel.JohnDoe, item, wallet), ServerPacketHeader.MintCollectibleResultComposer).Short());
+            var replies = await hotel.Mint(hotel.JohnDoe, item, wallet);
 
+            Assert.Equal(1, Read(replies, ServerPacketHeader.MintCollectibleResultComposer).Short());
+            Assert.Equal(200, Read(replies, ServerPacketHeader.EmeraldBalanceComposer).Int());
             Assert.Equal([("spring_lamp", 1, "mint")], hotel.Collectibles(wallet));
-            Assert.Equal(0, hotel.Db.QuerySingle<int>("SELECT mint_tokens FROM collectible_wallets WHERE address = @wallet", new { wallet }));
+            Assert.Equal((200, 200), (hotel.DbBalance(hotel.JohnDoe, Emerald), hotel.JohnDoe.Currencies[Emerald]));
         });
     }
 
     [RoomComponentDatabaseFact]
-    public async Task MintingFailsWithoutEnoughTokens()
+    public async Task MintingFailsWithTooFewEmeralds()
     {
         await InHotel(async hotel =>
         {
             var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
-            hotel.SetTokens(wallet, 2);
+            hotel.SetBalance(hotel.JohnDoe, Emerald, 149);
 
-            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5001, ItemType.Floor), wallet, tokens: 2);
+            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5001, ItemType.Floor), wallet);
         });
     }
 
@@ -554,14 +561,13 @@ public sealed class CollectiblesHubTests
         await InHotel(async hotel =>
         {
             var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
-            hotel.SetTokens(wallet, 5);
             var hers = hotel.GiveFurni(hotel.JaneDoe, 5001, ItemType.Floor);
 
-            Assert.Equal(0, Read(await hotel.Mint(hotel.JohnDoe, hers, wallet), ServerPacketHeader.MintCollectibleResultComposer).Short());
+            Assert.Equal([ServerPacketHeader.MintCollectibleResultComposer], (await hotel.Mint(hotel.JohnDoe, hers, wallet)).Select(p => p.Header));
 
             Assert.NotNull(hotel.JaneDoe.Inventory!.Furniture.GetItem(hers.Id));
             Assert.Equal(1, hotel.Db.QuerySingle<int>("SELECT COUNT(*) FROM items WHERE id = @id AND user_id = 8", new { id = hers.Id }));
-            Assert.Equal(5, hotel.Db.QuerySingle<int>("SELECT mint_tokens FROM collectible_wallets WHERE address = @wallet", new { wallet }));
+            Assert.Equal((300, 300), (hotel.DbBalance(hotel.JohnDoe, Emerald), hotel.JohnDoe.Currencies[Emerald]));
             Assert.Empty(hotel.Collectibles(wallet));
         });
     }
@@ -572,11 +578,10 @@ public sealed class CollectiblesHubTests
         await InHotel(async hotel =>
         {
             var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
-            hotel.SetTokens(wallet, 5);
 
-            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 7777, ItemType.Floor), wallet, tokens: 5);
-            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5001, ItemType.Wall), wallet, tokens: 5);
-            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5003, ItemType.Floor), wallet, tokens: 5);
+            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 7777, ItemType.Floor), wallet);
+            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5001, ItemType.Wall), wallet);
+            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5003, ItemType.Floor), wallet);
         });
     }
 
@@ -586,10 +591,9 @@ public sealed class CollectiblesHubTests
         await InHotel(async hotel =>
         {
             var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
-            hotel.SetTokens(wallet, 5);
 
-            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5004, ItemType.Floor), wallet, tokens: 5);
-            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5005, ItemType.Floor), wallet, tokens: 5);
+            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5004, ItemType.Floor), wallet);
+            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5005, ItemType.Floor), wallet);
         });
     }
 
@@ -599,10 +603,9 @@ public sealed class CollectiblesHubTests
         await InHotel(async hotel =>
         {
             var wallet = await hotel.CollectorWallet(hotel.JohnDoe);
-            hotel.SetTokens(wallet, 5);
             await hotel.Setting("collectibles.minting.enabled", "0");
 
-            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5001, ItemType.Floor), wallet, tokens: 5);
+            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5001, ItemType.Floor), wallet);
         });
     }
 
@@ -613,107 +616,8 @@ public sealed class CollectiblesHubTests
         {
             var hers = await hotel.CollectorWallet(hotel.JaneDoe);
             await hotel.CollectorWallet(hotel.JohnDoe);
-            hotel.SetTokens(hers, 5);
 
-            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5001, ItemType.Floor), hers, tokens: 5);
-        });
-    }
-
-    [RoomComponentDatabaseFact]
-    public async Task TheTransferFeeFollowsTheServerSetting()
-    {
-        await InHotel(async hotel =>
-        {
-            Assert.Equal(0, await hotel.TransferFee(hotel.JohnDoe));
-
-            await hotel.Setting("collectibles.transfer.fee", "25");
-
-            Assert.Equal(25, await hotel.TransferFee(hotel.JohnDoe));
-        });
-    }
-
-    [RoomComponentDatabaseFact]
-    public async Task TransferMovesEveryCollectibleOfTheCollectorWalletToTheLinkedWalletForTheFee()
-    {
-        await InHotel(async hotel =>
-        {
-            await hotel.Setting("collectibles.transfer.fee", "25");
-            var collector = await hotel.CollectorWallet(hotel.JohnDoe);
-            var linked = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('2', 40));
-            hotel.Own(linked, "spring_lamp");
-            hotel.Own(collector, "spring_chair");
-            hotel.Own(collector, "winter_badge");
-            hotel.SetBalance(hotel.JohnDoe, Silver, 500);
-
-            var replies = await hotel.Transfer(hotel.JohnDoe, linked);
-
-            Assert.Equal(0, Read(replies, ServerPacketHeader.NftTransferResultComposer).Short());
-            Assert.Equal(475, Read(replies, ServerPacketHeader.SilverBalanceComposer).Int());
-            Assert.Equal((475, 475), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
-            Assert.Equal([("spring_chair", 1, "staff"), ("spring_lamp", 1, "staff"), ("winter_badge", 1, "staff")], hotel.Collectibles(linked).Order());
-            Assert.Empty(hotel.Collectibles(collector));
-        });
-    }
-
-    [RoomComponentDatabaseFact]
-    public async Task TransferWithAnEmptyCollectorWalletIsRefusedAndCostsNothing()
-    {
-        await InHotel(async hotel =>
-        {
-            await hotel.Setting("collectibles.transfer.fee", "25");
-            await hotel.CollectorWallet(hotel.JohnDoe);
-            var linked = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('5', 40));
-            hotel.Own(linked, "spring_lamp");
-            hotel.SetBalance(hotel.JohnDoe, Silver, 500);
-
-            var replies = await hotel.Transfer(hotel.JohnDoe, linked);
-
-            Assert.Equal(3, Read(replies, ServerPacketHeader.NftTransferResultComposer).Short());
-            Assert.DoesNotContain(replies, p => p.Header == ServerPacketHeader.SilverBalanceComposer);
-            Assert.Equal([("spring_lamp", 1, "staff")], hotel.Collectibles(linked));
-            Assert.Equal((500, 500), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
-        });
-    }
-
-    [RoomComponentDatabaseFact]
-    public async Task TransferIsRefusedFromTheCollectorWalletOrAWalletThatIsNotTheUsers()
-    {
-        await InHotel(async hotel =>
-        {
-            var collector = await hotel.CollectorWallet(hotel.JohnDoe);
-            var hersLinked = hotel.LinkWallet(hotel.JaneDoe, "0x" + new string('3', 40));
-            await hotel.CollectorWallet(hotel.JaneDoe);
-            hotel.Own(collector, "spring_chair");
-            hotel.Own(hersLinked, "winter_badge");
-            hotel.SetBalance(hotel.JohnDoe, Silver, 500);
-
-            Assert.Equal(1, Read(await hotel.Transfer(hotel.JohnDoe, collector), ServerPacketHeader.NftTransferResultComposer).Short());
-            Assert.Equal(1, Read(await hotel.Transfer(hotel.JohnDoe, hersLinked), ServerPacketHeader.NftTransferResultComposer).Short());
-
-            Assert.Equal([("spring_chair", 1, "staff")], hotel.Collectibles(collector));
-            Assert.Equal([("winter_badge", 1, "staff")], hotel.Collectibles(hersLinked));
-            Assert.Equal((500, 500), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
-        });
-    }
-
-    [RoomComponentDatabaseFact]
-    public async Task TransferIsRefusedWithTooLittleSilverForTheFee()
-    {
-        await InHotel(async hotel =>
-        {
-            await hotel.Setting("collectibles.transfer.fee", "25");
-            var collector = await hotel.CollectorWallet(hotel.JohnDoe);
-            var linked = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('4', 40));
-            hotel.Own(collector, "spring_chair");
-            hotel.SetBalance(hotel.JohnDoe, Silver, 24);
-
-            var replies = await hotel.Transfer(hotel.JohnDoe, linked);
-
-            Assert.Equal(2, Read(replies, ServerPacketHeader.NftTransferResultComposer).Short());
-            Assert.DoesNotContain(replies, p => p.Header == ServerPacketHeader.SilverBalanceComposer);
-            Assert.Equal([("spring_chair", 1, "staff")], hotel.Collectibles(collector));
-            Assert.Empty(hotel.Collectibles(linked));
-            Assert.Equal((24, 24), (hotel.DbBalance(hotel.JohnDoe, Silver), hotel.JohnDoe.Currencies[Silver]));
+            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5001, ItemType.Floor), hers);
         });
     }
 
@@ -752,6 +656,35 @@ public sealed class CollectiblesHubTests
         });
     }
 
+    // A linked wallet row left from before 113 belongs to the user, but no request accepts it any more.
+    [RoomComponentDatabaseFact]
+    public async Task ALinkedWalletLeftFromBeforeIsRefusedLikeAWalletThatIsNotTheUsers()
+    {
+        await InHotel(async hotel =>
+        {
+            await hotel.CollectorWallet(hotel.JohnDoe);
+            var linked = hotel.LinkWallet(hotel.JohnDoe, "0x" + new string('6', 40));
+            hotel.Own(linked, "spring_chair");
+            hotel.Own(linked, "spring_lamp");
+            hotel.Own(linked, "spring_pet");
+
+            Assert.Empty(await hotel.Send(hotel.JohnDoe, new GetCollectorScoreEvent(hotel.Hub), linked));
+            Assert.Empty(await hotel.Send(hotel.JohnDoe, new GetNftCollectionsEvent(hotel.Hub), linked));
+            Assert.Equal(("spring_set", linked, false), await hotel.ClaimBonus(hotel.JohnDoe, "spring_set", linked));
+            Assert.Equal(("spring_set", linked, false), await hotel.ClaimReward(hotel.JohnDoe, "spring_set", linked));
+            var bought = await hotel.Buy(hotel.JohnDoe, "winter_badge", linked);
+            Assert.Equal(1, Read(bought, ServerPacketHeader.NftStorePurchaseResultComposer).Short());
+            Assert.DoesNotContain(bought, p => p.Header == ServerPacketHeader.EmeraldBalanceComposer);
+            await AssertMintFails(hotel, hotel.JohnDoe, hotel.GiveFurni(hotel.JohnDoe, 5001, ItemType.Floor), linked);
+
+            Assert.Equal((300, 300), (hotel.DbBalance(hotel.JohnDoe, Emerald), hotel.JohnDoe.Currencies[Emerald]));
+            Assert.Equal([("spring_chair", 1, "staff"), ("spring_lamp", 1, "staff"), ("spring_pet", 1, "staff")], hotel.Collectibles(linked));
+            Assert.Equal(3, hotel.Db.QuerySingle<int>("SELECT COUNT(*) FROM user_collectibles"));
+            Assert.Equal(0, hotel.Db.QuerySingle<int>("SELECT COUNT(*) FROM user_collectible_collection_claims"));
+            Assert.Equal(0, hotel.Db.QuerySingle<int>("SELECT highest_score FROM collectible_wallets WHERE address = @linked", new { linked }));
+        });
+    }
+
     [RoomComponentDatabaseFact]
     public async Task ClaimAllGivesEveryRemainingRewardThenNothingIsLeft()
     {
@@ -772,7 +705,8 @@ public sealed class CollectiblesHubTests
     }
 
     // Habbo's content from Database/Migrations/111_CollectiblesHubContent.sql, observed on Habbo US (AIR WIN63-202610201032-107964540)
-    // on 2026-10-21. FreshInstall.sql has no furni for nft_emerald_tome_5000, so its offer is left out.
+    // on 2026-10-21, with the min level that 113 gives each offer by its price. FreshInstall.sql has no furni for nft_emerald_tome_5000,
+    // so its offer is left out.
     [RoomComponentDatabaseFact]
     public async Task TheShopSellsHabbosOffersInHabbosOrder()
     {
@@ -782,22 +716,11 @@ public sealed class CollectiblesHubTests
 
             Assert.Equal(28, offers.Count);
             Assert.DoesNotContain(offers, o => o.Code == "nft_emerald_tome_5000");
-            Assert.Equal(new StoreOffer("nft_h26_witchchair", 700, true, false, -1, 0, new Product(1, "19160", 115, null, "", "", "nft_h26_witchchair", "Epic")), offers[0]);
-            Assert.Equal(new StoreOffer("nft_h23_vintaque_chair", 40, false, false, -1, 0, new Product(1, "14101", 10, null, "", "", "nft_h23_vintaque_chair", "Common")),
+            Assert.Equal(new StoreOffer("nft_h26_witchchair", 700, true, false, -1, 0, 5, new Product(1, "19160", 115, null, "", "", "nft_h26_witchchair", "Epic")), offers[0]);
+            Assert.Equal(new StoreOffer("nft_h23_vintaque_chair", 40, false, false, -1, 0, 0, new Product(1, "14101", 10, null, "", "", "nft_h23_vintaque_chair", "Common")),
                 offers.Single(o => o.Code == "nft_h23_vintaque_chair"));
-            Assert.Equal([("nft_emerald_100", 101), ("nft_emerald_1000", 1001), ("nft_emerald_500", 501), ("nft_emerald_50", 51), ("nft_emerald_10", 11)],
-                offers.TakeLast(5).Select(o => (o.Code, o.EmeraldPrice)));
-        }, habboContent: true);
-    }
-
-    [RoomComponentDatabaseFact]
-    public async Task MintTokensAreSoldInHabbosTenPacks()
-    {
-        await InHotel(async hotel =>
-        {
-            Assert.Equal(
-                Enumerable.Range(1, 10).Select(n => (29307 + n, n == 1 ? "nft_mint_token_purchase" : $"nft_mint_token_purchase_{n}", n * 100, n)),
-                await hotel.TokenOffers(hotel.JohnDoe));
+            Assert.Equal([("nft_emerald_100", 101, 2), ("nft_emerald_1000", 1001, 5), ("nft_emerald_500", 501, 4), ("nft_emerald_50", 51, 0), ("nft_emerald_10", 11, 0)],
+                offers.TakeLast(5).Select(o => (o.Code, o.EmeraldPrice, o.MinLevel)));
         }, habboContent: true);
     }
 
@@ -809,10 +732,11 @@ public sealed class CollectiblesHubTests
             var items = await hotel.MintableItems(hotel.JohnDoe);
 
             Assert.Equal(74, items.Count);
-            Assert.Equal(new Mintable(19169, 1792148400, 1794391140, false, 1, false, 0), items[0]);
-            Assert.Equal(new Mintable(14880, 1785996000, 1794304800, false, 1, false, 0), items[^1]);
+            Assert.Equal(new Mintable(19169, 1792148400, 1794391140, false, 50, false, 0), items[0]);
+            Assert.Equal(new Mintable(14880, 1785996000, 1794304800, false, 50, false, 0), items[^1]);
             Assert.Equal(5, items.Count(i => i.ItemType == 1));
-            Assert.Equal([(1619, 4), (4740, 3), (10210, 5)], items.Where(i => i.Price > 1).Select(i => (i.SpriteId, i.Price)));
+            // 113 turns each Curator Stamp of Habbo's price into 50 Emeralds.
+            Assert.Equal([(1619, 200), (4740, 150), (10210, 250)], items.Where(i => i.Price != 50).Select(i => (i.SpriteId, i.Price)));
             Assert.Equal("nft_hween_r19_witchfamiliar",
                 hotel.Db.QuerySingle<string>("SELECT product_code FROM collectible_mintable_items WHERE item_type = 's' AND sprite_id = 10818"));
         }, habboContent: true);
@@ -843,38 +767,184 @@ public sealed class CollectiblesHubTests
         }, habboContent: true);
     }
 
+    // 111 needs the tables and columns that 113 removes, so it runs again on a hotel before 113.
     [RoomComponentDatabaseFact]
     public async Task RunningTheContentMigrationAgainKeepsStaffEditsAndAddsNothing()
     {
-        await InHotel(async hotel =>
+        await BeforeEmeraldsOnly(async db =>
         {
-            hotel.Db.Execute("UPDATE collectible_shop_offers SET emerald_price = 1 WHERE product_code = 'nft_h26_witchchair'");
-            hotel.Db.Execute("DELETE FROM collectible_mintable_items WHERE sprite_id = 19169");
+            db.Execute("UPDATE collectible_shop_offers SET emerald_price = 1 WHERE product_code = 'nft_h26_witchchair'");
+            db.Execute("DELETE FROM collectible_mintable_items WHERE sprite_id = 19169");
 
-            await Apply(hotel.Db, "Database/Migrations/111_CollectiblesHubContent.sql");
+            await Apply(db, "Database/Migrations/111_CollectiblesHubContent.sql");
 
-            Assert.Equal((73, 582, 28, 10, 74, 0), hotel.Db.QuerySingle<(int, int, int, int, int, int)>("""
+            Assert.Equal((73, 582, 28, 10, 74, 0), db.QuerySingle<(int, int, int, int, int, int)>("""
                 SELECT (SELECT COUNT(*) FROM collectible_collections), (SELECT COUNT(*) FROM collectible_products),
                     (SELECT COUNT(*) FROM collectible_shop_offers), (SELECT COUNT(*) FROM collectible_mint_token_offers),
                     (SELECT COUNT(*) FROM collectible_mintable_items), (SELECT COUNT(*) FROM collectible_reward_claims)
                 """));
-            Assert.Equal(1, hotel.Db.QuerySingle<int>("SELECT emerald_price FROM collectible_shop_offers WHERE product_code = 'nft_h26_witchchair'"));
-        }, habboContent: true);
+            Assert.Equal(1, db.QuerySingle<int>("SELECT emerald_price FROM collectible_shop_offers WHERE product_code = 'nft_h26_witchchair'"));
+        });
     }
 
-    private static void AssertOnlyPurchaseError(List<(uint Header, byte[] Payload)> replies) =>
-        Assert.Equal([ServerPacketHeader.PurchaseErrorComposer], replies.Select(p => p.Header));
-
-    private static async Task AssertMintFails(Hotel hotel, Habbo habbo, InventoryItem item, string wallet, int tokens)
+    // A hotel that ran 109 and 111 and still has Silver, mint tokens and linked wallets. Offers sit on each edge of the price bands.
+    [RoomComponentDatabaseFact]
+    public async Task TheEmeraldsOnlyMigrationPricesRelicsInEmeraldsSetsShopLevelsAndRunsTwice()
     {
+        await BeforeEmeraldsOnly(async db =>
+        {
+            const string collector = "0x1111111111111111111111111111111111111111";
+            const string linked = "0x2222222222222222222222222222222222222222";
+            db.Execute("INSERT IGNORE INTO users (id, username, look, gender) VALUES (7, 'johndoe', 'hd-180-1', 'M')");
+            db.Execute("INSERT INTO collectible_wallets (address, user_id, is_collector, mint_tokens) VALUES (@collector, 7, 1, 12), (@linked, 7, 0, 3)",
+                new { collector, linked });
+            var bands = new[] { (75, 0), (76, 2), (150, 2), (151, 3), (300, 3), (301, 4), (600, 4), (601, 5), (1200, 5), (1201, 6) };
+
+            foreach (var (price, _) in bands) {
+                db.Execute("INSERT INTO collectible_products (product_code, product_type, item_type_id, score) VALUES (@code, 1, @code, 10)", new { code = $"band_{price}" });
+                db.Execute("INSERT INTO collectible_shop_offers (product_code, emerald_price) VALUES (@code, @price)", new { code = $"band_{price}", price });
+            }
+
+            await Apply(db, EmeraldsOnlyMigration);
+
+            Assert.Equal(bands, db.Query<(int, int)>("SELECT emerald_price, min_level FROM collectible_shop_offers WHERE product_code LIKE 'band%' ORDER BY emerald_price"));
+            Assert.Equal(5, db.QuerySingle<int>("SELECT min_level FROM collectible_shop_offers WHERE product_code = 'nft_h26_witchchair'"));
+            Assert.Equal(("0", "NO"), db.QuerySingle<(string, string)>(
+                "SELECT column_default, is_nullable FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'collectible_shop_offers' AND column_name = 'min_level'"));
+            Assert.Equal(["emerald_price"], db.Query<string>(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'collectible_mintable_items' AND column_name IN ('token_price', 'emerald_price')"));
+            Assert.Equal(74, db.QuerySingle<int>("SELECT COUNT(*) FROM collectible_mintable_items"));
+            Assert.Equal([(1619, 200), (4740, 150), (10210, 250)],
+                db.Query<(int, int)>("SELECT sprite_id, emerald_price FROM collectible_mintable_items WHERE emerald_price <> 50 ORDER BY sprite_id"));
+            Assert.Empty(db.Query<string>(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'collectible_mint_token_offers'"));
+            Assert.Empty(db.Query<string>(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'collectible_wallets' AND column_name = 'mint_tokens'"));
+            Assert.Equal([(collector, true), (linked, false)], db.Query<(string, bool)>("SELECT address, is_collector FROM collectible_wallets ORDER BY address"));
+            Assert.Equal(["collectibles.minting.enabled"], db.Query<string>("SELECT `key` FROM server_settings WHERE `key` LIKE 'collectibles.%'"));
+
+            db.Execute("UPDATE collectible_shop_offers SET min_level = 2 WHERE product_code = 'band_1201'");
+            var before = HubSnapshot(db);
+
+            await Apply(db, EmeraldsOnlyMigration);
+
+            Assert.Equal(before, HubSnapshot(db));
+        });
+    }
+
+    // Mint tokens become Emeralds at 50 per token for the user of every wallet, linked wallets too.
+    [RoomComponentDatabaseFact]
+    public async Task TheEmeraldsOnlyMigrationTurnsMintTokensIntoEmeraldsOnce()
+    {
+        await BeforeEmeraldsOnly(async db =>
+        {
+            db.Execute("INSERT IGNORE INTO users (id, username, look, gender) VALUES (7, 'johndoe', 'hd-180-1', 'M'), (8, 'janedoe', 'hd-180-1', 'F')");
+            db.Execute("INSERT INTO collectible_wallets (address, user_id, is_collector, mint_tokens) VALUES (@mine, 7, 1, 12), (@hers, 8, 0, 3)",
+                new { mine = "0x" + new string('3', 40), hers = "0x" + new string('4', 40) });
+            UserCurrencyStore.Set(db, 7, Emerald, 40);
+            db.Execute("DELETE FROM user_currencies WHERE user_id = 8 AND type = @Emerald", new { Emerald });
+
+            await Apply(db, EmeraldsOnlyMigration);
+
+            Assert.Equal([(7, 640), (8, 150)], db.Query<(int, int)>("SELECT user_id, amount FROM user_currencies WHERE type = @Emerald AND user_id IN (7, 8) ORDER BY user_id", new { Emerald }));
+
+            await Apply(db, EmeraldsOnlyMigration);
+
+            Assert.Equal([(7, 640), (8, 150)], db.Query<(int, int)>("SELECT user_id, amount FROM user_currencies WHERE type = @Emerald AND user_id IN (7, 8) ORDER BY user_id", new { Emerald }));
+        });
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task RunningTheEmeraldsOnlyMigrationAgainKeepsALevelStaffRemoved()
+    {
+        await BeforeEmeraldsOnly(async db =>
+        {
+            await Apply(db, EmeraldsOnlyMigration);
+            Assert.Equal(5, db.QuerySingle<int>("SELECT min_level FROM collectible_shop_offers WHERE product_code = 'nft_h26_witchchair'"));
+            db.Execute("UPDATE collectible_shop_offers SET min_level = 0 WHERE product_code = 'nft_h26_witchchair'");
+
+            await Apply(db, EmeraldsOnlyMigration);
+
+            Assert.Equal(0, db.QuerySingle<int>("SELECT min_level FROM collectible_shop_offers WHERE product_code = 'nft_h26_witchchair'"));
+        });
+    }
+
+    // The first run stopped right after it added emerald_price, so every relic held 0 Emeralds until the next run.
+    [RoomComponentDatabaseFact]
+    public async Task TheEmeraldsOnlyMigrationPricesRelicsAfterARunThatStoppedHalfway()
+    {
+        await BeforeEmeraldsOnly(async db =>
+        {
+            var statements = SqlScript.Split(await File.ReadAllTextAsync(HabbiconPacketTests.Repo(EmeraldsOnlyMigration)));
+            await db.ExecuteAsync(Assert.Single(statements, s => s.Contains("ALTER TABLE collectible_mintable_items ADD COLUMN")));
+
+            await Apply(db, EmeraldsOnlyMigration);
+
+            Assert.Equal(74, db.QuerySingle<int>("SELECT COUNT(*) FROM collectible_mintable_items"));
+            Assert.Equal([(1619, 200), (4740, 150), (10210, 250)],
+                db.Query<(int, int)>("SELECT sprite_id, emerald_price FROM collectible_mintable_items WHERE emerald_price <> 50 ORDER BY sprite_id"));
+        });
+    }
+
+    // A FreshInstall.sql rebuilt after 113 has the hub tables in the 113 shape, and a new hotel still runs 109, 111 and 113 on it.
+    // 109 and 113 on today's FreshInstall.sql give that shape. The hub must end up as on a hotel that ran 109, 111 and 113 in order.
+    [RoomComponentDatabaseFact]
+    public async Task TheContentMigrationFillsAFreshInstallRebuiltAfterTheEmeraldsOnlyMigration()
+    {
+        const string hubMigration = "Database/Migrations/109_CollectiblesHub.sql";
+        const string contentMigration = "Database/Migrations/111_CollectiblesHubContent.sql";
+        List<string> inOrder = [];
+        List<string> rebuilt = [];
+
+        await InSchema(async (db, _) =>
+        {
+            foreach (var file in new[] { hubMigration, contentMigration, EmeraldsOnlyMigration }) {
+                await Apply(db, file);
+            }
+
+            inOrder = HubSnapshot(db);
+        });
+        await InSchema(async (db, _) =>
+        {
+            foreach (var file in new[] { hubMigration, EmeraldsOnlyMigration, hubMigration, contentMigration, contentMigration, EmeraldsOnlyMigration }) {
+                await Apply(db, file);
+            }
+
+            Assert.Equal(74, db.QuerySingle<int>("SELECT COUNT(*) FROM collectible_mintable_items"));
+            Assert.Equal([(1619, 200), (4740, 150), (10210, 250)],
+                db.Query<(int, int)>("SELECT sprite_id, emerald_price FROM collectible_mintable_items WHERE emerald_price <> 50 ORDER BY sprite_id"));
+            rebuilt = HubSnapshot(db);
+        });
+
+        Assert.Equal(inOrder, rebuilt);
+    }
+
+    private static async Task AssertMintFails(Hotel hotel, Habbo habbo, InventoryItem item, string wallet)
+    {
+        var emeralds = habbo.Currencies[Emerald];
+
         var replies = await hotel.Mint(habbo, item, wallet);
 
+        Assert.Equal([ServerPacketHeader.MintCollectibleResultComposer], replies.Select(p => p.Header));
         Assert.Equal(0, Read(replies, ServerPacketHeader.MintCollectibleResultComposer).Short());
-        Assert.DoesNotContain(replies, p => p.Header == ServerPacketHeader.FurniListRemoveComposer);
         Assert.NotNull(habbo.Inventory!.Furniture.GetItem(item.Id));
         Assert.Equal(1, hotel.Db.QuerySingle<int>("SELECT COUNT(*) FROM items WHERE id = @id", new { id = item.Id }));
-        Assert.Equal(tokens, hotel.Db.QuerySingle<int>("SELECT mint_tokens FROM collectible_wallets WHERE address = @wallet", new { wallet }));
+        Assert.Equal((emeralds, emeralds), (hotel.DbBalance(habbo, Emerald), habbo.Currencies[Emerald]));
         Assert.Equal(0, hotel.Db.QuerySingle<int>("SELECT COUNT(*) FROM user_collectibles WHERE source = 'mint'"));
+    }
+
+    // Every hub table's columns and rows, and the hub settings, to show that a migration run changed nothing.
+    private static List<string> HubSnapshot(MySqlConnection db)
+    {
+        var tables = db.Query<string>("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE '%collectible%' ORDER BY table_name").ToList();
+        var columns = db.Query<string>("""
+            SELECT CONCAT_WS(' ', table_name, ordinal_position, column_name, column_type, is_nullable, COALESCE(column_default, 'none'))
+            FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name LIKE '%collectible%' ORDER BY table_name, ordinal_position
+            """);
+        var rows = tables.SelectMany(table => db.Query($"SELECT * FROM `{table}`").Select(row => $"{table} {(object)row}")).Order();
+        var settings = db.Query<string>("SELECT CONCAT(`key`, '=', `value`) FROM server_settings WHERE `key` LIKE 'collectibles.%' ORDER BY `key`");
+
+        return [.. tables, .. columns, .. rows, .. settings];
     }
 
     private static long Ms(DateTimeOffset time) => time.ToUnixTimeMilliseconds();
@@ -893,7 +963,7 @@ public sealed class CollectiblesHubTests
 
     private sealed record Collection(List<Product> Items, CollectionHead Head);
 
-    private sealed record StoreOffer(string Code, int EmeraldPrice, bool Featured, bool Limited, int MintLimit, int Minted, Product Product);
+    private sealed record StoreOffer(string Code, int EmeraldPrice, bool Featured, bool Limited, int MintLimit, int Minted, int MinLevel, Product Product);
 
     private sealed record Mintable(int SpriteId, int Start, int End, bool RegionLocked, int Price, bool LimitedEdition, short ItemType);
 
@@ -983,7 +1053,6 @@ public sealed class CollectiblesHubTests
             var (client, sent) = HabbiconTestSupport.Client(habbo);
             habbo.Client = client;
             _users[id] = (habbo, sent);
-            SetBalance(habbo, Silver, 500);
             SetBalance(habbo, Emerald, 300);
 
             return habbo;
@@ -1009,9 +1078,6 @@ public sealed class CollectiblesHubTests
 
             return address;
         }
-
-        public void SetTokens(string wallet, int tokens) =>
-            connection.Execute("UPDATE collectible_wallets SET mint_tokens = @tokens WHERE address = @wallet", new { wallet, tokens });
 
         public void Own(string wallet, string product, int count = 1)
         {
@@ -1055,7 +1121,7 @@ public sealed class CollectiblesHubTests
             return [.. sent];
         }
 
-        public async Task<(string Collector, List<string> Linked, int Silver, int Emeralds)> Wallets(Habbo habbo)
+        public async Task<(string Collector, List<string> Linked, int Emeralds)> Wallets(Habbo habbo)
         {
             var replies = await Send(habbo, new GetCollectibleWalletAddressesEvent(hub));
             var wallets = Read(replies, ServerPacketHeader.CollectibleWalletAddressesComposer);
@@ -1063,7 +1129,7 @@ public sealed class CollectiblesHubTests
             var linked = Enumerable.Range(0, wallets.Int()).Select(_ => wallets.String()).ToList();
             wallets.End();
 
-            return (collector, linked, Read(replies, ServerPacketHeader.SilverBalanceComposer).Int(), Read(replies, ServerPacketHeader.EmeraldBalanceComposer).Int());
+            return (collector, linked, Read(replies, ServerPacketHeader.EmeraldBalanceComposer).Int());
         }
 
         public async Task<string> CollectorWallet(Habbo habbo) => (await Wallets(habbo)).Collector;
@@ -1117,7 +1183,7 @@ public sealed class CollectiblesHubTests
         {
             var reader = Read(await Send(habbo, new GetNftStoreOffersEvent(hub)), ServerPacketHeader.NftStoreOffersComposer);
             var offers = Enumerable.Range(0, reader.Int())
-                .Select(_ => new StoreOffer(reader.String(), reader.Int(), reader.Bool(), reader.Bool(), reader.Int(), reader.Int(), reader.Product(withAmount: false)))
+                .Select(_ => new StoreOffer(reader.String(), reader.Int(), reader.Bool(), reader.Bool(), reader.Int(), reader.Int(), reader.Int(), reader.Product(withAmount: false)))
                 .ToList();
             reader.End();
 
@@ -1147,41 +1213,8 @@ public sealed class CollectiblesHubTests
             return items;
         }
 
-        public async Task<List<(int OfferId, string ProductCode, int SilverPrice, int Tokens)>> TokenOffers(Habbo habbo)
-        {
-            var reader = Read(await Send(habbo, new GetMintTokenOffersEvent(hub)), ServerPacketHeader.MintTokenOffersComposer);
-            var offers = Enumerable.Range(0, reader.Int()).Select(_ => (reader.Int(), reader.String(), reader.Int(), reader.Int())).ToList();
-            reader.End();
-
-            return offers;
-        }
-
-        public async Task<int> Tokens(Habbo habbo, string wallet)
-        {
-            var reader = Read(await Send(habbo, new GetCollectibleMintTokensEvent(hub), wallet), ServerPacketHeader.CollectibleMintTokensComposer);
-            var tokens = reader.Int();
-            reader.End();
-
-            return tokens;
-        }
-
-        public Task<List<(uint Header, byte[] Payload)>> BuyTokens(Habbo habbo, int offerId, string wallet) =>
-            Send(habbo, new PurchaseMintTokensEvent(hub), offerId, wallet);
-
         public Task<List<(uint Header, byte[] Payload)>> Mint(Habbo habbo, InventoryItem item, string wallet) =>
             Send(habbo, new MintCollectibleEvent(hub), (int)item.Id, wallet);
-
-        public async Task<int> TransferFee(Habbo habbo)
-        {
-            var reader = Read(await Send(habbo, new GetNftTransferFeeEvent(hub)), ServerPacketHeader.NftTransferFeeComposer);
-            var fee = reader.Int();
-            reader.End();
-
-            return fee;
-        }
-
-        public Task<List<(uint Header, byte[] Payload)>> Transfer(Habbo habbo, string wallet) =>
-            Send(habbo, new TransferNftsEvent(hub), wallet);
 
         public async Task<List<NftClaim>> Claims(Habbo habbo, string wallet)
         {
@@ -1199,7 +1232,47 @@ public sealed class CollectiblesHubTests
             Send(habbo, new ClaimNftRewardsEvent(hub), "", "");
     }
 
-    private static async Task InHotel(Func<Hotel, Task> run, bool habboContent = false)
+    private static Task InHotel(Func<Hotel, Task> run, bool habboContent = false) => InSchema(async (connection, connectionString) =>
+    {
+        foreach (var file in new[] { "Database/Migrations/109_CollectiblesHub.sql", "Database/Migrations/109_CollectiblesHub.sql" }) {
+            await Apply(connection, file);
+        }
+
+        if (habboContent) {
+            await Apply(connection, "Database/Migrations/111_CollectiblesHubContent.sql");
+            await Apply(connection, "Database/Migrations/111_CollectiblesHubContent.sql");
+        }
+
+        await Apply(connection, EmeraldsOnlyMigration);
+        await Apply(connection, EmeraldsOnlyMigration);
+
+        if (!habboContent) {
+            await Seed(connection);
+        }
+
+        var database = new HabbiconDatabaseTests.TestDatabase(connectionString);
+        var settings = new SettingsManager(database, NullLogger<SettingsManager>.Instance);
+        await settings.Reload();
+        await run(new Hotel(connection, new CollectiblesHubService(database, settings, new FixedClock(Now)), settings));
+    });
+
+    // A hotel that got the hub from 109 and 111 before 113 existed. The hub tables FreshInstall.sql already has are dropped first, so
+    // 109 makes them in the shape 113 starts from.
+    private static Task BeforeEmeraldsOnly(Func<MySqlConnection, Task> run) => InSchema(async (connection, _) =>
+    {
+        await connection.ExecuteAsync("""
+            SET FOREIGN_KEY_CHECKS = 0;
+            DROP TABLE IF EXISTS user_collectible_collection_claims, user_collectible_reward_claims, user_collectibles, collectible_wallets,
+                collectible_reward_claims, collectible_mintable_items, collectible_mint_token_offers, collectible_shop_offers, collectible_levels,
+                collectible_products, collectible_collections;
+            SET FOREIGN_KEY_CHECKS = 1;
+            """);
+        await Apply(connection, "Database/Migrations/109_CollectiblesHub.sql");
+        await Apply(connection, "Database/Migrations/111_CollectiblesHubContent.sql");
+        await run(connection);
+    });
+
+    private static async Task InSchema(Func<MySqlConnection, string, Task> run)
     {
         var options = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!) { AllowUserVariables = true, Pooling = false, AllowZeroDateTime = true, ConvertZeroDateTime = true };
         await using var admin = new MySqlConnection(options.ConnectionString);
@@ -1211,23 +1284,8 @@ public sealed class CollectiblesHubTests
             options.Database = schema;
             await using var connection = new MySqlConnection(options.ConnectionString);
             await connection.OpenAsync();
-
-            foreach (var file in new[] { "Database/FreshInstall.sql", "Database/Migrations/109_CollectiblesHub.sql", "Database/Migrations/109_CollectiblesHub.sql" }) {
-                await Apply(connection, file);
-            }
-
-            if (habboContent) {
-                await Apply(connection, "Database/Migrations/111_CollectiblesHubContent.sql");
-                await Apply(connection, "Database/Migrations/111_CollectiblesHubContent.sql");
-            }
-            else {
-                await Seed(connection);
-            }
-
-            var database = new HabbiconDatabaseTests.TestDatabase(options.ConnectionString);
-            var settings = new SettingsManager(database, NullLogger<SettingsManager>.Instance);
-            await settings.Reload();
-            await run(new Hotel(connection, new CollectiblesHubService(database, settings, new FixedClock(Now)), settings));
+            await Apply(connection, "Database/FreshInstall.sql");
+            await run(connection, options.ConnectionString);
         }
         finally {
             await admin.ExecuteAsync($"DROP DATABASE IF EXISTS `{schema}`");
@@ -1242,7 +1300,7 @@ public sealed class CollectiblesHubTests
     }
 
     // Spring Set: chair 10 + lamp 20 + pet 30 = 60, boost 50, a bonus and a reward, released yesterday, snapshot tomorrow.
-    // Winter Set: one badge worth 15, nothing else. Retired Set is disabled.
+    // Winter Set: one badge worth 15, nothing else. Retired Set is disabled. The spring chair offer needs level 1, which every wallet has.
     private static async Task Seed(MySqlConnection connection)
     {
         var times = new
@@ -1272,22 +1330,17 @@ public sealed class CollectiblesHubTests
             ('winter_badge', 'winter_set', 4, 'ACH_Winter1', 15, 'common', '', '', 1),
             ('retired_cup', 'retired_set', 1, '4200', 99, 'common', '', '', 1);
 
-            INSERT INTO collectible_shop_offers (product_code, emerald_price, is_featured, is_limited, mint_limit, sort_order, enabled) VALUES
-            ('winter_badge', 5, 0, 0, -1, 2, 1),
-            ('spring_chair', 20, 1, 1, 3, 1, 1),
-            ('spring_lamp', 8, 0, 0, -1, 0, 0);
+            INSERT INTO collectible_shop_offers (product_code, emerald_price, min_level, is_featured, is_limited, mint_limit, sort_order, enabled) VALUES
+            ('winter_badge', 5, 0, 0, 0, -1, 2, 1),
+            ('spring_chair', 20, 1, 1, 1, 3, 1, 1),
+            ('spring_lamp', 8, 0, 0, 0, -1, 0, 0);
 
-            INSERT INTO collectible_mint_token_offers (id, product_code, silver_price, amount_tokens, sort_order, enabled) VALUES
-            (11, 'mint_tokens_10', 100, 10, 2, 1),
-            (12, 'mint_tokens_50', 400, 50, 1, 1),
-            (13, 'mint_tokens_old', 1, 1000, 0, 0);
-
-            INSERT INTO collectible_mintable_items (id, item_type, sprite_id, product_code, token_price, starts_at, ends_at, region_locked, limited_edition, enabled) VALUES
-            (1, 's', 5001, 'spring_pet', 3, NULL, NULL, 0, 1, 1),
-            (2, 'i', 5002, 'spring_lamp', 2, @dayAgo, @inADay, 1, 0, 1),
-            (3, 's', 5003, 'spring_chair', 1, NULL, NULL, 0, 0, 0),
-            (4, 's', 5004, 'spring_chair', 1, @dayAgo, @hourAgo, 0, 0, 1),
-            (5, 's', 5005, 'spring_chair', 1, @inAnHour, NULL, 0, 0, 1);
+            INSERT INTO collectible_mintable_items (id, item_type, sprite_id, product_code, emerald_price, starts_at, ends_at, region_locked, limited_edition, enabled) VALUES
+            (1, 's', 5001, 'spring_pet', 150, NULL, NULL, 0, 1, 1),
+            (2, 'i', 5002, 'spring_lamp', 100, @dayAgo, @inADay, 1, 0, 1),
+            (3, 's', 5003, 'spring_chair', 50, NULL, NULL, 0, 0, 0),
+            (4, 's', 5004, 'spring_chair', 50, @dayAgo, @hourAgo, 0, 0, 1),
+            (5, 's', 5005, 'spring_chair', 50, @inAnHour, NULL, 0, 0, 1);
 
             INSERT INTO collectible_reward_claims (claim_id, product_code, set_id, set_name, min_level, claim_limit, valid_from, valid_to, created_at, updated_at) VALUES
             ('oct_double', 'spring_chair', 'spring_set', 'Spring Set', 1, 2, @dayAgo, @inADay, @created, @updated),

@@ -302,6 +302,7 @@ public sealed class WiredOctoberEditorTests
     {
         Assert.True(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [1201] }));
         Assert.True(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [2] }));
-        Assert.False(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [1202] }));
+        // Observed on AIR WIN63-202610201032-107964540: any threshold is stored, also above the editor's largest.
+        Assert.True(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [1202] }));
     }
 }

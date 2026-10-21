@@ -14,6 +14,17 @@ internal static class WiredConditionStoreRules
         or "wf_cnd_has_altitude" or "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap" or "wf_cnd_not_user_count" or "wf_cnd_match_date" or "wf_cnd_match_time"
         or "wf_act_move_furni_as_group" or "wf_act_neg_send_signal";
 
+    public const string UserSourceKey = "wiredfurni.error.invalid_user_source";
+
+    private static readonly HashSet<string> UserSourceKeyed = ["wf_cnd_actor_dir", "wf_cnd_actor_in_team", "wf_cnd_not_in_team",
+        "wf_cnd_not_trggrer_on", "wf_act_unfreeze", "wf_act_move_furni_as_group", "wf_act_neg_send_signal"];
+
+    /// <summary>The key of a user source these boxes refuse with their own wording, or null. Sources 10 and 11 come from the trigger.</summary>
+    public static string? UserSourceRefusal(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
+        UserSourceKeyed.Contains(name) && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length
+            && !metadata.UsersAllowed[index].Contains(source) && !WiredNativeEditorProjection.AnyTriggerContext.Contains(source)).Any()
+            ? UserSourceKey : null;
+
     public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native, ImmutableArray<int> defaults)
     {
         var p = Fit(native.OwnedIntParams, defaults);

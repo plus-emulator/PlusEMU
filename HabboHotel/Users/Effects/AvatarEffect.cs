@@ -32,6 +32,9 @@ public sealed class AvatarEffect
 
     public int Quantity { get; set; }
 
+    // An effect box stores its effect with a total duration of 0: it never runs out.
+    public bool IsPermanent => Duration <= 0;
+
     // Remaining time is measured against an instant the caller captured, never the wall clock.
     public double TimeLeftAt(DateTimeOffset now)
     {
@@ -42,7 +45,7 @@ public sealed class AvatarEffect
         return Math.Max(0, remaining);
     }
 
-    public bool HasExpiredAt(DateTimeOffset now) => Activated && TimeLeftAt(now) <= 0;
+    public bool HasExpiredAt(DateTimeOffset now) => !IsPermanent && Activated && TimeLeftAt(now) <= 0;
 
     /// <summary>
     /// Persists the activation at the captured UTC instant, then changes the model.

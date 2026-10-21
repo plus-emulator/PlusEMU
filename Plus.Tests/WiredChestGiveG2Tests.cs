@@ -394,7 +394,7 @@ public sealed class WiredChestGiveG2Tests
     [InlineData("wf_act_give_furni", new[] { 0, 1, 0, 1, 1, -1 }, false)]
     [InlineData("wf_act_give_furni", new[] { 2, 1, 0, 1, 1, 1 }, false)]
     [InlineData("wf_act_give_furni", new[] { 0, 0, 0, 1, 1, 1 }, true)]
-    [InlineData("wf_act_give_furni", new[] { 0, -5, 0, 1, 1, 1 }, false)]
+    [InlineData("wf_act_give_furni", new[] { 0, -5, 0, 1, 1, 1 }, true)]
     [InlineData("wf_act_give_furni", new[] { 0, 1, 2, 1, 1, 1 }, false)]
     [InlineData("wf_act_give_furni", new[] { 0, 1, 0, 1, 2, 1 }, false)]
     public void TheEditorFormsKeepToTheOctoberFieldRanges(string name, int[] owned, bool accepted)

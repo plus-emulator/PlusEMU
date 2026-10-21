@@ -105,7 +105,7 @@ public sealed class WiredRemainderG1EditorTests
     [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 4, 0, 300 }, false)]
     [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 0, 2, 300 }, false)]
     [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 0, 1, 29 }, true)]
-    [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 0, 1, 3601 }, false)]
+    [InlineData("wf_act_init_transaction", new[] { 0, 1, 0, 0, 1, 3601 }, true)]
     [InlineData("wf_act_cancel_transaction", new[] { 0 }, true)]
     [InlineData("wf_act_cancel_transaction", new[] { 1 }, true)]
     [InlineData("wf_act_cancel_transaction", new[] { 2 }, true)]

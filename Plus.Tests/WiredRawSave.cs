@@ -139,6 +139,9 @@ internal sealed class WiredRawSave : IDisposable
         return (key, parameters);
     }
 
+    /// <summary>The furni the box keeps picked now, as the open-editor frame lists them.</summary>
+    public uint[] Picks() => [.. _box.Configuration.SelectedItems];
+
     /// <summary>What the editor shows now: the stored form, as the open-editor frame carries it.</summary>
     public Result Stored(string answer = "ok", string? key = null)
     {

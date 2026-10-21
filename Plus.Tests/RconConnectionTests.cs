@@ -29,6 +29,19 @@ public sealed class RconConnectionTests
     }
 
     [Fact]
+    public async Task DispatchesAJsonShutdownRequest()
+    {
+        using var sockets = await ConnectedSockets.Create();
+        var commands = new RecordingCommands(true);
+        using var connection = new RconConnection(sockets.Server, NullLogger<RconConnection>.Instance, commands);
+
+        await sockets.Client.SendAsync(Encoding.UTF8.GetBytes("{\"command\":\"shutdown\",\"parameters\":[\"5\",\"30\"]}\n"));
+
+        Assert.Equal(0, (await ReadResponse(sockets.Client)).GetProperty("status").GetInt32());
+        Assert.Equal("shutdown\u00015:30", commands.Request);
+    }
+
+    [Fact]
     public async Task ReportsACommandRejectionInsteadOfFabricatingSuccess()
     {
         using var sockets = await ConnectedSockets.Create();

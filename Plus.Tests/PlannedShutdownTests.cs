@@ -60,6 +60,18 @@ public sealed class PlannedShutdownTests
     }
 
     [Fact]
+    public void LongestNoticeIsAccepted()
+    {
+        var world = new World();
+
+        Assert.True(world.Shutdown.TrySchedule(PlannedShutdown.MaxMinutes, 15));
+        world.Clock.Advance(TimeSpan.FromMinutes(PlannedShutdown.MaxMinutes));
+
+        Assert.Equal([[true, PlannedShutdown.MaxMinutes, 15], [true, 1, 15]], world.Warnings());
+        Assert.Equal(1, world.ShutdownCalls);
+    }
+
+    [Fact]
     public void SecondScheduleIsRefusedWhileOneIsPending()
     {
         var world = new World();
@@ -76,6 +88,7 @@ public sealed class PlannedShutdownTests
     [InlineData(0, 15)]
     [InlineData(-1, 15)]
     [InlineData(5, -1)]
+    [InlineData(PlannedShutdown.MaxMinutes + 1, 15)]
     public void InvalidScheduleSendsNothing(int minutes, int duration)
     {
         var world = new World();

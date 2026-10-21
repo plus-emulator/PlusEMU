@@ -233,6 +233,11 @@ public sealed class WiredConfigurationService(
             fields[1] = fields[1].TrimEnd('.');
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: an empty figure is saved and read back as an empty figure.
+        if (fields.Length == 2 && fields[1].Length == 0) {
+            return data;
+        }
+
         if (fields.Length != 2 || !WiredBotActions.FigureWellFormed(fields[1])) {
             throw new ArgumentException("Invalid bot figure.");
         }

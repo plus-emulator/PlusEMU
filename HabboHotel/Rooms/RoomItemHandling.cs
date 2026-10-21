@@ -690,8 +690,11 @@ public partial class RoomItemHandling
 
     private bool PlaceFloor(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses, double height, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision, (Plus.HabboHotel.Items.DataFormat.IFurniObjectData Data, Action Persist, RoomItemTransfer? Transfer)? commit, bool deferPositionSave = false)
     {
-        // A user's move or placement stores only a direction the furni has (FurnitureDirections.Place).
-        if (session != null) {
+        // A user's move or placement stores only a direction the furni has (FurnitureDirections.Place). A republish in place, such as a
+        // data save, is not a move: it keeps the stored rotation (a background saved at 2 keeps 2 though its asset lacks it).
+        var inPlace = !newItem && newX == item.GetX && newY == item.GetY && newRot == item.Rotation;
+
+        if (session != null && !inPlace) {
             newRot = FurnitureDirections.Place(item.Definition, newRot);
         }
 

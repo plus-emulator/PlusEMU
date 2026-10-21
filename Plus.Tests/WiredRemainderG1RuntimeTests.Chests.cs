@@ -219,7 +219,7 @@ public sealed partial class WiredRemainderG1RuntimeTests
     }
 
     [Fact]
-    public void HasItemTypeCountsNoFurniInACoinChestAndPassesWithoutAChest()
+    public void HasItemTypeCountsNoFurniInACoinChestOrWithoutAChest()
     {
         using var world = new G1World();
         var player = world.AddPlayer();
@@ -230,8 +230,8 @@ public sealed partial class WiredRemainderG1RuntimeTests
 
         world.Fire(Enter(player));
 
-        // A coin chest holds no furni, so zero equals zero; with no chest at all the condition passes (observed on AIR
-        // WIN63-202610151745-318700621, r97_chest_type_keep).
+        // A coin chest holds no furni, and with no chest the condition counts no furni either, so zero equals zero (observed on AIR
+        // WIN63-202610201032-107964540).
         Assert.Single(coinChest.Runs);
         Assert.Single(missing.Runs);
     }

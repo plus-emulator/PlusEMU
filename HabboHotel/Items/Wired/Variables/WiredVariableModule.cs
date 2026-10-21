@@ -835,13 +835,27 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     /// <summary>
-    /// The key a proposed reference is refused with, or null. Observed on AIR WIN63-202610201032-107964540: a room holds one reference
-    /// to a shared variable, a second one is refused.
+    /// The key a proposed reference is refused with, or null. Observed on AIR WIN63-202610201032-107964540: the variable must be shared
+    /// in the room it names, and that room must have the same owner. A room holds one reference to a shared variable, a second one is
+    /// refused.
     /// </summary>
     public string? RefuseReference(WiredVariableDefinition proposed)
     {
+        if (proposed.Link is not { } link) {
+            return null;
+        }
+
         lock (_gate) {
-            return proposed.Link is { } link && directory.ListRoom(roomId).Any(other => other.ItemId != proposed.ItemId && other.Link is { } existing
+            if (!TryDefinitionId(link.Source.Token, out var sourceId) || directory.Find(sourceId) is not { Availability: WiredVariableAvailability.Shared, Link: null } source
+                || source.RoomId != link.SourceRoomId || source.Target != link.Source.Target) {
+                return WiredVariableDefinitions.InvalidReferenceKey;
+            }
+
+            if (source.OwnerId != proposed.OwnerId) {
+                return WiredVariableDefinitions.ReferenceMustOwnKey;
+            }
+
+            return directory.ListRoom(roomId).Any(other => other.ItemId != proposed.ItemId && other.Link is { } existing
                 && existing.SourceRoomId == link.SourceRoomId && existing.Source == link.Source) ? WiredVariableDefinitions.ReferenceExistsKey : null;
         }
     }

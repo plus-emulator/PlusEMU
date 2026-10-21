@@ -855,21 +855,15 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>The editor record every card starts from: category metadata defaults, valid by construction.</summary>
-    public static WiredNativeEditorConfiguration DefaultNative(WiredBoxDescriptor descriptor, int? calendarYear = null)
+    public static WiredNativeEditorConfiguration DefaultNative(WiredBoxDescriptor descriptor)
     {
         var metadata = Metadata(descriptor.CanonicalName);
-        var owned = metadata.OwnedDefaults;
-
-        // The date condition's default window is the room clock's current year; the caller reads that clock once.
-        if (calendarYear is { } year && descriptor.CanonicalName == "wf_cnd_match_date" && owned.Length >= 2) {
-            owned = owned.SetItem(owned.Length - 2, year).SetItem(owned.Length - 1, year);
-        }
 
         return new()
         {
             Category = descriptor.Category,
             NativeCode = descriptor.EditorCode,
-            OwnedIntParams = owned,
+            OwnedIntParams = metadata.OwnedDefaults,
             FurniSourceTypes = metadata.FurniDefaults,
             UserSourceTypes = metadata.UserDefaults,
             VariableIds = metadata.VariableDefaults,
@@ -881,8 +875,8 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>The compiled default runtime for a fresh card, or null when the name has no native mapping yet.</summary>
-    public static WiredConfiguration? DefaultRuntime(uint itemId, WiredBoxDescriptor descriptor, int? calendarYear = null) =>
-        Supports(descriptor.CanonicalName) && TryCompile(itemId, descriptor, DefaultNative(descriptor, calendarYear), out var runtime, fresh: true) ? runtime : null;
+    public static WiredConfiguration? DefaultRuntime(uint itemId, WiredBoxDescriptor descriptor) =>
+        Supports(descriptor.CanonicalName) && TryCompile(itemId, descriptor, DefaultNative(descriptor), out var runtime, fresh: true) ? runtime : null;
 
     /// <summary>The editor record behind a bound runtime; an unbound runtime has no editor representation.</summary>
     public static bool TryProject(Item item, WiredBoxDescriptor descriptor, WiredConfiguration runtime,

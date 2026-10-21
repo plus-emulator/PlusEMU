@@ -84,7 +84,7 @@ public sealed class WiredOctoberRuntimeTests
     [Fact]
     public void UserLevelConditionHasALegacyDefault()
     {
-        var defaults = WiredConditionConfiguration.Defaults("wf_cnd_user_level", 2026);
+        var defaults = WiredConditionConfiguration.Defaults("wf_cnd_user_level");
 
         Assert.Equal(new[] { 1, 1, 0 }, defaults.IntParams);
         Assert.False(WiredConditionConfiguration.TryValidate("wf_cnd_user_level", new() { IntParams = [31, 1, 0] }, out _, out _));

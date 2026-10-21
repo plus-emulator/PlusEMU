@@ -38,9 +38,10 @@ public class WiredCalendarClockTests
         };
         var box = Assert.IsType<WiredModernCondition>(wired.CreateConfiguredBox(item, descriptor));
         var configuration = box.Configuration;
-        Assert.Equal(year, configuration.IntParams[6]);
-        Assert.Equal(year, configuration.IntParams[7]);
-        Assert.Equal(2, clock.Reads);
+        // Observed on AIR WIN63-202610201032-107964540: a fresh Date Matches holds year minimum and maximum 0, not the current year.
+        Assert.Equal(0, configuration.IntParams[6]);
+        Assert.Equal(0, configuration.IntParams[7]);
+        Assert.Equal(1, clock.Reads);
     }
 
     [Theory]

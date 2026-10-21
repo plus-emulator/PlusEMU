@@ -38,7 +38,8 @@ public partial class WiredComponent
 
     // Observed on AIR WIN63-202610151745-318700621: a board's QueryRevision comes from one counter for the whole room (3, 4, ... 10 over
     // successive saves of different boards), and the room's boards are numbered from 1 as overlays.
-    private int _leaderboardRoomRevision;
+    // Observed on AIR WIN63-202610201032-107964540: the counter starts at 1, so the first save of a board shows revision 2.
+    private int _leaderboardRoomRevision = 1;
     private readonly Dictionary<int, uint> _leaderboardOverlayItems = [];
 
     private int LeaderboardRevision(uint itemId)

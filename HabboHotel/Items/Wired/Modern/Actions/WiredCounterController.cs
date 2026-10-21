@@ -264,7 +264,9 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         }
 
         Evidence(clock, WiredClockReason.Adjust, origin);
-        clock.AdjustedSinceStop = !clock.Running;
+        // Observed on AIR WIN63-202610201032-107964540: a counter that ran since its last reset starts again from 0 after a Set, so only a
+        // counter that has not run keeps the value of its Set.
+        clock.AdjustedSinceStop = !clock.Running && !clock.Started;
         var previous = clock.Value;
         clock.Value = Math.Clamp(operation switch { 0 => previous + amount, 1 => previous - amount, _ => amount }, 0,
             clock.Countdown ? int.MaxValue * 2L : maxHalfSeconds);

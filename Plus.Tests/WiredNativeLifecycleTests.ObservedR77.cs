@@ -103,13 +103,15 @@ public sealed partial class WiredNativeLifecycleTests
 
     // The unchanged-form save (empty name, owned [0], id "0") was refused with the placeholder length key and no parameters.
     [Theory]
-    [InlineData("", true)]
-    [InlineData("   ", true)]
-    [InlineData("##", true)]
-    [InlineData("a", false)]
-    [InlineData("abcdefghijklmnopqrstuvwxyzabcdefghijklmn", false)]
-    [InlineData("abcdefghijklmnopqrstuvwxyzabcdefghijklmno", true)]
-    public void TextInputVariableNameLengthOutsideOneToFortyIsRefusedWithTheObservedKey(string name, bool tooLong)
+    [InlineData("", "wiredfurni.error.placeholder.name_length")]
+    // Observed on AIR WIN63-202610201032-107964540: a name is not trimmed, so spaces and "#" are refused as syntax, not as length, and
+    // the capturer saves without a variable.
+    [InlineData("   ", "wiredfurni.error.placeholder.name_syntax")]
+    [InlineData("##", "wiredfurni.error.placeholder.name_syntax")]
+    [InlineData("a", null)]
+    [InlineData("abcdefghijklmnopqrstuvwxyzabcdefghijklmn", null)]
+    [InlineData("abcdefghijklmnopqrstuvwxyzabcdefghijklmno", "wiredfurni.error.placeholder.name_length")]
+    public void TextInputVariableNameLengthOutsideOneToFortyIsRefusedWithTheObservedKey(string name, string? key)
     {
         var f = new World();
         var item = f.Item(4);
@@ -117,8 +119,8 @@ public sealed partial class WiredNativeLifecycleTests
         var box = f.Wired.CreateConfiguredBox(item)!;
         var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor) with { OwnedIntParams = [0], VariableIds = ["0"], Text = name };
         Assert.True(WiredNativeEditorProjection.TryCompile(item.Id, box.Descriptor, native, out var runtime));
-        Assert.False(WiredConfigurationSave.TrySave(box, runtime, TestWiredConfigurationStore.Instance, out var error));
-        Assert.Equal(tooLong, error == "wiredfurni.error.placeholder.name_length");
+        Assert.Equal(key is null, WiredConfigurationSave.TrySave(box, runtime, TestWiredConfigurationStore.Instance, out var error));
+        Assert.Equal(key ?? "", key is null ? "" : error);
     }
 
     // User Clicks Tile with a plain own furni picked was refused with this key; the invisible click tile saved.

@@ -274,8 +274,9 @@ public partial class ModernWiredRuntimeTests
         Assert.Null(Error("amount", "ctx:11", 147, 2));
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: the capturer saves with a variable of any kind or with none.
     [Fact]
-    public void G3OnlyAContextVariableThatTheRoomOwnsCanBePicked()
+    public void G3AnyVariableOrNoneCanBePicked()
     {
         using var f = new TeleportFixture();
         var variables = f.Room.GetWired().Variables;
@@ -283,13 +284,13 @@ public partial class ModernWiredRuntimeTests
         var box = Assert.IsType<WiredVariableTextInputBox>(variables.CreateBox(item));
         var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor) with { OwnedIntParams = [0], Text = "amount" };
 
-        foreach (var variable in new[] { "n", "0", "user:10", "furni:10", "room:10", "custom:10" }) {
-            if (WiredNativeEditorProjection.TryCompile(150, box.Descriptor, native with { VariableIds = [variable] }, out var runtime)) {
-                Assert.False(box.TryValidateConfiguration(runtime, out _, out _), variable);
-            }
+        foreach (var variable in new[] { "n", "0", "user:10", "furni:10", "room:10", "ctx:10" }) {
+            Assert.True(WiredNativeEditorProjection.TryCompile(150, box.Descriptor, native with { VariableIds = [variable] }, out var accepted), variable);
+            Assert.True(box.TryValidateConfiguration(accepted, out _, out var error), variable + ": " + error);
         }
 
-        Assert.True(WiredNativeEditorProjection.TryCompile(150, box.Descriptor, native with { VariableIds = ["ctx:10"] }, out var accepted));
-        Assert.True(box.TryValidateConfiguration(accepted, out _, out var error), error);
+        if (WiredNativeEditorProjection.TryCompile(150, box.Descriptor, native with { VariableIds = ["custom:10"] }, out var runtime)) {
+            Assert.False(box.TryValidateConfiguration(runtime, out _, out _));
+        }
     }
 }

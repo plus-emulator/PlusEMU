@@ -51,8 +51,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_xtra_mov_no_animation", Plain("wf_xtra_mov_no_animation", [], 0));
         yield return new("wf_xtra_exec_in_order", Plain("wf_xtra_exec_in_order", [], 0));
         yield return new("wf_xtra_unseen", Plain("wf_xtra_unseen", [], 0));
-        // Amount per window and the window in half-second pulses.
-        yield return new("wf_xtra_execution_limit", Plain("wf_xtra_execution_limit", [100, 1], 2, p => In(p[0], 1, 100) && In(p[1], 1, 20)));
+        // Amount per window and the window in half-second pulses. Observed on AIR WIN63-202610201032-107964540: the window runs to 120 pulses.
+        yield return new("wf_xtra_execution_limit", Plain("wf_xtra_execution_limit", [100, 1], 2, p => In(p[0], 1, 100) && In(p[1], 1, 120)));
         // The AIR form lists skipped executions first, the picker takes the amount first.
         yield return new("wf_xtra_random", Plain("wf_xtra_random", [0, 1], 2, p => In(p[0], 0, 100) && In(p[1], 1, 100), p => [p[1], p[0]]));
         // -1 selects a comparison (index, value); 0..3 are the plain evaluation modes.
@@ -60,8 +60,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         {
             var p = n.OwnedIntParams;
 
-            if (!Shape(n, 3, 1, 0, 0)
-                || !(p[0] == -1 ? In(p[1], 0, 2) && In(p[2], 0, 1000) : In(p[0], 0, 3) && p[1] == 0 && p[2] == 0)) {
+            // Observed on AIR WIN63-202610201032-107964540: the comparison runs 0 to 3 and the count is stored as sent, in every mode.
+            if (!Shape(n, 3, 1, 0, 0) || !In(p[0], -1, 3) || !In(p[1], 0, 3)) {
                 return null;
             }
 
@@ -103,7 +103,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             if (!Shape(n, 19, 3, 3, 2) || !TryTarget(p[5], out var timeTarget) || !TryTarget(p[17], out var distanceTarget)
                 || !(p[0] is 0 or 1 && In(p[1], 0, 3) && p[2] is 0 or 1 && p[3] is 0 or 1 && In(p[4], 1, 100000)
                     && p[6] is 0 or 1 && p[7] is 0 or 1 && p[8] is 0 or 1 && In(p[9], 0, 100000) && In(p[10], 0, 7)
-                    && In(p[11], 0, 127) && p[12] is 0 or 1 && p[13] is 0 or 1 && In(p[14], 0, 2) && p[15] is 0 or 1
+                    && p[12] is 0 or 1 && p[13] is 0 or 1 && In(p[14], 0, 2) && p[15] is 0 or 1
                     && In(p[16], -64, 64) && In(p[18], -1000, 1000))) {
                 return null;
             }

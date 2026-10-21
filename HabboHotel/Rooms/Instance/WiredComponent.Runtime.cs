@@ -57,6 +57,12 @@ public partial class WiredComponent
     private TimeZoneInfo EffectiveTimeZone => Settings.ExplicitTimeZone ?? WiredRoomSettings.DefaultTimeZone;
     internal DateTimeOffset CalendarTime =>
         TimeZoneInfo.ConvertTime(_clock.GetUtcNow(), EffectiveTimeZone);
+    /// <summary>
+    /// The clock Date Matches and Time Matches read. Observed on AIR WIN63-202610201032-107964540: a condition without a timezone of its own
+    /// reads UTC, not the zone that @current_time uses.
+    /// </summary>
+    internal DateTimeOffset ConditionCalendarTime =>
+        throw new NotImplementedException();
     private IWiredConfigurationStore ConfigurationStore => _configurationStore;
     public WiredRoomVariables Variables => (_variables ??= new(() => new(_room,
         _database, _clock, builtinRead: ReadBuiltin, builtinWrite: WriteBuiltin, stateChanged: PublishBuiltinStateChanged, travelStore: _travelStore, quests: _quests)

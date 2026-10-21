@@ -22,8 +22,9 @@ public static class WiredTimeConditions
         // Volt weekdays are Monday=0 through Sunday=6.
         var weekday = ((int)roomLocalTime.DayOfWeek + 6) % 7;
 
-        return (weekdayMask == 0 || (weekdayMask & (1 << weekday)) != 0)
-            && (monthMask == 0 || (monthMask & (1 << (roomLocalTime.Month - 1))) != 0)
+        // Observed on AIR WIN63-202610201032-107964540: a mask with no bit set fails the condition.
+        return (weekdayMask & (1 << weekday)) != 0
+            && (monthMask & (1 << (roomLocalTime.Month - 1))) != 0
             && MatchesPart(roomLocalTime.Day, Param(config, 1), Param(config, 2, 1), Param(config, 3, 31))
             && MatchesPart(roomLocalTime.Year, Param(config, 5), Param(config, 6), Param(config, 7, 9999));
     }

@@ -416,6 +416,8 @@ public static class WiredNativeEditorProjection
             native = native with { Text = Variables.WiredVariableMetadataBox.NormalizeConnector(native.Text) };
         }
 
+        native = WiredNativeAuxiliaryEditor.StoredForm(name, native);
+
         if (itemId == 0 || !Supports(name) || native.Version != 2 || native.Category != descriptor.Category
             || native.NativeCode != Code(name) || !WithinBounds(native)) {
             return false;

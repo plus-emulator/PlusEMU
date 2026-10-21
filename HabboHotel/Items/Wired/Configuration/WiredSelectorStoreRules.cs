@@ -30,10 +30,10 @@ internal static class WiredSelectorStoreRules
         var text = native.Text;
 
         switch (name) {
-            // The altitude is 0..8000. The comparison keeps 3 and 4, which the editor never offers, and resets any other value to 0.
+            // The altitude is 0..8000. The comparison keeps 3, 4 and 5, which the editor never offers, and resets any other value to 0.
             case "wf_slc_furni_altitude":
                 p[0] = Math.Clamp(p[0], 0, 8000);
-                p[1] = p[1] is >= 0 and <= 4 ? p[1] : 0;
+                p[1] = p[1] is >= 0 and <= 5 ? p[1] : 0;
                 break;
             // The state flag is on only for the exact value 1.
             case "wf_slc_furni_bytype":
@@ -72,6 +72,12 @@ internal static class WiredSelectorStoreRules
 
         return native with { OwnedIntParams = p.ToImmutable(), Text = text };
     }
+
+    /// <summary>The neighborhood reference users come only from the trigger or a signal; another user source has its own key.</summary>
+    public static string? UserSourceRefusal(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
+        name == "wf_slc_furni_neighborhood" && native.UserSourceTypes.Where((source, index) => index < metadata.UsersAllowed.Length
+            && !metadata.UsersAllowed[index].Contains(source) && !WiredNativeEditorProjection.AnyTriggerContext.Contains(source)).Any()
+            ? WiredEditorStoreRules.UserSourceKey : null;
 
     private static ImmutableArray<int> Fit(ImmutableArray<int> ints, ImmutableArray<int> defaults) =>
         [.. Enumerable.Range(0, defaults.Length).Select(index => index < ints.Length ? ints[index] : defaults[index])];

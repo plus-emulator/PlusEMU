@@ -136,7 +136,7 @@ internal static class WiredNativeSelectorEditor
                 fields = [.. p, filter, invert];
                 break;
             case "wf_slc_furni_altitude":
-                if (p.Length != 2 || p[0] is < 0 or > 8000 || p[1] is < 0 or > 4) {
+                if (p.Length != 2 || p[0] is < 0 or > 8000 || p[1] is < 0 or > 5) {
                     return false;
                 }
 

@@ -68,8 +68,9 @@ public static class WiredSelectorModule
 
                     break;
                 }
+            // Observed on AIR WIN63-202610201032-107964540: the type is one kind, not a bit mask (3 selects nobody).
             case "wf_slc_users_bytype":
-                selected.UserIds.UnionWith(world.Users.Where(x => ((int)x.Kind & P(0, 1)) != 0).Select(x => x.Id));
+                selected.UserIds.UnionWith(world.Users.Where(x => (int)x.Kind == P(0, 1)).Select(x => x.Id));
                 break;
             case "wf_slc_users_team":
                 selected.UserIds.UnionWith(world.Users.Where(x => x.Kind == WiredSelectorEntityKind.Player
@@ -118,15 +119,20 @@ public static class WiredSelectorModule
                     break;
                 }
             case "wf_slc_furni_altitude": {
-                    if (!double.TryParse(string.IsNullOrWhiteSpace(c.Text) ? "0" : c.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var altitude) || !double.IsFinite(altitude)) {
-                        throw new ArgumentException("Altitude must be a finite invariant number");
+                    if (!decimal.TryParse(string.IsNullOrWhiteSpace(c.Text) ? "0" : c.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var altitude)) {
+                        throw new ArgumentException("Altitude must be an invariant number");
                     }
 
-                    selected.FurniIds.UnionWith(available.Where(x => (P(0, 1) switch
+                    // Observed on AIR WIN63-202610201032-107964540: a tile stacked to 0.6 equals 60, and the stored comparisons 3, 4 and 5
+                    // are <=, != and >=. A height compares as a decimal, so the double sum 0.2 + 0.2 + 0.2 is 0.6.
+                    selected.FurniIds.UnionWith(available.Where(x => (decimal)x.Z is var z && (P(0, 1) switch
                     {
-                        0 => x.Z < altitude,
-                        1 => x.Z == altitude,
-                        2 => x.Z > altitude,
+                        0 => z < altitude,
+                        1 => z == altitude,
+                        2 => z > altitude,
+                        3 => z <= altitude,
+                        4 => z != altitude,
+                        5 => z >= altitude,
                         _ => false
                     })).Select(x => x.Id));
                     break;

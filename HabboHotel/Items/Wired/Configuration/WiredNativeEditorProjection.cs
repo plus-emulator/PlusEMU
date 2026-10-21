@@ -160,6 +160,10 @@ public static class WiredNativeEditorProjection
             return unofferedUserSource;
         }
 
+        if (WiredSelectorStoreRules.UserSourceRefusal(descriptor.CanonicalName, native, metadata) is { } unofferedSelectorUser) {
+            return unofferedSelectorUser;
+        }
+
         var allowed = metadata.FurniAllowed;
 
         if (native.FurniSourceTypes.Length == allowed.Length

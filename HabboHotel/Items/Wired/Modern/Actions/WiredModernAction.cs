@@ -604,7 +604,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         continue;
                     }
 
-                    if (config.Text.Length > 0) {
+                    // Observed on AIR WIN63-202610201032-107964540: Kick User whispers the user even when the box has no message (an empty line).
+                    if (name == "wf_act_kick_user" || config.Text.Length > 0) {
                         client.Send(new WiredChatComposer(user.VirtualId, user.VirtualId, FormatLegacyText(context, user, config.Text), 34, -1, true));
                     }
 

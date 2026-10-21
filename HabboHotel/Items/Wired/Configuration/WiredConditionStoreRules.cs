@@ -32,6 +32,8 @@ internal static class WiredConditionStoreRules
         { "wf_cnd_match_snapshot", new(OnlyOne) },
         { "wf_cnd_not_match_snap", new(OnlyOne) },
         { "wf_cnd_not_user_count", new(UserCount) },
+        // User Count In also keeps a quantifier of 1 or 2 although its editor shows none.
+        { "wf_cnd_user_count_in", new(UserCount, KeepsQuantifierTwo: true) },
         { "wf_cnd_match_date", new(MatchDate, ZoneOrEmpty) },
         { "wf_cnd_match_time", new(MatchTime, ZoneOrEmpty) },
         // Move Furni As Group: the target flag is 0 or 1 and each offset is clamped to the editor's -64..64.
@@ -49,6 +51,10 @@ internal static class WiredConditionStoreRules
         // The group conditions keep the id text only when it is a decimal number.
         { "wf_cnd_actor_in_group", new(Unchanged, DecimalOrEmpty, KeepsQuantifierTwo: true) },
         { "wf_cnd_not_in_group", new(Unchanged, DecimalOrEmpty, KeepsQuantifierTwo: true) },
+        // Triggerer Matches: the user type is 1 to 4 (0 and below read as 1, above 4 as 4); the name has no length limit and a tab or a
+        // line feed in it is stored as a space.
+        { "wf_cnd_triggerer_match", new(TriggererType, SingleLine, KeepsQuantifierTwo: true) },
+        { "wf_cnd_not_triggerer_match", new(TriggererType, SingleLine, KeepsQuantifierTwo: true) },
         { "wf_cnd_stuff_is", new(Unchanged, FitsToFrame: false, KeepsQuantifierTwo: true) },
         { "wf_cnd_not_stuff_is", new(Unchanged, FitsToFrame: false, KeepsQuantifierTwo: true) },
         { "wf_cnd_has_handitem", new(Unchanged, KeepsQuantifierTwo: true) },
@@ -81,6 +87,10 @@ internal static class WiredConditionStoreRules
     private static ImmutableArray<int> OnOff(ImmutableArray<int> p) => [p[0] == 0 ? 0 : 1];
 
     private static ImmutableArray<int> OnlyOne(ImmutableArray<int> p) => [.. p.Select(flag => flag == 1 ? 1 : 0)];
+
+    private static ImmutableArray<int> TriggererType(ImmutableArray<int> p) => [Math.Clamp(p[0], 1, 4)];
+
+    private static string SingleLine(string text) => text.Replace('\t', ' ').Replace('\n', ' ');
 
     private static ImmutableArray<int> UserCount(ImmutableArray<int> p)
     {

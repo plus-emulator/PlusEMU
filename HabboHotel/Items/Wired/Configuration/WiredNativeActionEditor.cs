@@ -149,7 +149,7 @@ internal static class WiredNativeActionEditor
             case "wf_act_unfreeze":
             case "wf_act_leave_team":
             case "wf_act_kick_user":
-                if (p.Length != 0 || name == "wf_act_kick_user" && text.Length > 100 || name != "wf_act_kick_user" && text != "") {
+                if (p.Length != 0 || name == "wf_act_kick_user" && text.Length > 200 || name != "wf_act_kick_user" && text != "") {
                     return false;
                 }
 

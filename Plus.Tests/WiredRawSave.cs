@@ -58,6 +58,9 @@ internal sealed class WiredRawSave : IDisposable
     /// <summary>A floor furni the box can pick, of the kind its editor accepts.</summary>
     public uint Furni(string interaction = "test") => _world.AddItem(interaction, InteractionType.None).Id;
 
+    /// <summary>A floor furni of the given kind, for the boxes that only accept some kinds as picks.</summary>
+    public uint Furni(string interaction, InteractionType type) => _world.AddItem(interaction, type).Id;
+
     /// <summary>A Furni Chest the chest boxes accept as a pick.</summary>
     public uint FurniChest() => _world.AddChest(Plus.HabboHotel.Items.Wired.Chests.WiredChestKind.Furni).Id;
 

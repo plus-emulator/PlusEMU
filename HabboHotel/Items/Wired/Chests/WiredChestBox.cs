@@ -68,6 +68,16 @@ public class WiredChestBox : WiredModernBox
     {
         error = "";
 
+        // Observed on AIR WIN63-202610201032-107964540: Transaction Failed accepts only contracts and the trade wired as picks, from either
+        // pick list.
+        if (Descriptor.CanonicalName == "wf_trg_transaction_fail"
+            && proposed.SelectedItems.Concat(proposed.SecondarySelectedItems).Any(id => Instance.GetRoomItemHandler().GetItem(id) is not { } item
+                || !IsTransactionSource(item))) {
+            error = "wiredfurni.error.require_contracts_or_trade_wired";
+
+            return false;
+        }
+
         if (Descriptor.CanonicalName is not ("wf_cnd_chest_has_item_type" or "wf_xtra_scan_chest_furni_by_type")) {
             return true;
         }
@@ -83,6 +93,9 @@ public class WiredChestBox : WiredModernBox
 
         return true;
     }
+
+    private static bool IsTransactionSource(Item item) => item.Definition.InteractionType is InteractionType.WiredContractPayment
+        or InteractionType.WiredContractTrade or InteractionType.WiredContractReward || item.Definition.ItemName == "wf_act_init_transaction";
 
     // Observed r93h/r93j r93-p2-chests-empty (hhus, WIN63-202610131318): give_currency and give_furni refuse a picked chest that is not
     // an upgraded Wired chest of their kind ("wiredfurni.error.require_coin_chests" / "require_furni_chests"); after the free Wired

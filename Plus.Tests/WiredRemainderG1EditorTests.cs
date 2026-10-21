@@ -63,7 +63,7 @@ public sealed class WiredRemainderG1EditorTests
         { "wf_xtra_custom_contract", [0, 0, 0, 1, -20, 0, 0, 0, 1, -20], [0, 0, 200, 200], [200, 200], [[0, 100, 101, 200, 201], [0, 100, 101, 200, 201], [0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [[0, 200, 201], [0, 200, 201]] },
         // The triggers only pick the contracts they listen for.
         { "wf_trg_transaction_complete", [], [100], [], [[100]], [] },
-        { "wf_trg_transaction_fail", [], [100], [], [[100]], [] }
+        { "wf_trg_transaction_fail", [], [100], [], [[100, 200]], [] }
     };
 
     [Theory]

@@ -102,9 +102,14 @@ public sealed class WiredModernCondition : WiredModernBox
                     return Quantify(user => MatchesKind(user, Param(config, 0)), 4);
                 }
 
-                var comparisons = Users(context, config, "comparison", config.UserSources["comparison"] == 101 ? config.Text : null)
+                // Observed on AIR WIN63-202610201032-107964540: the name of any triggerer type is compared here (a bot too), the name of a
+                // user with its case kept and the name of a bot without regard to case.
+                var comparisons = (config.UserSources["comparison"] == 101
+                        ? context.Targets.ResolveUsers(context, [], WiredSources.AllRoom)
+                        : Users(context, config, "comparison"))
                     .Where(user => MatchesKind(user, Param(config, 0)))
-                    .Where(user => Param(config, 1) == 0 || string.Equals(Name(user), config.Text, StringComparison.OrdinalIgnoreCase))
+                    .Where(user => Param(config, 1) == 0 || string.Equals(Name(user), config.Text,
+                        user.IsBot ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                     .Select(user => user.VirtualId).ToHashSet();
 
                 return comparisons.Count != 0 && Quantify(user => MatchesKind(user, Param(config, 0)) && comparisons.Contains(user.VirtualId), 4);

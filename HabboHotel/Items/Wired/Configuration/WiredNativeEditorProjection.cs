@@ -321,7 +321,8 @@ public static class WiredNativeEditorProjection
 
         // Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight, Set Furni Visibility and Bot Reaches Furni keep the default
         // for a user source slot that is left out, and refuse an extra slot with its own key.
-        if ((WiredFurniVisualRules.Applies(descriptor.CanonicalName) || descriptor.CanonicalName == "wf_trg_bot_reached_stf")
+        if ((WiredFurniVisualRules.Applies(descriptor.CanonicalName) || descriptor.CanonicalName == "wf_trg_bot_reached_stf"
+                || WiredSaveLeniency.PadsUserSources(descriptor.CanonicalName))
             && native.UserSourceTypes.Length != metadata.UsersAllowed.Length) {
             if (native.UserSourceTypes.Length > metadata.UsersAllowed.Length) {
                 error = WiredFurniVisualRules.UserSourceCountKey;
@@ -572,7 +573,7 @@ public static class WiredNativeEditorProjection
                 break;
             case "wf_cnd_user_count_in":
                 if (p.Length != 2 || p.Any(value => value is < 0 or > 125) || p[0] > p[1]
-                    || native.Text != "" || native.Quantifier != 0) {
+                    || native.Text != "" || native.Quantifier is not (0 or 1 or 2)) {
                     return false;
                 }
 

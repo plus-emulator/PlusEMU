@@ -255,6 +255,11 @@ public sealed class WiredConfigurationService(
 
     private string ValidateBotFigure(string data, GameClient session)
     {
+        // Observed on AIR WIN63-202610201032-107964540: an empty name and figure sent as an empty text read back as a single tab.
+        if (data.Length == 0) {
+            return "\t";
+        }
+
         var fields = data.Split('\t', 2);
 
         if (fields.Length == 2) {

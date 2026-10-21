@@ -434,14 +434,13 @@ public class Item
     /// <summary>A stacking height set by the Override Height effect; null keeps the definition's height. Not persisted.</summary>
     internal double? WiredHeightOverride { get; set; }
 
-    public double CurrentHeight
+    public double CurrentHeight => WiredHeightOverride ?? StateHeight;
+
+    /// <summary>The height the furni has in its current state, without the Override Height effect.</summary>
+    public double StateHeight
     {
         get
         {
-            if (WiredHeightOverride is { } overridden) {
-                return overridden;
-            }
-
             if (Definition.AdjustableHeights is { Count: > 1 } heights
                 && int.TryParse(LegacyDataString, out var index) && index >= 0 && index < heights.Count
                 && GetZ + heights[index] >= 0) {
@@ -453,6 +452,13 @@ public class Item
     }
 
     public double TotalHeight => GetZ + CurrentHeight;
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a furni whose height depends on its state keeps that state while furni stand on it,
+    /// both on a double-click and on Toggle State.
+    /// </summary>
+    internal bool StateHeldByFurniOnTop => Definition.AdjustableHeights.Count > 1 && GetRoom()?.GetGameMap() is { } map
+        && GetCoords.Any(tile => map.GetCoordinatedItems(tile).Any(other => !ReferenceEquals(other, this) && other.GetZ > GetZ));
 
     public bool IsWallItem => Definition.Type == ItemType.Wall;
 
@@ -1523,7 +1529,16 @@ public class Item
     {
         var room = GetRoom();
 
-        if (room == null || !IsFloorItem || Definition.AdjustableHeights.Count > 1) {
+        if (room == null || !IsFloorItem) {
+            UpdateState();
+
+            return;
+        }
+
+        // Observed on AIR WIN63-202610201032-107964540: a furni whose height depends on its state sends its new state, then its
+        // ObjectUpdate with the new height, then the height map.
+        if (Definition.AdjustableHeights.Count > 1) {
+            room.SendObjectData(this, LegacyDataString, false);
             UpdateState();
 
             return;
@@ -1551,10 +1566,6 @@ public class Item
             room.GetRoomItemHandler().UpdateItem(this);
         }
 
-        if (IsFloorItem) {
-            room.GetGameMap()?.NotifyPlacementState(this);
-        }
-
         if (inRoom) {
             if (IsFloorItem) {
                 var furnitureSnapshot = RoomItemSnapshot.Capture(this);
@@ -1566,6 +1577,11 @@ public class Item
                 room.SendPacket(new ItemUpdateComposer(furnitureSnapshot));
                 room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
             }
+        }
+
+        // Observed on AIR WIN63-202610201032-107964540: the height map follows the ObjectUpdate with the new height.
+        if (IsFloorItem) {
+            room.GetGameMap()?.NotifyPlacementState(this);
         }
     }
 

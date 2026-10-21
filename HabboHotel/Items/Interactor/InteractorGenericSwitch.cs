@@ -14,7 +14,7 @@ public class InteractorGenericSwitch(IQuestManager quests, IRewardTrackManager r
     {
         var modes = item.Definition.Modes - 1;
 
-        if (session == null || !hasRights || modes <= 0) {
+        if (session == null || !hasRights || modes <= 0 || item.StateHeldByFurniOnTop) {
             return;
         }
 

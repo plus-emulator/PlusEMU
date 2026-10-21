@@ -115,7 +115,7 @@ public sealed record RoomItemSnapshot(
             : guildData ?? FurnitureDataSnapshot.Capture(item.ExtraData);
 
         return new(item.Id, definition.SpriteId, item.GetX, item.GetY, item.Rotation,
-            TextHandling.GetString(z), TextHandling.GetString(definition.Height), extra,
+            TextHandling.GetString(z), TextHandling.GetString(item.StateHeight), extra,
             data, item.UniqueNumber, item.UniqueSeries, item.WallCoordinates ?? "",
             type == InteractionType.Postit ? legacy.Split(' ')[0] : legacy,
             UsagePolicy(definition), item.UserId, item.Username ?? "",

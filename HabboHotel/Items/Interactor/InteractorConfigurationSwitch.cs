@@ -55,7 +55,7 @@ public sealed class InteractorConfigurationSwitch(TimeProvider? clock = null) : 
         }
 
         item.LastSwitchUse = now;
-        Toggle(item);
+        Toggle(item, used: true);
     }
     public void OnWiredTrigger(Item item)
     {
@@ -64,11 +64,19 @@ public sealed class InteractorConfigurationSwitch(TimeProvider? clock = null) : 
             return;
         }
 
-        Toggle(item);
+        Toggle(item, used: false);
     }
-    private static void Toggle(Item item)
+    private static void Toggle(Item item, bool used)
     {
         item.LegacyDataString = item.LegacyDataString == "1" ? "0" : "1";
+
+        // Observed on AIR WIN63-202610201032-107964540: using the wired disabler sends one ObjectDataUpdate, not an ObjectUpdate.
+        if (used && item.Definition.InteractionType == InteractionType.WiredDisabler) {
+            item.UpdateUsedState();
+            ConfigurationItemStates.StateChanged(item);
+
+            return;
+        }
 
         // Observed on AIR WIN63-202610201032-107964540: a switch of the chooser disabler sends only the room flags, no ObjectUpdate.
         item.UpdateState(true, item.Definition.InteractionType != InteractionType.ChooserDisabler);

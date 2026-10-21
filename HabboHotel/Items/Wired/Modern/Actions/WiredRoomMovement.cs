@@ -609,7 +609,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     private static bool ValidAvatarDestination(Room room, int x, int y) => room.GetGameMap().ValidTile(x, y)
         && room.GetGameMap().Model.SqState[x, y] == SquareState.Open;
     public static WiredSelectorFurniture Furniture(Item item) => new(item.Id, (int)item.Definition.Id,
-        item.Definition.PublicName, item.LegacyDataString, item.GetX, item.GetY, item.GetZ, item.TotalHeight - item.GetZ,
+        item.Definition.DisplayName, item.LegacyDataString, item.GetX, item.GetY, item.GetZ, item.TotalHeight - item.GetZ,
         WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation).Select(point => (point.X, point.Y)).ToArray(),
         item.IsFloorItem, item.IsWired);
 }

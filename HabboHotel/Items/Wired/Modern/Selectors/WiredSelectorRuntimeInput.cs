@@ -101,7 +101,7 @@ public sealed record WiredSelectorRuntimeInput(WiredSelectorWorld World, WiredSe
         }
 
         var furni = items.Select(item => new WiredSelectorFurniture(item.Id, checked((int)item.Definition.Id),
-            item.Definition.PublicName, item.LegacyDataString, item.GetX, item.GetY, item.GetZ,
+            item.Definition.DisplayName, item.LegacyDataString, item.GetX, item.GetY, item.GetZ,
             item.TotalHeight - item.GetZ, item.GetAffectedTiles.Values.Select(t => (t.X, t.Y))
                 .Append((item.GetX, item.GetY)).Distinct().ToArray(), item.IsFloorItem, item.IsWired)).ToArray();
         var avatars = users.Select(user => Avatar(user, state.Read(user))).ToArray();

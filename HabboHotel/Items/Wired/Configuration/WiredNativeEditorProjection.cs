@@ -313,6 +313,12 @@ public static class WiredNativeEditorProjection
             native = filled;
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: these boxes read an empty user source list as the frame default.
+        if (WiredSaveLeniency.FillsEmptyUserSources(descriptor.CanonicalName) && native.UserSourceTypes.IsEmpty && metadata.UsersAllowed.Length > 0) {
+            filled = native with { UserSourceTypes = metadata.UserDefaults };
+            native = filled;
+        }
+
         var slots = metadata.FurniAllowed.Length;
         var given = native.FurniSourceTypes.Length;
 

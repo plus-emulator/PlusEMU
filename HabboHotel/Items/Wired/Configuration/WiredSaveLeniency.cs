@@ -21,7 +21,7 @@ internal static class WiredSaveLeniency
         "wf_cnd_time_less_than", "wf_cnd_time_more_than", "wf_cnd_has_handitem", "wf_cnd_not_has_handitem",
         "wf_trg_collision", "wf_trg_state_changed", "wf_trg_walks_off_furni", "wf_trg_click_tile", "wf_trg_click_user", "wf_trg_clock_counter",
         "wf_slc_users_onfurni", "wf_slc_furni_signal", "wf_slc_furni_altitude", "wf_slc_furni_area", "wf_slc_furni_bytype",
-        "wf_slc_furni_neighborhood", "wf_slc_remote", "wf_slc_users_bytype", "wf_slc_users_handitem"
+        "wf_slc_furni_neighborhood", "wf_slc_remote", "wf_slc_users_bytype", "wf_slc_users_handitem", "wf_trg_stuff_state"
     }.ToFrozenSet();
 
     // Boxes without int fields, whose ints are all dropped. The ints of the other boxes are cut and padded by their own store rules.
@@ -29,14 +29,27 @@ internal static class WiredSaveLeniency
     {
         "wf_act_chase", "wf_act_flee", "wf_act_neg_call_stacks", "wf_act_toggle_to_rnd", "wf_act_reset_timers", "wf_act_unfreeze",
         "wf_cnd_stuff_is", "wf_cnd_not_stuff_is", "wf_cnd_trggrer_on_frn", "wf_cnd_not_trggrer_on",
-        "wf_trg_collision", "wf_trg_state_changed", "wf_trg_walks_off_furni", "wf_trg_click_tile", "wf_slc_users_onfurni", "wf_slc_furni_signal"
+        "wf_trg_collision", "wf_trg_state_changed", "wf_trg_walks_off_furni", "wf_trg_click_tile", "wf_slc_users_onfurni", "wf_slc_furni_signal",
+        "wf_trg_bot_reached_avtr", "wf_trg_bot_reached_stf"
     }.ToFrozenSet();
 
-    public static bool Applies(string name) => NoText.Contains(name) || NoInts.Contains(name);
+    // Boxes that read an empty user source list as the frame default.
+    private static readonly FrozenSet<string> EmptyUserSourcesTakeDefault = new[]
+    {
+        "wf_act_move_furni_as_group", "wf_act_neg_send_signal", "wf_trg_bot_reached_avtr", "wf_trg_bot_reached_stf"
+    }.ToFrozenSet();
+
+    public static bool FillsEmptyUserSources(string name) => EmptyUserSourcesTakeDefault.Contains(name);
+
+    public static bool Applies(string name) => NoText.Contains(name) || NoInts.Contains(name) || name == FurniNameOutput;
+
+    private const string FurniNameOutput = "wf_xtra_text_output_furni_name";
 
     public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native) => native with
     {
         Text = NoText.Contains(name) ? "" : native.Text,
-        OwnedIntParams = NoInts.Contains(name) ? [] : native.OwnedIntParams
+        // The show-multiple flag of the furni name output reads 1 for any value but 0, and 0 when the save leaves it out.
+        OwnedIntParams = NoInts.Contains(name) ? [] : name == FurniNameOutput ? [native.OwnedIntParams is [var flag, ..] && flag != 0 ? 1 : 0]
+            : native.OwnedIntParams
     };
 }

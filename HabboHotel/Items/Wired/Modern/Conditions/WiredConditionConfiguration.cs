@@ -108,8 +108,9 @@ public static class WiredConditionConfiguration
             case "wf_cnd_actor_in_team":
             case "wf_cnd_has_handitem":
             case "wf_cnd_wearing_effect":
-                // AirSourceOnly (class_4227.as): the effect id box spans the whole int range.
-                if (p.Length != 3 || p[0] < 0 && name != "wf_cnd_wearing_effect" || name == "wf_cnd_actor_in_team" && p[0] > 4 || !U(1) || !Q(2)) {
+                // AirSourceOnly (class_4227.as): the effect id box spans the whole int range. Observed on AIR WIN63-202610201032-107964540:
+                // Has Hand Item stores any int as sent, a negative one too.
+                if (p.Length != 3 || p[0] < 0 && name == "wf_cnd_actor_in_team" || name == "wf_cnd_actor_in_team" && p[0] > 4 || !U(1) || !Q(2)) {
                     return false;
                 }
 

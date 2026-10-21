@@ -132,7 +132,8 @@ public static class WiredTriggerConfiguration
                 users["bots"] = p[0];
                 break;
             case "wf_trg_bot_reached_stf":
-                if (p.Length != 2 || !F(0) || !B(1) || proposed.Text.Length > 64) {
+                // Observed on AIR WIN63-202610201032-107964540: a bot name of any length is stored.
+                if (p.Length != 2 || !F(0) || !B(1)) {
                     return false;
                 }
 

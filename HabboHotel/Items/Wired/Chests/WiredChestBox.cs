@@ -102,16 +102,17 @@ public class WiredChestBox : WiredModernBox
         return true;
     }
 
-    private static bool IsTransactionSource(Item item) => WiredChestFurniture.IsContract(item.Definition) || item.Definition.ItemName == "wf_act_init_transaction";
+    private static bool IsTransactionSource(Item item) => WiredChestFurniture.IsContract(item.Definition) || item.Definition.ItemName == "wf_xtra_custom_contract";
 
     private sealed record PickRule(Func<Item, bool> Accepts, string Key);
 
     private static readonly PickRule ContractsOrTradeWired = new(IsTransactionSource, "wiredfurni.error.require_contracts_or_trade_wired");
 
-    // Observed on AIR WIN63-202610201032-107964540: these boxes refuse a pick of any other furni, from either pick list, with the key.
+    // Observed on AIR WIN63-202610201032-107964540: these boxes accept the three contracts and the Custom Contract add-on, and refuse a
+    // pick of any other furni, the Initiate Transaction box included, from either pick list, with the key.
     private static readonly FrozenDictionary<string, PickRule> PickRules = new Dictionary<string, PickRule>
     {
-        { "wf_act_cancel_transaction", new(item => WiredChestFurniture.IsContract(item.Definition), "wiredfurni.error.require_contracts") },
+        { "wf_act_cancel_transaction", new(IsTransactionSource, "wiredfurni.error.require_contracts") },
         { "wf_trg_transaction_complete", ContractsOrTradeWired },
         { "wf_trg_transaction_fail", ContractsOrTradeWired }
     }.ToFrozenDictionary();

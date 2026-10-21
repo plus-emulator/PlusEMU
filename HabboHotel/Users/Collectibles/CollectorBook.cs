@@ -59,9 +59,3 @@ public sealed class CollectorBook(ImmutableArray<CollectibleSet> sets, IReadOnly
         set.Prize(prize) != null && IsComplete(set) && !HasClaimed(set, prize)
         && (prize == SetPrize.Reward || (set.ReleasedAt is not { } released || released <= now) && (set.SnapshotAt is not { } snapshot || now < snapshot));
 }
-
-/// <summary>The collectible tables keep DATETIME values in UTC, and MySQL hands them back without a kind.</summary>
-public static class CollectibleTime
-{
-    public static DateTimeOffset Utc(DateTime stored) => new(DateTime.SpecifyKind(stored, DateTimeKind.Utc));
-}

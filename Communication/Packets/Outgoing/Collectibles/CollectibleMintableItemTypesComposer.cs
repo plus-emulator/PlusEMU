@@ -1,12 +1,11 @@
 using System.Collections.Immutable;
 using Plus.HabboHotel.GameClients;
-using Plus.HabboHotel.Users.Collectibles;
 
 namespace Plus.Communication.Packets.Outgoing.Collectibles;
 
 /// <summary>A furni that can be minted: its type ("s" floor, "i" wall), sprite, the product it becomes, price in mint tokens and window.</summary>
-public sealed record MintableItem(int Id, string ItemType, int SpriteId, string ProductCode, int TokenPrice, DateTime? StartsAt, DateTime? EndsAt,
-    bool RegionLocked, bool LimitedEdition);
+public sealed record MintableItem(int Id, string ItemType, int SpriteId, string ProductCode, int TokenPrice, DateTimeOffset? StartsAt,
+    DateTimeOffset? EndsAt, bool RegionLocked, bool LimitedEdition);
 
 /// <summary>
 /// AIR collectibles/class_4328.as:26-30 and class_4398.as:23-47: per item its sprite, start and end in unix seconds (0 = none), region lock,
@@ -31,5 +30,5 @@ public sealed class CollectibleMintableItemTypesComposer(ImmutableArray<Mintable
         }
     }
 
-    private static int UnixSeconds(DateTime? stored) => stored is { } time ? (int)CollectibleTime.Utc(time).ToUnixTimeSeconds() : 0;
+    private static int UnixSeconds(DateTimeOffset? time) => (int)(time?.ToUnixTimeSeconds() ?? 0);
 }

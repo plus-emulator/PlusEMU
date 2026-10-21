@@ -6,6 +6,7 @@
 -- collectible_shop_offers: the Shop tab, priced in emeralds. mint_limit -1 means no limit.
 -- collectible_mint_token_offers: mint token packs bought with silver.
 -- collectible_mintable_items: furni that can be minted (item_type s = floor, i = wall) and the product it becomes.
+--   A row needs ends_at for the client to allow minting, because AIR treats an end time of 0 as ended (MintInventoryListTab.as isMintPeriodExpired).
 -- collectible_levels: the collector level ladder. A wallet's level is the highest level whose min_score is not above its score.
 -- collectible_reward_claims: the monthly collector rewards; user_collectible_reward_claims counts how often each wallet claimed one.
 -- user_collectible_collection_claims: the bonus and reward of a set a wallet already claimed.

@@ -469,8 +469,7 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
             """, transaction: transaction)
             .Select(row => new CollectibleSet(row.Id, row.Name, row.BoostScore,
                 [.. products.Values.Where(product => product.CollectionId == row.Id).Select(product => product.Product)],
-                Prize(row.BonusProductCode), Prize(row.RewardProductCode),
-                row.ReleasedAt is { } released ? CollectibleTime.Utc(released) : null, row.SnapshotAt is { } snapshot ? CollectibleTime.Utc(snapshot) : null));
+                Prize(row.BonusProductCode), Prize(row.RewardProductCode), row.ReleasedAt, row.SnapshotAt));
         var levels = connection.Query<CollectorLevel>("SELECT level AS Level, min_score AS MinScore FROM collectible_levels", transaction: transaction);
         var owned = connection.Query<(string ProductCode, long Count)>(
             "SELECT product_code, COUNT(*) FROM user_collectibles WHERE wallet_address = @wallet GROUP BY product_code", new { wallet }, transaction);
@@ -497,8 +496,8 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
 
     private sealed record WalletRow(string Address, bool IsCollector, int MintTokens, int HighestScore);
 
-    private sealed record SetRow(string Id, string Name, int BoostScore, string? BonusProductCode, string? RewardProductCode, DateTime? ReleasedAt,
-        DateTime? SnapshotAt);
+    private sealed record SetRow(string Id, string Name, int BoostScore, string? BonusProductCode, string? RewardProductCode,
+        DateTimeOffset? ReleasedAt, DateTimeOffset? SnapshotAt);
 
     private sealed record ProductRow(string ProductCode, string? CollectionId, short ProductType, string ItemTypeId, int Score, string Rarity, string PetFigure,
         string FigureSetIds)

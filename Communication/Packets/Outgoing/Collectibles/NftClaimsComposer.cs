@@ -6,8 +6,8 @@ using Plus.HabboHotel.Users.Collectibles;
 namespace Plus.Communication.Packets.Outgoing.Collectibles;
 
 /// <summary>A monthly collector reward and how often the wallet claimed it.</summary>
-public sealed record NftRewardClaim(string ClaimId, string ProductCode, string SetId, string SetName, int ClaimLimit, DateTime ValidFrom, DateTime ValidTo,
-    DateTime CreatedAt, DateTime UpdatedAt, long Claimed)
+public sealed record NftRewardClaim(string ClaimId, string ProductCode, string SetId, string SetName, int ClaimLimit,
+    DateTimeOffset ValidFrom, DateTimeOffset ValidTo, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, long Claimed)
 {
     public bool Open => Claimed < ClaimLimit;
 }
@@ -43,5 +43,5 @@ public sealed class NftClaimsComposer(string wallet, ImmutableArray<(NftRewardCl
         }
     }
 
-    private static void WriteTime(IOutgoingPacket packet, DateTime stored) => DailyTaskWireWriter.WriteLong(packet, CollectibleTime.Utc(stored).ToUnixTimeMilliseconds());
+    private static void WriteTime(IOutgoingPacket packet, DateTimeOffset time) => DailyTaskWireWriter.WriteLong(packet, time.ToUnixTimeMilliseconds());
 }

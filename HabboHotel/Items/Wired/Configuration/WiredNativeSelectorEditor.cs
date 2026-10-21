@@ -75,7 +75,7 @@ internal static class WiredNativeSelectorEditor
                 sources = sources.Add("items", native.FurniSourceTypes[0]);
                 break;
             case "wf_slc_users_bytype":
-                if (p.Length != 1 || p[0] is not (1 or 2 or 4)) {
+                if (p.Length != 1 || p[0] is < 1 or > 4) {
                     return false;
                 }
 
@@ -105,11 +105,13 @@ internal static class WiredNativeSelectorEditor
                 fields = [native.FurniSourceTypes[0], filter, invert];
                 break;
             case "wf_slc_users_group":
-                if (!p.IsEmpty || text.Length > 0 && (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var group) || group <= 0)) {
+                if (!p.IsEmpty) {
                     return false;
                 }
 
-                fields = [text.Length == 0 ? 0 : 1, text.Length == 0 ? 0 : int.Parse(text, CultureInfo.InvariantCulture), filter, invert];
+                // A stored id that is not a positive number fitting 32 bits names no group.
+                var group = int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedGroup) ? parsedGroup : 0;
+                fields = [text.Length == 0 ? 0 : 1, group, filter, invert];
                 break;
             case "wf_slc_users_byname":
                 if (!p.IsEmpty || !WithinUsernameLimits(text)) {
@@ -119,7 +121,7 @@ internal static class WiredNativeSelectorEditor
                 fields = [filter, invert];
                 break;
             case "wf_slc_users_byaction":
-                if (p.Length != 1 || !WiredNativeTriggerEditor.TryAvatarAction(p[0], text, out var action)) {
+                if (p.Length != 1 || !WiredNativeTriggerEditor.TryStoredAvatarAction(p[0], text, out var action)) {
                     return false;
                 }
 
@@ -134,7 +136,7 @@ internal static class WiredNativeSelectorEditor
                 fields = [.. p, filter, invert];
                 break;
             case "wf_slc_furni_altitude":
-                if (p.Length != 2 || p[0] is < 0 or > 8000 || p[1] is < 0 or > 2) {
+                if (p.Length != 2 || p[0] is < 0 or > 8000 || p[1] is < 0 or > 4) {
                     return false;
                 }
 

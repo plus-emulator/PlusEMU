@@ -132,11 +132,6 @@ internal static class WiredNativeTriggerEditor
             return false;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: Bot Reaches Avatar keeps a bot name of any length.
-        if (name == "wf_trg_bot_reached_stf" && native.Text.Length > WiredBotActions.NameEditorLength) {
-            return false;
-        }
-
         var proposed = new WiredConfiguration
         {
             IntParams = parameters,

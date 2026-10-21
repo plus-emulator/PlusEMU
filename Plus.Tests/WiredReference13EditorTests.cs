@@ -84,7 +84,6 @@ public sealed class WiredReference13EditorTests
     [Theory]
     [InlineData("wf_act_bot_teleport", 0)]
     [InlineData("wf_act_bot_follow_avatar", 1)]
-    [InlineData("wf_trg_bot_reached_stf", 0)]
     public void EveryBotNameBoxTakesThirtyTwoCharacters(string name, int ints)
     {
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
@@ -94,11 +93,13 @@ public sealed class WiredReference13EditorTests
         Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { Text = new string('b', 33) }, out _));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Bot Reaches Avatar keeps a bot name of any length.
-    [Fact]
-    public void BotReachesAvatarTakesALongerBotName()
+    // Observed on AIR WIN63-202610201032-107964540: Bot Reaches Avatar and Bot Reaches Furni keep a bot name of any length.
+    [Theory]
+    [InlineData("wf_trg_bot_reached_avtr")]
+    [InlineData("wf_trg_bot_reached_stf")]
+    public void BotReachesTriggersTakeALongerBotName(string name)
     {
-        Assert.True(WiredBoxRegistry.TryGet("wf_trg_bot_reached_avtr", out var descriptor));
+        Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
         var native = WiredNativeEditorProjection.DefaultNative(descriptor);
         Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { Text = new string('b', 33) }, out _));
     }

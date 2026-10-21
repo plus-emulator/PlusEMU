@@ -313,6 +313,12 @@ public static class WiredNativeEditorProjection
             native = filled;
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: these boxes read an empty user source list as the frame default.
+        if (WiredSaveLeniency.FillsEmptyUserSources(descriptor.CanonicalName) && native.UserSourceTypes.IsEmpty && metadata.UsersAllowed.Length > 0) {
+            filled = native with { UserSourceTypes = metadata.UserDefaults };
+            native = filled;
+        }
+
         var slots = metadata.FurniAllowed.Length;
         var given = native.FurniSourceTypes.Length;
 
@@ -373,6 +379,12 @@ public static class WiredNativeEditorProjection
             native = WiredConditionStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: a text and ints a box does not read are accepted and dropped. Only a new save is
+        // fitted; a stored row loads in the form it was saved in.
+        if (!storedRow && WiredSaveLeniency.Applies(name) && Supports(name)) {
+            native = WiredSaveLeniency.Normalize(name, native);
+        }
+
         // Observed on AIR WIN63-202610201032-107964540: Room Initialized has no fields; ints and a text in a save are accepted and dropped.
         if (name == "wf_trg_room_initializes" && Supports(name)) {
             native = native with { OwnedIntParams = [], Text = "" };
@@ -381,6 +393,11 @@ public static class WiredNativeEditorProjection
         // Observed on AIR WIN63-202610201032-107964540: these triggers store a save in a normal form instead of refusing odd values.
         if (WiredTriggerStoreRules.Applies(name) && Supports(name)) {
             native = WiredTriggerStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
+        }
+
+        // Observed on AIR WIN63-202610201032-107964540: these selectors store a save in a normal form instead of refusing odd values.
+        if (!storedRow && WiredSelectorStoreRules.Applies(name) && Supports(name)) {
+            native = WiredSelectorStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 
         // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).

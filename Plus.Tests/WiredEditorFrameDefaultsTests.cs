@@ -30,7 +30,15 @@ public class WiredEditorFrameDefaultsTests
 
         Assert.Equal(saved, fresh.IntParams.ToArray());
         Assert.Equal(saved, old.IntParams.ToArray());
-        Assert.False(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [.. saved, 1] }));
+
+        // Observed on AIR WIN63-202610201032-107964540: Furni Neighborhood accepts an 18th int in a save and stores it as 0.
+        if (name == "wf_slc_furni_neighborhood") {
+            var extra = WiredOctoberEditorParityTests.Compile(name, native => native with { OwnedIntParams = [.. saved, 1] });
+            Assert.Equal(saved, extra.IntParams.ToArray());
+        }
+        else {
+            Assert.False(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [.. saved, 1] }));
+        }
     }
 
     [Theory]

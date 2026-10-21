@@ -98,6 +98,7 @@ internal static class FoundationRuntimeDatabase
         Assert.Equal("datetime", Column(connection, "user_effects", "activated_stamp"));
         Assert.Equal("enum('false','true')", Column(connection, "bots", "automatic_chat"));
         Assert.Equal("int(10) unsigned", Column(connection, "bots", "id"));
+        Assert.Equal("double", Column(connection, "bots", "z"));
         Assert.Equal("datetime(6)", Column(connection, "bots_petdata", "createstamp"));
         Assert.Equal("int(10) unsigned", Column(connection, "user_clothing", "part_id"));
     }

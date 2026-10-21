@@ -144,6 +144,11 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
                 Assert.Equal((room.Model.DoorX, room.Model.DoorY), (avatar.X, avatar.Y));
                 Assert.Contains(sent, packet => packet.Header == ServerPacketHeader.RoomEntryInfoComposer);
                 Assert.Equal(1, room.UserCount);
+                // Observed on AIR WIN63-202610201032-107964540: a bot placed on a colour tile at Z 0.2 is listed at "0.2" again after the room reloads.
+                var botEntry = HabbiconTestSupport.Incoming("room bot", "", "hd-180-1", bot.VirtualId, 1, 1, "0.2").Buffer;
+                Assert.Contains(sent, packet => packet.Header == ServerPacketHeader.UsersComposer && packet.Payload.AsSpan().IndexOf(botEntry.Span) >= 0);
+                Assert.True(room.GetRoomUserManager().TryGetPet(13, out var petUser));
+                Assert.Equal(0.2, petUser!.Z);
 
                 output.WriteLine("Reading DATETIME boundaries through moderation and live trading locks.");
                 var moderation = services.GetRequiredService<IModerationUserStore>();
@@ -191,8 +196,8 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
         INSERT INTO bots (id, user_id, room_id, ai_type, name, motto, look, x, y, z, automatic_chat, mix_sentences) VALUES
             (10, 7, 0, 'generic', 'inventory bot', '', 'hd-180-1', 0, 0, 0, 'false', FALSE),
             (11, 7, 0, 'pet', 'inventory pet', '', '', 0, 0, 0, 'false', FALSE),
-            (12, 7, 42, 'generic', 'room bot', '', 'hd-180-1', 1, 1, 0, 'true', TRUE),
-            (13, 7, 42, 'pet', 'room pet', '', '', 2, 1, 0, 'false', FALSE);
+            (12, 7, 42, 'generic', 'room bot', '', 'hd-180-1', 1, 1, 0.2, 'true', TRUE),
+            (13, 7, 42, 'pet', 'room pet', '', '', 2, 1, 0.2, 'false', FALSE);
         INSERT INTO bots_petdata (id, type, race, color, createstamp) VALUES
             (11, 0, '0', 'ffffff', '2017-02-19 03:13:54.123456'), (13, 0, '0', 'ffffff', '2017-02-19 03:13:54.123456');
         INSERT INTO bots_speech (bot_id, text) VALUES (12, 'hello');

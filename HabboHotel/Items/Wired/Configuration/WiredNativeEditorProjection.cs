@@ -304,9 +304,10 @@ public static class WiredNativeEditorProjection
 
         var metadata = Metadata(descriptor.CanonicalName);
 
-        // Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight and Set Furni Visibility keep the default for a user
-        // source slot that is left out, and refuse a third slot with its own key.
-        if (WiredFurniVisualRules.Applies(descriptor.CanonicalName) && native.UserSourceTypes.Length != metadata.UsersAllowed.Length) {
+        // Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight, Set Furni Visibility and Bot Reaches Furni keep the default
+        // for a user source slot that is left out, and refuse an extra slot with its own key.
+        if ((WiredFurniVisualRules.Applies(descriptor.CanonicalName) || descriptor.CanonicalName == "wf_trg_bot_reached_stf")
+            && native.UserSourceTypes.Length != metadata.UsersAllowed.Length) {
             if (native.UserSourceTypes.Length > metadata.UsersAllowed.Length) {
                 error = WiredFurniVisualRules.UserSourceCountKey;
 

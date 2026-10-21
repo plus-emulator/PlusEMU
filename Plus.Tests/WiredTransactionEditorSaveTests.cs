@@ -264,9 +264,10 @@ public sealed class WiredTransactionEditorSaveTests
     public void AGiveBoxStoresAnAmountBelowOneAsOne(string name, int last, int[] sent, int[] stored)
     {
         using var save = new WiredRawSave(name);
+        var chest = name == "wf_act_give_currency" ? save.CoinChest() : save.FurniChest();
 
         for (var index = 0; index < sent.Length; index++) {
-            var result = save.Save(ints: [0, sent[index], 0, -20, 0, last], furni: [100, 200], users: [0, 200]);
+            var result = save.Save(ints: [0, sent[index], 0, -20, 0, last], furni: [100, 200], users: [0, 200], picks: [chest]);
 
             Assert.True(result.Accepted, $"{sent[index]}: {result}");
             Assert.Equal([0, stored[index], 0, -20, 0, last], save.Stored().Ints);

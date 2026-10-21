@@ -64,6 +64,9 @@ internal sealed class WiredRawSave : IDisposable
     /// <summary>A Furni Chest the chest boxes accept as a pick.</summary>
     public uint FurniChest() => _world.AddChest(Plus.HabboHotel.Items.Wired.Chests.WiredChestKind.Furni).Id;
 
+    /// <summary>A Credit Chest the chest boxes accept as a pick.</summary>
+    public uint CoinChest() => _world.AddChest(Plus.HabboHotel.Items.Wired.Chests.WiredChestKind.Coins).Id;
+
     /// <summary>
     /// Sends one raw save. Anything left out takes the box's fresh editor value, so a call names only what it probes.
     /// </summary>

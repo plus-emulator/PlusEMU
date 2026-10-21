@@ -195,7 +195,7 @@ internal class MessengerDataLoader : IMessengerDataLoader
     {
         using var connection = _database.Connection();
 
-        return await connection.ExecuteScalarAsync<int>("SELECT count(0) FROM messenger_friendships WHERE user_one_id = @userid OR user_two_id = @userid", new { userid = userId });
+        return await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM messenger_friendships WHERE user_one_id = @userid", new { userid = userId });
     }
 
     public async Task<int> DeleteFriendship(int userOneId, int userTwoId)

@@ -1,5 +1,4 @@
 using System.Collections.Frozen;
-using System.Collections.Immutable;
 
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
@@ -10,6 +9,8 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// </summary>
 internal static class WiredSaveLeniency
 {
+    private const string FurniNameOutput = "wf_xtra_text_output_furni_name";
+
     // Boxes without a text field.
     private static readonly FrozenSet<string> NoText = new[]
     {
@@ -43,8 +44,6 @@ internal static class WiredSaveLeniency
     public static bool FillsEmptyUserSources(string name) => EmptyUserSourcesTakeDefault.Contains(name);
 
     public static bool Applies(string name) => NoText.Contains(name) || NoInts.Contains(name) || name == FurniNameOutput;
-
-    private const string FurniNameOutput = "wf_xtra_text_output_furni_name";
 
     public static WiredNativeEditorConfiguration Normalize(string name, WiredNativeEditorConfiguration native) => native with
     {

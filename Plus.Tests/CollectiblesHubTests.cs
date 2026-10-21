@@ -771,6 +771,97 @@ public sealed class CollectiblesHubTests
         });
     }
 
+    // Habbo's content from Database/Migrations/111_CollectiblesHubContent.sql, observed on Habbo US (AIR WIN63-202610201032-107964540)
+    // on 2026-10-21. FreshInstall.sql has no furni for nft_emerald_tome_5000, so its offer is left out.
+    [RoomComponentDatabaseFact]
+    public async Task TheShopSellsHabbosOffersInHabbosOrder()
+    {
+        await InHotel(async hotel =>
+        {
+            var offers = await hotel.StoreOffers(hotel.JohnDoe);
+
+            Assert.Equal(28, offers.Count);
+            Assert.DoesNotContain(offers, o => o.Code == "nft_emerald_tome_5000");
+            Assert.Equal(new StoreOffer("nft_h26_witchchair", 700, true, false, -1, 0, new Product(1, "19160", 115, null, "", "", "nft_h26_witchchair", "Epic")), offers[0]);
+            Assert.Equal(new StoreOffer("nft_h23_vintaque_chair", 40, false, false, -1, 0, new Product(1, "14101", 10, null, "", "", "nft_h23_vintaque_chair", "Common")),
+                offers.Single(o => o.Code == "nft_h23_vintaque_chair"));
+            Assert.Equal([("nft_emerald_100", 101), ("nft_emerald_1000", 1001), ("nft_emerald_500", 501), ("nft_emerald_50", 51), ("nft_emerald_10", 11)],
+                offers.TakeLast(5).Select(o => (o.Code, o.EmeraldPrice)));
+        }, habboContent: true);
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task MintTokensAreSoldInHabbosTenPacks()
+    {
+        await InHotel(async hotel =>
+        {
+            Assert.Equal(
+                Enumerable.Range(1, 10).Select(n => (29307 + n, n == 1 ? "nft_mint_token_purchase" : $"nft_mint_token_purchase_{n}", n * 100, n)),
+                await hotel.TokenOffers(hotel.JohnDoe));
+        }, habboContent: true);
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task HabbosMintableFurniKeepTheirMintingWindows()
+    {
+        await InHotel(async hotel =>
+        {
+            var items = await hotel.MintableItems(hotel.JohnDoe);
+
+            Assert.Equal(74, items.Count);
+            Assert.Equal(new Mintable(19169, 1792148400, 1794391140, false, 1, false, 0), items[0]);
+            Assert.Equal(new Mintable(14880, 1785996000, 1794304800, false, 1, false, 0), items[^1]);
+            Assert.Equal(5, items.Count(i => i.ItemType == 1));
+            Assert.Equal([(1619, 4), (4740, 3), (10210, 5)], items.Where(i => i.Price > 1).Select(i => (i.SpriteId, i.Price)));
+            Assert.Equal("nft_hween_r19_witchfamiliar",
+                hotel.Db.QuerySingle<string>("SELECT product_code FROM collectible_mintable_items WHERE item_type = 's' AND sprite_id = 10818"));
+        }, habboContent: true);
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task TheCollectionsTabListsHabbosSetsNewestFirst()
+    {
+        await InHotel(async hotel =>
+        {
+            var collections = await hotel.Collections(hotel.JohnDoe, await hotel.CollectorWallet(hotel.JohnDoe));
+
+            Assert.Equal(73, collections.Count);
+            Assert.Equal("witch_scholar", collections[0].Head.Id);
+
+            var vintaque = Assert.Single(collections, c => c.Head.Id == "vintaque");
+            Assert.Equal(new CollectionHead("vintaque", "Vintaque", 0, 150, 0, null, null, -1, -1, 0, null, null), vintaque.Head);
+            Assert.Equal(15, vintaque.Items.Count);
+            Assert.Equal(("nft_h23_vintaque_sofa", "nft_h23_vintaque_nightstand"), (vintaque.Items[0].Code, vintaque.Items[^1].Code));
+            Assert.All(vintaque.Items, item => Assert.Equal(((short)1, 0, "Common"), (item.Type, item.Amount ?? -1, item.Rarity)));
+
+            var soda = Assert.Single(Assert.Single(collections, c => c.Head.Id == "film_buff").Items, i => i.Code == "clothing_nftsoda");
+            var furni = hotel.Db.QuerySingle<(int Sprite, string Sets)>("SELECT sprite_id, custom_params FROM furniture WHERE furnidata_classname = 'clothing_nftsoda'");
+            Assert.Equal(new Product(11, furni.Sprite.ToString(), 10, 0, "", furni.Sets, "clothing_nftsoda", "Common"), soda);
+
+            Assert.Equal("Emerald Furni", Assert.Single(collections, c => c.Head.Id == "emerald_furni").Head.Name);
+            Assert.Contains(collections, c => c.Head.Id == "Lunar_New_Year_2024");
+        }, habboContent: true);
+    }
+
+    [RoomComponentDatabaseFact]
+    public async Task RunningTheContentMigrationAgainKeepsStaffEditsAndAddsNothing()
+    {
+        await InHotel(async hotel =>
+        {
+            hotel.Db.Execute("UPDATE collectible_shop_offers SET emerald_price = 1 WHERE product_code = 'nft_h26_witchchair'");
+            hotel.Db.Execute("DELETE FROM collectible_mintable_items WHERE sprite_id = 19169");
+
+            await Apply(hotel.Db, "Database/Migrations/111_CollectiblesHubContent.sql");
+
+            Assert.Equal((73, 582, 28, 10, 74, 0), hotel.Db.QuerySingle<(int, int, int, int, int, int)>("""
+                SELECT (SELECT COUNT(*) FROM collectible_collections), (SELECT COUNT(*) FROM collectible_products),
+                    (SELECT COUNT(*) FROM collectible_shop_offers), (SELECT COUNT(*) FROM collectible_mint_token_offers),
+                    (SELECT COUNT(*) FROM collectible_mintable_items), (SELECT COUNT(*) FROM collectible_reward_claims)
+                """));
+            Assert.Equal(1, hotel.Db.QuerySingle<int>("SELECT emerald_price FROM collectible_shop_offers WHERE product_code = 'nft_h26_witchchair'"));
+        }, habboContent: true);
+    }
+
     private static void AssertOnlyPurchaseError(List<(uint Header, byte[] Payload)> replies) =>
         Assert.Equal([ServerPacketHeader.PurchaseErrorComposer], replies.Select(p => p.Header));
 
@@ -1108,7 +1199,7 @@ public sealed class CollectiblesHubTests
             Send(habbo, new ClaimNftRewardsEvent(hub), "", "");
     }
 
-    private static async Task InHotel(Func<Hotel, Task> run)
+    private static async Task InHotel(Func<Hotel, Task> run, bool habboContent = false)
     {
         var options = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!) { AllowUserVariables = true, Pooling = false, AllowZeroDateTime = true, ConvertZeroDateTime = true };
         await using var admin = new MySqlConnection(options.ConnectionString);
@@ -1122,12 +1213,17 @@ public sealed class CollectiblesHubTests
             await connection.OpenAsync();
 
             foreach (var file in new[] { "Database/FreshInstall.sql", "Database/Migrations/109_CollectiblesHub.sql", "Database/Migrations/109_CollectiblesHub.sql" }) {
-                foreach (var statement in SqlScript.Split(await File.ReadAllTextAsync(HabbiconPacketTests.Repo(file)))) {
-                    await connection.ExecuteAsync(statement, commandTimeout: 300);
-                }
+                await Apply(connection, file);
             }
 
-            await Seed(connection);
+            if (habboContent) {
+                await Apply(connection, "Database/Migrations/111_CollectiblesHubContent.sql");
+                await Apply(connection, "Database/Migrations/111_CollectiblesHubContent.sql");
+            }
+            else {
+                await Seed(connection);
+            }
+
             var database = new HabbiconDatabaseTests.TestDatabase(options.ConnectionString);
             var settings = new SettingsManager(database, NullLogger<SettingsManager>.Instance);
             await settings.Reload();
@@ -1135,6 +1231,13 @@ public sealed class CollectiblesHubTests
         }
         finally {
             await admin.ExecuteAsync($"DROP DATABASE IF EXISTS `{schema}`");
+        }
+    }
+
+    private static async Task Apply(MySqlConnection connection, string file)
+    {
+        foreach (var statement in SqlScript.Split(await File.ReadAllTextAsync(HabbiconPacketTests.Repo(file)))) {
+            await connection.ExecuteAsync(statement, commandTimeout: 300);
         }
     }
 

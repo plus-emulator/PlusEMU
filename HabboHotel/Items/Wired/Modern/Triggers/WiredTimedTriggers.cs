@@ -8,7 +8,6 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Triggers;
 /// </summary>
 public sealed class WiredTimedTriggers
 {
-    private const long ResetCooldownMs = 500;
     private const long StateUpdateMs = WiredFlashStates.StateUpdateMilliseconds;
     private readonly Dictionary<uint, long> _nextPeriodicAt = [];
     private readonly Dictionary<uint, long> _firedEpoch = [];
@@ -94,11 +93,15 @@ public sealed class WiredTimedTriggers
     /// </summary>
     public static long FirstRoomTickAfter(long nowMs) => NextBoundary(nowMs);
 
-    /// <summary>A room timer reset re-arms an armed repeater one fixed cooldown out; an unarmed one stays unarmed.</summary>
+    /// <summary>
+    /// A room timer reset restarts an armed repeater on the first room tick after the reset; an unarmed one stays unarmed. Observed on AIR
+    /// WIN63-202610151745-318700621 and WIN63-202610201032-107964540: a 200 ms and a 600 s repeater both fired well under 500 ms after the
+    /// reset, on that tick, and the 600 s one again 600 s after it.
+    /// </summary>
     public void ResetPeriodic(uint boxId, long nowMs)
     {
         if (_nextPeriodicAt.ContainsKey(boxId)) {
-            _nextPeriodicAt[boxId] = nowMs + ResetCooldownMs;
+            _nextPeriodicAt[boxId] = FirstRoomTickAfter(nowMs);
         }
     }
 

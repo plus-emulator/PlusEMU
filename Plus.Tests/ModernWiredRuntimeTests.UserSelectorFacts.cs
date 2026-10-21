@@ -145,6 +145,22 @@ public partial class ModernWiredRuntimeTests
     public void UsersWithVariableWithInvertSelectsEveryoneWhoDoesNotPass(string ints, int? ownerValue, int[] expected) =>
         Assert.Equal(expected, WithScore(ints, ownerValue, invert: true));
 
+    // A raw save with one variable, then the form it was stored in fired in a room: only the user whose value passes is selected.
+    [Theory]
+    [InlineData(8, new[] { 7 })]
+    [InlineData(9, new int[0])]
+    public void UsersWithVariableSavedWithOneVariableSelectsTheHoldersWhoseValuePasses(int ownerValue, int[] expected)
+    {
+        using var save = new WiredRawSave("wf_slc_users_with_var");
+        var stored = save.Save(ints: [1, 1, 0, 8, -10, 0], variables: ["user:11"]);
+        Assert.True(stored.Accepted, stored.ToString());
+
+        var row = Row(18, $"[{string.Join(',', stored.Ints)}]", false, false, furni: $"[{string.Join(',', stored.Furni)}]",
+            users: $"[{string.Join(',', stored.Users)}]", variables: $"[{string.Join(',', stored.Variables!.Select(id => $"\"{id}\""))}]");
+
+        Assert.Equal(expected, PickedUsers("wf_slc_users_with_var", row, s => s.Give(s.F.User, ownerValue)));
+    }
+
     private static string JsonEscaped(string text) => text.Replace("\t", "\\t").Replace("\n", "\\n");
 
     // Names match whole and without regard to case. Only a tab separates them.

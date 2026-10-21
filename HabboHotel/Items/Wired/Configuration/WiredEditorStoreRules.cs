@@ -17,6 +17,7 @@ internal static class WiredEditorStoreRules
     private const string PlaceholderKey = "wiredfurni.error.placeholder.";
     public const string VariableCountKey = "wiredfurni.error.invalid_variable_count";
     private const string BotReachedFurni = "wf_trg_bot_reached_stf";
+    private const int KickMessageLength = 200;
 
     /// <param name="Store">The stored form of a save, or null for a box that only has a variable or user source check here.</param>
     /// <param name="VariableSlots">The box has one picked variable (or two for the filters by variable): a save with no variable takes the empty slots.</param>
@@ -30,6 +31,9 @@ internal static class WiredEditorStoreRules
         { "wf_xtra_filter_furni", new(FilterFurni, VariableSlots: true) },
         { "wf_xtra_filter_furni_by_var", new(FilterByVariable, VariableSlots: true) },
         { "wf_xtra_filter_users_by_var", new(FilterByVariable, VariableSlots: true) },
+        { "wf_xtra_filter_users", new(FilterUsers, VariableSlots: true) },
+        { "wf_act_teleport_to", new(TeleportTo) },
+        { "wf_act_kick_user", new(KickUser) },
         { "wf_xtra_or_eval", new(draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], -1, 3)) },
         { "wf_xtra_rotate_to_dir", new(RotateToDirection) },
         { ScanChest, new(Scan, VariableSlots: true) },
@@ -97,6 +101,33 @@ internal static class WiredEditorStoreRules
         ints[0] = Math.Clamp(ints[0], 1, 1000);
         ints[1] = ints[1] == 2 ? 1 : ints[1];
         ints[2] = Target(ints[2]);
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: the amount is held to 1..1000, the operand kind to 0..1 and the reference target to
+    // the four offered values. The box has no text.
+    private static void FilterUsers(WiredStoreDraft draft)
+    {
+        var ints = draft.Ints;
+
+        ints[0] = Math.Clamp(ints[0], 1, 1000);
+        ints[1] = Math.Clamp(ints[1], 0, 1);
+        ints[2] = Target(ints[2]);
+        draft.Text = "";
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: the fast flag is 1 for any value but 0, and the box has no text.
+    private static void TeleportTo(WiredStoreDraft draft)
+    {
+        draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1;
+        draft.Text = "";
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: the message is cut at 200 characters and a tab or a line feed in it is stored as a
+    // space.
+    private static void KickUser(WiredStoreDraft draft)
+    {
+        var text = draft.Text.Replace('\t', ' ').Replace('\n', ' ');
+        draft.Text = text.Length > KickMessageLength ? text[..KickMessageLength] : text;
     }
 
     private static void FilterByVariable(WiredStoreDraft draft)

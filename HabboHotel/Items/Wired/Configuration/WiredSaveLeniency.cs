@@ -87,6 +87,10 @@ internal static class WiredSaveLeniency
         { "wf_act_neg_send_signal", TextlessSources },
         { "wf_trg_bot_reached_avtr", IntlessSources },
         { "wf_trg_bot_reached_stf", IntlessSources },
+        { "wf_act_kick_user", IntlessSources },
+        { "wf_act_teleport_to", new(FillsEmptyUserSources: true) },
+        { "wf_trg_leave_room", Textless },
+        { "wf_trg_transaction_fail", Textless },
         // Triggerer Matches keeps its default comparison slot when a save names fewer user sources.
         { "wf_cnd_triggerer_match", PaddedSources },
         { "wf_cnd_not_triggerer_match", PaddedSources },

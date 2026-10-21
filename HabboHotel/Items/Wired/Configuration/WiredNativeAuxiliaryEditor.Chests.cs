@@ -29,6 +29,9 @@ internal static partial class WiredNativeAuxiliaryEditor
     // Transaction triggers filter the explicitly picked furniture.
     private static readonly WiredNativeEditorMetadata TransactionTrigger = new([[100]], [], [100], [], [], false);
 
+    // Observed on AIR WIN63-202610201032-107964540: Transaction Failed also offers the selector (200) as its furniture source.
+    private static readonly WiredNativeEditorMetadata TransactionFailTrigger = new([[100, 200]], [], [100], [], [], false);
+
     private static IEnumerable<KeyValuePair<string, Spec>> Chests()
     {
         // Mode (amount or all), amount, literal-or-variable option, its target, show-by-default, then currency category / iteration order.
@@ -57,7 +60,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_cnd_chest_has_items", new(TransactionMeta(OnePickList, 2, 1, [0, 0, -20, 2], 1, [100, 200], [200]) with { QuantifierType = 1 }, HasChest(2)));
         yield return new("wf_cnd_chest_has_item_type", new(TransactionMeta(TwoPickLists, 3, 1, [0, 0, -20, 2], 1, [100, 101, 0], [0]) with { QuantifierType = 1 }, HasChest(3)));
         yield return new("wf_trg_transaction_complete", new(TransactionTrigger, n => Shape(n, 0, 1, 0, 0) && n.FurniSourceTypes[0] == 100 ? ChestDraft(n, []) : null));
-        yield return new("wf_trg_transaction_fail", new(TransactionTrigger, n => Shape(n, 0, 1, 0, 0) && n.FurniSourceTypes[0] == 100 ? ChestDraft(n, []) : null));
+        yield return new("wf_trg_transaction_fail", new(TransactionFailTrigger, n => Shape(n, 0, 1, 0, 0) && n.FurniSourceTypes[0] is 100 or 200 ? ChestDraft(n, []) : null));
         // Scanning mode; item types and chests, writing into a context variable.
         yield return new("wf_xtra_scan_chest_furni_by_type", new(TransactionMeta(TwoPickLists, 2, 0, [0], 1, [0, 100], []), n =>
             Shape(n, 1, 2, 0, 1) ? ChestDraft(n, [.. n.OwnedIntParams]) : null));

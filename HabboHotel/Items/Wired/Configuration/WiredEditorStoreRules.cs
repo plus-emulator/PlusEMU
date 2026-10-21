@@ -32,7 +32,7 @@ internal static class WiredEditorStoreRules
         { "wf_xtra_filter_furni_by_var", new(FilterByVariable, VariableSlots: true) },
         { "wf_xtra_filter_users_by_var", new(FilterByVariable, VariableSlots: true) },
         { "wf_xtra_filter_users", new(FilterUsers, VariableSlots: true) },
-        { "wf_act_teleport_to", new(TeleportTo) },
+        { "wf_act_teleport_to", new(FlagWithoutText) },
         { "wf_act_kick_user", new(KickUser) },
         { "wf_xtra_or_eval", new(draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], -1, 3)) },
         { "wf_xtra_rotate_to_dir", new(RotateToDirection) },
@@ -54,7 +54,11 @@ internal static class WiredEditorStoreRules
         // Observed on AIR WIN63-202610201032-107964540: the bot name is kept as sent, of any length.
         { BotReachedFurni, new(_ => { }) },
         // Only the variable slots are checked.
-        { "wf_act_init_transaction", new(VariableSlots: true) }
+        { "wf_act_init_transaction", new(VariableSlots: true) },
+        { "wf_trg_transaction_complete", new(VariableSlots: true) },
+        { "wf_trg_transaction_fail", new(VariableSlots: true) },
+        // Observed on AIR WIN63-202610201032-107964540: any non-zero match criteria is stored as 1, and the box has no text.
+        { "wf_act_cancel_transaction", new(FlagWithoutText, VariableSlots: true) }
     }.ToFrozenDictionary();
 
     // The action codes the hotel keeps: the ones the client offers, the unoffered 9 and the client expression 67.
@@ -115,8 +119,9 @@ internal static class WiredEditorStoreRules
         draft.Text = "";
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the fast flag is 1 for any value but 0, and the box has no text.
-    private static void TeleportTo(WiredStoreDraft draft)
+    // Observed on AIR WIN63-202610201032-107964540: the flag (Teleport To's fast flag, Cancel Transaction's match criteria) is 1 for any
+    // value but 0, and the box has no text.
+    private static void FlagWithoutText(WiredStoreDraft draft)
     {
         draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1;
         draft.Text = "";

@@ -24,15 +24,26 @@ public sealed class PathSearch(NavGrid grid, PathfindingSettings settings)
         var legacy = req.Actor.LegacyOverride;
         into.View = legacy ? GraphView.LegacyTile : GraphView.Surface;
         EnsureWorkspaceFits(ws, legacy);
-        var goal = req.Goals ?? GoalResolver.Resolve(grid, req.Actor, req.GoalX, req.GoalY, req.Occupancy);
-        goal = ExcludeBlockedGoals(goal, req.Exclusions, legacy);
-        var startSlot = StartSlot(req.Start, legacy);
 
-        if (Precheck(req.Actor, goal, startSlot, legacy) is { } early) {
+        if (Screen(req, out var goal, out var startSlot) is { } early) {
             return early;
         }
 
         return new PathSearchRun(grid, _rules, settings, req, ws, goal).Execute(startSlot, into);
+    }
+
+    // The outcome that is known without expanding a node, or null when only the search can tell.
+    public PathOutcome? Screen(in SearchRequest req)
+        => grid.InBounds(req.GoalX, req.GoalY) ? Screen(req, out _, out _) : PathOutcome.InvalidGoal;
+
+    private PathOutcome? Screen(in SearchRequest req, out AcceptedGoal goal, out int startSlot)
+    {
+        var legacy = req.Actor.LegacyOverride;
+        goal = req.Goals ?? GoalResolver.Resolve(grid, req.Actor, req.GoalX, req.GoalY, req.Occupancy);
+        goal = ExcludeBlockedGoals(goal, req.Exclusions, legacy);
+        startSlot = StartSlot(req.Start, legacy);
+
+        return Precheck(req.Actor, goal, startSlot, legacy);
     }
 
     private AcceptedGoal ExcludeBlockedGoals(AcceptedGoal goal, PathExclusions? exclusions, bool legacy)

@@ -52,6 +52,7 @@ internal static class WiredSaveLeniency
         { "wf_trg_click_tile", Bare },
         { "wf_slc_users_onfurni", Bare },
         { "wf_slc_furni_signal", Bare },
+        { "wf_slc_users_signal", Bare },
         // Boxes without a text field. The ints of these boxes are cut and padded by their own store rules.
         { "wf_cnd_actor_dir", Textless },
         { "wf_cnd_actor_in_team", Textless },
@@ -78,6 +79,10 @@ internal static class WiredSaveLeniency
         { "wf_slc_furni_neighborhood", Textless },
         { "wf_slc_remote", Textless },
         { "wf_slc_users_bytype", Textless },
+        { "wf_slc_users_team", Textless },
+        { "wf_slc_users_area", Textless },
+        { "wf_slc_users_neighborhood", Textless },
+        { "wf_slc_users_with_var", Textless },
         { "wf_slc_users_handitem", Textless },
         { "wf_trg_stuff_state", Textless },
         { "wf_cnd_chest_has_items", Textless },

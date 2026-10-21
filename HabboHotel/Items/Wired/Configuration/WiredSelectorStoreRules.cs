@@ -47,7 +47,17 @@ internal static class WiredSelectorStoreRules
         { "wf_slc_users_byaction", ByAction },
         // The group id is kept as a plain number or cleared; the box has no ints.
         { "wf_slc_users_group", Group },
-        { "wf_slc_users_handitem", _ => { } }
+        { "wf_slc_users_handitem", _ => { } },
+        // Team numbers run 0 (any team) to 4 (Yellow). A number above 4 reads 4 and a number below 0 reads 0.
+        { "wf_slc_users_team", draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], 0, 4) },
+        // Same stored form as the furni neighborhood.
+        { "wf_slc_users_neighborhood", Neighborhood },
+        // The box has no ints and no text, and its sources are fixed.
+        { "wf_slc_users_signal", _ => { } },
+        // The comparison keeps 0 to 5 and reads any other value as 0. The value filter keeps 0 to 2: a larger value reads 2 and a
+        // negative value reads 0. The two reference value ints are stored as sent. The reference target keeps -20, -10, 0 and 1, and
+        // the same-holder flag reads 1 for any value but 0.
+        { "wf_slc_users_with_var", WithVariable }
     }.ToFrozenDictionary();
 
     public static bool Applies(string name) => Rules.ContainsKey(name);
@@ -73,6 +83,16 @@ internal static class WiredSelectorStoreRules
         p[2] = Math.Clamp(p[2], -64, 64);
         p[16] &= LastMaskWordBits;
         p[17] = 0;
+    }
+
+    private static void WithVariable(WiredStoreDraft draft)
+    {
+        var p = draft.Ints;
+
+        p[0] = p[0] is >= 0 and <= 5 ? p[0] : 0;
+        p[1] = Math.Clamp(p[1], 0, 2);
+        p[4] = p[4] is -20 or -10 or 0 or 1 ? p[4] : 0;
+        p[5] = p[5] == 0 ? 0 : 1;
     }
 
     private static void ByAction(WiredStoreDraft draft)

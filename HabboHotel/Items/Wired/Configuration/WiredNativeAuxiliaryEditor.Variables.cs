@@ -262,14 +262,17 @@ internal static partial class WiredNativeAuxiliaryEditor
         }
 
         if (!Shape(n, 5, 1, 1, 2) || n.Filter is null || n.Inverse is null || p[0] is < 0 or > 5 || p[1] is < 0 or > 2
-            || !TryTarget(p[4], out var target) || sameHolder == 1 && (p[1] != 2 || target != destination) || p[3] < 0 != (p[2] == -1) || p[2] is not (0 or -1)) {
+            || !TryTarget(p[4], out var target) || sameHolder == 1 && p[1] == 2 && target != destination) {
             return null;
         }
 
-        // The selector executor takes a 32-bit literal; a wider one has no representation here.
-        int[] core = [p[1] == 0 ? 0 : 1, ScalarComparison[p[0]], p[1] == 2 ? 1 : 0, p[3], target, n.UserSourceTypes[0],
+        // Observed on AIR WIN63-202610201032-107964540: the two value ints are stored as sent, whatever they hold. The selector executor
+        // takes a 32-bit literal, so a value wider than 32 bits compares as the nearest 32-bit one. The same-holder flag stays in the
+        // stored form but only counts for a comparison with a variable on the box's own side.
+        var literal = (int)Math.Clamp((long)p[2] << 32 | (uint)p[3], int.MinValue, int.MaxValue);
+        int[] core = [p[1] == 0 ? 0 : 1, ScalarComparison[p[0]], p[1] == 2 ? 1 : 0, literal, target, n.UserSourceTypes[0],
             n.FurniSourceTypes[0], n.Filter.Value ? 1 : 0, n.Inverse.Value ? 1 : 0];
 
-        return Draft(n, sameHolder == 1 ? [.. core, 1] : [.. core]);
+        return Draft(n, sameHolder == 1 && p[1] == 2 && target == destination ? [.. core, 1] : [.. core]);
     }
 }

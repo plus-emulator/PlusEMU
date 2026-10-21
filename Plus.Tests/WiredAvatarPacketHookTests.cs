@@ -200,7 +200,7 @@ public partial class WiredAvatarPacketHookTests
         var world = new World(9, 3, clock);
         var speech = new WiredRuntimeEvent(WiredEventKind.Speech) { Actor = world.Actor };
         bool Performs(int sign) => Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredModernCondition.IsPerforming(world.Actor,
-            new() { IntParams = [9, 1, sign, 0, 1] }, speech);
+            new() { IntParams = [9, 1, sign, 0, 1] }, speech, clock.Now);
 
         world.Actions.ApplySign(world.Room, world.Client, 3);
         world.Users.SerializeStatusUpdates();

@@ -96,7 +96,7 @@ public sealed class WiredModernCondition : WiredModernBox
 
                 return group != null && Quantify(user => !user.IsBot && group.IsMember(user.HabboId), 3);
             case "wf_cnd_user_performs_action":
-                return Quantify(user => IsPerforming(user, config, context.Event), 6);
+                return Quantify(user => IsPerforming(user, config, context.Event, _clock()), 6);
             case "wf_cnd_triggerer_match":
                 if (config.UserSources["comparison"] == 101 && config.Text.Length == 0 && Param(config, 1) == 0) {
                     return Quantify(user => MatchesKind(user, Param(config, 0)), 4);
@@ -184,7 +184,7 @@ public sealed class WiredModernCondition : WiredModernBox
     public static string Name(RoomUser user) => user.IsBot ? user.BotData.Name : user.GetClient()?.GetHabbo()?.Username ?? "";
     // Polaris' editor uses pet=2/bot=4; the internal mask reverses those bits.
     public static bool MatchesKind(RoomUser user, int mask) => (mask & (user.IsPet ? 2 : user.IsBot ? 4 : 1)) != 0;
-    public static bool IsPerforming(RoomUser user, WiredConfiguration config, WiredRuntimeEvent @event)
+    public static bool IsPerforming(RoomUser user, WiredConfiguration config, WiredRuntimeEvent @event, DateTimeOffset now)
     {
         var action = Param(config, 0);
 

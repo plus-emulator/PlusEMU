@@ -33,7 +33,7 @@ public partial class WiredAvatarPacketHookTests
             clock.Now = start.AddMilliseconds(milliseconds);
             world.Users.UpdateSignStatus(world.Actor);
 
-            return WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [condition, 0, 0, 0, 1] }, speech);
+            return WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [condition, 0, 0, 0, 1] }, speech, clock.Now);
         }
 
         Assert.False(PerformsAt(0));
@@ -147,7 +147,7 @@ public partial class WiredAvatarPacketHookTests
         clock.Now = clock.Now.AddMilliseconds(450);
         world.Users.UpdateSignStatus(world.Actor);
 
-        Assert.False(WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [condition, 0, 0, 0, 1] }, speech));
+        Assert.False(WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [condition, 0, 0, 0, 1] }, speech, clock.Now));
     }
 
     // Observed on AIR WIN63-202610151745-318700621: Sleep passes 1.78 s after the sleep expression and Awake passes from 2.22 s on,
@@ -158,7 +158,7 @@ public partial class WiredAvatarPacketHookTests
         var clock = new ManualClock(new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero));
         var world = new World(SleepCondition, -1, clock);
         var speech = new WiredRuntimeEvent(WiredEventKind.Speech) { Actor = world.Actor };
-        bool Performs(int condition) => WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [condition, 0, 0, 0, 1] }, speech);
+        bool Performs(int condition) => WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [condition, 0, 0, 0, 1] }, speech, clock.Now);
 
         world.Actions.PerformAction(world.Room, world.Client, SleepExpression);
         clock.Now = clock.Now.AddMilliseconds(1780);

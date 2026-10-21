@@ -806,19 +806,19 @@ internal sealed partial class WiredStackEngine
     /// </summary>
     internal bool OutputFollowsEcho(WiredRuntimeContext context) => _speechPass && context.Event.Kind == WiredEventKind.Signal;
 
-    /// <summary>True when a say left Variable Changed stacks for <see cref="DrainVariableStacks"/>.</summary>
+    /// <summary>True when a say left Variable Changed or Score Achieved stacks for <see cref="DrainVariableStacks"/>.</summary>
     public bool HasHeldVariableStacks
     {
         get
         {
             // Chat runs on a network thread while the room's fast cycle dequeues on its own thread.
             lock (_sync) {
-                return _dispatches.TryPeek(out var pending) && pending.Event.Kind == WiredEventKind.Variable;
+                return _dispatches.TryPeek(out var pending) && pending.Event.Kind is WiredEventKind.Variable or WiredEventKind.Score;
             }
         }
     }
 
-    /// <summary>Runs the Variable Changed stacks that a say raised. The caller sends the echo of the say first.</summary>
+    /// <summary>Runs the Variable Changed and Score Achieved stacks that a say raised. The caller sends the echo of the say first.</summary>
     public void DrainVariableStacks() => Pass(() =>
     {
         DrainSamePassCollisions();
@@ -831,6 +831,8 @@ internal sealed partial class WiredStackEngine
 
     // Observed on AIR WIN63-202610151745-318700621 (wf_trg_var_changed.give, .subvar_parent): Variable Changed stacks run in the pass of the
     // change, so their messages share its millisecond. After a say they follow the echo of the say, which DrainVariableStacks runs.
+    // Observed on AIR WIN63-202610201032-107964540 (wf_trg_score_achieved.game): a Score Achieved stack runs the same way, in the pass of the
+    // score change.
     //
     // Observed on AIR WIN63-202610151745-318700621 (r97_chase_collide_clk, r97_flee_corner_clk): User Stuff Collision raised by an effect
     // runs in the same pulse as that effect, its flashes and chat in the same batch. A Collision at the head of the queue therefore runs
@@ -844,7 +846,7 @@ internal sealed partial class WiredStackEngine
         _drainingCollisions = true;
 
         try {
-            while (_dispatches.TryPeek(out var pending) && (pending.Event.Kind == WiredEventKind.Collision || pending.Event.Kind == WiredEventKind.Variable && !_speechPass) && !OutOfBudget()) {
+            while (_dispatches.TryPeek(out var pending) && (pending.Event.Kind == WiredEventKind.Collision || (pending.Event.Kind is WiredEventKind.Variable or WiredEventKind.Score) && !_speechPass) && !OutOfBudget()) {
                 // Its stacks run in this cycle instead of waiting for the next one.
                 pending.ResumeImmediately = true;
 

@@ -50,6 +50,10 @@ public static class WiredConfigurationSave
             return false;
         }
 
+        if (box is Chests.WiredChestBox chestBox && !chestBox.TryValidateSavedPicks(proposed, out error)) {
+            return false;
+        }
+
         if (!box.TryValidateConfiguration(proposed, out var validated, out error)) {
             return false;
         }

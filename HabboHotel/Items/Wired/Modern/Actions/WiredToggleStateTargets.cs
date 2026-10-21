@@ -28,11 +28,14 @@ internal static class WiredToggleStateTargets
                 flashBox(item);
                 flashed = true;
             }
-            else if (Untouched.Contains(item.Definition.ItemName) || item.StateHeldByFurniOnTop) {
+            else if (Untouched.Contains(item.Definition.ItemName)) {
                 continue;
             }
             else if (item.Definition.Modes <= 1) {
                 listState(item);
+            }
+            else if (item.StateHeldByFurniOnTop) {
+                continue;
             }
             else {
                 rest.Add(item);

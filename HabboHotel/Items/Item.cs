@@ -457,7 +457,7 @@ public class Item
     /// Observed on AIR WIN63-202610201032-107964540: a furni whose height depends on its state keeps that state while furni stand on it,
     /// both on a double-click and on Toggle State.
     /// </summary>
-    internal bool StateHeldByFurniOnTop => Definition.AdjustableHeights.Count > 1 && GetRoom()?.GetGameMap() is { } map
+    internal bool StateHeldByFurniOnTop => Definition.Modes > 1 && Definition.AdjustableHeights.Count > 1 && GetRoom()?.GetGameMap() is { } map
         && GetCoords.Any(tile => map.GetCoordinatedItems(tile).Any(other => !ReferenceEquals(other, this) && other.GetZ > GetZ));
 
     public bool IsWallItem => Definition.Type == ItemType.Wall;

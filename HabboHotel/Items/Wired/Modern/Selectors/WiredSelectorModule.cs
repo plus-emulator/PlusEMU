@@ -422,7 +422,8 @@ public static class WiredSelectorModule
         }
 
         return user.LastAction is int previous && input.NowMs >= user.LastActionAtMs
-            && input.NowMs - user.LastActionAtMs <= 5000 && Match(previous, user.LastActionParameter);
+            && input.NowMs - user.LastActionAtMs <= WiredSelectorRoomState.RememberedMilliseconds(previous)
+            && Match(previous, user.LastActionParameter);
     }
 
     public static bool FiltersExisting(string name, WiredConfiguration c) =>

@@ -435,6 +435,46 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((BuildersClubItemIds.ToWire(placed.Id).ToString(), ":w=1,1 l=0,0 l", "52"), (wireId, position, added.ReadString()));
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a cine_light1 (three states) placed from the Builders Club has data "0",
+    // and clicks go "0" -> "1" -> "2" -> "0".
+    [Fact]
+    public async Task ABuildersClubWallLampStartsAtStateZero()
+    {
+        Viewer();
+        var (service, store, page) = BuildersClub();
+        var lamp = Furni(0, InteractionType.None, WiredBoxType.None, ItemType.Wall).Definition;
+        lamp.Id = 4383;
+        lamp.ItemName = "cine_light1";
+        lamp.Modes = 3;
+        page.Offers[18306] = new CatalogOffer
+        {
+            Id = 18306,
+            Products = [new CatalogProduct { Type = CatalogProductType.Furni, Definition = lamp, Amount = 1 }]
+        };
+
+        await new BuildersClubPlaceWallItemEvent(service).Parse(_room, _client,
+            ClientPacket(BuildersClubPageId, 18306, "", ":w=1,1 l=0,0 l", true));
+
+        var placed = Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
+        Assert.Equal("0", store.ExtraData[placed.Id]);
+        Assert.Equal("0", placed.LegacyDataString);
+        var added = new FlashIncomingPacket { Buffer = Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.ItemAddComposer).Body };
+        added.ReadString();
+        added.ReadInt();
+        added.ReadString();
+        Assert.Equal("0", added.ReadString());
+
+        var use = new FurnitureUseService(new FurnitureUseStore(EditorTestSupport.UntouchableDatabase()), Proxy<IQuestManager>((_, _) => null));
+        var states = new List<string>();
+
+        for (var click = 0; click < 3; click++) {
+            await new UseWallItemEvent(use).Parse(_room, _client, ClientPacket(unchecked((int)BuildersClubItemIds.ToWire(placed.Id)), 0));
+            states.Add(placed.LegacyDataString);
+        }
+
+        Assert.Equal(["1", "2", "0"], states);
+    }
+
     private static readonly DateTimeOffset Clock = new(2040, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
     private (BuildersClubService Service, BuildersClubTestStore Store, CatalogPage Page) BuildersClub(string? trialLimit = null)

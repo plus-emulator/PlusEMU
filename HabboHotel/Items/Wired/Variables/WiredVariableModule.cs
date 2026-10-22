@@ -80,7 +80,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             foreach (var (reference, holder, resolution) in requests) {
                 var definition = resolution.Definition;
                 var value = resolution.Builtin is { } builtin ? builtins?.Read(builtin, holder, frame)
-                    : IsUserPointer(definition) ? ReadPointer(definition!, holder, frame)
+                    : definition!.IsPointer ? ReadPointer(definition, holder, frame)
                     : Held(definition!, values.GetValueOrDefault(Key(definition!, holder)))
                         ?? (definition!.Target == WiredVariableTarget.Global ? new(definition.InitialValue, null, null) : null);
 
@@ -122,7 +122,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                     return null;
                 }
 
-                if (IsUserPointer(definition)) {
+                if (definition.IsPointer) {
                     return ReadPointer(definition, holder, frame);
                 }
 
@@ -771,9 +771,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return null;
             }
 
-            // Observed on AIR WIN63-202610201032-107964540: Give Variable and Change Variable on a user pointer changed nothing and gave
-            // no error.
-            if (writing && IsUserPointer(definition)) {
+            // Observed on AIR WIN63-202610201032-107964540: Give, Change and Remove through a pointer of any target changed nothing and
+            // gave no error.
+            if (writing && definition.IsPointer) {
                 return null;
             }
 
@@ -860,14 +860,12 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         }
     }
 
-    private static bool IsUserPointer(WiredVariableDefinition? definition) => definition is { IsPointer: true, Target: WiredVariableTarget.User };
-
     /// <summary>
-    /// The user variable a pointer stands for in this firing: the one whose box id its accessor context variable holds, read for the
-    /// same holder. Observed on AIR WIN63-202610201032-107964540: an id that is not a user variable's box (nothing, 0, a missing id,
-    /// the pointer itself, a furni, room or context variable) reads nothing.
+    /// The variable a pointer stands for in this firing: the one whose box id its accessor context variable holds, of the pointer's own
+    /// target, read for the same holder. Observed on AIR WIN63-202610201032-107964540: an id that is no variable box of that target
+    /// (nothing, 0, a missing id, a pointer, a variable of another target) reads nothing.
     /// </summary>
-    private WiredVariableReference? PointedAt(WiredVariableDefinition pointer, WiredVariableFrame frame)
+    private (WiredVariableReference Reference, WiredVariableDefinition Definition)? PointedAt(WiredVariableDefinition pointer, WiredVariableFrame frame)
     {
         if (!TryDefinitionId(pointer.PointerAccessor ?? "", out var accessorId)
             || Resolve(new(WiredVariableTarget.Context, $"custom:{accessorId}"), false)?.Definition is not { Target: WiredVariableTarget.Context, IsPointer: false }
@@ -875,22 +873,36 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             return null;
         }
 
-        var target = new WiredVariableReference(WiredVariableTarget.User, $"custom:{held.Value}");
+        var target = new WiredVariableReference(pointer.Target, $"custom:{held.Value}");
 
-        return Resolve(target, false)?.Definition is { Target: WiredVariableTarget.User, IsPointer: false } ? target : null;
+        return Resolve(target, false)?.Definition is { IsPointer: false } definition ? (target, definition) : null;
     }
 
     private WiredVariableValue? ReadPointer(WiredVariableDefinition pointer, WiredVariableHolder holder, WiredVariableFrame frame) =>
-        PointedAt(pointer, frame) is { } target ? Read(target, holder, frame) : null;
+        PointedAt(pointer, frame) is { } target ? Read(target.Reference, holder, frame) : null;
 
-    /// <summary>
-    /// False when the reference is a user pointer that points at no user variable in this firing, so a text placeholder for it stays as
-    /// written (observed on AIR WIN63-202610201032-107964540). Every other variable resolves, even when its holder has no value.
-    /// </summary>
-    public bool PointerResolves(WiredVariableReference reference, WiredVariableFrame frame)
+    /// <summary>True when the reference names a pointer variable.</summary>
+    public bool IsPointer(WiredVariableReference reference)
     {
         lock (_gate) {
-            return Resolve(reference, false)?.Definition is not { IsPointer: true, Target: WiredVariableTarget.User } pointer || PointedAt(pointer, frame) is not null;
+            return Resolve(reference, false)?.Definition is { IsPointer: true };
+        }
+    }
+
+    /// <summary>
+    /// What a text placeholder for this reference shows in this firing, or null when it stays as written. A pointer shows the variable
+    /// it points at. Observed on AIR WIN63-202610201032-107964540: a pointer that points at nothing leaves the placeholder, and a pointed
+    /// variable without a value shows "null".
+    /// </summary>
+    internal WiredVariableTextSource? TextSource(WiredVariableReference reference, WiredVariableFrame frame)
+    {
+        lock (_gate) {
+            if (Resolve(reference, false)?.Definition is not { IsPointer: true } pointer) {
+                // Observed on AIR WIN63-202610151745-318700621: a placeholder for is_maxed shows "null" also while the part exists.
+                return new(reference, derive?.Invoke(reference) is { HasValue: false });
+            }
+
+            return PointedAt(pointer, frame) is { } target ? new(target.Reference, !target.Definition.HasValue) : null;
         }
     }
 
@@ -935,14 +947,6 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     /// A parent change seen through an interceptable part (a Time Utilities Value part): the change keyed by the part, with the part's
     /// before and after values. Null when the reference is not such a part of the changed variable.
     /// </summary>
-    /// <summary>A derived part without a value (is_maxed): it exists or not, and a placeholder shows "null" for it.</summary>
-    internal bool IsValuelessPart(WiredVariableReference reference)
-    {
-        lock (_gate) {
-            return derive?.Invoke(reference) is { HasValue: false };
-        }
-    }
-
     internal WiredVariableChange? ProjectPartChange(WiredVariableReference reference, WiredVariableChange change)
     {
         lock (_gate) {
@@ -998,3 +1002,6 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         }
     }
 }
+
+/// <summary>The variable a text placeholder reads, and whether it shows "null" whatever the holder has.</summary>
+internal readonly record struct WiredVariableTextSource(WiredVariableReference Variable, bool Valueless);

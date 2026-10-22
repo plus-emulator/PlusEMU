@@ -274,6 +274,18 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         var operandReference = ReferenceSlot(name, p) is { } slot && p[slot.Option] == 1
             ? new WiredVariableReference((WiredVariableTarget)p[slot.Target], tokens[1]) : (WiredVariableReference?)null;
         var sameHolder = SameHolder(name, p);
+        var valueSource = name switch
+        {
+            "wf_act_give_var" => operandReference,
+            "wf_act_change_var_val" when p[2] == 1 && !WiredVariableArithmetic.IsUnary(p[1]) => new WiredVariableReference((WiredVariableTarget)p[4], tokens[1]),
+            _ => null
+        };
+
+        // Observed on AIR WIN63-202610201032-107964540: Give Variable and Change Variable never read a pointer as their value, so the
+        // destination keeps its value.
+        if (valueSource is not null && variables.IsPointer(valueSource)) {
+            return false;
+        }
 
         // A global variable always exists: Give Variable on one changes nothing (observed on hhus: = 0 still passed after giving 7), and
         // Remove Variable leaves its value (observed on hhus: 3 before the remove, 6 after another +3).

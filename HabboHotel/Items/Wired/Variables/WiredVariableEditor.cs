@@ -17,6 +17,6 @@ public sealed class WiredVariableEditor(WiredVariableModule variables)
     /// <summary>True when the reference names a pointer variable.</summary>
     public bool IsPointer(WiredVariableReference reference) => variables.IsPointer(reference);
 
-    /// <summary>The refusal key for a second reference to a shared variable a room already references, or null.</summary>
-    public string? RefuseReference(WiredVariableDefinition proposed) => variables.RefuseReference(proposed);
+    /// <summary>The refusal key for a reference the room does not allow, or null. A stored reference may name a source that is gone.</summary>
+    public string? RefuseReference(WiredVariableDefinition proposed, bool stored = false) => variables.RefuseReference(proposed, stored);
 }

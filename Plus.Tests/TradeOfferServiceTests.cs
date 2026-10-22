@@ -168,7 +168,7 @@ public sealed class TradeOfferServiceTests
         }
 
         Assert.Equal(9, trade.Users[0].OfferedItems.Count); // the tenth LTD is refused
-        Assert.Equal(10, alice.Sent.Count(header => header == ServerPacketHeader.TradingUpdateComposer)); // but still answered
+        Assert.Equal(9, alice.Sent.Count(header => header == ServerPacketHeader.TradingUpdateComposer)); // silently, like any refused offer
 
         var plain = f.Join(3, 9);
         var second = f.Join(4, 10);
@@ -218,20 +218,85 @@ public sealed class TradeOfferServiceTests
     }
 
     [Fact]
-    public void ExplicitLtdIdsPastTheSingleOfferCapStayTheRequestedItems()
+    public void ExplicitOfferFollowsTheSingleOfferLtdLimit()
     {
         using var f = new TradeConfirmationServiceTests.TradeFixture();
         var alice = f.Join(1, 7);
         var bob = f.Join(2, 8);
         var trade = f.Start(alice, bob);
-        Stock(alice, Enumerable.Range(0, 11).Select(i => Floor((uint)(600 + i), 90, ltd: true)).ToArray());
-        var requested = new uint[] { 601, 603, 605, 607, 609, 600, 602, 604, 606, 608 };
+        Stock(alice, [.. Enumerable.Range(0, 11).Select(i => Floor((uint)(600 + i), 90, ltd: true)), Floor(700, 91), Floor(701, 91)]);
+        var nine = new uint[] { 601, 603, 605, 607, 609, 600, 602, 604, 606 };
 
-        f.Trades.OfferItems(alice.Session, requested);
+        f.Trades.OfferItems(alice.Session, [.. nine, 608]);
+        Assert.Empty(trade.Users[0].OfferedItems);
+        Assert.Empty(alice.Sent);
 
-        Assert.Equal(requested, trade.Users[0].OfferedItems.Keys);
-        Assert.All(trade.Users[0].OfferedItems.Values, item => Assert.True(item.UniqueNumber > 0));
-        Assert.DoesNotContain(610u, trade.Users[0].OfferedItems.Keys);
+        f.Trades.OfferItems(alice.Session, nine);
+        Assert.Equal(nine, trade.Users[0].OfferedItems.Keys);
+        alice.Packets.Clear();
+
+        f.Trades.OfferItems(alice.Session, [608]);
+        f.Trades.OfferItems(alice.Session, [700, 608]);
+        f.Trades.OfferItem(alice.Session, 608);
+        Assert.Equal(nine, trade.Users[0].OfferedItems.Keys);
+        Assert.Empty(alice.Sent);
+
+        f.Trades.OfferItems(alice.Session, [700]); // the cap counts LTDs only
+        f.Trades.OfferItem(alice.Session, 701);
+        Assert.Equal(nine.Append(700u).Append(701u), trade.Users[0].OfferedItems.Keys);
+    }
+
+    [Fact]
+    public void ExplicitOfferFollowsTheSingleOfferItemLimit()
+    {
+        using var f = new TradeConfirmationServiceTests.TradeFixture();
+        var alice = f.Join(1, 7);
+        var bob = f.Join(2, 8);
+        var trade = f.Start(alice, bob);
+        Stock(alice, Enumerable.Range(0, 502).Select(i => Floor((uint)(5000 + i), 12)).ToArray());
+        var first = Enumerable.Range(0, 500).Select(i => (uint)(5000 + i)).ToArray();
+
+        f.Trades.OfferItems(alice.Session, [.. first, 5500]);
+        Assert.Empty(trade.Users[0].OfferedItems);
+        Assert.Empty(alice.Sent);
+
+        f.Trades.OfferItems(alice.Session, first);
+        Assert.Equal(500, trade.Users[0].OfferedItems.Count);
+        alice.Packets.Clear();
+
+        f.Trades.OfferItems(alice.Session, [5500]);
+        f.Trades.OfferItem(alice.Session, 5501);
+        Assert.Equal(first, trade.Users[0].OfferedItems.Keys);
+        Assert.Empty(alice.Sent);
+    }
+
+    [Fact]
+    public void UntradeableFurniIsNeverOffered()
+    {
+        using var f = new TradeConfirmationServiceTests.TradeFixture();
+        var alice = f.Join(1, 7);
+        var bob = f.Join(2, 8);
+        var trade = f.Start(alice, bob);
+        var poster = Floor(102, 13, tradeable: false);
+        poster.Definition.Type = ItemType.Wall;
+        Stock(alice, Floor(100, 11), Floor(101, 12, tradeable: false), poster);
+        f.Trades.Accept(alice.Session);
+        alice.Packets.Clear();
+        bob.Packets.Clear();
+
+        f.Trades.OfferItem(alice.Session, 101);
+        f.Trades.OfferItem(alice.Session, 102);
+        f.Trades.OfferItems(alice.Session, [101]);
+        f.Trades.OfferItems(alice.Session, [100, 101]);
+        f.Trades.OfferItems(alice.Session, [102, 100]);
+
+        Assert.Empty(trade.Users[0].OfferedItems);
+        Assert.True(trade.Users[0].HasAccepted);
+        Assert.Empty(alice.Sent);
+        Assert.Empty(bob.Sent);
+
+        f.Trades.OfferItems(alice.Session, [100]);
+        Assert.Equal(new uint[] { 100 }, trade.Users[0].OfferedItems.Keys);
     }
 
     [Fact]
@@ -307,10 +372,10 @@ public sealed class TradeOfferServiceTests
     private static void Stock(TradeConfirmationServiceTests.Actor actor, params InventoryItem[] items) =>
         actor.Habbo.Inventory = new() { Furniture = new(items, []), Badges = new(new()) };
 
-    private static InventoryItem Floor(uint id, int definitionId, bool ltd = false) => new()
+    private static InventoryItem Floor(uint id, int definitionId, bool ltd = false, bool tradeable = true) => new()
     {
         Id = id,
-        Definition = new ItemDefinition { Id = (uint)definitionId, Type = ItemType.Floor, SpriteId = 1 },
+        Definition = new ItemDefinition { Id = (uint)definitionId, Type = ItemType.Floor, SpriteId = 1, AllowTrade = tradeable },
         UniqueNumber = ltd ? 1u : 0u
     };
 

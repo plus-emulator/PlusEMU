@@ -209,7 +209,7 @@ internal static class WiredNativeCatalogProjection
 
     private const int ReferenceAvailability = 20;
 
-    internal static WiredNativeVariable Project(WiredNativeEndpoint endpoint, ImmutableArray<KeyValuePair<int, string>>? connector)
+    internal static WiredNativeVariable Project(WiredNativeEndpoint endpoint, ImmutableArray<KeyValuePair<int, string>>? connector, string? fallback = null)
     {
         var description = endpoint.Description;
         var definition = description.Definition;
@@ -238,12 +238,13 @@ internal static class WiredNativeCatalogProjection
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
             (definition.InterceptsChanges || description.IsDerived) && (definition.Link is null || crossRoom) && (writable || description.Interceptable) && builtin is null, false,
-            timestamps && definition.Target != WiredVariableTarget.Global, timestamps && (!contextBox || hasValue), connector);
+            timestamps && definition.Target != WiredVariableTarget.Global, timestamps && (!contextBox || hasValue), connector)
+        { TextConnectorFallback = fallback };
 
         // Observed on AIR WIN63-202610201032-107964540: a pointer is listed as a normal variable of availability 999 that can be created,
         // deleted and written but not intercepted, with an empty text connector, and it requires an execution context.
         return definition.IsPointer
-            ? variable with { Availability = 999, CanCreateAndDelete = true, CanWriteValue = true, CanInterceptChanges = false, Connector = [], RequiresExecutionContext = true }
+            ? variable with { Availability = 999, CanCreateAndDelete = true, CanWriteValue = true, CanInterceptChanges = false, Connector = [], TextConnectorFallback = null, RequiresExecutionContext = true }
             : variable;
     }
 }

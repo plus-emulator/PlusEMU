@@ -37,7 +37,7 @@ public class WiredTextConnectorParseTests
         Assert.Equal("3=b\n9=a", runtime.Origin!.Native.Text);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r122 p01a): a line "_=text" is the fallback text. The last one wins, the text may be
+    // Observed on AIR WIN63-202610201032-107964540: a line "_=text" is the fallback text. The last one wins, the text may be
     // empty and may hold "=", and a line with spaces around the "_" is dropped like any other bad line.
     [Theory]
     [InlineData("7=seven\n_=other", "other")]
@@ -55,7 +55,7 @@ public class WiredTextConnectorParseTests
     public void ReadsTheFallbackLine(string text, string? fallback) =>
         Assert.Equal(fallback, WiredVariableMetadataBox.ParseConnector(text).Fallback);
 
-    // Observed on AIR WIN63-202610201032-107964540 (r122 p01a): entries are stored in number order and the fallback is written last.
+    // Observed on AIR WIN63-202610201032-107964540: entries are stored in number order and the fallback is written last.
     [Theory]
     [InlineData("_=other\n7=seven", "7=seven\n_=other")]
     [InlineData("7=seven\n_=other\n9=nine", "7=seven\n9=nine\n_=other")]

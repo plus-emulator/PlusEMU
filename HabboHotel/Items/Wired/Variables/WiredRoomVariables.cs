@@ -20,10 +20,11 @@ public sealed partial class WiredRoomVariables
     public IReadOnlyCollection<WiredVariableDefinitionBox> Definitions => _definitions.Values.ToArray();
     public WiredVariableCatalog Catalog()
     {
-        var definitions = Module.DescribeDefinitions(_definitions.Keys).Select(description => description with
+        var definitions = Module.DescribeDefinitions(_definitions.Keys).Select(description =>
         {
-            TextConnector = TextConnectorOf(description.Definition),
-            TextConnectorFallback = (TextConnectorOf(description.Definition) as WiredTextConnector)?.Fallback
+            var connector = TextConnectorOf(description.Definition);
+
+            return description with { TextConnector = connector, TextConnectorFallback = (connector as WiredTextConnector)?.Fallback };
         }).ToArray();
 
         return new(definitions.Concat(definitions.SelectMany(DerivedDescriptions)).ToArray());

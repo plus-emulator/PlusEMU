@@ -65,9 +65,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Reference Include="AStar">
-			<HintPath>Resources\libs\AStar.dll</HintPath>
-		</Reference>
 		<Reference Include="HabboEncryption">
 			<HintPath>Resources\libs\HabboEncryption.dll</HintPath>
 		</Reference>

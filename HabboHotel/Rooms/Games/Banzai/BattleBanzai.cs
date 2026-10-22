@@ -7,15 +7,12 @@ using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Rooms.Games.Teams;
-using Plus.Utilities.Enclosure;
 
 namespace Plus.HabboHotel.Rooms.Games.Banzai;
 
 public class BattleBanzai
 {
     private ConcurrentDictionary<uint, Item> _banzaiTiles;
-    private GameField _field;
-    private byte[,] _floorMap;
     private ConcurrentDictionary<uint, Item> _pucks;
     private Room _room;
     private readonly TimeProvider _clock;
@@ -81,8 +78,6 @@ public class BattleBanzai
             return;
         }
 
-        _floorMap = new byte[_room.GetGameMap().Model.MapSizeY, _room.GetGameMap().Model.MapSizeX];
-        _field = new(_floorMap, true);
         _startedAt = _clock.GetUtcNow();
         _room.GetGameManager().LockGates();
 
@@ -128,7 +123,6 @@ public class BattleBanzai
         var awardsProgress = HasMinimumPlayTimeAt(now);
         IsBanzaiActive = false;
         _room.GetGameManager().StopGame(now);
-        _floorMap = null;
 
         if (!triggeredByUser) {
             _room.GetWired().TriggerEvent(WiredBoxType.TriggerGameEnds, null);
@@ -198,10 +192,6 @@ public class BattleBanzai
                     }
                 }
             }
-
-            if (_field != null) {
-                _field.Dispose();
-            }
         }
     }
 
@@ -247,18 +237,7 @@ public class BattleBanzai
                 if (item.Value == 3) {
                     user.LockedTilesCount++;
                     _room.GetGameManager().AddPointToTeam(item.Team, 1);
-                    _field.UpdateLocation(item.GetX, item.GetY, (byte)team);
-                    var gfield = _field.DoUpdate();
-                    Team t;
-
-                    foreach (var gameField in gfield) {
-                        t = (Team)gameField.ForValue;
-
-                        foreach (var p in gameField.GetPoints()) {
-                            HandleMaxBanzaiTiles(new(p.X, p.Y), t);
-                            _floorMap[p.Y, p.X] = gameField.ForValue;
-                        }
-                    }
+                    LockEnclosedTiles(team);
                 }
             }
         }
@@ -269,9 +248,10 @@ public class BattleBanzai
             }
         }
 
-        var newColor = item.Value + Convert.ToInt32(item.Team) * 3 - 1;
-        item.LegacyDataString = newColor.ToString();
+        ShowState(item);
     }
+
+    private static void ShowState(Item item) => item.LegacyDataString = (item.Value + Convert.ToInt32(item.Team) * 3 - 1).ToString();
 
     private void HandleBanzaiTiles(Point coord, Team team, RoomUser user)
     {
@@ -318,42 +298,24 @@ public class BattleBanzai
         }
     }
 
-    private void HandleMaxBanzaiTiles(Point coord, Team team)
+    private void LockEnclosedTiles(Team team)
     {
-        if (team == Team.None) {
-            return;
+        var floors = _banzaiTiles.Values.Where(item => item.Definition.InteractionType == InteractionType.Banzaifloor).ToList();
+        var lockedBy = new Dictionary<Point, Team>();
+
+        foreach (var item in floors.Where(item => item.Value == 3)) {
+            lockedBy[item.Coordinate] = item.Team;
         }
 
-        var items = _room.GetGameMap().GetCoordinatedItems(coord);
+        var enclosed = BanzaiEnclosure.EnclosedTiles(floors.Select(item => item.Coordinate).ToHashSet(), lockedBy, team).ToHashSet();
 
-        foreach (var item in _banzaiTiles.Values.ToList()) {
-            if (item == null) {
-                continue;
-            }
-
-            if (item.Definition.InteractionType != InteractionType.Banzaifloor) {
-                continue;
-            }
-
-            if (item.GetX != coord.X || item.GetY != coord.Y) {
-                continue;
-            }
-
-            SetMaxForTile(item, team);
+        foreach (var item in floors.Where(item => item.Value < 3 && enclosed.Contains(item.Coordinate))) {
+            item.Value = 3;
+            item.Team = team;
+            ShowState(item);
             _room.GetGameManager().AddPointToTeam(team, 1);
             item.UpdateState(false, true);
         }
-    }
-
-    private static void SetMaxForTile(Item item, Team team)
-    {
-        if (item.Value < 3) {
-            item.Value = 3;
-            item.Team = team;
-        }
-
-        var newColor = item.Value + Convert.ToInt32(item.Team) * 3 - 1;
-        item.LegacyDataString = newColor.ToString();
     }
 
     public void Dispose()
@@ -361,18 +323,8 @@ public class BattleBanzai
         _banzaiTiles.Clear();
         _pucks.Clear();
 
-        if (_floorMap != null) {
-            Array.Clear(_floorMap, 0, _floorMap.Length);
-        }
-
-        if (_field != null) {
-            _field.Dispose();
-        }
-
         _room = null;
         _banzaiTiles = null;
         _pucks = null;
-        _floorMap = null;
-        _field = null;
     }
 }

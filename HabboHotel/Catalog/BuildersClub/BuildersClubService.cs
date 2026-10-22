@@ -314,8 +314,7 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         or InteractionType.Bot or InteractionType.Pet or InteractionType.PetBreedingBox or InteractionType.GnomeBox or InteractionType.MonsterplantSeed
         or InteractionType.PurchasableClothing or InteractionType.HorseHairstyle or InteractionType.HorseBodyDye or InteractionType.HorseHairDye
         or InteractionType.MusicDisc or InteractionType.Jukebox or InteractionType.CameraPicture or InteractionType.Mannequin
-        or InteractionType.WiredChestFurni or InteractionType.WiredChestCoins or InteractionType.WiredContractPayment
-        or InteractionType.WiredContractTrade or InteractionType.WiredContractReward);
+        or InteractionType.WiredChestFurni or InteractionType.WiredChestCoins);
 
     // A recolorable starts in the colour the catalogue's palette chose (RecolorableFurnitureCatalogWidget); nothing else takes a
     // parameter from the client.

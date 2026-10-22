@@ -240,7 +240,7 @@ public partial class WiredRoomSettingsTests
     private static RoomUserManager Users(Room room)
     {
         var manager = new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused,
-            TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+            TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         Set(room, "_roomUserManager", manager);
 
         return manager;

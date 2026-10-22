@@ -18,7 +18,7 @@ public partial class PlacedFurniRoomTests
     {
         var emotions = new TestChatEmotions(message => message == "happy" ? 7 : throw new InvalidOperationException(message));
         var manager = new RoomUserManager(_room, TestRoomUserStore.Instance, TimeProvider.System,
-            TestRewardProgress.Unused, emotions, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+            TestRewardProgress.Unused, emotions, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         Set("_roomUserManager", manager);
         _room.WordFilterList = [];
         _client.GetHabbo().IgnoresComponent = new([]);
@@ -56,7 +56,7 @@ public partial class PlacedFurniRoomTests
             Assert.Equal(1, amount);
         });
         var manager = new RoomUserManager(_room, TestRoomUserStore.Instance, TimeProvider.System,
-            rewards, TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+            rewards, TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         Set("_roomUserManager", manager);
         Assert.True(manager.AddAvatarToRoom(_client));
         _client.Sent.Clear();

@@ -1,5 +1,6 @@
 using Plus.Database;
 using Plus.HabboHotel.Quests;
+using Plus.Utilities;
 
 namespace Plus.HabboHotel.Rooms.PathFinding;
 
@@ -45,6 +46,35 @@ internal sealed class V2MovementEngine : IMovementEngine
             _rebind.Rebind(actor);
             Context.RefreshMembership(actor);
         }
+    }
+    // The height the announced step lands on now, worked out as the landing does; true when its mv status changed.
+    internal bool RefreshStepHeight(RoomUser actor)
+    {
+        var state = actor.Movement;
+
+        if (!actor.IsWalking || !actor.SetStep || actor.RidingHorse || state.State != NavState.Active || state.PendingCount == 0
+            || !actor.Statusses.TryGetValue("mv", out var announced)) {
+            return false;
+        }
+
+        var surface = state.Pending[state.PendingCount - 1];
+        var landing = Context.Graph.ResolveLanding(surface, state.PendingView, Context.Graph.Position(surface, state.PendingView).Z);
+        var target = landing.Position;
+
+        if (landing.Support == null || (target.X, target.Y) != (actor.SetX, actor.SetY)) {
+            return false;
+        }
+
+        var mv = $"{target.X},{target.Y},{TextHandling.GetString(target.Z + Context.Graph.RiderOffset(actor, target.Slot))}";
+
+        if (mv == announced) {
+            return false;
+        }
+
+        actor.SetStatus("mv", mv);
+        actor.SetZ = target.Z;
+
+        return true;
     }
     public void Tick() => _executor.Tick();
     internal void Handle(RoomCommand command)

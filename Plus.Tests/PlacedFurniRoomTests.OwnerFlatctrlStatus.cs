@@ -85,7 +85,7 @@ public partial class PlacedFurniRoomTests
     private RoomUser Admit(TestClient client, int habboId, string? username)
     {
         var manager = new RoomUserManager(_room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(),
-            TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+            TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         Set("_roomUserManager", manager);
         _room.WordFilterList = [];
 

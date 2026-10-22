@@ -218,17 +218,19 @@ public sealed class WiredMovementActions(Random? random = null)
                 // or take one (two furni to two users 30 of 30, three furni 90 of 90), in a new random order each firing.
                 var dealtUsers = Dealt(users, movers.Count);
 
+                // Observed on AIR WIN63-202610201032-107964540: a walking user's furni goes to the step target, the mv tile of that tick.
                 // The moves run in a random order, and a furni dealt the user it already stands under is restacked like Furni To Furni:
                 // all 100 observed firings with z changes fit this, while no fixed order fits them.
                 foreach (var index in Shuffled(Enumerable.Range(0, movers.Count).ToArray())) {
                     var item = movers[index];
                     var user = dealtUsers[index];
+                    var (x, y) = user.IsWalking && user.SetStep ? (user.SetX, user.SetY) : (user.X, user.Y);
 
-                    if (item.GetX != user.X || item.GetY != user.Y) {
-                        affected |= move(item, user.X, user.Y, item.Rotation, null);
+                    if (item.GetX != x || item.GetY != y) {
+                        affected |= move(item, x, y, item.Rotation, null);
                     }
                     else if (!OnTopOfItsTile(item)) {
-                        affected |= move(item, user.X, user.Y, item.Rotation, RestackHeight(item));
+                        affected |= move(item, x, y, item.Rotation, RestackHeight(item));
                     }
                 }
 

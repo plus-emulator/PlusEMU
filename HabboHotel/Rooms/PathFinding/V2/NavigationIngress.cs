@@ -116,5 +116,16 @@ public sealed partial class RoomNavigation
             Executor.RefreshPostures();
         }
     }
+    /// <summary>The walking actors whose announced step now lands at another height, with that height in their mv status. Run as the room owner.</summary>
+    internal RoomUser[] RefreshStepHeights(IReadOnlyCollection<RoomUser> actors)
+    {
+        if (actors.Count == 0 || !RoomOwnerScope.IsOwner(_room)) {
+            return [];
+        }
+
+        ApplyDirty();
+
+        return [.. actors.Where(Executor.RefreshStepHeight)];
+    }
     public void CycleUsers() => Executor.Tick();
 }

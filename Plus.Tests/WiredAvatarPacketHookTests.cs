@@ -424,7 +424,7 @@ public partial class WiredAvatarPacketHookTests
             Room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
             Room.Id = 1;
             var items = new RoomItemHandling(Room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
-            Users = new RoomUserManager(Room, TestRoomUserStore.Instance, clock ?? TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+            Users = new RoomUserManager(Room, TestRoomUserStore.Instance, clock ?? TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
             Actions = new RoomAvatarActionService(clock ?? TimeProvider.System, new NoQuests(), Rewards);
             Set(Room, "_roomItemHandling", items);
             Set(Room, "_roomUserManager", Users);

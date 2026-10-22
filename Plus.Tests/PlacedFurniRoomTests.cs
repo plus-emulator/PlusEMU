@@ -70,7 +70,7 @@ public partial class PlacedFurniRoomTests : IDisposable
             TestLogging.Navigation, _roomSettings, new TestGroupManager(id => _groupLookup(id)),
             TestNavigationDatabase.Instance, TestNavigationRewards.Instance));
         Set("_roomItemHandling", new RoomItemHandling(_room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards));
-        Set("_roomUserManager", new RoomUserManager(_room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
+        Set("_roomUserManager", new RoomUserManager(_room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings));
         TestRoomUserSnapshots.Install(_room);
         _room.GetGameMap().GenerateMaps();
         _client.SetHabbo(new Habbo { Id = 7, Username = "owner", CurrentRoom = _room, Access = UserAccess.Empty });
@@ -174,7 +174,7 @@ public partial class PlacedFurniRoomTests : IDisposable
 
         Assert.Null(_room.GetRoomItemHandler().GetItem(30));
         Assert.NotNull(Assert.IsType<InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(30));
-        Assert.Contains(ServerPacketHeader.FurniListUpdateComposer, _client.Sent);
+        Assert.Contains(ServerPacketHeader.FurniListAddComposer, _client.Sent);
         Assert.Equal((7, "owner", 7u), (placed.UserId, placed.Username, placed.OwnerId));
     }
 

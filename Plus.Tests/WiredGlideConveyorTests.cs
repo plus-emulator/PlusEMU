@@ -271,7 +271,7 @@ public sealed partial class WiredGlideConveyorTests
             Set(_room, "_gamemap", _map);
             Set(_room, "_roomItemHandling", handler);
             var users = new RoomUserManager(_room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused,
-                TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+                TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
             Set(_room, "_roomUserManager", users);
             TestRoomUserSnapshots.Install(_room);
             _live = live;

@@ -407,22 +407,22 @@ public static class ClientPacketHeader
     public const uint GetCraftingRecipeEvent = 809;
     //public const uint GetCraftingRecipesAvailableEvent =;
 
-    // SnowStorm (AIR Game2 payloads); internal IDs match Volt's wire IDs.
+    // SnowStorm (AIR Game2).
     public const uint Game2CheckGameDirectoryStatusEvent = 822;
     public const uint Game2GetAccountGameStatusEvent = 2949;
-    public const uint Game2QuickJoinEvent = 6012;
-    public const uint Game2LeaveLobbyEvent = 6013;
+    public const uint Game2QuickJoinEvent = 1287;
+    public const uint Game2LeaveLobbyEvent = 1451;
     public const uint Game2LoadStageReadyEvent = 2914;
     public const uint Game2ExitGameEvent = 3482;
     public const uint Game2GameChatEvent = 584;
     public const uint Game2PlayAgainEvent = 2552;
-    public const uint Game2SetUserMoveTargetEvent = 6003;
-    public const uint Game2ThrowSnowballAtPositionEvent = 6004;
-    public const uint Game2ThrowSnowballAtHumanEvent = 6005;
-    public const uint Game2MakeSnowballEvent = 6006;
+    public const uint Game2SetUserMoveTargetEvent = 3787;
+    public const uint Game2ThrowSnowballAtPositionEvent = 2078;
+    public const uint Game2ThrowSnowballAtHumanEvent = 1898;
+    public const uint Game2MakeSnowballEvent = 3528;
     public const uint Game2RequestFullStatusUpdateEvent = 2893;
-    public const uint Game2GetTotalLeaderboardEvent = 6027;
-    public const uint Game2GetFriendsLeaderboardEvent = 6028;
+    public const uint Game2GetTotalLeaderboardEvent = 3990;
+    public const uint Game2GetFriendsLeaderboardEvent = 609;
     public const uint Game2GetWeeklyFriendsLeaderboardEvent = 1163;
     public const uint Game2GetTotalGroupLeaderboardEvent = 27;
     public const uint Game2GetWeeklyGroupLeaderboardEvent = 1936;

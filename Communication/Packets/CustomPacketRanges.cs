@@ -28,7 +28,6 @@ public static class CustomPacketRanges
     [
         new("client_extensions_client", PacketRangeDirection.ClientToServer, 4080, 4099, "client_extensions"),
         new("messenger_client", PacketRangeDirection.ClientToServer, 4900, 4999, "messenger"),
-        new("custom_gameplay_client", PacketRangeDirection.ClientToServer, 6000, 6099, "custom_gameplay"),
         new("room_extras_client", PacketRangeDirection.ClientToServer, 6200, 6299, "room_extras"),
         new("social_client", PacketRangeDirection.ClientToServer, 7000, 7099, "social_extensions"),
         new("youtube_client", PacketRangeDirection.ClientToServer, 8000, 8099, "youtube_room"),
@@ -39,10 +38,8 @@ public static class CustomPacketRanges
         new("reward_track_tools_client", PacketRangeDirection.ClientToServer, 10100, 10199, "reward_track_tools"),
         new("client_extensions_server", PacketRangeDirection.ServerToClient, 4050, 4099, "client_extensions"),
         new("messenger_server", PacketRangeDirection.ServerToClient, 4900, 4999, "messenger"),
-        new("snowwar_server", PacketRangeDirection.ServerToClient, 5000, 5099, "snowwar"),
         new("room_tools_server", PacketRangeDirection.ServerToClient, 5100, 5199, "room_tools"),
         new("room_extras_server", PacketRangeDirection.ServerToClient, 5200, 5299, "room_extras"),
-        new("custom_gameplay_server", PacketRangeDirection.ServerToClient, 6000, 6099, "custom_gameplay"),
         new("social_server", PacketRangeDirection.ServerToClient, 7000, 7099, "social_extensions"),
         new("youtube_server", PacketRangeDirection.ServerToClient, 8000, 8099, "youtube_room"),
         new("housekeeping_server", PacketRangeDirection.ServerToClient, 9200, 9299, "housekeeping"),

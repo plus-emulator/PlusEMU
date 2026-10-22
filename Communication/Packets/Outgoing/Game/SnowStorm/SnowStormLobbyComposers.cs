@@ -92,8 +92,7 @@ public sealed class Game2StopCounterComposer : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.Game2StopCounterComposer;
 
-    // AIR reads the InArenaQueue shape and ignores the value.
-    public void Compose(IOutgoingPacket packet) => packet.WriteInteger(0);
+    public void Compose(IOutgoingPacket packet) { }
 }
 
 public sealed class Game2JoiningGameFailedComposer(int reason) : IServerPacket

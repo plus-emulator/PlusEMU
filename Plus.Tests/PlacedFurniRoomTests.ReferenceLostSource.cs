@@ -53,6 +53,19 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(ReferenceId, RoomVariableIds());
     }
 
+    // Plus behavior, not probed on Habbo: saving the reference again after its source was picked up is refused like any save that
+    // names a missing source.
+    [Fact]
+    public async Task SavingAReferenceAgainAfterItsSourceIsPickedUpIsRefused()
+    {
+        var rows = LinkedRooms();
+        await SavedReference(rows);
+        PickUpSource(rows);
+
+        Assert.False(await SaveReference());
+        Assert.Equal($"r119ref [0] [{SourceWireId}] shared 0", Open(ReferenceId));
+    }
+
     // Room 8 holds the owner's shared user variable r119src (has value, availability 11); this room (42) will hold the reference.
     private static LinkedRoomRows LinkedRooms()
     {
@@ -79,7 +92,7 @@ public partial class PlacedFurniRoomTests
         return wired;
     }
 
-    // The reference box placed in this room, then saved through the raw variable save packet: read only off, the source picked.
+    // The reference box placed in this room, then saved.
     private async Task<Item> SavedReference(LinkedRoomRows rows)
     {
         Linked(rows, TestLogging.Logger, new EmptyConfigurationStore());
@@ -87,6 +100,14 @@ public partial class PlacedFurniRoomTests
         item.RoomId = RoomId;
         item.Definition.InteractionName = item.Definition.ItemName = "wf_var_reference";
         _room.GetRoomItemHandler().LoadFurniture([item]);
+        Assert.True(await SaveReference());
+
+        return item;
+    }
+
+    // The raw variable save packet for the reference box: read only off, the source picked. True when the editor closed (saved).
+    private async Task<bool> SaveReference()
+    {
         Assert.True(_room.GetWired().TryGet(ReferenceId, out var box));
         var fresh = WiredNativeEditorProjection.DefaultNative(((IWiredConfiguredItem)box).Descriptor);
         _client.Packets.Clear();
@@ -96,9 +117,7 @@ public partial class PlacedFurniRoomTests
             fresh.FurniSourceTypes.Length, .. fresh.FurniSourceTypes.Cast<object>(), fresh.UserSourceTypes.Length, .. fresh.UserSourceTypes.Cast<object>(),
             1, SourceWireId, 0]));
 
-        Assert.Contains(_client.Packets, packet => packet.Header == ServerPacketHeader.HideWiredConfigComposer);
-
-        return item;
+        return _client.Packets.Any(packet => packet.Header == ServerPacketHeader.HideWiredConfigComposer);
     }
 
     // What a confirmed pickup in room 8 leaves behind: the box's settings row is deleted and the item is no longer in a room.

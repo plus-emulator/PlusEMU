@@ -838,7 +838,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     /// The key a proposed reference is refused with, or null. Observed on AIR WIN63-202610201032-107964540: the variable must be shared
     /// in the room it names, and that room must have the same owner. A room holds one reference to a shared variable, a second one is
     /// refused. With <paramref name="stored"/>, a source that no longer exists is no refusal: observed on AIR WIN63-202610201032-107964540,
-    /// a reference whose source was picked up keeps its settings and still opens.
+    /// a reference whose source was picked up keeps its settings and still opens. Habbo was only probed within one room visit; that it
+    /// still loads after a room reload is inferred. A source placed again in another room, or saved again as local, still refuses the
+    /// stored reference; Habbo was not probed for that.
     /// </summary>
     public string? RefuseReference(WiredVariableDefinition proposed, bool stored = false)
     {

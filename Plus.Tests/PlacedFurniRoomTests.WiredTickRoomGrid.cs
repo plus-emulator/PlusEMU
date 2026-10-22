@@ -16,6 +16,7 @@ namespace Plus.Tests;
 public partial class PlacedFurniRoomTests
 {
     private const uint GridWalkTile = 10, GridTarget = 20, GridWalkStack = 30, GridTimerStackId = 40;
+    private const uint GridMoveTile = 50, GridMoveBox = 60, GridMoveTileStack = 70, GridMoveTarget = 80;
 
     [Fact]
     public void FastWiredPassesStartOncePerFiftyMsSlotOfTheRoomGrid()
@@ -128,6 +129,34 @@ public partial class PlacedFurniRoomTests
         Assert.True(output.Full, $"output in a fast pass {output.At - step.At} ms after the step");
         Assert.Equal(step.At + 500, output.At);
         AssertUserUpdateFirst(output, target);
+    }
+
+    [Fact]
+    public void AWalkOnThatADelayedMoveUserRaisesInTheRoomTickWaitsOneFastPassWhileTheStepWalkGoesOutInItsTick()
+    {
+        var (clock, manager) = GridRoom();
+        var stepTarget = GridWalkOnStack(delay: 0);
+        var moveTarget = ToggleAt(GridMoveTarget, 3, 3);
+        ExecutorFloor(GridMoveTile, 0, 3);
+        var move = WiredBox(GridMoveBox, "wf_act_user_to_furni", 3, 0);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(move,
+            new() { IntParams = [100, 0, 1], SelectedItems = [GridMoveTile], Delay = 1 }, out var config, out var error), error);
+        move.ApplyConfiguration(config);
+        Assert.True(_room.GetWired().AddBox(move));
+        GridStack(GridMoveTileStack, "wf_trg_walks_on_furni", new() { IntParams = [100], SelectedItems = [GridMoveTile] }, 2,
+            moveTarget, 0);
+        var actor = ExecutorActor(1, 0);
+        actor.MoveTo(1, 1);
+
+        var passes = RunRoom(manager, clock, clock.Ms + 2500, period: 25);
+
+        var step = Assert.Single(passes, pass => Touches(pass, stepTarget));
+        Assert.True(step.Full);
+        Assert.Contains("mv 1,1,", StatusOf(step, actor));
+        AssertUserUpdateFirst(step, stepTarget);
+        var output = Assert.Single(passes, pass => Touches(pass, moveTarget));
+        Assert.False(output.Full, $"output in the room tick {output.At - step.At} ms after the step");
+        Assert.Equal(step.At + 550, output.At);
     }
 
     [Theory]

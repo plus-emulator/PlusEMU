@@ -503,6 +503,8 @@ internal sealed partial class WiredStackEngine
     /// </summary>
     public void OnRoomTickEnd() => Pass(() =>
     {
+        _roomTickOpen = false;
+
         if (!_splitEnd || Disabled) {
             return false;
         }
@@ -550,7 +552,8 @@ internal sealed partial class WiredStackEngine
     });
 
     private bool _roomTickDrain;
-    // From the start of a room tick to the end of its Wired pass: the walks its actors raise run in it.
+    // From the start of a room tick until its avatar updates are sent: the walks its actors and rollers raise run in it. A walk that a
+    // Wired effect raises later in the pass waits one pass, as it does from a fast pass.
     private bool _roomTickOpen;
     private bool _splitEnd;
     private bool _endPhase;

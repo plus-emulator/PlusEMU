@@ -4,8 +4,8 @@ using Xunit;
 namespace Plus.Tests;
 
 // Observed on AIR WIN63-202610201032-107964540: each Variable Value Match save below was accepted, reopened with its ints unchanged and
-// an empty variable slot as "0", and then passed or blocked as listed. Comparisons: 0 below, 1 equal, 2 above, 3 at most, 4 not equal,
-// 5 at least. @index is the first user variable (-200) and @furni_count the first global one (-300).
+// an empty variable slot as "0", and then passed or blocked as listed. Comparisons follow the editor's order: 0 below, 1 equal, 2 above,
+// 3 at most, 4 not equal, 5 at least; the probe showed 1, 3 and 5 on a state of 0. @index is the first user variable (-200) and @furni_count the first global one (-300).
 public sealed partial class WiredGlideConveyorTests
 {
     private const string UserVariable = "-200", GlobalVariable = "-300";

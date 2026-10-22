@@ -33,7 +33,26 @@ public static class WiredNativeEditorProjection
     public static int Code(string name) => WiredBoxRegistry.TryGet(name, out var descriptor) ? descriptor.EditorCode
         : throw new InvalidDataException("This native editor projection is unavailable.");
 
-    public static WiredNativeEditorMetadata Metadata(string name) => name switch
+    // Observed on AIR WIN63-202610201032-107964540: these cards reopen their picks in Java HashSet order (see WiredLegacyProtocol.JavaHashSetOrder).
+    // Each name was saved and reopened on Habbo with a scrambled pick set. The negated and other cards are not proven and keep the saved order.
+    private static readonly HashSet<string> HashSetPickCards = new(StringComparer.Ordinal)
+    {
+        "wf_act_toggle_state", "wf_act_toggle_to_rnd", "wf_act_move_rotate", "wf_act_match_to_sshot", "wf_act_call_stacks", "wf_act_chase",
+        "wf_act_furni_to_furni", "wf_cnd_has_furni_on", "wf_cnd_furnis_hv_avtrs", "wf_cnd_match_snapshot", "wf_cnd_stuff_is",
+        "wf_trg_state_changed", "wf_trg_walks_on_furni", "wf_trg_walks_off_furni", "wf_trg_click_furni",
+        "wf_slc_furni_picks", "wf_slc_furni_bytype", "wf_slc_furni_onfurni"
+    };
+
+    public static WiredNativeEditorMetadata Metadata(string name)
+    {
+        var metadata = Define(name);
+
+        return HashSetPickCards.Contains(name)
+            ? metadata with { HashSetPickOrder = true, HashSetSecondaryPickOrder = name == "wf_act_furni_to_furni" }
+            : metadata;
+    }
+
+    private static WiredNativeEditorMetadata Define(string name) => name switch
     {
         // Says borrows the Sept9 reset defaults; remaining footer fields advertise local support.
         // No Sept16 server metadata oracle is claimed.

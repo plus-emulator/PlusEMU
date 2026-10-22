@@ -164,7 +164,8 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         // (a furni variable on a user target) and then changes nothing, like a box with no variable picked.
         unchosenDestination |= name == "wf_act_change_var_val" && tokens[0].Length == 0;
         // Observed on AIR WIN63-202610201032-107964540: Variable Value Match saves with no variable, or with option 1 and no reference
-        // variable, and then never passes.
+        // variable, and then never passes. Observed only on a furni target with same holder off, option 1 only with a left variable and
+        // comparisons 0, 1, 2 and 4. Other empty-slot shapes are assumed to save the same; they still never pass.
         var valueMatch = name == "wf_cnd_var_val_match";
         unchosenDestination |= valueMatch && tokens[0].Length == 0;
 

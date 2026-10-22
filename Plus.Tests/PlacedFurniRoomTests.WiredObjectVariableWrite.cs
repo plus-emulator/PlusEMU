@@ -1,4 +1,5 @@
 using Plus.Communication.Packets.Incoming.WiredVariables;
+using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Items.Wired;
@@ -47,6 +48,48 @@ public partial class PlacedFurniRoomTests
 
         await ObjectWrite(0, floor.Id, "-110", value, 0);
         Assert.Equal(value.ToString(), floor.LegacyDataString);
+        Assert.Equal(new[] { "@state" }, module.DrainChanges().Select(change => change.InternalKey));
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: an inspection write of @state leaves a Wired box (trigger, action, condition, selector,
+    // add-on, variable box or antenna) unchanged and sends nothing, while a Wired floor switch still changes.
+    [Theory]
+    [InlineData("wf_act_move_rotate", InteractionType.WiredEffect, "")]
+    [InlineData("wf_trg_says_something", InteractionType.WiredTrigger, "")]
+    [InlineData("wf_cnd_var_val_match", InteractionType.WiredCondition, "")]
+    [InlineData("wf_slc_furni_picks", InteractionType.WiredSelector, "")]
+    [InlineData("wf_xtra_random", InteractionType.WiredAddon, "")]
+    [InlineData("wf_var_furni", InteractionType.WiredVariable, "")]
+    [InlineData("wf_antenna2", InteractionType.None, "antenna")]
+    public async Task AirInspectionWriteLeavesTheStateOfAWiredBox(string name, InteractionType interaction, string interactionName)
+    {
+        WallSnapshotInstallStore();
+        var box = Furni(303, interaction, WiredBoxType.None);
+        box.RoomId = RoomId;
+        box.Definition.ItemName = name;
+        box.Definition.InteractionName = interactionName.Length > 0 ? interactionName : name;
+        box.Definition.Modes = 2;
+        box.ExtraData = new LegacyDataFormat { Data = "0" };
+        box.SetState(3, 3, 0);
+        var floor = Furni(302, InteractionType.WfFloorSwitch1, WiredBoxType.None);
+        floor.RoomId = RoomId;
+        floor.Definition.Modes = 2;
+        floor.ExtraData = new LegacyDataFormat { Data = "0" };
+        floor.SetState(2, 2, 0);
+        _room.GetRoomItemHandler().LoadFurniture([box, floor]);
+        var module = InspectionInstallModule();
+        _client.Packets.Clear();
+
+        await ObjectWrite(0, box.Id, "-110", 1, 0);
+
+        Assert.Equal("0", box.LegacyDataString);
+        Assert.Empty(module.DrainChanges());
+        Assert.DoesNotContain(_client.Packets, packet => packet.Header is ServerPacketHeader.ObjectUpdateComposer
+            or ServerPacketHeader.ObjectDataUpdateComposer or ServerPacketHeader.ObjectsDataUpdateComposer);
+
+        await ObjectWrite(0, floor.Id, "-110", 1, 0);
+
+        Assert.Equal("1", floor.LegacyDataString);
         Assert.Equal(new[] { "@state" }, module.DrainChanges().Select(change => change.InternalKey));
     }
 

@@ -284,9 +284,9 @@ public sealed class MarketplaceDatabaseTests
         Insert(1, sprite: 100, asking: 25, total: 26, state: "2", timestamp: 1, seller: SellerId);
         Insert(2, sprite: 200, asking: 5, total: 6, state: "2", timestamp: 1, seller: SellerId);
 
-        var owed = Store().ClaimSold(SellerId, _ => false);
+        var credits = Store().ClaimSold(SellerId, _ => null);
 
-        Assert.Null(owed);
+        Assert.Null(credits);
         Assert.Equal(2, CountWhere("state = '2' AND user_id = " + SellerId));
     }
 
@@ -298,15 +298,15 @@ public sealed class MarketplaceDatabaseTests
         Task? concurrent = null;
 
         // A sale completed after the claim read its rows must survive the claim: the delete names only the claimed ids.
-        var owed = Store().ClaimSold(SellerId, _ =>
+        var credits = Store().ClaimSold(SellerId, owed =>
         {
             concurrent = Task.Run(() => Insert(3, sprite: 300, asking: 7, total: 8, state: "2", timestamp: 1, seller: SellerId));
 
-            return true;
+            return 1000 + owed;
         });
         concurrent!.Wait(TimeSpan.FromSeconds(30));
 
-        Assert.Equal(30, owed);
+        Assert.Equal(1030, credits);
         Assert.Equal(new uint[] { 3 }, OfferIds("state = '2' AND user_id = " + SellerId));
     }
 
@@ -316,7 +316,7 @@ public sealed class MarketplaceDatabaseTests
         Insert(1, sprite: 100, asking: 25, total: 26, state: "2", timestamp: 1, seller: SellerId);
         Insert(2, sprite: 200, asking: -3, total: 6, state: "2", timestamp: 1, seller: SellerId);
 
-        Assert.Null(Store().ClaimSold(SellerId, _ => true));
+        Assert.Null(Store().ClaimSold(SellerId, owed => owed));
 
         Assert.Equal(2, CountWhere("state = '2' AND user_id = " + SellerId));
     }

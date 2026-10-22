@@ -110,17 +110,15 @@ public class MarketplaceRedemptionTests
         public bool ListFurni(MarketplaceListing listing) => throw new NotSupportedException();
         public bool ListFurni(IReadOnlyList<MarketplaceListing> listings) => throw new NotSupportedException();
 
-        public int? ClaimSold(int userId, Func<int, bool> accepts)
+        public int? ClaimSold(int userId, Func<int, int?> balanceAfter)
         {
-            var owed = Sold.Sum();
-
-            if (!accepts(owed)) {
+            if (Sold.Count == 0 || balanceAfter(Sold.Sum()) is not { } credits) {
                 return null;
             }
 
             Sold.Clear();
 
-            return owed;
+            return credits;
         }
     }
 }

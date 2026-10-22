@@ -138,7 +138,7 @@ public class MarketplacePurchaseTests
         return new MarketplacePurchaseService(store, items, marketplace, new FixedClock(Now));
     }
 
-    private static MarketplaceClaimedOffer Claim() => new(101, 55, new InventoryItem { Id = 77, OwnerId = 8, Definition = Definition(), ExtraData = FurniObjectData.Empty });
+    private static MarketplaceClaimedOffer Claim() => new(101, 55, new InventoryItem { Id = 77, OwnerId = 8, Definition = Definition(), ExtraData = FurniObjectData.Empty }, 899);
 
     private static ItemDefinition Definition() => new() { Id = 900, SpriteId = 55, PublicName = "Probe", ItemName = "probe", Type = ItemType.Floor, AllowTrade = true, AllowMarketplaceSell = true };
 

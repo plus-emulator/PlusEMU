@@ -15,12 +15,13 @@ public enum VoucherClaimResult
 
 public interface IVoucherClaimStore
 {
-    VoucherClaimResult Claim(int userId, string code);
+    // Marks the code used by the user and sets the voucher's currency to balance in one transaction.
+    VoucherClaimResult Claim(int userId, string code, VoucherType type, int balance);
 }
 
 public sealed class VoucherClaimStore(IDatabase database) : IVoucherClaimStore
 {
-    public VoucherClaimResult Claim(int userId, string code)
+    public VoucherClaimResult Claim(int userId, string code, VoucherType type, int balance)
     {
         using var connection = database.Connection();
         connection.Open();
@@ -64,8 +65,10 @@ public sealed class VoucherRedemptionService(IVoucherManager vouchers, IVoucherC
                 return;
             }
 
+            var balance = (voucher.Type == VoucherType.Credit ? habbo.Credits : habbo.Duckets) + voucher.Value;
+
             lock (voucher) {
-                switch (claims.Claim(habbo.Id, code)) {
+                switch (claims.Claim(habbo.Id, code, voucher.Type, balance)) {
                     case VoucherClaimResult.AlreadyUsed:
                         session.SendNotification("You've already used this voucher code, one per each user, sorry!");
 
@@ -80,11 +83,11 @@ public sealed class VoucherRedemptionService(IVoucherManager vouchers, IVoucherC
             }
 
             if (voucher.Type == VoucherType.Credit) {
-                habbo.Credits += voucher.Value;
+                habbo.Credits = balance;
                 session.Send(new CreditBalanceComposer(habbo.Credits));
             }
-            else if (voucher.Type == VoucherType.Ducket) {
-                habbo.Duckets += voucher.Value;
+            else {
+                habbo.Duckets = balance;
                 session.Send(new HabboActivityPointNotificationComposer(habbo.Duckets, voucher.Value));
             }
 

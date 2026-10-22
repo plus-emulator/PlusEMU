@@ -88,7 +88,7 @@ public sealed class VoucherRedemptionServiceTests
         public bool DuplicateAfterFirst { get; init; }
         public VoucherClaimResult Result { get; init; } = VoucherClaimResult.Claimed;
         public List<(int UserId, string Code)> Claims { get; } = [];
-        public VoucherClaimResult Claim(int userId, string code)
+        public VoucherClaimResult Claim(int userId, string code, VoucherType type, int balance)
         {
             beforeClaim?.Invoke();
 

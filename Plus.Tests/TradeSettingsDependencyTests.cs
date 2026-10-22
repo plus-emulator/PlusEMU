@@ -141,6 +141,6 @@ public sealed class TradeSettingsDependencyTests
             return true;
         }
 
-        public int? ClaimSold(int userId, Func<int, bool> accepts) => null;
+        public int? ClaimSold(int userId, Func<int, int?> balanceAfter) => null;
     }
 }

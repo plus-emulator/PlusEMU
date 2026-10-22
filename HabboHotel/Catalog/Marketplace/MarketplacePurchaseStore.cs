@@ -16,7 +16,7 @@ public sealed record MarketplaceDelivery(uint FurniId, uint ItemId, string Extra
 public sealed record MarketplacePurchaseRequest(int OfferId, int BuyerId, int BuyerCredits, DateTimeOffset ListedBefore,
     Func<uint, ItemDefinition?> DefinitionOf, Func<MarketplaceDelivery, InventoryItem> Prepare);
 
-public sealed record MarketplaceClaimedOffer(int TotalPrice, int SpriteId, InventoryItem Delivery);
+public sealed record MarketplaceClaimedOffer(int TotalPrice, int SpriteId, InventoryItem Delivery, int BuyerCredits);
 
 public sealed record MarketplacePurchaseResult(MarketplacePurchaseRefusal? Refusal, MarketplaceClaimedOffer? Offer);
 
@@ -110,7 +110,7 @@ public sealed class MarketplacePurchaseStore(IDatabase database) : IMarketplaceP
             RecordSale(connection, transaction, definition.SpriteId, offer.TotalPrice);
             transaction.Commit();
 
-            return new MarketplacePurchaseResult(null, new MarketplaceClaimedOffer(offer.TotalPrice, definition.SpriteId, prepared));
+            return new MarketplacePurchaseResult(null, new MarketplaceClaimedOffer(offer.TotalPrice, definition.SpriteId, prepared, request.BuyerCredits - offer.TotalPrice));
         }
         catch {
             transaction.Rollback();

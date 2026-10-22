@@ -294,7 +294,7 @@ public class MarketplaceListingTests
             return true;
         }
 
-        public int? ClaimSold(int userId, Func<int, bool> accepts) => throw new NotSupportedException();
+        public int? ClaimSold(int userId, Func<int, int?> balanceAfter) => throw new NotSupportedException();
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider

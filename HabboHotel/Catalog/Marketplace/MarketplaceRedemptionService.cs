@@ -21,13 +21,11 @@ public sealed class MarketplaceRedemptionService(IMarketplaceOfferStore store) :
             }
 
             // The store commits the claim only if the wallet can hold the total, so no sale is removed without being paid.
-            var owed = store.ClaimSold(habbo.Id, amount => CreditBalance.AddToBalance(habbo.Credits, amount) != null);
-
-            if (owed is not int total || total < 1) {
+            if (store.ClaimSold(habbo.Id, owed => CreditBalance.AddToBalance(habbo.Credits, owed)) is not { } credits) {
                 return;
             }
 
-            habbo.Credits += total;
+            habbo.Credits = credits;
             session.Send(new CreditBalanceComposer(habbo.Credits));
         }
     }

@@ -175,6 +175,6 @@ public class MarketplaceOfferWireTests
             return true;
         }
 
-        public int? ClaimSold(int userId, Func<int, bool> accepts) => throw new NotSupportedException();
+        public int? ClaimSold(int userId, Func<int, int?> balanceAfter) => throw new NotSupportedException();
     }
 }

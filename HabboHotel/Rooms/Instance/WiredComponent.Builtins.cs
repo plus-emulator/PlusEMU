@@ -33,10 +33,10 @@ public partial class WiredComponent
                 var created = change.Kind == WiredVariableChangeKind.Created;
 
                 // Observed on AIR WIN63-202610201032-107964540: a Give, also with override, has no old value and no difference. A Remove
-                // and a variable without a value have no new value.
+                // and a variable without a value have no new value. The box id is the id the client sees, also for a Builders Club box.
                 return key switch
                 {
-                    "@event.variable_update.box_id" => change.Key.DefinitionId,
+                    "@event.variable_update.box_id" => BuildersClubItemIds.ToWire(change.Key.DefinitionId),
                     "@event.variable_update.change_type" => (int)change.Kind,
                     "@event.variable_update.old_value" => created ? null : change.Before?.Value ?? 0,
                     "@event.variable_update.new_value" => change.Kind == WiredVariableChangeKind.Removed || change.Valueless ? null : change.After?.Value ?? 0,

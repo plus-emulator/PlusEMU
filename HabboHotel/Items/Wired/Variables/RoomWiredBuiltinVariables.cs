@@ -387,7 +387,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
 
         return key switch
         {
-            "@id" => item.IsWallItem ? WiredWallBuiltinValues.ReadIdentity(item.Id, item.Definition.SpriteId, key) : unchecked((int)item.Id),
+            // Observed on AIR WIN63-202610201032-107964540: a Builders Club furni's @id is the id the client sees.
+            "@id" => item.IsWallItem ? WiredWallBuiltinValues.ReadIdentity(item.Id, item.Definition.SpriteId, key) : unchecked((int)BuildersClubItemIds.ToWire(item.Id)),
             "@owner_id" => checked((int)item.OwnerId),
             "@class_id" => item.IsWallItem ? WiredWallBuiltinValues.ReadIdentity(item.Id, item.Definition.SpriteId, key) : item.Definition.SpriteId,
             "@height" => Hundredths(item.TotalHeight - item.GetZ),

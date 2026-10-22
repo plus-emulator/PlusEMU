@@ -66,9 +66,48 @@ public partial class PlacedFurniRoomTests
             Assert.DoesNotContain(pass.Packets, packet => packet.Header == ServerPacketHeader.UserUpdateComposer));
     }
 
-    private void FollowStack(Item tile)
+    // AIR (MovingObjectLogic.as:181-186) restarts a resent step from its start tile, so a resend mid-step snaps the avatar back.
+    [Fact]
+    public void FurniToUserOnA150MsRepeatSendsNoUserUpdateInTheFastPassesBetweenRoomTicks()
     {
-        AddFollowBox(FollowStackId, "wf_trg_period_short", new() { IntParams = [1] });
+        var (clock, manager) = GridRoom();
+        var tile = ExecutorFloor(FollowTile, 1, 0, height: 0.15);
+        var actor = ExecutorActor(1, 0);
+        FollowStack(tile, periodUnits: 3);
+        RunRoom(manager, clock, clock.Ms + 1000, period: 25);
+        actor.MoveTo(1, 3);
+
+        var passes = RunRoom(manager, clock, clock.Ms + 2500, period: 25);
+
+        Assert.Contains(passes, pass => !pass.Full && pass.Packets.Any(packet => packet.Header == ServerPacketHeader.WiredMovementsComposer));
+        Assert.All(passes.Where(pass => !pass.Full), pass =>
+            Assert.DoesNotContain(pass.Packets, packet => packet.Header == ServerPacketHeader.UserUpdateComposer));
+        Assert.Equal((1, 3), (actor.X, actor.Y));
+    }
+
+    [Fact]
+    public void FurniToUserWithAFlatFurniSendsOneUserUpdatePerStepTick()
+    {
+        var (clock, manager) = GridRoom();
+        var tile = ExecutorFloor(FollowTile, 1, 0, height: 0);
+        var actor = ExecutorActor(1, 0);
+        FollowStack(tile);
+        RunRoom(manager, clock, clock.Ms + 1000, period: 25);
+        actor.MoveTo(1, 3);
+
+        var passes = RunRoom(manager, clock, clock.Ms + 2500, period: 25);
+
+        var steps = passes.Where(pass => UserStatuses(pass, actor).Any(status => status.Status.Contains("mv "))).ToArray();
+        Assert.Equal([1, 2, 3], steps.Select(pass => StepTarget(UserStatuses(pass, actor)[0].Status).Y));
+        Assert.All(steps, pass => Assert.Single(UserStatuses(pass, actor)));
+        Assert.All(steps, pass => Assert.Contains(pass.Packets, packet => packet.Header == ServerPacketHeader.WiredMovementsComposer));
+        Assert.All(passes.Where(pass => !pass.Full), pass =>
+            Assert.DoesNotContain(pass.Packets, packet => packet.Header == ServerPacketHeader.UserUpdateComposer));
+    }
+
+    private void FollowStack(Item tile, int periodUnits = 1)
+    {
+        AddFollowBox(FollowStackId, "wf_trg_period_short", new() { IntParams = [periodUnits] });
         AddFollowBox(FollowStackId + 1, "wf_act_furni_to_user", new() { IntParams = [100, 200], SelectedItems = [tile.Id] });
         AddFollowBox(FollowStackId + 2, "wf_slc_users_bytype", new() { IntParams = [1, 0, 0] });
         AddFollowBox(FollowStackId + 3, "wf_xtra_mov_physics", new() { IntParams = [0, 1, 1, 0, 900, 900, 900] });

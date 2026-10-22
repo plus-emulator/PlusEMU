@@ -5,7 +5,7 @@ using Plus.HabboHotel.Rooms;
 
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
-public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextualTrigger
+public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextualTrigger, IWiredSaveRefusal
 {
     public WiredVariableChangedTrigger(Room room, Item item, WiredBoxDescriptor descriptor) : base(room, item, descriptor) =>
         ApplyConfiguration(WiredNativeEditorProjection.DefaultRuntime(item.Id, descriptor) ?? new() { IntParams = [0, 1, 1, 1, 1, 1, 1, -1] });
@@ -26,6 +26,28 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
         validated = proposed;
 
         return TryNormalize(proposed, out _, out error);
+    }
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a pointer variable, or a picked pointer box, is refused because a pointer only reads
+    /// inside an execution.
+    /// </summary>
+    public string? RefuseSave(WiredConfiguration proposed)
+    {
+        var p = proposed.IntParams;
+        var pickedBoxes = p.Length == 9 && p[8] == 1;
+
+        if (pickedBoxes ? proposed.SelectedItems.IsDefaultOrEmpty
+            : proposed.VariableIds.Length != 1 || !WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out _, out _)) {
+            return null;
+        }
+
+        var module = Instance.GetWired().Variables.Module;
+        var picksPointer = pickedBoxes
+            ? module.DescribeDefinitions(proposed.SelectedItems).Any(variable => variable.Definition.IsPointer)
+            : WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out var target, out var token) && module.IsPointer(new(target, token));
+
+        return picksPointer ? WiredVariableDefinitions.NeedsExecutionContextKey : null;
     }
 
     /// <summary>The integer shape only; the picked variable is an opaque catalog id resolved by the module at match time.</summary>

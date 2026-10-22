@@ -64,7 +64,7 @@ public sealed class WiredVariableDefinitionBoxTests
         Assert.Equal(proposed, box.Configuration);
         Assert.False(box.Execute());
         Assert.True(box.HasPersistedConfiguration);
-        Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { Text = "invalid name with spaces" }, out var invalid));
+        Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { Text = "invalid-name" }, out var invalid));
         Assert.False(box.TryValidateConfiguration(invalid, out _, out _));
         Assert.Equal(proposed, box.Configuration);
     }

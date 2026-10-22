@@ -6,7 +6,7 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
 /// <summary>Passive variable metadata. Reads and mutations run through the room module, never as a stack action.</summary>
-public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredConfigurationPersistenceProvider
+public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredConfigurationPersistenceProvider, IWiredSaveRefusal
 {
     private readonly WiredVariableConfigurationPersistence? _persistence;
     private readonly WiredVariableEditor? _editor;
@@ -57,7 +57,7 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
             return false;
         }
 
-        if (definition is { IsPointer: true } && _editor?.RefusePointer(definition) is { } refusal) {
+        if (definition is { IsPointer: true } && _editor?.RefuseAccessor(definition) is { } refusal) {
             error = refusal;
 
             return false;
@@ -81,6 +81,24 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
         }
 
         return true;
+    }
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a new save checks the name before anything else, and an echo of a pointer is refused
+    /// because a pointer only reads inside an execution.
+    /// </summary>
+    public string? RefuseSave(WiredConfiguration proposed)
+    {
+        if (_editor is null) {
+            return null;
+        }
+
+        if (WiredVariableDefinitions.IsNamed(Descriptor.CanonicalName)) {
+            return _editor.RefuseName(Item.Id, proposed.Text, Descriptor.CanonicalName == "wf_var_pointer");
+        }
+
+        return Descriptor.CanonicalName == "wf_var_echo" && WiredVariableDefinitions.TryDecode(Descriptor.CanonicalName, Item.Id, Instance.Id,
+                Instance.OwnerId > 0 ? (uint)Instance.OwnerId : 0, proposed, out var echo, out _)
+            && echo?.Link is { } link && _editor.IsPointer(link.Source) ? WiredVariableDefinitions.NeedsExecutionContextKey : null;
     }
     public void ApplyConfiguration(WiredConfiguration validated)
     {

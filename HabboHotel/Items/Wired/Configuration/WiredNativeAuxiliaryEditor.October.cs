@@ -186,7 +186,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         // The ints and the name are put in their stored form first (see StoredForm). The accessor is checked against the room's variables
         // when the box validates the save.
         yield return new("wf_var_pointer", new(Meta(0, 0, [1], 1), n =>
-            n.FurniSourceTypes.Length == 0 && n.UserSourceTypes.Length == 0 ? Draft(n, n.OwnedIntParams, n.Text) : null));
+            n.FurniSourceTypes.Length == 0 && n.UserSourceTypes.Length == 0 && n.VariableIds.Length == 1 ? Draft(n, n.OwnedIntParams, n.Text) : null));
     }
 
     /// <summary>
@@ -195,7 +195,8 @@ internal static partial class WiredNativeAuxiliaryEditor
     /// <item>Share and Import: any non-zero flag is stored as 1, a missing flag stays on, a fourth int is dropped and a string is accepted
     /// and not kept.</item>
     /// <item>Pointer: a fresh pointer opens on the user target. A target the form does not offer is stored as furni, missing ints give the
-    /// user target and extra ints are dropped. A space in the name becomes an underscore.</item>
+    /// user target and extra ints are dropped. A space in the name becomes an underscore. A second variable is refused with the count key
+    /// (WiredEditorStoreRules).</item>
     /// </list>
     /// </summary>
     internal static WiredNativeEditorConfiguration StoredForm(string name, WiredNativeEditorConfiguration native)
@@ -213,7 +214,7 @@ internal static partial class WiredNativeAuxiliaryEditor
                 return native with
                 {
                     OwnedIntParams = [requested is 1 or -10 or -20 ? requested : 0],
-                    VariableIds = [native.VariableIds.IsEmpty ? Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId : native.VariableIds[0]],
+                    VariableIds = native.VariableIds.IsEmpty ? [Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId] : native.VariableIds,
                     Text = native.Text.Replace(' ', '_')
                 };
             default:

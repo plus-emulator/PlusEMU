@@ -58,7 +58,7 @@ public sealed class WiredPointerEditorTests
         return (new(room, item, descriptor, null, new(module)), descriptor);
     }
 
-    /// <summary>A raw save on the pointer box: the stored configuration, or the refusal key.</summary>
+    /// <summary>A raw save on the pointer box, checked like a new save: the stored configuration, or the refusal key.</summary>
     private static (bool Saved, string Error, WiredConfiguration Stored) Save(int[] ints, string name, params string[] variables)
     {
         var (box, descriptor) = Box();
@@ -66,6 +66,10 @@ public sealed class WiredPointerEditorTests
 
         if (!WiredNativeEditorProjection.TryCompile(PointerId, descriptor, native, out var proposed)) {
             return (false, "compile", new());
+        }
+
+        if (box.RefuseSave(proposed) is { } refused) {
+            return (false, refused, new());
         }
 
         var saved = box.TryValidateConfiguration(proposed, out var validated, out var error);

@@ -65,7 +65,9 @@ internal static class WiredEditorStoreRules
         { "wf_act_cancel_transaction", new(FlagWithoutText, VariableSlots: true) },
         // Observed on AIR WIN63-202610201032-107964540: a save with one variable is stored with the second slot empty. The ints have
         // their own store rule (see WiredSelectorStoreRules).
-        { "wf_slc_users_with_var", new(VariableSlots: true) }
+        { "wf_slc_users_with_var", new(VariableSlots: true) },
+        // Observed on AIR WIN63-202610201032-107964540: a pointer has one variable slot, its accessor; two variables get the count key.
+        { "wf_var_pointer", new(VariableSlots: true) }
     }.ToFrozenDictionary();
 
     // The action codes the hotel keeps: the ones the client offers, the unoffered 9 and the client expression 67.

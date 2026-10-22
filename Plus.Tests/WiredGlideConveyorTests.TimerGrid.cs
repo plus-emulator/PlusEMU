@@ -47,7 +47,8 @@ public sealed partial class WiredGlideConveyorTests
     }
 
     // Observed on AIR WIN63-202610131318-860371703: a 500 ms timer keeps the room's 500 ms grid whatever its arming time, so its toggles
-    // keep one fixed phase on that grid (here the effect runs one wired tick after the trigger, as every effect does), 500 ms apart.
+    // keep one fixed phase on that grid, 500 ms apart. Observed on AIR WIN63-202610201032-107964540: the effect runs in the room tick the
+    // timer fires on.
     [Fact]
     public void AFiveHundredMillisecondTimerTogglesOnTheRoomTicks()
     {
@@ -65,7 +66,7 @@ public sealed partial class WiredGlideConveyorTests
             }
         }
 
-        Assert.Equal([550, 1050, 1550, 2050, 2550], changes);
+        Assert.Equal([500, 1000, 1500, 2000, 2500, 3000], changes);
     }
 
     private static (Fixture Fixture, Plus.HabboHotel.Rooms.RoomUser Rider) TimerGridRoom(string timer)

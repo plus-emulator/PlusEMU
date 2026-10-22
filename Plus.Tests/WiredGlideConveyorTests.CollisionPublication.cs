@@ -136,7 +136,7 @@ public sealed partial class WiredGlideConveyorTests
             Assert.Equal(2, ReadPublication(packets).Count(move => move.Type == 1));
             refusals++;
         };
-        f.Advance(200);
+        f.Advance(150);
         f.SetEngineCallback("_limits", depth ? new WiredEngineLimits { MaxDepth = 0 } : new WiredEngineLimits { MaxPendingStacks = 1 });
 
         f.Advance(50);

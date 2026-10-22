@@ -89,6 +89,8 @@ public sealed partial class WiredGlideConveyorTests
         public DateTimeOffset Now = DateTimeOffset.UnixEpoch;
         public override DateTimeOffset GetUtcNow() => Now;
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => (Now - DateTimeOffset.UnixEpoch).Ticks;
     }
 
     private sealed class MovementPositionStore : IRoomItemStore

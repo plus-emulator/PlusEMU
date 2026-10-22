@@ -238,6 +238,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
     private readonly HashSet<long> _wakeDue = [];
     private const long WakeLeadMs = 3;
 
+    /// <summary>Calls the action after the given ms. Tests replace it to see which wake-ups are armed.</summary>
+    internal Action<double, Action> WakeAfter { get; set; } = WiredWakeClock.Shared.After;
+
     private void ArmWake(long dueMs)
     {
         // The room tick runs what falls due on it, after its UserUpdate. Observed on AIR WIN63-202610201032-107964540: a delay that ends on a
@@ -253,7 +256,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
 
         // Handed over a little early; the worker holds the pass until the due time.
-        WiredWakeClock.Shared.After(dueMs - _engine.Now - WakeLeadMs, () => Wake(dueMs, 0));
+        WakeAfter(dueMs - _engine.Now - WakeLeadMs, () => Wake(dueMs, 0));
     }
 
     // A delayed effect's pass runs at its due time. When a pass is already running it may have started before the time fell due, so the
@@ -276,7 +279,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             return;
         }
 
-        WiredWakeClock.Shared.After(1, () => Wake(dueMs, attempt + 1));
+        WakeAfter(1, () => Wake(dueMs, attempt + 1));
     }
 
     internal void OnFastCycle()

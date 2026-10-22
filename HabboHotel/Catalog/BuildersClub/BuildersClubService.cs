@@ -109,8 +109,10 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         bool placed;
 
         try {
-            // Observed on AIR WIN63-202610201032-107964540: the new furni count comes before the furni's ObjectAdd.
-            placed = room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true, announcing: () => SendFurniCount(session));
+            // Observed on AIR WIN63-202610201032-107964540: the new furni count comes before the furni's ObjectAdd. The stored row
+            // already counts, so the count is read before the furni goes into the room.
+            var count = new BuildersClubFurniCountComposer(store.FurniCount(item.UserId));
+            placed = room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true, announcing: () => session.Send(count));
         }
         catch (Exception exception) {
             logger.LogError(exception, "Failed to place Builders Club furni {ItemId} in room {RoomId}", item.Id, room.Id);
@@ -182,32 +184,29 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
             return false;
         }
 
-        void CountDown()
-        {
-            store.Delete(item.Id);
+        var placer = clients.GetClientByUserId(item.UserId) is { } client && client.GetHabbo() != null ? client : null;
 
-            if (clients.GetClientByUserId(item.UserId) is { } placer && placer.GetHabbo() != null) {
-                SendFurniCount(placer);
-            }
-        }
-
-        // Observed on AIR WIN63-202610201032-107964540: the placer's new furni count comes before the floor furni's ObjectRemove.
-        // No capture shows the order for wall furni, so they keep sending it after ItemRemove. The band id is freed only after the
-        // remove packet carried it.
+        // Observed on AIR WIN63-202610201032-107964540: the placer's new furni count comes before the floor furni's ObjectRemove, so
+        // it is read before the stored row goes. No capture shows the order for wall furni, so they keep sending it after ItemRemove.
         lock (item) {
-            if (!ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item) ||
-                !room.GetRoomItemHandler().RemoveFurniture(session, item, item.IsFloorItem ? CountDown : null)) {
+            if (!ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item)) {
+                return false;
+            }
+
+            var count = placer != null && item.IsFloorItem ? new BuildersClubFurniCountComposer(store.FurniCount(item.UserId) - 1) : null;
+
+            if (!room.GetRoomItemHandler().RemoveFurniture(session, item, count == null ? null : () => placer!.Send(count))) {
                 return false;
             }
 
             item.RoomId = 0;
         }
 
-        if (!item.IsFloorItem) {
-            CountDown();
-        }
+        Delete(item.Id);
 
-        BuildersClubItemIds.Release(item.Id);
+        if (placer != null && !item.IsFloorItem) {
+            SendFurniCount(placer);
+        }
 
         return true;
     }

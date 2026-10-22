@@ -6,7 +6,7 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
 /// <summary>Passive variable metadata. Reads and mutations run through the room module, never as a stack action.</summary>
-public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredConfigurationPersistenceProvider
+public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredConfigurationPersistenceProvider, IWiredSaveRefusal
 {
     private readonly WiredVariableConfigurationPersistence? _persistence;
     private readonly WiredVariableEditor? _editor;
@@ -82,6 +82,7 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
 
         return true;
     }
+    public string? RefuseSave(WiredConfiguration proposed) => null;
     public void ApplyConfiguration(WiredConfiguration validated)
     {
         if (!WiredNativeEditorProjection.IsBound(Item.Id, Descriptor, validated)) {

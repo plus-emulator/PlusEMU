@@ -5,7 +5,7 @@ using Plus.HabboHotel.Rooms;
 
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
-public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextualTrigger
+public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextualTrigger, IWiredSaveRefusal
 {
     public WiredVariableChangedTrigger(Room room, Item item, WiredBoxDescriptor descriptor) : base(room, item, descriptor) =>
         ApplyConfiguration(WiredNativeEditorProjection.DefaultRuntime(item.Id, descriptor) ?? new() { IntParams = [0, 1, 1, 1, 1, 1, 1, -1] });
@@ -27,6 +27,8 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
 
         return TryNormalize(proposed, out _, out error);
     }
+
+    public string? RefuseSave(WiredConfiguration proposed) => null;
 
     /// <summary>The integer shape only; the picked variable is an opaque catalog id resolved by the module at match time.</summary>
     internal static bool TryNormalize(WiredConfiguration proposed, out WiredConfiguration validated, out string error)

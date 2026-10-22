@@ -51,9 +51,10 @@ public class RoomManager : IRoomManager, IStartable
     {
         try {
             // Only the monotonic clock: a wall clock correction would move a pass off the grid or skip it when the poll lands on its instant.
-            var elapsed = _clock.GetElapsedTime(0);
-            var monotonicMs = (long)elapsed.TotalMilliseconds;
-            var now = DateTimeOffset.UnixEpoch + elapsed;
+            // Whole ms, like the Wired engine: a boundary that kept one poll's fraction of a ms made the next on-time poll read 499.x ms, so
+            // the room tick started 25 ms late and the fast pass at its instant ran the Wired output due on it before its UserUpdate.
+            var monotonicMs = (long)_clock.GetElapsedTime(0).TotalMilliseconds;
+            var now = DateTimeOffset.UnixEpoch.AddMilliseconds(monotonicMs);
             var fullPass = RoomCycle.IsDue(_cycleLastExecution, now);
 
             if (fullPass) {

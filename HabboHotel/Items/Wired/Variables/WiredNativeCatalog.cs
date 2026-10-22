@@ -228,14 +228,17 @@ internal static class WiredNativeCatalogProjection
         // a Time Utilities Value part is writable and interceptable.
         // Observed on AIR WIN63-202610201032-107964540: a reference to a shared variable of another room is listed as a normal variable
         // (type 0) of availability 20 whose changes can be intercepted. An echo or alias of a variable of this room stays type 2.
+        // Observed on AIR WIN63-202610201032-107964540: a context variable box is never interceptable, and one without a value has no
+        // last update time.
         var crossRoom = definition.Link is { } link && link.SourceRoomId != definition.RoomId;
+        var contextBox = definition.Target == WiredVariableTarget.Context && !description.IsDerived;
         var variable = new WiredNativeVariable(description.CatalogId, description.IsDerived || definition.Link is not null && !crossRoom ? 2 : 0,
             definition.Name, builtin is not null || description.IsDerived || definition.Target == WiredVariableTarget.Context ? 999
                 : crossRoom ? ReferenceAvailability : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
-            (definition.Link is null || crossRoom) && (writable || description.Interceptable) && builtin is null, false,
-            timestamps && definition.Target != WiredVariableTarget.Global, timestamps, connector);
+            !contextBox && (definition.Link is null || crossRoom) && (writable || description.Interceptable) && builtin is null, false,
+            timestamps && definition.Target != WiredVariableTarget.Global, timestamps && (!contextBox || hasValue), connector);
 
         // Observed on AIR WIN63-202610201032-107964540: a pointer is listed as a normal variable of availability 999 that can be created,
         // deleted and written but not intercepted, with an empty text connector, and it requires an execution context.

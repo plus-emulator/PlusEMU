@@ -59,7 +59,7 @@ public partial class PlacedFurniRoomTests
         Assert.Null(_room.GetRoomItemHandler().GetItem(item.Id));
         Assert.NotNull(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(item.Id));
         Assert.True(progressed);
-        Assert.Contains(ServerPacketHeader.FurniListUpdateComposer, _client.Sent);
+        Assert.Contains(ServerPacketHeader.FurniListAddComposer, _client.Sent);
     }
 
     [Fact]

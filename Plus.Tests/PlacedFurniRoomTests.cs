@@ -174,7 +174,7 @@ public partial class PlacedFurniRoomTests : IDisposable
 
         Assert.Null(_room.GetRoomItemHandler().GetItem(30));
         Assert.NotNull(Assert.IsType<InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(30));
-        Assert.Contains(ServerPacketHeader.FurniListUpdateComposer, _client.Sent);
+        Assert.Contains(ServerPacketHeader.FurniListAddComposer, _client.Sent);
         Assert.Equal((7, "owner", 7u), (placed.UserId, placed.Username, placed.OwnerId));
     }
 

@@ -4,6 +4,7 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Quests;
+using Plus.HabboHotel.Users.Inventory.Furniture;
 using Plus.Utilities.DependencyInjection;
 
 namespace Plus.HabboHotel.Rooms;
@@ -148,7 +149,7 @@ public sealed class RoomItemPickupService(
             if (receiverHabbo?.Inventory is { } recipientInventory) {
                 // The pickup is already stored; an inventory that is not loaded picks the item up later.
                 recipientInventory.Furniture.AddItem(inventoryItem);
-                receiver!.Send(new FurniListUpdateComposer());
+                receiver!.Send(new FurniListAddComposer(InventoryItemSnapshot.Capture(inventoryItem)));
             }
 
             handler.CompleteTransfer(transfer, item);

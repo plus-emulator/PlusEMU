@@ -383,6 +383,7 @@ public static class WiredNativeEditorProjection
         // Observed on AIR WIN63-202610201032-107964540: these boxes store a save in a normal form instead of refusing most odd values.
         if (Supports(name)) {
             native = WiredEditorStoreRules.PadVariables(name, native, Metadata(name));
+            native = WiredEditorStoreRules.VariableValueForm(name, native);
         }
 
         if (WiredEditorStoreRules.Applies(name) && Supports(name)) {

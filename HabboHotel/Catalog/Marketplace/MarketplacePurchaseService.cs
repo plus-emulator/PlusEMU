@@ -66,7 +66,7 @@ public sealed class MarketplacePurchaseService(IMarketplacePurchaseStore store, 
 
             var claim = result.Offer!;
 
-            // The item was built before the commit; charging and handing it over cannot fail.
+            // The charge and the item were committed together, and the item was built before the commit, so handing it over cannot fail.
             habbo.Credits = claim.BuyerCredits;
             session.Send(new CreditBalanceComposer(habbo.Credits));
             inventory.Furniture.AddItem(claim.Delivery);

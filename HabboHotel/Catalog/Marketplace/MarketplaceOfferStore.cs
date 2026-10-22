@@ -108,6 +108,10 @@ public sealed class MarketplaceOfferStore(IDatabase database) : IMarketplaceOffe
                 throw new InvalidOperationException($"Claimed {sold.Count} sold offers for user {userId} but removed {deleted}; nothing was paid.");
             }
 
+            if (connection.Execute("UPDATE users SET credits = @credits WHERE id = @userId LIMIT 1", new { credits, userId }, transaction) != 1) {
+                throw new InvalidOperationException($"User {userId} was not paid; the sold offers stay queued.");
+            }
+
             transaction.Commit();
 
             return credits;

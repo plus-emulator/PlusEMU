@@ -5,6 +5,7 @@ using Plus.Communication.Packets.Outgoing.Inventory.Purse;
 using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Database;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Users;
 
 namespace Plus.HabboHotel.Catalog.Vouchers;
 
@@ -34,6 +35,15 @@ public sealed class VoucherClaimStore(IDatabase database) : IVoucherClaimStore
         if (connection.Execute("UPDATE catalog_vouchers SET current_uses=current_uses+1 WHERE voucher=@code AND enabled=1 AND current_uses<max_uses LIMIT 1",
                 new { code }, transaction) != 1) {
             return VoucherClaimResult.Exhausted;
+        }
+
+        if (type == VoucherType.Credit) {
+            if (connection.Execute("UPDATE users SET credits = @balance WHERE id = @userId LIMIT 1", new { balance, userId }, transaction) != 1) {
+                throw new InvalidOperationException($"User {userId} was not paid voucher {code}; the code stays unused.");
+            }
+        }
+        else {
+            UserCurrencyStore.Set(connection, userId, ActivityPointType.Duckets, balance, transaction);
         }
 
         transaction.Commit();

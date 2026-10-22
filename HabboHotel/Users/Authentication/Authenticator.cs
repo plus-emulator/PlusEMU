@@ -75,7 +75,7 @@ internal class Authenticator : IAuthenticator
             }
 
             var loaded = habbo;
-            loaded.Disconnected += async (_, _) => await OnHabboDisconnected(loaded);
+            loaded.Disconnected += (_, _) => OnHabboDisconnected(loaded);
 
             // TODO @80O: Remove after splitting up
             loaded.Init(session);
@@ -110,10 +110,10 @@ internal class Authenticator : IAuthenticator
         }
     }
 
-    private async Task OnHabboDisconnected(Habbo habbo)
+    private void OnHabboDisconnected(Habbo habbo)
     {
         foreach (var task in _authenticationTasks) {
-            await task.UserLoggedOut(habbo);
+            task.UserLoggedOut(habbo);
         }
     }
 }

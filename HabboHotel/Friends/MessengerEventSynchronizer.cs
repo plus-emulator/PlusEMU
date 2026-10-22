@@ -52,12 +52,7 @@ internal class MessengerEventSynchronizer : IAuthenticationTask
         }
     }
 
-    public Task UserLoggedOut(Habbo habbo)
-    {
-        NotifyOfflineStatus(habbo);
-
-        return Task.CompletedTask;
-    }
+    public void UserLoggedOut(Habbo habbo) => NotifyOfflineStatus(habbo);
 
 
     private void OnRoomInviteReceived(Habbo habbo, MessengerMessageEventArgs args) => habbo.Client?.Send(new RoomInviteComposer(args.Friend.Id, args.Message));

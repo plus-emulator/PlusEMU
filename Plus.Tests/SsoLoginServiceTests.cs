@@ -4,6 +4,7 @@ using System.Reflection;
 using Plus.Communication.Attributes;
 using Plus.Communication.Packets.Incoming.Handshake;
 using Plus.Communication.Packets.Outgoing;
+using Plus.Core;
 using Plus.Core.FigureData;
 using Plus.Core.Language;
 using Plus.Core.Settings;
@@ -79,39 +80,9 @@ public class SsoLoginServiceTests
     [Fact]
     public async Task SuccessfulLoginPreservesInitializationOrderAndAwaitsRewards()
     {
-        var calls = new List<string>();
         var rewardCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var habbo = new Habbo
-        {
-            Id = 7,
-            Look = "look",
-            Clothing = new(),
-            Access = UserAccess.Empty,
-            HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0)
-        };
-        var (client, sent) = HabbiconTestSupport.Client(habbo);
-        habbo.Client = client;
-        var settings = Proxy<ISettingsManager>((_, _) => "0");
-        var rooms = Proxy<IRoomManager>((method, _) => method == "GetRooms" ? Array.Empty<Room>() : Array.Empty<RoomModel>());
-        var styles = Proxy<IChatStyleManager>((_, _) => Array.Empty<int>());
-        var permissions = Proxy<IAccessControl>((_, _) => null);
-        using var lifecycle = new ClubLifecycle(permissions, null!, null!,
-            Proxy<IFigureDataManager>((_, args) => args![0]), styles, rooms, settings, new GroupManagementTests.RecordingDatabase(),
-            new FixedTimeProvider(FixedTimeProvider.Epoch), TestLogging.For<ClubLifecycle>());
-        var service = new SsoLoginService(
-            Proxy<IAuthenticator>((_, _) => { calls.Add("authenticate"); return Task.FromResult<AuthenticationError?>(null); }),
-            Proxy<IBadgeManager>((method, _) => throw new NotSupportedException(method)),
-            Proxy<IModerationManager>((_, _) => new Dictionary<string, List<ModerationPresetActions>>()),
-            Proxy<IAchievementShowcaseService>((_, _) => { calls.Add("definitions"); return null; }),
-            Proxy<ICacheManager>((method, _) => { calls.Add("cache"); return method == "ContainsUser" ? true : throw new NotSupportedException(method); }),
-            Proxy<ILanguageManager>((method, _) => throw new NotSupportedException(method)), settings,
-            Proxy<IRewardManager>((_, _) => { calls.Add("rewards"); return rewardCompletion.Task; }), lifecycle,
-            new ClientAccessLists(permissions, styles, rooms), new UserProcessFactory(TestLogging.For<ProcessComponent>(), new FixedTimeProvider(FixedTimeProvider.Epoch),
-                Proxy<IUserProcessStore>((_, _) => null), Proxy<IAchievementManager>((_, _) => null), settings),
-            Proxy<IModeratorTicketService>((method, _) => throw new NotSupportedException(method)),
-            Proxy<IAvatarEffectService>((_, _) => ImmutableArray<AvatarEffectEntry>.Empty),
-            Proxy<IRewardTrackManager>((_, _) => { calls.Add("tracks"); return null; }),
-            Proxy<ICampaignCalendarService>((_, _) => { calls.Add("calendar"); return null; }));
+        using var world = new LoginWorld(rewardCompletion.Task);
+        var (calls, habbo, client, sent, service) = (world.Calls, world.Habbo, world.Client, world.Sent, world.Service);
 
         var pending = service.Login(client, "valid");
 
@@ -150,10 +121,78 @@ public class SsoLoginServiceTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LoginTellsTheClientWhetherAShutdownIsPending(bool pending)
+    {
+        using var world = new LoginWorld(Task.CompletedTask, pending ? TestPlannedShutdown.Pending : TestPlannedShutdown.None);
+
+        try {
+            await world.Service.Login(world.Client, "valid");
+        }
+        finally {
+            ProcessOf(world.Habbo)?.Dispose();
+        }
+
+        var status = Assert.Single(world.Sent, packet => packet.Header == ServerPacketHeader.AvailabilityStatusComposer);
+        Assert.Equal(new byte[] { 1, pending ? (byte)1 : (byte)0, 1 }, status.Payload);
+    }
+
     private static ProcessComponent? ProcessOf(Habbo habbo) =>
         (ProcessComponent?)typeof(Habbo).GetProperty("Process", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(habbo);
 
     private static T Proxy<T>(Func<string, object?[]?, object?> invoke) where T : class => CatalogSnapshotTestSupport.Proxy<T>(invoke);
+
+    private sealed class LoginWorld : IDisposable
+    {
+        private readonly ClubLifecycle _lifecycle;
+
+        public List<string> Calls { get; } = [];
+        public Habbo Habbo { get; }
+        public Plus.Communication.Flash.FlashGameClient Client { get; }
+        public List<(uint Header, byte[] Payload)> Sent { get; }
+        public SsoLoginService Service { get; }
+
+        public LoginWorld(Task rewards, IPlannedShutdown? plannedShutdown = null)
+        {
+            var calls = Calls;
+            var habbo = Habbo = new Habbo
+            {
+                Id = 7,
+                Look = "look",
+                Clothing = new(),
+                Access = UserAccess.Empty,
+                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0)
+            };
+            (Client, Sent) = HabbiconTestSupport.Client(habbo);
+            habbo.Client = Client;
+            var settings = Proxy<ISettingsManager>((_, _) => "0");
+            var rooms = Proxy<IRoomManager>((method, _) => method == "GetRooms" ? Array.Empty<Room>() : Array.Empty<RoomModel>());
+            var styles = Proxy<IChatStyleManager>((_, _) => Array.Empty<int>());
+            var permissions = Proxy<IAccessControl>((_, _) => null);
+            _lifecycle = new ClubLifecycle(permissions, null!, null!,
+                Proxy<IFigureDataManager>((_, args) => args![0]), styles, rooms, settings, new GroupManagementTests.RecordingDatabase(),
+                new FixedTimeProvider(FixedTimeProvider.Epoch), TestLogging.For<ClubLifecycle>());
+            Service = new SsoLoginService(
+                Proxy<IAuthenticator>((_, _) => { calls.Add("authenticate"); return Task.FromResult<AuthenticationError?>(null); }),
+                Proxy<IBadgeManager>((method, _) => throw new NotSupportedException(method)),
+                Proxy<IModerationManager>((_, _) => new Dictionary<string, List<ModerationPresetActions>>()),
+                Proxy<IAchievementShowcaseService>((_, _) => { calls.Add("definitions"); return null; }),
+                Proxy<ICacheManager>((method, _) => { calls.Add("cache"); return method == "ContainsUser" ? true : throw new NotSupportedException(method); }),
+                Proxy<ILanguageManager>((method, _) => throw new NotSupportedException(method)), settings,
+                Proxy<IRewardManager>((_, _) => { calls.Add("rewards"); return rewards; }), _lifecycle,
+                new ClientAccessLists(permissions, styles, rooms), new UserProcessFactory(TestLogging.For<ProcessComponent>(), new FixedTimeProvider(FixedTimeProvider.Epoch),
+                    Proxy<IUserProcessStore>((_, _) => null), Proxy<IAchievementManager>((_, _) => null), settings),
+                Proxy<IModeratorTicketService>((method, _) => throw new NotSupportedException(method)),
+                Proxy<IAvatarEffectService>((_, _) => ImmutableArray<AvatarEffectEntry>.Empty),
+                Proxy<IRewardTrackManager>((_, _) => { calls.Add("tracks"); return null; }),
+                Proxy<ICampaignCalendarService>((_, _) => { calls.Add("calendar"); return null; }),
+                plannedShutdown: plannedShutdown);
+        }
+
+        public void Dispose() => _lifecycle.Dispose();
+    }
 
     private sealed class PendingLogin : ISsoLoginService
     {

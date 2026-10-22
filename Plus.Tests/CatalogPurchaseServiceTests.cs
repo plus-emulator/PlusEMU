@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets.Incoming.Catalog;
 using Plus.Communication.Packets.Outgoing;
+using Plus.Core;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
@@ -361,6 +362,94 @@ public sealed class CatalogPurchaseServiceTests
         Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
     }
 
+    public static TheoryData<string> ShutdownBlockedKinds => ["furni", "bundle", "club", "builders_club", "builders_club_addon"];
+
+    [Theory]
+    [MemberData(nameof(ShutdownBlockedKinds))]
+    public async Task PendingShutdownRefusesFurniClubAndBuildersClubWithoutChargingOrDelivering(string kind)
+    {
+        var purchase = ShutdownPurchase(kind, TestPlannedShutdown.Pending);
+
+        await new PurchaseFromCatalogEvent(purchase.Context.Service).Parse(purchase.Context.Client,
+            HabbiconTestSupport.Incoming(1, purchase.OfferId, "", 1));
+
+        var refusal = Assert.Single(purchase.Context.Sent);
+        Assert.Equal(ServerPacketHeader.PurchaseErrorComposer, refusal.Header);
+        Assert.Equal(0, new FlashIncomingPacket { Buffer = refusal.Payload }.ReadInt());
+        Assert.Equal(0, purchase.Context.Rewards.Charges);
+        Assert.Equal(0, purchase.Memberships.Purchases);
+        Assert.Equal(100, purchase.Context.Habbo.Credits);
+        Assert.Equal(10, purchase.Context.Habbo.Currencies[5]);
+        Assert.Equal(0, purchase.Context.Factory.Creates);
+        Assert.Empty(Assert.IsType<InventoryComponent>(purchase.Context.Habbo.Inventory).Furniture.AllItems);
+        Assert.Empty(purchase.BuildersClub.Delivered);
+        Assert.Equal(0, purchase.BuildersClub.StatusSent);
+        Assert.Empty(purchase.Context.Tracks.Calls);
+    }
+
+    [Theory]
+    [MemberData(nameof(ShutdownBlockedKinds))]
+    public async Task WithoutAPendingShutdownTheSameOffersAreBought(string kind)
+    {
+        var purchase = ShutdownPurchase(kind, TestPlannedShutdown.None);
+
+        await new PurchaseFromCatalogEvent(purchase.Context.Service).Parse(purchase.Context.Client,
+            HabbiconTestSupport.Incoming(1, purchase.OfferId, "", 1));
+
+        Assert.Contains(purchase.Context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+        Assert.DoesNotContain(purchase.Context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
+    }
+
+    [Fact]
+    public async Task PendingShutdownStillSellsABadge()
+    {
+        var context = Context(product: new CatalogProduct { Type = CatalogProductType.Badge, BadgeCode = "ACH_Shutdown" },
+            plannedShutdown: TestPlannedShutdown.Pending);
+
+        await new PurchaseFromCatalogEvent(context.Service).Parse(context.Client, HabbiconTestSupport.Incoming(1, 2, "", 1));
+
+        Assert.Equal(1, context.Rewards.Charges);
+        Assert.Equal(90, context.Habbo.Credits);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+        Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
+    }
+
+    private static ShutdownPurchaseCase ShutdownPurchase(string kind, IPlannedShutdown plannedShutdown)
+    {
+        var memberships = new RecordingMembership();
+        var buildersClub = new RecordingBuildersClub(canBuy: true);
+        var context = kind switch
+        {
+            "furni" => Context(points: 4, pointsType: 5, plannedShutdown: plannedShutdown),
+            "bundle" => Context(points: 4, pointsType: 5, plannedShutdown: plannedShutdown, products:
+            [
+                new CatalogProduct { Type = CatalogProductType.Furni, Definition = BundleDefinition(51) },
+                new CatalogProduct { Type = CatalogProductType.Furni, Definition = BundleDefinition(52) }
+            ]),
+            "club" => Context(club: true, memberships: memberships, plannedShutdown: plannedShutdown),
+            "builders_club" => Context(points: 4, pointsType: 5, buildersClub: buildersClub, plannedShutdown: plannedShutdown,
+                product: new CatalogProduct { Type = CatalogProductType.BuildersClub, Amount = 31, ExtraParam = "1000" }),
+            "builders_club_addon" => Context(points: 4, pointsType: 5, buildersClub: buildersClub, plannedShutdown: plannedShutdown,
+                product: new CatalogProduct { Type = CatalogProductType.BuildersClubAddon, Amount = 45 }),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+        };
+
+        context.Habbo.Currencies[5] = 10;
+
+        return new(context, kind == "club" ? 9 : 2, memberships, buildersClub);
+    }
+
+    private static ItemDefinition BundleDefinition(uint id) => new()
+    {
+        Id = id,
+        ItemName = $"bundle_chair_{id}",
+        ProductType = "s",
+        Type = ItemType.Floor,
+        InteractionType = InteractionType.None
+    };
+
+    private sealed record ShutdownPurchaseCase(TestContext Context, int OfferId, RecordingMembership Memberships, RecordingBuildersClub BuildersClub);
+
     private static Group Group(int owner, int[] members, bool forum) =>
         new(4, "Plus", "", "b28060s27124", 2, owner, null, 0, 3, 5, 0, forum, new([.. members], [], []));
 
@@ -384,7 +473,8 @@ public sealed class CatalogPurchaseServiceTests
         bool factorySucceeds = true, bool club = false, bool bot = false, bool botPreset = true,
         bool botStoreFails = false, int points = 0, int pointsType = 0, bool effect = false,
         InteractionType interaction = InteractionType.None, string extraParam = "", IGroupManager? groups = null, IGroupForumStore? forums = null,
-        string itemName = "chair", CatalogProduct? product = null, Plus.HabboHotel.Catalog.BuildersClub.IBuildersClubService? buildersClub = null)
+        string itemName = "chair", CatalogProduct? product = null, Plus.HabboHotel.Catalog.BuildersClub.IBuildersClubService? buildersClub = null,
+        IReadOnlyList<CatalogProduct>? products = null, RecordingMembership? memberships = null, IPlannedShutdown? plannedShutdown = null)
     {
         var definition = new ItemDefinition
         {
@@ -401,7 +491,7 @@ public sealed class CatalogPurchaseServiceTests
             CostPoints = points,
             PointsType = pointsType,
             LocalizationKey = "chair",
-            Products = [product != null
+            Products = products ?? [product != null
                 ? product
                 : effect
                 ? new CatalogProduct { Type = CatalogProductType.Effect, EffectId = 108 }
@@ -449,7 +539,7 @@ public sealed class CatalogPurchaseServiceTests
             factory,
             botStore,
             Proxy<IHabbiconService, EmptyProxy>(),
-            new RecordingMembership(),
+            memberships ?? new RecordingMembership(),
             rewards,
             tracks,
             Proxy<IAvatarEffectStore, EmptyProxy>(),
@@ -457,7 +547,8 @@ public sealed class CatalogPurchaseServiceTests
             forums ?? Proxy<IGroupForumStore, EmptyProxy>(),
             new FixedClock(new DateTimeOffset(2040, 2, 3, 4, 5, 6, TimeSpan.Zero)),
             NullLogger<CatalogPurchaseService>.Instance,
-            buildersClub);
+            buildersClub,
+            plannedShutdown);
 
         return new(service, client, habbo, sent, rewards, factory, botStore, tracks);
     }
@@ -698,9 +789,14 @@ public sealed class CatalogPurchaseServiceTests
 
     private sealed class RecordingMembership : IClubMembershipService
     {
+        public int Purchases { get; private set; }
         public DateTimeOffset? GetExpiry(int userId) => null;
-        public DateTimeOffset? Purchase(Habbo habbo, ClubOffer offer, int? recipientId = null) =>
-            new DateTimeOffset(2040, 3, 5, 4, 5, 6, TimeSpan.Zero);
+        public DateTimeOffset? Purchase(Habbo habbo, ClubOffer offer, int? recipientId = null)
+        {
+            Purchases++;
+
+            return new DateTimeOffset(2040, 3, 5, 4, 5, 6, TimeSpan.Zero);
+        }
     }
 
     public class EmptyProxy : DispatchProxy

@@ -20,7 +20,7 @@ public sealed class WiredVariableBuiltinStateTests
         room.Id = 1;
         var handling = new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
         typeof(Room).GetField("_roomItemHandling", flags)!.SetValue(room, handling);
-        typeof(Room).GetField("_roomUserManager", flags)!.SetValue(room, new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
+        typeof(Room).GetField("_roomUserManager", flags)!.SetValue(room, new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings));
         var floor = (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling).GetField("_floorItems", flags)!.GetValue(handling)!;
         var item = new Item { Id = 20, OwnerId = 5, ExtraData = new LegacyDataFormat { Data = "0" }, Definition = new() { Modes = 3, Type = ItemType.Floor } };
         typeof(Item).GetField("_room", flags)!.SetValue(item, room);
@@ -60,7 +60,7 @@ public sealed class WiredVariableBuiltinStateTests
         room.Id = 1;
         var handling = new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
         typeof(Room).GetField("_roomItemHandling", flags)!.SetValue(room, handling);
-        typeof(Room).GetField("_roomUserManager", flags)!.SetValue(room, new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
+        typeof(Room).GetField("_roomUserManager", flags)!.SetValue(room, new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings));
         var floor = (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling).GetField("_floorItems", flags)!.GetValue(handling)!;
         var item = new Item { Id = 20, OwnerId = 5, ExtraData = new LegacyDataFormat { Data = "0" }, Definition = new() { Modes = 3, Type = ItemType.Floor } };
         typeof(Item).GetField("_room", flags)!.SetValue(item, room);

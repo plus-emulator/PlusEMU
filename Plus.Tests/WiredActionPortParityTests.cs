@@ -1029,7 +1029,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         typeof(Room).GetField("_roomItemHandling", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, handler);
         typeof(Room).GetField("_roomUserManager", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room,
             new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(),
-                TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
+                TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings));
         TestRoomUserSnapshots.Install(room);
         map.GenerateMaps();
 

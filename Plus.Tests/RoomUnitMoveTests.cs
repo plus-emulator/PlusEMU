@@ -334,7 +334,7 @@ public sealed class RoomUnitMoveTests
             Room = new Room(new RoomData { Id = 42, OwnerId = RoomOwnerId, OwnerName = "owner", Type = "private", AllowPets = true, Model = model }, [],
                 TestLogging.Navigation, TestLogging.Logger, TestRoomAchievements.Unused, TestRoomOwners.Unused);
             Set(Room, "_gamemap", new Gamemap(Room, model, TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance));
-            Set(Room, "_roomUserManager", new RoomUserManager(Room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
+            Set(Room, "_roomUserManager", new RoomUserManager(Room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings));
             Set(Room, "_userSnapshots", CatalogSnapshotTestSupport.Proxy<IRoomUserSnapshotService>((_, _) => null));
             Room.UsersWithRights = [RightsHolderId];
             using var owner = RoomOwnerScope.Enter(Room);

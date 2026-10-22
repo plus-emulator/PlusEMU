@@ -1478,7 +1478,7 @@ public partial class PlacedFurniRoomTests
         SetOther("_roomItemHandling", new RoomItemHandling(room, new RoomItemStore(db.Database), new RoomItemMetadataStore(db.Database),
             TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards));
         SetOther("_roomUserManager", new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, TestRewardProgress.Unused,
-            TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
+            TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings));
         SetOther("_wiredComponent", new Plus.HabboHotel.Rooms.Instance.WiredComponent(room, TestLogging.Logger, TimeProvider.System,
             TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance, new EmptyConfigurationStore(), db.Database,
             TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestGroupManager.Empty,

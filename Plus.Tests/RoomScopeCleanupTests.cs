@@ -95,7 +95,7 @@ public sealed class RoomScopeCleanupTests
             Set(room, "_interactionClock", TimeProvider.System);
             Set(room, "_gamemap", map);
             Set(room, "_roomItemHandling", new RoomItemHandling(room, items, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestRewardProgress.Unused));
-            Set(room, "_roomUserManager", new RoomUserManager(room, users, TimeProvider.System, TestRewardProgress.Unused, TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
+            Set(room, "_roomUserManager", new RoomUserManager(room, users, TimeProvider.System, TestRewardProgress.Unused, TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings));
             TestRoomUserSnapshots.Install(room);
 
             if (v2) {

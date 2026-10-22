@@ -162,7 +162,7 @@ public sealed class BotSpeechHeadTurnTests
                 TestLogging.Navigation, TestLogging.Logger, TestRoomAchievements.Unused, TestRoomOwners.Unused);
             Set(Room, "_gamemap", new Gamemap(Room, model, TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance));
             Set(Room, "_roomUserManager", new RoomUserManager(Room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused,
-                new TestBotAiFactory((_, _) => Ai), TestGameClientManager.Empty, TestItemRuntime.Travel));
+                new TestBotAiFactory((_, _) => Ai), TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings));
             Set(Room, "_userSnapshots", CatalogSnapshotTestSupport.Proxy<IRoomUserSnapshotService>((_, _) => null));
             using var owner = RoomOwnerScope.Enter(Room);
             var manager = Room.GetRoomUserManager();

@@ -16,6 +16,7 @@ using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Items.Interactor;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Users;
+using Plus.Core.Settings;
 
 namespace Plus.Tests;
 
@@ -41,6 +42,7 @@ internal static class TestLogging
 internal static class TestItemRuntime
 {
     internal static IItemTravelStore Travel { get; } = new EmptyTravelStore();
+    internal static ISettingsManager Settings { get; } = Empty<ISettingsManager>();
     internal static IQuestManager Quests { get; } = Empty<IQuestManager>();
     internal static IRewardTrackManager Rewards { get; } = Empty<IRewardTrackManager>();
     internal static IAchievementManager Achievements { get; } = Empty<IAchievementManager>();

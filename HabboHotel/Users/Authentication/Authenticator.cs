@@ -1,3 +1,4 @@
+using Plus.Core;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users.UserData;
 using System.Diagnostics;
@@ -75,7 +76,7 @@ internal class Authenticator : IAuthenticator
             }
 
             var loaded = habbo;
-            loaded.Disconnected += async (_, _) => await OnHabboDisconnected(loaded);
+            loaded.Disconnected += (_, _) => OnHabboDisconnected(loaded);
 
             // TODO @80O: Remove after splitting up
             loaded.Init(session);
@@ -110,10 +111,16 @@ internal class Authenticator : IAuthenticator
         }
     }
 
-    private async Task OnHabboDisconnected(Habbo habbo)
+    // Runs inside the disconnect: one failing task must not skip the others or the save that follows.
+    private void OnHabboDisconnected(Habbo habbo)
     {
         foreach (var task in _authenticationTasks) {
-            await task.UserLoggedOut(habbo);
+            try {
+                task.UserLoggedOut(habbo);
+            }
+            catch (Exception e) {
+                ExceptionLogger.LogException(e);
+            }
         }
     }
 }

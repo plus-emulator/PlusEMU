@@ -22,9 +22,8 @@ public interface IAuthenticationTask
     Task UserLoggedIn(Habbo habbo) => Task.CompletedTask;
 
     /// <summary>
-    /// Raised when the user has been disconnected from the hotel.
+    /// Raised while the user is disconnected from the hotel, before the user is saved.
     /// </summary>
     /// <param name="habbo"></param>
-    /// <returns></returns>
-    Task UserLoggedOut(Habbo habbo) => Task.CompletedTask;
+    void UserLoggedOut(Habbo habbo) { }
 }

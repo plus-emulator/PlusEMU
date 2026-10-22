@@ -243,8 +243,9 @@ internal static class WiredEditorStoreRules
     /// <summary>
     /// Observed on AIR WIN63-202610201032-107964540: Variable Value Match and Change Variable Value store a six-int save with the seventh
     /// int (same holder) off, and an empty variable slot as "0". Variable Value Match also stores a save with one variable with the
-    /// second slot empty. Other shapes are left for the editor to refuse. An empty destination slot of Change Variable Value was not
-    /// probed; it reopens as "0" like the other slots, and the runtime treats "0" and "n" the same.
+    /// second slot empty, and a save with no variables with both slots empty. Other shapes are left for the editor to refuse. An empty
+    /// destination slot of Change Variable Value was not probed; it reopens as "0" like the other slots, and the runtime treats "0" and
+    /// "n" the same.
     /// </summary>
     public static WiredNativeEditorConfiguration VariableValueForm(string name, WiredNativeEditorConfiguration native)
     {
@@ -253,7 +254,12 @@ internal static class WiredEditorStoreRules
         }
 
         var ints = native.OwnedIntParams;
-        ImmutableArray<string> ids = name == "wf_cnd_var_val_match" && native.VariableIds.Length == 1 ? [native.VariableIds[0], ""] : native.VariableIds;
+        ImmutableArray<string> ids = name != "wf_cnd_var_val_match" ? native.VariableIds : native.VariableIds.Length switch
+        {
+            0 => ["", ""],
+            1 => [native.VariableIds[0], ""],
+            _ => native.VariableIds
+        };
 
         return native with
         {
@@ -263,6 +269,10 @@ internal static class WiredEditorStoreRules
                 : ids
         };
     }
+
+    /// <summary>Observed on AIR WIN63-202610201032-107964540: Toggle State saved with no ints is stored with its fresh ints.</summary>
+    public static WiredNativeEditorConfiguration EmptyIntsForm(string name, WiredNativeEditorConfiguration native, ImmutableArray<int> defaults) =>
+        name == "wf_act_toggle_state" && native.OwnedIntParams is { IsDefault: false, Length: 0 } ? native with { OwnedIntParams = defaults } : native;
 
     /// <summary>
     /// The text of a new Text Output save in its stored form. Observed on AIR WIN63-202610201032-107964540: the name is lower case, a

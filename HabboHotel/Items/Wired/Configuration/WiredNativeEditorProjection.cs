@@ -391,6 +391,7 @@ public static class WiredNativeEditorProjection
         if (Supports(name)) {
             native = WiredEditorStoreRules.PadVariables(name, native, Metadata(name));
             native = WiredEditorStoreRules.VariableValueForm(name, native);
+            native = WiredEditorStoreRules.EmptyIntsForm(name, native, Metadata(name).OwnedDefaults);
         }
 
         if (WiredEditorStoreRules.Applies(name) && Supports(name)) {

@@ -128,6 +128,18 @@ public sealed class PlannedShutdownTests
     }
 
     [Fact]
+    public void ShutdownStateGoesOutOnceNotWithEveryWarning()
+    {
+        var world = new World();
+
+        Assert.True(world.Shutdown.TrySchedule(5, 20));
+        world.Clock.Advance(TimeSpan.FromMinutes(4));
+
+        Assert.Equal(2, world.Warnings().Count);
+        Assert.Single(world.Writes(ServerPacketHeader.AvailabilityStatusComposer));
+    }
+
+    [Fact]
     public void AvailabilityStatusWritesHabboLayout()
     {
         var composer = new AvailabilityStatusComposer();

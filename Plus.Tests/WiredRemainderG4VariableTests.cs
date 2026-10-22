@@ -152,14 +152,16 @@ public sealed class WiredRemainderG4VariableTests
         }
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a context variable stores a space in its name as an underscore ("a b" reads back
+    // "a_b"), so only the echo and the reference refuse it.
     [Theory]
-    [InlineData("")]
-    [InlineData("has space")]
-    [InlineData("dash-ed")]
-    [InlineData("abcdefghijklmnopqrstuvwxyzabcdefghijklmno")]
-    public void ANameThatIsNotOneToFortyLettersDigitsOrUnderscoresIsRefusedOnEveryCard(string name)
+    [InlineData("", false)]
+    [InlineData("has space", true)]
+    [InlineData("dash-ed", false)]
+    [InlineData("abcdefghijklmnopqrstuvwxyzabcdefghijklmno", false)]
+    public void ANameThatIsNotOneToFortyLettersDigitsOrUnderscoresIsRefusedUnlessCleaned(string name, bool contextCleansIt)
     {
-        Assert.False(Saves("wf_var_context", [1], name, [], out _, out _));
+        Assert.Equal(contextCleansIt, Saves("wf_var_context", [1], name, [], out _, out _));
         Assert.False(Saves("wf_var_echo", [], name, ["user:10"], out _, out _));
         Assert.False(Saves("wf_var_reference", [1], name, ["shared:1:room:100"], out _, out _));
         Assert.True(Saves("wf_var_context", [1], new string('a', 40), [], out _, out _));

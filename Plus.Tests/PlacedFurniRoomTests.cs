@@ -295,7 +295,8 @@ public partial class PlacedFurniRoomTests : IDisposable
     }
 
     /// <summary>Accepts Dapper writes without a database.</summary>
-    private sealed class NoOpConnection(Func<string, DataTable>? read = null, Action<string, DbParameterCollection>? write = null) : DbConnection
+    private sealed class NoOpConnection(Func<string, DataTable>? read = null, Action<string, DbParameterCollection>? write = null,
+        Func<string, DbParameterCollection, DataTable>? query = null) : DbConnection
     {
         private ConnectionState _state = ConnectionState.Closed;
         [AllowNull] public override string ConnectionString { get; set; } = "";
@@ -307,7 +308,7 @@ public partial class PlacedFurniRoomTests : IDisposable
         public override void Close() => _state = ConnectionState.Closed;
         public override void Open() => _state = ConnectionState.Open;
         protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => new NoOpTransaction(this);
-        protected override DbCommand CreateDbCommand() => new NoOpCommand(read, write) { Connection = this };
+        protected override DbCommand CreateDbCommand() => new NoOpCommand(read, write, query) { Connection = this };
     }
 
     private sealed class NoOpTransaction(DbConnection connection) : DbTransaction
@@ -318,7 +319,8 @@ public partial class PlacedFurniRoomTests : IDisposable
         public override void Rollback() { }
     }
 
-    private sealed class NoOpCommand(Func<string, DataTable>? read = null, Action<string, DbParameterCollection>? write = null) : DbCommand
+    private sealed class NoOpCommand(Func<string, DataTable>? read = null, Action<string, DbParameterCollection>? write = null,
+        Func<string, DbParameterCollection, DataTable>? query = null) : DbCommand
     {
         [AllowNull] public override string CommandText { get; set; } = "";
         public override int CommandTimeout { get; set; }
@@ -340,6 +342,10 @@ public partial class PlacedFurniRoomTests : IDisposable
         protected override DbParameter CreateDbParameter() => new NoOpParameter();
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
+            if (query != null) {
+                return query(CommandText, Parameters).CreateDataReader();
+            }
+
             if (read != null) {
                 return read(CommandText).CreateDataReader();
             }

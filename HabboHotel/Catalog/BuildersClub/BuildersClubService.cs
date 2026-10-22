@@ -109,7 +109,8 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         bool placed;
 
         try {
-            placed = room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true);
+            // Observed on AIR WIN63-202610201032-107964540: the new furni count comes before the furni's ObjectAdd.
+            placed = room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true, announcing: () => SendFurniCount(session));
         }
         catch (Exception exception) {
             logger.LogError(exception, "Failed to place Builders Club furni {ItemId} in room {RoomId}", item.Id, room.Id);
@@ -131,8 +132,6 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
                 logger.LogError(exception, "Failed to load placed Builders Club Wired item {ItemId} in room {RoomId}", item.Id, room.Id);
             }
         }
-
-        SendFurniCount(session);
     }
 
     public void PlaceWallItem(Room room, GameClient session, BuildersClubPlacement request, string wallLocation, bool confirmed = false)
@@ -183,19 +182,32 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
             return false;
         }
 
+        void CountDown()
+        {
+            store.Delete(item.Id);
+
+            if (clients.GetClientByUserId(item.UserId) is { } placer && placer.GetHabbo() != null) {
+                SendFurniCount(placer);
+            }
+        }
+
+        // Observed on AIR WIN63-202610201032-107964540: the placer's new furni count comes before the floor furni's ObjectRemove.
+        // No capture shows the order for wall furni, so they keep sending it after ItemRemove. The band id is freed only after the
+        // remove packet carried it.
         lock (item) {
-            if (!ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item) || !room.GetRoomItemHandler().RemoveFurniture(session, item)) {
+            if (!ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item) ||
+                !room.GetRoomItemHandler().RemoveFurniture(session, item, item.IsFloorItem ? CountDown : null)) {
                 return false;
             }
 
             item.RoomId = 0;
         }
 
-        Delete(item.Id);
-
-        if (clients.GetClientByUserId(item.UserId) is { } placer && placer.GetHabbo() != null) {
-            SendFurniCount(placer);
+        if (!item.IsFloorItem) {
+            CountDown();
         }
+
+        BuildersClubItemIds.Release(item.Id);
 
         return true;
     }

@@ -781,8 +781,9 @@ public static class WiredNativeEditorProjection
     private static bool IsLive(Rooms.Room room, WiredNativeItemReference reference) =>
         room.GetRoomItemHandler().GetItem(reference.ItemId) is { IsTemporary: false } picked && picked.IsWallItem == reference.Wall;
 
-    // Observed on AIR WIN63-202610201032-107964540: Toggle State saves with an id of no furni or a wall item sent with a positive id,
-    // and reopens with only its other picks. A box that only takes certain furni refuses such a pick, so this runs after every pick rule.
+    // Observed on AIR WIN63-202610201032-107964540: Toggle State, Move/Rotate and Match to Snapshot save with an id of no furni or a wall
+    // item sent with a positive id, and reopen with only their other picks. A box that only takes certain furni refuses such a pick, so
+    // this runs after every pick rule.
     internal static bool TryKeepLivePicks(Item item, WiredBoxDescriptor descriptor, WiredConfiguration proposed, out WiredConfiguration kept)
     {
         kept = proposed;

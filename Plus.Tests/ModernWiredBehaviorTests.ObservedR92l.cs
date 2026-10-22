@@ -75,7 +75,7 @@ public partial class ModernWiredBehaviorTests
     public void SnapshotFrameCarriesTheHotelText(int state, int rotation, int position, int altitude, string text)
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_act_match_to_sshot", out var descriptor));
-        var fresh = WiredNativeEditorProjection.HotelFrame(descriptor, WiredNativeEditorProjection.DefaultNative(descriptor));
+        var fresh = WiredNativeEditorProjection.HotelFrame(descriptor, WiredNativeEditorProjection.DefaultRuntime(1, descriptor)!.Origin!.Native);
         Assert.Equal([0, 0, 0, 0, 1], fresh.OwnedIntParams.ToArray());
         Assert.Equal("", fresh.Text);
 

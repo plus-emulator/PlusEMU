@@ -22,6 +22,13 @@ public sealed record WiredNativeEditorConfiguration
     public bool? Filter { get; init; }
     public bool? Inverse { get; init; }
     public WiredNativeSavedState SavedState { get; init; } = new();
+
+    /// <summary>
+    /// The default record of a box that was never saved. It is never stored, so every stored row reads as saved. Habbo was only
+    /// probed within one room visit; the flag after a room reload, or after a pickup and placing again, is not checked on Habbo.
+    /// </summary>
+    [JsonIgnore]
+    public bool NeverSaved { get; init; }
 }
 
 public sealed record WiredNativeItemReference(uint ItemId, bool Wall)

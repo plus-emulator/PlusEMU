@@ -367,6 +367,7 @@ public static class ServerPacketHeader
     public const uint FriendFurniOtherLockConfirmedComposer = 1367;
     public const uint FriendFurniCancelLockComposer = 65420;
     public const uint BroadcastMessageAlertComposer = 1090;
+    public const uint ModeratorMessageComposer = 3187;
     public const uint MarketplaceCancelOfferResultComposer = 848;
     public const uint MarketplaceBuyOfferResultComposer = 3989;
     public const uint NavigatorSettingsComposer = 2262;

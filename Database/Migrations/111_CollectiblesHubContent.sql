@@ -317,11 +317,19 @@ INSERT INTO collectible_mintables_111 (item_type, item_name, product_code, token
 ('s', 'paris15_poodle', 'nft_paris15_poodle', 1, '2026-08-06 06:00:00', '2026-11-10 10:00:00', 0, 0, 71), ('s', 'bonusrare16_1*1', 'nft_bonusrare16_1*1', 1, '2026-08-06 06:00:00', '2026-11-10 10:00:00', 0, 0, 72),
 ('s', 'bonusrare16_2*2', 'nft_bonusrare16_2*2', 1, '2026-08-06 06:00:00', '2026-11-10 10:00:00', 0, 0, 73), ('s', 'rare_r24_htuberchair', 'nft_rare_r24_htuberchair', 1, '2026-08-06 06:00:00', '2026-11-10 10:00:00', 0, 0, 74);
 
-INSERT IGNORE INTO collectible_mintable_items (item_type, sprite_id, product_code, token_price, starts_at, ends_at, region_locked, limited_edition)
-SELECT m.item_type, f.sprite_id, m.product_code, m.token_price, m.starts_at, m.ends_at, m.region_locked, m.limited_edition FROM collectible_mintables_111 m
-JOIN furniture f ON f.furnidata_classname = m.item_name AND f.type = m.item_type
-JOIN collectible_products p ON p.product_code = m.product_code
-ORDER BY m.seq;
+-- A FreshInstall.sql rebuilt after 113 has emerald_price instead of token_price, so those relics get 50 Emeralds per Curator Stamp.
+SET @collectibles_111_token_price = EXISTS(SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'collectible_mintable_items' AND COLUMN_NAME = 'token_price');
+SET @collectibles_111_mintables_sql = CONCAT(
+    'INSERT IGNORE INTO collectible_mintable_items (item_type, sprite_id, product_code, ',
+    IF(@collectibles_111_token_price, 'token_price', 'emerald_price'), ', starts_at, ends_at, region_locked, limited_edition) ',
+    'SELECT m.item_type, f.sprite_id, m.product_code, ', IF(@collectibles_111_token_price, 'm.token_price', 'm.token_price * 50'),
+    ', m.starts_at, m.ends_at, m.region_locked, m.limited_edition FROM collectible_mintables_111 m ',
+    'JOIN furniture f ON f.furnidata_classname = m.item_name AND f.type = m.item_type ',
+    'JOIN collectible_products p ON p.product_code = m.product_code ORDER BY m.seq');
+PREPARE collectibles_111_mintables FROM @collectibles_111_mintables_sql;
+EXECUTE collectibles_111_mintables;
+DEALLOCATE PREPARE collectibles_111_mintables;
 
 DROP TEMPORARY TABLE collectible_mintables_111;
 DROP TEMPORARY TABLE collectible_offers_111;

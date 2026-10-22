@@ -28,12 +28,7 @@ public static class ClientPacketHeader
     public const uint PurchaseNftStoreOfferEvent = 2065; // package_13/class_1790
     public const uint GetCollectibleMintableItemTypesEvent = 446; // package_13/class_3377
     public const uint GetCollectibleMintingEnabledEvent = 264; // package_13/class_3511
-    public const uint GetMintTokenOffersEvent = 3070; // package_13/class_2755
-    public const uint GetCollectibleMintTokensEvent = 2050; // package_13/class_3835
-    public const uint PurchaseMintTokensEvent = 3760; // package_13/class_2093
     public const uint MintCollectibleEvent = 1663; // package_13/class_3662
-    public const uint GetNftTransferFeeEvent = 3678; // package_13/class_3686
-    public const uint TransferNftsEvent = 1589; // package_13/class_2699
     public const uint GetNftClaimsEvent = 1590; // package_13/class_3567
     public const uint ClaimNftRewardsEvent = 2855; // package_13/class_2817
 

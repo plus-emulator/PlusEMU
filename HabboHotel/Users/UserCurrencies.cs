@@ -9,7 +9,6 @@ public static class ActivityPointType
     public const int Duckets = 0;
     public const int Diamonds = 5;
     public const int Gotw = 103;
-    public const int Silver = 1000;
     public const int Emerald = 1001;
 
     public static bool IsValid(int type) => type >= 0;

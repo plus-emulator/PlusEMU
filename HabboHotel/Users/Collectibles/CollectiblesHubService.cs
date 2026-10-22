@@ -3,7 +3,6 @@ using System.Data;
 using System.Security.Cryptography;
 using Dapper;
 using Plus.Communication.Packets;
-using Plus.Communication.Packets.Outgoing.Catalog;
 using Plus.Communication.Packets.Outgoing.Collectibles;
 using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.Core.Settings;
@@ -14,9 +13,9 @@ using Plus.HabboHotel.Users.Inventory.Furniture;
 namespace Plus.HabboHotel.Users.Collectibles;
 
 /// <summary>
-/// The Collectibles hub in the catalog (AIR catalog/collectibles): wallets, collector score, collections, shop, minting, transfer and
-/// monthly reward claims. Habbo keeps collectibles on a blockchain; this hotel keeps them in the collectible_ tables. Each method
-/// answers the session itself.
+/// The Collectibles hub in the catalog (AIR catalog/collectibles): the Collector Wallet, collector score, collections, shop, minting
+/// and monthly reward claims. Collectibles live in the collectible_ tables and Emeralds are the only currency. Each method answers
+/// the session itself.
 /// </summary>
 public interface ICollectiblesHubService
 {
@@ -29,12 +28,7 @@ public interface ICollectiblesHubService
     Task PurchaseStoreOffer(GameClient session, string productCode, string wallet);
     Task SendMintableItemTypes(GameClient session);
     Task SendMintingEnabled(GameClient session);
-    Task SendMintTokenOffers(GameClient session);
-    Task SendMintTokens(GameClient session, string wallet);
-    Task PurchaseMintTokens(GameClient session, int offerId, string wallet);
     Task Mint(GameClient session, int itemId, string wallet);
-    Task SendTransferFee(GameClient session);
-    Task Transfer(GameClient session, string wallet);
     Task SendRewardClaims(GameClient session, string wallet);
     Task ClaimRewards(GameClient session);
 }
@@ -45,7 +39,6 @@ public interface ICollectiblesHubService
 public sealed class CollectiblesHubService(IDatabase database, ISettingsManager settings, TimeProvider clock) : ICollectiblesHubService
 {
     private const string MintingEnabledSetting = "collectibles.minting.enabled";
-    private const string TransferFeeSetting = "collectibles.transfer.fee";
 
     private const string ProductSelect = """
         SELECT product_code AS ProductCode, collection_id AS CollectionId, product_type AS ProductType, item_type_id AS ItemTypeId, score AS Score,
@@ -55,37 +48,23 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
 
     private const string StoreOfferSelect = """
         SELECT o.product_code AS ProductCode, o.emerald_price AS EmeraldPrice, o.is_featured AS IsFeatured, o.is_limited AS IsLimited,
-            o.mint_limit AS MintLimit, (SELECT COUNT(*) FROM user_collectibles c WHERE c.product_code = o.product_code) AS MintedCount
+            o.mint_limit AS MintLimit, (SELECT COUNT(*) FROM user_collectibles c WHERE c.product_code = o.product_code) AS MintedCount,
+            o.min_level AS MinLevel
         FROM collectible_shop_offers o WHERE o.enabled = 1
         """;
 
     private const string MintableSelect = """
-        SELECT id AS Id, item_type AS ItemType, sprite_id AS SpriteId, product_code AS ProductCode, token_price AS TokenPrice, starts_at AS StartsAt,
+        SELECT id AS Id, item_type AS ItemType, sprite_id AS SpriteId, product_code AS ProductCode, emerald_price AS EmeraldPrice, starts_at AS StartsAt,
             ends_at AS EndsAt, region_locked AS RegionLocked, limited_edition AS LimitedEdition
         FROM collectible_mintable_items WHERE enabled = 1 AND (ends_at IS NULL OR ends_at > @now)
         """;
 
-    private const string TokenOfferSelect =
-        "SELECT id AS Id, product_code AS ProductCode, silver_price AS SilverPrice, amount_tokens AS AmountTokens FROM collectible_mint_token_offers WHERE enabled = 1";
-
-    private enum TransferResult : short
-    {
-        Moved = 0,
-        NotALinkedWallet = 1,
-        NotEnoughSilver = 2,
-        NothingToTransfer = 3
-    }
-
     public Task SendWallets(GameClient session) => Run(session, habbo =>
     {
         using (var connection = database.Connection()) {
-            var collector = CollectorWallet(connection, null, habbo.Id);
-            var linked = connection.Query<string>("SELECT address FROM collectible_wallets WHERE user_id = @userId AND is_collector = 0 ORDER BY id",
-                new { userId = habbo.Id });
-            session.Send(new CollectibleWalletAddressesComposer(collector.Address, [.. linked]));
+            session.Send(new CollectibleWalletAddressesComposer(CollectorWallet(connection, null, habbo.Id).Address));
         }
 
-        session.Send(new SilverBalanceComposer(habbo.Currencies[ActivityPointType.Silver]));
         session.Send(new EmeraldBalanceComposer(habbo.Currencies[ActivityPointType.Emerald]));
     });
 
@@ -155,41 +134,6 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
 
     public Task SendMintingEnabled(GameClient session) => Run(session, _ => session.Send(new CollectibleMintingEnabledComposer(MintingEnabled)));
 
-    public Task SendMintTokenOffers(GameClient session) => Run(session, _ =>
-    {
-        using var connection = database.Connection();
-        session.Send(new MintTokenOffersComposer([.. connection.Query<MintTokenOffer>(TokenOfferSelect + " ORDER BY sort_order, id")]));
-    });
-
-    public Task SendMintTokens(GameClient session, string wallet) => Run(session, habbo =>
-    {
-        using var connection = database.Connection();
-
-        if (FindWallet(connection, null, habbo.Id, wallet) is { } owned) {
-            session.Send(new CollectibleMintTokensComposer(owned.MintTokens));
-        }
-    });
-
-    public Task PurchaseMintTokens(GameClient session, int offerId, string wallet) => Run(session, habbo =>
-    {
-        (int Silver, int Tokens)? bought;
-
-        lock (habbo.WalletSync) {
-            bought = habbo.WalletClosed ? null : TryBuyMintTokens(habbo, offerId, wallet);
-        }
-
-        // AIR HabboCatalog.as onPurchaseOK and onPurchaseError close the purchase dialog the token offer opened.
-        if (bought is not { } result) {
-            session.Send(new PurchaseErrorComposer(PurchaseError.Rejected));
-
-            return;
-        }
-
-        session.Send(new SilverBalanceComposer(result.Silver));
-        session.Send(new CollectibleMintTokensComposer(result.Tokens));
-        session.Send(new PurchaseOKComposer());
-    });
-
     public Task Mint(GameClient session, int itemId, string wallet) => Run(session, habbo =>
     {
         lock (habbo.WalletSync) {
@@ -201,7 +145,7 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
             }
 
             try {
-                if (!ReferenceEquals(inventory.Furniture.GetItem(item.Id), item) || TryMint(habbo.Id, item, wallet) is not { } tokens) {
+                if (!ReferenceEquals(inventory.Furniture.GetItem(item.Id), item) || TryMint(habbo, item, wallet) is not { } emeralds) {
                     session.Send(new MintCollectibleResultComposer(0));
 
                     return;
@@ -209,7 +153,7 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
 
                 inventory.Furniture.RemoveItem(item.Id);
                 session.Send(new FurniListRemoveComposer(item.Id));
-                session.Send(new CollectibleMintTokensComposer(tokens));
+                session.Send(new EmeraldBalanceComposer(emeralds));
                 session.Send(new MintCollectibleResultComposer(1));
             }
             finally {
@@ -218,32 +162,11 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
         }
     });
 
-    public Task SendTransferFee(GameClient session) => Run(session, _ => session.Send(new NftTransferFeeComposer(TransferFee)));
-
-    public Task Transfer(GameClient session, string wallet) => Run(session, habbo =>
-    {
-        (TransferResult Result, int Silver)? transfer;
-
-        lock (habbo.WalletSync) {
-            transfer = habbo.WalletClosed ? null : TryTransfer(habbo, wallet);
-        }
-
-        if (transfer is not { } done) {
-            return;
-        }
-
-        session.Send(new NftTransferResultComposer((short)done.Result));
-
-        if (done.Result == TransferResult.Moved) {
-            session.Send(new SilverBalanceComposer(done.Silver));
-        }
-    });
-
     public Task SendRewardClaims(GameClient session, string wallet) => Run(session, habbo =>
     {
         using var connection = database.Connection();
 
-        if (FindWallet(connection, null, habbo.Id, wallet) is not { IsCollector: true } collector) {
+        if (FindWallet(connection, null, habbo.Id, wallet) is not { } collector) {
             session.Send(new NftClaimsComposer(wallet, []));
 
             return;
@@ -285,8 +208,6 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
     });
 
     private bool MintingEnabled => settings.TryGetValue(MintingEnabledSetting) == "1";
-
-    private int TransferFee => int.TryParse(settings.TryGetValue(TransferFeeSetting), out var fee) && fee > 0 ? fee : 0;
 
     private static Task Run(GameClient session, Action<Habbo> action)
     {
@@ -339,6 +260,10 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
             return null;
         }
 
+        if (offer.MinLevel > 0 && Book(connection, transaction, owned.Address).Level < offer.MinLevel) {
+            return null;
+        }
+
         if (Spend(connection, transaction, habbo, ActivityPointType.Emerald, offer.EmeraldPrice) is not { } emeralds) {
             return null;
         }
@@ -350,33 +275,13 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
         return emeralds;
     }
 
-    private (int Silver, int Tokens)? TryBuyMintTokens(Habbo habbo, int offerId, string wallet)
+    private int? TryMint(Habbo habbo, InventoryItem item, string wallet)
     {
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
-        if (FindWallet(connection, transaction, habbo.Id, wallet, forUpdate: true) is not { } owned
-            || connection.QuerySingleOrDefault<MintTokenOffer>(TokenOfferSelect + " AND id = @offerId", new { offerId }, transaction) is not { AmountTokens: > 0 } offer
-            || Spend(connection, transaction, habbo, ActivityPointType.Silver, offer.SilverPrice) is not { } silver) {
-            return null;
-        }
-
-        connection.Execute("UPDATE collectible_wallets SET mint_tokens = mint_tokens + @amount WHERE address = @address",
-            new { amount = offer.AmountTokens, address = owned.Address }, transaction);
-        transaction.Commit();
-        habbo.Currencies[ActivityPointType.Silver] = silver;
-
-        return (silver, owned.MintTokens + offer.AmountTokens);
-    }
-
-    private int? TryMint(int userId, InventoryItem item, string wallet)
-    {
-        using var connection = database.Connection();
-        connection.Open();
-        using var transaction = connection.BeginTransaction();
-
-        if (FindWallet(connection, transaction, userId, wallet, forUpdate: true) is not { } owned) {
+        if (FindWallet(connection, transaction, habbo.Id, wallet, forUpdate: true) is not { } owned) {
             return null;
         }
 
@@ -385,47 +290,16 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
             new { now = clock.GetUtcNow().UtcDateTime, type = item.Definition.Type == ItemType.Wall ? "i" : "s", spriteId = item.Definition.SpriteId },
             transaction);
 
-        if (mintable is null || owned.MintTokens < mintable.TokenPrice
-            || connection.Execute("DELETE FROM items WHERE id = @id AND user_id = @userId AND room_id = 0", new { id = item.Id, userId }, transaction) != 1) {
+        if (mintable is null || Spend(connection, transaction, habbo, ActivityPointType.Emerald, mintable.EmeraldPrice) is not { } emeralds
+            || connection.Execute("DELETE FROM items WHERE id = @id AND user_id = @userId AND room_id = 0", new { id = item.Id, userId = habbo.Id }, transaction) != 1) {
             return null;
         }
 
-        connection.Execute("UPDATE collectible_wallets SET mint_tokens = mint_tokens - @price WHERE address = @address",
-            new { price = mintable.TokenPrice, address = owned.Address }, transaction);
         Grant(connection, transaction, owned.Address, mintable.ProductCode, "mint");
         transaction.Commit();
+        habbo.Currencies[ActivityPointType.Emerald] = emeralds;
 
-        return owned.MintTokens - mintable.TokenPrice;
-    }
-
-    private (TransferResult Result, int Silver) TryTransfer(Habbo habbo, string wallet)
-    {
-        using var connection = database.Connection();
-        connection.Open();
-        using var transaction = connection.BeginTransaction();
-
-        if (FindWallet(connection, transaction, habbo.Id, wallet, forUpdate: true) is not { IsCollector: false } linked) {
-            return (TransferResult.NotALinkedWallet, 0);
-        }
-
-        var collector = CollectorWallet(connection, transaction, habbo.Id, forUpdate: true);
-
-        if (connection.ExecuteScalar<long>("SELECT COUNT(*) FROM user_collectibles WHERE wallet_address = @collector FOR UPDATE",
-                new { collector = collector.Address }, transaction) == 0) {
-            return (TransferResult.NothingToTransfer, 0);
-        }
-
-        if (Spend(connection, transaction, habbo, ActivityPointType.Silver, TransferFee) is not { } silver) {
-            return (TransferResult.NotEnoughSilver, 0);
-        }
-
-        // collectibles.transfer.description: "Transfer all of your collectibles from your Collector Wallet to your selected Metamask wallet".
-        connection.Execute("UPDATE user_collectibles SET wallet_address = @linked WHERE wallet_address = @collector",
-            new { collector = collector.Address, linked = linked.Address }, transaction);
-        transaction.Commit();
-        habbo.Currencies[ActivityPointType.Silver] = silver;
-
-        return (TransferResult.Moved, silver);
+        return emeralds;
     }
 
     // The caller stores the returned balance in habbo.Currencies once the transaction commits.
@@ -453,15 +327,16 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
             """, new { wallet, productCode, source }, transaction);
     }
 
+    // Linked wallet rows from before migration 113 stay in the table, so only the Collector Wallet is accepted.
     private static WalletRow? FindWallet(IDbConnection connection, IDbTransaction? transaction, int userId, string address, bool forUpdate = false) =>
         connection.QuerySingleOrDefault<WalletRow>(
-            "SELECT address AS Address, is_collector AS IsCollector, mint_tokens AS MintTokens, highest_score AS HighestScore FROM collectible_wallets " +
-            "WHERE address = @address AND user_id = @userId" + (forUpdate ? " FOR UPDATE" : ""), new { address, userId }, transaction);
+            "SELECT address AS Address, highest_score AS HighestScore FROM collectible_wallets " +
+            "WHERE address = @address AND user_id = @userId AND is_collector = 1" + (forUpdate ? " FOR UPDATE" : ""), new { address, userId }, transaction);
 
     // Made on first use. The unique collector key keeps it to one wallet per user, so a request that loses a race reads the winner's row.
     private static WalletRow CollectorWallet(IDbConnection connection, IDbTransaction? transaction, int userId, bool forUpdate = false)
     {
-        const string select = "SELECT address AS Address, is_collector AS IsCollector, mint_tokens AS MintTokens, highest_score AS HighestScore " +
+        const string select = "SELECT address AS Address, highest_score AS HighestScore " +
             "FROM collectible_wallets WHERE user_id = @userId AND is_collector = 1";
         var lockClause = forUpdate ? " FOR UPDATE" : "";
 
@@ -513,7 +388,7 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
             ORDER BY r.claim_id
             """, new { wallet, level, now = clock.GetUtcNow().UtcDateTime }, transaction).ToList();
 
-    private sealed record WalletRow(string Address, bool IsCollector, int MintTokens, int HighestScore);
+    private sealed record WalletRow(string Address, int HighestScore);
 
     private sealed record SetRow(string Id, string Name, int BoostScore, string? BonusProductCode, string? RewardProductCode,
         DateTimeOffset? ReleasedAt, DateTimeOffset? SnapshotAt);

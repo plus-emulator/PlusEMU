@@ -314,7 +314,7 @@ internal sealed class G1World : IDisposable
     private uint _next = 500;
     private int _virtual = 7;
 
-    public G1World()
+    public G1World(IWiredConfigurationStore? configurationStore = null)
     {
         Room.Id = RoomId;
         Room.OwnerId = 1;
@@ -327,7 +327,7 @@ internal sealed class G1World : IDisposable
         Set(Room, "_gamemap", map);
         typeof(Gamemap).GetProperty("GameMap")!.SetValue(map, new byte[3, 3]);
         typeof(Gamemap).GetProperty("EffectMap")!.SetValue(map, new byte[3, 3]);
-        Wired = new WiredComponent(Room, TestLogging.Logger, Clock, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance, TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
+        Wired = new WiredComponent(Room, TestLogging.Logger, Clock, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance, configurationStore ?? TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
         Set(Room, "_wiredComponent", Wired);
         Set(Get(Wired, "_engine"), "_now", (Func<long>)(() => Clock.Milliseconds));
         Floor = (ConcurrentDictionary<uint, Item>)Get(items, "_floorItems");

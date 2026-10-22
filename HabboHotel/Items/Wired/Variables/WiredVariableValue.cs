@@ -28,6 +28,8 @@ public sealed record WiredVariableChange(uint RoomId, WiredVariableKey Key, Wire
     public string InternalKey { get; init; } = "";
     /// <summary>The changed variable is "permanent, shared": other rooms of its owner reach it through references.</summary>
     public bool Shared { get; init; }
+    /// <summary>The changed variable has no value: its box has "has value" off.</summary>
+    public bool Valueless { get; init; }
     public int NativeOrigin(uint currentRoomId) => Origin == 1 ? 3 : Origin == 2 ? 2 : Origin == 3 || RoomId != currentRoomId ? 1 : 0;
 }
 

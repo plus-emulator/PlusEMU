@@ -390,7 +390,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         _changes.Enqueue(new(definition.RoomId, key, write.After is null ? WiredVariableChangeKind.Removed :
             write.Before is null || mutation == WiredVariableMutation.Replace ? WiredVariableChangeKind.Created : WiredVariableChangeKind.Updated,
             write.Before, write.After, holder.EntityId, frame.Depth + 1)
-        { Origin = origin, Shared = definition.Availability == WiredVariableAvailability.Shared });
+        { Origin = origin, Shared = definition.Availability == WiredVariableAvailability.Shared, Valueless = !definition.HasValue });
 
         return true;
     }

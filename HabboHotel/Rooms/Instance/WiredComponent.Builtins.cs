@@ -30,13 +30,17 @@ public partial class WiredComponent
             }
 
             if (evt.Kind == WiredEventKind.Variable && evt.VariableChange is { } change) {
+                var created = change.Kind == WiredVariableChangeKind.Created;
+
+                // Observed on AIR WIN63-202610201032-107964540: a Give, also with override, has no old value and no difference. A Remove
+                // and a variable without a value have no new value.
                 return key switch
                 {
                     "@event.variable_update.box_id" => change.Key.DefinitionId,
                     "@event.variable_update.change_type" => (int)change.Kind,
-                    "@event.variable_update.old_value" => change.Before?.Value ?? 0,
-                    "@event.variable_update.new_value" => change.After?.Value ?? 0,
-                    "@event.variable_update.difference" => unchecked((change.After?.Value ?? 0) - (change.Before?.Value ?? 0)),
+                    "@event.variable_update.old_value" => created ? null : change.Before?.Value ?? 0,
+                    "@event.variable_update.new_value" => change.Kind == WiredVariableChangeKind.Removed || change.Valueless ? null : change.After?.Value ?? 0,
+                    "@event.variable_update.difference" => created ? null : unchecked((change.After?.Value ?? 0) - (change.Before?.Value ?? 0)),
                     "@event.variable_update.change_origin" => change.NativeOrigin(_room.Id),
                     _ => null
                 };

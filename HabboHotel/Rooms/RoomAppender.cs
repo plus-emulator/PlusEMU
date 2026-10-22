@@ -12,7 +12,7 @@ internal static class RoomAppender
 
         return new(data.Id, data.Name, data.OwnerId, data.OwnerName, RoomAccessUtility.GetRoomAccessPacketNum(data.Access), data.UsersNow, data.UsersMax,
             data.Description, data.TradeSettings, data.Score, data.Category, data.Tags.ToImmutableArray(), data.Type == "private", data.AllowPets,
-            featured?.Image, data.Group == null ? null : new(data.Group.Id, data.Group.Name, data.Group.Badge),
+            string.IsNullOrEmpty(featured?.Image) ? null : featured.Image, data.Group == null ? null : new(data.Group.Id, data.Group.Name, data.Group.Badge),
             data.Promotion == null ? null : new(data.Promotion.Name, data.Promotion.Description, data.Promotion.MinutesLeft));
     }
 

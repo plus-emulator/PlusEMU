@@ -73,6 +73,39 @@ public sealed class NavigatorSearchSnapshotTests
             query.Length > 0 ? [nameof(INavigatorSearchStore.FindByCaption)] : Array.Empty<string>(), storeCalls);
     }
 
+    [Fact]
+    public void FeaturedCategoryListsPublicRoomsInOrderWithTheirPicture()
+    {
+        var result = new SearchResultList(1, "official_view", "official-root", "", true, -1, "", NavigatorViewMode.Thumbnail, "featured", "NOTHING", 0);
+        FeaturedRoom[] publics = [new(2, "Cafe", "", "cafe.png"), new(99, "Deleted", "", "gone.png"), new(1, "Lounge", "", "")];
+        var navigator = CatalogSnapshotTestSupport.Proxy<INavigatorManager>((method, args) => method switch
+        {
+            nameof(INavigatorManager.GetCategoriessForSearch) => new List<SearchResultList> { result },
+            "get_FeaturedRooms" => publics,
+            nameof(INavigatorManager.TryGetFeaturedRoom) => FindFeatured(args, publics),
+            _ => throw new InvalidOperationException(method)
+        });
+        var unused = CatalogSnapshotTestSupport.Proxy<INavigatorSearchStore>((method, _) => throw new InvalidOperationException(method));
+        var groups = CatalogSnapshotTestSupport.Proxy<IGroupManager>((method, _) => throw new InvalidOperationException(method));
+        var roomManager = CatalogSnapshotTestSupport.Proxy<IRoomManager>((method, _) => throw new InvalidOperationException(method));
+        var (client, _) = HabbiconTestSupport.Client(new() { Id = 42 });
+
+        var snapshot = new NavigatorSearchService(navigator, unused, roomManager, groups, new Rooms()).Search(client, "official_view", "");
+
+        var block = Assert.Single(snapshot.Results);
+        Assert.Equal("official-root", block.CategoryIdentifier);
+        Assert.Equal(1, block.ViewMode);
+        Assert.Equal(new uint[] { 2, 1 }, block.Rooms.Select(room => room.Id));
+        Assert.Equal(new[] { "cafe.png", null }, block.Rooms.Select(room => room.FeaturedImage));
+    }
+
+    private static bool FindFeatured(object?[] args, FeaturedRoom[] publics)
+    {
+        args[1] = publics.FirstOrDefault(room => room.RoomId == (uint)args[0]!);
+
+        return args[1] != null;
+    }
+
     private static bool FoundResult(object?[] args, SearchResultList result)
     {
         args[1] = result;

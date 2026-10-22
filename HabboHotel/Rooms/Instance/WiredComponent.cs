@@ -233,6 +233,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         FlushVariableFx();
         FlushFlashes();
         FlushLeaderboards();
+        ResendRestackedSteps();
     }
 
     private readonly HashSet<long> _wakeDue = [];
@@ -293,6 +294,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
 
         FlushFlashes();
+        ResendRestackedSteps();
     }
     /// <summary>A Wired game counter is running, which is a game in progress for scores and team games.</summary>
     public bool GameCounterRunning => _counters.HasRunningGameCounter;

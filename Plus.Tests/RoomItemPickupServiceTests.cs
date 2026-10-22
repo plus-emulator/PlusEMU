@@ -1,6 +1,7 @@
 using System.Data;
 using Dapper;
 using MySqlConnector;
+using Plus.Communication.Flash;
 using Plus.Communication.Packets.Incoming.Rooms.Engine;
 using Plus.Communication.Packets.Outgoing;
 using Plus.Database;
@@ -59,6 +60,26 @@ public partial class PlacedFurniRoomTests
         Assert.NotNull(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(item.Id));
         Assert.True(progressed);
         Assert.Contains(ServerPacketHeader.FurniListUpdateComposer, _client.Sent);
+    }
+
+    [Fact]
+    public async Task OwnerPickupSendsObjectRemoveThenOnlyThePickedItem()
+    {
+        Viewer();
+        var item = Add(30, 1, 1);
+        item.Definition.SpriteId = 3171;
+        _client.Sent.Clear();
+        _client.Packets.Clear();
+
+        await PickupObject().Parse(_client, ClientPacket(2, 30));
+
+        Assert.Equal([ServerPacketHeader.ObjectRemoveComposer, ServerPacketHeader.FurniListAddComposer], _client.Sent);
+        var added = new FlashIncomingPacket { Buffer = _client.Packets[1].Body };
+        Assert.Equal(1, added.ReadInt());
+        Assert.Equal(30u, added.ReadUInt());
+        Assert.Equal("S", added.ReadString());
+        Assert.Equal(30u, added.ReadUInt());
+        Assert.Equal(3171, added.ReadInt());
     }
 
     [Fact]

@@ -335,14 +335,14 @@ public sealed class TradeConfirmationServiceTests
         public readonly TradeRequestService Trades;
         public readonly TradingComponent Trading;
 
-        public TradeFixture(ISettingsManager? settings = null)
+        public TradeFixture(ISettingsManager? settings = null, Plus.Core.IPlannedShutdown? plannedShutdown = null)
         {
             typeof(Room).GetField("_roomUserManager", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .SetValue(Room, new RoomUserManager(Room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel));
             TestRoomUserSnapshots.Install(Room);
             Trading = new TradingComponent(Room, Store, settings ?? TestRoomSettings.Empty);
             Room.SetTrading(Trading);
-            Trades = new TradeRequestService(new NoTradingLocks());
+            Trades = new TradeRequestService(new NoTradingLocks(), plannedShutdown);
             _originalGame = GameField.GetValue(null);
             var game = DispatchProxy.Create<IGame, GameProxy>();
             ((GameProxy)(object)game).Handler = (method, _) => method.Name == "get_ClientManager" ? _clients : throw new NotSupportedException(method.Name);

@@ -43,6 +43,7 @@ public interface ICatalogPurchaseService
 public sealed class CatalogPurchaseService : ICatalogPurchaseService
 {
     private readonly ICatalogManager _catalogManager;
+    private readonly IPlannedShutdown? _plannedShutdown;
     private readonly IHabbiconService _habbicons;
     private readonly ISettingsManager _settingsManager;
     private readonly IAchievementManager _achievementManager;
@@ -72,8 +73,10 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         IHabbiconService habbicons,
         IClubMembershipService clubMemberships, IClubRewards clubRewards, IRewardTrackManager rewardTracks, IAvatarEffectStore avatarEffects,
         IGroupManager groups, IGroupForumStore forums,
-        TimeProvider clock, ILogger<CatalogPurchaseService> logger, IBuildersClubService? buildersClub = null)
+        TimeProvider clock, ILogger<CatalogPurchaseService> logger, IBuildersClubService? buildersClub = null,
+        IPlannedShutdown? plannedShutdown = null)
     {
+        _plannedShutdown = plannedShutdown;
         _buildersClub = buildersClub;
         _catalogManager = catalogManager;
         _habbicons = habbicons;
@@ -116,7 +119,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         }
 
         if (page.Layout is "club_buy" or "vip_buy" or "loyalty_vip_buy") {
-            if (amount != 1) {
+            if (amount != 1 || _plannedShutdown?.IsPending == true) {
                 session.Send(new PurchaseErrorComposer(PurchaseError.Unavailable));
 
                 return;
@@ -128,6 +131,13 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         }
 
         if (!page.Offers.TryGetValue(offerId, out var offer) || !offer.Enabled || !offer.CanPurchase(session.GetHabbo())) {
+            return;
+        }
+
+        if (_plannedShutdown?.IsPending == true && offer.Products.Any(bought => bought.Type is CatalogProductType.Furni
+                or CatalogProductType.BuildersClub or CatalogProductType.BuildersClubAddon)) {
+            session.Send(new PurchaseErrorComposer(PurchaseError.Unavailable));
+
             return;
         }
 

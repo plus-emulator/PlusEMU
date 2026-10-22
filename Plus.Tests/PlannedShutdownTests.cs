@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Time.Testing;
 using Plus.Communication.Packets;
 using Plus.Communication.Packets.Outgoing;
+using Plus.Communication.Packets.Outgoing.Handshake;
 using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Communication.RCON.Commands.Hotel;
 using Plus.Core;
@@ -96,8 +97,62 @@ public sealed class PlannedShutdownTests
         Assert.False(world.Shutdown.TrySchedule(minutes, duration));
         world.Clock.Advance(TimeSpan.FromHours(1));
 
-        Assert.Empty(world.Warnings());
+        Assert.Empty(world.Broadcasts);
         Assert.Equal(0, world.ShutdownCalls);
+    }
+
+    [Fact]
+    public void ShutdownIsPendingOnlyOnceAScheduleIsAccepted()
+    {
+        var world = new World();
+        Assert.False(world.Shutdown.IsPending);
+
+        Assert.False(world.Shutdown.TrySchedule(0, 15));
+        Assert.False(world.Shutdown.IsPending);
+
+        Assert.True(world.Shutdown.TrySchedule(5, 15));
+        Assert.True(world.Shutdown.IsPending);
+    }
+
+    [Fact]
+    public void AcceptedScheduleTellsEveryUserTheHotelIsShuttingDown()
+    {
+        var world = new World();
+
+        Assert.True(world.Shutdown.TrySchedule(5, 20));
+        Assert.Equal([[true, true, true]], world.Writes(ServerPacketHeader.AvailabilityStatusComposer));
+        Assert.Equal([[true, 5, 20]], world.Warnings());
+
+        Assert.False(world.Shutdown.TrySchedule(2, 20));
+        Assert.Single(world.Writes(ServerPacketHeader.AvailabilityStatusComposer));
+    }
+
+    [Fact]
+    public void ShutdownStateGoesOutOnceNotWithEveryWarning()
+    {
+        var world = new World();
+
+        Assert.True(world.Shutdown.TrySchedule(5, 20));
+        world.Clock.Advance(TimeSpan.FromMinutes(4));
+
+        Assert.Equal(2, world.Warnings().Count);
+        Assert.Single(world.Writes(ServerPacketHeader.AvailabilityStatusComposer));
+    }
+
+    [Fact]
+    public void AvailabilityStatusWritesHabboLayout()
+    {
+        var composer = new AvailabilityStatusComposer();
+        var open = new HabbiconTestSupport.RecordingPacket();
+        var shuttingDown = new HabbiconTestSupport.RecordingPacket();
+
+        composer.Compose(open);
+        new AvailabilityStatusComposer(true).Compose(shuttingDown);
+
+        Assert.Equal(3147u, composer.MessageId);
+        Assert.Equal(ServerPacketHeader.AvailabilityStatusComposer, composer.MessageId);
+        Assert.Equal(new object[] { true, false, true }, open.Writes);
+        Assert.Equal(new object[] { true, true, true }, shuttingDown.Writes);
     }
 
     [Theory]
@@ -152,13 +207,15 @@ public sealed class PlannedShutdownTests
         public FakeTimeProvider Clock { get; } = new();
         public int ShutdownCalls;
         public PlannedShutdown Shutdown { get; }
+        public IReadOnlyList<IServerPacket> Broadcasts => _broadcasts;
 
         public World() => Shutdown = new(new TestGameClientManager(_ => null, _broadcasts), Clock, () => ShutdownCalls++);
 
-        public List<object[]> Warnings() => _broadcasts.Select(packet =>
+        public List<object[]> Warnings() => Writes(ServerPacketHeader.MaintenanceStatusComposer);
+
+        public List<object[]> Writes(uint header) => _broadcasts.Where(packet => packet.MessageId == header).Select(packet =>
         {
             var recorded = new HabbiconTestSupport.RecordingPacket();
-            Assert.Equal(ServerPacketHeader.MaintenanceStatusComposer, packet.MessageId);
             packet.Compose(recorded);
 
             return recorded.Writes.ToArray();
@@ -168,6 +225,7 @@ public sealed class PlannedShutdownTests
     private sealed class RecordingPlannedShutdown(bool accept) : IPlannedShutdown
     {
         public List<(int Minutes, int Duration)> Requests { get; } = [];
+        public bool IsPending => false;
 
         public bool TrySchedule(int minutes, int durationMinutes)
         {

@@ -1,9 +1,11 @@
 using System.Collections.Immutable;
 using System.Data;
 using System.Reflection;
+using Plus.Communication.Packets;
 using Plus.Communication.Packets.Incoming.Catalog;
 using Plus.Communication.Packets.Outgoing;
 using Plus.Communication.Packets.Outgoing.Catalog;
+using Plus.Core;
 using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
@@ -97,6 +99,36 @@ public sealed class ClubCatalogServiceTests
         Assert.Equal(45, context.Habbo.Diamonds);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PendingShutdownRefusesAMembershipExtensionWithoutBuyingIt(bool vip)
+    {
+        var context = Context(plannedShutdown: TestPlannedShutdown.Pending);
+        IPacketEvent handler = vip
+            ? new PurchaseVipMembershipExtensionEvent(context.Service)
+            : new PurchaseBasicMembershipExtensionEvent(context.Service);
+
+        await handler.Parse(context.Client, HabbiconTestSupport.Incoming(9));
+
+        var refusal = Assert.Single(context.Sent);
+        Assert.Equal(ServerPacketHeader.PurchaseErrorComposer, refusal.Header);
+        Assert.Equal(0, new Plus.Communication.Flash.FlashIncomingPacket { Buffer = refusal.Payload }.ReadInt());
+        Assert.Equal(0, context.Memberships.Purchases);
+        Assert.Equal((100, 50), (context.Habbo.Credits, context.Habbo.Diamonds));
+    }
+
+    [Fact]
+    public async Task WithoutAPendingShutdownAMembershipExtensionIsBought()
+    {
+        var context = Context(plannedShutdown: TestPlannedShutdown.None);
+
+        await new PurchaseBasicMembershipExtensionEvent(context.Service).Parse(context.Client, HabbiconTestSupport.Incoming(9));
+
+        Assert.Equal(1, context.Memberships.Purchases);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+    }
+
     [Fact]
     public void ClubGiftReceivedComposerUsesOnlyCapturedScalars()
     {
@@ -125,7 +157,8 @@ public sealed class ClubCatalogServiceTests
         bool claimSucceeds = true,
         bool hasClubPage = true,
         bool hasOffer = true,
-        bool membershipSucceeds = true)
+        bool membershipSucceeds = true,
+        IPlannedShutdown? plannedShutdown = null)
     {
         var habbo = new Habbo { Id = 42, Username = "Dennis", Credits = 100, Diamonds = 50 };
         var (client, sent) = HabbiconTestSupport.Client(habbo);
@@ -146,7 +179,7 @@ public sealed class ClubCatalogServiceTests
             ? [new CatalogPage { Id = 1, Enabled = true, Layout = "club_buy" }]
             : [];
         var memberships = new RecordingMembership(membershipSucceeds);
-        var service = new ClubCatalogService(rewards, new SnapshotService(), catalog, memberships);
+        var service = new ClubCatalogService(rewards, new SnapshotService(), catalog, memberships, plannedShutdown);
 
         return new(service, client, habbo, sent, rewards, memberships);
     }

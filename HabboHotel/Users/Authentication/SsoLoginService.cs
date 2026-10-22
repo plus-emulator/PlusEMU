@@ -10,6 +10,7 @@ using Plus.Communication.Packets.Outgoing.Moderation;
 using Plus.Communication.Packets.Outgoing.Navigator;
 using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Communication.Packets.Outgoing.Sound;
+using Plus.Core;
 using Plus.Core.Language;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Achievements;
@@ -36,6 +37,7 @@ public sealed class SsoLoginService : ISsoLoginService
 {
     private readonly ClientAccessLists _clientAccessLists;
     private readonly IAuthenticator _authenticate;
+    private readonly IPlannedShutdown? _plannedShutdown;
     private readonly IBadgeManager _badgeManager;
     private readonly IModerationManager _moderationManager;
     private readonly IModeratorTicketService _tickets;
@@ -61,8 +63,10 @@ public sealed class SsoLoginService : ISsoLoginService
         ISettingsManager settingsManager,
         IRewardManager rewardManager, ClubLifecycle clubLifecycle, ClientAccessLists clientAccessLists,
         IUserProcessFactory processFactory, IModeratorTicketService tickets, IAvatarEffectService avatarEffects, IRewardTrackManager rewardTracks, ICampaignCalendarService calendars,
-        IBuildersClubService? buildersClub = null, IDailyTaskManager? dailyTasks = null)
+        IBuildersClubService? buildersClub = null, IDailyTaskManager? dailyTasks = null,
+        IPlannedShutdown? plannedShutdown = null)
     {
+        _plannedShutdown = plannedShutdown;
         _buildersClub = buildersClub;
         _dailyTasks = dailyTasks;
         _authenticate = authenticate;
@@ -96,7 +100,7 @@ public sealed class SsoLoginService : ISsoLoginService
             session.Send(new FigureSetIdsComposer(session.GetHabbo().Clothing?.GetClothingParts ?? []));
             session.Send(new UserRightsComposer(UserRightsSnapshot.Capture(session.GetHabbo().Access)));
             _clientAccessLists.Send(session.GetHabbo());
-            session.Send(new AvailabilityStatusComposer());
+            session.Send(new AvailabilityStatusComposer(_plannedShutdown?.IsPending == true));
             session.Send(new AchievementScoreComposer(session.GetHabbo().HabboStats?.AchievementPoints ?? 0));
             session.Send(new CfhTopicsInitComposer(CfhTopicCategorySnapshot.Capture(_moderationManager.UserActionPresets)));
             _achievementShowcase.ShowDefinitions(session);

@@ -2,6 +2,7 @@ using System.Data;
 using System.Reflection;
 using Plus.Communication.Packets.Incoming.Catalog;
 using Plus.Communication.Packets.Outgoing;
+using Plus.Core;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Catalog;
@@ -123,11 +124,48 @@ public sealed class CatalogGiftPurchaseServiceTests
         Assert.Empty(context.SenderPackets);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PendingShutdownRefusesFurniAndClubGiftsWithoutChargingOrDelivering(bool club)
+    {
+        var context = CreateContext(club: club, plannedShutdown: TestPlannedShutdown.Pending);
+
+        await new PurchaseFromCatalogAsGiftEvent(context.Service).Parse(context.SenderClient,
+            HabbiconTestSupport.Incoming(1, 2, "", "recipient", "hello", 3, 4, 5, true));
+
+        var refusal = Assert.Single(context.SenderPackets);
+        Assert.Equal(ServerPacketHeader.PurchaseErrorComposer, refusal.Header);
+        Assert.Equal(0, new Plus.Communication.Flash.FlashIncomingPacket { Buffer = refusal.Payload }.ReadInt());
+        Assert.Equal(0, context.Rewards.Charges);
+        Assert.Equal(0, context.Memberships.Purchases);
+        Assert.Equal(0, context.Store.Creates);
+        Assert.Equal(100, context.Sender.Credits);
+        Assert.Empty(Assert.IsType<InventoryComponent>(context.Recipient.Inventory).Furniture.AllItems);
+        Assert.Empty(context.RecipientPackets);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WithoutAPendingShutdownFurniAndClubGiftsAreBought(bool club)
+    {
+        var context = CreateContext(club: club, plannedShutdown: TestPlannedShutdown.None);
+
+        await new PurchaseFromCatalogAsGiftEvent(context.Service).Parse(context.SenderClient,
+            HabbiconTestSupport.Incoming(1, 2, "", "recipient", "hello", 3, 4, 5, true));
+
+        Assert.Equal(90, context.Sender.Credits);
+        Assert.Contains(context.SenderPackets, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+        Assert.DoesNotContain(context.SenderPackets, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
+    }
+
     private static CatalogGiftPurchaseRequest Request(string recipient = "recipient") =>
         new(1, 2, "", recipient, "hello", 3, 4, 5, true);
 
     private static Context CreateContext(bool enabled = true, bool missingRecipient = false,
-        bool recipientIsSender = false, bool recipientAllowsGifts = true, bool storeFails = false, string attachedBadge = "")
+        bool recipientIsSender = false, bool recipientAllowsGifts = true, bool storeFails = false, string attachedBadge = "",
+        bool club = false, IPlannedShutdown? plannedShutdown = null)
     {
         var content = new ItemDefinition
         {
@@ -155,10 +193,11 @@ public sealed class CatalogGiftPurchaseServiceTests
                 ? [new CatalogProduct { Type = CatalogProductType.Furni, Definition = content }]
                 : [new CatalogProduct { Type = CatalogProductType.Badge, BadgeCode = attachedBadge }, new CatalogProduct { Type = CatalogProductType.Furni, Definition = content }]
         };
-        var page = new CatalogPage { Id = 1, Enabled = true, Layout = "default_3x3" };
+        var page = new CatalogPage { Id = 1, Enabled = true, Layout = club ? "club_buy" : "default_3x3" };
         page.Offers.Add(2, offer);
         var catalog = Proxy<ICatalogManager, CatalogProxy>();
         ((CatalogProxy)(object)catalog).Page = page;
+        ((CatalogProxy)(object)catalog).ClubOffer = new ClubOffer { Id = 2, Name = "HC_31", Days = 31, Credits = 10, Giftable = true };
         var items = Proxy<IItemDataManager, ItemDataProxy>();
         var itemProxy = (ItemDataProxy)(object)items;
         itemProxy.Gifts = new Dictionary<int, uint> { [3] = present.Id };
@@ -173,6 +212,7 @@ public sealed class CatalogGiftPurchaseServiceTests
         var clients = new ClientLookup(senderClient, recipientClient, missingRecipient);
         var rewards = new Rewards();
         var store = new GiftStore(storeFails, present);
+        var memberships = new Memberships();
         var clock = new FixedClock(new DateTimeOffset(2040, 2, 3, 4, 5, 6, TimeSpan.Zero));
         var service = new CatalogGiftPurchaseService(
             catalog,
@@ -181,13 +221,14 @@ public sealed class CatalogGiftPurchaseServiceTests
             Proxy<IAchievementManager, EmptyProxy>(),
             clients,
             Proxy<IQuestManager, EmptyProxy>(),
-            Proxy<IClubMembershipService, EmptyProxy>(),
+            memberships,
             rewards,
             store,
             clock,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CatalogGiftPurchaseService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CatalogGiftPurchaseService>.Instance,
+            plannedShutdown);
 
-        return new(service, senderClient, sender, recipient, senderPackets, recipientPackets, clients, rewards, store, clock);
+        return new(service, senderClient, sender, recipient, senderPackets, recipientPackets, clients, rewards, store, clock, memberships);
     }
 
     private static List<(uint Header, byte[] Payload)> Capture(GameClient client)
@@ -231,7 +272,8 @@ public sealed class CatalogGiftPurchaseServiceTests
         ClientLookup Clients,
         Rewards Rewards,
         GiftStore Store,
-        FixedClock Clock);
+        FixedClock Clock,
+        Memberships Memberships);
 
     private sealed class RecordingService : ICatalogGiftPurchaseService
     {
@@ -317,6 +359,19 @@ public sealed class CatalogGiftPurchaseServiceTests
         public void RunPaydays() => throw new NotSupportedException();
     }
 
+    private sealed class Memberships : IClubMembershipService
+    {
+        public int Purchases { get; private set; }
+        public DateTimeOffset? GetExpiry(int userId) => null;
+        public DateTimeOffset? Purchase(Habbo habbo, ClubOffer offer, int? recipientId = null)
+        {
+            Purchases++;
+            habbo.Credits -= offer.Credits;
+
+            return new DateTimeOffset(2040, 3, 5, 4, 5, 6, TimeSpan.Zero);
+        }
+    }
+
     private sealed class GiftStore(bool fails, ItemDefinition present) : ICatalogGiftStore
     {
         public int Creates { get; private set; }
@@ -339,12 +394,19 @@ public sealed class CatalogGiftPurchaseServiceTests
     public class CatalogProxy : DispatchProxy
     {
         public CatalogPage Page { get; set; } = null!;
+        public ClubOffer ClubOffer { get; set; } = null!;
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
             if (targetMethod?.Name == nameof(ICatalogManager.TryGetPage)) {
                 args![1] = Page;
 
                 return (int)args[0]! == Page.Id;
+            }
+
+            if (targetMethod?.Name == nameof(ICatalogManager.TryGetClubOffer)) {
+                args![1] = ClubOffer;
+
+                return (int)args[0]! == ClubOffer.Id;
             }
 
             return Default(targetMethod?.ReturnType);

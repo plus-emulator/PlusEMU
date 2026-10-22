@@ -6,6 +6,7 @@ using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.Communication.Packets.Outgoing.Inventory.Purse;
 using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Communication.Packets.Outgoing.Moderation;
+using Plus.Core;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Catalog.Utilities;
@@ -40,6 +41,7 @@ public interface ICatalogGiftPurchaseService
 public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
 {
     private readonly ICatalogManager _catalogManager;
+    private readonly IPlannedShutdown? _plannedShutdown;
     private readonly ISettingsManager _settingsManager;
     private readonly IItemDataManager _itemManager;
     private readonly IAchievementManager _achievementManager;
@@ -61,8 +63,10 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         IClubRewards clubRewards,
         ICatalogGiftStore giftStore,
         TimeProvider clock,
-        ILogger<CatalogGiftPurchaseService> logger)
+        ILogger<CatalogGiftPurchaseService> logger,
+        IPlannedShutdown? plannedShutdown = null)
     {
+        _plannedShutdown = plannedShutdown;
         _catalogManager = catalogManager;
         _settingsManager = settingsManager;
         _itemManager = itemManager;
@@ -96,6 +100,10 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         var spriteId = request.SpriteId;
         var boxId = request.BoxId;
         var ribbonId = request.RibbonId;
+
+        if (_plannedShutdown?.IsPending == true) {
+            return Reject(session, "a shutdown is pending");
+        }
 
         if (_settingsManager.TryGetValue("room.item.gifts.enabled") != "1") {
             session.SendNotification("The hotel managers have disabled gifting");

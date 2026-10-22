@@ -156,7 +156,8 @@ public static class WiredLegacyProtocol
         WiredNativeEditorConfiguration? editor = null, int? catalogHash = null,
         IReadOnlyList<Plus.HabboHotel.Items.Wired.Variables.WiredNativeSharedVariable>? sharedVariables = null,
         Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders? textPlaceholders = null,
-        Plus.HabboHotel.Items.Wired.Leaderboard.WiredLeaderboardContext? leaderboard = null, ImmutableArray<int> contextSources = default)
+        Plus.HabboHotel.Items.Wired.Leaderboard.WiredLeaderboardContext? leaderboard = null, ImmutableArray<int> contextSources = default,
+        Plus.HabboHotel.Items.Wired.Variables.WiredVariableBoxContext? variableBox = null)
     {
         editor ??= configuration.Origin?.Native;
 
@@ -212,11 +213,29 @@ public static class WiredLegacyProtocol
         // One context entry (type 0, the room's variable catalog) carries its hash; the client synchronizes the catalog by it.
         // Zero is the "unknown, request it" hint and is also what a failed capture sends. Cards without pickers carry no context.
         packet.WriteInteger((catalogHash is null ? 0 : 1) + (sharedVariables is null ? 0 : 1) + (textPlaceholders is null ? 0 : 1)
-            + (leaderboard is null ? 0 : 1));
+            + (leaderboard is null ? 0 : 1) + (variableBox is null ? 0 : 1));
 
         if (catalogHash is { } hash) {
             packet.WriteInteger(0);
             packet.WriteInteger(hash);
+        }
+
+        // Contexts 1 to 3 (VariableInfoAndHolders.as, VariableInfoAndValue.as): the box's variable, then its holders or the room variable's value.
+        if (variableBox is not null) {
+            packet.WriteInteger(variableBox.ContextType);
+            variableBox.Variable.Write(packet, false);
+
+            if (variableBox.Value is { } value) {
+                packet.WriteInteger(value);
+            }
+            else {
+                packet.WriteInteger(variableBox.Holders.Length);
+
+                foreach (var (objectId, held) in variableBox.Holders) {
+                    packet.WriteInteger(objectId);
+                    packet.WriteInteger(held);
+                }
+            }
         }
 
         // Context 4: the variables other rooms share, each as its room and the standard variable block.

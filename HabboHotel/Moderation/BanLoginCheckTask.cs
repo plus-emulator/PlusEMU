@@ -23,10 +23,8 @@ internal class BanLoginCheckTask : IAuthenticationTask
             return false;
         }
 
-        if (_moderationManager.UsernameBanCheck(username)) {
-            return false;
-        }
-
-        return true;
+#pragma warning disable CS0618 // The handshake's machine id only lives on the session.
+        return !_moderationManager.HasBan(ModerationBanType.Username, username) && !_moderationManager.HasBan(ModerationBanType.Machine, session.MachineId);
+#pragma warning restore CS0618
     }
 }

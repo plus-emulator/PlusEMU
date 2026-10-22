@@ -19,7 +19,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
     private readonly IGameClientManager _clients;
     private readonly IAccountSessionGate _sessionGate;
     private readonly TimeProvider _clock;
-    private readonly ConcurrentDictionary<string, ModerationBan> _bans = new();
+    private readonly ConcurrentDictionary<(ModerationBanType Type, string Value), ModerationBan> _bans = new();
     private readonly Dictionary<int, List<ModerationPresetActions>> _moderationCfhTopicActions = new();
 
 
@@ -169,7 +169,8 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
         foreach (var ban in bans) {
             if (ban.ExpiresAt is { } expiresAt && expiresAt > now) {
-                _bans.TryAdd(ban.Value, new(BanTypeUtility.GetModerationBanType(ban.Type), ban.Value, ban.Reason, expiresAt));
+                var type = BanTypeUtility.GetModerationBanType(ban.Type);
+                _bans.TryAdd((type, ban.Value), new(type, ban.Value, ban.Reason, expiresAt));
             }
             else {
                 await connection.ExecuteAsync("DELETE FROM bans WHERE bantype = @type AND value = @value LIMIT 1", new { type = ban.Type, value = ban.Value });
@@ -396,7 +397,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
             // Published in the same turn as the row: an unban, which clears the cache in its own turn, always comes
             // entirely before or after. A re-ban also refreshes the cached expiry.
             if (work.Type == ModerationBanType.Machine || work.Type == ModerationBanType.Username) {
-                _bans[work.Value] = new(work.Type, work.Value, work.Reason, work.ExpiresAt);
+                _bans[(work.Type, work.Value)] = new(work.Type, work.Value, work.Reason, work.ExpiresAt);
             }
         }
         finally {
@@ -441,7 +442,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
     /// <summary>
     /// Accounts a ban covers. A machine ban reaches the sessions online with that handshake machine id. An IP ban reaches
     /// the accounts whose users.ip_last is that address. Game sessions carry no client address of their own, so an IP ban
-    /// only reaches accounts that already have the address recorded. Username bans are refused at login by BanLoginCheckTask.
+    /// only reaches accounts that already have the address recorded. Username and machine bans are refused at login by BanLoginCheckTask.
     /// </summary>
     internal async Task<IReadOnlyList<int>> BannedAccounts(ModerationBanType type, string banValue, CancellationToken cancellationToken = default)
     {
@@ -469,85 +470,39 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     public ModerationTicket? GetTicketBySenderId(int userId) => _modTickets.Values.FirstOrDefault(ticket => ticket.Sender.Id == userId && !ticket.Answered);
 
-    /// <summary>
-    /// Runs a quick check to see if a ban record is cached in the server.
-    /// </summary>
-    /// <param name="key"></param>
-    /// <param name="ban"></param>
-    /// <returns></returns>
-    public bool IsBanned(string key, [NotNullWhen(true)] out ModerationBan? ban)
+    public bool IsBanned(ModerationBanType type, string value, [NotNullWhen(true)] out ModerationBan? ban)
     {
-        if (_bans.TryGetValue(key, out ban)) {
-            if (!ban.IsExpiredAt(_clock.GetUtcNow())) {
-                return true;
-            }
-
-            //This ban has expired, let us quickly remove it here.
-            using (var connection = _database.Connection()) {
-                connection.Execute("DELETE FROM bans WHERE bantype = @type AND value = @key LIMIT 1", new { type = BanTypeUtility.FromModerationBanType(ban.Type), key });
-            }
-
-            //And finally, let us remove the ban record from the cache.
-            _bans.TryRemove(key, out _);
-
+        if (!_bans.TryGetValue((type, value), out ban)) {
             return false;
         }
+
+        if (!ban.IsExpiredAt(_clock.GetUtcNow())) {
+            return true;
+        }
+
+        using (var connection = _database.Connection()) {
+            connection.Execute("DELETE FROM bans WHERE bantype = @type AND value = @value LIMIT 1", new { type = BanTypeUtility.FromModerationBanType(type), value });
+        }
+
+        _bans.TryRemove((type, value), out _);
 
         return false;
     }
 
-    public bool IsBanned(ModerationBanType type, string value, [NotNullWhen(true)] out ModerationBan? ban) => throw new NotImplementedException();
-
-    public bool HasBan(ModerationBanType type, string value) => throw new NotImplementedException();
-
-    /// <summary>
-    /// Run a quick database check to see if this ban exists in the database.
-    /// </summary>
-    /// <param name="machineId">The value of the ban.</param>
-    /// <returns></returns>
-    public bool HasMachineBanCheck(string machineId)
+    public bool HasBan(ModerationBanType type, string value)
     {
-        if (!IsBanned(machineId, out _)) {
+        if (!IsBanned(type, value, out _)) {
             return false;
         }
 
         using var connection = _database.Connection();
-        var exists = connection.ExecuteScalar<bool>("SELECT EXISTS(SELECT 1 FROM bans WHERE bantype = @type AND value = @value)", new { type = "machine", value = machineId });
+        var exists = connection.ExecuteScalar<bool>("SELECT EXISTS(SELECT 1 FROM bans WHERE bantype = @type AND value = @value)",
+            new { type = BanTypeUtility.FromModerationBanType(type), value });
 
         if (!exists) {
-            RemoveBan(machineId);
+            _bans.TryRemove((type, value), out _);
         }
 
         return exists;
-    }
-
-    /// <summary>
-    /// Run a quick database check to see if this ban exists in the database.
-    /// </summary>
-    /// <param name="username">The value of the ban.</param>
-    /// <returns></returns>
-    public bool UsernameBanCheck(string username)
-    {
-        if (!IsBanned(username, out _)) {
-            return false;
-        }
-
-        using var connection = _database.Connection();
-        var exists = connection.ExecuteScalar<bool>("SELECT EXISTS(SELECT 1 FROM bans WHERE bantype = @type AND value = @value)", new { type = "user", value = username });
-
-        if (!exists) {
-            RemoveBan(username);
-        }
-
-        return exists;
-    }
-
-    /// <summary>
-    /// Remove a ban from the cache based on a given value.
-    /// </summary>
-    /// <param name="value"></param>
-    public void RemoveBan(string value)
-    {
-        _bans.TryRemove(value, out _);
     }
 }

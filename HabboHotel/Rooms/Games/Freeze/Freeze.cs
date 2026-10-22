@@ -419,7 +419,7 @@ public class Freeze
 
     private void FreezeUser(RoomUser user)
     {
-        if (user.IsBot || user.ShieldActive || user.Team == Team.None || user.Freezed) {
+        if (!GameIsStarted || user.IsBot || user.ShieldActive || user.Team == Team.None || user.Freezed) {
             return;
         }
 

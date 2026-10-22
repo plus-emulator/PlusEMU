@@ -153,6 +153,14 @@ public static class WiredNativeEditorProjection
             }
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: with picked furni as its source (100), Control Clock refuses a wall pick (a negative
+        // id) with this key, also when no furni has that id. The editor takes no wall picks, so such a save never compiles. An empty source
+        // list counts as 100, like the other pick checks. Not observed: which key Habbo sends when the save is also wrong in another way.
+        if (descriptor.CanonicalName == "wf_act_control_clock" && (native.FurniSourceTypes.IsDefaultOrEmpty || native.FurniSourceTypes[0] == 100)
+            && native.PrimaryItems.Any(reference => reference.Wall)) {
+            return "wiredfurni.error.require_counter_furni";
+        }
+
         var metadata = Metadata(descriptor.CanonicalName);
 
         var allowed = metadata.FurniAllowed;

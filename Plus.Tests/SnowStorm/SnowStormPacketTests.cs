@@ -23,74 +23,75 @@ namespace Plus.Tests.SnowStorm;
 
 public class SnowStormPacketTests
 {
+    // Official ids of AIR WIN63-202610201032-107964540.
     private static readonly Dictionary<string, uint> Incoming = new()
     {
-        ["Game2CheckGameDirectoryStatusEvent"] = ClientPacketHeader.Game2CheckGameDirectoryStatusEvent,
-        ["Game2GetAccountGameStatusEvent"] = ClientPacketHeader.Game2GetAccountGameStatusEvent,
-        ["Game2QuickJoinEvent"] = ClientPacketHeader.Game2QuickJoinEvent,
-        ["Game2LeaveLobbyEvent"] = ClientPacketHeader.Game2LeaveLobbyEvent,
-        ["Game2LoadStageReadyEvent"] = ClientPacketHeader.Game2LoadStageReadyEvent,
-        ["Game2ExitGameEvent"] = ClientPacketHeader.Game2ExitGameEvent,
-        ["Game2GameChatEvent"] = ClientPacketHeader.Game2GameChatEvent,
-        ["Game2PlayAgainEvent"] = ClientPacketHeader.Game2PlayAgainEvent,
-        ["Game2SetUserMoveTargetEvent"] = ClientPacketHeader.Game2SetUserMoveTargetEvent,
-        ["Game2ThrowSnowballAtPositionEvent"] = ClientPacketHeader.Game2ThrowSnowballAtPositionEvent,
-        ["Game2ThrowSnowballAtHumanEvent"] = ClientPacketHeader.Game2ThrowSnowballAtHumanEvent,
-        ["Game2MakeSnowballEvent"] = ClientPacketHeader.Game2MakeSnowballEvent,
-        ["Game2RequestFullStatusUpdateEvent"] = ClientPacketHeader.Game2RequestFullStatusUpdateEvent,
-        ["Game2GetTotalLeaderboardEvent"] = ClientPacketHeader.Game2GetTotalLeaderboardEvent,
-        ["Game2GetFriendsLeaderboardEvent"] = ClientPacketHeader.Game2GetFriendsLeaderboardEvent,
-        ["Game2GetWeeklyLeaderboardEvent"] = ClientPacketHeader.Game2GetWeeklyLeaderboardEvent,
-        ["Game2GetWeeklyFriendsLeaderboardEvent"] = ClientPacketHeader.Game2GetWeeklyFriendsLeaderboardEvent,
-        ["Game2GetTotalGroupLeaderboardEvent"] = ClientPacketHeader.Game2GetTotalGroupLeaderboardEvent,
-        ["Game2GetWeeklyGroupLeaderboardEvent"] = ClientPacketHeader.Game2GetWeeklyGroupLeaderboardEvent,
-        ["GetSnowWarGameTokensOfferEvent"] = ClientPacketHeader.GetSnowWarGameTokensOfferEvent,
-        ["PurchaseSnowWarGameTokensOfferEvent"] = ClientPacketHeader.PurchaseSnowWarGameTokensOfferEvent
+        ["Game2CheckGameDirectoryStatusEvent"] = 822,
+        ["Game2GetAccountGameStatusEvent"] = 2949,
+        ["Game2QuickJoinEvent"] = 1287,
+        ["Game2LeaveLobbyEvent"] = 1451,
+        ["Game2LoadStageReadyEvent"] = 2914,
+        ["Game2ExitGameEvent"] = 3482,
+        ["Game2GameChatEvent"] = 584,
+        ["Game2PlayAgainEvent"] = 2552,
+        ["Game2SetUserMoveTargetEvent"] = 3787,
+        ["Game2ThrowSnowballAtPositionEvent"] = 2078,
+        ["Game2ThrowSnowballAtHumanEvent"] = 1898,
+        ["Game2MakeSnowballEvent"] = 3528,
+        ["Game2RequestFullStatusUpdateEvent"] = 2893,
+        ["Game2GetTotalLeaderboardEvent"] = 3990,
+        ["Game2GetFriendsLeaderboardEvent"] = 609,
+        ["Game2GetWeeklyLeaderboardEvent"] = 2215,
+        ["Game2GetWeeklyFriendsLeaderboardEvent"] = 1163,
+        ["Game2GetTotalGroupLeaderboardEvent"] = 27,
+        ["Game2GetWeeklyGroupLeaderboardEvent"] = 1936,
+        ["GetSnowWarGameTokensOfferEvent"] = 3976,
+        ["PurchaseSnowWarGameTokensOfferEvent"] = 1212
     };
 
     private static readonly Dictionary<string, uint> Outgoing = new()
     {
-        ["Game2GameDirectoryStatusComposer"] = ServerPacketHeader.Game2GameDirectoryStatusComposer,
-        ["GameAccountStatusComposer"] = ServerPacketHeader.GameAccountStatusComposer,
-        ["Game2GameCreatedComposer"] = ServerPacketHeader.Game2GameCreatedComposer,
-        ["Game2InArenaQueueComposer"] = ServerPacketHeader.Game2InArenaQueueComposer,
-        ["Game2GameLongDataComposer"] = ServerPacketHeader.Game2GameLongDataComposer,
-        ["Game2StartCounterComposer"] = ServerPacketHeader.Game2StartCounterComposer,
-        ["Game2UserJoinedGameComposer"] = ServerPacketHeader.Game2UserJoinedGameComposer,
-        ["Game2UserLeftGameComposer"] = ServerPacketHeader.Game2UserLeftGameComposer,
-        ["Game2StopCounterComposer"] = ServerPacketHeader.Game2StopCounterComposer,
-        ["Game2GameStartedComposer"] = ServerPacketHeader.Game2GameStartedComposer,
-        ["Game2EnterArenaComposer"] = ServerPacketHeader.Game2EnterArenaComposer,
-        ["Game2ArenaEnteredComposer"] = ServerPacketHeader.Game2ArenaEnteredComposer,
-        ["Game2EnterArenaFailedComposer"] = ServerPacketHeader.Game2EnterArenaFailedComposer,
-        ["Game2GameStatusComposer"] = ServerPacketHeader.Game2GameStatusComposer,
-        ["Game2FullGameStatusComposer"] = ServerPacketHeader.Game2FullGameStatusComposer,
-        ["Game2StageStartingComposer"] = ServerPacketHeader.Game2StageStartingComposer,
-        ["Game2StageLoadComposer"] = ServerPacketHeader.Game2StageLoadComposer,
-        ["Game2RejoinPreviousRoomComposer"] = ServerPacketHeader.Game2RejoinPreviousRoomComposer,
-        ["Game2StageStillLoadingComposer"] = ServerPacketHeader.Game2StageStillLoadingComposer,
-        ["Game2GameEndingComposer"] = ServerPacketHeader.Game2GameEndingComposer,
-        ["Game2GameChatComposer"] = ServerPacketHeader.Game2GameChatComposer,
-        ["Game2StageRunningComposer"] = ServerPacketHeader.Game2StageRunningComposer,
-        ["Game2StageEndingComposer"] = ServerPacketHeader.Game2StageEndingComposer,
-        ["Game2PlayerExitedGameArenaComposer"] = ServerPacketHeader.Game2PlayerExitedGameArenaComposer,
-        ["Game2PlayerRematchesComposer"] = ServerPacketHeader.Game2PlayerRematchesComposer,
-        ["Game2JoiningGameFailedComposer"] = ServerPacketHeader.Game2JoiningGameFailedComposer,
-        ["Game2StartingGameFailedComposer"] = ServerPacketHeader.Game2StartingGameFailedComposer,
-        ["Game2GameCancelledComposer"] = ServerPacketHeader.Game2GameCancelledComposer,
-        ["Game2GameNotFoundComposer"] = ServerPacketHeader.Game2GameNotFoundComposer,
-        ["Game2UserBlockedComposer"] = ServerPacketHeader.Game2UserBlockedComposer,
-        ["Game2TotalLeaderboardComposer"] = ServerPacketHeader.Game2TotalLeaderboardComposer,
-        ["Game2FriendsLeaderboardComposer"] = ServerPacketHeader.Game2FriendsLeaderboardComposer,
-        ["Game2WeeklyLeaderboardComposer"] = ServerPacketHeader.Game2WeeklyLeaderboardComposer,
-        ["Game2WeeklyFriendsLeaderboardComposer"] = ServerPacketHeader.Game2WeeklyFriendsLeaderboardComposer,
-        ["Game2TotalGroupLeaderboardComposer"] = ServerPacketHeader.Game2TotalGroupLeaderboardComposer,
-        ["Game2WeeklyGroupLeaderboardComposer"] = ServerPacketHeader.Game2WeeklyGroupLeaderboardComposer,
-        ["SnowWarGameTokensComposer"] = ServerPacketHeader.SnowWarGameTokensComposer
+        ["Game2GameDirectoryStatusComposer"] = 915,
+        ["GameAccountStatusComposer"] = 2570,
+        ["Game2GameCreatedComposer"] = 414,
+        ["Game2InArenaQueueComposer"] = 108,
+        ["Game2GameLongDataComposer"] = 667,
+        ["Game2StartCounterComposer"] = 3245,
+        ["Game2UserJoinedGameComposer"] = 1523,
+        ["Game2UserLeftGameComposer"] = 3976,
+        ["Game2StopCounterComposer"] = 1813,
+        ["Game2GameStartedComposer"] = 327,
+        ["Game2EnterArenaComposer"] = 2453,
+        ["Game2ArenaEnteredComposer"] = 2176,
+        ["Game2EnterArenaFailedComposer"] = 3038,
+        ["Game2GameStatusComposer"] = 1276,
+        ["Game2FullGameStatusComposer"] = 1234,
+        ["Game2StageStartingComposer"] = 1304,
+        ["Game2StageLoadComposer"] = 1612,
+        ["Game2RejoinPreviousRoomComposer"] = 1853,
+        ["Game2StageStillLoadingComposer"] = 1222,
+        ["Game2GameEndingComposer"] = 3869,
+        ["Game2GameChatComposer"] = 2834,
+        ["Game2StageRunningComposer"] = 3439,
+        ["Game2StageEndingComposer"] = 2392,
+        ["Game2PlayerExitedGameArenaComposer"] = 3480,
+        ["Game2PlayerRematchesComposer"] = 846,
+        ["Game2JoiningGameFailedComposer"] = 1966,
+        ["Game2StartingGameFailedComposer"] = 3292,
+        ["Game2GameCancelledComposer"] = 1346,
+        ["Game2GameNotFoundComposer"] = 3111,
+        ["Game2UserBlockedComposer"] = 817,
+        ["Game2TotalLeaderboardComposer"] = 972,
+        ["Game2FriendsLeaderboardComposer"] = 3486,
+        ["Game2WeeklyLeaderboardComposer"] = 2501,
+        ["Game2WeeklyFriendsLeaderboardComposer"] = 94,
+        ["Game2TotalGroupLeaderboardComposer"] = 3459,
+        ["Game2WeeklyGroupLeaderboardComposer"] = 1465,
+        ["SnowWarGameTokensComposer"] = 1547
     };
 
     [Fact]
-    public void EveryHeaderIsMappedToItsVoltIdInEveryRevisionWithoutCollisions()
+    public void EveryHeaderUsesItsOfficialAirIdWithoutCollisions()
     {
         {
             using var json = HabbiconPacketTests.CurrentRevisionTable();
@@ -139,7 +140,7 @@ public class SnowStormPacketTests
         Assert.Equal(lobbyWire, Write(new Game2GameLongDataComposer(lobby)));
         Assert.Equal(lobbyWire, Write(new Game2GameStartedComposer(lobby)));
         Assert.Equal(new object[] { 4, "Ann", "hd-1", "F", 2, 3, 120, 80, true }, Write(new Game2UserJoinedGameComposer(player, true)));
-        Assert.Equal(new object[] { 0 }, Write(new Game2StopCounterComposer()));
+        Assert.Empty(Write(new Game2StopCounterComposer()));
         Assert.Empty(Write(new Game2GameCancelledComposer()));
         Assert.Equal(new object[] { 0, 180, 4, -1 }, Write(new Game2GameDirectoryStatusComposer(0, 180, 4, -1)));
         Assert.Equal(new object[] { 0, 9, 12 }, Write(new GameAccountStatusComposer(0, 9, 12)));

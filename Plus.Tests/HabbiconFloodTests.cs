@@ -10,22 +10,21 @@ public class HabbiconFloodTests
     {
         var clock = new ManualTimeProvider();
         var messenger = new HabboMessenger(new(), new(), new(), clock);
-        var friend = new MessengerBuddy { Id = 2 };
 
         for (int i = 0; i < 10; i++) {
             Assert.True(messenger.TrySendHabbicon(clock.GetUtcNow()));
         }
 
-        Assert.Null(messenger.SendMessage(friend, "eleventh"));
+        Assert.Null(messenger.SendMessage("eleventh"));
         Assert.False(messenger.TrySendHabbicon(clock.GetUtcNow()));
-        Assert.Equal(MessageError.Flooding, messenger.SendMessage(friend, "blocked"));
+        Assert.Equal(MessageError.Flooding, messenger.SendMessage("blocked"));
         clock.Advance(TimeSpan.FromSeconds(21));
         Assert.False(messenger.TrySendHabbicon(clock.GetUtcNow()));
         clock.Advance(TimeSpan.FromSeconds(38));
         Assert.False(messenger.TrySendHabbicon(clock.GetUtcNow()));
         clock.Advance(TimeSpan.FromSeconds(1));
         Assert.True(messenger.TrySendHabbicon(clock.GetUtcNow()));
-        Assert.Null(messenger.SendMessage(friend, "after cooldown"));
+        Assert.Null(messenger.SendMessage("after cooldown"));
     }
 
     [Fact]
@@ -52,23 +51,22 @@ public class HabbiconFloodTests
     {
         var clock = new CountingClock { Now = new DateTimeOffset(2040, 1, 2, 12, 0, 0, TimeSpan.FromHours(5)) };
         var messenger = new HabboMessenger(new(), new(), new(), clock);
-        var friend = new MessengerBuddy { Id = 2 };
         clock.Reads = 0;
 
         for (var i = 0; i < 11; i++) {
-            Assert.Null(messenger.SendMessage(friend, "allowed"));
+            Assert.Null(messenger.SendMessage("allowed"));
         }
 
-        Assert.Equal(MessageError.Flooding, messenger.SendMessage(friend, "starts cooldown"));
+        Assert.Equal(MessageError.Flooding, messenger.SendMessage("starts cooldown"));
         Assert.Equal(12, clock.Reads);
 
         var deadline = clock.Now.AddMinutes(1).ToOffset(TimeSpan.FromHours(-7));
         clock.Now = deadline.AddTicks(-1);
-        Assert.Equal(MessageError.Flooding, messenger.SendMessage(friend, "before"));
+        Assert.Equal(MessageError.Flooding, messenger.SendMessage("before"));
         clock.Now = deadline;
-        Assert.Null(messenger.SendMessage(friend, "exact"));
+        Assert.Null(messenger.SendMessage("exact"));
         clock.Now = deadline.AddTicks(1);
-        Assert.Null(messenger.SendMessage(friend, "after"));
+        Assert.Null(messenger.SendMessage("after"));
         Assert.Equal(15, clock.Reads);
     }
 
@@ -85,7 +83,7 @@ public class HabbiconFloodTests
         Assert.False(messenger.TrySendHabbicon(clock.Now));
         Assert.False(messenger.TrySendHabbicon(clock.Now));
         clock.Now = clock.Now.AddTicks(-1);
-        Assert.Equal(MessageError.Flooding, messenger.SendMessage(new MessengerBuddy { Id = 2 }, "backwards"));
+        Assert.Equal(MessageError.Flooding, messenger.SendMessage("backwards"));
         Assert.Equal(2, clock.Reads);
     }
 

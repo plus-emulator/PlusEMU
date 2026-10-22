@@ -107,11 +107,10 @@ public sealed class MessengerMessageSendTests
         public readonly List<string> Rewards = [];
         public Task NextLog { get; set; } = Task.CompletedTask;
         public readonly MessengerCommunicationService Communication;
-        private readonly IMessengerDataLoader _loader;
 
         public Fixture()
         {
-            _loader = Fake<IMessengerDataLoader>((method, args) =>
+            var loader = Fake<IMessengerDataLoader>((method, args) =>
             {
                 Logs.Add($"{method.Name} {args![0]} {args[1]} {args[2]}");
 
@@ -131,17 +130,17 @@ public sealed class MessengerMessageSendTests
             });
             Communication = new MessengerCommunicationService(
                 filter,
-                _loader,
+                loader,
                 Fake<IQuestManager>((method, _) => throw new NotSupportedException(method.Name)),
                 rewards,
                 new MessengerCommunicationOutput(),
-                new MessengerFriendMutationService(_loader, new AccountSessionGate(), Clients),
+                new MessengerFriendMutationService(loader, new AccountSessionGate(), Clients),
                 Clients);
         }
 
         public async Task LogIn()
         {
-            var synchronizer = new MessengerEventSynchronizer(_loader, Clients);
+            var synchronizer = new MessengerEventSynchronizer(Clients);
             await synchronizer.UserLoggedIn(Sender.Habbo);
             await synchronizer.UserLoggedIn(Target.Habbo);
             Sender.Headers.Clear();

@@ -114,7 +114,7 @@ public class HabboMessenger
         return true;
     }
 
-    public MessageError? SendMessage(MessengerBuddy friend, string message)
+    public MessageError? SendMessage(string message)
     {
         if (string.IsNullOrWhiteSpace(message)) {
             return MessageError.EmptyMessage;

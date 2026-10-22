@@ -8,12 +8,10 @@ namespace Plus.HabboHotel.Friends;
 
 internal class MessengerEventSynchronizer : IAuthenticationTask
 {
-    private readonly IMessengerDataLoader _messengerDataLoader;
     private readonly IGameClientManager _gameClientManager;
 
-    public MessengerEventSynchronizer(IMessengerDataLoader messengerDataLoader, IGameClientManager gameClientManager)
+    public MessengerEventSynchronizer(IGameClientManager gameClientManager)
     {
-        _messengerDataLoader = messengerDataLoader;
         _gameClientManager = gameClientManager;
     }
 

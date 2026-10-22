@@ -51,7 +51,7 @@ public sealed class MessengerRequestSendTests
             return Task.FromResult(true);
         }
 
-        var synchronizer = new MessengerEventSynchronizer(loader, clients);
+        var synchronizer = new MessengerEventSynchronizer(clients);
         await synchronizer.UserLoggedIn(sender.Habbo);
         await synchronizer.UserLoggedIn(target.Habbo);
         var quests = Fake<IQuestManager>((method, args) => Record(order, method, args));

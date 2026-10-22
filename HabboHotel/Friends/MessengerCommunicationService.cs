@@ -54,7 +54,7 @@ public sealed class MessengerCommunicationService(
             return;
         }
 
-        var error = messenger.SendMessage(friend, message);
+        var error = messenger.SendMessage(message);
 
         if (error == MessageError.Flooding) {
             output.Notice(session, "You cannot send a message, you have flooded the console.\n\nYou can send a message in 60 seconds.");

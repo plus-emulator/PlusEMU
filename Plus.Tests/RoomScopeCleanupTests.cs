@@ -154,6 +154,66 @@ public sealed class RoomScopeCleanupTests
         Assert.NotSame(room, fixture.Create(room.Id));
     }
 
+    [Fact]
+    public async Task ACrashedRoomDoesNotBlockTheRoomLoopAndUnloadsWhenItsPassEnds()
+    {
+        var clock = new CycleClock();
+        using var fixture = new Fixture(initialize: room => Set(room, "_roomUserManager", new RoomUserManager(room, new TeardownUserStore(null, []),
+            TimeProvider.System, TestRewardProgress.Unused, TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel,
+            TestItemRuntime.Settings)), clock: clock);
+        var stuck = fixture.Create(1);
+        var other = fixture.Create(2);
+        using var started = new ManualResetEventSlim();
+        using var gate = new ManualResetEventSlim();
+        Assert.True(RoomCycle.TryStart(stuck, () =>
+        {
+            lock (stuck.NavigationSync) {
+                started.Set();
+                gate.Wait(TimeSpan.FromSeconds(30));
+            }
+        }, full: true));
+        Assert.True(started.Wait(TimeSpan.FromSeconds(5)));
+
+        try {
+            for (var tick = 0; tick <= RoomCycle.MissesUntilCrash; tick++) {
+                clock.Now += RoomCycle.Interval;
+                await Task.Run(fixture.Manager.OnCycle).WaitAsync(TimeSpan.FromSeconds(5));
+                await other.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
+            }
+
+            Assert.True(stuck.IsCrashed);
+            Assert.True(fixture.Manager.TryGetRoom(stuck.Id, out _));
+            var otherPass = other.ProcessTask;
+            clock.Now += RoomCycle.Interval;
+            await Task.Run(fixture.Manager.OnCycle).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.NotSame(otherPass, other.ProcessTask);
+            await other.ProcessTask.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(other.IsCrashed);
+            Assert.True(fixture.Manager.TryGetRoom(other.Id, out _));
+        }
+        finally {
+            gate.Set();
+        }
+
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+
+        while (fixture.Manager.TryGetRoom(stuck.Id, out _) && DateTime.UtcNow < deadline) {
+            await Task.Delay(10);
+        }
+
+        Assert.False(fixture.Manager.TryGetRoom(stuck.Id, out _));
+        Assert.True(stuck.MDisposed);
+        Assert.False(other.MDisposed);
+    }
+
+    private sealed class CycleClock : TimeProvider
+    {
+        public DateTimeOffset Now = DateTimeOffset.UnixEpoch.AddSeconds(1);
+        public override DateTimeOffset GetUtcNow() => Now;
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => (Now - DateTimeOffset.UnixEpoch).Ticks;
+    }
+
     private sealed class TeardownUserStore(string? failingWrite, List<string> calls) : IRoomUserStore
     {
         public void SavePet(RoomPetSave pet) => Write(nameof(SavePet));
@@ -191,7 +251,7 @@ public sealed class RoomScopeCleanupTests
         private readonly ScopedRoomFactory _factory;
         public int Disposed;
         public RoomManager Manager { get; }
-        public Fixture(Action? dispose = null, Action<Room>? initialize = null)
+        public Fixture(Action? dispose = null, Action<Room>? initialize = null, TimeProvider? clock = null)
         {
             var services = new ServiceCollection();
             services.AddSingleton<Plus.HabboHotel.Achievements.IAchievementManager>(TestRoomAchievements.Unused);
@@ -200,7 +260,7 @@ public sealed class RoomScopeCleanupTests
             services.AddScoped<IRoomComponent>(provider => new MinimalComponent(provider.GetRequiredService<Probe>(), initialize));
             _provider = services.BuildServiceProvider();
             _factory = new ScopedRoomFactory(_provider.GetRequiredService<IServiceScopeFactory>(), TestLogging.Navigation, TestLogging.Factory);
-            Manager = new RoomManager(NullLogger<RoomManager>.Instance, null!, null!, TimeProvider.System, _factory, new TestRoomDataLoaderFactory());
+            Manager = new RoomManager(NullLogger<RoomManager>.Instance, null!, null!, clock ?? TimeProvider.System, _factory, new TestRoomDataLoaderFactory());
         }
         public Room Create(uint id)
         {

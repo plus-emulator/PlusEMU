@@ -65,7 +65,7 @@ public partial class PlacedFurniRoomTests
     private (RoomUser Speaker, RoomUser Listener) TwoAvatars(int listenerBody)
     {
         var manager = new RoomUserManager(_room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(),
-            new TestChatEmotions(_ => 0), TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+            new TestChatEmotions(_ => 0), TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         Set("_roomUserManager", manager);
         _room.WordFilterList = [];
         _client.GetHabbo().IgnoresComponent = new([]);

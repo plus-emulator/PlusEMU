@@ -321,7 +321,7 @@ internal sealed class G1World : IDisposable
         Set(Room, "_interactionClock", TimeProvider.System);
         var items = new RoomItemHandling(Room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
         Set(Room, "_roomItemHandling", items);
-        var users = new RoomUserManager(Room, TestRoomUserStore.Instance, Clock, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+        var users = new RoomUserManager(Room, TestRoomUserStore.Instance, Clock, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         Set(Room, "_roomUserManager", users);
         var map = new Gamemap(Room, new RoomModel("g1", 0, 0, 0, 0, "000\r000\r000", 0, 0, true), TestLogging.Navigation, TestRoomSettings.Empty, TestGroupManager.Empty, TestNavigationDatabase.Instance, TestNavigationRewards.Instance);
         Set(Room, "_gamemap", map);

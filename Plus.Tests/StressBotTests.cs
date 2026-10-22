@@ -249,7 +249,7 @@ public class StressBotTests
 
         typeof(Gamemap).GetProperty(nameof(Gamemap.GameMap))!.SetValue(map, gameMap);
         var manager = new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused,
-            new TestBotAiFactory((_, virtualId) => new GenericBot(virtualId, new FakeWordFilter())), TestGameClientManager.Empty, TestItemRuntime.Travel);
+            new TestBotAiFactory((_, virtualId) => new GenericBot(virtualId, new FakeWordFilter())), TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         typeof(Room).GetField("_gamemap", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, map);
         typeof(Room).GetField("_roomUserManager", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, manager);
         TestRoomUserSnapshots.Install(room);

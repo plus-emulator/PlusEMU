@@ -1,6 +1,6 @@
+using Plus.Core.Settings;
 using Plus.Communication.Packets;
 using System.Diagnostics.CodeAnalysis;
-using Plus.HabboHotel.Permissions;
 using System.Collections.Concurrent;
 using Plus.Communication.Packets.Outgoing.Handshake;
 using Plus.Communication.Packets.Outgoing.Rooms.Avatar;
@@ -52,13 +52,15 @@ public class RoomUserManager
     private readonly IBotAiFactory _botAiFactory;
     private readonly IGameClientManager _clients;
     private readonly IItemTravelStore _travelStore;
+    private readonly ISettingsManager _settings;
     private ConcurrentDictionary<int, RoomUser> _users;
 
     public int UserCount;
 
 
     public RoomUserManager(Room room, IRoomUserStore store, TimeProvider clock, IRewardTrackManager rewards,
-        IChatEmotionsManager chatEmotions, IBotAiFactory botAiFactory, IGameClientManager clients, IItemTravelStore travelStore)
+        IChatEmotionsManager chatEmotions, IBotAiFactory botAiFactory, IGameClientManager clients, IItemTravelStore travelStore,
+        ISettingsManager settings)
     {
         _room = room;
         _store = store;
@@ -68,6 +70,7 @@ public class RoomUserManager
         _botAiFactory = botAiFactory;
         _clients = clients;
         _travelStore = travelStore;
+        _settings = settings;
         _users = new();
         _pets = new();
         _bots = new();
@@ -387,14 +390,8 @@ public class RoomUserManager
 
         user.UpdateNeeded = true;
 
-        var forcedEffects = session.GetHabbo().Effects;
-
-        if (forcedEffects != null && session.GetHabbo().Access.Can(PermissionKeys.ModerationTool) && !session.GetHabbo().DisableForcedEffects) {
-            ApplyArrivalEffect(session, user, 102);
-        }
-
-        if (forcedEffects != null && session.GetHabbo().IsAmbassador && !session.GetHabbo().DisableForcedEffects && !session.GetHabbo().Access.Can(PermissionKeys.ModerationTool)) {
-            ApplyArrivalEffect(session, user, 178);
+        if (ForcedEntryEffect.For(session.GetHabbo(), _settings) is > 0 and var forcedEffect) {
+            ApplyArrivalEffect(session, user, forcedEffect);
         }
 
         foreach (var bot in _bots.Values.ToList()) {

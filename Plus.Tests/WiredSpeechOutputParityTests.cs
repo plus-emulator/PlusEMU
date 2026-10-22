@@ -179,7 +179,7 @@ public partial class PlacedFurniRoomTests
         engine.GetType().GetField("_now", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(engine, new Func<long>(() => clock.GetUtcNow().ToUnixTimeMilliseconds()));
         var users = new RoomUserManager(_room, TestRoomUserStore.Instance, clock, TestRewardProgress.Unused,
-            new TestChatEmotions(), TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+            new TestChatEmotions(), TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         Set("_roomUserManager", users);
         _room.WordFilterList = [];
         _client.GetHabbo().IgnoresComponent = new([]);

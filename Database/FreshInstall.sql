@@ -105829,6 +105829,8 @@ INSERT INTO `server_settings` VALUES
 ('messenger.buddy_limit','5000'),
 ('room.background.allowed_hosts',''),
 ('room.chat.filter.banned_phrases.chances','6'),
+('room.forced_effect.ambassador','178'),
+('room.forced_effect.staff','102'),
 ('room.item.exchangeables.enabled','1'),
 ('room.item.gifts.enabled','1'),
 ('room.item.placement_limit','7500'),

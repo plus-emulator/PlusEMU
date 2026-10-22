@@ -49,9 +49,9 @@ public sealed class WiredAllVariablesDiffComposer(WiredVariableCatalogDiff diff)
         packet.WriteBoolean(variable.RequiresExecutionContext);
         packet.WriteBoolean(variable.CanReadCreationTime);
         packet.WriteBoolean(variable.CanReadLastUpdateTime);
-        packet.WriteBoolean(variable.TextConnector.Count > 0);
+        packet.WriteBoolean(variable.HasTextConnector);
 
-        if (variable.TextConnector.Count > 0) {
+        if (variable.HasTextConnector) {
             packet.WriteInteger(variable.TextConnector.Count);
 
             foreach (var (key, value) in variable.TextConnector.OrderBy(x => x.Key)) {

@@ -16,7 +16,7 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
     }
     public WiredVariableTimeUtilities? TimeUtilities { get; private set; }
     public WiredVariableLevelSystem? LevelSystem { get; private set; }
-    public IReadOnlyDictionary<int, string> TextConnector { get; private set; } = new Dictionary<int, string>();
+    public IReadOnlyDictionary<int, string> TextConnector { get; private set; } = new WiredTextConnector(new Dictionary<int, string>(), null);
     public static bool Supports(string name) => IsFx(name) || name is "wf_xtra_var_lvlup_system" or "wf_xtra_var_text_connector" or "wf_xtra_var_time_util"
         or "wf_xtra_var_share" or "wf_xtra_var_import";
     /// <summary>Whether a Share or Import add-on has its category on: 0 text connectors, 1 subvariable creators, 2 variable FX.</summary>
@@ -108,21 +108,24 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
     internal static string NormalizeConnector(string text)
     {
         try {
-            return string.Join('\n', ParseConnector(text).OrderBy(pair => pair.Key)
-                .Select(pair => pair.Key.ToString(CultureInfo.InvariantCulture) + "=" + pair.Value));
+            var connector = ParseConnector(text);
+            var lines = connector.OrderBy(pair => pair.Key).Select(pair => pair.Key.ToString(CultureInfo.InvariantCulture) + "=" + pair.Value);
+
+            return string.Join('\n', connector.Fallback is null ? lines : lines.Append("_=" + connector.Fallback));
         }
         catch (ArgumentException) {
             return text;
         }
     }
 
-    internal static IReadOnlyDictionary<int, string> ParseConnector(string text)
+    internal static WiredTextConnector ParseConnector(string text)
     {
         if (text.Length > 1000) {
             throw new ArgumentException("Text connector is too long.");
         }
 
         var result = new Dictionary<int, string>();
+        string? fallback = null;
         var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
         if (lines.Length > 30) {
@@ -136,6 +139,13 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
             var line = raw.TrimEnd('\r');
             var separator = line.IndexOf('=');
 
+            // Observed on AIR WIN63-202610201032-107964540: "_=text" is the fallback shown for a number with no label. The last one wins,
+            // the text may be empty or hold "=", and a "_" with spaces around it is a bad line.
+            if (separator == 1 && line[0] == '_') {
+                fallback = line[2..];
+                continue;
+            }
+
             if (separator <= 0 || !int.TryParse(line[..separator], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var key)) {
                 continue;
             }
@@ -143,6 +153,6 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
             result[key] = line[(separator + 1)..];
         }
 
-        return result;
+        return new(result, fallback);
     }
 }

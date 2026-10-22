@@ -124,7 +124,8 @@ public sealed class WiredNativeAuxiliaryTests
         var wide = Compile("wf_act_give_var", Native("wf_act_give_var", [0, 1, 5, 0], [0], [0], ["furni:3"]));
         Assert.Equal([1, 0, 5, 0, 0, 1, 1], wide.IntParams.ToArray());
         var change = Compile("wf_act_change_var_val", Native("wf_act_change_var_val", [0, 2, 1, 0, 0, 1], [0, 101], [0, 200], ["furni:3", "user:4"]));
-        Assert.Equal([1, 2, 1, 0, 0, 0, 0, 200, 101], change.IntParams.ToArray());
+        // A six-int save is stored with the seventh int (same holder) off, so it compiles like a seven-int save.
+        Assert.Equal([1, 2, 1, 0, 0, 0, 0, 200, 101, 0], change.IntParams.ToArray());
         // AIR '>' is code 2; the executors use 0 for greater-than.
         var match = Compile("wf_cnd_var_val_match", Native("wf_cnd_var_val_match", [1, 2, 0, 0, 9, 1], variables: ["user:12", "n"]) with { Quantifier = 1 });
         Assert.Equal(0, match.IntParams[1]);

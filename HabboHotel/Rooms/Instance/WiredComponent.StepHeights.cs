@@ -26,11 +26,22 @@ public partial class WiredComponent
         }
     }
 
-    // Runs at the end of the pass, after its WiredMovements. AIR applies the packets of one burst in one frame, and a second move for an
-    // avatar restarts from the same start point (MovingObjectLogic.as:160-189), so only the corrected height shows.
+    // Runs when a fast pass starts and when the room tick has sent its UserUpdate. A move outside a pass (speech, a state change), in a fast
+    // pass, or before the step was announced must not reach the room tick's resend.
+    private void ForgetRestackedSteps()
+    {
+        lock (_movedFurniTiles) {
+            _movedFurniTiles.Clear();
+            _stepStarts = null;
+        }
+    }
+
+    // Runs only at the end of the room tick pass, after its WiredMovements, in the batch that announced the step. A resend later in the step
+    // would restart it from its start tile, so AIR (MovingObjectLogic.as:181-186) snaps the avatar back. A second move for an avatar in the
+    // same batch restarts from the same start (MovingObjectLogic.as:160-189), so at most one frame shows the old height.
     private void ResendRestackedSteps()
     {
-        (int X, int Y)[] tiles;
+        HashSet<(int X, int Y)> tiles;
         Dictionary<int, RoomUserStatusSnapshot> starts;
 
         lock (_movedFurniTiles) {
@@ -40,7 +51,7 @@ public partial class WiredComponent
             _stepStarts = null;
         }
 
-        if (tiles.Length == 0 || _room.GetGameMap()?.Navigation is not { } navigation) {
+        if (tiles.Count == 0 || _room.GetGameMap()?.Navigation is not { } navigation) {
             return;
         }
 

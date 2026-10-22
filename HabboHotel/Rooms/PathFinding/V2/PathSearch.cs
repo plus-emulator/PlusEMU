@@ -33,9 +33,6 @@ public sealed class PathSearch(NavGrid grid, PathfindingSettings settings)
     }
 
     // The outcome that is known without expanding a node, or null when only the search can tell.
-    public PathOutcome? Screen(in SearchRequest req)
-        => grid.InBounds(req.GoalX, req.GoalY) ? Screen(req, out _, out _) : PathOutcome.InvalidGoal;
-
     private PathOutcome? Screen(in SearchRequest req, out AcceptedGoal goal, out int startSlot)
     {
         var legacy = req.Actor.LegacyOverride;

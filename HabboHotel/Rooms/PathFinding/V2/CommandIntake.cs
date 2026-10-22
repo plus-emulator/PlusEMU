@@ -2,6 +2,7 @@ namespace Plus.HabboHotel.Rooms.PathFinding;
 
 internal sealed class CommandIntake(MovementContext context, ForcePlacementService placement)
 {
+    private readonly Route _probe = new();
     public void Consume(RoomUser actor)
     {
         var state = actor.Movement;
@@ -49,7 +50,7 @@ internal sealed class CommandIntake(MovementContext context, ForcePlacementServi
         context.RefreshMembership(actor);
     }
     // Habbo ignores a click that has no route while the avatar walks: the walk goes on to its old goal.
-    // Avatars on the goal tile are not counted; that case is not observed yet.
+    // Avatars are not counted, so an avatar on the goal tile does not drop the click; that case is not observed yet.
     private bool KeepsCurrentWalk(RoomUser actor, MoveCommand command)
     {
         var state = actor.Movement;
@@ -63,8 +64,11 @@ internal sealed class CommandIntake(MovementContext context, ForcePlacementServi
         var profile = context.Profiles.Refresh(actor);
         var start = new NavPosition(actor.X, actor.Y, state.SupportZ);
         var goal = GoalResolver.ResolveClick(grid, profile, start, command.X, command.Y, null);
+        using var lease = PathWorkspacePool.Rent(grid.SlotCapacity,
+            profile.LegacyOverride ? grid.SlotCapacity : grid.ActiveNodeCount);
 
-        return new PathSearch(grid, context.Navigation.Settings).Screen(new(profile, start, command.X, command.Y, Goals: goal))
+        return new PathSearch(grid, context.Navigation.Settings).Find(new(profile, start, command.X, command.Y, Goals: goal,
+                View: OccupancyView.InitialPlanning), lease.Workspace, _probe)
             is PathOutcome.InvalidGoal or PathOutcome.Unreachable;
     }
 

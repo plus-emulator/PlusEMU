@@ -1,5 +1,6 @@
 using Plus.Communication.Packets.Outgoing.Inventory.Trading;
 using Plus.Communication.Packets;
+using Plus.Core;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Users;
@@ -20,8 +21,10 @@ public interface ITradeRequestService
     void RemoveItem(GameClient session, uint itemId);
 }
 
-public sealed class TradeRequestService(ITradingLockService tradingLocks) : ITradeRequestService
+public sealed class TradeRequestService(ITradingLockService tradingLocks, IPlannedShutdown? plannedShutdown = null) : ITradeRequestService
 {
+    private readonly IPlannedShutdown? _plannedShutdown = plannedShutdown;
+
     public void Start(GameClient session, int userId)
     {
         if (!session.GetHabbo().InRoom) {

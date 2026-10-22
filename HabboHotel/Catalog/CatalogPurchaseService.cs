@@ -43,6 +43,7 @@ public interface ICatalogPurchaseService
 public sealed class CatalogPurchaseService : ICatalogPurchaseService
 {
     private readonly ICatalogManager _catalogManager;
+    private readonly IPlannedShutdown? _plannedShutdown;
     private readonly IHabbiconService _habbicons;
     private readonly ISettingsManager _settingsManager;
     private readonly IAchievementManager _achievementManager;
@@ -72,8 +73,10 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         IHabbiconService habbicons,
         IClubMembershipService clubMemberships, IClubRewards clubRewards, IRewardTrackManager rewardTracks, IAvatarEffectStore avatarEffects,
         IGroupManager groups, IGroupForumStore forums,
-        TimeProvider clock, ILogger<CatalogPurchaseService> logger, IBuildersClubService? buildersClub = null)
+        TimeProvider clock, ILogger<CatalogPurchaseService> logger, IBuildersClubService? buildersClub = null,
+        IPlannedShutdown? plannedShutdown = null)
     {
+        _plannedShutdown = plannedShutdown;
         _buildersClub = buildersClub;
         _catalogManager = catalogManager;
         _habbicons = habbicons;

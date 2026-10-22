@@ -4,6 +4,7 @@ using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.Communication.Packets.Outgoing.Inventory.Purse;
 using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Communication.Packets.Outgoing.Users;
+using Plus.Core;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Subscriptions;
 using Plus.Utilities.DependencyInjection;
@@ -30,8 +31,11 @@ public sealed class ClubCatalogService(
     IClubRewards rewards,
     ICatalogSnapshotService snapshots,
     ICatalogManager catalog,
-    IClubMembershipService memberships) : IClubCatalogService
+    IClubMembershipService memberships,
+    IPlannedShutdown? plannedShutdown = null) : IClubCatalogService
 {
+    private readonly IPlannedShutdown? _plannedShutdown = plannedShutdown;
+
     public Task ShowStatus(GameClient session, string type)
     {
         if (type == "habbo_club") {

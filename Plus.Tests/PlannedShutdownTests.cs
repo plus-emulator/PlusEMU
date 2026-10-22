@@ -168,6 +168,7 @@ public sealed class PlannedShutdownTests
     private sealed class RecordingPlannedShutdown(bool accept) : IPlannedShutdown
     {
         public List<(int Minutes, int Duration)> Requests { get; } = [];
+        public bool IsPending => false;
 
         public bool TrySchedule(int minutes, int durationMinutes)
         {

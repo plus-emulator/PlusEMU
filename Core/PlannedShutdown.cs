@@ -7,6 +7,8 @@ namespace Plus.Core;
 [Singleton]
 public interface IPlannedShutdown
 {
+    bool IsPending { get; }
+
     bool TrySchedule(int minutes, int durationMinutes);
 }
 
@@ -34,6 +36,8 @@ public sealed class PlannedShutdown : IPlannedShutdown
         _clock = clock;
         _shutdown = shutdown;
     }
+
+    public bool IsPending => false;
 
     public static bool TryParse(IReadOnlyList<string> arguments, out int minutes, out int durationMinutes)
     {

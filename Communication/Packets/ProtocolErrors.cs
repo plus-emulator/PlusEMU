@@ -49,6 +49,7 @@ public enum DisconnectReason
 
 public enum TradingError
 {
+    HotelDisallowsTrading = 1,
     PartnerUnavailable = 4,
     RoomDisallowsTrading = 6,
     AlreadyTrading = 7,

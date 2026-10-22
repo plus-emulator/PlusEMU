@@ -25,15 +25,16 @@ internal sealed class WiredRawSave : IDisposable
             : $"{Answer} key={Key}";
     }
 
-    private readonly G1World _world = new();
+    private readonly G1World _world;
     private readonly G1Player _player;
     private readonly IWiredConfiguredItem _box;
     private readonly WiredBoxDescriptor _descriptor;
     private readonly IPacketEvent _handler;
     private readonly Item _item;
 
-    public WiredRawSave(string name)
+    public WiredRawSave(string name, IWiredConfigurationStore? store = null)
     {
+        _world = new(store);
         Assert.True(WiredBoxRegistry.TryGet(name, out _descriptor!));
         _player = _world.AddPlayer(1);
         _world.Room.OwnerName = "user1";
@@ -41,7 +42,7 @@ internal sealed class WiredRawSave : IDisposable
         _item = _world.AddItem(name, InteractionTypes.GetTypeFromString(name));
         _box = _world.Wired.CreateConfiguredBox(_item) ?? throw new InvalidOperationException(name);
         Assert.True(_world.Wired.AddBox((IWiredItem)_box));
-        var service = new WiredConfigurationService(TestWiredConfigurationStore.Instance, null!, new FakeWordFilter(), TestLogging.For<WiredConfigurationService>());
+        var service = new WiredConfigurationService(store ?? TestWiredConfigurationStore.Instance, null!, new FakeWordFilter(), TestLogging.For<WiredConfigurationService>());
         _handler = _descriptor.Category switch
         {
             WiredBoxCategory.Action => new SaveWiredEffectConfigEvent(service),
@@ -54,6 +55,13 @@ internal sealed class WiredRawSave : IDisposable
     }
 
     public void Dispose() => _world.Dispose();
+
+    /// <summary>The room the box stands in, for tests that also run the saved box.</summary>
+    public G1World World => _world;
+
+    public G1Player Player => _player;
+
+    public Item Item => _item;
 
     /// <summary>A floor furni the box can pick, of the kind its editor accepts.</summary>
     public uint Furni(string interaction = "test") => _world.AddItem(interaction, InteractionType.None).Id;

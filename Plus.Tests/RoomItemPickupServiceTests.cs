@@ -139,6 +139,28 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
+    public async Task RoomOwnerPickupOfAnOnlineOwnersItemKeepsTheOwnersInventoryReload()
+    {
+        Viewer();
+        var item = Add(30, 1, 1);
+        item.OwnerId = 99;
+        item.UserId = 99;
+        var owner = new TestClient();
+        owner.SetHabbo(new Plus.HabboHotel.Users.Habbo { Id = 99, Username = "johndoe", Access = UserAccess.Empty });
+        owner.GetHabbo().Inventory = new Plus.HabboHotel.Users.Inventory.InventoryComponent
+        {
+            Furniture = new Plus.HabboHotel.Users.Inventory.Furniture.FurnitureInventoryComponent([], [])
+        };
+        var store = new PickupStore(_ => true);
+        await new RoomItemPickupService(Proxy<IGameClientManager>((method, args) => method == "GetClientByUserId" && (int)args[0]! == 99 ? owner : null),
+            Proxy<IQuestManager>((_, _) => null), store).PickUp(_client, item.Id);
+
+        Assert.NotNull(owner.GetHabbo().Inventory!.Furniture.GetItem(item.Id));
+        Assert.Contains(ServerPacketHeader.FurniListUpdateComposer, owner.Sent);
+        Assert.DoesNotContain(ServerPacketHeader.FurniListAddComposer, owner.Sent);
+    }
+
+    [Fact]
     public async Task PickupDeniesUnrelatedOwnerAndPostitWithoutPersistence()
     {
         Viewer();

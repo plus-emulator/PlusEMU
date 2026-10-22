@@ -3,7 +3,6 @@ using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Rooms.Games.Teams;
-using Plus.HabboHotel.Rooms.PathFinding;
 
 namespace Plus.HabboHotel.Rooms.Games.Football;
 
@@ -54,96 +53,11 @@ public class Soccer
         }
 
         foreach (var item in _balls.Values.ToList()) {
-            var newX = 0;
-            var newY = 0;
-            var differenceX = user.X - item.GetX;
-            var differenceY = user.Y - item.GetY;
-
-            if (differenceX == 0 && differenceY == 0) {
-                if (user.RotBody == 4) {
-                    newX = user.X;
-                    newY = user.Y + 2;
-                }
-                else if (user.RotBody == 6) {
-                    newX = user.X - 2;
-                    newY = user.Y;
-                }
-                else if (user.RotBody == 0) {
-                    newX = user.X;
-                    newY = user.Y - 2;
-                }
-                else if (user.RotBody == 2) {
-                    newX = user.X + 2;
-                    newY = user.Y;
-                }
-                else if (user.RotBody == 1) {
-                    newX = user.X + 2;
-                    newY = user.Y - 2;
-                }
-                else if (user.RotBody == 7) {
-                    newX = user.X - 2;
-                    newY = user.Y - 2;
-                }
-                else if (user.RotBody == 3) {
-                    newX = user.X + 2;
-                    newY = user.Y + 2;
-                }
-                else if (user.RotBody == 5) {
-                    newX = user.X - 2;
-                    newY = user.Y + 2;
-                }
-
-                if (!_room.GetRoomItemHandler().CheckPosItem(item, newX, newY, item.Rotation)) {
-                    if (user.RotBody == 0) {
-                        newX = user.X;
-                        newY = user.Y + 1;
-                    }
-                    else if (user.RotBody == 2) {
-                        newX = user.X - 1;
-                        newY = user.Y;
-                    }
-                    else if (user.RotBody == 4) {
-                        newX = user.X;
-                        newY = user.Y - 1;
-                    }
-                    else if (user.RotBody == 6) {
-                        newX = user.X + 1;
-                        newY = user.Y;
-                    }
-                    else if (user.RotBody == 5) {
-                        newX = user.X + 1;
-                        newY = user.Y - 1;
-                    }
-                    else if (user.RotBody == 3) {
-                        newX = user.X - 1;
-                        newY = user.Y - 1;
-                    }
-                    else if (user.RotBody == 7) {
-                        newX = user.X + 1;
-                        newY = user.Y + 1;
-                    }
-                    else if (user.RotBody == 1) {
-                        newX = user.X - 1;
-                        newY = user.Y + 1;
-                    }
-                }
-            }
-            else if (differenceX <= 1 && differenceX >= -1 && differenceY <= 1 && differenceY >= -1 &&
-                     VerifyBall(user, item.Coordinate.X, item.Coordinate.Y)) //VERYFIC BALL CHECAR SI ESTA EN DIRECCION ASIA LA PELOTA
-            {
-                newX = differenceX * -1;
-                newY = differenceY * -1;
-                newX = newX + item.GetX;
-                newY = newY + item.GetY;
-            }
-
-            if (item.GetRoom().GetGameMap().ValidTile(newX, newY)) {
-                MoveBall(item, newX, newY, user);
+            if (BallKick.Target(_room, user, item) is { } target) {
+                MoveBall(item, target.X, target.Y, user);
             }
         }
     }
-
-    private bool VerifyBall(RoomUser user, int actualx, int actualy) => Rotation.Calculate(user.X, user.Y, actualx, actualy) == user.RotBody;
 
     public void RegisterGate(Item item)
     {

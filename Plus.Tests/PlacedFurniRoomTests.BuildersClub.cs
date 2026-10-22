@@ -1,4 +1,5 @@
 using Dapper;
+using Plus.Communication.Flash;
 using Plus.Communication.Packets.Incoming.Catalog;
 using Plus.Communication.Packets.Incoming.Rooms.Engine;
 using Plus.Communication.Packets.Outgoing;
@@ -12,6 +13,7 @@ using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Users.Inventory;
+using Plus.HabboHotel.Users.Inventory.Furniture;
 using Xunit;
 
 namespace Plus.Tests;
@@ -402,6 +404,37 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a poster from the Builders Club takes its number from the offer's product,
+    // whatever extra param the client sends.
+    [Theory]
+    [InlineData("")]
+    [InlineData("53")]
+    public async Task ABuildersClubPosterTakesItsNumberFromTheOffer(string clientExtraParam)
+    {
+        Viewer();
+        var (service, store, page) = BuildersClub();
+        var poster = Furni(0, InteractionType.None, WiredBoxType.None, ItemType.Wall).Definition;
+        poster.Id = 4001;
+        poster.ItemName = "poster";
+        page.Offers[18498] = new CatalogOffer
+        {
+            Id = 18498,
+            Products = [new CatalogProduct { Type = CatalogProductType.Furni, Definition = poster, Amount = 1, ExtraParam = "52" }]
+        };
+
+        await new BuildersClubPlaceWallItemEvent(service).Parse(_room, _client,
+            ClientPacket(BuildersClubPageId, 18498, clientExtraParam, ":w=1,1 l=0,0 l", true));
+
+        var placed = Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
+        Assert.Equal("52", placed.LegacyDataString);
+        Assert.Equal("52", store.ExtraData[placed.Id]);
+        var added = new FlashIncomingPacket { Buffer = Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.ItemAddComposer).Body };
+        var wireId = added.ReadString();
+        added.ReadInt();
+        var position = added.ReadString();
+        Assert.Equal((BuildersClubItemIds.ToWire(placed.Id).ToString(), ":w=1,1 l=0,0 l", "52"), (wireId, position, added.ReadString()));
+    }
+
     private static readonly DateTimeOffset Clock = new(2040, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
     private (BuildersClubService Service, BuildersClubTestStore Store, CatalogPage Page) BuildersClub(string? trialLimit = null)
@@ -469,6 +502,7 @@ public partial class PlacedFurniRoomTests
         public int Standing { get; set; }
         public List<uint> Created { get; } = [];
         public List<uint> Deleted { get; } = [];
+        public Dictionary<uint, string> ExtraData { get; } = [];
         public bool FailDelete { get; set; }
         public bool FailFurniCountWhilePlaced { get; set; }
         public BuildersClubMembership? Membership(int userId) => Expiry is { } expiry ? new(expiry, 0, 0) : null;
@@ -482,6 +516,7 @@ public partial class PlacedFurniRoomTests
         public uint Create(uint definitionId, int userId, string extraData)
         {
             Created.Add(_nextId);
+            ExtraData[_nextId] = extraData;
             _roomIds[_nextId] = 0;
 
             return _nextId++;

@@ -62,7 +62,8 @@ public sealed class MessengerRequestSendTests
             quests,
             rewards,
             Fake<IMessengerCommunicationOutput>((_, _) => throw new NotSupportedException()),
-            new MessengerFriendMutationService(loader, new AccountSessionGate(), clients));
+            new MessengerFriendMutationService(loader, new AccountSessionGate(), clients),
+            clients);
 
         await communication.RequestFriend(sender.Client, "Bob");
 

@@ -361,9 +361,9 @@ public sealed class MessengerCommunicationServiceTests
         }
 
         public MessengerCommunicationService ServiceWithRealOutput() =>
-            new(Filter, LoaderProxy(), Quests, Rewards, new MessengerCommunicationOutput(), Friends);
+            new(Filter, LoaderProxy(), Quests, Rewards, new MessengerCommunicationOutput(), Friends, TestGameClientManager.Empty);
 
-        public MessengerCommunicationService Service() => new(Filter, LoaderProxy(), Quests, Rewards, Output, Friends);
+        public MessengerCommunicationService Service() => new(Filter, LoaderProxy(), Quests, Rewards, Output, Friends, TestGameClientManager.Empty);
 
         // Memory-only stand-in for the persisted workflow: these tests check reward and quest ordering around the result.
         public readonly MemoryFriendMutations Friends = new();

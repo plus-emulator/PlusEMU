@@ -24,7 +24,8 @@ public sealed class MessengerCommunicationService(
     IQuestManager quests,
     IRewardTrackManager rewards,
     IMessengerCommunicationOutput output,
-    IMessengerFriendMutationService friends) : IMessengerCommunicationService
+    IMessengerFriendMutationService friends,
+    IGameClientManager clients) : IMessengerCommunicationService
 {
     public Task SendMessage(GameClient session, int friendId, string text)
     {

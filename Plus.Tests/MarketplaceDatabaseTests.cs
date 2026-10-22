@@ -336,6 +336,40 @@ public sealed class MarketplaceDatabaseTests
         Assert.Equal(0, CountWhere("state = '2' AND user_id = " + SellerId));
     }
 
+    [MarketplaceDatabaseFact]
+    public void RedemptionCommitsTheSellersPaidBalanceWithTheClaim()
+    {
+        Insert(1, sprite: 100, asking: 25, total: 26, state: "2", timestamp: 1, seller: SellerId);
+        var (client, _) = HabbiconTestSupport.Client(new Habbo { Id = SellerId, Username = "seller", Credits = 1000 });
+
+        new MarketplaceRedemptionService(Store()).Redeem(client);
+
+        Assert.Equal(1025, StoredCredits(SellerId));
+    }
+
+    [MarketplaceDatabaseFact]
+    public void PurchaseCommitsTheBuyersChargedBalanceWithTheDelivery()
+    {
+        Insert(1, sprite: 55, asking: 100, total: 101, state: "1", timestamp: Now.ToUnixTimeSeconds() - 1000, seller: SellerId, furniId: 77);
+
+        using (var connection = new MySqlConnection(_connectionString)) {
+            connection.Execute("INSERT IGNORE INTO `users` (`id`,`username`,`auth_ticket`) VALUES (@BuyerId, CONCAT('marketplace_', @BuyerId), '')", new { BuyerId });
+        }
+
+        var buyer = Buyer(credits: 1000);
+
+        Assert.Equal(MarketplacePurchaseOutcome.Bought, Purchase(buyer).Buy(buyer.Client, 1));
+
+        Assert.Equal(899, StoredCredits(BuyerId));
+    }
+
+    private int StoredCredits(int userId)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+
+        return connection.ExecuteScalar<int>("SELECT `credits` FROM `users` WHERE `id` = @userId", new { userId });
+    }
+
     private (GameClient Client, int Id) Buyer(int credits)
     {
         var habbo = new Habbo { Id = BuyerId, Username = "buyer", Credits = credits, Inventory = new InventoryComponent { Furniture = new FurnitureInventoryComponent([], []) } };

@@ -56,7 +56,7 @@ public class MarketplaceRedemptionTests
     }
 
     [Fact]
-    public void RealStoreCommitsTheClaimAndDeletesOnlyTheClaimedSales()
+    public void RealStoreCommitsTheSellerCreditsWithTheClaimedSales()
     {
         var database = new GroupManagementTests.RecordingDatabase { OfferRows = Sold(10u, 25, 11u, 5) };
         var (client, sent) = HabbiconTestSupport.Client(new Habbo { Id = 7, Username = "seller", Credits = 1000 });
@@ -65,9 +65,17 @@ public class MarketplaceRedemptionTests
 
         Assert.Equal(1030, client.GetHabbo().Credits);
         Assert.Equal(new[] { "commit", "dispose" }, database.Transactions);
-        var delete = Assert.Single(database.Writes);
-        Assert.StartsWith("DELETE FROM `catalog_marketplace_offers`", delete.Sql);
+        Assert.Equal(2, database.Writes.Count);
+        Assert.Single(database.Writes, write => write.Sql.StartsWith("DELETE FROM `catalog_marketplace_offers`", StringComparison.Ordinal));
+        AssertCreditsWritten(database, userId: 7, credits: 1030);
         Assert.Single(sent);
+    }
+
+    internal static void AssertCreditsWritten(GroupManagementTests.RecordingDatabase database, int userId, int credits)
+    {
+        var write = Assert.Single(database.Writes, write => write.Sql.StartsWith("UPDATE users SET credits", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(userId, write.Parameters.Values);
+        Assert.Contains(credits, write.Parameters.Values);
     }
 
     [Fact]

@@ -55,6 +55,39 @@ public sealed class VoucherRedemptionServiceTests
     }
 
     [Fact]
+    public void RealStoreCommitsTheCreditRewardWithTheClaim()
+    {
+        var voucher = new Voucher("CREDIT", "credit", 25, 0, 2);
+        var habbo = new Habbo { Id = 7, Credits = 10 };
+        var (client, _) = HabbiconTestSupport.Client(habbo);
+        var database = new GroupManagementTests.RecordingDatabase();
+
+        new VoucherRedemptionService(new VoucherManagerFake(voucher), new VoucherClaimStore(database)).Redeem(client, "CREDIT");
+
+        Assert.Equal(35, habbo.Credits);
+        Assert.Equal(new[] { "commit", "dispose" }, database.Transactions);
+        MarketplaceRedemptionTests.AssertCreditsWritten(database, userId: 7, credits: 35);
+    }
+
+    [Fact]
+    public void RealStoreCommitsTheDucketRewardWithTheClaim()
+    {
+        var voucher = new Voucher("DUCKET", "ducket", 5, 0, 2);
+        var habbo = new Habbo { Id = 7, Duckets = 3 };
+        var (client, _) = HabbiconTestSupport.Client(habbo);
+        var database = new GroupManagementTests.RecordingDatabase();
+
+        new VoucherRedemptionService(new VoucherManagerFake(voucher), new VoucherClaimStore(database)).Redeem(client, "DUCKET");
+
+        Assert.Equal(8, habbo.Duckets);
+        Assert.Equal(new[] { "commit", "dispose" }, database.Transactions);
+        var write = Assert.Single(database.Writes, write => write.Sql.StartsWith("INSERT INTO user_currencies", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(7, write.Parameters["userId"]);
+        Assert.Equal(ActivityPointType.Duckets, write.Parameters["type"]);
+        Assert.Equal(8, write.Parameters["amount"]);
+    }
+
+    [Fact]
     public void ClosedWalletDoesNotClaimVoucher()
     {
         var voucher = new Voucher("CREDIT", "credit", 25, 0, 2);

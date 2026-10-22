@@ -71,4 +71,7 @@ public sealed record WiredNativeEditorMetadata(ImmutableArray<ImmutableArray<int
 
     /// <summary>Reopen sends the primary picks in the iteration order of a Java HashSet of their ids, not in the saved order.</summary>
     public bool HashSetPickOrder { get; init; }
+
+    /// <summary>The same for the secondary picks.</summary>
+    public bool HashSetSecondaryPickOrder { get; init; }
 }

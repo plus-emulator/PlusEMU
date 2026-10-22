@@ -170,7 +170,8 @@ public static class WiredLegacyProtocol
         packet.WriteInteger(furniLimit);
         var picks = editor.PrimaryItems.Select(item => item.WireId);
         WriteInts(packet, metadata.HashSetPickOrder ? JavaHashSetOrder(picks) : picks);
-        WriteInts(packet, editor.SecondaryItems.Select(item => item.WireId));
+        var secondary = editor.SecondaryItems.Select(item => item.WireId);
+        WriteInts(packet, metadata.HashSetSecondaryPickOrder ? JavaHashSetOrder(secondary) : secondary);
         packet.WriteInteger(spriteId);
         packet.WriteUInteger(BuildersClubItemIds.ToWire(itemId));
         packet.WriteString(editor.Text);
@@ -289,19 +290,49 @@ public static class WiredLegacyProtocol
         WriteInts(packet, WiredNativeEditorProjection.FrameDefaults(descriptor.CanonicalName, metadata));
     }
 
-    // A java.util.HashSet<Integer> filled in this order: 16 buckets, doubled while it holds more than three quarters of them.
-    // An id lands in bucket (h ^ (h >>> 16)) & (buckets - 1); ids in one bucket keep their insertion order. Not probed on Habbo and not
-    // modelled: more than 32 buckets, and 9 or more ids in one bucket (Java then resizes or builds a tree).
+    // A java.util.HashSet<Integer> filled in this order. An id lands in bucket (h ^ (h >>> 16)) & (buckets - 1) of a table that starts with
+    // 16 buckets and doubles when it holds more than three quarters of them. Ids in one bucket keep their order, and a split keeps it too.
+    // Observed on AIR WIN63-202610201032-107964540 with 16 buckets: when a bucket gets its ninth id, Java doubles the table at once. The
+    // same step below 64 buckets comes from the JDK source (HashMap.treeifyBin). Not modelled: a ninth id in a bucket of a 64-bucket table, where Java builds a tree.
     private static IEnumerable<int> JavaHashSetOrder(IEnumerable<int> ids)
     {
-        var distinct = ids.Distinct().ToArray();
-        var buckets = 16u;
+        const int treeifyThreshold = 8;
+        var table = new List<int>[16];
+        var size = 0;
 
-        while (distinct.Length > buckets * 3 / 4) {
-            buckets *= 2;
+        foreach (var id in ids) {
+            var bucket = table[Bucket(id, table.Length)] ??= [];
+
+            if (bucket.Contains(id)) {
+                continue;
+            }
+
+            bucket.Add(id);
+            size++;
+
+            if (bucket.Count > treeifyThreshold && table.Length < 64) {
+                table = Resize(table);
+            }
+
+            if (size > table.Length * 3 / 4) {
+                table = Resize(table);
+            }
         }
 
-        return distinct.OrderBy(id => ((uint)id ^ ((uint)id >> 16)) & (buckets - 1));
+        return table.Where(bucket => bucket != null).SelectMany(bucket => bucket!).ToArray();
+    }
+
+    private static int Bucket(int id, int buckets) => (int)(((uint)id ^ ((uint)id >> 16)) & (uint)(buckets - 1));
+
+    private static List<int>[] Resize(List<int>[] table)
+    {
+        var grown = new List<int>[table.Length * 2];
+
+        foreach (var id in table.Where(bucket => bucket != null).SelectMany(bucket => bucket)) {
+            (grown[Bucket(id, grown.Length)] ??= []).Add(id);
+        }
+
+        return grown;
     }
 
     private static void WriteGroups(IOutgoingPacket packet, ImmutableArray<ImmutableArray<int>> groups)

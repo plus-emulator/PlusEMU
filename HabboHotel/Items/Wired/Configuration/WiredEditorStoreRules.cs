@@ -243,7 +243,8 @@ internal static class WiredEditorStoreRules
     /// <summary>
     /// Observed on AIR WIN63-202610201032-107964540: Variable Value Match and Change Variable Value store a six-int save with the seventh
     /// int (same holder) off, and an empty variable slot as "0". Variable Value Match also stores a save with one variable with the
-    /// second slot empty. Other shapes are left for the editor to refuse.
+    /// second slot empty. Other shapes are left for the editor to refuse. An empty destination slot of Change Variable Value was not
+    /// probed; it reopens as "0" like the other slots, and the runtime treats "0" and "n" the same.
     /// </summary>
     public static WiredNativeEditorConfiguration VariableValueForm(string name, WiredNativeEditorConfiguration native)
     {

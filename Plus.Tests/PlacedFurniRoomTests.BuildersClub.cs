@@ -50,6 +50,60 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(ServerPacketHeader.FurniListUpdateComposer, _client.Sent);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: the placer's new furni count comes before the furni's ObjectAdd and
+    // before its ObjectRemove, in the same tick.
+    [Fact]
+    public async Task TheFurniCountComesBeforeThePlacedFloorFurniIsAdded()
+    {
+        Viewer();
+        var (service, _, _) = BuildersClub();
+
+        await new BuildersClubPlaceRoomItemEvent(service).Parse(_room, _client, ClientPacket(BuildersClubPageId, BuildersClubOfferId, "", 1, 1, 2, true));
+
+        var placed = Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
+        var wire = unchecked((int)BuildersClubItemIds.ToWire(placed.Id));
+        Assert.Equal([(ServerPacketHeader.BuildersClubFurniCountComposer, 1), (ServerPacketHeader.ObjectAddComposer, wire)], CountAndFurniPackets());
+    }
+
+    [Fact]
+    public async Task TheFurniCountComesBeforeThePickedUpFloorFurniIsRemoved()
+    {
+        Viewer();
+        var (service, _, _) = BuildersClub();
+        await new BuildersClubPlaceRoomItemEvent(service).Parse(_room, _client, ClientPacket(BuildersClubPageId, BuildersClubOfferId, "", 1, 1, 2, true));
+        var placed = Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
+        var wire = unchecked((int)BuildersClubItemIds.ToWire(placed.Id));
+        _client.Packets.Clear();
+        var pickup = new RoomItemPickupService(Proxy<IGameClientManager>((method, args) => method == "GetClientByUserId" && (int)args[0]! == 7 ? _client : null),
+            Proxy<IQuestManager>((_, _) => throw new InvalidOperationException("A Builders Club pickup is no quest pickup")),
+            new PickupStore(_ => throw new InvalidOperationException("A Builders Club furni is never stored in an inventory")), service);
+
+        await new PickupObjectEvent(pickup).Parse(_client, ClientPacket(2, (int)placed.Id));
+
+        Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
+        Assert.Equal([(ServerPacketHeader.BuildersClubFurniCountComposer, 0), (ServerPacketHeader.ObjectRemoveComposer, wire)], CountAndFurniPackets());
+    }
+
+    [Fact]
+    public void AFailedPlacementSendsNoFurniCount()
+    {
+        Viewer();
+        var (service, store, _) = BuildersClub();
+
+        service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 40, 40, 0, confirmed: true);
+
+        Assert.Equal(0, store.FurniCount(7));
+        Assert.Empty(CountAndFurniPackets());
+    }
+
+    // The furni count with its value, and the furni adds and removes with the furni id, in the order the client got them.
+    private (uint Header, int Value)[] CountAndFurniPackets() => _client.Packets
+        .Where(packet => packet.Header is ServerPacketHeader.BuildersClubFurniCountComposer or ServerPacketHeader.ObjectAddComposer or ServerPacketHeader.ObjectRemoveComposer)
+        .Select(packet => (packet.Header, packet.Header == ServerPacketHeader.ObjectRemoveComposer
+            ? int.Parse(System.Text.Encoding.UTF8.GetString(packet.Body, 2, System.Buffers.Binary.BinaryPrimitives.ReadInt16BigEndian(packet.Body)))
+            : System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(packet.Body)))
+        .ToArray();
+
     [Fact]
     public async Task ATrialPlacesOnlyWhileAloneInTheRoomAndAMemberAlsoWithVisitors()
     {

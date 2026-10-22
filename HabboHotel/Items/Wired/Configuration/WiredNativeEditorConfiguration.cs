@@ -24,8 +24,9 @@ public sealed record WiredNativeEditorConfiguration
     public WiredNativeSavedState SavedState { get; init; } = new();
 
     /// <summary>
-    /// The default record of a box that was never saved. It is never stored, so every stored row reads as saved. Habbo was only
-    /// probed within one room visit; the flag after a room reload, or after a pickup and placing again, is not checked on Habbo.
+    /// The default record of a box that was never saved. It is never stored, so every stored row reads as saved. Observed on AIR
+    /// WIN63-202610201032-107964540: after a room reload a never-saved box still reads 1 and a saved box 0. The flag after a pickup and
+    /// placing again is not checked on Habbo.
     /// </summary>
     [JsonIgnore]
     public bool NeverSaved { get; init; }

@@ -82,6 +82,7 @@ public partial class WiredAvatarPacketHookTests
     public async Task ExpressionPacketRunsActualConfiguredTriggerOnceWithActorIdentity(int expression, int editorAction)
     {
         var world = new World(editorAction);
+        GrantClub(world);
         await new ActionEvent(world.Actions).Parse(world.Room, world.Client, Packet(expression));
         world.FlushWired();
         var observed = Assert.Single(world.Capture.Events);
@@ -199,7 +200,7 @@ public partial class WiredAvatarPacketHookTests
         var world = new World(9, 3, clock);
         var speech = new WiredRuntimeEvent(WiredEventKind.Speech) { Actor = world.Actor };
         bool Performs(int sign) => Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredModernCondition.IsPerforming(world.Actor,
-            new() { IntParams = [9, 1, sign, 0, 1] }, speech);
+            new() { IntParams = [9, 1, sign, 0, 1] }, speech, clock.Now);
 
         world.Actions.ApplySign(world.Room, world.Client, 3);
         world.Users.SerializeStatusUpdates();
@@ -427,7 +428,7 @@ public partial class WiredAvatarPacketHookTests
             Actions = new RoomAvatarActionService(clock ?? TimeProvider.System, new NoQuests(), Rewards);
             Set(Room, "_roomItemHandling", items);
             Set(Room, "_roomUserManager", Users);
-            _wired = new WiredComponent(Room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance, TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
+            _wired = new WiredComponent(Room, TestLogging.Logger, clock ?? TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance, TestWiredConfigurationStore.Instance, TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty, TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
             Set(Room, "_wiredComponent", _wired);
             Client = new FlashGameClient(TestGameServer.Instance, new FlashPacketFactory(), TestLogging.GameClient)
             {
@@ -471,6 +472,14 @@ public partial class WiredAvatarPacketHookTests
             Assert.True(WiredNativeTestSupport.TryValidateRuntime(trigger, new() { IntParams = [.. parameters] }, out var config, out var error), error);
             trigger.ApplyConfiguration(config);
             Assert.True(_wired.AddBox(trigger));
+        }
+
+        public void AddCondition(int action)
+        {
+            var condition = _wired.CreateConfiguredBox(Item("wf_cnd_user_performs_action"))!;
+            Assert.True(WiredNativeTestSupport.TryValidateRuntime(condition, new() { IntParams = [action, 0, 0, 0, 1, 0, 0] }, out var config, out var error), error);
+            condition.ApplyConfiguration(config);
+            Assert.True(_wired.AddBox(condition));
         }
 
         private Item Item(string name)

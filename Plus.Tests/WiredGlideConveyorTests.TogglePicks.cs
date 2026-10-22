@@ -14,7 +14,7 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    private const uint PickTile = 61, PickSay = 62, PickToggle = 63, PickClock = 64, PickCounter = 65, PickLamp = 66, PickMissing = 999;
+    private const uint PickTile = 61, PickSay = 62, PickToggle = 63, PickClock = 64, PickCounter = 65, PickLamp = 66, PickSnapshot = 67, PickMissing = 999;
 
     private static (Fixture Fixture, RoomUser Owner, List<(uint Header, byte[] Payload)> Frames) PickFixture()
     {
@@ -24,7 +24,8 @@ public sealed partial class WiredGlideConveyorTests
             (PickSay, 4, 9, 0.0, 0, "wf_trg_says_something", JsonSerializer.Serialize(new WiredConfiguration { IntParams = [1, 0, 0], Text = "tg" })),
             (PickToggle, 4, 9, 0.65, 0, "wf_act_toggle_state", null),
             (PickCounter, 8, 12, 0.0, 0, "wf_upcounter1", null),
-            (PickClock, 6, 9, 0.0, 0, "wf_act_control_clock", null)
+            (PickClock, 6, 9, 0.0, 0, "wf_act_control_clock", null),
+            (PickSnapshot, 7, 9, 0.0, 0, "wf_act_match_to_sshot", null)
         ], live: true);
         f.MovementContext().Room.GetWired().AttachRoomItem(f.Items[PickCounter]);
         f.Room.OwnerId = 1;
@@ -60,9 +61,10 @@ public sealed partial class WiredGlideConveyorTests
     private static uint[] Picks(Fixture f, uint box) => [.. ((IWiredConfiguredItem)f.Box(box)).Configuration.SelectedItems];
 
     // The client sends an action save as: item, ints, text, picks, delay, furni sources, user sources, variables, secondary picks.
-    private static void SavePicks(Fixture f, RoomUser owner, uint box, int[] ints, params int[] picks)
+    private static void SavePicks(Fixture f, RoomUser owner, List<(uint Header, byte[] Payload)> frames, uint box, int[] ints, params int[] picks)
     {
         var service = new WiredConfigurationService(new SavedConfigurations([]), null!, new FakeWordFilter(), TestLogging.For<WiredConfigurationService>());
+        frames.Clear();
         object[] fields = [(int)box, ints.Length, .. ints.Cast<object>(), "", picks.Length, .. picks.Cast<object>(), 0, 1, 100, 0, 0, 0];
         f.Owned(() => new SaveWiredEffectConfigEvent(service).Parse(owner.GetClient()!, EditorTestSupport.Incoming(fields)).GetAwaiter().GetResult());
     }
@@ -81,7 +83,7 @@ public sealed partial class WiredGlideConveyorTests
     {
         var (f, owner, frames) = PickFixture();
 
-        SavePicks(f, owner, PickToggle, [0], (int)PickTile, (int)PickLamp, (int)PickMissing, -(int)PickMissing);
+        SavePicks(f, owner, frames, PickToggle, [0], (int)PickTile, (int)PickLamp, (int)PickMissing, -(int)PickMissing);
 
         Assert.Null(SaveRefusal(frames));
         Assert.Contains(frames, frame => frame.Header == ServerPacketHeader.HideWiredConfigComposer);
@@ -100,34 +102,49 @@ public sealed partial class WiredGlideConveyorTests
         var (f, owner, frames) = PickFixture();
         var lamp = f.Room.GetRoomItemHandler().GetItem(PickLamp)!;
 
-        SavePicks(f, owner, PickToggle, [0], (int)PickLamp);
+        SavePicks(f, owner, frames, PickToggle, [0], (int)PickLamp);
         Assert.Null(SaveRefusal(frames));
         Assert.Empty(Picks(f, PickToggle));
         f.Owned(() => owner.OnChat(0, "tg", false));
         f.Advance(1000);
         Assert.Equal("0", lamp.LegacyDataString);
 
-        SavePicks(f, owner, PickToggle, [0], -(int)PickLamp);
+        SavePicks(f, owner, frames, PickToggle, [0], -(int)PickLamp);
         Assert.Null(SaveRefusal(frames));
+        Assert.Equal([PickLamp], Picks(f, PickToggle));
         f.Owned(() => owner.OnChat(0, "tg", false));
         f.Advance(1000);
         Assert.Equal("1", lamp.LegacyDataString);
     }
 
     // Observed on AIR WIN63-202610201032-107964540: a box that only takes counters still refuses a save where any pick is not a counter,
-    // including the positive id of a wall item or an id of no furni, and keeps its previous picks.
+    // including the positive id of a wall item or of no furni, and keeps its previous picks.
     [Theory]
     [InlineData((int)PickMissing)]
     [InlineData((int)PickLamp)]
     public void CounterBoxStillRefusesAPickThatIsNoCounter(int pick)
     {
         var (f, owner, frames) = PickFixture();
-        SavePicks(f, owner, PickClock, [0], (int)PickCounter);
+        SavePicks(f, owner, frames, PickClock, [0], (int)PickCounter);
         Assert.Null(SaveRefusal(frames));
 
-        SavePicks(f, owner, PickClock, [0], (int)PickCounter, pick);
+        SavePicks(f, owner, frames, PickClock, [0], (int)PickCounter, pick);
 
         Assert.Equal("wiredfurni.error.require_counter_furni", SaveRefusal(frames));
         Assert.Equal([PickCounter], Picks(f, PickClock).ToArray());
+    }
+
+    // A wall item sent with a positive id is dropped from the picks, so the box keeps no snapshot of it either.
+    [Fact]
+    public void SnapshotBoxKeepsNoSnapshotOfADroppedWallPick()
+    {
+        var (f, owner, frames) = PickFixture();
+
+        SavePicks(f, owner, frames, PickSnapshot, [0, 0, 1, 1], (int)PickTile, (int)PickLamp);
+
+        Assert.Null(SaveRefusal(frames));
+        var saved = ((IWiredConfiguredItem)f.Box(PickSnapshot)).Configuration.Origin!.Native;
+        Assert.Equal([PickTile], saved.PrimaryItems.Select(reference => reference.ItemId).ToArray());
+        Assert.Equal([PickTile], saved.SavedState.Snapshots.Select(snapshot => snapshot.ItemId).ToArray());
     }
 }

@@ -57,7 +57,7 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
             return false;
         }
 
-        if (definition is { IsPointer: true } && _editor?.RefusePointer(definition) is { } refusal) {
+        if (definition is { IsPointer: true } && _editor?.RefuseAccessor(definition) is { } refusal) {
             error = refusal;
 
             return false;
@@ -82,7 +82,24 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
 
         return true;
     }
-    public string? RefuseSave(WiredConfiguration proposed) => null;
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a new save checks the name before anything else, and an echo of a pointer is refused
+    /// because a pointer only reads inside an execution.
+    /// </summary>
+    public string? RefuseSave(WiredConfiguration proposed)
+    {
+        if (_editor is null) {
+            return null;
+        }
+
+        if (WiredVariableDefinitions.IsNamed(Descriptor.CanonicalName)) {
+            return _editor.RefuseName(Item.Id, proposed.Text, Descriptor.CanonicalName == "wf_var_pointer");
+        }
+
+        return Descriptor.CanonicalName == "wf_var_echo" && WiredVariableDefinitions.TryDecode(Descriptor.CanonicalName, Item.Id, Instance.Id,
+                Instance.OwnerId > 0 ? (uint)Instance.OwnerId : 0, proposed, out var echo, out _)
+            && echo?.Link is { } link && _editor.IsPointer(link.Source) ? WiredVariableDefinitions.NeedsExecutionContextKey : null;
+    }
     public void ApplyConfiguration(WiredConfiguration validated)
     {
         if (!WiredNativeEditorProjection.IsBound(Item.Id, Descriptor, validated)) {

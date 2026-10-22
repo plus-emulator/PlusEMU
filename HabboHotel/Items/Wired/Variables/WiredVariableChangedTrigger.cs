@@ -28,7 +28,27 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
         return TryNormalize(proposed, out _, out error);
     }
 
-    public string? RefuseSave(WiredConfiguration proposed) => null;
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a pointer variable, or a picked pointer box, is refused because a pointer only reads
+    /// inside an execution.
+    /// </summary>
+    public string? RefuseSave(WiredConfiguration proposed)
+    {
+        var p = proposed.IntParams;
+        var pickedBoxes = p.Length == 9 && p[8] == 1;
+
+        if (pickedBoxes ? proposed.SelectedItems.IsDefaultOrEmpty
+            : proposed.VariableIds.Length != 1 || !WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out _, out _)) {
+            return null;
+        }
+
+        var module = Instance.GetWired().Variables.Module;
+        var picksPointer = pickedBoxes
+            ? module.DescribeDefinitions(proposed.SelectedItems).Any(variable => variable.Definition.IsPointer)
+            : WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out var target, out var token) && module.IsPointer(new(target, token));
+
+        return picksPointer ? WiredVariableDefinitions.NeedsExecutionContextKey : null;
+    }
 
     /// <summary>The integer shape only; the picked variable is an opaque catalog id resolved by the module at match time.</summary>
     internal static bool TryNormalize(WiredConfiguration proposed, out WiredConfiguration validated, out string error)

@@ -54,6 +54,12 @@ public static class WiredConfigurationSave
             return false;
         }
 
+        if (box is IWiredSaveRefusal saveRules && saveRules.RefuseSave(proposed) is { } refused) {
+            error = refused;
+
+            return false;
+        }
+
         if (!box.TryValidateConfiguration(proposed, out var validated, out error)) {
             return false;
         }

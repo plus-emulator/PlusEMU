@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Plus.HabboHotel.Items.Wired.Configuration;
@@ -46,6 +47,20 @@ public static class WiredVariableDefinitions
     /// 1 to 40 characters, or with a character other than a letter, digit or underscore, is refused with these keys and no parameters.
     /// </summary>
     internal static string? RefuseName(string text) => text.Length is < 1 or > 40 ? NameLengthKey : ValidName(text) ? null : NameSyntaxKey;
+
+    // The boxes whose name a new save cleans and checks (see CleanName and WiredVariableModule.RefuseName).
+    private static readonly FrozenSet<string> NamedBoxes = FrozenSet.ToFrozenSet(["wf_var_user", "wf_var_furni", "wf_var_room", "wf_var_context", "wf_var_pointer"]);
+
+    internal static bool IsNamed(string name) => NamedBoxes.Contains(name);
+
+    /// <summary>
+    /// The name a new save stores. Observed on AIR WIN63-202610201032-107964540: each space becomes an underscore, the name is lower case
+    /// and loses its leading and trailing underscores ("_a" and "a_" store "a", "PtrUP" stores "ptrup"); inner underscores stay. Whether
+    /// the 40 character limit counts before or after this is not observed, so a longer name is kept as sent and stays too long. Only
+    /// ASCII capitals are lowered, so any other letter stays a syntax error.
+    /// </summary>
+    internal static string CleanName(string text) => text.Length > 40 ? text
+        : string.Concat(text.Select(c => c == ' ' ? '_' : char.IsAsciiLetterUpper(c) ? char.ToLowerInvariant(c) : c)).Trim('_');
 
     private static bool ValidName(string text) => text.Length is >= 1 and <= 40 && Regex.IsMatch(text, "^[A-Za-z0-9_]+$", RegexOptions.CultureInvariant);
 
@@ -167,17 +182,17 @@ public static class WiredVariableDefinitions
                 break;
             case "wf_var_pointer":
                 // AirSourceOnly (PointerVariable.as): the variable lives on its source type (0 furni, 1 user, -10 global, -20 context);
-                // its accessor is a context variable with a value. A box saved without one still loads, it just resolves nothing.
-                if (ints.Length != 1 || configuration.VariableIds.Length != 1 || ints[0] is not (0 or 1 or -10 or -20)
-                    || !WiredVariableAbsent.Is(configuration.VariableIds[0]) && !WiredVariableDescription.TryParseCatalogId(configuration.VariableIds[0], out _, out _)) {
+                // its accessor is a context variable with a value. A box without one still decodes, it just resolves nothing; a new save
+                // refuses it (WiredVariableModule.RefuseAccessor).
+                if (ints.Length != 1 || configuration.VariableIds.Length != 1 || ints[0] is not (0 or 1 or -10 or -20)) {
                     return false;
                 }
 
-                // The name rules are checked when a pointer is saved (WiredVariableModule.RefusePointer), so an older stored pointer still loads.
+                // The name rules are checked when a pointer is saved (WiredVariableDefinitionBox.RefuseSave), so an older stored pointer still loads.
                 target = ints[0] switch { 0 => WiredVariableTarget.Furni, 1 => WiredVariableTarget.User, -10 => WiredVariableTarget.Global, _ => WiredVariableTarget.Context };
                 availability = target == WiredVariableTarget.User ? WiredVariableAvailability.UserActive : WiredVariableAvailability.RoomActive;
                 hasValue = true;
-                pointerAccessor = WiredVariableAbsent.Is(configuration.VariableIds[0]) ? "" : WiredVariableDescription.TryParseCatalogId(configuration.VariableIds[0], out _, out var accessorToken) ? accessorToken : "";
+                pointerAccessor = WiredVariableDescription.TryParseCatalogId(configuration.VariableIds[0], out _, out var accessorToken) ? accessorToken : "";
                 break;
             default:
                 error = "This variable definition has no executable implementation.";

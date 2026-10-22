@@ -507,6 +507,12 @@ public static class WiredNativeEditorProjection
             native = WiredTextAddonRules.StoredForm(name, native, Metadata(name).OwnedDefaults);
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: a variable name is stored cleaned (see WiredVariableDefinitions.CleanName). A stored
+        // row keeps the name it was saved with.
+        if (!storedRow && Variables.WiredVariableDefinitions.IsNamed(name)) {
+            native = native with { Text = Variables.WiredVariableDefinitions.CleanName(native.Text) };
+        }
+
         native = WiredNativeAuxiliaryEditor.StoredForm(name, native);
 
         if (itemId == 0 || !Supports(name) || native.Version != 2 || native.Category != descriptor.Category

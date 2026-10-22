@@ -908,16 +908,36 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     /// <summary>
-    /// The key a proposed pointer is refused with, or null when it may be saved. Observed on AIR WIN63-202610201032-107964540: the accessor
-    /// must be a context variable that holds a value (anything else, or nothing, is a missing variable), a pointer is never an accessor, and a
-    /// name is taken by another variable of the pointer's target or by its accessor.
+    /// The key a new save of a named variable is refused with, or null. Observed on AIR WIN63-202610201032-107964540: a name that is empty
+    /// once cleaned is too short on every kind, a pointer name also needs 1 to 40 letters, digits or underscores, and the cleaned name must
+    /// differ from every user, furni, global, context and pointer variable of the room. Echo, reference and quest variables are not
+    /// observed, so they do not count (a daily task variable is a user variable here and does). An older stored name is compared as it is
+    /// stored.
     /// </summary>
-    public string? RefusePointer(WiredVariableDefinition proposed)
+    public string? RefuseName(uint itemId, string name, bool pointer)
     {
-        if (WiredVariableDefinitions.RefuseName(proposed.Name) is { } badName) {
+        if ((pointer ? WiredVariableDefinitions.RefuseName(name) : name.Length == 0 ? WiredVariableDefinitions.NameLengthKey : null) is { } badName) {
             return badName;
         }
 
+        lock (_gate) {
+            return directory.ListRoom(roomId).Any(other => other.ItemId != itemId && other.Link is null && other.Name == name)
+                ? WiredVariableDefinitions.NameTakenKey : null;
+        }
+    }
+
+    /// <summary>
+    /// The key a new pointer save is refused with, or null. Observed on AIR WIN63-202610201032-107964540: the name is checked first (length,
+    /// syntax, then uniqueness), then the accessor.
+    /// </summary>
+    public string? RefusePointer(WiredVariableDefinition proposed) => RefuseName(proposed.ItemId, proposed.Name, pointer: true) ?? RefuseAccessor(proposed);
+
+    /// <summary>
+    /// The key a pointer's accessor is refused with, or null. Observed on AIR WIN63-202610201032-107964540: the accessor must be a context
+    /// variable that holds a value (anything else, or nothing, is a missing variable) and a pointer is never an accessor.
+    /// </summary>
+    public string? RefuseAccessor(WiredVariableDefinition proposed)
+    {
         lock (_gate) {
             if (!TryDefinitionId(proposed.PointerAccessor ?? "", out var accessorId) || directory.Find(accessorId) is not { } accessor || accessor.RoomId != roomId) {
                 return WiredVariableDefinitions.MissingVariableKey;
@@ -927,14 +947,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return WiredVariableDefinitions.NeedsExecutionContextKey;
             }
 
-            if (accessor.Target != WiredVariableTarget.Context || !accessor.HasValue) {
-                return WiredVariableDefinitions.MissingVariableKey;
-            }
-
-            var taken = accessor.Name == proposed.Name || directory.ListRoom(roomId).Any(other => other.ItemId != proposed.ItemId
-                && other.Target == proposed.Target && other.Name == proposed.Name);
-
-            return taken ? WiredVariableDefinitions.NameTakenKey : null;
+            return accessor.Target != WiredVariableTarget.Context || !accessor.HasValue ? WiredVariableDefinitions.MissingVariableKey : null;
         }
     }
 

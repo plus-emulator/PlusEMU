@@ -159,6 +159,61 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(step.At + 550, output.At);
     }
 
+    [Fact]
+    public void ADelayThatEndsOnARoomTickArmsNoWakeUp()
+    {
+        var (clock, manager) = GridRoom();
+        var wakes = RecordWakes(clock);
+        var target = GridWalkOnStack(delay: 1);
+        var actor = ExecutorActor(1, 0);
+        actor.MoveTo(1, 3);
+
+        var passes = RunRoom(manager, clock, clock.Ms + 2500, period: 25);
+
+        Assert.Single(passes, pass => Touches(pass, target));
+        Assert.Empty(wakes);
+    }
+
+    [Fact]
+    public void ADelayThatEndsOffTheRoomTicksArmsOneWakeUpBeforeItsDueTime()
+    {
+        var (clock, manager) = GridRoom();
+        var wakes = RecordWakes(clock);
+        var stepTarget = GridWalkOnStack(delay: 0);
+        GridMoveUserStack(heldWalkDelay: 1);
+        var actor = ExecutorActor(1, 0);
+        actor.MoveTo(1, 1);
+
+        var passes = RunRoom(manager, clock, clock.Ms + 2500, period: 25);
+
+        // The move lands in the room tick 500 ms after the step; the walk it raises fires 50 ms later and its delay ends 500 ms after that.
+        var step = Assert.Single(passes, pass => Touches(pass, stepTarget));
+        var wake = Assert.Single(wakes);
+        Assert.InRange(wake.At + wake.AfterMs, step.At + 1001, step.At + 1050);
+    }
+
+    private ConcurrentQueue<(long At, double AfterMs)> RecordWakes(GridClock clock)
+    {
+        var wakes = new ConcurrentQueue<(long At, double AfterMs)>();
+        _room.GetWired().WakeAfter = (afterMs, _) => wakes.Enqueue((clock.Ms, afterMs));
+
+        return wakes;
+    }
+
+    // A delay of one on the Walks On stack of (1, 1) moves the user onto a tile at (0, 3), whose own Walks On stack toggles a furni.
+    private void GridMoveUserStack(int heldWalkDelay)
+    {
+        var target = ToggleAt(GridMoveTarget, 3, 3);
+        ExecutorFloor(GridMoveTile, 0, 3);
+        var move = WiredBox(GridMoveBox, "wf_act_user_to_furni", 3, 0);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(move,
+            new() { IntParams = [100, 0, 1], SelectedItems = [GridMoveTile], Delay = 1 }, out var config, out var error), error);
+        move.ApplyConfiguration(config);
+        Assert.True(_room.GetWired().AddBox(move));
+        GridStack(GridMoveTileStack, "wf_trg_walks_on_furni", new() { IntParams = [100], SelectedItems = [GridMoveTile] }, 2, target,
+            heldWalkDelay);
+    }
+
     [Theory]
     [InlineData(1000.0, 25)]
     [InlineData(1000.2, 25)]

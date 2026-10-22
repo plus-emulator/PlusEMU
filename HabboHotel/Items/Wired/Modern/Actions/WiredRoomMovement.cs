@@ -483,7 +483,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
     public bool MoveAvatar(WiredRuntimeContext context, RoomUser user, int x, int y, bool animate,
         int walkMode = 2, bool throughUsers = false, bool ignoreOccupants = false, int? animationTimeMs = null,
-        PassengerSnapshot? passengers = null, (int X, int Y, double Z)? carrySource = null, bool replaceStep = false)
+        PassengerSnapshot? passengers = null, (int X, int Y, double Z)? carrySource = null, bool replaceStep = false,
+        List<WiredMovementComposer>? batch = null)
     {
         var room = context.Room;
         user = WiredRoomOperations.Rider(room, user);
@@ -493,14 +494,14 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             context.Publication?.Flush();
         }
 
-        bool Move(RoomUser actor, long? sequence)
+        bool Move(RoomUser actor, long? sequence, List<WiredMovementComposer>? collect)
         {
             if (passengers != null && !passengers.CanMove(context, actor)) {
                 return false;
             }
 
             var moved = MoveAvatarOwned(context, actor, x, y, animate, walkMode, throughUsers, ignoreOccupants, animationTimeMs, sequence, carrySource,
-                replaceStep);
+                replaceStep, collect);
 
             if (moved) {
                 passengers?.Moved(actor);
@@ -511,17 +512,18 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         if (!RoomOwnerScope.IsOwner(room)) {
             // Placement, walk hooks and packets must observe the same owner-side move.
-            room.GetGameMap().Navigation!.RunOwner(user, (actor, sequence) => Move(actor, sequence));
+            // The posted move runs after the caller has sent its batch, so it sends its own packet.
+            room.GetGameMap().Navigation!.RunOwner(user, (actor, sequence) => Move(actor, sequence, null));
 
             return true;
         }
 
-        return Move(user, null);
+        return Move(user, null, batch);
     }
 
     private bool MoveAvatarOwned(WiredRuntimeContext context, RoomUser user, int x, int y, bool animate,
         int walkMode, bool throughUsers, bool ignoreOccupants, int? animationTimeMs, long? discardThrough, (int X, int Y, double Z)? carrySource,
-        bool replaceStep = false)
+        bool replaceStep = false, List<WiredMovementComposer>? batch = null)
     {
         var room = context.Room;
         var curve = context.Policy.Addons.Curve;
@@ -586,7 +588,14 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 JumpPower = curve?.Type == 7 ? curve.Strength : null
             };
 
-            if (!carrySource.HasValue || _appendCarryPublication?.Invoke(context, user, movement, style) != true) {
+            // A carried rider goes through the publication instead.
+            var collect = carrySource.HasValue ? null : batch;
+
+            if (collect != null) {
+                room.SendPacket(style);
+                collect.Add(movement);
+            }
+            else if (!carrySource.HasValue || _appendCarryPublication?.Invoke(context, user, movement, style) != true) {
                 room.FlushWiredFlashes();
                 room.SendPacket(style);
                 room.SendPacket(movement);
@@ -596,11 +605,18 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             if (horse != null && horse.X == user.X && horse.Y == user.Y) {
                 room.SendPacket(new WiredMoveStyleComposer(horse.VirtualId, curve?.Type ?? 0,
                     curve?.Type == 7 ? curve.Strength : curve?.Intensity ?? 100, 0, true));
-                room.SendPacket(new WiredMovementComposer(0, horse.VirtualId, source.X, source.Y, source.Z - horseSeat,
+                var horseMovement = new WiredMovementComposer(0, horse.VirtualId, source.X, source.Y, source.Z - horseSeat,
                     horse.X, horse.Y, horse.Z, horse.RotBody, horse.RotHead, animationTimeMs ?? context.Policy.Addons.AnimationTimeMs)
                 {
                     JumpPower = curve?.Type == 7 ? curve.Strength : null
-                });
+                };
+
+                if (collect != null) {
+                    collect.Add(horseMovement);
+                }
+                else {
+                    room.SendPacket(horseMovement);
+                }
             }
         }
 

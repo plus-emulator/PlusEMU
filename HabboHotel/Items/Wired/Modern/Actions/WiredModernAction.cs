@@ -417,6 +417,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 var own = context.CapturedStack.Select(x => x.Item.Id).ToHashSet();
                 movers = WiredToggleStateTargets.Resolve(movers, box => context.Room.GetWired().Flash(box, own.Contains(box.Id)),
                     item => context.Room.GetWired().TryQueueBatchData(item), out flashedBox);
+
+                if (movers.Any(item => !WiredToggleStateTargets.WritesOnlyBatchData(item))) {
+                    context.Publication?.Flush();
+                }
             }
 
             var passengers = WiredRoomMovement.CapturePassengers(context, movers);
@@ -722,6 +726,9 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 return changed;
             case "wf_act_move_rotate_user":
+                // Observed on AIR WIN63-202610201032-107964540: one box sends one WiredMovements with the moves of all its users, then
+                // their turns.
+                var moves = new List<WiredMovementComposer>();
                 var turns = new List<WiredUserDirectionComposer>();
 
                 foreach (var user in Users(context, config, "users")) {
@@ -733,7 +740,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         var stepping = user.IsWalking && user.SetStep;
                         var (baseX, baseY) = stepping ? (user.SetX, user.SetY) : (user.X, user.Y);
                         var resume = stepping && (user.GoalX, user.GoalY) != (baseX, baseY);
-                        changed |= _movement.MoveAvatar(context, user, baseX + offset.X, baseY + offset.Y, true, resume ? 1 : 2, replaceStep: stepping);
+                        changed |= _movement.MoveAvatar(context, user, baseX + offset.X, baseY + offset.Y, true, resume ? 1 : 2, replaceStep: stepping,
+                            batch: moves);
                     }
 
                     if (Param(config, 1) < 0) {
@@ -754,22 +762,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         user.UpdateNeeded = true;
                     }
 
-                    var turn = new WiredUserDirectionComposer(user.VirtualId, rotation, rotation);
-
-                    // Observed on AIR WIN63-202610201032-107964540: a turn without a move of every user of one box goes out in one
-                    // WiredMovements. A turn that follows a move keeps its own packet.
-                    if (Param(config, 0) < 0) {
-                        turns.Add(turn);
-                    }
-                    else {
-                        context.Room.SendPacket(turn);
-                    }
-
+                    turns.Add(new WiredUserDirectionComposer(user.VirtualId, rotation, rotation));
                     changed = true;
                 }
 
-                if (turns.Count != 0) {
-                    context.Room.SendPacket(new WiredMovementBatchComposer([], turns));
+                if (moves.Count != 0 || turns.Count != 0) {
+                    context.Room.FlushWiredFlashes();
+                    context.Room.SendPacket(new WiredMovementBatchComposer(moves, turns));
                 }
 
                 return changed;

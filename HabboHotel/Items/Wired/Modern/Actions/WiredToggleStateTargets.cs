@@ -44,4 +44,8 @@ internal static class WiredToggleStateTargets
 
         return [.. rest];
     }
+
+    /// <summary>A plain state furni whose new state only goes out in the tick's ObjectsDataUpdate (see WiredComponent.PublishState).</summary>
+    internal static bool WritesOnlyBatchData(Item item) => item.IsFloorItem && item.ExtraData is DataFormat.LegacyDataFormat
+        && item.Definition.AdjustableHeights.Count <= 1 && item.Definition.InteractionType == InteractionType.None;
 }

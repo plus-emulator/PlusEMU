@@ -304,16 +304,14 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         @event = @event with { Visits = _room.GetRoomUserManager()?.Visits ?? int.MaxValue };
         var ranAtOnce = @event.Kind == WiredEventKind.Speech;
-        var dispatched = WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() =>
-        {
-            if (@event.Kind != WiredEventKind.StateChanged) {
-                return DispatchCore(@event);
-            }
+        bool dispatched;
 
-            (ranAtOnce, var accepted) = _engine.DispatchStateChange(@event);
-
-            return accepted;
-        }));
+        if (@event.Kind == WiredEventKind.StateChanged) {
+            (ranAtOnce, dispatched) = _engine.DispatchStateChange(@event);
+        }
+        else {
+            dispatched = WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() => DispatchCore(@event)));
+        }
 
         // Speech runs its stacks at once, outside the room's passes: send what they flashed and wrote now, with the chat. Observed on hhus
         // (AIR WIN63-202610131318-860371703): the flash arrives in the same batch as the chat that fired it.
@@ -773,9 +771,29 @@ public partial class WiredComponent : IWiredRuntimeOperations
     /// </summary>
     internal void FlushFlashes()
     {
+        FlushFlashData();
+
+        Action[] messages;
+
+        lock (_pendingFlashes) {
+            messages = [.. _afterFlash];
+            _afterFlash.Clear();
+        }
+
+        foreach (var send in messages) {
+            send();
+        }
+    }
+
+    /// <summary>
+    /// Sends only the ObjectsDataUpdate of <see cref="FlushFlashes"/> and keeps the held messages. Observed on AIR
+    /// WIN63-202610201032-107964540: the ObjectsDataUpdate and the WiredMovements of one firing are adjacent, so a movement flush sends
+    /// the messages after its WiredMovements.
+    /// </summary>
+    internal void FlushFlashData()
+    {
         Item[] items;
         Dictionary<Item, int> visits;
-        Action[] messages;
 
         lock (_pendingFlashes) {
             if (_pendingFlashes.Count == 0 && _afterFlash.Count == 0) {
@@ -789,16 +807,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
             // The first-write rule of FlashDefinition covers one batch, so a flush in the middle of a firing (such as before a
             // movement) lets that firing's next write show again.
             _definitionFirings.Clear();
-            messages = [.. _afterFlash];
-            _afterFlash.Clear();
         }
 
         if (items.Length > 0) {
             _room.SendObjectsData(FlashOrder(items), visits);
-        }
-
-        foreach (var send in messages) {
-            send();
         }
     }
 

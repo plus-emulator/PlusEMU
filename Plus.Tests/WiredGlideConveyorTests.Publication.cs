@@ -563,9 +563,10 @@ public sealed partial class WiredGlideConveyorTests
         layout.Add((19, 4, 9, 0, 0, "bc_tile_1", null));
         layout.Add((20, 4, 12, 2.1, 0, "wf_act_move_to_dir", JsonSerializer.Serialize(new WiredConfiguration
         { IntParams = [2, 0, 100, 0], SelectedItems = [19] })));
-        // Toggle State still splits the segment; Show Message no longer does (see Room14WalkMessageDuringAPulseKeepsTheTilesHome).
-        layout.Add((21, 4, 12, 1.9, 0, "wf_act_toggle_state", JsonSerializer.Serialize(new WiredConfiguration
-        { IntParams = [0, 100], SelectedItems = [19] })));
+        // Toggle to Random State still splits the segment; Show Message and Toggle State no longer do (see
+        // Room14WalkMessageDuringAPulseKeepsTheTilesHome and TwoStacksOfOneSaySendAllStatesAndFlashesInOneObjectsDataUpdateBeforeTheWiredMovements).
+        layout.Add((21, 4, 12, 1.9, 0, "wf_act_toggle_to_rnd", JsonSerializer.Serialize(new WiredConfiguration
+        { IntParams = [100], SelectedItems = [19] })));
         layout.Add((22, 4, 12, 3, 0, "wf_xtra_exec_in_order", JsonSerializer.Serialize(new WiredConfiguration())));
         layout.Add((23, 4, 12, 3.5, 0, "wf_slc_users_bytype", JsonSerializer.Serialize(new WiredConfiguration { IntParams = [1, 0, 0] })));
         var f = new Fixture(layout.ToArray(), live: true);

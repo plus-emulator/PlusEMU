@@ -977,6 +977,7 @@ public class Room
     /// ObjectsDataUpdate with the fired boxes precedes the WiredMovements of the same firing (r92-chase, r92-u2f-targets, r92-room14-slow).
     /// </summary>
     internal void FlushWiredFlashes() => _wiredComponent?.FlushFlashes();
+    internal void FlushWiredFlashData() => _wiredComponent?.FlushFlashData();
 
     /// <param name="visits">Items a user sees only when its <see cref="RoomUser.Visit"/> is at most this (<see cref="RoomUserManager.Visits"/>).</param>
     internal void SendObjectsData(IReadOnlyList<Item> items, IReadOnlyDictionary<Item, int>? visits = null)

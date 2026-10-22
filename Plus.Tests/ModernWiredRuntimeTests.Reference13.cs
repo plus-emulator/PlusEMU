@@ -422,7 +422,7 @@ public partial class ModernWiredRuntimeTests
     private const string FollowRoom = "00000\r00000\r00000\r00000\r00000";
 
     private static HashSet<Point> Around(int x, int y) =>
-        Enumerable.Range(0, 8).Select(WiredRoomOperations.Offset).Select(offset => new Point(x + offset.X, y + offset.Y)).ToHashSet();
+        Enumerable.Range(0, 8).Select(Rotation.Offset).Select(offset => new Point(x + offset.X, y + offset.Y)).ToHashSet();
 
     private static Point? WalkGoal(RoomUser bot) => bot.Movement.Commands.Read() is { } command ? new Point(command.X, command.Y) : null;
 

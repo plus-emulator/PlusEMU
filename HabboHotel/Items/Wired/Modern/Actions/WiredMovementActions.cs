@@ -2,6 +2,7 @@ using System.Drawing;
 using Plus.HabboHotel.Items.Interactor;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.PathFinding;
 
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
@@ -105,7 +106,7 @@ public sealed class WiredMovementActions(Random? random = null)
                 affected = together(movers, (item, step) =>
                 {
                     var direction = MovementDirection(Param(0));
-                    var offset = WiredRoomOperations.Offset(direction);
+                    var offset = Rotation.Offset(direction);
                     // Turns step to the furni's next direction in 45 degree order; Random takes either step (not observed yet).
                     var rotation = Param(1) switch
                     {
@@ -144,7 +145,7 @@ public sealed class WiredMovementActions(Random? random = null)
                     break;
                 }
 
-                var groupOffset = WiredRoomOperations.Offset(Param(0));
+                var groupOffset = Rotation.Offset(Param(0));
 
                 // Volt/Polaris direction editor: leading edge first, blocked members skipped.
                 affected = together(movers.OrderByDescending(item => item.GetX * groupOffset.X + item.GetY * groupOffset.Y).ToArray(),
@@ -193,7 +194,7 @@ public sealed class WiredMovementActions(Random? random = null)
 
                 var target = targets[0];
                 var spacing = name.Equals("wf_act_move_furni_to", StringComparison.OrdinalIgnoreCase)
-                    ? WiredRoomOperations.Offset(Param(0)) : Point.Empty;
+                    ? Rotation.Offset(Param(0)) : Point.Empty;
 
                 var targetX = target.GetX + spacing.X * Param(1, 1);
                 var targetY = target.GetY + spacing.Y * Param(1, 1);

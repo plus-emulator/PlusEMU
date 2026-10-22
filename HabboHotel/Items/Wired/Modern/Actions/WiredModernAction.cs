@@ -669,7 +669,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         var back = _directions.LastChaseStep(item) is { } last ? (last + 4) % 8 : -1;
 
                         foreach (var heading in headings.OrderBy(heading => heading == back)) {
-                            var step = WiredRoomOperations.Offset(heading);
+                            var step = Rotation.Offset(heading);
 
                             if (Move(item.GetX + step.X, item.GetY + step.Y)) {
                                 _directions.RememberChaseStep(item, heading);
@@ -695,7 +695,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         if (Move(candidate.X, candidate.Y)) {
                             if (!flee) {
                                 _directions.RememberChaseStep(item, Enumerable.Range(0, 4).Select(index => index * 2)
-                                    .First(heading => WiredRoomOperations.Offset(heading) == new System.Drawing.Point(candidate.X - fromX, candidate.Y - fromY)));
+                                    .First(heading => Rotation.Offset(heading) == new System.Drawing.Point(candidate.X - fromX, candidate.Y - fromY)));
                             }
 
                             return true;
@@ -733,7 +733,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 foreach (var user in Users(context, config, "users")) {
                     if (Param(config, 0) >= 0) {
-                        var offset = WiredRoomOperations.Offset(Param(config, 0));
+                        var offset = Rotation.Offset(Param(config, 0));
                         // Observed on AIR WIN63-202610131318-860371703: a push on a walking user replaces the step in progress in the same tick.
                         // It runs from the step's start tile to the stepped-onto tile plus the push, then the walk resumes towards its goal
                         // (pushed back onto the start tile, the user treadmills). Pushed on the last step, the walk ends there.
@@ -912,13 +912,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     break;
                 case "wf_act_move_rotate":
                     if (Param(config, 0, -1) is >= 0 and <= 7 and var direction) {
-                        var offset = WiredRoomOperations.Offset(direction);
+                        var offset = Rotation.Offset(direction);
                         yield return (item, item.GetX + offset.X, item.GetY + offset.Y, item.Rotation, true);
                     }
 
                     break;
                 default:
-                    var heading = WiredRoomOperations.Offset(_directions.Heading(item, Param(config, 0)));
+                    var heading = Rotation.Offset(_directions.Heading(item, Param(config, 0)));
                     yield return (item, item.GetX + heading.X, item.GetY + heading.Y, item.Rotation, false);
                     break;
             }

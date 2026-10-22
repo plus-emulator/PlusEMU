@@ -778,6 +778,24 @@ public static class WiredNativeEditorProjection
         return true;
     }
 
+    private static bool IsLive(Rooms.Room room, WiredNativeItemReference reference) =>
+        room.GetRoomItemHandler().GetItem(reference.ItemId) is { IsTemporary: false } picked && picked.IsWallItem == reference.Wall;
+
+    // Observed on AIR WIN63-202610201032-107964540: Toggle State saves with an id of no furni or a wall item sent with a positive id,
+    // and reopens with only its other picks. A box that only takes certain furni refuses such a pick, so this runs after every pick rule.
+    internal static bool TryKeepLivePicks(Item item, WiredBoxDescriptor descriptor, WiredConfiguration proposed, out WiredConfiguration kept)
+    {
+        kept = proposed;
+        var native = proposed.Origin!.Native;
+
+        if (item.GetRoom() is not { } room || native.PrimaryItems.All(reference => IsLive(room, reference))) {
+            return true;
+        }
+
+        return TryCompile(item.Id, descriptor, native with { PrimaryItems = [.. native.PrimaryItems.Where(reference => IsLive(room, reference))] },
+            out kept, AnyTriggerContext);
+    }
+
     private const string ClickTileInteraction = "room_invisible_click_tile";
 
     internal static bool TryValidatePicks(Item item, WiredBoxDescriptor descriptor, WiredConfiguration proposed, out string error)
@@ -785,7 +803,8 @@ public static class WiredNativeEditorProjection
         error = "Invalid native editor picks.";
         var native = proposed.Origin!.Native;
         var room = item.GetRoom();
-        // Save-time picks must be live. Loading and execution resolve the remaining eligible items instead.
+        // Save-time second-list picks must be live; first-list picks that name no furni are dropped after the pick rules.
+        // Loading and execution resolve the remaining eligible items instead.
         var references = native.PrimaryItems.Concat(native.SecondaryItems).ToArray();
 
         // Picks are only meaningful in the live room that holds them; a pickless box has nothing to check there.
@@ -795,8 +814,7 @@ public static class WiredNativeEditorProjection
             return true;
         }
 
-        if (room == null || references.Any(reference =>
-            room.GetRoomItemHandler().GetItem(reference.ItemId) is not { IsTemporary: false } picked || picked.IsWallItem != reference.Wall)) {
+        if (room == null || native.SecondaryItems.Any(reference => !IsLive(room, reference))) {
             return false;
         }
 
@@ -845,7 +863,7 @@ public static class WiredNativeEditorProjection
         }
 
         bool AllAntennas(IEnumerable<WiredNativeItemReference> picks) =>
-            picks.All(reference => WiredStackEngine.IsSignalAntenna(room.GetRoomItemHandler().GetItem(reference.ItemId)!));
+            picks.All(reference => room.GetRoomItemHandler().GetItem(reference.ItemId) is { } picked && WiredStackEngine.IsSignalAntenna(picked));
 
         if (descriptor.CanonicalName is "wf_act_send_signal" or "wf_act_neg_send_signal" && native.FurniSourceTypes[0] is 100 or 101
             && !AllAntennas(native.FurniSourceTypes[0] == 100 ? native.PrimaryItems : native.SecondaryItems)) {

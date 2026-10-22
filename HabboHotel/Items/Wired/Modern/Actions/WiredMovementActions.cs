@@ -214,10 +214,22 @@ public sealed class WiredMovementActions(Random? random = null)
                     return false;
                 }
 
-                // Observed on AIR WIN63-202610151745-318700621: with two users selected, the furni went to a random one of them each firing.
-                foreach (var item in movers) {
-                    var user = users[_random.Next(users.Count)];
-                    affected |= move(item, user.X, user.Y, item.Rotation, null);
+                // Observed on AIR WIN63-202610201032-107964540: the furni are dealt out so each selected user gets the same number, give
+                // or take one (two furni to two users 30 of 30, three furni 90 of 90), in a new random order each firing.
+                var dealtUsers = Dealt(users, movers.Count);
+
+                // The moves run in a random order, and a furni dealt the user it already stands under is restacked like Furni To Furni:
+                // all 100 observed firings with z changes fit this, while no fixed order fits them.
+                foreach (var index in Shuffled(Enumerable.Range(0, movers.Count).ToArray())) {
+                    var item = movers[index];
+                    var user = dealtUsers[index];
+
+                    if (item.GetX != user.X || item.GetY != user.Y) {
+                        affected |= move(item, user.X, user.Y, item.Rotation, null);
+                    }
+                    else if (!OnTopOfItsTile(item)) {
+                        affected |= move(item, user.X, user.Y, item.Rotation, RestackHeight(item));
+                    }
                 }
 
                 break;
@@ -335,9 +347,12 @@ public sealed class WiredMovementActions(Random? random = null)
                     return false;
                 }
 
-                foreach (var user in users) {
-                    var destination = targets[Random.Shared.Next(targets.Count)];
-                    affected |= relocate(user, destination, false, Param(0) == 1, 2);
+                // Observed on AIR WIN63-202610201032-107964540: two selected users always went to two different furni (30 of 30 with two
+                // furni, 30 of 30 with three), in a new random order each firing.
+                var teleportTargets = Dealt(targets, users.Count);
+
+                for (var index = 0; index < users.Count; index++) {
+                    affected |= relocate(users[index], teleportTargets[index], false, Param(0) == 1, 2);
                 }
 
                 break;
@@ -346,6 +361,18 @@ public sealed class WiredMovementActions(Random? random = null)
         }
 
         return affected;
+    }
+
+    // Deals count values in rounds: each round uses every value once, in a new random order.
+    private T[] Dealt<T>(IReadOnlyList<T> values, int count)
+    {
+        var dealt = new List<T>(count);
+
+        while (dealt.Count < count && values.Count > 0) {
+            dealt.AddRange(Shuffled(values));
+        }
+
+        return dealt.Take(count).ToArray();
     }
 
     private T[] Shuffled<T>(IReadOnlyList<T> values)

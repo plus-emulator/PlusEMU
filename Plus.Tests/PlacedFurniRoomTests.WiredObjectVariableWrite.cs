@@ -52,7 +52,7 @@ public partial class PlacedFurniRoomTests
     }
 
     // Observed on AIR WIN63-202610201032-107964540: an inspection write of @state leaves a Wired box (trigger, action, condition, selector,
-    // add-on, variable box or antenna) unchanged and sends nothing, while a Wired floor switch still changes.
+    // add-on, variable box or antenna) unchanged and shows no error, while a Wired floor switch still changes.
     [Theory]
     [InlineData("wf_act_move_rotate", InteractionType.WiredEffect, "")]
     [InlineData("wf_trg_says_something", InteractionType.WiredTrigger, "")]

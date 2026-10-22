@@ -312,8 +312,8 @@ public sealed class RoomWiredBuiltinVariables(Room room,
         if (holder.Target == WiredVariableTarget.Furni && key == "@state") {
             var item = FindItem(holder, frame);
 
-            // Observed on AIR WIN63-202610201032-107964540: a variable write leaves the state of a Wired box or antenna; only its own
-            // firing flashes it. A Wired floor switch still changes.
+            // Observed on AIR WIN63-202610201032-107964540: a variable write leaves the state of a Wired box or antenna unchanged; a
+            // Wired floor switch still changes. Only wf_antenna2 was probed; wf_antenna1 shares its interaction.
             if (item is null || item.IsWired || WiredStackEngine.IsSignalAntenna(item)) {
                 return false;
             }

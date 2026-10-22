@@ -101,7 +101,7 @@ public sealed partial class WiredNativeLifecycleTests
         // the same key (a reference to a shared variable of the owner saves, see PlacedFurniRoomTests.ReferenceOwner).
         var chosen = unchosen with { VariableIds = ["shared:2:room:4"] };
         Assert.True(WiredNativeEditorProjection.TryCompile(item.Id, box.Descriptor, chosen, out runtime));
-        Assert.False(box.TryValidateConfiguration(runtime, out _, out error));
+        Assert.False(WiredConfigurationSave.TrySave(box, runtime, TestWiredConfigurationStore.Instance, out error));
         Assert.Equal("wiredfurni.error.variables.reference.valid", error);
     }
 

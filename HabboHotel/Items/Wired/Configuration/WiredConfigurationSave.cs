@@ -34,7 +34,10 @@ public static class WiredConfigurationSave
             return false;
         }
 
-        if (existsInRoom != null && (!proposed.SelectedItems.All(existsInRoom)
+        var native = WiredNativeEditorProjection.Supports(box.Descriptor.CanonicalName);
+
+        // Native boxes check their picks below and drop the ones that name no furni of their kind.
+        if (!native && existsInRoom != null && (!proposed.SelectedItems.All(existsInRoom)
             || !proposed.SecondarySelectedItems.All(existsInRoom))) {
             return false;
         }
@@ -45,8 +48,7 @@ public static class WiredConfigurationSave
             return false;
         }
 
-        if (WiredNativeEditorProjection.Supports(box.Descriptor.CanonicalName)
-            && !WiredNativeEditorProjection.TryValidatePicks(box.Item, box.Descriptor, proposed, out error)) {
+        if (native && !WiredNativeEditorProjection.TryValidatePicks(box.Item, box.Descriptor, proposed, out error)) {
             return false;
         }
 
@@ -56,6 +58,12 @@ public static class WiredConfigurationSave
 
         if (box is IWiredSaveRefusal saveRules && saveRules.RefuseSave(proposed) is { } refused) {
             error = refused;
+
+            return false;
+        }
+
+        if (native && !WiredNativeEditorProjection.TryKeepLivePicks(box.Item, box.Descriptor, proposed, out proposed)) {
+            error = "Invalid native editor picks.";
 
             return false;
         }

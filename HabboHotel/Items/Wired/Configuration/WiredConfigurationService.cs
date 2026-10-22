@@ -246,8 +246,9 @@ public sealed class WiredConfigurationService(
 
         var allowWall = WiredNativeEditorProjection.Metadata(name).AllowWall;
 
-        // Only cards whose editor admits wall picks capture them, and only with a parseable wall position.
-        return picks.Select(reference => reference.ItemId).Distinct().Select(handler.GetItem)
+        // Only cards whose editor admits wall picks capture them, and only with a parseable wall position. A pick of the other kind
+        // than its furni is dropped on save, so it keeps no snapshot.
+        return picks.Distinct().Select(reference => handler.GetItem(reference.ItemId) is { } item && item.IsWallItem == reference.Wall ? item : null)
             .Where(item => item is { IsFloorItem: true } || allowWall && item is { IsWallItem: true })
             .Select(item => (Item: item!, Snapshot: WiredRoomOperations.Capture(item!)))
             .Where(pair => !pair.Item.IsWallItem || pair.Snapshot.Wall != null).Select(pair => pair.Snapshot).ToImmutableArray();

@@ -217,13 +217,12 @@ public class PetBot : BotAi
         if (message.ToLower().StartsWith($"{petData.Name.ToLower()} ") && speakerSession.GetHabbo().Username.ToLower() == petData.OwnerName.ToLower() ||
             message.ToLower().StartsWith($"{petData.Name.ToLower()} ") &&
             _commands.TryInvoke(message.Substring(petData.Name.ToLower().Length + 1)) == 8) {
-            var command = message.Substring(petData.Name.ToLower().Length + 1);
-            var r = Random.Shared.Next(1, 8 + 1); // Made Random
+            var commandId = _commands.TryInvoke(message.Substring(petData.Name.ToLower().Length + 1));
 
-            if (petData.Energy > 10 && r < 6 || petData.Level > 15 || _commands.TryInvoke(command) == 8) {
+            if (petData.ObeysCommand(commandId)) {
                 RemovePetStatus(); // Remove Status
 
-                switch (_commands.TryInvoke(command)) {
+                switch (commandId) {
                     // TODO - Level you can use the commands at...
                     case 1:
                         RemovePetStatus();
@@ -349,7 +348,7 @@ public class PetBot : BotAi
             else {
                 RemovePetStatus(); // Remove Status
 
-                if (petData.Energy < 10) {
+                if (petData.IsTired) {
                     var speech = _locale.GetValue("pet.tired");
                     pet.Chat(speech[Random.Shared.Next(0, speech.Length)]);
                     pet.Statusses.Add("lay", TextHandling.GetString(pet.Z));

@@ -109,7 +109,10 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         bool placed;
 
         try {
-            placed = room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true);
+            // Observed on AIR WIN63-202610201032-107964540: the new furni count comes before the furni's ObjectAdd. The stored row
+            // already counts, so the count is read before the furni goes into the room.
+            var count = new BuildersClubFurniCountComposer(store.FurniCount(item.UserId));
+            placed = room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true, announcing: () => session.Send(count));
         }
         catch (Exception exception) {
             logger.LogError(exception, "Failed to place Builders Club furni {ItemId} in room {RoomId}", item.Id, room.Id);
@@ -131,8 +134,6 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
                 logger.LogError(exception, "Failed to load placed Builders Club Wired item {ItemId} in room {RoomId}", item.Id, room.Id);
             }
         }
-
-        SendFurniCount(session);
     }
 
     public void PlaceWallItem(Room room, GameClient session, BuildersClubPlacement request, string wallLocation, bool confirmed = false)
@@ -183,8 +184,18 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
             return false;
         }
 
+        var placer = clients.GetClientByUserId(item.UserId) is { } client && client.GetHabbo() != null ? client : null;
+
+        // Observed on AIR WIN63-202610201032-107964540: the placer's new furni count comes before the floor furni's ObjectRemove, so
+        // it is read before the stored row goes. No capture shows the order for wall furni, so they keep sending it after ItemRemove.
         lock (item) {
-            if (!ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item) || !room.GetRoomItemHandler().RemoveFurniture(session, item)) {
+            if (!ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item)) {
+                return false;
+            }
+
+            var count = placer != null && item.IsFloorItem ? new BuildersClubFurniCountComposer(store.FurniCount(item.UserId) - 1) : null;
+
+            if (!room.GetRoomItemHandler().RemoveFurniture(session, item, count == null ? null : () => placer!.Send(count))) {
                 return false;
             }
 
@@ -193,7 +204,7 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
 
         Delete(item.Id);
 
-        if (clients.GetClientByUserId(item.UserId) is { } placer && placer.GetHabbo() != null) {
+        if (placer != null && !item.IsFloorItem) {
             SendFurniCount(placer);
         }
 

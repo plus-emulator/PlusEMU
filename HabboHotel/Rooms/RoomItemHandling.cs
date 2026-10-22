@@ -478,17 +478,18 @@ public partial class RoomItemHandling
         }
     }
 
-    public bool RemoveFurniture(GameClient session, Item item)
+    // announcing runs once the item has left the room, just before the clients hear about it.
+    public bool RemoveFurniture(GameClient session, Item item, Action? announcing = null)
     {
         if (item.ExtraData is not Plus.HabboHotel.Items.DataFormat.HighscoreDataFormat) {
-            return RemoveFurniture(session, item, null);
+            return RemoveFurniture(session, item, null, announcing);
         }
 
         if (!TryReserveTransfers([item], out var transfer)) {
             return false;
         }
 
-        var removed = RemoveFurniture(session, item, transfer);
+        var removed = RemoveFurniture(session, item, transfer, announcing);
 
         if (removed) {
             CompleteTransfer(transfer!, item);
@@ -500,7 +501,7 @@ public partial class RoomItemHandling
         return removed;
     }
 
-    internal bool RemoveFurniture(GameClient session, Item item, RoomItemTransfer? transfer)
+    internal bool RemoveFurniture(GameClient session, Item item, RoomItemTransfer? transfer, Action? announcing = null)
     {
         if (item.IsTemporary || !ReferenceEquals(GetItem(item.Id), item)) {
             return false;
@@ -529,13 +530,13 @@ public partial class RoomItemHandling
             item.UpdateNeeded = false;
         }
 
-        return RemoveRoomItem(item);
+        return RemoveRoomItemCore(item, true, announcing);
     }
 
     private bool RemoveRoomItem(Item item) => RemoveRoomItemCore(item, true);
 
     // Remove Temporary Furni sends its own batch, so its removals are not announced one by one.
-    private bool RemoveRoomItemCore(Item item, bool announce)
+    private bool RemoveRoomItemCore(Item item, bool announce, Action? announcing = null)
     {
         var inputs = _room.GetGameMap().Navigation?.Inputs;
 
@@ -558,6 +559,7 @@ public partial class RoomItemHandling
             return false;
         }
 
+        announcing?.Invoke();
         var neverSent = item.IsFloorItem && FurniVisibility.ForgetRemoved(_room, item);
 
         if (announce && item.IsFloorItem && !neverSent) {
@@ -630,8 +632,9 @@ public partial class RoomItemHandling
         }
     }
 
-    public bool SetFloorItem(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses = false, double height = -1, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision = null, bool deferPositionSave = false) =>
-        PlaceFloor(session, item, newX, newY, newRot, newItem, onRoller, sendMessage, updateRoomUserStatuses, height, wiredCollision, null, deferPositionSave);
+    // announcing runs once the item is placed, just before the clients hear about it.
+    public bool SetFloorItem(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses = false, double height = -1, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision = null, bool deferPositionSave = false, Action? announcing = null) =>
+        PlaceFloor(session, item, newX, newY, newRot, newItem, onRoller, sendMessage, updateRoomUserStatuses, height, wiredCollision, null, deferPositionSave, announcing);
 
     public bool PersistFurnitureData(Item item, Plus.HabboHotel.Items.DataFormat.IFurniObjectData data, bool dataUpdateOnly = false)
     {
@@ -688,7 +691,7 @@ public partial class RoomItemHandling
         return false;
     }
 
-    private bool PlaceFloor(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses, double height, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision, (Plus.HabboHotel.Items.DataFormat.IFurniObjectData Data, Action Persist, RoomItemTransfer? Transfer)? commit, bool deferPositionSave = false)
+    private bool PlaceFloor(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses, double height, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision, (Plus.HabboHotel.Items.DataFormat.IFurniObjectData Data, Action Persist, RoomItemTransfer? Transfer)? commit, bool deferPositionSave = false, Action? announcing = null)
     {
         // A user's move or placement stores only a direction the furni has (FurnitureDirections.Place). A republish in place, such as a
         // data save, is not a move: it keeps the stored rotation (a background saved at 2 keeps 2 though its asset lacks it).
@@ -889,6 +892,7 @@ public partial class RoomItemHandling
 
         // A move across the edge of a hidden area adds or removes the furni for the clients instead of updating it.
         var settled = newItem ? [] : FurniVisibility.Reconcile(_room, [item]);
+        announcing?.Invoke();
 
         if (sendMessage) {
             if (newItem) {

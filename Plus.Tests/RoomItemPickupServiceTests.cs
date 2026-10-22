@@ -1,6 +1,7 @@
 using System.Data;
 using Dapper;
 using MySqlConnector;
+using Plus.Communication.Flash;
 using Plus.Communication.Packets.Incoming.Rooms.Engine;
 using Plus.Communication.Packets.Outgoing;
 using Plus.Database;
@@ -58,7 +59,27 @@ public partial class PlacedFurniRoomTests
         Assert.Null(_room.GetRoomItemHandler().GetItem(item.Id));
         Assert.NotNull(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(item.Id));
         Assert.True(progressed);
-        Assert.Contains(ServerPacketHeader.FurniListUpdateComposer, _client.Sent);
+        Assert.Contains(ServerPacketHeader.FurniListAddComposer, _client.Sent);
+    }
+
+    [Fact]
+    public async Task OwnerPickupSendsObjectRemoveThenOnlyThePickedItem()
+    {
+        Viewer();
+        var item = Add(30, 1, 1);
+        item.Definition.SpriteId = 3171;
+        _client.Sent.Clear();
+        _client.Packets.Clear();
+
+        await PickupObject().Parse(_client, ClientPacket(2, 30));
+
+        Assert.Equal([ServerPacketHeader.ObjectRemoveComposer, ServerPacketHeader.FurniListAddComposer], _client.Sent);
+        var added = new FlashIncomingPacket { Buffer = _client.Packets[1].Body };
+        Assert.Equal(1, added.ReadInt());
+        Assert.Equal(30u, added.ReadUInt());
+        Assert.Equal("S", added.ReadString());
+        Assert.Equal(30u, added.ReadUInt());
+        Assert.Equal(3171, added.ReadInt());
     }
 
     [Fact]
@@ -115,6 +136,28 @@ public partial class PlacedFurniRoomTests
             Proxy<IQuestManager>((_, _) => null), store).PickUp(_client, item.Id);
         Assert.Null(_room.GetRoomItemHandler().GetItem(item.Id));
         Assert.Null(Assert.IsType<Plus.HabboHotel.Users.Inventory.InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(item.Id));
+    }
+
+    [Fact]
+    public async Task RoomOwnerPickupOfAnOnlineOwnersItemKeepsTheOwnersInventoryReload()
+    {
+        Viewer();
+        var item = Add(30, 1, 1);
+        item.OwnerId = 99;
+        item.UserId = 99;
+        var owner = new TestClient();
+        owner.SetHabbo(new Plus.HabboHotel.Users.Habbo { Id = 99, Username = "johndoe", Access = UserAccess.Empty });
+        owner.GetHabbo().Inventory = new Plus.HabboHotel.Users.Inventory.InventoryComponent
+        {
+            Furniture = new Plus.HabboHotel.Users.Inventory.Furniture.FurnitureInventoryComponent([], [])
+        };
+        var store = new PickupStore(_ => true);
+        await new RoomItemPickupService(Proxy<IGameClientManager>((method, args) => method == "GetClientByUserId" && (int)args[0]! == 99 ? owner : null),
+            Proxy<IQuestManager>((_, _) => null), store).PickUp(_client, item.Id);
+
+        Assert.NotNull(owner.GetHabbo().Inventory!.Furniture.GetItem(item.Id));
+        Assert.Contains(ServerPacketHeader.FurniListUpdateComposer, owner.Sent);
+        Assert.DoesNotContain(ServerPacketHeader.FurniListAddComposer, owner.Sent);
     }
 
     [Fact]

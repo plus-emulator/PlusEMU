@@ -330,7 +330,8 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
     // A recolorable starts in the colour the catalogue's palette chose (RecolorableFurnitureCatalogWidget). A poster takes its number
     // from the offer and ignores the client's: observed for one poster offer on AIR WIN63-202610201032-107964540 (client "" and "53"
     // both gave the offer's "52"); other poster offers are assumed to work the same. Nothing else takes a parameter.
-    // A wall item with more than one state starts at "0" (cine_light1 on the same build), like a floor switch does.
+    // A wall item with more than one state starts at "0": observed for cine_light1 on the same build; other multi-state wall items are
+    // assumed to work the same. A normal (non Builders Club) purchase of such an item was not observed, so it still starts at "".
     private static string ExtraData(ItemDefinition definition, string productParam, string clientParam) => definition switch
     {
         { InteractionType: InteractionType.Recolorable } => RecolorableDataFormat.FormatCatalogueColor(RecolorablePalette.PurchaseColor(

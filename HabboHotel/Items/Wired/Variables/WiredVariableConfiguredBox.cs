@@ -78,7 +78,10 @@ public sealed class WiredVariableConfiguredBox : IWiredContextualItem
         // Observed on hhus (AIR WIN63-202610131318-860371703): a Give Variable or Change Variable Value that writes a variable flashes
         // that variable's definition box, and the variable add-ons on its tile, with the action's own flash.
         if (_executors.Destination(Descriptor.CanonicalName, configuration) is { } destination) {
-            var firing = context.Firing ?? context;
+            // Observed on AIR WIN63-202610201032-107964540: runs of one Variable Changed stack in the same tick (two Gives in one click)
+            // flip the context variable they each give once in that tick's update, so those gives count as one firing here.
+            var firing = Descriptor.CanonicalName == "wf_act_give_var" && destination.Target == WiredVariableTarget.Context
+                && context.Trigger is WiredVariableChangedTrigger trigger ? trigger : context.Firing ?? context;
 
             // A batched Change Variable Value is written when its stack's batch flushes, so the kind is picked then, in the same pass.
             // Observed on AIR WIN63-202610151745-318700621: add 1 after give 5 shows 2, another add 1 shows 3, subtract 1 shows 4.

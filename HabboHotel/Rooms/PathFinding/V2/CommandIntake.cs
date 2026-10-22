@@ -23,6 +23,10 @@ internal sealed class CommandIntake(MovementContext context, ForcePlacementServi
             return;
         }
 
+        if (KeepsCurrentWalk(actor, command)) {
+            return;
+        }
+
         context.Approaches.Bind(actor, command, context.ApproachGoals.Surface(command));
         state.GoalRevision++;
         state.Origin = command.Origin;
@@ -44,6 +48,26 @@ internal sealed class CommandIntake(MovementContext context, ForcePlacementServi
         context.Replan(actor);
         context.RefreshMembership(actor);
     }
+    // Habbo ignores a click that has no route while the avatar walks: the walk goes on to its old goal.
+    // Avatars on the goal tile are not counted; that case is not observed yet.
+    private bool KeepsCurrentWalk(RoomUser actor, MoveCommand command)
+    {
+        var state = actor.Movement;
+
+        if (!state.HasIntent || command.Origin != MoveOrigin.User || command.Approach != null
+            || context.Navigation.Settings.UnreachablePolicy == "nearest") {
+            return false;
+        }
+
+        var grid = context.Grid;
+        var profile = context.Profiles.Refresh(actor);
+        var start = new NavPosition(actor.X, actor.Y, state.SupportZ);
+        var goal = GoalResolver.ResolveClick(grid, profile, start, command.X, command.Y, null);
+
+        return new PathSearch(grid, context.Navigation.Settings).Screen(new(profile, start, command.X, command.Y, Goals: goal))
+            is PathOutcome.InvalidGoal or PathOutcome.Unreachable;
+    }
+
     private void ResolveGoal(RoomUser actor)
     {
         var state = actor.Movement;

@@ -126,7 +126,7 @@ public partial class PlacedFurniRoomTests
         FallbackAssertStopped(actor, 5, 1);
     }
     [Fact]
-    public void NewUnreachableClickDuringAWalkStays()
+    public void NewUnreachableClickDuringAWalkKeepsTheWalk()
     {
         FallbackModel(FallbackAlternative);
         Add(20, 6, 3, height: 1, stackable: false);
@@ -136,7 +136,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         actor.MoveTo(6, 3);
         FallbackRun(actor, 20);
-        FallbackAssertStopped(actor, 2, 1);
+        FallbackAssertStopped(actor, 6, 1);
     }
     [Fact]
     public void SameTargetReclickAfterTruncationIsANewCommand()

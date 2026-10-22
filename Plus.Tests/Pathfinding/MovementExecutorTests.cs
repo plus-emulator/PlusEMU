@@ -192,7 +192,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void ExecutorUnreachableClickCommitsOldPendingStepThenStays()
+    public void ExecutorUnreachableClickKeepsTheOldWalk()
     {
         Add(10, 3, 3, height: 2, stackable: false);
         var actor = ExecutorActor(0, 1);
@@ -201,11 +201,11 @@ public partial class PlacedFurniRoomTests
         actor.MoveTo(3, 3);
         ExecutorTick();
         Assert.Equal((1, 1), (actor.X, actor.Y));
+        Assert.Contains("/mv 2,1,0.0/", ExecutorUpdate(actor).Status);
+        ExecutorTick();
+        ExecutorTick();
+        Assert.Equal((3, 1), (actor.X, actor.Y));
         Assert.False(actor.IsWalking);
-        Assert.DoesNotContain("/mv ", ExecutorUpdate(actor).Status);
-        ExecutorTick();
-        ExecutorTick();
-        Assert.Equal((1, 1), (actor.X, actor.Y));
     }
 
     [Fact]

@@ -26,7 +26,7 @@ public sealed class RoomPetsComponent(IDatabase database) : IRoomComponent
                 data.HaveSaddle, data.AnyoneRide, data.Hairdye, data.Pethair, data.GnomeClothing, row.OwnerName);
             var speeches = new List<RandomSpeech>();
             _room.GetRoomUserManager().DeployBot(new(pet.PetId, _room.Id, "pet", "freeroam", pet.Name, "", pet.Look,
-                pet.X, pet.Y, Convert.ToInt32(pet.Z), 0, 0, 0, 0, 0, ref speeches, "", 0, pet.OwnerId, false, 0, false, 0), pet);
+                pet.X, pet.Y, pet.Z, 0, 0, 0, 0, 0, ref speeches, "", 0, pet.OwnerId, false, 0, false, 0), pet);
         }
     }
 

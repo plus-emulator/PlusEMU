@@ -16,7 +16,7 @@ public sealed class RoomBotsComponent(IDatabase database) : IRoomComponent
         foreach (var bot in Load(connection, _room.Id)) {
             var speeches = LoadSpeech(connection, bot.Id).Select(text => new RandomSpeech(text, bot.Id)).ToList();
             _room.GetRoomUserManager().DeployBot(new(bot.Id, bot.RoomId, bot.AiType, bot.WalkMode, bot.Name,
-                bot.Motto, bot.Look, bot.X, bot.Y, Convert.ToInt32(bot.Z), bot.Rotation, 0, 0, 0, 0, ref speeches, "M", 0,
+                bot.Motto, bot.Look, bot.X, bot.Y, bot.Z, bot.Rotation, 0, 0, 0, 0, ref speeches, "M", 0,
                 bot.UserId, bot.AutomaticChat, bot.SpeakingInterval, bot.MixSentences, bot.ChatBubble), null);
         }
     }

@@ -48,7 +48,8 @@ public class WiredHashSetPickOrderTests
         Assert.Equal(reopened, frame.Skip(2 + HabboSent.Length + 1).Take(targets.Length));
     }
 
-    // Habbo, 9 and 10 ids in one bucket (ids 16 apart): the ninth id resizes the table, which splits the bucket.
+    // Habbo, 8 ids and then 9 ids in one bucket (ids 16 apart, 16 buckets): the ninth id doubles the table, which splits the bucket. The
+    // 18 ids row is from the real JDK 21, not from Habbo.
     [Theory]
     [InlineData(new[] { 2147418131, 2147418147, 2147418163, 2147418179, 2147418195, 2147418211, -2147418116, -2147418132 },
         new[] { 2147418131, 2147418147, 2147418163, 2147418179, 2147418195, 2147418211, -2147418116, -2147418132 })]

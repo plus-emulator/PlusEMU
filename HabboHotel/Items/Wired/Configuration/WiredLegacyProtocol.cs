@@ -292,8 +292,8 @@ public static class WiredLegacyProtocol
 
     // A java.util.HashSet<Integer> filled in this order. An id lands in bucket (h ^ (h >>> 16)) & (buckets - 1) of a table that starts with
     // 16 buckets and doubles when it holds more than three quarters of them. Ids in one bucket keep their order, and a split keeps it too.
-    // Observed on AIR WIN63-202610201032-107964540: when a bucket gets its ninth id while the table has fewer than 64 buckets, Java doubles
-    // the table at once. Not modelled: a ninth id in a bucket of a 64-bucket table, where Java builds a tree.
+    // Observed on AIR WIN63-202610201032-107964540 with 16 buckets: when a bucket gets its ninth id, Java doubles the table at once. The
+    // same step below 64 buckets comes from the JDK source (HashMap.treeifyBin). Not modelled: a ninth id in a bucket of a 64-bucket table, where Java builds a tree.
     private static IEnumerable<int> JavaHashSetOrder(IEnumerable<int> ids)
     {
         const int treeifyThreshold = 8;

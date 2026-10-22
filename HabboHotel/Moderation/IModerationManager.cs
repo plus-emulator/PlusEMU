@@ -29,31 +29,9 @@ public interface IModerationManager
     bool UserHasTickets(int userId);
     ModerationTicket? GetTicketBySenderId(int userId);
 
-    /// <summary>
-    /// Runs a quick check to see if a ban record is cached in the server.
-    /// </summary>
-    /// <param name="key"></param>
-    /// <param name="ban"></param>
-    /// <returns></returns>
-    bool IsBanned(string key, [NotNullWhen(true)] out ModerationBan? ban);
+    /// <summary>Whether an unexpired ban of this type and value is cached.</summary>
+    bool IsBanned(ModerationBanType type, string value, [NotNullWhen(true)] out ModerationBan? ban);
 
-    /// <summary>
-    /// Run a quick database check to see if this ban exists in the database.
-    /// </summary>
-    /// <param name="machineId">The value of the ban.</param>
-    /// <returns></returns>
-    bool HasMachineBanCheck(string machineId);
-
-    /// <summary>
-    /// Run a quick database check to see if this ban exists in the database.
-    /// </summary>
-    /// <param name="username">The value of the ban.</param>
-    /// <returns></returns>
-    bool UsernameBanCheck(string username);
-
-    /// <summary>
-    /// Remove a ban from the cache based on a given value.
-    /// </summary>
-    /// <param name="value"></param>
-    void RemoveBan(string value);
+    /// <summary>Whether an unexpired ban of this type and value is cached and its row still exists.</summary>
+    bool HasBan(ModerationBanType type, string value);
 }

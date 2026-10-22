@@ -37,8 +37,9 @@ public sealed class ClientIdentityServiceTests
         client.DisconnectRequested = () => disconnected = true;
         var moderation = CatalogSnapshotTestSupport.Proxy<IModerationManager>((method, args) =>
         {
-            Assert.Equal(nameof(IModerationManager.HasMachineBanCheck), method);
-            Assert.Equal("machine", args![0]);
+            Assert.Equal(nameof(IModerationManager.HasBan), method);
+            Assert.Equal(ModerationBanType.Machine, args![0]);
+            Assert.Equal("machine", args[1]);
             Assert.Equal("machine", client.MachineId);
             Assert.False(disconnected);
             Assert.Empty(sent);

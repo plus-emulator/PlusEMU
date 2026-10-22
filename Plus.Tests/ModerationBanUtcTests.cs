@@ -73,11 +73,11 @@ public sealed class ModerationBanUtcTests
             var loadClock = new CountingClock(Now, TimeZoneInfo.Utc);
             var loadedManager = Manager(database, loadClock);
             loadedManager.ReCacheBans();
-            Assert.True(loadedManager.IsBanned("future", out var loaded));
+            Assert.True(loadedManager.IsBanned(ModerationBanType.Username, "future", out var loaded));
             Assert.Equal(expectedExpiry, loaded.ExpiresAt);
-            Assert.False(loadedManager.IsBanned("zero", out _));
-            Assert.False(loadedManager.IsBanned("unknown", out _));
-            Assert.False(loadedManager.IsBanned("exact", out _));
+            Assert.False(loadedManager.IsBanned(ModerationBanType.Username, "zero", out _));
+            Assert.False(loadedManager.IsBanned(ModerationBanType.Username, "unknown", out _));
+            Assert.False(loadedManager.IsBanned(ModerationBanType.Username, "exact", out _));
 
             var clock = new CountingClock(Now, TimeZoneInfo.CreateCustomTimeZone("plus-nine", TimeSpan.FromHours(9), "test", "test"));
             var manager = Manager(database, clock);

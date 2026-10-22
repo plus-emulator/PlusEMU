@@ -1,3 +1,4 @@
+using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users.Authentication;
 using Plus.HabboHotel.Users.UserData;
 
@@ -14,7 +15,7 @@ internal class BanLoginCheckTask : IAuthenticationTask
         _userDataFactory = userDataFactory;
     }
 
-    public async Task<bool> CanLogin(int userId)
+    public async Task<bool> CanLogin(GameClient session, int userId)
     {
         var username = await _userDataFactory.GetUsernameForHabboById(userId);
 
@@ -22,10 +23,8 @@ internal class BanLoginCheckTask : IAuthenticationTask
             return false;
         }
 
-        if (_moderationManager.UsernameBanCheck(username)) {
-            return false;
-        }
-
-        return true;
+#pragma warning disable CS0618 // The handshake's machine id only lives on the session.
+        return !_moderationManager.HasBan(ModerationBanType.Username, username) && !_moderationManager.HasBan(ModerationBanType.Machine, session.MachineId);
+#pragma warning restore CS0618
     }
 }

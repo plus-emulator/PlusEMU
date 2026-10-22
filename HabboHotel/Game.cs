@@ -93,6 +93,8 @@ public class Game : IGame
         }
     }
 
+    internal static int PollDelay(double nowMs) => throw new NotImplementedException();
+
     public void StopGameLoop()
     {
         lock (_cycleSync) {

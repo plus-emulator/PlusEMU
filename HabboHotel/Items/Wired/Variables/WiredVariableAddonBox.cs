@@ -204,7 +204,8 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
         using var reads = _variables.CaptureReads([source.Variable], frame);
         var labels = p[1] == 2 && WiredVariableModule.TryDefinitionId(source.Variable.Token, out var id) ? _textConnector(id) : null;
         string Shown(WiredVariableHolder holder) => !source.Valueless && reads.Read(source.Variable, holder, frame) is { } value
-            ? value.Value is >= int.MinValue and <= int.MaxValue && labels?.GetValueOrDefault((int)value.Value) is { } label ? label : value.Value.ToString(CultureInfo.InvariantCulture)
+            ? value.Value is >= int.MinValue and <= int.MaxValue && labels?.GetValueOrDefault((int)value.Value) is { } label ? label
+                : labels is WiredTextConnector { Fallback: { } fallback } ? fallback : value.Value.ToString(CultureInfo.InvariantCulture)
             : "null";
         // Observed on AIR WIN63-202610201032-107964540: a furni or user without the variable shows "null" and a bot is left out. With
         // nobody to show, the placeholder stays as written.

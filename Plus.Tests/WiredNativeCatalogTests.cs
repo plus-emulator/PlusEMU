@@ -188,6 +188,25 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.Equal(native.Hash, catalog.Diff(new Dictionary<string, int>()).SelectMany(diff => diff.Changed).Single(row => row.Id == native.Id).Hash);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: the catalog entry of a variable with a "_=text" connector line carries the fallback,
+    // also when the connector has no number lines, and a changed fallback changes the row hash.
+    [Theory]
+    [InlineData("7=seven\n_=other", "other", 1)]
+    [InlineData("_=other", "other", 0)]
+    [InlineData("_=", "", 0)]
+    [InlineData("7=seven", null, 1)]
+    public void TheNativeCatalogRowCarriesTheConnectorFallback(string text, string? fallback, int labels)
+    {
+        var fixture = new Fixture();
+        fixture.AddDefinition(10);
+        fixture.AddMetadata(20, "wf_xtra_var_text_connector", new() { Text = text });
+        Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
+        var native = Assert.Single(Own(catalog!));
+        Assert.Equal(fallback, native.TextConnectorFallback);
+        Assert.Equal(labels, native.Connector!.Value.Length);
+        Assert.NotEqual(native.Hash, (native with { TextConnectorFallback = "changed" }).Hash);
+    }
+
     [Theory]
     [InlineData("save")]
     [InlineData("load")]

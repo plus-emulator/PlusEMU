@@ -10,7 +10,8 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
     // AIR WIN63-202610201032-107964540).
     public bool RequiresExecutionContext => Definition.IsPointer;
     public string? TextConnectorFallback { get; init; }
-    public bool HasTextConnectorFallback => TextConnector.Count > 0 && TextConnectorFallback is not null;
+    public bool HasTextConnectorFallback => TextConnectorFallback is not null;
+    public bool HasTextConnector => TextConnector.Count > 0 || HasTextConnectorFallback;
     public bool IsBuiltin { get; init; }
     public bool IsDerived { get; init; }
     public bool CanCreateAndDelete => !ReadOnly && !IsBuiltin && !IsDerived && Definition.Target is WiredVariableTarget.User or WiredVariableTarget.Furni;
@@ -84,7 +85,7 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
             var hash = StableHash(CatalogId);
 
             foreach (var value in new[] { StableHash(Definition.Name), CatalogTarget, (int)Definition.Availability, CatalogTarget,
-                HasValue ? 1 : 0, TextConnector.Count > 0 ? 2 : 0, ReadOnly ? 4 : 0, IsBuiltin ? 1 : 0, IsDerived ? 1 : 0,
+                HasValue ? 1 : 0, HasTextConnector ? 2 : 0, ReadOnly ? 4 : 0, IsBuiltin ? 1 : 0, IsDerived ? 1 : 0,
                 RequiresExecutionContext ? 1 : 0 }) {
                 hash = unchecked(hash * 31 + value);
             }
@@ -94,7 +95,7 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
                 hash = unchecked(hash * 31 + StableHash(value));
             }
 
-            if (TextConnector.Count > 0) {
+            if (HasTextConnector) {
                 hash = unchecked(hash * 31 + (HasTextConnectorFallback ? 1 : 0));
 
                 if (HasTextConnectorFallback) {

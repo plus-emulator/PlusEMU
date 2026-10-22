@@ -36,4 +36,32 @@ public class WiredTextConnectorParseTests
         Assert.True(Plus.HabboHotel.Items.Wired.Configuration.WiredNativeEditorProjection.TryCompile(1, descriptor, native, out var runtime));
         Assert.Equal("3=b\n9=a", runtime.Origin!.Native.Text);
     }
+
+    // Observed on AIR WIN63-202610201032-107964540: a line "_=text" is the fallback text. The last one wins, the text may be
+    // empty and may hold "=", and a line with spaces around the "_" is dropped like any other bad line.
+    [Theory]
+    [InlineData("7=seven\n_=other", "other")]
+    [InlineData("_=other", "other")]
+    [InlineData("_=", "")]
+    [InlineData("_=[Empty]", "[Empty]")]
+    [InlineData("_=a\n_=b", "b")]
+    [InlineData("_=x\n_=", "")]
+    [InlineData("_=a=b", "a=b")]
+    [InlineData("7=seven\n\n_=o", "o")]
+    [InlineData(" _ = x ", null)]
+    [InlineData("_ =x", null)]
+    [InlineData(" _=x", null)]
+    [InlineData("7=seven", null)]
+    public void ReadsTheFallbackLine(string text, string? fallback) =>
+        Assert.Equal(fallback, WiredVariableMetadataBox.ParseConnector(text).Fallback);
+
+    // Observed on AIR WIN63-202610201032-107964540: entries are stored in number order and the fallback is written last.
+    [Theory]
+    [InlineData("_=other\n7=seven", "7=seven\n_=other")]
+    [InlineData("7=seven\n_=other\n9=nine", "7=seven\n9=nine\n_=other")]
+    [InlineData("_=x\n_=", "_=")]
+    [InlineData("_=a=b", "_=a=b")]
+    [InlineData(" _=x", "")]
+    public void StoresTheFallbackAfterTheEntries(string text, string stored) =>
+        Assert.Equal(stored, WiredVariableMetadataBox.NormalizeConnector(text));
 }

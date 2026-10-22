@@ -56,6 +56,78 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal([(20, 9, 10), (21, 10, 11)], batch.Select(entry => (entry.Id, entry.FromX, entry.ToX)).Order());
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: the ObjectsDataUpdate and the WiredMovements of one firing are adjacent. A Show
+    // Message chat comes before the data update or after the WiredMovements, never between them.
+    [Fact]
+    public void SayStackThatTogglesMovesAndShowsAMessageSendsTheChatAfterTheWiredMovements()
+    {
+        var f = new Fixture(
+        [
+            (5, 6, 8, 0.0, 0, "wf_colortile", null),
+            (20, 9, 12, 0.0, 0, "bc_tile_1", null),
+            (30, 4, 14, 0.0, 0, "wf_trg_says_something", SaysConfig("bx")),
+            (31, 4, 14, 0.65, 0, "wf_act_toggle_state", ObservedNative("wf_act_toggle_state", [0], [5], 100)),
+            (32, 4, 14, 1.3, 0, "wf_act_move_rotate", MoveRotateConfig(5, 20)),
+            (33, 4, 14, 1.95, 0, "wf_act_show_message", ShownMessage("r115 c"))
+        ], live: true);
+        var rider = f.Walker((int)SpeakerId, 4, 10, 4, 11);
+        f.Advance(1000);
+        var packets = CapturePublication(rider);
+
+        f.Owned(() => rider.OnChat(0, "bx", false));
+        f.Advance(200);
+
+        var message = System.Text.Encoding.UTF8.GetBytes("r115 c");
+        var order = packets.Select(bytes => BinaryPrimitives.ReadUInt32BigEndian(bytes) switch
+        {
+            ServerPacketHeader.ObjectsDataUpdateComposer => "data",
+            ServerPacketHeader.WiredMovementsComposer => "movements",
+            _ when bytes.AsSpan().IndexOf(message) >= 0 => "message",
+            _ => null
+        }).OfType<string>();
+        Assert.Equal(["data", "movements", "message"], order);
+    }
+
+    // A toggled furni whose height depends on its state sends its own ObjectUpdate. When an earlier stack of the same say has moved furni,
+    // that stack's WiredMovements goes out first.
+    [Fact]
+    public void ToggleOfAFurniWithStateHeightsSendsTheEarlierStacksWiredMovementsFirst()
+    {
+        const uint block = 51;
+        var f = new Fixture(
+        [
+            (block, 6, 8, 0.0, 0, "bc_block_0_recolorable", null),
+            (20, 9, 12, 0.0, 0, "bc_tile_1", null),
+            (40, 5, 14, 0.0, 0, "wf_trg_says_something", SaysConfig("bx")),
+            (41, 5, 14, 0.65, 0, "wf_act_move_rotate", MoveRotateConfig(5, 20)),
+            (30, 4, 14, 0.0, 0, "wf_trg_says_something", SaysConfig("bx")),
+            (31, 4, 14, 0.65, 0, "wf_act_toggle_state", ObservedNative("wf_act_toggle_state", [0], [block], 100))
+        ], live: true);
+
+        // As the furniture table defines it: five states, 1.0 high at state 0 and 0.25 lower per state.
+        var definition = f.Items[block].Definition;
+        definition.Height = 1.0;
+        definition.Modes = 5;
+        definition.AdjustableHeights = [1.0, 0.75, 0.5, 0.25, 0.0];
+        definition.InteractionName = "recolorable";
+        definition.InteractionType = Plus.HabboHotel.Items.InteractionType.Recolorable;
+        f.Items[block].ExtraData = new Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat();
+
+        var rider = f.Walker((int)SpeakerId, 4, 10, 4, 11);
+        // Runs the move stack (40) before the toggle stack (30).
+        f.SetEngineCallback("_effectOrderRandom", new StackOrderRandom(true));
+        f.Advance(1000);
+        var packets = CapturePublication(rider);
+
+        f.Owned(() => rider.OnChat(0, "bx", false));
+        f.Advance(200);
+
+        var frames = packets.Select(bytes => BinaryPrimitives.ReadUInt32BigEndian(bytes))
+            .Where(header => header is ServerPacketHeader.WiredMovementsComposer or ServerPacketHeader.ObjectUpdateComposer);
+        Assert.Equal([ServerPacketHeader.WiredMovementsComposer, ServerPacketHeader.ObjectUpdateComposer], frames);
+        Assert.Equal("1", f.Items[block].LegacyDataString);
+    }
+
     // Observed on AIR WIN63-202610201032-107964540: one Move and Rotate User box whose selector picks two users sends one
     // WiredMovements with both user moves (5 of 5 firings).
     [Fact]

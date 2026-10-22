@@ -87,6 +87,25 @@ public sealed class VoucherRedemptionServiceTests
         Assert.Equal(8, write.Parameters["amount"]);
     }
 
+    [Theory]
+    [InlineData("CREDIT", "credit")]
+    [InlineData("DUCKET", "ducket")]
+    public void VoucherTheWalletCannotHoldStaysUnclaimed(string code, string type)
+    {
+        var voucher = new Voucher(code, type, 25, 0, 2);
+        var habbo = new Habbo { Id = 7, Credits = int.MaxValue - 10, Duckets = int.MaxValue - 10 };
+        var (client, sent) = HabbiconTestSupport.Client(habbo);
+        var store = new RecordingStore();
+
+        new VoucherRedemptionService(new VoucherManagerFake(voucher), store).Redeem(client, code);
+
+        Assert.Empty(store.Claims);
+        Assert.Equal(int.MaxValue - 10, habbo.Credits);
+        Assert.Equal(int.MaxValue - 10, habbo.Duckets);
+        Assert.Equal(0, voucher.CurrentUses);
+        Assert.Empty(sent);
+    }
+
     [Fact]
     public void ClosedWalletDoesNotClaimVoucher()
     {

@@ -63,7 +63,7 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
             return false;
         }
 
-        if (definition is { Link: not null } && Descriptor.CanonicalName == "wf_var_reference" && _editor?.RefuseReference(definition) is { } duplicate) {
+        if (definition is { Link: not null } && Descriptor.CanonicalName == "wf_var_reference" && _editor?.RefuseReference(definition, stored: true) is { } duplicate) {
             error = duplicate;
 
             return false;
@@ -96,9 +96,16 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
             return _editor.RefuseName(Item.Id, proposed.Text, Descriptor.CanonicalName == "wf_var_pointer");
         }
 
-        return Descriptor.CanonicalName == "wf_var_echo" && WiredVariableDefinitions.TryDecode(Descriptor.CanonicalName, Item.Id, Instance.Id,
-                Instance.OwnerId > 0 ? (uint)Instance.OwnerId : 0, proposed, out var echo, out _)
-            && echo?.Link is { } link && _editor.IsPointer(link.Source) ? WiredVariableDefinitions.NeedsExecutionContextKey : null;
+        if (!WiredVariableDefinitions.TryDecode(Descriptor.CanonicalName, Item.Id, Instance.Id,
+                Instance.OwnerId > 0 ? (uint)Instance.OwnerId : 0, proposed, out var definition, out _) || definition?.Link is not { } link) {
+            return null;
+        }
+
+        if (Descriptor.CanonicalName == "wf_var_reference") {
+            return _editor.RefuseReference(definition);
+        }
+
+        return Descriptor.CanonicalName == "wf_var_echo" && _editor.IsPointer(link.Source) ? WiredVariableDefinitions.NeedsExecutionContextKey : null;
     }
     public void ApplyConfiguration(WiredConfiguration validated)
     {

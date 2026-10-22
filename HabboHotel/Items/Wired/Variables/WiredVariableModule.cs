@@ -837,16 +837,27 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     /// <summary>
     /// The key a proposed reference is refused with, or null. Observed on AIR WIN63-202610201032-107964540: the variable must be shared
     /// in the room it names, and that room must have the same owner. A room holds one reference to a shared variable, a second one is
-    /// refused.
+    /// refused. With <paramref name="stored"/>, a source that no longer exists is no refusal: observed on AIR WIN63-202610201032-107964540,
+    /// a reference whose source was picked up keeps its settings and still opens.
     /// </summary>
-    public string? RefuseReference(WiredVariableDefinition proposed)
+    public string? RefuseReference(WiredVariableDefinition proposed, bool stored = false)
     {
         if (proposed.Link is not { } link) {
             return null;
         }
 
         lock (_gate) {
-            if (!TryDefinitionId(link.Source.Token, out var sourceId) || directory.Find(sourceId) is not { Availability: WiredVariableAvailability.Shared, Link: null } source
+            if (!TryDefinitionId(link.Source.Token, out var sourceId)) {
+                return WiredVariableDefinitions.InvalidReferenceKey;
+            }
+
+            var found = directory.Find(sourceId);
+
+            if (found is null && stored) {
+                return null;
+            }
+
+            if (found is not { Availability: WiredVariableAvailability.Shared, Link: null } source
                 || source.RoomId != link.SourceRoomId || source.Target != link.Source.Target) {
                 return WiredVariableDefinitions.InvalidReferenceKey;
             }

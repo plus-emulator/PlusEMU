@@ -16,9 +16,9 @@ public interface IMarketplaceOfferStore
     // The same for a batch: every offer and every removal commits together, or nothing does (false when one of the furni is on a music playlist).
     bool ListFurni(IReadOnlyList<MarketplaceListing> listings);
 
-    // Claims the user's sold offers in one transaction. Returns the total owed, or null (nothing changed) when a claim is negative,
-    // overflows, or accepts rejects the total.
-    int? ClaimSold(int userId, Func<int, bool> accepts);
+    // Claims the user's sold offers in one transaction. Returns the user's new credit balance, or null (nothing changed) when nothing
+    // was sold, a claim is negative, the total overflows, or balanceAfter has no balance for the total.
+    int? ClaimSold(int userId, Func<int, int?> balanceAfter);
 }
 
 public sealed class MarketplaceOfferStore(IDatabase database) : IMarketplaceOfferStore
@@ -74,7 +74,7 @@ public sealed class MarketplaceOfferStore(IDatabase database) : IMarketplaceOffe
         }
     }
 
-    public int? ClaimSold(int userId, Func<int, bool> accepts)
+    public int? ClaimSold(int userId, Func<int, int?> balanceAfter)
     {
         using var connection = database.Connection();
         connection.Open();
@@ -95,24 +95,26 @@ public sealed class MarketplaceOfferStore(IDatabase database) : IMarketplaceOffe
                 owed += offer.AskingPrice;
             }
 
-            if (owed > int.MaxValue || !accepts((int)owed)) {
+            if (sold.Count == 0 || owed > int.MaxValue || balanceAfter((int)owed) is not { } credits) {
                 transaction.Rollback();
 
                 return null;
             }
 
-            if (sold.Count > 0) {
-                var deleted = connection.Execute("DELETE FROM `catalog_marketplace_offers` WHERE `user_id` = @userId AND `state` = '2' AND `offer_id` IN @offerIds",
-                    new { userId, offerIds = sold.Select(offer => offer.OfferId).ToArray() }, transaction);
+            var deleted = connection.Execute("DELETE FROM `catalog_marketplace_offers` WHERE `user_id` = @userId AND `state` = '2' AND `offer_id` IN @offerIds",
+                new { userId, offerIds = sold.Select(offer => offer.OfferId).ToArray() }, transaction);
 
-                if (deleted != sold.Count) {
-                    throw new InvalidOperationException($"Claimed {sold.Count} sold offers for user {userId} but removed {deleted}; nothing was paid.");
-                }
+            if (deleted != sold.Count) {
+                throw new InvalidOperationException($"Claimed {sold.Count} sold offers for user {userId} but removed {deleted}; nothing was paid.");
+            }
+
+            if (connection.Execute("UPDATE users SET credits = @credits WHERE id = @userId LIMIT 1", new { credits, userId }, transaction) != 1) {
+                throw new InvalidOperationException($"User {userId} was not paid; the sold offers stay queued.");
             }
 
             transaction.Commit();
 
-            return (int)owed;
+            return credits;
         }
         catch {
             transaction.Rollback();

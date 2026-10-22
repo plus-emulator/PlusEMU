@@ -108,6 +108,29 @@ public class MarketplacePurchaseTests
     }
 
     [Fact]
+    public void RealStoreCommitsTheBuyerChargeWithTheDelivery()
+    {
+        Dapper.SqlMapper.AddTypeHandler(new Plus.Database.UtcDateTimeOffsetHandler());
+        var offer = new System.Data.DataTable();
+
+        foreach (var (name, type) in new[] { ("State", typeof(string)), ("ListedAt", typeof(DateTime)), ("TotalPrice", typeof(int)), ("ExtraData", typeof(string)),
+                     ("ItemId", typeof(uint)), ("FurniId", typeof(uint)), ("UserId", typeof(uint)), ("LimitedNumber", typeof(int)), ("LimitedStack", typeof(int)) }) {
+            offer.Columns.Add(name, type);
+        }
+
+        offer.Rows.Add("1", Now.AddSeconds(-1000).UtcDateTime, 101, "", 900u, 77u, 7u, 0, 0);
+        var database = new GroupManagementTests.RecordingDatabase { OfferRows = offer };
+        var (client, _) = HabbiconTestSupport.Client(Buyer(credits: 1000));
+
+        Assert.Equal(MarketplacePurchaseOutcome.Bought, Service(new MarketplacePurchaseStore(database), new(), new()).Buy(client, 5));
+
+        Assert.Equal(899, client.GetHabbo().Credits);
+        Assert.Equal(new[] { "commit", "dispose" }, database.Transactions);
+        Assert.Single(database.Writes, write => write.Sql.StartsWith("INSERT INTO `items`", StringComparison.Ordinal));
+        MarketplaceRedemptionTests.AssertCreditsWritten(database, userId: 8, credits: 899);
+    }
+
+    [Fact]
     public void ClosedWalletIsNotOfferedToTheStore()
     {
         var store = new ClaimStore(Claim());
@@ -138,7 +161,7 @@ public class MarketplacePurchaseTests
         return new MarketplacePurchaseService(store, items, marketplace, new FixedClock(Now));
     }
 
-    private static MarketplaceClaimedOffer Claim() => new(101, 55, new InventoryItem { Id = 77, OwnerId = 8, Definition = Definition(), ExtraData = FurniObjectData.Empty });
+    private static MarketplaceClaimedOffer Claim() => new(101, 55, new InventoryItem { Id = 77, OwnerId = 8, Definition = Definition(), ExtraData = FurniObjectData.Empty }, 899);
 
     private static ItemDefinition Definition() => new() { Id = 900, SpriteId = 55, PublicName = "Probe", ItemName = "probe", Type = ItemType.Floor, AllowTrade = true, AllowMarketplaceSell = true };
 

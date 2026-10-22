@@ -4,7 +4,9 @@ using Plus.Communication.Packets.Outgoing.Catalog;
 using Plus.Communication.Packets.Outgoing.Inventory.Purse;
 using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Database;
+using Plus.HabboHotel.Catalog.Marketplace;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Users;
 
 namespace Plus.HabboHotel.Catalog.Vouchers;
 
@@ -15,12 +17,13 @@ public enum VoucherClaimResult
 
 public interface IVoucherClaimStore
 {
-    VoucherClaimResult Claim(int userId, string code);
+    // Marks the code used by the user and sets the voucher's currency to balance in one transaction.
+    VoucherClaimResult Claim(int userId, string code, VoucherType type, int balance);
 }
 
 public sealed class VoucherClaimStore(IDatabase database) : IVoucherClaimStore
 {
-    public VoucherClaimResult Claim(int userId, string code)
+    public VoucherClaimResult Claim(int userId, string code, VoucherType type, int balance)
     {
         using var connection = database.Connection();
         connection.Open();
@@ -33,6 +36,15 @@ public sealed class VoucherClaimStore(IDatabase database) : IVoucherClaimStore
         if (connection.Execute("UPDATE catalog_vouchers SET current_uses=current_uses+1 WHERE voucher=@code AND enabled=1 AND current_uses<max_uses LIMIT 1",
                 new { code }, transaction) != 1) {
             return VoucherClaimResult.Exhausted;
+        }
+
+        if (type == VoucherType.Credit) {
+            if (connection.Execute("UPDATE users SET credits = @balance WHERE id = @userId LIMIT 1", new { balance, userId }, transaction) != 1) {
+                throw new InvalidOperationException($"User {userId} was not paid voucher {code}; the code stays unused.");
+            }
+        }
+        else {
+            UserCurrencyStore.Set(connection, userId, ActivityPointType.Duckets, balance, transaction);
         }
 
         transaction.Commit();
@@ -64,8 +76,12 @@ public sealed class VoucherRedemptionService(IVoucherManager vouchers, IVoucherC
                 return;
             }
 
+            if (CreditBalance.AddToBalance(voucher.Type == VoucherType.Credit ? habbo.Credits : habbo.Duckets, voucher.Value) is not { } balance) {
+                return;
+            }
+
             lock (voucher) {
-                switch (claims.Claim(habbo.Id, code)) {
+                switch (claims.Claim(habbo.Id, code, voucher.Type, balance)) {
                     case VoucherClaimResult.AlreadyUsed:
                         session.SendNotification("You've already used this voucher code, one per each user, sorry!");
 
@@ -80,11 +96,11 @@ public sealed class VoucherRedemptionService(IVoucherManager vouchers, IVoucherC
             }
 
             if (voucher.Type == VoucherType.Credit) {
-                habbo.Credits += voucher.Value;
+                habbo.Credits = balance;
                 session.Send(new CreditBalanceComposer(habbo.Credits));
             }
-            else if (voucher.Type == VoucherType.Ducket) {
-                habbo.Duckets += voucher.Value;
+            else {
+                habbo.Duckets = balance;
                 session.Send(new HabboActivityPointNotificationComposer(habbo.Duckets, voucher.Value));
             }
 

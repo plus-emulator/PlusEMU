@@ -16,13 +16,13 @@ public sealed record MarketplaceDelivery(uint FurniId, uint ItemId, string Extra
 public sealed record MarketplacePurchaseRequest(int OfferId, int BuyerId, int BuyerCredits, DateTimeOffset ListedBefore,
     Func<uint, ItemDefinition?> DefinitionOf, Func<MarketplaceDelivery, InventoryItem> Prepare);
 
-public sealed record MarketplaceClaimedOffer(int TotalPrice, int SpriteId, InventoryItem Delivery);
+public sealed record MarketplaceClaimedOffer(int TotalPrice, int SpriteId, InventoryItem Delivery, int BuyerCredits);
 
 public sealed record MarketplacePurchaseResult(MarketplacePurchaseRefusal? Refusal, MarketplaceClaimedOffer? Offer);
 
 public interface IMarketplacePurchaseStore
 {
-    // Claims one offer, delivers its furni row and records the sale in one transaction. Refusals and failures before the first write change nothing.
+    // Claims one offer, delivers its furni row, charges the buyer and records the sale in one transaction. Refusals and failures before the first write change nothing.
     MarketplacePurchaseResult Claim(MarketplacePurchaseRequest request);
 }
 
@@ -107,10 +107,16 @@ public sealed class MarketplacePurchaseStore(IDatabase database) : IMarketplaceP
                 throw new InvalidOperationException($"Furni {offer.FurniId} was not delivered; nothing was charged.");
             }
 
+            var credits = request.BuyerCredits - offer.TotalPrice;
+
+            if (connection.Execute("UPDATE users SET credits = @credits WHERE id = @BuyerId LIMIT 1", new { credits, request.BuyerId }, transaction) != 1) {
+                throw new InvalidOperationException($"User {request.BuyerId} was not charged; nothing was delivered.");
+            }
+
             RecordSale(connection, transaction, definition.SpriteId, offer.TotalPrice);
             transaction.Commit();
 
-            return new MarketplacePurchaseResult(null, new MarketplaceClaimedOffer(offer.TotalPrice, definition.SpriteId, prepared));
+            return new MarketplacePurchaseResult(null, new MarketplaceClaimedOffer(offer.TotalPrice, definition.SpriteId, prepared, credits));
         }
         catch {
             transaction.Rollback();

@@ -4,6 +4,7 @@ using Plus.Communication.Packets.Outgoing.Catalog;
 using Plus.Communication.Packets.Outgoing.Inventory.Purse;
 using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Database;
+using Plus.HabboHotel.Catalog.Marketplace;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users;
 
@@ -75,7 +76,9 @@ public sealed class VoucherRedemptionService(IVoucherManager vouchers, IVoucherC
                 return;
             }
 
-            var balance = (voucher.Type == VoucherType.Credit ? habbo.Credits : habbo.Duckets) + voucher.Value;
+            if (CreditBalance.AddToBalance(voucher.Type == VoucherType.Credit ? habbo.Credits : habbo.Duckets, voucher.Value) is not { } balance) {
+                return;
+            }
 
             lock (voucher) {
                 switch (claims.Claim(habbo.Id, code, voucher.Type, balance)) {

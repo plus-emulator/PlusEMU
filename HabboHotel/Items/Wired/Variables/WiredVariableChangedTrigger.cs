@@ -116,7 +116,7 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             return Matches(config with { Text = reference.Token }, part, context.Room.Id);
         }
 
-        return Matches(config with { Text = reference.Token }, change, context.Room.Id);
+        return module.InterceptsChanges(reference) && Matches(config with { Text = reference.Token }, change, context.Room.Id);
     }
     // Source-derived scalar support. Resolve only live definitions of this room through the module's ownership checks.
     // Echo/reference/derived-box identity is intentionally not guessed without a runtime observation.
@@ -127,7 +127,7 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
         }
 
         return module.DescribeDefinitions(config.SelectedItems).Any(variable => variable.Definition.Link is null
-            && variable.Definition.Target != WiredVariableTarget.Context
+            && variable.Definition.InterceptsChanges
             && Matches(config with { IntParams = config.IntParams.SetItem(0, (int)variable.Definition.Target), Text = variable.Definition.Token }, change, roomId));
     }
     public static bool Matches(WiredConfiguration config, WiredVariableChange change) => Matches(config, change, change.RoomId);

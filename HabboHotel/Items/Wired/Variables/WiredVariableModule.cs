@@ -890,6 +890,14 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         }
     }
 
+    /// <summary>False when the reference names a variable whose changes no Variable Changed trigger sees.</summary>
+    public bool InterceptsChanges(WiredVariableReference reference)
+    {
+        lock (_gate) {
+            return Resolve(reference, false)?.Definition is not { InterceptsChanges: false };
+        }
+    }
+
     /// <summary>
     /// What a text placeholder for this reference shows in this firing, or null when it stays as written. A pointer shows the variable
     /// it points at. Observed on AIR WIN63-202610201032-107964540: a pointer that points at nothing leaves the placeholder, and a pointed

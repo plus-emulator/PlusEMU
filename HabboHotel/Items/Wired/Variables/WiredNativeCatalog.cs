@@ -237,7 +237,7 @@ internal static class WiredNativeCatalogProjection
                 : crossRoom ? ReferenceAvailability : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
-            !contextBox && (definition.Link is null || crossRoom) && (writable || description.Interceptable) && builtin is null, false,
+            (definition.InterceptsChanges || description.IsDerived) && (definition.Link is null || crossRoom) && (writable || description.Interceptable) && builtin is null, false,
             timestamps && definition.Target != WiredVariableTarget.Global, timestamps && (!contextBox || hasValue), connector);
 
         // Observed on AIR WIN63-202610201032-107964540: a pointer is listed as a normal variable of availability 999 that can be created,

@@ -267,7 +267,7 @@ public sealed class CatalogPurchaseServiceTests
         Assert.Equal(ServerPacketHeader.BroadcastMessageAlertComposer, error.Header);
         var payload = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = error.Payload };
         Assert.Equal("Oops! There was an error whilst purchasing this bot. It seems that there is no bot data for the bot!", payload.ReadString());
-        Assert.Equal("", payload.ReadString());
+        Assert.False(payload.HasDataRemaining());
         Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
         Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.FurniListUpdateComposer);
     }

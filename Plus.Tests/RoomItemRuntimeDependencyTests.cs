@@ -267,7 +267,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(ServerPacketHeader.BroadcastMessageAlertComposer, packet.Header);
         var body = new FlashIncomingPacket { Buffer = packet.Bytes[6..] };
         Assert.Equal("localized duplicate", body.ReadString());
-        Assert.Equal(string.Empty, body.ReadString());
         Assert.False(body.HasDataRemaining());
     }
 

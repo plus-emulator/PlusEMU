@@ -39,7 +39,7 @@ public sealed class FurnitureInventoryPersistenceTests
         Assert.Empty(context.Sent[0].Payload);
         var notification = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = context.Sent[1].Payload };
         Assert.Equal("Your inventory has been cleared!", notification.ReadString());
-        Assert.Equal("", notification.ReadString());
+        Assert.False(notification.HasDataRemaining());
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public sealed class FurnitureInventoryPersistenceTests
         Assert.Equal(ServerPacketHeader.BroadcastMessageAlertComposer, notification.Header);
         var packet = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = notification.Payload };
         Assert.Equal("To confirm, you must type in :emptyitems yes", packet.ReadString());
-        Assert.Equal("", packet.ReadString());
+        Assert.False(packet.HasDataRemaining());
     }
 
     [Fact]

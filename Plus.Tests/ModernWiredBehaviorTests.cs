@@ -294,16 +294,17 @@ public partial class ModernWiredBehaviorTests
     }
 
     [Fact]
-    public void RepeaterDeadlinesRestartFromLatePolls()
+    public void ARepeatShortKeepsItsDeadlinesAfterALatePoll()
     {
         var timers = new WiredTimedTriggers();
         var config = new WiredConfiguration { IntParams = [2] };
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1000, 0, 0));
         Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1130, 0, 0));
-        // The late poll starts the next 100ms wait at 1130.
+        // Observed on AIR WIN63-202610201032-107964540: a Repeat Short does not drift, so the late poll at 1130 keeps the 1200 deadline.
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1199, 0, 0));
-        Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1200, 0, 0));
-        Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1230, 0, 0));
+        Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1200, 0, 0));
+        Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1230, 0, 0));
+        Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1300, 0, 0));
         // A poll long after skips the deadlines it slept through instead of firing for each.
         Assert.True(timers.TryFire("wf_trg_period_short", 1, config, long.MaxValue / 2, 0, 0));
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, long.MaxValue / 2, 0, 0));

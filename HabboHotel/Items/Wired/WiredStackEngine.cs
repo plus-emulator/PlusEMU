@@ -314,6 +314,7 @@ internal sealed partial class WiredStackEngine
         }
 
         DrainDueActions();
+        _roomTickOpen = false;
         UpdateFastWork();
 
         return true;

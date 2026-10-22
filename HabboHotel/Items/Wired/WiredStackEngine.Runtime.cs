@@ -140,13 +140,17 @@ internal sealed partial class WiredStackEngine
 
         RefreshStacks();
         var samePass = RunsInPassOfChange(@event.Kind);
+        // Observed on AIR WIN63-202610201032-107964540: a Walks On or Walks Off that the room tick raised runs in that tick and its output
+        // follows the tick's UserUpdate in the same ms; a delay counts from the tick.
+        var walkInTick = _roomTickOpen && @event.Kind is WiredEventKind.WalkOn or WiredEventKind.WalkOff;
         // Observed on AIR WIN63-202610201032-107964540: the stacks of a Bot Reaches Furni also run at once, because a Bot Teleport raises it
         // in the tick that republishes the bot.
         var dispatch = new PendingDispatch(@event, eventDepth)
         {
             CollisionProof = collision,
             SamePass = samePass,
-            ResumeImmediately = samePass || @event.Kind == WiredEventKind.BotReachedFurni
+            ResumeImmediately = samePass || walkInTick || @event.Kind == WiredEventKind.BotReachedFurni,
+            FiredAt = walkInTick ? LastRoomTick : null
         };
         SnapshotDispatch(dispatch);
 
@@ -499,6 +503,8 @@ internal sealed partial class WiredStackEngine
     /// </summary>
     public void OnRoomTickEnd() => Pass(() =>
     {
+        _roomTickOpen = false;
+
         if (!_splitEnd || Disabled) {
             return false;
         }
@@ -529,6 +535,7 @@ internal sealed partial class WiredStackEngine
 
         var now = _now();
         LastRoomTick = now - now % WiredFlashStates.StateUpdateMilliseconds;
+        _roomTickOpen = true;
         _roomTickDrain = true;
         _splitEnd = splitEnd;
 
@@ -545,6 +552,9 @@ internal sealed partial class WiredStackEngine
     });
 
     private bool _roomTickDrain;
+    // From the start of a room tick until its avatar updates are sent: the walks its actors and rollers raise run in it. A walk that a
+    // Wired effect raises later in the pass waits one pass, as it does from a fast pass.
+    private bool _roomTickOpen;
     private bool _splitEnd;
     private bool _endPhase;
 
@@ -606,6 +616,7 @@ internal sealed partial class WiredStackEngine
         RunRuntimeTimersAndSignals();
         DrainDueActions();
         DrainSamePassEvents();
+        _roomTickOpen = false;
         UpdateFastWork();
 
         return true;
@@ -641,13 +652,14 @@ internal sealed partial class WiredStackEngine
         context.Selected = context.Triggering.Copy();
     }
 
-    private bool RunRuntimeStack(IWiredItem source, WiredRuntimeContext context, bool? negative, object[][]? conditionActors = null, bool defer = true)
+    private bool RunRuntimeStack(IWiredItem source, WiredRuntimeContext context, bool? negative, object[][]? conditionActors = null, bool defer = true,
+        long? firedAt = null)
     {
         if (TooDeep(context.Depth) || !IsAttached(source)) {
             return false;
         }
 
-        var firing = BeginFiring(source, context, negative, conditionActors);
+        var firing = BeginFiring(source, context, negative, conditionActors, firedAt: firedAt);
 
         if (ResumeFiring(firing)) {
             firing.Dispose();
@@ -837,10 +849,13 @@ internal sealed partial class WiredStackEngine
                 snapshot ??= CreateContext(@event, 0);
                 var context = snapshot.Fork(@event, 0);
                 context.Trigger = timer;
+                // Observed on AIR WIN63-202610201032-107964540: a timer's stack runs on the Wired tick it is due and its output goes out in
+                // that tick, after the room tick's UserUpdate; a delay counts from that tick.
+                context.ResumeImmediately = true;
                 SeedEvent(context);
 
-                if (RunRuntimeStack(timer, context, null)) {
-                    HoldFlashes([timer.Item], _cycle + 1);
+                if (RunRuntimeStack(timer, context, null, firedAt: now - now % WiredFlashStates.WiredTickMilliseconds)) {
+                    Flash(timer.Item);
                 }
             }
             catch (Exception error) {
@@ -1055,6 +1070,8 @@ internal sealed partial class WiredStackEngine
         public bool Initialized, IsQueued;
         public bool IncludeLegacy = true;
         public bool ResumeImmediately;
+        /// <summary>The time its stacks fire at, when that is not the pass that runs them: the room tick that raised a walk.</summary>
+        public long? FiredAt;
         public bool SamePass;
         public Modern.Actions.WiredFurniturePublication? Publication;
         public HeadingCollisionProof? CollisionProof;

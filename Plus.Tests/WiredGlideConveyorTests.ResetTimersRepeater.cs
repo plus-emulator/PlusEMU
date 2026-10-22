@@ -12,9 +12,9 @@ public sealed partial class WiredGlideConveyorTests
     // after the reset. Observed on AIR WIN63-202610201032-107964540: a 600 s Periodic Long fired 140 ms after the reset and again 600 s
     // after that tick. Neither waited 500 ms.
     [Theory]
-    [InlineData("wf_trg_period_short", 4, new[] { 2550, 2750, 2950, 3150, 3350 })]
-    [InlineData("wf_trg_periodically", 1, new[] { 2550, 3050 })]
-    [InlineData("wf_trg_period_long", 1, new[] { 2550 })]
+    [InlineData("wf_trg_period_short", 4, new[] { 2500, 2700, 2900, 3100, 3300 })]
+    [InlineData("wf_trg_periodically", 1, new[] { 2500, 3000 })]
+    [InlineData("wf_trg_period_long", 1, new[] { 2500 })]
     public void ARepeaterFiresOnTheFirstRoomTickAfterResetTimersAndThenEveryInterval(string timer, int units, int[] toggles)
     {
         string Config(int[] parameters, string text = "", params uint[] selected) => JsonSerializer.Serialize(new WiredConfiguration

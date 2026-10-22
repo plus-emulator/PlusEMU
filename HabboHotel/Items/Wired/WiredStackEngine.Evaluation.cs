@@ -113,7 +113,7 @@ internal sealed partial class WiredStackEngine
         var queued = pending.IsQueued;
         // Observed on AIR WIN63-202610151745-318700621: the stacks one event fires share one WiredMovements. The clock moves on while
         // a stack runs, so every stack this call starts gets the same firing time, and with it the same publication deadline.
-        var firedAt = _now();
+        var firedAt = pending.FiredAt ?? _now();
 
         if (pending.Signal == null && pending.CapturedPositions.Any(position => !IsAttached(position.Box)
             || (position.Box.Item.GetX, position.Box.Item.GetY, position.Box.Item.GetZ, position.Box.Item.MovementGeneration)

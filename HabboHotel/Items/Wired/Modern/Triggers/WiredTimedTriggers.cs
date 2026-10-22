@@ -9,6 +9,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Triggers;
 public sealed class WiredTimedTriggers
 {
     private const long StateUpdateMs = WiredFlashStates.StateUpdateMilliseconds;
+    private const long WiredTickMs = WiredFlashStates.WiredTickMilliseconds;
     private readonly Dictionary<uint, long> _nextPeriodicAt = [];
     private readonly Dictionary<uint, long> _firedEpoch = [];
 
@@ -50,11 +51,11 @@ public sealed class WiredTimedTriggers
         var intervalMs = units * stepMs;
         // Observed on AIR WIN63-202610131318-860371703: a 500 ms "Repeat every" timer first fires on the next 500 ms room boundary after it is
         // armed (the save time does not set the phase) and then stays on that grid, the same ticks as the walk steps. The 5 s timer keeps
-        // the same grid (fires 4959.5 / 9959.6 ms into the run, 5000 ms apart). The 50 ms timer has its own cadence.
+        // the same grid (fires 4959.5 / 9959.6 ms into the run, 5000 ms apart). The 50 ms timer counts on the 50 ms Wired ticks.
         var onGrid = stepMs % StateUpdateMs == 0;
 
         if (!_nextPeriodicAt.TryGetValue(boxId, out var next)) {
-            _nextPeriodicAt[boxId] = onGrid ? NextBoundary(nowMs) + intervalMs - StateUpdateMs : nowMs + intervalMs;
+            _nextPeriodicAt[boxId] = onGrid ? NextBoundary(nowMs) + intervalMs - StateUpdateMs : nowMs - nowMs % WiredTickMs + intervalMs;
 
             return false;
         }
@@ -63,8 +64,10 @@ public sealed class WiredTimedTriggers
             return false;
         }
 
-        // A late poll fires once, then waits a full period from this firing (from its grid boundary for a grid timer).
-        _nextPeriodicAt[boxId] = (onGrid ? nowMs - nowMs % StateUpdateMs : nowMs) + intervalMs;
+        // A late poll fires once. A grid timer counts the next period from its 500 ms boundary. Observed on AIR WIN63-202610201032-107964540:
+        // a 200 ms Repeat Short fires at room tick + 0, 200, 400, 100, 300 ms with no drift and no lost tick, so it counts from its due time;
+        // a poll a whole period late skips the missed periods instead of firing them in a burst.
+        _nextPeriodicAt[boxId] = onGrid ? nowMs - nowMs % StateUpdateMs + intervalMs : next + ((nowMs - next) / intervalMs + 1) * intervalMs;
 
         return true;
     }

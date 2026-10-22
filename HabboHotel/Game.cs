@@ -38,7 +38,7 @@ public class Game : IGame
 
     private IBotManager _botManager;
     private ICacheManager _cacheManager;
-    private readonly int _cycleSleepTime = 25;
+    private const int PollInterval = 25;
     private IGameDataManager _gameDataManager;
     private volatile bool _cycleActive;
     private readonly object _cycleSync = new();
@@ -89,9 +89,16 @@ public class Game : IGame
         while (_cycleActive) {
             _roomManager.OnCycle();
             _clientManager.OnCycle();
-            Thread.Sleep(_cycleSleepTime);
+            Thread.Sleep(PollDelay(System.Diagnostics.Stopwatch.GetElapsedTime(0).TotalMilliseconds));
         }
     }
+
+    /// <summary>
+    /// The wait until the next 25 ms instant of the monotonic clock the rooms count in, rounded up so the poll never comes early. Room ticks
+    /// (every 500 ms) and Wired ticks (every 50 ms) fall on those instants, so they start on time instead of up to 25 ms late. Observed on AIR
+    /// WIN63-202610201032-107964540: the room tick's UserUpdate keeps its phase within about 5 ms.
+    /// </summary>
+    internal static int PollDelay(double nowMs) => (int)Math.Ceiling(PollInterval - nowMs % PollInterval);
 
     public void StopGameLoop()
     {

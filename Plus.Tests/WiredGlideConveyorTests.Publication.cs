@@ -422,7 +422,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(7, ReadPublication(packets).Count(move => move.Type == 1));
         f.Engine.Remove(11);
         packets.Clear();
-        f.Advance(450);
+        f.Advance(400);
         Assert.Empty(ReadPublication(packets));
         f.Advance(50);
 
@@ -482,12 +482,16 @@ public sealed partial class WiredGlideConveyorTests
     [InlineData(false)]
     public void OpaqueExternalPollAndFlushSealBeforeTheirOutput(bool poll)
     {
-        var f = new Fixture(FastQueueLayout(2), live: true);
+        // Delayed, the repeater's effects of 200 run at 700 ahead of that pass's poll, so its moves are open when the poll sends output.
+        var layout = ChangePublicationConfig(ChangePublicationConfig(FastQueueLayout(2), 12, config => config with { Delay = 1 }),
+            13, config => config with { Delay = 1 });
+        var f = new Fixture(layout, live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
         void Output() => rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, rider.VirtualId, "barrier", 0, -1, true));
 
-        f.Advance(200);
+        f.Advance(650);
+        Assert.Empty(ReadPublication(packets).Where(move => move.Type == 1));
         packets.Clear();
         Assert.True(f.Engine.Enqueue(new(WiredEventKind.WalkOn) { Actor = rider, EventItem = f.Items[1] }));
 
@@ -587,8 +591,9 @@ public sealed partial class WiredGlideConveyorTests
         var f = new Fixture(layout.ToArray(), live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
-        f.Advance(200);
-        f.SetEngineCallback("_limits", new WiredEngineLimits { MaxExecutionsPerPass = 1 });
+        f.Advance(150);
+        // The repeater's stack runs its effects in the pass it fires, after 4 executions of evaluation; one effect fits.
+        f.SetEngineCallback("_limits", new WiredEngineLimits { MaxExecutionsPerPass = 5 });
 
         f.Advance(50);
 
@@ -758,8 +763,9 @@ public sealed partial class WiredGlideConveyorTests
         var f = new Fixture(layout.ToArray(), live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
-        f.Advance(200);
-        f.SetEngineCallback("_limits", new WiredEngineLimits { MaxExecutionsPerPass = 2 });
+        f.Advance(150);
+        // The repeater's stack runs its effects in the pass it fires, after 4 executions of evaluation; two effects fit.
+        f.SetEngineCallback("_limits", new WiredEngineLimits { MaxExecutionsPerPass = 6 });
         f.Advance(50);
         Assert.Equal(7, ReadPublication(packets).Count(move => move.Type == 1));
         Assert.True(f.Engine.ReadStats().Pending > 0);

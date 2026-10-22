@@ -467,21 +467,15 @@ public partial class WiredRuntimeEngineTests
             f.Engine.OnFastCycle();
         }
 
-        // Each reached deadline schedules one chain for the following boundary and rearms from that poll.
+        // Each reached deadline runs its stack in that pass (observed on AIR WIN63-202610201032-107964540). The 500 ms and 5 s timers rearm on
+        // the room's 500 ms grid; the 50 ms timer from its due time, skipping whole periods a late pass missed.
         var expected = new List<long>();
         var next = (long)interval;
-        var pending = false;
 
         foreach (var pass in passes.Skip(1)) {
-            if (pending) {
-                expected.Add(pass);
-                pending = false;
-            }
-
             if (pass >= next) {
-                pending = true;
-                // The 500 ms and 5 s timers rearm on the room's 500 ms grid; the 50 ms timer from the poll.
-                next = (name == "wf_trg_period_short" ? pass : pass - pass % 500) + interval;
+                expected.Add(pass);
+                next = name == "wf_trg_period_short" ? next + ((pass - next) / interval + 1) * interval : pass - pass % 500 + interval;
             }
         }
 
@@ -502,9 +496,9 @@ public partial class WiredRuntimeEngineTests
             f.Engine.OnFastCycle();
         }
 
-        // 2730 schedules one emission for the next pass, then rearms on the grid at 3000 (observed on AIR WIN63-202610131318-860371703:
-        // the 500 ms timer stays on the room's 500 ms grid).
-        Assert.Equal([2999L, 3499L], fired);
+        // 2730 fires in its own pass, then rearms on the grid at 3000 (observed on AIR WIN63-202610131318-860371703: the 500 ms timer stays
+        // on the room's 500 ms grid; observed on AIR WIN63-202610201032-107964540: a timer's output goes out in the tick it fires).
+        Assert.Equal([2730L, 3000L, 3500L], fired);
     }
 
     [Fact]
@@ -521,7 +515,7 @@ public partial class WiredRuntimeEngineTests
             f.Engine.OnFastCycle();
         }
 
-        Assert.Equal([105L, 150L], fired);
+        Assert.Equal([60L, 105L, 150L], fired);
     }
 
     [Fact]
@@ -577,13 +571,13 @@ public partial class WiredRuntimeEngineTests
         Assert.True(f.Engine.NeedsFastCycle);
         f.Engine.OnFastCycle();
         Assert.Equal(1, timer.Polls);
-        Assert.Equal(0, action.Calls);
+        Assert.Equal(1, action.Calls);
         // The room paces the passes; a timer decides for itself whether a deadline is due.
         f.Advance(49);
         Assert.Equal(2, timer.Polls);
         f.Engine.OnCycle();
         Assert.Equal(3, timer.Polls);
-        Assert.Equal(2, action.Calls);
+        Assert.Equal(3, action.Calls);
         f.Engine.Remove(timer.Item.Id);
         Assert.False(f.Engine.NeedsFastCycle);
     }

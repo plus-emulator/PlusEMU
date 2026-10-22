@@ -19,8 +19,11 @@ internal static class RoomCycle
     /// so the room ticks stay on that grid instead of drifting by each pass's lateness. Observed on hhus (AIR WIN63-202610131318-860371703):
     /// a walk's UserUpdates keep one phase within a few ms, and Wired steps land on those ticks; ours moved about 4 ms a tick.
     /// </summary>
-    public static DateTimeOffset Boundary(DateTimeOffset now, long monotonicMilliseconds) =>
-        now - TimeSpan.FromMilliseconds(monotonicMilliseconds % (long)Interval.TotalMilliseconds);
+    public static DateTimeOffset Boundary(DateTimeOffset now, long monotonicMilliseconds) => Boundary(now, monotonicMilliseconds, Interval);
+
+    /// <summary>The start of the <paramref name="interval"/> step of that grid at or before <paramref name="now"/>.</summary>
+    public static DateTimeOffset Boundary(DateTimeOffset now, long monotonicMilliseconds, TimeSpan interval) =>
+        now - TimeSpan.FromMilliseconds(monotonicMilliseconds % (long)interval.TotalMilliseconds);
 
     private const int Idle = 0;
     private const int FastPass = 1;

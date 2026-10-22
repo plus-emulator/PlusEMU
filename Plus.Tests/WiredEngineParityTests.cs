@@ -500,11 +500,12 @@ public partial class WiredRuntimeEngineTests
         Assert.True(timers.TryFire("wf_trg_period_long", 2, configuration, 5750, 5750, 0));
         Assert.False(timers.TryFire("wf_trg_period_long", 2, configuration, 10499, 10499, 0));
         Assert.True(timers.TryFire("wf_trg_period_long", 2, configuration, 10500, 10500, 0));
-        // The 50 ms timer keeps its own cadence from the poll.
+        // Observed on AIR WIN63-202610201032-107964540: the 50 ms timer keeps its own deadlines on the 50 ms grid, so a late firing at 73
+        // waits for 100, not 123.
         Assert.False(timers.TryFire("wf_trg_period_short", 3, configuration, 0, 0, 0));
         Assert.True(timers.TryFire("wf_trg_period_short", 3, configuration, 73, 73, 0));
-        Assert.False(timers.TryFire("wf_trg_period_short", 3, configuration, 122, 122, 0));
-        Assert.True(timers.TryFire("wf_trg_period_short", 3, configuration, 123, 123, 0));
+        Assert.False(timers.TryFire("wf_trg_period_short", 3, configuration, 99, 99, 0));
+        Assert.True(timers.TryFire("wf_trg_period_short", 3, configuration, 100, 100, 0));
     }
 
     // Observed on AIR WIN63-202610131318-860371703: the 5 s timer fires 5000 ms apart on the room's 500 ms grid (4959.5 / 9959.6 ms into
@@ -782,8 +783,6 @@ public partial class WiredRuntimeEngineTests
         Assert.Equal(1, queued.Calls);
         Assert.Equal(0, periodic.Calls);
         f.User(2);
-        f.Advance(50);
-        Assert.Equal(0, periodic.Calls);
         f.Advance(50);
         Assert.Equal(1, periodic.Calls);
         Assert.Empty(f.Errors);

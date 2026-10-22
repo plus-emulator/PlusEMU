@@ -50,11 +50,15 @@ public class RoomManager : IRoomManager, IStartable
     public void OnCycle()
     {
         try {
-            var now = _clock.GetLocalNow();
+            // Only the monotonic clock: a wall clock correction would move a pass off the grid or skip it when the poll lands on its instant.
+            // Whole ms, like the Wired engine: a boundary that kept one poll's fraction of a ms made the next on-time poll read 499.x ms, so
+            // the room tick started 25 ms late and the fast pass at its instant ran the Wired output due on it before its UserUpdate.
+            var monotonicMs = (long)_clock.GetElapsedTime(0).TotalMilliseconds;
+            var now = DateTimeOffset.UnixEpoch.AddMilliseconds(monotonicMs);
             var fullPass = RoomCycle.IsDue(_cycleLastExecution, now);
 
             if (fullPass) {
-                _cycleLastExecution = RoomCycle.Boundary(now, (long)_clock.GetElapsedTime(0).TotalMilliseconds);
+                _cycleLastExecution = RoomCycle.Boundary(now, monotonicMs);
 
                 foreach (var room in _rooms.Values.ToList()) {
                     if (room.IsCrashed) {
@@ -99,8 +103,10 @@ public class RoomManager : IRoomManager, IStartable
                 }
             }
 
+            // Observed on AIR WIN63-202610201032-107964540: the Wired clock ticks at room tick + 0, 50, ... 450 ms. A late poll keeps the
+            // tick it belongs to, so the next fast pass stays on that grid; the room tick's own slot is its full pass.
             if (now - _wiredLastExecution >= RoomCycle.WiredInterval) {
-                _wiredLastExecution = now;
+                _wiredLastExecution = RoomCycle.Boundary(now, monotonicMs, RoomCycle.WiredInterval);
 
                 if (!fullPass && !_fastWiredRooms.IsEmpty) {
                     foreach (var room in _fastWiredRooms.Values) {

@@ -240,6 +240,12 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     private void ArmWake(long dueMs)
     {
+        // The room tick runs what falls due on it, after its UserUpdate. Observed on AIR WIN63-202610201032-107964540: a delay that ends on a
+        // room tick goes out in the ms of that tick's UserUpdate, after it. A wake-up pass could run first.
+        if (dueMs % WiredFlashStates.StateUpdateMilliseconds == 0) {
+            return;
+        }
+
         lock (_wakeDue) {
             if (!_wakeDue.Add(dueMs)) {
                 return;

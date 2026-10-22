@@ -116,7 +116,12 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             return Matches(config with { Text = reference.Token }, part, context.Room.Id);
         }
 
-        return module.InterceptsChanges(reference) && Matches(config with { Text = reference.Token }, change, context.Room.Id);
+        // Only a give or change of a context variable is observed to stay silent; a removal keeps firing until Habbo shows otherwise.
+        if (change.Kind != WiredVariableChangeKind.Removed && !module.InterceptsChanges(reference)) {
+            return false;
+        }
+
+        return Matches(config with { Text = reference.Token }, change, context.Room.Id);
     }
     // Source-derived scalar support. Resolve only live definitions of this room through the module's ownership checks.
     // Echo/reference/derived-box identity is intentionally not guessed without a runtime observation.

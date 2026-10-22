@@ -7,7 +7,6 @@ namespace Plus.HabboHotel.Users.Effects;
 public interface IAvatarEffectStore
 {
     IReadOnlyList<AvatarEffect> Load(int userId);
-    AvatarEffect Create(int userId, int spriteId, double duration);
     // The two writes below run inside the caller's transaction, so they commit or roll back with it.
     AvatarEffect Create(IDbConnection connection, IDbTransaction transaction, int userId, int spriteId, double duration);
     void AddQuantity(IDbConnection connection, IDbTransaction transaction, int id);
@@ -25,17 +24,6 @@ public sealed class AvatarEffectStore(IDatabase database) : IAvatarEffectStore
 
         return rows.Select(row => new AvatarEffect(row.Id, checked((int)row.UserId), row.SpriteId, row.Duration, row.Activated,
             row.TimestampActivated, row.Quantity, this)).ToList();
-    }
-
-    public AvatarEffect Create(int userId, int spriteId, double duration)
-    {
-        using var connection = database.Connection();
-        connection.Open();
-        using var transaction = connection.BeginTransaction();
-        var effect = Create(connection, transaction, userId, spriteId, duration);
-        transaction.Commit();
-
-        return effect;
     }
 
     public AvatarEffect Create(IDbConnection connection, IDbTransaction transaction, int userId, int spriteId, double duration)

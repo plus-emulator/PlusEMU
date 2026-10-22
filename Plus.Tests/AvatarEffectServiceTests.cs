@@ -454,7 +454,6 @@ public class AvatarEffectServiceTests
         public Action<int>? OnSave { get; set; }
 
         public IReadOnlyList<AvatarEffect> Load(int userId) => [];
-        public AvatarEffect Create(int userId, int spriteId, double duration) => throw new NotSupportedException();
         public AvatarEffect Create(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int userId, int spriteId, double duration) => throw new NotSupportedException();
         public void AddQuantity(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int id) => throw new NotSupportedException();
 

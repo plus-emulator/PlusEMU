@@ -837,7 +837,6 @@ public sealed class CatalogPurchaseServiceTests
         public List<int> AddedQuantities { get; } = [];
         public List<int> SavedOutside { get; } = [];
         public IReadOnlyList<AvatarEffect> Load(int userId) => [];
-        public AvatarEffect Create(int userId, int spriteId, double duration) => new(9, userId, spriteId, duration, false, null, 1, this);
         public AvatarEffect Create(IDbConnection connection, IDbTransaction transaction, int userId, int spriteId, double duration)
         {
             Transaction = transaction;
@@ -901,8 +900,6 @@ public sealed class CatalogPurchaseServiceTests
             return [new Item { Id = (uint)(698 + Creates), OwnerId = (uint)habbo.Id, Definition = definition },
                 new Item { Id = (uint)(699 + Creates), OwnerId = (uint)habbo.Id, Definition = definition }];
         }
-        public void CreateMoodlightData(Item item) => throw new NotSupportedException();
-        public void CreateTonerData(Item item) => throw new NotSupportedException();
         public IDbTransaction? Transaction { get; private set; }
         public Item CreateSingleItemNullable(IDbConnection connection, IDbTransaction transaction, ItemDefinition definition, Habbo habbo, string extraData,
             int groupId = 0, uint limitedNumber = 0, uint limitedStack = 0)

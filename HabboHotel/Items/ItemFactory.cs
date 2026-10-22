@@ -129,9 +129,6 @@ public class ItemFactory : IItemFactory
         return items;
     }
 
-    public List<Item> CreateTeleporterItems(ItemDefinition definition, Habbo habbo, int groupId = 0) =>
-        InTransaction((connection, transaction) => CreateTeleporterItems(connection, transaction, definition, habbo, groupId));
-
     public List<Item> CreateTeleporterItems(IDbConnection connection, IDbTransaction transaction, ItemDefinition definition, Habbo habbo, int groupId = 0)
     {
         var items = new List<Item>();
@@ -165,23 +162,9 @@ public class ItemFactory : IItemFactory
         return items;
     }
 
-    public void CreateMoodlightData(Item item) => InTransaction((connection, transaction) =>
-    {
-        CreateMoodlightData(connection, transaction, item);
-
-        return true;
-    });
-
     public void CreateMoodlightData(IDbConnection connection, IDbTransaction transaction, Item item) =>
         connection.Execute("INSERT INTO `room_items_moodlight` (`item_id`, `enabled`, `current_preset`, `preset_one`, `preset_two`, `preset_three`) VALUES (@itemId,FALSE,1,@preset,@preset,@preset)",
             new { itemId = item.Id, preset = "#000000,255,0" }, transaction);
-
-    public void CreateTonerData(Item item) => InTransaction((connection, transaction) =>
-    {
-        CreateTonerData(connection, transaction, item);
-
-        return true;
-    });
 
     public void CreateTonerData(IDbConnection connection, IDbTransaction transaction, Item item) =>
         connection.Execute("INSERT INTO `room_items_toner` (`id`, `data1`, `data2`, `data3`, `enabled`) VALUES (@id,0,0,0,FALSE)", new { id = item.Id }, transaction);

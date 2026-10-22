@@ -62,7 +62,7 @@ internal class Authenticator : IAuthenticator
                 return AuthenticationError.LoginProhibited;
             }
 
-            var canLogin = await CanLogin(userId);
+            var canLogin = await CanLogin(session, userId);
 
             if (!canLogin) {
                 return AuthenticationError.LoginProhibited;
@@ -92,10 +92,10 @@ internal class Authenticator : IAuthenticator
         return null;
     }
 
-    private async Task<bool> CanLogin(int userId)
+    private async Task<bool> CanLogin(GameClient session, int userId)
     {
         foreach (var task in _authenticationTasks) {
-            if (!(await task.CanLogin(userId))) {
+            if (!(await task.CanLogin(session, userId))) {
                 return false;
             }
         }

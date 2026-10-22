@@ -1,3 +1,4 @@
+using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users.Authentication;
 using Plus.HabboHotel.Users.UserData;
 
@@ -14,7 +15,7 @@ internal class BanLoginCheckTask : IAuthenticationTask
         _userDataFactory = userDataFactory;
     }
 
-    public async Task<bool> CanLogin(int userId)
+    public async Task<bool> CanLogin(GameClient session, int userId)
     {
         var username = await _userDataFactory.GetUsernameForHabboById(userId);
 

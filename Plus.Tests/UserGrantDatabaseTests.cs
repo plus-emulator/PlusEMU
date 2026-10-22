@@ -471,7 +471,7 @@ public sealed class UserGrantDatabaseTests : IDisposable
     private async Task<(Habbo Habbo, GameClient Client)> Login()
     {
         using (await _gate.EnterAsync(User)) {
-            Assert.True(await new DisconnectCurrentOnlineHabboTask(_clients).CanLogin(User));
+            Assert.True(await new DisconnectCurrentOnlineHabboTask(_clients).CanLogin(null!, User));
 
             return Online(User, Scalar("SELECT credits FROM users WHERE id = 962001"));
         }

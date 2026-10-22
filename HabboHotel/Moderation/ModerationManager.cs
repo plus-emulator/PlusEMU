@@ -496,6 +496,10 @@ public sealed class ModerationManager : IModerationManager, IStartable
         return false;
     }
 
+    public bool IsBanned(ModerationBanType type, string value, [NotNullWhen(true)] out ModerationBan? ban) => throw new NotImplementedException();
+
+    public bool HasBan(ModerationBanType type, string value) => throw new NotImplementedException();
+
     /// <summary>
     /// Run a quick database check to see if this ban exists in the database.
     /// </summary>

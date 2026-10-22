@@ -11,7 +11,7 @@ public class DisconnectCurrentOnlineHabboTask : IAuthenticationTask
         _gameClientManager = gameClientManager;
     }
 
-    public Task<bool> CanLogin(int userId)
+    public Task<bool> CanLogin(GameClient session, int userId)
     {
         var existingSession = _gameClientManager.GetClientByUserId(userId);
         existingSession?.Disconnect();

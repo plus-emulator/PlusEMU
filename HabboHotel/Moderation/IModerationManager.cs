@@ -37,6 +37,12 @@ public interface IModerationManager
     /// <returns></returns>
     bool IsBanned(string key, [NotNullWhen(true)] out ModerationBan? ban);
 
+    /// <summary>Whether an unexpired ban of this type and value is cached.</summary>
+    bool IsBanned(ModerationBanType type, string value, [NotNullWhen(true)] out ModerationBan? ban);
+
+    /// <summary>Whether an unexpired ban of this type and value is cached and its row still exists.</summary>
+    bool HasBan(ModerationBanType type, string value);
+
     /// <summary>
     /// Run a quick database check to see if this ban exists in the database.
     /// </summary>

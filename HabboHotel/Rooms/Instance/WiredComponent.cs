@@ -679,6 +679,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
     /// <summary>
     /// Observed on AIR WIN63-202610131318-860371703: a furni state written by wired goes out in the tick's data batch, with the antenna flips
     /// and any due box flashes, on every wired tick and ahead of that tick's movement packet. Other data formats keep the object update.
+    /// Observed on AIR WIN63-202610201032-107964540: a furni whose height depends on its state first gets its ObjectUpdate with the new
+    /// height and the height map, and is listed in the batch too.
     /// </summary>
     internal void PublishState(Item item, bool persist)
     {
@@ -688,7 +690,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             return;
         }
 
-        item.UpdateState(persist, false);
+        item.UpdateState(persist, item.Definition.AdjustableHeights.Count > 1);
         Plus.HabboHotel.Items.ConfigurationItemStates.StateChanged(item);
 
         lock (_pendingFlashes) {

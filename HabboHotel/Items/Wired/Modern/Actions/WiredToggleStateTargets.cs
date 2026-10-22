@@ -3,7 +3,8 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// <summary>
 /// Which furni Toggle State changes. Observed on AIR WIN63-202610201032-107964540: it changes colour tiles and other state furni and
 /// every Wired box in its list, but never a floor switch, an antenna, a pressure plate, an arrow plate, a box, a pyramid or the two
-/// plain game tiles, whatever number of states they have. A one-state furni, such as the stairs, is listed with the state it has.
+/// plain game tiles, whatever number of states they have. A one-state furni, such as the stairs, is listed with the state it has. A furni
+/// whose height depends on its state is skipped while furni stand on it.
 /// </summary>
 internal static class WiredToggleStateTargets
 {
@@ -32,6 +33,9 @@ internal static class WiredToggleStateTargets
             }
             else if (item.Definition.Modes <= 1) {
                 listState(item);
+            }
+            else if (item.StateHeldByFurniOnTop) {
+                continue;
             }
             else {
                 rest.Add(item);

@@ -23,6 +23,9 @@ public interface ITradeRequestService
 
 public sealed class TradeRequestService(ITradingLockService tradingLocks, IPlannedShutdown? plannedShutdown = null) : ITradeRequestService
 {
+    private const int MaxOfferedItems = 500;
+    private const int MaxOfferedLtds = 9;
+
     private readonly IPlannedShutdown? _plannedShutdown = plannedShutdown;
 
     public void Start(GameClient session, int userId)
@@ -242,57 +245,9 @@ public sealed class TradeRequestService(ITradingLockService tradingLocks, IPlann
         trade.EndTrade(habbo.Id);
     }
 
-    public void OfferItem(GameClient session, uint itemId)
-    {
-        if (!TryGetRoomUser(session, out var room, out var roomUser, out var habbo)) {
-            return;
-        }
+    public void OfferItem(GameClient session, uint itemId) => OfferItems(session, [itemId]);
 
-        if (!roomUser.IsTrading) {
-            session.Send(new TradingClosedComposer(habbo.Id));
-
-            return;
-        }
-
-        if (!room.GetTrading().TryGetTrade(roomUser.TradeId, out var trade)) {
-            session.Send(new TradingClosedComposer(habbo.Id));
-
-            return;
-        }
-
-        lock (habbo.InventoryMutationSync) {
-            var item = habbo.Inventory?.Furniture.GetItem(itemId);
-
-            if (item == null) {
-                return;
-            }
-
-            if (!trade.CanChange) {
-                return;
-            }
-
-            if (!TryGetTradeUser(trade, roomUser, out var tradeUser)) {
-                return;
-            }
-
-            if (tradeUser.OfferedItems.ContainsKey(item.Id)) {
-                return;
-            }
-
-            trade.RemoveAccepted();
-
-            if (tradeUser.OfferedItems.Count <= 499) {
-                var totalLtDs = tradeUser.OfferedItems.Count(x => x.Value.UniqueNumber > 0);
-
-                if (totalLtDs < 9) {
-                    tradeUser.OfferedItems.Add(item.Id, item);
-                }
-            }
-
-            trade.SendPacket(new TradingUpdateComposer(TradeOfferSnapshot.Capture(trade)));
-        }
-    }
-
+    // Any refused id refuses the whole list, so a refused offer never changes the trade.
     public void OfferItems(GameClient session, IReadOnlyList<uint> itemIds)
     {
         if (!TryGetRoomUser(session, out var room, out var roomUser, out var habbo)) {
@@ -320,7 +275,7 @@ public sealed class TradeRequestService(ITradingLockService tradingLocks, IPlann
                 return;
             }
 
-            if (itemIds.Count == 0) {
+            if (itemIds.Count == 0 || tradeUser.OfferedItems.Count + itemIds.Count > MaxOfferedItems) {
                 return;
             }
 
@@ -334,11 +289,15 @@ public sealed class TradeRequestService(ITradingLockService tradingLocks, IPlann
 
                 var item = habbo.Inventory?.Furniture.GetItem(itemId);
 
-                if (item == null) {
+                if (item == null || !item.Definition.AllowTrade) {
                     return;
                 }
 
                 selected.Add(item);
+            }
+
+            if (tradeUser.OfferedItems.Values.Concat(selected).Count(item => item.UniqueNumber > 0) > MaxOfferedLtds) {
+                return;
             }
 
             trade.RemoveAccepted();

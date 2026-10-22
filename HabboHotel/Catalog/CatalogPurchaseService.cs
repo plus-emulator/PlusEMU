@@ -262,14 +262,19 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
 
         switch (product.Type) {
             case CatalogProductType.Furni: {
-                    if (!ChargePurchase()) {
+                    List<Item> generatedGenericItems = [];
+
+                    if (!ChargePurchase((connection, transaction) =>
+                        {
+                            generatedGenericItems = offer.IsBundle
+                                ? offer.Products.Where(bundled => bundled.Type == CatalogProductType.Furni)
+                                    .SelectMany(bundled => CreateFurni(connection, transaction, session, bundled.Definition!, "", bundled.Amount, 0, 0)).ToList()
+                                : CreateFurni(connection, transaction, session, product.Definition!, extraData, amountPurchase, limitedEditionSells, limitedEditionStack);
+
+                            return generatedGenericItems.Count > 0;
+                        })) {
                         return;
                     }
-
-                    var generatedGenericItems = offer.IsBundle
-                        ? offer.Products.Where(bundled => bundled.Type == CatalogProductType.Furni)
-                            .SelectMany(bundled => CreateFurni(session, bundled.Definition!, "", bundled.Amount, 0, 0)).ToList()
-                        : CreateFurni(session, product.Definition!, extraData, amountPurchase, limitedEditionSells, limitedEditionStack);
 
                     foreach (var purchasedItem in generatedGenericItems) {
                         if (inventory.Furniture.AddItem(purchasedItem.ToInventoryItem())) {
@@ -277,32 +282,43 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                         }
                     }
 
-                    if (!offer.IsBundle && product.Definition!.InteractionType == InteractionType.GuildForum && generatedGenericItems.Count > 0) {
+                    if (!offer.IsBundle && product.Definition!.InteractionType == InteractionType.GuildForum) {
                         EnableBoughtForum(extraData);
                     }
 
-                    if (generatedGenericItems.Count > 0) {
-                        _rewardTracks.Progress(session, RewardTrackActions.BuyFromCatalogue);
-                    }
-
+                    _rewardTracks.Progress(session, RewardTrackActions.BuyFromCatalogue);
                     break;
                 }
             case CatalogProductType.Effect: {
                     var habbo = session.GetHabbo();
 
                     // Effects are loaded at login; without them the bought effect could not be delivered, so nothing is charged.
-                    if (habbo.Effects is not { } effects || !ChargePurchase()) {
+                    if (habbo.Effects is not { } effects) {
                         return;
                     }
 
-                    var effect = effects.GetEffectNullable(product.EffectId);
+                    var owned = effects.GetEffectNullable(product.EffectId);
+                    AvatarEffect? created = null;
 
-                    if (effect != null) {
-                        effect.AddToQuantity();
+                    if (!ChargePurchase((connection, transaction) =>
+                        {
+                            if (owned != null) {
+                                _avatarEffects.AddQuantity(connection, transaction, owned.Id);
+                            }
+                            else {
+                                created = _avatarEffects.Create(connection, transaction, habbo.Id, product.EffectId, 3600);
+                            }
+
+                            return true;
+                        })) {
+                        return;
+                    }
+
+                    if (created != null) {
+                        effects.TryAdd(created);
                     }
                     else {
-                        effect = _avatarEffects.Create(habbo.Id, product.EffectId, 3600);
-                        effects.TryAdd(effect);
+                        owned!.Quantity++;
                     }
 
                     session.Send(new AvatarEffectAddedComposer(product.EffectId, 3600));
@@ -351,11 +367,11 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                     break;
                 }
             case CatalogProductType.Badge: {
-                    if (!ChargePurchase()) {
+                    if (!ChargePurchase((connection, transaction) => _badgeManager.StoreBadge(connection, transaction, session.GetHabbo(), product.BadgeCode))) {
                         return;
                     }
 
-                    await _badgeManager.GiveBadge(session.GetHabbo(), product.BadgeCode);
+                    _badgeManager.PublishBadge(session.GetHabbo(), product.BadgeCode);
                     session.Send(new FurniListNotificationComposer(0, 4));
                     break;
                 }
@@ -484,7 +500,8 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         }
     }
 
-    private List<Item> CreateFurni(GameClient session, ItemDefinition definition, string extraData, int amount, uint limitedEditionSells, uint limitedEditionStack)
+    private List<Item> CreateFurni(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, GameClient session, ItemDefinition definition,
+        string extraData, int amount, uint limitedEditionSells, uint limitedEditionStack)
     {
         var items = new List<Item>();
 
@@ -495,9 +512,9 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                 var groupId = int.TryParse(extraData, NumberStyles.Integer, CultureInfo.InvariantCulture, out var group) ? group : 0;
 
                 if (amount > 1) {
-                    items.AddRange(_itemFactory.CreateMultipleItems(definition, session.GetHabbo(), extraData, amount, groupId) ?? []);
+                    items.AddRange(_itemFactory.CreateMultipleItems(connection, transaction, definition, session.GetHabbo().Id, extraData, amount, groupId));
                 }
-                else if (_itemFactory.CreateSingleItemNullable(definition, session.GetHabbo(), extraData, extraData, groupId) is { } guildItem) {
+                else if (_itemFactory.CreateSingleItemNullable(connection, transaction, definition, session.GetHabbo(), extraData, groupId) is { } guildItem) {
                     items.Add(guildItem);
                 }
 
@@ -506,15 +523,15 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
             case InteractionType.Teleport:
             case InteractionType.WiredRoomLinker:
                 for (var i = 0; i < amount; i++) {
-                    items.AddRange(_itemFactory.CreateTeleporterItems(definition, session.GetHabbo()) ?? []);
+                    items.AddRange(_itemFactory.CreateTeleporterItems(connection, transaction, definition, session.GetHabbo()));
                 }
 
                 break;
             default:
                 if (amount > 1) {
-                    items.AddRange(_itemFactory.CreateMultipleItems(definition, session.GetHabbo(), extraData, amount) ?? []);
+                    items.AddRange(_itemFactory.CreateMultipleItems(connection, transaction, definition, session.GetHabbo().Id, extraData, amount));
                 }
-                else if (_itemFactory.CreateSingleItemNullable(definition, session.GetHabbo(), extraData, extraData, 0, limitedEditionSells, limitedEditionStack) is { } item) {
+                else if (_itemFactory.CreateSingleItemNullable(connection, transaction, definition, session.GetHabbo(), extraData, 0, limitedEditionSells, limitedEditionStack) is { } item) {
                     items.Add(item);
                 }
 
@@ -523,10 +540,10 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
 
         foreach (var item in items) {
             if (definition.InteractionType == InteractionType.Moodlight) {
-                _itemFactory.CreateMoodlightData(item);
+                _itemFactory.CreateMoodlightData(connection, transaction, item);
             }
             else if (definition.InteractionType == InteractionType.Toner) {
-                _itemFactory.CreateTonerData(item);
+                _itemFactory.CreateTonerData(connection, transaction, item);
             }
         }
 

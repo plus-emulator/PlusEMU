@@ -46,6 +46,7 @@ public sealed class NavigatorSearchService(INavigatorManager navigator, INavigat
         IEnumerable<RoomData> selected = result.CategoryType switch
         {
             NavigatorCategoryType.Query => Query(query),
+            NavigatorCategoryType.Featured => Resolve(navigator.FeaturedRooms.Select(room => (uint)room.RoomId)),
             NavigatorCategoryType.Popular => rooms.GetPopularRooms(-1, limit).Select(room => room.Data),
             NavigatorCategoryType.Recommended => rooms.GetRecommendedRooms(limit).Select(room => room.Data),
             NavigatorCategoryType.Category => rooms.GetRoomsByCategory(result.Id, limit).Select(room => room.Data),

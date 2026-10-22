@@ -192,7 +192,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         }
 
         // Observed on AIR WIN63-202610201032-107964540: a walk magic tile restacked on its own tile lifts each user standing on it in
-        // the same WiredMovements, also without the Carry add-on. A walking user is left out, as for a carry.
+        // the same WiredMovements, without the Carry add-on. Walking users are not handled here yet: Habbo also sends them an entry
+        // to their step target at the new height.
         var lifted = item.Definition.InteractionType == InteractionType.WalkMagicTile && x == item.GetX && y == item.GetY
             ? room.GetRoomUserManager().GetRoomUsers().Where(user => !carried.Contains(user) && !user.IsWalking && !HasQueuedWalk(user)
                 && room.GetGameMap().WalkMagicAt(user.X, user.Y) == item).Select(user => (User: user, FromZ: user.Z)).ToArray()

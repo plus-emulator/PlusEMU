@@ -96,6 +96,38 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(CountAndFurniPackets());
     }
 
+    [Fact]
+    public async Task APickupWhoseStoredRowCannotBeDeletedStillRemovesTheFurniForTheRoom()
+    {
+        Viewer();
+        var (service, store, _) = BuildersClub();
+        await new BuildersClubPlaceRoomItemEvent(service).Parse(_room, _client, ClientPacket(BuildersClubPageId, BuildersClubOfferId, "", 1, 1, 2, true));
+        var placed = Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
+        var wire = unchecked((int)BuildersClubItemIds.ToWire(placed.Id));
+        _client.Packets.Clear();
+        store.FailDelete = true;
+        var pickup = new RoomItemPickupService(Proxy<IGameClientManager>((method, args) => method == "GetClientByUserId" && (int)args[0]! == 7 ? _client : null),
+            Proxy<IQuestManager>((_, _) => throw new InvalidOperationException("A Builders Club pickup is no quest pickup")),
+            new PickupStore(_ => throw new InvalidOperationException("A Builders Club furni is never stored in an inventory")), service);
+
+        await Record.ExceptionAsync(() => new PickupObjectEvent(pickup).Parse(_client, ClientPacket(2, (int)placed.Id)));
+
+        Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
+        Assert.Contains((ServerPacketHeader.ObjectRemoveComposer, wire), CountAndFurniPackets());
+    }
+
+    [Fact]
+    public void APlacementWhoseCountCannotBeReadKeepsTheRoomAndTheStoreInStep()
+    {
+        Viewer();
+        var (service, store, _) = BuildersClub();
+        store.FailFurniCountWhilePlaced = true;
+
+        Record.Exception(() => service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 2, confirmed: true));
+
+        Assert.Equal(store.Created.Except(store.Deleted), _room.GetRoomItemHandler().GetWallAndFloor.Select(item => item.Id));
+    }
+
     // The furni count with its value, and the furni adds and removes with the furni id, in the order the client got them.
     private (uint Header, int Value)[] CountAndFurniPackets() => _client.Packets
         .Where(packet => packet.Header is ServerPacketHeader.BuildersClubFurniCountComposer or ServerPacketHeader.ObjectAddComposer or ServerPacketHeader.ObjectRemoveComposer)
@@ -362,18 +394,29 @@ public partial class PlacedFurniRoomTests
         public int Standing { get; set; }
         public List<uint> Created { get; } = [];
         public List<uint> Deleted { get; } = [];
+        public bool FailDelete { get; set; }
+        public bool FailFurniCountWhilePlaced { get; set; }
         public BuildersClubMembership? Membership(int userId) => Expiry is { } expiry ? new(expiry, 0, 0) : null;
         public void Extend(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int userId, int days, int furniLimit, DateTimeOffset now) =>
             throw new NotSupportedException();
         public bool AddFurni(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int userId, int furni, DateTimeOffset now) =>
             throw new NotSupportedException();
-        public int FurniCount(int userId) => Standing + Created.Count - Deleted.Count;
+        public int FurniCount(int userId) => FailFurniCountWhilePlaced && Created.Count > Deleted.Count
+            ? throw new InvalidOperationException("The database is gone")
+            : Standing + Created.Count - Deleted.Count;
         public uint Create(uint definitionId, int userId, string extraData)
         {
             Created.Add(_nextId);
 
             return _nextId++;
         }
-        public void Delete(uint itemId) => Deleted.Add(itemId);
+        public void Delete(uint itemId)
+        {
+            if (FailDelete) {
+                throw new InvalidOperationException("The database is gone");
+            }
+
+            Deleted.Add(itemId);
+        }
     }
 }

@@ -191,8 +191,16 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             context.Publication?.Flush();
         }
 
-        if (passengers != null && carried.Length > 0) {
-            _prepareCarryPublication?.Invoke(context, carried);
+        // Observed on AIR WIN63-202610201032-107964540: a walk magic tile restacked on its own tile lifts each user standing on it in
+        // the same WiredMovements, without the Carry add-on. Walking users are not handled here yet: Habbo also sends them an entry
+        // to their step target at the new height.
+        var lifted = item.Definition.InteractionType == InteractionType.WalkMagicTile && x == item.GetX && y == item.GetY
+            ? room.GetRoomUserManager().GetRoomUsers().Where(user => !carried.Contains(user) && !user.IsWalking && !HasQueuedWalk(user)
+                && room.GetGameMap().WalkMagicAt(user.X, user.Y) == item).Select(user => (User: user, FromZ: user.Z)).ToArray()
+            : [];
+
+        if (passengers != null && carried.Length + lifted.Length > 0) {
+            _prepareCarryPublication?.Invoke(context, [.. carried, .. lifted.Select(lift => lift.User)]);
         }
 
         // Placement immediately rebinds support heights; carry animation starts at the moved furniture's prior top.
@@ -270,18 +278,39 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             var aimed = projectile == null || item.Definition.Directions.Count == 1 ? null
                 : AimShooter(context, projectile, (long)item.GetX - source.X, (long)item.GetY - source.Y);
 
+            // The placement has already set each lifted user on the new walk magic height.
+            var lifts = lifted.Select(lift => (lift.User, Entry: AvatarMovement(context, policy.Curve, lift.User,
+                (lift.User.X, lift.User.Y, lift.FromZ), options.AnimationTimeMs))).ToArray();
+
             if (context.Publication is { } publication && publication.Append(item, movement, style, context.Firing, policy.ExecuteInOrder)) {
                 if (aimed is { } late) {
                     publication.AppendDirection(late.Shooter, late.Lifetime, late.Turn);
+                }
+
+                foreach (var (user, entry) in lifts) {
+                    if (_appendCarryPublication?.Invoke(context, user, entry.Movement, entry.Style) != true) {
+                        room.FlushWiredFlashes();
+                        room.SendPacket(entry.Style);
+                        room.SendPacket(entry.Movement);
+                    }
                 }
             }
             else {
                 room.FlushWiredFlashes();
                 room.SendPacket(style);
 
-                // One packet: the furniture body, then the shooter's direction (re-checked after the style callback).
+                foreach (var (_, entry) in lifts) {
+                    room.SendPacket(entry.Style);
+                }
+
+                // One packet: the furniture body, the lifted users, then the shooter's direction (re-checked after the style callback).
                 var turn = aimed is { } pending && IsCurrentAim(room, pending) ? pending.Turn : null;
-                room.SendPacket(new WiredMovementBatchComposer([movement], turn == null ? null : new[] { turn }));
+                room.SendPacket(new WiredMovementBatchComposer([movement, .. lifts.Select(lift => lift.Entry.Movement)],
+                    turn == null ? null : new[] { turn }));
+            }
+
+            foreach (var (user, _) in lifts.Where(lift => !lift.User.IsBot)) {
+                user.MarkWiredMove();
             }
         }
 
@@ -579,14 +608,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         walkTransition(user, oldItems, newItems);
 
         if (animate && !context.Policy.Addons.DisableAnimation) {
-            var style = new WiredMoveStyleComposer(user.VirtualId, curve?.Type ?? 0,
-                curve?.Type == 7 ? curve.Strength : curve?.Intensity ?? 100, 0, true);
             var source = carrySource ?? (X: oldX, Y: oldY, Z: oldZ);
-            var movement = new WiredMovementComposer(0, user.VirtualId, source.X, source.Y, source.Z, user.X, user.Y, user.Z,
-                user.RotBody, user.RotHead, animationTimeMs ?? context.Policy.Addons.AnimationTimeMs)
-            {
-                JumpPower = curve?.Type == 7 ? curve.Strength : null
-            };
+            var (style, movement) = AvatarMovement(context, curve, user, source, animationTimeMs);
 
             // A carried rider goes through the publication instead.
             var collect = carrySource.HasValue ? null : batch;
@@ -632,6 +655,20 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         }
 
         return true;
+    }
+
+    private static (WiredMoveStyleComposer Style, WiredMovementComposer Movement) AvatarMovement(WiredRuntimeContext context,
+        WiredCurvePolicy? curve, RoomUser user, (int X, int Y, double Z) source, int? animationTimeMs)
+    {
+        var style = new WiredMoveStyleComposer(user.VirtualId, curve?.Type ?? 0,
+            curve?.Type == 7 ? curve.Strength : curve?.Intensity ?? 100, 0, true);
+        var movement = new WiredMovementComposer(0, user.VirtualId, source.X, source.Y, source.Z, user.X, user.Y, user.Z,
+            user.RotBody, user.RotHead, animationTimeMs ?? context.Policy.Addons.AnimationTimeMs)
+        {
+            JumpPower = curve?.Type == 7 ? curve.Strength : null
+        };
+
+        return (style, movement);
     }
 
     internal static WiredCollisionPolicy? Collision(WiredPhysicsPolicy? physics, bool step, IReadOnlySet<uint>? unit = null) => physics == null

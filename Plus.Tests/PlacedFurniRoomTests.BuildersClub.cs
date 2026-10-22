@@ -492,7 +492,7 @@ public partial class PlacedFurniRoomTests
     [InlineData("tiki_surfboard", 9, "0")]
     [InlineData("window_square", 1, "")]
     [InlineData("window_golden", 1, "")]
-    public async Task ABuildersClubWallItemStartsAtStateZeroWhenItHasSeveralStates(string name, int states, string data)
+    public async Task ABuildersClubWallItemStartsAtZeroOnlyWhenItHasSeveralStates(string name, int states, string data)
     {
         Viewer();
         var (service, store, page) = BuildersClub();

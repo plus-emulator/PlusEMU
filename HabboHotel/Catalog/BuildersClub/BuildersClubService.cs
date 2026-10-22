@@ -328,7 +328,8 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         or InteractionType.WiredChestFurni or InteractionType.WiredChestCoins);
 
     // A recolorable starts in the colour the catalogue's palette chose (RecolorableFurnitureCatalogWidget). A poster takes its number
-    // from the offer and ignores the client's (observed on AIR WIN63-202610201032-107964540). Nothing else takes a parameter.
+    // from the offer and ignores the client's: observed for one poster offer on AIR WIN63-202610201032-107964540 (client "" and "53"
+    // both gave the offer's "52"); other poster offers are assumed to work the same. Nothing else takes a parameter.
     private static string ExtraData(ItemDefinition definition, string productParam, string clientParam) => definition switch
     {
         { InteractionType: InteractionType.Recolorable } => RecolorableDataFormat.FormatCatalogueColor(RecolorablePalette.PurchaseColor(

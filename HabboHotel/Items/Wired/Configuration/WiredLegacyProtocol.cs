@@ -290,7 +290,8 @@ public static class WiredLegacyProtocol
     }
 
     // A java.util.HashSet<Integer> filled in this order: 16 buckets, doubled while it holds more than three quarters of them.
-    // An id lands in bucket (h ^ (h >>> 16)) & (buckets - 1); ids in one bucket keep their insertion order.
+    // An id lands in bucket (h ^ (h >>> 16)) & (buckets - 1); ids in one bucket keep their insertion order. Not probed on Habbo and not
+    // modelled: more than 32 buckets, and 9 or more ids in one bucket (Java then resizes or builds a tree).
     private static IEnumerable<int> JavaHashSetOrder(IEnumerable<int> ids)
     {
         var distinct = ids.Distinct().ToArray();

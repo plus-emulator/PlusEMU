@@ -11,7 +11,8 @@ using Xunit;
 namespace Plus.Tests;
 
 // Observed on AIR WIN63-202610201032-107964540: Toggle State reopens its picks in the iteration order of a Java HashSet<Integer> of
-// the saved ids (wall picks negative), whatever order the client saved them in. Expected orders come from that model.
+// the saved ids (wall picks negative), not in the order the client saved them; ids that share a bucket keep the saved order. Expected
+// orders come from that model.
 public partial class PlacedFurniRoomTests
 {
     private const uint PickOrderBox = 601;

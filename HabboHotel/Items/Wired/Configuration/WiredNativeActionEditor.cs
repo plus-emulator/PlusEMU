@@ -28,7 +28,8 @@ internal static class WiredNativeActionEditor
     private static readonly Dictionary<string, WiredNativeEditorMetadata> Known = new(StringComparer.Ordinal)
     {
         // Observed on hhus (AIR WIN63-202610131318-860371703): allows wall picks; toggling only writes the item's state.
-        // Observed on AIR WIN63-202610201032-107964540: reopen lists the picks in Java HashSet order, whatever order they were saved in.
+        // Observed on AIR WIN63-202610201032-107964540: reopen lists the picks in Java HashSet order, not the saved order; ids that share a
+        // bucket keep the saved order.
         ["wf_act_toggle_state"] = Meta([Furni], [], [100], [], [0], true) with { HashSetPickOrder = true },
         ["wf_act_toggle_to_rnd"] = Meta([Furni], [], [100], [], [], true),
         ["wf_act_reset_timers"] = Meta([], [], [], [], []),

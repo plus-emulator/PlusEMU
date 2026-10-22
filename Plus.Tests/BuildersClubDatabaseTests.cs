@@ -118,14 +118,21 @@ public sealed class BuildersClubDatabaseTests
         });
     }
 
-    private static void Migrate(MySqlConnection connection)
+    internal static void Migrate(MySqlConnection connection)
     {
         connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/89_BuildersClubCatalog.sql")));
         connection.Execute(System.Text.RegularExpressions.Regex.Match(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/90_BuildersClubMembership.sql")),
             @"ALTER TABLE `user_builders_club`.*?;", System.Text.RegularExpressions.RegexOptions.Singleline).Value);
     }
 
-    private static void InSchema(Action<MySqlConnection, string> run)
+    private static void InSchema(Action<MySqlConnection, string> run) => InSchemaAsync((connection, connectionString) =>
+    {
+        run(connection, connectionString);
+
+        return Task.CompletedTask;
+    }).GetAwaiter().GetResult();
+
+    internal static async Task InSchemaAsync(Func<MySqlConnection, string, Task> run)
     {
         var options = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!);
         using var admin = new MySqlConnection(options.ConnectionString);
@@ -167,7 +174,7 @@ public sealed class BuildersClubDatabaseTests
                 INSERT INTO catalog_page_texts (page_id, slot, text) VALUES (2, 0, 'Blocks');
                 ALTER TABLE catalog_pages AUTO_INCREMENT = 1000;
                 """);
-            run(connection, options.ConnectionString);
+            await run(connection, options.ConnectionString);
         }
         finally {
             admin.Execute($"DROP DATABASE `{schema}`");

@@ -109,9 +109,9 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         bool placed;
 
         try {
-            // Observed on AIR WIN63-202610201032-107964540: the new furni count comes before the furni's ObjectAdd. The stored row
-            // already counts, so the count is read before the furni goes into the room.
-            var count = new BuildersClubFurniCountComposer(store.FurniCount(item.UserId));
+            // Observed on AIR WIN63-202610201032-107964540: the count that includes the new furni comes before its ObjectAdd. The
+            // stored row counts only once the room saves its position, after ObjectAdd, so the new furni is added here.
+            var count = new BuildersClubFurniCountComposer(store.FurniCount(item.UserId) + 1);
             placed = room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true, announcing: () => session.Send(count));
         }
         catch (Exception exception) {

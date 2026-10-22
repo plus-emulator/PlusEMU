@@ -1,3 +1,4 @@
+using Dapper;
 using Plus.Communication.Packets.Incoming.Catalog;
 using Plus.Communication.Packets.Incoming.Rooms.Engine;
 using Plus.Communication.Packets.Outgoing;
@@ -82,6 +83,65 @@ public partial class PlacedFurniRoomTests
 
         Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
         Assert.Equal([(ServerPacketHeader.BuildersClubFurniCountComposer, 0), (ServerPacketHeader.ObjectRemoveComposer, wire)], CountAndFurniPackets());
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: with 419 furni standing, a pickup sends 418 before ObjectRemove and the next
+    // placement sends 419 before ObjectAdd.
+    [Fact]
+    public async Task ThePlacementCountIncludesTheNewFurniAndThePickupCountLeavesItOut()
+    {
+        Viewer();
+        var (service, store, _) = BuildersClub();
+        store.Expiry = Clock.AddDays(1);
+        store.Standing = 418;
+
+        await new BuildersClubPlaceRoomItemEvent(service).Parse(_room, _client, ClientPacket(BuildersClubPageId, BuildersClubOfferId, "", 1, 1, 2, true));
+        var placed = Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
+        var wire = unchecked((int)BuildersClubItemIds.ToWire(placed.Id));
+
+        Assert.Equal([(ServerPacketHeader.BuildersClubFurniCountComposer, 419), (ServerPacketHeader.ObjectAddComposer, wire)], CountAndFurniPackets());
+
+        _client.Packets.Clear();
+        var pickup = new RoomItemPickupService(Proxy<IGameClientManager>((method, args) => method == "GetClientByUserId" && (int)args[0]! == 7 ? _client : null),
+            Proxy<IQuestManager>((_, _) => throw new InvalidOperationException("A Builders Club pickup is no quest pickup")),
+            new PickupStore(_ => throw new InvalidOperationException("A Builders Club furni is never stored in an inventory")), service);
+        await new PickupObjectEvent(pickup).Parse(_client, ClientPacket(2, (int)placed.Id));
+
+        Assert.Equal([(ServerPacketHeader.BuildersClubFurniCountComposer, 418), (ServerPacketHeader.ObjectRemoveComposer, wire)], CountAndFurniPackets());
+        Assert.Equal(418, store.FurniCount(7));
+    }
+
+    // The same placement and pickup with the stores that write MariaDB.
+    [RoomComponentDatabaseFact]
+    public async Task TheStoredFurniCountsFollowThePlacementAndThePickup()
+    {
+        Viewer();
+        await BuildersClubDatabaseTests.InSchemaAsync(async (connection, connectionString) =>
+        {
+            BuildersClubDatabaseTests.Migrate(connection);
+            // Far from the ids other tests give ordinary furni, as in BuildersClubTestStore.
+            connection.Execute("ALTER TABLE items AUTO_INCREMENT = 1950100000");
+            var database = new HabbiconDatabaseTests.TestDatabase(connectionString);
+            InstallRoomItemStore(new RoomItemStore(database));
+            var store = new BuildersClubStore(database);
+            var (service, _) = BuildersClub(store);
+
+            await new BuildersClubPlaceRoomItemEvent(service).Parse(_room, _client, ClientPacket(BuildersClubPageId, BuildersClubOfferId, "", 1, 1, 2, true));
+            var placed = Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
+            var wire = unchecked((int)BuildersClubItemIds.ToWire(placed.Id));
+
+            Assert.Equal([(ServerPacketHeader.BuildersClubFurniCountComposer, 1), (ServerPacketHeader.ObjectAddComposer, wire)], CountAndFurniPackets());
+            Assert.Equal(1, store.FurniCount(7));
+
+            _client.Packets.Clear();
+            var pickup = new RoomItemPickupService(Proxy<IGameClientManager>((method, args) => method == "GetClientByUserId" && (int)args[0]! == 7 ? _client : null),
+                Proxy<IQuestManager>((_, _) => throw new InvalidOperationException("A Builders Club pickup is no quest pickup")),
+                new PickupStore(_ => throw new InvalidOperationException("A Builders Club furni is never stored in an inventory")), service);
+            await new PickupObjectEvent(pickup).Parse(_client, ClientPacket(2, (int)placed.Id));
+
+            Assert.Equal([(ServerPacketHeader.BuildersClubFurniCountComposer, 0), (ServerPacketHeader.ObjectRemoveComposer, wire)], CountAndFurniPackets());
+            Assert.Equal(0, store.FurniCount(7));
+        });
     }
 
     [Fact]
@@ -346,6 +406,19 @@ public partial class PlacedFurniRoomTests
 
     private (BuildersClubService Service, BuildersClubTestStore Store, CatalogPage Page) BuildersClub(string? trialLimit = null)
     {
+        var store = new BuildersClubTestStore();
+        InstallRoomItemStore(store);
+        var (service, page) = BuildersClub(store, trialLimit);
+
+        return (service, store, page);
+    }
+
+    private void InstallRoomItemStore(IRoomItemStore store) =>
+        Set("_roomItemHandling", new RoomItemHandling(_room, store, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems,
+            TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards));
+
+    private (BuildersClubService Service, CatalogPage Page) BuildersClub(IBuildersClubStore store, string? trialLimit = null)
+    {
         var definition = Furni(0, InteractionType.None, WiredBoxType.None).Definition;
         definition.Id = 19348;
         definition.ItemName = "bc_block_0_recolorable";
@@ -376,20 +449,22 @@ public partial class PlacedFurniRoomTests
         var settings = Proxy<ISettingsManager>((method, args) => method == nameof(ISettingsManager.GetOptionalValue) && (string)args[0]! == "builders_club.trial_furni_limit"
             ? trialLimit
             : null);
-        var store = new BuildersClubTestStore();
         var clients = Proxy<IGameClientManager>((method, args) => method == "GetClientByUserId" && (int)args[0]! == 7 ? _client : null);
 
-        return (new BuildersClubService(catalog, store, settings, clients, new FixedTimeProvider(Clock), TestLogging.For<BuildersClubService>()), store, page);
+        return (new BuildersClubService(catalog, store, settings, clients, new FixedTimeProvider(Clock), TestLogging.For<BuildersClubService>()), page);
     }
 
     private System.Collections.Concurrent.ConcurrentDictionary<int, RoomUser> RoomUsers() =>
         (System.Collections.Concurrent.ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager)
             .GetField("_users", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(_room.GetRoomUserManager())!;
 
-    private sealed class BuildersClubTestStore : IBuildersClubStore
+    // Counts like BuildersClubStore.FurniCount: only furni whose stored row names a room, which the room item store writes when the
+    // furni is placed. A new furni is stored without a room.
+    private sealed class BuildersClubTestStore : IBuildersClubStore, IRoomItemStore
     {
         // Far from the ids other tests give ordinary furni: a Builders Club furni's band id is process-wide.
         private uint _nextId = 1_950_000_000;
+        private readonly Dictionary<uint, uint> _roomIds = [];
         public DateTimeOffset? Expiry { get; set; }
         public int Standing { get; set; }
         public List<uint> Created { get; } = [];
@@ -403,10 +478,11 @@ public partial class PlacedFurniRoomTests
             throw new NotSupportedException();
         public int FurniCount(int userId) => FailFurniCountWhilePlaced && Created.Count > Deleted.Count
             ? throw new InvalidOperationException("The database is gone")
-            : Standing + Created.Count - Deleted.Count;
+            : Standing + _roomIds.Count(row => row.Value != 0);
         public uint Create(uint definitionId, int userId, string extraData)
         {
             Created.Add(_nextId);
+            _roomIds[_nextId] = 0;
 
             return _nextId++;
         }
@@ -417,6 +493,19 @@ public partial class PlacedFurniRoomTests
             }
 
             Deleted.Add(itemId);
+            _roomIds.Remove(itemId);
+        }
+        public void AssignOwner(uint itemId, int userId) { }
+        public void ClearRoom(uint itemId) => Place(itemId, 0);
+        public void SaveWallPosition(uint itemId, string wallPosition) { }
+        public void SaveMoved(IReadOnlyList<RoomItemSave> items) { }
+        public void PlaceFloor(uint itemId, uint roomId, int x, int y, double z, int rotation) => Place(itemId, roomId);
+        public void PlaceWall(uint itemId, uint roomId, int x, int y, double z, int rotation, string wallPosition) => Place(itemId, roomId);
+        private void Place(uint itemId, uint roomId)
+        {
+            if (_roomIds.ContainsKey(itemId)) {
+                _roomIds[itemId] = roomId;
+            }
         }
     }
 }

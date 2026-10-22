@@ -153,6 +153,13 @@ public static class WiredNativeEditorProjection
             }
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: Control Clock refuses a wall pick (a negative id) with this key, also when no furni
+        // has that id. The editor takes no wall picks, so such a save never compiles.
+        if (descriptor.CanonicalName == "wf_act_control_clock" && (native.FurniSourceTypes.IsDefaultOrEmpty || native.FurniSourceTypes[0] == 100)
+            && native.PrimaryItems.Any(reference => reference.Wall)) {
+            return "wiredfurni.error.require_counter_furni";
+        }
+
         var metadata = Metadata(descriptor.CanonicalName);
 
         var allowed = metadata.FurniAllowed;

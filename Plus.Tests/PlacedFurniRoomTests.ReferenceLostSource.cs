@@ -8,13 +8,14 @@ using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
+using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Rooms.Instance;
 using Xunit;
 
 namespace Plus.Tests;
 
 // A Variable Reference whose shared source was picked up. Observed on AIR WIN63-202610201032-107964540: the reference still opens at
-// once with its stored name, ints and variable id and an empty shared list, and the room's variable list no longer holds it.
+// once with its stored name, ints and variable id and an empty shared list. The room's variable list keeps it until the room unloads.
 public partial class PlacedFurniRoomTests
 {
     private const uint SourceRoomId = 8, SourceId = 200, ReferenceId = 601;
@@ -27,12 +28,48 @@ public partial class PlacedFurniRoomTests
         var item = await SavedReference(rows);
         Assert.Equal($"r119ref [0] [{SourceWireId}] shared 1", Open(ReferenceId));
         Assert.Contains(ReferenceId, RoomVariableIds());
+        var listed = Assert.Single(NativeVariables(), variable => variable.Id == $"user:{ReferenceId}");
 
         PickUpSource(rows);
 
         Assert.Equal($"r119ref [0] [{SourceWireId}] shared 0", Open(ReferenceId));
-        Assert.DoesNotContain(ReferenceId, RoomVariableIds());
+        Assert.Contains(ReferenceId, RoomVariableIds());
+        Assert.Equal(listed, Assert.Single(NativeVariables(), variable => variable.Id == $"user:{ReferenceId}"));
         Assert.True(_room.GetWired().TryGet(item.Id, out _));
+    }
+
+    // Nobody opened a variable list in this room between the save and the pickup.
+    [Fact]
+    public async Task AReferenceWhoseSourceIsPickedUpStaysListedWithoutAnEarlierLook()
+    {
+        var rows = LinkedRooms();
+        await SavedReference(rows);
+
+        PickUpSource(rows);
+
+        Assert.Contains(ReferenceId, RoomVariableIds());
+        var listed = Assert.Single(NativeVariables(), variable => variable.Id == $"user:{ReferenceId}");
+        Assert.Equal(("r119ref", 20), (listed.Name, listed.Availability));
+    }
+
+    [Fact]
+    public async Task AListedReferenceWhoseSourceIsPickedUpNeitherReadsNorWrites()
+    {
+        var rows = LinkedRooms();
+        await SavedReference(rows);
+        var holder = new WiredVariableHolder(WiredVariableTarget.User, 7, 1);
+        var frame = new WiredVariableFrame(RoomId, [holder]);
+        var module = _room.GetWired().Variables.Module;
+        WiredVariableReference reference = new(WiredVariableTarget.User, $"custom:{ReferenceId}");
+        Assert.Contains(ReferenceId, RoomVariableIds());
+        Assert.True(module.TryResolveCatalogId($"user:{ReferenceId}", WiredVariableTarget.User, out _));
+
+        PickUpSource(rows);
+
+        Assert.Contains(ReferenceId, RoomVariableIds());
+        Assert.False(module.TryResolveCatalogId($"user:{ReferenceId}", WiredVariableTarget.User, out _));
+        Assert.Null(module.Read(reference, holder, frame));
+        Assert.False(module.Mutate(reference, holder, WiredVariableMutation.Set, 6, frame));
     }
 
     [Fact]
@@ -51,6 +88,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(wired.TryGet(ReferenceId, out _));
         Assert.Equal($"r119ref [0] [{SourceWireId}] shared 0", Open(ReferenceId));
         Assert.DoesNotContain(ReferenceId, RoomVariableIds());
+        Assert.DoesNotContain(NativeVariables(), variable => variable.Id == $"user:{ReferenceId}");
     }
 
     // Plus behavior, not probed on Habbo: saving the reference again after its source was picked up is refused like any save that
@@ -125,6 +163,14 @@ public partial class PlacedFurniRoomTests
     {
         new WiredConfigurationStore(rows.Database).Reset([SourceId]);
         rows.ItemRooms[SourceId] = 0;
+    }
+
+    // The list the client shows: the room's native variable catalog.
+    private WiredNativeVariable[] NativeVariables()
+    {
+        Assert.True(_room.GetWired().Variables.TryCaptureNativeCatalog(out var catalog));
+
+        return [.. catalog!.Variables];
     }
 
     private uint[] RoomVariableIds() => [.. _room.GetWired().Variables.Catalog().Variables.Select(variable => variable.Definition.ItemId)];

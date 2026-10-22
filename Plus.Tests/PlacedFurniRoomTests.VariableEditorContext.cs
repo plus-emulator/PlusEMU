@@ -89,7 +89,7 @@ public partial class PlacedFurniRoomTests
     {
         var service = UseVariableRows();
         var users = new RoomUserManager(_room, TestRoomUserStore.Instance, TimeProvider.System, TestRewardProgress.Unused,
-            new TestChatEmotions(), TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel);
+            new TestChatEmotions(), TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         Set("_roomUserManager", users);
         _room.WordFilterList = [];
         _client.GetHabbo().IgnoresComponent = new([]);

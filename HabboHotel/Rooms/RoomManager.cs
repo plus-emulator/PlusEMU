@@ -83,7 +83,10 @@ public class RoomManager : IRoomManager, IStartable
 
                         if (tick.Crashed) {
                             room.IsCrashed = true;
-                            UnloadRoom(room.Id);
+                            _logger.LogError("Room {RoomId} crashed after its pass missed {Misses} ticks; it unloads when that pass ends", room.Id,
+                                RoomCycle.MissesUntilCrash);
+                            // Unloading waits for the room's lock, which the stuck pass holds; waiting here would stop every room.
+                            room.ProcessTask.ContinueWith(_ => UnloadCrashedRoom(room), TaskScheduler.Default);
                         }
                     }
                 }
@@ -215,12 +218,23 @@ public class RoomManager : IRoomManager, IStartable
         return false;
     }
 
-    public void UnloadRoom(uint roomId)
-    {
-        Room room;
+    public void UnloadRoom(uint roomId) => Unload(roomId, null);
 
+    private void UnloadCrashedRoom(Room room)
+    {
+        try {
+            // Only this instance: the room may have been unloaded and loaded again while its pass was stuck.
+            Unload(room.Id, room);
+        }
+        catch (Exception e) {
+            ExceptionLogger.LogException(e);
+        }
+    }
+
+    private void Unload(uint roomId, Room? room)
+    {
         lock (_roomLoadingSync) {
-            if (!_rooms.TryRemove(roomId, out room!)) {
+            if (room == null ? !_rooms.TryRemove(roomId, out room) : !_rooms.TryRemove(new KeyValuePair<uint, Room>(roomId, room))) {
                 return;
             }
 

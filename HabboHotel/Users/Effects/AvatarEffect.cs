@@ -68,12 +68,5 @@ public sealed class AvatarEffect
         habbo.Client?.Send(new AvatarEffectExpiredComposer(new AvatarEffectExpiry(SpriteId)));
     }
 
-    public void AddToQuantity()
-    {
-        var quantity = Quantity + 1;
-        Store.SaveQuantity(Id, quantity, Activated, ActivatedAt);
-        Quantity = quantity;
-    }
-
     private IAvatarEffectStore Store => _store ?? throw new InvalidOperationException("Avatar effect persistence is not configured.");
 }

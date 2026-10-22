@@ -227,6 +227,109 @@ public sealed class CatalogPurchaseServiceTests
         Assert.Single(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Bots.Bots);
     }
 
+    [Theory]
+    [InlineData(InteractionType.None)]
+    [InlineData(InteractionType.Teleport)]
+    public async Task FurnitureIsCreatedInsideTheCharge(InteractionType interaction)
+    {
+        var context = Context(interaction: interaction);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "ignored", 1));
+
+        Assert.Equal(1, context.Rewards.Charges);
+        Assert.Same(context.Rewards.Transaction, context.Factory.Transaction);
+        Assert.Equal(90, context.Habbo.Credits);
+        Assert.NotNull(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.GetItem(700));
+    }
+
+    [Fact]
+    public async Task BundleFurnitureIsCreatedInsideTheCharge()
+    {
+        var context = Context(products:
+        [
+            new CatalogProduct { Type = CatalogProductType.Furni, Definition = BundleDefinition(51) },
+            new CatalogProduct { Type = CatalogProductType.Furni, Definition = BundleDefinition(52) }
+        ]);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "", 1));
+
+        Assert.Same(context.Rewards.Transaction, context.Factory.Transaction);
+        Assert.Equal(2, Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.AllItems.Count());
+    }
+
+    [Fact]
+    public async Task FurnitureThatCannotBeCreatedIsNotCharged()
+    {
+        var context = Context(factorySucceeds: false);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "ignored", 1));
+
+        Assert.Equal(100, context.Habbo.Credits);
+        Assert.Empty(Assert.IsType<InventoryComponent>(context.Habbo.Inventory).Furniture.AllItems);
+        Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.CreditBalanceComposer);
+        Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+    }
+
+    [Fact]
+    public async Task NewEffectIsCreatedInsideTheCharge()
+    {
+        var effects = new RecordingEffects();
+        var context = Context(effect: true, effects: effects);
+        context.Habbo.Effects = new EffectsComponent(TimeProvider.System);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "ignored", 1));
+
+        Assert.Same(context.Rewards.Transaction, effects.Transaction);
+        Assert.Equal(90, context.Habbo.Credits);
+        Assert.Equal(3600, context.Habbo.Effects.GetEffectNullable(108)!.Duration);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.AvatarEffectAddedComposer);
+    }
+
+    [Fact]
+    public async Task OwnedEffectGainsItsQuantityInsideTheCharge()
+    {
+        var effects = new RecordingEffects();
+        var context = Context(effect: true, effects: effects);
+        context.Habbo.Effects = new EffectsComponent(TimeProvider.System);
+        var owned = new AvatarEffect(5, 42, 108, 3600, false, null, 1, effects);
+        context.Habbo.Effects.TryAdd(owned);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "ignored", 1));
+
+        Assert.Same(context.Rewards.Transaction, effects.Transaction);
+        Assert.Equal(new[] { 5 }, effects.AddedQuantities);
+        Assert.Empty(effects.SavedOutside);
+        Assert.Equal(2, owned.Quantity);
+        Assert.Equal(90, context.Habbo.Credits);
+    }
+
+    [Fact]
+    public async Task BadgeIsStoredInsideTheChargeAndPublishedAfterIt()
+    {
+        var badges = new RecordingBadges(stores: true);
+        var context = Context(product: new CatalogProduct { Type = CatalogProductType.Badge, BadgeCode = "ACH_Bought" }, badges: badges);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "", 1));
+
+        Assert.Same(context.Rewards.Transaction, badges.Transaction);
+        Assert.Equal(new[] { "ACH_Bought" }, badges.Published);
+        Assert.Empty(badges.GivenOutside);
+        Assert.Equal(90, context.Habbo.Credits);
+    }
+
+    [Fact]
+    public async Task BadgeThatCannotBeStoredIsNotCharged()
+    {
+        var badges = new RecordingBadges(stores: false);
+        var context = Context(product: new CatalogProduct { Type = CatalogProductType.Badge, BadgeCode = "ACH_Restricted" }, badges: badges);
+
+        await context.Service.Purchase(context.Client, new(1, 2, "", 1));
+
+        Assert.Equal(100, context.Habbo.Credits);
+        Assert.Empty(badges.Published);
+        Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+    }
+
     [Fact]
     public async Task FurniturePurchaseWithoutLoadedInventoryDoesNotCharge()
     {
@@ -474,7 +577,8 @@ public sealed class CatalogPurchaseServiceTests
         bool botStoreFails = false, int points = 0, int pointsType = 0, bool effect = false,
         InteractionType interaction = InteractionType.None, string extraParam = "", IGroupManager? groups = null, IGroupForumStore? forums = null,
         string itemName = "chair", CatalogProduct? product = null, Plus.HabboHotel.Catalog.BuildersClub.IBuildersClubService? buildersClub = null,
-        IReadOnlyList<CatalogProduct>? products = null, RecordingMembership? memberships = null, IPlannedShutdown? plannedShutdown = null)
+        IReadOnlyList<CatalogProduct>? products = null, RecordingMembership? memberships = null, IPlannedShutdown? plannedShutdown = null,
+        IBadgeManager? badges = null, IAvatarEffectStore? effects = null)
     {
         var definition = new ItemDefinition
         {
@@ -535,14 +639,14 @@ public sealed class CatalogPurchaseServiceTests
             new Settings(enabled),
             Proxy<IAchievementManager, EmptyProxy>(),
             Proxy<IItemDataManager, EmptyProxy>(),
-            Proxy<IBadgeManager, EmptyProxy>(),
+            badges ?? new RecordingBadges(stores: true),
             factory,
             botStore,
             Proxy<IHabbiconService, EmptyProxy>(),
             memberships ?? new RecordingMembership(),
             rewards,
             tracks,
-            Proxy<IAvatarEffectStore, EmptyProxy>(),
+            effects ?? Proxy<IAvatarEffectStore, EmptyProxy>(),
             groups ?? Proxy<IGroupManager, EmptyProxy>(),
             forums ?? Proxy<IGroupForumStore, EmptyProxy>(),
             new FixedClock(new DateTimeOffset(2040, 2, 3, 4, 5, 6, TimeSpan.Zero)),
@@ -702,6 +806,52 @@ public sealed class CatalogPurchaseServiceTests
         }
     }
 
+    private sealed class RecordingBadges(bool stores) : IBadgeManager
+    {
+        public IDbTransaction? Transaction { get; private set; }
+        public List<string> Published { get; } = [];
+        public List<string> GivenOutside { get; } = [];
+        public IReadOnlyDictionary<string, BadgeDefinition> Badges { get; } = new Dictionary<string, BadgeDefinition>();
+        public Task Init() => Task.CompletedTask;
+        public Task GiveBadge(Habbo habbo, string code)
+        {
+            GivenOutside.Add(code);
+
+            return Task.CompletedTask;
+        }
+        public bool StoreBadge(IDbConnection connection, IDbTransaction transaction, Habbo habbo, string code)
+        {
+            Transaction = transaction;
+
+            return stores;
+        }
+        public void PublishBadge(Habbo habbo, string code) => Published.Add(code);
+        public Task RemoveBadge(Habbo habbo, string badge) => throw new NotSupportedException();
+        public Task<bool> ReplaceBadge(Habbo habbo, string? previous, string code) => throw new NotSupportedException();
+        public Task<List<Plus.HabboHotel.Users.Badges.Badge>> LoadBadgesForHabbo(int userId) => throw new NotSupportedException();
+    }
+
+    private sealed class RecordingEffects : IAvatarEffectStore
+    {
+        public IDbTransaction? Transaction { get; private set; }
+        public List<int> AddedQuantities { get; } = [];
+        public List<int> SavedOutside { get; } = [];
+        public IReadOnlyList<AvatarEffect> Load(int userId) => [];
+        public AvatarEffect Create(IDbConnection connection, IDbTransaction transaction, int userId, int spriteId, double duration)
+        {
+            Transaction = transaction;
+
+            return new(9, userId, spriteId, duration, false, null, 1, this);
+        }
+        public void AddQuantity(IDbConnection connection, IDbTransaction transaction, int id)
+        {
+            Transaction = transaction;
+            AddedQuantities.Add(id);
+        }
+        public void Activate(int id, DateTimeOffset timestamp) => throw new NotSupportedException();
+        public void SaveQuantity(int id, int quantity, bool activated, DateTimeOffset? activatedAt) => SavedOutside.Add(id);
+    }
+
     private sealed class RecordingFactory(bool succeeds) : IItemFactory
     {
         public int Creates { get; private set; }
@@ -750,8 +900,29 @@ public sealed class CatalogPurchaseServiceTests
             return [new Item { Id = (uint)(698 + Creates), OwnerId = (uint)habbo.Id, Definition = definition },
                 new Item { Id = (uint)(699 + Creates), OwnerId = (uint)habbo.Id, Definition = definition }];
         }
-        public void CreateMoodlightData(Item item) => throw new NotSupportedException();
-        public void CreateTonerData(Item item) => throw new NotSupportedException();
+        public IDbTransaction? Transaction { get; private set; }
+        public Item CreateSingleItemNullable(IDbConnection connection, IDbTransaction transaction, ItemDefinition definition, Habbo habbo, string extraData,
+            int groupId = 0, uint limitedNumber = 0, uint limitedStack = 0)
+        {
+            Transaction = transaction;
+
+            return CreateSingleItemNullable(definition, habbo, extraData, extraData, groupId, limitedNumber, limitedStack);
+        }
+        public List<Item> CreateMultipleItems(IDbConnection connection, IDbTransaction transaction, ItemDefinition definition, int ownerId, string extraData,
+            int amount, int groupId = 0)
+        {
+            Transaction = transaction;
+
+            return CreateMultipleItems(definition, new Habbo { Id = ownerId }, extraData, amount, groupId);
+        }
+        public List<Item> CreateTeleporterItems(IDbConnection connection, IDbTransaction transaction, ItemDefinition definition, Habbo habbo, int groupId = 0)
+        {
+            Transaction = transaction;
+
+            return CreateTeleporterItems(definition, habbo, groupId);
+        }
+        public void CreateMoodlightData(IDbConnection connection, IDbTransaction transaction, Item item) => throw new NotSupportedException();
+        public void CreateTonerData(IDbConnection connection, IDbTransaction transaction, Item item) => throw new NotSupportedException();
     }
 
     public class CatalogProxy : DispatchProxy

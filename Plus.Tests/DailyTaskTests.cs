@@ -582,6 +582,8 @@ public sealed class DailyTaskTests
         public IReadOnlyDictionary<string, BadgeDefinition> Badges { get; } = new Dictionary<string, BadgeDefinition>();
         public Task Init() => Task.CompletedTask;
         public Task GiveBadge(Habbo habbo, string code) => Task.CompletedTask;
+        public bool StoreBadge(IDbConnection connection, IDbTransaction transaction, Habbo habbo, string code) => false;
+        public void PublishBadge(Habbo habbo, string code) { }
         public Task RemoveBadge(Habbo habbo, string badge) => Task.CompletedTask;
         public Task<bool> ReplaceBadge(Habbo habbo, string? previous, string code) => Task.FromResult(false);
         public Task<List<Badge>> LoadBadgesForHabbo(int userId) => Task.FromResult(new List<Badge>());

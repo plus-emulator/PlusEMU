@@ -196,6 +196,8 @@ public class RewardTrackLiveTests
         public void Add(string code) => _badges[code.ToUpper()] = new() { Code = code };
         public Task Init() => Task.CompletedTask;
         public Task GiveBadge(Habbo habbo, string code) => throw new InvalidOperationException("Claims grant badges in their own transaction.");
+        public bool StoreBadge(IDbConnection connection, IDbTransaction transaction, Habbo habbo, string code) => throw new NotSupportedException();
+        public void PublishBadge(Habbo habbo, string code) => throw new NotSupportedException();
         public Task RemoveBadge(Habbo habbo, string badge) => throw new NotSupportedException();
         public Task<bool> ReplaceBadge(Habbo habbo, string? previous, string code) => throw new NotSupportedException();
         public Task<List<Badge>> LoadBadgesForHabbo(int userId) => throw new NotSupportedException();

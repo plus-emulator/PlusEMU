@@ -7,7 +7,9 @@ namespace Plus.HabboHotel.Users.Effects;
 public interface IAvatarEffectStore
 {
     IReadOnlyList<AvatarEffect> Load(int userId);
-    AvatarEffect Create(int userId, int spriteId, double duration);
+    // The two writes below run inside the caller's transaction, so they commit or roll back with it.
+    AvatarEffect Create(IDbConnection connection, IDbTransaction transaction, int userId, int spriteId, double duration);
+    void AddQuantity(IDbConnection connection, IDbTransaction transaction, int id);
     void Activate(int id, DateTimeOffset timestamp);
     void SaveQuantity(int id, int quantity, bool activated, DateTimeOffset? activatedAt);
 }
@@ -24,14 +26,16 @@ public sealed class AvatarEffectStore(IDatabase database) : IAvatarEffectStore
             row.TimestampActivated, row.Quantity, this)).ToList();
     }
 
-    public AvatarEffect Create(int userId, int spriteId, double duration)
+    public AvatarEffect Create(IDbConnection connection, IDbTransaction transaction, int userId, int spriteId, double duration)
     {
-        using var connection = database.Connection();
         var id = connection.ExecuteScalar<int>("INSERT INTO `user_effects` (`user_id`,`effect_id`,`total_duration`,`is_activated`,`activated_stamp`,`quantity`) " +
-            "VALUES (@userId, @spriteId, @duration, false, NULL, 1); SELECT LAST_INSERT_ID()", new { userId, spriteId, duration });
+            "VALUES (@userId, @spriteId, @duration, false, NULL, 1); SELECT LAST_INSERT_ID()", new { userId, spriteId, duration }, transaction);
 
         return new(id, userId, spriteId, duration, false, null, 1, this);
     }
+
+    public void AddQuantity(IDbConnection connection, IDbTransaction transaction, int id) =>
+        RequireUpdatedRow(connection.Execute("UPDATE `user_effects` SET `quantity` = `quantity` + 1 WHERE `id` = @id", new { id }, transaction), id);
 
     public void Activate(int id, DateTimeOffset timestamp)
     {

@@ -1,3 +1,4 @@
+using System.Data;
 using Plus.HabboHotel.Users.Inventory.Badges;
 using Plus.Core;
 using Dapper;
@@ -38,25 +39,47 @@ public class BadgeManager : IBadgeManager, IStartable
         _logger.LogInformation("Loaded " + Badges.Count + " badge definitions.");
     }
 
+    public Task GiveBadge(Habbo habbo, string code)
+    {
+        using var connection = _database.Connection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        if (StoreBadge(connection, transaction, habbo, code)) {
+            transaction.Commit();
+            PublishBadge(habbo, code);
+        }
+
+        return Task.CompletedTask;
+    }
+
     // Badges are given to and taken from the loaded inventory; without one nothing is written.
-    public async Task GiveBadge(Habbo habbo, string code)
+    public bool StoreBadge(IDbConnection connection, IDbTransaction transaction, Habbo habbo, string code)
     {
         if (habbo.Inventory is not { } inventory || inventory.Badges.HasBadge(code)) {
-            return;
+            return false;
         }
 
         if (!_badges.TryGetValue(code.ToUpper(), out var badge) || badge.RequiredRight.Length > 0 && !habbo.Access.Can(badge.RequiredRight)) {
-            return;
+            return false;
         }
 
-        using var connection = _database.Connection();
-        await connection.ExecuteScalarAsync<int>("REPLACE INTO `user_badges` (`user_id`,`badge_id`,`badge_slot`) VALUES (@userId, @badge, '0');", new
+        connection.Execute("REPLACE INTO `user_badges` (`user_id`,`badge_id`,`badge_slot`) VALUES (@userId, @badge, '0');", new
         {
             userId = habbo.Id,
             badge = badge.Code
-        });
-        inventory.Badges.AddBadge(new Badge(code, 0));
+        }, transaction);
 
+        return true;
+    }
+
+    public void PublishBadge(Habbo habbo, string code)
+    {
+        if (habbo.Inventory is not { } inventory) {
+            return;
+        }
+
+        inventory.Badges.AddBadge(new Badge(code, 0));
         habbo.Client.SendBadgeInventory(habbo.Id, inventory.Badges.Badges.Values);
         habbo.Client?.Send(new FurniListNotificationComposer(1, 4));
     }

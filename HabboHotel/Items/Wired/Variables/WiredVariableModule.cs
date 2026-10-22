@@ -873,7 +873,8 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             return null;
         }
 
-        var target = new WiredVariableReference(pointer.Target, $"custom:{held.Value}");
+        // The accessor holds the id the client sees (@id, @event.variable_update.box_id), so a Builders Club box maps back to its stored id.
+        var target = new WiredVariableReference(pointer.Target, $"custom:{BuildersClubItemIds.FromWire((uint)held.Value)}");
 
         return Resolve(target, false)?.Definition is { IsPointer: false } definition ? (target, definition) : null;
     }

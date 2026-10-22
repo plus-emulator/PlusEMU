@@ -121,7 +121,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             var p = n.OwnedIntParams;
 
             if (!(Shape(n, 6, 2, 2, 2) || Shape(n, 7, 2, 2, 2)) || !TryTarget(p[0], out var target)
-                || p[1] is < 0 or > 5 || !TryReference(p[2], p[5], p.Length == 7 ? p[6] : 0, target, out var reference)) {
+                || p[1] is < 0 or > 5 || !TryReference(p[2], p[5], p.Length == 7 ? p[6] : 0, target, out var reference, globalHolder: true)) {
                 return null;
             }
 
@@ -212,11 +212,12 @@ internal static partial class WiredNativeAuxiliaryEditor
 
     /// <summary>
     /// The October value-or-variable tail: the option (0 value, 1 variable), the reference's AIR target and "same holder",
-    /// which only applies to a variable read on holders of the destination's own kind.
+    /// which only applies to a variable read on holders of the destination's own kind. Observed on AIR WIN63-202610201032-107964540:
+    /// Variable Value Match also takes it on a global target; the other boxes were not probed there.
     /// </summary>
-    private static bool TryReference(int option, int air, int sameHolder, int target, out int reference) =>
+    private static bool TryReference(int option, int air, int sameHolder, int target, out int reference, bool globalHolder = false) =>
         TryTarget(air, out reference) && option is 0 or 1 && sameHolder is 0 or 1
-        && (sameHolder == 0 || option == 0 || reference == target && target is 0 or 1);
+        && (sameHolder == 0 || option == 0 || reference == target && (target is 0 or 1 || globalHolder && target == 3));
 
     private static WiredNativeEditorMetadata SelectorMeta(ImmutableArray<int> owned) => Meta(1, 1, owned, 2) with
     {

@@ -119,7 +119,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         }
 
         if (page.Layout is "club_buy" or "vip_buy" or "loyalty_vip_buy") {
-            if (amount != 1) {
+            if (amount != 1 || _plannedShutdown?.IsPending == true) {
                 session.Send(new PurchaseErrorComposer(PurchaseError.Unavailable));
 
                 return;
@@ -131,6 +131,13 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         }
 
         if (!page.Offers.TryGetValue(offerId, out var offer) || !offer.Enabled || !offer.CanPurchase(session.GetHabbo())) {
+            return;
+        }
+
+        if (_plannedShutdown?.IsPending == true && offer.Products.Any(bought => bought.Type is CatalogProductType.Furni
+                or CatalogProductType.BuildersClub or CatalogProductType.BuildersClubAddon)) {
+            session.Send(new PurchaseErrorComposer(PurchaseError.Unavailable));
+
             return;
         }
 

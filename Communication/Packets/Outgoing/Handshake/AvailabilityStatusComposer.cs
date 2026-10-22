@@ -10,9 +10,8 @@ public class AvailabilityStatusComposer(bool onShutDown = false) : IServerPacket
 
     public void Compose(IOutgoingPacket packet)
     {
-        // TODO @80O: Pass variables via constructor.
         packet.WriteBoolean(true);
-        packet.WriteBoolean(false);
+        packet.WriteBoolean(_onShutDown);
         packet.WriteBoolean(true);
     }
 }

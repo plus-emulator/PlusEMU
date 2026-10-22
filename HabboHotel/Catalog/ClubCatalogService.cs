@@ -99,7 +99,8 @@ public sealed class ClubCatalogService(
     {
         var habbo = session.GetHabbo();
 
-        if (!catalog.Pages.Any(page => page.CanOpen(habbo) &&
+        if (_plannedShutdown?.IsPending == true ||
+            !catalog.Pages.Any(page => page.CanOpen(habbo) &&
                 page.Layout is "club_buy" or "vip_buy" or "loyalty_vip_buy") ||
             !catalog.TryGetClubOffer(offerId, out var offer) ||
             memberships.Purchase(habbo, offer) == null) {

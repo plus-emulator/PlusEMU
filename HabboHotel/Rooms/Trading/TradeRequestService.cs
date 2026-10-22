@@ -49,6 +49,12 @@ public sealed class TradeRequestService(ITradingLockService tradingLocks, IPlann
             return;
         }
 
+        if (_plannedShutdown?.IsPending == true) {
+            session.Send(new TradingErrorComposer(TradingError.HotelDisallowsTrading, targetUser.GetUsername()));
+
+            return;
+        }
+
         var hadLock = session.GetHabbo().TradingLockExpiresAt != null;
 
         if (tradingLocks.IsLocked(session.GetHabbo())) {

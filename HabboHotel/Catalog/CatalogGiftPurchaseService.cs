@@ -101,6 +101,10 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         var boxId = request.BoxId;
         var ribbonId = request.RibbonId;
 
+        if (_plannedShutdown?.IsPending == true) {
+            return Reject(session, "a shutdown is pending");
+        }
+
         if (_settingsManager.TryGetValue("room.item.gifts.enabled") != "1") {
             session.SendNotification("The hotel managers have disabled gifting");
 

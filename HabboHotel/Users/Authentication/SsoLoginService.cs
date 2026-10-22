@@ -100,7 +100,7 @@ public sealed class SsoLoginService : ISsoLoginService
             session.Send(new FigureSetIdsComposer(session.GetHabbo().Clothing?.GetClothingParts ?? []));
             session.Send(new UserRightsComposer(UserRightsSnapshot.Capture(session.GetHabbo().Access)));
             _clientAccessLists.Send(session.GetHabbo());
-            session.Send(new AvailabilityStatusComposer());
+            session.Send(new AvailabilityStatusComposer(_plannedShutdown?.IsPending == true));
             session.Send(new AchievementScoreComposer(session.GetHabbo().HabboStats?.AchievementPoints ?? 0));
             session.Send(new CfhTopicsInitComposer(CfhTopicCategorySnapshot.Capture(_moderationManager.UserActionPresets)));
             _achievementShowcase.ShowDefinitions(session);

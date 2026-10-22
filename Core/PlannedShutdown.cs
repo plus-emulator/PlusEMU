@@ -1,3 +1,4 @@
+using Plus.Communication.Packets.Outgoing.Handshake;
 using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.HabboHotel.GameClients;
 using Plus.Utilities.DependencyInjection;
@@ -37,7 +38,7 @@ public sealed class PlannedShutdown : IPlannedShutdown
         _shutdown = shutdown;
     }
 
-    public bool IsPending => false;
+    public bool IsPending => Volatile.Read(ref _scheduled) == 1;
 
     public static bool TryParse(IReadOnlyList<string> arguments, out int minutes, out int durationMinutes)
     {
@@ -58,6 +59,8 @@ public sealed class PlannedShutdown : IPlannedShutdown
             return false;
         }
 
+        // AIR hides the trade button while onShutDown is set (InfoStandWidgetHandler.as:935-961, build WIN63-202610201032-107964540).
+        _clients.SendPacket(new AvailabilityStatusComposer(true));
         Warn(minutes, durationMinutes);
 
         if (minutes > 1) {

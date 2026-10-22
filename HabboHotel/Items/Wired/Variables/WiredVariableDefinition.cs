@@ -28,6 +28,11 @@ public sealed record WiredVariableDefinition(uint ItemId, uint RoomId, uint Owne
     public string Token => $"custom:{ItemId}";
     /// <summary>A pointer variable: the token of the context variable whose value names the variable it stands for.</summary>
     public bool IsPointer => PointerAccessor is not null;
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: a Variable Changed trigger never sees a change of a context variable, so the catalog
+    /// lists it without interception.
+    /// </summary>
+    public bool InterceptsChanges => Target != WiredVariableTarget.Context;
     public bool IsDurable => Availability is WiredVariableAvailability.Persistent or WiredVariableAvailability.Shared;
 }
 

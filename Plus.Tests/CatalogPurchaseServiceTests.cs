@@ -752,6 +752,29 @@ public sealed class CatalogPurchaseServiceTests
         }
         public void CreateMoodlightData(Item item) => throw new NotSupportedException();
         public void CreateTonerData(Item item) => throw new NotSupportedException();
+        public IDbTransaction? Transaction { get; private set; }
+        public Item CreateSingleItemNullable(IDbConnection connection, IDbTransaction transaction, ItemDefinition definition, Habbo habbo, string extraData,
+            int groupId = 0, uint limitedNumber = 0, uint limitedStack = 0)
+        {
+            Transaction = transaction;
+
+            return CreateSingleItemNullable(definition, habbo, extraData, extraData, groupId, limitedNumber, limitedStack);
+        }
+        public List<Item> CreateMultipleItems(IDbConnection connection, IDbTransaction transaction, ItemDefinition definition, int ownerId, string extraData,
+            int amount, int groupId = 0)
+        {
+            Transaction = transaction;
+
+            return CreateMultipleItems(definition, new Habbo { Id = ownerId }, extraData, amount, groupId);
+        }
+        public List<Item> CreateTeleporterItems(IDbConnection connection, IDbTransaction transaction, ItemDefinition definition, Habbo habbo, int groupId = 0)
+        {
+            Transaction = transaction;
+
+            return CreateTeleporterItems(definition, habbo, groupId);
+        }
+        public void CreateMoodlightData(IDbConnection connection, IDbTransaction transaction, Item item) => throw new NotSupportedException();
+        public void CreateTonerData(IDbConnection connection, IDbTransaction transaction, Item item) => throw new NotSupportedException();
     }
 
     public class CatalogProxy : DispatchProxy

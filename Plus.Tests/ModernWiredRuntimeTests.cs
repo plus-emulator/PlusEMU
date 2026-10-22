@@ -916,7 +916,7 @@ public partial class ModernWiredRuntimeTests
         var users = new List<RoomUser>();
 
         for (var direction = 0; direction < 8; direction++) {
-            var offset = WiredRoomOperations.Offset(direction);
+            var offset = Rotation.Offset(direction);
             var user = new RoomUser(direction + 1, f.Room.Id, direction + 20, f.Room, null, TestChatEmotions.Unused, TestRewardProgress.Unused);
             user.InitializePosition(1 + offset.X, 1 + offset.Y, 0);
             Admit(f.Room, user);
@@ -1114,7 +1114,7 @@ public partial class ModernWiredRuntimeTests
         var proposed = new WiredConfiguration { IntParams = [.. ints], SelectedItems = [1] };
 
         if (name == "wf_act_move_furni_as_group") {
-            var offset = WiredRoomOperations.Offset(ints[0]);
+            var offset = Rotation.Offset(ints[0]);
             proposed = proposed with { IntParams = [0, offset.X, offset.Y, 100, 101, 0], SecondarySelectedItems = [mover.Id] };
             LoadStoredDirectionalGroup(action, proposed);
         }
@@ -1336,7 +1336,7 @@ public partial class ModernWiredRuntimeTests
         var proposed = SavePacket(ints, movers.Select(item => item.Id).ToArray(), 0);
 
         if (name == "wf_act_move_furni_as_group") {
-            var offset = WiredRoomOperations.Offset(direction);
+            var offset = Rotation.Offset(direction);
             proposed = proposed with { IntParams = [0, offset.X, offset.Y, 100, 101, 0], SecondarySelectedItems = [movers[0].Id] };
             LoadStoredDirectionalGroup(action, proposed);
         }
@@ -1562,7 +1562,7 @@ public partial class ModernWiredRuntimeTests
                 Assert.Equal(new[] { storedDirection[movement], storedTurn[rotation], 100, 0 }, saved.IntParams.ToArray());
 
                 if (movement >= 4) {
-                    Assert.Equal(compass[movement - 4], WiredRoomOperations.Offset(saved.IntParams[0]));
+                    Assert.Equal(compass[movement - 4], Rotation.Offset(saved.IntParams[0]));
                 }
 
                 var editor = f.Open();

@@ -1,5 +1,6 @@
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.PathFinding;
 
 namespace Plus.HabboHotel.Items.Wired.Modern.Conditions;
 
@@ -79,7 +80,7 @@ public static class WiredItemConditions
     public static bool ValidMoves(IEnumerable<Item> items, Func<Item, int, int, bool> canMove) =>
         WiredRoomOperations.Quantify(items.Select(item => Enumerable.Range(0, 4).Any(index =>
         {
-            var offset = WiredRoomOperations.Offset(index * 2);
+            var offset = Rotation.Offset(index * 2);
 
             return canMove(item, item.GetX + offset.X, item.GetY + offset.Y);
         })), 0);

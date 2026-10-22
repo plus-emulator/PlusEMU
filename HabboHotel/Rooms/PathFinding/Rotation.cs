@@ -1,3 +1,5 @@
+using System.Drawing;
+
 namespace Plus.HabboHotel.Rooms.PathFinding;
 
 public static class Rotation
@@ -56,4 +58,17 @@ public static class Rotation
 
         return rot;
     }
+
+    public static Point Offset(int direction) => direction switch
+    {
+        0 => new(0, -1),
+        1 => new(1, -1),
+        2 => new(1, 0),
+        3 => new(1, 1),
+        4 => new(0, 1),
+        5 => new(-1, 1),
+        6 => new(-1, 0),
+        7 => new(-1, -1),
+        _ => Point.Empty
+    };
 }

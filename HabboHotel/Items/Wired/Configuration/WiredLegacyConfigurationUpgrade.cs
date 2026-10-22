@@ -3,6 +3,7 @@ using System.Text.Json;
 using Plus.HabboHotel.Items.Wired.Modern;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Modern.Selectors;
+using Plus.HabboHotel.Rooms.PathFinding;
 
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
@@ -109,7 +110,7 @@ internal static class WiredLegacyConfigurationUpgrade
                 if (p.Length == 2) {
                     // The old direction editor moved the group one tile. The target editor says the same with the movers as their own
                     // target: both resolve the same picks in the same order, so the first mover steps one tile from itself.
-                    var offset = WiredRoomOperations.Offset(p[0]);
+                    var offset = Rotation.Offset(p[0]);
                     current = validated with { IntParams = [0, offset.X, offset.Y, p[1], p[1], 0], SecondarySelectedItems = [], Text = "" };
                 }
                 else {

@@ -48,19 +48,6 @@ public static class WiredRoomOperations
             SecondarySelectedItems = templates ? proposed.SecondarySelectedItems.Where(id => handler.GetItem(id)?.IsTemporary != true).ToImmutableArray() : proposed.SecondarySelectedItems
         };
     }
-    public static Point Offset(int direction) => direction switch
-    {
-        0 => new(0, -1),
-        1 => new(1, -1),
-        2 => new(1, 0),
-        3 => new(1, 1),
-        4 => new(0, 1),
-        5 => new(-1, 1),
-        6 => new(-1, 0),
-        7 => new(-1, -1),
-        _ => Point.Empty
-    };
-
     public static IEnumerable<Point> Footprint(Item item, int x, int y, int rotation)
     {
         // Gamemap.GetAffectedTiles omits the origin and can repeat other cells.

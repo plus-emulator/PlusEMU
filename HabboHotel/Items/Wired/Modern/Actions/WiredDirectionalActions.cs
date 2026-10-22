@@ -1,5 +1,6 @@
 using System.Drawing;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.PathFinding;
 
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
@@ -20,7 +21,7 @@ public sealed class WiredDirectionalActions
         var moved = false;
 
         for (var attempt = 0; attempt < 8; attempt++) {
-            var offset = WiredRoomOperations.Offset(heading);
+            var offset = Rotation.Offset(heading);
             var x = item.GetX + offset.X;
             var y = item.GetY + offset.Y;
             var occupants = usersAt(x, y);

@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.PathFinding;
 
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
@@ -165,7 +166,7 @@ public sealed class WiredBotTargets
         }
 
         var map = room.GetGameMap();
-        var free = Enumerable.Range(0, 8).Select(WiredRoomOperations.Offset).Select(offset => (X: tile.X + offset.X, Y: tile.Y + offset.Y))
+        var free = Enumerable.Range(0, 8).Select(Rotation.Offset).Select(offset => (X: tile.X + offset.X, Y: tile.Y + offset.Y))
             .Where(point => map.ValidTile(point.X, point.Y) && map.SquareIsOpen(point.X, point.Y, false)
                 && WiredRoomOperations.UsersStandingOn(room, new(point.X, point.Y)).All(other => ReferenceEquals(other, bot)))
             .ToArray();
@@ -247,7 +248,7 @@ public sealed class WiredBotTargets
     private static void Approach(Room room, RoomUser bot, RoomUser user, Target target)
     {
         var map = room.GetGameMap();
-        var goal = Enumerable.Range(0, 8).Select(WiredRoomOperations.Offset)
+        var goal = Enumerable.Range(0, 8).Select(Rotation.Offset)
             .Select(offset => (X: user.X + offset.X, Y: user.Y + offset.Y))
             .Where(point => map.ValidTile(point.X, point.Y) && map.SquareIsOpen(point.X, point.Y, false) && map.CanWalk(point.X, point.Y, false))
             .OrderBy(point => Math.Max(Math.Abs(point.X - bot.X), Math.Abs(point.Y - bot.Y)))

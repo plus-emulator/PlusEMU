@@ -38,13 +38,10 @@ public sealed class MessengerCommunicationServiceTests
     }
 
     [Fact]
-    public async Task MissingFriendNotifiesBeforeFilteringAndNeverRaisesAMessengerEvent()
+    public async Task MissingFriendNotifiesBeforeFilteringAndNeverDelivers()
     {
         using var f = new MessengerFixture();
         var messenger = f.Messenger();
-        var events = new List<int>();
-        // Would throw on a null friend, which is the crash the production synchronizer hit.
-        messenger.MessageSend += (_, args) => events.Add(args.Friend.Id);
         var (session, sent) = f.RealSession(messenger);
         var sentAtFilter = -1;
         f.Filter.Output = "hello";
@@ -57,7 +54,7 @@ public sealed class MessengerCommunicationServiceTests
         Assert.Single(sent);
         Assert.Equal(ServerPacketHeader.InstantMessageErrorComposer, sent[0].Header);
         Assert.Equal(new object[] { 6, 99, "" }, MessengerFixture.Decode(sent[0].Payload));
-        Assert.Empty(events);
+        Assert.Empty(f.Delivered);
         Assert.Empty(f.Rewards.Progressed);
     }
 
@@ -188,18 +185,15 @@ public sealed class MessengerCommunicationServiceTests
     }
 
     [Fact]
-    public async Task SuccessfulDeliveryRaisesTheMessengerEventOnce()
+    public async Task SuccessfulDeliveryLogsTheFilteredMessageOnce()
     {
         using var f = new MessengerFixture();
-        var messenger = f.Messenger(friend: 2);
-        var sent = new List<(int Friend, string Text)>();
-        messenger.MessageSend += (_, args) => sent.Add((args.Friend.Id, args.Message));
-        var (session, _) = f.Session(messenger);
+        var (session, _) = f.Session(f.Messenger(friend: 2));
         f.Filter.Output = "hello";
 
-        await f.Service().SendMessage(session, 2, "hello");
+        await f.Service().SendMessage(session, 2, "raw");
 
-        Assert.Equal(new[] { (2, "hello") }, sent);
+        Assert.Equal(new[] { "hello" }, f.Delivered);
         Assert.Equal(new[] { "send_messenger_message" }, f.Rewards.Progressed);
     }
 
@@ -323,10 +317,7 @@ public sealed class MessengerCommunicationServiceTests
                 pending.Add(pendingId);
             }
 
-            var messenger = new HabboMessenger(friends, requests, pending, Clock);
-            messenger.MessageSend += (_, args) => Delivered.Add(args.Message);
-
-            return messenger;
+            return new HabboMessenger(friends, requests, pending, Clock);
         }
 
         public (FlashGameClient Session, object Unused) Session(HabboMessenger messenger)
@@ -361,9 +352,9 @@ public sealed class MessengerCommunicationServiceTests
         }
 
         public MessengerCommunicationService ServiceWithRealOutput() =>
-            new(Filter, LoaderProxy(), Quests, Rewards, new MessengerCommunicationOutput(), Friends);
+            new(Filter, LoaderProxy(), Quests, Rewards, new MessengerCommunicationOutput(), Friends, TestGameClientManager.Empty);
 
-        public MessengerCommunicationService Service() => new(Filter, LoaderProxy(), Quests, Rewards, Output, Friends);
+        public MessengerCommunicationService Service() => new(Filter, LoaderProxy(), Quests, Rewards, Output, Friends, TestGameClientManager.Empty);
 
         // Memory-only stand-in for the persisted workflow: these tests check reward and quest ordering around the result.
         public readonly MemoryFriendMutations Friends = new();
@@ -398,10 +389,22 @@ public sealed class MessengerCommunicationServiceTests
         private IMessengerDataLoader LoaderProxy()
         {
             var loader = DispatchProxy.Create<IMessengerDataLoader, ServiceProxy>();
-            ((ServiceProxy)(object)loader).Handler = (method, _) => method.Name == nameof(IMessengerDataLoader.CanReceiveFriendRequests)
-                ? Loader.Next : throw new NotSupportedException(method.Name);
+            ((ServiceProxy)(object)loader).Handler = (method, args) => method.Name switch
+            {
+                nameof(IMessengerDataLoader.CanReceiveFriendRequests) => Loader.Next,
+                nameof(IMessengerDataLoader.LogPrivateMessage) => Log((string)args![2]!),
+                nameof(IMessengerDataLoader.LogPrivateOfflineMessage) => Task.CompletedTask,
+                _ => throw new NotSupportedException(method.Name),
+            };
 
             return (IMessengerDataLoader)(object)loader;
+        }
+
+        private Task Log(string message)
+        {
+            Delivered.Add(message);
+
+            return Task.CompletedTask;
         }
 
         internal static List<object> Decode(byte[] payload)

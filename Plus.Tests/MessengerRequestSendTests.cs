@@ -51,7 +51,7 @@ public sealed class MessengerRequestSendTests
             return Task.FromResult(true);
         }
 
-        var synchronizer = new MessengerEventSynchronizer(loader, clients);
+        var synchronizer = new MessengerEventSynchronizer(clients);
         await synchronizer.UserLoggedIn(sender.Habbo);
         await synchronizer.UserLoggedIn(target.Habbo);
         var quests = Fake<IQuestManager>((method, args) => Record(order, method, args));
@@ -62,7 +62,8 @@ public sealed class MessengerRequestSendTests
             quests,
             rewards,
             Fake<IMessengerCommunicationOutput>((_, _) => throw new NotSupportedException()),
-            new MessengerFriendMutationService(loader, new AccountSessionGate(), clients));
+            new MessengerFriendMutationService(loader, new AccountSessionGate(), clients),
+            clients);
 
         await communication.RequestFriend(sender.Client, "Bob");
 

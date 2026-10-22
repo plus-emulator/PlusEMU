@@ -8,12 +8,10 @@ namespace Plus.HabboHotel.Friends;
 
 internal class MessengerEventSynchronizer : IAuthenticationTask
 {
-    private readonly IMessengerDataLoader _messengerDataLoader;
     private readonly IGameClientManager _gameClientManager;
 
-    public MessengerEventSynchronizer(IMessengerDataLoader messengerDataLoader, IGameClientManager gameClientManager)
+    public MessengerEventSynchronizer(IGameClientManager gameClientManager)
     {
-        _messengerDataLoader = messengerDataLoader;
         _gameClientManager = gameClientManager;
     }
 
@@ -28,7 +26,6 @@ internal class MessengerEventSynchronizer : IAuthenticationTask
         messenger.FriendStatusUpdated += (_, args) => OnFriendStatusUpdated(habbo, args);
         messenger.FriendUpdated += (_, args) => OnFriendUpdated(habbo, args);
         messenger.FriendsUpdated += (_, args) => OnFriendsUpdated(habbo, args);
-        messenger.MessageSend += async (_, args) => await OnMessageSend(habbo, args);
         messenger.MessageReceived += (_, args) => OnMessageReceived(habbo, args);
         messenger.RoomInviteReceived += (_, args) => OnRoomInviteReceived(habbo, args);
         messenger.StatusUpdated += (_, _) => OnStatusUpdated(habbo);
@@ -63,45 +60,6 @@ internal class MessengerEventSynchronizer : IAuthenticationTask
     private void OnRoomInviteReceived(Habbo habbo, MessengerMessageEventArgs args) => habbo.Client?.Send(new RoomInviteComposer(args.Friend.Id, args.Message));
 
     private void OnMessageReceived(Habbo habbo, MessengerMessageEventArgs args) => habbo.Client?.Send(new NewConsoleMessageComposer(args.Friend.Id, args.Message, 0, args.Friend.Username, args.Friend.Look));
-
-    private async Task OnMessageSend(Habbo habbo, MessengerMessageEventArgs args)
-    {
-        if (habbo.TimeMuted > 0) {
-            habbo.Client?.Send(new InstantMessageErrorComposer(MessengerMessageErrors.YourMuted, args.Friend.Id));
-
-            return;
-        }
-
-        await _messengerDataLoader.LogPrivateMessage(habbo.Id, args.Friend.Id, args.Message);
-        var target = _gameClientManager.GetClientByUserId(args.Friend.Id);
-
-        if (target == null) {
-            await _messengerDataLoader.LogPrivateOfflineMessage(habbo.Id, args.Friend.Id, args.Message);
-
-            return;
-        }
-
-        if (target.GetHabbo().TimeMuted > 0) {
-            habbo.Client?.Send(new InstantMessageErrorComposer(MessengerMessageErrors.FriendMuted, args.Friend.Id));
-
-            return;
-        }
-
-        if (!target.GetHabbo().AllowConsoleMessages || target.GetHabbo().IgnoresComponent?.IsIgnored(habbo.Id) == true) {
-            habbo.Client?.Send(new InstantMessageErrorComposer(MessengerMessageErrors.FriendBusy, args.Friend.Id));
-
-            return;
-        }
-
-        var messenger = target.GetHabbo().Messenger;
-        var friend = messenger?.GetFriend(habbo.Id);
-
-        if (messenger == null || friend == null) {
-            return;
-        }
-
-        messenger.ReceiveMessage(friend, args.Message);
-    }
 
     private void OnFriendsUpdated(Habbo habbo, MessengerBuddiesModifiedEventArgs args)
     {

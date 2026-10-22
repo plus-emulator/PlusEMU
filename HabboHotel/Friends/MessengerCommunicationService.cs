@@ -24,9 +24,10 @@ public sealed class MessengerCommunicationService(
     IQuestManager quests,
     IRewardTrackManager rewards,
     IMessengerCommunicationOutput output,
-    IMessengerFriendMutationService friends) : IMessengerCommunicationService
+    IMessengerFriendMutationService friends,
+    IGameClientManager clients) : IMessengerCommunicationService
 {
-    public Task SendMessage(GameClient session, int friendId, string text)
+    public async Task SendMessage(GameClient session, int friendId, string text)
     {
         var habbo = session.GetHabbo();
         var messenger = habbo.Messenger;
@@ -39,31 +40,60 @@ public sealed class MessengerCommunicationService(
         var message = wordFilter.CheckMessage(text);
 
         if (string.IsNullOrWhiteSpace(message)) {
-            return Task.CompletedTask;
+            return;
         }
 
         if (habbo.TimeMuted > 0) {
             output.Notice(session, "Oops, you're currently muted - you cannot send messages.");
 
-            return Task.CompletedTask;
+            return;
         }
 
         // Without a friend there is nothing to deliver to, so the messenger is never asked to send.
         if (messenger == null || friend == null) {
-            return Task.CompletedTask;
+            return;
         }
 
-        var error = messenger.SendMessage(friend, message);
-
-        if (error == null) {
-            rewards.Progress(session, RewardTrackActions.SendMessengerMessage);
-        }
+        var error = messenger.SendMessage(message);
 
         if (error == MessageError.Flooding) {
             output.Notice(session, "You cannot send a message, you have flooded the console.\n\nYou can send a message in 60 seconds.");
         }
 
-        return Task.CompletedTask;
+        if (error != null) {
+            return;
+        }
+
+        await Deliver(session, friend, message);
+        rewards.Progress(session, RewardTrackActions.SendMessengerMessage);
+    }
+
+    private async Task Deliver(GameClient session, MessengerBuddy friend, string message)
+    {
+        var senderId = session.GetHabbo().Id;
+        await messengerData.LogPrivateMessage(senderId, friend.Id, message);
+
+        if (clients.GetClientByUserId(friend.Id)?.GetHabbo() is not { } target) {
+            await messengerData.LogPrivateOfflineMessage(senderId, friend.Id, message);
+
+            return;
+        }
+
+        if (target.TimeMuted > 0) {
+            output.InstantMessageError(session, MessengerMessageErrors.FriendMuted, friend.Id);
+
+            return;
+        }
+
+        if (!target.AllowConsoleMessages || target.IgnoresComponent?.IsIgnored(senderId) == true) {
+            output.InstantMessageError(session, MessengerMessageErrors.FriendBusy, friend.Id);
+
+            return;
+        }
+
+        if (target.Messenger?.GetFriend(senderId) is { } sender) {
+            target.Messenger.ReceiveMessage(sender, message);
+        }
     }
 
     public async Task RequestFriend(GameClient session, string username)

@@ -17,7 +17,6 @@ public class HabboMessenger
 
     public event EventHandler<FriendRequestModifiedEventArgs>? FriendRequestUpdated;
     public event EventHandler<MessengerMessageEventArgs>? RoomInviteReceived;
-    public event EventHandler<MessengerMessageEventArgs>? MessageSend;
     public event EventHandler<MessengerMessageEventArgs>? MessageReceived;
     public event EventHandler<FriendStatusUpdatedEventArgs>? FriendStatusUpdated;
 
@@ -115,7 +114,7 @@ public class HabboMessenger
         return true;
     }
 
-    public MessageError? SendMessage(MessengerBuddy friend, string message)
+    public MessageError? SendMessage(string message)
     {
         if (string.IsNullOrWhiteSpace(message)) {
             return MessageError.EmptyMessage;
@@ -128,7 +127,6 @@ public class HabboMessenger
         }
 
         _lastMessageAt = sentAt.ToUniversalTime();
-        MessageSend?.Invoke(this, new(friend, message));
 
         return null;
     }

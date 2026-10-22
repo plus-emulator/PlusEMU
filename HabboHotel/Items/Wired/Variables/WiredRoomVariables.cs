@@ -139,9 +139,10 @@ public sealed partial class WiredRoomVariables
             throw new InvalidOperationException("The room variable could not be initialized from its authoritative definition.");
         }
 
+        RememberReference(definition);
         FxDirty = true;
     }
-    /// <summary>Memory-only publication hook, called after atomic persistence and ApplyConfiguration.</summary>
+    /// <summary>Publication hook, called after atomic persistence and ApplyConfiguration. It writes no database rows.</summary>
     public void ConfigurationSaved(IWiredConfiguredItem box)
     {
         lock (_membershipGate) {
@@ -160,7 +161,24 @@ public sealed partial class WiredRoomVariables
             _membershipEpoch++;
         }
 
+        if (box is WiredVariableDefinitionBox saved) {
+            RememberReference(saved);
+        }
+
         FxDirty = true;
+    }
+    // Only the listing after a lost source depends on this, so a database error must not fail the load or the save.
+    private void RememberReference(WiredVariableDefinitionBox box)
+    {
+        if (box.Descriptor.CanonicalName != "wf_var_reference") {
+            return;
+        }
+
+        try {
+            Module.RememberReference(box.Item.Id);
+        }
+        catch (System.Data.Common.DbException) {
+        }
     }
     public void HolderLeft(WiredVariableHolder holder)
     {

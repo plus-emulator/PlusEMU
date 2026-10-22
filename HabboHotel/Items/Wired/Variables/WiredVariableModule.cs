@@ -13,6 +13,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     private readonly MemoryWiredVariableStore _active = new();
     private readonly Queue<WiredVariableChange> _changes = new();
     private readonly object _gate = new();
+    // Observed on AIR WIN63-202610201032-107964540: a reference whose source was picked up stays listed as it last was until its room
+    // unloads. This module lives as long as the loaded room. In Plus, reads and writes through it still fail to resolve and do nothing.
+    private readonly Dictionary<uint, ListedReference> _listedReferences = [];
     private long _valueChanges;
     private long _valueDecreases;
 
@@ -609,7 +612,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                     continue;
                 }
 
-                var resolved = Resolve(new(local.Target, local.Token), false, authority);
+                var resolved = Resolve(new(local.Target, local.Token), false, authority) ?? Listed(local, authority)?.Read;
 
                 if (resolved is null) {
                     continue;
@@ -622,6 +625,24 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             return result.OrderBy(x => x.CatalogTarget).ThenBy(x => x.Definition.Name, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.Definition.ItemId).ToArray();
         }
     }
+
+    /// <summary>Remembers how a reference to a variable of another room resolves now, so it stays listed after its source is lost.</summary>
+    public void RememberReference(uint definitionId)
+    {
+        lock (_gate) {
+            var authority = new ReadDirectory(directory);
+
+            if (authority.Find(definitionId) is { Link: { } link } local && local.RoomId == roomId && link.SourceRoomId != roomId
+                && Resolve(new(local.Target, local.Token), false, authority) is { } read) {
+                _listedReferences[definitionId] = new(local, read, Resolve(new(local.Target, local.Token), true, authority) is not null);
+            }
+        }
+    }
+
+    // The remembered resolution of a reference whose source item is gone, as after a pickup.
+    private ListedReference? Listed(WiredVariableDefinition local, IWiredVariableDirectory authority) =>
+        _listedReferences.TryGetValue(local.ItemId, out var listed) && listed.Local == local && local.Link is { } link
+        && TryDefinitionId(link.Source.Token, out var sourceId) && authority.Find(sourceId) is null ? listed : null;
 
     // Native catalog resolution uses one directory for both authorization paths and only frozen derivation inputs.
     internal IReadOnlyList<WiredNativeEndpoint>? DescribeNativeDefinitions(
@@ -641,8 +662,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
                 var reference = new WiredVariableReference(stored.Target, stored.Token);
                 var read = Resolve(reference, false, authority, derivations);
+                var listed = read is null && stored == local ? Listed(local, authority) : null;
 
-                if (read is null) {
+                if (read is null && listed is null) {
                     continue;
                 }
 
@@ -650,10 +672,11 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                     return null;
                 }
 
-                var write = Resolve(reference, true, authority, derivations);
+                read ??= listed!.Read;
+                var writable = listed?.Writable ?? Resolve(reference, true, authority, derivations) is not null;
                 var readOnly = read.Authorization?.Lineage.Any(value => value.Link?.ReadOnly == true) == true;
                 result.Add(new(new(local, NativeHasValue(read), readOnly) { IsBuiltin = read.Builtin is not null },
-                    read.Definition, read.Builtin, write is not null, read.Convert is not null));
+                    read.Definition, read.Builtin, writable, read.Convert is not null));
             }
 
             foreach (var local in derivedDefinitions) {
@@ -838,9 +861,8 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     /// The key a proposed reference is refused with, or null. Observed on AIR WIN63-202610201032-107964540: the variable must be shared
     /// in the room it names, and that room must have the same owner. A room holds one reference to a shared variable, a second one is
     /// refused. With <paramref name="stored"/>, a source that no longer exists is no refusal: observed on AIR WIN63-202610201032-107964540,
-    /// a reference whose source was picked up keeps its settings and still opens. Habbo was only probed within one room visit; that it
-    /// still loads after a room reload is inferred. A source placed again in another room, or saved again as local, still refuses the
-    /// stored reference; Habbo was not probed for that.
+    /// a reference whose source was picked up keeps its settings and still opens, also after a room reload. A source placed again in
+    /// another room, or saved again as local, still refuses the stored reference; Habbo was not probed for that.
     /// </summary>
     public string? RefuseReference(WiredVariableDefinition proposed, bool stored = false)
     {
@@ -1014,6 +1036,8 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
 
     private sealed record Resolved(WiredVariableDefinition? Definition, WiredVariableReference? Builtin, WiredVariableAuthorization? Authorization,
         Func<WiredVariableValue, WiredVariableValue?>? Convert = null, Func<long, long, long?>? Compose = null);
+
+    private sealed record ListedReference(WiredVariableDefinition Local, Resolved Read, bool Writable);
 
     private sealed class ReadDirectory(IWiredVariableDirectory source) : IWiredVariableDirectory
     {

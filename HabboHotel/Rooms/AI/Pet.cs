@@ -119,6 +119,10 @@ public class Pet
 
     public static int MaxEnergy => 100;
 
+    public bool IsTired => Energy <= 10;
+
+    public bool ObeysCommand(int commandId) => !IsTired && (Level > 15 || commandId == 8 || Random.Shared.Next(1, 9) < 6);
+
     public static int MaxNutrition => 150;
 
     public string CustomParts => !string.IsNullOrEmpty(GnomeClothing) && GnomeClothing != "-1"

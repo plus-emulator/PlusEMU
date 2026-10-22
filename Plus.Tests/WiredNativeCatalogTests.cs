@@ -75,7 +75,8 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.Equal(always, variable.AlwaysAvailable);
         Assert.Equal(target != WiredVariableTarget.Global, variable.CanCreateAndDelete);
         Assert.True(variable.CanWriteValue);
-        Assert.True(variable.CanInterceptChanges);
+        // Observed on AIR WIN63-202610201032-107964540: a context variable's changes are never interceptable.
+        Assert.Equal(target != WiredVariableTarget.Context, variable.CanInterceptChanges);
         // Observed on hhus (AIR WIN63-202610131318-860371703): a global lists no creation time but does list its last update time.
         Assert.Equal(target != WiredVariableTarget.Global, variable.CanReadCreationTime);
         Assert.True(variable.CanReadLastUpdateTime);
@@ -495,6 +496,67 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.False(part.RequiresExecutionContext);
         Assert.Equal($"ctx:{WiredRoomVariables.SyntheticId(WiredVariableTarget.Context, 10, 10, true)}", part.Id);
         Assert.Null(WiredRoomVariables.SyntheticId(WiredVariableTarget.Context, 10, 0, false));
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: in WiredAllVariablesDiffs a context variable box is listed as type 0, availability 999,
+    // target -20, creatable and deletable, with a creation time and never interceptable. With a value it is writable and has a last update
+    // time; without a value it has neither.
+    [Theory]
+    [InlineData(1)]
+    [InlineData(0)]
+    public void AContextVariableIsListedWithoutInterceptionAndALastUpdateTimeOnlyWithAValue(int withValue)
+    {
+        var fixture = new Fixture();
+        fixture.AddDefinition(10, "wf_var_context", new() { IntParams = [withValue], Text = "pctx" });
+
+        new WiredVariableMenuService().ShowCatalogDiff(fixture.World.Room, fixture.World.Client, new Dictionary<string, int>());
+
+        var row = Assert.Single(CatalogRows(fixture), row => row.Name == "pctx");
+        var hasValue = withValue == 1;
+        Assert.Equal((0, 999, -20), (row.Type, row.Availability, row.Target));
+        Assert.Equal([false, true, hasValue, hasValue, false, false, false, true, hasValue], row.Flags);
+    }
+
+    // The rows of every catalog diff the client received: type, name, availability, target, then the flags in wire order (always
+    // available, create and delete, has value, write, intercept, invisible, execution context, creation time, last update time).
+    private static List<(int Type, string Name, int Availability, int Target, bool[] Flags)> CatalogRows(Fixture fixture)
+    {
+        var rows = new List<(int, string, int, int, bool[])>();
+
+        foreach (var frame in fixture.World.Packets.Where(frame => frame.Header == ServerPacketHeader.WiredAllVariablesDiffComposer)) {
+            var packet = new FlashIncomingPacket { Buffer = frame.Payload };
+            packet.ReadInt();
+            packet.ReadBool();
+
+            for (var removed = packet.ReadInt(); removed > 0; removed--) {
+                packet.ReadString();
+            }
+
+            for (var count = packet.ReadInt(); count > 0; count--) {
+                packet.ReadInt();
+                packet.ReadString();
+                var type = packet.ReadInt();
+                var name = packet.ReadString();
+                var availability = packet.ReadInt();
+                var target = packet.ReadInt();
+                var flags = Enumerable.Range(0, 9).Select(_ => packet.ReadBool()).ToArray();
+
+                if (packet.ReadBool()) {
+                    for (var pairs = packet.ReadInt(); pairs > 0; pairs--) {
+                        packet.ReadInt();
+                        packet.ReadString();
+                    }
+
+                    if (packet.ReadBool()) {
+                        packet.ReadString();
+                    }
+                }
+
+                rows.Add((type, name, availability, target, flags));
+            }
+        }
+
+        return rows;
     }
 
     private static string[] Parts(Fixture fixture)

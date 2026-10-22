@@ -130,8 +130,10 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
         _firings.Clear();
         _ordered.Clear();
 
-        if (live.Length != 0 || avatars.Length != 0) {
-            room.FlushWiredFlashes();
+        var flushes = live.Length != 0 || avatars.Length != 0;
+
+        if (flushes) {
+            room.FlushWiredFlashData();
         }
 
         foreach (var entry in live) {
@@ -145,6 +147,10 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
 
         if (movements.Length > 0 || turns.Length > 0) {
             room.SendPacket(new WiredMovementBatchComposer(movements, turns));
+        }
+
+        if (flushes) {
+            room.FlushWiredFlashes();
         }
     }
 }

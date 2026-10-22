@@ -21,6 +21,9 @@ public sealed record WiredEditorSnapshot(
     /// <summary>Context section 8 for the Variable Leaderboard add-on; null for every other form.</summary>
     public Plus.HabboHotel.Items.Wired.Leaderboard.WiredLeaderboardContext? Leaderboard { get; init; }
 
+    /// <summary>The variable context entry of a user, furni or room variable box; null for every other form.</summary>
+    public Plus.HabboHotel.Items.Wired.Variables.WiredVariableBoxContext? VariableBox { get; init; }
+
     /// <summary>The user sources the stack's trigger adds to every user slot (10 under Bot Reaches User, 11 under Click User).</summary>
     public ImmutableArray<int> TriggerContextSources { get; init; } = [];
 
@@ -52,6 +55,7 @@ public sealed record WiredEditorSnapshot(
             TextPlaceholders = Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Applies(box.Descriptor.CanonicalName)
                 ? Plus.HabboHotel.Items.Wired.Runtime.WiredTextPlaceholders.Capture(box) : null,
             Leaderboard = box.Descriptor.CanonicalName == "wf_xtra_var_leaderboard" ? box.Instance.GetWired().LeaderboardContext(box) : null,
+            VariableBox = box.Instance.GetWired().VariableBoxContext(box),
             TriggerContextSources = TriggerContext(box)
         };
     }

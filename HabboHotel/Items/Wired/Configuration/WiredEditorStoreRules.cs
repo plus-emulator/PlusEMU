@@ -241,6 +241,29 @@ internal static class WiredEditorStoreRules
     }
 
     /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: Variable Value Match and Change Variable Value store a six-int save with the seventh
+    /// int (same holder) off, and an empty variable slot as "0". Variable Value Match also stores a save with one variable with the
+    /// second slot empty. Other shapes are left for the editor to refuse.
+    /// </summary>
+    public static WiredNativeEditorConfiguration VariableValueForm(string name, WiredNativeEditorConfiguration native)
+    {
+        if (name is not ("wf_cnd_var_val_match" or "wf_act_change_var_val") || native.OwnedIntParams.IsDefault || native.VariableIds.IsDefault) {
+            return native;
+        }
+
+        var ints = native.OwnedIntParams;
+        ImmutableArray<string> ids = name == "wf_cnd_var_val_match" && native.VariableIds.Length == 1 ? [native.VariableIds[0], ""] : native.VariableIds;
+
+        return native with
+        {
+            OwnedIntParams = ints.Length == 6 ? [.. ints, 0] : ints,
+            VariableIds = ids.Length == 2
+                ? [.. ids.Select(id => Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Is(id) ? Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId : id)]
+                : ids
+        };
+    }
+
+    /// <summary>
     /// The text of a new Text Output save in its stored form. Observed on AIR WIN63-202610201032-107964540: the name is lower case, a
     /// single placeholder keeps the name only and a placeholder for several values keeps the name and the delimiter. Text after a second
     /// tab is cut. A stored row is read as it is.

@@ -18,7 +18,8 @@ public sealed class WiredVariableDefinitionBoxTests
     // A fresh Has Variable opens on the hotel's literal "0" slot, the measured shape that saves but never resolves (IsUnresolvedLiteralZero).
     [InlineData("wf_cnd_has_var", 4, true)]
     [InlineData("wf_cnd_neg_has_var", 4, true)]
-    [InlineData("wf_cnd_var_val_match", 11, false)]
+    // Observed on AIR WIN63-202610201032-107964540: Variable Value Match saves with no variable and never passes.
+    [InlineData("wf_cnd_var_val_match", 11, true)]
     [InlineData("wf_cnd_var_age_match", 10, false)]
     public void ScalarDraftOpensWithClientShapeButCannotExecuteWithoutSelection(string name, int count, bool saves)
     {

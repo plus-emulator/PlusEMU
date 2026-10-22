@@ -475,6 +475,44 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(["1", "2", "0"], states);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: every multi-state default wall item below starts at "0" when placed from the Builders
+    // Club; the two single-state ones keep an empty value. The state counts are the ones Habbo's click cycles showed.
+    [Theory]
+    [InlineData("cine_light2", 3, "0")]
+    [InlineData("party_lights", 2, "0")]
+    [InlineData("uni_fairylights", 4, "0")]
+    [InlineData("torch", 2, "0")]
+    [InlineData("hs_wlight", 2, "0")]
+    [InlineData("window_basic", 2, "0")]
+    [InlineData("party_wc_boy", 2, "0")]
+    [InlineData("sb_tag1", 2, "0")]
+    [InlineData("pixel_painting_blue", 3, "0")]
+    [InlineData("school_chalkboard", 4, "0")]
+    [InlineData("exe_map", 2, "0")]
+    [InlineData("tiki_surfboard", 9, "0")]
+    [InlineData("window_square", 1, "")]
+    [InlineData("window_golden", 1, "")]
+    public async Task ABuildersClubWallItemStartsAtStateZeroWhenItHasSeveralStates(string name, int states, string data)
+    {
+        Viewer();
+        var (service, store, page) = BuildersClub();
+        var wall = Furni(0, InteractionType.None, WiredBoxType.None, ItemType.Wall).Definition;
+        wall.Id = 4400;
+        wall.ItemName = name;
+        wall.Modes = states;
+        page.Offers[18400] = new CatalogOffer
+        {
+            Id = 18400,
+            Products = [new CatalogProduct { Type = CatalogProductType.Furni, Definition = wall, Amount = 1 }]
+        };
+
+        await new BuildersClubPlaceWallItemEvent(service).Parse(_room, _client,
+            ClientPacket(BuildersClubPageId, 18400, "", ":w=1,1 l=0,0 l", true));
+
+        var placed = Assert.Single(_room.GetRoomItemHandler().GetWallAndFloor);
+        Assert.Equal(data, store.ExtraData[placed.Id]);
+    }
+
     private static readonly DateTimeOffset Clock = new(2040, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
     private (BuildersClubService Service, BuildersClubTestStore Store, CatalogPage Page) BuildersClub(string? trialLimit = null)

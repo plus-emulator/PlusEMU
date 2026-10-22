@@ -190,7 +190,8 @@ public static class WiredNativeEditorProjection
     /// <summary>
     /// The frame as the hotel sends it. move_rotate and match_to_sshot end with a hotel-owned int that is 1 until the first save and 0
     /// after it, whatever was saved (r92k r92h-hidden-ints: [0,0,1] initially, every reopen ...,0). Observed on AIR
-    /// WIN63-202610201032-107964540: match_to_sshot saved with [1,0,0,0] or [1,1,1,1,1] reopens with [1,0,0,0,0] or [1,1,1,1,0].
+    /// WIN63-202610201032-107964540: match_to_sshot saved with [1,0,0,0] or [1,1,1,1,1] reopens with [1,0,0,0,0] or [1,1,1,1,0], and
+    /// move_rotate saved with its defaults [0,0] and no picks reopens with [0,0,0].
     /// A saved match_to_sshot frame carries its snapshot as text, one "id,state,rotation,x,y,altitude" entry per
     /// furni with N for each part the saved options do not restore (r92l r92l-sshot-hidden: [0,0,0,0] gives "id,N,N,N,N,N",
     /// [1,1,1,1] gives "id,0,0,8,2,0").
@@ -233,11 +234,9 @@ public static class WiredNativeEditorProjection
             return native;
         }
 
-        var defaults = Metadata(name).OwnedDefaults;
-        var fresh = native.PrimaryItems.IsEmpty && native.SavedState.Snapshots.IsEmpty && native.OwnedIntParams.SequenceEqual(defaults);
-        var frame = native with { OwnedIntParams = [.. native.OwnedIntParams, fresh ? 1 : 0] };
+        var frame = native with { OwnedIntParams = [.. native.OwnedIntParams, native.NeverSaved ? 1 : 0] };
 
-        if (name == "wf_act_match_to_sshot" && !fresh && native.OwnedIntParams.Length == 4) {
+        if (name == "wf_act_match_to_sshot" && !native.NeverSaved && native.OwnedIntParams.Length == 4) {
             var p = native.OwnedIntParams;
             string Part(bool kept, string value) => kept ? value : "N";
             frame = frame with
@@ -889,7 +888,7 @@ public static class WiredNativeEditorProjection
 
     /// <summary>The compiled default runtime for a fresh card, or null when the name has no native mapping yet.</summary>
     public static WiredConfiguration? DefaultRuntime(uint itemId, WiredBoxDescriptor descriptor) =>
-        Supports(descriptor.CanonicalName) && TryCompile(itemId, descriptor, DefaultNative(descriptor), out var runtime, fresh: true) ? runtime : null;
+        Supports(descriptor.CanonicalName) && TryCompile(itemId, descriptor, DefaultNative(descriptor) with { NeverSaved = true }, out var runtime, fresh: true) ? runtime : null;
 
     /// <summary>The editor record behind a bound runtime; an unbound runtime has no editor representation.</summary>
     public static bool TryProject(Item item, WiredBoxDescriptor descriptor, WiredConfiguration runtime,

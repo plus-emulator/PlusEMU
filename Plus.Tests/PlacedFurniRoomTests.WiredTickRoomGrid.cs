@@ -98,6 +98,38 @@ public partial class PlacedFurniRoomTests
         Assert.All(fired.Zip(fired.Skip(1), (previous, next) => next - previous), gap => Assert.Equal(200, gap));
     }
 
+    // The game loop wakes at each 25 ms instant, and a fraction of a ms after each room tick, a little less late each time.
+    private static Func<long, double> LessLateEachRoomTick(long start) => ms => ms % 500 == 0 ? 0.9 - 0.1 * ((ms - start) / 500 % 9) : 0;
+
+    [Fact]
+    public void EachRoomTickStartsOnThePollAtItsBoundaryWhenThatPollIsLessLateThanTheLastOne()
+    {
+        var (clock, manager) = GridRoom();
+        ExecutorActor(1, 0);
+
+        var passes = RunRoom(manager, clock, clock.Ms + 5000, period: 25, LessLateEachRoomTick(clock.Ms));
+
+        Assert.Equal(10, passes.Count(pass => pass.Full));
+        Assert.All(passes, pass => Assert.True(pass.Full == (pass.At % 500 == 0), $"pass at {pass.At % 500} ms after the room tick, full {pass.Full}"));
+    }
+
+    [Fact]
+    public void AWalkOnDelayOfOneGoesOutInItsRoomTickAfterTheUserUpdateWhenThePollIsLessLateThanTheLastOne()
+    {
+        var (clock, manager) = GridRoom();
+        var target = GridWalkOnStack(delay: 1);
+        var actor = ExecutorActor(1, 0);
+        actor.MoveTo(1, 3);
+
+        var passes = RunRoom(manager, clock, clock.Ms + 2500, period: 25, LessLateEachRoomTick(clock.Ms));
+
+        var step = Assert.Single(passes, pass => pass.Full && HasUserUpdate(pass) && StatusOf(pass, actor).Contains("mv 1,1,"));
+        var output = Assert.Single(passes, pass => Touches(pass, target));
+        Assert.True(output.Full, $"output in a fast pass {output.At - step.At} ms after the step");
+        Assert.Equal(step.At + 500, output.At);
+        AssertUserUpdateFirst(output, target);
+    }
+
     [Theory]
     [InlineData(1000.0, 25)]
     [InlineData(1000.2, 25)]
@@ -161,13 +193,14 @@ public partial class PlacedFurniRoomTests
     }
 
     // Polls the room manager as the game loop does and returns each pass it started, with its start time and what the client got.
-    private List<GridPass> RunRoom(RoomManager manager, GridClock clock, long until, int period)
+    private List<GridPass> RunRoom(RoomManager manager, GridClock clock, long until, int period, Func<long, double>? lateness = null)
     {
         var passes = new List<GridPass>();
         var roomTick = typeof(RoomManager).GetField("_cycleLastExecution", BindingFlags.Instance | BindingFlags.NonPublic)!;
         _client.Packets.Clear();
 
         for (; clock.Ms < until; clock.Ms += period) {
+            clock.SubMs = lateness?.Invoke(clock.Ms) ?? 0;
             var previous = _room.ProcessTask;
             var tick = roomTick.GetValue(manager);
             var seen = _client.Packets.Count;
@@ -243,13 +276,15 @@ public partial class PlacedFurniRoomTests
         public long Slot => At - At % 50;
     }
 
-    // Wall time and the monotonic timestamp move together, in whole milliseconds from a 500 ms boundary.
+    // Wall time and the monotonic timestamp move together from a 500 ms boundary. The Wired engine reads whole milliseconds; the monotonic
+    // timestamp also has the fraction of a millisecond the game loop wakes late by.
     private sealed class GridClock : TimeProvider
     {
         public long Ms { get; set; } = 1_000_000;
-        public override DateTimeOffset GetUtcNow() => DateTimeOffset.UnixEpoch.AddMilliseconds(Ms);
+        public double SubMs { get; set; }
+        public override DateTimeOffset GetUtcNow() => DateTimeOffset.UnixEpoch.AddMilliseconds(Ms + SubMs);
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
-        public override long TimestampFrequency => 1000;
-        public override long GetTimestamp() => Ms;
+        public override long TimestampFrequency => 1_000_000;
+        public override long GetTimestamp() => Ms * 1000 + (long)(SubMs * 1000);
     }
 }

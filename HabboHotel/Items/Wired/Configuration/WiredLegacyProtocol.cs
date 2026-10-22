@@ -168,7 +168,8 @@ public static class WiredLegacyProtocol
 
         var metadata = WiredNativeEditorProjection.WithTriggerContext(WiredNativeEditorProjection.Metadata(descriptor.CanonicalName), contextSources);
         packet.WriteInteger(furniLimit);
-        WriteInts(packet, editor.PrimaryItems.Select(item => item.WireId));
+        var picks = editor.PrimaryItems.Select(item => item.WireId);
+        WriteInts(packet, metadata.HashSetPickOrder ? JavaHashSetOrder(picks) : picks);
         WriteInts(packet, editor.SecondaryItems.Select(item => item.WireId));
         packet.WriteInteger(spriteId);
         packet.WriteUInteger(BuildersClubItemIds.ToWire(itemId));
@@ -286,6 +287,20 @@ public static class WiredLegacyProtocol
         }
 
         WriteInts(packet, WiredNativeEditorProjection.FrameDefaults(descriptor.CanonicalName, metadata));
+    }
+
+    // A java.util.HashSet<Integer> filled in this order: 16 buckets, doubled while it holds more than three quarters of them.
+    // An id lands in bucket (h ^ (h >>> 16)) & (buckets - 1); ids in one bucket keep their insertion order.
+    private static IEnumerable<int> JavaHashSetOrder(IEnumerable<int> ids)
+    {
+        var distinct = ids.Distinct().ToArray();
+        var buckets = 16u;
+
+        while (distinct.Length > buckets * 3 / 4) {
+            buckets *= 2;
+        }
+
+        return distinct.OrderBy(id => ((uint)id ^ ((uint)id >> 16)) & (buckets - 1));
     }
 
     private static void WriteGroups(IOutgoingPacket packet, ImmutableArray<ImmutableArray<int>> groups)

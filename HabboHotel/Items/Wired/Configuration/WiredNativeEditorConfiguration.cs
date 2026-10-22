@@ -68,4 +68,7 @@ public sealed record WiredNativeEditorMetadata(ImmutableArray<ImmutableArray<int
     /// selector). Such a save still compiles; the editor then opens it padded with the new selector's defaults.
     /// </summary>
     public int LegacySlots { get; init; }
+
+    /// <summary>Reopen sends the primary picks in the iteration order of a Java HashSet of their ids, not in the saved order.</summary>
+    public bool HashSetPickOrder { get; init; }
 }

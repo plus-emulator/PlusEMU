@@ -204,11 +204,15 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             return (pose.X, pose.Y, Z: sourceTop + user.Z - WiredRoomOperations.StandZ(room, user));
         });
         var z = height ?? (physics?.KeepAltitude == true ? item.GetZ : (double?)null);
+        room.GetWired()?.FurniMoving();
 
         if (!WiredRoomOperations.MoveItem(room, item, x, y, options.Rotation, z, animate: false,
                 collision: collision, announce: !options.Animate)) {
             return false;
         }
+
+        room.GetWired()?.FurniMoved(source.Tiles.Concat(WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation)
+            .Select(point => (point.X, point.Y))));
 
         var projectile = policy.Projectile?.AppliesTo(item.Id) == true ? policy.Projectile : null;
         var overshootMs = ProjectileOvershootMs;

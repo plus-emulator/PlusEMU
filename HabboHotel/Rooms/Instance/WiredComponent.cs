@@ -233,6 +233,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         FlushVariableFx();
         FlushFlashes();
         FlushLeaderboards();
+        ResendRestackedSteps();
     }
 
     private readonly HashSet<long> _wakeDue = [];
@@ -284,6 +285,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     internal void OnFastCycle()
     {
+        ForgetRestackedSteps();
         _highscores?.OnOwnedPass();
         PublishStateWrites();
         _engine.OnFastCycle();
@@ -357,7 +359,11 @@ public partial class WiredComponent : IWiredRuntimeOperations
     /// <summary>Called at the start of every room tick's pass, before the room moves and serializes avatars.</summary>
     public void OnRoomTick(bool splitEnd = false) => _engine.OnRoomTick(splitEnd);
 
-    public void OnRoomTickEnd() => _engine.OnRoomTickEnd();
+    public void OnRoomTickEnd()
+    {
+        ForgetRestackedSteps();
+        _engine.OnRoomTickEnd();
+    }
 
     public bool ScheduleAux(WiredRuntimeContext context, int delayMilliseconds, Action callback, Action? onCancelled = null,
         bool alignToStateUpdate = false) =>

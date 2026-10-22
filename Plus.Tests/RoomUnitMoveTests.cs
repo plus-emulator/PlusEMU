@@ -264,13 +264,17 @@ public sealed class RoomUnitMoveTests
         Assert.Contains(world.Bot, world.Room.GetGameMap().GetRoomUsers(new(2, 1)));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a bot placed from the inventory says "Hello!" in its own chat bubble (31 for a
-    // rentable bot), the same bubble its Wired Bot Talk lines use.
-    [Fact]
-    public void APlacedBotGreetsTheRoomInItsOwnChatBubble()
+    // Observed on AIR WIN63-202610201032-107964540: a placed bot says one random line of three with chat style 31, sent right
+    // after its Users packet.
+    [Theory]
+    [InlineData(0, "Hello!")]
+    [InlineData(1, "Yo!")]
+    [InlineData(2, "Hello I'm a real party animal!")]
+    public async Task APlacedBotGreetsTheRoomWithOneRandomLineInStyle31(int pick, string line)
     {
         const int placedBotId = 32;
         var world = new World();
+        TestRoomUserSnapshots.Install(world.Room);
         world.BotStore.Placement = new("generic", "stand", false, 7, false, 31, []);
         var (owner, _) = HabbiconTestSupport.Client(new Habbo
         {
@@ -283,14 +287,41 @@ public sealed class RoomUnitMoveTests
         world.ViewerPackets.Clear();
 
         using (RoomOwnerScope.Enter(world.Room)) {
-            world.Bots.Place(world.Room, owner, placedBotId, 0, 3);
+            await new PlaceBotEvent(new BotManagementService(world.BotStore, null!, new FixedRandom(pick)))
+                .Parse(world.Room, owner, HabbiconTestSupport.Incoming(placedBotId, 0, 3));
         }
 
+        var bot = Assert.IsType<RoomUser>(world.Room.GetRoomUserManager().GetBotByName("Robbie"));
+        Assert.Equal([ServerPacketHeader.UsersComposer, ServerPacketHeader.ChatComposer], world.ViewerPackets.Select(sent => sent.Header)
+            .Where(header => header is ServerPacketHeader.UsersComposer or ServerPacketHeader.ChatComposer));
         var chat = new FlashIncomingPacket { Buffer = world.ViewerPackets.Single(sent => sent.Header == ServerPacketHeader.ChatComposer).Payload };
-        chat.ReadInt();
-        Assert.Equal("Hello!", chat.ReadString());
-        chat.ReadInt();
-        Assert.Equal(31, chat.ReadInt());
+        Assert.Equal((bot.VirtualId, line, 0, 31, 0, -1, world.Avatar.VirtualId, -1),
+            (chat.ReadInt(), chat.ReadString(), chat.ReadInt(), chat.ReadInt(), chat.ReadInt(), chat.ReadInt(), chat.ReadInt(), chat.ReadInt()));
+        Assert.False(chat.HasDataRemaining());
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: a bot that is already in the room comes back on a room reload without a greeting.
+    [Fact]
+    public void ABotLoadedWithTheRoomSaysNothing()
+    {
+        var world = new World();
+        TestRoomUserSnapshots.Install(world.Room);
+        var speech = new List<RandomSpeech>();
+        world.ViewerPackets.Clear();
+
+        using (RoomOwnerScope.Enter(world.Room)) {
+            world.Room.GetRoomUserManager().DeployBot(new(33, 42, "generic", "stand", "Robbie", "", "hr-100", 0, 3, 0, 2, 0, 0, 0, 0, ref speech, "M", 0,
+                RoomOwnerId, false, 7, false, 31), null);
+        }
+
+        Assert.Contains(world.ViewerPackets, sent => sent.Header == ServerPacketHeader.UsersComposer);
+        Assert.DoesNotContain(world.ViewerPackets, sent => sent.Header == ServerPacketHeader.ChatComposer);
+    }
+
+    private sealed class FixedRandom(int value) : Random
+    {
+        public override int Next(int maxValue) => value;
+        public override int Next(int minValue, int maxValue) => minValue + value;
     }
 
     private sealed class World

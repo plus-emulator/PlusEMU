@@ -113,10 +113,15 @@ public interface IBotManagementService
     void ShowAction(GameClient session, int botId, int actionId);
 }
 
-public sealed class BotManagementService(IBotManagementStore store, IFigureDataManager figures) : IBotManagementService
+public sealed class BotManagementService(IBotManagementStore store, IFigureDataManager figures, Random? random = null) : IBotManagementService
 {
+    private readonly Random _random = random ?? Random.Shared;
+
     /// <summary>Observed on AIR WIN63-202610151745-318700621: a bot placed from the inventory faces direction 2.</summary>
     private const int PlacedBotRotation = 2;
+
+    /// <summary>Observed on AIR WIN63-202610201032-107964540: a placed bot says one of these lines, picked at random.</summary>
+    private static readonly string[] PlacementGreetings = ["Hello!", "Yo!", "Hello I'm a real party animal!"];
 
     public void ShowAction(GameClient session, int botId, int actionId)
     {
@@ -163,7 +168,7 @@ public sealed class BotManagementService(IBotManagementStore store, IFigureDataM
         var botUser = room.GetRoomUserManager().DeployBot(new(bot.Id, room.RoomId, data.AiType, data.WalkMode, bot.Name, bot.Motto ?? "", bot.Figure, x, y, room.GetGameMap().SqAbsoluteHeight(x, y),
             PlacedBotRotation, 0, 0, 0, 0, ref speeches, string.IsNullOrEmpty(bot.Gender) ? "M" : bot.Gender, 0, bot.OwnerId, data.AutomaticChat, data.SpeakingInterval,
             data.MixSentences, data.ChatBubble), null);
-        botUser.Chat("Hello!", data.ChatBubble);
+        botUser.Chat(PlacementGreetings[_random.Next(PlacementGreetings.Length)], data.ChatBubble);
         room.GetGameMap().UpdateUserMovement(new(x, y), new(x, y), botUser);
 
         if (inventory.Bots.RemoveBot(botId)) {
@@ -269,7 +274,7 @@ public sealed class BotManagementService(IBotManagementStore store, IFigureDataM
                 botData.WalkingMode = mode;
                 break;
             case BotAction.Dance:
-                botData.DanceId = botData.DanceId > 0 ? 0 : Random.Shared.Next(1, 4);
+                botData.DanceId = botData.DanceId > 0 ? 0 : _random.Next(1, 4);
                 room.SendPacket(new DanceComposer(bot.VirtualId, botData.DanceId));
                 break;
             case BotAction.Rename:

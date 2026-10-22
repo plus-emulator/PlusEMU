@@ -295,7 +295,7 @@ public partial class PlacedFurniRoomTests : IDisposable
     }
 
     /// <summary>Accepts Dapper writes without a database.</summary>
-    private sealed class NoOpConnection(Func<string, DataTable>? read = null, Action<string, DbParameterCollection>? write = null,
+    internal sealed class NoOpConnection(Func<string, DataTable>? read = null, Action<string, DbParameterCollection>? write = null,
         Func<string, DbParameterCollection, DataTable>? query = null) : DbConnection
     {
         private ConnectionState _state = ConnectionState.Closed;

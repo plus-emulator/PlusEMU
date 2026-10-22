@@ -36,7 +36,7 @@ public static class WiredConfigurationSave
 
         var native = WiredNativeEditorProjection.Supports(box.Descriptor.CanonicalName);
 
-        // Native boxes check their picks below and drop the ones that name no furni.
+        // Native boxes check their picks below and drop the ones that name no furni of their kind.
         if (!native && existsInRoom != null && (!proposed.SelectedItems.All(existsInRoom)
             || !proposed.SecondarySelectedItems.All(existsInRoom))) {
             return false;

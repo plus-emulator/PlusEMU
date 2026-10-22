@@ -264,7 +264,7 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
             return null;
         }
 
-        var extraData = ExtraData(definition, request.ExtraParam);
+        var extraData = ExtraData(definition, offer.Product.ExtraParam, request.ExtraParam);
         var item = new Item
         {
             Id = store.Create(definition.Id, habbo.Id, extraData),
@@ -327,12 +327,15 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         or InteractionType.MusicDisc or InteractionType.Jukebox or InteractionType.CameraPicture or InteractionType.Mannequin
         or InteractionType.WiredChestFurni or InteractionType.WiredChestCoins);
 
-    // A recolorable starts in the colour the catalogue's palette chose (RecolorableFurnitureCatalogWidget); nothing else takes a
-    // parameter from the client.
-    private static string ExtraData(ItemDefinition definition, string extraParam) => definition.InteractionType == InteractionType.Recolorable
-        ? RecolorableDataFormat.FormatCatalogueColor(RecolorablePalette.PurchaseColor(definition.ItemName,
-            RecolorableDataFormat.TryParseCatalogueColor(extraParam, out var chosen) ? chosen : null))
-        : "";
+    // A recolorable starts in the colour the catalogue's palette chose (RecolorableFurnitureCatalogWidget). A poster takes its number
+    // from the offer and ignores the client's (observed on AIR WIN63-202610201032-107964540). Nothing else takes a parameter.
+    private static string ExtraData(ItemDefinition definition, string productParam, string clientParam) => definition switch
+    {
+        { InteractionType: InteractionType.Recolorable } => RecolorableDataFormat.FormatCatalogueColor(RecolorablePalette.PurchaseColor(
+            definition.ItemName, RecolorableDataFormat.TryParseCatalogueColor(clientParam, out var chosen) ? chosen : null)),
+        { Type: ItemType.Wall, ItemName: "poster" } => productParam,
+        _ => ""
+    };
 
     private static void PlacementError(GameClient session) =>
         session.Send(new RoomNotificationComposer("furni_placement_error", "message", "${room.error.cant_set_item}"));

@@ -417,6 +417,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 var own = context.CapturedStack.Select(x => x.Item.Id).ToHashSet();
                 movers = WiredToggleStateTargets.Resolve(movers, box => context.Room.GetWired().Flash(box, own.Contains(box.Id)),
                     item => context.Room.GetWired().TryQueueBatchData(item), out flashedBox);
+
+                if (movers.Any(item => !WiredToggleStateTargets.WritesOnlyBatchData(item))) {
+                    context.Publication?.Flush();
+                }
             }
 
             var passengers = WiredRoomMovement.CapturePassengers(context, movers);

@@ -39,6 +39,15 @@ internal sealed partial class WiredStackEngine
             return null;
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: when one say fires a stack that moves furni and a stack that toggles furni, all
+        // states go out in one ObjectsDataUpdate before the one WiredMovements, whichever stack runs first. So Toggle State joins the
+        // open publication; it flushes the publication itself before a write that is sent on its own.
+        if (box is WiredModernAction { Descriptor.CanonicalName: "wf_act_toggle_state" } && context != null && scheduled is { Callback: null }
+            && _activePublication is { Open: true } open && open.Epoch == _publicationEpoch
+            && open.Deadline == scheduled.Chain.FirstResumeAt!.Value + scheduled.DelayMilliseconds) {
+            return open;
+        }
+
         if (context == null || scheduled?.Callback != null || box is not WiredModernAction action
             || !action.SupportsPublication(context) || action.PublicationBridge && !PublicationBridgesAreTrusted || scheduled == null) {
             SealPublication();

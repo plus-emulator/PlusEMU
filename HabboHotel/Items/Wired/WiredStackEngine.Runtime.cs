@@ -119,12 +119,25 @@ internal sealed partial class WiredStackEngine
         or WiredEventKind.Score or WiredEventKind.StateChanged or WiredEventKind.Counter;
 
     /// <summary>
-    /// Runs the stacks of a furni state change at once. A change that a running stack made waits in the queue of its pass instead.
+    /// Runs the stacks of a furni state change at once. A change that a running stack made waits in the queue of its pass instead, and
+    /// leaves the open publication to that queued dispatch, which seals it only when a stack runs (see BeforePublicationDispatch).
     /// Returns whether the stacks ran at once and whether the event was accepted.
     /// </summary>
-    public (bool RanAtOnce, bool Accepted) DispatchStateChange(WiredRuntimeEvent @event) => Pass(() => _runtimeContext != null
-        ? (false, !Disabled && EnqueueCore(@event))
-        : (true, DispatchCore(@event, resumeImmediately: true).Accepted));
+    public (bool RanAtOnce, bool Accepted) DispatchStateChange(WiredRuntimeEvent @event) => Pass(() =>
+    {
+        try {
+            if (_runtimeContext != null) {
+                return (false, !Disabled && EnqueueCore(@event));
+            }
+
+            SealPublication();
+
+            return (true, DispatchCore(@event, resumeImmediately: true).Accepted);
+        }
+        finally {
+            UpdateFastWork();
+        }
+    });
 
     private bool EnqueueCore(WiredRuntimeEvent @event, int? depth = null, HeadingCollisionProof? collision = null, bool sealOnRejection = false)
     {

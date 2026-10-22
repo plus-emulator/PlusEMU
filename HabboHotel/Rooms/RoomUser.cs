@@ -142,6 +142,8 @@ public class RoomUser
     public bool UpdateNeeded;
     public int UserId;
     public int VirtualId;
+    /// <summary>The room's <see cref="RoomUserManager.Visits"/> right after this user came in; 0 when unknown.</summary>
+    internal int Visit { get; init; }
 
     public int X; //byte
     public int Y; //byte

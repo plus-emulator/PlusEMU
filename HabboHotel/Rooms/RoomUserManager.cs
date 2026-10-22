@@ -76,6 +76,9 @@ public class RoomUserManager
         UserCount = 0;
     }
 
+    /// <summary>Every user, bot and pet that comes into the room takes the next VirtualId, so this counts the visits started so far.</summary>
+    internal int Visits => Volatile.Read(ref _primaryPrivateUserId);
+
     public int PetCount { get; private set; }
 
     // Requests are bounded and applied on the cycle thread, before its user snapshot.
@@ -279,7 +282,8 @@ public class RoomUserManager
             return false;
         }
 
-        var user = new RoomUser(session.GetHabbo().Id, _room.RoomId, Interlocked.Increment(ref _primaryPrivateUserId) - 1, _room, session, _chatEmotions, _rewards);
+        var visit = Interlocked.Increment(ref _primaryPrivateUserId);
+        var user = new RoomUser(session.GetHabbo().Id, _room.RoomId, visit - 1, _room, session, _chatEmotions, _rewards) { Visit = visit };
         user.UserId = session.GetHabbo().Id;
         session.GetHabbo().TentId = 0;
         var personalId = user.VirtualId;

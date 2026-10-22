@@ -830,12 +830,12 @@ internal sealed partial class WiredStackEngine
 
     // Observed on AIR WIN63-202610151745-318700621 (r97_projectile_kinds): a stack fired outside speech flashes in the same
     // ObjectsDataUpdate as the furni state its effects write, one wired tick after the firing. Its flashes wait for that tick.
-    private readonly List<(long Cycle, Item Item)> _heldFlashes = [];
+    private readonly List<(long Cycle, Item Item, int Visits)> _heldFlashes = [];
 
-    private void HoldFlashes(IEnumerable<Item> items, long cycle)
+    private void HoldFlashes(IEnumerable<Item> items, long cycle, int visits = int.MaxValue)
     {
         foreach (var item in items) {
-            _heldFlashes.Add((cycle, item));
+            _heldFlashes.Add((cycle, item, visits));
         }
     }
 
@@ -848,12 +848,15 @@ internal sealed partial class WiredStackEngine
         var due = _heldFlashes.Where(entry => entry.Cycle <= _cycle).ToArray();
         _heldFlashes.RemoveAll(entry => entry.Cycle <= _cycle);
 
-        foreach (var (_, item) in due) {
-            Flash(item);
+        foreach (var (_, item, visits) in due) {
+            Flash(item, visits);
         }
     }
 
-    private void Flash(Item item)
+    /// <summary>Flashes an item only to the users whose <see cref="RoomUser.Visit"/> is at most the given visits; set by the room.</summary>
+    internal Action<Item, int>? FlashToVisits { get; set; }
+
+    private void Flash(Item item, int visits = int.MaxValue)
     {
         if (_activeFiring is { } firing && !firing.Context.ResumeImmediately) {
             firing.Flashes.Add(item);
@@ -862,7 +865,12 @@ internal sealed partial class WiredStackEngine
         }
 
         try {
-            _flash(item);
+            if (visits < int.MaxValue && FlashToVisits != null) {
+                FlashToVisits(item, visits);
+            }
+            else {
+                _flash(item);
+            }
         }
         catch (Exception e) {
             SealPublication();

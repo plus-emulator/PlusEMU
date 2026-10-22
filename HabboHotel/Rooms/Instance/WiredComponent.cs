@@ -70,6 +70,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             WiredEngineLimits.FromSettings(settings.TryGetValue),
             CaptureActorVisit);
         _engine.ActionDue = ArmWake;
+        _engine.FlashToVisits = (item, visits) => Flash(item, false, visits);
         _targets = new(
             () => _room.GetRoomItemHandler().GetFloor,
             () => _room.GetRoomUserManager().GetUserList(),
@@ -290,6 +291,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     internal void ObserveFastWork(Action<bool>? observer) => _engine.ObserveFastWork(observer);
     public bool Dispatch(WiredRuntimeEvent @event)
     {
+        @event = @event with { Visits = _room.GetRoomUserManager()?.Visits ?? int.MaxValue };
         var ranAtOnce = @event.Kind == WiredEventKind.Speech;
         var dispatched = WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() =>
         {
@@ -628,7 +630,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
     public void OnEvent(Item item) => Flash(item, false);
 
     /// <param name="flipAgain">The box flips again although it flashed in this half second (Toggle State on a box of its own stack).</param>
-    internal void Flash(Item item, bool flipAgain)
+    /// <param name="visits">Only users whose <see cref="RoomUser.Visit"/> is at most this see the flash (<see cref="WiredRuntimeEvent.Visits"/>).
+    /// Observed on AIR WIN63-202610201032-107964540: a user who leaves and enters again gets no box flash for its own leave.</param>
+    internal void Flash(Item item, bool flipAgain, int visits = int.MaxValue)
     {
         // Hidden wired boxes are not on the clients, so they do not flash.
         if (_room.HideWired) {
@@ -652,7 +656,10 @@ public partial class WiredComponent : IWiredRuntimeOperations
         item.LegacyDataString = WiredFlashStates.Next(item.LegacyDataString, box);
 
         lock (_pendingFlashes) {
-            _pendingFlashes.Add(item);
+            // A flash already in the batch keeps the wider audience.
+            if (_pendingFlashes.Add(item) ? visits < int.MaxValue : _flashVisits.ContainsKey(item)) {
+                _flashVisits[item] = Math.Max(visits, _flashVisits.GetValueOrDefault(item));
+            }
         }
     }
 
@@ -739,6 +746,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     private readonly HashSet<Item> _pendingFlashes = [];
+    private readonly Dictionary<Item, int> _flashVisits = [];
     private readonly HashSet<(uint ItemId, object Firing)> _definitionFirings = [];
     private readonly Dictionary<uint, long> _flashWindows = [];
 
@@ -751,6 +759,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     internal void FlushFlashes()
     {
         Item[] items;
+        Dictionary<Item, int> visits;
         Action[] messages;
 
         lock (_pendingFlashes) {
@@ -760,6 +769,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
             items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
             _pendingFlashes.Clear();
+            visits = new(_flashVisits);
+            _flashVisits.Clear();
             // The first-write rule of FlashDefinition covers one batch, so a flush in the middle of a firing (such as before a
             // movement) lets that firing's next write show again.
             _definitionFirings.Clear();
@@ -768,7 +779,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
 
         if (items.Length > 0) {
-            _room.SendObjectsData(FlashOrder(items));
+            _room.SendObjectsData(FlashOrder(items), visits);
         }
 
         foreach (var send in messages) {

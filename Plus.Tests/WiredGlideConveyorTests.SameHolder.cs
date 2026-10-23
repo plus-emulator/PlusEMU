@@ -7,7 +7,8 @@ using Xunit;
 namespace Plus.Tests;
 
 // Observed on AIR WIN63-202610201032-107964540: "same holder" saves on Change Variable Value, Give Variable and Variable Value Match for every
-// pair of destination and reference kind (furni, user, global) with a variable, and with a value or an empty slot when both are global.
+// pair of destination and reference kind (furni, user, global) with a variable, with a value or an empty slot when both are global, and with
+// an empty reference slot on a furni destination.
 // Each save reopens with its ints unchanged. Read on a holder of another kind (a global destination with a furni or user reference, a
 // furni destination with a global reference), the reference gives nothing: Change Variable Value then changes nothing.
 public sealed partial class WiredGlideConveyorTests
@@ -120,17 +121,22 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(variables.Split(',').Select(token => token == "n" ? "0" : token), reopened.Variables);
     }
 
-    // Not probed on Habbo, so Plus keeps refusing it: an empty reference slot with same holder on when the targets are not both global.
+    // Observed on AIR WIN63-202610201032-107964540: an empty reference slot with same holder on saves on a furni destination too (the box then
+    // changes nothing), with its ints as sent.
     [Theory]
     [InlineData(ChangeBox)]
     [InlineData(GiveBox)]
-    public void SameHolderWithAnEmptyReferenceOnAFurniDestinationIsStillRefused(string box)
+    public void SameHolderSavesWithAnEmptyReferenceOnAFurniDestination(string box)
     {
         var (f, owner, frames) = VariableBoxFixture(box);
+        var ints = SameHolderInts(box, 0, 0);
 
-        SaveVariableBox(f, owner, frames, box, SameHolderInts(box, 0, 0), ["furni:301", "n"]);
+        SaveVariableBox(f, owner, frames, box, ints, ["furni:301", "n"]);
 
-        Assert.StartsWith("refused", SaveAnswer(frames));
+        Assert.True(SaveAnswer(frames) == "ok", $"{box}: {SaveAnswer(frames)}");
+        var reopened = Reopen(f, owner, frames, MatchCondition, VariableBoxHeader(box));
+        Assert.Equal(ints, reopened.Ints);
+        Assert.Equal(["furni:301", "0"], reopened.Variables);
     }
 
     // Same holder on with a value instead of a variable, on a global destination.

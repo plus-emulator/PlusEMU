@@ -179,8 +179,10 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         unchosenDestination |= valueMatch && tokens[0].Length == 0;
 
         // Same holder reads the reference on each destination holder. Observed on AIR WIN63-202610201032-107964540: it saves for every pair
-        // of destination and reference kind with a variable. Plus accepts an empty reference slot with same holder on only when both targets are global
-        // (probed; the box then changes nothing). An empty destination slot saves on any target. With a value it saves on a global destination; other targets are accepted with a value but were not probed.
+        // of destination and reference kind with a variable, and with a value or an empty reference slot on a furni, user or global destination.
+        // Give Variable and Change Variable Value also save with an empty or unresolved slot and the variable option on, same holder on or off; the
+        // box then changes nothing. A furni or user destination with same holder on takes a value, and a reference of its own kind from its own
+        // holder, and nothing from a reference of the other kind.
         var sameIndex = name switch
         {
             "wf_act_give_var" when p.Length is GiveExtended or GiveReferenced => 7,
@@ -192,10 +194,6 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         if (sameIndex >= 0 && p[sameIndex] is not (0 or 1)) {
             return false;
         }
-
-        var sameHolder = sameIndex >= 0 && p[sameIndex] == 1;
-        var emptyGlobalSlot = sameHolder && (WiredVariableTarget)p[0] == WiredVariableTarget.Global
-            && (WiredVariableTarget)p[name == "wf_act_give_var" ? 6 : 4] == WiredVariableTarget.Global;
 
         if (!unchosenDestination && !(ReadsPresence(name) && tokens[0].Length == 0) && !ValidToken(tokens[0])) {
             return false;
@@ -214,7 +212,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
                 return false;
             }
 
-            if (p[2] == 1 && !ValidToken(tokens[1]) && !(valueMatch && tokens[1].Length == 0) && !(emptyGlobalSlot && tokens[1].Length == 0)) {
+            if (p[2] == 1 && !ValidToken(tokens[1]) && !(valueMatch && tokens[1].Length == 0) && !(SavesAnyVariableId(name) && tokens[1].Length == 0)) {
                 return false;
             }
         }
@@ -224,7 +222,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         }
 
         if (ReferenceSlot(name, p) is { } slot && (p[slot.Option] is not (0 or 1) || !Enum.IsDefined((WiredVariableTarget)p[slot.Target])
-            || p[slot.Option] == 1 && !ValidToken(tokens[1]) && !(emptyGlobalSlot && tokens[1].Length == 0))) {
+            || p[slot.Option] == 1 && !ValidToken(tokens[1]) && !(SavesAnyVariableId(name) && tokens[1].Length == 0))) {
             return false;
         }
 

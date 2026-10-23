@@ -979,6 +979,17 @@ public class Room
     internal void FlushWiredFlashes() => _wiredComponent?.FlushFlashes();
     internal void FlushWiredFlashData() => _wiredComponent?.FlushFlashData();
 
+    /// <summary>Sends a Wired movement packet after the pending box flashes and furni states (see WiredComponent.SendWiredMovement).</summary>
+    internal void SendWiredMovement(IServerPacket packet)
+    {
+        if (_wiredComponent is { } wired) {
+            wired.SendWiredMovement(packet);
+        }
+        else {
+            SendPacket(packet);
+        }
+    }
+
     /// <param name="visits">Items a user sees only when its <see cref="RoomUser.Visit"/> is at most this (<see cref="RoomUserManager.Visits"/>).</param>
     internal void SendObjectsData(IReadOnlyList<Item> items, IReadOnlyDictionary<Item, int>? visits = null)
     {

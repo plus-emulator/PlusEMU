@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using Plus.Communication.Packets;
 using Dapper;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -305,13 +306,25 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         @event = @event with { Visits = _room.GetRoomUserManager()?.Visits ?? int.MaxValue };
         var ranAtOnce = @event.Kind is WiredEventKind.Speech or WiredEventKind.ClickFurni;
+        var holdsMovements = @event.Kind == WiredEventKind.ClickFurni;
         bool dispatched;
 
-        if (@event.Kind == WiredEventKind.StateChanged) {
-            (ranAtOnce, dispatched) = _engine.DispatchStateChange(@event);
+        if (holdsMovements) {
+            Interlocked.Increment(ref _movementHolds);
         }
-        else {
-            dispatched = WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() => DispatchCore(@event)));
+
+        try {
+            if (@event.Kind == WiredEventKind.StateChanged) {
+                (ranAtOnce, dispatched) = _engine.DispatchStateChange(@event);
+            }
+            else {
+                dispatched = WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() => DispatchCore(@event)));
+            }
+        }
+        finally {
+            if (holdsMovements) {
+                Interlocked.Decrement(ref _movementHolds);
+            }
         }
 
         // Speech and a furni click run their stacks at once, outside the room's passes: send what they flashed and wrote now, with the chat.
@@ -798,11 +811,15 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         Item[] items;
         Dictionary<Item, int> visits;
+        IServerPacket[] movements;
 
         lock (_pendingFlashes) {
-            if (_pendingFlashes.Count == 0 && _afterFlash.Count == 0) {
+            if (_pendingFlashes.Count == 0 && _afterFlash.Count == 0 && _heldMovements.Count == 0) {
                 return;
             }
+
+            movements = [.. _heldMovements];
+            _heldMovements.Clear();
 
             items = [.. _pendingFlashes.Where(item => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item))];
             _pendingFlashes.Clear();
@@ -816,6 +833,33 @@ public partial class WiredComponent : IWiredRuntimeOperations
         if (items.Length > 0) {
             _room.SendObjectsData(FlashOrder(items), visits);
         }
+
+        foreach (var movement in movements) {
+            _room.SendPacket(movement);
+        }
+    }
+
+    private readonly List<IServerPacket> _heldMovements = [];
+    private int _movementHolds;
+
+    /// <summary>
+    /// Sends a WiredMovements after the pending ObjectsDataUpdate. While a click runs its stacks, it waits for the end of the click, so
+    /// the states that the click's other effects write still go out before it. Observed on AIR WIN63-202610201032-107964540: a click
+    /// whose stack toggles furni and turns the user sends one ObjectsDataUpdate with the flashes and the new states, then the
+    /// WiredMovements, whichever effect runs first.
+    /// </summary>
+    internal void SendWiredMovement(IServerPacket packet)
+    {
+        if (_movementHolds > 0) {
+            lock (_pendingFlashes) {
+                _heldMovements.Add(packet);
+            }
+
+            return;
+        }
+
+        FlushFlashData();
+        _room.SendPacket(packet);
     }
 
     private readonly List<Action> _afterFlash = [];

@@ -546,7 +546,12 @@ internal sealed partial class WiredStackEngine
         [AdjustClockSet] = ["wf_act_adjust_clock"],
         // Observed on AIR WIN63-202610201032-107964540: a Remove Variable runs after a Give Variable of the same variable, whatever the
         // box order (12 of 12 for each order).
-        ["wf_act_remove_var"] = ["wf_act_give_var"]
+        ["wf_act_remove_var"] = ["wf_act_give_var"],
+        // Observed on AIR WIN63-202610201032-107964540: a Give Variable or Change Variable Value that reads the state or the rotation of a
+        // furni reads the new value when a Toggle State or Move and Rotate of the same firing changes it, whatever the box order (12 of 12
+        // for each pair and box order).
+        ["wf_act_give_var"] = ["wf_act_toggle_state", "wf_act_move_rotate"],
+        ["wf_act_change_var_val"] = ["wf_act_toggle_state", "wf_act_move_rotate"]
     };
 
     private const string AdjustClockSet = "wf_act_adjust_clock:set";
@@ -556,17 +561,27 @@ internal sealed partial class WiredStackEngine
     {
         var order = Enumerable.Range(0, effects.Length).OrderBy(index => ranks[index]).ToList();
 
-        foreach (var later in order.ToArray()) {
-            if (!DefaultRunsAfter.TryGetValue(PrecedenceKey(effects[later].Box), out var earlier)) {
-                continue;
+        // A move can break a pair settled before it (Remove after Give, then Give after Toggle State), so the pass repeats until nothing moves.
+        for (var pass = 0; pass < effects.Length; pass++) {
+            var moved = false;
+
+            foreach (var later in order.ToArray()) {
+                if (!DefaultRunsAfter.TryGetValue(PrecedenceKey(effects[later].Box), out var earlier)) {
+                    continue;
+                }
+
+                var last = order.FindLastIndex(index => earlier.Contains(PrecedenceKey(effects[index].Box)));
+                var at = order.IndexOf(later);
+
+                if (last > at) {
+                    order.RemoveAt(at);
+                    order.Insert(last, later);
+                    moved = true;
+                }
             }
 
-            var last = order.FindLastIndex(index => earlier.Contains(PrecedenceKey(effects[index].Box)));
-            var at = order.IndexOf(later);
-
-            if (last > at) {
-                order.RemoveAt(at);
-                order.Insert(last, later);
+            if (!moved) {
+                break;
             }
         }
 

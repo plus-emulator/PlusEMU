@@ -45,7 +45,7 @@ public sealed partial class WiredRuntimeEngineTests
     // The other type pairs were not separable, so they keep the per-firing permutation.
     [Theory]
     [InlineData("wf_act_toggle_state", "wf_act_rel_mov")]
-    [InlineData("wf_act_change_var_val", "wf_act_toggle_state")]
+    [InlineData("wf_act_change_var_val", "wf_act_rel_mov")]
     [InlineData("wf_act_match_to_sshot", "wf_act_show_message")]
     public void DefaultOrderOfUnobservedPairsStillVaries(string lower, string upper)
     {

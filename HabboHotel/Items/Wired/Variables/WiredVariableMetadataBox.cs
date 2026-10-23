@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Addons;
 using Plus.HabboHotel.Items.Wired.Variables.Fx;
@@ -92,7 +93,10 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
             }
         }
         else if (name == "wf_xtra_var_text_connector") {
-            ParseConnector(configuration.Text);
+            // A stored row keeps loading whatever its size; only a save is held to the limit.
+            if (Encoding.UTF8.GetByteCount(configuration.Text) > MaxConnectorBytes) {
+                throw new ArgumentException("Text connector is too long.");
+            }
         }
         else if (name is "wf_xtra_var_share" or "wf_xtra_var_import") {
             if (configuration.IntParams.Length != 3 || configuration.IntParams.Any(flag => flag is not (0 or 1)) || configuration.Text.Length != 0) {
@@ -118,19 +122,17 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
         }
     }
 
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: the connector text may hold 1000 UTF-8 bytes, the "_=" line included, and any
+    /// number of lines. A longer text is refused with wiredfurni.error.too_much_text and the stored text stays.
+    /// </summary>
+    internal const int MaxConnectorBytes = 1000;
+
     internal static WiredTextConnector ParseConnector(string text)
     {
-        if (text.Length > 1000) {
-            throw new ArgumentException("Text connector is too long.");
-        }
-
         var result = new Dictionary<int, string>();
         string? fallback = null;
         var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-
-        if (lines.Length > 30) {
-            throw new ArgumentException("Text connector has too many entries.");
-        }
 
         // Observed on AIR WIN63-202610151745-318700621 (the stored connector, read back from the room's variables): every line is
         // "number=text"; a line that is not is dropped and the save still succeeds ("bad", "x=1", "Seven=7" and " 3 = z " all dropped).

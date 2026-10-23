@@ -173,6 +173,12 @@ public sealed class WiredConfigurationService(
                 return;
             }
 
+            if (WiredTextAddonRules.ConnectorRefusal(descriptor.CanonicalName, native) is var (tooMuchKey, tooMuchLimits)) {
+                session.Send(new WiredValidationErrorComposer(tooMuchKey, tooMuchLimits));
+
+                return;
+            }
+
             if (WiredNativeEditorProjection.SaveRefusal(descriptor, native) is { } refusal) {
                 session.Send(new WiredValidationErrorComposer(refusal));
 

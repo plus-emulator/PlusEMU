@@ -9,9 +9,9 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540 (3 runs, 6 firings each): Toggle State sets a colour tile and a button in its tick batch, sends the
-    // blob's new state alone on the next room tick (about 0.18 to 0.37 s later) and sets the button back to 0 about 600 ms after it was set, in a
-    // packet of its own. A blob starts in state 1 and goes 0, 1, 0 ... on each firing.
+    // Observed on AIR WIN63-202610201032-107964540 (3 runs, 6 firings each, for wf_blob, wf_blob2, wf_button, wf_button_red and wf_button_x): Toggle
+    // State sets a colour tile and a button in its tick batch, sends the blob's new state alone on the next room tick (0.06 to 0.37 s later) and
+    // sets the button back to 0 600 ms after it was set, in a packet of its own. A blob starts in state 1 and goes 0, 1, 0 ... on each firing.
     [Fact]
     public void ToggleStateSetsABlobOnTheNextRoomTickAndResetsAButtonAfter600Milliseconds()
     {
@@ -21,6 +21,7 @@ public sealed partial class WiredGlideConveyorTests
             (tile, 5, 12, 0.0, 0, "wf_colortile", null),
             (blob, 6, 12, 0.0, 0, "wf_blob", null),
             (button, 7, 12, 0.0, 0, "wf_button", null),
+            (47, 8, 12, 0.0, 0, "wf_trg_stuff_state", SelectedConfig([0, 100], blob)),
             (say, 4, 9, 0.0, 0, "wf_trg_says_something", JsonSerializer.Serialize(new WiredConfiguration { IntParams = [1, 0, 0], Text = "tg" })),
             (action, 4, 9, 0.65, 0, "wf_act_toggle_state", ObservedNative("wf_act_toggle_state", [0], [tile, blob, button], 100))
         };
@@ -40,29 +41,37 @@ public sealed partial class WiredGlideConveyorTests
 
             return false;
         };
-        f.Advance(1000);
+        f.Advance(1150);
         frames.Clear();
 
-        f.Owned(() => rider.OnChat(0, "tg", false));
+        var blobStates = new List<string>();
 
-        for (; elapsed < 1500; elapsed += 50) {
-            f.Advance(50);
+        for (var firing = 0; firing < 3; firing++) {
+            var start = elapsed;
+            f.Owned(() => rider.OnChat(0, "tg", false));
+
+            for (; elapsed < start + 3000; elapsed += 50) {
+                f.Advance(50);
+            }
+
+            var batches = frames.Where(frame => frame.At >= start && frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer)
+                .Select(frame => (frame.At, Entries: ReadBatch((frame.Header, frame.Payload)))).ToArray();
+            var first = batches.First(batch => batch.Entries.Any(entry => entry.Id == tile));
+            Assert.Contains(first.Entries, entry => entry.Id == button && entry.Text == "1");
+            Assert.DoesNotContain(first.Entries, entry => entry.Id == blob);
+
+            var blobBatch = Assert.Single(batches, batch => batch.Entries.Any(entry => entry.Id == blob));
+            // A trigger that watches the blob flashes in the batch of its change.
+            Assert.Equal([blob, 47u], blobBatch.Entries.Select(entry => entry.Id).Order());
+            blobStates.Add(blobBatch.Entries.Single(entry => entry.Id == blob).Text);
+            Assert.InRange(blobBatch.At - first.At, 50, 500);
+
+            var reset = Assert.Single(frames, frame => frame.At >= start && frame.Header == ServerPacketHeader.ObjectDataUpdateComposer);
+            Assert.Equal((button, "0"), ReadSingle((reset.Header, reset.Payload)));
+            Assert.InRange(reset.At - first.At, 550, 650);
+            Assert.Equal("0", f.Items[button].LegacyDataString);
         }
 
-        var batches = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer)
-            .Select(frame => (frame.At, Entries: ReadBatch((frame.Header, frame.Payload)))).ToArray();
-        var first = batches.First(batch => batch.Entries.Any(entry => entry.Id == tile));
-        Assert.Contains(first.Entries, entry => entry.Id == button && entry.Text == "1");
-        Assert.DoesNotContain(first.Entries, entry => entry.Id == blob);
-
-        var blobBatch = Assert.Single(batches, batch => batch.Entries.Any(entry => entry.Id == blob));
-        Assert.Equal([(blob, "0")], blobBatch.Entries.Where(entry => entry.Id != say && entry.Id != action).ToArray());
-        Assert.InRange(blobBatch.At - first.At, 50, 500);
-
-        var reset = Assert.Single(frames, frame => frame.Header == ServerPacketHeader.ObjectDataUpdateComposer && ReadSingle((frame.Header, frame.Payload)).Id == button);
-        Assert.Equal("0", ReadSingle((reset.Header, reset.Payload)).Text);
-        Assert.InRange(reset.At - first.At, 550, 700);
-        Assert.Equal("0", f.Items[button].LegacyDataString);
-        Assert.Equal("0", f.Items[blob].LegacyDataString);
+        Assert.Equal(["0", "1", "0"], blobStates);
     }
 }

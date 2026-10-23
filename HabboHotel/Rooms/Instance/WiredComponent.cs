@@ -229,12 +229,14 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         WiredAvatarState.For(_room).FlushTickEffects();
         _highscores?.OnOwnedPass();
-        PublishStateWrites();
 
+        // The blobs change first, so that the state writes are reported in this same pass.
         foreach (var blob in WiredDeferredStates.For(_room).TakeBlobs()) {
             blob.LegacyDataString = WiredDeferredStates.NextState(blob);
             PublishState(blob, true);
         }
+
+        PublishStateWrites();
 
         _engine.OnCycle();
         FlushVariableFx();

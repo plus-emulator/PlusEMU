@@ -503,8 +503,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             }
 
             if (name == "wf_act_toggle_state") {
-                foreach (var button in movers.Where(item => WiredDeferredStates.IsButton(item) && item.LegacyDataString == "1")) {
-                    WiredDeferredStates.For(context.Room).ResetAfterDelay(button, context.NowMilliseconds);
+                foreach (var button in movers.Where(WiredDeferredStates.IsButton)) {
+                    if (button.LegacyDataString == "1") {
+                        WiredDeferredStates.For(context.Room).ResetAfterDelay(button, context.NowMilliseconds);
+                    }
+                    else {
+                        WiredDeferredStates.For(context.Room).CancelReset(button);
+                    }
                 }
             }
 

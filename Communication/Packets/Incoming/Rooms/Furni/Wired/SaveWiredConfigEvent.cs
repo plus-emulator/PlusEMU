@@ -28,8 +28,8 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
                 native = native with { Quantifier = 0 };
             }
 
-            if (visual != null) {
-                native = WiredFurniVisualRules.ReadSave(visual, native);
+            if (Envelope is not (WiredBoxCategory.Addon or WiredBoxCategory.Variable) && !WiredNativeEditorProjection.TryLimitPicks(native, out native)) {
+                return Task.CompletedTask;
             }
 
             if (WiredNativeEditorProjection.WithinBounds(visual == null ? native : WiredFurniVisualRules.WithoutNegativeDelay(native))) {

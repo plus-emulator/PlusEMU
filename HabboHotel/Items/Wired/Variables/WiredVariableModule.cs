@@ -954,9 +954,10 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         lock (_gate) {
             var resolved = Resolve(reference, false);
 
-            // Observed on AIR WIN63-202610201032-107964540: a variable whose box was picked up after the stack fired, while a delayed
-            // Show Message waits, leaves its placeholder as written.
-            if (resolved is null && derive?.Invoke(reference) is null && TryDefinitionId(reference.Token, out _)) {
+            // Observed on AIR WIN63-202610201032-107964540: when the variable's own box is picked up after the stack fired, while a
+            // delayed Show Message waits, its placeholder stays as written. Other unresolved variables keep showing "null".
+            if (resolved is null && derive?.Invoke(reference) is null && TryDefinitionId(reference.Token, out var definitionId)
+                && directory.Find(definitionId) is null) {
                 return null;
             }
 

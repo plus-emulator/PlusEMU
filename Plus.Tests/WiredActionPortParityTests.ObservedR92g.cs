@@ -5,11 +5,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Official hhus r92g probes (AIR WIN63-202610131318-860371703); facts and receipts in reviews/r92-movement-facts.md.</summary>
 public sealed partial class WiredActionPortParityTests
 {
-    // r92g r92-stackmagic plain-w1 / keepalt-w1 / thru-w1: rel_mov onto a tile_stackmagic (height 0) under a block lands at the
-    // magic tile's height (z 0.0), with or without physics.
+    // rel_mov onto a tile_stackmagic (height 0) under a block lands at the magic tile's height (z 0.0), with or without physics.
     [Fact]
     public void RelativeMoveOntoAStackMagicTileLandsAtItsHeight()
     {
@@ -31,7 +29,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((2, 2, 0.0), (mover.GetX, mover.GetY, mover.GetZ));
     }
 
-    // r92g r92-rel-edges relVoid-w1: dy -2 into the void does not move; relOnto-w1: onto the own marker stacks (z 1.0).
+    // dy -2 into the void does not move. Onto the own marker stacks (z 1.0).
     [Fact]
     public void RelativeMoveIntoTheVoidStays()
     {
@@ -45,7 +43,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((2, 1), (mover.GetX, mover.GetY));
     }
 
-    // r92g r92-user-moves mru-w1: move_rotate_user move 2 steps the owner one tile east and leaves the rotation (-1) alone.
+    // move_rotate_user move 2 steps the owner one tile east and leaves the rotation (-1) alone.
     [Fact]
     public void MoveRotateUserMoveTwoStepsEast()
     {

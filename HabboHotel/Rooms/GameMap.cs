@@ -61,8 +61,7 @@ public class Gamemap
         return new(height, canStack, false);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: Furni To User moves the furni onto a user on the door tile, even where the
-    // heightmap marks that tile 'x'. Other placement keeps the door tile closed.
+    // Furni To User moves the furni onto a user on the door tile, even where the heightmap marks that tile 'x'. Other placement keeps the door tile closed.
     internal bool IsWiredDoorLanding(Point point, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? collision) =>
         collision?.OntoDoor == true && point.X == Model.DoorX && point.Y == Model.DoorY;
 
@@ -197,7 +196,7 @@ public class Gamemap
 
             var heights = PlacementHeightMap();
 
-            // Observed on AIR WIN63-202610201032-107964540: the entry marks the tiles of a hider that is on as 0xFFFF.
+            // The entry marks the tiles of a hider that is on as 0xFFFF.
             foreach (var (x, y) in hiddenTiles) {
                 heights[x, y] = -1;
             }
@@ -1465,8 +1464,7 @@ public class Gamemap
 
     public static Dictionary<int, ThreeDCoord> GetAffectedTiles(int length, int width, int posX, int posY, int rotation)
     {
-        // A diagonal covers the tiles of the quarter turn it rounds up to (AIR WIN63-202610151745-318700621,
-        // room/class_1854.as:1971-1983: (direction + 45) % 360 / 90).
+        // A diagonal covers the tiles of the quarter turn it rounds up to: (direction + 45) % 360 / 90.
         if (rotation is 1 or 3 or 5 or 7) {
             rotation = (rotation + 1) % 8;
         }

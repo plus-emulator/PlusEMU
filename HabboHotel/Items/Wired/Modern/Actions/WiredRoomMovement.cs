@@ -159,10 +159,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             options = options with { Rotation = FurnitureDirections.Heading(item.Definition, turned) ?? rotation };
         }
 
-        // A turn on the spot is a plain ObjectUpdate. Observed r92g r92-move-rotate mrCw-w1/mrCcw-w1 (AIR WIN63-202610131318-860371703,
-        // frames 39269/39535): no WiredMovements for a rotation without a move.
-        // Observed on AIR WIN63-202610201032-107964540: furni stacked on one tile that turn together also send ObjectUpdate, although
-        // the ones above the bottom one land on a new height.
+        // A turn on the spot is a plain ObjectUpdate: no WiredMovements for a rotation without a move.
+        // Furni stacked on one tile that turn together also send ObjectUpdate, although the ones above the bottom one land on a new height.
         if (x == item.GetX && y == item.GetY && rotation != item.Rotation) {
             options = options with { Animate = false };
         }
@@ -191,9 +189,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             context.Publication?.Flush();
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a walk magic tile restacked on its own tile lifts each user standing on it in
-        // the same WiredMovements, without the Carry add-on. Walking users are not handled here yet: Habbo also sends them an entry
-        // to their step target at the new height.
+        // A walk magic tile restacked on its own tile lifts each user standing on it in the same WiredMovements, without the Carry add-on.
+        // Walking users are not handled here yet: Habbo also sends them an entry to their step target at the new height.
         var lifted = item.Definition.InteractionType == InteractionType.WalkMagicTile && x == item.GetX && y == item.GetY
             ? room.GetRoomUserManager().GetRoomUsers().Where(user => !carried.Contains(user) && !user.IsWalking && !HasQueuedWalk(user)
                 && room.GetGameMap().WalkMagicAt(user.X, user.Y) == item).Select(user => (User: user, FromZ: user.Z)).ToArray()
@@ -236,7 +233,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 overshootMs = flight.OvershootMs;
             }
 
-            // Observed on AIR WIN63-202610201032-107964540: always shooting a negative number of tiles moves the furni at once.
+            // Always shooting a negative number of tiles moves the furni at once.
             if (projectile.Distance == WiredProjectileDistance.Fixed && projectile.DistanceTiles < 0) {
                 duration = 0;
             }
@@ -267,14 +264,12 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 item.GetX, item.GetY, item.GetZ, item.Rotation, item.Rotation, options.AnimationTimeMs)
             {
                 CurveStrength = options.CurveType == 7 && options.CurveStrength != 0 ? options.CurveStrength : null,
-                // Observed on AIR WIN63-202610201032-107964540: the overshoot modes send the time of the rest of the flight. A shot with no
-                // time per tile keeps the value 800.
+                // The overshoot modes send the time of the rest of the flight. A shot with no time per tile keeps the value 800.
                 OvershootTimeMs = projectile?.Distance is WiredProjectileDistance.Overshoot or WiredProjectileDistance.Fixed ? overshootMs : null
             };
 
-            // The shooter faces the exact heading, diagonals included, on every fire, also when the furni lands on the rotation
-            // it had. Observed on AIR WIN63-202610151745-318700621 with wf_antenna2 and wf_floor_switch1. A furni with a single
-            // direction cannot turn and leaves the shooter as is: a wf_colortile flying alone sent no avatar direction.
+            // The shooter faces the exact heading, diagonals included, on every fire, also when the furni lands on the rotation it had.
+            // A furni with a single direction cannot turn and leaves the shooter as is.
             var aimed = projectile == null || item.Definition.Directions.Count == 1 ? null
                 : AimShooter(context, projectile, (long)item.GetX - source.X, (long)item.GetY - source.Y);
 
@@ -333,7 +328,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             return null;
         }
 
-        // Aims the first present shooter once per firing, without the item offset; the once-per-firing and source policy are not proven.
+        // Aims the first present shooter once per firing, without the item offset.
         projectile.ShooterAimed = true;
         var room = context.Room;
         var shooter = context.Targets.ResolveUsers(context, [], source).FirstOrDefault(user =>
@@ -354,8 +349,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     /// bottom item, except a Move and Rotate stack of single-tile stackable furni, which moves one furni at a time.
     /// Before a unit enters a tile, a still-pending unit there that would block it takes its own step first,
     /// so a line follows its front or waits behind it in any order. Without step rules (wf_act_rel_mov) the units move in the
-    /// movers' order and land on stackable furniture like any non-step move. Observed r92k r92h-rel-wall (AIR WIN63-202610131318-860371703):
-    /// a column picked m3, m2, m1 moving into the wall left m1, stacked m2 on m1 and m3 on m2 before m2 left (m3 kept z 1.0).
+    /// movers' order and land on stackable furniture like any non-step move.
     /// </summary>
     public bool MoveTogether(WiredRuntimeContext context, IReadOnlyList<Item> movers, Func<Item, Func<int, int, int, bool>, bool> step,
         PassengerSnapshot? passengers = null, bool stepRules = true, bool stackableBlocks = true, bool randomStacks = false)
@@ -523,9 +517,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         internal void Moved(RoomUser user) => _moved.TryAdd(user, 0);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703 (Fast Queue, 200 ms): a user walking against the queue walks tile by tile with no
-    // carry entries; carrying resumes once the walk has ended. A walking user, or one whose walk request is still queued, is not a
-    // passenger: carrying them would discard that request.
+    // A user walking against the queue walks tile by tile with no carry entries; carrying resumes once the walk has ended.
+    // A walking user, or one whose walk request is still queued, is not a passenger: carrying them would discard that request.
     private static RoomUser[] Carried(WiredRuntimeContext context, Item item) => context.Room.GetRoomUserManager().GetRoomUsers()
         .Where(user => context.Policy.Addons.Carry?.UserIds.Contains(user.VirtualId) == true
             && !user.IsWalking && !HasQueuedWalk(user)
@@ -669,7 +662,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             }
         }
 
-        // An animated wired move shows "wf" on the avatar for one status update (r92m r92m-wf-status).
+        // An animated wired move shows "wf" on the avatar for one status update.
         if (animate && !user.IsBot) {
             user.MarkWiredMove();
         }

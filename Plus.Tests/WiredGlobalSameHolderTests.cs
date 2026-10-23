@@ -4,9 +4,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 with two room variables (7 and 3): Change Variable Value with same holder on and a global
-// destination reads the reference like it does with the option off, a reference of another kind (furni or user) changes nothing, and Give
-// Variable on a global destination gives nothing in every shape.
+// Change Variable Value with same holder on and a global destination reads the reference like it does with the option off, a
+// reference of another kind (furni or user) changes nothing, and Give Variable on a global destination gives nothing in every
+// shape.
 public sealed class WiredGlobalSameHolderTests
 {
     private const string Destination = "room:20", Reference = "room:21", FurniVariable = "furni:10";

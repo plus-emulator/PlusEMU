@@ -12,7 +12,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             VariableDefaults = [.. Enumerable.Repeat(Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId, variables)]
         };
 
-    // Observed r92d/r92e initial frames of carry users and physics (AIR WIN63-202610131318-860371703): trigger, selector, signal, all users.
+    // Carry users and physics offer the triggering user, the selector, the signal and all users.
     private static readonly ImmutableArray<int> AddonUsers = [0, 200, 201, 900];
     private static readonly ImmutableArray<int> AddonFurni = [0, 100, 200, 201, 900];
     private static readonly ImmutableArray<int> PhysicsFurni = [0, 100, 101, 200, 201, 900];
@@ -51,42 +51,41 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_xtra_mov_no_animation", Plain("wf_xtra_mov_no_animation", [], 0));
         yield return new("wf_xtra_exec_in_order", Plain("wf_xtra_exec_in_order", [], 0));
         yield return new("wf_xtra_unseen", Plain("wf_xtra_unseen", [], 0));
-        // Amount per window and the window in half-second pulses. Observed on AIR WIN63-202610201032-107964540: the window runs to 120 pulses.
+        // Amount per window and the window in half-second pulses. The window runs to 120 pulses.
         yield return new("wf_xtra_execution_limit", Plain("wf_xtra_execution_limit", [100, 1], 2, p => In(p[0], 1, 100) && In(p[1], 1, 120)));
-        // The AIR form lists skipped executions first, the picker takes the amount first.
+        // The client form lists skipped executions first, the picker takes the amount first.
         yield return new("wf_xtra_random", Plain("wf_xtra_random", [0, 1], 2, p => In(p[0], 0, 100) && In(p[1], 1, 100), p => [p[1], p[0]]));
         // -1 selects a comparison (index, value); 0..3 are the plain evaluation modes.
         yield return new("wf_xtra_or_eval", new(Sources([PlainFurni], [], [1, 0, 0]) with { FurniDefaults = [100] }, n =>
         {
             var p = n.OwnedIntParams;
 
-            // Observed on AIR WIN63-202610201032-107964540: the comparison runs 0 to 3 and the count is stored as sent, in every mode.
+            // The comparison runs 0 to 3 and the count is stored as sent, in every mode.
             if (!Shape(n, 3, 1, 0, 0) || !In(p[0], -1, 3) || !In(p[1], 0, 3)) {
                 return null;
             }
 
             return Norm("wf_xtra_or_eval", n, p[0] == -1 ? [4 + p[1], 0, p[2]] : [p[0], 0, 1]);
         }));
-        // Hotel editor defaults, observed r92b (AIR WIN63-202610131318-860371703): carry user source 900; physics furni sources [900, 900], user source 900.
+        // Hotel editor defaults: carry user source 900; physics furni sources [900, 900], user source 900.
         yield return new("wf_xtra_mov_carry_users", new(Sources([], [AddonUsers], [0]) with { UserDefaults = [900] }, n => Shape(n, 1, 0, 1, 0) && In(n.OwnedIntParams[0], 0, 1)
             ? Norm("wf_xtra_mov_carry_users", n, [n.OwnedIntParams[0], n.UserSourceTypes[0]]) : null));
         yield return new("wf_xtra_mov_physics", new(Sources([PhysicsFurni, PhysicsFurni], [AddonUsers], [1, 0, 0, 0]) with
         { FurniDefaults = [900, 900], UserDefaults = [900] }, n => Shape(n, 4, 2, 1, 0)
             && n.OwnedIntParams.All(flag => flag is 0 or 1)
             ? Norm("wf_xtra_mov_physics", n, [.. n.OwnedIntParams, n.FurniSourceTypes[0], n.FurniSourceTypes[1], n.UserSourceTypes[0]]) : null));
-        // Observed on hhus (AIR WIN63-202610131318-860371703): allows wall picks; the name lookup needs no tile.
+        // Allows wall picks; the name lookup needs no tile.
         yield return new("wf_xtra_text_output_furni_name", new(Sources([[0, 100, 200, 201]], [], [0]) with { AllowWall = true }, n => Shape(n, 1, 1, 0, 0) && Placeholder(n)
             ? Norm("wf_xtra_text_output_furni_name", n, [n.OwnedIntParams[0] == 1 ? 2 : 1, n.FurniSourceTypes[0]]) : null));
         yield return new("wf_xtra_text_output_username", new(Sources([], [[0, 200, 201]], [0]), n => Shape(n, 1, 0, 1, 0) && Placeholder(n)
             ? Norm("wf_xtra_text_output_username", n, [n.OwnedIntParams[0] == 1 ? 2 : 1, n.UserSourceTypes[0]]) : null));
-        // Observed on AIR WIN63-202610131318-860371703 (initial editor frames): both filters offer furni 0/100/201 opening on 100 and
-        // users 0/201 opening on 0 for the variable-mode holder.
+        // Both filters offer furni 0/100/201 opening on 100 and users 0/201 opening on 0 for the variable-mode holder.
         yield return new("wf_xtra_filter_furni", new(Meta(1, 1, [10, 0, 1], 1) with { FurniAllowed = [[0, 100, 201]], UsersAllowed = [[0, 201]], FurniDefaults = [100] },
             FilterSpec("wf_xtra_filter_furni")));
         yield return new("wf_xtra_filter_users", new(Meta(1, 1, [10, 0, 1], 1) with { FurniAllowed = [[0, 100, 201]], UsersAllowed = [[0, 201]], FurniDefaults = [100] },
             FilterSpec("wf_xtra_filter_users")));
         // Jump strength: literal or variable value, with the merged reference's own target and source.
-        // Observed r92f r92-move-addons initial frame (pkt 19139): furni 0/100/200/201 opening on 100, users 0/200/201 opening on 0.
+        // Initial frame: furni 0/100/200/201 opening on 100, users 0/200/201 opening on 0.
         yield return new("wf_xtra_mov_curve", new(Sources([PlainFurni], [ProjectileUsers], [0, 160, -20], 1) with { FurniDefaults = [100] }, n =>
         {
             var p = n.OwnedIntParams;

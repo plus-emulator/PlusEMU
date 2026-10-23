@@ -11,7 +11,7 @@ namespace Plus.Tests;
 // The two chest conditions, the chest scanner and the custom contract add-on.
 public sealed partial class WiredRemainderG1RuntimeTests
 {
-    // The AIR comparison radios: < 0, = 1, > 2, <= 3, != 4, >= 5.
+    // The comparison radios: < 0, = 1, > 2, <= 3, != 4, >= 5.
     private static bool Compares(int comparison, long amount, long reference) => comparison switch
     {
         0 => amount < reference,
@@ -85,7 +85,7 @@ public sealed partial class WiredRemainderG1RuntimeTests
     }
 
     [Fact]
-    // Observed on AIR WIN63-202610151745-318700621 (r97_chest_none2): with no chest to check, the condition passes whatever the comparison.
+    // With no chest to check, the condition passes whatever the comparison.
     public void HasItemsPassesWithoutAnyChestWhateverTheComparison()
     {
         using var world = new G1World();
@@ -93,7 +93,7 @@ public sealed partial class WiredRemainderG1RuntimeTests
         var chair = world.AddItem("chair", InteractionType.None, 4, 4);
         var chest = world.AddChest(WiredChestKind.Coins, 5);
         var none = HasItemsStack(world, 100, 0, [], 6);
-        // A picked furni that is not a chest is refused at save (observed on AIR WIN63-202610151745-318700621, r97_chest_none).
+        // A picked furni that is not a chest is refused at save.
         Assert.Equal("wiredfurni.error.require_chests", Assert.ThrowsAny<Exception>(() => HasItemsStack(world, 100, 0, [chair], 7)).Message);
         var gone = HasItemsStack(world, 100, 0, [chest], 8);
         world.Floor.TryRemove(chest.Id, out _);
@@ -230,8 +230,7 @@ public sealed partial class WiredRemainderG1RuntimeTests
 
         world.Fire(Enter(player));
 
-        // A coin chest holds no furni, and with no chest the condition counts no furni either, so zero equals zero (observed on AIR
-        // WIN63-202610201032-107964540).
+        // A coin chest holds no furni, and with no chest the condition counts no furni either, so zero equals zero.
         Assert.Single(coinChest.Runs);
         Assert.Single(missing.Runs);
     }

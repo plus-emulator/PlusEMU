@@ -11,7 +11,7 @@ namespace Plus.Communication.Packets.Outgoing.Collectibles;
 public sealed record NftStoreOffer(string ProductCode, int EmeraldPrice, bool IsFeatured, bool IsLimited, int MintLimit, long MintedCount, int MinLevel);
 
 /// <summary>
-/// AIR collectibles/class_3977.as:27-31 and class_3825.as:23-33: per offer its code, price, flags, limit, minted count and product.
+/// Per offer its code, price, flags, limit, minted count and product.
 /// The min level before the product is this hotel's own field, so the official AIR client cannot read this packet.
 /// </summary>
 public sealed class NftStoreOffersComposer(ImmutableArray<(NftStoreOffer Offer, CollectibleProduct Product)> offers) : IServerPacket

@@ -12,7 +12,7 @@ public sealed record WiredNativeVariable(string Id, int Type, string Name, int A
     public string? TextConnectorFallback { get; init; }
     public bool HasTextConnectorFallback => Connector.HasValue && TextConnectorFallback is not null;
 
-    /// <summary>The AIR variable record: the catalog diff leads it with the row hash, a shared-variable row does not.</summary>
+    /// <summary>The variable record: the catalog diff leads it with the row hash, a shared-variable row does not.</summary>
     public void Write(Plus.HabboHotel.GameClients.IOutgoingPacket packet, bool withHash)
     {
         if (withHash) {
@@ -144,16 +144,14 @@ internal static class WiredNativeCatalogProjection
     private static readonly Lazy<IReadOnlyDictionary<string, BuiltinListing>> BuiltinListings = new(LoadBuiltinListings);
 
     /// <summary>
-    /// The built-in (@) and smart (~) variables every room catalogue lists, under Habbo's fixed ids. The AIR variable pickers
-    /// (NewVariablePicker.filteredAllVariables, WIN63-202610131318) list only the room catalogue, so these rows are what puts
-    /// "@index" or "@direction" in the Echo, Give, Change and condition pickers. Type 1 is class_4027.INTERNAL.
+    /// The built-in (@) and smart (~) variables every room catalogue lists, under Habbo's fixed ids. The client's variable pickers list only the room catalogue,
+    /// so these rows are what puts "@index" or "@direction" in the Echo, Give, Change and condition pickers. Type 1 is INTERNAL.
     /// </summary>
     internal static ImmutableArray<WiredNativeVariable> Builtins { get; } = [.. WiredHabboVariableIds.All.Select(Builtin)];
 
     /// <summary>
-    /// Habbo's listing of each built-in row (WiredBuiltinCatalogue.json, decoded from hhus WiredAllVariablesDiffs on AIR
-    /// WIN63-202610131318-860371703): its type (3 for every ~ row), whether it is always available or invisible, and its text
-    /// connector. An empty connector is still a connector: the AIR client then renders @position as "x: 8, y: 8".
+    /// Habbo's listing of each built-in row: its type (3 for every ~ row), whether it is always available or invisible, and its text connector.
+    /// An empty connector is still a connector: the client then renders @position as "x: 8, y: 8".
     /// </summary>
     private sealed record BuiltinListing(int Type, bool AlwaysAvailable, bool IsInvisible,
         ImmutableArray<KeyValuePair<int, string>>? Connector, string? TextConnectorFallback);
@@ -223,13 +221,11 @@ internal static class WiredNativeCatalogProjection
         var timestamps = !derived && builtin is null && endpoint.Terminal is not null;
         var target = CatalogTarget(definition.Target);
 
-        // Observed on hhus: the lvlup sub-variable "<parent>.current_level" is listed with type 2 and availability 999.
-        // Observed on hhus (AIR WIN63-202610131318-860371703): a global lists canReadCreationTime false, canReadLastUpdateTime true;
-        // a Time Utilities Value part is writable and interceptable.
-        // Observed on AIR WIN63-202610201032-107964540: a reference to a shared variable of another room is listed as a normal variable
-        // (type 0) of availability 20 whose changes can be intercepted. An echo or alias of a variable of this room stays type 2.
-        // Observed on AIR WIN63-202610201032-107964540: a context variable box is never interceptable, and one without a value has no
-        // last update time.
+        // The lvlup sub-variable "<parent>.current_level" is listed with type 2 and availability 999.
+        // A global lists canReadCreationTime false, canReadLastUpdateTime true; a Time Utilities Value part is writable and interceptable.
+        // A reference to a shared variable of another room is listed as a normal variable (type 0) of availability 20 whose changes can be intercepted.
+        // An echo or alias of a variable of this room stays type 2.
+        // A context variable box is never interceptable, and one without a value has no last update time.
         var crossRoom = definition.Link is { } link && link.SourceRoomId != definition.RoomId;
         var contextBox = definition.Target == WiredVariableTarget.Context && !description.IsDerived;
         var variable = new WiredNativeVariable(description.CatalogId, description.IsDerived || definition.Link is not null && !crossRoom ? 2 : 0,
@@ -241,8 +237,7 @@ internal static class WiredNativeCatalogProjection
             timestamps && definition.Target != WiredVariableTarget.Global, timestamps && (!contextBox || hasValue), connector)
         { TextConnectorFallback = fallback };
 
-        // Observed on AIR WIN63-202610201032-107964540: a pointer is listed as a normal variable of availability 999 that can be created,
-        // deleted and written but not intercepted, with an empty text connector, and it requires an execution context.
+        // A pointer is listed as a normal variable of availability 999 that can be created, deleted and written but not intercepted, with an empty text connector, and it requires an execution context.
         return definition.IsPointer
             ? variable with { Availability = 999, CanCreateAndDelete = true, CanWriteValue = true, CanInterceptChanges = false, Connector = [], TextConnectorFallback = null, RequiresExecutionContext = true }
             : variable;

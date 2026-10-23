@@ -5,7 +5,7 @@ using static Plus.Tests.SharedAddonIds;
 namespace Plus.Tests;
 
 /// <summary>
-/// Variable FX travel with the Share and Import add-ons. Observed on AIR WIN63-202610201032-107964540: a room that imports them sends the
+/// Variable FX travel with the Share and Import add-ons. A room that imports them sends the
 /// FX config under the id -1 and draws it over the reference, only while the Import add-on has variable FX on.
 /// </summary>
 public sealed class WiredSharedFxTests

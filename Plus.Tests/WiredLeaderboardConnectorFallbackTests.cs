@@ -6,9 +6,8 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// The text of a leaderboard row for a variable with a Text Connector. Observed on AIR WIN63-202610201032-107964540 (a board with a
-/// text column over a variable with the connector, values 5 and 9 given by a Says box): a labelled value shows its label, an unlabelled
-/// value shows the "_=" fallback (empty when the fallback is empty), and with no fallback line the row has no text.
+/// The text of a leaderboard row for a variable with a Text Connector: a labelled value shows its label, an unlabelled value
+/// shows the "_=" fallback (empty when the fallback is empty), and with no fallback line the row has no text.
 /// </summary>
 public sealed class WiredLeaderboardConnectorFallbackTests
 {

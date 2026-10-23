@@ -16,8 +16,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// AIR WIN63-202610151745-318700621: outgoing 2545 is id, gender, figure (package_66/class_3476.as:15-30); the gate's stuff data is
-// "<male look>,<female look>" (FurnitureClothingChangeLogic.as:51-66).
+// Outgoing 2545 is id, gender, figure. The gate's stuff data is "<male look>,<female look>".
 public sealed class FootballGateTests
 {
     private const string MaleKit = "hd-99999-99999.ch-3109-92-1408.lg-3116-82-1408.sh-3115-1408-1408";

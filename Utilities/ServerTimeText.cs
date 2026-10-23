@@ -3,9 +3,7 @@ using System.Globalization;
 namespace Plus.Utilities;
 
 /// <summary>
-/// Wall-clock times the client sends as text, e.g. GetSecondsUntil's "2026-11-05 23:59"
-/// (AIR WIN63-202610151745-318700621, package_146/class_3739.as:11). They are read in the server's time zone; which zone
-/// Habbo's servers use is not verified.
+/// Wall-clock times the client sends as text, e.g. GetSecondsUntil's "2026-11-05 23:59". They are read in the server's time zone.
 /// </summary>
 public static class ServerTimeText
 {

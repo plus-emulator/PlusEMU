@@ -14,12 +14,11 @@ public interface IPlannedShutdown
 }
 
 /// <summary>
-/// Warns every user with Habbo's maintenance alert (AIR WIN63-202610201032-107964540, HabboAlertDialogManager.as:76-81, text
-/// maintenance.shutdown), again when one minute is left, and then shuts the server down.
+/// Warns every user with Habbo's maintenance alert (text maintenance.shutdown), again when one minute is left, and then shuts the server down.
 /// </summary>
 public sealed class PlannedShutdown : IPlannedShutdown
 {
-    // AIR reads 15 when the packet has no duration (class_3083.as:41-49).
+    // The client reads 15 when the packet has no duration.
     public const int DefaultDurationMinutes = 15;
     public const int MaxMinutes = 24 * 60;
 
@@ -59,7 +58,7 @@ public sealed class PlannedShutdown : IPlannedShutdown
             return false;
         }
 
-        // AIR hides the trade button while onShutDown is set (InfoStandWidgetHandler.as:935-961, build WIN63-202610201032-107964540).
+        // The client hides the trade button while onShutDown is set.
         _clients.SendPacket(new AvailabilityStatusComposer(true));
         Warn(minutes, durationMinutes);
 

@@ -4,7 +4,6 @@ using Plus.HabboHotel.Moderation;
 namespace Plus.Communication.Packets.Outgoing.Moderation;
 
 // The issue entry shared by the moderator init and the issue info messages.
-// AIR WIN63-202610151745-318700621 package_75/class_3624.as:31 (patterns: class_4070).
 internal static class ModeratorTicketWire
 {
     public static void Write(IOutgoingPacket packet, ModeratorTicketSnapshot ticket)

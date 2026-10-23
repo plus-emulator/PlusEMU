@@ -7,7 +7,7 @@ internal class TradingOfferItemsEvent(ITradeRequestService trades) : IPacketEven
 {
     public Task Parse(GameClient session, IIncomingPacket packet)
     {
-        // AIR class_3171 writes the selected ids after their count. Any other length is rejected.
+        // The client writes the selected ids after their count. Any other length is rejected.
         var count = packet.ReadInt();
 
         if (count < 1 || packet.Buffer.Length != (long)count * 4) {

@@ -4,10 +4,8 @@ using Plus.HabboHotel.GameClients;
 namespace Plus.HabboHotel.Rooms.Chat.Commands.User;
 
 /// <summary>
-/// :pickallbc returns every Builders Club furni in the room to the warehouse. AIR WIN63-202610151745-318700621 asks for it with
-/// room.confirm.pick_all_bc and then says ":pickallbc" (com/sulake/habbo/ui/handler/ChatInputWidgetHandler.as:325-327,
-/// com/sulake/habbo/session/SessionDataManager.as pickAllBuilderFurniture). A Builders Club furni is deleted on pickup, which frees
-/// its place in the placer's furni limit.
+/// :pickallbc returns every Builders Club furni in the room to the warehouse. The client asks for it with room.confirm.pick_all_bc and then says ":pickallbc".
+/// A Builders Club furni is deleted on pickup, which frees its place in the placer's furni limit.
 /// </summary>
 internal sealed class PickAllBuildersClubCommand(IBuildersClubService buildersClub) : IChatCommand
 {

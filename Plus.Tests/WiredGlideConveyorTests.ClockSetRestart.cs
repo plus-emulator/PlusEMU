@@ -6,8 +6,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a Set Clock on a running counter restarts its tick. The next second shows 1000 ms after the
-    // Set, however the Set falls on the 500 ms room grid. A step that was already due is not taken at once.
+    // A Set Clock on a running counter restarts its tick. The next second shows 1000 ms after the Set, however the Set falls on
+    // the 500 ms room grid. A step that was already due is not taken at once.
     [Theory]
     [InlineData(2100)]
     [InlineData(2250)]

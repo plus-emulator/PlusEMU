@@ -8,7 +8,7 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
 /// How the hotel stores and refuses a save of the capturer (Text Input Variable) and the captures of a Says trigger, beyond the text output
-/// rules in <see cref="WiredEditorStoreRules"/>. Observed on AIR WIN63-202610201032-107964540:
+/// rules in <see cref="WiredEditorStoreRules"/>:
 /// <list type="bullet">
 /// <item>A capture name has 1 to 40 letters, digits or underscores and is stored in lower case. It is not trimmed.</item>
 /// <item>The mode flag stores any non-zero value as 1 and missing ints take the default.</item>
@@ -37,8 +37,7 @@ internal static class WiredTextAddonRules
     public static bool Applies(string name) => name is Input or Output;
 
     /// <summary>
-    /// The refusal of a Text Connector text over its limit. Observed on AIR WIN63-202610201032-107964540: the limit is 1000 UTF-8 bytes
-    /// and the refusal carries it as "limit".
+    /// The refusal of a Text Connector text over its limit of 1000 UTF-8 bytes. The refusal carries the limit as "limit".
     /// </summary>
     public static (string Key, IReadOnlyList<KeyValuePair<string, string>> Parameters)? ConnectorRefusal(string name, WiredNativeEditorConfiguration native) =>
         name == "wf_xtra_var_text_connector" && Encoding.UTF8.GetByteCount(native.Text) > WiredVariableMetadataBox.MaxConnectorBytes
@@ -54,9 +53,8 @@ internal static class WiredTextAddonRules
             return CapturesTwice(native.Text) ? DuplicateCaptureKey : null;
         }
 
-        // The furni name and username outputs have no variable, so an empty name is refused even on the box's default ints. Observed on AIR
-        // WIN63-202610201032-107964540: so is the variable output's own frame (no name, the one empty variable slot); other shapes of an empty name are
-        // not checked here.
+        // The furni name and username outputs have no variable, so an empty name is refused even on the box's default ints.
+        // So is the variable output's own frame (no name, the one empty variable slot). Other shapes of an empty name are not checked here.
         if (name is FurniName or Username) {
             return native.Text.Length == 0 ? NameLengthKey : null;
         }

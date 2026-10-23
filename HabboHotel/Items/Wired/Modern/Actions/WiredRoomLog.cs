@@ -24,8 +24,8 @@ public sealed record WiredRoomLogEntry(long Id, int Level, WiredLogSource Source
     // The client's log levels (default texts wiredmenu.logs_overview.log_level.N): 0 INFO, 1 WARN, 2 ERROR, 3 DEBUG.
     public static string LevelName(int level) => level switch { 0 => "INFO", 1 => "WARNING", 2 => "ERROR", _ => "DEBUG" };
 
-    // Observed on hhus (WIN63-202610131318): a Write to Logs line is listed under source 1; the client's two log sources
-    // are 0 System (the engine's own notes) and 1 Wired (lines the boxes wrote).
+    // A Write to Logs line is listed under source 1. The client's two log sources are 0 System (the engine's own notes)
+    // and 1 Wired (lines the boxes wrote).
     public const int SystemSource = 0;
     public const int WiredSource = 1;
     public int WireSource => Source == WiredLogSource.WiredLog ? WiredSource : SystemSource;

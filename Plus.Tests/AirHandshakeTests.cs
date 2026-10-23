@@ -17,14 +17,7 @@ using SystemBigInteger = System.Numerics.BigInteger;
 
 namespace Plus.Tests;
 
-/// <summary>
-/// Runs the Diffie-Hellman, RSA and RC4 handshake against the AIR client's own algorithm, reimplemented here from
-/// AIR WIN63-202610151745-318700621:
-/// communication/demo/class_1974.as:130-219 (onInitDiffieHandshake, onCompleteDiffieHandshake),
-/// com/hurlant/crypto/rsa/RSAKey.as:134-283 (verify, encrypt, pkcs1pad, pkcs1unpad),
-/// communication/encryption/DiffieHellman.as:25-61, communication/encryption/ArcFour.as:27-75,
-/// core/communication/encryption/CryptoTools.as:38-82 and package_30/class_4247.as:24-31.
-/// </summary>
+/// <summary>Runs the Diffie-Hellman, RSA and RC4 handshake against the AIR client's own algorithm, reimplemented here.</summary>
 [Collection(nameof(AirHandshakeTests))]
 public class AirHandshakeTests
 {
@@ -170,14 +163,12 @@ public class AirHandshakeTests
         Assert.Equal(new byte[] { 0, 0, 0, 3, 0, (byte)TestComposerId, 0x2A }, reply);
     }
 
-    /// <summary>The client side of the handshake, step for step.</summary>
     private sealed class AirClient(string modulusHex)
     {
         private readonly HurlantRsa _rsa = new(SystemBigInteger.Parse("0" + modulusHex, NumberStyles.HexNumber), 0x10001);
         private SystemBigInteger _prime;
         private SystemBigInteger _privateKey;
 
-        // class_1974.as:130-187
         public string OnInitDiffieHandshake(string encryptedPrime, string encryptedGenerator)
         {
             var prime = SystemBigInteger.Parse(Encoding.UTF8.GetString(_rsa.Verify(CryptoTools.HexStringToByteArray(encryptedPrime))));
@@ -210,7 +201,6 @@ public class AirHandshakeTests
             return CryptoTools.ByteArrayToHexString(_rsa.Encrypt(Encoding.Latin1.GetBytes(best!)));
         }
 
-        // class_1974.as:190-212
         public (ArcFour Outgoing, ArcFour? Incoming) OnCompleteDiffieHandshake(string encryptedPublicKey, bool serverClientEncryption)
         {
             var serverPublicKey = SystemBigInteger.Parse(Encoding.UTF8.GetString(_rsa.Verify(CryptoTools.HexStringToByteArray(encryptedPublicKey))));
@@ -233,12 +223,11 @@ public class AirHandshakeTests
         }
     }
 
-    /// <summary>com/hurlant/crypto/rsa/RSAKey.as with only the public half.</summary>
     private sealed class HurlantRsa(SystemBigInteger n, int e)
     {
         private int BlockSize => (int)((n.GetBitLength() + 7) / 8);
 
-        // verify: _decrypt(doPublic, ..., 1); each block is read as exactly BlockSize bytes (RSAKey.as:183-209).
+        // verify: _decrypt(doPublic, ..., 1); each block is read as exactly BlockSize bytes.
         public byte[] Verify(byte[] source)
         {
             Assert.Equal(0, source.Length % BlockSize);
@@ -254,7 +243,7 @@ public class AirHandshakeTests
             return output.ToArray();
         }
 
-        // encrypt: _encrypt(doPublic, ..., 2) with leading zero bytes up to the block size (RSAKey.as:154-181).
+        // encrypt: _encrypt(doPublic, ..., 2) with leading zero bytes up to the block size.
         public byte[] Encrypt(byte[] source)
         {
             var output = new List<byte>();
@@ -328,7 +317,6 @@ public class AirHandshakeTests
 
     private static class CryptoTools
     {
-        // CryptoTools.as:60-82
         public static byte[] HexStringToByteArray(string hex)
         {
             if (hex.Length % 2 != 0) {
@@ -344,11 +332,9 @@ public class AirHandshakeTests
             return bytes;
         }
 
-        // CryptoTools.as:38-58, lowercase.
         public static string ByteArrayToHexString(byte[] bytes) => Convert.ToHexStringLower(bytes);
     }
 
-    /// <summary>communication/encryption/ArcFour.as:27-75.</summary>
     private sealed class ArcFour
     {
         private readonly uint[] _sbox = new uint[256];

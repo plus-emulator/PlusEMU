@@ -18,7 +18,7 @@ public sealed class ClaimProductCatalog(ISettingsManager settings, TimeProvider 
     public const string CursedDragonAdoption = "cursed_dragon_adoption";
 
     // pet.configuration index 37 is curseddragon; the window previews palette 0 as the blue package and palette 1 as the
-    // purple one with colour ffffff (AIR WIN63-202610151745-318700621, catalog/cursed_dragon_adoption/CursedDragonPreviewView.as).
+    // purple one with colour ffffff.
     public const int CursedDragonPetType = 37;
     public const string CursedDragonColour = "ffffff";
 

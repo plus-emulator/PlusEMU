@@ -23,8 +23,7 @@ public sealed class WiredVariableMetadataTests
         var initial = box.Configuration;
         Assert.True(box.TryValidateConfiguration(initial, out _, out _));
         Assert.False(box.Execute());
-        // Observed on AIR WIN63-202610201032-107964540: an audience-restricted display without an audience variable is saved as sent, and
-        // the room draws nothing for it.
+        // An audience-restricted display without an audience variable is saved as sent, and the room draws nothing for it.
         var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor);
         Assert.True(WiredNativeEditorProjection.TryCompile(10, box.Descriptor, native with { OwnedIntParams = native.OwnedIntParams.SetItem(1, 3) }, out var saved));
         Assert.Equal(3, saved.IntParams[1]);
@@ -41,7 +40,7 @@ public sealed class WiredVariableMetadataTests
         Assert.Empty(box.TextConnector);
         box.ApplyConfiguration(validated);
         Assert.Equal("two", box.TextConnector[2]);
-        // Observed on AIR WIN63-202610151745-318700621: a line that is not "number=text" is dropped and the save succeeds.
+        // A line that is not "number=text" is dropped and the save succeeds.
         Assert.True(WiredNativeEditorProjection.TryCompile(10, box.Descriptor, connector with { Text = "not-an-integer=value" }, out _));
         Assert.Equal("two", box.TextConnector[2]);
         var level = Box("wf_xtra_var_lvlup_system");

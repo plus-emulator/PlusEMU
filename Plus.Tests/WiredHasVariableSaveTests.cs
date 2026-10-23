@@ -3,7 +3,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // Has Variable and Not Has Variable saves as Habbo stores them. A save may name no variable and may name a variable of any domain
-// with any target. An unoffered target is stored as 0. Observed on AIR WIN63-202610201032-107964540.
+// with any target. An unoffered target is stored as 0.
 public sealed class WiredHasVariableSaveTests
 {
     public static TheoryData<string> Boxes => new() { "wf_cnd_has_var", "wf_cnd_neg_has_var" };
@@ -73,7 +73,7 @@ public sealed class WiredHasVariableSaveTests
         Assert.Equal("wiredfurni.error.invalid_variable_count", result.Key);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the boxes have no text field, so a text in a save is dropped.
+    // The boxes have no text field, so a text in a save is dropped.
     [Theory]
     [MemberData(nameof(Boxes))]
     public void ATextInASaveIsDropped(string name)
@@ -86,7 +86,7 @@ public sealed class WiredHasVariableSaveTests
         Assert.Equal("", save.Stored().Text);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the trigger user source 10 is stored next to 11, 0, 200 and 201.
+    // The trigger user source 10 is stored next to 11, 0, 200 and 201.
     [Theory]
     [MemberData(nameof(Boxes))]
     public void UserSourceTenIsStored(string name)
@@ -98,7 +98,6 @@ public sealed class WiredHasVariableSaveTests
         Assert.Equal([10], result.Users);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Not Has Variable stores a quantifier of 2.
     [Fact]
     public void NotHasVariableStoresAQuantifierOfTwo()
     {

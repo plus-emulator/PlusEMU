@@ -9,7 +9,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // Users Performing Action, fired through a real room: the owner acts through the avatar packets, a stack says which users its
-// selector picked by turning them. Observed on AIR WIN63-202610201032-107964540.
+// selector picked by turning them.
 public sealed partial class WiredGlideConveyorTests
 {
     private const int WaveCode = 0;

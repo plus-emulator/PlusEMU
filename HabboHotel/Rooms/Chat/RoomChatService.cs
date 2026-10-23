@@ -63,7 +63,7 @@ public sealed class RoomChatService(
         var now = clock.GetUtcNow();
         message = StringCharFilter.Escape(message);
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): talk of 250, 300 and 400 characters is echoed with its first 200.
+        // Longer talk is echoed with its first 200 characters.
         if (message.Length > MaxMessageLength) {
             message = message[..MaxMessageLength];
         }

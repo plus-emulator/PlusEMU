@@ -4,7 +4,7 @@ using static Plus.Tests.WiredR104Save;
 
 namespace Plus.Tests;
 
-// Chest condition saves as Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// Chest condition saves as Habbo stores them.
 public sealed class WiredR104ChestConditionTests
 {
     private static Result Saved(string name, int[] ints)

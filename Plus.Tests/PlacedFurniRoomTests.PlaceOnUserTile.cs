@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on hhus (AIR WIN63-202610131318-860371703): the owner places a floor item on the tile they stand on, and moves one onto it.
+// The owner places a floor item on the tile they stand on, and moves one onto it.
 public partial class PlacedFurniRoomTests
 {
     [Fact]

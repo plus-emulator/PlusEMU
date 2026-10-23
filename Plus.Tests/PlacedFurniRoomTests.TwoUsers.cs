@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Two real users in the real room: the owner (7) and a visitor (8). Observed on AIR WIN63-202610201032-107964540.
+// Two real users in the real room: the owner (7) and a visitor (8).
 public partial class PlacedFurniRoomTests
 {
     private (WiredComponent Wired, RoomUser Owner, RoomUser Visitor, TestClient VisitorClient, SpeechClock Clock) PrepareTwoUsers()
@@ -84,7 +84,6 @@ public partial class PlacedFurniRoomTests
         Assert.Contains("hello", ChatTexts(_client, ServerPacketHeader.ChatComposer));
     }
 
-    // The user count conditions count the two real users in the room.
     [Theory]
     [InlineData("wf_cnd_user_count_in", 2, 2, true)]
     [InlineData("wf_cnd_user_count_in", 1, 1, false)]

@@ -25,8 +25,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a Bot Move fired by a said keyword walks the bot to the picked tile. Said again
-    // while the bot stands on that tile, the client gets only the box flash and the chat line: no UserUpdate for the bot at all.
+    // A Bot Move fired by a said keyword walks the bot to the picked tile. Said again while the bot stands on that tile, the
+    // client gets only the box flash and the chat line: no UserUpdate for the bot at all.
     [Fact]
     public void BotMoveToTheTileTheBotStandsOnSendsNoUserUpdate()
     {

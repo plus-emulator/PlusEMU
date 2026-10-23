@@ -3,11 +3,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Official hhus r92i probes (AIR WIN63-202610131318-860371703); facts and receipts in reviews/r92-movement-facts.md.</summary>
 public sealed partial class WiredRuntimeEngineTests
 {
-    // r92i r92h-signal-hop hop-w1..w6: the sender's action after send_signal always ran before both receiver stacks, and the
-    // receivers ran in the same tick.
+    // The sender's action after send_signal always runs before both receiver stacks, and the receivers run in the same tick.
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
@@ -32,8 +30,7 @@ public sealed partial class WiredRuntimeEngineTests
         Assert.True(order.IndexOf("after") < order.IndexOf("hop one") && order.IndexOf("after") < order.IndexOf("hop two"), string.Join(",", order));
     }
 
-    // r92g r92-exec-order delay-w1/w2 and r92i r92h-f2f occupied-w1/w2: a delayed action flashes with its stack when the stack fires,
-    // not when it runs (delay 1 flashed at +147 ms, its message came at +648 ms).
+    // A delayed action flashes with its stack when the stack fires, not when it runs.
     [Fact]
     public void DelayedActionFlashesWhenItsStackFires()
     {

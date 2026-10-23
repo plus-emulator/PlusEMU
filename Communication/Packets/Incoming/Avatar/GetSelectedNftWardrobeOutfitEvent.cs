@@ -4,7 +4,7 @@ using Plus.HabboHotel.Users.Collectibles;
 
 namespace Plus.Communication.Packets.Incoming.Avatar;
 
-/// <summary>The avatar editor asks which collectible the user wears (AIR HabboAvatarEditor.as init and after saving one).</summary>
+/// <summary>The avatar editor asks which collectible the user wears.</summary>
 internal class GetSelectedNftWardrobeOutfitEvent(INftWardrobeService collectibles) : IPacketEvent
 {
     public async Task Parse(GameClient session, IIncomingPacket packet)

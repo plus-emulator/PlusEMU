@@ -5,20 +5,18 @@ public sealed record WiredRoomStats(double ExecutionCost, double ExecutionCostCa
     int WallItems, int WallItemCap, int PermanentFurniVariables, int MaxPermanentFurniVariables, int PermanentUserVariables,
     int MaxPermanentUserVariables, int PermanentGlobalVariables, int MaxPermanentGlobalVariables)
 {
-    // Observed on AIR WIN63-202610131318-860371703: floor and wall furni are both capped at 4000.
+    // Floor and wall furni are both capped at 4000.
     public const int FloorItemLimit = 4000;
     public const int WallItemLimit = 4000;
 
-    // Observed on AIR WIN63-202610131318-860371703: a room's execution cost cap was 3125, other rooms showed 2500, 4687.5 and
-    // 6563. What sets the cap is still open; until it is known every room uses this default or wired.execution_cost_cap.
+    // The execution cost cap of a room varies; until the rule is known every room uses this default or wired.execution_cost_cap.
     public const double DefaultExecutionCostCap = 3125;
 
     public static WiredRoomStats Create(double cost, double cap, int floorItems, int wallItems, int furniVariables, int userVariables,
         int globalVariables) => new(cost, cap, IsHeavyAt(cost, cap), floorItems, FloorItemLimit, wallItems, WallItemLimit,
         furniVariables, MaxFurniVariables(cap), userVariables, MaxUserVariables(cap), globalVariables, MaxGlobalVariables(cap));
 
-    // Observed on AIR WIN63-202610131318-860371703: the permanent variable caps follow the cost cap exactly in every sampled room
-    // (3125 -> 15 / 62 / 46, 4687.5 -> 23 / 93 / 70, 2500 -> 12 / 50 / 37, 6563 -> 32 furni).
+    // The permanent variable caps follow the cost cap exactly (3125 -> 15 / 62 / 46, 4687.5 -> 23 / 93 / 70, 2500 -> 12 / 50 / 37, 6563 -> 32 furni).
     public static int MaxFurniVariables(double cap) => (int)Math.Floor(cap / 200);
     public static int MaxUserVariables(double cap) => (int)Math.Floor(cap / 50);
     public static int MaxGlobalVariables(double cap) => (int)Math.Floor(cap * 3 / 200);

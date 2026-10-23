@@ -8,8 +8,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: an Enter Room stack runs inside the room entry; its flash comes after the labels and
-    // before the controller packets.
+    // An Enter Room stack runs inside the room entry; its flash comes after the labels and before the controller packets.
     [Fact]
     public void EnterRoomStackFlashesInsideTheRoomEntryBeforeTheControllerPackets()
     {

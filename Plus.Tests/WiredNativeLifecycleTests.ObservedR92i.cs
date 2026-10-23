@@ -5,9 +5,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredNativeLifecycleTests
 {
-    // Observed r92g r92-signals (AIR WIN63-202610131318-860371703): send_signal saved with one furni source [100] reopened as
-    // [100, 200]; r92i r92-signals saved both slots and reopened them unchanged. r92f r92-valid-moves: a furni source on a box
-    // without furni slots is refused with wiredfurni.error.invalid_furni_source_count (frame 20502).
+    // send_signal saved with one furni source [100] reopens as [100, 200]; saved with both slots it reopens them unchanged. A
+    // furni source on a box without furni slots is refused with wiredfurni.error.invalid_furni_source_count.
     [Fact]
     public void MissingFurniSourceSlotsTakeTheirDefaultsAndExtraSlotsAreRefused()
     {

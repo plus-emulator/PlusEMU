@@ -75,9 +75,9 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.Equal(always, variable.AlwaysAvailable);
         Assert.Equal(target != WiredVariableTarget.Global, variable.CanCreateAndDelete);
         Assert.True(variable.CanWriteValue);
-        // Observed on AIR WIN63-202610201032-107964540: a context variable's changes are never interceptable.
+        // A context variable's changes are never interceptable.
         Assert.Equal(target != WiredVariableTarget.Context, variable.CanInterceptChanges);
-        // Observed on hhus (AIR WIN63-202610131318-860371703): a global lists no creation time but does list its last update time.
+        // A global lists no creation time but does list its last update time.
         Assert.Equal(target != WiredVariableTarget.Global, variable.CanReadCreationTime);
         Assert.True(variable.CanReadLastUpdateTime);
         Assert.Equal(target == WiredVariableTarget.Context ? 999 : (int)availability, variable.Availability);
@@ -88,7 +88,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [InlineData(WiredVariableTarget.Furni, "~area_hide.hiding_wallitems", false, true)]
     [InlineData(WiredVariableTarget.Furni, "@altitude", true, false)]
     [InlineData(WiredVariableTarget.Furni, "@id", false, false)]
-    // Observed on AIR WIN63-202610151745-318700621: @handitem can be given and removed (CarryObject), as well as written.
+    // @handitem can be given and removed (CarryObject), as well as written.
     [InlineData(WiredVariableTarget.User, "@handitem", true, true)]
     [InlineData(WiredVariableTarget.User, "@achievement_score", false, false)]
     [InlineData(WiredVariableTarget.Global, "@teams.red.score", true, false)]
@@ -188,8 +188,8 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.Equal(native.Hash, catalog.Diff(new Dictionary<string, int>()).SelectMany(diff => diff.Changed).Single(row => row.Id == native.Id).Hash);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the catalog entry of a variable with a "_=text" connector line carries the fallback,
-    // also when the connector has no number lines, and a changed fallback changes the row hash.
+    // The catalog entry of a variable with a "_=text" connector line carries the fallback, also when the connector has no number
+    // lines, and a changed fallback changes the row hash.
     [Theory]
     [InlineData("7=seven\n_=other", "other", 1)]
     [InlineData("_=other", "other", 0)]
@@ -430,8 +430,8 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         fixture.AddDefinition(10);
         fixture.AddMetadata(20, "wf_xtra_var_time_util", new() { IntParams = [1 << 21, mode] });
         Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
-        // Observed on hhus (AIR WIN63-202610131318-860371703): parts are "<parent>.<mode>.<part>", type 2, availability 999; the
-        // timestamp modes add the base row "<parent>.<mode>"; only Value parts are writable and interceptable.
+        // Parts are "<parent>.<mode>.<part>", type 2, availability 999; the timestamp modes add the base row "<parent>.<mode>";
+        // only Value parts are writable and interceptable.
         var rows = Own(catalog!).Where(variable => variable.Name.Contains('.')).ToArray();
         var names = mode switch
         {
@@ -450,7 +450,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         });
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: these built-ins are listed as creatable and deletable.
+    // These built-ins are listed as creatable and deletable.
     [Theory]
     [InlineData("@handitem", 1)]
     [InlineData("@can_move_freely", 0)]
@@ -460,7 +460,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.True(Assert.Single(WiredNativeCatalogProjection.Builtins, row => row.Name == name && row.Target == target).CanCreateAndDelete);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: every level-up part is interceptable, current_xp is writable and is_maxed has no value.
+    // Every level-up part is interceptable, current_xp is writable and is_maxed has no value.
     [Fact]
     public void LevelPartsAreInterceptableWithAWritableXpAndAPresenceMaxed()
     {
@@ -481,8 +481,8 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [Fact]
     public void TimeModesFollowTheParentsOwnCapabilities()
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703): a global has no creation time, so the creation-time mode lists nothing
-        // while the last-update mode lists the base row and its parts; the Value mode needs the parent to hold a value.
+        // A global has no creation time, so the creation-time mode lists nothing while the last-update mode lists the base row
+        // and its parts; the Value mode needs the parent to hold a value.
         var fixture = new Fixture();
         fixture.AddDefinition(10, "wf_var_room", new() { IntParams = [1, 0], Text = "glob" });
         var metadata = fixture.AddMetadata(20, "wf_xtra_var_time_util", new() { IntParams = [1 << 10, 1] });
@@ -517,9 +517,9 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.Null(WiredRoomVariables.SyntheticId(WiredVariableTarget.Context, 10, 0, false));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: in WiredAllVariablesDiffs a context variable box is listed as type 0, availability 999,
-    // target -20, creatable and deletable, with a creation time and never interceptable. With a value it is writable and has a last update
-    // time; without a value it has neither.
+    // In WiredAllVariablesDiffs a context variable box is listed as type 0, availability 999, target -20, creatable and
+    // deletable, with a creation time and never interceptable. With a value it is writable and has a last update time; without a
+    // value it has neither.
     [Theory]
     [InlineData(1)]
     [InlineData(0)]
@@ -594,7 +594,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
         var rows = Own(catalog!).Where(row => row.Name.Contains('.')).ToDictionary(row => row.Name);
 
-        // The base row and 17 parts: 18 rows. hhus sends the month part with a trailing space.
+        // The base row and 17 parts: 18 rows. The month part has a trailing space.
         Assert.Equal(18, rows.Count);
         Assert.Contains("score10.creation_time", rows.Keys);
         Assert.Contains("score10.creation_time.milliseconds_of_seconds", rows.Keys);
@@ -613,8 +613,8 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [Fact]
     public void ARoomWithoutOwnVariablesStillListsTheBuiltinsUnderHabbosIds()
     {
-        // AIR WIN63-202610131318: NewVariablePicker lists only the room catalogue (Echo, Give, Change pickers alike), and hhus
-        // sends its built-ins there (r90: 163 rows besides the room's own). Without them an empty room's pickers were empty.
+        // NewVariablePicker lists only the room catalogue (Echo, Give, Change pickers alike), so the built-ins are sent there
+        // too (163 rows besides the room's own). Without them an empty room's pickers were empty.
         var fixture = new Fixture();
         Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
         Assert.Empty(Own(catalog!));
@@ -643,8 +643,8 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [Fact]
     public void BuiltinRowsCarryHabbosTypeFlagsAndTextConnectors()
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703, WiredAllVariablesDiffs): ~ rows are type 3, @direction names its
-        // eight directions, and @position carries an empty connector, which the client renders as "x: 8, y: 8".
+        // ~ rows are type 3, @direction names its eight directions, and @position carries an empty connector, which the client
+        // renders as "x: 8, y: 8".
         var rows = WiredNativeCatalogProjection.Builtins.ToDictionary(variable => variable.Id);
         Assert.Equal(WiredHabboVariableIds.Count, rows.Count);
 
@@ -666,7 +666,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [Fact]
     public void OnlyTheFourProjectileCountsAreListedInterceptable()
     {
-        // Observed on hhus (AIR WIN63-202610151745-318700621): -2100, -2101, -2102 and -2106 are the only interceptable built-ins.
+        // -2100, -2101, -2102 and -2106 are the only interceptable built-ins.
         var rows = WiredNativeCatalogProjection.Builtins.Where(variable => variable.CanInterceptChanges).Select(variable => variable.Id);
         Assert.Equal(new[] { "-2100", "-2101", "-2102", "-2106" }, rows.Order());
     }
@@ -674,7 +674,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [Fact]
     public void PlantRowsCarryAValueExceptTheirFlags()
     {
-        // Observed on hhus (AIR WIN63-202610151745-318700621): ~600, ~601, ~602 and ~615 to ~617 have a value; ~610 to ~614 do not.
+        // ~600, ~601, ~602 and ~615 to ~617 have a value; ~610 to ~614 do not.
         var rows = WiredNativeCatalogProjection.Builtins.Where(variable => variable.Name.StartsWith("~plant.", StringComparison.Ordinal));
         Assert.Equal(new[] { "~600", "~601", "~602", "~615", "~616", "~617" }, rows.Where(row => row.HasValue).Select(row => row.Id).Order());
         Assert.All(rows, row => Assert.False(row.CanWriteValue || row.CanCreateAndDelete || row.CanInterceptChanges));

@@ -44,7 +44,7 @@ internal static class WiredNativeConditionEditor
             defaults = [0];
         }
 
-        // Observed on AIR WIN63-202610131318-860371703 (initial editor frames): user slots offer 0/200/201 (10 and 11 come
+        // User slots offer 0/200/201 (10 and 11 come
         // from the stack's trigger only); Triggerer Matches compares against 101 by default, Stuff Type Matches opens on 0 and 100, and
         // Input Source Quantity opens both slots on the selector (200).
         WiredNativeEditorMetadata metadata = positive switch
@@ -52,9 +52,9 @@ internal static class WiredNativeConditionEditor
             "wf_cnd_trggrer_on_frn" => new([[0, 100, 200, 201]], [[0, 200, 201]], [100], [0], defaults, false),
             "wf_cnd_triggerer_match" => new([], [[0, 200, 201], [0, 101, 200, 201]], [], [0, 101], defaults, false),
             "wf_cnd_stuff_is" => new([[0, 100, 101, 200, 201], [0, 100, 101, 200, 201]], [], [0, 100], [], defaults, true),
-            // Observed on hhus (AIR WIN63-202610131318-860371703): no wall picks (it has no pick source).
+            // No wall picks (it has no pick source).
             "wf_cnd_slc_quantity" => new([[0, 200, 201]], [[0, 200, 201]], [200], [200], defaults, false),
-            // Observed on hhus (AIR WIN63-202610131318-860371703): the snapshot conditions allow wall picks.
+            // The snapshot conditions allow wall picks.
             "wf_cnd_furnis_hv_avtrs" or "wf_cnd_has_furni_on" or "wf_cnd_match_snapshot"
                 or "wf_cnd_has_altitude" or "wf_cnd_counter_time_matches" =>
                 new([[0, 100, 200, 201]], [], [100], [], defaults, positive is "wf_cnd_has_altitude" or "wf_cnd_match_snapshot"),
@@ -75,8 +75,8 @@ internal static class WiredNativeConditionEditor
             _ => 0
         };
 
-        // The invert flag only picks the ".neg." quantifier labels (AIR WIN63-202610131318-860371703 UserDefinedRoomEventsCtrl.as:512-517);
-        // observed on hhus, Not Furni Has Furni sends it false. The condition still negates at runtime.
+        // The invert flag only picks the ".neg." quantifier labels, and
+        // Not Furni Has Furni sends it false. The condition still negates at runtime.
         return metadata with { QuantifierType = quantifier, Invert = name != positive && name != "wf_cnd_not_furni_on" };
     }
 
@@ -98,7 +98,7 @@ internal static class WiredNativeConditionEditor
         // A quantifier of 2 is kept in the frame; the evaluation reads it as "any" like 1.
         var q = Math.Min(native.Quantifier.Value, 1);
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): Furni Has Furni On saves quantifier 1 and reads it back although its
+        // Furni Has Furni On saves quantifier 1 and reads it back although its
         // editor shows no quantifier; the runtime keeps reading its own all/any field.
         if (Metadata(name).QuantifierType == 0 && q != 0 && !AcceptsHiddenQuantifier(name) && !keepsQuantifier) {
             return false;
@@ -236,7 +236,7 @@ internal static class WiredNativeConditionEditor
                 break;
             case "wf_cnd_time_less_than":
             case "wf_cnd_time_more_than":
-                // Observed on AIR WIN63-202610201032-107964540: any threshold is stored, also 0 and negative ones.
+                // Any threshold is stored, also 0 and negative ones.
                 if (p.Length != 1) {
                     return false;
                 }

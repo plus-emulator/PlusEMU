@@ -6,13 +6,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (Change Variable Value: 270 firings in three runs; Give Variable: 150 firings in three runs): with
-// same holder off and a reference read from several furni holders, Habbo gives each furni destination the value of one reference holder, at
-// random and anew at every firing. The same sets fired six times gave six different pairings, and a set of three holders used as both sides
-// (30 firings) gave all six pairings about evenly (6, 6, 6, 5, 4 and 3 times; over 90 firings identity, swap and 3-cycle came 19, 48 and 23 times).
-// With as many reference holders as destinations every reference value is used once; with more reference holders only some of them are used,
-// each once; with fewer, each reference value is used the same number of times, give or take one. With one reference holder every destination gets
-// its value. Users were not probed (one account).
+// With same holder off and a reference read from several furni holders, each furni destination gets the value of one reference holder, at random and anew at every firing.
+// With as many reference holders as destinations every reference value is used once. With more reference holders only some are used, each once.
+// With fewer, each reference value is used the same number of times, give or take one. With one reference holder every destination gets its value.
 public partial class PlacedFurniRoomTests
 {
     private const int PairingFirings = 40;

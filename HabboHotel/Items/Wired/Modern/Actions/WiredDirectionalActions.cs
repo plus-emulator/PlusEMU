@@ -5,8 +5,7 @@ using Plus.HabboHotel.Rooms.PathFinding;
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
-/// Per-item heading and nearest-avatar rules, matched to hhus (AIR WIN63-202610131318-860371703, r92d/r92f movement probes,
-/// reviews/r92-movement-facts.md); the caller commits actual moves.
+/// Per-item heading and nearest-avatar rules; the caller commits actual moves.
 /// </summary>
 public sealed class WiredDirectionalActions
 {
@@ -82,11 +81,11 @@ public sealed class WiredDirectionalActions
         6 => direction,
         _ => (direction + 4) % 8
     };
-    // Observed r92f r92-chase: from Manhattan 3 the mover steps towards the owner; from Manhattan 10 it wanders (12,1), (11,2), (10,1).
+    // From Manhattan distance 3 the mover steps towards the owner; from 10 it wanders.
     public static RoomUser? Nearest(Item item, IEnumerable<RoomUser> users, int? range = 3) => Nearest(item, users, range, Random.Shared);
 
-    // Observed on AIR WIN63-202610151745-318700621: chase with two users at the same distance went towards each about half the time, on
-    // one axis and across axes. Flee uses the same pick; its tie is inferred from chase, not observed.
+    // Chase with two users at the same distance goes towards each about half the time, on
+    // one axis and across axes. Flee uses the same pick.
     public static RoomUser? Nearest(Item item, IEnumerable<RoomUser> users, int? range, Random random)
     {
         var inRange = users.Where(user => !user.IsBot)
@@ -104,8 +103,7 @@ public sealed class WiredDirectionalActions
     }
     public static IEnumerable<Point> Steps(Item item, RoomUser user, bool away) => Steps(item, user, away, Random.Shared);
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_chase_tie): chasing from an exact diagonal took the y step 6 times and the x step
-    // 2 times in 10 fires, so a tie between the axes is decided at random.
+    // A tie between the axes is decided at random.
     public static IEnumerable<Point> Steps(Item item, RoomUser user, bool away, Random random)
     {
         var dx = user.X - item.GetX;
@@ -128,9 +126,6 @@ public sealed class WiredDirectionalActions
     /// Flee: from a user in its own row or column within three tiles the block steps straight away. Otherwise, or when that tile is
     /// taken, it steps east, even towards the user. When east is taken it steps away from the nearest user on y (south when level),
     /// then the other way on y.
-    /// Observed on AIR WIN63-202610151745-318700621 in a model_a room, 10 of 10 fires for each start: offsets (-3,0) and (0,-2) went
-    /// straight away; (-4,0), (0,-4), every off-axis offset, and (0,2) on the south edge went east; at the east wall (3,0) and (3,1)
-    /// went south and (3,-1) went north. Observed r92f r92-flee: (0,-3) against the north wall went east.
     /// </summary>
     public static IEnumerable<Point> FleeSteps(Item item, RoomUser? inLine, RoomUser nearest)
     {

@@ -9,8 +9,8 @@ using static Plus.Tests.SharedAddonIds;
 namespace Plus.Tests;
 
 /// <summary>
-/// The Share and Import add-ons carry a shared variable's text connector to its references. Observed on AIR WIN63-202610201032-107964540:
-/// a Share add-on stacked with a shared variable publishes that stack's add-ons only when it is synchronized, to every reference that
+/// The Share and Import add-ons carry a shared variable's text connector to its references.
+/// A Share add-on stacked with a shared variable publishes that stack's add-ons only when it is synchronized, to every reference that
 /// exists then. The Import add-on stacked with a reference picks the categories it shows, and changes at once. Both work per stack.
 /// </summary>
 public sealed class WiredSharedAddonSyncTests

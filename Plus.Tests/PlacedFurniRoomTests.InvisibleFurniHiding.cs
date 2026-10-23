@@ -27,8 +27,8 @@ public partial class PlacedFurniRoomTests
         return ids;
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: switching the Invisible Furni Controller on removes the room_invisible furni from
-    // the clients with one ObjectRemoveMultiple (picker -1, flag on); other furni stay.
+    // Switching the Invisible Furni Controller on removes the room_invisible furni from the clients with one ObjectRemoveMultiple
+    // (picker -1, flag on); other furni stay.
     [Fact]
     public void SwitchingTheInvisibleFurniControllerOnRemovesTheInvisibleFurniFromTheClients()
     {
@@ -44,7 +44,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new byte[] { 0, 0, 0, 1, 0 }, Assert.Single(StatesPackets()));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: switching it off sends the flag and one Objects packet that adds the hidden furni.
+    // Switching it off sends the flag and one Objects packet that adds the hidden furni.
     [Fact]
     public void SwitchingTheInvisibleFurniControllerOffAddsTheInvisibleFurniAgain()
     {
@@ -60,8 +60,7 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectRemoveMultipleComposer);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: an invisible furni placed while the controller is on is accepted, but no ObjectAdd
-    // is sent; it appears when the controller goes off.
+    // An invisible furni placed while the controller is on is accepted, but no ObjectAdd is sent; it appears when the controller goes off.
     [Fact]
     public void AnInvisibleFurniPlacedWhileTheControllerIsOnIsAcceptedWithoutAnObjectAdd()
     {
@@ -75,7 +74,7 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(ServerPacketHeader.ObjectAddComposer, _client.Sent);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the room entry lists no hidden furni while the controller is on.
+    // The room entry lists no hidden furni while the controller is on.
     [Fact]
     public void TheRoomEntryLeavesOutTheHiddenInvisibleFurni()
     {
@@ -86,8 +85,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal([70u, 72u], _room.VisibleFloorItems.Select(item => item.Id).OrderBy(id => id));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: picking the controller up while on sends the flag still on, then the flag off with
-    // the hidden furni added again.
     [Fact]
     public async Task PickingTheControllerUpWhileOnSendsTheFlagOnAndThenOffWithTheFurniAdded()
     {
@@ -101,7 +98,6 @@ public partial class PlacedFurniRoomTests
         Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectsComposer);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: an area hider with the invisibility option is hidden too.
     [Fact]
     public void AnAreaHiderWithTheInvisibilityOptionIsHiddenToo()
     {

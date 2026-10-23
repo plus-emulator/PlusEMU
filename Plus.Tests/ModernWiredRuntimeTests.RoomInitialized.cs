@@ -9,7 +9,7 @@ namespace Plus.Tests;
 /// <summary>Room Initialized stacks run while the room loads, before anyone is in it.</summary>
 public partial class ModernWiredRuntimeTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: the visual state sent on room entry already holds the effects of the Room
+    // The visual state sent on room entry already holds the effects of the Room
     // Initialized stacks, so they ran during the load and not in a later room tick.
     [Fact]
     public void RoomInitializedStacksStoreTheirEveryoneEffectsBeforeTheFirstRoomTick()
@@ -28,7 +28,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((0, 1, 1, 1, 100, 0xFFB700), (state.Int(), state.Int(), state.Int(), state.Int(), state.Int(), state.Int()));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Room Initialized has no triggering user, so an effect for the selected users
+    // Room Initialized has no triggering user, so an effect for the selected users
     // sends nothing and stores nothing.
     [Fact]
     public void RoomInitializedHasNoTriggeringUserForAnEffectAimedAtSelectedUsers()
@@ -45,7 +45,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(sent);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: an everyone effect that targets the triggering user does nothing.
+    // An everyone effect that targets the triggering user does nothing.
     [Fact]
     public void RoomInitializedHasNoTriggeringUserForAnEffectTargetingUsers()
     {

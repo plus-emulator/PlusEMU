@@ -12,8 +12,8 @@ public sealed partial class WiredGlideConveyorTests
 {
     private const int TeleportTargetId = 20;
 
-    // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal teleport gives effect 4 at the firing, republishes the avatar in
-    // place 1000 ms after the first boundary, lands at +2.0 s and drops the effect at +3.5 s. No avatar movement entry is sent.
+    // An on-boundary normal teleport gives effect 4 at the firing, republishes the avatar in place 1000 ms after the first
+    // boundary, lands at +2.0 s and drops the effect at +3.5 s. No avatar movement entry is sent.
     [Fact]
     public void NativeCompiledTeleportToLandsTheStandingHumanOnTheTargetWithoutAvatarMovementEntries()
     {
@@ -39,8 +39,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Empty(own);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: when the teleport glow ends on a tick that also sends the avatar's status update, the
-    // status update goes first and the effect change follows it.
+    // When the teleport glow ends on a tick that also sends the avatar's status update, the status update goes first and the
+    // effect change follows it.
     [Theory]
     [InlineData(0, 3450)]
     [InlineData(1, 1450)]
@@ -62,7 +62,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.True(update < effect, "the status update goes before the effect change");
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: fast = effect 235; an on-boundary firing lands at +1.0 s and drops the effect at +1.5 s.
+    // Fast = effect 235; an on-boundary firing lands at +1.0 s and drops the effect at +1.5 s.
     [Fact]
     public void NativeCompiledFastTeleportToLandsOnTheSecondBoundaryWithEffect235()
     {
@@ -83,8 +83,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Empty(ReadMovementEntries(packets).Where(entry => entry.Type is 0 or 3 && entry.Id == rider.VirtualId));
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: a fast teleport ends the walk on the tile being stepped onto; a normal one lets the
-    // user walk on and relocates it afterwards.
+    // A fast teleport ends the walk on the tile being stepped onto; a normal one lets the user walk on and relocates it
+    // afterwards.
     [Fact]
     public void FastTeleportToEndsTheWalkOnTheTileBeingSteppedOnto()
     {

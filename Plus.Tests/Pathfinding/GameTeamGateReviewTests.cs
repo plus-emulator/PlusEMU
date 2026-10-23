@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: gate counts, gate locks and the zeroed score counters of the Banzai and Freeze games.
+// Gate counts, gate locks and the zeroed score counters of the Banzai and Freeze games.
 public partial class PlacedFurniRoomTests
 {
     [Fact]

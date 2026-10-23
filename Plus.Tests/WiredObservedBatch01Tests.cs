@@ -6,7 +6,6 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Observed on hhus build WIN63-202610131318, r75 batch 01.</summary>
 public sealed class WiredObservedBatch01Tests
 {
     [Theory]

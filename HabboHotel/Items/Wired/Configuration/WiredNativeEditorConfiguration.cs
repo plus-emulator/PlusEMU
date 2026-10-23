@@ -35,9 +35,8 @@ public sealed record WiredNativeEditorConfiguration
     public int SecondarySent { get; init; }
 
     /// <summary>
-    /// The default record of a box that was never saved. It is never stored, so every stored row reads as saved. Observed on AIR
-    /// WIN63-202610201032-107964540: after a room reload a never-saved box still reads 1 and a saved box 0. The flag after a pickup and
-    /// placing again is not checked on Habbo.
+    /// The default record of a box that was never saved. It is never stored, so every stored row reads as saved.
+    /// After a room reload a never-saved box still reads 1 and a saved box 0.
     /// </summary>
     [JsonIgnore]
     public bool NeverSaved { get; init; }
@@ -70,7 +69,7 @@ public sealed record WiredNativeEditorMetadata(ImmutableArray<ImmutableArray<int
     /// <summary>One empty slot per variable picker; an unchosen variable is the safe inactive default.</summary>
     public ImmutableArray<string> VariableDefaults { get; init; } = [];
 
-    /// <summary>Condition footer: 0 none, 1 furni, 2 users, 3 variables (the AIR quantifier wording), and the invert flag.</summary>
+    /// <summary>Condition footer: 0 none, 1 furni, 2 users, 3 variables (the client's quantifier wording), and the invert flag.</summary>
     public int QuantifierType { get; init; }
     public bool Invert { get; init; }
 

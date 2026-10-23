@@ -11,9 +11,8 @@ public partial class PlacedFurniRoomTests
 {
     private const uint ShownContextVariable = 994;
 
-    // Observed on AIR WIN63-202610201032-107964540: without Execute in Order, a Show Message whose number-mode placeholder reads the
-    // context variable a Give Variable of the same firing writes prints the new value, with the message below the Give (11 of 11) and
-    // above it (11 of 11).
+    // Without Execute in Order, a Show Message whose number-mode placeholder reads the context variable a Give Variable of the same
+    // firing writes prints the new value, whether the message is below or above the Give.
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

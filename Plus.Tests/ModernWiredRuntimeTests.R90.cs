@@ -12,7 +12,6 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Facts of the hhus live run r90 (reviews/r90-implementation-facts.md, WIN63-202610131318-860371703).</summary>
 public partial class ModernWiredRuntimeTests
 {
     [Fact]
@@ -22,7 +21,7 @@ public partial class ModernWiredRuntimeTests
         new ObjectRemoveConfirmComposer(42, false, ObjectRemoveConfirmComposer.VariableTitle, ObjectRemoveConfirmComposer.VariableBody).Compose(packet);
 
         Assert.Equal(new object[] { 2, 42u, "wiredfurni.variables.pickup.title", "wiredfurni.variables.pickup.body" }, packet.Writes);
-        // Observed: 83 bytes with the 6-byte frame head (length and header): 4 + 4 + (2 + 33) + (2 + 32) = 77.
+        // Habbo sends 83 bytes; without the 6-byte frame head (length and header) that is 77.
         Assert.Equal(77, 4 + 4 + 2 + ObjectRemoveConfirmComposer.VariableTitle.Length + 2 + ObjectRemoveConfirmComposer.VariableBody.Length);
         Assert.Equal(3589u, new ObjectRemoveConfirmComposer(0, false, "", "").MessageId);
     }
@@ -37,7 +36,7 @@ public partial class ModernWiredRuntimeTests
         var service = new RecordingPickup(calls);
         var sent = Capture(f.Client);
 
-        // The legacy two-int form and the AIR/Volt confirmed form both reach the pickup when nothing stored is at stake.
+        // The legacy two-int form and the confirmed form that AIR and Volt send both reach the pickup when nothing stored is at stake.
         await new PickupObjectEvent(service).Parse(f.Client, EditorTestSupport.Incoming(2, 130));
         await new PickupObjectEvent(service).Parse(f.Client, EditorTestSupport.Incoming(10, 130, true));
 
@@ -55,7 +54,7 @@ public partial class ModernWiredRuntimeTests
 
         f.Room.GetWired().SendLabels(f.Client);
 
-        // Observed on hhus (r90): an empty 2237 of 10 bytes on every room entry.
+        // An empty 2237 of 10 bytes on every room entry.
         var labels = Reply(sent, ServerPacketHeader.WiredLabelsComposer);
         Assert.Equal(0, labels.Int());
         labels.End();
@@ -76,7 +75,7 @@ public partial class ModernWiredRuntimeTests
             [new[] { new WiredVariableChange(0, new(9, WiredVariableTarget.User, 1), WiredVariableChangeKind.Updated, null, new(9, null, null), 0, 0) }]);
         typeof(WiredComponent).GetMethod("FlushLeaderboards", flags)!.Invoke(wired, []);
 
-        // Observed on AIR WIN63-202610151745-318700621: pushes land on a 10 s grid, never in the write's tick. The change is still waiting.
+        // Pushes land on a 10 s grid, never in the write's tick. The change is still waiting.
         var due = (DateTimeOffset?)typeof(WiredComponent).GetField("_leaderboardPushDue", flags)!.GetValue(wired);
         Assert.NotNull(due);
         Assert.True(due > before && due <= before + WiredComponent.LeaderboardPushPeriod);
@@ -99,7 +98,7 @@ public partial class ModernWiredRuntimeTests
     [InlineData("wf_xtra_var_fx_number")]
     public void FreshFxEditorLeavesTheStyleSlotsUnset(string card)
     {
-        // Observed on hhus (r90 varfx-a/b): 23 ints, user source first, colour/width/renderer -1 until a save normalises them.
+        // 23 ints, user source first, colour/width/renderer -1 until a save normalises them.
         var native = WiredNativeEditorProjection.DefaultNative(Descriptor(card));
 
         Assert.Equal(23, native.OwnedIntParams.Length);
@@ -111,7 +110,6 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void VariableFxPacketsUseTheOfficialIds()
     {
-        // WIN63-202610151745-318700621: class_2605, class_3257, class_2753, class_2542.
         Assert.Equal((739u, 2588u, 754u, 236u), (ServerPacketHeader.WiredVariableFxConfigsComposer, ServerPacketHeader.WiredVariableFxConfigsRemovedComposer,
             ServerPacketHeader.WiredVariableFxStatusComposer, ServerPacketHeader.WiredVariableFxStatusRemovedComposer));
     }

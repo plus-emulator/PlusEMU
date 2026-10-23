@@ -12,9 +12,7 @@ public partial class PlacedFurniRoomTests
 {
     private const uint ChangedContext = 981, ChangedUser = 982, ContextVariableTile = 983, ContextBoxTile = 984, UserVariableTile = 985;
 
-    // Observed on AIR WIN63-202610201032-107964540: a Variable Changed trigger never fires when a context variable is given or changed,
-    // whether it picks the variable or the variable's box, and it still saves with the context variable picked. The same trigger on a
-    // user variable fires on every give.
+    // A Variable Changed trigger never fires when a context variable is given or changed, whether it picks the variable or the variable's box, and it still saves with the context variable picked. The same trigger on a user variable fires on every give.
     [Fact]
     public async Task VariableChangedNeverFiresForAContextVariable()
     {

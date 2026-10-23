@@ -3,9 +3,9 @@ using System.Collections.Frozen;
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
-/// What a save may carry that the box does not read. Observed on AIR WIN63-202610201032-107964540: the hotel answers such a save and
+/// What a save may carry that the box does not read. The hotel answers such a save and
 /// stores the box's own fields only. A text the box has no field for is dropped, ints beyond the box's fields are dropped, and ints
-/// the save leaves out take the frame default. Each box below was saved this way and read back.
+/// the save leaves out take the frame default.
 /// </summary>
 internal static class WiredSaveLeniency
 {
@@ -102,7 +102,7 @@ internal static class WiredSaveLeniency
         { "wf_cnd_triggerer_match", PaddedSources },
         { "wf_cnd_not_triggerer_match", PaddedSources },
         { FurniNameOutput, new(Ints: IntsMode.ShowMultipleFlag) },
-        // Observed on AIR WIN63-202610201032-107964540: the username output stores its flag like the furni name output, and reads an empty
+        // The username output stores its flag like the furni name output, and reads an empty
         // user source list as the frame default.
         { UsernameOutput, new(Ints: IntsMode.ShowMultipleFlag, FillsEmptyUserSources: true) }
     }.ToFrozenDictionary();

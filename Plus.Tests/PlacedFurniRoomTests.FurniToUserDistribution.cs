@@ -50,8 +50,7 @@ public partial class PlacedFurniRoomTests
         (user.X, user.Y, user.Z) = (x, y, 0);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: three furni and two users gave one user two furni and the other one in 90 of 90
-    // firings, and two furni went one to each user in 30 of 30 firings.
+    // Three furni and two users give one user two furni and the other one. Two furni go one to each user.
     [Theory]
     [InlineData(2, 0)]
     [InlineData(2, 17)]
@@ -76,8 +75,8 @@ public partial class PlacedFurniRoomTests
         Assert.True(shares.Count > 1);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a furni dealt to the user it already stands under moves onto the top of the other
-    // furni there when one stands above it (5,12 z 0.0 -> 5,12 z 2.0 under a furni at z 1.0); a furni already on top stays.
+    // A furni dealt to the user it already stands under moves onto the top of the other furni there when one stands above it; a furni
+    // already on top stays.
     [Theory]
     [InlineData(0)]
     [InlineData(17)]

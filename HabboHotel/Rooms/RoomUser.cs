@@ -88,7 +88,7 @@ public class RoomUser
     public int PrevTime;
     public bool RidingHorse = false;
 
-    // AIR AvatarInfoWidget.isSwimming: the swim effects. A swimming avatar cannot sit or lay.
+    // The swim effects. A swimming avatar cannot sit or lay.
     private static readonly int[] SwimEffects = [29, 30, 185];
     public bool IsSwimming => !IsBot && GetClient()?.GetHabbo()?.Effects is { } effects && SwimEffects.Contains(effects.CurrentEffect);
     public int RollerDelay = 0;
@@ -109,8 +109,7 @@ public class RoomUser
     public int? HeldSign;
 
     /// <summary>
-    /// The last Wave or Respect expression and when Wired stops seeing it. Observed on AIR WIN63-202610201032-107964540: the condition
-    /// "user performs action" passes for these two shortly after the expression, though no status of them is left.
+    /// The last Wave or Respect expression and when Wired stops seeing it. The condition "user performs action" passes for these two shortly after the expression, though no status of them is left.
     /// </summary>
     internal (int Action, DateTimeOffset ExpiresAt)? RecentExpression { get; set; }
     public DateTimeOffset? SignExpiresAt;
@@ -445,8 +444,7 @@ public class RoomUser
     }
 
     /// <summary>
-    /// Observed on AIR WIN63-202610151745-318700621: a standing avatar turns its head one step toward a speaking bot or user that
-    /// is at most two steps from where its body faces, or straight to it when it is one step away.
+    /// A standing avatar turns its head one step toward a speaking bot or user that is at most two steps from where its body faces, or straight to it when it is one step away.
     /// </summary>
     internal int? LookToward(int x, int y)
     {
@@ -488,9 +486,8 @@ public class RoomUser
 
     /// <summary>
     /// The chat budget: a bucket of <see cref="ChatBurst"/> lines that gains one line on every <see cref="ChatRefillMilliseconds"/> step of
-    /// the clock. A line over the budget is dropped without a mute. Observed on AIR WIN63-202610151745-318700621 (r97_flood_*): says 600 ms
-    /// apart all go out; 500 ms apart drop every sixth after the first eight; 400 ms apart drop every third after the first six; 150 ms apart
-    /// keep the first three and then one per 600 ms; no flood-control message comes in any of them.
+    /// the clock. A line over the budget is dropped without a mute. Says 600 ms apart all go out; 500 ms apart drop every sixth after the first eight; 400 ms apart drop every third after the first six;
+    /// 150 ms apart keep the first three and then one per 600 ms. No flood-control message comes in any of them.
     /// </summary>
     public bool IncrementAndCheckFlood(DateTimeOffset now, out int muteTime)
     {
@@ -534,7 +531,7 @@ public class RoomUser
             return;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: "k105a 5 " does not fire "k105a #(a)" and is echoed as "k105a 5".
+        // "k 5 " does not fire "k #(a)" and is echoed as "k 5".
         message = message.TrimEnd(' ');
         habbo.HasSpoken = true;
 
@@ -746,8 +743,7 @@ public class RoomUser
 
 
     /// <summary>
-    /// Set when the "wf" status of a wired move has gone out once; the next status update clears it. Observed r92m r92m-wf-status
-    /// (AIR WIN63-202610131318-860371703): "/flatctrl 4/wf//" on the update after move_rotate_user, user_to_furni or a carry, then
+    /// Set when the "wf" status of a wired move has gone out once; the next status update clears it. "/flatctrl 4/wf//" goes on the update after move_rotate_user, user_to_furni or a carry, then
     /// "/flatctrl 4//" about 500 ms later; none for furni_to_user or teleport_to.
     /// </summary>
     internal bool WiredMoveStatusSent { get; set; }
@@ -760,8 +756,7 @@ public class RoomUser
     }
 
     /// <summary>
-    /// Set when the "sign" status has gone out once; the next status update clears it. Observed on AIR WIN63-202610151745-318700621:
-    /// the sign is in one status update and gone from the next one, about 500 ms later.
+    /// Set when the "sign" status has gone out once; the next status update clears it. The sign is in one status update and gone from the next one, about 500 ms later.
     /// </summary>
     internal bool SignStatusSent { get; set; }
 

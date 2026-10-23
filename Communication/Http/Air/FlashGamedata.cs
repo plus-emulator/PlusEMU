@@ -18,9 +18,7 @@ public sealed class FlashGamedataSet(IReadOnlyList<FlashGamedataFile> files, str
 
     /// <summary>
     /// <c>{"hashes":[{name,url,hash}]}</c>, the document <c>GameDataResources.parse</c> reads. The client needs
-    /// external_texts, external_variables, furnidata and productdata (AIR WIN63-202610151745-318700621,
-    /// com/sulake/core/localization/GameDataResources.as:35-79) and loads <c>url + "/" + hash</c>
-    /// (CoreLocalizationManager.as:166, HabboConfigurationManager.as:320).
+    /// external_texts, external_variables, furnidata and productdata, and loads <c>url + "/" + hash</c>.
     /// </summary>
     public byte[] HashesJson() => JsonSerializer.SerializeToUtf8Bytes(new
     {
@@ -76,8 +74,7 @@ public sealed class FlashGamedata(IOptions<AirClientConfiguration> options, ICat
         var productdata = ProductData(furni);
         var texts = File(TextsRoute, "external_texts", KeyValueText(Merge(_configuration.ExternalTextsFiles), "# No external_flash_texts configured (AirClient:ExternalTextsFiles)."), TextPlain);
 
-        // SessionDataManager loads furnidata.load.url and productdata.load.url from these variables
-        // (AIR WIN63-202610151745-318700621, com/sulake/habbo/session/SessionDataManager.as:336-374).
+        // SessionDataManager loads furnidata.load.url and productdata.load.url from these variables.
         var variables = Merge(_configuration.ExternalVariablesFiles);
         variables["furnidata.load.url"] = $"{urlPrefix}/gamedata/{FurnidataRoute}/{furnidataXml.Hash}";
         variables["productdata.load.url"] = $"{urlPrefix}/gamedata/{ProductdataRoute}/{productdata.Hash}";
@@ -114,8 +111,7 @@ public sealed class FlashGamedata(IOptions<AirClientConfiguration> options, ICat
 
     /// <summary>
     /// The XML furnidata <c>FurnitureDataParser.parseXmlFormat</c> reads: roomitemtypes and wallitemtypes with
-    /// furnitype id and classname attributes and one element per field, booleans as 1 or 0, part colours as
-    /// partcolors/color (AIR WIN63-202610151745-318700621, com/sulake/habbo/session/furniture/FurnitureDataParser.as:193-265).
+    /// furnitype id and classname attributes and one element per field, booleans as 1 or 0, part colours as partcolors/color.
     /// </summary>
     public static byte[] FurnidataXml(CatalogFurnidataFile? furni)
     {
@@ -181,8 +177,7 @@ public sealed class FlashGamedata(IOptions<AirClientConfiguration> options, ICat
         _ => value.GetRawText()
     };
 
-    /// <summary>The XML productdata <c>ProductDataParser.parseXmlFormat</c> reads: product elements with a code
-    /// attribute and a name (AIR WIN63-202610151745-318700621, com/sulake/habbo/session/product/ProductDataParser.as:154-178).</summary>
+    /// <summary>The XML productdata <c>ProductDataParser.parseXmlFormat</c> reads: product elements with a code attribute and a name.</summary>
     public static byte[] ProductDataXml(IEnumerable<(string Code, string Name, string Description)> products) => WriteXml(writer =>
     {
         writer.WriteStartElement("productdata");
@@ -260,7 +255,7 @@ public sealed class FlashGamedata(IOptions<AirClientConfiguration> options, ICat
     }
 
     /// <summary>key=value lines the way the client reads them: # starts a comment, the first = splits, both sides are
-    /// trimmed, a literal \n in a value is a line break (CoreLocalizationManager.as:368-405).</summary>
+    /// trimmed, a literal \n in a value is a line break.</summary>
     public static IEnumerable<(string, string)> KeyValueEntries(string text)
     {
         foreach (var line in text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)) {

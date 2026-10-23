@@ -5,9 +5,9 @@ using Plus.Database;
 namespace Plus.HabboHotel.Items.Wired.Labels;
 
 /// <summary>
-/// A WIRED Label's bubble (room/object/data/FurnitureLabelData.as:3, WIN63-202610131318-860371703): its text, colour, who sees it
+/// A WIRED Label's bubble: its text, colour, who sees it
 /// (0 everyone, 1 users with wired inspection rights) and whether it stays open. A label nobody wrote yet carries the client's
-/// update-message defaults (RoomObjectFurnitureLabelUpdateMessage.as:5): no text, blue, inspectors only, closed.
+/// update-message defaults: no text, blue, inspectors only, closed.
 /// </summary>
 public sealed record WiredLabel(uint FurniId, string Text, int BubbleColor, int Visibility, bool AlwaysOpen)
 {
@@ -16,7 +16,7 @@ public sealed record WiredLabel(uint FurniId, string Text, int BubbleColor, int 
     // The label widget sets no character limit (the layout XML is not read); the server keeps a bubble's worth of text.
     public const int MaxTextLength = 1000;
 
-    // FurnitureLabelSettingsView.as COLORS (L17): Blue, Teal, Green, Gold, Orange, Red, Purple, Charcoal.
+    // Blue, Teal, Green, Gold, Orange, Red, Purple, Charcoal.
     public static readonly ImmutableArray<int> Colors = [4278912, 2651759, 4157508, 8416562, 8409402, 8404554, 6834048, 5592405];
 
     public static WiredLabel Default(uint furniId) => new(furniId, "", DefaultColor, 1, false);

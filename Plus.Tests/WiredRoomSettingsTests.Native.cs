@@ -16,10 +16,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: WiredGetRoomSettings (3215, no fields) and WiredSetRoomSettings
-// (2035: int modify mask, int read mask, string timezone) are both answered with WiredRoomSettings
-// (3319: int modify mask, int read mask, string timezone; an empty timezone means the room has no own timezone).
-// Volt keeps its own save (65465, same fields) and its own settings frame (5102).
+// WiredGetRoomSettings (3215, no fields) and WiredSetRoomSettings (2035: int modify mask, int read mask, string timezone) are
+// both answered with WiredRoomSettings (3319: int modify mask, int read mask, string timezone; an empty timezone means the room
+// has no own timezone). Volt keeps its own save (65465, same fields) and its own settings frame (5102).
 public partial class WiredRoomSettingsTests
 {
     private const uint NativeGetId = 3320;

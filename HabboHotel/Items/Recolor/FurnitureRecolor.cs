@@ -6,10 +6,8 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Recolor;
 
 /// <summary>
-/// The in-room recolour window's Apply (AIR WIN63-202610131318-860371703 ui/widget/furniture/recolor/FurnitureRecolorController.as).
-/// The client offers it to the room owner, users with rights and room controllers (hasRights, L151) for floor furni with a
-/// recolorable colour, and only sends colours from the furni's palette (apply, L103-116). The scope is the window's
-/// "Apply to:" menu, furniture.recolor.scope.0-3.
+/// The in-room recolour window's Apply. The client offers it to the room owner, users with rights and room controllers for floor furni with a
+/// recolorable colour, and only sends colours from the furni's palette. The scope is the window's "Apply to:" menu.
 /// </summary>
 public static class FurnitureRecolor
 {

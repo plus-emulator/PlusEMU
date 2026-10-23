@@ -110,7 +110,7 @@ public sealed class WiredAddonModule
                         }
                     }
                     else {
-                        // Observed on AIR WIN63-202610131318-860371703: a literal Filter To X Users keeps a random N on each firing, like furni.
+                        // A literal Filter To X Users keeps a random N on each firing, like furni.
                         var literalIsTheLimit = P(1) == 0 && keep < (policy.UserLimit ?? int.MaxValue);
                         policy.UserLimit = Math.Min(policy.UserLimit ?? int.MaxValue, keep);
 
@@ -157,7 +157,7 @@ public sealed class WiredAddonModule
                                 .Where(byId.ContainsKey).Select(id => byId[id].Name);
                         }
 
-                        // Observed on AIR WIN63-202610201032-107964540: with no furni the placeholder stays as written.
+                        // With no furni the placeholder stays as written.
                         if (Name == "wf_xtra_text_output_furni_name" && !names.Any()) {
                             return text;
                         }
@@ -228,8 +228,7 @@ public sealed class WiredAddonModule
         return input.ReadVariable(new(target, token, users, furni, c));
     }
 
-    // The window counts whole wired pulses (500 ms), not milliseconds since the first execution. Observed on AIR
-    // WIN63-202610151745-318700621 (wf_xtra_execution_limit.burst): with 2 executions per 4 pulses, six says one second apart all ran.
+    // The window counts whole wired pulses (500 ms), not milliseconds since the first execution.
     private bool Acquire(long now, int max, int window)
     {
         const int pulse = 500;

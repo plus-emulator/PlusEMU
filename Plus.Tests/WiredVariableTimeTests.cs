@@ -36,7 +36,7 @@ public sealed class WiredVariableTimeTests
     [Fact]
     public void PartsReadAndWriteBefore1970AsObservedOnHhus()
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703), Inspection reads after writing the parent or one part.
+        // Inspection reads after writing the parent or one part.
         var zone = Plus.HabboHotel.Items.Wired.Settings.WiredRoomSettings.DefaultTimeZone;
         var time = new WiredVariableTimeUtilities(WiredVariableTimeUtilities.ValidMask, 0);
         long? Read(long parent, int part) => time.Read(new(parent, null, null), part, zone);
@@ -67,8 +67,8 @@ public sealed class WiredVariableTimeTests
     [InlineData(26, 10, 26265601000L)]
     public void WritingAPartFromOneSecondAfterTheEpochMatchesHhus(int part, long value, long parent)
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703): the parent set to 1000, then one part written through the Inspection tab;
-        // the parts read back as these parents (the int parent itself reads clamped above 2147483647).
+        // The parent set to 1000, then one part written through the Inspection tab; the parts read back as these parents (the int
+        // parent itself reads clamped above 2147483647).
         var zone = Plus.HabboHotel.Items.Wired.Settings.WiredRoomSettings.DefaultTimeZone;
         var time = new WiredVariableTimeUtilities(WiredVariableTimeUtilities.ValidMask, 0);
         Assert.Equal(parent, time.Write(1000, part, value, zone));
@@ -77,8 +77,8 @@ public sealed class WiredVariableTimeTests
     [Fact]
     public void TheDefaultWiredCalendarIsLondonTimeAsObservedOnHhus()
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703): a parent of 0 read hour_of_day 1 on a Thursday in 1970, and
-        // @current_time.hour_of_day read 22 at 21:26 UTC on 2026-10-16.
+        // hour_of_day uses the default timezone, Europe/London: a parent of 0 (a Thursday in 1970) reads 1, and 21:26 UTC on
+        // 2026-10-16 reads 22.
         var zone = Plus.HabboHotel.Items.Wired.Settings.WiredRoomSettings.DefaultTimeZone;
         var time = new WiredVariableTimeUtilities(WiredVariableTimeUtilities.ValidMask, 0);
         Assert.Equal((1, 4, 1, 1970), (time.Read(new(0, null, null), 4, zone), time.Read(new(0, null, null), 5, zone),

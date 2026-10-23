@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: the hotel opens a fresh Furni/Users With Variable editor with variable ids ["0", "0"].
+// The hotel opens a fresh Furni/Users With Variable editor with variable ids ["0", "0"].
 public class WiredUnsetVariableSlotTests
 {
     [Fact]

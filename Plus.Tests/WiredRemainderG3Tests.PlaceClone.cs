@@ -10,7 +10,7 @@ namespace Plus.Tests;
 
 public sealed partial class WiredRemainderG3Tests
 {
-    // Observed on AIR WIN63-202610151745-318700621: BC templates save, while an owned Pura template is refused.
+    // BC templates save, while an owned Pura template is refused.
     [Theory]
     [InlineData("trade", true)]
     [InlineData("market", true)]

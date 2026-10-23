@@ -4,8 +4,7 @@ namespace Plus.Tests;
 
 public class WiredSshotEditorIntsTests
 {
-    // Observed on AIR WIN63-202610131318-860371703: wired_setup/actiontypes/class_4247.as:37-67 (code 3) reads four option
-    // ints and returns exactly four, so the save check must accept that echo.
+    // The editor (code 3) reads four option ints and returns exactly four, so the save check must accept that echo.
     [Theory]
     [InlineData(0, 0, 0, 0)]
     [InlineData(1, 0, 1, 0)]

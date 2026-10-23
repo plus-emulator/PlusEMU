@@ -11,8 +11,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The real room manager runs the real room on a fake monotonic clock. Observed on AIR WIN63-202610201032-107964540: the Wired clock ticks
-// every 50 ms on the room's 500 ms grid; on a room tick the UserUpdate comes first and the Wired output follows in the same ms.
+// The real room manager runs the real room on a fake monotonic clock. The Wired clock ticks every 50 ms on the room's 500 ms grid. On a room tick the UserUpdate comes first and the Wired output follows in the same ms.
 public partial class PlacedFurniRoomTests
 {
     private const uint GridWalkTile = 10, GridTarget = 20, GridWalkStack = 30, GridTimerStackId = 40;

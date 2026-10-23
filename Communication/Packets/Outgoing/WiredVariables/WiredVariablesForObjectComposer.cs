@@ -4,7 +4,7 @@ using Plus.HabboHotel.Items;
 namespace Plus.Communication.Packets.Outgoing.WiredVariables;
 
 /// <summary>
-/// One object's variable values for the inspection tab (AIR WIN63-202610151745-318700621 package_121/WiredObjectInspectionData.as:25-64):
+/// One object's variable values for the inspection tab:
 /// type (0 furni, 1 user, -10 room), the furni's item id or the user's room index (nothing for the room), then id/value pairs, and for a
 /// furni the ids of the Wired boxes that pick it.
 /// </summary>

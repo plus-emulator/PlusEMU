@@ -11,8 +11,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredConditionParityTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: with the owner and one bot in the room, the user count conditions see one user.
-    // Selection Quantity is a different rule: it does count a bot.
+    // With the owner and one bot in the room, the user count conditions see one user. Selection Quantity is a different rule: it
+    // does count a bot.
     [Theory]
     [InlineData("wf_cnd_user_count_in", 1, 1, true)]
     [InlineData("wf_cnd_user_count_in", 2, 5, false)]

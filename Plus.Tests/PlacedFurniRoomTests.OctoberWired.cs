@@ -6,8 +6,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // A "user says keyword" stack offers $(trigger_text) to its message editors and fills it with what was said
-    // (official capture of an editor over such a stack: placeholderNames ["trigger_text"], capturerNames []).
+    // A "user says keyword" stack offers $(trigger_text) to its message editors and fills it with what was said.
     [Fact]
     public void UserSaysKeywordStacksOfferAndFillTriggerText()
     {
@@ -35,7 +34,7 @@ public partial class PlacedFurniRoomTests
         Assert.Null(WiredEditorSnapshot.Capture(clock).TextPlaceholders);
     }
 
-    // Room 79874981 sends one ObjectsDataUpdate every 500 ms with every furni whose state changed (WIN63-202610121709).
+    // The room sends one ObjectsDataUpdate every 500 ms with every furni whose state changed.
     [Fact]
     public void BoxFlashesGoOutTogetherInOneDataUpdate()
     {
@@ -56,8 +55,7 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(_client.Packets.Where(packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer));
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): a box flash goes out with the chat that fired it, and a second stack fired
-    // 200 ms later flashes at once rather than on a shared 500 ms room interval.
+    // A box flash goes out with the chat that fired it. A second stack fired 200 ms later flashes at once, not on a shared 500 ms room interval.
     [Fact]
     public void EachFiringFlashesInItsOwnPass()
     {
@@ -77,7 +75,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(2, _client.Packets.Count(packet => packet.Header == ServerPacketHeader.ObjectsDataUpdateComposer));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a hidden chat is echoed to its speaker after the stack's flash and message.
+    // A hidden chat is echoed to its speaker after the stack's flash and message.
     [Fact]
     public void HiddenSpeechEchoFollowsTheFlashAndTheStackMessage()
     {
@@ -106,7 +104,7 @@ public partial class PlacedFurniRoomTests
         actor.OnChat(0, "one", false);
 
         Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectsDataUpdateComposer);
-        // Observed on AIR WIN63-202610151745-318700621: the flash comes before the message the stack sends and before the chat.
+        // The flash comes before the message the stack sends and before the chat.
         Assert.Equal(ServerPacketHeader.ObjectsDataUpdateComposer, _client.Packets[0].Header);
     }
 }

@@ -9,9 +9,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: a Give Variable that names a built-in variable the box cannot create leaves the holder as it
-// was, and a Change Variable Value on the same variable writes it, in the tick the box flashes. A colour tile has 7 states (0 to 6) and a
-// Wired floor switch 2.
+// A Give Variable that names a built-in variable the box cannot create leaves the holder as it was, and a Change Variable
+// Value on the same variable writes it, in the tick the box flashes.
 public partial class PlacedFurniRoomTests
 {
     private const uint RuntimeTile = 961, RuntimeSpeech = 962, RuntimeBox = 963;
@@ -69,9 +68,9 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(expected, tile.LegacyDataString);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (three runs): assigning a value from the furni's state count up sets state 0. A colour tile (states
-    // 0 to 6) from state 1 or 0 with 7, 8, 24, 1000 or 2147483647; a floor switch (states 0 and 1) with 2 or 5. A negative result sets state 0 too
-    // (EveryOperationWritesItsResultAsTheState, 2 - 3). The probe also sent -5 and -1 with a zero high word, which Plus reads as 4294967291 and
+    // Assigning a value from the furni's state count up sets state 0. A colour tile (states 0 to 6) from state 1 or 0 with 7, 8,
+    // 24, 1000 or 2147483647; a floor switch (states 0 and 1) with 2 or 5. A negative result sets state 0 too
+    // (EveryOperationWritesItsResultAsTheState, 2 - 3). Values of -5 and -1 with a zero high word read as 4294967291 and
     // 4294967295; a value beyond 32 bits is not handled.
     [Theory]
     [InlineData(7, "1", 7, "0")]
@@ -96,8 +95,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(expected, tile.LegacyDataString);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (colour tile in state 2, constant operand 3, three runs): each operation writes its result
-    // as the state, and a result outside the 7 states sets state 0 (2 - 3 is -1 and 2 ** 3 is 8).
+    // Each operation writes its result as the state, and a result outside the 7 states sets state 0 (2 - 3 is -1 and 2 ** 3 is 8).
     [Theory]
     [InlineData(0, "3")]
     [InlineData(1, "5")]
@@ -121,8 +119,8 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(expected, tile.LegacyDataString);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (colour tile, three runs): Change Variable Value assigning @position.y, @position or @altitude moves
-    // or lifts the tile (y 1 to 9, (4,1) to (12,9), z 0 to 3 on a larger floor), and Give Variable with the same value leaves it where it is.
+    // Change Variable Value assigning @position.y, @position or @altitude moves or lifts the tile, and Give Variable with the
+    // same value leaves it where it is.
     [Theory]
     [InlineData(Change, "-121", 3, 2, 3, 0.0)]
     [InlineData(Give, "-121", 3, 2, 2, 0.0)]
@@ -141,7 +139,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((x, y, z), (tile.GetX, tile.GetY, tile.GetZ));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a write of @height, @id, @owner_id or @dimensions.x, which a furni cannot take, changes nothing.
+    // A write of @height, @id, @owner_id or @dimensions.x, which a furni cannot take, changes nothing.
     [Theory]
     [InlineData("-102", 55)]
     [InlineData("-100", 5)]
@@ -158,8 +156,8 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(("0", 2, 2, 0.0), (tile.LegacyDataString, tile.GetX, tile.GetY, tile.GetZ));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (the speaker, three runs): Change Variable Value assigning @position.x, @position.y, @position or
-    // @direction moves or turns the speaker, and Give Variable with the same value does not.
+    // Change Variable Value assigning @position.x, @position.y, @position or @direction moves or turns the speaker, and Give
+    // Variable with the same value does not.
     [Theory]
     [InlineData(Change, "-230", 3, 3, 0, 0)]
     [InlineData(Give, "-230", 3, 0, 0, 0)]
@@ -179,8 +177,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((x, y, direction), (actor.X, actor.Y, actor.RotBody));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (the speaker, three runs): @habbicon, @effect, @altitude, @level and @team.score (in no team)
-    // take neither Give Variable nor Change Variable Value.
+    // @habbicon, @effect, @altitude, @level and @team.score (in no team) take neither Give Variable nor Change Variable Value.
     [Theory]
     [InlineData(Give, "-245", 5)]
     [InlineData(Change, "-245", 5)]
@@ -200,9 +197,8 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((0, 0, 0, 0, 0), (actor.X, actor.Y, actor.RotBody, actor.CarryItemId, actor.CurrentEffect));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (@handitem of the speaker, no item in hand): Give with 3 hands item 3, and so does Change
-    // Variable Value assigning 3, which on a custom variable the speaker does not hold changes nothing. Both show CarryObject in the tick the box
-    // flashes.
+    // Give with 3 hands item 3, and so does Change Variable Value assigning 3, which on a custom variable the speaker does not
+    // hold changes nothing. Both show CarryObject in the tick the box flashes.
     [Theory]
     [InlineData(Give)]
     [InlineData(Change)]
@@ -217,8 +213,7 @@ public partial class PlacedFurniRoomTests
         Assert.Contains(_client.Packets, packet => packet.Header == ServerPacketHeader.CarryObjectComposer);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (@handitem of the speaker, constant operand 5, three runs, every operation of the editor):
-    // assigning 5 hands item 5 whether the speaker holds one (2) or not, and every other operation changes nothing, held or not.
+    // Assigning 5 hands item 5 whether the speaker holds one (2) or not, and every other operation changes nothing, held or not.
     [Theory]
     [InlineData(0, 0, 5)]
     [InlineData(0, 2, 5)]

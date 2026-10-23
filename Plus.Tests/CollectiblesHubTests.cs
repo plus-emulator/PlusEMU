@@ -19,8 +19,8 @@ using Xunit;
 namespace Plus.Tests;
 
 // The Collectibles hub on a fresh install with Database/Migrations/109_CollectiblesHub.sql and 113_CollectiblesEmeraldsOnly.sql each
-// applied twice, driven through the packet handlers. Layouts follow AIR WIN63-202610201032-107964540
-// (communication/messages/parser/collectibles), except NftStoreOffers, which carries this hotel's min level per offer.
+// applied twice, driven through the packet handlers. Layouts follow the client's collectibles parsers, except NftStoreOffers,
+// which carries this hotel's min level per offer.
 // Choices for details the spec leaves open:
 // - Reading a wallet that is not the user's (score, collections) sends nothing. Actions on such a wallet answer with their failure
 //   result and change nothing.
@@ -35,7 +35,7 @@ namespace Plus.Tests;
 // - Minting costs the mintable row's Emerald price. It sends FurniListRemove, EmeraldBalance and MintCollectibleResult(1) on success,
 //   and only MintCollectibleResult(0) on any failure.
 // - Reward claims are listed by claim id, status 0 while claimed < limit else 1, collection = set id. Other wallets get an empty list.
-//   Claim all gives every remaining amount of a claim (claimLimit - claimedAmount, RewardCollectibleItemRenderer.as:41) and answers 0
+//   Claim all gives every remaining amount of a claim (claimLimit - claimedAmount) and answers 0
 //   when it gave at least one collectible and 1 when nothing was left.
 // - The level comes from the current score, not the highest score.
 // - DATETIME columns hold UTC. The hotel clock is fixed at Now.
@@ -704,9 +704,7 @@ public sealed class CollectiblesHubTests
         });
     }
 
-    // Habbo's content from Database/Migrations/111_CollectiblesHubContent.sql, observed on Habbo US (AIR WIN63-202610201032-107964540)
-    // on 2026-10-21, with the min level that 113 gives each offer by its price. FreshInstall.sql has no furni for nft_emerald_tome_5000,
-    // so its offer is left out.
+    // Habbo's content from Database/Migrations/111_CollectiblesHubContent.sql, with the min level that 113 gives each offer by its price. FreshInstall.sql has no furni for nft_emerald_tome_5000, so its offer is left out.
     [RoomComponentDatabaseFact]
     public async Task TheShopSellsHabbosOffersInHabbosOrder()
     {

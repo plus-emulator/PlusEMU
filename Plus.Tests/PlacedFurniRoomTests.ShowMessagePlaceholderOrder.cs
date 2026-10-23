@@ -53,8 +53,7 @@ public partial class PlacedFurniRoomTests
     /// <summary>Text Input Variable in number mode: the capture name and a context variable.</summary>
     private Task DpCapturer(string name) => DpSave(WiredBoxCategory.Addon, "wf_xtra_text_input_variable", [0], name, [], null, [], [], ["ctx:" + DpCtx], []);
 
-    // The raw WIRED_OPEN packet, then the context list of the Show Message editor frame read the way AIR reads it, up to the text
-    // placeholder entry (context 7): its placeholder names and its capturer names.
+    // The raw WIRED_OPEN packet, then the context list of the Show Message editor frame up to the text placeholder entry (context 7): its placeholder names and its capturer names.
     private async Task<(string[] Placeholders, string[] Capturers)> OpenMessageEditorPlaceholders(uint id)
     {
         _client.Packets.Clear();

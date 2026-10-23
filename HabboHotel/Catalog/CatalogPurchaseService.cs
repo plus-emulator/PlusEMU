@@ -348,7 +348,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                     break;
                 }
             // Builders Club membership days and furni limit, bought from the Memberships pages like Habbo Club. The status goes out at once,
-            // which is how the client learns the new expiry and limit (AIR HabboCatalog.onBuildersClubSubscriptionStatus, HabboCatalog.as:3694).
+            // which is how the client learns the new expiry and limit.
             case CatalogProductType.BuildersClub:
             case CatalogProductType.BuildersClubAddon: {
                     var habbo = session.GetHabbo();
@@ -449,8 +449,8 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
 
                 return number.ToString(CultureInfo.InvariantCulture); // maintain extra data // todo: validate
             case InteractionType.Recolorable:
-                // AIR RecolorableFurnitureCatalogWidget.as:93-121 sends the chosen "r,g,b" and only offers the class's palette
-                // (class_3492.as:13); any other value starts in the palette's first colour.
+                // The client sends the chosen "r,g,b" and only offers the class's palette;
+                // any other value starts in the palette's first colour.
                 return RecolorableDataFormat.FormatCatalogueColor(RecolorablePalette.PurchaseColor(definition.ItemName,
                     RecolorableDataFormat.TryParseCatalogueColor(extraData, out var chosen) ? chosen : null));
             case InteractionType.Postit:

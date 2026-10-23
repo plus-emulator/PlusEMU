@@ -6,8 +6,7 @@ using System.Text.RegularExpressions;
 namespace Plus.HabboHotel.Items.Wired.Links;
 
 /// <summary>
-/// The link dataframe text, as LinkDataframeCodec writes it (WIN63-202610131318-860371703,
-/// wired_setup/uibuilder/presets/applications/LinkDataframeCodec.as:31-130): a JSON array of [key, text] pairs, one per used row.
+/// The link dataframe text, as the client's LinkDataframeCodec writes it: a JSON array of [key, text] pairs, one per used row.
 /// </summary>
 public static partial class WiredLinkDataframeCodec
 {

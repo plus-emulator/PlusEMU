@@ -60,7 +60,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(0, f.Engine.ReadStats().Pending);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: on the furni a Projectile add-on moves, its curve wins over the Movement Curve add-on.
+    // On the furni a Projectile add-on moves, its curve wins over the Movement Curve add-on.
     [Theory]
     [InlineData("literal-positive", 100, 100)]
     [InlineData("literal-negative", -100, -100)]

@@ -8,8 +8,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: an At Given Time box placed and saved in a room whose timer had already passed its
-// time did not fire; its first flash came after the next timer reset passed the time.
+// An At Given Time box placed and saved in a room whose timer had already passed its time does not fire; its first flash comes after the next timer reset passes the time.
 public sealed class WiredAtGivenTimePlacementTests : IDisposable
 {
     private readonly G1World _world = new();

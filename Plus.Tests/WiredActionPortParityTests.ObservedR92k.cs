@@ -9,7 +9,6 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Official hhus r92k probes (AIR WIN63-202610131318-860371703); facts and receipts in reviews/r92-movement-facts.md.</summary>
 public sealed partial class WiredActionPortParityTests
 {
     private static WiredModernCondition ValidMovesBox(Room room)
@@ -26,8 +25,7 @@ public sealed partial class WiredActionPortParityTests
         return box;
     }
 
-    // r92k r92h-vm-fail one-w1/w2: rel_mov dy -1 of a marker on the wall row: valid_moves fails and the stack does not run.
-    // two-w1/w2: the same with a second, free marker: still fails. r92g r92-valid-moves: a legal stack move passes.
+    // rel_mov dy -1 of a marker on the wall row: valid_moves fails and the stack does not run. The same with a second, free marker still fails. A legal stack move passes.
     [Theory]
     [InlineData(false, false, true)]
     [InlineData(true, false, false)]
@@ -47,8 +45,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal(passes, condition.Execute(context));
     }
 
-    // r92k r92h-rel-wall wall-w1..w3: a column of three markers moving dy -1 into the north wall, picked m3, m2, m1: m1 stays, m2
-    // stacks on m1 (z 1.0), m3 lands on m2 before it leaves and keeps z 1.0 on (8,2); the next fire puts m3 on top (z 2.0).
+    // A column of three markers moving dy -1 into the north wall, picked m3, m2, m1: m1 stays, m2 stacks on m1 (z 1.0), m3 lands on m2 before it leaves and keeps z 1.0 on (8,2). The next fire puts m3 on top (z 2.0).
     [Fact]
     public void RelativeMoveColumnIntoAWallStacksInPickOrder()
     {
@@ -74,8 +71,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((2, 0, 2.0), (m3.GetX, m3.GetY, m3.GetZ));
     }
 
-    // r92k r92h-magic-raised: a marker at z 1.0 moved onto a tile_stackmagic drops to the magic height (0.0) without physics and keeps
-    // z 1.0 with keepAltitude; moved off with keepAltitude it keeps z 1.0 over the bare floor.
+    // A marker at z 1.0 moved onto a tile_stackmagic drops to the magic height (0.0) without physics and keeps z 1.0 with keepAltitude. Moved off with keepAltitude it keeps z 1.0 over the bare floor.
     [Theory]
     [InlineData(false, 0.0, 0.0)]
     [InlineData(true, 1.0, 1.0)]

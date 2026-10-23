@@ -5,18 +5,16 @@ using SystemBigInteger = System.Numerics.BigInteger;
 namespace Plus.Communication.Encryption.Keys;
 
 /// <summary>
-/// The RSA key of the Diffie-Hellman handshake. The client holds only the public half and uses it two ways
-/// (AIR WIN63-202610151745-318700621, com/hurlant/crypto/rsa/RSAKey.as:134-283):
+/// The RSA key of the Diffie-Hellman handshake. The client holds only the public half and uses it two ways:
 /// <list type="bullet">
 /// <item><c>verify</c> (public exponent, PKCS#1 type 1) checks the prime, generator and server public key this key signs.</item>
 /// <item><c>encrypt</c> (public exponent, PKCS#1 type 2) hides the client's public key, which this key decrypts.</item>
 /// </list>
-/// The client reads each block as exactly <see cref="BlockSize"/> bytes (RSAKey.as:197), so signatures are left-padded to it.
+/// The client reads each block as exactly <see cref="BlockSize"/> bytes, so signatures are left-padded to it.
 /// </summary>
 public sealed class HandshakeRsaKey
 {
-    /// <summary>The exponent the AIR client hard-codes: <c>RSAKey.parsePublicKey(..., "10001")</c>
-    /// (AIR WIN63-202610151745-318700621, communication/demo/class_1974.as:141).</summary>
+    /// <summary>The exponent the client hard-codes: <c>RSAKey.parsePublicKey(..., "10001")</c>.</summary>
     public const int AirPublicExponent = 65537;
 
     private readonly SystemBigInteger _n;
@@ -59,7 +57,7 @@ public sealed class HandshakeRsaKey
         return new(Unsigned(parameters.Modulus!), Unsigned(parameters.Exponent!), Unsigned(parameters.D!));
     }
 
-    /// <summary>A new 2048-bit key with the exponent the AIR client uses, as a PKCS#8 PEM.</summary>
+    /// <summary>A new 2048-bit key with the exponent the client uses, as a PKCS#8 PEM.</summary>
     public static string GeneratePem(int bits = 2048)
     {
         // .NET always generates with e = 65537.
@@ -93,7 +91,7 @@ public sealed class HandshakeRsaKey
         return Unpad(ToBlock(SystemBigInteger.ModPow(c, _d, _n)), expectedType: 2);
     }
 
-    // RSAKey.as:211 pkcs1pad: 00 type filler 00 message, filled to the block size.
+    // pkcs1pad: 00 type filler 00 message, filled to the block size.
     private byte[] Pad(byte[] message, byte type)
     {
         if (message.Length > BlockSize - 11) {
@@ -113,7 +111,7 @@ public sealed class HandshakeRsaKey
         return block;
     }
 
-    // RSAKey.as:254 pkcs1unpad on a full block: 00, the type byte, non-zero filler, a zero, then the message.
+    // pkcs1unpad on a full block: 00, the type byte, non-zero filler, a zero, then the message.
     private static byte[]? Unpad(byte[] block, byte expectedType)
     {
         if (block.Length < 11 || block[0] != 0 || block[1] != expectedType) {

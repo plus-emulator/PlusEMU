@@ -17,8 +17,8 @@ public partial class WiredAvatarPacketHookTests
     private const int SleepCondition = 5;
     private const int RespectCondition = 12;
 
-    // Observed on AIR WIN63-202610201032-107964540: a wave still counts 4.76 s after the expression but not 5.27 s after it.
-    // Respect counts 1.56 s after it but not 1.87 s after it.
+    // A wave still counts 4.76 s after the expression but not 5.27 s after it. Respect counts 1.56 s after it but not 1.87 s
+    // after it.
     [Theory]
     [InlineData(WaveExpression, WaveCondition, 4760, 5270)]
     [InlineData(RespectExpression, RespectCondition, 1560, 1870)]
@@ -45,9 +45,8 @@ public partial class WiredAvatarPacketHookTests
         Assert.False(PerformsAt(failsAt));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a wave counts 4.90 s after the expression but not 5.27 s after it, respect
-    // 1.69 s but not 1.87 s, and sleep 2.50 s. Observed on AIR WIN63-202610151745-318700621: sleep ends before 2.77 s.
-    // The condition must see the end at that time, not at the next room cycle.
+    // A wave counts 4.90 s after the expression but not 5.27 s after it, respect 1.69 s but not 1.87 s, and sleep 2.50 s. Sleep
+    // ends before 2.77 s. The condition must see the end at that time, not at the next room cycle.
     [Theory]
     [InlineData(WaveExpression, WaveCondition, 4900, true)]
     [InlineData(WaveExpression, WaveCondition, 5270, false)]
@@ -73,8 +72,8 @@ public partial class WiredAvatarPacketHookTests
         Assert.Equal(passes ? 1 : 0, world.Capture.Events.Count);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: without Habbo Club, these expressions reach nobody, the sender included,
-    // fire no Wired and leave a dancing, sleeping avatar as it was.
+    // Without Habbo Club, these expressions reach nobody, the sender included, fire no Wired and leave a dancing, sleeping avatar
+    // as it was.
     [Theory]
     [InlineData(KissExpression, 2)]
     [InlineData(LaughExpression, 3)]
@@ -96,7 +95,7 @@ public partial class WiredAvatarPacketHookTests
         Assert.True(world.Actor.IsAsleep);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: without Habbo Club, wave, sleep, respect and expression 0 still reach the room.
+    // Without Habbo Club, wave, sleep, respect and expression 0 still reach the room.
     [Theory]
     [InlineData(0, WaveCondition)]
     [InlineData(WaveExpression, WaveCondition)]
@@ -128,8 +127,7 @@ public partial class WiredAvatarPacketHookTests
         Assert.Single(world.Capture.Events);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: without Habbo Club, dance 2, 3 and 4 send nothing and the avatar keeps dance 1.
-    // Dance 0 still stops it.
+    // Without Habbo Club, dance 2, 3 and 4 send nothing and the avatar keeps dance 1. Dance 0 still stops it.
     [Theory]
     [InlineData(2)]
     [InlineData(3)]
@@ -178,8 +176,8 @@ public partial class WiredAvatarPacketHookTests
         Assert.False(WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [condition, 0, 0, 0, 1] }, speech, clock.Now));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: Sleep passes 1.78 s after the sleep expression and Awake passes 2.77 s after it,
-    // while the avatar still shows as asleep until its next action.
+    // Sleep passes 1.78 s after the sleep expression and Awake passes 2.77 s after it, while the avatar still shows as asleep
+    // until its next action.
     [Fact]
     public void PerformsActionConditionSeesTheSleepExpressionForAShortTimeOnly()
     {

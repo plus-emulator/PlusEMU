@@ -8,8 +8,7 @@ namespace Plus.Tests;
 
 public class CustomPacketRangesTests
 {
-    // Highest official header of either direction in WIN63-202610121709-785561319 and WIN63-202610131318-860371703
-    // (outgoing 4101, ClaimDailyTask); every id above it and below the placeholders is ours.
+    // Highest official header of either direction (outgoing 4101, ClaimDailyTask); every id above it and below the placeholders is ours.
     private const uint HighestOfficialId = 4101;
 
     public static TheoryData<string, PacketRangeDirection> Tables => new()

@@ -7,10 +7,9 @@ using Plus.HabboHotel.Items.AreaHide;
 namespace Plus.HabboHotel.Rooms;
 
 /// <summary>
-/// The floor furni a room keeps off its clients. Observed on AIR WIN63-202610201032-107964540: while the Invisible Furni Controller is
-/// on, the clients get no room_invisible furni and no area hider with the invisibility option. The server removes them with one
-/// ObjectRemoveMultiple (picker -1, flag on) and adds them again with one Objects packet when the controller goes off. The room keeps
-/// the set the clients were told about, so the diff of the next refresh is exactly what changed.
+/// The floor furni a room keeps off its clients. While the Invisible Furni Controller is on, the clients get no room_invisible furni and no area hider with the invisibility option.
+/// The server removes them with one ObjectRemoveMultiple (picker -1, flag on) and adds them again with one Objects packet when the controller goes off.
+/// The room keeps the set the clients were told about, so the diff of the next refresh is exactly what changed.
 /// </summary>
 public static class FurniVisibility
 {
@@ -53,8 +52,7 @@ public static class FurniVisibility
     public static bool ShouldHide(Room room, Item item, Item? except = null) => Hides(Capture(room, except), item);
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: a hider that is on removes the floor furni on its tiles from the clients (outside its
-    /// rectangle with invert). The hider itself and the avatars stay.
+    /// A hider that is on removes the floor furni on its tiles from the clients (outside its rectangle with invert). The hider itself and the avatars stay.
     /// </summary>
     private static bool InHiddenArea(Hiding hiding, Item item)
     {

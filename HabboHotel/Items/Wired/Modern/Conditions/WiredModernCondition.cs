@@ -52,7 +52,7 @@ public sealed class WiredModernCondition : WiredModernBox
 
         // The negative furniture-on label is the empty direction: 0 is at least one empty, 1 is all empty.
         if (negative && Descriptor.CanonicalName is "wf_cnd_not_furni_on") {
-            // Observed on AIR WIN63-202610131318-860371703: the negation fails on an empty selection too, like "Furni has furni on".
+            // The negation fails on an empty selection too, like "Furni has furni on".
             if (Furni(context, config, "items").Length == 0) {
                 return false;
             }
@@ -102,8 +102,7 @@ public sealed class WiredModernCondition : WiredModernBox
                     return Quantify(user => MatchesKind(user, Param(config, 0)), 4);
                 }
 
-                // Observed on AIR WIN63-202610201032-107964540: the name of any triggerer type is compared here (a bot too), the name of a
-                // user with its case kept and the name of a bot without regard to case.
+                // The name of any triggerer type is compared here (a bot too), the name of a user with its case kept and the name of a bot without regard to case.
                 var comparisons = (config.UserSources["comparison"] == 101
                         ? context.Targets.ResolveUsers(context, [], WiredSources.AllRoom)
                         : Users(context, config, "comparison"))
@@ -131,9 +130,8 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_has_altitude":
                 return WiredItemConditions.MatchesAltitude(config, Items());
             case "wf_cnd_valid_moves":
-                // Observed (AIR WIN63-202610131318-860371703): the hotel editor has no furni source. The condition checks the moves
-                // of the stack's movement effects: r92k r92h-vm-fail one-w1/w2 and two-w1/w2 failed when a rel_mov step was blocked
-                // by the wall (also with a second, free mover); r92g r92-valid-moves a/b/c passed when the stack's move was legal.
+                // The hotel editor has no furni source. The condition checks the moves of the stack's movement effects: it fails when a rel_mov step is blocked
+                // by the wall (also with a second, free mover) and passes when the stack's move is legal.
                 var planned = context.CapturedStack.OfType<Actions.WiredModernAction>().SelectMany(action => action.PlannedMoves(context)).ToArray();
                 var moving = Items();
 
@@ -152,7 +150,7 @@ public sealed class WiredModernCondition : WiredModernBox
             case "wf_cnd_counter_time_matches":
                 var targetMs = Param(config, 1) * 60_000L + Param(config, 2) * 500L;
 
-                // Observed on AIR WIN63-202610201032-107964540: a stored comparison of 3 passes when the counter is at most the value.
+                // A stored comparison of 3 passes when the counter is at most the value.
                 return WiredRoomOperations.Quantify(Items().Select(item => _counterTime(item) is { } time
                     && (Param(config, 0) == 3 ? time <= targetMs : WiredRoomOperations.Compare(time, targetMs, Param(config, 0)))), Param(config, 4));
             case "wf_cnd_match_time":
@@ -171,8 +169,7 @@ public sealed class WiredModernCondition : WiredModernBox
                     ? WiredRoomOperations.Compare(scores[team], Param(config, 2), Param(config, 1))
                     : 1 + Enumerable.Range(1, 4).Count(other => scores[other] > scores[team]) == Param(config, 1) + 1);
 
-                // "The user's team": each selected user is checked through their own team, and a user in no team fails. Observed on hhus
-                // (AIR WIN63-202610131318-860371703): with the owner in a team and a bot in none, "all users" fails and "any user" passes.
+                // "The user's team": each selected user is checked through their own team, and a user in no team fails. With the owner in a team and a bot in none, "all users" fails and "any user" passes.
                 return Param(config, 0) == 0
                     ? Quantify(user => TeamMatches((int)user.Team), name == "wf_cnd_team_has_score" ? 4 : 3)
                     : TeamMatches(Param(config, 0));
@@ -198,13 +195,13 @@ public sealed class WiredModernCondition : WiredModernBox
 
         return action switch
         {
-            // Observed on AIR WIN63-202610201032-107964540: Wave and Respect pass for a short time after the expression.
+            // Wave and Respect pass for a short time after the expression.
             1 or 5 or 12 => recent == action,
             4 => recent != (int)WiredAvatarAction.Relax,
             6 => user.HasStatus("sit"),
             7 => !user.HasStatus("sit") && !user.HasStatus("lay"),
             8 => user.HasStatus("lay"),
-            // Observed on AIR WIN63-202610151745-318700621: the condition still sees a sign 3.4 s after it, long after its status is gone.
+            // The condition still sees a sign 3.4 s after it, long after its status is gone.
             9 => user.HeldSign is int sign && (Param(config, 1) == 0 || sign == Param(config, 2)),
             10 => user.DanceId != 0 && (Param(config, 3) == 0 || user.DanceId == Param(config, 4)),
             _ => false

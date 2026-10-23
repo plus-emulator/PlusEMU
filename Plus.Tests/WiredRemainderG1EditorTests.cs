@@ -5,9 +5,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// The editor frames of the transaction cards. The two chest conditions and the scanner were observed on hhus (WIN63-202610131318, r62 batch 04,
-/// run 20261013T200247); the other five are read from the October AIR client (wired_setup/actiontypes/chests, addons/chests, triggerconfs) and
-/// follow the sibling frames for their sources.
+/// The editor frames of the transaction cards.
 /// </summary>
 public sealed class WiredRemainderG1EditorTests
 {
@@ -33,7 +31,7 @@ public sealed class WiredRemainderG1EditorTests
         Assert.Equal(furniAllowed, metadata.FurniAllowed.Select(slot => slot.ToArray()).ToArray());
         Assert.Equal(usersAllowed, metadata.UsersAllowed.Select(slot => slot.ToArray()).ToArray());
         Assert.Equal(wall, metadata.AllowWall);
-        // Observed on AIR WIN63-202610201032-107964540: the two chest conditions open with the quantifier selector, the scanner does not.
+        // The two chest conditions open with the quantifier selector, the scanner does not.
         Assert.Equal(name.StartsWith("wf_cnd", StringComparison.Ordinal) ? 1 : 0, metadata.QuantifierType);
         Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native, out _));
     }
@@ -85,7 +83,8 @@ public sealed class WiredRemainderG1EditorTests
     [Fact]
     public void TheNumberOfVariablePickersFollowsTheAirForms()
     {
-        // ValueOrVariableSection: one in the conditions, three in Initiate Transaction (observed on AIR WIN63-202610201032-107964540), two in the custom contract, the scanner's context variable.
+        // ValueOrVariableSection: one in the conditions, three in Initiate Transaction, two in the custom contract, the scanner's
+        // context variable.
         foreach (var (name, variables) in new[] { ("wf_act_init_transaction", 3), ("wf_act_cancel_transaction", 0), ("wf_cnd_chest_has_items", 1), ("wf_cnd_chest_has_item_type", 1),
             ("wf_xtra_scan_chest_furni_by_type", 1), ("wf_xtra_custom_contract", 2), ("wf_trg_transaction_complete", 0), ("wf_trg_transaction_fail", 0) }) {
             Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
@@ -109,7 +108,7 @@ public sealed class WiredRemainderG1EditorTests
     [InlineData("wf_act_cancel_transaction", new[] { 0 }, true)]
     [InlineData("wf_act_cancel_transaction", new[] { 1 }, true)]
     [InlineData("wf_act_cancel_transaction", new[] { 2 }, true)]
-    // Observed on AIR WIN63-202610201032-107964540: the chest conditions clamp or reset the amount, option and comparison instead of refusing.
+    // The chest conditions clamp or reset the amount, option and comparison instead of refusing.
     [InlineData("wf_cnd_chest_has_items", new[] { 0, 0, 2, 0 }, true)]
     [InlineData("wf_cnd_chest_has_items", new[] { 1000000, 1, 2, 5 }, true)]
     [InlineData("wf_cnd_chest_has_items", new[] { -1, 0, 2, 0 }, true)]
@@ -131,7 +130,8 @@ public sealed class WiredRemainderG1EditorTests
     public void TheSavedNumbersStayInsideTheLimitsOfTheAirForms(string name, int[] scalars, bool saved)
     {
         using var world = new G1World();
-        // The AIR target codes are what the editor sends; the scalars here use the executor's codes, converted like the editor does.
+        // The editor's target codes differ from the executor's; the scalars here use the executor's codes, converted like the
+        // editor does.
         var targets = name == "wf_act_init_transaction" ? new[] { 3 } : name == "wf_cnd_chest_has_items" || name == "wf_cnd_chest_has_item_type" ? [2]
             : name == "wf_xtra_custom_contract" ? [4, 9] : [];
         var air = (int[])scalars.Clone();
@@ -143,7 +143,7 @@ public sealed class WiredRemainderG1EditorTests
         Assert.Equal(saved, world.TrySave(name, native => native with { OwnedIntParams = [.. air] }));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a raw save of 29 seconds is accepted and read back as 30.
+    // A raw save of 29 seconds is accepted and read back as 30.
     [Theory]
     [InlineData(29, 30)]
     [InlineData(0, 30)]
@@ -214,11 +214,11 @@ public sealed class WiredRemainderG1EditorTests
     {
         using var world = new G1World();
 
-        // Observed on AIR WIN63-202610201032-107964540: Transaction Completed accepts ints [1, 2] and Cancel Transaction ints [1, 2].
+        // Transaction Completed accepts ints [1, 2] and Cancel Transaction ints [1, 2].
         Assert.True(world.TrySave("wf_trg_transaction_complete", native => native));
         Assert.True(world.TrySave("wf_trg_transaction_complete", native => native with { OwnedIntParams = [1] }));
         Assert.True(world.TrySave("wf_act_cancel_transaction", native => native with { OwnedIntParams = [0, 1] }));
-        // Observed on AIR WIN63-202610201032-107964540: Scan Chest takes the frame default for a missing mode.
+        // Scan Chest takes the frame default for a missing mode.
         Assert.True(world.TrySave("wf_xtra_scan_chest_furni_by_type", native => native with { OwnedIntParams = [] }));
     }
 

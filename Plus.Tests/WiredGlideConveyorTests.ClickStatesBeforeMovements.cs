@@ -11,10 +11,9 @@ public sealed partial class WiredGlideConveyorTests
 {
     private const uint ClickToggledTile = 50, ClickStateTrigger = 51, ClickStateToggle = 52, ClickStateRotate = 53;
 
-    // Observed on AIR WIN63-202610201032-107964540: a click on a stack that toggles furni and turns the user sends one ObjectsDataUpdate
-    // with the box flashes and the new furni states, then one WiredMovements with the turn (1204 of 1204 recorded clicks with a
-    // WiredMovements: no ObjectsDataUpdate follows the WiredMovements). The effects run in a random order, so both orders must give
-    // the same packets.
+    // A click on a stack that toggles furni and turns the user sends one ObjectsDataUpdate with the box flashes and the new
+    // furni states, then one WiredMovements with the turn. The effects run in a random order, so both orders must give the same
+    // packets.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

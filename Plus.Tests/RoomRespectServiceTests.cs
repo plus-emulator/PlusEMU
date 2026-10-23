@@ -71,7 +71,7 @@ public partial class PlacedFurniRoomTests
         service.Respect(_room, _client, 9);
         Assert.Equal(new[] { "quest", "ACH_RespectGiven", "ACH_RespectEarned", "reward" }, order);
         Assert.Equal((1, 1, 1), (stats.DailyRespectPoints, stats.RespectGiven, Assert.IsType<HabboStats>(target.HabboStats).Respect));
-        // Observed on AIR WIN63-202610151745-318700621: the giver's thumbs-up goes out before the respect notification.
+        // The giver's thumbs-up goes out before the respect notification.
         Assert.Equal(new[] { ServerPacketHeader.ActionComposer, ServerPacketHeader.RespectNotificationComposer }, _client.Sent);
     }
 

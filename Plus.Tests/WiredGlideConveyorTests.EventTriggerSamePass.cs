@@ -9,8 +9,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: a stack whose trigger watches a score, a furni state or a clock flashes in the same
-// millisecond as the change it watches, also when a click or the clock itself made the change.
+// A stack whose trigger watches a score, a furni state or a clock flashes in the same millisecond as the change it watches, also
+// when a click or the clock itself made the change.
 public sealed partial class WiredGlideConveyorTests
 {
     private const uint SamePassTileId = 61;

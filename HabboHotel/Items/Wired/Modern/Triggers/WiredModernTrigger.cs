@@ -53,7 +53,7 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
 
     public override bool Execute(WiredRuntimeContext context) => Matches(context, afterSelectors: false);
 
-    // Observed on AIR WIN63-202610151745-318700621: saving the same score settings keeps a spent box spent.
+    // Saving the same score settings keeps a spent box spent.
     protected override void ConfigurationChanged()
     {
         if (Descriptor.CanonicalName != "wf_trg_score_achieved" || !TryValidateConfiguration(Configuration, out var config, out _)) {
@@ -130,8 +130,7 @@ public class WiredModernTrigger : WiredModernBox, IWiredClickTrigger
                 || Items().Any(item => WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(new(evt.X, evt.Y)))),
             "wf_trg_click_user" => evt.Actor != null && evt.TargetUser != null,
             "wf_trg_bot_reached_avtr" => evt.TargetUser != null && BotMatches(),
-            // Observed on AIR WIN63-202610201032-107964540: with user source 100 the name must match exactly, ignoring case, so an empty
-            // name matches no bot. With user source 200 only the user selection decides.
+            // With user source 100 the name must match exactly, ignoring case, so an empty name matches no bot. With user source 200 only the user selection decides.
             "wf_trg_bot_reached_stf" => evt.Actor is { IsBot: true, IsPet: false } && ItemMatches()
                 && (config.UserSources["bots"] == WiredSources.Selector
                     ? deferBots || Users(context, config, "bots").Contains(evt.Actor)
@@ -214,8 +213,7 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
             return null;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a box with 0 pulses did not fire when saved, and fired on the first room tick
-        // after each timer reset.
+        // A box with 0 pulses does not fire when saved, and fires on the first room tick after each timer reset.
         if (Descriptor.CanonicalName == "wf_trg_at_given_time" && config.IntParams is [0]
             && (!_resetByAction || nowMilliseconds < WiredTimedTriggers.FirstRoomTickAfter(_started))) {
             return null;

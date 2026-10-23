@@ -13,9 +13,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: the owner stands at (5,12) facing 5 and says bt1. Bot Move walks the bot from (6,12)
-    // to the picked tile (8,13); Bot Reaches Furni fires there and its Show Message to everyone is said by the bot. The owner's next
-    // status update turns the head one step toward the bot (head 4, body 5), and 5000 ms after that update the head goes back to 5.
+    // Bot Move walks a bot to the picked tile, and Bot Reaches Furni fires there with a Show Message the bot says. The owner's
+    // next status update turns the owner's head one step toward the bot, and 5000 ms after that update the head goes back.
     [Fact]
     public void ABotSayingAShowMessageToEveryoneTurnsTheOwnersHeadTowardTheBot()
     {

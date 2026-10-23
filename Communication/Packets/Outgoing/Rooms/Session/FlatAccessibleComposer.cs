@@ -2,7 +2,7 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Session;
 
-// AIR WIN63-202610151745-318700621 package_14/class_3772.as:35 reads the flat id, then the user name.
+// The client reads the flat id, then the user name.
 public class FlatAccessibleComposer : IServerPacket
 {
     private readonly uint _roomId;

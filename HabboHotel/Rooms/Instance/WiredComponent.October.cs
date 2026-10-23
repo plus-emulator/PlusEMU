@@ -7,7 +7,7 @@ using Plus.HabboHotel.Items.Wired.Runtime;
 
 namespace Plus.HabboHotel.Rooms.Instance;
 
-/// <summary>Room services of the October boxes (r88): link endpoints, room initialization and room-wide add-on lookups.</summary>
+/// <summary>Room services of the October boxes: link endpoints, room initialization and room-wide add-on lookups.</summary>
 public partial class WiredComponent
 {
     private IWiredLinkStore? _linkStore;
@@ -38,7 +38,7 @@ public partial class WiredComponent
         .Select(item => TryGet(item.Id, out var box) ? box as IWiredConfiguredItem : null).OfType<IWiredConfiguredItem>()
         .Where(box => ReferenceEquals(handler.GetItem(box.Item.Id), box.Item));
 
-    /// <summary>Achievements the room's Achievement Enablers list, one per line (class_4012.as:27), first mention first.</summary>
+    /// <summary>Achievements the room's Achievement Enablers list, one per line, first mention first.</summary>
     internal IReadOnlyList<string> EnabledAchievements() => [.. ConfiguredBoxes("wf_xtra_achievement_enabler")
         .SelectMany(box => box.Configuration.Text.Split('\n')).Select(line => line.Trim()).Where(line => line.Length > 0)
         .Distinct(StringComparer.OrdinalIgnoreCase)];
@@ -47,8 +47,7 @@ public partial class WiredComponent
         && EnabledAchievements().Contains(achievement, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Observed on AIR WIN63-202610131318-860371703: when any box text in the room uses $(trigger_text), every user entering
-    /// (owner or visitor) gets NotificationDialog 2356 "wired.error" right after the room-enter packet 1647.
+    /// When any box text in the room uses $(trigger_text), every user entering (owner or visitor) gets NotificationDialog 2356 "wired.error" right after the room-enter packet 1647.
     /// </summary>
     public void SendTriggerTextNotice(GameClient session)
     {
@@ -103,8 +102,7 @@ public partial class WiredComponent
     }
 
     /// <summary>
-    /// The Share add-on's Synchronize button (header 397, VariableAddonShareAddon.as:31, write permission only): the add-ons of the shared
-    /// variables stacked with it are published to their references. Observed on AIR WIN63-202610201032-107964540.
+    /// The Share add-on's Synchronize button (header 397, write permission only): the add-ons of the shared variables stacked with it are published to their references.
     /// </summary>
     public bool SynchronizeShare(Plus.HabboHotel.GameClients.GameClient session, uint itemId)
     {
@@ -113,8 +111,7 @@ public partial class WiredComponent
     }
 
     /// <summary>
-    /// A permanent or shared variable box (availability 10 or 11): hhus asks before picking it up, since its stored values go with it
-    /// (r90, wf_var_user; in-room variables were picked up directly).
+    /// A permanent or shared variable box (availability 10 or 11): the client asks before picking it up, since its stored values go with it (in-room variables are picked up directly).
     /// </summary>
     public bool StoresVariableData(Item item) => item.Definition.WiredDescriptor?.Category == WiredBoxCategory.Variable
         && TryGet(item.Id, out var box) && box is IWiredConfiguredItem

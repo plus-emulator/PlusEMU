@@ -7,8 +7,7 @@ using Plus.HabboHotel.Items.Wired.Variables;
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
-/// The October boxes of the r88 dossier. Every grammar is the AIR editor's own save (WIN63-202610131318-860371703); the cited
-/// line is the editor's readIntParamsFromForm / readStringParamFromForm. Merged selections pair a furni and a user source slot,
+/// The October boxes. Every grammar is the official editor's own save. Merged selections pair a furni and a user source slot,
 /// so a value-or-variable reference adds one of each after the box's own targets.
 /// </summary>
 internal static partial class WiredNativeAuxiliaryEditor
@@ -23,12 +22,12 @@ internal static partial class WiredNativeAuxiliaryEditor
         UserSources = users.ToImmutableDictionary(pair => pair.Role, pair => pair.Source)
     };
 
-    // A value-or-variable: 0 literal or 1 variable, the literal and the variable's AIR target. An unchosen variable is the inactive default.
+    // A value-or-variable: 0 literal or 1 variable, the literal and the variable's target. An unchosen variable is the inactive default.
     private static bool ValueOrVariable(int option, int target) => option is 0 or 1 && TryTarget(target, out _);
 
     private static IEnumerable<KeyValuePair<string, Spec>> October()
     {
-        // ProgressAchievement.as:36 [progression (1 add, 0 set), option, number 0..2147483647, target]; :46 achievement name; :51 the variable.
+        // [progression (1 add, 0 set), option, number 0..2147483647, target]; achievement name; the variable.
         yield return new("wf_act_progress_ach", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [1, 0, 0, -10], 1) with
         {
             FurniDefaults = [0]
@@ -41,7 +40,7 @@ internal static partial class WiredNativeAuxiliaryEditor
                 ? Roles(Draft(n, [p[0], p[1], p[2], target], n.Text), [("reference", n.FurniSourceTypes[0])],
                     [("users", n.UserSourceTypes[0]), ("reference", n.UserSourceTypes[1])]) : null;
         }));
-        // class_3931.as:56 [effect id 0..10000, priority 0..2, type 0/1].
+        // [effect id 0..10000, priority 0..2, type 0/1].
         yield return new("wf_act_give_effect", new(Sources([], [TargetUsers], [0, 0, 0]), n =>
         {
             var p = n.OwnedIntParams;
@@ -49,7 +48,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Shape(n, 3, 0, 1, 0) && n.Text.Length == 0 && In(p[0], 0, 10000) && In(p[1], 0, 2) && p[2] is 0 or 1
                 ? Roles(Draft(n, p), [], [("users", n.UserSourceTypes[0])]) : null;
         }));
-        // class_4092.as:54 [height 0..8000 in hundredths, type (0 override, 1 restore)].
+        // [height 0..8000 in hundredths, type (0 override, 1 restore)].
         yield return new("wf_act_override_height", new(Sources([TargetFurni], [], [0, 0]) with { FurniDefaults = [100] }, n =>
         {
             var p = n.OwnedIntParams;
@@ -57,7 +56,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Shape(n, 2, 1, 0, 0) && n.Text.Length == 0 && In(p[0], 0, 8000) && p[1] is 0 or 1
                 ? Roles(Draft(n, p), [("items", n.FurniSourceTypes[0])], []) : null;
         }));
-        // ProgressRewardTrack.as:58 [add to existing, option, score 1..2147483647, target]; :68 track id TAB task id ([A-Za-z0-9_], 100 each).
+        // [add to existing, option, score 1..2147483647, target]; track id TAB task id ([A-Za-z0-9_], 100 each).
         yield return new("wf_act_progress_reward_track", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [1, 0, 1, -10], 1) with
         {
             FurniDefaults = [0]
@@ -71,13 +70,13 @@ internal static partial class WiredNativeAuxiliaryEditor
                 ? Roles(Draft(n, [p[0], p[1], p[2], target], n.Text), [("reference", n.FurniSourceTypes[0])],
                     [("users", n.UserSourceTypes[0]), ("reference", n.UserSourceTypes[1])]) : null;
         }));
-        // class_4288.as:41 the track id (at most 100, no TAB); no ints.
+        // The track id (at most 100, no TAB); no ints.
         yield return new("wf_act_reset_reward_track", new(Sources([], [TargetUsers], []), n =>
             Shape(n, 0, 0, 1, 0) && (n.Text.Length == 0 || TrackId(n.Text))
                 ? Roles(Draft(n, [], n.Text), [], [("users", n.UserSourceTypes[0])]) : null));
         // A stored row keeps the wider bounds it was saved under; the stricter value rules are checked on a new save only (WiredFurniVisualRules).
-        // Observed on AIR WIN63-202610201032-107964540: both editors offer wall furni.
-        // class_4285.as:79 [audience (1 everyone), visibility 0/100, click through, easing 0..4, target users]; merged [[0,1],[-1,0]]:
+        // Both editors offer wall furni.
+        // [audience (1 everyone), visibility 0/100, click through, easing 0..4, target users]; merged [[0,1],[-1,0]]:
         // furni 0 with user 1 are the targets, user 0 the audience.
         yield return new("wf_act_set_visibility", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [0, 100, 0, 4, 0]) with
         {
@@ -90,7 +89,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Shape(n, 5, 1, 2, 0) && n.Text.Length == 0
                 ? Roles(Draft(n, p), [("items", n.FurniSourceTypes[0])], [("audience", n.UserSourceTypes[0]), ("targets", n.UserSourceTypes[1])]) : null;
         }));
-        // class_4214.as:112 [audience, type 0..5, strength, colour, animation 0/1, easing 0..4, target users]; the strengths and colours
+        // [audience, type 0..5, strength, colour, animation 0/1, easing 0..4, target users]; the strengths and colours
         // of each type are WiredFurniVisualRules.
         yield return new("wf_act_set_highlight", new(Sources([TargetFurni], [TargetUsers, TargetUsers], [0, 0, 100, 16771584, 0, 4, 0]) with
         {
@@ -103,29 +102,28 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Shape(n, 7, 1, 2, 0) && n.Text.Length == 0
                 ? Roles(Draft(n, p), [("items", n.FurniSourceTypes[0])], [("audience", n.UserSourceTypes[0]), ("targets", n.UserSourceTypes[1])]) : null;
         }));
-        // SendLinkMessage.as:95 [source (0 the trigger's text, 1 custom)]; :100 the message, at most 1000 UTF-8 bytes (:105). Furni 0 picks the endpoints.
+        // [source (0 the trigger's text, 1 custom)]; the message, at most 1000 UTF-8 bytes. Furni 0 picks the endpoints.
         yield return new("wf_act_send_message", new(Sources([TargetFurni], [], [1]) with { FurniDefaults = [100] }, n =>
             Shape(n, 1, 1, 0, 0) && n.OwnedIntParams[0] is 0 or 1 && WiredLinkDataframeCodec.Utf8Length(n.Text) <= WiredLinkDataframeCodec.MaxLinkMessageBytes
                 ? Roles(Draft(n, n.OwnedIntParams, n.Text), [("endpoints", n.FurniSourceTypes[0])], []) : null));
-        // LinkDataframeSendPreset.as:121-142 [count, 12 x (mode, literal, target)] = 37 ints, JSON [key, text] rows, 12 variable ids.
-        // Merged rows pair furni i+1 with user i (SendLinkDataframe.as mergedSelections); furni 0 picks the endpoints.
+        // [count, 12 x (mode, literal, target)] = 37 ints, JSON [key, text] rows, 12 variable ids.
+        // Merged rows pair furni i+1 with user i; furni 0 picks the endpoints.
         yield return new("wf_act_send_dataframe", new(Sources([TargetFurni, .. Enumerable.Repeat(TargetFurni, 12)],
             [.. Enumerable.Repeat(TargetUsers, 12)], [0, .. Enumerable.Range(0, 12).SelectMany(_ => new[] { 0, 0, -10 })], 12) with
         {
             FurniDefaults = [100, .. Enumerable.Repeat(0, 12)]
         }, SendDataframe));
-        // RoomInitialized.as: no fields.
         yield return new("wf_trg_room_initializes", new(Meta(0, 0, []), n => Shape(n, 0, 0, 0, 0) && n.Text.Length == 0 ? Draft(n, []) : null));
-        // ReceiveLinkMessage.as: no fields; furni 0 picks the endpoints it listens on.
+        // Furni 0 picks the endpoints it listens on.
         yield return new("wf_trg_receive_message", new(Sources([TargetFurni], [], []) with { FurniDefaults = [100] }, n =>
             Shape(n, 0, 1, 0, 0) && n.Text.Length == 0 ? Roles(Draft(n, []), [("endpoints", n.FurniSourceTypes[0])], []) : null));
-        // LinkDataframeReceivePreset.as:91-124 [count, 12 x kind] = 13 ints, JSON [key, placeholder] rows, 12 variable ids.
+        // [count, 12 x kind] = 13 ints, JSON [key, placeholder] rows, 12 variable ids.
         yield return new("wf_trg_receive_dataframe", new(Sources([TargetFurni], [], [0, .. Enumerable.Repeat(0, 12)], 12) with
         {
             FurniDefaults = [100]
         }, ReceiveDataframe));
-        // LevelMatches.as:49 [level 1..30, comparison 0 lower, 1 equal, 2 higher]. LevelMatches overrides only code, inputMode, buildInputs,
-        // onEditStart and readIntParamsFromForm, exactly like the badge condition (conditions/class_4263.as): its user source picker and
+        // [level 1..30, comparison 0 lower, 1 equal, 2 higher]. LevelMatches overrides only code, inputMode, buildInputs,
+        // onEditStart and readIntParamsFromForm, exactly like the badge condition: its user source picker and
         // user quantifier come from the server's footer, so it advertises the footer of the other user conditions.
         yield return new("wf_cnd_user_level", new(Sources([], [[0, 200, 201]], [1, 1]) with { QuantifierType = 2 }, n =>
         {
@@ -135,21 +133,21 @@ internal static partial class WiredNativeAuxiliaryEditor
                 ? Roles(Draft(n, [p[0], p[1], n.Quantifier ?? 0]), [], [("users", n.UserSourceTypes[0])]) : null;
         }));
 
-        // class_3963.as (base of the share and import add-ons): [text connectors, subvariable creators, variable FX], each 0/1.
+        // Base of the share and import add-ons: [text connectors, subvariable creators, variable FX], each 0/1.
         // The flags and the string are put in their stored form first (see StoredForm).
         foreach (var name in new[] { "wf_xtra_var_share", "wf_xtra_var_import" }) {
             yield return new(name, new(Meta(0, 0, [1, 1, 1]), n =>
                 n.FurniSourceTypes.Length == 0 && n.UserSourceTypes.Length == 0 && n.VariableIds.Length == 0 ? Draft(n, n.OwnedIntParams) : null));
         }
 
-        // VariableLeaderboardConfigCodec.as:182-222: 19 ints, 12 variable ids, 17 TAB-joined fields (empty while unpublished).
+        // 19 ints, 12 variable ids, 17 TAB-joined fields (empty while unpublished).
         yield return new("wf_xtra_var_leaderboard", new(Meta(0, 0, WiredLeaderboardConfig.DefaultInts) with
         {
             VariableDefaults = [.. Enumerable.Repeat(WiredLeaderboardConfig.NoVariable, WiredLeaderboardConfig.VariableCount)]
         }, n => n.FurniSourceTypes.Length == 0 && n.UserSourceTypes.Length == 0
             && WiredLeaderboardConfig.Decode(n.OwnedIntParams, n.VariableIds, n.Text) is not null
                 ? Draft(n, n.OwnedIntParams, WiredLeaderboardConfig.Normalize(n.Text, n.OwnedIntParams)) : null));
-        // GlobalPlaceholderAddon.as:155 [mode (0 custom text, 1 room), 0, room index]; :160 placeholder name TAB text.
+        // [mode (0 custom text, 1 room), 0, room index]; placeholder name TAB text.
         yield return new("wf_xtra_global_placeholder", new(Meta(0, 0, [0, 0, 0]), n =>
         {
             var p = n.OwnedIntParams;
@@ -159,10 +157,10 @@ internal static partial class WiredNativeAuxiliaryEditor
                 && (n.Text.Length == 0 || WiredLinkDataframeCodec.IsPlaceholder(parts[0]) && (parts.Length == 1 || parts[1].Length <= 1000))
                 ? Draft(n, p, n.Text) : null;
         }));
-        // class_4012.as:27 one achievement per line, at most 2000 characters.
+        // The text: one achievement per line, at most 2000 characters.
         yield return new("wf_xtra_achievement_enabler", new(Meta(0, 0, []), n => Shape(n, 0, 0, 0, 0) && n.Text.Length <= 2000
             ? Draft(n, [], n.Text) : null));
-        // VariablesWebApiAddon.as:108 read key TAB write key; :113 [bulk delete], only with a write key. Keys are the server's own.
+        // The text: read key TAB write key. The int: [bulk delete], only with a write key. Keys are the server's own.
         yield return new("wf_xtra_var_web_api", new(Meta(0, 0, [0]), n =>
         {
             var parts = n.Text.Split('\t');
@@ -171,18 +169,18 @@ internal static partial class WiredNativeAuxiliaryEditor
                 && parts.All(key => key.Length == 0 || WiredWebApiKeyFormat.IsKey(key)))
                 && (n.OwnedIntParams[0] == 0 || parts.Length == 2 && parts[1].Length > 0) ? Draft(n, n.OwnedIntParams, n.Text) : null;
         }));
-        // class_4123.as:43 [message, dataframe]; the speaker always picks furni (forceFurniSelection).
+        // [message, dataframe]; the speaker always picks furni (forceFurniSelection).
         yield return new("wf_xtra_link_speaker", new(Sources([TargetFurni], [], [1, 1]) with { FurniDefaults = [100] }, n =>
             Shape(n, 2, 1, 0, 0) && n.Text.Length == 0 && n.OwnedIntParams.All(flag => flag is 0 or 1)
                 ? Roles(Draft(n, n.OwnedIntParams), [("speakers", n.FurniSourceTypes[0])], []) : null));
-        // DailyTaskVariable.as: variable name TAB task text (at most 100); no ints or variables.
+        // The text: variable name TAB task text (at most 100). No ints or variables.
         yield return new("wf_var_dailytask", new(Meta(0, 0, []), n =>
         {
             var parts = n.Text.Split('\t');
 
             return Shape(n, 0, 0, 0, 0) && parts.Length <= 2 && (parts.Length == 1 || parts[1].Length <= 100) ? Draft(n, [], n.Text) : null;
         }));
-        // PointerVariable.as: [source type (0 furni, 1 user, -10 global, -20 context)], the accessor (a context variable) and the name.
+        // [source type (0 furni, 1 user, -10 global, -20 context)], the accessor (a context variable) and the name.
         // The ints and the name are put in their stored form first (see StoredForm). The accessor is checked against the room's variables
         // when the box validates the save.
         yield return new("wf_var_pointer", new(Meta(0, 0, [1], 1), n =>
@@ -190,7 +188,7 @@ internal static partial class WiredNativeAuxiliaryEditor
     }
 
     /// <summary>
-    /// The form a save is stored in, and the form the editor opens on again. Observed on AIR WIN63-202610201032-107964540:
+    /// The form a save is stored in, and the form the editor opens on again.
     /// <list type="bullet">
     /// <item>Share and Import: any non-zero flag is stored as 1, a missing flag stays on, a fourth int is dropped and a string is accepted
     /// and not kept.</item>
@@ -217,11 +215,11 @@ internal static partial class WiredNativeAuxiliaryEditor
                     VariableIds = native.VariableIds.IsEmpty ? [Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId] : native.VariableIds,
                     Text = native.Text.Replace(' ', '_')
                 };
-            // Observed on AIR WIN63-202610201032-107964540: these cards keep any number in a variable slot and any other text as "0".
+            // These cards keep any number in a variable slot and any other text as "0".
             case "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var":
                 return native with { VariableIds = [.. native.VariableIds.Select(Plus.HabboHotel.Items.Wired.Variables.WiredVariableDescription.StoredId)] };
-            // Observed on AIR WIN63-202610201032-107964540: Variable Age keeps any number in its variable slot, and Variable Changed does too
-            // while it watches one variable (not the picked variable boxes), and any other text becomes "0". The duration variable was not probed.
+            // Variable Age keeps any number in its variable slot, and Variable Changed does too
+            // while it watches one variable (not the picked variable boxes), and any other text becomes "0".
             case "wf_cnd_var_age_match" when native.VariableIds.Length > 0:
                 return native with { VariableIds = [Plus.HabboHotel.Items.Wired.Variables.WiredVariableDescription.StoredId(native.VariableIds[0]), .. native.VariableIds.Skip(1)] };
             case "wf_trg_var_changed" when native.VariableIds.Length == 1 && (native.OwnedIntParams.Length != 6 || native.OwnedIntParams[5] == 0):

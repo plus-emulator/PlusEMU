@@ -9,9 +9,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: the editor of a user, furni or room variable box ends with one Wired context entry that
-// holds the box's variable. A user or furni variable lists each holder in the room with its value (VariableInfoAndHolders.as), a room
-// variable its value (VariableInfoAndValue.as). A context variable box has no entry. Holders come in no fixed order.
+// The editor of a user, furni or room variable box ends with one Wired context entry that holds the box's variable. A user or furni variable lists each holder in the room with its value, a room variable its value. A context variable box has no entry. Holders come in no fixed order.
 public partial class PlacedFurniRoomTests
 {
     private const uint EditedUser = 861, EditedNoValue = 862, EditedFurni = 863, EditedRoom = 864, EditedContext = 865;
@@ -141,7 +139,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal($"{body[0]} saved", $"{body[0]} {SaveAnswer()}");
     }
 
-    // The raw WIRED_OPEN packet, then the context list of the variable editor frame read the way AIR reads it (class_2426.as).
+    // The raw WIRED_OPEN packet, then the context list of the variable editor frame.
     private async Task<EditorContextEntry[]> OpenVariableEditor(uint id)
     {
         _client.Packets.Clear();
@@ -204,7 +202,7 @@ public partial class PlacedFurniRoomTests
         return holders;
     }
 
-    // package_223/WiredVariable.as: id, type, name, availability, target, nine flags, then the optional text connector.
+    // Variable: id, type, name, availability, target, nine flags, then the optional text connector.
     private static EditorVariable ReadEditorVariable(FlashIncomingPacket frame)
     {
         var id = frame.ReadString();

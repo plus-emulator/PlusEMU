@@ -10,8 +10,8 @@ public sealed class WiredSelectorRoomState
 
     /// <summary>
     /// How long Users Performing Action still selects a user after an action, or null for an action it never remembers, which also
-    /// leaves the earlier action in place. Observed on AIR WIN63-202610201032-107964540: a wave is selected until 5 s after it and
-    /// respect 2 s but not 3 s after it; a blow, a laugh and a dance that has stopped are not selected.
+    /// leaves the earlier action in place. A wave is selected until 5 s after it and respect 2 s but not 3 s after it;
+    /// a blow, a laugh and a dance that has stopped are not selected.
     /// </summary>
     public static int? RememberedMilliseconds(int action) => (WiredAvatarAction)action switch
     {

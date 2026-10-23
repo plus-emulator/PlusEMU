@@ -12,9 +12,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: a says-something trigger, a Variable Value Match and a Toggle State on a colour tile.
-// A Value Match saved with no variable, or with option 1 and no reference variable, is accepted, reopens with an empty slot as "0"
-// and blocks when fired. A Toggle State saved with no ints reopens with ints [0] and toggles its pick.
+// A says-something trigger, a Variable Value Match and a Toggle State on a colour tile. A Value Match saved with no variable, or
+// with option 1 and no reference variable, is accepted, reopens with an empty slot as "0" and blocks when fired. A Toggle State
+// saved with no ints reopens with ints [0] and toggles its pick.
 public sealed partial class WiredGlideConveyorTests
 {
     private const uint MatchTarget = 71, MatchState = 72, MatchSay = 73, MatchCondition = 74, MatchToggle = 75;

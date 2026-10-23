@@ -44,15 +44,13 @@ public interface IBuildersClubService
 
 /// <summary>
 /// Builders Club furni are placed straight from the BUILDERS_CLUB catalogue into a room and count against the placer's furni
-/// limit. The rules mirror AIR's HabboCatalog.getBuilderFurniPlaceableStatus (WIN63-202610151745-318700621,
-/// com/sulake/habbo/catalog/HabboCatalog.as:2842-2889): the count must be under the limit, the placer must own the room or
+/// limit. The rules mirror the client's own placeable check: the count must be under the limit, the placer must own the room or
 /// control it as a group admin (room controller level 3 or more), and without a membership (the trial) nobody else may be in
 /// the room.
 /// </summary>
 public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubStore store, ISettingsManager settings, IGameClientManager clients,
     TimeProvider clock, ILogger<BuildersClubService> logger) : IBuildersClubService
 {
-    // Observed on hhus at login for a member: furni limit 500, max furni limit 2000000.
     public const int DefaultMemberFurniLimit = 500;
     public const int DefaultTrialFurniLimit = 50;
     public const int DefaultMaxFurniLimit = 2_000_000;
@@ -109,7 +107,7 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         bool placed;
 
         try {
-            // Observed on AIR WIN63-202610201032-107964540: the count that includes the new furni comes before its ObjectAdd. The
+            // The count that includes the new furni comes before its ObjectAdd. The
             // stored row counts only once the room saves its position, after ObjectAdd, so the new furni is added here.
             var count = new BuildersClubFurniCountComposer(store.FurniCount(item.UserId) + 1);
             placed = room.GetRoomItemHandler().SetFloorItem(session, item, x, y, rotation, true, false, true, announcing: () => session.Send(count));
@@ -186,8 +184,8 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
 
         var placer = clients.GetClientByUserId(item.UserId) is { } client && client.GetHabbo() != null ? client : null;
 
-        // Observed on AIR WIN63-202610201032-107964540: the placer's new furni count comes before the floor furni's ObjectRemove, so
-        // it is read before the stored row goes. No capture shows the order for wall furni, so they keep sending it after ItemRemove.
+        // The placer's new furni count comes before the floor furni's ObjectRemove, so
+        // it is read before the stored row goes. Wall furni keep sending it after ItemRemove.
         lock (item) {
             if (!ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item)) {
                 return false;
@@ -256,8 +254,7 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
             return null;
         }
 
-        // Without a membership (or its grace) Builders Club furni hide the room, which the client confirms first
-        // (room.confirm.hide_room, AIR WIN63-202610151745-318700621 com/sulake/habbo/room/class_2005.as:366-397).
+        // Without a membership (or its grace) Builders Club furni hide the room, which the client confirms first (room.confirm.hide_room).
         if (status.SecondsLeftWithGrace <= 0 && !confirmed && !HidesRoom(room)) {
             session.Send(warning());
 
@@ -327,11 +324,9 @@ public sealed class BuildersClubService(ICatalogManager catalog, IBuildersClubSt
         or InteractionType.MusicDisc or InteractionType.Jukebox or InteractionType.CameraPicture or InteractionType.Mannequin
         or InteractionType.WiredChestFurni or InteractionType.WiredChestCoins);
 
-    // A recolorable starts in the colour the catalogue's palette chose (RecolorableFurnitureCatalogWidget). A poster takes its number
-    // from the offer and ignores the client's: observed for one poster offer on AIR WIN63-202610201032-107964540 (client "" and "53"
-    // both gave the offer's "52"); other poster offers are assumed to work the same. Nothing else takes a parameter.
-    // A wall item with more than one state starts at "0": observed on the same build for cine_light1 and 12 other default wall items
-    // (2 to 9 states); two single-state items start empty. A normal (non Builders Club) purchase of such an item was not observed, so it
+    // A recolorable starts in the colour the catalogue's palette chose. A poster takes its number
+    // from the offer and ignores the client's. Nothing else takes a parameter.
+    // A wall item with more than one state starts at "0". A normal (non Builders Club) purchase of such an item
     // still starts at "".
     private static string ExtraData(ItemDefinition definition, string productParam, string clientParam) => definition switch
     {

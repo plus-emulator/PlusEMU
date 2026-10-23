@@ -9,9 +9,9 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: Toggle State changes colour tiles and other state furni, but never a floor
-    // switch, an antenna or a few game tiles. It also toggles every Wired box in its list, whatever the box type, and the box
-    // shows the change as its normal flash (a box that flashes in the same tick still shows one change).
+    // Toggle State changes colour tiles and other state furni, but never a floor switch, an antenna or a few game tiles. It also
+    // toggles every Wired box in its list, whatever the box type, and the box shows the change as its normal flash (a box that
+    // flashes in the same tick still shows one change).
     [Fact]
     public void ToggleStateSkipsSwitchesAndAntennasAndTogglesEveryWiredBox()
     {
@@ -71,8 +71,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal("1", f.Items[say].LegacyDataString);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the boxes of the stack that is running flash, and Toggle State then flips them again,
-    // so a box in its own list ends in the toggled state, not in the flash state.
+    // The boxes of the stack that is running flash, and Toggle State then flips them again, so a box in its own list ends in the
+    // toggled state, not in the flash state.
     [Fact]
     public void ToggleStateFlipsTheBoxesOfItsOwnStackAfterTheirFlash()
     {

@@ -37,7 +37,7 @@ public abstract record FurnitureDataSnapshot(FurniDataStructure Structure)
 public static class FurnitureWireData
 {
     /// <summary>
-    /// The data an ObjectDataUpdate carries for a state: legacy for ordinary furni, the full map for a recolorable, whose AIR
+    /// The data an ObjectDataUpdate carries for a state: legacy for ordinary furni, the full map for a recolorable, whose client
     /// logic paints legacy data white.
     /// </summary>
     public static FurnitureDataSnapshot ForState(IFurniObjectData data, string state) => data is RecolorableDataFormat recolorable
@@ -69,13 +69,11 @@ public sealed record RoomItemSnapshot(
             ? item.GetRoom()?.FindGuildAppearance(item.GroupId)
             : null;
 
-    // AIR usage policy: 0 nobody, 1 room controllers, 2 everybody. Wired boxes are always used (their editor opened) by
-    // those with rights, whatever states their furni definition declares. Observed on AIR WIN63-202610151745-318700621: a fridge
-    // (vending machine) and Floor Switch are usable by anyone, a football score board by nobody, and a game counter and a
-    // one-state recolorable block by room controllers.
+    // Usage policy: 0 nobody, 1 room controllers, 2 everybody. Wired boxes are always used (their editor opened) by
+    // those with rights, whatever states their furni definition declares.
     private static int UsagePolicy(ItemDefinition definition) => definition.WiredDescriptor != null ? 1 : IsNeverUsed(definition) ? 0 : definition.InteractionType switch
     {
-        // The other score board colours and Floor Switch 2 share the observed furni's server behaviour.
+        // The other score board colours and Floor Switch 2 follow the same rule.
         InteractionType.VendingMachine or InteractionType.WfFloorSwitch1 or InteractionType.WfFloorSwitch2 => 2,
         InteractionType.Footballcounterred or InteractionType.Footballcounterblue or InteractionType.Footballcountergreen
             or InteractionType.Footballcounteryellow => 0,
@@ -101,7 +99,7 @@ public sealed record RoomItemSnapshot(
         var type = definition.InteractionType;
         var z = item.GetZ;
         var legacy = item.LegacyDataString;
-        // Observed on AIR WIN63-202610151745-318700621: plain floor items carry extra 0.
+        // Plain floor items carry extra 0.
         var extra = 0;
 
         if (type == InteractionType.WalkMagicTile) {
@@ -118,7 +116,7 @@ public sealed record RoomItemSnapshot(
             }
         }
 
-        // AIR's FurnitureGuildCustomizedLogic reads StringArray [state, groupId, badge, colour1, colour2]; it draws the badge
+        // The client reads StringArray [state, groupId, badge, colour1, colour2]; it draws the badge
         // and colours and links the forum terminal to groupforum/<groupId>. Without its group the stored data stays.
         FurnitureDataSnapshot? guildData = guild == null ? null
             : new FurnitureDataSnapshot.Strings([legacy, guild.GroupId.ToString(CultureInfo.InvariantCulture), guild.Badge, guild.Colour1, guild.Colour2]);

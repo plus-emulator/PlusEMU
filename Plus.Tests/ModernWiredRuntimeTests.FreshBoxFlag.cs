@@ -6,8 +6,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: the last int of a move_rotate or match_to_sshot frame is 1 only while the box was never
-// saved. Any accepted save reopens it as 0, whatever was saved, and the int the client sends is ignored.
+// The last int of a move_rotate or match_to_sshot frame is 1 only while the box was never saved. Any accepted save reopens it as 0, and the int the client sends is ignored.
 public partial class ModernWiredRuntimeTests
 {
     private static async Task<int[]> SaveAndReopen(MovementOracleSession f, int[] ints, int source = 100, int[]? picks = null)

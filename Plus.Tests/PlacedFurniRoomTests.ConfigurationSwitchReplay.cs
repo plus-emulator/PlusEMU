@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: the room flag furni (Invisible Furni Controller, :chooser disabler, hand item blocker).
+// The room flag furni are the Invisible Furni Controller, the :chooser disabler and the hand item blocker.
 public partial class PlacedFurniRoomTests
 {
     // The way the Toggle State action writes a furni state.
@@ -54,8 +54,7 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(StatesPackets());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: using the wired disabler sends one ObjectDataUpdate with the new state, no
-    // ObjectUpdate and no room flags.
+    // Using the wired disabler sends one ObjectDataUpdate with the new state, no ObjectUpdate and no room flags.
     [Theory]
     [InlineData(false, "1")]
     [InlineData(true, "0")]
@@ -71,8 +70,8 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(StatesPackets());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: using a flag furni sends one ObjectDataUpdate with the new state and then the
-    // room flags, no ObjectUpdate. The chooser disabler sends the data update too.
+    // Using a flag furni sends one ObjectDataUpdate with the new state and then the room flags, no ObjectUpdate. The chooser
+    // disabler sends the data update too.
     [Theory]
     [InlineData(InteractionType.HandItemBlocker, false, "1", new byte[] { 1, 0, 0, 0, 0 })]
     [InlineData(InteractionType.HandItemBlocker, true, "0", new byte[] { 0, 0, 0, 0, 0 })]

@@ -9,8 +9,8 @@ public sealed class RoomEventComposer(RoomEventSnapshot data) : IServerPacket
 
     public void Compose(IOutgoingPacket packet)
     {
-        // package_52/class_3609: ad id, owner id, owner name, flat id, event type, name, description, minutes since creation, minutes
-        // left, category. Observed on AIR WIN63-202610151745-318700621: a room without an event sends -1 for the ids, type and category.
+        // Ad id, owner id, owner name, flat id, event type, name, description, minutes since creation, minutes left, category.
+        // A room without an event sends -1 for the ids, type and category.
         packet.WriteInteger(data.RoomId);
         packet.WriteInteger(data.OwnerId);
         packet.WriteString(data.OwnerName);

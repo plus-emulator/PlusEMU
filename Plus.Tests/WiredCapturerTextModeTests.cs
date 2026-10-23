@@ -4,7 +4,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// A capturer in text mode over a variable with a Text Connector. Observed on AIR WIN63-202610201032-107964540: only a word that is a label
+/// A capturer in text mode over a variable with a Text Connector. Only a word that is a label
 /// of the connector is captured, whatever the connector holds. A number is never read, an empty connector captures nothing, and the "_="
 /// fallback line is not a label: neither its text nor "_" is captured.
 /// </summary>

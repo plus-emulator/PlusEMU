@@ -485,8 +485,7 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
     {
         outcome.Data?.NotifyDataUpdated();
 
-        // Observed on AIR WIN63-202610151745-318700621: a gate Toggle State write goes out in the tick's data batch with
-        // the box flashes, like any other wired state write, not as a full object update.
+        // A gate Toggle State write goes out in the tick's data batch with the box flashes, like any other wired state write, not as a full object update.
         if (reason == GateCloseReason.Wired) {
             room.GetWired().PublishState(item, persist);
         }

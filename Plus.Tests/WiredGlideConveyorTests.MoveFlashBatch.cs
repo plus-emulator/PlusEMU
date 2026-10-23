@@ -10,8 +10,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610151745-318700621 (projectile moved by a stack, move and rotate): a stack that moves furni flashes its
-    // trigger, its add-on and the moving effect in one ObjectsDataUpdate, before the WiredMovements packet.
+    // A stack that moves furni flashes its trigger, its add-on and the moving effect in one ObjectsDataUpdate, before the
+    // WiredMovements packet.
     [Fact]
     public void AMovingStackFlashesItsTriggerAddonAndEffectInOneBatch()
     {

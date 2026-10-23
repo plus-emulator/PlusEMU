@@ -17,8 +17,8 @@ public interface IMarketplaceFeePolicy
     int Fee(int price);
 }
 
-// The official marketplace window shows the seller `price - ceil(round(1000 * price * (sellingFeePercentage / 100 + 0.5 * price / halfTaxLimit)) / 1000)` for the price typed
-// (MarketplaceView.calculateFinalPrice, WIN63-202609161723); the same numbers are sent in the marketplace configuration and used here, so both sides agree.
+// The marketplace window shows the seller `price - ceil(round(1000 * price * (sellingFeePercentage / 100 + 0.5 * price / halfTaxLimit)) / 1000)` for the price typed.
+// The same numbers are sent in the marketplace configuration and used here, so both sides agree.
 // Settings (all optional): catalog.marketplace.fee.percentage (1), catalog.marketplace.fee.half_tax_limit (int.MaxValue, i.e. practically flat), catalog.marketplace.fee.revenue_limit (0).
 public sealed class MarketplaceFeePolicy(ISettingsManager settings) : IMarketplaceFeePolicy
 {

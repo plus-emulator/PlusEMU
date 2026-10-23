@@ -6,7 +6,6 @@ using Xunit;
 namespace Plus.Tests;
 
 // Saves of Set Furni Highlight and Set Furni Visibility, answered the way Habbo answers them.
-// Observed on AIR WIN63-202610201032-107964540.
 public partial class ModernWiredRuntimeTests
 {
     private const string Highlight = "wf_act_set_highlight";

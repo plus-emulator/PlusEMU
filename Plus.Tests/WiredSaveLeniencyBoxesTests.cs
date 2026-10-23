@@ -3,7 +3,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // Condition, trigger, action and add-on saves as Habbo stores them: odd values are reset or clamped, missing values take the frame
-// default, and extra values are dropped. Observed on AIR WIN63-202610201032-107964540.
+// default, and extra values are dropped.
 public sealed class WiredSaveLeniencyBoxesTests
 {
     [Theory]

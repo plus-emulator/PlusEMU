@@ -32,8 +32,7 @@ public static class WiredItemConditions
     {
         var subjects = items.ToArray();
 
-        // Observed on AIR WIN63-202610131318-860371703: "Furnis have avatars" passes on an empty selection under both "all" and "any"
-        // (unlike "Furni has furni on", which fails).
+        // "Furnis have avatars" passes on an empty selection under both "all" and "any" (unlike "Furni has furni on", which fails).
         return subjects.Length == 0 || WiredRoomOperations.Quantify(subjects.Select(item => roomAvatars.Any(avatar =>
             WiredRoomOperations.IsStandingOn(avatar, item))), Param(config, 0) == 1 ? 0 : 1);
     }
@@ -64,7 +63,7 @@ public static class WiredItemConditions
         var targetHundredths = (long)Math.Round(target * 100, MidpointRounding.AwayFromZero);
         var comparison = Param(config, 0, 1);
 
-        // Observed on AIR WIN63-202610201032-107964540: a stored comparison of 3 passes when the altitude is at most the value.
+        // A stored comparison of 3 passes when the altitude is at most the value.
         return WiredRoomOperations.Quantify(items.Select(item =>
         {
             var altitude = (long)Math.Round(item.GetZ * 100, MidpointRounding.AwayFromZero);
@@ -75,7 +74,7 @@ public static class WiredItemConditions
 
     /// <summary>
     /// Legacy rule for rows that still pick furniture: each item needs a valid cardinal neighbour. The hotel editor has no furni
-    /// source; the native condition checks the stack's own planned moves instead (WiredModernCondition, observed r92k r92h-vm-fail).
+    /// source; the native condition checks the stack's own planned moves instead (WiredModernCondition).
     /// </summary>
     public static bool ValidMoves(IEnumerable<Item> items, Func<Item, int, int, bool> canMove) =>
         WiredRoomOperations.Quantify(items.Select(item => Enumerable.Range(0, 4).Any(index =>
@@ -90,8 +89,7 @@ public static class WiredItemConditions
         var count = Param(config, 2) == 0 ? avatarCount : furniCount;
         var amount = Param(config, 1);
 
-        // Observed on AIR WIN63-202610201032-107964540: a stored comparison of 3 passes when the count is at most the amount and a
-        // stored comparison of 4 passes when it differs from the amount.
+        // A stored comparison of 3 passes when the count is at most the amount and a stored comparison of 4 passes when it differs from the amount.
         return Param(config, 0, 1) switch
         {
             3 => count <= amount,

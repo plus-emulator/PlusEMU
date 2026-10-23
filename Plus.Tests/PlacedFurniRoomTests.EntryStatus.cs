@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: a plain room entry receives the entering user's status once, from the room tick.
+// A plain room entry sends the entering user's status once, from the room tick.
 public partial class PlacedFurniRoomTests
 {
     [Fact]

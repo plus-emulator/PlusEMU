@@ -7,8 +7,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610151745-318700621 (r97_group_furni_clk): picks (6,12) then (7,12) moved east as a group are listed in
-    // that order in one WiredMovements, though the leading (7,12) member lands first.
+    // Picks (6,12) then (7,12) moved east as a group are listed in that order in one WiredMovements, though the leading (7,12)
+    // member lands first.
     [Fact]
     public void AGroupMoveListsItsMembersInPickOrder()
     {

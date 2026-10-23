@@ -162,7 +162,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(WiredNativeEditorProjection.TryValidatePicks(box.Item, box.Descriptor, missingPick, out _));
         var wrongKind = box.Configuration.Origin.Native with { PrimaryItems = [new(timer.Id, true)] };
         Assert.False(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor, wrongKind, out _));
-        // Observed on AIR WIN63-202610151745-318700621: an operation the editor does not offer saves.
+        // An operation the editor does not offer saves.
         Assert.True(WiredNativeEditorProjection.TryCompile(box.Item.Id, box.Descriptor,
             box.Configuration.Origin.Native with { OwnedIntParams = [5] }, out _));
     }

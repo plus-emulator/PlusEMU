@@ -6,7 +6,7 @@ using static Plus.Tests.WiredSelectorTests;
 
 namespace Plus.Tests;
 
-// Official hhus WIN63-202610131318 batches r80-var-01/02/03: the saved native shapes and the behaviour the windows showed.
+// The saved native shapes of the variable cards and how they behave.
 public sealed class WiredObservedR82VariableTests
 {
     private const uint Marker = 7;
@@ -29,7 +29,7 @@ public sealed class WiredObservedR82VariableTests
             return picks == null ? edited : edited with { PrimaryItems = [.. picks.Select(id => new WiredNativeItemReference(id, false))] };
         });
 
-    // The saved native ints and ids of every r80 variable card are accepted by the editor.
+    // The saved native ints and ids of every variable card are accepted by the editor.
     [Fact]
     public void EveryObservedVariableSaveIsAccepted()
     {
@@ -63,7 +63,7 @@ public sealed class WiredObservedR82VariableTests
         return (new WiredVariableModule(1, new Directory(), new MemoryWiredVariableStore(), clock), frame, furni, user);
     }
 
-    // Official: give (create), change (assign 7) and remove each fired the Variable Changed stack saved [1,1,1,7,-1,0].
+    // Give (create), change (assign 7) and remove each fire the Variable Changed stack saved [1,1,1,7,-1,0].
     [Fact]
     public void VariableChangedFiresForCreateChangeAndDelete()
     {
@@ -79,7 +79,7 @@ public sealed class WiredObservedR82VariableTests
         Assert.True(WiredVariableChangedTrigger.Matches(trigger, Assert.Single(module.DrainChanges())));
     }
 
-    // Official: right after the give, "younger than 600 s" passed and "older than 600 s" did not; before the give both failed.
+    // Right after the give, "younger than 600 s" passes and "older than 600 s" does not; before the give both fail.
     [Fact]
     public void VariableAgeMatchesAFreshlyGivenVariableOnlyAsYounger()
     {
@@ -95,7 +95,7 @@ public sealed class WiredObservedR82VariableTests
         Assert.False(executors.Execute("wf_cnd_var_age_match", older, frame));
     }
 
-    // A write that leaves the value as it was is not a value change (r97_definer_same).
+    // A write that leaves the value as it was is not a value change.
     [Fact]
     public void OnlyWritesThatMoveTheValueCountAsValueChanges()
     {
@@ -109,7 +109,7 @@ public sealed class WiredObservedR82VariableTests
         Assert.Equal(afterGive + 1, module.ValueChanges);
     }
 
-    // Official: a user variable without a value, given to the own user, was selected by With Variable (the teleport followed).
+    // A user variable without a value, given to the own user, is selected by With Variable.
     [Fact]
     public void UserSelectorFindsAValuelessUserVariableAfterTheGive()
     {
@@ -126,7 +126,7 @@ public sealed class WiredObservedR82VariableTests
         Assert.Equal([4], WiredSelectorModule.SelectRaw("wf_slc_users_with_var", config, World(), inputsAfter).Selection.UserIds);
     }
 
-    // Official: Filter Users By Variable (default 10, highest first) on a valueless variable dropped the own user (no teleport followed).
+    // Filter Users By Variable (default 10, highest first) on a valueless variable drops the own user.
     [Fact]
     public void FilterByVariableKeepsNoHolderOfAValuelessVariable()
     {
@@ -137,7 +137,7 @@ public sealed class WiredObservedR82VariableTests
         Assert.Empty(WiredVariablePredicates.Filter(module, reference, [user], frame, 0, 10));
     }
 
-    // Official initial editor frames (receipts initial_editor): source options, defaults, wall flag and owned defaults of every card.
+    // Initial editor frames: source options, defaults, wall flag and owned defaults of every card.
     [Theory]
     [InlineData("wf_act_give_var", "0,100,101,200,201;0,100,101,200,201", "0,200,201;0,200,201", "0,200", "0,200", true, "1,0,0,0,0,-10,0")]
     [InlineData("wf_act_change_var_val", "0,100,101,200,201;0,100,101,200,201", "0,200,201;0,200,201", "0,200", "0,200", true, "1,0,0,0,0,-10,0")]
@@ -188,7 +188,7 @@ public sealed class WiredObservedR82VariableTests
         var (module, frame, furni, user) = Vars(TimeProvider.System);
         var executors = new WiredVariableExecutors(module, TimeProvider.System);
         Assert.True(module.Mutate(new(WiredVariableTarget.Furni, "custom:10"), furni, WiredVariableMutation.Give, 42, frame));
-        // AIR targets: 1 user, 0 furni. Destination: the triggering user (0); reference: the selector pool (200).
+        // Editor targets: 1 user, 0 furni. Destination: the triggering user (0); reference: the selector pool (200).
         var give = Compile("wf_act_give_var", [1, 0, 0, 0, 1, 0, 0], ["user:12", "furni:10"], [0, 200], [0, 200]);
         Assert.Equal(10, give.IntParams.Length);
 

@@ -20,26 +20,23 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
     }
 
     /// <summary>
-    /// Observed on hhus (AIR WIN63-202610131318-860371703): Give Variable and Change Variable Value save with no destination variable
-    /// picked (the picker's "n"/"0"), with every other field checked as usual. Observed on AIR WIN63-202610201032-107964540: so does Remove
-    /// Variable. Such a box changes nothing until a variable is chosen; execution still requires a resolved destination.
+    /// Give Variable, Change Variable Value and Remove Variable save with no destination variable picked (the picker's "n"/"0"), with every other field checked as usual.
+    /// Such a box changes nothing until a variable is chosen; execution still requires a resolved destination.
     /// </summary>
     private static bool UnchosenDestination(string name, WiredConfiguration configuration) =>
         name is "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var" or "wf_cnd_var_age_match" && configuration.VariableIds.Length > 0
         && WiredVariableAbsent.Is(configuration.VariableIds[0]);
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: Give Variable, Change Variable Value and Remove Variable save on any id the editor sends
-    /// (all 162 built-in ids, a number that names no variable, an id of another kind than the target), and store it as described on
-    /// WiredVariableDescription.StoredId. A box whose id names no variable of its target's kind changes nothing, like a slot with no variable
-    /// picked. Variable Age does the same with its variable (the first slot); the slot of the duration variable was not probed with such ids.
+    /// Give Variable, Change Variable Value and Remove Variable save on any id the editor sends (all built-in ids, a number that names no variable, an id of another kind than the target),
+    /// and store it as described on WiredVariableDescription.StoredId. A box whose id names no variable of its target's kind changes nothing, like a slot with no variable picked.
+    /// Variable Age does the same with its variable (the first slot).
     /// </summary>
     private static bool SavesAnyVariableId(string name, int slot = 0) =>
         name is "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var" || slot == 0 && name == "wf_cnd_var_age_match";
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: Has Variable and Not Has Variable save with no variable, or with a variable of another
-    /// domain than their target, and read it as no variable: the first never passes and the second always does.
+    /// Has Variable and Not Has Variable save with no variable, or with a variable of another domain than their target, and read it as no variable: the first never passes and the second always does.
     /// </summary>
     private static bool ReadsPresence(string name) => name is "wf_cnd_has_var" or "wf_cnd_neg_has_var";
 
@@ -171,21 +168,15 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: Give Variable, Change Variable Value and Remove Variable save with a variable of another
-        // domain than their target (a furni variable on a user target) and then change nothing, like a box with no variable picked.
+        // Give Variable, Change Variable Value and Remove Variable save with a variable of another domain than their target (a furni variable on a user target) and then change nothing, like a box with no variable picked.
         unchosenDestination |= SavesAnyVariableId(name) && tokens[0].Length == 0;
-        // Observed on AIR WIN63-202610201032-107964540: Variable Value Match saves with no variable, or with option 1 and no reference
-        // variable, and then never passes. Observed with option 1 and only the reference empty, only the left variable empty, or both
-        // empty, and with same holder on and either slot empty (furni target only). Other empty-slot shapes are assumed to save the
-        // same; they still never pass.
+        // Variable Value Match saves with no variable, or with option 1 and no reference variable, and then never passes. Other empty-slot shapes save the same and also never pass.
         var valueMatch = name == "wf_cnd_var_val_match";
         unchosenDestination |= valueMatch && tokens[0].Length == 0;
 
-        // Same holder reads the reference on each destination holder. Observed on AIR WIN63-202610201032-107964540: it saves for every pair
-        // of destination and reference kind with a variable, and with a value or an empty reference slot on a furni, user or global destination.
-        // Give Variable and Change Variable Value also save with an empty or unresolved slot and the variable option on, same holder on or off; the
-        // box then changes nothing. A furni or user destination with same holder on takes a value, and a reference of its own kind from its own
-        // holder, and nothing from a reference of the other kind.
+        // Same holder reads the reference on each destination holder. It saves for every pair of destination and reference kind with a variable, and with a value or an empty reference slot on a furni, user or global destination.
+        // Give Variable and Change Variable Value also save with an empty or unresolved slot and the variable option on, same holder on or off; the box then changes nothing.
+        // A furni or user destination with same holder on takes a value, and a reference of its own kind from its own holder, and nothing from a reference of the other kind.
         var sameIndex = name switch
         {
             "wf_act_give_var" when p.Length is GiveExtended or GiveReferenced => 7,
@@ -229,7 +220,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: Not Has Variable stores a quantifier of 2.
+        // Not Has Variable stores a quantifier of 2.
         if (name.StartsWith("wf_cnd_", StringComparison.Ordinal) && p[^1] is not (0 or 1) && !(name == "wf_cnd_neg_has_var" && p[^1] == 2)) {
             return false;
         }
@@ -243,7 +234,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             _ => [1, 2]
         };
 
-        // Observed on AIR WIN63-202610201032-107964540: Has Variable and Not Has Variable store the trigger user source 10 in the user slot.
+        // Has Variable and Not Has Variable store the trigger user source 10 in the user slot.
         if (sourceIndices.Any(i => p[i] is not (0 or 11 or 100 or 101 or 200 or 201) && !(ReadsPresence(name) && i == 1 && p[i] == 10))) {
             return false;
         }
@@ -288,10 +279,8 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             _ => null
         };
 
-        // Observed on AIR WIN63-202610201032-107964540: Give Variable and Change Variable never read a pointer as their value, so the
-        // destination keeps its value. A box that runs after a delay reads it like the variable it points at, and writes through a
-        // destination pointer on the pointed variable. Observed with a delay: reads of user, global and context pointers, Give, Change and
-        // Remove through a user pointer, and Change through a furni, global and context pointer.
+        // Give Variable and Change Variable never read a pointer as their value, so the destination keeps its value. A box that runs after a delay reads it like the variable it points at,
+        // and writes through a destination pointer on the pointed variable.
         if (configuration.Delay > 0) {
             if (variables.Unpoint(reference, frame) is not { } pointed) {
                 return false;
@@ -303,8 +292,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
-        // A global variable always exists: Give Variable on one changes nothing (observed on hhus: = 0 still passed after giving 7), and
-        // Remove Variable leaves its value (observed on hhus: 3 before the remove, 6 after another +3).
+        // A global variable always exists: Give Variable on one changes nothing, and Remove Variable leaves its value.
         if (name is "wf_act_give_var" or "wf_act_remove_var" && reference.Target == WiredVariableTarget.Global) {
             return false;
         }
@@ -395,9 +383,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
                     return false;
                 }
 
-                // A global has no readable creation time (its catalogue row lists canReadCreationTime false). Observed on AIR
-                // WIN63-202610151745-318700621 (wf_cnd_var_age_match.pass_fail): "created less than 60 s ago" fails for a global placed
-                // seconds earlier.
+                // A global has no readable creation time (its catalogue row lists canReadCreationTime false): "created less than 60 s ago" fails for a global placed seconds earlier.
                 var timestamp = p[1] == 1 ? current.UpdatedAt : reference.Target == WiredVariableTarget.Global ? null : current.CreatedAt;
 
                 if (timestamp is null) {
@@ -452,8 +438,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
                 && WiredVariablePredicates.Compare(p[1], value.Value, operand)), p[^1]);
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: with several furni reference holders each furni destination gets the value of one of them
-        // (see Pair). Users were not probed: they stay on the first value.
+        // With several furni reference holders each furni destination gets the value of one of them (see Pair). Users stay on the first value.
         if (operands.Count > 1 && reference.Target == WiredVariableTarget.Furni && p[4] == (int)WiredVariableTarget.Furni) {
             var values = Pair(targets.Length, [.. operands.Select(pair => pair.Value)]);
 
@@ -464,10 +449,9 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
     }
 
     /// <summary>
-    /// The value each of count destination holders takes from the values of the reference holders when same holder is off. Observed on AIR
-    /// WIN63-202610201032-107964540 (Change Variable Value and Give Variable): the pairing is random and drawn anew at every run. With at least as
-    /// many reference holders as destinations each destination gets the value of a different holder; with fewer the values are shared evenly,
-    /// and which destinations share one varies too. Probed with furni destinations and furni reference holders only.
+    /// The value each of count destination holders takes from the values of the reference holders when same holder is off. The pairing is random and drawn anew at every run.
+    /// With at least as many reference holders as destinations each destination gets the value of a different holder; with fewer the values are shared evenly,
+    /// and which destinations share one varies too.
     /// </summary>
     private long[] Pair(int count, long[] values)
     {
@@ -495,8 +479,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         var any = false;
 
         foreach (var (target, operand) in targets) {
-            // Observed on AIR WIN63-202610201032-107964540: an assign hands the speaker the item whether or not one is held, and every other
-            // operation of the editor changes nothing. A held item is changed like any variable; an assign creates a missing one.
+            // An assign hands the speaker the item whether or not one is held, and every other operation of the editor changes nothing. A held item is changed like any variable; an assign creates a missing one.
             if (RoomWiredBuiltinVariables.CarriesPresenceValue(reference) && (operation != 0 || variables.Read(reference, target, frame) is null)) {
                 any |= operation == 0 && variables.Mutate(reference, target, WiredVariableMutation.Replace, operand, frame);
 

@@ -6,10 +6,10 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: a save that sends more than 20 ids in a pick list gets no answer at all, and the box keeps its
-// old picks (32 cards; 21 to 100 ids on Toggle State). The count is of the ids sent: on Toggle State 21 ids with a repeat (20 different
-// ones) are dropped and 20 ids that are only 10 different ones are saved. A repeated id saves once (48 cards). The limit is per list: Furni
-// To Furni saved 20 picks with 20 second picks and dropped 21 in either list; Move Furni As Group dropped 21 second picks.
+// A save that sends more than 20 ids in a pick list gets no answer at all, and the box keeps its old picks. The count is of the
+// ids sent: on Toggle State 21 ids with a repeat (20 different ones) are dropped and 20 ids that are only 10 different ones are
+// saved. A repeated id saves once. The limit is per list: Furni To Furni saves 20 picks with 20 second picks and drops 21 in
+// either list; Move Furni As Group drops 21 second picks.
 public sealed partial class WiredGlideConveyorTests
 {
     private const uint LimitBox = 90;
@@ -102,7 +102,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal("no answer", SaveLists("wf_act_move_furni_as_group", Ids(5), Ids(21)));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a dropped save leaves the box with the picks it had.
+    // A dropped save leaves the box with the picks it had.
     [Fact]
     public void ADroppedSaveKeepsTheOldPicks()
     {
@@ -115,7 +115,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal([3u, 5u], ((IWiredConfiguredItem)f.Box(LimitBox)).Configuration.SelectedItems.Order().ToArray());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: five ids with one repeat save, and the box holds each id once (48 cards).
+    // Five ids with one repeat save, and the box holds each id once.
     [Fact]
     public void ARepeatedIdSavesOnceAndKeepsEachIdOnce()
     {

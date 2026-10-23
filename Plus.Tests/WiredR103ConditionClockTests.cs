@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Date Matches and Time Matches read the clock in UTC when the room has no timezone of its own. Observed on AIR WIN63-202610201032-107964540.
+// Date Matches and Time Matches read the clock in UTC when the room has no timezone of its own.
 public sealed class WiredR103ConditionClockTests
 {
     [Theory]

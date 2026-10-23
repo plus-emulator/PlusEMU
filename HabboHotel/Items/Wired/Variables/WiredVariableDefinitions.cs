@@ -43,8 +43,7 @@ public static class WiredVariableDefinitions
     internal const string NeedsExecutionContextKey = "wiredfurni.error.variables.requires_execution_context";
 
     /// <summary>
-    /// The key a proposed variable name is refused with, or null. Observed on AIR WIN63-202610201032-107964540: a pointer name outside
-    /// 1 to 40 characters, or with a character other than a letter, digit or underscore, is refused with these keys and no parameters.
+    /// The key a proposed variable name is refused with, or null. A pointer name outside 1 to 40 characters, or with a character other than a letter, digit or underscore, is refused with these keys and no parameters.
     /// </summary>
     internal static string? RefuseName(string text) => text.Length is < 1 or > 40 ? NameLengthKey : ValidName(text) ? null : NameSyntaxKey;
 
@@ -54,10 +53,9 @@ public static class WiredVariableDefinitions
     internal static bool IsNamed(string name) => NamedBoxes.Contains(name);
 
     /// <summary>
-    /// The name a new save stores. Observed on AIR WIN63-202610201032-107964540: each space becomes an underscore, the name is lower case
-    /// and loses its leading and trailing underscores ("_a" and "a_" store "a", "PtrUP" stores "ptrup"); inner underscores stay. Whether
-    /// the 40 character limit counts before or after this is not observed, so a longer name is kept as sent and stays too long. Only
-    /// ASCII capitals are lowered, so any other letter stays a syntax error.
+    /// The name a new save stores: each space becomes an underscore, the name is lower case and loses its leading and trailing underscores
+    /// ("_a" and "a_" store "a", "PtrUP" stores "ptrup"); inner underscores stay. A longer name than the 40 character limit is kept as sent and stays too long.
+    /// Only ASCII capitals are lowered, so any other letter stays a syntax error.
     /// </summary>
     internal static string CleanName(string text) => text.Length > 40 ? text
         : string.Concat(text.Select(c => c == ' ' ? '_' : char.IsAsciiLetterUpper(c) ? char.ToLowerInvariant(c) : c)).Trim('_');
@@ -65,8 +63,8 @@ public static class WiredVariableDefinitions
     private static bool ValidName(string text) => text.Length is >= 1 and <= 40 && Regex.IsMatch(text, "^[A-Za-z0-9_]+$", RegexOptions.CultureInvariant);
 
     /// <summary>
-    /// An echo saved before its variable was picked (observed on hhus: the initial frame, variable id "0", saved under a name and
-    /// reopened unchanged). It is a valid card that mirrors nothing, so it is stored but defines no variable.
+    /// An echo saved before its variable was picked (the initial frame, variable id "0", saved under a name and reopened unchanged).
+    /// It is a valid card that mirrors nothing, so it is stored but defines no variable.
     /// </summary>
     public static bool IsUnpickedEcho(string name, WiredConfiguration configuration) => name == "wf_var_echo" && configuration.Version == 1
         && configuration.IntParams.Length == 0 && configuration.VariableIds.Length == 1 && WiredVariableAbsent.Is(configuration.VariableIds[0])
@@ -109,7 +107,7 @@ public static class WiredVariableDefinitions
                 hasValue = ints[0] == 1;
                 break;
             case "wf_var_room":
-                // The AIR form edits availability only; the starting value is always zero and live values survive saves.
+                // The form edits availability only; the starting value is always zero and live values survive saves.
                 if (ints.Length != 2 || ints[0] is not (1 or 10 or 11) || ints[1] != 0) {
                     return false;
                 }
@@ -144,7 +142,7 @@ public static class WiredVariableDefinitions
                     return false;
                 }
 
-                // Observed on hhus (WIN63-202610131318): an unchosen reference ("0") is refused with this key and no parameters.
+                // An unchosen reference ("0") is refused with this key and no parameters.
                 if (!TryParseShared(configuration.VariableIds[0], out var sourceRoom, out target, out var sourceItem) || sourceRoom == roomId) {
                     error = InvalidReferenceKey;
 
@@ -169,8 +167,7 @@ public static class WiredVariableDefinitions
                 link = new(roomId, new(WiredVariableTarget.User, WiredQuestVariables.Token(itemId)), true);
                 break;
             case "wf_var_dailytask":
-                // AirSourceOnly (DailyTaskVariable.as): name TAB task text. PlusEMU has no daily tasks, so this is a user variable that
-                // Wired effects set; the task text is kept with the box.
+                // Name TAB task text. PlusEMU has no daily tasks, so this is a user variable that Wired effects set; the task text is kept with the box.
                 if (ints.Length != 0 || configuration.VariableIds.Length != 0) {
                     return false;
                 }
@@ -181,9 +178,8 @@ public static class WiredVariableDefinitions
                 hasValue = true;
                 break;
             case "wf_var_pointer":
-                // AirSourceOnly (PointerVariable.as): the variable lives on its source type (0 furni, 1 user, -10 global, -20 context);
-                // its accessor is a context variable with a value. A box without one still decodes, it just resolves nothing; a new save
-                // refuses it (WiredVariableModule.RefuseAccessor).
+                // The variable lives on its source type (0 furni, 1 user, -10 global, -20 context); its accessor is a context variable with a value.
+                // A box without one still decodes, it just resolves nothing; a new save refuses it (WiredVariableModule.RefuseAccessor).
                 if (ints.Length != 1 || configuration.VariableIds.Length != 1 || ints[0] is not (0 or 1 or -10 or -20)) {
                     return false;
                 }

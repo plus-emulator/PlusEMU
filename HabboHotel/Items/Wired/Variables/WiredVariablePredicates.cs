@@ -21,8 +21,7 @@ public static class WiredVariablePredicates
             return [];
         }
 
-        // Observed on hhus (WIN63-202610131318): sorting by value over a user variable without a value kept nobody, so the one
-        // selected user was dropped. The editor offers the value orders only for variables that hold a value.
+        // Sorting by value over a user variable without a value keeps nobody, so the one selected user is dropped. The editor offers the value orders only for variables that hold a value.
         if (sort < 2 && !variables.CarriesValue(reference)) {
             return [];
         }

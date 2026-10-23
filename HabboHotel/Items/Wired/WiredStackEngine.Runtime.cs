@@ -59,8 +59,7 @@ internal sealed partial class WiredStackEngine
     });
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: while a wired disabler is on, no wired runs in the room: no trigger fires and
-    /// the repeaters and timers stand still. Placing and saving boxes still works.
+    /// While a wired disabler is on, no wired runs in the room: no trigger fires and the repeaters and timers stand still. Placing and saving boxes still works.
     /// </summary>
     private bool Disabled
     {
@@ -76,8 +75,7 @@ internal sealed partial class WiredStackEngine
     private long? _disabledSince;
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: a delay that is running when the disabler goes on is paused and goes on with the time
-    /// it had left once the disabler is off. Time stands still in whole room ticks: every waiting step moves later by the ticks that passed.
+    /// A delay that is running when the disabler goes on is paused and goes on with the time it had left once the disabler is off. Time stands still in whole room ticks: every waiting step moves later by the ticks that passed.
     /// </summary>
     private void TrackDisabled(bool disabled)
     {
@@ -153,11 +151,9 @@ internal sealed partial class WiredStackEngine
 
         RefreshStacks();
         var samePass = RunsInPassOfChange(@event.Kind);
-        // Observed on AIR WIN63-202610201032-107964540: a Walks On or Walks Off that the room tick raised runs in that tick and its output
-        // follows the tick's UserUpdate in the same ms; a delay counts from the tick.
+        // A Walks On or Walks Off that the room tick raised runs in that tick and its output follows the tick's UserUpdate in the same ms; a delay counts from the tick.
         var walkInTick = _roomTickOpen && @event.Kind is WiredEventKind.WalkOn or WiredEventKind.WalkOff;
-        // Observed on AIR WIN63-202610201032-107964540: the stacks of a Bot Reaches Furni also run at once, because a Bot Teleport raises it
-        // in the tick that republishes the bot.
+        // The stacks of a Bot Reaches Furni also run at once, because a Bot Teleport raises it in the tick that republishes the bot.
         var dispatch = new PendingDispatch(@event, eventDepth)
         {
             CollisionProof = collision,
@@ -307,7 +303,7 @@ internal sealed partial class WiredStackEngine
 
             if (typed != null) {
                 _queuedDepth = queuedDepth;
-                // Observed on AIR WIN63-202610151745-318700621: an Enter Room stack runs inside the room entry, like a speech stack with its chat.
+                // An Enter Room stack runs inside the room entry, like a speech stack with its chat.
                 accepted |= typed.Kind switch
                 {
                     WiredEventKind.Speech => DispatchSynchronously(typed),
@@ -400,8 +396,7 @@ internal sealed partial class WiredStackEngine
 
         var accepted = false;
 
-        // Observed on AIR WIN63-202610151745-318700621: a loop that waits before it signals again keeps running past 100 runs, so a
-        // delayed Send Signal starts one new count for all its antennas and batches.
+        // A loop that waits before it signals again keeps running past 100 runs, so a delayed Send Signal starts one new count for all its antennas and batches.
         if (_executingAction is { DelayMilliseconds: > 0 } step && !ReferenceEquals(parent.SignalChainStep, step)) {
             parent.SignalChainRuns = [];
             parent.SignalChainStep = step;
@@ -409,8 +404,7 @@ internal sealed partial class WiredStackEngine
 
         foreach (var antenna in antennas) {
             // Official delivery fires once per addressed antenna matching a receiving stack's picks.
-            // Observed on AIR WIN63-202610151745-318700621: a straight chain of signals runs every stack, and each receiving stack in a
-            // loop runs 100 times. A hop therefore keeps the sender's depth; the run cap (SignalRunCapReached) bounds a loop instead.
+            // A straight chain of signals runs every stack, and each receiving stack in a loop runs 100 times. A hop therefore keeps the sender's depth; the run cap (SignalRunCapReached) bounds a loop instead.
             parent.SignalChainRuns ??= [];
             var child = parent.Fork(new(WiredEventKind.Signal)
             {
@@ -425,10 +419,8 @@ internal sealed partial class WiredStackEngine
             var dispatch = new PendingDispatch(child.Event, child.Depth,
                 new([(antenna, antenna.MovementGeneration)], child, parent))
             { ResumeImmediately = true, Publication = parent.Publication };
-            // Observed r92i r92h-signal-hop hop-w1..w6 and r92-signals sig-w1..w3 (AIR WIN63-202610131318-860371703): receivers run in
-            // the sender's tick, after the sender stack's remaining actions, and two receivers on one antenna run in a varying order.
-            // r92m r92m-recv-order (15 samples over four layouts): neither placement, id, height nor tile fixed the order (the stack on
-            // (11,3) ran first in 14 of 17 samples with r92i, the one on (9,3) in 3), so receivers keep the per-event random order.
+            // Receivers run in the sender's tick, after the sender stack's remaining actions, and two receivers on one antenna run in a varying order:
+            // neither placement, id, height nor tile fixes the order, so receivers keep the per-event random order.
             SnapshotDispatch(dispatch);
 
             if (QueueFull(dispatch.Slots)) {
@@ -647,15 +639,13 @@ internal sealed partial class WiredStackEngine
             context.Triggering.FurniIds.Add(context.Event.EventItem.Id);
         }
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): Variable Changed on a user variable shows a triggering-user message from
-        // that user; on a global it fires with no triggering user (the message is not shown), whoever ran the change.
+        // Variable Changed on a user variable shows a triggering-user message from that user; on a global it fires with no triggering user (the message is not shown), whoever ran the change.
         var user = context.Event.Kind switch
         {
-            // Observed on hhus (AIR WIN63-202610151745-318700621): Bot Reached Avatar + Bot Talk To Avatar (avatar: triggering user) says
-            // nothing, so the triggering user is the bot; the avatar it reached is the Reached User source.
+            // Bot Reached Avatar + Bot Talk To Avatar (avatar: triggering user) says nothing, so the triggering user is the bot; the avatar it reached is the Reached User source.
             WiredEventKind.BotReachedUser => context.Event.Actor,
             WiredEventKind.Variable => context.Event.TargetUser,
-            // Observed on hhus (AIR WIN63-202610131318-860371703): Bot Reached Furni + Show Message (triggering user) is said by the bot.
+            // Bot Reached Furni + Show Message (triggering user) is said by the bot.
             WiredEventKind.BotReachedFurni => context.Event.Actor,
             WiredEventKind.StateChanged => null,
             _ => context.Event.Actor
@@ -721,8 +711,7 @@ internal sealed partial class WiredStackEngine
             var kept = (result.Invert ? universe.Except(selected) : selected).ToArray();
 
             if (result.FiltersExisting) {
-                // Observed on AIR WIN63-202610131318-860371703: a filter with no selector of its kind before it selects nothing; it does
-                // not fall back to the triggering user.
+                // A filter with no selector of its kind before it selects nothing; it does not fall back to the triggering user.
                 var basis = context.SelectorKinds.HasFlag(kind) ? order.ToArray() : [];
                 var matches = kept.ToHashSet();
                 order.Clear();
@@ -740,8 +729,7 @@ internal sealed partial class WiredStackEngine
 
             context.SelectorKinds |= kind;
         }
-        // Selectors include temporary copies; manual picks still refuse them. The inversion universe also includes wall furniture
-        // (observed on AIR WIN63-202610151745-318700621).
+        // Selectors include temporary copies; manual picks still refuse them. The inversion universe also includes wall furniture.
         Apply(context.SelectorPool.FurniIds, context.SelectorFurniOrder, result.Selection.FurniIds,
             context.FurniIdentity.Keys, WiredSelectionKind.Furni);
         Apply(context.SelectorPool.UserIds, context.SelectorUserOrder, result.Selection.UserIds,
@@ -865,8 +853,7 @@ internal sealed partial class WiredStackEngine
                 snapshot ??= CreateContext(@event, 0);
                 var context = snapshot.Fork(@event, 0);
                 context.Trigger = timer;
-                // Observed on AIR WIN63-202610201032-107964540: a timer's stack runs on the Wired tick it is due and its output goes out in
-                // that tick, after the room tick's UserUpdate; a delay counts from that tick.
+                // A timer's stack runs on the Wired tick it is due and its output goes out in that tick, after the room tick's UserUpdate; a delay counts from that tick.
                 context.ResumeImmediately = true;
                 SeedEvent(context);
 
@@ -927,16 +914,11 @@ internal sealed partial class WiredStackEngine
 
     private bool _drainingSamePass;
 
-    // Observed on AIR WIN63-202610151745-318700621 (wf_trg_var_changed.give, .subvar_parent): Variable Changed stacks run in the pass of the
-    // change, so their messages share its millisecond. After a say they follow the echo of the say, which DrainVariableStacks runs.
-    // Observed on AIR WIN63-202610201032-107964540 (wf_trg_score_achieved.game): a Score Achieved stack runs the same way, in the pass of the
-    // score change.
-    // Observed on AIR WIN63-202610201032-107964540 (wf_trg_score_achieved.cov_teams_max, wf_trg_stuff_state.cov_wired_toggle,
-    // wf_trg_clock_counter.cov_control): the same holds when a click fired the Give Score or Toggle State, and for a clock tick. The
-    // watching stack flashes in the millisecond of the change, not one tick later.
+    // Variable Changed stacks run in the pass of the change, so their messages share its millisecond. After a say they follow the echo of the say, which DrainVariableStacks runs.
+    // A Score Achieved stack runs the same way, in the pass of the score change. The same holds when a click fired the Give Score or Toggle State, and for a clock tick.
+    // The watching stack flashes in the millisecond of the change, not one tick later.
     //
-    // Observed on AIR WIN63-202610151745-318700621 (r97_chase_collide_clk, r97_flee_corner_clk): User Stuff Collision raised by an effect
-    // runs in the same pulse as that effect, its flashes and chat in the same batch. A Collision at the head of the queue therefore runs
+    // User Stuff Collision raised by an effect runs in the same pulse as that effect, its flashes and chat in the same batch. A Collision at the head of the queue therefore runs
     // before the pass ends, with the effects it schedules; the pass budget and the event depth still bound a chain of them.
     private void DrainSamePassEvents()
     {
@@ -969,9 +951,8 @@ internal sealed partial class WiredStackEngine
 
     private void DrainReadySignals()
     {
-        // Continue only ready signal envelopes. An earlier external event retains its FIFO position, but the state change of a toggled
-        // furni that no stack listens to is passed in order. Observed on AIR WIN63-202610151745-318700621: a signal loop whose stacks
-        // toggle furni runs and flashes in the tick of its first signal, in one ObjectsDataUpdate.
+        // Continue only ready signal envelopes. An earlier external event retains its FIFO position, but the state change of a toggled furni that no stack listens to is passed in order.
+        // A signal loop whose stacks toggle furni runs and flashes in the tick of its first signal, in one ObjectsDataUpdate.
         // An active evaluation may still own the head reservation, so admission must never re-enter it.
         if (_drainingSignals || _draining || _dispatchAdvanceDepth != 0 || _activeFiring != null) {
             return;

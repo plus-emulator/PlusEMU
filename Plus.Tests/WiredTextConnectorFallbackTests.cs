@@ -12,8 +12,8 @@ namespace Plus.Tests;
 
 public class WiredTextConnectorFallbackTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a variable whose connector holds only a fallback still has a connector,
-    // with no entries and the fallback after them. Without a fallback the flag after the entries is false.
+    // A variable whose connector holds only a fallback still has a connector, with no entries and the fallback after them.
+    // Without a fallback the flag after the entries is false.
     [Theory]
     [InlineData(null, new[] { 1 }, new object[] { true, 1, 1, "one", false })]
     [InlineData("other", new[] { 1 }, new object[] { true, 1, 1, "one", true, "other" })]
@@ -45,8 +45,8 @@ public class WiredTextConnectorFallbackTests
             new WiredVariableDescription(variable.Definition, true, false) { TextConnectorFallback = "" }.Hash);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: in text mode a value with no label shows the fallback, a labelled value
-    // keeps its label, a holder without the variable shows "null" and number mode never reads the connector.
+    // In text mode a value with no label shows the fallback, a labelled value keeps its label, a holder without the variable
+    // shows "null" and number mode never reads the connector.
     [Theory]
     [InlineData(1, 7, "other", "w seven")]
     [InlineData(1, 9, "other", "w other")]

@@ -11,8 +11,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredConditionParityTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: the name of a user is compared with the case kept ("objecto" does not match
-    // "Objecto"), and the name of a bot is compared without regard to case ("robbie" matches "Robbie").
+    // The name of a user is compared with the case kept ("objecto" does not match "Objecto"), and the name of a bot is compared
+    // without regard to case ("robbie" matches "Robbie").
     [Theory]
     [InlineData(false, "Objecto", true)]
     [InlineData(false, "objecto", false)]

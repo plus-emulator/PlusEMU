@@ -9,9 +9,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: one say fires stack A (toggle five furni, show a message) and stack B (toggle two
-    // furni, move two furni). The tick sends one ObjectsDataUpdate with all seven states and all six box flashes, then one
-    // WiredMovements with both furni.
+    // One say fires stack A (toggle five furni, show a message) and stack B (toggle two furni, move two furni). The tick sends
+    // one ObjectsDataUpdate with all seven states and all six box flashes, then one WiredMovements with both furni.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -56,8 +55,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal([(20, 9, 10), (21, 10, 11)], batch.Select(entry => (entry.Id, entry.FromX, entry.ToX)).Order());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the ObjectsDataUpdate and the WiredMovements of one firing are adjacent. A Show
-    // Message chat comes before the data update or after the WiredMovements, never between them.
+    // The ObjectsDataUpdate and the WiredMovements of one firing are adjacent. A Show Message chat comes before the data update
+    // or after the WiredMovements, never between them.
     [Fact]
     public void SayStackThatTogglesMovesAndShowsAMessageSendsTheChatAfterTheWiredMovements()
     {
@@ -128,8 +127,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal("1", f.Items[block].LegacyDataString);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: one Move and Rotate User box whose selector picks two users sends one
-    // WiredMovements with both user moves (5 of 5 firings).
+    // One Move and Rotate User box whose selector picks two users sends one WiredMovements with both user moves.
     [Fact]
     public void MoveUserBoxMovingTwoUsersSendsOneWiredMovements()
     {
@@ -144,8 +142,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal([(4, 12), (7, 12)], new[] { rider, other }.Select(user => (user.X, user.Y)));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: with Movement Down and Rotation Clockwise, one box that picks two users sends one
-    // WiredMovements with four entries: both moves, then both turns.
+    // With Movement Down and Rotation Clockwise, one box that picks two users sends one WiredMovements with four entries: both
+    // moves, then both turns.
     [Fact]
     public void MoveAndRotateUserBoxSendsBothMovesThenBothTurnsInOneWiredMovements()
     {

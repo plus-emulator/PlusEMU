@@ -16,14 +16,9 @@ public sealed class WiredBotTargets
         // A following bot rests from this time on the room's Wired clock; Arrived when the rest follows a stop on its tile.
         public long? RestFrom; public bool Arrived;
     }
-    /// <summary>
-    /// Observed on AIR WIN63-202610151745-318700621: the user gets the item 300 ms after the bot's step next to them is announced.
-    /// </summary>
+    /// <summary>The user gets the item 300 ms after the bot's step next to them is announced.</summary>
     public const int HandOverDelayMilliseconds = 300;
-    /// <summary>
-    /// Observed on AIR WIN63-202610151745-318700621: a following bot that reached its tile waits one room tick before it looks for the user
-    /// again.
-    /// </summary>
+    /// <summary>A following bot that reached its tile waits one room tick before it looks for the user again.</summary>
     public const int FollowRestMilliseconds = 500;
     // Picks the tile around the user that a following bot walks to.
     internal Random Random { get; set; } = Random.Shared;
@@ -34,8 +29,8 @@ public sealed class WiredBotTargets
     public void Walk(RoomUser bot, Item item) => _targets[bot] = new(item, null);
     public void Follow(RoomUser bot, RoomUser user) => _targets[bot] = new(null, user);
     /// <summary>
-    /// Bot Give Handitem. Observed on AIR WIN63-202610151745-318700621: the bot takes the item at once; standing next to the user
-    /// (diagonals count) it hands it over in the same instant, otherwise it walks to the user's nearest free neighbouring tile first.
+    /// Bot Give Handitem. The bot takes the item at once. Next to the user (diagonals count) it hands the item over in the same instant,
+    /// otherwise it first walks to the user's nearest free neighbouring tile.
     /// </summary>
     public void Give(Room room, RoomUser bot, RoomUser user, int handItem, long now)
     {
@@ -58,8 +53,7 @@ public sealed class WiredBotTargets
         _targets.Remove(user);
 
         foreach (var (bot, target) in _targets.Where(entry => ReferenceEquals(entry.Value.User, user)).ToArray()) {
-            // Observed on AIR WIN63-202610151745-318700621: a bot carrying a hand item to a user who left keeps walking to where they
-            // stood and lets the item go there.
+            // A bot carrying a hand item to a user who left keeps walking to where they stood and lets the item go there.
             if (target.HandItem != 0) {
                 target.User = null;
                 target.LeftFrom = (user.X, user.Y);
@@ -80,7 +74,7 @@ public sealed class WiredBotTargets
             botData.ForcedUserTargetMovement = 0;
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: a bot that arrived, or that already stands still, sends no extra status.
+        // A bot that arrived, or that already stands still, sends no extra status.
         if (IsMoving(bot)) {
             bot.ClearMovement(true);
         }
@@ -137,10 +131,9 @@ public sealed class WiredBotTargets
         return result;
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a following bot picks a random free tile among the 8 around the tile the user stands on
-    // or steps onto. It walks all the way there, past other tiles next to the user and while the user moves on. Next to the user it
-    // does not move. Bot Reached Avatar fires one room tick after the bot stops on its tile next to the user, and only then: a bot told
-    // to follow a user it already stands next to, or one the user walks up to, raises none.
+    // A following bot picks a random free tile among the 8 around the tile the user stands on or steps onto.
+    // It walks all the way there and does not move when it is already next to the user.
+    // Bot Reached Avatar fires one room tick after the bot stops on its tile next to the user, and only then.
     // Returns whether the bot reached the user.
     private bool PollFollow(Room room, RoomUser bot, RoomUser user, Target target, long now)
     {
@@ -221,8 +214,7 @@ public sealed class WiredBotTargets
         var step = WiredRoomOperations.StandingTile(bot);
 
         if (Math.Max(Math.Abs(left.X - step.X), Math.Abs(left.Y - step.Y)) > 1) {
-            // Observed on AIR WIN63-202610151745-318700621: a bot that cannot get next to the spot (the user stood boxed in) keeps
-            // holding the item.
+            // A bot that cannot get next to the spot (the user stood boxed in) keeps holding the item.
             if (!bot.IsWalking && !bot.SetStep) {
                 _targets.Remove(bot);
             }
@@ -246,8 +238,8 @@ public sealed class WiredBotTargets
 
     private static bool Near(System.Drawing.Point tile, RoomUser user) => Math.Max(Math.Abs(user.X - tile.X), Math.Abs(user.Y - tile.Y)) <= 1;
 
-    // Observed on AIR WIN63-202610151745-318700621: the bot ends on the free tile around the user closest to it (diagonals count),
-    // nearer in straight-line distance on a tie. Observed on AIR WIN63-202610201032-107964540: a tile the bot cannot enter is never the goal.
+    // The bot ends on the free tile around the user closest to it (diagonals count), nearer in straight-line distance on a tie.
+    // A tile the bot cannot enter is never the goal.
     private static void Approach(Room room, RoomUser bot, RoomUser user, Target target)
     {
         var map = room.GetGameMap();

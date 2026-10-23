@@ -26,13 +26,11 @@ public partial class PlacedFurniRoomTests
     [InlineData("wiredprobeusernameqzvkxwmb B<$(clickprobeuser)>E", "wiredprobeusernameqzvkxwmb BE")]
     [InlineData("wiredprobeusernameqzvkxwmb $(clickprobeuser)", "wiredprobeusernameqzvkxwmb $(clickprobeuser)")]
     public void ShowMessageRemovesAngleBracketSegmentsAtOutputAndKeepsUnknownPlaceholdersLiteral(string saved, string delivered) =>
-        // hotel-text-markup-fact-r64 / hotel-unresolved-placeholder-fact-r65
         Assert.Equal([delivered], ShowMessageOutput(saved, false));
 
     [Fact]
     public void ShowMessageSubstitutesUsernamePlaceholderWithTriggeringUserDisplayName()
     {
-        // hotel-username-placeholder-fact-r68
         var output = ShowMessageOutput("wiredprobeusernameqzvkxwmb $(clickprobeuser)", true);
         var message = Assert.Single(output);
         Assert.StartsWith("wiredprobeusernameqzvkxwmb ", message);

@@ -4,9 +4,8 @@ using Plus.HabboHotel.Items;
 namespace Plus.Communication.Packets.Outgoing.Rooms.Engine;
 
 /// <summary>
-/// Removes several floor objects at once: int count, count × int id, int pickerId, bool byInvisibleFurniManager. AIR
-/// WIN63-202610131318-860371703 package_71/class_2976.as:44-60 (incoming 3589). Observed on hhus: Remove Temporary Furni sends
-/// [1, 2147401728, -1, false] instead of ObjectRemove.
+/// Removes several floor objects at once: int count, count × int id, int pickerId, bool byInvisibleFurniManager.
+/// Remove Temporary Furni sends [1, 2147401728, -1, false] instead of ObjectRemove.
 /// </summary>
 public class ObjectRemoveMultipleComposer : IServerPacket
 {

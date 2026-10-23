@@ -83,7 +83,7 @@ public partial class ModernWiredBehaviorTests
         Assert.Equal(new[] { (1u, 6, 7) }, requests);
     }
 
-    // Observed r94 F1 (hhus 2026-10-16, AIR WIN63-202610131318-860371703): 6 movers onto 2 targets split 3/3 in all 8 firings.
+    // 6 movers onto 2 targets split 3 and 3.
     [Theory]
     [InlineData(0)]
     [InlineData(17)]
@@ -164,7 +164,7 @@ public partial class ModernWiredBehaviorTests
         Assert.Equal(new[] { 2, 2, 3 }, requests.GroupBy(request => request.Target).Select(group => group.Count()).Order());
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: with two users selected, Furni To User moves to a random one of them each firing.
+    // With two users selected, Furni To User moves to a random one of them each firing.
     [Theory]
     [InlineData(0)]
     [InlineData(17)]
@@ -300,7 +300,7 @@ public partial class ModernWiredBehaviorTests
         var config = new WiredConfiguration { IntParams = [2] };
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1000, 0, 0));
         Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1130, 0, 0));
-        // Observed on AIR WIN63-202610201032-107964540: a Repeat Short does not drift, so the late poll at 1130 keeps the 1200 deadline.
+        // A Repeat Short does not drift, so the late poll at 1130 keeps the 1200 deadline.
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1199, 0, 0));
         Assert.True(timers.TryFire("wf_trg_period_short", 1, config, 1200, 0, 0));
         Assert.False(timers.TryFire("wf_trg_period_short", 1, config, 1230, 0, 0));

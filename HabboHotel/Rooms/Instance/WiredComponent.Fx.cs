@@ -43,7 +43,7 @@ public partial class WiredComponent
         return true;
     });
 
-    // Observed on AIR WIN63-202610151745-318700621: room entry sends the Wired environment after the configuration item states.
+    // Room entry sends the Wired environment after the configuration item states.
     internal void SendEnvironment(GameClient session) => _engine.Mutate(() =>
     {
         session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.WiredEnvironmentComposer(_clickUserTriggers.Count != 0, EnabledAchievements()));

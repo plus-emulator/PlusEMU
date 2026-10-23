@@ -14,8 +14,7 @@ internal sealed class WalkPlan(NavGrid grid, PlanningOccupancy occupancy)
     internal bool Fits(int steps) => RemainingSteps >= steps;
     internal void Commit(int steps) => RemainingSteps = Math.Max(0, RemainingSteps - steps);
 
-    // Observed on AIR WIN63-202610151745-318700621: a repair after a blocked step sees new furniture next to the walker,
-    // not further away, and not in the repair that follows a diagonal fallback step.
+    // A repair after a blocked step sees new furniture next to the walker, not further away, and not in the repair that follows a diagonal fallback step.
     internal void DiscoverNeighbours(NavGrid live, MovementRules liveRules, ActorProfile actor, NavPosition from)
     {
         foreach (var (dx, dy) in PathTieBreak.Neighbours) {

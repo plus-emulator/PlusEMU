@@ -6,9 +6,8 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Wired.Modern.Addons;
 
 /// <summary>
-/// The October add-ons of the r88 dossier (WIN63-202610131318-860371703). Most of them are room-wide settings read where they apply:
-/// Achievement Enabler by Progress Achievement, Global Placeholder by message text, Web API by the HTTP variable API, Leaderboard by
-/// the room's overlays, Only the Link Speaker joins its stack's firing.
+/// The October add-ons. Most of them are room-wide settings read where they apply: Achievement Enabler by Progress Achievement,
+/// Global Placeholder by message text, Web API by the HTTP variable API, Leaderboard by the room's overlays, Only the Link Speaker joins its stack's firing.
 /// </summary>
 public sealed class WiredOctoberAddonBox(Room room, Item item, WiredBoxDescriptor descriptor)
     : WiredConfiguredBehaviorBox(room, item, descriptor, configuration => configuration), IWiredContextualAddon
@@ -25,7 +24,7 @@ public sealed class WiredOctoberAddonBox(Room room, Item item, WiredBoxDescripto
     {
         var configuration = context.ConfigurationOf(this);
 
-        // class_4123.as [message, dataframe]: the speaker's picked WIRED Link furni speak for the stack's send effects.
+        // [message, dataframe]: the speaker's picked WIRED Link furni speak for the stack's send effects.
         if (Descriptor.CanonicalName == "wf_xtra_link_speaker" && configuration.IntParams is [var message, var dataframe, ..]) {
             var speakers = context.Targets.ResolveFurni(context, configuration.SelectedItems, configuration.FurniSources.GetValueOrDefault("speakers"))
                 .Where(WiredLinkTransport.IsLink).ToArray();

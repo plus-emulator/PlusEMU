@@ -2,7 +2,7 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.Collectibles;
 
-/// <summary>AIR collectibles/class_4209.as:29-39: the Collector Wallet, then the linked wallets. This hotel has none, so the count is 0.</summary>
+/// <summary>The Collector Wallet, then the linked wallets. This hotel has none, so the count is 0.</summary>
 public sealed class CollectibleWalletAddressesComposer(string collectorWallet) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.CollectibleWalletAddressesComposer;

@@ -7,8 +7,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // A 50 ms Repeat Short with Furni to User (users from a selector) and physics through furni and users moves a 0.15 high tile.
-// Observed on AIR WIN63-202610201032-107964540: on every step tick the furni goes to the step target (the mv tile of that tick's
-// UserUpdate), in the same ms, after that UserUpdate.
+// On every step tick the furni goes to the step target (the mv tile of that tick's UserUpdate), in the same ms, after that UserUpdate.
 public partial class PlacedFurniRoomTests
 {
     private const uint FollowTile = 50, FollowStackId = 51;
@@ -66,7 +65,7 @@ public partial class PlacedFurniRoomTests
             Assert.DoesNotContain(pass.Packets, packet => packet.Header == ServerPacketHeader.UserUpdateComposer));
     }
 
-    // AIR (MovingObjectLogic.as:181-186) restarts a resent step from its start tile, so a resend mid-step snaps the avatar back.
+    // A resent step restarts from its start tile, so a resend mid-step snaps the avatar back.
     [Fact]
     public void FurniToUserOnA150MsRepeatSendsNoUserUpdateInTheFastPassesBetweenRoomTicks()
     {

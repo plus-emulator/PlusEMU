@@ -22,7 +22,7 @@ public class FurnitureDirectionsTests
     [InlineData("ktchn_fridge", 2, null)]
     public void RotationIsAPositionInTheFurnisDirections(string name, int value, int? stored)
     {
-        // Observed on AIR WIN63-202610151745-318700621: @rotation writes and reads the position in the furni's list of directions.
+        // @rotation writes and reads the position in the furni's list of directions.
         var definition = new ItemDefinition { ItemName = name, Directions = FurnitureDirections.For(name) };
 
         Assert.Equal(stored, FurnitureDirections.RotationAt(definition, value));
@@ -61,7 +61,7 @@ public class FurnitureDirectionsTests
         Assert.False(table.ContainsKey("none"));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a heading the furni lacks lands it on its defaultdir.
+    // A heading the furni lacks lands it on its defaultdir.
     [Theory]
     [InlineData(new[] { 0, 2 }, 2, 4, 2)]
     [InlineData(new[] { 0, 2 }, 2, 3, 2)]
@@ -89,7 +89,7 @@ public class FurnitureDirectionsTests
         Assert.Equal(expected, FurnitureDirections.Heading(new ItemDefinition { ExtraRot = extraRot }, heading));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 with Move/Rotate: each turn is the next direction in 45 degree order.
+    // With Move/Rotate, each turn is the next direction in 45 degree order.
     [Theory]
     [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 0, true, new[] { 1, 2, 3 })]
     [InlineData(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, 0, false, new[] { 7, 6, 5 })]
@@ -112,8 +112,7 @@ public class FurnitureDirectionsTests
         Assert.Equal(expected, turns);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 on wf_antenna2 (0, 2): from 0, 1 stored 2 and 4 was refused; from 2, 4 was
-    // refused, 0 stored 0, then 6 and 4 were refused. bc_stairs_recolorable took 3.
+    // On wf_antenna2 (0, 2): from 0, 1 stores 2 and 4 is refused; from 2, 4 is refused, 0 stores 0, then 6 and 4 are refused. bc_stairs_recolorable takes 3.
     [Theory]
     [InlineData(new[] { 0, 2 }, 1, 2)]
     [InlineData(new[] { 0, 2 }, 4, null)]
@@ -133,7 +132,7 @@ public class FurnitureDirectionsTests
         Assert.Equal(expected, FurnitureDirections.Write(Definition(2, directions), value));
     }
 
-    // The observed r97_rot_assign4 sequence on wf_antenna2 (0, 2) starting at 2: 4, 0, 6, 4.
+    // Assigns 4, 0, 6 and 4 in turn to wf_antenna2 (directions 0 and 2), starting at 2.
     [Fact]
     public void TheObservedAssignSequenceStoresOnlyTheZero()
     {
@@ -152,7 +151,7 @@ public class FurnitureDirectionsTests
         Assert.Equal(0, rotation);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a client move of wf_antenna2 (0, 2, defaultdir 2) to direction 4 stored 2.
+    // A client move of wf_antenna2 (0, 2, defaultdir 2) to direction 4 stores 2.
     [Theory]
     [InlineData(new[] { 0, 2 }, 2, 4, 2)]
     [InlineData(new[] { 0, 2 }, 2, 0, 0)]
@@ -207,7 +206,7 @@ public class FurnitureDirectionsTests
         Assert.Equal(expected, rotation);
     }
 
-    // AIR WIN63-202610151745-318700621 room/class_1854.as:1971-1983 rounds a diagonal up to the next quarter turn.
+    // The client rounds a diagonal up to the next quarter turn.
     [Theory]
     [InlineData(1, 2)]
     [InlineData(3, 4)]

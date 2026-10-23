@@ -13,8 +13,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610131318-860371703: a visitor with rights can move, rotate and use a Place Furni copy but never
-    // pick it up; a visitor without rights can do none of these.
+    // A visitor with rights can move, rotate and use a Place Furni copy but never pick it up. A visitor without rights can do none of these.
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -41,8 +40,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(_room.GetRoomItemHandler().OwnsTemporary(item));
     }
 
-    // Observed on AIR WIN63-202610131318-860371703 (hhus): the box owner picks up a Place Furni copy. The copy is removed, and
-    // nothing reaches the inventory or the database.
+    // The box owner picks up a Place Furni copy. The copy is removed, and nothing reaches the inventory or the database.
     [Fact]
     public void BoxOwnerPicksUpTemporaryCopyWithoutInventoryOrStorage()
     {
@@ -57,7 +55,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0, store.Calls);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: @level is the profile's account level, the same level User Level compares.
+    // @level is the profile's account level, the same level User Level compares.
     [Fact]
     public void LevelVariableReadsTheUserLevel()
     {
@@ -75,7 +73,7 @@ public partial class PlacedFurniRoomTests
         Assert.NotEqual(5454, Read()?.Value);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: a visitor without rights sees the wired boxes unless the room hides them.
+    // A visitor without rights sees the wired boxes unless the room hides them.
     [Fact]
     public void VisitorWithoutRightsReceivesWiredBoxesInTheObjectList()
     {

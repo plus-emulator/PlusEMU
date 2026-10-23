@@ -95,8 +95,7 @@ public class Game : IGame
 
     /// <summary>
     /// The wait until the next 25 ms instant of the monotonic clock the rooms count in, rounded up so the poll never comes early. Room ticks
-    /// (every 500 ms) and Wired ticks (every 50 ms) fall on those instants, so they start on time instead of up to 25 ms late. Observed on AIR
-    /// WIN63-202610201032-107964540: the room tick's UserUpdate keeps its phase within about 5 ms.
+    /// (every 500 ms) and Wired ticks (every 50 ms) fall on those instants, so they start on time instead of up to 25 ms late.
     /// </summary>
     internal static int PollDelay(double nowMs) => (int)Math.Ceiling(PollInterval - nowMs % PollInterval);
 

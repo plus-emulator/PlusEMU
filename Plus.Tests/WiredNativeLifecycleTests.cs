@@ -209,8 +209,7 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.Equal(1, effect.Calls);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: Give @handitem 2 hands the avatar item 2, assign 5 swaps it, Remove drops it; carrying
-    // nothing reads as no @handitem.
+    // Give @handitem 2 hands the avatar item 2, assign 5 swaps it, Remove drops it; carrying nothing reads as no @handitem.
     [Fact]
     public void HandItemIsGivenSwappedAndRemovedThroughItsVariable()
     {

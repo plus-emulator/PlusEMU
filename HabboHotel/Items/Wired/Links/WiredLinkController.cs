@@ -6,8 +6,8 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Wired.Links;
 
 /// <summary>
-/// The WIRED Link window (roomevents/wired_link/WiredLinkController.as:41, WIN63-202610131318-860371703). Only the furni's owner
-/// edits it (ownsTarget, :130); networks belong to that owner and may join furni in any of their rooms.
+/// The WIRED Link window. Only the furni's owner
+/// edits it; networks belong to that owner and may join furni in any of their rooms.
 /// </summary>
 public static class WiredLinkController
 {
@@ -125,7 +125,7 @@ public static class WiredLinkController
         var result = room.GetWired().LinkStore.Delete(ownerId, network, out var detached);
         Reply(room, session, item, ownerId, Delete, result, result == WiredLinkResult.Ok ? networkId : "");
 
-        // Other open windows on the network's furni learn that it is gone (package_82/class_2356).
+        // Other open windows on the network's furni learn that it is gone.
         foreach (var connection in detached.Where(connection => connection.ItemId != item.Id)) {
             session.Send(new WiredLinkNetworkInvalidatedComposer(connection.RoomId, connection.ItemId, networkId));
         }

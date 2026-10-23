@@ -453,10 +453,7 @@ public class Item
 
     public double TotalHeight => GetZ + CurrentHeight;
 
-    /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: a furni whose height depends on its state keeps that state while furni stand on it,
-    /// both on a double-click and on Toggle State.
-    /// </summary>
+    /// <summary>A furni whose height depends on its state keeps that state while furni stand on it, on a double-click and on Toggle State.</summary>
     internal bool StateHeldByFurniOnTop => Definition.Modes > 1 && Definition.AdjustableHeights.Count > 1 && GetRoom()?.GetGameMap() is { } map
         && GetCoords.Any(tile => map.GetCoordinatedItems(tile).Any(other => !ReferenceEquals(other, this) && other.GetZ > GetZ));
 
@@ -1067,7 +1064,7 @@ public class Item
                         }
                         break;
                     case InteractionType.HabboWheel:
-                        // AIR WIN63-202610151745-318700621 FurnitureHabboWheelVisualization.as:37 stops on results 1 to 10.
+                        // The client stops the wheel on results 1 to 10.
                         LegacyDataString = Random.Shared.Next(1, 11).ToString();
                         UpdateState();
                         break;
@@ -1522,8 +1519,8 @@ public class Item
     }
 
     /// <summary>
-    /// A state a user switched by using the furni. Observed on hhus (AIR WIN63-202610131318-860371703): using a wf_colortile sends one
-    /// ObjectDataUpdate (374) with the new state, not a full ObjectUpdate. Furni whose height depends on the state keep the full update.
+    /// A state a user switched by using the furni. It goes out as one ObjectDataUpdate with the new state, not a full ObjectUpdate.
+    /// Furni whose height depends on the state keep the full update.
     /// </summary>
     public void UpdateUsedState()
     {
@@ -1535,8 +1532,7 @@ public class Item
             return;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a furni whose height depends on its state sends its new state, then its
-        // ObjectUpdate with the new height, then the height map.
+        // A furni whose height depends on its state sends its new state, then its ObjectUpdate with the new height, then the height map.
         if (Definition.AdjustableHeights.Count > 1) {
             room.SendObjectData(this, LegacyDataString, false);
             UpdateState();
@@ -1579,7 +1575,7 @@ public class Item
             }
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: the height map follows the ObjectUpdate with the new height.
+        // The height map follows the ObjectUpdate with the new height.
         if (IsFloorItem) {
             room.GetGameMap()?.NotifyPlacementState(this);
         }
@@ -1706,8 +1702,8 @@ public class Item
     }
 
     /// <summary>
-    /// Raises only the Wired walk-on event. Observed on hhus (AIR WIN63-202610131318-860371703): a walk-on stack's flash and message go
-    /// out in the same tick as the UserUpdate that announces the step onto the furni (mv towards it), one walk tick before the arrival.
+    /// Raises only the Wired walk-on event. A walk-on stack's flash and message go out in the same tick as the UserUpdate that
+    /// announces the step onto the furni, one walk tick before the arrival.
     /// </summary>
     internal void WiredWalksOnFurni(RoomUser user) => WiredWalk(user, WiredEventKind.WalkOn, WiredBoxType.TriggerWalkOnFurni);
 

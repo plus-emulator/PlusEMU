@@ -50,7 +50,7 @@ public class WiredClickPacketHookTests
         Assert.Empty(service.Clicks);
     }
 
-    // Local regression only: AIR contract 3db3d3c1 sends [positive floor id, 0]; no native 21 semantics and no official-server claim.
+    // The client sends [positive floor id, 0]; this is a local rule with no native 21 semantics.
     [Theory]
     [InlineData(5)]
     [InlineData(4096)]
@@ -61,7 +61,8 @@ public class WiredClickPacketHookTests
         Assert.Equal(new FurnitureClickRequest((uint)id, false), Assert.Single(service.Clicks));
     }
 
-    // Category 10 is the existing local grammar and proves the same permanent-item route dispatches; 0 is the AIR second int.
+    // Category 10 is the existing local grammar and proves the same permanent-item route dispatches; 0 is the client's second
+    // int.
     [Theory]
     [InlineData(0)]
     [InlineData(10)]
@@ -80,7 +81,6 @@ public class WiredClickPacketHookTests
         Assert.Same(item, evt.EventItem);
     }
 
-    // Controls: these stay not delegated before and after the AIR grammar fix.
     [Fact]
     public async Task AirShapedMalformedFurnitureClicksStayUndelegated()
     {
@@ -115,9 +115,9 @@ public class WiredClickPacketHookTests
         Assert.Equal(blockMenu, links.Contains("avatar-info/block-menu"));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: after a click on a user the clicker turns to face them in the next status
-    // update. In a room with a Click User trigger the AIR client sends only the click packet, so the server turns the clicker; without
-    // one it sends only a look-at message. The case without a trigger here only checks that a click alone still turns the clicker.
+    // After a click on a user the clicker turns to face them in the next status update. In a room with a Click User trigger the
+    // client sends only the click packet, so the server turns the clicker; without one it sends only a look-at message. The case
+    // without a trigger here only checks that a click alone still turns the clicker.
     [Theory]
     [InlineData("wf_trg_click_user", 0, 1, 6)]
     [InlineData("wf_trg_click_user", 2, 1, 2)]
@@ -134,7 +134,6 @@ public class WiredClickPacketHookTests
         Assert.True(world.Actor.UpdateNeeded);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: with "do not rotate" set on Click User the clicker keeps facing the same way.
     [Fact]
     public async Task ClickUserDoNotRotateKeepsTheClickerFacingTheSameWay()
     {
@@ -244,7 +243,7 @@ public class WiredClickPacketHookTests
     [InlineData(true)]
     public async Task ABotClickFiresClickUserAndAPetClickDoesNot(bool pet)
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703): clicking the bot Robbie fires Click User.
+        // Clicking the bot Robbie fires Click User.
         var world = new World("wf_trg_click_user", [1, 1]);
         world.Target.BotData = (RoomBot)RuntimeHelpers.GetUninitializedObject(typeof(RoomBot));
         world.Target.BotData.AiType = pet ? BotAiType.Pet : BotAiType.Generic;
@@ -301,7 +300,7 @@ public class WiredClickPacketHookTests
     [Fact]
     public void ASpawnedCopyArrivesAsASingleObjectObjectsPacket()
     {
-        // Observed on hhus: a Wired copy arrives as Objects (1991) holding one object, never ObjectAdd.
+        // A Wired copy arrives as Objects (1991) holding one object, never ObjectAdd.
         var world = new World("wf_trg_click_furni", [100]);
         var definition = new ItemDefinition { Id = 30, ItemName = "template", Type = ItemType.Floor, Length = 1, Width = 1, Height = 0.1, Stackable = true };
         world.Packets.Clear();
@@ -323,8 +322,8 @@ public class WiredClickPacketHookTests
     [Fact]
     public void RemoveTemporaryFurniSendsObjectRemoveMultipleAndAPickUpSendsObjectRemove()
     {
-        // Observed on hhus: Wired removal is in 3589 [1, 2147401728, -1, false] (AIR package_71/class_2976.as:44-60), never ObjectRemove;
-        // the owner's pick-up of a copy is ObjectRemove.
+        // Wired removal is in 3589 [1, 2147401728, -1, false], never ObjectRemove; the owner's pick-up of a copy is
+        // ObjectRemove.
         var world = new World("wf_trg_click_furni", [100]);
         var definition = new ItemDefinition { Id = 30, ItemName = "template", Type = ItemType.Floor, Length = 1, Width = 1, Height = 0.1, Stackable = true };
         var handler = world.Room.GetRoomItemHandler();
@@ -390,8 +389,8 @@ public class WiredClickPacketHookTests
         Assert.Empty(world.Capture.Events);
     }
 
-    // R53 official sample: AIR [owned invisible tile id, 0] did not activate selected-input native 21.
-    // Category 10 remains the legacy furnishing-click grammar; neither route emits a tile click.
+    // A click with [owned invisible tile id, 0] does not activate selected-input native 21. Category 10 remains the legacy
+    // furnishing-click grammar; neither route emits a tile click.
     [Theory]
     [InlineData(0)]
     [InlineData(10)]

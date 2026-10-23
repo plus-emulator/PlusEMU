@@ -7,8 +7,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: Control Clock (Start) and Give Score To Team in one stack give the score in the game
-    // they start, with the give above or below the clock. The effects' default order is random per firing, so the give must still follow.
+    // Control Clock (Start) and Give Score To Team in one stack give the score in the game they start, with the give above or
+    // below the clock. The effects' default order is random per firing, so the give must still follow.
     [Theory]
     [InlineData(0.65, 1.3)]
     [InlineData(1.3, 0.65)]

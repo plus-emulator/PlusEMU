@@ -73,8 +73,7 @@ public sealed class WiredVariableMenu(Room room, WiredRoomVariables variables)
     }
 
     /// <summary>
-    /// One object's values for the inspection tab, keyed by the native catalogue id the client knows the variable by. Observed on AIR
-    /// WIN63-202610151745-318700621: a user lists its built-in values and its custom and derived ones; an absent part is left out.
+    /// One object's values for the inspection tab, keyed by the native catalogue id the client knows the variable by. A user lists its built-in values and its custom and derived ones; an absent part is left out.
     /// A furni also lists the Wired boxes that pick it. Null for an unknown object or target.
     /// </summary>
     public (IReadOnlyList<(string Id, long Value)> Values, IReadOnlyList<uint> ConfiguredIn)? ReadObject(int type, int objectId)

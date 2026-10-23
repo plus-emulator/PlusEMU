@@ -14,8 +14,8 @@ public partial class ModernWiredRuntimeTests
 {
     private static readonly DateTimeOffset RoomLoadedAt = new(2040, 4, 5, 6, 0, 0, TimeSpan.Zero);
 
-    // Observed on AIR WIN63-202610151745-318700621: in a room loaded long ago that nobody reset, More Than 1201 passes and Less Than 1201
-    // fails on the first check, and @wired_timer counts the half-seconds since the room loaded.
+    // In a room loaded long ago that nobody reset, More Than 1201 passes and Less Than 1201 fails on the first check.
+    // @wired_timer counts the half-seconds since the room loaded.
     [Fact]
     public void TheRoomTimerRunsFromRoomLoadBeforeAnyTimeCheck()
     {
@@ -29,7 +29,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(1321, timer.WiredTimer());
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a Less Than 2 check 150 or 300 ms after Reset Timers still sees the old
+    // A Less Than 2 check 150 or 300 ms after Reset Timers still sees the old
     // timer and fails; 450 ms and later it passes. The reset takes effect on the next 500 ms room tick.
     [Fact]
     public void ResetTimersRestartsTheRoomTimerOnTheNextRoomTick()

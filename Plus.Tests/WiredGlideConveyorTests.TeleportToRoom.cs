@@ -10,8 +10,7 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: Teleport to Room glows the user with effect 234 from the firing and takes them
-    // into the linked room about 950 ms later.
+    // Teleport to Room glows the user with effect 234 from the firing and takes them into the linked room about 950 ms later.
     [Fact]
     public void TeleportToRoomGlowsTheUserBeforeTheForward()
     {

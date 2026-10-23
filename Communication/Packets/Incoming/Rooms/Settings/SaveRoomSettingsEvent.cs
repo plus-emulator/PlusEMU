@@ -4,7 +4,6 @@ using Plus.HabboHotel.Rooms;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Settings;
 
-// AIR WIN63-202610151745-318700621 package_157/class_3305.as:12.
 internal sealed class SaveRoomSettingsEvent(IRoomSettingsService settings) : IPacketEvent
 {
     public Task Parse(GameClient session, IIncomingPacket packet)

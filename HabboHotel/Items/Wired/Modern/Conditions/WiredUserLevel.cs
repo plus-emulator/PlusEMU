@@ -3,7 +3,7 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Wired.Modern.Conditions;
 
 /// <summary>
-/// The level User Level (LevelMatches.as, levels 1 to 30) compares. The October client never shows a user level, so the source is
+/// The level User Level (levels 1 to 30) compares. The client never shows a user level, so the source is
 /// inferred: one level per 1000 achievement points, from 1 up to 30. Kept in one place so a live observation can replace the rule.
 /// The @level user variable reads the same value, so the condition and the variable always agree.
 /// </summary>

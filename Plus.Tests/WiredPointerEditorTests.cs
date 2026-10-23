@@ -9,7 +9,7 @@ namespace Plus.Tests;
 
 /// <summary>
 /// The Pointer Variable editor: the fresh frame, how a save is normalised and the refusal keys.
-/// Observed on AIR WIN63-202610201032-107964540 (PointerVariable.as): every case below was saved on a pointer whose accessor was a
+/// Every case below was saved on a pointer whose accessor was a
 /// context variable with a value.
 /// </summary>
 public sealed class WiredPointerEditorTests

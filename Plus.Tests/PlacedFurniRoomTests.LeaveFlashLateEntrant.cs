@@ -12,9 +12,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Two Leaves Room stacks: one toggles tile C at once, one toggles tile D after 5 s. Observed on AIR WIN63-202610201032-107964540: users in
-// the room when someone leaves get the box flash; a user who leaves and enters again gets no flash for its own leave, its room entry
-// already shows tile C toggled, and the delayed toggle of D still reaches it.
+// Two Leaves Room stacks: one toggles tile C at once, one toggles tile D after 5 s. Users in the room when someone leaves get the box
+// flash; a user who leaves and enters again gets no flash for its own leave, its room entry already shows tile C toggled, and the
+// delayed toggle of D still reaches it.
 public partial class PlacedFurniRoomTests
 {
     private const uint LeaveTileC = 401, LeaveTileD = 402, ToggleNowTrigger = 411, ToggleNow = 412, ToggleLaterTrigger = 421, ToggleLater = 422;

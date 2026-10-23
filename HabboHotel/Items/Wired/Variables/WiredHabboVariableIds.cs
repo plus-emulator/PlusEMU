@@ -1,9 +1,8 @@
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
 /// <summary>
-/// Habbo's fixed ids for the variables every room has, as hhus lists them in WiredAllVariablesDiffs (WIN63-202610121709,
-/// room 79874981): "-N" for a built-in (@) variable, "~N" for a smart (~) one. The AIR client sorts internal variables by
-/// Number(variableId) (Util.variableCompare). An id the client saved this way names the same built-in token as ours.
+/// Habbo's fixed ids for the variables every room has: "-N" for a built-in (@) variable, "~N" for a smart (~) one.
+/// The client sorts internal variables by Number(variableId). An id the client saved this way names the same built-in token as ours.
 /// </summary>
 public static class WiredHabboVariableIds
 {

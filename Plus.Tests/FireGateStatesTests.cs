@@ -2,7 +2,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: Toggle State turns the fire gate from 0 to 1 and back to 0.
+// Toggle State turns the fire gate from 0 to 1 and back to 0.
 public sealed class FireGateStatesTests
 {
     [Fact]

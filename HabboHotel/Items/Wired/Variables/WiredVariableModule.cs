@@ -13,8 +13,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     private readonly MemoryWiredVariableStore _active = new();
     private readonly Queue<WiredVariableChange> _changes = new();
     private readonly object _gate = new();
-    // Observed on AIR WIN63-202610201032-107964540: a reference whose source was picked up stays listed as it last was until its room
-    // unloads. This module lives as long as the loaded room. In Plus, reads and writes through it still fail to resolve and do nothing.
+    // A reference whose source was picked up stays listed as it last was until its room unloads. This module lives as long as the loaded room. In Plus, reads and writes through it still fail to resolve and do nothing.
     private readonly Dictionary<uint, ListedReference> _listedReferences = [];
     private long _valueChanges;
     private long _valueDecreases;
@@ -309,7 +308,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         var definition = resolved.Definition!;
 
         if (resolved.Compose is { } compose) {
-            // Writing a Time Utilities Value part rewrites the parent's value (observed on hhus, AIR WIN63-202610131318-860371703).
+            // Writing a Time Utilities Value part rewrites the parent's value.
             if (mutation != WiredVariableMutation.Set) {
                 return false;
             }
@@ -361,15 +360,14 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return null;
             }
 
-            // Observed on AIR WIN63-202610151745-318700621: a variable without a value is held as -1 (it reads -1, and after the box is
-            // switched to having a value, +1 gives 0).
+            // A variable without a value is held as -1 (it reads -1, and after the box is switched to having a value, +1 gives 0).
             var next = definition.HasValue ? transform(current?.Value ?? 0) : -1;
 
             if (mutation == WiredVariableMutation.Set && !notifyUnchanged && previous is not null && previous.Value == next) {
                 return previous;
             }
 
-            // Observed on AIR WIN63-202610131318-860371703: a Give with override re-creates the value even when it is unchanged.
+            // A Give with override re-creates the value even when it is unchanged.
             acceptedUnchangedWrite = (notifyUnchanged && mutation == WiredVariableMutation.Set) || mutation == WiredVariableMutation.Replace;
             var now = clock.GetUtcNow();
 
@@ -388,8 +386,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             }
         }
 
-        // Observed on AIR WIN63-202610131318-860371703: every successful Give, including an override of an existing value,
-        // fires Variable Changed as created and never as changed.
+        // Every successful Give, including an override of an existing value, fires Variable Changed as created and never as changed.
         _changes.Enqueue(new(definition.RoomId, key, write.After is null ? WiredVariableChangeKind.Removed :
             write.Before is null || mutation == WiredVariableMutation.Replace ? WiredVariableChangeKind.Created : WiredVariableChangeKind.Updated,
             write.Before, write.After, holder.EntityId, frame.Depth + 1)
@@ -794,8 +791,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return null;
             }
 
-            // Observed on AIR WIN63-202610201032-107964540: Give, Change and Remove through a pointer of any target changed nothing and
-            // gave no error.
+            // Give, Change and Remove through a pointer of any target change nothing and give no error.
             if (writing && definition.IsPointer) {
                 return null;
             }
@@ -858,11 +854,10 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     /// <summary>
-    /// The key a proposed reference is refused with, or null. Observed on AIR WIN63-202610201032-107964540: the variable must be shared
-    /// in the room it names, and that room must have the same owner. A room holds one reference to a shared variable, a second one is
-    /// refused. With <paramref name="stored"/>, a source that no longer exists is no refusal: observed on AIR WIN63-202610201032-107964540,
-    /// a reference whose source was picked up keeps its settings and still opens, also after a room reload. A source placed again in
-    /// another room, or saved again as local, still refuses the stored reference; Habbo was not probed for that.
+    /// The key a proposed reference is refused with, or null. The variable must be shared in the room it names, and that room must have the same owner.
+    /// A room holds one reference to a shared variable, a second one is refused. With <paramref name="stored"/>, a source that no longer exists is no refusal:
+    /// a reference whose source was picked up keeps its settings and still opens, also after a room reload. A source placed again in another room, or saved again as local,
+    /// still refuses the stored reference.
     /// </summary>
     public string? RefuseReference(WiredVariableDefinition proposed, bool stored = false)
     {
@@ -896,9 +891,8 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     /// <summary>
-    /// The variable a pointer stands for in this firing: the one whose box id its accessor context variable holds, of the pointer's own
-    /// target, read for the same holder. Observed on AIR WIN63-202610201032-107964540: an id that is no variable box of that target
-    /// (nothing, 0, a missing id, a pointer, a variable of another target) reads nothing.
+    /// The variable a pointer stands for in this firing: the one whose box id its accessor context variable holds, of the pointer's own target, read for the same holder.
+    /// An id that is no variable box of that target (nothing, 0, a missing id, a pointer, a variable of another target) reads nothing.
     /// </summary>
     private (WiredVariableReference Reference, WiredVariableDefinition Definition)? PointedAt(WiredVariableDefinition pointer, WiredVariableFrame frame)
     {
@@ -945,24 +939,22 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     /// <summary>
-    /// What a text placeholder for this reference shows in this firing, or null when it stays as written. A pointer shows the variable
-    /// it points at. Observed on AIR WIN63-202610201032-107964540: a pointer that points at nothing leaves the placeholder, and a pointed
-    /// variable without a value shows "null".
+    /// What a text placeholder for this reference shows in this firing, or null when it stays as written. A pointer shows the variable it points at.
+    /// A pointer that points at nothing leaves the placeholder, and a pointed variable without a value shows "null".
     /// </summary>
     internal WiredVariableTextSource? TextSource(WiredVariableReference reference, WiredVariableFrame frame)
     {
         lock (_gate) {
             var resolved = Resolve(reference, false);
 
-            // Observed on AIR WIN63-202610201032-107964540: when the variable's own box is picked up after the stack fired, while a
-            // delayed Show Message waits, its placeholder stays as written. Other unresolved variables keep showing "null".
+            // When the variable's own box is picked up after the stack fired, while a delayed Show Message waits, its placeholder stays as written. Other unresolved variables keep showing "null".
             if (resolved is null && derive?.Invoke(reference) is null && TryDefinitionId(reference.Token, out var definitionId)
                 && directory.Find(definitionId) is null) {
                 return null;
             }
 
             if (resolved?.Definition is not { IsPointer: true } pointer) {
-                // Observed on AIR WIN63-202610151745-318700621: a placeholder for is_maxed shows "null" also while the part exists.
+                // A placeholder for is_maxed shows "null" also while the part exists.
                 return new(reference, derive?.Invoke(reference) is { HasValue: false });
             }
 
@@ -971,11 +963,9 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     /// <summary>
-    /// The key a new save of a named variable is refused with, or null. Observed on AIR WIN63-202610201032-107964540: a name that is empty
-    /// once cleaned is too short on every kind, a pointer name also needs 1 to 40 letters, digits or underscores, and the cleaned name must
-    /// differ from every user, furni, global, context and pointer variable of the room. Echo, reference and quest variables are not
-    /// observed, so they do not count (a daily task variable is a user variable here and does). An older stored name is compared as it is
-    /// stored.
+    /// The key a new save of a named variable is refused with, or null. A name that is empty once cleaned is too short on every kind, a pointer name also needs 1 to 40 letters,
+    /// digits or underscores, and the cleaned name must differ from every user, furni, global, context and pointer variable of the room. Echo, reference and quest variables
+    /// do not count (a daily task variable is a user variable here and does). An older stored name is compared as it is stored.
     /// </summary>
     public string? RefuseName(uint itemId, string name, bool pointer)
     {
@@ -990,14 +980,12 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     /// <summary>
-    /// The key a new pointer save is refused with, or null. Observed on AIR WIN63-202610201032-107964540: the name is checked first (length,
-    /// syntax, then uniqueness), then the accessor.
+    /// The key a new pointer save is refused with, or null. The name is checked first (length, syntax, then uniqueness), then the accessor.
     /// </summary>
     public string? RefusePointer(WiredVariableDefinition proposed) => RefuseName(proposed.ItemId, proposed.Name, pointer: true) ?? RefuseAccessor(proposed);
 
     /// <summary>
-    /// The key a pointer's accessor is refused with, or null. Observed on AIR WIN63-202610201032-107964540: the accessor must be a context
-    /// variable that holds a value (anything else, or nothing, is a missing variable) and a pointer is never an accessor.
+    /// The key a pointer's accessor is refused with, or null. The accessor must be a context variable that holds a value (anything else, or nothing, is a missing variable) and a pointer is never an accessor.
     /// </summary>
     public string? RefuseAccessor(WiredVariableDefinition proposed)
     {
@@ -1038,8 +1026,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             var after = change.After is null ? null : resolved.Convert!(change.After);
 
             // The part's own appearance decides the kind: a presence part (is_maxed) is created when it appears and removed when it goes, and
-            // nothing happens while it stays absent. Observed on AIR WIN63-202610151745-318700621: is_maxed fired on the writes that made it
-            // appear, kept it and removed it, not on a write while absent.
+            // nothing happens while it stays absent. is_maxed fires on the writes that make it appear, keep it and remove it, not on a write while absent.
             if (before is null && after is null) {
                 return null;
             }

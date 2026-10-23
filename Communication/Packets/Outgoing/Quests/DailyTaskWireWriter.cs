@@ -4,8 +4,7 @@ using Plus.HabboHotel.Quests.DailyTasks;
 namespace Plus.Communication.Packets.Outgoing.Quests;
 
 /// <summary>
-/// Writes daily tasks the way AIR WIN63-202610151745-318700621 reads them: package_180/class_2919.as:39-61 for a task and
-/// package_180/class_4315.as:17-24 for a reward.
+/// Writes daily tasks and their rewards the way the client reads them.
 /// </summary>
 internal static class DailyTaskWireWriter
 {

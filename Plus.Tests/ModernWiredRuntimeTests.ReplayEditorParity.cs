@@ -5,7 +5,6 @@ using Xunit;
 namespace Plus.Tests;
 
 // Saves of Set Furni Highlight, Set Furni Visibility and Room Initialized, answered the way Habbo answers them.
-// Observed on AIR WIN63-202610201032-107964540.
 public partial class ModernWiredRuntimeTests
 {
     private const string RoomInitialized = "wf_trg_room_initializes";
@@ -124,7 +123,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal([8u], Assert.Single(f.Store.Saves).SelectedItems.ToArray());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Set Furni Visibility saves a furni picked twice once, as it does on 48 cards in all.
+    // Set Furni Visibility saves a furni picked twice once.
     [Fact]
     public async Task TheSameFurniPickedTwiceInVisibilityIsSavedOnce()
     {

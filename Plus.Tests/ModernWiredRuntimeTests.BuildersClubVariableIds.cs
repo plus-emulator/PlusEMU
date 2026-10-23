@@ -4,8 +4,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// Builders Club furni in Wired values. Observed on AIR WIN63-202610201032-107964540: @id gives the id the client sees for a Builders Club
-/// furni, and a pointer whose accessor holds that id reads the variable of that box.
+/// @id gives the id the client sees for a Builders Club furni. A pointer whose accessor holds that id reads the variable of that box.
 /// </summary>
 public partial class ModernWiredRuntimeTests
 {

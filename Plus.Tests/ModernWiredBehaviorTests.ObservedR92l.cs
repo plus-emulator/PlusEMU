@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Official hhus r92l match_to_sshot probes (AIR WIN63-202610131318-860371703); receipts in reviews/r92-movement-facts.md.</summary>
+/// <summary>Official match_to_sshot behaviour for selector pools and snapshots.</summary>
 public partial class ModernWiredBehaviorTests
 {
     private static WiredConfiguration SnapshotRuntime(int source, params (uint Id, int X)[] spots)
@@ -30,7 +30,7 @@ public partial class ModernWiredBehaviorTests
         return movers.ToDictionary(item => item.Id, item => item.GetX);
     }
 
-    // r92l r92l-sshot-perm aligned-w1..w3 and shifted-w1..w3: with the picked furni each marker returns to its own saved spot.
+    // With the picked furni each marker returns to its own saved spot.
     [Fact]
     public void PickedSnapshotFurniReturnToTheirOwnSpots()
     {
@@ -42,8 +42,7 @@ public partial class ModernWiredBehaviorTests
         }
     }
 
-    // r92l r92l-sshot-unequal four-w1..w3: a selector pool of four furni (one without an entry) over three saved spots: every spot
-    // is used, the three snapshotted furni took a varying permutation and the fourth shared a spot; one-w1/w2: one furni went to A, then C.
+    // A selector pool of four furni (one without an entry) over three saved spots: every spot is used, the three snapshotted furni take a varying permutation and the fourth shares a spot. With one furni, it goes to A, then C.
     [Fact]
     public void SelectorPoolFurniAreDealtTheSavedSpotsInARandomOrder()
     {
@@ -62,9 +61,7 @@ public partial class ModernWiredBehaviorTests
         Assert.True(singles.Count > 1);
     }
 
-    // r92l r92l-sshot-hidden ms0..ms5 and r92l-sshot-perm: the reopened frame of a saved snapshot carries the snapshot text with N
-    // for each part the options leave out; a fresh box opens with [0,0,0,0,1] and no text. Observed on AIR WIN63-202610201032-107964540:
-    // the reopened frame ends with the hotel int at 0.
+    // The reopened frame of a saved snapshot carries the snapshot text with N for each part the options leave out, and ends with the hotel int at 0. A fresh box opens with [0,0,0,0,1] and no text.
     [Theory]
     [InlineData(0, 0, 0, 0, "2147418170,N,N,N,N,N")]
     [InlineData(1, 0, 0, 0, "2147418170,0,N,N,N,N")]
@@ -91,7 +88,7 @@ public partial class ModernWiredBehaviorTests
         Assert.Equal(text, frame.Text);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_sshot_resave_plain): an opened snapshot editor saved back with its listing compiles.
+    // An opened snapshot editor saved back with its listing compiles.
     [Theory]
     [InlineData("wf_act_match_to_sshot")]
     [InlineData("wf_cnd_match_snapshot")]
@@ -111,7 +108,7 @@ public partial class ModernWiredBehaviorTests
         Assert.True(WiredNativeEditorProjection.TryCompile(1, descriptor, frame, out _));
     }
 
-    // r92l r92l-sshot-perm: three entries are listed by descending id.
+    // Three entries are listed by descending id.
     [Fact]
     public void SnapshotFrameListsEntriesByDescendingId()
     {

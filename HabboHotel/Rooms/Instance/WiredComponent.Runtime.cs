@@ -38,9 +38,7 @@ public partial class WiredComponent
     }
     private bool WithHighscoreSpeechOwner(bool speech, Func<bool> action)
     {
-        // Speech runs its stacks inside an owned pass, so avatar moves land at once instead of on the next room tick. Observed on AIR
-        // WIN63-202610151745-318700621: Move/Rotate User and User To Furni move the avatar with the say (+130 ms round trip on all
-        // 13 fires), while ours waited for the room tick (+480..+500 ms).
+        // Speech runs its stacks inside an owned pass, so avatar moves land at once instead of on the next room tick: Move/Rotate User and User To Furni move the avatar with the say.
         if (!speech || Plus.HabboHotel.Rooms.PathFinding.RoomOwnerScope.IsOwner(_room) || _engine.CurrentThreadOwnsPass) {
             return action();
         }
@@ -58,8 +56,7 @@ public partial class WiredComponent
     internal DateTimeOffset CalendarTime =>
         TimeZoneInfo.ConvertTime(_clock.GetUtcNow(), EffectiveTimeZone);
     /// <summary>
-    /// The clock Date Matches and Time Matches read. Observed on AIR WIN63-202610201032-107964540: a condition without a timezone of its own
-    /// reads UTC, not the zone that @current_time uses.
+    /// The clock Date Matches and Time Matches read. A condition without a timezone of its own reads UTC, not the zone that @current_time uses.
     /// </summary>
     internal DateTimeOffset ConditionCalendarTime =>
         TimeZoneInfo.ConvertTime(_clock.GetUtcNow(), Settings.ExplicitTimeZone ?? TimeZoneInfo.Utc);
@@ -161,9 +158,7 @@ public partial class WiredComponent
     public void ClearLogs() => _roomLog.Clear();
 
     /// <summary>
-    /// Counts one occurrence on a monitor error row. Placement failure counts the placement-failure dialogs shown to the owner,
-    /// not the failed runs: observed on AIR WIN63-202610131318-860371703, 9 dialogs over about 20 failed runs read as 9.
-    /// The dialog's sender calls this with <see cref="WiredErrorKind.PlacementFailure"/> each time it shows one.
+    /// Counts one occurrence on a monitor error row. Placement failure counts the placement-failure dialogs shown to the owner, not the failed runs.
     /// </summary>
     public void RecordError(WiredErrorKind kind) => _errors.Record(kind);
 
@@ -221,8 +216,7 @@ public partial class WiredComponent
         }, 0, "", reason, _clock.GetUtcNow());
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: a failed wired furni placement shows every user in the room (owner and visitors
-    // without rights alike) one NotificationDialog wired.error, also for timer runs, and only when at least 5.0 s have passed since that
+    // A failed wired furni placement shows every user in the room (owner and visitors without rights alike) one NotificationDialog wired.error, also for timer runs, and only when at least 5.0 s have passed since that
     // user's last one. The rest of the stack still runs. The monitor's PLACEMENT_FAILURE count follows the runs that showed a dialog.
     private const long PlacementFailureCooldownMs = 5000;
     private readonly Dictionary<int, long> _lastPlacementFailureMs = [];
@@ -256,11 +250,9 @@ public partial class WiredComponent
             "room.error.wired.placement_failure", _clock.GetUtcNow());
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a give from picked chests none of which is usable (518 reason 15) writes a DEBUG
-    // line to the room log each time. The wired.error dialog TRANSACTION_FAILURE shows at most once per 20 s (none 19.0 s after the last
-    // one, one 20.5 s after), and each dialog adds one TRANSACTION_FAILURE to the monitor and an ERROR line before that failure's DEBUG
-    // line. A failure inside the window does not restart it. Observed on AIR WIN63-202610201032-107964540: the dialog goes to every user
-    // in the room, whoever triggered the failure, and the 20 s window is shared by the whole room.
+    // A give from picked chests none of which is usable (518 reason 15) writes a DEBUG line to the room log each time. The wired.error dialog TRANSACTION_FAILURE shows at most once per 20 s,
+    // and each dialog adds one TRANSACTION_FAILURE to the monitor and an ERROR line before that failure's DEBUG line. A failure inside the window does not restart it.
+    // The dialog goes to every user in the room, whoever triggered the failure, and the 20 s window is shared by the whole room.
     private const long TransactionFailureCooldownMs = 20000;
     private long? _lastTransactionFailureMs;
     private readonly object _transactionFailureGate = new();

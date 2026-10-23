@@ -15,8 +15,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// What the official client (WIN63-202609161723) shows and sends for the marketplace: MarketplaceView.calculateFinalPrice for the seller price, the 11 fields of the configuration
-// message, and MakeOfferMessageComposer (price, furniType, count, ids).
+// What the official client shows and sends for the marketplace: MarketplaceView.calculateFinalPrice for the seller price, the 11 fields of the configuration message, and MakeOfferMessageComposer (price, furniType, count, ids).
 public class MarketplaceOfferWireTests
 {
     [Theory]

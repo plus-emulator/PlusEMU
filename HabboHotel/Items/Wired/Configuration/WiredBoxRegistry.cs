@@ -3,7 +3,7 @@ using System.Collections.Frozen;
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
-/// EditorCode is the native AIR form code within the box's own category (Action/Trigger/Condition/Selector/Addon/Variable
+/// EditorCode is the native form code within the box's own category (Action/Trigger/Condition/Selector/Addon/Variable
 /// code spaces are independent); behavioral registration
 /// remains the concrete factory's responsibility. Volt uses three legacy envelopes for six kinds.
 /// </summary>
@@ -21,7 +21,7 @@ public static class WiredBoxRegistry
         new("wf_trg_transaction_fail", WiredBoxCategory.Trigger, 26, "WiredTrading"),
         new("wf_xtra_scan_chest_furni_by_type", WiredBoxCategory.Addon, 18, "WiredTrading"),
         new("wf_xtra_custom_contract", WiredBoxCategory.Addon, 20, "WiredTrading"),
-        // October AIR boxes (WIN63-202610131318-860371703, r88 dossier); codes from each editor's code getter.
+        // Codes come from each editor's code getter.
         new("wf_act_progress_ach", WiredBoxCategory.Action, 51, "wired_setup/actiontypes/ProgressAchievement.as"),
         new("wf_act_give_effect", WiredBoxCategory.Action, 52, "wired_setup/actiontypes/class_3931.as"),
         new("wf_act_override_height", WiredBoxCategory.Action, 53, "wired_setup/actiontypes/class_4092.as"),
@@ -155,7 +155,7 @@ public static class WiredBoxRegistry
         new("wf_slc_users_signal", WiredBoxCategory.Selector, 10, "habbohotel/items/interactions/wired/selector/WiredEffectUsersSignal.java"),
         new("wf_slc_users_team", WiredBoxCategory.Selector, 3, "habbohotel/items/interactions/wired/selector/WiredEffectUsersTeam.java"),
         new("wf_slc_users_with_var", WiredBoxCategory.Selector, 18, "habbohotel/items/interactions/wired/selector/WiredEffectUsersWithVariable.java"),
-        // Both timers open AIR TriggerOnce (TriggerConfCodes.TRIGGER_ONCE = 3, triggerconfs/TriggerOnce.as); the client has no
+        // Both timers open TriggerOnce (code 3); the client has no
         // separate long-timer code, so sharing 3 is intended and both take the same 1-1200 half-second pulses.
         new("wf_trg_at_given_time", WiredBoxCategory.Trigger, 3, "habbohotel/items/interactions/wired/triggers/WiredTriggerAtSetTime.java"),
         new("wf_trg_at_time_long", WiredBoxCategory.Trigger, 3, "habbohotel/items/interactions/wired/triggers/WiredTriggerAtTimeLong.java"),

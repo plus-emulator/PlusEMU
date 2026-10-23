@@ -4,7 +4,7 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
 /// The answer to the source lists of a save, the same for every box with a native editor.
-/// Observed on AIR WIN63-202610201032-107964540: a value Habbo does not know anywhere in either list is dropped without any reply.
+/// A value Habbo does not know anywhere in either list is dropped without any reply.
 /// Otherwise the furni list is checked first, then the user list. In each list a value its slot does not offer gets the source key, and
 /// only then a list longer than the box has slots gets the count key. A shorter list is not refused: the box fills it from its defaults.
 /// A box above the triggers keeps the trigger context sources 10 and 11 in any user slot.

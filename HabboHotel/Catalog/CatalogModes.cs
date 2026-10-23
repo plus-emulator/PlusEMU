@@ -1,7 +1,7 @@
 namespace Plus.HabboHotel.Catalog;
 
 // The catalogue a page belongs to. The client keeps one window per mode and routes every index and page by the mode
-// it carries (AIR WIN63-202610151745-318700621, com/sulake/habbo/catalog/HabboCatalog.as:1755-1760 and 2144-2150).
+// it carries.
 public static class CatalogModes
 {
     public const string Normal = "NORMAL";

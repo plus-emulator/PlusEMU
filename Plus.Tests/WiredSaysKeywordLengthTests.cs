@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Observed on hhus (AIR WIN63-202610131318-860371703): Says Something keeps the first 200 characters of a longer keyword.</summary>
+/// <summary>Says Something keeps the first 200 characters of a longer keyword.</summary>
 public class WiredSaysKeywordLengthTests
 {
     private static WiredConfiguration Compile(int length)

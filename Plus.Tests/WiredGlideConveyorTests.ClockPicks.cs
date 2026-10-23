@@ -4,8 +4,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: Control Clock refuses a save with a negative id of no furni, alone or next to a
-    // counter, and a wall item picked as a wall item, with require_counter_furni and no parameters. The box keeps its previous picks.
+    // Control Clock refuses a save with a negative id of no furni, alone or next to a counter, and a wall item picked as a wall
+    // item, with require_counter_furni and no parameters. The box keeps its previous picks.
     [Theory]
     [InlineData((int)PickCounter, -(int)PickMissing)]
     [InlineData(-(int)PickMissing)]

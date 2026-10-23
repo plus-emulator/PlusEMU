@@ -419,7 +419,7 @@ public class RoomUserManager
         return true;
     }
 
-    // The room sees the effect now; the entrant gets its own effect with the room entry, after the room rating (AIR WIN63-202610151745-318700621).
+    // The room sees the effect now; the entrant gets its own effect with the room entry, after the room rating.
     private void ApplyArrivalEffect(GameClient session, RoomUser user, int effectId)
     {
         if (session.GetHabbo().Effects is not { } effects) {
@@ -449,8 +449,7 @@ public class RoomUserManager
         return _room.CheckRights(session, false, true) ? 3 : 0;
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: the entrant's controller level and Wired permissions follow the room's labels,
-    // then YouAreOwner for the owner.
+    // The entrant's controller level and Wired permissions follow the room's labels, then YouAreOwner for the owner.
     public void SendEntryRights(GameClient session)
     {
         var level = ControllerLevel(session);
@@ -494,7 +493,7 @@ public class RoomUserManager
                 session.Send(new GenericErrorComposer(GenericError.KickedFromRoom));
             }
 
-            // Observed on AIR WIN63-202610151745-318700621: leaving a room, for the hotel view or another room, starts with YouArePlayingGame(false).
+            // Leaving a room, for the hotel view or another room, starts with YouArePlayingGame(false).
             if (user != null) {
                 session.Send(new Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired.YouArePlayingGameComposer(false));
             }
@@ -543,8 +542,7 @@ public class RoomUserManager
                         if (session.GetHabbo().Effects is { CurrentEffect: not 0 } teamEffects) {
                             teamEffects.ApplyEffect(0);
                             // ApplyEffect is skipped when the session already moved on (re-entering the room); the team effect must
-                            // still not come back with the next room entry. Observed on AIR WIN63-202610151745-318700621
-                            // (wf_act_kick_user.cov_selector): a teamed owner re-entering gets no avatar effect.
+                            // still not come back with the next room entry: a teamed owner re-entering gets no avatar effect.
                             teamEffects.CurrentEffect = 0;
                         }
                     }
@@ -657,7 +655,7 @@ public class RoomUserManager
             return false;
         }
 
-        // The leaver itself gets no UserRemove (AIR WIN63-202610151745-318700621); its client drops the whole room.
+        // The leaver itself gets no UserRemove; its client drops the whole room.
         var leaver = user.IsBot ? null : user.GetClient();
         var recipients = GetRoomUsers().Select(roomUser => roomUser.GetClient()).Where(client => client != null && !ReferenceEquals(client, leaver))
             .Cast<GameClient>().ToArray();

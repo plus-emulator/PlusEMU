@@ -70,7 +70,7 @@ public partial class PlacedFurniRoomTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    // Observed on AIR WIN63-202610151745-318700621: a pending (announced) step still lands, then the walk ends; a queued search is dropped.
+    // A pending (announced) step still lands, then the walk ends; a queued search is dropped.
     public void WiredFreezeCancelsThePendingBatchOrQueuedSearchAtTheOwnerBoundary(bool queuedSearch)
     {
         var actor = ExecutorConfiguredActor(new()

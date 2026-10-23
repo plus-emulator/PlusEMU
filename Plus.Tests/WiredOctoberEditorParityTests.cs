@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Editor payloads of the WIN63-202610121709 AIR client, checked against its decompiled editors.</summary>
+/// <summary>Editor payloads of the October editors, checked against their decompiled form.</summary>
 public sealed class WiredOctoberEditorParityTests
 {
     [Theory]

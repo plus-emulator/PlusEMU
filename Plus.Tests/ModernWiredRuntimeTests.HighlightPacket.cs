@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Set Furni Highlight sends the saved values unchanged. Observed on AIR WIN63-202610201032-107964540.
+// Set Furni Highlight sends the saved values unchanged.
 public partial class ModernWiredRuntimeTests
 {
     [Theory]

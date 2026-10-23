@@ -99,7 +99,7 @@ public sealed class WiredConfigurationService(
                 native = native with { Text = FilterMessageText(native.Text) };
             }
 
-            // The Web API add-on saves only keys this server made for it (VariablesWebApiAddon.as:108).
+            // The Web API add-on saves only keys this server made for it.
             if (descriptor.CanonicalName == "wf_xtra_var_web_api" && !room.GetWired().WebApiKeysAccepted(selectedItem.Id, native.Text)) {
                 session.Send(new WiredValidationErrorComposer("These Web API keys were not made for this add-on."));
 
@@ -137,7 +137,7 @@ public sealed class WiredConfigurationService(
                 return;
             }
 
-            // Place Furni refuses a template that cannot be cloned (observed r93a; see WiredPlaceTemplatePolicy).
+            // Place Furni refuses a template that cannot be cloned (see WiredPlaceTemplatePolicy).
             if (descriptor.CanonicalName == "wf_act_place_furni"
                 && Modern.Actions.WiredPlaceTemplatePolicy.RefusalKey(room, native.SavedState.Snapshots) is { } notCloneable) {
                 session.Send(new WiredValidationErrorComposer(notCloneable));
@@ -186,8 +186,7 @@ public sealed class WiredConfigurationService(
             }
 
             // Sources 10 and 11 save in any stack, even when its trigger does not offer them. Show Message with 11 saves without a
-            // Click User trigger (observed on AIR WIN63-202610151745-318700621), and Furni To User with 10 saves without a Bot Reaches
-            // User trigger (observed on AIR WIN63-202610131318-860371703).
+            // Click User trigger, and Furni To User with 10 saves without a Bot Reaches User trigger.
             var compiled = WiredNativeEditorProjection.TryCompile(selectedItem.Id, descriptor, native, out var runtime,
                 WiredNativeEditorProjection.AnyTriggerContext);
 
@@ -227,8 +226,8 @@ public sealed class WiredConfigurationService(
         }
     }
 
-    // Observed on hhus: the filtered Show Message text is what is stored and returned on reopen, and the save still succeeds.
-    // The official rule set is unobserved; this applies only the hotel word filter that PlusEMU already has.
+    // The filtered Show Message text is what is stored and returned on reopen, and the save still succeeds.
+    // Only the hotel word filter applies.
     private string FilterMessageText(string text)
     {
         var filtered = wordFilter.CheckMessage(text);
@@ -262,7 +261,7 @@ public sealed class WiredConfigurationService(
 
     private string ValidateBotFigure(string data, GameClient session)
     {
-        // Observed on AIR WIN63-202610201032-107964540: an empty name and figure sent as an empty text read back as a single tab.
+        // An empty name and figure sent as an empty text read back as a single tab.
         if (data.Length == 0) {
             return "\t";
         }
@@ -273,7 +272,7 @@ public sealed class WiredConfigurationService(
             fields[1] = fields[1].TrimEnd('.');
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: an empty figure is saved and read back as an empty figure.
+        // An empty figure is saved and read back as an empty figure.
         if (fields.Length == 2 && fields[1].Length == 0) {
             return data;
         }

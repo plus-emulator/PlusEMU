@@ -96,7 +96,7 @@ public sealed class WiredSelectorTests
         Assert.Equal(expected.Order(), result.Selection.UserIds.Order());
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: the hotel stores a negative hand item as sent.
+    // The hotel stores a negative hand item as sent.
     [Theory]
     [InlineData(-1)]
     [InlineData(-5)]
@@ -130,7 +130,7 @@ public sealed class WiredSelectorTests
         Assert.Equal(new[] { 4 }, input.SelectorPool.UserIds);
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): a picked Wired box stays in the picks selection (Call Stacks runs its stack).
+    // A picked Wired box stays in the picks selection (Call Stacks runs its stack).
     [Fact]
     public void APickedWiredBoxStaysSelected()
     {
@@ -143,7 +143,7 @@ public sealed class WiredSelectorTests
     {
         var result = WiredSelectorModule.Compose(WiredSelectorModule.SelectRaw("wf_slc_furni_picks",
             Config([0, 1], [1]), World(), Inputs()), World(), Inputs());
-        // Observed on AIR WIN63-202610151745-318700621: the complement includes wall and Wired furniture.
+        // The complement includes wall and Wired furniture.
         Assert.Equal(new uint[] { 2, 3, 4, 5 }, result.FurniIds.Order());
     }
 
@@ -163,7 +163,7 @@ public sealed class WiredSelectorTests
         Assert.Empty(result.Selection.FurniIds);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a chain of 61 nested Remote Selection stacks still reaches the last stack.
+    // A chain of 61 nested Remote Selection stacks still reaches the last stack.
     [Theory]
     [InlineData(21)]
     [InlineData(61)]
@@ -204,7 +204,7 @@ public sealed class WiredSelectorTests
         Assert.Single(WiredSelectorModule.SelectRaw("wf_slc_users_byaction", Config([10, 0, 0, 1, 2]), world, Inputs()).Selection.UserIds);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: Furni In Area and Furni On Furni select the Wired boxes in their scope.
+    // Furni In Area and Furni On Furni select the Wired boxes in their scope.
     [Fact]
     public void AreaAndOnFurniSelectorsIncludeWiredBoxes()
     {
@@ -214,7 +214,7 @@ public sealed class WiredSelectorTests
             .Selection.FurniIds.Order());
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a Wired box sent with a signal arrives in Furni From Signal.
+    // A Wired box sent with a signal arrives in Furni From Signal.
     [Fact]
     public void FurniFromSignalKeepsWiredBoxes()
     {

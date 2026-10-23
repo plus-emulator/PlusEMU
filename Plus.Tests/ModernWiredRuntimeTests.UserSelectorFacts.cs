@@ -4,7 +4,6 @@ using Xunit;
 namespace Plus.Tests;
 
 // What the user selectors pick in a real firing. The owner (7, "Alice") stands at (0, 0) and Bob (8) at (2, 0).
-// Observed on AIR WIN63-202610201032-107964540.
 public partial class ModernWiredRuntimeTests
 {
     private static int[] PickedUsers(string name, string row, Action<SelectorStack>? setup = null)

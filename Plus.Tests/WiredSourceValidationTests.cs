@@ -4,7 +4,7 @@ namespace Plus.Tests;
 
 // The answer to a source list a save should not carry, the same for every box with a native editor. A source value Habbo does not know
 // is dropped without any reply; a known value the slot does not offer gets the furni or user source key; a list longer than the box has
-// slots gets the count key; the values are checked before the counts. Observed on AIR WIN63-202610201032-107964540.
+// slots gets the count key; the values are checked before the counts.
 public sealed class WiredSourceValidationTests
 {
     private const string FurniSource = "wiredfurni.error.invalid_furni_source";

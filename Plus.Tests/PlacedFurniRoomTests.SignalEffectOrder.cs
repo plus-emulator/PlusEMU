@@ -15,9 +15,7 @@ public partial class PlacedFurniRoomTests
 {
     private const uint SignalAntenna = 430, SignalSubject = 431;
 
-    // Observed on AIR WIN63-202610201032-107964540: the receiving stack sees the results of the other effect of the sending stack, whatever the box
-    // order (12 of 12 firings for each case): a Give Variable in the receiving stack copies the new variable value, the new state or
-    // rotation, and its message comes after the sender's.
+    // The receiving stack sees the results of the other effect of the sending stack, whatever the box order: a Give Variable in the receiving stack copies the new variable value, the new state or rotation, and its message comes after the sender's.
     [Theory]
     [InlineData("give", false)]
     [InlineData("give", true)]

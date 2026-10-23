@@ -7,9 +7,9 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items;
 
 /// <summary>
-/// The room-wide switches of ConfigurationItemStates. Observed on AIR WIN63-202610201032-107964540: invisible furniture are hidden
-/// from the clients while an Invisible Furni Controller is switched on, the hand item drop is blocked while a hand item blocker is
-/// switched on, and the :chooser command is disabled for visitors without rights while a :chooser disabler is switched on.
+/// The room-wide switches of ConfigurationItemStates. Invisible furniture are hidden from the clients while an Invisible Furni Controller is on.
+/// The hand item drop is blocked while a hand item blocker is on.
+/// The :chooser command is disabled for visitors without rights while a :chooser disabler is on.
 /// </summary>
 public static class ConfigurationItemStates
 {
@@ -21,8 +21,8 @@ public static class ConfigurationItemStates
     public static Item? RollerSpeedController(Room room) => room.GetRoomItemHandler()?.GetFloor
         .FirstOrDefault(item => item.Definition.InteractionType == InteractionType.RollerSpeedController);
     /// <summary>
-    /// The time between two roller steps in the room, in milliseconds. Observed on AIR WIN63-202610201032-107964540: a room without the
-    /// speed controller steps every 2000 ms. The controller has 12 states in four groups of three: 500, 1000, 1500 and 2000 ms.
+    /// The time between two roller steps in the room, in milliseconds. A room without the speed controller steps every 2000 ms.
+    /// The controller has 12 states in four groups of three: 500, 1000, 1500 and 2000 ms.
     /// </summary>
     public static int RollerStepMilliseconds(Room room) => RollerSpeedController(room) is { } controller
         ? InteractorRollerSpeed.StepMilliseconds(controller)
@@ -32,16 +32,12 @@ public static class ConfigurationItemStates
     /// <summary>Room entry: every entry carries the states, all off included.</summary>
     public static void SendTo(GameClient session, Room room)
     {
-        // Observed on AIR WIN63-202610151745-318700621: every room entry carries the states, all off included.
         session.Send(Compose(room));
     }
     /// <summary>The furni whose state is one of the room flags in the flags packet.</summary>
     public static bool IsFlag(InteractionType type) => type is InteractionType.InvisibleFurniControl or InteractionType.ChooserDisabler
         or InteractionType.HandItemBlocker;
-    /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: a room holds one of each configuration furni. A second placement is refused with
-    /// the type limit text.
-    /// </summary>
+    /// <summary>A room holds one of each configuration furni. A second placement is refused with the type limit text.</summary>
     public static bool IsLimitedToOne(InteractionType type) => IsFlag(type) || type is InteractionType.WiredDisabler or InteractionType.RollerSpeedController;
     public static bool TypeLimitReached(Room room, ItemDefinition definition) => IsLimitedToOne(definition.InteractionType)
         && room.GetRoomItemHandler().GetFloor.Any(item => item.Definition.InteractionType == definition.InteractionType);
@@ -50,8 +46,8 @@ public static class ConfigurationItemStates
     public static void Announce(Room room, Item? except = null) => room.SendPacket(Compose(room, except));
 
     /// <summary>
-    /// A flag furni has a new state: the room flags go out, and the invisible furni are hidden or shown again. Observed on AIR
-    /// WIN63-202610201032-107964540: a switch by Wired does the same as a use.
+    /// A flag furni has a new state: the room flags go out, and the invisible furni are hidden or shown again.
+    /// A switch by Wired does the same as a use.
     /// </summary>
     public static void StateChanged(Item item)
     {

@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Variable Leaderboard overlay packets and ranking (VariableLeaderboard*, WIN63-202610131318-860371703).</summary>
+/// <summary>Variable Leaderboard overlay packets and ranking (VariableLeaderboard*).</summary>
 public sealed class WiredLeaderboardTests
 {
     private static readonly DateTimeOffset T0 = new(2026, 10, 14, 12, 0, 0, TimeSpan.Zero);
@@ -72,7 +72,7 @@ public sealed class WiredLeaderboardTests
         Assert.Null(first[0].Level);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: the row times are 0 unless the board shows a last-update (2) or creation (3) column.
+    // The row times are 0 unless the board shows a last-update (2) or creation (3) column.
     [Fact]
     public void RowTimesGoOutOnlyForShownTimeColumns()
     {

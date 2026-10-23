@@ -11,8 +11,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a say whose stack changes the value of a user variable fires the Variable Changed stack
-    // in the tick of the say, after the echo, like a Give Variable does. The flashes of the say stack and of the fired stack are one batch.
+    // A say whose stack changes the value of a user variable fires the Variable Changed stack in the tick of the say, after the echo, like a Give Variable does. The flashes of the say stack and of the fired stack are one batch.
     [Fact]
     public void VariableChangedStackRunsInTheTickOfASayThatChangesTheValue()
     {
@@ -35,8 +34,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(["vc1", "vc fired"], SpeechMessages(ServerPacketHeader.ChatComposer));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a change of a parent variable fires the Variable Changed stacks of the parent and of
-    // its Time Utilities parts in the tick of the say. A part whose value did not change fires as "unchanged".
+    // A change of a parent variable fires the Variable Changed stacks of the parent and of its Time Utilities parts in the tick of the say. A part whose value did not change fires as "unchanged".
     [Fact]
     public void VariableChangedStacksOfTimePartsRunInTheTickOfASayThatChangesTheParent()
     {
@@ -60,8 +58,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(["ms changed", "parent changed", "year changed"], inTick[1..].Order().ToArray());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: adding to the year part changes the parent. The year part fires as "increased" and the
-    // milliseconds part as "unchanged", in the tick of the say.
+    // Adding to the year part changes the parent. The year part fires as "increased" and the milliseconds part as "unchanged", in the tick of the say.
     [Fact]
     public void VariableChangedStacksOfTimePartsRunInTheTickOfASayThatChangesAPart()
     {

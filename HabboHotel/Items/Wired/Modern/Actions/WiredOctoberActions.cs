@@ -12,9 +12,8 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
-/// The October effects of the r88 dossier (WIN63-202610131318-860371703). The client only shows their editors and, for transparency
-/// and highlight, the incoming visual packets; every server rule here is inferred from those editors (WiredEvidenceRegistry AirSourceOnly).
-/// Runtime int layouts are the ones WiredNativeAuxiliaryEditor.October compiles.
+/// The October effects. The client only shows their editors and, for transparency and highlight, the incoming visual packets;
+/// every server rule here is inferred from those editors. Runtime int layouts are the ones WiredNativeAuxiliaryEditor.October compiles.
 /// </summary>
 public static class WiredOctoberActions
 {
@@ -66,8 +65,7 @@ public static class WiredOctoberActions
         return queries.ReadOperand(target, id, userSource, furniSource, config);
     }
 
-    // ProgressAchievement.as: 1 adds the amount to the player's progress, 0 sets the progress to it. Only achievements an Achievement
-    // Enabler of the room lists can progress, which is what the editor's achievementsInRoom dropdown offers.
+    // 1 adds the amount to the player's progress, 0 sets the progress to it. Only achievements an Achievement Enabler of the room lists can progress, which is what the editor's achievementsInRoom dropdown offers.
     private static bool ProgressAchievement(WiredRuntimeContext context, WiredConfiguration config, RoomUser[] recipients)
     {
         var group = config.Text;
@@ -94,7 +92,7 @@ public static class WiredOctoberActions
         return changed;
     }
 
-    // class_3931.as [effect id, priority, type]: type 0 puts the effect on, type 1 takes it off. Priority has no server meaning here.
+    // [effect id, priority, type]: type 0 puts the effect on, type 1 takes it off. Priority has no server meaning here.
     private static bool GiveEffect(WiredConfiguration config, RoomUser[] users)
     {
         foreach (var user in users) {
@@ -104,7 +102,7 @@ public static class WiredOctoberActions
         return users.Length > 0;
     }
 
-    // class_4092.as [height in hundredths, type]: type 0 makes the furni stack at that height, type 1 restores its own height.
+    // [height in hundredths, type]: type 0 makes the furni stack at that height, type 1 restores its own height.
     private static bool OverrideHeight(WiredRuntimeContext context, WiredConfiguration config, Item[] items)
     {
         var changed = false;
@@ -124,7 +122,7 @@ public static class WiredOctoberActions
         return changed;
     }
 
-    // ProgressRewardTrack.as: the task id names the reward track action progressed; the score is the amount.
+    // The task id names the reward track action progressed; the score is the amount.
     private static bool ProgressRewardTrack(WiredRuntimeContext context, WiredConfiguration config, RoomUser[] recipients)
     {
         var parts = config.Text.Split('\t');
@@ -146,7 +144,7 @@ public static class WiredOctoberActions
         return changed;
     }
 
-    // Audience 1 is everyone in the room; otherwise the users of the audience source see it (class_4285.as onAudienceChanged).
+    // Audience 1 is everyone in the room; otherwise the users of the audience source see it.
     private static void Show(WiredRuntimeContext context, WiredConfiguration config, Func<string, RoomUser[]> users, IServerPacket packet)
     {
         if (P(config, 0) == 1) {
@@ -160,7 +158,7 @@ public static class WiredOctoberActions
         }
     }
 
-    // class_4285.as [audience, visibility 0/100, click through, easing, target users]; the targets are furni or, with target users, users.
+    // [audience, visibility 0/100, click through, easing, target users]; the targets are furni or, with target users, users.
     private static bool SetVisibility(WiredRuntimeContext context, WiredConfiguration config, Func<string, Item[]> furni, Func<string, RoomUser[]> users)
     {
         var targetUsers = P(config, 4) == 1;
@@ -175,7 +173,7 @@ public static class WiredOctoberActions
             ? new WiredUserTransparencyComposer(targets, transparency, clickThrough, easing)
             : new WiredFurniTransparencyComposer(targets, transparency, clickThrough, easing));
 
-        // Observed on AIR WIN63-202610201032-107964540: only an effect for everyone on furni is part of the room entry state.
+        // Only an effect for everyone on furni is part of the room entry state.
         if (P(config, 0) == 1 && !targetUsers) {
             context.Room.GetWired().RememberTransparency(targets, transparency, clickThrough, easing);
         }
@@ -187,7 +185,7 @@ public static class WiredOctoberActions
         ? [.. users("targets").Select(user => user.VirtualId).Distinct()]
         : [.. furni("items").Where(item => item.IsFloorItem).Select(item => unchecked((int)item.Id)).Distinct()];
 
-    // class_4214.as [audience, type, strength, colour, animation, easing, target users]; users get class_3603, furni class_2680.
+    // [audience, type, strength, colour, animation, easing, target users].
     private static bool SetHighlight(WiredRuntimeContext context, WiredConfiguration config, Func<string, Item[]> furni, Func<string, RoomUser[]> users)
     {
         var targetUsers = P(config, 6) == 1;
@@ -197,12 +195,11 @@ public static class WiredOctoberActions
             return false;
         }
 
-        // Darken carries no colour and Brighten is white (class_4214.as readIntParamsFromForm); Brighten always pulses.
+        // Darken carries no colour and Brighten is white; Brighten always pulses.
         var type = P(config, 1);
         var color = type == 2 ? 0 : type == 4 ? 0xFFFFFF : P(config, 3);
         var animation = type == 4 ? 1 : P(config, 4);
-        // Observed on AIR WIN63-202610201032-107964540: the packet carries the saved strength (Brighten On stays 38) and the saved
-        // easing, also for a pulsing highlight.
+        // The packet carries the saved strength and easing, also for a pulsing highlight.
         var strength = P(config, 2);
         var easing = P(config, 5);
         Show(context, config, users, targetUsers
@@ -218,7 +215,7 @@ public static class WiredOctoberActions
 
     private static int Hops(WiredRuntimeContext context) => context.Event.Link is { } received ? received.Hops + 1 : 0;
 
-    // SendLinkMessage.as [source]: 0 forwards the text that started the stack (said, or a received link message), 1 the custom message.
+    // [source]: 0 forwards the text that started the stack (said, or a received link message), 1 the custom message.
     private static bool SendMessage(WiredModernBox box, WiredRuntimeContext context, WiredConfiguration config, Item[] endpoints)
     {
         var message = P(config, 0) == 1 ? context.Policy.FormatText(context, config.Text)
@@ -275,7 +272,7 @@ public static class WiredOctoberActions
         && value is >= int.MinValue and <= int.MaxValue && described.TextConnector.TryGetValue((int)value, out var name)
             ? name : value.ToString(CultureInfo.InvariantCulture);
 
-    // Link Speaker add-ons of the stack (class_4123.as [message, dataframe]) add their picked WIRED Link furni as endpoints.
+    // Link Speaker add-ons of the stack ([message, dataframe]) add their picked WIRED Link furni as endpoints.
     private static IEnumerable<Item> Speakers(WiredRuntimeContext context, bool dataframe) =>
         context.Policy.Addons.LinkSpeakers.Where(speaker => dataframe ? speaker.Dataframe : speaker.Message).SelectMany(speaker => speaker.Endpoints);
 }

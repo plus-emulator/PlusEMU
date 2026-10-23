@@ -5,7 +5,7 @@ public static class WiredPlaceTemplatePolicy
 {
     public const string NotCloneableKey = "wiredfurni.error.furni_can_not_be_cloned";
 
-    // Observed on AIR WIN63-202610151745-318700621: Builders Club templates save; an owned Pura item is refused.
+    // Builders Club templates save; an owned Pura item is refused.
     // Trade flags describe the catalogue definition, not whether this room instance came from Builders Club.
     public static bool CanClone(Item item) => item.IsBuildersClub && !item.IsTemporary && item.UniqueNumber == 0
         && !IsWiredBox(item.Definition)

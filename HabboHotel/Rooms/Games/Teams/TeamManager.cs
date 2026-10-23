@@ -116,8 +116,7 @@ public class TeamManager
             or InteractionType.Banzaigateyellow);
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: a Banzai gate and a Freeze gate of one colour are one team. Both show the number of
-    /// players in it and change in one ObjectsDataUpdate when a player joins or leaves.
+    /// A Banzai gate and a Freeze gate of one colour are one team. Both show the number of players in it and change in one ObjectsDataUpdate when a player joins or leaves.
     /// </summary>
     private static void ShowGateCounts(Room room, Team team)
     {

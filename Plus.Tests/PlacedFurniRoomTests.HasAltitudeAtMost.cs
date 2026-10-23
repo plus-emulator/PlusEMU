@@ -9,8 +9,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540 (a block at 1.50 and one on the floor): a stored comparison of 3 passes when the
-    // furni altitude is at most the value.
+    // A stored comparison of 3 passes when the furni altitude is at most the value.
     [Theory]
     [InlineData(1.5, 100, false)]
     [InlineData(1.5, 150, true)]

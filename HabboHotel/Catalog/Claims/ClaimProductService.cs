@@ -16,8 +16,7 @@ public interface IClaimProductService
 }
 
 /// <summary>
-/// HasClaimedProduct and ClaimProduct (AIR WIN63-202610151745-318700621, package_143/class_3538.as:12 and
-/// package_143/class_2610.as:12). Every decision is made here; the composers only write what they are given.
+/// HasClaimedProduct and ClaimProduct. Every decision is made here; the composers only write what they are given.
 /// </summary>
 public sealed class ClaimProductService(IClaimProductCatalog catalog, IClaimProductStore store, IAccountSessionGate sessions,
     TimeProvider clock, ILogger<ClaimProductService> logger) : IClaimProductService

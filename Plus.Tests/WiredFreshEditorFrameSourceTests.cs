@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Observed on AIR WIN63-202610131318-860371703: initial editor frames of fresh boxes (allowed lists and defaults).</summary>
+/// <summary>Initial editor frames of fresh boxes (allowed lists and defaults).</summary>
 public sealed class WiredFreshEditorFrameSourceTests
 {
     [Theory]
@@ -79,8 +79,8 @@ public sealed class WiredFreshEditorFrameSourceTests
     public void FreshEditorFramesCarryTheObservedDefaultInts(string name, string ints) =>
         Assert.Equal(ints, string.Join(",", WiredNativeEditorProjection.Metadata(name).OwnedDefaults));
 
-    // Observed: every trigger gives users 0/200/201, except Bot Reaches User (adds 10) and Click User (adds 11), inserted after 0 in every user
-    // slot of every box in that stack; furni lists and defaults never change.
+    // Every trigger gives users 0/200/201, except Bot Reaches User (adds 10) and Click User (adds 11), inserted after 0 in every
+    // user slot of every box in that stack; furni lists and defaults never change.
     [Fact]
     public void TheStackTriggerAddsTenOrElevenAfterZeroInEveryUserSlot()
     {
@@ -116,7 +116,7 @@ public sealed class WiredFreshEditorFrameSourceTests
         Assert.False(WiredNativeEditorProjection.TryCompile(7, descriptor, native, out _, [source == 10 ? 11 : 10]));
     }
 
-    // A row saved under the wider lists still loads; only a new save is checked against the official lists.
+    // A row saved under the wider lists still loads; only a new save is checked against the current lists.
     [Fact]
     public void AStoredRowWithASourceTheEditorNoLongerOffersStillLoads()
     {

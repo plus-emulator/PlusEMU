@@ -9,8 +9,8 @@ public class WiredLeaderboardLenientTextTests
 {
     private static readonly ImmutableArray<string> NoVariables = [.. Enumerable.Repeat("0", WiredLeaderboardConfig.VariableCount)];
 
-    // Observed on AIR WIN63-202610151745-318700621: one column, no override, an 8-field text with an override name; accepted and read
-    // back as the title, the column label and 14 empty fields.
+    // One column, no override, an 8-field text with an override name; accepted and read back as the title, the column label and
+    // 14 empty fields.
     [Fact]
     public void AShortTextIsPaddedAndUnusedSlotsAreEmptied()
     {
@@ -31,7 +31,7 @@ public class WiredLeaderboardLenientTextTests
         Assert.Equal("lb probe\t\tValue" + new string('\t', 14), runtime.Origin!.Native.Text);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: an override variable with no override counted is refused with the leaderboard key.
+    // An override variable with no override counted is refused with the leaderboard key.
     [Fact]
     public void AnOverrideVariableWithoutAnOverrideIsRefusedWithTheLeaderboardKey()
     {
@@ -43,8 +43,8 @@ public class WiredLeaderboardLenientTextTests
             WiredNativeEditorProjection.SourceRejectionKey(descriptor, WiredNativeEditorProjection.DefaultNative(descriptor)));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a titled board with a variable in the first override slot and no override counted
-    // saves, keeps the variable and drops the override name.
+    // A titled board with a variable in the first override slot and no override counted saves, keeps the variable and drops the
+    // override name.
     [Fact]
     public void APublishedBoardKeepsAnUncountedOverrideVariable()
     {

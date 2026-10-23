@@ -2,7 +2,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Raw saves of the room triggers through the real save packet. Each case follows a save observed on AIR WIN63-202610201032-107964540.
+// Raw saves of the room triggers through the real save packet.
 public sealed class WiredRoomTriggerEditorSaveTests
 {
     private const string VariableCount = "wiredfurni.error.invalid_variable_count";

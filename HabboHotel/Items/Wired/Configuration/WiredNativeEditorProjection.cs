@@ -8,7 +8,7 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 public static class WiredNativeEditorProjection
 {
     private const int MaxSelectorAreaCoordinate = 64;
-    // The October Show Message editor: TextAreaParam(40, -1, 8, -1, 400), eight lines of at most 400 characters.
+    // The Show Message editor takes eight lines of at most 400 characters.
     private const int ShowMessageMaxCharacters = 400;
     private static readonly int[] ShowStyles = [34, 200, 201, 202, 210, 211, 212, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 250, 251, 252];
 
@@ -33,11 +33,9 @@ public static class WiredNativeEditorProjection
     public static int Code(string name) => WiredBoxRegistry.TryGet(name, out var descriptor) ? descriptor.EditorCode
         : throw new InvalidDataException("This native editor projection is unavailable.");
 
-    // Observed on AIR WIN63-202610201032-107964540: every card that was saved and reopened with a scrambled pick set returned its picks, and a
-    // second pick list, in Java HashSet order (see WiredLegacyProtocol.JavaHashSetOrder), a card with a picker or without. These cards were
-    // not: they have no Builders Club offer, or the probe could not give them a valid save with picks (chests, coin chests, a room linker,
-    // dataframes, a custom contract, Or Evaluation, the text outputs, a leaderboard, a text input, a card that takes only a selector as its
-    // furni source), or Habbo gives them no pick source (Link Speaker).
+    // Cards reopen their picks, and a second pick list, in Java HashSet order (see WiredLegacyProtocol.JavaHashSetOrder).
+    // The cards below keep the sent order, because Habbo's order for them is not known: chests, coin chests, a room linker, dataframes, a custom contract, Or Evaluation, the text outputs,
+    // a leaderboard, a text input, cards that take only a selector as their furni source, and Link Speaker (no pick source).
     private static readonly HashSet<string> UnprovenPickCards = new(StringComparer.Ordinal)
     {
         "wf_act_move_furni_to", "wf_act_init_transaction", "wf_cnd_chest_has_items", "wf_act_give_currency", "wf_act_give_furni",
@@ -56,15 +54,15 @@ public static class WiredNativeEditorProjection
     {
         var metadata = Define(name);
 
-        // Observed on AIR WIN63-202610201032-107964540: these four cards refused every save with picks in the first list (chests, a room linker)
-        // and kept a second list saved alone, reopening it in HashSet order.
+        // These four cards refuse every save with picks in the first list (chests, a room linker)
+        // and keep a second list saved alone, reopening it in HashSet order.
         if (UnprovenPickCards.Contains(name)) {
             return name is "wf_act_give_currency" or "wf_act_give_furni" or "wf_act_teleport_to_room" or "wf_cnd_chest_has_items"
                 ? metadata with { HashSetSecondaryPickOrder = true } : metadata;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: every card keeps a second list and reopens it in HashSet order, one with a second
-        // selector or not. The second list of a chest condition refused a save without chests, so its order was not seen.
+        // Every card keeps a second list and reopens it in HashSet order, with a second
+        // selector or without. Chest Has Item Type keeps the sent order of its second list: a save without chests is refused, so Habbo's order is not known.
         return metadata with { HashSetPickOrder = true, HashSetSecondaryPickOrder = name != "wf_cnd_chest_has_item_type" };
     }
 
@@ -81,8 +79,8 @@ public static class WiredNativeEditorProjection
         "wf_trg_periodically" => new([], [], [], [], [1], false),
         "wf_cnd_user_count_in" => new([], [], [], [], [1, 50], false),
         "wf_act_teleport_to" => new([[0, 100, 200, 201]], [[0, 200, 201]], [100], [0], [0], false),
-        // Rotate owns two fields; the frame adds the hotel's third (FrameDefaults, HotelFrame). Wall picks are allowed as on hhus
-        // (AIR WIN63-202610131318-860371703) and skipped by the mover, which only moves floor furni.
+        // Rotate owns two fields; the frame adds the hotel's third (FrameDefaults, HotelFrame). Wall picks are allowed
+        // and skipped by the mover, which only moves floor furni.
         "wf_act_move_rotate" => new([[0, 100, 200, 201]], [], [100], [], [0, 0], true),
         "wf_act_move_to_dir" => new([[0, 100, 200, 201]], [], [100], [], [0, 0, 1], false),
         "wf_act_control_clock" => new([[0, 100, 200, 201]], [], [100], [], [0], false),
@@ -96,7 +94,7 @@ public static class WiredNativeEditorProjection
     };
 
     /// <summary>
-    /// Observed on AIR WIN63-202610131318-860371703: a stack with Bot Reaches User offers source 10 and a stack with Click User offers 11,
+    /// A stack with Bot Reaches User offers source 10 and a stack with Click User offers 11,
     /// inserted after 0 in every user slot of every box in that stack. Other triggers add nothing; furni slots and defaults never change.
     /// </summary>
     public static ImmutableArray<int> TriggerContextSources(IEnumerable<string> stackBoxNames)
@@ -150,8 +148,8 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>
-    /// The localization key the editor reports when a furni source is outside the card's allowed group. Observed on hhus for
-    /// Remove Furni with source 100 (WiredValidationError, no parameters). User sources are unobserved and keep the generic refusal.
+    /// The localization key the editor reports when a furni source is outside the card's allowed group.
+    /// The error has no parameters. User sources keep the generic refusal.
     /// </summary>
     public static string? SourceRejectionKey(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native)
     {
@@ -159,18 +157,18 @@ public static class WiredNativeEditorProjection
             return null;
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: a leaderboard whose override variables do not match its override count is refused
+        // A leaderboard whose override variables do not match its override count is refused
         // with this key.
         if (descriptor.CanonicalName == "wf_xtra_var_leaderboard") {
             return "wiredfurni.error.variable_leaderboard.invalid_configuration";
         }
 
-        // Observed on AIR WIN63-202610131318-860371703: Freeze User with effect 5 is refused with this key and no parameters.
+        // Freeze User with effect 5 is refused with this key and no parameters.
         if (descriptor.CanonicalName == "wf_act_freeze" && native.OwnedIntParams is [< 0 or > 4, _]) {
             return "wiredfurni.error.invalid_freeze_effect";
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight and Set Furni Visibility answer each refused value with its
+        // Set Furni Highlight and Set Furni Visibility answer each refused value with its
         // own key.
         if (WiredFurniVisualRules.Applies(descriptor.CanonicalName)
             && WiredFurniVisualRules.ValueRefusal(descriptor.CanonicalName, WiredFurniVisualRules.Normalize(descriptor.CanonicalName, native,
@@ -188,9 +186,9 @@ public static class WiredNativeEditorProjection
             }
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: with picked furni as its source (100), Control Clock refuses a wall pick (a negative
+        // With picked furni as its source (100), Control Clock refuses a wall pick (a negative
         // id) with this key, also when no furni has that id. The editor takes no wall picks, so such a save never compiles. An empty source
-        // list counts as 100, like the other pick checks. Not observed: which key Habbo sends when the save is also wrong in another way.
+        // list counts as 100, like the other pick checks.
         if (descriptor.CanonicalName == "wf_act_control_clock" && (native.FurniSourceTypes.IsDefaultOrEmpty || native.FurniSourceTypes[0] == 100)
             && native.PrimaryItems.Any(reference => reference.Wall)) {
             return "wiredfurni.error.require_counter_furni";
@@ -209,7 +207,7 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>
-    /// The key a client save is refused with before it is compiled, or null. Observed on AIR WIN63-202610201032-107964540: the capturer
+    /// The key a client save is refused with before it is compiled, or null. The capturer
     /// refuses an odd name or a second variable with its own key, and a Says text may not capture one name twice. A fresh capturer opens
     /// with an empty name, which only a save is refused for.
     /// </summary>
@@ -217,32 +215,29 @@ public static class WiredNativeEditorProjection
         Supports(descriptor.CanonicalName) ? WiredTextAddonRules.Refusal(descriptor.CanonicalName, native) : null;
 
     /// <summary>
-    /// A save the hotel drops without any reply: no error and no save success. Observed on AIR WIN63-202610131318-860371703:
-    /// Join Team with team 9, and Give Score To Team with team 9 (observed on AIR WIN63-202610151745-318700621).
+    /// A save the hotel drops without any reply: no error and no save success.
+    /// Examples: Join Team with team 9, and Give Score To Team with team 9.
     /// </summary>
     public static bool DroppedWithoutReply(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native) =>
         descriptor.CanonicalName switch
         {
             "wf_act_join_team" => native.OwnedIntParams is [< 1 or > 4, _],
             "wf_act_give_score_tm" => native.OwnedIntParams is [_, _, < 1 or > 4],
-            // Observed on AIR WIN63-202610201032-107964540: an unknown user source.
+            // Highlight and Visibility drop a save with an unknown user source.
             WiredFurniVisualRules.Highlight or WiredFurniVisualRules.Visibility => WiredFurniVisualRules.DroppedWithoutReply(native),
             _ => WiredEditorStoreRules.DroppedWithoutReply(descriptor.CanonicalName, native)
         };
 
     /// <summary>
     /// The frame as the hotel sends it. move_rotate and match_to_sshot end with a hotel-owned int that is 1 until the first save and 0
-    /// after it, whatever was saved (r92k r92h-hidden-ints: [0,0,1] initially, every reopen ...,0). Observed on AIR
-    /// WIN63-202610201032-107964540: match_to_sshot saved with [1,0,0,0] or [1,1,1,1,1] reopens with [1,0,0,0,0] or [1,1,1,1,0], and
+    /// after it, whatever was saved: match_to_sshot saved with [1,0,0,0] reopens with [1,0,0,0,0], and
     /// move_rotate saved with its defaults [0,0] and no picks reopens with [0,0,0].
     /// A saved match_to_sshot frame carries its snapshot as text, one "id,state,rotation,x,y,altitude" entry per
-    /// furni with N for each part the saved options do not restore (r92l r92l-sshot-hidden: [0,0,0,0] gives "id,N,N,N,N,N",
-    /// [1,1,1,1] gives "id,0,0,8,2,0").
+    /// furni with N for each part the saved options do not restore ([0,0,0,0] gives "id,N,N,N,N,N").
     /// </summary>
     /// <summary>
     /// A save may echo the frame's trailing hotel-owned int (see <see cref="HotelFrame"/>); the hotel accepts it and keeps only the box's
-    /// own fields. Observed on hhus (AIR WIN63-202610131318-860371703): move_rotate saved with [0,0,1] and match_to_sshot with
-    /// [0,0,0,0,1] are accepted.
+    /// own fields. Examples: move_rotate saved with [0,0,1] and match_to_sshot with [0,0,0,0,1] are accepted.
     /// </summary>
     public static WiredNativeEditorConfiguration WithoutHotelInt(string name, WiredNativeEditorConfiguration native)
     {
@@ -264,7 +259,7 @@ public static class WiredNativeEditorProjection
             var p = native.OwnedIntParams;
             bool Ticked(int index) => index < p.Length && p[index] == 1;
 
-            // Observed on AIR WIN63-202610201032-107964540: Stuff State lists the state when its one option is 1 and nothing else. A save
+            // Stuff State lists the state when its one option is 1 and nothing else. A save
             // without ints stores the option as 1 and still lists no state.
             return native.SavedState.Snapshots.IsDefaultOrEmpty ? native : native with
             {
@@ -298,16 +293,13 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>
-    /// The snapshot conditions' saved text. Observed on hhus (AIR WIN63-202610131318-860371703): a wall torch at `:w=5,0 l=8,40 r`
-    /// saved with state matching only is stored as `-2147418112,0,5,0,8,247,r`: the negated wall id, the state, the wall tile, the
-    /// offset along the wall, the altitude in hundredths and the side, with no part masked by the unticked options. Floor entries are
-    /// id,state,rotation,x,y,altitude in hundredths, highest id first: a colour tile at state 3 on (8,11), a block turned to 2 on (9,11)
-    /// and a block turned to 4 stacked on it saved `2147418155,0,4,9,11,100;2147418149,3,0,8,11,0;2147418148,0,2,9,11,0`. The AIR editor
-    /// never reads the text (class_4293.as:49-71 reads and writes only the four option ints).
+    /// The snapshot conditions' saved text. A wall entry is the negated wall id, the state, the wall tile, the offset along the wall,
+    /// the altitude in hundredths and the side. A floor entry is id,state,rotation,x,y,altitude in hundredths. Entries go highest id first,
+    /// and a part the unticked options do not restore is not masked in wall entries. The editor never reads the text, only the four option ints.
     /// </summary>
     internal static string SnapshotText(IEnumerable<WiredFurniSnapshot> snapshots) => SnapshotText(snapshots, new(true, true, true, true));
 
-    /// <summary>The fields of a snapshot entry an option keeps. Observed on AIR WIN63-202610201032-107964540: a floor entry writes N for each field its option leaves unticked.</summary>
+    /// <summary>The fields of a snapshot entry an option keeps. A floor entry writes N for each field its option leaves unticked.</summary>
     internal readonly record struct SnapshotFields(bool State, bool Rotation, bool Position, bool Altitude);
 
     internal static string SnapshotText(IEnumerable<WiredFurniSnapshot> snapshots, SnapshotFields kept)
@@ -332,9 +324,8 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>
-    /// The default int list the frame advertises. move_rotate and match_to_sshot end it with the hotel-owned int at its unsaved value 1,
-    /// as observed on hhus (AIR WIN63-202610131318-860371703): [0,0,1] and [0,0,0,0,1]. The editors never read it (class_4131.as:29-38
-    /// reads two ints, class_4247.as:45-67 four), so resetting to these defaults saves the same fields as before.
+    /// The default int list the frame advertises. move_rotate and match_to_sshot end it with the hotel-owned int at its unsaved value 1:
+    /// [0,0,1] and [0,0,0,0,1]. The editors never read it, so resetting to these defaults saves the same fields as before.
     /// </summary>
     public static ImmutableArray<int> FrameDefaults(string name, WiredNativeEditorMetadata metadata) =>
         name is "wf_act_move_rotate" or "wf_act_match_to_sshot" ? [.. metadata.OwnedDefaults, 1] : metadata.OwnedDefaults;
@@ -343,9 +334,8 @@ public static class WiredNativeEditorProjection
     public const string UserSourceCountKey = "wiredfurni.error.invalid_user_source_count";
 
     /// <summary>
-    /// Furni source slots as the hotel stores them. Observed (AIR WIN63-202610131318-860371703): r92g r92-signals saved send_signal
-    /// with one furni source [100] and the hotel stored [100, 200], the second slot keeping its default; r92f r92-valid-moves saved
-    /// a furni source on a box without furni slots and got this count key (frame 20502).
+    /// Furni source slots as the hotel stores them. A save of send_signal with one furni source [100] is stored as [100, 200],
+    /// the second slot keeping its default. A furni source on a box without furni slots gets this count key.
     /// </summary>
     public static bool TryFillSourceSlots(WiredBoxDescriptor descriptor, WiredNativeEditorConfiguration native,
         out WiredNativeEditorConfiguration filled, out string? error)
@@ -359,7 +349,7 @@ public static class WiredNativeEditorProjection
 
         var metadata = Metadata(descriptor.CanonicalName);
 
-        // Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight, Set Furni Visibility and Bot Reaches Furni keep the default
+        // Set Furni Highlight, Set Furni Visibility and Bot Reaches Furni keep the default
         // for a user source slot that is left out, and refuse an extra slot with its own key.
         if ((WiredFurniVisualRules.Applies(descriptor.CanonicalName) || descriptor.CanonicalName == "wf_trg_bot_reached_stf"
                 || WiredSaveLeniency.PadsUserSources(descriptor.CanonicalName))
@@ -374,13 +364,13 @@ public static class WiredNativeEditorProjection
             native = filled;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: these boxes read an empty user source list as the frame default.
+        // These boxes read an empty user source list as the frame default.
         if (WiredSaveLeniency.FillsEmptyUserSources(descriptor.CanonicalName) && native.UserSourceTypes.IsEmpty && metadata.UsersAllowed.Length > 0) {
             filled = native with { UserSourceTypes = metadata.UserDefaults };
             native = filled;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: the projectile keeps the frame default for a user source slot that is left out.
+        // The projectile keeps the frame default for a user source slot that is left out.
         if (descriptor.CanonicalName == "wf_xtra_rotate_to_dir" && !native.UserSourceTypes.IsDefault
             && native.UserSourceTypes.Length < metadata.UsersAllowed.Length) {
             filled = native with { UserSourceTypes = [.. native.UserSourceTypes, .. metadata.UserDefaults.Skip(native.UserSourceTypes.Length)] };
@@ -390,7 +380,7 @@ public static class WiredNativeEditorProjection
         var slots = metadata.FurniAllowed.Length;
         var given = native.FurniSourceTypes.Length;
 
-        // Observed on AIR WIN63-202610201032-107964540: a user source on a box without a user selector is refused with this key.
+        // A user source on a box without a user selector is refused with this key.
         if (metadata.UsersAllowed.Length == 0 && !native.UserSourceTypes.IsDefaultOrEmpty) {
             error = UserSourceCountKey;
 
@@ -422,7 +412,7 @@ public static class WiredNativeEditorProjection
         var name = descriptor.CanonicalName;
         native = WithoutHotelInt(name, native);
 
-        // Observed on AIR WIN63-202610201032-107964540: these boxes store a save in a normal form instead of refusing most odd values.
+        // These boxes store a save in a normal form instead of refusing most odd values.
         if (Supports(name)) {
             native = WiredEditorStoreRules.PadVariables(name, native, Metadata(name));
             native = WiredEditorStoreRules.VariableValueForm(name, native);
@@ -443,7 +433,7 @@ public static class WiredNativeEditorProjection
             }
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: Set Furni Highlight and Set Furni Visibility store their ints in a normal form.
+        // Set Furni Highlight and Set Furni Visibility store their ints in a normal form.
         if (WiredFurniVisualRules.Applies(name) && Supports(name)) {
             native = WiredFurniVisualRules.Normalize(name, native, Metadata(name).OwnedDefaults);
 
@@ -454,49 +444,49 @@ public static class WiredNativeEditorProjection
             }
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: these boxes store a save in a normal form instead of refusing odd values.
+        // These boxes store a save in a normal form instead of refusing odd values.
         if (WiredConditionStoreRules.Applies(name) && Supports(name)) {
             native = WiredConditionStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a text and ints a box does not read are accepted and dropped. Only a new save is
+        // A text and ints a box does not read are accepted and dropped. Only a new save is
         // fitted; a stored row loads in the form it was saved in.
         if (!storedRow && WiredSaveLeniency.Applies(name) && Supports(name)) {
             native = WiredSaveLeniency.Normalize(name, native);
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: Room Initialized has no fields; ints and a text in a save are accepted and dropped.
+        // Room Initialized has no fields; ints and a text in a save are accepted and dropped.
         if (name == "wf_trg_room_initializes" && Supports(name)) {
             native = native with { OwnedIntParams = [], Text = "" };
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: these triggers store a save in a normal form instead of refusing odd values.
+        // These triggers store a save in a normal form instead of refusing odd values.
         if (WiredTriggerStoreRules.Applies(name) && Supports(name)) {
             native = WiredTriggerStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: these selectors store a save in a normal form instead of refusing odd values.
+        // These selectors store a save in a normal form instead of refusing odd values.
         if (!storedRow && WiredSelectorStoreRules.Applies(name) && Supports(name)) {
             native = WiredSelectorStoreRules.Normalize(name, native, Metadata(name).OwnedDefaults);
         }
 
         // The board keeps its text padded and with unused slots emptied, and reads it back that way (see WiredLeaderboardConfig.Normalize).
-        // Observed on AIR WIN63-202610151745-318700621: the area selectors store each of x, y, width and height clamped to 0..64
+        // The area selectors store each of x, y, width and height clamped to 0..64
         // (-5 reads back 0, 500 reads back 64) instead of refusing the save.
         if (name is "wf_slc_furni_area" or "wf_slc_users_area" && native.OwnedIntParams.Length == 4) {
             native = native with { OwnedIntParams = [.. native.OwnedIntParams.Select(value => Math.Clamp(value, 0, MaxSelectorAreaCoordinate))] };
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: Give Score and Give Score To Team save a per-game limit above 10 and read it
+        // Give Score and Give Score To Team save a per-game limit above 10 and read it
         // back as 10 ([5, 99] and [5, 11] read back [5, 10]; [5, 99, 1] reads back [5, 10, 1]). The Give Score editor never sends more
-        // than 10: its limit slider runs 1 to 11, and 11 means unlimited and is sent as 0 (GiveScore.as in AIR WIN63-202610131318-860371703).
+        // than 10: its limit slider runs 1 to 11, and 11 means unlimited and is sent as 0.
         if (name is "wf_act_give_score" or "wf_act_give_score_tm" && native.OwnedIntParams.Length >= 2 && native.OwnedIntParams[1] > 10) {
             native = native with { OwnedIntParams = native.OwnedIntParams.SetItem(1, 10) };
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: a variable FX box reads back its stored form, not what the editor sent (a boss bar
+        // A variable FX box reads back its stored form, not what the editor sent (a boss bar
         // saved with colour, width and renderer -1 and a stale range target reads back 5/4/100 and its own source).
-        // Observed on AIR WIN63-202610201032-107964540: a save is fitted, never refused for its numbers. A stored row keeps the form it was
+        // A save is fitted, never refused for its numbers. A stored row keeps the form it was
         // saved in, and a fresh card shows its frame unfitted until its first save.
         if (Variables.Fx.WiredVariableFxSettings.Category(name) >= 0) {
             native = storedRow
@@ -509,13 +499,13 @@ public static class WiredNativeEditorProjection
                 };
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: Users By Name stores its names lowercased ("Robbie" reads back "robbie").
+        // Users By Name stores its names lowercased ("Robbie" reads back "robbie").
         if (name == "wf_slc_users_byname") {
             native = native with { Text = native.Text.ToLowerInvariant() };
         }
 
         if (name == "wf_xtra_var_leaderboard") {
-            // Observed on AIR WIN63-202610201032-107964540: a save without text is refused; only a fresh card holds no text.
+            // A save without text is refused; only a fresh card holds no text.
             if (!storedRow && !fresh && native.Text.Length == 0) {
                 return false;
             }
@@ -525,8 +515,7 @@ public static class WiredNativeEditorProjection
         }
 
         // The snapshot boxes' text is the hotel's listing of the saved snapshot (see HotelFrame); an editor saves it back unchanged and the
-        // snapshot is captured again from the room. Observed on AIR WIN63-202610151745-318700621 (r97_sshot_resave_plain): re-saving an
-        // opened Match Snapshot succeeds.
+        // snapshot is captured again from the room, so re-saving an opened Match Snapshot succeeds.
         if (name is "wf_act_match_to_sshot" or "wf_cnd_match_snapshot" or "wf_cnd_not_match_snap") {
             native = native with { Text = "" };
         }
@@ -536,13 +525,13 @@ public static class WiredNativeEditorProjection
             native = native with { Text = WiredBotActions.TalkText(native.Text) };
         }
 
-        // Observed on AIR WIN63-202610151745-318700621 (r97_tc_store): the connector is stored as its valid "number=text" lines only, one per
+        // The connector is stored as its valid "number=text" lines only, one per
         // number with its last text, in ascending number order ("9=a 3=b -2=neg 20=c" reads back "-2=neg 3=b 9=a 20=c").
         if (name == "wf_xtra_var_text_connector") {
             native = native with { Text = Variables.WiredVariableMetadataBox.NormalizeConnector(native.Text) };
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: the capturer stores a save in a normal form. A stored row keeps the form it was
+        // The capturer stores a save in a normal form. A stored row keeps the form it was
         // saved in.
         if (storedRow) {
             native = WiredTextAddonRules.StoredRow(name, native);
@@ -551,7 +540,7 @@ public static class WiredNativeEditorProjection
             native = WiredTextAddonRules.StoredForm(name, native, Metadata(name).OwnedDefaults);
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a variable name is stored cleaned (see WiredVariableDefinitions.CleanName). A stored
+        // A variable name is stored cleaned (see WiredVariableDefinitions.CleanName). A stored
         // row keeps the name it was saved with.
         if (!storedRow && Variables.WiredVariableDefinitions.IsNamed(name)) {
             native = native with { Text = Variables.WiredVariableDefinitions.CleanName(native.Text) };
@@ -604,7 +593,7 @@ public static class WiredNativeEditorProjection
                     return false;
                 }
 
-                // Observed on hhus (AIR WIN63-202610131318-860371703): a longer keyword saves, but only its first 200 characters are kept.
+                // A longer keyword saves, but only its first 200 characters are kept.
                 if (text.Length > SaysKeywordLength) {
                     text = text[..SaysKeywordLength];
                     native = native with { Text = text };
@@ -655,7 +644,7 @@ public static class WiredNativeEditorProjection
                 users["users"] = native.UserSourceTypes[0];
                 break;
             case "wf_cnd_furnis_hv_avtrs":
-                // Observed on hhus (AIR WIN63-202610131318-860371703): quantifier 1 saves and reads back, though the editor shows none.
+                // Quantifier 1 saves and reads back, though the editor shows none.
                 if (p.Length != 1 || p[0] is < 0 or > 1 || native.Quantifier is not (0 or 1) || native.Text != "") {
                     return false;
                 }
@@ -685,7 +674,7 @@ public static class WiredNativeEditorProjection
                 furni["items"] = native.FurniSourceTypes[0];
                 break;
             case "wf_act_control_clock":
-                // Observed on AIR WIN63-202610201032-107964540: any operation saves and is stored clamped to 0..4 (5, 100 and int max
+                // Any operation saves and is stored clamped to 0..4 (5, 100 and int max
                 // reopen as 4, -1 as 0). Older rows saved with 5 did nothing at run time; clamping them on load would change existing rooms.
                 if (p.Length != 1) {
                     return false;
@@ -707,7 +696,7 @@ public static class WiredNativeEditorProjection
                 users["users"] = native.UserSourceTypes[0];
                 break;
             case "wf_act_give_score":
-                // The points slider runs 1 to 1000 and the radio flips the sign (GiveScore.as), so zero points cannot come from the editor.
+                // The points slider runs 1 to 1000 and the radio flips the sign, so zero points cannot come from the editor.
                 if (p.Length != 2 || p[0] is < -1000 or > 1000 or 0 || p[1] is < 0 or > 10) {
                     return false;
                 }
@@ -775,12 +764,10 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540 on actions, conditions, triggers and selectors: a save with more than 20 ids in a pick
-    /// list gets no answer (32 cards) and the box keeps its old picks. On Toggle State repeats count: 21 ids of 20 different ones are
-    /// dropped and 20 ids of 10 different ones are saved. An id sent twice in a list saves once (48 cards). The limit and the repeats hold
-    /// the same on the add-ons (19 tried) and the variable boxes (furni, user, room and context), and the limit comes before the refusals of
-    /// the box itself (a missing name, a pick of a wrong kind, a temporary copy). A box saved earlier with more than 20
-    /// picks keeps them, but every editor save of it is dropped until picks are removed, as Habbo never holds more than 20.
+    /// A save with more than 20 ids in a pick list gets no answer and the box keeps its old picks. On Toggle State repeats count:
+    /// 21 ids of 20 different ones are dropped and 20 ids of 10 different ones are saved. An id sent twice in a list saves once.
+    /// The limit comes before the refusals of the box itself (a missing name, a pick of a wrong kind, a temporary copy).
+    /// A box saved earlier with more than 20 picks keeps them, but every editor save of it is dropped until picks are removed, as Habbo never holds more than 20.
     /// </summary>
     public static bool TryLimitPicks(WiredNativeEditorConfiguration native, out WiredNativeEditorConfiguration limited)
     {
@@ -809,8 +796,7 @@ public static class WiredNativeEditorProjection
     }
 
     /// <summary>
-    /// Whether each pick list holds at most 20 ids, repeats counted. Observed on AIR WIN63-202610201032-107964540: on the add-ons (19 tried) and
-    /// the variable boxes (furni, user, room and context) 20 ids save and 21 get no answer, with the box keeping its picks.
+    /// Whether each pick list holds at most 20 ids, repeats counted. 20 ids save and 21 get no answer, with the box keeping its picks.
     /// </summary>
     public static bool WithinPickLimit(WiredNativeEditorConfiguration native) => native.PrimaryItems.IsDefault || native.SecondaryItems.IsDefault
         || native.PrimaryItems.Length <= WiredConfigurationLimits.EditorFurniLimit && native.SecondaryItems.Length <= WiredConfigurationLimits.EditorFurniLimit;
@@ -870,9 +856,8 @@ public static class WiredNativeEditorProjection
     private static bool IsLive(Rooms.Room room, WiredNativeItemReference reference) =>
         room.GetRoomItemHandler().GetItem(reference.ItemId) is { IsTemporary: false } picked && picked.IsWallItem == reference.Wall;
 
-    // Observed on AIR WIN63-202610201032-107964540: Toggle State, Move/Rotate and Match to Snapshot save with an id of no furni or a wall
-    // item sent with a positive id, and reopen with only their other picks; so does a second list on every card that was tried (70 cards of
-    // every kind). A box that only takes certain furni refuses such a pick, so this runs after every pick rule.
+    // Toggle State, Move/Rotate and Match to Snapshot save with an id of no furni or a wall
+    // item sent with a positive id, and reopen with only their other picks; so does a second list on every card. A box that only takes certain furni refuses such a pick, so this runs after every pick rule.
     internal static bool TryKeepLivePicks(Item item, WiredBoxDescriptor descriptor, WiredConfiguration proposed, out WiredConfiguration kept)
     {
         kept = proposed;
@@ -882,9 +867,9 @@ public static class WiredNativeEditorProjection
             return true;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: an id that names no furni still counts in the number of ids sent, which sizes the first
+        // An id that names no furni still counts in the number of ids sent, which sizes the first
         // set of the pick order, with or without a repeat in the list. A wall item sent with a positive id is dropped the same way and counted
-        // the same way; that was not probed.
+        // the same way.
         var primary = native.PrimaryItems.Where(reference => IsLive(room, reference)).ToImmutableArray();
         var secondary = native.SecondaryItems.Where(reference => IsLive(room, reference)).ToImmutableArray();
 
@@ -920,9 +905,9 @@ public static class WiredNativeEditorProjection
             return false;
         }
 
-        // Observed on hhus (WIN63-202610131318): saving a click-tile trigger that picks a furni which is not an invisible click tile
+        // Saving a click-tile trigger that picks a furni which is not an invisible click tile
         // is refused with wiredfurni.error.require_click_tiles and no parameters.
-        // Observed on AIR WIN63-202610201032-107964540: the picks are only checked when they are the source; with the selector as source
+        // The picks are only checked when they are the source; with the selector as source
         // a plain furni pick saves.
         if (descriptor.CanonicalName == "wf_trg_click_tile" && (native.FurniSourceTypes.IsDefaultOrEmpty || native.FurniSourceTypes[0] == 100)
             && references.Any(reference =>
@@ -932,8 +917,8 @@ public static class WiredNativeEditorProjection
             return false;
         }
 
-        // Teleport to Room only forwards through WIRED Room Linkers; the client text for this key (WIN63-202610131318) is
-        // "Can only select wired room linkers!". Observed on AIR WIN63-202610201032-107964540: the picks are only checked when the picked
+        // Teleport to Room only forwards through WIRED Room Linkers; the client text for this key is
+        // "Can only select wired room linkers!". The picks are only checked when the picked
         // furni are the source; a plain furni picked with the triggering furni as source saves.
         if (descriptor.CanonicalName == "wf_act_teleport_to_room" && (native.FurniSourceTypes.IsDefaultOrEmpty || native.FurniSourceTypes[0] == 100)
             && native.PrimaryItems.Any(reference =>
@@ -943,8 +928,7 @@ public static class WiredNativeEditorProjection
             return false;
         }
 
-        // The AIR client (WIN63-202610131318) never filters furni picks itself (UserDefinedRoomEventsCtrl.stuffSelected only checks
-        // the wall flag and the furni limit); these keys exist only as server refusals shown on save.
+        // The client never filters furni picks itself (it only checks the wall flag and the furni limit); these keys exist only as server refusals shown on save.
         var picksSelected = native.FurniSourceTypes.IsDefaultOrEmpty || native.FurniSourceTypes[0] == 100;
 
         // Counter boxes drive Wired counters and game timers; client text: "Can only select counter furni."

@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Official hhus WIN63-202610131318 batch r83-logs: Write to Logs and its negative form in a stack whose condition fails or passes.
+// Write to Logs and its negative form in a stack whose condition fails or passes.
 public sealed partial class WiredGlideConveyorTests
 {
     private static Fixture ObservedLogRoom(int[] conditionInts)
@@ -22,8 +22,8 @@ public sealed partial class WiredGlideConveyorTests
         return new(layout, live: true);
     }
 
-    // Official: with the condition failing, only the negative log wrote (source 1, level 0) and the positive log in the same stack
-    // stayed silent; the negative box flipped and the condition and the positive log did not. With the condition passing it is the other way round.
+    // With the condition failing, only the negative log writes (source 1, level 0): the negative box flips, and the condition
+    // and the positive log do not. With the condition passing it is the other way round.
     [Theory]
     [InlineData(false, "neglog alpha", "poslog alpha")]
     [InlineData(true, "poslog alpha", "neglog alpha")]

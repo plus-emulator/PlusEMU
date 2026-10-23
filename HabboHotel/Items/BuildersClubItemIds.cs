@@ -3,9 +3,8 @@ using System.Collections.Concurrent;
 namespace Plus.HabboHotel.Items;
 
 /// <summary>
-/// The id band the client reserves for Builders Club furni. AIR WIN63-202610151745-318700621 com/sulake/habbo/utils/class_1858.as:21-24
-/// (isBuilderClubId) tells a Builders Club furni only by its object id; InfoStandFurniView.as:598-635 then colours the infostand and
-/// names the warehouse (builder.catalog.title and the bcw icon, :381-392) instead of the owner.
+/// The id band the client reserves for Builders Club furni. The client tells a Builders Club furni only by its object id, then
+/// colours the infostand and names the warehouse instead of the owner.
 /// A Builders Club furni keeps its stored id inside the emulator. On the wire it carries an id from this band: composers write
 /// <see cref="ToWire"/> and room lookups accept <see cref="FromWire"/>.
 /// </summary>

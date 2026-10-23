@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Delay, sources and picks of Set Furni Highlight and Set Furni Visibility. Observed on AIR WIN63-202610201032-107964540.
+// Delay, sources and picks of Set Furni Highlight and Set Furni Visibility.
 public partial class ModernWiredRuntimeTests
 {
     private const string DelayKey = "wiredfurni.error.invalid_delay";

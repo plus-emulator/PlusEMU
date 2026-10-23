@@ -13,8 +13,7 @@ public partial class WiredComponent
         { NowMilliseconds = _engine.NowMilliseconds });
 
     /// <summary>
-    /// The context entry of a user, furni or room variable box editor: the users or furni in the room holding its variable with their
-    /// values, or the room variable's value. Null for every other box (observed on AIR WIN63-202610201032-107964540).
+    /// The context entry of a user, furni or room variable box editor: the users or furni in the room holding its variable with their values, or the room variable's value. Null for every other box.
     /// </summary>
     public WiredVariableBoxContext? VariableBoxContext(IWiredConfiguredItem box)
     {

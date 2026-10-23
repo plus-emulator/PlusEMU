@@ -8,7 +8,7 @@ public static class WiredConfigurationLimits
     public const int IntParams = 6 + NeighborhoodTiles * 2;
     // The server keeps reading up to 100 picks so boxes stored with more than the editor's limit still load; an editor save over the limit is dropped.
     public const int SelectedItems = 100;
-    // The pick limit the editor frame advertises. Observed on hhus (AIR WIN63-202610131318-860371703): every box sends 20.
+    // The pick limit the editor frame advertises: every box sends 20.
     public const int EditorFurniLimit = 20;
     public const int TextCharacters = 32768;
     public const int DelayPulses = 3600;

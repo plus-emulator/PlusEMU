@@ -10,8 +10,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // The AIR inspection tab writes a furni's @state (-110) and @altitude (-123) through class_3770 (AIR WIN63-202610131318-860371703
-    // WiredMenuInspectionTab.as:193): target 0 (furni), the furni id, the variable id, the value and operation 0 (set).
+    // The inspection tab writes a furni's @state (-110) and @altitude (-123): target 0 (furni), the furni id, the variable id, the value and operation 0 (set).
     [Fact]
     public async Task AirInspectionWriteSetsFloorStateAndAltitude()
     {
@@ -31,7 +30,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new[] { "@state", "@altitude" }, module.DrainChanges().Select(change => change.InternalKey));
     }
 
-    // A furni placed from the inventory can have no state text yet (wf_floor_switch1 on our hotel); it reads 0 and takes a write.
+    // A furni placed from the inventory can have no state text yet; it reads 0 and takes a write.
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
@@ -51,8 +50,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new[] { "@state" }, module.DrainChanges().Select(change => change.InternalKey));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: an inspection write of @state leaves a Wired box (trigger, action, condition, selector,
-    // add-on, variable box or antenna) unchanged and shows no error, while a Wired floor switch still changes.
+    // An inspection write of @state leaves a Wired box (trigger, action, condition, selector, add-on, variable box or antenna) unchanged and shows no error, while a Wired floor switch still changes.
     [Theory]
     [InlineData("wf_act_move_rotate", InteractionType.WiredEffect, "")]
     [InlineData("wf_trg_says_something", InteractionType.WiredTrigger, "")]
@@ -124,9 +122,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(WiredSetObjectVariableValueEvent.TryRead(ClientPacket(0, 302, "-110", 1), out _));
     }
 
-    // The AIR inspection tab reads one object through class_3018 [type, id] and gets WiredObjectInspectionData back (AIR
-    // WIN63-202610151745-318700621 package_121/WiredObjectInspectionData.as:25-64): type, id, id/value pairs, and for a furni the boxes
-    // picking it. Observed on hhus: a furni reply is (0, item id, values, []).
+    // The inspection tab reads one object through [type, id] and gets WiredObjectInspectionData back: type, id, id/value pairs, and for a furni the boxes picking it. A furni reply is (0, item id, values, []).
     [Fact]
     public async Task AirInspectionReadListsAFurnisValuesInTheAirLayout()
     {

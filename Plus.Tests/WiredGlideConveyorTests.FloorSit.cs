@@ -11,8 +11,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a user who faces a diagonal and sits on the floor turns one step clockwise,
-    // and the head follows the body (3 -> 4, 5 -> 6, 7 -> 0).
+    // A user who faces a diagonal and sits on the floor turns one step clockwise, and the head follows the body (3 -> 4, 5 -> 6,
+    // 7 -> 0).
     [Theory]
     [InlineData(3, 4)]
     [InlineData(5, 6)]

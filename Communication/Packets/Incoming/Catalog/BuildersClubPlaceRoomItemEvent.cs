@@ -6,9 +6,8 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.Communication.Packets.Incoming.Catalog;
 
 /// <summary>
-/// [page, offer, extra param, x, y, direction, confirmed] (AIR WIN63-202610151745-318700621, package_16/class_2016.as:11). Sent when a
-/// furni is dropped from the Builders Club catalogue (HabboCatalog.as:3117-3130) or copied from the info stand with page -1
-/// (InfoStandWidget.as:557). The client sets the flag once the user accepted hiding the room (room/class_2005.as:383).
+/// [page, offer, extra param, x, y, direction, confirmed]. Sent when a furni is dropped from the Builders Club catalogue
+/// or copied from the info stand with page -1. The client sets the flag once the user accepted hiding the room.
 /// </summary>
 internal sealed class BuildersClubPlaceRoomItemEvent(IBuildersClubService buildersClub) : RoomPacketEvent
 {

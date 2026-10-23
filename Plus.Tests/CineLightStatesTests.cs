@@ -2,7 +2,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: clicks turn a cine_light1 from 0 to 1, to 2 and back to 0.
+// Clicks turn a cine_light1 from 0 to 1, to 2 and back to 0.
 public sealed class CineLightStatesTests
 {
     [Fact]

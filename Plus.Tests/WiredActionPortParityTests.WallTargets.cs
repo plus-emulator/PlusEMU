@@ -8,8 +8,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// Observed on hhus (AIR WIN63-202610131318-860371703): furni_to_furni saves with a wall torch as its only target, and firing it moves
-/// nothing and sends no WiredMovements.
+/// furni_to_furni saves with a wall torch as its only target, and firing it moves nothing and sends no WiredMovements.
 /// </summary>
 public sealed partial class WiredActionPortParityTests
 {

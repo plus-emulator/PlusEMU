@@ -23,7 +23,6 @@ namespace Plus.Tests.SnowStorm;
 
 public class SnowStormPacketTests
 {
-    // Official ids of AIR WIN63-202610201032-107964540.
     private static readonly Dictionary<string, uint> Incoming = new()
     {
         ["Game2CheckGameDirectoryStatusEvent"] = 822,

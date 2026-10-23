@@ -7,10 +7,10 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (three runs, identical): a fresh Variable Age condition and a fresh Variable Changed trigger save
-// as the editor opens them, with no variable. They reopen as saved and never act: the condition fails, and the trigger does not fire when a furni
-// variable or a user variable is given or changed (a trigger on that variable does). Both cards also save on any variable id, in the form of
-// Give Variable: a number is kept and other text is stored as "0" (an id of this hotel's own catalog is kept as it is).
+// A fresh Variable Age condition and a fresh Variable Changed trigger save as the editor opens them, with no variable. They reopen as
+// saved and never act: the condition fails, and the trigger does not fire when a furni variable or a user variable is given or changed
+// (a trigger on that variable does). Both cards also save on any variable id, in the form of Give Variable: a number is kept and other
+// text is stored as "0" (an id of this hotel's own catalog is kept as it is).
 public partial class PlacedFurniRoomTests
 {
     private const uint FreshAge = 721, FreshChanged = 722;
@@ -45,7 +45,7 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(frame.Users);
     }
 
-    // Ids of the probe: a custom variable id, a number that names no variable, text, empty, and a negative number.
+    // The ids: a custom variable id, a number that names no variable, text, empty, and a negative number.
     [Theory]
     [InlineData("313917", "313917")]
     [InlineData("-99999", "-99999")]

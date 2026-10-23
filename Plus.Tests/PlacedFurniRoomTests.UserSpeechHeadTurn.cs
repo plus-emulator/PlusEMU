@@ -7,8 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621 with two avatars: a user's line turns another standing avatar's head one step
-// toward the speaker on the next status update and back about 5000 ms later; with the speaker straight behind, nothing turns.
+// A user's line turns another standing avatar's head one step toward the speaker on the next status update and back about 5000 ms later. With the speaker straight behind, nothing turns.
 public partial class PlacedFurniRoomTests
 {
     [Theory]

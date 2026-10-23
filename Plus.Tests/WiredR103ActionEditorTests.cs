@@ -3,7 +3,7 @@ using static Plus.Tests.WiredR103EditorSave;
 
 namespace Plus.Tests;
 
-// Move Furni As Group and Negative Send Signal saves as Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// Move Furni As Group and Negative Send Signal saves as Habbo stores them.
 public sealed class WiredR103ActionEditorTests
 {
     [Fact]

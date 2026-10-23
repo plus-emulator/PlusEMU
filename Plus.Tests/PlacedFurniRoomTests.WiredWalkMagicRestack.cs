@@ -9,9 +9,8 @@ namespace Plus.Tests;
 
 // A 50 ms Repeat Short with Furni to User moves a walk magic tile and a 0.15 high tile to a user, with physics through furni and users.
 // Both land on the user's tile, so each firing restacks one on top of the other and the stack climbs.
-// Observed on AIR WIN63-202610201032-107964540: every WiredMovements that restacks the walk magic tile under a standing user also
-// moves that user from the old to the new walk magic height (avatar entry, animation type 1, the furni's 500 ms) after the furni
-// entries, and the user's status update shows "wf".
+// Every WiredMovements that restacks the walk magic tile under a standing user also moves that user to the new walk magic height
+// (avatar entry, animation type 1, 500 ms) after the furni entries, and the user's status update shows "wf".
 public partial class PlacedFurniRoomTests
 {
     private const uint RestackWalkMagic = 60, RestackTile = 61, RestackStackId = 62;

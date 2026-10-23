@@ -15,8 +15,7 @@ public interface IHandshakeRsaKeyProvider
 /// Loads the handshake key once: PLUS_RSA_PRIVATE_KEY (PEM text), then PLUS_RSA_PRIVATE_KEY_FILE, then
 /// Encryption:RsaPrivateKeyFile. Without any of them it falls back to the public 1024-bit key with exponent 3 that
 /// older PlusEMU releases built in. The AIR client cannot use that key: it hard-codes exponent 10001 and Habbo's
-/// modulus (AIR WIN63-202610151745-318700621, communication/demo/class_1974.as:141), so an AIR launch needs a
-/// configured key and the launcher's patched modulus.
+/// modulus, so an AIR launch needs a configured key and the launcher's patched modulus.
 /// </summary>
 public sealed class HandshakeRsaKeyProvider : IHandshakeRsaKeyProvider
 {

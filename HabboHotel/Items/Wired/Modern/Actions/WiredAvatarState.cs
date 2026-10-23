@@ -7,11 +7,11 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// <summary>Tracks only Wired-owned freeze state; room lifecycle must forget departing avatars.</summary>
 public sealed class WiredAvatarState
 {
-    // Previous: the avatar effect worn before the first freeze, or the team effect set by Join/Leave Team while frozen; Thaw puts it back (hhus restores e.g. the Wired team effect).
+    // Previous: the avatar effect worn before the first freeze, or the team effect set by Join/Leave Team while frozen; Thaw puts it back (Habbo restores e.g. the Wired team effect).
     private sealed record Freeze(bool Frozen, bool CanWalk, int Effect, bool CancelOnTeleport, int Previous);
     private readonly Dictionary<RoomUser, Freeze> _frozen = [];
-    // Observed on AIR WIN63-202610151745-318700621: the freeze and unfreeze effects arrive with the next room tick (in the same batch as
-    // a repeater's flash on that tick, 150-500 ms after the Wired flash), not with the Wired flash itself.
+    // The freeze and unfreeze effects arrive with the next room tick (in the same batch as
+    // a repeater's flash on that tick), not with the Wired flash itself.
     private readonly List<Action> _tickEffects = [];
     private Room? _executorRoom;
     private static readonly ConditionalWeakTable<Room, WiredAvatarState> Rooms = new();
@@ -25,7 +25,7 @@ public sealed class WiredAvatarState
 
             navigation.RunOwner(user, (actor, sequence) =>
             {
-                // Observed on AIR WIN63-202610151745-318700621: a user frozen while walking finishes the step announced when the freeze
+                // A user frozen while walking finishes the step announced when the freeze
                 // fired and stops there; a step announced after it is not taken.
                 if (actor.SetStep && new System.Drawing.Point(actor.SetX, actor.SetY) == stopAt && navigation.StopAfterStep(actor)) {
                     FreezeActor(actor, effect, cancelOnTeleport, stopWalk: false);
@@ -60,7 +60,7 @@ public sealed class WiredAvatarState
         user.Frozen = true;
         user.CanWalk = false;
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): freezing a standing user sends only the effect, no UserUpdate.
+        // Freezing a standing user sends only the effect, no UserUpdate.
         // A walking user still needs one so its stop (mv removed) reaches the clients.
         if (moving) {
             user.UpdateNeeded = true;
@@ -108,7 +108,7 @@ public sealed class WiredAvatarState
             return false;
         }
 
-        // Observed on AIR WIN63-202610151745-318700621 (wf_act_freeze.cov_effect_sources): Unfreeze lands on the room tick, like Freeze
+        // Unfreeze lands on the room tick, like Freeze
         // (said at +0, effect 0 at +400 ms), and a teleport that cancels a freeze sends only the teleport effect, no effect 0 first.
         if (!teleport && _executorRoom?.GetGameMap()?.Navigation is { } navigation) {
             navigation.RunOwner(user, (actor, _) =>
@@ -123,7 +123,7 @@ public sealed class WiredAvatarState
 
         ThawActor(user, state, restoreEffect: !teleport);
 
-        // Observed on AIR WIN63-202610151745-318700621: the teleport that cancels a freeze ends with the effect worn before the freeze.
+        // The teleport that cancels a freeze ends with the effect worn before the freeze.
         if (teleport && WearsFreezeEffect(user, state)) {
             effectAfterTeleport = EffectAfterThaw(state);
         }
@@ -142,8 +142,8 @@ public sealed class WiredAvatarState
         user.Frozen = state.Frozen;
         user.CanWalk = state.CanWalk;
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): unfreeze sends only the restored effect and no UserUpdate;
-        // a user in a Wired team gets the team effect (223) back on unfreeze, not 0.
+        // Unfreeze sends only the restored effect and no UserUpdate;
+        // a user in a Wired team gets the team effect back on unfreeze, not 0.
         if (restoreEffect && !user.IsBot && state.Effect > 0) {
             OnNextTick(() =>
             {

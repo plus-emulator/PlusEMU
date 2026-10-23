@@ -23,7 +23,7 @@ public class SoundSettingsComposer : IServerPacket
 
     public void Compose(IOutgoingPacket packet)
     {
-        // AIR WIN63-202610151745-318700621 package_43/class_1951.as:160 reads three volumes, three bools, two ints,
+        // The client reads three volumes, three bools, two ints,
         // three bools, an int and a bool; everything after that is optional.
         for (var index = 0; index < 3; index++) {
             packet.WriteInteger(index < _volumes.Length ? _volumes[index] : 0);
@@ -34,8 +34,8 @@ public class SoundSettingsComposer : IServerPacket
         packet.WriteBoolean(_focusPreference);
         packet.WriteInteger(_friendBarState);
         packet.WriteInteger(0);
-        // package_43/class_1951.as:170-172: wired menu button, wired inspect button, play test mode. Nothing stores
-        // them yet (the wired menu save, outgoing 3802, has no handler), so send AIR's defaults from flush (:141).
+        // Wired menu button, wired inspect button, play test mode. Nothing stores
+        // them yet (the wired menu save, outgoing 3802, has no handler), so send the client defaults.
         packet.WriteBoolean(false);
         packet.WriteBoolean(false);
         packet.WriteBoolean(false);

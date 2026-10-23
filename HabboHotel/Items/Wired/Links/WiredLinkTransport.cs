@@ -14,8 +14,7 @@ public sealed record WiredLinkRow(string Key, string Text, long? Number);
 public sealed record WiredLinkPayload(uint SourceRoomId, uint SourceItemId, string Message, ImmutableArray<WiredLinkRow> Rows, int Hops);
 
 /// <summary>
-/// Server-side link delivery. The AIR client has no packet for it (WIN63-202610131318-860371703: only the WiredLinkController network
-/// window), so this is inferred: a message sent through a WIRED Link furni reaches every other furni of its network in loaded rooms,
+/// Server-side link delivery. A message sent through a WIRED Link furni reaches every other furni of its network in loaded rooms,
 /// and a furni of the sending room only when it receives local messages. Rooms that are not loaded do not receive it.
 /// </summary>
 public static class WiredLinkTransport

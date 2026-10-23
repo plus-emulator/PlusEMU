@@ -18,8 +18,8 @@ public sealed class WiredTemporaryEffects
     {
         var current = readEffect();
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): a second teleport fired while the avatar still glows with the same effect
-        // sends no new effect, and the first teleport's end clears the glow. The live lease stays; this one has nothing to undo.
+        // A second teleport fired while the avatar still glows with the same effect sends no new effect, and the first teleport's end clears the glow.
+        // The live lease stays; this one has nothing to undo.
         if (_leases.TryGetValue(user, out var live) && live.Effect == effect && current == effect) {
             return () => { };
         }

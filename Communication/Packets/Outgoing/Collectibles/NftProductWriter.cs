@@ -4,8 +4,8 @@ using Plus.HabboHotel.Users.Collectibles;
 namespace Plus.Communication.Packets.Outgoing.Collectibles;
 
 /// <summary>
-/// AIR collectibles/class_2543.as:23-41: type, item type id, score, the subtype's own fields, pet figure, figure set ids, product code and
-/// rarity. A collection item (class_4405) adds its amount right after the score.
+/// A product: type, item type id, score, the subtype's own fields, pet figure, figure set ids, product code and
+/// rarity. A collection item adds its amount right after the score.
 /// </summary>
 internal static class NftProductWriter
 {

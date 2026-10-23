@@ -6,8 +6,8 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: after a roller slide the standing avatar of a user gets a UserUpdate 500 ms and another
-    // 1000 ms after the slide (3 of 3 slides in each of 3 runs). None comes with the slide itself, and none follows after the second.
+    // After a roller slide the standing avatar of a user gets a UserUpdate 500 ms and another 1000 ms after the slide.
+    // None comes with the slide itself, and none follows after the second.
     [Fact]
     public void ARollerSlideIsFollowedByTwoUserUpdatesOneRoomTickApart()
     {

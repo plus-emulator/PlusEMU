@@ -112,8 +112,8 @@ public class FigureDataManager : IFigureDataManager, IStartable
     public string ProcessFigure(string figure, string gender, ICollection<ClothingParts>? clothingParts, int clubLevel)
         => Process(figure, gender, clothingParts, clubLevel, false);
 
-    // Observed r93h r93-p3-bots (bot clothes reopen, pkt 3686): "hd-180-1.ch-210-66.lg-270-82.sh-290-80.hr-100-" was stored as
-    // "hr-100.hd-180-1.ch-210-66.lg-270-82.sh-290-80".
+    // A stored figure lists its parts in figure data order, not in the order the client sent, and a part sent without a colour
+    // is stored without one.
     public string ProcessFigureCanonical(string figure, string gender, ICollection<ClothingParts>? clothingParts, int clubLevel)
         => Process(figure, gender, clothingParts, clubLevel, true);
 
@@ -158,8 +158,7 @@ public class FigureDataManager : IFigureDataManager, IStartable
                 continue;
             }
 
-            // Observed on AIR WIN63-202610151745-318700621: Bot Clothes stores a part that takes no colour without one ("hr-100-61" reads
-            // back "hr-100").
+            // A part that takes no colour is stored without one ("hr-100-61" becomes "hr-100").
             if (canonical && !set.Colorable && pieces[0] is not ("ca" or "wa")) {
                 rebuilt[pieces[0]] = $"{pieces[0]}-{set.Id}";
                 continue;
@@ -180,8 +179,7 @@ public class FigureDataManager : IFigureDataManager, IStartable
         }
 
         foreach (var requirement in _requirements) {
-            // Observed on AIR WIN63-202610151745-318700621: Bot Clothes fills a missing chest and legs for a male figure too, with the
-            // lowest selectable set and the first colour ("hd-180-1" stored as "hd-180-1.ch-210-1408.lg-270-1408").
+            // A missing chest and legs are filled for a male figure too, with the lowest selectable set and the first colour.
             if (rebuilt.ContainsKey(requirement) || !canonical && requirement == "ch" && gender == "M" || !_setTypes.TryGetValue(requirement, out var type)) {
                 continue;
             }

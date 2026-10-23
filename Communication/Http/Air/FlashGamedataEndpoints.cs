@@ -5,8 +5,7 @@ using Microsoft.AspNetCore.Routing;
 namespace Plus.Communication.Http.Air;
 
 /// <summary>
-/// The Flash gamedata the AIR client loads from <c>${url.prefix}/gamedata/...</c> (AIR WIN63-202610151745-318700621,
-/// embedded common_configuration, class_424.as:6):
+/// The Flash gamedata the client loads from <c>${url.prefix}/gamedata/...</c>:
 /// <list type="bullet">
 /// <item>GET /gamedata/hashes: the file list with content hashes.</item>
 /// <item>GET /gamedata/{external_flash_texts|external_variables|furnidata_xml|productdata}/{hash}: the file. Any hash gets

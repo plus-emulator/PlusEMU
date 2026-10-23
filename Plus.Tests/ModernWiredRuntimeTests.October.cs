@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>The October boxes (r88) firing in a room: furni visuals and link delivery between WIRED Link furni.</summary>
+/// <summary>The October boxes firing in a room: furni visuals and link delivery between WIRED Link furni.</summary>
 public partial class ModernWiredRuntimeTests
 {
     [Fact]

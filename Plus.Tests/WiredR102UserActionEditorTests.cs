@@ -6,7 +6,7 @@ using static Plus.Tests.WiredR102EditorSave;
 
 namespace Plus.Tests;
 
-// User Performs Action (trigger and both conditions) as Habbo stores it. Observed on AIR WIN63-202610201032-107964540.
+// User Performs Action (trigger and both conditions) as Habbo stores it.
 public sealed class WiredR102UserActionEditorTests
 {
     public static TheoryData<string> Names => new("wf_trg_user_performs_action", "wf_cnd_user_performs_action", "wf_cnd_not_user_performs_action");

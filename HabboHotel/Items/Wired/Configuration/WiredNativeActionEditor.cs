@@ -11,13 +11,13 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 internal static class WiredNativeActionEditor
 {
     private static readonly int[] Furni = [0, 100, 200, 201];
-    // Observed on hhus: Remove Furni offers 0/200/201 with 200 selected, and refuses the selected-furni source 100.
+    // Remove Furni refuses the selected-furni source 100.
     private static readonly int[] RemoveFurniSources = [0, 200, 201];
     private static readonly int[] FurniAndSnapshot = [0, 100, 101, 200, 201];
-    // Observed on hhus (WIN63-202610131318, r80 place card): the furni to place also offers 110, the snapshot taken at save, and opens on it.
+    // The furni to place also offers 110, the snapshot taken at save, and opens on it.
     private static readonly int[] PlaceTemplateSources = [0, 100, 101, 110, 200, 201];
     private static readonly int[] SignalFurni = [0, 100, 101, 200, 201];
-    // Observed on AIR WIN63-202610131318-860371703 (initial editor frames): user slots offer 0/200/201; 10 and 11 are added only by the
+    // User slots offer 0/200/201. 10 and 11 are added only by the
     // stack's trigger (see WiredNativeEditorProjection.WithTriggerContext).
     private static readonly int[] Users = [0, 200, 201];
     private static readonly int[] SignalUsers = [0, 200, 201];
@@ -27,7 +27,7 @@ internal static class WiredNativeActionEditor
 
     private static readonly Dictionary<string, WiredNativeEditorMetadata> Known = new(StringComparer.Ordinal)
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703): allows wall picks; toggling only writes the item's state.
+        // Allows wall picks; toggling only writes the item's state.
         ["wf_act_toggle_state"] = Meta([Furni], [], [100], [], [0], true),
         ["wf_act_toggle_to_rnd"] = Meta([Furni], [], [100], [], [], true),
         ["wf_act_reset_timers"] = Meta([], [], [], [], []),
@@ -40,7 +40,7 @@ internal static class WiredNativeActionEditor
         ["wf_act_leave_team"] = Meta([], [SignalUsers], [], [0], []),
         ["wf_act_bot_teleport"] = Meta([Furni], [BotCodes], [100], [100], []),
         ["wf_act_bot_move"] = Meta([Furni], [BotCodes], [100], [100], []),
-        // Observed on hhus (r62-batch-02): the bots slot offers 0/100/200/201 and the users slot 0/200/201, with 100 and 0 selected.
+        // The bots slot opens on 100 and the users slot on 0.
         ["wf_act_bot_follow_avatar"] = Meta([], [BotCodes, SignalUsers], [], [100, 0], [1]),
         ["wf_act_bot_give_handitem"] = Meta([], [BotCodes, SignalUsers], [], [100, 0], [2]),
         // The October editor saves a third field, "hide bot name" (0/1).
@@ -53,14 +53,13 @@ internal static class WiredNativeActionEditor
         ["wf_act_flee"] = Meta([Furni], [], [100], [], []),
         ["wf_act_move_rotate_user"] = Meta([], [SignalUsers], [], [0], [-1, -1]),
         ["wf_act_rel_mov"] = Meta([Furni], [], [100], [], [0, 0], true),
-        // Observed r92f r92-f2f-basic initial frame (pkt 4877): movers default to the triggering furni (0), targets to the picked furni (100).
-        // Observed on hhus (AIR WIN63-202610131318-860371703): wall picks are allowed; a wall target saves but nothing moves to it.
+        // Movers default to the triggering furni (0), targets to the picked furni (100). Wall picks are allowed; a wall target saves but nothing moves to it.
         ["wf_act_furni_to_furni"] = Meta([FurniAndSnapshot, FurniAndSnapshot], [], [0, 100], [], [], true),
         ["wf_act_furni_to_user"] = Meta([Furni], [Users], [100], [0], []),
         ["wf_act_move_furni_to"] = Meta([Furni, FurniAndSnapshot], [], [100, 101], [], [0, 1]),
-        // Observed on AIR WIN63-202610131318-860371703: furni 0/100/200/201, no snapshot source.
+        // No snapshot source.
         ["wf_act_match_to_sshot"] = Meta([Furni], [], [100], [], [0, 0, 0, 0], true),
-        // Observed r92f r92-u2f-targets initial frame (pkt 10351): users 0/200/201, no clicked-user source.
+        // No clicked-user source.
         ["wf_act_user_to_furni"] = Meta([Furni], [SignalUsers], [100], [0], [0]),
         ["wf_act_place_furni"] = Meta([PlaceTemplateSources, FurniAndSnapshot, FurniAndSnapshot], [SignalUsers, SignalUsers], [110, 0, 200], [0, 200], [0, 0, 0, 0, 0, 0, 0, 0, 0, -20], true) with
         {
@@ -157,7 +156,7 @@ internal static class WiredNativeActionEditor
                 users["users"] = User(native, 0);
                 break;
             case "wf_act_mute_triggerer":
-                // The October slider runs 0 to 10 (class_4046 createSliderSection min 0, max 10, default 1), so a zero saves.
+                // The October slider runs 0 to 10, so a zero saves.
                 // Zero minutes mutes nobody at run time: the room deadline rejects a non-positive duration.
                 if (p.Length != 1 || p[0] is < 0 or > 10 || text.Length > 100) {
                     return false;
@@ -168,7 +167,7 @@ internal static class WiredNativeActionEditor
                 break;
             case "wf_act_bot_teleport":
             case "wf_act_bot_move":
-                // Observed on AIR WIN63-202610151745-318700621: Bot Move keeps a bot name longer than the editor field.
+                // Bot Move keeps a bot name longer than the editor field.
                 if (p.Length != 0 || name == "wf_act_bot_teleport" && !BotName(text)) {
                     return false;
                 }

@@ -17,7 +17,6 @@ public partial class WiredRuntimeEngineTests
         return item;
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: with the wired disabler on, no wired runs: a stack does not fire.
     [Fact]
     public void AWiredStackDoesNotFireWhileTheWiredDisablerIsOn()
     {
@@ -33,7 +32,6 @@ public partial class WiredRuntimeEngineTests
         Assert.Equal(0, action.Calls);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a repeater stops with the disabler and ticks again once the disabler is off.
     [Fact]
     public void ARepeaterStopsWhileTheWiredDisablerIsOnAndResumesWhenItIsOff()
     {
@@ -61,7 +59,7 @@ public partial class WiredRuntimeEngineTests
         Assert.True(action.Calls > before);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: wired boxes can still be placed and saved while the disabler is on.
+    // Wired boxes can still be placed and saved while the disabler is on.
     [Fact]
     public void WiredBoxesCanStillBeEditedWhileTheWiredDisablerIsOn()
     {
@@ -74,7 +72,6 @@ public partial class WiredRuntimeEngineTests
         Assert.True(f.Engine.Mutate(() => true));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a wired toggle cannot switch the disabler back off.
     [Fact]
     public void AWiredToggleDoesNotSwitchTheWiredDisablerBackOff()
     {

@@ -5,7 +5,7 @@ namespace Plus.Tests;
 
 public partial class ModernWiredRuntimeTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: the state follows the first (empty) Users packet and comes before the floor items.
+    // The state follows the first (empty) Users packet and comes before the floor items.
     [Fact]
     public void TheEntryStateIsSentRightAfterTheFirstUsersPacketAndBeforeTheFloorItems()
     {

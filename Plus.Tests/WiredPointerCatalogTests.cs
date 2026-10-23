@@ -5,7 +5,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// How a pointer is listed in the variable catalogue. Observed on AIR WIN63-202610201032-107964540: it is a normal variable (type 0)
+/// How a pointer is listed in the variable catalogue. It is a normal variable (type 0)
 /// that is always listed with availability 999, can be created, deleted and written, cannot be intercepted, carries an empty text
 /// connector and is marked as needing an execution context, which keeps it out of the pickers that run outside a stack.
 /// </summary>

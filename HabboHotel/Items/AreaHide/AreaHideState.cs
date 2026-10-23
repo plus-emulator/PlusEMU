@@ -19,7 +19,7 @@ public sealed record AreaHideValues(ImmutableArray<int> Values)
 public static class AreaHideState
 {
     public const int ControllerMaxSize = 20; // Pinned RoomConfig.AreaHideMaxSize default; only the SetBranding (2955) save checks it.
-    // Observed on AIR WIN63-202610201032-107964540: SetAreaHide clamps width and length to 0..64 and does not limit the origin.
+    // SetAreaHide clamps width and length to 0..64 and does not limit the origin.
     public const int WidgetMaxSize = 64;
     private static readonly ConditionalWeakTable<Item, object> Gates = new();
     private static readonly string[] Fields = ["state", "rootX", "rootY", "width", "length", "invisibility", "wallItems", "invert"];
@@ -78,8 +78,8 @@ public static class AreaHideState
         }
     }
     /// <summary>
-    /// The SetAreaHide save of the widget. Observed on AIR WIN63-202610201032-107964540: the rectangle and options are stored as sent,
-    /// negative values become 0 and a width or length over 64 becomes 64. The state is kept.
+    /// The SetAreaHide save of the widget. The rectangle and options are stored as sent, negative values become 0 and a width or length over 64 becomes 64.
+    /// The state is kept.
     /// </summary>
     public static bool Apply(Room room, GameClient client, uint furniId, int x, int y, int width, int length, bool invisibility, bool wallItems, bool invert)
     {
@@ -151,8 +151,8 @@ public static class AreaHideState
             return false;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: the data update comes first, then the furni change, then AreaHide, then the
-        // tiles. AreaHide is sent only when the hider goes on or off; a rectangle change while on sends none.
+        // The data update comes first, then the furni change, then AreaHide, then the tiles.
+        // AreaHide is sent only when the hider goes on or off; a rectangle change while on sends none.
         FurniVisibility.RefreshFurni(room);
 
         if (wasOn != (values[0] == 1)) {

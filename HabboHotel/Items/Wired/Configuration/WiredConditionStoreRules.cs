@@ -6,7 +6,6 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// <summary>
 /// The normal form Habbo stores for these boxes. A save with an odd value is not refused: the value is clamped, switched to the
 /// nearest flag value, or filled from the frame default, and the box reads back the stored form.
-/// Observed on AIR WIN63-202610201032-107964540.
 /// </summary>
 internal static class WiredConditionStoreRules
 {

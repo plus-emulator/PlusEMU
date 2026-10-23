@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The text add-on editors and the Says trigger text, saved as Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// The text add-on editors and the Says trigger text, saved as Habbo stores them.
 public sealed class WiredR105TextAddonEditorTests
 {
     private const string Input = "wf_xtra_text_input_variable";

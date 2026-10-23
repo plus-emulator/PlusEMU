@@ -32,7 +32,7 @@ public sealed class AreaHideParityTests
         var composer = new AreaHideComposer(item.Id, state);
         composer.Compose(packet);
         Assert.Equal(2763u, composer.MessageId);
-        // Observed on AIR WIN63-202610201032-107964540: AreaHide has seven fields; the options are not in it.
+        // AreaHide has seven fields; the options are not in it.
         Assert.Equal(new object[] { 300u, true, 2, 3, 4, 5, true }, packet.Writes);
         var removed = new RecordingPacket();
         new AreaHideComposer(item.Id, state, removed: true).Compose(removed);
@@ -81,7 +81,7 @@ public sealed class AreaHideParityTests
         await handler.Parse(world.Client, Incoming([300, duplicate.Length, .. duplicate.Cast<object>()]));
         Assert.Equal(packetCount, world.Packets.Count);
         Assert.Equal(stored, fixture.Connection.QuerySingle<string>("SELECT extra_data FROM items WHERE id=300"));
-        // Controller rights can configure, without the unrelated branding/staff permission.
+        // Room rights are enough to configure it. No branding or staff permission is needed.
         world.Room.UsersWithRights.Add(2);
         await handler.Parse(guest, Incoming([300, fields.Length, .. Fields(state: 0).Cast<object>()]));
         Assert.True(AreaHideState.TryRead(item, out saved));
@@ -127,7 +127,7 @@ public sealed class AreaHideParityTests
         world.Packets.Clear();
         var users = (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager).GetField("_users", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(world.Room.GetRoomUserManager())!;
         users.Clear(); // Furniture snapshot is independent of avatar snapshot services.
-        // Observed on AIR WIN63-202610201032-107964540: the room entry lists the hider in the FloorHeightMap and sends no AreaHide.
+        // The room entry lists the hider in the FloorHeightMap and sends no AreaHide.
         users.TryAdd(world.Actor.VirtualId, world.Actor);
         world.Packets.Clear();
         Assert.True(world.Room.GetRoomItemHandler().RemoveFurniture(world.Client, item));

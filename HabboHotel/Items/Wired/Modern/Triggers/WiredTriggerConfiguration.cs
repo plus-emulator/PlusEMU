@@ -41,8 +41,7 @@ public static class WiredTriggerConfiguration
 
     public static bool IsTimed(string name) => name is "wf_trg_at_given_time" or "wf_trg_at_time_long"
         or "wf_trg_periodically" or "wf_trg_period_short" or "wf_trg_period_long";
-    // The most units each timed editor offers (Volt sliders); the least is 1. At Given Time and Periodically Long keep what was sent
-    // instead (observed on AIR WIN63-202610201032-107964540: 1201 pulses and 121 units are stored as sent).
+    // The most units each timed editor offers (Volt sliders); the least is 1. At Given Time and Periodically Long keep what was sent instead (1201 pulses and 121 units are stored as sent).
     public static int MaxTimedUnits(string name) => name switch
     {
         "wf_trg_period_short" => 10,
@@ -132,7 +131,7 @@ public static class WiredTriggerConfiguration
                 users["bots"] = p[0];
                 break;
             case "wf_trg_bot_reached_stf":
-                // Observed on AIR WIN63-202610201032-107964540: a bot name of any length is stored.
+                // A bot name of any length is stored.
                 if (p.Length != 2 || !F(0) || !B(1)) {
                     return false;
                 }
@@ -161,7 +160,7 @@ public static class WiredTriggerConfiguration
                 furni["items"] = p[1];
                 break;
             case "wf_trg_score_achieved":
-                // ScoreAchieved.as: the points slider runs 1 to 1000 and the team radio 0 (any) to 4.
+                // The points slider runs 1 to 1000 and the team radio 0 (any) to 4.
                 if (p.Length != 2 || p[0] is < 1 or > 1000 || p[1] is < 0 or > 4) {
                     return false;
                 }

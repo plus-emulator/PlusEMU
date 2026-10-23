@@ -103,8 +103,7 @@ public static class WiredBotActions
 
     /// <summary>
     /// "bot TAB message", read the way the hotel splits it: trailing empty fields are dropped, and a single field is the message, not
-    /// the bot. Observed on AIR WIN63-202610151745-318700621 (r97_bot_empty_msg): a talk box saved with bot "Robbie" and no message
-    /// reads back as "\tRobbie".
+    /// the bot. A talk box saved with bot "Robbie" and no message reads back as "\tRobbie".
     /// </summary>
     internal static string TalkText(string text)
     {
@@ -116,7 +115,7 @@ public static class WiredBotActions
 
         return fields.Count switch
         {
-            // Observed on AIR WIN63-202610131318-860371703: a fresh talk box has an empty text, not "\t".
+            // A fresh talk box has an empty text, not "\t".
             0 => "",
             1 => "\t" + fields[0],
             _ => fields[0] + "\t" + string.Join('\t', fields.Skip(1))
@@ -167,9 +166,7 @@ public static class WiredBotActions
                     var item = items[Random.Shared.Next(items.Length)];
 
                     if (name == "wf_act_bot_teleport") {
-                        // Observed on hhus (AIR WIN63-202610131318-860371703): a bot teleport is a normal Teleport To: effect 4 at the
-                        // firing, the bot republished on the first tick + 1000 ms, landed 500 ms later and its effect dropped 1500 ms after.
-                        // A bot does not teleport onto a tile another avatar stands on.
+                        // A bot teleport is a normal Teleport To. A bot does not teleport onto a tile another avatar stands on.
                         if (teleport != null) {
                             if (!context.Room.GetGameMap().GetRoomUsers(new(item.GetX, item.GetY)).Any(other => !ReferenceEquals(other, bot))) {
                                 changed |= teleport(bot, item);
@@ -181,7 +178,7 @@ public static class WiredBotActions
                         }
                     }
                     else if (WiredBotTargets.StandsStillOn(bot, item.GetX, item.GetY)) {
-                        // Observed on AIR WIN63-202610201032-107964540: a Bot Move to the tile the bot stands still on sends nothing.
+                        // A Bot Move to the tile the bot stands still on sends nothing.
                         targets.Stop(bot);
                     }
                     else {
@@ -296,8 +293,7 @@ public static class WiredBotActions
                         }
                     }
                     else if (name == "wf_act_bot_talk_to_avatar") {
-                        // Observed on hhus (AIR WIN63-202610131318-860371703): said aloud, the bot addresses the avatar by name
-                        // ("Objecto: hello you"), once per avatar.
+                        // Said aloud, the bot addresses the avatar by name ("Objecto: hello you"), once per avatar.
                         var said = false;
 
                         foreach (var user in users) {
@@ -332,7 +328,7 @@ public static class WiredBotActions
     {
         var fields = part.Split('-');
 
-        // A colour field may be empty ("hr-100-"). Observed on AIR WIN63-202610131318-860371703: Habbo saves it and drops the empty colour.
+        // A colour field may be empty ("hr-100-"). Habbo saves it and drops the empty colour.
         return fields.Length >= 2 && fields[0].Length == 2 && fields[0].All(c => c is >= 'a' and <= 'z') && fields[1].Length > 0
             && fields.Skip(1).All(field => field.All(c => c is >= '0' and <= '9'));
     });

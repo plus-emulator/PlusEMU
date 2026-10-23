@@ -228,8 +228,7 @@ public sealed class ItemRedemptionService(IItemRedemptionStore store, ISettingsM
         }
     }
 
-    // AIR WIN63-202610201032-107964540 furniture_effectbox: only the owner gets the dialog (FurnitureContextMenuWidgetHandler.as:390) and its
-    // OK button sends the plain use packet (EffectBoxOpenDialogView.as:103). The box works once: the owner wears its effect, which stays in the effects list for good,
+    // Only the owner gets the effect box dialog, and its OK button sends the plain use packet. The box works once: the owner wears its effect, which stays in the effects list for good,
     // and the box plays its opening state before it leaves the room. A box left in state 1 by the old toggle still opens.
     public void OpenEffectBox(GameClient session, Item item, DateTimeOffset now)
     {

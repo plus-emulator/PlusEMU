@@ -6,8 +6,8 @@ public sealed class WiredChangeVariableDomainSaveTests
 {
     private const string FurniAltitude = "-123";
 
-    // Observed on AIR WIN63-202610201032-107964540: Change Variable Value saves a furni variable (Altitude) with the user target and with
-    // the furni target. The box with the user target changes nothing.
+    // Change Variable Value saves a furni variable (Altitude) with the user target and with the furni target. The box with the
+    // user target changes nothing.
     [Theory]
     [InlineData(1)]
     [InlineData(0)]

@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Observed on hhus (AIR WIN63-202610131318-860371703): saves that echo the frame's trailing hotel int are accepted.</summary>
+/// <summary>Saves that echo the frame's trailing hotel int are accepted.</summary>
 public class WiredHotelIntSaveTests
 {
     private static bool Compile(string name, int[] ints, out WiredConfiguration runtime)

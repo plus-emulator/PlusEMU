@@ -46,7 +46,7 @@ public class FloorHeightMapComposer : IServerPacket
 
         packet.WriteInteger(_cameraX);
         packet.WriteInteger(_cameraY);
-        // AIR WIN63-202610151745-318700621 package_71/class_3887.as:76 reads the camera z as readFloat.
+        // The client reads the camera z as a float.
         packet.WriteFloat(_cameraZ);
     }
 }

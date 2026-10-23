@@ -15,7 +15,7 @@ public sealed partial class WiredGlideConveyorTests
     [InlineData(true)]
     public void ScoreAchievedDoesNotFireAgainInTheSameRound(bool saveIdenticalTrigger)
     {
-        // Observed on AIR WIN63-202610151745-318700621: dropping below the threshold and saving the same settings do not rearm it.
+        // Dropping below the threshold and saving the same settings do not rearm it.
         var (f, speaker, marker) = ScoreRoundRoom();
         var start = marker.GetY;
         GiveRoundScore(f, speaker, 7);
@@ -75,7 +75,7 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void ScoreAchievedForAnyTeamFiresOnceForTheWholeBox()
     {
-        // Observed on AIR WIN63-202610151745-318700621: with team Any, Red 0->7 fired and Green 0->7 right after did not.
+        // With team Any, Red 0->7 fired and Green 0->7 right after did not.
         var (f, speaker, marker) = ScoreRoundRoom();
         var start = marker.GetY;
         SaveRoundBox(f, 43, [6, 0]);
@@ -91,7 +91,7 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void ScoreAchievedFiresAgainAfterItsSettingsChange()
     {
-        // Observed on AIR WIN63-202610151745-318700621: after Red fired, saving team Any let a Green crossing fire in the same round.
+        // After Red fired, saving team Any let a Green crossing fire in the same round.
         var (f, speaker, marker) = ScoreRoundRoom();
         var start = marker.GetY;
         GiveRoundScore(f, speaker, 7);
@@ -106,7 +106,7 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void ScoreAchievedFiresAgainAfterItsSettingsChangeAndChangeBack()
     {
-        // Observed on AIR WIN63-202610151745-318700621: after Red fired, saving Any and then Red again let a Red recross fire.
+        // After Red fired, saving Any and then Red again let a Red recross fire.
         var (f, speaker, marker) = ScoreRoundRoom();
         var start = marker.GetY;
         GiveRoundScore(f, speaker, 7);
@@ -124,7 +124,7 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void ScoreAchievedBlockedByAConditionStillUsesItsOneFiring()
     {
-        // Observed on AIR WIN63-202610151745-318700621: a crossing stopped by a false condition was not retried by a later recross.
+        // A crossing stopped by a false condition was not retried by a later recross.
         var (f, speaker, marker) = ScoreRoundRoom(withUserCountCondition: true);
         var start = marker.GetY;
         GiveRoundScore(f, speaker, 7);

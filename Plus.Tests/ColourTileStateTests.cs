@@ -6,8 +6,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on hhus (AIR WIN63-202610131318-860371703): wf_colortile is an ordinary 7-state furni with legacy stuff data. Wired
-// toggle state cycles it 0..6, a user's use cycles it, and walking on it changes nothing.
+// wf_colortile is an ordinary 7-state furni with legacy stuff data. Wired toggle state cycles it 0..6, a user's use cycles it, and walking on it changes nothing.
 public class ColourTileStateTests
 {
     private static ItemDefinition ColourTile() => new()

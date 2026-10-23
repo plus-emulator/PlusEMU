@@ -8,9 +8,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: after Reset Timers a 200 ms Periodic Short fired on the next room tick, 361 and 372 ms
-    // after the reset. Observed on AIR WIN63-202610201032-107964540: a 600 s Periodic Long fired 140 ms after the reset and again 600 s
-    // after that tick. Neither waited 500 ms.
+    // After Reset Timers a 200 ms Periodic Short fires on the next room tick, and a 600 s Periodic Long fires about 140 ms after
+    // the reset and again 600 s after that tick. Neither waits 500 ms.
     [Theory]
     [InlineData("wf_trg_period_short", 4, new[] { 2500, 2700, 2900, 3100, 3300 })]
     [InlineData("wf_trg_periodically", 1, new[] { 2500, 3000 })]

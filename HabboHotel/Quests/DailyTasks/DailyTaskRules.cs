@@ -68,7 +68,7 @@ public static class DailyTaskRules
 
     /// <summary>
     /// Seconds until the task's day ends. A task of an earlier day reports -1: the client lists it under unclaimed tasks
-    /// when it is completed (DailyTasksController.as:171-186, class_2919.isExpired).
+    /// when it is completed.
     /// </summary>
     public static int SecondsLeft(UserDailyTask task, DateTimeOffset now)
     {

@@ -6,7 +6,6 @@ using Xunit;
 namespace Plus.Tests;
 
 // The Variable FX cards and the Variable Leaderboard, saved the way Habbo stores them.
-// Observed on AIR WIN63-202610201032-107964540.
 public sealed class WiredR105VariableFxEditorTests
 {
     private static readonly string[] Cards =
@@ -82,7 +81,7 @@ public sealed class WiredR105VariableFxEditorTests
         // Show mode: 0, 1 and 2 stay and mode 2 switches the hover flag on; anything else is 0.
         Assert.Equal([2, 1], Stored(card, p => p[2] = 2).Skip(2).Where((_, index) => index is 0 or 2));
         Assert.Equal([0, 0], Stored(card, p => { p[2] = 3; p[4] = 1; }).Skip(2).Where((_, index) => index is 0 or 2));
-        // Observed on AIR WIN63-202610201032-107964540: show mode 1 keeps the hover flag as sent, and show mode 0 stores it off.
+        // Show mode 1 keeps the hover flag as sent, and show mode 0 stores it off.
         Assert.Equal(1, Stored(card, p => { p[2] = 1; p[4] = 1; })[4]);
         Assert.Equal(0, Stored(card, p => { p[2] = 1; p[4] = 0; })[4]);
         Assert.Equal(0, Stored(card, p => { p[2] = 0; p[4] = 1; })[4]);
@@ -297,8 +296,6 @@ public sealed class WiredR105VariableFxEditorTests
         Assert.Equal(1, world.Wired.LeaderboardContext(box).OverlayInstanceId);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a published board whose stack has no user variable is sent in the snapshot with no
-    // choices and the default variable "0".
     [Fact]
     public void APublishedBoardWithoutAUserVariableIsInTheSnapshotWithTheDefaultVariableZero()
     {
@@ -320,8 +317,8 @@ public sealed class WiredR105VariableFxEditorTests
         Assert.Equal("probe board", sent.Config.Title);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the room's board revision counter starts at 1, so the first save of a board shows
-    // revision 2 and every later save of any board adds one.
+    // The room's board revision counter starts at 1, so the first save of a board shows revision 2 and every later save of any
+    // board adds one.
     [Fact]
     public void TheQueryRevisionOfABoardStartsAtTwoAndGrowsWithEverySave()
     {

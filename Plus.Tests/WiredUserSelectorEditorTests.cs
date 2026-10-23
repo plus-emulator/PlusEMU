@@ -3,7 +3,6 @@ using Xunit;
 namespace Plus.Tests;
 
 // The user selectors and the Filter Users add-on, saved through the real packet path and read back as the editor shows them.
-// Observed on AIR WIN63-202610201032-107964540.
 public sealed class WiredUserSelectorEditorTests
 {
     private static WiredRawSave.Result Saved(string name, int[]? ints = null, string text = "", int[]? furni = null, int[]? users = null,

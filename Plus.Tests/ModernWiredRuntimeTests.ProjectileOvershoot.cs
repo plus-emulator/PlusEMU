@@ -47,8 +47,7 @@ public partial class ModernWiredRuntimeTests
         return (movements, replies.Any(reply => reply.Header == ServerPacketHeader.ObjectUpdateComposer), (f.Target.GetX, f.Target.GetY), animations);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the overshoot modes send an overshoot value with the movement: 800 for two more tiles
-    // at 400 ms a tile.
+    // The overshoot modes send an overshoot value with the movement: 800 for two more tiles at 400 ms a tile.
     [Theory]
     [InlineData(WiredProjectileDistance.Overshoot, 2)]
     [InlineData(WiredProjectileDistance.Fixed, 3)]
@@ -60,10 +59,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((2, 1), shot.At);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a shot sends one packet. It holds the animation time of the first tile and the time of
-    // the rest of the flight as the overshoot. The whole flight takes the time per tile for every tile, less the speed increase
-    // (400 ms a tile, 6 tiles: 2400 ms; speed increase 100 takes 1800 ms), shared by the tiles of the flight. The largest speed
-    // increase changes nothing.
+    // A shot sends one packet. It holds the animation time of the first tile and the time of the rest of the flight as the overshoot. The whole flight takes the time per tile for every tile, less the speed increase (400 ms a tile, 6 tiles: 2400 ms; speed increase 100 takes 1800 ms), shared by the tiles of the flight. The largest speed increase changes nothing.
     [Theory]
     [InlineData(WiredProjectileDistance.Fixed, 6, 0, 400, 2000)]
     [InlineData(WiredProjectileDistance.Fixed, 6, 100, 300, 1500)]
@@ -94,8 +90,7 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void ANormalProjectileSendsNoOvershoot() => Assert.Equal((false, 0), Assert.Single(ShootOneTile(WiredProjectileDistance.Normal, 0).Movements));
 
-    // Observed on AIR WIN63-202610201032-107964540: always shooting a negative number of tiles moves the furni at once with one
-    // ObjectUpdate and no WiredMovements.
+    // Always shooting a negative number of tiles moves the furni at once with one ObjectUpdate and no WiredMovements.
     [Fact]
     public void ANegativeAlwaysShootDistanceMovesTheFurniAtOnce()
     {

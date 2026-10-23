@@ -21,7 +21,7 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
         or "wf_xtra_var_share" or "wf_xtra_var_import";
     /// <summary>Whether a Share or Import add-on has its category on: 0 text connectors, 1 subvariable creators, 2 variable FX.</summary>
     public bool Category(int index) => Configuration.IntParams.Length > index && Configuration.IntParams[index] != 0;
-    // AIR VariableLvlUpAddon.as:95 SubVariableParam names (WIN63-202610131318-860371703); the sub-variable is "<parent>.<name>".
+    // The level-up sub-variable names; a sub-variable is named "<parent>.<name>".
     public static readonly string[] LevelKeys = ["current_level", "current_xp", "progress", "progress_percentage", "xp_required", "xp_remaining", "is_maxed", "max_level"];
     public string[] DerivedKeys => LevelKeys;
     public bool HasDerived(int sub) => sub >= 0 && sub < DerivedKeys.Length && LevelSystem is { } level && (level.SubvariableMask & (1 << sub)) != 0;
@@ -119,8 +119,7 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
     }
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: the connector text may hold 1000 UTF-8 bytes, the "_=" line included, and any
-    /// number of lines. A longer text is refused with wiredfurni.error.too_much_text and the stored text stays.
+    /// The connector text may hold 1000 UTF-8 bytes, the "_=" line included, and any number of lines. A longer text is refused with wiredfurni.error.too_much_text and the stored text stays.
     /// </summary>
     internal const int MaxConnectorBytes = 1000;
 
@@ -130,15 +129,13 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
         string? fallback = null;
         var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
-        // Observed on AIR WIN63-202610151745-318700621 (the stored connector, read back from the room's variables): every line is
-        // "number=text"; a line that is not is dropped and the save still succeeds ("bad", "x=1", "Seven=7" and " 3 = z " all dropped).
+        // Every line is "number=text"; a line that is not is dropped and the save still succeeds ("bad", "x=1", "Seven=7" and " 3 = z " all dropped).
         // The text may be empty ("5=" keeps ""), the number may be negative, and a repeated number keeps its last text.
         foreach (var raw in lines) {
             var line = raw.TrimEnd('\r');
             var separator = line.IndexOf('=');
 
-            // Observed on AIR WIN63-202610201032-107964540: "_=text" is the fallback shown for a number with no label. The last one wins,
-            // the text may be empty or hold "=", and a "_" with spaces around it is a bad line.
+            // "_=text" is the fallback shown for a number with no label. The last one wins, the text may be empty or hold "=", and a "_" with spaces around it is a bad line.
             if (separator == 1 && line[0] == '_') {
                 fallback = line[2..];
                 continue;

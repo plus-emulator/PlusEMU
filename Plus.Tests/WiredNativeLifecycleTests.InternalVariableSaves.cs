@@ -6,8 +6,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: Give Variable (initial 32, override), Change Variable Value (assign 33) and Remove
-// Variable all save on the internal user variable @habbicon ("-245"), and none of them changes it: a placeholder reads null after each.
+// Give Variable (initial 32, override), Change Variable Value (assign 33) and Remove Variable all save on the internal user
+// variable @habbicon ("-245"), and none of them changes it: a placeholder reads null after each.
 public sealed partial class WiredNativeLifecycleTests
 {
     private const string HabbiconId = "-245";

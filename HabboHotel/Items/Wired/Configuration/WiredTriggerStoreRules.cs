@@ -6,7 +6,6 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// <summary>
 /// The normal form Habbo stores for these trigger saves: a missing int takes the frame default, an extra int is dropped, and an odd
 /// value is reset or clamped instead of refused.
-/// Observed on AIR WIN63-202610201032-107964540.
 /// </summary>
 internal static class WiredTriggerStoreRules
 {

@@ -13,8 +13,8 @@ namespace Plus.Tests;
 /// </summary>
 public partial class ModernWiredRuntimeTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: give 5 shows 6, give 5 again 7, add 1 shows 2, add 1 again 3, remove 8, a remove
-    // with nothing to remove sends no update, give 6, add 1 shows 2.
+    // Each kind of write has its own state, and a repeat of the same kind shows the next one: give 6 then 7, add 2 then 3,
+    // remove 8. A remove with nothing to remove sends no update.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -31,8 +31,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(("2", 6L), stack.Run("wf_act_change_var_val", [1, 1, 0, 0, 1, -10, 0]));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_definer_same): give 5 shows 6, assign 5 shows 0, assign 5 again 1, give 6,
-    // assign 5 shows 0.
+    // An assign that keeps the value shows 0, and 1 on a repeat. A write of another kind in between starts it at 0 again.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -46,8 +45,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(("0", 5L), stack.Run("wf_act_change_var_val", [1, 0, 0, 0, 5, -10, 0]));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: give 5 shows 6, subtract 1 shows 4, subtract 1 again 5, add 1 shows 2, add 1
-    // again 3, subtract 1 shows 4.
+    // Subtract shows 4, and 5 on a repeat. Add shows 2, and 3 on a repeat.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -62,8 +60,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(("4", 4L), stack.Run("wf_act_change_var_val", [1, 2, 0, 0, 1, -10, 0]));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: give 5 and add 3 in one execution show the give state, 6 and then 7 on the next
-    // execution, with or without Execute In Order. A change in a later execution shows its own state again.
+    // Give and add in one execution show the give state, with or without Execute In Order. A change in a later execution shows its own state again.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -16,8 +16,8 @@ public sealed class WiredVariablePortParityTests
         Assert.True(executor.Execute("wf_act_change_var_val", WiredNativeTestSupport.Scalar("wf_act_change_var_val", Config(target, source, 0)), frame));
         var assigned = destinations.Select(holder => module.Read(new(target, "custom:10"), holder, frame)!.Value).ToArray();
 
-        // Observed on AIR WIN63-202610201032-107964540: furni destinations take the value of a different furni reference holder each, at random.
-        // Users were not probed: they take the first value read.
+        // Furni destinations take the value of a different furni reference holder each, at random. Users take the first value
+        // read.
         Assert.Equal(target == WiredVariableTarget.Furni && source == WiredVariableTarget.Furni ? new long[] { 10, 20 } : [10, 10], assigned.Order());
         module.Mutate(new(source, "custom:11"), operands[0], WiredVariableMutation.Remove, 0, frame);
         Assert.True(executor.Execute("wf_act_change_var_val", WiredNativeTestSupport.Scalar("wf_act_change_var_val", Config(target, source, 0)), frame));
@@ -37,7 +37,7 @@ public sealed class WiredVariablePortParityTests
         Assert.True(executor.Execute("wf_cnd_var_val_match", WiredNativeTestSupport.Scalar("wf_cnd_var_val_match", config with { IntParams = [.. config.IntParams, 0] }), frame));
     }
 
-    // Not probed on Habbo and not changed by the pairing of Change Variable Value and Give Variable: a comparison reads the first reference value.
+    // Pairing Change Variable Value with Give Variable does not change this: a comparison reads the first reference value.
     [Fact]
     public void ComparisonKeepsReadingTheFirstReferenceValueWithSeveralFurni()
     {

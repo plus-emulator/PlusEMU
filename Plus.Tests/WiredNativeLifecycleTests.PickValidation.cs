@@ -4,8 +4,8 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// The AIR client (WIN63-202610131318) does not filter furni picks itself: UserDefinedRoomEventsCtrl.stuffSelected only checks the
-/// wall flag and the furni limit. Wrong picks are refused by the server on save with the official wiredfurni.error.* keys.
+/// The client does not filter furni picks itself: it only checks the wall flag and the furni limit. Wrong picks are refused by
+/// the server on save with the wiredfurni.error.* keys.
 /// </summary>
 public sealed partial class WiredNativeLifecycleTests
 {

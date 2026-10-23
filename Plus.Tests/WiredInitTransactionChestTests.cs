@@ -2,8 +2,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Raw saves of Initiate Transaction through the real save packet. Observed on AIR WIN63-202610201032-107964540: a save without a chest
-// is refused with the chest key and no parameters.
+// Raw saves of Initiate Transaction through the real save packet. A save without a chest is refused with the chest key and no
+// parameters.
 public sealed class WiredInitTransactionChestTests
 {
     private const string RequireChests = "wiredfurni.error.require_chests";

@@ -3,9 +3,8 @@ using System.Diagnostics;
 namespace Plus.HabboHotel.Rooms.Instance;
 
 /// <summary>
-/// Wakes rooms at the time a delayed effect falls due. Observed on AIR WIN63-202610151745-318700621 (r97_core_delays): an effect with a
-/// delay of N pulses lands N x 500 ms after its firing, within 2 ms. Pool timers drift several ms under load, so one dedicated thread
-/// sleeps until just before the earliest due time and yields through the last stretch.
+/// Wakes rooms at the time a delayed effect falls due. An effect with a delay of N pulses lands N x 500 ms after its firing, within 2 ms.
+/// Pool timers drift several ms under load, so one dedicated thread sleeps until just before the earliest due time and yields through the last stretch.
 /// </summary>
 public sealed class WiredWakeClock : IDisposable
 {

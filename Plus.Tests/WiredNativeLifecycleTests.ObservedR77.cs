@@ -8,10 +8,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Observed on hhus build WIN63-202610131318, r77 live-check batches 01 and 02 and r62 batches 04 and 05.</summary>
 public sealed partial class WiredNativeLifecycleTests
 {
-    // Join Team saved [team 2, type 1] (Battle Banzai) and delivered AvatarEffect 34; [team 3, type 2] (Freeze) delivered 42.
+    // Join Team saved as [team 2, type 1] (Battle Banzai) gives AvatarEffect 34; [team 3, type 2] (Freeze) gives 42.
     [Theory]
     [InlineData(1, 2, 34)]
     [InlineData(2, 3, 42)]
@@ -30,7 +29,8 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.Equal(effect, WiredGameState.TeamEffect(runtime.IntParams[0], (Team)runtime.IntParams[1]));
     }
 
-    // r77 range windows: 1767225600..1798761600 (2026-01-01 to 2027-01-01 UTC) delivered the message, 1577836800..1609459200 (2020) did not.
+    // Range windows: 1767225600..1798761600 (2026-01-01 to 2027-01-01 UTC) delivers the message, 1577836800..1609459200 (2020)
+    // does not.
     [Theory]
     [InlineData(1767225600, 1798761600, 0, true)]
     [InlineData(1767225600, 1798761600, 9, true)]
@@ -57,13 +57,13 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.True(WiredTimeConditions.MatchesRange(config, DateTimeOffset.FromUnixTimeSeconds(1798761600)));
         Assert.False(WiredTimeConditions.MatchesRange(config, DateTimeOffset.FromUnixTimeSeconds(1798761601)));
         Assert.False(WiredTimeConditions.MatchesRange(config, DateTimeOffset.FromUnixTimeSeconds(1767225599)));
-        // Observed on hhus (AIR WIN63-202610131318-860371703): an end of 0 never passes; a start of 0 is open.
+        // An end of 0 never passes; a start of 0 is open.
         var now = DateTimeOffset.FromUnixTimeSeconds(1792200000);
         bool Range(int start, int end) => WiredTimeConditions.MatchesRange(config with { IntParams = [start, end] }, now);
         Assert.Equal((false, true, false, false), (Range(0, 0), Range(0, 2000000000), Range(1700000000, 0), Range(0, 1700000000)));
     }
 
-    // Show Message radio 0 arrived as a Whisper and radio 1 as a Chat, both to the owner; the saved ints were [radio, 202, -1].
+    // Show Message radio 0 arrives as a Whisper and radio 1 as a Chat, both to the owner; the saved ints are [radio, 202, -1].
     [Theory]
     [InlineData(0, true)]
     [InlineData(1, false)]
@@ -78,7 +78,7 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.Equal(whisper ? ServerPacketHeader.WhisperComposer : ServerPacketHeader.ChatComposer, packet.MessageId);
     }
 
-    // The unchosen reference ("0") the official initial editor sends, with a valid name, was refused with this key and no parameters.
+    // The unchosen reference ("0") the initial editor sends, with a valid name, is refused with this key and no parameters.
     [Fact]
     public void VariableReferenceWithoutAChosenReferenceIsRefusedWithTheObservedKey()
     {
@@ -97,8 +97,8 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.True(WiredNativeEditorProjection.TryCompile(item.Id, box.Descriptor, unchosen, out var runtime));
         Assert.False(WiredConfigurationSave.TrySave(box, runtime, TestWiredConfigurationStore.Instance, out var error));
         Assert.Equal("wiredfurni.error.variables.reference.valid", error);
-        // Observed on AIR WIN63-202610201032-107964540: a reference to a variable that is not shared in the room it names is refused with
-        // the same key (a reference to a shared variable of the owner saves, see PlacedFurniRoomTests.ReferenceOwner).
+        // A reference to a variable that is not shared in the room it names is refused with the same key (a reference to a shared
+        // variable of the owner saves, see PlacedFurniRoomTests.ReferenceOwner).
         var chosen = unchosen with { VariableIds = ["shared:2:room:4"] };
         Assert.True(WiredNativeEditorProjection.TryCompile(item.Id, box.Descriptor, chosen, out runtime));
         Assert.False(WiredConfigurationSave.TrySave(box, runtime, TestWiredConfigurationStore.Instance, out error));
@@ -108,8 +108,7 @@ public sealed partial class WiredNativeLifecycleTests
     // The unchanged-form save (empty name, owned [0], id "0") was refused with the placeholder length key and no parameters.
     [Theory]
     [InlineData("", "wiredfurni.error.placeholder.name_length")]
-    // Observed on AIR WIN63-202610201032-107964540: a name is not trimmed, so spaces and "#" are refused as syntax, not as length, and
-    // the capturer saves without a variable.
+    // A name is not trimmed, so spaces and "#" are refused as syntax, not as length, and the capturer saves without a variable.
     [InlineData("   ", "wiredfurni.error.placeholder.name_syntax")]
     [InlineData("##", "wiredfurni.error.placeholder.name_syntax")]
     [InlineData("a", null)]
@@ -153,7 +152,7 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.True(WiredConfigurationSave.TrySave(trigger, runtime, TestWiredConfigurationStore.Instance, out error), error);
     }
 
-    // Client text (WIN63-202610131318): wiredfurni.error.require_room_linker = "Can only select wired room linkers!".
+    // Client text: wiredfurni.error.require_room_linker = "Can only select wired room linkers!".
     [Fact]
     public void TeleportToRoomRefusesAPickThatIsNotARoomLinker()
     {

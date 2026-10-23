@@ -27,8 +27,8 @@ public sealed class DatabaseWiredLeaderboardProfiles(IDatabase database) : IWire
 }
 
 /// <summary>
-/// Ranks a user variable's holders the way the overlay presents them. Sort modes are VariableLeaderboardAddon's (0 highest value,
-/// 1 lowest, 2 oldest creation, 3 latest creation, 4 oldest update, 5 latest update); equal keys keep the lower user id first.
+/// Ranks a user variable's holders the way the overlay presents them. Sort modes: 0 highest value,
+/// 1 lowest, 2 oldest creation, 3 latest creation, 4 oldest update, 5 latest update; equal keys keep the lower user id first.
 /// The filter keeps holders that also hold the filter variable; with a comparison the filter variable's value must equal the
 /// literal or global operand (the editor names no operator, so equality is inferred).
 /// </summary>
@@ -60,8 +60,7 @@ public static class WiredLeaderboardRanking
     }
 
     /// <summary>Chunk <paramref name="index"/> of the ranking: 50 rows, ranks counted from the top of the whole list.</summary>
-    // Observed on AIR WIN63-202610151745-318700621: a row carries its creation and last-update times only when the board shows a
-    // column of that kind; otherwise both are 0.
+    // A row carries its creation and last-update times only when the board shows a column of that kind; otherwise both are 0.
     public static IReadOnlyList<WiredLeaderboardRow> Chunk(IReadOnlyList<(long UserId, WiredVariableValue Value)> ranked, int index,
         WiredLeaderboardChoice choice, IWiredLeaderboardProfiles profiles, WiredLeaderboardConfig? config = null)
     {
@@ -83,7 +82,7 @@ public static class WiredLeaderboardRanking
         })];
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a value with a label shows it, any other value shows the "_=" fallback (empty when the
+    // A value with a label shows it, any other value shows the "_=" fallback (empty when the
     // fallback is empty), and a connector without a fallback line gives the row no text.
     private static string? ConnectorText(IReadOnlyDictionary<int, string> connector, long value) =>
         value is >= int.MinValue and <= int.MaxValue && connector.TryGetValue((int)value, out var text) ? text

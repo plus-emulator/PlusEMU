@@ -5,7 +5,7 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
 /// How the hotel stores a save of the add-ons, the two long timers, the User Performs Action boxes, Teleport to Room, Scan Chest, Match To Snapshot and the two chest conditions.
-/// Observed on AIR WIN63-202610201032-107964540: a save with missing ints takes the frame default for each, extra ints and a text the box
+/// A save with missing ints takes the frame default for each, extra ints and a text the box
 /// does not read are dropped, and most out-of-range numbers are clamped or reset instead of refused.
 /// </summary>
 internal static class WiredEditorStoreRules
@@ -54,23 +54,23 @@ internal static class WiredEditorStoreRules
         { "wf_cnd_chest_has_item_type", new(ChestCondition, VariableSlots: true) },
         { TextVariable, new(TextOutputVariable, VariableSlots: true) },
         { TextFurniName, new(draft => draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1) },
-        // Observed on AIR WIN63-202610201032-107964540: the username output stores its ints and its name like the furni name output.
+        // The username output stores its ints and its name like the furni name output.
         { TextUsername, new(draft => draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1) },
-        // Observed on AIR WIN63-202610201032-107964540: the bot name is kept as sent, of any length.
+        // The bot name is kept as sent, of any length.
         { BotReachedFurni, new(_ => { }) },
         // Only the variable slots are checked. The transaction triggers have none.
         { "wf_act_init_transaction", new(VariableSlots: true) },
         { "wf_trg_transaction_complete", new(VariableSlots: true) },
         { "wf_trg_transaction_fail", new(VariableSlots: true) },
-        // Observed on AIR WIN63-202610201032-107964540: the room triggers have no variable slot either, so a variable gets the count key.
+        // The room triggers have no variable slot either, so a variable gets the count key.
         { "wf_trg_enter_room", new(VariableSlots: true) },
         { "wf_trg_leave_room", new(VariableSlots: true) },
-        // Observed on AIR WIN63-202610201032-107964540: any non-zero match criteria is stored as 1, and the box has no text.
+        // Any non-zero match criteria is stored as 1, and the box has no text.
         { "wf_act_cancel_transaction", new(FlagWithoutText, VariableSlots: true) },
-        // Observed on AIR WIN63-202610201032-107964540: a save with one variable is stored with the second slot empty. The ints have
+        // A save with one variable is stored with the second slot empty. The ints have
         // their own store rule (see WiredSelectorStoreRules).
         { "wf_slc_users_with_var", new(VariableSlots: true) },
-        // Observed on AIR WIN63-202610201032-107964540: a pointer has one variable slot, its accessor; two variables get the count key.
+        // A pointer has one variable slot, its accessor; two variables get the count key.
         { "wf_var_pointer", new(VariableSlots: true) }
     }.ToFrozenDictionary();
 
@@ -120,7 +120,7 @@ internal static class WiredEditorStoreRules
         ints[2] = Target(ints[2]);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the amount is held to 1..1000, the operand kind to 0..1 and the reference target to
+    // The amount is held to 1..1000, the operand kind to 0..1 and the reference target to
     // the four offered values. The box has no text.
     private static void FilterUsers(WiredStoreDraft draft)
     {
@@ -132,7 +132,7 @@ internal static class WiredEditorStoreRules
         draft.Text = "";
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Movement Curve holds the operand kind to 0..1, the strength to -1000..1000 and the
+    // Movement Curve holds the operand kind to 0..1, the strength to -1000..1000 and the
     // reference target to the four offered values. The box has no text.
     private static void MovementCurve(WiredStoreDraft draft)
     {
@@ -144,7 +144,7 @@ internal static class WiredEditorStoreRules
         draft.Text = "";
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the flag (Teleport To's fast flag, Cancel Transaction's match criteria) is 1 for any
+    // The flag (Teleport To's fast flag, Cancel Transaction's match criteria) is 1 for any
     // value but 0, and the box has no text.
     private static void FlagWithoutText(WiredStoreDraft draft)
     {
@@ -152,7 +152,7 @@ internal static class WiredEditorStoreRules
         draft.Text = "";
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the message is cut at 200 characters and a tab or a line feed in it is stored as a
+    // The message is cut at 200 characters and a tab or a line feed in it is stored as a
     // space.
     private static void KickUser(WiredStoreDraft draft)
     {
@@ -186,7 +186,7 @@ internal static class WiredEditorStoreRules
         ints[18] = Math.Clamp(ints[18], -1000, 1000);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Match To Snapshot switches an option on only for the exact value 1.
+    // Match To Snapshot switches an option on only for the exact value 1.
     private static void MatchToSnapshot(WiredStoreDraft draft)
     {
         for (var index = 0; index < draft.Ints.Count; index++) {
@@ -194,7 +194,7 @@ internal static class WiredEditorStoreRules
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the chest conditions clamp the amount to 0..1000000, the option to 0..1, reset
+    // The chest conditions clamp the amount to 0..1000000, the option to 0..1, reset
     // an unoffered target to 0 and reset a comparison above 5 or below 0 to 0.
     private static void ChestCondition(WiredStoreDraft draft)
     {
@@ -204,18 +204,18 @@ internal static class WiredEditorStoreRules
         ints[1] = Math.Clamp(ints[1], 0, 1);
         ints[2] = Target(ints[2]);
         ints[3] = ints[3] is >= 0 and <= 5 ? ints[3] : 0;
-        // Observed on AIR WIN63-202610201032-107964540: a quantifier outside 0 to 2 is stored as 0.
+        // A quantifier outside 0 to 2 is stored as 0.
         draft.Quantifier = draft.Quantifier is { } value ? value is 1 or 2 ? value : 0 : null;
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Has Variable stores a target the editor does not offer as 0, and has no text field.
+    // Has Variable stores a target the editor does not offer as 0, and has no text field.
     private static void HasVariable(WiredStoreDraft draft)
     {
         draft.Ints[0] = Target(draft.Ints[0]);
         draft.Text = "";
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the text output boxes store any non-zero flag as 1, and a target the editor
+    // The text output boxes store any non-zero flag as 1, and a target the editor
     // does not offer as 0.
     private static void TextOutputVariable(WiredStoreDraft draft)
     {
@@ -242,7 +242,7 @@ internal static class WiredEditorStoreRules
     private static void UserAction(WiredStoreDraft draft) => draft.Ints[0] = IsStoredAction(draft.Ints[0]) ? draft.Ints[0] : 0;
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: a save that names fewer variables than the box has slots keeps the empty slot for
+    /// A save that names fewer variables than the box has slots keeps the empty slot for
     /// each one it leaves out, and an empty variable id is stored as the empty slot.
     /// </summary>
     public static WiredNativeEditorConfiguration PadVariables(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata)
@@ -257,11 +257,10 @@ internal static class WiredEditorStoreRules
     }
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: Variable Value Match and Change Variable Value store a six-int save with the seventh
+    /// Variable Value Match and Change Variable Value store a six-int save with the seventh
     /// int (same holder) off, and an empty variable slot as "0"; Give Variable stores an empty slot as "0" too. Variable Value Match also stores a save with one variable with the
-    /// second slot empty, and a save with no variables with both slots empty. Other shapes are left for the editor to refuse. An empty
-    /// destination slot of Change Variable Value was not probed; it reopens as "0" like the other slots, and the runtime treats "0" and
-    /// "n" the same.
+    /// second slot empty, and a save with no variables with both slots empty. Other shapes are left for the editor to refuse.
+    /// The runtime treats "0" and "n" the same.
     /// </summary>
     public static WiredNativeEditorConfiguration VariableValueForm(string name, WiredNativeEditorConfiguration native)
     {
@@ -286,12 +285,12 @@ internal static class WiredEditorStoreRules
         };
     }
 
-    /// <summary>Observed on AIR WIN63-202610201032-107964540: Toggle State saved with no ints is stored with its fresh ints.</summary>
+    /// <summary>Toggle State saved with no ints is stored with its fresh ints.</summary>
     public static WiredNativeEditorConfiguration EmptyIntsForm(string name, WiredNativeEditorConfiguration native, ImmutableArray<int> defaults) =>
         name == "wf_act_toggle_state" && native.OwnedIntParams is { IsDefault: false, Length: 0 } ? native with { OwnedIntParams = defaults } : native;
 
     /// <summary>
-    /// The text of a new Text Output save in its stored form. Observed on AIR WIN63-202610201032-107964540: the name is lower case, a
+    /// The text of a new Text Output save in its stored form. The name is lower case, a
     /// single placeholder keeps the name only and a placeholder for several values keeps the name and the delimiter. Text after a second
     /// tab is cut. A stored row is read as it is.
     /// </summary>
@@ -308,8 +307,8 @@ internal static class WiredEditorStoreRules
     }
 
     /// <summary>
-    /// The key of a Text Output name or delimiter the hotel refuses on a new save, or null. Observed on AIR WIN63-202610201032-107964540:
-    /// the name has 1 to 40 characters of a-z, 0-9 and _ in lower case (capitals are lowered first) and is not "trigger_text"; the
+    /// The key of a Text Output name or delimiter the hotel refuses on a new save, or null.
+    /// The name has 1 to 40 characters of a-z, 0-9 and _ in lower case (capitals are lowered first) and is not "trigger_text"; the
     /// delimiter of a placeholder for several values has 1 to 5 characters.
     /// </summary>
     public static string? PlaceholderRefusal(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata)
@@ -375,6 +374,6 @@ internal static class WiredEditorStoreRules
     private static WiredNativeEditorConfiguration Normalized(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata) =>
         Applies(name) ? Normalize(name, native, metadata.OwnedDefaults) : native;
 
-    // An AIR reference target the editor does not offer reads as 0.
+    // A reference target the editor does not offer reads as 0.
     private static int Target(int value) => value is 0 or 1 or -10 or -20 ? value : 0;
 }

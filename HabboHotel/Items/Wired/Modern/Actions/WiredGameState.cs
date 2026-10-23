@@ -28,9 +28,7 @@ public sealed class WiredGameState
     /// <summary>A Battle Banzai, Freeze or football game, or a Wired game counter, is in progress: the only time a team score exists.</summary>
     public static bool GameRunning(Room room) => room.GetBanzai().IsBanzaiActive || room.GetFreeze().GameIsStarted || room.GetSoccer().GameIsStarted
         || room.GetWired() is { GameCounterRunning: true };
-    // Observed on hhus (build WIN63-202610131318), room without a running game: Give Score (team 0, 1 point) and Give Score To Team
-    // (team 1, 1 point) both flashed their boxes, but the Score Achieved stacks (threshold 1, any team and team 1) never fired and the
-    // hotel sent no score related packet. Outside a running game giving score is a no-op: no points, no quota use, no score event.
+    // Outside a running game giving score is a no-op: no points, no quota use, no score event. The box still flashes.
     public bool GiveScore(Room room, uint boxId, int playerId, Team team, int amount, int? quota, Action<WiredRuntimeEvent> publish)
     {
         if ((int)team is < 1 or > 4 || !GameRunning(room)) {
@@ -55,7 +53,7 @@ public sealed class WiredGameState
 
         return true;
     }
-    // Observed on AIR WIN63-202610151745-318700621: a Score Achieved box fires once per game round, for the first team that crosses,
+    // A Score Achieved box fires once per game round, for the first team that crosses,
     // and a firing stopped by a false condition still counts. A new game or a save that changes its settings rearms it.
     public bool TryFireScoreTrigger(uint boxId) => _spentScoreTriggers.Add(boxId);
     public void RearmScoreTrigger(uint boxId) => _spentScoreTriggers.Remove(boxId);
@@ -96,7 +94,7 @@ public sealed class WiredGameState
             applyEffect(user, team, TeamEffect(type, team));
         }
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): joining or leaving a Wired team sends only the AvatarEffect, no UserUpdate.
+        // Joining or leaving a Wired team sends only the AvatarEffect, no UserUpdate.
         return true;
     }
     public bool Leave(Room room, RoomUser user, Action<RoomUser, int>? clearEffect = null)
@@ -135,22 +133,20 @@ public sealed class WiredGameState
 
         return _types.TryGetValue(user, out var joined) && joined.Team == user.Team && joined.Type == 0 ? 4 : null;
     }
-    // Observed on hhus (AIR WIN63-202610131318-860371703): a user in a plain Wired team talks, shouts and whispers with the team bubble,
-    // 130 in Red and 133 in Green, and 0 outside a team. Blue 131 and Yellow 132 follow the @event.chat.style connector's team styles.
-    // Observed on AIR WIN63-202610201032-107964540: a user that Join Team put into a Battle Banzai or Freeze team, and a user that
-    // walked onto a Battle Banzai or Freeze gate, talks with the same bubbles, also after walking off the gate. A user whose team
-    // changed after a Join Team keeps the own bubble unless a Battle Banzai or Freeze team list holds them (not observed).
+    // A user in a plain Wired team talks, shouts and whispers with the team bubble, 130 in Red and 133 in Green, and 0 outside a team.
+    // Blue 131 and Yellow 132 follow the @event.chat.style connector's team styles.
+    // A user that Join Team put into a Battle Banzai or Freeze team, and a user that walked onto a Battle Banzai or Freeze gate,
+    // talks with the same bubbles, also after walking off the gate. A user whose team changed after a Join Team keeps the own
+    // bubble unless a Battle Banzai or Freeze team list holds them.
     public static int? TeamChatStyle(Room room, RoomUser user) => !user.IsBot && user.Team != Team.None
         && (For(room)._types.TryGetValue(user, out var joined) && joined.Team == user.Team && joined.Revision == user.TeamRevision
             || Contains(room.Teambanzai, user) || Contains(room.Teamfreeze, user))
         ? user.Team switch { Team.Red => 130, Team.Blue => 131, Team.Yellow => 132, Team.Green => 133, _ => null }
         : null;
-    // Observed on hhus (build WIN63-202610131318): the effect is 222 + team for a plain wired team (type 0, team 1 gave 223), 32 + team for
-    // a Battle Banzai team (team 2 gave 34) and 39 + team for a Freeze team (team 3 gave 42); leaving delivers effect 0. 224-226 for
-    // plain teams 2-4 follow the observed 223 and are unobserved. The own avatar gets it 54 to 498 ms after the action's own stack effects
-    // (join 54, 273, 420; leave 306, 498), so it rides the next 500 ms state update instead of a fixed delay.
+    // The effect is 222 + team for a plain wired team, 32 + team for a Battle Banzai team and 39 + team for a Freeze team.
+    // Leaving delivers effect 0. The own avatar gets it after the action's own stack effects, so it rides the next 500 ms state
+    // update instead of a fixed delay.
     // Battle Banzai and Freeze number their effects in team order; Wired teams use 223 Red, 224 Blue, 225 Yellow, 226 Green.
-    // Observed on hhus (AIR WIN63-202610131318-860371703): joining Blue, Yellow and Green gave 224, 225 and 226.
     internal static int TeamEffect(int type, Team team) => type switch
     {
         1 => (int)team + 32,

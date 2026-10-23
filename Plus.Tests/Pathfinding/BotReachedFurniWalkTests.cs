@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: Bot Reaches Furni fires right after the UserUpdate that announces the bot's step onto
+// Bot Reaches Furni fires right after the UserUpdate that announces the bot's step onto
 // the furni, also for a furni the bot only walks over, and not for a Bot Move to the furni the bot already stands on.
 public partial class PlacedFurniRoomTests
 {

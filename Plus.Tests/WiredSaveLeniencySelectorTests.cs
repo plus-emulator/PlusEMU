@@ -3,7 +3,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // Selector saves as Habbo stores them: ints that are out of range are clamped or reset, ints that are missing take the frame
-// default, extra ints are dropped, and a text the selector does not read is dropped. Observed on AIR WIN63-202610201032-107964540.
+// default, extra ints are dropped, and a text the selector does not read is dropped.
 public sealed class WiredSaveLeniencySelectorTests
 {
     private static WiredRawSave.Result Saved(string name, int[] ints, string text = "")

@@ -4,7 +4,6 @@ using Plus.HabboHotel.Users;
 
 namespace Plus.Communication.Packets.Outgoing.Users;
 
-/// <summary>AIR WIN63-202610151745-318700621 package_9/class_2227.as:61 (read by package_37/class_3916.as:24).</summary>
 public class ProfileInformationComposer(PlayerProfileSnapshot profile) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.ProfileInformationComposer;

@@ -10,8 +10,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610131318-860371703: a push (+y) on a user stepping (5,3) -> (6,3) sends one walk entry
-    // (5,3) -> (6,4) in the same tick, and the user then walks on to its goal.
+    // A push (+y) on a user stepping (5,3) -> (6,3) sends one walk entry (5,3) -> (6,4) in the same tick, and the user then walks
+    // on to its goal.
     [Fact]
     public void PushOnAWalkingUserReplacesTheStepAndTheWalkResumes()
     {
@@ -27,7 +27,6 @@ public sealed partial class WiredGlideConveyorTests
         Assert.False(rider.IsWalking);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: pushed on the last step of the walk, the walk ends at the push.
     [Fact]
     public void PushOnTheLastStepEndsTheWalkThere()
     {
@@ -41,8 +40,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.False(rider.IsWalking);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: pushed back the way it came, the entry is (5,3) -> (5,3) every step and the walk
-    // never completes.
+    // Pushed back the way it came, the entry is (5,3) -> (5,3) every step and the walk never completes.
     [Fact]
     public void PushBackOntoTheStartTileTreadmills()
     {

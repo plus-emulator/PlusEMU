@@ -29,8 +29,7 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
     }
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: a pointer variable, or a picked pointer box, is refused because a pointer only reads
-    /// inside an execution.
+    /// A pointer variable, or a picked pointer box, is refused because a pointer only reads inside an execution.
     /// </summary>
     public string? RefuseSave(WiredConfiguration proposed)
     {
@@ -51,8 +50,7 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
     }
 
     /// <summary>
-    /// The integer shape only; the picked variable is an opaque catalog id resolved by the module at match time. Observed on AIR
-    /// WIN63-202610201032-107964540: a trigger with no variable, or an id that names none, saves and never fires.
+    /// The integer shape only; the picked variable is an opaque catalog id resolved by the module at match time. A trigger with no variable, or an id that names none, saves and never fires.
     /// </summary>
     internal static bool TryNormalize(WiredConfiguration proposed, out WiredConfiguration validated, out string error)
     {
@@ -72,8 +70,7 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             p = p.SetItem(3, 0).SetItem(4, 0).SetItem(5, 0);
         }
 
-        // Room variables and built-ins are never created or deleted by a box. A projectile's is_travelling still disappears when it
-        // lands, which hhus reports as a deletion (AIR WIN63-202610151745-318700621).
+        // Room variables and built-ins are never created or deleted by a box. A projectile's is_travelling still disappears when it lands, which Habbo reports as a deletion.
         if (!pickedBoxes && (p[0] == (int)WiredVariableTarget.Global
             || WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out _, out var pickedToken)
                 && pickedToken.StartsWith("internal:", StringComparison.Ordinal)
@@ -83,7 +80,7 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
 
         p = p.SetItem(7, p[7] < 0 ? -1 : p[7] & 15);
 
-        // A value-changed trigger with no change types still saves and simply never fires (AIR WIN63-202610151745-318700621).
+        // A value-changed trigger with no change types still saves and simply never fires.
         if (p[1] == 0 && p[6] == 0 && p[2] == 0) {
             return false;
         }
@@ -111,14 +108,13 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             return false;
         }
 
-        // A Time Utilities Value part is interceptable. Observed on hhus (AIR WIN63-202610131318-860371703): every change of the parent
-        // is a change of each part, and the part's own values pick increased, decreased or unchanged (+1 ms on the parent fired
-        // year/unchanged and milliseconds_of_seconds/increased; +1 on the year part fired year/increased and milliseconds/unchanged).
+        // A Time Utilities Value part is interceptable. Every change of the parent is a change of each part, and the part's own values pick increased, decreased or unchanged
+        // (+1 ms on the parent fires year/unchanged and milliseconds_of_seconds/increased).
         if (module.ProjectPartChange(reference, change) is { } part) {
             return Matches(config with { Text = reference.Token }, part, context.Room.Id);
         }
 
-        // Only a give or change of a context variable is observed to stay silent; a removal keeps firing until Habbo shows otherwise.
+        // Only a give or change of a context variable stays silent; a removal keeps firing.
         if (change.Kind != WiredVariableChangeKind.Removed && !module.InterceptsChanges(reference)) {
             return false;
         }

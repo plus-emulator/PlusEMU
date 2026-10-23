@@ -2,7 +2,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Filter Users saved through the real packet path. Observed on AIR WIN63-202610201032-107964540.
+// Filter Users saved through the real packet path.
 public sealed class WiredFilterUsersEditorTests
 {
     private const string Name = "wf_xtra_filter_users";

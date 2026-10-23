@@ -48,7 +48,7 @@ public sealed class LandingEffects
                 _room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)
                 { Actor = actor, Action = (int)WiredAvatarAction.Lay });
             }
-            // Observed on AIR WIN63-202610201032-107964540: stepping onto a sit tile fires User Performs Action - Sit in the same tick.
+            // Stepping onto a sit tile fires User Performs Action - Sit in the same tick.
             else if (!wasSitting && actor.HasStatus("sit") && IsHere(actor, location)) {
                 _room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)
                 { Actor = actor, Action = (int)WiredAvatarAction.Sit, Code = -1 });
@@ -92,8 +92,7 @@ public sealed class LandingEffects
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a user in no team joins the colour of the gate. A user in any team leaves it, also on
-    // a gate of another colour, and never switches. Both send YouArePlayingGame, the gate counts and the avatar effect in that order.
+    // A user in no team joins the colour of the gate. A user in any team leaves it, also on a gate of another colour, and never switches. Both send YouArePlayingGame, the gate counts and the avatar effect in that order.
     private static void ToggleTeam(RoomUser actor, Item item, TeamManager teams, int offset)
     {
         // Team membership is shown through the effect, so a user without loaded effects does not change team.

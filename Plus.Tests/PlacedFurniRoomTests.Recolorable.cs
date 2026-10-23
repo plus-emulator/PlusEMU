@@ -34,8 +34,7 @@ public partial class PlacedFurniRoomTests
         return item;
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): ~recolorable_furni.color.rgb (~146) has a value and can be written; its red
-    // (~140), green (~141) and blue (~142) parts only have a value.
+    // ~recolorable_furni.color.rgb (~146) has a value and can be written. Its red (~140), green (~141) and blue (~142) parts only have a value.
     [Fact]
     public void RecolorableColourVariablesReadTheFurniColour()
     {
@@ -65,8 +64,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void ABuildersClubRecolorableRefusesAnRgbWriteSilentlyAndKeepsItsColour()
     {
-        // Observed on AIR WIN63-202610151745-318700621: bc_block_0_recolorable refused 0xFF8000, +1, -1, 0x1000000, 0 and 0x00FF00 without
-        // an error, kept white and still read rgb 0xFFFFFF with its parts.
+        // bc_block_0_recolorable refuses 0xFF8000, +1, -1, 0x1000000, 0 and 0x00FF00 without an error, keeps white and still reads rgb 0xFFFFFF with its parts.
         Viewer();
         var item = PlacedRecolorable(221);
         var holder = WiredVariableRuntimeFrames.FurniHolder(item);
@@ -164,8 +162,6 @@ public partial class PlacedFurniRoomTests
 
     private static int Rgb(Item item) => Assert.IsType<RecolorableDataFormat>(item.ExtraData).Rgb;
 
-    // AIR WIN63-202610131318-860371703 package_100/class_2402.as:11 is 2852 there and 3047 on WIN63-202610121709-785561319;
-    // its answer package_64/class_3777 is 181 there and 3469 here.
     [Fact]
     public void RecolourPacketsUseTheInternalRevisionHeaders()
     {
@@ -251,7 +247,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0x6AB18E, Rgb(grass));
     }
 
-    // FurnitureRecolorController.as:151 hasRights: owner, rights holders and room controllers.
+    // Rights to recolour: owner, rights holders and room controllers.
     [Fact]
     public async Task UsersWithoutRightsCannotRecolour()
     {

@@ -5,8 +5,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredNativeLifecycleTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: User Clicks Tile checks that its picks are click tiles only when the picks are its
-    // source; with the selector as source a plain furni pick saves.
+    // User Clicks Tile checks that its picks are click tiles only when the picks are its source; with the selector as source a
+    // plain furni pick saves.
     [Fact]
     public void ClickTileTriggerChecksItsPicksOnlyWhenThePicksAreTheSource()
     {

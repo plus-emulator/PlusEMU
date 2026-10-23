@@ -63,7 +63,7 @@ public sealed class WiredVariableLevelTests
         Assert.Equal(0, system.Read(-1, 1));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (linear 100, three levels, all parts): the parts read back through placeholders.
+    // The parts read back through placeholders.
     [Theory]
     [InlineData(50, new long[] { 1, 50, 50, 50, 100, 50, 3 }, false)]
     [InlineData(200, new long[] { 3, 200, 0, 0, 0, 0, 3 }, true)]
@@ -75,7 +75,7 @@ public sealed class WiredVariableLevelTests
         Assert.Equal(maxed, system!.Read(xp, 6) is not null);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: assigning current_xp 250 set the variable to 200, the last level's start.
+    // Assigning current_xp 250 set the variable to 200, the last level's start.
     [Fact]
     public void WritingCurrentXpCapsAtTheLastLevel()
     {

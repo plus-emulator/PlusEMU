@@ -26,7 +26,7 @@ internal static class FloorPlanRequest
             packet.ReadInt(),
             packet.ReadInt(),
             -1);
-        // The wall-height int is absent when class_2506 was given -1. Do not read past the five ints.
+        // The wall-height int is absent when the client gave -1. Do not read past the five ints.
         var wallHeightPresent = packet.Buffer.Length >= sizeof(int);
 
         if (wallHeightPresent) {

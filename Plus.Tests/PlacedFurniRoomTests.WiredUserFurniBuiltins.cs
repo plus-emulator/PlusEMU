@@ -46,7 +46,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void DanceSignAndTeamExistOnlyWhileTheAvatarHasThem()
     {
-        // Observed on AIR WIN63-202610151745-318700621: an avatar that does not dance, holds no sign and is in no team has none of these.
+        // An avatar that does not dance, holds no sign and is in no team has none of these.
         var avatar = Viewer();
         avatar.BotData = null;
         var holder = WiredVariableRuntimeFrames.UserHolder(avatar);
@@ -345,7 +345,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void LandingDeletesIsTravellingForAWatcherThatListensForDeletion()
     {
-        // Observed on hhus (AIR WIN63-202610151745-318700621): a Deleted-only watcher on is_travelling fires on landing.
+        // A Deleted-only watcher on is_travelling fires on landing.
         var config = new Plus.HabboHotel.Items.Wired.Configuration.WiredConfiguration { Version = 1, IntParams = [1, 0, 0, 0, 0, 0, 1, -1], VariableIds = ["-2106"] };
         Assert.True(WiredVariableChangedTrigger.TryNormalize(config, out var validated, out _));
         Assert.Equal(1, validated.IntParams[6]);

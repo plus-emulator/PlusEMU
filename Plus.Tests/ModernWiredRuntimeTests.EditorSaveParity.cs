@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Editor saves answered the way Habbo answers them, as observed on AIR WIN63-202610131318-860371703 and AIR WIN63-202610151745-318700621.
+// Editor saves answered the way Habbo answers them.
 public partial class ModernWiredRuntimeTests
 {
     [Fact]
@@ -29,7 +29,6 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("Robbie\thr-100.hd-180-1.ch-210-66.lg-270-82.sh-290-80", Assert.Single(f.Store.Saves).Text);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Bot Clothes saves an empty figure and reads it back as an empty figure.
     [Theory]
     [InlineData("Robbie\t")]
     [InlineData("\t")]

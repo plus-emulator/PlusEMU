@@ -72,7 +72,6 @@ public static class ClaimMatrix
 
     // The first plan steps straight onto a standing avatar only when no route of the same length avoids it,
     // and does not step onto one diagonally while a straight entry or a short detour exists.
-    // Inferred from routes observed on AIR `WIN63-202610151745-318700621`.
     public static int StepCost(ActorProfile actor, StepPurpose purpose, OccupancyView view, TargetOccupancy target, bool diagonal)
         => view != OccupancyView.InitialPlanning || purpose != StepPurpose.Transit || actor.LegacyOverride || actor.IgnoreUsers
             || (target & (TargetOccupancy.Stationary | TargetOccupancy.OffGraph)) == 0 ? Step

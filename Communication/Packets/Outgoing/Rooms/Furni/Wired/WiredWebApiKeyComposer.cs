@@ -2,7 +2,7 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 
-/// <summary>A generated Web API key: class_3530 -> class_4132 reads [wired id, read key?, key] (VariablesWebApiAddon.as:133-148).</summary>
+/// <summary>A generated Web API key: [wired id, read key?, key].</summary>
 public sealed class WiredWebApiKeyComposer(uint wiredId, bool readKey, string key) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.WiredWebApiKeyComposer;

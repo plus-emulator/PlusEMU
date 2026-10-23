@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Bot Reaches Furni stacks saved through the native editor row and fired through the engine. Observed on AIR WIN63-202610201032-107964540.
+// Bot Reaches Furni stacks saved through the native editor row and fired through the engine.
 public partial class ModernWiredRuntimeTests
 {
     private static string BotReachedRow(string name, int furniSource = 100, int userSource = 100, string picks = "[]") =>

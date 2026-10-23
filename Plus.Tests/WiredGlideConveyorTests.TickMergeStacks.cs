@@ -8,9 +8,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: two stacks that fire on the same say each move their own block. The tick sends
-    // one ObjectsDataUpdate with the flashes of both stacks, then one WiredMovements that lists A before B on every say, whichever
-    // stack ran first.
+    // Two stacks that fire on the same say each move their own block. The tick sends one ObjectsDataUpdate with the flashes of
+    // both stacks, then one WiredMovements that lists A before B on every say, whichever stack ran first.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -44,7 +43,7 @@ public sealed partial class WiredGlideConveyorTests
     }
 
     // On a live server the clock moves on while the first stack runs, so the second stack of the same say fires a few ms later.
-    // Observed on AIR WIN63-202610151745-318700621: both stacks still share one WiredMovements.
+    // Both stacks still share one WiredMovements.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

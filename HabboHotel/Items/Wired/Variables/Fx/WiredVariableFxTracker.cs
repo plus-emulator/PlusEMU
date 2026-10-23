@@ -117,7 +117,7 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
                     }
                 }
 
-                // Observed on AIR WIN63-202610151745-318700621: a levelling box on a variable without a level-up system sends empty extras.
+                // A levelling box on a variable without a level-up system sends empty extras.
                 if ((binding.Config.Category == 2 || binding.Config.ColorId == 1001) && binding.Level?.Invoke(value.Value) is { } level) {
                     extra["current_level"] = level.Level.ToString(CultureInfo.InvariantCulture);
                     extra["max_level"] = level.MaxLevel.ToString(CultureInfo.InvariantCulture);
@@ -130,9 +130,8 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
                     ? (binding.Config.UserFx ? "user:" : "furni:") + definitionId : binding.Variable.Token;
                 var key = new WiredVariableFxKey(binding.Config.Id, wireVariable, binding.Config.UserFx, holder.EntityId);
                 identities[key] = holder;
-                // Observed on AIR WIN63-202610151745-318700621: a variable given at runtime to a user or furni the viewer already has is sent
-                // with initialize false; a first sync or a saved box sends all its statuses again, each with initialize true. A holder the
-                // viewer did not have before still starts initialized.
+                // A variable given at runtime to a user or furni the viewer already has is sent with initialize false; a first sync or a saved box sends all its
+                // statuses again, each with initialize true. A holder the viewer did not have before still starts initialized.
                 var initialize = !state.Synced || resent.Contains(binding.Config.Id) || !state.Ready.Contains(holder)
                     || state.Holders.TryGetValue(key, out var previousHolder) && previousHolder != holder;
                 wanted[key] = new(key, initialize, value.Value, min, max, extra.ToImmutable());

@@ -3,7 +3,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// The Text Connector text limit, driven through the raw save packet. Observed on AIR WIN63-202610201032-107964540: the limit is 1000
+/// The Text Connector text limit, driven through the raw save packet. The limit is 1000
 /// UTF-8 bytes of the whole text (the "_=" fallback line counts), a longer text is refused with wiredfurni.error.too_much_text and the
 /// stored text stays as it was, and there is no limit on the number of lines.
 /// </summary>

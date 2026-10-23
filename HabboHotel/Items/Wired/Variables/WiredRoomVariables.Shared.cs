@@ -4,7 +4,7 @@ using Plus.HabboHotel.Items.Wired.Variables.Fx;
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
 /// <summary>
-/// Share and Import. Observed on AIR WIN63-202610201032-107964540: a Share add-on publishes the text connector, level-up system and
+/// Share and Import. A Share add-on publishes the text connector, level-up system and
 /// Variable FX of the shared variables stacked with it when its Synchronize button is pressed, to the references that exist then. The
 /// Import add-on stacked with a reference picks which of those categories it shows, and that works at once. A stack is the furniture on
 /// one tile: a Share add-on or an Import add-on on another tile does not count.
@@ -145,8 +145,7 @@ public sealed partial class WiredRoomVariables
 
     /// <summary>
     /// The imported Variable FX of the references that show them, at most <see cref="MaxFxBoxes"/>. Their configuration ids count down
-    /// from -1 over the whole room, so two references never share one. Observed on AIR WIN63-202610201032-107964540: only the id -1
-    /// was seen. Ids of -2 and lower, and the count over the whole room, were not checked.
+    /// from -1 over the whole room, so two references never share one.
     /// </summary>
     private IEnumerable<(WiredVariableDefinition Reference, WiredSharedFx Fx, int ConfigId)> ImportedFx(IReadOnlyDictionary<uint, WiredVariableDescription> authorized) =>
         _definitions.Keys.Order().Where(authorized.ContainsKey).Select(ReferenceOf).OfType<WiredVariableDefinition>()

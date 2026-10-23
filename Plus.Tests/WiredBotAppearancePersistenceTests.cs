@@ -189,7 +189,7 @@ public sealed class WiredBotAppearancePersistenceTests
             var body = new FlashIncomingPacket { Buffer = packet.Payload };
             Assert.Equal(Bot.VirtualId, body.ReadInt());
             Assert.Equal(look, body.ReadString());
-            // The UserChange carries the bot gender in lower case (observed on AIR WIN63-202610151745-318700621).
+            // The UserChange carries the bot gender in lower case.
             Assert.Equal(gender.ToLowerInvariant(), body.ReadString());
         }
 

@@ -153,7 +153,7 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void G3EachFireStacksAnotherCopyUpToAltitude35AndThenPlacesNothingWithoutAnError()
     {
-        // Observed on hhus: copies stacked "On top" stopped at z 35.0 with no error and no per-room cap (560 copies).
+        // Copies stacked "On top" stop at z 35.0 with no error and no per-room cap.
         var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 2, 0, 0, 0, "0")));
         using var f = stack.F;
         stack.Lamp.Height = 1;
@@ -251,8 +251,7 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void G3CopiesTakeTheNextIdOfTheTemporaryBand()
     {
-        // Observed on hhus: copies 2147401728, 1729, 1730, 1731 with removals in between, and 2147401728 again after an unload. AIR
-        // class_1846.isTempId is 2147401728..2147418111.
+        // Copies take ids from the temporary band (2147401728..2147418111), and the first id returns after an unload.
         var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 2, 0, 0, 0, "0")));
         using var f = stack.F;
         var handler = f.Room.GetRoomItemHandler();
@@ -272,7 +271,7 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void G3AReloadDropsEveryCopyAndStartsTheBandAgain()
     {
-        // Observed on hhus: after a 16-minute unload no copy was listed and the next copy was 2147401728 again.
+        // After an unload no copy is listed and the band starts again.
         var (room, _, _) = World();
         var handler = room.GetRoomItemHandler();
         var lamp = G3Definition(G3Lamp);
@@ -306,7 +305,7 @@ public partial class ModernWiredRuntimeTests
     [InlineData(InteractionType.Roller)]
     public void G3NoCopyIsPlacedOntoAGateOrRollerEvenWhenItStacks(InteractionType type)
     {
-        // Observed on hhus: one-way gate, gate and roller templates save, but a copy on top of them is a placement failure; with an
+        // One-way gate, gate and roller templates save, but a copy on top of them is a placement failure; with an
         // offset to a free tile the copy is placed.
         var stack = G3PlaceStack(G3Place(null, G3Snap(900, G3Lamp, 1, 1, 0, 0, "0"), G3Snap(901, G3Lamp, 2, 2, 0, 0, "0")));
         using var f = stack.F;
@@ -503,7 +502,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(baseline, handler.GetFloor.Select(item => item.Id).Order().ToArray());
         Assert.True(stack.Action.Execute(Context(f.Room, new(WiredEventKind.Use), f.Items.Values.ToArray(), [f.User])));
         var second = Assert.Single(G3Temporaries(f.Room));
-        // Observed on hhus: a removed copy's id is not handed to the next copy.
+        // A removed copy's id is not handed to the next copy.
         Assert.Equal(first.Id + 1, second.Id);
         Assert.Null(handler.GetItem(first.Id));
         Assert.False(handler.OwnsTemporary(first));

@@ -9,8 +9,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a say whose stack gives a variable shown by a Variable FX box sends the FX status in the
-    // same tick, before the packet that flashes the stack's boxes.
+    // A say whose stack gives a variable shown by a Variable FX box sends the FX status in the same tick, before the packet that flashes the stack's boxes.
     [Fact]
     public void VariableFxStatusGoesOutBeforeTheFlashOfTheSayThatGaveTheVariable()
     {

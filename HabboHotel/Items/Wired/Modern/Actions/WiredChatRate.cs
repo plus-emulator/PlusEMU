@@ -4,11 +4,8 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
-/// The room's Show Message budget: at most <see cref="Limit"/> messages in any <see cref="WindowMilliseconds"/>. Observed on AIR
-/// WIN63-202610151745-318700621 (r97_msg_rate, wf_act_show_message.cov_styles): ten messages from one firing go out, the next firings
-/// 1.5 s and 3 s later show nothing, and a firing 7 s after the first shows all ten again; after ten messages at +1.5 s and +3.0 s,
-/// firings at +4.5 s and +6.0 s showed nothing and one at +7.5 s showed its four. A second budget allows <see cref="LongLimit"/> messages in any
-/// <see cref="LongWindowMilliseconds"/>.
+/// The room's Show Message budget: at most <see cref="Limit"/> messages in any <see cref="WindowMilliseconds"/>,
+/// and at most <see cref="LongLimit"/> in any <see cref="LongWindowMilliseconds"/>. <see cref="TryAdmit"/> refuses a message over the budget.
 /// </summary>
 public sealed class WiredChatRate
 {

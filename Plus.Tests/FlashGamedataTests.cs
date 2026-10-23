@@ -11,8 +11,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>The Flash gamedata as the AIR client reads it (AIR WIN63-202610151745-318700621: GameDataResources.as:35-79,
-/// FurnitureDataParser.as:193-265, ProductDataParser.as:154-178, CoreLocalizationManager.as:368-405).</summary>
+/// <summary>The Flash gamedata as the AIR client reads it.</summary>
 public sealed class FlashGamedataTests : IAsyncLifetime
 {
     private readonly string _directory = Directory.CreateTempSubdirectory("flash-gamedata").FullName;

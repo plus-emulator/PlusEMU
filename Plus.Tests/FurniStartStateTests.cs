@@ -4,8 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: a new Wired counter, floor switch, antenna or colour tile has state "0", so a
-// Move/Rotate update carries "0" and starting a counter at 0 sends nothing until it shows 1.
+// A new Wired counter, floor switch, antenna or colour tile has state "0", so a Move/Rotate update carries "0" and starting a counter at 0 sends nothing until it shows 1.
 public sealed class FurniStartStateTests
 {
     [Theory]

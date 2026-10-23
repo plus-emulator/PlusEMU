@@ -11,9 +11,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Chest Has Item Type compares the number of furni of the picked types in its chests. Observed on AIR WIN63-202610201032-107964540: with
-// the chest selection on the second picks and nothing picked there, the condition counts 0 and applies the comparison, so "equal to 1",
-// "more than 0", "more than 1" and "less than 0" fail.
+// Chest Has Item Type compares the number of furni of the picked types in its chests. With the chest selection on the second
+// picks and nothing picked there, the condition counts 0 and applies the comparison, so "equal to 1", "more than 0",
+// "more than 1" and "less than 0" fail.
 public partial class PlacedFurniRoomTests
 {
     private const uint ChestId = 640;

@@ -5,22 +5,20 @@ using Plus.HabboHotel.Items.Wired.Configuration;
 namespace Plus.HabboHotel.Items.Wired.Variables.Fx;
 
 /// <summary>
-/// The AIR variable FX form: source (0 furni, 1 user), visibility, show mode and duration, then style/colour/width/renderer from the
-/// shared catalog, the value range, range-override and audience variables, segments, then two trailing ints the AIR editor always
-/// writes (observed on hhus, WIN63-202610131318, all six cards): [21] the category slot (levelling sub-renderer, number icon alignment,
-/// 0 for the others) and [22] the "Order in FX stack" (any int, higher places the FX lower in the holder's stack). A number display's
-/// icon rides the text. Variable ids are [range minimum, range maximum, audience].
+/// The variable FX form: source (0 furni, 1 user), visibility, show mode and duration, then style/colour/width/renderer from the
+/// shared catalog, the value range, range-override and audience variables, segments, then two trailing ints the editor always
+/// writes: [21] the category slot (levelling sub-renderer, number icon alignment, 0 for the others) and [22] the "Order in FX stack"
+/// (any int, higher places the FX lower in the holder's stack). A number display's icon rides the text. Variable ids are [range minimum, range maximum, audience].
 /// </summary>
 public static class WiredVariableFxSettings
 {
-    /// <summary>Total ints of every variable FX form (the observed official editor frame).</summary>
+    /// <summary>Total ints of every variable FX form.</summary>
     public const int IntCount = 23;
     private const int CategorySlot = 21;
     private const int StackOrder = 22;
 
     /// <summary>
-    /// The icons of the AIR editor's dropdown (VariableFxVisualizationSettingsPreset STANDARD_ICON_IDS plus the campaign "ranch." icons the
-    /// editor shows behind a client flag); the renderer throws on any other asset name, so no other name is ever stored.
+    /// The icons of the editor's dropdown plus the campaign "ranch." icons the editor shows behind a client flag; the renderer throws on any other asset name, so no other name is ever stored.
     /// </summary>
     private static readonly HashSet<string> Icons = ["battery", "burning", "cash", "cooldown", "droplet", "energy", "eye", "fish", "food", "freezing", "gems",
         "gold", "health", "honor", "magic", "mana", "poison", "repairing", "reputation", "shield", "stamina", "star_power", "stealth", "timeleft",
@@ -49,14 +47,14 @@ public static class WiredVariableFxSettings
     public static ImmutableArray<int> Defaults(int category)
     {
         var style = WiredVariableFxStyles.All[(category, 0)];
-        // Observed on hhus (r90 varfx-a/b): the fresh editor frame leaves colour, width and renderer at -1; a save normalises them per style.
+        // The fresh editor frame leaves colour, width and renderer at -1; a save normalises them per style.
         int[] ints = [1, 2, 0, 7, 0, 3000, 0, -1, -1, -1, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0];
 
         return [.. ints, category == 2 ? style.SubRenderers[0] : 0, 0];
     }
 
     /// <summary>
-    /// The hotel's stored form of a saved variable FX form. Observed on AIR WIN63-202610201032-107964540: a save is never refused for its
+    /// The hotel's stored form of a saved variable FX form. A save is never refused for its
     /// numbers; the hotel fits each one and reads the fitted form back. The source is furni (0) or user (1); the audience is 0, 1, 3 or 4,
     /// else 2; the show mode is 0, 1 or 2, else 0; mode 2 also switches the hover flag on (the hover int sent is ignored), mode 1 keeps the
     /// hover flag as sent and mode 0 stores it off; the duration runs from 1500 to 20000; an unknown style is style 0; a colour, width or

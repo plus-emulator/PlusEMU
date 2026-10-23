@@ -125,7 +125,7 @@ public sealed class RoomChatServiceTests
     [InlineData(Team.Green, 133)]
     public async Task UsersInAWiredTeamTalkShoutAndWhisperWithTheTeamBubble(Team team, int expected)
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703): own Talk echo carries 130 in Red, 133 in Green and 0 before joining.
+        // Own Talk echo carries 130 in Red, 133 in Green and 0 before joining.
         // The banned-phrase path echoes the sender's own chat packet without a full room, with the same resolved bubble.
         // Each line comes a chat step later, inside the chat budget.
         var world = new World(new SteppingClock(Now, TimeSpan.FromMilliseconds(600)));
@@ -150,8 +150,8 @@ public sealed class RoomChatServiceTests
         Assert.Equal(2, Bubble(world.SenderPackets[^1]));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a user put into a Battle Banzai or Freeze team by Join Team talks with the same
-    // team bubble as in a Wired team (130 Red, 131 Blue, 132 Yellow, 133 Green), and with the own bubble after Leave Team (0 in the trace).
+    // A user put into a Battle Banzai or Freeze team by Join Team talks with the same team bubble as in a Wired team
+    // (130 Red, 131 Blue, 132 Yellow, 133 Green), and with the own bubble after Leave Team (0).
     [Theory]
     [InlineData(1, Team.Red, 130)]
     [InlineData(1, Team.Blue, 131)]
@@ -176,7 +176,7 @@ public sealed class RoomChatServiceTests
         Assert.Equal(2, Bubble(world.SenderPackets[^1]));
     }
 
-    // Plus guard, not observed on Habbo: a plain Wired team that is cleared and set again does not bring the Join Team bubble back
+    // Plus guard: a plain Wired team that is cleared and set again does not bring the Join Team bubble back
     // (the Banzai and Freeze team lists keep the user, so the guard covers the Wired team only).
     // The test sets the team directly and does not run the gate code.
     [Fact]
@@ -195,7 +195,7 @@ public sealed class RoomChatServiceTests
         Assert.Equal(2, Bubble(world.SenderPackets[^1]));
     }
 
-    // Plus guard, not observed on Habbo: a team set directly, with no Join Team and no game gate, keeps the own bubble.
+    // Plus guard: a team set directly, with no Join Team and no game gate, keeps the own bubble.
     [Fact]
     public async Task ATeamSetWithoutAGateOrJoinTeamKeepsTheOwnBubble()
     {
@@ -208,7 +208,7 @@ public sealed class RoomChatServiceTests
         Assert.Equal(2, Bubble(world.SenderPackets[^1]));
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): talk is kept up to 200 characters.
+    // Talk is kept up to 200 characters.
     [Theory]
     [InlineData(150, 150)]
     [InlineData(200, 200)]
@@ -254,7 +254,7 @@ public sealed class RoomChatServiceTests
         Assert.False(world.Sender.GetHabbo().HasSpoken);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: exact matching ignores case but preserves message whitespace.
+    // Exact matching ignores case but preserves message whitespace.
     [Theory]
     [InlineData("hello", true)]
     [InlineData("HELLO", true)]
@@ -282,7 +282,7 @@ public sealed class RoomChatServiceTests
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: "k105a 5 " does not fire the exact keyword "k105a #(a)", and its echo reads "k105a 5".
+    // "k105a 5 " does not fire the exact keyword "k105a #(a)", and its echo reads "k105a 5".
     [Theory]
     [InlineData("k105a 5", true)]
     [InlineData("k105a 5 ", false)]
@@ -331,7 +331,7 @@ public sealed class RoomChatServiceTests
         Assert.Single(after.Logs.Entries);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_flood_*): two lines in hand, one more on every 600 ms step, no mute.
+    // Two lines in hand, one more on every 600 ms step, no mute.
     [Fact]
     public void ChatSpendsATwoLineBudgetThatRefillsEverySixHundredMilliseconds()
     {

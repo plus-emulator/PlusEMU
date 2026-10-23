@@ -9,10 +9,9 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// The six variable FX cards (wf_xtra_var_fx_health/progress/level/status/boss/number) of the g4 remainder batch, run end to end from the
-/// native editor frame through validation, binding and the per viewer tracker to the packets a client receives. The editor frame is the one
-/// observed on hhus (WIN63-202610131318): 23 ints, the category slot at [21] and the "Order in FX stack" at [22]. Runtime behaviour that
-/// nothing official shows is not yet observed on official Habbo (facts only).
+/// The six variable FX cards (wf_xtra_var_fx_health/progress/level/status/boss/number), run end to end from the native editor
+/// frame through validation, binding and the per viewer tracker to the packets a client receives. The editor frame has 23 ints,
+/// the category slot at [21] and the "Order in FX stack" at [22].
 /// </summary>
 public sealed class WiredRemainderG4FxTests
 {
@@ -113,7 +112,7 @@ public sealed class WiredRemainderG4FxTests
     [MemberData(nameof(AllCards))]
     public void TheOfficialEditorSendsZeroForEveryUnpickedVariableSlotAndTheCardStillSaves(string card)
     {
-        // Observed on hhus: variableIds ["0","0","0"] in the initial frame and in every saved frame of the six cards.
+        // The editor sends variableIds ["0","0","0"] in the initial frame and in every saved frame of the six cards.
         Assert.NotNull(Bind(card, variables: ["0", "0", "0"]));
         Assert.NotNull(Bind(card, variables: ["n", "n", "n"]));
         // With an audience restriction the third slot must be a real variable, and "0" is none.
@@ -272,7 +271,7 @@ public sealed class WiredRemainderG4FxTests
     public void ShowDurationShowModeAndMaskStayInTheEditorsBounds()
     {
         Assert.Null(Bind("wf_xtra_var_fx_health", ints => { ints[2] = 3; return ints; }));
-        // Observed on AIR WIN63-202610201032-107964540: the update mask is stored as sent.
+        // The update mask is stored as sent.
         Assert.Equal(16, Bind("wf_xtra_var_fx_health", ints => { ints[3] = 16; return ints; })!.Config.UpdateMask);
         Assert.Null(Bind("wf_xtra_var_fx_health", ints => { ints[5] = 1499; return ints; }));
         Assert.Null(Bind("wf_xtra_var_fx_health", ints => { ints[5] = 20001; return ints; }));
@@ -396,7 +395,7 @@ public sealed class WiredRemainderG4FxTests
         Assert.Empty(changed.Configs);
         Assert.Equal([30L, 1L], changed.Statuses.OrderBy(entry => entry.Key.EntityId == 7 ? 0 : 1).Select(entry => entry.Value));
         Assert.False(changed.Statuses.Single(entry => entry.Key.EntityId == 7).Initialize);
-        // Observed on AIR WIN63-202610151745-318700621: a variable given at runtime to a holder the viewer already has is not initialized.
+        // A variable given at runtime to a holder the viewer already has is not initialized.
         Assert.False(changed.Statuses.Single(entry => entry.Key.EntityId == 9).Initialize);
 
         // Nothing moved: nothing to send.
@@ -598,8 +597,7 @@ public sealed class WiredRemainderG4FxTests
         Assert.Equal((200L, 200L), (top.Min!.Value, top.Max!.Value));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a levelling FX box on a variable without a level-up system sends its status with
-    // empty extras and no range.
+    // A levelling FX box on a variable without a level-up system sends its status with empty extras and no range.
     [Fact]
     public void ALevelBadgeWithoutALevelSystemSendsNoLevelExtras()
     {
@@ -681,7 +679,7 @@ public sealed class WiredRemainderG4FxTests
     [Fact]
     public void TheNormalisedStoredFormIsWhatTheRuntimeDecodes()
     {
-        // The official editor opens with the style options unset (-1,-1,-1); the stored form has the style's own defaults.
+        // The editor opens with the style options unset (-1,-1,-1); the stored form has the style's own defaults.
         var configuration = Compile("wf_xtra_var_fx_health", ints => { ints[7] = ints[8] = ints[9] = -1; return ints; }, save: true)!;
 
         Assert.Equal([1000, 2, 10], configuration.IntParams.Skip(7).Take(3));
@@ -690,8 +688,7 @@ public sealed class WiredRemainderG4FxTests
     [Fact]
     public void TheEditorReadsBackTheStoredFormOfABossBar()
     {
-        // Observed on AIR WIN63-202610151745-318700621: saved with -1/-1/-1 and the user targets on a furni source, it reads back
-        // 5/4/100 and furni targets.
+        // Saved with -1/-1/-1 and the user targets on a furni source, it reads back 5/4/100 and furni targets.
         var configuration = Compile("wf_xtra_var_fx_boss", ints =>
         {
             ints[0] = 0;
@@ -708,7 +705,7 @@ public sealed class WiredRemainderG4FxTests
     [Fact]
     public void ABossBarStoresStaleRangeTargetsAsItsOwnSource()
     {
-        // Observed on AIR WIN63-202610151745-318700621: a switched source with the old targets saves, and only -10 survives.
+        // A switched source with the old targets saves, and only -10 survives.
         int[] Targets(int source, int target, bool overrides = false, string[]? variables = null)
         {
             var configuration = Compile("wf_xtra_var_fx_boss", ints =>
@@ -736,7 +733,7 @@ public sealed class WiredRemainderG4FxTests
     [Fact]
     public void OneBoxDrawsEveryVariableOfItsKindOnItsTileUnderOneConfig()
     {
-        // Observed on AIR WIN63-202610151745-318700621: two user variables on the tile of one boss bar each got their own status.
+        // Two user variables on the tile of one boss bar each get their own status.
         var world = new World();
         world.Give(10, Holder, 25);
         world.Give(11, Holder, 7);
@@ -752,7 +749,7 @@ public sealed class WiredRemainderG4FxTests
     [Fact]
     public void ASavedBoxSendsAllItsStatusesAgainAsInitialized()
     {
-        // Observed on AIR WIN63-202610151745-318700621: saving a boss bar sent its config, then every status with initialize true.
+        // Saving a boss bar sends its config, then every status with initialize true.
         var world = new World();
         world.Give(10, Holder, 25);
         var binding = Bind("wf_xtra_var_fx_boss")!;

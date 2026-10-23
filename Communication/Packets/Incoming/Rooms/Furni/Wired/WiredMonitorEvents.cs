@@ -29,7 +29,7 @@ public sealed class WiredMonitorRequestEvent(IWiredMonitorService monitor) : Roo
     }
 }
 
-/// <summary>Official AIR monitor statistics request (wiredmenu class_3333). It has no body; a frame with one is ignored.</summary>
+/// <summary>Official AIR monitor statistics request. It has no body; a frame with one is ignored.</summary>
 public sealed class GetWiredRoomStatsEvent(IWiredMonitorService monitor) : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
@@ -42,7 +42,7 @@ public sealed class GetWiredRoomStatsEvent(IWiredMonitorService monitor) : RoomP
     }
 }
 
-/// <summary>Official AIR monitor error rows request (wiredmenu class_2575). It has no body; a frame with one is ignored.</summary>
+/// <summary>Official AIR monitor error rows request. It has no body; a frame with one is ignored.</summary>
 public sealed class GetWiredErrorLogsEvent(IWiredMonitorService monitor) : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
@@ -55,7 +55,7 @@ public sealed class GetWiredErrorLogsEvent(IWiredMonitorService monitor) : RoomP
     }
 }
 
-/// <summary>Official AIR monitor clear button (wiredmenu class_3239). It has no body; a frame with one is ignored.</summary>
+/// <summary>Official AIR monitor clear button. It has no body; a frame with one is ignored.</summary>
 public sealed class ClearWiredErrorLogsEvent(IWiredMonitorService monitor) : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)

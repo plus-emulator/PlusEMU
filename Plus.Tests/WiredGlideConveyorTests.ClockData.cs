@@ -103,8 +103,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Empty(ObjectUpdates(frames));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a counter value written by Wired (Start reset, Reset, Adjust Clock) goes out in the
-    // same ObjectsDataUpdate as the flashes of the event that wrote it, with each item once.
+    // A counter value written by Wired (Start reset, Reset, Adjust Clock) goes out in the same ObjectsDataUpdate as the flashes
+    // of the event that wrote it, with each item once.
     [Theory]
     [InlineData(0, 10)]
     [InlineData(2, 10)]
@@ -200,8 +200,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Empty(ObjectUpdates(frames));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a Wired increase or decrease sends the new value in an
-    // ObjectsDataUpdate, like a Wired set, and never a full object update.
+    // A Wired increase or decrease sends the new value in an ObjectsDataUpdate, like a Wired set, and never a full object update.
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
@@ -224,7 +223,7 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void WiredStartedGameCounterTicksPublishSingleDataAndNoObjectUpdate()
     {
-        // Observed on AIR WIN63-202610131318-860371703: wf_game_upcounter1 started by control_clock sends "1", "2", ... as ObjectDataUpdate.
+        // A wf_game_upcounter1 started by control_clock sends "1", "2", ... as ObjectDataUpdate.
         var f = ClockFixture("wf_game_upcounter1", "wf_act_control_clock", [0, 100]);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var frames = CaptureFrames(rider);
@@ -314,7 +313,7 @@ public sealed partial class WiredGlideConveyorTests
 
         f.Advance(500);
 
-        // Observed on AIR WIN63-202610151745-318700621: two writes of one counter in one event go out once, with the last value.
+        // Two writes of one counter in one event go out once, with the last value.
         Assert.Equal(["10"], mappedFrames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer).Select(frame => CounterEntries(frame).Single().Text));
         Assert.Empty(ObjectUpdates(mappedFrames));
         Assert.Equal(["10"], ObjectUpdates(legacyFrames).Select(ReadObjectUpdateData));
@@ -356,7 +355,7 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void WiredStartKeepsAValueAdjustedAfterTheLastStopAndRestartsFromZeroAfterAStop()
     {
-        // Observed on AIR WIN63-202610131318-860371703: set 30, start keeps 30 then counts 31, 32 ...; a start after a stop restarts from 0.
+        // Set 30, start keeps 30 then counts 31, 32 ...; a start after a stop restarts from 0.
         var item = ClockItem("wf_upcounter1", 107);
         var clocks = new WiredCounterController();
         clocks.Attach(item);
@@ -451,8 +450,8 @@ public sealed partial class WiredGlideConveyorTests
         }
     };
 
-    // Observed on AIR WIN63-202610131318-860371703: a started counter shows its first "1" on the 2nd 500 ms room boundary strictly after
-    // the firing (501-1000 ms later; exactly 1000 ms for an on-boundary firing), then ticks every 1000 ms on that grid.
+    // A started counter shows its first "1" on the 2nd 500 ms room boundary strictly after the firing (501-1000 ms later; exactly
+    // 1000 ms for an on-boundary firing), then ticks every 1000 ms on that grid.
     [Theory]
     [InlineData(150, 1000)]
     [InlineData(450, 1000)]

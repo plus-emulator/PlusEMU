@@ -3,8 +3,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The snapshot text an opened snapshot editor shows. A field its option leaves unticked is written as N. Observed on AIR
-// WIN63-202610201032-107964540.
+// The snapshot text an opened snapshot editor shows. A field its option leaves unticked is written as N.
 public sealed class WiredSnapshotTextTests
 {
     public static TheoryData<string> Conditions => new() { "wf_cnd_match_snapshot", "wf_cnd_not_match_snap" };
@@ -73,7 +72,7 @@ public sealed class WiredSnapshotTextTests
         Assert.Matches(new Regex(pattern), result.Text);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a save without ints stores the frame default, but its snapshot keeps no state.
+    // A save without ints stores the frame default, but its snapshot keeps no state.
     [Fact]
     public void StuffStateSavedWithoutIntsDropsTheSnapshotState()
     {

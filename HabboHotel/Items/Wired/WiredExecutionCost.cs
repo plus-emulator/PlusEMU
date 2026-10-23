@@ -6,13 +6,11 @@ namespace Plus.HabboHotel.Items.Wired;
 /// </summary>
 internal sealed class WiredExecutionCost
 {
-    // Observed on AIR WIN63-202610131318-860371703: after a busy queue stops the cost falls about x0.6 every 500 ms
-    // (104.69, 65.70, 41.33, 26.40, 16.77, 10.74, 7.28), and a lone 500 ms repeater holds it near 1.0.
+    // After a busy queue stops the cost falls about x0.6 every 500 ms, and a lone 500 ms repeater holds it near 1.0.
     public const int StepMs = 500;
     public const double Decay = 0.6;
 
-    // Approximate: the live samples did not separate a per-run weight from a per-box one. One pass of one execution adds 0.4,
-    // so one such pass per step settles at 0.4 / (1 - 0.6) = 1.0, the observed idle floor.
+    // Approximate: one pass of one execution adds 0.4, so one such pass per step settles at 0.4 / (1 - 0.6) = 1.0, the idle floor.
     public const double PassWeight = 0.05;
     public const double ExecutionWeight = 0.35;
 

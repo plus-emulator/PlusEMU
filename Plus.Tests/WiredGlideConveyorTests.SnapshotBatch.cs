@@ -15,8 +15,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: Match to Snapshot with only the position option sends every furni it moves
-    // back in one WiredMovements per firing, the same as with position and altitude.
+    // Match to Snapshot with only the position option sends every furni it moves back in one WiredMovements per firing, the same
+    // as with position and altitude.
     [Theory]
     [InlineData(0)]
     [InlineData(1)]

@@ -9,7 +9,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// What a user pointer variable does in a stack. Observed on AIR WIN63-202610201032-107964540 (PointerVariable.as): the context variable
+/// What a user pointer variable does in a stack. The context variable
 /// holds the id of another variable's box, and the pointer reads that variable for the same user.
 /// </summary>
 public sealed class WiredPointerRuntimeTests

@@ -3,7 +3,7 @@ using static Plus.Tests.WiredR104Save;
 
 namespace Plus.Tests;
 
-// Condition editor saves as Habbo stores them: out-of-range values are clamped or reset, not refused. Observed on AIR WIN63-202610201032-107964540.
+// Condition editor saves as Habbo stores them: out-of-range values are clamped or reset, not refused.
 public sealed class WiredR104ConditionEditorTests
 {
     private static Result Saved(string name, int[]? ints = null, string? text = null, int? quantifier = null)

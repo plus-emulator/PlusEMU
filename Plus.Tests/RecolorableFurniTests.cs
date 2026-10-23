@@ -10,8 +10,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on hhus (AIR WIN63-202610131318-860371703): the *_recolorable Builders Club furni carry MapData r, g, b and state; a
-// fresh one is {"r":"255","b":"255","g":"255","state":"0"} and its state cycles like any multi-state furni.
+// The *_recolorable Builders Club furni carry MapData r, g, b and state. A fresh one is {"r":"255","b":"255","g":"255","state":"0"} and its state cycles like any multi-state furni.
 public class RecolorableFurniTests
 {
     internal static ItemDefinition Block(int modes = 5) => new()
@@ -144,7 +143,7 @@ public class RecolorableFurniTests
         Assert.Equal(69, Regex.Matches(fresh, @"^\(\d+,'bc_[a-z0-9_]+_recolorable','[^']+','s',(?:[^,]+,){11}0,'recolorable',", RegexOptions.Multiline).Count);
     }
 
-    // Habbo's furnidata (r75) gives ten of the classes customparams; the rest have none.
+    // Habbo's furnidata gives ten of the classes customparams; the rest have none.
     [Fact]
     public void MigrationAndFreshInstallCarryHabbosCustomParamsAndHabbosPageLayout()
     {

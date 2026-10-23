@@ -11,9 +11,9 @@ public sealed partial class WiredGlideConveyorTests
 {
     private const uint SpeedControllerId = 60, SpeedMoverId = 61, SpeedSayId = 62, SpeedToggleId = 63;
 
-    // Observed on AIR WIN63-202610201032-107964540: a placed Roller Speed Controller steps the rollers every 500 ms and shows frame 1
-    // and 2 by turns from the start. Each Toggle State moves it to the first state of the next group (3, 6, 9, 0) and it then shows the
-    // two frames after that state. The rollers keep stepping every 500 ms after every toggle.
+    // A placed Roller Speed Controller steps the rollers every 500 ms and shows frame 1 and 2 by turns from the start. Each
+    // Toggle State moves it to the first state of the next group (3, 6, 9, 0) and it then shows the two frames after that state.
+    // The rollers keep stepping every 500 ms after every toggle.
     [Fact]
     public void ToggleStateMovesTheSpeedControllerToTheNextGroupAndKeepsTheRollerStep()
     {
@@ -32,8 +32,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.All(slides, count => Assert.Equal(1, count));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a use of the controller jumps to the next group and sets the step time of that group,
-    // also after a Wired toggle.
+    // A use of the controller jumps to the next group and sets the step time of that group, also after a Wired toggle.
     [Fact]
     public void AUseOfTheSpeedControllerAfterAToggleStateSetsTheStepTimeOfItsGroup()
     {
@@ -54,7 +53,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(3, steps[1].tick - steps[0].tick);
     }
 
-    // A fresh controller holds an empty state; rollers at (5,12) (6,12) (6,13) (5,13) turn in a loop, so the mover never leaves them.
+    // A fresh controller holds an empty state; the rollers turn in a loop, so the mover never leaves them.
     private static (Fixture Fixture, RoomUser Rider, List<byte[]> Packets) SpeedControllerRoom()
     {
         var layout = new (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[]

@@ -39,8 +39,8 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: At Given Time with 4 pulses fires 2.48 s after each reset (1128 to 3610 and 7131 to 9611 ms,
-    // the room grid at x.110 / x.610 in that run): the pulses count from the next room tick after the reset. Here the grid is at x.000 / x.500.
+    // At Given Time with 4 pulses fires 2.48 s after each reset: the pulses count from the next room tick after the reset. Here
+    // the room grid is at x.000 / x.500.
     [Theory]
     [InlineData(1018, 3500)]
     [InlineData(7021, 9500)]

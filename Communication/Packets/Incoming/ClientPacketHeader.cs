@@ -14,23 +14,23 @@ public static class ClientPacketHeader
     public const uint ChangeUserNameEvent = 1837;
     public const uint GetWardrobeEvent = 832;
     public const uint SaveWardrobeOutfitEvent = 944;
-    public const uint GetUserNftWardrobeEvent = 1320; // package_34/GetUserNftWardrobeMessageComposer
-    public const uint GetSelectedNftWardrobeOutfitEvent = 3707; // package_34/class_3910
-    public const uint SaveUserNftWardrobeEvent = 2036; // package_34/SaveUserNftWardrobeMessageComposer
+    public const uint GetUserNftWardrobeEvent = 1320;
+    public const uint GetSelectedNftWardrobeOutfitEvent = 3707;
+    public const uint SaveUserNftWardrobeEvent = 2036;
 
     // Collectibles hub
-    public const uint GetCollectibleWalletAddressesEvent = 3112; // package_13/class_3119
-    public const uint GetCollectorScoreEvent = 3283; // package_13/class_2800
-    public const uint GetNftCollectionsEvent = 2267; // package_13/class_3300
-    public const uint ClaimNftCollectionBonusEvent = 2709; // package_13/class_3745
-    public const uint ClaimNftCollectionRewardEvent = 1471; // package_13/class_3681
-    public const uint GetNftStoreOffersEvent = 1112; // package_13/class_2974
-    public const uint PurchaseNftStoreOfferEvent = 2065; // package_13/class_1790
-    public const uint GetCollectibleMintableItemTypesEvent = 446; // package_13/class_3377
-    public const uint GetCollectibleMintingEnabledEvent = 264; // package_13/class_3511
-    public const uint MintCollectibleEvent = 1663; // package_13/class_3662
-    public const uint GetNftClaimsEvent = 1590; // package_13/class_3567
-    public const uint ClaimNftRewardsEvent = 2855; // package_13/class_2817
+    public const uint GetCollectibleWalletAddressesEvent = 3112;
+    public const uint GetCollectorScoreEvent = 3283;
+    public const uint GetNftCollectionsEvent = 2267;
+    public const uint ClaimNftCollectionBonusEvent = 2709;
+    public const uint ClaimNftCollectionRewardEvent = 1471;
+    public const uint GetNftStoreOffersEvent = 1112;
+    public const uint PurchaseNftStoreOfferEvent = 2065;
+    public const uint GetCollectibleMintableItemTypesEvent = 446;
+    public const uint GetCollectibleMintingEnabledEvent = 264;
+    public const uint MintCollectibleEvent = 1663;
+    public const uint GetNftClaimsEvent = 1590;
+    public const uint ClaimNftRewardsEvent = 2855;
 
     //Preferences
     public const uint SetChatStylePreferenceEvent = 1615;
@@ -163,7 +163,7 @@ public static class ClientPacketHeader
     public const uint RemoveFriendEvent = 3098;
     public const uint RefreshCampaignEvent = 720;
     public const uint AcceptFriendEvent = 1797;
-    public const uint YouTubeVideoInformationEvent = 65401; // No AIR WIN63-202610151745-318700621 composer; 2488 is TryPhoneNumber (package_144/class_2849)
+    public const uint YouTubeVideoInformationEvent = 65401; // The client has no composer for this id; 2488 is TryPhoneNumber
     public const uint FollowFriendEvent = 394;
     public const uint SaveBotActionEvent = 3967;
     public const uint LetUserInEvent = 3316;
@@ -216,7 +216,7 @@ public static class ClientPacketHeader
     public const uint WiredVariableHashesEvent = 1219;
     public const uint WiredAllVariablesRequestEvent = 1467;
     public const uint SaveWiredEffectConfigEvent = 2397;
-    public const uint ApplySnapshotEvent = 787; // class_3039, ApplySnapshot
+    public const uint ApplySnapshotEvent = 787;
     public const uint SaveWiredSelectorConfigEvent = 3071;
     public const uint SaveWiredAddonConfigEvent = 3963;
     public const uint SaveWiredVariableConfigEvent = 138;
@@ -224,7 +224,7 @@ public static class ClientPacketHeader
     public const uint JoinQueueEvent = 65471;
     public const uint CanCreateRoomEvent = 988;
     public const uint SetTonerEvent = 3802;
-    public const uint RecolorFurnitureEvent = 3752; // package_100/class_2414
+    public const uint RecolorFurnitureEvent = 3752;
     public const uint SaveWiredTriggerConfigEvent = 2487;
     public const uint PlaceBotEvent = 1994;
     public const uint MoveEntityInFlatEvent = 2508;
@@ -253,9 +253,9 @@ public static class ClientPacketHeader
     public const uint GetTalentTrackEvent = 3551;
     public const uint GiveAdminRightsEvent = 2249;
     public const uint GetCatalogIndexEvent = 3401;
-    public const uint BuildersClubPlaceRoomItemEvent = 3501; // package_16/class_2016
-    public const uint BuildersClubPlaceWallItemEvent = 428; // package_16/class_1795
-    public const uint GetGuideReportingStatusEvent = 1348; // class_2256, GetGuideReportingStatus
+    public const uint BuildersClubPlaceRoomItemEvent = 3501;
+    public const uint BuildersClubPlaceWallItemEvent = 428;
+    public const uint GetGuideReportingStatusEvent = 1348;
     public const uint CancelOfferEvent = 872;
     public const uint SaveWiredConditionConfigEvent = 3498;
     public const uint RedeemVoucherEvent = 1603;
@@ -267,7 +267,7 @@ public static class ClientPacketHeader
     public const uint MemoryPerformanceEvent = 1121;
     public const uint ToggleYouTubeVideoEvent = 2720;
     public const uint SetMannequinFigureEvent = 2169;
-    public const uint SetClothingChangeDataEvent = 2321; // package_66.class_3476
+    public const uint SetClothingChangeDataEvent = 2321;
     public const uint GetEventCategoriesEvent = 897;
     public const uint DeleteGroupThreadEvent = 614;
     public const uint PurchaseGroupEvent = 2440;
@@ -453,9 +453,9 @@ public static class ClientPacketHeader
     public const uint GetRewardTracksEvent = 9450;
     public const uint ClaimRewardTrackPrizeEvent = 853;
     public const uint PurchaseRewardTrackPremiumEvent = 3850;
-    // Daily tasks, AIR WIN63-202610151745-318700621 (quest/dailytasks/DailyTasksController.as).
-    public const uint GetDailyTasksEvent = 4100; // package_24.class_1820
-    public const uint ClaimDailyTaskEvent = 4101; // package_24.class_2568
+    // Daily tasks.
+    public const uint GetDailyTasksEvent = 4100;
+    public const uint ClaimDailyTaskEvent = 4101;
     public const uint GetQuizQuestionsEvent = 3454;
     public const uint PostQuizAnswersEvent = 2101;
     // Room music
@@ -473,46 +473,46 @@ public static class ClientPacketHeader
     public const uint WiredVariableHoldersRequest64Event = 10114;
     public const uint WiredVariableHoldersPage64Event = 10115;
     // Wired chests and wired trades; see reviews/chest-protocol-map.md.
-    public const uint ChestOpenEvent = 1606; // package_95.class_2556
-    public const uint ChestCloseEvent = 3929; // package_95.class_2991
-    public const uint ChestStartDepositEvent = 1850; // package_95.class_3680
-    public const uint ChestWithdrawAllEvent = 1344; // package_95.class_3893
-    public const uint ChestWithdrawFurniEvent = 3782; // package_95.class_2400
-    public const uint ChestWithdrawCoinsEvent = 2836; // package_95.class_3317
-    public const uint ChestSaveOptionsEvent = 2622; // package_95.class_3287
-    public const uint ChestSavePreferencesEvent = 782; // package_95.class_3106
-    public const uint ChestSaveNotificationsEvent = 1762; // package_95.class_2759
-    public const uint WiredChestOfferItemsEvent = 3890; // package_186.class_2968
-    public const uint WiredChestAcceptEvent = 1683; // package_186.class_3406
-    public const uint WiredChestCancelEvent = 1711; // package_186.class_3271
-    public const uint ChestUpgradeEvent = 1795; // package_95.class_3733
-    public const uint WiredChestLockEvent = 414; // package_95.class_3520
+    public const uint ChestOpenEvent = 1606;
+    public const uint ChestCloseEvent = 3929;
+    public const uint ChestStartDepositEvent = 1850;
+    public const uint ChestWithdrawAllEvent = 1344;
+    public const uint ChestWithdrawFurniEvent = 3782;
+    public const uint ChestWithdrawCoinsEvent = 2836;
+    public const uint ChestSaveOptionsEvent = 2622;
+    public const uint ChestSavePreferencesEvent = 782;
+    public const uint ChestSaveNotificationsEvent = 1762;
+    public const uint WiredChestOfferItemsEvent = 3890;
+    public const uint WiredChestAcceptEvent = 1683;
+    public const uint WiredChestCancelEvent = 1711;
+    public const uint ChestUpgradeEvent = 1795;
+    public const uint WiredChestLockEvent = 414;
 
-    // October wired boxes (r88).
-    public const uint WiredWebApiKeyRequestEvent = 3915; // class_2630
-    public const uint WiredVariableShareSynchronizeEvent = 397; // class_3060
-    public const uint WiredVariableLeaderboardSubscribeEvent = 1708; // package_221.class_3719
-    public const uint SaveWiredLabelTextEvent = 1736; // class_2809
-    public const uint SaveWiredLabelSettingsEvent = 951; // class_3231
-    public const uint WiredLinkRequestConfigEvent = 3661; // package_129.class_2728
-    public const uint WiredLinkSaveSelectionEvent = 296; // package_129.class_2545
-    public const uint WiredLinkCreateNetworkEvent = 1297; // package_129.class_3727
-    public const uint WiredLinkRenameNetworkEvent = 702; // package_129.class_3853
-    public const uint WiredLinkDeleteNetworkEvent = 1728; // package_129.class_3634
-    public const uint WiredLinkGetConnectionsEvent = 3745; // package_129.class_3536
-    public const uint GetWiredContractContentsEvent = 1764; // package_193.class_3900
-    public const uint UpdateWiredContractEvent = 1005; // package_193.class_3040
-    // Wired monitor (wiredmenu composers); the monitor tab sends both requests together (WiredMenuMonitorTab.requestData).
-    public const uint GetWiredRoomStatsEvent = 2525; // wiredmenu.class_3345
-    public const uint GetWiredErrorLogsEvent = 3287; // wiredmenu.class_2587
-    public const uint ClearWiredErrorLogsEvent = 2374; // wiredmenu.class_3251
-    // The inspection tab's value edit, create and delete (WiredMenuInspectionTab.as:193, 249, 265).
-    public const uint WiredSetObjectVariableValueEvent = 3190; // wiredmenu.class_3782
-    // The inspection tab's read of one object's variables (WiredMenuInspectionTab.requestVariablesForObject).
-    public const uint WiredGetVariablesForObjectEvent = 825; // wiredmenu.class_3018
+    // October wired boxes.
+    public const uint WiredWebApiKeyRequestEvent = 3915;
+    public const uint WiredVariableShareSynchronizeEvent = 397;
+    public const uint WiredVariableLeaderboardSubscribeEvent = 1708;
+    public const uint SaveWiredLabelTextEvent = 1736;
+    public const uint SaveWiredLabelSettingsEvent = 951;
+    public const uint WiredLinkRequestConfigEvent = 3661;
+    public const uint WiredLinkSaveSelectionEvent = 296;
+    public const uint WiredLinkCreateNetworkEvent = 1297;
+    public const uint WiredLinkRenameNetworkEvent = 702;
+    public const uint WiredLinkDeleteNetworkEvent = 1728;
+    public const uint WiredLinkGetConnectionsEvent = 3745;
+    public const uint GetWiredContractContentsEvent = 1764;
+    public const uint UpdateWiredContractEvent = 1005;
+    // Wired monitor. The monitor tab sends both requests together.
+    public const uint GetWiredRoomStatsEvent = 2525;
+    public const uint GetWiredErrorLogsEvent = 3287;
+    public const uint ClearWiredErrorLogsEvent = 2374;
+    // The inspection tab's value edit, create and delete.
+    public const uint WiredSetObjectVariableValueEvent = 3190;
+    // The inspection tab's read of one object's variables.
+    public const uint WiredGetVariablesForObjectEvent = 825;
 
-    // Free product claims (cursed dragon adoption) and the new-feature promo expiry, AIR WIN63-202610151745-318700621.
-    public const uint HasClaimedProductEvent = 2014; // package_143.class_3538
-    public const uint ClaimProductEvent = 3149; // package_143.class_2610
-    public const uint GetSecondsUntilEvent = 359; // package_146.class_3739
+    // Free product claims (cursed dragon adoption) and the new-feature promo expiry.
+    public const uint HasClaimedProductEvent = 2014;
+    public const uint ClaimProductEvent = 3149;
+    public const uint GetSecondsUntilEvent = 359;
 }

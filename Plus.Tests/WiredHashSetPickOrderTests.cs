@@ -3,15 +3,14 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: every card below reopens its picks in the iteration order of a Java HashSet<Integer>
-// of the saved ids, not in the saved order. Orders were saved and reopened on Habbo with five floor ids.
+// Every card below reopens its picks in the iteration order of a Java HashSet<Integer> of the saved ids, not in the saved order.
 public class WiredHashSetPickOrderTests
 {
     private static readonly int[] HabboSent = [2147418128, 2147418114, 2147418112, 2147418130, 2147418113];
     private static readonly int[] HabboReopened = [2147418114, 2147418130, 2147418113, 2147418128, 2147418112];
 
-    // Every card below was saved and reopened on Habbo with the same scrambled set; cards that need picks of one furni kind (counters, antennas,
-    // links, click tiles, contracts) were saved with furni of that kind.
+    // Every card below was saved and reopened with the same scrambled set; cards that need picks of one furni kind (counters,
+    // antennas, links, click tiles, contracts) were saved with furni of that kind.
     private static readonly string[] ProvenCards =
     [
         "wf_act_adjust_clock", "wf_act_bot_clothes", "wf_act_bot_follow_avatar",
@@ -69,9 +68,10 @@ public class WiredHashSetPickOrderTests
         "wf_xtra_var_time_util"
     ];
 
-    // Not proven: the card has no Builders Club offer, or the probe could not give it a valid save with picks (chests, coin chests, room linker,
-    // dataframes, custom contract, Or Evaluation, the text outputs and inputs, a leaderboard, a variable box, a card that takes only a selector as its
-    // furni source), or it has no pick source on Habbo (Link Speaker). Their reopen order stays as saved.
+    // Unproven cards: the card has no Builders Club offer, or it cannot take a valid save with picks (chests, coin chests, room
+    // linker, dataframes, custom contract, Or Evaluation, the text outputs and inputs, a leaderboard, a variable box, a card
+    // that takes only a selector as its furni source), or it has no pick source (Link Speaker). Their reopen order stays as
+    // saved.
     private static readonly string[] UnprovenCards =
     [
         "wf_act_give_currency", "wf_act_give_effect", "wf_act_give_furni",
@@ -147,8 +147,8 @@ public class WiredHashSetPickOrderTests
         Assert.True(flagged.Length == 0, string.Join(", ", flagged));
     }
 
-    // The second pick list of every proven card, saved and reopened on Habbo, a card with a picker or without. Chest Has Item Type refuses a
-    // second list without chests, so its second list is not proven.
+    // The second pick list of every proven card, a card with a picker or without. Chest Has Item Type refuses a second list
+    // without chests, so its second list is not proven.
     public static TheoryData<string> SecondListCardNames => new(ProvenCards.Where(card => card != "wf_cnd_chest_has_item_type"));
 
     [Fact]
@@ -163,8 +163,8 @@ public class WiredHashSetPickOrderTests
         Assert.Equal(ProvenCards.Where(card => card != "wf_cnd_chest_has_item_type").Concat(secondListOnly).Order(), flagged);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Give Currency, Give Furni, Teleport To Room and Chest Has Items refuse any save with picks in
-    // the first list without chests or a room linker, but keep a second list saved alone and reopen it in HashSet order (three runs).
+    // Give Currency, Give Furni, Teleport To Room and Chest Has Items refuse any save with picks in the first list without
+    // chests or a room linker, but keep a second list saved alone and reopen it in HashSet order.
     [Theory]
     [InlineData("wf_act_give_currency")]
     [InlineData("wf_act_give_furni")]
@@ -204,8 +204,8 @@ public class WiredHashSetPickOrderTests
         Assert.Equal(targets, frame.Skip(2 + HabboSent.Length + 1).Take(targets.Length));
     }
 
-    // Habbo, 8 ids and then 9 ids in one bucket (ids 16 apart, 16 buckets): the ninth id doubles the table, which splits the bucket. The
-    // 18 ids row is from the real JDK 21, not from Habbo.
+    // 8 ids and then 9 ids in one bucket (ids 16 apart, 16 buckets): the ninth id doubles the table, which splits the bucket.
+    // The 18 ids row is from the real JDK 21.
     [Theory]
     [InlineData(new[] { 2147418131, 2147418147, 2147418163, 2147418179, 2147418195, 2147418211, -2147418116, -2147418132 },
         new[] { 2147418131, 2147418147, 2147418163, 2147418179, 2147418195, 2147418211, -2147418116, -2147418132 })]
@@ -221,24 +221,23 @@ public class WiredHashSetPickOrderTests
         Assert.Equal(reopened, Primary(Frame("wf_act_toggle_state", sent, [])));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (7 saves that repeat ids, the sent count 12 or 20 against 11 or 10 different ids): the first
-    // set of the two steps is sized from the number of ids sent, repeats counted, so the order differs from one sized from the different ids.
-    // The probe, in the order of the sent ids, then the order Habbo reopened.
+    // The first set of the two steps is sized from the number of ids sent, repeats counted, so the order differs from one sized
+    // from the different ids. Each case lists the sent ids, then the reopened order.
     [Theory]
     [InlineData(new[] { 2147418142, 2147418148, 2147418172, 2147418168, 2147418140, 2147418162, 2147418117, 2147418118, 2147418132, 2147418160, 2147418142, 2147418166 },
-        new[] { 2147418142, 2147418172, 2147418140, 2147418168, 2147418166, 2147418118, 2147418117, 2147418132, 2147418148, 2147418162, 2147418160 })] // Habbo, 12 ids sent, 11 different
+        new[] { 2147418142, 2147418172, 2147418140, 2147418168, 2147418166, 2147418118, 2147418117, 2147418132, 2147418148, 2147418162, 2147418160 })] // 12 ids sent, 11 different
     [InlineData(new[] { 2147418147, 2147418146, 2147418157, 2147418134, 2147418120, 2147418146, 2147418162, 2147418155, 2147418145, 2147418154, 2147418131, 2147418116 },
-        new[] { 2147418157, 2147418155, 2147418154, 2147418120, 2147418134, 2147418116, 2147418131, 2147418147, 2147418162, 2147418146, 2147418145 })] // Habbo, 12 ids sent, 11 different
+        new[] { 2147418157, 2147418155, 2147418154, 2147418120, 2147418134, 2147418116, 2147418131, 2147418147, 2147418162, 2147418146, 2147418145 })] // 12 ids sent, 11 different
     [InlineData(new[] { 2147418118, 2147418158, 2147418114, 2147418116, 2147418166, 2147418147, 2147418114, 2147418152, 2147418116, 2147418147, 2147418129, 2147418122, 2147418114, 2147418122, 2147418162, 2147418129, 2147418129, 2147418114, 2147418162, 2147418118 },
-        new[] { 2147418158, 2147418122, 2147418152, 2147418166, 2147418118, 2147418116, 2147418147, 2147418162, 2147418114, 2147418129 })] // Habbo, 20 ids sent, 10 different
+        new[] { 2147418158, 2147418122, 2147418152, 2147418166, 2147418118, 2147418116, 2147418147, 2147418162, 2147418114, 2147418129 })] // 20 ids sent, 10 different
     [InlineData(new[] { 2147418116, 2147418152, 2147418168, 2147418126, 2147418145, 2147418122, 2147418168, 2147418141, 2147418119, 2147418168, 2147418150, 2147418141, 2147418141, 2147418145, 2147418119, 2147418163, 2147418141, 2147418145, 2147418150, 2147418152 },
-        new[] { 2147418126, 2147418141, 2147418122, 2147418168, 2147418152, 2147418119, 2147418150, 2147418116, 2147418163, 2147418145 })] // Habbo, 20 ids sent, 10 different
+        new[] { 2147418126, 2147418141, 2147418122, 2147418168, 2147418152, 2147418119, 2147418150, 2147418116, 2147418163, 2147418145 })] // 20 ids sent, 10 different
     [InlineData(new[] { 2147418126, 2147418132, 2147418131, 2147418159, 2147418132, 2147418115, 2147418159, 2147418126, 2147418131, 2147418126, 2147418130, 2147418142, 2147418131, 2147418127, 2147418130, 2147418117, 2147418121, 2147418159, 2147418127, 2147418127 },
-        new[] { 2147418159, 2147418127, 2147418142, 2147418126, 2147418121, 2147418117, 2147418132, 2147418131, 2147418115, 2147418130 })] // Habbo, 20 ids sent, 10 different
+        new[] { 2147418159, 2147418127, 2147418142, 2147418126, 2147418121, 2147418117, 2147418132, 2147418131, 2147418115, 2147418130 })] // 20 ids sent, 10 different
     [InlineData(new[] { 2147418150, 2147418136, 2147418162, 2147418138, 2147418131, 2147418129, 2147418124, 2147418151, 2147418144, 2147418128, 2147418136, 2147418155 },
-        new[] { 2147418124, 2147418155, 2147418138, 2147418136, 2147418151, 2147418150, 2147418131, 2147418162, 2147418129, 2147418128, 2147418144 })] // Habbo, 12 ids sent, 11 different
+        new[] { 2147418124, 2147418155, 2147418138, 2147418136, 2147418151, 2147418150, 2147418131, 2147418162, 2147418129, 2147418128, 2147418144 })] // 12 ids sent, 11 different
     [InlineData(new[] { 2147418167, 2147418149, 2147418149, 2147418114, 2147418114, 2147418112, 2147418128, 2147418150, 2147418114, 2147418112, 2147418165, 2147418114, 2147418165, 2147418150, 2147418131, 2147418167, 2147418150, 2147418146, 2147418149, 2147418135 },
-        new[] { 2147418167, 2147418135, 2147418150, 2147418165, 2147418149, 2147418131, 2147418114, 2147418146, 2147418128, 2147418112 })] // Habbo, 20 ids sent, 10 different
+        new[] { 2147418167, 2147418135, 2147418150, 2147418165, 2147418149, 2147418131, 2147418114, 2147418146, 2147418128, 2147418112 })] // 20 ids sent, 10 different
     public void ASaveThatRepeatsIdsReopensInTheOrderOfTheSentCount(int[] sent, int[] reopened)
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_act_toggle_state", out var descriptor));
@@ -254,17 +253,16 @@ public class WiredHashSetPickOrderTests
         Assert.Equal(reopened, packet.Writes.Skip(2).Take(reopened.Length).Cast<int>());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (four saves of the second list that repeat ids, the sent count 12 or 20 against 11 or 10
-    // different ids): the second list follows the same rule as the first.
+    // The second list follows the same rule as the first.
     [Theory]
     [InlineData(new[] { 2147418116, 2147418152, 2147418168, 2147418126, 2147418145, 2147418122, 2147418168, 2147418141, 2147418119, 2147418168, 2147418150, 2147418141, 2147418141, 2147418145, 2147418119, 2147418163, 2147418141, 2147418145, 2147418150, 2147418152 },
-        new[] { 2147418126, 2147418141, 2147418122, 2147418168, 2147418152, 2147418119, 2147418150, 2147418116, 2147418163, 2147418145 })] // Habbo, 20 ids sent, 10 different
+        new[] { 2147418126, 2147418141, 2147418122, 2147418168, 2147418152, 2147418119, 2147418150, 2147418116, 2147418163, 2147418145 })] // 20 ids sent, 10 different
     [InlineData(new[] { 2147418126, 2147418132, 2147418131, 2147418159, 2147418132, 2147418115, 2147418159, 2147418126, 2147418131, 2147418126, 2147418130, 2147418142, 2147418131, 2147418127, 2147418130, 2147418117, 2147418121, 2147418159, 2147418127, 2147418127 },
-        new[] { 2147418159, 2147418127, 2147418142, 2147418126, 2147418121, 2147418117, 2147418132, 2147418131, 2147418115, 2147418130 })] // Habbo, 20 ids sent, 10 different
+        new[] { 2147418159, 2147418127, 2147418142, 2147418126, 2147418121, 2147418117, 2147418132, 2147418131, 2147418115, 2147418130 })] // 20 ids sent, 10 different
     [InlineData(new[] { 2147418150, 2147418136, 2147418162, 2147418138, 2147418131, 2147418129, 2147418124, 2147418151, 2147418144, 2147418128, 2147418136, 2147418155 },
-        new[] { 2147418124, 2147418155, 2147418138, 2147418136, 2147418151, 2147418150, 2147418131, 2147418162, 2147418129, 2147418128, 2147418144 })] // Habbo, 12 ids sent, 11 different
+        new[] { 2147418124, 2147418155, 2147418138, 2147418136, 2147418151, 2147418150, 2147418131, 2147418162, 2147418129, 2147418128, 2147418144 })] // 12 ids sent, 11 different
     [InlineData(new[] { 2147418167, 2147418149, 2147418149, 2147418114, 2147418114, 2147418112, 2147418128, 2147418150, 2147418114, 2147418112, 2147418165, 2147418114, 2147418165, 2147418150, 2147418131, 2147418167, 2147418150, 2147418146, 2147418149, 2147418135 },
-        new[] { 2147418167, 2147418135, 2147418150, 2147418165, 2147418149, 2147418131, 2147418114, 2147418146, 2147418128, 2147418112 })] // Habbo, 20 ids sent, 10 different
+        new[] { 2147418167, 2147418135, 2147418150, 2147418165, 2147418149, 2147418131, 2147418114, 2147418146, 2147418128, 2147418112 })] // 20 ids sent, 10 different
     public void ASecondListThatRepeatsIdsReopensInTheOrderOfTheSentCount(int[] sent, int[] reopened)
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_act_toggle_state", out var descriptor));
@@ -296,7 +294,7 @@ public class WiredHashSetPickOrderTests
         Assert.Equal(fits, WiredNativeEditorProjection.WithinBounds(native));
     }
 
-    // The stored row keeps the sent count, so a reload (an unload of the room on Habbo gave the same order) reopens the same order.
+    // The stored row keeps the sent count, so a reload reopens the same order.
     [Fact]
     public void TheSentCountIsPartOfTheStoredRow()
     {

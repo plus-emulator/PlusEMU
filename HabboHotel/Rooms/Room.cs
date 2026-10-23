@@ -48,8 +48,7 @@ public class Room
 
     public bool IsCrashed;
     public DateTimeOffset? LastRegenerationAt;
-    // The room's Wired timer, read by the elapsed-time conditions and @wired_timer. It starts when the room loads. Observed on AIR
-    // WIN63-202610151745-318700621: @wired_timer reads 26 in a room nobody reset, and More Than 1201 passes in a room loaded long ago.
+    // The room's Wired timer, read by the elapsed-time conditions and @wired_timer. It starts when the room loads.
     public DateTimeOffset LastTimerResetAt;
     private DateTimeOffset? _timerRestartAt;
     public bool MDisposed;
@@ -152,9 +151,8 @@ public class Room
     }
 
     /// <summary>
-    /// Reset Timers at <paramref name="now"/> restarts the room timer at <paramref name="tickAt"/>, the next 500 ms room tick; until then
-    /// the timer keeps counting. Observed on AIR WIN63-202610151745-318700621: a Less Than check 150 or 300 ms after the reset still sees
-    /// the old timer, and one 450 ms or more after it sees the new one.
+    /// Reset Timers at <paramref name="now"/> restarts the room timer at <paramref name="tickAt"/>, the next 500 ms room tick; until then the timer keeps counting.
+    /// A Less Than check 150 or 300 ms after the reset still sees the old timer, and one 450 ms or more after it sees the new one.
     /// </summary>
     internal void RestartTimerAt(DateTimeOffset now, DateTimeOffset tickAt)
     {
@@ -521,8 +519,7 @@ public class Room
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: an empty room was never unloaded after 32.45 seconds or less and always after
-    // 35.2 seconds or more. 66 cycles of 500 ms is 33 seconds.
+    // An empty room unloads after about 33 seconds: 66 cycles of 500 ms.
     private const int IdleCyclesBeforeUnload = 66;
 
     private bool KeepRoomActive()
@@ -638,14 +635,12 @@ public class Room
             presentation.HalfScale, Plus.HabboHotel.Items.AreaHide.AreaHideState.EntryHides(this), cameraX: presentation.CameraX, cameraY: presentation.CameraY, cameraZ: presentation.CameraZ));
         session.Send(new RoomVisualizationSettingsComposer(WallThickness, FloorThickness, Convert.ToBoolean(Hidewall)));
         var snapshotUsers = _roomUserManager.GetUserList().Where(user => user != null).ToArray();
-        // Observed on AIR WIN63-202610151745-318700621: the entrant gets the users already in the room as one Users packet (empty
-        // when nobody is there) before the furni, and its own Users entry after the wall items. It gets no status update for itself
-        // here; that follows in the next room cycle.
+        // The entrant gets the users already in the room as one Users packet (empty when nobody is there) before the furni, and its own Users entry after the wall items.
+        // It gets no status update for itself here; that follows in the next room cycle.
         var entrant = snapshotUsers.FirstOrDefault(user => !user.IsBot && ReferenceEquals(user.GetClient(), session));
         var present = snapshotUsers.Where(user => !ReferenceEquals(user, entrant)).ToArray();
         session.Send(new UsersComposer(_userSnapshots.Capture(present)));
-        // Observed on AIR WIN63-202610201032-107964540: the transparency and highlight state comes right after that Users packet,
-        // before the floor items.
+        // The transparency and highlight state comes right after that Users packet, before the floor items.
         GetWired()?.SendVisualizationState(session);
 
         foreach (var user in present) {
@@ -780,8 +775,7 @@ public class Room
     public void SendPacket(IServerPacket packet, bool withRightsOnly = false) => SendPacket(packet, withRightsOnly, null);
 
     /// <summary>
-    /// Sends a chat packet to everyone in the room. Each copy carries the viewer's own room index as its receiver
-    /// (AIR WIN63-202610151745-318700621 package_167/class_2856.as:124), so <paramref name="chat"/> composes it per viewer.
+    /// Sends a chat packet to everyone in the room. Each copy carries the viewer's own room index as its receiver, so <paramref name="chat"/> composes it per viewer.
     /// </summary>
     public void SendChat(Func<int, IServerPacket> chat, Func<RoomUser, bool>? receives = null)
     {
@@ -860,7 +854,7 @@ public class Room
             return;
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: two templates arrive together in one Objects message.
+        // Two templates arrive together in one Objects message.
         var snapshot = RoomFurnitureSnapshot.Capture(items, OwnerId, OwnerName);
         SendPacket(new ObjectsComposer(snapshot), false, viewer =>
         {
@@ -973,8 +967,7 @@ public class Room
     /// update instead.
     /// </summary>
     /// <summary>
-    /// The tick's box flashes go out before its Wired movement packet. Observed r92f (AIR WIN63-202610131318-860371703): the
-    /// ObjectsDataUpdate with the fired boxes precedes the WiredMovements of the same firing (r92-chase, r92-u2f-targets, r92-room14-slow).
+    /// The tick's box flashes go out before its Wired movement packet: the ObjectsDataUpdate with the fired boxes precedes the WiredMovements of the same firing.
     /// </summary>
     internal void FlushWiredFlashes() => _wiredComponent?.FlushFlashes();
     internal void FlushWiredFlashData() => _wiredComponent?.FlushFlashData();

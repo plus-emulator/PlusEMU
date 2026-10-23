@@ -179,8 +179,8 @@ public partial class PlacedFurniRoomTests
         Assert.False(wired.TryGet(HasVarId, out _));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a Has Variable box with no variable is saved with any target, source, quantifier
-    // and pick, so the real load admits what the save stores. This replaces the old guard that admitted one measured shape only.
+    // A Has Variable box with no variable is saved with any target, source, quantifier
+    // and pick, so the real load admits what the save stores.
     [Theory]
     [InlineData("wf_cnd_has_var", "target-furni")]
     [InlineData("wf_cnd_neg_has_var", "target-context")]
@@ -214,7 +214,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(wired.TryGet(HasVarId, out _));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Variable Age saves with the empty variable slot, so a row that carries the literal 0 loads.
+    // Variable Age saves with the empty variable slot, so a row that carries the literal 0 loads.
     [Fact]
     public void AVariableAgeRowWithTheLiteralZeroLoadsLikeTheFreshBox()
     {

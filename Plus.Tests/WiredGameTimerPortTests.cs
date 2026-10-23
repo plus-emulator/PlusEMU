@@ -105,8 +105,8 @@ public sealed class WiredGameTimerPortTests
         Assert.Equal(9000, clocks.ReadMilliseconds(item));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the host picks a timer's duration with the reset button, a new timer starts at 30 seconds,
-    // and the saved duration survives a run, a room unload and a Wired reload.
+    // The host picks a timer's duration with the reset button, a new timer starts at 30 seconds, and the saved duration survives
+    // a run, a room unload and a Wired reload.
     private static readonly int[] Cycle = [60, 120, 180, 300, 600, 30];
 
     [Theory]

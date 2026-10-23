@@ -33,10 +33,9 @@ public interface IDailyTaskManager
 }
 
 /// <summary>
-/// The daily tasks window of AIR WIN63-202610151745-318700621 (quest/dailytasks/DailyTasksController.as). Every user gets
-/// dailytasks.count tasks (default 3) per day of the server's time zone, drawn from daily_tasks by weight; completing all
-/// of them opens one bonus task. Completed tasks of the last dailytasks.unclaimed_days days (default 7) stay claimable,
-/// which the client lists as unclaimed tasks. At the day's end every online user gets the new day's list.
+/// The daily tasks window. Every user gets dailytasks.count tasks (default 3) per day of the server's time zone, drawn from daily_tasks by weight; completing all
+/// of them opens one bonus task. Completed tasks of the last dailytasks.unclaimed_days days (default 7) stay claimable, which the client lists as unclaimed tasks.
+/// At the day's end every online user gets the new day's list.
 /// </summary>
 public sealed class DailyTaskManager(IDailyTaskStore store, ISettingsManager settings, IGameClientManager clients, IBadgeManager badges,
     TimeProvider clock, ILogger<DailyTaskManager> logger) : IDailyTaskManager, IStartable, IDisposable

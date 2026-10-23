@@ -22,7 +22,7 @@ public static class WiredTimeConditions
         // Volt weekdays are Monday=0 through Sunday=6.
         var weekday = ((int)roomLocalTime.DayOfWeek + 6) % 7;
 
-        // Observed on AIR WIN63-202610201032-107964540: a mask with no bit set fails the condition.
+        // A mask with no bit set fails the condition.
         return (weekdayMask & (1 << weekday)) != 0
             && (monthMask & (1 << (roomLocalTime.Month - 1))) != 0
             && MatchesPart(roomLocalTime.Day, Param(config, 1), Param(config, 2, 1), Param(config, 3, 31))
@@ -35,8 +35,7 @@ public static class WiredTimeConditions
         var end = Param(config, 1);
         var seconds = now.ToUnixTimeSeconds();
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): a start of 0 is open, an end of 0 never passes: (0, future) passed,
-        // (0, 0), (past, 0), (future, 0), (0, past) and (past, past) failed, (past, future) passed.
+        // A start of 0 is open, an end of 0 never passes: (0, future) and (past, future) pass; (0, 0), (past, 0), (future, 0), (0, past) and (past, past) fail.
         return (start == 0 || seconds >= start) && end != 0 && seconds <= end;
     }
 
@@ -45,8 +44,7 @@ public static class WiredTimeConditions
         var elapsedPulses = Math.Max(0, elapsedMs) / 500;
         var targetPulses = Param(config, 0, 1);
 
-        // Observed on AIR WIN63-202610201032-107964540: both conditions pass during the pulse of their threshold. Less Than passes
-        // through it and More Than from it.
+        // Both conditions pass during the pulse of their threshold. Less Than passes through it and More Than from it.
         return moreThan ? elapsedPulses >= targetPulses : elapsedPulses <= targetPulses;
     }
 

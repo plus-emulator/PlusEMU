@@ -3,7 +3,7 @@ using static Plus.Tests.WiredR102EditorSave;
 
 namespace Plus.Tests;
 
-// Text Output Variable and Text Output Furni Name saves as Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// Text Output Variable and Text Output Furni Name saves as Habbo stores them.
 public sealed class WiredR105TextOutputTests
 {
     private const string Variable = "wf_xtra_text_output_variable";

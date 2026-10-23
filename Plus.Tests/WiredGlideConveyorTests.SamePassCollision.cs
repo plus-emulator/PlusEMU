@@ -7,8 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621 (r97_chase_collide_clk, r97_flee_corner_clk): User Stuff Collision raised by an effect
-// runs in the same pulse as that effect.
+// User Stuff Collision raised by an effect runs in the same pulse as that effect.
 public sealed partial class WiredGlideConveyorTests
 {
     private const uint CollisionMoverId = 60;

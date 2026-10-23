@@ -4,10 +4,9 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
 {
     public IReadOnlyDictionary<int, string> TextConnector { get; init; } = new Dictionary<int, string>();
     public bool Interceptable { get; init; }
-    // The AIR client only reads this flag to keep a variable out of pickers used outside a running stack (Echo,
+    // The client only reads this flag to keep a variable out of pickers used outside a running stack (Echo,
     // Variable Changed, FX override/audience, overview holder actions, leaderboard, pointer). Habbo sends it false
-    // for every variable, context ones included, so context variables stay pickable there. Only a pointer sets it (observed on
-    // AIR WIN63-202610201032-107964540).
+    // for every variable, context ones included, so context variables stay pickable there. Only a pointer sets it.
     public bool RequiresExecutionContext => Definition.IsPointer;
     public string? TextConnectorFallback { get; init; }
     public bool HasTextConnectorFallback => TextConnectorFallback is not null;
@@ -17,7 +16,7 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
     public bool CanCreateAndDelete => !ReadOnly && !IsBuiltin && !IsDerived && Definition.Target is WiredVariableTarget.User or WiredVariableTarget.Furni;
     public bool CanWriteValue => !ReadOnly && HasValue;
     public bool CanReadTimestamps => !IsBuiltin && !IsDerived;
-    /// <summary>Observed on hhus (AIR WIN63-202610131318-860371703): a global variable lists canReadCreationTime false and canReadLastUpdateTime true.</summary>
+    /// <summary>A global variable lists canReadCreationTime false and canReadLastUpdateTime true.</summary>
     public bool CanReadCreationTime => CanReadTimestamps && Definition.Target != WiredVariableTarget.Global;
     public bool CanReadLastUpdateTime => CanReadTimestamps;
     // Catalog target/type codes differ from scalar editor target codes.
@@ -80,11 +79,10 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
     }
 
     /// <summary>
-    /// The id Habbo stores in a variable slot of Give Variable, Change Variable Value and Remove Variable. Observed on AIR
-    /// WIN63-202610201032-107964540: the slot keeps any number, whether or not a variable has that id, with a "-" or "~" in front or not. A
-    /// number is stored in its plain form, after its prefix ("+5" and "007" as "5", "-007" as "-7", "~+5" as "~5", "-00" as "-0", an Arabic digit as
-    /// its value). Any other text, and a number a long cannot hold, is stored as "0", the id of no variable. A catalog id of this hotel is a
-    /// variable id and stays.
+    /// The id Habbo stores in a variable slot of Give Variable, Change Variable Value and Remove Variable. The slot keeps any number, whether or not
+    /// a variable has that id, with a "-" or "~" in front or not. A number is stored in its plain form, after its prefix ("+5" and "007" as "5", "-007" as "-7",
+    /// "~+5" as "~5", "-00" as "-0", an Arabic digit as its value). Any other text, and a number a long cannot hold, is stored as "0", the id of no
+    /// variable. A catalog id of this hotel is a variable id and stays.
     /// </summary>
     public static string StoredId(string id)
     {
@@ -218,7 +216,7 @@ internal static class WiredVariablePaging
     }
 }
 
-/// <summary>The AIR picker's "no variable" sentinel (WiredVariable "n"); an empty id means the same.</summary>
+/// <summary>The picker's "no variable" sentinel (WiredVariable "n"); an empty id means the same.</summary>
 public static class WiredVariableAbsent
 {
     public const string Id = "n";

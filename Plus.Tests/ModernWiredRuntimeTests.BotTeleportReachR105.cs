@@ -8,8 +8,7 @@ namespace Plus.Tests;
 
 public partial class ModernWiredRuntimeTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: Bot Teleport fires Bot Reaches Furni in the tick that republishes the bot, one room
-    // tick before the bot shows on the furni, and only once.
+    // Bot Teleport fires Bot Reaches Furni once, in the tick that republishes the bot. That is one room tick before the bot shows on the furni.
     [Fact]
     public void BotTeleportFiresBotReachesFurniWhenTheBotIsRepublished()
     {

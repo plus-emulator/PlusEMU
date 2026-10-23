@@ -7,8 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621 (AvatarMenuView.isShowGiveRights): the owner of a group home room can give rights
-// to any avatar below controller level 1, so a group room keeps individual rights holders at level 1.
+// The owner of a group home room can give rights to any avatar below controller level 1, so a group room keeps individual rights holders at level 1.
 public partial class PlacedFurniRoomTests
 {
     [Fact]

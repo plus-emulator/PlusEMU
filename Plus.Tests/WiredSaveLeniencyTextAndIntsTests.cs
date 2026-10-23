@@ -3,7 +3,6 @@ using Xunit;
 namespace Plus.Tests;
 
 // A save with a text or ints the box does not read is accepted and the extra part is dropped.
-// Observed on AIR WIN63-202610201032-107964540.
 public sealed class WiredSaveLeniencyTextAndIntsTests
 {
     // Boxes with no int fields and no text field.

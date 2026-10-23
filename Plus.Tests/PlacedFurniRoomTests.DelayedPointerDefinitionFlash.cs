@@ -16,9 +16,9 @@ public partial class PlacedFurniRoomTests
     private static readonly uint[] PointerBoxes = [PointerUser, PointerFurni, PointerGlobal, PointerContext];
     private static readonly uint[] PointedBoxes = [PointedUser, PointedTotal, PointedFurni, PointedGlobal, PointedContext, PointedAccessor];
 
-    // Observed on AIR WIN63-202610201032-107964540: a Give, Change or Remove Variable that runs after a delay and writes through a pointer
-    // flashes the definition box of the variable the pointer points at, with the same state and in the same batch as the same write on that
-    // variable itself. The pointer box never flashes. The stack's own batch only holds the definitions its Give boxes reset.
+    // A Give, Change or Remove Variable that runs after a delay and writes through a pointer flashes the definition box of the pointed
+    // variable, with the same state and in the same batch as a direct write. The pointer box never flashes. The stack's own batch only holds
+    // the definitions its Give boxes reset.
     [Theory]
     [InlineData("change user pointer", true, PointedUser, new[] { "2", "2", "2" })]
     [InlineData("change user", true, PointedUser, new[] { "2", "2", "2" })]
@@ -49,8 +49,8 @@ public partial class PlacedFurniRoomTests
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: without a delay a write through a pointer is ignored, so no later batch follows and the
-    // stack's own batch only holds the definitions its Give boxes reset.
+    // Without a delay a write through a pointer is ignored, so no later batch follows and the stack's own batch only holds the
+    // definitions its Give boxes reset.
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

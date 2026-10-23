@@ -4,8 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610131318-860371703: a say trigger with two effects at 0.65 and 1.3. Without Execute in Order the
-// match_to_sshot below a toggle_state or rel_mov still ran last; with it the lower match ran first.
+// Without Execute in Order a match_to_sshot below a toggle_state or rel_mov still runs last; with it the lower match runs first.
 public sealed partial class WiredGlideConveyorTests
 {
     [Theory]

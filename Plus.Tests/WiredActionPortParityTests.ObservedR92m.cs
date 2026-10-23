@@ -3,11 +3,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Official hhus r92m probes (AIR WIN63-202610131318-860371703); facts and receipts in reviews/r92-movement-facts.md.</summary>
 public sealed partial class WiredActionPortParityTests
 {
-    // r92m r92m-wf-status mru-w1/w2: move_rotate_user marks the moved owner with "wf"; f2u-w1/w2: furni_to_user lifts the owner
-    // without it. r92m-user-facing: user_to_furni keeps the facing the owner arrived with (4 after walking south, 6 after walking west).
+    // move_rotate_user marks the moved owner with "wf"; furni_to_user lifts the owner without it. user_to_furni keeps the facing the owner arrived with (4 after walking south, 6 after walking west).
     [Fact]
     public void WiredUserMovesMarkTheWfStatusAndKeepTheFacing()
     {

@@ -8,10 +8,9 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: one click on a furni that fires a passing and a failing User Clicks Furni stack sends
-    // one ObjectsDataUpdate with the boxes of every passing stack and the trigger of every failing stack, then the passing stacks' chat.
-    // A click whose stacks all fail sends its trigger flash just as fast. A click is answered as fast as a say or a furni use (median
-    // 138, 138 and 137 ms over the recorded runs), so the stacks run at the click, not on a later room pass.
+    // One click on a furni that fires a passing and a failing User Clicks Furni stack sends one ObjectsDataUpdate with the boxes
+    // of every passing stack and the trigger of every failing stack, then the passing stacks' chat. A click whose stacks all
+    // fail sends its trigger flash just as fast. The stacks run at the click, not on a later room pass.
     [Theory]
     [InlineData("pass,fail", new uint[] { 100, 101, 102, 110 })]
     [InlineData("pass,pass,fail", new uint[] { 100, 101, 102, 110, 111, 112, 120 })]

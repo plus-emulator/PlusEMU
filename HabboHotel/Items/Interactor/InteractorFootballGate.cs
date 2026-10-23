@@ -6,7 +6,7 @@ namespace Plus.HabboHotel.Items.Interactor;
 
 /// <summary>
 /// Walking through the gate puts on its look for the user's gender; walking through again gives the user's own look back.
-/// Using the gate only opens the client's editor (FurnitureClothingChangeLogic.as:68-97), so a trigger changes nothing.
+/// Using the gate only opens the client's editor, so a trigger changes nothing.
 /// </summary>
 internal sealed class InteractorFootballGate(Item gate) : IFurniInteractor
 {

@@ -8,8 +8,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: User Performs Action fires Sit or Lay in the same tick as the step onto a sit or lay tile,
-// and Stand in the same tick as the first step off it.
+// User Performs Action fires Sit or Lay in the same tick as the step onto a sit or lay tile, and Stand in the same tick as the first step off it.
 public partial class PlacedFurniRoomTests
 {
     [Theory]

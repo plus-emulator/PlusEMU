@@ -50,7 +50,7 @@ public class CatalogOfferIndex
     }
 
     // First Builders Club page the user can open that shows this offer. The info stand's Builders Club copy sends the
-    // furnidata bcofferid with page -1 (AIR WIN63-202610151745-318700621, com/sulake/habbo/ui/widget/infostand/InfoStandWidget.as:557-564).
+    // furnidata bcofferid with page -1.
     public bool TryGetBuildersClub(int offerId, Habbo habbo, [NotNullWhen(true)] out CatalogPage? page, [NotNullWhen(true)] out CatalogOffer? offer)
     {
         foreach (var candidate in _buildersClubPagesByOffer.GetValueOrDefault(offerId) ?? []) {

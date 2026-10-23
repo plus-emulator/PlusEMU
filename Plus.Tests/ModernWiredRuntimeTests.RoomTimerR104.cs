@@ -4,7 +4,7 @@ namespace Plus.Tests;
 
 public partial class ModernWiredRuntimeTests
 {
-    // Observed on AIR WIN63-202610201032-107964540 (checks every 100 ms after a Reset Timers): with n the number of whole 0.5 second pulses
+    // With n the number of whole 0.5 second pulses
     // since the reset took effect, Less Than T passes while n is at most T and More Than T passes while n is at least T.
     [Theory]
     [InlineData(0)]
@@ -25,7 +25,7 @@ public partial class ModernWiredRuntimeTests
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a negative threshold is stored; Less Than never passes and More Than always passes.
+    // A negative threshold is stored; Less Than never passes and More Than always passes.
     [Fact]
     public void ANegativeTimeThresholdNeverPassesLessThanAndAlwaysPassesMoreThan()
     {

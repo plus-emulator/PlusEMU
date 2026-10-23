@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>The 22 October boxes of the r88 dossier: registry entries and the AIR editors' save grammar (WIN63-202610131318-860371703).</summary>
+/// <summary>The 22 October boxes: registry entries and the editors' save grammar.</summary>
 public sealed class WiredOctoberEditorTests
 {
     [Theory]
@@ -37,7 +37,6 @@ public sealed class WiredOctoberEditorTests
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
         Assert.Equal(category, descriptor.Category);
         Assert.Equal(code, descriptor.EditorCode);
-        // The leaderboard was observed on hhus in r90 (ledger v39); the others still rest on the AIR source alone.
         Assert.Equal(name == "wf_xtra_var_leaderboard" ? WiredEvidenceLevel.Observed : WiredEvidenceLevel.AirSourceOnly, WiredEvidenceRegistry.LevelOf(name));
         Assert.True(WiredNativeEditorProjection.Supports(name));
         Assert.NotNull(WiredNativeEditorProjection.DefaultRuntime(1, descriptor));
@@ -61,12 +60,12 @@ public sealed class WiredOctoberEditorTests
     [InlineData("wf_cnd_user_level", new[] { 31, 0 }, false)]
     [InlineData("wf_cnd_user_level", new[] { 1, 3 }, false)]
     [InlineData("wf_xtra_var_share", new[] { 0, 1, 0 }, true)]
-    // Observed on AIR WIN63-202610201032-107964540: any non-zero flag saves and is stored as 1.
+    // Any non-zero flag saves and is stored as 1.
     [InlineData("wf_xtra_var_import", new[] { 2, 0, 0 }, true)]
     [InlineData("wf_xtra_link_speaker", new[] { 1, 0 }, true)]
     [InlineData("wf_xtra_link_speaker", new[] { 1, 2 }, false)]
     [InlineData("wf_var_pointer", new[] { -20 }, true)]
-    // Observed on AIR WIN63-202610201032-107964540: a target the form does not offer saves and is stored as furni.
+    // A target the form does not offer saves and is stored as furni.
     [InlineData("wf_var_pointer", new[] { 2 }, true)]
     public void IntFieldsFollowTheEditorRanges(string name, int[] ints, bool accepted) =>
         Assert.Equal(accepted, WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [.. ints] }));
@@ -74,14 +73,14 @@ public sealed class WiredOctoberEditorTests
     [Fact]
     public void UserLevelAdvertisesTheUserConditionFooter()
     {
-        // LevelMatches.as overrides the same members as the badge condition (class_4263.as); both get one user source and a user quantifier.
+        // Both the level condition and the badge condition get one user source and a user quantifier.
         var level = WiredNativeEditorProjection.Metadata("wf_cnd_user_level");
         var badge = WiredNativeEditorProjection.Metadata("wf_cnd_wearing_badge");
 
         Assert.Equal(badge.UsersAllowed.Single().ToArray(), level.UsersAllowed.Single().ToArray());
         Assert.Equal((badge.QuantifierType, badge.FurniAllowed.Length), (level.QuantifierType, level.FurniAllowed.Length));
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_cnd_user_level", native => native with { UserSourceTypes = [200], Quantifier = 1 }));
-        // Observed on AIR WIN63-202610131318-860371703: 11 is offered only when the stack has a Click User trigger.
+        // 11 is offered only when the stack has a Click User trigger.
         Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_cnd_user_level", native => native with { UserSourceTypes = [11], Quantifier = 1 }));
     }
 
@@ -97,7 +96,7 @@ public sealed class WiredOctoberEditorTests
             FurniSourceTypes = [100]
         });
 
-        // AIR target 1 (user) is the scalar user target 0; recipients and the reference keep their own sources.
+        // Target 1 (user) is the scalar user target 0; recipients and the reference keep their own sources.
         Assert.Equal(new[] { 0, 1, 25, 0 }, runtime.IntParams);
         Assert.Equal(200, runtime.UserSources["users"]);
         Assert.Equal(100, runtime.FurniSources["reference"]);
@@ -127,7 +126,7 @@ public sealed class WiredOctoberEditorTests
     public void SendLinkMessageCountsUtf8Bytes()
     {
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_act_send_message", native => native with { Text = new string('a', 1000) }));
-        // SendLinkMessage.as:105 measures UTF-8: 500 two-byte characters fill the 1000 bytes.
+        // The limit counts UTF-8 bytes: 500 two-byte characters fill the 1000 bytes.
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_act_send_message", native => native with { Text = new string('é', 500) }));
         Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_act_send_message", native => native with { Text = new string('é', 501) }));
         Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_act_send_message", native => native with { OwnedIntParams = [2] }));
@@ -294,7 +293,7 @@ public sealed class WiredOctoberEditorTests
         [rows.Length, .. Enumerable.Range(0, 12).SelectMany(index => index < rows.Length
             ? new[] { rows[index].Mode, rows[index].Literal, rows[index].Target } : new[] { 0, 0, -10 })];
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): the editors write 1..1200 pulses plus one, and 1201 saves.
+    // The editors write 1..1200 pulses plus one, and 1201 saves.
     [Theory]
     [InlineData("wf_cnd_time_more_than")]
     [InlineData("wf_cnd_time_less_than")]
@@ -302,7 +301,7 @@ public sealed class WiredOctoberEditorTests
     {
         Assert.True(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [1201] }));
         Assert.True(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [2] }));
-        // Observed on AIR WIN63-202610201032-107964540: any threshold is stored, also above the editor's largest.
+        // Any threshold is stored, also above the editor's largest.
         Assert.True(WiredOctoberEditorParityTests.TryCompile(name, native => native with { OwnedIntParams = [1202] }));
     }
 }

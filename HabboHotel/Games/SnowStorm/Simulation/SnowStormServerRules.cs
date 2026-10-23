@@ -26,7 +26,7 @@ public sealed class SnowStormServerRules(SnowStormArena arena)
     private readonly Dictionary<int, int> _rayGunLastBurst = [];
     private readonly HashSet<int> _rayGunArrivals = [];
 
-    /// <summary>AIR <c>class_2527.calculateDirectionTowardsCenter</c>: Direction8 from a tile towards tile (25, 25).</summary>
+    /// <summary>Direction8 from a tile towards tile (25, 25).</summary>
     public static int DirectionTowardsCenter(int tileX, int tileY) =>
         SnowStormMath.Direction360ToDirection8(SnowStormMath.GetAngleFromComponents(CenterTile - tileX, CenterTile - tileY));
 

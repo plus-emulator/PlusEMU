@@ -5,7 +5,7 @@ using Plus.HabboHotel.Rooms;
 
 namespace Plus.HabboHotel.Items.Wired.Chests;
 
-/// <summary>AIR25 class_2536 / AbstractContract: short kind, nullable rule sets, byte node kinds, optional furniture tuples.</summary>
+/// <summary>Contract wire format: short kind, nullable rule sets, byte node kinds, optional furniture tuples.</summary>
 public static class WiredNativeContractWire
 {
     public static WiredChestContract Read(IIncomingPacket packet)

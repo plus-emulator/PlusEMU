@@ -10,8 +10,8 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void WiredStartAndStopOfAGameCounterRaiseGameStartsAndGameEndsOnce()
     {
-        // Observed on AIR WIN63-202610131318-860371703: control_clock Start on wf_game_upcounter1 fires Game Starts in the Start tick, Stop fires
-        // Game Ends in the Stop tick, and a give score in between reaches Score Achieved.
+        // A control_clock Start on wf_game_upcounter1 fires Game Starts in the Start tick, Stop fires Game Ends in the Stop tick,
+        // and a give score in between reaches Score Achieved.
         var f = ClockFixture("wf_game_upcounter1", "wf_act_control_clock", [0, 100]);
         f.Walker(1, 4, 10, 4, 11);
         var events = new List<WiredEventKind>();
@@ -46,7 +46,7 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void WiredStartOfARunningGameCounterRestartsItsGameAndElapsedTime()
     {
-        // Observed on AIR WIN63-202610151745-318700621: another Start resets the running counter and fires both game triggers.
+        // Another Start resets the running counter and fires both game triggers.
         var f = ClockFixture("wf_game_upcounter1", "wf_act_control_clock", [0, 100]);
         f.Walker(1, 4, 10, 4, 11);
         var events = new List<WiredEventKind>();
@@ -156,8 +156,8 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void WiredStartOfAStoppedNonZeroGameCounterBatchesItsZeroAndCountsFromOne()
     {
-        // Observed on AIR WIN63-202610131318-860371703 (wf_game_upcounter1, 8/8): a Start on a stopped non-zero counter puts its "0" in the
-        // Start's own batch and counts from 1; a Start on a counter already at 0 has no counter entry.
+        // A Start on a stopped non-zero counter puts its "0" in the Start's own batch and counts from 1; a Start on a counter
+        // already at 0 has no counter entry.
         var item = ClockItem("wf_game_upcounter1", 203);
         var clocks = new WiredCounterController();
         clocks.Attach(item);
@@ -184,8 +184,8 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void GameCountersKeepCountingPastNinetyNineMinutesWithoutEndingTheGame()
     {
-        // Observed on AIR WIN63-202610151745-318700621: a game counter set to 99:59.5 and started shows 6000, 6001 and 6002, and the other
-        // started game counters keep counting. No upper limit is visible.
+        // A game counter set to 99:59.5 and started shows 6000, 6001 and 6002, and the other started game counters keep counting.
+        // No upper limit is visible.
         var transitions = new List<WiredClockTransition>();
         var clocks = new WiredCounterController(gameTransition: transitions.Add);
         var high = ClockItem("wf_game_upcounter1", 206);

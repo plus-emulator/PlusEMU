@@ -37,8 +37,8 @@ public partial class WiredComponent
     }
 
     // Runs only at the end of the room tick pass, after its WiredMovements, in the batch that announced the step. A resend later in the step
-    // would restart it from its start tile, so AIR (MovingObjectLogic.as:181-186) snaps the avatar back. A second move for an avatar in the
-    // same batch restarts from the same start (MovingObjectLogic.as:160-189), so at most one frame shows the old height.
+    // would restart it from its start tile, so the client snaps the avatar back. A second move for an avatar in the same batch restarts from the same start,
+    // so at most one frame shows the old height.
     private void ResendRestackedSteps()
     {
         HashSet<(int X, int Y)> tiles;

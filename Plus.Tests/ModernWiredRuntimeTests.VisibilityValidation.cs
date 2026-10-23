@@ -2,7 +2,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: Set Furni Visibility is either visible (0) or invisible (100).
+// Set Furni Visibility is either visible (0) or invisible (100).
 public partial class ModernWiredRuntimeTests
 {
     private const string VisibilityKey = "wiredfurni.error.set_furni_transparency.";

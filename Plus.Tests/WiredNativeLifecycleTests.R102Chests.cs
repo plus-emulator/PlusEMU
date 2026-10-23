@@ -4,7 +4,7 @@ using static Plus.Tests.WiredR102EditorSave;
 
 namespace Plus.Tests;
 
-// Teleport to Room and Scan Chest Furni by Type as Habbo stores and refuses them. Observed on AIR WIN63-202610201032-107964540.
+// Teleport to Room and Scan Chest Furni by Type as Habbo stores and refuses them.
 public sealed partial class WiredNativeLifecycleTests
 {
     [Fact]

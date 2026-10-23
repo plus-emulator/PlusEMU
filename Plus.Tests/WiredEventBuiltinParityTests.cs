@@ -152,7 +152,7 @@ public partial class PlacedFurniRoomTests
         // The low byte is a position in the furni's directions (0, 2, 4, 6 here): 2 faces 4.
         Assert.True(wired.WriteBuiltin(new(WiredVariableTarget.Furni, "@occupation"), furni, (1 << 16) | (2 << 8) | 2, frame));
         Assert.Equal((1, 2, 4), (item.GetX, item.GetY, item.Rotation));
-        // Observed on AIR WIN63-202610201032-107964540: a position that is not in the list changes nothing at all, also when x or y differ.
+        // A position that is not in the list changes nothing at all, also when x or y differ.
         Assert.False(wired.WriteBuiltin(new(WiredVariableTarget.Furni, "@occupation"), furni, (2 << 16) | (2 << 8) | 99, frame));
         Assert.Equal((1, 2, 4), (item.GetX, item.GetY, item.Rotation));
         Assert.False(wired.WriteBuiltin(new(WiredVariableTarget.Furni, "@position"), furni, (9 << 8) | 1, frame));

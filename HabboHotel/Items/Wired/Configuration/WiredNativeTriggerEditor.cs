@@ -12,7 +12,7 @@ internal static class WiredNativeTriggerEditor
     internal static WiredNativeEditorMetadata Metadata(string name) => name switch
     {
         "wf_trg_walks_off_furni" => new([[100, 200]], [], [100], [], [], false),
-        // Observed on hhus (AIR WIN63-202610131318-860371703): click, use and state-change triggers allow wall picks; wall clicks and state writes fire them.
+        // Click, use and state-change triggers allow wall picks; wall clicks and state writes fire them.
         // The click trigger offers picks (100) and the selector (200) only; with 200 a click on furni in the stack's selector pool fires it.
         "wf_trg_click_furni" => new([[100, 200]], [], [100], [], [], true),
         "wf_trg_click_tile" => new([[100, 200]], [], [100], [], [], false),
@@ -144,9 +144,8 @@ internal static class WiredNativeTriggerEditor
     }
 
     /// <summary>
-    /// The action of a trigger or condition save. Observed on AIR WIN63-202610201032-107964540: the hotel stores action 9, which the client
-    /// does not offer, and any filter text for every action. No avatar action matches 9, and a filter this server cannot read leaves the
-    /// action unfiltered.
+    /// The action of a trigger or condition save. The hotel stores action 9, which the client does not offer, and any filter text for every action.
+    /// No avatar action matches 9, and a filter this server cannot read leaves the action unfiltered.
     /// </summary>
     internal static bool TryStoredAvatarAction(int code, string text, out ImmutableArray<int> parameters)
     {

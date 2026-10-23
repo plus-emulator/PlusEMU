@@ -88,8 +88,7 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
                 return false;
             }
 
-            // Observed on AIR WIN63-202610201032-107964540: a variable of another domain than the target is accepted. It reads as no
-            // variable.
+            // A variable of another domain than the target is accepted. It reads as no variable.
             if ((int)parsed != target) {
                 return true;
             }
@@ -195,8 +194,7 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
         var frame = context.VariableFrame;
         var reference = new WiredVariableReference((WiredVariableTarget)p[0], variable);
 
-        // Observed on AIR WIN63-202610201032-107964540: a pointer shows the variable it points at, with that variable's Text Connector
-        // labels, and leaves its placeholder as written when it points at nothing.
+        // A pointer shows the variable it points at, with that variable's Text Connector labels, and leaves its placeholder as written when it points at nothing.
         if (_variables.TextSource(reference, frame) is not { } source) {
             return text;
         }
@@ -207,8 +205,7 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
             ? value.Value is >= int.MinValue and <= int.MaxValue && labels?.GetValueOrDefault((int)value.Value) is { } label ? label
                 : labels is WiredTextConnector { Fallback: { } fallback } ? fallback : value.Value.ToString(CultureInfo.InvariantCulture)
             : "null";
-        // Observed on AIR WIN63-202610201032-107964540: a furni or user without the variable shows "null" and a bot is left out. With
-        // nobody to show, the placeholder stays as written.
+        // A furni or user without the variable shows "null" and a bot is left out. With nobody to show, the placeholder stays as written.
         var values = WiredVariableExecutors.Select(frame, reference.Target, p[3], p[4], WiredVariableExecutors.Picks(configuration, p[4]))
             .Where(holder => !WiredVariableRuntimeFrames.IsBot(holder)).Select(Shown).ToArray();
 

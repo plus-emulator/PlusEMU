@@ -6,8 +6,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610131318-860371703: a Wired counter's Start, Stop and Reset fire wf_trg_stuff_state once each;
-// an adjust and the per-second ticks never do.
+// A Wired counter's Start, Stop and Reset fire wf_trg_stuff_state once each; an adjust and the per-second ticks never do.
 public partial class PlacedFurniRoomTests
 {
     [Fact]
@@ -21,7 +20,6 @@ public partial class PlacedFurniRoomTests
         var clocks = (WiredCounterController)typeof(Plus.HabboHotel.Rooms.Instance.WiredComponent)
             .GetField("_counters", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(_room.GetWired())!;
 
-        // Far past the room's own clock, so only the polls below tick the counter.
         const long start = 1L << 40;
 
         void Cycle()
@@ -35,7 +33,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("30", counter.LegacyDataString);
         Assert.Equal(0, StateLines().Changed);
 
-        // The Start keeps the adjusted 30 and still changes the state once.
         Assert.True(clocks.Control(counter, 0, start, WiredClockOrigin.ModernWired));
         Cycle();
         Assert.Equal("30", counter.LegacyDataString);

@@ -7,11 +7,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: the Movement Curve add-on (ints: operand kind, strength, reference target) saves every one
-// of these saves and stores it in a normal form. The operand kind above 1 is stored as 1 and below 0 as 0, the strength is clamped to
-// -1000..1000, a reference target other than 0, 1, -10 and -20 is stored as 0, a missing int takes the frame default [0, 160, -20], an
-// extra int and a text are dropped. Two variables get the variable count key. Each save gets exactly one answer, and the box reopens with
-// the stored form. The saves run in the order of the observation, on one box.
+// The Movement Curve add-on stores every save in a normal form. The operand kind is limited to 0..1 and the strength to -1000..1000.
+// A reference target other than 0, 1, -10 and -20 becomes 0. A missing int takes the default [0, 160, -20]. An extra int and a text are dropped.
+// Two variables get the variable count key. Each save gets exactly one answer, and the box reopens with the stored form. The saves run in order on one box.
 public partial class PlacedFurniRoomTests
 {
     private const uint MovementCurveBox = 960;

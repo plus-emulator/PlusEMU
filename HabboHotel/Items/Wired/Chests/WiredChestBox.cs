@@ -61,7 +61,7 @@ public class WiredChestBox : WiredModernBox
     }
 
     /// <summary>
-    /// The pick rule of a new save that a stored row is not held to. Observed on AIR WIN63-202610201032-107964540: Chest Has Item Type
+    /// The pick rule of a new save that a stored row is not held to. Chest Has Item Type
     /// accepts only a Furni Chest and answers a Credit Chest, a mix of both or any other furni with the furni chest key. The chest
     /// scanner follows the same rule. A second-list pick that names no furni is dropped on a contract card, not refused.
     /// </summary>
@@ -78,7 +78,7 @@ public class WiredChestBox : WiredModernBox
             return false;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: Initiate Transaction picks its chests from the first pick list, and a save with no
+        // Initiate Transaction picks its chests from the first pick list, and a save with no
         // chest there is refused with the chest key.
         if (Descriptor.CanonicalName == "wf_act_init_transaction" && proposed.FurniSources.GetValueOrDefault("f0", 100) == 100
             && !proposed.SelectedItems.Any(id => Instance.GetRoomItemHandler().GetItem(id) is { } item && Chests.Read(item) is not null)) {
@@ -109,7 +109,7 @@ public class WiredChestBox : WiredModernBox
 
     private static readonly PickRule ContractsOrTradeWired = new(IsTransactionSource, "wiredfurni.error.require_contracts_or_trade_wired");
 
-    // Observed on AIR WIN63-202610201032-107964540: these boxes accept the three contracts and the Custom Contract add-on, and refuse a
+    // These boxes accept the three contracts and the Custom Contract add-on, and refuse a
     // pick of any other furni, the Initiate Transaction box included, from either pick list, with the key.
     private static readonly FrozenDictionary<string, PickRule> PickRules = new Dictionary<string, PickRule>
     {
@@ -118,12 +118,12 @@ public class WiredChestBox : WiredModernBox
         { "wf_trg_transaction_fail", ContractsOrTradeWired }
     }.ToFrozenDictionary();
 
-    // Observed r93h/r93j r93-p2-chests-empty (hhus, WIN63-202610131318): give_currency and give_furni refuse a picked chest that is not
+    // give_currency and give_furni refuse a picked chest that is not
     // an upgraded Wired chest of their kind ("wiredfurni.error.require_coin_chests" / "require_furni_chests"); after the free Wired
     // upgrade the same saves are accepted. The chest conditions and the scan add-on accept normal chests.
     private bool GiveChestsAccepted(WiredConfiguration proposed, ref string error)
     {
-        // Observed on AIR WIN63-202610151745-318700621 (r97_chest_none): Chest Has Items with a picked furni that is not a chest is
+        // Chest Has Items with a picked furni that is not a chest is
         // refused with "wiredfurni.error.require_chests"; any chest, upgraded or not, is accepted.
         if (Descriptor.CanonicalName is "wf_cnd_chest_has_items" or "wf_cnd_chest_has_item_type") {
             var slot = Descriptor.CanonicalName == "wf_cnd_chest_has_items" ? "f0" : "f1";
@@ -230,8 +230,8 @@ public class WiredChestBox : WiredModernBox
         var amount = types == null ? chests.Sum(chest => (long)chest.Amount)
             : chests.Sum(chest => (long)chest.Items.Count(item => types.Contains(WiredChestItemType.Of(item))));
 
-        // Observed on AIR WIN63-202610151745-318700621: with no chest to check, Chest Has Items passes whatever the comparison.
-        // Observed on AIR WIN63-202610201032-107964540: Chest Has Item Type with no chest counts 0 and compares.
+        // With no chest to check, Chest Has Items passes whatever the comparison.
+        // Chest Has Item Type with no chest counts 0 and compares.
         if (chests.Length == 0 && types == null) {
             return true;
         }
@@ -314,9 +314,8 @@ public sealed class WiredChestAction(Room room, Item item, WiredBoxDescriptor de
         var kind = Descriptor.CanonicalName == "wf_act_give_currency" ? WiredChestKind.Coins : WiredChestKind.Furni;
         var snapshots = Chests.Read(picked).Where(chest => chest.Kind == kind && chest.Usable).ToArray();
 
-        // Observed r93j r93-p2-chests-empty (hhus, WIN63-202610131318): a give from upgraded but locked (and empty) chests answers each
-        // triggering user with WiredTransactionFail reason 15 (pkts 96608, 97045) instead of failing silently. Observed on AIR
-        // WIN63-202610151745-318700621: a give is no transaction, so its failure does not fire Transaction Failed.
+        // A give from upgraded but locked (and empty) chests answers each triggering user with WiredTransactionFail reason 15
+        // instead of failing silently. A give is no transaction, so its failure does not fire Transaction Failed.
         if (snapshots.Length == 0) {
             foreach (var actor in actors) {
                 Chests.Fail(actor, Item.Id, WiredChestFailure.NoOrLockedChests, fireTrigger: false);
@@ -326,8 +325,8 @@ public sealed class WiredChestAction(Room room, Item item, WiredBoxDescriptor de
             return false;
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: after the chest check, a user who may not trade gets reason 8,
-        // with no wired.error dialog and no Transaction Failed. The order against invalid settings is not proven on Habbo.
+        // After the chest check, a user who may not trade gets reason 8,
+        // with no wired.error dialog and no Transaction Failed.
         var traders = actors.Where(actor => !Chests.CannotTrade(actor.GetClient()!.GetHabbo())).ToArray();
 
         foreach (var actor in actors.Except(traders)) {
@@ -398,7 +397,7 @@ public sealed class WiredChestTrigger(Room room, Item item, WiredBoxDescriptor d
     {
         var selected = context.ConfigurationOf(this).SelectedItems;
 
-        // Observed on hhus: a fail trigger with no source selected does not fire for a session that wired cancelled.
+        // A fail trigger with no source selected does not fire for a session that wired cancelled.
         if (selected.Length == 0) {
             return !context.Event.CancelledByWired;
         }

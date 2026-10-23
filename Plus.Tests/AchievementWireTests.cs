@@ -9,17 +9,14 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Reads the achievement packets exactly the way the AIR client (WIN63-202609161723) parses them; a payload with bytes left
-// over or missing fails.
+// Reads the achievement packets exactly the way the AIR client parses them; a payload with bytes left over or missing fails.
 public class AchievementWireTests
 {
     private static readonly AchievementSnapshotService Service = new();
 
-    // package_92.class_3624, the AchievementData of 1487, 1049 and 564.
     public sealed record Data(int AchievementId, int Level, string Badge, int ScoreAtStart, int ScoreLimit, int RewardAmount, int RewardType,
         int CurrentPoints, bool FinalLevel, string Category, string SubCategory, int LevelCount, int DisplayMethod, short State);
 
-    // package_53.class_3440, the level-up of 2028.
     public sealed record Unlock(int Type, int Level, int BadgeId, string Badge, int Points, int Reward, int RewardType, int BonusPoints,
         int AchievementId, string RemovedBadge, string Category, bool ShowDialog, int OwnerCount, int RarityId);
 
@@ -42,7 +39,7 @@ public class AchievementWireTests
         // Listed in habbo.com order (official id), whatever order the dictionary holds.
         Assert.Equal(new Data(10, 1, "ACH_Fresh1", 0, 2, 10, 0, 0, false, "identity", "", 2, 0, 1), entries[0]);
         Assert.Equal(new Data(20, 1, "ACH_Done1", 0, 3, 10, 0, 3, true, "explore", "", 1, 0, 2), entries[1]);
-        // Level 3 runs from the level 2 threshold to its own; AIR shows (7 - 5) of (10 - 5).
+        // Level 3 runs from the level 2 threshold to its own, so the bar shows (7 - 5) of (10 - 5).
         Assert.Equal(new Data(30, 3, "ACH_Ladder3", 5, 10, 10, 0, 7, false, "social", "", 4, 0, 1), entries[2]);
     }
 
@@ -99,7 +96,7 @@ public class AchievementWireTests
 
         var reader = new FlashIncomingPacket { Buffer = Payload(new BadgeDefinitionsComposer(Service.CaptureDefinitions([profile, ladder]))) };
 
-        // class_3075 / class_3733: count, then per code its levels; the badge key is "ACH_" + code + level.
+        // Count, then per code its levels; the badge key is "ACH_" + code + level.
         Assert.Equal(1, reader.ReadInt());
         Assert.Equal(("Ladder", 2), (reader.ReadString(), reader.ReadInt()));
         Assert.Equal((1, 1, 2, 5), (reader.ReadInt(), reader.ReadInt(), reader.ReadInt(), reader.ReadInt()));

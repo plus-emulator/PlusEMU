@@ -182,7 +182,7 @@ public partial class PlacedFurniRoomTests
 
     // The raw save of the card's own kind, from its default editor record: ints, text, picks, then its footer (delay, quantifier or the two
     // selector flags), furni and user sources, variables and the second picks. The picks are furni 600 plus nn.
-    private string SaveLists(WiredConfigurationService service, WiredBoxDescriptor descriptor, int[] first, int[] second)
+    private string SaveLists(WiredConfigurationService service, WiredBoxDescriptor descriptor, int[] first, int[] second, string? name = null)
     {
         var native = WiredNativeEditorProjection.DefaultNative(descriptor);
         var furni = native.FurniSourceTypes.ToArray();
@@ -192,7 +192,7 @@ public partial class PlacedFurniRoomTests
         }
 
         // A variable box needs a name.
-        var text = descriptor.Category == WiredBoxCategory.Variable ? "r125n" : native.Text;
+        var text = name ?? (descriptor.Category == WiredBoxCategory.Variable ? "r125n" : native.Text);
         List<object> body = [(int)SecondListBox, native.OwnedIntParams.Length, .. native.OwnedIntParams.Cast<object>(), text,
             first.Length, .. first.Select(id => (object)(int)(SecondListBase + id))];
 

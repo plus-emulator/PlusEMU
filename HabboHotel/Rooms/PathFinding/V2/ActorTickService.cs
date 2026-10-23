@@ -10,6 +10,7 @@ public sealed class ActorTickService(Room room)
             return false;
         }
 
+        actor.CompleteWake();
         actor.IdleTime++;
         actor.HandleSpamTicks();
         // A sign lasts its own time while the avatar stands still too.

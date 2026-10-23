@@ -870,6 +870,12 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         if (turnsHeads) {
                             room.GetRoomUserManager().TurnHeadsToward(user);
                         }
+
+                        // Observed on AIR WIN63-202610201032-107964540 (4 of 4 runs for each visibility): a Show Message wakes a sleeping
+                        // user on the next room tick, as their own chat does.
+                        if (!user.IsBot) {
+                            user.UnIdle(atRoomTick: true);
+                        }
                     }, context);
 
                     changed = true;

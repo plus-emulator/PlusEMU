@@ -361,7 +361,11 @@ public class RoomUser
         return GetClient()?.GetHabbo()?.Username ?? "Unknown User";
     }
 
-    public void UnIdle()
+    /// <summary>
+    /// The avatar did something. Observed on AIR WIN63-202610201032-107964540: a sleeping avatar that talks, waves, signs or dances, or is
+    /// spoken to by a Show Message, wakes on the next room tick, not at once (<paramref name="atRoomTick"/>); a walk wakes it at once.
+    /// </summary>
+    public void UnIdle(bool atRoomTick = false)
     {
         var room = GetRoom();
 
@@ -379,11 +383,42 @@ public class RoomUser
 
         IdleTime = 0;
 
-        if (IsAsleep) {
-            IsAsleep = false;
-            room.SendPacket(new SleepComposer(VirtualId, false));
-            room.GetWired().Dispatch(new(WiredEventKind.AvatarAction) { Actor = this, Action = (int)WiredAvatarAction.Awake });
+        if (!IsAsleep) {
+            return;
         }
+
+        if (atRoomTick) {
+            WakePending = true;
+
+            return;
+        }
+
+        WakeUp(room);
+    }
+
+    /// <summary>The avatar woke up on the room tick after an action (see <see cref="UnIdle"/>).</summary>
+    public bool WakePending;
+
+    public void CompleteWake()
+    {
+        if (WakePending && GetRoom() is { } room) {
+            WakeUp(room);
+        }
+
+        WakePending = false;
+    }
+
+    private void WakeUp(Room room)
+    {
+        WakePending = false;
+
+        if (!IsAsleep) {
+            return;
+        }
+
+        IsAsleep = false;
+        room.SendPacket(new SleepComposer(VirtualId, false));
+        room.GetWired().Dispatch(new(WiredEventKind.AvatarAction) { Actor = this, Action = (int)WiredAvatarAction.Awake });
     }
 
     public void Dispose()

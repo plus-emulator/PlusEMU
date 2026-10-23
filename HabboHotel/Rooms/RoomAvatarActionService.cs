@@ -128,10 +128,11 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             user.DanceId = 0;
         }
 
-        user.UnIdle();
+        user.UnIdle(atRoomTick: true);
         room.SendPacket(new ActionComposer(user.VirtualId, action));
 
         if (action == 5) {
+            user.WakePending = false;
             user.IsAsleep = true;
             room.SendPacket(new SleepComposer(user.VirtualId, true));
         }
@@ -165,7 +166,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             return;
         }
 
-        user.UnIdle();
+        user.UnIdle(atRoomTick: true);
 
         if (danceId < 0 || danceId > 4) {
             danceId = 0;
@@ -295,7 +296,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
         }
 
         var now = clock.GetUtcNow();
-        user.UnIdle();
+        user.UnIdle(atRoomTick: true);
         user.ShowSign(signId, now + SignDuration);
         room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)
         { Actor = user, Action = (int)WiredAvatarAction.Sign, Code = signId });

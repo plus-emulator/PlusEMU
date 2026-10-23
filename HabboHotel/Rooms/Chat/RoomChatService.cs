@@ -84,7 +84,7 @@ public sealed class RoomChatService(
             user.LastBubble = colour;
         }
         else {
-            user.UnIdle();
+            user.UnIdle(atRoomTick: true);
         }
 
         if (habbo.FloodUntil is { } floodUntil && now < floodUntil) {
@@ -148,7 +148,7 @@ public sealed class RoomChatService(
         questManager.ProgressUserQuest(session, QuestType.SocialChat);
 
         if (shout) {
-            user.UnIdle();
+            user.UnIdle(atRoomTick: true);
         }
 
         user.OnChat(user.LastBubble, message, shout);

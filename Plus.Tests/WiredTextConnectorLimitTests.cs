@@ -93,4 +93,16 @@ public sealed class WiredTextConnectorLimitTests
         Assert.Equal(700, parsed[7].Length);
         Assert.Equal(400, parsed.Fallback!.Length);
     }
+
+    // The same row compiled the way a stored box is loaded: the limit belongs to the save, so a row an older server stored must load.
+    [Fact]
+    public void AStoredTextOverTheByteLimitStillLoads()
+    {
+        Assert.True(Plus.HabboHotel.Items.Wired.Configuration.WiredBoxRegistry.TryGet(Box, out var descriptor));
+        var text = "7=" + new string('é', 600);
+        var native = Plus.HabboHotel.Items.Wired.Configuration.WiredNativeEditorProjection.DefaultNative(descriptor) with { Text = text };
+
+        Assert.True(Plus.HabboHotel.Items.Wired.Configuration.WiredNativeEditorProjection.TryCompile(1, descriptor, native, out var runtime));
+        Assert.Equal(text, runtime.Origin!.Native.Text);
+    }
 }

@@ -47,15 +47,20 @@ internal static class WiredToggleStateTargets
 
     private static readonly HashSet<string> RandomUntouched = new(StringComparer.OrdinalIgnoreCase)
     {
-        "wf_tile1", "wf_tile2", "wf_pyramid", "wf_blob", "wf_box", "wf_button", "wf_arrowplate", "wf_pressureplate"
+        "wf_tile1", "wf_tile2", "wf_pyramid", "wf_box", "wf_arrowplate", "wf_arrowplate_8dir", "wf_pressureplate", "wf_ringplate",
+        "wf_antenna1", "wf_antenna2"
     };
+
+    private static bool LeftAloneByRandom(string name) => RandomUntouched.Contains(name)
+        || name.StartsWith("wf_blob", StringComparison.OrdinalIgnoreCase) || name.StartsWith("wf_button", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// The furni Toggle to Random changes. Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs, 24 firings each): it changes colour
-    /// tiles, floor switches, number tiles, glow balls, blocks, knobs, toggles and fire gates, but no Wired box, the two plain game tiles,
-    /// the pyramid, the blob, the box, the button, the arrow plate or the pressure plate.
+    /// tiles, floor switches, number tiles, glow balls, blocks, knobs, toggles, glass doors, sliders, team tiles, team meters, mazes and
+    /// fire gates, but no Wired box, the two plain game tiles, the pyramid, the box, the arrow and pressure plates, the antennas, the
+    /// blobs or the buttons.
     /// </summary>
-    internal static Item[] ResolveRandom(IEnumerable<Item> targets) => [.. targets.Where(item => !item.IsWired && !RandomUntouched.Contains(item.Definition.ItemName))];
+    internal static Item[] ResolveRandom(IEnumerable<Item> targets) => [.. targets.Where(item => !item.IsWired && !LeftAloneByRandom(item.Definition.ItemName))];
 
     /// <summary>A plain state furni whose new state only goes out in the tick's ObjectsDataUpdate (see WiredComponent.PublishState).</summary>
     internal static bool WritesOnlyBatchData(Item item) => item.IsFloorItem && item.ExtraData is DataFormat.LegacyDataFormat

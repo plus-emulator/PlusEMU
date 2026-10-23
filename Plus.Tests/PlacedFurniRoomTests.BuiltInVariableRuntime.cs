@@ -16,7 +16,7 @@ public partial class PlacedFurniRoomTests
 {
     private const uint RuntimeTile = 961, RuntimeSpeech = 962, RuntimeBox = 963;
 
-    private (RoomUser Actor, Item Tile, WiredConfigurationService Service) BuiltInRuntimeRoom(int modes = 7, string state = "0")
+    private (RoomUser Actor, Item Tile, WiredConfigurationService Service) BuiltInRuntimeRoom(int modes = 7, string state = "0", int x = 2, int y = 2, int rotation = 0)
     {
         var service = UseVariableRows();
         var users = new RoomUserManager(_room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(),
@@ -29,7 +29,7 @@ public partial class PlacedFurniRoomTests
         var tile = Furni(RuntimeTile, InteractionType.None, WiredBoxType.None);
         tile.Definition.Modes = modes;
         tile.ExtraData = new LegacyDataFormat { Data = state };
-        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, tile, 2, 2, 0, true, false, false));
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, tile, x, y, rotation, true, false, false));
         AddSpeechBox(RuntimeSpeech, "wf_trg_says_something", new() { IntParams = [1, 0, 0], Text = "go" }, 0, 1, 1);
 
         return (actor, tile, service);

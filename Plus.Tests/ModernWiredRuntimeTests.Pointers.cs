@@ -14,7 +14,7 @@ namespace Plus.Tests;
 public partial class ModernWiredRuntimeTests
 {
     private const uint PointedOwner = 5;
-    private const uint UserA = 610, UserB = 611, UserFlag = 612, FurniA = 620, GlobalA = 630, GlobalB = 631, ContextT = 640, Accessor = 641;
+    private const uint UserA = 610, UserB = 611, UserFlag = 612, UserC = 613, FurniA = 620, GlobalA = 630, GlobalB = 631, ContextT = 640, Accessor = 641;
     private const uint UserPointer = 650, FurniPointer = 651, GlobalPointer = 652, ContextPointer = 653;
 
     // AIR variable targets: 0 furni, 1 user, -10 global, -20 context.
@@ -27,6 +27,7 @@ public partial class ModernWiredRuntimeTests
             [UserA] = Plain(UserA, "pu_a", WiredVariableTarget.User),
             [UserB] = Plain(UserB, "pu_b", WiredVariableTarget.User),
             [UserFlag] = Plain(UserFlag, "pu_flag", WiredVariableTarget.User) with { HasValue = false },
+            [UserC] = Plain(UserC, "pu_c", WiredVariableTarget.User),
             [FurniA] = Plain(FurniA, "pf_a", WiredVariableTarget.Furni),
             [GlobalA] = Plain(GlobalA, "pg_a", WiredVariableTarget.Global),
             [GlobalB] = Plain(GlobalB, "pg_b", WiredVariableTarget.Global),
@@ -83,7 +84,7 @@ public partial class ModernWiredRuntimeTests
 
         /// <summary>A box saved from its native editor row on the trigger's tile; each new box stands above the last one.</summary>
         public void Native(string name, int[] owned, string[] variables, string text = "", int[]? furni = null, int[]? users = null,
-            uint[]? picks = null, Func<uint, IReadOnlyDictionary<int, string>>? connector = null)
+            uint[]? picks = null, Func<uint, IReadOnlyDictionary<int, string>>? connector = null, int delay = 0)
         {
             var id = _next++;
             var item = S.Place(id, name, 0, 0);
@@ -99,7 +100,8 @@ public partial class ModernWiredRuntimeTests
                 VariableIds = [.. variables],
                 FurniSourceTypes = furni is null ? native.FurniSourceTypes : [.. furni],
                 UserSourceTypes = users is null ? native.UserSourceTypes : [.. users],
-                PrimaryItems = [.. (picks ?? []).Select(pick => new WiredNativeItemReference(pick, false))]
+                PrimaryItems = [.. (picks ?? []).Select(pick => new WiredNativeItemReference(pick, false))],
+                Delay = delay > 0 ? delay : native.Delay
             };
             Assert.True(WiredNativeEditorProjection.TryCompile(id, descriptor, native, out var runtime, WiredNativeEditorProjection.AnyTriggerContext), name);
             Assert.True(box.TryValidateConfiguration(runtime, out var validated, out var error), error);
@@ -108,10 +110,27 @@ public partial class ModernWiredRuntimeTests
         }
 
         /// <summary>Give Variable on the context accessor: the box id the pointer should follow.</summary>
-        public void Point(uint box) => Give(AirContext, $"ctx:{Accessor}", box);
+        public void Point(uint box, int delay = 0) => Give(AirContext, $"ctx:{Accessor}", box, delay: delay);
 
-        public void Give(int airTarget, string variable, long value, uint[]? picks = null) => Native("wf_act_give_var",
-            [airTarget, 0, (int)value, 1, 0, -10, 0], [variable, "n"], furni: picks is null ? [0, 200] : [100, 200], users: [0, 200], picks: picks);
+        public void Give(int airTarget, string variable, long value, uint[]? picks = null, int delay = 0) => Native("wf_act_give_var",
+            [airTarget, 0, (int)value, 1, 0, -10, 0], [variable, "n"], furni: picks is null ? [0, 200] : [100, 200], users: [0, 200], picks: picks, delay: delay);
+
+        /// <summary>The stack fires, then the clock runs on so that its delayed actions run.</summary>
+        public WiredRuntimeContext FireAndWait(int milliseconds)
+        {
+            var context = S.Fire();
+            S.F.Advance(milliseconds);
+
+            return context;
+        }
+
+        public long? Read(int airTarget, string token, Plus.HabboHotel.Items.Item? furni = null)
+        {
+            var target = airTarget == AirUser ? WiredVariableTarget.User : airTarget == AirFurni ? WiredVariableTarget.Furni : WiredVariableTarget.Global;
+            var holder = airTarget == AirUser ? WiredVariableRuntimeFrames.UserHolder(S.F.User) : airTarget == AirFurni ? WiredVariableRuntimeFrames.FurniHolder(furni!) : new(WiredVariableTarget.Global, 0, 0);
+
+            return Module.Read(new(target, token), holder, new(1, [holder]))?.Value;
+        }
 
         /// <summary>Text Output Variable: number or text mode, the first holder's value, the triggering user or the given sources.</summary>
         public void Output(string placeholder, int airTarget, string variable, bool textMode = false, int furni = 0, int user = 0,
@@ -312,5 +331,170 @@ public partial class ModernWiredRuntimeTests
         p.Output("b", AirUser, $"user:{UserB}");
 
         Assert.Equal("b=2", p.Shown("b=$(b)"));
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540 (r124 delay 1 and 2 operands): a Change Variable or Give Variable that runs after a delay
+    // reads a pointer as its value source, like the variable it points at.
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void ADelayedChangeVariableReadsAPointerAsTheValueSource(int delay)
+    {
+        using var p = new PointerStack();
+        p.SetUser(UserA, p.S.F.User, 7);
+        p.SetUser(UserB, p.S.F.User, 100);
+        p.Point(UserA);
+        p.Native("wf_act_change_var_val", [AirUser, 1, 1, 0, 0, AirUser, 0], [$"user:{UserB}", "user:650"], furni: [0, 0], users: [0, 0], delay: delay);
+
+        p.FireAndWait(delay * 500 + 500);
+
+        Assert.Equal(107, p.Read(AirUser, $"custom:{UserB}"));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void ADelayedGiveVariableReadsAPointerAsTheValueSource(int delay)
+    {
+        using var p = new PointerStack();
+        p.SetUser(UserA, p.S.F.User, 7);
+        p.SetUser(UserB, p.S.F.User, 2);
+        p.Point(UserA);
+        p.Native("wf_act_give_var", [AirUser, 0, 0, 1, 1, AirUser, 0], [$"user:{UserB}", "user:650"], furni: [0, 0], users: [0, 0], delay: delay);
+
+        p.FireAndWait(delay * 500 + 500);
+
+        Assert.Equal(7, p.Read(AirUser, $"custom:{UserB}"));
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540 (r124 readtime e1 and e3): the delayed box reads the pointer when it runs, with the
+    // accessor the stack holds then, not the one it held when the box was reached.
+    [Fact]
+    public void ADelayedReadFollowsTheAccessorAsItIsWhenTheBoxRuns()
+    {
+        using var p = new PointerStack();
+        p.SetUser(UserA, p.S.F.User, 7);
+        p.SetUser(UserB, p.S.F.User, 2);
+        p.SetUser(UserC, p.S.F.User, 100);
+        p.Point(UserA);
+        p.Native("wf_act_change_var_val", [AirUser, 1, 1, 0, 0, AirUser, 0], [$"user:{UserC}", "user:650"], furni: [0, 0], users: [0, 0], delay: 2);
+        p.Point(UserB, delay: 1);
+
+        p.FireAndWait(1500);
+
+        Assert.Equal(102, p.Read(AirUser, $"custom:{UserC}"));
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540 (r124 delay 1 destinations, delay targets d1-d5): Give, Change and Remove that run after a
+    // delay write through a pointer of any target to the variable it points at.
+    [Fact]
+    public void ADelayedWriteThroughAUserPointerChangesThePointedVariable()
+    {
+        using var p = new PointerStack();
+        p.SetUser(UserA, p.S.F.User, 7);
+        p.Point(UserA);
+        p.Native("wf_act_change_var_val", [AirUser, 1, 0, 0, 5, -10, 0], ["user:650", "n"], furni: [0, 0], users: [0, 0], delay: 1);
+
+        p.FireAndWait(1000);
+
+        Assert.Equal(12, p.Read(AirUser, $"custom:{UserA}"));
+    }
+
+    [Fact]
+    public void ADelayedGiveThroughAUserPointerGivesThePointedVariable()
+    {
+        using var p = new PointerStack();
+        p.SetUser(UserA, p.S.F.User, 7);
+        p.Point(UserA);
+        p.Native("wf_act_give_var", [AirUser, 0, 5, 1, 0, -10, 0], ["user:650", "n"], furni: [0, 200], users: [0, 200], delay: 1);
+
+        p.FireAndWait(1000);
+
+        Assert.Equal(5, p.Read(AirUser, $"custom:{UserA}"));
+    }
+
+    [Fact]
+    public void ADelayedRemoveThroughAUserPointerRemovesThePointedVariable()
+    {
+        using var p = new PointerStack();
+        p.SetUser(UserA, p.S.F.User, 7);
+        p.Point(UserA);
+        p.Native("wf_act_remove_var", [AirUser], ["user:650"], delay: 1);
+
+        p.FireAndWait(1000);
+
+        Assert.Null(p.Read(AirUser, $"custom:{UserA}"));
+    }
+
+    [Fact]
+    public void ADelayedChangeThroughAFurniPointerChangesThePointedFurniVariable()
+    {
+        using var p = new PointerStack();
+        p.SetFurni(FurniA, p.S.Blocks[0], 21);
+        p.Point(FurniA);
+        p.Native("wf_act_change_var_val", [AirFurni, 1, 0, 0, 1, -10, 0], ["furni:651", "n"], furni: [100, 200], users: [0, 200],
+            picks: [p.S.Blocks[0].Id], delay: 1);
+
+        p.FireAndWait(1000);
+
+        Assert.Equal(22, p.Read(AirFurni, $"custom:{FurniA}", p.S.Blocks[0]));
+    }
+
+    [Fact]
+    public void ADelayedChangeThroughAGlobalPointerChangesThePointedGlobal()
+    {
+        using var p = new PointerStack();
+        p.SetGlobal(GlobalA, 33);
+        p.Point(GlobalA);
+        p.Native("wf_act_change_var_val", [AirGlobal, 0, 0, 0, 9, -10, 0], ["room:652", "n"], delay: 1);
+
+        p.FireAndWait(1000);
+
+        Assert.Equal(9, p.Read(AirGlobal, $"custom:{GlobalA}"));
+    }
+
+    [Fact]
+    public void ADelayedChangeThroughAContextPointerChangesThePointedContextVariable()
+    {
+        using var p = new PointerStack();
+        p.Give(AirContext, $"ctx:{ContextT}", 44);
+        p.Point(ContextT);
+        p.Native("wf_act_change_var_val", [AirContext, 1, 0, 0, 1, -10, 0], ["ctx:653", "n"], delay: 1);
+
+        var context = p.FireAndWait(1000);
+
+        Assert.Equal(45, context.VariableFrame!.Context.Read(new(ContextT, WiredVariableTarget.Context, 0))?.Value);
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540 (r124 delay targets): a delayed box reads a global or context pointer as its value source.
+    [Theory]
+    [InlineData(AirGlobal, "room:652", GlobalA, 133)]
+    [InlineData(AirContext, "ctx:653", ContextT, 144)]
+    public void ADelayedChangeReadsAGlobalOrContextPointerAsTheValueSource(int airSource, string pointer, uint pointed, long expected)
+    {
+        using var p = new PointerStack();
+        p.SetUser(UserB, p.S.F.User, 100);
+        p.SetGlobal(GlobalA, 33);
+        p.Give(AirContext, $"ctx:{ContextT}", 44);
+        p.Point(pointed);
+        p.Native("wf_act_change_var_val", [AirUser, 1, 1, 0, 0, airSource, 0], [$"user:{UserB}", pointer], furni: [0, 0], users: [0, 0], delay: 1);
+
+        p.FireAndWait(1000);
+
+        Assert.Equal(expected, p.Read(AirUser, $"custom:{UserB}"));
+    }
+
+    // A pointer that points at nothing stays a no-op after a delay too.
+    [Fact]
+    public void ADelayedWriteThroughAPointerThatPointsAtNothingChangesNothing()
+    {
+        using var p = new PointerStack();
+        p.SetUser(UserA, p.S.F.User, 7);
+        p.Native("wf_act_give_var", [AirUser, 0, 5, 1, 0, -10, 0], ["user:650", "n"], furni: [0, 200], users: [0, 200], delay: 1);
+
+        p.FireAndWait(1000);
+
+        Assert.Equal(7, p.Read(AirUser, $"custom:{UserA}"));
+        Assert.Null(p.Read(AirUser, $"custom:{UserB}"));
     }
 }

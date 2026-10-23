@@ -28,7 +28,14 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
                 native = native with { Quantifier = 0 };
             }
 
-            if (Envelope is not (WiredBoxCategory.Addon or WiredBoxCategory.Variable) && !WiredNativeEditorProjection.TryLimitPicks(native, out native)) {
+            // Observed on AIR WIN63-202610201032-107964540: the limit of 20 ids holds on add-ons and variable boxes too, and comes before their
+            // own refusals. A repeated id on these boxes was not probed, so they keep their picks as sent.
+            if (Envelope is WiredBoxCategory.Addon or WiredBoxCategory.Variable) {
+                if (!WiredNativeEditorProjection.WithinPickLimit(native)) {
+                    return Task.CompletedTask;
+                }
+            }
+            else if (!WiredNativeEditorProjection.TryLimitPicks(native, out native)) {
                 return Task.CompletedTask;
             }
 

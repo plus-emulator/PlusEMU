@@ -777,10 +777,10 @@ public static class WiredNativeEditorProjection
     /// <summary>
     /// Observed on AIR WIN63-202610201032-107964540 on actions, conditions, triggers and selectors: a save with more than 20 ids in a pick
     /// list gets no answer (32 cards) and the box keeps its old picks. On Toggle State repeats count: 21 ids of 20 different ones are
-    /// dropped and 20 ids of 10 different ones are saved. An id sent twice in a list saves once (48 cards). Add-ons and variable boxes
-    /// were not probed. Whether this check comes before the keyed refusals was not probed
-    /// either. A box saved earlier with more than 20 picks keeps them, but every editor save of it is dropped until picks are removed,
-    /// as Habbo never holds more than 20.
+    /// dropped and 20 ids of 10 different ones are saved. An id sent twice in a list saves once (48 cards). The limit also holds on the
+    /// add-ons and variable boxes that could be tried (see <see cref="WithinPickLimit"/>; repeats were not probed there) and comes before
+    /// the refusals of the box itself (a missing name, a pick of a wrong kind, a temporary copy). A box saved earlier with more than 20
+    /// picks keeps them, but every editor save of it is dropped until picks are removed, as Habbo never holds more than 20.
     /// </summary>
     public static bool TryLimitPicks(WiredNativeEditorConfiguration native, out WiredNativeEditorConfiguration limited)
     {
@@ -790,7 +790,7 @@ public static class WiredNativeEditorProjection
             return true;
         }
 
-        if (native.PrimaryItems.Length > WiredConfigurationLimits.EditorFurniLimit || native.SecondaryItems.Length > WiredConfigurationLimits.EditorFurniLimit) {
+        if (!WithinPickLimit(native)) {
             return false;
         }
 
@@ -798,6 +798,13 @@ public static class WiredNativeEditorProjection
 
         return true;
     }
+
+    /// <summary>
+    /// Whether each pick list holds at most 20 ids, repeats counted. Observed on AIR WIN63-202610201032-107964540: on the add-ons (18 tried) and
+    /// the variable boxes (furni, user, room and context) 20 ids save and 21 get no answer, with the box keeping its picks.
+    /// </summary>
+    public static bool WithinPickLimit(WiredNativeEditorConfiguration native) => native.PrimaryItems.IsDefault || native.SecondaryItems.IsDefault
+        || native.PrimaryItems.Length <= WiredConfigurationLimits.EditorFurniLimit && native.SecondaryItems.Length <= WiredConfigurationLimits.EditorFurniLimit;
 
     public static bool WithinBounds(WiredNativeEditorConfiguration native) => native.Version == 2
         && !native.OwnedIntParams.IsDefault && native.OwnedIntParams.Length <= WiredConfigurationLimits.IntParams

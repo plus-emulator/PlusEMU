@@ -310,7 +310,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         bool dispatched;
 
         if (holdsMovements) {
-            _movementHolds++;
+            Interlocked.Increment(ref _movementHolds);
         }
 
         try {
@@ -323,7 +323,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
         finally {
             if (holdsMovements) {
-                _movementHolds--;
+                Interlocked.Decrement(ref _movementHolds);
             }
         }
 

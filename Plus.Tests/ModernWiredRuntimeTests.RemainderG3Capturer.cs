@@ -208,7 +208,7 @@ public partial class ModernWiredRuntimeTests
     {
         var rig = G3CapturerStack("size #(count)", 1, ("count", "ctx:11", 1));
         using var f = rig.F;
-        // No text connector is on the variable yet, so a word is only read as the number it spells.
+        // No text connector is on the variable yet, so nothing is captured.
         G3Say(rig, "size big");
         Assert.Empty(rig.Recorder.Runs);
         G3Connector(rig, 11, "1=small\n2=big");

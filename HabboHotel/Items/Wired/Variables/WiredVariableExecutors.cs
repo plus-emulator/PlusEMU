@@ -5,6 +5,8 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 /// <summary>Executable scalar boxes decoded from the native editor's compiled runtime shape.</summary>
 public sealed class WiredVariableExecutors(WiredVariableModule variables, TimeProvider clock)
 {
+    private readonly Random _random = Random.Shared;
+
     public static bool Supports(string name) => name is "wf_act_give_var" or "wf_act_remove_var" or "wf_act_change_var_val"
         or "wf_cnd_has_var" or "wf_cnd_neg_has_var" or "wf_cnd_var_val_match" or "wf_cnd_var_age_match";
 
@@ -311,20 +313,34 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             var mutation = name == "wf_act_remove_var" ? WiredVariableMutation.Remove : p[1] == 1 ? WiredVariableMutation.Replace : WiredVariableMutation.Give;
             var changed = false;
             var initial = literal;
+            long[] paired = [];
 
-            // Given from a variable: its value on each holder itself, or the first value its reference holders have.
+            // Given from a variable: its value on each holder itself, or the first value its reference holders have. Furni destinations take the
+            // value of one furni reference holder each (see Pair).
             if (operandReference is { } given && !sameHolder) {
                 var (referenceUsers, referenceFurni) = p.Length == GiveReferenced ? (p[8], p[9]) : (p[3], p[4]);
 
-                if (FirstValue(configuration, given, referenceUsers, referenceFurni, frame) is not { } first) {
+                if (reference.Target == WiredVariableTarget.Furni && given.Target == WiredVariableTarget.Furni) {
+                    var referenceValues = ReferenceValues(configuration, given, referenceUsers, referenceFurni, frame);
+
+                    if (referenceValues.Length == 0) {
+                        return false;
+                    }
+
+                    paired = Pair(targets.Length, referenceValues);
+                }
+                else if (FirstValue(configuration, given, referenceUsers, referenceFurni, frame) is { } first) {
+                    initial = first;
+                }
+                else {
                     return false;
                 }
-
-                initial = first;
             }
 
+            var position = 0;
+
             foreach (var target in targets) {
-                var value = initial;
+                var value = paired.Length > 0 ? paired[position++] : initial;
 
                 if (operandReference is { } own && sameHolder) {
                     if (variables.Read(own, target, frame) is not { } held) {
@@ -436,7 +452,41 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
                 && WiredVariablePredicates.Compare(p[1], value.Value, operand)), p[^1]);
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: with several furni reference holders each furni destination gets the value of one of them
+        // (see Pair). Users were not probed: they stay on the first value.
+        if (operands.Count > 1 && reference.Target == WiredVariableTarget.Furni && p[4] == (int)WiredVariableTarget.Furni) {
+            var values = Pair(targets.Length, [.. operands.Select(pair => pair.Value)]);
+
+            return ChangeEach(reference, targets.Select((target, index) => (target, values[index])).ToArray(), p[1], frame);
+        }
+
         return ChangeEach(reference, targets.Select(target => (target, operand)).ToArray(), p[1], frame);
+    }
+
+    /// <summary>
+    /// The value each of count destination holders takes from the values of the reference holders when same holder is off. Observed on AIR
+    /// WIN63-202610201032-107964540 (Change Variable Value and Give Variable): the pairing is random and drawn anew at every run. With at least as
+    /// many reference holders as destinations each destination gets the value of a different holder; with fewer the values are shared evenly,
+    /// and which destinations share one varies too. Probed with furni destinations and furni reference holders only.
+    /// </summary>
+    private long[] Pair(int count, long[] values)
+    {
+        var order = Enumerable.Range(0, values.Length).ToArray();
+        _random.Shuffle(order);
+        var picks = Enumerable.Range(0, count).Select(index => order[index % values.Length]).ToArray();
+        _random.Shuffle(picks);
+
+        return [.. picks.Select(pick => values[pick])];
+    }
+
+    /// <summary>The values a reference variable has among the holders its source picks, in the order of the source.</summary>
+    private long[] ReferenceValues(WiredConfiguration configuration, WiredVariableReference reference, int userSource, int furniSource,
+        WiredVariableFrame frame)
+    {
+        using var reads = variables.CaptureReads([reference], frame);
+
+        return [.. Select(frame, reference.Target, userSource, furniSource, Picks(configuration, furniSource))
+            .Select(source => reads.Read(reference, source, frame)).Where(value => value is not null).Select(value => value!.Value)];
     }
 
     private bool ChangeEach(WiredVariableReference reference, (WiredVariableHolder Target, long Operand)[] targets, int operation,

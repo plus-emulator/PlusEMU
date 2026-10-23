@@ -30,7 +30,12 @@ public sealed class WiredVariableOperandTests
 
         for (var i = 0; i < holders.Length; i++) {
             module.Mutate(new(target, "custom:10"), holders[i], WiredVariableMutation.Give, 0, frame);
-            module.Mutate(new(target, "custom:11"), holders[i], WiredVariableMutation.Give, (i + 1) * 10, frame);
+
+            // Furni destinations take the value of a different furni reference holder each (observed on AIR WIN63-202610201032-107964540), so
+            // here only the first furni holds the reference and every destination reads its value.
+            if (target == WiredVariableTarget.User || i == 0) {
+                module.Mutate(new(target, "custom:11"), holders[i], WiredVariableMutation.Give, (i + 1) * 10, frame);
+            }
         }
 
         var box = Assert.IsType<WiredVariableConfiguredBox>(WiredVariableBoxFactory.Create(room,
@@ -62,7 +67,7 @@ public sealed class WiredVariableOperandTests
         }
 
         Assert.True(executor.Execute("wf_act_change_var_val", WiredNativeTestSupport.Scalar("wf_act_change_var_val", configuration with { IntParams = [(int)target, 0, 1, 0, (int)target, 200, 200, 201, 201] }), reversed));
-        Assert.Equal(new long[] { 20, 20 }, holders.Select(x => module.Read(new(target, "custom:10"), x, reversed)!.Value));
+        Assert.Equal(target == WiredVariableTarget.Furni ? new long[] { 10, 10 } : [20, 20], holders.Select(x => module.Read(new(target, "custom:10"), x, reversed)!.Value));
     }
 
     [Fact]

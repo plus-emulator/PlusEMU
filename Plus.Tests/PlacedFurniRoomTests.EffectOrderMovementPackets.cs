@@ -14,7 +14,7 @@ public partial class PlacedFurniRoomTests
     private const uint MpTarget = 441, MpHolder = 442;
 
     // Observed on AIR WIN63-202610201032-107964540: in a stack with User To Furni or Furni To User and a Toggle State or Move and Rotate of
-    // another furni, the toggled state goes out before the WiredMovements and the turned furni's ObjectUpdate goes out before both,
+    // another furni, the toggled state goes out before the WiredMovements and the ObjectUpdate of a turned furni goes out before the WiredMovements,
     // whatever the box order (12 of 12 firings for each case).
     [Theory]
     [InlineData("wf_act_user_to_furni", "wf_act_move_rotate", false)]

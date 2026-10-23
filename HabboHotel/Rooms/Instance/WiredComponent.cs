@@ -233,6 +233,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         FlushVariableFx();
         FlushFlashes();
         FlushLeaderboards();
+        FlushLeaderboardRepublish();
         ResendRestackedSteps();
     }
 

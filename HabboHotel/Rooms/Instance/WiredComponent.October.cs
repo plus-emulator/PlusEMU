@@ -88,6 +88,10 @@ public partial class WiredComponent
             LeaderboardSaved(leaderboard);
         }
 
+        if (box is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_var_text_connector" } connector) {
+            LeaderboardConnectorChanged(connector.Item);
+        }
+
         if (box is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_xtra_var_web_api" } webApi) {
             WebApiSaved(webApi);
         }

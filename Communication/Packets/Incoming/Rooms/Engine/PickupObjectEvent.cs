@@ -25,6 +25,15 @@ internal class PickupObjectEvent(IRoomItemPickupService pickup) : IPacketEvent
             return Task.CompletedTask;
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: picking up a Text Connector republishes the leaderboards on its tile.
+        if (!stored && room?.GetRoomItemHandler().GetItem(itemId) is { } connector && room.GetWired().IsTextConnector(connector)) {
+            if (pickup.TryPickUp(session, itemId)) {
+                room.GetWired().TextConnectorPickedUp(connector);
+            }
+
+            return Task.CompletedTask;
+        }
+
         if (!stored) {
             return pickup.PickUp(session, itemId);
         }

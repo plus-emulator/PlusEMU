@@ -1,5 +1,6 @@
 using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Leaderboard;
 using Plus.HabboHotel.Items.Wired.Variables;
@@ -26,6 +27,8 @@ public partial class WiredComponent
     private readonly Dictionary<uint, int> _leaderboardRevisions = [];
     private readonly Dictionary<(int HabboId, int OverlayId), LeaderboardSubscription> _leaderboardSubscriptions = [];
     private readonly HashSet<uint> _dirtyLeaderboardVariables = [];
+    private readonly HashSet<uint> _republishedLeaderboards = [];
+    private DateTimeOffset? _leaderboardRepublishDue;
     private IWiredLeaderboardProfiles? _leaderboardProfiles;
 
     private sealed record LeaderboardSubscription(GameClient Session, int Revision, string VariableId, int[] Chunks);
@@ -198,6 +201,62 @@ public partial class WiredComponent
     {
         lock (_leaderboardGate) {
             _leaderboardRevisions[box.Item.Id] = ++_leaderboardRoomRevision;
+        }
+
+        BroadcastLeaderboards(null);
+    }
+
+    /// <summary>
+    /// A Text Connector was saved or picked up. Observed on AIR WIN63-202610201032-107964540: the published boards on its tile get one
+    /// snapshot with their revision one higher at the next tick of the push grid, however many saves came before it, and an unchanged
+    /// text counts as a save. The client then subscribes to the new revision and gets the rows with the new text. A connector on another
+    /// tile sends nothing.
+    /// </summary>
+    private void LeaderboardConnectorChanged(Item connector)
+    {
+        var boards = ConfiguredBoxes("wf_xtra_var_leaderboard")
+            .Where(box => box.Item.GetX == connector.GetX && box.Item.GetY == connector.GetY
+                && WiredLeaderboardConfig.Decode(box.Configuration.IntParams, box.Configuration.VariableIds, box.Configuration.Text)?.Published == true)
+            .Select(box => box.Item.Id).ToArray();
+
+        if (boards.Length == 0) {
+            return;
+        }
+
+        lock (_leaderboardGate) {
+            _republishedLeaderboards.UnionWith(boards);
+            _leaderboardRepublishDue ??= NextLeaderboardPush(_clock.GetUtcNow());
+        }
+    }
+
+    /// <summary>A configured Text Connector in this room, so that its pickup can republish the boards on its tile.</summary>
+    internal bool IsTextConnector(Item item) => DescriptorOf(item)?.CanonicalName == "wf_xtra_var_text_connector" && TryGet(item.Id, out _);
+
+    /// <summary>
+    /// A user picked up a Text Connector. Only a user's pickup counts: Habbo was not seen republishing when furniture is reloaded or reset.
+    /// </summary>
+    internal void TextConnectorPickedUp(Item connector) => _engine.Mutate(() =>
+    {
+        LeaderboardConnectorChanged(connector);
+
+        return true;
+    });
+
+    /// <summary>The boards a connector changed move to a new revision, and everyone in the room gets the new snapshot.</summary>
+    private void FlushLeaderboardRepublish()
+    {
+        lock (_leaderboardGate) {
+            if (_leaderboardRepublishDue is not { } republishAt || _clock.GetUtcNow() < republishAt) {
+                return;
+            }
+
+            _leaderboardRepublishDue = null;
+
+            foreach (var board in _republishedLeaderboards) {
+                _leaderboardRevisions[board] = ++_leaderboardRoomRevision;
+            }
+
+            _republishedLeaderboards.Clear();
         }
 
         BroadcastLeaderboards(null);

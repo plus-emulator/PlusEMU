@@ -22,7 +22,10 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
     /// <summary>The boxes whose editor is a message editor: Show Message, the two bot talk effects and Send Link Message.</summary>
     public static bool Applies(string name) => name is "wf_act_show_message" or "wf_act_bot_talk" or "wf_act_bot_talk_to_avatar" or "wf_act_send_message";
 
-    /// <summary>The stack on a box's tile, bottom up: the trigger's placeholder, the text output add-ons and the capturers.</summary>
+    /// <summary>
+    /// The stack on a box's tile, bottom up: the trigger's placeholder, the text output add-ons and the capturers. The placeholder names
+    /// go out sorted by name. Observed on AIR WIN63-202610201032-107964540: outputs stacked as ptr, cx, ev, ct, nv list ct, cx, ev, nv, ptr.
+    /// </summary>
     public static WiredTextPlaceholders Capture(IWiredConfiguredItem box)
     {
         var room = box.Instance;
@@ -60,7 +63,7 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
             }
         }
 
-        return new([.. placeholders.Where(name => name.Length > 0).Distinct(StringComparer.Ordinal)],
+        return new([.. placeholders.Where(name => name.Length > 0).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             [.. capturers.Where(name => name.Length > 0).Distinct(StringComparer.Ordinal)]);
     }
 

@@ -952,7 +952,15 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     internal WiredVariableTextSource? TextSource(WiredVariableReference reference, WiredVariableFrame frame)
     {
         lock (_gate) {
-            if (Resolve(reference, false)?.Definition is not { IsPointer: true } pointer) {
+            var resolved = Resolve(reference, false);
+
+            // Observed on AIR WIN63-202610201032-107964540: a variable whose box was picked up after the stack fired, while a delayed
+            // Show Message waits, leaves its placeholder as written.
+            if (resolved is null && derive?.Invoke(reference) is null && TryDefinitionId(reference.Token, out _)) {
+                return null;
+            }
+
+            if (resolved?.Definition is not { IsPointer: true } pointer) {
                 // Observed on AIR WIN63-202610151745-318700621: a placeholder for is_maxed shows "null" also while the part exists.
                 return new(reference, derive?.Invoke(reference) is { HasValue: false });
             }

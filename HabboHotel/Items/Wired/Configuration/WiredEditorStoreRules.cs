@@ -33,6 +33,7 @@ internal static class WiredEditorStoreRules
         { "wf_xtra_filter_furni_by_var", new(FilterByVariable, VariableSlots: true) },
         { "wf_xtra_filter_users_by_var", new(FilterByVariable, VariableSlots: true) },
         { "wf_xtra_filter_users", new(FilterUsers, VariableSlots: true) },
+        { "wf_xtra_mov_curve", new(MovementCurve, VariableSlots: true) },
         { "wf_act_teleport_to", new(FlagWithoutText) },
         { "wf_act_kick_user", new(KickUser) },
         { "wf_xtra_or_eval", new(draft => draft.Ints[0] = Math.Clamp(draft.Ints[0], -1, 3)) },
@@ -124,6 +125,18 @@ internal static class WiredEditorStoreRules
 
         ints[0] = Math.Clamp(ints[0], 1, 1000);
         ints[1] = Math.Clamp(ints[1], 0, 1);
+        ints[2] = Target(ints[2]);
+        draft.Text = "";
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540: Movement Curve holds the operand kind to 0..1, the strength to -1000..1000 and the
+    // reference target to the four offered values. The box has no text.
+    private static void MovementCurve(WiredStoreDraft draft)
+    {
+        var ints = draft.Ints;
+
+        ints[0] = Math.Clamp(ints[0], 0, 1);
+        ints[1] = Math.Clamp(ints[1], -1000, 1000);
         ints[2] = Target(ints[2]);
         draft.Text = "";
     }

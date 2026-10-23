@@ -343,10 +343,6 @@ public partial class WiredComponent
             LeaderboardRemoved(item.Id);
         }
 
-        if (DescriptorOf(item)?.CanonicalName == "wf_xtra_var_text_connector" && TryGet(item.Id, out _)) {
-            LeaderboardConnectorChanged(item);
-        }
-
         _counters.Forget(item);
         WiredProjectileFlights.For(_room).Forget(item);
 

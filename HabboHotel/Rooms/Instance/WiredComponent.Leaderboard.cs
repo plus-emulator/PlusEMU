@@ -229,6 +229,19 @@ public partial class WiredComponent
         }
     }
 
+    /// <summary>A configured Text Connector in this room, so that its pickup can republish the boards on its tile.</summary>
+    internal bool IsTextConnector(Item item) => DescriptorOf(item)?.CanonicalName == "wf_xtra_var_text_connector" && TryGet(item.Id, out _);
+
+    /// <summary>
+    /// A user picked up a Text Connector. Only a user's pickup counts: Habbo was not seen republishing when furniture is reloaded or reset.
+    /// </summary>
+    internal void TextConnectorPickedUp(Item connector) => _engine.Mutate(() =>
+    {
+        LeaderboardConnectorChanged(connector);
+
+        return true;
+    });
+
     /// <summary>The boards a connector changed move to a new revision, and everyone in the room gets the new snapshot.</summary>
     private void FlushLeaderboardRepublish()
     {

@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Addons;
 using Plus.HabboHotel.Items.Wired.Variables.Fx;
@@ -93,10 +92,7 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
             }
         }
         else if (name == "wf_xtra_var_text_connector") {
-            // A stored row keeps loading whatever its size; only a save is held to the limit.
-            if (Encoding.UTF8.GetByteCount(configuration.Text) > MaxConnectorBytes) {
-                throw new ArgumentException("Text connector is too long.");
-            }
+            // Validate also loads a stored row, so the size limit is checked only on a save (WiredTextAddonRules.ConnectorRefusal).
         }
         else if (name is "wf_xtra_var_share" or "wf_xtra_var_import") {
             if (configuration.IntParams.Length != 3 || configuration.IntParams.Any(flag => flag is not (0 or 1)) || configuration.Text.Length != 0) {

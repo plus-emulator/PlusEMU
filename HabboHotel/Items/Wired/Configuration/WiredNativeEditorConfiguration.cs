@@ -24,8 +24,8 @@ public sealed record WiredNativeEditorConfiguration
     public WiredNativeSavedState SavedState { get; init; } = new();
 
     /// <summary>
-    /// How many ids the save sent in the first and in the second pick list when a list repeated an id; 0 when it did not, and the count of
-    /// the list is then the number of its picks.
+    /// How many ids the save sent in the first and in the second pick list when a list repeated an id or held an id that names no furni; 0
+    /// when it did not, and the count of the list is then the number of its picks.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int PrimarySent { get; init; }

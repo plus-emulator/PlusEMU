@@ -9,25 +9,30 @@ namespace Plus.Tests;
 
 // Observed on AIR WIN63-202610201032-107964540: a User Clicks Furni stack with Move to Direction on a colour tile. With a Movement Curve
 // add-on (strength 500) and a Projectile add-on with its default settings (curve strength 50) on one stack, the tile moves with curve
-// strength 50, the same as with the Projectile add-on alone, in either stacking order. A projectile curve strength of 200 is used over 500
-// the same way, and a projectile curve strength of 0 leaves the Movement Curve add-on in charge (3 of 3 runs). The Movement Curve add-on
-// alone moves it with 500.
+// strength 50, the same as with the Projectile add-on alone, in either stacking order. The projectile curve wins over a Movement Curve
+// add-on of 500, 100, 0 and -100, and a projectile curve of 200 or -100 is used the same way. A projectile curve of 0 leaves the Movement
+// Curve add-on in charge (3 of 3 runs). The Movement Curve add-on alone moves it with its own strength.
 public sealed partial class WiredGlideConveyorTests
 {
     private const uint CpTile = 81, CpSwitch = 82, CpTrigger = 83, CpMove = 84, CpCurve = 85, CpProjectile = 86;
 
-    // The Projectile editor frame as the client sends it unchanged: no rotation, 500 ms a tile, curve strength 50 (index 18).
+    // A Projectile editor frame with no rotation. Only the curve strength (index 18, 50 on a new box) matters to these tests.
     private static readonly int[] CpProjectileFrame = [0, 0, 0, 0, 500, -20, 1, 1, 0, 4, 0, 0, 1, 1, 0, 0, 1, -20, 50];
 
     [Theory]
-    [InlineData("curve,projectile", 50, 50)]
-    [InlineData("projectile,curve", 50, 50)]
-    [InlineData("projectile", 50, 50)]
-    [InlineData("curve", 500, 50)]
-    [InlineData("curve,projectile", 200, 200)]
-    [InlineData("projectile", 200, 200)]
-    [InlineData("curve,projectile", 500, 0)]
-    public async Task AClickedStackMovesTheTileWithTheProjectileCurveWhenItHasBothCurveAddons(string addons, int strength, int projectileCurve)
+    [InlineData("curve,projectile", 50, 50, 500)]
+    [InlineData("projectile,curve", 50, 50, 500)]
+    [InlineData("projectile", 50, 50, 500)]
+    [InlineData("curve", 500, 50, 500)]
+    [InlineData("curve,projectile", 200, 200, 500)]
+    [InlineData("projectile", 200, 200, 500)]
+    [InlineData("curve,projectile", 500, 0, 500)]
+    [InlineData("curve,projectile", 50, 50, 100)]
+    [InlineData("curve,projectile", 50, 50, 0)]
+    [InlineData("curve,projectile", 50, 50, -100)]
+    [InlineData("curve,projectile", -100, -100, 500)]
+    [InlineData("curve", -100, 50, -100)]
+    public async Task AClickedStackMovesTheTileWithTheProjectileCurveWhenItHasBothCurveAddons(string addons, int strength, int projectileCurve, int curve)
     {
         var f = new Fixture(
         [
@@ -57,7 +62,7 @@ public sealed partial class WiredGlideConveyorTests
         // Add-on save: item, ints, text, picks, furni sources, user sources, variables, secondary picks.
         foreach (var addon in addons.Split(',')) {
             object[] body = addon == "curve"
-                ? [(int)CpCurve, 3, 0, 500, 0, "", 1, (int)CpTile, 1, 100, 1, 0, 1, "0", 0]
+                ? [(int)CpCurve, 3, 0, curve, 0, "", 1, (int)CpTile, 1, 100, 1, 0, 1, "0", 0]
                 : [(int)CpProjectile, CpProjectileFrame.Length, .. CpProjectileFrame[..^1].Cast<object>(), projectileCurve, "", 0, 3, 901, 0, 0, 3, 0, 0, 0, 2, "0", "0", 0];
             Send(f, owner, frames, new SaveWiredAddonConfigEvent(service), body);
             Assert.Equal("ok", SaveAnswer(frames));

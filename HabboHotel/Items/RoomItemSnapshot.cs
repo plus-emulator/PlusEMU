@@ -73,7 +73,7 @@ public sealed record RoomItemSnapshot(
     // those with rights, whatever states their furni definition declares. Observed on AIR WIN63-202610151745-318700621: a fridge
     // (vending machine) and Floor Switch are usable by anyone, a football score board by nobody, and a game counter and a
     // one-state recolorable block by room controllers.
-    private static int UsagePolicy(ItemDefinition definition) => definition.WiredDescriptor != null ? 1 : definition.InteractionType switch
+    private static int UsagePolicy(ItemDefinition definition) => definition.WiredDescriptor != null ? 1 : IsNeverUsed(definition) ? 0 : definition.InteractionType switch
     {
         // The other score board colours and Floor Switch 2 share the observed furni's server behaviour.
         InteractionType.VendingMachine or InteractionType.WfFloorSwitch1 or InteractionType.WfFloorSwitch2 => 2,
@@ -82,6 +82,15 @@ public sealed record RoomItemSnapshot(
         InteractionType.Counter or InteractionType.Recolorable => 1,
         _ => definition.Modes > 1 ? 1 : 0
     };
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540 (usage read from a placed item, and no reaction to 6 double-clicks in each of 3 runs): the
+    /// two plain game tiles, the pyramid, the blobs, the box, the buttons and the arrow, pressure and ring plates cannot be used, whatever
+    /// number of states they have.
+    /// </summary>
+    internal static bool IsNeverUsed(ItemDefinition definition) => definition.ItemName is "wf_tile1" or "wf_tile2" or "wf_pyramid" or "wf_box"
+        or "wf_arrowplate" or "wf_arrowplate_8dir" or "wf_pressureplate" or "wf_ringplate"
+        || definition.ItemName.StartsWith("wf_blob", StringComparison.Ordinal) || definition.ItemName.StartsWith("wf_button", StringComparison.Ordinal);
 
     private static RoomItemSnapshot CaptureLocked(Item item, GuildFurnitureAppearance? guild)
     {

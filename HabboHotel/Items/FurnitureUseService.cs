@@ -187,7 +187,7 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
             return;
         }
 
-        if (item.Definition.InteractionType == InteractionType.Banzaitele) {
+        if (item.Definition.InteractionType == InteractionType.Banzaitele || RoomItemSnapshot.IsNeverUsed(item.Definition)) {
             return;
         }
 

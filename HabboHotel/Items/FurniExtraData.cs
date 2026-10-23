@@ -218,7 +218,32 @@ internal static class FurniExtraData
 
     // Observed on AIR WIN63-202610151745-318700621: a new Wired counter, floor switch, antenna or colour tile has state "0", never "".
     // Game furni such as freeze blocks, scoreboards and game timers use an empty state for their own meaning, so they keep it.
-    internal static string LegacyState(ItemDefinition definition, string stored) => stored.Length == 0 && StartsAtZero(definition) ? "0" : stored;
+    // Observed on AIR WIN63-202610201032-107964540: a new blob has state 1, a new game tile, box or button has no state, and a new glass door,
+    // fire gate or 8 direction arrow plate has state 0.
+    internal static string LegacyState(ItemDefinition definition, string stored) => stored.Length > 0 ? stored : StartState(definition) ?? stored;
+
+    private static string? StartState(ItemDefinition definition)
+    {
+        if (definition.Type != ItemType.Floor) {
+            return null;
+        }
+
+        var name = definition.ItemName;
+
+        if (name.StartsWith("wf_blob", StringComparison.Ordinal)) {
+            return "1";
+        }
+
+        if (name is "wf_tile1" or "wf_tile2" or "wf_box" || name.StartsWith("wf_button", StringComparison.Ordinal)) {
+            return "";
+        }
+
+        if (name is "wf_glassdoor" or "wf_firegate" or "wf_arrowplate_8dir") {
+            return "0";
+        }
+
+        return StartsAtZero(definition) ? "0" : null;
+    }
 
     private static bool StartsAtZero(ItemDefinition definition) => definition.Type == ItemType.Floor
         && (Wired.Modern.Actions.WiredCounterController.IsWiredCounter(definition)

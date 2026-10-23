@@ -78,6 +78,62 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
 
         return false;
     }
+
+    /// <summary>
+    /// The id Habbo stores in a variable slot of Give Variable, Change Variable Value and Remove Variable. Observed on AIR
+    /// WIN63-202610201032-107964540: the slot keeps any number, whether or not a variable has that id, with a "-" or "~" in front or not. A
+    /// number is stored in its plain form, after its prefix ("+5" and "007" as "5", "-007" as "-7", "~+5" as "~5", "-00" as "-0", an Arabic digit as
+    /// its value). Any other text, and a number a long cannot hold, is stored as "0", the id of no variable. A catalog id of this hotel is a
+    /// variable id and stays.
+    /// </summary>
+    public static string StoredId(string id)
+    {
+        if (TryParseCatalogId(id, out _, out _)) {
+            return id;
+        }
+
+        var prefix = id is ['-' or '~', ..] ? id[..1] : "";
+
+        return TryParseJavaLong(id[prefix.Length..], out var number)
+            ? prefix + number.ToString(System.Globalization.CultureInfo.InvariantCulture) : WiredVariableAbsent.WireId;
+    }
+
+    // Java's Long.parseLong: an optional sign, then decimal digits of any script, within the range of a long.
+    private static bool TryParseJavaLong(string text, out long value)
+    {
+        value = 0;
+        var index = text.Length > 0 && text[0] is '-' or '+' ? 1 : 0;
+
+        if (index == text.Length) {
+            return false;
+        }
+
+        var negative = text[0] == '-';
+        UInt128 magnitude = 0;
+
+        for (; index < text.Length; index++) {
+            var digit = System.Globalization.CharUnicodeInfo.GetDecimalDigitValue(text[index]);
+
+            if (digit < 0) {
+                return false;
+            }
+
+            magnitude = magnitude * 10 + (uint)digit;
+
+            if (magnitude > (UInt128)long.MaxValue + 1) {
+                return false;
+            }
+        }
+
+        if (!negative && magnitude > (UInt128)long.MaxValue) {
+            return false;
+        }
+
+        value = negative ? unchecked((long)(0 - (ulong)magnitude)) : (long)magnitude;
+
+        return true;
+    }
+
     public int Hash
     {
         get

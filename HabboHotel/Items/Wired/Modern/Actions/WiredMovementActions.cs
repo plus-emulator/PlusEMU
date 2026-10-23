@@ -251,7 +251,10 @@ public sealed class WiredMovementActions(Random? random = null)
                 var ranks = Shuffled(Enumerable.Range(0, movers.Count).ToArray());
                 var dealIndex = 0;
 
-                foreach (var item in movers) {
+                // Observed on AIR WIN63-202610201032-107964540: five furni put back on one tile by position only stacked in a new order in
+                // nearly every firing (17 orders in 18); with the altitude too the saved stack came back in all 18. Other restores were not
+                // probed and keep the pick order.
+                foreach (var item in Param(2) == 1 && Param(3) != 1 ? Shuffled(movers) : movers) {
                     var snapshot = dealt is { Length: > 0 } && item.IsFloorItem
                         ? dealt[ranks[dealIndex++] % dealt.Length]
                         : configuration.Snapshots.FirstOrDefault(entry => entry.ItemId == item.Id);

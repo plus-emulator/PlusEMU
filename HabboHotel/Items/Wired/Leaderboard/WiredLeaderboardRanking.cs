@@ -79,7 +79,13 @@ public static class WiredLeaderboardRanking
                 choice.Description.HasValue ? value.ToString(CultureInfo.InvariantCulture) : "",
                 showsCreation ? row.Value.CreatedAt?.ToUnixTimeMilliseconds() ?? 0 : 0, showsUpdate ? row.Value.UpdatedAt?.ToUnixTimeMilliseconds() ?? 0 : 0,
                 choice.LevelSystem?.Level(value).Level.ToString(CultureInfo.InvariantCulture),
-                value is >= int.MinValue and <= int.MaxValue && choice.TextConnector.TryGetValue((int)value, out var text) ? text : null);
+                ConnectorText(choice.TextConnector, value));
         })];
     }
+
+    // Observed on AIR WIN63-202610201032-107964540: a value with a label shows it, any other value shows the "_=" fallback (empty when the
+    // fallback is empty), and a connector without a fallback line gives the row no text.
+    private static string? ConnectorText(IReadOnlyDictionary<int, string> connector, long value) =>
+        value is >= int.MinValue and <= int.MaxValue && connector.TryGetValue((int)value, out var text) ? text
+        : (connector as WiredTextConnector)?.Fallback;
 }

@@ -150,6 +150,51 @@ public sealed class RoomChatServiceTests
         Assert.Equal(2, Bubble(world.SenderPackets[^1]));
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: a user put into a Battle Banzai or Freeze team by Join Team talks with the same
+    // team bubble as in a Wired team (130 Red, 131 Blue, 132 Yellow, 133 Green), and with the own bubble after Leave Team (0 in the trace).
+    [Theory]
+    [InlineData(1, Team.Red, 130)]
+    [InlineData(1, Team.Blue, 131)]
+    [InlineData(1, Team.Green, 133)]
+    [InlineData(1, Team.Yellow, 132)]
+    [InlineData(2, Team.Red, 130)]
+    [InlineData(2, Team.Blue, 131)]
+    [InlineData(2, Team.Green, 133)]
+    [InlineData(2, Team.Yellow, 132)]
+    public async Task UsersJoinedToABanzaiOrFreezeTeamTalkWithTheTeamBubble(int type, Team team, int expected)
+    {
+        var world = new World(new SteppingClock(Now, TimeSpan.FromMilliseconds(600)));
+        world.Filter.Banned = true;
+
+        Assert.True(WiredGameState.For(world.Room).Join(world.Room, world.SenderUser, type, team, 0, [world.SenderUser, world.RecipientUser],
+            applyEffect: (_, _, _) => { }));
+        await world.Service.Chat(world.Sender, "talk", 2);
+        Assert.Equal((ServerPacketHeader.ChatComposer, expected), (world.SenderPackets[^1].Header, Bubble(world.SenderPackets[^1])));
+
+        Assert.True(WiredGameState.For(world.Room).Leave(world.Room, world.SenderUser, (_, _) => { }));
+        await world.Service.Chat(world.Sender, "after", 2);
+        Assert.Equal(2, Bubble(world.SenderPackets[^1]));
+    }
+
+    // Plus guard, not observed on Habbo: a game gate that clears and sets the team again does not bring the Join Team bubble back.
+    // The test sets the team directly and does not run the gate code.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task AGateRejoinOfTheSameColourAfterAJoinTeamKeepsTheOwnBubble(int type)
+    {
+        var world = new World(new SteppingClock(Now, TimeSpan.FromMilliseconds(600)));
+        world.Filter.Banned = true;
+        Assert.True(WiredGameState.For(world.Room).Join(world.Room, world.SenderUser, type, Team.Red, 0, [world.SenderUser, world.RecipientUser],
+            applyEffect: (_, _, _) => { }));
+
+        world.SenderUser.Team = Team.None;
+        world.SenderUser.Team = Team.Red;
+        await world.Service.Chat(world.Sender, "talk", 2);
+
+        Assert.Equal(2, Bubble(world.SenderPackets[^1]));
+    }
+
     [Fact]
     public async Task BattleBanzaiTeamMembersKeepTheirOwnBubble()
     {

@@ -13,7 +13,8 @@ public sealed class WiredVariableDefinitionBoxTests
     // Give, Change, Value and Age drafts follow the October editors' fresh-box payloads, so they carry the reference fields.
     // Observed on hhus (AIR WIN63-202610131318-860371703): Give and Change save with no variable picked; they still change nothing.
     [InlineData("wf_act_give_var", 8, true)]
-    [InlineData("wf_act_remove_var", 3, false)]
+    // Observed on AIR WIN63-202610201032-107964540: Remove Variable saves with no variable picked ("0" or "n"), like Give and Change.
+    [InlineData("wf_act_remove_var", 3, true)]
     [InlineData("wf_act_change_var_val", 10, true)]
     // A fresh Has Variable opens on the hotel's literal "0" slot, the measured shape that saves but never resolves (IsUnresolvedLiteralZero).
     [InlineData("wf_cnd_has_var", 4, true)]

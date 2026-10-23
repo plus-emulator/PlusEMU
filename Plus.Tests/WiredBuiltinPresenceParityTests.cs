@@ -23,7 +23,8 @@ public sealed class WiredBuiltinPresenceParityTests
         Assert.Null(module.Read(new(holder.Target, give.Text), holder, frame));
         Assert.False(executor.Execute("wf_act_remove_var", WiredNativeTestSupport.Scalar("wf_act_remove_var", new() { IntParams = [1, 0, 0], Text = give.Text }), frame));
         Assert.Empty(module.DrainChanges()); // Native metadata prohibits interception for these presence flags.
-        Assert.False(WiredVariableExecutors.TryValidate("wf_act_give_var", WiredNativeTestSupport.Scalar("wf_act_give_var", give with { Text = "internal:@is_stackable" }), out _));
+        // Observed on AIR WIN63-202610201032-107964540: Give Variable saves on every built-in variable, this one included.
+        Assert.True(WiredVariableExecutors.TryValidate("wf_act_give_var", WiredNativeTestSupport.Scalar("wf_act_give_var", give with { Text = "internal:@is_stackable" }), out _));
         Assert.False(module.Mutate(new(holder.Target, give.Text), holder, WiredVariableMutation.Give, 0, new(1, [])));
         Assert.False(module.Mutate(new(holder.Target, give.Text), holder, WiredVariableMutation.Give, 0, new(2, [holder])));
     }

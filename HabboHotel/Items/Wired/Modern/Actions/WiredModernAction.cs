@@ -893,8 +893,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             room.GetRoomUserManager().TurnHeadsToward(user);
                         }
 
-                        // Observed on AIR WIN63-202610201032-107964540 (one run, 4 tries for each visibility): a Show Message wakes a
-                        // sleeping user on the next room tick, as their own chat does. An awake user's idle time is not touched.
+                        // A Show Message wakes a sleeping user on the next room tick, as their own chat does. An awake user's idle time is not touched.
                         if (!user.IsBot && user.IsAsleep) {
                             user.UnIdle(atRoomTick: true);
                         }

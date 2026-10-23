@@ -4,9 +4,8 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
-/// State changes Toggle State makes later than its tick batch. Observed on AIR WIN63-202610201032-107964540 (3 runs, 6 firings each, for the blobs wf_blob and wf_blob2 and the buttons wf_button, wf_button_red and wf_button_x): a blob
-/// changes state on the next room tick, in a data update of its own, and a button set to 1 goes back to 0 about 600 ms later in a single
-/// object data update. Only these exact classes are known: the other blob and button colours are left to the plain toggle.
+/// State changes Toggle State makes later than its tick batch: a blob changes on the next room tick, in a data update of its own, and a button
+/// set to 1 goes back to 0 after 600 ms. Only the classes named here behave this way.
 /// </summary>
 public sealed class WiredDeferredStates(Room room)
 {

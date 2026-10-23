@@ -78,9 +78,6 @@ public sealed class WiredAtGivenTimePlacementTests : IDisposable
         Assert.Single(Flashes(box, 5_000));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs): a box of 20 pulses (10 s) placed 5.2 s and saved about 5.6 s after a timer
-    // reset fired 10.0 to 10.4 s after that reset, not 10 s after it was saved, and again after the next reset. A box whose time had passed
-    // did not fire.
     [Fact]
     public void ABoxPlacedBeforeItsTimeFiresAtItsTimeAfterTheLastReset()
     {
@@ -100,8 +97,6 @@ public sealed class WiredAtGivenTimePlacementTests : IDisposable
         Assert.Single(Flashes(box, 11_000));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs): a box saved again 3 to 5 s after a reset, with the same time or a later
-    // one, fires at its time after that reset (10 s, or 12 s for 24 pulses), not at its time after the save.
     [Theory]
     [InlineData(20, 7_400, 7_600)]
     [InlineData(24, 9_400, 9_600)]

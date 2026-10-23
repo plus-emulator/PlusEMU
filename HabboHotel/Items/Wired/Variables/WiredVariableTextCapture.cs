@@ -8,7 +8,9 @@ public sealed record WiredVariableCapturer(uint DefinitionId, string Name, IRead
 {
     public long? Read(string text)
     {
-        if (Labels is { Count: > 0 }) {
+        // Observed on AIR WIN63-202610201032-107964540: with a connector in text mode only its labels are captured. A number is never read,
+        // and a connector with no labels, or with only the "_=" fallback, captures nothing.
+        if (Labels is not null) {
             // Observed on AIR WIN63-202610131318-860371703: the connector lookup is case-insensitive and the last matching line wins.
             return Labels.Where(pair => string.Equals(pair.Value.Trim(), text.Trim(), StringComparison.OrdinalIgnoreCase))
                 .Select(pair => (long?)pair.Key).LastOrDefault();

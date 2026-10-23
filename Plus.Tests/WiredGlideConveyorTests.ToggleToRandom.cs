@@ -12,8 +12,8 @@ public sealed partial class WiredGlideConveyorTests
     // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs, 24 firings each): Toggle to Random sets a random state of the state
     // furni in its list (colour tile 0 to 6, floor switch 1 0 to 1, floor switch 2 0 to 3, number tile 0 to 9, glow ball 0 to 1, block
     // 0 to 4, knob 0 to 7, glass door 0 to 1, slider 0 to 3, maze 0 to 3). It never changes the game tiles, the pyramid, the blobs, the
-    // box, the buttons, the arrow plates, the pressure plates, the ring plate, the antennas or a Wired box that is not part of the running
-    // stack.
+    // box, the buttons, the arrow plates, the pressure plates, the ring plate, the antennas, a game counter or a Wired box that is not part
+    // of the running stack.
     [Fact]
     public void ToggleToRandomChangesStateFurniAndLeavesTheOthersAlone()
     {
@@ -23,7 +23,7 @@ public sealed partial class WiredGlideConveyorTests
             (59, "wf_glassdoor", 2), (60, "wf_slider", 4), (61, "wf_maze", 4)];
         (uint Id, string Name, int Modes)[] untouched = [(51, "wf_tile1", 10), (52, "wf_tile2", 10), (53, "wf_pyramid", 4), (54, "wf_blob", 4), (55, "wf_box", 2),
             (56, "wf_button", 2), (57, "wf_arrowplate", 4), (58, "wf_pressureplate", 4), (62, "wf_blob2", 4), (63, "wf_button_red", 2),
-            (64, "wf_arrowplate_8dir", 4), (65, "wf_ringplate", 4), (66, "wf_antenna1", 4), (67, "wf_antenna2", 4)];
+            (64, "wf_arrowplate_8dir", 4), (65, "wf_ringplate", 4), (66, "wf_antenna1", 4), (67, "wf_antenna2", 4), (68, "wf_game_upcounter1", 2)];
         var all = changed.Concat(untouched).ToArray();
         var layout = all.Select((tile, index) => (tile.Id, 4 + index % 8, 10 + index / 8, 0.0, 0, tile.Name, (string?)null))
             .Append((other, 9, 9, 0.0, 0, "wf_trg_says_something", JsonSerializer.Serialize(new WiredConfiguration { IntParams = [1, 0, 0], Text = "never" })))

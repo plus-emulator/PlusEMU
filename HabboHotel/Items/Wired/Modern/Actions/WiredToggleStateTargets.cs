@@ -57,10 +57,12 @@ internal static class WiredToggleStateTargets
     /// <summary>
     /// The furni Toggle to Random changes. Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs, 24 firings each): it changes colour
     /// tiles, floor switches, number tiles, glow balls, blocks, knobs, toggles, glass doors, sliders, team tiles, team meters, mazes and
-    /// fire gates, but no Wired box, the two plain game tiles, the pyramid, the box, the arrow and pressure plates, the antennas, the
-    /// blobs or the buttons.
+    /// fire gates, but no Wired box in its list (the boxes of the running stack show their normal flash), no counter, the two plain game
+    /// tiles, the pyramid, the box, the arrow plates, the pressure and ring plates, the antennas, the blobs or the buttons. The other
+    /// blob and button colours and the other counters are taken to follow their family.
     /// </summary>
-    internal static Item[] ResolveRandom(IEnumerable<Item> targets) => [.. targets.Where(item => !item.IsWired && !LeftAloneByRandom(item.Definition.ItemName))];
+    internal static Item[] ResolveRandom(IEnumerable<Item> targets) =>
+        [.. targets.Where(item => !item.IsWired && !WiredCounterController.IsWiredCounter(item.Definition) && !LeftAloneByRandom(item.Definition.ItemName))];
 
     /// <summary>A plain state furni whose new state only goes out in the tick's ObjectsDataUpdate (see WiredComponent.PublishState).</summary>
     internal static bool WritesOnlyBatchData(Item item) => item.IsFloorItem && item.ExtraData is DataFormat.LegacyDataFormat

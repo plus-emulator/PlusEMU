@@ -8,8 +8,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // A queued firing (Furni Clicked) counts its delays from the pass its stack first runs in; the wake-up is armed for that time, not
-    // for the moment the click was queued.
+    // A queued firing counts its delays from the pass its stack first runs in; the wake-up is armed for that time, not for the moment
+    // the event was queued. A Furni Clicked event put straight in the queue stands for any queued event (a click itself runs at once).
     [Fact]
     public void AQueuedFiringArmsItsWakeUpFromThePassItRunsIn()
     {
@@ -45,7 +45,7 @@ public sealed partial class WiredGlideConveyorTests
         var wakes = new List<long>();
         f.SetEngineCallback("<ActionDue>k__BackingField", (Action<long>)wakes.Add);
 
-        f.Owned(() => f.Room.GetWired().Dispatch(new WiredRuntimeEvent(WiredEventKind.ClickFurni) { Actor = rider, EventItem = f.Items[92] }));
+        f.Owned(() => f.Engine.Enqueue(new WiredRuntimeEvent(WiredEventKind.ClickFurni) { Actor = rider, EventItem = f.Items[92] }));
         long ranAt = -1;
 
         for (var pass = 0; pass < 10 && ranAt < 0; pass++) {

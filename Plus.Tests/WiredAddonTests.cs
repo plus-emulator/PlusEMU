@@ -292,7 +292,8 @@ public sealed class WiredAddonTests
         var one = WiredMovementPolicy.Resolve(policy, World().Furni[0], 3, 3, 10);
         Assert.Equal(5, one.Rotation);
         Assert.Equal(0, one.Height);
-        Assert.Equal(80, one.CurveStrength);
+        // Observed on AIR WIN63-202610201032-107964540: the projectile curve wins over the Movement Curve add-on on the furni it moves.
+        Assert.Equal(-50, one.CurveStrength);
         Assert.Equal(5, one.AnimationDistanceOffset);
         var two = WiredMovementPolicy.Resolve(policy, World().Furni[1], 3, 3, 10);
         Assert.Null(two.Rotation);

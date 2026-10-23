@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using Plus.HabboHotel.Items.Wired.Variables;
 
@@ -25,12 +27,21 @@ internal static class WiredTextAddonRules
 
     public const string NameLengthKey = "wiredfurni.error.placeholder.name_length";
     public const string NameSyntaxKey = "wiredfurni.error.placeholder.name_syntax";
+    private const string TooMuchTextKey = "wiredfurni.error.too_much_text";
     private const string VariableCountKey = "wiredfurni.error.invalid_variable_count";
     private const string DuplicateCaptureKey = "wiredfurni.error.capturer.duplicate";
 
     private static readonly Regex Capture = new("#\\(([^()#]+)\\)", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
 
     public static bool Applies(string name) => name is Input or Output;
+
+    /// <summary>
+    /// The refusal of a Text Connector text over its limit. Observed on AIR WIN63-202610201032-107964540: the limit is 1000 UTF-8 bytes
+    /// and the refusal carries it as "limit".
+    /// </summary>
+    public static (string Key, IReadOnlyList<KeyValuePair<string, string>> Parameters)? ConnectorRefusal(string name, WiredNativeEditorConfiguration native) =>
+        name == "wf_xtra_var_text_connector" && Encoding.UTF8.GetByteCount(native.Text) > WiredVariableMetadataBox.MaxConnectorBytes
+            ? (TooMuchTextKey, [new("limit", WiredVariableMetadataBox.MaxConnectorBytes.ToString(CultureInfo.InvariantCulture))]) : null;
 
     public static string? NameRefusal(string name) => name.Length is 0 or > MaxNameLength ? NameLengthKey
         : name.All(c => c is '_' or >= '0' and <= '9' or >= 'a' and <= 'z' or >= 'A' and <= 'Z') ? null : NameSyntaxKey;

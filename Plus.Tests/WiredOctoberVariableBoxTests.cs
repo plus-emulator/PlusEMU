@@ -44,11 +44,12 @@ public sealed class WiredOctoberVariableBoxTests
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_slc_furni_with_var", n => n with { OwnedIntParams = [2, 2, 0, 0, 0, 1] }));
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: same holder saves for every pair of destination and reference kind.
     [Fact]
-    public void SameHolderOnlyAppliesToAVariableOfTheDestinationsOwnKind()
+    public void SameHolderSavesForAReferenceOfAnotherKind()
     {
-        Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_act_change_var_val", n => n with { OwnedIntParams = [0, 1, 1, 0, 0, 1, 1], VariableIds = ["furni:10", "user:11"] }));
-        Assert.False(WiredOctoberEditorParityTests.TryCompile("wf_act_give_var", n => n with { OwnedIntParams = [-10, 0, 0, 0, 1, -10, 1], VariableIds = ["room:10", "room:11"] }));
+        Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_act_change_var_val", n => n with { OwnedIntParams = [0, 1, 1, 0, 0, 1, 1], VariableIds = ["furni:10", "user:11"] }));
+        Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_act_give_var", n => n with { OwnedIntParams = [-10, 0, 0, 0, 1, -10, 1], VariableIds = ["room:10", "room:11"] }));
     }
 
     [Theory]

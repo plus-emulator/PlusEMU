@@ -61,7 +61,7 @@ public sealed class WiredScalarLiteralParityTests
     [InlineData("wf_act_give_var", new[] { 1, 0, 1, 0, 0, 1 })]
     [InlineData("wf_act_give_var", new[] { 1, 0, 1, 0, 0, 2, 0 })]
     [InlineData("wf_act_give_var", new[] { 1, 0, 1, 0, 0, 1, 0, 0 })]
-    [InlineData("wf_act_change_var_val", new[] { 1, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
+    [InlineData("wf_act_change_var_val", new[] { 1, 0, 0, 1, 1, 0, 0, 0, 0, 2 })]
     [InlineData("wf_cnd_var_val_match", new[] { 1, 2, 0, 1, 1, 0, 0, 0, 0, 1, 2, 0 })]
     [InlineData("wf_cnd_var_val_match", new[] { 1, 2, 0, 1, 1, 0, 0, 0, 0, 2, 1, 0 })]
     public void MalformedSuffixesAndOriginalQuantifiersAreRejected(string name, int[] fields)

@@ -20,7 +20,8 @@ public sealed partial class WiredGlideConveyorTests
     private const uint MatchTarget = 71, MatchState = 72, MatchSay = 73, MatchCondition = 74, MatchToggle = 75;
     private const int FurniState = -110;
 
-    private static (Fixture Fixture, RoomUser Owner, List<(uint Header, byte[] Payload)> Frames) MatchFixture(bool condition = true)
+    private static (Fixture Fixture, RoomUser Owner, List<(uint Header, byte[] Payload)> Frames) MatchFixture(bool condition = true,
+        string variableBox = "wf_cnd_var_val_match", Func<uint, IWiredVariableDirectory>? variables = null)
     {
         var f = new Fixture(
         [
@@ -32,13 +33,13 @@ public sealed partial class WiredGlideConveyorTests
         f.Room.OwnerName = "user1";
         f.Room.Type = "private";
         // The room's real built-in variables, so @state reads the tile.
-        var module = new WiredVariableModule(f.Room.Id, new NoUserVariables(), new MemoryWiredVariableStore(), TimeProvider.System,
+        var module = new WiredVariableModule(f.Room.Id, variables?.Invoke(f.Room.Id) ?? new NoUserVariables(), new MemoryWiredVariableStore(), TimeProvider.System,
             new RoomWiredBuiltinVariables(f.Room));
         typeof(WiredRoomVariables).GetField("<Module>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(f.Room.GetWired().Variables, module);
 
         if (condition) {
-            f.PlaceWired(MatchCondition, 4, 9, 0.65, "wf_cnd_var_val_match");
+            f.PlaceWired(MatchCondition, 4, 9, 0.65, variableBox);
         }
 
         f.PlaceWired(MatchToggle, 4, 9, 1.3, "wf_act_toggle_state");

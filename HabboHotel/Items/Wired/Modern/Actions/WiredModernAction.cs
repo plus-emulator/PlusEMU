@@ -852,6 +852,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                     var room = context.Room;
                     var target = client;
+                    // Observed on AIR WIN63-202610201032-107964540: a bot saying the message to everyone turns heads like its own chat.
+                    var turnsHeads = shownToRoom && user.IsBot && !user.IsPet;
 
                     room.GetWired().AfterFlash(() =>
                     {
@@ -860,6 +862,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         }
                         else {
                             room.SendChat(receiver => packet with { ReceiverVirtualId = receiver });
+                        }
+
+                        if (turnsHeads) {
+                            room.GetRoomUserManager().TurnHeadsToward(user);
                         }
                     }, context);
 

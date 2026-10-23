@@ -84,7 +84,7 @@ public sealed class RoomChatService(
             user.LastBubble = colour;
         }
         else {
-            user.UnIdle();
+            user.UnIdle(atRoomTick: true);
         }
 
         if (habbo.FloodUntil is { } floodUntil && now < floodUntil) {

@@ -131,8 +131,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         else if (name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6) {
             slot = "movers";
         }
+        // Observed on AIR WIN63-202610201032-107964540: a firing that restores only the position of several furni, with or
+        // without the altitude, sends all their moves in one WiredMovements.
         else if (name == "wf_act_match_to_sshot" && config.IntParams.Length == 5
-            && config.IntParams.Take(4).SequenceEqual(new[] { 0, 0, 1, 1 })
+            && config.IntParams.Take(3).SequenceEqual(new[] { 0, 0, 1 }) && config.IntParams[3] is 0 or 1
             && config.Snapshots.All(snapshot => snapshot.Wall == null)) {
             slot = "movers";
         }

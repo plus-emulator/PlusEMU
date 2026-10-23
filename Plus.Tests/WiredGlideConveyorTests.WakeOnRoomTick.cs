@@ -53,10 +53,14 @@ public sealed partial class WiredGlideConveyorTests
         f.Advance(150);
         f.Owned(() =>
         {
-            switch (action) {
-                case "wave": service.PerformAction(f.Room, owner.GetClient()!, 1); break;
-                case "sign": service.ApplySign(f.Room, owner.GetClient()!, 3); break;
-                default: service.Dance(f.Room, owner.GetClient()!, 1); break;
+            if (action == "wave") {
+                service.PerformAction(f.Room, owner.GetClient()!, 1);
+            }
+            else if (action == "sign") {
+                service.ApplySign(f.Room, owner.GetClient()!, 3);
+            }
+            else {
+                service.Dance(f.Room, owner.GetClient()!, 1);
             }
         });
 

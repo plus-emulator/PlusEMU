@@ -425,6 +425,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 }
             }
 
+            if (name == "wf_act_toggle_to_rnd") {
+                movers = WiredToggleStateTargets.ResolveRandom(movers);
+            }
+
             var passengers = WiredRoomMovement.CapturePassengers(context, movers);
 
             var targets = config.FurniSources.ContainsKey("targets") ? Furni(context, config, "targets", name == "wf_act_furni_to_furni"

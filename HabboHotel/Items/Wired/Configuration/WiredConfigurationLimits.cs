@@ -6,7 +6,7 @@ public static class WiredConfigurationLimits
     // Neighborhood selectors save six fields followed by all 81 editor tile pairs.
     public const int NeighborhoodTiles = 81;
     public const int IntParams = 6 + NeighborhoodTiles * 2;
-    // The server keeps accepting up to 100 picks so boxes saved with more than the editor's limit still load and save.
+    // The server keeps reading up to 100 picks so boxes stored with more than the editor's limit still load; an editor save over the limit is dropped.
     public const int SelectedItems = 100;
     // The pick limit the editor frame advertises. Observed on hhus (AIR WIN63-202610131318-860371703): every box sends 20.
     public const int EditorFurniLimit = 20;

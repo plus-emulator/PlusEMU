@@ -209,7 +209,7 @@ public static class WiredNativeEditorProjection
         {
             "wf_act_join_team" => native.OwnedIntParams is [< 1 or > 4, _],
             "wf_act_give_score_tm" => native.OwnedIntParams is [_, _, < 1 or > 4],
-            // Observed on AIR WIN63-202610201032-107964540: an unknown user source, or more than 20 picked furni.
+            // Observed on AIR WIN63-202610201032-107964540: an unknown user source.
             WiredFurniVisualRules.Highlight or WiredFurniVisualRules.Visibility => WiredFurniVisualRules.DroppedWithoutReply(native),
             _ => WiredEditorStoreRules.DroppedWithoutReply(descriptor.CanonicalName, native)
         };
@@ -754,6 +754,31 @@ public static class WiredNativeEditorProjection
         }
 
         runtime = derived.Bind(new(itemId, name, derived, native));
+
+        return true;
+    }
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540 on actions, conditions, triggers and selectors: a save with more than 20 ids in a pick
+    /// list gets no answer (32 cards) and the box keeps its old picks. On Toggle State repeats count: 21 ids of 20 different ones are
+    /// dropped and 20 ids of 10 different ones are saved. An id sent twice in a list saves once (48 cards). Add-ons and variable boxes
+    /// were not probed. Whether this check comes before the keyed refusals was not probed
+    /// either. A box saved earlier with more than 20 picks keeps them, but every editor save of it is dropped until picks are removed,
+    /// as Habbo never holds more than 20.
+    /// </summary>
+    public static bool TryLimitPicks(WiredNativeEditorConfiguration native, out WiredNativeEditorConfiguration limited)
+    {
+        limited = native;
+
+        if (native.PrimaryItems.IsDefault || native.SecondaryItems.IsDefault) {
+            return true;
+        }
+
+        if (native.PrimaryItems.Length > WiredConfigurationLimits.EditorFurniLimit || native.SecondaryItems.Length > WiredConfigurationLimits.EditorFurniLimit) {
+            return false;
+        }
+
+        limited = native with { PrimaryItems = [.. native.PrimaryItems.Distinct()], SecondaryItems = [.. native.SecondaryItems.Distinct()] };
 
         return true;
     }

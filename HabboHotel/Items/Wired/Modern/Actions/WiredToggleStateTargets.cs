@@ -48,11 +48,10 @@ internal static class WiredToggleStateTargets
     private static readonly HashSet<string> RandomUntouched = new(StringComparer.OrdinalIgnoreCase)
     {
         "wf_tile1", "wf_tile2", "wf_pyramid", "wf_box", "wf_arrowplate", "wf_arrowplate_8dir", "wf_pressureplate", "wf_ringplate",
-        "wf_antenna1", "wf_antenna2"
+        "wf_antenna1", "wf_antenna2", "wf_blob", "wf_blob2", "wf_button", "wf_button_red", "wf_button_x"
     };
 
-    private static bool LeftAloneByRandom(string name) => RandomUntouched.Contains(name)
-        || name.StartsWith("wf_blob", StringComparison.OrdinalIgnoreCase) || name.StartsWith("wf_button", StringComparison.OrdinalIgnoreCase);
+    private static bool LeftAloneByRandom(string name) => RandomUntouched.Contains(name);
 
     /// <summary>
     /// The furni Toggle to Random changes. Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs, 24 firings each): it changes colour

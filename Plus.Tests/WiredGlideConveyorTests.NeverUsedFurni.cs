@@ -6,11 +6,12 @@ namespace Plus.Tests;
 public sealed partial class WiredGlideConveyorTests
 {
     // Observed on AIR WIN63-202610201032-107964540 (6 double-clicks in each of 3 runs): a colour tile changes state on every double-click, the
-    // two plain game tiles, the blobs, the buttons and the plates never do.
+    // two plain game tiles, the blob, the buttons and the plates never do. The super blob changes too.
     [Theory]
     [InlineData("wf_colortile", 7, true)]
     [InlineData("wf_tile1", 10, false)]
     [InlineData("wf_blob", 2, false)]
+    [InlineData("wf_blob2", 2, true)]
     [InlineData("wf_button", 2, false)]
     [InlineData("wf_pressureplate", 4, false)]
     public void ADoubleClickChangesTheStateOfOnlyTheFurniThatCanBeUsed(string name, int modes, bool changes)

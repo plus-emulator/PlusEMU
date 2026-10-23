@@ -5,10 +5,10 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (a floor item read from the room after it was placed from Builders Club, and 3 runs of user
-// double-clicks on 34 classes): the two plain game tiles, the pyramid, the blobs, the box, the buttons, the arrow, pressure and ring plates have usage
-// policy 0 and ignore a double-click; the other state furni can be used by controllers and the floor switches by anyone. New blobs start in
-// state 1 and new buttons, game tiles and boxes have no state; the glass door and the fire gates start in state 0.
+// Observed on AIR WIN63-202610201032-107964540 (a floor item read after Builders Club placement, and 3 runs of double-clicks): the two plain game
+// tiles, the pyramid, the blobs, the box, the buttons and the arrow, pressure and ring plates have usage policy 0. All of them ignore a
+// double-click except the super blob, which changes state although its usage policy is 0. New wf_blob items start in state 1, new buttons,
+// game tiles and boxes have no state, and new glass doors and fire gates start in state 0.
 public sealed class FurnitureStateClassesTests
 {
     private static Item Placed(string name, int modes, string interaction = "default", string stored = "")
@@ -60,7 +60,6 @@ public sealed class FurnitureStateClassesTests
     [InlineData("wf_button_red", 2, "default", "")]
     [InlineData("wf_button_x", 2, "default", "")]
     [InlineData("wf_blob", 2, "default", "1")]
-    [InlineData("wf_blob2", 2, "default", "1")]
     [InlineData("wf_glassdoor", 2, "gate", "0")]
     [InlineData("wf_firegate", 2, "gate", "0")]
     [InlineData("wf_arrowplate_8dir", 4, "pressure_pad", "0")]

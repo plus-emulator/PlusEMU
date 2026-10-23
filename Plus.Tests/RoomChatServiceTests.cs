@@ -176,13 +176,12 @@ public sealed class RoomChatServiceTests
         Assert.Equal(2, Bubble(world.SenderPackets[^1]));
     }
 
-    // Plus guard, not observed on Habbo: a game gate that clears and sets the team again does not bring the Join Team bubble back.
-    // The test sets the team directly and does not run the gate code.
-    [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    public async Task AGateRejoinOfTheSameColourAfterAJoinTeamKeepsTheOwnBubble(int type)
+    // Plus guard, not observed on Habbo: a team that is cleared and set again outside the game gates does not bring the Join Team
+    // bubble back. The test sets the team directly and does not run the gate code.
+    [Fact]
+    public async Task ATeamSetAgainOfTheSameColourAfterAJoinTeamKeepsTheOwnBubble()
     {
+        const int type = 0;
         var world = new World(new SteppingClock(Now, TimeSpan.FromMilliseconds(600)));
         world.Filter.Banned = true;
         Assert.True(WiredGameState.For(world.Room).Join(world.Room, world.SenderUser, type, Team.Red, 0, [world.SenderUser, world.RecipientUser],
@@ -195,8 +194,9 @@ public sealed class RoomChatServiceTests
         Assert.Equal(2, Bubble(world.SenderPackets[^1]));
     }
 
+    // Plus guard, not observed on Habbo: a team set directly, with no Join Team and no game gate, keeps the own bubble.
     [Fact]
-    public async Task BattleBanzaiTeamMembersKeepTheirOwnBubble()
+    public async Task ATeamSetWithoutAGateOrJoinTeamKeepsTheOwnBubble()
     {
         var world = new World();
         world.Filter.Banned = true;

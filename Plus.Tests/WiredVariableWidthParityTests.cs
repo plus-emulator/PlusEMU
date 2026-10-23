@@ -97,7 +97,12 @@ public sealed class WiredVariableWidthParityTests
 
         foreach (var (holder, index) in holders.Select((holder, index) => (holder, index))) {
             Assert.True(module.Mutate(new(holder.Target, "custom:10"), holder, WiredVariableMutation.Give, index, frame));
-            Assert.True(module.Mutate(new(holder.Target, "custom:11"), holder, WiredVariableMutation.Give, index == 0 ? long.MaxValue : 2, frame));
+
+            // Furni destinations take the value of a different furni reference holder each (observed on AIR WIN63-202610201032-107964540), so
+            // the wide reference sits on the first furni only and every destination reads it.
+            if (index == 0) {
+                Assert.True(module.Mutate(new(holder.Target, "custom:11"), holder, WiredVariableMutation.Give, long.MaxValue, frame));
+            }
         }
 
         module.DrainChanges();

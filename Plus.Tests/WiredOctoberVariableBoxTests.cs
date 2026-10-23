@@ -65,9 +65,10 @@ public sealed class WiredOctoberVariableBoxTests
         Assert.True(executor.Execute("wf_act_give_var", Config([1, 0, 0, 0, 0, 1, 1, 1], "furni:10", "furni:11"), frame));
         Assert.Equal(new long[] { 3, 7 }, Read(module, frame, holders, 10));
 
-        // Give from a variable on its own source: the first value read.
+        // Give from a variable on its own source: each furni takes the value of a different furni, at random (observed on AIR
+        // WIN63-202610201032-107964540).
         Assert.True(executor.Execute("wf_act_give_var", Config([1, 0, 0, 0, 0, 1, 1, 0], "furni:12", "furni:11"), frame));
-        Assert.Equal(new long[] { 3, 3 }, Read(module, frame, holders, 12));
+        Assert.Equal(new long[] { 3, 7 }, Read(module, frame, holders, 12).Order());
 
         // Change by a variable, same holder: 10 += 11 on each furni.
         Assert.True(executor.Execute("wf_act_change_var_val", Config([1, 1, 1, 0, 1, 0, 0, 0, 0, 1], "furni:10", "furni:11"), frame));

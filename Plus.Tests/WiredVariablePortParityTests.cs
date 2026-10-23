@@ -10,11 +10,15 @@ public sealed class WiredVariablePortParityTests
     [InlineData(WiredVariableTarget.User, WiredVariableTarget.User)]
     [InlineData(WiredVariableTarget.User, WiredVariableTarget.Furni)]
     [InlineData(WiredVariableTarget.Furni, WiredVariableTarget.Furni)]
-    public void ChangeUsesOneFirstReadableReferenceForEveryDestination(WiredVariableTarget target, WiredVariableTarget source)
+    public void ChangeTakesReferenceValuesForEveryDestination(WiredVariableTarget target, WiredVariableTarget source)
     {
         var (module, executor, frame, destinations, operands) = Scene(target, source);
         Assert.True(executor.Execute("wf_act_change_var_val", WiredNativeTestSupport.Scalar("wf_act_change_var_val", Config(target, source, 0)), frame));
-        Assert.Equal(new long[] { 10, 10 }, destinations.Select(holder => module.Read(new(target, "custom:10"), holder, frame)!.Value));
+        var assigned = destinations.Select(holder => module.Read(new(target, "custom:10"), holder, frame)!.Value).ToArray();
+
+        // Observed on AIR WIN63-202610201032-107964540: furni destinations take the value of a different furni reference holder each, at random.
+        // Users were not probed: they take the first value read.
+        Assert.Equal(target == WiredVariableTarget.Furni && source == WiredVariableTarget.Furni ? new long[] { 10, 20 } : [10, 10], assigned.Order());
         module.Mutate(new(source, "custom:11"), operands[0], WiredVariableMutation.Remove, 0, frame);
         Assert.True(executor.Execute("wf_act_change_var_val", WiredNativeTestSupport.Scalar("wf_act_change_var_val", Config(target, source, 0)), frame));
         Assert.Equal(new long[] { 20, 20 }, destinations.Select(holder => module.Read(new(target, "custom:10"), holder, frame)!.Value));
@@ -31,6 +35,23 @@ public sealed class WiredVariablePortParityTests
 
         var config = Config(WiredVariableTarget.User, WiredVariableTarget.User, 2);
         Assert.True(executor.Execute("wf_cnd_var_val_match", WiredNativeTestSupport.Scalar("wf_cnd_var_val_match", config with { IntParams = [.. config.IntParams, 0] }), frame));
+    }
+
+    // Not probed on Habbo and not changed by the pairing of Change Variable Value and Give Variable: a comparison reads the first reference value.
+    [Fact]
+    public void ComparisonKeepsReadingTheFirstReferenceValueWithSeveralFurni()
+    {
+        var (module, executor, frame, destinations, _) = Scene(WiredVariableTarget.Furni, WiredVariableTarget.Furni);
+        var config = Config(WiredVariableTarget.Furni, WiredVariableTarget.Furni, 2);
+        var match = WiredNativeTestSupport.Scalar("wf_cnd_var_val_match", config with { IntParams = [.. config.IntParams, 0] });
+
+        foreach (var (value, passes) in new[] { (10L, true), (20L, false) }) {
+            foreach (var target in destinations) {
+                module.Mutate(new(target.Target, "custom:10"), target, WiredVariableMutation.Set, value, frame);
+            }
+
+            Assert.Equal(passes, executor.Execute("wf_cnd_var_val_match", match, frame));
+        }
     }
 
     [Fact]

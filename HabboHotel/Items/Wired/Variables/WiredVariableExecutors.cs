@@ -293,8 +293,16 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         };
 
         // Observed on AIR WIN63-202610201032-107964540: Give Variable and Change Variable never read a pointer as their value, so the
-        // destination keeps its value.
-        if (valueSource is not null && variables.IsPointer(valueSource)) {
+        // destination keeps its value. A box that runs after a delay reads it like the variable it points at, and writes, gives and removes
+        // through a destination pointer on the pointed variable, for a pointer of any target. A pointer that points at nothing does nothing.
+        if (configuration.Delay > 0) {
+            if (variables.Unpoint(reference, frame) is not { } pointed) {
+                return false;
+            }
+
+            reference = pointed;
+        }
+        else if (valueSource is not null && variables.IsPointer(valueSource)) {
             return false;
         }
 

@@ -917,6 +917,17 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     private WiredVariableValue? ReadPointer(WiredVariableDefinition pointer, WiredVariableHolder holder, WiredVariableFrame frame) =>
         PointedAt(pointer, frame) is { } target ? Read(target.Reference, holder, frame) : null;
 
+    /// <summary>
+    /// The variable a pointer stands for in this firing, or the reference itself when it is not a pointer; null when the pointer points at
+    /// nothing.
+    /// </summary>
+    public WiredVariableReference? Unpoint(WiredVariableReference reference, WiredVariableFrame frame)
+    {
+        lock (_gate) {
+            return Resolve(reference, false)?.Definition is { IsPointer: true } pointer ? PointedAt(pointer, frame)?.Reference : reference;
+        }
+    }
+
     /// <summary>True when the reference names a pointer variable.</summary>
     public bool IsPointer(WiredVariableReference reference)
     {

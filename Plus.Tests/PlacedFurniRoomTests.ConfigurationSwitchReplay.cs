@@ -71,6 +71,31 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(StatesPackets());
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: using a flag furni sends one ObjectDataUpdate with the new state and then the
+    // room flags, no ObjectUpdate. The chooser disabler sends the data update too.
+    [Theory]
+    [InlineData(InteractionType.HandItemBlocker, false, "1", new byte[] { 1, 0, 0, 0, 0 })]
+    [InlineData(InteractionType.HandItemBlocker, true, "0", new byte[] { 0, 0, 0, 0, 0 })]
+    [InlineData(InteractionType.ChooserDisabler, false, "1", new byte[] { 0, 1, 0, 0, 0 })]
+    [InlineData(InteractionType.ChooserDisabler, true, "0", new byte[] { 0, 0, 0, 0, 0 })]
+    [InlineData(InteractionType.InvisibleFurniControl, false, "1", new byte[] { 0, 0, 0, 1, 0 })]
+    [InlineData(InteractionType.InvisibleFurniControl, true, "0", new byte[] { 0, 0, 0, 0, 0 })]
+    public void UsingAFlagFurniSendsADataUpdateThenTheFlags(InteractionType type, bool on, string expected, byte[] flags)
+    {
+        var item = PlaceConfiguration(87, type, on);
+
+        new FurnitureUseService(new FurnitureUseStore(_database), Proxy<IQuestManager>((_, _) => null)).Use(_room, _client, new(item.Id, 0));
+
+        Assert.Equal(expected, item.LegacyDataString);
+        var data = _client.Packets.FindIndex(packet => packet.Header == ServerPacketHeader.ObjectDataUpdateComposer);
+        var states = _client.Packets.FindIndex(packet => packet.Header == ServerPacketHeader.ConfigurationItemStatesComposer);
+        Assert.InRange(data, 0, int.MaxValue);
+        Assert.True(data < states, "the data update comes before the flags");
+        Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectDataUpdateComposer);
+        Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
+        Assert.Equal(flags, Assert.Single(StatesPackets()));
+    }
+
     // Four uses in the same millisecond switch the flag once: the first use counts.
     [Fact]
     public void FourUsesInTheSameMillisecondSwitchTheChooserFlagOnce()

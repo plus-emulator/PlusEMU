@@ -767,7 +767,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 }
 
                 if (moves.Count != 0 || turns.Count != 0) {
-                    context.Room.FlushWiredFlashes();
+                    // Observed on AIR WIN63-202610201032-107964540: the chat of a Show Message in the same stack follows the WiredMovements, whichever
+                    // box comes first and with or without Execute in Order (75 of 96 firings; in the others the chat came first in the same
+                    // millisecond), so the held messages stay until the pass ends.
+                    context.Room.FlushWiredFlashData();
                     context.Room.SendPacket(new WiredMovementBatchComposer(moves, turns));
                 }
 

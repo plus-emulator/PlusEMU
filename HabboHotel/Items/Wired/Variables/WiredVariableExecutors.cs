@@ -19,12 +19,20 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
 
     /// <summary>
     /// Observed on hhus (AIR WIN63-202610131318-860371703): Give Variable and Change Variable Value save with no destination variable
-    /// picked (the picker's "n"/"0"), with every other field checked as usual. Such a box changes nothing until a variable is chosen;
-    /// execution still requires a resolved destination.
+    /// picked (the picker's "n"/"0"), with every other field checked as usual. Observed on AIR WIN63-202610201032-107964540: so does Remove
+    /// Variable. Such a box changes nothing until a variable is chosen; execution still requires a resolved destination.
     /// </summary>
     private static bool UnchosenDestination(string name, WiredConfiguration configuration) =>
-        name is "wf_act_give_var" or "wf_act_change_var_val" && configuration.VariableIds.Length > 0
+        name is "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var" && configuration.VariableIds.Length > 0
         && WiredVariableAbsent.Is(configuration.VariableIds[0]);
+
+    /// <summary>
+    /// Observed on AIR WIN63-202610201032-107964540: Give Variable, Change Variable Value and Remove Variable save on any id the editor sends
+    /// (all 162 built-in ids, a number that names no variable, an id of another kind than the target), and store it as described on
+    /// WiredVariableDescription.StoredId. A box whose id names no variable of its target's kind changes nothing, like a slot with no variable
+    /// picked.
+    /// </summary>
+    private static bool SavesAnyVariableId(string name) => name is "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var";
 
     /// <summary>
     /// Observed on AIR WIN63-202610201032-107964540: Has Variable and Not Has Variable save with no variable, or with a variable of another
@@ -58,11 +66,11 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             }
 
             if (!WiredVariableDescription.TryParseCatalogId(id, out var parsed, out var parsedToken)) {
-                return false;
+                return SavesAnyVariableId(name);
             }
 
             if ((int)parsed != target) {
-                return ReadsPresence(name) || name == "wf_act_change_var_val";
+                return ReadsPresence(name) || SavesAnyVariableId(name);
             }
 
             token = authority is null ? parsedToken : authority.TryResolveCatalogId(id, parsed, out var reference) ? reference.Token : "";
@@ -160,9 +168,9 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: Change Variable Value saves with a variable of another domain than its target
-        // (a furni variable on a user target) and then changes nothing, like a box with no variable picked.
-        unchosenDestination |= name == "wf_act_change_var_val" && tokens[0].Length == 0;
+        // Observed on AIR WIN63-202610201032-107964540: Give Variable, Change Variable Value and Remove Variable save with a variable of another
+        // domain than their target (a furni variable on a user target) and then change nothing, like a box with no variable picked.
+        unchosenDestination |= SavesAnyVariableId(name) && tokens[0].Length == 0;
         // Observed on AIR WIN63-202610201032-107964540: Variable Value Match saves with no variable, or with option 1 and no reference
         // variable, and then never passes. Observed with option 1 and only the reference empty, only the left variable empty, or both
         // empty, and with same holder on and either slot empty (furni target only). Other empty-slot shapes are assumed to save the
@@ -193,19 +201,8 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
-        if (name is "wf_act_give_var" or "wf_act_remove_var") {
-            // Observed on hhus (AIR WIN63-202610131318-860371703): Give Variable saves with a global variable (and then gives nothing).
-            // Observed on hhus (AIR WIN63-202610151745-318700621): so does Remove Variable, and it then removes nothing.
-            var destination = new WiredVariableReference((WiredVariableTarget)p[0], tokens[0]);
-
-            if (!unchosenDestination && !WiredVariableModule.TryDefinitionId(tokens[0], out _)
-                && !RoomWiredBuiltinVariables.SupportsPresenceMutation(destination) && !RoomWiredBuiltinVariables.SavesWithoutEffect(destination)) {
-                return false;
-            }
-
-            if (name == "wf_act_give_var" && p[1] is not (0 or 1)) {
-                return false;
-            }
+        if (name == "wf_act_give_var" && p[1] is not (0 or 1)) {
+            return false;
         }
 
         if (name is "wf_act_change_var_val" or "wf_cnd_var_val_match") {

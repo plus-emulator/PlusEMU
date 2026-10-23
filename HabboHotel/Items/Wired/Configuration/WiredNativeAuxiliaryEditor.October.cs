@@ -217,6 +217,9 @@ internal static partial class WiredNativeAuxiliaryEditor
                     VariableIds = native.VariableIds.IsEmpty ? [Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.WireId] : native.VariableIds,
                     Text = native.Text.Replace(' ', '_')
                 };
+            // Observed on AIR WIN63-202610201032-107964540: these cards keep any number in a variable slot and any other text as "0".
+            case "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var":
+                return native with { VariableIds = [.. native.VariableIds.Select(Plus.HabboHotel.Items.Wired.Variables.WiredVariableDescription.StoredId)] };
             default:
                 return ChestStoredForm(name, native);
         }

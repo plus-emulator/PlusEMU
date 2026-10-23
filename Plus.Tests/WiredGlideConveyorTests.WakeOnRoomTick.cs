@@ -10,7 +10,7 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs; chat 6 times, wave, sign and dance 4 times each): a sleeping avatar that talks,
+    // Observed on AIR WIN63-202610201032-107964540 (3 runs; chat 6 times, wave, sign and dance 4 times each per run): a sleeping avatar that talks,
     // waves, signs or dances gets its Sleep packet (awake) on the next 500 ms room tick, 0.14 to 0.63 s after the action, and the action's own
     // packets come first. A walk that really moves the avatar wakes it at once.
     [Fact]
@@ -69,8 +69,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.False(owner.IsAsleep);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (4 of 4 runs each): a walk to another tile wakes the avatar in the ms the request arrives
-    // (about 10 ms before the avatar's first step); a walk to the tile it stands on wakes it on the next room tick.
+    // Observed on AIR WIN63-202610201032-107964540 (3 runs, 2 tries each): a walk to another tile wakes the avatar when the request arrives, a
+    // walk to the tile it stands on wakes it on the next room tick.
     [Theory]
     [InlineData(7, 11, true)]
     [InlineData(6, 11, false)]
@@ -94,8 +94,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(0, sleep.Payload[4]);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (4 of 4 runs): a Show Message wakes the sleeping avatar it speaks to on the next room tick
-    // (0.27 to 0.48 s after the click); a Toggle State fired the same way does not wake it.
+    // Observed on AIR WIN63-202610201032-107964540 (one run, 4 tries for each visibility): a Show Message wakes the sleeping avatar it speaks
+    // to on the next room tick (0.27 to 0.48 s after the click); a Toggle State fired the same way does not wake it.
     [Fact]
     public void AShowMessageWakesTheSleepingAvatarOnTheRoomTick()
     {

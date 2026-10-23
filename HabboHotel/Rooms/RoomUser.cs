@@ -363,7 +363,7 @@ public class RoomUser
 
     /// <summary>
     /// The avatar did something. Observed on AIR WIN63-202610201032-107964540: a sleeping avatar that talks, waves, signs or dances, or is
-    /// spoken to by a Show Message, wakes on the next room tick, not at once (<paramref name="atRoomTick"/>); a walk wakes it at once.
+    /// spoken to by a Show Message, wakes on the next room tick, not at once (<paramref name="atRoomTick"/>); a walk to another tile wakes it at once.
     /// </summary>
     public void UnIdle(bool atRoomTick = false)
     {
@@ -396,7 +396,7 @@ public class RoomUser
         WakeUp(room);
     }
 
-    /// <summary>The avatar woke up on the room tick after an action (see <see cref="UnIdle"/>).</summary>
+    /// <summary>The avatar wakes on the next room tick, after an action (see <see cref="UnIdle"/>).</summary>
     public bool WakePending;
 
     public void CompleteWake()
@@ -404,8 +404,6 @@ public class RoomUser
         if (WakePending && GetRoom() is { } room) {
             WakeUp(room);
         }
-
-        WakePending = false;
     }
 
     private void WakeUp(Room room)

@@ -148,7 +148,7 @@ public sealed class RoomChatService(
         questManager.ProgressUserQuest(session, QuestType.SocialChat);
 
         if (shout) {
-            user.UnIdle(atRoomTick: true);
+            user.UnIdle();
         }
 
         user.OnChat(user.LastBubble, message, shout);

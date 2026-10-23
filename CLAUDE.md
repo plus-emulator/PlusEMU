@@ -3,6 +3,7 @@
 ## Commits and pull requests
 
 - Titles use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`, e.g. `fix(wired): re-stack a furni_to_furni mover already on its target`.
+- Wrap code names in backticks in titles, descriptions, commit messages and release notes, for example `` `@state` `` or `` `furni_to_furni` ``. GitHub turns a bare `@name` into a mention of the GitHub user with that name, and release notes are built from PR titles. Before you publish a release, check its notes: every `@` outside backticks must be a PR author.
 - Keep descriptions short: what was wrong and what changed.
 - Cite Habbo evidence as "Observed on AIR `<build>`" or with the AIR path and line. Don't name rooms, runs or test sessions.
 - No test counts, suite results, lint or code-style status, checklists or long tables.

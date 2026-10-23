@@ -13,7 +13,9 @@ if draft=$(gh release view "$tag" --json isDraft --jq .isDraft); then
         exit 0
     fi
 else
-    gh release create "$tag" --target "$commit" --title "$title" --generate-notes --draft
+    notes=$(gh api "repos/{owner}/{repo}/releases/generate-notes" -f tag_name="$tag" -f target_commitish="$commit" --jq .body)
+    notes=$(python3 "$(dirname "$0")/release-notes.py" <<< "$notes")
+    gh release create "$tag" --target "$commit" --title "$title" --notes "$notes" --draft
 fi
 
 gh release upload "$tag" "$@" --clobber

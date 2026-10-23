@@ -69,6 +69,31 @@ public sealed partial class WiredGlideConveyorTests
         Assert.False(owner.IsAsleep);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540 (4 of 4 runs each): a walk to another tile wakes the avatar in the ms the request arrives
+    // (about 10 ms before the avatar's first step); a walk to the tile it stands on wakes it on the next room tick.
+    [Theory]
+    [InlineData(7, 11, true)]
+    [InlineData(6, 11, false)]
+    public void AWalkWakesASleepingAvatarAtOnceWhenItMovesAndOnTheRoomTickWhenItDoesNot(int x, int y, bool atOnce)
+    {
+        var f = new Fixture([(ObservedSubjectId, 9, 9, 0.0, 0, "bc_tile_1", null)], live: true);
+        var owner = f.Walker(1, 6, 10, 6, 11);
+        f.Advance(1000);
+        owner.IsAsleep = true;
+        var frames = CaptureFlashFrames(owner);
+        var service = new RoomAvatarActionService(TimeProvider.System, NoOp<IQuestManager>.Create(), NoOp<IRewardTrackManager>.Create());
+
+        f.Advance(150);
+        f.Owned(() => service.Move(owner.GetClient()!, x, y));
+
+        Assert.Equal(atOnce, frames.Any(frame => frame.Header == ServerPacketHeader.SleepComposer));
+
+        f.Advance(500);
+
+        var sleep = Assert.Single(frames, frame => frame.Header == ServerPacketHeader.SleepComposer);
+        Assert.Equal(0, sleep.Payload[4]);
+    }
+
     // Observed on AIR WIN63-202610201032-107964540 (4 of 4 runs): a Show Message wakes the sleeping avatar it speaks to on the next room tick
     // (0.27 to 0.48 s after the click); a Toggle State fired the same way does not wake it.
     [Fact]

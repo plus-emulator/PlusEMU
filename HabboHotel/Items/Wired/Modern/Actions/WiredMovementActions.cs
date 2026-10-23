@@ -40,7 +40,7 @@ public sealed class WiredMovementActions(Random? random = null)
         .All(other => other.Id == item.Id || other.GetZ < item.GetZ) ?? true;
 
     // The top of the item's stack without the item itself: where a restack onto the same tile lands.
-    private static double? RestackHeight(Item item) => item.GetRoom()?.GetGameMap()?.GetCoordinatedItems(new(item.GetX, item.GetY))
+    internal static double? RestackHeight(Item item) => item.GetRoom()?.GetGameMap()?.GetCoordinatedItems(new(item.GetX, item.GetY))
         .Where(other => other.Id != item.Id).Select(other => other.TotalHeight).DefaultIfEmpty(item.GetZ).Max();
 
     public bool Execute(string name, WiredConfiguration configuration, IReadOnlyList<Item> movers,
@@ -90,10 +90,10 @@ public sealed class WiredMovementActions(Random? random = null)
 
                 break;
             case "wf_act_move_rotate":
-                // With no movement and no rotation, each picked furni not already on top is placed again on its own tile, on top of
-                // the rest of its stack (bottom first). The furni above it stay where they are.
+                // With no movement and no rotation each picked furni is placed again on top of its stack, in a random order.
+                // One already on top at its turn stays.
                 if (Param(0) is < 0 or > 10 && Param(1) is not (2 or 4 or 6)) {
-                    foreach (var item in movers.OrderBy(item => item.GetZ).ThenBy(item => item.Id)) {
+                    foreach (var item in Shuffled(movers)) {
                         if (!OnTopOfItsTile(item)) {
                             affected |= move(item, item.GetX, item.GetY, item.Rotation, RestackHeight(item));
                         }

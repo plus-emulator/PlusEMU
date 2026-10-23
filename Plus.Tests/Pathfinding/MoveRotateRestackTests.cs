@@ -5,8 +5,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Move/Rotate with no movement and no rotation places each picked furni not already on top again on its own tile,
-// on top of the rest of its stack (bottom first). The furni above it stay where they are.
+// Move/Rotate with no movement and no rotation places each picked furni not already on top again on its own tile, on top of the rest
+// of its stack. Several picked furni are placed in a random order.
 public partial class PlacedFurniRoomTests
 {
     [Theory]
@@ -21,7 +21,14 @@ public partial class PlacedFurniRoomTests
             (item, x, y, rotation, height) => WiredRoomOperations.MoveItem(_room, item, x, y, rotation, height), (_, _, _, _, _) => false,
             (_, _) => throw new InvalidOperationException());
 
-        Assert.Equal(heights, stack.Select(item => item.GetZ));
+        if (picked.Length == 1) {
+            Assert.Equal(heights, stack.Select(item => item.GetZ));
+        }
+        else {
+            Assert.Equal(heights.Order(), stack.Select(item => item.GetZ).Order());
+            Assert.Equal(2.0, stack[2].GetZ);
+        }
+
         Assert.All(stack, item => Assert.Equal((1, 1), (item.GetX, item.GetY)));
     }
 }

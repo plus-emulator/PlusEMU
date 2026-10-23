@@ -316,7 +316,8 @@ public partial class WiredAvatarPacketHookTests
         world.Actor.RotBody = 3;
         world.Actions.SetPosture(world.Client, 1);
         Assert.True(world.Actor.IsSitting);
-        Assert.Equal(2, world.Actor.RotBody);
+        // Observed on AIR WIN63-202610201032-107964540: sitting from direction 3 turns the body to 4.
+        Assert.Equal(4, world.Actor.RotBody);
         // Observed on hhus (AIR WIN63-202610131318-860371703): "sit 0.55 1" with the Z unchanged.
         Assert.Equal(0, world.Actor.Z);
         Assert.Equal("0.55 1", world.Actor.Statusses["sit"]);

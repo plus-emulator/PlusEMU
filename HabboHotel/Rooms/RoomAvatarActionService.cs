@@ -211,8 +211,11 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
         var wasSitting = user.IsSitting;
 
         if (posture == 1 && !user.Statusses.ContainsKey("sit")) {
+            // Observed on AIR WIN63-202610201032-107964540: sitting from a diagonal turns the body one step clockwise
+            // and the head follows it (3 -> 4, 5 -> 6, 7 -> 0).
             if (user.RotBody % 2 != 0) {
-                user.RotBody--;
+                user.RotBody = (user.RotBody + 1) % 8;
+                user.RotHead = user.RotBody;
             }
 
             // Observed on hhus (AIR WIN63-202610131318-860371703): sitting on the floor sends "sit 0.55 1" (sit height, can stand up)

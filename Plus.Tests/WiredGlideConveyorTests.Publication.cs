@@ -60,6 +60,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(0, f.Engine.ReadStats().Pending);
     }
 
+    // Observed on AIR WIN63-202610201032-107964540: on the furni a Projectile add-on moves, its curve wins over the Movement Curve add-on.
     [Theory]
     [InlineData("literal-positive", 100, 100)]
     [InlineData("literal-negative", -100, -100)]
@@ -73,8 +74,8 @@ public sealed partial class WiredGlideConveyorTests
     [InlineData("projectile-negative", -100, null)]
     [InlineData("projectile-zero", null, null)]
     [InlineData("projectile-unselected", null, null)]
-    [InlineData("addon-zero-projectile", null, 0)]
-    [InlineData("addon-negative-projectile", -100, -100)]
+    [InlineData("addon-zero-projectile", 100, 0)]
+    [InlineData("addon-negative-projectile", 100, -100)]
     [InlineData("absent", null, null)]
     public void CanonicalStrengthResolvedAddonAndProjectileScopeReachActualProducers(string scenario, int? floorExpected, int? avatarExpected)
     {

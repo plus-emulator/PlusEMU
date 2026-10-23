@@ -22,12 +22,15 @@ public static class WiredMovementPolicy
                 - Math.Max(Math.Abs((long)targetX - mover.X), Math.Abs((long)targetY - mover.Y)), int.MinValue, int.MaxValue),
             _ => 0
         } : 0;
+        // Observed on AIR WIN63-202610201032-107964540: with a Movement Curve add-on (500) and a Projectile add-on (curve 50) on one
+        // stack, the furni the projectile moves takes the projectile curve (50), as with the Projectile add-on alone.
+        var projectileCurve = scoped ? projectile!.CurveStrength : null;
 
         return new(policy.AnimationTimeMs, !policy.DisableAnimation,
             policy.Physics?.KeepAltitude == true && !explicitHeight ? mover.Z : targetZ,
             direction is int d ? (d + projectile!.RotationOffset) % 8 : rotation,
-            policy.Curve?.Type ?? (scoped && projectile!.CurveStrength is not null ? 7 : 0), policy.Curve?.Intensity ?? 100,
-            policy.Curve?.Strength ?? (scoped ? projectile!.CurveStrength ?? 0 : 0), offset);
+            projectileCurve is not null ? 7 : policy.Curve?.Type ?? 0, projectileCurve is not null ? 100 : policy.Curve?.Intensity ?? 100,
+            projectileCurve ?? policy.Curve?.Strength ?? 0, offset);
     }
 
     public static int? Direction(int system, long dx, long dy)

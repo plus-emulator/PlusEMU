@@ -2,7 +2,6 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Clicks and Toggle to Random turn a wf_floor_switch1 between 0 and 1 only.
 public sealed class FloorSwitchStatesTests
 {
     [Fact]

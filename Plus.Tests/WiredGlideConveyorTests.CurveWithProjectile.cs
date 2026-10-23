@@ -7,9 +7,6 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// A User Clicks Furni stack with Move to Direction on a colour tile. With a Movement Curve add-on and a Projectile add-on on one
-// stack, the projectile curve wins, in either stacking order, whatever the Movement Curve strength. A projectile curve of 0
-// leaves the Movement Curve add-on in charge. The Movement Curve add-on alone moves the tile with its own strength.
 public sealed partial class WiredGlideConveyorTests
 {
     private const uint CpTile = 81, CpSwitch = 82, CpTrigger = 83, CpMove = 84, CpCurve = 85, CpProjectile = 86;

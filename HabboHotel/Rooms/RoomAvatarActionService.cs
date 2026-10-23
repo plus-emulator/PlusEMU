@@ -48,7 +48,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             return;
         }
 
-        // A walk to another tile wakes a sleeping avatar when the request arrives; a walk to the tile it stands on wakes it on the next room tick.
+        // A walk to another tile wakes a sleeping avatar at once; a walk to the tile it stands on wakes it on the next room tick.
         if (!user.SetStep && x == user.X && y == user.Y) {
             user.UnIdle(atRoomTick: true);
 

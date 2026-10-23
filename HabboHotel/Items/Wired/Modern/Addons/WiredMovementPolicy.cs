@@ -22,7 +22,7 @@ public static class WiredMovementPolicy
                 - Math.Max(Math.Abs((long)targetX - mover.X), Math.Abs((long)targetY - mover.Y)), int.MinValue, int.MaxValue),
             _ => 0
         } : 0;
-        // With a Movement Curve add-on and a Projectile add-on on one stack, the furni the projectile moves takes the projectile curve.
+        // The furni a Projectile add-on moves takes the projectile curve, not the Movement Curve add-on's.
         var projectileCurve = scoped ? projectile!.CurveStrength : null;
 
         return new(policy.AnimationTimeMs, !policy.DisableAnimation,

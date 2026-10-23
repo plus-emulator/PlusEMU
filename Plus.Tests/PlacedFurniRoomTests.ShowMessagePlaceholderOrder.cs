@@ -6,7 +6,6 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// A Show Message editor lists the placeholder names of its stack sorted by name.
 public partial class PlacedFurniRoomTests
 {
     [Fact]
@@ -29,7 +28,6 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(capturers);
     }
 
-    // Placeholder names sort by character code of the lower case name (a capital is stored in lower case). Capturer names sort the same way and are listed apart.
     [Fact]
     public async Task ShowMessageEditorSortsTheNamesOfAllSourcesAndTheCapturers()
     {

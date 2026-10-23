@@ -23,8 +23,8 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
     public static bool Applies(string name) => name is "wf_act_show_message" or "wf_act_bot_talk" or "wf_act_bot_talk_to_avatar" or "wf_act_send_message";
 
     /// <summary>
-    /// The stack on a box's tile, bottom up: the trigger's placeholder, the text output add-ons and the capturers. The placeholder names
-    /// and the capturer names go out sorted by name (outputs stacked as ptr, cx, ev, ct, nv list ct, cx, ev, nv, ptr).
+    /// The stack on a box's tile, bottom up: the trigger's placeholder, the text output add-ons and the capturers. Placeholder and capturer
+    /// names go out sorted by name.
     /// </summary>
     public static WiredTextPlaceholders Capture(IWiredConfiguredItem box)
     {

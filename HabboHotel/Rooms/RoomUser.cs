@@ -361,7 +361,8 @@ public class RoomUser
     }
 
     /// <summary>
-    /// The avatar did something. A sleeping avatar that talks, waves, signs or dances, or is spoken to by a Show Message, wakes on the next room tick, not at once (<paramref name="atRoomTick"/>); a walk to another tile wakes it at once.
+    /// A sleeping avatar that talks, waves, signs or dances, or is spoken to by a Show Message, wakes on the next room tick (<paramref name="atRoomTick"/>);
+    /// a walk to another tile wakes it at once.
     /// </summary>
     public void UnIdle(bool atRoomTick = false)
     {

@@ -216,8 +216,7 @@ internal static class FurniExtraData
 
     // A new Wired counter, floor switch, antenna or colour tile has state "0", never "".
     // Game furni such as freeze blocks, scoreboards and game timers use an empty state for their own meaning, so they keep it.
-    // A new wf_blob has state 1, a new game tile, box or button has no state, and a new glass door,
-    // fire gate or 8 direction arrow plate has state 0.
+    // A new wf_blob has state 1, a new game tile, box or button has no state, and a new glass door, fire gate or 8 direction arrow plate has state 0.
     internal static string LegacyState(ItemDefinition definition, string stored) => stored.Length > 0 ? stored : StartState(definition) ?? stored;
 
     private static string? StartState(ItemDefinition definition)

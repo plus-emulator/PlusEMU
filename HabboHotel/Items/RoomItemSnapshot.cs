@@ -81,14 +81,15 @@ public sealed record RoomItemSnapshot(
         _ => definition.Modes > 1 ? 1 : 0
     };
 
-    /// <summary>The two plain game tiles, the pyramid, the blobs, the box, three buttons and the arrow, pressure and ring plates have usage policy 0, whatever number of states they have.</summary>
+    /// <summary>
+    /// The game tiles, the pyramid, the blob, the box, three buttons and the plates have usage policy 0, whatever number of states they have.
+    /// </summary>
     internal static bool IsNeverUsed(ItemDefinition definition) => definition.ItemName is "wf_tile1" or "wf_tile2" or "wf_pyramid" or "wf_box"
         or "wf_arrowplate" or "wf_arrowplate_8dir" or "wf_pressureplate" or "wf_ringplate" or "wf_blob" or "wf_blob2"
         or "wf_button" or "wf_button_red" or "wf_button_x";
 
     /// <summary>
-    /// Usage policy 0 is not the same as ignoring a double-click: all of those ignore it except the super
-    /// blob (wf_blob2), whose state changes with each double-click although its usage policy is 0.
+    /// Usage policy 0 is not the same as ignoring a double-click: the super blob (wf_blob2) still changes state when used.
     /// </summary>
     internal static bool IgnoresUse(ItemDefinition definition) => IsNeverUsed(definition) && definition.ItemName != "wf_blob2";
 

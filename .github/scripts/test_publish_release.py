@@ -17,6 +17,10 @@ state_path = Path(os.environ["RELEASE_TEST_STATE"])
 state = json.loads(state_path.read_text())
 command = sys.argv[2]
 state["calls"].append(sys.argv[1:])
+if sys.argv[1] == "api":
+    state_path.write_text(json.dumps(state))
+    print(os.environ["RELEASE_TEST_NOTES"])
+    sys.exit(0)
 if command == os.environ.get("RELEASE_TEST_FAIL"):
     state_path.write_text(json.dumps(state))
     sys.exit(1)
@@ -51,7 +55,9 @@ class PublishReleaseTests(unittest.TestCase):
         gh.chmod(0o755)
         self.state = root / "state.json"
         self.env = dict(os.environ, PATH=f"{root}:{os.environ['PATH']}",
-                        RELEASE_TEST_STATE=str(self.state))
+                        RELEASE_TEST_STATE=str(self.state),
+                        RELEASE_TEST_NOTES="* fix(wired): change @state and `@handitem` by @DennisObject in https://x/pull/1\n"
+                                           "* @newcomer made their first contribution in https://x/pull/2")
         self.script = Path(__file__).with_name("publish-release.sh")
         self.seed("absent")
 
@@ -66,16 +72,25 @@ class PublishReleaseTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1 if fail else 0, result.stderr)
         return json.loads(self.state.read_text())
 
+    def call(self, state, command):
+        return next(call for call in state["calls"] if call[:2] == ["release", command])
+
     def commands(self, state):
-        return [call[1] for call in state["calls"]]
+        return [call[1] for call in state["calls"] if call[0] == "release"]
 
     def test_new_release_uploads_before_publication(self):
         state = self.run_release()
         self.assertEqual(self.commands(state), ["view", "create", "upload", "edit"])
-        create = state["calls"][1]
+        create = self.call(state, "create")
         self.assertEqual(create[create.index("--target") + 1], "abcdef012345")
-        self.assertIn("asset with spaces.zip", state["calls"][2])
+        self.assertIn("asset with spaces.zip", self.call(state, "upload"))
         self.assertEqual(state["release"], "published")
+
+    def test_code_names_in_notes_are_not_user_mentions(self):
+        create = self.call(self.run_release(), "create")
+        self.assertEqual(create[create.index("--notes") + 1],
+                         "* fix(wired): change `@state` and `@handitem` by @DennisObject in https://x/pull/1\n"
+                         "* @newcomer made their first contribution in https://x/pull/2")
 
     def test_published_release_is_unchanged(self):
         self.seed("published")

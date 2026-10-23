@@ -5,8 +5,6 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Twelve stacks that answer one click with one Show Message each let at most ten lines out in any five seconds, and forty in
-    // all. After the fourth batch nothing comes out until thirty seconds after the first batch, when ten come out again.
     [Fact]
     public void ShowMessageAllowsFortyLinesInAnyThirtySeconds()
     {

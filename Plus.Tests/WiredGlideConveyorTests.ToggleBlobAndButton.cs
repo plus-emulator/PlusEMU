@@ -9,9 +9,6 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Toggle State sets a colour tile and a button in its tick batch, sends the blob's new state alone on the next room tick and
-    // sets the button back to 0 600 ms after it was set, in a packet of its own. A blob starts in state 1 and goes 0, 1, 0 ...
-    // on each firing.
     [Fact]
     public void ToggleStateSetsABlobOnTheNextRoomTickAndResetsAButtonAfter600Milliseconds()
     {

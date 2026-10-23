@@ -53,11 +53,9 @@ internal static class WiredToggleStateTargets
     private static bool LeftAloneByRandom(string name) => RandomUntouched.Contains(name);
 
     /// <summary>
-    /// The furni Toggle to Random changes: colour tiles,
-    /// floor switches, number tiles, glow balls, blocks, knobs, toggles, glass doors, sliders, team tiles, team meters, mazes and
-    /// fire gates, but no Wired box in its list (the boxes of the running stack show their normal flash), no counter, the two plain game
-    /// tiles, the pyramid, the box, the arrow plates, the pressure and ring plates, the antennas, the blobs or the buttons. The other
-    /// blob and button colours and the other counters are taken to follow their family.
+    /// The furni Toggle to Random changes: colour tiles, floor switches, number tiles, glow balls, blocks, knobs, toggles, glass doors, sliders,
+    /// team tiles, team meters, mazes and fire gates. Not Wired boxes in its list, counters, the game tiles, the pyramid, the box, the plates, the
+    /// antennas, the blobs or the buttons.
     /// </summary>
     internal static Item[] ResolveRandom(IEnumerable<Item> targets) =>
         [.. targets.Where(item => !item.IsWired && !WiredCounterController.IsWiredCounter(item.Definition) && !LeftAloneByRandom(item.Definition.ItemName))];

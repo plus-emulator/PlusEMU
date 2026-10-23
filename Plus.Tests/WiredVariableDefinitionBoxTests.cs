@@ -22,7 +22,8 @@ public sealed class WiredVariableDefinitionBoxTests
     // Observed on AIR WIN63-202610201032-107964540: Variable Value Match saves with no variable and never passes. This fresh shape itself
     // was not saved there; the observed empty-slot saves imply it.
     [InlineData("wf_cnd_var_val_match", 11, true)]
-    [InlineData("wf_cnd_var_age_match", 10, false)]
+    // Observed on AIR WIN63-202610201032-107964540: a fresh Variable Age saves with no variable and never passes.
+    [InlineData("wf_cnd_var_age_match", 10, true)]
     public void ScalarDraftOpensWithClientShapeButCannotExecuteWithoutSelection(string name, int count, bool saves)
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));

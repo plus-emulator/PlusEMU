@@ -214,26 +214,26 @@ public partial class PlacedFurniRoomTests
         Assert.True(wired.TryGet(HasVarId, out _));
     }
 
-    // Guard: another variable card carrying the same literal 0 is not admitted.
+    // Observed on AIR WIN63-202610201032-107964540: Variable Age saves with the empty variable slot, so a row that carries the literal 0 loads.
     [Fact]
-    public void AnotherVariableCardWithTheLiteralZeroStaysRejectedByTheRealLoad()
+    public void AVariableAgeRowWithTheLiteralZeroLoadsLikeTheFreshBox()
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_cnd_var_age_match", out var descriptor));
         var native = new WiredNativeEditorConfiguration
         {
             Category = descriptor.Category,
             NativeCode = descriptor.EditorCode,
-            OwnedIntParams = [1, 0, 0, 0, 0, 1],
-            FurniSourceTypes = [100],
-            UserSourceTypes = [0],
-            VariableIds = ["0"],
+            OwnedIntParams = [1, 0, 0, 0, 0, 1, 0, -10],
+            FurniSourceTypes = [0, 200],
+            UserSourceTypes = [0, 200],
+            VariableIds = ["0", "0"],
             Quantifier = 0
         };
         var (wired, _) = PrepareSpeech(new SpeechClock());
         SetStore(wired, new(HasVarId, "wf_cnd_var_age_match", 2, JsonSerializer.Serialize(native)));
-        Assert.True(WiredNativeEditorProjection.TryCompile(HasVarId, descriptor, native, out _), "the other card's row must compile so the rejection is the token");
+        Assert.True(WiredNativeEditorProjection.TryCompile(HasVarId, descriptor, native, out _));
 
-        Assert.Null(wired.LoadWiredBox(HasVarItem("wf_cnd_var_age_match", 1, 1)));
+        Assert.NotNull(wired.LoadWiredBox(HasVarItem("wf_cnd_var_age_match", 1, 1)));
     }
 
     private static void SetStore(Plus.HabboHotel.Rooms.Instance.WiredComponent wired, ModernWiredRuntimeTests.StoredRuntimeRow row) =>

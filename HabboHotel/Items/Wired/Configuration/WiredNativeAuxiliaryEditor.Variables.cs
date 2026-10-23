@@ -197,9 +197,9 @@ internal static partial class WiredNativeAuxiliaryEditor
                 p = n.OwnedIntParams;
             }
 
-            if (!Shape(n, 5, 0, 0, 1) || !Plus.HabboHotel.Items.Wired.Variables.WiredVariableAbsent.Is(n.VariableIds[0])
-                && !(Plus.HabboHotel.Items.Wired.Variables.WiredVariableDescription.TryParseCatalogId(n.VariableIds[0], out var picked, out _)
-                    && (target = (int)picked) >= 0)
+            // Observed on AIR WIN63-202610201032-107964540: a fresh box with no variable saves, and so does any other id; the box then never fires.
+            if (!Shape(n, 5, 0, 0, 1) || Plus.HabboHotel.Items.Wired.Variables.WiredVariableDescription.TryParseCatalogId(n.VariableIds[0], out var picked, out _)
+                && (target = (int)picked) < 0
                 || p[0] is not (0 or 1) || p[1] is not (0 or 1) || p[2] is not (0 or 1) || p[3] is < 0 or > 7) {
                 return null;
             }

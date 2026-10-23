@@ -9,7 +9,8 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// 1.5 s and 3 s later show nothing, and a firing 7 s after the first shows all ten again; after ten messages at +1.5 s and +3.0 s,
 /// firings at +4.5 s and +6.0 s showed nothing and one at +7.5 s showed its four. Observed on AIR WIN63-202610201032-107964540 (3 of 3
 /// runs): there is a second budget of <see cref="LongLimit"/> messages in any <see cref="LongWindowMilliseconds"/>. Firings one second
-/// apart showed ten lines at +0, +5, +10 and +15 s and nothing more until thirty seconds after the first.
+/// apart showed batches of ten at +0, +5, +10 or +11 and +16 or +17 s (a firing on the edge of a window gets part of a batch) and nothing
+/// more until thirty seconds after the first. Only one user was in the room, so whether the budget is per room is not proven.
 /// </summary>
 public sealed class WiredChatRate
 {

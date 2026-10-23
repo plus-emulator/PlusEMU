@@ -6,9 +6,9 @@ namespace Plus.Tests;
 public sealed partial class WiredGlideConveyorTests
 {
     // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs, clicks one second apart at three different phases): twelve stacks that
-    // answer one click with one Show Message each let ten lines out per click, at most ten in any five seconds (the first ten at +0 s,
-    // the next at +5 s ...), and forty in all. After the fourth batch nothing comes out until thirty seconds after the first batch,
-    // when ten come out again.
+    // answer one click with one Show Message each let at most ten lines out in any five seconds (batches of ten at +0, +5, +10 or +11 and
+    // +16 or +17 s; a click on the edge of a window gets part of a batch), and forty in all. After the fourth batch nothing comes out until
+    // thirty seconds after the first batch, when ten come out again.
     [Fact]
     public void ShowMessageAllowsFortyLinesInAnyThirtySeconds()
     {
@@ -35,11 +35,11 @@ public sealed partial class WiredGlideConveyorTests
             perClick.Add(frames.Count(frame => frame.Header == ServerPacketHeader.WhisperComposer));
         }
 
-        Assert.All(perClick.Take(5), lines => Assert.InRange(lines, 0, 10));
         Assert.Equal(10, perClick[0]);
+        Assert.Equal(0, perClick.Skip(1).Take(4).Sum());
         Assert.Equal(40, perClick.Take(30).Sum());
         Assert.Equal(10, perClick[30]);
-        Assert.Equal(0, perClick.Skip(16).Take(14).Sum());
+        Assert.Equal(0, perClick.Skip(18).Take(12).Sum());
         Assert.Equal(10, perClick[35]);
     }
 }

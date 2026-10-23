@@ -14,6 +14,7 @@ internal static class WiredEditorStoreRules
     private const string ScanChest = "wf_xtra_scan_chest_furni_by_type";
     private const string TextVariable = "wf_xtra_text_output_variable";
     private const string TextFurniName = "wf_xtra_text_output_furni_name";
+    private const string TextUsername = "wf_xtra_text_output_username";
     private const string PlaceholderKey = "wiredfurni.error.placeholder.";
     public const string VariableCountKey = "wiredfurni.error.invalid_variable_count";
     private const string BotReachedFurni = "wf_trg_bot_reached_stf";
@@ -52,6 +53,8 @@ internal static class WiredEditorStoreRules
         { "wf_cnd_chest_has_item_type", new(ChestCondition, VariableSlots: true) },
         { TextVariable, new(TextOutputVariable, VariableSlots: true) },
         { TextFurniName, new(draft => draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1) },
+        // Observed on AIR WIN63-202610201032-107964540: the username output stores its ints and its name like the furni name output.
+        { TextUsername, new(draft => draft.Ints[0] = draft.Ints[0] == 0 ? 0 : 1) },
         // Observed on AIR WIN63-202610201032-107964540: the bot name is kept as sent, of any length.
         { BotReachedFurni, new(_ => { }) },
         // Only the variable slots are checked. The transaction triggers have none.
@@ -281,7 +284,7 @@ internal static class WiredEditorStoreRules
     /// </summary>
     public static WiredNativeEditorConfiguration NormalizeNewSave(string name, WiredNativeEditorConfiguration native)
     {
-        if (name is not (TextVariable or TextFurniName) || native.OwnedIntParams.IsDefaultOrEmpty) {
+        if (name is not (TextVariable or TextFurniName or TextUsername) || native.OwnedIntParams.IsDefaultOrEmpty) {
             return native;
         }
 
@@ -298,7 +301,7 @@ internal static class WiredEditorStoreRules
     /// </summary>
     public static string? PlaceholderRefusal(string name, WiredNativeEditorConfiguration native, WiredNativeEditorMetadata metadata)
     {
-        if (name is not (TextVariable or TextFurniName) || native.OwnedIntParams.IsDefaultOrEmpty) {
+        if (name is not (TextVariable or TextFurniName or TextUsername) || native.OwnedIntParams.IsDefaultOrEmpty) {
             return null;
         }
 

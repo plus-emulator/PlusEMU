@@ -41,9 +41,10 @@ public sealed class WiredCapturerTextModeTests
         Assert.Equal(expected, values[10]);
     }
 
-    // Without a connector the capturer reads numbers (number mode).
+    // No labels at all is number mode. A text-mode capturer without a connector gets an empty connector and captures nothing
+    // (see PlacedFurniRoomTests.ATextModeCapturerWithoutAConnectorCapturesNothing).
     [Fact]
-    public void WithoutAConnectorTheCapturerReadsNumbers()
+    public void InNumberModeTheCapturerReadsNumbers()
     {
         Assert.True(WiredVariableTextCapture.TryMatch("tc price #(amount)", "tc price 7", 1, [new(10, "amount", null)], out var values));
         Assert.Equal(7, values[10]);

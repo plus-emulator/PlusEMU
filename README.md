@@ -2,6 +2,10 @@
 
 PlusEMU is a Habbo Hotel server (an "emulator") written in C#. It works with the official Habbo AIR client and with the [Volt](https://github.com/plus-emulator/Volt) web client.
 
+[![Join our Discord](https://img.shields.io/badge/Discord-Join%20our%20server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/D7B42G7Rxk)
+
+**Need help or have a question? [Join our Discord](https://discord.gg/D7B42G7Rxk).**
+
 Full guides are on the documentation site: <https://docs.plusemu.dev>
 
 ## Setup

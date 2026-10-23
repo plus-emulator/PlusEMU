@@ -70,15 +70,16 @@ public sealed class InteractorConfigurationSwitch(TimeProvider? clock = null) : 
     {
         item.LegacyDataString = item.LegacyDataString == "1" ? "0" : "1";
 
-        // Observed on AIR WIN63-202610201032-107964540: using the wired disabler sends one ObjectDataUpdate, not an ObjectUpdate.
-        if (used && item.Definition.InteractionType == InteractionType.WiredDisabler) {
+        // Observed on AIR WIN63-202610201032-107964540: using any of these furni sends one ObjectDataUpdate with the new state, then the
+        // room flags (not for the wired disabler), and no ObjectUpdate.
+        if (used) {
             item.UpdateUsedState();
             ConfigurationItemStates.StateChanged(item);
 
             return;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a switch of the chooser disabler sends only the room flags, no ObjectUpdate.
+        // A switch by Wired keeps its packets (the traces cover uses only).
         item.UpdateState(true, item.Definition.InteractionType != InteractionType.ChooserDisabler);
         ConfigurationItemStates.StateChanged(item);
     }

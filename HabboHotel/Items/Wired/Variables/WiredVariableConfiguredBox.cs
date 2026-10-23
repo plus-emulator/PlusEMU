@@ -77,7 +77,11 @@ public sealed class WiredVariableConfiguredBox : IWiredContextualItem
 
         // Observed on hhus (AIR WIN63-202610131318-860371703): a Give Variable or Change Variable Value that writes a variable flashes
         // that variable's definition box, and the variable add-ons on its tile, with the action's own flash.
-        if (_executors.Destination(Descriptor.CanonicalName, configuration) is { } destination) {
+        // Observed on AIR WIN63-202610201032-107964540: a delayed write through a pointer flashes the definition of the variable the pointer
+        // points at, like the same write on that variable. The pointer's own box never flashes, and without a delay the write is ignored.
+        if (_executors.Destination(Descriptor.CanonicalName, configuration) is { } named && variables != null
+            && (configuration.Delay > 0 ? variables.Module.Unpoint(named, context.VariableFrame) : named) is { } destination
+            && !variables.Module.IsPointer(destination)) {
             // Observed on AIR WIN63-202610201032-107964540: runs of one Variable Changed stack in the same tick (two Gives in one click)
             // flip the context variable they each give once in that tick's update, so those gives count as one firing here.
             var firing = Descriptor.CanonicalName == "wf_act_give_var" && destination.Target == WiredVariableTarget.Context

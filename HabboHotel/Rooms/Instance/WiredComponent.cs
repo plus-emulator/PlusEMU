@@ -80,7 +80,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             () => _room.GetRoomItemHandler().GetWallAndFloor);
         _engine.BindRuntime(_room, _targets, this,
             () => _counters.HasRunning || WiredBotTargets.For(_room).HasTargets || _chests?.HasPending == true
-                || WiredProjectileFlights.For(_room).HasPending, PollCounters, FlushExternalChanges);
+                || WiredProjectileFlights.For(_room).HasPending || WiredDeferredStates.For(_room).HasPending, PollCounters, FlushExternalChanges);
         _engine.ObserveEvent = (evt, now) =>
         {
             _selectorState.Observe(evt, now);
@@ -229,7 +229,15 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         WiredAvatarState.For(_room).FlushTickEffects();
         _highscores?.OnOwnedPass();
+
+        // The blobs change first, so that the state writes are reported in this same pass.
+        foreach (var blob in WiredDeferredStates.For(_room).TakeBlobs()) {
+            blob.LegacyDataString = WiredDeferredStates.NextState(blob);
+            PublishState(blob, true);
+        }
+
         PublishStateWrites();
+
         _engine.OnCycle();
         FlushVariableFx();
         FlushFlashes();

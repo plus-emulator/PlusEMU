@@ -78,6 +78,66 @@ public sealed class WiredAtGivenTimePlacementTests : IDisposable
         Assert.Single(Flashes(box, 5_000));
     }
 
+    // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs): a box of 20 pulses (10 s) placed 5.2 s and saved about 5.6 s after a timer
+    // reset fired 10.0 to 10.4 s after that reset, not 10 s after it was saved, and again after the next reset. A box whose time had passed
+    // did not fire.
+    [Fact]
+    public void ABoxPlacedBeforeItsTimeFiresAtItsTimeAfterTheLastReset()
+    {
+        _world.Wired.RoomInitialized();
+        Run(1_000);
+        ResetTimers();
+        Run(5_200);
+        var box = Place("wf_trg_at_given_time");
+        Assert.Equal(ServerPacketHeader.HideWiredConfigComposer, Save(box, 20));
+
+        var flashes = Flashes(box, 8_000);
+
+        var flash = Assert.Single(flashes);
+        Assert.InRange(flash, 5_250, 5_450);
+
+        ResetTimers();
+        Assert.Single(Flashes(box, 11_000));
+    }
+
+    // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs): a box saved again 3 to 5 s after a reset, with the same time or a later
+    // one, fires at its time after that reset (10 s, or 12 s for 24 pulses), not at its time after the save.
+    [Theory]
+    [InlineData(20, 7_400, 7_600)]
+    [InlineData(24, 9_400, 9_600)]
+    public void ABoxSavedAgainBeforeItsTimeFiresAtItsTimeAfterTheLastReset(int pulses, int earliest, int latest)
+    {
+        var box = Place("wf_trg_at_given_time");
+        _world.Wired.RoomInitialized();
+        Run(1_000);
+        ResetTimers();
+        Run(3_000);
+        Assert.Equal(ServerPacketHeader.HideWiredConfigComposer, Save(box, pulses));
+
+        var flash = Assert.Single(Flashes(box, 11_000));
+        Assert.InRange(flash, earliest, latest);
+    }
+
+    // The engine clock and the room timer are separate clocks cut to whole milliseconds, so a save never lines up with the reset tick.
+    [Theory]
+    [InlineData(0.6, 0.5)]
+    [InlineData(0.1, 0.9)]
+    [InlineData(0.99, 0.01)]
+    public void ASavedBoxStillFiresOnTheRightTickWhenTheClocksAreOffByFractionsOfAMillisecond(double beforeReset, double beforeSave)
+    {
+        var box = Place("wf_trg_at_given_time");
+        _world.Wired.RoomInitialized();
+        Run(1_000);
+        _world.Clock.Advance(TimeSpan.FromMilliseconds(beforeReset));
+        ResetTimers();
+        Run(3_000);
+        _world.Clock.Advance(TimeSpan.FromMilliseconds(beforeSave));
+        Assert.Equal(ServerPacketHeader.HideWiredConfigComposer, Save(box, 20));
+
+        var flash = Assert.Single(Flashes(box, 11_000));
+        Assert.InRange(flash, 7_400, 7_650);
+    }
+
     // As the placement service does: the furni joins the room, then its Wired box loads with the stored or default settings.
     private Item Place(string name)
     {

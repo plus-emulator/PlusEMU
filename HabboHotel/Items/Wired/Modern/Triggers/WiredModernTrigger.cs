@@ -199,6 +199,7 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
     // At Given Time with 0 pulses starts only from a room timer reset, not from being added to the room.
     private bool _resetByAction;
     private readonly Func<long?>? _roomTimer;
+    private const long RoomTimerMarginMs = 20;
     public WiredModernTimedTrigger(Room room, Item item, WiredBoxDescriptor descriptor, Func<long?>? roomTimer = null) : base(room, item, descriptor)
     {
         if (!WiredTriggerConfiguration.IsTimed(descriptor.CanonicalName)) {
@@ -226,12 +227,19 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
     }
     public void Reset(long nowMilliseconds)
     {
-        ResetElapsed(nowMilliseconds);
+        var roomTimer = _roomTimer?.Invoke();
+
+        // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs): a placed, saved or moved At Given Time box counts from the last timer
+        // reset, not from the moment it was placed, saved or moved. Its time is measured on the room timer. The poll counts from the first
+        // room tick after the start, so the start is put a little before the room timer began: the engine clock and the room timer are two
+        // clocks, each cut to whole ms, and a start on or after the tick would count from the next one.
+        var counted = Descriptor.CanonicalName == "wf_trg_at_given_time" && roomTimer is { } elapsed ? nowMilliseconds - elapsed - RoomTimerMarginMs : nowMilliseconds;
+        ResetElapsed(counted);
         _resetByAction = false;
         _timers.Forget(Item.Id);
 
-        if (_roomTimer?.Invoke() is { } roomTimer && TryValidateConfiguration(Configuration, out var config, out _)) {
-            _timers.Join(Descriptor.CanonicalName, Item.Id, config, roomTimer, _epoch);
+        if (roomTimer is { } timer && TryValidateConfiguration(Configuration, out var config, out _)) {
+            _timers.Join(Descriptor.CanonicalName, Item.Id, config, timer, _epoch);
         }
     }
     public void ResetElapsed(long nowMilliseconds)

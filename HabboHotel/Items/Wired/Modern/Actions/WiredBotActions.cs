@@ -180,6 +180,10 @@ public static class WiredBotActions
                             changed |= movement.MoveAvatar(context, bot, item.GetX, item.GetY, false);
                         }
                     }
+                    else if (WiredBotTargets.StandsStillOn(bot, item.GetX, item.GetY)) {
+                        // Observed on AIR WIN63-202610201032-107964540: a Bot Move to the tile the bot stands still on sends nothing.
+                        targets.Stop(bot);
+                    }
                     else {
                         botData.ForcedUserTargetMovement = 0;
                         botData.ForcedMovement = true;

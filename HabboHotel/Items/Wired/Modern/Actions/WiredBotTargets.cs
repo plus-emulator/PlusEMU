@@ -86,6 +86,9 @@ public sealed class WiredBotTargets
         }
     }
 
+    /// <summary>Whether the bot stands still on the tile, with no walk or step under way and none queued.</summary>
+    internal static bool StandsStillOn(RoomUser bot, int x, int y) => bot.X == x && bot.Y == y && !IsMoving(bot);
+
     private static bool IsMoving(RoomUser bot) => bot.IsWalking || bot.SetStep || bot.Movement.HasIntent
         || bot.Movement.Commands.Read()?.Sequence > bot.Movement.ConsumedSequence;
     public IReadOnlyList<WiredRuntimeEvent> Poll(Room room) => Poll(room, Environment.TickCount64);

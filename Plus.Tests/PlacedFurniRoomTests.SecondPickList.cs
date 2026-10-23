@@ -16,8 +16,7 @@ namespace Plus.Tests;
 // Java HashSet. The second list alone is kept as well, a second list that names no furni is saved and comes back empty, and an emptied second
 // list reopens empty. These tests save through the handler with ids 600 to 618, which fall into the same buckets as the probe's ids (those sit in the
 // Builders Club id band that other tests hand out), so the lists reopen in the order of that rule for these ids. The probe's own ids are checked in
-// WiredHashSetPickOrderTests. Variable Age and Variable Changed saved a fresh box on Habbo and are refused here, and Chest Has Item Type refuses a
-// second list without chests; they are covered there only.
+// WiredHashSetPickOrderTests. Chest Has Item Type refuses a second list without chests; it is covered there only.
 public partial class PlacedFurniRoomTests
 {
     private const uint SecondListBox = 700, SecondListBase = 600;
@@ -33,10 +32,10 @@ public partial class PlacedFurniRoomTests
         "wf_act_set_visibility", "wf_act_teleport_to", "wf_act_toggle_state", "wf_act_toggle_to_rnd", "wf_act_user_to_furni",
         "wf_cnd_furnis_hv_avtrs", "wf_cnd_has_altitude", "wf_cnd_has_furni_on", "wf_cnd_has_var", "wf_cnd_match_snapshot", "wf_cnd_neg_has_var",
         "wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs", "wf_cnd_not_match_snap", "wf_cnd_not_stuff_is", "wf_cnd_not_trggrer_on", "wf_cnd_stuff_is",
-        "wf_cnd_trggrer_on_frn", "wf_cnd_var_val_match", "wf_slc_furni_bytype", "wf_slc_furni_neighborhood",
+        "wf_cnd_trggrer_on_frn", "wf_cnd_var_age_match", "wf_cnd_var_val_match", "wf_slc_furni_bytype", "wf_slc_furni_neighborhood",
         "wf_slc_furni_onfurni", "wf_slc_furni_picks", "wf_slc_furni_with_var", "wf_slc_remote", "wf_slc_users_neighborhood", "wf_slc_users_onfurni",
         "wf_slc_users_with_var", "wf_trg_bot_reached_stf", "wf_trg_click_furni", "wf_trg_state_changed", "wf_trg_stuff_state",
-        "wf_trg_walks_off_furni", "wf_trg_walks_on_furni", "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users",
+        "wf_trg_var_changed", "wf_trg_walks_off_furni", "wf_trg_walks_on_furni", "wf_xtra_filter_furni", "wf_xtra_filter_furni_by_var", "wf_xtra_filter_users",
         "wf_xtra_filter_users_by_var", "wf_xtra_mov_curve", "wf_xtra_mov_physics", "wf_xtra_rotate_to_dir"
     ]);
 

@@ -9,7 +9,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 public sealed class WiredGameState
 {
     private readonly Dictionary<(uint Box, int Player), int> _grants = [];
-    private readonly Dictionary<RoomUser, (int Type, Team Team)> _types = [];
+    private readonly Dictionary<RoomUser, (int Type, Team Team, long Revision)> _types = [];
     private readonly HashSet<uint> _spentScoreTriggers = [];
     private static readonly ConditionalWeakTable<Room, WiredGameState> Rooms = new();
     public static WiredGameState For(Room room) => Rooms.GetValue(room, _ => new());
@@ -86,7 +86,7 @@ public sealed class WiredGameState
 
         RemoveFromManagers(room, user);
         user.Team = team;
-        _types[user] = (type, team);
+        _types[user] = (type, team, user.TeamRevision);
         manager?.AddUser(user);
 
         if (applyEffect == null) {
@@ -137,7 +137,11 @@ public sealed class WiredGameState
     }
     // Observed on hhus (AIR WIN63-202610131318-860371703): a user in a plain Wired team talks, shouts and whispers with the team bubble,
     // 130 in Red and 133 in Green, and 0 outside a team. Blue 131 and Yellow 132 follow the @event.chat.style connector's team styles.
-    public static int? TeamChatStyle(Room room, RoomUser user) => For(room).ReadTeamType(room, user) == 4
+    // Observed on AIR WIN63-202610201032-107964540: a user that Join Team put into a Battle Banzai or Freeze team talks with the same
+    // bubbles. A user in such a team by any other way keeps the own bubble (not observed): the join counts only until the
+    // team of the user changes again.
+    public static int? TeamChatStyle(Room room, RoomUser user) => For(room)._types.TryGetValue(user, out var joined) && joined.Team == user.Team
+        && joined.Revision == user.TeamRevision && !user.IsBot
         ? user.Team switch { Team.Red => 130, Team.Blue => 131, Team.Yellow => 132, Team.Green => 133, _ => null }
         : null;
     // Observed on hhus (build WIN63-202610131318): the effect is 222 + team for a plain wired team (type 0, team 1 gave 223), 32 + team for

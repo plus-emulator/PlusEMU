@@ -124,15 +124,15 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal([8u], Assert.Single(f.Store.Saves).SelectedItems.ToArray());
     }
 
-    // Another box with a double pick keeps its answer: none.
+    // Observed on AIR WIN63-202610201032-107964540: Set Furni Visibility saves a furni picked twice once, as it does on 48 cards in all.
     [Fact]
-    public async Task ADoublePickInVisibilityIsStillDroppedWithoutAReply()
+    public async Task TheSameFurniPickedTwiceInVisibilityIsSavedOnce()
     {
         var f = new MovementOracleSession(Visibility);
 
         await SaveEffect(f, ActionSave(ValidInts(Visibility), picks: [8, 8]));
 
-        Assert.Empty(f.Client.Packets);
-        Assert.Empty(f.Store.Saves);
+        AssertSaved(f, true, "");
+        Assert.Equal([8u], Assert.Single(f.Store.Saves).SelectedItems.ToArray());
     }
 }

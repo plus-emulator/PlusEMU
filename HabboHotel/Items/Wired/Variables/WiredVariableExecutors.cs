@@ -446,6 +446,14 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         var any = false;
 
         foreach (var (target, operand) in targets) {
+            // Observed on AIR WIN63-202610201032-107964540: an assign hands the speaker the item whether or not one is held, and every other
+            // operation of the editor changes nothing. A held item is changed like any variable; an assign creates a missing one.
+            if (RoomWiredBuiltinVariables.CarriesPresenceValue(reference) && (operation != 0 || variables.Read(reference, target, frame) is null)) {
+                any |= operation == 0 && variables.Mutate(reference, target, WiredVariableMutation.Replace, operand, frame);
+
+                continue;
+            }
+
             if (frame.VariableChanges is { } batch) {
                 // Presence is judged when the batch flushes, so a Change may run ahead of the Give that creates it.
                 batch.Add(variables, reference, target, operation, operand, frame);

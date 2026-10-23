@@ -4,7 +4,7 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
-/// State changes Toggle State makes later than its tick batch. Observed on AIR WIN63-202610201032-107964540 (3 runs, 6 firings each): a blob
+/// State changes Toggle State makes later than its tick batch. Observed on AIR WIN63-202610201032-107964540 (3 runs, 6 firings each, for the blobs wf_blob and wf_blob2 and the buttons wf_button, wf_button_red and wf_button_x): a blob
 /// changes state on the next room tick, in a data update of its own, and a button set to 1 goes back to 0 about 600 ms later in a single
 /// object data update.
 /// </summary>
@@ -17,9 +17,9 @@ public sealed class WiredDeferredStates(Room room)
 
     public static WiredDeferredStates For(Room room) => Rooms.GetValue(room, current => new(current));
 
-    public static bool IsBlob(Item item) => item.IsFloorItem && item.Definition.ItemName.StartsWith("wf_blob", StringComparison.Ordinal);
+    public static bool IsBlob(Item item) => item.IsFloorItem && item.Definition.ItemName is "wf_blob" or "wf_blob2";
 
-    public static bool IsButton(Item item) => item.IsFloorItem && item.Definition.ItemName.StartsWith("wf_button", StringComparison.Ordinal);
+    public static bool IsButton(Item item) => item.IsFloorItem && item.Definition.ItemName is "wf_button" or "wf_button_red" or "wf_button_x";
 
     public bool HasPending
     {

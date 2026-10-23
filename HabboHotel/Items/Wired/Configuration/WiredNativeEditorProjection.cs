@@ -33,29 +33,39 @@ public static class WiredNativeEditorProjection
     public static int Code(string name) => WiredBoxRegistry.TryGet(name, out var descriptor) ? descriptor.EditorCode
         : throw new InvalidDataException("This native editor projection is unavailable.");
 
-    // Observed on AIR WIN63-202610201032-107964540: every card with a picker that was saved and reopened with a scrambled pick set returned
-    // its picks in Java HashSet order (see WiredLegacyProtocol.JavaHashSetOrder). These cards were not: they have no Builders Club offer, or
-    // the probe could not give them a valid save with picks (chests, coin chests, a room linker, dataframes, a custom contract, Or Evaluation,
-    // the two text outputs), or Habbo gives them no pick source (Link Speaker).
+    // Observed on AIR WIN63-202610201032-107964540: every card that was saved and reopened with a scrambled pick set returned its picks, and a
+    // second pick list, in Java HashSet order (see WiredLegacyProtocol.JavaHashSetOrder), a card with a picker or without. These cards were
+    // not: they have no Builders Club offer, or the probe could not give them a valid save with picks (chests, coin chests, a room linker,
+    // dataframes, a custom contract, Or Evaluation, the text outputs, a leaderboard, a text input, a card that takes only a selector as its
+    // furni source), or Habbo gives them no pick source (Link Speaker).
     private static readonly HashSet<string> UnprovenPickCards = new(StringComparer.Ordinal)
     {
         "wf_act_move_furni_to", "wf_act_init_transaction", "wf_cnd_chest_has_items", "wf_act_give_currency", "wf_act_give_furni",
         "wf_act_teleport_to_room", "wf_act_send_dataframe", "wf_trg_receive_dataframe", "wf_act_override_height", "wf_act_progress_ach",
-        "wf_act_progress_reward_track", "wf_xtra_custom_contract", "wf_xtra_or_eval", "wf_xtra_scan_chest_furni_by_type", "wf_xtra_link_speaker",
-        "wf_xtra_text_output_furni_name", "wf_xtra_text_output_variable"
+        "wf_act_progress_reward_track", "wf_xtra_custom_contract", "wf_xtra_or_eval", "wf_xtra_scan_chest_furni_by_type",
+        "wf_xtra_link_speaker", "wf_xtra_text_output_furni_name", "wf_xtra_text_output_variable", "wf_act_give_effect",
+        "wf_act_give_reward", "wf_act_reset_reward_track", "wf_act_mute_triggerer", "wf_act_remove_furni", "wf_cnd_not_wearing_b",
+        "wf_cnd_not_wearing_fx", "wf_cnd_slc_quantity", "wf_cnd_user_level", "wf_cnd_wearing_badge", "wf_cnd_wearing_effect",
+        "wf_trg_at_time_long", "wf_xtra_achievement_enabler", "wf_xtra_global_placeholder", "wf_xtra_text_input_variable",
+        "wf_xtra_var_fx_boss", "wf_xtra_var_fx_health", "wf_xtra_var_fx_level", "wf_xtra_var_fx_number", "wf_xtra_var_fx_progress",
+        "wf_xtra_var_fx_status", "wf_xtra_var_leaderboard", "wf_xtra_var_web_api", "wf_xtra_text_output_username", "wf_var_dailytask",
+        "wf_var_echo", "wf_var_pointer", "wf_var_quest", "wf_var_quest_chain", "wf_var_reference"
     };
 
     public static WiredNativeEditorMetadata Metadata(string name)
     {
         var metadata = Define(name);
 
-        // Furni Picks has no furni source slot but is a picker; a card with neither keeps the saved order.
-        if (UnprovenPickCards.Contains(name) || name != "wf_slc_furni_picks" && !metadata.FurniAllowed.Any(group => group.Contains(WiredSources.Selected))) {
-            return metadata;
+        // Observed on AIR WIN63-202610201032-107964540: these four cards refused every save with picks in the first list (chests, a room linker)
+        // and kept a second list saved alone, reopening it in HashSet order.
+        if (UnprovenPickCards.Contains(name)) {
+            return name is "wf_act_give_currency" or "wf_act_give_furni" or "wf_act_teleport_to_room" or "wf_cnd_chest_has_items"
+                ? metadata with { HashSetSecondaryPickOrder = true } : metadata;
         }
 
-        // The second list of a chest condition refused a save without chests, so its order was not seen.
-        return metadata with { HashSetPickOrder = true, HashSetSecondaryPickOrder = metadata.FurniAllowed.Length > 1 && name != "wf_cnd_chest_has_item_type" };
+        // Observed on AIR WIN63-202610201032-107964540: every card keeps a second list and reopens it in HashSet order, one with a second
+        // selector or not. The second list of a chest condition refused a save without chests, so its order was not seen.
+        return metadata with { HashSetPickOrder = true, HashSetSecondaryPickOrder = name != "wf_cnd_chest_has_item_type" };
     }
 
     private static WiredNativeEditorMetadata Define(string name) => name switch
@@ -841,19 +851,22 @@ public static class WiredNativeEditorProjection
         room.GetRoomItemHandler().GetItem(reference.ItemId) is { IsTemporary: false } picked && picked.IsWallItem == reference.Wall;
 
     // Observed on AIR WIN63-202610201032-107964540: Toggle State, Move/Rotate and Match to Snapshot save with an id of no furni or a wall
-    // item sent with a positive id, and reopen with only their other picks. A box that only takes certain furni refuses such a pick, so
-    // this runs after every pick rule.
+    // item sent with a positive id, and reopen with only their other picks; so does a second list on every card that was tried (70 cards of
+    // every kind). A box that only takes certain furni refuses such a pick, so this runs after every pick rule.
     internal static bool TryKeepLivePicks(Item item, WiredBoxDescriptor descriptor, WiredConfiguration proposed, out WiredConfiguration kept)
     {
         kept = proposed;
         var native = proposed.Origin!.Native;
 
-        if (item.GetRoom() is not { } room || native.PrimaryItems.All(reference => IsLive(room, reference))) {
+        if (item.GetRoom() is not { } room || native.PrimaryItems.Concat(native.SecondaryItems).All(reference => IsLive(room, reference))) {
             return true;
         }
 
-        return TryCompile(item.Id, descriptor, native with { PrimaryItems = [.. native.PrimaryItems.Where(reference => IsLive(room, reference))] },
-            out kept, AnyTriggerContext);
+        return TryCompile(item.Id, descriptor, native with
+        {
+            PrimaryItems = [.. native.PrimaryItems.Where(reference => IsLive(room, reference))],
+            SecondaryItems = [.. native.SecondaryItems.Where(reference => IsLive(room, reference))]
+        }, out kept, AnyTriggerContext);
     }
 
     private const string ClickTileInteraction = "room_invisible_click_tile";
@@ -863,9 +876,10 @@ public static class WiredNativeEditorProjection
         error = "Invalid native editor picks.";
         var native = proposed.Origin!.Native;
         var room = item.GetRoom();
-        // Save-time second-list picks must be live; first-list picks that name no furni are dropped after the pick rules.
-        // Loading and execution resolve the remaining eligible items instead.
-        var references = native.PrimaryItems.Concat(native.SecondaryItems).ToArray();
+        // Picks that name no furni, in either list, are dropped after the pick rules; loading and execution resolve the remaining eligible items
+        // instead. A second-list pick that names no furni is no pick of the wrong kind, so it takes no part in the kind rules below.
+        var live = native.SecondaryItems.Where(reference => room?.GetRoomItemHandler().GetItem(reference.ItemId) != null);
+        var references = native.PrimaryItems.Concat(live).ToArray();
 
         // Picks are only meaningful in the live room that holds them; a pickless box has nothing to check there.
         if (references.Length == 0) {
@@ -874,7 +888,7 @@ public static class WiredNativeEditorProjection
             return true;
         }
 
-        if (room == null || native.SecondaryItems.Any(reference => !IsLive(room, reference))) {
+        if (room == null) {
             return false;
         }
 

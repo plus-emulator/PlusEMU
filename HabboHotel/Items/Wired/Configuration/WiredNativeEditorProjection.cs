@@ -33,23 +33,29 @@ public static class WiredNativeEditorProjection
     public static int Code(string name) => WiredBoxRegistry.TryGet(name, out var descriptor) ? descriptor.EditorCode
         : throw new InvalidDataException("This native editor projection is unavailable.");
 
-    // Observed on AIR WIN63-202610201032-107964540: these cards reopen their picks in Java HashSet order (see WiredLegacyProtocol.JavaHashSetOrder).
-    // Each name was saved and reopened on Habbo with a scrambled pick set. The negated and other cards are not proven and keep the saved order.
-    private static readonly HashSet<string> HashSetPickCards = new(StringComparer.Ordinal)
+    // Observed on AIR WIN63-202610201032-107964540: every card with a picker that was saved and reopened with a scrambled pick set returned
+    // its picks in Java HashSet order (see WiredLegacyProtocol.JavaHashSetOrder). These cards were not: they have no Builders Club offer, or
+    // the probe could not give them a valid save with picks (chests, coin chests, a room linker, dataframes, a custom contract, Or Evaluation,
+    // the two text outputs), or Habbo gives them no pick source (Link Speaker).
+    private static readonly HashSet<string> UnprovenPickCards = new(StringComparer.Ordinal)
     {
-        "wf_act_toggle_state", "wf_act_toggle_to_rnd", "wf_act_move_rotate", "wf_act_match_to_sshot", "wf_act_call_stacks", "wf_act_chase",
-        "wf_act_furni_to_furni", "wf_cnd_has_furni_on", "wf_cnd_furnis_hv_avtrs", "wf_cnd_match_snapshot", "wf_cnd_stuff_is",
-        "wf_trg_state_changed", "wf_trg_walks_on_furni", "wf_trg_walks_off_furni", "wf_trg_click_furni",
-        "wf_slc_furni_picks", "wf_slc_furni_bytype", "wf_slc_furni_onfurni"
+        "wf_act_move_furni_to", "wf_act_init_transaction", "wf_cnd_chest_has_items", "wf_act_give_currency", "wf_act_give_furni",
+        "wf_act_teleport_to_room", "wf_act_send_dataframe", "wf_trg_receive_dataframe", "wf_act_override_height", "wf_act_progress_ach",
+        "wf_act_progress_reward_track", "wf_xtra_custom_contract", "wf_xtra_or_eval", "wf_xtra_scan_chest_furni_by_type", "wf_xtra_link_speaker",
+        "wf_xtra_text_output_furni_name", "wf_xtra_text_output_variable"
     };
 
     public static WiredNativeEditorMetadata Metadata(string name)
     {
         var metadata = Define(name);
 
-        return HashSetPickCards.Contains(name)
-            ? metadata with { HashSetPickOrder = true, HashSetSecondaryPickOrder = name == "wf_act_furni_to_furni" }
-            : metadata;
+        // Furni Picks has no furni source slot but is a picker; a card with neither keeps the saved order.
+        if (UnprovenPickCards.Contains(name) || name != "wf_slc_furni_picks" && !metadata.FurniAllowed.Any(group => group.Contains(WiredSources.Selected))) {
+            return metadata;
+        }
+
+        // The second list of a chest condition refused a save without chests, so its order was not seen.
+        return metadata with { HashSetPickOrder = true, HashSetSecondaryPickOrder = metadata.FurniAllowed.Length > 1 && name != "wf_cnd_chest_has_item_type" };
     }
 
     private static WiredNativeEditorMetadata Define(string name) => name switch

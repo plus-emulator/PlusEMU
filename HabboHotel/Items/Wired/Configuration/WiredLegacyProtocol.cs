@@ -290,14 +290,40 @@ public static class WiredLegacyProtocol
         WriteInts(packet, WiredNativeEditorProjection.FrameDefaults(descriptor.CanonicalName, metadata));
     }
 
-    // A java.util.HashSet<Integer> filled in this order. An id lands in bucket (h ^ (h >>> 16)) & (buckets - 1) of a table that starts with
-    // 16 buckets and doubles when it holds more than three quarters of them. Ids in one bucket keep their order, and a split keeps it too.
-    // Observed on AIR WIN63-202610201032-107964540 with 16 buckets: when a bucket gets its ninth id, Java doubles the table at once. The
-    // same step below 64 buckets comes from the JDK source (HashMap.treeifyBin). Not modelled: a ninth id in a bucket of a 64-bucket table, where Java builds a tree.
+    // The iteration order of the java.util.HashSet<Integer> Habbo holds a card's picks in. An id lands in bucket (h ^ (h >>> 16)) & (buckets - 1)
+    // and a table doubles when it holds more than three quarters of its buckets. Ids in one bucket keep their order, and a split keeps it too.
+    // Observed on AIR WIN63-202610201032-107964540: the set is built twice. First like the copy constructor of JDK 18 and older, with a
+    // table sized from the number of ids sent, then again by adding the first set's ids one by one to a default set of 16 buckets. When no bucket gets a ninth id, below
+    // 12 ids and from 13 ids the two steps give the order of one plain add loop; exactly 12 ids give a 16-bucket table filled in the
+    // order of a 32-bucket one. When a bucket gets its ninth id, Java doubles a table of under 64 buckets at once (HashMap.treeifyBin).
+    // Plus sizes the first step from the different ids it holds, as it does not keep how many ids were sent; that differs only when a
+    // save repeats an id. Not modelled: a bucket whose chain gets another id in a table of 64 buckets (the 11th id in a bucket when the
+    // first step has 16 buckets, the 10th when it has 32), where Java builds a tree. Habbo reached it with 11 ids and returned the sent
+    // order with one id moved first, which was the id the JDK 21 tree puts first in 1 of 6 samples. Habbo was not probed for this tree case
+    // with 12 or more ids sent.
     private static IEnumerable<int> JavaHashSetOrder(IEnumerable<int> ids)
     {
+        var sent = ids.ToArray();
+        var copied = Fill(sent, TableSizeFor(Math.Max((int)(sent.Length / 0.75f) + 1, 16)));
+
+        return Fill(copied, 16);
+    }
+
+    private static int TableSizeFor(int capacity)
+    {
+        var size = 1;
+
+        while (size < capacity) {
+            size <<= 1;
+        }
+
+        return size;
+    }
+
+    private static int[] Fill(IEnumerable<int> ids, int buckets)
+    {
         const int treeifyThreshold = 8;
-        var table = new List<int>[16];
+        var table = new List<int>[buckets];
         var size = 0;
 
         foreach (var id in ids) {
@@ -319,7 +345,7 @@ public static class WiredLegacyProtocol
             }
         }
 
-        return table.Where(bucket => bucket != null).SelectMany(bucket => bucket!).ToArray();
+        return [.. table.Where(bucket => bucket != null).SelectMany(bucket => bucket!)];
     }
 
     private static int Bucket(int id, int buckets) => (int)(((uint)id ^ ((uint)id >> 16)) & (uint)(buckets - 1));

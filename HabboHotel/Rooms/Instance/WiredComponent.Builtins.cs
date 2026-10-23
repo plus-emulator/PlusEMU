@@ -232,8 +232,9 @@ public partial class WiredComponent
             return key switch
             {
                 "@position" => movement.MoveFurniture(context, item, (value >> 8) & 255, value & 255, item.Rotation, null),
-                "@occupation" => movement.MoveFurniture(context, item, (value >> 16) & 255, (value >> 8) & 255,
-                    FurnitureDirections.RotationAt(item.Definition, value & 255) ?? item.Rotation, null),
+                // Observed on AIR WIN63-202610201032-107964540: a position that is not in the furni's list of directions changes nothing at all.
+                "@occupation" => FurnitureDirections.RotationAt(item.Definition, value & 255) is { } occupied
+                    && movement.MoveFurniture(context, item, (value >> 16) & 255, (value >> 8) & 255, occupied, null),
                 "@position.x" => movement.MoveFurniture(context, item, value, item.GetY, item.Rotation, null),
                 "@position.y" => movement.MoveFurniture(context, item, item.GetX, value, item.Rotation, null),
                 // The value is a position in the furni's list of directions; one past its end is never stored.

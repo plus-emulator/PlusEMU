@@ -543,7 +543,10 @@ internal sealed partial class WiredStackEngine
         ["wf_act_give_score_tm"] = ["wf_act_control_clock"],
         // Observed on AIR WIN63-202610201032-107964540: an Adjust Clock Set runs after the Increase and Decrease of the same firing,
         // whatever the box order (18 of 18). Two Sets still run in a random order.
-        [AdjustClockSet] = ["wf_act_adjust_clock"]
+        [AdjustClockSet] = ["wf_act_adjust_clock"],
+        // Observed on AIR WIN63-202610201032-107964540: a Remove Variable runs after a Give Variable of the same variable, whatever the
+        // box order (12 of 12 for each order).
+        ["wf_act_remove_var"] = ["wf_act_give_var"]
     };
 
     private const string AdjustClockSet = "wf_act_adjust_clock:set";

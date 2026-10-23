@@ -114,6 +114,7 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
                 actor.Movement.Commands.Read()?.Sequence ?? 0);
             actor.IsRolling = true;
             actor.RollerDelay = 1;
+            actor.RollerSettling = false;
         }
     }
 

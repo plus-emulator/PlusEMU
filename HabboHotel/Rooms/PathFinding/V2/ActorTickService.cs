@@ -28,8 +28,15 @@ public sealed class ActorTickService(Room room)
             room.GetFreeze().CycleUser(actor);
         }
 
+        // Observed on AIR WIN63-202610201032-107964540: the standing avatar of a user gets a UserUpdate one room tick after a roller slide and
+        // a second one tick later. Bots were not observed.
         if (actor.IsRolling && actor.RollerDelay-- <= 0) {
             actor.IsRolling = false;
+            actor.UpdateNeeded = true;
+            actor.RollerSettling = !actor.IsBot;
+        }
+        else if (actor.RollerSettling && !actor.IsRolling) {
+            actor.RollerSettling = false;
             actor.UpdateNeeded = true;
         }
 

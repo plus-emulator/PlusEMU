@@ -304,7 +304,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     public bool Dispatch(WiredRuntimeEvent @event)
     {
         @event = @event with { Visits = _room.GetRoomUserManager()?.Visits ?? int.MaxValue };
-        var ranAtOnce = @event.Kind == WiredEventKind.Speech;
+        var ranAtOnce = @event.Kind is WiredEventKind.Speech or WiredEventKind.ClickFurni;
         bool dispatched;
 
         if (@event.Kind == WiredEventKind.StateChanged) {
@@ -314,8 +314,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
             dispatched = WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() => DispatchCore(@event)));
         }
 
-        // Speech runs its stacks at once, outside the room's passes: send what they flashed and wrote now, with the chat. Observed on hhus
-        // (AIR WIN63-202610131318-860371703): the flash arrives in the same batch as the chat that fired it.
+        // Speech and a furni click run their stacks at once, outside the room's passes: send what they flashed and wrote now, with the chat.
+        // Observed on hhus (AIR WIN63-202610131318-860371703): the flash arrives in the same batch as the chat that fired it.
         // Observed on AIR WIN63-202610201032-107964540 (wf_trg_stuff_state.cov_snapshot): a furni a user switches flashes its Stuff State
         // stack in the millisecond of its new state, right after it.
         if (ranAtOnce) {
@@ -341,6 +341,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
         return @event.Kind switch
         {
             WiredEventKind.Speech => _engine.DispatchSynchronously(@event),
+            // Observed on AIR WIN63-202610201032-107964540: a click is answered as fast as a say or a furni use, and the boxes of every
+            // stack it passed and the trigger of every stack it failed flash in one ObjectsDataUpdate, before the chat of the passing stacks.
+            WiredEventKind.ClickFurni => _engine.DispatchAtOnce(@event),
             // Observed on AIR WIN63-202610201032-107964540: the Room Initialized stacks have run before the first entrant is sent the room.
             WiredEventKind.RoomInitialized => _engine.DispatchOnLoad(@event),
             _ => _engine.Enqueue(@event)

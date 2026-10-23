@@ -61,7 +61,7 @@ internal static partial class WiredNativeAuxiliaryEditor
 
             var referenced = Shape(n, 7, 2, 2, 2);
 
-            if (!(Shape(n, 7, 1, 1, 2) || referenced) || !TryTarget(p[0], out var target) || !TryReference(p[4], p[5], p[6], target, out var reference)) {
+            if (!(Shape(n, 7, 1, 1, 2) || referenced) || !TryTarget(p[0], out var target) || !TryReference(p[4], p[5], p[6], out var reference)) {
                 return null;
             }
 
@@ -97,7 +97,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             var p = n.OwnedIntParams;
 
             if (!(Shape(n, 6, 2, 2, 2) || Shape(n, 7, 2, 2, 2)) || !TryTarget(p[0], out var target)
-                || !TryReference(p[2], p[5], p.Length == 7 ? p[6] : 0, target, out var reference)) {
+                || !TryReference(p[2], p[5], p.Length == 7 ? p[6] : 0, out var reference)) {
                 return null;
             }
 
@@ -121,7 +121,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             var p = n.OwnedIntParams;
 
             if (!(Shape(n, 6, 2, 2, 2) || Shape(n, 7, 2, 2, 2)) || !TryTarget(p[0], out var target)
-                || p[1] is < 0 or > 5 || !TryReference(p[2], p[5], p.Length == 7 ? p[6] : 0, target, out var reference, globalHolder: true)) {
+                || p[1] is < 0 or > 5 || !TryReference(p[2], p[5], p.Length == 7 ? p[6] : 0, out var reference)) {
                 return null;
             }
 
@@ -158,7 +158,7 @@ internal static partial class WiredNativeAuxiliaryEditor
                 return Draft(n, [.. core, n.Quantifier ?? 0]);
             }
 
-            if (!TryReference(p[6], p[7], 0, target, out var reference)) {
+            if (!TryReference(p[6], p[7], 0, out var reference)) {
                 return null;
             }
 
@@ -211,13 +211,13 @@ internal static partial class WiredNativeAuxiliaryEditor
     }
 
     /// <summary>
-    /// The October value-or-variable tail: the option (0 value, 1 variable), the reference's AIR target and "same holder",
-    /// which only applies to a variable read on holders of the destination's own kind. Observed on AIR WIN63-202610201032-107964540:
-    /// Variable Value Match also takes it on a global target; the other boxes were not probed there.
+    /// The October value-or-variable tail: the option (0 value, 1 variable), the reference's AIR target and "same holder".
+    /// Observed on AIR WIN63-202610201032-107964540: Change Variable Value, Give Variable and Variable Value Match save "same holder" for every
+    /// pair of destination and reference kind (furni, user, global) with a variable. A value instead of a variable was seen with global
+    /// targets (and with a furni target on Variable Value Match). A reference read on a holder of another kind gave nothing for a global destination with a furni or user reference and a furni destination with a global reference.
     /// </summary>
-    private static bool TryReference(int option, int air, int sameHolder, int target, out int reference, bool globalHolder = false) =>
-        TryTarget(air, out reference) && option is 0 or 1 && sameHolder is 0 or 1
-        && (sameHolder == 0 || option == 0 || reference == target && (target is 0 or 1 || globalHolder && target == 3));
+    private static bool TryReference(int option, int air, int sameHolder, out int reference) =>
+        TryTarget(air, out reference) && option is 0 or 1 && sameHolder is 0 or 1;
 
     private static WiredNativeEditorMetadata SelectorMeta(ImmutableArray<int> owned) => Meta(1, 1, owned, 2) with
     {

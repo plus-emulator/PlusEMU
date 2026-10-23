@@ -23,16 +23,17 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
     /// Variable. Such a box changes nothing until a variable is chosen; execution still requires a resolved destination.
     /// </summary>
     private static bool UnchosenDestination(string name, WiredConfiguration configuration) =>
-        name is "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var" && configuration.VariableIds.Length > 0
+        name is "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var" or "wf_cnd_var_age_match" && configuration.VariableIds.Length > 0
         && WiredVariableAbsent.Is(configuration.VariableIds[0]);
 
     /// <summary>
     /// Observed on AIR WIN63-202610201032-107964540: Give Variable, Change Variable Value and Remove Variable save on any id the editor sends
     /// (all 162 built-in ids, a number that names no variable, an id of another kind than the target), and store it as described on
     /// WiredVariableDescription.StoredId. A box whose id names no variable of its target's kind changes nothing, like a slot with no variable
-    /// picked.
+    /// picked. Variable Age does the same with its variable (the first slot); the slot of the duration variable was not probed with such ids.
     /// </summary>
-    private static bool SavesAnyVariableId(string name) => name is "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var";
+    private static bool SavesAnyVariableId(string name, int slot = 0) =>
+        name is "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var" || slot == 0 && name == "wf_cnd_var_age_match";
 
     /// <summary>
     /// Observed on AIR WIN63-202610201032-107964540: Has Variable and Not Has Variable save with no variable, or with a variable of another
@@ -57,7 +58,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return false;
         }
 
-        bool Resolve(string id, int target, out string token)
+        bool Resolve(string id, int target, int slot, out string token)
         {
             token = "";
 
@@ -66,11 +67,11 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             }
 
             if (!WiredVariableDescription.TryParseCatalogId(id, out var parsed, out var parsedToken)) {
-                return SavesAnyVariableId(name);
+                return SavesAnyVariableId(name, slot);
             }
 
             if ((int)parsed != target) {
-                return ReadsPresence(name) || SavesAnyVariableId(name);
+                return ReadsPresence(name) || SavesAnyVariableId(name, slot);
             }
 
             token = authority is null ? parsedToken : authority.TryResolveCatalogId(id, parsed, out var reference) ? reference.Token : "";
@@ -78,17 +79,17 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             return true;
         }
 
-        if (!Resolve(ids[0], p[0], out tokens[0])) {
+        if (!Resolve(ids[0], p[0], 0, out tokens[0])) {
             return false;
         }
 
         // A literal-valued box ignores its reference slot.
         if (operand && p[2] == 1) {
-            return Enum.IsDefined((WiredVariableTarget)p[4]) && Resolve(ids[1], p[4], out tokens[1]);
+            return Enum.IsDefined((WiredVariableTarget)p[4]) && Resolve(ids[1], p[4], 1, out tokens[1]);
         }
 
         if (reference is { } slot && p[slot.Option] == 1) {
-            return Enum.IsDefined((WiredVariableTarget)p[slot.Target]) && Resolve(ids[1], p[slot.Target], out tokens[1]);
+            return Enum.IsDefined((WiredVariableTarget)p[slot.Target]) && Resolve(ids[1], p[slot.Target], 1, out tokens[1]);
         }
 
         return true;
@@ -212,7 +213,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
                 return false;
             }
 
-            if (p[2] == 1 && !ValidToken(tokens[1]) && !(valueMatch && tokens[1].Length == 0) && !(SavesAnyVariableId(name) && tokens[1].Length == 0)) {
+            if (p[2] == 1 && !ValidToken(tokens[1]) && !(valueMatch && tokens[1].Length == 0) && !(SavesAnyVariableId(name, 1) && tokens[1].Length == 0)) {
                 return false;
             }
         }
@@ -222,7 +223,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         }
 
         if (ReferenceSlot(name, p) is { } slot && (p[slot.Option] is not (0 or 1) || !Enum.IsDefined((WiredVariableTarget)p[slot.Target])
-            || p[slot.Option] == 1 && !ValidToken(tokens[1]) && !(SavesAnyVariableId(name) && tokens[1].Length == 0))) {
+            || p[slot.Option] == 1 && !ValidToken(tokens[1]) && !(SavesAnyVariableId(name, 1) && tokens[1].Length == 0))) {
             return false;
         }
 

@@ -50,7 +50,10 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
         return picksPointer ? WiredVariableDefinitions.NeedsExecutionContextKey : null;
     }
 
-    /// <summary>The integer shape only; the picked variable is an opaque catalog id resolved by the module at match time.</summary>
+    /// <summary>
+    /// The integer shape only; the picked variable is an opaque catalog id resolved by the module at match time. Observed on AIR
+    /// WIN63-202610201032-107964540: a trigger with no variable, or an id that names none, saves and never fires.
+    /// </summary>
     internal static bool TryNormalize(WiredConfiguration proposed, out WiredConfiguration validated, out string error)
     {
         validated = proposed;
@@ -61,8 +64,7 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
 
         if (proposed.Version != 1 || p.Length != 8 && !pickedBoxes || !Enum.IsDefined((WiredVariableTarget)p[0])
             || p.Skip(1).Take(6).Any(value => value is not (0 or 1)) || proposed.VariableIds.Length != 1
-            || !pickedBoxes && (WiredVariableAbsent.Is(proposed.VariableIds[0])
-                || !WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out var target, out _) || (int)target != p[0])) {
+            || !pickedBoxes && WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out var target, out _) && (int)target != p[0]) {
             return false;
         }
 

@@ -220,6 +220,12 @@ internal static partial class WiredNativeAuxiliaryEditor
             // Observed on AIR WIN63-202610201032-107964540: these cards keep any number in a variable slot and any other text as "0".
             case "wf_act_give_var" or "wf_act_change_var_val" or "wf_act_remove_var":
                 return native with { VariableIds = [.. native.VariableIds.Select(Plus.HabboHotel.Items.Wired.Variables.WiredVariableDescription.StoredId)] };
+            // Observed on AIR WIN63-202610201032-107964540: Variable Age keeps any number in its variable slot, and Variable Changed does too
+            // while it watches one variable (not the picked variable boxes), and any other text becomes "0". The duration variable was not probed.
+            case "wf_cnd_var_age_match" when native.VariableIds.Length > 0:
+                return native with { VariableIds = [Plus.HabboHotel.Items.Wired.Variables.WiredVariableDescription.StoredId(native.VariableIds[0]), .. native.VariableIds.Skip(1)] };
+            case "wf_trg_var_changed" when native.VariableIds.Length == 1 && (native.OwnedIntParams.Length != 6 || native.OwnedIntParams[5] == 0):
+                return native with { VariableIds = [Plus.HabboHotel.Items.Wired.Variables.WiredVariableDescription.StoredId(native.VariableIds[0])] };
             default:
                 return ChestStoredForm(name, native);
         }

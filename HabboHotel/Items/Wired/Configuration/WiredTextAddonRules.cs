@@ -14,13 +14,14 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// <item>The mode flag stores any non-zero value as 1 and missing ints take the default.</item>
 /// <item>The capturer takes one variable of any kind, or none.</item>
 /// <item>A Says text may not capture the same name twice.</item>
-/// <item>A furni name output save with an empty name is refused.</item>
+/// <item>A furni name or username output save with an empty name is refused.</item>
 /// </list>
 /// </summary>
 internal static class WiredTextAddonRules
 {
     public const string Input = "wf_xtra_text_input_variable";
     private const string FurniName = "wf_xtra_text_output_furni_name";
+    private const string Username = "wf_xtra_text_output_username";
     private const string Output = "wf_xtra_text_output_variable";
 
     public const int MaxNameLength = 40;
@@ -53,9 +54,15 @@ internal static class WiredTextAddonRules
             return CapturesTwice(native.Text) ? DuplicateCaptureKey : null;
         }
 
-        // The furni name output has no variable, so an empty name is refused even on the box's default ints.
-        if (name == FurniName) {
+        // The furni name and username outputs have no variable, so an empty name is refused even on the box's default ints. Observed on AIR
+        // WIN63-202610201032-107964540: so is the variable output's own frame (no name, the one empty variable slot); other shapes of an empty name are
+        // not checked here.
+        if (name is FurniName or Username) {
             return native.Text.Length == 0 ? NameLengthKey : null;
+        }
+
+        if (name == Output) {
+            return native.Text.Length == 0 && native.VariableIds is [var only] && WiredVariableAbsent.Is(only) ? NameLengthKey : null;
         }
 
         if (name != Input) {

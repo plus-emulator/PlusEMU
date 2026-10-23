@@ -10,6 +10,7 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 internal static class WiredSaveLeniency
 {
     private const string FurniNameOutput = "wf_xtra_text_output_furni_name";
+    private const string UsernameOutput = "wf_xtra_text_output_username";
 
     private enum IntsMode
     {
@@ -100,7 +101,10 @@ internal static class WiredSaveLeniency
         // Triggerer Matches keeps its default comparison slot when a save names fewer user sources.
         { "wf_cnd_triggerer_match", PaddedSources },
         { "wf_cnd_not_triggerer_match", PaddedSources },
-        { FurniNameOutput, new(Ints: IntsMode.ShowMultipleFlag) }
+        { FurniNameOutput, new(Ints: IntsMode.ShowMultipleFlag) },
+        // Observed on AIR WIN63-202610201032-107964540: the username output stores its flag like the furni name output, and reads an empty
+        // user source list as the frame default.
+        { UsernameOutput, new(Ints: IntsMode.ShowMultipleFlag, FillsEmptyUserSources: true) }
     }.ToFrozenDictionary();
 
     public static bool FillsEmptyUserSources(string name) => Rules.TryGetValue(name, out var rule) && rule.FillsEmptyUserSources;

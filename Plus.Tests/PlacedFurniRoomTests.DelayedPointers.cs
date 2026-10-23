@@ -27,6 +27,7 @@ public partial class PlacedFurniRoomTests
 
     private uint _dpNext = 301;
     private double _dpZ;
+    private (int X, int Y) _dpTile = (1, 1);
     private WiredConfigurationService? _dpService;
 
     // A furni pointer as the operand, read on the switch H. With a delay of 1 or 2 it reads like pf_a; without a delay it is ignored. The
@@ -274,7 +275,7 @@ public partial class PlacedFurniRoomTests
     /// The room with the variable boxes of the probes placed, the switch H and the trigger: a speech trigger with Execute in Order on
     /// one tile, where every later box stands above the last one.
     /// </summary>
-    private async Task<(WiredComponent Wired, RoomUser Actor, SpeechClock Clock)> DelayedPointerRoom()
+    private async Task<(WiredComponent Wired, RoomUser Actor, SpeechClock Clock)> DelayedPointerRoom(bool executeInOrder = true)
     {
         var clock = new SpeechClock();
         var (wired, actor) = PrepareSpeech(clock);
@@ -293,7 +294,10 @@ public partial class PlacedFurniRoomTests
         var holder = Furni(DpHolder, InteractionType.None, WiredBoxType.None);
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, holder, 0, 0, 0, true, false, false));
         AddSpeechBox(_dpNext++, "wf_trg_says_something", new() { IntParams = [1, 0, 0], Text = "go" }, _dpZ++);
-        PlaceSavedBox(_dpNext++, "wf_xtra_exec_in_order", 1, 1, _dpZ++);
+
+        if (executeInOrder) {
+            PlaceSavedBox(_dpNext++, "wf_xtra_exec_in_order", 1, 1, _dpZ++);
+        }
 
         return (wired, actor, clock);
     }
@@ -317,7 +321,7 @@ public partial class PlacedFurniRoomTests
         int[] users, string[] variables, uint[] secondary)
     {
         var id = _dpNext++;
-        PlaceSavedBox(id, name, 1, 1, _dpZ++);
+        PlaceSavedBox(id, name, _dpTile.X, _dpTile.Y, _dpZ++);
         List<object> body = [(int)id, ints.Length, .. ints.Cast<object>(), text, picks.Length, .. picks.Select(pick => (object)(int)pick)];
 
         if (delay is { } pulses) {

@@ -169,9 +169,9 @@ public static class WiredLegacyProtocol
         var metadata = WiredNativeEditorProjection.WithTriggerContext(WiredNativeEditorProjection.Metadata(descriptor.CanonicalName), contextSources);
         packet.WriteInteger(furniLimit);
         var picks = editor.PrimaryItems.Select(item => item.WireId);
-        WriteInts(packet, metadata.HashSetPickOrder ? JavaHashSetOrder(picks) : picks);
+        WriteInts(packet, metadata.HashSetPickOrder ? JavaHashSetOrder(picks, editor.PrimarySent) : picks);
         var secondary = editor.SecondaryItems.Select(item => item.WireId);
-        WriteInts(packet, metadata.HashSetSecondaryPickOrder ? JavaHashSetOrder(secondary) : secondary);
+        WriteInts(packet, metadata.HashSetSecondaryPickOrder ? JavaHashSetOrder(secondary, editor.SecondarySent) : secondary);
         packet.WriteInteger(spriteId);
         packet.WriteUInteger(BuildersClubItemIds.ToWire(itemId));
         packet.WriteString(editor.Text);
@@ -293,18 +293,17 @@ public static class WiredLegacyProtocol
     // The iteration order of the java.util.HashSet<Integer> Habbo holds a card's picks in. An id lands in bucket (h ^ (h >>> 16)) & (buckets - 1)
     // and a table doubles when it holds more than three quarters of its buckets. Ids in one bucket keep their order, and a split keeps it too.
     // Observed on AIR WIN63-202610201032-107964540: the set is built twice. First like the copy constructor of JDK 18 and older, with a
-    // table sized from the number of ids sent, then again by adding the first set's ids one by one to a default set of 16 buckets. When no bucket gets a ninth id, below
-    // 12 ids and from 13 ids the two steps give the order of one plain add loop; exactly 12 ids give a 16-bucket table filled in the
+    // table sized from the number of ids sent, repeats counted (seven saves that repeated an id, also after the room unloaded; the sent count
+    // is kept in the stored row), then again by adding the first set's ids one by one to a default set of 16 buckets. When no bucket gets a ninth
+    // id, below 12 ids and from 13 ids the two steps give the order of one plain add loop; exactly 12 ids give a 16-bucket table filled in the
     // order of a 32-bucket one. When a bucket gets its ninth id, Java doubles a table of under 64 buckets at once (HashMap.treeifyBin).
-    // Plus sizes the first step from the different ids it holds, as it does not keep how many ids were sent; that differs only when a
-    // save repeats an id. Not modelled: a bucket whose chain gets another id in a table of 64 buckets (the 11th id in a bucket when the
-    // first step has 16 buckets, the 10th when it has 32), where Java builds a tree. Habbo reached it with 11 ids and returned the sent
-    // order with one id moved first, which was the id the JDK 21 tree puts first in 1 of 6 samples. Habbo was not probed for this tree case
-    // with 12 or more ids sent.
-    private static IEnumerable<int> JavaHashSetOrder(IEnumerable<int> ids)
+    // Not modelled: a bucket whose chain gets another id in a table of 64 buckets (the 11th id in a bucket when the first step has 16 buckets,
+    // the 10th when it has 32), where Java builds a tree. Habbo reached it with 11 ids and returned the sent order with one id moved first,
+    // which was the id the JDK 21 tree puts first in 1 of 6 samples. Habbo was not probed for this tree case with 12 or more ids sent.
+    private static IEnumerable<int> JavaHashSetOrder(IEnumerable<int> ids, int sentCount)
     {
         var sent = ids.ToArray();
-        var copied = Fill(sent, TableSizeFor(Math.Max((int)(sent.Length / 0.75f) + 1, 16)));
+        var copied = Fill(sent, TableSizeFor(Math.Max((int)(Math.Max(sentCount, sent.Length) / 0.75f) + 1, 16)));
 
         return Fill(copied, 16);
     }

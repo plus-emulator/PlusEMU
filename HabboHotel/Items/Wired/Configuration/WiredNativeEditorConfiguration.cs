@@ -24,6 +24,17 @@ public sealed record WiredNativeEditorConfiguration
     public WiredNativeSavedState SavedState { get; init; } = new();
 
     /// <summary>
+    /// How many ids the save sent in the first and in the second pick list when a list repeated an id; 0 when it did not, and the count of
+    /// the list is then the number of its picks.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int PrimarySent { get; init; }
+
+    /// <inheritdoc cref="PrimarySent"/>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int SecondarySent { get; init; }
+
+    /// <summary>
     /// The default record of a box that was never saved. It is never stored, so every stored row reads as saved. Observed on AIR
     /// WIN63-202610201032-107964540: after a room reload a never-saved box still reads 1 and a saved box 0. The flag after a pickup and
     /// placing again is not checked on Habbo.

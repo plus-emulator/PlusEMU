@@ -794,7 +794,16 @@ public static class WiredNativeEditorProjection
             return false;
         }
 
-        limited = native with { PrimaryItems = [.. native.PrimaryItems.Distinct()], SecondaryItems = [.. native.SecondaryItems.Distinct()] };
+        // The counts of the ids sent are kept when a list repeats an id: they size the first set of the pick order (see JavaHashSetOrder). Habbo
+        // was not probed for a repeat together with an id that names no furni, which is dropped afterwards and leaves the count as sent.
+        ImmutableArray<WiredNativeItemReference> primary = [.. native.PrimaryItems.Distinct()], secondary = [.. native.SecondaryItems.Distinct()];
+        limited = native with
+        {
+            PrimaryItems = primary,
+            SecondaryItems = secondary,
+            PrimarySent = native.PrimaryItems.Length > primary.Length ? native.PrimaryItems.Length : 0,
+            SecondarySent = native.SecondaryItems.Length > secondary.Length ? native.SecondaryItems.Length : 0
+        };
 
         return true;
     }
@@ -806,6 +815,9 @@ public static class WiredNativeEditorProjection
     public static bool WithinPickLimit(WiredNativeEditorConfiguration native) => native.PrimaryItems.IsDefault || native.SecondaryItems.IsDefault
         || native.PrimaryItems.Length <= WiredConfigurationLimits.EditorFurniLimit && native.SecondaryItems.Length <= WiredConfigurationLimits.EditorFurniLimit;
 
+    // A sent count is 0 (no repeat) or more than the picks that were kept and at most the limit of a save.
+    private static bool SentCountFits(int sent, int picks) => sent == 0 || sent > picks && sent <= WiredConfigurationLimits.EditorFurniLimit;
+
     public static bool WithinBounds(WiredNativeEditorConfiguration native) => native.Version == 2
         && !native.OwnedIntParams.IsDefault && native.OwnedIntParams.Length <= WiredConfigurationLimits.IntParams
         && native.Text != null && native.Text.Length <= WiredConfigurationLimits.TextCharacters
@@ -814,6 +826,7 @@ public static class WiredNativeEditorProjection
         && native.PrimaryItems.Length <= WiredConfigurationLimits.SelectedItems && native.SecondaryItems.Length <= WiredConfigurationLimits.SelectedItems
         && native.PrimaryItems.Concat(native.SecondaryItems).All(item => item != null && (item.ItemId is > 0 and <= int.MaxValue
             || item.Wall && TemporaryItemIds.IsWallIdentity(item.ItemId)))
+        && SentCountFits(native.PrimarySent, native.PrimaryItems.Length) && SentCountFits(native.SecondarySent, native.SecondaryItems.Length)
         && native.PrimaryItems.Distinct().Count() == native.PrimaryItems.Length
         && native.SecondaryItems.Distinct().Count() == native.SecondaryItems.Length
         && !native.FurniSourceTypes.IsDefault && native.FurniSourceTypes.Length <= WiredConfigurationLimits.IntParams

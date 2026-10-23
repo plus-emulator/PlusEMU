@@ -36,10 +36,10 @@ public partial class WiredComponent
         producer.Initialize(store ?? new Plus.HabboHotel.Rooms.Games.RoomHighscoreStore(_database));
         Volatile.Write(ref _highscores, producer);
     }
-    private bool WithHighscoreSpeechOwner(bool speech, Func<bool> action)
+    private bool WithRoomOwner(bool onRoomPass, Func<bool> action)
     {
-        // Speech runs its stacks inside an owned pass, so avatar moves land at once instead of on the next room tick: Move/Rotate User and User To Furni move the avatar with the say.
-        if (!speech || Plus.HabboHotel.Rooms.PathFinding.RoomOwnerScope.IsOwner(_room) || _engine.CurrentThreadOwnsPass) {
+        // Speech and a furni click run their stacks on the room's own pass, so a gate closes and an avatar moves at once.
+        if (!onRoomPass || Plus.HabboHotel.Rooms.PathFinding.RoomOwnerScope.IsOwner(_room) || _engine.CurrentThreadOwnsPass) {
             return action();
         }
 

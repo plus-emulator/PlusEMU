@@ -322,7 +322,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
                 (ranAtOnce, dispatched) = _engine.DispatchStateChange(@event);
             }
             else {
-                dispatched = WithHighscoreSpeechOwner(@event.Kind == WiredEventKind.Speech, () => _engine.Mutate(() => DispatchCore(@event)));
+                dispatched = WithRoomOwner(ranAtOnce, () => _engine.Mutate(() => DispatchCore(@event)));
             }
         }
         finally {
@@ -331,7 +331,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             }
         }
 
-        // Speech and a furni click run their stacks at once, outside the room's passes: send what they flashed and wrote now, with the chat.
+        // Speech and a furni click run their stacks at once: send what they flashed and wrote now, with the chat.
         // The flash arrives in the same batch as the chat that fired it. A furni a user switches flashes its Stuff State stack in the millisecond of its new state, right after it.
         if (ranAtOnce) {
             FlushSpeechOutput();
@@ -527,7 +527,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     public bool TriggerEvent(WiredBoxType type, params object[] arguments)
     {
-        var triggered = WithHighscoreSpeechOwner(type == WiredBoxType.TriggerUserSays, () => TriggerEventCore(type, arguments));
+        var triggered = WithRoomOwner(type == WiredBoxType.TriggerUserSays, () => TriggerEventCore(type, arguments));
 
         // A chat runs its stacks at once, like Dispatch of speech: their flashes go out with the chat. Enter Room stacks run inside the
         // room entry, so their flashes go out with it.

@@ -420,6 +420,13 @@ public partial class WiredComponent
         }
 
         PollProjectiles(now);
+
+        foreach (var button in WiredDeferredStates.For(_room).TakeDueResets(now)) {
+            button.LegacyDataString = "0";
+            button.UpdateState(true, false);
+            _room.SendObjectData(button, "0", false);
+        }
+
         FlushExternalChanges();
     }
 

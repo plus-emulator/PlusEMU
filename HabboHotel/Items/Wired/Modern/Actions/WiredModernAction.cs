@@ -412,6 +412,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             }
 
             var flashedBox = false;
+            var queuedBlob = false;
 
             if (name == "wf_act_toggle_state") {
                 // Observed on AIR WIN63-202610201032-107964540: a box of the stack that is running has flashed already, and the toggle
@@ -419,6 +420,16 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 var own = context.CapturedStack.Select(x => x.Item.Id).ToHashSet();
                 movers = WiredToggleStateTargets.Resolve(movers, box => context.Room.GetWired().Flash(box, own.Contains(box.Id)),
                     item => context.Room.GetWired().TryQueueBatchData(item), out flashedBox);
+
+                // A blob changes on the next room tick, not in this batch.
+                var deferred = WiredDeferredStates.For(context.Room);
+
+                foreach (var blob in movers.Where(WiredDeferredStates.IsBlob).ToArray()) {
+                    deferred.ToggleOnNextRoomTick(blob);
+                    queuedBlob = true;
+                }
+
+                movers = [.. movers.Where(item => !WiredDeferredStates.IsBlob(item))];
 
                 if (movers.Any(item => !WiredToggleStateTargets.WritesOnlyBatchData(item))) {
                     context.Publication?.Flush();
@@ -491,7 +502,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 context.Publication?.Reorder(movers);
             }
 
-            return movedAny || flashedBox;
+            if (name == "wf_act_toggle_state") {
+                foreach (var button in movers.Where(item => WiredDeferredStates.IsButton(item) && item.LegacyDataString == "1")) {
+                    WiredDeferredStates.For(context.Room).ResetAfterDelay(button, context.NowMilliseconds);
+                }
+            }
+
+            return movedAny || flashedBox || queuedBlob;
         }
 
         // Reset timers always covers the whole room, unlimited, so it resolves its own targets.

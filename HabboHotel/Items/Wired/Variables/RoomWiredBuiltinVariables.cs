@@ -318,21 +318,25 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 return false;
             }
 
+            // Observed on AIR WIN63-202610201032-107964540: a value below 0 or from the furni's state count up sets state 0 (a colour tile has
+            // states 0 to 6, a Wired floor switch 0 and 1).
+            var state = value < 0 || item.Definition.Modes <= value ? 0 : value;
+
             // A furni placed from the inventory can carry no state text yet; it shows state 0, and any write sets it.
-            if (value < 0 || item.Definition.Modes <= value
-                || item.LegacyDataString is { Length: > 0 } text && (!int.TryParse(text, out var previous) || previous == value)) {
+            if (item.Definition.Modes <= 0
+                || item.LegacyDataString is { Length: > 0 } text && (!int.TryParse(text, out var previous) || previous == state)) {
                 return false;
             }
 
             var mark = FurnitureStateEvents.Mark();
 
             if (GateTransitionService.For(item) != null) {
-                if (!WriteGateState(item, value)) {
+                if (!WriteGateState(item, state)) {
                     return false;
                 }
             }
             else {
-                item.LegacyDataString = value.ToString(CultureInfo.InvariantCulture);
+                item.LegacyDataString = state.ToString(CultureInfo.InvariantCulture);
                 item.UpdateState();
             }
 

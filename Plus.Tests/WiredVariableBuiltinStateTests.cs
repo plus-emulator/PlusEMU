@@ -28,11 +28,12 @@ public sealed class WiredVariableBuiltinStateTests
         var holder = WiredVariableRuntimeFrames.FurniHolder(item);
         var frame = new WiredVariableFrame(1, [holder]) { Depth = 3 };
         var notices = 0;
+        var notified = new List<string>();
         var builtins = new RoomWiredBuiltinVariables(room, stateChanged: (changed, firing) =>
         {
             Assert.Same(item, changed);
             Assert.Same(frame, firing);
-            Assert.Equal("1", changed.LegacyDataString);
+            notified.Add(changed.LegacyDataString);
             var moved = (ConcurrentDictionary<uint, Item>)typeof(RoomItemHandling).GetField("_movedItems", flags)!.GetValue(handling)!;
             Assert.Same(item, moved[item.Id]);
             notices++;
@@ -46,11 +47,14 @@ public sealed class WiredVariableBuiltinStateTests
         Assert.Equal(1, change.After!.Value);
         Assert.False(module.Mutate(reference, holder, WiredVariableMutation.Set, 1, frame));
         Assert.False(builtins.Write(reference, holder, 1, frame));
-        Assert.False(module.Mutate(reference, holder, WiredVariableMutation.Set, 3, frame));
         Assert.False(builtins.Write(reference, holder, 2, new(1, [])));
         Assert.Equal(1, notices);
         Assert.Empty(module.DrainChanges());
         Assert.Equal("1", item.LegacyDataString);
+        // Observed on AIR WIN63-202610201032-107964540: a value from the state count up (3 of 3 states) sets state 0.
+        Assert.True(module.Mutate(reference, holder, WiredVariableMutation.Set, 3, frame));
+        Assert.Equal("0", item.LegacyDataString);
+        Assert.Equal(["1", "0"], notified);
     }
     [Fact]
     public async Task CreatorStateNotificationDoesNotHoldModuleLockWhileEnteringEngine()

@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
+/// <summary>A capture of one context variable. Labels is the Text Connector in text mode (empty without one) and null in number mode.</summary>
 public sealed record WiredVariableCapturer(uint DefinitionId, string Name, IReadOnlyDictionary<int, string>? Labels)
 {
     public long? Read(string text)

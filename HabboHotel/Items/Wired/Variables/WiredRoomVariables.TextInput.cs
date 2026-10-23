@@ -39,7 +39,10 @@ public sealed partial class WiredRoomVariables
                 continue;
             }
 
-            capturers.Add(new(id, config.Text, config.IntParams[0] == 2 ? MetadataOn(id, "wf_xtra_var_text_connector")?.TextConnector : null));
+            // Observed on AIR WIN63-202610201032-107964540: text mode without a Text Connector on the variable captures nothing, not even a
+            // number. Only number mode reads numbers.
+            capturers.Add(new(id, config.Text, config.IntParams[0] == 2
+                ? MetadataOn(id, "wf_xtra_var_text_connector")?.TextConnector ?? new Dictionary<int, string>() : null));
             capturing.Add((box.Item, id));
         }
 

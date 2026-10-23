@@ -226,12 +226,18 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
     }
     public void Reset(long nowMilliseconds)
     {
-        ResetElapsed(nowMilliseconds);
+        var roomTimer = _roomTimer?.Invoke();
+
+        // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs): a placed, saved or moved At Given Time box counts from the last timer
+        // reset, not from the moment it was placed, saved or moved. Its time is measured on the room timer. The poll counts from the first
+        // room tick after the start, so the start is one ms before the room timer began.
+        var counted = Descriptor.CanonicalName == "wf_trg_at_given_time" && roomTimer is { } elapsed ? nowMilliseconds - elapsed - 1 : nowMilliseconds;
+        ResetElapsed(counted);
         _resetByAction = false;
         _timers.Forget(Item.Id);
 
-        if (_roomTimer?.Invoke() is { } roomTimer && TryValidateConfiguration(Configuration, out var config, out _)) {
-            _timers.Join(Descriptor.CanonicalName, Item.Id, config, roomTimer, _epoch);
+        if (roomTimer is { } timer && TryValidateConfiguration(Configuration, out var config, out _)) {
+            _timers.Join(Descriptor.CanonicalName, Item.Id, config, timer, _epoch);
         }
     }
     public void ResetElapsed(long nowMilliseconds)

@@ -552,7 +552,10 @@ internal sealed partial class WiredStackEngine
         // for each pair and box order). The same holds for the x of a user moved by User To Furni and the x of a furni moved by Furni To
         // User (12 of 12 for each pair and box order).
         ["wf_act_give_var"] = ["wf_act_toggle_state", "wf_act_move_rotate", "wf_act_user_to_furni", "wf_act_furni_to_user"],
-        ["wf_act_change_var_val"] = ["wf_act_toggle_state", "wf_act_move_rotate", "wf_act_user_to_furni", "wf_act_furni_to_user"]
+        ["wf_act_change_var_val"] = ["wf_act_toggle_state", "wf_act_move_rotate", "wf_act_user_to_furni", "wf_act_furni_to_user"],
+        // Observed on AIR WIN63-202610201032-107964540: a User To Furni sends its WiredMovements after the state update of a Toggle State
+        // and the ObjectUpdate of a Move and Rotate of the same firing, whatever the box order (12 of 12 for each pair and box order).
+        ["wf_act_user_to_furni"] = ["wf_act_toggle_state", "wf_act_move_rotate"]
     };
 
     private const string AdjustClockSet = "wf_act_adjust_clock:set";

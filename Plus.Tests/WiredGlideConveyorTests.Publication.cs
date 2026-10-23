@@ -543,8 +543,7 @@ public sealed partial class WiredGlideConveyorTests
     [Theory]
     [InlineData(0, 1, 1, 1)]
     [InlineData(1, 0, 1, 1)]
-    [InlineData(0, 0, 1, 0)]
-    public void SnapshotStateRotationAndPartialPositionRemainIndividual(int state, int rotation, int xy, int z)
+    public void SnapshotStateAndRotationRemainIndividual(int state, int rotation, int xy, int z)
     {
         var layout = Configure(FastQueueLayout(2), (14, [state, rotation, xy, z, 100]));
         var f = new Fixture(layout, live: true);

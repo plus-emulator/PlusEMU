@@ -170,6 +170,25 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         var valueMatch = name == "wf_cnd_var_val_match";
         unchosenDestination |= valueMatch && tokens[0].Length == 0;
 
+        // Same holder reads the reference on each destination holder. Observed on AIR WIN63-202610201032-107964540: it saves for every pair
+        // of destination and reference kind with a variable. Plus accepts an empty reference slot with same holder on only when both targets are global
+        // (probed; the box then changes nothing). An empty destination slot saves on any target. With a value it saves on a global destination; other targets are accepted with a value but were not probed.
+        var sameIndex = name switch
+        {
+            "wf_act_give_var" when p.Length is GiveExtended or GiveReferenced => 7,
+            "wf_act_change_var_val" when p.Length == ChangeExtended => 9,
+            "wf_cnd_var_val_match" when p.Length == ValueMatchExtended => 9,
+            _ => -1
+        };
+
+        if (sameIndex >= 0 && p[sameIndex] is not (0 or 1)) {
+            return false;
+        }
+
+        var sameHolder = sameIndex >= 0 && p[sameIndex] == 1;
+        var emptyGlobalSlot = sameHolder && (WiredVariableTarget)p[0] == WiredVariableTarget.Global
+            && (WiredVariableTarget)p[name == "wf_act_give_var" ? 6 : 4] == WiredVariableTarget.Global;
+
         if (!unchosenDestination && !(ReadsPresence(name) && tokens[0].Length == 0) && !ValidToken(tokens[0])) {
             return false;
         }
@@ -198,7 +217,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
                 return false;
             }
 
-            if (p[2] == 1 && !ValidToken(tokens[1]) && !(valueMatch && tokens[1].Length == 0)) {
+            if (p[2] == 1 && !ValidToken(tokens[1]) && !(valueMatch && tokens[1].Length == 0) && !(emptyGlobalSlot && tokens[1].Length == 0)) {
                 return false;
             }
         }
@@ -208,28 +227,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
         }
 
         if (ReferenceSlot(name, p) is { } slot && (p[slot.Option] is not (0 or 1) || !Enum.IsDefined((WiredVariableTarget)p[slot.Target])
-            || p[slot.Option] == 1 && !ValidToken(tokens[1]))) {
-            return false;
-        }
-
-        // Same holder reads the reference on the destination's own holders, so both must be of one user or furni kind.
-        var sameIndex = name switch
-        {
-            "wf_act_give_var" when p.Length is GiveExtended or GiveReferenced => 7,
-            "wf_act_change_var_val" when p.Length == ChangeExtended => 9,
-            "wf_cnd_var_val_match" when p.Length == ValueMatchExtended => 9,
-            _ => -1
-        };
-        var referenceTarget = name == "wf_act_give_var" ? 6 : 4;
-        var option = name == "wf_act_give_var" ? 5 : 2;
-
-        // Observed on AIR WIN63-202610201032-107964540: Variable Value Match also saves same holder on a global target, and then passes.
-        // The other two boxes were not probed on a global target.
-        var sameHolderTarget = (WiredVariableTarget)p[0] is WiredVariableTarget.User or WiredVariableTarget.Furni
-            || valueMatch && (WiredVariableTarget)p[0] == WiredVariableTarget.Global;
-
-        if (sameIndex >= 0 && (p[sameIndex] is not (0 or 1) || p[sameIndex] == 1 && (p[option] != 1 || p[referenceTarget] != p[0]
-            || !sameHolderTarget))) {
+            || p[slot.Option] == 1 && !ValidToken(tokens[1]) && !(emptyGlobalSlot && tokens[1].Length == 0))) {
             return false;
         }
 

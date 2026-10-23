@@ -2,7 +2,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Users In Area saved through the real packet path. Observed on AIR WIN63-202610201032-107964540.
+// Users In Area saved through the real packet path.
 public sealed class WiredUsersAreaEditorTests
 {
     private static void Expect(int[] sent, int[] stored, string text = "")

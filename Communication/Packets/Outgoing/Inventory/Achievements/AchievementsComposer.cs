@@ -19,7 +19,7 @@ public class AchievementsComposer(ImmutableArray<AchievementProgressSnapshot> ac
         packet.WriteString(""); // Default category: none, the window opens on its overview.
     }
 
-    // WIN63 AchievementData (package_92.class_3624), shared by Achievements 1487, AchievementProgressed 1049 and UserGameAchievements 564.
+    // One achievement entry, shared by Achievements 1487, AchievementProgressed 1049 and UserGameAchievements 564.
     internal static void WriteAchievement(IOutgoingPacket packet, AchievementProgressSnapshot achievement)
     {
         packet.WriteInteger(achievement.Id); // achievementId

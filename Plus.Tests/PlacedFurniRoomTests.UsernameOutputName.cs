@@ -8,10 +8,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (three runs, identical): Text Output Username refuses and stores a name exactly as Text Output Furni
-// Name does, with or without picks and on the box's own frame (no name, ints [0]); Text Output Variable also refuses an empty name on its own
-// frame. The answer is a WiredValidationError packet with the key and no parameters (hex 0028 + "wiredfurni.error.placeholder.name_length" +
-// 00000000). A name is stored in lower case; any non-zero first int is the show-multiple flag.
+// Text Output Username refuses and stores a name exactly as Text Output Furni Name does, with or without picks and on the box's own frame. Text Output Variable also refuses an empty name on its own frame.
+// The answer is a WiredValidationError packet with the key and no parameters. A name is stored in lower case. Any non-zero first int is the show-multiple flag.
 public partial class PlacedFurniRoomTests
 {
     private const string UsernameOutput = "wf_xtra_text_output_username";
@@ -147,7 +145,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("wiredfurni.error.invalid_user_source", SaveUsernameOutput(service, [0], "", [], [100]));
     }
 
-    // User sources of the probe: the source values that save, the ones that are refused with a key, one that gets no answer, two sources, and none.
+    // User sources: the values that save, the ones refused with a key, one that gets no answer, two sources, and none.
     [Theory]
     [InlineData(new[] { 0 }, "saved", new[] { 0 })]
     [InlineData(new[] { 10 }, "saved", new[] { 10 })]

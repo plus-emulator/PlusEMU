@@ -7,8 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: a fresh Date Matches frame holds year minimum and maximum 0, and a save from that
-// frame with "Use Year" off keeps them at 0. The year range is only read when "Use Year" is on.
+// A fresh Date Matches frame holds year minimum and maximum 0, and a save with "Use Year" off keeps them at 0. The year range is only read when "Use Year" is on.
 public partial class PlacedFurniRoomTests
 {
     private const uint MatchDateId = 703;

@@ -3,7 +3,6 @@ using Plus.HabboHotel.Rooms;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Settings;
 
-// AIR WIN63-202610151745-318700621 package_105/class_3641.as:20.
 public sealed class RoomSettingsDataComposer(RoomSettingsSnapshot data) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.RoomSettingsDataComposer;
@@ -30,7 +29,7 @@ public sealed class RoomSettingsDataComposer(RoomSettingsSnapshot data) : IServe
         packet.WriteInteger(data.Hidewall ? 1 : 0);
         packet.WriteInteger(data.WallThickness);
         packet.WriteInteger(data.FloorThickness);
-        packet.WriteInteger(data.ExtraFlood); // Chat flood sensitivity, the only chat setting AIR reads.
+        packet.WriteInteger(data.ExtraFlood); // Chat flood sensitivity, the only chat setting the client reads.
         packet.WriteBoolean(false); // Leave on door tile.
         packet.WriteBoolean(false); // Idle sleep.
         packet.WriteInteger(0); // Idle sleep timeout seconds.
@@ -40,7 +39,7 @@ public sealed class RoomSettingsDataComposer(RoomSettingsSnapshot data) : IServe
         packet.WriteInteger(data.WhoCanMute);
         packet.WriteInteger(data.WhoCanKick);
         packet.WriteInteger(data.WhoCanBan);
-        // Shows the room-locked notice (AIR WIN63-202610151745-318700621 navigator/roomsettings/RoomSettingsCtrl.as:726).
+        // Shows the room-locked notice.
         packet.WriteBoolean(data.HiddenByBuildersClub);
     }
 }

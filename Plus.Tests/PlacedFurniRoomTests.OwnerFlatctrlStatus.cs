@@ -10,8 +10,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The room owner is admitted through the real RoomUserManager owner branch. The recorded official owner status reads "flatctrl 4" (the same level the
-// controller packet already carries); these tests only compare the status string, not any client visual, permission or wf behaviour.
+// The room owner is admitted through the real RoomUserManager owner branch. The owner status reads "flatctrl 4" (the same level the
+// controller packet carries). These tests only compare the status string.
 public partial class PlacedFurniRoomTests
 {
     [Fact]
@@ -97,7 +97,7 @@ public partial class PlacedFurniRoomTests
         client.Sent.Clear();
         client.Packets.Clear();
         Assert.True(manager.AddAvatarToRoom(client));
-        // Room entry sends the controller packets after the room data (AIR WIN63-202610151745-318700621).
+        // Room entry sends the controller packets after the room data.
         manager.SendEntryRights(client);
 
         return Assert.IsType<RoomUser>(manager.GetRoomUserByHabbo(habboId));

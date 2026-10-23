@@ -29,7 +29,7 @@ public class AirClientConfiguration
     public string Name { get; set; } = "PlusEMU";
 
     /// <summary>The environment id the client runs as; it must be one of the client's live.environment.list
-    /// (en, pt, de, es, fi, fr, it, nl, tr, s2), or the client drops it (AIR WIN63-202610151745-318700621, class_64.as:200).</summary>
+    /// (en, pt, de, es, fi, fr, it, nl, tr, s2), or the client drops it.</summary>
     public string Environment { get; set; } = "en";
 
     /// <summary>Public host of the Flash listener. It cannot sit behind an HTTP-only proxy.</summary>

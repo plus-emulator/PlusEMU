@@ -12,9 +12,7 @@ public partial class PlacedFurniRoomTests
 {
     private const uint FlashedContext = 994, FlashedFire = 995, FlashedPotion = 996;
 
-    // Observed on AIR WIN63-202610201032-107964540: one execution gives two user variables, so a Variable Changed stack that gives a
-    // context variable runs twice in the same tick. The one ObjectsDataUpdate of that tick flips the context variable's box once
-    // (6, then 7 on the next click), and each given variable's box once.
+    // One execution gives two user variables, so a Variable Changed stack that gives a context variable runs twice in the same tick. The one ObjectsDataUpdate of that tick flips the context variable's box once and each given variable's box once.
     [Fact]
     public async Task TwoVariableChangedRunsInOneTickFlipTheContextBoxOnce()
     {

@@ -5,8 +5,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Official stored editor contracts: 3db3d3c17 (click cards), f8f1f95f4 (move/rotate user).
-// These checks cover source admission and editor publication, not official execution semantics.
+// These checks cover source admission and editor publication, not execution semantics.
 public sealed class WiredObservedEditorSourceTests
 {
     [Theory]
@@ -65,8 +64,7 @@ public sealed class WiredObservedEditorSourceTests
         Assert.False(WiredNativeEditorProjection.TryCompile(7, descriptor, native, out _));
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): click_furni allows furni sources [100, 200], default 100. Saved rows with the
-    // earlier 0 or 201 still load.
+    // The click_furni trigger allows furni sources [100, 200], default 100. Saved rows with the earlier 0 or 201 still load.
     [Theory]
     [InlineData(0, false)]
     [InlineData(100, true)]

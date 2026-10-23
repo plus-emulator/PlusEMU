@@ -4,8 +4,6 @@ namespace Plus.Tests;
 
 public partial class ModernWiredBehaviorTests
 {
-    // r92m r92m-sshot-extra (AIR WIN63-202610131318-860371703): a selected furni without its own entry went to A, C, B, B, C, C, B, B,
-    // A over three spots and B, A, A, A over two; every spot was used each time.
     [Fact]
     public void ExtraSelectorFurniTakesARandomSavedSpotWhileEverySpotIsUsed()
     {

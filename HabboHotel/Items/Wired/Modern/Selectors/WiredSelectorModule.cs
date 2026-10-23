@@ -29,8 +29,7 @@ public static class WiredSelectorModule
 
         c = WiredSelectorConfiguration.Normalize(name, c);
 
-        // Observed on AIR WIN63-202610151745-318700621: Furni In Area and Furni On Furni select the Wired boxes in their scope like any
-        // other floor furni (the box stack itself, a variable definition box).
+        // Furni In Area and Furni On Furni select the Wired boxes in their scope like any other floor furni (the box stack itself, a variable definition box).
         var available = world.Furni.Where(x => x.IsFloor).ToList();
         var selected = new WiredSelectedIds();
         var target = name == "wf_slc_remote" ? WiredSelectorTarget.Both
@@ -44,12 +43,11 @@ public static class WiredSelectorModule
 
         switch (name) {
             case "wf_slc_furni_picks":
-                // Picked Wired boxes stay in the selection. Observed on hhus (AIR WIN63-202610131318-860371703): Call Stacks with the
-                // furni-picks selector picking another stack's trigger box runs that stack.
+                // Picked Wired boxes stay in the selection: Call Stacks with the furni-picks selector picking another stack's trigger box runs that stack.
                 selected.FurniIds.UnionWith(world.Furni.Where(x => c.SelectedItems.Contains(x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_furni_signal":
-                // Observed on AIR WIN63-202610151745-318700621: a Wired box sent with a signal arrives in Furni From Signal.
+                // A Wired box sent with a signal arrives in Furni From Signal.
                 selected.FurniIds.UnionWith(world.Furni.Where(x => input.Signal.FurniIds.Contains(x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_users_signal":
@@ -68,7 +66,7 @@ public static class WiredSelectorModule
 
                     break;
                 }
-            // Observed on AIR WIN63-202610201032-107964540: the type is one kind, not a bit mask (3 selects nobody).
+            // The type is one kind, not a bit mask (3 selects nobody).
             case "wf_slc_users_bytype":
                 selected.UserIds.UnionWith(world.Users.Where(x => (int)x.Kind == P(0, 1)).Select(x => x.Id));
                 break;
@@ -77,23 +75,20 @@ public static class WiredSelectorModule
                     && x.Team != 0 && (P(0) == 0 || x.Team == P(0))).Select(x => x.Id));
                 break;
             case "wf_slc_users_byname": {
-                    // Observed on AIR WIN63-202610151745-318700621: only a tab separates names (the editors turn line breaks into tabs), and
-                    // a name keeps its spaces, so " Robbie" or "Robbie " matches nobody.
+                    // Only a tab separates names (the editors turn line breaks into tabs), and a name keeps its spaces, so " Robbie" or "Robbie " matches nobody.
                     var names = c.Text.Split('\t', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
                     selected.UserIds.UnionWith(world.Users.Where(x => names.Contains(x.Name)).Select(x => x.Id));
                     break;
                 }
             case "wf_slc_users_handitem":
-                // Observed on AIR WIN63-202610151745-318700621: hand item 0 selects the Habbos holding nothing but not a bot standing next
-                // to them; the selector only looks at Habbos.
+                // Hand item 0 selects the Habbos holding nothing but not a bot standing next to them; the selector only looks at Habbos.
                 selected.UserIds.UnionWith(world.Users.Where(x => x.Kind == WiredSelectorEntityKind.Player && x.HandItem == P(0)).Select(x => x.Id));
                 break;
             case "wf_slc_users_group": {
                     var groupId = P(0) == 0 ? world.RoomGroupId : P(1);
 
                     if (groupId > 0) {
-                        // Observed on AIR WIN63-202610151745-318700621: every member of the group is selected, whether or not it is
-                        // their favourite group.
+                        // Every member of the group is selected, whether or not it is their favourite group.
                         selected.UserIds.UnionWith(world.Users.Where(x => x.Kind == WiredSelectorEntityKind.Player
                             && (world.IsGroupMember?.Invoke(x.Id, groupId) ?? x.GroupIds?.Contains(groupId) == true)).Select(x => x.Id));
                     }
@@ -123,8 +118,7 @@ public static class WiredSelectorModule
                         throw new ArgumentException("Altitude must be an invariant number");
                     }
 
-                    // Observed on AIR WIN63-202610201032-107964540: a tile stacked to 0.6 equals 60, and the stored comparisons 3, 4 and 5
-                    // are <=, != and >=. A height compares as a decimal, so the double sum 0.2 + 0.2 + 0.2 is 0.6.
+                    // A tile stacked to 0.6 equals 60, and the stored comparisons 3, 4 and 5 are <=, != and >=. A height compares as a decimal, so the double sum 0.2 + 0.2 + 0.2 is 0.6.
                     selected.FurniIds.UnionWith(available.Where(x => (decimal)x.Z is var z && (P(0, 1) switch
                     {
                         0 => z < altitude,
@@ -204,14 +198,12 @@ public static class WiredSelectorModule
                         stacks = stacks.Take(P(3)).ToList();
                     }
 
-                    // Union or Intersection combines the picked stacks for furni and users alike. Observed on hhus (AIR
-                    // WIN63-202610131318-860371703): a furni-only stack intersected with a users-only stack selects neither kind, and a
-                    // picked stack without a selector is an empty operand.
+                    // Union or Intersection combines the picked stacks for furni and users alike. A furni-only stack intersected with a users-only stack
+                    // selects neither kind, and a picked stack without a selector is an empty operand.
                     var firstStack = true;
 
                     foreach (var stack in stacks) {
-                        // Observed on AIR WIN63-202610151745-318700621: 61 nested stacks still select, so only a stack already on the
-                        // path is skipped. The stack check only stops a chain too deep for the thread.
+                        // Deeply nested stacks still select, so only a stack already on the path is skipped. The stack check only stops a chain too deep for the thread.
                         if (stack.Count > 0 && (!RuntimeHelpers.TryEnsureSufficientExecutionStack() || !visiting.Add(stack[0]))) {
                             continue;
                         }
@@ -300,7 +292,7 @@ public static class WiredSelectorModule
         var output = input.SelectorPool.Copy();
 
         if (result.Target is WiredSelectorTarget.Furni or WiredSelectorTarget.Both) {
-            // Observed on AIR WIN63-202610151745-318700621: inversion includes wall furniture and the executing Wired stack.
+            // Inversion includes wall furniture and the executing Wired stack.
             var kept = result.Invert ? world.Furni
                 .Select(x => x.Id).Except(result.Selection.FurniIds) : result.Selection.FurniIds;
 
@@ -432,8 +424,7 @@ public static class WiredSelectorModule
     private static bool FiltersExistingNormalized(string name, WiredConfiguration c) =>
         c.Origin?.Native.Filter ?? WiredSelectorSources.Param(c, SwitchIndexes(name).Filter) == 1;
 
-    // Observed on AIR WIN63-202610131318-860371703: the filters of a stack narrow what its other selectors picked wherever they stand,
-    // so they run after them, keeping the stack order within each group.
+    // The filters of a stack narrow what its other selectors picked wherever they stand, so they run after them, keeping the stack order within each group.
     public static IEnumerable<T> FiltersLast<T>(IEnumerable<T> selectors, Func<T, bool> filters)
     {
         var all = selectors.ToArray();

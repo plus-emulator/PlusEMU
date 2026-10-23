@@ -9,8 +9,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: Toggle State lists the one-state stairs in its data batch with state 0, next to the
-    // block and the colour tile it moves to their next state.
+    // Toggle State lists the one-state stairs in its data batch with state 0, next to the block and the colour tile it moves to
+    // their next state.
     [Fact]
     public void ToggleStateListsOneStateStairsWithTheirState()
     {
@@ -60,9 +60,9 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Toggle State steps a free block 0, 1, 2, 3, 4, 0, 1. Each step sends its ObjectUpdate
-    // with the new height and the HeightMapUpdate for its tile before the data batch, which lists it too. A block with a colour tile on
-    // top keeps its state and is not in the batch.
+    // Toggle State steps a free block 0, 1, 2, 3, 4, 0, 1. Each step sends its ObjectUpdate with the new height and the
+    // HeightMapUpdate for its tile before the data batch, which lists it too. A block with a colour tile on top keeps its state
+    // and is not in the batch.
     [Fact]
     public void ToggleStateLowersAFreeBlockAndSkipsABlockWithFurniOnTop()
     {

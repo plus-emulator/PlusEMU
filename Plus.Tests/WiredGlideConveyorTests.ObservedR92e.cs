@@ -11,9 +11,9 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed r92e room 14 (AIR WIN63-202610131318-860371703): a Fast Queue of sprite 3666 colour tiles with the owner riding.
-    // Each ~200ms pulse the tiles are reported home->home for 500ms in the same WiredMovements packet as the rider's step
-    // (own user duration = the movement addon's animation time, 300ms there); the colour tiles never appear to move east.
+    // A Fast Queue of colour tiles with the owner riding. Each 200 ms pulse the tiles are reported home to home for 500 ms in
+    // the same WiredMovements packet as the rider's step (user duration is the movement addon's animation time, 300 ms); the
+    // colour tiles never appear to move east.
     private static (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] ColourTileFastQueueLayout(int animationMs = 300) =>
         FastQueueLayout(2).Select(item => item.Name == "bc_tile_1" ? item with { Name = "wf_colortile" }
             : item.Name == "wf_xtra_anim_time" ? item with { Json = System.Text.Json.JsonSerializer.Serialize(new WiredConfiguration { IntParams = [animationMs] }) }
@@ -50,10 +50,9 @@ public sealed partial class WiredGlideConveyorTests
             Assert.All(furniture, move => Assert.Equal(("0.0", "0.0"), (move.FromZ, move.ToZ)));
             var carry = Assert.Single(group.Where(move => move.Type == 0));
             Assert.Equal((3 + pulse, 4 + pulse, 300), (carry.FromX, carry.ToX, carry.Duration));
-            Assert.Equal(0, group[^1].Type); // The rider's entry follows the tiles' entries, as in the official packet.
+            Assert.Equal(0, group[^1].Type); // The rider's entry follows the tiles' entries.
             Assert.Equal((4 + pulse, 11), (rider.X, rider.Y));
-            // Movement Physics, Carry Users and Animation Time take part in each pulse, but a box flips once per 500 ms window
-            // (observed r92e r92-room14-def: boxes 600/400 ms apart under the 200 ms repeater).
+            // Movement Physics, Carry Users and Animation Time take part in each pulse, but a box flips once per 500 ms window.
             flashes.Add(string.Join(",", new uint[] { 15, 16, 17, 18 }.Select(id => f.Items[id].LegacyDataString).Distinct()));
             Assert.Equal(0, f.Engine.ReadStats().Pending);
         }
@@ -61,8 +60,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(["1", "1", "0", "0"], flashes);
     }
 
-    // Observed r92e r92-room14-def and r92f r92-room14-slow / r92-chase: the ObjectsDataUpdate with the flashed boxes goes out
-    // before the WiredMovements packet of the same firing.
+    // The ObjectsDataUpdate with the flashed boxes goes out before the WiredMovements packet of the same firing.
     [Fact]
     public void ColourTileFastQueueSendsTheBoxFlashesBeforeTheMovementPacket()
     {
@@ -103,8 +101,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(Enumerable.Range(4, 8), Enumerable.Range(1, 8).Select(id => f.Items[(uint)id].GetX));
     }
 
-    // Room 14 also has an unused collision trigger, an unrelated walk-on area and variable metadata.
-    // None of those may split a blocked queue step from its same-pulse snapshot restore.
+    // The room also has an unused collision trigger, an unrelated walk-on area and variable metadata. None of those may split a
+    // blocked queue step from its same-pulse snapshot restore.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -127,7 +125,7 @@ public sealed partial class WiredGlideConveyorTests
         }
 
         var f = new Fixture(layout.ToArray(), live: true);
-        _ = f.Room.GetWired().Chests; // Room 14 has idle chests; opening their component must not split a pulse.
+        _ = f.Room.GetWired().Chests; // The room has idle chests; opening their component must not split a pulse.
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
         var errors = new List<Exception>();

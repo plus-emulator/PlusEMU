@@ -16,8 +16,8 @@ public partial class PlacedFurniRoomTests
 {
     private const uint EoHolder = 421;
 
-    // Observed on AIR WIN63-202610201032-107964540: the Toggle State or Move and Rotate runs before the Give or Change that reads the
-    // furni, whatever the box order (12 of 12 firings for each case): the variable holds the new state, or the new rotation.
+    // The Toggle State or Move and Rotate runs before the Give or Change that reads the furni, whatever the box order. The variable holds
+    // the new state or rotation.
     [Theory]
     [InlineData("GTa", "toggle,give", "wf_act_toggle_state", "-110")]
     [InlineData("GTb", "give,toggle", "wf_act_toggle_state", "-110")]

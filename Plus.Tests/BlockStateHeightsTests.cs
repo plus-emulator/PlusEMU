@@ -2,7 +2,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: the small Builders Club block is 1.0, 0.75, 0.5, 0.25 and 0.0 high in states 0 to 4.
+// The small Builders Club block is 1.0, 0.75, 0.5, 0.25 and 0.0 high in states 0 to 4.
 public sealed class BlockStateHeightsTests
 {
     private const string Heights = "1.0,0.75,0.5,0.25,0.0";

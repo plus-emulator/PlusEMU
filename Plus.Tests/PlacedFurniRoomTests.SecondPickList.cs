@@ -10,20 +10,17 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (three runs, 70 cards of every kind: actions, conditions, triggers, selectors and add-ons): every
-// card keeps a second pick list next to its first one, whether or not it uses one. Saved with the first list [16, 2, 0, 18, 1] and the second
-// [1, 18, 0, 2, 16] (ids 2147418112 plus these), a card reopens [2, 18, 1, 16, 0] and [18, 2, 1, 0, 16]: each list in the iteration order of a
-// Java HashSet. The second list alone is kept as well, a second list that names no furni is saved and comes back empty, and an emptied second
-// list reopens empty. These tests save through the handler with ids 600 to 618, which fall into the same buckets as the probe's ids (those sit in the
-// Builders Club id band that other tests hand out), so the lists reopen in the order of that rule for these ids. The probe's own ids are checked in
-// WiredHashSetPickOrderTests. Chest Has Item Type refuses a second list without chests; it is covered there only.
+// Every card keeps a second pick list next to its first one, whether or not it uses one. A card reopens each list in the iteration order of a Java HashSet.
+// The second list alone is kept as well. A second list that names no furni is saved and comes back empty, and an emptied second list reopens empty.
+// These tests use ids 600 to 618, which fall into the same buckets as the Builders Club ids 2147418112 plus 0 to 18, so the lists reopen in the order of that rule.
+// The Builders Club ids themselves are checked in WiredHashSetPickOrderTests. Chest Has Item Type refuses a second list without chests; it is covered there only.
 public partial class PlacedFurniRoomTests
 {
     private const uint SecondListBox = 700, SecondListBase = 600;
     private static readonly int[] SecondListFirst = [16, 2, 0, 18, 1], SecondListSecond = [1, 18, 0, 2, 16];
     private static readonly int[] SecondListFirstReopened = [16, 0, 1, 2, 18], SecondListSecondReopened = [0, 16, 1, 18, 2];
 
-    // The cards of the probe that need only plain furni as picks (colour tiles).
+    // The cards that need only plain furni as picks (colour tiles).
     public static TheoryData<string> PlainPickCards() => new(
     [
         "wf_act_bot_move", "wf_act_bot_teleport", "wf_act_call_stacks", "wf_act_change_var_val", "wf_act_chase", "wf_act_flee", "wf_act_furni_to_furni",
@@ -39,7 +36,7 @@ public partial class PlacedFurniRoomTests
         "wf_xtra_filter_users_by_var", "wf_xtra_mov_curve", "wf_xtra_mov_physics", "wf_xtra_rotate_to_dir"
     ]);
 
-    // The cards of the probe with no picker of their own (a user condition, a clock trigger, a text add-on, ...): Habbo kept both lists on them too.
+    // The cards with no picker of their own (a user condition, a clock trigger, a text add-on, ...) keep both lists too.
     public static TheoryData<string> NoPickerCards() => new(
     [
         "wf_act_bot_clothes", "wf_act_bot_follow_avatar", "wf_act_bot_give_handitem",
@@ -71,7 +68,7 @@ public partial class PlacedFurniRoomTests
         "wf_xtra_var_text_connector"
     ]);
 
-    // The cards of the probe that refuse a pick of any other kind of furni, with the kind they were saved with.
+    // The cards that refuse a pick of any other kind of furni, with the kind they were saved with.
     public static TheoryData<string, string> SpecialPickCards() => new()
     {
         { "wf_act_adjust_clock", "counter" }, { "wf_act_control_clock", "counter" }, { "wf_cnd_counter_time_matches", "counter" },
@@ -80,7 +77,7 @@ public partial class PlacedFurniRoomTests
         { "wf_trg_transaction_complete", "contract" }, { "wf_trg_transaction_fail", "contract" }
     };
 
-    // The variable boxes of the probe: they keep both lists too.
+    // The variable boxes keep both lists too.
     public static TheoryData<string> VariableBoxCards() => new(["wf_var_furni", "wf_var_user", "wf_var_room", "wf_var_context"]);
 
     [Theory]

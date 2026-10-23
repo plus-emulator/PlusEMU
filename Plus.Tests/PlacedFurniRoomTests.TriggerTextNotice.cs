@@ -11,8 +11,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610131318-860371703: a box text with $(trigger_text) makes room entry send NotificationDialog
-    // "wired.error" (2356) to the entrant, owner or visitor, right after the room-enter packet (1647).
+    // A box text with $(trigger_text) makes room entry send NotificationDialog "wired.error" (2356) to the entrant, owner or visitor, right after the room-enter packet (1647).
     [Theory]
     [InlineData("wf_act_show_message", true)]
     [InlineData("wf_act_bot_talk", true)]

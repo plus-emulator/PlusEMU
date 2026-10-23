@@ -7,17 +7,16 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: a card reopens its picks in the order of a Java HashSet<Integer>. The set is built twice: first
-// like the copy constructor of JDK 18 and older (table sized from the number of ids sent), then again by adding the first set's ids one by one
-// to a default set. Orders below come from Habbo (first row) or the real JDK 21 (java.util.HashSet with the same two steps); the same rule matched 160 of 165
-// reopen samples read back from Habbo. With no bucket of nine ids, exactly 12 ids is where the two steps differ from a plain add loop.
+// A card reopens its picks in the order of a Java HashSet<Integer>. The set is built twice: first like the copy constructor of
+// JDK 18 and older (table sized from the number of ids sent), then again by adding the first set's ids one by one to a default
+// set. With no bucket of nine ids, exactly 12 ids is where the two steps differ from a plain add loop.
 public sealed partial class WiredGlideConveyorTests
 {
     private const uint HashToggle = 90;
 
     public static TheoryData<int[], int[]> HashSetPickOrders => new()
     {
-        // A 12 id sample read back from Habbo (floor ids 2147418112 + 10 to 130).
+        // A 12 id sample (floor ids 2147418112 + 10 to 130).
         { [2147418195, 2147418151, 2147418214, 2147418125, 2147418131, 2147418137, 2147418206, 2147418127, 2147418242, 2147418167, 2147418122, 2147418135],
             [2147418127, 2147418206, 2147418125, 2147418122, 2147418137, 2147418167, 2147418135, 2147418151, 2147418214, 2147418195, 2147418131, 2147418242] },
         // 12 ids from the real JDK 21, two steps; a plain add loop gives 16, 49, 17, 6, 39, 25, 9, 26, 12, 13, 15, 47.

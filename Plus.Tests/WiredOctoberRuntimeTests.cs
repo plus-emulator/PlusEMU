@@ -13,7 +13,7 @@ public sealed class WiredOctoberRuntimeTests
     [Fact]
     public void TransparencyPacketsFollowTheClientParsers()
     {
-        // class_2988 L34-48 / class_2441: [n, ids], transparency, click through, easing.
+        // [n, ids], transparency, click through, easing.
         var furni = new HabbiconTestSupport.RecordingPacket();
         new WiredFurniTransparencyComposer([4, 9], 100, true, 3).Compose(furni);
         Assert.Equal(new object[] { 2, 4, 9, 100, true, 3 }, furni.Writes);
@@ -29,7 +29,7 @@ public sealed class WiredOctoberRuntimeTests
     [Fact]
     public void HighlightPacketFollowsTheClientParser()
     {
-        // class_3488 L40-56: [n, ids], type, strength, colour, animation, easing.
+        // [n, ids], type, strength, colour, animation, easing.
         var packet = new HabbiconTestSupport.RecordingPacket();
         new WiredFurniHighlightComposer([7], 3, 75, 0xFF00FF, 1, 0).Compose(packet);
         Assert.Equal(new object[] { 1, 7, 3, 75, 0xFF00FF, 1, 0 }, packet.Writes);
@@ -39,12 +39,12 @@ public sealed class WiredOctoberRuntimeTests
     [Fact]
     public void UserHighlightAndEntryStatePacketsFollowTheClientParsers()
     {
-        // class_2412 L37-57: [n, room indices], type, strength, colour, animation, easing.
+        // [n, room indices], type, strength, colour, animation, easing.
         var user = new HabbiconTestSupport.RecordingPacket();
         new WiredUserHighlightComposer([3, 4], 1, 100, 0x00FF00, 0, 4).Compose(user);
         Assert.Equal(new object[] { 2, 3, 4, 1, 100, 0x00FF00, 0, 4 }, user.Writes);
 
-        // class_3015 / class_2803 L25-52: transparencies then highlights.
+        // Transparencies then highlights.
         var state = new HabbiconTestSupport.RecordingPacket();
         new WiredVisualizationStateComposer(false, [new(9, 100, false, 1)], [new(9, 2, 30, 0, 1, 0)]).Compose(state);
         Assert.Equal(new object[] { 1, 9, 100, false, 1, 1, 9, 2, 30, 0, 1, 0 }, state.Writes);
@@ -56,7 +56,7 @@ public sealed class WiredOctoberRuntimeTests
     [Fact]
     public void EnvironmentPacketListsTheEnabledAchievements()
     {
-        // class_3405.parse L25-42: [click user wired, n, achievement x n], nothing after.
+        // [click user wired, n, achievement x n], nothing after.
         var packet = new HabbiconTestSupport.RecordingPacket();
         new WiredEnvironmentComposer(true, ["ACH_RoomEntry", "ACH_Login"]).Compose(packet);
         Assert.Equal(new object[] { true, 2, "ACH_RoomEntry", "ACH_Login" }, packet.Writes);

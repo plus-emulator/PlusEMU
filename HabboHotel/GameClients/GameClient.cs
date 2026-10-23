@@ -264,7 +264,7 @@ public abstract class GameClient
         IsAuthenticated = true;
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: the official hotel sends no such message; a Flash/AIR socket session gets none.
+    // The official hotel sends no such message, so a Flash socket session gets none.
     internal bool SkipsClientExtensions => _server is Plus.Communication.Flash.FlashServer;
 
     public void Send(IServerPacket composer)

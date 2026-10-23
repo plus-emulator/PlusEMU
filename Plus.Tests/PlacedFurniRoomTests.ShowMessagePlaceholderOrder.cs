@@ -6,8 +6,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: a Show Message editor lists the placeholder names of its stack sorted by name. Text
-// Output Variable boxes named ptr, cx, ev, ct and nv, stacked in that order above the Show Message, open as ct, cx, ev, nv, ptr.
+// A Show Message editor lists the placeholder names of its stack sorted by name.
 public partial class PlacedFurniRoomTests
 {
     [Fact]
@@ -30,9 +29,7 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(capturers);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs): Text Output boxes named Zed (a capital is stored in lower case), x10, x2,
-    // a_b and x_, a Says trigger and Text Input capturers named zcap and acap, stacked in three different orders, open as
-    // a_b, trigger_text, x10, x2, x_, zed with the capturers acap, zcap. The sort is by character code of the lower case name.
+    // Placeholder names sort by character code of the lower case name (a capital is stored in lower case). Capturer names sort the same way and are listed apart.
     [Fact]
     public async Task ShowMessageEditorSortsTheNamesOfAllSourcesAndTheCapturers()
     {
@@ -58,8 +55,7 @@ public partial class PlacedFurniRoomTests
     /// <summary>Text Input Variable in number mode: the capture name and a context variable.</summary>
     private Task DpCapturer(string name) => DpSave(WiredBoxCategory.Addon, "wf_xtra_text_input_variable", [0], name, [], null, [], [], ["ctx:" + DpCtx], []);
 
-    // The raw WIRED_OPEN packet, then the context list of the Show Message editor frame read the way AIR reads it, up to the text
-    // placeholder entry (context 7): its placeholder names and its capturer names.
+    // The raw WIRED_OPEN packet, then the context list of the Show Message editor frame up to the text placeholder entry (context 7): its placeholder names and its capturer names.
     private async Task<(string[] Placeholders, string[] Capturers)> OpenMessageEditorPlaceholders(uint id)
     {
         _client.Packets.Clear();

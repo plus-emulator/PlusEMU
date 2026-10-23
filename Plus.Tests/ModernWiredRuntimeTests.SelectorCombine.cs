@@ -12,7 +12,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// Selector stacks saved through the native editor rows (AIR WIN63-202610131318-860371703, UpdateSelectorMessageComposer.as:11-47):
+/// Selector stacks saved through the native editor rows:
 /// a first selector seeds the selection and a second one with "Filter existing selection" narrows it.
 /// </summary>
 public partial class ModernWiredRuntimeTests
@@ -117,31 +117,31 @@ public partial class ModernWiredRuntimeTests
 
     private static string Pick(uint id) => $$"""[{"ItemId":{{id}},"Wall":false}]""";
 
-    // Furni of the picked block's type (class_3961.as:34-48).
+    // Furni of the picked block's type.
     private static string BlocksByType(bool filter = false, bool invert = false) => Row(0, "[0]", filter, invert, furni: "[100]", picks: Pick(201));
 
-    // Users By Type (class_4313.as:34-47): Habbo 1, Pet 2, Bot 4.
+    // Users By Type: Habbo 1, Pet 2, Bot 4.
     private static string Habbos(bool filter = false, bool invert = false) => Row(2, "[1]", filter, invert);
 
     private static string UsersByName(string names, bool filter = false, bool invert = false) => Row(11, "[]", filter, invert, text: names);
 
-    // Users in an area (InArea.as:100-123): x, y, width, length.
+    // Users in an area: x, y, width, length.
     private static string UsersArea(int x, int y, int width, int length, bool filter = false, bool invert = false) =>
         Row(13, $"[{x},{y},{width},{length}]", filter, invert);
 
-    // With Variable (WithVariable.as:144-150): "select by value" equals the value, or every holder of the variable.
+    // With Variable: "select by value" equals the value, or every holder of the variable.
     private static string Points(bool filter, bool invert, int? value = 2) =>
         Row(17, value is { } v ? $"[1,1,0,{v},-10,0]" : "[2,0,0,0,-10,0]", filter, invert, furni: "[100]", users: "[0]", variables: """["furni:10","n"]""");
 
     private static string Score(bool filter, bool invert, int? value = 2) =>
         Row(18, value is { } v ? $"[1,1,0,{v},-10,0]" : "[2,0,0,0,-10,0]", filter, invert, furni: "[100]", users: "[0]", variables: """["user:11","n"]""");
 
-    // Remote Selection (class_4144.as:38-60): [type (Union 0, Intersection 1), random amount (0 = all stacks)], stacks picked from source 100.
+    // Remote Selection: [type (Union 0, Intersection 1), random amount (0 = all stacks)], stacks picked from source 100.
     private static string Remote(uint[] stacks, int type = 0, int amount = 0, bool filter = false, bool invert = false) =>
         Row(19, $"[{type},{amount}]", filter, invert, furni: "[100]",
             picks: "[" + string.Join(",", stacks.Select(id => $$"""{"ItemId":{{id}},"Wall":false}""")) + "]");
 
-    // Observed on hhus (R95-C5, AIR WIN63-202610131318-860371703): a filter narrows the selection of the other selectors of its kind,
+    // A filter narrows the selection of the other selectors of its kind,
     // wherever it stands, and Invert keeps the non-matching ones. Variable filters read each candidate's own value.
     [Theory]
     [InlineData(false, false, true, new uint[] { 203 })]
@@ -208,7 +208,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new[] { 7 }, s.Users(context));
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703, r96 S2): Union keeps what each stack selected; Intersection works per kind
+    // Union keeps what each stack selected; Intersection works per kind
     // across every picked stack, so a furni-only stack intersected with a users-only stack selects neither kind.
     [Theory]
     [InlineData(0, new uint[] { 201, 202, 203 }, new[] { 7 })]
@@ -238,7 +238,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new uint[] { 203 }, s.Furni(s.Fire()));
     }
 
-    // Observed on hhus (r96 S1): a picked stack without a selector is an empty operand, and picking any box of a stack selects that
+    // A picked stack without a selector is an empty operand, and picking any box of a stack selects that
     // whole stack.
     [Theory]
     [InlineData(0, new[] { 7 })]
@@ -264,7 +264,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new uint[] { 201, 202, 203 }, s.Furni(s.Fire()));
     }
 
-    // Observed on hhus (r96 S2 n23): Invert on a remote over a furni-only stack inverts both kinds, so the empty user set becomes every
+    // Invert on a remote over a furni-only stack inverts both kinds, so the empty user set becomes every
     // user.
     [Fact]
     public void InvertedRemoteOverAFurniStackInvertsBothKinds()
@@ -280,7 +280,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Contains(1u, context.Selected.FurniIds);
     }
 
-    // Observed on hhus (r96 S2 n31-n34): Filter on the remote keeps the matches, Filter + Invert keeps the rest of the existing
+    // Filter on the remote keeps the matches, Filter + Invert keeps the rest of the existing
     // selection, and a remote whose stacks select no furni empties the furni pool.
     [Theory]
     [InlineData(false, new[] { 7 })]
@@ -302,7 +302,7 @@ public partial class ModernWiredRuntimeTests
         }
     }
 
-    // Observed on hhus (r96 S4): Invert without Filter selects every Wired box and every temporary copy in the room, on the stack itself
+    // Invert without Filter selects every Wired box and every temporary copy in the room, on the stack itself
     // and through a remote.
     [Theory]
     [InlineData(false)]

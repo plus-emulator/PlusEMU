@@ -24,9 +24,8 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// The Variables Web API add-on (2002) and Habbo's public Wired Variables Web API it opens. Every JSON answer is checked against the
-/// official spec (Fixtures/HabboWiredVariablesOpenApi.json, the "Wired Variables" part of habbo.com /api/public/api-docs/), and the
-/// error bodies against what habbo.com answers without a key.
+/// The Variables Web API add-on (2002) and the public Wired Variables Web API it opens. Every JSON answer is checked against the
+/// spec (Fixtures/HabboWiredVariablesOpenApi.json) and the error bodies against what the public API answers without a key.
 /// </summary>
 public sealed class WiredWebApiTests : IAsyncLifetime
 {
@@ -124,7 +123,7 @@ public sealed class WiredWebApiTests : IAsyncLifetime
     [Fact]
     public async Task ErrorsMatchWhatHabboAnswersWithoutAKey()
     {
-        // Observed on habbo.com: a key that the room has none of, or none at all, is key_missing; Bearer is not read.
+        // A key that the room has none of, or none at all, is key_missing; Bearer is not read.
         await AssertError("GET", "/api/public/rooms/1/variables", null, 403, WiredWebApiErrors.KeyMissing);
         await AssertError("GET", "/api/public/rooms/2/variables", null, 403, WiredWebApiErrors.KeyMissing, read: _readKey);
         await AssertError("GET", "/api/public/rooms/1/variables", null, 403, WiredWebApiErrors.KeyMissing, write: _writeKey);
@@ -520,7 +519,7 @@ public sealed class WiredWebApiTests : IAsyncLifetime
         Assert.Contains($"<pre>Cannot {method} {path}</pre>", await response.Content.ReadAsStringAsync());
     }
 
-    /// <summary>Sends a request and checks a JSON answer against the operation's documented responses in the official spec.</summary>
+    /// <summary>Sends a request and checks a JSON answer against the operation's documented responses in the spec.</summary>
     private async Task<(int Status, JsonElement Body, string ContentType)> Call(string method, string path, string? body = null, string? read = null, string? write = null,
         string? bearer = null)
     {

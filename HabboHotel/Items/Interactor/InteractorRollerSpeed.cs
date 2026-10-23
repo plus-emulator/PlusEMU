@@ -5,10 +5,10 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.HabboHotel.Items.Interactor;
 
 /// <summary>
-/// The roller speed controller. Observed on AIR WIN63-202610201032-107964540: it has 12 states in four groups of three. A use or a
-/// Wired toggle jumps to the first state of the next group (0, 3, 6, 9, 0). On every roller step the furni sends a data update that
-/// alternates between the two frames after its group state; the stored state stays the group state. Only a use (or the state it was
-/// placed with) sets the roller step time: a Wired toggle changes the state and leaves the step time as it was.
+/// The roller speed controller. It has 12 states in four groups of three. A use or a Wired toggle jumps to the first state of the
+/// next group (0, 3, 6, 9, 0). On every roller step the furni sends a data update that alternates between the two frames after its
+/// group state; the stored state stays the group state. Only a use (or the state it was placed with) sets the roller step time:
+/// a Wired toggle changes the state and leaves the step time as it was.
 /// </summary>
 public sealed class InteractorRollerSpeed : IFurniInteractor
 {

@@ -3,8 +3,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: when Kick User removes a visitor, the visitor gets YouArePlayingGame(false) and then
-// CloseConnection with the short 2. No GenericError is sent.
+// When Kick User removes a visitor, the visitor gets YouArePlayingGame(false) and then CloseConnection with the short 2. No GenericError is sent.
 public partial class ModernWiredRuntimeTests
 {
     [Fact]

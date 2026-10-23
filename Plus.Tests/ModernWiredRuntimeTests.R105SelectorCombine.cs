@@ -5,9 +5,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// Observed on AIR WIN63-202610201032-107964540: how Filter existing selection and Invert combine the selectors of one stack, and how
-/// Remote Selection combines the stacks it picks. P picks the test furni and the first block, S is an area over the test furni and the
-/// two other blocks, S2 an area over the last block.
+/// How Filter existing selection and Invert combine the selectors of one stack, and how Remote Selection combines the stacks it picks. P picks the test furni and the first block, S is an area over the test furni and the two other blocks, S2 an area over the last block.
 /// </summary>
 public partial class ModernWiredRuntimeTests
 {
@@ -147,8 +145,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(s.Furni(s.Fire()));
         Assert.NotEqual(0u, remote.Item.Id);
     }
-    // Observed on AIR WIN63-202610201032-107964540: Not Has Hand Item is the opposite of the whole quantified Has Hand Item result, not a
-    // check that each user lacks the item. Both users are selected; only the first one holds item 2.
+    // Not Has Hand Item is the opposite of the whole quantified Has Hand Item result, not a check that each user lacks the item. Both users are selected; only the first one holds item 2.
     [Theory]
     [InlineData(true, 0, true)]
     [InlineData(true, 1, false)]

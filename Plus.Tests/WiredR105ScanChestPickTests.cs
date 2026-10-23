@@ -4,8 +4,8 @@ using static Plus.Tests.WiredR104Save;
 
 namespace Plus.Tests;
 
-// Chest Item Type Scanner picks as Habbo stores them. Observed on AIR WIN63-202610201032-107964540: a new save whose chest list is a
-// picked list must pick only Furni Chests, and anything else is answered with the furni chest key.
+// Chest Item Type Scanner picks as Habbo stores them. A new save whose chest list is a picked list must pick only Furni Chests,
+// and anything else is answered with the furni chest key.
 public sealed class WiredR105ScanChestPickTests
 {
     private const string Name = "wf_xtra_scan_chest_furni_by_type";

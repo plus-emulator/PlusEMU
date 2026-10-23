@@ -3,10 +3,6 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>
-/// Official hhus r92i r92h-f2f (AIR WIN63-202610131318-860371703): furni_to_furni with movers on source 100 and targets on 101.
-/// Facts and receipts in reviews/r92-movement-facts.md.
-/// </summary>
 public sealed partial class WiredActionPortParityTests
 {
     private static Item StackableMarker(uint id, int x, int y)
@@ -18,7 +14,7 @@ public sealed partial class WiredActionPortParityTests
         return item;
     }
 
-    // f2fOne-w1/w2: the mover lands on top of the target (z 1.0). f2fMulti-w1..w4: with two targets it went to T2, T2, T2, T1.
+    // The mover lands on top of the target (z 1.0). With two targets the pick is random.
     [Fact]
     public void FurniToFurniLandsOnTopOfARandomTarget()
     {
@@ -42,7 +38,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal([(2, 2), (4, 2)], reached.Order());
     }
 
-    // f2fTwo-w1/w2: two movers, one target: both land on it, the second on top of the first (z 1.0 and 2.0, one packet).
+    // Two movers, one target: both land on it, the second on top of the first (z 1.0 and 2.0, one packet).
     [Fact]
     public void TwoMoversOntoOneTargetStack()
     {
@@ -61,7 +57,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal([1.0, 2.0], new[] { m1.GetZ, m2.GetZ }.Order());
     }
 
-    // f2fSpread-w1..w4: two movers, two targets: one each (m1->T2/m2->T1 once, m1->T1/m2->T2 three times).
+    // Two movers, two targets: one each.
     [Fact]
     public void TwoMoversOntoTwoTargetsTakeOneEach()
     {
@@ -80,7 +76,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal([(2, 2), (4, 2)], new[] { (m1.GetX, m1.GetY), (m2.GetX, m2.GetY) }.Order());
     }
 
-    // f2fStack-w1/w2: a target stacked on a block (top 2.0): the mover lands at z 2.0.
+    // A target stacked on a block (top 2.0): the mover lands at z 2.0.
     [Fact]
     public void FurniToFurniLandsOnTopOfAStackedTarget()
     {
@@ -98,7 +94,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((3, 1, 2.0), (mover.GetX, mover.GetY, mover.GetZ));
     }
 
-    // occupied-w1/w2: the target tile held by the owner: the mover stays.
+    // The target tile held by the owner: the mover stays.
     [Fact]
     public void FurniToFurniRefusesATargetTileHeldByAUser()
     {
@@ -117,7 +113,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((0, 0), (mover.GetX, mover.GetY));
     }
 
-    // r92j r92h-flee-sides trial-w1..w6: both sides free, owner straight south: the sidestep is east (right of the away heading) every time.
+    // Both sides free, owner straight south: the sidestep is east (right of the away heading) every time.
     [Fact]
     public void FleeSidestepsToTheRightWhenBothSidesAreFree()
     {
@@ -133,7 +129,7 @@ public sealed partial class WiredActionPortParityTests
         }
     }
 
-    // r92j r92h-chase-retry trial-w1..w6: out of range in a corner (north and west blocked) the marker always moved (east or south).
+    // Out of range in a corner (north and west blocked) the marker always moves (east or south).
     [Fact]
     public void ChaseOutOfRangeRetriesABlockedRandomStep()
     {

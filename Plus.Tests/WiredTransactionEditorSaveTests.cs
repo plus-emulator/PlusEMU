@@ -4,8 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Raw saves of the transaction boxes through the real save packet, read back the way the editor reopens them. Each case follows a save
-// observed on AIR WIN63-202610201032-107964540.
+// Raw saves of the transaction boxes through the real save packet, read back the way the editor reopens them.
 public sealed class WiredTransactionEditorSaveTests
 {
     private const string VariableCount = "wiredfurni.error.invalid_variable_count";

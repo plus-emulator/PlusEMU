@@ -43,7 +43,7 @@ public sealed record CatalogProduct
         _ => ""
     };
 
-    // Builders Club membership and furni limit go out with no product, as hhus sends them.
+    // Builders Club membership and furni limit go out with no product.
     public bool IsBuildersClub => Type is CatalogProductType.BuildersClub or CatalogProductType.BuildersClubAddon;
 
     public int ClassId => Type switch

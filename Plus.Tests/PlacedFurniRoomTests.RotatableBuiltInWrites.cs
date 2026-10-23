@@ -3,10 +3,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (three runs, identical; a couch and a chair that can rotate, started facing 2): Change Variable Value
-// writes @rotation as a position in the furni's list of directions (0, 2, 4, 6) and @occupation as x, y and such a position; a position that is not in
-// the list (4 and more, or -1) changes nothing, and with @occupation it changes nothing at all, also when x or y differ. Give Variable (override on)
-// and Remove Variable change neither variable.
+// Change Variable Value writes @rotation as a position in the furni's list of directions (0, 2, 4, 6) and @occupation as x, y and such a position.
+// A position that is not in the list (4 and more, or -1) changes nothing, and with @occupation nothing at all, also when x or y differ.
+// Give Variable (override on) and Remove Variable change neither variable.
 public partial class PlacedFurniRoomTests
 {
     private const string RotationId = "-122", OccupationId = "-126";

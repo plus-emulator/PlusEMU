@@ -15,14 +15,14 @@ namespace Plus.Tests;
 /// <summary>
 /// Delayed Give, Change and Remove Variable with pointers, as built in the client: every box is saved from its raw packet
 /// through the real save event, a real speech trigger fires the stack and the room cycle runs its delayed boxes pulse by pulse. The
-/// Show Message text is what the client receives. Observed on AIR WIN63-202610201032-107964540.
+/// Show Message text is what the client receives.
 /// </summary>
 public partial class PlacedFurniRoomTests
 {
     private const uint DpUa = 401, DpUb = 402, DpUt = 403, DpFa = 404, DpGa = 405, DpCt = 406, DpCtx = 407;
     private const uint DpPu = 408, DpPf = 409, DpPg = 410, DpPc = 411, DpHolder = 420;
 
-    // AIR variable targets: 0 furni, 1 user, -10 global, -20 context.
+    // Variable targets: 0 furni, 1 user, -10 global, -20 context.
     private const int DpFurni = 0, DpUser = 1, DpGlobal = -10, DpContext = -20;
 
     private uint _dpNext = 301;
@@ -272,7 +272,7 @@ public partial class PlacedFurniRoomTests
         ["user:" + DpUb, "user:" + source], furni: [0, 0], users: [0, 0], delay: delay);
 
     /// <summary>
-    /// The room with the variable boxes of the probes placed, the switch H and the trigger: a speech trigger with Execute in Order on
+    /// The room with the variable boxes of these tests placed, the switch H and the trigger: a speech trigger with Execute in Order on
     /// one tile, where every later box stands above the last one.
     /// </summary>
     private async Task<(WiredComponent Wired, RoomUser Actor, SpeechClock Clock)> DelayedPointerRoom(bool executeInOrder = true)
@@ -356,7 +356,7 @@ public partial class PlacedFurniRoomTests
         return SpeechMessages(ServerPacketHeader.WhisperComposer);
     }
 
-    /// <summary>The variables of the probes. Like the database directory, a variable whose box left the room is not found.</summary>
+    /// <summary>The variables of these tests. Like the database directory, a variable whose box left the room is not found.</summary>
     private sealed class DelayedPointerDirectory(Room room) : IWiredVariableDirectory
     {
         private readonly Dictionary<uint, WiredVariableDefinition> _definitions = new()

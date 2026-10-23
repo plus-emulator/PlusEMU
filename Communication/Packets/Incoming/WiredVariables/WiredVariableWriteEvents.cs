@@ -91,10 +91,7 @@ public sealed class WiredUserVariableManage64Event(IWiredVariableMenuService men
     }
 }
 
-/// <summary>
-/// The AIR inspection tab's value edit, create and delete (AIR WIN63-202610131318-860371703
-/// outgoing/userdefinedroomevents/wiredmenu/class_3770.as:18): target, object id, variable id, value, operation.
-/// </summary>
+/// <summary>The inspection tab's value edit, create and delete: target, object id, variable id, value, operation.</summary>
 public sealed class WiredSetObjectVariableValueEvent(IWiredVariableMenuService menus) : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
@@ -132,10 +129,7 @@ public sealed class WiredSetObjectVariableValueEvent(IWiredVariableMenuService m
     }
 }
 
-/// <summary>
-/// The AIR inspection tab's read of one object (AIR WIN63-202610151745-318700621 outgoing/userdefinedroomevents/wiredmenu/class_3018.as:12):
-/// type (0 furni, 1 user, -10 room) and the object id.
-/// </summary>
+/// <summary>The inspection tab's read of one object: type (0 furni, 1 user, -10 room) and the object id.</summary>
 public sealed class WiredGetVariablesForObjectEvent(IWiredVariableMenuService menus) : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)

@@ -5,10 +5,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (a floor item read after Builders Club placement, and 3 runs of double-clicks): the two plain game
-// tiles, the pyramid, the blobs, the box, the buttons and the arrow, pressure and ring plates have usage policy 0. All of them ignore a
-// double-click except the super blob, which changes state although its usage policy is 0. New wf_blob items start in state 1, new buttons,
-// game tiles and boxes have no state, and new glass doors and fire gates start in state 0.
+// The two plain game tiles, the pyramid, the blobs, the box, the buttons and the arrow, pressure and ring plates have usage policy 0. All of them ignore a double-click except the super blob, which changes state although its usage policy is 0. New wf_blob items start in state 1, new buttons, game tiles and boxes have no state, and new glass doors and fire gates start in state 0.
 public sealed class FurnitureStateClassesTests
 {
     private static Item Placed(string name, int modes, string interaction = "default", string stored = "")

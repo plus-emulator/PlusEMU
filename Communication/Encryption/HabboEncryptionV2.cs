@@ -18,8 +18,7 @@ public static class HabboEncryptionV2
         _diffieHellman = new();
     }
 
-    // The client reads the signed number with ByteArray.toString() and parses it in base 10
-    // (AIR WIN63-202610151745-318700621, communication/demo/class_1974.as:142-145).
+    // The client reads the signed number with ByteArray.toString() and parses it in base 10.
     private static string GetRsaStringEncrypted(string message)
     {
         try {
@@ -36,7 +35,7 @@ public static class HabboEncryptionV2
 
     public static string GetRsaDiffieHellmanPublicKey() => GetRsaStringEncrypted(DiffieHellman.PublicKey.ToString(10));
 
-    /// <summary>The shared key from the client's RSA-encrypted, base-10 public key (class_1974.as:164-187). 0 when it does not decrypt.</summary>
+    /// <summary>The shared key from the client's RSA-encrypted, base-10 public key. 0 when it does not decrypt.</summary>
     public static BigInteger CalculateDiffieHellmanSharedKey(string publicKey)
     {
         try {
@@ -54,9 +53,7 @@ public static class HabboEncryptionV2
     }
 
     /// <summary>
-    /// The RC4 key the client derives from the shared key: <c>getSharedKey(16).toUpperCase()</c> turned into bytes by
-    /// <c>CryptoTools.hexStringToByteArray</c>, which prefixes a "0" to an odd-length string
-    /// (AIR WIN63-202610151745-318700621, communication/demo/class_1974.as:199-206, CryptoTools.as:60-82).
+    /// The RC4 key the client derives from the shared key. The client turns the upper-case hex string into bytes and prefixes a "0" to an odd-length string.
     /// So the key is the shared key's big-endian bytes with no leading zero byte.
     /// </summary>
     public static byte[] Rc4KeyFromSharedKey(BigInteger sharedKey) => Rc4KeyFromSharedKeyHex(sharedKey.ToString(16));

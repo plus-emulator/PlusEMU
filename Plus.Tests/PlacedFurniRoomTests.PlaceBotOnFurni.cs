@@ -10,7 +10,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a bot placed on a colour tile (stack height 0.2) stands at Z 0.2, like an avatar.
+    // A bot placed on a colour tile (stack height 0.2) stands at Z 0.2, like an avatar.
     [Fact]
     public async Task ABotPlacedOnFurniStandsOnTopOfIt()
     {

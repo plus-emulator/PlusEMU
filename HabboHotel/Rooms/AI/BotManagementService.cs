@@ -117,10 +117,10 @@ public sealed class BotManagementService(IBotManagementStore store, IFigureDataM
 {
     private readonly Random _random = random ?? Random.Shared;
 
-    /// <summary>Observed on AIR WIN63-202610151745-318700621: a bot placed from the inventory faces direction 2.</summary>
+    /// <summary>A bot placed from the inventory faces direction 2.</summary>
     private const int PlacedBotRotation = 2;
 
-    /// <summary>Observed on AIR WIN63-202610201032-107964540: a placed bot says one of these lines, picked at random.</summary>
+    /// <summary>A placed bot says one of these lines, picked at random.</summary>
     private static readonly string[] PlacementGreetings = ["Hello!", "Yo!", "Hello I'm a real party animal!"];
 
     public void ShowAction(GameClient session, int botId, int actionId)
@@ -164,7 +164,7 @@ public sealed class BotManagementService(IBotManagementStore store, IFigureDataM
 
         var data = store.Place(bot.Id, bot.OwnerId, room.RoomId, x, y);
         var speeches = data.Speech.Select(text => new RandomSpeech(text, bot.Id)).ToList();
-        // Observed on AIR WIN63-202610151745-318700621: a placed bot shows its motto and gender ("m") in Users and UserChange.
+        // A placed bot shows its motto and gender ("m") in Users and UserChange.
         var botUser = room.GetRoomUserManager().DeployBot(new(bot.Id, room.RoomId, data.AiType, data.WalkMode, bot.Name, bot.Motto ?? "", bot.Figure, x, y, room.GetGameMap().SqAbsoluteHeight(x, y),
             PlacedBotRotation, 0, 0, 0, 0, ref speeches, string.IsNullOrEmpty(bot.Gender) ? "M" : bot.Gender, 0, bot.OwnerId, data.AutomaticChat, data.SpeakingInterval,
             data.MixSentences, data.ChatBubble), null);
@@ -204,7 +204,7 @@ public sealed class BotManagementService(IBotManagementStore store, IFigureDataM
         room.GetRoomUserManager().RemoveBot(bot.VirtualId, false);
     }
 
-    // AIR lets a room controller move (Alt+click, then a tile) or rotate (Shift+click) a placed rentable bot.
+    // A room controller may move (Alt+click, then a tile) or rotate (Shift+click) a placed rentable bot.
     // It names the bot by its room index, so avatars and pets sharing that index space are refused.
     public void Move(Room room, GameClient session, int virtualId, int x, int y, int direction)
     {

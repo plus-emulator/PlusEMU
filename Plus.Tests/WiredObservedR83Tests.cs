@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Official hhus WIN63-202610131318 batches r83-var-room, r83-placeholders and r83-logs: the opening frames and the behaviour the windows showed.
+// The opening frames of the room variable, placeholder and log boxes, and how they behave.
 public sealed class WiredObservedR83Tests
 {
     private const uint RoomVariable = 10;
@@ -30,7 +30,6 @@ public sealed class WiredObservedR83Tests
             return edited;
         });
 
-    // Official initial editor frames (receipts initial_editor of the r83 batches).
     [Theory]
     [InlineData("wf_cnd_var_val_match", "0,100,101,200,201;0,100,101,200,201", "0,200,201;0,200,201", "0,200", "0,200", true, "1,2,0,0,0,-10,0")]
     [InlineData("wf_xtra_text_output_variable", "0,100,200,201", "0,200,201", "100", "0", true, "0,1,0")]
@@ -56,7 +55,7 @@ public sealed class WiredObservedR83Tests
         Assert.Equal(owned, string.Join(',', metadata.OwnedDefaults));
     }
 
-    // Official: the opening [0, 1, 100, 50, 50] is accepted as it opens; saves carry only the selected mode's fields.
+    // The opening [0, 1, 100, 50, 50] is accepted as it opens; saves carry only the selected mode's fields.
     [Fact]
     public void LevelSystemAcceptsItsOfficialOpeningFrameAndTheModeFields()
     {
@@ -76,7 +75,7 @@ public sealed class WiredObservedR83Tests
         return (module, new(module, TimeProvider.System), frame);
     }
 
-    // Official r83-var-room: Variable Value (global == 7) failed before the say wrote the global and passed after Change Variable assigned 7.
+    // Variable Value (global == 7) failed before the say wrote the global and passed after Change Variable assigned 7.
     [Fact]
     public void RoomVariableFailsTheMatchUntilTheWriteAssignsIt()
     {
@@ -93,7 +92,8 @@ public sealed class WiredObservedR83Tests
         Assert.False(executors.Execute("wf_cnd_var_val_match", never, frame));
     }
 
-    // Official r83-placeholders: "$(r80vroom)" printed the room variable's value 7; with the text-mode placeholder over a "7=seven" connector it printed "seven".
+    // "$(r80vroom)" printed the room variable's value 7; with the text-mode placeholder over a "7=seven" connector it printed
+    // "seven".
     [Theory]
     [InlineData(0, "wiredprobe 7")]
     [InlineData(1, "wiredprobe seven")]
@@ -122,7 +122,7 @@ public sealed class WiredObservedR83Tests
         Assert.Equal(expected, context.Policy.FormatText(context, "wiredprobe $(r80vroom)"));
     }
 
-    // Official: write-to-logs entries are listed under source 1 (Wired) at the saved level; the client numbers the levels 0 INFO, 1 WARN, 2 ERROR, 3 DEBUG
+    // Write-to-logs entries are listed under source 1 (Wired) at the saved level; the client numbers the levels 0 INFO, 1 WARN, 2 ERROR, 3 DEBUG
     // (default texts wiredmenu.logs_overview.log_level.N) and its two sources 0 System, 1 Wired; "only the most recent 200 logs are stored per type".
     [Fact]
     public void RoomLogNumbersLevelsAndSourcesLikeTheClientAndBoundsEachTypeOnItsOwn()

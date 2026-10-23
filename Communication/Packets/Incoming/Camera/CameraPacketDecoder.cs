@@ -4,8 +4,8 @@ using Plus.HabboHotel.GameClients;
 namespace Plus.Communication.Packets.Incoming.Camera;
 
 /// <summary>
-/// Reads Volt's camera request: one JSON string. AIR WIN63-202610151745-318700621 camera/class_2065.as:116 sends its
-/// render (2284) and thumbnail (2854, camera/class_2266) requests as an int length plus zlib-deflated plane and sprite data;
+/// Reads Volt's camera request: one JSON string. The client sends its
+/// render (2284) and thumbnail (2854) requests as an int length plus zlib-deflated plane and sprite data;
 /// that body is rejected as a frame error here without throwing.
 /// </summary>
 internal static class CameraPacketDecoder

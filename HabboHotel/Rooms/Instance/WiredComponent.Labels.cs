@@ -6,8 +6,8 @@ using Plus.HabboHotel.Items.Wired.Labels;
 namespace Plus.HabboHotel.Rooms.Instance;
 
 /// <summary>
-/// WIRED Label bubbles of the room (furni_label logic). Everyone gets the full list on entry (class_3043) and changes as they happen
-/// (class_2856); a label for inspectors only goes to users with wired inspection rights and leaves everyone else's room as a removal.
+/// WIRED Label bubbles of the room (furni_label logic). Everyone gets the full list on entry and changes as they happen;
+/// a label for inspectors only goes to users with wired inspection rights and leaves everyone else's room as a removal.
 /// </summary>
 public partial class WiredComponent
 {
@@ -49,10 +49,10 @@ public partial class WiredComponent
         }
     }
 
-    // FurnitureLabelWidget.canView (L255): everyone sees visibility 0, wired readers see every label.
+    // Everyone sees visibility 0; wired readers see every label.
     private bool CanSeeLabel(GameClient session, WiredLabel label) => label.Visibility == 0 || Settings.CanInspect(session);
 
-    /// <summary>The room's labels this user may see, sent on room entry; empty when there are none (observed on hhus, r90: 10 bytes).</summary>
+    /// <summary>The room's labels this user may see, sent on room entry; empty when there are none.</summary>
     public void SendLabels(GameClient session) =>
         session.Send(new WiredLabelsComposer([.. Labels().Where(label => CanSeeLabel(session, label))]));
 
@@ -93,7 +93,7 @@ public partial class WiredComponent
         PublishLabel(label, label.FurniId);
     }
 
-    /// <summary>Label text from the bubble (class_2797, saveLabel only with wired write permission).</summary>
+    /// <summary>Label text from the bubble; saved only with wired write permission.</summary>
     public bool SaveLabelText(GameClient session, uint furniId, string text)
     {
         if (text.Length > WiredLabel.MaxTextLength || !TryLabel(session, furniId, out var label)) {
@@ -105,7 +105,7 @@ public partial class WiredComponent
         return true;
     }
 
-    /// <summary>Label settings from the settings view (class_3219): one of the eight colours, visibility, always open.</summary>
+    /// <summary>Label settings from the settings view: one of the eight colours, visibility, always open.</summary>
     public bool SaveLabelSettings(GameClient session, uint furniId, int color, int visibility, bool alwaysOpen)
     {
         if (!WiredLabel.ValidSettings(color, visibility, alwaysOpen) || !TryLabel(session, furniId, out var label)) {

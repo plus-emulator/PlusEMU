@@ -172,7 +172,7 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
             return false;
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: try the Y component, then X.
+        // Try the Y component, then X.
         return TryRecoveryTile(actor, failure.From, failure.From.X, ty, out target)
             || TryRecoveryTile(actor, failure.From, tx, failure.From.Y, out target);
     }
@@ -217,7 +217,7 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
         var reason = StepReason.NotStandable;
 
         if (slot < 0 || !ClaimStep(actor, profile, from, grid.Position(slot), StepPurpose.Transit, out _, out reason)) {
-            // Inferred from routes observed on AIR WIN63-202610151745-318700621: later repairs avoid a fallback tile found blocked.
+            // Later repairs avoid a fallback tile found blocked.
             if (actor.Movement.Plan is { } known && planned is { } surface) {
                 Remember(known, new(from, surface, reason));
             }
@@ -262,7 +262,7 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
         actor.UpdateNeeded = true;
         context.FloorEffects.Apply(actor, target.X, target.Y, state.Pending[state.PendingCount - 1]);
 
-        // Observed on AIR WIN63-202610201032-107964540: the first step off a sit or lay tile fires User Performs Action - Stand.
+        // The first step off a sit or lay tile fires User Performs Action - Stand.
         if (wasPosed) {
             room.GetWired().Dispatch(new(WiredEventKind.AvatarAction) { Actor = actor, Action = (int)WiredAvatarAction.Stand, Code = -1 });
         }
@@ -285,8 +285,7 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
             habbo.HopperId = 0;
         }
     }
-    // Observed on hhus (AIR WIN63-202610131318-860371703): Wired walk-off and walk-on fire in the tick whose UserUpdate announces the
-    // step (mv towards the next tile), one walk tick before the landing. The landing still runs the furni interactions.
+    // Wired walk-off and walk-on fire in the tick whose UserUpdate announces the step (mv towards the next tile), one walk tick before the landing. The landing still runs the furni interactions.
     private void AnnounceWiredWalk(RoomUser actor, NavPosition target)
     {
         var state = actor.Movement;
@@ -308,8 +307,7 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
         foreach (var item in landing) {
             item.WiredWalksOnFurni(actor);
 
-            // Observed on AIR WIN63-202610201032-107964540: Bot Reaches Furni fires with the announce of every step onto the furni,
-            // also one the bot only walks over.
+            // Bot Reaches Furni fires with the announce of every step onto the furni, also one the bot only walks over.
             if (actor is { IsBot: true, IsPet: false }) {
                 room.GetWired().Dispatch(new(WiredEventKind.BotReachedFurni) { Actor = actor, EventItem = item });
             }

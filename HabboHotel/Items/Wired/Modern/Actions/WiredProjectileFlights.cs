@@ -11,8 +11,7 @@ public sealed class WiredProjectileFlights(Room room)
     private readonly Dictionary<uint, Flight> _flights = [];
     public static WiredProjectileFlights For(Room room) => Rooms.GetValue(room, current => new(current));
 
-    // Observed on hhus (AIR WIN63-202610151745-318700621): only these four are listed interceptable; a change fires on the room tick
-    // after the projectile crosses into a tile, never at launch.
+    // Only these four are interceptable. A change fires on the room tick after the projectile crosses into a tile, never at launch.
     internal static readonly string[] Intercepted =
     [
         "@projectile.animation.tiles_traveled", "@projectile.animation.user_collisions", "@projectile.animation.furni_collisions",
@@ -84,7 +83,7 @@ public sealed class WiredProjectileFlights(Room room)
             return null;
         }
 
-        // AIR Projectile SubVariableParam ids: travelled, users, furni, X, Y, altitude, travelling.
+        // Projectile SubVariableParam ids: travelled, users, furni, X, Y, altitude, travelling.
         var bit = key switch
         {
             "@projectile.animation.tiles_traveled" => 0,

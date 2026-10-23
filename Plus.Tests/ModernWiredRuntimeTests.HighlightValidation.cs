@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: what Set Furni Highlight accepts and the key of each refusal.
+// What Set Furni Highlight accepts and the key of each refusal.
 public partial class ModernWiredRuntimeTests
 {
     private const string HighlightKey = "wiredfurni.error.set_furni_highlight.";

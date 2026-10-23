@@ -9,8 +9,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// Observed on hhus (AIR WIN63-202610131318-860371703): a wall torch picked in match_snapshot / not_match_snap with state matching
-/// passes / fails at its saved state, and fails / passes after a Wired toggle changed it.
+/// A wall torch picked in match_snapshot / not_match_snap with state matching passes / fails at its saved state, and fails / passes after a Wired toggle changed it.
 /// </summary>
 public partial class PlacedFurniRoomTests
 {

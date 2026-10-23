@@ -3,8 +3,7 @@ using System.Collections.Frozen;
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
-/// How a wired card's behaviour is known. AirSourceOnly cards come from the October AIR client code alone and need a live check.
-/// UnobservedRuntime cards have an editor read from AIR/hhus and a runtime not yet observed on official Habbo.
+/// How a wired card's behaviour is known. AirSourceOnly cards come from the client code alone. UnobservedRuntime cards have a known editor but a runtime not yet checked against official Habbo.
 /// </summary>
 public enum WiredEvidenceLevel
 {
@@ -29,25 +28,17 @@ public static class WiredEvidenceRegistry
 
     public static readonly FrozenDictionary<string, WiredEvidence> AirSourceOnly = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
     {
-        // AS3 wired_setup/conditions/class_4263.as (badge code, no ints)
         ["wf_cnd_wearing_badge"] = new(WiredEvidenceLevel.AirSourceOnly, Conditions + "class_4263.as", NoCatalogue),
-        // AS3 wired_setup/conditions/class_4227.as (effect id int)
         ["wf_cnd_wearing_effect"] = new(WiredEvidenceLevel.AirSourceOnly, Conditions + "class_4227.as", NoCatalogue),
-        // AS3 wired_setup/conditions/class_4227.as (negative)
         ["wf_cnd_not_wearing_fx"] = new(WiredEvidenceLevel.AirSourceOnly, Conditions + "class_4227.as", NoCatalogue),
-        // AS3 wired_setup/conditions/class_4263.as (negative)
         ["wf_cnd_not_wearing_b"] = new(WiredEvidenceLevel.AirSourceOnly, Conditions + "class_4263.as", NoCatalogue),
-        // AS3 wired_setup/variables/QuestVariable.as
         ["wf_var_quest"] = new(WiredEvidenceLevel.AirSourceOnly, Variables + "QuestVariable.as", NoCatalogue),
-        // AS3 wired_setup/variables/QuestChainVariable.as
         ["wf_var_quest_chain"] = new(WiredEvidenceLevel.AirSourceOnly, Variables + "QuestChainVariable.as", NoCatalogue),
-        // The October boxes of the r88 dossier: editor grammar read from WIN63-202610131318-860371703, runtime inferred from it.
         ["wf_act_progress_ach"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "ProgressAchievement.as", OctoberCards),
         ["wf_act_give_effect"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "class_3931.as", OctoberUnsold),
         ["wf_act_override_height"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "class_4092.as", OctoberUnsold),
         ["wf_act_progress_reward_track"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "ProgressRewardTrack.as", OctoberUnsold),
         ["wf_act_reset_reward_track"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "class_4288.as", OctoberUnsold),
-        // The incoming furni transparency/highlight payloads are read from the client parsers class_2988 and class_3488.
         ["wf_act_set_visibility"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "class_4285.as", OctoberCards),
         ["wf_act_set_highlight"] = new(WiredEvidenceLevel.AirSourceOnly, Actions + "class_4214.as", OctoberCards),
         // Link transport is server-only in the client: delivery between wf_link endpoints is inferred.
@@ -74,25 +65,18 @@ public static class WiredEvidenceRegistry
 
     public static readonly FrozenDictionary<string, WiredEvidence> UnobservedRuntime = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
     {
-        // AS3 triggerconfs/TriggerOnce.as (code 3, shared with wf_trg_at_given_time)
         ["wf_trg_at_time_long"] = new(WiredEvidenceLevel.UnobservedRuntime, Triggers + "TriggerOnce.as", AirEditorCards),
-        // AS3 actiontypes/class_4162.as
         ["wf_act_move_furni_to"] = new(WiredEvidenceLevel.UnobservedRuntime, Actions + "class_4162.as", AirEditorCards),
-        // AS3 triggerconfs/class_4226.as
         ["wf_trg_transaction_complete"] = new(WiredEvidenceLevel.UnobservedRuntime, "wired_setup/triggerconfs/class_4226.as", RemainderCards),
-        // AS3 actiontypes/class_4199.as
         ["wf_act_give_reward"] = new(WiredEvidenceLevel.UnobservedRuntime, "wired_setup/actiontypes/class_4199.as", RemainderCards),
-        // AS3 actiontypes/class_4046.as
         ["wf_act_mute_triggerer"] = new(WiredEvidenceLevel.UnobservedRuntime, "wired_setup/actiontypes/class_4046.as", RemainderCards),
-        // AS3 actiontypes/class_3972.as
-        // AS3 addons/VariableTimeUtilAddon.as
         ["wf_xtra_var_time_util"] = new(WiredEvidenceLevel.UnobservedRuntime, "wired_setup/addons/VariableTimeUtilAddon.as", RemainderCards)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     private const string R90 = "reviews/october-batch-r90-r90-";
     private const string R90Observed = "Observed on hhus (r90, WIN63-202610131318-860371703, ledger v39 limited_observed_slice).";
 
-    /// <summary>Cards promoted to Observed by the r90 live run (ledger v39); the source is that batch's summary.</summary>
+    /// <summary>Cards checked against official Habbo.</summary>
     public static readonly FrozenDictionary<string, WiredEvidence> ObservedR90 = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
     {
         ["wf_cnd_date_rng_active"] = new(WiredEvidenceLevel.Observed, R90 + "date-rng-summary.json", R90Observed),
@@ -114,13 +98,13 @@ public static class WiredEvidenceRegistry
         ["wf_xtra_var_leaderboard"] = new(WiredEvidenceLevel.Observed, R90 + "pair-leaderboard-summary.json", R90Observed)
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>The label furni wf_label (WiredLabel) is not a wired box, so it is kept out of the card tables; the r90 run observed it too.</summary>
+    /// <summary>The label furni wf_label (WiredLabel) is not a wired box, so it is kept out of the card tables.</summary>
     public static readonly WiredEvidence LabelFurniR90 = new(WiredEvidenceLevel.Observed, R90 + "label-summary.json", R90Observed);
 
     private const string R92 = "reviews/r92-movement-facts.md";
     private const string R92Observed = "Observed on hhus (r92d/r92e/r92f/r92g movement, ordering and variable probes, WIN63-202610131318-860371703); receipts per window in the facts file.";
 
-    /// <summary>Movement cards (and the variable min/max operators) whose runtime the r92 probes decided; the source is the facts file.</summary>
+    /// <summary>Movement cards (and the variable min/max operators) checked against official Habbo.</summary>
     public static readonly FrozenDictionary<string, WiredEvidence> ObservedR92 = new Dictionary<string, WiredEvidence>(StringComparer.OrdinalIgnoreCase)
     {
         ["wf_act_move_to_dir"] = new(WiredEvidenceLevel.Observed, R92 + "#r92d-r92-mtd-wall", R92Observed),

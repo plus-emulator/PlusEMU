@@ -41,8 +41,8 @@ public partial class PlacedFurniRoomTests
     private List<uint> Removed() => _client.Packets.Where(packet => packet.Header == ServerPacketHeader.ObjectRemoveMultipleComposer)
         .SelectMany(packet => RemovedIds(packet.Body)).ToList();
 
-    // Observed on AIR WIN63-202610201032-107964540: the widget saves with SetAreaHide (3831): id, x, y, width, length, invisibility, wall
-    // items, invert. The answer is one ObjectDataUpdate and nothing else while the hider is off.
+    // The widget saves with SetAreaHide (3831): id, x, y, width, length, invisibility, wall items, invert. The answer is one
+    // ObjectDataUpdate and nothing else while the hider is off.
     [Fact]
     public async Task SetAreaHideSavesTheRectangleAndOptionsAndAnswersWithOneDataUpdate()
     {
@@ -54,8 +54,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal([ServerPacketHeader.ObjectDataUpdateComposer], _client.Sent);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: negative values become 0 and a width or length over 64 becomes 64. The origin is not
-    // limited.
+    // Negative values become 0 and a width or length over 64 becomes 64. The origin is not limited.
     [Fact]
     public async Task SetAreaHideClampsTheSizeAndKeepsTheOrigin()
     {
@@ -85,7 +84,7 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(_client.Sent);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: AreaHide (2763) has exactly 7 fields: id, on, x, y, width, length, invert.
+    // AreaHide (2763) has exactly 7 fields: id, on, x, y, width, length, invert.
     [Fact]
     public void TheAreaHideMessageHasSevenFields()
     {
@@ -104,9 +103,9 @@ public partial class PlacedFurniRoomTests
         return state;
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: turning the hider on sends the data update, then removes the furni inside the
-    // rectangle in one ObjectRemoveMultiple (picker -1, flag on), then AreaHide, then the tiles as a height map update with 0xFFFF. The
-    // hider itself and the avatars stay.
+    // Turning the hider on sends the data update, then removes the furni inside the rectangle in one ObjectRemoveMultiple
+    // (picker -1, flag on), then AreaHide, then the tiles as a height map update with 0xFFFF. The hider itself and the avatars
+    // stay.
     [Fact]
     public async Task TurningTheAreaHiderOnRemovesTheFurniInsideTheRectangle()
     {
@@ -132,8 +131,7 @@ public partial class PlacedFurniRoomTests
         Assert.All(Enumerable.Range(0, 4), i => Assert.Equal((short)-1, BinaryPrimitives.ReadInt16BigEndian(tiles.AsSpan(1 + i * 4 + 2))));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: turning it off adds the furni again with one Objects packet, sends AreaHide off and the
-    // tiles with their heights.
+    // Turning it off adds the furni again with one Objects packet, sends AreaHide off and the tiles with their heights.
     [Fact]
     public async Task TurningTheAreaHiderOffAddsTheFurniAgain()
     {
@@ -153,7 +151,7 @@ public partial class PlacedFurniRoomTests
         Assert.All(Enumerable.Range(0, 4), i => Assert.NotEqual((short)-1, BinaryPrimitives.ReadInt16BigEndian(tiles.AsSpan(1 + i * 4 + 2))));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: with invert on, everything outside the rectangle is hidden and the hider stays.
+    // With invert on, everything outside the rectangle is hidden and the hider stays.
     [Fact]
     public async Task AnInvertedAreaHiderHidesTheFurniOutsideTheRectangle()
     {
@@ -171,8 +169,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(1, area[^1]);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: changing the rectangle while the hider is on moves the hidden furni and tiles but
-    // sends no AreaHide.
+    // Changing the rectangle while the hider is on moves the hidden furni and tiles but sends no AreaHide.
     [Fact]
     public async Task ChangingTheRectangleWhileOnSendsNoAreaHide()
     {
@@ -192,7 +189,7 @@ public partial class PlacedFurniRoomTests
         Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.HeightMapUpdateComposer);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a furni placed inside a hidden rectangle is accepted without an ObjectAdd.
+    // A furni placed inside a hidden rectangle is accepted without an ObjectAdd.
     [Fact]
     public async Task AFurniPlacedInsideTheHiddenRectangleGetsNoObjectAdd()
     {
@@ -208,8 +205,8 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(ServerPacketHeader.ObjectAddComposer, _client.Sent);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the room entry carries a hider that is on in the FloorHeightMap list and sends no
-    // separate AreaHide; the hidden furni are not in the entry.
+    // The room entry carries a hider that is on in the FloorHeightMap list and sends no separate AreaHide; the hidden furni
+    // are not in the entry.
     [Fact]
     public async Task TheRoomEntryCarriesTheHiderInTheFloorHeightMapAndHidesItsFurni()
     {

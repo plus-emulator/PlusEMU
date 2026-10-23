@@ -7,7 +7,7 @@ namespace Plus.Tests;
 
 public sealed class WiredEvidenceRegistryTests
 {
-    // The six October conditions/variables of r61, then the 22 boxes of the r88 dossier.
+    // The six October conditions and variables, then the 22 boxes.
     private static readonly string[] Expected =
     [
         "wf_act_give_effect", "wf_act_override_height", "wf_act_progress_ach", "wf_act_progress_reward_track", "wf_act_reset_reward_track",

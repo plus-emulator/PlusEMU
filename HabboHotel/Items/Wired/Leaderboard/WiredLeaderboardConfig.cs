@@ -11,10 +11,8 @@ public sealed record WiredLeaderboardColumn(int Type, string Label, int Width);
 public sealed record WiredLeaderboardOverride(string VariableId, string Name);
 
 /// <summary>
-/// The Variable Leaderboard add-on's settings, as VariableLeaderboardConfigCodec (WIN63-202610131318-860371703,
-/// wired_setup/addons/leaderboard/VariableLeaderboardConfigCodec.as:182-222 encode, :65 decode, :246-392 validation) writes them:
+/// The Variable Leaderboard add-on's settings, as the client writes them:
 /// 19 ints, 12 variable ids and a TAB-joined text of 17 fields. An empty text is the unpublished board.
-/// Kept apart from the overlay runtime so live hhus observations can adjust the rules in one place.
 /// </summary>
 public sealed record WiredLeaderboardConfig
 {
@@ -54,7 +52,7 @@ public sealed record WiredLeaderboardConfig
     public static int DefaultWidth(int type) => type switch { 0 => 3, 2 or 3 => 1, 5 => 2, _ => 0 };
 
     /// <summary>
-    /// The numbers of a save as the hotel keeps them. Observed on AIR WIN63-202610201032-107964540: a sort mode above 5 or below 0 is
+    /// The numbers of a save as the hotel keeps them. A sort mode above 5 or below 0 is
     /// stored as 0; a column count below 1 is stored as 1; a column the count does not reach stores type -1 and width 0; a column width
     /// outside 0 to 3 is stored as 0; a negative override count is stored as 0; the comparison and operand switches stay 0 while the
     /// filter is off. Other values are refused by <see cref="Decode"/>.
@@ -86,9 +84,8 @@ public sealed record WiredLeaderboardConfig
     }
 
     /// <summary>
-    /// The board's text as the hotel keeps it: 17 TAB fields, with the fields of unused slots emptied. Observed on AIR
-    /// WIN63-202610151745-318700621: "lb probe\t\tValue\t\t\t\t\tOwner" (one column, no override) is accepted and reads back as
-    /// "lb probe\t\tValue" and 14 empty fields; the override name in an unused slot is dropped. Fields past the 17th are dropped.
+    /// The board's text as the hotel keeps it: 17 TAB fields, with the fields of unused slots emptied.
+    /// The override name in an unused slot is dropped. Fields past the 17th are dropped.
     /// </summary>
     public static string Normalize(string text, ImmutableArray<int> p)
     {
@@ -154,12 +151,12 @@ public sealed record WiredLeaderboardConfig
         string Id(int index) => ids[index] is "" ? NoVariable : ids[index];
         bool Absent(int index) => Id(index) == NoVariable;
 
-        // Observed on AIR WIN63-202610201032-107964540: a variable in a section that is switched off is stored as sent.
+        // A variable in a section that is switched off is stored as sent.
         if (filter && Absent(0) || comparison && p[8] == 1 && Absent(1)) {
             return null;
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: an override variable past the override count is kept on a published board
+        // An override variable past the override count is kept on a published board
         // (with a title), and refused on an unpublished one.
         for (var index = 0; index < MaxOverrides; index++) {
             if (index < p[9] ? Absent(2 + index) : !Absent(2 + index) && text.Length == 0) {

@@ -4,8 +4,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed r92m r92m-wf-status mru-w1/w2 (AIR WIN63-202610131318-860371703): after move_rotate_user moves the owner, the next
-    // UserUpdate has status "/flatctrl 4/wf//" and the one after it (~500 ms) has the status without "wf".
+    // After move_rotate_user moves the owner, the next UserUpdate has status "/flatctrl 4/wf//" and the one after it (about 500
+    // ms later) has the status without "wf".
     [Fact]
     public void WiredUserMoveShowsTheWfStatusForOneStatusUpdate()
     {

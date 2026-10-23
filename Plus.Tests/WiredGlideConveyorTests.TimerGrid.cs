@@ -11,8 +11,7 @@ public sealed partial class WiredGlideConveyorTests
 {
     private const uint GridTileId = 40;
 
-    // Observed on AIR WIN63-202610131318-860371703: under a 50 ms timer the toggled furni's state goes out in a data batch on every tick;
-    // no full object update is sent for it.
+    // Under a 50 ms timer the toggled furni's state goes out in a data batch on every tick; no full object update is sent for it.
     [Fact]
     public void AFiftyMillisecondTimerPublishesTheToggledStateInADataBatchEveryTick()
     {
@@ -46,9 +45,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(f.Items[GridTileId].LegacyDataString, batches[^1].State);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: a 500 ms timer keeps the room's 500 ms grid whatever its arming time, so its toggles
-    // keep one fixed phase on that grid, 500 ms apart. Observed on AIR WIN63-202610201032-107964540: the effect runs in the room tick the
-    // timer fires on.
+    // A 500 ms timer keeps the room's 500 ms grid whatever its arming time, so its toggles keep one fixed phase on that grid, 500
+    // ms apart. The effect runs in the room tick the timer fires on.
     [Fact]
     public void AFiveHundredMillisecondTimerTogglesOnTheRoomTicks()
     {

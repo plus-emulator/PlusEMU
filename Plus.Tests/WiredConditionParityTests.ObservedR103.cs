@@ -5,8 +5,7 @@ namespace Plus.Tests;
 
 public sealed partial class WiredConditionParityTests
 {
-    // Observed on AIR WIN63-202610201032-107964540 (a counter stopped at 5:30.5): comparison 3 is stored and passes when the counter is
-    // less than or equal to the value.
+    // Comparison 3 is stored and passes when the counter is less than or equal to the value.
     [Theory]
     [InlineData(1, 5, 30, 1, 3, true)]
     [InlineData(1, 5, 31, 0, 3, true)]
@@ -34,8 +33,7 @@ public sealed partial class WiredConditionParityTests
         Assert.Equal(expected, box.Execute(Context(room, [counter], [])));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (a block at 1.50 and one on the floor): comparison 3 is stored and passes when the
-    // altitude is at most the value.
+    // Comparison 3 is stored and passes when the altitude is at most the value.
     [Theory]
     [InlineData(100, 3, 0.0, true)]
     [InlineData(0, 3, 0.0, true)]

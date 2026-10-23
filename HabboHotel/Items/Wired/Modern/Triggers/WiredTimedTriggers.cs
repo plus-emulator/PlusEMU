@@ -49,9 +49,8 @@ public sealed class WiredTimedTriggers
         }
 
         var intervalMs = units * stepMs;
-        // Observed on AIR WIN63-202610131318-860371703: a 500 ms "Repeat every" timer first fires on the next 500 ms room boundary after it is
-        // armed (the save time does not set the phase) and then stays on that grid, the same ticks as the walk steps. The 5 s timer keeps
-        // the same grid (fires 4959.5 / 9959.6 ms into the run, 5000 ms apart). The 50 ms timer counts on the 50 ms Wired ticks.
+        // A 500 ms "Repeat every" timer first fires on the next 500 ms room boundary after it is armed (the save time does not set the phase) and then stays on that grid,
+        // the same ticks as the walk steps. The 5 s timer keeps the same grid. The 50 ms timer counts on the 50 ms Wired ticks.
         var onGrid = stepMs % StateUpdateMs == 0;
 
         if (!_nextPeriodicAt.TryGetValue(boxId, out var next)) {
@@ -64,9 +63,8 @@ public sealed class WiredTimedTriggers
             return false;
         }
 
-        // A late poll fires once. A grid timer counts the next period from its 500 ms boundary. Observed on AIR WIN63-202610201032-107964540:
-        // a 200 ms Repeat Short fires at room tick + 0, 200, 400, 100, 300 ms with no drift and no lost tick, so it counts from its due time;
-        // a poll a whole period late skips the missed periods instead of firing them in a burst.
+        // A late poll fires once. A grid timer counts the next period from its 500 ms boundary. Another timer, such as a 200 ms Repeat Short,
+        // counts from its due time, so it does not drift or lose a tick; a poll a whole period late skips the missed periods instead of firing them in a burst.
         _nextPeriodicAt[boxId] = onGrid ? nowMs - nowMs % StateUpdateMs + intervalMs : next + ((nowMs - next) / intervalMs + 1) * intervalMs;
 
         return true;
@@ -74,8 +72,6 @@ public sealed class WiredTimedTriggers
 
     /// <summary>
     /// A box placed, saved or moved when the room timer has already passed its time counts as fired until the next timer reset.
-    /// Observed on AIR WIN63-202610151745-318700621: a box with 1 pulse placed and saved long after the last reset did not fire; it fired
-    /// one pulse after the next reset.
     /// </summary>
     public void Join(string name, uint boxId, WiredConfiguration config, long roomTimerMs, long resetEpoch)
     {
@@ -91,15 +87,12 @@ public sealed class WiredTimedTriggers
     private static long NextBoundary(long nowMs) => (nowMs / StateUpdateMs + 1) * StateUpdateMs;
 
     /// <summary>
-    /// The first 500 ms room tick strictly after the instant. Observed on AIR WIN63-202610131318-860371703: At Given Time with 4 pulses fires
-    /// 2.48 s after each reset (1128 to 3610, 7131 to 9611 ms), on the room grid: its pulses count from the next room tick after the reset.
+    /// The first 500 ms room tick strictly after the instant. At Given Time pulses count from the next room tick after the reset, on the room grid.
     /// </summary>
     public static long FirstRoomTickAfter(long nowMs) => NextBoundary(nowMs);
 
     /// <summary>
-    /// A room timer reset restarts an armed repeater on the first room tick after the reset; an unarmed one stays unarmed. Observed on AIR
-    /// WIN63-202610151745-318700621 and WIN63-202610201032-107964540: a 200 ms and a 600 s repeater both fired well under 500 ms after the
-    /// reset, on that tick, and the 600 s one again 600 s after it.
+    /// A room timer reset restarts an armed repeater on the first room tick after the reset; an unarmed one stays unarmed.
     /// </summary>
     public void ResetPeriodic(uint boxId, long nowMs)
     {

@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on hhus (AIR WIN63-202610131318-860371703): a walks-on stack's flash and message go out in the same tick as the UserUpdate
+// A walks-on stack's flash and message go out in the same tick as the UserUpdate
 // that announces the step onto the furni (Location 6,11 with mv 6,10,0.2); a walks-off stack's in the tick announcing the step off
 // (Location 6,10 with mv 5,11). The furni interactions still run with the arrival.
 public partial class PlacedFurniRoomTests
@@ -87,7 +87,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(WiredRoomOperations.IsStandingOn(actor, landing));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a users-in-area selector picks a user as soon as the step into the area is
+    // A users-in-area selector picks a user as soon as the step into the area is
     // announced, and stops picking one whose step out of it is announced.
     [Fact]
     public void SelectorsReadTheTileAnAnnouncedStepGoesTo()
@@ -109,7 +109,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 1), SelectorTile(actor));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: Bot Give Handitem's bot takes the item, walks next to the user and hands it over
+    // Bot Give Handitem's bot takes the item, walks next to the user and hands it over
     // 300 ms after that step is announced.
     [Theory]
     [InlineData(false)]
@@ -147,7 +147,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(targets.HasTargets);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Bot Give Handitem's bot takes the item and always walks to a tile next to the
+    // Bot Give Handitem's bot takes the item and always walks to a tile next to the
     // user and hands it over there, also when the closest tile next to the user cannot be entered.
     [Fact]
     public void GiveHandItemBotWalksToAFreeTileWhenTheClosestOneIsBlocked()
@@ -176,7 +176,7 @@ public partial class PlacedFurniRoomTests
         Assert.NotEqual((0, 1), (bot.X, bot.Y));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: when the user leaves while the bot walks the item over, the bot keeps walking to
+    // When the user leaves while the bot walks the item over, the bot keeps walking to
     // where the user stood and lets the item go there.
     [Fact]
     public void GiveHandItemBotFinishesTheWalkAndDropsTheItemWhenTheUserLeft()
@@ -212,7 +212,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(targets.HasTargets);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: with the user boxed in by furni the bot takes the item but cannot walk it over, and
+    // With the user boxed in by furni the bot takes the item but cannot walk it over, and
     // when the user then leaves it keeps holding it.
     [Fact]
     public void GiveHandItemBotKeepsTheItemWhenItCannotReachTheUser()
@@ -242,7 +242,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((0, 0), (bot.X, bot.Y));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a Move/Rotate into a tile is blocked by a user whose step onto it was announced, and
+    // A Move/Rotate into a tile is blocked by a user whose step onto it was announced, and
     // not by one whose step off it was.
     [Fact]
     public void WiredFurniMovesMeetUsersOnTheTileTheirStepGoesTo()
@@ -259,7 +259,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(WiredRoomOperations.CanMoveItem(_room, block, 0, 1, 0));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a user frozen while walking finishes the step that was announced and stops there.
+    // A user frozen while walking finishes the step that was announced and stops there.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -284,7 +284,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(actor.HasStatus("mv"));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: the freeze stops the user on the step announced when it fired; a step announced
+    // The freeze stops the user on the step announced when it fired; a step announced
     // later is not taken.
     [Fact]
     public void FreezeBeforeAnyStepIsAnnouncedKeepsTheUserInPlace()

@@ -13,10 +13,7 @@ public interface ICatalogBotPurchaseStore
 
 public sealed class CatalogBotPurchaseStore : ICatalogBotPurchaseStore
 {
-    /// <summary>
-    /// Bought (rentable) bots talk with bubble 31, "Bot Rentable". Observed on hhus (AIR WIN63-202610131318-860371703): a bought
-    /// Robbie's Wired Bot Talk line arrives with bubble style 31.
-    /// </summary>
+    /// <summary>Bought (rentable) bots talk with bubble 31, "Bot Rentable", also in Wired Bot Talk lines.</summary>
     public const int RentableChatBubble = 31;
 
     public Bot Create(IDbConnection connection, IDbTransaction transaction, CatalogBot preset, int ownerId)

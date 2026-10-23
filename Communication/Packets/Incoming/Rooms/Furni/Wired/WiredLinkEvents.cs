@@ -5,7 +5,7 @@ using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 
-/// <summary>WIRED Link window requests (package_129, WIN63-202610131318-860371703). A body with extra or missing fields is ignored.</summary>
+/// <summary>WIRED Link window requests. A body with extra or missing fields is ignored.</summary>
 public abstract class WiredLinkEvent : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
@@ -27,13 +27,13 @@ public abstract class WiredLinkEvent : RoomPacketEvent
     protected abstract Action<Room, GameClient, uint> Read(IIncomingPacket packet);
 }
 
-/// <summary>class_2716: [furni id].</summary>
+/// <summary>[furni id].</summary>
 public sealed class WiredLinkRequestConfigEvent : WiredLinkEvent
 {
     protected override Action<Room, GameClient, uint> Read(IIncomingPacket packet) => WiredLinkController.SendConfiguration;
 }
 
-/// <summary>class_2533: [furni id, network id, receive local].</summary>
+/// <summary>[furni id, network id, receive local].</summary>
 public sealed class WiredLinkSaveSelectionEvent : WiredLinkEvent
 {
     protected override Action<Room, GameClient, uint> Read(IIncomingPacket packet)
@@ -45,7 +45,7 @@ public sealed class WiredLinkSaveSelectionEvent : WiredLinkEvent
     }
 }
 
-/// <summary>class_3715: [furni id, name].</summary>
+/// <summary>[furni id, name].</summary>
 public sealed class WiredLinkCreateNetworkEvent : WiredLinkEvent
 {
     protected override Action<Room, GameClient, uint> Read(IIncomingPacket packet)
@@ -56,7 +56,7 @@ public sealed class WiredLinkCreateNetworkEvent : WiredLinkEvent
     }
 }
 
-/// <summary>class_3841: [furni id, network id, new name].</summary>
+/// <summary>[furni id, network id, new name].</summary>
 public sealed class WiredLinkRenameNetworkEvent : WiredLinkEvent
 {
     protected override Action<Room, GameClient, uint> Read(IIncomingPacket packet)
@@ -68,7 +68,7 @@ public sealed class WiredLinkRenameNetworkEvent : WiredLinkEvent
     }
 }
 
-/// <summary>class_3622: [furni id, network id].</summary>
+/// <summary>[furni id, network id].</summary>
 public sealed class WiredLinkDeleteNetworkEvent : WiredLinkEvent
 {
     protected override Action<Room, GameClient, uint> Read(IIncomingPacket packet)
@@ -79,7 +79,7 @@ public sealed class WiredLinkDeleteNetworkEvent : WiredLinkEvent
     }
 }
 
-/// <summary>class_3524: [furni id, network id].</summary>
+/// <summary>[furni id, network id].</summary>
 public sealed class WiredLinkGetConnectionsEvent : WiredLinkEvent
 {
     protected override Action<Room, GameClient, uint> Read(IIncomingPacket packet)

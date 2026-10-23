@@ -130,7 +130,7 @@ public sealed class WiredChestProtocolTests
         Assert.Equal((int)WiredChestFailure.Invalid, failure.Code);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: a deposit by a user who may not trade is refused with WiredTransactionFail reason 8.
+    // A deposit by a user who may not trade is refused with WiredTransactionFail reason 8.
     [Fact]
     public void TradeLockedUserCannotDepositIntoAChest()
     {
@@ -185,8 +185,8 @@ public sealed class WiredChestProtocolTests
     [Fact]
     public void WiredTradePacketsUseTheOfficialAirShapesAndIds()
     {
-        // AIR WIN63-202610131318 package_192.class_3295 / class_3527 + TradeRequirement*: int type 4, youGetText, layout, rules
-        // definition (bool, int, rule[], bool, rule), int rulesType, int multiplier, then showImmediate, override, timeout.
+        // Layout: int type 4, youGetText, layout, rules definition (bool, int, rule[], bool, rule), int rulesType, int
+        // multiplier, then showImmediate, override, timeout.
         var contract = new WiredChestContract { Kind = WiredContractKind.Trade, ReceiveText = "Pay", Payment = [[new(5)]], Reward = [new(2, new(false, 44))] };
         var open = new RecordingPacket();
         new WiredChestTradeOpenComposer(contract, [WiredChestKind.Furni], 1, 3, 30, false).Compose(open);
@@ -197,7 +197,7 @@ public sealed class WiredChestProtocolTests
         var donation = new RecordingPacket();
         new WiredChestTradeOpenComposer(new() { Kind = WiredContractKind.Payment, ReceiveText = "Thanks" }, [WiredChestKind.Coins], 0, 1, 0, false).Compose(donation);
         Assert.Equal(new object[] { 0, "Thanks", "generic", true, false, 0 }, donation.Writes);
-        // package_192.class_3020 / class_3109: class_3481 (user side, chest side), canAccept, extra.
+        // Layout: (user side, chest side), canAccept, extra.
         var items = new RecordingPacket();
         new WiredChestTradeItemsComposer(1, [], [], 7, true, 2).Compose(items);
         Assert.Equal(new object[] { 1, 0, 0, 0, 0, 0, 0, 7, true, 2 }, items.Writes);
@@ -214,38 +214,37 @@ public sealed class WiredChestProtocolTests
     }
 
     [Theory]
-    // Client -> server ids of WIN63-202610201032-107964540; classes as named on WIN63-202610131318-860371703 (reviews/chest-protocol-map.md).
-    [InlineData(nameof(ClientPacketHeader.ChestOpenEvent), 1606u)] // package_95.class_2544
-    [InlineData(nameof(ClientPacketHeader.ChestCloseEvent), 3929u)] // package_95.class_2979
-    [InlineData(nameof(ClientPacketHeader.ChestStartDepositEvent), 1850u)] // package_95.class_3668
-    [InlineData(nameof(ClientPacketHeader.ChestWithdrawAllEvent), 1344u)] // package_95.class_3881
-    [InlineData(nameof(ClientPacketHeader.ChestWithdrawFurniEvent), 3782u)] // package_95.class_2388
-    [InlineData(nameof(ClientPacketHeader.ChestWithdrawCoinsEvent), 2836u)] // package_95.class_3305
-    [InlineData(nameof(ClientPacketHeader.ChestSavePreferencesEvent), 782u)] // package_95.class_3094
-    [InlineData(nameof(ClientPacketHeader.ChestSaveOptionsEvent), 2622u)] // package_95.class_3275
-    [InlineData(nameof(ClientPacketHeader.ChestSaveNotificationsEvent), 1762u)] // package_95.class_2747
-    [InlineData(nameof(ClientPacketHeader.ChestUpgradeEvent), 1795u)] // package_95.class_3721
-    [InlineData(nameof(ClientPacketHeader.WiredChestLockEvent), 414u)] // package_95.class_3508
-    [InlineData(nameof(ClientPacketHeader.WiredChestOfferItemsEvent), 3890u)] // package_186.class_2956
-    [InlineData(nameof(ClientPacketHeader.WiredChestAcceptEvent), 1683u)] // package_186.class_3394
-    [InlineData(nameof(ClientPacketHeader.WiredChestCancelEvent), 1711u)] // package_186.class_3259
+    [InlineData(nameof(ClientPacketHeader.ChestOpenEvent), 1606u)]
+    [InlineData(nameof(ClientPacketHeader.ChestCloseEvent), 3929u)]
+    [InlineData(nameof(ClientPacketHeader.ChestStartDepositEvent), 1850u)]
+    [InlineData(nameof(ClientPacketHeader.ChestWithdrawAllEvent), 1344u)]
+    [InlineData(nameof(ClientPacketHeader.ChestWithdrawFurniEvent), 3782u)]
+    [InlineData(nameof(ClientPacketHeader.ChestWithdrawCoinsEvent), 2836u)]
+    [InlineData(nameof(ClientPacketHeader.ChestSavePreferencesEvent), 782u)]
+    [InlineData(nameof(ClientPacketHeader.ChestSaveOptionsEvent), 2622u)]
+    [InlineData(nameof(ClientPacketHeader.ChestSaveNotificationsEvent), 1762u)]
+    [InlineData(nameof(ClientPacketHeader.ChestUpgradeEvent), 1795u)]
+    [InlineData(nameof(ClientPacketHeader.WiredChestLockEvent), 414u)]
+    [InlineData(nameof(ClientPacketHeader.WiredChestOfferItemsEvent), 3890u)]
+    [InlineData(nameof(ClientPacketHeader.WiredChestAcceptEvent), 1683u)]
+    [InlineData(nameof(ClientPacketHeader.WiredChestCancelEvent), 1711u)]
     public void ChestRequestsUseTheOfficialIds(string name, uint id) =>
         Assert.Equal(id, (uint)typeof(ClientPacketHeader).GetField(name)!.GetRawConstantValue()!);
 
     [Theory]
-    [InlineData(nameof(ServerPacketHeader.WiredChestOpenComposer), 2598u)] // package_112.class_3066
-    [InlineData(nameof(ServerPacketHeader.WiredChestSettingsUpdatedComposer), 2149u)] // package_112.class_2436
-    [InlineData(nameof(ServerPacketHeader.WiredChestUpgradeComposer), 3314u)] // package_112.class_3153
-    [InlineData(nameof(ServerPacketHeader.WiredChestCoinsComposer), 3978u)] // package_112.class_3799
-    [InlineData(nameof(ServerPacketHeader.WiredChestFurniChunkComposer), 3704u)] // package_112.class_2610
-    [InlineData(nameof(ServerPacketHeader.WiredChestFurniUpdateComposer), 3731u)] // package_112.class_3289
-    [InlineData(nameof(ServerPacketHeader.WiredTransactionFailComposer), 2729u)] // package_196.class_3447
-    [InlineData(nameof(ServerPacketHeader.WiredTransactionSuccessComposer), 470u)] // package_196.class_3152
-    [InlineData(nameof(ServerPacketHeader.WiredTradeErrorComposer), 1961u)] // package_192.class_3890
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeOpenComposer), 2881u)] // package_192.class_3295
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeItemsComposer), 1716u)] // package_192.class_3020
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCancelledComposer), 3834u)] // package_192.class_3825
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCompletedComposer), 2367u)] // package_192.class_3864
+    [InlineData(nameof(ServerPacketHeader.WiredChestOpenComposer), 2598u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestSettingsUpdatedComposer), 2149u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestUpgradeComposer), 3314u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestCoinsComposer), 3978u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestFurniChunkComposer), 3704u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestFurniUpdateComposer), 3731u)]
+    [InlineData(nameof(ServerPacketHeader.WiredTransactionFailComposer), 2729u)]
+    [InlineData(nameof(ServerPacketHeader.WiredTransactionSuccessComposer), 470u)]
+    [InlineData(nameof(ServerPacketHeader.WiredTradeErrorComposer), 1961u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeOpenComposer), 2881u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeItemsComposer), 1716u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCancelledComposer), 3834u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCompletedComposer), 2367u)]
     public void ChestResponsesUseTheOfficialIds(string name, uint id) =>
         Assert.Equal(id, (uint)typeof(ServerPacketHeader).GetField(name)!.GetRawConstantValue()!);
 
@@ -282,7 +281,7 @@ public sealed class WiredChestProtocolTests
         Assert.Equal(1, Read("@transaction.state"));
         Assert.Equal(0, Read("@transaction.current_multiplier"));
         Assert.Null(Read("@transaction.can_accept"));
-        Assert.Null(Read("@transaction.start_time")); // Its official unit is not established by the pinned source.
+        Assert.Null(Read("@transaction.start_time")); // Its official unit is unknown.
         world.Module.Offer(world.Client, [201], true);
         Assert.Equal(1, Read("@transaction.current_multiplier"));
         Assert.Equal(1, Read("@transaction.can_accept"));
@@ -415,7 +414,7 @@ public sealed class WiredChestProtocolTests
     [Fact]
     public void GiveBoxesRefuseChestsThatAreNotUpgradedWiredChestsOfTheirKind()
     {
-        // Observed r93h/r93j (hhus): the save is refused with the official keys until the picked chest is upgraded to a Wired chest.
+        // The save is refused with the chest error keys until the picked chest is upgraded to a Wired chest.
         var world = new World();
         world.Store.Kind = WiredChestKind.Coins;
         world.Store.Settings = world.Store.Settings with { WiredEnabled = false };
@@ -436,7 +435,7 @@ public sealed class WiredChestProtocolTests
     [Fact]
     public void GiveFromLockedChestsAnswersEachUserWithNoOrLockedChests()
     {
-        // Observed r93j r93-p2-chests-empty: upgraded chests are locked by default and a give answers WiredTransactionFail reason 15.
+        // Upgraded chests are locked by default and a give answers WiredTransactionFail reason 15.
         var world = new World();
         world.Store.Kind = WiredChestKind.Coins;
         var effect = (WiredChestAction)WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(box => box.CanonicalName == "wf_act_give_currency"), world.Module);
@@ -449,8 +448,7 @@ public sealed class WiredChestProtocolTests
         Assert.False(effect.Execute(context));
         Assert.Empty(world.Store.Requests);
 
-        // Observed on AIR WIN63-202610151745-318700621: each give answers 560, fires no Transaction Failed and shows the wired.error
-        // dialog at most once per 20 s.
+        // Each give answers 560, fires no Transaction Failed and shows the wired.error dialog at most once per 20 s.
         Assert.Equal(2, world.Packets.Count(packet => packet.Header == ServerPacketHeader.WiredTransactionFailComposer));
         Assert.DoesNotContain(world.Events, e => e.Kind == WiredEventKind.TransactionFail);
         Assert.Single(world.Packets, packet => packet.Header == ServerPacketHeader.RoomNotificationComposer);
@@ -557,14 +555,14 @@ public sealed class WiredChestProtocolTests
     [Fact]
     public void TransactionSuccessAndSettingsUpdatedHaveTheOfficialShapes()
     {
-        // package_139 WiredTransactionSuccessContents: int type; type 2: rule (byte-typed TradeRequirementNodes), text, openByDefault.
+        // WiredTransactionSuccessContents: int type; type 2: rule (byte-typed TradeRequirementNodes), text, openByDefault.
         var reward = new RecordingPacket();
         WiredTransactionSuccessComposer.Rewarded(new(null, 100, [], [], new(1, 0, 0, 0, 7)), "earned", true).Compose(reward);
         Assert.Equal(new object[] { 2, 1, (byte)0, 7, "earned", true }, reward.Writes);
         var withdraw = new RecordingPacket();
         new WiredTransactionSuccessComposer(WiredTransactionSuccess.Withdraw).Compose(withdraw);
         Assert.Equal(new object[] { 1 }, withdraw.Writes);
-        // package_112.class_2436 / class_4267: int chestId, bool isNotificationPreferences.
+        // SettingsUpdated: int chestId, bool isNotificationPreferences.
         var saved = new RecordingPacket();
         new WiredChestSettingsUpdatedComposer(100, true).Compose(saved);
         Assert.Equal(new object[] { 100u, true }, saved.Writes);
@@ -576,7 +574,7 @@ public sealed class WiredChestProtocolTests
     [Fact]
     public async Task SavePreferencesReadsTheWiredFlagAndTheUpgradeIsOneWay()
     {
-        // AIR ChestSettingsUI.onSaveClicked: class_3094(..., previewAmount, upgradeButton.disabled); the Wired upgrade is this save.
+        // The save carries previewAmount and upgradeButton.disabled; the Wired upgrade is this save.
         var world = new World();
         world.Store.Settings = world.Store.Settings with { WiredEnabled = false };
         await new ChestSavePreferencesEvent().Parse(world.Room, world.Client, Incoming(100, "Box", "Desc", true, false, 1, 2, 3, true));
@@ -615,7 +613,7 @@ public sealed class WiredChestProtocolTests
     [Fact]
     public async Task SaveNotificationsReadsTheModeFirst()
     {
-        // AIR ChestNotificationSettingsUI.onSaveClicked: class_2747(chestId, mode, full, donation, withdraws, empty, wired).
+        // Notification settings save: chestId, mode, full, donation, withdraws, empty, wired.
         var world = new World();
         await new ChestSaveNotificationsEvent().Parse(world.Room, world.Client, Incoming(100, 1, true, false, true, false, true));
         var saved = world.Store.Saved!;
@@ -640,7 +638,7 @@ public sealed class WiredChestProtocolTests
         Assert.Single(world.Packets, packet => packet.Header == ServerPacketHeader.WiredChestFurniChunkComposer);
         Assert.DoesNotContain(world.Packets, packet => packet.Header == ServerPacketHeader.WiredChestCoinsComposer);
 
-        // Contents change while the window is open: AIR class_3289 removed ids + added storages.
+        // Contents change while the window is open: removed ids and added storages.
         world.Packets.Clear();
         world.Store.Stock = [];
         world.Module.Refresh(world.Chest);

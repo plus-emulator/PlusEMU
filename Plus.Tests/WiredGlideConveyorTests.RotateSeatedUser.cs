@@ -11,9 +11,9 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a clockwise Move and Rotate User on a user who sits on a chair or lies on a bed
-    // still sends the turned direction in WiredMovements, but the user keeps the furni direction: the next UserUpdate shows the old head
-    // and body direction, and the next turn starts from it again.
+    // A clockwise Move and Rotate User on a user who sits on a chair or lies on a bed still sends the turned direction in
+    // WiredMovements, but the user keeps the furni direction: the next UserUpdate shows the old head and body direction, and the
+    // next turn starts from it again.
     [Theory]
     [InlineData("chair", "sit")]
     [InlineData("bed", "lay")]
@@ -36,7 +36,6 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a user who sits on the floor turns like a standing user.
     [Fact]
     public void RotateUserTurnsAUserWhoSitsOnTheFloor()
     {

@@ -8,8 +8,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610151745-318700621 (r97_projectile_kinds, r97_projectile_watch): a stack fired outside speech flashes
-    // its trigger and effect in the same ObjectsDataUpdate as the furni state its effect writes.
+    // A stack fired outside speech flashes its trigger and effect in the same ObjectsDataUpdate as the furni state its effect
+    // writes.
     [Theory]
     [InlineData("wf_trg_periodically")]
     [InlineData("wf_trg_period_short")]

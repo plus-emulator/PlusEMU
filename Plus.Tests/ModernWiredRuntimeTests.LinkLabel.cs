@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>WIRED Link network window and WIRED Label bubbles (r88 dossier, WIN63-202610131318-860371703).</summary>
+/// <summary>WIRED Link network window and WIRED Label bubbles.</summary>
 public partial class ModernWiredRuntimeTests
 {
     [Fact]
@@ -141,7 +141,7 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void LinkResultCodesAreTheOfficialErrorTexts()
     {
-        // WiredLinkView.operationFailed (L170-187) shows ${wiredlink.error.N}; external_flash_texts wiredlink.error.1-8.
+        // The client shows ${wiredlink.error.N} for errors 1 to 8.
         Assert.Equal(new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 }, new[]
         {
             WiredLinkResult.Ok, WiredLinkResult.OwnerOnly, WiredLinkResult.NetworkMissing, WiredLinkResult.InvalidName, WiredLinkResult.DuplicateName,

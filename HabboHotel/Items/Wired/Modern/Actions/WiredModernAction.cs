@@ -16,7 +16,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 {
-    /// <summary>The whisper a Kick User sends the room owner it cannot kick (hhus text).</summary>
+    /// <summary>The whisper a Kick User sends the room owner it cannot kick.</summary>
     internal const string KickOwnerException = "Wired kick exception: Room owner";
     private readonly WiredCounterController _clocks;
     private readonly Action<WiredRuntimeEvent> _publish;
@@ -68,7 +68,6 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
     }
 
     // Saving move_to_dir restarts every furni from the configured direction; the heading is kept only across firings.
-    // Observed on hhus (AIR WIN63-202610131318-860371703): re-saves with direction 3, then 1, moved the same tile (+1,+1), then (+1,-1).
     protected override void ConfigurationChanged() => _directions.Clear();
 
     internal void BindHeadingCollision(Func<WiredRuntimeContext, WiredRuntimeEvent, bool?> enqueue)
@@ -113,26 +112,24 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         else if (name == "wf_act_rel_mov" && config.IntParams.Length == 5) {
             slot = "movers";
         }
-        // Observed on AIR WIN63-202610151745-318700621 (wf_act_furni_to_furni.spread): one firing's movers share one WiredMovements.
+        // One firing's movers share one WiredMovements.
         else if (name == "wf_act_furni_to_furni") {
             slot = "movers";
         }
-        // Observed on AIR WIN63-202610151745-318700621: all Move/Rotate boxes of one firing, with or without the projectile add-on,
-        // share one WiredMovements.
+        // All Move/Rotate boxes of one firing, with or without the projectile add-on, share one WiredMovements.
         else if (name == "wf_act_move_rotate") {
             slot = "movers";
         }
-        // Observed on AIR WIN63-202610151745-318700621: a receiver that fires twice in one tick sends one WiredMovements with one
-        // entry per furni, from its tile at the start of the tick to where it ends, also when it ends where it started.
+        // A receiver that fires twice in one tick sends one WiredMovements with one entry per furni, from its tile at the start of the tick
+        // to where it ends, also when it ends where it started.
         else if (name == "wf_act_furni_to_user") {
             slot = "movers";
         }
-        // Observed on AIR WIN63-202610151745-318700621 (r97_group_furni_clk): a group's moves also go out in one WiredMovements.
+        // A group's moves also go out in one WiredMovements.
         else if (name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6) {
             slot = "movers";
         }
-        // Observed on AIR WIN63-202610201032-107964540: a firing that restores only the position of several furni, with or
-        // without the altitude, sends all their moves in one WiredMovements.
+        // A firing that restores only the position of several furni, with or without the altitude, sends all their moves in one WiredMovements.
         else if (name == "wf_act_match_to_sshot" && config.IntParams.Length == 5
             && config.IntParams.Take(3).SequenceEqual(new[] { 0, 0, 1 }) && config.IntParams[3] is 0 or 1
             && config.Snapshots.All(snapshot => snapshot.Wall == null)) {
@@ -415,8 +412,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             var queuedBlob = false;
 
             if (name == "wf_act_toggle_state") {
-                // Observed on AIR WIN63-202610201032-107964540: a box of the stack that is running has flashed already, and the toggle
-                // flips it again, so it ends in the toggled state.
+                // A box of the stack that is running has flashed already, and the toggle flips it again, so it ends in the toggled state.
                 var own = context.CapturedStack.Select(x => x.Item.Id).ToHashSet();
                 movers = WiredToggleStateTargets.Resolve(movers, box => context.Room.GetWired().Flash(box, own.Contains(box.Id)),
                     item => context.Room.GetWired().TryQueueBatchData(item), out flashedBox);
@@ -450,7 +446,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 targets = targets.Where(item => item.IsFloorItem).ToArray();
             }
 
-            // Observed on hhus (AIR WIN63-202610131318-860371703): furni_to_furni with a wall item as its only target moves nothing.
+            // Furni To Furni with a wall item as its only target moves nothing.
             if (name == "wf_act_furni_to_furni") {
                 targets = targets.Where(item => item.IsFloorItem).ToArray();
             }
@@ -489,15 +485,14 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             _publish(new(WiredEventKind.StateChanged) { Actor = FurnitureStateEvents.Present(context.Room, context.Event.Actor), EventItem = item });
                         }
                     }) is GateTransition.Applied or GateTransition.Queued,
-                // Observed on AIR WIN63-202610151745-318700621 (r97_mv_collide): a Move/Rotate step onto a stackable block lands on top of it
-                // (z 1.0), also when that block arrived in the same firing; only furniture that cannot be stacked on blocks it.
+                // A Move/Rotate step onto a stackable block lands on top of it (z 1.0), also when that block arrived in the same firing;
+                // only furniture that cannot be stacked on blocks it.
                 (movers, step) => _movement.MoveTogether(context, movers, step, passengers, WiredMovementActions.Steps.Contains(name),
                     stackableBlocks: name != "wf_act_move_rotate"), context.Room.GetGameMap().ValidTile,
                 (item, snapshot, position, altitude) => _movement.RestoreWallSnapshot(context, item, snapshot, position, altitude),
                 (item, operation, altitude) => _movement.SetWallAltitude(context, item, operation, altitude));
 
-            // Observed on AIR WIN63-202610151745-318700621 (r97_group_furni_clk): a group's moves are listed in pick order, though the
-            // landings are worked out leading edge first so members do not stack on each other.
+            // A group's moves are listed in pick order, though the landings are worked out leading edge first so members do not stack on each other.
             if (name == "wf_act_move_furni_as_group" && config.IntParams.Length == 6) {
                 context.Publication?.Reorder(movers);
             }
@@ -542,9 +537,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         }
                     }
 
-                    // Observed on AIR WIN63-202610151745-318700621: a frozen user keeps the freeze effect when it joins or leaves a Wired,
-                    // Battle Banzai or Freeze team, and unfreeze then shows the effect of its team at that time (223 Wired Red, 36 Battle
-                    // Banzai Yellow, 40 Freeze Red), or 0 without a team.
+                    // A frozen user keeps the freeze effect when it joins or leaves a Wired, Battle Banzai or Freeze team. Unfreeze then shows the
+                    // effect of its team at that time (223 Wired Red, 36 Battle Banzai Yellow, 40 Freeze Red), or 0 without a team.
                     var frozen = WiredAvatarState.For(context.Room);
                     var moved = name == "wf_act_join_team"
                         ? WiredGameState.For(context.Room).Join(context.Room, user, Param(config, 0), (Team)Param(config, 1), Param(config, 3), context.Targets.AllUsers(),
@@ -567,9 +561,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             }
                         }));
 
-                    // Observed on hhus (r90 game-b): YouArePlayingGame goes out with the join (true) and the leave (false), in the same
-                    // tick and ahead of the team effect (223 on join, 0 on leave) of the next state update. Observed on AIR
-                    // WIN63-202610151745-318700621: a leave sends it even outside a team, a join into the user's own team sends nothing.
+                    // YouArePlayingGame goes out with the join (true) and the leave (false), in the same tick and ahead of the team effect
+                    // (223 on join, 0 on leave) of the next state update. A leave sends it even outside a team; a join into the user's own team sends nothing.
                     if (moved || name == "wf_act_leave_team") {
                         user.GetClient()?.Send(new YouArePlayingGameComposer(name == "wf_act_join_team"));
                     }
@@ -625,7 +618,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     }
 
                     if (player.Id == context.Room.OwnerId) {
-                        // Observed on hhus (AIR WIN63-202610131318-860371703): the owner is not kicked and is whispered this notification.
+                        // The owner is not kicked and is whispered this notification.
                         if (name == "wf_act_kick_user") {
                             client.Send(new WiredChatComposer(user.VirtualId, user.VirtualId, KickOwnerException, 34, -1, true));
                         }
@@ -637,7 +630,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         continue;
                     }
 
-                    // Observed on AIR WIN63-202610201032-107964540: Kick User whispers the user even when the box has no message (an empty line).
+                    // Kick User whispers the user even when the box has no message (an empty line).
                     if (name == "wf_act_kick_user" || config.Text.Length > 0) {
                         client.Send(new WiredChatComposer(user.VirtualId, user.VirtualId, FormatLegacyText(context, user, config.Text), 34, -1, true));
                     }
@@ -676,10 +669,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 {
                     bool Move(int x, int y) => _movement.MoveFurniture(context, item, x, y, item.Rotation, null, passengers: carry);
                     var flee = name == "wf_act_flee";
-                    // Observed r92f r92-flee: flee moves with any user in the room (Manhattan 10 still moves on all three fires).
-                    // Observed on AIR WIN63-202610151745-318700621: chase only follows a user in its own row or column (2 and 3 tiles away it
-                    // stepped towards the user 10 times in 10; at offsets (1,1), (2,1), (2,2) and (3,1) it took a random step). Flee
-                    // steps straight away only from such a user, too.
+                    // Flee moves with any user in the room. Chase only follows a user in its own row or column; at other offsets it takes a
+                    // random step. Flee steps straight away only from such a user, too.
                     var random = _random ?? Random.Shared;
                     var inLine = WiredDirectionalActions.Nearest(item, context.Targets.AllUsers().Where(user => user.X == item.GetX || user.Y == item.GetY), 3, random);
                     var nearest = flee ? WiredDirectionalActions.Nearest(item, context.Targets.AllUsers(), null, random) : inLine;
@@ -689,9 +680,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             return false;
                         }
 
-                        // Observed r92j r92h-chase-retry (AIR WIN63-202610131318-860371703): from the corner (4,1), with north and west
-                        // void, the out-of-range marker moved on all six trials (east 3, south 3), so a blocked random direction is retried.
-                        // Observed on AIR WIN63-202610151745-318700621: the random step never goes straight back (no reversal in 54 steps).
+                        // A blocked random direction is retried. The random step never goes straight back.
                         int[] headings = [0, 2, 4, 6];
                         Random.Shared.Shuffle(headings);
                         var back = _directions.LastChaseStep(item) is { } last ? (last + 4) % 8 : -1;
@@ -754,15 +743,14 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 return changed;
             case "wf_act_move_rotate_user":
-                // Observed on AIR WIN63-202610201032-107964540: one box sends one WiredMovements with the moves of all its users, then
-                // their turns.
+                // One box sends one WiredMovements with the moves of all its users, then their turns.
                 var moves = new List<WiredMovementComposer>();
                 var turns = new List<WiredUserDirectionComposer>();
 
                 foreach (var user in Users(context, config, "users")) {
                     if (Param(config, 0) >= 0) {
                         var offset = Rotation.Offset(Param(config, 0));
-                        // Observed on AIR WIN63-202610131318-860371703: a push on a walking user replaces the step in progress in the same tick.
+                        // A push on a walking user replaces the step in progress in the same tick.
                         // It runs from the step's start tile to the stepped-onto tile plus the push, then the walk resumes towards its goal
                         // (pushed back onto the start tile, the user treadmills). Pushed on the last step, the walk ends there.
                         var stepping = user.IsWalking && user.SetStep;
@@ -778,8 +766,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                     var rotation = WiredDirectionalActions.AvatarRotation(user.RotBody, Param(config, 1));
 
-                    // Observed on AIR WIN63-202610201032-107964540: a user on a seat or bed keeps the furni direction. The turn is still
-                    // sent, and the status update that follows shows the old direction again. A user who sits on the floor turns.
+                    // A user on a seat or bed keeps the furni direction. The turn is still sent, and the status update that follows shows the old direction again. A user who sits on the floor turns.
                     if (user.Statusses.ContainsKey("lay") || user.Statusses.ContainsKey("sit") && !user.IsSitting) {
                         user.UpdateNeeded = true;
                     }
@@ -795,9 +782,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 }
 
                 if (moves.Count != 0 || turns.Count != 0) {
-                    // Observed on AIR WIN63-202610201032-107964540: the chat of a Show Message in the same stack follows the WiredMovements, whichever
-                    // box comes first and with or without Execute in Order (75 of 96 firings; in the others the chat came first in the same
-                    // millisecond), so the held messages stay until the pass ends.
+                    // The chat of a Show Message in the same stack follows the WiredMovements, whichever box comes first and with or without
+                    // Execute in Order, so the held messages stay until the pass ends.
                     context.Room.SendWiredMovement(new WiredMovementBatchComposer(moves, turns));
                 }
 
@@ -831,8 +817,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 var forwarded = Furni(context, config, "forwarded", true).Select(item => item.Id).ToArray();
                 var users = Users(context, config, "users").Select(user => user.VirtualId).ToArray();
                 var furniBatches = Param(config, 3) == 1 ? forwarded.Select(id => new[] { id }).ToArray() : [forwarded];
-                // Observed on AIR WIN63-202610151745-318700621: split user signals run in a new random order each firing, whatever
-                // the selection order.
+                // Split user signals run in a new random order each firing, whatever the selection order.
                 var userBatches = Param(config, 4) == 1 ? users.Select(id => new[] { id }).ToArray() : [users];
                 (_random ?? Random.Shared).Shuffle(userBatches);
 
@@ -863,8 +848,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     var client = user.GetClient();
                     var shownToRoom = Param(config, 1) != 0;
 
-                    // Observed on hhus (AIR WIN63-202610131318-860371703): a message shown to everyone for a bot is said by the bot
-                    // (Bot Reached Furni/Avatar + Show Message). A private one has nobody to go to.
+                    // A message shown to everyone for a bot is said by the bot (Bot Reached Furni/Avatar + Show Message). A private one has nobody to go to.
                     if (client == null && !(user.IsBot && shownToRoom)) {
                         continue;
                     }
@@ -877,7 +861,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                     var room = context.Room;
                     var target = client;
-                    // Observed on AIR WIN63-202610201032-107964540: a bot saying the message to everyone turns heads like its own chat.
+                    // A bot saying the message to everyone turns heads like its own chat.
                     var turnsHeads = shownToRoom && user.IsBot && !user.IsPet;
 
                     room.GetWired().AfterFlash(() =>
@@ -893,8 +877,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             room.GetRoomUserManager().TurnHeadsToward(user);
                         }
 
-                        // Observed on AIR WIN63-202610201032-107964540 (one run, 4 tries for each visibility): a Show Message wakes a
-                        // sleeping user on the next room tick, as their own chat does. An awake user's idle time is not touched.
+                        // A Show Message wakes a sleeping user on the next room tick, as their own chat does. An awake user's idle time is not touched.
                         if (!user.IsBot && user.IsAsleep) {
                             user.UnIdle(atRoomTick: true);
                         }
@@ -967,8 +950,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
     }
 
-    // Editor choice -> turn rule. Observed r92d r92-mtd-wall (mover heading north into the void): right 45/90 end east, left 45/90
-    // west, back south, all in the same fire, and the new heading is kept on the next fire; wait stays.
+    // Editor choice -> turn rule. Right 45/90 end east, left 45/90 west, back south (mover heading north), all in the same fire,
+    // and the new heading is kept on the next fire; wait stays.
     private static int HeadingTurnRule(int choice) => choice switch
     {
         0 => 6,
@@ -990,8 +973,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return false;
         }
 
-        // A user already on the target is teleported all the same. Observed on AIR WIN63-202610151745-318700621
-        // (wf_xtra_filter_users.area_teleport): the owner standing on T is republished at +1.5 s and relocated onto T at +2.0 s.
+        // A user already on the target is teleported all the same: it is republished at +1.5 s and relocated onto the target at +2.0 s.
         var room = context.Room;
 
         bool Relocate()
@@ -1007,7 +989,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return Relocate();
         }
 
-        // Observed on AIR WIN63-202610131318-860371703: every step counts in room ticks from the first tick after the firing.
+        // Every step counts in room ticks from the first tick after the firing.
         // Normal: effect 4 at the firing, the avatar republished on the 3rd tick, relocated on the 4th and the effect dropped on the 7th
         // (1500 ms after the landing); the walk is not stopped. Fast: effect 235, the walk ends on the tile being stepped onto, the avatar
         // is republished on the 1st tick, lands on the 2nd and the effect drops on the 3rd. A fast teleport from a walk-off stack fired
@@ -1031,7 +1013,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 user.UpdateNeeded = true;
 
-                // Observed on AIR WIN63-202610201032-107964540: Bot Teleport fires Bot Reaches Furni with the republish, before the landing.
+                // Bot Teleport fires Bot Reaches Furni with the republish, before the landing.
                 if (user is { IsBot: true, IsPet: false }) {
                     var (x, y) = TeleportLanding(room, user, target);
 
@@ -1062,8 +1044,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return Relocate();
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: when the glow ends on a tick that also sends the avatar's status update, the
-        // status update goes first and the effect change follows it.
+        // When the glow ends on a tick that also sends the avatar's status update, the status update goes first and the effect change follows it.
         if (!wired.ScheduleOnRoomTick(context, effectEnd, restore, restore, afterAvatarUpdates: true)) {
             restore();
         }
@@ -1071,9 +1052,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         return true;
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: a teleport lands past users standing on the target, and onto furni nobody can stand on
-    // it does not land: the user lands on a free tile next to it (the tile north of the target was taken; the order of the other
-    // neighbours is not established).
+    // A teleport lands past users standing on the target, and onto furni nobody can stand on it does not land: the user lands on a free
+    // tile next to it, trying north of the target first.
     private static readonly (int X, int Y)[] TeleportNeighbours = [(0, -1), (1, 0), (0, 1), (-1, 0)];
 
     private static (int X, int Y) TeleportLanding(Room room, RoomUser user, Item target)
@@ -1112,8 +1092,8 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
     }
 
-    // Observed on hhus: the kick applies avatar effect 4 on the next 500 ms state update and removes the user 2000 ms after the firing.
-    // Observed on AIR WIN63-202610201032-107964540: the removal sends no GenericError and closes with the short 2.
+    // The kick applies avatar effect 4 on the next 500 ms state update and removes the user 2000 ms after the firing.
+    // The removal sends no GenericError and closes with the short 2.
     private void Kick(WiredRuntimeContext context, RoomUser user, GameClient client)
     {
         var room = context.Room;
@@ -1148,7 +1128,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
     private const int TeleportEffectId = 4;
     private const int FastTeleportEffectId = 235;
 
-    // Observed on hhus: a "<...>" segment of Show Message text is removed (brackets included) at output; the stored text is untouched.
+    // A "<...>" segment of Show Message text is removed (brackets included) at output; the stored text is untouched.
     // Unknown $(name) placeholders are left literal by the text formatters.
     internal static string StripAngleSegments(string text)
     {

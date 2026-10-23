@@ -34,8 +34,8 @@ public sealed partial class WiredGlideConveyorTests
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed r94 F2 (hhus 2026-10-16, AIR WIN63-202610131318-860371703): furni_to_furni moves a mover that already stands on its
-    // assigned target back onto the top of that stack; a mover already on top publishes nothing.
+    // furni_to_furni moves a mover that already stands on its assigned target back onto the top of that stack; a mover already
+    // on top publishes nothing.
     [Fact]
     public void FurniToFurniRestacksAMoverAlreadyOnItsTargetUnlessItIsOnTop()
     {
@@ -57,8 +57,8 @@ public sealed partial class WiredGlideConveyorTests
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610131318-860371703: on a 200 ms Fast Queue a user walking against the queue walks tile by tile to the
-    // start with no carry; carrying resumes once the walk has ended.
+    // On a 200 ms Fast Queue a user walking against the queue walks tile by tile to the start with no carry; carrying resumes
+    // once the walk has ended.
     [Fact]
     public void FastQueueDoesNotCarryAUserWhoIsWalkingAgainstIt()
     {
@@ -79,9 +79,8 @@ public sealed partial class WiredGlideConveyorTests
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610131318-860371703: with a 200 ms Fast Queue running, placing a Write to Logs box on either stack,
-    // moving it between stacks and saving it never disturbs the queue. Every pulse publishes one WiredMovements entry per tile,
-    // home to home.
+    // With a 200 ms Fast Queue running, placing a Write to Logs box on either stack, moving it between stacks and saving it never
+    // disturbs the queue. Every pulse publishes one WiredMovements entry per tile, home to home.
     [Theory]
     [InlineData("none")]
     [InlineData("place")]
@@ -117,8 +116,8 @@ public sealed partial class WiredGlideConveyorTests
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610151745-318700621 (wf_act_furni_to_furni.spread): four movers sent to two targets by one say arrive in one
-    // WiredMovements packet, including the movers restacked on the target they already stood on.
+    // Four movers sent to two targets by one say arrive in one WiredMovements packet, including the movers restacked on the
+    // target they already stood on.
     [Fact]
     public void FurniToFurniPublishesAFiringsMoversInOnePacket()
     {

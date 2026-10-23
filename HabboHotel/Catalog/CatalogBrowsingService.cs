@@ -62,7 +62,7 @@ public sealed class CatalogBrowsingService(IItemDataManager items, IPetRaceManag
         session.Send(new CatalogItemDiscountComposer());
     }
 
-    // The index of the requested catalogue. Observed on hhus: the BUILDERS_CLUB index is followed by the Builders Club furni count.
+    // The index of the requested catalogue. The BUILDERS_CLUB index is followed by the Builders Club furni count.
     public void ShowMode(GameClient session, string mode)
     {
         mode = CatalogModes.FromClient(mode);

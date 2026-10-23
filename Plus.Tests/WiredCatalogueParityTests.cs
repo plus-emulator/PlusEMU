@@ -3,7 +3,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Migration 82: the Wired catalogue matches hhus (WIN63-202610131318) and the :chooser disabler is sold and works.</summary>
+/// <summary>Migration 82: the Wired catalogue matches the reference catalogue and the :chooser disabler is sold and
+/// works.</summary>
 public sealed class WiredCatalogueParityTests
 {
     private static string Read(string path) => File.ReadAllText(HabbiconPacketTests.Repo(path)).Replace("\r\n", "\n");

@@ -4,9 +4,7 @@ using Plus.HabboHotel.Items.FootballGate;
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni;
 
 /// <summary>
-/// AIR WIN63-202610151745-318700621 outgoing 2545, package_66/class_3476.as:15-30: item id, gender, figure. The avatar editor passes
-/// the figure and its gender (HabboAvatarEditor.as:362-368) and the widget sends them gender first
-/// (FurnitureClothingChangeWidgetHandler.as:141-147).
+/// Item id, gender, figure. The avatar editor passes the figure and its gender, and the widget sends them gender first.
 /// </summary>
 internal sealed class SetClothingChangeDataEvent(IFootballGateService gates) : IPacketEvent
 {

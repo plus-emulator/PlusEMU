@@ -38,8 +38,8 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
             };
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: the entry order does not follow which stack ran first, and no rule matched every
-        // capture, so entries go in item id order. A group move puts its own entries back in pick order (see Reorder).
+        // Entries go in item id order, not in the order the stacks ran.
+        // A group move puts its own entries back in pick order (see Reorder).
         if (!_entries.ContainsKey(item)) {
             var slot = _order.FindIndex(listed => listed.Id > item.Id);
             _order.Insert(slot < 0 ? _order.Count : slot, item);
@@ -90,7 +90,7 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
         return true;
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: with the projectile add-on, the shooter's direction is the last entry of the
+    // With the projectile add-on, the shooter's direction is the last entry of the
     // firing's WiredMovements.
     internal void AppendDirection(RoomUser shooter, long lifetime, WiredUserDirectionComposer turn)
     {
@@ -102,7 +102,7 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
         && actor.Movement.LifetimeId == lifetime
         && ReferenceEquals(room.GetRoomUserManager().GetRoomUserByVirtualId(actor.VirtualId), actor);
 
-    // Observed on AIR WIN63-202610131318-860371703: a furni that ends a firing where it started gets no movement entry without
+    // A furni that ends a firing where it started gets no movement entry without
     // Execute in Order, and one from == to entry with it. Moves of several firings (a Fast Queue signal chain) keep their entries.
     private bool NetZeroInOneFiring(Item item, WiredMovementComposer movement) => !_ordered.Contains(item)
         && movement.FromX == movement.ToX && movement.FromY == movement.ToY && movement.FromZ == movement.ToZ

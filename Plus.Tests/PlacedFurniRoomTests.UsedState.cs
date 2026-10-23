@@ -11,7 +11,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on hhus (AIR WIN63-202610131318-860371703): using a wf_colortile sends one ObjectDataUpdate with the new state.
+    // Using a wf_colortile sends one ObjectDataUpdate with the new state.
     [Fact]
     public void AUserSwitchedStateGoesOutAsADataUpdate()
     {
@@ -31,8 +31,7 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: double-clicking a wf_colortile in a room sends one ObjectDataUpdate with the
-    // new state and no ObjectUpdate.
+    // Double-clicking a wf_colortile in a room sends one ObjectDataUpdate with the new state and no ObjectUpdate.
     [Fact]
     public void UsingASwitchInARoomSendsOnlyADataUpdate()
     {
@@ -52,8 +51,7 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a user who switches a Floor Switch from the next tile makes the room receive one
-    // ObjectDataUpdate with the new state and no ObjectUpdate.
+    // A user who switches a Floor Switch from the next tile makes the room receive one ObjectDataUpdate with the new state and no ObjectUpdate.
     [Fact]
     public void UsingAFloorSwitchFromTheNextTileSendsOnlyADataUpdate()
     {

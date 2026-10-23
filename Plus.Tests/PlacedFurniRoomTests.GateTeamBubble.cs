@@ -20,8 +20,8 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540 (3 runs, 8 gates each): a user who walks onto a Banzai or Freeze gate talks with
-    // the team bubble (130 Red, 131 Blue, 133 Green, 132 Yellow) from then on, also after walking off the gate.
+    // A user who walks onto a Banzai or Freeze gate talks with the team bubble (130 Red, 131 Blue, 133 Green, 132 Yellow) from then on,
+    // also after walking off the gate.
     [Theory]
     [InlineData(InteractionType.Banzaigatered, 130)]
     [InlineData(InteractionType.Banzaigateblue, 131)]
@@ -46,8 +46,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(bubble, Talk(actor, "off the gate"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: after Leave Team a user who joined at a gate talks with the own bubble (bubble 0 in
-    // the trace).
+    // After Leave Team a user who joined at a gate talks with the own bubble (bubble 0).
     [Fact]
     public void AUserWhoJoinedAtAGateTalksWithTheOwnBubbleAfterLeaveTeam()
     {
@@ -62,7 +61,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0, Talk(actor, "out"));
     }
 
-    // Plus guard, not observed on Habbo: a user who leaves the team by walking onto a gate again talks with the own bubble.
+    // Plus guard: a user who leaves the team by walking onto a gate again talks with the own bubble.
     [Fact]
     public void AUserWhoLeavesTheTeamAtAGateTalksWithTheOwnBubble()
     {

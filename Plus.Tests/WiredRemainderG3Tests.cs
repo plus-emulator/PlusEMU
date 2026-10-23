@@ -13,13 +13,13 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Group g3 of the remainder cards: the editors of the five cards against the October AS3 and the official frames,
-// Time Utilities through the room's variable catalog, and Filter Users by Variable through the stack's selector pool.
+// Group g3 of the remainder cards: the editors of the five cards, Time Utilities through the room's variable catalog, and Filter
+// Users by Variable through the stack's selector pool.
 public sealed partial class WiredRemainderG3Tests
 {
     private static string Groups(ImmutableArray<ImmutableArray<int>> groups) => string.Join(';', groups.Select(group => string.Join(',', group)));
 
-    // Official initial frames: r80 (place, remove), r77 batch 05 (filter, capturer, time utilities; r83 for the last).
+    // Initial frames of the place, remove, filter, capturer and time utilities cards.
     [Theory]
     [InlineData("wf_act_place_furni", "0,100,101,110,200,201;0,100,101,200,201;0,100,101,200,201", "0,200,201;0,200,201", "110,0,200", "0,200", true, "0,0,0,0,0,0,0,0,0,-20")]
     [InlineData("wf_act_remove_furni", "0,200,201", "", "200", "", false, "")]
@@ -236,7 +236,7 @@ public sealed partial class WiredRemainderG3Tests
 
         public void Set(long value) => Assert.True(Module.Mutate(new(Holder.Target, "custom:20"), Holder, WiredVariableMutation.Set, value, Frame));
 
-        // Each ticked part is its own catalogue variable "<parent>.<mode>.<part>" (observed on hhus, AIR WIN63-202610131318-860371703).
+        // Each ticked part is its own catalogue variable "<parent>.<mode>.<part>".
         public WiredVariableReference Part(int sub) =>
             new(Holder.Target, $"custom:{WiredRoomVariables.SyntheticId(Holder.Target, 20, sub, true)!.Value}");
         public long? Read(int sub) => Module.Read(Part(sub), Holder, Frame)?.Value;
@@ -248,7 +248,7 @@ public sealed partial class WiredRemainderG3Tests
     [Fact]
     public void ContextTimePartReadsOnlyFromItsExecutionAndTarget()
     {
-        // Observed on AIR WIN63-202610151745-318700621: 1700000000 milliseconds gives the context value's year as 1970.
+        // 1700000000 milliseconds gives the context value's year as 1970.
         var rig = new G3TimeRig(1 << 10, 0, WiredVariableTarget.Context);
         var part = rig.Part(10);
         Assert.Null(rig.Read(10));
@@ -269,7 +269,7 @@ public sealed partial class WiredRemainderG3Tests
     [Fact]
     public void TimeUtilitiesReadEveryCalendarFieldAndEveryElapsedUnitOfTheValueAsEpochMilliseconds()
     {
-        // A Value-mode parent holds epoch milliseconds, the unit of @current_time (observed on hhus, AIR WIN63-202610131318-860371703).
+        // A Value-mode parent holds epoch milliseconds, the unit of @current_time.
         var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
         rig.Give(TuesdayMs);
         var expected = new Dictionary<int, long>
@@ -303,8 +303,7 @@ public sealed partial class WiredRemainderG3Tests
     [Fact]
     public void TheEditorsNamesNameTheSubVariablesAndOnlyTheTickedOnesExist()
     {
-        // AIR VariableTimeUtilAddon.as:48-59 (WIN63-202610131318-860371703) SubVariableParam names.
-        // Observed on hhus: "<parent>.value.<part>", with the month part sent as "month_of_year " (trailing space).
+        // SubVariableParam names: "<parent>.value.<part>", with the month part sent as "month_of_year " (trailing space).
         var rig = new G3TimeRig(WiredVariableTimeUtilities.ValidMask, 0);
         rig.Give(TuesdayMs);
         Assert.Equal(new[]
@@ -407,8 +406,7 @@ public sealed partial class WiredRemainderG3Tests
     [Fact]
     public void WritingAValuePartMovesTheParentByThatPartAndKeepsEveryOtherField()
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703): year 2026 → 2025 moved 2026-10-16 to 2025-10-16, then day_of_week 1
-        // moved it to the Monday of that week.
+        // Year 2026 → 2025 moved 2026-10-16 to 2025-10-16, then day_of_week 1 moved it to the Monday of that week.
         var rig = new G3TimeRig((1 << 5) | (1 << 10) | (1 << 4) | (1 << 21), 0);
         var friday = new DateTimeOffset(2026, 10, 16, 21, 26, 0, 123, TimeSpan.Zero).ToUnixTimeMilliseconds();
         rig.Give(friday);
@@ -450,7 +448,7 @@ public sealed partial class WiredRemainderG3Tests
     [Fact]
     public void AParentChangeIsAnUnchangedChangeOfAPartThatKeptItsValue()
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703): +1 ms on the parent fired the year part's Variable Changed set to unchanged.
+        // +1 ms on the parent fired the year part's Variable Changed set to unchanged.
         var rig = new G3TimeRig(1 << 10, 0);
         rig.Give(TuesdayMs);
         rig.Module.DrainChanges();

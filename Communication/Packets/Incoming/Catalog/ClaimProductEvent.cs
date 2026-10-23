@@ -3,7 +3,7 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Incoming.Catalog;
 
-// AIR WIN63-202610151745-318700621, package_143/class_2610.as:12: string claimId, then an int choice that is only
+// String claimId, then an int choice that is only
 // written when it is not -1.
 public sealed class ClaimProductEvent(IClaimProductService claims) : IPacketEvent
 {

@@ -8,8 +8,7 @@ public sealed class WiredActionEditorSaveParityTests
 {
     private static readonly string LongName = new('x', 33);
 
-    // Observed on AIR WIN63-202610201032-107964540: Control Clock saves any operation for a counter pick, stores it clamped to the five
-    // offered operations and reopens with the stored one. It refuses a pick that is not a counter.
+    // Control Clock saves any operation for a counter pick, stores it clamped to the five offered operations and reopens with the stored one. It refuses a pick that is not a counter.
     [Theory]
     [InlineData(0, 0)]
     [InlineData(1, 1)]
@@ -42,8 +41,7 @@ public sealed class WiredActionEditorSaveParityTests
         Assert.Equal("wiredfurni.error.require_counter_furni", result.Key);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Bot Change Clothes saves an empty bot name with an empty figure, sent as an empty
-    // text, for every bot source and reads it back as a single tab.
+    // Bot Change Clothes saves an empty bot name with an empty figure, sent as an empty text, for every bot source and reads it back as a single tab.
     [Theory]
     [InlineData(0)]
     [InlineData(100)]
@@ -60,7 +58,7 @@ public sealed class WiredActionEditorSaveParityTests
         Assert.Equal([source], result.Users);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: Bot Move saves a 33-character bot name.
+    // Bot Move saves a 33-character bot name.
     [Fact]
     public void BotMoveSavesABotNameLongerThanTheEditorField()
     {

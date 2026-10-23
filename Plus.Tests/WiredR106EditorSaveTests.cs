@@ -2,8 +2,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Raw saves of the boxes below, sent through the real save packet and read back the way the editor reopens them. Observed on AIR
-// WIN63-202610201032-107964540.
+// Raw saves of the boxes below, sent through the real save packet and read back the way the editor reopens them.
 public sealed class WiredR106EditorSaveTests
 {
     private const string Invalid = "wiredfurni.error.invalid_user_source";

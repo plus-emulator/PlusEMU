@@ -37,7 +37,7 @@ public class CatalogIndexComposer : IServerPacket
         packet.WriteInteger(_index.Roots.Length);
     }
 
-    // AIR WIN63-202610151745-318700621 package_5/class_3470.as:23 has no parent id per node.
+    // The client reads no parent id per node.
     private static void WriteNode(IOutgoingPacket packet, CatalogIndexNode node)
     {
         packet.WriteBoolean(node.Visible);

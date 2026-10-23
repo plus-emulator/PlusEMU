@@ -12,8 +12,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Sept9 own-room guide replay: eight BC tiles, seven moving picks returned in descending ID order.
-    // Both directions are verified natively; mirrored creation order guards against ID-dependent recapture.
+    // Eight BC tiles, seven moving picks returned in descending ID order. The mirrored
+    // creation order checks that the result does not depend on the ids.
     [Theory]
     [InlineData(2, 4, 5, false)]
     [InlineData(2, 4, 5, true)]
@@ -71,8 +71,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(11, f.Items[8].GetX);
     }
 
-    // Hotel editor defaults, observed r92b (AIR WIN63-202610131318-860371703): physics sources [900, 900] / [900], carry user source 900.
-    // The client echoes the defaults it was sent when a slider or checkbox is changed, so only the toggled fields differ from them.
+    // Hotel editor defaults: physics sources [900, 900] / [900], carry user source 900. The client echoes the defaults it was
+    // sent when a slider or checkbox is changed, so only the toggled fields differ from them.
     [Fact]
     public void EditorDefaultSourcesAndPhysicsFlagsBuildAWorkingFastQueue()
     {
@@ -289,8 +289,8 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: speech moves the avatar with the say, not on the next room tick. Effects of one firing
-    // run in a random order (also observed on hhus): seed 1 steps the queue before its signal restores it home, seed 2 signals first.
+    // Speech moves the avatar with the say, not on the next room tick. Effects of one firing run in a random order: seed 1 steps
+    // the queue before its signal restores it home, seed 2 signals first.
     [Theory]
     [InlineData(1, new[] { 4, 5, 6, 7, 8, 9, 10, 11 })]
     [InlineData(2, new[] { 5, 6, 7, 8, 9, 10, 11, 11 })]

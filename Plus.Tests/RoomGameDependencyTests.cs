@@ -22,7 +22,7 @@ public partial class PlacedFurniRoomTests
         if (v2) {
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: an empty room stays loaded for at least 32.5 seconds and is gone after 35.
+        // An empty room stays loaded for at least 32.5 seconds and is gone after 35.
         _room.IdleTime = 64;
         WithUnavailableRoomGame(() =>
         {
@@ -101,7 +101,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(awarded ? [("ACH_BattleBallTilesLocked", 4), ("ACH_BattleBallPlayer", 1), ("ACH_BattleBallWinner", 1)] : [], calls);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: the server sends the room data right after RoomReady without a client request.
+    // The server sends the room data right after RoomReady without a client request.
     [Fact]
     public void OpeningARoomSendsItsEntryDataWithoutAClientRequest()
     {

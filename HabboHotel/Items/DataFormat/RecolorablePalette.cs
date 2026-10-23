@@ -4,10 +4,9 @@ using System.Globalization;
 namespace Plus.HabboHotel.Items.DataFormat;
 
 /// <summary>
-/// The colours each recolorable furni class may take. The client reads them from Habbo's external variables
-/// (recolorable_bc.palette_to_furni and recolorable_bc.palette.&lt;name&gt;, gamedata r75 external_variables.txt lines
-/// 2908-2920) with AIR WIN63-202610131318-860371703 room/object/data/class_3492.as:13 getColors; the server keeps the
-/// same values so a purchase or a recolour cannot pick a colour the client would not offer.
+/// The colours each recolorable furni class may take. The client reads them from external variables
+/// (recolorable_bc.palette_to_furni and recolorable_bc.palette.&lt;name&gt;).
+/// The server keeps the same values so a purchase or a recolour cannot pick a colour the client would not offer.
 /// </summary>
 public static class RecolorablePalette
 {
@@ -73,7 +72,7 @@ public static class RecolorablePalette
         return colours.Count > 0 ? colours[0] : RecolorableDataFormat.White;
     }
 
-    // class_3492.as:17-34: the last palette that names the class wins.
+    // The last palette that names the class wins.
     private static FrozenDictionary<string, string> ReadPaletteByClass()
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -93,7 +92,7 @@ public static class RecolorablePalette
         return result.ToFrozenDictionary(StringComparer.Ordinal);
     }
 
-    // class_3492.as:41-48: six hex digits each, anything else skipped.
+    // Six hex digits each, anything else skipped.
     private static int[] ReadColours(string palette) =>
     [
         .. palette.Split(',').Select(entry => entry.Trim())

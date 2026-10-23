@@ -36,7 +36,7 @@ public static class WiredAddonConfiguration
                 break;
             case "wf_xtra_filter_furni":
             case "wf_xtra_filter_users":
-                // Observed on AIR WIN63-202610201032-107964540: Filter Users also stores the trigger context user sources 10 and 11.
+                // Filter Users also stores the trigger context user sources 10 and 11.
                 if (c.IntParams.Length != 5 || P(1) is not (0 or 1) || P(2) is < 0 or > 3
                     || P(3) is not (0 or 200 or 201) && !(name == "wf_xtra_filter_users" && P(3) is 10 or 11)
                     || P(4) is not (0 or 100 or 101 or 200 or 201)) {
@@ -46,8 +46,8 @@ public static class WiredAddonConfiguration
                 fields = [Range(0, 0, 10000), P(1), P(2), P(3), P(4)];
                 break;
             case "wf_xtra_execution_limit": {
-                    // The editor saves raw pulses 1..120 (observed on AIR WIN63-202610201032-107964540). A larger value is milliseconds,
-                    // snapped to the same half-second grid and at most 60000; 1250 becomes 1500 and 5000 stays 5000.
+                    // The editor saves raw pulses 1..120. A larger value is milliseconds, snapped to the same half-second grid and at most 60000;
+                    // 1250 becomes 1500 and 5000 stays 5000.
                     var window = P(1, 1);
                     window = window is >= 1 and <= 120 ? window * 500 : (Math.Clamp(window, 500, 60000) + 250) / 500 * 500;
                     fields = [Range(0, 1, 100, 1), window];

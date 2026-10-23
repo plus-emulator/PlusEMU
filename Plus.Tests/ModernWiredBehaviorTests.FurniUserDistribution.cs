@@ -15,8 +15,7 @@ public partial class ModernWiredBehaviorTests
         return user;
     }).ToArray();
 
-    // Observed on AIR WIN63-202610201032-107964540: with two users selected, two furni went one to each user in 30 of 30 firings and
-    // three furni went two to one user and one to the other in 90 of 90 firings. Who got which furni changed from firing to firing.
+    // With two users selected, two furni go one to each user, and three furni go two to one user and one to the other. Who gets which furni changes from firing to firing.
     [Theory]
     [InlineData(2, 0)]
     [InlineData(2, 17)]
@@ -43,8 +42,7 @@ public partial class ModernWiredBehaviorTests
         Assert.True(assignments.Count > 1);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: with three furni and two users, the furni that had a user to itself changed between
-    // firings (two different furni in each of three runs of 30).
+    // With three furni and two users, the furni that has a user to itself changes between firings.
     [Theory]
     [InlineData(0)]
     [InlineData(17)]
@@ -65,8 +63,7 @@ public partial class ModernWiredBehaviorTests
         Assert.True(alone.Count > 1);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Teleport To with two users selected sent them to two different furni in 30 of 30
-    // firings with two furni and 30 of 30 with three furni; which furni each user got changed from firing to firing.
+    // Teleport To with two users selected sends them to two different furni, with two or three furni. Which furni each user gets changes from firing to firing.
     [Theory]
     [InlineData(2, 0)]
     [InlineData(2, 17)]

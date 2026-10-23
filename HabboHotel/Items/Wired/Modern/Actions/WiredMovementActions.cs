@@ -28,8 +28,7 @@ public sealed class WiredMovementActions(Random? random = null)
     };
 
     /// <summary>
-    /// Furniture movers stepping to a derived tile, where any other furniture blocks. wf_act_rel_mov is not one: observed r92f
-    /// r92-move-addons nophys-w1, a +1x move onto an own stackable marker stacked on it (z 2.0) without a physics add-on.
+    /// Furniture movers stepping to a derived tile, where any other furniture blocks. wf_act_rel_mov is not one: it moves onto its own stackable marker and stacks on it, also without a physics add-on.
     /// </summary>
     public static readonly IReadOnlySet<string> Steps = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -91,8 +90,8 @@ public sealed class WiredMovementActions(Random? random = null)
 
                 break;
             case "wf_act_move_rotate":
-                // Observed on AIR WIN63-202610151745-318700621: with no movement and no rotation each picked furni not already on top is
-                // placed again on its own tile, on top of the rest of its stack (bottom first); the furni above it stay where they are.
+                // With no movement and no rotation, each picked furni not already on top is placed again on its own tile, on top of
+                // the rest of its stack (bottom first). The furni above it stay where they are.
                 if (Param(0) is < 0 or > 10 && Param(1) is not (2 or 4 or 6)) {
                     foreach (var item in movers.OrderBy(item => item.GetZ).ThenBy(item => item.Id)) {
                         if (!OnTopOfItsTile(item)) {
@@ -107,7 +106,7 @@ public sealed class WiredMovementActions(Random? random = null)
                 {
                     var direction = MovementDirection(Param(0));
                     var offset = Rotation.Offset(direction);
-                    // Turns step to the furni's next direction in 45 degree order; Random takes either step (not observed yet).
+                    // Turns step to the furni's next direction in 45 degree order; Random takes either step.
                     var rotation = Param(1) switch
                     {
                         2 => FurnitureDirections.Turn(item.Definition, item.Rotation, clockwise: true),
@@ -136,8 +135,7 @@ public sealed class WiredMovementActions(Random? random = null)
                         return false;
                     }
 
-                    // Observed on AIR WIN63-202610151745-318700621 (r97_group_user_clk): a member whose landing tile holds a user stays
-                    // put and the rest of the group still moves.
+                    // A member whose landing tile holds a user stays put; the rest of the group still moves.
                     foreach (var item in movers.OrderByDescending(item => item.GetX * Math.Sign(groupDx) + item.GetY * Math.Sign(groupDy))) {
                         affected |= move(item, item.GetX + groupDx, item.GetY + groupDy, item.Rotation, null);
                     }
@@ -161,8 +159,7 @@ public sealed class WiredMovementActions(Random? random = null)
                 var uses = new int[destinations.Length];
                 var assignments = movers.Select(item => ReserveTarget(destinations, uses, item.Id)).ToArray();
 
-                // Observed r92i r92h-f2f (AIR WIN63-202610131318-860371703): a random target (T2, T2, T2, T1), two movers spread one per
-                // target, two movers on one target stack (z 1.0, 2.0), a stacked target is landed on top, and a target tile held by a user
+                // Two movers spread one per target, two movers on one target stack, a stacked target is landed on top, and a target tile held by a user
                 // refuses the move.
                 // Assign before moving: every target gets a turn, including assignments whose move is blocked.
                 // Execute separately in random order because earlier moves change the stack for later ones.
@@ -170,8 +167,7 @@ public sealed class WiredMovementActions(Random? random = null)
                     var item = movers[index];
                     var assigned = assignments[index];
 
-                    // Observed r94 F2 (hhus 2026-10-16, AIR WIN63-202610131318-860371703): a mover assigned the target it already stands
-                    // on is moved again, back onto the top of that stack (same tile, new height); only one already on top stays put.
+                    // A mover assigned the target it already stands on is moved again, back onto the top of that stack; only one already on top stays put.
                     if (assigned == null) {
                         continue;
                     }
@@ -180,8 +176,7 @@ public sealed class WiredMovementActions(Random? random = null)
                         affected |= move(item, assigned.GetX, assigned.GetY, item.Rotation, null);
                     }
                     else if (!OnTopOfItsTile(item)) {
-                        // The room drops a move that keeps tile, rotation and height, so the restack names its new height
-                        // (observed on AIR WIN63-202610151745-318700621: (8,13) z 2 -> (8,13) z 4).
+                        // The room drops a move that keeps tile, rotation and height, so the restack names its new height.
                         affected |= move(item, assigned.GetX, assigned.GetY, item.Rotation, RestackHeight(item));
                     }
                 }
@@ -215,13 +210,11 @@ public sealed class WiredMovementActions(Random? random = null)
                     return false;
                 }
 
-                // Observed on AIR WIN63-202610201032-107964540: the furni are dealt out so each selected user gets the same number, give
-                // or take one (two furni to two users 30 of 30, three furni 90 of 90), in a new random order each firing.
+                // Furni are dealt out so each selected user gets the same number, give or take one, in a new random order each firing.
                 var dealtUsers = Dealt(users, movers.Count);
 
-                // Observed on AIR WIN63-202610201032-107964540: a walking user's furni goes to the step target, the mv tile of that tick.
-                // The moves run in a random order, and a furni dealt the user it already stands under is restacked like Furni To Furni:
-                // all 100 observed firings with z changes fit this, while no fixed order fits them.
+                // A walking user's furni goes to the step target, the mv tile of that tick.
+                // The moves run in a random order, and a furni dealt the user it already stands under is restacked like Furni To Furni.
                 foreach (var index in Shuffled(Enumerable.Range(0, movers.Count).ToArray())) {
                     var item = movers[index];
                     var user = dealtUsers[index];
@@ -239,21 +232,16 @@ public sealed class WiredMovementActions(Random? random = null)
             case "wf_act_match_to_sshot":
                 // A furni outside a one-furni snapshot takes that furni's state; nothing else of it was recorded.
                 var only = configuration.Snapshots.Length == 1 && configuration.Snapshots[0].Wall == null ? configuration.Snapshots[0] : null;
-                // Observed (AIR WIN63-202610131318-860371703): with the picked furni (source 100) each item returns to its own entry
-                // (r92l r92l-sshot-perm, 6/6 from aligned and shifted layouts). With a selector pool (source 200) the saved floor spots
-                // are dealt out in a random order, also to a selected furni without an entry, and reused when there are more furni
-                // than spots (r92l r92l-sshot-unequal four-w1..w3: a, b, c took a permutation of A, B, C and d shared one; one-w1/w2:
-                // the single furni went to A, then C).
+                // With the picked furni (source 100) each item returns to its own entry. With a selector pool (source 200) the saved floor spots
+                // are dealt out in a random order, also to a selected furni without an entry, and reused when there are more furni than spots.
                 var dealt = configuration.Origin?.Native == null || configuration.FurniSources.GetValueOrDefault("movers") != WiredSources.Selector ? null
                     : Shuffled(configuration.Snapshots.Where(entry => entry.Wall == null).ToArray());
-                // Which furni shares a reused spot is random as well: r92m r92m-sshot-extra put the furni without an entry on A, C,
-                // B, B, C, C, B, B, A over three spots and B, A, A, A over two, and every spot was used each time.
+                // Which furni shares a reused spot is random as well, and every spot is used each time.
                 var ranks = Shuffled(Enumerable.Range(0, movers.Count).ToArray());
                 var dealIndex = 0;
 
-                // Observed on AIR WIN63-202610201032-107964540: five furni put back on one tile by position only stacked in a new order in
-                // nearly every firing (17 orders in 18); with the altitude too the saved stack came back in all 18. Other restores were not
-                // probed and keep the pick order.
+                // Furni put back on one tile by position only stack in a new order; with the altitude too the saved stack comes back.
+                // Other restores keep the pick order.
                 foreach (var item in Param(2) == 1 && Param(3) != 1 ? Shuffled(movers) : movers) {
                     var snapshot = dealt is { Length: > 0 } && item.IsFloorItem
                         ? dealt[ranks[dealIndex++] % dealt.Length]
@@ -353,8 +341,7 @@ public sealed class WiredMovementActions(Random? random = null)
                     return false;
                 }
 
-                // Observed on AIR WIN63-202610201032-107964540: two selected users always went to two different furni (30 of 30 with two
-                // furni, 30 of 30 with three), in a new random order each firing.
+                // Two selected users always go to two different furni, in a new random order each firing.
                 var teleportTargets = Dealt(targets, users.Count);
 
                 for (var index = 0; index < users.Count; index++) {

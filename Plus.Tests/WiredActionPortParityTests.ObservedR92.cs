@@ -5,13 +5,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>
-/// Official hhus movement probes r92d/r92e/r92f (AIR WIN63-202610131318-860371703, room 77757296); the facts and their receipts
-/// are in reviews/r92-movement-facts.md of the wired runtime workspace.
-/// </summary>
 public sealed partial class WiredActionPortParityTests
 {
-    // r92f r92-flee far-w1..w3: from (11,1) with the owner on (4,4) (Manhattan 10) the marker moved +x on all three fires.
+    // From (11,1) with the owner on (4,4) (Manhattan 10) the marker still moves +x.
     [Fact]
     public void FleeHasNoRangeAndStepsEastFromAFarOwner()
     {
@@ -26,7 +22,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((5, 1), (mover.GetX, mover.GetY));
     }
 
-    // r92f r92-flee away-w1: (4,2) -> (4,1); wall-w1/w2: (4,1) against the north wall with the owner straight south -> (5,1).
+    // Flee moves from (4,2) to (4,1). Against the north wall at (4,1) with the owner straight south, the marker goes to (5,1).
     [Theory]
     [InlineData(2, 1, 2, 0)]
     [InlineData(2, 0, 3, 0)]
@@ -43,8 +39,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((expectedX, expectedY), (mover.GetX, mover.GetY));
     }
 
-    // r92f r92-chase far-w1..w3: Manhattan 10 still takes one random cardinal step. Observed on AIR WIN63-202610151745-318700621: an
-    // owner two tiles along the row is followed every time.
+    // Manhattan 10 still takes one random cardinal step. An owner two tiles along the row is followed every time.
     [Fact]
     public void ChaseStepsTowardsANearOwnerAndWandersOneTileWhenNoneIsInRange()
     {
@@ -64,8 +59,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal(1, Math.Abs(far.GetX - 2) + Math.Abs(far.GetY - 2));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: with nobody to follow, the chase's random step never goes straight back (no reversal
-    // in 54 steps).
+    // With nobody to follow, the chase's random step never goes straight back.
     [Fact]
     public void ChaseRandomStepNeverReversesTheLastStep()
     {
@@ -92,8 +86,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.NotNull(last);
     }
 
-    // r92f r92-move-addons nophys-w1 and phys-w1: rel_mov +1x onto an own stackable marker lands on top of it (z 2.0 on a marker
-    // at 1.0 with height 1.0), with or without a physics add-on.
+    // rel_mov +1x onto an own stackable marker lands on top of it (z 2.0 on a marker at 1.0 with height 1.0), with or without a physics add-on.
     [Fact]
     public void RelativeMoveStacksOntoStackableFurnitureInTheWay()
     {
@@ -111,7 +104,7 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((2, 1, 1.0), (mover.GetX, mover.GetY, mover.GetZ));
     }
 
-    // r92f r92-u2f-targets u2fBlock-w1: user_to_furni onto a solid (non-walkable) marker puts the owner on top of it (z 1.0).
+    // user_to_furni onto a solid (non-walkable) marker puts the owner on top of it (z 1.0).
     [Fact]
     public void UserToFurniStandsTheUserOnTopOfASolidTarget()
     {
@@ -130,7 +123,6 @@ public sealed partial class WiredActionPortParityTests
         Assert.Equal((3, 3, 1.0), (owner.X, owner.Y, owner.Z));
     }
 
-    // Initial editor frames observed in r92d/r92e/r92f (the receipt packet index is in the facts file).
     [Theory]
     [InlineData("wf_act_chase", "0,100,200,201", "", "100", "", "")]
     [InlineData("wf_act_flee", "0,100,200,201", "", "100", "", "")]

@@ -5,8 +5,8 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// The Share and Import add-on editors. Observed on AIR WIN63-202610201032-107964540 (class_3963.as, VariableAddonShareAddon.as,
-/// VariableAddonImportAddon.as): both open on [text connectors, subvariable creators, variable FX] all on and save the same way.
+/// The Share and Import add-on editors: both open on [text connectors, subvariable creators, variable FX] all on and save the
+/// same way.
 /// </summary>
 public sealed class WiredShareImportEditorTests
 {

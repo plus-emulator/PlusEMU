@@ -3,8 +3,8 @@ using static Plus.Tests.WiredR102EditorSave;
 
 namespace Plus.Tests;
 
-// Projectile user sources as Habbo stores them. Observed on AIR WIN63-202610201032-107964540: a save that names fewer user sources than
-// the three slots keeps the frame default for each one it leaves out.
+// Projectile user sources as Habbo stores them. A save that names fewer user sources than the three slots keeps the frame default
+// for each one it leaves out.
 public sealed class WiredR105ProjectileSourceTests
 {
     private static readonly int[] Frame = [0, 0, 0, 0, 500, -20, 1, 1, 0, 4, 0, 0, 1, 1, 0, 0, 1, -20, 50];

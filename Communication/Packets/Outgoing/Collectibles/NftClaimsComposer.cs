@@ -13,7 +13,7 @@ public sealed record NftRewardClaim(string ClaimId, string ProductCode, string S
 }
 
 /// <summary>
-/// AIR collectibles/class_3967.as:27-31, class_4380.as:33-47 and class_4407.as:13-17: per claim its id, status (0 = claimable), claimed
+/// Per claim its id, status (0 = claimable), claimed
 /// amount, limit, valid from, valid to, created and updated in ms, collection, product code, wallet, then the product with its set id and
 /// set name.
 /// </summary>

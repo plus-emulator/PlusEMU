@@ -6,7 +6,7 @@ using Xunit;
 namespace Plus.Tests;
 
 // Variable Value Match and Change Variable Value reopen in the hotel's stored form: seven ints and two variable slots, with an empty
-// slot as "0". Observed on AIR WIN63-202610201032-107964540.
+// slot as "0".
 public sealed class WiredVariableValueSaveShapeTests
 {
     private const string ValueMatch = "wf_cnd_var_val_match";

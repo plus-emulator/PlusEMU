@@ -4,7 +4,7 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 
 public sealed partial class WiredRoomVariables
 {
-    // The room adapter provides the room's Wired timezone; without one the hotel default (Europe/London, as hhus behaves) applies.
+    // The room adapter provides the room's Wired timezone; without one the hotel default (Europe/London) applies.
     public Func<TimeZoneInfo> TimeZone { get; set; } = () => WiredRoomSettings.DefaultTimeZone;
     private WiredVariableMetadataBox? DerivedMetadataOn(uint definitionId) => MetadataOn(definitionId, "wf_xtra_var_lvlup_system");
 
@@ -18,8 +18,7 @@ public sealed partial class WiredRoomVariables
     {
         var definition = source.Definition;
 
-        // Observed on AIR WIN63-202610151745-318700621: a context variable gets Time Utilities parts too (cxv.value.year read 1970 for
-        // 1700000000 in the same run); its other derivations are not offered.
+        // A context variable gets Time Utilities parts too; its other derivations are not offered.
         var context = definition.Target == WiredVariableTarget.Context;
 
         if (!context && source.HasValue && LevelOf(definition.ItemId) is { } level) {
@@ -40,8 +39,7 @@ public sealed partial class WiredRoomVariables
             }
         }
 
-        // Time Utilities parts, named "<parent>.<mode>.<part>" as observed on hhus (AIR WIN63-202610131318-860371703); the creation-time
-        // and last-update modes also list the base row "<parent>.<mode>".
+        // Time Utilities parts, named "<parent>.<mode>.<part>"; the creation-time and last-update modes also list the base row "<parent>.<mode>".
         if (MetadataOn(definition.ItemId, "wf_xtra_var_time_util")?.TimeUtilities is { } time && TimeVisible(time, source)) {
             foreach (var sub in time.Parts) {
                 if (SyntheticId(definition.Target, definition.ItemId, sub, true) is { } id && _room.GetRoomItemHandler().GetItem(id) is null) {
@@ -56,7 +54,7 @@ public sealed partial class WiredRoomVariables
     }
 
     /// <summary>
-    /// hhus gates each mode on the parent's own capability: Value needs a value, creation time needs canReadCreationTime (a global
+    /// Each mode is gated on the parent's own capability: Value needs a value, creation time needs canReadCreationTime (a global
     /// has none) and last update needs canReadLastUpdateTime.
     /// </summary>
     private static bool TimeVisible(WiredVariableTimeUtilities time, WiredVariableDescription source) => time.Mode switch
@@ -146,8 +144,7 @@ public sealed partial class WiredRoomVariables
             return;
         }
 
-        // A write through an echo shows on its source's definition; the echo box only flashes. Observed on AIR WIN63-202610151745-318700621
-        // (wf_var_echo.runtime): assigning through the echo put the global's box in state 2 and flipped the echo box 0/1.
+        // A write through an echo shows on its source's definition; the echo box only flashes. Assigning through the echo puts the global's box in state 2 and flips the echo box 0/1.
         if (Module.DescribeDefinitions([id]).FirstOrDefault()?.Definition.Link is { } link && link.SourceRoomId == _room.Id
             && WiredVariableModule.TryDefinitionId(link.Source.Token, out var source) && source != id) {
             wired.OnEvent(definition);

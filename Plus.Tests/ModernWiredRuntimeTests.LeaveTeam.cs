@@ -7,8 +7,7 @@ namespace Plus.Tests;
 
 public partial class ModernWiredRuntimeTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: Leave Team tells the user it is not playing every time, also outside a team; Join
-    // Team into the team the user is already in sends nothing.
+    // Leave Team tells the user it is not playing every time, also outside a team. Join Team into the team the user is already in sends nothing.
     [Fact]
     public void LeaveTeamTellsTheUserItIsNotPlayingEvenOutsideATeam()
     {

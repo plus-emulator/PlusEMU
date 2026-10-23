@@ -17,8 +17,7 @@ public class WiredDateMaskTests
         return WiredTimeConditions.MatchesDate(config, Friday);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a weekday mask with no day set fails the condition, and so does a month mask
-    // with no month set.
+    // A weekday mask with no day set fails the condition, and so does a month mask with no month set.
     [Fact]
     public void AnEmptyWeekdayMaskFails() => Assert.False(Matches(0, 4095));
 

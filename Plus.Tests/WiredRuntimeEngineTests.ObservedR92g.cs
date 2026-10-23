@@ -3,11 +3,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Official hhus r92g probes (AIR WIN63-202610131318-860371703); facts and receipts in reviews/r92-movement-facts.md.</summary>
 public sealed partial class WiredRuntimeEngineTests
 {
-    // r92g r92-signals call-w1/w2: the called stack's message comes in the caller's tick, and its action flashes while its own
-    // trigger does not.
+    // The called stack's message comes in the caller's tick, and its action flashes while its own trigger does not.
     [Fact]
     public void CalledStackFlashesItsActionsButNotItsTrigger()
     {
@@ -26,7 +24,7 @@ public sealed partial class WiredRuntimeEngineTests
         Assert.DoesNotContain(calledTrigger.Item, f.Flashed);
     }
 
-    // r92g r92-signals two-w1..w3: two stacks on one say ran two/one, one/two, one/two, so their order is not fixed by id.
+    // The order of two stacks on one say is not fixed by id.
     [Fact]
     public void StacksOfOneEventRunInAVaryingOrder()
     {
@@ -48,7 +46,7 @@ public sealed partial class WiredRuntimeEngineTests
         Assert.Equal([0, 1], firsts.Order());
     }
 
-    // r92g r92-exec-order delay-w1/w2: delay 0 at the firing, precise -50 about 50 ms later, one pulse 500 ms after the firing.
+    // Delay 0 at the firing, precise -50 about 50 ms later, one pulse 500 ms after the firing.
     [Theory]
     [InlineData(0, 0)]
     [InlineData(-50, 50)]

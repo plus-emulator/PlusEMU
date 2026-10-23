@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>The editor frames of the 13 reference cards: observed on hhus (r62 batches 01 and 02) or read from the October AIR client.</summary>
+/// <summary>The editor frames of the 13 reference cards.</summary>
 public sealed class WiredReference13EditorTests
 {
     public static TheoryData<string, int[], int[], int[], int[][], int[][]> ObservedFrames => new()
@@ -60,7 +60,8 @@ public sealed class WiredReference13EditorTests
     [Fact]
     public void TheTwoAirReadEditorsOpenWithTheirAs3Defaults()
     {
-        // TriggerOnce (code 3, shared by at given time and at time long): one slider, 1..1200 half seconds. class_4162: direction 0, spacing 1.
+        // TriggerOnce (code 3, shared by at given time and at time long): one slider, 1..1200 half seconds.
+        // Move Furni To opens with direction 0 and spacing 1.
         Assert.True(WiredBoxRegistry.TryGet("wf_trg_at_time_long", out var timer));
         Assert.Equal([1], WiredNativeEditorProjection.DefaultNative(timer).OwnedIntParams.ToArray());
         Assert.True(WiredBoxRegistry.TryGet("wf_act_move_furni_to", out var move));
@@ -93,7 +94,7 @@ public sealed class WiredReference13EditorTests
         Assert.False(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { Text = new string('b', 33) }, out _));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Bot Reaches Avatar and Bot Reaches Furni keep a bot name of any length.
+    // Bot Reaches Avatar and Bot Reaches Furni keep a bot name of any length.
     [Theory]
     [InlineData("wf_trg_bot_reached_avtr")]
     [InlineData("wf_trg_bot_reached_stf")]
@@ -107,7 +108,7 @@ public sealed class WiredReference13EditorTests
     [Fact]
     public void ThePositionOfTheBotsAndUsersSlotsFollowsTheEditor()
     {
-        // Bots slot first (100 selected), users slot second (0 selected), as in the observed frames.
+        // Bots slot first (100 selected), users slot second (0 selected).
         Assert.True(WiredBoxRegistry.TryGet("wf_act_bot_follow_avatar", out var descriptor));
         var native = WiredNativeEditorProjection.DefaultNative(descriptor) with { UserSourceTypes = [200, 201] };
         Assert.True(WiredNativeEditorProjection.TryCompile(10, descriptor, native with { Text = "Bobby" }, out var runtime));

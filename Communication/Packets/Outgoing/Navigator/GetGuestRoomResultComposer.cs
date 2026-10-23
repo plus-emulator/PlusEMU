@@ -28,8 +28,7 @@ public sealed class GetGuestRoomResultComposer(GuestRoomInfoSnapshot snapshot) :
             packet.WriteString(tag);
         }
 
-        // AIR WIN63-202610151745-318700621 package_52/class_2175.as:103: bit 2 adds the group, bit 4 the promotion;
-        // 8 | 16 | 32 are the show-owner, allow-pets and entry-ad flags.
+        // Bit 2 adds the group, bit 4 the promotion; 8 | 16 | 32 are the show-owner, allow-pets and entry-ad flags.
         var flags = 56 | (snapshot.Group != null ? 2 : 0) | (snapshot.Promotion != null ? 4 : 0);
         packet.WriteInteger(flags);
 
@@ -53,8 +52,7 @@ public sealed class GetGuestRoomResultComposer(GuestRoomInfoSnapshot snapshot) :
         packet.WriteInteger(snapshot.WhoCanKick);
         packet.WriteInteger(snapshot.WhoCanBan);
         packet.WriteBoolean(snapshot.CanModify);
-        // AIR WIN63-202610151745-318700621 package_60/class_2076.as:40 reads only the flood sensitivity as chat
-        // settings, then one more boolean that has no counterpart here.
+        // The client reads only the flood sensitivity as chat settings, then one more boolean that has no counterpart here.
         packet.WriteInteger(snapshot.ExtraFlood);
         packet.WriteBoolean(false);
     }

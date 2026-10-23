@@ -9,9 +9,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a stack with Move and Rotate User and Show Message sends the data update, then the
-    // WiredMovements, then the chat, whichever box comes first and with or without Execute in Order (75 of 96 firings; the other 21 had the
-    // chat in the same millisecond, before the movement).
+    // A stack with Move and Rotate User and Show Message sends the data update, then the WiredMovements, then the chat,
+    // whichever box comes first and with or without Execute in Order.
     [Theory]
     [InlineData(2, -1, true, false)]
     [InlineData(2, -1, false, false)]

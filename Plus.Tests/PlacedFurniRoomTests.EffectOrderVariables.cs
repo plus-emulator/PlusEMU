@@ -9,8 +9,7 @@ namespace Plus.Tests;
 
 /// <summary>
 /// Two effects of one stack without Execute in Order, each box saved from its raw packet and fired by a real speech trigger on the
-/// room cycle. Observed on AIR WIN63-202610201032-107964540: the order of the boxes does not matter for the pairs below, in 12 of 12
-/// firings for each box order, and Execute in Order still follows the box order.
+/// room cycle. The order of the boxes does not matter for the pairs below, and Execute in Order still follows the box order.
 /// </summary>
 public partial class PlacedFurniRoomTests
 {

@@ -4,8 +4,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// A Has Variable box saved with a variable of another domain than its target reads as having no variable. Observed on AIR
-// WIN63-202610201032-107964540: the condition fails and the negated one passes, like a box with no variable.
+// A Has Variable box saved with a variable of another domain than its target reads as having no variable: the condition fails and the
+// negated one passes.
 public partial class PlacedFurniRoomTests
 {
     [Theory]

@@ -6,7 +6,7 @@ namespace Plus.Tests;
 
 public sealed class WiredSelectorParityTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: every member is selected, whether or not the group is their favourite.
+    // Every member is selected, whether or not the group is their favourite.
     [Fact]
     public void GroupSelectorMatchesEveryMemberWhateverTheirFavouriteGroup()
     {
@@ -76,7 +76,7 @@ public sealed class WiredSelectorParityTests
         };
         var selected = WiredSelectorModule.SelectRaw("wf_slc_remote",
             new() { IntParams = [0, 0, 0, 0], SelectedItems = [10] }, world, new(new(), new(), new()));
-        // The nested Invert picks every other floor furni, Wired boxes included (observed on hhus).
+        // The nested Invert picks every other floor furni, Wired boxes included.
         Assert.Equal(new uint[] { 1, 2, 3, 10, 11, 20 }, selected.Selection.FurniIds.Order());
     }
 

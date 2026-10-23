@@ -10,19 +10,19 @@ namespace Plus.Tests;
 public sealed class WiredVariableDefinitionBoxTests
 {
     [Theory]
-    // Give, Change, Value and Age drafts follow the October editors' fresh-box payloads, so they carry the reference fields.
-    // Observed on hhus (AIR WIN63-202610131318-860371703): Give and Change save with no variable picked; they still change nothing.
+    // Give, Change, Value and Age drafts follow the October editors' fresh-box payloads, so they carry the reference fields. Give
+    // and Change save with no variable picked; they still change nothing.
     [InlineData("wf_act_give_var", 8, true)]
-    // Observed on AIR WIN63-202610201032-107964540: Remove Variable saves with no variable picked ("0" or "n"), like Give and Change.
+    // Remove Variable saves with no variable picked ("0" or "n"), like Give and Change.
     [InlineData("wf_act_remove_var", 3, true)]
     [InlineData("wf_act_change_var_val", 10, true)]
-    // A fresh Has Variable opens on the hotel's literal "0" slot, the measured shape that saves but never resolves (IsUnresolvedLiteralZero).
+    // A fresh Has Variable opens on the hotel's literal "0" slot, the shape that saves but never resolves
+    // (IsUnresolvedLiteralZero).
     [InlineData("wf_cnd_has_var", 4, true)]
     [InlineData("wf_cnd_neg_has_var", 4, true)]
-    // Observed on AIR WIN63-202610201032-107964540: Variable Value Match saves with no variable and never passes. This fresh shape itself
-    // was not saved there; the observed empty-slot saves imply it.
+    // Variable Value Match saves with no variable and never passes.
     [InlineData("wf_cnd_var_val_match", 11, true)]
-    // Observed on AIR WIN63-202610201032-107964540: a fresh Variable Age saves with no variable and never passes.
+    // A fresh Variable Age saves with no variable and never passes.
     [InlineData("wf_cnd_var_age_match", 10, true)]
     public void ScalarDraftOpensWithClientShapeButCannotExecuteWithoutSelection(string name, int count, bool saves)
     {

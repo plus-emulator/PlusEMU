@@ -1,7 +1,7 @@
 namespace Plus.HabboHotel.Games.SnowStorm.Simulation;
 
 /// <summary>
-/// The deterministic AIR SnowStorm simulation (<c>SynchronizedGameArena</c> + <c>class_2526</c>/<c>class_2527</c> stage):
+/// The deterministic AIR SnowStorm simulation:
 /// tiles from <see cref="SnowStormLevelData"/>, game objects in insertion order, input events queued per
 /// (turn, subturn) and a checksum per turn. Not thread-safe; drive it from one tick.
 /// <para>
@@ -283,7 +283,7 @@ public sealed class SnowStormArena
         gameObject.IsActive = false;
     }
 
-    // AIR class_2527.testCollisionWithGround: below 1, or below the summed fuse height of the ball's tile.
+    // Below 1, or below the summed fuse height of the ball's tile.
     internal bool TestCollisionWithGround(int x, int y, int z)
     {
         if (z < 1) {
@@ -437,7 +437,7 @@ public sealed class SnowStormArena
         gameObject.OnRemove();
     }
 
-    // AIR class_2527.linkTiles: every char except lowercase 'x' (including a missing one) is a tile.
+    // Every char except lowercase 'x' (including a missing one) is a tile.
     private void LinkTiles(SnowStormLevelData level)
     {
         string[] rows = level.HeightMap.Split('\r');
@@ -469,7 +469,7 @@ public sealed class SnowStormArena
         }
     }
 
-    // AIR class_2527.checkAndAdjustNeighbouringTiles: only the first row and first column of the footprint.
+    // Only the first row and first column of the footprint.
     private void AdjustNeighbouringTiles(SnowStormFuseObject fuseObject)
     {
         int xDimension = fuseObject.XDimension;

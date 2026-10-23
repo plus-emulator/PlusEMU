@@ -5,7 +5,7 @@ namespace Plus.Tests;
 
 public class WiredTextConnectorParseTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: the save always succeeds and the stored connector keeps only "number=text" lines.
+    // The save always succeeds and the stored connector keeps only "number=text" lines.
     [Theory]
     [InlineData("7=Seven\n8=seven", "7:Seven|8:seven")]
     [InlineData("7=a\n7=b", "7:b")]
@@ -21,7 +21,7 @@ public class WiredTextConnectorParseTests
         Assert.Equal(expected, string.Join("|", parsed.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}:{pair.Value}")));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_tc_store): the stored text is the valid lines, one per number, in number order.
+    // The stored text is the valid lines, one per number, in number order.
     [Theory]
     [InlineData("9=a\n3=b\n-2=neg\n20=c", "-2=neg\n3=b\n9=a\n20=c")]
     [InlineData("Seven=7\nseven=8\n7=seven\n 8=x\n9=\n10=a=b\n7=again", "7=again\n9=\n10=a=b")]
@@ -37,8 +37,8 @@ public class WiredTextConnectorParseTests
         Assert.Equal("3=b\n9=a", runtime.Origin!.Native.Text);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a line "_=text" is the fallback text. The last one wins, the text may be
-    // empty and may hold "=", and a line with spaces around the "_" is dropped like any other bad line.
+    // A line "_=text" is the fallback text. The last one wins, the text may be empty and may hold "=", and a line with spaces
+    // around the "_" is dropped like any other bad line.
     [Theory]
     [InlineData("7=seven\n_=other", "other")]
     [InlineData("_=other", "other")]
@@ -55,7 +55,7 @@ public class WiredTextConnectorParseTests
     public void ReadsTheFallbackLine(string text, string? fallback) =>
         Assert.Equal(fallback, WiredVariableMetadataBox.ParseConnector(text).Fallback);
 
-    // Observed on AIR WIN63-202610201032-107964540: entries are stored in number order and the fallback is written last.
+    // Entries are stored in number order and the fallback is written last.
     [Theory]
     [InlineData("_=other\n7=seven", "7=seven\n_=other")]
     [InlineData("7=seven\n_=other\n9=nine", "7=seven\n9=nine\n_=other")]

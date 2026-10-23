@@ -63,8 +63,7 @@ public class GameManager
     }
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: a Banzai or Freeze game start sets every team score and every Banzai and
-    /// Freeze score counter to 0 in one update. The scores stay after the game ends.
+    /// A Banzai or Freeze game start sets every team score and every Banzai and Freeze score counter to 0 in one update. The scores stay after the game ends.
     /// </summary>
     internal void ZeroScores()
     {
@@ -78,8 +77,7 @@ public class GameManager
         PublishScores(counters);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the Banzai and Freeze score counters of one colour show the same number, and
-    // football goals and counters never change in a Banzai or Freeze game.
+    // The Banzai and Freeze score counters of one colour show the same number, and football goals and counters never change in a Banzai or Freeze game.
     private List<Item> ScoreCounters(Team team) =>
         [.. GetFurniItems(team).Values.Where(item => IsScoreCounter(item.Definition.InteractionType))];
 

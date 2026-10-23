@@ -4,8 +4,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610131318-860371703 (r95 R95-EO): a say trigger with a relative move (+1x) and a match back to the saved
-// tile, both in one firing. Without Execute in Order the furni ends where it started and gets no movement entry; with it, one entry.
+// A say trigger with a relative move (+1x) and a match back to the saved tile, both in one firing. Without Execute in Order the
+// furni ends where it started and gets no movement entry; with it, one entry.
 public sealed partial class WiredGlideConveyorTests
 {
     [Theory]

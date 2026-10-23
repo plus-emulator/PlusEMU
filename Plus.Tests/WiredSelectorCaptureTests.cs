@@ -207,7 +207,7 @@ public sealed class WiredSelectorCaptureTests(ITestOutputHelper output)
     [InlineData("wf_slc_furni_bytype")]
     public void SelectorsDeliverTemporaryFurni(string name)
     {
-        // Observed on hhus: area and by-type selectors deliver copies (Remove Temporary Furni removed them); only a manual pick is refused.
+        // Area and by-type selectors deliver copies (Remove Temporary Furni removed them); only a manual pick is refused.
         var f = new Fixture();
         var user = f.User(1);
         f.Trigger();

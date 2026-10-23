@@ -6,13 +6,13 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.Communication.Packets.Outgoing.Rooms.Engine;
 
 /// <summary>
-/// class_2126 -> class_2291 (WIN63-202610131318-860371703, parse L72-186). Habbo (1): sex, group id, group status, group name,
+/// Habbo (1): sex, group id, group status, group name,
 /// swim figure, achievement score, moderator, badges rank. Pet (2): type, owner id, owner name, rarity, saddle, riding, can breed,
 /// can harvest, can revive, breeding permission, level, posture. Rentable bot (4): sex, owner id, owner name, skills. Nothing follows.
 /// </summary>
 public sealed class UsersComposer : IServerPacket
 {
-    /// <summary>No rank; class_2587.flush L63 defaults to it and a negative rank is hidden.</summary>
+    /// <summary>No rank. The client defaults to it and hides a negative rank.</summary>
     private const int BadgesRankUnknown = -1;
     /// <summary>The skills of a bot type without a list of its own.</summary>
     private static readonly short[] DefaultBotSkills = [1, 2, 3, 4, 5];

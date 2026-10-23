@@ -11,8 +11,7 @@ public partial class PlacedFurniRoomTests
 {
     private const uint SameTickVariableId = 993;
 
-    // Observed on AIR WIN63-202610151745-318700621: a say whose stack gives a user variable fires the Variable Changed stack in the same
-    // tick, and its message comes after the echo of the say.
+    // A say whose stack gives a user variable fires the Variable Changed stack in the same tick, and its message comes after the echo of the say.
     [Fact]
     public void VariableChangedStackRunsInTheTickOfTheSayAfterItsEcho()
     {

@@ -7,9 +7,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// A pointer variable read and written by boxes saved from their native editor rows and fired through the room's engine. Observed on AIR
-/// WIN63-202610201032-107964540: the context accessor holds the box id of a variable of the pointer's own kind, and the pointer reads that
-/// variable for the holder the reading box selects.
+/// A pointer variable read and written by boxes saved from their native editor rows and fired through the room's engine. The context accessor holds the box id of a variable of the pointer's own kind, and the pointer reads that variable for the holder the reading box selects.
 /// </summary>
 public partial class ModernWiredRuntimeTests
 {
@@ -17,7 +15,7 @@ public partial class ModernWiredRuntimeTests
     private const uint UserA = 610, UserB = 611, UserFlag = 612, UserC = 613, FurniA = 620, GlobalA = 630, GlobalB = 631, ContextT = 640, Accessor = 641;
     private const uint UserPointer = 650, FurniPointer = 651, GlobalPointer = 652, ContextPointer = 653;
 
-    // AIR variable targets: 0 furni, 1 user, -10 global, -20 context.
+    // Variable targets: 0 furni, 1 user, -10 global, -20 context.
     private const int AirFurni = 0, AirUser = 1, AirGlobal = -10, AirContext = -20;
 
     private sealed class PointerCatalog : IWiredVariableDirectory
@@ -147,7 +145,7 @@ public partial class ModernWiredRuntimeTests
         public void Dispose() => S.Dispose();
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r111 targets c0-c4): every target reads the variable whose box id the accessor holds.
+    // Every target reads the variable whose box id the accessor holds.
     [Theory]
     [InlineData(AirUser, "user:650", UserA, "p=7")]
     [InlineData(AirFurni, "furni:651", FurniA, "p=21")]
@@ -167,8 +165,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(expected, p.Shown("p=$(p)"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r111 targets c5-c7, c15): a holder without the variable prints null, a global never
-    // set prints 0.
+    // A holder without the variable prints null. A global never set prints 0.
     [Theory]
     [InlineData(AirFurni, "furni:651", FurniA, "p=null")]
     [InlineData(AirGlobal, "room:652", GlobalB, "p=0")]
@@ -183,7 +180,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(expected, p.Shown("p=$(p)"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r111 targets c8-c14): a box of another kind, or a pointer box, leaves the placeholder.
+    // A box of another kind, or a pointer box, leaves the placeholder.
     [Theory]
     [InlineData(AirFurni, "furni:651", UserA)]
     [InlineData(AirGlobal, "room:652", FurniA)]
@@ -206,8 +203,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("p=$(p)", p.Shown("p=$(p)"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r111 writes c5-c9): Give and Change through a furni, global or context pointer change
-    // nothing, create nothing and raise no Variable Changed.
+    // Give and Change through a furni, global or context pointer change nothing, create nothing and raise no Variable Changed.
     [Fact]
     public void WritesThroughFurniGlobalAndContextPointersChangeNothing()
     {
@@ -257,7 +253,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("c=null p=null", p.Shown("c=$(c) p=$(p)"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r111 varchanged L71): a variable without a value read through a pointer prints null.
+    // A variable without a value read through a pointer prints null.
     [Fact]
     public void AVariableWithoutAValueReadThroughAPointerPrintsNull()
     {
@@ -269,8 +265,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("p=null", p.Shown("p=$(p)"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r111 p13): in text mode a pointer shows the label of the pointed variable's Text
-    // Connector; a value without a label shows the number.
+    // In text mode a pointer shows the label of the pointed variable's Text Connector. A value without a label shows the number.
     [Theory]
     [InlineData(7, "t=seven")]
     [InlineData(9, "t=9")]
@@ -285,7 +280,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(expected, p.Shown("t=$(t)"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r111 p11): the holder comes from the reading box's user source, not the triggering user.
+    // The holder comes from the reading box's user source, not the triggering user.
     [Fact]
     public void APointerReadsTheUserTheReadingBoxSelects()
     {
@@ -300,8 +295,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("pt=7 po=42", p.Shown("pt=$(pt) po=$(po)"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r111 readers c1-c3, reader_controls c5-c7, p02 a and c): Give Variable and Change
-    // Variable never read a pointer as their value source, while the same message still reads the pointer.
+    // Give Variable and Change Variable never read a pointer as their value source, while the same message still reads the pointer.
     [Fact]
     public void GiveVariableIgnoresAPointerAsTheValueSource()
     {
@@ -333,8 +327,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("b=2", p.Shown("b=$(b)"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r124 delay 1 and 2 operands): a Change Variable or Give Variable that runs after a delay
-    // reads a pointer as its value source, like the variable it points at.
+    // A Change Variable or Give Variable that runs after a delay reads a pointer as its value source, like the variable it points at.
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
@@ -367,8 +360,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(7, p.Read(AirUser, $"custom:{UserB}"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r124 readtime e1 and e3): the delayed box reads the pointer when it runs, with the
-    // accessor the stack holds then, not the one it held when the box was reached.
+    // The delayed box reads the pointer when it runs, with the accessor the stack holds then, not the one it held when the box was reached.
     [Fact]
     public void ADelayedReadFollowsTheAccessorAsItIsWhenTheBoxRuns()
     {
@@ -385,8 +377,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(102, p.Read(AirUser, $"custom:{UserC}"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r124 delay 1 destinations, delay targets d1-d5): Give, Change and Remove that run after a
-    // delay write through a pointer of any target to the variable it points at.
+    // Give, Change and Remove that run after a delay write through a pointer of any target to the variable it points at.
     [Fact]
     public void ADelayedWriteThroughAUserPointerChangesThePointedVariable()
     {
@@ -466,7 +457,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(45, context.VariableFrame!.Context.Read(new(ContextT, WiredVariableTarget.Context, 0))?.Value);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540 (r124 delay targets): a delayed box reads a global or context pointer as its value source.
+    // A delayed box reads a global or context pointer as its value source.
     [Theory]
     [InlineData(AirGlobal, "room:652", GlobalA, 133)]
     [InlineData(AirContext, "ctx:653", ContextT, 144)]

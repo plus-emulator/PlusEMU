@@ -18,9 +18,8 @@ public partial class PlacedFurniRoomTests
 {
     private const uint MrTarget = 431;
 
-    // Observed on AIR WIN63-202610201032-107964540: a Give or Change Variable that reads the x of the user (User To Furni) or of the furni
-    // (Furni To User) reads the new x, whatever the box order (12 of 12 firings for each case). A Show Message shows the new x as well.
-    // With Teleport To a Give or Change reads the x the user had (12 of 12): the teleport lands later.
+    // A Give or Change Variable that reads the x of the user (User To Furni) or of the furni (Furni To User) reads the new x, whatever
+    // the box order. A Show Message shows the new x as well. With Teleport To it reads the x the user had: the teleport lands later.
     [Theory]
     [InlineData("GUa", "move,give", "wf_act_user_to_furni", "-230", true)]
     [InlineData("GUb", "give,move", "wf_act_user_to_furni", "-230", true)]

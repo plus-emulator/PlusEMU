@@ -7,7 +7,6 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: with the hand item blocker off, DropCarryItem drops the hand item.
     [Fact]
     public async Task DropCarryItemDropsTheHandItemWhileTheBlockerIsOff()
     {
@@ -20,7 +19,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0, avatar.CarryItemId);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: with the blocker on, DropCarryItem is ignored with no reply and the hand item stays.
+    // With the blocker on, DropCarryItem is ignored with no reply and the hand item stays.
     [Fact]
     public async Task DropCarryItemIsIgnoredWithoutAReplyWhileTheBlockerIsOn()
     {
@@ -35,7 +34,7 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(_client.Packets);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a vending machine still gives a hand item while the blocker is on.
+    // A vending machine still gives a hand item while the blocker is on.
     [Fact]
     public void AnAvatarStillGetsANewHandItemWhileTheBlockerIsOn()
     {

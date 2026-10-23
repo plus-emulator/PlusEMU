@@ -5,7 +5,7 @@ namespace Plus.HabboHotel.Rooms.Instance;
 
 /// <summary>
 /// Transparency and highlight that Set Furni Visibility / Set Furni Highlight showed the whole room on furni. A user entering the room
-/// is sent the current state (class_3560) so late joiners see what everyone else sees. Effects shown to an audience of chosen users and
+/// is sent the current state so late joiners see what everyone else sees. Effects shown to an audience of chosen users and
 /// effects on users are not replayed.
 /// </summary>
 public partial class WiredComponent
@@ -14,8 +14,7 @@ public partial class WiredComponent
     private readonly Dictionary<int, WiredTransparencyState> _furniTransparency = [];
     private readonly Dictionary<int, WiredHighlightState> _furniHighlight = [];
 
-    // Observed on AIR WIN63-202610201032-107964540: a furni made visible again and a highlight at strength 0 stay as entries; only
-    // picking the furni up removes them.
+    // A furni made visible again and a highlight at strength 0 stay as entries; only picking the furni up removes them.
     internal void RememberTransparency(IEnumerable<int> ids, int transparency, bool clickThrough, int easing)
     {
         lock (_visualizationGate) {

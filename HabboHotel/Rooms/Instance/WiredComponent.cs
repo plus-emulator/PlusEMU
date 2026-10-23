@@ -111,8 +111,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         _engine.PublicationPollIsSilent = () => _counterItems.Count == 0 && _chests?.HasPending != true
             && !WiredBotTargets.For(_room).HasTargets;
         _engine.LimitReached = NoteLimit;
-        // The hidden message is echoed to its speaker as a whisper, after the stack's flash and its messages (AIR
-        // WIN63-202610151745-318700621).
+        // The hidden message is echoed to its speaker as a whisper, after the stack's flash and its messages.
         _engine.SpeechHidden = evt =>
         {
             if (evt.Actor?.GetClient() is not { } client) {
@@ -144,8 +143,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         _highscores?.Observe(transition);
 
-        // A reset of a paused game timer sends no stop of its own, so the gates open here. Observed on AIR WIN63-202610201032-107964540:
-        // the gates stay locked while another Banzai or Freeze timer is started, and a reset of a timer that was never started does nothing.
+        // A reset of a paused game timer sends no stop of its own, so the gates open here. The gates stay locked while another Banzai or Freeze timer is started, and a reset of a timer that was never started does nothing.
         if (transition.Reason == WiredClockReason.Reset && transition.WasStarted && IsBanzaiOrFreezeTimer(transition.Item)
             && !OtherGameTimerActive(transition.Item)) {
             _room.GetGameManager().UnlockGates();
@@ -156,8 +154,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         && (item.Definition.InteractionType is InteractionType.Banzaicounter or InteractionType.Freezetimer
             || item.Definition.ItemName is "bb_counter" or "es_counter");
 
-    // Observed on AIR WIN63-202610201032-107964540: the Banzai and Freeze gates lock when the timer starts and stay locked while it is
-    // paused. They open when the countdown ends or the timer is reset.
+    // The Banzai and Freeze gates lock when the timer starts and stay locked while it is paused. They open when the countdown ends or the timer is reset.
     private bool KeepsGatesLocked(WiredClockTransition transition) =>
         transition.Reason is WiredClockReason.Stop or WiredClockReason.Pause || OtherGameTimerActive(transition.Item);
 
@@ -254,8 +251,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     private void ArmWake(long dueMs)
     {
-        // The room tick runs what falls due on it, after its UserUpdate. Observed on AIR WIN63-202610201032-107964540: a delay that ends on a
-        // room tick goes out in the ms of that tick's UserUpdate, after it. A wake-up pass could run first.
+        // The room tick runs what falls due on it, after its UserUpdate. A delay that ends on a room tick goes out in the ms of that tick's UserUpdate, after it. A wake-up pass could run first.
         if (dueMs % WiredFlashStates.StateUpdateMilliseconds == 0) {
             return;
         }
@@ -336,9 +332,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
 
         // Speech and a furni click run their stacks at once, outside the room's passes: send what they flashed and wrote now, with the chat.
-        // Observed on hhus (AIR WIN63-202610131318-860371703): the flash arrives in the same batch as the chat that fired it.
-        // Observed on AIR WIN63-202610201032-107964540 (wf_trg_stuff_state.cov_snapshot): a furni a user switches flashes its Stuff State
-        // stack in the millisecond of its new state, right after it.
+        // The flash arrives in the same batch as the chat that fired it. A furni a user switches flashes its Stuff State stack in the millisecond of its new state, right after it.
         if (ranAtOnce) {
             FlushSpeechOutput();
         }
@@ -362,10 +356,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
         return @event.Kind switch
         {
             WiredEventKind.Speech => _engine.DispatchSynchronously(@event),
-            // Observed on AIR WIN63-202610201032-107964540: a click is answered as fast as a say or a furni use, and the boxes of every
-            // stack it passed and the trigger of every stack it failed flash in one ObjectsDataUpdate, before the chat of the passing stacks.
+            // A click is answered as fast as a say or a furni use, and the boxes of every stack it passed and the trigger of every stack it failed flash in one ObjectsDataUpdate, before the chat of the passing stacks.
             WiredEventKind.ClickFurni => _engine.DispatchAtOnce(@event),
-            // Observed on AIR WIN63-202610201032-107964540: the Room Initialized stacks have run before the first entrant is sent the room.
+            // The Room Initialized stacks have run before the first entrant is sent the room.
             WiredEventKind.RoomInitialized => _engine.DispatchOnLoad(@event),
             _ => _engine.Enqueue(@event)
         };
@@ -549,7 +542,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         return triggered;
     }
 
-    // Variable Changed stacks raised by a say run after its echo (AIR WIN63-202610151745-318700621).
+    // Variable Changed stacks raised by a say run after its echo.
     public void FinishSpeech()
     {
         ReleaseAfterEcho();
@@ -557,8 +550,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         FlushSpeechOutput();
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a variable a say gave goes out as its Variable FX status in the same tick, before the
-    // packet that flashes the boxes of the stack.
+    // A variable a say gave goes out as its Variable FX status in the same tick, before the packet that flashes the boxes of the stack.
     private void FlushSpeechOutput()
     {
         if (_variables?.IsValueCreated == true && _variables.Value.FxDirty) {
@@ -662,14 +654,13 @@ public partial class WiredComponent : IWiredRuntimeOperations
     /// <summary>
     /// A box acts: it flips to its other flash state, at most once per 500 ms state-update window; boxes hold their state
     /// between flashes. A signal antenna (not a box) flips on every signal.
-    /// Observed r92e r92-room14-def (AIR WIN63-202610131318-860371703): under a 200 ms repeater every box of both stacks flips
-    /// 600, 400, 600, 400 ms apart while the antenna flips every 200 ms; the flips share one ObjectsDataUpdate per tick.
+    /// Under a 200 ms repeater every box of both stacks flips 600, 400, 600, 400 ms apart while the antenna flips every 200 ms; the flips share one ObjectsDataUpdate per tick.
     /// </summary>
     public void OnEvent(Item item) => Flash(item, false);
 
     /// <param name="flipAgain">The box flips again although it flashed in this half second (Toggle State on a box of its own stack).</param>
     /// <param name="visits">Only users whose <see cref="RoomUser.Visit"/> is at most this see the flash (<see cref="WiredRuntimeEvent.Visits"/>).
-    /// Observed on AIR WIN63-202610201032-107964540: a user who leaves and enters again gets no box flash for its own leave.</param>
+    /// A user who leaves and enters again gets no box flash for its own leave.</param>
     internal void Flash(Item item, bool flipAgain, int visits = int.MaxValue)
     {
         // Hidden wired boxes are not on the clients, so they do not flash.
@@ -702,8 +693,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     /// <summary>
-    /// A variable definition shows the kind of its write in the next flash batch. Within one stack firing only the first write in the batch
-    /// counts. Observed on AIR WIN63-202610151745-318700621: give 5 and then add 3 in one firing shows 6 (7 on the next firing), not 2.
+    /// A variable definition shows the kind of its write in the next flash batch. Within one stack firing only the first write in the batch counts: give 5 and then add 3 in one firing shows 6 (7 on the next firing), not 2.
     /// </summary>
     internal void FlashDefinition(Item item, int kind, object? firing)
     {
@@ -722,10 +712,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     /// <summary>
-    /// Observed on AIR WIN63-202610131318-860371703: a furni state written by wired goes out in the tick's data batch, with the antenna flips
-    /// and any due box flashes, on every wired tick and ahead of that tick's movement packet. Other data formats keep the object update.
-    /// Observed on AIR WIN63-202610201032-107964540: a furni whose height depends on its state first gets its ObjectUpdate with the new
-    /// height and the height map, and is listed in the batch too.
+    /// A furni state written by wired goes out in the tick's data batch, with the antenna flips and any due box flashes, on every wired tick and ahead of that tick's movement packet.
+    /// Other data formats keep the object update. A furni whose height depends on its state first gets its ObjectUpdate with the new height and the height map, and is listed in the batch too.
     /// </summary>
     internal void PublishState(Item item, bool persist)
     {
@@ -744,8 +732,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     /// <summary>
-    /// Observed on AIR WIN63-202610151745-318700621: a counter value written by Wired (Start reset, Reset, Adjust Clock) goes out in the
-    /// same ObjectsDataUpdate as the event's flashes, each counter once with its last value. Other data formats keep their own frame.
+    /// A counter value written by Wired (Start reset, Reset, Adjust Clock) goes out in the same ObjectsDataUpdate as the event's flashes, each counter once with its last value. Other data formats keep their own frame.
     /// </summary>
     internal bool TryQueueBatchData(Item item)
     {
@@ -762,8 +749,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     /// <summary>
     /// Every save of a selector sends its resting state: 3 (green) with "Filter existing selection", 0 (orange) without; Invert is not
-    /// a colour. Observed on hhus (AIR WIN63-202610131318-860371703): ObjectDataUpdate right after UpdateSelector. Room entry lists the
-    /// last state, flashes included.
+    /// a colour. ObjectDataUpdate goes right after UpdateSelector. Room entry lists the last state, flashes included.
     /// </summary>
     private void ShowRestingState(IWiredItem box)
     {
@@ -776,8 +762,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
         box.Item.LegacyDataString = state;
         box.Item.UpdateState(true, false);
 
-        // A single ObjectDataUpdate (AIR incoming 374, class_2387). Hidden boxes are not on the clients; they show the state when they
-        // come back.
+        // A single ObjectDataUpdate. Hidden boxes are not on the clients; they show the state when they come back.
         if (!_room.HideWired) {
             _room.SendObjectData(box.Item, state, false);
         }
@@ -790,8 +775,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     /// <summary>
     /// Sends the flashed boxes' states and Wired's furni state writes together, at the end of the pass that made them. Each box flips at most
-    /// once per 500 ms window (see <see cref="OnEvent"/>); the room has no shared flash interval. Observed on hhus (AIR
-    /// WIN63-202610131318-860371703): a box flash goes out in the same batch as the chat that fired it, and two stacks fired 200 ms apart
+    /// once per 500 ms window (see <see cref="OnEvent"/>); the room has no shared flash interval. A box flash goes out in the same batch as the chat that fired it, and two stacks fired 200 ms apart
     /// flash 200 ms apart.
     /// </summary>
     internal void FlushFlashes()
@@ -811,9 +795,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     /// <summary>
-    /// Sends only the ObjectsDataUpdate of <see cref="FlushFlashes"/> and keeps the held messages. Observed on AIR
-    /// WIN63-202610201032-107964540: the ObjectsDataUpdate and the WiredMovements of one firing are adjacent, so a movement flush sends
-    /// the messages after its WiredMovements.
+    /// Sends only the ObjectsDataUpdate of <see cref="FlushFlashes"/> and keeps the held messages. The ObjectsDataUpdate and the WiredMovements of one firing are adjacent, so a movement flush sends the messages after its WiredMovements.
     /// </summary>
     internal void FlushFlashData()
     {
@@ -852,8 +834,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     /// <summary>
     /// Sends a WiredMovements after the pending ObjectsDataUpdate. While a click runs its stacks, it waits for the end of the click, so
-    /// the states that the click's other effects write still go out before it. Observed on AIR WIN63-202610201032-107964540: a click
-    /// whose stack toggles furni and turns the user sends one ObjectsDataUpdate with the flashes and the new states, then the
+    /// the states that the click's other effects write still go out before it. A click whose stack toggles furni and turns the user sends one ObjectsDataUpdate with the flashes and the new states, then the
     /// WiredMovements, whichever effect runs first.
     /// </summary>
     internal void SendWiredMovement(IServerPacket packet)
@@ -875,7 +856,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     /// <summary>
     /// Like <see cref="AfterFlash(Action)"/>, but a message from a stack that a Send Signal reached during a say waits for the echo of the
-    /// say. Observed on AIR WIN63-202610151745-318700621: it comes after the echo, in the same millisecond. <see cref="FinishSpeech"/> sends it.
+    /// say. It comes after the echo, in the same millisecond. <see cref="FinishSpeech"/> sends it.
     /// </summary>
     internal void AfterFlash(Action send, WiredRuntimeContext context)
     {
@@ -900,8 +881,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     /// <summary>
-    /// Sends a stack's chat output after the pass's flash. Observed on AIR WIN63-202610151745-318700621: the flash comes before the
-    /// message a stack shows (and before the speaker's chat), while packets such as YouArePlayingGame or AvatarEffect go out at once.
+    /// Sends a stack's chat output after the pass's flash: the flash comes before the message a stack shows (and before the speaker's chat), while packets such as YouArePlayingGame or AvatarEffect go out at once.
     /// </summary>
     internal void AfterFlash(Action send)
     {
@@ -911,8 +891,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     /// <summary>
-    /// Observed on hhus (AIR WIN63-202610131318-860371703): the tick's data batch lists the furni states written by Wired first, then the
-    /// trigger box, then the stack's other boxes (walks-on [trigger, show_message]; periodically [colour tile, trigger, toggle_state]).
+    /// The tick's data batch lists the furni states written by Wired first, then the trigger box, then the stack's other boxes (walks-on [trigger, show_message]; periodically [colour tile, trigger, toggle_state]).
     /// </summary>
     internal static Item[] FlashOrder(IEnumerable<Item> items) => [.. items.OrderBy(item => !item.IsWired ? 0
         : item.Definition.InteractionType == InteractionType.WiredTrigger ? 1 : 2)];

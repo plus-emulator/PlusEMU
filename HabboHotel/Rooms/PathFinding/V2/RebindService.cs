@@ -43,8 +43,7 @@ internal sealed class RebindService(Room room, NavGrid Grid)
 
         PostureService.Apply(room, Grid, actor);
 
-        // Observed on AIR WIN63-202610201032-107964540: a furni that moves but still covers the avatar's tile sends no
-        // avatar update. Applying the posture again must not flag one when nothing about the avatar changed.
+        // A furni that moves but still covers the avatar's tile sends no avatar update. Applying the posture again must not flag one when nothing about the avatar changed.
         actor.UpdateNeeded = updateNeeded;
 
         if (actor.Z != oldZ || sit != actor.Statusses.GetValueOrDefault("sit")

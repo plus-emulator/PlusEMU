@@ -24,8 +24,7 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
 
     /// <summary>
     /// The stack on a box's tile, bottom up: the trigger's placeholder, the text output add-ons and the capturers. The placeholder names
-    /// and the capturer names go out sorted by name. Observed on AIR WIN63-202610201032-107964540: outputs stacked as ptr, cx, ev, ct, nv
-    /// list ct, cx, ev, nv, ptr.
+    /// and the capturer names go out sorted by name (outputs stacked as ptr, cx, ev, ct, nv list ct, cx, ev, nv, ptr).
     /// </summary>
     public static WiredTextPlaceholders Capture(IWiredConfiguredItem box)
     {

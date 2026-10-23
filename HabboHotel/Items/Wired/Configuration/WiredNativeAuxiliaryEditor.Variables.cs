@@ -4,7 +4,7 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 internal static partial class WiredNativeAuxiliaryEditor
 {
-    // AIR merged variable targets: 0 furni, 1 user, -10 global, -20 context. The scalar executors use 0 user, 1 furni, 2 context, 3 global.
+    // Merged variable targets: 0 furni, 1 user, -10 global, -20 context. The scalar executors use 0 user, 1 furni, 2 context, 3 global.
     internal static bool TryTarget(int air, out int scalar)
     {
         scalar = air switch { 1 => 0, 0 => 1, -20 => 2, -10 => 3, _ => -1 };
@@ -35,7 +35,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         VariableIds = n.VariableIds
     };
 
-    // Volt comparison codes (0 >, 1 >=, 2 ==, 3 <=, 4 <, 5 !=) for the AIR radios (0 <, 1 =, 2 >, 3 <=, 4 !=, 5 >=).
+    // Volt comparison codes (0 >, 1 >=, 2 ==, 3 <=, 4 <, 5 !=) for the client radios (0 <, 1 =, 2 >, 3 <=, 4 !=, 5 >=).
     private static readonly int[] ScalarComparison = [4, 2, 0, 3, 5, 1];
 
     private static IEnumerable<KeyValuePair<string, Spec>> Variables()
@@ -43,8 +43,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         // Destination: variable target, value (high, low), override-existing; one furni and one user source. The October
         // editor (GiveVariable) adds value-or-variable, the reference's target and "same holder", with the reference as a
         // second variable id ("n" in value mode). A fresh box opens on [1, 0, 0, 0, 0, -10, 0].
-        // Observed on hhus (WIN63-202610131318): the editor opens with two merged source selectors, the destination and the reference,
-        // both defaulting to the triggering user/furni (0) and the selector pool (200), and allows wall furniture.
+        // The editor opens with two merged source selectors, the destination and the reference, both defaulting to the triggering user/furni (0)
+        // and the selector pool (200), and allows wall furniture.
         yield return new("wf_act_give_var", new(Meta(2, 2, [1, 0, 0, 0, 0, -10, 0], 2) with
         {
             FurniDefaults = [0, 200],
@@ -70,7 +70,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             // The reference's own sources only matter when the value is read from a variable.
             return Draft(n, WithLiteral(referenced && p[4] == 1 ? [.. core, n.UserSourceTypes[1], n.FurniSourceTypes[1]] : core, 2, p[1], p[2]));
         }));
-        // Observed: no secondary pick source, picked furni (100) and the triggering user (0) by default, wall furniture allowed.
+        // No secondary pick source; picked furni (100) and the triggering user (0) by default; wall furniture allowed.
         yield return new("wf_act_remove_var", new(Meta(1, 1, [1], 1) with
         {
             FurniAllowed = [[0, 100, 200, 201]],
@@ -108,8 +108,8 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_cnd_has_var", new(HasVar(false), HasVarSpec));
         yield return new("wf_cnd_neg_has_var", new(HasVar(true), HasVarSpec));
         // The October editor (VariableValue) adds "same holder" as a seventh field.
-        // Observed on hhus (WIN63-202610131318): opens on [1, 2, 0, 0, 0, -10, 0] with the merged destination and reference source
-        // selectors on the triggering user/furni (0) and the selector pool (200), and allows wall furniture.
+        // Opens on [1, 2, 0, 0, 0, -10, 0] with the merged destination and reference source selectors on the triggering user/furni (0)
+        // and the selector pool (200), and allows wall furniture.
         yield return new("wf_cnd_var_val_match", new(Meta(2, 2, [1, 2, 0, 0, 0, -10, 0], 2) with
         {
             QuantifierType = 3,
@@ -168,8 +168,8 @@ internal static partial class WiredNativeAuxiliaryEditor
                 : Draft(n, [.. core, p[6], reference, n.Quantifier ?? 0]);
         }));
         // Variable (fixed target), comparison, value mode (none, literal, variable), value (high, low), the variable's target.
-        // The sixth int is WithVariable.as referenceVariableOnTarget (AIR WIN63-202610131318-860371703 selectors/WithVariable.as:48-56); hhus opens it on 0.
-        // Observed: a selector offers no selector-pool source, defaults to picked furni (100) and the triggering user (0), allows walls.
+        // The sixth int is WithVariable referenceVariableOnTarget; it opens on 0.
+        // A selector offers no selector-pool source, defaults to picked furni (100) and the triggering user (0), allows walls.
         yield return new("wf_slc_furni_with_var", new(SelectorMeta([2, 0, 0, 0, -10, 0]), n => WithVariable(n, 1)));
         yield return new("wf_slc_users_with_var", new(SelectorMeta([2, 0, 0, 0, -10, 0]), n => WithVariable(n, 0)));
         // Created, value changed, deleted; increased/decreased/unchanged mask; origin mask. The target comes from the chosen variable.
@@ -180,7 +180,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             // The scalar target follows the picked variable's own target; an unchosen variable keeps the user default.
             var target = 0;
 
-            // AIR VariableUpdate: mode 1 watches the selected variable definition boxes, independently of the disabled picker.
+            // Mode 1 watches the selected variable definition boxes, independently of the disabled picker.
             if (Shape(n, 6, 0, 0, 1) && p[5] == 1) {
                 if (p[0] is not (0 or 1) || p[1] is not (0 or 1) || p[2] is not (0 or 1) || p[3] is < 0 or > 7) {
                     return null;
@@ -197,7 +197,7 @@ internal static partial class WiredNativeAuxiliaryEditor
                 p = n.OwnedIntParams;
             }
 
-            // Observed on AIR WIN63-202610201032-107964540: a fresh box with no variable saves, and so does any other id; the box then never fires.
+            // A fresh box with no variable saves, and so does any other id; the box then never fires.
             if (!Shape(n, 5, 0, 0, 1) || Plus.HabboHotel.Items.Wired.Variables.WiredVariableDescription.TryParseCatalogId(n.VariableIds[0], out var picked, out _)
                 && (target = (int)picked) < 0
                 || p[0] is not (0 or 1) || p[1] is not (0 or 1) || p[2] is not (0 or 1) || p[3] is < 0 or > 7) {
@@ -211,10 +211,10 @@ internal static partial class WiredNativeAuxiliaryEditor
     }
 
     /// <summary>
-    /// The October value-or-variable tail: the option (0 value, 1 variable), the reference's AIR target and "same holder".
-    /// Observed on AIR WIN63-202610201032-107964540: Change Variable Value, Give Variable and Variable Value Match save "same holder" for every
-    /// pair of destination and reference kind (furni, user, global) with a variable. A value instead of a variable was seen with global
-    /// targets (and with a furni target on Variable Value Match). A reference read on a holder of another kind gave nothing for a global destination with a furni or user reference and a furni destination with a global reference.
+    /// The October value-or-variable tail: the option (0 value, 1 variable), the reference's target and "same holder". Change Variable Value,
+    /// Give Variable and Variable Value Match save "same holder" for every pair of destination and reference kind with a variable.
+    /// A reference read on a holder of another kind gives nothing for a global destination with a furni or user reference and for a
+    /// furni destination with a global reference.
     /// </summary>
     private static bool TryReference(int option, int air, int sameHolder, out int reference) =>
         TryTarget(air, out reference) && option is 0 or 1 && sameHolder is 0 or 1;
@@ -228,7 +228,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         AllowWall = true
     };
 
-    // Observed on AIR WIN63-202610131318-860371703: furni 0/100/200/201 opening on 100, users 0/200/201 opening on 0.
+    // Furni offer 0/100/200/201 and open on 100; users offer 0/200/201 and open on 0.
     private static WiredNativeEditorMetadata HasVar(bool negative) => Meta(1, 1, [1], 1) with
     {
         QuantifierType = 3,
@@ -250,7 +250,7 @@ internal static partial class WiredNativeAuxiliaryEditor
     {
         var p = n.OwnedIntParams;
 
-        // WithVariable.as: referenceVariableOnTarget reads the reference on each candidate holder.
+        // The same-holder flag (referenceVariableOnTarget) reads the reference on each candidate holder.
         var sameHolder = Shape(n, 6, 1, 1, 2) ? p[5] : 0;
 
         if (sameHolder is not (0 or 1)) {
@@ -267,9 +267,9 @@ internal static partial class WiredNativeAuxiliaryEditor
             return null;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: the two value ints are stored as sent, whatever they hold. The selector executor
-        // takes a 32-bit literal, so a value wider than 32 bits compares as the nearest 32-bit one. The same-holder flag stays in the
-        // stored form but only counts for a comparison with a variable on the box's own side.
+        // The two value ints are stored as sent, whatever they hold. The selector executor takes a 32-bit literal, so a value wider than
+        // 32 bits compares as the nearest 32-bit one. The same-holder flag stays in the stored form but only counts for a comparison with
+        // a variable on the box's own side.
         var literal = (int)Math.Clamp((long)p[2] << 32 | (uint)p[3], int.MinValue, int.MaxValue);
         int[] core = [p[1] == 0 ? 0 : 1, ScalarComparison[p[0]], p[1] == 2 ? 1 : 0, literal, target, n.UserSourceTypes[0],
             n.FurniSourceTypes[0], n.Filter.Value ? 1 : 0, n.Inverse.Value ? 1 : 0];

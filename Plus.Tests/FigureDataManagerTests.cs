@@ -60,7 +60,7 @@ public class FigureDataManagerTests
     [Fact]
     public void CanonicalFiguresFollowSetTypeOrderAndKeepMissingColoursEmpty()
     {
-        // Observed r93h r93-p3-bots: Habbo stored the bot clothes figure in figuredata order and left "hr-100-" uncoloured.
+        // Habbo stores the bot clothes figure in figuredata order and leaves "hr-100-" uncoloured.
         var processed = Manager().ProcessFigureCanonical("hd-180-1.ch-210-66.lg-270-82.sh-290-80.hr-100-", "M", null!, 2);
 
         Assert.Equal("hr-100.hd-180-1.ch-210-66.lg-270-82.sh-290-80.", processed);
@@ -91,7 +91,7 @@ public class FigureDataManagerTests
 
     private static string SetOf(string part) => string.Join('-', part.Split('-').Take(2));
 
-    // Observed on AIR WIN63-202610151745-318700621 (Bot Clothes saved by a male user, read back from the bot's UserChange).
+    // Bot Clothes saved by a male user are read back from the bot's UserChange.
     [Theory]
     [InlineData("hd-180-1", "hd-180-1.ch-210-1408.lg-270-1408.")]
     [InlineData("hr-100-61.hd-180-1.ch-210-66.lg-270-82.sh-290-80", "hr-100.hd-180-1.ch-210-66.lg-270-82.sh-290-80.")]

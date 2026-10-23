@@ -5,9 +5,8 @@ namespace Plus.Tests;
 
 public partial class WiredRuntimeEngineTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a delay that is already running is paused while the wired disabler is on. It goes on
-    // with the time it had left when the disabler is off again: started at 0 s with 5 s of delay, disabled from 1.0 s to 3.5 s, the effect
-    // runs at 7.5 s.
+    // A delay that is already running is paused while the wired disabler is on. It goes on with the time it had left when the
+    // disabler is off again: started at 0 s with 5 s of delay, disabled from 1.0 s to 3.5 s, the effect runs at 7.5 s.
     [Fact]
     public void ARunningDelayIsPausedWhileTheWiredDisablerIsOn()
     {
@@ -32,8 +31,7 @@ public partial class WiredRuntimeEngineTests
         Assert.Equal(1, action.Calls);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a delay that would have ended while the disabler was on does not run at once when it is
-    // off again.
+    // A delay that would have ended while the disabler was on does not run at once when it is off again.
     [Fact]
     public void ADelayThatEndsWhileTheWiredDisablerIsOnWaitsForTheRestOfItsTime()
     {

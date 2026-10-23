@@ -21,7 +21,7 @@ public sealed partial class WiredConditionParityTests
     [Fact]
     public void CounterTimeKeepsMinuteZeroAndStoresValuesOutsideTheEditorClamped()
     {
-        // Observed on AIR WIN63-202610201032-107964540: minutes above 99 and seconds above 59 are stored as 99 and 59, not refused.
+        // Minutes above 99 and seconds above 59 are stored as 99 and 59, not refused.
         Assert.True(Validates(0, 0));
         Assert.True(Validates(100, 0));
         Assert.True(Validates(99, 120));
@@ -53,8 +53,7 @@ public sealed partial class WiredConditionParityTests
         Expect("wf_cnd_not_furni_on", "wf_cnd_not_hv_avtrs", mixed, true, false, false, true, "negative mixed");
     }
 
-    // Observed on AIR WIN63-202610131318-860371703 (furni source = a picks selector with nothing picked): "Furnis have avatars" passes under
-    // both all and any, "Furni has furni on" and its negation fail.
+    // "Furnis have avatars" passes under both all and any, "Furni has furni on" and its negation fail.
     [Theory]
     [InlineData("wf_cnd_furnis_hv_avtrs", true)]
     [InlineData("wf_cnd_has_furni_on", false)]
@@ -84,8 +83,8 @@ public sealed partial class WiredConditionParityTests
         Assert.Equal((expected, expected), (RunEmpty(0), RunEmpty(1)));
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): both cards save quantifier 1 (any) and read it back as 1, although their editors
-    // show no quantifier; on an empty selection the result is the same as under quantifier 0.
+    // Both cards save quantifier 1 (any) and read it back as 1, although their editors show no quantifier; on an empty selection
+    // the result is the same as under quantifier 0.
     [Theory]
     [InlineData("wf_cnd_furnis_hv_avtrs", true)]
     [InlineData("wf_cnd_has_furni_on", false)]

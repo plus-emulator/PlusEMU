@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Official hhus WIN63-202610131318 batch r82 (r80-fire-01): Give Score and Give Score To Team in a room without a running game.
+// Give Score and Give Score To Team in a room without a running game.
 public sealed partial class WiredGlideConveyorTests
 {
     private static string ObservedNativeDefault(string name, int[] owned)
@@ -32,8 +32,8 @@ public sealed partial class WiredGlideConveyorTests
         return (f, f.Walker(1, 4, 10, 4, 11), f.Items[ObservedSubjectId]);
     }
 
-    // Official: with no game running, the say gave 1 point (team 0, own user) and 1 point to team 1, both boxes flashed, and neither
-    // Score Achieved stack (threshold 1) moved the marker. Once a team game runs the same stacks score and fire.
+    // With no game running, the say gave 1 point (team 0, own user) and 1 point to team 1, both boxes flashed, and neither Score
+    // Achieved stack (threshold 1) moved the marker. Once a team game runs the same stacks score and fire.
     [Theory]
     [InlineData("wf_act_give_score", new[] { 1, 0 }, new[] { 1, 0 })]
     [InlineData("wf_act_give_score_tm", new[] { 1, 0, 1 }, new[] { 1, 1 })]

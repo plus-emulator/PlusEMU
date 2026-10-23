@@ -98,7 +98,7 @@ public sealed class WiredVariableWallBuiltinTests
     [Fact]
     public void AFurnisTypeTellsNormalBuildersClubAndTemporaryApart()
     {
-        // Observed on AIR WIN63-202610151745-318700621: the @type connector reads 0 Normal, 1 BC, 2 Temp; a Builders Club block reads 1.
+        // The @type connector reads 0 Normal, 1 BC, 2 Temp; a Builders Club block reads 1.
         var f = new Fixture();
         var normal = new Item { Id = 3, OwnerId = 5, Definition = new() { Type = ItemType.Floor } };
         var club = new Item { Id = 4, OwnerId = 5, IsBuildersClub = true, Definition = new() { Type = ItemType.Floor } };

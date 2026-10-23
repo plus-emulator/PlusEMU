@@ -4,7 +4,7 @@ using static Plus.Tests.WiredR103EditorSave;
 
 namespace Plus.Tests;
 
-// Condition editor saves as Habbo stores them: out-of-range values are clamped, not refused. Observed on AIR WIN63-202610201032-107964540.
+// Condition editor saves as Habbo stores them: out-of-range values are clamped, not refused.
 public sealed class WiredR103ConditionEditorTests
 {
     [Fact]

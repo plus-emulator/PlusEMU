@@ -7,18 +7,17 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (three runs): Change Variable Value and Give Variable save with an empty variable slot (a "0" or
-// "n" destination or reference, with the variable option on, same holder on or off) on a furni or a user destination, and then change nothing.
-// With same holder on a furni or user destination takes a value, a reference of its own kind from its own holder (each tile its own value), and
-// nothing from a reference of the other kind. Two furni (variable "furni:863" 100 on both, "furni:982" 3 and 5) and the speaker ("user:861" 100,
-// "user:983" 4) are the holders. With same holder off and a reference read from several holders Habbo pairs destination and reference holders
-// by their position in a pick set; the pairing changed between runs, so those rows are left out.
+// Change Variable Value and Give Variable save with an empty variable slot (a "0" or "n" destination or reference, with the variable option on, same holder on or off)
+// on a furni or a user destination, and then change nothing. With same holder on, a furni or user destination takes a value, a reference of its own kind from its own holder
+// (each tile its own value), and nothing from a reference of the other kind.
+// With same holder off and a reference read from several holders, Habbo pairs destination and reference holders by their position in a pick set.
+// That pairing is not stable, so those rows are left out.
 public partial class PlacedFurniRoomTests
 {
     private const uint SameFurniReference = 982, SameUserReference = 983, SameBox = 984, SameSpeech = 985;
     private const string FurniDestination = "furni:863", FurniReference = "furni:982", UserDestination = "user:861", UserReference = "user:983";
 
-    // One row per shape the Habbo probe ran, with the values each holder ended on: the two furni for a furni destination, the speaker for a user one.
+    // One row per shape, with the values each holder ended on: the two furni for a furni destination, the speaker for a user one.
     public static TheoryData<string, int, string, int, bool, long?, long?> SameHolderRows()
     {
         var data = new TheoryData<string, int, string, int, bool, long?, long?>();
@@ -115,7 +114,7 @@ public partial class PlacedFurniRoomTests
         PlaceSavedBox(SameBox, card, 1, 1, 1);
         var furni = target == 0;
         var (destination, own, other) = furni ? (FurniDestination, FurniReference, UserReference) : (UserDestination, UserReference, FurniReference);
-        // The ints of the probe: a value is 9 with reference target -10, a reference shape has value 0 and the target of its variable (-10 when empty).
+        // The ints: a value is 9 with reference target -10, a reference shape has value 0 and the target of its variable (-10 when empty).
         var (reference, option, referenceTarget) = shape switch
         {
             "value" => ("0", 0, -10),
@@ -131,7 +130,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("saved", SaveAnswer());
     }
 
-    // Habbo (p1k, three runs): both cards save with the destination, the reference or both naming no variable ("0", "n", or a number no variable has),
+    // Both cards save with the destination, the reference or both naming no variable ("0", "n", or a number no variable has),
     // with the value or the variable option and same holder on or off, and reopen with their ints as sent.
     [Theory]
     [InlineData("0", "0", "0", "0")]

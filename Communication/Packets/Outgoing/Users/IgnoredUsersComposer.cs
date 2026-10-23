@@ -2,7 +2,7 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.Users;
 
-/// <summary>AIR WIN63-202610151745-318700621 package_37/class_4333.as:23: the ignored user ids.</summary>
+/// <summary>The ignored user ids.</summary>
 public class IgnoredUsersComposer : IServerPacket
 {
     private readonly IReadOnlyCollection<int> _ignoredUsers;

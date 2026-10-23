@@ -8,8 +8,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a Move and Rotate that turns furni stacked on one tile, such as Wired boxes, sends
-    // one ObjectUpdate for each of them and no WiredMovements, also for the ones that end on a new height.
+    // A Move and Rotate that turns furni stacked on one tile, such as Wired boxes, sends one ObjectUpdate for each of them and no
+    // WiredMovements, also for the ones that end on a new height.
     [Fact]
     public void TurningFurniStackedOnOneTileSendsObjectUpdatesAndNoWiredMovements()
     {

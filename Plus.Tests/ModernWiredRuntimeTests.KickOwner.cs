@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on hhus (AIR WIN63-202610131318-860371703): Kick User on the room owner whispers "Wired kick exception: Room owner" (style 34) and kicks nobody.
+// Kick User on the room owner whispers "Wired kick exception: Room owner" (style 34) and kicks nobody.
 public partial class ModernWiredRuntimeTests
 {
     [Fact]

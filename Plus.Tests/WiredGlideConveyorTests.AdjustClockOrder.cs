@@ -12,8 +12,8 @@ public sealed partial class WiredGlideConveyorTests
     private const int AdjustDecrease = 1;
     private const int AdjustSet = 2;
 
-    // Observed on AIR WIN63-202610201032-107964540: without Execute in Order, an Adjust Clock Set runs after the Increase and Decrease
-    // of the same firing, whatever the box order (18 of 18). With Execute in Order the boxes run bottom to top.
+    // Without Execute in Order, an Adjust Clock Set runs after the Increase and Decrease of the same firing, whatever the box
+    // order. With Execute in Order the boxes run bottom to top.
     [Theory]
     [InlineData(AdjustSet, 2, AdjustDecrease, 1, false, "120")]
     [InlineData(AdjustDecrease, 1, AdjustSet, 2, false, "120")]
@@ -28,7 +28,7 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: two Sets in one firing still run in a random order (120, 120, 60, 60).
+    // Two Sets in one firing still run in a random order.
     [Fact]
     public void TwoAdjustClockSetsKeepARandomOrder()
     {

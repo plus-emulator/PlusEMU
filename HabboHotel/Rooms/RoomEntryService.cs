@@ -41,18 +41,16 @@ public sealed class RoomEntryService(IQuestManager quests, TimeProvider clock, I
             quests.QuestReminder(session, stats.QuestId);
         }
 
-        // Observed on AIR WIN63-202610151745-318700621 (owner, rights holder and visitor alike): after the entrant's own Users entry come
-        // RoomEntryInfo, RoomEvent, the configuration item states, the Wired environment and the labels, then the controller level, Wired
-        // permissions, YouAreOwner, the room rating and the raid protection capability. The trigger-text notice follows the room-enter
-        // packet in the same tick (AIR WIN63-202610131318-860371703).
+        // After the entrant's own Users entry come RoomEntryInfo, RoomEvent, the configuration item states, the Wired environment and the labels, then the controller level, Wired
+        // permissions, YouAreOwner, the room rating and the raid protection capability. The trigger-text notice follows the room-enter packet in the same tick.
         session.Send(new RoomEntryInfoComposer(room.RoomId, room.CheckRights(session, true)));
         room.GetWired()?.SendTriggerTextNotice(session);
         session.Send(new RoomEventComposer(RoomEventSnapshot.Capture(room.Data, room.Promotion)));
         Plus.HabboHotel.Items.ConfigurationItemStates.SendTo(session, room);
         room.GetWired()?.SendEnvironment(session);
-        // WIRED Label bubbles (class_3043): the full list this user may see, once the room is entered.
+        // WIRED Label bubbles: the full list this user may see, once the room is entered.
         room.GetWired()?.SendLabels(session);
-        // Observed on AIR WIN63-202610151745-318700621: Enter Room stacks run here, and their flashes come before the controller packets.
+        // Enter Room stacks run here, and their flashes come before the controller packets.
         room.GetWired()?.TriggerEvent(WiredBoxType.TriggerRoomEnter, habbo);
         room.GetRoomUserManager().SendEntryRights(session);
         session.Send(new Plus.Communication.Packets.Outgoing.Navigator.RoomRatingComposer(room.Score, !(habbo.RatedRooms.Contains(room.RoomId) || room.OwnerId == habbo.Id)));

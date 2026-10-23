@@ -322,8 +322,8 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): a Receive Signal trigger whose condition fails flashes with the antenna and the
-    // sender; its condition and action stay at rest.
+    // A Receive Signal trigger whose condition fails flashes with the antenna and the sender; its condition and action stay at
+    // rest.
     [Fact]
     public void AReceiverWhoseConditionFailsStillFlashesItsTrigger()
     {
@@ -342,8 +342,8 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a Receive Signal stack whose condition fails runs its negative actions, so a
-    // negative Send Signal in it passes the signal on to the next hop.
+    // A Receive Signal stack whose condition fails runs its negative actions, so a negative Send Signal in it passes the signal
+    // on to the next hop.
     [Fact]
     public void AReceiverWhoseConditionFailsRunsItsNegativeActions()
     {
@@ -467,8 +467,8 @@ public partial class WiredRuntimeEngineTests
             f.Engine.OnFastCycle();
         }
 
-        // Each reached deadline runs its stack in that pass (observed on AIR WIN63-202610201032-107964540). The 500 ms and 5 s timers rearm on
-        // the room's 500 ms grid; the 50 ms timer from its due time, skipping whole periods a late pass missed.
+        // Each reached deadline runs its stack in that pass. The 500 ms and 5 s timers rearm on the room's 500 ms grid; the 50 ms
+        // timer from its due time, skipping whole periods a late pass missed.
         var expected = new List<long>();
         var next = (long)interval;
 
@@ -496,8 +496,8 @@ public partial class WiredRuntimeEngineTests
             f.Engine.OnFastCycle();
         }
 
-        // 2730 fires in its own pass, then rearms on the grid at 3000 (observed on AIR WIN63-202610131318-860371703: the 500 ms timer stays
-        // on the room's 500 ms grid; observed on AIR WIN63-202610201032-107964540: a timer's output goes out in the tick it fires).
+        // 2730 fires in its own pass, then rearms on the grid at 3000. The 500 ms timer stays on the room's 500 ms grid, and a
+        // timer's output goes out in the tick it fires.
         Assert.Equal([2730L, 3000L, 3500L], fired);
     }
 

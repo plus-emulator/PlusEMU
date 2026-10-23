@@ -4,8 +4,7 @@ namespace Plus.HabboHotel.Items.FootballGate;
 
 /// <summary>
 /// The football gate's stuff data is one legacy string, "&lt;male look&gt;,&lt;female look&gt;". The client splits it on "," and
-/// takes index 0 as furniture_clothing_boy and index 1 as furniture_clothing_girl (AIR WIN63-202610151745-318700621,
-/// com/sulake/habbo/room/object/logic/furniture/FurnitureClothingChangeLogic.as:51-66).
+/// takes index 0 as furniture_clothing_boy and index 1 as furniture_clothing_girl.
 /// </summary>
 public static partial class FootballGateLooks
 {
@@ -13,8 +12,8 @@ public static partial class FootballGateLooks
     public const string Female = "F";
     private const int MaxParts = 32;
 
-    // The editor seeds the gate with a placeholder head (hd-99999-99999) and only edits torso and legs
-    // (FurnitureClothingChangeWidgetHandler.as:100-115), so the gate's head is never put on an avatar.
+    // The editor seeds the gate with a placeholder head (hd-99999-99999) and only edits torso and legs,
+    // so the gate's head is never put on an avatar.
     private const string HeadSetType = "hd";
 
     public static (string Male, string Female) Parse(string? data)

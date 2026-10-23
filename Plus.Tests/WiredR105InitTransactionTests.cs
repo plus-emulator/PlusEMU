@@ -4,7 +4,7 @@ using static Plus.Tests.WiredR102EditorSave;
 
 namespace Plus.Tests;
 
-// Init Transaction has three variable slots. Observed on AIR WIN63-202610201032-107964540.
+// Init Transaction has three variable slots.
 public sealed class WiredR105InitTransactionTests
 {
     private const string Name = "wf_act_init_transaction";

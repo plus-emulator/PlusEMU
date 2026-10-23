@@ -7,8 +7,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Raw saves of Match to Snapshot through the real save packet, read back the way the editor reopens them. Observed on AIR
-// WIN63-202610201032-107964540: the reopened frame has the four options and a fifth hotel int that is 0 after any save.
+// Raw saves of Match to Snapshot through the real save packet, read back the way the editor reopens them. The reopened frame has
+// the four options and a fifth hotel int that is 0 after any save.
 public sealed class WiredMatchSnapshotEditorSaveTests
 {
     private const string Name = "wf_act_match_to_sshot";
@@ -35,7 +35,7 @@ public sealed class WiredMatchSnapshotEditorSaveTests
         }
     }
 
-    // Not observed for this box: a missing option takes its default, as with one int and no ints, and ints past the fifth are dropped.
+    // A missing option takes its default, as with one int and no ints, and ints past the fifth are dropped.
     [Theory]
     [InlineData(new[] { 1, 0, 1 }, new[] { 1, 0, 1, 0, 0 })]
     [InlineData(new[] { 1, 1, 1, 1, 1, 1 }, new[] { 1, 1, 1, 1, 0 })]
@@ -62,7 +62,7 @@ public sealed class WiredMatchSnapshotEditorSaveTests
         Assert.DoesNotContain("abc", result.Text);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: a new box opens with [0,0,0,0,1].
+    // A new box opens with [0,0,0,0,1].
     [Fact]
     public void ANewBoxOpensWithTheHotelIntAtOne()
     {

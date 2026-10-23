@@ -5,9 +5,8 @@ namespace Plus.HabboHotel.Items.DataFormat;
 
 /// <summary>
 /// Habbo's recolorable Builders Club furni: an ordinary multi-state furni whose state goes out as MapData together with its
-/// colour. Observed on hhus (AIR WIN63-202610131318-860371703): a fresh one is {"r":"255","b":"255","g":"255","state":"0"}.
-/// AIR's furniture_recolorable logic reads r, g and b from that map and falls back to 255 per channel; legacy data paints
-/// it white. The state stays the legacy value, so use, Wired and snapshots treat it like any multi-state furni.
+/// colour. A fresh one is {"r":"255","b":"255","g":"255","state":"0"}.
+/// The client reads r, g and b from that map and falls back to 255 per channel; legacy data paints it white. The state stays the legacy value, so use, Wired and snapshots treat it like any multi-state furni.
 /// </summary>
 public sealed class RecolorableDataFormat : LegacyDataFormat
 {
@@ -96,7 +95,7 @@ public sealed class RecolorableDataFormat : LegacyDataFormat
         Data = state;
     }
 
-    /// <summary>AIR RecolorableFurnitureCatalogWidget sends the chosen colour as "r,g,b".</summary>
+    /// <summary>The client sends the chosen colour as "r,g,b".</summary>
     public static bool TryParseCatalogueColor(string? value, out int rgb)
     {
         rgb = White;
@@ -123,7 +122,7 @@ public sealed class RecolorableDataFormat : LegacyDataFormat
     public static string FormatCatalogueColor(int rgb) =>
         string.Create(CultureInfo.InvariantCulture, $"{(rgb >> 16) & 0xFF},{(rgb >> 8) & 0xFF},{rgb & 0xFF}");
 
-    // AIR class_2297.readChannel: one to three digits up to 255, otherwise 255.
+    // The client reads one to three digits up to 255, otherwise 255.
     private static int Channel(string value) =>
         value.Length is >= 1 and <= 3 && int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var channel) && channel <= 255 ? channel : 255;
 }

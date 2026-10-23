@@ -3,21 +3,18 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (three runs, identical): a save counts every id it sends. On 24 cards (Toggle State, 19 add-ons and
-// 4 variable boxes; the tests use the 18 add-ons that need no name) a list that repeats an id saves when it sends at most 20 ids (10 ids twice) and gets no answer from 21 ids on (20 different ids
-// and a repeat, 11 ids twice, 20 ids twice). The reopened order follows a set built from the different ids and sized from the number of ids sent
-// (repeats counted). An id that names no furni is dropped without an answer and counts as sent too: the order of 8 saves with 1 to 3 ids of no
-// furni, with and without a repeat, followed that rule on Toggle State (first and second list) and Filter Furni, and none of the other five rules
-// tried (a set sized from the ids that name a furni, from the different ids, or built with the ids of no furni in it). The ids below are the
-// probe's ids (2147418112 plus nn) moved to ids in the same buckets (576 + (nn xor 63)), which keep every order of the probe in 32 or 64 buckets.
+// A save counts every id it sends. A list that repeats an id saves when it sends at most 20 ids and gets no answer from 21 ids on.
+// The reopened order follows a set built from the different ids and sized from the number of ids sent (repeats counted).
+// An id that names no furni is dropped without an answer and counts as sent too.
+// The ids below are Builders Club ids (2147418112 plus nn) moved to ids in the same buckets (576 + (nn xor 63)), which keep every order in 32 or 64 buckets.
 public partial class PlacedFurniRoomTests
 {
-    // An id of the probe that names no furni (nn from 1500) moves to an id far from the furni of the room.
+    // An id that names no furni (nn from 1500) moves to an id far from the furni of the room.
     private static int SentId(int nn) => nn >= 1500 ? 9000 + nn - 1500 : 576 + (nn ^ 63) - (int)SecondListBase;
 
     private static int[] SentIds(params int[] nn) => [.. nn.Select(SentId)];
 
-    // Saves of the probe: the ids sent (nn) and the order the box reopened them in (nn).
+    // Saves: the ids sent (nn) and the order the box reopened them in (nn).
     private static readonly (int[] Sent, int[] Reopened)[] RepeatedSaves =
     [
         ([14, 14], [14]),
@@ -94,7 +91,7 @@ public partial class PlacedFurniRoomTests
 
     public static TheoryData<string> SentPicksCardNames() => [.. SentPicksCards];
 
-    // Saves of the probe that send ids of no furni (nn from 1500), some with a repeat: the ids sent and the order the card reopened them in.
+    // Saves that send ids of no furni (nn from 1500), some with a repeat: the ids sent and the order the card reopened them in.
     private static readonly (int[] Sent, int[] Reopened)[] SavesWithIdsOfNoFurni =
     [
         ([1502, 5, 7, 20, 22, 4, 8, 25, 27, 26, 9, 21], [27, 26, 25, 9, 8, 7, 22, 21, 5, 20, 4]),

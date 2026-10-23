@@ -6,9 +6,9 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: Match to Snapshot puts five furni of one stack back on one tile. With the position
-    // only, they stack in a new order in nearly every firing (17 orders in 18 firings); with the altitude too, the saved heights are
-    // restored and the stack comes back as it was (18 of 18). Restores of the rotation only were not probed and keep one order.
+    // Match to Snapshot puts five furni of one stack back on one tile. With the position only, they stack in a new order in
+    // nearly every firing; with the altitude too, the saved heights are restored and the stack comes back as it was. Restores of
+    // the rotation only keep one order here; Habbo was not checked for them.
     [Theory]
     [InlineData(0, true)]
     [InlineData(1, false)]

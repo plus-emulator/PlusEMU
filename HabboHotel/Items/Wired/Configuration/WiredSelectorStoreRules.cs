@@ -7,7 +7,6 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 /// <summary>
 /// The normal form Habbo stores for these selector saves. A save with an odd value is not refused: the value is clamped or reset, a
 /// missing int takes the frame default and an extra int is dropped.
-/// Observed on AIR WIN63-202610201032-107964540.
 /// </summary>
 internal static class WiredSelectorStoreRules
 {
@@ -68,8 +67,8 @@ internal static class WiredSelectorStoreRules
     private const int MaxUsernames = 20;
 
     /// <summary>
-    /// The refusal of a Users By Name save, or null. Observed on AIR WIN63-202610201032-107964540: a name of more than 30 characters
-    /// and more than 20 names are refused with their own key and limit. Only the tab separates names.
+    /// The refusal of a Users By Name save, or null. A name of more than 30 characters and more than 20 names are refused with their own key and limit.
+    /// Only the tab separates names.
     /// </summary>
     public static (string Key, IReadOnlyList<KeyValuePair<string, string>> Parameters)? UsernameRefusal(string name, WiredNativeEditorConfiguration native)
     {

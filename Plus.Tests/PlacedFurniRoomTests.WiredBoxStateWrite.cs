@@ -12,8 +12,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a Change Variable Value that sets @state to 1 on picked furni changes a Wired floor
-    // switch, while the picked Wired boxes and antennas stay at 0.
+    // A Change Variable Value that sets @state to 1 on picked furni changes a Wired floor switch, while the picked Wired boxes and antennas stay at 0.
     [Fact]
     public async Task ChangeVariableValueLeavesTheStateOfPickedWiredBoxes()
     {

@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Observed on AIR WIN63-202610151745-318700621: the area selectors clamp each area int to 0..64 when saved.</summary>
+/// <summary>The area selectors clamp each area int to 0..64 when saved.</summary>
 public sealed class WiredAreaSelectorClampTests
 {
     [Theory]

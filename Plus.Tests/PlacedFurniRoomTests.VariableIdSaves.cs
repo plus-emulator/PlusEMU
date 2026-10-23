@@ -8,18 +8,15 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: Give Variable, Change Variable Value and Remove Variable save on any variable id the editor
-// sends, whatever its kind. All 162 built-in ids saved on each card and reopened as sent. An id of a variable the room does not have, or
-// of another kind than the target, saves too. A number is kept as a number; any other text is stored as "0", the id of no variable. The
-// reference slot of Give and Change is stored the same way; only the stored form of that slot is covered here, not a save with the "from a
-// variable" option on and no variable to read.
+// Give Variable, Change Variable Value and Remove Variable save on any variable id the editor sends, whatever its kind. An id of a variable the room does not have, or of another kind than the target, saves too. A number is kept as a number; any other text is stored as "0", the id of no variable.
+// The reference slot of Give and Change is stored the same way. A save with the "from a variable" option on and no variable to read is not covered.
 public partial class PlacedFurniRoomTests
 {
     private const uint VariableIdTile = 951, VariableIdBox = 952;
     private uint _variableIdBox;
     private const string Give = "wf_act_give_var", Change = "wf_act_change_var_val", Remove = "wf_act_remove_var";
 
-    // Every variable of the room catalog on Habbo, with its target (0 furni, 1 user, -10 global, -20 context).
+    // Every variable of the room catalog, with its target (0 furni, 1 user, -10 global, -20 context).
     private static readonly (int Target, string Id)[] HabboBuiltIns =
     [
         (0, "-100"), (0, "-101"), (0, "-102"), (0, "-110"), (0, "-120"), (0, "-121"), (0, "-122"), (0, "-123"), (0, "-124"), (0, "-125"), (0, "-126"),
@@ -68,7 +65,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(failures.Count == 0, string.Join("; ", failures.Take(12)));
     }
 
-    // Habbo sent each id in the first slot of Give Variable, Change Variable Value and Remove Variable; the three cards answered the same.
+    // Each id goes in the first slot of Give Variable, Change Variable Value and Remove Variable; the three cards answer the same.
     [Theory]
     [InlineData("-110", 1, "-110")] // the furni @state id on a user target
     [InlineData("-230", 0, "-230")] // the user @position.x id on a furni target
@@ -142,8 +139,7 @@ public partial class PlacedFurniRoomTests
         }
     }
 
-    // The reference slot of Give Variable and Change Variable Value is stored the same way (Habbo: Give [0,0,1,1,0,0,0] and Change
-    // [0,0,0,0,1,0,0], that is the value option on and a furni reference target).
+    // The reference slot of Give Variable and Change Variable Value is stored the same way (the value option on and a furni reference target).
     [Theory]
     [InlineData("5", "5")]
     [InlineData("+5", "5")]
@@ -191,7 +187,7 @@ public partial class PlacedFurniRoomTests
         return SaveAnswer();
     }
 
-    // The raw WIRED_OPEN packet, then the variable ids of the effect editor frame (WiredLegacyProtocol.Write).
+    // The raw WIRED_OPEN packet, then the variable ids of the effect editor frame.
     private string[] ReopenVariableIds()
     {
         _client.Packets.Clear();

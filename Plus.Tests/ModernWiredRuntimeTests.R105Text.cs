@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The text add-ons in a fired stack, and the numbers a capturer reads. Observed on AIR WIN63-202610201032-107964540.
+// The text add-ons in a fired stack, and the numbers a capturer reads.
 public partial class ModernWiredRuntimeTests
 {
     // A text add-on saved through the editor, on the stack's tile.
@@ -60,7 +60,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("v7 [$(tv)]", Shown(s, "v7 [$(tv)]"));
     }
 
-    // Users By Type (class_4313.as:34-47): Bot 4.
+    // Users By Type: Bot 4.
     private static string Bots() => Row(2, "[4]", false, false);
 
     [Fact]
@@ -89,7 +89,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("v5 [$(tv)] [$(all)]", Shown(s, "v5 [$(tv)] [$(all)]"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the triggering user without the variable shows "null".
+    // The triggering user without the variable shows "null".
     [Fact]
     public void TextOutputVariablePrintsNullForTheTriggeringUserWithoutTheVariable()
     {
@@ -119,7 +119,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("v13 [$(fn)] [$(all)]", Shown(s, "v13 [$(fn)] [$(all)]"));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Furni Name prints the name of the furnidata ("Colour Tile"), not the shop name.
+    // Furni Name prints the name of the furnidata ("Colour Tile"), not the shop name.
     [Fact]
     public void TextOutputFurniNamePrintsTheFurnidataName()
     {

@@ -38,7 +38,7 @@ public sealed class FootballGateService(IFootballGateStore store) : IFootballGat
 {
     /// <summary>
     /// Stores one gender's look and keeps the other. The editor is only offered to the room owner, room controllers and users with
-    /// rights (AIR WIN63-202610151745-318700621, FurnitureClothingChangeWidgetHandler.as:85).
+    /// rights.
     /// </summary>
     public void SaveLook(GameClient session, FootballGateLookRequest request)
     {

@@ -2,7 +2,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// What each selector picks in a real firing. Observed on AIR WIN63-202610201032-107964540.
+// What each selector picks in a real firing.
 public partial class ModernWiredRuntimeTests
 {
     private static string PickedFurni(params uint[] ids) =>

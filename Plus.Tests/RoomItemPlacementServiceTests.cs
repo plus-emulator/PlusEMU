@@ -299,7 +299,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new[] { "FurniMove", "FurniRotate", RewardTrackActions.MoveItem, RewardTrackActions.RotateItem }, calls);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a refused move or rotation resends the item and shows the mover the placement error.
+    // A refused move or rotation resends the item and shows the mover the placement error.
     [Fact]
     public void ARefusedMoveShowsThePlacementError()
     {

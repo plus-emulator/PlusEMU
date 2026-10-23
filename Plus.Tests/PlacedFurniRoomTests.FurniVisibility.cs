@@ -67,7 +67,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(FurniVisibility.Scans - before <= 1, $"RefreshFurni scanned {FurniVisibility.Scans - before} times for 41 furni");
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the room entry lists every floor item that no hider covers.
+    // The room entry lists every floor item that no hider covers.
     [Fact]
     public async Task TheEntryStillHidesOnlyTheCoveredFurniWhenAHiderIsOn()
     {
@@ -119,7 +119,7 @@ public partial class PlacedFurniRoomTests
         Assert.False(HoldsId(added[0], 70001), "the wired box inside the hidden area was sent");
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a furni that is inside a hidden area is not on the clients, wherever it came from.
+    // A furni that is inside a hidden area is not on the clients, wherever it came from.
     [Fact]
     public async Task AFurniMovedIntoAHiddenAreaIsRemovedFromTheClients()
     {
@@ -228,7 +228,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal([101u], Removed());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the entry height map marks the tiles of a hider that is on as 0xFFFF.
+    // The entry height map marks the tiles of a hider that is on as 0xFFFF.
     [Fact]
     public void TheEntryHeightMapMarksTheHiddenTiles()
     {

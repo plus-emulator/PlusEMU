@@ -31,8 +31,7 @@ internal sealed partial class WiredStackEngine
             return;
         }
 
-        // Observed r92g r92-signals two-w1..w3 (AIR WIN63-202610131318-860371703): two say stacks on one message ran stack two first
-        // once and stack one first twice, so stacks of one event are not run in id order. They run in a per-event random order.
+        // Stacks of one event are not run in id order. They run in a per-event random order.
         // A signal skips the receivers that pick other antennas before their stacks are captured, so a large loop stays cheap per hop.
         var antenna = pending.Signal != null ? unchecked((uint)pending.Event.Code) : 0;
         var triggers = _items.Values.OfType<IWiredContextualTrigger>()
@@ -111,8 +110,7 @@ internal sealed partial class WiredStackEngine
     private bool AdvanceDispatchCore(PendingDispatch pending)
     {
         var queued = pending.IsQueued;
-        // Observed on AIR WIN63-202610151745-318700621: the stacks one event fires share one WiredMovements. The clock moves on while
-        // a stack runs, so every stack this call starts gets the same firing time, and with it the same publication deadline.
+        // The stacks one event fires share one WiredMovements. The clock moves on while a stack runs, so every stack this call starts gets the same firing time, and with it the same publication deadline.
         var firedAt = pending.FiredAt ?? _now();
 
         if (pending.Signal == null && pending.CapturedPositions.Any(position => !IsAttached(position.Box)
@@ -273,9 +271,7 @@ internal sealed partial class WiredStackEngine
         }
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a receiving stack runs at most 100 times in one 500 ms wired window, a 1, 2 or
-    // 3-stack loop 100 times each in one tick. Signals past that are dropped, not deferred, and the client gets no notice. The sending
-    // antenna still flips.
+    // A receiving stack runs at most 100 times in one 500 ms wired window. Signals past that are dropped, not deferred, and the client gets no notice. The sending antenna still flips.
     // The chain count is this engine's own bound: it holds a loop too large for one pass to the same 100 runs per stack across windows.
     private const int MaxSignalRunsPerWindow = 100;
     private readonly Dictionary<IWiredItem, int> _signalRuns = [];
@@ -438,9 +434,7 @@ internal sealed partial class WiredStackEngine
 
         ApplySelectorLimits(context);
 
-        // The final trigger gate runs once the selector pool is ready and before any condition. Observed r92k r92k-trigger-gate
-        // (AIR WIN63-202610131318-860371703): a walks-on trigger whose selector pool rejected the walked tile flashed nothing in
-        // neg-w1..w3 (no trigger, selector or always-true condition), while the accepting control pos-w1/w2 flashed all of them.
+        // The final trigger gate runs once the selector pool is ready and before any condition: a walks-on trigger whose selector pool rejected the walked tile flashes nothing.
         if (trigger != null && !trigger.CanTrigger(context)) {
             yield break;
         }
@@ -512,14 +506,12 @@ internal sealed partial class WiredStackEngine
             }
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a Receive Signal stack whose condition fails runs its negative actions, so a
-        // negative Send Signal in it carries the signal on to the next hop.
+        // A Receive Signal stack whose condition fails runs its negative actions, so a negative Send Signal in it carries the signal on to the next hop.
         var negativeSignal = negative == false && !called && !conditionsPassed && context.Event.Kind == WiredEventKind.Signal
             && stack.Any(x => IsKind(x, InteractionType.WiredEffect) && x is IWiredContextualAction { IsNegative: true });
 
         if (!negativeSignal && negative is { } requested && (requested ? conditionsPassed : !conditionsPassed)) {
-            // Observed on hhus (AIR WIN63-202610131318-860371703): a Receive Signal trigger whose condition fails still flashes, with the
-            // antenna and the sender in the same batch; its condition and actions stay at rest.
+            // A Receive Signal trigger whose condition fails still flashes, with the antenna and the sender in the same batch; its condition and actions stay at rest.
             if (!requested && !called && context.Event.Kind == WiredEventKind.Signal) {
                 Flash(firing.Source);
             }
@@ -531,8 +523,7 @@ internal sealed partial class WiredStackEngine
             && (x is IWiredContextualAction action && action.IsNegative) == (!conditionsPassed && (negative == null || negativeSignal))).ToArray();
 
         if (negative == null && !conditionsPassed && actions.Length == 0) {
-            // Observed on hhus (WIN63-202610131318): a click trigger flips even when its date condition fails; the failed condition
-            // and the actions it gates stay at rest.
+            // A click trigger flips even when its date condition fails; the failed condition and the actions it gates stay at rest.
             Flash(firing.Source);
 
             yield break;
@@ -581,8 +572,7 @@ internal sealed partial class WiredStackEngine
         {
             context.VariableChanges = context.Policy.Addons.ExecuteInOrder ? null : new WiredVariableChangeBatch();
             firing.HasEffects = ready.Count > 0;
-            // The add-ons and the trigger flash before the actions run, so a flash an action sends early (before a movement) carries the
-            // whole stack. Observed on AIR WIN63-202610151745-318700621: a moving stack flashes trigger, mover and add-on in one batch.
+            // The add-ons and the trigger flash before the actions run, so a flash an action sends early (before a movement) carries the whole stack.
             firing.Accepted = ScheduleActions(firing.Source, stack, ready.ToArray(), legacy,
                 action => action is IWiredConfiguredItem configured ? WiredConfigurationLimits.DelayMilliseconds(context.ConfigurationOf(configured).Delay) : GetDelay(action),
                 firing.FiredAt, prepared: true, accepted: () =>
@@ -591,7 +581,7 @@ internal sealed partial class WiredStackEngine
                         Flash(addon);
                     }
 
-                    // Observed r92g r92-signals call-w1/w2: a called stack flashes its actions, not its own trigger.
+                    // A called stack flashes its actions, not its own trigger.
                     if (!called) {
                         Flash(firing.Source);
                     }

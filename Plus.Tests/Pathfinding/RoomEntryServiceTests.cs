@@ -73,7 +73,6 @@ public partial class PlacedFurniRoomTests
         var tail = _client.Sent.SkipWhile(id => id != ServerPacketHeader.RoomEntryInfoComposer).ToArray();
         var expected = new List<uint>
         {
-            // Observed on AIR WIN63-202610151745-318700621.
             ServerPacketHeader.RoomEntryInfoComposer,
             ServerPacketHeader.RoomEventComposer,
             ServerPacketHeader.ConfigurationItemStatesComposer,

@@ -14,7 +14,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// class_3027 [box id] (AIR WIN63-202610131318-860371703): "Apply Furni to set conditions" restores the box's saved snapshot.
+// "Apply Furni to set conditions" restores the box's saved snapshot.
 public partial class PlacedFurniRoomTests
 {
     private const string ApplyWallBaseline = ":w=1,2 l=11,53 l";

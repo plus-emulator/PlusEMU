@@ -36,7 +36,6 @@ public sealed class WiredNativeAuxiliaryTests
         Assert.Equal(WiredNativeEditorProjection.Metadata(name).VariableDefaults.Length, runtime.VariableIds.Length);
     }
 
-    // Observed r92b in the official editor frames (AIR WIN63-202610131318-860371703).
     [Fact]
     public void MovementAddonEditorDefaultsMatchTheHotel()
     {
@@ -117,7 +116,7 @@ public sealed class WiredNativeAuxiliaryTests
     [Fact]
     public void ScalarBoxesKeepTheOpaqueIdsAndTranslateTargetsLiteralsAndComparisons()
     {
-        // AIR user target 1 -> scalar user 0; a literal above 32 bits rides the extension pair.
+        // Editor user target 1 -> scalar user 0; a literal above 32 bits rides the extension pair.
         var give = Compile("wf_act_give_var", Native("wf_act_give_var", [1, 0, 7, 1], [100], [0], ["user:12"]));
         Assert.Equal([0, 1, 7, 0, 100], give.IntParams.ToArray());
         Assert.Equal(["user:12"], give.VariableIds.ToArray());
@@ -126,7 +125,7 @@ public sealed class WiredNativeAuxiliaryTests
         var change = Compile("wf_act_change_var_val", Native("wf_act_change_var_val", [0, 2, 1, 0, 0, 1], [0, 101], [0, 200], ["furni:3", "user:4"]));
         // A six-int save is stored with the seventh int (same holder) off, so it compiles like a seven-int save.
         Assert.Equal([1, 2, 1, 0, 0, 0, 0, 200, 101, 0], change.IntParams.ToArray());
-        // AIR '>' is code 2; the executors use 0 for greater-than.
+        // The editor's '>' is code 2; the executors use 0 for greater-than.
         var match = Compile("wf_cnd_var_val_match", Native("wf_cnd_var_val_match", [1, 2, 0, 0, 9, 1], variables: ["user:12", "n"]) with { Quantifier = 1 });
         Assert.Equal(0, match.IntParams[1]);
         Assert.Equal(9, match.IntParams[3]);

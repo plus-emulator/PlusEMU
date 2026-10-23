@@ -8,9 +8,8 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// wf_var_context, wf_var_echo and wf_var_reference of the g4 remainder batch, run through the variable module the stacks use: the editor
-/// frame (observed on hhus, WIN63-202610131318), the definition each saved frame decodes to, and what reads and writes through it do.
-/// Behaviour nothing official shows is not yet observed on official Habbo (WiredVariableContext/Echo/Reference.cs and their tests; facts only).
+/// wf_var_context, wf_var_echo and wf_var_reference of the g4 remainder batch, run through the variable module the stacks use:
+/// the editor frame, the definition each saved frame decodes to, and what reads and writes through it do.
 /// </summary>
 public sealed class WiredRemainderG4VariableTests
 {
@@ -152,8 +151,8 @@ public sealed class WiredRemainderG4VariableTests
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a context variable stores a space in its name as an underscore ("a b" reads back
-    // "a_b"), so only the echo and the reference refuse it.
+    // A context variable stores a space in its name as an underscore ("a b" reads back "a_b"), so only the echo and the reference
+    // refuse it.
     [Theory]
     [InlineData("", false)]
     [InlineData("has space", true)]
@@ -260,7 +259,7 @@ public sealed class WiredRemainderG4VariableTests
     [Fact]
     public void AnEchoMayBeSavedBeforeItsVariableIsPickedAndThenMirrorsNothing()
     {
-        // Observed on hhus: the initial editor frame (variable id "0") saved under a name and reopened unchanged.
+        // The initial editor frame (variable id "0") saved under a name and reopened unchanged.
         Assert.True(Saves("wf_var_echo", [], "r70_probe_echo", ["0"], out var error, out var definition), error);
         Assert.Null(definition);
         Assert.True(Saves("wf_var_echo", [], "r70_probe_echo", [WiredVariableAbsent.Id], out error, out _), error);
@@ -371,7 +370,7 @@ public sealed class WiredRemainderG4VariableTests
     [Fact]
     public void AReferenceNeedsAVariableOfAnotherRoomAndSaysSoWithTheObservedKey()
     {
-        // The unpicked frame ("0") was refused on hhus with this key.
+        // The unpicked frame ("0") is refused with this key.
         Assert.False(Saves("wf_var_reference", [1], "r70_probe_reference", ["0"], out var error, out _));
         Assert.Equal("wiredfurni.error.variables.reference.valid", error);
         // The Hall cannot refer to its own variables, and a malformed id is no reference.

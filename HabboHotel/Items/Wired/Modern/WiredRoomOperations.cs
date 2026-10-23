@@ -76,22 +76,19 @@ public static class WiredRoomOperations
 
     /// <summary>
     /// Whether the user stands on the item for a condition. A user whose step is announced counts on the tile it steps to: the Wired
-    /// walk events fire with that announcement, and observed on hhus (AIR WIN63-202610131318-860371703) a walk-on stack's "triggerer
-    /// is on furni" condition holds for the furni walked onto.
+    /// walk events fire with that announcement, and a walk-on stack's "triggerer is on furni" condition holds for the furni walked onto.
     /// </summary>
     public static bool IsStandingOn(RoomUser user, Item item) =>
         Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(StandingTile(user));
 
     /// <summary>
-    /// The tile Wired reads for a user: the tile an announced step goes to, otherwise the user's tile. Observed on AIR
-    /// WIN63-202610151745-318700621: a users-in-area selector picks a user whose step into the area was announced (mv) before the
-    /// step completes, and no longer picks one whose step out of it was announced.
+    /// The tile Wired reads for a user: the tile an announced step goes to, otherwise the user's tile. A users-in-area selector picks a user whose step
+    /// into the area was announced (mv) before the step completes, and no longer picks one whose step out of it was announced.
     /// </summary>
     public static Point StandingTile(RoomUser user) => user.SetStep ? new(user.SetX, user.SetY) : user.Coordinate;
 
     /// <summary>
-    /// The users a Wired furni move onto the tile meets. Observed on AIR WIN63-202610151745-318700621: a Move/Rotate into a tile is
-    /// blocked by a user whose step onto it was announced, and not by one whose step off it was.
+    /// The users a Wired furni move onto the tile meets. A Move/Rotate into a tile is blocked by a user whose step onto it was announced, and not by one whose step off it was.
     /// </summary>
     public static List<RoomUser> UsersStandingOn(Room room, Point point)
     {
@@ -334,9 +331,8 @@ public static class WiredRoomOperations
         && (!altitude || Math.Abs(item.GetZ - snapshot.Z) < 0.00001);
 
     /// <summary>
-    /// Observed on hhus (AIR WIN63-202610131318-860371703): a picked wall torch takes part in the snapshot conditions, and with state
-    /// matching on, match passes at the saved state and fails once a Wired toggle changed it. A wall item has no rotation, so direction
-    /// never fails it; position is its wall tile, offset and side, altitude its saved height.
+    /// A picked wall torch takes part in the snapshot conditions, and with state matching on, match passes at the saved state and fails once a Wired toggle changed it.
+    /// A wall item has no rotation, so direction never fails it; position is its wall tile, offset and side, altitude its saved height.
     /// </summary>
     private static bool MatchesWallSnapshot(Item item, WiredFurniSnapshot snapshot, bool state, bool position, bool altitude)
     {

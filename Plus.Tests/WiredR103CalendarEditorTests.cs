@@ -3,7 +3,7 @@ using static Plus.Tests.WiredR103EditorSave;
 
 namespace Plus.Tests;
 
-// Date Matches and Time Matches as Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// Date Matches and Time Matches as Habbo stores them.
 public sealed class WiredR103CalendarEditorTests
 {
     private static readonly int[] Date = [0, 1, 127, 1, 1, 4095, 2026, 2026];

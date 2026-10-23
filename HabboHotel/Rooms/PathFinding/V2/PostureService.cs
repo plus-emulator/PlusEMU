@@ -42,7 +42,7 @@ public static class PostureService
     private static void ItemPosture(RoomUser actor, Plus.HabboHotel.Items.Item item, NavFlags flags)
     {
         var bed = (flags & NavFlags.GoalOnlyBed) != 0;
-        // Observed on AIR WIN63-202610151745-318700621: a seat reads "sit 1.01 0"; the client treats a third token of "1" as a floor sit.
+        // A seat reads "sit 1.01 0"; the client treats a third token of "1" as a floor sit.
         actor.SetStatus(bed ? "lay" : "sit", TextHandling.GetString(item.Definition.Height) + (bed ? " null" : " 0"));
         actor.RotHead = actor.RotBody = item.Rotation;
         actor.UpdateNeeded = true;

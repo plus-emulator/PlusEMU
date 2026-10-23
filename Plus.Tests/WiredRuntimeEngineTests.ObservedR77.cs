@@ -5,7 +5,6 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Observed on hhus build WIN63-202610131318, r77.</summary>
 public partial class WiredRuntimeEngineTests
 {
     [Theory]

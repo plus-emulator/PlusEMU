@@ -10,7 +10,7 @@ namespace Plus.Tests;
 /// <summary>Room Initialized runs at the end of the real room load, once every component has loaded its part of the room.</summary>
 public partial class ModernWiredRuntimeTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: the Room Initialized stacks run during the load, and the room's bots are already
+    // The Room Initialized stacks run during the load, and the room's bots are already
     // there, so a bot action in such a stack finds its bot.
     [Fact]
     public void RoomInitializedStackFindsABotThatLoadsWithTheRoom()

@@ -11,8 +11,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The Builders Club catalogue mode of AIR WIN63-202610151745-318700621: the client asks for the NORMAL and the BUILDERS_CLUB index
-// by mode and builds each in its own window (HabboCatalog.as:1744-1760, 2144-2150).
+// The Builders Club catalogue mode: the client asks for the NORMAL and the BUILDERS_CLUB index by mode and builds each in its own window.
 public sealed class BuildersClubCatalogTests
 {
     private static readonly DateTimeOffset Now = new(2040, 1, 1, 0, 0, 0, TimeSpan.Zero);
@@ -232,7 +231,7 @@ public sealed class BuildersClubCatalogTests
         Assert.False(snapshot.CanGift);
     }
 
-    // Migration 91 mirrors hhus' BUILDERS_CLUB tree with Habbo's page ids; the fresh install carries it.
+    // Migration 91 adds the BUILDERS_CLUB tree with Habbo's page ids; the fresh install carries it.
     [Fact]
     public void TheFreshInstallCarriesHabbosBuildersClubTree()
     {

@@ -20,30 +20,30 @@ public static class ServerPacketHeader
 
     // Avatar
     public const uint WardrobeComposer = 831;
-    public const uint UserNftWardrobeComposer = 1345; // package_210/class_3851
-    public const uint SelectedNftWardrobeOutfitComposer = 3758; // package_210/class_3356
+    public const uint UserNftWardrobeComposer = 1345;
+    public const uint SelectedNftWardrobeOutfitComposer = 3758;
 
     // Collectibles hub
-    public const uint CollectibleWalletAddressesComposer = 2681; // package_65/class_2945
-    public const uint CollectorScoreComposer = 1598; // package_65/class_2689
-    public const uint NftCollectionsComposer = 3181; // package_65/class_3665
-    public const uint NftCollectionBonusClaimResultComposer = 3325; // package_65/class_3852
-    public const uint NftCollectionRewardClaimResultComposer = 352; // package_65/class_3012
-    public const uint NftStoreOffersComposer = 3287; // package_65/class_3532
-    public const uint NftStorePurchaseResultComposer = 358; // package_65/class_2220
-    public const uint CollectibleMintableItemTypesComposer = 749; // package_65/class_3177
-    public const uint CollectibleMintingEnabledComposer = 2689; // package_65/class_2619
-    public const uint MintCollectibleResultComposer = 1072; // package_65/class_3081
-    public const uint NftClaimsComposer = 3065; // package_65/class_3805
-    public const uint NftClaimResultComposer = 3539; // package_65/class_2793
-    public const uint EmeraldBalanceComposer = 2789; // package_65/class_2134
+    public const uint CollectibleWalletAddressesComposer = 2681;
+    public const uint CollectorScoreComposer = 1598;
+    public const uint NftCollectionsComposer = 3181;
+    public const uint NftCollectionBonusClaimResultComposer = 3325;
+    public const uint NftCollectionRewardClaimResultComposer = 352;
+    public const uint NftStoreOffersComposer = 3287;
+    public const uint NftStorePurchaseResultComposer = 358;
+    public const uint CollectibleMintableItemTypesComposer = 749;
+    public const uint CollectibleMintingEnabledComposer = 2689;
+    public const uint MintCollectibleResultComposer = 1072;
+    public const uint NftClaimsComposer = 3065;
+    public const uint NftClaimResultComposer = 3539;
+    public const uint EmeraldBalanceComposer = 2789;
 
     // Catalog
     public const uint CatalogIndexComposer = 1462;
     public const uint CatalogItemDiscountComposer = 853;
-    public const uint BuildersClubSubscriptionStatusComposer = 228; // package_5/class_1773
-    public const uint BuildersClubFurniCountComposer = 738; // package_5/class_2247
-    public const uint BuildersClubPlacementWarningComposer = 3594; // package_64/class_3565
+    public const uint BuildersClubSubscriptionStatusComposer = 228;
+    public const uint BuildersClubFurniCountComposer = 738;
+    public const uint BuildersClubPlacementWarningComposer = 3594;
     public const uint PurchaseOKComposer = 2258;
     public const uint CatalogOfferComposer = 2985;
     public const uint CatalogPageComposer = 3143;
@@ -81,15 +81,15 @@ public static class ServerPacketHeader
     public const uint ObjectUpdateComposer = 3458;
     public const uint ObjectDataUpdateComposer = 1200;
     public const uint ObjectsDataUpdateComposer = 3151;
-    public const uint FurniRecolorUpdateComposer = 2132; // package_64/class_3789
+    public const uint FurniRecolorUpdateComposer = 2132;
     public const uint ObjectRemoveComposer = 167;
-    public const uint ObjectRemoveMultipleComposer = 2419; // package_64/class_3737
+    public const uint ObjectRemoveMultipleComposer = 2419;
     public const uint SlideObjectBundleComposer = 1238;
     public const uint ItemsComposer = 797;
     public const uint ItemAddComposer = 1091;
     public const uint ItemUpdateComposer = 787;
-    // Plus-only (custom, not an AIR id): furni metadata for the entries above. 5120 is unused on AIR WIN63-202610151745-318700621 (incoming)
-    // and on the Volt-Renderer incoming table.
+    // Plus-only id, not an official one: furni metadata for the entries above. 5120 is free in the client's and Volt-Renderer's
+    // incoming tables.
     public const uint FurnitureMetadataComposer = 5120;
     public const uint ItemRemoveComposer = 1352;
 
@@ -125,10 +125,10 @@ public static class ServerPacketHeader
     public const uint WiredClickSettingsComposer = 1494;
     public const uint WiredClickUserResponseComposer = 3678;
     public const uint InClientLinkComposer = 1931;
-    public const uint WiredVariableFxConfigsComposer = 739; // class_2605
-    public const uint WiredVariableFxConfigsRemovedComposer = 2588; // class_3257
-    public const uint WiredVariableFxStatusComposer = 754; // class_2753
-    public const uint WiredVariableFxStatusRemovedComposer = 236; // class_2542
+    public const uint WiredVariableFxConfigsComposer = 739;
+    public const uint WiredVariableFxConfigsRemovedComposer = 2588;
+    public const uint WiredVariableFxStatusComposer = 754;
+    public const uint WiredVariableFxStatusRemovedComposer = 236;
     public const uint WiredUserVariablesDataComposer = 5103;
     public const uint WiredAllVariablesHashComposer = 3811;
     public const uint WiredAllVariablesDiffComposer = 908;
@@ -294,7 +294,7 @@ public static class ServerPacketHeader
     public const uint SubmitBullyReportComposer = 1630;
     public const uint UserNameChangeComposer = 271;
     public const uint FriendFurniStartConfirmationComposer = 2166;
-    public const uint GuideReportingStatusComposer = 721; // class_2139 [statusCode]
+    public const uint GuideReportingStatusComposer = 721;
     public const uint VoucherRedeemErrorComposer = 83;
     public const uint PurchaseErrorComposer = 1115;
     public const uint CampaignCalendarDoorOpenedComposer = 136;
@@ -307,7 +307,7 @@ public static class ServerPacketHeader
     public const uint FlatAccessDeniedComposer = 2059;
     public const uint LatencyPingResponseComposer = 3179;
     public const uint HabboUserBadgesComposer = 1460;
-    public const uint HeightMapUpdateComposer = 3841; // package_71/class_3258
+    public const uint HeightMapUpdateComposer = 3841;
     public const uint HeightMapComposer = 3698;
 
     public const uint CanCreateRoomComposer = 3897;
@@ -391,10 +391,10 @@ public static class ServerPacketHeader
     public const uint RewardTrackClaimResultComposer = 3872;
     public const uint RewardTrackProgressComposer = 3578;
     public const uint RewardTrackPremiumPurchaseResultComposer = 1980;
-    // Daily tasks, AIR WIN63-202610151745-318700621 (quest/dailytasks/DailyTasksController.as).
-    public const uint ActiveDailyTasksComposer = 1617; // package_162.class_3100, parser package_180.class_3130
-    public const uint DailyTasksAddedComposer = 3362; // package_162.class_2799, parser package_180.class_3531
-    public const uint DailyTaskUpdatedComposer = 1799; // package_162.class_3370, parser package_180.class_3495
+    // Daily tasks.
+    public const uint ActiveDailyTasksComposer = 1617;
+    public const uint DailyTasksAddedComposer = 3362;
+    public const uint DailyTaskUpdatedComposer = 1799;
     public const uint HabboClubExtendOfferComposer = 2993;
     public const uint ClubGiftReceivedComposer = 1249;
     public const uint PickMonthlyClubGiftComposer = 3405;
@@ -452,59 +452,59 @@ public static class ServerPacketHeader
     public const uint WiredEnvironmentComposer = 3025;
     public const uint AreaHideComposer = 2763;
     public const uint ConfigurationItemStatesComposer = 3946;
-    public const uint UserNftChatStylesComposer = 3026; // package_170/class_2869
-    public const uint RaidProtectionCapabilityComposer = 554; // package_236/class_4123
+    public const uint UserNftChatStylesComposer = 3026;
+    public const uint RaidProtectionCapabilityComposer = 554;
     public const uint WiredUserVariablesData64Composer = 9480;
     public const uint WiredVariableHolders64Composer = 9481;
     public const uint WiredVariableHoldersPage64Composer = 9482;
     // Wired chests and wired transactions; see reviews/chest-protocol-map.md.
-    public const uint WiredChestOpenComposer = 2598; // package_112.class_3078
-    public const uint WiredChestSettingsUpdatedComposer = 2149; // package_112.class_2448
-    public const uint WiredChestUpgradeComposer = 3314; // package_112.class_3165
-    public const uint WiredChestCoinsComposer = 3978; // package_112.class_3811
-    public const uint WiredChestFurniChunkComposer = 3704; // package_112.class_2622
-    public const uint WiredChestFurniUpdateComposer = 3731; // package_112.class_3301
-    public const uint WiredTransactionFailComposer = 2729; // package_196.class_3459
-    public const uint WiredTransactionSuccessComposer = 470; // package_196.class_3164
-    public const uint WiredTradeErrorComposer = 1961; // package_192.class_3902
-    public const uint WiredChestTradeOpenComposer = 2881; // package_192.class_3307
-    public const uint WiredChestTradeItemsComposer = 1716; // package_192.class_3032
-    public const uint WiredChestTradeCancelledComposer = 3834; // package_192.class_3837
-    public const uint WiredChestTradeCompletedComposer = 2367; // package_192.class_3876
+    public const uint WiredChestOpenComposer = 2598;
+    public const uint WiredChestSettingsUpdatedComposer = 2149;
+    public const uint WiredChestUpgradeComposer = 3314;
+    public const uint WiredChestCoinsComposer = 3978;
+    public const uint WiredChestFurniChunkComposer = 3704;
+    public const uint WiredChestFurniUpdateComposer = 3731;
+    public const uint WiredTransactionFailComposer = 2729;
+    public const uint WiredTransactionSuccessComposer = 470;
+    public const uint WiredTradeErrorComposer = 1961;
+    public const uint WiredChestTradeOpenComposer = 2881;
+    public const uint WiredChestTradeItemsComposer = 1716;
+    public const uint WiredChestTradeCancelledComposer = 3834;
+    public const uint WiredChestTradeCompletedComposer = 2367;
 
-    // October wired boxes (r88).
-    public const uint WiredFurniTransparencyComposer = 3331; // class_3402
-    public const uint WiredUserTransparencyComposer = 1479; // class_2840
-    public const uint WiredFurniHighlightComposer = 2122; // class_2692
-    public const uint WiredWebApiKeyComposer = 3954; // class_3542
-    public const uint WiredVariableLeaderboardSnapshotComposer = 3516; // package_160.class_3581
-    public const uint WiredVariableLeaderboardChunkComposer = 3948; // package_160.class_3180
-    public const uint WiredLabelsComposer = 1142; // class_3055
-    public const uint WiredLabelsUpdateComposer = 925; // class_2868
-    public const uint WiredLinkOpenComposer = 2374; // package_82.class_3704
-    public const uint WiredLinkConfigurationComposer = 1199; // package_82.class_3204
-    public const uint WiredLinkOperationResultComposer = 2156; // package_82.class_3734
-    public const uint WiredLinkConnectionsComposer = 2593; // package_82.class_2754
-    public const uint WiredLinkNetworkInvalidatedComposer = 3715; // package_82.class_2368
-    public const uint WiredUserHighlightComposer = 2235; // class_3615
-    public const uint WiredFurniVisualizationStateComposer = 2207; // class_3572
-    public const uint WiredUserVisualizationStateComposer = 1063; // class_3471
-    public const uint ObjectRemoveConfirmComposer = 3589; // package_64/class_3467
-    public const uint YouArePlayingGameComposer = 1784; // package_44/class_3268
-    public const uint WiredContractOpenComposer = 3218; // package_99.class_3725
-    public const uint WiredContractContentsComposer = 2309; // package_99.class_2410
-    public const uint WiredContractUpdateResultComposer = 1085; // package_99.class_3013
+    // October wired boxes.
+    public const uint WiredFurniTransparencyComposer = 3331;
+    public const uint WiredUserTransparencyComposer = 1479;
+    public const uint WiredFurniHighlightComposer = 2122;
+    public const uint WiredWebApiKeyComposer = 3954;
+    public const uint WiredVariableLeaderboardSnapshotComposer = 3516;
+    public const uint WiredVariableLeaderboardChunkComposer = 3948;
+    public const uint WiredLabelsComposer = 1142;
+    public const uint WiredLabelsUpdateComposer = 925;
+    public const uint WiredLinkOpenComposer = 2374;
+    public const uint WiredLinkConfigurationComposer = 1199;
+    public const uint WiredLinkOperationResultComposer = 2156;
+    public const uint WiredLinkConnectionsComposer = 2593;
+    public const uint WiredLinkNetworkInvalidatedComposer = 3715;
+    public const uint WiredUserHighlightComposer = 2235;
+    public const uint WiredFurniVisualizationStateComposer = 2207;
+    public const uint WiredUserVisualizationStateComposer = 1063;
+    public const uint ObjectRemoveConfirmComposer = 3589;
+    public const uint YouArePlayingGameComposer = 1784;
+    public const uint WiredContractOpenComposer = 3218;
+    public const uint WiredContractContentsComposer = 2309;
+    public const uint WiredContractUpdateResultComposer = 1085;
 
     // Wired monitor.
-    public const uint WiredRoomStatsComposer = 2746; // package_121.class_3190
-    public const uint WiredErrorLogsComposer = 353; // package_121.class_2831
-    // Wired menu permissions, sent on room entry. Observed on AIR WIN63-202610131318-860371703 as package_121.class_3679, parser class_2713.
-    public const uint WiredPermissionsComposer = 2131; // package_121.class_3691
-    // Answers WiredGetVariablesForObject (package_121.class_3373, parser wiredmenu.class_4057).
+    public const uint WiredRoomStatsComposer = 2746;
+    public const uint WiredErrorLogsComposer = 353;
+    // Wired menu permissions, sent on room entry.
+    public const uint WiredPermissionsComposer = 2131;
+    // Answers WiredGetVariablesForObject.
     public const uint WiredVariablesForObjectComposer = 2938;
 
-    // Free product claims (cursed dragon adoption) and the new-feature promo expiry, AIR WIN63-202610151745-318700621.
-    public const uint HasClaimedProductResponseComposer = 1215; // parser package_174.class_2885
-    public const uint ClaimProductResultComposer = 3886; // parser package_174.class_3882
-    public const uint SecondsUntilComposer = 1309; // parser package_205.class_3987
+    // Free product claims (cursed dragon adoption) and the new-feature promo expiry.
+    public const uint HasClaimedProductResponseComposer = 1215;
+    public const uint ClaimProductResultComposer = 3886;
+    public const uint SecondsUntilComposer = 1309;
 }

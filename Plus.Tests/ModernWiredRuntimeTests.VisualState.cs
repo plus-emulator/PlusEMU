@@ -5,7 +5,6 @@ using Xunit;
 namespace Plus.Tests;
 
 // The state a user entering the room is sent for Set Furni Highlight and Set Furni Visibility.
-// Observed on AIR WIN63-202610201032-107964540.
 public partial class ModernWiredRuntimeTests
 {
     [Fact]

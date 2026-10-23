@@ -9,8 +9,7 @@ public sealed partial class WiredActionPortParityTests
     private static readonly string ModelA = string.Join('\r',
         new[] { "xxxxxxxxxxxx" }.Concat(Enumerable.Repeat("xxxx00000000", 13)).Concat(["xxxxxxxxxxxx", "xxxxxxxxxxxx"]));
 
-    // Observed on AIR WIN63-202610151745-318700621, 10 of 10 fires for each start in a model_a room. A user in the same row or column
-    // within three tiles makes the block step straight away. Otherwise, or when that tile is taken, the block steps east, even
+    // A user in the same row or column within three tiles makes the block step straight away. Otherwise, or when that tile is taken, the block steps east, even
     // towards the user. When east is taken it steps away from the user on y (south when level), then the other way on y.
     [Theory]
     [InlineData(8, 11, 5, 11, 4, 11)]

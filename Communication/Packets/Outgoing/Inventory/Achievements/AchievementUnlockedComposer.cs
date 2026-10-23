@@ -10,7 +10,7 @@ public class AchievementUnlockedComposer : IServerPacket
 
     public AchievementUnlockedComposer(AchievementUnlockSnapshot snapshot) => _snapshot = snapshot;
 
-    // WIN63 package_53.class_3440. AIR reads type (compared with achievementId by the resolution view), level, badgeId and
+    // The client reads type (compared with achievementId by the resolution view), level, badgeId and
     // badgeCode (inventory), removedBadgeCode, category (notification link), ownerCount and badgeRarityId; points, bonusPoints,
     // achievementID and showDialogToUser are parsed but unused.
     public void Compose(IOutgoingPacket packet)

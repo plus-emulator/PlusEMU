@@ -13,7 +13,7 @@ using Plus.HabboHotel.Users.Inventory.Furniture;
 namespace Plus.HabboHotel.Users.Collectibles;
 
 /// <summary>
-/// The Collectibles hub in the catalog (AIR catalog/collectibles): the Collector Wallet, collector score, collections, shop, minting
+/// The Collectibles hub in the catalog: the Collector Wallet, collector score, collections, shop, minting
 /// and monthly reward claims. Collectibles live in the collectible_ tables and Emeralds are the only currency. Each method answers
 /// the session itself.
 /// </summary>
@@ -188,7 +188,7 @@ public sealed class CollectiblesHubService(IDatabase database, ISettingsManager 
             var open = ReachableClaims(connection, transaction, collector.Address, Book(connection, transaction, collector.Address).Level)
                 .Where(claim => claim.Open).ToList();
 
-            // AIR RewardCollectibleItemRenderer.as:41 shows the remaining amount (limit - claimed), and claiming gives all of it.
+            // The client shows the remaining amount (limit - claimed), and claiming gives all of it.
             foreach (var claim in open) {
                 connection.Execute("""
                     INSERT INTO user_collectible_reward_claims (wallet_address, claim_id, claimed_amount) VALUES (@address, @claimId, @limit)

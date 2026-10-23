@@ -4,8 +4,8 @@ using Plus.HabboHotel.Items.Wired.Leaderboard;
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 
 /// <summary>
-/// The room's published leaderboards: package_160/class_3569 -> package_135/class_2558 reads [n (0..4), descriptor x n], each descriptor
-/// per class_2737.fromMessage (L48-83). The client drops overlays the snapshot no longer lists.
+/// The room's published leaderboards: [n (0..4), descriptor x n].
+/// The client drops overlays the snapshot no longer lists.
 /// </summary>
 public sealed class WiredVariableLeaderboardSnapshotComposer(IReadOnlyList<WiredLeaderboardDescriptor> descriptors) : IServerPacket
 {
@@ -48,8 +48,8 @@ public sealed class WiredVariableLeaderboardSnapshotComposer(IReadOnlyList<Wired
 }
 
 /// <summary>
-/// Rows of one subscribed chunk: package_160/class_3168 -> package_135/class_3018 reads [overlay, revision, variable, chunk, total,
-/// n (0..50), row x n]; each row per class_3133.fromMessage (L47-62), whose two times are readLong (two 32-bit halves).
+/// Rows of one subscribed chunk: [overlay, revision, variable, chunk, total,
+/// n (0..50), row x n]. The two times of a row are longs (two 32-bit halves).
 /// </summary>
 public sealed class WiredVariableLeaderboardChunkComposer(WiredLeaderboardChunk chunk) : IServerPacket
 {
@@ -86,7 +86,7 @@ public sealed class WiredVariableLeaderboardChunkComposer(WiredLeaderboardChunk 
         }
     }
 
-    // class_4259.readLong: the high then the low unsigned 32-bit word.
+    // A long is the high then the low unsigned 32-bit word.
     private static void WriteLong(IOutgoingPacket packet, long value)
     {
         packet.WriteInteger(unchecked((int)(value >> 32)));

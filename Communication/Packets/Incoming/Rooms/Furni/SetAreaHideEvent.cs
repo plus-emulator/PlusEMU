@@ -6,7 +6,7 @@ namespace Plus.Communication.Packets.Incoming.Rooms.Furni;
 
 /// <summary>
 /// The area hider widget saves: int id, int rootX, int rootY, int width, int length, bool invisibility, bool wallItems, bool invert.
-/// Observed on AIR WIN63-202610201032-107964540: every change of the widget is sent at once, and the answer is a data update.
+/// Every change of the widget is sent at once, and the answer is a data update.
 /// </summary>
 internal sealed class SetAreaHideEvent : IPacketEvent
 {

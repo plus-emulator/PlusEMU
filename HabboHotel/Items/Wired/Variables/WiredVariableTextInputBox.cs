@@ -27,7 +27,7 @@ public sealed class WiredVariableTextInputBox(Room room, Item item, WiredBoxDesc
             return false;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: the name is checked as sent, length first, then the characters.
+        // The name is checked as sent, length first, then the characters.
         if (WiredTextAddonRules.NameRefusal(proposed.Text) is { } refused) {
             error = refused;
 
@@ -42,7 +42,7 @@ public sealed class WiredVariableTextInputBox(Room room, Item item, WiredBoxDesc
 
         error = "Choose a context variable and capturer name.";
 
-        // Observed on AIR WIN63-202610201032-107964540: any variable, or none, is accepted. Only a context variable is captured.
+        // Any variable, or none, is accepted. Only a context variable is captured.
         return proposed.Version == 1 && proposed.IntParams.Length == 1 && proposed.IntParams[0] is 1 or 2 && proposed.VariableIds.Length == 1
             && (WiredVariableAbsent.Is(proposed.VariableIds[0]) || WiredVariableDescription.TryParseCatalogId(proposed.VariableIds[0], out _, out _));
     }

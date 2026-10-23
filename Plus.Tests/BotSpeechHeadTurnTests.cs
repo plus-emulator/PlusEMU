@@ -12,8 +12,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: when a bot speaks, a standing avatar turns its head one step toward the bot on
-// the next status update, and the head goes back to the body direction 5000 ms after that update.
+// When a bot speaks, a standing avatar turns its head one step toward the bot on the next status update. The head goes back to the body direction 5000 ms after that update.
 public sealed class BotSpeechHeadTurnTests
 {
     private const int VisitorId = 9;
@@ -192,7 +191,6 @@ public sealed class BotSpeechHeadTurnTests
         public RoomUser Bot { get; }
         public RoomUser Avatar { get; }
 
-        // Runs one room cycle and returns the head and body this unit had in that cycle's status update, if it had one.
         public (int Head, int Body)? NextStatusOf(RoomUser unit)
         {
             _viewerPackets.Clear();
@@ -228,7 +226,6 @@ public sealed class BotSpeechHeadTurnTests
             typeof(Room).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, value);
     }
 
-    // Runs OnTick from inside the room's actor tick, where bot auto chat is said.
     private sealed class TickingBotAi : BotAi
     {
         public Action? OnTick { get; set; }

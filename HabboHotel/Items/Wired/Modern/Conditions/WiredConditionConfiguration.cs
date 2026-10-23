@@ -108,8 +108,7 @@ public static class WiredConditionConfiguration
             case "wf_cnd_actor_in_team":
             case "wf_cnd_has_handitem":
             case "wf_cnd_wearing_effect":
-                // AirSourceOnly (class_4227.as): the effect id box spans the whole int range. Observed on AIR WIN63-202610201032-107964540:
-                // Has Hand Item stores any int as sent, a negative one too.
+                // The effect id box spans the whole int range. Has Hand Item stores any int as sent, a negative one too.
                 if (p.Length != 3 || p[0] < 0 && name == "wf_cnd_actor_in_team" || name == "wf_cnd_actor_in_team" && p[0] > 4 || !U(1) || !Q(2)) {
                     return false;
                 }
@@ -117,7 +116,7 @@ public static class WiredConditionConfiguration
                 users["users"] = p[1];
                 break;
             case "wf_cnd_user_level":
-                // AirSourceOnly (LevelMatches.as:49): level 1..30, comparison 0 lower, 1 equal, 2 higher, then the quantifier.
+                // Level 1..30, comparison 0 lower, 1 equal, 2 higher, then the quantifier.
                 if (p.Length != 3 || !Range(0, 1, 30) || !Range(1, 0, 2) || !Q(2)) {
                     return false;
                 }
@@ -125,7 +124,7 @@ public static class WiredConditionConfiguration
                 users["users"] = WiredSources.Trigger;
                 break;
             case "wf_cnd_wearing_badge":
-                // AirSourceOnly (class_4263.as): the badge code box takes up to 1000 characters.
+                // The badge code box takes up to 1000 characters.
                 if (p.Length != 2 || !U(0) || !Q(1) || proposed.Text.Length > 1000) {
                     return false;
                 }

@@ -4,8 +4,8 @@ using System.Collections.Immutable;
 namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 /// <summary>
-/// What the hotel does with a save of Set Furni Highlight and Set Furni Visibility. Observed on AIR WIN63-202610201032-107964540:
-/// missing ints take the frame default and extra ints are dropped, and the flags and the easing are clamped instead of refused.
+/// What the hotel does with a save of Set Furni Highlight and Set Furni Visibility. Missing ints take the frame default and extra ints are dropped,
+/// and the flags and the easing are clamped instead of refused.
 /// Set Furni Highlight refuses a type, strength, colour or animation the editor does not offer, each with its own key.
 /// </summary>
 internal static class WiredFurniVisualRules
@@ -28,7 +28,7 @@ internal static class WiredFurniVisualRules
     // The strengths of each type: Outline, Soft glow, Darken, Color tint, Brighten and Neon aura.
     private static readonly int[][] Strengths = [[0, 100], [0, 100], [0], [0, 25, 50, 75, 100], [0, 38], [0, 100]];
 
-    /// <summary>Observed on AIR WIN63-202610201032-107964540: at most 120 pulses of delay.</summary>
+    /// <summary>At most 120 pulses of delay.</summary>
     public const int MaxDelayPulses = 120;
     public const string DelayKey = "wiredfurni.error.invalid_delay";
     public const string UserSourceKey = "wiredfurni.error.invalid_user_source";
@@ -67,7 +67,7 @@ internal static class WiredFurniVisualRules
     }
 
     /// <summary>
-    /// The save with a negative delay set to 0, for the packet bounds check only. Observed on AIR WIN63-202610201032-107964540: a delay
+    /// The save with a negative delay set to 0, for the packet bounds check only. A delay
     /// of -1 is answered with the delay key and not dropped, so the delay check is left to <see cref="DelayAccepted"/>.
     /// </summary>
     public static WiredNativeEditorConfiguration WithoutNegativeDelay(WiredNativeEditorConfiguration native) =>

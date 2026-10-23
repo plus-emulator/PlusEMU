@@ -31,7 +31,7 @@ public sealed class WiredVariableTextCaptureTests
     [Fact]
     public void AdjacentMarkersNeverMatch()
     {
-        // Observed on AIR WIN63-202610131318-860371703: adjacent markers never fire, with or without a literal prefix.
+        // Adjacent markers never fire, with or without a literal prefix.
         WiredVariableCapturer[] capturers = [new(10, "a", new Dictionary<int, string> { [1] = "red" }), new(11, "b", null)];
         Assert.False(WiredVariableTextCapture.TryMatch("#a##b#", "red123", 1, capturers, out _));
         WiredVariableCapturer[] numbers = [new(10, "a", null), new(11, "b", null)];
@@ -46,7 +46,7 @@ public sealed class WiredVariableTextCaptureTests
     [Fact]
     public void MarkerWithoutCapturerStopsMatch()
     {
-        // Observed on AIR WIN63-202610131318-860371703: a marker with no capturer of its own stops the trigger.
+        // A marker with no capturer of its own stops the trigger.
         Assert.False(WiredVariableTextCapture.TryMatch("p7 #(a) #(b)", "p7 5 6", 1, [new(10, "a", null)], out _));
         Assert.True(WiredVariableTextCapture.TryMatch("p7 #(a) #(b)", "p7 5 6", 1, [new(10, "a", null), new(11, "b", null)], out var values));
         Assert.Equal(5, values[10]);
@@ -57,7 +57,7 @@ public sealed class WiredVariableTextCaptureTests
     [Fact]
     public void ConnectorLookupIsCaseInsensitiveAndLastLineWins()
     {
-        // Observed on AIR WIN63-202610131318-860371703: "abc" against lines 1=abc and 2=ABC reads 2.
+        // "abc" against lines 1=abc and 2=ABC reads 2.
         WiredVariableCapturer[] capturers = [new(10, "a", new Dictionary<int, string> { [1] = "abc", [2] = "ABC" })];
 
         foreach (var said in new[] { "p7 ABC", "p7 Abc", "p7 abc" }) {

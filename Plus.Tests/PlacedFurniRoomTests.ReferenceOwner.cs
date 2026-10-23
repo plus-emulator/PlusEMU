@@ -10,8 +10,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Raw saves of Variable Reference. The room belongs to user 7. A shared variable is looked up the way the hotel reads it, from the stored
-// rows. Observed on AIR WIN63-202610201032-107964540.
+// Raw saves of Variable Reference. The room belongs to user 7. A shared variable is looked up the way the hotel reads it, from the stored rows.
 public partial class PlacedFurniRoomTests
 {
     private const string MustOwn = "wiredfurni.error.variables.reference.must_own";

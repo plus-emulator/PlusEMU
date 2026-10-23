@@ -8,7 +8,7 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// A room holds one reference to a shared variable. Observed on AIR WIN63-202610201032-107964540: a second reference to the same
+/// A room holds one reference to a shared variable. A second reference to the same
 /// shared variable is refused with this key and no parameters.
 /// </summary>
 public sealed class WiredReferenceDuplicateTests

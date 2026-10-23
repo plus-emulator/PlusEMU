@@ -11,8 +11,7 @@ public partial class PlacedFurniRoomTests
     private const uint ValuedEventVariableId = 995;
     private const uint ValuelessEventVariableId = 996;
 
-    // Observed on AIR WIN63-202610201032-107964540: a Give, also a Give with override of an existing value, reports change type 0 with no old
-    // value and no difference. A Change reports both, also when it assigns the same value.
+    // A Give, also a Give with override of an existing value, reports change type 0 with no old value and no difference. A Change reports both, also when it assigns the same value.
     [Fact]
     public void VariableChangedEventFieldsOfAGiveHaveNoOldValueAndNoDifference()
     {
@@ -36,7 +35,7 @@ public partial class PlacedFurniRoomTests
             EventFieldMessages());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a Give of a variable without a value reports no new value.
+    // A Give of a variable without a value reports no new value.
     [Fact]
     public void VariableChangedEventFieldsOfAVariableWithoutAValueHaveNoNewValue()
     {
@@ -52,7 +51,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(["ct=0 ov=null nv=null df=null"], EventFieldMessages());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a Remove reports change type 2 with no new value.
+    // A Remove reports change type 2 with no new value.
     [Fact]
     public void VariableChangedEventFieldsOfARemoveHaveNoNewValue()
     {

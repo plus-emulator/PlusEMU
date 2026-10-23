@@ -24,7 +24,7 @@ public interface IRoomUserSnapshotService
 public sealed class RoomUserSnapshotService(IGroupManager groups, IGameClientManager clients, ICacheManager cache,
     IDatabase database) : IRoomUserSnapshotService
 {
-    /// <summary>Observed on AIR WIN63-202610151745-318700621: a generic bot's Users entry lists skills 1-5 and 19-23.</summary>
+    /// <summary>A generic bot's Users entry lists skills 1-5 and 19-23.</summary>
     private static readonly short[] GenericBotSkills = [1, 2, 3, 4, 5, 19, 20, 21, 22, 23];
 
     public IReadOnlyList<RoomUserSnapshot> Capture(IEnumerable<RoomUser> users) =>
@@ -65,7 +65,7 @@ public sealed class RoomUserSnapshotService(IGroupManager groups, IGameClientMan
                 user.RidingHorse, pet.Level);
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: a bot's entry carries the direction it faces.
+        // A bot's entry carries the direction it faces.
         return new(ai.BaseId, user.BotData.Name, user.BotData.Motto, user.BotData.Look.ToLowerInvariant(),
             user.VirtualId, user.X, user.Y, TextHandling.GetString(user.Z), user.RotBody, kind,
             user.BotData.Gender.ToLowerInvariant(), 0, "", 0, false, 0, user.BotData.OwnerId,

@@ -8,10 +8,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (seven saves that repeat an id, three runs, and after the room unloaded): the pick order of a card
-// follows a set built twice, the first time sized from the number of ids sent, repeats counted. A save of 12 ids with 11 different ones reopens
-// in another order than the same 11 ids sent once, and the room unloading changed nothing. Expected orders come from the real JDK 21 HashSet
-// (legacy copy constructor sizing).
+// The pick order of a card follows a set built twice, the first time sized from the number of ids sent, repeats counted.
+// A save of 12 ids with 11 different ones reopens in another order than the same 11 ids sent once, and the room unloading changes nothing.
+// Expected orders come from the real JDK 21 HashSet (legacy copy constructor sizing).
 public partial class PlacedFurniRoomTests
 {
     [Fact]

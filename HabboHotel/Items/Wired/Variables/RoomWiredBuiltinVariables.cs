@@ -42,7 +42,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 or "~horse.controller_user_id" or "~pet.creation_time" or "~pet.energy" or "~pet.experience"
                 or "~pet.experience_required" or "~pet.happiness" or "~pet.level" or "~pet.max_energy"
                 or "~pet.max_happiness" or "~pet.max_level" or "~pet.owner_id" or "~pet.scratches"
-                // Observed on hhus (AIR WIN63-202610151745-318700621): the plant's numeric parts carry a value; its can_/is_ flags do not.
+                // The plant's numeric parts carry a value; its can_/is_ flags do not.
                 or "~plant.color" or "~plant.max_wellbeing_seconds" or "~plant.rarity_level" or "~plant.remaining_growing_seconds"
                 or "~plant.remaining_wellbeing_seconds" or "~plant.shape",
             WiredVariableTarget.Global => key is "@furni_count" or "@room_id" or "@user_count" or "@wired_timer" or "@group_id"
@@ -164,21 +164,18 @@ public sealed class RoomWiredBuiltinVariables(Room room,
         && (AreaHideIndex(Normalize(reference.Token)) is >= 5 and <= 7 || Normalize(reference.Token) is "@can_move_freely" or "~walk_helper.is_multi_walk")
         || CarriesPresenceValue(reference);
 
-    // Observed on AIR WIN63-202610151745-318700621: Give @can_move_freely to a floor furni makes Has Variable pass and Remove makes it fail;
-    // it did not let a Wired move pass an avatar standing on the next tile. ~walk_helper.is_multi_walk is listed creatable too, but a
-    // colour tile never takes it (Has Variable stayed false), so it needs a walk helper, which this hotel does not have.
+    // Give @can_move_freely to a floor furni makes Has Variable pass and Remove makes it fail; it does not let a Wired move pass an avatar standing on the next tile.
+    // ~walk_helper.is_multi_walk is listed creatable too, but a colour tile never takes it, so it needs a walk helper, which this hotel does not have.
     private readonly HashSet<uint> _movesFreely = [];
 
     /// <summary>
-    /// A built-in whose Give and Remove carry a value: @handitem. Observed on AIR WIN63-202610151745-318700621: Give @handitem 2 hands the
-    /// avatar item 2, Change Variable assign 5 swaps it for 5, and Remove drops it (CarryObject 2, 5, 0).
+    /// A built-in whose Give and Remove carry a value: @handitem. Give @handitem 2 hands the avatar item 2, Change Variable assign 5 swaps it for 5, and Remove drops it.
     /// </summary>
     public static bool CarriesPresenceValue(WiredVariableReference reference) => reference.Target == WiredVariableTarget.User
         && Normalize(reference.Token) == "@handitem";
 
     /// <summary>
-    /// A built-in that Give and Remove Variable save on but never change: @habbicon. Observed on AIR WIN63-202610151745-318700621: Give
-    /// (initial 32, override), Change Variable Value (assign 33) and Remove all save on it, and a placeholder reads null after each.
+    /// A built-in that Give and Remove Variable save on but never change: @habbicon. A placeholder reads null after each.
     /// </summary>
     public static bool SavesWithoutEffect(WiredVariableReference reference) => reference.Target == WiredVariableTarget.User
         && Normalize(reference.Token) == "@habbicon";
@@ -292,8 +289,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 key == "~background_color.lightness" ? value : room.TonerData.Lightness), metadataStore);
         }
 
-        // ~recolorable_furni.color.rgb is listed as writable and its red, green and blue parts only read. Observed on AIR
-        // WIN63-202610151745-318700621: a write to a Builders Club class (bc_block_0_recolorable; every recolourable class is one) is
+        // ~recolorable_furni.color.rgb is listed as writable and its red, green and blue parts only read. A write to a Builders Club class (every recolourable class is one) is
         // refused without an error and leaves the colour, however the furni was placed; the colour still reads.
         if (holder.Target == WiredVariableTarget.Furni && key == "~recolorable_furni.color.rgb") {
             var item = FindItem(holder, frame);
@@ -312,14 +308,12 @@ public sealed class RoomWiredBuiltinVariables(Room room,
         if (holder.Target == WiredVariableTarget.Furni && key == "@state") {
             var item = FindItem(holder, frame);
 
-            // Observed on AIR WIN63-202610201032-107964540: a variable write leaves the state of a Wired box, wf_antenna1 or wf_antenna2
-            // unchanged; a Wired floor switch still changes.
+            // A variable write leaves the state of a Wired box, wf_antenna1 or wf_antenna2 unchanged; a Wired floor switch still changes.
             if (item is null || item.IsWired || WiredStackEngine.IsSignalAntenna(item)) {
                 return false;
             }
 
-            // Observed on AIR WIN63-202610201032-107964540: a value below 0 or from the furni's state count up sets state 0 (a colour tile has
-            // states 0 to 6, a Wired floor switch 0 and 1).
+            // A value below 0 or from the furni's state count up sets state 0.
             var state = value < 0 || item.Definition.Modes <= value ? 0 : value;
 
             // A furni placed from the inventory can carry no state text yet; it shows state 0, and any write sets it.
@@ -397,7 +391,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
 
         return key switch
         {
-            // Observed on AIR WIN63-202610201032-107964540: a Builders Club furni's @id is the id the client sees.
+            // A Builders Club furni's @id is the id the client sees.
             "@id" => item.IsWallItem ? WiredWallBuiltinValues.ReadIdentity(item.Id, item.Definition.SpriteId, key) : unchecked((int)BuildersClubItemIds.ToWire(item.Id)),
             "@owner_id" => checked((int)item.OwnerId),
             "@class_id" => item.IsWallItem ? WiredWallBuiltinValues.ReadIdentity(item.Id, item.Definition.SpriteId, key) : item.Definition.SpriteId,
@@ -424,7 +418,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@can_stand_on" => Flag(item.IsFloorItem && item.Definition.Walkable),
             "@can_sit_on" => Flag(item.IsFloorItem && item.Definition.IsSeat),
             "@can_lay_on" => Flag(item.IsFloorItem && item.Definition.InteractionType == InteractionType.Bed),
-            // Observed on AIR WIN63-202610151745-318700621: the connector reads 0 Normal, 1 BC, 2 Temp, and a Builders Club block reads 1.
+            // The connector reads 0 Normal, 1 BC, 2 Temp, and a Builders Club block reads 1.
             "@type" => item.IsTemporary ? 2 : item.IsBuildersClub ? 1 : item.OwnerId > 0 ? 0 : null,
             _ => null
         };
@@ -470,18 +464,16 @@ public sealed class RoomWiredBuiltinVariables(Room room,
             "@position.y" => avatar.Y,
             "@altitude" => Hundredths(avatar.Z),
             "@direction" => avatar.RotBody,
-            // Observed on AIR WIN63-202610151745-318700621: @dance, @sign and @effect exist only while the avatar dances, holds a sign or wears an
-            // effect, and @team.color and @team.score only while it is in a team.
+            // @dance, @sign and @effect exist only while the avatar dances, holds a sign or wears an effect, and @team.color and @team.score only while it is in a team.
             "@dance" => avatar.DanceId > 0 ? avatar.DanceId : null,
-            // Observed on AIR WIN63-202610151745-318700621: an avatar carrying nothing has no @handitem (a placeholder shows "null").
+            // An avatar carrying nothing has no @handitem (a placeholder shows "null").
             "@handitem" => avatar.CarryItemId == 0 ? null : avatar.CarryItemId,
-            // Observed on AIR WIN63-202610151745-318700621: @sign keeps the sign for about 5 s, long after its status is gone.
+            // @sign keeps the sign for about 5 s, long after its status is gone.
             "@sign" => avatar.HeldSign,
             "@effect" => habbo?.Effects?.CurrentEffect is > 0 and var effect ? effect : null,
             "@gender" => habbo is null ? -1 : habbo.Gender.Equals("M", StringComparison.OrdinalIgnoreCase) ? 0 : 1,
             "@achievement_score" => habbo?.HabboStats?.AchievementPoints,
-            // Observed on AIR WIN63-202610131318-860371703: @level is the account level the extended profile shows as Level
-            // (8 and 1 for two users whose achievement levels are 90 and 19), so it is the hotel's user level, not an achievement level.
+            // @level is the account level the extended profile shows as Level, so it is the hotel's user level, not an achievement level.
             "@level" => habbo is null ? null : Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredUserLevel.Of(avatar),
             "@favourite_group_id" => habbo?.HabboStats?.FavouriteGroupId is > 0 ? habbo.HabboStats.FavouriteGroupId : null,
             "@is_group_admin" => Flag(habbo is not null && room.Group is { } group && (group.CreatorId == habbo.Id || group.IsAdmin(habbo.Id))),
@@ -544,7 +536,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
     private static bool Matches(RoomUser avatar, WiredVariableHolder holder) => avatar.IsBot
         ? !holder.CanPersist && holder.StableId == -(long)avatar.VirtualId - 1
         : holder.CanPersist && holder.StableId == avatar.HabboId;
-    // Observed on AIR WIN63-202610151745-318700621: a builtin flag that is set reads -1 (@is_owner, @has_rights, @is_stackable).
+    // A builtin flag that is set reads -1 (@is_owner, @has_rights, @is_stackable).
     private static int? Flag(bool flag) => flag ? -1 : null;
     private static int Hundredths(double value) => (int)Math.Clamp(Math.Round(value * 100), int.MinValue, int.MaxValue);
     private static int AreaHideIndex(string key) => key switch

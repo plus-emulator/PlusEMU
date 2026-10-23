@@ -17,9 +17,10 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// The measured furniture quantity filter (native 10, literal option, amount, F100, U0, helper variable "0") kept different members of the same
-/// two picked furniture while the picks, the world and the filter configuration were unchanged. These tests drive a real native compile, a real
-/// selector, the real addon module and policy, and the engine's own limit application, with a scripted random source passed to the module.
+/// The furniture quantity filter (native 10, literal option, amount, F100, U0, helper variable "0") must keep different members
+/// of the same two picked furniture across firings while the picks, the world and the filter configuration are unchanged. These
+/// tests drive a real native compile, a real selector, the real addon module and policy, and the engine's own limit application,
+/// with a scripted random source passed to the module.
 /// </summary>
 public sealed class WiredFilterFurniIdentityTests
 {
@@ -57,8 +58,8 @@ public sealed class WiredFilterFurniIdentityTests
     public void NativeFilterFurniAmountOneNeverRetainsTheOutsideItem(int draw) =>
         Assert.DoesNotContain(C, Fire(1, new ScriptedRandom(draw)));
 
-    // The normal module (no injected random) hands the shared random to a literal furniture limit that truncates; nothing is drawn here, so this is
-    // deterministic. This is the local policy for the subset choice, not a claim about an official algorithm, distribution or order.
+    // The normal module (no injected random) hands the shared random to a literal furniture limit that truncates; nothing is
+    // drawn here, so this is deterministic. This is the local policy for the subset choice.
     [Fact]
     public void NormalModuleSuppliesTheSharedRandomToALiteralFurnitureLimit()
     {
@@ -104,8 +105,7 @@ public sealed class WiredFilterFurniIdentityTests
         Assert.Equal(0, random.Calls);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: a literal Filter To X Users keeps a random N on each firing (both users were kept
-    // across firings), like the furni filter.
+    // A literal Filter To X Users keeps a random N on each firing (both users were kept across firings), like the furni filter.
     [Fact]
     public void LiteralUserFilterKeepsARandomSubsetOnEachFiring()
     {
@@ -213,7 +213,6 @@ public sealed class WiredFilterFurniIdentityTests
 
     private static WiredAddonInputs Inputs() => new(WiredSelectorTests.World(), WiredSelectorTests.Inputs(), 0, _ => null);
 
-    // Observed on AIR WIN63-202610201032-107964540: an amount of 0 is stored as 1.
     [Fact]
     public void NativeFilterFurniAmountZeroIsStoredAsOne()
     {
@@ -232,7 +231,7 @@ public sealed class WiredFilterFurniIdentityTests
             VariableIds = ["0"]
         };
 
-    // One firing over a fresh room: selector picks A and B (the measured transport order B, A) with an unpicked C in the same injected world,
+    // One firing over a fresh room: selector picks A and B (transport order B, A) with an unpicked C in the same injected world,
     // then the filter, then a recorder that snapshots the surviving furniture pool.
     private static uint[] Fire(int amount, Random? random)
     {

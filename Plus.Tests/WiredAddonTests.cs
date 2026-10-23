@@ -9,7 +9,7 @@ public sealed class WiredAddonTests
 {
     private static WiredAddonInputs Input(long now = 0) => new(World(), Inputs(), now);
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_msg_rate): ten messages, then nothing at +1.5 s and +3 s, ten again at +7 s.
+    // Show Message lets ten messages out, then nothing at +1.5 s and +3 s, and ten again at +7 s.
     [Fact]
     public void ShowMessageAllowsTenMessagesInAnyFiveSeconds()
     {
@@ -22,8 +22,7 @@ public sealed class WiredAddonTests
         Assert.True(rate.TryAdmit(13000));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (wf_xtra_execution_limit.burst): 2 executions per 4 pulses let six says one second
-    // apart all run; the window counts whole pulses, not milliseconds since the first execution.
+    // 2 executions per 4 pulses let six says one second apart all run; the window counts whole pulses, not milliseconds since the first execution.
     [Fact]
     public void ExecutionLimitCountsItsWindowInWholePulses()
     {
@@ -136,8 +135,8 @@ public sealed class WiredAddonTests
         Assert.Equal(20u, Assert.Single(unseen.Pick([20, 10, 30])));
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: pick 1 / avoid 2 over two effects strictly alternates, avoid 2 over three effects is a
-    // fixed rotation, and avoid 1 over two alternates; when too few effects remain the oldest avoided executions stop counting first.
+    // Pick 1 / avoid 2 over two effects strictly alternates, avoid 2 over three effects is a fixed rotation, and avoid 1 over two alternates.
+    // When too few effects remain, the oldest avoided executions stop counting first.
     [Theory]
     [InlineData(2, 2)]
     [InlineData(2, 3)]
@@ -292,7 +291,7 @@ public sealed class WiredAddonTests
         var one = WiredMovementPolicy.Resolve(policy, World().Furni[0], 3, 3, 10);
         Assert.Equal(5, one.Rotation);
         Assert.Equal(0, one.Height);
-        // Observed on AIR WIN63-202610201032-107964540: the projectile curve wins over the Movement Curve add-on on the furni it moves.
+        // The projectile curve wins over the Movement Curve add-on on the furni it moves.
         Assert.Equal(-50, one.CurveStrength);
         Assert.Equal(5, one.AnimationDistanceOffset);
         var two = WiredMovementPolicy.Resolve(policy, World().Furni[1], 3, 3, 10);

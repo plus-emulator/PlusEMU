@@ -26,8 +26,7 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
 {
     public void Place(Room room, GameClient session, string rawData)
     {
-        // AIR WIN63-202610151745-318700621 package_66/class_2142.as:37 joins the fields with single spaces; a trailing
-        // separator (":w=1,1 l=0,0 l ") must not turn into an extra empty field that fails the wall position check.
+        // The client joins the fields with single spaces; a trailing separator (":w=1,1 l=0,0 l ") must not turn into an extra empty field that fails the wall position check.
         var data = rawData.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
         if (data.Length == 0 || !uint.TryParse(data[0], out var itemId)) {
@@ -331,8 +330,7 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
 
         item = room.GetRoomItemHandler().GetItem(itemId);
 
-        // Observed on AIR WIN63-202610131318-860371703: a visitor with rights is offered Move and Rotate on a copy placed by
-        // Place Furni, and the move is applied; without rights nothing is offered.
+        // A visitor with rights is offered Move and Rotate on a copy placed by Place Furni, and the move is applied; without rights nothing is offered.
         if (item == null || item.IsTemporary && !room.GetRoomItemHandler().OwnsTemporary(item)) {
             return;
         }
@@ -363,7 +361,7 @@ public sealed class RoomItemPlacementService(ISettingsManager settings, IAchieve
             room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
             room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
 
-            // Observed on AIR WIN63-202610151745-318700621: a refused move or rotation also shows the mover the placement error.
+            // A refused move or rotation also shows the mover the placement error.
             session.Send(new RoomNotificationComposer("furni_placement_error", "message", "${room.error.cant_set_item}"));
 
             return;

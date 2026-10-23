@@ -46,9 +46,9 @@ public sealed record WiredProjectilePolicy(IReadOnlySet<uint> ItemIds, int? Dire
         TimePerTileMs is null ? stackDuration : Total(Length(dx, dy, dz));
 
     /// <summary>
-    /// The packet times of a shot that flies on past its move step. Observed on AIR WIN63-202610201032-107964540: the whole flight
-    /// takes the time per tile for every tile, less the speed increase. The packet holds the share of the first step as its animation
-    /// time and the rest of the flight as the overshoot. Null when the shot has no time per tile or no tiles to fly on.
+    /// The packet times of a shot that flies on past its move step. The whole flight takes the time per tile for every tile, less the speed
+    /// increase. The packet holds the share of the first step as its animation time and the rest of the flight as the overshoot.
+    /// Null when the shot has no time per tile or no tiles to fly on.
     /// </summary>
     internal (int AnimationMs, int OvershootMs)? Flight(long dx, long dy, double dz, int extraTiles)
     {

@@ -15,7 +15,6 @@ public sealed class OctoberPacketGrammarTests
     [InlineData(true)]
     public void RemovalBytesFollowOctoberSourceAndEndImmediatelyAfterManagerFlag(bool wall)
     {
-        // October package_71/class_2416.as:49-51; class_3726.as:64-68.
         var bytes = TypedFurnitureStateTests.Payload(wall
             ? new ItemRemoveComposer(7, 0x01020304)
             : new ObjectRemoveComposer(7, false, 0x01020304));

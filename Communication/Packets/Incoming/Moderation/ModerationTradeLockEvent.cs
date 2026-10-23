@@ -13,7 +13,7 @@ internal class ModerationTradeLockEvent(ITradeModerationService moderation) : IP
         var userId = packet.ReadInt();
         var message = packet.ReadString();
         var minutes = packet.ReadInt();
-        packet.ReadInt(); // topic id; an optional issue id follows (AIR package_84/class_3575.as:14)
+        packet.ReadInt(); // topic id; an optional issue id follows
 
         return moderation.Lock(session, userId, minutes, message);
     }

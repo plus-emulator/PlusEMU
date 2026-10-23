@@ -76,8 +76,8 @@ public sealed partial class WiredGlideConveyorTests
         return refusal.Payload == null ? null : System.Text.Encoding.UTF8.GetString(refusal.Payload, 2, System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(refusal.Payload));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: Toggle State saved with a picked floor tile, the positive id of a wall item and ids
-    // of no furni in the room saves; the reopened box holds only the tile, and firing it toggles the tile but not the wall item.
+    // Toggle State saved with a picked floor tile, the positive id of a wall item and ids of no furni in the room saves; the
+    // reopened box holds only the tile, and firing it toggles the tile but not the wall item.
     [Fact]
     public void ToggleStateSaveDropsPicksThatNameNoFurniOfTheirKind()
     {
@@ -94,8 +94,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal("0", f.Room.GetRoomItemHandler().GetItem(PickLamp)!.LegacyDataString);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a wall item picked with its positive id saves with no pick and firing leaves it as it
-    // is; picked with its negative id, as the client sends a wall pick, firing toggles it.
+    // A wall item picked with its positive id saves with no pick and firing leaves it as it is; picked with its negative id, as
+    // the client sends a wall pick, firing toggles it.
     [Fact]
     public void ToggleStateTogglesAWallItemOnlyWhenItIsPickedAsAWallItem()
     {
@@ -117,8 +117,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal("1", lamp.LegacyDataString);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a box that only takes counters still refuses a save where any pick is not a counter,
-    // including the positive id of a wall item or of no furni, and keeps its previous picks.
+    // A box that only takes counters still refuses a save where any pick is not a counter, including the positive id of a wall
+    // item or of no furni, and keeps its previous picks.
     [Theory]
     [InlineData((int)PickMissing)]
     [InlineData((int)PickLamp)]

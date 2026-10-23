@@ -18,8 +18,8 @@ public partial class PlacedFurniRoomTests
         return definition;
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: each double-click on a free block sends ObjectDataUpdate, then ObjectUpdate with the
-    // new height, then HeightMapUpdate for its tile, and state 4 goes back to 0.
+    // Each double-click on a free block sends ObjectDataUpdate, then ObjectUpdate with the new height, then HeightMapUpdate
+    // for its tile, and state 4 goes back to 0.
     [Fact]
     public async Task DoubleClickingAFreeBlockSendsItsStateThenItsNewHeightThenTheHeightMap()
     {
@@ -41,8 +41,8 @@ public partial class PlacedFurniRoomTests
         }
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a double-click on a block with another block on top sends nothing and keeps its
-    // state; the top block changes as usual and stays at Z 1.0.
+    // A double-click on a block with another block on top sends nothing and keeps its state; the top block changes as usual
+    // and stays at Z 1.0.
     [Fact]
     public async Task DoubleClickingABlockWithFurniOnTopDoesNothing()
     {
@@ -64,7 +64,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((252u, "1.0", "0.75", "1"), ReadFloorUpdate(update.Body));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: on room entry Objects lists a block in state 3 with height 0.25; the state is kept.
+    // On room entry Objects lists a block in state 3 with height 0.25; the state is kept.
     [Theory]
     [InlineData("state\t3\nr\t255\ng\t255\nb\t255", "3", "0.25")]
     [InlineData("3", "3", "0.25")]

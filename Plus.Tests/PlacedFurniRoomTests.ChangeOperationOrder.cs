@@ -10,10 +10,10 @@ namespace Plus.Tests;
 /// </summary>
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: the boxes run by operation, whatever the box order (12 of 12 firings for each pair and
-    // box order): Assign, Power, Multiply, Divide, Modulo, Add and Subtract, then Minimum and Maximum. Operations are the editor's codes
-    // 0 assign, 1 add, 2 subtract, 3 multiply, 4 divide, 5 power, 6 modulo, 40 minimum, 41 maximum. Pairs that give the same value in both
-    // orders, or a random one in Habbo (two Assign boxes, Minimum with Maximum), are not listed.
+    // The boxes run by operation, whatever the box order: Assign, Power, Multiply, Divide, Modulo, Add and Subtract, then Minimum
+    // and Maximum. Operations are the editor's codes 0 assign, 1 add, 2 subtract, 3 multiply, 4 divide, 5 power, 6 modulo, 40 minimum,
+    // 41 maximum. Pairs that give the same value in both orders, or a random one in Habbo (two Assign boxes, Minimum with Maximum),
+    // are not listed.
     public static TheoryData<int, int, int, int, int, bool> ChangeOperationPairs()
     {
         (int, int, int, int, int)[] pairs =

@@ -3,7 +3,7 @@ using static Plus.Tests.WiredR104Save;
 
 namespace Plus.Tests;
 
-// The box accepts a variable of another domain than its target, the way Habbo does. Observed on AIR WIN63-202610201032-107964540.
+// The box accepts a variable of another domain than its target, the way Habbo does.
 public sealed class WiredR105VariableDomainTests
 {
     [Theory]

@@ -25,8 +25,8 @@ public partial class PlacedFurniRoomTests
     private List<byte[]> StatesPackets() => _client.Packets.Where(packet => packet.Header == ServerPacketHeader.ConfigurationItemStatesComposer)
         .Select(packet => packet.Body).ToList();
 
-    // Observed on AIR WIN63-202610201032-107964540: the first byte of the room flags is the hand item block, then the chooser, free
-    // furni movement, invisible furni and a last byte that is always 0. The flags of the room are OR-ed.
+    // The first byte of the room flags is the hand item block, then the chooser, free furni movement, invisible furni and a
+    // last byte that is always 0. The flags of the room are OR-ed.
     [Fact]
     public void TheRoomFlagsPacketHoldsTheHandItemBlockFirstAndOrsTheFlags()
     {
@@ -49,7 +49,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new byte[] { 0, 0, 0, 0, 0 }, Assert.Single(StatesPackets()));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: each use of a flag furni sends the full set of flag bytes.
+    // Each use of a flag furni sends the full set of flag bytes.
     [Theory]
     [InlineData(InteractionType.HandItemBlocker, new byte[] { 1, 0, 0, 0, 0 })]
     [InlineData(InteractionType.InvisibleFurniControl, new byte[] { 0, 0, 0, 1, 0 })]
@@ -65,7 +65,6 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new byte[] { 0, 0, 0, 0, 0 }, Assert.Single(StatesPackets()));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: placing a furni sends no flags, except the Invisible Furni Controller.
     [Theory]
     [InlineData(InteractionType.HandItemBlocker, false)]
     [InlineData(InteractionType.ChooserDisabler, false)]
@@ -82,8 +81,8 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(sends ? 1 : 0, StatesPackets().Count);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: picking a flag furni up while it is on sends the flag still on; the client keeps
-    // it until the next room entry. Picking it up while it is off sends nothing.
+    // Picking a flag furni up while it is on sends the flag still on; the client keeps it until the next room entry.
+    // Picking it up while it is off sends nothing.
     [Theory]
     [InlineData(InteractionType.HandItemBlocker, new byte[] { 1, 0, 0, 0, 0 })]
     [InlineData(InteractionType.ChooserDisabler, new byte[] { 0, 1, 0, 0, 0 })]
@@ -114,7 +113,6 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(StatesPackets());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the wired disabler and the roller speed controller are no room flags.
     [Theory]
     [InlineData(InteractionType.WiredDisabler)]
     [InlineData(InteractionType.RollerSpeedController)]
@@ -128,8 +126,7 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(StatesPackets());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a room holds one of each configuration furni. A second one is refused with the
-    // type limit text.
+    // A room holds one of each configuration furni. A second one is refused with the type limit text.
     [Theory]
     [InlineData(InteractionType.InvisibleFurniControl)]
     [InlineData(InteractionType.RollerSpeedController)]

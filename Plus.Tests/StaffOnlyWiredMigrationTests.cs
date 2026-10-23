@@ -5,8 +5,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Official Habbo sells none of these Wired boxes (no catalogue offer, no Builders Club offer in AIR WIN63-202610151745-318700621
-// furnidata, absent from the public catalogue), so only staff may buy them; catalogue search only finds offers on public pages.
+// Official Habbo sells none of these Wired boxes (no catalogue offer, no Builders Club offer, absent from the public catalogue),
+// so only staff may buy them. Catalogue search only finds offers on public pages.
 public sealed class StaffOnlyWiredMigrationTests
 {
     private const string Migration = "Database/Migrations/100_StaffOnlyUnreleasedWired.sql";

@@ -3,7 +3,7 @@ using static Plus.Tests.WiredR104Save;
 
 namespace Plus.Tests;
 
-// Trigger editor saves as Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// Trigger editor saves as Habbo stores them.
 public sealed class WiredR104TriggerEditorTests
 {
     private static Result Saved(string name, int[]? ints = null, string? text = null)

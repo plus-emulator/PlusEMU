@@ -17,7 +17,7 @@ public partial class PlacedFurniRoomTests
 {
     private const uint EffectBoxId = 50;
 
-    // AIR furniture_effectbox: only the owner gets the dialog, and OK sends the plain use packet (EffectBoxOpenDialogView.as:103).
+    // Only the owner gets the dialog, and OK sends the plain use packet.
     // The Habbo dialog text says the box works once and the effect can be worn again later from the effects tab, so it is permanent.
     // A box left in state 1 by the old toggle is the same item and must still open.
     [Theory]

@@ -9,15 +9,14 @@ public sealed record WiredVariableCapturer(uint DefinitionId, string Name, IRead
 {
     public long? Read(string text)
     {
-        // Observed on AIR WIN63-202610201032-107964540: with a connector in text mode only its labels are captured. A number is never read,
-        // and a connector with no labels, or with only the "_=" fallback, captures nothing.
+        // With a connector in text mode only its labels are captured. A number is never read, and a connector with no labels, or with only the "_=" fallback, captures nothing.
         if (Labels is not null) {
-            // Observed on AIR WIN63-202610131318-860371703: the connector lookup is case-insensitive and the last matching line wins.
+            // The connector lookup is case-insensitive and the last matching line wins.
             return Labels.Where(pair => string.Equals(pair.Value.Trim(), text.Trim(), StringComparison.OrdinalIgnoreCase))
                 .Select(pair => (long?)pair.Key).LastOrDefault();
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a space before or after the number is not read ("k 5 " and "k  5" do not fire).
+        // A space before or after the number is not read ("k 5 " and "k  5" do not fire).
         return long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value) ? value : null;
     }
 }
@@ -62,7 +61,7 @@ public static class WiredVariableTextCapture
 
         var names = matches.Select(match => (match.Groups[1].Success ? match.Groups[1] : match.Groups[2]).Value.Trim()).ToArray();
 
-        // Observed on AIR WIN63-202610131318-860371703: a marker without a capturer of its own stops the trigger.
+        // A marker without a capturer of its own stops the trigger.
         if (!names.All(byName.ContainsKey)) {
             return false;
         }
@@ -73,7 +72,7 @@ public static class WiredVariableTextCapture
         for (var index = 0; index < matches.Length; index++) {
             var match = matches[index];
 
-            // Observed on AIR WIN63-202610131318-860371703: adjacent markers never fire, with or without a literal prefix.
+            // Adjacent markers never fire, with or without a literal prefix.
             if (index > 0 && match.Index == cursor) {
                 return false;
             }

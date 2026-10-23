@@ -13,15 +13,14 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: a Text Connector save or pickup on the tile of a published Variable Leaderboard sends
-// the room one snapshot with the board's revision one higher at the next tick of the 10 s push grid; the client then subscribes to
-// the new revision and gets the rows with the new text. A connector on another tile sends nothing.
+// A Text Connector save or pickup on the tile of a published Variable Leaderboard sends the room one snapshot with the board's revision
+// one higher at the next tick of the 10 s push grid; the client then subscribes to the new revision and gets the rows with the new
+// text. A connector on another tile sends nothing.
 public partial class PlacedFurniRoomTests
 {
     private const uint BoardVariable = 1101, BoardConnector = 1102, BoardBox = 1103, OtherVariable = 1104, OtherConnector = 1105;
 
     // The grid ticks fall on whole 10 s of the clock; the scenario times below are ms after Origin, so the ticks are at ...4687.
-    // The observed times are when the client received a packet, so the room sent it at or before them.
     private static readonly DateTimeOffset BoardOrigin = DateTimeOffset.FromUnixTimeMilliseconds(1_760_000_000_000 - 4687);
 
     [Fact]
@@ -148,9 +147,9 @@ public partial class PlacedFurniRoomTests
     }
 
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: user variable lbv (permanent) with a Text Connector and a published board on one tile,
-    /// othv with its own connector on another tile. The board's own save sends the snapshot at once; the client subscribes and gets no
-    /// rows. The user then gets 5 in lbv, and the row comes at the next grid tick.
+    /// User variable lbv (permanent) with a Text Connector and a published board on one tile, othv with its own connector on another
+    /// tile. The board's own save sends the snapshot at once; the client subscribes and gets no rows. The user then gets 5 in lbv, and the
+    /// row comes at the next grid tick.
     /// </summary>
     private async Task<(SpeechClock Clock, WiredConfigurationService Service, int Revision)> PublishedBoard()
     {

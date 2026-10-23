@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Official hhus WIN63-202610131318 batch r79: native cards saved through the real editor shape, then fired by the real triggers.
+// Native cards saved through the real editor shape, then fired by the real triggers.
 public sealed partial class WiredGlideConveyorTests
 {
     private const uint ObservedSubjectId = 40;
@@ -50,7 +50,7 @@ public sealed partial class WiredGlideConveyorTests
     private static void ObservedClickSubject(Fixture f, RoomUser rider, Plus.HabboHotel.Items.Item subject) =>
         f.Owned(() => f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.ClickFurni) { Actor = rider, EventItem = subject }));
 
-    // Official: the saved ints [-2, 0] with furniture source 0 moved the clicked tile from (6,1) to (4,1); the picked furniture stayed put.
+    // The saved ints [-2, 0] with furniture source 0 move the clicked tile from (6,1) to (4,1); the picked furniture stays put.
     [Fact]
     public void NativeRelativeMoveWithSourceZeroMovesTheClickedFurniture()
     {
@@ -73,7 +73,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal((9, 9), (f.Items[ObservedSubjectId].GetX, f.Items[ObservedSubjectId].GetY));
     }
 
-    // Official: operator 0 with value 100 raised a marker from 7.24 to 8.24, so operator 0 adds; 1 subtracts; 2 sets.
+    // Operator 0 adds (value 100 raises a marker from 7.24 to 8.24), 1 subtracts and 2 sets.
     [Theory]
     [InlineData(0, 150, 3.5)]
     [InlineData(1, 150, 0.5)]
@@ -89,7 +89,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(expected, subject.GetZ, 2);
     }
 
-    // Official: the toggle cycled the marker state forward on every fire.
+    // The toggle cycles the marker state forward on every fire.
     [Fact]
     public void NativeToggleStateCyclesTheStateForward()
     {
@@ -105,7 +105,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(["1", "2", "3"], seen);
     }
 
-    // Official: the stack boxes flip 1 then 0 on consecutive fires, and the says-something trigger flips like any other trigger.
+    // The stack boxes flip 1 then 0 on consecutive fires, and the says-something trigger flips like any other trigger.
     [Fact]
     public void SaysTriggerAndActionFlashOnEveryFiring()
     {

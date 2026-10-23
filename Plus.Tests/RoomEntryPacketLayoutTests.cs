@@ -11,13 +11,11 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Reads each composer back in the order the WIN63-202610131318-860371703 parser reads it and requires no bytes left over.</summary>
 public class RoomEntryPacketLayoutTests
 {
     [Fact]
     public void OpenConnectionCarriesTheFlatId()
     {
-        // class_2691.parse L22-26: flat id.
         var packet = Read(new OpenConnectionComposer(4521));
 
         Assert.Equal(4521, packet.ReadInt());
@@ -27,7 +25,6 @@ public class RoomEntryPacketLayoutTests
     [Fact]
     public void YouAreOwnerCarriesTheFlatId()
     {
-        // class_4114.parse L27-30: flat id.
         var packet = Read(new YouAreOwnerComposer(4521));
 
         Assert.Equal(4521, packet.ReadInt());
@@ -37,7 +34,7 @@ public class RoomEntryPacketLayoutTests
     [Fact]
     public void WiredEnvironmentEndsAtTheEnabledAchievements()
     {
-        // class_3405.parse L25-42: click user wired, n, achievement x n.
+        // Click user wired, n, achievement x n.
         var packet = Read(new WiredEnvironmentComposer(true, ["ACH_RoomEntry"]));
 
         Assert.True(packet.ReadBool());
@@ -49,7 +46,7 @@ public class RoomEntryPacketLayoutTests
     [Fact]
     public void WiredPermissionsEndsAtCanRead()
     {
-        // class_2713.parse L25-30: canModify, then canRead, and nothing after them.
+        // canModify, then canRead, and nothing after them.
         var packet = Read(new WiredPermissionsComposer(canModify: true, canRead: false));
 
         Assert.True(packet.ReadBool());
@@ -60,7 +57,7 @@ public class RoomEntryPacketLayoutTests
     [Fact]
     public void UserChangeEndsAtTheBadgesRank()
     {
-        // class_2587.parse L67-90: id, figure, sex, motto, achievement score, string, n x (int, int, int), badges rank.
+        // id, figure, sex, motto, achievement score, string, n x (int, int, int), badges rank.
         var packet = Read(new UserChangeComposer(new AvatarChangeSnapshot(-1, "hd-180-1", "M", "hi", 12)));
 
         Assert.Equal(-1, packet.ReadInt());
@@ -77,12 +74,12 @@ public class RoomEntryPacketLayoutTests
     [Fact]
     public void UsersWritesEveryKindInTheParserOrder()
     {
-        // class_2291.parse L72-186: common fields, then the branch for the user type, and nothing after it.
+        // Common fields, then the branch for the user type, and nothing after it.
         var habbo = new RoomUserSnapshot(7, "Dennis", "hi", "hd-180-1", 1, 2, 3, "1.5", 2, 1, "m", 9, "Club", 12,
             false, 0, 0, "", false, false);
         var pet = new RoomUserSnapshot(10, "Rex", "", "0 0 ffffff", 2, 4, 5, "0", 0, 2, "", 0, "", 0,
             true, 13, 7, "Dennis", true, false, 6);
-        // Observed on AIR WIN63-202610151745-318700621: a generic bot lists skills 1-5 and 19-23.
+        // A generic bot lists skills 1-5 and 19-23.
         var bot = new RoomUserSnapshot(11, "Frank", "hello", "hd-180-1", 3, 6, 7, "0", 0, 4, "f", 0, "", 0,
             false, 0, 7, "Dennis", false, false, BotSkills: [1, 2, 3, 4, 5, 19, 20, 21, 22, 23]);
         var packet = Read(new UsersComposer([habbo, pet, bot]));
@@ -131,8 +128,7 @@ public class RoomEntryPacketLayoutTests
     [Fact]
     public void ObjectAddEndsAtTheOwnerNameAfterTheFloorEntry()
     {
-        // Observed on AIR WIN63-202610131318-860371703: class_4287.parseObjectData L23-46 (id, type, x, y, dir, z, sizeZ, extra,
-        // stuff data, expiry, usage, owner; the static class only when type is negative), then class_2409.parse L40-41 (owner name).
+        // id, type, x, y, dir, z, sizeZ, extra, stuff data, expiry, usage, owner (the static class only when type is negative), then the owner name.
         var packet = Read(new ObjectAddComposer(FloorItem()));
 
         ReadFloorEntry(packet);
@@ -143,7 +139,7 @@ public class RoomEntryPacketLayoutTests
     [Fact]
     public void ObjectsEndsAtTheFloorEntryWithNoMetadataInts()
     {
-        // Observed on AIR WIN63-202610131318-860371703: class_2845.parse L56-76 (owner map, count, class_4287.parseObjectData per entry).
+        // Owner map, count, then the object data per entry.
         var packet = Read(new ObjectsComposer(new RoomFurnitureSnapshot([FloorItem()], [])));
 
         Assert.Equal(0, packet.ReadInt());
@@ -155,8 +151,7 @@ public class RoomEntryPacketLayoutTests
     [Fact]
     public void ItemAddEndsAtTheOwnerNameAfterTheWallEntry()
     {
-        // Observed on AIR WIN63-202610131318-860371703: class_4295.parseItemData L28-118 (id string, type, location, data, expiry,
-        // usage, owner), then class_3456.parse L40-41 (owner name).
+        // id string, type, location, data, expiry, usage, owner, then the owner name.
         var packet = Read(new ItemAddComposer(WallItem()));
 
         ReadWallEntry(packet);
@@ -167,7 +162,7 @@ public class RoomEntryPacketLayoutTests
     [Fact]
     public void ItemsEndsAtTheWallEntryWithNoMetadataInts()
     {
-        // Observed on AIR WIN63-202610131318-860371703: class_3036.parse L56-74 (owner map, count, class_4295.parseItemData per entry).
+        // Owner map, count, then the item data per entry.
         var packet = Read(new ItemsComposer(new RoomFurnitureSnapshot([WallItem()], [])));
 
         Assert.Equal(0, packet.ReadInt());

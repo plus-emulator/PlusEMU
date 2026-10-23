@@ -5,7 +5,7 @@ using static Plus.Tests.SharedAddonIds;
 namespace Plus.Tests;
 
 /// <summary>
-/// The sub-variables of a level-up system travel with the Share and Import add-ons. Observed on AIR WIN63-202610201032-107964540: a
+/// The sub-variables of a level-up system travel with the Share and Import add-ons. A
 /// reference lists them while its Import add-on has subvariable creators on, and they go away at once when it does not.
 /// </summary>
 public sealed class WiredSharedLevelTests

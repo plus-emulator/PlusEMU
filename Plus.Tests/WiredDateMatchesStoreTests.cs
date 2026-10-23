@@ -4,8 +4,7 @@ namespace Plus.Tests;
 
 public class WiredDateMatchesStoreTests
 {
-    // Observed on AIR WIN63-202610151745-318700621 (r97_mdate_store): an inverted year range reads back with its end raised to its start;
-    // an inverted day range is kept.
+    // An inverted year range reads back with its end raised to its start; an inverted day range is kept.
     [Fact]
     public void DateMatchesRaisesAnInvertedYearRangeEnd()
     {

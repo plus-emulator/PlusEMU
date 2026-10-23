@@ -106,8 +106,7 @@ public class RoomManager : IRoomManager, IStartable
                 }
             }
 
-            // Observed on AIR WIN63-202610201032-107964540: the Wired clock ticks at room tick + 0, 50, ... 450 ms. A late poll keeps the
-            // tick it belongs to, so the next fast pass stays on that grid; the room tick's own slot is its full pass.
+            // The Wired clock ticks at room tick + 0, 50, ... 450 ms. A late poll keeps the tick it belongs to, so the next fast pass stays on that grid; the room tick's own slot is its full pass.
             if (now - _wiredLastExecution >= RoomCycle.WiredInterval) {
                 _wiredLastExecution = RoomCycle.Boundary(now, monotonicMs, RoomCycle.WiredInterval);
 

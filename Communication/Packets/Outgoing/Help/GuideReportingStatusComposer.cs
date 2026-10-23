@@ -2,7 +2,7 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.Help;
 
-/// <summary>GuideReportingStatus (class_2127, parser class_2132): [statusCode], plus the pending ticket only when the code is 1.</summary>
+/// <summary>GuideReportingStatus: [statusCode], plus the pending ticket only when the code is 1.</summary>
 public class GuideReportingStatusComposer : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.GuideReportingStatusComposer;

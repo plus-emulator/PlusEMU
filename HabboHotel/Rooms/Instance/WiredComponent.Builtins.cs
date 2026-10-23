@@ -32,8 +32,7 @@ public partial class WiredComponent
             if (evt.Kind == WiredEventKind.Variable && evt.VariableChange is { } change) {
                 var created = change.Kind == WiredVariableChangeKind.Created;
 
-                // Observed on AIR WIN63-202610201032-107964540: a Give, also with override, has no old value and no difference. A Remove
-                // and a variable without a value have no new value. The box id is the id the client sees, also for a Builders Club box.
+                // A Give, also with override, has no old value and no difference. A Remove and a variable without a value have no new value. The box id is the id the client sees, also for a Builders Club box.
                 return key switch
                 {
                     "@event.variable_update.box_id" => BuildersClubItemIds.ToWire(change.Key.DefinitionId),
@@ -100,7 +99,7 @@ public partial class WiredComponent
             return key switch
             {
                 "@room_entry.method" => (int)user.WiredRoomEntry.Method,
-                // Observed on AIR WIN63-202610151745-318700621: a user who did not come in by teleport has no @room_entry.teleport_id.
+                // A user who did not come in by teleport has no @room_entry.teleport_id.
                 "@room_entry.teleport_id" => user.WiredRoomEntry.TeleporterId == 0 ? null : unchecked((int)user.WiredRoomEntry.TeleporterId),
                 _ => null
             };
@@ -232,7 +231,7 @@ public partial class WiredComponent
             return key switch
             {
                 "@position" => movement.MoveFurniture(context, item, (value >> 8) & 255, value & 255, item.Rotation, null),
-                // Observed on AIR WIN63-202610201032-107964540: a position that is not in the furni's list of directions changes nothing at all.
+                // A position that is not in the furni's list of directions changes nothing at all.
                 "@occupation" => FurnitureDirections.RotationAt(item.Definition, value & 255) is { } occupied
                     && movement.MoveFurniture(context, item, (value >> 16) & 255, (value >> 8) & 255, occupied, null),
                 "@position.x" => movement.MoveFurniture(context, item, value, item.GetY, item.Rotation, null),

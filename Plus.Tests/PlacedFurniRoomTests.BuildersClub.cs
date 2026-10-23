@@ -18,8 +18,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Builders Club placement as AIR WIN63-202610151745-318700621 checks it (HabboCatalog.getBuilderFurniPlaceableStatus,
-// com/sulake/habbo/catalog/HabboCatalog.as:2842-2889) and as hhus answers it: the furni count follows every placement and removal.
+// Builders Club placement: the furni count follows every placement and removal.
 public partial class PlacedFurniRoomTests
 {
     private const int BuildersClubPageId = 900;
@@ -53,8 +52,7 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(ServerPacketHeader.FurniListUpdateComposer, _client.Sent);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the placer's new furni count comes before the furni's ObjectAdd and
-    // before its ObjectRemove, in the same tick.
+    // The placer's new furni count comes before the furni's ObjectAdd and before its ObjectRemove, in the same tick.
     [Fact]
     public async Task TheFurniCountComesBeforeThePlacedFloorFurniIsAdded()
     {
@@ -87,8 +85,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal([(ServerPacketHeader.BuildersClubFurniCountComposer, 0), (ServerPacketHeader.ObjectRemoveComposer, wire)], CountAndFurniPackets());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: with 419 furni standing, a pickup sends 418 before ObjectRemove and the next
-    // placement sends 419 before ObjectAdd.
+    // A pickup sends the lowered furni count before ObjectRemove and the next placement sends the raised count before ObjectAdd.
     [Fact]
     public async Task ThePlacementCountIncludesTheNewFurniAndThePickupCountLeavesItOut()
     {
@@ -254,7 +251,7 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the three contracts place from the Builders Club "Contracts" page.
+    // The three contracts place from the Builders Club "Contracts" page.
     [Theory]
     [InlineData(InteractionType.WiredContractPayment)]
     [InlineData(InteractionType.WiredContractTrade)]
@@ -273,7 +270,7 @@ public partial class PlacedFurniRoomTests
         Assert.Contains(ServerPacketHeader.BuildersClubFurniCountComposer, _client.Sent);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a Builders Club placement of a chest gets no answer at all.
+    // A Builders Club placement of a chest gets no answer at all.
     [Theory]
     [InlineData(InteractionType.WiredChestFurni)]
     [InlineData(InteractionType.WiredChestCoins)]
@@ -305,7 +302,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void PickAllBuildersClubDeletesEveryBuildersClubFurniAndPickAllLeavesThem()
     {
-        // AIR WIN63-202610151745-318700621 com/sulake/habbo/ui/handler/ChatInputWidgetHandler.as:325-327 says ":pickallbc" once confirmed.
+        // :pickallbc is said once confirmed.
         Viewer();
         var (service, store, _) = BuildersClub();
         service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);
@@ -325,8 +322,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public async Task BuildersClubFurniTravelsByItsBandIdAndIsPickedUpByIt()
     {
-        // AIR WIN63-202610151745-318700621 com/sulake/habbo/utils/class_1858.as:21-24: the infostand knows a Builders Club furni only
-        // by an object id in this band (InfoStandFurniView.as:598-635).
+        // The infostand knows a Builders Club furni only by an object id in this band.
         Viewer();
         var (service, store, _) = BuildersClub();
 
@@ -359,8 +355,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void ATrialPlacementAsksBeforeItHidesTheRoomAndAMemberNeverHidesIt()
     {
-        // AIR WIN63-202610151745-318700621 com/sulake/habbo/room/class_2005.as:366-397: BuildersClubPlacementWarning (2075) asks
-        // room.confirm.hide_room and the client sends the placement again confirmed.
+        // BuildersClubPlacementWarning (2075) asks room.confirm.hide_room and the client sends the placement again confirmed.
         Viewer();
         var (service, store, _) = BuildersClub();
 
@@ -404,8 +399,7 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(_room.GetRoomItemHandler().GetWallAndFloor);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a poster from the Builders Club takes its number from the offer's product,
-    // whatever extra param the client sends.
+    // A poster from the Builders Club takes its number from the offer's product, whatever extra param the client sends.
     [Theory]
     [InlineData("")]
     [InlineData("53")]
@@ -435,8 +429,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((BuildersClubItemIds.ToWire(placed.Id).ToString(), ":w=1,1 l=0,0 l", "52"), (wireId, position, added.ReadString()));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a cine_light1 (three states) placed from the Builders Club has data "0",
-    // and clicks go "0" -> "1" -> "2" -> "0".
+    // A cine_light1 (three states) placed from the Builders Club has data "0", and clicks go "0" -> "1" -> "2" -> "0".
     [Fact]
     public async Task ABuildersClubWallLampStartsAtStateZero()
     {
@@ -475,8 +468,8 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(["1", "2", "0"], states);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: every multi-state default wall item below starts at "0" when placed from the Builders
-    // Club; the two single-state ones keep an empty value. The state counts are the ones Habbo's click cycles showed.
+    // Every multi-state default wall item below starts at "0" when placed from the Builders Club; the two single-state ones
+    // keep an empty value.
     [Theory]
     [InlineData("cine_light2", 3, "0")]
     [InlineData("party_lights", 2, "0")]

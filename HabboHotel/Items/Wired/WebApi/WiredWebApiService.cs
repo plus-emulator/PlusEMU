@@ -23,7 +23,7 @@ public readonly record struct WiredWebApiCredentials(string? ReadKey, string? Wr
 
 /// <summary>
 /// A value of a write body (WiredValueWrite, WiredVariablesPatch): a signed 64-bit decimal string. Habbo answers a body without one
-/// 400 wired.variables.invalid_value and one that is not such a string 400 request-failed-non-200 (observed on habbo.com).
+/// 400 wired.variables.invalid_value and one that is not such a string 400 request-failed-non-200.
 /// </summary>
 public readonly record struct WiredWebApiInput(long Value, string? Error)
 {
@@ -60,10 +60,10 @@ public static class WiredWebApiErrors
     /// <summary>A room the add-on's room is not loaded for (the spec's WiredRoomNotFoundError).</summary>
     public const string RoomNotFound = "room.not_found";
 
-    /// <summary>A room id that names no room, or an entity id that is not a number (observed on habbo.com).</summary>
+    /// <summary>A room id that names no room, or an entity id that is not a number.</summary>
     public const string Missing = "not-found";
 
-    /// <summary>A write value that is present but not a signed 64-bit decimal string (observed on habbo.com).</summary>
+    /// <summary>A write value that is present but not a signed 64-bit decimal string.</summary>
     public const string RequestFailed = "request-failed-non-200";
 }
 
@@ -88,9 +88,8 @@ public interface IWiredWebApiService
 }
 
 /// <summary>
-/// Habbo's public Wired Variables Web API (habbo.com /api/public/api-docs/, tag "Wired Variables") over the room's variables, opened by
-/// the keys of the room's Variables Web API add-on (VariablesWebApiAddon.as, WIN63-202610131318-860371703).
-/// Checks run in habbo.com's order: the room exists, the path and body are well formed, then the key, the rate limit, the loaded room
+/// Habbo's public Wired Variables Web API (tag "Wired Variables") over the room's variables, opened by the keys of the room's Variables Web API add-on.
+/// Checks run in Habbo's order: the room exists, the path and body are well formed, then the key, the rate limit, the loaded room
 /// and the add-on; only then is a variable or holder looked up.
 /// </summary>
 public sealed partial class WiredWebApiService : IWiredWebApiService
@@ -173,7 +172,7 @@ public sealed partial class WiredWebApiService : IWiredWebApiService
         return room.HasAddon(granted.ItemId) ? handle(new(room, read, write, readError, writeError)) : Forbidden(WiredWebApiErrors.ApiDisabled);
     }
 
-    // A room without a key of that kind answers key_missing whatever is sent (observed on habbo.com for a room without the add-on).
+    // A room without a key of that kind answers key_missing whatever is sent.
     private static (WiredWebApiKeys? Row, string? Error) Match(IReadOnlyList<WiredWebApiKeys> rows, string? key, Func<WiredWebApiKeys, string?> hash)
     {
         var configured = rows.Where(row => hash(row) is not null).ToArray();

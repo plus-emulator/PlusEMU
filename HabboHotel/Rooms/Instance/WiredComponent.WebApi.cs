@@ -4,7 +4,7 @@ using Plus.HabboHotel.Items.Wired.WebApi;
 
 namespace Plus.HabboHotel.Rooms.Instance;
 
-/// <summary>Keys of the room's Variables Web API add-ons (VariablesWebApiAddon.as:93-148, WIN63-202610131318-860371703).</summary>
+/// <summary>Keys of the room's Variables Web API add-ons.</summary>
 public partial class WiredComponent
 {
     private IWiredWebApiStore? _webApiStore;
@@ -23,7 +23,7 @@ public partial class WiredComponent
             && ReferenceEquals(_room.GetRoomItemHandler().GetItem(itemId), configured.Item) && (box = configured) != null;
     }
 
-    /// <summary>The editor's generate button (class_2618 [wired id, read key?]): a new random key, live at once, for an editor of the room.</summary>
+    /// <summary>The editor's generate button: a new random key, live at once, for an editor of the room.</summary>
     public bool IssueWebApiKey(GameClient session, uint itemId, bool read, out string key)
     {
         key = "";

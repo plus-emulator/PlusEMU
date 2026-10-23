@@ -22,8 +22,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         yield return new("wf_xtra_text_input_variable", new(Meta(0, 0, [0], 1), n => Shape(n, 1, 0, 0, 1) && n.OwnedIntParams[0] is 0 or 1
             ? Draft(n, [n.OwnedIntParams[0] == 1 ? 2 : 1], n.Text) : null));
         // Placeholder name with an optional separator, the picked variable's target and display mode, over one merged source.
-        // Observed on hhus (WIN63-202610131318): picked furni (100) and the triggering user (0) by default, no clicked-user or
-        // second pick source, wall furniture allowed.
+        // Picked furni (100) and the triggering user (0) by default, no clicked-user or second pick source, wall furniture allowed.
         yield return new("wf_xtra_text_output_variable", new(Sources([[0, 100, 200, 201]], [[0, 200, 201]], [0, 1, 0], 1) with
         {
             FurniDefaults = [100],
@@ -41,7 +40,7 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Draft(n, [target, p[2] == 1 ? 2 : 1, p[0] == 1 ? 2 : 1, n.UserSourceTypes[0], n.FurniSourceTypes[0]],
                 "\t" + parts[0] + "\t" + (parts.Length > 1 ? parts[1] : ""));
         }));
-        // Observed: picked furni (100) and the triggering user (0) by default, no walls (the official editor also hides the selector pool).
+        // Picked furni (100) and the triggering user (0) by default, no walls (the official editor also hides the selector pool).
         yield return new("wf_xtra_filter_furni_by_var", new(FilterMeta(), FilterByVariable));
         yield return new("wf_xtra_filter_users_by_var", new(FilterMeta(), FilterByVariable));
         yield return new("wf_xtra_var_text_connector", new(Meta(0, 0, []), n => Shape(n, 0, 0, 0, 0)
@@ -65,7 +64,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         }
     }
 
-    // Observed on hhus (r62-batch-05, WIN63-202610131318): the amount reference offers the triggering furni, the picked furni and the
+    // The amount reference offers the triggering furni, the picked furni and the
     // selector's on the furni slot, and the triggering user and the signal's on the user slot; it opens on 100 and 0.
     private static WiredNativeEditorMetadata FilterMeta() => Meta(1, 1, [10, 0, 0, 1], 2) with
     {

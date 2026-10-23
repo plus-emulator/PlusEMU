@@ -9,16 +9,14 @@ namespace Plus.HabboHotel.Items.Interactor;
 /// </summary>
 public sealed class InteractorConfigurationSwitch(TimeProvider? clock = null) : IFurniInteractor
 {
-    /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: four uses of one switch within the same millisecond switch it once, while uses
-    /// 100 ms apart each count. The first use counts; the window is one room tick.
-    /// </summary>
+    /// <summary>Several uses of one switch at the same moment switch it once, while uses 100 ms apart each count. The first use
+    /// counts; the window is one room tick.</summary>
     private static readonly TimeSpan UseWindow = TimeSpan.FromMilliseconds(50);
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
 
     public void OnPlace(GameClient? session, Item item)
     {
-        // Observed on AIR WIN63-202610201032-107964540: placing the Invisible Furni Controller sends the flags; the other furni send nothing.
+        // Placing the Invisible Furni Controller sends the flags; the other furni send nothing.
         if (item.Definition.InteractionType == InteractionType.InvisibleFurniControl) {
             Announce(item);
             Refresh(item);
@@ -30,8 +28,7 @@ public sealed class InteractorConfigurationSwitch(TimeProvider? clock = null) : 
             return;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a flag furni taken up while on sends the flag still on, so the client keeps it
-        // until the next room entry; taken up while off it sends nothing.
+        // A flag furni taken up while on sends the flag still on, so the client keeps it until the next room entry; taken up while off it sends nothing.
         if (item.LegacyDataString == "1") {
             ConfigurationItemStates.Announce(room);
 
@@ -59,7 +56,7 @@ public sealed class InteractorConfigurationSwitch(TimeProvider? clock = null) : 
     }
     public void OnWiredTrigger(Item item)
     {
-        // Observed on AIR WIN63-202610201032-107964540: wired cannot switch the wired disabler back off.
+        // Wired cannot switch the wired disabler back off.
         if (item.Definition.InteractionType == InteractionType.WiredDisabler && item.LegacyDataString == "1") {
             return;
         }
@@ -70,8 +67,7 @@ public sealed class InteractorConfigurationSwitch(TimeProvider? clock = null) : 
     {
         item.LegacyDataString = item.LegacyDataString == "1" ? "0" : "1";
 
-        // Observed on AIR WIN63-202610201032-107964540: using any of these furni sends one ObjectDataUpdate with the new state, then the
-        // room flags (not for the wired disabler), and no ObjectUpdate.
+        // Using any of these furni sends one ObjectDataUpdate with the new state, then the room flags (not for the wired disabler), and no ObjectUpdate.
         if (used) {
             item.UpdateUsedState();
             ConfigurationItemStates.StateChanged(item);
@@ -79,7 +75,7 @@ public sealed class InteractorConfigurationSwitch(TimeProvider? clock = null) : 
             return;
         }
 
-        // A switch by Wired keeps its packets (the traces cover uses only).
+        // A switch by Wired keeps its packets.
         item.UpdateState(true, item.Definition.InteractionType != InteractionType.ChooserDisabler);
         ConfigurationItemStates.StateChanged(item);
     }

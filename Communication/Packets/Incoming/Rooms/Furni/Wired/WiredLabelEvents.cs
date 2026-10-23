@@ -5,7 +5,7 @@ using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 
-/// <summary>class_2797 [furni id, text]: the label bubble's text, saved with wired write permission. The hotel word filter applies.</summary>
+/// <summary>[furni id, text]: the label bubble's text, saved with wired write permission. The hotel word filter applies.</summary>
 public sealed class SaveWiredLabelTextEvent(IWordFilterManager wordFilter) : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
@@ -26,7 +26,7 @@ public sealed class SaveWiredLabelTextEvent(IWordFilterManager wordFilter) : Roo
     }
 }
 
-/// <summary>class_3219 [furni id, bubble colour, visibility, always open]: the label settings view.</summary>
+/// <summary>[furni id, bubble colour, visibility, always open]: the label settings view.</summary>
 public sealed class SaveWiredLabelSettingsEvent : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)

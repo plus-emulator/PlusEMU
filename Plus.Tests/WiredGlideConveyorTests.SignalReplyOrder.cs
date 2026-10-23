@@ -8,8 +8,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: a message shown by a stack that a say reached through Send Signal comes after the
-    // echo of the say, in the same millisecond. A message shown by a stack the say runs itself still comes before the echo.
+    // A message shown by a stack that a say reached through Send Signal comes after the echo of the say, in the same millisecond.
+    // A message shown by a stack the say runs itself still comes before the echo.
     [Theory]
     [InlineData(1, 0, new[] { "direct", "sg", "reply" })]
     [InlineData(0, 0, new[] { "direct", "sg", "reply" })]

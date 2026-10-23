@@ -39,8 +39,7 @@ public sealed record WiredCounterChange(Item Item, WiredRuntimeEvent Event, bool
     WiredCounterPublication Publication = WiredCounterPublication.Object, bool ForceDisplay = false, string Text = "");
 
 /// <summary>Room-owned clock state. The room drains changes and publishes packets/events once.</summary>
-/// <remarks>Observed on AIR WIN63-202610151745-318700621: a game counter started at 99:59.5 goes on to 6000, 6001 and 6002 seconds.
-/// No upper limit is visible, so the default limit only keeps the saved seconds inside an int.</remarks>
+/// <remarks>A game counter has no visible upper limit, so the default limit only keeps the saved seconds inside an int.</remarks>
 public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 2L, Action<Item, bool>? gameControl = null, int defaultGameSeconds = 30,
     Action<WiredClockTransition>? observeTransition = null, Action<WiredClockTransition>? gameTransition = null,
     Func<Item, WiredClockOrigin, RoomUser?, bool>? canBegin = null)
@@ -78,7 +77,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
     public static string? StoredState(Item item) => IsGameTimer(item) && item.TimerDurationSeconds > 0
         ? item.TimerDurationSeconds.ToString(CultureInfo.InvariantCulture) : null;
     /// <summary>A newly placed native game timer starts again at 30 seconds.</summary>
-    /// <remarks>Observed on AIR WIN63-202610201032-107964540: a timer picked up and placed again shows 30, not its old saved duration.</remarks>
+    /// <remarks>A timer picked up and placed again shows 30, not its old saved duration.</remarks>
     public static void PlacedNew(Item item)
     {
         if (IsGameTimer(item)) {
@@ -101,8 +100,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         var duration = countdown && value > 0 ? value : defaultGameSeconds * 2L;
         _clocks[item.Id] = new(item, game, countdown, countdown ? duration : value, duration);
 
-        // Observed on AIR WIN63-202610201032-107964540: a timer that loads again, also from the middle of a game, is stopped and
-        // shows its saved duration.
+        // A timer that loads again, also from the middle of a game, is stopped and shows its saved duration.
         if (countdown) {
             item.TimerDurationSeconds = (int)(duration / 2);
 
@@ -170,12 +168,12 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             return false;
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: Start restarts a running Wired game counter and fires both game triggers.
+        // Start restarts a running Wired game counter and fires both game triggers.
         if (restartGame) {
             Stop(clock, WiredClockReason.Stop, origin, actor);
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: the reset button does nothing while the clock runs.
+        // The reset button does nothing while the clock runs.
         if (operation == 2 && clock.Countdown && origin == WiredClockOrigin.Gui && clock.Running) {
             return true;
         }
@@ -187,8 +185,8 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
                 Evidence(clock, WiredClockReason.Reset, origin, actor);
             }
 
-            // Observed on AIR WIN63-202610201032-107964540: the reset button of a clock that has not run since its last reset moves the
-            // saved duration to the next of 30, 60, 120, 180, 300, 600 and back to 30. After a run it only returns to the saved duration.
+            // The reset button of a clock that has not run since its last reset moves the saved duration to the next of 30, 60, 120, 180, 300, 600 and back to 30.
+            // After a run it only returns to the saved duration.
             if (clock.Countdown && origin == WiredClockOrigin.Gui && !clock.Started) {
                 SaveDuration(clock, DurationCycle.FirstOrDefault(seconds => seconds * 2L > clock.Duration, 30) * 2L);
             }
@@ -200,8 +198,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             ReportState(clock);
         }
 
-        // Observed on AIR WIN63-202610131318-860371703: a Start keeps a value adjusted after the last stop, and restarts from 0 otherwise.
-        // Observed on AIR WIN63-202610131318-860371703 (wf_game_upcounter1, 8/8): game counters reset the same way, the "0" in the Start's batch.
+        // A Start keeps a value adjusted after the last stop, and restarts from 0 otherwise. Game counters reset the same way.
         if (operation == 0 && origin == WiredClockOrigin.ModernWired && !clock.Running && !clock.Countdown
             && clock.Value != 0 && !clock.AdjustedSinceStop) {
             var previous = clock.Value;
@@ -209,7 +206,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             PublishClock(clock, previous, WiredCounterPublication.BatchData);
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a resume fired on a game counter that never ran leaves it at 0.
+        // A resume fired on a game counter that never ran leaves it at 0.
         if ((operation == 0 || operation == 4 && clock.Started) && !clock.Running) {
             if (clock.Countdown && clock.Value <= 0) {
                 var previous = clock.Value;
@@ -221,8 +218,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             clock.Running = true;
             clock.Started = true;
             clock.AdjustedSinceStop = false;
-            // Observed on AIR WIN63-202610131318-860371703: a started counter shows its first "1" on the 2nd 500 ms room boundary strictly after
-            // the firing (501-1000 ms later, exactly 1000 ms for an on-boundary firing), then every 1000 ms on that grid.
+            // A started counter shows its first "1" on the 2nd 500 ms room boundary after the firing (exactly 1000 ms for an on-boundary firing), then every 1000 ms.
             clock.GridOffset = 0;
             clock.NextTick = clock.Countdown ? nowMilliseconds + 1000 : NextBoundary(nowMilliseconds, clock.GridOffset);
             ReportState(clock);
@@ -236,7 +232,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
                 }
             }
             else if (clock.GameAware && operation == 0) {
-                // Observed on AIR WIN63-202610131318-860371703: starting a game counter starts the game in the same tick.
+                // Starting a game counter starts the game in the same tick.
                 gameTransition?.Invoke(transition);
             }
         }
@@ -265,21 +261,19 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         }
 
         Evidence(clock, WiredClockReason.Adjust, origin);
-        // Observed on AIR WIN63-202610201032-107964540: a counter that ran since its last reset starts again from 0 after a Set, so only a
-        // counter that has not run keeps the value of its Set.
+        // A counter that ran since its last reset starts again from 0 after a Set. Only a counter that has not run keeps the value of its Set.
         clock.AdjustedSinceStop = !clock.Running && !clock.Started;
         var previous = clock.Value;
         clock.Value = Math.Clamp(operation switch { 0 => previous + amount, 1 => previous - amount, _ => amount }, 0,
             clock.Countdown ? int.MaxValue * 2L : maxHalfSeconds);
 
-        // Observed on AIR WIN63-202610201032-107964540: a Wired set of a running counter restarts its tick. The next second shows 1000 ms
-        // after the set, whatever the room grid is. A step that was due at that moment is not taken.
+        // A Wired set of a running counter restarts its tick. The next second shows 1000 ms after the set, and a step due at that moment is not taken.
         if (operation == 2 && clock.Running && !clock.Countdown && origin == WiredClockOrigin.ModernWired && nowMilliseconds is { } now) {
             clock.GridOffset = now % WiredFlashStates.StateUpdateMilliseconds;
             clock.NextTick = NextBoundary(now, clock.GridOffset);
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: a Wired increase, decrease or set sends the value as data in an ObjectsDataUpdate.
+        // A Wired increase, decrease or set sends the value as data in an ObjectsDataUpdate.
         PublishClock(clock, previous, ModernBatch(origin), operation == 2 && origin == WiredClockOrigin.ModernWired);
 
         return true;
@@ -292,7 +286,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             return false;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a game timer reacts only to use states 1 (start or stop) and 2 (reset).
+        // A game timer reacts only to use states 1 (start or stop) and 2 (reset).
         if (clock.Countdown && parameter is not (1 or 2)) {
             return false;
         }
@@ -372,7 +366,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             }
         }
         else if (clock.GameAware && reason != WiredClockReason.Pause) {
-            // Observed on AIR WIN63-202610131318-860371703: stopping a game counter ends the game in the same tick.
+            // Stopping a game counter ends the game in the same tick.
             gameTransition?.Invoke(transition);
         }
     }
@@ -397,8 +391,7 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
 
         return transition;
     }
-    // Observed on AIR WIN63-202610131318-860371703: Start, Stop and Reset change a Wired counter's furni state once each,
-    // also when the displayed value stays the same.
+    // Start, Stop and Reset change a Wired counter's furni state once each, also when the displayed value stays the same.
     private static void ReportState(Clock clock)
     {
         if (!clock.Countdown && clock.Item.GetRoom() is { } room) {
@@ -416,14 +409,13 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
         var changed = clock.Item.LegacyDataString != text;
 
         if (changed) {
-            // Observed on AIR WIN63-202610131318-860371703: a Wired counter's ticks and adjusts do not change its furni state.
+            // A Wired counter's ticks and adjusts do not change its furni state.
             using (!clock.Countdown && clock.Item.GetRoom() is { } room ? FurnitureStateEvents.Unreported(room, clock.Item) : null) {
                 clock.Item.LegacyDataString = text;
             }
         }
 
-        // Observed on AIR WIN63-202610131318-860371703: a Wired-started game counter sends each second as ObjectDataUpdate like a plain counter;
-        // only the native game timers keep the object update.
+        // A Wired-started game counter sends each second as ObjectDataUpdate like a plain counter. Only the native game timers keep the object update.
         if (clock.Countdown) {
             publication = WiredCounterPublication.Object;
             force = false;

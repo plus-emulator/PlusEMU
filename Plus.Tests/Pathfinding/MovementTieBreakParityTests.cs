@@ -4,8 +4,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: tied north/south repairs use
-    // the western tile, and tied east/west repairs use the northern tile.
+    // Tied north/south repairs use the western tile, and tied east/west repairs use the northern tile.
     [Theory]
     [InlineData(false, 7, 12, 7, 7, 7, 10, 7, 9, 6, 9)]
     [InlineData(true, 7, 12, 7, 7, 7, 10, 7, 9, 6, 9)]

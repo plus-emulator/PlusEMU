@@ -6,7 +6,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: with the owner and one bot in the room, the user count conditions see one user.
+    // With the owner and one bot in the room, the user count conditions see one user.
     [Theory]
     [InlineData("wf_cnd_user_count_in", 1, 1, true)]
     [InlineData("wf_cnd_user_count_in", 2, 5, false)]

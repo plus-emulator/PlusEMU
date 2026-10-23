@@ -5,8 +5,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: Move/Rotate with no movement and no rotation places each picked furni not already on top
-// again on its own tile, on top of the rest of its stack (bottom first); the furni above it stay where they are.
+// Move/Rotate with no movement and no rotation places each picked furni not already on top again on its own tile,
+// on top of the rest of its stack (bottom first). The furni above it stay where they are.
 public partial class PlacedFurniRoomTests
 {
     [Theory]

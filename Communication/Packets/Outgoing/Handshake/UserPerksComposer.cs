@@ -10,7 +10,7 @@ public class UserPerksComposer(bool cameraAllowed) : IServerPacket
     {
         // TODO @80O: Pass perks via constructor.
         // TODO @80O: Store perks in the database.
-        // Observed on AIR WIN63-202610201032-107964540: Habbo sends these 12 perks in this order.
+        // Habbo sends these 12 perks in this order.
         // BUILDER_AT_WORK stays denied so floor plans keep the normal size limit.
         // HABBO_CLUB_OFFER_BETA stays denied because this hotel has no Habbo Club offer.
         (string Code, string DenialKey, bool Allowed)[] perks =
@@ -30,8 +30,7 @@ public class UserPerksComposer(bool cameraAllowed) : IServerPacket
         ];
         packet.WriteInteger(perks.Length);
 
-        // Each perk contains its code, denial-message localization key, and allowed flag.
-        // Observed on AIR WIN63-202610201032-107964540: only a denied perk carries its key.
+        // Each perk contains its code, denial-message localization key, and allowed flag. Only a denied perk carries its key.
         foreach (var (code, denialKey, allowed) in perks) {
             packet.WriteString(code);
             packet.WriteString(allowed ? "" : denialKey);

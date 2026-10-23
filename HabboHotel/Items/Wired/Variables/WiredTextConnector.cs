@@ -3,8 +3,7 @@ using System.Collections;
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
 /// <summary>
-/// A variable's Text Connector: the label of each number and the fallback text of a number with no label. Observed on AIR
-/// WIN63-202610201032-107964540: the fallback is saved as a "_=text" line and replaces an unlabelled number in text mode.
+/// A variable's Text Connector: the label of each number and the fallback text of a number with no label. The fallback is saved as a "_=text" line and replaces an unlabelled number in text mode.
 /// </summary>
 public sealed class WiredTextConnector(IReadOnlyDictionary<int, string> labels, string? fallback) : IReadOnlyDictionary<int, string>
 {

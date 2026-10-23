@@ -9,11 +9,10 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs, 24 firings each): Toggle to Random sets a random state of the state
-    // furni in its list (colour tile 0 to 6, floor switch 1 0 to 1, floor switch 2 0 to 3, number tile 0 to 9, glow ball 0 to 1, block
-    // 0 to 4, knob 0 to 7, glass door 0 to 1, slider 0 to 3, maze 0 to 3). It never changes the game tiles, the pyramid, the blobs, the
-    // box, the buttons, the arrow plates, the pressure plates, the ring plate, the antennas, a game counter or a Wired box that is not part
-    // of the running stack.
+    // Toggle to Random sets a random state of the state furni in its list (colour tile 0 to 6, floor switch 1 0 to 1, floor
+    // switch 2 0 to 3, number tile 0 to 9, glow ball 0 to 1, block 0 to 4, knob 0 to 7, glass door 0 to 1, slider 0 to 3, maze 0
+    // to 3). It never changes the game tiles, the pyramid, the blobs, the box, the buttons, the arrow plates, the pressure
+    // plates, the ring plate, the antennas, a game counter or a Wired box that is not part of the running stack.
     [Fact]
     public void ToggleToRandomChangesStateFurniAndLeavesTheOthersAlone()
     {

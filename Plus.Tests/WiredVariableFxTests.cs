@@ -30,8 +30,8 @@ public sealed class WiredVariableFxTests
         Assert.Equal(new object[] { 1, 50, true, 2, 15, true }, packet.Values.Take(6).ToArray());
     }
 
-    // Official hhus WIN63-202610131318 (r78 batch): the reopened ints of each card saved from its defaults, all 23 of them: the category
-    // slot at [21] and the "Order in FX stack" at [22] (the spec saved 1 there and it reopened as 1).
+    // The reopened ints of each card saved from its defaults, all 23 of them: the category slot at [21] and the "Order in FX
+    // stack" at [22] (a saved 1 there reopens as 1).
     [Theory]
     [InlineData("wf_xtra_var_fx_status", new[] { 1, 2, 0, 7, 0, 3000, 0, -1, 2, 2, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
     [InlineData("wf_xtra_var_fx_health", new[] { 1, 2, 0, 7, 0, 3000, 0, 1000, 2, 10, 0, 0, 0, 100, 0, 0, 1, 1, 0, 0, 0, 0, 1 })]
@@ -43,7 +43,7 @@ public sealed class WiredVariableFxTests
     {
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
         var native = WiredNativeEditorProjection.DefaultNative(descriptor);
-        // The official default leaves the style options unset (-1); saving stores the style's own defaults.
+        // The default leaves the style options unset (-1); saving stores the style's own defaults.
         var unset = observed.ToArray();
         (unset[7], unset[8], unset[9]) = (-1, -1, -1);
         Assert.True(WiredNativeEditorProjection.TryCompile(50, descriptor, native with { OwnedIntParams = [.. unset] }, out var configuration));

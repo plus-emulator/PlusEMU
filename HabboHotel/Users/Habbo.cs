@@ -436,14 +436,13 @@ public class Habbo
             return;
         }
 
-        // A WIRED room forward opens the room without OpenConnection (AIR WIN63-202610151745-318700621).
+        // A WIRED room forward opens the room without OpenConnection.
         if (openConnection) {
             Client.Send(new OpenConnectionComposer(room.Id));
         }
 
         if (!room.CheckRights(Client, true, true) && !Client.GetHabbo().IsTeleporting && !Client.GetHabbo().IsHopping) {
-            // A room hidden by Builders Club furni overrides its door mode (AIR WIN63-202610151745-318700621
-            // navigator/roomsettings/RoomSettingsCtrl.as:726, notification.builders_club.room_locked); staff still enter.
+            // A room hidden by Builders Club furni overrides its door mode (notification.builders_club.room_locked); staff still enter.
             if (!Access.Can(PermissionKeys.RoomEnterLocked) && _buildersClub?.HidesRoom(room) == true) {
                 Client.Send(new FlatAccessDeniedComposer(room.Id, ""));
                 Client.Send(new CloseConnectionComposer());
@@ -494,7 +493,7 @@ public class Habbo
         }
 
         Client.GetHabbo().CurrentRoom = room;
-        // Observed on AIR WIN63-202610151745-318700621: the NFT chat styles come before RoomReady, the entry tile right after it.
+        // The NFT chat styles come before RoomReady, the entry tile right after it.
         Client.Send(new Plus.Communication.Packets.Outgoing.Rooms.Session.UserNftChatStylesComposer());
         Client.Send(new RoomReadyComposer(room.RoomId, room.ModelName));
 
@@ -521,7 +520,7 @@ public class Habbo
             _roomAchievements.ProgressAchievement(Client, "ACH_RoomEntry", 1);
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: the server sends the room data right after opening it; the client asks for nothing.
+        // The server sends the room data right after opening it; the client asks for nothing.
         _roomEntry?.Enter(Client);
 
         return true;

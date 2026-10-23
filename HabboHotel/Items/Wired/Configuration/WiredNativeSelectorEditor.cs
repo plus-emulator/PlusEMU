@@ -20,8 +20,7 @@ internal static class WiredNativeSelectorEditor
             "wf_slc_furni_area" or "wf_slc_users_area" => [0, 0, 0, 0],
             "wf_slc_furni_altitude" => [0, 0],
             "wf_slc_remote" => [0, 0],
-            // Observed on hhus (AIR WIN63-202610131318-860371703): the default ends with one more zero mask word than the 14 the editor
-            // writes for its 441 tiles (InNeighborhood.as:103-110, SpiralUtils.as:47-73); that word covers no tile.
+            // The default ends with one more zero mask word than the 14 the editor writes for its 441 tiles; that word covers no tile.
             "wf_slc_furni_neighborhood" or "wf_slc_users_neighborhood" => [1, 0, 0, 33554431, .. Enumerable.Repeat(0, 14)],
             _ => []
         };
@@ -29,8 +28,7 @@ internal static class WiredNativeSelectorEditor
         WiredNativeEditorMetadata metadata = name switch
         {
             "wf_slc_remote" => new([[0, 100, 201]], [], [100], [], defaults, false),
-            // Observed on AIR WIN63-202610131318-860371703 (initial editor frames): these selectors offer furni 0/100/201 (no selector source)
-            // and the neighborhood anchor users 0/201.
+            // These selectors offer no selector source.
             "wf_slc_furni_bytype" or "wf_slc_furni_onfurni" or "wf_slc_users_onfurni" =>
                 new([[0, 100, 201]], [], [100], [], defaults, false),
             "wf_slc_furni_neighborhood" or "wf_slc_users_neighborhood" =>
@@ -39,7 +37,7 @@ internal static class WiredNativeSelectorEditor
             _ => throw new InvalidDataException("Unknown native selector.")
         };
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): Furni By Type and Picked Furni allow wall picks.
+        // Furni By Type and Picked Furni allow wall picks.
         return name is "wf_slc_furni_bytype" or "wf_slc_furni_picks" ? metadata with { AllowWall = true } : metadata;
     }
 
@@ -83,7 +81,7 @@ internal static class WiredNativeSelectorEditor
                 break;
             case "wf_slc_users_team":
             case "wf_slc_users_handitem":
-                // Observed on AIR WIN63-202610151745-318700621: Users With Handitem stores any int (-5 and 2147483647 read back as sent).
+                // Users With Handitem stores any int.
                 if (p.Length != 1 || name == "wf_slc_users_team" && p[0] is < 0 or > 4) {
                     return false;
                 }

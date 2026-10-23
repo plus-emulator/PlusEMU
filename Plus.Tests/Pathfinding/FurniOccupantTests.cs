@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: a furni that moves or rotates never carries the avatar that sits or lies on it.
+// A furni that moves or rotates never carries the avatar that sits or lies on it.
 // The avatar keeps its tile. It keeps its posture only while the new footprint still covers that tile, and a furni that
 // lands on a standing avatar makes it sit or lie at once. The change reaches the room on the next room tick.
 public partial class PlacedFurniRoomTests

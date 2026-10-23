@@ -872,8 +872,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(1, service.PendingCount);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a gate Toggle State write goes out in the wired data batch with the
-    // box flashes, not as a full object update.
+    // A gate Toggle State write goes out in the wired data batch with the box flashes, not as a full object update.
     [Fact]
     public void AWiredGateWriteGoesOutInTheWiredDataBatch()
     {

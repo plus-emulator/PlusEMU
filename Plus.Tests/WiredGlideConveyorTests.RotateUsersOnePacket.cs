@@ -6,8 +6,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: one Move and Rotate User box that turns two users sends one WiredMovements
-    // with one direction entry per user, not one packet per user.
+    // One Move and Rotate User box that turns two users sends one WiredMovements with one direction entry per user, not one
+    // packet per user.
     [Fact]
     public void RotateUserTurningTwoUsersSendsOneWiredMovementsPacket()
     {

@@ -495,7 +495,6 @@ internal sealed partial class WiredStackEngine
             }
 
             // Without exec_in_order, stacks fired by one event run in their (random) firing order, not by height or id.
-            // Observed r92g r92-signals two-w1..w3 (AIR WIN63-202610131318-860371703).
             var height = 0.0;
             var id = 0u;
 
@@ -518,9 +517,7 @@ internal sealed partial class WiredStackEngine
                     ActionDue?.Invoke(due + delay);
                 }
 
-                // A scheduled action flashes with its stack's firing, also when it runs later. Observed (AIR WIN63-202610131318-860371703):
-                // r92g r92-exec-order delay-w1 flashed the 500 ms action at +147 ms with its message at +648 ms; r92i r92h-f2f occupied-w1
-                // flashed the delay-2 furni_to_furni at the firing.
+                // A scheduled action flashes with its stack's firing, also when it runs later.
                 Flash(step.Box);
             }
         }
@@ -530,31 +527,24 @@ internal sealed partial class WiredStackEngine
         return true;
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: without Execute in Order, effects of one firing run neither by height nor by
-    // placement or box code. With both heights, toggle_state and rel_mov ran before match_to_sshot, and change_var_val and
-    // toggle_state ran before show_message. Only these pairs are proven; every other pair keeps the per-firing order (open).
+    // Without Execute in Order, effects of one firing run neither by height nor by placement or box code. With both heights, toggle_state and rel_mov run before match_to_sshot,
+    // and change_var_val and toggle_state run before show_message. Every other pair keeps the per-firing order.
     private static readonly Dictionary<string, string[]> DefaultRunsAfter = new()
     {
         ["wf_act_match_to_sshot"] = ["wf_act_toggle_state", "wf_act_rel_mov"],
         ["wf_act_show_message"] = ["wf_act_change_var_val", "wf_act_toggle_state"],
-        // Observed on AIR WIN63-202610151745-318700621: Control Clock (Start) and Give Score To Team in one stack give the score in the
-        // game they start, with the give above or below the clock (6 of 6); a score given with no game running is lost.
+        // Control Clock (Start) and Give Score To Team in one stack give the score in the game they start, with the give above or below the clock; a score given with no game running is lost.
         ["wf_act_give_score"] = ["wf_act_control_clock"],
         ["wf_act_give_score_tm"] = ["wf_act_control_clock"],
-        // Observed on AIR WIN63-202610201032-107964540: an Adjust Clock Set runs after the Increase and Decrease of the same firing,
-        // whatever the box order (18 of 18). Two Sets still run in a random order.
+        // An Adjust Clock Set runs after the Increase and Decrease of the same firing, whatever the box order. Two Sets still run in a random order.
         [AdjustClockSet] = ["wf_act_adjust_clock"],
-        // Observed on AIR WIN63-202610201032-107964540: a Remove Variable runs after a Give Variable of the same variable, whatever the
-        // box order (12 of 12 for each order).
+        // A Remove Variable runs after a Give Variable of the same variable, whatever the box order.
         ["wf_act_remove_var"] = ["wf_act_give_var"],
-        // Observed on AIR WIN63-202610201032-107964540: a Give Variable or Change Variable Value that reads the state or the rotation of a
-        // furni reads the new value when a Toggle State or Move and Rotate of the same firing changes it, whatever the box order (12 of 12
-        // for each pair and box order). The same holds for the x of a user moved by User To Furni and the x of a furni moved by Furni To
-        // User (12 of 12 for each pair and box order).
+        // A Give Variable or Change Variable Value that reads the state or the rotation of a furni reads the new value when a Toggle State or Move and Rotate of the same firing changes it,
+        // whatever the box order. The same holds for the x of a user moved by User To Furni and the x of a furni moved by Furni To User.
         ["wf_act_give_var"] = ["wf_act_toggle_state", "wf_act_move_rotate", "wf_act_user_to_furni", "wf_act_furni_to_user"],
         ["wf_act_change_var_val"] = ["wf_act_toggle_state", "wf_act_move_rotate", "wf_act_user_to_furni", "wf_act_furni_to_user"],
-        // Observed on AIR WIN63-202610201032-107964540: a User To Furni sends its WiredMovements after the state update of a Toggle State
-        // and the ObjectUpdate of a Move and Rotate of the same firing, whatever the box order (12 of 12 for each pair and box order).
+        // A User To Furni sends its WiredMovements after the state update of a Toggle State and the ObjectUpdate of a Move and Rotate of the same firing, whatever the box order.
         ["wf_act_user_to_furni"] = ["wf_act_toggle_state", "wf_act_move_rotate"]
     };
 
@@ -767,8 +757,7 @@ internal sealed partial class WiredStackEngine
                             _executingAction = previousAction;
                         }
 
-                        // A later step of an action that already ran (a teleport's republish, landing and effect end) does not flash the
-                        // box again. Observed on hhus (AIR WIN63-202610131318-860371703): Teleport To flashes once, with its stack's firing.
+                        // A later step of an action that already ran (a teleport's republish, landing and effect end) does not flash the box again. Teleport To flashes once, with its stack's firing.
                     }
                     finally {
                         if (--chain.Remaining == 0) {
@@ -851,8 +840,7 @@ internal sealed partial class WiredStackEngine
 
     private void Flash(IWiredItem box) => Flash(box.Item);
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_projectile_kinds): a stack fired outside speech flashes in the same
-    // ObjectsDataUpdate as the furni state its effects write, one wired tick after the firing. Its flashes wait for that tick.
+    // A stack fired outside speech flashes in the same ObjectsDataUpdate as the furni state its effects write, one wired tick after the firing. Its flashes wait for that tick.
     private readonly List<(long Cycle, Item Item, int Visits)> _heldFlashes = [];
 
     private void HoldFlashes(IEnumerable<Item> items, long cycle, int visits = int.MaxValue)

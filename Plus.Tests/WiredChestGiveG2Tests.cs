@@ -100,7 +100,8 @@ public sealed class WiredChestGiveG2Tests
         world.Coins(101, 20, enabled: false);
         world.Furni(102, 5);
 
-        // hhus refuses the save when any pick is not an upgraded coin chest (require_coin_chests): disabled, furni and unplaced picks.
+        // The save is refused when any pick is not an upgraded coin chest (require_coin_chests): disabled, furni and unplaced
+        // picks.
         foreach (var pick in new uint[] { 101, 102, 999 }) {
             var refused = (WiredChestAction)WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(entry => entry.CanonicalName == "wf_act_give_currency"), world.Module);
             Assert.True(WiredNativeEditorProjection.TryCompile(9, refused.Descriptor, world.Native("wf_act_give_currency", Currency(0, 5, 0), [FirstChest, pick], ""), out var runtime));
@@ -264,7 +265,7 @@ public sealed class WiredChestGiveG2Tests
         using var world = new Scene();
         world.Coins(FirstChest, 20);
         world.Furni(101, 2, sprites: [10, 10], locked: true);
-        // A picked coin chest refuses the save (hhus require_furni_chests); the locked furni chest alone saves but gives nothing.
+        // A picked coin chest refuses the save (require_furni_chests); the locked furni chest alone saves but gives nothing.
         var refused = (WiredChestAction)WiredChestBox.Create(world.Room, new() { Id = 9 }, WiredBoxRegistry.All.Single(entry => entry.CanonicalName == "wf_act_give_furni"), world.Module);
         Assert.True(WiredNativeEditorProjection.TryCompile(9, refused.Descriptor, world.Native("wf_act_give_furni", FurniGive(0, 1, order: 1), [FirstChest, 101], ""), out var mixed));
         Assert.False(refused.TryValidateConfiguration(mixed, out _, out var error));
@@ -278,8 +279,8 @@ public sealed class WiredChestGiveG2Tests
         Assert.Equal(20, world.Store.Chests[FirstChest].Coins);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a give to a user who may not trade answers WiredTransactionFail reason 8,
-    // with no wired.error dialog and no Transaction Failed. A locked chest is checked first and answers reason 15.
+    // A give to a user who may not trade answers WiredTransactionFail reason 8, with no wired.error dialog and no Transaction
+    // Failed. A locked chest is checked first and answers reason 15.
     [Theory]
     [InlineData("wf_act_give_currency")]
     [InlineData("wf_act_give_furni")]
@@ -306,8 +307,8 @@ public sealed class WiredChestGiveG2Tests
         Assert.Single(world.Packets, packet => packet.Header == Plus.Communication.Packets.Outgoing.ServerPacketHeader.RoomNotificationComposer);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a give from a locked chest answers the triggering user with WiredTransactionFail 15.
-    // The wired.error dialog goes to every user in the room, at most once per 20 s for the whole room.
+    // A give from a locked chest answers the triggering user with WiredTransactionFail 15. The wired.error dialog goes to every
+    // user in the room, at most once per 20 s for the whole room.
     [Fact]
     public void TheTransactionFailureDialogGoesToEveryUserOnceForTheWholeRoom()
     {
@@ -414,7 +415,7 @@ public sealed class WiredChestGiveG2Tests
             && box.TryValidateConfiguration(runtime, out _, out _));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a raw save with amount 0 is accepted and read back as 1.
+    // A raw save with amount 0 is accepted and read back as 1.
     [Theory]
     [InlineData("wf_act_give_currency", 11)]
     [InlineData("wf_act_give_furni", 1)]

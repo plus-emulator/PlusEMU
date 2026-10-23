@@ -48,8 +48,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             return;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540 (3 runs, 2 tries each): a walk to another tile wakes a sleeping avatar when the
-        // request arrives; a walk to the tile it stands on wakes it on the next room tick.
+        // A walk to another tile wakes a sleeping avatar when the request arrives; a walk to the tile it stands on wakes it on the next room tick.
         if (!user.SetStep && x == user.X && y == user.Y) {
             user.UnIdle(atRoomTick: true);
 
@@ -98,19 +97,17 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
     private sealed record ExpressionRule(WiredAvatarAction? Wired = null, TimeSpan? CountsFor = null, bool ClubOnly = false);
 
-    // Observed on AIR WIN63-202610201032-107964540: without Habbo Club, expressions 2, 3, 4, 6 and 67 reach nobody. User Performs
-    // Action still sees a wave 4.90 s after it but not 5.27 s after it, and respect 1.69 s after it but not 1.87 s after it.
+    // Without Habbo Club, expressions 2, 3, 4, 6 and 67 reach nobody. User Performs Action sees a wave for about 5 s and respect for about 1.8 s.
     private static readonly Dictionary<int, ExpressionRule> Expressions = new()
     {
         [1] = new(WiredAvatarAction.Wave, TimeSpan.FromSeconds(5)),
         [2] = new(WiredAvatarAction.Kiss, ClubOnly: true),
         [3] = new(WiredAvatarAction.Laugh, ClubOnly: true),
         [4] = new(ClubOnly: true),
-        // Observed on AIR WIN63-202610201032-107964540: the sleep expression still counts 2.50 s after it, though the avatar stays asleep.
-        // Observed on AIR WIN63-202610151745-318700621: it no longer counts 2.77 s after it.
+        // The sleep expression counts for about 2.6 s, though the avatar stays asleep.
         [5] = new(WiredAvatarAction.Relax, TimeSpan.FromMilliseconds(2600)),
         [6] = new(ClubOnly: true),
-        // Observed on AIR WIN63-202610201032-107964540: the respect expression fires User Performs Action - Respect. Expression 67 fires nothing.
+        // The respect expression fires User Performs Action - Respect. Expression 67 fires nothing.
         [7] = new(WiredAvatarAction.Respect, TimeSpan.FromMilliseconds(1800)),
         [67] = new(ClubOnly: true)
     };
@@ -160,7 +157,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
     public void Dance(Room room, GameClient session, int danceId)
     {
-        // Observed on AIR WIN63-202610201032-107964540: without Habbo Club, dance 2 to 4 sends nothing and the current dance stays.
+        // Without Habbo Club, dance 2 to 4 sends nothing and the current dance stays.
         if (danceId is > 1 and <= 4 && ClubAccess.LevelFor(session.GetHabbo().Access) == 0) {
             return;
         }
@@ -217,15 +214,13 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
         var wasSitting = user.IsSitting;
 
         if (posture == 1 && !user.Statusses.ContainsKey("sit")) {
-            // Observed on AIR WIN63-202610201032-107964540: sitting from a diagonal turns the body one step clockwise
-            // and the head follows it (3 -> 4, 5 -> 6, 7 -> 0).
+            // Sitting from a diagonal turns the body one step clockwise and the head follows it (3 -> 4, 5 -> 6, 7 -> 0).
             if (user.RotBody % 2 != 0) {
                 user.RotBody = (user.RotBody + 1) % 8;
                 user.RotHead = user.RotBody;
             }
 
-            // Observed on hhus (AIR WIN63-202610131318-860371703): sitting on the floor sends "sit 0.55 1" (sit height, can stand up)
-            // and keeps the avatar's Z.
+            // Sitting on the floor sends "sit 0.55 1" (sit height, can stand up) and keeps the avatar's Z.
             user.Statusses.Add("sit", "0.55 1");
             user.IsSitting = true;
             user.UpdateNeeded = true;

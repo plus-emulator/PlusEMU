@@ -4,9 +4,7 @@ using System.Globalization;
 namespace Plus.HabboHotel.Items.Wired.Variables;
 
 /// <summary>
-/// Calendar fields use the room timezone; elapsed units always count from the UTC epoch. A Value-mode parent holds epoch
-/// milliseconds, the unit of @current_time (observed on hhus, AIR WIN63-202610131318-860371703: "attr" given @current_time
-/// read year 2026 and day_of_week 5 on 2026-10-16).
+/// Calendar fields use the room timezone; elapsed units always count from the UTC epoch. A Value-mode parent holds epoch milliseconds, the unit of @current_time.
 /// </summary>
 public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
 {
@@ -15,8 +13,7 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
     public const int BasePart = 0;
     public const long MaxMilliseconds = 253402300799999;
     /// <summary>
-    /// Values before 1970 are timestamps too. Observed on hhus (AIR WIN63-202610131318-860371703): a parent of -1 reads 00:59:59.999 on
-    /// Thursday 1970-01-01 (the room zone, UTC+1), and writing day_of_week 3 from Thursday 1970-01-01 01:00:01 gives -86399000.
+    /// Values before 1970 are timestamps too: a parent of -1 reads 00:59:59.999 on Thursday 1970-01-01 (the room zone, UTC+1), and writing day_of_week 3 from Thursday 1970-01-01 01:00:01 gives -86399000.
     /// </summary>
     public const long MinMilliseconds = -62135596800000;
     public IEnumerable<int> Selected => Enumerable.Range(1, 26).Where(id => (Mask & (1 << id) & ValidMask) != 0);
@@ -24,7 +21,7 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
     public IEnumerable<int> Parts => Mode == 0 ? Selected : Selected.Prepend(BasePart);
     public bool Has(int id) => id is > 0 and <= 26 && (Mask & (1 << id) & ValidMask) != 0;
     public bool HasPart(int id) => id == BasePart ? Mode != 0 : Has(id);
-    /// <summary>Only Value-mode parts are writable and interceptable; timestamp parts are read-only (observed on hhus).</summary>
+    /// <summary>Only Value-mode parts are writable and interceptable; timestamp parts are read-only.</summary>
     public bool Writable => Mode == 0;
     public static string Key(int id) => id switch
     {
@@ -55,8 +52,7 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
     };
 
     /// <summary>
-    /// The catalogue name after "&lt;parent&gt;.": "value.year", "creation_time.year" or the base row "creation_time". Observed on hhus
-    /// (AIR WIN63-202610131318-860371703): the month part is sent as "month_of_year " with a trailing space in every mode, while
+    /// The catalogue name after "&lt;parent&gt;.": "value.year", "creation_time.year" or the base row "creation_time". The month part is sent as "month_of_year " with a trailing space in every mode, while
     /// "@current_time.month_of_year" has none.
     /// </summary>
     public string CatalogKey(int id) => id == BasePart ? ModeKey : ModeKey + "." + (id == 9 ? "month_of_year " : Key(id));
@@ -67,7 +63,7 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
         [.. new[] { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }
             .Select((name, index) => KeyValuePair.Create(index + 1, name))];
 
-    /// <summary>The text connector hhus lists on a part in every mode: day_of_week 1 Monday..7 Sunday, month_of_year 1 January..12 December.</summary>
+    /// <summary>The text connector Habbo lists on a part in every mode: day_of_week 1 Monday..7 Sunday, month_of_year 1 January..12 December.</summary>
     public static ImmutableArray<KeyValuePair<int, string>>? Connector(int id) => id switch
     {
         5 => Weekdays,
@@ -126,9 +122,8 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
     }
 
     /// <summary>
-    /// The parent value after writing one Value-mode part, or null when the write is refused. Observed on hhus (AIR
-    /// WIN63-202610131318-860371703): year 2026 → 2025 moved 2026-10-16 to 2025-10-16, and day_of_week 4 → 1 moved it to the Monday
-    /// of that week. Each part moves the parent by the difference in its own unit and keeps every other field.
+    /// The parent value after writing one Value-mode part, or null when the write is refused. Each part moves the parent by the difference in its own unit and keeps every other field
+    /// (day_of_week 4 -> 1 moves it to the Monday of that week).
     /// </summary>
     public long? Write(long parent, int id, long part, TimeZoneInfo zone)
     {
@@ -174,9 +169,8 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
     }
 
     /// <summary>
-    /// Whole months since 1970-01 in UTC. The elapsed units count towards zero, so a time before 1970 counts a month only once it is a
-    /// whole month back. Observed on hhus (AIR WIN63-202610131318-860371703): -1 ms reads second 0, -86399000 reads minute -1439, hour -23,
-    /// day 0, week 0 and month 0; 1970-11-01 00:00:01 reads month 10.
+    /// Whole months since 1970-01 in UTC. The elapsed units count towards zero, so a time before 1970 counts a month only once it is a whole month back
+    /// (-1 ms reads second 0 and month 0; 1970-11-01 00:00:01 reads month 10).
     /// </summary>
     private static long ElapsedMonths(DateTimeOffset utc)
     {
@@ -206,9 +200,9 @@ public sealed record WiredVariableTimeUtilities(int Mask, int Mode)
 public sealed record WiredVariableDerivation(WiredVariableReference Source, Func<WiredVariableValue, WiredVariableValue?> Convert,
     bool RequiresValue = true, bool RequiresTimestamps = false, Func<long, long, long?>? Write = null)
 {
-    /// <summary>A creation-time part needs a source that keeps one; a global variable does not (observed on hhus).</summary>
+    /// <summary>A creation-time part needs a source that keeps one; a global variable does not.</summary>
     public bool RequiresCreationTime { get; init; }
-    /// <summary>Variable Changed can watch the part: every write of the parent is a change of the part (level-up parts, observed on hhus).</summary>
+    /// <summary>Variable Changed can watch the part: every write of the parent is a change of the part (level-up parts).</summary>
     public bool Interceptable { get; init; }
     /// <summary>False for a presence part (is_maxed): it exists or not, and has no value.</summary>
     public bool HasValue { get; init; } = true;

@@ -53,7 +53,7 @@ public partial class ModernWiredRuntimeTests
         });
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: with two users split into signals, the user whose signal runs last changes from
+    // With two users split into signals, the user whose signal runs last changes from
     // firing to firing, whatever the order of the selectors.
     [Theory]
     [InlineData(0)]

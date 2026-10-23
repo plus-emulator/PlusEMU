@@ -23,7 +23,7 @@ public sealed class WiredBuiltinPresenceParityTests
         Assert.Null(module.Read(new(holder.Target, give.Text), holder, frame));
         Assert.False(executor.Execute("wf_act_remove_var", WiredNativeTestSupport.Scalar("wf_act_remove_var", new() { IntParams = [1, 0, 0], Text = give.Text }), frame));
         Assert.Empty(module.DrainChanges()); // Native metadata prohibits interception for these presence flags.
-        // Observed on AIR WIN63-202610201032-107964540: Give Variable saves on every built-in variable, this one included.
+        // Give Variable saves on every built-in variable, this one included.
         Assert.True(WiredVariableExecutors.TryValidate("wf_act_give_var", WiredNativeTestSupport.Scalar("wf_act_give_var", give with { Text = "internal:@is_stackable" }), out _));
         Assert.False(module.Mutate(new(holder.Target, give.Text), holder, WiredVariableMutation.Give, 0, new(1, [])));
         Assert.False(module.Mutate(new(holder.Target, give.Text), holder, WiredVariableMutation.Give, 0, new(2, [holder])));
@@ -32,7 +32,7 @@ public sealed class WiredBuiltinPresenceParityTests
     [Fact]
     public void GiveVariableSavesWithAGlobalAndGivesNothing()
     {
-        // Observed on hhus (AIR WIN63-202610131318-860371703): the save is accepted and "= 0" still passes after giving 7.
+        // The save is accepted and "= 0" still passes after giving 7.
         var give = WiredNativeTestSupport.Scalar("wf_act_give_var", new() { IntParams = [(int)WiredVariableTarget.Global, 1, 7, 0, 0], Text = "custom:42" });
         Assert.True(WiredVariableExecutors.TryValidate("wf_act_give_var", give, out _));
         var module = new WiredVariableModule(1, new Directory(), new MemoryWiredVariableStore(), TimeProvider.System, new Presence());
@@ -42,7 +42,7 @@ public sealed class WiredBuiltinPresenceParityTests
     [Fact]
     public void RemoveVariableSavesWithAGlobalAndRemovesNothing()
     {
-        // Observed on hhus (AIR WIN63-202610151745-318700621): the save is accepted, and the global kept its value (3, then 6 after +3).
+        // The save is accepted, and the global keeps its value (3, then 6 after +3).
         var remove = WiredNativeTestSupport.Scalar("wf_act_remove_var", new() { IntParams = [(int)WiredVariableTarget.Global, 0, 0], Text = "custom:42" });
         Assert.True(WiredVariableExecutors.TryValidate("wf_act_remove_var", remove, out _));
         var module = new WiredVariableModule(1, new Directory(), new MemoryWiredVariableStore(), TimeProvider.System, new Presence());

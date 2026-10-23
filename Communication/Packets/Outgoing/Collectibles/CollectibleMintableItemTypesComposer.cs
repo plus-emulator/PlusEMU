@@ -8,8 +8,8 @@ public sealed record MintableItem(int Id, string ItemType, int SpriteId, string 
     DateTimeOffset? EndsAt, bool RegionLocked, bool LimitedEdition);
 
 /// <summary>
-/// AIR collectibles/class_4328.as:26-30 and class_4398.as:23-47: per item its sprite, start and end in unix seconds (0 = none), region lock,
-/// price, limited edition and type (0 floor, 1 wall, 2 clothing). AIR reads the price as mint tokens; this hotel sends Emeralds.
+/// Per item its sprite, start and end in unix seconds (0 = none), region lock,
+/// price, limited edition and type (0 floor, 1 wall, 2 clothing). The client reads the price as mint tokens; this hotel sends Emeralds.
 /// </summary>
 public sealed class CollectibleMintableItemTypesComposer(ImmutableArray<MintableItem> items) : IServerPacket
 {

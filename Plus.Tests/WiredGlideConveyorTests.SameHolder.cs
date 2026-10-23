@@ -6,16 +6,16 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: "same holder" saves on Change Variable Value, Give Variable and Variable Value Match for every
-// pair of destination and reference kind (furni, user, global) with a variable, with a value or an empty slot when both are global, and with
-// an empty reference slot on a furni destination.
-// Each save reopens with its ints unchanged. Read on a holder of another kind (a global destination with a furni or user reference, a
-// furni destination with a global reference), the reference gives nothing: Change Variable Value then changes nothing.
+// "same holder" saves on Change Variable Value, Give Variable and Variable Value Match for every pair of destination and
+// reference kind (furni, user, global) with a variable, with a value or an empty slot when both are global, and with an empty
+// reference slot on a furni destination. Each save reopens with its ints unchanged. Read on a holder of another kind (a global
+// destination with a furni or user reference, a furni destination with a global reference), the reference gives nothing: Change
+// Variable Value then changes nothing.
 public sealed partial class WiredGlideConveyorTests
 {
     private const string ChangeBox = "wf_act_change_var_val", GiveBox = "wf_act_give_var", MatchBox = "wf_cnd_var_val_match";
 
-    // One custom variable of each kind, and a second global one for the reference (the probe used @state, @position.x and two room variables).
+    // One custom variable of each kind, and a second global one for the reference.
     private static readonly Dictionary<int, string> DestinationVariables = new() { [0] = "furni:301", [1] = "user:302", [-10] = "room:303" };
     private static readonly Dictionary<int, string> ReferenceVariables = new() { [0] = "furni:301", [1] = "user:302", [-10] = "room:304" };
 
@@ -121,8 +121,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(variables.Split(',').Select(token => token == "n" ? "0" : token), reopened.Variables);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: an empty reference slot with same holder on saves on a furni destination too (the box then
-    // changes nothing), with its ints as sent.
+    // An empty reference slot with same holder on saves on a furni destination too (the box then changes nothing), with its ints
+    // as sent.
     [Theory]
     [InlineData(ChangeBox)]
     [InlineData(GiveBox)]
@@ -156,8 +156,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(["room:303", "0"], reopened.Variables);
     }
 
-    // Habbo: a furni state set from a global variable takes its value; with same holder on it reads the global on the furni, finds nothing
-    // and the state stays. The probe set the state from a custom global variable of the room (this test uses the built-in @furni_count) (0 to 1, then with same holder on 1 stayed 1).
+    // A furni state set from a global variable takes its value; with same holder on it reads the global on the furni, finds
+    // nothing and the state stays. This test uses the built-in @furni_count.
     [Theory]
     [InlineData(0, true)]
     [InlineData(1, false)]

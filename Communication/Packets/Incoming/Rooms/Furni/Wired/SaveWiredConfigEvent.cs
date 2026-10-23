@@ -23,12 +23,12 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
             // Two boxes have their own bounds: the others drop a save that is out of bounds without a reply.
             var visual = VisualBoxName(session, itemId);
 
-            // Observed on AIR WIN63-202610201032-107964540: a condition save with a quantifier outside 0..2 is answered and stored as 0.
+            // A condition save with a quantifier outside 0..2 is answered and stored as 0.
             if (native.Quantifier is { } quantifier and not (0 or 1 or 2)) {
                 native = native with { Quantifier = 0 };
             }
 
-            // Observed on AIR WIN63-202610201032-107964540: the limit of 20 ids, repeats counted, holds on every box, add-ons and variable boxes
+            // The limit of 20 ids, repeats counted, holds on every box, add-ons and variable boxes
             // included, and comes before their own refusals.
             if (!WiredNativeEditorProjection.TryLimitPicks(native, out native)) {
                 return Task.CompletedTask;

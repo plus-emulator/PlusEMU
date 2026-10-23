@@ -4,7 +4,7 @@ using static Plus.Tests.WiredR104Save;
 
 namespace Plus.Tests;
 
-// Chest condition quantifier and user source as Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// Chest condition quantifier and user source as Habbo stores them.
 public sealed class WiredR105ChestConditionSaveTests
 {
     private static Result Run(string name, int? quantifier = null, int[]? users = null)

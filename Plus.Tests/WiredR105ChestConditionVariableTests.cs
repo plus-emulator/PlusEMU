@@ -4,9 +4,8 @@ using static Plus.Tests.WiredR104Save;
 
 namespace Plus.Tests;
 
-// The chest conditions take the variable rules of the other variable boxes. Observed on AIR WIN63-202610201032-107964540: a save with no
-// variable keeps the empty slot, a variable of another domain than the target is accepted, and a second variable is answered with the
-// variable count key.
+// The chest conditions take the variable rules of the other variable boxes. A save with no variable keeps the empty slot, a
+// variable of another domain than the target is accepted, and a second variable is answered with the variable count key.
 public sealed class WiredR105ChestConditionVariableTests
 {
     private static Result Saved(string name, int[] ints, string[] variables, bool variableMode = true)

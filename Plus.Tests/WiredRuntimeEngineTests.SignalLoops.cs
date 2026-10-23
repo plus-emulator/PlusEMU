@@ -5,8 +5,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: a receiving stack runs at most 100 times in one 500 ms wired window, all in the tick
-// of the first signal. Signals past that are dropped, but the sending antenna still flips. A straight chain runs every stack once.
+// A receiving stack runs at most 100 times in one 500 ms wired window, all in the tick of the first signal. Signals past that are
+// dropped, but the sending antenna still flips. A straight chain runs every stack once.
 public partial class WiredRuntimeEngineTests
 {
     [Theory]
@@ -111,8 +111,7 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a receiving stack that signals its own antenna after a 0.5 s delay kept running past
-    // 100 runs (88, 107, 126, 144 at 9 s steps), about two runs a second.
+    // A receiving stack that signals its own antenna after a 0.5 s delay keeps running past 100 runs, about two runs a second.
     [Fact]
     public void ASignalLoopWithADelayKeepsRunningPastAHundredRuns()
     {

@@ -7,10 +7,6 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>
-/// The supported client build (WIN63-202610121709-785561319) registers header 2029 to class_3347, whose parser class_2754 reads
-/// i32 count, then per user: i32 index, i32 x, i32 y, string z, i32 head, i32 body, i32 third, string status.
-/// </summary>
 public sealed class UserUpdateComposerGrammarTests
 {
     private static readonly Dictionary<string, RoomUserStatusSnapshot[]> Cases = new()
@@ -44,7 +40,7 @@ public sealed class UserUpdateComposerGrammarTests
 
     private sealed record ReadUser(int Index, int X, int Y, string Z, int Head, int Body, int Third, string Status);
 
-    // class_2754: i32 count; per user index, x, y, z string, head, body, third, status string. Anything short or left over is a failure.
+    // i32 count; per user index, x, y, z string, head, body, third, status string. Anything short or left over is a failure.
     private static List<ReadUser> ReadUserUpdate(byte[] bytes)
     {
         var position = 0;

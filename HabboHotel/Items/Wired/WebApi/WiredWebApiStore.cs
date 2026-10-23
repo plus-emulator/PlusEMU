@@ -10,9 +10,8 @@ namespace Plus.HabboHotel.Items.Wired.WebApi;
 public sealed record WiredWebApiKeys(uint ItemId, string? ReadHash, string? WriteHash, bool BulkDelete);
 
 /// <summary>
-/// Keys of the Variables Web API add-on (VariablesWebApiAddon.as, WIN63-202610131318-860371703). The server makes them (32 random
-/// bytes, base64url) when the editor asks; the new key replaces the old one at once. Only SHA-256 hashes are stored here; the
-/// editor keeps the keys in its saved text, and a save is only accepted with the keys the server last made for that add-on.
+/// Keys of the Variables Web API add-on. The server makes them (32 random bytes, base64url) when the editor asks; the new key replaces the old one at once.
+/// Only SHA-256 hashes are stored here; the editor keeps the keys in its saved text, and a save is only accepted with the keys the server last made for that add-on.
 /// </summary>
 public interface IWiredWebApiStore
 {

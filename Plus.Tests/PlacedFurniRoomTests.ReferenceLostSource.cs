@@ -14,8 +14,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// A Variable Reference whose shared source was picked up. Observed on AIR WIN63-202610201032-107964540: the reference still opens at
-// once with its stored name, ints and variable id and an empty shared list. The room's variable list keeps it until the room unloads.
+// A Variable Reference whose shared source was picked up still opens at once with its stored name, ints and variable id and an empty shared list.
+// The room's variable list keeps it until the room unloads.
 public partial class PlacedFurniRoomTests
 {
     private const uint SourceRoomId = 8, SourceId = 200, ReferenceId = 601;
@@ -91,8 +91,8 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(NativeVariables(), variable => variable.Id == $"user:{ReferenceId}");
     }
 
-    // Plus behavior, not probed on Habbo: saving the reference again after its source was picked up is refused like any save that
-    // names a missing source.
+    // Plus's own choice (Habbo not checked): saving the reference again after its source was picked up is refused like any save
+    // that names a missing source.
     [Fact]
     public async Task SavingAReferenceAgainAfterItsSourceIsPickedUpIsRefused()
     {
@@ -104,7 +104,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal($"r119ref [0] [{SourceWireId}] shared 0", Open(ReferenceId));
     }
 
-    // Room 8 holds the owner's shared user variable r119src (has value, availability 11); this room (42) will hold the reference.
+    // Room 8 holds the owner's shared user variable (has value, availability 11). This room (42) will hold the reference.
     private static LinkedRoomRows LinkedRooms()
     {
         var rows = new LinkedRoomRows();

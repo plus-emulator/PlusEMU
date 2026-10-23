@@ -11,8 +11,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610131318-860371703: a Place Furni run that cannot place its copies shows every user in the room one
-// NotificationDialog wired.error, at most once per 5.0 s since that user's last dialog; the rest of the stack still runs.
+// A Place Furni run that cannot place its copies shows every user in the room one NotificationDialog wired.error, at most once
+// per 5.0 s since that user's last dialog; the rest of the stack still runs.
 public sealed partial class WiredGlideConveyorTests
 {
     private static Fixture PlacementFailureRoom(string trigger, WiredConfiguration triggerConfig)
@@ -166,8 +166,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(dialogs.Count, f.Room.GetWired().ReadLogs(0, 50, query: "after place").Total);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: the dialog goes to every user in the room, the visitor without rights too, each on its
-    // own 5 s cooldown: says at 0 (owner), 1.8 (visitor), 3.0 (owner), 8.1 (visitor), 9.5 (owner) show both users a dialog at 0 and 8.1 only.
+    // The dialog goes to every user in the room, the visitor without rights too, each on its own 5 s cooldown: says at 0 (owner),
+    // 1.8 (visitor), 3.0 (owner), 8.1 (visitor), 9.5 (owner) show both users a dialog at 0 and 8.1 only.
     [Fact]
     public void PlacementFailureDialogGoesToEveryUserInTheRoom()
     {

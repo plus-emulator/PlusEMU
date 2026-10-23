@@ -7,9 +7,8 @@ using Plus.HabboHotel.Rooms.PathFinding;
 namespace Plus.HabboHotel.Rooms.Instance;
 
 /// <summary>
-/// "Apply Furni to set conditions" (class_3027 [box id], UserDefinedRoomEventsCtrl.applySnapshot, AIR WIN63-202610131318-860371703):
-/// every furni in the box's saved snapshot goes back to its recorded state, rotation, position and height. The saved snapshot is
-/// never re-captured; furni that left the room or were replaced are skipped, and so is a floor move the tile does not allow.
+/// "Apply Furni to set conditions": every furni in the box's saved snapshot goes back to its recorded state, rotation, position and height.
+/// The saved snapshot is never re-captured; furni that left the room or were replaced are skipped, and so is a floor move the tile does not allow.
 /// </summary>
 public partial class WiredComponent
 {

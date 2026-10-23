@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on hhus (AIR WIN63-202610131318-860371703): a user in a Wired team (effect 223) gets 223 back on unfreeze.
+// A user in a Wired team (effect 223) gets 223 back on unfreeze.
 public partial class ModernWiredRuntimeTests
 {
     [Theory]
@@ -18,7 +18,7 @@ public partial class ModernWiredRuntimeTests
         f.User.ApplyEffect(before);
         var state = new WiredAvatarState();
         Assert.True(state.FreezeUser(f.User, 218, false));
-        // Observed on AIR WIN63-202610151745-318700621: the effect arrives with the next room tick.
+        // The effect arrives with the next room tick.
         Assert.Equal(before, f.Habbo.Effects!.CurrentEffect);
         state.FlushTickEffects();
         Assert.Equal(218, f.Habbo.Effects!.CurrentEffect);
@@ -29,7 +29,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(after, f.Habbo.Effects!.CurrentEffect);
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): freeze and unfreeze of a standing user send no UserUpdate.
+    // Freeze and unfreeze of a standing user send no UserUpdate.
     [Fact]
     public void FreezeAndThawFlagAStatusUpdateOnlyForAWalkingUser()
     {
@@ -49,7 +49,7 @@ public partial class ModernWiredRuntimeTests
         Assert.False(user.HasStatus("mv"));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a teleport that cancels a freeze sends only the teleport effect, so the freeze
+    // A teleport that cancels a freeze sends only the teleport effect, so the freeze
     // effect is not cleared first.
     [Fact]
     public void ATeleportThatCancelsAFreezeLeavesTheEffectToTheTeleport()
@@ -64,7 +64,7 @@ public partial class ModernWiredRuntimeTests
         Assert.False(f.User.Frozen);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: when the teleport that cancelled a freeze ends, the user gets back the effect worn
+    // When the teleport that cancelled a freeze ends, the user gets back the effect worn
     // before the freeze (223 in a Wired team, otherwise 0), not the freeze effect.
     [Theory]
     [InlineData(223)]
@@ -91,7 +91,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (wf_act_kick_user.cov_selector): a teamed user re-entering the room gets no avatar
+    // A teamed user re-entering the room gets no avatar
     // effect back, also when the session left before the room let go of it.
     [Fact]
     public void LeavingTheRoomDropsTheTeamEffectEvenWhenTheSessionMovedOn()

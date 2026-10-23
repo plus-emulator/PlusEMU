@@ -10,6 +10,6 @@ public class AchievementProgressedComposer : IServerPacket
 
     public AchievementProgressedComposer(AchievementProgressSnapshot snapshot) => _snapshot = snapshot;
 
-    // WIN63 package_134.class_2905: a single AchievementData entry.
+    // A single achievement entry.
     public void Compose(IOutgoingPacket packet) => AchievementsComposer.WriteAchievement(packet, _snapshot);
 }

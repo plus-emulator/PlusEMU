@@ -5,9 +5,8 @@ namespace Plus.HabboHotel.Items.Wired.Configuration;
 
 internal static partial class WiredNativeAuxiliaryEditor
 {
-    // Observed on hhus (WIN63-202610131318, r62 batch 04): a chest card with one pick list offers the triggering furni, the picks, the selector
-    // and the signal; one with two pick lists (item types and chests) also offers the second list (101) on every slot. Users never include
-    // the clicked user (11) here.
+    // A chest card with one pick list offers the triggering furni, the picks, the selector and the signal; one with two pick lists
+    // (item types and chests) also offers the second list (101) on every slot. Users never include the clicked user (11) here.
     private static readonly ImmutableArray<int> OnePickList = [0, 100, 200, 201];
     private static readonly ImmutableArray<int> TwoPickLists = [0, 100, 101, 200, 201];
     private static readonly ImmutableArray<int> TransactionUsers = [0, 200, 201];
@@ -27,22 +26,19 @@ internal static partial class WiredNativeAuxiliaryEditor
         UserSources = n.UserSourceTypes.Select((source, index) => (source, index)).ToImmutableDictionary(pair => "u" + pair.index, pair => pair.source)
     };
 
-    // Observed on AIR WIN63-202610201032-107964540: the transaction triggers offer the picks (100) and the selector (200) as their
-    // furniture source.
+    // The transaction triggers offer the picks (100) and the selector (200) as their furniture source.
     private static readonly WiredNativeEditorMetadata TransactionTrigger = new([[100, 200]], [], [100], [], [], false);
 
     private static IEnumerable<KeyValuePair<string, Spec>> Chests()
     {
         // Mode (amount or all), amount, literal-or-variable option, its target, show-by-default, then currency category / iteration order.
-        // Observed r93h r93-p2-chests-empty initial frames (pkt 8769): both slots offer [0, 100, 101, 200, 201] for furni and [0, 200, 201]
-        // for users, defaulting to [100, 200] and [0, 200], with wall items allowed.
+        // Both slots offer [0, 100, 101, 200, 201] for furni and [0, 200, 201] for users, defaulting to [100, 200] and [0, 200], with wall items allowed.
         yield return new("wf_act_give_currency", new(TransactionMeta(TwoPickLists, 2, 2, [0, 1, 0, -20, 1, 11], 1, [100, 200], [0, 200]), n => Reward(n, 11, 13)));
         yield return new("wf_act_give_furni", new(TransactionMeta(TwoPickLists, 2, 2, [0, 1, 0, -20, 1, 0], 1, [100, 200], [0, 200]), n => Reward(n, 0, 2)));
         // Mode, multiplier, option, target, timeout flag and seconds; chests, contracts and the merged reference.
-        // Observed on hhus: mode 0 stores a multiplier below 2 as 2. The editor frames open the chests on 100, the contracts on 101,
-        // the users on 0 and the merged reference on the selector (furni 200, users 200).
-        // Observed on AIR WIN63-202610201032-107964540: the editor frame has three variable slots. A row stored with the first slot only
-        // keeps loading, because a missing slot is filled before the box reads it. The timeout is in its stored form (see ChestStoredForm).
+        // Mode 0 stores a multiplier below 2 as 2. The editor frames open the chests on 100, the contracts on 101, the users on 0 and the
+        // merged reference on the selector (furni 200, users 200). The editor frame has three variable slots; a row stored with the first
+        // slot only keeps loading, because a missing slot is filled before the box reads it. The timeout is in its stored form (see ChestStoredForm).
         yield return new("wf_act_init_transaction", new(TransactionMeta(TwoPickLists, 3, 2, [0, 10, 0, -20, 0, 300], 3, [100, 101, 200], [0, 200]), n =>
         {
             var p = n.OwnedIntParams;
@@ -50,11 +46,11 @@ internal static partial class WiredNativeAuxiliaryEditor
             return Shape(n, 6, 3, 2, 3) && TryTarget(p[3], out var target)
                 ? ChestDraft(n, [p[0], p[0] == 0 && p[1] == 1 ? 2 : p[1], p[2], target, p[4], p[5]], n.Text) : null;
         }));
-        // Observed on hhus (AIR WIN63-202610131318-860371703): the only chest card without wall picks.
+        // The only chest card without wall picks.
         yield return new("wf_act_cancel_transaction", new(TransactionMeta(OnePickList, 1, 1, [0], 0, [100], [0]) with { AllowWall = false }, n =>
             Shape(n, 1, 1, 1, 0) ? ChestDraft(n, [.. n.OwnedIntParams]) : null));
         // Compared amount, its option and target, comparison (the form's own codes).
-        // Observed on AIR WIN63-202610201032-107964540: both conditions open with the quantifier selector (quantifier type 1).
+        // Both conditions open with the quantifier selector (quantifier type 1).
         yield return new("wf_cnd_chest_has_items", new(TransactionMeta(OnePickList, 2, 1, [0, 0, -20, 2], 1, [100, 200], [200]) with { QuantifierType = 1 }, HasChest(2)));
         yield return new("wf_cnd_chest_has_item_type", new(TransactionMeta(TwoPickLists, 3, 1, [0, 0, -20, 2], 1, [100, 101, 0], [0]) with { QuantifierType = 1 }, HasChest(3)));
         yield return new("wf_trg_transaction_complete", new(TransactionTrigger, TransactionTriggerDraft));
@@ -73,7 +69,7 @@ internal static partial class WiredNativeAuxiliaryEditor
         }));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the editor reopens these saves with the stored value, not the one sent.
+    // The editor reopens these saves with the stored value, not the one sent.
     private static readonly FrozenDictionary<string, Func<ImmutableArray<int>, ImmutableArray<int>>> StoredInts =
         new Dictionary<string, Func<ImmutableArray<int>, ImmutableArray<int>>>
         {
@@ -99,7 +95,7 @@ internal static partial class WiredNativeAuxiliaryEditor
     {
         var p = n.OwnedIntParams;
 
-        // Observed on AIR WIN63-202610201032-107964540: a raw save with an amount below 1 is accepted and gives 1 (see StoredInts).
+        // A raw save with an amount below 1 is accepted and gives 1 (see StoredInts).
         return Shape(n, 6, 2, 2, 1) && TryTarget(p[3], out var target) && p[5] >= lowest && p[5] <= highest
             ? ChestDraft(n, [p[0], Math.Max(p[1], 1), p[2], target, p[4], p[5]], n.Text) : null;
     }

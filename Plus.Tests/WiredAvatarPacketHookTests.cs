@@ -155,7 +155,7 @@ public partial class WiredAvatarPacketHookTests
         Assert.Null(world.Actor.SignExpiresAt);
     }
 
-    // A standing avatar's sign expires in the v2 actor tick too; on our hotel it stayed until the avatar next walked.
+    // A standing avatar's sign expires in the v2 actor tick too, not only when the avatar next walks.
     [Fact]
     public void TheActorTickExpiresASignWithoutAWalk()
     {
@@ -167,8 +167,8 @@ public partial class WiredAvatarPacketHookTests
         Assert.False(world.Actor.Statusses.ContainsKey("sign"));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: the "sign" status is in one status update and gone from the next one,
-    // about 500 ms later. A new sign shows again for one update.
+    // The "sign" status is in one status update and gone from the next one, about 500 ms later. A new sign shows again for one
+    // update.
     [Fact]
     public void SignStatusLastsOneStatusUpdate()
     {
@@ -191,8 +191,7 @@ public partial class WiredAvatarPacketHookTests
         Assert.Equal([true, false, true, false], Updates());
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: "user performs action: sign" still passes 3.4 s after the sign, when its status
-    // is long gone from the status updates.
+    // "user performs action: sign" still passes 3.4 s after the sign, when its status is long gone from the status updates.
     [Fact]
     public void PerformsActionConditionSeesTheSignAfterItsStatusIsGone()
     {
@@ -216,7 +215,7 @@ public partial class WiredAvatarPacketHookTests
         Assert.False(Performs(3));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: Wired keeps the sign for about 5 s, long after its status is gone.
+    // Wired keeps the sign for about 5 s, long after its status is gone.
     [Fact]
     public void UsersByActionSelectorStillReadsTheSignAfterItsStatusIsGone()
     {
@@ -316,9 +315,9 @@ public partial class WiredAvatarPacketHookTests
         world.Actor.RotBody = 3;
         world.Actions.SetPosture(world.Client, 1);
         Assert.True(world.Actor.IsSitting);
-        // Observed on AIR WIN63-202610201032-107964540: sitting from direction 3 turns the body to 4.
+        // Sitting from direction 3 turns the body to 4.
         Assert.Equal(4, world.Actor.RotBody);
-        // Observed on hhus (AIR WIN63-202610131318-860371703): "sit 0.55 1" with the Z unchanged.
+        // "sit 0.55 1" with the Z unchanged.
         Assert.Equal(0, world.Actor.Z);
         Assert.Equal("0.55 1", world.Actor.Statusses["sit"]);
 

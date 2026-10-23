@@ -5,7 +5,7 @@ using static Plus.Tests.WiredR102EditorSave;
 
 namespace Plus.Tests;
 
-// Editor saves of the add-ons, read back the way Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// Editor saves of the add-ons, read back the way Habbo stores them.
 public sealed class WiredR102AddonEditorTests
 {
     private const string UserSourceKey = "wiredfurni.error.invalid_user_source";

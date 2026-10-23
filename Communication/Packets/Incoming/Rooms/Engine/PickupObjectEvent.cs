@@ -6,8 +6,8 @@ using Plus.HabboHotel.Items;
 namespace Plus.Communication.Packets.Incoming.Rooms.Engine;
 
 /// <summary>
-/// [category, id, confirmed] (package_66/class_3322.as:15-41, WIN63-202610131318-860371703). A permanent or shared variable box is
-/// only picked up once confirmed: the first pickup is answered with ObjectRemoveConfirm and leaves the box (observed on hhus, r90).
+/// [category, id, confirmed]. A permanent or shared variable box is
+/// only picked up once confirmed: the first pickup is answered with ObjectRemoveConfirm and leaves the box.
 /// </summary>
 internal class PickupObjectEvent(IRoomItemPickupService pickup) : IPacketEvent
 {
@@ -25,7 +25,7 @@ internal class PickupObjectEvent(IRoomItemPickupService pickup) : IPacketEvent
             return Task.CompletedTask;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: picking up a Text Connector republishes the leaderboards on its tile.
+        // Picking up a Text Connector republishes the leaderboards on its tile.
         if (!stored && room?.GetRoomItemHandler().GetItem(itemId) is { } connector && room.GetWired().IsTextConnector(connector)) {
             if (pickup.TryPickUp(session, itemId)) {
                 room.GetWired().TextConnectorPickedUp(connector);

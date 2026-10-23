@@ -111,16 +111,14 @@ public sealed partial class WiredRoomVariables
 
                 if (!context && level is not null) {
                     foreach (var sub in level.Subs) {
-                        // Observed on AIR WIN63-202610151745-318700621: every part is interceptable, current_xp is writable (to the parent,
-                        // capped at the last level) and is_maxed is a presence part without a value.
+                        // Every part is interceptable, current_xp is writable (to the parent, capped at the last level) and is_maxed is a presence part without a value.
                         AddDerived(sub, false, level.Keys[sub], true, false,
                             value => level.Read(value.Value, sub) is { } part ? new(part, null, null) : null,
                             write: sub == 1 ? (_, xp) => level.Level!.ClampXp(xp) : null, interceptable: true, hasValue: sub != 6);
                     }
                 }
 
-                // Observed on hhus (AIR WIN63-202610131318-860371703): each ticked part is a catalogue variable "<parent>.<mode>.<part>",
-                // and the creation-time and last-update modes add the base row "<parent>.<mode>" (17 parts, or 18 with the base row).
+                // Each ticked part is a catalogue variable "<parent>.<mode>.<part>", and the creation-time and last-update modes add the base row "<parent>.<mode>".
                 var time = associated.FirstOrDefault(box => box.Time is not null)?.Time;
 
                 if (time is not null && !(time.Mode == 1 && definition.Target == WiredVariableTarget.Global)) {

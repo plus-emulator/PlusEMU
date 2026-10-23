@@ -64,9 +64,8 @@ public class Freeze
         RemoveSoloPlayer();
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a Freeze game started by a single player in a team takes that player out of the
-    // team. The effect goes, the gate counts go to 0 and YouArePlayingGame is false. A team size cap, lives and a start with more
-    // players were not observed and stay as they are.
+    // A Freeze game started by a single player in a team takes that player out of the team. The effect goes, the gate counts go to 0 and YouArePlayingGame is false.
+    // This does not change the team size cap, the lives or a start with more players.
     private void RemoveSoloPlayer()
     {
         var teams = _room.GetTeamManagerForFreeze();

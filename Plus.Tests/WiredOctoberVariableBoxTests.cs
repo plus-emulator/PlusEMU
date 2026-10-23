@@ -5,8 +5,8 @@ using Xunit;
 namespace Plus.Tests;
 
 /// <summary>
-/// The WIN63-202610121709 variable editors (GiveVariable, ChangeVariable, VariableValue, VariableAge, WithVariable,
-/// VariableUpdate readIntParamsFromForm / readVariableIdsFromForm) and what their new fields do at run time.
+/// The variable editors (GiveVariable, ChangeVariable, VariableValue, VariableAge, WithVariable, VariableUpdate
+/// readIntParamsFromForm / readVariableIdsFromForm) and what their new fields do at run time.
 /// </summary>
 public sealed class WiredOctoberVariableBoxTests
 {
@@ -44,7 +44,7 @@ public sealed class WiredOctoberVariableBoxTests
         Assert.True(WiredOctoberEditorParityTests.TryCompile("wf_slc_furni_with_var", n => n with { OwnedIntParams = [2, 2, 0, 0, 0, 1] }));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: same holder saves for every pair of destination and reference kind.
+    // Same holder saves for every pair of destination and reference kind.
     [Fact]
     public void SameHolderSavesForAReferenceOfAnotherKind()
     {
@@ -65,8 +65,7 @@ public sealed class WiredOctoberVariableBoxTests
         Assert.True(executor.Execute("wf_act_give_var", Config([1, 0, 0, 0, 0, 1, 1, 1], "furni:10", "furni:11"), frame));
         Assert.Equal(new long[] { 3, 7 }, Read(module, frame, holders, 10));
 
-        // Give from a variable on its own source: each furni takes the value of a different furni, at random (observed on AIR
-        // WIN63-202610201032-107964540).
+        // Give from a variable on its own source: each furni takes the value of a different furni, at random.
         Assert.True(executor.Execute("wf_act_give_var", Config([1, 0, 0, 0, 0, 1, 1, 0], "furni:12", "furni:11"), frame));
         Assert.Equal(new long[] { 3, 7 }, Read(module, frame, holders, 12).Order());
 
@@ -110,7 +109,7 @@ public sealed class WiredOctoberVariableBoxTests
     [InlineData("~131", WiredVariableTarget.Furni, "internal:~chest.locked")]
     public void HabboBuiltInIdsNameOurBuiltInTokens(string id, WiredVariableTarget target, string token)
     {
-        // hhus WiredAllVariablesDiffs, WIN63-202610121709: 162 built-in and smart variables with fixed ids.
+        // WiredAllVariablesDiffs: 162 built-in and smart variables with fixed ids.
         Assert.Equal(162, WiredHabboVariableIds.Count);
         Assert.True(WiredVariableDescription.TryParseCatalogId(id, out var parsed, out var parsedToken));
         Assert.Equal((target, token), (parsed, parsedToken));

@@ -11,7 +11,6 @@ namespace Plus.Tests;
 /// <summary>
 /// The Pointer, Share and Import editors through the packet handler the client uses. The editor reopens on what the store keeps, so these
 /// tests read the stored native record and the record the next editor open sends, not only the compiled runtime.
-/// Observed on AIR WIN63-202610201032-107964540.
 /// </summary>
 public partial class PlacedFurniRoomTests
 {

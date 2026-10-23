@@ -3,7 +3,7 @@ using static Plus.Tests.WiredR103EditorSave;
 
 namespace Plus.Tests;
 
-// A user source the box does not offer is refused with its own key. Observed on AIR WIN63-202610201032-107964540.
+// A user source the box does not offer is refused with its own key.
 public sealed class WiredR103UserSourceTests
 {
     public static TheoryData<string, int[]> Boxes => new()

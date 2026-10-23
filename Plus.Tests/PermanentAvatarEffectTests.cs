@@ -6,8 +6,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// An effect box gives an effect for good; it is stored with a total duration of 0. AIR reads the permanent flag in the effects
-// list, AvatarEffectAdded and AvatarEffectActivated (class_3808, class_3580, class_2904) and shows it as permanent.
+// An effect box gives an effect for good; it is stored with a total duration of 0. The client reads the permanent flag in the effects
+// list, AvatarEffectAdded and AvatarEffectActivated and shows it as permanent.
 public sealed class PermanentAvatarEffectTests
 {
     private static readonly DateTimeOffset Now = FixedTimeProvider.Epoch;

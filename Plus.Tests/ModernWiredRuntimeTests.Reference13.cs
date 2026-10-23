@@ -86,7 +86,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(2, 2), present.Coordinate);
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): a bot teleport has a normal teleport's effect 4 and timing.
+    // A bot teleport has a normal teleport's effect 4 and timing.
     [Fact]
     public void BotTeleportGlowsAndLandsLikeATeleport()
     {
@@ -103,7 +103,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(1, 1), bot.Coordinate);
         Assert.Equal(4, bot.CurrentEffect);
 
-        // Observed on AIR WIN63-202610131318-860371703: the bot's glow ends 1500 ms after the landing, like a user's.
+        // The bot's glow ends 1500 ms after the landing, like a user's.
         f.Advance(1450);
         Assert.Equal(4, bot.CurrentEffect);
         f.Advance(50);
@@ -111,7 +111,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(2, replies.Count(reply => reply.Header == ServerPacketHeader.AvatarEffectComposer));
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): a second Bot Teleport fired while the bot still glows sends no new effect 4,
+    // A second Bot Teleport fired while the bot still glows sends no new effect 4,
     // and the first teleport's end (1500 ms after its landing) clears the glow.
     [Fact]
     public void BotTeleportFiredWhileGlowingKeepsTheFirstGlowAndItsEnd()
@@ -132,7 +132,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(2, replies.Count(reply => reply.Header == ServerPacketHeader.AvatarEffectComposer));
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): Show Message to everyone for a bot is said by the bot.
+    // Show Message to everyone for a bot is said by the bot.
     [Theory]
     [InlineData(1, true)]
     [InlineData(0, false)]
@@ -160,7 +160,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(1, 1), resident.Coordinate);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a Bot Move to the furni the bot already stands on raises no Bot Reaches Furni.
+    // A Bot Move to the furni the bot already stands on raises no Bot Reaches Furni.
     [Fact]
     public void BotMoveOnAFurniTheBotAlreadyStandsOnRaisesNoArrival()
     {
@@ -263,7 +263,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(talk.User.VirtualId, open.Receiver);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a bot line said by wired turns a standing avatar's head toward the bot.
+    // A bot line said by wired turns a standing avatar's head toward the bot.
     [Theory]
     [InlineData("wf_act_bot_talk", new[] { 0, 100, -1, 0 })]
     [InlineData("wf_act_bot_talk", new[] { 1, 100, -1, 0 })]
@@ -309,7 +309,7 @@ public partial class ModernWiredRuntimeTests
         Assert.False(WiredBotTargets.For(stop.Room).HasTargets);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a bot that already stands next to the user it is told to follow raises no arrival.
+    // A bot that already stands next to the user it is told to follow raises no arrival.
     [Fact]
     public void BotFollowFromNextToTheUserRaisesNoArrival()
     {
@@ -319,7 +319,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(WiredBotTargets.For(f.Room).Poll(f.Room));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: Bot Reached Avatar fired one room tick after the bot stopped on its tile next to the
+    // Bot Reached Avatar fires one room tick after the bot stops on its tile next to the
     // user, not while it walked past other tiles next to the user. It fires again after the next walk.
     [Fact]
     public void BotFollowRaisesOneArrivalOneTickAfterTheBotStopsNextToTheUser()
@@ -441,7 +441,7 @@ public partial class ModernWiredRuntimeTests
         return goals;
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: from the same corner the bot ended east, north, south, north-east and west of the user
+    // From the same corner the bot ended east, north, south, north-east and west of the user
     // on different tries, and later stops took the other diagonals too.
     [Fact]
     public void BotFollowWalksToARandomTileAroundTheUser()
@@ -470,7 +470,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(expected, FollowGoals(f, bot));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: the bot aims around the tile the user is stepping onto, and the tile the user steps
+    // The bot aims around the tile the user is stepping onto, and the tile the user steps
     // off counts as free.
     [Fact]
     public void BotFollowAimsAroundTheTileTheUserStepsOnto()
@@ -486,7 +486,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(Around(3, 2), FollowGoals(f, bot));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a bot on any of the 8 tiles around the user, diagonals included, does not move.
+    // A bot on any of the 8 tiles around the user, diagonals included, does not move.
     [Fact]
     public void BotFollowNextToTheUserStaysWhereItIs()
     {
@@ -505,7 +505,7 @@ public partial class ModernWiredRuntimeTests
         }
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a bot walks on to the tile it picked, past other tiles next to the user, and does not
+    // A bot walks on to the tile it picked, past other tiles next to the user, and does not
     // turn while the user moves on.
     [Fact]
     public void BotFollowKeepsWalkingToThePickedTileWhileTheUserMoves()
@@ -528,8 +528,8 @@ public partial class ModernWiredRuntimeTests
         Assert.Same(walk, bot.Movement.Commands.Read());
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a bot that reached its tile after the user walked away stood one room tick, then picked
-    // a new tile around the user and walked there.
+    // A bot that reaches its tile after the user walked away stands one room tick, then picks
+    // a new tile around the user and walks there.
     [Fact]
     public void BotFollowRestsOneTickAfterArrivingThenFollowsTheUserAgain()
     {
@@ -563,7 +563,7 @@ public partial class ModernWiredRuntimeTests
         optional.Fire();
         Assert.Equal(5, optional.User.CarryItemId);
 
-        // Observed on AIR WIN63-202610151745-318700621: a bot next to the user (diagonals count) hands the item over at once.
+        // A bot next to the user (diagonals count) hands the item over at once.
         using var named = new TeleportFixture(actionName: "wf_act_bot_give_handitem", intParams: [8, 0, 100], text: "Bobby");
         var adjacent = AddNamedBot(named, 9, "Bobby", 1, 1);
         named.Fire();
@@ -714,7 +714,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): said aloud, Bot Talk To Avatar addresses the avatar by name.
+    // Said aloud, Bot Talk To Avatar addresses the avatar by name.
     [Fact]
     public void BotTalkToAvatarAloudAddressesTheAvatarByName()
     {
@@ -729,7 +729,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(f.Habbo.Username + ": welcome", chat.Text);
     }
 
-    // Observed on hhus (AIR WIN63-202610151745-318700621): Bot Reached Avatar's triggering user is the bot, so Bot Talk To Avatar to the
+    // Bot Reached Avatar's triggering user is the bot, so Bot Talk To Avatar to the
     // triggering user says nothing, whispered or aloud; the reached avatar is the Reached User source.
     [Theory]
     [InlineData(0)]

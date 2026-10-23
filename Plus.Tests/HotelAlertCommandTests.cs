@@ -14,8 +14,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // AIR WIN63-202610201032-107964540 reads one string for incoming 1090 (package_27/class_2572.as:23)
-    // and a message plus a link for incoming 3187 (package_75/class_2713.as:42-43).
+    // The client reads one string for incoming 1090, and a message plus a link for incoming 3187.
     private const uint AirBroadcastMessageAlert = 1090;
     private const uint AirModeratorMessage = 3187;
 

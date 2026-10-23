@@ -22,7 +22,7 @@ internal class ModerationBanEvent : IPacketEvent
         packet.ReadInt(); // topic id
         var sanctionTypeId = packet.ReadInt();
         packet.ReadBool(); // avatar-only; accounts hold a single avatar here
-        // An optional issue id follows (AIR package_84/class_3884.as:14).
+        // An optional issue id follows.
 
         if (!BanHours.TryGetValue(sanctionTypeId, out var hours)) {
             return;
@@ -31,7 +31,7 @@ internal class ModerationBanEvent : IPacketEvent
         await _sanctions.Ban(session, new(userId, message, hours, false, false));
     }
 
-    // Ban sanction types offered by AIR WIN63-202610151745-318700621 com/sulake/habbo/moderation/ModActionCtrl.as:66-71.
+    // Ban sanction types the moderation tool offers.
     internal static readonly IReadOnlyDictionary<int, int> BanHours = new Dictionary<int, int>
     {
         [3] = 18,

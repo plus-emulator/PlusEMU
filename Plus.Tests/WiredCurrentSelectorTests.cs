@@ -26,7 +26,7 @@ public sealed class WiredCurrentSelectorTests
         var input = Inputs();
         input.SelectorPool.FurniIds.UnionWith([2u, 3u]);
         input = input with { FurniModified = true };
-        // Observed on AIR WIN63-202610131318-860371703: By Type offers furni 0/100/201, so the type comes from a picked furni here.
+        // By Type offers furni 0/100/201, so the type comes from a picked furni here.
         var runtime = Compile("wf_slc_furni_bytype", native => native with
         {
             FurniSourceTypes = [100],

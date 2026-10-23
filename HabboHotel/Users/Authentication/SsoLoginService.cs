@@ -108,7 +108,7 @@ public sealed class SsoLoginService : ISsoLoginService
                 session.GetHabbo().FocusPreference,
                 FriendBarStateUtility.GetInt(session.GetHabbo().FriendbarState)));
             //SendMessage(new TalentTrackLevelComposer());
-            // Observed on hhus: the Builders Club status follows the login unasked.
+            // The Builders Club status follows the login unasked.
             _buildersClub?.SendStatus(session);
 
 

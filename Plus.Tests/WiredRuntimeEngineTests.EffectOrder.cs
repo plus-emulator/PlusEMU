@@ -4,8 +4,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610131318-860371703: each pair was built with both heights. Without Execute in Order toggle_state and
-// rel_mov ran before match_to_sshot, and change_var_val and toggle_state ran before show_message; with it the lower box ran first.
+// Without Execute in Order toggle_state and rel_mov run before match_to_sshot, and change_var_val and toggle_state run before
+// show_message, whichever box is higher; with it the lower box runs first.
 public sealed partial class WiredRuntimeEngineTests
 {
     [Theory]

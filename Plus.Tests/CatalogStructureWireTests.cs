@@ -46,7 +46,7 @@ public class CatalogStructureWireTests
 
         new UserPerksComposer(cameraAllowed).Compose(packet);
 
-        // Observed on AIR WIN63-202610201032-107964540: 12 perks, and the denial key is empty for an allowed perk.
+        // There are 12 perks, and the denial key is empty for an allowed perk.
         var perks = packet.Writes.Skip(1).Chunk(3).Select(perk => ((string)perk[0], (string)perk[1], (bool)perk[2])).ToArray();
         Assert.Equal(12, packet.Writes[0]);
         Assert.Equal(1 + 12 * 3, packet.Writes.Count);

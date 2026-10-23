@@ -5,7 +5,7 @@ using static Plus.Tests.WiredR104Save;
 
 namespace Plus.Tests;
 
-// Bot Reaches Furni editor saves as Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// Bot Reaches Furni editor saves as Habbo stores them.
 public sealed class WiredR105BotReachedFurniEditorTests
 {
     private const string Name = "wf_trg_bot_reached_stf";

@@ -9,7 +9,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: a bot sent by Bot Move sends one idle status when it arrives, and no second one
+    // A bot sent by Bot Move sends one idle status when it arrives, and no second one
     // a tick later.
     [Fact]
     public void BotMoveArrivalSendsOneIdleStatus()
@@ -33,7 +33,7 @@ public partial class PlacedFurniRoomTests
         Assert.Null(statuses[^1]);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a bot sent on to new furni while it steps onto its old goal starts the new walk
+    // A bot sent on to new furni while it steps onto its old goal starts the new walk
     // in the tick that ends that step, with no idle status in between.
     [Fact]
     public void BotMoveSentOnDuringItsLastStepWalksOnInTheNextTick()
@@ -58,7 +58,7 @@ public partial class PlacedFurniRoomTests
         Assert.Contains("mv 2,1,", status);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: Bot Follow Avatar set to stop sends no status for a bot that already stands still.
+    // Bot Follow Avatar set to stop sends no status for a bot that already stands still.
     [Fact]
     public void BotFollowStopSendsNoStatusForAStandingBot()
     {

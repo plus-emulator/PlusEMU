@@ -24,8 +24,8 @@ public sealed partial class WiredGlideConveyorTests
 
     private static (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json) IdleBox(string name) => (IdleBoxId, 6, 2, 0.0, 0, name, null);
 
-    // Observed on hhus (R95-FQ): a pulse is one frame with every tile home to home and the rider carried, whatever else stands
-    // in the room. An idle box of any registered type on a far tile cannot see the carried tile land on the rider.
+    // A pulse is one frame with every tile home to home and the rider carried, whatever else stands in the room. An idle box of
+    // any registered type on a far tile cannot see the carried tile land on the rider.
     [Theory]
     [MemberData(nameof(RegisteredBoxNames))]
     public void Room14IdleBoxElsewhereKeepsTheCarriedPulseInOneFrame(string name)

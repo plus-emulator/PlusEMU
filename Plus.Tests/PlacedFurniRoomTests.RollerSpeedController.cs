@@ -22,7 +22,7 @@ public partial class PlacedFurniRoomTests
         return item;
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a room without the controller steps its rollers every 2000 ms.
+    // A room without the controller steps its rollers every 2000 ms.
     [Fact]
     public void ARoomWithoutTheSpeedControllerStepsEvery2000Milliseconds()
     {
@@ -30,7 +30,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(4, _room.GetRoomItemHandler().RollerStepTicks);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the 12 states form four groups of three: 500, 1000, 1500 and 2000 ms.
+    // The 12 states form four groups of three: 500, 1000, 1500 and 2000 ms.
     [Theory]
     [InlineData("0", 500)]
     [InlineData("2", 500)]
@@ -48,7 +48,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(milliseconds / 500, _room.GetRoomItemHandler().RollerStepTicks);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: picking the controller up brings the step time back to 2000 ms at once.
+    // Picking the controller up brings the step time back to 2000 ms at once.
     [Fact]
     public async Task PickingTheSpeedControllerUpBringsTheStepTimeBackTo2000()
     {
@@ -59,8 +59,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(2000, ConfigurationItemStates.RollerStepMilliseconds(_room));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: each use jumps to the first state of the next group: 0, 3, 6, 9, 0. The answer is
-    // one ObjectDataUpdate with the state.
+    // Each use jumps to the first state of the next group: 0, 3, 6, 9, 0. The answer is one ObjectDataUpdate with the state.
     [Fact]
     public void EachUseOfTheSpeedControllerMovesToTheNextGroup()
     {
@@ -87,8 +86,8 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("0", item.LegacyDataString);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: on every roller step the controller sends a data update that alternates between the
-    // two frames after its group state, and it keeps its group state. Steps come every 500, 1000, 1500 or 2000 ms.
+    // On every roller step the controller sends a data update that alternates between the two frames after its group state, and it keeps its group state.
+    // Steps come every 500, 1000, 1500 or 2000 ms.
     [Theory]
     [InlineData("0", 1, new[] { "1", "2", "1", "2" })]
     [InlineData("3", 2, new[] { "4", "5", "4", "5" })]

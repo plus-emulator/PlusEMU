@@ -145,7 +145,7 @@ public sealed class WiredMonitorProtocolTests
         return stream.ToArray()[6..];
     }
 
-    // Reads the rows as package_121/class_4361.as:19-28 does: int, string, string, int, then a signed 64-bit long.
+    // Reads the rows as the client does: int, string, string, int, then a signed 64-bit long.
     private static (int Id, string Name, string Category, int Count, long Ms)[] Read(byte[] body)
     {
         var position = 0;

@@ -13,8 +13,7 @@ public sealed record WiredErrorRow(int ErrorId, string ErrorName, string Categor
 /// <summary>Room-owned counters behind the monitor's error rows. Clearing resets every row but keeps all ten.</summary>
 public sealed class WiredErrorLog(TimeProvider clock)
 {
-    // Observed on AIR WIN63-202610131318-860371703: exactly these ten rows in this order, every one ERROR except
-    // MARKED_AS_HEAVY (WARNING), and still all ten (0 / -1) after a clear.
+    // Exactly these ten rows in this order, every one ERROR except MARKED_AS_HEAVY (WARNING), and still all ten (0 / -1) after a clear.
     private static readonly (int Id, string Name, string Category)[] Rows =
     [
         (0, "EXECUTION_CAP", "ERROR"), (1, "DELAYED_EVENTS_CAP", "ERROR"), (2, "EXECUTOR_OVERLOAD", "ERROR"),

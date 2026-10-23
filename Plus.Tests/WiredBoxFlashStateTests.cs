@@ -7,9 +7,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on hhus (AIR WIN63-202610131318-860371703): every firing flips the trigger box's legacy state "1"/"0" in the flash
-// ObjectsDataUpdate (says something, periodically, long periodically, walks on). Boxes loaded from the inventory kept empty
-// stuff data, so their flashes could not change it and they went out as "" on every firing.
+// Every firing flips the trigger box's legacy state "1"/"0" in the flash ObjectsDataUpdate (says something, periodically, long
+// periodically, walks on). Boxes loaded from the inventory with empty stuff data must still get the legacy
+// state, or every flash goes out as "".
 public sealed partial class WiredGlideConveyorTests
 {
     [Theory]
@@ -46,7 +46,7 @@ public sealed partial class WiredGlideConveyorTests
         var states = new List<string>();
         var last = trigger.LegacyDataString;
 
-        // The flash goes out with the effect, one wired tick after each firing (AIR WIN63-202610151745-318700621).
+        // The flash goes out with the effect, one wired tick after each firing.
         for (var now = 50; now <= 2050; now += 50) {
             f.Advance(50);
 
@@ -100,7 +100,7 @@ public sealed partial class WiredGlideConveyorTests
 
 public class WiredDefinitionFlashStateTests
 {
-    // Observed on AIR WIN63-202610151745-318700621 and r90: give 6 then 7, change 2, remove 8 on a variable definition box.
+    // Give 6 then 7, change 2, remove 8 on a variable definition box.
     [Fact]
     public void ADefinitionShowsTheKindOfItsLastWriteAndAlternatesWithinIt()
     {
@@ -109,7 +109,7 @@ public class WiredDefinitionFlashStateTests
         Assert.Equal("6", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("7", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionGiven));
         Assert.Equal("2", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("7", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionChanged));
         Assert.Equal("8", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("2", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionRemoved));
-        // Observed on AIR WIN63-202610151745-318700621 (r97_definer_same): an unchanged change flips 6 to 0, then 0 to 1.
+        // An unchanged change flips 6 to 0, then 0 to 1.
         Assert.Equal("0", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("6", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionUnchanged));
         Assert.Equal("1", Plus.HabboHotel.Items.Wired.WiredFlashStates.NextDefinition("0", Plus.HabboHotel.Items.Wired.WiredFlashStates.DefinitionUnchanged));
     }

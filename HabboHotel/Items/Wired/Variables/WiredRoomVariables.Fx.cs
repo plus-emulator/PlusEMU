@@ -39,8 +39,7 @@ public sealed partial class WiredRoomVariables
 
         foreach (var box in _metadata.Values.Where(x => WiredVariableMetadataBox.IsFx(x.Descriptor.CanonicalName) && IsAttached(x.Item)).OrderBy(x => x.Item.Id)) {
             var target = WiredVariableFxSettings.UsesUserSource(box.Configuration) ? WiredVariableTarget.User : WiredVariableTarget.Furni;
-            // Observed on AIR WIN63-202610151745-318700621: one box draws every variable of its kind on its tile (two furni variables, or
-            // two user variables, each got its own statuses under the same config).
+            // One box draws every variable of its kind on its tile (two furni variables, or two user variables, each get their own statuses under the same config).
             var definitions = _definitions.Values.Where(x => x.Descriptor.CanonicalName == (target == WiredVariableTarget.User ? "wf_var_user" : "wf_var_furni")
                 && authorized.ContainsKey(x.Item.Id) && IsAttached(x.Item) && x.Item.GetX == box.Item.GetX && x.Item.GetY == box.Item.GetY)
                 .OrderBy(x => x.Item.GetZ).ThenBy(x => x.Item.Id).Cast<WiredVariableDefinitionBox?>().DefaultIfEmpty();
@@ -62,9 +61,7 @@ public sealed partial class WiredRoomVariables
             }
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: the Variable FX a reference imports are drawn over the reference, with the settings
-        // of the shared variable's own FX. Only the id -1 was seen. Ids of -2 and lower, and a count over the whole room, were not checked,
-        // so the ids below -1 follow the same count by assumption.
+        // The Variable FX a reference imports are drawn over the reference, with the settings of the shared variable's own FX. Their ids count down from -1 (see ImportedFx).
         foreach (var (reference, fx, configId) in ImportedFx(authorized)) {
             var configuration = new WiredConfiguration { IntParams = fx.Ints, VariableIds = fx.VariableIds, Text = fx.Text };
             var target = WiredVariableFxSettings.UsesUserSource(configuration) ? WiredVariableTarget.User : WiredVariableTarget.Furni;

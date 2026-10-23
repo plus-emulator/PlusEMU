@@ -69,8 +69,7 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
             return false;
         }
 
-        // Observed r92g r92-echo-capture (AIR WIN63-202610131318-860371703, frame 50108): an echo of another echo is refused with
-        // this key and no parameters.
+        // An echo of another echo is refused with this key and no parameters.
         if (definition?.Link is { } link && Descriptor.CanonicalName == "wf_var_echo"
             && WiredVariableModule.TryDefinitionId(link.Source.Token, out var echoed)
             && (echoed == Item.Id || Instance.GetWired() is { } wired && wired.TryGet(echoed, out var source)
@@ -83,8 +82,7 @@ public sealed class WiredVariableDefinitionBox : IWiredConfiguredItem, IWiredCon
         return true;
     }
     /// <summary>
-    /// Observed on AIR WIN63-202610201032-107964540: a new save checks the name before anything else, and an echo of a pointer is refused
-    /// because a pointer only reads inside an execution.
+    /// A new save checks the name before anything else, and an echo of a pointer is refused because a pointer only reads inside an execution.
     /// </summary>
     public string? RefuseSave(WiredConfiguration proposed)
     {

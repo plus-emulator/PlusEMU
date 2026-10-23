@@ -5,13 +5,13 @@ using Plus.Database;
 
 namespace Plus.HabboHotel.Items.Wired.Links;
 
-/// <summary>A WIRED Link network as the link window lists it (package_82/WiredLinkNetwork.as:5).</summary>
+/// <summary>A WIRED Link network as the link window lists it.</summary>
 public sealed record WiredLinkNetwork(uint Id, string Name, int ConnectionCount, bool LinkedInCurrentRoom)
 {
     public string WireId => Id.ToString(CultureInfo.InvariantCulture);
 }
 
-/// <summary>One WIRED Link furni joined to a network (package_82/WiredLinkConnection.as:5).</summary>
+/// <summary>One WIRED Link furni joined to a network.</summary>
 public sealed record WiredLinkConnection(uint RoomId, string RoomName, uint ItemId, bool ReceiveLocal);
 
 /// <summary>The network a WIRED Link furni is joined to; network 0 is none.</summary>
@@ -30,8 +30,7 @@ public interface IWiredLinkStore
 }
 
 /// <summary>
-/// Result codes of the link window: WiredLinkView.operationFailed (L170-187, WIN63-202610131318-860371703) shows
-/// ${wiredlink.error.N}; the external flash texts give the meanings.
+/// Result codes of the link window. The client shows them as ${wiredlink.error.N}.
 /// </summary>
 public enum WiredLinkResult
 {
@@ -109,7 +108,7 @@ public sealed class DatabaseWiredLinkStore(IDatabase database) : IWiredLinkStore
             return WiredLinkResult.NetworkMissing;
         }
 
-        // A room joins a network through one furni only (WiredLinkController.canConnect).
+        // A room joins a network through one furni only.
         if (connection.ExecuteScalar<int>("SELECT COUNT(*) FROM wired_link_endpoints e JOIN items i ON i.id = e.item_id "
             + "WHERE e.network_id = @NetworkId AND i.room_id = @RoomId AND e.item_id <> @ItemId", new { NetworkId = networkId, RoomId = roomId, ItemId = itemId }, transaction) > 0) {
             return WiredLinkResult.AlreadyConnected;

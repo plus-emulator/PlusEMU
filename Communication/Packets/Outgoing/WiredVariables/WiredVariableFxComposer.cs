@@ -4,11 +4,7 @@ using Plus.HabboHotel.Items.Wired.Variables.Fx;
 
 namespace Plus.Communication.Packets.Outgoing.WiredVariables;
 
-/// <summary>
-/// Variable FX messages. Classes and parsers as named on WIN63-202610131318-860371703: configs class_2593 -> class_2815,
-/// configs removed class_3245 -> class_3169, status class_2741 -> class_2548, status removed class_2530 -> class_2887
-/// (ids in ServerPacketHeader). Bodies follow those parsers' reads.
-/// </summary>
+/// <summary>Variable FX messages: configs, configs removed, status and status removed (ids in ServerPacketHeader).</summary>
 public sealed class WiredVariableFxComposer : IServerPacket
 {
     public const uint ConfigsId = ServerPacketHeader.WiredVariableFxConfigsComposer;

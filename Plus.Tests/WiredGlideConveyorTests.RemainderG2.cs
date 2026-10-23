@@ -8,8 +8,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// g2: wf_act_give_score, wf_act_give_score_tm and wf_trg_score_achieved as full stacks (say trigger, give score, score trigger, marker
-// move), in a room whose team game runs (official: outside a running game the score actions do nothing, see ObservedR82).
+// g2: wf_act_give_score, wf_act_give_score_tm and wf_trg_score_achieved as full stacks (say trigger, give score, score trigger,
+// marker move), in a room whose team game runs (outside a running game the score actions do nothing, see ObservedR82).
 public sealed partial class WiredGlideConveyorTests
 {
     private const int RedTeam = (int)Team.Red;
@@ -148,7 +148,7 @@ public sealed partial class WiredGlideConveyorTests
     [InlineData("wf_act_give_score", new[] { 0, 0 }, false)]
     [InlineData("wf_act_give_score", new[] { 1001, 0 }, false)]
     [InlineData("wf_act_give_score", new[] { -1001, 0 }, false)]
-    // Observed on AIR WIN63-202610151745-318700621: a per-game limit above 10 saves and reads back as 10.
+    // A per-game limit above 10 saves and reads back as 10.
     [InlineData("wf_act_give_score", new[] { 5, 11 }, true)]
     [InlineData("wf_act_give_score", new[] { 5, -1 }, false)]
     [InlineData("wf_act_give_score", new[] { 5 }, false)]
@@ -157,7 +157,7 @@ public sealed partial class WiredGlideConveyorTests
     [InlineData("wf_act_give_score_tm", new[] { 5, 0, 0 }, false)]
     [InlineData("wf_act_give_score_tm", new[] { 5, 0, 5 }, false)]
     [InlineData("wf_act_give_score_tm", new[] { 0, 0, 1 }, false)]
-    // Observed on AIR WIN63-202610151745-318700621: a per-game limit above 10 saves and reads back as 10.
+    // A per-game limit above 10 saves and reads back as 10.
     [InlineData("wf_act_give_score_tm", new[] { 5, 11, 1 }, true)]
     [InlineData("wf_act_give_score_tm", new[] { 5, 0 }, false)]
     [InlineData("wf_trg_score_achieved", new[] { 1, 0 }, true)]
@@ -179,8 +179,8 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void ScoreCardsOpenWithTheObservedOfficialEditorFrames()
     {
-        // hhus WIN63-202610131318 r62-batch-02 / r62-batch-01: give score 5/0 with users [0,200,201] default 0, give score to team 5/0/1 with no
-        // selectors, score achieved 100/0 with no selectors.
+        // Give score 5/0 with users [0,200,201] default 0, give score to team 5/0/1 with no selectors, score achieved 100/0 with
+        // no selectors.
         var give = WiredNativeEditorProjection.DefaultNative(WiredBoxRegistry.All.Single(box => box.CanonicalName == "wf_act_give_score"));
         Assert.Equal([5, 0], give.OwnedIntParams.ToArray());
         Assert.Equal([0], give.UserSourceTypes.ToArray());

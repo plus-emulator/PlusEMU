@@ -11,9 +11,9 @@ public sealed partial class WiredGlideConveyorTests
 {
     private const uint ClickTrigger = 100, ClickCondition = 101, ClickShow = 102;
 
-    // Observed on AIR WIN63-202610201032-107964540: a User Clicks Furni stack fires on every click, also when the clicks come 100 ms apart
-    // (27 of 27 clicks for each gap from 100 to 2500 ms), while its Show Message box flashes at most once in each half second window of
-    // the room clock: three clicks 100 ms apart that fall in one window flash it once, and three clicks 500 ms apart, one in each window, flash it three times.
+    // A User Clicks Furni stack fires on every click, also when the clicks come 100 ms apart. Its Show Message box flashes at
+    // most once in each half second window of the room clock: three clicks 100 ms apart in one window flash it once, three
+    // clicks 500 ms apart, one in each window, flash it three times.
     [Theory]
     [InlineData(100, 1)]
     [InlineData(500, 3)]
@@ -34,8 +34,9 @@ public sealed partial class WiredGlideConveyorTests
             .Count(frame => ReadBatch(frame).Any(entry => entry.Id == ClickShow)));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: when one click fires several stacks, the boxes of every stack that passed and the
-    // trigger of every stack whose condition failed flash in one ObjectsDataUpdate. The condition and the message of a failed stack do not flash. A click that only fails flashes its trigger in one packet.
+    // When one click fires several stacks, the boxes of every stack that passed and the trigger of every stack whose condition
+    // failed flash in one ObjectsDataUpdate. The condition and the message of a failed stack do not flash. A click that only
+    // fails flashes its trigger in one packet.
     [Theory]
     [InlineData("pass,fail", new uint[] { 100, 101, 102, 110 })]
     [InlineData("pass,pass,fail", new uint[] { 100, 101, 102, 110, 111, 112, 120 })]

@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: Banzai and Freeze gates and score counters of one colour belong to one team.
+// Banzai and Freeze gates and score counters of one colour belong to one team.
 public partial class PlacedFurniRoomTests
 {
     private RoomUser JoinableActor(int x = 0)

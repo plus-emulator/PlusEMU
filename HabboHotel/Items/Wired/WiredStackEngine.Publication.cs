@@ -31,17 +31,15 @@ internal sealed partial class WiredStackEngine
     {
         var scheduled = _executingAction;
 
-        // Observed on AIR WIN63-202610131318-860371703: a Write to Logs box on a running Fast Queue stack does not split the pulse;
-        // every pulse still publishes one home-to-home entry per tile. A box that sends nothing to the room leaves the open
-        // publication as it is. Show Message only sends chat: observed on AIR WIN63-202610151745-318700621, a walk stack that
-        // whispers while a Fast Queue pulses leaves every pulse one home-to-home frame.
+        // A Write to Logs box on a running Fast Queue stack does not split the pulse; every pulse still publishes one home-to-home entry per tile.
+        // A box that sends nothing to the room leaves the open publication as it is. Show Message only sends chat, so a walk stack that whispers
+        // while a Fast Queue pulses leaves every pulse one home-to-home frame.
         if (box is WiredModernAction { Descriptor.CanonicalName: "wf_act_log" or "wf_act_neg_log" or "wf_act_show_message" }) {
             return null;
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: when one say fires a stack that moves furni and a stack that toggles furni, all
-        // states go out in one ObjectsDataUpdate before the one WiredMovements, whichever stack runs first. So Toggle State joins the
-        // open publication; it flushes the publication itself before a write that is sent on its own.
+        // When one say fires a stack that moves furni and a stack that toggles furni, all states go out in one ObjectsDataUpdate before the one WiredMovements,
+        // whichever stack runs first. So Toggle State joins the open publication; it flushes the publication itself before a write that is sent on its own.
         if (box is WiredModernAction { Descriptor.CanonicalName: "wf_act_toggle_state" } && context != null && scheduled is { Callback: null }
             && _activePublication is { Open: true } open && open.Epoch == _publicationEpoch
             && open.Deadline == scheduled.Chain.FirstResumeAt!.Value + scheduled.DelayMilliseconds) {
@@ -63,8 +61,7 @@ internal sealed partial class WiredStackEngine
             return inherited;
         }
 
-        // Observed on AIR WIN63-202610151745-318700621: stacks that fire in the same tick share one WiredMovements, so an open
-        // publication is kept for every action due at the same time, whichever stack fired it.
+        // Stacks that fire in the same tick share one WiredMovements, so an open publication is kept for every action due at the same time, whichever stack fired it.
         if (_activePublication is { Open: true } active && active.Deadline == deadline && active.Epoch == _publicationEpoch) {
             return active;
         }

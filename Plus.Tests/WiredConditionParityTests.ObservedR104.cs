@@ -6,8 +6,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredConditionParityTests
 {
-    // Observed on AIR WIN63-202610201032-107964540 (two selected furni): the strict comparisons 0, 1 and 2 are unchanged, a stored
-    // comparison of 3 passes when the count is at most the amount, and a stored comparison of 4 passes when it differs from the amount.
+    // The strict comparisons 0, 1 and 2 are unchanged, a stored comparison of 3 passes when the count is at most the amount, and
+    // a stored comparison of 4 passes when it differs from the amount.
     [Theory]
     [InlineData(0, 3, false)]
     [InlineData(1, 3, false)]

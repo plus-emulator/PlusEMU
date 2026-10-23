@@ -4,8 +4,8 @@ using Plus.HabboHotel.Rooms;
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 
 /// <summary>
-/// package_221/class_3707 [overlay, revision, variable id, n (0..2), distinct chunk index x n]. [0, 0, "0", 0] is the room-open request
-/// the leaderboard controller sends on room entry (Controller.as:229); other requests subscribe to chunks (Controller.as:438).
+/// [overlay, revision, variable id, n (0..2), distinct chunk index x n]. [0, 0, "0", 0] is the room-open request
+/// the client sends on room entry. Other requests subscribe to chunks.
 /// </summary>
 public sealed class WiredVariableLeaderboardSubscribeEvent : RoomPacketEvent
 {

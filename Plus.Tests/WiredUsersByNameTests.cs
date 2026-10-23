@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-/// <summary>Observed on AIR WIN63-202610151745-318700621: Users By Name splits on tabs only, keeps spaces and stores lowercase.</summary>
+/// <summary>Users By Name splits on tabs only, keeps spaces and stores lowercase.</summary>
 public sealed class WiredUsersByNameTests
 {
     [Theory]

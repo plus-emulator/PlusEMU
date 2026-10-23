@@ -5,7 +5,7 @@ using Plus.HabboHotel.Users.Collectibles;
 namespace Plus.Communication.Packets.Outgoing.Collectibles;
 
 /// <summary>
-/// AIR collectibles/class_3936.as:27-31 and class_4381.as:51-95: per set its items with the owned amount, id, name, score, total score,
+/// Per set its items with the owned amount, id, name, score, total score,
 /// boost score, the optional bonus and reward items, release and snapshot times in ms (-1 = none), status and the claim of each prize.
 /// </summary>
 public sealed class NftCollectionsComposer(CollectorBook book, DateTimeOffset now) : IServerPacket
@@ -47,7 +47,7 @@ public sealed class NftCollectionsComposer(CollectorBook book, DateTimeOffset no
         }
     }
 
-    // AIR CollectibleItemClaim.as:23-26. A prize can be claimed once; status 0 means it can be claimed now.
+    // A prize can be claimed once; status 0 means it can be claimed now.
     private void WriteClaim(IOutgoingPacket packet, CollectibleSet set, SetPrize prize)
     {
         if (set.Prize(prize) == null) {

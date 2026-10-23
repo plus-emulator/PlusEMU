@@ -274,7 +274,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Null(Error("amount", "ctx:11", 147, 2));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: the capturer saves with a variable of any kind or with none.
+    // The capturer saves with a variable of any kind or with none.
     [Fact]
     public void G3AnyVariableOrNoneCanBePicked()
     {

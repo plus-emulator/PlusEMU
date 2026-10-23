@@ -6,7 +6,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a use of the chooser disabler sends one ObjectDataUpdate and the room flags, no ObjectUpdate.
+    // A use of the chooser disabler sends one ObjectDataUpdate and the room flags, no ObjectUpdate.
     [Fact]
     public void AUseOfTheChooserDisablerSendsNoObjectUpdate()
     {

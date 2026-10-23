@@ -2,7 +2,6 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.FriendList;
 
-// AIR WIN63-202610151745-318700621 package_18/class_1918.as:37 (content: package_20/class_3161.as:27).
 public class NewConsoleMessageComposer : IServerPacket
 {
     private const int TextContent = 0;

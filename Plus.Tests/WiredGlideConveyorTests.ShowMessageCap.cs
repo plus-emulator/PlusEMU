@@ -5,10 +5,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs, clicks one second apart at three different phases): twelve stacks that
-    // answer one click with one Show Message each let at most ten lines out in any five seconds (batches of ten at +0, +5, +10 or +11 and
-    // +16 or +17 s; a click on the edge of a window gets part of a batch), and forty in all. After the fourth batch nothing comes out until
-    // thirty seconds after the first batch, when ten come out again.
+    // Twelve stacks that answer one click with one Show Message each let at most ten lines out in any five seconds, and forty in
+    // all. After the fourth batch nothing comes out until thirty seconds after the first batch, when ten come out again.
     [Fact]
     public void ShowMessageAllowsFortyLinesInAnyThirtySeconds()
     {

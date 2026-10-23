@@ -14,9 +14,9 @@ public partial class PlacedFurniRoomTests
     private const uint CaptureNoConnector = 961, CaptureNumber = 962, CaptureWithConnector = 963, CaptureConnector = 964;
     private const uint CaptureTextTile = 965, CaptureNumberTile = 966, CaptureLabelTile = 967;
 
-    // Observed on AIR WIN63-202610201032-107964540: a capturer in text mode over a context variable with no Text Connector on its tile
-    // never lets the Says trigger fire, for a number or a word. In number mode the same shape fires for a number only, and in text mode
-    // over a variable with the connector "7=seven" only the label fires.
+    // A capturer in text mode over a context variable with no Text Connector on its tile never lets the Says trigger fire, for a
+    // number or a word. In number mode the same shape fires for a number only, and in text mode over a variable with the connector
+    // "7=seven" only the label fires.
     [Fact]
     public async Task ATextModeCapturerWithoutAConnectorCapturesNothing()
     {

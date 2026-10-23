@@ -71,8 +71,7 @@ public sealed class CatalogFurnidata(IDatabase database, ICatalogManager catalog
 
     // Sets offerid to the offer that sells the entry's furni (-1 when none does) and buyout to whether that offer
     // sells only this furni; bc and bcofferid name the Builders Club offer that places it, which the Builders Club search
-    // and the info stand's copy use (AIR WIN63-202610151745-318700621, HabboCatalog.as:1927-1950 and 2009-2013,
-    // InfoStandWidget.as:557-564). Rent offers do not exist here.
+    // and the info stand's copy use. Rent offers do not exist here.
     public static void Overlay(JsonObject root, IEnumerable<CatalogPage> pages)
     {
         var all = pages.ToList();

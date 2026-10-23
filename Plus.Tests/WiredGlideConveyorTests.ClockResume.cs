@@ -49,8 +49,8 @@ public sealed partial class WiredGlideConveyorTests
         .. frames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer).SelectMany(CounterEntries)
     ];
 
-    // Observed on AIR WIN63-202610201032-107964540: a Control Clock saved with operation 5 reopens with 4, and firing it on a game
-    // counter that never ran flashes only the boxes. The counter stays at 0.
+    // A Control Clock saved with operation 5 reopens with 4, and firing it on a game counter that never ran flashes only the
+    // boxes. The counter stays at 0.
     [Fact]
     public void AStoredResumeDoesNotStartACounterThatNeverRan()
     {

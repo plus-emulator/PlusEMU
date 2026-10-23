@@ -88,10 +88,10 @@ public static class SnowStormMath
         247, 248, 248, 249, 249, 250, 250, 251, 251, 252, 252, 253, 253, 254, 254, 255
     ];
 
-    /// <summary>AIR <c>class_4083.javaDiv</c>: truncates toward zero.</summary>
+    /// <summary>Integer division that truncates toward zero.</summary>
     public static int JavaDiv(double value) => value >= 0 ? (int)Math.Floor(value) : (int)Math.Ceiling(value);
 
-    /// <summary>AIR <c>class_4035.fast_sqrt</c>: table-driven integer square root; -1 for negative input.</summary>
+    /// <summary>Table-driven integer square root; -1 for negative input.</summary>
     public static int FastSqrt(int value)
     {
         if (value >= 65536) {

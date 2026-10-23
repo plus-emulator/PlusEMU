@@ -3,9 +3,8 @@ using Plus.HabboHotel.GameClients;
 namespace Plus.Communication.Packets.Outgoing.Catalog;
 
 /// <summary>
-/// [type (0 floor, 1 wall), page, offer, extra param, then x, y, direction or the wall location] (AIR WIN63-202610151745-318700621,
-/// package_64/class_3565 -> package_71/class_2436.as:40-62). The client asks room.confirm.hide_room and, on OK, sends the placement
-/// again with its confirmed flag set (com/sulake/habbo/room/class_2005.as:366-397).
+/// [type (0 floor, 1 wall), page, offer, extra param, then x, y, direction or the wall location]. The client asks room.confirm.hide_room and, on OK, sends the placement
+/// again with its confirmed flag set.
 /// </summary>
 public sealed class BuildersClubPlacementWarningComposer : IServerPacket
 {

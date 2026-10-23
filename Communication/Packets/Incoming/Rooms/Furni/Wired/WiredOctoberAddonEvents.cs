@@ -5,7 +5,7 @@ using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 
-/// <summary>class_2618 [wired id, read key?]: the Web API editor's generate button; the new key comes back on class_3530.</summary>
+/// <summary>[wired id, read key?]: the Web API editor's generate button. The new key comes back in WiredWebApiKeyComposer.</summary>
 public sealed class WiredWebApiKeyRequestEvent : RoomPacketEvent
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)

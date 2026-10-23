@@ -14,8 +14,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The supported client build (WIN63-202610201032-107964540, communication/class_2061.as) sends the room log page request under
-// _composers[2730] = class_3819 and registers the room log page frame as name_1[976] = class_3652.
+// The supported client sends the room log page request under header 2730 and registers the room log page frame under header 976.
 public class WiredRoomLogHeaderCompatibilityTests
 {
     private const uint ClientRequestId = 2730;

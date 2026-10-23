@@ -4,7 +4,7 @@ using static Plus.Tests.WiredR102EditorSave;
 
 namespace Plus.Tests;
 
-// At Given Time and Periodically Long, read back the way Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// At Given Time and Periodically Long, read back the way Habbo stores them.
 public sealed class WiredR102TimerTests
 {
     [Theory]

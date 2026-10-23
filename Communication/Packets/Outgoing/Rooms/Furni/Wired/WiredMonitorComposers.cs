@@ -63,7 +63,7 @@ public sealed class WiredMonitorDataComposer(WiredMonitorSnapshot snapshot) : IS
     private static int Seconds(WiredRoomLogEntry entry) => (int)Math.Clamp(entry.Timestamp.ToUnixTimeSeconds(), 0, int.MaxValue);
 }
 
-/// <summary>Official AIR <c>WiredLogPage</c>: a 1-based page of the room log and the filters that produced it.</summary>
+/// <summary>The Wired log page: a 1-based page of the room log and the filters that produced it.</summary>
 public sealed class WiredRoomLogPageComposer(WiredRoomLogPage page, int levelFilter, int sourceFilter, string query) : IServerPacket
 {
     private readonly WiredRoomLogPage _captured = page with { Entries = page.Entries.ToImmutableArray() };
@@ -105,8 +105,7 @@ public sealed class WiredRoomLogPageComposer(WiredRoomLogPage page, int levelFil
 }
 
 /// <summary>
-/// Official AIR monitor statistics, read by <c>package_121/WiredRoomStatsData.as:34-50</c> (WIN63-202610131318-860371703):
-/// cost and cost cap as doubles, heavy, then floor, wall and the three permanent variable kinds as count / cap pairs.
+/// Monitor statistics: cost and cost cap as doubles, heavy, then floor, wall and the three permanent variable kinds as count / cap pairs.
 /// </summary>
 public sealed class WiredRoomStatsComposer(WiredRoomStats stats) : IServerPacket
 {
@@ -130,7 +129,7 @@ public sealed class WiredRoomStatsComposer(WiredRoomStats stats) : IServerPacket
 }
 
 /// <summary>
-/// Official AIR monitor error rows: a count, then per row (<c>package_121/class_4361.as:19-28</c>, WIN63-202610131318-860371703)
+/// Monitor error rows: a count, then per row
 /// error id, name, category, throw count and the milliseconds since the last occurrence as a long (-1 for never).
 /// </summary>
 public sealed class WiredErrorLogsComposer(IReadOnlyList<WiredErrorRow> rows) : IServerPacket

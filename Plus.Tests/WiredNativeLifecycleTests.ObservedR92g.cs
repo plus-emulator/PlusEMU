@@ -6,8 +6,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredNativeLifecycleTests
 {
-    // Observed r92g r92-echo-capture (AIR WIN63-202610131318-860371703, save reply frame 50108): an echo that picks another echo is
-    // refused with wiredfurni.error.echo.self_reference; an echo of a plain user variable saves.
+    // An echo that picks another echo is refused with wiredfurni.error.echo.self_reference; an echo of a plain user variable
+    // saves.
     [Fact]
     public void EchoOfAnEchoIsRefusedWithTheSelfReferenceKey()
     {

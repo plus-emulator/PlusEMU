@@ -6,7 +6,7 @@ using Plus.HabboHotel.Users.Inventory.Badges;
 namespace Plus.Communication.Packets.Outgoing.Inventory.Badges;
 
 /// <summary>
-/// AIR WIN63-202610151745-318700621 package_199/class_3484.as:48: total fragments, fragment index (0-based), then per badge
+/// Total fragments, fragment index (0-based), then per badge
 /// id, code, owner count and rarity id. Worn badges are not part of this packet.
 /// </summary>
 public sealed class BadgesComposer(BadgeInventorySnapshot snapshot) : IServerPacket
@@ -32,8 +32,8 @@ public sealed class BadgesComposer(BadgeInventorySnapshot snapshot) : IServerPac
 public static class BadgeInventoryPackets
 {
     /// <summary>
-    /// Sends the badge inventory followed by the user's own worn badges. AIR resets worn markers on every badge list
-    /// (inventory/badges/BadgesModel.as:189) and takes them from HabboUserBadges for its own user id (inventory/class_1974.as:586).
+    /// Sends the badge inventory followed by the user's own worn badges. The client resets worn markers on every badge list
+    /// and takes them from HabboUserBadges for its own user id.
     /// </summary>
     public static void SendBadgeInventory(this GameClient? client, int userId, IEnumerable<Badge> badges)
     {

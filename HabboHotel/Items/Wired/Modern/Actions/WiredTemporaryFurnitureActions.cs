@@ -34,7 +34,6 @@ public static class WiredTemporaryFurnitureActions
             : config.Snapshots;
 
         // A snapshot retains geometry and state, but its Builders Club template must still be in the room.
-        // Observed on AIR WIN63-202610151745-318700621: picking up one of two saved templates leaves only one copy on the next firing.
         var eligibleTemplates = templates.Select(snapshot => (Snapshot: snapshot,
             Definition: definitions.Items.GetValueOrDefault(snapshot.DefinitionId), Item: handler.GetItem(snapshot.ItemId)))
             .Where(template => template.Definition?.Type is Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor or Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Wall
@@ -151,7 +150,7 @@ public static class WiredTemporaryFurnitureActions
             };
             var z = Math.Max(height + policy.OffsetAltitudeHundredths / 100d, 0);
 
-            // Above the copy altitude limit nothing is placed and nothing is reported (observed on hhus).
+            // Above the copy altitude limit nothing is placed and nothing is reported.
             if (Plus.HabboHotel.Rooms.RoomItemHandling.AboveTemporaryLimit(z)) {
                 continue;
             }

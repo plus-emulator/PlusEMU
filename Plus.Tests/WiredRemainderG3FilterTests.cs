@@ -244,7 +244,7 @@ public sealed class WiredRemainderG3FilterTests
     [InlineData(1, -1, 0, 0, true)]
     [InlineData(1, 0, 2, 0, true)]
     [InlineData(1, 0, 0, 4, true)]
-    // Observed on AIR WIN63-202610201032-107964540: a value outside the form is stored in range (see WiredR102AddonEditorTests), not refused.
+    // A value outside the form is stored in range (see WiredR102AddonEditorTests), not refused.
     public void TheEditorFormTakesOneToAThousandAndSixSortOrders(int count, int sort, int option, int target, bool accepted)
     {
         Assert.True(WiredBoxRegistry.TryGet("wf_xtra_filter_users_by_var", out var descriptor));

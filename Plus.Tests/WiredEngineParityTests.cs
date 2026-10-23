@@ -364,7 +364,7 @@ public partial class WiredRuntimeEngineTests
             TargetUser = kind == WiredEventKind.BotReachedUser ? reached : null,
             EventItem = kind == WiredEventKind.BotReachedFurni ? chair : null
         }));
-        // Observed on hhus (AIR WIN63-202610151745-318700621): the arriving bot is the triggering user of both bot arrivals.
+        // The arriving bot is the triggering user of both bot arrivals.
         Assert.Equal(new[] { bot.VirtualId }, Assert.Single(seen));
         f.Engine.OnFastCycle();
         Assert.Equal(1, action.Calls);
@@ -381,7 +381,7 @@ public partial class WiredRuntimeEngineTests
         var furni = f.Furni();
         // The typed trigger's own matching is covered by WiredVariableChangedTriggerTests; this checks the engine's holder timing.
         f.Trigger(WiredEventKind.Variable);
-        // A user holder is the triggering user (observed on hhus, AIR WIN63-202610131318-860371703); a furni holder joins after conditions.
+        // A user holder is the triggering user; a furni holder joins after conditions.
         var triggering = target == WiredVariableTarget.User ? new[] { holder.VirtualId } : [];
         f.Add(new Selector { SelectBody = ctx => { Assert.Equal(triggering, ctx.Triggering.UserIds); Assert.Empty(ctx.Triggering.FurniIds); return new(new(), WiredSelectionKind.Both); } });
         // The selector (both kinds, empty) replaces the selection; the holder joins it again after the conditions.
@@ -424,8 +424,8 @@ public partial class WiredRuntimeEngineTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): click_furni on the selector (200) with a furni area selector fires for a click on
-    // furni in that pool, and an effect on the triggering furni (0) acts on the clicked furni. A click elsewhere does not fire.
+    // Click_furni on the selector (200) with a furni area selector fires for a click on furni in that pool, and an effect on the
+    // triggering furni (0) acts on the clicked furni. A click elsewhere does not fire.
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -447,8 +447,7 @@ public partial class WiredRuntimeEngineTests
     }
 
     [Fact]
-    // Observed r92k r92k-trigger-gate neg-w1..w3 (AIR WIN63-202610131318-860371703): a trigger rejected by its selector pool runs
-    // and flashes no condition.
+    // A trigger rejected by its selector pool runs and flashes no condition.
     public void DeferredSelectorTriggerRejectsTheEventBeforeAnyCondition()
     {
         var f = new Fixture();
@@ -489,8 +488,7 @@ public partial class WiredRuntimeEngineTests
         var configuration = new WiredConfiguration { IntParams = [1] };
         Assert.False(timers.TryFire("wf_trg_periodically", 1, configuration, 0, 0, 0));
         Assert.True(timers.TryFire("wf_trg_periodically", 1, configuration, 750, 750, 0));
-        // Observed on AIR WIN63-202610131318-860371703: the 500 ms timer stays on the room's 500 ms grid, so a late firing at 750 waits
-        // for 1000, not 1250.
+        // The 500 ms timer stays on the room's 500 ms grid, so a late firing at 750 waits for 1000, not 1250.
         Assert.False(timers.TryFire("wf_trg_periodically", 1, configuration, 999, 999, 0));
         Assert.True(timers.TryFire("wf_trg_periodically", 1, configuration, 1000, 1000, 0));
         Assert.False(timers.TryFire("wf_trg_periodically", 1, configuration, 1250, 1250, 0));
@@ -500,16 +498,15 @@ public partial class WiredRuntimeEngineTests
         Assert.True(timers.TryFire("wf_trg_period_long", 2, configuration, 5750, 5750, 0));
         Assert.False(timers.TryFire("wf_trg_period_long", 2, configuration, 10499, 10499, 0));
         Assert.True(timers.TryFire("wf_trg_period_long", 2, configuration, 10500, 10500, 0));
-        // Observed on AIR WIN63-202610201032-107964540: the 50 ms timer keeps its own deadlines on the 50 ms grid, so a late firing at 73
-        // waits for 100, not 123.
+        // The 50 ms timer keeps its own deadlines on the 50 ms grid, so a late firing at 73 waits for 100, not 123.
         Assert.False(timers.TryFire("wf_trg_period_short", 3, configuration, 0, 0, 0));
         Assert.True(timers.TryFire("wf_trg_period_short", 3, configuration, 73, 73, 0));
         Assert.False(timers.TryFire("wf_trg_period_short", 3, configuration, 99, 99, 0));
         Assert.True(timers.TryFire("wf_trg_period_short", 3, configuration, 100, 100, 0));
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: the 5 s timer fires 5000 ms apart on the room's 500 ms grid (4959.5 / 9959.6 ms into
-    // the run), so like the 500 ms timer its first firing is set by the grid, not by the arming instant.
+    // The 5 s timer fires 5000 ms apart on the room's 500 ms grid, so like the 500 ms timer its first firing is set by the grid,
+    // not by the arming instant.
     [Theory]
     [InlineData(105, 5000)]
     [InlineData(499, 5000)]
@@ -526,7 +523,7 @@ public partial class WiredRuntimeEngineTests
         Assert.True(timers.TryFire("wf_trg_period_long", 1, configuration, firstAt + 5000, 0, 0));
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: armed at an arbitrary phase (.605), the 500 ms timer first fires on the next boundary.
+    // Armed at an arbitrary phase (.605), the 500 ms timer first fires on the next boundary.
     [Theory]
     [InlineData(105, 500)]
     [InlineData(499, 500)]

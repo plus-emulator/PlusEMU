@@ -3,8 +3,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// More editor saves answered the way Habbo answers them, as observed on AIR WIN63-202610151745-318700621 (Give Score, Give Score To
-// Team) and AIR WIN63-202610131318-860371703 (Chase).
+// More editor saves answered the way Habbo answers them.
 public partial class ModernWiredRuntimeTests
 {
     // Habbo saves a per-game limit of 11 or 99 and reads it back as 10.

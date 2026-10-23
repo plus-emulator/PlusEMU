@@ -3,8 +3,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: Kick User whispers the kicked user (an empty text when the box has none) before the
-// kick effect, and the user leaves the room 2000 ms after the firing, with or without a message.
+// Kick User whispers the kicked user (an empty text when the box has none) before the kick effect. The user leaves the room 2000 ms after the firing, with or without a message.
 public partial class ModernWiredRuntimeTests
 {
     [Theory]

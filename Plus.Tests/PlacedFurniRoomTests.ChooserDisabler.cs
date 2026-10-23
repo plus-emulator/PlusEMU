@@ -27,7 +27,6 @@ public partial class PlacedFurniRoomTests
 
     private byte[] StatesPacket() => Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.ConfigurationItemStatesComposer).Body;
 
-    // Observed on AIR WIN63-202610201032-107964540: each use of the disabler flips the flag, and so does a Wired toggle.
     [Fact]
     public void EachUseAndEachWiredToggleFlipsTheChooserFlag()
     {
@@ -41,8 +40,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new byte[] { 0, 0, 0, 0, 0 }, StatesPacket());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: picking the disabler up while it is on sends the flag still on, and the next room
-    // entry sends it off.
+    // Picking the disabler up while it is on sends the flag still on, and the next room entry sends it off.
     [Fact]
     public async Task PickingUpTheChooserDisablerWhileOnSendsTheFlagStillOn()
     {
@@ -56,7 +54,6 @@ public partial class PlacedFurniRoomTests
         Assert.NotNull(item);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: picking the disabler up while it is off sends no flag packet.
     [Fact]
     public async Task PickingUpTheChooserDisablerWhileOffSendsNoFlag()
     {
@@ -68,7 +65,6 @@ public partial class PlacedFurniRoomTests
         Assert.DoesNotContain(ServerPacketHeader.ConfigurationItemStatesComposer, _client.Sent);
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a second disabler in a room is refused with the type limit text.
     [Fact]
     public async Task ASecondChooserDisablerInTheRoomIsRefusedWithTheTypeLimit()
     {

@@ -10,7 +10,7 @@ internal class DropHandItemEvent : RoomPacketEvent
     {
         var user = room.GetRoomUserManager().GetRoomUserByHabbo(session.GetHabbo().Id);
 
-        // Observed on AIR WIN63-202610201032-107964540: with a hand item blocker on, the drop is ignored and gets no reply.
+        // With a hand item blocker on, the drop is ignored and gets no reply.
         if (user == null || ConfigurationItemStates.HandItemBlocked(room)) {
             return Task.CompletedTask;
         }

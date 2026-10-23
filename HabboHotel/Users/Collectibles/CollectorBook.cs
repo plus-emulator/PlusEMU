@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace Plus.HabboHotel.Users.Collectibles;
 
-/// <summary>A product a collectible can be (AIR collectibles/class_2543).</summary>
+/// <summary>A product a collectible can be.</summary>
 public sealed record CollectibleProduct(string ProductCode, short ProductType, string ItemTypeId, int Score, string Rarity, string PetFigure,
     ImmutableArray<int> FigureSetIds);
 

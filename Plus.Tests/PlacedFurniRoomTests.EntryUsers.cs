@@ -4,8 +4,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: room entry sends the users already present as one Users packet before the furni,
-// the entrant's own Users entry after the wall items, and no status update for the entrant until the next room cycle.
+// Room entry sends the users already present as one Users packet before the furni, the entrant's own Users entry after the wall items,
+// and no status update for the entrant until the next room cycle.
 public partial class PlacedFurniRoomTests
 {
     [Fact]

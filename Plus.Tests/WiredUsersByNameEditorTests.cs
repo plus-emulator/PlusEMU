@@ -3,7 +3,6 @@ using Xunit;
 namespace Plus.Tests;
 
 // Users By Name saved through the real packet path and read back as the editor shows it.
-// Observed on AIR WIN63-202610201032-107964540.
 public sealed class WiredUsersByNameEditorTests
 {
     private static WiredRawSave.Result Saved(string name, string text)

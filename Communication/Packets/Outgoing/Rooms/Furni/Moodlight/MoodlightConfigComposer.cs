@@ -28,7 +28,7 @@ public class MoodlightConfigComposer : IServerPacket
             i++;
         }
 
-        // AIR WIN63-202610151745-318700621 package_173/class_3442.as:59 reads isOn and the moodlight's item id after the presets.
+        // The client reads isOn and the moodlight's item id after the presets.
         packet.WriteBoolean(_snapshot.Enabled);
         packet.WriteUInteger(_snapshot.ItemId);
     }

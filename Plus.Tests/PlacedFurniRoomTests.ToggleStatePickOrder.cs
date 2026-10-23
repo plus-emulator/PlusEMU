@@ -10,9 +10,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: Toggle State reopens its picks in the iteration order of a Java HashSet<Integer> of
-// the saved ids (wall picks negative), not in the order the client saved them; ids that share a bucket keep the saved order. Expected
-// orders come from that model.
+// Toggle State reopens its picks in the iteration order of a Java HashSet<Integer> of the saved ids (wall picks negative), not in the order the client saved them.
+// Ids that share a bucket keep the saved order. Expected orders come from that model.
 public partial class PlacedFurniRoomTests
 {
     private const uint PickOrderBox = 601;
@@ -50,7 +49,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(new[] { -611, 618, 602, 605 }, await OpenPicks());
     }
 
-    // Sent and reopened orders copied from the Habbo probes, with Habbo's own ids.
+    // Sent and reopened orders with Habbo's own ids.
     [Theory]
     [InlineData(new[] { 2147418112, 2147418119, -2147418130, 2147418117 }, new[] { 2147418119, 2147418117, -2147418130, 2147418112 })]
     [InlineData(new[] { -2147418131, 2147418115, -2147418129, 2147418123, 2147418113 },

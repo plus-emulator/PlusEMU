@@ -16,9 +16,8 @@ public sealed class WiredRandomActionPicker(int amount, int skipExecutions, Rand
         var history = _recent.ToArray();
         var result = new List<uint>(count);
 
-        // Observed on AIR WIN63-202610131318-860371703: the add-on avoids the effects of the last N executions of its stack. When too few
-        // are left it stops avoiding the OLDEST executions first (pick 1 / avoid 2 over two effects strictly alternates), so the top-up is
-        // least-recently-used, never a random repeat.
+        // The add-on avoids the effects of the last N executions of its stack. When too few are left it stops avoiding the OLDEST
+        // executions first (pick 1 / avoid 2 over two effects strictly alternates), so the top-up is least-recently-used, never a random repeat.
         for (var oldest = 0; oldest <= history.Length && result.Count < count; oldest++) {
             var avoided = history.Skip(oldest).SelectMany(x => x).ToHashSet();
             result.AddRange(candidates.Where(x => !avoided.Contains(x) && !result.Contains(x)).Take(count - result.Count));

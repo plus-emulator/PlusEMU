@@ -6,7 +6,6 @@ using Xunit;
 namespace Plus.Tests;
 
 // Selector editor saves through the packet handler, the frame the editor reopens on, and the stored row read back.
-// Observed on AIR WIN63-202610201032-107964540.
 public partial class ModernWiredRuntimeTests
 {
     private const string FurniSourceKey = "wiredfurni.error.invalid_furni_source";

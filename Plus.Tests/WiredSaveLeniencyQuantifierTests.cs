@@ -3,7 +3,6 @@ using Xunit;
 namespace Plus.Tests;
 
 // A condition save with a quantifier outside 0..2 is stored as 0, and 2 is kept, instead of being dropped or refused.
-// Observed on AIR WIN63-202610201032-107964540.
 public sealed class WiredSaveLeniencyQuantifierTests
 {
     private const string Boxes = "wf_cnd_actor_in_group,wf_cnd_not_in_group,wf_cnd_slc_quantity,wf_cnd_stuff_is,wf_cnd_not_stuff_is,wf_cnd_team_has_rank,"

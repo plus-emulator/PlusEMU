@@ -21,7 +21,7 @@ internal static class FurniExtraData
 
     private static readonly HashSet<string> BackgroundAddressKeys = new(StringComparer.Ordinal) { "imageUrl", "clickUrl" };
 
-    // A room background shows the image a branding staff member typed and opens its click address (AIR RoomBrandingLogic).
+    // A room background shows the image a branding staff member typed and opens its click address.
     // Only plain http(s) addresses pass; every other key keeps the client image rules.
     public static bool RejectsBackground(IReadOnlyList<string> values)
     {
@@ -49,8 +49,7 @@ internal static class FurniExtraData
 
     private const int MaxBackgroundAddressLength = 500;
 
-    // Observed on AIR WIN63-202610201032-107964540: a room background keeps imageUrl, offsetX, offsetY and offsetZ
-    // (FurnitureRoomBrandingLogic.as:13-21); scale and alpha are the Volt image position editor's own settings.
+    // A room background keeps imageUrl, offsetX, offsetY and offsetZ; scale and alpha are the Volt image position editor's own settings.
     private static readonly Dictionary<string, (int Min, int Max)> BackgroundNumbers = new(StringComparer.Ordinal)
     {
         ["offsetX"] = (-10000, 10000),
@@ -175,8 +174,7 @@ internal static class FurniExtraData
             return board;
         }
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): every firing flips a box's legacy state between "1" and "0" (says something,
-        // periodically, long periodically and walks on alike), and a box that never fired rests at "0". A box keeps legacy data in the
+        // Every firing flips a box's legacy state between "1" and "0", and a box that never fired rests at "0". A box keeps legacy data in the
         // inventory too, so a placed box can always flash.
         if (IsWiredBox(definition)) {
             return new LegacyDataFormat { Data = stored.Length == 0 ? "0" : stored };
@@ -216,9 +214,9 @@ internal static class FurniExtraData
         }
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a new Wired counter, floor switch, antenna or colour tile has state "0", never "".
+    // A new Wired counter, floor switch, antenna or colour tile has state "0", never "".
     // Game furni such as freeze blocks, scoreboards and game timers use an empty state for their own meaning, so they keep it.
-    // Observed on AIR WIN63-202610201032-107964540: a new wf_blob has state 1 (3 of 3 runs), a new game tile, box or button has no state, and a new glass door,
+    // A new wf_blob has state 1, a new game tile, box or button has no state, and a new glass door,
     // fire gate or 8 direction arrow plate has state 0.
     internal static string LegacyState(ItemDefinition definition, string stored) => stored.Length > 0 ? stored : StartState(definition) ?? stored;
 

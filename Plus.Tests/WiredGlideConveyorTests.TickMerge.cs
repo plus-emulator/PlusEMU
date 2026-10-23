@@ -9,9 +9,8 @@ public sealed partial class WiredGlideConveyorTests
 {
     private const uint MarkerId = 80;
 
-    // Observed on AIR WIN63-202610151745-318700621: a signal split over two users fires the receiver twice in one tick, and each
-    // firing sends the marker to its user. The tick sends one WiredMovements with one entry for the marker, from where it was at
-    // the start of the tick to where it ends.
+    // A signal split over two users fires the receiver twice in one tick, and each firing sends the marker to its user. The tick
+    // sends one WiredMovements with one entry for the marker, from where it was at the start of the tick to where it ends.
     [Fact]
     public void TwoReceiverFiringsInOneTickSendOneEntryFromTheStartToTheEnd()
     {
@@ -27,8 +26,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal((9, 12), (f.Items[MarkerId].GetX, f.Items[MarkerId].GetY));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: when the two firings move the marker away and back, the tick still sends one
-    // entry, from its tile to the same tile.
+    // When the two firings move the marker away and back, the tick still sends one entry, from its tile to the same tile.
     [Fact]
     public void AFurniMovedAwayAndBackInOneTickKeepsOneEntry()
     {

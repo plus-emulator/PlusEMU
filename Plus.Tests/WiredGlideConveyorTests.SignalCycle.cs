@@ -9,9 +9,9 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: a say signals A1, R1 toggles T1 and signals A2, R2 toggles T2 and signals A3, and
-    // R3 toggles T3 and signals A1 again. Each receiving stack ran 100 times (each 7-state tile went from 0 to 2), and the whole
-    // cascade flashed in one ObjectsDataUpdate. A 1-stack loop did the same. The tiles here have 1000 states, so a state is a run count.
+    // A say starts a loop of three stacks: each toggles a tile and signals the next, and the last signals the first again. The
+    // loop runs 100 times and the whole cascade flashes in one ObjectsDataUpdate. A loop of one stack does the same. The tiles
+    // have 1000 states, so a state is a run count.
     [Theory]
     [InlineData(1)]
     [InlineData(2)]

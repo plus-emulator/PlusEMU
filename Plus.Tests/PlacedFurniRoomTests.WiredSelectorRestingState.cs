@@ -30,8 +30,7 @@ public partial class PlacedFurniRoomTests
         return box;
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): every save of a selector is followed by ObjectDataUpdate (374) with its
-    // resting state, 3 (green) with "Filter existing selection" and 0 (orange) without; Invert has no colour of its own.
+    // Every save of a selector is followed by ObjectDataUpdate (374) with its resting state, 3 (green) with "Filter existing selection" and 0 (orange) without. Invert has no colour of its own.
     [Theory]
     [InlineData(true, false, "3")]
     [InlineData(false, false, "0")]
@@ -72,8 +71,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("1", WiredFlashStates.Next(box.Item.LegacyDataString, box));
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): room entry lists each selector in its last state, a flash state included
-    // (a fired filter box "5", a plain one "1" or "2").
+    // Room entry lists each selector in its last state, a flash state included (a fired filter box "5", a plain one "1" or "2").
     [Theory]
     [InlineData(true, "5")]
     [InlineData(false, "1")]

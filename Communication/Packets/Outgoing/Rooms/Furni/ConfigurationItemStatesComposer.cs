@@ -3,7 +3,6 @@ using Plus.HabboHotel.GameClients;
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni;
 
 // The client reads these four room-wide switches in this order; the later three are optional on its side
-// (AIR WIN63-202610131318 package_14/class_3143.as parse).
 public sealed class ConfigurationItemStatesComposer(bool chooserDisabled, bool invisibleFurni, bool handItemBlocked = false) : IServerPacket
 {
     public bool HandItemBlocked => handItemBlocked;
@@ -16,7 +15,7 @@ public sealed class ConfigurationItemStatesComposer(bool chooserDisabled, bool i
         packet.WriteBool(chooserDisabled);
         packet.WriteBool(false); // free furni movements
         packet.WriteBool(invisibleFurni);
-        // Observed on AIR WIN63-202610151745-318700621: room entry carries five bytes; the client reads the first four.
+        // Room entry carries five bytes; the client reads the first four.
         packet.WriteBool(false);
     }
 }

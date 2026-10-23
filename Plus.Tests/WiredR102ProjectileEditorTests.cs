@@ -3,7 +3,7 @@ using static Plus.Tests.WiredR102EditorSave;
 
 namespace Plus.Tests;
 
-// Projectile (wf_xtra_rotate_to_dir) editor saves, read back the way Habbo stores them. Observed on AIR WIN63-202610201032-107964540.
+// Projectile (wf_xtra_rotate_to_dir) editor saves, read back the way Habbo stores them.
 public sealed class WiredR102ProjectileEditorTests
 {
     private static readonly int[] Frame = [0, 0, 0, 0, 500, -20, 1, 1, 0, 4, 0, 0, 1, 1, 0, 0, 1, -20, 50];

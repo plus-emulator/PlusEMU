@@ -4,7 +4,7 @@ using Plus.HabboHotel.Users;
 
 namespace Plus.HabboHotel.Achievements;
 
-// One AIR AchievementData entry (WIN63 package_92.class_3624), already resolved against the achievement's own levels:
+// One achievement entry, already resolved against the achievement's own levels:
 // the level a user works towards, or the last level once every level is held. Scores are the cumulative totals;
 // the client subtracts ScoreAtStartOfLevel from Requirement and Progress for the bar of the level.
 public sealed record AchievementProgressSnapshot(int Id, int TargetLevel, string Badge, int ScoreAtStartOfLevel, int Requirement, int RewardPixels,

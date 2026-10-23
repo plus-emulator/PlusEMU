@@ -7,8 +7,8 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed on AIR WIN63-202610201032-107964540: a Score Achieved stack runs in the same tick as the Give Score of the say that crossed
-    // the threshold, right after the echo of the say. It does not wait for the next pass.
+    // A Score Achieved stack runs in the same tick as the Give Score of the say that crossed the threshold, right after the echo
+    // of the say. It does not wait for the next pass.
     [Fact]
     public void ScoreAchievedStackRunsInTheTickOfTheSayThatCrossesTheThreshold()
     {

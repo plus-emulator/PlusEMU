@@ -14,7 +14,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
 {
     private readonly Dictionary<int, Session> _sessions = [];
     private readonly Dictionary<int, uint> _viewers = [];
-    // What each viewer's open chest window shows, so a change is sent as AIR's coins update or furni delta.
+    // What each viewer's open chest window shows, so a change is sent as the client's coins update or furni delta.
     private readonly Dictionary<int, ViewerState> _shown = [];
     public bool HasPending => _sessions.Count > 0;
     public IWiredChestStore Store => store;
@@ -76,8 +76,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         }
 
         // A wired transaction works with the usable chests among the picked ones and fails only when none is;
-        // a user's own deposit needs every chest to take it.
-        // Observed on AIR WIN63-202610131318-860371703: a deposit by a user who may not trade is refused with reason 8.
+        // a user's own deposit needs every chest to take it. A deposit by a user who may not trade is refused with reason 8.
         var failure = contract != null ? usable.Length == 0 ? WiredChestFailure.NoOrLockedChests : (WiredChestFailure?)null
             : CannotTrade(habbo) ? WiredChestFailure.UserCantTrade
             : snapshots.Length != chests.Length || snapshots.Length == 0 ? WiredChestFailure.ChestNotInRoom
@@ -409,7 +408,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         Refresh(item);
     }
 
-    /// <summary>Using a chest furni asks the client to open it (AIR WiredChestController.onOpenChest); it answers with ChestOpenEvent.</summary>
+    /// <summary>Using a chest furni asks the client to open it; it answers with ChestOpenEvent.</summary>
     public void RequestOpen(GameClient client, Item item)
     {
         if (Read(item) is { } chest && chest.CanOpen((uint)client.GetHabbo().Id, room.GetWired().Settings.CanInspect(client))) {
@@ -632,7 +631,7 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
         var userId = client.GetHabbo().Id;
         var every = locked && all;
 
-        // AIR expects no answer: the chests' stuff data shows the new lock state.
+        // The client expects no answer: the chests' stuff data shows the new lock state.
         if (every && room.OwnerId != userId) {
             return;
         }

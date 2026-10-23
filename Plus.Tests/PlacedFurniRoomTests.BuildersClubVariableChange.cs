@@ -11,7 +11,7 @@ public partial class PlacedFurniRoomTests
 {
     private const uint BuildersClubVariableId = 994;
 
-    // Observed on AIR WIN63-202610201032-107964540: @event.variable_update.box_id is the id the client sees for a Builders Club variable box.
+    // @event.variable_update.box_id is the id the client sees for a Builders Club variable box.
     [Fact]
     public void TheBoxIdOfAVariableChangeIsTheBuildersClubIdTheClientSees()
     {

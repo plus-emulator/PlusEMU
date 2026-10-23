@@ -5,8 +5,8 @@ namespace Plus.Tests;
 
 public class TextHandlingTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: heights go out in the shortest form with ".0" on whole numbers, and a tiny height
-    // as "1.0E-6", with an exponent below 0.001 and from 10,000,000 up.
+    // Heights go out in the shortest form with ".0" on whole numbers, and a tiny height as "1.0E-6",
+    // with an exponent below 0.001 and from 10,000,000 up.
     [Theory]
     [InlineData(0.0, "0.0")]
     [InlineData(1.0, "1.0")]

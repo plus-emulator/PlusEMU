@@ -30,8 +30,8 @@ public sealed partial class WiredGlideConveyorTests
         return f;
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a counter that ran and was stopped starts again from 0, also when a Set Clock gave it a
-    // value while it was stopped. The Set shows its value at once, and the Start writes 0 in a batch of its own.
+    // A counter that ran and was stopped starts again from 0, also when a Set Clock gave it a value while it was stopped. The Set
+    // shows its value at once, and the Start writes 0 in a batch of its own.
     [Fact]
     public void WiredStartAfterAStopAndASetRestartsTheCounterFromZero()
     {
@@ -59,7 +59,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal("2", counter.LegacyDataString);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a counter that has not run yet keeps the value a Set Clock gave it when it starts.
+    // A counter that has not run yet keeps the value a Set Clock gave it when it starts.
     [Fact]
     public void WiredStartOfACounterThatNeverRanKeepsTheValueOfItsSet()
     {

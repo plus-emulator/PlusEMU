@@ -50,7 +50,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         var events = new List<WiredRuntimeEvent>();
         var action = Box(room, "wf_act_chase", [100], [mover.Id], events.Add);
         Assert.True(action.Execute(Context(room, [mover], [user])));
-        // Observed on AIR WIN63-202610151745-318700621: a user on a diagonal is not followed; the chase takes a random step instead.
+        // A user on a diagonal is not followed; the chase takes a random step instead.
         Assert.Equal(1, Math.Abs(mover.GetX - 1) + Math.Abs(mover.GetY - 1));
         Assert.Empty(events);
     }
@@ -88,7 +88,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal(new HashSet<int> { other.VirtualId }, context.Policy.Addons.Physics.ThroughUsers);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: with two users selected, the furni lands on whichever user was picked.
+    // With two users selected, the furni lands on whichever user was picked.
     [Theory]
     [InlineData(0)]
     [InlineData(17)]
@@ -114,8 +114,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal(new[] { (2, 4), (4, 4) }, landings.Order());
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: an Enters Room stack's Furni To User moves the furni onto the entrant, who still
-    // stands on the door tile.
+    // An Enters Room stack's Furni To User moves the furni onto the entrant, who still stands on the door tile.
     [Fact]
     public void FurniToUserMovesTheFurniOntoAUserStandingOnTheDoorTile()
     {
@@ -263,7 +262,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         var user = Avatar(room, 1, name == "wf_act_flee" ? 0 : 4, 2);
         var action = Box(room, name, name == "wf_act_move_to_dir" ? [2, 0, 100, 0] : [100], [1, 2]);
         Assert.True(action.Execute(Context(room, topFirst ? [top, bottom] : [bottom, top], [user])));
-        // Flee sidesteps when its away tile is taken (observed r92f r92-flee wall-w1/w2), so a blocked bottom moves aside.
+        // Flee sidesteps when its away tile is taken, so a blocked bottom moves aside.
         Assert.Equal(topFirst ? (name == "wf_act_flee" ? (2, 3, 0.0) : (2, 2, 0.0)) : (3, 2, 0.0), (bottom.GetX, bottom.GetY, bottom.GetZ));
         Assert.Equal((3, 2, topFirst ? 0.0 : 0.5), (top.GetX, top.GetY, top.GetZ));
     }
@@ -325,7 +324,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal((2, 3), (item.GetX, item.GetY));
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): each save of the box restarts the furni on the configured direction.
+    // Each save of the box restarts the furni on the configured direction.
     [Fact]
     public void MoveToDirectionSaveRestartsTheRememberedHeading()
     {
@@ -347,7 +346,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         Assert.Equal((3, 4), (item.GetX, item.GetY));
     }
 
-    // Official AIR r92d r92-mtd-blocked: east stacks at z=1; NE passes between the two neighboring blocks at z=0.
+    // East stacks at z=1; NE passes between the two neighboring blocks at z=0.
     [Theory]
     [InlineData(2, 3, 2, 1.0)]
     [InlineData(1, 3, 1, 0.0)]
@@ -593,7 +592,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
             variables: context => WiredSelectorVariableBridge.Create(context, module), readWorld: _ => world);
         var quantityNative = WiredNativeEditorProjection.DefaultNative(quantityDescriptor);
         WiredNativeTestSupport.Install(quantity, variableQuantity
-            // Observed on AIR WIN63-202610131318-860371703: the filter's holder slot offers 0/100/201, so the holders are picked here.
+            // The filter's holder slot offers 0/100/201, so the holders are picked here.
             ? quantityNative with
             {
                 OwnedIntParams = [2, 1, WiredNativeAuxiliaryEditor.AirTarget(1)],
@@ -638,7 +637,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     [InlineData(true, "3", "4", "5")]
     public void SelectorsFlashBetweenTheirRestingStatePlusOneAndPlusTwo(bool filter, string resting, string first, string second)
     {
-        // Room 79874981 (WIN63-202610121709): area selectors rest at 0 and alternate 1/2; filter-mode selectors rest at 3 and alternate 4/5.
+        // Area selectors rest at 0 and alternate 1/2; filter-mode selectors rest at 3 and alternate 4/5.
         var (room, _, items) = World();
         using var ownerScope = RoomOwnerScope.Enter(room);
         var flashed = new List<Item>();

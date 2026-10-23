@@ -10,8 +10,7 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Observed r92g r92-move-rotate mrCw-w1 / mrCcw-w1 (AIR WIN63-202610131318-860371703, frames 39269 / 39535): a turn without a move
-    // is one ObjectUpdate with the new rotation (cw 0 -> 2, ccw 0 -> 6) and no WiredMovements.
+    // A turn without a move is one ObjectUpdate with the new rotation (cw 0 -> 2, ccw 0 -> 6) and no WiredMovements.
     [Theory]
     [InlineData(1, 2)]
     [InlineData(2, 6)]

@@ -115,8 +115,7 @@ public sealed class CatalogPurchaseServiceTests
         Assert.Equal(stored, Assert.Single(context.Factory.ExtraData));
     }
 
-    // AIR WIN63-202610131318-860371703 RecolorableFurnitureCatalogWidget.as:93-121 only offers the class's palette
-    // (class_3492.as:13), so a colour outside it is bought in the palette's first colour.
+    // The client only offers the class's palette, so a colour outside it is bought in the palette's first colour.
     [Theory]
     [InlineData("bc_block_0_recolorable", "0,133,255", "0,133,255")]
     [InlineData("bc_block_0_recolorable", "1,2,3", "255,255,255")]
@@ -675,7 +674,6 @@ public sealed class CatalogPurchaseServiceTests
         where TInterface : class
         where TProxy : DispatchProxy => DispatchProxy.Create<TInterface, TProxy>();
 
-    // Builders Club membership and furni limit are bought from the Memberships pages and delivered inside the charge.
     [Fact]
     public async Task BuildersClubMembershipIsDeliveredInTheChargeAndItsStatusGoesOutAtOnce()
     {

@@ -4,8 +4,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540: At Given Time with 0 pulses fires on the first room tick after a timer reset, 428 ms
-// after the reset in the capture, and the box with 1 pulse one pulse later. It did not fire when it was saved.
+// At Given Time with 0 pulses fires on the first room tick after a timer reset, and the box with 1 pulse one pulse later. It does not fire when it is saved.
 public partial class ModernWiredRuntimeTests
 {
     [Fact]

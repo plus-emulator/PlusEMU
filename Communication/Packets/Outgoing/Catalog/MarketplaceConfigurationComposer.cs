@@ -3,7 +3,7 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Packets.Outgoing.Catalog;
 
-// MarketplaceConfigurationEvent of the official client (WIN63-202609161723): enabled, commission, token batch price and size, minimum and maximum price, expiration hours,
+// Field order of the marketplace configuration message: enabled, commission, token batch price and size, minimum and maximum price, expiration hours,
 // average price period, then sellingFeePercentage, revenueLimit and halfTaxLimit.
 public class MarketplaceConfigurationComposer(IMarketplaceFeePolicy fee) : IServerPacket
 {

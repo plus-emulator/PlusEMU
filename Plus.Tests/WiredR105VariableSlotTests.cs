@@ -3,9 +3,8 @@ using static Plus.Tests.WiredR102EditorSave;
 
 namespace Plus.Tests;
 
-// Variable slots of the filter and scan add-ons as Habbo stores them. Observed on AIR WIN63-202610201032-107964540: a save with no
-// variable keeps the empty slot, a variable of another domain than the target is accepted, and more variables than slots are
-// answered with the variable count key.
+// Variable slots of the filter and scan add-ons as Habbo stores them. A save with no variable keeps the empty slot, a variable of
+// another domain than the target is accepted, and more variables than slots are answered with the variable count key.
 public sealed class WiredR105VariableSlotTests
 {
     private const string CountKey = "wiredfurni.error.invalid_variable_count";

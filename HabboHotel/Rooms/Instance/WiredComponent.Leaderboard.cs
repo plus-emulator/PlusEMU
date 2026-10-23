@@ -8,13 +8,10 @@ using Plus.HabboHotel.Items.Wired.Variables;
 namespace Plus.HabboHotel.Rooms.Instance;
 
 /// <summary>
-/// Variable Leaderboard overlays (VariableLeaderboardController, WIN63-202610131318-860371703). On room entry the client asks with
-/// [0, 0, "0", no chunks] and gets the snapshot of published boards (at most four); it then subscribes to at most two 50-row chunks
-/// of the selected variable and gets them now and again when the variable changes. A save of a board republishes the snapshot.
-/// Observed on hhus (r90, pair-leaderboard): every room entry carries the snapshot (10 bytes when empty), a save republishes it at
-/// once, a pickup republishes it without the board, and row updates after value writes arrive seconds later (+5.3 s, +9.4 s), not in
-/// the write's tick. Observed on AIR WIN63-202610151745-318700621: writes at +0.3, +12.3, +24.3 and +36.3 s were pushed at +10.3, +20.3,
-/// +30.3 and +40.3 s, so changed variables go out on a fixed <see cref="LeaderboardPushPeriod"/> grid.
+/// Variable Leaderboard overlays. On room entry the client asks with [0, 0, "0", no chunks] and gets the snapshot of published boards (at most four);
+/// it then subscribes to at most two 50-row chunks of the selected variable and gets them now and again when the variable changes. A save of a board republishes the snapshot.
+/// Every room entry carries the snapshot, a save republishes it at once, a pickup republishes it without the board, and row updates after value writes arrive later, not in the write's tick:
+/// changed variables go out on a fixed <see cref="LeaderboardPushPeriod"/> grid.
 /// </summary>
 public partial class WiredComponent
 {
@@ -39,9 +36,7 @@ public partial class WiredComponent
         internal set => _leaderboardProfiles = value;
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a board's QueryRevision comes from one counter for the whole room (3, 4, ... 10 over
-    // successive saves of different boards), and the room's boards are numbered from 1 as overlays.
-    // Observed on AIR WIN63-202610201032-107964540: the counter starts at 1, so the first save of a board shows revision 2.
+    // A board's QueryRevision comes from one counter for the whole room, and the room's boards are numbered from 1 as overlays. The counter starts at 1, so the first save of a board shows revision 2.
     private int _leaderboardRoomRevision = 1;
     private readonly Dictionary<int, uint> _leaderboardOverlayItems = [];
 
@@ -62,8 +57,7 @@ public partial class WiredComponent
             }
         }
 
-        // Observed on AIR WIN63-202610201032-107964540: a published board is overlay 1 in its own editor even when its stack has no user
-        // variable yet. Published boards are numbered in furni id order.
+        // A published board is overlay 1 in its own editor even when its stack has no user variable yet. Published boards are numbered in furni id order.
         var published = ConfiguredBoxes("wf_xtra_var_leaderboard")
             .Where(box => WiredLeaderboardConfig.Decode(box.Configuration.IntParams, box.Configuration.VariableIds, box.Configuration.Text)?.Published == true)
             .Select(box => box.Item.Id);
@@ -71,7 +65,7 @@ public partial class WiredComponent
         return published.Count(id => id < itemId) + 1;
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a "while in room" user variable is offered too, but ranks nobody.
+    // A "while in room" user variable is offered too, but ranks nobody.
     private IReadOnlyList<WiredLeaderboardChoice> BoardChoices(IWiredConfiguredItem box) =>
         [.. Variables.LeaderboardChoices(box.Item.GetX, box.Item.GetY).TakeLast(MaxLeaderboardChoices)];
 
@@ -102,8 +96,7 @@ public partial class WiredComponent
                 config.Overrides.FirstOrDefault(entry => entry.VariableId == choice.VariableId)?.Name
                 ?? WiredLeaderboardConfig.SuggestName(choice.Description.Definition.Name))).ToArray();
 
-            // Observed on AIR WIN63-202610201032-107964540: a published board whose stack has no user variable is still sent, with no
-            // choices and the default variable "0" (the client accepts exactly that, isDescriptorStructurallyValid).
+            // A published board whose stack has no user variable is still sent, with no choices and the default variable "0" (the client accepts exactly that).
             descriptors.Add(new(descriptors.Count + 1, LeaderboardRevision(box.Item.Id), config, choices, choices.Length == 0 ? "0" : choices[0].VariableId));
             overlays[descriptors.Count] = box.Item.Id;
 
@@ -125,7 +118,7 @@ public partial class WiredComponent
         return descriptors;
     }
 
-    /// <summary>The subscription packet (package_221/class_3707): room-open, or the chunks of a selected variable.</summary>
+    /// <summary>The subscription packet: room-open, or the chunks of a selected variable.</summary>
     public void SubscribeLeaderboard(GameClient session, int overlayId, int revision, string variableId, int[] chunks)
     {
         if (session.GetHabbo() is not { } habbo || !ReferenceEquals(habbo.CurrentRoom, _room)) {
@@ -207,10 +200,8 @@ public partial class WiredComponent
     }
 
     /// <summary>
-    /// A Text Connector was saved or picked up. Observed on AIR WIN63-202610201032-107964540: the published boards on its tile get one
-    /// snapshot with their revision one higher at the next tick of the push grid, however many saves came before it, and an unchanged
-    /// text counts as a save. The client then subscribes to the new revision and gets the rows with the new text. A connector on another
-    /// tile sends nothing.
+    /// A Text Connector was saved or picked up: the published boards on its tile get one snapshot with their revision one higher at the next tick of the push grid, however many saves came before it,
+    /// and an unchanged text counts as a save. The client then subscribes to the new revision and gets the rows with the new text. A connector on another tile sends nothing.
     /// </summary>
     private void LeaderboardConnectorChanged(Item connector)
     {

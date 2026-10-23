@@ -21,7 +21,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// AIR's Shift+click rotate and Alt-move of a placed monsterplant (MovePet 819) or rentable bot (MoveEntityInFlat 2508); ids from WIN63-202610201032-107964540.
+// Shift+click rotate and Alt-move of a placed monsterplant (MovePet) or rentable bot (MoveEntityInFlat).
 public sealed class RoomUnitMoveTests
 {
     private const int RoomOwnerId = 1;
@@ -264,8 +264,7 @@ public sealed class RoomUnitMoveTests
         Assert.Contains(world.Bot, world.Room.GetGameMap().GetRoomUsers(new(2, 1)));
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a placed bot says one random line of three with chat style 31, sent right
-    // after its Users packet.
+    // A placed bot says one random line of three with chat style 31, sent right after its Users packet.
     [Theory]
     [InlineData(0, "Hello!")]
     [InlineData(1, "Yo!")]
@@ -300,7 +299,7 @@ public sealed class RoomUnitMoveTests
         Assert.False(chat.HasDataRemaining());
     }
 
-    // Observed on AIR WIN63-202610201032-107964540: a bot that is already in the room comes back on a room reload without a greeting.
+    // A bot that is already in the room comes back on a room reload without a greeting.
     [Fact]
     public void ABotLoadedWithTheRoomSaysNothing()
     {

@@ -10,8 +10,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Raw saves of the variable boxes, Variable Changed and Echo through the real save packets, in one room whose variables are read back the
-// way the hotel stores them. Observed on AIR WIN63-202610201032-107964540.
+// Raw saves of the variable boxes, Variable Changed and Echo through the real save packets, in one room whose variables are read back the way the hotel stores them.
 public partial class PlacedFurniRoomTests
 {
     private const string NameLength = "wiredfurni.error.variables.name_length";
@@ -168,9 +167,7 @@ public partial class PlacedFurniRoomTests
         _ => SaveVariable(service, id, VariableInts(_variableBoxes[id].Descriptor.CanonicalName), name)
     };
 
-    // wf_var_pointer.r111_name_rule_pointer, wf_var_user.r111_name_rule_user, wf_var_pointer.r111_editor (PtrUP),
-    // wf_var_pointer.r111_editor_name_underscore: spaces become underscores, the name is lower case and loses its leading and trailing
-    // underscores. Inner underscores and digit-only names stay.
+    // Spaces become underscores, the name is lower case and loses its leading and trailing underscores. Inner underscores and digit-only names stay.
     [Theory]
     [InlineData("_a", "a")]
     [InlineData("a_", "a")]
@@ -192,7 +189,7 @@ public partial class PlacedFurniRoomTests
         }
     }
 
-    // wf_var_furni.r111_name_rule_kinds part 1: the same cleaning on furni, global and context variables.
+    // The same cleaning on furni, global and context variables.
     [Theory]
     [InlineData("_a", "a")]
     [InlineData("a_", "a")]
@@ -224,7 +221,7 @@ public partial class PlacedFurniRoomTests
         }
     }
 
-    // wf_var_furni.r111_name_rule_kinds part 2: each kind takes the name of each other kind and is refused.
+    // Each kind takes the name of each other kind and is refused.
     [Fact]
     public void AVariableNameIsUniqueAcrossAllKindsOfTheRoom()
     {
@@ -239,8 +236,7 @@ public partial class PlacedFurniRoomTests
         }
     }
 
-    // wf_var_pointer.r111_p05_editor_names_order_lb_fx_pickup and r111_p05b_editor_retry: a user pointer named like a furni, global or
-    // context variable or like a furni pointer is refused, and so is a furni pointer named like a user variable or the user pointer.
+    // A user pointer named like a furni, global or context variable or like a furni pointer is refused, and so is a furni pointer named like a user variable or the user pointer.
     [Theory]
     [InlineData(NamedPointer, "nf")]
     [InlineData(NamedPointer, "ng")]
@@ -258,7 +254,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(id == NamedPointer ? "pu" : "pf", StoredName(id));
     }
 
-    // wf_var_furni.r111_name_rule_kinds part 3: the cleaned name is what must be unique.
+    // The cleaned name is what must be unique.
     [Theory]
     [InlineData("_nf_")]
     [InlineData("NF")]
@@ -271,8 +267,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("nu", StoredName(NamedUser));
     }
 
-    // r111_p05 and r111_p05b: with a user variable as accessor, a bad or taken name is answered for the name, before the accessor. A
-    // 41-character name with a dash is too long before it is a syntax error.
+    // With a user variable as accessor, a bad or taken name is answered for the name, before the accessor. A 41-character name with a dash is too long before it is a syntax error.
     [Theory]
     [InlineData("ptr-1", NameSyntax)]
     [InlineData("", NameLength)]
@@ -286,7 +281,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(MissingVariable, SaveVariable(service, NamedPointer, [1], "ok_name", $"user:{NamedUser}"));
     }
 
-    // wf_var_pointer.r111_editor L66-L74: a pointer save with two variables, in either order, is refused and the pointer is unchanged.
+    // A pointer save with two variables, in either order, is refused and the pointer is unchanged.
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -299,7 +294,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal([$"ctx:{NamedContext}"], _variableBoxes[NamedPointer].Configuration.VariableIds.ToArray());
     }
 
-    // r111.ptr_unknown_accessor: every accessor that is no context variable of the room is a missing variable.
+    // Every accessor that is no context variable of the room is a missing variable.
     [Theory]
     [InlineData("999999999")]
     [InlineData("n")]
@@ -316,7 +311,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal([$"ctx:{NamedContext}"], _variableBoxes[NamedPointer].Configuration.VariableIds.ToArray());
     }
 
-    // wf_var_pointer.r111_editor L167-L171: Variable Changed in variable mode refuses a pointer.
+    // Variable Changed in variable mode refuses a pointer.
     [Fact]
     public void VariableChangedRefusesAPointerVariable()
     {
@@ -330,7 +325,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(NeedsExecutionContext, SaveAnswer());
     }
 
-    // wf_var_pointer.r111_editor L174-L177: Variable Changed in box mode refuses a picked pointer box.
+    // Variable Changed in box mode refuses a picked pointer box.
     [Fact]
     public void VariableChangedRefusesAPickedPointerBox()
     {
@@ -362,7 +357,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("saved", SaveAnswer());
     }
 
-    // wf_var_pointer.r111_editor L182-L185: an Echo of a pointer is refused; an Echo of a user variable saves.
+    // An Echo of a pointer is refused; an Echo of a user variable saves.
     [Fact]
     public void EchoRefusesAPointer()
     {
@@ -373,8 +368,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("saved", SaveVariable(service, NamedEcho, [], "pecho", $"user:{NamedUser}"));
     }
 
-    // Not observed: whether an echo's name counts. Only the five named kinds are proven, so an echo keeps the name it has and does not
-    // take a name from them.
+    // Plus rule: an echo's name does not count. It neither blocks a name of the five named kinds nor is blocked by them.
     [Fact]
     public void AnEchoNameDoesNotBlockAVariableName()
     {
@@ -387,8 +381,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("saved", SaveNamed(service, NamedUser, "nu"));
     }
 
-    // Only ASCII capitals are lowered. A non-ASCII letter stays a syntax error, also one whose lower case is an ASCII letter (the Kelvin
-    // sign), as an accented letter is on Habbo (wf_var_pointer.r111_editor).
+    // Only ASCII capitals are lowered. A non-ASCII letter stays a syntax error, also one whose lower case is an ASCII letter (the Kelvin sign).
     [Theory]
     [InlineData("\u212Aa")]
     [InlineData("ptr_\u00e9")]
@@ -401,8 +394,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("pu", StoredName(NamedPointer));
     }
 
-    // Not observed: names stored before the cleaning rule. A stored name is compared as it is stored, so a new save keeps working beside
-    // an older name that differs only in case.
+    // Names stored before the cleaning rule are compared as stored, so a new save keeps working beside an older name that differs only in case.
     [Fact]
     public void AStoredNameIsComparedAsStored()
     {

@@ -6,9 +6,9 @@ namespace Plus.Tests;
 
 public sealed partial class WiredGlideConveyorTests
 {
-    // Room 14's Fast Queue as stored in wired_item_configurations (native v2 rows): a 200 ms repeater moves six colour tiles
-    // east with carry users, and a signal restores them from their snapshot in the same pulse. Observed on hhus (R95-FQ): each
-    // pulse is one frame where every tile goes home to home and the rider is carried one tile.
+    // A Fast Queue as stored in wired_item_configurations (native v2 rows): a 200 ms repeater moves six colour tiles east with
+    // carry users, and a signal restores them from their snapshot in the same pulse. Each pulse is one frame where every tile
+    // goes home to home and the rider is carried one tile.
     private static (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] Room14FastQueueRows() =>
     [
         (91, 4, 11, 0.0, 0, "wf_trg_period_short", "native:" + """{"Version":2,"Category":0,"NativeCode":19,"OwnedIntParams":[4],"Text":"","PrimaryItems":[],"SecondaryItems":[],"FurniSourceTypes":[],"UserSourceTypes":[],"VariableIds":[],"Delay":null,"Quantifier":null,"Filter":null,"Inverse":null,"SavedState":{"Snapshots":[]}}"""),
@@ -30,8 +30,8 @@ public sealed partial class WiredGlideConveyorTests
         (121, 5, 11, 1.3, 0, "wf_xtra_mov_physics", "native:" + """{"Version":2,"Category":4,"NativeCode":7,"OwnedIntParams":[0,1,1,0],"Text":"","PrimaryItems":[],"SecondaryItems":[],"FurniSourceTypes":[0,0],"UserSourceTypes":[900],"VariableIds":[],"Delay":null,"Quantifier":null,"Filter":null,"Inverse":null,"SavedState":{"Snapshots":[]}}"""),
     ];
 
-    // Observed on hhus (R95-FQ): one frame per pulse wherever the rider stands. A rider on a middle tile has a moved tile land on
-    // it before its own tile carries it; that pulse must still be one frame with the rider entry last.
+    // One frame per pulse wherever the rider stands. A rider on a middle tile has a moved tile land on it before its own tile
+    // carries it; that pulse must still be one frame with the rider entry last.
     [Theory]
     [InlineData(4, 12, 4)]
     [InlineData(5, 12, 5)]
@@ -43,10 +43,8 @@ public sealed partial class WiredGlideConveyorTests
         RunRoom14Queue(fromX, fromY, x, Room14FastQueueRows());
     }
 
-    // Room 14 also holds an idle, unconfigured Change Variable Value box. It must not split a carried pulse into one packet per
-    // tile: hhus R95-FQ shows the forward step, the carry and the snapshot reset as one frame.
-    // Room 14 also holds an idle, unconfigured Change Variable Value box. It must not split a carried pulse into one packet per
-    // tile: hhus R95-FQ shows the forward step, the carry and the snapshot reset as one frame.
+    // An idle, unconfigured Change Variable Value box in the room must not split a carried pulse into one packet per tile: the
+    // forward step, the carry and the snapshot reset are one frame.
     [Theory]
     [InlineData(4, 12, 4)]
     [InlineData(7, 12, 7)]
@@ -56,7 +54,7 @@ public sealed partial class WiredGlideConveyorTests
         RunRoom14Queue(fromX, fromY, x, [.. Room14FastQueueRows(), .. Room14OtherRows()]);
     }
 
-    // Room 14's walk stack: walking onto the 3x3 colour tiles whispers the user's heading.
+    // The walk stack: walking onto the 3x3 colour tiles whispers the user's heading.
     private static (uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] Room14WalkMessageRows() =>
     [
         (3199, 5, 1, 0.0, 2, "wf_trg_walks_on_furni", "native:" + """{"Version":2,"Category":0,"NativeCode":1,"OwnedIntParams":[],"Text":"","PrimaryItems":[],"SecondaryItems":[],"FurniSourceTypes":[200],"UserSourceTypes":[],"VariableIds":[],"Delay":null,"Quantifier":null,"Filter":null,"Inverse":null,"SavedState":{"Snapshots":[]}}"""),
@@ -64,9 +62,8 @@ public sealed partial class WiredGlideConveyorTests
         (3201, 5, 1, 1.65, 0, "wf_act_show_message", "native:" + """{"Version":2,"Category":1,"NativeCode":7,"OwnedIntParams":[0,34,-1],"Text":"you are walking","PrimaryItems":[],"SecondaryItems":[],"FurniSourceTypes":[],"UserSourceTypes":[0],"VariableIds":[],"Delay":0,"Quantifier":null,"Filter":null,"Inverse":null,"SavedState":{"Snapshots":[]}}"""),
     ];
 
-    // Observed on AIR WIN63-202610151745-318700621: a walk stack whispering in the same pass as a Fast Queue pulse leaves the pulse
-    // one home-to-home frame. The whisper ran between the forward step and the snapshot reset and sent them as two frames, so the
-    // tiles jumped a tile ahead and back.
+    // A walk stack whispering in the same pass as a Fast Queue pulse leaves the pulse one home-to-home frame. The whisper must not
+    // split the forward step and the snapshot reset into two frames, or the tiles jump a tile ahead and back.
     [Fact]
     public void Room14WalkMessageDuringAPulseKeepsTheTilesHome()
     {

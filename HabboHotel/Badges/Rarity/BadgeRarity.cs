@@ -4,7 +4,7 @@ using Plus.Core.Settings;
 
 namespace Plus.HabboHotel.Badges.Rarity;
 
-/// <summary>WIN63 badge rarity ids (class_3472). Legendary outranks mythical.</summary>
+/// <summary>Badge rarity ids. Legendary outranks mythical.</summary>
 public enum BadgeRarityTier
 {
     Common = 0,

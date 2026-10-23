@@ -3,7 +3,7 @@ using Plus.HabboHotel.Items;
 
 namespace Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 
-/// <summary>Set Furni Transparency on furni: class_2988 reads [n, furni id x n, transparency, click through, easing] (L34-48).</summary>
+/// <summary>Set Furni Transparency on furni: [n, furni id x n, transparency, click through, easing].</summary>
 public sealed class WiredFurniTransparencyComposer(IReadOnlyList<int> furniIds, int transparency, bool allowClickThrough, int easing) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.WiredFurniTransparencyComposer;
@@ -26,7 +26,7 @@ public sealed class WiredFurniTransparencyComposer(IReadOnlyList<int> furniIds, 
     }
 }
 
-/// <summary>Set Furni Transparency on users: class_2441 reads [n, room index x n, transparency, click through, easing].</summary>
+/// <summary>Set Furni Transparency on users: [n, room index x n, transparency, click through, easing].</summary>
 public sealed class WiredUserTransparencyComposer(IReadOnlyList<int> roomIndices, int transparency, bool allowClickThrough, int easing) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.WiredUserTransparencyComposer;
@@ -40,7 +40,7 @@ public sealed class WiredUserTransparencyComposer(IReadOnlyList<int> roomIndices
     }
 }
 
-/// <summary>Set Furni Highlight: class_3488 reads [n, furni id x n, type, strength, colour, animation, easing] (L40-56).</summary>
+/// <summary>Set Furni Highlight: [n, furni id x n, type, strength, colour, animation, easing].</summary>
 public sealed class WiredFurniHighlightComposer(IReadOnlyList<int> furniIds, int type, int strength, int color, int animation, int easing) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.WiredFurniHighlightComposer;
@@ -56,7 +56,7 @@ public sealed class WiredFurniHighlightComposer(IReadOnlyList<int> furniIds, int
     }
 }
 
-/// <summary>Set Furni Highlight on users: class_3603 -> class_2412 reads [n, room index x n, type, strength, colour, animation, easing] (L37-57).</summary>
+/// <summary>Set Furni Highlight on users: [n, room index x n, type, strength, colour, animation, easing].</summary>
 public sealed class WiredUserHighlightComposer(IReadOnlyList<int> roomIndices, int type, int strength, int color, int animation, int easing) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.WiredUserHighlightComposer;
@@ -79,9 +79,9 @@ public sealed record WiredTransparencyState(int Id, int Transparency, bool Allow
 public sealed record WiredHighlightState(int Id, int Type, int Strength, int Color, int Animation, int Easing);
 
 /// <summary>
-/// The visual state a user entering the room starts from: class_3560 -> class_3015 (furni) and class_3459 -> class_2803 (users) read
-/// [n, (id, transparency, click through, easing) x n, m, (id, type, strength, colour, animation, easing) x m] (parse L25-52); the room
-/// applies them without easing (class_56.initializeWiredFurniVisualizationStates L2994, initializeWiredUserVisualizationStates L3060).
+/// The visual state a user entering the room starts from, for furni and for users:
+/// [n, (id, transparency, click through, easing) x n, m, (id, type, strength, colour, animation, easing) x m]. The room
+/// applies them without easing.
 /// </summary>
 public sealed class WiredVisualizationStateComposer(bool users, IReadOnlyList<WiredTransparencyState> transparencies,
     IReadOnlyList<WiredHighlightState> highlights) : IServerPacket

@@ -7,7 +7,7 @@ namespace Plus.Tests;
 
 public sealed class WiredSelectorWallTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: a wall exemplar selects wall furniture of that type.
+    // A wall exemplar selects wall furniture of that type.
     [Theory]
     [InlineData(false, new uint[] { 1, 2 })]
     [InlineData(true, new uint[] { 1 })]

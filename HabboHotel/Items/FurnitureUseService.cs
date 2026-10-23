@@ -103,7 +103,7 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
         quests.ProgressUserQuest(session, QuestType.ExploreFindItem, (int)item.Definition.Id);
     }
 
-    // AIR WIN63-202610151745-318700621 class_1854.as:2598 sends ROFCAE_USE_HABBOWHEEL as its own message with only the id.
+    // The client sends a Habbo wheel use as its own message with only the id.
     public void UseHabboWheel(Room room, GameClient session, uint itemId)
     {
         if (FindPermanent(room, session, itemId)?.Definition.InteractionType != InteractionType.HabboWheel) {
@@ -175,7 +175,7 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
             return;
         }
 
-        // Observed on AIR WIN63-202610131318-860371703: a user with rights uses a Place Furni copy (its state goes 0 to 1);
+        // A user with rights uses a Place Furni copy (its state goes 0 to 1);
         // without rights it does nothing. Only a plain state switch is used, since a copy never reaches storage.
         if (item.IsTemporary) {
             if (room.GetRoomItemHandler().OwnsTemporary(item) && room.CheckRights(session, false, true)

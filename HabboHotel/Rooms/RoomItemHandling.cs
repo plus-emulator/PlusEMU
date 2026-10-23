@@ -23,16 +23,14 @@ public partial class RoomItemHandling
     private uint _nextTemporaryWallId = TemporaryItemIds.First;
 
     /// <summary>
-    /// The highest altitude a Wired copy is placed at. Observed on hhus (AIR WIN63-202610131318-860371703): 560 copies stacked "On top"
-    /// stopped at 35 per tile, the top one at z 35.0, with no error and no per-room cap.
+    /// The highest altitude a Wired copy is placed at: copies stacked "On top" stop at 35 per tile, the top one at z 35.0, with no error and no per-room cap.
     /// </summary>
     public const double TemporaryItemMaxAltitude = 35;
 
     public bool OwnsTemporary(Item item) => item.IsTemporary
         && _temporaryItems.TryGetValue(item.Id, out var owned) && ReferenceEquals(owned, item);
 
-    // Copies take the next id of the client's temporary band. A removed copy's id is not reused while the room stays loaded; a reload
-    // starts the band again (observed on hhus: 2147401728, 1729, 1730 after Wired removals, and 2147401728 again after an unload).
+    // Copies take the next id of the client's temporary band. A removed copy's id is not reused while the room stays loaded; a reload starts the band again.
     public Item? PlaceTemporaryFloorItem(ItemDefinition definition, uint ownerId, int x, int y,
         int rotation, double? height = null, string state = "", bool sendMessage = true)
     {
@@ -113,8 +111,7 @@ public partial class RoomItemHandling
         return null;
     }
 
-    // Gates, one-way gates and rollers can be Place Furni templates, but no copy is placed onto one, also not onto their copies (observed
-    // on hhus: room.error.wired.placement_failure on top of the template, a copy on a free tile).
+    // Gates, one-way gates and rollers can be Place Furni templates, but no copy is placed onto one, also not onto their copies (room.error.wired.placement_failure on top of the template, a copy on a free tile).
     public bool BlocksTemporaryCopy(ItemDefinition definition, int x, int y, int rotation) =>
         Gamemap.GetAffectedTiles(definition.Length, definition.Width, x, y, rotation).Values.Select(tile => new Point(tile.X, tile.Y))
             .Append(new Point(x, y)).Distinct()
@@ -125,8 +122,7 @@ public partial class RoomItemHandling
     public bool RemoveTemporaryFloorItem(Item item) => RemoveTemporary(item, true);
 
     /// <summary>
-    /// Remove Temporary Furni: the copies leave in one ObjectRemoveMultiple, not in ObjectRemove. Observed on hhus (AIR
-    /// WIN63-202610131318-860371703): in 3589 [1, 2147401728, -1, false].
+    /// Remove Temporary Furni: the copies leave in one ObjectRemoveMultiple, not in ObjectRemove.
     /// </summary>
     public bool RemoveTemporaryFloorItemsByWired(IEnumerable<Item> items)
     {
@@ -195,7 +191,7 @@ public partial class RoomItemHandling
         _rewards = rewards;
         HopperCount = 0;
         GotRollers = false;
-        // Observed on AIR WIN63-202610201032-107964540: a room without a speed controller steps its rollers every 2000 ms, which is 4 room ticks.
+        // A room without a speed controller steps its rollers every 2000 ms, which is 4 room ticks.
         _mRollerSpeed = 3;
         _mRollerCycle = 0;
         _movedItems = new();
@@ -707,14 +703,12 @@ public partial class RoomItemHandling
             return false;
         }
 
-        // Observed on AIR WIN63-202610131318-860371703: a user with rights moves and rotates Place Furni copies. The copy is
-        // never stored, so the move runs as an anonymous one: no placement hooks or travel registration that write to storage.
+        // A user with rights moves and rotates Place Furni copies. The copy is never stored, so the move runs as an anonymous one: no placement hooks or travel registration that write to storage.
         if (item.IsTemporary) {
             session = null!;
         }
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): the owner places a floor item (walkable or not) on the tile they stand on,
-        // and moves one onto it. Avatars only block server-side and Wired moves, never a user's own placement or move.
+        // The owner places a floor item (walkable or not) on the tile they stand on, and moves one onto it. Avatars only block server-side and Wired moves, never a user's own placement or move.
         bool HasBlockingUsers(int x, int y) => wiredCollision == null
             ? session == null && _room.GetGameMap().SquareHasUsers(x, y)
             : wiredCollision.BlocksUsers(_room.GetGameMap().GetRoomUsers(new(x, y)));
@@ -793,7 +787,7 @@ public partial class RoomItemHandling
                     newZ = MagicTileHeight.Clamp(newZ, floorZ);
                 }
 
-                // The rotate button offers only the asset's directions, diagonals included (AIR WIN63-202610151745-318700621, room/class_1854.as:2167-2222).
+                // The rotate button offers only the asset's directions, diagonals included.
                 if (newRot != 8 && !FurnitureDirections.Allows(item.Definition, newRot)) {
                     newRot = 0;
                 }

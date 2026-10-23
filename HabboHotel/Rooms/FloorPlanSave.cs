@@ -35,7 +35,7 @@ public static class FloorPlanSave
 
     /// <summary>
     /// Map-only keeps the room's door, both thicknesses, and wall height.
-    /// class_2506 writes the wall-height int only when that argument is not -1.
+    /// The client writes the wall-height int only when that argument is not -1.
     /// Main Save passes -1 with the checkbox off. Import Save omits the argument,
     /// so the default -1 applies. Those two packets are the same five ints, and
     /// the missing int is stored as -1.

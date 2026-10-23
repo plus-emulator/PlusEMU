@@ -3,10 +3,9 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610201032-107964540 (three runs, identical): the limit of 20 ids in one pick list holds on the add-ons and on the variable
-// boxes too. One of these saves 20 picks, and a save of 21 gets no answer and leaves the picks as they were. On a card with a refusal of its own the
-// order is the same: a variable box with no name answers its name key at 20 picks and nothing at 21, and so do the cards that refuse picks of a wrong
-// kind (a Click Tile trigger, Control Clock, Send Signal, Toggle State with a temporary copy): the key at 19 and 20 picks, nothing at 21.
+// The limit of 20 ids in one pick list holds on the add-ons and on the variable boxes too. A save of 21 gets no answer
+// and leaves the picks as they were. A variable box with no name answers its name key at 20 picks and nothing at 21. Cards that refuse picks of a wrong kind (a Click Tile trigger, Control Clock, Send Signal,
+// Toggle State with a temporary copy) answer their key at 19 and 20 picks and nothing at 21.
 public partial class PlacedFurniRoomTests
 {
     public static TheoryData<string> CardsWithAPickLimit() => new(

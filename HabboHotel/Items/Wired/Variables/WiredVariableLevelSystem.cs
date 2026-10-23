@@ -142,9 +142,7 @@ public sealed class WiredVariableLevelSystem
         return new(current + 1, _thresholds.Length, start, maxed ? start : next, maxed);
     }
     /// <summary>
-    /// A part's value; null when the part is absent (is_maxed below the last level). Observed on AIR WIN63-202610151745-318700621 (linear
-    /// 100, three levels): xp 50 reads level 1, current_xp 50, progress 50, 50 %, xp_required 100, xp_remaining 50, no is_maxed; xp 200
-    /// and 1200 read level 3, current_xp 200, progress 0, 0 %, xp_required 0, xp_remaining 0 and is_maxed present (-1).
+    /// A part's value; null when the part is absent (is_maxed below the last level). At the last level progress, xp_required and xp_remaining read 0 and is_maxed is present (-1).
     /// </summary>
     public long? Read(long rawXp, int subvariable)
     {
@@ -167,7 +165,7 @@ public sealed class WiredVariableLevelSystem
         };
     }
 
-    /// <summary>The variable's value after current_xp is written: at most the last level's start (observed: 250 wrote 200).</summary>
+    /// <summary>The variable's value after current_xp is written: at most the last level's start (250 writes 200).</summary>
     public long ClampXp(long xp) => Math.Clamp(xp, 0, _thresholds.Length == 0 ? xp : _thresholds[^1]);
     private static long Clamp(decimal value) => (long)Math.Clamp(value, 0m, long.MaxValue);
 }

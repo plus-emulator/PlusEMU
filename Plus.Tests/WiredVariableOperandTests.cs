@@ -31,8 +31,8 @@ public sealed class WiredVariableOperandTests
         for (var i = 0; i < holders.Length; i++) {
             module.Mutate(new(target, "custom:10"), holders[i], WiredVariableMutation.Give, 0, frame);
 
-            // Furni destinations take the value of a different furni reference holder each (observed on AIR WIN63-202610201032-107964540), so
-            // here only the first furni holds the reference and every destination reads its value.
+            // Furni destinations take the value of a different furni reference holder each, so here only the first furni holds
+            // the reference and every destination reads its value.
             if (target == WiredVariableTarget.User || i == 0) {
                 module.Mutate(new(target, "custom:11"), holders[i], WiredVariableMutation.Give, (i + 1) * 10, frame);
             }

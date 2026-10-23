@@ -19,8 +19,7 @@ public sealed class WiredVariableWidthParityTests
         Assert.Equal(expected, WiredVariableArithmetic.Apply(operation, current, operand));
     }
 
-    // Observed r92g r92g-minmax (AIR WIN63-202610131318-860371703; runs/r92g-minmax-20261015T080347 windows minhigh-w1, minlow-w1,
-    // maxhigh-w1, maxlow-w1): wf_act_change_var_val from 5. Set minimum (40) is a floor, set maximum (41) a cap.
+    // wf_act_change_var_val from 5. Set minimum (40) is a floor, set maximum (41) a cap.
     [Theory]
     [InlineData(40, 5, 8, 8L)]
     [InlineData(40, 5, 3, 5L)]
@@ -98,8 +97,8 @@ public sealed class WiredVariableWidthParityTests
         foreach (var (holder, index) in holders.Select((holder, index) => (holder, index))) {
             Assert.True(module.Mutate(new(holder.Target, "custom:10"), holder, WiredVariableMutation.Give, index, frame));
 
-            // Furni destinations take the value of a different furni reference holder each (observed on AIR WIN63-202610201032-107964540), so
-            // the wide reference sits on the first furni only and every destination reads it.
+            // Furni destinations take the value of a different furni reference holder each, so the wide reference sits on the
+            // first furni only and every destination reads it.
             if (index == 0) {
                 Assert.True(module.Mutate(new(holder.Target, "custom:11"), holder, WiredVariableMutation.Give, long.MaxValue, frame));
             }

@@ -9,7 +9,7 @@ namespace Plus.Tests;
 
 public class FurnitureWireTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: every plain floor item in room loads and updates carries extra 0.
+    // Every plain floor item in room loads and updates carries extra 0.
     [Fact]
     public void FloorItemExtraIsZeroUnlessGiftOrDisc()
     {
@@ -158,8 +158,7 @@ public class FurnitureWireTests
         public void WriteDouble(double value) => Writes.Add(value);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a fridge (vending machine) and Floor Switch are usable by anyone, a football
-    // score board by nobody, and a game counter and a one-state recolorable block by room controllers.
+    // A fridge (vending machine) and Floor Switch are usable by anyone, a football score board by nobody, and a game counter and a one-state recolorable block by room controllers.
     [Theory]
     [InlineData(InteractionType.VendingMachine, 2, 2)]
     [InlineData(InteractionType.WfFloorSwitch1, 3, 2)]

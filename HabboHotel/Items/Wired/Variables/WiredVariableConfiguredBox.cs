@@ -75,20 +75,17 @@ public sealed class WiredVariableConfiguredBox : IWiredContextualItem
         var changes = (variables?.Module.ValueChanges ?? 0) - changesBefore;
         var lowered = changes > 0 && (variables?.Module.ValueDecreases ?? 0) - decreasesBefore == changes;
 
-        // Observed on hhus (AIR WIN63-202610131318-860371703): a Give Variable or Change Variable Value that writes a variable flashes
-        // that variable's definition box, and the variable add-ons on its tile, with the action's own flash.
-        // Observed on AIR WIN63-202610201032-107964540: a delayed write through a pointer flashes the definition of the variable the pointer
-        // points at, like the same write on that variable. The pointer's own box never flashes, and without a delay the write is ignored.
+        // A Give Variable or Change Variable Value that writes a variable flashes that variable's definition box, and the variable add-ons on its tile, with the action's own flash.
+        // A delayed write through a pointer flashes the definition of the variable the pointer points at, like the same write on that variable.
+        // The pointer's own box never flashes, and without a delay the write is ignored.
         if (_executors.Destination(Descriptor.CanonicalName, configuration) is { } named && variables != null
             && (configuration.Delay > 0 ? variables.Module.Unpoint(named, context.VariableFrame) : named) is { } destination
             && !variables.Module.IsPointer(destination)) {
-            // Observed on AIR WIN63-202610201032-107964540: runs of one Variable Changed stack in the same tick (two Gives in one click)
-            // flip the context variable they each give once in that tick's update, so those gives count as one firing here.
+            // Runs of one Variable Changed stack in the same tick (two Gives in one click) flip the context variable they each give once in that tick's update, so those gives count as one firing here.
             var firing = Descriptor.CanonicalName == "wf_act_give_var" && destination.Target == WiredVariableTarget.Context
                 && context.Trigger is WiredVariableChangedTrigger trigger ? trigger : context.Firing ?? context;
 
             // A batched Change Variable Value is written when its stack's batch flushes, so the kind is picked then, in the same pass.
-            // Observed on AIR WIN63-202610151745-318700621: add 1 after give 5 shows 2, another add 1 shows 3, subtract 1 shows 4.
             if (Descriptor.CanonicalName == "wf_act_change_var_val" && context.VariableFrame.VariableChanges is { } batch && variables != null) {
                 batch.AfterFlush(variables.Module, destination, (moved, down) => variables.FlashDefinition(destination, DefinitionKind(moved, down), firing));
             }
@@ -100,8 +97,7 @@ public sealed class WiredVariableConfiguredBox : IWiredContextualItem
         return true;
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_definer_same): a change that leaves the value as it was only flips the
-    // definition between 0 and 1 (6 then 0, then 1); one that lowers the value shows 4/5 instead of 2/3.
+    // A change that leaves the value as it was only flips the definition between 0 and 1; one that lowers the value shows 4/5 instead of 2/3.
     private int DefinitionKind(bool valueChanged, bool lowered) => Descriptor.CanonicalName switch
     {
         "wf_act_give_var" => WiredFlashStates.DefinitionGiven,

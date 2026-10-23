@@ -4,7 +4,6 @@ using Plus.HabboHotel.GameClients;
 namespace Plus.Communication.Packets.Outgoing.Catalog;
 
 // One catalog offer as the client parses it, shared by catalog pages, single product offers and club gifts.
-// AIR WIN63-202610151745-318700621 package_5/class_1948.as:35 (products: package_5/class_2305.as:33)
 public static class CatalogOfferWriter
 {
     public static void Write(IOutgoingPacket packet, CatalogOfferSnapshot offer)

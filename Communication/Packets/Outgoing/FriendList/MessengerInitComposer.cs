@@ -10,6 +10,6 @@ public class MessengerInitComposer(int limit) : IServerPacket
         packet.WriteInteger(limit);
         packet.WriteInteger(limit);
         packet.WriteInteger(limit);
-        packet.WriteInteger(0); // friend categories (AIR package_18/class_2048.as:30)
+        packet.WriteInteger(0); // friend categories
     }
 }

@@ -8,7 +8,7 @@ internal sealed class UseHabboWheelEvent(IFurnitureUseService furniture) : RoomP
 {
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
-        // AIR WIN63-202610151745-318700621 package_100/class_3347.as:21 sends only the wheel id.
+        // The client sends only the wheel id.
         furniture.UseHabboWheel(room, session, BuildersClubItemIds.FromWire(packet.ReadUInt()));
 
         return Task.CompletedTask;

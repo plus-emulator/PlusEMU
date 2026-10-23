@@ -131,10 +131,9 @@ public static class WiredRoomForwarding
     /// <summary>The arriving user loses the glow on this room tick after entering.</summary>
     public const int ArrivalEffectTicks = 3;
 
-    // Observed on AIR WIN63-202610151745-318700621 (Furni Clicked and Walks On firings, room linker pair): the firing puts effect 234 on
-    // the user (2517) at once; the user keeps walking, and 951-953 ms later (not on a room tick) the room switch starts. The user enters
-    // on the other linker's tile facing its rotation, still with effect 234, which is cleared on the linked room's third tick after the
-    // entry (1.1-1.4 s). With the other linker picked up nothing happens.
+    // The firing puts effect 234 on the user at once. The user keeps walking, and about 950 ms later (not on a room tick) the room switch starts.
+    // The user enters on the other linker's tile facing its rotation, still with effect 234, which is cleared on the linked room's third tick
+    // after the entry. With the other linker picked up nothing happens.
     public static bool Execute(WiredRuntimeContext context, WiredConfiguration config, ILogger logger, IItemTravelStore travelStore)
     {
         var items = context.Targets.ResolveFurni(context, config.SelectedItems, config.FurniSources["links"]);
@@ -171,11 +170,10 @@ public static class WiredRoomForwarding
                 habbo.TeleporterId = target.TeleporterId;
                 habbo.ForwardArrivalRestoreEffect = original;
                 room.GetWired().RecordRoomNetworkForward(user, target.RoomId);
-                // The glow goes along to the linked room (AIR WIN63-202610151745-318700621): leaving must not put the old effect back.
+                // The glow goes along to the linked room: leaving must not put the old effect back.
                 WiredTemporaryEffects.For(room).Drop(user);
-                // Observed on AIR WIN63-202610151745-318700621: no RoomForward and no OpenConnection; the server takes the user out of the
-                // room (YouArePlayingGame) and sends the linked room's data starting with RoomReady. Run outside this room's Wired pass so
-                // two rooms forwarding into each other cannot hold each other's locks.
+                // No RoomForward and no OpenConnection: the server takes the user out of the room (YouArePlayingGame) and sends the linked room's data
+                // starting with RoomReady. Run outside this room's Wired pass so two rooms forwarding into each other cannot hold each other's locks.
                 SwitchRoom(() => habbo.PrepareRoom(target.RoomId, "", openConnection: false));
             }
 

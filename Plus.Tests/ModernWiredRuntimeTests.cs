@@ -77,7 +77,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(1, operations.Resets);
         var restartedAt = instant.AddMilliseconds(500);
 
-        // Observed on AIR WIN63-202610201032-107964540: Less Than 2 passes through pulse 2 (up to 1499 ms) and More Than 2 from pulse 2 (1000 ms).
+        // Less Than 2 passes through pulse 2 (up to 1499 ms) and More Than 2 passes from pulse 2 (1000 ms).
         AssertBoundary("wf_cnd_time_less_than", restartedAt.AddMilliseconds(1499).ToOffset(TimeSpan.FromHours(9)), true);
         AssertBoundary("wf_cnd_time_less_than", restartedAt.AddMilliseconds(1500).ToOffset(TimeSpan.FromHours(9)), false);
         AssertBoundary("wf_cnd_time_more_than", restartedAt.AddMilliseconds(999).ToOffset(TimeSpan.FromHours(-7)), false);
@@ -408,7 +408,7 @@ public partial class ModernWiredRuntimeTests
         var settings = new WiredRoomSettings(f.Room, store);
         typeof(WiredComponent).GetField("<Settings>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance)!
             .SetValue(f.Room.GetWired(), settings);
-        // AIR enables Clear from hasWritePermission, which is the server's canModify (WiredPermissions), so a rights holder with modify rights may clear.
+        // The client enables Clear from the server's canModify (WiredPermissions), so a rights holder with modify rights may clear.
         store.Saved = new(InspectMask: (int)WiredRoomAccess.Everyone, ModifyMask: (int)WiredRoomAccess.Rights);
         settings.Reload();
 
@@ -809,7 +809,7 @@ public partial class ModernWiredRuntimeTests
         var attached = true;
         var first = effects.Acquire(user, () => current, value => current = value, () => attached);
         var second = effects.Acquire(user, () => current, value => current = value, () => attached);
-        // Observed on hhus (AIR WIN63-202610131318-860371703): a second lease of the same effect while the first is live adds nothing; the
+        // A second lease of the same effect while the first is live adds nothing; the
         // first one's end clears the effect.
         first();
         Assert.Equal(8, current);
@@ -1021,7 +1021,7 @@ public partial class ModernWiredRuntimeTests
             Assert.True(Pulse(room, action, line, blockedBySelf: false));
         }
 
-        // Move/Rotate stacks against the wall like Move To Direction (observed on AIR WIN63-202610151745-318700621, r97_mv_collide).
+        // Move/Rotate stacks against the wall like Move To Direction.
         Assert.Equal(new[] { 0, 0, 0, 0, 1, 2, 3 }, line.Select(item => item.GetX));
 
         var (open, free) = TileLine(6, 1, 1, frontFirst);
@@ -1038,7 +1038,7 @@ public partial class ModernWiredRuntimeTests
     [InlineData(InteractionType.None, false, true, true)]
     [InlineData(InteractionType.Stacktool, true, false, true)]
     [InlineData(InteractionType.Stacktool, true, true, true)]
-    // Observed on AIR WIN63-202610151745-318700621 (r97_mv_collide): Move/Rotate lands on stackable furniture; only furniture that
+    // Move/Rotate lands on stackable furniture; only furniture that
     // cannot be stacked on blocks it, unless physics moves through it.
     public void MoveRotateIsBlockedByNonStackableFurnitureUnlessPhysicsMovesThroughIt(InteractionType type, bool stackable, bool through, bool moves)
     {
@@ -1090,7 +1090,7 @@ public partial class ModernWiredRuntimeTests
         Assert.True(WiredRoomOperations.CanMoveItem(room, mover, 1, 1, 0, collision: WiredRoomMovement.Collision(through, step: true)));
     }
 
-    // wf_act_rel_mov is no step move: observed r92f r92-move-addons nophys-w1 stacks it on the furni ahead (see WiredActionPortParityTests.ObservedR92).
+    // wf_act_rel_mov is no step move: it stacks on the furni ahead.
     [Theory]
     [InlineData("wf_act_move_rotate", new[] { -1, 2, 100, 0 }, true)]
     public void StepActionsStopAtStackableFurnitureButRotatingInPlaceIsNoStep(string name, int[] ints, bool changes)
@@ -1195,7 +1195,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((1, 1, name == "wf_act_move_to_dir" && !tileFirst ? 0.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
     }
 
-    // wf_act_rel_mov lands on stackable furni (observed r92f r92-move-addons nophys-w1), so only move_rotate keeps step rules here.
+    // wf_act_rel_mov lands on stackable furni, so only move_rotate keeps step rules here.
     [Theory]
     [InlineData("wf_act_move_rotate", true)]
     [InlineData("wf_act_move_rotate", false)]
@@ -1208,7 +1208,7 @@ public partial class ModernWiredRuntimeTests
         var ahead = StackItem(map, items, 9, "color_tile", 1, 0, 0.5, true);
         var action = StackBox(room, name, 2, stack);
 
-        // Move/Rotate lands on stackable furniture like Move To Direction (observed on AIR WIN63-202610151745-318700621, r97_mv_collide).
+        // Move/Rotate lands on stackable furniture like Move To Direction.
         var directional = name is "wf_act_move_to_dir" or "wf_act_move_rotate";
         Assert.Equal(directional, StackPulse(room, action, stack, ahead));
 
@@ -1224,7 +1224,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((1, 1, tileFirst ? 1.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
     }
 
-    // wf_act_rel_mov stacks in pick order at a wall instead (observed r92k r92h-rel-wall; see WiredActionPortParityTests.ObservedR92k).
+    // wf_act_rel_mov stacks in pick order at a wall instead.
     [Theory]
     [InlineData("wf_act_move_rotate", true)]
     [InlineData("wf_act_move_rotate", false)]
@@ -1402,7 +1402,7 @@ public partial class ModernWiredRuntimeTests
         return action.Execute(context);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (r97_chase_tie): from an exact diagonal the chase steps along either axis.
+    // From an exact diagonal the chase steps along either axis.
     [Fact]
     public void ChaseFromAnExactDiagonalPicksEitherAxis()
     {
@@ -1413,9 +1413,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new HashSet<Point> { new(1, 0), new(0, 1) }, first);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (wf_act_chase.two_users_*): from (8,11) with users 2 west and 2 east the block went
-    // east 5 and west 5 times in 10; with users 2 north and 2 east it went east 5 and north 5 times. With users 2 west and 3 east it
-    // went west 10 times in 10.
+    // With equally near users on two sides the chase steps toward either. With a nearer user it always steps toward that user.
     [Theory]
     [InlineData(6, 11, 10, 11)]
     [InlineData(8, 9, 10, 11)]
@@ -1730,7 +1728,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(0, reply.Sprite);
         Assert.Equal(100u, reply.ItemId);
         Assert.Equal("", reply.Text);
-        // move_rotate frames end with the hotel-owned int: 1 until the first save, then 0 (observed r92k r92h-hidden-ints).
+        // move_rotate frames end with the hotel-owned int: 1 until the first save, then 0.
         Assert.Equal(direction ? owned : [.. owned, picks.Length == 0 && owned.SequenceEqual([0, 0]) ? 1 : 0], reply.Owned);
         Assert.Empty(reply.Variables);
         Assert.Equal(new[] { 100 }, reply.Furni);
@@ -1742,7 +1740,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(reply.UsersAllowed);
         Assert.Equal(new[] { 100 }, reply.FurniDefaults);
         Assert.Empty(reply.UserDefaults);
-        // Observed on hhus (AIR WIN63-202610131318-860371703): rotate allows wall picks and its defaults end with the hotel int 1.
+        // Rotate allows wall picks and its defaults end with the hotel int 1.
         Assert.Equal(!direction, reply.AllowWall);
         Assert.Equal(0, reply.ContextCount);
         Assert.Equal(new[] { 0, 0, 1 }, reply.OwnedDefaults);
@@ -2023,7 +2021,7 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public async Task ShowMessageSaveStoresWordFilteredTextAndStillAcknowledges()
     {
-        // hotel-text-filter-fact-r63: the hotel word filter rewrites the text at save; the stored text is what the editor returns.
+        // The hotel word filter rewrites the text at save; the stored text is what the editor returns.
         var f = new MovementOracleSession("wf_act_show_message");
         var filter = new ReplacingFilter("56-20261013", "bobba");
         object[] body = [100, 3, 0, 202, -1, "wiredprobe-username-sol-r56-20261013 B<$(clickprobeuser)>E", 0, 0, 0, 1, 0, 0, 0];
@@ -2191,7 +2189,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    // Observed on AIR WIN63-202610151745-318700621: the forward sends no RoomForward; the server switches the room itself.
+    // The forward sends no RoomForward; the server switches the room itself.
     public void ConfiguredRoomForwardingSwitchesTheRoomServerSideAndLeavesRoomChecksToEntry()
     {
         using var fixture = new TeleportFixture();
@@ -2295,7 +2293,7 @@ public partial class ModernWiredRuntimeTests
         Assert.False(targets.HasTargets);
         var user = new RoomUser(1, 0, 8, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 1, Y = 0 };
         RoomUsers(room)[8] = user;
-        // Starting next to the user is no arrival (observed on AIR WIN63-202610151745-318700621); walking away and stopping on a tile next
+        // Starting next to the user is no arrival; walking away and stopping on a tile next
         // to the user again is one, a room tick later.
         targets.Follow(bot, user);
         Assert.Empty(targets.Poll(room, 0));
@@ -2325,8 +2323,8 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void BotTalkKeepsTheOctoberHideNameFieldAndOlderSaves()
     {
-        // WIN63-202610121709 bot talk editors save [mode, bubble width, hide bot name].
-        // Observed on AIR WIN63-202610151745-318700621: a bot name with no message is read as a message with no bot.
+        // Bot talk editors save [mode, bubble width, hide bot name].
+        // A bot name with no message is read as a message with no bot.
         Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk", new() { IntParams = [0, 100, -1], Text = "Robbie\t" }, out var empty, out _));
         Assert.Equal("\tRobbie", empty.Text);
         Assert.True(WiredBotActions.TryValidate("wf_act_bot_talk_to_avatar", new() { IntParams = [0, 0, 100, -1], Text = "Robbie" }, out var bare, out _));
@@ -2360,8 +2358,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703 (owner and a bot inside one area, Teleport To on the selector's users):
-    // a filter alone teleports nobody, a Habbo filter keeps only the owner whether it stands above or below the area selector,
+    // A filter alone teleports nobody, a Habbo filter keeps only the owner whether it stands above or below the area selector,
     // a furni filter leaves the users alone, and an inverted Bot filter keeps the owner.
     [Theory]
     [InlineData("filter alone", false, false)]
@@ -2420,7 +2417,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: an inverted Bot selector keeps every user that is not a bot.
+    // An inverted Bot selector keeps every user that is not a bot.
     [Fact]
     public void InvertedUserTypeSelectorKeepsEveryUserOfTheOtherKinds()
     {
@@ -2460,7 +2457,7 @@ public partial class ModernWiredRuntimeTests
         return bot;
     }
 
-    // Observed on AIR WIN63-202610151745-318700621 (wf_xtra_filter_users.area_teleport): a user already standing on the target is
+    // A user already standing on the target is
     // teleported all the same.
     [Fact]
     public void TeleportRunsForAUserAlreadyOnTheTarget()
@@ -2500,7 +2497,7 @@ public partial class ModernWiredRuntimeTests
         using var f = new TeleportFixture();
         f.Use(1, 0);
         var replies = Capture(f.Habbo.Client);
-        // Observed on AIR WIN63-202610131318-860371703: fast = effect 235, an on-boundary firing lands at +1000 ms and drops the
+        // Fast = effect 235, an on-boundary firing lands at +1000 ms and drops the
         // effect at +1500 ms. The relocation runs at the start of the room tick that publishes it.
         f.Fire(land: false);
         Assert.Equal(235, f.User.CurrentEffect);
@@ -2546,7 +2543,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         Assert.Equal(4, f.User.CurrentEffect);
         Assert.Contains(replies, reply => reply.Header == ServerPacketHeader.AvatarEffectComposer);
-        // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal firing lands at +2.0 s and drops the effect at +3.5 s. The
+        // An on-boundary normal firing lands at +2.0 s and drops the effect at +3.5 s. The
         // relocation runs at the start of the room tick that publishes it.
         f.Advance(1950);
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
@@ -2576,7 +2573,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(f.Errors);
     }
 
-    // Observed on AIR WIN63-202610131318-860371703: onto furni nobody can stand on, the user lands on the free tile next to it.
+    // Onto furni nobody can stand on, the user lands on the free tile next to it.
     [Fact]
     public void TeleportOntoFurniNobodyCanStandOnLandsOnTheFreeTileNextToIt()
     {
@@ -3059,7 +3056,7 @@ public partial class ModernWiredRuntimeTests
             Engine.Add(Trigger);
             Engine.Add(Action);
         }
-        // Observed on AIR WIN63-202610131318-860371703: an on-boundary normal teleport lands 2000 ms after the firing (a fast one at 1000 ms).
+        // An on-boundary normal teleport lands 2000 ms after the firing (a fast one at 1000 ms).
         public const int TeleportLandsAfterMilliseconds = 2000;
         public void Fire(bool land = true, bool owned = true)
         {
@@ -3159,7 +3156,7 @@ public partial class ModernWiredRuntimeTests
         var clocks = new WiredCounterController();
         Assert.True(clocks.Attach(item));
         Assert.True(clocks.Control(item, 0, 100));
-        // Observed on AIR WIN63-202610131318-860371703: the half-second steps sit on the room's 500 ms grid, so a firing at 100 ms
+        // The half-second steps sit on the room's 500 ms grid, so a firing at 100 ms
         // takes its first step at 500 ms and shows "1" at 1000 ms.
         Assert.Empty(clocks.Poll(499));
         var half = Assert.Single(clocks.Poll(500));
@@ -3681,7 +3678,7 @@ public partial class ModernWiredRuntimeTests
         definition.Stackable = true;
         definition.Height = 1;
         Assert.Null(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 80));
-        // Observed on hhus: copies stop at altitude 35, and there is no per-room cap (560 copies were placed).
+        // Copies stop at altitude 35, and there is no per-room cap.
         Assert.Null(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 35.5));
         Assert.NotNull(handler.PlaceTemporaryFloorItem(definition, 1, 0, 0, 0, 35));
         definition.Height = 0;
@@ -4444,7 +4441,7 @@ public partial class ModernWiredRuntimeTests
         Assert.All(keys, key => Assert.Null(flights.Read(f.Target, "@projectile.animation." + key, 1000)));
     }
 
-    // Observed on hhus (AIR WIN63-202610131318-860371703): a default projectile add-on moves a colortile diagonally one tile,
+    // A default projectile add-on moves a colortile diagonally one tile,
     // keeps rotation 0 and only adds curveStrength 50 to the WiredMovements entry.
     [Fact]
     public void DefaultProjectileAddonMovesStackFurniDiagonallyWithItsCurve()
@@ -4464,7 +4461,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((2, 2, 0), (f.Target.GetX, f.Target.GetY, f.Target.Rotation));
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a heading the furni lacks lands it on its defaultdir, and the shooter faces
+    // A heading the furni lacks lands it on its defaultdir, and the shooter faces
     // the exact heading on every fire, also when the furni keeps its rotation. A one-direction wf_colortile leaves the shooter.
     [Theory]
     [InlineData(new[] { 0 }, 0, 0, 0, 2)]

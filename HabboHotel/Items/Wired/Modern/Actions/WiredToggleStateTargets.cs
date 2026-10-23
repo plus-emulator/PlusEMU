@@ -1,10 +1,9 @@
 namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
-/// Which furni Toggle State changes. Observed on AIR WIN63-202610201032-107964540: it changes colour tiles and other state furni and
-/// every Wired box in its list, but never a floor switch, an antenna, a pressure plate, an arrow plate, a box, a pyramid or the two
-/// plain game tiles, whatever number of states they have. A one-state furni, such as the stairs, is listed with the state it has. A furni
-/// whose height depends on its state is skipped while furni stand on it.
+/// Which furni Toggle State changes: colour tiles and other state furni and every Wired box in its list, but never a floor switch, an antenna,
+/// a pressure plate, an arrow plate, a box, a pyramid or the two plain game tiles, whatever number of states they have. A one-state furni,
+/// such as the stairs, is listed with the state it has. A furni whose height depends on its state is skipped while furni stand on it.
 /// </summary>
 internal static class WiredToggleStateTargets
 {
@@ -54,8 +53,8 @@ internal static class WiredToggleStateTargets
     private static bool LeftAloneByRandom(string name) => RandomUntouched.Contains(name);
 
     /// <summary>
-    /// The furni Toggle to Random changes. Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs, 24 firings each): it changes colour
-    /// tiles, floor switches, number tiles, glow balls, blocks, knobs, toggles, glass doors, sliders, team tiles, team meters, mazes and
+    /// The furni Toggle to Random changes: colour tiles,
+    /// floor switches, number tiles, glow balls, blocks, knobs, toggles, glass doors, sliders, team tiles, team meters, mazes and
     /// fire gates, but no Wired box in its list (the boxes of the running stack show their normal flash), no counter, the two plain game
     /// tiles, the pyramid, the box, the arrow plates, the pressure and ring plates, the antennas, the blobs or the buttons. The other
     /// blob and button colours and the other counters are taken to follow their family.

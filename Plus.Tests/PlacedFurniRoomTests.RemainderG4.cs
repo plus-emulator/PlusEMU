@@ -8,8 +8,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // Observed on AIR WIN63-202610151745-318700621: the reference editor context holds only the shared variables, with no variable
-    // catalog hash; the editor picks from that list (ReferenceVariable.as:76-90).
+    // The reference editor context holds only the shared variables, with no variable catalog hash. The editor picks from that list.
     [Fact]
     public void AReferenceEditorCarriesTheSharedListButNoVariableCatalogHash()
     {

@@ -144,7 +144,7 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
                 Assert.Equal((room.Model.DoorX, room.Model.DoorY), (avatar.X, avatar.Y));
                 Assert.Contains(sent, packet => packet.Header == ServerPacketHeader.RoomEntryInfoComposer);
                 Assert.Equal(1, room.UserCount);
-                // Observed on AIR WIN63-202610201032-107964540: a bot placed on a colour tile at Z 0.2 is listed at "0.2" again after the room reloads.
+                // A bot placed on a colour tile at Z 0.2 is listed at "0.2" again after the room reloads.
                 var botEntry = HabbiconTestSupport.Incoming("room bot", "", "hd-180-1", bot.VirtualId, 1, 1, "0.2").Buffer;
                 Assert.Contains(sent, packet => packet.Header == ServerPacketHeader.UsersComposer && packet.Payload.AsSpan().IndexOf(botEntry.Span) >= 0);
                 Assert.True(room.GetRoomUserManager().TryGetPet(13, out var petUser));

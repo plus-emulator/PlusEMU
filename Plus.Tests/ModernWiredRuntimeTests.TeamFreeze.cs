@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Observed on AIR WIN63-202610151745-318700621: while a user is frozen, Join Team and Leave Team change the team and send
+// While a user is frozen, Join Team and Leave Team change the team and send
 // YouArePlayingGame, but the user keeps the freeze effect. Unfreeze then puts back the effect of the current team, or 0 without a team.
 public partial class ModernWiredRuntimeTests
 {
@@ -57,7 +57,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(0, f.Habbo.Effects!.CurrentEffect);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: a frozen user joining a Battle Banzai or Freeze game team, and leaving it, gets only
+    // A frozen user joining a Battle Banzai or Freeze game team, and leaving it, gets only
     // YouArePlayingGame and keeps the freeze effect, like a Wired team.
     [Theory]
     [InlineData(4, 1)]
@@ -87,7 +87,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(0, f.Habbo.Effects!.CurrentEffect);
     }
 
-    // Observed on AIR WIN63-202610151745-318700621: unfreeze inside a Battle Banzai Yellow team showed 36 and inside a Freeze Red team 40.
+    // Unfreeze inside a Battle Banzai Yellow team shows effect 36 and inside a Freeze Red team 40.
     [Theory]
     [InlineData(4, 1, 36)]
     [InlineData(1, 2, 40)]

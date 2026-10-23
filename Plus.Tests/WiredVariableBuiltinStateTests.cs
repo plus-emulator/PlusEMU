@@ -51,7 +51,7 @@ public sealed class WiredVariableBuiltinStateTests
         Assert.Equal(1, notices);
         Assert.Empty(module.DrainChanges());
         Assert.Equal("1", item.LegacyDataString);
-        // Observed on AIR WIN63-202610201032-107964540: a value from the state count up (3 of 3 states) sets state 0.
+        // A value from the state count up sets state 0.
         Assert.True(module.Mutate(reference, holder, WiredVariableMutation.Set, 3, frame));
         Assert.Equal("0", item.LegacyDataString);
         Assert.Equal(["1", "0"], notified);

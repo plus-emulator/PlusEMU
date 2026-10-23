@@ -19,8 +19,7 @@ public class RespectPetNotificationComposer : IServerPacket
         _colour = colour;
     }
 
-    // AIR WIN63-202610151745-318700621 package_37/class_2618.as:30 reads respect, owner id, then the pet data of
-    // package_123/class_2538.as:19 (id, name, figure of class_3869.as:21, level, rarity).
+    // The client reads respect, owner id, then the pet data (id, name, figure, level, rarity).
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteInteger(_virtualId);

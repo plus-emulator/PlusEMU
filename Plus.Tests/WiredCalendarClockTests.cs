@@ -13,7 +13,7 @@ namespace Plus.Tests;
 public class WiredCalendarClockTests
 {
     [Theory]
-    // A room without its own timezone uses Europe/London, not the server's local zone (observed on hhus).
+    // A room without its own timezone uses Europe/London, not the server's local zone.
     [InlineData("", 2040, 0)]
     [InlineData("Europe/Berlin", 2041, 1)]
     public void CalendarAndDateDefaultsUseOneRoomClockRead(string zone, int year, int offsetHours)
@@ -38,7 +38,7 @@ public class WiredCalendarClockTests
         };
         var box = Assert.IsType<WiredModernCondition>(wired.CreateConfiguredBox(item, descriptor));
         var configuration = box.Configuration;
-        // Observed on AIR WIN63-202610201032-107964540: a fresh Date Matches holds year minimum and maximum 0, not the current year.
+        // A fresh Date Matches holds year minimum and maximum 0, not the current year.
         Assert.Equal(0, configuration.IntParams[6]);
         Assert.Equal(0, configuration.IntParams[7]);
         Assert.Equal(1, clock.Reads);
@@ -83,7 +83,7 @@ public class WiredCalendarClockTests
         };
         Assert.True(WiredNativeEditorProjection.TryCompile(1, date, dateNative, out var dateConfig));
         Assert.True(WiredTimeConditions.MatchesDate(dateConfig, instant));
-        // Observed on AIR WIN63-202610201032-107964540: a timezone the hotel does not know is stored as empty, not refused.
+        // A timezone the hotel does not know is stored as empty, not refused.
         Assert.True(WiredNativeEditorProjection.TryCompile(1, time, timeNative with { Text = "Not/AZone" }, out var invalidZone));
         Assert.Equal("", invalidZone.Text);
     }

@@ -1,6 +1,7 @@
 using Plus.Communication.Flash;
 using Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 using Plus.Communication.Packets.Outgoing;
+using Plus.HabboHotel.Items.Wired.Configuration;
 using Xunit;
 
 namespace Plus.Tests;
@@ -28,6 +29,34 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(["ct", "cx", "ev", "nv", "ptr"], placeholders);
         Assert.Empty(capturers);
     }
+
+    // Observed on AIR WIN63-202610201032-107964540 (3 of 3 runs): Text Output boxes named Zed (a capital is stored in lower case), x10, x2,
+    // a_b and x_, a Says trigger and Text Input capturers named zcap and acap, stacked in three different orders, open as
+    // a_b, trigger_text, x10, x2, x_, zed with the capturers acap, zcap. The sort is by character code of the lower case name.
+    [Fact]
+    public async Task ShowMessageEditorSortsTheNamesOfAllSourcesAndTheCapturers()
+    {
+        await DelayedPointerRoom(executeInOrder: false);
+        _dpTile = (2, 2);
+        var show = _dpNext;
+        AddSpeechBox(_dpNext++, "wf_trg_says_something", new() { IntParams = [1, 0, 0], Text = "hello" }, _dpZ++, 2, 2);
+        await DpShow("x", 0);
+        await DpOutput("Zed", DpContext, "ctx:" + DpCtx);
+        await DpOutput("x10", DpContext, "ctx:" + DpCtx);
+        await DpCapturer("zcap");
+        await DpOutput("x2", DpContext, "ctx:" + DpCtx);
+        await DpCapturer("acap");
+        await DpOutput("a_b", DpContext, "ctx:" + DpCtx);
+        await DpOutput("x_", DpContext, "ctx:" + DpCtx);
+
+        var (placeholders, capturers) = await OpenMessageEditorPlaceholders(show + 1);
+
+        Assert.Equal(["a_b", "trigger_text", "x10", "x2", "x_", "zed"], placeholders);
+        Assert.Equal(["acap", "zcap"], capturers);
+    }
+
+    /// <summary>Text Input Variable in number mode: the capture name and a context variable.</summary>
+    private Task DpCapturer(string name) => DpSave(WiredBoxCategory.Addon, "wf_xtra_text_input_variable", [0], name, [], null, [], [], ["ctx:" + DpCtx], []);
 
     // The raw WIRED_OPEN packet, then the context list of the Show Message editor frame read the way AIR reads it, up to the text
     // placeholder entry (context 7): its placeholder names and its capturer names.

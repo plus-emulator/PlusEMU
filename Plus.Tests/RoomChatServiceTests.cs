@@ -176,8 +176,9 @@ public sealed class RoomChatServiceTests
         Assert.Equal(2, Bubble(world.SenderPackets[^1]));
     }
 
-    // Plus guard, not observed on Habbo: a team that is cleared and set again outside the game gates does not bring the Join Team
-    // bubble back. The test sets the team directly and does not run the gate code.
+    // Plus guard, not observed on Habbo: a plain Wired team that is cleared and set again does not bring the Join Team bubble back
+    // (the Banzai and Freeze team lists keep the user, so the guard covers the Wired team only).
+    // The test sets the team directly and does not run the gate code.
     [Fact]
     public async Task ATeamSetAgainOfTheSameColourAfterAJoinTeamKeepsTheOwnBubble()
     {

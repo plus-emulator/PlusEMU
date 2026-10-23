@@ -139,7 +139,7 @@ public sealed class WiredGameState
     // 130 in Red and 133 in Green, and 0 outside a team. Blue 131 and Yellow 132 follow the @event.chat.style connector's team styles.
     // Observed on AIR WIN63-202610201032-107964540: a user that Join Team put into a Battle Banzai or Freeze team, and a user that
     // walked onto a Battle Banzai or Freeze gate, talks with the same bubbles, also after walking off the gate. A user whose team
-    // changed after a Join Team keeps the own bubble unless a game gate holds them (not observed).
+    // changed after a Join Team keeps the own bubble unless a Battle Banzai or Freeze team list holds them (not observed).
     public static int? TeamChatStyle(Room room, RoomUser user) => !user.IsBot && user.Team != Team.None
         && (For(room)._types.TryGetValue(user, out var joined) && joined.Team == user.Team && joined.Revision == user.TeamRevision
             || Contains(room.Teambanzai, user) || Contains(room.Teamfreeze, user))

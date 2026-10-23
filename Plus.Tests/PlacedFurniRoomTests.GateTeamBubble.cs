@@ -5,6 +5,7 @@ using Plus.Communication.Packets.Outgoing;
 using Plus.Core.Settings;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Moderation;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Rooms.Chat;
@@ -45,7 +46,23 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(bubble, Talk(actor, "off the gate"));
     }
 
-    // The same user leaves the team by walking onto a gate again, and then talks with the own bubble.
+    // Observed on AIR WIN63-202610201032-107964540: after Leave Team a user who joined at a gate talks with the own bubble (bubble 0 in
+    // the trace).
+    [Fact]
+    public void AUserWhoJoinedAtAGateTalksWithTheOwnBubbleAfterLeaveTeam()
+    {
+        var gate = InteractionItem(10, 1, 1, InteractionType.FreezeBlueGate);
+        gate.Definition.Walkable = true;
+        var actor = JoinableActor();
+
+        StepTo(actor, 1);
+        Assert.Equal(131, Talk(actor, "in"));
+
+        Assert.True(WiredGameState.For(_room).Leave(_room, actor, (_, _) => { }));
+        Assert.Equal(0, Talk(actor, "out"));
+    }
+
+    // Plus guard, not observed on Habbo: a user who leaves the team by walking onto a gate again talks with the own bubble.
     [Fact]
     public void AUserWhoLeavesTheTeamAtAGateTalksWithTheOwnBubble()
     {

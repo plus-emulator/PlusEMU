@@ -16,7 +16,7 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
     }
     public WiredVariableTimeUtilities? TimeUtilities { get; private set; }
     public WiredVariableLevelSystem? LevelSystem { get; private set; }
-    public IReadOnlyDictionary<int, string> TextConnector { get; private set; } = new WiredTextConnector(new Dictionary<int, string>(), null);
+    public IReadOnlyDictionary<long, string> TextConnector { get; private set; } = new WiredTextConnector(new Dictionary<long, string>(), null);
     public static bool Supports(string name) => IsFx(name) || name is "wf_xtra_var_lvlup_system" or "wf_xtra_var_text_connector" or "wf_xtra_var_time_util"
         or "wf_xtra_var_share" or "wf_xtra_var_import";
     /// <summary>Whether a Share or Import add-on has its category on: 0 text connectors, 1 subvariable creators, 2 variable FX.</summary>
@@ -125,7 +125,7 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
 
     internal static WiredTextConnector ParseConnector(string text)
     {
-        var result = new Dictionary<int, string>();
+        var result = new Dictionary<long, string>();
         string? fallback = null;
         var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
@@ -141,7 +141,7 @@ public sealed class WiredVariableMetadataBox : WiredConfiguredBehaviorBox
                 continue;
             }
 
-            if (separator <= 0 || !int.TryParse(line[..separator], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var key)) {
+            if (separator <= 0 || !long.TryParse(line[..separator], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var key)) {
                 continue;
             }
 

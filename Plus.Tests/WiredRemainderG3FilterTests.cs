@@ -72,7 +72,7 @@ public sealed class WiredRemainderG3FilterTests
         public WiredVariableAddonBox Filter(int[] owned, string variable, string operand, int userSource = 0, int furniSource = 100)
         {
             Assert.True(WiredBoxRegistry.TryGet("wf_xtra_filter_users_by_var", out var descriptor));
-            var box = new WiredVariableAddonBox(Room, new Item { Id = 90 }, descriptor, Module, _ => new Dictionary<int, string>());
+            var box = new WiredVariableAddonBox(Room, new Item { Id = 90 }, descriptor, Module, _ => new Dictionary<long, string>());
             var native = WiredNativeEditorProjection.DefaultNative(descriptor) with
             {
                 OwnedIntParams = [.. owned],

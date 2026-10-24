@@ -87,7 +87,7 @@ public sealed partial class WiredRoomVariables
                 var importsConnector = imported is { TextConnector.IsEmpty: false } or { TextConnectorFallback: not null };
                 fallbacks[definition.ItemId] = connectorBox is null ? imported?.TextConnectorFallback : connectorBox.Fallback;
                 connectors[definition.ItemId] = connectorBox?.Connector
-                    ?? (importsConnector ? imported!.TextConnector.OrderBy(pair => pair.Key).ToImmutableArray() : null);
+                    ?? (importsConnector ? WiredTextConnector.ToWire(imported!.TextConnector) : null);
 
                 var context = definition.Target == WiredVariableTarget.Context;
 
@@ -232,7 +232,7 @@ public sealed partial class WiredRoomVariables
             if (input.Name == "wf_xtra_var_text_connector") {
                 var connector = WiredVariableMetadataBox.ParseConnector(configuration.Text);
 
-                return new(input, connector.OrderBy(pair => pair.Key).ToImmutableArray(), null, null, [], [], connector.Fallback);
+                return new(input, WiredTextConnector.ToWire(connector), null, null, [], [], connector.Fallback);
             }
 
             if (input.Name == "wf_xtra_var_time_util") {

@@ -205,6 +205,23 @@ public partial class PlacedFurniRoomTests
         _room.GetWired().Variables.ConfigurationLoaded(definition);
     }
 
+    [Fact]
+    public async Task AConnectorKeyOutside32BitNamesTheLeaderboardRow()
+    {
+        var (clock, service, revision) = await PublishedBoard();
+        await SaveBoardConnector(clock, service, 16368, "2147483648=big");
+        CycleUntil(clock, 16368, 24687);
+        Assert.Equal(++revision, Assert.Single(BoardSnapshots()));
+
+        var actor = _room.GetRoomUserManager().GetRoomUsers().First(user => !user.IsBot);
+        var holder = WiredVariableRuntimeFrames.UserHolder(actor);
+        clock.Now = BoardOrigin.AddMilliseconds(26001);
+        Assert.True(_room.GetWired().Variables.Module.Mutate(new(WiredVariableTarget.User, $"custom:{BoardVariable}"), holder, WiredVariableMutation.Set, 2147483648L,
+            new(RoomId, [holder])));
+        await Resubscribe(clock, 26100, revision);
+        Assert.Equal((revision, "2147483648", "big"), Assert.Single(BoardChunks()));
+    }
+
     private async Task SaveBoardConnector(SpeechClock clock, WiredConfigurationService service, int at, string text)
     {
         clock.Now = BoardOrigin.AddMilliseconds(at);

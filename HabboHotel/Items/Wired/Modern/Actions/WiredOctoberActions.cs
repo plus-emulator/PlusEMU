@@ -269,7 +269,6 @@ public static class WiredOctoberActions
     private static string TextConnector(WiredRuntimeContext context, string id, long value) =>
         WiredVariableDescription.TryParseCatalogId(id, out _, out var token) && WiredVariableModule.TryDefinitionId(token, out var definition)
         && context.Room.GetWired().Variables.Catalog().Variables.FirstOrDefault(description => description.Definition.ItemId == definition) is { } described
-        && value is >= int.MinValue and <= int.MaxValue
-            ? described.TextConnector.TryGetValue((int)value, out var name) ? name : described.TextConnectorFallback ?? value.ToString(CultureInfo.InvariantCulture)
+            ? described.TextConnector.TryGetValue(value, out var name) ? name : described.TextConnectorFallback ?? value.ToString(CultureInfo.InvariantCulture)
             : value.ToString(CultureInfo.InvariantCulture);
 }

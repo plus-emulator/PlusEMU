@@ -82,7 +82,7 @@ public partial class ModernWiredRuntimeTests
 
         /// <summary>A box saved from its native editor row on the trigger's tile; each new box stands above the last one.</summary>
         public void Native(string name, int[] owned, string[] variables, string text = "", int[]? furni = null, int[]? users = null,
-            uint[]? picks = null, Func<uint, IReadOnlyDictionary<int, string>>? connector = null, int delay = 0)
+            uint[]? picks = null, Func<uint, IReadOnlyDictionary<long, string>>? connector = null, int delay = 0)
         {
             var id = _next++;
             var item = S.Place(id, name, 0, 0);
@@ -132,7 +132,7 @@ public partial class ModernWiredRuntimeTests
 
         /// <summary>Text Output Variable: number or text mode, the first holder's value, the triggering user or the given sources.</summary>
         public void Output(string placeholder, int airTarget, string variable, bool textMode = false, int furni = 0, int user = 0,
-            uint[]? picks = null, Func<uint, IReadOnlyDictionary<int, string>>? connector = null) =>
+            uint[]? picks = null, Func<uint, IReadOnlyDictionary<long, string>>? connector = null) =>
             Native("wf_xtra_text_output_variable", [0, airTarget, textMode ? 1 : 0], [variable], placeholder, [furni], [user], picks, connector);
 
         public string Shown(string message)
@@ -275,7 +275,7 @@ public partial class ModernWiredRuntimeTests
         p.SetUser(UserA, p.S.F.User, value);
         p.Point(UserA);
         p.Output("t", AirUser, "user:650", textMode: true,
-            connector: id => id == UserA ? new Dictionary<int, string> { [7] = "seven" } : new Dictionary<int, string>());
+            connector: id => id == UserA ? new Dictionary<long, string> { [7] = "seven" } : new Dictionary<long, string>());
 
         Assert.Equal(expected, p.Shown("t=$(t)"));
     }

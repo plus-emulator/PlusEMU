@@ -84,7 +84,7 @@ public static class WiredLeaderboardRanking
 
     // A value with a label shows it, any other value shows the "_=" fallback (empty when the
     // fallback is empty), and a connector without a fallback line gives the row no text.
-    private static string? ConnectorText(IReadOnlyDictionary<int, string> connector, long value) =>
-        value is >= int.MinValue and <= int.MaxValue && connector.TryGetValue((int)value, out var text) ? text
+    private static string? ConnectorText(IReadOnlyDictionary<long, string> connector, long value) =>
+        connector.TryGetValue(value, out var text) ? text
         : (connector as WiredTextConnector)?.Fallback;
 }

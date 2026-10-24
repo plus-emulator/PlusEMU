@@ -46,7 +46,7 @@ public sealed partial class WiredRoomVariables
                     yield return new(definition with { ItemId = id, Name = definition.Name + "." + time.CatalogKey(sub) }, true, !time.Writable)
                     {
                         IsDerived = true,
-                        TextConnector = WiredVariableTimeUtilities.Connector(sub)?.ToDictionary() ?? new Dictionary<int, string>()
+                        TextConnector = WiredVariableTimeUtilities.Connector(sub)?.ToDictionary(pair => (long)pair.Key, pair => pair.Value) ?? new Dictionary<long, string>()
                     };
                 }
             }

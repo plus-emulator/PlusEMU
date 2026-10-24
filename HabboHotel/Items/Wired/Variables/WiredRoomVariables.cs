@@ -102,7 +102,7 @@ public sealed partial class WiredRoomVariables
 
             if (WiredVariableAddonBox.Supports(descriptor.CanonicalName)) {
                 return new WiredVariableAddonBox(_room, item, descriptor, Module,
-                id => MetadataOn(id, "wf_xtra_var_text_connector")?.TextConnector ?? new Dictionary<int, string>());
+                id => MetadataOn(id, "wf_xtra_var_text_connector")?.TextConnector ?? new Dictionary<long, string>());
             }
         }
 

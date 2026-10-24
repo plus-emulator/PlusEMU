@@ -536,6 +536,65 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.Equal([false, true, hasValue, hasValue, false, false, false, true, hasValue], row.Flags);
     }
 
+    // The catalog sends each connector key as a 32 bit int saturated to int.MinValue or int.MaxValue, in the order of the real key, and keeps the duplicates.
+    [Fact]
+    public void ACatalogConnectorKeyOutside32BitIsSentSaturated()
+    {
+        var fixture = new Fixture();
+        fixture.AddDefinition(10);
+        fixture.AddMetadata(20, "wf_xtra_var_text_connector", new() { Text = "2147483647=max\n2147483648=big\n-2147483648=min\n-2147483649=small\n1099511627776=terabig" });
+
+        new WiredVariableMenuService().ShowCatalogDiff(fixture.World.Room, fixture.World.Client, new Dictionary<string, int>());
+
+        Assert.Equal(["-2147483648 small", "-2147483648 min", "2147483647 max", "2147483647 big", "2147483647 terabig"], ConnectorPairs(fixture, "score10"));
+    }
+
+    private static List<string> ConnectorPairs(Fixture fixture, string name)
+    {
+        var pairs = new List<string>();
+
+        foreach (var frame in fixture.World.Packets.Where(frame => frame.Header == ServerPacketHeader.WiredAllVariablesDiffComposer)) {
+            var packet = new FlashIncomingPacket { Buffer = frame.Payload };
+            packet.ReadInt();
+            packet.ReadBool();
+
+            for (var removed = packet.ReadInt(); removed > 0; removed--) {
+                packet.ReadString();
+            }
+
+            for (var count = packet.ReadInt(); count > 0; count--) {
+                packet.ReadInt();
+                packet.ReadString();
+                packet.ReadInt();
+                var own = packet.ReadString() == name;
+                packet.ReadInt();
+                packet.ReadInt();
+
+                for (var flag = 0; flag < 9; flag++) {
+                    packet.ReadBool();
+                }
+
+                if (!packet.ReadBool()) {
+                    continue;
+                }
+
+                for (var length = packet.ReadInt(); length > 0; length--) {
+                    var pair = packet.ReadInt() + " " + packet.ReadString();
+
+                    if (own) {
+                        pairs.Add(pair);
+                    }
+                }
+
+                if (packet.ReadBool()) {
+                    packet.ReadString();
+                }
+            }
+        }
+
+        return pairs;
+    }
+
     // The rows of every catalog diff the client received: type, name, availability, target, then the flags in wire order (always
     // available, create and delete, has value, write, intercept, invisible, execution context, creation time, last update time).
     private static List<(int Type, string Name, int Availability, int Target, bool[] Flags)> CatalogRows(Fixture fixture)

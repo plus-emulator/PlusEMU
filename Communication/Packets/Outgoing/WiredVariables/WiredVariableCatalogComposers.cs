@@ -54,7 +54,7 @@ public sealed class WiredAllVariablesDiffComposer(WiredVariableCatalogDiff diff)
         if (variable.HasTextConnector) {
             packet.WriteInteger(variable.TextConnector.Count);
 
-            foreach (var (key, value) in variable.TextConnector.OrderBy(x => x.Key)) {
+            foreach (var (key, value) in WiredTextConnector.ToWire(variable.TextConnector)) {
                 packet.WriteInteger(key);
                 packet.WriteString(value);
             }

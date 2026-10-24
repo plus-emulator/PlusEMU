@@ -14,7 +14,7 @@ public class WiredPacketFreezeTests
     [Fact]
     public void CatalogMenuAndHolderPacketsFreezeListsAndNestedTextConnectors()
     {
-        var connector = new Dictionary<int, string> { [1] = "one" };
+        var connector = new Dictionary<long, string> { [1] = "one" };
         var variable = new WiredVariableDescription(new(10, 1, 5, "score", WiredVariableTarget.User,
             WiredVariableAvailability.Persistent, true), true, false)
         { TextConnector = connector };

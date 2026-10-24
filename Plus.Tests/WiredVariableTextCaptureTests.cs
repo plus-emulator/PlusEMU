@@ -8,7 +8,7 @@ public sealed class WiredVariableTextCaptureTests
     [Fact]
     public void NumericAndTextCapturesRequireWholeValidValuesBeforeMatch()
     {
-        WiredVariableCapturer[] capturers = [new(10, "score", null), new(11, "team", new Dictionary<int, string> { [2] = "blue team" })];
+        WiredVariableCapturer[] capturers = [new(10, "score", null), new(11, "team", new Dictionary<long, string> { [2] = "blue team" })];
         Assert.True(WiredVariableTextCapture.TryMatch("set #score# for #team#", "SET -12 for blue team", 1, capturers, out var values));
         Assert.Equal(-12, values[10]);
         Assert.Equal(2, values[11]);
@@ -32,7 +32,7 @@ public sealed class WiredVariableTextCaptureTests
     public void AdjacentMarkersNeverMatch()
     {
         // Adjacent markers never fire, with or without a literal prefix.
-        WiredVariableCapturer[] capturers = [new(10, "a", new Dictionary<int, string> { [1] = "red" }), new(11, "b", null)];
+        WiredVariableCapturer[] capturers = [new(10, "a", new Dictionary<long, string> { [1] = "red" }), new(11, "b", null)];
         Assert.False(WiredVariableTextCapture.TryMatch("#a##b#", "red123", 1, capturers, out _));
         WiredVariableCapturer[] numbers = [new(10, "a", null), new(11, "b", null)];
         Assert.False(WiredVariableTextCapture.TryMatch("qr:#(a)#(b)", "QR:12", 1, numbers, out _));
@@ -58,7 +58,7 @@ public sealed class WiredVariableTextCaptureTests
     public void ConnectorLookupIsCaseInsensitiveAndLastLineWins()
     {
         // "abc" against lines 1=abc and 2=ABC reads 2.
-        WiredVariableCapturer[] capturers = [new(10, "a", new Dictionary<int, string> { [1] = "abc", [2] = "ABC" })];
+        WiredVariableCapturer[] capturers = [new(10, "a", new Dictionary<long, string> { [1] = "abc", [2] = "ABC" })];
 
         foreach (var said in new[] { "p7 ABC", "p7 Abc", "p7 abc" }) {
             Assert.True(WiredVariableTextCapture.TryMatch("p7 #(a)", said, 1, capturers, out var values));

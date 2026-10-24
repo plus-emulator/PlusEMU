@@ -76,13 +76,13 @@ public sealed class OctoberPacketGrammarTests
         var variable = new WiredVariableDescription(new(17, 1, 5, "counter",
             context ? WiredVariableTarget.Context : WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true), true, false)
         {
-            TextConnector = connector ? new Dictionary<int, string> { [-7] = "seven", [19] = "nineteen" } : new Dictionary<int, string>(),
+            TextConnector = connector ? new Dictionary<long, string> { [-7] = "seven", [19] = "nineteen" } : new Dictionary<long, string>(),
             TextConnectorFallback = fallback ? "fallback é" : null
         };
         var bytes = Write(packet => WiredAllVariablesDiffComposer.WriteVariable(packet, variable));
         ReadSourceRecord(bytes, context ? "ctx:17" : "user:17", context ? 3 : 1, context ? 3 : 1,
             [true, !context, true, true, false, false, true, true], false,
-            connector ? variable.TextConnector.OrderBy(pair => pair.Key).ToArray() : null, variable.TextConnectorFallback);
+            connector ? WiredTextConnector.ToWire(variable.TextConnector).ToArray() : null, variable.TextConnectorFallback);
     }
 
     [Fact]

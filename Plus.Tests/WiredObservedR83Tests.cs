@@ -108,7 +108,7 @@ public sealed class WiredObservedR83Tests
         Assert.True(module.InitializeGlobal(RoomVariable));
         Assert.True(module.Mutate(new(WiredVariableTarget.Global, "custom:10"), new(WiredVariableTarget.Global, 0, 0), WiredVariableMutation.Set, 7, frame));
         Assert.True(WiredBoxRegistry.TryGet("wf_xtra_text_output_variable", out var descriptor));
-        var box = new WiredVariableAddonBox(room, new Item { Id = 90 }, descriptor, module, _ => new Dictionary<int, string> { [7] = "seven", [8] = "eight" });
+        var box = new WiredVariableAddonBox(room, new Item { Id = 90 }, descriptor, module, _ => new Dictionary<long, string> { [7] = "seven", [8] = "eight" });
         WiredNativeTestSupport.Install(box, WiredNativeEditorProjection.DefaultNative(descriptor) with
         {
             OwnedIntParams = [0, -10, textMode],

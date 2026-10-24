@@ -583,7 +583,7 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
         });
         engine.Add(selector);
         Assert.True(WiredBoxRegistry.TryGet("wf_xtra_filter_furni_by_var", out var sortDescriptor));
-        var sort = new WiredVariableAddonBox(room, Floor(sortFirst ? 52u : 53u, 5, 5), sortDescriptor, module, _ => new Dictionary<int, string>());
+        var sort = new WiredVariableAddonBox(room, Floor(sortFirst ? 52u : 53u, 5, 5), sortDescriptor, module, _ => new Dictionary<long, string>());
         WiredNativeTestSupport.Install(sort, WiredNativeTestSupport.FromLegacyVariableAddon(sortDescriptor,
             new() { IntParams = [0, 0, 2, 1, 0, 0], Text = "custom:10\t" }));
         engine.Add(sort);

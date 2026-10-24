@@ -2,7 +2,7 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 
 public sealed record WiredVariableDescription(WiredVariableDefinition Definition, bool HasValue, bool ReadOnly)
 {
-    public IReadOnlyDictionary<int, string> TextConnector { get; init; } = new Dictionary<int, string>();
+    public IReadOnlyDictionary<long, string> TextConnector { get; init; } = new Dictionary<long, string>();
     public bool Interceptable { get; init; }
     // The client only reads this flag to keep a variable out of pickers used outside a running stack (Echo,
     // Variable Changed, FX override/audience, overview holder actions, leaderboard, pointer). Habbo sends it false
@@ -144,7 +144,7 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
                 hash = unchecked(hash * 31 + value);
             }
 
-            foreach (var (key, value) in TextConnector.OrderBy(x => x.Key)) {
+            foreach (var (key, value) in WiredTextConnector.ToWire(TextConnector)) {
                 hash = unchecked(hash * 31 + key);
                 hash = unchecked(hash * 31 + StableHash(value));
             }

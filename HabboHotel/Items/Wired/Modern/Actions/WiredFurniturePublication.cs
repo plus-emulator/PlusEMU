@@ -16,6 +16,8 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
     internal long Deadline { get; } = deadline;
     internal long Epoch { get; } = epoch;
     internal bool Open { get; private set; } = true;
+    /// <summary>Sends the movements like a Move and Rotate User box does: after the states a click writes, with the chat held back.</summary>
+    internal bool SendsAsUserMovement { get; set; }
 
     internal bool Append(Item item, WiredMovementComposer movement, WiredMoveStyleComposer style, object? firing = null, bool executeInOrder = false)
     {
@@ -131,8 +133,9 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
         _ordered.Clear();
 
         var flushes = live.Length != 0 || avatars.Length != 0;
+        var userMovement = SendsAsUserMovement;
 
-        if (flushes) {
+        if (flushes && !(userMovement && room.HoldsWiredMovements)) {
             room.FlushWiredFlashData();
         }
 
@@ -146,10 +149,17 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
         var turns = directions.Where(entry => LiveActor(entry.Actor, entry.Lifetime)).Select(entry => entry.Turn).ToArray();
 
         if (movements.Length > 0 || turns.Length > 0) {
-            room.SendPacket(new WiredMovementBatchComposer(movements, turns));
+            var batch = new WiredMovementBatchComposer(movements, turns);
+
+            if (userMovement) {
+                room.SendWiredMovement(batch);
+            }
+            else {
+                room.SendPacket(batch);
+            }
         }
 
-        if (flushes) {
+        if (flushes && !userMovement) {
             room.FlushWiredFlashes();
         }
     }

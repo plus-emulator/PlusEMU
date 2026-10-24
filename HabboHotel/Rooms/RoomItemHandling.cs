@@ -635,7 +635,7 @@ public partial class RoomItemHandling
         var placed = PlaceFloor(session, item, newX, newY, newRot, newItem, onRoller, sendMessage, updateRoomUserStatuses, height, wiredCollision, null, deferPositionSave, announcing);
 
         // Only a user's placement or move counts: a room load and wired movement do not republish a leaderboard.
-        if (placed && session != null && !item.IsTemporary && (newItem || fromX != item.GetX || fromY != item.GetY)) {
+        if (placed && session != null && !item.IsTemporary && item.Definition.WiredDescriptor?.CanonicalName == "wf_xtra_var_text_connector" && (newItem || fromX != item.GetX || fromY != item.GetY)) {
             _room.GetWired()?.TextConnectorMoved(item, newItem ? null : fromX, newItem ? null : fromY);
         }
 

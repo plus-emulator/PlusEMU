@@ -79,27 +79,24 @@ public partial class ModernWiredRuntimeTests
         AssertSaved(f, false, DelayKey);
     }
 
-    // Only the two boxes of the evidence change: another box still drops a negative delay without a reply.
     [Fact]
-    public async Task ANegativeDelayOnAnotherBoxIsStillDroppedWithoutAReply()
+    public async Task ANegativeDelayOnAnotherBoxIsRefusedWithTheDelayKey()
     {
         var f = new MovementOracleSession("wf_act_toggle_state");
 
         await SaveEffect(f, ActionSave([0], delay: -1, userSources: []));
 
-        Assert.Empty(f.Client.Packets);
-        Assert.Empty(f.Store.Saves);
+        AssertSaved(f, false, DelayKey);
     }
 
     [Fact]
-    public async Task ADelayAbove3600IsStillDroppedWithoutAReply()
+    public async Task ADelayAbove3600IsRefusedWithTheDelayKey()
     {
         var f = new MovementOracleSession(Highlight);
 
         await SaveEffect(f, ActionSave(ValidInts(Highlight), delay: 3601));
 
-        Assert.Empty(f.Client.Packets);
-        Assert.Empty(f.Store.Saves);
+        AssertSaved(f, false, DelayKey);
     }
 
     [Fact]

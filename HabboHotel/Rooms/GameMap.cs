@@ -946,6 +946,9 @@ public class Gamemap
                     _room.GetGameItemHandler().AddPyramid(item, item.Id);
                     break;
                 }
+            case InteractionType.Gate when item.Definition.ItemName == "wf_pyramid":
+                _room.GetGameItemHandler().AddHiddenPyramid(item);
+                break;
             case InteractionType.Banzaitele: {
                     _room.GetGameItemHandler().AddTeleport(item, item.Id);
                     item.LegacyDataString = "";

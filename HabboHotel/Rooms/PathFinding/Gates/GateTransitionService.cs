@@ -8,7 +8,7 @@ namespace Plus.HabboHotel.Rooms.PathFinding;
 // Initiator decides what a refusal means: explicit closes just fail, automatic closes are kept and retried.
 public enum GateCloseReason
 {
-    Click, Wired, Automatic, Walk
+    Click, Wired, Automatic, Walk, Timer
 }
 
 public enum GateTransition
@@ -488,6 +488,10 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
         // A gate Toggle State write goes out in the tick's data batch with the box flashes, like any other wired state write, not as a full object update.
         if (reason == GateCloseReason.Wired) {
             room.GetWired().PublishState(item, persist);
+        }
+        else if (reason == GateCloseReason.Timer) {
+            item.UpdateState(persist, false);
+            room.SendObjectData(item, item.LegacyDataString, false);
         }
         else {
             item.UpdateState(persist, true);

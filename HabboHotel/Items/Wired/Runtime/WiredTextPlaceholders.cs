@@ -69,7 +69,7 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
 
     /// <summary>
     /// $(trigger_text) is what the user said, when a "user says keyword" trigger started the stack, or the link message a Receive Link
-    /// Message trigger received. A Receive Link Dataframe trigger fills its placeholder rows from the dataframe's keys, and the room's
+    /// Message trigger received. A Receive Link Dataframe trigger fills its placeholder rows from the dataframe's keys, "null" for a key the dataframe lacks, and the room's
     /// Global Placeholders fill their own names.
     /// </summary>
     public static string FillTriggerText(WiredRuntimeContext context, string text)
@@ -86,9 +86,8 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
         if (context.Event is { Kind: WiredEventKind.LinkDataframe, Link: { } link }
             && context.Trigger is IWiredConfiguredItem { Descriptor.CanonicalName: "wf_trg_receive_dataframe" } receiver) {
             foreach (var (key, placeholder) in DataframePlaceholders(context.ConfigurationOf(receiver))) {
-                if (link.Rows.FirstOrDefault(row => row.Key == key) is { } value) {
-                    text = text.Replace("$(" + placeholder + ")", value.Text, StringComparison.OrdinalIgnoreCase);
-                }
+                var shown = link.Rows.FirstOrDefault(row => row.Key == key) is { } value ? value.Text : "null";
+                text = text.Replace("$(" + placeholder + ")", shown, StringComparison.OrdinalIgnoreCase);
             }
         }
 

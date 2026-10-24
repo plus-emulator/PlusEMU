@@ -215,13 +215,13 @@ public static class WiredOctoberActions
 
     private static int Hops(WiredRuntimeContext context) => context.Event.Link is { } received ? received.Hops + 1 : 0;
 
-    // [source]: 0 forwards the text that started the stack (said, or a received link message), 1 the custom message.
+    // [source]: 0 forwards the text that started the stack (said, or a received link message; "null" for a trigger without text), 1 the custom message.
     private static bool SendMessage(WiredModernBox box, WiredRuntimeContext context, WiredConfiguration config, Item[] endpoints)
     {
         var message = P(config, 0) == 1 ? context.Policy.FormatText(context, config.Text)
-            : context.Event.Kind is WiredEventKind.Speech or WiredEventKind.LinkMessage ? context.Event.Message : "";
+            : context.Event.Kind is WiredEventKind.Speech or WiredEventKind.LinkMessage ? context.Event.Message : "null";
 
-        if (message.Length == 0 || WiredLinkDataframeCodec.Utf8Length(message) > WiredLinkDataframeCodec.MaxLinkMessageBytes) {
+        if (WiredLinkDataframeCodec.Utf8Length(message) > WiredLinkDataframeCodec.MaxLinkMessageBytes) {
             return false;
         }
 
@@ -265,12 +265,13 @@ public static class WiredOctoberActions
         return context.Room.GetWired().SendLink([.. furni("endpoints"), .. Speakers(context, true)], payload, WiredEventKind.LinkDataframe);
     }
 
-    // A variable's text connector names its values; a value without a name sends the number.
+    // A variable's text connector names its values; a value without a name sends the "_=" text, else the number.
     private static string TextConnector(WiredRuntimeContext context, string id, long value) =>
         WiredVariableDescription.TryParseCatalogId(id, out _, out var token) && WiredVariableModule.TryDefinitionId(token, out var definition)
         && context.Room.GetWired().Variables.Catalog().Variables.FirstOrDefault(description => description.Definition.ItemId == definition) is { } described
-        && value is >= int.MinValue and <= int.MaxValue && described.TextConnector.TryGetValue((int)value, out var name)
-            ? name : value.ToString(CultureInfo.InvariantCulture);
+        && value is >= int.MinValue and <= int.MaxValue
+            ? described.TextConnector.TryGetValue((int)value, out var name) ? name : described.TextConnectorFallback ?? value.ToString(CultureInfo.InvariantCulture)
+            : value.ToString(CultureInfo.InvariantCulture);
 
     // Link Speaker add-ons of the stack ([message, dataframe]) add their picked WIRED Link furni as endpoints.
     private static IEnumerable<Item> Speakers(WiredRuntimeContext context, bool dataframe) =>

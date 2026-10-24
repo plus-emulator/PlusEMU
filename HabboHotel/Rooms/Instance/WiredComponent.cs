@@ -289,6 +289,28 @@ public partial class WiredComponent : IWiredRuntimeOperations
         WakeAfter(1, () => Wake(dueMs, attempt + 1));
     }
 
+    /// <summary>Queues an event from another room and starts a Wired pass of this room now, instead of at its next 50 ms step.</summary>
+    internal bool DispatchNow(WiredRuntimeEvent @event)
+    {
+        var dispatched = Dispatch(@event);
+        StartPassNow(0);
+
+        return dispatched;
+    }
+
+    private void StartPassNow(int attempt)
+    {
+        if (_room.MDisposed || _room.IsCrashed) {
+            return;
+        }
+
+        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, workers: WiredWakeWorkers.Shared, startAtMs: WiredWakeClock.Now) || attempt >= 10) {
+            return;
+        }
+
+        WakeAfter(1, () => StartPassNow(attempt + 1));
+    }
+
     internal void OnFastCycle()
     {
         ForgetRestackedSteps();

@@ -61,12 +61,12 @@ public static class WiredLinkTransport
                 var @event = Event(endpoint, receiver);
 
                 // The sending room's engine is locked while its effect runs; another room is handed the event on the thread pool,
-                // so two rooms sending to each other never wait on each other's lock.
+                // so two rooms sending to each other never wait on each other's lock. That room starts a pass at once to run it.
                 if (ReferenceEquals(target, room)) {
                     delivered |= Deliver(room, @event);
                 }
                 else {
-                    _ = Task.Run(() => Deliver(target, @event));
+                    _ = Task.Run(() => Deliver(target, @event, true));
                     delivered = true;
                 }
             }
@@ -74,12 +74,12 @@ public static class WiredLinkTransport
 
         return delivered;
 
-        static bool Deliver(Room target, WiredRuntimeEvent @event)
+        static bool Deliver(Room target, WiredRuntimeEvent @event, bool startPass = false)
         {
             var wired = target.GetWired();
             wired?.SpeakLink(@event);
 
-            return wired?.Dispatch(@event) ?? false;
+            return (startPass ? wired?.DispatchNow(@event) : wired?.Dispatch(@event)) ?? false;
         }
 
         WiredRuntimeEvent Event(Item sender, Item receiver) => new(kind)

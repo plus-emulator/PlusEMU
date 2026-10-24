@@ -61,7 +61,7 @@ public partial class PlacedFurniRoomTests
         "wf_slc_users_area", "wf_slc_users_byaction", "wf_slc_users_byname",
         "wf_slc_users_bytype", "wf_slc_users_group", "wf_slc_users_handitem",
         "wf_slc_users_signal", "wf_slc_users_team", "wf_xtra_random",
-        "wf_xtra_unseen", "wf_act_send_message", "wf_trg_receive_message",
+        "wf_xtra_unseen",
         "wf_xtra_var_import", "wf_xtra_var_share", "wf_xtra_var_lvlup_system",
         "wf_xtra_exec_in_order", "wf_xtra_execution_limit", "wf_xtra_mov_carry_users",
         "wf_xtra_mov_no_animation", "wf_xtra_anim_time", "wf_xtra_var_time_util",
@@ -74,7 +74,8 @@ public partial class PlacedFurniRoomTests
         { "wf_act_adjust_clock", "counter" }, { "wf_act_control_clock", "counter" }, { "wf_cnd_counter_time_matches", "counter" },
         { "wf_trg_clock_counter", "counter" }, { "wf_act_send_signal", "antenna" }, { "wf_act_neg_send_signal", "antenna" },
         { "wf_trg_recv_signal", "antenna" }, { "wf_trg_click_tile", "click tile" }, { "wf_act_cancel_transaction", "contract" },
-        { "wf_trg_transaction_complete", "contract" }, { "wf_trg_transaction_fail", "contract" }
+        { "wf_trg_transaction_complete", "contract" }, { "wf_trg_transaction_fail", "contract" }, { "wf_act_send_message", "link" },
+        { "wf_trg_receive_message", "link" }
     };
 
     // The variable boxes keep both lists too.
@@ -160,7 +161,7 @@ public partial class PlacedFurniRoomTests
             Modes = 1,
             Stackable = true,
             InteractionType = kind == "contract" ? InteractionType.WiredContractTrade : InteractionType.None,
-            InteractionName = kind switch { "antenna" => "antenna", "click tile" => "room_invisible_click_tile", "counter" => "wf_upcounter1", _ => "" },
+            InteractionName = kind switch { "antenna" => "antenna", "click tile" => "room_invisible_click_tile", "counter" => "wf_upcounter1", "link" => "wired_link", _ => "" },
             WiredType = WiredBoxType.None,
             ItemName = kind == "counter" ? "wf_upcounter1" : "",
             PublicName = "",

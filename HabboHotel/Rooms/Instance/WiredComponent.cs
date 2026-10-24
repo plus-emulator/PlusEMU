@@ -250,6 +250,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
     /// <summary>Calls the action after the given ms. Tests replace it to see which wake-ups are armed.</summary>
     internal Action<double, Action> WakeAfter { get; set; } = WiredWakeClock.Shared.After;
 
+    /// <summary>The threads that run this room's wake-up passes. Tests give a room its own, so passes of other rooms cannot hold them.</summary>
+    internal WiredWakeWorkers Workers { get; set; } = WiredWakeWorkers.Shared;
+
     private void ArmWake(long dueMs)
     {
         // The room tick runs what falls due on it, after its UserUpdate. A delay that ends on a room tick goes out in the ms of that tick's UserUpdate, after it. A wake-up pass could run first.
@@ -296,7 +299,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             return;
         }
 
-        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, workers: WiredWakeWorkers.Shared, startAtMs: startAtMs) || attempt >= maxAttempts) {
+        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, workers: Workers, startAtMs: startAtMs) || attempt >= maxAttempts) {
             done?.Invoke();
 
             return;

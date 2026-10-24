@@ -57,7 +57,7 @@ public partial class ModernWiredRuntimeTests
         LinkTextLog(b, "got [$(trigger_text)]");
         SpeakerAddon(b, 130, 1, 2, 1, 1, receiver);
         typeof(WiredStackEngine).GetField("_flash", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(b.Engine, (Action<Item>)b.Room.GetWired().OnEvent);
-        LoadRooms(a.Room, b.Room);
+        LoadRooms(a, b);
 
         return (b, receiver, CaptureThreadSafe(b));
     }
@@ -127,7 +127,7 @@ public partial class ModernWiredRuntimeTests
         using var _a = a;
         var (b, _, _) = CrossRoom(2, 60, store, "unused");
         using var _b = b;
-        LoadRooms(a.Room, b.Room);
+        LoadRooms(a, b);
         Interlocked.Exchange(ref b.Room.CycleSlot, 1);
 
         a.Fire(land: false);
@@ -145,7 +145,7 @@ public partial class ModernWiredRuntimeTests
         using var _a = a;
         var (b, _, _) = CrossRoom(2, 60, store, "unused");
         using var _b = b;
-        LoadRooms(a.Room, b.Room);
+        LoadRooms(a, b);
         Interlocked.Exchange(ref b.Room.CycleSlot, 1);
 
         a.Fire(land: false);
@@ -221,7 +221,7 @@ public partial class ModernWiredRuntimeTests
         using var _a = a;
         var (b, _, _) = CrossRoom(2, 60, store, "unused");
         using var _b = b;
-        LoadRooms(a.Room, b.Room);
+        LoadRooms(a, b);
         Interlocked.Exchange(ref b.Room.CycleSlot, 1);
 
         a.Fire(land: false);

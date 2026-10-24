@@ -3675,12 +3675,12 @@ DROP TABLE IF EXISTS `wired_link_endpoints`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `wired_link_endpoints` (
   `item_id` int(10) unsigned NOT NULL,
-  `network_id` int(10) unsigned NOT NULL,
+  `network_id` int(10) unsigned DEFAULT NULL,
   `receive_local` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`item_id`),
   KEY `wired_link_endpoints_network` (`network_id`),
   CONSTRAINT `fk_wired_link_endpoints_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_wired_link_endpoints_network_id` FOREIGN KEY (`network_id`) REFERENCES `wired_link_networks` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_wired_link_endpoints_network_id` FOREIGN KEY (`network_id`) REFERENCES `wired_link_networks` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

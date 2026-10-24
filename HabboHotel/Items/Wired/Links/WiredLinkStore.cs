@@ -47,7 +47,7 @@ public enum WiredLinkResult
 
 /// <summary>
 /// Owner-scoped networks of WIRED Link furni, which may stand in different rooms. Endpoint rooms are read from the items table,
-/// so a picked-up or moved furni follows its row; a furni deleted from the hotel leaves its network through the foreign key.
+/// so a picked-up or moved furni follows its row; a furni deleted from the hotel leaves its network through the foreign key. A deleted network keeps its endpoints without a network.
 /// </summary>
 public sealed class DatabaseWiredLinkStore(IDatabase database) : IWiredLinkStore
 {
@@ -74,7 +74,7 @@ public sealed class DatabaseWiredLinkStore(IDatabase database) : IWiredLinkStore
     {
         using var connection = database.Connection();
 
-        return connection.QuerySingleOrDefault<EndpointRow>("SELECT item_id AS ItemId, network_id AS NetworkId, receive_local AS ReceiveLocal "
+        return connection.QuerySingleOrDefault<EndpointRow>("SELECT item_id AS ItemId, COALESCE(network_id, 0) AS NetworkId, receive_local AS ReceiveLocal "
             + "FROM wired_link_endpoints WHERE item_id = @ItemId", new { ItemId = itemId }) is { } row
             ? new(row.ItemId, row.NetworkId, row.ReceiveLocal) : null;
     }
@@ -99,7 +99,8 @@ public sealed class DatabaseWiredLinkStore(IDatabase database) : IWiredLinkStore
     public WiredLinkResult Select(int ownerId, uint itemId, uint roomId, uint networkId, bool receiveLocal) => InTransaction((connection, transaction) =>
     {
         if (networkId == 0) {
-            connection.Execute("DELETE FROM wired_link_endpoints WHERE item_id = @ItemId", new { ItemId = itemId }, transaction);
+            connection.Execute("INSERT INTO wired_link_endpoints (item_id, network_id, receive_local) VALUES (@ItemId, NULL, @ReceiveLocal) "
+                + "ON DUPLICATE KEY UPDATE network_id = NULL, receive_local = @ReceiveLocal", new { ItemId = itemId, ReceiveLocal = receiveLocal }, transaction);
 
             return WiredLinkResult.Ok;
         }
@@ -171,7 +172,6 @@ public sealed class DatabaseWiredLinkStore(IDatabase database) : IWiredLinkStore
             }
 
             members = connection.Query<ConnectionRow>(MemberSelect + "WHERE e.network_id = @NetworkId", new { NetworkId = networkId }, transaction).Select(row => row.Connection).ToArray();
-            connection.Execute("DELETE FROM wired_link_endpoints WHERE network_id = @Id", new { Id = networkId }, transaction);
             connection.Execute("DELETE FROM wired_link_networks WHERE id = @Id", new { Id = networkId }, transaction);
 
             return WiredLinkResult.Ok;

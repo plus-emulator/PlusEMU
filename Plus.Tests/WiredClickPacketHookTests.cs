@@ -110,9 +110,19 @@ public class WiredClickPacketHookTests
         var response = Assert.Single(world.Packets, p => p.Id == 9460).Payload;
         Assert.Equal(world.Target.VirtualId, response.ReadInt());
         Assert.Equal(!blockMenu, response.ReadBool());
-        var links = world.Packets.Where(p => p.Id == 2023).Select(p => p.Payload.ReadString()).ToArray();
-        Assert.Equal(noRotate, links.Contains("avatar-info/block-rotate"));
-        Assert.Equal(blockMenu, links.Contains("avatar-info/block-menu"));
+        Assert.DoesNotContain(world.Packets, p => p.Id == 2023);
+    }
+
+    // A suppressed menu or rotation sends no InClientLink; OpenMenu false carries the menu flag.
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task R139a_ClickUserSuppressionSendsNoInClientLink(bool blockMenu, bool noRotate)
+    {
+        var world = new World("wf_trg_click_user", [blockMenu ? 1 : 0, noRotate ? 1 : 0]);
+        await new ClickUserEvent().Parse(world.Room, world.Client, Packet(world.Target.VirtualId));
+        world.FlushWired(responseEvent: true);
+        Assert.DoesNotContain(world.Packets, p => p.Id == 2023);
     }
 
     // After a click on a user the clicker turns to face them in the next status update. In a room with a Click User trigger the

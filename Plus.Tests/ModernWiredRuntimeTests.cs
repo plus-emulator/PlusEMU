@@ -2325,9 +2325,9 @@ public partial class ModernWiredRuntimeTests
         Assert.Empty(targets.Poll(room, 100));
         Assert.Same(user, Assert.Single(targets.Poll(room, 100 + WiredBotTargets.FollowRestMilliseconds)).TargetUser);
         Assert.Empty(targets.Poll(room, 1000));
-        RoomUsers(room)[8] = new RoomUser(1, 0, 8, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused);
+        RoomUsers(room)[8] = new RoomUser(2, 0, 8, room, null, TestChatEmotions.Unused, TestRewardProgress.Unused);
         Assert.Empty(targets.Poll(room));
-        Assert.False(targets.HasTargets);
+        Assert.True(targets.HasTargets);
     }
 
     [Fact]

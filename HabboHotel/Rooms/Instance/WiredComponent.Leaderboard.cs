@@ -10,7 +10,7 @@ namespace Plus.HabboHotel.Rooms.Instance;
 /// <summary>
 /// Variable Leaderboard overlays. On room entry the client asks with [0, 0, "0", no chunks] and gets the snapshot of published boards (at most four);
 /// it then subscribes to at most two 50-row chunks of the selected variable and gets them now and again when the variable changes. A save of a board republishes the snapshot.
-/// Every room entry carries the snapshot, a save republishes it at once, a pickup republishes it without the board, and row updates after value writes arrive later, not in the write's tick:
+/// Every room entry carries the snapshot, a save republishes it at once, a pickup republishes it without the board at the next tick, and row updates after value writes arrive later, not in the write's tick:
 /// changed variables go out on a fixed <see cref="LeaderboardPushPeriod"/> grid.
 /// </summary>
 public partial class WiredComponent
@@ -82,12 +82,12 @@ public partial class WiredComponent
     public void SendLeaderboardSnapshot(GameClient session) => session.Send(new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors()));
 
     /// <summary>The published boards of the room, lowest furni id first, each with its stack's user variables to choose from.</summary>
-    public IReadOnlyList<WiredLeaderboardDescriptor> LeaderboardDescriptors(uint? leaving = null)
+    public IReadOnlyList<WiredLeaderboardDescriptor> LeaderboardDescriptors()
     {
         var descriptors = new List<WiredLeaderboardDescriptor>();
         var overlays = new Dictionary<int, uint>();
 
-        foreach (var box in ConfiguredBoxes("wf_xtra_var_leaderboard").Where(box => box.Item.Id != leaving).OrderBy(box => box.Item.Id)) {
+        foreach (var box in ConfiguredBoxes("wf_xtra_var_leaderboard").OrderBy(box => box.Item.Id)) {
             if (WiredLeaderboardConfig.Decode(box.Configuration.IntParams, box.Configuration.VariableIds, box.Configuration.Text) is not { Published: true } config) {
                 continue;
             }
@@ -105,13 +105,11 @@ public partial class WiredComponent
             }
         }
 
-        if (leaving == null) {
-            lock (_leaderboardGate) {
-                _leaderboardOverlayItems.Clear();
+        lock (_leaderboardGate) {
+            _leaderboardOverlayItems.Clear();
 
-                foreach (var (overlay, item) in overlays) {
-                    _leaderboardOverlayItems[overlay] = item;
-                }
+            foreach (var (overlay, item) in overlays) {
+                _leaderboardOverlayItems[overlay] = item;
             }
         }
 
@@ -196,17 +194,17 @@ public partial class WiredComponent
             _leaderboardRevisions[box.Item.Id] = ++_leaderboardRoomRevision;
         }
 
-        BroadcastLeaderboards(null);
+        BroadcastLeaderboards();
     }
 
     /// <summary>
     /// A Text Connector was saved or picked up: the published boards on its tile get one snapshot with their revision one higher at the next tick of the push grid, however many saves came before it,
     /// and an unchanged text counts as a save. The client then subscribes to the new revision and gets the rows with the new text. A connector on another tile sends nothing.
     /// </summary>
-    private void LeaderboardConnectorChanged(Item connector)
+    private void LeaderboardConnectorChanged(int x, int y)
     {
         var boards = ConfiguredBoxes("wf_xtra_var_leaderboard")
-            .Where(box => box.Item.GetX == connector.GetX && box.Item.GetY == connector.GetY
+            .Where(box => box.Item.GetX == x && box.Item.GetY == y
                 && WiredLeaderboardConfig.Decode(box.Configuration.IntParams, box.Configuration.VariableIds, box.Configuration.Text)?.Published == true)
             .Select(box => box.Item.Id).ToArray();
 
@@ -228,12 +226,28 @@ public partial class WiredComponent
     /// </summary>
     internal void TextConnectorPickedUp(Item connector) => _engine.Mutate(() =>
     {
-        LeaderboardConnectorChanged(connector);
+        LeaderboardConnectorChanged(connector.GetX, connector.GetY);
 
         return true;
     });
 
-    /// <summary>The boards a connector changed move to a new revision, and everyone in the room gets the new snapshot.</summary>
+    /// <summary>A user placed a Text Connector, or moved one to another tile: the boards on the tiles it left and reached are republished.</summary>
+    internal void TextConnectorMoved(Item connector, int? fromX, int? fromY) => _engine.Mutate(() =>
+    {
+        if (DescriptorOf(connector)?.CanonicalName != "wf_xtra_var_text_connector") {
+            return false;
+        }
+
+        if (fromX is { } x && fromY is { } y) {
+            LeaderboardConnectorChanged(x, y);
+        }
+
+        LeaderboardConnectorChanged(connector.GetX, connector.GetY);
+
+        return true;
+    });
+
+    /// <summary>The boards a connector changed move to a new revision, and everyone in the room gets the snapshot, also after a board left.</summary>
     private void FlushLeaderboardRepublish()
     {
         lock (_leaderboardGate) {
@@ -250,13 +264,18 @@ public partial class WiredComponent
             _republishedLeaderboards.Clear();
         }
 
-        BroadcastLeaderboards(null);
+        BroadcastLeaderboards();
     }
 
-    /// <summary>A board left the room: everyone gets the snapshot without it.</summary>
-    private void LeaderboardRemoved(uint itemId) => BroadcastLeaderboards(itemId);
+    /// <summary>A board left the room: everyone gets the snapshot without it at the next tick of the push grid.</summary>
+    private void LeaderboardRemoved()
+    {
+        lock (_leaderboardGate) {
+            _leaderboardRepublishDue ??= NextLeaderboardPush(_clock.GetUtcNow());
+        }
+    }
 
-    private void BroadcastLeaderboards(uint? leaving)
+    private void BroadcastLeaderboards()
     {
         // An unloading room has dropped its users before its furniture; with nobody to tell, the boxes are not read.
         var clients = _room.GetRoomUserManager()?.GetRoomUsers().Select(user => user.GetClient()).OfType<GameClient>().ToList() ?? [];
@@ -265,7 +284,7 @@ public partial class WiredComponent
             return;
         }
 
-        var snapshot = new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors(leaving));
+        var snapshot = new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors());
 
         foreach (var client in clients) {
             client.Send(snapshot);

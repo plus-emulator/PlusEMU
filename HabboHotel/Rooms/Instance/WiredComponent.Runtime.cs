@@ -332,7 +332,7 @@ public partial class WiredComponent
         }
 
         if (DescriptorOf(item)?.CanonicalName == "wf_xtra_var_leaderboard" && TryGet(item.Id, out _)) {
-            LeaderboardRemoved(item.Id);
+            LeaderboardRemoved();
         }
 
         _counters.Forget(item);

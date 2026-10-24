@@ -629,8 +629,18 @@ public partial class RoomItemHandling
     }
 
     // announcing runs once the item is placed, just before the clients hear about it.
-    public bool SetFloorItem(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses = false, double height = -1, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision = null, bool deferPositionSave = false, Action? announcing = null) =>
-        PlaceFloor(session, item, newX, newY, newRot, newItem, onRoller, sendMessage, updateRoomUserStatuses, height, wiredCollision, null, deferPositionSave, announcing);
+    public bool SetFloorItem(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses = false, double height = -1, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision = null, bool deferPositionSave = false, Action? announcing = null)
+    {
+        var (fromX, fromY) = (item.GetX, item.GetY);
+        var placed = PlaceFloor(session, item, newX, newY, newRot, newItem, onRoller, sendMessage, updateRoomUserStatuses, height, wiredCollision, null, deferPositionSave, announcing);
+
+        // Only a user's placement or move counts: a room load and wired movement do not republish a leaderboard.
+        if (placed && session != null && !item.IsTemporary && item.Definition.WiredDescriptor?.CanonicalName == "wf_xtra_var_text_connector" && (newItem || fromX != item.GetX || fromY != item.GetY)) {
+            _room.GetWired()?.TextConnectorMoved(item, newItem ? null : fromX, newItem ? null : fromY);
+        }
+
+        return placed;
+    }
 
     public bool PersistFurnitureData(Item item, Plus.HabboHotel.Items.DataFormat.IFurniObjectData data, bool dataUpdateOnly = false)
     {

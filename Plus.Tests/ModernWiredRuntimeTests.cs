@@ -1179,8 +1179,6 @@ public partial class ModernWiredRuntimeTests
     [Theory]
     [InlineData("wf_act_rel_mov", true)]
     [InlineData("wf_act_rel_mov", false)]
-    [InlineData("wf_act_move_rotate", true)]
-    [InlineData("wf_act_move_rotate", false)]
     [InlineData("wf_act_move_to_dir", true)]
     [InlineData("wf_act_move_to_dir", false)]
     public void StepActionsPreserveGroupsWhileDirectionalMovesUseIndependentItems(string name, bool tileFirst)
@@ -1195,10 +1193,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((1, 1, name == "wf_act_move_to_dir" && !tileFirst ? 0.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
     }
 
-    // wf_act_rel_mov lands on stackable furni, so only move_rotate keeps step rules here.
     [Theory]
-    [InlineData("wf_act_move_rotate", true)]
-    [InlineData("wf_act_move_rotate", false)]
     [InlineData("wf_act_move_to_dir", true)]
     [InlineData("wf_act_move_to_dir", false)]
     public void GroupedStepsBlockOnStackableTilesWhileDirectionalItemsUseNormalPlacement(string name, bool tileFirst)
@@ -1208,27 +1203,16 @@ public partial class ModernWiredRuntimeTests
         var ahead = StackItem(map, items, 9, "color_tile", 1, 0, 0.5, true);
         var action = StackBox(room, name, 2, stack);
 
-        // Move/Rotate lands on stackable furniture like Move To Direction.
-        var directional = name is "wf_act_move_to_dir" or "wf_act_move_rotate";
-        Assert.Equal(directional, StackPulse(room, action, stack, ahead));
-
-        if (name == "wf_act_move_rotate") {
-            // The tile and its chair move as one unit onto the stackable tile ahead.
-            Assert.Equal((1, 1, 0.5), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
-            Assert.Equal((1, 1, 1.0), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
-
-            return;
-        }
+        Assert.Equal(name == "wf_act_move_to_dir", StackPulse(room, action, stack, ahead));
 
         Assert.Equal((tileFirst ? 1 : 0, 1, tileFirst ? 0.5 : 0.0), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
         Assert.Equal((1, 1, tileFirst ? 1.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
     }
 
-    // wf_act_rel_mov stacks in pick order at a wall instead.
     [Theory]
     [InlineData("wf_act_move_rotate", true)]
     [InlineData("wf_act_move_rotate", false)]
-    public void LineOfStacksWaitsIntactAtAWallAndKeepsItsSpacingInFreeSpace(string name, bool frontFirst)
+    public void LineOfChairStacksWaitsAtAWallAndEveryChairAdvancesInFreeSpace(string name, bool frontFirst)
     {
         var (room, line) = StackLine(0, -1, frontFirst);
         var action = StackBox(room, name, 6, line);
@@ -1242,9 +1226,18 @@ public partial class ModernWiredRuntimeTests
         var (open, free) = StackLine(6, 1, frontFirst);
         var east = StackBox(open, name, 2, free);
 
+        // Every chair advances. A tile stays or follows one tile, and never lands on a chair.
         for (var pulse = 1; pulse <= 2; pulse++) {
+            var before = free.Select(item => item.GetX).ToArray();
             Assert.True(StackPulse(open, east, free));
-            AssertStackLine(free, [6 + pulse, 5 + pulse, 4 + pulse, 3 + pulse]);
+
+            for (var stack = 0; stack < 4; stack++) {
+                Assert.Equal(6 - stack + pulse, free[2 * stack + 1].GetX);
+                Assert.InRange(free[2 * stack].GetX, before[2 * stack], before[2 * stack] + 1);
+            }
+
+            var chairs = free.Where((_, index) => index % 2 == 1).ToArray();
+            Assert.All(free.Where((_, index) => index % 2 == 0), tile => Assert.DoesNotContain(chairs, chair => chair.GetX == tile.GetX && chair.GetZ < tile.GetZ));
         }
     }
 
@@ -1266,6 +1259,17 @@ public partial class ModernWiredRuntimeTests
             Assert.Equal((positions[pulse].Item1, 1, !tileFirst && pulse == 2 ? 0.5 : 0.0), (first.GetX, first.GetY, first.GetZ));
             Assert.Equal((positions[pulse].Item2, 1, tileFirst ? 0.5 : 0.0), (second.GetX, second.GetY, second.GetZ));
         }
+    }
+
+    // The furni of a tile with a chair move one at a time in a random order. The tile cannot land on the chair.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MoveRotateMovesATileWithAChairOneFurniAtATime(bool ahead)
+    {
+        string[] expected = ahead ? ["(0, 1, 0)/(1, 1, 0.5)", "(1, 1, 0.5)/(1, 1, 1)"] : ["(0, 1, 0)/(1, 1, 0)", "(1, 1, 0)/(1, 1, 0.5)"];
+
+        Assert.Equal(expected, RandomStackOutcomes("wf_act_move_rotate", true, ahead));
     }
 
     [Theory]
@@ -1295,6 +1299,23 @@ public partial class ModernWiredRuntimeTests
         StackItem(map, items, tileFirst ? firstId : firstId + 1, "color_tile", x, 0, 0.5, true),
         StackItem(map, items, tileFirst ? firstId + 1 : firstId, "chair", x, 0.5, 1, false)
     ];
+
+    // Fires Move/Rotate east on a tile with a chair many times and returns the distinct end positions as "tile/chair".
+    private static string[] RandomStackOutcomes(string name, bool tileFirst, bool ahead)
+    {
+        var outcomes = new SortedSet<string>(StringComparer.Ordinal);
+
+        for (var firing = 0; firing < 40; firing++) {
+            var (room, map, items) = World(new RecordingPlacementStore());
+            var stack = TileWithChair(map, items, 0, tileFirst);
+            var other = ahead ? StackItem(map, items, 9, "color_tile", 1, 0, 0.5, true) : null;
+
+            Assert.True(StackPulse(room, StackBox(room, name, 2, stack), stack, other));
+            outcomes.Add(string.Join('/', stack.Select(item => (item.GetX, item.GetY, item.GetZ))));
+        }
+
+        return [.. outcomes];
+    }
 
     private static Item StackItem(Gamemap map, ConcurrentDictionary<uint, Item> items, uint id, string name, int x, double z, double height, bool stackable)
     {

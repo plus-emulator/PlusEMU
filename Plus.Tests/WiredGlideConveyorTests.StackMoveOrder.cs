@@ -101,11 +101,11 @@ public sealed partial class WiredGlideConveyorTests
     }
 
     [Fact]
-    public void MoveRotateKeepsAStackWithAnItemThatCannotBeStackedOnTogether()
+    public void MoveRotateMovesAStackWithAnItemThatCannotBeStackedOnOneFurniAtATime()
     {
-        var orders = new HashSet<string>();
+        var outcomes = new SortedSet<string>(StringComparer.Ordinal);
 
-        for (var firing = 0; firing < 12; firing++) {
+        for (var firing = 0; firing < 24; firing++) {
             var f = new Fixture(
             [
                 (80, 6, 12, 0.0, 0, "bc_tile_1", null),
@@ -120,7 +120,10 @@ public sealed partial class WiredGlideConveyorTests
             f.Owned(() => rider.OnChat(0, "mv", false));
             f.Advance(300);
 
-            Assert.Equal([(7, 13, 0.0), (7, 13, 1.0)], new[] { f.Items[80], f.Items[81] }.Select(item => (item.GetX, item.GetY, item.GetZ)));
+            outcomes.Add(string.Join('/', new[] { f.Items[80], f.Items[81] }.Select(item => (item.GetX, item.GetY, item.GetZ))));
         }
+
+        // The upper furni cannot be stacked on, so the lower one stays when the upper one moves first.
+        Assert.Equal(["(6, 12, 0)/(7, 13, 0)", "(7, 13, 0)/(7, 13, 1)"], outcomes);
     }
 }

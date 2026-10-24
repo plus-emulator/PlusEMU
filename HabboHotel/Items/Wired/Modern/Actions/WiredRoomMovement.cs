@@ -346,7 +346,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
     /// <summary>
     /// Resolves one execution's furniture steps together. Movers stacked on each other step as one unit, decided by its
-    /// bottom item, except a Move and Rotate stack of single-tile stackable furni, which moves one furni at a time.
+    /// bottom item, except a Move and Rotate stack of single-tile furni, which moves one furni at a time.
     /// Before a unit enters a tile, a still-pending unit there that would block it takes its own step first,
     /// so a line follows its front or waits behind it in any order. Without step rules (wf_act_rel_mov) the units move in the
     /// movers' order and land on stackable furniture like any non-step move.
@@ -357,12 +357,12 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var physics = context.Policy.Addons.Physics;
         var units = Units(movers);
 
-        // Without physics, a stack of single-tile stackable furni moves one furni at a time in a random order.
+        // Without physics, a stack of single-tile furni moves one furni at a time in a random order. A furni that cannot be stacked on blocks the ones after it.
         // The furni still on the start tile do not block each other.
         var stacks = new Dictionary<Item, (Item[] Members, int X, int Y)>();
 
         if (randomStacks && physics == null) {
-            foreach (var unit in units.Where(unit => unit.Length > 1 && unit.All(item => item.Definition.Stackable && item.Definition.Width <= 1 && item.Definition.Length <= 1))) {
+            foreach (var unit in units.Where(unit => unit.Length > 1 && unit.All(item => item.Definition.Width <= 1 && item.Definition.Length <= 1))) {
                 foreach (var item in unit) {
                     stacks[item] = (unit, item.GetX, item.GetY);
                 }
@@ -398,10 +398,13 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             if (unit.Length == 1 && stacks.TryGetValue(unit[0], out var origin)) {
                 var item = unit[0];
                 var leaving = origin.Members.Where(member => member.GetX == origin.X && member.GetY == origin.Y).Select(member => member.Id).ToHashSet();
-                // A furni that turns on its own tile lands on top of the rest of its stack.
                 var turnsInPlace = x == item.GetX && y == item.GetY && rotation != item.Rotation;
+                var top = turnsInPlace ? context.Room.GetGameMap().GetCoordinatedItems(new(item.GetX, item.GetY))
+                    .Where(other => other.Id != item.Id).MaxBy(other => other.TotalHeight) : null;
+                // A furni that turns on its own tile lands on top of the rest of its stack, unless the top furni cannot be stacked on.
+                var restack = !turnsInPlace ? null : top is { Definition.Stackable: false } ? item.GetZ : WiredMovementActions.RestackHeight(item);
 
-                return MoveFurniture(context, item, x, y, rotation, turnsInPlace ? WiredMovementActions.RestackHeight(item) : null,
+                return MoveFurniture(context, item, x, y, rotation, restack,
                     step: stepRules && stackableBlocks, leaving, passengers);
             }
 

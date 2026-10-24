@@ -42,14 +42,15 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
         public LinkedList<Entry> Pending { get; } = new();
     }
 
-    private sealed class StateWrite(Item item, Func<string, string?> next, GateCloseReason reason, bool persist, Action<Item>? after)
+    private sealed class StateWrite(Item item, Func<string, string?> next, GateCloseReason reason, bool persist, Action<Item>? after, IReadOnlySet<RoomUser>? departing)
     {
         public Item Item { get; } = item;
         public Func<string, string?> Next { get; } = next;
         public GateCloseReason Reason { get; } = reason;
         public bool Persist { get; } = persist;
         public Action<Item>? After { get; } = after;
-        public StateWrite Prepared(string state) => new(Item, _ => state, Reason, Persist, After);
+        public IReadOnlySet<RoomUser>? Departing { get; } = departing;
+        public StateWrite Prepared(string state) => new(Item, _ => state, Reason, Persist, After, Departing);
     }
 
     private readonly record struct Outcome(GateTransition Result, LegacyDataFormat? Data = null, bool Closed = false);
@@ -93,10 +94,10 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
 
     // Toggle-style writers decide the next state from the state they observe; null leaves it unchanged.
     public static GateTransition ToggleState(Item item, Func<string, string?> nextState, GateCloseReason reason,
-        bool persist = true, Action<Item>? afterWrite = null)
+        bool persist = true, Action<Item>? afterWrite = null, IReadOnlySet<RoomUser>? departing = null)
     {
         if (IsGate(item) && For(item) is { } gates) {
-            return gates.Toggle(item, nextState, reason, persist, afterWrite);
+            return gates.Toggle(item, nextState, reason, persist, afterWrite, departing);
         }
 
         if (nextState(item.LegacyDataString) is not { } state) {
@@ -139,10 +140,10 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
         => Toggle(item, _ => closedState, reason, persist, afterClose);
 
     public GateTransition Toggle(Item item, Func<string, string?> nextState, GateCloseReason reason,
-        bool persist = true, Action<Item>? afterWrite = null)
+        bool persist = true, Action<Item>? afterWrite = null, IReadOnlySet<RoomUser>? departing = null)
     {
         DecisionHook?.Invoke();
-        var write = new StateWrite(item, nextState, reason, persist, afterWrite);
+        var write = new StateWrite(item, nextState, reason, persist, afterWrite, departing);
         var operation = Admit(item, run => RunState(write, run));
 
         if (operation == null) {
@@ -169,7 +170,7 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
             }
 
             mark = FurnitureStateEvents.Mark();
-            outcome = CommitWith(operation, state);
+            outcome = CommitWith(operation, state, departing);
         }
         catch {
             End(operation);
@@ -410,7 +411,7 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
         var item = write.Item;
         var state = StillInRoom(item) ? write.Next(item.LegacyDataString) : null;
         var mark = FurnitureStateEvents.Mark();
-        var outcome = state is null ? new Outcome(GateTransition.Unchanged) : CommitWith(operation, state);
+        var outcome = state is null ? new Outcome(GateTransition.Unchanged) : CommitWith(operation, state, write.Departing);
 
         if (outcome.Result == GateTransition.Refused && write.Reason == GateCloseReason.Automatic) {
             _retained[item.Id] = write;
@@ -447,7 +448,7 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
         return outcome.Result;
     }
 
-    private Outcome CommitWith(GateOperation operation, string state)
+    private Outcome CommitWith(GateOperation operation, string state, IReadOnlySet<RoomUser>? departing = null)
     {
         lock (_sync) {
             if (!_lanes.TryGetValue(operation.Item.Id, out var lane) || !ReferenceEquals(lane.Active, operation)) {
@@ -460,7 +461,7 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
                 return new(GateTransition.Applied, item.StoreStateQuietly(state));
             }
 
-            var (refused, data) = ValidateAndWrite(item, state);
+            var (refused, data) = ValidateAndWrite(item, state, departing);
 
             return refused ? new(GateTransition.Refused) : new(GateTransition.Applied, data, Closed: true);
         }
@@ -468,10 +469,10 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
 
     // Footprint capture, occupancy validation and the state write (including the NavInputs record publication
     // inside NavSync) form one transaction under PlacementSync, so a packet-thread move cannot slip between them.
-    private (bool Refused, LegacyDataFormat? Data) ValidateAndWrite(Item item, string closedState)
+    private (bool Refused, LegacyDataFormat? Data) ValidateAndWrite(Item item, string closedState, IReadOnlySet<RoomUser>? departing)
     {
         lock (room.GetGameMap().PlacementSync) {
-            if (occupancy().IsBlocked(item.GetCoords)) {
+            if (occupancy().IsBlocked(item.GetCoords, departing)) {
                 return (true, null);
             }
 

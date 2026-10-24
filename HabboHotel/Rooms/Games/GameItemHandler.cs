@@ -54,9 +54,21 @@ public class GameItemHandler
 
             if (--pyramid.TicksLeft <= 0) {
                 var flipped = state == "0" ? "1" : "0";
-                GateTransitionService.ToggleState(pyramid.Item, current => current == state ? flipped : null, GateCloseReason.Timer, persist: false);
+                GateTransitionService.ToggleState(pyramid.Item, current => current == state ? flipped : null, GateCloseReason.Timer, persist: false,
+                    departing: SteppingOff(pyramid.Item));
             }
         }
+    }
+
+    // An avatar whose step this tick leaves the pyramid's tiles does not hold the pyramid up.
+    private HashSet<RoomUser>? SteppingOff(Item pyramid)
+    {
+        var tiles = pyramid.GetCoords;
+        var leaving = _room.GetRoomUserManager().GetRoomUsers()
+            .Where(user => user.IsWalking && tiles.Any(tile => tile.X == user.X && tile.Y == user.Y) && !tiles.Any(tile => tile.X == user.SetX && tile.Y == user.SetY))
+            .ToHashSet();
+
+        return leaving.Count == 0 ? null : leaving;
     }
 
     private void CyclePyramids()

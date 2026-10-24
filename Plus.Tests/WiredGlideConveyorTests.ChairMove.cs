@@ -28,7 +28,7 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void MoveRotateMovesAChairOnAStackOneFurniAtATime()
     {
-        var chairAlone = 0;
+        var heights = new SortedSet<double>();
 
         for (var firing = 0; firing < 36; firing++) {
             var f = new Fixture(
@@ -51,10 +51,34 @@ public sealed partial class WiredGlideConveyorTests
             Assert.Equal(moved.Order(), batch.Select(entry => (uint)entry.Id).Order());
             Assert.Contains(82u, moved);
             Assert.All(moved.Where(id => id != 82), id => Assert.True(f.Items[id].GetZ < f.Items[82].GetZ));
-            chairAlone += moved.Length == 1 ? 1 : 0;
+            heights.Add(f.Items[82].GetZ);
         }
 
-        Assert.InRange(chairAlone, 1, 35);
+        Assert.Equal([0.0, 1.0, 2.0], heights);
+    }
+
+    // Turning a chair stack in place keeps the blocks under the chair.
+    [Fact]
+    public void MoveRotateTurnsAChairStackInPlaceWithoutPuttingABlockOnTheChair()
+    {
+        for (var firing = 0; firing < 24; firing++) {
+            var f = new Fixture(
+            [
+                (80, 6, 12, 0.0, 0, "bc_tile_1", null),
+                (81, 6, 12, 1.0, 0, "bc_tile_1", null),
+                (82, 6, 12, 2.0, 2, "chair", null),
+                (90, 4, 14, 0.0, 0, "wf_trg_says_something", SaysConfig("mv")),
+                (91, 4, 14, 0.65, 0, "wf_act_move_rotate", MoveRotateWithTurnConfig(0, 1, 80, 81, 82))
+            ], live: true);
+            SeatFurni(f, 82);
+            var rider = f.Walker((int)SpeakerId, 4, 10, 4, 11);
+            f.Advance(1000);
+            f.Owned(() => rider.OnChat(0, "mv", false));
+            f.Advance(300);
+
+            Assert.Equal([0.0, 1.0, 2.0], new uint[] { 80, 81, 82 }.Select(id => f.Items[id].GetZ));
+            Assert.All(new uint[] { 80, 81, 82 }, id => Assert.Equal((6, 12), (f.Items[id].GetX, f.Items[id].GetY)));
+        }
     }
 
     // Three Move boxes bring an empty chair and two blocks onto one tile: one WiredMovements.

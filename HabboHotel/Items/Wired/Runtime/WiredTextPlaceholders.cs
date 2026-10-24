@@ -20,7 +20,7 @@ public sealed record WiredTextPlaceholders(ImmutableArray<string> PlaceholderNam
     public static bool UsesTriggerText(string? text) => text?.Contains(TriggerTextToken, StringComparison.Ordinal) == true;
 
     /// <summary>The boxes whose editor is a message editor: Show Message, the two bot talk effects and Send Link Message.</summary>
-    public static bool Applies(string name) => name is "wf_act_show_message" or "wf_act_bot_talk" or "wf_act_bot_talk_to_avatar" or "wf_act_send_message";
+    public static bool Applies(string name) => name is "wf_act_show_message" or "wf_act_bot_talk" or "wf_act_bot_talk_to_avatar" or "wf_act_send_message" or "wf_act_send_dataframe";
 
     /// <summary>
     /// The stack on a box's tile, bottom up: the trigger's placeholder, the text output add-ons and the capturers. Placeholder and capturer

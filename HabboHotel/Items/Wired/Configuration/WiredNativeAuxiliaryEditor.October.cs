@@ -15,6 +15,8 @@ internal static partial class WiredNativeAuxiliaryEditor
     // Properties, not fields: the spec table in the other part of this class is built before this part's static fields.
     private static ImmutableArray<int> TargetFurni => [0, 100, 200, 201];
     private static ImmutableArray<int> TargetUsers => [0, 200, 201];
+    private static ImmutableArray<int> LinkReceiveFurni => [100, 200];
+    private static ImmutableArray<int> LinkRowFurni => [0, 100, 101, 200, 201];
 
     private static WiredConfiguration Roles(WiredConfiguration draft, (string Role, int Source)[] furni, (string Role, int Source)[] users) => draft with
     {
@@ -103,22 +105,23 @@ internal static partial class WiredNativeAuxiliaryEditor
                 ? Roles(Draft(n, p), [("items", n.FurniSourceTypes[0])], [("audience", n.UserSourceTypes[0]), ("targets", n.UserSourceTypes[1])]) : null;
         }));
         // [source (0 the trigger's text, 1 custom)]; the message, at most 1000 UTF-8 bytes. Furni 0 picks the endpoints.
-        yield return new("wf_act_send_message", new(Sources([TargetFurni], [], [1]) with { FurniDefaults = [100] }, n =>
+        yield return new("wf_act_send_message", new(Sources([TargetFurni], [], [0]) with { FurniDefaults = [100] }, n =>
             Shape(n, 1, 1, 0, 0) && n.OwnedIntParams[0] is 0 or 1 && WiredLinkDataframeCodec.Utf8Length(n.Text) <= WiredLinkDataframeCodec.MaxLinkMessageBytes
                 ? Roles(Draft(n, n.OwnedIntParams, n.Text), [("endpoints", n.FurniSourceTypes[0])], []) : null));
         // [count, 12 x (mode, literal, target)] = 37 ints, JSON [key, text] rows, 12 variable ids.
         // Merged rows pair furni i+1 with user i; furni 0 picks the endpoints.
-        yield return new("wf_act_send_dataframe", new(Sources([TargetFurni, .. Enumerable.Repeat(TargetFurni, 12)],
-            [.. Enumerable.Repeat(TargetUsers, 12)], [0, .. Enumerable.Range(0, 12).SelectMany(_ => new[] { 0, 0, -10 })], 12) with
+        yield return new("wf_act_send_dataframe", new(Sources([.. Enumerable.Repeat(LinkRowFurni, 13)],
+            [.. Enumerable.Repeat(TargetUsers, 12)], [0, .. Enumerable.Range(0, 12).SelectMany(_ => new[] { 0, 0, -20 })], 12) with
         {
-            FurniDefaults = [100, .. Enumerable.Repeat(0, 12)]
+            FurniDefaults = [100, .. Enumerable.Repeat(200, 12)],
+            AllowWall = true
         }, SendDataframe));
         yield return new("wf_trg_room_initializes", new(Meta(0, 0, []), n => Shape(n, 0, 0, 0, 0) && n.Text.Length == 0 ? Draft(n, []) : null));
         // Furni 0 picks the endpoints it listens on.
-        yield return new("wf_trg_receive_message", new(Sources([TargetFurni], [], []) with { FurniDefaults = [100] }, n =>
+        yield return new("wf_trg_receive_message", new(Sources([LinkReceiveFurni], [], []) with { FurniDefaults = [100] }, n =>
             Shape(n, 0, 1, 0, 0) && n.Text.Length == 0 ? Roles(Draft(n, []), [("endpoints", n.FurniSourceTypes[0])], []) : null));
         // [count, 12 x kind] = 13 ints, JSON [key, placeholder] rows, 12 variable ids.
-        yield return new("wf_trg_receive_dataframe", new(Sources([TargetFurni], [], [0, .. Enumerable.Repeat(0, 12)], 12) with
+        yield return new("wf_trg_receive_dataframe", new(Sources([LinkReceiveFurni], [], [0, .. Enumerable.Repeat(0, 12)], 12) with
         {
             FurniDefaults = [100]
         }, ReceiveDataframe));
@@ -169,10 +172,10 @@ internal static partial class WiredNativeAuxiliaryEditor
                 && parts.All(key => key.Length == 0 || WiredWebApiKeyFormat.IsKey(key)))
                 && (n.OwnedIntParams[0] == 0 || parts.Length == 2 && parts[1].Length > 0) ? Draft(n, n.OwnedIntParams, n.Text) : null;
         }));
-        // [message, dataframe]; the speaker always picks furni (forceFurniSelection).
-        yield return new("wf_xtra_link_speaker", new(Sources([TargetFurni], [], [1, 1]) with { FurniDefaults = [100] }, n =>
-            Shape(n, 2, 1, 0, 0) && n.Text.Length == 0 && n.OwnedIntParams.All(flag => flag is 0 or 1)
-                ? Roles(Draft(n, n.OwnedIntParams), [("speakers", n.FurniSourceTypes[0])], []) : null));
+        // [message, dataframe]; the speaker always speaks for its picked links and has no furni source.
+        yield return new("wf_xtra_link_speaker", new(Sources([], [], [1, 1]), n =>
+            Shape(n, 2, 0, 0, 0) && n.Text.Length == 0 && n.OwnedIntParams.All(flag => flag is 0 or 1)
+                ? Roles(Draft(n, n.OwnedIntParams), [("speakers", WiredSources.Selected)], []) : null));
         // The text: variable name TAB task text (at most 100). No ints or variables.
         yield return new("wf_var_dailytask", new(Meta(0, 0, []), n =>
         {
@@ -206,6 +209,25 @@ internal static partial class WiredNativeAuxiliaryEditor
                     OwnedIntParams = [.. Enumerable.Range(0, 3).Select(index => index < native.OwnedIntParams.Length ? (native.OwnedIntParams[index] != 0 ? 1 : 0) : 1)],
                     Text = ""
                 };
+            // The speaker had a furni source before it lost it, and any non-zero flag is stored as 1.
+            case "wf_xtra_link_speaker":
+                return native with
+                {
+                    FurniSourceTypes = [],
+                    OwnedIntParams = native.OwnedIntParams.Length == 2 ? [.. native.OwnedIntParams.Select(flag => flag != 0 ? 1 : 0)] : native.OwnedIntParams
+                };
+            case "wf_trg_receive_dataframe" when native.VariableIds.IsEmpty:
+                return StoredForm(name, native with { VariableIds = [.. Enumerable.Repeat(WiredVariableAbsent.WireId, 12)] });
+            case "wf_trg_receive_dataframe" when !native.NeverSaved && WiredLinkDataframeCodec.Decode(native.Text, native.OwnedIntParams.IsEmpty ? -1 : native.OwnedIntParams[0]) is { } rows
+                && native.OwnedIntParams.Length == 13:
+                return native with
+                {
+                    Text = WiredLinkDataframeCodec.Encode(rows.Select((row, index) => (WiredLinkDataframeCodec.NormalizeKey(row.Key),
+                        native.OwnedIntParams[1 + index] == WiredLinkDataframeCodec.PlaceholderDestination ? row.Text.ToLowerInvariant() : row.Text)))
+                };
+            case "wf_act_send_dataframe" when !native.NeverSaved && native.OwnedIntParams.Length == 37
+                && WiredLinkDataframeCodec.Decode(native.Text, native.OwnedIntParams[0]) is { Length: 0 }:
+                return native with { Text = WiredLinkDataframeCodec.Encode([]) };
             case "wf_var_pointer":
                 var requested = native.OwnedIntParams.IsEmpty ? 1 : native.OwnedIntParams[0];
 

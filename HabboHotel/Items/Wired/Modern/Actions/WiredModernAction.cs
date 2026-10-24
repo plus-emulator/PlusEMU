@@ -142,7 +142,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         return Furni(context, config, slot).All(item => WiredRoomMovement.PlainPublicationItem(item) || name == "wf_act_move_rotate" && EmptyPlainSeat(context, item));
     }
 
-    // An empty seat without its own interaction joins the shared WiredMovements like a plain furni.
+    // A seat with a user on it sends its own WiredMovements.
     private static bool EmptyPlainSeat(WiredRuntimeContext context, Item item) => item.IsFloorItem && item.Definition.IsSeat
         && item.Definition.InteractionType == InteractionType.None
         && WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation).All(point => context.Room.GetGameMap().GetRoomUsers(point).Count == 0);

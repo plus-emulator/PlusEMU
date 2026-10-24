@@ -398,10 +398,13 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             if (unit.Length == 1 && stacks.TryGetValue(unit[0], out var origin)) {
                 var item = unit[0];
                 var leaving = origin.Members.Where(member => member.GetX == origin.X && member.GetY == origin.Y).Select(member => member.Id).ToHashSet();
-                // A furni that turns on its own tile lands on top of the rest of its stack.
                 var turnsInPlace = x == item.GetX && y == item.GetY && rotation != item.Rotation;
+                var top = turnsInPlace ? context.Room.GetGameMap().GetCoordinatedItems(new(item.GetX, item.GetY))
+                    .Where(other => other.Id != item.Id).MaxBy(other => other.TotalHeight) : null;
+                // A furni that turns on its own tile lands on top of the rest of its stack, unless the top furni cannot be stacked on.
+                var restack = !turnsInPlace ? null : top is { Definition.Stackable: false } ? item.GetZ : WiredMovementActions.RestackHeight(item);
 
-                return MoveFurniture(context, item, x, y, rotation, turnsInPlace ? WiredMovementActions.RestackHeight(item) : null,
+                return MoveFurniture(context, item, x, y, rotation, restack,
                     step: stepRules && stackableBlocks, leaving, passengers);
             }
 

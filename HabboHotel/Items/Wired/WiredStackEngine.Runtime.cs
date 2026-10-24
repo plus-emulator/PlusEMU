@@ -818,7 +818,8 @@ internal sealed partial class WiredStackEngine
         // Every pass polls: the room paces passes, and each timer keeps its own deadlines.
         WiredRuntimeContext? snapshot = null;
         var timers = _items.Values.OfType<IWiredTimedTrigger>().Where(RuntimeSupported)
-            .OrderBy(x => x.Item.GetZ).ThenBy(x => x.Item.Id).ToArray();
+            .OrderBy(IsRepeatShort).ThenBy(x => x.Item.GetZ).ThenBy(x => x.Item.Id).ToArray();
+        var roomTickTimerFired = false;
 
         var dormant = timers.Any(timer => timer is WiredModernTimedTrigger)
             && !_targets!.AllUsers().Any(user => !user.IsBot || user.IsWalking);
@@ -850,6 +851,14 @@ internal sealed partial class WiredStackEngine
                     SealPublication();
                 }
 
+                // A Repeat Short that fires after a room tick timer sends its own ObjectsDataUpdate.
+                if (IsRepeatShort(timer) && roomTickTimerFired) {
+                    roomTickTimerFired = false;
+                    SealPublication();
+                    (_operations as Plus.HabboHotel.Rooms.Instance.WiredComponent)?.FlushFlashData();
+                }
+
+                roomTickTimerFired |= !IsRepeatShort(timer);
                 snapshot ??= CreateContext(@event, 0);
                 var context = snapshot.Fork(@event, 0);
                 context.Trigger = timer;
@@ -881,6 +890,8 @@ internal sealed partial class WiredStackEngine
 
         DrainReadySignals();
     }
+
+    private static bool IsRepeatShort(IWiredTimedTrigger timer) => timer is WiredModernTimedTrigger { Descriptor.CanonicalName: "wf_trg_period_short" };
 
     private bool _drainingSignals;
     private bool _speechPass;

@@ -535,7 +535,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     public bool MoveAvatar(WiredRuntimeContext context, RoomUser user, int x, int y, bool animate,
         int walkMode = 2, bool throughUsers = false, bool ignoreOccupants = false, int? animationTimeMs = null,
         PassengerSnapshot? passengers = null, (int X, int Y, double Z)? carrySource = null, bool replaceStep = false,
-        List<WiredMovementComposer>? batch = null)
+        List<WiredMovementComposer>? batch = null, bool raiseWalkOn = true)
     {
         var room = context.Room;
         user = WiredRoomOperations.Rider(room, user);
@@ -552,7 +552,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             }
 
             var moved = MoveAvatarOwned(context, actor, x, y, animate, walkMode, throughUsers, ignoreOccupants, animationTimeMs, sequence, carrySource,
-                replaceStep, collect);
+                replaceStep, collect, raiseWalkOn);
 
             if (moved) {
                 passengers?.Moved(actor);
@@ -580,7 +580,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
     private bool MoveAvatarOwned(WiredRuntimeContext context, RoomUser user, int x, int y, bool animate,
         int walkMode, bool throughUsers, bool ignoreOccupants, int? animationTimeMs, long? discardThrough, (int X, int Y, double Z)? carrySource,
-        bool replaceStep = false, List<WiredMovementComposer>? batch = null)
+        bool replaceStep = false, List<WiredMovementComposer>? batch = null, bool raiseWalkOn = true)
     {
         var room = context.Room;
         var curve = context.Policy.Addons.Curve;
@@ -633,7 +633,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             context.Publication?.Flush();
         }
 
-        walkTransition(user, oldItems, newItems);
+        walkTransition(user, oldItems, raiseWalkOn ? newItems : newItems.Where(item => oldItems.Any(old => old.Id == item.Id)));
 
         if (animate && !context.Policy.Addons.DisableAnimation) {
             var source = carrySource ?? (X: oldX, Y: oldY, Z: oldZ);

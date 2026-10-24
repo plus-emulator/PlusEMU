@@ -1001,11 +1001,11 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         // A user already on the target is teleported all the same: it is republished at +1.5 s and relocated onto the target at +2.0 s.
         var room = context.Room;
 
-        bool Relocate()
+        bool Relocate(bool raiseWalkOn = true)
         {
             var (x, y) = TeleportLanding(room, user, target);
 
-            return _movement.MoveAvatar(context, user, x, y, false, 2, ignoreOccupants: true);
+            return _movement.MoveAvatar(context, user, x, y, false, 2, ignoreOccupants: true, raiseWalkOn: raiseWalkOn);
         }
 
         var effects = user.GetClient()?.GetHabbo()?.Effects;
@@ -1038,6 +1038,26 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
                 user.UpdateNeeded = true;
 
+                // A normal teleport raises Walks On with the republish; the landing then raises only Walks Off.
+                if (!fast) {
+                    void RaiseWalkOn(RoomUser actor)
+                    {
+                        var (landingX, landingY) = TeleportLanding(room, actor, target);
+                        var map = room.GetGameMap();
+                        var left = map.GetCoordinatedItems(actor.Coordinate).Select(item => item.Id).ToHashSet();
+
+                        wired.DispatchWalkTransition(actor, [],
+                            map.GetCoordinatedItems(new(landingX, landingY)).Where(item => !left.Contains(item.Id)));
+                    }
+
+                    if (RoomOwnerScope.IsOwner(room)) {
+                        RaiseWalkOn(user);
+                    }
+                    else {
+                        room.GetGameMap().Navigation!.RunOwner(user, (actor, _) => RaiseWalkOn(actor));
+                    }
+                }
+
                 // Bot Teleport fires Bot Reaches Furni with the republish, before the landing.
                 if (user is { IsBot: true, IsPet: false }) {
                     var (x, y) = TeleportLanding(room, user, target);
@@ -1061,7 +1081,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         if (!wired.ScheduleOnRoomTick(context, relocate, () =>
             {
                 if (user.IsAttachedTo(room)) {
-                    Relocate();
+                    Relocate(raiseWalkOn: fast);
                 }
             })) {
             restore();

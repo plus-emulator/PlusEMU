@@ -28,9 +28,6 @@ internal static class WiredFurniVisualRules
     // The strengths of each type: Outline, Soft glow, Darken, Color tint, Brighten and Neon aura.
     private static readonly int[][] Strengths = [[0, 100], [0, 100], [0], [0, 25, 50, 75, 100], [0, 38], [0, 100]];
 
-    /// <summary>At most 120 pulses of delay.</summary>
-    public const int MaxDelayPulses = 120;
-    public const string DelayKey = "wiredfurni.error.invalid_delay";
     public const string UserSourceKey = "wiredfurni.error.invalid_user_source";
     public const string UserSourceCountKey = "wiredfurni.error.invalid_user_source_count";
 
@@ -65,13 +62,6 @@ internal static class WiredFurniVisualRules
         // The editors have no text field; a text in the save is accepted and dropped.
         return native with { OwnedIntParams = ints.MoveToImmutable(), Text = "" };
     }
-
-    /// <summary>
-    /// The save with a negative delay set to 0, for the packet bounds check only. A delay
-    /// of -1 is answered with the delay key and not dropped, so the delay check is left to <see cref="DelayAccepted"/>.
-    /// </summary>
-    public static WiredNativeEditorConfiguration WithoutNegativeDelay(WiredNativeEditorConfiguration native) =>
-        native.Delay is < 0 ? native with { Delay = 0 } : native;
 
     // Any value but 0 is 1.
     private static int Flag(int value) => value == 0 ? 0 : 1;
@@ -114,8 +104,6 @@ internal static class WiredFurniVisualRules
         name == Highlight && saved.IntParams is [_, ColourTint, _, _, 0, _, 0] && saved.FurniSources.GetValueOrDefault("items") == WiredSources.Selected
             && saved.SelectedItems.Any(id => !isBuildersClub(id))
             ? HighlightKeyPrefix + "normal_furni" : null;
-
-    public static bool DelayAccepted(int? delay) => delay is not { } pulses || pulses <= MaxDelayPulses && WiredConfigurationLimits.IsDelay(pulses);
 
     /// <summary>A save the hotel drops without a reply: an unknown user source. More than 20 picks are dropped earlier, see TryLimitPicks.</summary>
     public static bool DroppedWithoutReply(WiredNativeEditorConfiguration native) =>

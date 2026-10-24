@@ -1189,6 +1189,13 @@ public partial class ModernWiredRuntimeTests
         var stack = TileWithChair(map, items, 0, tileFirst);
         var action = StackBox(room, name, 2, stack);
 
+        if (name == "wf_act_move_rotate") {
+            // Move/Rotate moves a stack with a chair one furni at a time in a random order. The tile cannot land on the chair.
+            Assert.Equal(["(0, 1, 0)/(1, 1, 0)", "(1, 1, 0)/(1, 1, 0.5)"], RandomStackOutcomes(name, tileFirst, ahead: false));
+
+            return;
+        }
+
         Assert.True(StackPulse(room, action, stack));
 
         Assert.Equal((name == "wf_act_move_to_dir" && !tileFirst ? 0 : 1, 1, 0.0), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
@@ -1208,17 +1215,15 @@ public partial class ModernWiredRuntimeTests
         var ahead = StackItem(map, items, 9, "color_tile", 1, 0, 0.5, true);
         var action = StackBox(room, name, 2, stack);
 
-        // Move/Rotate lands on stackable furniture like Move To Direction.
-        var directional = name is "wf_act_move_to_dir" or "wf_act_move_rotate";
-        Assert.Equal(directional, StackPulse(room, action, stack, ahead));
-
         if (name == "wf_act_move_rotate") {
-            // The tile and its chair move as one unit onto the stackable tile ahead.
-            Assert.Equal((1, 1, 0.5), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
-            Assert.Equal((1, 1, 1.0), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
+            // Move/Rotate lands on stackable furniture like Move To Direction, one furni at a time in a random order.
+            // The tile cannot land on the chair, so it stays when the chair moves first.
+            Assert.Equal(["(0, 1, 0)/(1, 1, 0.5)", "(1, 1, 0.5)/(1, 1, 1)"], RandomStackOutcomes(name, tileFirst, ahead: true));
 
             return;
         }
+
+        Assert.Equal(name == "wf_act_move_to_dir", StackPulse(room, action, stack, ahead));
 
         Assert.Equal((tileFirst ? 1 : 0, 1, tileFirst ? 0.5 : 0.0), (stack[0].GetX, stack[0].GetY, stack[0].GetZ));
         Assert.Equal((1, 1, tileFirst ? 1.0 : 0.5), (stack[1].GetX, stack[1].GetY, stack[1].GetZ));
@@ -1242,9 +1247,10 @@ public partial class ModernWiredRuntimeTests
         var (open, free) = StackLine(6, 1, frontFirst);
         var east = StackBox(open, name, 2, free);
 
+        // Each furni of a stack moves alone in a random order, so only the chair of the front stack always advances.
         for (var pulse = 1; pulse <= 2; pulse++) {
             Assert.True(StackPulse(open, east, free));
-            AssertStackLine(free, [6 + pulse, 5 + pulse, 4 + pulse, 3 + pulse]);
+            Assert.Equal(6 + pulse, free[1].GetX);
         }
     }
 
@@ -1295,6 +1301,23 @@ public partial class ModernWiredRuntimeTests
         StackItem(map, items, tileFirst ? firstId : firstId + 1, "color_tile", x, 0, 0.5, true),
         StackItem(map, items, tileFirst ? firstId + 1 : firstId, "chair", x, 0.5, 1, false)
     ];
+
+    // Fires Move/Rotate east on a tile with a chair many times and returns the distinct end positions as "tile/chair".
+    private static string[] RandomStackOutcomes(string name, bool tileFirst, bool ahead)
+    {
+        var outcomes = new SortedSet<string>(StringComparer.Ordinal);
+
+        for (var firing = 0; firing < 40; firing++) {
+            var (room, map, items) = World(new RecordingPlacementStore());
+            var stack = TileWithChair(map, items, 0, tileFirst);
+            var other = ahead ? StackItem(map, items, 9, "color_tile", 1, 0, 0.5, true) : null;
+
+            Assert.True(StackPulse(room, StackBox(room, name, 2, stack), stack, other));
+            outcomes.Add(string.Join('/', stack.Select(item => (item.GetX, item.GetY, item.GetZ))));
+        }
+
+        return [.. outcomes];
+    }
 
     private static Item StackItem(Gamemap map, ConcurrentDictionary<uint, Item> items, uint id, string name, int x, double z, double height, bool stackable)
     {

@@ -104,4 +104,14 @@ public sealed class WiredSharedAddonFallbackTests
 
         Assert.Contains("other", json);
     }
+
+    [Fact]
+    public void ARowStoredWithoutAFallbackReadsAsNone()
+    {
+        var addons = WiredSharedAddons.FromJson("{\"TextConnector\":[{\"Key\":1,\"Value\":\"one\"}],\"Level\":null,\"Fx\":[]}");
+
+        Assert.NotNull(addons);
+        Assert.Null(addons!.TextConnectorFallback);
+        Assert.Equal("", WiredSharedAddons.FromJson(new WiredSharedAddons { TextConnectorFallback = "" }.ToJson())!.TextConnectorFallback);
+    }
 }

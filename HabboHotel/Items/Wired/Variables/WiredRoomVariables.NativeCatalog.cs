@@ -84,9 +84,10 @@ public sealed partial class WiredRoomVariables
                     && PublishedTo(definition.ItemId) is { } published
                         ? published.Pick(flags[0] != 0, flags[1] != 0, flags[2] != 0) : null;
                 var connectorBox = associated.FirstOrDefault(box => box.Input.Name == "wf_xtra_var_text_connector");
-                fallbacks[definition.ItemId] = connectorBox?.Fallback;
+                var importsConnector = imported is { TextConnector.IsEmpty: false } or { TextConnectorFallback: not null };
+                fallbacks[definition.ItemId] = connectorBox is null ? imported?.TextConnectorFallback : connectorBox.Fallback;
                 connectors[definition.ItemId] = connectorBox?.Connector
-                    ?? (imported is { TextConnector.IsEmpty: false } ? imported.TextConnector.OrderBy(pair => pair.Key).ToImmutableArray() : null);
+                    ?? (importsConnector ? imported!.TextConnector.OrderBy(pair => pair.Key).ToImmutableArray() : null);
 
                 var context = definition.Target == WiredVariableTarget.Context;
 

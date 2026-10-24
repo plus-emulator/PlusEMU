@@ -17,19 +17,21 @@ public sealed record WiredSharedFx(string Box, ImmutableArray<int> Ints, Immutab
 public sealed record WiredSharedAddons
 {
     public ImmutableArray<KeyValuePair<int, string>> TextConnector { get; init; } = [];
+    public string? TextConnectorFallback { get; init; }
     public string? Level { get; init; }
     public ImmutableArray<WiredSharedFx> Fx { get; init; } = [];
-    public bool IsEmpty => TextConnector.IsEmpty && Level is null && Fx.IsEmpty;
+    public bool IsEmpty => TextConnector.IsEmpty && TextConnectorFallback is null && Level is null && Fx.IsEmpty;
 
     /// <summary>The categories an Import add-on has on (its text connector, subvariable creator and variable FX flags).</summary>
     public WiredSharedAddons Pick(bool textConnector, bool subvariableCreators, bool variableFx) => new()
     {
         TextConnector = textConnector ? TextConnector : [],
+        TextConnectorFallback = textConnector ? TextConnectorFallback : null,
         Level = subvariableCreators ? Level : null,
         Fx = variableFx ? Fx : []
     };
 
-    public string ToJson() => JsonSerializer.Serialize(new Stored([.. TextConnector.Select(pair => new StoredPair(pair.Key, pair.Value))], Level,
+    public string ToJson() => JsonSerializer.Serialize(new Stored([.. TextConnector.Select(pair => new StoredPair(pair.Key, pair.Value))], TextConnectorFallback, Level,
         [.. Fx.Select(fx => new StoredFx(fx.Box, [.. fx.Ints], [.. fx.VariableIds], fx.Text))]));
 
     public static WiredSharedAddons? FromJson(string json)
@@ -40,6 +42,7 @@ public sealed record WiredSharedAddons
             return stored is null ? null : new()
             {
                 TextConnector = [.. (stored.TextConnector ?? []).Select(pair => new KeyValuePair<int, string>(pair.Key, pair.Value))],
+                TextConnectorFallback = stored.TextConnectorFallback,
                 Level = stored.Level,
                 Fx = [.. (stored.Fx ?? []).Select(fx => new WiredSharedFx(fx.Box, [.. fx.Ints], [.. fx.VariableIds], fx.Text))]
             };
@@ -51,7 +54,7 @@ public sealed record WiredSharedAddons
 
     private sealed record StoredPair(int Key, string Value);
     private sealed record StoredFx(string Box, int[] Ints, string[] VariableIds, string Text);
-    private sealed record Stored(StoredPair[]? TextConnector, string? Level, StoredFx[]? Fx);
+    private sealed record Stored(StoredPair[]? TextConnector, string? TextConnectorFallback, string? Level, StoredFx[]? Fx);
 }
 
 /// <summary>The published add-ons each reference variable has received, by the item id of the reference.</summary>

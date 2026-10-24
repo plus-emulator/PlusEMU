@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NetCoreServer;
+using Plus.Communication.Abstractions;
 
 namespace Plus.HabboHotel.GameClients;
 
@@ -16,7 +17,7 @@ public class WsSessionProxy : WsSession
     private readonly GameClient _client;
     private readonly ILogger _logger;
 
-    public WsSessionProxy(WsServer server, GameClient client, ILogger? logger = null) : base(server)
+    public WsSessionProxy(WsServer server, GameClient client, ILogger? logger = null, ConnectionAdmission? admission = null) : base(server)
     {
         _client = client;
         _logger = logger ?? NullLogger.Instance;

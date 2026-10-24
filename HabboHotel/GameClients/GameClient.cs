@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
+using Plus.Communication.Abstractions;
 using Plus.Communication.Encryption.Crypto.Prng;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets;
@@ -65,6 +66,9 @@ public abstract class GameClient
     internal Action? DisconnectRequested { get; set; }
 
     public Guid Id { get; set; }
+
+    /// <summary>Set by the transport once it knows where the connection comes from.</summary>
+    public ClientAddress? RemoteAddress { get; internal set; }
 
 
     private Revision RequiredRevision => Revision ?? throw new InvalidOperationException("The client has no packet revision.");

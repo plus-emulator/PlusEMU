@@ -17,6 +17,7 @@ using Plus.Database;
 using Plus.Database.Migrator;
 using Plus.HabboHotel.Camera;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Users.Authentication;
 using Plus.Plugins;
 using Plus.Utilities.DependencyInjection;
 using Scrutor;
@@ -67,6 +68,7 @@ public static class Program
         services.AddConfiguration<WebServerConfiguration>(configuration.GetSection("WebServer"));
         services.AddConfiguration<EncryptionConfiguration>(configuration.GetSection("Encryption"));
         services.AddConfiguration<AirClientConfiguration>(configuration.GetSection("AirClient"));
+        services.AddConfiguration<LoginThrottleConfiguration>(configuration.GetSection("LoginThrottle"));
 
         // Dependency Injection
         services.AddDefaultRules(typeof(Program).Assembly);

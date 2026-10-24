@@ -13,9 +13,10 @@ internal class Authenticator : IAuthenticator
     private readonly ISsoTicketStore _ssoTickets;
     private readonly IAccountSessionGate _sessionGate;
     private readonly IUserPersistenceService _persistence;
+    private readonly ILoginThrottle _loginThrottle;
 
     public Authenticator(IEnumerable<IAuthenticationTask> authenticationTasks, IGameClientManager gameClientManager, IUserDataFactory userDataFactory, ISsoTicketStore ssoTickets,
-        IAccountSessionGate sessionGate, IUserPersistenceService persistence)
+        IAccountSessionGate sessionGate, IUserPersistenceService persistence, ILoginThrottle loginThrottle)
     {
         _authenticationTasks = authenticationTasks;
         _gameClientManager = gameClientManager;
@@ -23,6 +24,7 @@ internal class Authenticator : IAuthenticator
         _ssoTickets = ssoTickets;
         _sessionGate = sessionGate;
         _persistence = persistence;
+        _loginThrottle = loginThrottle;
     }
 
     public async Task<AuthenticationError?> AuthenticateUsingSSO(GameClient session, string sso)

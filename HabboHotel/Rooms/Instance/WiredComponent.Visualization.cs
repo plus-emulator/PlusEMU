@@ -33,6 +33,10 @@ public partial class WiredComponent
         }
     }
 
+    internal void RememberUserHighlight(IEnumerable<int> indexes, int type, int strength, int color, int animation, int easing)
+    {
+    }
+
     private void ForgetVisualization(int id)
     {
         lock (_visualizationGate) {

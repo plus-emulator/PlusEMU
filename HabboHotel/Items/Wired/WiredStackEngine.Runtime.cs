@@ -855,7 +855,7 @@ internal sealed partial class WiredStackEngine
                 if (IsRepeatShort(timer) && roomTickTimerFired) {
                     roomTickTimerFired = false;
                     SealPublication();
-                    (_operations as Plus.HabboHotel.Rooms.Instance.WiredComponent)?.FlushFlashData();
+                    _runtimeRoom?.FlushWiredFlashData();
                 }
 
                 roomTickTimerFired |= !IsRepeatShort(timer);

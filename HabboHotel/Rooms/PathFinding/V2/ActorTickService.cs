@@ -1,9 +1,14 @@
+using System.Drawing;
 using Plus.Communication.Packets.Outgoing.Rooms.Avatar;
 
 namespace Plus.HabboHotel.Rooms.PathFinding;
 
+internal sealed record PendingRollerLanding(Point Destination, long Revision);
+
 public sealed class ActorTickService(Room room)
 {
+    private readonly TransportLandingService _landings = new(room);
+
     public bool BeforeMovement(RoomUser actor)
     {
         if (!room.GetRoomUserManager().ValidateMovementActor(actor)) {
@@ -34,6 +39,7 @@ public sealed class ActorTickService(Room room)
             actor.IsRolling = false;
             actor.UpdateNeeded = true;
             actor.RollerSettling = !actor.IsBot;
+            LandRoller(actor);
         }
         else if (actor.RollerSettling && !actor.IsRolling) {
             actor.RollerSettling = false;
@@ -41,6 +47,15 @@ public sealed class ActorTickService(Room room)
         }
 
         return true;
+    }
+    private void LandRoller(RoomUser actor)
+    {
+        var landing = actor.PendingLanding;
+        actor.PendingLanding = null;
+
+        if (landing != null && actor.Movement.LocationRevision == landing.Revision && actor.Movement.State == NavState.Active) {
+            _landings.TriggerWalkOn(actor, landing.Destination);
+        }
     }
     public void EndCycle()
     {

@@ -14,12 +14,12 @@ public sealed record WiredLinkRow(string Key, string Text, long? Number);
 public sealed record WiredLinkPayload(uint SourceRoomId, uint SourceItemId, string Message, ImmutableArray<WiredLinkRow> Rows, int Hops);
 
 /// <summary>
-/// Server-side link delivery. A message sent through a WIRED Link furni reaches every other furni of its network in loaded rooms,
-/// and a furni of the sending room only when it receives local messages. Rooms that are not loaded do not receive it.
+/// Server-side link delivery. A message sent through a WIRED Link furni reaches every other furni of its network in loaded rooms.
+/// A link that receives local messages also receives its own, with or without a network. Rooms that are not loaded do not receive it.
 /// </summary>
 public static class WiredLinkTransport
 {
-    public const int MaxHops = 8;
+    public const int MaxHops = 9;
     public const string Interaction = "wired_link";
 
     public static bool IsLink(Item item) => string.Equals(item.Definition.InteractionName, Interaction, StringComparison.OrdinalIgnoreCase);
@@ -35,7 +35,15 @@ public static class WiredLinkTransport
         var reached = new HashSet<uint>();
 
         foreach (var endpoint in endpoints.Where(IsLink).DistinctBy(item => item.Id)) {
-            if (store.Endpoint(endpoint.Id) is not { NetworkId: > 0 } joined) {
+            if (store.Endpoint(endpoint.Id) is not { } joined) {
+                continue;
+            }
+
+            if (joined.ReceiveLocal && reached.Add(endpoint.Id)) {
+                delivered |= room.GetWired().Dispatch(Event(endpoint, endpoint));
+            }
+
+            if (joined.NetworkId == 0) {
                 continue;
             }
 
@@ -50,12 +58,7 @@ public static class WiredLinkTransport
                     continue;
                 }
 
-                var @event = new WiredRuntimeEvent(kind)
-                {
-                    EventItem = receiver,
-                    Message = payload.Message,
-                    Link = payload with { SourceItemId = endpoint.Id }
-                };
+                var @event = Event(endpoint, receiver);
 
                 // The sending room's engine is locked while its effect runs; another room is handed the event on the thread pool,
                 // so two rooms sending to each other never wait on each other's lock.
@@ -70,5 +73,12 @@ public static class WiredLinkTransport
         }
 
         return delivered;
+
+        WiredRuntimeEvent Event(Item sender, Item receiver) => new(kind)
+        {
+            EventItem = receiver,
+            Message = payload.Message,
+            Link = payload with { SourceItemId = sender.Id }
+        };
     }
 }

@@ -85,27 +85,25 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void LinkMessageReachesAReceiverOfTheSameNetworkThatReceivesLocally()
+    public void LinkMessageReachesTheSendingLinkOnlyWhenItReceivesLocally()
     {
         using var f = new TeleportFixture();
         Assert.True(f.Engine.Remove(100));
         var store = new MemoryLinkStore();
         f.Room.GetWired().LinkStore = store;
-        var sender = LinkFurni(f, 50, 3, 0);
-        var receiver = LinkFurni(f, 51, 3, 2);
-        store.Join(sender.Id, 7, false);
-        store.Join(receiver.Id, 7, true);
+        var link = LinkFurni(f, 50, 3, 0);
+        store.Join(link.Id, 7, true);
 
         OctoberBox<WiredModernAction>(f, 110, "wf_act_send_message", 0, 0, native => native with
         {
             OwnedIntParams = [1],
             Text = "door open",
-            PrimaryItems = [new(sender.Id, false)],
+            PrimaryItems = [new(link.Id, false)],
             FurniSourceTypes = [100]
         });
         OctoberBox<WiredModernTrigger>(f, 120, "wf_trg_receive_message", 2, 2, native => native with
         {
-            PrimaryItems = [new(receiver.Id, false)],
+            PrimaryItems = [new(link.Id, false)],
             FurniSourceTypes = [100]
         });
         var log = Assert.IsType<WiredModernAction>(f.Room.GetWired().CreateConfiguredBox(Placed(f, MakeItem(121, "wf_act_log"), 2, 2), Descriptor("wf_act_log")));
@@ -119,8 +117,8 @@ public partial class ModernWiredRuntimeTests
 
         Assert.Equal("got door open", f.Room.GetWired().ReadLogs(1, 50).Entries.Single().Reason);
 
-        // Without "receive local" the furni of the sending room hears nothing.
-        store.Join(receiver.Id, 7, false);
+        // Without "receive local" the sending link hears nothing.
+        store.Join(link.Id, 7, false);
         f.Room.GetWired().ClearLogs();
         f.Fire(land: false);
         f.Advance(50);

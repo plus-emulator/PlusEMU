@@ -1,5 +1,4 @@
 using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
-using Plus.Communication.Packets.Outgoing.Users;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.PathFinding;
@@ -36,15 +35,8 @@ public sealed class ClickUserEvent : RoomPacketEvent
         // The server turns the clicker toward the clicked user. The client sends this
         // click instead of a look-at message, so without this turn the clicker would never face them.
         // A clicker who already faces the target gets no update.
-        if (result.DoNotRotate) {
-            session.Send(new InClientLinkComposer("avatar-info/block-rotate"));
-        }
-        else if (Rotation.Calculate(actor.X, actor.Y, target.X, target.Y) != actor.RotBody) {
+        if (!result.DoNotRotate && Rotation.Calculate(actor.X, actor.Y, target.X, target.Y) != actor.RotBody) {
             actor.TurnToward(target.X, target.Y);
-        }
-
-        if (result.BlockMenu) {
-            session.Send(new InClientLinkComposer("avatar-info/block-menu"));
         }
 
         session.Send(new WiredClickUserResponseComposer(virtualId, !result.BlockMenu));

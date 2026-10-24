@@ -290,72 +290,16 @@ public static class WiredLegacyProtocol
         WriteInts(packet, WiredNativeEditorProjection.FrameDefaults(descriptor.CanonicalName, metadata));
     }
 
-    // The iteration order of the java.util.HashSet<Integer> Habbo holds a card's picks in. An id lands in bucket (h ^ (h >>> 16)) & (buckets - 1)
-    // and a table doubles when it holds more than three quarters of its buckets. Ids in one bucket keep their order, and a split keeps it too.
-    // The set is built twice. First like the copy constructor of JDK 18 and older, with a table sized from the number of ids sent,
-    // repeats counted (the sent count is kept in the stored row), then again by adding the first set's ids one by one to a default set of
-    // 16 buckets. When no bucket gets a ninth id, below 12 ids and from 13 ids the two steps give the order of one plain add loop;
-    // exactly 12 ids give a 16-bucket table filled in the order of a 32-bucket one. When a bucket gets its ninth id, Java doubles a table
-    // of under 64 buckets at once (HashMap.treeifyBin).
-    // Not modelled: a bucket whose chain gets another id in a table of 64 buckets, where Java builds a tree.
+    // The iteration order of the java.util.HashSet<Long> Habbo holds a card's picks in, built in three steps. First a set sized from the
+    // number of ids sent, repeats counted (the sent count is kept in the stored row). Then a second set sized from the first set's size,
+    // filled in the first set's order. Then a default set of 16 buckets, filled in the second set's order. That last order is the one sent.
     private static IEnumerable<int> JavaHashSetOrder(IEnumerable<int> ids, int sentCount)
     {
         var sent = ids.ToArray();
-        var copied = Fill(sent, TableSizeFor(Math.Max((int)(Math.Max(sentCount, sent.Length) / 0.75f) + 1, 16)));
+        var first = JavaHashSet.Order(sent, Math.Max((int)(Math.Max(sentCount, sent.Length) / 0.75f) + 1, 16));
+        var second = JavaHashSet.Order(first, Math.Max((int)(first.Length / 0.75f) + 1, 16));
 
-        return Fill(copied, 16);
-    }
-
-    private static int TableSizeFor(int capacity)
-    {
-        var size = 1;
-
-        while (size < capacity) {
-            size <<= 1;
-        }
-
-        return size;
-    }
-
-    private static int[] Fill(IEnumerable<int> ids, int buckets)
-    {
-        const int treeifyThreshold = 8;
-        var table = new List<int>[buckets];
-        var size = 0;
-
-        foreach (var id in ids) {
-            var bucket = table[Bucket(id, table.Length)] ??= [];
-
-            if (bucket.Contains(id)) {
-                continue;
-            }
-
-            bucket.Add(id);
-            size++;
-
-            if (bucket.Count > treeifyThreshold && table.Length < 64) {
-                table = Resize(table);
-            }
-
-            if (size > table.Length * 3 / 4) {
-                table = Resize(table);
-            }
-        }
-
-        return [.. table.Where(bucket => bucket != null).SelectMany(bucket => bucket!)];
-    }
-
-    private static int Bucket(int id, int buckets) => (int)(((uint)id ^ ((uint)id >> 16)) & (uint)(buckets - 1));
-
-    private static List<int>[] Resize(List<int>[] table)
-    {
-        var grown = new List<int>[table.Length * 2];
-
-        foreach (var id in table.Where(bucket => bucket != null).SelectMany(bucket => bucket)) {
-            (grown[Bucket(id, grown.Length)] ??= []).Add(id);
-        }
-
-        return grown;
+        return JavaHashSet.Order(second, 16);
     }
 
     private static void WriteGroups(IOutgoingPacket packet, ImmutableArray<ImmutableArray<int>> groups)

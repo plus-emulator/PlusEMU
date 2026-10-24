@@ -438,8 +438,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     /// <summary>
     /// Accounts a ban covers. A machine ban reaches the sessions online with that handshake machine id. An IP ban reaches
-    /// the accounts whose users.ip_last is that address, so it
-    /// only reaches accounts that already have the address recorded. Username and machine bans are refused at login by BanLoginCheckTask.
+    /// only the accounts whose users.ip_last is that address. Username and machine bans are refused at login by BanLoginCheckTask.
     /// </summary>
     internal async Task<IReadOnlyList<int>> BannedAccounts(ModerationBanType type, string banValue, CancellationToken cancellationToken = default)
     {

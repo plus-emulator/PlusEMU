@@ -53,7 +53,7 @@ public sealed class ConnectionAdmission
             }
         }
 
-        var visitor = ParseAddress(realIp) ?? ParseAddress(forwardedFor?[(forwardedFor.LastIndexOf(',') + 1)..]);
+        var visitor = ParseVisitor(realIp) ?? ParseVisitor(forwardedFor?[(forwardedFor.LastIndexOf(',') + 1)..]);
 
         return visitor == null ? new(peer, false) : new(visitor, true);
     }
@@ -133,8 +133,11 @@ public sealed class ConnectionAdmission
         }
     }
 
-    /// <summary>Accepts an address with an optional port, as "203.0.113.7:80" or "[2001:db8::5]:443".</summary>
-    private static IPAddress? ParseAddress(string? value)
+    /// <summary>
+    /// Accepts an address with an optional port, as "203.0.113.7:80" or "[2001:db8::5]:443". A loopback or unspecified
+    /// address names another local hop, not a visitor.
+    /// </summary>
+    private static IPAddress? ParseVisitor(string? value)
     {
         var text = value.AsSpan().Trim();
 
@@ -160,10 +163,20 @@ public sealed class ConnectionAdmission
             return null;
         }
 
-        return Normalize(address);
+        address = Normalize(address);
+
+        return IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any) ? null : address;
     }
 
-    private static IPAddress Normalize(IPAddress address) => address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
+    private static IPAddress Normalize(IPAddress address)
+    {
+        if (address.IsIPv4MappedToIPv6) {
+            return address.MapToIPv4();
+        }
+
+        // A scope id would make one address count as many.
+        return address.AddressFamily == AddressFamily.InterNetworkV6 && address.ScopeId != 0 ? new IPAddress(address.GetAddressBytes()) : address;
+    }
 
     private sealed class Lease(ConnectionAdmission admission, IPAddress address) : IDisposable
     {

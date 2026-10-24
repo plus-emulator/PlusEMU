@@ -43,7 +43,8 @@ internal class Authenticator : IAuthenticator
             return AuthenticationError.SessionClosed;
         }
 
-        if (error is not null and not AuthenticationError.SessionClosed) {
+        // Only a ticket that is not live counts; a valid ticket for a prohibited account is no guess.
+        if (error is AuthenticationError.EmptySSO or AuthenticationError.InvalidSSO or AuthenticationError.NoAccountFound) {
             _loginThrottle.RecordFailure(session.RemoteAddress);
         }
 

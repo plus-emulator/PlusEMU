@@ -64,4 +64,25 @@ public class WiredTextConnectorParseTests
     [InlineData(" _=x", "")]
     public void StoresTheFallbackAfterTheEntries(string text, string stored) =>
         Assert.Equal(stored, WiredVariableMetadataBox.NormalizeConnector(text));
+
+    // A key is any signed 64 bit number.
+    [Fact]
+    public void KeepsEveryLineWithA64BitKey()
+    {
+        var parsed = WiredVariableMetadataBox.ParseConnector("2147483647=max\n2147483648=big\n-2147483648=min\n-2147483649=small\n1099511627776=terabig");
+        Assert.Equal(5, parsed.Count);
+    }
+
+    [Fact]
+    public void StoresA64BitKeyInNumberOrder() =>
+        Assert.Equal("-2147483649=small\n-2147483648=min\n2147483647=max\n2147483648=big\n1099511627776=terabig",
+            WiredVariableMetadataBox.NormalizeConnector("1099511627776=terabig\n2147483648=big\n-2147483648=min\n2147483647=max\n-2147483649=small"));
+
+    [Fact]
+    public void DropsAKeyOutside64Bit() =>
+        Assert.Equal("1=one", WiredVariableMetadataBox.NormalizeConnector("9223372036854775808=x\n1=one"));
+
+    [Fact]
+    public void ACapturerReads64BitKeyOfALabel() =>
+        Assert.Equal(2147483648L, new WiredVariableCapturer(1, "n", WiredVariableMetadataBox.ParseConnector("2147483648=big")).Read("big"));
 }

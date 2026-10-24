@@ -1,3 +1,4 @@
+using Plus.Communication.Packets.Outgoing.Rooms.Chat;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
@@ -116,6 +117,26 @@ public partial class WiredComponent
     public bool StoresVariableData(Item item) => item.Definition.WiredDescriptor?.Category == WiredBoxCategory.Variable
         && TryGet(item.Id, out var box) && box is IWiredConfiguredItem
         && Variables.Module.DescribeDefinitions([item.Id]).FirstOrDefault()?.Definition.IsDurable == true;
+
+    /// <summary>Each Link Speaker that picks the receiving link and speaks for this kind shows the received text as a bubble at its tile.</summary>
+    internal void SpeakLink(WiredRuntimeEvent @event)
+    {
+        if (@event.EventItem is not { } receiver || @event.Link is not { } link) {
+            return;
+        }
+
+        var dataframe = @event.Kind == WiredEventKind.LinkDataframe;
+        var text = dataframe ? string.Join('\n', link.Rows.Select(row => $"[b]{row.Key}[/b]: {row.Text}")) : link.Message;
+
+        foreach (var speaker in ConfiguredBoxes("wf_xtra_link_speaker")) {
+            if (speaker.Configuration.IntParams is not [var message, var rows, ..] || (dataframe ? rows : message) != 1
+                || !speaker.Configuration.SelectedItems.Contains(receiver.Id)) {
+                continue;
+            }
+
+            _room.SendChat(viewer => new LinkSpeakerChatComposer(viewer, text, speaker.Item.GetX, speaker.Item.GetY));
+        }
+    }
 
     internal bool SendLink(Item[] endpoints, WiredLinkPayload payload, WiredEventKind kind) =>
         WiredLinkTransport.Send(_room, endpoints, payload, kind, LinkStore, _room.Rooms);

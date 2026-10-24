@@ -227,7 +227,7 @@ public static class WiredOctoberActions
 
         var payload = new WiredLinkPayload(context.Room.Id, box.Item.Id, message, [], Hops(context));
 
-        return context.Room.GetWired().SendLink([.. endpoints, .. Speakers(context, false)], payload, WiredEventKind.LinkMessage);
+        return context.Room.GetWired().SendLink(endpoints, payload, WiredEventKind.LinkMessage);
     }
 
     // LinkDataframeSendPreset rows: mode 0 a number literal, 1 a variable's number, 2 a variable's text connector text, 3 a custom message.
@@ -262,7 +262,7 @@ public static class WiredOctoberActions
 
         var payload = new WiredLinkPayload(context.Room.Id, box.Item.Id, "", rows.MoveToImmutable(), Hops(context));
 
-        return context.Room.GetWired().SendLink([.. furni("endpoints"), .. Speakers(context, true)], payload, WiredEventKind.LinkDataframe);
+        return context.Room.GetWired().SendLink(furni("endpoints"), payload, WiredEventKind.LinkDataframe);
     }
 
     // A variable's text connector names its values; a value without a name sends the "_=" text, else the number.
@@ -272,8 +272,4 @@ public static class WiredOctoberActions
         && value is >= int.MinValue and <= int.MaxValue
             ? described.TextConnector.TryGetValue((int)value, out var name) ? name : described.TextConnectorFallback ?? value.ToString(CultureInfo.InvariantCulture)
             : value.ToString(CultureInfo.InvariantCulture);
-
-    // Link Speaker add-ons of the stack ([message, dataframe]) add their picked WIRED Link furni as endpoints.
-    private static IEnumerable<Item> Speakers(WiredRuntimeContext context, bool dataframe) =>
-        context.Policy.Addons.LinkSpeakers.Where(speaker => dataframe ? speaker.Dataframe : speaker.Message).SelectMany(speaker => speaker.Endpoints);
 }

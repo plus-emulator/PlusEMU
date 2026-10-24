@@ -124,7 +124,7 @@ public sealed partial class WiredRoomVariables
             var holder = WiredVariableRuntimeFrames.UserHolder(viewer.User);
 
             try {
-                var batch = Fx.Update(holder, frame, bindings, viewer.ReadyHolders, Team, reads);
+                var batch = Fx.Update(holder, frame, bindings, viewer.ReadyHolders, Team, reads, _rewritten);
 
                 foreach (var packet in WiredVariableFxComposer.ComposeBatch(batch)) {
                     send(viewer.User.GetClient(), packet);
@@ -142,6 +142,10 @@ public sealed partial class WiredRoomVariables
         }
 
         FxDirty = failed;
+
+        if (!failed) {
+            _rewritten.Clear();
+        }
 
         return true;
     }

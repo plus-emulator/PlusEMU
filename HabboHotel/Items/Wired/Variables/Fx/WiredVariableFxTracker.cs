@@ -54,12 +54,12 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
 
     public WiredVariableFxBatch Update(WiredVariableHolder viewer, WiredVariableFrame frame,
         IReadOnlyList<WiredVariableFxBinding> bindings, IReadOnlyList<WiredVariableHolder> readyHolders,
-        Func<WiredVariableHolder, int> team, WiredVariableReadSnapshot? reads = null)
+        Func<WiredVariableHolder, int> team, WiredVariableReadSnapshot? reads = null, IReadOnlySet<WiredVariableKey>? rewritten = null)
     {
         if (reads is null) {
             using var snapshot = CaptureReads(frame, bindings);
 
-            return Update(viewer, frame, bindings, readyHolders, team, snapshot);
+            return Update(viewer, frame, bindings, readyHolders, team, snapshot, rewritten);
         }
 
         if (viewer.Target != WiredVariableTarget.User || !viewer.CanPersist || !frame.Contains(viewer)) {
@@ -78,6 +78,7 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
         var resent = changedConfigs.Select(x => x.Id).ToHashSet();
         var wanted = new Dictionary<WiredVariableFxKey, WiredVariableFxStatus>();
         var identities = new Dictionary<WiredVariableFxKey, WiredVariableHolder>();
+        var resend = new HashSet<WiredVariableFxKey>();
 
         foreach (var binding in bindings) {
             foreach (var holder in readyHolders) {
@@ -134,12 +135,18 @@ public sealed class WiredVariableFxTracker(WiredVariableModule variables, int ma
                 // statuses again, each with initialize true. A holder the viewer did not have before still starts initialized.
                 var initialize = !state.Synced || resent.Contains(binding.Config.Id) || !state.Ready.Contains(holder)
                     || state.Holders.TryGetValue(key, out var previousHolder) && previousHolder != holder;
+
+                // A Give with override reports the value again even when it did not change.
+                if (rewritten is not null && WiredVariableModule.TryDefinitionId(binding.Variable.Token, out var written) && rewritten.Contains(new(written, holder.Target, holder.StorageId))) {
+                    resend.Add(key);
+                }
+
                 wanted[key] = new(key, initialize, value.Value, min, max, extra.ToImmutable());
             }
         }
 
         var removedStatuses = state.Statuses.Keys.Where(key => !wanted.ContainsKey(key)).ToArray();
-        var statuses = wanted.Where(x => x.Value.Initialize || !state.Statuses.TryGetValue(x.Key, out var old) || old != Signature(x.Value with { Initialize = false }))
+        var statuses = wanted.Where(x => x.Value.Initialize || resend.Contains(x.Key) || !state.Statuses.TryGetValue(x.Key, out var old) || old != Signature(x.Value with { Initialize = false }))
             .Select(x => x.Value).ToArray();
         var batch = new WiredVariableFxBatch(!state.Synced || changedConfigs.Length > 0, changedConfigs, removedConfigs, statuses, removedStatuses);
         _pending[viewer.StableId] = (batch, new Viewer

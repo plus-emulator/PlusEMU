@@ -1,3 +1,4 @@
+using Plus.Communication.Packets.Outgoing.Rooms.Furni.Wired;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items;
@@ -29,8 +30,12 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
             }
 
             // The limit of 20 ids, repeats counted, holds on every box, add-ons and variable boxes
-            // included, and comes before their own refusals.
+            // included, and comes before their own refusals except the two source count ones.
             if (!WiredNativeEditorProjection.TryLimitPicks(native, out native)) {
+                if (SourceCountRefusal(session, itemId, native) is { } key) {
+                    session.Send(new WiredValidationErrorComposer(key));
+                }
+
                 return Task.CompletedTask;
             }
 
@@ -40,6 +45,19 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
         }
 
         return Task.CompletedTask;
+    }
+
+    private string? SourceCountRefusal(GameClient session, uint itemId, WiredNativeEditorConfiguration native)
+    {
+        if (session.GetHabbo()?.CurrentRoom is not { } room || !room.GetWired().Settings.CanModify(session)
+            || !room.GetWired().TryGet(itemId, out var box) || box is not IWiredConfiguredItem configured
+            || configured.Descriptor.Envelope != Envelope || !WiredNativeEditorProjection.Supports(configured.Descriptor.CanonicalName)) {
+            return null;
+        }
+
+        var verdict = WiredSourceRules.Check(configured.Descriptor, native, WiredNativeEditorProjection.Metadata(configured.Descriptor.CanonicalName));
+
+        return !verdict.Dropped && verdict.Key is WiredSourceRules.FurniSourceCountKey or WiredSourceRules.UserSourceCountKey ? verdict.Key : null;
     }
 
     private static string? VisualBoxName(GameClient? session, uint itemId) =>

@@ -134,6 +134,21 @@ public class WiredClickPacketHookTests
         Assert.True(world.Actor.UpdateNeeded);
     }
 
+    [Theory]
+    [InlineData("wf_trg_click_user", 0, 1, 6)]
+    [InlineData(null, 2, 1, 2)]
+    public async Task ClickingAUserTheClickerAlreadyFacesSendsNoUpdate(string? trigger, int x, int y, int rotation)
+    {
+        var world = new World(trigger, trigger == null ? [] : [1, 0]);
+        Place(world.Actor, 1, 1, rotation);
+        Place(world.Target, x, y, 0);
+
+        await new ClickUserEvent().Parse(world.Room, world.Client, Packet(world.Target.VirtualId));
+
+        Assert.Equal((rotation, rotation), (world.Actor.RotBody, world.Actor.RotHead));
+        Assert.False(world.Actor.UpdateNeeded);
+    }
+
     [Fact]
     public async Task ClickUserDoNotRotateKeepsTheClickerFacingTheSameWay()
     {

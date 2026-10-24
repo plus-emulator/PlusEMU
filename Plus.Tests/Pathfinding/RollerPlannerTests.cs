@@ -155,7 +155,7 @@ public partial class PlacedFurniRoomTests
     {
         var loop = PlannerFullLoop(false);
         var observed = new List<string>();
-        PlannerObserveWalkOn(() => observed.Add(loop.Positions()));
+        PlannerObserveRollerHook(() => observed.Add(loop.Positions()));
         StartPlannerRollers();
         ExecutorTick();
         Assert.Equal(loop.Expected(1), loop.Positions());
@@ -273,20 +273,20 @@ public partial class PlacedFurniRoomTests
 
     private int PlannerSlides() => _client.Packets.Count(packet => packet.Header == ServerPacketHeader.SlideObjectBundleComposer);
 
-    private void PlannerObserveWalkOn(Action observe)
+    private void PlannerObserveRollerHook(Action observe)
     {
-        var item = Furni(900, InteractionType.WiredTrigger, WiredBoxType.TriggerWalkOnFurni);
+        var item = Furni(900, InteractionType.WiredTrigger, WiredBoxType.TriggerWalkOffFurni);
         item.Definition.Height = 0;
         item.Definition.Width = item.Definition.Length = 1;
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, item, 3, 3, 0, true, false, false));
-        Assert.True(_room.GetWired().AddBox(new PlannerWalkOnObserver(_room, item, observe)));
+        Assert.True(_room.GetWired().AddBox(new PlannerRollerHookObserver(_room, item, observe)));
     }
 
-    private sealed class PlannerWalkOnObserver(Room room, Item item, Action observe) : IWiredItem
+    private sealed class PlannerRollerHookObserver(Room room, Item item, Action observe) : IWiredItem
     {
         public Room Instance { get; set; } = room;
         public Item Item { get; set; } = item;
-        public WiredBoxType Type => WiredBoxType.TriggerWalkOnFurni;
+        public WiredBoxType Type => WiredBoxType.TriggerWalkOffFurni;
         public ConcurrentDictionary<uint, Item> SetItems { get; set; } = new();
         public string StringData { get; set; } = "";
         public bool BoolData { get; set; }

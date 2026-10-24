@@ -206,18 +206,23 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void RollerClaimIsHeldThroughLandingCallbacksAndReleasedAtUserPhaseEnd()
+    public void RollerClaimIsHeldThroughSlideHooksAndWalksOnSeesAPlainClaim()
     {
         ExecutorRoller(10, 0, 1);
         ExecutorFloor(11, 1, 1);
-        var observed = new List<TargetOccupancy>();
         var actor = ExecutorRollerActor(0, 1, 0.5);
-        ExecutorObserveRollerClaim(observed);
+        var tick = 0;
+        var claims = _room.GetGameMap().Navigation!.Executor.Claims;
+        var observed = new List<(int, WiredBoxType, uint, TargetOccupancy)>();
+        RollerWalkEvents(() => tick, (kind, item) => observed.Add((tick, kind, item, claims.OccupancyAt(5, 0))));
         EnableExecutorRollers();
-        ExecutorTick();
-        Assert.Equal(new[] { TargetOccupancy.Stationary | TargetOccupancy.RollerClaim }, observed);
-        var occupancy = _room.GetGameMap().Navigation!.Executor.Claims.OccupancyAt(5, 0);
-        Assert.Equal(TargetOccupancy.Stationary, occupancy);
+        RollerRunTicks(ref tick, 2);
+        Assert.Equal(new[]
+        {
+            (1, WiredBoxType.TriggerWalkOffFurni, 10u, TargetOccupancy.Stationary | TargetOccupancy.RollerClaim),
+            (2, WiredBoxType.TriggerWalkOnFurni, 11u, TargetOccupancy.Stationary)
+        }, observed.ToArray());
+        Assert.Equal(TargetOccupancy.Stationary, claims.OccupancyAt(5, 0));
         Assert.False(actor.HasStatus("mv"));
     }
 
@@ -305,15 +310,6 @@ public partial class PlacedFurniRoomTests
         return found;
     }
 
-    private void ExecutorObserveRollerClaim(List<TargetOccupancy> observed)
-    {
-        var item = Furni(900, InteractionType.WiredTrigger, WiredBoxType.TriggerWalkOnFurni);
-        item.Definition.Height = 0;
-        item.Definition.Width = item.Definition.Length = 1;
-        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, item, 3, 3, 0, true, false, false));
-        Assert.True(_room.GetWired().AddBox(new RollerClaimObserver(_room, item, observed)));
-    }
-
     private static bool ExecutorIsAvatarSlide((uint Header, byte[] Body) sent, int virtualId)
     {
         if (sent.Header != ServerPacketHeader.SlideObjectBundleComposer) {
@@ -354,25 +350,5 @@ public partial class PlacedFurniRoomTests
         }
 
         throw new InvalidOperationException("No roller slide for cargo");
-    }
-
-    private sealed class RollerClaimObserver(Room room, Item item, List<TargetOccupancy> observed) : IWiredItem
-    {
-        public Room Instance { get; set; } = room;
-        public Item Item { get; set; } = item;
-        public WiredBoxType Type => WiredBoxType.TriggerWalkOnFurni;
-        public ConcurrentDictionary<uint, Item> SetItems { get; set; } = new();
-        public string StringData { get; set; } = "";
-        public bool BoolData { get; set; }
-        public string ItemsData { get; set; } = "";
-        public void HandleSave(IIncomingPacket packet) => throw new NotSupportedException();
-        public bool Execute(params object[] arguments)
-        {
-            if (((Item)arguments[1]).Id == 11) {
-                observed.Add(Instance.GetGameMap().Navigation!.Executor.Claims.OccupancyAt(5, 0));
-            }
-
-            return false;
-        }
     }
 }

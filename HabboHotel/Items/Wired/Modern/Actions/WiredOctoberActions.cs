@@ -173,9 +173,14 @@ public static class WiredOctoberActions
             ? new WiredUserTransparencyComposer(targets, transparency, clickThrough, easing)
             : new WiredFurniTransparencyComposer(targets, transparency, clickThrough, easing));
 
-        // Only an effect for everyone on furni is part of the room entry state.
-        if (P(config, 0) == 1 && !targetUsers) {
-            context.Room.GetWired().RememberTransparency(targets, transparency, clickThrough, easing);
+        // Only an effect for everyone is part of the room entry state.
+        if (P(config, 0) == 1) {
+            if (targetUsers) {
+                context.Room.GetWired().RememberUserTransparency(targets, transparency, clickThrough, easing);
+            }
+            else {
+                context.Room.GetWired().RememberTransparency(targets, transparency, clickThrough, easing);
+            }
         }
 
         return true;
@@ -206,8 +211,13 @@ public static class WiredOctoberActions
             ? new WiredUserHighlightComposer(targets, type, strength, color, animation, easing)
             : new WiredFurniHighlightComposer(targets, type, strength, color, animation, easing));
 
-        if (P(config, 0) == 1 && !targetUsers) {
-            context.Room.GetWired().RememberHighlight(targets, type, strength, color, animation, easing);
+        if (P(config, 0) == 1) {
+            if (targetUsers) {
+                context.Room.GetWired().RememberUserHighlight(targets, type, strength, color, animation, easing);
+            }
+            else {
+                context.Room.GetWired().RememberHighlight(targets, type, strength, color, animation, easing);
+            }
         }
 
         return true;

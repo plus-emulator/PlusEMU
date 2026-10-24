@@ -1,8 +1,10 @@
 using System.Drawing;
+using System.Reflection;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
+using Plus.HabboHotel.Rooms;
 using Xunit;
 
 namespace Plus.Tests;
@@ -141,5 +143,51 @@ public partial class PlacedFurniRoomTests
         _room.GetRoomItemHandler().RemoveFurniture(null!, pyramid.Id);
 
         Assert.Equal(-1, TicksUntilItFlips(pyramid, 40));
+    }
+
+    [Fact]
+    public void AFlippedHiddenPyramidIsNotSavedWhenTheRoomUnloads()
+    {
+        var store = new PyramidSaveStore();
+        Set("_roomItemHandling", new RoomItemHandling(_room, store, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards));
+        _room.GetGameMap().GenerateMaps();
+        var pyramid = HiddenPyramid("1");
+
+        Assert.Equal(10, TicksUntilItFlips(pyramid, 40));
+        Assert.Equal("0", pyramid.LegacyDataString);
+        typeof(RoomItemHandling).GetMethod("SaveFurniture", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(_room.GetRoomItemHandler(), null);
+
+        var saved = Assert.Single(store.Saved, save => save.Id == pyramid.Id);
+        Assert.True(string.IsNullOrEmpty(saved.ExtraData));
+    }
+
+    [Fact]
+    public void HiddenPyramidWithSomeoneOnItFlipsInTheTickTheyStepOff()
+    {
+        var pyramid = HiddenPyramid("1");
+        var actor = _room.GetRoomUserManager().GetRoomUsers().Single();
+        actor.MoveTo(1, 1);
+
+        for (var tick = 1; tick <= 25; tick++) {
+            ExecutorTick();
+        }
+
+        Assert.Equal((1, 1, "1"), (actor.X, actor.Y, pyramid.LegacyDataString));
+        actor.MoveTo(1, 2);
+        ExecutorTick();
+
+        Assert.True(actor.IsWalking);
+        Assert.Equal("0", pyramid.LegacyDataString);
+    }
+
+    private sealed class PyramidSaveStore : IRoomItemStore
+    {
+        public List<RoomItemSave> Saved { get; } = [];
+        public void AssignOwner(uint itemId, int userId) { }
+        public void ClearRoom(uint itemId) { }
+        public void SaveWallPosition(uint itemId, string wallPosition) { }
+        public void SaveMoved(IReadOnlyList<RoomItemSave> items) => Saved.AddRange(items);
+        public void PlaceFloor(uint itemId, uint roomId, int x, int y, double z, int rotation) { }
+        public void PlaceWall(uint itemId, uint roomId, int x, int y, double z, int rotation, string wallPosition) { }
     }
 }

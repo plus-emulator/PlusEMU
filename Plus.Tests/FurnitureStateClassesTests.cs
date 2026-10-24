@@ -56,6 +56,7 @@ public sealed class FurnitureStateClassesTests
     [InlineData("wf_button_red", 2, "default", "")]
     [InlineData("wf_button_x", 2, "default", "")]
     [InlineData("wf_blob", 2, "default", "1")]
+    [InlineData("wf_pyramid", 4, "gate", "1")]
     [InlineData("wf_glassdoor", 2, "gate", "0")]
     [InlineData("wf_firegate", 2, "gate", "0")]
     [InlineData("wf_arrowplate_8dir", 4, "pressure_pad", "0")]

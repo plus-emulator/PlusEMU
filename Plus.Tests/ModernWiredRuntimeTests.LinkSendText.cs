@@ -129,6 +129,9 @@ public partial class ModernWiredRuntimeTests
     [InlineData("1=one\n5=five\n_=other", 5, "five")]
     [InlineData("_=other", 9, "other")]
     [InlineData("1=uno", 9, "9")]
+    [InlineData("2147483648=big\n-2147483649=small", 2147483648, "big")]
+    [InlineData("2147483648=big\n-2147483649=small", -2147483649, "small")]
+    [InlineData("2147483648=big\n_=other", 4294967296, "other")]
     public void LinkSendDataframeVariableTextUsesTheConnectorFallback(string connector, long value, string expected)
     {
         var (f, l1, l2) = LinkTextRoom();

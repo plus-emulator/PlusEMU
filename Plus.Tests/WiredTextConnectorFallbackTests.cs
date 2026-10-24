@@ -55,7 +55,18 @@ public class WiredTextConnectorFallbackTests
     [InlineData(1, 9, null, "w 9")]
     [InlineData(0, 9, "other", "w 9")]
     [InlineData(0, 7, "other", "w 7")]
-    public void TheFallbackReplacesAnUnlabelledNumberInTextMode(int textMode, int? value, string? fallback, string expected)
+    public void TheFallbackReplacesAnUnlabelledNumberInTextMode(int textMode, int? value, string? fallback, string expected) =>
+        Assert.Equal(expected, FormatWith(textMode, value, fallback));
+
+    // A 64 bit key names its value the same way.
+    [Theory]
+    [InlineData(1, 2147483648L, "w big")]
+    [InlineData(1, -2147483649L, "w other")]
+    [InlineData(0, 2147483648L, "w 2147483648")]
+    public void ALabelWithA64BitKeyNamesItsValueInTextMode(int textMode, long value, string expected) =>
+        Assert.Equal(expected, FormatWith(textMode, value, "other"));
+
+    private static string FormatWith(int textMode, long? value, string? fallback)
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 1;
@@ -70,7 +81,7 @@ public class WiredTextConnectorFallbackTests
         }
 
         Assert.True(WiredBoxRegistry.TryGet("wf_xtra_text_output_variable", out var descriptor));
-        var connector = new WiredTextConnector(new Dictionary<long, string> { [7] = "seven" }, fallback);
+        var connector = new WiredTextConnector(new Dictionary<long, string> { [7] = "seven", [2147483648] = "big" }, fallback);
         var box = new WiredVariableAddonBox(room, new Item { Id = 90 }, descriptor, module, _ => connector);
         WiredNativeTestSupport.Install(box, WiredNativeEditorProjection.DefaultNative(descriptor) with
         {
@@ -82,7 +93,8 @@ public class WiredTextConnectorFallbackTests
         });
 
         Assert.True(box.Apply(context));
-        Assert.Equal(expected, context.Policy.FormatText(context, "w $(r80vroom)"));
+
+        return context.Policy.FormatText(context, "w $(r80vroom)");
     }
 
     private sealed class Operations : IWiredRuntimeOperations

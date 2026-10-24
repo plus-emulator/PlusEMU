@@ -145,6 +145,7 @@ public partial class WiredComponent
         WiredAvatarState.For(_room).Forget(actor);
         WiredBotTargets.For(_room).Forget(actor);
         WiredGameState.For(_room).Forget(actor);
+        ForgetUserVisualization(actor.VirtualId);
 
         return true;
     });

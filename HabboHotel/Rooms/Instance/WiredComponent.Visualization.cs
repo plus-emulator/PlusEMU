@@ -5,14 +5,16 @@ namespace Plus.HabboHotel.Rooms.Instance;
 
 /// <summary>
 /// Transparency and highlight that Set Furni Visibility / Set Furni Highlight showed the whole room on furni. A user entering the room
-/// is sent the current state so late joiners see what everyone else sees. Effects shown to an audience of chosen users and
-/// effects on users are not replayed.
+/// is sent the current state so late joiners see what everyone else sees. Effects on users and bots are kept per room index and
+/// forgotten when that user or bot leaves. Effects shown to an audience of chosen users are not replayed.
 /// </summary>
 public partial class WiredComponent
 {
     private readonly object _visualizationGate = new();
     private readonly Dictionary<int, WiredTransparencyState> _furniTransparency = [];
     private readonly Dictionary<int, WiredHighlightState> _furniHighlight = [];
+    private readonly Dictionary<int, WiredTransparencyState> _userTransparency = [];
+    private readonly Dictionary<int, WiredHighlightState> _userHighlight = [];
 
     // A furni made visible again and a highlight at strength 0 stay as entries; only picking the furni up removes them.
     internal void RememberTransparency(IEnumerable<int> ids, int transparency, bool clickThrough, int easing)
@@ -33,6 +35,34 @@ public partial class WiredComponent
         }
     }
 
+    internal void RememberUserTransparency(IEnumerable<int> indexes, int transparency, bool clickThrough, int easing)
+    {
+        lock (_visualizationGate) {
+            foreach (var index in indexes.Where(IsInRoom)) {
+                _userTransparency[index] = new(index, transparency, clickThrough, easing);
+            }
+        }
+    }
+
+    internal void RememberUserHighlight(IEnumerable<int> indexes, int type, int strength, int color, int animation, int easing)
+    {
+        lock (_visualizationGate) {
+            foreach (var index in indexes.Where(IsInRoom)) {
+                _userHighlight[index] = new(index, type, strength, color, animation, easing);
+            }
+        }
+    }
+
+    private bool IsInRoom(int index) => _room.GetRoomUserManager().GetRoomUserByVirtualId(index) != null;
+
+    private void ForgetUserVisualization(int index)
+    {
+        lock (_visualizationGate) {
+            _userTransparency.Remove(index);
+            _userHighlight.Remove(index);
+        }
+    }
+
     private void ForgetVisualization(int id)
     {
         lock (_visualizationGate) {
@@ -45,15 +75,24 @@ public partial class WiredComponent
     public void SendVisualizationState(GameClient session)
     {
         WiredVisualizationStateComposer? furni = null;
+        WiredVisualizationStateComposer? users = null;
 
         lock (_visualizationGate) {
             if (_furniTransparency.Count + _furniHighlight.Count > 0) {
                 furni = new(false, [.. _furniTransparency.Values], [.. _furniHighlight.Values]);
             }
+
+            if (_userTransparency.Count + _userHighlight.Count > 0) {
+                users = new(true, [.. _userTransparency.Values], [.. _userHighlight.Values]);
+            }
         }
 
         if (furni != null) {
             session.Send(furni);
+        }
+
+        if (users != null) {
+            session.Send(users);
         }
     }
 }

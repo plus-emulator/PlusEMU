@@ -62,8 +62,9 @@ public sealed class WiredOctoberEditorTests
     [InlineData("wf_xtra_var_share", new[] { 0, 1, 0 }, true)]
     // Any non-zero flag saves and is stored as 1.
     [InlineData("wf_xtra_var_import", new[] { 2, 0, 0 }, true)]
+    // The speaker stores any non-zero flag as 1.
     [InlineData("wf_xtra_link_speaker", new[] { 1, 0 }, true)]
-    [InlineData("wf_xtra_link_speaker", new[] { 1, 2 }, false)]
+    [InlineData("wf_xtra_link_speaker", new[] { 1, 2 }, true)]
     [InlineData("wf_var_pointer", new[] { -20 }, true)]
     // A target the form does not offer saves and is stored as furni.
     [InlineData("wf_var_pointer", new[] { 2 }, true)]

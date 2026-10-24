@@ -198,6 +198,19 @@ public sealed class LoginThrottleTests
         Assert.Null(await login.Attempt(new ClientAddress(IPAddress.Loopback, false), "good-ticket-00007"));
     }
 
+    [Fact]
+    public async Task AValidTicketForAProhibitedAccountIsNotCounted()
+    {
+        var (throttle, _) = Throttle();
+        var login = new LoginWorld(throttle, refusedUserId: 13);
+
+        for (var i = 0; i < 5; i++) {
+            Assert.Equal(AuthenticationError.LoginProhibited, await login.Attempt(Visitor, "good-ticket-00013"));
+        }
+
+        Assert.Null(await login.Attempt(Visitor, "good-ticket-00007"));
+    }
+
     private static ClientAddress Address(string address) => new(IPAddress.Parse(address), true);
 
     private static (ILoginThrottle Throttle, FakeTimeProvider Clock) Throttle(LoginThrottleConfiguration? configuration = null)
@@ -222,7 +235,7 @@ public sealed class LoginThrottleTests
         private readonly Authenticator _authenticator;
         private int _consumed;
 
-        public LoginWorld(ILoginThrottle throttle)
+        public LoginWorld(ILoginThrottle throttle, int? refusedUserId = null)
         {
             var clients = new SharedTestClients();
             var persistence = CatalogSnapshotTestSupport.Proxy<IUserPersistenceService>((_, _) => null);
@@ -257,7 +270,8 @@ public sealed class LoginThrottleTests
 
                 return Task.FromResult<Habbo?>(habbo);
             });
-            _authenticator = new Authenticator([], clients, users, tickets, new AccountSessionGate(), persistence, throttle);
+            IAuthenticationTask[] tasks = refusedUserId is { } refused ? [new RefuseUser(refused)] : [];
+            _authenticator = new Authenticator(tasks, clients, users, tickets, new AccountSessionGate(), persistence, throttle);
         }
 
         public int Consumed => Volatile.Read(ref _consumed);
@@ -269,5 +283,10 @@ public sealed class LoginThrottleTests
 
             return _authenticator.AuthenticateUsingSSO(session, ticket);
         }
+    }
+
+    private sealed class RefuseUser(int userId) : IAuthenticationTask
+    {
+        public Task<bool> CanLogin(Plus.HabboHotel.GameClients.GameClient session, int id) => Task.FromResult(id != userId);
     }
 }

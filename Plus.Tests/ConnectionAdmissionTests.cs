@@ -118,6 +118,29 @@ public sealed class ConnectionAdmissionTests
         Assert.Equal(new ClientAddress(IPAddress.Loopback, false), address);
     }
 
+    [Theory]
+    [InlineData("127.0.0.1")]
+    [InlineData("::1")]
+    [InlineData("0.0.0.0")]
+    [InlineData("::")]
+    public void AForwardedLoopbackOrUnspecifiedAddressIsNoVisitor(string value)
+    {
+        Assert.Equal(new ClientAddress(IPAddress.Loopback, false), Admission().Resolve(IPAddress.Loopback, [("X-Real-IP", value)]));
+        Assert.Equal(new ClientAddress(IPAddress.Loopback, false), Admission().Resolve(IPAddress.Loopback, [("X-Forwarded-For", value)]));
+    }
+
+    [Fact]
+    public void IPv6ScopeIdsShareOneAddress()
+    {
+        var admission = Admission(Limit(1));
+        var first = admission.Resolve(IPAddress.Loopback, [("X-Real-IP", "2001:db8::1%1")]);
+        var second = admission.Resolve(IPAddress.Loopback, [("X-Real-IP", "2001:db8::1%2")]);
+
+        Assert.Equal(new ClientAddress(IPAddress.Parse("2001:db8::1"), true), first);
+        Assert.NotNull(admission.TryAdmit(first));
+        Assert.Null(admission.TryAdmit(second));
+    }
+
     [Fact]
     public void ABadRealIpFallsBackToForwardedFor()
     {

@@ -766,7 +766,7 @@ public static class WiredNativeEditorProjection
     /// <summary>
     /// A save with more than 20 ids in a pick list gets no answer and the box keeps its old picks. On Toggle State repeats count:
     /// 21 ids of 20 different ones are dropped and 20 ids of 10 different ones are saved. An id sent twice in a list saves once.
-    /// The limit comes before the refusals of the box itself (a missing name, a pick of a wrong kind, a temporary copy).
+    /// The limit comes before the refusals of the box itself (a missing name, a pick of a wrong kind, a temporary copy), except the two source count refusals.
     /// A box saved earlier with more than 20 picks keeps them, but every editor save of it is dropped until picks are removed, as Habbo never holds more than 20.
     /// </summary>
     public static bool TryLimitPicks(WiredNativeEditorConfiguration native, out WiredNativeEditorConfiguration limited)

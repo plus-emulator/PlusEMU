@@ -100,7 +100,7 @@ public partial class ModernWiredRuntimeTests
     }
 
     [Fact]
-    public void TwoRoomsSendingToEachOtherAtTheSameTimeDoNotWaitOnEachOther()
+    public void TwoRoomsSendingToEachOtherEachRunTheOtherRoomsStack()
     {
         var store = new CrossRoomLinkStore();
         var (a, _, _) = CrossRoom(1, 50, store, "fromA");

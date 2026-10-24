@@ -256,7 +256,7 @@ public sealed partial class WiredGlideConveyorTests
         public IWiredItem Box(uint id) => ((Dictionary<uint, IWiredItem>)Get(Engine, "_items"))[id];
 
         public Fixture((uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)[] layout, bool live = false, string movementEngine = "v2", IRoomItemStore? itemStore = null,
-            IItemDataManager? definitions = null, double colourTileHeight = 0.1, int colourTileModes = 7)
+            IItemDataManager? definitions = null, double colourTileHeight = 0.1, int colourTileModes = 7, IItemTravelStore? travel = null)
         {
             _room.Id = 14;
             _room.WordFilterList = [];
@@ -289,7 +289,7 @@ public sealed partial class WiredGlideConveyorTests
             _savedRows = saved.ToImmutableDictionary(row => row.ItemId);
             _wired = new(_room, TestLogging.Logger, TimeProvider.System, TestRoomSettings.Empty, TestWiredRoomSettingsFactory.Instance,
                 new SavedConfigurations(saved), TestWiredDatabase.Instance, TestWiredRewardService.Instance, TestBotManagementStore.Instance,
-                TestWiredClients.Empty, TestGroupManager.Empty, definitions ?? TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, TestItemRuntime.Travel);
+                TestWiredClients.Empty, TestGroupManager.Empty, definitions ?? TestWiredDefinitions.Unused, TestWiredCommands.Unused, TestWiredAccess.Unused, travel ?? TestItemRuntime.Travel);
             Set(_room, "_wiredComponent", _wired);
             var engine = Get(_wired, "_engine");
             engine.GetType().GetField("_now", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(engine, (Func<long>)(() => _now));
@@ -312,7 +312,7 @@ public sealed partial class WiredGlideConveyorTests
                         Length = 1,
                         Height = builderTile ? 1 : tile ? colourTileHeight : antenna ? 1 : 0.65,
                         Stackable = true,
-                        Walkable = tile,
+                        Walkable = tile || entry.Name == "wired_room_linker",
                         Modes = tile && !builderTile ? colourTileModes : 1,
                         ItemName = entry.Name,
                         PublicName = entry.Name,

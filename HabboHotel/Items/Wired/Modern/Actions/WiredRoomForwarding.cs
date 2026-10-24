@@ -36,9 +36,13 @@ public static class WiredRoomForwarding
 
     public static Destination? Resolve(IEnumerable<Item> items, string roomText, Func<uint, uint> roomOfItem, Func<uint, uint> pairedItem, ILogger logger)
     {
+        Destination? resolved = null;
+
         foreach (var item in items) {
             if (item.ExtraData is MapDataFormat map && map.Data.TryGetValue("internalLink", out var link) && PositiveId(link, out var linkedRoom)) {
-                return new(linkedRoom);
+                resolved = new(linkedRoom);
+
+                continue;
             }
 
             var raw = item.ExtraData.Serialize();
@@ -49,14 +53,18 @@ public static class WiredRoomForwarding
 
                     if (document.RootElement.TryGetProperty("room_linker", out var section) && section.ValueKind == JsonValueKind.Object) {
                         if (section.TryGetProperty("RoomId", out var room) && room.ValueKind == JsonValueKind.Number && room.TryGetInt32(out var roomId) && roomId > 0) {
-                            return new((uint)roomId);
+                            resolved = new((uint)roomId);
+
+                            continue;
                         }
 
                         if (section.TryGetProperty("ItemId", out var pair) && pair.ValueKind == JsonValueKind.Number && pair.TryGetInt32(out var pairId) && pairId > 0) {
                             var destination = roomOfItem((uint)pairId);
 
                             if (destination is > 0 and <= int.MaxValue) {
-                                return new(destination, (uint)pairId);
+                                resolved = new(destination, (uint)pairId);
+
+                                continue;
                             }
                         }
                     }
@@ -80,11 +88,11 @@ public static class WiredRoomForwarding
             var destinationRoom = roomOfItem(paired);
 
             if (destinationRoom is > 0 and <= int.MaxValue) {
-                return new(destinationRoom, paired);
+                resolved = new(destinationRoom, paired);
             }
         }
 
-        return PositiveId(roomText, out var fallback) ? new(fallback) : null;
+        return resolved ?? (PositiveId(roomText, out var fallback) ? new(fallback) : null);
     }
 
     private static readonly AsyncLocal<Action<Action>?> SwitchOverride = new();
@@ -133,13 +141,18 @@ public static class WiredRoomForwarding
 
     // The firing puts effect 234 on the user at once. The user keeps walking, and about 950 ms later (not on a room tick) the room switch starts.
     // The user enters on the other linker's tile facing its rotation, still with effect 234, which is cleared on the linked room's third tick
-    // after the entry. With the other linker picked up nothing happens.
-    public static bool Execute(WiredRuntimeContext context, WiredConfiguration config, ILogger logger, IItemTravelStore travelStore)
+    // after the entry. With the other linker picked up nothing happens. When the other linker stands in the same room, the user moves onto its tile
+    // facing its rotation, without a room switch. Of several picks the last one decides.
+    public static bool Execute(WiredRuntimeContext context, WiredConfiguration config, ILogger logger, IItemTravelStore travelStore, WiredRoomMovement movement)
     {
         var items = context.Targets.ResolveFurni(context, config.SelectedItems, config.FurniSources["links"]);
+        var stored = WiredLegacyProtocol.JavaHashSetOrder(config.SelectedItems.Where(id => id <= int.MaxValue).Select(id => (int)id), 0).ToList();
+        items = [.. items.OrderBy(item => stored.IndexOf((int)item.Id) is var index and >= 0 ? index : stored.Count)];
         var target = Resolve(items, config.Text, id => ItemTeleporterFinder.GetTeleRoomId(id, context.Room, travelStore), travelStore.FindLinkedTeleporter, logger);
 
-        if (target == null || target.RoomId == context.Room.RoomId) {
+        var sameRoom = target?.RoomId == context.Room.RoomId;
+
+        if (target == null || sameRoom && target.TeleporterId == 0) {
             return false;
         }
 
@@ -162,6 +175,16 @@ public static class WiredRoomForwarding
             void Forward()
             {
                 if (!user.IsAttachedTo(room) || !ReferenceEquals(habbo.CurrentRoom, room)) {
+                    return;
+                }
+
+                if (sameRoom) {
+                    if (room.GetRoomItemHandler().GetItem(target.TeleporterId) is { } partner) {
+                        movement.MoveAvatar(context, user, partner.GetX, partner.GetY, false, 2, ignoreOccupants: true);
+                        user.RotHead = user.RotBody = partner.Rotation;
+                        user.UpdateNeeded = true;
+                    }
+
                     return;
                 }
 

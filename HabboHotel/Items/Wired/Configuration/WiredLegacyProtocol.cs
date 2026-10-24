@@ -293,7 +293,7 @@ public static class WiredLegacyProtocol
     // The iteration order of the java.util.HashSet<Long> Habbo holds a card's picks in, built in three steps. First a set sized from the
     // number of ids sent, repeats counted (the sent count is kept in the stored row). Then a second set sized from the first set's size,
     // filled in the first set's order. Then a default set of 16 buckets, filled in the second set's order. That last order is the one sent.
-    private static IEnumerable<int> JavaHashSetOrder(IEnumerable<int> ids, int sentCount)
+    internal static IEnumerable<int> JavaHashSetOrder(IEnumerable<int> ids, int sentCount)
     {
         var sent = ids.ToArray();
         var first = JavaHashSet.Order(sent, Math.Max((int)(Math.Max(sentCount, sent.Length) / 0.75f) + 1, 16));

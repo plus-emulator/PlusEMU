@@ -403,7 +403,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         }
 
         if (name == "wf_act_teleport_to_room") {
-            return WiredRoomForwarding.Execute(context, config, _logger, _travelStore);
+            return WiredRoomForwarding.Execute(context, config, _logger, _travelStore, _movement);
         }
 
         if (WiredBotActions.Names.Contains(name)) {

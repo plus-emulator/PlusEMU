@@ -14,6 +14,7 @@ public sealed class WiredLinkStoreDatabaseTests
 
         Assert.Contains("MODIFY `network_id` INT(10) UNSIGNED NULL", sql);
         Assert.Contains("ON DELETE SET NULL", sql);
+        Assert.DoesNotContain("DROP FOREIGN KEY IF EXISTS `fk_wired_link_endpoints_network_id`,", sql);
     }
 
     [RoomComponentDatabaseFact]

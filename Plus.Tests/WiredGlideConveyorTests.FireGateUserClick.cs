@@ -22,10 +22,12 @@ public sealed partial class WiredGlideConveyorTests
         var frames = CaptureFlashFrames(clicker);
 
         await ClickTheUser(f, clicker, target);
+        f.Advance(200);
         var opening = BatchWithTheGate(frames);
         f.Advance(800);
         frames.Clear();
         await ClickTheUser(f, clicker, target);
+        f.Advance(200);
         var closing = BatchWithTheGate(frames);
 
         Assert.Contains(opening, entry => entry.Id == FireGate && entry.Text == "1");

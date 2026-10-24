@@ -23,7 +23,17 @@
     "Nitro": {
         "Hostname": "127.0.0.1",
         "Port": 2096,
-        "Name": "Nitro Server"
+        "Name": "Nitro Server",
+        "TrustedProxies": [
+            "127.0.0.1",
+            "::1"
+        ],
+        "MaxConnectionsPerIp": 20
+    },
+    "LoginThrottle": {
+        "MaxFailuresPerIp": 10,
+        "WindowMinutes": 5,
+        "BlockMinutes": 10
     },
     "Rcon": {
         "Hostname": "127.0.0.1",

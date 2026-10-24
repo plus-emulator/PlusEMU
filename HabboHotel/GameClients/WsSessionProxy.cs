@@ -1,3 +1,4 @@
+using System.Net;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,13 +15,18 @@ public class WsSessionProxy : WsSession
     private static readonly FieldInfo? WebSocketField = typeof(WsSession).GetField("WebSocket", BindingFlags.Instance | BindingFlags.NonPublic);
     private static readonly FieldInfo? SendLockField = typeof(WebSocket).GetField("WsSendLock", BindingFlags.Instance | BindingFlags.NonPublic);
 
+    private static readonly IDisposable Disconnected = new ClosedLease();
+
     private readonly GameClient _client;
     private readonly ILogger _logger;
+    private readonly ConnectionAdmission? _admission;
+    private IDisposable? _connectionSlot;
 
     public WsSessionProxy(WsServer server, GameClient client, ILogger? logger = null, ConnectionAdmission? admission = null) : base(server)
     {
         _client = client;
         _logger = logger ?? NullLogger.Instance;
+        _admission = admission;
         SendLock = ResolveSendLock(this) ?? new object();
         _client.Id = Id;
         _client.SendCallback = args =>
@@ -46,7 +52,41 @@ public class WsSessionProxy : WsSession
         base.OnConnected();
     }
 
-    protected override void OnDisconnected() => _client.OnTransportDisconnected();
+    /// <summary>Over the per-IP limit the connection closes here, before the upgrade, so it never reaches a login.</summary>
+    public override bool OnWsConnecting(HttpRequest request, HttpResponse response)
+    {
+        if (_admission == null) {
+            return true;
+        }
+
+        if (Socket.RemoteEndPoint is not IPEndPoint peer) {
+            Disconnect();
+
+            return false;
+        }
+
+        var address = _admission.Resolve(peer.Address, Enumerable.Range(0, (int)request.Headers).Select(index => request.Header(index)));
+        _client.RemoteAddress = address;
+
+        if (_admission.TryAdmit(address) is not { } slot) {
+            Disconnect();
+
+            return false;
+        }
+
+        // A disconnect that ran first, or a second upgrade request, keeps the slot count unchanged.
+        if (Interlocked.CompareExchange(ref _connectionSlot, slot, null) != null) {
+            slot.Dispose();
+        }
+
+        return true;
+    }
+
+    protected override void OnDisconnected()
+    {
+        Interlocked.Exchange(ref _connectionSlot, Disconnected)?.Dispose();
+        _client.OnTransportDisconnected();
+    }
 
     /// <summary>
     /// Every WebSocket callback (frames, ping, pong, close) runs from here on a thread-pool thread, where an
@@ -134,5 +174,10 @@ public class WsSessionProxy : WsSession
         catch (Exception disconnectException) {
             _logger.LogError(disconnectException, "Failed to close WebSocket session {SessionId}", Id);
         }
+    }
+
+    private sealed class ClosedLease : IDisposable
+    {
+        public void Dispose() { }
     }
 }

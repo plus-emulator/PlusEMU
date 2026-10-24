@@ -29,13 +29,25 @@ internal class Authenticator : IAuthenticator
 
     public async Task<AuthenticationError?> AuthenticateUsingSSO(GameClient session, string sso)
     {
+        if (_loginThrottle.IsBlocked(session.RemoteAddress)) {
+            return AuthenticationError.TooManyAttempts;
+        }
+
+        AuthenticationError? error;
+
         // The packet manager abandons slow logins and closes the socket; the login must stop with it.
         try {
-            return await AuthenticateUsingSSO(session, sso, session.Closed);
+            error = await AuthenticateUsingSSO(session, sso, session.Closed);
         }
         catch (OperationCanceledException) when (session.Closed.IsCancellationRequested) {
             return AuthenticationError.SessionClosed;
         }
+
+        if (error is not null and not AuthenticationError.SessionClosed) {
+            _loginThrottle.RecordFailure(session.RemoteAddress);
+        }
+
+        return error;
     }
 
     private async Task<AuthenticationError?> AuthenticateUsingSSO(GameClient session, string sso, CancellationToken cancellationToken)

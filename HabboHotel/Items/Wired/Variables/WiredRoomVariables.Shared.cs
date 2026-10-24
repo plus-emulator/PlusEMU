@@ -57,7 +57,7 @@ public sealed partial class WiredRoomVariables
 
         return new()
         {
-            TextConnector = [.. (connector ?? new Dictionary<int, string>()).OrderBy(pair => pair.Key).Select(pair => new KeyValuePair<int, string>(pair.Key, pair.Value))],
+            TextConnector = [.. (connector ?? new Dictionary<long, string>()).OrderBy(pair => pair.Key).Select(pair => new KeyValuePair<long, string>(pair.Key, pair.Value))],
             TextConnectorFallback = (connector as WiredTextConnector)?.Fallback,
             Level = level,
             Fx = [.. effects]
@@ -129,10 +129,10 @@ public sealed partial class WiredRoomVariables
         && WiredVariableDefinitions.TryDecode("wf_var_reference", definitionId, _room.Id, _room.OwnerId > 0 ? (uint)_room.OwnerId : 0, box.Configuration, out var definition, out _)
             ? definition : null;
 
-    private IReadOnlyDictionary<int, string> TextConnectorOf(WiredVariableDefinition definition) =>
+    private IReadOnlyDictionary<long, string> TextConnectorOf(WiredVariableDefinition definition) =>
         MetadataOn(definition.ItemId, "wf_xtra_var_text_connector")?.TextConnector
         ?? (ImportedAddons(definition) is { } imported && (!imported.TextConnector.IsEmpty || imported.TextConnectorFallback is not null)
-            ? new WiredTextConnector(imported.TextConnector.ToDictionary(), imported.TextConnectorFallback) : new Dictionary<int, string>());
+            ? new WiredTextConnector(imported.TextConnector.ToDictionary(), imported.TextConnectorFallback) : new Dictionary<long, string>());
 
     /// <summary>The level-up system that adds sub-variables to a variable: the one stacked with it, or one a reference imports.</summary>
     private WiredVariableLevelSystem? LevelOf(uint definitionId)

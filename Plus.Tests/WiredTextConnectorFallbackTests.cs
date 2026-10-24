@@ -24,7 +24,7 @@ public class WiredTextConnectorFallbackTests
     {
         var variable = new WiredVariableDescription(new(10, 1, 5, "score", WiredVariableTarget.User, WiredVariableAvailability.Persistent, true), true, false)
         {
-            TextConnector = keys.ToDictionary(key => key, _ => "one"),
+            TextConnector = keys.ToDictionary(key => (long)key, _ => "one"),
             TextConnectorFallback = fallback
         };
         var composer = new WiredAllVariablesDiffComposer(new(42, true, [], [variable]));
@@ -38,7 +38,7 @@ public class WiredTextConnectorFallbackTests
     public void TheFallbackChangesTheCatalogHash()
     {
         var variable = new WiredVariableDescription(new(10, 1, 5, "score", WiredVariableTarget.User, WiredVariableAvailability.Persistent, true), true, false)
-        { TextConnector = new Dictionary<int, string> { [1] = "one" } };
+        { TextConnector = new Dictionary<long, string> { [1] = "one" } };
         Assert.NotEqual(variable.Hash, (variable with { TextConnectorFallback = "x" }).Hash);
         Assert.NotEqual((variable with { TextConnectorFallback = "x" }).Hash, (variable with { TextConnectorFallback = "y" }).Hash);
         Assert.NotEqual(new WiredVariableDescription(variable.Definition, true, false).Hash,
@@ -70,7 +70,7 @@ public class WiredTextConnectorFallbackTests
         }
 
         Assert.True(WiredBoxRegistry.TryGet("wf_xtra_text_output_variable", out var descriptor));
-        var connector = new WiredTextConnector(new Dictionary<int, string> { [7] = "seven" }, fallback);
+        var connector = new WiredTextConnector(new Dictionary<long, string> { [7] = "seven" }, fallback);
         var box = new WiredVariableAddonBox(room, new Item { Id = 90 }, descriptor, module, _ => connector);
         WiredNativeTestSupport.Install(box, WiredNativeEditorProjection.DefaultNative(descriptor) with
         {

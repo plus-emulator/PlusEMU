@@ -56,7 +56,7 @@ public sealed class WiredLeaderboardTests
         var holders = Holders([.. Enumerable.Range(1, 120).Select(user => ((long)user, (long)user, 0, 0))]);
         var ranked = WiredLeaderboardRanking.Rank(Config(0), holders, null, null);
         var choice = new WiredLeaderboardChoice(new(new(9, 1, 1, "coins", WiredVariableTarget.User, WiredVariableAvailability.Persistent, true), true, false),
-            null, new Dictionary<int, string> { [120] = "Gold" });
+            null, new Dictionary<long, string> { [120] = "Gold" });
         var profiles = new Profiles();
 
         var second = WiredLeaderboardRanking.Chunk(ranked, 1, choice, profiles);
@@ -79,7 +79,7 @@ public sealed class WiredLeaderboardTests
         var holders = Holders((1, 5, 1, 2));
         var ranked = WiredLeaderboardRanking.Rank(Config(0), holders, null, null);
         var choice = new WiredLeaderboardChoice(new(new(9, 1, 1, "coins", WiredVariableTarget.User, WiredVariableAvailability.Persistent, true), true, false),
-            null, new Dictionary<int, string>());
+            null, new Dictionary<long, string>());
         var plain = WiredLeaderboardRanking.Chunk(ranked, 0, choice, new Profiles(), Config(0))[0];
         Assert.Equal((0L, 0L), (plain.CreationTime, plain.LastUpdateTime));
         var timed = WiredLeaderboardRanking.Chunk(ranked, 0, choice, new Profiles(), Config(0) with
@@ -120,7 +120,7 @@ public sealed class WiredLeaderboardTests
         Assert.True(WiredBoxRegistry.TryGet("wf_xtra_var_leaderboard", out var descriptor));
         var runtime = WiredNativeEditorProjection.DefaultRuntime(3, descriptor)!;
         var choice = new WiredLeaderboardChoice(new(new(9, 1, 1, "coins", WiredVariableTarget.User, WiredVariableAvailability.Persistent, true), true, false),
-            null, new Dictionary<int, string>());
+            null, new Dictionary<long, string>());
         var packet = new HabbiconTestSupport.RecordingPacket();
 
         WiredLegacyProtocol.Write(packet, 3, 19408, descriptor, runtime, 100, [], catalogHash: 5, leaderboard: new(0, 4, 6, 1, [choice]));

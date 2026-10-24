@@ -72,7 +72,7 @@ public sealed class WiredVariableAddonTests
     {
         Assert.True(WiredBoxRegistry.TryGet(name, out var descriptor));
 
-        return new(room, new Item { Id = 90 }, descriptor, module, _ => new Dictionary<int, string> { [10] = "ten", [20] = "twenty" });
+        return new(room, new Item { Id = 90 }, descriptor, module, _ => new Dictionary<long, string> { [10] = "ten", [20] = "twenty" });
     }
     private static (Room Room, WiredRuntimeContext Context, WiredVariableModule Module, WiredVariableHolder[] Holders) World()
     {

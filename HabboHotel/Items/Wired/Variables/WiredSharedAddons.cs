@@ -16,7 +16,7 @@ public sealed record WiredSharedFx(string Box, ImmutableArray<int> Ints, Immutab
 /// </summary>
 public sealed record WiredSharedAddons
 {
-    public ImmutableArray<KeyValuePair<int, string>> TextConnector { get; init; } = [];
+    public ImmutableArray<KeyValuePair<long, string>> TextConnector { get; init; } = [];
     public string? TextConnectorFallback { get; init; }
     public string? Level { get; init; }
     public ImmutableArray<WiredSharedFx> Fx { get; init; } = [];
@@ -41,7 +41,7 @@ public sealed record WiredSharedAddons
 
             return stored is null ? null : new()
             {
-                TextConnector = [.. (stored.TextConnector ?? []).Select(pair => new KeyValuePair<int, string>(pair.Key, pair.Value))],
+                TextConnector = [.. (stored.TextConnector ?? []).Select(pair => new KeyValuePair<long, string>(pair.Key, pair.Value))],
                 TextConnectorFallback = stored.TextConnectorFallback,
                 Level = stored.Level,
                 Fx = [.. (stored.Fx ?? []).Select(fx => new WiredSharedFx(fx.Box, [.. fx.Ints], [.. fx.VariableIds], fx.Text))]
@@ -52,7 +52,7 @@ public sealed record WiredSharedAddons
         }
     }
 
-    private sealed record StoredPair(int Key, string Value);
+    private sealed record StoredPair(long Key, string Value);
     private sealed record StoredFx(string Box, int[] Ints, string[] VariableIds, string Text);
     private sealed record Stored(StoredPair[]? TextConnector, string? TextConnectorFallback, string? Level, StoredFx[]? Fx);
 }

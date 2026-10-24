@@ -2,7 +2,7 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 
 /// <summary>A user variable a Variable Leaderboard can rank, with the add-ons stacked on its definition box.</summary>
 public sealed record WiredLeaderboardChoice(WiredVariableDescription Description, WiredVariableLevelSystem? LevelSystem,
-    IReadOnlyDictionary<int, string> TextConnector)
+    IReadOnlyDictionary<long, string> TextConnector)
 {
     public string VariableId => Description.CatalogId;
     public bool Persistent => Description.Definition.IsDurable;
@@ -26,6 +26,6 @@ public sealed partial class WiredRoomVariables
             .OfType<WiredVariableDescription>().Where(description => description.Definition.Target == WiredVariableTarget.User)
             .Select(description => new WiredLeaderboardChoice(description,
                 MetadataOn(description.Definition.ItemId, "wf_xtra_var_lvlup_system")?.LevelSystem,
-                MetadataOn(description.Definition.ItemId, "wf_xtra_var_text_connector")?.TextConnector ?? new Dictionary<int, string>()))];
+                MetadataOn(description.Definition.ItemId, "wf_xtra_var_text_connector")?.TextConnector ?? new Dictionary<long, string>()))];
     }
 }

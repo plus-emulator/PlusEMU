@@ -40,7 +40,7 @@ public partial class ModernWiredRuntimeTests
 
         Assert.True(WiredBoxRegistry.TryGet("wf_xtra_filter_users_by_var", out var descriptor));
         var item = MakeItem(120, "wf_xtra_filter_users_by_var");
-        var filter = new WiredVariableAddonBox(f.Room, item, descriptor, module, _ => new Dictionary<int, string>());
+        var filter = new WiredVariableAddonBox(f.Room, item, descriptor, module, _ => new Dictionary<long, string>());
         WiredNativeTestSupport.Install(filter, WiredNativeEditorProjection.DefaultNative(descriptor) with
         {
             OwnedIntParams = [count, sort, 0, 1],

@@ -95,7 +95,7 @@ public sealed class WiredPointerRuntimeTests
         public string Message()
         {
             Assert.True(WiredBoxRegistry.TryGet("wf_xtra_text_output_variable", out var descriptor));
-            var box = new WiredVariableAddonBox(Room, new Item { Id = 90 }, descriptor, Module, _ => new Dictionary<int, string>());
+            var box = new WiredVariableAddonBox(Room, new Item { Id = 90 }, descriptor, Module, _ => new Dictionary<long, string>());
             WiredNativeTestSupport.Install(box, WiredNativeTestSupport.FromLegacyVariableAddon(descriptor,
                 new() { IntParams = [0, 1, 1, 200, 0], Text = $"custom:{Pointer}\tpb\t," }));
             Assert.True(box.Apply(Context));

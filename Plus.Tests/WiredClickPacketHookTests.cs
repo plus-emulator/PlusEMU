@@ -460,7 +460,7 @@ public class WiredClickPacketHookTests
     }
 
     [Fact]
-    public async Task DelayedClickFiringCannotTransferToReplacementActorWithSameVirtualAndHabboIds()
+    public async Task DelayedClickFiringKeepsItsOriginalActorWhenAReplacementTakesTheSameIds()
     {
         var world = new World("wf_trg_click_user", [0, 0]);
         WiredNativeTestSupport.Install(world.Capture, WiredNativeEditorProjection.DefaultNative(world.Capture.Descriptor) with { Delay = 1 });
@@ -471,7 +471,7 @@ public class WiredClickPacketHookTests
         ((ConcurrentDictionary<int, RoomUser>)Get(world.Room.GetRoomUserManager(), "_users"))[world.Actor.VirtualId] = replacement;
         world.Clock = 1000;
         world.Room.GetWired().OnCycle();
-        Assert.Empty(world.Capture.Events);
+        Assert.Same(world.Actor, Assert.Single(world.Capture.Events).Actor);
     }
 
     [Fact]

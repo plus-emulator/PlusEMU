@@ -390,7 +390,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(resetIds, furniture.Where(move => move.Duration == 500).Select(move => move.Id));
         Assert.All(furniture, move => Assert.Equal(move.FromX + (move.Duration == 200 ? 1 : -1), move.ToX));
         Assert.Same(rider, ((WiredRuntimeEvent)capturedEnvelope!.GetType().GetProperty("Event")!.GetValue(capturedEnvelope)!).Actor);
-        Assert.Equal(!actorReuse, (bool)capturedEnvelope!.GetType().GetField("Initialized")!.GetValue(capturedEnvelope)!);
+        Assert.True((bool)capturedEnvelope!.GetType().GetField("Initialized")!.GetValue(capturedEnvelope)!);
         Assert.Equal(0, f.Engine.ReadStats().Pending);
 
         if (replacement != null) {

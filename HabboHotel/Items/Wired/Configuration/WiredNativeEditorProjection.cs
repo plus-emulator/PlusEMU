@@ -940,6 +940,14 @@ public static class WiredNativeEditorProjection
             return false;
         }
 
+        if (descriptor.CanonicalName is "wf_trg_receive_message" or "wf_act_send_message" or "wf_xtra_link_speaker" && picksSelected
+            && native.PrimaryItems.Any(reference => room.GetRoomItemHandler().GetItem(reference.ItemId) is { } picked
+                && !Links.WiredLinkTransport.IsLink(picked))) {
+            error = "wiredfurni.error.require_link_furni";
+
+            return false;
+        }
+
         // OR evaluation scopes picked conditions and add-ons; client text: "Can only select WIRED Conditions and Add-Ons!"
         if (descriptor.CanonicalName == "wf_xtra_or_eval" && picksSelected && native.PrimaryItems.Any(reference =>
             room.GetRoomItemHandler().GetItem(reference.ItemId)?.Definition.WiredDescriptor is not { Category: WiredBoxCategory.Condition or WiredBoxCategory.Addon })) {

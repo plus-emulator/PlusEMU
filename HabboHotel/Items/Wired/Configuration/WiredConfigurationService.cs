@@ -179,6 +179,12 @@ public sealed class WiredConfigurationService(
                 return;
             }
 
+            if (WiredLinkSaveRules.Refusal(descriptor.CanonicalName, native) is var (linkKey, linkParameters)) {
+                session.Send(new WiredValidationErrorComposer(linkKey, linkParameters));
+
+                return;
+            }
+
             if (WiredNativeEditorProjection.SaveRefusal(descriptor, native) is { } refusal) {
                 session.Send(new WiredValidationErrorComposer(refusal));
 

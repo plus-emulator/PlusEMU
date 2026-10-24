@@ -7,6 +7,7 @@ public class GameItemHandler
 {
     private ConcurrentDictionary<uint, Item> _banzaiPyramids;
     private ConcurrentDictionary<uint, Item> _banzaiTeleports;
+    internal Random Dice { get; set; } = Random.Shared;
     private Room _room;
 
     public GameItemHandler(Room room)

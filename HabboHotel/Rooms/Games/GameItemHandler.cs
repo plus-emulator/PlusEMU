@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Rooms.PathFinding;
 
 namespace Plus.HabboHotel.Rooms.Games;
 
@@ -7,6 +8,8 @@ public class GameItemHandler
 {
     private ConcurrentDictionary<uint, Item> _banzaiPyramids;
     private ConcurrentDictionary<uint, Item> _banzaiTeleports;
+    private readonly ConcurrentDictionary<uint, HiddenPyramid> _hiddenPyramids = new();
+    internal Random Dice { get; set; } = Random.Shared;
     private Room _room;
 
     public GameItemHandler(Room room)
@@ -19,6 +22,41 @@ public class GameItemHandler
     public void OnCycle()
     {
         CyclePyramids();
+        CycleHiddenPyramids();
+    }
+
+    // A hidden pyramid stays 0 for 8 to 20 room ticks and 1 for 10 to 30, then flips by itself. A flip that is refused is tried again on the next tick.
+    private sealed class HiddenPyramid(Item item)
+    {
+        public Item Item { get; } = item;
+        public string? LastState { get; set; }
+        public int TicksLeft { get; set; }
+    }
+
+    public void AddHiddenPyramid(Item item) =>
+        _hiddenPyramids.AddOrUpdate(item.Id, _ => new(item), (_, known) => ReferenceEquals(known.Item, item) ? known : new(item));
+
+    private void CycleHiddenPyramids()
+    {
+        foreach (var pyramid in _hiddenPyramids.Values) {
+            if (!ReferenceEquals(_room.GetRoomItemHandler().GetItem(pyramid.Item.Id), pyramid.Item)) {
+                _hiddenPyramids.TryRemove(pyramid.Item.Id, out _);
+
+                continue;
+            }
+
+            var state = pyramid.Item.LegacyDataString;
+
+            if (state != pyramid.LastState) {
+                pyramid.LastState = state;
+                pyramid.TicksLeft = state == "0" ? Dice.Next(8, 21) : Dice.Next(10, 31);
+            }
+
+            if (--pyramid.TicksLeft <= 0) {
+                var flipped = state == "0" ? "1" : "0";
+                GateTransitionService.ToggleState(pyramid.Item, current => current == state ? flipped : null, GateCloseReason.Timer, persist: false);
+            }
+        }
     }
 
     private void CyclePyramids()
@@ -126,6 +164,7 @@ public class GameItemHandler
             _banzaiPyramids.Clear();
         }
 
+        _hiddenPyramids.Clear();
         _banzaiPyramids = null;
         _banzaiTeleports = null;
         _room = null;

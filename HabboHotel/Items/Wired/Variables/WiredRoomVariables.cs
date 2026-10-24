@@ -30,6 +30,7 @@ public sealed partial class WiredRoomVariables
         return new(definitions.Concat(definitions.SelectMany(DerivedDescriptions)).ToArray());
     }
     public bool FxDirty { get; private set; } = true;
+    private readonly HashSet<WiredVariableKey> _rewritten = [];
 
     /// <summary>What Share add-ons published to the references of this room.</summary>
     internal IWiredSharedAddonStore SharedAddons { get; set; }
@@ -240,6 +241,12 @@ public sealed partial class WiredRoomVariables
 
         if (changes.Count > 0) {
             FxDirty = true;
+
+            // Only a Give with override creates a variable that already had a value.
+            foreach (var change in changes.Where(x => x.Kind == WiredVariableChangeKind.Created && x.Before is not null)) {
+                _rewritten.Add(change.Key);
+            }
+
             WiredSharedVariableBroadcast.Deliver(Module.RoomId, changes);
         }
 

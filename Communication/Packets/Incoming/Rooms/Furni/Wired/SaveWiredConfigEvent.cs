@@ -21,9 +21,6 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
         }
 
         if (itemId is > 0 and <= int.MaxValue && WiredLegacyProtocol.TryReadNativeUnbounded(packet, Envelope, out var native)) {
-            // Two boxes have their own bounds: the others drop a save that is out of bounds without a reply.
-            var visual = VisualBoxName(session, itemId);
-
             // A condition save with a quantifier outside 0..2 is answered and stored as 0.
             if (native.Quantifier is { } quantifier and not (0 or 1 or 2)) {
                 native = native with { Quantifier = 0 };
@@ -39,7 +36,8 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
                 return Task.CompletedTask;
             }
 
-            if (WiredNativeEditorProjection.WithinBounds(visual == null ? native : WiredFurniVisualRules.WithoutNegativeDelay(native))) {
+            // A delay the editor does not offer is answered with the delay key when the save is compiled, so it passes the bounds check here.
+            if (WiredNativeEditorProjection.WithinBounds(native.Delay is int delay && !WiredConfigurationLimits.IsEditorDelay(delay) ? native with { Delay = 0 } : native)) {
                 service.Save(session, new(itemId, Envelope, WiredLegacyProtocol.WireDraft(native), native));
             }
         }
@@ -59,10 +57,6 @@ internal abstract class SaveWiredConfigEvent(IWiredConfigurationService service)
 
         return !verdict.Dropped && verdict.Key is WiredSourceRules.FurniSourceCountKey or WiredSourceRules.UserSourceCountKey ? verdict.Key : null;
     }
-
-    private static string? VisualBoxName(GameClient? session, uint itemId) =>
-        session?.GetHabbo()?.CurrentRoom?.GetWired()?.TryGet(itemId, out var box) == true && box is IWiredConfiguredItem configured
-            && WiredFurniVisualRules.Applies(configured.Descriptor.CanonicalName) ? configured.Descriptor.CanonicalName : null;
 }
 
 internal sealed class SaveWiredSelectorConfigEvent(IWiredConfigurationService service) : SaveWiredConfigEvent(service)

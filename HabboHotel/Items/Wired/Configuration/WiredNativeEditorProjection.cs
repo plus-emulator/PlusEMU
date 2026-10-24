@@ -176,11 +176,12 @@ public static class WiredNativeEditorProjection
             return refusal;
         }
 
-        if (WiredFurniVisualRules.Applies(descriptor.CanonicalName)) {
-            if (!WiredFurniVisualRules.DelayAccepted(native.Delay)) {
-                return WiredFurniVisualRules.DelayKey;
-            }
+        // A new save of any action box is held to the delay the editor offers.
+        if (native.Delay is int delay && !WiredConfigurationLimits.IsEditorDelay(delay)) {
+            return WiredConfigurationLimits.DelayKey;
+        }
 
+        if (WiredFurniVisualRules.Applies(descriptor.CanonicalName)) {
             if (WiredFurniVisualRules.UserSourceRefusal(native, Metadata(descriptor.CanonicalName)) is { } userSource) {
                 return userSource;
             }
@@ -410,6 +411,18 @@ public static class WiredNativeEditorProjection
     {
         runtime = new();
         var name = descriptor.CanonicalName;
+
+        if (native.Delay is int delay && !WiredConfigurationLimits.IsEditorDelay(delay)) {
+            // A stored row with a longer delay runs with the longest one the editor offers.
+            if (!storedRow) {
+                return false;
+            }
+
+            if (delay > WiredConfigurationLimits.EditorDelayPulses) {
+                native = native with { Delay = WiredConfigurationLimits.EditorDelayPulses };
+            }
+        }
+
         native = WithoutHotelInt(name, native);
 
         // These boxes store a save in a normal form instead of refusing most odd values.

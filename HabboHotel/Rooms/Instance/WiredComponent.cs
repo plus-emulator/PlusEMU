@@ -831,6 +831,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     private readonly List<IServerPacket> _heldMovements = [];
     private int _movementHolds;
+    internal bool HoldsMovements => _movementHolds > 0;
 
     /// <summary>
     /// Sends a WiredMovements after the pending ObjectsDataUpdate. While a click runs its stacks, it waits for the end of the click, so

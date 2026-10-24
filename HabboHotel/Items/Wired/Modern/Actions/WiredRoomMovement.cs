@@ -540,7 +540,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var room = context.Room;
         user = WiredRoomOperations.Rider(room, user);
 
-        if (!carrySource.HasValue) {
+        if (!carrySource.HasValue && !(batch != null && JoinsPublication(context, user, x, y))) {
             // Ordinary relocation can invoke landing/walk work before its immediate animation.
             context.Publication?.Flush();
         }
@@ -571,6 +571,12 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         return Move(user, null, batch);
     }
+
+    // A wired user move on plain tiles adds its entry to the open publication, like the furni moves of the same firing.
+    private bool JoinsPublication(WiredRuntimeContext context, RoomUser user, int x, int y) => transparentWalkTransition
+        && context.Publication is { Open: true } && RoomOwnerScope.IsOwner(context.Room) && WiredRoomOperations.Horse(context.Room, user) == null
+        && context.Room.GetGameMap().GetCoordinatedItems(user.Coordinate).Concat(context.Room.GetGameMap().GetCoordinatedItems(new(x, y)))
+            .All(PlainPublicationItem);
 
     private bool MoveAvatarOwned(WiredRuntimeContext context, RoomUser user, int x, int y, bool animate,
         int walkMode, bool throughUsers, bool ignoreOccupants, int? animationTimeMs, long? discardThrough, (int X, int Y, double Z)? carrySource,
@@ -637,8 +643,10 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             var collect = carrySource.HasValue ? null : batch;
 
             if (collect != null) {
-                room.SendPacket(style);
-                collect.Add(movement);
+                if (context.Publication is not { Open: true } || _appendCarryPublication?.Invoke(context, user, movement, style) != true) {
+                    room.SendPacket(style);
+                    collect.Add(movement);
+                }
             }
             else if (!carrySource.HasValue || _appendCarryPublication?.Invoke(context, user, movement, style) != true) {
                 room.FlushWiredFlashes();

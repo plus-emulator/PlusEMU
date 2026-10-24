@@ -971,6 +971,7 @@ public class Room
     /// </summary>
     internal void FlushWiredFlashes() => _wiredComponent?.FlushFlashes();
     internal void FlushWiredFlashData() => _wiredComponent?.FlushFlashData();
+    internal bool HoldsWiredMovements => _wiredComponent?.HoldsMovements == true;
 
     /// <summary>Sends a Wired movement packet after the pending box flashes and furni states (see WiredComponent.SendWiredMovement).</summary>
     internal void SendWiredMovement(IServerPacket packet)

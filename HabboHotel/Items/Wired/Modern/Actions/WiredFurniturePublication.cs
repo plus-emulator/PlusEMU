@@ -9,13 +9,15 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
     private readonly Dictionary<Item, (WiredMovementComposer Movement, WiredMoveStyleComposer Style, long Placement, ItemDefinition Definition)> _entries = new(ReferenceEqualityComparer.Instance);
     private readonly List<Item> _order = [];
     private readonly List<(RoomUser Actor, long Lifetime, WiredMovementComposer Movement)> _avatars = [];
-    private readonly List<(RoomUser Actor, long Lifetime, WiredUserDirectionComposer Turn)> _directions = [];
+    private readonly List<(RoomUser Actor, long Lifetime, WiredUserDirectionComposer Turn, bool FromUserBox)> _directions = [];
     // Firings that moved each furni, and furni whose firing ran with Execute in Order.
     private readonly Dictionary<Item, HashSet<object?>> _firings = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<Item> _ordered = new(ReferenceEqualityComparer.Instance);
     internal long Deadline { get; } = deadline;
     internal long Epoch { get; } = epoch;
     internal bool Open { get; private set; } = true;
+    /// <summary>Sends the movements like a Move and Rotate User box does: after the states a click writes, with the chat held back.</summary>
+    internal bool SendsAsUserMovement { get; set; }
 
     internal bool Append(Item item, WiredMovementComposer movement, WiredMoveStyleComposer style, object? firing = null, bool executeInOrder = false)
     {
@@ -94,8 +96,15 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
     // firing's WiredMovements.
     internal void AppendDirection(RoomUser shooter, long lifetime, WiredUserDirectionComposer turn)
     {
-        _directions.RemoveAll(entry => ReferenceEquals(entry.Actor, shooter));
-        _directions.Add((shooter, lifetime, turn));
+        _directions.RemoveAll(entry => !entry.FromUserBox && ReferenceEquals(entry.Actor, shooter));
+        _directions.Add((shooter, lifetime, turn, false));
+    }
+
+    // Every turn of a Move and Rotate User box is sent, also next to a shooter turn of the same user.
+    internal void AppendUserTurn(RoomUser actor, long lifetime, WiredUserDirectionComposer turn)
+    {
+        _directions.Add((actor, lifetime, turn, true));
+        SendsAsUserMovement = true;
     }
 
     private bool LiveActor(RoomUser actor, long lifetime) => actor.Movement.State != NavState.Removing
@@ -131,8 +140,9 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
         _ordered.Clear();
 
         var flushes = live.Length != 0 || avatars.Length != 0;
+        var userMovement = SendsAsUserMovement;
 
-        if (flushes) {
+        if (flushes && !(userMovement && room.HoldsWiredMovements)) {
             room.FlushWiredFlashData();
         }
 
@@ -146,10 +156,17 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
         var turns = directions.Where(entry => LiveActor(entry.Actor, entry.Lifetime)).Select(entry => entry.Turn).ToArray();
 
         if (movements.Length > 0 || turns.Length > 0) {
-            room.SendPacket(new WiredMovementBatchComposer(movements, turns));
+            var batch = new WiredMovementBatchComposer(movements, turns);
+
+            if (userMovement) {
+                room.SendWiredMovement(batch);
+            }
+            else {
+                room.SendPacket(batch);
+            }
         }
 
-        if (flushes) {
+        if (flushes && !userMovement) {
             room.FlushWiredFlashes();
         }
     }

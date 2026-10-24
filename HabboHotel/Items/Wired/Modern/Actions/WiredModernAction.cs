@@ -103,6 +103,11 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
             return false;
         }
 
+        // Its moves and turns join the furni entries of the firing.
+        if (name == "wf_act_move_rotate_user") {
+            return true;
+        }
+
         string slot;
 
         if (name == "wf_act_move_to_dir" && config.IntParams.Length == 4
@@ -749,10 +754,13 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 return changed;
             case "wf_act_move_rotate_user":
                 // One box sends one WiredMovements with the moves of all its users, then their turns.
+                // Inside an open publication they go out with the furni entries of the firing instead.
                 var moves = new List<WiredMovementComposer>();
                 var turns = new List<WiredUserDirectionComposer>();
 
                 foreach (var user in Users(context, config, "users")) {
+                    var collected = moves.Count;
+
                     if (Param(config, 0) >= 0) {
                         var offset = Rotation.Offset(Param(config, 0));
                         // A push on a walking user replaces the step in progress in the same tick.
@@ -763,6 +771,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         var resume = stepping && (user.GoalX, user.GoalY) != (baseX, baseY);
                         changed |= _movement.MoveAvatar(context, user, baseX + offset.X, baseY + offset.Y, true, resume ? 1 : 2, replaceStep: stepping,
                             batch: moves);
+
+                        if (moves.Count == collected && context.Publication is { Open: true } joined && joined.ContainsActor(user)) {
+                            joined.SendsAsUserMovement = true;
+                        }
                     }
 
                     if (Param(config, 1) < 0) {
@@ -782,7 +794,15 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         user.UpdateNeeded = true;
                     }
 
-                    turns.Add(new WiredUserDirectionComposer(user.VirtualId, rotation, rotation));
+                    var turn = new WiredUserDirectionComposer(user.VirtualId, rotation, rotation);
+
+                    if (moves.Count == collected && context.Publication is { Open: true } open) {
+                        open.AppendUserTurn(user, user.Movement.LifetimeId, turn);
+                    }
+                    else {
+                        turns.Add(turn);
+                    }
+
                     changed = true;
                 }
 

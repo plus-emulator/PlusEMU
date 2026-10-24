@@ -771,6 +771,10 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         var resume = stepping && (user.GoalX, user.GoalY) != (baseX, baseY);
                         changed |= _movement.MoveAvatar(context, user, baseX + offset.X, baseY + offset.Y, true, resume ? 1 : 2, replaceStep: stepping,
                             batch: moves);
+
+                        if (moves.Count == collected && context.Publication is { Open: true } joined && joined.ContainsActor(user)) {
+                            joined.SendsAsUserMovement = true;
+                        }
                     }
 
                     if (Param(config, 1) < 0) {

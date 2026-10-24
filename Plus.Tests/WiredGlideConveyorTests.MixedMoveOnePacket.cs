@@ -116,6 +116,44 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(await Headers(false), await Headers(true));
     }
 
+    // A clicked stack with User To Furni, Move Furni and Show Message sends the packets in this order.
+    [Fact]
+    public async Task UserToFurniWithAFurniMoverKeepsItsPacketOrder()
+    {
+        Assert.True(WiredBoxRegistry.TryGet("wf_act_user_to_furni", out var descriptor));
+        var userToFurni = "native:" + JsonSerializer.Serialize(new WiredNativeEditorConfiguration
+        {
+            Category = descriptor.Category,
+            NativeCode = descriptor.EditorCode,
+            OwnedIntParams = [0],
+            PrimaryItems = [new WiredNativeItemReference(MixedWalkOnTileId, false)],
+            FurniSourceTypes = [100],
+            UserSourceTypes = [0],
+            Delay = 0
+        });
+        var f = new Fixture(
+        [
+            (ObservedSubjectId, 9, 9, 0.0, 0, "bc_tile_1", null),
+            (MixedBlockId, 6, 12, 0.0, 0, "bc_tile_1", null),
+            (MixedWalkOnTileId, 7, 7, 0.0, 0, "bc_tile_1", null),
+            (ClickStateTrigger, 4, 12, 0.0, 0, "wf_trg_click_furni", ObservedClick(ObservedSubjectId)),
+            (84, 4, 12, 0.65, 0, "wf_act_user_to_furni", userToFurni),
+            (85, 4, 12, 1.3, 0, "wf_act_move_rotate", MoveRotateConfig(5, MixedBlockId)),
+            (86, 4, 12, 1.95, 0, "wf_act_show_message", ShownMessage("moved"))
+        ], live: true);
+        f.SetEngineCallback("_effectOrderRandom", new EffectSwapRandom(false));
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        f.Advance(1000);
+        var frames = CaptureFlashFrames(rider);
+
+        await new ClickFurniEvent(new FurnitureUseService(null!, null!)).Parse(f.Room, rider.GetClient()!,
+            ClickPacket((int)ObservedSubjectId, 0));
+        f.Advance(500);
+
+        Assert.Equal((7, 7), (rider.X, rider.Y));
+        Assert.Equal("3841,3151,5110,1695,5110,1695,2011,2254", string.Join(",", frames.Select(frame => frame.Header)));
+    }
+
     // The turn of a projectile shooter and the turn of a Move User box on the same user are both sent.
     [Fact]
     public void ProjectileTurnAndMoveUserTurnOfOneUserAreBothSent()

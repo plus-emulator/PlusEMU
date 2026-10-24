@@ -643,14 +643,9 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             var collect = carrySource.HasValue ? null : batch;
 
             if (collect != null) {
-                var publication = context.Publication;
-
-                if (publication is not { Open: true } || _appendCarryPublication?.Invoke(context, user, movement, style) != true) {
+                if (context.Publication is not { Open: true } || _appendCarryPublication?.Invoke(context, user, movement, style) != true) {
                     room.SendPacket(style);
                     collect.Add(movement);
-                }
-                else {
-                    publication.SendsAsUserMovement = true;
                 }
             }
             else if (!carrySource.HasValue || _appendCarryPublication?.Invoke(context, user, movement, style) != true) {

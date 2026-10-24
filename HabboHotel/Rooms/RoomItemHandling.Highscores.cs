@@ -239,7 +239,8 @@ public partial class RoomItemHandling
     }
 
     private bool PayloadBlocked(uint id) => _pendingHighscores.ContainsKey(id) || _payloadTransfers.ContainsKey(id);
-    private string? SavePayload(Item item) => PayloadBlocked(item.Id) || item.ExtraData is HighscoreDataFormat
+    // A hidden pyramid always loads at state 1, so its flips are never saved.
+    private string? SavePayload(Item item) => PayloadBlocked(item.Id) || item.Definition.ItemName == "wf_pyramid" || item.ExtraData is HighscoreDataFormat
         && (!ReferenceEquals(GetItem(item.Id), item) || !ReferenceEquals(item.GetRoom(), _room) || item.RoomId != _room.Id)
         ? null : WiredCounterController.StoredState(item) ?? item.ExtraData?.Serialize();
 

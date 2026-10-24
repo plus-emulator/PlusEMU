@@ -176,6 +176,75 @@ public partial class PlacedFurniRoomTests
         Assert.NotEqual((0, 1), (bot.X, bot.Y));
     }
 
+    private void BlockTile(uint id, int x, int y)
+    {
+        var block = Furni(id, InteractionType.None, WiredBoxType.None);
+        block.Definition.Walkable = false;
+        block.Definition.Height = 1;
+        block.Definition.Width = block.Definition.Length = 1;
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, block, x, y, 0, true, false, false));
+    }
+
+    private static (int X, int Y) CommandGoal(RoomUser bot) => bot.Movement.Commands.Read() is { } command ? (command.X, command.Y) : (-1, -1);
+
+    private sealed class FixedIndexRandom(int index) : Random
+    {
+        public override int Next(int maxValue) => Math.Min(index, maxValue - 1);
+    }
+
+    // User (2,1) with (2,2) closed and the bot at (2,3): (1,2) and (3,2) are equal in steps and in straight-line distance.
+    [Fact]
+    public void GiveHandItemBotPicksEitherTileOnAnExactTie()
+    {
+        BlockTile(70, 2, 2);
+        var user = Viewer(2, 1);
+        var bot = WalkActor(WalkActorKind.Bot, 2, 3, v2: true);
+        var targets = WiredBotTargets.For(_room);
+        var goals = new HashSet<(int X, int Y)>();
+
+        foreach (var seed in Enumerable.Range(0, 32)) {
+            targets.Random = new Random(seed);
+            targets.Give(_room, bot, user, 2, 0);
+            goals.Add(CommandGoal(bot));
+        }
+
+        Assert.Equal(new HashSet<(int X, int Y)> { (1, 2), (3, 2) }, goals);
+    }
+
+    [Fact]
+    public void GiveHandItemBotKeepsItsTiedGoalWhileItWalks()
+    {
+        BlockTile(70, 2, 2);
+        var user = Viewer(2, 1);
+        var bot = WalkActor(WalkActorKind.Bot, 2, 3, v2: true);
+        var targets = WiredBotTargets.For(_room);
+        targets.Random = new FixedIndexRandom(0);
+        targets.Give(_room, bot, user, 2, 0);
+        var goal = CommandGoal(bot);
+        Assert.Contains(goal, new[] { (1, 2), (3, 2) });
+
+        foreach (var index in new[] { 0, 1, 0, 1 }) {
+            targets.Random = new FixedIndexRandom(index);
+            targets.Poll(_room, 0);
+            ExecutorTick();
+            Assert.Equal(goal, CommandGoal(bot));
+        }
+    }
+
+    [Fact]
+    public void GiveHandItemBotWalksToTheSingleNearestTileWhenNothingTies()
+    {
+        var user = Viewer(2, 1);
+        var bot = WalkActor(WalkActorKind.Bot, 2, 3, v2: true);
+        var targets = WiredBotTargets.For(_room);
+
+        foreach (var seed in Enumerable.Range(0, 8)) {
+            targets.Random = new Random(seed);
+            targets.Give(_room, bot, user, 2, 0);
+            Assert.Equal((2, 2), CommandGoal(bot));
+        }
+    }
+
     // When the user leaves while the bot walks the item over, the bot keeps walking to
     // where the user stood and lets the item go there.
     [Fact]

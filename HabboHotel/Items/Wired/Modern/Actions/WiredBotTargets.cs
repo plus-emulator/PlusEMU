@@ -239,20 +239,25 @@ public sealed class WiredBotTargets
     private static bool Near(System.Drawing.Point tile, RoomUser user) => Math.Max(Math.Abs(user.X - tile.X), Math.Abs(user.Y - tile.Y)) <= 1;
 
     // The bot ends on the free tile around the user closest to it (diagonals count), nearer in straight-line distance on a tie.
+    // Tiles equal in both are picked at random, and the current goal stays while it is one of them.
     // A tile the bot cannot enter is never the goal.
-    private static void Approach(Room room, RoomUser bot, RoomUser user, Target target)
+    private void Approach(Room room, RoomUser bot, RoomUser user, Target target)
     {
         var map = room.GetGameMap();
-        var goal = Enumerable.Range(0, 8).Select(Rotation.Offset)
+        var best = Enumerable.Range(0, 8).Select(Rotation.Offset)
             .Select(offset => (X: user.X + offset.X, Y: user.Y + offset.Y))
             .Where(point => map.ValidTile(point.X, point.Y) && map.SquareIsOpen(point.X, point.Y, false) && map.CanWalk(point.X, point.Y, false))
-            .OrderBy(point => Math.Max(Math.Abs(point.X - bot.X), Math.Abs(point.Y - bot.Y)))
-            .ThenBy(point => (point.X - bot.X) * (point.X - bot.X) + (point.Y - bot.Y) * (point.Y - bot.Y))
-            .Select(point => ((int X, int Y)?)point).FirstOrDefault();
+            .GroupBy(point => (Steps: Math.Max(Math.Abs(point.X - bot.X), Math.Abs(point.Y - bot.Y)), Distance: (point.X - bot.X) * (point.X - bot.X) + (point.Y - bot.Y) * (point.Y - bot.Y)))
+            .OrderBy(group => group.Key.Steps)
+            .ThenBy(group => group.Key.Distance)
+            .FirstOrDefault()?.ToArray();
 
-        if (goal is { } tile && target.Goal != tile) {
-            target.Goal = tile;
-            bot.MoveTo(tile.X, tile.Y);
+        if (best == null || target.Goal is { } current && best.Contains(current)) {
+            return;
         }
+
+        var tile = best[Random.Next(best.Length)];
+        target.Goal = tile;
+        bot.MoveTo(tile.X, tile.Y);
     }
 }

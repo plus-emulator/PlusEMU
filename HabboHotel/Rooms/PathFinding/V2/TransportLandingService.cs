@@ -13,7 +13,7 @@ internal sealed class TransportLandingService(Room room)
         }
     }
 
-    // Returns false when a hook moved the actor away.
+    // Returns false when the actor has no client or a hook moved it away.
     internal bool TriggerWalkOn(RoomUser actor, Point destination)
     {
         var habbo = actor.GetClient()?.GetHabbo();

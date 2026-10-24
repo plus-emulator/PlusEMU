@@ -53,7 +53,8 @@ public sealed class ActorTickService(Room room)
         var landing = actor.PendingLanding;
         actor.PendingLanding = null;
 
-        if (landing != null && actor.Movement.LocationRevision == landing.Revision && actor.Movement.State == NavState.Active) {
+        if (landing != null && actor.Movement.LocationRevision == landing.Revision && actor.Movement.State == NavState.Active
+            && !actor.IsWalking && actor.Movement.PendingCount == 0) {
             _landings.TriggerWalkOn(actor, landing.Destination);
         }
     }

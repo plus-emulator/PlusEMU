@@ -210,7 +210,7 @@ internal static class FurniExtraData
                     return data;
                 }
             default:
-                return keepLegacy ? new LegacyDataFormat { Data = LegacyState(definition, stored) } : FurniObjectData.Empty;
+                return keepLegacy ? new LegacyDataFormat { Data = LegacyState(definition, definition.ItemName == "wf_pyramid" ? "" : stored) } : FurniObjectData.Empty;
         }
     }
 

@@ -127,4 +127,43 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal("ok", SaveAnswer(frames));
         Assert.Equal([3u, 5u, 7u, 9u], ((IWiredConfiguredItem)f.Box(LimitBox)).Configuration.SelectedItems.Order().ToArray());
     }
+
+    private static string SaveWithSources(int[] picks, int[] furniSources, int[] userSources)
+    {
+        var (f, owner, frames) = LimitFixture("wf_act_toggle_state");
+        object[] body = [(int)LimitBox, 1, 0, "", picks.Length, .. picks.Cast<object>(), 0,
+            furniSources.Length, .. furniSources.Cast<object>(), userSources.Length, .. userSources.Cast<object>(), 0, 0];
+
+        Send(f, owner, frames, new SaveWiredEffectConfigEvent(MatchService()), body);
+
+        return SaveAnswer(frames);
+    }
+
+    // The two source count refusals are answered even when the save has more than 20 picks.
+    [Theory]
+    [InlineData(5)]
+    [InlineData(20)]
+    [InlineData(21)]
+    [InlineData(22)]
+    public void ThreeUserSourcesGetTheCountKeyAlsoWithMoreThanTwentyPicks(int picks) =>
+        Assert.Equal("refused: wiredfurni.error.invalid_user_source_count", SaveWithSources(Ids(picks), [100], [0, 0, 0]));
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(21)]
+    public void ThreeFurniSourcesGetTheCountKeyAlsoWithMoreThanTwentyPicks(int picks) =>
+        Assert.Equal("refused: wiredfurni.error.invalid_furni_source_count", SaveWithSources(Ids(picks), [100, 100, 100], []));
+
+    // An unknown source id stays a silent drop.
+    [Theory]
+    [InlineData(5, "no answer")]
+    [InlineData(21, "no answer")]
+    public void AnUnknownUserSourceIsDroppedWithoutAnswer(int picks, string answer) =>
+        Assert.Equal(answer, SaveWithSources(Ids(picks), [100], [77]));
+
+    [Theory]
+    [InlineData(5, "no answer")]
+    [InlineData(21, "no answer")]
+    public void AnUnknownFurniSourceIsDroppedWithoutAnswer(int picks, string answer) =>
+        Assert.Equal(answer, SaveWithSources(Ids(picks), [7], []));
 }

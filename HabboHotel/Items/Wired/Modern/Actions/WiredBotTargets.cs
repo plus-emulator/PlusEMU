@@ -15,6 +15,8 @@ public sealed class WiredBotTargets
         public int HandItem; public long? AnnouncedAt; public (int X, int Y)? Goal; public (int X, int Y)? LeftFrom;
         // A following bot rests from this time on the room's Wired clock; Arrived when the rest follows a stop on its tile.
         public long? RestFrom; public bool Arrived;
+        // The account a following bot is tied to. User is null while that account is out of the room.
+        public int FollowId;
     }
     /// <summary>The user gets the item 300 ms after the bot's step next to them is announced.</summary>
     public const int HandOverDelayMilliseconds = 300;
@@ -27,7 +29,7 @@ public sealed class WiredBotTargets
     public static WiredBotTargets For(Room room) => Rooms.GetValue(room, _ => new());
     public bool HasTargets => _targets.Count != 0;
     public void Walk(RoomUser bot, Item item) => _targets[bot] = new(item, null);
-    public void Follow(RoomUser bot, RoomUser user) => _targets[bot] = new(null, user);
+    public void Follow(RoomUser bot, RoomUser user) => _targets[bot] = new(null, user) { FollowId = user.IsBot ? 0 : user.HabboId };
     /// <summary>
     /// Bot Give Handitem. The bot takes the item at once. Next to the user (diagonals count) it hands the item over in the same instant,
     /// otherwise it first walks to the user's nearest free neighbouring tile.
@@ -60,12 +62,19 @@ public sealed class WiredBotTargets
                 continue;
             }
 
+            if (target.FollowId != 0) {
+                target.User = null;
+                continue;
+            }
+
             Stop(bot);
         }
     }
     public void Clear() => _targets.Clear();
+    // A bot that stops following finishes the walk it is on. Any other stop ends the walk.
     public void Stop(RoomUser bot)
     {
+        var following = _targets.GetValueOrDefault(bot) is { FollowId: not 0 };
         _targets.Remove(bot);
 
         // Only bots are ever tracked here; their forced movement is cleared before the walk stops.
@@ -75,7 +84,7 @@ public sealed class WiredBotTargets
         }
 
         // A bot that arrived, or that already stands still, sends no extra status.
-        if (IsMoving(bot)) {
+        if (!following && IsMoving(bot)) {
             bot.ClearMovement(true);
         }
     }
@@ -95,6 +104,14 @@ public sealed class WiredBotTargets
             if (!attached.Contains(bot)) {
                 _targets.Remove(bot);
                 continue;
+            }
+
+            if (target.FollowId != 0 && (target.User is null || !attached.Contains(target.User))) {
+                target.User = attached.FirstOrDefault(other => !other.IsBot && other.HabboId == target.FollowId);
+
+                if (target.User is null) {
+                    continue;
+                }
             }
 
             if (target.Item is { } item) {

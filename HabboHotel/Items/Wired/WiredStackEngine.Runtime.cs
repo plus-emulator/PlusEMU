@@ -111,10 +111,11 @@ internal sealed partial class WiredStackEngine
 
     public bool Enqueue(WiredRuntimeEvent @event, int? depth = null) => Pass(() => !Disabled && EnqueueCore(@event, depth));
 
-    // The events that report a change: a collision, a variable, a score, a furni state or a clock value. Their stacks run in the pass of
+    // The events that report a change: a collision, a variable, a score, a furni state, a clock value or a link message. Their stacks run in the pass of
     // the change (see DrainSamePassEvents), not one tick later like those of a click or a walk.
     private static bool RunsInPassOfChange(WiredEventKind kind) => kind is WiredEventKind.Collision or WiredEventKind.Variable
-        or WiredEventKind.Score or WiredEventKind.StateChanged or WiredEventKind.Counter;
+        or WiredEventKind.Score or WiredEventKind.StateChanged or WiredEventKind.Counter
+        or WiredEventKind.LinkMessage or WiredEventKind.LinkDataframe;
 
     /// <summary>
     /// Runs the stacks of a furni state change at once. A change that a running stack made waits in the queue of its pass instead, and

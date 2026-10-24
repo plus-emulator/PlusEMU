@@ -29,6 +29,13 @@ internal static class WiredLinkSaveRules
         };
     }
 
+    /// <summary>Receive Message, Send Message and Link Speaker pick WIRED Links only. A pick that names no furni is not checked.</summary>
+    public static string? PickRefusal(string name, WiredNativeEditorConfiguration native, Func<uint, Item?> find) =>
+        name is "wf_trg_receive_message" or "wf_act_send_message" or "wf_xtra_link_speaker"
+        && (native.FurniSourceTypes.IsDefaultOrEmpty || native.FurniSourceTypes[0] == WiredSources.Selected)
+        && native.PrimaryItems.Any(reference => find(reference.ItemId) is { } picked && !WiredLinkTransport.IsLink(picked))
+            ? "wiredfurni.error.require_link_furni" : null;
+
     private static (string, IReadOnlyList<KeyValuePair<string, string>>)? Plain(string? key) => key == null ? null : (key, []);
 
     private static (string, IReadOnlyList<KeyValuePair<string, string>>)? TooMuch(int limit) =>

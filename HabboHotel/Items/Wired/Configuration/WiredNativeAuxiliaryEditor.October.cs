@@ -209,14 +209,23 @@ internal static partial class WiredNativeAuxiliaryEditor
                     OwnedIntParams = [.. Enumerable.Range(0, 3).Select(index => index < native.OwnedIntParams.Length ? (native.OwnedIntParams[index] != 0 ? 1 : 0) : 1)],
                     Text = ""
                 };
-            case "wf_trg_receive_dataframe" when WiredLinkDataframeCodec.Decode(native.Text, native.OwnedIntParams.IsEmpty ? -1 : native.OwnedIntParams[0]) is { } rows
+            // The speaker had a furni source before it lost it, and any non-zero flag is stored as 1.
+            case "wf_xtra_link_speaker":
+                return native with
+                {
+                    FurniSourceTypes = [],
+                    OwnedIntParams = native.OwnedIntParams.Length == 2 ? [.. native.OwnedIntParams.Select(flag => flag != 0 ? 1 : 0)] : native.OwnedIntParams
+                };
+            case "wf_trg_receive_dataframe" when native.VariableIds.IsEmpty:
+                return StoredForm(name, native with { VariableIds = [.. Enumerable.Repeat(WiredVariableAbsent.WireId, 12)] });
+            case "wf_trg_receive_dataframe" when !native.NeverSaved && WiredLinkDataframeCodec.Decode(native.Text, native.OwnedIntParams.IsEmpty ? -1 : native.OwnedIntParams[0]) is { } rows
                 && native.OwnedIntParams.Length == 13:
                 return native with
                 {
                     Text = WiredLinkDataframeCodec.Encode(rows.Select((row, index) => (WiredLinkDataframeCodec.NormalizeKey(row.Key),
                         native.OwnedIntParams[1 + index] == WiredLinkDataframeCodec.PlaceholderDestination ? row.Text.ToLowerInvariant() : row.Text)))
                 };
-            case "wf_act_send_dataframe" when native.OwnedIntParams.Length == 37
+            case "wf_act_send_dataframe" when !native.NeverSaved && native.OwnedIntParams.Length == 37
                 && WiredLinkDataframeCodec.Decode(native.Text, native.OwnedIntParams[0]) is { Length: 0 }:
                 return native with { Text = WiredLinkDataframeCodec.Encode([]) };
             case "wf_var_pointer":

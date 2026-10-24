@@ -90,13 +90,9 @@ public sealed record WiredProjectilePolicy(IReadOnlySet<uint> ItemIds, int? Dire
     }
 }
 
-/// <summary>A Link Speaker add-on of the stack: the link kinds it speaks and the WIRED Link furni it picked.</summary>
-public sealed record WiredLinkSpeaker(bool Message, bool Dataframe, IReadOnlyList<Item> Endpoints);
-
 /// <summary>One firing's typed options. Stateful pickers belong to the placed addon, not this policy.</summary>
 public sealed class WiredAddonPolicy
 {
-    public List<WiredLinkSpeaker> LinkSpeakers { get; } = [];
     public WiredConditionPolicy? Conditions { get; set; }
     public IWiredActionPicker? ActionPicker { get; set; }
     public bool ExecuteInOrder { get; set; }

@@ -40,7 +40,7 @@ public static class WiredLinkTransport
             }
 
             if (joined.ReceiveLocal && reached.Add(endpoint.Id)) {
-                delivered |= room.GetWired().Dispatch(Event(endpoint, endpoint));
+                delivered |= Deliver(room, Event(endpoint, endpoint));
             }
 
             if (joined.NetworkId == 0) {
@@ -63,16 +63,24 @@ public static class WiredLinkTransport
                 // The sending room's engine is locked while its effect runs; another room is handed the event on the thread pool,
                 // so two rooms sending to each other never wait on each other's lock.
                 if (ReferenceEquals(target, room)) {
-                    delivered |= room.GetWired().Dispatch(@event);
+                    delivered |= Deliver(room, @event);
                 }
                 else {
-                    _ = Task.Run(() => target.GetWired()?.Dispatch(@event));
+                    _ = Task.Run(() => Deliver(target, @event));
                     delivered = true;
                 }
             }
         }
 
         return delivered;
+
+        static bool Deliver(Room target, WiredRuntimeEvent @event)
+        {
+            var wired = target.GetWired();
+            wired?.SpeakLink(@event);
+
+            return wired?.Dispatch(@event) ?? false;
+        }
 
         WiredRuntimeEvent Event(Item sender, Item receiver) => new(kind)
         {

@@ -758,10 +758,6 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 var moves = new List<WiredMovementComposer>();
                 var turns = new List<WiredUserDirectionComposer>();
 
-                if (context.Publication is { Open: true } joined) {
-                    joined.SendsAsUserMovement = true;
-                }
-
                 foreach (var user in Users(context, config, "users")) {
                     var collected = moves.Count;
 
@@ -797,7 +793,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                     var turn = new WiredUserDirectionComposer(user.VirtualId, rotation, rotation);
 
                     if (moves.Count == collected && context.Publication is { Open: true } open) {
-                        open.AppendDirection(user, user.Movement.LifetimeId, turn);
+                        open.AppendUserTurn(user, user.Movement.LifetimeId, turn);
                     }
                     else {
                         turns.Add(turn);

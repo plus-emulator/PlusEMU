@@ -1,9 +1,10 @@
 using System.Buffers.Binary;
 using System.Text.Json;
+using Plus.Communication.Packets.Incoming.Rooms.Engine;
+using Plus.HabboHotel.Items;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
-using Plus.HabboHotel.Items.Wired.Runtime;
 using Xunit;
 
 namespace Plus.Tests;
@@ -53,7 +54,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal((5, 11), (rider.X, rider.Y));
     }
 
-    // The walk triggers of a wired move fire once each, and after the user entry has been sent.
+    // The walk-on and walk-off stacks of a wired user move run after its WiredMovements, and each fires once.
     [Theory]
     [InlineData(true, false)]
     [InlineData(false, false)]
@@ -63,20 +64,96 @@ public sealed partial class WiredGlideConveyorTests
     {
         for (var seed = 0; seed < 4; seed++) {
             var (f, rider, packets) = MixedMoveRoom(furniBoxFirst, seed, userBox: true, furniBox: withFurniBox, walkTriggers: true);
-            var observed = new List<(WiredEventKind Kind, bool UserEntrySent)>();
-            f.Engine.ObserveEvent = (evt, _) =>
-            {
-                if (evt.Kind is WiredEventKind.WalkOn or WiredEventKind.WalkOff) {
-                    observed.Add((evt.Kind, ReadMovementPackets(packets).SelectMany(batch => batch).Any(entry => entry.Type == 0)));
-                }
-            };
 
             FireMixed(f, rider);
 
-            Assert.Equal(["WalkOff", "WalkOn"], observed.Select(entry => entry.Kind.ToString()).Order());
-            Assert.All(observed, entry => Assert.True(entry.UserEntrySent));
+            Assert.Single(ReadMovementPackets(packets));
+            var moved = packets.FindIndex(bytes => BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredMovementsComposer);
+
+            foreach (var text in new[] { "walked-on", "walked-off" }) {
+                var chats = packets.Select((bytes, index) => (bytes, index))
+                    .Where(entry => IsChat(entry.bytes) && System.Text.Encoding.UTF8.GetString(entry.bytes).Contains(text)).ToArray();
+                Assert.Single(chats);
+                Assert.True(chats[0].index > moved, $"{text} after the WiredMovements (seed {seed})");
+            }
+
             Assert.Equal((5, 11), (rider.X, rider.Y));
         }
+    }
+
+    // A Move User box that adds no entry leaves the packets of a clicked furni mover as they are without it.
+    [Fact]
+    public async Task MoveUserBoxWithNoEntryDoesNotChangeTheFurniMovementPackets()
+    {
+        async Task<List<uint>> Headers(bool noEntryBox)
+        {
+            var layout = new List<(uint Id, int X, int Y, double Z, int Rot, string Name, string? Json)>
+            {
+                (ObservedSubjectId, 9, 9, 0.0, 0, "bc_tile_1", null),
+                (MixedBlockId, 6, 12, 0.0, 0, "bc_tile_1", null),
+                (ClickStateTrigger, 4, 12, 0.0, 0, "wf_trg_click_furni", ObservedClick(ObservedSubjectId)),
+                (84, 4, 12, 0.65, 0, "wf_act_move_rotate", MoveRotateConfig(5, MixedBlockId))
+            };
+
+            if (noEntryBox) {
+                layout.Add((85, 4, 12, 1.3, 0, "wf_act_move_rotate_user", MoveUserConfig(-1, -1)));
+            }
+
+            layout.Add((86, 4, 12, 1.95, 0, "wf_act_show_message", ShownMessage("moved")));
+            var f = new Fixture(layout.ToArray(), live: true);
+            f.SetEngineCallback("_effectOrderRandom", new EffectSwapRandom(false));
+            var rider = f.Walker(1, 4, 10, 4, 11);
+            f.Advance(1000);
+            var frames = CaptureFlashFrames(rider);
+
+            await new ClickFurniEvent(new FurnitureUseService(null!, null!)).Parse(f.Room, rider.GetClient()!,
+                ClickPacket((int)ObservedSubjectId, 0));
+            f.Advance(500);
+
+            return [.. frames.Select(frame => frame.Header)];
+        }
+
+        Assert.Equal(await Headers(false), await Headers(true));
+    }
+
+    // The turn of a projectile shooter and the turn of a Move User box on the same user are both sent.
+    [Fact]
+    public void ProjectileTurnAndMoveUserTurnOfOneUserAreBothSent()
+    {
+        var f = new Fixture(
+        [
+            (80, 9, 12, 0.0, 0, "wf_colortile", null),
+            (81, 9, 10, 0.0, 0, "wf_antenna2", null),
+            (83, 4, 14, 0.0, 0, "wf_trg_says_something", SaysConfig("pj")),
+            (84, 4, 14, 0.65, 0, "wf_act_move_rotate", MoveRotateConfig(7, 80, 81)),
+            (85, 4, 14, 1.3, 0, "wf_xtra_rotate_to_dir", null),
+            (86, 4, 14, 1.95, 0, "wf_act_move_rotate_user", MoveUserConfig(-1, 9))
+        ], live: true);
+        f.Items[81].Definition.Directions = [0, 2, 4, 6];
+        var rider = f.Walker((int)SpeakerId, 4, 10, 4, 11);
+        f.Advance(1000);
+        rider.RotBody = 2;
+        rider.RotHead = 2;
+        var packets = CapturePublication(rider);
+
+        FireMixed(f, rider, "pj");
+
+        Assert.Equal(2, ReadMovementPackets(packets).SelectMany(batch => batch).Count(entry => entry.Type == 3 && entry.Id == rider.VirtualId));
+    }
+
+    private static string MoveUserConfig(int movement, int rotation)
+    {
+        Assert.True(WiredBoxRegistry.TryGet("wf_act_move_rotate_user", out var descriptor));
+
+        return "native:" + JsonSerializer.Serialize(new WiredNativeEditorConfiguration
+        {
+            Category = descriptor.Category,
+            NativeCode = descriptor.EditorCode,
+            OwnedIntParams = [movement, rotation],
+            FurniSourceTypes = [],
+            UserSourceTypes = [0],
+            Delay = 0
+        });
     }
 
     [Theory]
@@ -96,25 +173,16 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
-    private static void FireMixed(Fixture f, Plus.HabboHotel.Rooms.RoomUser rider)
+    private static void FireMixed(Fixture f, Plus.HabboHotel.Rooms.RoomUser rider, string say = "mx")
     {
-        f.Owned(() => rider.OnChat(0, "mx", false));
+        f.Owned(() => rider.OnChat(0, say, false));
         f.Advance(500);
     }
 
     private static (Fixture Fixture, Plus.HabboHotel.Rooms.RoomUser Rider, List<byte[]> Packets) MixedMoveRoom(bool furniBoxFirst, int seed,
         bool userBox, bool furniBox, bool walkTriggers = false, bool showMessage = false)
     {
-        Assert.True(WiredBoxRegistry.TryGet("wf_act_move_rotate_user", out var descriptor));
-        var moveUser = "native:" + JsonSerializer.Serialize(new WiredNativeEditorConfiguration
-        {
-            Category = descriptor.Category,
-            NativeCode = descriptor.EditorCode,
-            OwnedIntParams = [2, -1],
-            FurniSourceTypes = [],
-            UserSourceTypes = [0],
-            Delay = 0
-        });
+        var moveUser = MoveUserConfig(2, -1);
         var boxes = new List<(string Name, string Json)>();
 
         if (furniBox) {
@@ -148,8 +216,10 @@ public sealed partial class WiredGlideConveyorTests
             layout.Add((MixedWalkOffTileId, 4, 11, 0.0, 0, "bc_tile_1", null));
             layout.Add((95, 8, 16, 0.0, 0, "wf_trg_walks_on_furni", JsonSerializer.Serialize(new WiredConfiguration
             { IntParams = [100], SelectedItems = [MixedWalkOnTileId] })));
+            layout.Add((97, 8, 16, 0.65, 0, "wf_act_show_message", ShownMessage("walked-on")));
             layout.Add((96, 9, 16, 0.0, 0, "wf_trg_walks_off_furni", JsonSerializer.Serialize(new WiredConfiguration
             { IntParams = [100], SelectedItems = [MixedWalkOffTileId] })));
+            layout.Add((98, 9, 16, 0.65, 0, "wf_act_show_message", ShownMessage("walked-off")));
         }
 
         var f = new Fixture(layout.ToArray(), live: true);

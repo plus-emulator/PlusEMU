@@ -1,3 +1,4 @@
+using System.Data;
 using System.Drawing;
 using System.Reflection;
 using Plus.Communication.Flash;
@@ -178,6 +179,37 @@ public partial class PlacedFurniRoomTests
 
         Assert.True(actor.IsWalking);
         Assert.Equal("0", pyramid.LegacyDataString);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("")]
+    [InlineData("1")]
+    public void AHiddenPyramidAlwaysLoadsAtStateOneAndIsWalkable(string stored)
+    {
+        var table = new DataTable();
+
+        foreach (var column in new[] { "id", "user_id", "x", "y", "rot", "limited_number", "limited_stack", "base_item" }) {
+            table.Columns.Add(column, typeof(int));
+        }
+
+        table.Columns.Add("z", typeof(double));
+
+        foreach (var column in new[] { "extra_data", "wall_pos", "username" }) {
+            table.Columns.Add(column, typeof(string));
+        }
+
+        var row = table.Rows.Add(31, 7, 1, 1, 0, 0, 0, 31, 0.0, stored, "", "owner");
+        var definition = Furni(31, InteractionType.Gate, WiredBoxType.None).Definition;
+        definition.ItemName = "wf_pyramid";
+        definition.Modes = 4;
+        definition.Height = 0;
+        definition.Walkable = false;
+        definition.Width = definition.Length = 1;
+        _room.GetRoomItemHandler().LoadFurniture([ItemLoader.ReadRoomItem(row, RoomId, definition)]);
+
+        Assert.Equal("1", _room.GetRoomItemHandler().GetItem(31).LegacyDataString);
+        Assert.True(_room.GetGameMap().CanWalk(1, 1, false));
     }
 
     private sealed class PyramidSaveStore : IRoomItemStore

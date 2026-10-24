@@ -58,6 +58,7 @@ public sealed partial class WiredRoomVariables
         return new()
         {
             TextConnector = [.. (connector ?? new Dictionary<int, string>()).OrderBy(pair => pair.Key).Select(pair => new KeyValuePair<int, string>(pair.Key, pair.Value))],
+            TextConnectorFallback = (connector as WiredTextConnector)?.Fallback,
             Level = level,
             Fx = [.. effects]
         };
@@ -130,7 +131,8 @@ public sealed partial class WiredRoomVariables
 
     private IReadOnlyDictionary<int, string> TextConnectorOf(WiredVariableDefinition definition) =>
         MetadataOn(definition.ItemId, "wf_xtra_var_text_connector")?.TextConnector
-        ?? (ImportedAddons(definition) is { TextConnector.IsEmpty: false } imported ? imported.TextConnector.ToDictionary() : new Dictionary<int, string>());
+        ?? (ImportedAddons(definition) is { } imported && (!imported.TextConnector.IsEmpty || imported.TextConnectorFallback is not null)
+            ? new WiredTextConnector(imported.TextConnector.ToDictionary(), imported.TextConnectorFallback) : new Dictionary<int, string>());
 
     /// <summary>The level-up system that adds sub-variables to a variable: the one stacked with it, or one a reference imports.</summary>
     private WiredVariableLevelSystem? LevelOf(uint definitionId)

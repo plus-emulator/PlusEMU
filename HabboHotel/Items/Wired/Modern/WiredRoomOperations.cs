@@ -139,7 +139,7 @@ public static class WiredRoomOperations
                 return false;
             }
 
-            if (!magic && !placement.HasHelper && !throughUsers && !item.Definition.IsSeat && UsersStandingOn(room, point) is var standing
+            if (!magic && !placement.HasHelper && !throughUsers && !(item.Definition.IsSeat && Footprint(item, item.GetX, item.GetY, item.Rotation).Contains(point)) && UsersStandingOn(room, point) is var standing
                 && (collision?.BlocksUsers(standing) ?? standing.Count != 0)) {
                 return false;
             }

@@ -180,13 +180,9 @@ internal sealed partial class WiredStackEngine
 
     public void ActorLeaving(RoomUser actor) => Pass(() =>
     {
-        if (_activeFiring?.Context.Event.Kind != WiredEventKind.Leave && ReferenceEquals(_activeFiring?.Context.Event.Actor, actor)) {
-            _activeFiring!.Cancelled = true;
-        }
-
-        _pending.RemoveWhere(chain => chain.Context.Runtime?.Event.Kind != WiredEventKind.Leave
-            && (ReferenceEquals(chain.Context.Runtime?.Event.Actor, actor) || ReferenceEquals(chain.Context.ActorVisit, actor)));
-        PruneSchedule(); // Cancellation runs while the original visit can still restore transient effects.
+        // A runtime chain outlives its actor; its steps check that their own user is still in the room.
+        _pending.RemoveWhere(chain => chain.Context.Runtime == null && ReferenceEquals(chain.Context.ActorVisit, actor));
+        PruneSchedule();
         var kept = _dispatches.Where(pending => pending.Event.Kind == WiredEventKind.Leave
             || !ReferenceEquals(pending.Event.Actor, actor)).ToArray();
 

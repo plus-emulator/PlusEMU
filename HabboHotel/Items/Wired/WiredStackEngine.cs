@@ -892,11 +892,8 @@ internal sealed partial class WiredStackEngine
     private WiredExecutionContext CreateContext(object[] arguments, int depth) =>
         new(arguments, depth, _actorVisit?.Invoke(arguments));
 
-    private bool IsActorPresent(WiredExecutionContext context) => context.Runtime is { } runtime
-        ? runtime.Event.Kind == WiredEventKind.Leave || runtime.Event.Actor == null
-            || runtime.Targets.ResolveUsers(runtime, [runtime.Event.Actor.VirtualId], WiredSources.Selected, raw: true)
-                .Contains(runtime.Event.Actor)
-        : _actorPresent(context.Arguments)
+    private bool IsActorPresent(WiredExecutionContext context) => context.Runtime != null
+        || _actorPresent(context.Arguments)
             && (_actorVisit == null || ReferenceEquals(context.ActorVisit, _actorVisit(context.Arguments)));
 
     private bool Execute(IWiredItem box, WiredExecutionContext context)

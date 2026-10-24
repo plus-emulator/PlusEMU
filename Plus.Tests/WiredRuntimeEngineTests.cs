@@ -604,7 +604,7 @@ public partial class WiredRuntimeEngineTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NormalDelayedActorFiringCancelsAfterDepartureOrNewVisit(bool reenter)
+    public void NormalDelayedActorFiringRunsAfterDepartureOrNewVisit(bool reenter)
     {
         var f = new Fixture();
         var actor = f.User(7);
@@ -618,7 +618,7 @@ public partial class WiredRuntimeEngineTests
         }
 
         f.Advance(500);
-        Assert.Equal(0, action.Calls);
+        Assert.Equal(1, action.Calls);
     }
 
     [Fact]
@@ -990,6 +990,36 @@ public partial class WiredRuntimeEngineTests
     }
 
     [Fact]
+    public void ATimedRestoreOnAnotherUserRunsWhenTheTriggeringUserLeaves()
+    {
+        var f = new Fixture();
+        var actor = f.User(1);
+        var other = f.User(2);
+        var effect = 12;
+        var called = false;
+        f.Trigger();
+        f.Action(ctx =>
+        {
+            var restore = Plus.HabboHotel.Items.Wired.Modern.Actions.WiredTemporaryEffects.For(f.Room)
+                .Acquire(other, () => effect, value => effect = value, () => f.Users.Contains(other));
+            Assert.True(f.Engine.ScheduleAux(ctx, 500, () => { called = true; restore(); }, restore));
+
+            return true;
+        });
+        f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = actor });
+        f.Advance(50);
+        Assert.Equal(4, effect);
+        Plus.HabboHotel.Items.Wired.Modern.Actions.WiredTemporaryEffects.For(f.Room).Forget(actor);
+        f.Engine.ActorLeaving(actor);
+        f.Users.Remove(actor);
+
+        Assert.Equal(4, effect);
+        f.Advance(500);
+        Assert.True(called);
+        Assert.Equal(12, effect);
+    }
+
+    [Fact]
     public void PreLeaveCancelsAuxiliaryAndRestoresTransientEffectBeforeDetach()
     {
         var f = new Fixture();
@@ -1008,12 +1038,13 @@ public partial class WiredRuntimeEngineTests
         f.Engine.DispatchSynchronously(new WiredRuntimeEvent(WiredEventKind.Enter) { Actor = actor });
         f.Advance(50);
         Assert.Equal(4, effect);
+        Plus.HabboHotel.Items.Wired.Modern.Actions.WiredTemporaryEffects.For(f.Room).Forget(actor);
         f.Engine.ActorLeaving(actor);
         Assert.Equal(12, effect);
         f.Users.Remove(actor);
         f.User(1);
         f.Advance(500);
-        Assert.False(called);
+        Assert.Equal(12, effect);
         Assert.False(f.Engine.NeedsFastCycle);
         Assert.Empty(f.Errors);
     }

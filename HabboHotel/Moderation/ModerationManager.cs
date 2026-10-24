@@ -414,10 +414,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
             new { banId, now = _clock.GetUtcNow().UtcDateTime }, cancellationToken: cancellationToken)) > 0;
     }
 
-    /// <summary>
-    /// The address the server knows for an account: users.ip_last.
-    /// The game socket's own address is the proxy's, so it is never used.
-    /// </summary>
+    /// <summary>The address the server knows for an account: users.ip_last.</summary>
     private async Task<string> AccountAddress(int userId, CancellationToken cancellationToken)
     {
         using var connection = _database.Connection();
@@ -441,8 +438,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     /// <summary>
     /// Accounts a ban covers. A machine ban reaches the sessions online with that handshake machine id. An IP ban reaches
-    /// the accounts whose users.ip_last is that address. Game sessions carry no client address of their own, so an IP ban
-    /// only reaches accounts that already have the address recorded. Username and machine bans are refused at login by BanLoginCheckTask.
+    /// only the accounts whose users.ip_last is that address. Username and machine bans are refused at login by BanLoginCheckTask.
     /// </summary>
     internal async Task<IReadOnlyList<int>> BannedAccounts(ModerationBanType type, string banValue, CancellationToken cancellationToken = default)
     {

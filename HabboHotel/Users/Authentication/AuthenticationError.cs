@@ -7,5 +7,7 @@ public enum AuthenticationError
     NoAccountFound,
     LoginProhibited,
     /// <summary>The connection closed or timed out before the login finished.</summary>
-    SessionClosed
+    SessionClosed,
+    /// <summary>The address failed too many logins and must wait.</summary>
+    TooManyAttempts
 }

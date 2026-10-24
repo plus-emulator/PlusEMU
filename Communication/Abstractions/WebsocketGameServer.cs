@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace Plus.Communication.Abstractions;
 
 public abstract class WebsocketGameServer<TGameServerOptions> : WsServer, IGameServer
-    where TGameServerOptions : class, IGameServerOptions
+    where TGameServerOptions : class, IWebsocketServerOptions
 {
     private readonly IGameClientFactory<WsSessionProxy, WsServer> _clientFactory;
     private readonly IPacketManager _packetManager;
@@ -30,9 +30,12 @@ public abstract class WebsocketGameServer<TGameServerOptions> : WsServer, IGameS
         _logger = logger;
         _incomingInjectors = incomingInjectors.GroupBy(x => x.MessageId).ToDictionary(x => x.Key, x => x.ToArray());
         _outgoingInjectors = outgoingInjectors.GroupBy(x => x.MessageId).ToDictionary(x => x.Key, x => x.ToArray());
+        Admission = new(options.Value, TimeProvider.System, logger);
         // Packets sent in the same tick (a rider's and its horse's roller slides) must not wait for an ACK.
         OptionNoDelay = true;
     }
+
+    internal ConnectionAdmission Admission { get; }
 
     protected override WsSession CreateSession() => _clientFactory.Create(this);
 

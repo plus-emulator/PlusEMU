@@ -9,11 +9,13 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Nitro;
 
-public class NitroServerConfiguration : IGameServerOptions
+public class NitroServerConfiguration : IWebsocketServerOptions
 {
     public string Name { get; set; } = "Nitro";
     public int Port { get; set; }
     public string Hostname { get; set; } = "127.0.0.1";
+    public IEnumerable<string>? TrustedProxies { get; set; }
+    public int MaxConnectionsPerIp { get; set; } = 20;
 }
 
 public interface INitroServer : IGameServer { }
@@ -43,7 +45,7 @@ public class NitroClientFactory : IGameClientFactory<WsSessionProxy, WsServer>
     {
         var flashClient = new FlashGameClient((NitroServer)server, _packetFactory, _logger)
         { Revision = _revisionsCache.InternalRevision };
-        var wsSession = new WsSessionProxy((NitroServer)server, flashClient, _logger);
+        var wsSession = new WsSessionProxy((NitroServer)server, flashClient, _logger, ((NitroServer)server).Admission);
 
         return wsSession;
     }

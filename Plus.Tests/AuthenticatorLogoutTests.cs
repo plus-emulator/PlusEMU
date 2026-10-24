@@ -62,7 +62,7 @@ public sealed class AuthenticatorLogoutTests
             return Task.FromResult<Habbo?>(habbo);
         });
 
-        return new Authenticator(tasks, clients, users, tickets, new AccountSessionGate(), persistence);
+        return new Authenticator(tasks, clients, users, tickets, new AccountSessionGate(), persistence, TestLoginThrottle.Off);
     }
 
     private sealed class FailingTask : IAuthenticationTask

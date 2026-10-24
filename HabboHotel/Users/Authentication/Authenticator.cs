@@ -13,9 +13,10 @@ internal class Authenticator : IAuthenticator
     private readonly ISsoTicketStore _ssoTickets;
     private readonly IAccountSessionGate _sessionGate;
     private readonly IUserPersistenceService _persistence;
+    private readonly ILoginThrottle _loginThrottle;
 
     public Authenticator(IEnumerable<IAuthenticationTask> authenticationTasks, IGameClientManager gameClientManager, IUserDataFactory userDataFactory, ISsoTicketStore ssoTickets,
-        IAccountSessionGate sessionGate, IUserPersistenceService persistence)
+        IAccountSessionGate sessionGate, IUserPersistenceService persistence, ILoginThrottle loginThrottle)
     {
         _authenticationTasks = authenticationTasks;
         _gameClientManager = gameClientManager;
@@ -23,17 +24,31 @@ internal class Authenticator : IAuthenticator
         _ssoTickets = ssoTickets;
         _sessionGate = sessionGate;
         _persistence = persistence;
+        _loginThrottle = loginThrottle;
     }
 
     public async Task<AuthenticationError?> AuthenticateUsingSSO(GameClient session, string sso)
     {
+        if (_loginThrottle.IsBlocked(session.RemoteAddress)) {
+            return AuthenticationError.TooManyAttempts;
+        }
+
+        AuthenticationError? error;
+
         // The packet manager abandons slow logins and closes the socket; the login must stop with it.
         try {
-            return await AuthenticateUsingSSO(session, sso, session.Closed);
+            error = await AuthenticateUsingSSO(session, sso, session.Closed);
         }
         catch (OperationCanceledException) when (session.Closed.IsCancellationRequested) {
             return AuthenticationError.SessionClosed;
         }
+
+        // Only a ticket that is not live counts; a valid ticket for a prohibited account is no guess.
+        if (error is AuthenticationError.EmptySSO or AuthenticationError.InvalidSSO or AuthenticationError.NoAccountFound) {
+            _loginThrottle.RecordFailure(session.RemoteAddress);
+        }
+
+        return error;
     }
 
     private async Task<AuthenticationError?> AuthenticateUsingSSO(GameClient session, string sso, CancellationToken cancellationToken)

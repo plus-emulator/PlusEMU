@@ -146,7 +146,7 @@ public sealed class UserOnlineFlagTests
             return Task.FromResult<Habbo?>(habbo);
         });
 
-        return new Authenticator([], clients, users, tickets, new AccountSessionGate(), persistence);
+        return new Authenticator([], clients, users, tickets, new AccountSessionGate(), persistence, TestLoginThrottle.Off);
     }
 
     private static (Habbo Habbo, GameClient Session) Session(SharedTestClients clients)

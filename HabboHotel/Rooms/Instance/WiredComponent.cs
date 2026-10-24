@@ -224,6 +224,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     public void OnCycle()
     {
+        ShowLinkArrivals();
         WiredAvatarState.For(_room).FlushTickEffects();
         _highscores?.OnOwnedPass();
 
@@ -263,56 +264,50 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
 
         // Handed over a little early; the worker holds the pass until the due time.
-        WakeAfter(dueMs - _engine.Now - WakeLeadMs, () => Wake(dueMs, 0));
+        WakeAfter(dueMs - _engine.Now - WakeLeadMs, () => Wake(dueMs));
     }
 
     // A delayed effect's pass runs at its due time. When a pass is already running it may have started before the time fell due, so the
     // wake-up retries each millisecond for a few, then leaves it to the next 50 ms step.
-    private void Wake(long dueMs, int attempt)
+    private void Wake(long dueMs)
     {
-        if (_room.MDisposed || _room.IsCrashed) {
-            return;
-        }
-
         // A queued pool item, or a new thread, can wait several ms to start on a busy server, which the effect would land late by; the
         // wake-up hands the pass to a pre-started worker and the clock stays free.
         var startAt = WiredWakeClock.Now + Math.Max(0, dueMs - _engine.Now);
 
-        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, workers: WiredWakeWorkers.Shared, startAtMs: startAt) || attempt >= 10) {
+        StartWakePass(startAt, 0, () =>
+        {
             lock (_wakeDue) {
                 _wakeDue.Remove(dueMs);
             }
-
-            return;
-        }
-
-        WakeAfter(1, () => Wake(dueMs, attempt + 1));
+        });
     }
 
     /// <summary>Queues an event from another room and starts a Wired pass of this room now, instead of at its next 50 ms step.</summary>
-    internal bool DispatchNow(WiredRuntimeEvent @event)
+    internal void DispatchNow(WiredRuntimeEvent @event)
     {
-        var dispatched = Dispatch(@event);
-        StartPassNow(0);
-
-        return dispatched;
+        _linkArrivals.Enqueue(@event);
+        StartWakePass(WiredWakeClock.Now, 0, null, 1000, () => !_linkArrivals.IsEmpty);
     }
 
-    private void StartPassNow(int attempt)
+    private void StartWakePass(double startAtMs, int attempt, Action? done = null, int maxAttempts = 10, Func<bool>? pending = null)
     {
-        if (_room.MDisposed || _room.IsCrashed) {
+        if (_room.MDisposed || _room.IsCrashed || pending?.Invoke() == false) {
             return;
         }
 
-        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, workers: WiredWakeWorkers.Shared, startAtMs: WiredWakeClock.Now) || attempt >= 10) {
+        if (RoomCycle.TryStart(_room, _room.ProcessWiredOnly, workers: WiredWakeWorkers.Shared, startAtMs: startAtMs) || attempt >= maxAttempts) {
+            done?.Invoke();
+
             return;
         }
 
-        WakeAfter(1, () => StartPassNow(attempt + 1));
+        WakeAfter(1, () => StartWakePass(startAtMs, attempt + 1, done, maxAttempts, pending));
     }
 
     internal void OnFastCycle()
     {
+        ShowLinkArrivals();
         ForgetRestackedSteps();
         _highscores?.OnOwnedPass();
         PublishStateWrites();

@@ -118,6 +118,23 @@ public partial class WiredComponent
         && TryGet(item.Id, out var box) && box is IWiredConfiguredItem
         && Variables.Module.DescribeDefinitions([item.Id]).FirstOrDefault()?.Definition.IsDurable == true;
 
+    private readonly System.Collections.Concurrent.ConcurrentQueue<WiredRuntimeEvent> _linkArrivals = new();
+
+    // A link that receives from another room switches its state, then its Link Speakers talk, before the pass runs the receiving stacks.
+    private void ShowLinkArrivals()
+    {
+        while (_linkArrivals.TryDequeue(out var arrival)) {
+            if (arrival.EventItem is { } link && ReferenceEquals(_room.GetRoomItemHandler().GetItem(link.Id), link)) {
+                link.LegacyDataString = link.LegacyDataString == "1" ? "0" : "1";
+                link.UpdateState(true, false);
+                _room.SendObjectData(link, link.LegacyDataString, false);
+            }
+
+            SpeakLink(arrival);
+            Dispatch(arrival);
+        }
+    }
+
     /// <summary>Each Link Speaker that picks the receiving link and speaks for this kind shows the received text as a bubble at its tile.</summary>
     internal void SpeakLink(WiredRuntimeEvent @event)
     {

@@ -238,6 +238,27 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new[] { 0, 2 }, copies.Select(item => item.Rotation).ToArray());
     }
 
+    [Theory]
+    [InlineData(WiredPlaceAltitudeType.OnTopOfTargetLocation)]
+    [InlineData(WiredPlaceAltitudeType.CustomAltitude)]
+    public void G3CustomLocationPlacesTheCopyOnTheTriggeringUsersTile(WiredPlaceAltitudeType altitude)
+    {
+        var stack = G3PlaceStack(G3Place(new(TargetIsUser: true, Location: WiredPlaceLocationType.CustomLocation, Altitude: altitude),
+            G3Snap(900, G3Lamp, 2, 2, 0, 0, "0")));
+        using var f = stack.F;
+        f.User.X = 1;
+        f.User.Y = 1;
+        f.User.Z = 0;
+        f.Room.GetGameMap().AddUserToMap(f.User, new System.Drawing.Point(1, 1));
+        Assert.True(f.Room.GetGameMap().SquareHasUsers(1, 1));
+
+        f.Fire(land: false);
+
+        var copy = Assert.Single(G3Temporaries(f.Room));
+        Assert.Equal((1, 1), (copy.GetX, copy.GetY));
+        Assert.Equal(0, copy.GetZ);
+    }
+
     [Fact]
     public void G3CustomLocationWithoutAUserTargetPlacesNothing()
     {

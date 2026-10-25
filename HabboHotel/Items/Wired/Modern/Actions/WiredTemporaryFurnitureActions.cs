@@ -97,6 +97,9 @@ public static class WiredTemporaryFurnitureActions
 
         var placed = new List<Item>();
         var failedAny = false;
+        var collision = context.Policy.Addons.Physics is { } physics
+            ? new WiredCollisionPolicy(ThroughFurni: new HashSet<uint>(), ThroughUsers: physics.ThroughUsers, BlockingFurni: new HashSet<uint>())
+            : null;
 
         foreach (var (snapshot, definition) in eligibleTemplates) {
             if (definition!.Type == Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Wall) {
@@ -157,7 +160,7 @@ public static class WiredTemporaryFurnitureActions
 
             var item = handler.BlocksTemporaryCopy(definition!, x, y, snapshot.Rotation)
                 ? null
-                : handler.PlaceTemporaryFloorItem(definition!, box.OwnerId, x, y, snapshot.Rotation, z, snapshot.State, sendMessage: false);
+                : handler.PlaceTemporaryFloorItem(definition!, box.OwnerId, x, y, snapshot.Rotation, z, snapshot.State, sendMessage: false, collision: collision);
 
             if (item == null) {
                 failedAny = true;

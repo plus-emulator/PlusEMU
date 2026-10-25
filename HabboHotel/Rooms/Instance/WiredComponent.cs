@@ -124,6 +124,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
             var echo = new Plus.HabboHotel.Items.Wired.Modern.Actions.WiredChatComposer(evt.Actor.VirtualId, evt.Actor.VirtualId, evt.Message, evt.ChatStyle, -1, true);
             AfterFlash(() => client.Send(echo));
         };
+        _engine.PassScope = () => _variables?.IsValueCreated == true ? _variables.Value.OpenPass() : null;
         _engine.CaptureSpeech = (context, trigger) => _variables?.IsValueCreated == true
             ? _variables.Value.CaptureSpeech(context, trigger) : null;
         _engine.ConfigurationPublished = box =>

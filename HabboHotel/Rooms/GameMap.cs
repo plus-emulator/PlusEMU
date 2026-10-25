@@ -1526,19 +1526,24 @@ public class Gamemap
             return new();
         }
 
-        var items = new List<Item>();
+        uint[] ids;
 
         lock (input) {
-            foreach (var id in input.ToList()) {
-                var itm = _room.GetRoomItemHandler().GetItem(id);
+            ids = input.ToArray();
+        }
 
-                if (itm != null && !items.Contains(itm)) {
-                    items.Add(itm);
-                }
+        var handler = _room.GetRoomItemHandler();
+        var items = new List<Item>(ids.Length);
+        // A short stack is cheaper to scan than to hash.
+        var seen = ids.Length > 16 ? new HashSet<Item>(ids.Length, ReferenceEqualityComparer.Instance) : null;
+
+        foreach (var id in ids) {
+            if (handler.GetItem(id) is { } item && (seen?.Add(item) ?? !items.Contains(item))) {
+                items.Add(item);
             }
         }
 
-        return items.ToList();
+        return items;
     }
 
     public List<Item> GetRoomItemForSquare(int pX, int pY, double minZ)

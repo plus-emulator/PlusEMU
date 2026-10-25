@@ -23,8 +23,9 @@ public sealed class WiredVariableFrame(uint roomId, IReadOnlyList<WiredVariableH
     public Func<WiredVariableTarget, int, IEnumerable<uint>, IEnumerable<WiredVariableHolder>>? ResolveSource { get; init; }
     public int Depth { get; init; }
     public string? ChatText { get; init; }
+    private readonly HashSet<WiredVariableHolder> _members = [.. holders];
     public bool Contains(WiredVariableHolder holder) => holder.Target is WiredVariableTarget.Global or WiredVariableTarget.Context
-        ? holder.StableId == 0 && holder.EntityId == 0 : Holders.Contains(holder);
+        ? holder.StableId == 0 && holder.EntityId == 0 : _members.Contains(holder);
 }
 
 /// <summary>Proceed: run now. Deferred: queued whole. Stale: the target changed after reservation, before any evaluation.</summary>

@@ -206,6 +206,18 @@ public partial class RoomItemHandling
 
     public ICollection<Item> GetFloor => _floorItems.Values;
 
+    /// <summary>Searches the live floor items without copying them all first, so a match returns early.</summary>
+    public Item? FindFloor(Func<Item, bool> match)
+    {
+        foreach (var (_, item) in _floorItems) {
+            if (match(item)) {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
     public ICollection<Item> GetWall => _wallItems.Values;
 
     public IEnumerable<Item> GetWallAndFloor => _floorItems.Values.Concat(_wallItems.Values);

@@ -18,8 +18,8 @@ public static class ConfigurationItemStates
     public static bool HandItemBlocked(Room room, Item? except = null) => IsOn(room, InteractionType.HandItemBlocker, except);
     public static bool WiredDisabled(Room room) => IsOn(room, InteractionType.WiredDisabler, null);
     public const int DefaultRollerStepMilliseconds = 2000;
-    public static Item? RollerSpeedController(Room room) => room.GetRoomItemHandler()?.GetFloor
-        .FirstOrDefault(item => item.Definition.InteractionType == InteractionType.RollerSpeedController);
+    public static Item? RollerSpeedController(Room room) => room.GetRoomItemHandler()?
+        .FindFloor(item => item.Definition.InteractionType == InteractionType.RollerSpeedController);
     /// <summary>
     /// The time between two roller steps in the room, in milliseconds. A room without the speed controller steps every 2000 ms.
     /// The controller has 12 states in four groups of three: 500, 1000, 1500 and 2000 ms.
@@ -40,7 +40,7 @@ public static class ConfigurationItemStates
     /// <summary>A room holds one of each configuration furni. A second placement is refused with the type limit text.</summary>
     public static bool IsLimitedToOne(InteractionType type) => IsFlag(type) || type is InteractionType.WiredDisabler or InteractionType.RollerSpeedController;
     public static bool TypeLimitReached(Room room, ItemDefinition definition) => IsLimitedToOne(definition.InteractionType)
-        && room.GetRoomItemHandler().GetFloor.Any(item => item.Definition.InteractionType == definition.InteractionType);
+        && room.GetRoomItemHandler().FindFloor(item => item.Definition.InteractionType == definition.InteractionType) != null;
     public static void SendTypeLimit(GameClient session) =>
         session.Send(new RoomNotificationComposer("furni_placement_error", "message", "${room.error.type_limit}"));
     public static void Announce(Room room, Item? except = null) => room.SendPacket(Compose(room, except));
@@ -61,6 +61,6 @@ public static class ConfigurationItemStates
             FurniVisibility.Refresh(room);
         }
     }
-    private static bool IsOn(Room room, InteractionType type, Item? except) => room.GetRoomItemHandler()?.GetFloor.Any(item =>
-        !ReferenceEquals(item, except) && item.Definition.InteractionType == type && item.LegacyDataString == "1") == true;
+    private static bool IsOn(Room room, InteractionType type, Item? except) => room.GetRoomItemHandler()?.FindFloor(item =>
+        !ReferenceEquals(item, except) && item.Definition.InteractionType == type && item.LegacyDataString == "1") != null;
 }

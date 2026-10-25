@@ -1036,7 +1036,10 @@ internal sealed partial class WiredStackEngine
     private T Pass<T>(Func<T> body)
     {
         lock (_sync) {
-            if (_passDepth++ == 0) {
+            var outermost = _passDepth++ == 0;
+            IDisposable? scope = null;
+
+            if (outermost) {
                 _publicationEpoch++;
                 _remaining = _limits.MaxExecutionsPerPass;
                 _passPeakDepth = 0;
@@ -1045,11 +1048,20 @@ internal sealed partial class WiredStackEngine
             }
 
             try {
+                if (outermost) {
+                    scope = PassScope?.Invoke();
+                }
+
                 return body();
             }
             finally {
                 if (--_passDepth == 0) {
-                    EndPass();
+                    try {
+                        EndPass();
+                    }
+                    finally {
+                        scope?.Dispose();
+                    }
                 }
             }
         }

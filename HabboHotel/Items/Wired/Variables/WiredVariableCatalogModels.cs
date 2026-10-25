@@ -183,10 +183,8 @@ public sealed class WiredVariableCatalog(IReadOnlyList<WiredVariableDescription>
         var current = Variables.ToDictionary(x => x.CatalogId);
         var removed = known.Keys.Where(x => !current.ContainsKey(x)).Order(StringComparer.Ordinal).ToArray();
         var changed = Variables.Where(x => !known.TryGetValue(x.CatalogId, out var hash) || x.Hash != hash).ToArray();
-        var count = Math.Max(1, (changed.Length + 99) / 100);
 
-        return Enumerable.Range(0, count).Select(i => new WiredVariableCatalogDiff(Hash, i == count - 1,
-            i == 0 ? removed : [], changed.Skip(i * 100).Take(100).ToArray())).ToArray();
+        return [new WiredVariableCatalogDiff(Hash, true, removed, changed)];
     }
 }
 public sealed record WiredVariableCatalogDiff(int Hash, bool LastChunk, IReadOnlyList<string> Removed,

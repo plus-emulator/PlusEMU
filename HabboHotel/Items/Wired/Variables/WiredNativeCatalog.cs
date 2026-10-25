@@ -109,10 +109,8 @@ public sealed class WiredNativeCatalog(ImmutableArray<WiredNativeVariable> varia
         var current = Variables.ToDictionary(variable => variable.Id, StringComparer.Ordinal);
         var removed = known.Keys.Where(id => !current.ContainsKey(id)).Order(StringComparer.Ordinal).ToImmutableArray();
         var changed = Variables.Where(variable => !known.TryGetValue(variable.Id, out var hash) || hash != variable.Hash).ToArray();
-        var count = Math.Max(1, (changed.Length + 99) / 100);
 
-        return Enumerable.Range(0, count).Select(index => new WiredNativeCatalogDiff(Hash, index == count - 1,
-            index == 0 ? removed : [], changed.Skip(index * 100).Take(100).ToImmutableArray())).ToImmutableArray();
+        return [new WiredNativeCatalogDiff(Hash, true, removed, [.. changed])];
     }
 }
 

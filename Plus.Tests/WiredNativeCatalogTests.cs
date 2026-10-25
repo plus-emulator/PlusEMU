@@ -150,16 +150,16 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     }
 
     [Fact]
-    public void LargeCatalogDiffUsesFrozenRowsAndOneHashWithRemovalOnlyAndEmptyFinal()
+    public void LargeCatalogDiffSendsAllRowsInOneChunkWithRemovalOnlyAndEmptyFinal()
     {
         var variables = Enumerable.Range(0, 205).Select(index => Native() with { Id = "user:" + index }).ToImmutableArray();
         var catalog = new WiredNativeCatalog(variables);
         var chunks = catalog.Diff(new Dictionary<string, int> { ["gone"] = int.MinValue });
-        Assert.Equal(new[] { 100, 100, 5 }, chunks.Select(chunk => chunk.Changed.Length));
-        Assert.All(chunks, chunk => Assert.Equal(catalog.Hash, chunk.Hash));
-        Assert.Equal(new[] { "gone" }, chunks[0].Removed);
-        Assert.False(chunks[0].LastChunk);
-        Assert.True(chunks[2].LastChunk);
+        var only = Assert.Single(chunks);
+        Assert.Equal(205, only.Changed.Length);
+        Assert.Equal(catalog.Hash, only.Hash);
+        Assert.Equal(new[] { "gone" }, only.Removed);
+        Assert.True(only.LastChunk);
         var known = variables.ToDictionary(variable => variable.Id, variable => variable.Hash);
         var equal = Assert.Single(catalog.Diff(known));
         Assert.Empty(equal.Changed);
@@ -696,7 +696,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         var index = Assert.Single(catalog.Variables, variable => variable.Id == "-200");
         Assert.Equal(("@index", true, false), (index.Name, index.HasValue, index.CanWriteValue));
         Assert.Contains(catalog.Variables, variable => variable.Id == "-420" && variable.Target == -20);
-        Assert.Equal(2, catalog.Diff(new Dictionary<string, int>()).Length);
+        Assert.Single(catalog.Diff(new Dictionary<string, int>()));
     }
 
     [Fact]

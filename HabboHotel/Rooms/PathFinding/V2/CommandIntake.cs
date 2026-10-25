@@ -50,7 +50,7 @@ internal sealed class CommandIntake(MovementContext context, ForcePlacementServi
         context.RefreshMembership(actor);
     }
     // Habbo ignores a click that has no route while the avatar walks: the walk goes on to its old goal.
-    // Avatars are not counted, so an avatar on the goal tile does not drop the click; that case is not observed yet.
+    // A click on a tile with no free spot, such as one an avatar occupies, counts as having no route.
     private bool KeepsCurrentWalk(RoomUser actor, MoveCommand command)
     {
         var state = actor.Movement;
@@ -63,7 +63,7 @@ internal sealed class CommandIntake(MovementContext context, ForcePlacementServi
         var grid = context.Grid;
         var profile = context.Profiles.Refresh(actor);
         var start = new NavPosition(actor.X, actor.Y, state.SupportZ);
-        var goal = GoalResolver.ResolveClick(grid, profile, start, command.X, command.Y, null);
+        var goal = GoalResolver.ResolveClick(grid, profile, start, command.X, command.Y, context.Occupancy(actor));
         using var lease = PathWorkspacePool.Rent(grid.SlotCapacity,
             profile.LegacyOverride ? grid.SlotCapacity : grid.ActiveNodeCount);
 

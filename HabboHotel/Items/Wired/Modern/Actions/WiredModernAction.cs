@@ -878,7 +878,9 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                         continue;
                     }
 
-                    if (!WiredChatRate.For(context.Room).TryAdmit(context.NowMilliseconds)) {
+                    var shownAt = context.NowMilliseconds;
+
+                    if (!shownToRoom && !WiredChatRate.For(user).TryAdmit(shownAt)) {
                         continue;
                     }
 
@@ -895,7 +897,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                             target!.Send(packet);
                         }
                         else {
-                            room.SendChat(receiver => packet with { ReceiverVirtualId = receiver });
+                            room.SendChat(receiver => packet with { ReceiverVirtualId = receiver }, receiver => WiredChatRate.For(receiver).TryAdmit(shownAt));
                         }
 
                         if (turnsHeads) {

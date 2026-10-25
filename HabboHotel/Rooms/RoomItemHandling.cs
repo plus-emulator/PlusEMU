@@ -707,9 +707,10 @@ public partial class RoomItemHandling
             newRot = FurnitureDirections.Place(item.Definition, newRot);
         }
 
+        // A new temporary copy may share its tile with a standing user. A later move of that copy may not.
         if (item.IsTemporary && (!OwnsTemporary(item) || session != null && newItem
             || !Plus.HabboHotel.Items.Wired.Modern.WiredRoomOperations.CanPlaceItem(_room, item, newX, newY, newRot,
-                height == -1 ? null : height, collision: wiredCollision))) {
+                height == -1 ? null : height, throughUsers: newItem, collision: wiredCollision))) {
             return false;
         }
 
@@ -719,9 +720,11 @@ public partial class RoomItemHandling
         }
 
         // The owner places a floor item (walkable or not) on the tile they stand on, and moves one onto it. Avatars only block server-side and Wired moves, never a user's own placement or move.
-        bool HasBlockingUsers(int x, int y) => wiredCollision == null
-            ? session == null && _room.GetGameMap().SquareHasUsers(x, y)
-            : wiredCollision.BlocksUsers(_room.GetGameMap().GetRoomUsers(new(x, y)));
+        bool HasBlockingUsers(int x, int y) => item.IsTemporary && newItem
+            ? false
+            : wiredCollision == null
+                ? session == null && _room.GetGameMap().SquareHasUsers(x, y)
+                : wiredCollision.BlocksUsers(_room.GetGameMap().GetRoomUsers(new(x, y)));
         var magic = MagicTileHeight.IsMagicTile(item.Definition.InteractionType);
 
         if (newItem) {

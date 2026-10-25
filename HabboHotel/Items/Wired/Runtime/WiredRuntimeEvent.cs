@@ -15,6 +15,8 @@ public sealed record WiredRuntimeEvent(WiredEventKind Kind)
 {
     public RoomUser? Actor { get; init; }
     public Item? EventItem { get; init; }
+    /// <summary>The leaver of the Leaves Room stack whose Send Signal raised this signal while the leaver's variables were readable.</summary>
+    public RoomUser? SignalLeaver { get; init; }
     /// <summary>The contract (or the Initiate Transaction box of a custom contract) a transaction event is about, even once its furni has left the room.</summary>
     public uint SourceId { get; init; }
     public RoomUser? TargetUser { get; init; }

@@ -32,7 +32,8 @@ public partial class RoomItemHandling
 
     // Copies take the next id of the client's temporary band. A removed copy's id is not reused while the room stays loaded; a reload starts the band again.
     public Item? PlaceTemporaryFloorItem(ItemDefinition definition, uint ownerId, int x, int y,
-        int rotation, double? height = null, string state = "", bool sendMessage = true)
+        int rotation, double? height = null, string state = "", bool sendMessage = true,
+        Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? collision = null)
     {
         if (definition.Type != Plus.HabboHotel.Users.Inventory.Furniture.ItemType.Floor
             || AboveTemporaryLimit(height) || NextTemporaryId() is not { } id) {
@@ -52,7 +53,7 @@ public partial class RoomItemHandling
         };
         _temporaryItems.Add(id, item);
 
-        if (!SetFloorItem(null!, item, x, y, rotation, true, false, sendMessage, true, height ?? -1)) {
+        if (!SetFloorItem(null!, item, x, y, rotation, true, false, sendMessage, true, height ?? -1, collision)) {
             _temporaryItems.Remove(id);
 
             return null;

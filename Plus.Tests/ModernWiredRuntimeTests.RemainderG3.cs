@@ -238,6 +238,85 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new[] { 0, 2 }, copies.Select(item => item.Rotation).ToArray());
     }
 
+    [Theory]
+    [InlineData(WiredPlaceAltitudeType.OnTopOfTargetLocation)]
+    [InlineData(WiredPlaceAltitudeType.CustomAltitude)]
+    public void G3CustomLocationPlacesTheCopyOnTheTriggeringUsersTile(WiredPlaceAltitudeType altitude)
+    {
+        var stack = G3PlaceStack(G3Place(new(TargetIsUser: true, Location: WiredPlaceLocationType.CustomLocation, Altitude: altitude),
+            G3Snap(900, G3Lamp, 2, 2, 0, 0, "0")));
+        using var f = stack.F;
+        f.User.X = 1;
+        f.User.Y = 1;
+        f.User.Z = 0;
+        f.Room.GetGameMap().AddUserToMap(f.User, new System.Drawing.Point(1, 1));
+        Assert.True(f.Room.GetGameMap().SquareHasUsers(1, 1));
+        G3MoveThroughUsers(f, 1, WiredSources.AllRoom);
+        var packets = Capture(f.Client);
+
+        f.Fire(land: false);
+
+        var copy = Assert.Single(G3Temporaries(f.Room));
+        Assert.Equal((1, 1), (copy.GetX, copy.GetY));
+        Assert.Equal(0, copy.GetZ);
+        Assert.DoesNotContain(packets, packet => PlacementFailed(packet.Body));
+    }
+
+    [Fact]
+    public void G3CustomLocationRefusesACopyUnderAUserWhenThereIsNoPhysicsAddon() =>
+        G3RefuseCopyUnderTheStandingUser(null, WiredSources.AllRoom);
+
+    [Fact]
+    public void G3CustomLocationRefusesACopyUnderAUserWhenMoveThroughUsersIsOff() =>
+        G3RefuseCopyUnderTheStandingUser(0, WiredSources.AllRoom);
+
+    [Fact]
+    public void G3CustomLocationRefusesACopyUnderAUserWhenMoveThroughUsersSelectsSignalUsers() =>
+        G3RefuseCopyUnderTheStandingUser(1, WiredSources.Signal);
+
+    private static void G3RefuseCopyUnderTheStandingUser(int? throughUsers, int userSource)
+    {
+        var stack = G3PlaceStack(G3Place(new(TargetIsUser: true, Location: WiredPlaceLocationType.CustomLocation),
+            G3Snap(900, G3Lamp, 2, 2, 0, 0, "0")));
+        using var f = stack.F;
+        f.User.X = 1;
+        f.User.Y = 1;
+        f.User.Z = 0;
+        f.Room.GetGameMap().AddUserToMap(f.User, new System.Drawing.Point(1, 1));
+        Assert.True(f.Room.GetGameMap().SquareHasUsers(1, 1));
+
+        if (throughUsers is int flag) {
+            G3MoveThroughUsers(f, flag, userSource);
+        }
+
+        var packets = Capture(f.Client);
+        f.Fire(land: false);
+
+        Assert.Empty(G3Temporaries(f.Room));
+        Assert.Contains(packets, packet => PlacementFailed(packet.Body));
+        Assert.Empty(f.Errors);
+    }
+
+    private static void G3MoveThroughUsers(TeleportFixture f, int throughUsers, int userSource)
+    {
+        var item = MakeItem(103, "wf_xtra_mov_physics");
+        typeof(Item).GetField("_room", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(item, f.Room);
+        item.RoomId = f.Room.Id;
+        item.SetState(f.Trigger.Item.GetX, f.Trigger.Item.GetY, 1);
+        var addon = Plus.HabboHotel.Items.Wired.Modern.Addons.WiredAddonFactory.Create(f.Room, item, new(), TestGroupManager.Empty);
+        Assert.NotNull(addon);
+        Assert.True(WiredNativeTestSupport.TryValidateRuntime(addon, new()
+        {
+            IntParams = [1, 1, throughUsers, 0, WiredSources.AllRoom, WiredSources.AllRoom, userSource]
+        }, out var config, out var error), error);
+        addon.ApplyConfiguration(config);
+        f.Items[item.Id] = item;
+        Assert.True(f.Engine.Add(addon));
+    }
+
+    private static bool PlacementFailed(byte[] body) =>
+        System.Text.Encoding.UTF8.GetString(body).Contains("${room.error.wired.placement_failure}", StringComparison.Ordinal);
+
     [Fact]
     public void G3CustomLocationWithoutAUserTargetPlacesNothing()
     {

@@ -40,7 +40,7 @@ public partial class ModernWiredRuntimeTests
         }
     }
 
-    /// <summary>Gives a room its own wake threads and clock, so wake-ups armed by other tests cannot delay its passes.</summary>
+    /// <summary>Gives a room its own wake threads, clock and hand-off threads, so other tests cannot delay its passes or its deliveries.</summary>
     private sealed class WakeIsolation : IDisposable
     {
         private readonly WiredWakeWorkers _workers = new(2);
@@ -49,6 +49,7 @@ public partial class ModernWiredRuntimeTests
         public WakeIsolation(WiredComponent wired)
         {
             wired.Workers = _workers;
+            wired.HandOff = work => new Thread(() => work()) { IsBackground = true }.Start();
             wired.WakeAfter = _clock.After;
         }
 
@@ -74,7 +75,7 @@ public partial class ModernWiredRuntimeTests
         return manager;
     }
 
-    private static bool WaitFor(Func<bool> condition, int milliseconds = 3000)
+    private static bool WaitFor(Func<bool> condition, int milliseconds = 10000)
     {
         var clock = Stopwatch.StartNew();
 
@@ -133,11 +134,11 @@ public partial class ModernWiredRuntimeTests
 
         for (var round = 0; round < 20; round++) {
             using var start = new Barrier(2);
-            var senders = new[] { a, b }.Select(room => Task.Run(() =>
+            var senders = new[] { a, b }.Select(room => Task.Factory.StartNew(() =>
             {
                 start.SignalAndWait();
                 room.Fire(land: false);
-            })).ToArray();
+            }, TaskCreationOptions.LongRunning)).ToArray();
 
             Assert.True(Task.WaitAll(senders, 10000), "Two rooms sending to each other waited on each other.");
         }

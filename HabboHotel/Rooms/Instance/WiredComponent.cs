@@ -256,6 +256,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
     /// <summary>The threads that run this room's wake-up passes. Tests give a room its own, so passes of other rooms cannot hold them.</summary>
     internal WiredWakeWorkers Workers { get; set; } = WiredWakeWorkers.Shared;
 
+    /// <summary>Runs a link delivery to another room off the sending room's lock. Tests give a room a thread of its own, so a busy thread pool cannot delay it.</summary>
+    internal Action<Action> HandOff { get; set; } = work => _ = Task.Run(work);
+
     private void ArmWake(long dueMs)
     {
         // The room tick runs what falls due on it, after its UserUpdate. A delay that ends on a room tick goes out in the ms of that tick's UserUpdate, after it. A wake-up pass could run first.

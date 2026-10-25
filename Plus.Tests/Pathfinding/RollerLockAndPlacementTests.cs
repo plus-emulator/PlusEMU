@@ -92,7 +92,7 @@ public partial class PlacedFurniRoomTests
         InstallRollerChainEngine();
         var rider = PlannerActor(1, 0, 3, .5);
         var fired = false;
-        PlannerObserveWalkOn(() =>
+        PlannerObserveRollerHook(() =>
         {
             if (fired) {
                 return;

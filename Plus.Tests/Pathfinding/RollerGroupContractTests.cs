@@ -167,7 +167,7 @@ public partial class PlacedFurniRoomTests
         var first = PlannerActor(1, 0, 1, .5);
         var second = PlannerActor(2, 0, 3, .5);
         var fired = false;
-        PlannerObserveWalkOn(() =>
+        PlannerObserveRollerHook(() =>
         {
             if (fired) {
                 return;

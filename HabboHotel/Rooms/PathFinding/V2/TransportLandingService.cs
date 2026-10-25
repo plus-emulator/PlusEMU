@@ -8,10 +8,18 @@ internal sealed class TransportLandingService(Room room)
 {
     internal void Trigger(RoomUser actor, Point destination, Item? roller = null)
     {
+        if (TriggerWalkOn(actor, destination)) {
+            TriggerWalkOff(actor, roller);
+        }
+    }
+
+    // Returns false when the actor has no client or a hook moved it away.
+    internal bool TriggerWalkOn(RoomUser actor, Point destination)
+    {
         var habbo = actor.GetClient()?.GetHabbo();
 
         if (habbo == null) {
-            return;
+            return false;
         }
 
         var revision = actor.Movement.LocationRevision;
@@ -24,11 +32,18 @@ internal sealed class TransportLandingService(Room room)
             room.GetWired().TriggerEvent(WiredBoxType.TriggerWalkOnFurni, habbo, item);
 
             if (actor.Movement.LocationRevision != revision || actor.Movement.State != NavState.Active) {
-                return;
+                return false;
             }
         }
 
-        if (roller != null && ReferenceEquals(room.GetRoomItemHandler().GetItem(roller.Id), roller)) {
+        return true;
+    }
+
+    internal void TriggerWalkOff(RoomUser actor, Item? roller)
+    {
+        var habbo = actor.GetClient()?.GetHabbo();
+
+        if (habbo != null && roller != null && ReferenceEquals(room.GetRoomItemHandler().GetItem(roller.Id), roller)) {
             room.GetWired().TriggerEvent(WiredBoxType.TriggerWalkOffFurni, habbo, roller);
         }
     }

@@ -1,4 +1,5 @@
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.PathFinding;
 using Xunit;
@@ -26,16 +27,24 @@ public partial class PlacedFurniRoomTests
         var rug = grid.SlotOf(new SurfaceRef(LayeredTile(1, 1), 12, SurfaceKind.Top));
         Assert.Equal((LayeredTile(1, 1), true), (grid.SlotOf(new SurfaceRef(LayeredTile(1, 1), 21, SurfaceKind.Top)), rug >= grid.TileCount));
         var observed = new List<(TargetOccupancy Rug, TargetOccupancy Deck)>();
-        ExecutorObserveLanding((_, item) =>
+        var slideHook = new List<(TargetOccupancy Rug, TargetOccupancy Deck)>();
+        RollerWalkEvents(() => 0, (kind, item) =>
         {
-            if (item.Id == 12) {
-                observed.Add((claims.OccupancyAt(rug, 0), claims.OccupancyAt(LayeredTile(1, 1), 0)));
+            var seen = (claims.OccupancyAt(rug, 0), claims.OccupancyAt(LayeredTile(1, 1), 0));
+
+            if (kind == WiredBoxType.TriggerWalkOffFurni && item == 10) {
+                slideHook.Add(seen);
+            }
+            else if (kind == WiredBoxType.TriggerWalkOnFurni && item == 12) {
+                observed.Add(seen);
             }
         });
         EnableExecutorRollers();
         ExecutorTick();
+        Assert.Equal(new[] { (TargetOccupancy.Stationary | TargetOccupancy.RollerClaim, TargetOccupancy.None) }, slideHook);
+        ExecutorTick();
         Assert.Equal((1, 1, 0d), (actor.X, actor.Y, actor.Z));
-        Assert.Equal(new[] { (TargetOccupancy.Stationary | TargetOccupancy.RollerClaim, TargetOccupancy.None) }, observed);
+        Assert.Equal(new[] { (TargetOccupancy.Stationary, TargetOccupancy.None) }, observed);
     }
 
     [Fact]
@@ -188,17 +197,25 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         var claims = LayeredNavigation.Executor.Claims;
         var observed = new List<TargetOccupancy>();
-        ExecutorObserveLanding((_, item) =>
+        var slideHook = new List<TargetOccupancy>();
+        RollerWalkEvents(() => 0, (kind, item) =>
         {
-            if (item.Id == 12) {
-                observed.Add(claims.OccupancyAt(LayeredNavigation.Grid.SlotOf(actor.Movement.CurrentRef!.Value), 0));
+            var seen = claims.OccupancyAt(LayeredNavigation.Grid.SlotOf(actor.Movement.CurrentRef!.Value), 0);
+
+            if (kind == WiredBoxType.TriggerWalkOffFurni && item == 10) {
+                slideHook.Add(seen);
+            }
+            else if (kind == WiredBoxType.TriggerWalkOnFurni && item == 12) {
+                observed.Add(seen);
             }
         });
         EnableExecutorRollers();
         ExecutorTick();
+        Assert.Equal(new[] { TargetOccupancy.Stationary | TargetOccupancy.RollerClaim }, slideHook);
+        ExecutorTick();
         Assert.Equal((1, 1, 0d), (actor.X, actor.Y, actor.Z));
         Assert.Equal(new SurfaceRef(LayeredTile(1, 1), 12, SurfaceKind.Top), actor.Movement.CurrentRef);
-        Assert.Equal(new[] { TargetOccupancy.Stationary | TargetOccupancy.RollerClaim }, observed);
+        Assert.Equal(new[] { TargetOccupancy.Stationary }, observed);
     }
 
     // A vending machine at deck level (2) beside approach tile (1,0), which has a floor and a deck; decks lead from (3,0).

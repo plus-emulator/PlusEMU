@@ -66,7 +66,7 @@ public static class WiredLinkTransport
                     delivered |= Deliver(room, @event);
                 }
                 else {
-                    _ = Task.Run(() => Deliver(target, @event, true));
+                    room.GetWired().HandOff(() => Deliver(target, @event, true));
                     delivered = true;
                 }
             }

@@ -47,7 +47,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void ChainedRollersGlideTheActorWithoutAStatusBetweenPulses()
+    public void ChainedRollersGlideTheActorWithoutAStatusInTheSlideTick()
     {
         ExecutorRoller(10, 0, 1);
         ExecutorRoller(11, 1, 1);
@@ -58,7 +58,9 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         var slide = ExecutorAvatarSlide(actor);
         Assert.Equal((1, 1, 2, 1), (slide.FromX, slide.FromY, slide.ToX, slide.ToY));
-        Assert.False(ExecutorHasUpdate(actor));
+        var landed = ExecutorUpdate(actor);
+        Assert.Equal((1, 1, "0.5"), (landed.X, landed.Y, landed.Z));
+        Assert.DoesNotContain("/mv ", landed.Status);
         ExecutorTick();
         var update = ExecutorUpdate(actor);
         Assert.Equal((2, 1, "0.0"), (update.X, update.Y, update.Z));

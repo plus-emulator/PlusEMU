@@ -80,6 +80,9 @@ internal sealed class RollerDepartures
     internal IReadOnlySet<RoomUser> Users { get; }
     internal bool IsEmpty => Items.Count == 0 && Users.Count == 0;
 
+    internal RollerDepartures Including(IEnumerable<RoomUser> users)
+        => new(Roller, Items, Users.Concat(users).ToHashSet<RoomUser>(ReferenceEqualityComparer.Instance));
+
     internal bool AllUsersLeave(IEnumerable<RoomUser> occupants) => occupants.All(Users.Contains);
 
     // Solid cargo leaving the tile rebuilds its map cell, which ends any explicit floor status there

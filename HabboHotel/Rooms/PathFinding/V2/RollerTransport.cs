@@ -54,6 +54,17 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
         }
     }
 
+    // Rollers run after the avatars step, so an avatar whose step off a tile is announced this tick has left it.
+    public RollerDepartures Departing(IRollerDepartureView departures, Point tile)
+    {
+        var departing = departures.At(tile);
+        var stepping = context.Room.GetGameMap().GetRoomUsers(tile).Where(user => user.Movement.PendingCount > 0).ToList();
+
+        return stepping.Count == 0 ? departing : departing.Including(stepping);
+    }
+
+    public void ReleaseClaims() => context.Claims.ReleaseRollers();
+
     public bool AdmitsActor(RollerMove move, RollerDepartures departing)
     {
         var to = move.Destination;
@@ -79,7 +90,7 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
     // Furniture may not land where another actor stands, walks or holds any claim, on any surface of any footprint tile.
     public bool AdmitsCargo(RollerMove move, IRollerDepartureView departures)
         => CargoFootprint(move).All(tile => !Grid.InBounds(tile.X, tile.Y) || TileSlots(tile).All(slot
-            => (context.Claims.OccupancyAt(slot, ClaimLedger.NoGroup, departures.At(tile).Users) & Anything) == 0));
+            => (context.Claims.OccupancyAt(slot, ClaimLedger.NoGroup, Departing(departures, tile).Users) & Anything) == 0));
 
     // One R claim per tile the group lands on, with that tile's own departures excluded; all or nothing.
     // Layered rooms also reserve a cargo footprint tile an actor of the same group lands on: the actor's
@@ -89,7 +100,7 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
         var reserved = new List<Action>();
 
         foreach (var (tile, landing) in LandingTiles(group)) {
-            var release = TryReserve(tile, landing, group.At(tile), Riders(group));
+            var release = TryReserve(tile, landing, Departing(group, tile), Riders(group));
 
             if (release != null) {
                 reserved.Add(release);
@@ -113,7 +124,7 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
             placement.Relocate(actor, move.Destination.X, move.Destination.Y, move.CarriedZ,
                 actor.Movement.Commands.Read()?.Sequence ?? 0);
             actor.IsRolling = true;
-            actor.RollerDelay = 1;
+            actor.RollerDelay = 0;
             actor.RollerSettling = false;
         }
     }
@@ -129,7 +140,7 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
             if (move.Horse is { } horse) {
                 placement.CarryHorse(move.Actor!);
                 horse.IsRolling = true;
-                horse.RollerDelay = 1;
+                horse.RollerDelay = 0;
                 horse.UpdateNeeded = false;
             }
 

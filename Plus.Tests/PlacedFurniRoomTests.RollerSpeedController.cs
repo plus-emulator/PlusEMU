@@ -99,7 +99,7 @@ public partial class PlacedFurniRoomTests
         var handler = _room.GetRoomItemHandler();
 
         for (var tick = 0; tick < ticksPerStep * frames.Length; tick++) {
-            handler.OnCycle();
+            handler.OnRollerCycle();
         }
 
         var sent = _client.Packets.Where(packet => packet.Header == ServerPacketHeader.ObjectDataUpdateComposer)

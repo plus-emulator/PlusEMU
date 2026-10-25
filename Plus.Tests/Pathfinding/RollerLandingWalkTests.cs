@@ -51,7 +51,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void RollerLandingSkipsWalksOnWhenAWalkStartedInTheSlideTick()
+    public void RollerLandingFiresWalksOnBeforeAWalkOrderedInTheSlideTickBegins()
     {
         ExecutorRoller(10, 0, 1);
         ExecutorFloor(11, 1, 1);
@@ -69,7 +69,7 @@ public partial class PlacedFurniRoomTests
         RollerRunTicks(ref tick, 4);
 
         Assert.True(started);
-        Assert.DoesNotContain(events, e => e.Kind == WiredBoxType.TriggerWalkOnFurni && e.Item == 11);
+        Assert.Equal(new[] { 2 }, events.Where(e => e.Kind == WiredBoxType.TriggerWalkOnFurni && e.Item == 11).Select(e => e.Tick).ToArray());
     }
 
     [Fact]

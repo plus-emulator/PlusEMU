@@ -232,7 +232,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("1,1,0.0", actor.Statusses["mv"]);
     }
     [Fact]
-    public void ExecutorRollerClaimBlocksStressIgnoreUsersUntilTheNextTick()
+    public void ExecutorStressIgnoreUsersStepClaimBlocksTheRollerInTheSameTick()
     {
         ExecutorRoller(10, 0, 1);
         var carried = ExecutorRollerActor(0, 1, .5);
@@ -241,18 +241,13 @@ public partial class PlacedFurniRoomTests
         stress.MoveTo(1, 1);
         EnableExecutorRollers();
         ExecutorTick();
-        Assert.Equal((1, 1), (carried.X, carried.Y));
         Assert.True(stress.Movement.Profile.IgnoreUsers);
         Assert.False(stress.Movement.Profile.LegacyOverride);
-        Assert.Equal((2, 1), (stress.X, stress.Y));
-        Assert.False(stress.HasStatus("mv"));
-        var occupancy = _room.GetGameMap().Navigation!.Executor.Claims.OccupancyAt(5, 0);
-        Assert.Equal(TargetOccupancy.Stationary, occupancy);
-        stress.MoveTo(1, 1);
-        ExecutorTick();
+        Assert.Equal((0, 1), (carried.X, carried.Y));
         Assert.Equal("1,1,0.0", stress.Statusses["mv"]);
         ExecutorTick();
         Assert.Equal((1, 1), (stress.X, stress.Y));
+        Assert.Equal((0, 1), (carried.X, carried.Y));
     }
 
     private RoomUser AcceptanceBot(int x, int y, int id, bool admit = true, bool temporary = false)

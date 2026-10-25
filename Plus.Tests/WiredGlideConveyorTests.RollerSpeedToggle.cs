@@ -84,7 +84,7 @@ public sealed partial class WiredGlideConveyorTests
         for (var tick = 0; tick < ticks; tick++) {
             var mark = packets.Count;
             f.Advance(500);
-            f.Owned(() => f.Room.GetRoomItemHandler().OnCycle());
+            f.Owned(() => f.Room.GetRoomItemHandler().OnRollerCycle());
             slides.Add(packets.Skip(mark).Count(bytes => BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.SlideObjectBundleComposer));
         }
     }

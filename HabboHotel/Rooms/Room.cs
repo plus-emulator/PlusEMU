@@ -502,6 +502,7 @@ public class Room
             RunRoomPhase(CycleFurniture);
             RunRoomPhase(CycleActors);
             RunRoomPhase(() => GetRoomUserManager().SerializeStatusUpdates());
+            RunRoomPhase(CycleRollers);
             RunRoomPhase(() => GetWired().OnRoomTickEnd());
             RunRoomPhase(() => _gameItemHandler?.OnCycle());
             RunRoomPhase(CycleWired);
@@ -566,6 +567,13 @@ public class Room
 
         GetRoomItemHandler().OnCycle();
         _music?.Cycle();
+    }
+
+    private void CycleRollers()
+    {
+        GetGameMap().Navigation?.ApplyDirty();
+        GetGameMap().Navigation?.DrainCommands();
+        GetRoomItemHandler().OnRollerCycle();
     }
 
     private void CycleActors()

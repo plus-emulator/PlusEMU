@@ -1,9 +1,10 @@
 using System.Drawing;
+using Plus.HabboHotel.Items;
 using Plus.Communication.Packets.Outgoing.Rooms.Avatar;
 
 namespace Plus.HabboHotel.Rooms.PathFinding;
 
-internal sealed record PendingRollerLanding(Point Destination, long Revision);
+internal sealed record PendingRollerLanding(Point Destination, long Revision, Item Roller);
 
 public sealed class ActorTickService(Room room)
 {
@@ -74,8 +75,16 @@ public sealed class ActorTickService(Room room)
         var landing = actor.PendingLanding;
         actor.PendingLanding = null;
 
-        if (landing != null && actor.Movement.LocationRevision == landing.Revision && actor.Movement.State == NavState.Active
-            && !actor.IsWalking && actor.Movement.PendingCount == 0) {
+        if (landing == null) {
+            return;
+        }
+
+        // Walks Off always fires for the roller the user left. Walks On needs the user to still be at the landing.
+        var stillLanded = actor.Movement.LocationRevision == landing.Revision && actor.Movement.State == NavState.Active
+            && !actor.IsWalking && actor.Movement.PendingCount == 0;
+        _landings.TriggerWalkOff(actor, landing.Roller);
+
+        if (stillLanded && actor.Movement.LocationRevision == landing.Revision && actor.Movement.State == NavState.Active) {
             _landings.TriggerWalkOn(actor, landing.Destination);
         }
     }

@@ -5,6 +5,7 @@ using Dapper;
 using Microsoft.Extensions.Logging;
 using Plus.Communication.Packets.Outgoing.Inventory.Badges;
 using Plus.Communication.Packets.Outgoing.Inventory.Furni;
+using Plus.Communication.Packets.Outgoing.Users;
 using Plus.Database;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users;
@@ -148,13 +149,28 @@ public class BadgeManager : IBadgeManager, IStartable
             return;
         }
 
-        using var connection = _database.Connection();
-        await connection.ExecuteAsync("DELETE FROM user_badges WHERE badge_id = @badge AND user_id = @userId LIMIT 1", new
-        {
-            badge,
-            userId = habbo.Id
-        });
-        inventory.Badges.RemoveBadge(badge);
+        await inventory.Badges.EquipmentGate.WaitAsync();
+        var worn = false;
+
+        try {
+            worn = inventory.Badges.GetBadge(badge) is { Slot: > 0 };
+            using var connection = _database.Connection();
+            await connection.ExecuteAsync("DELETE FROM user_badges WHERE badge_id = @badge AND user_id = @userId LIMIT 1", new
+            {
+                badge,
+                userId = habbo.Id
+            });
+            inventory.Badges.RemoveBadge(badge);
+        }
+        finally {
+            inventory.Badges.EquipmentGate.Release();
+        }
+
+        habbo.Client.SendBadgeInventory(habbo.Id, inventory.Badges.Badges.Values);
+
+        if (worn && habbo.CurrentRoom is { } room) {
+            room.SendPacket(new HabboUserBadgesComposer(habbo.Id, BadgeInventorySnapshot.Capture(inventory.Badges.EquippedBadges).Equipped));
+        }
     }
 
     public async Task<List<Badge>> LoadBadgesForHabbo(int userId)

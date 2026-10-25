@@ -7,6 +7,7 @@ public sealed class WiredVariableQueries(WiredVariableModule variables, WiredVar
 {
     private readonly Dictionary<WiredVariableReference, WiredVariableReadSnapshot> _reads = [];
     private readonly Dictionary<(string Name, WiredConfiguration Configuration), long?> _operands = [];
+    private readonly Dictionary<(WiredVariableTarget Target, string VariableId), WiredVariableReference?> _references = [];
     private bool _disposed;
 
     public bool MatchSelector(string name, WiredConfiguration configuration, WiredVariableHolder holder)
@@ -73,9 +74,16 @@ public sealed class WiredVariableQueries(WiredVariableModule variables, WiredVar
     }
 
     /// <summary>A picked variable is an opaque catalog id; it resolves through the room module's current authority.</summary>
-    private WiredVariableReference? Resolve(WiredVariableTarget target, string variableId) =>
-        Enum.IsDefined(target) && !WiredVariableAbsent.Is(variableId) && variables.TryResolveCatalogId(variableId, target, out var reference)
-            ? reference : null;
+    private WiredVariableReference? Resolve(WiredVariableTarget target, string variableId)
+    {
+        if (!_references.TryGetValue((target, variableId), out var resolved)) {
+            resolved = Enum.IsDefined(target) && !WiredVariableAbsent.Is(variableId) && variables.TryResolveCatalogId(variableId, target, out var reference)
+                ? reference : null;
+            _references[(target, variableId)] = resolved;
+        }
+
+        return resolved;
+    }
 
     public long? ReadOperand(WiredVariableTarget target, string variableId, int userSource, int furniSource, WiredConfiguration configuration)
     {

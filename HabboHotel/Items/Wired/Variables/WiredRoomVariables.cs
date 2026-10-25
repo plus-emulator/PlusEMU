@@ -12,6 +12,7 @@ public sealed partial class WiredRoomVariables
     private readonly TimeProvider _clock;
     private readonly WiredVariableConfigurationPersistence _persistence;
     private readonly Dictionary<uint, WiredVariableDefinitionBox> _definitions = [];
+    private readonly RoomDirectory _directory;
     private readonly Plus.HabboHotel.Quests.IQuestManager? _quests;
     private readonly WiredSharedVariableBroadcast.Endpoint _broadcast;
     public WiredVariableModule Module { get; }
@@ -44,7 +45,8 @@ public sealed partial class WiredRoomVariables
         _room = room;
         _clock = clock;
         _quests = quests;
-        Module = new(room.Id, new RoomDirectory(new DatabaseWiredVariableDirectory(database), this), new DatabaseWiredVariableStore(database), clock,
+        _directory = new(new(new DatabaseWiredVariableDirectory(database)), this);
+        Module = new(room.Id, _directory, new DatabaseWiredVariableStore(database), clock,
             new RoomWiredBuiltinVariables(room, builtinRead, builtinWrite, stateChanged, new RoomItemMetadataStore(database), travelStore, quests, QuestBinding), ResolveDerived);
         Editor = new(Module);
         Fx = new(Module);
@@ -56,13 +58,29 @@ public sealed partial class WiredRoomVariables
     }
 
     /// <summary>The room's own variables come from its loaded boxes; every other question goes to the database.</summary>
-    private sealed class RoomDirectory(IWiredVariableDirectory inner, WiredRoomVariables owner) : IWiredVariableDirectory
+    private sealed class RoomDirectory(WiredPassDirectory inner, WiredRoomVariables owner) : IWiredVariableDirectory
     {
-        public WiredVariableDefinition? Find(uint itemId) => inner.Find(itemId);
+        public WiredPassDirectory Database => inner;
+        public WiredVariableDefinition? Find(uint itemId) => owner.LoadedDefinition(itemId) ?? inner.Find(itemId);
         public uint? GetRoomOwner(uint roomId) => inner.GetRoomOwner(roomId);
         public IReadOnlyList<WiredSharedVariable> ListShared(uint ownerId, uint exceptRoomId) => inner.ListShared(ownerId, exceptRoomId);
         public IReadOnlyList<WiredVariableDefinition> ListRoom(uint roomId) => roomId == owner._room.Id ? owner.LoadedDefinitions() : inner.ListRoom(roomId);
         public IReadOnlyList<WiredVariableDefinition> ListReferences(uint sourceRoomId, uint sourceItemId) => inner.ListReferences(sourceRoomId, sourceItemId);
+    }
+
+    /// <summary>Remembers database lookups of variable definitions and room owners until the Wired pass ends.</summary>
+    public IDisposable? OpenPass() => _directory?.Database.OpenPass();
+
+    private WiredVariableDefinition? LoadedDefinition(uint itemId)
+    {
+        WiredVariableDefinitionBox? box;
+
+        lock (_membershipGate) {
+            _definitions.TryGetValue(itemId, out box);
+        }
+
+        return box is { HasPersistedConfiguration: true } && WiredVariableDefinitions.TryDecode(box.Descriptor.CanonicalName, itemId, _room.Id,
+            _room.OwnerId > 0 ? (uint)_room.OwnerId : 0, box.Configuration, out var definition, out _) ? definition : null;
     }
 
     private IReadOnlyList<WiredVariableDefinition> LoadedDefinitions()

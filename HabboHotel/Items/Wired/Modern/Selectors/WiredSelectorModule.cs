@@ -38,8 +38,12 @@ public static class WiredSelectorModule
         var filter = FiltersExistingNormalized(name, c);
         var invert = c.Origin?.Native.Inverse ?? WiredSelectorSources.Param(c, invertIndex) == 1;
         int P(int index, int fallback = 0) => WiredSelectorSources.Param(c, index, fallback);
-        IEnumerable<WiredSelectorFurniture> Furni(int source) =>
-            world.Furni.Where(x => WiredSelectorSources.Furni(source, c, input, world).Contains(x.Id));
+        IEnumerable<WiredSelectorFurniture> Furni(int source)
+        {
+            var ids = WiredSelectorSources.Furni(source, c, input, world).ToHashSet();
+
+            return world.Furni.Where(x => ids.Contains(x.Id));
+        }
 
         switch (name) {
             case "wf_slc_furni_picks":
@@ -176,14 +180,17 @@ public static class WiredSelectorModule
                     throw new InvalidOperationException("Furniture variable predicate is required");
                 }
 
-                selected.FurniIds.UnionWith(available.Where(x => input.ScopedFurniVariablePredicate?.Invoke(name, c, x.Id, input) ?? input.FurniVariablePredicate!(name, c, x.Id)).Select(x => x.Id));
+                // A filter keeps only what is already selected, so nothing else needs a variable read.
+                var furniCandidates = filter ? available.Where(x => input.FurniModified && input.SelectorPool.FurniIds.Contains(x.Id)) : available;
+                selected.FurniIds.UnionWith(furniCandidates.Where(x => input.ScopedFurniVariablePredicate?.Invoke(name, c, x.Id, input) ?? input.FurniVariablePredicate!(name, c, x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_users_with_var":
                 if (input.UserVariablePredicate is null && input.ScopedUserVariablePredicate is null) {
                     throw new InvalidOperationException("Avatar variable predicate is required");
                 }
 
-                selected.UserIds.UnionWith(world.Users.Where(x => input.ScopedUserVariablePredicate?.Invoke(name, c, x.Id, input) ?? input.UserVariablePredicate!(name, c, x.Id)).Select(x => x.Id));
+                var userCandidates = filter ? world.Users.Where(x => input.UsersModified && input.SelectorPool.UserIds.Contains(x.Id)) : world.Users;
+                selected.UserIds.UnionWith(userCandidates.Where(x => input.ScopedUserVariablePredicate?.Invoke(name, c, x.Id, input) ?? input.UserVariablePredicate!(name, c, x.Id)).Select(x => x.Id));
                 break;
             case "wf_slc_remote": {
                     var stacks = RemoteStacks(c, world, input).ToList();
@@ -259,9 +266,17 @@ public static class WiredSelectorModule
         var seen = new HashSet<(int X, int Y, uint UnprojectedId)>();
         var source = WiredSelectorSources.Param(c, 4, WiredSources.Selected);
         var pickedIds = input is null ? c.SelectedItems : WiredSelectorSources.Furni(source, c, input, world);
+        var floor = new Dictionary<uint, WiredSelectorFurniture>();
+
+        foreach (var item in world.Furni.Where(item => item.IsFloor)) {
+            floor.TryAdd(item.Id, item);
+        }
+
+        var selectorsOnTile = world.Furni.Where(item => item.IsFloor && world.RemoteSelectors?.ContainsKey(item.Id) == true)
+            .ToLookup(item => (item.X, item.Y));
 
         foreach (var pickedId in pickedIds) {
-            var picked = world.Furni.FirstOrDefault(item => item.Id == pickedId && item.IsFloor);
+            var picked = floor.GetValueOrDefault(pickedId);
 
             if (picked is null) {
                 // Custom projections can supply a selector without a furniture model.
@@ -276,8 +291,7 @@ public static class WiredSelectorModule
                 continue;
             }
 
-            var selectors = world.Furni.Where(item => item.IsFloor && item.X == picked.X && item.Y == picked.Y
-                && world.RemoteSelectors?.ContainsKey(item.Id) == true)
+            var selectors = selectorsOnTile[(picked.X, picked.Y)]
                 .OrderBy(item => item.Z).ThenBy(item => item.Id).Select(item => item.Id).ToArray();
 
             // A picked stack without a selector still counts, as an empty one.
@@ -330,9 +344,17 @@ public static class WiredSelectorModule
             throw new ArgumentException("Neighborhood requires its native 441-tile bitmap");
         }
 
-        IEnumerable<(int X, int Y)> positions = P(0) == 1
-            ? world.Users.Where(x => WiredSelectorSources.Users(c.UserSources.GetValueOrDefault("anchor", 0), input, world).Contains(x.Id)).Select(x => (x.X, x.Y))
-            : world.Furni.Where(x => x.IsFloor && WiredSelectorSources.Furni(c.FurniSources.GetValueOrDefault("anchor", 100), c, input, world).Contains(x.Id)).Select(x => (x.X, x.Y));
+        IEnumerable<(int X, int Y)> positions;
+
+        if (P(0) == 1) {
+            var anchors = WiredSelectorSources.Users(c.UserSources.GetValueOrDefault("anchor", 0), input, world).ToHashSet();
+            positions = world.Users.Where(x => anchors.Contains(x.Id)).Select(x => (x.X, x.Y));
+        }
+        else {
+            var anchors = WiredSelectorSources.Furni(c.FurniSources.GetValueOrDefault("anchor", 100), c, input, world).ToHashSet();
+            positions = world.Furni.Where(x => x.IsFloor && anchors.Contains(x.Id)).Select(x => (x.X, x.Y));
+        }
+
         var offsets = NeighborhoodOffsets(c.IntParams).ToArray();
         var tiles = new HashSet<(int X, int Y)>();
 

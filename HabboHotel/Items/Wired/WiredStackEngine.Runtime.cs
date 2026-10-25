@@ -28,6 +28,8 @@ internal sealed partial class WiredStackEngine
     private Action? _flushExternal;
     private int? _queuedDepth;
     public Action<IWiredConfiguredItem>? ConfigurationPublished { get; set; }
+    /// <summary>Opened when the outermost pass starts and disposed when it ends.</summary>
+    public Func<IDisposable?>? PassScope { get; set; }
     private readonly Dictionary<uint, (int X, int Y, double Z)> _runtimePositions = [];
     private int _fastWork;
     private Action<bool>? _fastWorkObserver;
@@ -387,9 +389,7 @@ internal sealed partial class WiredStackEngine
             return false;
         }
 
-        var live = _targets!.AllFurni().ToDictionary(x => x.Id);
-        var antennas = receivers.DistinctBy(x => x.Id).Where(receiver =>
-            live.TryGetValue(receiver.Id, out var attached) && ReferenceEquals(receiver, attached) && IsSignalAntenna(receiver)).ToArray();
+        var antennas = receivers.DistinctBy(x => x.Id).Where(receiver => IsSignalAntenna(receiver) && _targets!.IsAttached(receiver)).ToArray();
 
         if (antennas.Length == 0) {
             return false;

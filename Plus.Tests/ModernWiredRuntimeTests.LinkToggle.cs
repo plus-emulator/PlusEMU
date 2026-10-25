@@ -6,6 +6,7 @@ using Plus.Communication.Flash;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
+using Plus.HabboHotel.Rooms.Instance;
 using Plus.HabboHotel.Rooms.PathFinding;
 using Xunit;
 
@@ -194,13 +195,15 @@ public partial class ModernWiredRuntimeTests
             a.Fire(land: false);
         }
 
-        Thread.Sleep(100);
+        var arrivals = typeof(WiredComponent).GetField("_linkArrivals", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(b.Room.GetWired())!;
+        var count = arrivals.GetType().GetProperty("Count")!;
+        Assert.True(WaitFor(() => (int)count.GetValue(arrivals)! == 20), "The 20 deliveries did not reach the busy room.");
         var passes = new HashSet<Task>();
         var before = b.Room.ProcessTask;
         Interlocked.Exchange(ref b.Room.CycleSlot, 0);
         var clock = Stopwatch.StartNew();
 
-        while (clock.ElapsedMilliseconds < 300) {
+        while (clock.ElapsedMilliseconds < 3000 && (clock.ElapsedMilliseconds < 300 || LinkTextLogs(b).Length < 20)) {
             if (b.Room.ProcessTask is { } pass && !ReferenceEquals(pass, before)) {
                 passes.Add(pass);
             }
@@ -209,6 +212,7 @@ public partial class ModernWiredRuntimeTests
         }
 
         Assert.Equal(20, LinkTextLogs(b).Length);
+        Assert.True(PassEnded(b));
         Assert.Equal(20, LinkPackets(sent, receiver).Count(kind => kind == "link"));
         Assert.Single(passes);
     }

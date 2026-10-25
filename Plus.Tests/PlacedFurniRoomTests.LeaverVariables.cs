@@ -169,6 +169,75 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(["a=7"], DpFire(wired, owner, clock, 1));
     }
 
+    // The user leaves and comes back before the room runs the leave stack. The old value must not come back.
+    [Fact]
+    public async Task AUserWhoReturnsBeforeTheLeaveRunsGetsNoOldValue()
+    {
+        var (wired, owner, clock) = await DelayedPointerRoom();
+        var visitor = AddLeaver(out var visitorClient);
+
+        await DpShow("a=$(a)", 0);
+        await DpOutput("a", DpUser, "user:" + DpUa);
+        await GiveOnSetWord();
+        _dpTile = (2, 1);
+        _dpZ = 0;
+        AddLeaveTrigger(2, 1);
+        await DpEffect("wf_act_change_var_val", [DpUser, 1, 0, 0, 5, -10, 0], ["user:" + DpUa, "n"], furni: [0, 0], users: [0, 0]);
+
+        Say(wired, visitor, clock, "set");
+        _room.GetRoomUserManager().RemoveUserFromRoom(visitorClient, true, false);
+        EnterVisitor(visitorClient);
+        var returned = Assert.IsType<RoomUser>(_room.GetRoomUserManager().GetRoomUserByHabbo(LeaverId));
+        Advance(wired, clock, 3000);
+
+        Assert.Equal(["a=null"], VisitorMessages(wired, returned, visitorClient, clock));
+    }
+
+    // The user comes back and an Enters Room stack gives pu_a = 3. That new value must survive the old leave.
+    [Fact]
+    public async Task AUserWhoReturnsBeforeTheLeaveRunsKeepsTheNewValue()
+    {
+        var (wired, owner, clock) = await DelayedPointerRoom();
+        var visitor = AddLeaver(out var visitorClient);
+
+        await DpShow("a=$(a)", 0);
+        await DpOutput("a", DpUser, "user:" + DpUa);
+        await GiveOnSetWord();
+        _dpTile = (2, 1);
+        _dpZ = 0;
+        AddLeaveTrigger(2, 1);
+        await DpEffect("wf_act_change_var_val", [DpUser, 1, 0, 0, 5, -10, 0], ["user:" + DpUa, "n"], furni: [0, 0], users: [0, 0]);
+        _dpTile = (2, 2);
+        _dpZ = 0;
+        AddTriggerAt("wf_trg_enter_room", 2, 2);
+        await DpGive(DpUser, "user:" + DpUa, 3);
+
+        Say(wired, visitor, clock, "set");
+        _room.GetRoomUserManager().RemoveUserFromRoom(visitorClient, true, false);
+        EnterVisitor(visitorClient);
+        var returned = Assert.IsType<RoomUser>(_room.GetRoomUserManager().GetRoomUserByHabbo(LeaverId));
+        Advance(wired, clock, 3000);
+
+        Assert.Equal(["a=3"], VisitorMessages(wired, returned, visitorClient, clock));
+    }
+
+    private void AddTriggerAt(string name, int x, int y)
+    {
+        var trigger = WiredBox(_dpNext++, name, x, y);
+        trigger.Item.GetZ = _dpZ++;
+        WiredNativeTestSupport.InstallRuntime(trigger, WiredTriggerConfiguration.Defaults(name));
+        Assert.True(_room.GetWired().AddBox(trigger));
+    }
+
+    private void EnterVisitor(TestClient client)
+    {
+        client.GetHabbo().CurrentRoom = _room;
+        client.GetHabbo().HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        var quests = Proxy<Plus.HabboHotel.Quests.IQuestManager>((method, _) => throw new InvalidOperationException(method));
+        var polls = Proxy<Plus.HabboHotel.Rooms.Polls.IRoomPollService>((method, _) => method == nameof(Plus.HabboHotel.Rooms.Polls.IRoomPollService.Offer) ? null : throw new InvalidOperationException(method));
+        new RoomEntryService(quests, TimeProvider.System, polls, EntryWordQuiz).Enter(client);
+    }
+
     private RoomUser AddLeaver(out TestClient client)
     {
         client = new();

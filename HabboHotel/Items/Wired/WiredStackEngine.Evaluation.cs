@@ -98,8 +98,9 @@ internal sealed partial class WiredStackEngine
     /// A Leaves Room stack still reads and changes the leaver's user variables while its conditions and its effects without a delay
     /// run. Its delayed effects find nothing, and the variables go once the last effect without a delay has run.
     /// </summary>
-    private bool LeaverReadable(WiredRuntimeEvent @event, bool primary) =>
-        primary && @event is { Kind: WiredEventKind.Leave, Actor: { IsBot: false } leaver } && _targets!.Leavers.Add(leaver);
+    private bool LeaverReadable(WiredRuntimeEvent @event, bool primary, bool notStarted = false) =>
+        primary && @event is { Kind: WiredEventKind.Leave, Actor: { IsBot: false } leaver }
+        && (notStarted || _leaverWindows.ContainsKey(leaver)) && _targets!.Leavers.Add(leaver);
 
     private void EndLeaverRead(WiredRuntimeEvent @event, bool readable)
     {
@@ -132,7 +133,7 @@ internal sealed partial class WiredStackEngine
         _dispatchAdvanceDepth++;
 
         var finished = true;
-        var readable = LeaverReadable(pending.Event, pending.Call == null && pending.Signal == null);
+        var readable = LeaverReadable(pending.Event, pending.Call == null && pending.Signal == null, !pending.Initialized);
 
         try {
             finished = AdvanceDispatchCore(pending);

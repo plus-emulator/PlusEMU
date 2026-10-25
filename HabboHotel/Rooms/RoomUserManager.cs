@@ -285,6 +285,7 @@ public class RoomUserManager
             return false;
         }
 
+        _room.GetWired()?.VisitorArriving(session.GetHabbo().Id);
         var visit = Interlocked.Increment(ref _primaryPrivateUserId);
         var user = new RoomUser(session.GetHabbo().Id, _room.RoomId, visit - 1, _room, session, _chatEmotions, _rewards) { Visit = visit };
         user.UserId = session.GetHabbo().Id;

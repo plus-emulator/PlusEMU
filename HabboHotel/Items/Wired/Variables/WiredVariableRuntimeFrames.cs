@@ -17,7 +17,8 @@ public static class WiredVariableRuntimeFrames
         IEnumerable<WiredVariableHolder> Furni(IEnumerable<Item> items) => items.Select(FurniHolder);
         IEnumerable<WiredVariableHolder> Users(IEnumerable<RoomUser> users) => users.Select(UserHolder);
         RoomUser[] Leaver() => context.Event.Actor is { IsBot: false } actor && context.Targets.IsLeaving(actor)
-            && context.Triggering.UserIds.Contains(actor.VirtualId) ? [actor] : [];
+            && context.Triggering.UserIds.Contains(actor.VirtualId)
+            && !context.Targets.AllUsers().Any(user => !user.IsBot && user.HabboId == actor.HabboId) ? [actor] : [];
         // AllRoom remains floor-only; captured wall targets also need live variable holders.
         var holders = Furni(context.Targets.ResolveFurni(context, [], WiredSources.AllRoom, raw: true))
             .Concat(Furni(context.FurniIdentity.Values.Where(context.Targets.IsAttached)))

@@ -94,7 +94,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
         };
         _engine.LeaverSettled = leaver =>
         {
-            if (_variables?.IsValueCreated == true) {
+            // A user who already came back keeps the values of the new visit.
+            if (_variables?.IsValueCreated == true && _room.GetRoomUserManager()?.GetRoomUserByHabbo(leaver.HabboId) == null) {
                 _variables.Value.HolderLeft(WiredVariableRuntimeFrames.UserHolder(leaver));
             }
         };
@@ -328,6 +329,15 @@ public partial class WiredComponent : IWiredRuntimeOperations
     public bool GameCounterRunning => _counters.HasRunningGameCounter;
     internal bool NeedsFastCycle => _engine.NeedsFastCycle;
     internal void ObserveFastWork(Action<bool>? observer) => _engine.ObserveFastWork(observer);
+    /// <summary>Drops in-room user values left from an earlier visit, so nothing comes back on return.</summary>
+    public void VisitorArriving(int habboId) => _engine.Mutate(() =>
+    {
+        if (_variables?.IsValueCreated == true) {
+            _variables.Value.Module.HolderLeft(new(WiredVariableTarget.User, habboId, 0));
+        }
+
+        return true;
+    });
     public bool Dispatch(WiredRuntimeEvent @event)
     {
         @event = @event with { Visits = _room.GetRoomUserManager()?.Visits ?? int.MaxValue };

@@ -94,16 +94,59 @@ internal sealed partial class WiredStackEngine
         pending.Current?.Dispose();
     }
 
+    /// <summary>
+    /// A Leaves Room stack still reads and changes the leaver's user variables while its conditions and its effects without a delay
+    /// run. Its delayed effects find nothing, and the variables go once the last effect without a delay has run.
+    /// </summary>
+    private bool LeaverReadable(WiredRuntimeEvent @event, bool primary) =>
+        primary && @event is { Kind: WiredEventKind.Leave, Actor: { IsBot: false } leaver } && _targets!.Leavers.Add(leaver);
+
+    private void EndLeaverRead(WiredRuntimeEvent @event, bool readable)
+    {
+        if (readable && @event.Actor is { } leaver) {
+            _targets!.Leavers.Remove(leaver);
+        }
+    }
+
+    private void SettleLeavers()
+    {
+        if (_leaverWindows.Count == 0 || _draining) {
+            return;
+        }
+
+        foreach (var (leaver, window) in _leaverWindows.ToArray()) {
+            if (window.Dispatched && !HasImmediateLeaveWork(leaver)) {
+                _leaverWindows.Remove(leaver);
+                LeaverSettled?.Invoke(leaver);
+            }
+        }
+    }
+
+    private bool HasImmediateLeaveWork(RoomUser leaver) => _schedule.UnorderedItems.Any(entry => entry.Element is
+    { Finished: false, DelayMilliseconds: 0 } scheduled && _pending.Contains(scheduled.Chain)
+        && scheduled.Chain.Context.Runtime?.Event is { Kind: WiredEventKind.Leave } leave && ReferenceEquals(leave.Actor, leaver));
+
     private bool AdvanceDispatch(PendingDispatch pending)
     {
         BeforePublicationDispatch(pending);
         _dispatchAdvanceDepth++;
 
+        var finished = true;
+        var readable = LeaverReadable(pending.Event, pending.Call == null && pending.Signal == null);
+
         try {
-            return AdvanceDispatchCore(pending);
+            finished = AdvanceDispatchCore(pending);
+
+            return finished;
         }
         finally {
             _dispatchAdvanceDepth--;
+            EndLeaverRead(pending.Event, readable);
+
+            if (finished) {
+                pending.LeaverWindow?.Dispatched = true;
+                SettleLeavers();
+            }
         }
     }
 
@@ -159,6 +202,10 @@ internal sealed partial class WiredStackEngine
 
             ObserveEvent?.Invoke(pending.Event, _now());
             pending.Initialized = true;
+
+            if (pending.Event is { Kind: WiredEventKind.Leave, Actor: { IsBot: false } leaver } && pending.Call == null && pending.Signal == null) {
+                pending.LeaverWindow = _leaverWindows[leaver] = new();
+            }
         }
 
         while (true) {

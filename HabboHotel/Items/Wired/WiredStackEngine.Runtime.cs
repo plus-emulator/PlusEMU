@@ -16,6 +16,8 @@ internal sealed partial class WiredStackEngine
     private WiredRuntimeContext? _runtimeContext;
     private WiredRuntimeEvent? _legacyRuntimeEvent;
     public Action<WiredRuntimeEvent, long>? ObserveEvent { get; set; }
+    public Action<RoomUser>? LeaverSettled { get; set; }
+    private readonly Dictionary<RoomUser, LeaverWindow> _leaverWindows = new(ReferenceEqualityComparer.Instance);
     public Func<WiredRuntimeContext, IWiredContextualTrigger, bool?>? CaptureSpeech { get; set; }
     public Action<WiredRuntimeEvent>? SpeechHidden { get; set; }
     private bool _legacySpeechAdmission;
@@ -273,6 +275,8 @@ internal sealed partial class WiredStackEngine
             }
             else {
                 dispatch.Current?.Dispose();
+                dispatch.LeaverWindow?.Dispatched = true;
+                SettleLeavers();
             }
         }
 
@@ -1073,6 +1077,7 @@ internal sealed partial class WiredStackEngine
         public HashSet<IWiredContextualTrigger> CancelledRecipients = [];
         public int Slots = 1;
         public bool Initialized, IsQueued;
+        public LeaverWindow? LeaverWindow;
         public bool IncludeLegacy = true;
         public bool ResumeImmediately;
         /// <summary>The time its stacks fire at, when that is not the pass that runs them: the room tick that raised a walk.</summary>
@@ -1082,6 +1087,11 @@ internal sealed partial class WiredStackEngine
         public HeadingCollisionProof? CollisionProof;
         public bool Accepted, ConsumedChat;
         public WiredClickResult Click;
+    }
+
+    private sealed class LeaverWindow
+    {
+        public bool Dispatched;
     }
 
     private sealed record PendingCall(IWiredItem Source, WiredRuntimeContext Parent, WiredSelection Selection);

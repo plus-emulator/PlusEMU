@@ -90,10 +90,12 @@ public partial class WiredComponent : IWiredRuntimeOperations
                 WiredAvatarState.For(_room).Forget(evt.Actor);
                 WiredBotTargets.For(_room).Forget(evt.Actor);
                 WiredGameState.For(_room).Forget(evt.Actor);
-
-                if (_variables?.IsValueCreated == true) {
-                    _variables.Value.HolderLeft(WiredVariableRuntimeFrames.UserHolder(evt.Actor));
-                }
+            }
+        };
+        _engine.LeaverSettled = leaver =>
+        {
+            if (_variables?.IsValueCreated == true) {
+                _variables.Value.HolderLeft(WiredVariableRuntimeFrames.UserHolder(leaver));
             }
         };
         // Only these concrete adapters are known silent for publication purposes.

@@ -99,6 +99,7 @@ public static class PermissionKeys
     public const string CommandStress = "command.stress";
     public const string CommandSummon = "command.summon";
     public const string CommandSuperfastwalk = "command.superfastwalk";
+    public const string CommandTakebadge = "command.takebadge";
     public const string CommandTakerole = "command.takerole";
     public const string CommandTeleport = "command.teleport";
     public const string CommandTradeban = "command.tradeban";

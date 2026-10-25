@@ -6,17 +6,16 @@ namespace Plus.Tests;
 public sealed class WiredVariableCatalogTests
 {
     [Fact]
-    public void DiffChunksChangesAndRemovalsWithoutLosingEmptyFinalAcknowledgment()
+    public void DiffSendsAllChangesAndRemovalsInOneChunk()
     {
         var variables = Enumerable.Range(1, 201).Select(i => new WiredVariableDescription(
             new((uint)i, 1, 5, "v" + i, WiredVariableTarget.User, WiredVariableAvailability.Persistent, true), true, false)).ToArray();
         var catalog = new WiredVariableCatalog(variables);
         var diff = catalog.Diff(new Dictionary<string, int> { ["deleted:1"] = 123 });
-        Assert.Equal(new[] { 100, 100, 1 }, diff.Select(x => x.Changed.Count));
-        Assert.Equal(new[] { false, false, true }, diff.Select(x => x.LastChunk));
-        Assert.Single(diff[0].Removed);
-        Assert.Empty(diff[1].Removed);
-        Assert.Empty(diff[2].Removed);
+        var only = Assert.Single(diff);
+        Assert.Equal(201, only.Changed.Count);
+        Assert.True(only.LastChunk);
+        Assert.Single(only.Removed);
         var unchanged = Assert.Single(catalog.Diff(variables.ToDictionary(x => x.CatalogId, x => x.Hash)));
         Assert.True(unchanged.LastChunk);
         Assert.Empty(unchanged.Changed);

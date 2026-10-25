@@ -35,7 +35,7 @@ public sealed class ActorTickService(Room room)
             room.GetFreeze().CycleUser(actor);
         }
 
-        // The standing avatar of a user gets a UserUpdate one room tick after a roller slide and a second one tick later.
+        // The standing avatar of a user or bot gets a UserUpdate one room tick after a roller slide and a second one tick later.
         if (actor.IsRolling && DefersToRoller(actor)) {
             actor.RollerDeferred = true;
         }
@@ -58,7 +58,7 @@ public sealed class ActorTickService(Room room)
         actor.IsRolling = false;
         actor.RollerDeferred = false;
         actor.UpdateNeeded = true;
-        actor.RollerSettling = !actor.IsBot;
+        actor.RollerSettling = true;
         LandRoller(actor);
     }
     // A deferred unit the roller phase did not move lands now.

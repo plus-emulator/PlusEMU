@@ -35,11 +35,11 @@ public sealed class ActorTickService(Room room)
         }
 
         // The standing avatar of a user gets a UserUpdate one room tick after a roller slide and a second one tick later.
-        if (actor.IsRolling && actor.RollerDelay-- <= 0) {
-            actor.IsRolling = false;
-            actor.UpdateNeeded = true;
-            actor.RollerSettling = !actor.IsBot;
-            LandRoller(actor);
+        if (actor.IsRolling && DefersToRoller(actor)) {
+            actor.RollerDeferred = true;
+        }
+        else if (actor.IsRolling && actor.RollerDelay-- <= 0) {
+            Land(actor);
         }
         else if (actor.RollerSettling && !actor.IsRolling) {
             actor.RollerSettling = false;
@@ -47,6 +47,27 @@ public sealed class ActorTickService(Room room)
         }
 
         return true;
+    }
+    // A unit on a roller that steps again this tick is not landed: it gets no update and no Walks On between pulses.
+    private bool DefersToRoller(RoomUser actor)
+        => actor.RollerDelay <= 0 && room.GetRoomItemHandler().RollersStepThisTick
+            && room.GetGameMap().GetAllRoomItemForSquare(actor.X, actor.Y).Any(RollerIdentity.IsRoller);
+    private void Land(RoomUser actor)
+    {
+        actor.IsRolling = false;
+        actor.RollerDeferred = false;
+        actor.UpdateNeeded = true;
+        actor.RollerSettling = !actor.IsBot;
+        LandRoller(actor);
+    }
+    // A deferred unit the roller phase did not move lands now.
+    public void LandDeferred(RoomUser actor)
+    {
+        if (actor.RollerDeferred && actor.IsRolling) {
+            Land(actor);
+        }
+
+        actor.RollerDeferred = false;
     }
     private void LandRoller(RoomUser actor)
     {

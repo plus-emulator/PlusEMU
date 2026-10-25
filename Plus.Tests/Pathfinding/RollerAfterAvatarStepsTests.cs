@@ -302,4 +302,20 @@ public partial class PlacedFurniRoomTests
 
         Assert.NotEqual((cargo.GetX, cargo.GetY), (bot.X, bot.Y));
     }
+
+    [Fact]
+    public void ASpeedZeroChainFiresWalksOffOnMiddleRollersAndWalksOnAtTheEnd()
+    {
+        ExecutorRoller(10, 0, 1);
+        ExecutorRoller(11, 1, 1);
+        ExecutorFloor(12, 2, 1);
+        ExecutorRollerActor(0, 1, 0.5);
+        var tick = 0;
+        var events = RollerWalkEvents(() => tick);
+        EnableExecutorRollers();
+        RollerRunTicks(ref tick, 5);
+
+        Assert.Equal(new[] { (1, WiredBoxType.TriggerWalkOffFurni, 10u), (2, WiredBoxType.TriggerWalkOffFurni, 11u), (3, WiredBoxType.TriggerWalkOnFurni, 12u) },
+            events.ToArray());
+    }
 }

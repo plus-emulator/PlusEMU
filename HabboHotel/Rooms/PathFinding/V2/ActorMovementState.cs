@@ -24,6 +24,8 @@ public sealed class ActorMovementState
     internal double[] PendingZ { get; } = new double[3];
     public int PendingCount { get; internal set; }
     internal bool StopAfterPending { get; set; }
+    // A roller used the tile this announced step leaves, so the step always lands.
+    internal bool RollerHeldStep { get; set; }
     // Purpose each pending edge was claimed with; commit re-validates with the same purpose.
     public StepPurpose[] PendingPurpose { get; } = new StepPurpose[3];
     internal GraphView PendingView { get; set; }

@@ -30,6 +30,12 @@ internal sealed class MovementExecutor(Room room, MovementContext context, Rebin
             ticks.EndCycle();
         }
     }
+    internal void LandDeferredRollers()
+    {
+        foreach (var actor in room.GetRoomUserManager().GetUserList().ToArray()) {
+            ticks.LandDeferred(actor);
+        }
+    }
     private void PhaseA(RoomUser actor)
     {
         var state = actor.Movement;

@@ -23,6 +23,7 @@ internal sealed class CommitService(Room room, RoomNavigation navigation, Moveme
         var revision = state.LocationRevision;
         var count = state.PendingCount;
         var accepted = ValidPrefix(actor);
+        state.RollerHeldStep = false;
         state.PendingCount = 0;
         actor.SetStep = false;
 
@@ -122,11 +123,20 @@ internal sealed class CommitService(Room room, RoomNavigation navigation, Moveme
             var purpose = state.PendingPurpose[i];
             var landing = _surfaces.Resolve(actor, state.Cursor + i, from, step, state.PendingView, state.PendingZ[i], purpose);
 
-            if (landing.Support == null && !profile.LegacyOverride && purpose != StepPurpose.Interaction) {
+            if (landing.Support == null && !profile.LegacyOverride && purpose != StepPurpose.Interaction
+                && !(i == 0 && state.RollerHeldStep)) {
                 break;
             }
 
             var to = landing.Position;
+
+            if (i == 0 && state.RollerHeldStep) {
+                state.Pending[i] = landing.Support ?? step;
+                accepted++;
+                from = to;
+
+                continue;
+            }
 
             if (!_rules.CanStep(profile, from, to, purpose, OccupancyView.Execution, context.OccupancyAt(actor, to.Slot)).Ok) {
                 break;

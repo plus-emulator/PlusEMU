@@ -63,6 +63,18 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
         return stepping.Count == 0 ? departing : departing.Including(stepping);
     }
 
+    // A step that a roller relied on must land, so it cannot be cancelled or blocked later.
+    public void HoldDepartingSteps(IEnumerable<RollerMove> moves)
+    {
+        var tiles = moves.SelectMany(move => move.Cargo != null ? CargoFootprint(move) : [move.Destination]).Distinct();
+
+        foreach (var user in tiles.SelectMany(tile => context.Room.GetGameMap().GetRoomUsers(tile)).ToList()) {
+            if (user.Movement.PendingCount > 0) {
+                user.Movement.RollerHeldStep = true;
+            }
+        }
+    }
+
     public void ReleaseClaims() => context.Claims.ReleaseRollers();
 
     public bool AdmitsActor(RollerMove move, RollerDepartures departing)
@@ -125,6 +137,7 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
                 actor.Movement.Commands.Read()?.Sequence ?? 0);
             actor.IsRolling = true;
             actor.RollerDelay = 0;
+            actor.RollerDeferred = false;
             actor.RollerSettling = false;
         }
     }
@@ -141,6 +154,7 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
                 placement.CarryHorse(move.Actor!);
                 horse.IsRolling = true;
                 horse.RollerDelay = 0;
+                horse.RollerDeferred = false;
                 horse.UpdateNeeded = false;
             }
 
@@ -154,8 +168,8 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
         }
     }
 
-    // The group's own cargo may replace the reserved landing surface; the R claim is held through the
-    // user phase (§14.9), so it moves to the surface at the final carried Z before any hook runs.
+    // The group's own cargo may replace the reserved landing surface, so the R claim moves to the
+    // surface at the final carried Z before any hook runs.
     private void RebindRollerClaim(RollerMove move)
     {
         context.Claims.ReleaseRollers(move.Actor!);

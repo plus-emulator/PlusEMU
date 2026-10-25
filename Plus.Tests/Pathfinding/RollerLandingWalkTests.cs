@@ -69,7 +69,8 @@ public partial class PlacedFurniRoomTests
         RollerRunTicks(ref tick, 4);
 
         Assert.True(started);
-        Assert.Equal(new[] { 2 }, events.Where(e => e.Kind == WiredBoxType.TriggerWalkOnFurni && e.Item == 11).Select(e => e.Tick).ToArray());
+        Assert.Equal(new[] { (2, WiredBoxType.TriggerWalkOnFurni), (2, WiredBoxType.TriggerWalkOffFurni) },
+            events.Where(e => e.Item == 11).Select(e => (e.Tick, e.Kind)).ToArray());
     }
 
     [Fact]

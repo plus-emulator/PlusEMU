@@ -191,7 +191,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void WalkerCannotEnterASecondaryTileOfCargoThatJustRolled()
+    public void CargoDoesNotRollOntoASecondaryTileAWalkerStepClaimed()
     {
         PlannerRoller(10, 0, 1, 2);
         var cargo = PlannerLongCargo(20, 0, 1, walkable: true);
@@ -200,10 +200,10 @@ public partial class PlacedFurniRoomTests
         StartPlannerRollers();
         walker.MoveTo(1, 2);
         ExecutorTick();
-        Assert.Equal((1, 1), (cargo.GetX, cargo.GetY));
+        Assert.Equal((0, 1), (cargo.GetX, cargo.GetY));
         Assert.Equal((2, 2, 0d), (walker.X, walker.Y, walker.Z));
-        Assert.DoesNotContain("/mv 1,2", ExecutorUpdate(walker).Status);
-        Assert.Equal(TargetOccupancy.None, PlannerOccupancy(1, 2));
+        Assert.Contains("/mv 1,2", ExecutorUpdate(walker).Status);
+        Assert.Equal(0, PlannerSlides());
     }
 
     private RoomUser PlannerLockedSolidCargoChain()

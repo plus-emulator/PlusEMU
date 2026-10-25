@@ -1154,7 +1154,11 @@ public partial class RoomItemHandling
         _rollers.TryRemove(new KeyValuePair<uint, Item>(item.Id, item));
     }
 
-    public void OnCycle()
+    // True when the roller cycle moves load in this room tick.
+    internal bool RollersStepThisTick => (GotRollers || !_rollers.IsEmpty) && _mRollerCycle >= RollerStepTicks - 1;
+
+    // Rollers run after the avatars step in the room tick.
+    public void OnRollerCycle()
     {
         if (GotRollers || !_rollers.IsEmpty || ConfigurationItemStates.RollerSpeedController(_room) != null) {
             try {
@@ -1166,7 +1170,10 @@ public partial class RoomItemHandling
                 GotRollers = false;
             }
         }
+    }
 
+    public void OnCycle()
+    {
         if (_roomItemUpdateQueue.Count > 0) {
             var addItems = new List<Item>();
 

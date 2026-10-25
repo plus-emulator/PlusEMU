@@ -77,6 +77,7 @@ internal sealed class V2MovementEngine : IMovementEngine
         return true;
     }
     public void Tick() => _executor.Tick();
+    internal void LandDeferredRollers() => _executor.LandDeferredRollers();
     internal void Handle(RoomCommand command)
     {
         var actor = command.Actor;

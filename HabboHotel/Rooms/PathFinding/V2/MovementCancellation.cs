@@ -5,6 +5,15 @@ internal sealed class MovementCancellation(MovementContext context)
     internal void Cancel(RoomUser actor, long discardThrough = 0)
     {
         context.Approaches.Cancel(actor);
+        var state = actor.Movement;
+
+        if (state.RollerHeldStep && state.PendingCount > 0) {
+            state.StopAfterPending = true;
+            state.Route.Count = Math.Min(state.Route.Count, state.Cursor + state.PendingCount);
+
+            return;
+        }
+
         Finish(actor, discardThrough);
     }
     // Movement ended at its goal: the approach intent, if any, is completed by the caller instead of dropped.
@@ -19,6 +28,7 @@ internal sealed class MovementCancellation(MovementContext context)
         state.Cursor = 0;
         state.PendingCount = 0;
         state.StopAfterPending = false;
+        state.RollerHeldStep = false;
         state.WaitTicks = state.StallTicks = 0;
         state.ConsumedSequence = Math.Max(state.ConsumedSequence, discardThrough);
         actor.GoalX = actor.X;
@@ -52,6 +62,7 @@ internal sealed class MovementCancellation(MovementContext context)
     }
     internal void Remove(RoomUser actor)
     {
+        actor.Movement.RollerHeldStep = false;
         Cancel(actor);
         actor.Movement.State = NavState.Removing;
         actor.Movement.LocationRevision++;

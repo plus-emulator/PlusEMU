@@ -23,6 +23,7 @@ internal sealed class TransportGroupCommitter(Room room, RollerTransport transpo
 
             items.CommitFloorMoves(furniture);
             transport.CommitActors(actors);
+            transport.HoldDepartingSteps(ordered);
         }
 
         transport.Publish(actors);

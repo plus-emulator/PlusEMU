@@ -54,6 +54,29 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
         }
     }
 
+    // Rollers run after the avatars step, so an avatar whose step off a tile is announced this tick has left it.
+    public RollerDepartures Departing(IRollerDepartureView departures, Point tile)
+    {
+        var departing = departures.At(tile);
+        var stepping = context.Room.GetGameMap().GetRoomUsers(tile).Where(user => user.Movement.PendingCount > 0).ToList();
+
+        return stepping.Count == 0 ? departing : departing.Including(stepping);
+    }
+
+    // A step that a roller relied on must land, so it cannot be cancelled or blocked later.
+    public void HoldDepartingSteps(IEnumerable<RollerMove> moves)
+    {
+        var tiles = moves.SelectMany(move => move.Cargo != null ? CargoFootprint(move) : [move.Destination]).Distinct();
+
+        foreach (var user in tiles.SelectMany(tile => context.Room.GetGameMap().GetRoomUsers(tile)).ToList()) {
+            if (user.Movement.PendingCount > 0) {
+                user.Movement.RollerHeldStep = true;
+            }
+        }
+    }
+
+    public void ReleaseClaims() => context.Claims.ReleaseRollers();
+
     public bool AdmitsActor(RollerMove move, RollerDepartures departing)
     {
         var to = move.Destination;
@@ -79,7 +102,7 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
     // Furniture may not land where another actor stands, walks or holds any claim, on any surface of any footprint tile.
     public bool AdmitsCargo(RollerMove move, IRollerDepartureView departures)
         => CargoFootprint(move).All(tile => !Grid.InBounds(tile.X, tile.Y) || TileSlots(tile).All(slot
-            => (context.Claims.OccupancyAt(slot, ClaimLedger.NoGroup, departures.At(tile).Users) & Anything) == 0));
+            => (context.Claims.OccupancyAt(slot, ClaimLedger.NoGroup, Departing(departures, tile).Users) & Anything) == 0));
 
     // One R claim per tile the group lands on, with that tile's own departures excluded; all or nothing.
     // Layered rooms also reserve a cargo footprint tile an actor of the same group lands on: the actor's
@@ -89,7 +112,7 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
         var reserved = new List<Action>();
 
         foreach (var (tile, landing) in LandingTiles(group)) {
-            var release = TryReserve(tile, landing, group.At(tile), Riders(group));
+            var release = TryReserve(tile, landing, Departing(group, tile), Riders(group));
 
             if (release != null) {
                 reserved.Add(release);
@@ -113,7 +136,8 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
             placement.Relocate(actor, move.Destination.X, move.Destination.Y, move.CarriedZ,
                 actor.Movement.Commands.Read()?.Sequence ?? 0);
             actor.IsRolling = true;
-            actor.RollerDelay = 1;
+            actor.RollerDelay = 0;
+            actor.RollerDeferred = false;
             actor.RollerSettling = false;
         }
     }
@@ -129,7 +153,8 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
             if (move.Horse is { } horse) {
                 placement.CarryHorse(move.Actor!);
                 horse.IsRolling = true;
-                horse.RollerDelay = 1;
+                horse.RollerDelay = 0;
+                horse.RollerDeferred = false;
                 horse.UpdateNeeded = false;
             }
 
@@ -143,8 +168,8 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
         }
     }
 
-    // The group's own cargo may replace the reserved landing surface; the R claim is held through the
-    // user phase (§14.9), so it moves to the surface at the final carried Z before any hook runs.
+    // The group's own cargo may replace the reserved landing surface, so the R claim moves to the
+    // surface at the final carried Z before any hook runs.
     private void RebindRollerClaim(RollerMove move)
     {
         context.Claims.ReleaseRollers(move.Actor!);

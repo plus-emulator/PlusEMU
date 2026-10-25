@@ -82,7 +82,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void CargoDestinationHoldsARollerClaimThroughTheUserPhase()
+    public void AWalkerStepClaimOnTheCargoDestinationBlocksTheRollerInTheSameTick()
     {
         PlannerRoller(10, 0, 1, 2);
         var cargo = ExecutorFloor(20, 0, 1, z: .5, height: .25);
@@ -91,10 +91,10 @@ public partial class PlacedFurniRoomTests
         StartPlannerRollers();
         walker.MoveTo(1, 1);
         ExecutorTick();
-        Assert.Equal((1, 1, 0d), (cargo.GetX, cargo.GetY, cargo.GetZ));
+        Assert.Equal((0, 1, .5), (cargo.GetX, cargo.GetY, cargo.GetZ));
         Assert.Equal((2, 1, 0d), (walker.X, walker.Y, walker.Z));
-        Assert.DoesNotContain("/mv 1,1", ExecutorUpdate(walker).Status);
-        Assert.Equal(TargetOccupancy.None, PlannerOccupancy(1, 1));
+        Assert.Contains("/mv 1,1", ExecutorUpdate(walker).Status);
+        Assert.Equal(0, PlannerSlides());
     }
     [Fact]
     public void TemporaryCargoFollowsADepartingUserInAChain()

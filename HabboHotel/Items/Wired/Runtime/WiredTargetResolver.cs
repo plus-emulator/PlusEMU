@@ -6,6 +6,9 @@ namespace Plus.HabboHotel.Items.Wired.Runtime;
 public sealed class WiredTargetResolver(Func<IEnumerable<Item>> furni, Func<IEnumerable<RoomUser>> users,
     Func<uint, Item?>? findFurni = null, Func<int, RoomUser?>? findUser = null, Func<IEnumerable<Item>>? attachedFurni = null)
 {
+    /// <summary>Users who left and whose Leaves Room stacks are still running their immediate part.</summary>
+    internal HashSet<RoomUser> Leavers { get; } = new(ReferenceEqualityComparer.Instance);
+    internal bool IsLeaving(RoomUser user) => Leavers.Contains(user);
     public Item[] AllFurni() => furni().ToArray();
     internal Item[] AttachedFurni() => (attachedFurni?.Invoke() ?? furni()).ToArray();
     public RoomUser[] AllUsers() => users().ToArray();

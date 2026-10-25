@@ -135,6 +135,8 @@ internal sealed partial class WiredStackEngine
                 dispatch.Current?.Dispose();
             }
 
+            _leaverWindows.Clear();
+
             foreach (var dispatch in _dispatches) {
                 dispatch.IsQueued = false;
             }
@@ -177,6 +179,7 @@ internal sealed partial class WiredStackEngine
 
             foreach (var pending in _dispatches.Except(kept)) {
                 pending.Current?.Dispose();
+                pending.LeaverWindow?.Dispatched = true;
             }
 
             foreach (var pending in _dispatches) {
@@ -190,6 +193,7 @@ internal sealed partial class WiredStackEngine
                 QueueDispatch(pending);
             }
 
+            SettleLeavers();
             UpdateFastWork();
         }
     }
@@ -744,8 +748,17 @@ internal sealed partial class WiredStackEngine
                                 SealPublication();
                             }
 
-                            var succeeded = scheduled.Callback == null ? Execute(action, chain.Context)
-                                : Invoke(action, chain.Context, () => { scheduled.Callback(); return true; });
+                            var leave = chain.Context.Runtime?.Event;
+                            var readable = scheduled.DelayMilliseconds == 0 && leave != null && LeaverReadable(leave, true);
+                            bool succeeded;
+
+                            try {
+                                succeeded = scheduled.Callback == null ? Execute(action, chain.Context)
+                                    : Invoke(action, chain.Context, () => { scheduled.Callback(); return true; });
+                            }
+                            finally {
+                                EndLeaverRead(leave!, readable);
+                            }
 
                             if (succeeded && chain.Context.Runtime?.Policy.StopOnSuccess == true) {
                                 FlushVariableChanges(chain);
@@ -795,6 +808,7 @@ internal sealed partial class WiredStackEngine
             }
 
             _draining = false;
+            SettleLeavers();
         }
 
         if (!_roomTickDrain) {

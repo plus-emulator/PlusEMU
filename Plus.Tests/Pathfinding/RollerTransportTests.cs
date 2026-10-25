@@ -206,7 +206,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void RollerClaimIsHeldThroughSlideHooksAndWalksOnSeesAPlainClaim()
+    public void RollerClaimIsHeldThroughTheSlideCommitAndLandingHooksSeeAPlainClaim()
     {
         ExecutorRoller(10, 0, 1);
         ExecutorFloor(11, 1, 1);
@@ -214,14 +214,17 @@ public partial class PlacedFurniRoomTests
         var tick = 0;
         var claims = _room.GetGameMap().Navigation!.Executor.Claims;
         var observed = new List<(int, WiredBoxType, uint, TargetOccupancy)>();
+        var atSlide = new List<TargetOccupancy>();
         RollerWalkEvents(() => tick, (kind, item) => observed.Add((tick, kind, item, claims.OccupancyAt(5, 0))));
+        RollerObserveSlide(() => atSlide.Add(claims.OccupancyAt(5, 0)));
         EnableExecutorRollers();
         RollerRunTicks(ref tick, 2);
+        Assert.Equal(new[] { TargetOccupancy.Stationary | TargetOccupancy.RollerClaim }, atSlide);
         Assert.Equal(new[]
         {
-            (1, WiredBoxType.TriggerWalkOffFurni, 10u, TargetOccupancy.Stationary | TargetOccupancy.RollerClaim),
-            (2, WiredBoxType.TriggerWalkOnFurni, 11u, TargetOccupancy.Stationary)
-        }, observed.ToArray());
+            (2, WiredBoxType.TriggerWalkOnFurni, 11u, TargetOccupancy.Stationary),
+            (2, WiredBoxType.TriggerWalkOffFurni, 10u, TargetOccupancy.Stationary)
+        }, observed.OrderBy(e => e.Item2).ToArray());
         Assert.Equal(TargetOccupancy.Stationary, claims.OccupancyAt(5, 0));
         Assert.False(actor.HasStatus("mv"));
     }

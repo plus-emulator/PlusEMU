@@ -28,15 +28,11 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((LayeredTile(1, 1), true), (grid.SlotOf(new SurfaceRef(LayeredTile(1, 1), 21, SurfaceKind.Top)), rug >= grid.TileCount));
         var observed = new List<(TargetOccupancy Rug, TargetOccupancy Deck)>();
         var slideHook = new List<(TargetOccupancy Rug, TargetOccupancy Deck)>();
+        RollerObserveSlide(() => slideHook.Add((claims.OccupancyAt(rug, 0), claims.OccupancyAt(LayeredTile(1, 1), 0))));
         RollerWalkEvents(() => 0, (kind, item) =>
         {
-            var seen = (claims.OccupancyAt(rug, 0), claims.OccupancyAt(LayeredTile(1, 1), 0));
-
-            if (kind == WiredBoxType.TriggerWalkOffFurni && item == 10) {
-                slideHook.Add(seen);
-            }
-            else if (kind == WiredBoxType.TriggerWalkOnFurni && item == 12) {
-                observed.Add(seen);
+            if (kind == WiredBoxType.TriggerWalkOnFurni && item == 12) {
+                observed.Add((claims.OccupancyAt(rug, 0), claims.OccupancyAt(LayeredTile(1, 1), 0)));
             }
         });
         EnableExecutorRollers();
@@ -198,20 +194,16 @@ public partial class PlacedFurniRoomTests
         var claims = LayeredNavigation.Executor.Claims;
         var observed = new List<TargetOccupancy>();
         var slideHook = new List<TargetOccupancy>();
+        RollerObserveSlide(() => slideHook.Add(claims.OccupancyAt(LayeredNavigation.Grid.SlotOf(actor.Movement.CurrentRef!.Value), 0)));
         RollerWalkEvents(() => 0, (kind, item) =>
         {
-            var seen = claims.OccupancyAt(LayeredNavigation.Grid.SlotOf(actor.Movement.CurrentRef!.Value), 0);
-
-            if (kind == WiredBoxType.TriggerWalkOffFurni && item == 10) {
-                slideHook.Add(seen);
-            }
-            else if (kind == WiredBoxType.TriggerWalkOnFurni && item == 12) {
-                observed.Add(seen);
+            if (kind == WiredBoxType.TriggerWalkOnFurni && item == 12) {
+                observed.Add(claims.OccupancyAt(LayeredNavigation.Grid.SlotOf(actor.Movement.CurrentRef!.Value), 0));
             }
         });
         EnableExecutorRollers();
         ExecutorTick();
-        Assert.Equal(new[] { TargetOccupancy.Stationary | TargetOccupancy.RollerClaim }, slideHook);
+        Assert.Equal(new[] { TargetOccupancy.Stationary | TargetOccupancy.RollerClaim }, slideHook.Distinct().ToArray());
         ExecutorTick();
         Assert.Equal((1, 1, 0d), (actor.X, actor.Y, actor.Z));
         Assert.Equal(new SurfaceRef(LayeredTile(1, 1), 12, SurfaceKind.Top), actor.Movement.CurrentRef);

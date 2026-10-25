@@ -273,30 +273,12 @@ public partial class PlacedFurniRoomTests
 
     private int PlannerSlides() => _client.Packets.Count(packet => packet.Header == ServerPacketHeader.SlideObjectBundleComposer);
 
+    // Runs while a roller group commit sends its slide packet, before any later group commits.
     private void PlannerObserveRollerHook(Action observe)
-    {
-        var item = Furni(900, InteractionType.WiredTrigger, WiredBoxType.TriggerWalkOffFurni);
-        item.Definition.Height = 0;
-        item.Definition.Width = item.Definition.Length = 1;
-        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, item, 3, 3, 0, true, false, false));
-        Assert.True(_room.GetWired().AddBox(new PlannerRollerHookObserver(_room, item, observe)));
-    }
-
-    private sealed class PlannerRollerHookObserver(Room room, Item item, Action observe) : IWiredItem
-    {
-        public Room Instance { get; set; } = room;
-        public Item Item { get; set; } = item;
-        public WiredBoxType Type => WiredBoxType.TriggerWalkOffFurni;
-        public ConcurrentDictionary<uint, Item> SetItems { get; set; } = new();
-        public string StringData { get; set; } = "";
-        public bool BoolData { get; set; }
-        public string ItemsData { get; set; } = "";
-        public void HandleSave(IIncomingPacket packet) => throw new NotSupportedException();
-        public bool Execute(params object[] arguments)
+        => _client.BeforeCapture = header =>
         {
-            observe();
-
-            return false;
-        }
-    }
+            if (header == ServerPacketHeader.SlideObjectBundleComposer) {
+                observe();
+            }
+        };
 }

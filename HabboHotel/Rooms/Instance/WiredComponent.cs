@@ -276,7 +276,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     {
         // A queued pool item, or a new thread, can wait several ms to start on a busy server, which the effect would land late by; the
         // wake-up hands the pass to a pre-started worker and the clock stays free.
-        var startAt = WiredWakeClock.Now + Math.Max(0, dueMs - _engine.Now);
+        var startAt = WiredWakeClock.Now + Math.Clamp(dueMs - _engine.Now, 0, WakeLeadMs + 1);
 
         StartWakePass(startAt, 0, () =>
         {

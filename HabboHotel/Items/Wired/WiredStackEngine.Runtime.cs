@@ -411,7 +411,8 @@ internal sealed partial class WiredStackEngine
             {
                 Code = unchecked((int)antenna.Id),
                 Actor = parent.Event.Actor,
-                EventItem = parent.Event.EventItem
+                EventItem = parent.Event.EventItem,
+                SignalLeaver = LeaverOf(parent.Event) is { } leaver && _targets!.Leavers.Contains(leaver) ? leaver : null
             }, parent.Depth);
             child.Signal = new(selection, parent.Values);
             // Routing antennas and forwarded targets are independent from the original event's targets.

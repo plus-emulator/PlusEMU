@@ -92,19 +92,24 @@ internal sealed partial class WiredStackEngine
         _queuedSlots -= pending.Slots;
         pending.IsQueued = false;
         pending.Current?.Dispose();
+        SettleLeavers();
     }
 
     /// <summary>
     /// A Leaves Room stack still reads and changes the leaver's user variables while its conditions and its effects without a delay
-    /// run. Its delayed effects find nothing, and the variables go once the last effect without a delay has run.
+    /// run. Its delayed effects find nothing, and the variables go once the last effect without a delay has run. A stack it reaches
+    /// with Send Signal reads them the same way.
     /// </summary>
     private bool LeaverReadable(WiredRuntimeEvent @event, bool primary, bool notStarted = false) =>
-        primary && @event is { Kind: WiredEventKind.Leave, Actor: { IsBot: false } leaver }
+        primary && LeaverOf(@event) is { } leaver
         && (notStarted || _leaverWindows.ContainsKey(leaver)) && _targets!.Leavers.Add(leaver);
+
+    private static RoomUser? LeaverOf(WiredRuntimeEvent @event) =>
+        (@event.Kind == WiredEventKind.Leave ? @event.Actor : @event.SignalLeaver) is { IsBot: false } leaver ? leaver : null;
 
     private void EndLeaverRead(WiredRuntimeEvent @event, bool readable)
     {
-        if (readable && @event.Actor is { } leaver) {
+        if (readable && LeaverOf(@event) is { } leaver) {
             _targets!.Leavers.Remove(leaver);
         }
     }
@@ -125,7 +130,8 @@ internal sealed partial class WiredStackEngine
 
     private bool HasImmediateLeaveWork(RoomUser leaver) => _schedule.UnorderedItems.Any(entry => entry.Element is
     { Finished: false, DelayMilliseconds: 0 } scheduled && _pending.Contains(scheduled.Chain)
-        && scheduled.Chain.Context.Runtime?.Event is { Kind: WiredEventKind.Leave } leave && ReferenceEquals(leave.Actor, leaver));
+        && scheduled.Chain.Context.Runtime?.Event is { } leave && ReferenceEquals(LeaverOf(leave), leaver))
+        || _dispatches.Any(pending => pending.Signal != null && ReferenceEquals(LeaverOf(pending.Event), leaver));
 
     private bool AdvanceDispatch(PendingDispatch pending)
     {
@@ -133,7 +139,7 @@ internal sealed partial class WiredStackEngine
         _dispatchAdvanceDepth++;
 
         var finished = true;
-        var readable = LeaverReadable(pending.Event, pending.Call == null && pending.Signal == null, !pending.Initialized);
+        var readable = LeaverReadable(pending.Event, pending.Call == null, !pending.Initialized && pending.Signal == null);
 
         try {
             finished = AdvanceDispatchCore(pending);

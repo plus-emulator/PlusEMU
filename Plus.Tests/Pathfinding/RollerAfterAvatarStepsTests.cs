@@ -304,7 +304,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void ASpeedZeroChainFiresWalksOffOnMiddleRollersAndWalksOnAtTheEnd()
+    public void ASpeedZeroChainFiresNothingBetweenPulsesAndWalksOffAndOnAtTheEnd()
     {
         ExecutorRoller(10, 0, 1);
         ExecutorRoller(11, 1, 1);
@@ -315,7 +315,7 @@ public partial class PlacedFurniRoomTests
         EnableExecutorRollers();
         RollerRunTicks(ref tick, 5);
 
-        Assert.Equal(new[] { (1, WiredBoxType.TriggerWalkOffFurni, 10u), (2, WiredBoxType.TriggerWalkOffFurni, 11u), (3, WiredBoxType.TriggerWalkOnFurni, 12u) },
-            events.ToArray());
+        Assert.Equal(new[] { (3, WiredBoxType.TriggerWalkOnFurni, 12u), (3, WiredBoxType.TriggerWalkOffFurni, 11u) },
+            events.OrderBy(e => e.Kind).ToArray());
     }
 }

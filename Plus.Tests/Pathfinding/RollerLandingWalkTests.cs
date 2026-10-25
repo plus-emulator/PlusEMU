@@ -12,7 +12,7 @@ namespace Plus.Tests;
 public partial class PlacedFurniRoomTests
 {
     [Fact]
-    public void RollerSlideFiresWalksOnOneTickAfterTheSlide()
+    public void RollerSlideFiresWalksOffAndWalksOnInTheLandingTick()
     {
         ExecutorRoller(10, 0, 1);
         ExecutorFloor(11, 1, 1);
@@ -23,12 +23,44 @@ public partial class PlacedFurniRoomTests
         var slides = RollerRunTicks(ref tick, 4);
 
         Assert.Equal(new[] { 1 }, slides);
-        Assert.Equal(new[] { (2, WiredBoxType.TriggerWalkOnFurni, 11u) },
-            events.Where(e => e.Kind == WiredBoxType.TriggerWalkOnFurni && e.Item == 11).ToArray());
+        Assert.Equal(new[] { (2, WiredBoxType.TriggerWalkOffFurni, 10u), (2, WiredBoxType.TriggerWalkOnFurni, 11u) },
+            events.OrderBy(e => e.Item).ToArray());
     }
 
     [Fact]
-    public void ChainedRollersFireWalksOnOncePerLandingAndWalksOffOncePerSlide()
+    public void RollerSlideTickFiresNoWalkTrigger()
+    {
+        ExecutorRoller(10, 0, 1);
+        ExecutorFloor(11, 1, 1);
+        ExecutorRollerActor(0, 1, 0.5);
+        var tick = 0;
+        var events = RollerWalkEvents(() => tick);
+        EnableExecutorRollers();
+        RollerRunTicks(ref tick, 1);
+
+        Assert.Empty(events);
+    }
+
+    [Fact]
+    public void RollerLandingStillFiresWalksOffWhenTheUserWasMovedDuringTheWait()
+    {
+        ExecutorRoller(10, 0, 1);
+        ExecutorFloor(11, 1, 1);
+        var actor = ExecutorRollerActor(0, 1, 0.5);
+        var tick = 0;
+        var events = RollerWalkEvents(() => tick);
+        EnableExecutorRollers();
+        ExecutorTick();
+        _room.GetGameMap().Navigation!.ForcePlace(actor, 1, 1, 0, ForceResolution.ExactZ);
+        tick = 2;
+        ExecutorTick();
+        ExecutorTick();
+
+        Assert.Equal(new[] { (2, WiredBoxType.TriggerWalkOffFurni, 10u) }, events.ToArray());
+    }
+
+    [Fact]
+    public void ChainedRollersFireWalksOffAndWalksOnOncePerLanding()
     {
         ExecutorRoller(10, 0, 1);
         ExecutorRoller(11, 1, 1);
@@ -44,7 +76,7 @@ public partial class PlacedFurniRoomTests
         var first = slides[0];
         var second = slides[1];
         Assert.True(second > first + 1);
-        Assert.Equal(new[] { (first, WiredBoxType.TriggerWalkOffFurni, 10u), (second, WiredBoxType.TriggerWalkOffFurni, 11u) },
+        Assert.Equal(new[] { (first + 1, WiredBoxType.TriggerWalkOffFurni, 10u), (second + 1, WiredBoxType.TriggerWalkOffFurni, 11u) },
             events.Where(e => e.Kind == WiredBoxType.TriggerWalkOffFurni).ToArray());
         Assert.Equal(new[] { (first + 1, WiredBoxType.TriggerWalkOnFurni, 11u), (second + 1, WiredBoxType.TriggerWalkOnFurni, 12u) },
             events.Where(e => e.Kind == WiredBoxType.TriggerWalkOnFurni).ToArray());
@@ -58,19 +90,18 @@ public partial class PlacedFurniRoomTests
         var actor = ExecutorRollerActor(0, 1, 0.5);
         var tick = 0;
         var started = false;
-        var events = RollerWalkEvents(() => tick, (kind, item) =>
+        var events = RollerWalkEvents(() => tick);
+        RollerObserveSlide(() =>
         {
-            if (kind == WiredBoxType.TriggerWalkOffFurni && item == 10 && !started) {
-                started = true;
-                actor.MoveTo(2, 1);
-            }
+            started = true;
+            actor.MoveTo(2, 1);
         });
         EnableExecutorRollers();
         RollerRunTicks(ref tick, 4);
 
         Assert.True(started);
-        Assert.Equal(new[] { (2, WiredBoxType.TriggerWalkOnFurni), (2, WiredBoxType.TriggerWalkOffFurni) },
-            events.Where(e => e.Item == 11).Select(e => (e.Tick, e.Kind)).ToArray());
+        Assert.Equal(new[] { (2, WiredBoxType.TriggerWalkOffFurni, 10u), (2, WiredBoxType.TriggerWalkOnFurni, 11u), (2, WiredBoxType.TriggerWalkOffFurni, 11u) },
+            events.OrderBy(e => e.Item).ThenBy(e => e.Kind).ToArray());
     }
 
     [Fact]
@@ -124,6 +155,15 @@ public partial class PlacedFurniRoomTests
         Assert.Empty(events);
         Assert.Equal((0, 1), (actor.X, actor.Y));
     }
+
+    // Runs while the roller commit sends its slide packet.
+    private void RollerObserveSlide(Action observe)
+        => _client.BeforeCapture = header =>
+        {
+            if (header == ServerPacketHeader.SlideObjectBundleComposer) {
+                observe();
+            }
+        };
 
     private List<int> RollerRunTicks(ref int tick, int count)
     {

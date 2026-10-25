@@ -177,18 +177,12 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
         context.Claims.TryClaim(move.Actor!, LandingSlot(move.Destination, move.CarriedZ), ClaimKind.Roller, TargetOccupancy.None);
     }
 
-    // Walks Off fires with the slide; Walks On waits for the landing update one room tick later.
+    // Nothing fires with the slide: Walks Off and Walks On both wait for the landing update one room tick later.
     public void Land(RollerMove move)
     {
         var actor = move.Actor!;
-        context.TransportLandings.TriggerWalkOff(actor, move.Roller);
-
-        if (StillAt(actor, move.Destination)) {
-            actor.PendingLanding = new(move.Destination, actor.Movement.LocationRevision);
-        }
+        actor.PendingLanding = new(move.Destination, actor.Movement.LocationRevision, move.Roller);
     }
-
-    private static bool StillAt(RoomUser actor, Point destination) => actor.X == destination.X && actor.Y == destination.Y;
 
     // Actor destinations first, then every cargo's whole destination footprint. With K=1 an arriving
     // actor's claim already covers its tile; layered rooms reserve that tile for the cargo as well.

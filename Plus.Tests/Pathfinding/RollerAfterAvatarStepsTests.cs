@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Plus.Communication.Packets.Outgoing;
+using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.AI;
 using Xunit;
@@ -53,11 +55,18 @@ public partial class PlacedFurniRoomTests
         return -1;
     }
 
-    private RoomUser StepOrderViewerOffTheRoller()
-    {
-        var viewer = ExecutorActor(3, 3);
+    private RoomUser StepOrderViewerOffTheRoller() => ExecutorActor(3, 3);
 
-        return viewer;
+    private Item StepOrderSolid(uint id, int x, int y)
+    {
+        var item = Furni(id, InteractionType.None, WiredBoxType.None);
+        item.Definition.Walkable = false;
+        item.Definition.Stackable = false;
+        item.Definition.Height = 1;
+        item.Definition.Width = item.Definition.Length = 1;
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, item, x, y, 0, true, false, false));
+
+        return item;
     }
 
     [Fact]
@@ -207,5 +216,90 @@ public partial class PlacedFurniRoomTests
 
         ExecutorTick();
         Assert.True(ExecutorHasUpdate(user));
+    }
+
+    [Fact]
+    public void ACancelledStepStillLandsWhenCargoUsedItsTile()
+    {
+        ExecutorRoller(10, 0, 1);
+        var cargo = ExecutorFloor(12, 0, 1, z: 0.5, height: 0.1);
+        StepOrderViewerOffTheRoller();
+        var bot = StepOrderBot(1, 1);
+        EnableExecutorRollers();
+        ExecutorTick();
+        ExecutorTick();
+        bot.MoveTo(3, 1);
+        ExecutorTick();
+        Assert.Equal((1, 1), (cargo.GetX, cargo.GetY));
+
+        bot.ClearMovement(true);
+        ExecutorTick();
+        ExecutorTick();
+
+        Assert.Equal((2, 1), (bot.X, bot.Y));
+        Assert.Equal((1, 1), (cargo.GetX, cargo.GetY));
+        Assert.False(bot.IsWalking);
+    }
+
+    [Fact]
+    public void ACancelledStepStillLandsWhenARiderUsedItsTile()
+    {
+        ExecutorRoller(10, 0, 1);
+        var rider = ExecutorRollerActor(0, 1, 0.5);
+        var bot = StepOrderBot(1, 1);
+        EnableExecutorRollers();
+        ExecutorTick();
+        ExecutorTick();
+        bot.MoveTo(3, 1);
+        ExecutorTick();
+        Assert.Equal((1, 1), (rider.X, rider.Y));
+
+        bot.ClearMovement(true);
+        ExecutorTick();
+        ExecutorTick();
+
+        Assert.Equal((2, 1), (bot.X, bot.Y));
+        Assert.Equal((1, 1), (rider.X, rider.Y));
+    }
+
+    [Fact]
+    public void ASolidFurniOnTheStepTargetDoesNotKeepTheUnitUnderARider()
+    {
+        ExecutorRoller(10, 0, 1);
+        var rider = ExecutorRollerActor(0, 1, 0.5);
+        var bot = StepOrderBot(1, 1);
+        EnableExecutorRollers();
+        ExecutorTick();
+        ExecutorTick();
+        bot.MoveTo(2, 1);
+        ExecutorTick();
+        Assert.Equal((1, 1), (rider.X, rider.Y));
+
+        StepOrderSolid(30, 2, 1);
+        ExecutorTick();
+        ExecutorTick();
+
+        Assert.NotEqual((rider.X, rider.Y), (bot.X, bot.Y));
+    }
+
+    [Fact]
+    public void ASolidFurniOnTheStepTargetDoesNotKeepTheUnitUnderCargo()
+    {
+        ExecutorRoller(10, 0, 1);
+        var cargo = ExecutorFloor(12, 0, 1, z: 0.5, height: 0.1);
+        StepOrderViewerOffTheRoller();
+        var bot = StepOrderBot(1, 1);
+        EnableExecutorRollers();
+        ExecutorTick();
+        ExecutorTick();
+        bot.MoveTo(2, 1);
+        ExecutorTick();
+        Assert.Equal((1, 1), (cargo.GetX, cargo.GetY));
+
+        StepOrderSolid(30, 2, 1);
+        ExecutorTick();
+        ExecutorTick();
+
+        Assert.NotEqual((cargo.GetX, cargo.GetY), (bot.X, bot.Y));
     }
 }

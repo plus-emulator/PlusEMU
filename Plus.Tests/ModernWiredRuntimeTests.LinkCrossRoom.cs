@@ -3,6 +3,7 @@ using System.Reflection;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired.Links;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.Instance;
 using Xunit;
 
 namespace Plus.Tests;
@@ -28,12 +29,33 @@ public partial class ModernWiredRuntimeTests
         return (f, sender, receiver);
     }
 
-    private static void LoadRooms(params Room[] loaded)
+    private static void LoadRooms(params TeleportFixture[] fixtures)
     {
+        var loaded = fixtures.Select(fixture => fixture.Room).ToArray();
         var manager = DispatchProxyFor(loaded);
 
-        foreach (var room in loaded) {
-            typeof(Room).GetField("_rooms", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, manager);
+        foreach (var fixture in fixtures) {
+            typeof(Room).GetField("_rooms", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(fixture.Room, manager);
+            fixture.Isolation = new WakeIsolation(fixture.Room.GetWired());
+        }
+    }
+
+    /// <summary>Gives a room its own wake threads and clock, so wake-ups armed by other tests cannot delay its passes.</summary>
+    private sealed class WakeIsolation : IDisposable
+    {
+        private readonly WiredWakeWorkers _workers = new(2);
+        private readonly WiredWakeClock _clock = new();
+
+        public WakeIsolation(WiredComponent wired)
+        {
+            wired.Workers = _workers;
+            wired.WakeAfter = _clock.After;
+        }
+
+        public void Dispose()
+        {
+            _clock.Dispose();
+            _workers.Dispose();
         }
     }
 
@@ -75,7 +97,7 @@ public partial class ModernWiredRuntimeTests
         using var _a = a;
         var (b, _, _) = CrossRoom(2, 60, store, "unused");
         using var _b = b;
-        LoadRooms(a.Room, b.Room);
+        LoadRooms(a, b);
 
         a.Fire(land: false);
 
@@ -91,7 +113,7 @@ public partial class ModernWiredRuntimeTests
         using var _a = a;
         var (b, _, _) = CrossRoom(2, 60, store, "unused");
         using var _b = b;
-        LoadRooms(a.Room);
+        LoadRooms(a);
 
         a.Fire(land: false);
         b.Advance(100);
@@ -107,7 +129,7 @@ public partial class ModernWiredRuntimeTests
         using var _a = a;
         var (b, _, _) = CrossRoom(2, 60, store, "fromB");
         using var _b = b;
-        LoadRooms(a.Room, b.Room);
+        LoadRooms(a, b);
 
         for (var round = 0; round < 20; round++) {
             using var start = new Barrier(2);

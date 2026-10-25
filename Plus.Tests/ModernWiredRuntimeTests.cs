@@ -3164,8 +3164,10 @@ public partial class ModernWiredRuntimeTests
             Items[item.Id] = item;
             Assert.True(Engine.Add(addon));
         }
+        public IDisposable? Isolation;
         public void Dispose()
         {
+            Isolation?.Dispose();
             Engine.Clear();
             typeof(PlusEnvironment).GetField("_game", BindingFlags.Static | BindingFlags.NonPublic)!.SetValue(null, _originalGame);
         }

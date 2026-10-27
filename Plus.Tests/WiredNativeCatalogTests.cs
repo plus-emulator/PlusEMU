@@ -460,6 +460,34 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.True(Assert.Single(WiredNativeCatalogProjection.Builtins, row => row.Name == name && row.Target == target).CanCreateAndDelete);
     }
 
+    [Theory]
+    [InlineData("~chest.available_amount")]
+    [InlineData("~chest.capacity")]
+    [InlineData("~chest.is_auto_lock")]
+    [InlineData("~chest.is_donatable")]
+    [InlineData("~chest.is_open")]
+    [InlineData("~chest.locked")]
+    [InlineData("~clock.is_game_aware")]
+    [InlineData("~clock.pulse_count")]
+    [InlineData("~clock.state")]
+    [InlineData("~recolorable_furni.color.rgb")]
+    [InlineData("~recolorable_furni.color.rgb.red")]
+    [InlineData("~recolorable_furni.color.rgb.green")]
+    [InlineData("~recolorable_furni.color.rgb.blue")]
+    public void FurniBuiltinsOfSpecialFurnitureAreListedInvisible(string name)
+    {
+        Assert.True(Assert.Single(WiredNativeCatalogProjection.Builtins, row => row.Name == name && row.Target == 0).IsInvisible);
+    }
+
+    [Fact]
+    public void HabbiconIsListedWithAValueAndTimesAndCanMoveFreelyWithoutAValue()
+    {
+        var habbicon = Assert.Single(WiredNativeCatalogProjection.Builtins, row => row.Name == "@habbicon" && row.Target == 1);
+        Assert.Equal(new[] { true, true, true, true, true }, new[] { habbicon.CanCreateAndDelete, habbicon.HasValue, habbicon.CanWriteValue,
+            habbicon.CanReadCreationTime, habbicon.CanReadLastUpdateTime });
+        Assert.False(Assert.Single(WiredNativeCatalogProjection.Builtins, row => row.Name == "@can_move_freely" && row.Target == 0).HasValue);
+    }
+
     // Every level-up part is interceptable, current_xp is writable and is_maxed has no value.
     [Fact]
     public void LevelPartsAreInterceptableWithAWritableXpAndAPresenceMaxed()
@@ -689,7 +717,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
                 _ => WiredVariableTarget.Context
             }, variable.Name));
             Assert.False(variable.RequiresExecutionContext);
-            Assert.False(variable.CanReadCreationTime);
+            Assert.Equal(variable.Name == "@habbicon", variable.CanReadCreationTime);
         });
         var direction = Assert.Single(catalog.Variables, variable => variable.Id == "-232");
         Assert.Equal(("@direction", 1, true, true), (direction.Name, direction.Target, direction.HasValue, direction.CanWriteValue));

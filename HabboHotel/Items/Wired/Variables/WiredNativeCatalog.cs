@@ -152,7 +152,7 @@ internal static class WiredNativeCatalogProjection
     /// An empty connector is still a connector: the client then renders @position as "x: 8, y: 8".
     /// </summary>
     private sealed record BuiltinListing(int Type, bool AlwaysAvailable, bool IsInvisible,
-        ImmutableArray<KeyValuePair<int, string>>? Connector, string? TextConnectorFallback);
+        ImmutableArray<KeyValuePair<int, string>>? Connector, string? TextConnectorFallback, System.Text.Json.JsonElement? Flags = null);
 
     private static WiredNativeVariable Builtin((string Id, WiredVariableTarget Target, string Token) entry)
     {
@@ -166,11 +166,13 @@ internal static class WiredNativeCatalogProjection
         }
 
         // The behaviour flags stay ours: they gate what this server can actually read, write or create.
+        bool Flag(string key, bool computed) => listing.Flags is { } flags && flags.TryGetProperty(key, out var value) ? value.GetBoolean() : computed;
+
         return new(entry.Id, listing.Type, name, 999, target, listing.AlwaysAvailable,
-            RoomWiredBuiltinVariables.SupportsPresenceMutation(reference), hasValue,
-            hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference),
+            Flag("canCreateAndDelete", RoomWiredBuiltinVariables.SupportsPresenceMutation(reference)), Flag("hasValue", hasValue),
+            Flag("canWriteValue", hasValue && RoomWiredBuiltinVariables.SupportsNumericWrite(reference)),
             Array.IndexOf(Modern.Actions.WiredProjectileFlights.Intercepted, RoomWiredBuiltinVariables.Normalize(reference.Token)) >= 0,
-            listing.IsInvisible, false, false,
+            listing.IsInvisible, Flag("canReadCreationTime", false), Flag("canReadLastUpdateTime", false),
             listing.Connector)
         { TextConnectorFallback = listing.TextConnectorFallback };
     }
@@ -189,7 +191,8 @@ internal static class WiredNativeCatalogProjection
             var fallback = row.TryGetProperty("textConnectorFallback", out var text) ? text.GetString() : null;
 
             listings.Add(row.GetProperty("id").GetString()!, new(row.GetProperty("type").GetInt32(),
-                row.GetProperty("alwaysAvailable").GetBoolean(), row.GetProperty("isInvisible").GetBoolean(), connector, fallback));
+                row.GetProperty("alwaysAvailable").GetBoolean(), row.GetProperty("isInvisible").GetBoolean(), connector, fallback,
+                row.TryGetProperty("flags", out var flags) ? flags.Clone() : null));
         }
 
         return listings;

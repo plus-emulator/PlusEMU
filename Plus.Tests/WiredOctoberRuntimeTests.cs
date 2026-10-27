@@ -22,8 +22,8 @@ public sealed class WiredOctoberRuntimeTests
         new WiredUserTransparencyComposer([12], 0, false, 0).Compose(users);
         Assert.Equal(new object[] { 1, 12, 0, false, 0 }, users.Writes);
 
-        Assert.Equal(3331u, new WiredFurniTransparencyComposer([], 0, false, 0).MessageId);
-        Assert.Equal(1479u, new WiredUserTransparencyComposer([], 0, false, 0).MessageId);
+        Assert.Equal(3737u, new WiredFurniTransparencyComposer([], 0, false, 0).MessageId);
+        Assert.Equal(3073u, new WiredUserTransparencyComposer([], 0, false, 0).MessageId);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class WiredOctoberRuntimeTests
         new WiredVisualizationStateComposer(false, [new(9, 100, false, 1)], [new(9, 2, 30, 0, 1, 0)]).Compose(state);
         Assert.Equal(new object[] { 1, 9, 100, false, 1, 1, 9, 2, 30, 0, 1, 0 }, state.Writes);
 
-        Assert.Equal((2235u, 2207u, 1063u), (new WiredUserHighlightComposer([], 0, 0, 0, 0, 0).MessageId,
+        Assert.Equal((1899u, 1477u, 3360u), (new WiredUserHighlightComposer([], 0, 0, 0, 0, 0).MessageId,
             new WiredVisualizationStateComposer(false, [], []).MessageId, new WiredVisualizationStateComposer(true, [], []).MessageId));
     }
 

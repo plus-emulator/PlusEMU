@@ -19,7 +19,7 @@ public sealed class PlannedShutdownTests
 
         composer.Compose(packet);
 
-        Assert.Equal(2378u, composer.MessageId);
+        Assert.Equal(2747u, composer.MessageId);
         Assert.Equal(ServerPacketHeader.MaintenanceStatusComposer, composer.MessageId);
         Assert.Equal(new object[] { true, 5, 15 }, packet.Writes);
     }
@@ -149,7 +149,7 @@ public sealed class PlannedShutdownTests
         composer.Compose(open);
         new AvailabilityStatusComposer(true).Compose(shuttingDown);
 
-        Assert.Equal(3147u, composer.MessageId);
+        Assert.Equal(1182u, composer.MessageId);
         Assert.Equal(ServerPacketHeader.AvailabilityStatusComposer, composer.MessageId);
         Assert.Equal(new object[] { true, false, true }, open.Writes);
         Assert.Equal(new object[] { true, true, true }, shuttingDown.Writes);

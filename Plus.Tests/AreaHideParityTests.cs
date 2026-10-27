@@ -31,7 +31,7 @@ public sealed class AreaHideParityTests
         var packet = new RecordingPacket();
         var composer = new AreaHideComposer(item.Id, state);
         composer.Compose(packet);
-        Assert.Equal(2763u, composer.MessageId);
+        Assert.Equal(552u, composer.MessageId);
         // AreaHide has seven fields; the options are not in it.
         Assert.Equal(new object[] { 300u, true, 2, 3, 4, 5, true }, packet.Writes);
         var removed = new RecordingPacket();

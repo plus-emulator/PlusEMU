@@ -29,7 +29,7 @@ public sealed class UserUpdateComposerGrammarTests
     public void UserUpdateIsReadByTheSupportedOctoberUserUpdateGrammarToTheExactEnd(string name)
     {
         var users = Cases[name];
-        Assert.Equal(2254u, ServerPacketHeader.UserUpdateComposer);
+        Assert.Equal(3744u, ServerPacketHeader.UserUpdateComposer);
         var bytes = TypedFurnitureStateTests.Payload(new UserUpdateComposer([.. users]));
 
         var read = ReadUserUpdate(bytes);

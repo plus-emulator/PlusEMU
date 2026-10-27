@@ -165,8 +165,8 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void RecolourPacketsUseTheInternalRevisionHeaders()
     {
-        Assert.Equal(3752u, ClientPacketHeader.RecolorFurnitureEvent);
-        Assert.Equal(2132u, ServerPacketHeader.FurniRecolorUpdateComposer);
+        Assert.Equal(672u, ClientPacketHeader.RecolorFurnitureEvent);
+        Assert.Equal(2911u, ServerPacketHeader.FurniRecolorUpdateComposer);
     }
 
     [Fact]

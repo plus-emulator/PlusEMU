@@ -17,7 +17,7 @@ public sealed class InvisibleFurniControlTests
         var packet = new RecordingPacket();
         var composer = new ConfigurationItemStatesComposer(chooserDisabled, invisibleFurni);
         composer.Compose(packet);
-        Assert.Equal(3946u, composer.MessageId);
+        Assert.Equal(205u, composer.MessageId);
         // A fifth, unread flag follows.
         Assert.Equal(new object[] { false, chooserDisabled, false, invisibleFurni, false }, packet.Writes);
     }

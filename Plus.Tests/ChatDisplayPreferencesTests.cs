@@ -294,7 +294,8 @@ public sealed class ChatDisplayPreferencesTests
             var count = sent.Count;
             await manager.TryExecutePacket(session, 2359, Frame(false, 2, 9, -1));
             await manager.TryExecutePacket(session, 1917, Frame(7));
-            await manager.TryExecutePacket(session, 3519, Frame(0, 9));
+            await manager.TryExecutePacket(session, 3519, Frame(0, 5));
+            await manager.TryExecutePacket(session, 3519, Frame(0, -1));
             await manager.TryExecutePacket(session, 2359, Frame(false, 1));
             await manager.TryExecutePacket(session, 1917, Frame());
 
@@ -304,6 +305,9 @@ public sealed class ChatDisplayPreferencesTests
 
             await manager.TryExecutePacket(session, 3519, Frame(0));
             Assert.Equal((3, 1, 2, 0, 2), Row(connection, 7));
+
+            await manager.TryExecutePacket(session, 3519, Frame(0, 4));
+            Assert.Equal((4, 1, 2, 0, 2), Row(connection, 7));
         });
     }
 

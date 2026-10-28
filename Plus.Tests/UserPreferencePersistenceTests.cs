@@ -325,6 +325,7 @@ public sealed class UserPreferencePersistenceTests
                 connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/59_UserCurrencies.sql")));
                 connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/122_AccountWiredPreferences.sql")));
                 connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/125_AccountChatDisplayPreferences.sql")));
+                connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/126_AccountLevel.sql")));
             }
 
             var loader = new UserDataFactory(null!, database, [], null!, null!, null!, null!, TimeProvider.System, TestRoomAchievements.Unused, TestGameClientManager.Empty, TestRoomManager.Unused);

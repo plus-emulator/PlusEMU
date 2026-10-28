@@ -1,5 +1,6 @@
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Runtime;
+using Plus.HabboHotel.Rooms;
 using Xunit;
 
 namespace Plus.Tests;
@@ -60,33 +61,48 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("v7 [$(tv)]", Shown(s, "v7 [$(tv)]"));
     }
 
-    // Users By Type: Bot 4.
-    private static string Bots() => Row(2, "[4]", false, false);
-
     [Fact]
-    public void TextOutputVariableLeavesOutABot()
+    public void TextOutputVariablePrintsABotLikeAnyOtherUser()
     {
         using var s = new SelectorStack();
         s.Give(s.F.User, 7);
         s.Give(s.Bob, 8);
         Bot(s.F.Room, 20);
-        s.Selector("wf_slc_users_bytype", Habbos());
-        s.Selector("wf_slc_users_bytype", Bots());
+        s.Selector("wf_slc_users_area", UsersArea(0, 0, 9, 3));
         TextAddon(s, 400, "wf_xtra_text_output_variable", [1, 1, 0], "tv\t/", ["user:11"], users: [200]);
 
-        Assert.Equal(["7", "8"], Shown(s, "$(tv)").Split('/').Order());
+        Assert.Equal(["7", "8", "null"], Shown(s, "$(tv)").Split('/').Order());
     }
 
     [Fact]
-    public void TextOutputVariableLeavesThePlaceholderWhenOnlyABotIsSelected()
+    public void TextOutputVariablePrintsNullForASelectedBotWithoutTheVariable()
     {
         using var s = new SelectorStack();
-        Bot(s.F.Room, 20);
-        s.Selector("wf_slc_users_bytype", Bots());
+        SelectedBot(s);
         TextAddon(s, 400, "wf_xtra_text_output_variable", [0, 1, 0], "tv", ["user:11"], users: [200]);
         TextAddon(s, 401, "wf_xtra_text_output_variable", [1, 1, 0], "all\t,", ["user:11"], users: [200]);
 
-        Assert.Equal("v5 [$(tv)] [$(all)]", Shown(s, "v5 [$(tv)] [$(all)]"));
+        Assert.Equal("v5 [null] [null]", Shown(s, "v5 [$(tv)] [$(all)]"));
+    }
+
+    [Fact]
+    public void TextOutputVariablePrintsTheValueOfASelectedBot()
+    {
+        using var s = new SelectorStack();
+        s.Give(SelectedBot(s), 8);
+        TextAddon(s, 400, "wf_xtra_text_output_variable", [0, 1, 0], "tv", ["user:11"], users: [200]);
+        TextAddon(s, 401, "wf_xtra_text_output_variable", [1, 1, 0], "all\t,", ["user:11"], users: [200]);
+
+        Assert.Equal("v5 [8] [8]", Shown(s, "v5 [$(tv)] [$(all)]"));
+    }
+
+    private static RoomUser SelectedBot(SelectorStack s)
+    {
+        var bot = Bot(s.F.Room, 20);
+        bot.BotData.Name = "Robbie";
+        s.Selector("wf_slc_users_byname", UsersByName("Robbie"));
+
+        return bot;
     }
 
     // The triggering user without the variable shows "null".

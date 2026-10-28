@@ -58,7 +58,6 @@ public sealed partial class FurnitureStateCountsTests
     [GeneratedRegex(@"^\(\d+,'((?:[^'\\]|\\.)*)','(?:[^'\\]|\\.)*','\w',-?\d+,-?\d+,[^,]+,\d,\d,\d,-?\d+,\d,\d,\d,\d,\d,'(?:[^'\\]|\\.)*',-?\d+,(-?\d+),'(?:[^'\\]|\\.)*','(?:[^'\\]|\\.)*',-?\d+,-?\d+,\d,\d,(\d),")]
     private static partial Regex FurnitureRowParts();
 
-
     [RoomComponentDatabaseFact]
     public void AFreshInstallAndAMigratedHotelHoldTheSameFixedRows()
     {

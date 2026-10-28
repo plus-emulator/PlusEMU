@@ -44,6 +44,28 @@ public partial class PlacedFurniRoomTests
         FallbackAssertStopped(actor, 0, 1);
     }
 
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(3, 3)]
+    public async Task AStandingAvatarGetsNoStatusOnAClickWithNoRoute(int x, int y)
+    {
+        FallbackModel(UnreachableGoalRoom);
+        Add(30, 3, 3, height: 1, stackable: false);
+        Add(31, 1, 1, height: 1, stackable: false);
+        var actor = FallbackActor(0, 1);
+        FallbackRun(actor, 3);
+        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(_client, ClientPacket(x, y));
+        var updates = new List<bool>();
+
+        for (var tick = 0; tick < 4; tick++) {
+            ExecutorTick();
+            updates.Add(ExecutorHasUpdate(actor));
+        }
+
+        Assert.Equal([false, false, false, false], updates);
+        FallbackAssertStopped(actor, 0, 1);
+    }
+
     private (RoomUser Actor, MoveAvatarEvent Move) UnreachableGoalWalk()
     {
         FallbackModel(UnreachableGoalRoom);

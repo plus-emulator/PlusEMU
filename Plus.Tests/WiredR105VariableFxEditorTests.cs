@@ -317,10 +317,9 @@ public sealed class WiredR105VariableFxEditorTests
         Assert.Equal("probe board", sent.Config.Title);
     }
 
-    // The room's board revision counter starts at 1, so the first save of a board shows revision 2 and every later save of any
-    // board adds one.
+    // The room's board revision counter starts at 0, so the first save of a board shows revision 1 and every later save of any board adds one.
     [Fact]
-    public void TheQueryRevisionOfABoardStartsAtTwoAndGrowsWithEverySave()
+    public void TheQueryRevisionOfABoardStartsAtOneAndGrowsWithEverySave()
     {
         using var world = new G1World();
         Assert.True(WiredBoxRegistry.TryGet(Board, out var descriptor));
@@ -337,6 +336,6 @@ public sealed class WiredR105VariableFxEditorTests
             revisions.Add(Assert.Single(world.Wired.LeaderboardDescriptors()).QueryRevision);
         }
 
-        Assert.Equal([2, 3, 4], revisions);
+        Assert.Equal([1, 2, 3], revisions);
     }
 }

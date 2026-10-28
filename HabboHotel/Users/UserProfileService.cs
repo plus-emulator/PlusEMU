@@ -324,11 +324,56 @@ public sealed class UserProfileService(
         return Task.CompletedTask;
     }
 
-    public Task SetChatDisplayPreferences(GameClient session, int chatMode, int bubbleWidth, int scrollSpeed) => throw new NotImplementedException();
+    public Task SetChatDisplayPreferences(GameClient session, int chatMode, int bubbleWidth, int scrollSpeed)
+    {
+        if (!InRange(chatMode, 1) || !InRange(bubbleWidth, 2) || !InRange(scrollSpeed, 2)) {
+            return Task.CompletedTask;
+        }
 
-    public Task SetChatSize(GameClient session, int chatSize) => throw new NotImplementedException();
+        var habbo = session.GetHabbo();
+        UpdateSettings(habbo, "chat_mode = @chatMode, chat_bubble_width = @bubbleWidth, chat_scroll_speed = @scrollSpeed", new { chatMode, bubbleWidth, scrollSpeed, userId = habbo.Id });
+        habbo.ChatDisplay = habbo.ChatDisplay with { ChatMode = chatMode, BubbleWidth = bubbleWidth, ScrollSpeed = scrollSpeed };
 
-    public Task SetOnlineIndicatorPreference(GameClient session, int preference) => throw new NotImplementedException();
+        return Task.CompletedTask;
+    }
+
+    public Task SetChatSize(GameClient session, int chatSize)
+    {
+        if (!InRange(chatSize, 4)) {
+            return Task.CompletedTask;
+        }
+
+        var habbo = session.GetHabbo();
+        UpdateSettings(habbo, "chat_font_size = @chatSize", new { chatSize, userId = habbo.Id });
+        habbo.ChatDisplay = habbo.ChatDisplay with { ChatSize = chatSize };
+
+        return Task.CompletedTask;
+    }
+
+    public Task SetOnlineIndicatorPreference(GameClient session, int preference)
+    {
+        if (!InRange(preference, 2)) {
+            return Task.CompletedTask;
+        }
+
+        var habbo = session.GetHabbo();
+        UpdateSettings(habbo, "friend_online_indicator = @preference", new { preference, userId = habbo.Id });
+        habbo.ChatDisplay = habbo.ChatDisplay with { OnlineIndicator = preference };
+
+        return Task.CompletedTask;
+    }
+
+    private static bool InRange(int value, int max) => value >= 0 && value <= max;
+
+    private void UpdateSettings(Habbo habbo, string assignments, object values)
+    {
+        using var connection = database.Connection();
+        var updated = connection.Execute($"UPDATE users_settings SET {assignments} WHERE user_id = @userId LIMIT 1", values);
+
+        if (updated != 1) {
+            throw new DBConcurrencyException($"Settings for user {habbo.Id} no longer exist.");
+        }
+    }
 
     public void SetFriendBarState(GameClient session, int state)
     {

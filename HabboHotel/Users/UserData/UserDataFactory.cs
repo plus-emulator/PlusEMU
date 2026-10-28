@@ -92,7 +92,7 @@ public class UserDataFactory : IUserDataFactory
     {
         using var connection = _database.Connection();
         var users = await connection.QueryAsync<Habbo, StoredSettings, Habbo>(
-            "SELECT u.`id`, u.`username`, u.`motto`, u.`look`, u.`gender`, u.`last_online` AS LastOnlineAt, u.`credits`, us.`home_room`, us.`block_newfriends` as AllowFriendRequests, u.`vip`, u.`account_created` AS AccountCreatedAt, us.`chat_preference`, us.`focus_preference`, us.`pets_muted` as AllowPetSpeech, us.`bots_muted` as AllowBotSpeech, u.`last_change` as LastNameChangedAt, us.`ignore_invites` as AllowMessengerInvites, u.`time_muted`, us.`allow_gifts`, us.`friend_bar_state`, us.`disable_forced_effects`, us.`allow_mimic`, u.`bubble_id` as CustomBubbleId, s.`AchievementScore` as AchievementPoints, s.`groupid` as FavouriteGroupId, i.`trading_locked` AS TradingLockExpiresAt, us.`volume` AS Volume, us.`wired_menu_button` AS WiredMenuButton, us.`wired_inspect_button` AS WiredInspectButton, us.`wired_play_test` AS WiredPlayTest, us.`wired_whisper_disabled` AS WiredWhisperDisabled, us.`wired_show_all_notifications` AS WiredShowAllNotifications, us.`wired_ui_style` AS WiredUiStyle " +
+            "SELECT u.`id`, u.`username`, u.`motto`, u.`look`, u.`gender`, u.`last_online` AS LastOnlineAt, u.`credits`, us.`home_room`, us.`block_newfriends` as AllowFriendRequests, u.`vip`, u.`account_created` AS AccountCreatedAt, us.`chat_preference`, us.`focus_preference`, us.`pets_muted` as AllowPetSpeech, us.`bots_muted` as AllowBotSpeech, u.`last_change` as LastNameChangedAt, us.`ignore_invites` as AllowMessengerInvites, u.`time_muted`, us.`allow_gifts`, us.`friend_bar_state`, us.`disable_forced_effects`, us.`allow_mimic`, u.`bubble_id` as CustomBubbleId, s.`AchievementScore` as AchievementPoints, s.`groupid` as FavouriteGroupId, i.`trading_locked` AS TradingLockExpiresAt, us.`volume` AS Volume, us.`wired_menu_button` AS WiredMenuButton, us.`wired_inspect_button` AS WiredInspectButton, us.`wired_play_test` AS WiredPlayTest, us.`wired_whisper_disabled` AS WiredWhisperDisabled, us.`wired_show_all_notifications` AS WiredShowAllNotifications, us.`wired_ui_style` AS WiredUiStyle, us.`chat_font_size` AS ChatFontSize, us.`chat_mode` AS ChatMode, us.`chat_bubble_width` AS ChatBubbleWidth, us.`chat_scroll_speed` AS ChatScrollSpeed, us.`friend_online_indicator` AS FriendOnlineIndicator " +
             "FROM `users` u " +
             "INNER JOIN `users_settings` us ON us.user_id = u.id " +
             "LEFT JOIN `user_statistics` s ON u.id = s.id " +
@@ -102,6 +102,7 @@ public class UserDataFactory : IUserDataFactory
             {
                 user.ClientVolume = ParseVolumes(settings.Volume);
                 user.WiredPreferences = new WiredAccountPreferences(settings.WiredMenuButton, settings.WiredInspectButton, settings.WiredPlayTest, settings.WiredWhisperDisabled, settings.WiredShowAllNotifications, settings.WiredUiStyle);
+                user.ChatDisplay = new ChatDisplayPreferences(settings.ChatFontSize, settings.ChatMode, settings.ChatBubbleWidth, settings.ChatScrollSpeed, settings.FriendOnlineIndicator);
 
                 return user;
             },
@@ -114,7 +115,7 @@ public class UserDataFactory : IUserDataFactory
         return habbo;
     }
 
-    private sealed record StoredSettings(string Volume, bool WiredMenuButton, bool WiredInspectButton, bool WiredPlayTest, bool WiredWhisperDisabled, bool WiredShowAllNotifications, string WiredUiStyle);
+    private sealed record StoredSettings(string Volume, bool WiredMenuButton, bool WiredInspectButton, bool WiredPlayTest, bool WiredWhisperDisabled, bool WiredShowAllNotifications, string WiredUiStyle, sbyte ChatFontSize, sbyte ChatMode, sbyte ChatBubbleWidth, sbyte ChatScrollSpeed, sbyte FriendOnlineIndicator);
 
     internal static List<int> ParseVolumes(string? volume) =>
         (volume ?? string.Empty).Split(',').Take(3)

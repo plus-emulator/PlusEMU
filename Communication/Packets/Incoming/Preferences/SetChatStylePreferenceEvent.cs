@@ -5,10 +5,15 @@ namespace Plus.Communication.Packets.Incoming.Preferences;
 
 internal class SetChatStylePreferenceEvent(IUserProfileService profiles) : IPacketEvent
 {
-    public Task Parse(GameClient session, IIncomingPacket packet)
+    public async Task Parse(GameClient session, IIncomingPacket packet)
     {
         var value = packet.ReadInt();
+        var chatSize = packet.Buffer.Length >= sizeof(int) ? packet.ReadInt() : (int?)null;
 
-        return profiles.SetChatStylePreference(session, value);
+        await profiles.SetChatStylePreference(session, value);
+
+        if (chatSize is { } size) {
+            await profiles.SetChatSize(session, size);
+        }
     }
 }

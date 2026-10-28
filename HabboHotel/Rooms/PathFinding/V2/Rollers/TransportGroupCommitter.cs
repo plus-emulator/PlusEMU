@@ -1,3 +1,5 @@
+using Plus.Communication.Packets;
+
 namespace Plus.HabboHotel.Rooms.PathFinding;
 
 // Simultaneous group contract (§14.9): validate (including every furniture-setter rejection), reserve,
@@ -28,13 +30,42 @@ internal sealed class TransportGroupCommitter(Room room, RollerTransport transpo
 
         transport.Publish(actors);
         items.SettleFloorMoves(furniture);
-        room.SendPacket(ordered.SelectMany(move => move.HorseSlide == null ? [move.Slide] : new[] { move.HorseSlide, move.Slide }).ToList());
+        room.SendPacket(Slides(ordered));
 
         foreach (var move in actors.Where(StillLanded)) {
             transport.Land(move);
         }
 
         return true;
+    }
+
+    // A rider standing on cargo slides in the same bundle as the cargo it stands on.
+    private static List<IServerPacket> Slides(List<RollerMove> ordered)
+    {
+        var bundles = new Dictionary<RollerMove, RollerBundleComposer>();
+        var carried = new HashSet<RollerMove>();
+
+        foreach (var rider in ordered.Where(move => move.Actor != null && move.Horse == null)) {
+            var cargo = ordered.Where(move => move.Cargo != null && move.Roller == rider.Roller && move.Origin == rider.Origin).ToList();
+
+            if (cargo.Count > 0) {
+                bundles[rider] = new(rider, cargo);
+                carried.UnionWith(cargo);
+            }
+        }
+
+        var packets = new List<IServerPacket>();
+
+        foreach (var move in ordered.Where(move => !carried.Contains(move))) {
+            if (bundles.TryGetValue(move, out var bundle)) {
+                packets.Add(bundle);
+            }
+            else {
+                packets.AddRange(move.HorseSlide == null ? [move.Slide] : [move.HorseSlide, move.Slide]);
+            }
+        }
+
+        return packets;
     }
 
     // An earlier hook in this group may already have moved the actor elsewhere.

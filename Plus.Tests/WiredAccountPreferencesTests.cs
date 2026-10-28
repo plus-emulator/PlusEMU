@@ -21,7 +21,7 @@ public sealed class WiredAccountPreferencesTests
     public void TheWireFrameHasTheShowAllFlagAndTheStyleAfterTheWhisperFlag()
     {
         var packet = new HabbiconTestSupport.RecordingPacket();
-        new SoundSettingsComposer([75, 75, 75], false, false, false, 3, Everything).Compose(packet);
+        new SoundSettingsComposer([75, 75, 75], false, false, false, 3, Everything, ChatDisplayPreferences.Default).Compose(packet);
 
         Assert.Equal(new object[] { 75, 75, 75, false, false, false, 3, 0, true, true, true, 0, true, true, "volter", 0, 0, 1, 1, 0 }, packet.Writes);
     }
@@ -30,7 +30,7 @@ public sealed class WiredAccountPreferencesTests
     public void TheWhisperFlagAndTheShowAllFlagKeepTheirOwnPlaces()
     {
         var packet = new HabbiconTestSupport.RecordingPacket();
-        new SoundSettingsComposer([75, 75, 75], false, false, false, 3, new WiredAccountPreferences(false, true, false, true, false, "volter")).Compose(packet);
+        new SoundSettingsComposer([75, 75, 75], false, false, false, 3, new WiredAccountPreferences(false, true, false, true, false, "volter"), ChatDisplayPreferences.Default).Compose(packet);
 
         Assert.Equal(new object[] { 75, 75, 75, false, false, false, 3, 0, false, true, false, 0, true, false, "volter", 0, 0, 1, 1, 0 }, packet.Writes);
     }
@@ -39,7 +39,7 @@ public sealed class WiredAccountPreferencesTests
     public void ADefaultAccountSendsAllFlagsOffAndAnEmptyStyle()
     {
         var packet = new HabbiconTestSupport.RecordingPacket();
-        new SoundSettingsComposer([75, 75, 75], false, false, false, 3, new Habbo().WiredPreferences).Compose(packet);
+        new SoundSettingsComposer([75, 75, 75], false, false, false, 3, new Habbo().WiredPreferences, ChatDisplayPreferences.Default).Compose(packet);
 
         Assert.Equal(new object[] { 75, 75, 75, false, false, false, 3, 0, false, false, false, 0, false, false, "", 0, 0, 1, 1, 0 }, packet.Writes);
     }
@@ -235,6 +235,9 @@ public sealed class WiredAccountPreferencesTests
         public WiredAccountPreferences? Saved { get; private set; }
         public void ShowUserObject(Plus.HabboHotel.GameClients.GameClient session) { }
         public Task SetChatPreference(Plus.HabboHotel.GameClients.GameClient session, bool enabled) => Task.CompletedTask;
+        public Task SetChatDisplayPreferences(Plus.HabboHotel.GameClients.GameClient session, int chatMode, int bubbleWidth, int scrollSpeed) => Task.CompletedTask;
+        public Task SetChatSize(Plus.HabboHotel.GameClients.GameClient session, int chatSize) => Task.CompletedTask;
+        public Task SetOnlineIndicatorPreference(Plus.HabboHotel.GameClients.GameClient session, int preference) => Task.CompletedTask;
         public Task SetMessengerInvitePreference(Plus.HabboHotel.GameClients.GameClient session, bool enabled) => Task.CompletedTask;
         public Task SetSoundVolumes(Plus.HabboHotel.GameClients.GameClient session, SoundVolumeRequest request) => Task.CompletedTask;
         public void UpdateFigure(Plus.HabboHotel.GameClients.GameClient session, FigureUpdateRequest request) { }

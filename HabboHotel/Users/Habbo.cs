@@ -120,6 +120,8 @@ public class Habbo
 
     public WiredAccountPreferences WiredPreferences { get; set; } = WiredAccountPreferences.Default;
 
+    public ChatDisplayPreferences ChatDisplay { get; set; } = ChatDisplayPreferences.Default;
+
     public bool AllowTradingRequests { get; set; } = true;
 
     public bool AllowUserFollowing { get; set; }

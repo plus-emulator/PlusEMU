@@ -540,8 +540,9 @@ internal sealed partial class WiredStackEngine
         // Control Clock (Start) and Give Score To Team in one stack give the score in the game they start, with the give above or below the clock; a score given with no game running is lost.
         ["wf_act_give_score"] = ["wf_act_control_clock"],
         ["wf_act_give_score_tm"] = ["wf_act_control_clock"],
-        // An Adjust Clock Set runs after the Increase and Decrease of the same firing, whatever the box order. Two Sets still run in a random order.
-        [AdjustClockSet] = ["wf_act_adjust_clock"],
+        // An Adjust Clock Decrease runs after the Increase, and a Set after both, of the same firing, whatever the box order. Two Sets still run in a random order.
+        [AdjustClockDecrease] = ["wf_act_adjust_clock"],
+        [AdjustClockSet] = ["wf_act_adjust_clock", AdjustClockDecrease],
         // A Remove Variable runs after a Give Variable of the same variable, whatever the box order.
         ["wf_act_remove_var"] = ["wf_act_give_var"],
         // A Give Variable or Change Variable Value that reads the state or the rotation of a furni reads the new value when a Toggle State or Move and Rotate of the same firing changes it,
@@ -552,6 +553,7 @@ internal sealed partial class WiredStackEngine
         ["wf_act_user_to_furni"] = ["wf_act_toggle_state", "wf_act_move_rotate"]
     };
 
+    private const string AdjustClockDecrease = "wf_act_adjust_clock:decrease";
     private const string AdjustClockSet = "wf_act_adjust_clock:set";
 
     // Moves each constrained effect just behind the last effect it must follow; all other effects keep their relative order.
@@ -589,7 +591,8 @@ internal sealed partial class WiredStackEngine
     }
 
     private static string PrecedenceKey(IWiredItem box) => box is IWiredConfiguredItem configured
-        ? configured.Descriptor.CanonicalName == "wf_act_adjust_clock" && configured.Configuration.IntParams is [2, ..] ? AdjustClockSet
+        ? configured.Descriptor.CanonicalName == "wf_act_adjust_clock" && configured.Configuration.IntParams is [var operation, ..] && operation is 1 or 2
+            ? operation == 1 ? AdjustClockDecrease : AdjustClockSet
             : configured.Descriptor.CanonicalName
         : WiredBoxRegistry.TryGetByLegacyType(box.Type, out var descriptor) ? descriptor.CanonicalName : "";
 

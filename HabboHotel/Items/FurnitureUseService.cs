@@ -113,8 +113,6 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
         UseWall(room, session, new(itemId, 0));
     }
 
-    // The state writes the interactor makes for this request are the user's, reported once each, in order,
-    // also when the interactor then fails: its exception still propagates.
     // A use that waited for the user to walk up to the furni: the same writes and state-change trigger as a use from next to it.
     internal static void UseApproached(Room room, GameClient session, Item item)
     {
@@ -122,6 +120,8 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
         room.GetWired().TriggerEvent(WiredBoxType.TriggerStateChanges, session.GetHabbo(), item);
     }
 
+    // The state writes the interactor makes for this request are the user's, reported once each, in order,
+    // also when the interactor then fails: its exception still propagates.
     private static void Trigger(Room room, GameClient session, Item item, int request, bool hasRights)
     {
         var actor = FurnitureStateEvents.Actor(room, session);

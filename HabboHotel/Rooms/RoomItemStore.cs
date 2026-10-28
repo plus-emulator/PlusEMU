@@ -15,6 +15,7 @@ public interface IRoomItemStore
     void SaveWallPosition(uint itemId, string wallPosition);
     void MoveWall(uint itemId, uint roomId, string wallPosition) => throw new NotSupportedException("Atomic wall movement is unavailable.");
     void SaveMoved(IReadOnlyList<RoomItemSave> items);
+    void Restore(uint roomId, IReadOnlyList<RoomItemSave> items) => throw new NotSupportedException("Restoring loaded furni is unavailable.");
     void PlaceFloor(uint itemId, uint roomId, int x, int y, double z, int rotation);
     void PlaceWall(uint itemId, uint roomId, int x, int y, double z, int rotation, string wallPosition);
 }
@@ -63,6 +64,24 @@ public sealed class RoomItemStore(IDatabase database) : IRoomItemStore
             connection.Execute("UPDATE items SET x = @x, y = @y, z = @z, rot = @rotation WHERE id = @id LIMIT 1",
                 new { item.X, item.Y, item.Z, item.Rotation, item.Id });
         }
+    }
+
+    /// <summary>Puts furni back to a saved place and state. A furni that has left the room since is not changed.</summary>
+    public void Restore(uint roomId, IReadOnlyList<RoomItemSave> items)
+    {
+        using var connection = database.Connection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        foreach (var item in items) {
+            connection.Execute("""
+                UPDATE items SET x = @x, y = @y, z = @z, rot = @rotation,
+                    extra_data = COALESCE(@extraData, extra_data), wall_pos = IF(@saveWallPosition, @wallPosition, wall_pos)
+                WHERE id = @id AND room_id = @roomId LIMIT 1
+                """, new { item.X, item.Y, item.Z, item.Rotation, item.ExtraData, item.SaveWallPosition, item.WallPosition, item.Id, roomId }, transaction);
+        }
+
+        transaction.Commit();
     }
 
     private void Execute(string sql, object parameters)

@@ -172,6 +172,8 @@ public partial class RoomItemHandling
     private readonly IRewardTrackManager _rewards;
     private readonly ConcurrentDictionary<uint, Item> _wallItems;
     private int _mRollerCycle;
+    private RoomItemSave[] _loadedState = [];
+    private volatile bool _restoreOnDispose;
     private int _mRollerSpeed;
 
     private ConcurrentQueue<Item> _roomItemUpdateQueue;
@@ -423,7 +425,12 @@ public partial class RoomItemHandling
                 HopperCount++;
             }
         }
+
+        _loadedState = GetWallAndFloor.Where(item => !item.IsTemporary).Select(ToSave).ToArray();
     }
+
+    /// <summary>When the room unloads, every furni it loaded with goes back to its loaded place and state after the normal save.</summary>
+    public void RestoreLoadedStateOnDispose() => _restoreOnDispose = true;
 
     private Plus.HabboHotel.Items.Data.Moodlight.MoodlightData? LoadMoodlight(uint itemId) =>
         _metadata.LoadMoodlight(itemId) is { } record ? new Plus.HabboHotel.Items.Data.Moodlight.MoodlightData(itemId, record) : null;
@@ -629,10 +636,7 @@ public partial class RoomItemHandling
         try {
             lock (_payloadGate) {
                 if (_movedItems.Count > 0) {
-                    _store.SaveMoved(_movedItems.Values.Where(item => !item.IsTemporary).Select(item => new RoomItemSave(
-                        item.Id, item.GetX, item.GetY, item.GetZ, item.Rotation, SavePayload(item), item.WallCoordinates,
-                        item.IsWallItem && (!item.Definition.ItemName.Contains("wallpaper_single") || !item.Definition.ItemName.Contains("floor_single") ||
-                            !item.Definition.ItemName.Contains("landscape_single")))).ToArray());
+                    _store.SaveMoved(_movedItems.Values.Where(item => !item.IsTemporary).Select(ToSave).ToArray());
                 }
             }
         }
@@ -640,6 +644,11 @@ public partial class RoomItemHandling
             ExceptionLogger.LogCriticalException(e);
         }
     }
+
+    private RoomItemSave ToSave(Item item) => new(
+        item.Id, item.GetX, item.GetY, item.GetZ, item.Rotation, SavePayload(item), item.WallCoordinates,
+        item.IsWallItem && (!item.Definition.ItemName.Contains("wallpaper_single") || !item.Definition.ItemName.Contains("floor_single") ||
+            !item.Definition.ItemName.Contains("landscape_single")));
 
     // announcing runs once the item is placed, just before the clients hear about it.
     public bool SetFloorItem(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses = false, double height = -1, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision = null, bool deferPositionSave = false, Action? announcing = null)
@@ -1425,6 +1434,15 @@ public partial class RoomItemHandling
     public void Dispose()
     {
         SaveFurniture();
+
+        if (_restoreOnDispose) {
+            try {
+                _store.Restore(_room.Id, _loadedState);
+            }
+            catch (Exception e) {
+                ExceptionLogger.LogCriticalException(e);
+            }
+        }
 
         foreach (var item in GetWallAndFloor.ToList()) {
             if (item == null) {

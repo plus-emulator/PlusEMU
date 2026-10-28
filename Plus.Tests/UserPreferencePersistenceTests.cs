@@ -203,7 +203,7 @@ public sealed class UserPreferencePersistenceTests
         Assert.Equal((20, 30, 40, true, false, true, expected, 0, false, false, false),
             (body.ReadInt(), body.ReadInt(), body.ReadInt(), body.ReadBool(), body.ReadBool(), body.ReadBool(),
              body.ReadInt(), body.ReadInt(), body.ReadBool(), body.ReadBool(), body.ReadBool()));
-        Assert.Equal((0, false), (body.ReadInt(), body.ReadBool()));
+        Assert.Equal((0, false, false, ""), (body.ReadInt(), body.ReadBool(), body.ReadBool(), body.ReadString()));
         Assert.False(body.HasDataRemaining());
     }
 
@@ -322,6 +322,7 @@ public sealed class UserPreferencePersistenceTests
 
                 connection.Execute("ALTER TABLE users ADD bubble_id TINYINT NOT NULL DEFAULT 0; ALTER TABLE user_stats RENAME TO user_statistics; INSERT INTO users(id,username,auth_ticket,account_created) VALUES(7,'VolumeUser','ticket','2042-01-01 00:00:00'); INSERT INTO users_settings(user_id,home_room,ignore_invites,volume) VALUES(7,42,true,'20,50,80')");
                 connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/59_UserCurrencies.sql")));
+                connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/121_AccountWiredPreferences.sql")));
             }
 
             var loader = new UserDataFactory(null!, database, [], null!, null!, null!, null!, TimeProvider.System, TestRoomAchievements.Unused, TestGameClientManager.Empty, TestRoomManager.Unused);

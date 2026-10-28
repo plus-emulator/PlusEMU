@@ -173,6 +173,7 @@ public static class ClientPacketHeader
     public const uint SetUIFlagsEvent = 3774;
     public const uint DeleteRoomEvent = 1238;
     public const uint SetSoundSettingsEvent = 781;
+    public const uint GetSoundSettingsEvent = 929;
     public const uint InitializeGameCenterEvent = 65468;
     public const uint RedeemOfferCreditsEvent = 2483;
     public const uint FriendListUpdateEvent = 2877;

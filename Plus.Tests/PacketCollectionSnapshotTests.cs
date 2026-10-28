@@ -55,7 +55,7 @@ public sealed class PacketCollectionSnapshotTests
     public void SoundSettingsFreezeVolumesAndPreserveThreeChannelPadding(int count)
     {
         var volumes = Enumerable.Range(1, count).ToList();
-        var composer = new SoundSettingsComposer(volumes, true, false, true, 2);
+        var composer = new SoundSettingsComposer(volumes, true, false, true, 2, WiredAccountPreferences.Default);
         object[] expected = [count > 0 ? 1 : 0, count > 1 ? 2 : 0, count > 2 ? 3 : 0,
             true, false, true, 2, 0, false, false, false, 0, false];
 

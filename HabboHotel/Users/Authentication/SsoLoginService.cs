@@ -106,7 +106,7 @@ public sealed class SsoLoginService : ISsoLoginService
             _achievementShowcase.ShowDefinitions(session);
             session.Send(new SoundSettingsComposer(session.GetHabbo().ClientVolume, session.GetHabbo().ChatPreference, session.GetHabbo().AllowMessengerInvites,
                 session.GetHabbo().FocusPreference,
-                FriendBarStateUtility.GetInt(session.GetHabbo().FriendbarState)));
+                FriendBarStateUtility.GetInt(session.GetHabbo().FriendbarState), session.GetHabbo().WiredPreferences));
             //SendMessage(new TalentTrackLevelComposer());
             // The Builders Club status follows the login unasked.
             _buildersClub?.SendStatus(session);

@@ -145,5 +145,6 @@ public sealed class UserProfileEventTests
             return Task.CompletedTask;
         }
         public void SetFriendBarState(GameClient session, int state) => FriendBar = state;
+        public Task SetWiredPreferences(GameClient session, WiredAccountPreferences preferences) => Task.CompletedTask;
     }
 }

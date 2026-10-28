@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Users;
 
 namespace Plus.Communication.Packets.Outgoing.Sound;
 
@@ -9,16 +10,18 @@ public class SoundSettingsComposer : IServerPacket
     private readonly bool _invitesStatus;
     private readonly bool _focusPreference;
     private readonly int _friendBarState;
+    private readonly WiredAccountPreferences _wired;
 
     public uint MessageId => ServerPacketHeader.SoundSettingsComposer;
 
-    public SoundSettingsComposer(IEnumerable<int> volumes, bool chatPreference, bool invitesStatus, bool focusPreference, int friendBarState)
+    public SoundSettingsComposer(IEnumerable<int> volumes, bool chatPreference, bool invitesStatus, bool focusPreference, int friendBarState, WiredAccountPreferences wired)
     {
         _volumes = volumes.ToArray();
         _chatPreference = chatPreference;
         _invitesStatus = invitesStatus;
         _focusPreference = focusPreference;
         _friendBarState = friendBarState;
+        _wired = wired;
     }
 
     public void Compose(IOutgoingPacket packet)

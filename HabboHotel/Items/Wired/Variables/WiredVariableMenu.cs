@@ -184,6 +184,65 @@ public sealed class WiredVariableMenu(Room room, WiredRoomVariables variables)
         return result with { Holders = ToWireHolders(result.Holders) };
     }
 
+    /// <summary>The holders in the room by the id the client knows them by (furni id, user room index), highest id first.</summary>
+    public IReadOnlyList<(int EntityId, long Value)> LiveEntities(WiredVariableDescription variable)
+    {
+        var (frame, _) = LiveHolders(variable.Definition.Target);
+        var reference = new WiredVariableReference(variable.Definition.Target, variable.Definition.Token);
+        using var reads = variables.Module.CaptureReads([reference], frame);
+
+        return frame.Holders.Where(x => x.Target == variable.Definition.Target)
+            .Select(x => (Holder: x, Value: reads.Read(reference, x, frame)))
+            .Where(x => x.Value is not null)
+            .Select(x => (x.Holder.Target == WiredVariableTarget.Furni ? TemporaryItemIds.ToWiredEntityId(x.Holder.EntityId) : x.Holder.EntityId, x.Value!.Value))
+            .OrderByDescending(x => x.Item1).ToArray();
+    }
+
+    /// <summary>
+    /// One page of a permanent user variable's holders, offline ones included. Sort 0 highest value first, 1 lowest value first,
+    /// 2 and 3 oldest and newest creation first, 4 and 5 oldest and newest update first; any other sort is 0.
+    /// </summary>
+    public WiredVariableHolderPage Owners(WiredVariableDescription variable, int page, int size, int sort) =>
+        variables.Module.ReadHolderPage(variable.Definition.ItemId, page, size, sort switch
+        {
+            1 => WiredVariablePaging.ValueAscending,
+            2 => WiredVariablePaging.CreatedAscending,
+            3 => WiredVariablePaging.CreatedDescending,
+            4 => WiredVariablePaging.UpdatedAscending,
+            5 => WiredVariablePaging.UpdatedDescending,
+            _ => WiredVariablePaging.ValueDescending
+        });
+
+    /// <summary>The permanent user variables one user holds, online or not, in catalogue order.</summary>
+    public IReadOnlyList<(WiredVariableDescription Variable, WiredVariableValue Value)> PermanentValues(int userId)
+    {
+        var permanent = Catalog().Variables.Where(x => x.IsPermanent && x.Definition.Target == WiredVariableTarget.User).ToArray();
+        var values = variables.Module.ReadStored(permanent.Select(x => x.Definition.ItemId), WiredVariableTarget.User, userId);
+
+        return permanent.Where(x => values.ContainsKey(x.Definition.ItemId)).Select(x => (x, values[x.Definition.ItemId])).ToArray();
+    }
+
+    /// <summary>Changes one user's permanent variable through the room's variable changes; a user who is not in the room takes the write too.</summary>
+    public bool WritePermanent(WiredVariableDescription variable, int userId, WiredVariableMutation mutation, long value)
+    {
+        var (frame, _) = LiveHolders(WiredVariableTarget.User);
+        var holder = frame.Holders.FirstOrDefault(x => x.Target == WiredVariableTarget.User && x.StableId == userId);
+
+        if (holder == default) {
+            holder = new(WiredVariableTarget.User, userId, 0);
+            frame = new(room.Id, [holder]);
+        }
+
+        var changed = variables.Module.Change(new(WiredVariableTarget.User, variable.Definition.Token), holder, mutation, _ => value, frame,
+            origin: 2, notifyUnchanged: true);
+
+        if (changed) {
+            variables.InvalidateFx();
+        }
+
+        return changed;
+    }
+
     // The unpaged overview only highlights live room entities. Offline holders use bounded pages.
     public IReadOnlyList<WiredVariableStoredHolder> Live(WiredVariableDescription variable)
     {

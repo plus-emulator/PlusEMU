@@ -15,6 +15,11 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
     public bool IsDerived { get; init; }
     public bool CanCreateAndDelete => !ReadOnly && !IsBuiltin && !IsDerived && Definition.Target is WiredVariableTarget.User or WiredVariableTarget.Furni;
     public bool CanWriteValue => !ReadOnly && HasValue;
+    /// <summary>A variable of the room's own furni or user boxes, which the Variables tab lists holder by holder.</summary>
+    public bool HasHolders => !IsBuiltin && !IsDerived && Definition.Link is null && !Definition.IsPointer
+        && Definition.Target is WiredVariableTarget.User or WiredVariableTarget.Furni;
+    /// <summary>A holder variable whose values are kept when the holder leaves.</summary>
+    public bool IsPermanent => HasHolders && Definition.IsDurable;
     public bool CanReadTimestamps => !IsBuiltin && !IsDerived;
     /// <summary>A global variable lists canReadCreationTime false and canReadLastUpdateTime true.</summary>
     public bool CanReadCreationTime => CanReadTimestamps && Definition.Target != WiredVariableTarget.Global;
@@ -196,6 +201,9 @@ public sealed record WiredVariableHolderPage(int Total, int Page, int PageSize, 
 
 internal static class WiredVariablePaging
 {
+    // Sorts 0 to 2 are the editor's own (value up, value down, name); every other sort orders by holder id.
+    public const int ValueAscending = 0, ValueDescending = 1, CreatedAscending = 3, CreatedDescending = 4, UpdatedAscending = 5, UpdatedDescending = 6;
+
     public static WiredVariableHolderPage Page(IEnumerable<WiredVariableStoredHolder> values, int page, int size, int sort)
     {
         page = Math.Max(1, page);
@@ -205,6 +213,10 @@ internal static class WiredVariablePaging
             0 => values.OrderBy(x => x.Value.Value).ThenBy(x => x.Key.HolderId),
             1 => values.OrderByDescending(x => x.Value.Value).ThenBy(x => x.Key.HolderId),
             2 => values.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.Key.HolderId),
+            CreatedAscending => values.OrderBy(x => x.Value.CreatedAt).ThenBy(x => x.Key.HolderId),
+            CreatedDescending => values.OrderByDescending(x => x.Value.CreatedAt).ThenBy(x => x.Key.HolderId),
+            UpdatedAscending => values.OrderBy(x => x.Value.UpdatedAt).ThenBy(x => x.Key.HolderId),
+            UpdatedDescending => values.OrderByDescending(x => x.Value.UpdatedAt).ThenBy(x => x.Key.HolderId),
             _ => values.OrderBy(x => x.Key.HolderId)
         };
         var all = ordered.ToArray();

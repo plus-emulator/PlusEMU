@@ -411,6 +411,13 @@ public class RoomUser
 
     public void CompletePostureActions()
     {
+        if (GetRoom() is not { } room) {
+            return;
+        }
+
+        while (PostureActions.TryDequeue(out var action)) {
+            room.GetWired().Dispatch(new(WiredEventKind.AvatarAction) { Actor = this, Action = (int)action, Code = -1 });
+        }
     }
 
     private void WakeUp(Room room)

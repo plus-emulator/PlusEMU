@@ -535,8 +535,8 @@ public sealed partial class WiredActionPortParityTests(ITestOutputHelper output)
     [InlineData(false, false, null, 1)]
     [InlineData(true, true, 1, 1)]
     [InlineData(false, true, 1, 1)]
-    [InlineData(true, true, null, 2)]
-    [InlineData(false, true, null, 2)]
+    [InlineData(true, true, null, 0)]
+    [InlineData(false, true, null, 0)]
     [InlineData(true, true, 0, 0)]
     [InlineData(false, true, -1, 0)]
     public void VariableSortAndQuantityAddonsFilterTheActualSelectorPoolInStackOrder(bool sortFirst, bool variableQuantity, int? variableCount, int expectedCount)

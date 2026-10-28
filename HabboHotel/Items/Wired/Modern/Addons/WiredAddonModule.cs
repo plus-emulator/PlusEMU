@@ -92,7 +92,7 @@ public sealed class WiredAddonModule
 
                     if (P(1) == 1) {
                         var token = c.VariableIds.FirstOrDefault() ?? "";
-                        count = ReadVariable(input, P(2), token, P(3), P(4), c) ?? count;
+                        count = ReadVariable(input, P(2), token, P(3), P(4), c) ?? 0;
                     }
 
                     var keep = (int)Math.Clamp(count, 0, 10000);

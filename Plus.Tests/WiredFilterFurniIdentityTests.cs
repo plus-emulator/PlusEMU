@@ -90,8 +90,8 @@ public sealed class WiredFilterFurniIdentityTests
     {
         var random = new ScriptedRandom(draw);
         var policy = new WiredAddonPolicy();
-        Assert.True(new WiredAddonModule("wf_xtra_filter_users", new() { IntParams = [1, 1, 3, 0, 0], VariableIds = ["missing"] }, random).Apply(Inputs(), policy));
-        Assert.True(new WiredAddonModule("wf_xtra_filter_furni", new() { IntParams = [1, 1, 3, 0, 0], VariableIds = ["missing"] }, random).Apply(Inputs(), policy));
+        Assert.True(new WiredAddonModule("wf_xtra_filter_users", new() { IntParams = [1, 1, 3, 0, 0], VariableIds = ["held:1"] }, random).Apply(Inputs(), policy));
+        Assert.True(new WiredAddonModule("wf_xtra_filter_furni", new() { IntParams = [1, 1, 3, 0, 0], VariableIds = ["held:1"] }, random).Apply(Inputs(), policy));
         var selection = new WiredSelectedIds();
         selection.FurniIds.UnionWith(new uint[] { 1, 2, 3 });
         selection.UserIds.UnionWith(new[] { 1, 2, 3 });
@@ -132,7 +132,7 @@ public sealed class WiredFilterFurniIdentityTests
     public void OnlyALiteralFurnitureFilterThatSetsTheLimitActivatesTheRandom()
     {
         var random = new ScriptedRandom(0);
-        var variable = new WiredConfiguration { IntParams = [3, 1, 3, 0, 0], VariableIds = ["missing"] };
+        var variable = new WiredConfiguration { IntParams = [3, 1, 3, 0, 0], VariableIds = ["held:3"] };
         var literalThenVariable = new WiredAddonPolicy();
         new WiredAddonModule("wf_xtra_filter_furni", Filter(1, 0), random).Apply(Inputs(), literalThenVariable);
         new WiredAddonModule("wf_xtra_filter_furni", variable, random).Apply(Inputs(), literalThenVariable);
@@ -211,7 +211,8 @@ public sealed class WiredFilterFurniIdentityTests
 
     private static WiredConfiguration Filter(int amount, int mode) => new() { IntParams = [amount, mode, 0, 0, 100] };
 
-    private static WiredAddonInputs Inputs() => new(WiredSelectorTests.World(), WiredSelectorTests.Inputs(), 0, _ => null);
+    private static WiredAddonInputs Inputs() => new(WiredSelectorTests.World(), WiredSelectorTests.Inputs(), 0,
+        request => request.Token.StartsWith("held:", StringComparison.Ordinal) ? long.Parse(request.Token[5..]) : null);
 
     [Fact]
     public void NativeFilterFurniAmountZeroIsStoredAsOne()

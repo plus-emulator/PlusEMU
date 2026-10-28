@@ -2,15 +2,15 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
 /// Which furni Toggle State changes: colour tiles and other state furni and every Wired box in its list, but never a floor switch, an antenna,
-/// a pressure plate, an arrow plate, a box, a pyramid or the two plain game tiles, whatever number of states they have. A one-state furni,
+/// a pressure plate, an arrow plate, a ring plate, a box, a pyramid or the two plain game tiles, whatever number of states they have. A one-state furni,
 /// such as the stairs, is listed with the state it has. A furni whose height depends on its state is skipped while furni stand on it.
 /// </summary>
 internal static class WiredToggleStateTargets
 {
     private static readonly HashSet<string> Untouched = new(StringComparer.OrdinalIgnoreCase)
     {
-        "wf_floor_switch1", "wf_floor_switch2", "wf_antenna1", "wf_antenna2", "wf_pressureplate", "wf_arrowplate",
-        "wf_box", "wf_pyramid", "wf_tile1", "wf_tile2"
+        "wf_floor_switch1", "wf_floor_switch2", "wf_antenna1", "wf_antenna2", "wf_pressureplate", "wf_arrowplate", "wf_arrowplate_8dir",
+        "wf_ringplate", "wf_box", "wf_pyramid", "wf_tile1", "wf_tile2"
     };
 
     /// <summary>
@@ -43,6 +43,9 @@ internal static class WiredToggleStateTargets
 
         return [.. rest];
     }
+
+    /// <summary>The game up counter is started by Toggle State instead of changing its state.</summary>
+    internal static bool IsStartedByToggle(Item item) => item.Definition.ItemName.Equals("wf_game_upcounter1", StringComparison.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> RandomUntouched = new(StringComparer.OrdinalIgnoreCase)
     {

@@ -197,10 +197,10 @@ internal sealed partial class WiredStackEngine
             pending.Root.InheritedPublication = pending.Publication;
 
             if (pending.Call is { } called) {
-                // A called stack starts with an empty context; it does not read or write the context of the calling stack.
-                pending.Root.VariableFrame = null;
                 pending.Root.Triggering = called.Selection.Copy();
                 pending.Root.Selected = pending.Root.Triggering.Copy();
+                // A called stack starts with an empty context; it does not read or write the context of the calling stack.
+                pending.Root.VariableFrame = pending.Root.VariableFrame is null ? null : WiredVariableRuntimeFrames.Create(pending.Root);
                 pending.Root.ResumeImmediately = pending.ResumeImmediately;
                 pending.Current = BeginFiring(called.Source, pending.Root, false, called: true, firedAt: firedAt);
             }

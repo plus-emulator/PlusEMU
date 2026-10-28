@@ -151,7 +151,7 @@ public sealed partial class WiredGlideConveyorTests
         f.Advance(500);
 
         Assert.Equal((7, 7), (rider.X, rider.Y));
-        Assert.Equal("2234,1272,5110,965,5110,965,3712,3744", string.Join(",", frames.Select(frame => frame.Header)));
+        Assert.Equal("2234,1272,965,965,3712,3744", string.Join(",", frames.Select(frame => frame.Header)));
     }
 
     // The turn of a projectile shooter and the turn of a Move User box on the same user are both sent.
@@ -218,7 +218,7 @@ public sealed partial class WiredGlideConveyorTests
     }
 
     private static (Fixture Fixture, Plus.HabboHotel.Rooms.RoomUser Rider, List<byte[]> Packets) MixedMoveRoom(bool furniBoxFirst, int seed,
-        bool userBox, bool furniBox, bool walkTriggers = false, bool showMessage = false)
+        bool userBox, bool furniBox, bool walkTriggers = false, bool showMessage = false, int? curveStrength = null)
     {
         var moveUser = MoveUserConfig(2, -1);
         var boxes = new List<(string Name, string Json)>();
@@ -247,6 +247,11 @@ public sealed partial class WiredGlideConveyorTests
 
         if (showMessage) {
             layout.Add((89, 4, 14, 0.65 * (boxes.Count + 1), 0, "wf_act_show_message", ShownMessage("moved")));
+        }
+
+        if (curveStrength is { } strength) {
+            layout.Add((90, 4, 14, 0.65 * (boxes.Count + 3), 0, "wf_xtra_mov_curve", JsonSerializer.Serialize(new WiredConfiguration
+            { IntParams = [7, 100, strength, 0, 0, 0, 0] })));
         }
 
         if (walkTriggers) {

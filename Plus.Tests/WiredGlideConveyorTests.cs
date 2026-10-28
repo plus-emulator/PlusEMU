@@ -12,6 +12,7 @@ using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
+using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.Instance;
 using Plus.HabboHotel.Rooms.PathFinding;
@@ -392,6 +393,27 @@ public sealed partial class WiredGlideConveyorTests
         public object? EngineField(string name) => Get(Engine, name);
         public void SetEngineCallback(string name, object callback) => Set(Engine, name, callback);
         public void ReplaceUser(RoomUser user) => _users[user.VirtualId] = user;
+
+        public void AfterCarryAppend(Action<RoomUser> hook)
+        {
+            var appendField = typeof(WiredRoomMovement).GetField("_appendCarryPublication", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            foreach (var box in ((Dictionary<uint, IWiredItem>)Get(Engine, "_items")).Values.OfType<WiredModernAction>()) {
+                var movement = typeof(WiredModernAction).GetField("_movement", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(box);
+
+                if (appendField.GetValue(movement) is not Func<WiredRuntimeContext, RoomUser, WiredMovementComposer, bool> original) {
+                    continue;
+                }
+
+                appendField.SetValue(movement, (Func<WiredRuntimeContext, RoomUser, WiredMovementComposer, bool>)((context, actor, body) =>
+                {
+                    var appended = original(context, actor, body);
+                    hook(actor);
+
+                    return appended;
+                }));
+            }
+        }
 
         public void DrainMovement() => _room.RunFastPass(_map.Navigation!.DrainCommands);
 

@@ -2743,12 +2743,12 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new Point(0, 0), f.User.Coordinate);
         Assert.Null(f.User.LastItem);
         Assert.Empty(MovementEndpoints(replies));
-        Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.WiredFurniMoveStyleComposer);
+        Assert.DoesNotContain(replies, reply => reply.Header == 5110);
         f.DrainOwned();
         Assert.Equal(new Point(1, 1), f.User.Coordinate);
         Assert.Same(f.Target, f.User.LastItem);
         Assert.Empty(MovementEndpoints(replies));
-        Assert.DoesNotContain(replies, reply => reply.Header == ServerPacketHeader.WiredFurniMoveStyleComposer);
+        Assert.DoesNotContain(replies, reply => reply.Header == 5110);
         Assert.Empty(f.Errors);
     }
 

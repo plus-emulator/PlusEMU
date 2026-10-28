@@ -69,6 +69,7 @@ public sealed partial class WiredGlideConveyorTests
         await new ClickFurniEvent(new FurnitureUseService(null!, null!)).Parse(f.Room, owner.GetClient()!, ClickPacket((int)CpSwitch, 0));
         f.Advance(1000);
 
+        Assert.DoesNotContain(frames, frame => frame.Header == 5110);
         var movement = Assert.Single(frames, frame => frame.Header == ServerPacketHeader.WiredMovementsComposer);
         var packet = new FlashIncomingPacket { Buffer = movement.Payload };
         Assert.Equal(1, packet.ReadInt());

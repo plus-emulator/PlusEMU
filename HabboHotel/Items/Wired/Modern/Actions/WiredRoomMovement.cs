@@ -211,9 +211,16 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         var z = height ?? (physics?.KeepAltitude == true ? item.GetZ : (double?)null);
         room.GetWired()?.FurniMoving();
 
+        // The moves of one furni in one firing that send no WiredMovements go out as one ObjectUpdate with the final state.
+        var batched = !options.Animate && context.Firing != null && room.GetWired() != null;
+
         if (!WiredRoomOperations.MoveItem(room, item, x, y, options.Rotation, z, animate: false,
-                collision: collision, announce: !options.Animate)) {
+                collision: collision, announce: !options.Animate && !batched)) {
             return false;
+        }
+
+        if (batched) {
+            room.GetWired()!.DeferObjectUpdate(item);
         }
 
         room.GetWired()?.FurniMoved(source.Tiles.Concat(WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation)

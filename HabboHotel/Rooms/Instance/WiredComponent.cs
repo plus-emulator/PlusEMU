@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Plus.Communication.Packets;
+using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Dapper;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -806,6 +807,42 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
 
     private readonly HashSet<Item> _pendingFlashes = [];
+    private readonly List<Item> _pendingObjectUpdates = [];
+
+    /// <summary>Holds the ObjectUpdate of a furni that a firing moved without WiredMovements. <see cref="FlushFlashData"/> sends it first, with the state the furni ends on.</summary>
+    internal void DeferObjectUpdate(Item item)
+    {
+        lock (_pendingFlashes) {
+            if (!_pendingObjectUpdates.Contains(item)) {
+                _pendingObjectUpdates.Add(item);
+            }
+        }
+    }
+
+    private void SendDeferredObjectUpdates()
+    {
+        Item[] items;
+
+        lock (_pendingFlashes) {
+            if (_pendingObjectUpdates.Count == 0) {
+                return;
+            }
+
+            items = [.. _pendingObjectUpdates];
+            _pendingObjectUpdates.Clear();
+        }
+
+        foreach (var item in items) {
+            if (!ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item) || FurniVisibility.IsConcealed(_room, item)) {
+                continue;
+            }
+
+            var snapshot = RoomItemSnapshot.Capture(item);
+            _room.SendPacket(new ObjectUpdateComposer(snapshot));
+            _room.SendPacket(new FurnitureMetadataComposer([snapshot]));
+        }
+    }
+
     private readonly Dictionary<Item, int> _flashVisits = [];
     private readonly HashSet<(uint ItemId, object Firing)> _definitionFirings = [];
     private readonly Dictionary<uint, long> _flashWindows = [];
@@ -836,6 +873,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
     /// </summary>
     internal void FlushFlashData()
     {
+        SendDeferredObjectUpdates();
+
         Item[] items;
         Dictionary<Item, int> visits;
         IServerPacket[] movements;

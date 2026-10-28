@@ -161,7 +161,7 @@ internal static class FurniExtraData
 
             // Legacy newly-created boards carry only their switch state; typed captured payloads never fall back to empty.
             if (stored is "" or "0" or "1") {
-                board.State = stored;
+                board.State = stored == "" ? "0" : stored;
             }
             else {
                 board.Store(stored);

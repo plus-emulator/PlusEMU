@@ -1,5 +1,6 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
+using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Rooms.PathFinding;
 
@@ -35,6 +36,15 @@ public class InteractorGenericSwitch(IQuestManager quests, IRewardTrackManager r
         }
 
         quests.ProgressUserQuest(session, QuestType.FurniSwitch);
+
+        if (item.ExtraData is HighscoreDataFormat) {
+            if (item.GetRoom()?.GetRoomItemHandler().TryToggleHighscoreState(item) == true) {
+                item.UpdateUsedState();
+                rewards.Progress(session, RewardTrackActions.SwitchItemState);
+            }
+
+            return;
+        }
 
         if (GateTransitionService.IsGate(item) && GateTransitionService.For(item) != null) {
             ToggleSequenced(session, item, modes);

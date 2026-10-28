@@ -156,7 +156,17 @@ public sealed class DatabaseWiredVariableStore(IDatabase database) : IWiredVaria
         }
 
         var where = "v.definition_id=@definitionId AND v.target_kind=@target" + (holderFilter is null ? "" : " AND v.holder_id IN @holderFilter");
-        var order = sort switch { 0 => "v.value ASC,v.holder_id ASC", 1 => "v.value DESC,v.holder_id ASC", 2 => "Name ASC,v.holder_id ASC", _ => "v.holder_id ASC" };
+        var order = sort switch
+        {
+            WiredVariablePaging.ValueAscending => "v.value ASC,v.holder_id ASC",
+            WiredVariablePaging.ValueDescending => "v.value DESC,v.holder_id ASC",
+            2 => "Name ASC,v.holder_id ASC",
+            WiredVariablePaging.CreatedAscending => "v.created_at ASC,v.holder_id ASC",
+            WiredVariablePaging.CreatedDescending => "v.created_at DESC,v.holder_id ASC",
+            WiredVariablePaging.UpdatedAscending => "v.updated_at ASC,v.holder_id ASC",
+            WiredVariablePaging.UpdatedDescending => "v.updated_at DESC,v.holder_id ASC",
+            _ => "v.holder_id ASC"
+        };
         var arguments = new { definitionId, target, holderFilter, size, offset = (long)(page - 1) * size };
         using var connection = database.Connection();
         connection.Open();

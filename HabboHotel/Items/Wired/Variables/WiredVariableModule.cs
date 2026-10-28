@@ -592,6 +592,19 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         }
     }
 
+    /// <summary>One holder's kept values of the given permanent variables, by definition id. The holder may be offline.</summary>
+    public IReadOnlyDictionary<uint, WiredVariableValue> ReadStored(IEnumerable<uint> definitionIds, WiredVariableTarget target, long holderId)
+    {
+        lock (_gate) {
+            var definitions = definitionIds.Select(id => Resolve(new(target, $"custom:{id}"), false)?.Definition)
+                .OfType<WiredVariableDefinition>().Where(x => x.IsDurable && x.Target == target).ToArray();
+            var values = durable.ReadMany(definitions.Select(x => new WiredVariableKey(x.ItemId, target, holderId)).ToArray());
+
+            return definitions.Where(x => values.ContainsKey(new(x.ItemId, target, holderId)))
+                .ToDictionary(x => x.ItemId, x => Held(x, values[new(x.ItemId, target, holderId)])!);
+        }
+    }
+
     // A variable without a value reads -1 whatever an older save stored for it (see Change).
     private static WiredVariableValue? Held(WiredVariableDefinition definition, WiredVariableValue? value) =>
         value is not null && !definition.HasValue ? value with { Value = -1 } : value;

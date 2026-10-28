@@ -502,6 +502,12 @@ public static class ServerPacketHeader
     public const uint WiredPermissionsComposer = 635;
     // Answers WiredGetVariablesForObject.
     public const uint WiredVariablesForObjectComposer = 876;
+    // Answers of the Variables tab's Highlight, Delete and Manage buttons.
+    public const uint WiredAllVariableHoldersComposer = 1596;
+    public const uint WiredUserVariablesListComposer = 3704;
+    public const uint WiredUserPermanentVariablesComposer = 3853;
+    public const uint WiredSetUserPermanentVariableResultComposer = 3359;
+    public const uint WiredMenuErrorComposer = 770;
 
     // Free product claims (cursed dragon adoption) and the new-feature promo expiry.
     public const uint HasClaimedProductResponseComposer = 3508;

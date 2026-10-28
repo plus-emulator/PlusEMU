@@ -954,8 +954,8 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
             }
 
             if (resolved?.Definition is not { IsPointer: true } pointer) {
-                // A placeholder for is_maxed shows "null" also while the part exists.
-                return new(reference, derive?.Invoke(reference) is { HasValue: false });
+                // A placeholder for a variable without a value shows "null" also while the holder has it.
+                return new(reference, derive?.Invoke(reference) is { HasValue: false } || resolved is { } found && !NativeHasValue(found));
             }
 
             return PointedAt(pointer, frame) is { } target ? new(target.Reference, !target.Definition.HasValue) : null;

@@ -107,6 +107,7 @@ public partial class ModernWiredRuntimeTests
         {
             10 => new(10, 1, 5, "points", WiredVariableTarget.Furni, WiredVariableAvailability.RoomActive, true),
             11 => new(11, 1, 5, "score", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true),
+            12 => new(12, 1, 5, "flag", WiredVariableTarget.Furni, WiredVariableAvailability.RoomActive, false),
             _ => null
         };
     }

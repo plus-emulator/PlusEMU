@@ -23,7 +23,11 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
         && (Definition.Link is null || IsEcho);
     /// <summary>A holder variable of its own whose values are kept when the holder leaves.</summary>
     public bool IsPermanent => HasHolders && !IsEcho && Definition.IsDurable;
-    private bool IsEcho => Definition.Link is { ReadOnly: false } link && link.SourceRoomId == Definition.RoomId;
+    public const int EchoAvailability = 21;
+    /// <summary>An Echo variable mirrors a variable of its own room.</summary>
+    public bool IsEcho => !IsDerived && Definition.Link is { ReadOnly: false } link && link.SourceRoomId == Definition.RoomId;
+    /// <summary>The availability the client is told: 21 for an Echo variable, whatever the variable it echoes has.</summary>
+    public int WireAvailability => IsEcho ? EchoAvailability : (int)Definition.Availability;
     public bool CanReadTimestamps => !IsBuiltin && !IsDerived;
     /// <summary>A global variable lists canReadCreationTime false and canReadLastUpdateTime true.</summary>
     public bool CanReadCreationTime => CanReadTimestamps && Definition.Target != WiredVariableTarget.Global;

@@ -241,7 +241,8 @@ internal static class WiredNativeCatalogProjection
         var crossRoom = definition.Link is { } link && link.SourceRoomId != definition.RoomId;
         var contextBox = definition.Target == WiredVariableTarget.Context && !description.IsDerived;
         var variable = new WiredNativeVariable(description.CatalogId, description.IsDerived || definition.Link is not null && !crossRoom ? 2 : 0,
-            definition.Name, builtin is not null || description.IsDerived || definition.Target == WiredVariableTarget.Context ? 999
+            definition.Name, description.IsEcho ? WiredVariableDescription.EchoAvailability
+                : builtin is not null || description.IsDerived || definition.Target == WiredVariableTarget.Context ? 999
                 : crossRoom ? ReferenceAvailability : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),

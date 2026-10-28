@@ -49,6 +49,10 @@ public sealed class WiredAllVariablesDiffComposer(WiredVariableCatalogDiff diff)
         packet.WriteBoolean(variable.RequiresExecutionContext);
         packet.WriteBoolean(variable.CanReadCreationTime);
         packet.WriteBoolean(variable.CanReadLastUpdateTime);
+        WriteTextConnector(packet, variable);
+    }
+    internal static void WriteTextConnector(IOutgoingPacket packet, WiredVariableDescription variable)
+    {
         packet.WriteBoolean(variable.HasTextConnector);
 
         if (variable.HasTextConnector) {

@@ -35,13 +35,33 @@ public sealed class WiredAllVariableHoldersComposer(WiredVariableDescription var
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteInteger(_variable.Definition.Target == WiredVariableTarget.Furni ? 1 : 2);
-        WiredAllVariablesDiffComposer.WriteVariable(packet, _variable);
+        WriteVariable(packet, _variable);
         packet.WriteInteger(_holders.Length);
 
         foreach (var (entityId, value) in _holders) {
             packet.WriteInteger(entityId);
             packet.WriteInteger(WiredVariableHolderWire.Clamp(value));
         }
+    }
+
+    // A holder variable is a custom furni or user variable: user created (type 0), interceptable, furni target 0, user target 1.
+    private static void WriteVariable(IOutgoingPacket packet, WiredVariableDescription variable)
+    {
+        packet.WriteString(variable.CatalogId);
+        packet.WriteInteger(0);
+        packet.WriteString(variable.Definition.Name);
+        packet.WriteInteger(variable.WireAvailability);
+        packet.WriteInteger(variable.Definition.Target == WiredVariableTarget.Furni ? 0 : 1);
+        packet.WriteBoolean(false);
+        packet.WriteBoolean(variable.CanCreateAndDelete);
+        packet.WriteBoolean(variable.HasValue);
+        packet.WriteBoolean(variable.CanWriteValue);
+        packet.WriteBoolean(true);
+        packet.WriteBoolean(false);
+        packet.WriteBoolean(variable.RequiresExecutionContext);
+        packet.WriteBoolean(variable.CanReadCreationTime);
+        packet.WriteBoolean(variable.CanReadLastUpdateTime && variable.HasValue);
+        WiredAllVariablesDiffComposer.WriteTextConnector(packet, variable);
     }
 }
 

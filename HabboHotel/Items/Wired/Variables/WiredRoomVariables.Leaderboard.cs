@@ -23,7 +23,7 @@ public sealed partial class WiredRoomVariables
         var described = Module.DescribeDefinitions(boxes.Select(box => box.Item.Id)).ToDictionary(description => description.Definition.ItemId);
 
         return [.. boxes.Select(box => described.GetValueOrDefault(box.Item.Id))
-            .OfType<WiredVariableDescription>().Where(description => description.Definition.Target == WiredVariableTarget.User)
+            .OfType<WiredVariableDescription>().Where(description => description.Definition is { Target: WiredVariableTarget.User, IsPointer: false })
             .Select(description => new WiredLeaderboardChoice(description,
                 MetadataOn(description.Definition.ItemId, "wf_xtra_var_lvlup_system")?.LevelSystem,
                 MetadataOn(description.Definition.ItemId, "wf_xtra_var_text_connector")?.TextConnector ?? new Dictionary<long, string>()))];

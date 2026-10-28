@@ -748,6 +748,14 @@ public sealed class WiredChestProtocolTests
         public WiredChestContract? LoadContract(Item item) => null;
         public bool SaveContract(Item item, WiredChestContract contract) => true;
         public WiredChestUpgradeResult Upgrade(Item item, int user, int count, int? credits = null, int? diamonds = null) => new(4);
+        public WiredChestLogPage Log = new(false, 42, 0, 1, 10, []);
+        public List<WiredChestLogQuery> LogQueries = [];
+        public WiredChestLogPage ReadLog(WiredChestLogQuery query)
+        {
+            LogQueries.Add(query);
+
+            return Log;
+        }
         public WiredChestTransferResult Transfer(WiredChestTransfer request)
         {
             Requests.Add(request);

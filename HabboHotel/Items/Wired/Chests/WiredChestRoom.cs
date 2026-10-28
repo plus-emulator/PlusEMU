@@ -63,7 +63,8 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
                 ChestIds = usable.Select(chest => chest.Id).ToArray(),
                 Reward = WiredChestContracts.Scale(contract.Reward, multiplier),
                 Wired = true,
-                Multiplier = multiplier
+                Multiplier = multiplier,
+                LogType = WiredChestLogType.ContractReward
             });
 
             if (result.Succeeded && !result.Replayed) {
@@ -238,7 +239,9 @@ public sealed class WiredChestRoom(Room room, IWiredChestStore store, TimeProvid
             Reward = session.Contract is { Kind: WiredContractKind.Trade } trade ? WiredChestContracts.Scale(trade.Reward, times) : [],
             Wired = session.Contract != null,
             CanModify = room.GetWired().Settings.CanModify(client),
-            Multiplier = times
+            Multiplier = times,
+            LogType = session.Contract == null ? WiredChestLogType.Manual
+                : session.Contract.Kind == WiredContractKind.Trade ? WiredChestLogType.ContractTrade : WiredChestLogType.ContractPayment
         });
 
         if (result.Failure is { } failure) {

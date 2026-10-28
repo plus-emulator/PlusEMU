@@ -19,6 +19,11 @@ public enum WiredChestFailure
     TooFast = 18, ExceedsCapacity = 19, InternalError = 1000, DatabaseError = 1001
 }
 
+public enum WiredChestLogType
+{
+    Manual = 0, Wired = 1, ContractPayment = 2, ContractReward = 3, ContractTrade = 4, AutoWithdraw = 5
+}
+
 public sealed record WiredChestSettings
 {
     public bool Locked { get; init; } = true;
@@ -92,7 +97,22 @@ public sealed record WiredChestTransfer
     public int Multiplier { get; init; } = 1;
     public int Order { get; init; } = 1;
     public int? LiveCredits { get; init; }
+    public WiredChestLogType LogType { get; init; }
 }
+
+/// <summary>A log page request. The amount is kept in 1..200 and the page is 1-based, as the hotel answers them.</summary>
+public sealed record WiredChestLogQuery(uint RoomId, uint? ChestId, int Amount, int Page)
+{
+    public const int MaxAmount = 200;
+    public static WiredChestLogQuery Room(uint roomId, int amount, int page) => new(roomId, null, Clamp(amount), Math.Max(1, page));
+    public static WiredChestLogQuery Chest(uint roomId, uint chestId, int amount, int page) => new(roomId, chestId, Clamp(amount), Math.Max(1, page));
+    private static int Clamp(int amount) => Math.Clamp(amount, 1, MaxAmount);
+}
+
+public sealed record WiredChestLogRow(long Id, uint RoomId, WiredChestLogType Type, int UserId, string UserName, long Timestamp,
+    int ChestCount, int WithdrawFurni, int DepositFurni, int WithdrawCoins, int DepositCoins);
+
+public sealed record WiredChestLogPage(bool ForChest, long ListId, int Total, int Page, int Amount, WiredChestLogRow[] Rows);
 
 public sealed record WiredChestFigures(int Multiplier, int DepositFurni, int DepositCoins, int WithdrawalFurni, int WithdrawalCoins);
 public sealed record WiredChestTransferResult(WiredChestFailure? Failure, int Credits, InventoryItem[] Received,
@@ -109,6 +129,7 @@ public interface IWiredChestStore
     WiredChestContract? LoadContract(Item item);
     bool SaveContract(Item item, WiredChestContract contract);
     WiredChestTransferResult Transfer(WiredChestTransfer request);
+    WiredChestLogPage ReadLog(WiredChestLogQuery query);
     WiredChestUpgradeResult Upgrade(Item chest, int userId, int count, int? liveCredits = null, int? liveDiamonds = null);
 }
 

@@ -3562,6 +3562,7 @@ CREATE TABLE `wired_chest_transaction_entries` (
   `coins` int(10) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `wired_chest_entry_log` (`transaction_id`),
+  KEY `wired_chest_entries_chest` (`chest_id`,`transaction_id`),
   CONSTRAINT `wired_chest_entry_log` FOREIGN KEY (`transaction_id`) REFERENCES `wired_chest_transactions` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -3579,10 +3580,12 @@ CREATE TABLE `wired_chest_transactions` (
   `user_id` int(11) NOT NULL,
   `room_id` int(11) NOT NULL,
   `source_id` int(10) unsigned NOT NULL,
+  `log_type` tinyint(3) unsigned NOT NULL DEFAULT 0,
   `result` longtext NOT NULL,
   `created_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `operation_id` (`operation_id`)
+  UNIQUE KEY `operation_id` (`operation_id`),
+  KEY `wired_chest_transactions_room` (`room_id`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

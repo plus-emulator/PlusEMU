@@ -240,6 +240,12 @@ internal static class WiredChestWire
         }
     }
 
+    public static void Long(IOutgoingPacket packet, long value)
+    {
+        packet.WriteInt(unchecked((int)(value >> 32)));
+        packet.WriteInt(unchecked((int)value));
+    }
+
     /// <summary>int count, ChestStorage[].</summary>
     public static void Storages(IOutgoingPacket packet, InventoryItem[] items, IReadOnlyDictionary<uint, long>? depositTransactions)
     {
@@ -285,6 +291,37 @@ internal static class WiredChestWire
             if (!item.IsWallItem) {
                 packet.WriteInt(0);
             }
+        }
+    }
+}
+
+/// <summary>int listType (0 chest, 1 room), long listId, int total, int page, int amount, int count, transaction[].</summary>
+public sealed class WiredTransactionLogListComposer(WiredChestLogPage page) : IServerPacket
+{
+    public uint MessageId => ServerPacketHeader.WiredTransactionLogListComposer;
+    public void Compose(IOutgoingPacket packet)
+    {
+        packet.WriteInt(page.ForChest ? 0 : 1);
+        WiredChestWire.Long(packet, page.ListId);
+        packet.WriteInt(page.Total);
+        packet.WriteInt(page.Page);
+        packet.WriteInt(page.Amount);
+        packet.WriteInt(page.Rows.Length);
+
+        foreach (var row in page.Rows) {
+            WiredChestWire.Long(packet, row.Id);
+            packet.WriteInt((int)row.RoomId);
+            packet.WriteInt((int)row.Type);
+            packet.WriteString("");
+            packet.WriteInt(row.UserId);
+            packet.WriteString(row.UserName);
+            WiredChestWire.Long(packet, row.Timestamp);
+            packet.WriteString(DateTimeOffset.FromUnixTimeMilliseconds(row.Timestamp).ToString("yyyy-MM-dd HH:mm:ss"));
+            packet.WriteInt(row.ChestCount);
+            packet.WriteInt(row.WithdrawFurni);
+            packet.WriteInt(row.DepositFurni);
+            packet.WriteInt(row.WithdrawCoins);
+            packet.WriteInt(row.DepositCoins);
         }
     }
 }

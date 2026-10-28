@@ -32,6 +32,7 @@ public sealed class WiredChestGiveG2Tests
         Assert.Equal(15, world.Store.Chests[FirstChest].Coins);
         var request = Assert.Single(world.Store.Requests);
         Assert.True(request.Wired);
+        Assert.Equal(WiredChestLogType.Wired, request.LogType);
         Assert.Equal(5, Assert.Single(request.Reward).Amount);
         Assert.Null(request.Reward[0].ItemType);
         Assert.Empty(request.PaymentIds);
@@ -491,6 +492,7 @@ public sealed class WiredChestGiveG2Tests
         public WiredChestContract? LoadContract(Item item) => null;
         public bool SaveContract(Item item, WiredChestContract contract) => true;
         public WiredChestUpgradeResult Upgrade(Item chest, int userId, int count, int? liveCredits = null, int? liveDiamonds = null) => new(4);
+        public WiredChestLogPage ReadLog(WiredChestLogQuery query) => new(query.ChestId != null, query.ChestId ?? query.RoomId, 0, query.Page, query.Amount, []);
         public WiredChestTransferResult Transfer(WiredChestTransfer request)
         {
             Requests.Add(request);

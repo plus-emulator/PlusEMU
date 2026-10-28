@@ -374,7 +374,8 @@ public sealed class WiredChestAction(Room room, Item item, WiredBoxDescriptor de
                 ChestIds = current.Select(chest => chest.Id).ToArray(),
                 Wired = true,
                 Reward = reward,
-                Order = kind == WiredChestKind.Furni ? c.IntParams[5] : 1
+                Order = kind == WiredChestKind.Furni ? c.IntParams[5] : 1,
+                LogType = WiredChestLogType.Wired
             });
 
             if (result.Succeeded && !result.Replayed) {

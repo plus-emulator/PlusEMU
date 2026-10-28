@@ -471,6 +471,7 @@ public static class ServerPacketHeader
     public const uint WiredChestTradeItemsComposer = 790;
     public const uint WiredChestTradeCancelledComposer = 3357;
     public const uint WiredChestTradeCompletedComposer = 3813;
+    public const uint WiredTransactionLogListComposer = 3312;
 
     // October wired boxes.
     public const uint WiredFurniTransparencyComposer = 3737;

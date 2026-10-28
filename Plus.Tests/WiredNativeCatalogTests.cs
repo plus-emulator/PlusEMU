@@ -675,6 +675,22 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         return new() { Buffer = bytes };
     }
 
+    // A user or furni variable without a value is listed with a creation time and no last update time, as a context variable box is.
+    [Theory]
+    [InlineData("wf_var_user", 0, 10)]
+    [InlineData("wf_var_user", 0, 0)]
+    [InlineData("wf_var_furni", 0, 1)]
+    public void AVariableWithoutAValueIsListedWithoutALastUpdateTime(string box, int withValue, int availability)
+    {
+        var fixture = new Fixture();
+        fixture.AddDefinition(10, box, new() { IntParams = [withValue, availability], Text = "flagged" });
+
+        new WiredVariableMenuService().ShowCatalogDiff(fixture.World.Room, fixture.World.Client, new Dictionary<string, int>());
+
+        var row = Assert.Single(CatalogRows(fixture), row => row.Name == "flagged");
+        Assert.Equal([false, true, false, false, true, false, false, true, false], row.Flags);
+    }
+
     // The catalog sends each connector key as a 32 bit int saturated to int.MinValue or int.MaxValue, in the order of the real key, and keeps the duplicates.
     [Fact]
     public void ACatalogConnectorKeyOutside32BitIsSentSaturated()

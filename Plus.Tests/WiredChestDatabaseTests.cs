@@ -17,6 +17,19 @@ public sealed class WiredChestDatabaseFactAttribute : FactAttribute
     }
 }
 
+public sealed class WiredChestLogDatabaseFactAttribute : FactAttribute
+{
+    internal static string? ServerConnection =>
+        Environment.GetEnvironmentVariable("WIRED_CHEST_DATABASE") ?? Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE");
+
+    public WiredChestLogDatabaseFactAttribute()
+    {
+        if (ServerConnection == null) {
+            Skip = "Set WIRED_CHEST_DATABASE or ROOM_COMPONENT_DATABASE to a disposable loopback MariaDB server.";
+        }
+    }
+}
+
 public sealed class WiredChestDatabaseTests
 {
     [WiredChestDatabaseFact]
@@ -39,7 +52,7 @@ public sealed class WiredChestDatabaseTests
         Assert.Equal(1, fixture.Connection.QuerySingle<int>("SELECT COUNT(*) FROM wired_chest_transactions"));
     }
 
-    [WiredChestDatabaseFact]
+    [WiredChestLogDatabaseFact]
     public void TransactionsFormARoomAndChestLogNewestFirst()
     {
         using var fixture = new Fixture();
@@ -252,7 +265,7 @@ public sealed class WiredChestDatabaseTests
         public DatabaseWiredChestStore Store { get; }
         public Fixture()
         {
-            var options = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("WIRED_CHEST_DATABASE"));
+            var options = new MySqlConnectionStringBuilder(WiredChestLogDatabaseFactAttribute.ServerConnection);
             Assert.True(options.Server is "127.0.0.1" or "localhost" || Path.IsPathRooted(options.Server));
             options.AllowUserVariables = true;
             options.Database = "mysql";

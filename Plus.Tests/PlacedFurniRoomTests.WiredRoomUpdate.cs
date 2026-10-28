@@ -109,6 +109,7 @@ public partial class PlacedFurniRoomTests
         var builder = new TestClient();
         builder.SetHabbo(new Habbo { Id = 8, Username = "builder", CurrentRoom = _room, Access = UserAccess.Empty });
         _room.UsersWithRights = [8];
+        Assert.True(_room.GetWired().Settings.TrySave(_client, 2, 2, "", out _));
 
         await new WiredRoomUpdateEvent(RoomUpdates(unloads)).Parse(_room, builder, EditorTestSupport.Incoming(true));
         Assert.Empty(unloads);

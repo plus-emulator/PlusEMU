@@ -25,7 +25,7 @@ public sealed class WiredRoomSettingsDefaultMigrationTests
                 INSERT INTO rooms (id) VALUES (1), (2), (3);
                 INSERT INTO room_wired_settings (room_id, inspect_mask, modify_mask, timezone) VALUES (2, 14, 8, 'Europe/Berlin');
                 """);
-            var migration = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/121_WiredRoomSettingsKeepExistingRights.sql"));
+            var migration = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/123_WiredRoomSettingsKeepExistingRights.sql"));
             connection.Execute(migration);
             connection.Execute(migration);
 

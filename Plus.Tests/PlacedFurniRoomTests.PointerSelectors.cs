@@ -39,7 +39,7 @@ public partial class PlacedFurniRoomTests
     /// next, on the tile (3, 1).
     /// </summary>
     private async Task<(Plus.HabboHotel.Rooms.Instance.WiredComponent Wired, Plus.HabboHotel.Rooms.RoomUser Actor, SpeechClock Clock)> SignalledPointerRoom(
-        bool accessorSet)
+        bool accessorSet, Func<Task>? beforeSignal = null)
     {
         var (wired, actor, clock) = await DelayedPointerRoom();
         typeof(WiredRoomVariables).GetField("<Module>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(wired.Variables,
@@ -53,6 +53,10 @@ public partial class PlacedFurniRoomTests
 
         if (accessorSet) {
             await DpGive(DpContext, "ctx:" + DpCtx, DpUa);
+        }
+
+        if (beforeSignal is not null) {
+            await beforeSignal();
         }
 
         await DpEffect("wf_act_send_signal", [0, 0], [], furni: [100, 100], users: [0], picks: [PointerSelectorAntenna]);

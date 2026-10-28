@@ -121,7 +121,6 @@ public static class ServerPacketHeader
     public const uint WiredRoomSettingsComposer = 3767;
     public const uint WiredRewardResultComposer = 2763;
     public const uint WiredMovementsComposer = 965;
-    public const uint WiredFurniMoveStyleComposer = 5110;
     public const uint WiredClickSettingsComposer = 1456;
     public const uint WiredClickUserResponseComposer = 3690;
     public const uint InClientLinkComposer = 3162;

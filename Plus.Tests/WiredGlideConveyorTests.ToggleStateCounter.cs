@@ -19,6 +19,7 @@ public sealed partial class WiredGlideConveyorTests
         var shown = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectDataUpdateComposer).Select(ReadSingle)
             .Where(entry => entry.Id == CounterId).Select(entry => entry.Text).ToArray();
         Assert.True(Counters(f).IsRunning(f.Items[CounterId]));
+        Assert.DoesNotContain(frames, frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer);
         Assert.True(shown.Length >= 6, string.Join(",", shown));
         Assert.Equal(Enumerable.Range(1, shown.Length).Select(n => n.ToString()), shown);
     }

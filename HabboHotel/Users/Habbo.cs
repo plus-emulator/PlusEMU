@@ -94,6 +94,10 @@ public class Habbo
 
     public int Credits { get; set; }
 
+    public const int DefaultAccountLevel = 8;
+
+    public int AccountLevel { get; set; } = DefaultAccountLevel;
+
     // Activity point balances by type, from user_currencies.
     public UserCurrencies Currencies { get; } = new();
 

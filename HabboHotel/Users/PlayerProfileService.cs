@@ -11,7 +11,7 @@ namespace Plus.HabboHotel.Users;
 public sealed record ProfileGroupSnapshot(int Id, string Name, string Badge, string FirstColor, string SecondColor, bool Favorite, bool ForumEnabled);
 public sealed record PlayerProfileSnapshot(int Id, string Username, string Look, string Motto, DateTimeOffset? CreatedAt,
     int AchievementPoints, int FriendCount, bool IsFriend, bool RequestedFriendship, bool Online,
-    ImmutableArray<ProfileGroupSnapshot> Groups, int LastOnlineSeconds, ProfileBadgeStats? Badges = null);
+    ImmutableArray<ProfileGroupSnapshot> Groups, int LastOnlineSeconds, int AccountLevel, ProfileBadgeStats? Badges = null);
 
 /// <summary>Badge totals for the profile; a rank below zero hides it.</summary>
 public sealed record ProfileBadgeStats(int Total, int Rank, ImmutableArray<(BadgeRarityTier Tier, int Count)> RarityCounts)
@@ -63,6 +63,6 @@ public sealed class PlayerProfileService(IGroupManager groupManager, IMessengerD
         session.Send(new ProfileInformationComposer(new(target.Id, target.Username, target.Look, target.Motto,
             target.AccountCreatedAt, stats.AchievementPoints, friendCount, friendship,
             otherUser && !friendship && viewer.Messenger?.OutstandingFriendRequests.Contains(target.Id) == true,
-            clients.GetClientByUserId(target.Id) != null, groups, elapsed, ProfileBadgeStats.From(badgeRarity.Snapshot, target.Id))));
+            clients.GetClientByUserId(target.Id) != null, groups, elapsed, target.AccountLevel, ProfileBadgeStats.From(badgeRarity.Snapshot, target.Id))));
     }
 }

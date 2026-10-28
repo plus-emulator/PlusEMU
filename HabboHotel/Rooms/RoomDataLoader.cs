@@ -111,6 +111,7 @@ internal sealed class RoomDataRow
     public string ModelName { get; set; } = string.Empty;
     public string? Username { get; set; }
     public int Owner { get; set; }
+    public int OwnerAccountLevel { get; set; }
     public string Password { get; set; } = string.Empty;
     public int Score { get; set; }
     public string Roomtype { get; set; } = string.Empty;

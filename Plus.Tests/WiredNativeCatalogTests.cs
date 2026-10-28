@@ -109,7 +109,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.False(variable.CanReadCreationTime);
         Assert.False(variable.CanReadLastUpdateTime);
         Assert.False(variable.AlwaysAvailable);
-        Assert.Equal(999, variable.Availability);
+        Assert.Equal(21, variable.Availability);
         Assert.Equal(RoomWiredBuiltinVariables.HasNumericValue(new(target, token)), variable.HasValue);
     }
 
@@ -613,6 +613,37 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         var hasValue = withValue == 1;
         Assert.Equal((0, 999, -20), (row.Type, row.Availability, row.Target));
         Assert.Equal([false, true, hasValue, hasValue, false, false, false, true, hasValue], row.Flags);
+    }
+
+    // An Echo variable is listed with availability 21 whatever the variable it echoes has; the echoed variable keeps its own.
+    [Theory]
+    [InlineData("wf_var_user", 0, 0, 0)]
+    [InlineData("wf_var_user", 10, 0, 10)]
+    [InlineData("wf_var_user", 11, 0, 11)]
+    [InlineData("wf_var_furni", 1, 1, 1)]
+    [InlineData("wf_var_furni", 10, 1, 10)]
+    public async Task AnEchoVariableIsListedWithAvailabilityTwentyOne(string sourceBox, int sourceAvailability, int sourceTarget, int expectedSource)
+    {
+        var fixture = new Fixture();
+        fixture.AddDefinition(10, sourceBox, new() { IntParams = [1, sourceAvailability], Text = "source" });
+        fixture.AddDefinition(11, "wf_var_echo", new() { Text = "{\"variableName\":\"echo\",\"sourceTargetType\":" + sourceTarget + ",\"sourceVariableToken\":\"custom:10\"}" });
+
+        await new WiredVariableHashesEvent(new WiredVariableMenuService()).Parse(fixture.World.Room, fixture.World.Client, RawInts(0));
+
+        var rows = CatalogRows(fixture);
+        Assert.Equal(21, Assert.Single(rows, row => row.Name == "echo").Availability);
+        Assert.Equal(expectedSource, Assert.Single(rows, row => row.Name == "source").Availability);
+    }
+
+    private static FlashIncomingPacket RawInts(params int[] values)
+    {
+        var bytes = new byte[values.Length * 4];
+
+        for (var i = 0; i < values.Length; i++) {
+            BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(i * 4), values[i]);
+        }
+
+        return new() { Buffer = bytes };
     }
 
     // The catalog sends each connector key as a 32 bit int saturated to int.MinValue or int.MaxValue, in the order of the real key, and keeps the duplicates.

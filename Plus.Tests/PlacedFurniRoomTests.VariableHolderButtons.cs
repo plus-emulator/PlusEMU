@@ -165,9 +165,10 @@ public partial class PlacedFurniRoomTests
         return stream.ToArray();
     }
 
-    // The variable block of the catalogue: id, target, name, availability, target, then the flags of a plain custom variable.
-    private static object[] VbVariable(string id, int target, string name, int availability, bool hasValue) =>
-        [id, target, name, availability, target, true, true, hasValue, hasValue, false, false, false, true, true, false];
+    // The variable block of an answer: id, type 0, name, availability, target (furni 0, user 1), then the flags of a custom holder variable.
+    // The first argument is the kind of the answer (1 furni, 2 user).
+    private static object[] VbVariable(string id, int kind, string name, int availability, bool hasValue) =>
+        [id, 0, name, availability, kind == 2 ? 0 : 1, false, true, hasValue, hasValue, true, false, false, true, hasValue, false];
 
     private static object[] VbStamp(int hour) => [VbAt(hour).ToUnixTimeMilliseconds(), VbAt(hour).UtcDateTime.ToString("dd-MM-yyyy HH:mm:ss")];
 
@@ -216,6 +217,16 @@ public partial class PlacedFurniRoomTests
         VariableButtonsRoom();
 
         VbEqual([VbError(2)], await VbHolders(id));
+    }
+
+    [Fact]
+    public async Task HighlightOfAnEchoAnswersAvailabilityTwentyOne()
+    {
+        VariableButtonsRoom();
+        VbGive(VbUserPermanent, WiredVariableRuntimeFrames.UserHolder(_vbOwner), 7);
+
+        VbEqual([(ServerPacketHeader.WiredAllVariableHoldersComposer,
+            VbBody(2, VbVariable("user:510", 1, "ue", 21, true), 1, _vbOwner.VirtualId, 7))], await VbHolders("user:510"));
     }
 
     // An echo variable lists the holders of the variable it echoes; it has no owners page and is never cleared.

@@ -38,6 +38,24 @@ public partial class PlacedFurniRoomTests
         }
     }
 
+    // A hidden pyramid does not answer a user's double-click; it only flips on its own timer.
+    [Fact]
+    public async Task DoubleClickingAHiddenPyramidChangesNothing()
+    {
+        AdmitOwner();
+        var pyramid = HiddenPyramid("1");
+        _client.Packets.Clear();
+
+        await UseEvent().Parse(_room, _client, ClientPacket((int)pyramid.Id, 0));
+
+        for (var tick = 0; tick < 4; tick++) {
+            ExecutorTick();
+        }
+
+        Assert.Equal("1", pyramid.LegacyDataString);
+        Assert.Empty(StateHeightPackets());
+    }
+
     // A recolorable with one state (the stairs) still answers each double-click with an ObjectDataUpdate of its unchanged data.
     [Fact]
     public async Task DoubleClickingAOneStateRecolorableAnswersWithItsData()

@@ -30,21 +30,28 @@ public partial class WiredRoomSettingsTests
         Assert.False(WiredRoomSettingsSnapshot.TryValidate(inspect, modify, timezone, out _));
 
     [Fact]
-    public void NoSavedRowPreservesExistingPlusDecoratorAndGroupAdminRights()
+    public void NoSavedRowGivesOnlyTheOwnerStaffAndGroupAdminsWiredAccess()
     {
         var room = Room();
         var rights = Client(room, 2);
         room.UsersWithRights.Add(2);
         var admin = Client(room, 3);
+        var member = Client(room, 5);
         var guest = Client(room, 4);
         Set(Assert.IsType<Plus.HabboHotel.Groups.Group>(room.Group), "_administrators", new List<int> { 3 });
+        Set(Assert.IsType<Plus.HabboHotel.Groups.Group>(room.Group), "_members", new List<int> { 5 });
         var settings = new WiredRoomSettings(room, new MemoryStore());
-        Assert.True(settings.CanModify(rights));
-        Assert.True(settings.CanInspect(rights));
+        Assert.Equal(new(8, 8, ""), settings.Snapshot);
+        Assert.False(settings.CanModify(rights));
+        Assert.False(settings.CanInspect(rights));
         Assert.True(settings.CanModify(admin));
         Assert.True(settings.CanInspect(admin));
+        Assert.False(settings.CanModify(member));
+        Assert.False(settings.CanInspect(member));
         Assert.False(settings.CanModify(guest));
         Assert.False(settings.CanInspect(guest));
+        Assert.True(settings.CanModify(Client(room, 1)));
+        Assert.True(settings.CanInspect(Client(room, 6, "room.owner.any")));
     }
 
     [Theory]
@@ -122,7 +129,7 @@ public partial class WiredRoomSettingsTests
     }
 
     [Fact]
-    public async Task ActualSettingsReloadFailurePreservesSnapshotAndDeletedRowRestoresLegacyRights()
+    public async Task ActualSettingsReloadFailurePreservesSnapshotAndDeletedRowRestoresTheDefaultRights()
     {
         var room = Room();
         var owner = Client(room, 1);
@@ -143,8 +150,8 @@ public partial class WiredRoomSettingsTests
         replies.Clear();
         await new WiredRoomSettingsRequestEvent(Service()).Parse(room, owner, new FlashIncomingPacket { Buffer = Memory<byte>.Empty });
         Assert.Equal(5102u, Assert.Single(replies).Id);
-        Assert.Equal(new(), settings.Snapshot);
-        Assert.True(settings.CanModify(decorator));
+        Assert.Equal(new(8, 8, ""), settings.Snapshot);
+        Assert.False(settings.CanModify(decorator));
         Assert.Null(settings.ExplicitTimeZone);
         Assert.True(settings.TrySave(owner, 2, 2, "", out _)); // First-row CAS now expects absence.
     }

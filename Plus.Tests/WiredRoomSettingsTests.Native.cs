@@ -38,8 +38,8 @@ public partial class WiredRoomSettingsTests
         Assert.Equal(NativeSettingsId, frame.MessageId);
         Assert.Equal((14, 15, "Europe/Berlin"), NativeFields(frame));
 
-        // A room without a saved row keeps the Plus defaults and has no own timezone.
-        Assert.Equal((2, 2, ""), NativeFields(new WiredRoomSettingsComposer(defaults.View(owner))));
+        // A room without a saved row has the default of a new room and no own timezone.
+        Assert.Equal((8, 8, ""), NativeFields(new WiredRoomSettingsComposer(defaults.View(owner))));
     }
 
     [Fact]
@@ -60,6 +60,23 @@ public partial class WiredRoomSettingsTests
         ownerPackets.Clear();
         await new WiredGetRoomSettingsEvent(Service()).Parse(room, owner, HabbiconTestSupport.Incoming(1));
         Assert.Empty(ownerPackets);
+    }
+
+    [Fact]
+    public async Task NativeGetInARoomWithoutASavedRowAnswersTheDefaultMasksForARightsHolder()
+    {
+        var room = Room();
+        room.UsersWithRights.Add(2);
+        var store = new MemoryStore();
+        var settings = Register(room, store);
+        var (rights, rightsPackets) = NativeClient(room, 2);
+
+        await new WiredGetRoomSettingsEvent(Service()).Parse(room, rights, HabbiconTestSupport.Incoming());
+
+        Assert.Equal((8, 8, ""), NativeFrame(Assert.Single(rightsPackets)));
+        Assert.False(settings.CanModify(rights));
+        Assert.False(settings.CanInspect(rights));
+        Assert.Null(store.Saved);
     }
 
     [Fact]

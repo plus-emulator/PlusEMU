@@ -23,7 +23,7 @@ namespace Plus.Tests;
 public partial class PlacedFurniRoomTests
 {
     private const uint VbUserActive = 501, VbUserPermanent = 502, VbUserShared = 503, VbUserNoValue = 504, VbFurniPermanent = 505,
-        VbFurniRoom = 506, VbFurniNoValue = 507, VbGlobal = 508, VbContext = 509;
+        VbFurniRoom = 506, VbFurniNoValue = 507, VbGlobal = 508, VbContext = 509, VbEcho = 510;
     private const uint VbHolderA = 601, VbHolderB = 602;
     private const int VbOffline = 20, VbIdle = 21;
     private static readonly DateTimeOffset VbBase = new(2026, 10, 28, 10, 0, 0, TimeSpan.Zero);
@@ -47,7 +47,7 @@ public partial class PlacedFurniRoomTests
         typeof(WiredRoomVariables).GetField("<Module>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(_vbWired.Variables, module);
         _dpService = new WiredConfigurationService(TestWiredConfigurationStore.Instance, null!, new FakeWordFilter(), TestLogging.For<WiredConfigurationService>());
         var boxes = new[] { (VbUserActive, "wf_var_user"), (VbUserPermanent, "wf_var_user"), (VbUserShared, "wf_var_user"), (VbUserNoValue, "wf_var_user"),
-            (VbFurniPermanent, "wf_var_furni"), (VbFurniRoom, "wf_var_furni"), (VbFurniNoValue, "wf_var_furni"), (VbGlobal, "wf_var_room"), (VbContext, "wf_var_context") };
+            (VbFurniPermanent, "wf_var_furni"), (VbFurniRoom, "wf_var_furni"), (VbFurniNoValue, "wf_var_furni"), (VbGlobal, "wf_var_room"), (VbContext, "wf_var_context"), (VbEcho, "wf_var_echo") };
 
         for (var i = 0; i < boxes.Length; i++) {
             var box = WiredBox(boxes[i].Item1, boxes[i].Item2, i % 4, 3);
@@ -214,6 +214,24 @@ public partial class PlacedFurniRoomTests
         VariableButtonsRoom();
 
         VbEqual([VbError(2)], await VbHolders(id));
+    }
+
+    // An echo variable lists the holders of the variable it echoes; it has no owners page and is never cleared.
+    [Fact]
+    public async Task HighlightOfAnEchoListsTheHoldersOfItsVariable()
+    {
+        VariableButtonsRoom();
+        VbGive(VbUserPermanent, WiredVariableRuntimeFrames.UserHolder(_vbOwner), 7);
+
+        var reply = Assert.Single(await VbHolders("user:510"));
+        Assert.Equal(ServerPacketHeader.WiredAllVariableHoldersComposer, reply.Header);
+        var input = new FlashIncomingPacket { Buffer = reply.Body };
+        Assert.Equal(2, input.ReadInt());
+        Assert.Equal("user:510", input.ReadString());
+        Assert.Equal(Convert.ToHexString(VbBody(1, _vbOwner.VirtualId, 7)), Convert.ToHexString(reply.Body[^12..]));
+        VbEqual([VbError(3)], await VbOwners("user:510", 1, 10, 0, -1));
+        VbEqual([VbError(1)], await VbDelete("user:510"));
+        Assert.Equal(7, VbStored(VbUserPermanent, WiredVariableTarget.User, 7)!.Value);
     }
 
     [Fact]
@@ -607,7 +625,9 @@ public partial class PlacedFurniRoomTests
             [VbFurniRoom] = new(VbFurniRoom, RoomId, 7, "fr", WiredVariableTarget.Furni, WiredVariableAvailability.RoomActive, true),
             [VbFurniNoValue] = new(VbFurniNoValue, RoomId, 7, "fn", WiredVariableTarget.Furni, WiredVariableAvailability.RoomActive, false),
             [VbGlobal] = new(VbGlobal, RoomId, 7, "gr", WiredVariableTarget.Global, WiredVariableAvailability.RoomActive, true),
-            [VbContext] = new(VbContext, RoomId, 7, "cx", WiredVariableTarget.Context, WiredVariableAvailability.RoomActive, true)
+            [VbContext] = new(VbContext, RoomId, 7, "cx", WiredVariableTarget.Context, WiredVariableAvailability.RoomActive, true),
+            [VbEcho] = new(VbEcho, RoomId, 7, "ue", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true,
+                Link: new(RoomId, new(WiredVariableTarget.User, $"custom:{VbUserPermanent}"), false))
         };
 
         public uint? GetRoomOwner(uint roomId) => 7;

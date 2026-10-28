@@ -510,6 +510,12 @@ public static class ClientPacketHeader
     public const uint WiredSetObjectVariableValueEvent = 3831;
     // The inspection tab's read of one object's variables.
     public const uint WiredGetVariablesForObjectEvent = 2768;
+    // The Variables tab's Highlight, Delete and Manage buttons.
+    public const uint WiredGetAllVariableHoldersEvent = 791;
+    public const uint WiredDeleteAllVariableHoldersEvent = 3612;
+    public const uint WiredGetVariableOwnersPageEvent = 2579;
+    public const uint WiredGetUserPermanentVariablesEvent = 2120;
+    public const uint WiredSetUserPermanentVariableEvent = 2482;
 
     // Free product claims (cursed dragon adoption) and the new-feature promo expiry.
     public const uint HasClaimedProductEvent = 2640;

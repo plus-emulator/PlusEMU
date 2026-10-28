@@ -172,7 +172,7 @@ public partial class RoomItemHandling
     private readonly IRewardTrackManager _rewards;
     private readonly ConcurrentDictionary<uint, Item> _wallItems;
     private int _mRollerCycle;
-    private RoomItemSave[] _loadedState = [];
+    private readonly ConcurrentDictionary<uint, RoomItemSave> _restorePoint = new();
     private volatile bool _restoreOnDispose;
     private int _mRollerSpeed;
 
@@ -426,10 +426,14 @@ public partial class RoomItemHandling
             }
         }
 
-        _loadedState = GetWallAndFloor.Where(item => !item.IsTemporary).Select(ToSave).ToArray();
+        _restorePoint.Clear();
+
+        foreach (var item in GetWallAndFloor.Where(item => !item.IsTemporary)) {
+            _restorePoint[item.Id] = ToSave(item);
+        }
     }
 
-    /// <summary>When the room unloads, every furni it loaded with goes back to its loaded place and state after the normal save.</summary>
+    /// <summary>When the room unloads, every furni goes back to the place and state it had when the room loaded or when it was placed, after the normal save.</summary>
     public void RestoreLoadedStateOnDispose() => _restoreOnDispose = true;
 
     private Plus.HabboHotel.Items.Data.Moodlight.MoodlightData? LoadMoodlight(uint itemId) =>
@@ -965,6 +969,10 @@ public partial class RoomItemHandling
             _store.PlaceFloor(item.Id, _room.RoomId, item.GetX, item.GetY, item.GetZ, item.Rotation);
         }
 
+        if (newItem) {
+            _restorePoint[item.Id] = ToSave(item);
+        }
+
         return true;
     }
 
@@ -1112,6 +1120,7 @@ public partial class RoomItemHandling
         }
 
         _store.PlaceWall(item.Id, _room.RoomId, item.GetX, item.GetY, item.GetZ, item.Rotation, item.WallCoordinates);
+        _restorePoint[item.Id] = ToSave(item);
         _wallItems.TryAdd(item.Id, item);
         _room.SendObject(item);
 
@@ -1437,7 +1446,7 @@ public partial class RoomItemHandling
 
         if (_restoreOnDispose) {
             try {
-                _store.Restore(_room.Id, _loadedState);
+                _store.Restore(_room.Id, _restorePoint.Values.ToArray());
             }
             catch (Exception e) {
                 ExceptionLogger.LogCriticalException(e);

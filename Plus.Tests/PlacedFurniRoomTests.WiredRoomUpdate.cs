@@ -1,4 +1,5 @@
 using System.Data;
+using Microsoft.Extensions.Time.Testing;
 using Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.GameClients;
@@ -38,7 +39,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public async Task RollbackPutsTheFurniBackToTheirLoadedPlaceAndStateAfterTheUnloadSave()
+    public async Task RollbackPutsTheFurniBackToTheirLoadedOrPlacedPlaceAndStateAfterTheUnloadSave()
     {
         var (store, unloads) = LoadedRoom();
         var (_, viewer) = InRoom(_client);
@@ -49,6 +50,7 @@ public partial class PlacedFurniRoomTests
         handler.GetItem(51).WallCoordinates = ":w=1,3 l=4,20 r";
         var placedLater = Furni(52, InteractionType.None, WiredBoxType.None);
         Assert.True(handler.SetFloorItem(null!, placedLater, 0, 0, 0, true, false, false));
+        Assert.True(handler.SetFloorItem(null!, placedLater, 2, 2, 2, false, false, false));
 
         await new WiredRoomUpdateEvent(RoomUpdates(unloads)).Parse(_room, _client, EditorTestSupport.Incoming(true));
 
@@ -59,7 +61,8 @@ public partial class PlacedFurniRoomTests
         var restoredWall = Assert.Single(store.Restored, save => save.Id == 51);
         Assert.True(restoredWall.SaveWallPosition);
         Assert.Equal(LoadedWall, restoredWall.WallPosition);
-        Assert.DoesNotContain(store.Restored, save => save.Id == 52);
+        var restoredLater = Assert.Single(store.Restored, save => save.Id == 52);
+        Assert.Equal((0, 0, 0.0, 0), (restoredLater.X, restoredLater.Y, restoredLater.Z, restoredLater.Rotation));
         AssertSentOutAndBack(viewer);
     }
 
@@ -154,6 +157,8 @@ public partial class PlacedFurniRoomTests
         return (user, client);
     }
 
+    private readonly FakeTimeProvider _roomClock = new();
+
     private IWiredRoomStateService RoomUpdates(List<uint> unloads) => new WiredRoomStateService(Proxy<IRoomManager>((method, args) =>
     {
         Assert.Equal("UnloadRoom", method);
@@ -161,10 +166,14 @@ public partial class PlacedFurniRoomTests
         _room.GetRoomItemHandler().Dispose();
 
         return null;
-    }));
+    }), _roomClock);
 
     private void AssertSentOutAndBack(TestClient client)
     {
+        _roomClock.Advance(TimeSpan.FromMilliseconds(1999));
+        Assert.DoesNotContain(client.Packets, packet => packet.Header == ServerPacketHeader.RoomForwardComposer);
+        _roomClock.Advance(TimeSpan.FromMilliseconds(1));
+
         var sent = client.Packets.Select(packet => (packet.Header, Convert.ToHexString(packet.Body))).ToArray();
 
         Assert.Equal(

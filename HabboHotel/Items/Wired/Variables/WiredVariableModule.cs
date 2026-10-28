@@ -998,7 +998,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     public string? RefusePointer(WiredVariableDefinition proposed) => RefuseName(proposed.ItemId, proposed.Name, pointer: true) ?? RefuseAccessor(proposed);
 
     /// <summary>
-    /// The key a pointer's accessor is refused with, or null. The accessor must be a context variable that holds a value (anything else, or nothing, is a missing variable) and a pointer is never an accessor.
+    /// The key a pointer's accessor is refused with, or null. The accessor must be a context variable of its own that holds a value (anything else, an echo or nothing, is a missing variable) and a pointer is never an accessor.
     /// </summary>
     public string? RefuseAccessor(WiredVariableDefinition proposed)
     {
@@ -1011,7 +1011,7 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
                 return WiredVariableDefinitions.NeedsExecutionContextKey;
             }
 
-            return accessor.Target != WiredVariableTarget.Context || !accessor.HasValue ? WiredVariableDefinitions.MissingVariableKey : null;
+            return accessor.Target != WiredVariableTarget.Context || !accessor.HasValue || accessor.Link is not null ? WiredVariableDefinitions.MissingVariableKey : null;
         }
     }
 

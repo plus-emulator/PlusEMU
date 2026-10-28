@@ -54,10 +54,11 @@ public static class WiredVariableDefinitions
 
     /// <summary>
     /// The name a new save stores: each space becomes an underscore, the name is lower case and loses its leading and trailing underscores
-    /// ("_a" and "a_" store "a", "PtrUP" stores "ptrup"); inner underscores stay. A longer name than the 40 character limit is kept as sent and stays too long.
-    /// Only ASCII capitals are lowered, so any other letter stays a syntax error.
+    /// ("_a" and "a_" store "a", "PtrUP" stores "ptrup"); inner underscores stay. A pointer name is always cleaned, so the 40 character limit
+    /// applies to the cleaned name. Any other name longer than 40 characters is kept as sent. Only ASCII capitals are lowered, so any other
+    /// letter stays a syntax error.
     /// </summary>
-    internal static string CleanName(string text) => text.Length > 40 ? text
+    internal static string CleanName(string text, bool pointer = false) => !pointer && text.Length > 40 ? text
         : string.Concat(text.Select(c => c == ' ' ? '_' : char.IsAsciiLetterUpper(c) ? char.ToLowerInvariant(c) : c)).Trim('_');
 
     private static bool ValidName(string text) => text.Length is >= 1 and <= 40 && Regex.IsMatch(text, "^[A-Za-z0-9_]+$", RegexOptions.CultureInvariant);

@@ -194,7 +194,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
         }
 
         if (key == "@can_move_freely") {
-            if (item is null || item.IsWallItem) {
+            if (item is null || item.IsWallItem || mutation == WiredVariableMutation.Replace) {
                 return false;
             }
 

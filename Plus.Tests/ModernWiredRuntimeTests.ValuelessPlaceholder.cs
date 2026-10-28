@@ -33,4 +33,22 @@ public partial class ModernWiredRuntimeTests
 
         Assert.Equal("[null]", Shown(s, "[$(one)]"));
     }
+
+    [Fact]
+    public void ChangeNeverCreatesCanMoveFreelyAndKeepsAHeldOne()
+    {
+        using var s = new SelectorStack();
+        var holder = WiredVariableRuntimeFrames.FurniHolder(s.Blocks[0]);
+        var reference = new WiredVariableReference(WiredVariableTarget.Furni, "internal:@can_move_freely");
+        WiredVariableFrame Frame() => new(1, [holder]);
+
+        s.Module.Mutate(reference, holder, WiredVariableMutation.Replace, 5, Frame());
+        Assert.Null(s.Module.Read(reference, holder, Frame()));
+        Assert.True(s.Module.Mutate(reference, holder, WiredVariableMutation.Give, 1, Frame()));
+        Assert.NotNull(s.Module.Read(reference, holder, Frame()));
+        s.Module.Mutate(reference, holder, WiredVariableMutation.Replace, 5, Frame());
+        Assert.NotNull(s.Module.Read(reference, holder, Frame()));
+        Assert.True(s.Module.Mutate(reference, holder, WiredVariableMutation.Remove, 0, Frame()));
+        Assert.Null(s.Module.Read(reference, holder, Frame()));
+    }
 }

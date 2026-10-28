@@ -574,7 +574,6 @@ public class Room
         GetGameMap().Navigation?.ApplyDirty();
         GetGameMap().Navigation?.DrainCommands();
         GetRoomItemHandler().OnRollerCycle();
-        GetGameMap().Navigation?.Executor.LandDeferredRollers();
     }
 
     private void CycleActors()

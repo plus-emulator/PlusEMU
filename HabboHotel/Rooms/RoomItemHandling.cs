@@ -1188,9 +1188,6 @@ public partial class RoomItemHandling
         _rollers.TryRemove(new KeyValuePair<uint, Item>(item.Id, item));
     }
 
-    // True when the roller cycle moves load in this room tick.
-    internal bool RollersStepThisTick => (GotRollers || !_rollers.IsEmpty) && _mRollerCycle >= RollerStepTicks - 1;
-
     // Rollers run after the avatars step in the room tick.
     public void OnRollerCycle()
     {

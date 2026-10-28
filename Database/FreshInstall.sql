@@ -3426,6 +3426,7 @@ CREATE TABLE `users` (
   `account_created` datetime DEFAULT NULL,
   `last_online` datetime DEFAULT NULL,
   `last_change` datetime DEFAULT NULL,
+  `account_level` int(11) NOT NULL DEFAULT 8,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`) USING BTREE,
   KEY `ip_last` (`ip_last`),

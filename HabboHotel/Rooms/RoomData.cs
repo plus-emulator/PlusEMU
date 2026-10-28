@@ -73,6 +73,7 @@ public class RoomData
         ModelName = data.ModelName;
         OwnerName = data.OwnerName;
         OwnerId = data.OwnerId;
+        OwnerAccountLevel = data.OwnerAccountLevel;
         Password = data.Password;
         Score = data.Score;
         Type = data.Type;

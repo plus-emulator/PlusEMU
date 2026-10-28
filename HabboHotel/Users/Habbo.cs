@@ -94,6 +94,7 @@ public class Habbo
 
     public int Credits { get; set; }
 
+    // Every account starts at level 8, which gives its rooms the 3125 Wired execution cost cap.
     public const int DefaultAccountLevel = 8;
 
     public int AccountLevel { get; set; } = DefaultAccountLevel;

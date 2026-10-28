@@ -197,7 +197,7 @@ public partial class WiredComponent
 
         var items = _room.GetRoomItemHandler();
 
-        return WiredRoomStats.Create(_engine.ReadExecutionCost(), _engine.Limits.ExecutionCostCap ?? WiredRoomStats.DefaultExecutionCostCap, items.GetFloor.Count,
+        return WiredRoomStats.Create(_engine.ReadExecutionCost(), _engine.Limits.ExecutionCostCap ?? WiredRoomStats.ExecutionCostCapFor(_room.Data.OwnerAccountLevel), items.GetFloor.Count,
             items.GetWall.Count, furni, user, global);
     }
 

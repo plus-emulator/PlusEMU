@@ -37,7 +37,7 @@ public class ProfileInformationComposer(PlayerProfileSnapshot profile) : IServer
 
         var badges = profile.Badges ?? ProfileBadgeStats.None;
         packet.WriteBoolean(false); // hidden
-        packet.WriteInteger(0); // account level
+        packet.WriteInteger(profile.AccountLevel);
         packet.WriteInteger(0);
         packet.WriteInteger(0); // star gems
         packet.WriteBoolean(false);

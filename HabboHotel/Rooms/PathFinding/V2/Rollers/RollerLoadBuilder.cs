@@ -82,8 +82,8 @@ internal sealed class RollerLoadBuilder(Room room, RollerTransport transport)
 
         var z = Carried(actor.Z, roller, nextIsRoller);
 
-        if (!nextIsRoller && Math.Abs(actor.Z - roller.TotalHeight) <= SurfaceSelection.Tolerance) {
-            z = transport.StandZ(destination, z);
+        if (Math.Abs(actor.Z - roller.TotalHeight) <= SurfaceSelection.Tolerance) {
+            z = nextIsRoller ? transport.RollerTopZ(destination) : transport.StandZ(destination, z);
         }
 
         var slide = new SlideObjectBundleComposer(actor.X, actor.Y, actor.Z, destination.X, destination.Y,

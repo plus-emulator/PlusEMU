@@ -42,13 +42,24 @@ public partial class ModernWiredRuntimeTests
         var reference = new WiredVariableReference(WiredVariableTarget.Furni, "internal:@can_move_freely");
         WiredVariableFrame Frame() => new(1, [holder]);
 
-        s.Module.Mutate(reference, holder, WiredVariableMutation.Replace, 5, Frame());
+        s.Module.Change(reference, holder, WiredVariableMutation.Set, _ => 5, Frame(), notifyUnchanged: true);
         Assert.Null(s.Module.Read(reference, holder, Frame()));
         Assert.True(s.Module.Mutate(reference, holder, WiredVariableMutation.Give, 1, Frame()));
         Assert.NotNull(s.Module.Read(reference, holder, Frame()));
-        s.Module.Mutate(reference, holder, WiredVariableMutation.Replace, 5, Frame());
+        s.Module.Change(reference, holder, WiredVariableMutation.Set, _ => 5, Frame(), notifyUnchanged: true);
         Assert.NotNull(s.Module.Read(reference, holder, Frame()));
         Assert.True(s.Module.Mutate(reference, holder, WiredVariableMutation.Remove, 0, Frame()));
         Assert.Null(s.Module.Read(reference, holder, Frame()));
+    }
+
+    [Fact]
+    public void GiveWithOverrideCreatesCanMoveFreely()
+    {
+        using var s = new SelectorStack();
+        var holder = WiredVariableRuntimeFrames.FurniHolder(s.Blocks[0]);
+        var reference = new WiredVariableReference(WiredVariableTarget.Furni, "internal:@can_move_freely");
+
+        Assert.True(s.Module.Mutate(reference, holder, WiredVariableMutation.Replace, 0, new(1, [holder])));
+        Assert.NotNull(s.Module.Read(reference, holder, new(1, [holder])));
     }
 }

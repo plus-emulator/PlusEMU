@@ -282,9 +282,12 @@ public static class WiredOctoberActions
         return context.Room.GetWired().SendLink(furni("endpoints"), payload, WiredEventKind.LinkDataframe);
     }
 
-    // A variable's text connector names its values; a value without a name sends the "_=" text, else the number.
+    // A variable's text connector names its values; a value without a name sends the "_=" text, else the number. A pointer uses the
+    // connector of the variable it points at.
     private static string TextConnector(WiredRuntimeContext context, string id, long value) =>
-        WiredVariableDescription.TryParseCatalogId(id, out _, out var token) && WiredVariableModule.TryDefinitionId(token, out var definition)
+        WiredVariableDescription.TryParseCatalogId(id, out var target, out var token)
+        && WiredVariableModule.TryDefinitionId(context.Room.GetWired().Variables.Module.Unpoint(new(target, token),
+            WiredVariableRuntimeFrames.Create(context, context.VariableFrame))?.Token ?? token, out var definition)
         && context.Room.GetWired().Variables.Catalog().Variables.FirstOrDefault(description => description.Definition.ItemId == definition) is { } described
             ? described.TextConnector.TryGetValue(value, out var name) ? name : described.TextConnectorFallback ?? value.ToString(CultureInfo.InvariantCulture)
             : value.ToString(CultureInfo.InvariantCulture);

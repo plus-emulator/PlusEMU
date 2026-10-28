@@ -38,7 +38,7 @@ internal sealed class RollerLoadBuilder(Room room, RollerTransport transport)
         var destination = roller.SquareInFront;
         var nextIsRoller = map.GetAllRoomItemForSquare(destination.X, destination.Y).Any(RollerIdentity.IsRoller);
         var moves = map.GetRoomItemForSquare(roller.GetX, roller.GetY, roller.GetZ)
-            .Where(cargo => transport.RestsOnRoller(roller, cargo)).Take(MaxCargo)
+            .Where(cargo => transport.RestsOnRoller(roller, cargo) && !room.GetRoomItemHandler().WaitsForRoller(cargo)).Take(MaxCargo)
             .Where(cargo => cargoSeen.Add(cargo.Id))
             .Select(cargo => CargoMove(roller, cargo, destination, nextIsRoller)).ToList();
         // A ridden horse never rolls on its own: its rider rolls and takes it along.

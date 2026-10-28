@@ -494,6 +494,9 @@ public sealed class GateTransitionService(Room room, Func<IGateOccupancy> occupa
             item.UpdateState(persist, false);
             room.SendObjectData(item, item.LegacyDataString, false);
         }
+        else if (reason == GateCloseReason.Click && persist) {
+            item.UpdateUsedState();
+        }
         else {
             item.UpdateState(persist, true);
         }

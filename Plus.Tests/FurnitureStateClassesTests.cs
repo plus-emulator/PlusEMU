@@ -45,6 +45,8 @@ public sealed class FurnitureStateClassesTests
     [InlineData("wf_antenna1", 4, "antenna", 1)]
     [InlineData("wf_glassdoor", 2, "gate", 1)]
     [InlineData("wf_floor_switch1", 2, "wf_floor_switch1", 2)]
+    [InlineData("queue_tile1*8", 3, "roller", 0)]
+    [InlineData("conf_queue_speed", 12, "queue_speed", 1)]
     public void TheseClassesCarryHabbosUsagePolicy(string name, int modes, string interaction, int usage) =>
         Assert.Equal(usage, RoomItemSnapshot.Capture(Placed(name, modes, interaction)).UseButton);
 

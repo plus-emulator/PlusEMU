@@ -34,8 +34,7 @@ public sealed class RoomWiredBuiltinVariables(Room room,
                 or "~area_hide.root_x" or "~area_hide.root_y" or "~area_hide.width" or "~area_hide.length"
                 or "~clock.state" or "~clock.pulse_count" or "~teleport.target_id" or "~background_color.hue" or "~background_color.saturation" or "~background_color.lightness"
                 or "~recolorable_furni.color.rgb" or "~recolorable_furni.color.rgb.red" or "~recolorable_furni.color.rgb.green" or "~recolorable_furni.color.rgb.blue"
-                or "@projectile.animation.position.x" or "@projectile.animation.position.y" or "@projectile.animation.position.altitude"
-                or "@can_move_freely",
+                or "@projectile.animation.position.x" or "@projectile.animation.position.y" or "@projectile.animation.position.altitude",
             WiredVariableTarget.User => WiredQuestVariables.TryParseKey(key, out _, out _) || key is "@achievement_score" or "@level" or "@altitude" or "@bot_id" or "@dance" or "@direction" or "@effect"
                 or "@gender" or "@handitem" or "@index" or "@pet_id" or "@pet_owner_id" or "@favourite_group_id" or "@position" or "@position.x" or "@position.y" or "@room_entry.method"
                 or "@room_entry.teleport_id" or "@sign" or "@team.type" or "@team.color" or "@team.score" or "@type" or "@user_id"

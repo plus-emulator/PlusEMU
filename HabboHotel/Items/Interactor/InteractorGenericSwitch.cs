@@ -19,13 +19,16 @@ public class InteractorGenericSwitch(IQuestManager quests, IRewardTrackManager r
             return;
         }
 
-        quests.ProgressUserQuest(session, QuestType.FurniSwitch);
-
-        if (WiredDeferredStates.IsBlob(item) && item.GetRoom() is { } blobRoom) {
-            WiredDeferredStates.For(blobRoom).ToggleOnNextRoomTick(item);
+        if (WiredDeferredStates.IsBlob(item)) {
+            if (item.GetRoom() is { } blobRoom && blobRoom.GetWired().GameCounterRunning) {
+                quests.ProgressUserQuest(session, QuestType.FurniSwitch);
+                WiredDeferredStates.For(blobRoom).ToggleOnNextRoomTick(item);
+            }
 
             return;
         }
+
+        quests.ProgressUserQuest(session, QuestType.FurniSwitch);
 
         if (GateTransitionService.IsGate(item) && GateTransitionService.For(item) != null) {
             ToggleSequenced(session, item, modes);

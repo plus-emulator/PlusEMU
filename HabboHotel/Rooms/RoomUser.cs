@@ -621,7 +621,7 @@ public class RoomUser
     }
 
     // Walks to the item's approach tile; under v2 with approach_auto_interact the arrival starts the interaction.
-    public void ApproachItem(Item item, int actionKind)
+    public void ApproachItem(Item item, int actionKind, Point? approachTile = null)
     {
         var room = GetRoom();
 
@@ -629,7 +629,7 @@ public class RoomUser
             return;
         }
 
-        var front = item.SquareInFront;
+        var front = approachTile ?? item.SquareInFront;
 
         if (!IsBot && !TeleportEnabled && room.GetGameMap()?.Navigation is { Settings.ApproachAutoInteract: true } navigation
             && navigation.DescribeApproach(item, actionKind) is { } approach) {

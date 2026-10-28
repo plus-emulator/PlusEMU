@@ -314,13 +314,14 @@ public sealed class DatabaseWiredChestStore(IDatabase database, IItemDataManager
                 CAST(COALESCE(SUM(e.is_deposit=1 AND e.item_id IS NOT NULL),0) AS SIGNED) AS DepositFurni,
                 CAST(LEAST(COALESCE(SUM(IF(e.is_deposit=0 AND e.item_id IS NULL,e.coins,0)),0),2147483647) AS SIGNED) AS WithdrawCoins,
                 CAST(LEAST(COALESCE(SUM(IF(e.is_deposit=1 AND e.item_id IS NULL,e.coins,0)),0),2147483647) AS SIGNED) AS DepositCoins
-            FROM wired_chest_transactions t
+            FROM (SELECT p.id FROM wired_chest_transactions p WHERE p.room_id=@RoomId
+                    AND (@ChestId IS NULL OR EXISTS (SELECT 1 FROM wired_chest_transaction_entries scope WHERE scope.transaction_id=p.id AND scope.chest_id=@ChestId))
+                ORDER BY p.id DESC LIMIT @Amount OFFSET @Offset) page
+            JOIN wired_chest_transactions t ON t.id=page.id
             LEFT JOIN users u ON u.id=t.user_id
             LEFT JOIN wired_chest_transaction_entries e ON e.transaction_id=t.id AND (@ChestId IS NULL OR e.chest_id=@ChestId)
-            WHERE t.room_id=@RoomId
-                AND (@ChestId IS NULL OR EXISTS (SELECT 1 FROM wired_chest_transaction_entries scope WHERE scope.transaction_id=t.id AND scope.chest_id=@ChestId))
             GROUP BY t.id, t.room_id, t.log_type, t.user_id, u.username, t.created_at
-            ORDER BY t.id DESC LIMIT @Amount OFFSET @Offset
+            ORDER BY t.id DESC
             """, parameters).Select(row => new WiredChestLogRow(row.Id, row.RoomId, (WiredChestLogType)row.Type, row.UserId, row.UserName, row.Timestamp,
                 row.ChestCount, row.WithdrawFurni, row.DepositFurni, row.WithdrawCoins, row.DepositCoins)).ToArray();
 

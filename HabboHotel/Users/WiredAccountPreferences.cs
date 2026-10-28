@@ -8,7 +8,7 @@ public sealed record WiredAccountPreferences(
     bool ShowAllNotifications,
     string UiStyle)
 {
-    public const int MaxUiStyleLength = 64;
+    public const int MaxUiStyleLength = 30000;
 
     public static readonly WiredAccountPreferences Default = new(false, false, false, false, false, "");
 }

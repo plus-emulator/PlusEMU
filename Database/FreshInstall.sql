@@ -3538,7 +3538,7 @@ CREATE TABLE `users_settings` (
   `wired_play_test` tinyint(1) NOT NULL DEFAULT 0,
   `wired_whisper_disabled` tinyint(1) NOT NULL DEFAULT 0,
   `wired_show_all_notifications` tinyint(1) NOT NULL DEFAULT 0,
-  `wired_ui_style` varchar(64) NOT NULL DEFAULT '',
+  `wired_ui_style` text NOT NULL DEFAULT '',
   PRIMARY KEY (`user_id`),
   KEY `fk_users_settings_home_room_ref` (`home_room_ref`),
   CONSTRAINT `fk_users_settings_home_room_ref` FOREIGN KEY (`home_room_ref`) REFERENCES `rooms` (`id`),

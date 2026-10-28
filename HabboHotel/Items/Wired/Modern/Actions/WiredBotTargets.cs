@@ -148,7 +148,8 @@ public sealed class WiredBotTargets
         return result;
     }
 
-    // A following bot picks a random free tile among the 8 around the tile the user stands on or steps onto.
+    // A following bot picks a random free tile among the 8 around the tile the user stands on, or, while the user walks,
+    // the tile the user is announced to step onto in the tick of the bot's own first step.
     // It walks all the way there and does not move when it is already next to the user.
     // Bot Reached Avatar fires one room tick after the bot stops on its tile next to the user, and only then.
     // Returns whether the bot reached the user.
@@ -172,7 +173,7 @@ public sealed class WiredBotTargets
 
         var arrival = target.Arrived;
         target.Arrived = false;
-        var tile = WiredRoomOperations.StandingTile(user);
+        var tile = FollowedTile(room, user);
 
         if (Math.Max(Math.Abs(tile.X - bot.X), Math.Abs(tile.Y - bot.Y)) <= 1) {
             return arrival;
@@ -195,6 +196,22 @@ public sealed class WiredBotTargets
         bot.MoveTo(pick.X, pick.Y);
 
         return false;
+    }
+
+    private static (int X, int Y) FollowedTile(Room room, RoomUser user)
+    {
+        var state = user.Movement;
+        var next = state.Cursor + state.PendingCount;
+
+        if (state.State == NavState.Active && state.HasIntent && next < state.Route.Count && room.GetGameMap().Navigation is { } navigation) {
+            var tile = state.Route.Steps[next].Tile;
+
+            return (tile % navigation.Grid.Width, tile / navigation.Grid.Width);
+        }
+
+        var standing = WiredRoomOperations.StandingTile(user);
+
+        return (standing.X, standing.Y);
     }
 
     private void PollGive(Room room, RoomUser bot, RoomUser user, Target target, long now)

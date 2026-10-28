@@ -168,6 +168,7 @@ public partial class ModernWiredRuntimeTests
     [Theory]
     [InlineData(2, "user:650", 0, "seven")]
     [InlineData(2, "user:610", 0, "seven")]
+    [InlineData(2, "user:650", 1, "seven")]
     [InlineData(1, "user:650", 0, "7")]
     [InlineData(1, "user:650", 1, "7")]
     public void LinkSendDataframeReadsTheConnectorOfThePointedVariable(int mode, string variable, int delay, string expected)

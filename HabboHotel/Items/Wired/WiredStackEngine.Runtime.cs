@@ -493,6 +493,8 @@ internal sealed partial class WiredStackEngine
 
     /// <summary>The boundary of the last room tick that started, or null before the first one.</summary>
     public long? LastRoomTick { get; private set; }
+    /// <summary>The number of room ticks that started. Work between two room ticks shares one count.</summary>
+    public long RoomTickIndex { get; private set; }
 
     /// <summary>
     /// The boundary of the first room tick after <paramref name="firing"/>: the tick after the last one that started, or a tick that is
@@ -545,6 +547,7 @@ internal sealed partial class WiredStackEngine
 
         var now = _now();
         LastRoomTick = now - now % WiredFlashStates.StateUpdateMilliseconds;
+        RoomTickIndex++;
         _roomTickOpen = true;
         _roomTickDrain = true;
         _splitEnd = splitEnd;

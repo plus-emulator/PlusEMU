@@ -15,6 +15,8 @@ public sealed class WiredBotTargets
         public int HandItem; public long? AnnouncedAt; public (int X, int Y)? Goal; public (int X, int Y)? LeftFrom;
         // A following bot rests from this time on the room's Wired clock; Arrived when the rest follows a stop on its tile.
         public long? RestFrom; public bool Arrived;
+        // The room tick and the Wired time of the bot's last start roll.
+        public long? RolledTick, RolledAt;
         // The account a following bot is tied to. User is null while that account is out of the room.
         public int FollowId;
     }
@@ -22,8 +24,17 @@ public sealed class WiredBotTargets
     public const int HandOverDelayMilliseconds = 300;
     /// <summary>A following bot that reached its tile waits one room tick before it looks for the user again.</summary>
     public const int FollowRestMilliseconds = 500;
+    /// <summary>A following bot that could start walking starts in a room tick with this chance while its user walks.</summary>
+    public const double FollowStartChanceWalking = 0.57;
+    /// <summary>The same chance while the user stands still.</summary>
+    public const double FollowStartChanceStanding = 0.38;
     // Picks the tile around the user that a following bot walks to.
     internal Random Random { get; set; } = Random.Shared;
+    // Whether a following bot is processed before its user in the tick it decides, so that it sees the tile the user stands on.
+    internal Func<bool> BotFirst { get; set; } = () => Random.Shared.Next(2) == 0;
+    // A random number in [0, 1) that decides whether a following bot that could start walking does so in this room tick.
+    internal static Func<double> DefaultStartRoll { get; set; } = () => Random.Shared.NextDouble();
+    internal Func<double> StartRoll { get; set; } = () => DefaultStartRoll();
     private readonly Dictionary<RoomUser, Target> _targets = [];
     private static readonly ConditionalWeakTable<Room, WiredBotTargets> Rooms = new();
     public static WiredBotTargets For(Room room) => Rooms.GetValue(room, _ => new());
@@ -148,8 +159,10 @@ public sealed class WiredBotTargets
         return result;
     }
 
-    // A following bot picks a random free tile among the 8 around the tile the user stands on or steps onto.
+    // A following bot picks a random free tile among the 8 around the tile the user stands on, or, while the user walks,
+    // the tile the user is announced to step onto in the tick of the bot's own first step.
     // It walks all the way there and does not move when it is already next to the user.
+    // When it could start, it does so with a fixed chance per room tick.
     // Bot Reached Avatar fires one room tick after the bot stops on its tile next to the user, and only then.
     // Returns whether the bot reached the user.
     private bool PollFollow(Room room, RoomUser bot, RoomUser user, Target target, long now)
@@ -172,9 +185,22 @@ public sealed class WiredBotTargets
 
         var arrival = target.Arrived;
         target.Arrived = false;
-        var tile = WiredRoomOperations.StandingTile(user);
+        var tile = FollowedTile(room, user);
 
         if (Math.Max(Math.Abs(tile.X - bot.X), Math.Abs(tile.Y - bot.Y)) <= 1) {
+            return arrival;
+        }
+
+        var tick = room.GetWired()?.RoomTickIndex;
+
+        if (target.RolledAt is { } rolledAt && target.RolledTick == tick && now - rolledAt < FollowRestMilliseconds) {
+            return arrival;
+        }
+
+        target.RolledTick = tick;
+        target.RolledAt = now;
+
+        if (StartRoll() >= (IsMoving(user) ? FollowStartChanceWalking : FollowStartChanceStanding)) {
             return arrival;
         }
 
@@ -195,6 +221,24 @@ public sealed class WiredBotTargets
         bot.MoveTo(pick.X, pick.Y);
 
         return false;
+    }
+
+    private (int X, int Y) FollowedTile(Room room, RoomUser user)
+    {
+        var state = user.Movement;
+        var next = state.Cursor + state.PendingCount;
+
+        // A bot processed before its walking user still sees the tile the user stands on.
+        if (state.State == NavState.Active && state.HasIntent && next < state.Route.Count && room.GetGameMap().Navigation is { } navigation
+            && !BotFirst()) {
+            var tile = state.Route.Steps[next].Tile;
+
+            return (tile % navigation.Grid.Width, tile / navigation.Grid.Width);
+        }
+
+        var standing = WiredRoomOperations.StandingTile(user);
+
+        return (standing.X, standing.Y);
     }
 
     private void PollGive(Room room, RoomUser bot, RoomUser user, Target target, long now)

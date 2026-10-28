@@ -985,13 +985,13 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
     }
 
     /// <summary>
-    /// The key a new save of a named variable is refused with, or null. A name that is empty once cleaned is too short on every kind, a pointer name also needs 1 to 40 letters,
+    /// The key a new save of a named variable is refused with, or null. A name is cleaned first and must then be 1 to 40 characters on every kind, a pointer name also needs 1 to 40 letters,
     /// digits or underscores, and the cleaned name must differ from every user, furni, global, context and pointer variable of the room. Echo, reference and quest variables
     /// do not count (a daily task variable is a user variable here and does). An older stored name is compared as it is stored.
     /// </summary>
     public string? RefuseName(uint itemId, string name, bool pointer)
     {
-        if ((pointer ? WiredVariableDefinitions.RefuseName(name) : name.Length == 0 ? WiredVariableDefinitions.NameLengthKey : null) is { } badName) {
+        if ((pointer ? WiredVariableDefinitions.RefuseName(name) : name.Length is < 1 or > 40 ? WiredVariableDefinitions.NameLengthKey : null) is { } badName) {
             return badName;
         }
 

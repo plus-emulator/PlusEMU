@@ -44,7 +44,7 @@ public partial class PlacedFurniRoomTests
         Assert.All(starts.Starts, start => Assert.True(Next(start.Goal, start.Before), $"goal {start.Goal} is not next to the user's tile {start.Before}\n{starts.Log}"));
     }
 
-    // On the user's last step of a walk the bot sees the tile the user steps onto, whatever the processing order.
+    // On the user's last step of a walk the bot is processed before or after the user like on any other step.
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
@@ -54,9 +54,27 @@ public partial class PlacedFurniRoomTests
     [InlineData(6)]
     [InlineData(7)]
     [InlineData(8)]
-    public async Task ABotAimsNextToTheTileTheUserArrivesOnWhateverTheProcessingOrder(int seed)
+    public async Task ABotProcessedBeforeTheUserOnItsLastStepAimsNextToTheTileTheUserStandsOn(int seed)
     {
         var starts = await FollowStarts(seed, botFirst: true, targetX: 3);
+
+        Assert.NotEmpty(starts.Starts);
+        Assert.All(starts.Starts, start => Assert.True(start.After == (3, 2), $"the bot did not start on the user's last step\n{starts.Log}"));
+        Assert.All(starts.Starts, start => Assert.True(Next(start.Goal, start.Before), $"goal {start.Goal} is not next to the user's tile {start.Before}\n{starts.Log}"));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(8)]
+    public async Task ABotProcessedAfterTheUserOnItsLastStepAimsNextToTheTileTheUserArrivesOn(int seed)
+    {
+        var starts = await FollowStarts(seed, botFirst: false, targetX: 3);
 
         Assert.NotEmpty(starts.Starts);
         Assert.All(starts.Starts, start => Assert.True(start.After == (3, 2), $"the bot did not start on the user's last step\n{starts.Log}"));

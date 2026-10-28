@@ -8,7 +8,11 @@ namespace Plus.Tests;
 
 public sealed partial class FurnitureStateCountsTests
 {
-    private const string MigrationFile = "Database/Migrations/127_FurnitureStateCounts.sql";
+    private static readonly string[] MigrationFiles =
+    [
+        "Database/Migrations/127_FurnitureStateCounts.sql",
+        "Database/Migrations/128_MoreFurnitureStateCounts.sql",
+    ];
 
     [GeneratedRegex(@"^UPDATE furniture SET interaction_modes_count = (\d+) WHERE .* IN \((.*)\);$", RegexOptions.Multiline)]
     private static partial Regex CountUpdate();
@@ -16,22 +20,58 @@ public sealed partial class FurnitureStateCountsTests
     [GeneratedRegex(@"'((?:[^'\\]|''|\\.)*)'")]
     private static partial Regex Quoted();
 
-    private static (string Name, int Count)[] FixedClasses() =>
+    private static (string Name, int Count)[] FixedClasses(string migrationFile) =>
     [
-        .. CountUpdate().Matches(File.ReadAllText(HabbiconPacketTests.Repo(MigrationFile))).SelectMany(match =>
+        .. CountUpdate().Matches(File.ReadAllText(HabbiconPacketTests.Repo(migrationFile))).SelectMany(match =>
             Quoted().Matches(match.Groups[2].Value).Select(name => (name.Groups[1].Value.Replace("''", "'"), int.Parse(match.Groups[1].Value))))
     ];
 
+    // The count a hotel ends with: a later migration wins over an earlier one.
+    private static (string Name, int Count)[] FixedClasses()
+    {
+        var counts = new Dictionary<string, int>();
+
+        foreach (var file in MigrationFiles) {
+            foreach (var (name, count) in FixedClasses(file)) {
+                counts[name] = count;
+            }
+        }
+
+        return [.. counts.Select(entry => (entry.Key, entry.Value))];
+    }
+
     [Fact]
-    public void TheMigrationNamesEachClassOnceAndFixesTheWiredFurniOfThisChange()
+    public void EachMigrationNamesEachClassOnce()
+    {
+        foreach (var file in MigrationFiles) {
+            var fixes = FixedClasses(file);
+
+            Assert.NotEmpty(fixes);
+            Assert.Equal(fixes.Length, fixes.Select(fix => fix.Name).Distinct().Count());
+        }
+    }
+
+    [Fact]
+    public void TheMigrationsFixTheWiredFurniOfThisChange()
     {
         var fixes = FixedClasses();
 
-        Assert.Equal(fixes.Length, fixes.Select(fix => fix.Name).Distinct().Count());
         Assert.Contains(("wf_antenna1", 2), fixes);
         Assert.Contains(("wf_antenna2", 2), fixes);
         Assert.Contains(("wf_fx_firegate", 2), fixes);
         Assert.Contains(("wf_teamcolortile", 10), fixes);
+    }
+
+    [Theory]
+    [InlineData("hween_c18_labtilefloor", 3)]
+    [InlineData("hygge_c25_carpetfloor", 3)]
+    [InlineData("vwave_c21_trash", 4)]
+    [InlineData("hween_c26_circle", 12)]
+    [InlineData("cine_curtain", 2)]
+    [InlineData("s12_bonfire", 2)]
+    public void TheSecondMigrationGivesAClassTheCountHabboCyclesThrough(string name, int count)
+    {
+        Assert.Contains((name, count), FixedClasses(MigrationFiles[1]));
     }
 
     [Fact]
@@ -84,13 +124,15 @@ public sealed partial class FurnitureStateCountsTests
 
             // The hotel as it was before this migration: every fixed class has a count the fix replaces, and placed items sit above the new last state.
             hotel.Execute("UPDATE furniture SET interaction_modes_count = interaction_modes_count + 3 WHERE has_furnidata = 1 AND item_name IN @names", new { names = fixes.Select(fix => fix.Name).ToArray() });
-            var shrinking = fixes.First(fix => fix.Count >= 2);
+            var shrinking = FixedClasses(MigrationFiles[^1]).First(fix => fix.Count >= 2 && fixes.Contains(fix));
             var baseItem = hotel.ExecuteScalar<uint>("SELECT id FROM furniture WHERE has_furnidata = 1 AND item_name = @name", new { name = shrinking.Name });
             hotel.Execute("INSERT INTO items (user_id, room_id, base_item, extra_data) VALUES (0, 0, @baseItem, @top), (0, 0, @baseItem, '0'), (0, 0, @baseItem, 'text')",
                 new { baseItem, top = (shrinking.Count + 2).ToString() });
 
-            foreach (var statement in SqlScript.Split(File.ReadAllText(HabbiconPacketTests.Repo(MigrationFile)))) {
-                hotel.Execute(statement);
+            foreach (var file in MigrationFiles) {
+                foreach (var statement in SqlScript.Split(File.ReadAllText(HabbiconPacketTests.Repo(file)))) {
+                    hotel.Execute(statement);
+                }
             }
 
             var query = "SELECT item_name, interaction_type, interaction_modes_count FROM furniture WHERE has_furnidata = 1 AND item_name IN @names ORDER BY item_name";

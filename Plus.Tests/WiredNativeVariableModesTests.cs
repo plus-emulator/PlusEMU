@@ -46,6 +46,27 @@ public sealed class WiredNativeVariableModesTests
         Assert.False(WiredVariableChangedTrigger.MatchesPickedBoxes(config, change, module, 1));
     }
 
+    // A Variable Changed trigger that picks an Echo box sees the changes of the variable the Echo mirrors.
+    [Fact]
+    public void PickedEchoBoxSeesTheChangesOfItsSource()
+    {
+        var config = WiredOctoberEditorParityTests.Compile("wf_trg_var_changed", n => n with
+        {
+            OwnedIntParams = [1, 1, 1, 1, 4, 1],
+            VariableIds = ["n"],
+            PrimaryItems = [new(31, false)]
+        });
+        var module = new WiredVariableModule(1, new Directory(), new MemoryWiredVariableStore(), TimeProvider.System);
+        var user = new WiredVariableHolder(WiredVariableTarget.User, 7, 1);
+        var frame = new WiredVariableFrame(1, [user]);
+        Assert.True(module.Mutate(new(user.Target, "custom:30"), user, WiredVariableMutation.Give, 4, frame, origin: 2));
+        Assert.True(WiredVariableChangedTrigger.MatchesPickedBoxes(config, Assert.Single(module.DrainChanges()), module, 1));
+        Assert.True(module.Mutate(new(user.Target, "custom:31"), user, WiredVariableMutation.Set, 3, frame, origin: 2));
+        Assert.False(WiredVariableChangedTrigger.MatchesPickedBoxes(config, Assert.Single(module.DrainChanges()), module, 1)); // increase-only
+        Assert.True(module.Mutate(new(user.Target, "custom:31"), user, WiredVariableMutation.Remove, 0, frame, origin: 2));
+        Assert.True(WiredVariableChangedTrigger.MatchesPickedBoxes(config, Assert.Single(module.DrainChanges()), module, 1));
+    }
+
     [Theory]
     [InlineData(WiredVariableTarget.User, "wf_slc_users_with_var", 1, "user:")]
     [InlineData(WiredVariableTarget.Furni, "wf_slc_furni_with_var", 0, "furni:")]
@@ -95,6 +116,8 @@ public sealed class WiredNativeVariableModesTests
             10 when !Removed => new(10, 1, 5, "user", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true),
             11 => new(11, 1, 5, "furni", WiredVariableTarget.Furni, WiredVariableAvailability.RoomActive, true),
             12 => new(12, 1, 5, "other", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true),
+            30 => new(30, 1, 5, "source", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true),
+            31 => new(31, 1, 5, "echo", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true, Link: new(1, new(WiredVariableTarget.User, "custom:30"), false)),
             20 or 21 => new(id, 1, 5, "selector", SelectorTarget, WiredVariableAvailability.RoomActive, true),
             99 => new(99, 2, 5, "foreign", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true),
             _ => null

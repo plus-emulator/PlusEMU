@@ -943,6 +943,15 @@ public sealed class WiredVariableModule(uint roomId, IWiredVariableDirectory dir
         }
     }
 
+    /// <summary>The reference whose changes a Variable Changed trigger on this reference sees. An Echo reports the changes of the variable it mirrors.</summary>
+    public WiredVariableReference ChangeSource(WiredVariableReference reference)
+    {
+        lock (_gate) {
+            return Resolve(reference, false)?.Definition is { } terminal && terminal.RoomId == roomId && terminal.Token != reference.Token
+                && TryDefinitionId(reference.Token, out _) ? new(reference.Target, terminal.Token) : reference;
+        }
+    }
+
     /// <summary>False when the reference names a variable whose changes no Variable Changed trigger sees.</summary>
     public bool InterceptsChanges(WiredVariableReference reference)
     {

@@ -236,16 +236,18 @@ internal static class WiredNativeCatalogProjection
         // The lvlup sub-variable "<parent>.current_level" is listed with type 2 and availability 999.
         // A global lists canReadCreationTime false, canReadLastUpdateTime true; a Time Utilities Value part is writable and interceptable.
         // A reference to a shared variable of another room is listed as a normal variable (type 0) of availability 20 whose changes can be intercepted.
-        // An echo or alias of a variable of this room stays type 2.
+        // An echo of a custom variable of this room is listed like the variable itself (type 0, interceptable). An alias of a built-in stays type 2.
         // A context variable box is never interceptable, and one without a value has no last update time.
         var crossRoom = definition.Link is { } link && link.SourceRoomId != definition.RoomId;
         var contextBox = definition.Target == WiredVariableTarget.Context && !description.IsDerived;
-        var variable = new WiredNativeVariable(description.CatalogId, description.IsDerived || definition.Link is not null && !crossRoom ? 2 : 0,
-            definition.Name, builtin is not null || description.IsDerived || definition.Target == WiredVariableTarget.Context ? 999
+        var customEcho = description.IsEcho && builtin is null;
+        var variable = new WiredNativeVariable(description.CatalogId, description.IsDerived || definition.Link is not null && !crossRoom && !customEcho ? 2 : 0,
+            definition.Name, description.IsEcho ? WiredVariableDescription.EchoAvailability
+                : builtin is not null || description.IsDerived || definition.Target == WiredVariableTarget.Context ? 999
                 : crossRoom ? ReferenceAvailability : (int)(endpoint.Terminal?.Availability ?? definition.Availability), target,
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
-            (definition.InterceptsChanges || description.IsDerived) && (definition.Link is null || crossRoom) && (writable || description.Interceptable) && builtin is null, false,
+            (definition.InterceptsChanges || description.IsDerived) && (definition.Link is null || crossRoom || customEcho) && (writable || description.Interceptable) && builtin is null, false,
             timestamps && definition.Target != WiredVariableTarget.Global, timestamps && (!contextBox || hasValue), connector)
         { TextConnectorFallback = fallback };
 

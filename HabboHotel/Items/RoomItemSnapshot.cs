@@ -82,9 +82,10 @@ public sealed record RoomItemSnapshot(
     };
 
     /// <summary>
-    /// The game tiles, the pyramid, the blob, the box, three buttons and the plates have usage policy 0, whatever number of states they have.
+    /// Rollers, the game tiles, the pyramid, the blob, the box, three buttons and the plates have usage policy 0, whatever number of states they have.
     /// </summary>
-    internal static bool IsNeverUsed(ItemDefinition definition) => definition.ItemName is "wf_tile1" or "wf_tile2" or "wf_pyramid" or "wf_box"
+    internal static bool IsNeverUsed(ItemDefinition definition) => definition.InteractionType == InteractionType.Roller
+        || definition.ItemName is "wf_tile1" or "wf_tile2" or "wf_pyramid" or "wf_box"
         or "wf_arrowplate" or "wf_arrowplate_8dir" or "wf_pressureplate" or "wf_ringplate" or "wf_blob" or "wf_blob2"
         or "wf_button" or "wf_button_red" or "wf_button_x";
 

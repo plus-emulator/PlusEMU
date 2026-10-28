@@ -88,7 +88,7 @@ public sealed class WiredRoomSettings(Room room, IWiredRoomSettingsStore store, 
     {
         lock (_gate) {
             var saved = store.Load(room.Id);
-            // Publish only a successful authoritative read; a deleted row restores the existing Plus fallback.
+            // Publish only a successful authoritative read; a deleted row restores the default settings.
             _saved = saved;
             _loaded = true;
         }
@@ -107,12 +107,8 @@ public sealed class WiredRoomSettings(Room room, IWiredRoomSettingsStore store, 
         lock (_gate) {
             EnsureLoaded();
 
-            // No companion row preserves Plus's existing room and group decorator permissions.
-            if (_saved == null) {
-                return room.CheckRights(session, false, true);
-            }
-
-            var mask = (WiredRoomAccess)(modify ? _saved.ModifyMask : _saved.InspectMask);
+            var saved = _saved ?? new();
+            var mask = (WiredRoomAccess)(modify ? saved.ModifyMask : saved.InspectMask);
             var habbo = session.GetHabbo();
 
             if (!modify && mask.HasFlag(WiredRoomAccess.Everyone)) {

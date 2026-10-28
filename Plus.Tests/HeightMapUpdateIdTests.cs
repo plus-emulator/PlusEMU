@@ -11,7 +11,7 @@ public sealed class HeightMapUpdateIdTests
     public void HeightMapUpdateUsesTheAirIdAndLayout()
     {
         var composer = new HeightMapUpdateComposer([new(8, 10, unchecked((short)0x8000))]);
-        Assert.Equal(3841u, composer.MessageId);
+        Assert.Equal(2234u, composer.MessageId);
         Assert.Equal(new byte[] { 1, 8, 10, 0x80, 0 }, TypedFurnitureStateTests.Payload(composer));
     }
 }

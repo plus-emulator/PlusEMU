@@ -151,7 +151,7 @@ public sealed partial class WiredGlideConveyorTests
         f.Advance(500);
 
         Assert.Equal((7, 7), (rider.X, rider.Y));
-        Assert.Equal("3841,3151,5110,1695,5110,1695,2011,2254", string.Join(",", frames.Select(frame => frame.Header)));
+        Assert.Equal("2234,1272,5110,965,5110,965,3712,3744", string.Join(",", frames.Select(frame => frame.Header)));
     }
 
     // The turn of a projectile shooter and the turn of a Move User box on the same user are both sent.

@@ -60,7 +60,7 @@ public sealed class CollectiblesHubTests
     public void HeadersMatchAir()
     {
         Assert.Equal(
-            new uint[] { 3112, 3283, 2267, 2709, 1471, 1112, 2065, 446, 264, 1663, 1590, 2855 },
+            new uint[] { 3913, 2368, 60, 1653, 3288, 3277, 2688, 1028, 2719, 3957, 1352, 501 },
             new[]
             {
                 ClientPacketHeader.GetCollectibleWalletAddressesEvent, ClientPacketHeader.GetCollectorScoreEvent, ClientPacketHeader.GetNftCollectionsEvent,
@@ -69,7 +69,7 @@ public sealed class CollectiblesHubTests
                 ClientPacketHeader.MintCollectibleEvent, ClientPacketHeader.GetNftClaimsEvent, ClientPacketHeader.ClaimNftRewardsEvent,
             });
         Assert.Equal(
-            new uint[] { 2681, 1598, 3181, 3325, 352, 3287, 358, 749, 2689, 1072, 3065, 3539, 2789 },
+            new uint[] { 3185, 2659, 667, 154, 2730, 3151, 2908, 131, 2735, 595, 2824, 1957, 1071 },
             new[]
             {
                 ServerPacketHeader.CollectibleWalletAddressesComposer, ServerPacketHeader.CollectorScoreComposer, ServerPacketHeader.NftCollectionsComposer,
@@ -92,10 +92,10 @@ public sealed class CollectiblesHubTests
         var manager = new PacketManager(handlers, NullLogger<PacketManager>.Instance);
 
         Assert.Equal(12, handlers.Count);
-        Assert.All(new uint[] { 3112, 3283, 2267, 2709, 1471, 1112, 2065, 446, 264, 1663, 1590, 2855 },
+        Assert.All(new uint[] { 3913, 2368, 60, 1653, 3288, 3277, 2688, 1028, 2719, 3957, 1352, 501 },
             header => Assert.True(manager.IsRegistered(header), $"{header} has no handler"));
         // AIR's mint token, transfer fee and transfer requests.
-        Assert.All(new uint[] { 3070, 2050, 3760, 3678, 1589 }, header => Assert.False(manager.IsRegistered(header), $"{header} still has a handler"));
+        Assert.All(new uint[] { 79, 307, 668, 3654, 2626 }, header => Assert.False(manager.IsRegistered(header), $"{header} still has a handler"));
     }
 
     [RoomComponentDatabaseFact]

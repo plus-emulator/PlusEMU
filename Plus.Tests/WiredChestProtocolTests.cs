@@ -206,45 +206,45 @@ public sealed class WiredChestProtocolTests
         Assert.Equal(new object[] { 100u, 20, false }, coins.Writes);
 
         var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
-        Assert.Equal("WIN63-202610201032-107964540", revision.Name);
-        Assert.Equal(1606u, revision.IncomingHeaders["ChestOpenEvent"]);
-        Assert.Equal(2881u, revision.OutgoingHeaders["WiredChestTradeOpenComposer"]);
-        Assert.Equal(1606u, revision.IncomingIdToInternalIdMapping[1606]);
-        Assert.Equal(2881u, revision.InternalIdToOutgoingIdMapping[2881]);
+        Assert.Equal("WIN63-202610271147-806594867", revision.Name);
+        Assert.Equal(2038u, revision.IncomingHeaders["ChestOpenEvent"]);
+        Assert.Equal(932u, revision.OutgoingHeaders["WiredChestTradeOpenComposer"]);
+        Assert.Equal(2038u, revision.IncomingIdToInternalIdMapping[2038]);
+        Assert.Equal(932u, revision.InternalIdToOutgoingIdMapping[932]);
     }
 
     [Theory]
-    [InlineData(nameof(ClientPacketHeader.ChestOpenEvent), 1606u)]
-    [InlineData(nameof(ClientPacketHeader.ChestCloseEvent), 3929u)]
-    [InlineData(nameof(ClientPacketHeader.ChestStartDepositEvent), 1850u)]
-    [InlineData(nameof(ClientPacketHeader.ChestWithdrawAllEvent), 1344u)]
-    [InlineData(nameof(ClientPacketHeader.ChestWithdrawFurniEvent), 3782u)]
-    [InlineData(nameof(ClientPacketHeader.ChestWithdrawCoinsEvent), 2836u)]
-    [InlineData(nameof(ClientPacketHeader.ChestSavePreferencesEvent), 782u)]
-    [InlineData(nameof(ClientPacketHeader.ChestSaveOptionsEvent), 2622u)]
-    [InlineData(nameof(ClientPacketHeader.ChestSaveNotificationsEvent), 1762u)]
-    [InlineData(nameof(ClientPacketHeader.ChestUpgradeEvent), 1795u)]
-    [InlineData(nameof(ClientPacketHeader.WiredChestLockEvent), 414u)]
-    [InlineData(nameof(ClientPacketHeader.WiredChestOfferItemsEvent), 3890u)]
-    [InlineData(nameof(ClientPacketHeader.WiredChestAcceptEvent), 1683u)]
-    [InlineData(nameof(ClientPacketHeader.WiredChestCancelEvent), 1711u)]
+    [InlineData(nameof(ClientPacketHeader.ChestOpenEvent), 2038u)]
+    [InlineData(nameof(ClientPacketHeader.ChestCloseEvent), 2599u)]
+    [InlineData(nameof(ClientPacketHeader.ChestStartDepositEvent), 2299u)]
+    [InlineData(nameof(ClientPacketHeader.ChestWithdrawAllEvent), 3567u)]
+    [InlineData(nameof(ClientPacketHeader.ChestWithdrawFurniEvent), 1589u)]
+    [InlineData(nameof(ClientPacketHeader.ChestWithdrawCoinsEvent), 2073u)]
+    [InlineData(nameof(ClientPacketHeader.ChestSavePreferencesEvent), 2976u)]
+    [InlineData(nameof(ClientPacketHeader.ChestSaveOptionsEvent), 785u)]
+    [InlineData(nameof(ClientPacketHeader.ChestSaveNotificationsEvent), 1274u)]
+    [InlineData(nameof(ClientPacketHeader.ChestUpgradeEvent), 361u)]
+    [InlineData(nameof(ClientPacketHeader.WiredChestLockEvent), 3787u)]
+    [InlineData(nameof(ClientPacketHeader.WiredChestOfferItemsEvent), 1882u)]
+    [InlineData(nameof(ClientPacketHeader.WiredChestAcceptEvent), 3369u)]
+    [InlineData(nameof(ClientPacketHeader.WiredChestCancelEvent), 3390u)]
     public void ChestRequestsUseTheOfficialIds(string name, uint id) =>
         Assert.Equal(id, (uint)typeof(ClientPacketHeader).GetField(name)!.GetRawConstantValue()!);
 
     [Theory]
-    [InlineData(nameof(ServerPacketHeader.WiredChestOpenComposer), 2598u)]
-    [InlineData(nameof(ServerPacketHeader.WiredChestSettingsUpdatedComposer), 2149u)]
-    [InlineData(nameof(ServerPacketHeader.WiredChestUpgradeComposer), 3314u)]
-    [InlineData(nameof(ServerPacketHeader.WiredChestCoinsComposer), 3978u)]
-    [InlineData(nameof(ServerPacketHeader.WiredChestFurniChunkComposer), 3704u)]
-    [InlineData(nameof(ServerPacketHeader.WiredChestFurniUpdateComposer), 3731u)]
-    [InlineData(nameof(ServerPacketHeader.WiredTransactionFailComposer), 2729u)]
-    [InlineData(nameof(ServerPacketHeader.WiredTransactionSuccessComposer), 470u)]
-    [InlineData(nameof(ServerPacketHeader.WiredTradeErrorComposer), 1961u)]
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeOpenComposer), 2881u)]
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeItemsComposer), 1716u)]
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCancelledComposer), 3834u)]
-    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCompletedComposer), 2367u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestOpenComposer), 3315u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestSettingsUpdatedComposer), 1453u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestUpgradeComposer), 2439u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestCoinsComposer), 1016u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestFurniChunkComposer), 3110u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestFurniUpdateComposer), 3829u)]
+    [InlineData(nameof(ServerPacketHeader.WiredTransactionFailComposer), 180u)]
+    [InlineData(nameof(ServerPacketHeader.WiredTransactionSuccessComposer), 270u)]
+    [InlineData(nameof(ServerPacketHeader.WiredTradeErrorComposer), 2537u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeOpenComposer), 932u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeItemsComposer), 790u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCancelledComposer), 3357u)]
+    [InlineData(nameof(ServerPacketHeader.WiredChestTradeCompletedComposer), 3813u)]
     public void ChestResponsesUseTheOfficialIds(string name, uint id) =>
         Assert.Equal(id, (uint)typeof(ServerPacketHeader).GetField(name)!.GetRawConstantValue()!);
 

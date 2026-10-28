@@ -14,9 +14,9 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    // The client reads one string for incoming 1090, and a message plus a link for incoming 3187.
-    private const uint AirBroadcastMessageAlert = 1090;
-    private const uint AirModeratorMessage = 3187;
+    // The client reads one string for incoming 3870, and a message plus a link for incoming 3187.
+    private const uint AirBroadcastMessageAlert = 3870;
+    private const uint AirModeratorMessage = 898;
 
     [Fact]
     public async Task HotelAlertSendsOnlyTheMessageTheAirBroadcastAlertReads()

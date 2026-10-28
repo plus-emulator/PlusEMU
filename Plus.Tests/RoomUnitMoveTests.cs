@@ -54,8 +54,8 @@ public sealed class RoomUnitMoveTests
         var movePet = HabbiconTestSupport.Incoming(PetId, 3, 1, 6);
         var moveBot = HabbiconTestSupport.Incoming(4, 0, 3, 2);
 
-        await manager.TryExecutePacket(client, 819, movePet);
-        await manager.TryExecutePacket(client, 2508, moveBot);
+        await manager.TryExecutePacket(client, 3443, movePet);
+        await manager.TryExecutePacket(client, 583, moveBot);
 
         Assert.False(movePet.HasDataRemaining());
         Assert.False(moveBot.HasDataRemaining());

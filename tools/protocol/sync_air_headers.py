@@ -221,8 +221,6 @@ def plusemu(root: Path):
 
     def finish(resolver: Resolver, writes: dict, identity_raw: bytes):
         writes[cache] = replace_build(cache, current, resolver.target.id, r'Name = "{build}"')
-        ranges = root / 'Communication/Packets/CustomPacketRanges.cs'
-        writes[ranges] = replace_build(ranges, current, resolver.target.id, r'not official in {build}')
 
     return current, headers, finish
 

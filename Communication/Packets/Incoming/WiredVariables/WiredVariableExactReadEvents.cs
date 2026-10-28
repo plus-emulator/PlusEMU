@@ -35,14 +35,14 @@ public sealed class WiredVariableHoldersPage64Event(IWiredVariableMenuService me
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
         if (WiredExactReadRequest.TryRead(packet, 2, out var request)) {
-            menus.ShowExactHolderPage(room, session, request.Id, request.Page, request.Size, request.Users, request.Sort);
+            menus.ShowExactHolderPage(room, session, request.Id, request.Page, request.Size, request.Sort, request.UserType);
         }
 
         return Task.CompletedTask;
     }
 }
 
-internal readonly record struct WiredExactReadRequest(string Id, int Page, int Size, int Users, int Sort)
+internal readonly record struct WiredExactReadRequest(string Id, int Page, int Size, int Sort, int UserType)
 {
     internal static bool TryRead(IIncomingPacket packet, int kind, out WiredExactReadRequest request)
     {
@@ -56,14 +56,14 @@ internal readonly record struct WiredExactReadRequest(string Id, int Page, int S
             var id = kind == 0 ? "" : packet.ReadString();
             var page = kind == 2 ? packet.ReadInt() : 0;
             var size = kind == 2 ? packet.ReadInt() : 0;
-            var users = kind == 2 ? packet.ReadInt() : 0;
-            var sort = kind == 2 ? packet.ReadInt() : -1;
+            var sort = kind == 2 ? packet.ReadInt() : 0;
+            var userType = kind == 2 ? packet.ReadInt() : WiredVariableHolderFilters.AllTypes;
 
-            if (kind != 0 && id.Length is < 1 or > 64 || users is not (0 or 1) || sort is < -1 or > 2 || packet.HasDataRemaining()) {
+            if (kind != 0 && id.Length is < 1 or > 64 || !WiredVariableHolderFilters.IsValid(sort, userType) || packet.HasDataRemaining()) {
                 return false;
             }
 
-            request = new(id, page, size, users, sort);
+            request = new(id, page, size, sort, userType);
 
             return true;
         }

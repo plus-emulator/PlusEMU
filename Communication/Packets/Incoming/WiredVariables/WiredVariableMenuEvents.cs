@@ -88,24 +88,24 @@ public sealed class WiredVariableHoldersPageEvent(IWiredVariableMenuService menu
     public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
     {
         string id;
-        int page, size, users, sort;
+        int page, size, sort, userType;
 
         try {
             id = packet.ReadString();
             page = packet.ReadInt();
             size = packet.ReadInt();
-            users = packet.ReadInt();
             sort = packet.ReadInt();
+            userType = packet.ReadInt();
         }
         catch (ArgumentException) {
             return Task.CompletedTask;
         }
 
-        if (id.Length is < 1 or > 64 || users is not (0 or 1) || sort is < -1 or > 2 || packet.HasDataRemaining()) {
+        if (id.Length is < 1 or > 64 || !WiredVariableHolderFilters.IsValid(sort, userType) || packet.HasDataRemaining()) {
             return Task.CompletedTask;
         }
 
-        menus.ShowHolderPage(room, session, id, page, size, users, sort);
+        menus.ShowHolderPage(room, session, id, page, size, sort, userType);
 
         return Task.CompletedTask;
     }

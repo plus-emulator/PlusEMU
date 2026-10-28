@@ -12,12 +12,12 @@ public interface IWiredVariableMenuService
     void ShowCatalogDiff(Room room, GameClient session, IReadOnlyDictionary<string, int> known);
     void ShowSnapshot(Room room, GameClient session);
     void ShowHolders(Room room, GameClient session, string id);
-    void ShowHolderPage(Room room, GameClient session, string id, int page, int size, int users, int sort);
+    void ShowHolderPage(Room room, GameClient session, string id, int page, int size, int sort, int userType);
     void Write(Room room, GameClient session, WiredVariableMenuWrite request);
     void Manage(Room room, GameClient session, WiredVariableMenuWrite request);
     void ShowExactSnapshot(Room room, GameClient session);
     void ShowExactHolders(Room room, GameClient session, string id);
-    void ShowExactHolderPage(Room room, GameClient session, string id, int page, int size, int users, int sort);
+    void ShowExactHolderPage(Room room, GameClient session, string id, int page, int size, int sort, int userType);
     void WriteExact(Room room, GameClient session, WiredVariableMenuWrite request);
     void ManageExact(Room room, GameClient session, WiredVariableMenuWrite request);
     void WriteObject(Room room, GameClient session, WiredObjectVariableWrite request);
@@ -67,10 +67,10 @@ public sealed class WiredVariableMenuService : IWiredVariableMenuService
     public void ShowExactSnapshot(Room room, GameClient session) => ShowSnapshot(room, session, true);
     public void ShowHolders(Room room, GameClient session, string id) => ShowHolders(room, session, id, false);
     public void ShowExactHolders(Room room, GameClient session, string id) => ShowHolders(room, session, id, true);
-    public void ShowHolderPage(Room room, GameClient session, string id, int page, int size, int users, int sort) =>
-        ShowHolderPage(room, session, id, page, size, users, sort, false);
-    public void ShowExactHolderPage(Room room, GameClient session, string id, int page, int size, int users, int sort) =>
-        ShowHolderPage(room, session, id, page, size, users, sort, true);
+    public void ShowHolderPage(Room room, GameClient session, string id, int page, int size, int sort, int userType) =>
+        ShowHolderPage(room, session, id, page, size, sort, userType, false);
+    public void ShowExactHolderPage(Room room, GameClient session, string id, int page, int size, int sort, int userType) =>
+        ShowHolderPage(room, session, id, page, size, sort, userType, true);
     public void Write(Room room, GameClient session, WiredVariableMenuWrite request) => Write(room, session, request, false);
     public void WriteExact(Room room, GameClient session, WiredVariableMenuWrite request) => Write(room, session, request, true);
     public void Manage(Room room, GameClient session, WiredVariableMenuWrite request) => Manage(room, session, request, false);
@@ -100,7 +100,7 @@ public sealed class WiredVariableMenuService : IWiredVariableMenuService
         }
     }
 
-    private static void ShowHolderPage(Room room, GameClient session, string id, int page, int size, int users, int sort, bool exact)
+    private static void ShowHolderPage(Room room, GameClient session, string id, int page, int size, int sort, int userType, bool exact)
     {
         if (!CanInspect(room, session)) {
             return;
@@ -109,9 +109,9 @@ public sealed class WiredVariableMenuService : IWiredVariableMenuService
         var menu = Menu(room);
 
         if (menu.Catalog().Find(id) is { } variable) {
-            var result = menu.Page(variable, page, size, users, sort);
+            var result = menu.Page(variable, page, size, sort, userType);
             result = result with { Holders = result.Holders.ToImmutableArray() };
-            SendFrozen(room, session, result.Holders, exact, () => new WiredVariableHoldersPageComposer(id, result, users, sort, exact));
+            SendFrozen(room, session, result.Holders, exact, () => new WiredVariableHoldersPageComposer(id, result, userType, sort, exact));
         }
     }
 

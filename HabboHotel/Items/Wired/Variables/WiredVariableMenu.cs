@@ -173,13 +173,19 @@ public sealed class WiredVariableMenu(Room room, WiredRoomVariables variables)
         return new(room.Id, catalog.Variables, ToWireHolders(assignments));
     }
 
-    public WiredVariableHolderPage Page(WiredVariableDescription variable, int page, int size, int userFilter, int sort)
+    /// <summary>
+    /// One page of a variable's holders by the AIR client's filters. Only Habbos hold user variables, so any other user type lists nobody.
+    /// </summary>
+    public WiredVariableHolderPage Page(WiredVariableDescription variable, int page, int size, int sort, int userType)
     {
+        if (variable.Definition.Target == WiredVariableTarget.User && userType is not (WiredVariableHolderFilters.AllTypes or WiredVariableHolderFilters.Habbo)) {
+            return new(0, Math.Max(1, page), Math.Clamp(size, 1, 200), []);
+        }
+
         var (frame, names) = LiveHolders(variable.Definition.Target);
-        var result = variable.IsBuiltin || variable.IsDerived ? WiredVariablePaging.Page(ReadLive(variable, frame, names), page, size, sort)
-            : variables.Module.ReadHolderPage(variable.Definition.ItemId, page, size, sort,
-            variable.Definition.Target == WiredVariableTarget.User && userFilter == 1
-                ? frame.Holders.Where(x => x.Target == WiredVariableTarget.User).Select(x => x.StableId).ToArray() : null, names);
+        var pagingSort = WiredVariableHolderFilters.PagingSort(sort);
+        var result = variable.IsBuiltin || variable.IsDerived ? WiredVariablePaging.Page(ReadLive(variable, frame, names), page, size, pagingSort)
+            : variables.Module.ReadHolderPage(variable.Definition.ItemId, page, size, pagingSort, null, names);
 
         return result with { Holders = ToWireHolders(result.Holders) };
     }
@@ -203,15 +209,7 @@ public sealed class WiredVariableMenu(Room room, WiredRoomVariables variables)
     /// 2 and 3 oldest and newest creation first, 4 and 5 oldest and newest update first; any other sort is 0.
     /// </summary>
     public WiredVariableHolderPage Owners(WiredVariableDescription variable, int page, int size, int sort) =>
-        variables.Module.ReadHolderPage(variable.Definition.ItemId, page, size, sort switch
-        {
-            1 => WiredVariablePaging.ValueAscending,
-            2 => WiredVariablePaging.CreatedAscending,
-            3 => WiredVariablePaging.CreatedDescending,
-            4 => WiredVariablePaging.UpdatedAscending,
-            5 => WiredVariablePaging.UpdatedDescending,
-            _ => WiredVariablePaging.ValueDescending
-        });
+        variables.Module.ReadHolderPage(variable.Definition.ItemId, page, size, WiredVariableHolderFilters.PagingSort(sort));
 
     /// <summary>The permanent user variables one user holds, online or not, in catalogue order.</summary>
     public IReadOnlyList<(WiredVariableDescription Variable, WiredVariableValue Value)> PermanentValues(int userId)

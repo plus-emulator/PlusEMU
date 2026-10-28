@@ -188,6 +188,10 @@ public static class WiredRoomOperations
             return false;
         }
 
+        if (item.GetX != source.X || item.GetY != source.Y) {
+            room.GetRoomItemHandler().WaitForRoller(item);
+        }
+
         if (animate) {
             room.SendPacket(new SlideObjectBundleComposer(source.X, source.Y, sourceZ,
                 item.GetX, item.GetY, item.GetZ, 0, 0, item.Id));

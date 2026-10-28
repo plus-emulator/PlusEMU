@@ -297,7 +297,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             }
 
             foreach (var (user, _) in lifts.Where(lift => !lift.User.IsBot)) {
-                user.MarkWiredMove();
+                room.GetRoomUserManager().MarkWiredMove(user, options.AnimationTimeMs);
             }
         }
 
@@ -663,7 +663,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         // An animated wired move shows "wf" on the avatar for one status update.
         if (animate && !user.IsBot) {
-            user.MarkWiredMove();
+            room.GetRoomUserManager().MarkWiredMove(user, animationTimeMs ?? context.Policy.Addons.AnimationTimeMs);
         }
 
         // A newer walk request takes precedence over restoring the route captured by this move.

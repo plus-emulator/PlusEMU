@@ -241,6 +241,8 @@ public partial class PlacedFurniRoomTests
         SetManager("_fastWiredRooms", new ConcurrentDictionary<uint, Room>([new(_room.Id, _room)]));
         SetManager("_pendingFullRooms", new ConcurrentDictionary<uint, Room>());
 
+        typeof(RoomUserManager).GetField("_clock", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(_room.GetRoomUserManager(), clock);
+
         return (clock, manager);
     }
 

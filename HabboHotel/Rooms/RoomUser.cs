@@ -744,15 +744,15 @@ public class RoomUser
 
 
     /// <summary>
-    /// Set when the "wf" status of a wired move has gone out once; the next status update clears it. "/flatctrl 4/wf//" goes on the update after move_rotate_user, user_to_furni or a carry, then
-    /// "/flatctrl 4//" about 500 ms later; none for furni_to_user or teleport_to.
+    /// The "wf" status of a wired move lasts as long as the animation of the last move. The first status update after that clears it.
+    /// "/flatctrl 4/wf//" goes on the status updates inside the animation. A move without animation sets nothing.
     /// </summary>
-    internal bool WiredMoveStatusSent { get; set; }
+    internal DateTimeOffset? WiredStatusUntil { get; set; }
 
-    internal void MarkWiredMove()
+    internal void MarkWiredMove(DateTimeOffset until)
     {
         SetStatus("wf");
-        WiredMoveStatusSent = false;
+        WiredStatusUntil = until;
         UpdateNeeded = true;
     }
 

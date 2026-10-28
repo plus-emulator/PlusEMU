@@ -261,9 +261,16 @@ public static class WiredOctoberActions
                         config.FurniSources.GetValueOrDefault("row" + row)),
                 _ => null
             };
+            var held = number is not null;
+
+            if (mode is WiredLinkDataframeCodec.NumberVariable or WiredLinkDataframeCodec.VariableText && !WiredVariableAbsent.Is(id)) {
+                number ??= -1;
+            }
+
             var text = mode switch
             {
                 WiredLinkDataframeCodec.CustomMessage => context.Policy.FormatText(context, keys[row].Text),
+                WiredLinkDataframeCodec.VariableText when !held && !WiredVariableAbsent.Is(id) => "null",
                 WiredLinkDataframeCodec.VariableText when number is { } value => TextConnector(context, id, value),
                 _ => number?.ToString(CultureInfo.InvariantCulture) ?? ""
             };

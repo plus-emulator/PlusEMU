@@ -95,6 +95,69 @@ public sealed class WiredObservedR82VariableTests
         Assert.False(executors.Execute("wf_cnd_var_age_match", older, frame));
     }
 
+    private sealed class StepClock : TimeProvider
+    {
+        private DateTimeOffset _now = new(2026, 10, 27, 12, 0, 0, TimeSpan.Zero);
+        public override DateTimeOffset GetUtcNow() => _now;
+        public void Advance(double seconds) => _now = _now.AddSeconds(seconds);
+    }
+
+    // Variable Age: [target, comparison (0 lower, 2 higher), clock (0 creation, 1 update), duration, unit 1 = seconds, ...], four seconds.
+    private static string AgeFlags(WiredVariableExecutors executors, WiredVariableFrame frame, int target, string id, uint[] picks)
+    {
+        var flags = new System.Text.StringBuilder();
+
+        foreach (var (comparison, clock) in new[] { (2, 0), (0, 0), (2, 1), (0, 1) }) {
+            var age = Compile("wf_cnd_var_age_match", [target, comparison, clock, 0, 4, 1, 0, -10], [id, "n"], [100, 200], [0, 200], picks);
+            flags.Append(executors.Execute("wf_cnd_var_age_match", age, frame) ? '1' : '0');
+        }
+
+        return flags.ToString();
+    }
+
+    // A Give with override re-creates the variable, so both times restart; a Give without override on a held variable and a Change keep the creation time.
+    [Fact]
+    public void GiveWithOverrideRestartsBothTimesAndChangeRestartsOnlyTheUpdateTime()
+    {
+        var clock = new StepClock();
+        var (module, frame, furni, _) = Vars(clock);
+        var executors = new WiredVariableExecutors(module, clock);
+        const string id = "furni:10";
+        string Flags() => AgeFlags(executors, frame, 0, id, [Marker]);
+        bool Run(string name, int[] ints) => executors.Execute(name, Compile(name, ints, [id, "n"], [100, 200], [0, 200], [Marker]), frame);
+
+        Assert.Equal("0000", Flags());
+        Assert.True(Run("wf_act_give_var", [0, 0, 1, 1, 0, -10, 0]));
+        clock.Advance(2);
+        Assert.Equal("0101", Flags());
+        clock.Advance(6);
+        Assert.Equal("1010", Flags());
+
+        Assert.True(Run("wf_act_give_var", [0, 0, 1, 1, 0, -10, 0]));
+        clock.Advance(2);
+        Assert.Equal("0101", Flags());
+        clock.Advance(6);
+
+        Assert.True(Run("wf_act_change_var_val", [0, 0, 0, 0, 1, -10, 0]));
+        clock.Advance(2);
+        Assert.Equal("1001", Flags());
+        clock.Advance(6);
+
+        Assert.True(Run("wf_act_change_var_val", [0, 0, 0, 0, 5, -10, 0]));
+        clock.Advance(2);
+        Assert.Equal("1001", Flags());
+        clock.Advance(6);
+
+        Assert.False(Run("wf_act_give_var", [0, 0, 9, 0, 0, -10, 0]));
+        clock.Advance(2);
+        Assert.Equal("1010", Flags());
+        Assert.Equal(5, module.Read(new(WiredVariableTarget.Furni, "custom:10"), furni, frame)!.Value);
+
+        Assert.True(Run("wf_act_give_var", [0, 0, 2, 1, 0, -10, 0]));
+        clock.Advance(2);
+        Assert.Equal("0101", Flags());
+    }
+
     // A write that leaves the value as it was is not a value change.
     [Fact]
     public void OnlyWritesThatMoveTheValueCountAsValueChanges()

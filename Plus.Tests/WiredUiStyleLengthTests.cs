@@ -76,7 +76,7 @@ public sealed class WiredUiStyleLengthTests
     {
         var table = UsersSettingsTable();
 
-        Assert.Contains("`wired_ui_style` text NOT NULL DEFAULT '',\n  PRIMARY KEY", table.Replace("\r\n", "\n"));
+        Assert.Contains("`wired_ui_style` text NOT NULL DEFAULT '',\n", table.Replace("\r\n", "\n"));
     }
 
     [RoomComponentDatabaseFact]

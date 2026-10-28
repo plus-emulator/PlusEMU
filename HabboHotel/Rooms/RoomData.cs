@@ -73,6 +73,7 @@ public class RoomData
         ModelName = data.ModelName;
         OwnerName = data.OwnerName;
         OwnerId = data.OwnerId;
+        OwnerAccountLevel = data.OwnerAccountLevel;
         Password = data.Password;
         Score = data.Score;
         Type = data.Type;
@@ -122,6 +123,7 @@ public class RoomData
     public string ModelName { get; set; }
     public string OwnerName { get; set; }
     public int OwnerId { get; set; }
+    public int OwnerAccountLevel { get; set; } = Users.Habbo.DefaultAccountLevel;
     public string Password { get; set; }
     public int Score { get; set; }
     public RoomAccess Access { get; set; }

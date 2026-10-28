@@ -9,8 +9,8 @@ public sealed record WiredRoomStats(double ExecutionCost, double ExecutionCostCa
     public const int FloorItemLimit = 4000;
     public const int WallItemLimit = 4000;
 
-    // The execution cost cap of a room varies; until the rule is known every room uses this default or wired.execution_cost_cap.
-    public const double DefaultExecutionCostCap = 3125;
+    // A room's execution cost cap follows its owner's account level. A level below 1 counts as 1.
+    public static double ExecutionCostCapFor(int ownerAccountLevel) => 312.5 * (Math.Max(1, ownerAccountLevel) + 2);
 
     public static WiredRoomStats Create(double cost, double cap, int floorItems, int wallItems, int furniVariables, int userVariables,
         int globalVariables) => new(cost, cap, IsHeavyAt(cost, cap), floorItems, FloorItemLimit, wallItems, WallItemLimit,

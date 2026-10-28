@@ -66,12 +66,25 @@ public sealed class WiredMonitorProtocolTests
         Assert.Equal((furni, user, global), (stats.MaxPermanentFurniVariables, stats.MaxPermanentUserVariables, stats.MaxPermanentGlobalVariables));
     }
 
+    // The cap is 312.5 x (owner account level + 2). A level below 1 counts as 1.
+    [Theory]
+    [InlineData(6, 2500)]
+    [InlineData(8, 3125)]
+    [InlineData(9, 3437.5)]
+    [InlineData(13, 4687.5)]
+    [InlineData(19, 6562.5)]
+    [InlineData(1, 937.5)]
+    [InlineData(0, 937.5)]
+    [InlineData(-4, 937.5)]
+    public void TheCostCapFollowsTheOwnersAccountLevel(int level, double cap) => Assert.Equal(cap, WiredRoomStats.ExecutionCostCapFor(level));
+
     [Fact]
-    public void TheCostCapDefaultsTo3125AndCanBeConfigured()
+    public void TheCostCapOverrideIsOnlySetByAPositiveSetting()
     {
-        Assert.Equal(3125d, WiredEngineLimits.FromSettings(_ => "0").ExecutionCostCap);
+        Assert.Null(WiredEngineLimits.FromSettings(_ => "0").ExecutionCostCap);
         Assert.Equal(4687.5, WiredEngineLimits.FromSettings(key => key == "wired.execution_cost_cap" ? "4687.5" : "0").ExecutionCostCap);
-        Assert.Equal(3125d, WiredEngineLimits.FromSettings(key => key == "wired.execution_cost_cap" ? "-1" : "0").ExecutionCostCap);
+        Assert.Null(WiredEngineLimits.FromSettings(key => key == "wired.execution_cost_cap" ? "-1" : "0").ExecutionCostCap);
+        Assert.Null(WiredEngineLimits.FromSettings(key => key == "wired.execution_cost_cap" ? "NaN" : "0").ExecutionCostCap);
     }
 
     [Fact]

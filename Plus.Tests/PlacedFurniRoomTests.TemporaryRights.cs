@@ -1,3 +1,4 @@
+using Plus.Communication.Packets.Incoming.WiredVariables;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Items;
@@ -55,22 +56,33 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0, store.Calls);
     }
 
-    // @level is the profile's account level, the same level User Level compares.
+    // @level is the profile's account level, the same level User Level compares, whatever the achievement score.
     [Fact]
-    public void LevelVariableReadsTheUserLevel()
+    public async Task LevelVariableReadsTheAccountLevelInTheInspectionAnswer()
     {
         var avatar = Viewer();
         var habbo = _client.GetHabbo();
-        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
-        var holder = WiredVariableRuntimeFrames.UserHolder(avatar);
-        var frame = new WiredVariableFrame(RoomId, [holder]);
-        var builtins = new RoomWiredBuiltinVariables(_room);
-        WiredVariableValue? Read() => builtins.Read(new(holder.Target, "internal:@level"), holder, frame);
-        Assert.True(RoomWiredBuiltinVariables.HasNumericValue(new(holder.Target, "internal:@level")));
-        Assert.Equal(1, Read()?.Value);
-        habbo.HabboStats.AchievementPoints = 5454;
-        Assert.Equal(Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredUserLevel.Of(avatar), Read()?.Value);
-        Assert.NotEqual(5454, Read()?.Value);
+        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0) { AchievementPoints = 5454 };
+        habbo.AccountLevel = 9;
+        InspectionInstallModule();
+
+        Assert.Equal(9, await InspectedLevel(avatar));
+        Assert.Equal(9, Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredUserLevel.Of(avatar));
+
+        habbo.AccountLevel = 21;
+        Assert.Equal(21, await InspectedLevel(avatar));
+        Assert.Equal(21, Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredUserLevel.Of(avatar));
+    }
+
+    private async Task<long> InspectedLevel(RoomUser avatar)
+    {
+        _client.Packets.Clear();
+        await new WiredGetVariablesForObjectEvent(new WiredVariableMenuService()).Parse(_room, _client, ClientPacket(1, avatar.VirtualId));
+        var reply = Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.WiredVariablesForObjectComposer);
+        var input = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = reply.Body };
+        Assert.Equal((1, avatar.VirtualId), (input.ReadInt(), input.ReadInt()));
+
+        return Enumerable.Range(0, input.ReadInt()).Select(_ => (input.ReadString(), input.ReadInt())).ToDictionary()["-210"];
     }
 
     // A visitor without rights sees the wired boxes unless the room hides them.

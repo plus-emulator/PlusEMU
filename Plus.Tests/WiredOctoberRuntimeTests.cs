@@ -63,15 +63,6 @@ public sealed class WiredOctoberRuntimeTests
     }
 
     [Theory]
-    [InlineData(0, 1)]
-    [InlineData(999, 1)]
-    [InlineData(1000, 2)]
-    [InlineData(28_999, 29)]
-    [InlineData(500_000, 30)]
-    [InlineData(-5, 1)]
-    public void UserLevelRunsFromOneToThirty(int points, int level) => Assert.Equal(level, WiredUserLevel.FromAchievementPoints(points));
-
-    [Theory]
     [InlineData("wf_trg_room_initializes", WiredEventKind.RoomInitialized)]
     [InlineData("wf_trg_receive_message", WiredEventKind.LinkMessage)]
     [InlineData("wf_trg_receive_dataframe", WiredEventKind.LinkDataframe)]

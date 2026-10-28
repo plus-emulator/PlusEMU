@@ -83,7 +83,7 @@ public sealed class RoomDataLoaderTests
         try {
             connection.Execute($"USE `{schema}`");
             connection.Execute("""
-                CREATE TABLE users (id INT PRIMARY KEY, username VARCHAR(100) NULL);
+                CREATE TABLE users (id INT PRIMARY KEY, username VARCHAR(100) NULL, account_level INT NOT NULL DEFAULT 8);
                 CREATE TABLE rooms (
                     id INT UNSIGNED PRIMARY KEY, owner INT NOT NULL, caption VARCHAR(100) NOT NULL,
                     model_name VARCHAR(50) NOT NULL, password VARCHAR(50) NOT NULL DEFAULT '', score INT NOT NULL DEFAULT 0,
@@ -103,7 +103,7 @@ public sealed class RoomDataLoaderTests
                     enables_enabled BOOL NOT NULL DEFAULT FALSE, respect_notifications_enabled BOOL NOT NULL DEFAULT FALSE,
                     pet_morphs_allowed BOOL NOT NULL DEFAULT FALSE, lay_enabled BOOL NOT NULL DEFAULT FALSE,
                     hide_wired BOOL NOT NULL DEFAULT FALSE, diagonal_squeeze BOOL NOT NULL DEFAULT FALSE);
-                INSERT INTO users VALUES (7, 'owner'), (8, '');
+                INSERT INTO users (id, username) VALUES (7, 'owner'), (8, '');
                 INSERT INTO rooms (id, owner, caption, model_name) VALUES
                     (1, 7, 'Zulu', 'model_a'), (3, 7, 'Missing model', 'unknown');
                 INSERT INTO rooms (id, owner, caption, model_name, state, tags, allow_pets, allow_pets_eat,

@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Reflection;
+using Plus.Communication.Packets.Incoming.Users;
+using Plus.Communication.Packets.Outgoing;
 using Plus.Communication.Packets.Outgoing.Users;
 using Plus.HabboHotel.Badges.Rarity;
 using Plus.HabboHotel.Friends;
@@ -19,7 +21,7 @@ public sealed class PlayerProfileSnapshotTests
     public void ProfileWireLayoutUsesCapturedDataAndInvariantDates()
     {
         PlayerProfileSnapshot profile = new(7, "Alice", "hd-1", "hello", new(2020, 2, 3, 0, 0, 0, TimeSpan.Zero),
-            12, 3, false, true, false, [new(42, "Group", "badge", "red", "blue", true, true)], 90,
+            12, 3, false, true, false, [new(42, "Group", "badge", "red", "blue", true, true)], 90, 11,
             new(5, 9, [(BadgeRarityTier.Mythical, 2)]));
         var composer = new ProfileInformationComposer(profile);
         var oldCulture = CultureInfo.CurrentCulture;
@@ -30,7 +32,7 @@ public sealed class PlayerProfileSnapshotTests
             composer.Compose(packet);
             Assert.Equal(new object[] { 7, "Alice", "hd-1", "hello", "03/02/2020", 12, 3, false, true, (byte)0, 1,
                 42, "Group", "badge", "red", "blue", true, 0, true, 90, true,
-                false, 0, 0, 0, false, false, 5, 0, 1, (byte)4, 2, 9 }, packet.Writes);
+                false, 11, 0, 0, false, false, 5, 0, 1, (byte)4, 2, 9 }, packet.Writes);
             var changed = profile with { Groups = profile.Groups.Add(new(99, "New", "", "", "", false, false)) };
             Assert.Equal(2, changed.Groups.Length);
             var repeated = new HabbiconTestSupport.RecordingPacket();
@@ -40,6 +42,29 @@ public sealed class PlayerProfileSnapshotTests
         finally {
             CultureInfo.CurrentCulture = oldCulture;
         }
+    }
+
+    // The profile answer carries the account level of the profile's owner, not the viewer's, whatever the achievement score.
+    [Fact]
+    public async Task TheRawProfileRequestAnswersWithTheTargetsAccountLevel()
+    {
+        var viewer = new Habbo { Id = 3, Username = "Viewer", AccountLevel = 13 };
+        var target = new Habbo { Id = 7, Username = "Alice", AccountLevel = 6 };
+        var (session, sent) = HabbiconTestSupport.Client(viewer);
+        var (targetClient, _) = HabbiconTestSupport.Client(target);
+        var clients = new SharedTestClients();
+        clients.Online[3] = session;
+        clients.Online[7] = targetClient;
+        var profiles = new PlayerProfileService(DispatchProxy.Create<IGroupManager, EmptyGroups>(),
+            DispatchProxy.Create<IMessengerDataLoader, FriendCount>(), clients, null!, new Stats(), new FixedClock(), new NoBadges());
+
+        await new OpenPlayerProfileEvent(profiles).Parse(session, HabbiconTestSupport.Incoming(7, true));
+        target.AccountLevel = 21;
+        await new OpenPlayerProfileEvent(profiles).Parse(session, HabbiconTestSupport.Incoming(7, false));
+
+        Assert.Equal(2, sent.Count);
+        Assert.All(sent, packet => Assert.Equal(ServerPacketHeader.ProfileInformationComposer, packet.Header));
+        Assert.Equal([6, 21], sent.Select(packet => BinaryPrimitives.ReadInt32BigEndian(packet.Payload.AsSpan(packet.Payload.Length - ProfileTailBytes + 1, 4))));
     }
 
     [Theory]

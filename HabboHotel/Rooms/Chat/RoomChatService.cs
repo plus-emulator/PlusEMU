@@ -2,6 +2,7 @@ using Plus.Communication.Packets.Outgoing.Moderation;
 using Plus.Communication.Packets.Outgoing.Rooms.Chat;
 using Plus.Core.Settings;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Moderation;
 using Plus.HabboHotel.Permissions;
@@ -198,19 +199,6 @@ public sealed class RoomChatService(
             return;
         }
 
-        var recipient = room.GetRoomUserManager().GetRoomUserByHabbo(toUser);
-
-        if (recipient == null || recipient.IsBot) {
-            return;
-        }
-
-        var recipientClient = clientManager.GetClientByUserId(recipient.HabboId);
-        var recipientHabbo = recipientClient?.GetHabbo();
-
-        if (recipientClient == null || recipientHabbo == null || recipientHabbo.CurrentRoom != room) {
-            return;
-        }
-
         if (habbo.TimeMuted > 0) {
             session.Send(new MutedComposer(habbo.TimeMuted));
 
@@ -243,12 +231,6 @@ public sealed class RoomChatService(
             return;
         }
 
-        if (!recipientHabbo.ReceiveWhispers && !habbo.Access.Can(PermissionKeys.RoomWhisperOverride)) {
-            session.SendWhisper("Oops, this user has their whispers disabled!");
-
-            return;
-        }
-
         chatlogManager.StoreChatlog(new(habbo.Id, room.Id, $"<Whisper to {toUser}>: {message}", now, habbo, room));
 
         if (wordFilterManager.CheckBannedWords(message)) {
@@ -263,6 +245,39 @@ public sealed class RoomChatService(
             }
 
             session.Send(new WhisperComposer(user.VirtualId, message, 0, user.LastBubble, user.VirtualId));
+
+            return;
+        }
+
+        if (room.GetWired().TriggerEvent(WiredBoxType.TriggerUserSays, habbo, message, user.LastBubble, false)) {
+            room.GetWired().FinishSpeech();
+
+            return;
+        }
+
+        var recipient = room.GetRoomUserManager().GetRoomUserByHabbo(toUser);
+
+        if (recipient == null) {
+            if (room.GetRoomUserManager().GetBotByName(toUser) == null) {
+                session.Send(new WhisperComposer(user.VirtualId, message, 0, user.LastBubble, user.VirtualId));
+            }
+
+            return;
+        }
+
+        if (recipient.IsBot) {
+            return;
+        }
+
+        var recipientClient = clientManager.GetClientByUserId(recipient.HabboId);
+        var recipientHabbo = recipientClient?.GetHabbo();
+
+        if (recipientClient == null || recipientHabbo == null || recipientHabbo.CurrentRoom != room) {
+            return;
+        }
+
+        if (!recipientHabbo.ReceiveWhispers && !habbo.Access.Can(PermissionKeys.RoomWhisperOverride)) {
+            session.SendWhisper("Oops, this user has their whispers disabled!");
 
             return;
         }

@@ -282,6 +282,111 @@ public sealed class RoomChatServiceTests
         }
     }
 
+    // A whisper fires a Says Something trigger like a spoken line does, whoever it is addressed to. A hidden message is not delivered to its
+    // recipient and the speaker gets one whisper echo. The "disable whispering to Wired" preference changes nothing.
+    [Theory]
+    [InlineData("Bob", false)]
+    [InlineData("Bob", true)]
+    [InlineData("Alice", false)]
+    [InlineData("Wired", false)]
+    [InlineData("Wired", true)]
+    public async Task AWhisperFiresASaysSomethingTriggerAndHidesTheMessage(string target, bool whisperDisabled)
+    {
+        var world = new World();
+        world.AddHiddenSpeechTrigger("hello");
+        Set(world.SenderUser, "_chatEmotions", new TestChatEmotions());
+        world.Sender.GetHabbo().WiredPreferences = new(false, false, false, whisperDisabled, false, "");
+
+        await new WhisperEvent(world.Service).Parse(world.Sender, HabbiconTestSupport.Incoming(target + " hello", 0));
+
+        Assert.Empty(world.RecipientPackets);
+        var echo = Assert.Single(world.SenderPackets);
+        Assert.Equal(ServerPacketHeader.WhisperComposer, echo.Header);
+        Assert.Contains("hello", Text(echo.Payload));
+    }
+
+    // A whisper that a trigger hides is still written to the chat log, like a spoken line.
+    [Theory]
+    [InlineData("Bob")]
+    [InlineData("Nobody")]
+    public async Task AWhisperThatATriggerHidesIsLogged(string target)
+    {
+        var world = new World();
+        world.AddHiddenSpeechTrigger("hello");
+        Set(world.SenderUser, "_chatEmotions", new TestChatEmotions());
+
+        await new WhisperEvent(world.Service).Parse(world.Sender, HabbiconTestSupport.Incoming(target + " hello", 0));
+
+        Assert.Empty(world.RecipientPackets);
+        var entry = Assert.Single(world.Logs.Entries);
+        Assert.Equal($"<Whisper to {target}>: hello", entry.Message);
+        Assert.Equal(Now, entry.CreatedAt);
+    }
+
+    // A banned phrase in a whisper that fires a trigger is logged and counted, and the speaker gets the echo once.
+    [Fact]
+    public async Task ABannedPhraseInAWhisperThatATriggerHidesIsLoggedAndCounted()
+    {
+        var world = new World();
+        world.AddHiddenSpeechTrigger("hello");
+        world.Filter.Banned = true;
+        Set(world.SenderUser, "_chatEmotions", new TestChatEmotions());
+
+        await new WhisperEvent(world.Service).Parse(world.Sender, HabbiconTestSupport.Incoming("Bob hello", 0));
+
+        Assert.Equal(1, world.Sender.GetHabbo().BannedPhraseCount);
+        Assert.Equal("<Whisper to Bob>: hello", Assert.Single(world.Logs.Entries).Message);
+        Assert.Empty(world.RecipientPackets);
+        Assert.Equal(ServerPacketHeader.WhisperComposer, Assert.Single(world.SenderPackets).Header);
+        Assert.Empty(world.Quests.Progresses);
+    }
+
+    // A banned phrase in an ordinary whisper is logged, counted and not delivered.
+    [Fact]
+    public async Task ABannedPhraseInAnOrdinaryWhisperIsLoggedCountedAndNotDelivered()
+    {
+        var world = new World();
+        world.Filter.Banned = true;
+
+        await world.Service.Whisper(world.Sender, "Bob blocked words", 2);
+
+        Assert.Equal(1, world.Sender.GetHabbo().BannedPhraseCount);
+        Assert.Equal("<Whisper to Bob>: blocked words", Assert.Single(world.Logs.Entries).Message);
+        Assert.Empty(world.RecipientPackets);
+        Assert.Single(world.SenderPackets);
+    }
+
+    // A whisper to a name that is no user in the room is echoed to the speaker only.
+    [Theory]
+    [InlineData("Nobody")]
+    [InlineData("Wired")]
+    public async Task AWhisperToNoUserIsEchoedToTheSpeaker(string target)
+    {
+        var world = new World();
+        Set(world.SenderUser, "_chatEmotions", new TestChatEmotions());
+
+        await new WhisperEvent(world.Service).Parse(world.Sender, HabbiconTestSupport.Incoming(target + " hello", 0));
+
+        Assert.Empty(world.RecipientPackets);
+        var echo = Assert.Single(world.SenderPackets);
+        Assert.Equal(ServerPacketHeader.WhisperComposer, echo.Header);
+        Assert.Contains("hello", Text(echo.Payload));
+    }
+
+    // A whisper that no trigger hides still reaches its recipient.
+    [Fact]
+    public async Task AWhisperThatNoTriggerHidesIsStillDelivered()
+    {
+        var world = new World();
+        world.AddHiddenSpeechTrigger("hello");
+        Set(world.SenderUser, "_chatEmotions", new TestChatEmotions());
+
+        await new WhisperEvent(world.Service).Parse(world.Sender, HabbiconTestSupport.Incoming("Bob goodbye", 0));
+
+        Assert.Single(world.SenderPackets);
+        Assert.Contains("goodbye", Text(Assert.Single(world.RecipientPackets).Payload));
+    }
+
     // "k105a 5 " does not fire the exact keyword "k105a #(a)", and its echo reads "k105a 5".
     [Theory]
     [InlineData("k105a 5", true)]
@@ -469,7 +574,7 @@ public sealed class RoomChatServiceTests
     }
 
     [Fact]
-    public async Task MalformedBotDisconnectedOrDepartedWhisperRecipientDoesNotPublish()
+    public async Task MalformedBotDisconnectedOrDepartedWhisperRecipientDoesNotPublishBeyondTheSpeakerEcho()
     {
         var world = new World();
 
@@ -480,21 +585,23 @@ public sealed class RoomChatServiceTests
 
         world.RecipientUser.BotData = (Plus.HabboHotel.Rooms.AI.RoomBot)RuntimeHelpers.GetUninitializedObject(typeof(Plus.HabboHotel.Rooms.AI.RoomBot));
         await world.Service.Whisper(world.Sender, "Bob message", 1);
-        Assert.Empty(world.Logs.Entries);
-        Assert.Empty(world.SenderPackets);
+        Assert.Single(world.Logs.Entries);
+        Assert.Equal(ServerPacketHeader.WhisperComposer, Assert.Single(world.SenderPackets).Header);
+        world.SenderPackets.Clear();
         Assert.Empty(world.RecipientPackets);
 
         world.RecipientUser.BotData = null!;
         world.Clients.ByUserId.Remove(8);
         await world.Service.Whisper(world.Sender, "Bob message", 1);
-        Assert.Empty(world.Logs.Entries);
+        Assert.Equal(2, world.Logs.Entries.Count);
         Assert.Empty(world.SenderPackets);
         Assert.Empty(world.RecipientPackets);
 
         world.Clients.ByUserId[8] = world.Recipient;
         world.Recipient.GetHabbo().CurrentRoom = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
+        Set(world.SenderUser, "_chatTokens", RoomUser.ChatBurst);
         await world.Service.Whisper(world.Sender, "Bob message", 1);
-        Assert.Empty(world.Logs.Entries);
+        Assert.Equal(3, world.Logs.Entries.Count);
         Assert.Empty(world.SenderPackets);
         Assert.Empty(world.RecipientPackets);
     }

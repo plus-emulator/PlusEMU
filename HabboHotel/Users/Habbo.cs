@@ -118,6 +118,8 @@ public class Habbo
 
     public bool FocusPreference { get; set; }
 
+    public WiredAccountPreferences WiredPreferences { get; set; } = WiredAccountPreferences.Default;
+
     public bool AllowTradingRequests { get; set; } = true;
 
     public bool AllowUserFollowing { get; set; }

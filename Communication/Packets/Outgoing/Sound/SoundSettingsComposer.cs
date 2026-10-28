@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Users;
 
 namespace Plus.Communication.Packets.Outgoing.Sound;
 
@@ -9,16 +10,18 @@ public class SoundSettingsComposer : IServerPacket
     private readonly bool _invitesStatus;
     private readonly bool _focusPreference;
     private readonly int _friendBarState;
+    private readonly WiredAccountPreferences _wired;
 
     public uint MessageId => ServerPacketHeader.SoundSettingsComposer;
 
-    public SoundSettingsComposer(IEnumerable<int> volumes, bool chatPreference, bool invitesStatus, bool focusPreference, int friendBarState)
+    public SoundSettingsComposer(IEnumerable<int> volumes, bool chatPreference, bool invitesStatus, bool focusPreference, int friendBarState, WiredAccountPreferences wired)
     {
         _volumes = volumes.ToArray();
         _chatPreference = chatPreference;
         _invitesStatus = invitesStatus;
         _focusPreference = focusPreference;
         _friendBarState = friendBarState;
+        _wired = wired;
     }
 
     public void Compose(IOutgoingPacket packet)
@@ -34,12 +37,12 @@ public class SoundSettingsComposer : IServerPacket
         packet.WriteBoolean(_focusPreference);
         packet.WriteInteger(_friendBarState);
         packet.WriteInteger(0);
-        // Wired menu button, wired inspect button, play test mode. Nothing stores
-        // them yet (the wired menu save, outgoing 3802, has no handler), so send the client defaults.
-        packet.WriteBoolean(false);
-        packet.WriteBoolean(false);
-        packet.WriteBoolean(false);
+        packet.WriteBoolean(_wired.MenuButton);
+        packet.WriteBoolean(_wired.InspectButton);
+        packet.WriteBoolean(_wired.PlayTestMode);
         packet.WriteInteger(0);
-        packet.WriteBoolean(false); // wired whisper disabled
+        packet.WriteBoolean(_wired.WhisperDisabled);
+        packet.WriteBoolean(_wired.ShowAllNotifications);
+        packet.WriteString(_wired.UiStyle);
     }
 }

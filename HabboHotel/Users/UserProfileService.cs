@@ -39,6 +39,7 @@ public interface IUserProfileService
     void SetFocusPreference(GameClient session, bool enabled);
     Task SetChatStylePreference(GameClient session, int bubbleId);
     void SetFriendBarState(GameClient session, int state);
+    Task SetWiredPreferences(GameClient session, WiredAccountPreferences preferences);
 }
 
 public sealed class UserProfileService(
@@ -325,7 +326,30 @@ public sealed class UserProfileService(
         var habbo = session.GetHabbo();
         habbo.FriendbarState = FriendBarStateUtility.GetEnum(state);
         session.Send(new SoundSettingsComposer(habbo.ClientVolume, habbo.ChatPreference, habbo.AllowMessengerInvites,
-            habbo.FocusPreference, FriendBarStateUtility.GetInt(habbo.FriendbarState)));
+            habbo.FocusPreference, FriendBarStateUtility.GetInt(habbo.FriendbarState), habbo.WiredPreferences));
+    }
+
+    public Task SetWiredPreferences(GameClient session, WiredAccountPreferences preferences)
+    {
+        if (preferences.UiStyle.Length > WiredAccountPreferences.MaxUiStyleLength) {
+            return Task.CompletedTask;
+        }
+
+        var habbo = session.GetHabbo();
+        using var connection = database.Connection();
+        var updated = connection.Execute(
+            "UPDATE users_settings SET wired_menu_button = @MenuButton, wired_inspect_button = @InspectButton, wired_play_test = @PlayTestMode, " +
+            "wired_whisper_disabled = @WhisperDisabled, wired_show_all_notifications = @ShowAllNotifications, wired_ui_style = @UiStyle " +
+            "WHERE user_id = @userId LIMIT 1",
+            new { preferences.MenuButton, preferences.InspectButton, preferences.PlayTestMode, preferences.WhisperDisabled, preferences.ShowAllNotifications, preferences.UiStyle, userId = habbo.Id });
+
+        if (updated != 1) {
+            throw new DBConcurrencyException($"Settings for user {habbo.Id} no longer exist.");
+        }
+
+        habbo.WiredPreferences = preferences;
+
+        return Task.CompletedTask;
     }
 
     public void SetFocusPreference(GameClient session, bool enabled)

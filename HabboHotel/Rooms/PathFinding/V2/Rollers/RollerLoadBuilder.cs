@@ -66,7 +66,7 @@ internal sealed class RollerLoadBuilder(Room room, RollerTransport transport)
     }
 
     // A rider is carried at its horse's height; the rider keeps its seat offset above the horse.
-    private static RollerMove ActorMove(Item roller, RoomUser actor, RoomUser? horse, Point destination, bool nextIsRoller)
+    private RollerMove ActorMove(Item roller, RoomUser actor, RoomUser? horse, Point destination, bool nextIsRoller)
     {
         if (horse != null) {
             var horseZ = Carried(horse.Z, roller, nextIsRoller);
@@ -81,6 +81,11 @@ internal sealed class RollerLoadBuilder(Room room, RollerTransport transport)
         }
 
         var z = Carried(actor.Z, roller, nextIsRoller);
+
+        if (!nextIsRoller && Math.Abs(actor.Z - roller.TotalHeight) <= SurfaceSelection.Tolerance) {
+            z = transport.StandZ(destination, z);
+        }
+
         var slide = new SlideObjectBundleComposer(actor.X, actor.Y, actor.Z, destination.X, destination.Y,
             z, roller.Id, actor.VirtualId, 0);
 

@@ -146,7 +146,7 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
 
         if (p[1] == 1) {
             using var queries = new WiredVariableQueries(_variables, frame);
-            count = (int)Math.Clamp(queries.ReadOperand((WiredVariableTarget)p[3], configuration.VariableIds[1], p[4], p[5], configuration) ?? 1, 0, 10000);
+            count = (int)Math.Clamp(queries.ReadOperand((WiredVariableTarget)p[3], configuration.VariableIds[1], p[4], p[5], configuration) ?? 0, 0, 10000);
         }
 
         var holders = frame.Holders.Where(holder => holder.Target == target).ToDictionary(holder => holder.EntityId);

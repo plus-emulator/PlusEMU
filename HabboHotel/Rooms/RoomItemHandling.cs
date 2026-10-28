@@ -429,7 +429,7 @@ public partial class RoomItemHandling
         _restorePoint.Clear();
 
         foreach (var item in GetWallAndFloor.Where(item => !item.IsTemporary)) {
-            _restorePoint[item.Id] = ToSave(item);
+            _restorePoint[item.Id] = RestorePoint(item);
         }
     }
 
@@ -648,6 +648,9 @@ public partial class RoomItemHandling
             ExceptionLogger.LogCriticalException(e);
         }
     }
+
+    // Scores of a high score board are never reset, so its restore point carries no payload.
+    private RoomItemSave RestorePoint(Item item) => item.ExtraData is Plus.HabboHotel.Items.DataFormat.HighscoreDataFormat ? ToSave(item) with { ExtraData = null } : ToSave(item);
 
     private RoomItemSave ToSave(Item item) => new(
         item.Id, item.GetX, item.GetY, item.GetZ, item.Rotation, SavePayload(item), item.WallCoordinates,
@@ -970,7 +973,7 @@ public partial class RoomItemHandling
         }
 
         if (newItem) {
-            _restorePoint[item.Id] = ToSave(item);
+            _restorePoint[item.Id] = RestorePoint(item);
         }
 
         return true;
@@ -1120,7 +1123,7 @@ public partial class RoomItemHandling
         }
 
         _store.PlaceWall(item.Id, _room.RoomId, item.GetX, item.GetY, item.GetZ, item.Rotation, item.WallCoordinates);
-        _restorePoint[item.Id] = ToSave(item);
+        _restorePoint[item.Id] = RestorePoint(item);
         _wallItems.TryAdd(item.Id, item);
         _room.SendObject(item);
 

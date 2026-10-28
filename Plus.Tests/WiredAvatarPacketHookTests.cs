@@ -292,11 +292,15 @@ public partial class WiredAvatarPacketHookTests
         await handler.Parse(world.Client, Packet(1));
         Assert.True(world.Actor.IsSitting);
         world.FlushWired();
+        Assert.Empty(world.Capture.Events);
+        world.Actor.CompletePostureActions();
+        world.FlushWired();
         Assert.Single(world.Capture.Events);
         await handler.Parse(world.Client, Packet(0));
         await handler.Parse(world.Client, Packet(0));
         Assert.False(world.Actor.IsSitting);
         Assert.Equal(0, world.Actor.Z);
+        world.Actor.CompletePostureActions();
         world.FlushWired();
         Assert.Equal(new[] { 6, 7 }, world.Capture.Events.Select(evt => evt.Action));
         Assert.All(world.Capture.Events, evt => Assert.Same(world.Actor, evt.Actor));

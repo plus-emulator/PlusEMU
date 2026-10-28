@@ -85,8 +85,8 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
             return false;
         }
 
-        // A roller never lifts its rider: the target may not stand higher than the rider does now.
-        if (move.CarriedZ > move.SourceZ + SurfaceSelection.Tolerance) {
+        // A roller never lifts its rider onto another surface; a roller target takes the rider at its own top.
+        if (move.CarriedZ > move.SourceZ + SurfaceSelection.Tolerance && !HasRoller(to)) {
             return false;
         }
 
@@ -252,6 +252,13 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
 
         return slot >= 0 ? Grid.WalkZ[slot] : carriedZ;
     }
+
+    // The top of the highest roller on the tile.
+    public double RollerTopZ(Point tile)
+        => context.Room.GetGameMap().GetAllRoomItemForSquare(tile.X, tile.Y).Where(RollerIdentity.IsRoller).Max(roller => roller.TotalHeight);
+
+    public bool HasRoller(Point tile)
+        => context.Room.GetGameMap().GetAllRoomItemForSquare(tile.X, tile.Y).Any(RollerIdentity.IsRoller);
 
     // The tile's own slot plus every other compiled surface on it (only the own slot with K = 1).
     private IEnumerable<int> TileSlots(Point tile)

@@ -8,7 +8,7 @@ public enum WiredRoomAccess
     None = 0, Everyone = 1, Rights = 2, GroupMembers = 4, GroupAdmins = 8
 }
 
-public sealed record WiredRoomSettingsSnapshot(int InspectMask = 2, int ModifyMask = 2, string TimeZoneId = "")
+public sealed record WiredRoomSettingsSnapshot(int InspectMask = 8, int ModifyMask = 8, string TimeZoneId = "")
 {
     public static bool TryValidate(int inspect, int modify, string? timezone, out WiredRoomSettingsSnapshot validated)
     {

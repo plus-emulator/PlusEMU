@@ -36,8 +36,8 @@ public partial class WiredComponent
         internal set => _leaderboardProfiles = value;
     }
 
-    // A board's QueryRevision comes from one counter for the whole room, and the room's boards are numbered from 1 as overlays. The counter starts at 1, so the first save of a board shows revision 2.
-    private int _leaderboardRoomRevision = 1;
+    // A board's QueryRevision comes from one counter for the whole room, and the room's boards are numbered from 1 as overlays. The counter starts at 0, so the first save of a board shows revision 1.
+    private int _leaderboardRoomRevision;
     private readonly Dictionary<int, uint> _leaderboardOverlayItems = [];
 
     private int LeaderboardRevision(uint itemId)

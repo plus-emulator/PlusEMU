@@ -420,8 +420,18 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
 
             var flashedBox = false;
             var queuedBlob = false;
+            var startedCounter = false;
 
             if (name == "wf_act_toggle_state") {
+                // A game up counter starts counting and keeps counting; a later firing neither restarts nor stops it.
+                foreach (var counter in movers.Where(WiredToggleStateTargets.IsStartedByToggle)) {
+                    if (!_clocks.IsRunning(counter)) {
+                        startedCounter |= _clocks.Control(counter, 0, context.NowMilliseconds, WiredClockOrigin.ModernWired, context.Event.Actor);
+                    }
+                }
+
+                movers = [.. movers.Where(item => !WiredToggleStateTargets.IsStartedByToggle(item))];
+
                 // A box of the stack that is running has flashed already, and the toggle flips it again, so it ends in the toggled state.
                 var own = context.CapturedStack.Select(x => x.Item.Id).ToHashSet();
                 movers = WiredToggleStateTargets.Resolve(movers, box => context.Room.GetWired().Flash(box, own.Contains(box.Id)),
@@ -518,7 +528,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
                 }
             }
 
-            return movedAny || flashedBox || queuedBlob;
+            return movedAny || flashedBox || queuedBlob || startedCounter;
         }
 
         // Reset timers always covers the whole room, unlimited, so it resolves its own targets.

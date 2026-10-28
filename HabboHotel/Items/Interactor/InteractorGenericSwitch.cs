@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Rooms.PathFinding;
 
@@ -15,6 +16,15 @@ public class InteractorGenericSwitch(IQuestManager quests, IRewardTrackManager r
         var modes = item.Definition.Modes - 1;
 
         if (session == null || !hasRights || modes <= 0 || item.StateHeldByFurniOnTop) {
+            return;
+        }
+
+        if (WiredDeferredStates.IsBlob(item)) {
+            if (item.GetRoom() is { } blobRoom && blobRoom.GetWired().GameCounterRunning) {
+                quests.ProgressUserQuest(session, QuestType.FurniSwitch);
+                WiredDeferredStates.For(blobRoom).ToggleOnNextRoomTick(item);
+            }
+
             return;
         }
 

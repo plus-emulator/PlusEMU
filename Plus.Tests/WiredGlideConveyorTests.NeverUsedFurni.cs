@@ -9,7 +9,7 @@ public sealed partial class WiredGlideConveyorTests
     [InlineData("wf_colortile", 7, true)]
     [InlineData("wf_tile1", 10, false)]
     [InlineData("wf_blob", 2, false)]
-    [InlineData("wf_blob2", 2, true)]
+    [InlineData("wf_blob2", 2, false)]
     [InlineData("wf_button", 2, false)]
     [InlineData("wf_pressureplate", 4, false)]
     public void ADoubleClickChangesTheStateOfOnlyTheFurniThatCanBeUsed(string name, int modes, bool changes)

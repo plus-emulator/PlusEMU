@@ -89,9 +89,9 @@ public sealed record RoomItemSnapshot(
         or "wf_button" or "wf_button_red" or "wf_button_x";
 
     /// <summary>
-    /// Usage policy 0 is not the same as ignoring a double-click: the super blob (wf_blob2) still changes state when used.
+    /// Usage policy 0 is not the same as ignoring a double-click: the blobs (wf_blob, wf_blob2) still change state when used in a running game.
     /// </summary>
-    internal static bool IgnoresUse(ItemDefinition definition) => IsNeverUsed(definition) && definition.ItemName != "wf_blob2";
+    internal static bool IgnoresUse(ItemDefinition definition) => IsNeverUsed(definition) && definition.ItemName is not ("wf_blob" or "wf_blob2");
 
     private static RoomItemSnapshot CaptureLocked(Item item, GuildFurnitureAppearance? guild)
     {

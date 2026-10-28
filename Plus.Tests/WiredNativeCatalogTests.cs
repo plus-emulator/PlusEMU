@@ -484,6 +484,8 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [InlineData("chest", "~chest")]
     [InlineData("areahide", "~area_hide")]
     [InlineData("recolorable", "~recolorable_furni")]
+    [InlineData("teleport", "~teleport")]
+    [InlineData("roomlinker", "~teleport")]
     public void ARoomListsASpecialFurniGroupOnlyWhileItHoldsSuchAFurni(string kind, string group)
     {
         var fixture = new Fixture();
@@ -501,6 +503,12 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
                 break;
             case "areahide":
                 item.Definition.InteractionType = InteractionType.AreaHide;
+                break;
+            case "teleport":
+                item.Definition.InteractionType = InteractionType.Teleport;
+                break;
+            case "roomlinker":
+                item.Definition.InteractionType = InteractionType.WiredRoomLinker;
                 break;
             default:
                 item.ExtraData = new Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat();

@@ -155,7 +155,7 @@ internal static class WiredNativeCatalogProjection
         ImmutableArray<KeyValuePair<int, string>>? Connector, string? TextConnectorFallback, System.Text.Json.JsonElement? Flags = null);
 
     /// <summary>
-    /// The built-ins as one room lists them. The smart rows of counters, chests, area hide and recolorable furni are visible only while the room holds such a furni.
+    /// The built-ins as one room lists them. The smart rows of counters, chests, area hide, recolorable furni and teleporters are visible only while the room holds such a furni.
     /// </summary>
     internal static ImmutableArray<WiredNativeVariable> BuiltinsFor(IEnumerable<Item> floor)
     {
@@ -258,7 +258,7 @@ internal static class WiredNativeCatalogProjection
 
 internal static class WiredSpecialFurniGroups
 {
-    private static readonly string[] Names = ["~chest", "~clock", "~area_hide", "~recolorable_furni"];
+    private static readonly string[] Names = ["~chest", "~clock", "~area_hide", "~recolorable_furni", "~teleport"];
 
     public static string? Of(string rowName) => rowName.IndexOf('.') is > 0 and var dot && Array.IndexOf(Names, rowName[..dot]) >= 0 ? rowName[..dot] : null;
 
@@ -285,6 +285,10 @@ internal static class WiredSpecialFurniGroups
 
             if (item.ExtraData is DataFormat.RecolorableDataFormat) {
                 held.Add("~recolorable_furni");
+            }
+
+            if (InteractionTypes.IsLinkedPair(item.Definition.InteractionType)) {
+                held.Add("~teleport");
             }
         }
 

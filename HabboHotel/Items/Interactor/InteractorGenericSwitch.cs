@@ -1,4 +1,5 @@
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Rooms.PathFinding;
 
@@ -19,6 +20,12 @@ public class InteractorGenericSwitch(IQuestManager quests, IRewardTrackManager r
         }
 
         quests.ProgressUserQuest(session, QuestType.FurniSwitch);
+
+        if (WiredDeferredStates.IsBlob(item) && item.GetRoom() is { } blobRoom) {
+            WiredDeferredStates.For(blobRoom).ToggleOnNextRoomTick(item);
+
+            return;
+        }
 
         if (GateTransitionService.IsGate(item) && GateTransitionService.For(item) != null) {
             ToggleSequenced(session, item, modes);

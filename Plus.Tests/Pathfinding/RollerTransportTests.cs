@@ -81,7 +81,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(5, actor.Movement.CurrentRef.Value.Tile);
         Assert.Equal(2.5, navigation.Grid.WalkZ[5]);
         Assert.Equal(0.5, navigation.Inputs.AppliedRecords[cargo.Id].Z);
-        Assert.Equal("2.5", ExecutorAvatarSlide(actor).ToZ);
+        Assert.Equal("2.5", Assert.Single(RollerBundles()).Avatar!.Value.ToZ);
     }
 
     [Fact]
@@ -114,8 +114,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         Assert.Equal((1, 1, 1d), (cargo.GetX, cargo.GetY, cargo.GetZ));
         Assert.Equal((1, 1, 1.5), (actor.X, actor.Y, actor.Z));
-        Assert.Equal(2, _client.Packets.Count(p => p.Header == ServerPacketHeader.SlideObjectBundleComposer));
-        Assert.Equal("1.5", ExecutorAvatarSlide(actor).ToZ);
+        Assert.Equal("1.5", Assert.Single(RollerBundles()).Avatar!.Value.ToZ);
     }
 
     [Theory]

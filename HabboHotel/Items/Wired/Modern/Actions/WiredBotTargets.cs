@@ -200,12 +200,14 @@ public sealed class WiredBotTargets
         return false;
     }
 
-    private static (int X, int Y) FollowedTile(Room room, RoomUser user)
+    private (int X, int Y) FollowedTile(Room room, RoomUser user)
     {
         var state = user.Movement;
         var next = state.Cursor + state.PendingCount;
 
-        if (state.State == NavState.Active && state.HasIntent && next < state.Route.Count && room.GetGameMap().Navigation is { } navigation) {
+        // A bot processed before its walking user still sees the tile the user stands on, except on the user's last step.
+        if (state.State == NavState.Active && state.HasIntent && next < state.Route.Count && room.GetGameMap().Navigation is { } navigation
+            && (next == state.Route.Count - 1 || !BotFirst())) {
             var tile = state.Route.Steps[next].Tile;
 
             return (tile % navigation.Grid.Width, tile / navigation.Grid.Width);

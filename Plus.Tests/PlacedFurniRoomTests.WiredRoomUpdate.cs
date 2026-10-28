@@ -4,6 +4,7 @@ using Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Settings;
 using Plus.HabboHotel.Permissions;
@@ -20,6 +21,7 @@ namespace Plus.Tests;
 public partial class PlacedFurniRoomTests
 {
     private const string LoadedWall = ":w=0,2 l=11,53 l";
+    private const string PlacedWall = ":w=1,1 l=2,10 l";
 
     [Fact]
     public async Task ReloadSendsEveryoneOutAndBackWithTheFurniAsTheyAreNow()
@@ -64,6 +66,40 @@ public partial class PlacedFurniRoomTests
         var restoredLater = Assert.Single(store.Restored, save => save.Id == 52);
         Assert.Equal((0, 0, 0.0, 0), (restoredLater.X, restoredLater.Y, restoredLater.Z, restoredLater.Rotation));
         AssertSentOutAndBack(viewer);
+    }
+
+    [Fact]
+    public async Task RollbackKeepsTheScoresOfAHighscoreBoardButStillPutsItBack()
+    {
+        var (store, unloads) = LoadedRoom();
+        InRoom(_client);
+        var handler = _room.GetRoomItemHandler();
+        var board = handler.GetItem(53);
+        Assert.IsType<HighscoreDataFormat>(board.ExtraData).Entries = [new HighscoreEntry(9, ["owner"])];
+
+        await new WiredRoomUpdateEvent(RoomUpdates(unloads)).Parse(_room, _client, EditorTestSupport.Incoming(true));
+
+        var restored = Assert.Single(store.Restored, save => save.Id == 53);
+        Assert.Null(restored.ExtraData);
+        Assert.Equal((3, 3), (restored.X, restored.Y));
+    }
+
+    [Fact]
+    public async Task AWallFurniPlacedAfterTheLoadAndThenMovedGoesBackToItsPlacementSpot()
+    {
+        var (store, unloads) = LoadedRoom();
+        InRoom(_client);
+        var handler = _room.GetRoomItemHandler();
+        var placedLater = Furni(54, InteractionType.None, WiredBoxType.None, ItemType.Wall);
+        placedLater.WallCoordinates = PlacedWall;
+        Assert.True(handler.SetWallItem(_client, placedLater));
+        placedLater.WallCoordinates = ":w=3,5 l=6,30 r";
+
+        await new WiredRoomUpdateEvent(RoomUpdates(unloads)).Parse(_room, _client, EditorTestSupport.Incoming(true));
+
+        var restored = Assert.Single(store.Restored, save => save.Id == 54);
+        Assert.True(restored.SaveWallPosition);
+        Assert.Equal(PlacedWall, restored.WallPosition);
     }
 
     [Fact]
@@ -139,9 +175,12 @@ public partial class PlacedFurniRoomTests
         var floor = Furni(50, InteractionType.None, WiredBoxType.None).Definition;
         floor.Modes = 2;
         var wall = Furni(51, InteractionType.None, WiredBoxType.None, ItemType.Wall).Definition;
+        var board = Furni(53, InteractionType.None, WiredBoxType.None).Definition;
+        board.ItemName = "highscore_classic";
         _room.GetRoomItemHandler().LoadFurniture([
             ItemLoader.ReadRoomItem(table.Rows.Add(50, 7, 1, 1, 0, 0, 0, 50, 0.0, "0", "", "owner"), RoomId, floor),
-            ItemLoader.ReadRoomItem(table.Rows.Add(51, 7, 0, 0, 0, 0, 0, 51, 0.0, "", LoadedWall, "owner"), RoomId, wall)
+            ItemLoader.ReadRoomItem(table.Rows.Add(51, 7, 0, 0, 0, 0, 0, 51, 0.0, "", LoadedWall, "owner"), RoomId, wall),
+            ItemLoader.ReadRoomItem(table.Rows.Add(53, 7, 3, 3, 0, 0, 0, 53, 0.0, new HighscoreDataFormat { State = "0", ScoreType = 2 }.Serialize(), "", "owner"), RoomId, board)
         ]);
         _room.GetGameMap().GenerateMaps();
 

@@ -116,7 +116,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void LinkedCustomUsesOneDirectoryAndTerminalFactsWithoutAdvertisingInterception(bool readOnly)
+    public void LinkedCustomUsesOneDirectoryAndTerminalFacts(bool readOnly)
     {
         var directory = new Directory();
         var terminal = new WiredVariableDefinition(20, 42, 1, "source", WiredVariableTarget.User, WiredVariableAvailability.Persistent, false);
@@ -125,12 +125,12 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         directory.Rows[20] = terminal;
         var endpoint = Assert.Single(Module(directory).DescribeNativeDefinitions([owning], new Dictionary<WiredVariableReference, WiredVariableDerivation>(), [])!);
         var variable = WiredNativeCatalogProjection.Project(endpoint, null);
-        Assert.Equal(2, variable.Type);
+        Assert.Equal(readOnly ? 2 : 0, variable.Type);
         Assert.False(variable.HasValue);
         Assert.False(variable.CanWriteValue);
         Assert.Equal(!readOnly, variable.CanCreateAndDelete);
         Assert.True(variable.CanReadCreationTime);
-        Assert.False(variable.CanInterceptChanges);
+        Assert.Equal(!readOnly, variable.CanInterceptChanges);
         Assert.Equal(1, directory.Reads[10]);
         Assert.Equal(1, directory.Reads[20]);
     }
@@ -633,6 +633,27 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         var rows = CatalogRows(fixture);
         Assert.Equal(21, Assert.Single(rows, row => row.Name == "echo").Availability);
         Assert.Equal(expectedSource, Assert.Single(rows, row => row.Name == "source").Availability);
+    }
+
+    // An Echo of a custom variable is listed like a normal interceptable variable (type 0), and the variable it echoes is unchanged.
+    [Theory]
+    [InlineData("wf_var_user", 10, 0)]
+    [InlineData("wf_var_furni", 1, 1)]
+    public async Task AnEchoVariableIsListedAsAnInterceptableVariableOfTypeZero(string sourceBox, int sourceAvailability, int sourceTarget)
+    {
+        var fixture = new Fixture();
+        fixture.AddDefinition(10, sourceBox, new() { IntParams = [1, sourceAvailability], Text = "source" });
+        fixture.AddDefinition(11, "wf_var_echo", new() { Text = "{\"variableName\":\"echo\",\"sourceTargetType\":" + sourceTarget + ",\"sourceVariableToken\":\"custom:10\"}" });
+
+        await new WiredVariableHashesEvent(new WiredVariableMenuService()).Parse(fixture.World.Room, fixture.World.Client, RawInts(0));
+
+        var rows = CatalogRows(fixture);
+        var echo = Assert.Single(rows, row => row.Name == "echo");
+        var source = Assert.Single(rows, row => row.Name == "source");
+        Assert.Equal((0, 21), (echo.Type, echo.Availability));
+        Assert.Equal([false, true, true, true, true, false, false, true, true], echo.Flags);
+        Assert.Equal((0, sourceAvailability), (source.Type, source.Availability));
+        Assert.Equal(echo.Flags, source.Flags);
     }
 
     private static FlashIncomingPacket RawInts(params int[] values)

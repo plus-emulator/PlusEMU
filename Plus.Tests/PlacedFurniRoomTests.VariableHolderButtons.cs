@@ -324,6 +324,7 @@ public partial class PlacedFurniRoomTests
 
         Assert.Empty(await VbDelete("user:502", guest));
         _room.UsersWithRights.Add(LeaverId);
+        Assert.True(_room.GetWired().Settings.TrySave(_client, 2, 2, "", out _));
         VbEqual([VbError(7)], await VbDelete("user:502", guest));
         Assert.Equal(5, VbStored(VbUserPermanent, WiredVariableTarget.User, VbOffline)!.Value);
     }
@@ -644,6 +645,7 @@ public partial class PlacedFurniRoomTests
 
         Assert.Empty(await VbSet(1, VbOffline, "user:502", 3, 0, guest));
         _room.UsersWithRights.Add(LeaverId);
+        Assert.True(_room.GetWired().Settings.TrySave(_client, 2, 2, "", out _));
         VbEqual([VbResult(true)], (await VbSet(1, VbOffline, "user:502", 3, 0, guest))[..1]);
         Assert.Equal(3, VbStored(VbUserPermanent, WiredVariableTarget.User, VbOffline)!.Value);
     }

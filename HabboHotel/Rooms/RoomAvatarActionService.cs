@@ -97,18 +97,17 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
     private sealed record ExpressionRule(WiredAvatarAction? Wired = null, TimeSpan? CountsFor = null, bool ClubOnly = false);
 
-    // Without Habbo Club, expressions 2, 3, 4, 6 and 67 reach nobody. User Performs Action sees a wave for about 5 s and respect for about 1.8 s.
+    // Without Habbo Club, expressions 2, 3, 4, 6 and 67 reach nobody. User Performs Action sees a wave for about 5 s and respect for 2 s.
     private static readonly Dictionary<int, ExpressionRule> Expressions = new()
     {
         [1] = new(WiredAvatarAction.Wave, TimeSpan.FromSeconds(5)),
         [2] = new(WiredAvatarAction.Kiss, ClubOnly: true),
         [3] = new(WiredAvatarAction.Laugh, ClubOnly: true),
         [4] = new(ClubOnly: true),
-        // The sleep expression counts for about 2.6 s, though the avatar stays asleep.
-        [5] = new(WiredAvatarAction.Relax, TimeSpan.FromMilliseconds(2600)),
+        [5] = new(WiredAvatarAction.Relax),
         [6] = new(ClubOnly: true),
         // The respect expression fires User Performs Action - Respect. Expression 67 fires nothing.
-        [7] = new(WiredAvatarAction.Respect, TimeSpan.FromMilliseconds(1800)),
+        [7] = new(WiredAvatarAction.Respect, TimeSpan.FromSeconds(2)),
         [67] = new(ClubOnly: true)
     };
 
@@ -139,9 +138,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
             room.SendPacket(new SleepComposer(user.VirtualId, true));
         }
 
-        if (rule is { Wired: { } remembered, CountsFor: { } window }) {
-            user.RecentExpression = ((int)remembered, clock.GetUtcNow() + window);
-        }
+        user.RecentExpression = rule is { Wired: { } remembered, CountsFor: { } window } ? ((int)remembered, clock.GetUtcNow() + window) : null;
 
         if (rule.Wired is { } wiredAction) {
             room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)

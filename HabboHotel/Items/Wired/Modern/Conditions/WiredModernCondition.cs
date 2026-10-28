@@ -196,8 +196,9 @@ public sealed class WiredModernCondition : WiredModernBox
         return action switch
         {
             // Wave and Respect pass for a short time after the expression.
-            1 or 5 or 12 => recent == action,
-            4 => recent != (int)WiredAvatarAction.Relax,
+            1 or 12 => recent == action,
+            4 => !user.IsAsleep,
+            5 => user.IsAsleep,
             6 => user.HasStatus("sit"),
             7 => !user.HasStatus("sit") && !user.HasStatus("lay"),
             8 => user.HasStatus("lay"),

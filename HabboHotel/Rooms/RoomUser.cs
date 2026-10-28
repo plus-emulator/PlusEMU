@@ -92,7 +92,6 @@ public class RoomUser
     private static readonly int[] SwimEffects = [29, 30, 185];
     public bool IsSwimming => !IsBot && GetClient()?.GetHabbo()?.Effects is { } effects && SwimEffects.Contains(effects.CurrentEffect);
     public int RollerDelay = 0;
-    internal bool RollerDeferred;
     internal bool RollerSettling;
     internal PendingRollerLanding? PendingLanding;
     public uint RoomId;

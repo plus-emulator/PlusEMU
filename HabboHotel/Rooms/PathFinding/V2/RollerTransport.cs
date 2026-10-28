@@ -137,7 +137,6 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
                 actor.Movement.Commands.Read()?.Sequence ?? 0);
             actor.IsRolling = true;
             actor.RollerDelay = 0;
-            actor.RollerDeferred = false;
             actor.RollerSettling = false;
         }
     }
@@ -154,7 +153,6 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
                 placement.CarryHorse(move.Actor!);
                 horse.IsRolling = true;
                 horse.RollerDelay = 0;
-                horse.RollerDeferred = false;
                 horse.UpdateNeeded = false;
             }
 

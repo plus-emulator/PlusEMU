@@ -39,7 +39,7 @@ public sealed class WiredVariableCatalogWireTests
         var packet = new Packet();
         new WiredVariableHoldersPageComposer("user:10", new(25, 2, 10, [holder]), 1, 0).Compose(packet);
         Assert.Equal(new object[] { "user:10", 25, 2, 10, 1, 1, 901, "player", 25, 1, 1,
-            "19/02/1970 17:02:47", 0, 0, "", 1, 0 }, packet.Values);
+            "19-02-1970 17:02:47", 0, 0, "", 1, 0 }, packet.Values);
     }
     [Fact]
     public void EpochAndPreEpochKeepRawMillisecondsButOmitLegacyText()

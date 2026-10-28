@@ -5,6 +5,7 @@ public static class ApproachActionKind
     public const int VendingMachine = 1;
     public const int Teleporter = 2;
     public const int Hopper = 3;
+    public const int FloorSwitch = 4;
 }
 
 // An approach descriptor bound to the command that carried it; replans of the same command keep this identity.

@@ -6,7 +6,7 @@ namespace Plus.HabboHotel.Items.Wired.Variables;
 /// <summary>Independent per-session request kinds; a poll cannot swallow a clear or a page request.</summary>
 public enum WiredRequestKind
 {
-    MonitorFetch, MonitorClear, RoomLogPage, ApplySnapshot, RoomStats, ErrorLogs, ErrorClear
+    MonitorFetch, MonitorClear, RoomLogPage, ApplySnapshot, RoomStats, ErrorLogs, ErrorClear, ChestLog
 }
 
 public interface IWiredRequestGateService
@@ -18,8 +18,8 @@ public interface IWiredRequestGateService
 public sealed class WiredRequestGateService(TimeProvider clock) : IWiredRequestGateService
 {
     private static readonly TimeSpan[] Intervals = [TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(500),
-        TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200)];
-    private readonly ConditionalWeakTable<GameClient, StrongBox<long?>>[] _last = [new(), new(), new(), new(), new(), new(), new()];
+        TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(250)];
+    private readonly ConditionalWeakTable<GameClient, StrongBox<long?>>[] _last = [new(), new(), new(), new(), new(), new(), new(), new()];
 
     public bool TryPass(GameClient session, WiredRequestKind kind)
     {

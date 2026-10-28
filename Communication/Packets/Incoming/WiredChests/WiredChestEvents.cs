@@ -262,3 +262,28 @@ public sealed class WiredChestLockEvent : WiredChestPacketEvent
         return module => module.Lock(session, locked, all);
     }
 }
+
+/// <summary>int amount, int page: the transaction log of the room.</summary>
+public sealed class WiredTransactionGetRoomLogsEvent(IWiredChestLogService logs) : WiredChestPacketEvent
+{
+    protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
+    {
+        var amount = packet.ReadInt();
+        var page = packet.ReadInt();
+
+        return module => logs.ShowRoom(module, room, session, amount, page);
+    }
+}
+
+/// <summary>int chestId, int amount, int page: the transaction log of one chest.</summary>
+public sealed class WiredTransactionGetChestLogsEvent(IWiredChestLogService logs) : WiredChestPacketEvent
+{
+    protected override Action<WiredChestRoom>? Read(Room room, GameClient session, IIncomingPacket packet)
+    {
+        var chestId = packet.ReadUInt();
+        var amount = packet.ReadInt();
+        var page = packet.ReadInt();
+
+        return module => logs.ShowChest(module, room, session, chestId, amount, page);
+    }
+}

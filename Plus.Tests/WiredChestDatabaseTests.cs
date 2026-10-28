@@ -17,6 +17,19 @@ public sealed class WiredChestDatabaseFactAttribute : FactAttribute
     }
 }
 
+public sealed class WiredChestLogDatabaseFactAttribute : FactAttribute
+{
+    internal static string? ServerConnection =>
+        Environment.GetEnvironmentVariable("WIRED_CHEST_DATABASE") ?? Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE");
+
+    public WiredChestLogDatabaseFactAttribute()
+    {
+        if (ServerConnection == null) {
+            Skip = "Set WIRED_CHEST_DATABASE or ROOM_COMPONENT_DATABASE to a disposable loopback MariaDB server.";
+        }
+    }
+}
+
 public sealed class WiredChestDatabaseTests
 {
     [WiredChestDatabaseFact]
@@ -38,6 +51,58 @@ public sealed class WiredChestDatabaseTests
         Assert.Equal(1, fixture.Connection.QuerySingle<int>("SELECT COUNT(*) FROM items WHERE chest_item_id=100"));
         Assert.Equal(1, fixture.Connection.QuerySingle<int>("SELECT COUNT(*) FROM wired_chest_transactions"));
     }
+
+    [WiredChestLogDatabaseFact]
+    public void TransactionsFormARoomAndChestLogNewestFirst()
+    {
+        using var fixture = new Fixture();
+        fixture.Chest(100, 1, WiredChestKind.Furni);
+        fixture.Chest(101, 1, WiredChestKind.Coins);
+        fixture.Enable(100);
+        fixture.Enable(101);
+        var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        Assert.True(fixture.Store.Transfer(fixture.Request(1, 100) with { PaymentIds = [201] }).Succeeded);
+        Assert.True(fixture.Store.Transfer(fixture.Request(1, 101) with { Wired = true, WalletDepositCredits = 10, LogType = WiredChestLogType.ContractPayment }).Succeeded);
+        Assert.True(fixture.Store.Transfer(fixture.Request(2, 101) with { Wired = true, Reward = [new(4)], LogType = WiredChestLogType.Wired }).Succeeded);
+        fixture.Connection.Execute("DELETE FROM users WHERE id=2");
+
+        var room = fixture.Store.ReadLog(WiredChestLogQuery.Room(42, 25, 1));
+
+        Assert.False(room.ForChest);
+        Assert.Equal((42L, 3, 1, 25), (room.ListId, room.Total, room.Page, room.Amount));
+        Assert.Equal(new[] { WiredChestLogType.Wired, WiredChestLogType.ContractPayment, WiredChestLogType.Manual }, room.Rows.Select(row => row.Type));
+        Assert.Equal(new[] { "", "alice", "alice" }, room.Rows.Select(row => row.UserName));
+        Assert.Equal(new[] { 2, 1, 1 }, room.Rows.Select(row => row.UserId));
+        Assert.Equal((1, 0, 0, 4, 0), Figures(room.Rows[0]));
+        Assert.Equal((1, 0, 0, 0, 10), Figures(room.Rows[1]));
+        Assert.Equal((1, 0, 1, 0, 0), Figures(room.Rows[2]));
+        Assert.All(room.Rows, row => Assert.InRange(row.Timestamp, before - 1000, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 1000));
+        Assert.Equal(room.Rows.Select(row => row.Id).Order().Reverse(), room.Rows.Select(row => row.Id));
+
+        var coinChest = fixture.Store.ReadLog(WiredChestLogQuery.Chest(42, 101, 25, 1));
+        Assert.True(coinChest.ForChest);
+        Assert.Equal((101L, 2), (coinChest.ListId, coinChest.Total));
+        Assert.Equal(new[] { WiredChestLogType.Wired, WiredChestLogType.ContractPayment }, coinChest.Rows.Select(row => row.Type));
+        Assert.Equal(new[] { WiredChestLogType.Manual }, fixture.Store.ReadLog(WiredChestLogQuery.Chest(42, 100, 25, 1)).Rows.Select(row => row.Type));
+
+        var second = fixture.Store.ReadLog(WiredChestLogQuery.Room(42, 1, 2));
+        Assert.Equal((3, 2, 1), (second.Total, second.Page, second.Amount));
+        Assert.Equal(WiredChestLogType.ContractPayment, Assert.Single(second.Rows).Type);
+        Assert.Empty(fixture.Store.ReadLog(WiredChestLogQuery.Room(42, 25, 99999)).Rows);
+        Assert.Equal(0, fixture.Store.ReadLog(WiredChestLogQuery.Room(43, 25, 1)).Total);
+    }
+
+    [Fact]
+    public void LogMigrationIsRepeatable()
+    {
+        var sql = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/121_WiredChestTransactionLog.sql"));
+
+        Assert.Contains("ADD COLUMN IF NOT EXISTS log_type", sql);
+        Assert.Equal(2, sql.Split("CREATE INDEX IF NOT EXISTS").Length - 1);
+    }
+
+    private static (int Chests, int WithdrawFurni, int DepositFurni, int WithdrawCoins, int DepositCoins) Figures(WiredChestLogRow row) =>
+        (row.ChestCount, row.WithdrawFurni, row.DepositFurni, row.WithdrawCoins, row.DepositCoins);
 
     [WiredChestDatabaseFact]
     public void MissingRewardAndFinalWriteFailureRollBackBothSidesAndOperationRetriesOnce()
@@ -200,7 +265,7 @@ public sealed class WiredChestDatabaseTests
         public DatabaseWiredChestStore Store { get; }
         public Fixture()
         {
-            var options = new MySqlConnectionStringBuilder(Environment.GetEnvironmentVariable("WIRED_CHEST_DATABASE"));
+            var options = new MySqlConnectionStringBuilder(WiredChestLogDatabaseFactAttribute.ServerConnection);
             Assert.True(options.Server is "127.0.0.1" or "localhost" || Path.IsPathRooted(options.Server));
             options.AllowUserVariables = true;
             options.Database = "mysql";
@@ -212,7 +277,7 @@ public sealed class WiredChestDatabaseTests
             Connection = new(options.ConnectionString);
             Connection.Open();
             Connection.Execute("""
-                CREATE TABLE users(id INT PRIMARY KEY,credits INT NOT NULL) ENGINE=InnoDB;
+                CREATE TABLE users(id INT PRIMARY KEY,credits INT NOT NULL,username VARCHAR(125) NOT NULL DEFAULT '') ENGINE=InnoDB;
                 CREATE TABLE rooms(id INT UNSIGNED PRIMARY KEY,owner INT);
                 INSERT INTO rooms VALUES(42,1);
                 CREATE TABLE user_currencies(user_id INT,type INT,amount INT,PRIMARY KEY(user_id,type)) ENGINE=InnoDB;
@@ -222,11 +287,12 @@ public sealed class WiredChestDatabaseTests
                 CREATE TABLE furniture(id INT PRIMARY KEY,item_name VARCHAR(100),interaction_type VARCHAR(25));
                 CREATE TABLE wired_item_configurations(item_id INT UNSIGNED PRIMARY KEY,box_name VARCHAR(100),configuration LONGTEXT);
                 CREATE TABLE room_music_playlist(disc_id INT UNSIGNED PRIMARY KEY);
-                INSERT INTO users VALUES (1,100),(2,100),(7,0),(8,0);
+                INSERT INTO users VALUES (1,100,'alice'),(2,100,'bob'),(7,0,''),(8,0,'');
                 INSERT INTO items(id,user_id,room_id,base_item,extra_data) VALUES (201,1,0,1,'kept'),(202,2,0,1,''),(203,1,42,1,'');
                 """);
             var sql = File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/65_WiredChests.sql"));
             Connection.Execute(sql);
+            Connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/121_WiredChestTransactionLog.sql")));
             Definitions = new(() => new() { [1] = new() { Id = 1, SpriteId = 44, AllowTrade = true, Type = ItemType.Floor } });
             Store = new(Database, Definitions);
         }

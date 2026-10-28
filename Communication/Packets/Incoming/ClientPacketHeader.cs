@@ -489,6 +489,8 @@ public static class ClientPacketHeader
     public const uint WiredChestCancelEvent = 3390;
     public const uint ChestUpgradeEvent = 361;
     public const uint WiredChestLockEvent = 3787;
+    public const uint WiredTransactionGetRoomLogsEvent = 3320;
+    public const uint WiredTransactionGetChestLogsEvent = 3451;
 
     // October wired boxes.
     public const uint WiredWebApiKeyRequestEvent = 971;

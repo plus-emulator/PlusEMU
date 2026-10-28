@@ -267,8 +267,8 @@ public sealed class DatabaseWiredChestStore(IDatabase database, IItemDataManager
 
         var result = new WiredChestTransferResult(null, (int)credits, received.ToArray(), request.PaymentIds,
             new(request.Multiplier, deposits.Count, (int)depositedCoins, received.Count, (int)withdrawnCoins));
-        connection.Execute("INSERT INTO wired_chest_transactions (operation_id,user_id,room_id,source_id,result,created_at) VALUES (@operation,@UserId,@RoomId,@SourceId,@result,UTC_TIMESTAMP(6))",
-            new { operation = request.OperationId.ToString("N"), request.UserId, request.RoomId, request.SourceId, result = JsonSerializer.Serialize(new StoredResult(result.Credits, result.Figures)) }, transaction);
+        connection.Execute("INSERT INTO wired_chest_transactions (operation_id,user_id,room_id,source_id,log_type,result,created_at) VALUES (@operation,@UserId,@RoomId,@SourceId,@logType,@result,UTC_TIMESTAMP(6))",
+            new { operation = request.OperationId.ToString("N"), request.UserId, request.RoomId, request.SourceId, logType = (byte)request.LogType, result = JsonSerializer.Serialize(new StoredResult(result.Credits, result.Figures)) }, transaction);
         var logId = connection.ExecuteScalar<long>("SELECT LAST_INSERT_ID()", transaction: transaction);
 
         foreach (var (itemId, chestId) in deposits) {
@@ -295,6 +295,37 @@ public sealed class DatabaseWiredChestStore(IDatabase database, IItemDataManager
         transaction.Commit();
 
         return result;
+    }
+
+    public WiredChestLogPage ReadLog(WiredChestLogQuery query)
+    {
+        using var connection = database.Connection();
+        connection.Open();
+        var parameters = new { query.RoomId, query.ChestId, query.Amount, Offset = (long)(query.Page - 1) * query.Amount };
+        var total = connection.ExecuteScalar<int>("""
+            SELECT COUNT(*) FROM wired_chest_transactions t WHERE t.room_id=@RoomId
+                AND (@ChestId IS NULL OR EXISTS (SELECT 1 FROM wired_chest_transaction_entries scope WHERE scope.transaction_id=t.id AND scope.chest_id=@ChestId))
+            """, parameters);
+        var rows = connection.Query<LogRow>("""
+            SELECT t.id AS Id, t.room_id AS RoomId, t.log_type AS Type, t.user_id AS UserId, COALESCE(u.username,'') AS UserName,
+                CAST(TIMESTAMPDIFF(MICROSECOND,'1970-01-01 00:00:00',t.created_at)/1000 AS SIGNED) AS Timestamp,
+                CAST((SELECT COUNT(DISTINCT chest_id) FROM wired_chest_transaction_entries WHERE transaction_id=t.id) AS SIGNED) AS ChestCount,
+                CAST(COALESCE(SUM(e.is_deposit=0 AND e.item_id IS NOT NULL),0) AS SIGNED) AS WithdrawFurni,
+                CAST(COALESCE(SUM(e.is_deposit=1 AND e.item_id IS NOT NULL),0) AS SIGNED) AS DepositFurni,
+                CAST(LEAST(COALESCE(SUM(IF(e.is_deposit=0 AND e.item_id IS NULL,e.coins,0)),0),2147483647) AS SIGNED) AS WithdrawCoins,
+                CAST(LEAST(COALESCE(SUM(IF(e.is_deposit=1 AND e.item_id IS NULL,e.coins,0)),0),2147483647) AS SIGNED) AS DepositCoins
+            FROM (SELECT p.id FROM wired_chest_transactions p WHERE p.room_id=@RoomId
+                    AND (@ChestId IS NULL OR EXISTS (SELECT 1 FROM wired_chest_transaction_entries scope WHERE scope.transaction_id=p.id AND scope.chest_id=@ChestId))
+                ORDER BY p.id DESC LIMIT @Amount OFFSET @Offset) page
+            JOIN wired_chest_transactions t ON t.id=page.id
+            LEFT JOIN users u ON u.id=t.user_id
+            LEFT JOIN wired_chest_transaction_entries e ON e.transaction_id=t.id AND (@ChestId IS NULL OR e.chest_id=@ChestId)
+            GROUP BY t.id, t.room_id, t.log_type, t.user_id, u.username, t.created_at
+            ORDER BY t.id DESC
+            """, parameters).Select(row => new WiredChestLogRow(row.Id, row.RoomId, (WiredChestLogType)row.Type, row.UserId, row.UserName, row.Timestamp,
+                row.ChestCount, row.WithdrawFurni, row.DepositFurni, row.WithdrawCoins, row.DepositCoins)).ToArray();
+
+        return new(query.ChestId != null, query.ChestId ?? query.RoomId, total, query.Page, query.Amount, rows);
     }
 
     public WiredChestUpgradeResult Upgrade(Item chest, int userId, int count, int? liveCredits = null, int? liveDiamonds = null)
@@ -369,6 +400,20 @@ public sealed class DatabaseWiredChestStore(IDatabase database, IItemDataManager
     }
     private static void Entry(IDbConnection connection, IDbTransaction transaction, long logId, uint chestId, uint? itemId, bool deposit, long coins) =>
         connection.Execute("INSERT INTO wired_chest_transaction_entries (transaction_id,chest_id,item_id,is_deposit,coins) VALUES (@logId,@chestId,@itemId,@deposit,@coins)", new { logId, chestId, itemId, deposit, coins }, transaction);
+    private sealed class LogRow
+    {
+        public long Id { get; set; }
+        public uint RoomId { get; set; }
+        public byte Type { get; set; }
+        public int UserId { get; set; }
+        public string UserName { get; set; } = "";
+        public long Timestamp { get; set; }
+        public int ChestCount { get; set; }
+        public int WithdrawFurni { get; set; }
+        public int DepositFurni { get; set; }
+        public int WithdrawCoins { get; set; }
+        public int DepositCoins { get; set; }
+    }
     private sealed record StoredResult(int Credits, WiredChestFigures Figures);
     private sealed class ChestRow
     {

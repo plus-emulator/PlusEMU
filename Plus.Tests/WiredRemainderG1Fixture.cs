@@ -96,6 +96,8 @@ internal sealed class G1ChestStore : IWiredChestStore
 
     public WiredChestUpgradeResult Upgrade(Item chest, int userId, int count, int? liveCredits = null, int? liveDiamonds = null) => new(4);
 
+    public WiredChestLogPage ReadLog(WiredChestLogQuery query) => new(query.ChestId != null, query.ChestId ?? query.RoomId, 0, query.Page, query.Amount, []);
+
     public WiredChestTransferResult Transfer(WiredChestTransfer request)
     {
         Requests.Add(request);

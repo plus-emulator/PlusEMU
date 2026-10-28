@@ -231,6 +231,24 @@ public sealed class RoomChatService(
             return;
         }
 
+        chatlogManager.StoreChatlog(new(habbo.Id, room.Id, $"<Whisper to {toUser}>: {message}", now, habbo, room));
+
+        if (wordFilterManager.CheckBannedWords(message)) {
+            habbo.BannedPhraseCount++;
+
+            if (habbo.BannedPhraseCount >= Convert.ToInt32(settingsManager.TryGetValue("room.chat.filter.banned_phrases.chances"))) {
+                await moderationManager.BanUser("System", ModerationBanType.Username, habbo.Username,
+                    $"Spamming banned phrases ({message})", now.AddSeconds(78892200));
+                session.Disconnect();
+
+                return;
+            }
+
+            session.Send(new WhisperComposer(user.VirtualId, message, 0, user.LastBubble, user.VirtualId));
+
+            return;
+        }
+
         if (room.GetWired().TriggerEvent(WiredBoxType.TriggerUserSays, habbo, message, user.LastBubble, false)) {
             room.GetWired().FinishSpeech();
 
@@ -260,24 +278,6 @@ public sealed class RoomChatService(
 
         if (!recipientHabbo.ReceiveWhispers && !habbo.Access.Can(PermissionKeys.RoomWhisperOverride)) {
             session.SendWhisper("Oops, this user has their whispers disabled!");
-
-            return;
-        }
-
-        chatlogManager.StoreChatlog(new(habbo.Id, room.Id, $"<Whisper to {toUser}>: {message}", now, habbo, room));
-
-        if (wordFilterManager.CheckBannedWords(message)) {
-            habbo.BannedPhraseCount++;
-
-            if (habbo.BannedPhraseCount >= Convert.ToInt32(settingsManager.TryGetValue("room.chat.filter.banned_phrases.chances"))) {
-                await moderationManager.BanUser("System", ModerationBanType.Username, habbo.Username,
-                    $"Spamming banned phrases ({message})", now.AddSeconds(78892200));
-                session.Disconnect();
-
-                return;
-            }
-
-            session.Send(new WhisperComposer(user.VirtualId, message, 0, user.LastBubble, user.VirtualId));
 
             return;
         }

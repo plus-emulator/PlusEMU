@@ -200,6 +200,22 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Empty(ObjectUpdates(frames));
     }
 
+    // A Wired decrease that leaves the counter at 0 still sends the value in the batch of the firing's flashes, like a Wired set.
+    [Fact]
+    public void WiredDecreaseThatChangesNothingStillPublishesTheCounterInTheBatch()
+    {
+        var f = ClockFixture("wf_upcounter1", "wf_act_adjust_clock", [1, 100, 0, 60]);
+        var rider = f.Walker(1, 4, 10, 4, 11);
+        var frames = CaptureFrames(rider);
+
+        f.Advance(1000);
+
+        var batches = frames.Where(frame => frame.Header == ServerPacketHeader.ObjectsDataUpdateComposer).Select(CounterEntries).ToArray();
+        Assert.True(batches.Length >= 3);
+        Assert.All(batches, batch => Assert.Equal([((uint)CounterId, "0")], batch));
+        Assert.Empty(ObjectUpdates(frames));
+    }
+
     // A Wired increase or decrease sends the new value in an ObjectsDataUpdate, like a Wired set, and never a full object update.
     [Theory]
     [InlineData(0)]
@@ -294,8 +310,8 @@ public sealed partial class WiredGlideConveyorTests
     [Fact]
     public void QueuedSetsReachDataAndFallbackClientsWithTheirOwnTextWhenDrainedLater()
     {
-        // The periodic action only adds zero, so it publishes nothing; the two Sets below are both queued before the first drain.
-        var f = ClockFixture("wf_upcounter1", "wf_act_adjust_clock", [0, 100, 0, 0]);
+        // The periodic action pauses a stopped counter, so it publishes nothing; the two Sets below are both queued before the first drain.
+        var f = ClockFixture("wf_upcounter1", "wf_act_control_clock", [3, 100]);
         var mapped = f.Walker(1, 4, 10, 4, 11);
         var legacy = f.Walker(2, 5, 10, 5, 11);
         legacy.GetClient()!.Revision = new Revision
@@ -402,7 +418,7 @@ public sealed partial class WiredGlideConveyorTests
             Single(clocks, c => c.Adjust(item, 0, 0, 2, WiredClockOrigin.ModernWired)),
             Single(clocks, c => c.Adjust(item, 1, 0, 4, WiredClockOrigin.ModernWired))
         }) {
-            Assert.Equal((WiredCounterPublication.BatchData, false), (change.Publication, change.ForceDisplay));
+            Assert.Equal((WiredCounterPublication.BatchData, true), (change.Publication, change.ForceDisplay));
         }
 
         // A Start right after an adjust keeps the value; the Start after a Stop restarts from zero.

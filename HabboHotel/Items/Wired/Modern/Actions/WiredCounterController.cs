@@ -273,8 +273,8 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             clock.NextTick = NextBoundary(now, clock.GridOffset);
         }
 
-        // A Wired increase, decrease or set sends the value as data in an ObjectsDataUpdate.
-        PublishClock(clock, previous, ModernBatch(origin), operation == 2 && origin == WiredClockOrigin.ModernWired);
+        // A Wired increase, decrease or set sends the value as data in an ObjectsDataUpdate, also when the value did not change.
+        PublishClock(clock, previous, ModernBatch(origin), origin == WiredClockOrigin.ModernWired);
 
         return true;
     }

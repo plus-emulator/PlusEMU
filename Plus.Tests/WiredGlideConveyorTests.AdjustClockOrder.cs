@@ -28,6 +28,21 @@ public sealed partial class WiredGlideConveyorTests
         }
     }
 
+    // Without Execute in Order, an Increase runs before a Decrease of the same firing, whatever the box order, so a Decrease never clamps
+    // at 0 before the Increase. With Execute in Order the boxes run bottom to top.
+    [Theory]
+    [InlineData(AdjustIncrease, 2, AdjustDecrease, 1, false, "60", "120")]
+    [InlineData(AdjustDecrease, 1, AdjustIncrease, 2, false, "60", "120")]
+    [InlineData(AdjustIncrease, 2, AdjustDecrease, 1, true, "60", "120")]
+    [InlineData(AdjustDecrease, 1, AdjustIncrease, 2, true, "120", "180")]
+    public void AdjustClockIncreaseRunsBeforeDecreaseUnlessExecuteInOrder(int lowerOperation, int lowerMinutes, int upperOperation,
+        int upperMinutes, bool inOrder, string first, string second)
+    {
+        for (var seed = 0; seed < 16; seed++) {
+            Assert.Equal([first, second], FireAdjustClockPair(seed, inOrder, (lowerOperation, lowerMinutes), (upperOperation, upperMinutes)));
+        }
+    }
+
     // Two Sets in one firing still run in a random order.
     [Fact]
     public void TwoAdjustClockSetsKeepARandomOrder()

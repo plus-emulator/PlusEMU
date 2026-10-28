@@ -19,14 +19,14 @@ public partial class PlacedFurniRoomTests
     public void V2RollerIdentityFollowsTheCurrentInteractionType(bool destinationIsRoller)
     {
         ExecutorRoller(10, 0, 1);
-        var destination = ExecutorFloor(11, 1, 1, height: .5);
+        var destination = ExecutorFloor(11, 1, 1, height: .25);
         InstallRollerChainEngine();
         var actor = RollerChainActor(1, 0, .5);
         destination.Definition.InteractionType = destinationIsRoller ? InteractionType.Roller : InteractionType.None;
         ExecutorTick();
         EnableExecutorRollers();
         ExecutorTick();
-        Assert.Equal((1, 1, destinationIsRoller ? .5 : 0d), (actor.X, actor.Y, actor.Z));
+        Assert.Equal((1, 1, destinationIsRoller ? .5 : .25), (actor.X, actor.Y, actor.Z));
     }
     [Fact]
     public void V2RollersCycleWithoutTheLegacyGotRollersFlag()

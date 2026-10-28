@@ -85,6 +85,11 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
             return false;
         }
 
+        // A roller never lifts its rider: the target may not stand higher than the rider does now.
+        if (move.CarriedZ > move.SourceZ + SurfaceSelection.Tolerance) {
+            return false;
+        }
+
         var actor = move.Actor!;
         var slot = LandingSlot(to, move.CarriedZ);
         var profile = actor.Movement.Profile;
@@ -234,6 +239,18 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
         var exact = SurfaceSelection.Select(Grid, index, carriedZ, ForceResolution.ExactZ);
 
         return exact >= 0 ? exact : Grid.TopSlot(index);
+    }
+
+    // A rider standing on the roller lands where an avatar stands on the target tile.
+    public double StandZ(Point tile, double carriedZ)
+    {
+        if (!Grid.InBounds(tile.X, tile.Y)) {
+            return carriedZ;
+        }
+
+        var slot = SurfaceSelection.Resting(Grid, Grid.Tile(tile.X, tile.Y), carriedZ);
+
+        return slot >= 0 ? Grid.WalkZ[slot] : carriedZ;
     }
 
     // The tile's own slot plus every other compiled surface on it (only the own slot with K = 1).

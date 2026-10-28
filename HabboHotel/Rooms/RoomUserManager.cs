@@ -841,6 +841,13 @@ public class RoomUserManager
         return pets;
     }
 
+    internal void MarkWiredMove(RoomUser user, int animationMs)
+    {
+        if (animationMs > 0) {
+            user.MarkWiredMove(_clock.GetUtcNow().AddMilliseconds(animationMs));
+        }
+    }
+
     public void SerializeStatusUpdates()
     {
         var users = new List<RoomUser>();
@@ -851,6 +858,7 @@ public class RoomUserManager
         }
 
         var hasViewer = false;
+        var now = _clock.GetUtcNow();
 
         foreach (var user in roomUsers) {
             if (user == null) {
@@ -859,9 +867,9 @@ public class RoomUserManager
 
             hasViewer |= !user.IsBot && user.GetClient() != null;
 
-            // A wired move's "wf" status and a sign's "sign" status last one status update.
-            if (user.WiredMoveStatusSent) {
-                user.WiredMoveStatusSent = false;
+            // A wired move's "wf" status lasts through its animation. A sign's "sign" status lasts one status update.
+            if (user.WiredStatusUntil is { } wiredUntil && now > wiredUntil) {
+                user.WiredStatusUntil = null;
 
                 if (user.HasStatus("wf")) {
                     user.RemoveStatus("wf");
@@ -883,7 +891,6 @@ public class RoomUserManager
             }
 
             user.UpdateNeeded = false;
-            user.WiredMoveStatusSent = user.HasStatus("wf");
             user.SignStatusSent = user.HasStatus("sign");
             users.Add(user);
         }

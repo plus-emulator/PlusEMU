@@ -113,4 +113,52 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(0, sleep.Payload[4]);
         Assert.False(rider.IsAsleep);
     }
+
+    [Theory]
+    [InlineData("talk")]
+    [InlineData("wave")]
+    [InlineData("sign")]
+    public void SleepAndAwakeConditionsFollowTheAvatarSleepStateUntilItWakes(string action)
+    {
+        var f = new Fixture([(ObservedSubjectId, 9, 9, 0.0, 0, "bc_tile_1", null)], live: true);
+        f.Room.MutedUsers = [];
+        var owner = f.Walker(1, 6, 10, 6, 11);
+        f.Advance(1000);
+        var service = new RoomAvatarActionService(TimeProvider.System, NoOp<IQuestManager>.Create(), NoOp<IRewardTrackManager>.Create());
+        var speech = new Plus.HabboHotel.Items.Wired.Runtime.WiredRuntimeEvent(Plus.HabboHotel.Items.Wired.Runtime.WiredEventKind.Speech) { Actor = owner };
+        bool Performs(int condition) => Plus.HabboHotel.Items.Wired.Modern.Conditions.WiredModernCondition.IsPerforming(owner, new() { IntParams = [condition, 0, 0, 0, 1] }, speech, DateTimeOffset.UtcNow);
+
+        f.Owned(() => service.PerformAction(f.Room, owner.GetClient()!, 5));
+        f.Advance(8000);
+
+        Assert.True(owner.IsAsleep);
+        Assert.True(Performs(5));
+        Assert.False(Performs(4));
+
+        f.Advance(150);
+
+        if (action == "talk") {
+            Say(f, new ChatEvent(ChatService()), owner, "wake");
+        }
+        else {
+            f.Owned(() =>
+            {
+                if (action == "wave") {
+                    service.PerformAction(f.Room, owner.GetClient()!, 1);
+                }
+                else {
+                    service.ApplySign(f.Room, owner.GetClient()!, 3);
+                }
+            });
+        }
+
+        Assert.True(Performs(5));
+        Assert.False(Performs(4));
+
+        f.Advance(500);
+
+        Assert.False(owner.IsAsleep);
+        Assert.False(Performs(5));
+        Assert.True(Performs(4));
+    }
 }

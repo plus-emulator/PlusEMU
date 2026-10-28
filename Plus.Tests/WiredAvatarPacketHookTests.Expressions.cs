@@ -13,15 +13,14 @@ public partial class WiredAvatarPacketHookTests
     private const int SleepExpression = 5;
     private const int RespectExpression = 7;
     private const int WaveCondition = 1;
-    private const int AwakeCondition = 4;
     private const int SleepCondition = 5;
     private const int RespectCondition = 12;
 
-    // A wave still counts 4.76 s after the expression but not 5.27 s after it. Respect counts 1.56 s after it but not 1.87 s
+    // A wave still counts 4.76 s after the expression but not 5.27 s after it. Respect counts 1.96 s after it but not 2.12 s
     // after it.
     [Theory]
     [InlineData(WaveExpression, WaveCondition, 4760, 5270)]
-    [InlineData(RespectExpression, RespectCondition, 1560, 1870)]
+    [InlineData(RespectExpression, RespectCondition, 1960, 2120)]
     public async Task PerformsActionConditionRemembersWaveAndRespectForTheirOwnWindow(int expression, int condition, int passesAt, int failsAt)
     {
         var clock = new ManualClock(new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero));
@@ -45,17 +44,13 @@ public partial class WiredAvatarPacketHookTests
         Assert.False(PerformsAt(failsAt));
     }
 
-    // A wave counts 4.90 s after the expression but not 5.27 s after it, respect 1.69 s but not 1.87 s, and sleep 2.50 s. Sleep
-    // ends before 2.77 s. The condition must see the end at that time, not at the next room cycle.
+    // A wave counts 4.90 s after the expression but not 5.27 s after it, respect 1.99 s but not 2.12 s. The condition must see
+    // the end at that time, not at the next room cycle.
     [Theory]
     [InlineData(WaveExpression, WaveCondition, 4900, true)]
     [InlineData(WaveExpression, WaveCondition, 5270, false)]
-    [InlineData(RespectExpression, RespectCondition, 1690, true)]
-    [InlineData(RespectExpression, RespectCondition, 1870, false)]
-    [InlineData(SleepExpression, SleepCondition, 2500, true)]
-    [InlineData(SleepExpression, SleepCondition, 2770, false)]
-    [InlineData(SleepExpression, AwakeCondition, 2500, false)]
-    [InlineData(SleepExpression, AwakeCondition, 2770, true)]
+    [InlineData(RespectExpression, RespectCondition, 1990, true)]
+    [InlineData(RespectExpression, RespectCondition, 2120, false)]
     public async Task PerformsActionConditionEndsTheWindowWithoutARoomCycle(int expression, int condition, int milliseconds, bool passes)
     {
         var clock = new ManualClock(new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero));
@@ -70,6 +65,29 @@ public partial class WiredAvatarPacketHookTests
         world.FlushWired();
 
         Assert.Equal(passes ? 1 : 0, world.Capture.Events.Count);
+    }
+
+    // A later expression ends the window of the one before it. Sitting, dancing, talking and walking do not.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(SleepExpression)]
+    [InlineData(RespectExpression)]
+    [InlineData(8)]
+    public async Task PerformsActionConditionForgetsTheWaveWhenAnotherExpressionFollows(int next)
+    {
+        var clock = new ManualClock(new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero));
+        var world = new World(WaveCondition, -1, clock);
+        var speech = new WiredRuntimeEvent(WiredEventKind.Speech) { Actor = world.Actor };
+        bool Waving() => WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [WaveCondition, 0, 0, 0, 1] }, speech, clock.Now);
+        var handler = new ActionEvent(world.Actions);
+
+        await handler.Parse(world.Room, world.Client, Packet(WaveExpression));
+        clock.Now = clock.Now.AddMilliseconds(1000);
+        Assert.True(Waving());
+
+        await handler.Parse(world.Room, world.Client, Packet(next));
+
+        Assert.False(Waving());
     }
 
     // Without Habbo Club, these expressions reach nobody, the sender included, fire no Wired and leave a dancing, sleeping avatar
@@ -174,28 +192,5 @@ public partial class WiredAvatarPacketHookTests
         world.Users.UpdateSignStatus(world.Actor);
 
         Assert.False(WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [condition, 0, 0, 0, 1] }, speech, clock.Now));
-    }
-
-    // Sleep passes 1.78 s after the sleep expression and Awake passes 2.77 s after it, while the avatar still shows as asleep
-    // until its next action.
-    [Fact]
-    public void PerformsActionConditionSeesTheSleepExpressionForAShortTimeOnly()
-    {
-        var clock = new ManualClock(new DateTimeOffset(2040, 1, 2, 3, 4, 5, TimeSpan.Zero));
-        var world = new World(SleepCondition, -1, clock);
-        var speech = new WiredRuntimeEvent(WiredEventKind.Speech) { Actor = world.Actor };
-        bool Performs(int condition) => WiredModernCondition.IsPerforming(world.Actor, new() { IntParams = [condition, 0, 0, 0, 1] }, speech, clock.Now);
-
-        world.Actions.PerformAction(world.Room, world.Client, SleepExpression);
-        clock.Now = clock.Now.AddMilliseconds(1780);
-        world.Users.UpdateSignStatus(world.Actor);
-        Assert.True(Performs(SleepCondition));
-        Assert.False(Performs(AwakeCondition));
-
-        clock.Now = clock.Now.AddMilliseconds(990);
-        world.Users.UpdateSignStatus(world.Actor);
-        Assert.True(world.Actor.IsAsleep);
-        Assert.False(Performs(SleepCondition));
-        Assert.True(Performs(AwakeCondition));
     }
 }

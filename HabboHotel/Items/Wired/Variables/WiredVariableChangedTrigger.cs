@@ -119,20 +119,22 @@ public sealed class WiredVariableChangedTrigger : WiredModernBox, IWiredContextu
             return false;
         }
 
-        return Matches(config with { Text = reference.Token }, change, context.Room.Id);
+        return Matches(config with { Text = module.ChangeSource(reference).Token }, change, context.Room.Id);
     }
     // Source-derived scalar support. Resolve only live definitions of this room through the module's ownership checks.
-    // Echo/reference/derived-box identity is intentionally not guessed without a runtime observation.
+    // An Echo box reports the changes of the variable it mirrors. Reference and derived boxes are not matched.
     internal static bool MatchesPickedBoxes(WiredConfiguration config, WiredVariableChange change, WiredVariableModule module, uint roomId)
     {
         if (change.RoomId != roomId || module.RoomId != roomId || config.IntParams.Length != 9 || config.IntParams[8] != 1) {
             return false;
         }
 
-        return module.DescribeDefinitions(config.SelectedItems).Any(variable => variable.Definition.Link is null
+        return module.DescribeDefinitions(config.SelectedItems).Any(variable => (variable.Definition.Link is null || variable.IsEcho)
             && variable.Definition.InterceptsChanges
-            && Matches(config with { IntParams = config.IntParams.SetItem(0, (int)variable.Definition.Target), Text = variable.Definition.Token }, change, roomId));
+            && Matches(config with { IntParams = config.IntParams.SetItem(0, (int)variable.Definition.Target), Text = SourceToken(module, variable.Definition) }, change, roomId));
     }
+    private static string SourceToken(WiredVariableModule module, WiredVariableDefinition definition) =>
+        module.ChangeSource(new(definition.Target, definition.Token)).Token;
     public static bool Matches(WiredConfiguration config, WiredVariableChange change) => Matches(config, change, change.RoomId);
     public static bool Matches(WiredConfiguration config, WiredVariableChange change, uint currentRoomId)
     {

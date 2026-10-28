@@ -172,6 +172,8 @@ public partial class RoomItemHandling
     private readonly IRewardTrackManager _rewards;
     private readonly ConcurrentDictionary<uint, Item> _wallItems;
     private int _mRollerCycle;
+    private readonly ConcurrentDictionary<uint, RoomItemSave> _restorePoint = new();
+    private volatile bool _restoreOnDispose;
     private int _mRollerSpeed;
 
     private ConcurrentQueue<Item> _roomItemUpdateQueue;
@@ -423,7 +425,16 @@ public partial class RoomItemHandling
                 HopperCount++;
             }
         }
+
+        _restorePoint.Clear();
+
+        foreach (var item in GetWallAndFloor.Where(item => !item.IsTemporary)) {
+            _restorePoint[item.Id] = RestorePoint(item);
+        }
     }
+
+    /// <summary>When the room unloads, every furni goes back to the place and state it had when the room loaded or when it was placed, after the normal save.</summary>
+    public void RestoreLoadedStateOnDispose() => _restoreOnDispose = true;
 
     private Plus.HabboHotel.Items.Data.Moodlight.MoodlightData? LoadMoodlight(uint itemId) =>
         _metadata.LoadMoodlight(itemId) is { } record ? new Plus.HabboHotel.Items.Data.Moodlight.MoodlightData(itemId, record) : null;
@@ -629,10 +640,7 @@ public partial class RoomItemHandling
         try {
             lock (_payloadGate) {
                 if (_movedItems.Count > 0) {
-                    _store.SaveMoved(_movedItems.Values.Where(item => !item.IsTemporary).Select(item => new RoomItemSave(
-                        item.Id, item.GetX, item.GetY, item.GetZ, item.Rotation, SavePayload(item), item.WallCoordinates,
-                        item.IsWallItem && (!item.Definition.ItemName.Contains("wallpaper_single") || !item.Definition.ItemName.Contains("floor_single") ||
-                            !item.Definition.ItemName.Contains("landscape_single")))).ToArray());
+                    _store.SaveMoved(_movedItems.Values.Where(item => !item.IsTemporary).Select(ToSave).ToArray());
                 }
             }
         }
@@ -640,6 +648,14 @@ public partial class RoomItemHandling
             ExceptionLogger.LogCriticalException(e);
         }
     }
+
+    // Scores of a high score board are never reset, so its restore point carries no payload.
+    private RoomItemSave RestorePoint(Item item) => item.ExtraData is Plus.HabboHotel.Items.DataFormat.HighscoreDataFormat ? ToSave(item) with { ExtraData = null } : ToSave(item);
+
+    private RoomItemSave ToSave(Item item) => new(
+        item.Id, item.GetX, item.GetY, item.GetZ, item.Rotation, SavePayload(item), item.WallCoordinates,
+        item.IsWallItem && (!item.Definition.ItemName.Contains("wallpaper_single") || !item.Definition.ItemName.Contains("floor_single") ||
+            !item.Definition.ItemName.Contains("landscape_single")));
 
     // announcing runs once the item is placed, just before the clients hear about it.
     public bool SetFloorItem(GameClient session, Item item, int newX, int newY, int newRot, bool newItem, bool onRoller, bool sendMessage, bool updateRoomUserStatuses = false, double height = -1, Plus.HabboHotel.Items.Wired.Modern.WiredCollisionPolicy? wiredCollision = null, bool deferPositionSave = false, Action? announcing = null)
@@ -956,6 +972,10 @@ public partial class RoomItemHandling
             _store.PlaceFloor(item.Id, _room.RoomId, item.GetX, item.GetY, item.GetZ, item.Rotation);
         }
 
+        if (newItem) {
+            _restorePoint[item.Id] = RestorePoint(item);
+        }
+
         return true;
     }
 
@@ -1103,6 +1123,7 @@ public partial class RoomItemHandling
         }
 
         _store.PlaceWall(item.Id, _room.RoomId, item.GetX, item.GetY, item.GetZ, item.Rotation, item.WallCoordinates);
+        _restorePoint[item.Id] = RestorePoint(item);
         _wallItems.TryAdd(item.Id, item);
         _room.SendObject(item);
 
@@ -1425,6 +1446,15 @@ public partial class RoomItemHandling
     public void Dispose()
     {
         SaveFurniture();
+
+        if (_restoreOnDispose) {
+            try {
+                _store.Restore(_room.Id, _restorePoint.Values.ToArray());
+            }
+            catch (Exception e) {
+                ExceptionLogger.LogCriticalException(e);
+            }
+        }
 
         foreach (var item in GetWallAndFloor.ToList()) {
             if (item == null) {

@@ -78,6 +78,28 @@ public sealed class WiredMenuPermissionsSaveEvent(IWiredRoomSettingsService sett
     }
 }
 
+/// <summary>The Room state buttons: false reloads the room, true rolls it back to its last load.</summary>
+public sealed class WiredRoomUpdateEvent(IWiredRoomStateService roomState) : RoomPacketEvent
+{
+    public override Task Parse(Room room, GameClient session, IIncomingPacket packet)
+    {
+        bool rollback;
+
+        try {
+            rollback = packet.ReadBool();
+        }
+        catch (Exception error) when (error is ArgumentException or IndexOutOfRangeException) {
+            return Task.CompletedTask;
+        }
+
+        if (!packet.HasDataRemaining()) {
+            roomState.Update(room, session, rollback);
+        }
+
+        return Task.CompletedTask;
+    }
+}
+
 internal static class WiredRoomSettingsSaveFrame
 {
     /// <summary>Reads modify mask, read mask and timezone; a short or longer frame is dropped.</summary>

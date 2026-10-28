@@ -197,6 +197,8 @@ internal sealed partial class WiredStackEngine
             pending.Root.InheritedPublication = pending.Publication;
 
             if (pending.Call is { } called) {
+                // A called stack starts with an empty context; it does not read or write the context of the calling stack.
+                pending.Root.VariableFrame = null;
                 pending.Root.Triggering = called.Selection.Copy();
                 pending.Root.Selected = pending.Root.Triggering.Copy();
                 pending.Root.ResumeImmediately = pending.ResumeImmediately;

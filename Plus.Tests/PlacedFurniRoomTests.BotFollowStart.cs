@@ -6,10 +6,12 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    private (RoomUser Bot, RoomUser Owner, WiredBotTargets Targets) FollowTrial(int ownerX, Func<double> roll)
+    private const string FollowRowBlocked = "0000000000000000\r00000000000xxx00\r0000000000000000\r0000000000000000\r0000000000000000";
+
+    private (RoomUser Bot, RoomUser Owner, WiredBotTargets Targets) FollowTrial(int ownerX, Func<double> roll, int ownerY = 2, string heightmap = FollowRow)
     {
-        FallbackModel(FollowRow);
-        var owner = FallbackActor(ownerX, 2);
+        FallbackModel(heightmap);
+        var owner = FallbackActor(ownerX, ownerY);
         var bot = FallbackBot(0, 2, 99);
         var targets = WiredBotTargets.For(_room);
         targets.StartRoll = roll;
@@ -20,18 +22,30 @@ public partial class PlacedFurniRoomTests
 
     private static bool BotWalks(RoomUser bot) => bot.Statusses.GetValueOrDefault("mv") is not null;
 
-    private static Func<double> Rolls(params double[] values)
+    // A following bot that could start picks one of the 9 tiles of the 3 x 3 square around the user per room tick.
+    // It starts when that tile is free, so the chance is the number of free tiles around the user divided by 9.
+    [Theory]
+    [InlineData(12, 2, FollowRow, 0.85)]
+    [InlineData(15, 2, FollowRow, 0.5)]
+    [InlineData(15, 4, FollowRow, 0.3)]
+    [InlineData(12, 2, FollowRowBlocked, 0.5)]
+    public void ABotFarFromAStandingUserStartsWhenItsRollIsUnderTheShareOfFreeTilesAroundTheUser(int ownerX, int ownerY, string heightmap, double roll)
     {
-        var index = 0;
+        var (bot, _, _) = FollowTrial(ownerX, () => roll, ownerY, heightmap);
+        ExecutorTick();
+        ExecutorTick();
 
-        return () => values[Math.Min(index++, values.Length - 1)];
+        Assert.True(BotWalks(bot));
     }
 
-    // A following bot far from a user who stands still starts with a chance of 0.38 per room tick.
-    [Fact]
-    public void ABotFarFromAStandingUserStaysWhereItIsWhileItsRollIsHigh()
+    [Theory]
+    [InlineData(12, 2, FollowRow, 0.9)]
+    [InlineData(15, 2, FollowRow, 0.6)]
+    [InlineData(15, 4, FollowRow, 0.35)]
+    [InlineData(12, 2, FollowRowBlocked, 0.6)]
+    public void ABotFarFromAStandingUserStaysWhereItIsWhileItsRollIsOverTheShareOfFreeTilesAroundTheUser(int ownerX, int ownerY, string heightmap, double roll)
     {
-        var (bot, _, _) = FollowTrial(12, () => 0.9);
+        var (bot, _, _) = FollowTrial(ownerX, () => roll, ownerY, heightmap);
 
         for (var tick = 0; tick < 8; tick++) {
             ExecutorTick();
@@ -39,62 +53,28 @@ public partial class PlacedFurniRoomTests
         }
     }
 
-    [Fact]
-    public void ABotFarFromAStandingUserStartsWhenItsRollIsLow()
+    // The two tiles a walking user is on in that tick, the one it steps off and the one it steps onto, are not free.
+    // In open floor that leaves 7 of 9 while the user walks and 8 of 9 once it stands.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ABotFollowingAWalkingUserHasSevenFreeTilesOfNineAndEightOnceTheUserStands(bool botFirst)
     {
-        var (bot, _, _) = FollowTrial(12, () => 0.1);
-        ExecutorTick();
-        ExecutorTick();
+        var (bot, owner, targets) = FollowTrial(2, () => 0.8);
+        targets.BotFirst = () => botFirst;
+        await EdgeMove().Parse(_client, ClientPacket(14, 2));
+        var log = new List<string>();
+        var started = false;
 
-        Assert.True(BotWalks(bot));
-    }
-
-    [Fact]
-    public void ARollBetweenTheTwoChancesDoesNotStartABotFarFromAStandingUser()
-    {
-        var (bot, _, _) = FollowTrial(12, () => 0.5);
-
-        for (var tick = 0; tick < 8; tick++) {
+        for (var tick = 0; tick < 20 && !started; tick++) {
             ExecutorTick();
-            Assert.False(BotWalks(bot), $"the bot started in tick {tick}");
+            var ownerWalks = owner.Statusses.GetValueOrDefault("mv") is not null;
+            log.Add($"t{tick} owner ({owner.X},{owner.Y}) walks={ownerWalks} bot ({bot.X},{bot.Y}) walks={BotWalks(bot)}");
+            started = BotWalks(bot);
+            Assert.False(started && ownerWalks, string.Join("\n", log));
         }
-    }
 
-    // While the user walks the chance is 0.57.
-    [Fact]
-    public async Task ARollBetweenTheTwoChancesStartsABotFarFromAWalkingUser()
-    {
-        var (bot, _, _) = FollowTrial(6, () => 0.5);
-        await EdgeMove().Parse(_client, ClientPacket(15, 2));
-        ExecutorTick();
-        ExecutorTick();
-
-        Assert.True(BotWalks(bot));
-    }
-
-    // A bot that decides in the tick of the user's last step takes its first step in the tick after it, which still has the walking chance.
-    [Fact]
-    public async Task TheBotsFirstStepInTheTickAfterTheUsersLastStepHasTheWalkingChance()
-    {
-        var (bot, _, _) = FollowTrial(6, () => 0.5);
-        await EdgeMove().Parse(_client, ClientPacket(7, 2));
-        ExecutorTick();
-        ExecutorTick();
-
-        Assert.True(BotWalks(bot));
-    }
-
-    // The tick after that the user stands.
-    [Fact]
-    public async Task TheBotsFirstStepTwoTicksAfterTheUsersLastStepHasTheStandingChance()
-    {
-        var (bot, _, _) = FollowTrial(6, Rolls(0.9, 0.5));
-        await EdgeMove().Parse(_client, ClientPacket(7, 2));
-
-        for (var tick = 0; tick < 8; tick++) {
-            ExecutorTick();
-            Assert.False(BotWalks(bot), $"the bot started in tick {tick}");
-        }
+        Assert.True(started, string.Join("\n", log));
     }
 
     // A room tick gets one roll, however often the bot is looked at in it.
@@ -102,7 +82,7 @@ public partial class PlacedFurniRoomTests
     public void ABotRollsOnceInARoomTick()
     {
         var rolls = 0;
-        var (_, _, targets) = FollowTrial(12, () => { rolls++; return 0.9; });
+        var (_, _, targets) = FollowTrial(12, () => { rolls++; return 0.95; });
 
         targets.Poll(_room, 1000);
         targets.Poll(_room, 1050);

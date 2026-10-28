@@ -100,20 +100,6 @@ internal sealed record WiredMovementBatchComposer(IReadOnlyList<WiredMovementCom
     }
 }
 
-public sealed record WiredMoveStyleComposer(int Id, int Style, int Intensity, int Overshoot, bool Avatar = false) : IServerPacket
-{
-    public uint MessageId => ServerPacketHeader.WiredFurniMoveStyleComposer;
-    public void Compose(IOutgoingPacket packet)
-    {
-        packet.WriteInteger(1);
-        packet.WriteInteger(Avatar ? Id : BuildersClubItemIds.ToWire(Id));
-        packet.WriteInteger(Style);
-        packet.WriteInteger(Intensity);
-        packet.WriteInteger(Overshoot);
-        packet.WriteInteger(Avatar ? 1 : 0);
-    }
-}
-
 public sealed record WiredWallMovementComposer(int Id, WiredWallSnapshot From, WiredWallSnapshot To, int DurationMs) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.WiredMovementsComposer;

@@ -58,7 +58,7 @@ public static class CustomPacketRanges
         new("WIRED_CHEST_TRANSACTION_DETAILS", 9334, "Furni breakdown of one logged chest transaction; not implemented."),
         new("WIRED_USER_INSPECT_MOVE", 10027, "Creator tools: move an inspected user; not implemented."),
         new("WIRED_FURNI_RUNTIME_STATE_REQUEST", 10028, "Creator tools: read or write @gravity / @opacity; not implemented."),
-        new("WIRED_FEATURE_CAPABILITIES", 10029, "Client capability flags; WiredFurniMoveStyleComposer is sent without a handshake."),
+        new("WIRED_FEATURE_CAPABILITIES", 10029, "Client capability flags; not implemented."),
         new("WIRED_ARRAY_INSPECTION_REQUEST", 10034, "Array variable inspection; not implemented."),
         new("WIRED_ARRAY_INSPECTION_UPDATE", 10035, "Array variable inspection edit; not implemented.")
     ];

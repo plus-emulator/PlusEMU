@@ -179,16 +179,13 @@ public sealed partial class WiredGlideConveyorTests
     {
         var f = new Fixture(FastQueueLayout(2), live: true);
         var rider = f.Walker(1, 7, 10, 7, 11);
-        var packets = new List<byte[]>();
+        var packets = CapturePublication(rider);
         var changed = false;
         var order = new List<WiredEventKind>();
         var collisionFirst = false;
-        rider.GetClient()!.SendCallback = args =>
+        f.AfterCarryAppend(_ =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
-
-            if (!changed && BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredFurniMoveStyleComposer && bytes[^1] == 1) {
+            if (!changed) {
                 changed = true;
                 var queue = (System.Collections.IEnumerable)f.EngineField("_dispatches")!;
                 var collisions = queue.Cast<object>().Where(pending => ((WiredRuntimeEvent)pending.GetType().GetProperty("Event")!.GetValue(pending)!).Kind == WiredEventKind.Collision).ToArray();
@@ -207,9 +204,7 @@ public sealed partial class WiredGlideConveyorTests
                     }
                 };
             }
-
-            return false;
-        };
+        });
 
         f.Advance(250);
 
@@ -297,23 +292,18 @@ public sealed partial class WiredGlideConveyorTests
         var variables = room.GetWired().Variables;
         var definition = new WiredVariableDefinition(700, room.Id, 1, "pending", WiredVariableTarget.Global,
             WiredVariableAvailability.RoomActive, true);
-        var packets = new List<byte[]>();
+        var packets = CapturePublication(rider);
         var injected = false;
-        rider.GetClient()!.SendCallback = args =>
+        f.AfterCarryAppend(_ =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
-
-            if (!injected && BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredFurniMoveStyleComposer && bytes[^1] == 1) {
+            if (!injected) {
                 injected = true;
                 Assert.NotNull(CapturedCollision(f).GetType().GetField("CollisionProof")!.GetValue(CapturedCollision(f)));
                 Assert.Empty(ReadPublication(packets).Where(move => move.Type == 1));
                 variables.Module.PersistDefinitionConfiguration(definition.ItemId,
                     before => new(definition, new(before, new WiredVariableValue(1, null, null))));
             }
-
-            return false;
-        };
+        });
 
         f.Advance(250);
 
@@ -339,12 +329,9 @@ public sealed partial class WiredGlideConveyorTests
         var signalFirst = false;
         WiredFurniturePublication? oldPublication = null;
         var sawReset = false;
-        rider.GetClient()!.SendCallback = args =>
+        f.AfterCarryAppend(_ =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
-
-            if (!changed && BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredFurniMoveStyleComposer && bytes[^1] == 1) {
+            if (!changed) {
                 changed = true;
                 var captured = CapturedCollision(f);
                 capturedEnvelope = captured;
@@ -367,6 +354,11 @@ public sealed partial class WiredGlideConveyorTests
                     source.Attach(f.MovementContext().Room, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
                 }
             }
+        });
+        rider.GetClient()!.SendCallback = args =>
+        {
+            var bytes = args.MemoryBuffer.ToArray();
+            packets.Add(bytes);
 
             if (changed && !sawReset && ReadPublication([bytes]).Any(move => move.Type == 1 && move.Duration == 500)) {
                 sawReset = true;
@@ -409,23 +401,18 @@ public sealed partial class WiredGlideConveyorTests
         var added = f.Box(19);
         Assert.True(f.Engine.Remove(19));
         var rider = f.Walker(1, 7, 10, 7, 11);
-        var packets = new List<byte[]>();
+        var packets = CapturePublication(rider);
         var changed = false;
         object? captured = null;
-        rider.GetClient()!.SendCallback = args =>
+        f.AfterCarryAppend(_ =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
-
-            if (!changed && BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredFurniMoveStyleComposer && bytes[^1] == 1) {
+            if (!changed) {
                 changed = true;
                 captured = CapturedCollision(f);
                 Assert.NotNull(captured.GetType().GetField("CollisionProof")!.GetValue(captured));
                 Assert.True(f.Engine.Add(added));
             }
-
-            return false;
-        };
+        });
 
         f.Advance(250);
 

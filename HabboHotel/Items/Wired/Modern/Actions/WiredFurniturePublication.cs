@@ -6,7 +6,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 /// <summary>Output only, for one engine-owned continuous movement segment. Room commits remain immediate.</summary>
 internal sealed class WiredFurniturePublication(Room room, long deadline, long epoch)
 {
-    private readonly Dictionary<Item, (WiredMovementComposer Movement, WiredMoveStyleComposer Style, long Placement, ItemDefinition Definition)> _entries = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<Item, (WiredMovementComposer Movement, long Placement, ItemDefinition Definition)> _entries = new(ReferenceEqualityComparer.Instance);
     private readonly List<Item> _order = [];
     private readonly List<(RoomUser Actor, long Lifetime, WiredMovementComposer Movement)> _avatars = [];
     private readonly List<(RoomUser Actor, long Lifetime, WiredUserDirectionComposer Turn, bool FromUserBox)> _directions = [];
@@ -19,7 +19,7 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
     /// <summary>Sends the movements like a Move and Rotate User box does: after the states a click writes, with the chat held back.</summary>
     internal bool SendsAsUserMovement { get; set; }
 
-    internal bool Append(Item item, WiredMovementComposer movement, WiredMoveStyleComposer style, object? firing = null, bool executeInOrder = false)
+    internal bool Append(Item item, WiredMovementComposer movement, object? firing = null, bool executeInOrder = false)
     {
         if (!Open || !ReferenceEquals(item.GetRoom(), room) || !ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item)) {
             return false;
@@ -47,7 +47,7 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
             _order.Insert(slot < 0 ? _order.Count : slot, item);
         }
 
-        _entries[item] = (movement, style, item.Placement, item.Definition);
+        _entries[item] = (movement, item.Placement, item.Definition);
 
         if (!_firings.TryGetValue(item, out var firings)) {
             _firings[item] = firings = new(ReferenceEqualityComparer.Instance);
@@ -77,7 +77,7 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
     internal bool HasAvatarEntries => _avatars.Count != 0;
     internal bool ContainsActor(RoomUser actor) => _avatars.Any(entry => ReferenceEquals(entry.Actor, actor));
 
-    internal bool AppendAvatar(RoomUser actor, WiredMovementComposer movement, WiredMoveStyleComposer style)
+    internal bool AppendAvatar(RoomUser actor, WiredMovementComposer movement)
     {
         var lifetime = actor.Movement.LifetimeId;
 
@@ -86,8 +86,6 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
         }
 
         _avatars.Add((actor, lifetime, movement));
-        // Retention owns the animation even if this original hint's callback seals the segment.
-        room.SendPacket(style);
 
         return true;
     }
@@ -146,11 +144,6 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
             room.FlushWiredFlashData();
         }
 
-        foreach (var entry in live) {
-            room.SendPacket(entry.Entry.Style);
-        }
-
-        // A style callback can remove/reuse an actor; validate again immediately before the batch.
         var movements = furniMoves
             .Concat(avatars.Where(entry => LiveActor(entry.Actor, entry.Lifetime)).Select(entry => entry.Movement)).ToArray();
         var turns = directions.Where(entry => LiveActor(entry.Actor, entry.Lifetime)).Select(entry => entry.Turn).ToArray();

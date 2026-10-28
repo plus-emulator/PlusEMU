@@ -80,7 +80,7 @@ public sealed class WiredModernAction : WiredModernBox, IWiredContextualAction
         _movement.WalkBindingIsCurrent(walk);
 
     internal void BindCarryPublication(Action<WiredRuntimeContext, IReadOnlyList<RoomUser>> prepare,
-        Func<WiredRuntimeContext, RoomUser, WiredMovementComposer, WiredMoveStyleComposer, bool> append) =>
+        Func<WiredRuntimeContext, RoomUser, WiredMovementComposer, bool> append) =>
         _movement.BindCarryPublication(prepare, append);
 
     internal bool PublicationBridge => Descriptor.CanonicalName is "wf_act_send_signal" or "wf_act_neg_send_signal"

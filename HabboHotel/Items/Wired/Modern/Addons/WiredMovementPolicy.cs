@@ -3,7 +3,7 @@ using Plus.HabboHotel.Items.Wired.Modern.Selectors;
 namespace Plus.HabboHotel.Items.Wired.Modern.Addons;
 
 public sealed record WiredMovementOptions(int AnimationTimeMs, bool Animate, double Height,
-    int? Rotation, int CurveType, int CurveIntensity, int CurveStrength, int AnimationDistanceOffset);
+    int? Rotation, int CurveType, int CurveStrength, int AnimationDistanceOffset);
 
 /// <summary>Shared calculations for actual furniture/avatar movement callbacks.</summary>
 public static class WiredMovementPolicy
@@ -28,7 +28,7 @@ public static class WiredMovementPolicy
         return new(policy.AnimationTimeMs, !policy.DisableAnimation,
             policy.Physics?.KeepAltitude == true && !explicitHeight ? mover.Z : targetZ,
             direction is int d ? (d + projectile!.RotationOffset) % 8 : rotation,
-            projectileCurve is not null ? 7 : policy.Curve?.Type ?? 0, projectileCurve is not null ? 100 : policy.Curve?.Intensity ?? 100,
+            projectileCurve is not null ? 7 : policy.Curve?.Type ?? 0,
             projectileCurve ?? policy.Curve?.Strength ?? 0, offset);
     }
 

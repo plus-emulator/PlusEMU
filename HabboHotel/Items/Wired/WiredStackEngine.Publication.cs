@@ -166,16 +166,15 @@ internal sealed partial class WiredStackEngine
             var token = Token(context);
 
             if (token == null || actors.Any(token.ContainsActor)) {
-                // Split before any later furniture commit or actor style, even for equal styles.
+                // Split before any later furniture commit.
                 Seal(context);
             }
-        }, (context, actor, movement, style) =>
+        }, (context, actor, movement) =>
         {
             var token = Token(context);
 
             if (token != null && context.UserIdentity.TryGetValue(actor.VirtualId, out var captured)
-                && ReferenceEquals(actor, captured) && token.AppendAvatar(actor, movement, style)) {
-                // Append owns publication even if the original hint reentrantly sealed the token.
+                && ReferenceEquals(actor, captured) && token.AppendAvatar(actor, movement)) {
                 return true;
             }
 

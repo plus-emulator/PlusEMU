@@ -137,10 +137,8 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(useVariable ? 1 : 0, reads);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CanonicalStrengthAvatarRetainsTheSameCurveAcrossWalkAndHintCallbacks(bool changeAtHint)
+    [Fact]
+    public void CanonicalStrengthAvatarRetainsTheSameCurveAcrossWalkCallbacks()
     {
         var f = new Fixture(FastQueueLayout(2), live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
@@ -148,30 +146,14 @@ public sealed partial class WiredGlideConveyorTests
         context.Policy.Addons.Curve = new(7, 100, 100);
         var packets = CapturePublication(rider);
         var changed = false;
-        var capture = rider.GetClient()!.SendCallback;
-        rider.GetClient()!.SendCallback = args =>
-        {
-            var bytes = args.MemoryBuffer.ToArray();
-
-            if (changeAtHint && IsAvatarHint(bytes)) {
-                context.Policy.Addons.Curve = new(7, 100, -100);
-                changed = true;
-            }
-
-            return capture!(args);
-        };
         var movement = new WiredRoomMovement((_, _, _) =>
         {
-            if (!changeAtHint) {
-                context.Policy.Addons.Curve = new(7, 100, -100);
-                changed = true;
-            }
+            context.Policy.Addons.Curve = new(7, 100, -100);
+            changed = true;
         });
         f.Owned(() => Assert.True(movement.MoveAvatar(context, rider, 4, 10, true)));
 
         Assert.True(changed);
-        var hint = Assert.Single(packets.Where(IsAvatarHint));
-        Assert.Equal(100, BinaryPrimitives.ReadInt32BigEndian(hint.AsSpan(18)));
         Assert.Equal(100, Assert.Single(ReadTrajectoryPublication(packets)).Strength);
     }
 
@@ -292,22 +274,19 @@ public sealed partial class WiredGlideConveyorTests
                 observed++;
             }
         };
-        var packets = new List<byte[]>();
+        var packets = CapturePublication(rider);
         var injected = false;
-        rider.GetClient()!.SendCallback = args =>
+        f.AfterCarryAppend(_ =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
-
-            if (!injected && BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredFurniMoveStyleComposer && bytes[^1] == 1) {
-                injected = true;
-                Assert.NotEmpty(ReadPublication(packets).Where(move => move.Type == 1));
-                variables.Module.PersistDefinitionConfiguration(definition.ItemId,
-                    before => new(definition, new(before, new WiredVariableValue(1, null, null))));
+            if (injected) {
+                return;
             }
 
-            return false;
-        };
+            injected = true;
+            Assert.NotEmpty(ReadPublication(packets).Where(move => move.Type == 1));
+            variables.Module.PersistDefinitionConfiguration(definition.ItemId,
+                before => new(definition, new(before, new WiredVariableValue(1, null, null))));
+        });
 
         f.Advance(250);
 
@@ -341,18 +320,24 @@ public sealed partial class WiredGlideConveyorTests
             packets.Add(bytes);
             var header = BinaryPrimitives.ReadUInt32BigEndian(bytes);
 
-            if (!injected && header == ServerPacketHeader.WiredFurniMoveStyleComposer && bytes[^1] == 1) {
-                injected = true;
-                Assert.Empty(ReadPublication(packets).Where(move => move.Type == 1));
-                Assert.True(counters.Adjust(f.Items[20], 2, 0, 2));
-            }
-            else if (header == ServerPacketHeader.ObjectUpdateComposer && BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(6)) == 20) {
+            if (header == ServerPacketHeader.ObjectUpdateComposer && BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(6)) == 20) {
                 displayed++;
                 Assert.Equal(7, ReadPublication(packets).Count(move => move.Type == 1));
             }
 
             return false;
         };
+
+        f.AfterCarryAppend(_ =>
+        {
+            if (injected) {
+                return;
+            }
+
+            injected = true;
+            Assert.Empty(ReadPublication(packets).Where(move => move.Type == 1));
+            Assert.True(counters.Adjust(f.Items[20], 2, 0, 2));
+        });
 
         f.Advance(250);
 
@@ -716,7 +701,7 @@ public sealed partial class WiredGlideConveyorTests
 
         Assert.Empty(ReadPublication(packets));
         Assert.False(publication.Open);
-        Assert.False(publication.Append(original, new(1, 1, 4, 11, 0, 5, 11, 0, 0, 0, 200), new(1, 0, 100, 0)));
+        Assert.False(publication.Append(original, new(1, 1, 4, 11, 0, 5, 11, 0, 0, 0, 200)));
         Assert.Equal(5, original.GetX);
     }
 

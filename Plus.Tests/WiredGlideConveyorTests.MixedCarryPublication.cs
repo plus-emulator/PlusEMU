@@ -190,72 +190,29 @@ public sealed partial class WiredGlideConveyorTests
         Assert.Equal(0, f.Engine.ReadStats().Pending);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CarryHintRetainsExactlyOneCombinedBodyAcrossLoggedFailure(bool throws)
-    {
-        var f = new Fixture(FastQueueLayout(2), live: true, movementEngine: "legacy");
-        var rider = f.Walker(1, 4, 10, 4, 11);
-        var packets = new List<byte[]>();
-        var hints = 0;
-        var movementsAtHint = -1;
-        rider.GetClient()!.SendCallback = args =>
-        {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
-
-            if (IsAvatarHint(bytes)) {
-                hints++;
-                movementsAtHint = ReadPublication(packets).Count;
-
-                if (throws) {
-                    throw new InvalidOperationException("logged legacy hint failure");
-                }
-            }
-
-            return false;
-        };
-
-        f.AdvanceWiredPass(250, false);
-
-        Assert.Equal(1, hints);
-        Assert.Equal(0, movementsAtHint);
-        Assert.Equal(7, ReadPublication(packets).Count(move => move.Type == 1));
-        Assert.Single(ReadPublication(packets), move => move.Type == 0);
-        Assert.Equal(0, ReadPublication([Assert.Single(packets.Where(IsMovementBody))])[^1].Type);
-    }
-
     [Fact]
-    public void LegacyImmediateHintReentrantMutationSealsBeforeObserverOutput()
+    public void LegacyReentrantMutationAfterACarryAppendSealsBeforeObserverOutput()
     {
         var f = new Fixture(FastQueueLayout(2), live: true, movementEngine: "legacy");
         var rider = f.Walker(1, 4, 10, 4, 11);
-        var packets = new List<byte[]>();
-        var hints = 0;
-        rider.GetClient()!.SendCallback = args =>
+        var packets = CapturePublication(rider);
+        var appends = 0;
+        f.AfterCarryAppend(_ =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
+            appends++;
+            Assert.Empty(ReadPublication(packets));
+            Assert.True(f.Engine.Mutate(() =>
+            {
+                Assert.Single(ReadPublication(packets), move => move.Type == 1);
+                rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, rider.VirtualId, "legacy observer", 0, -1, true));
 
-            if (IsAvatarHint(bytes)) {
-                hints++;
-                Assert.Empty(ReadPublication(packets));
-                Assert.True(f.Engine.Mutate(() =>
-                {
-                    Assert.Single(ReadPublication(packets), move => move.Type == 1);
-                    rider.GetClient()!.Send(new WiredChatComposer(rider.VirtualId, rider.VirtualId, "legacy observer", 0, -1, true));
-
-                    return true;
-                }));
-            }
-
-            return false;
-        };
+                return true;
+            }));
+        });
 
         f.AdvanceWiredPass(250, false);
 
-        Assert.Equal(1, hints);
+        Assert.Equal(1, appends);
         Assert.Equal(14, ReadPublication(packets).Count(move => move.Type == 1));
         Assert.Single(ReadPublication(packets), move => move.Type == 0);
         Assert.True(packets.FindIndex(IsChat) > packets.FindIndex(IsMovementBody));
@@ -345,10 +302,10 @@ public sealed partial class WiredGlideConveyorTests
 
                 var movement = (WiredRoomMovement)typeof(WiredModernAction).GetField("_movement", BindingFlags.Instance | BindingFlags.NonPublic)!
                     .GetValue(action)!;
-                var append = (Func<WiredRuntimeContext, RoomUser, WiredMovementComposer, WiredMoveStyleComposer, bool>)typeof(WiredRoomMovement)
+                var append = (Func<WiredRuntimeContext, RoomUser, WiredMovementComposer, bool>)typeof(WiredRoomMovement)
                     .GetField("_appendCarryPublication", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(movement)!;
                 // Probe the actual prepared adapter while its original action still runs, before returning to placement.
-                handled = append(context, rider, new(0, rider.VirtualId, 4, 11, 1, 5, 11, 1, 0, 0, 200), new(rider.VirtualId, 0, 100, 0, true));
+                handled = append(context, rider, new(0, rider.VirtualId, 4, 11, 1, 5, 11, 1, 0, 0, 200));
                 Assert.False(context.Publication!.Open);
             }
 
@@ -383,28 +340,31 @@ public sealed partial class WiredGlideConveyorTests
         var packets = new List<byte[]>();
         var injected = false;
         var persisted = false;
-        var movementsAtHint = -1;
+        var movementsAtAppend = -1;
         rider.GetClient()!.SendCallback = args =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
-
-            if (!injected && IsAvatarHint(bytes)) {
-                injected = true;
-                movementsAtHint = ReadPublication(packets).Count;
-                variables.Module.PersistDefinitionConfiguration(definition.ItemId,
-                    before => new(definition, new(before, new WiredVariableValue(1, null, null))));
-                persisted = true;
-            }
+            packets.Add(args.MemoryBuffer.ToArray());
 
             return false;
         };
+        f.AfterCarryAppend(_ =>
+        {
+            if (injected) {
+                return;
+            }
+
+            injected = true;
+            movementsAtAppend = ReadPublication(packets).Count;
+            variables.Module.PersistDefinitionConfiguration(definition.ItemId,
+                before => new(definition, new(before, new WiredVariableValue(1, null, null))));
+            persisted = true;
+        });
 
         f.AdvanceWiredPass(250, false);
 
         Assert.True(injected);
         Assert.True(persisted);
-        Assert.Equal(0, movementsAtHint);
+        Assert.Equal(0, movementsAtAppend);
         Assert.Equal(14, ReadPublication(packets).Count(move => move.Type == 1));
         Assert.Single(ReadPublication(packets), move => move.Type == 0);
         Assert.Empty(variables.DrainChanges());
@@ -424,7 +384,7 @@ public sealed partial class WiredGlideConveyorTests
         var packets = new List<byte[]>();
         var injected = false;
         var displayed = 0;
-        var movementsAtHint = -1;
+        var movementsAtAppend = -1;
         var movementsAtDisplay = -1;
         rider.GetClient()!.SendCallback = args =>
         {
@@ -432,92 +392,52 @@ public sealed partial class WiredGlideConveyorTests
             packets.Add(bytes);
             var header = BinaryPrimitives.ReadUInt32BigEndian(bytes);
 
-            if (!injected && IsAvatarHint(bytes)) {
-                injected = true;
-                movementsAtHint = ReadPublication(packets).Count;
-                Assert.True(counters.Adjust(f.Items[20], 2, 0, 2));
-            }
-            else if (header == ServerPacketHeader.ObjectUpdateComposer && BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(6)) == 20) {
+            if (header == ServerPacketHeader.ObjectUpdateComposer && BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(6)) == 20) {
                 displayed++;
                 movementsAtDisplay = ReadPublication(packets).Count(move => move.Type == 1);
             }
 
             return false;
         };
+        f.AfterCarryAppend(_ =>
+        {
+            if (injected) {
+                return;
+            }
+
+            injected = true;
+            movementsAtAppend = ReadPublication(packets).Count;
+            Assert.True(counters.Adjust(f.Items[20], 2, 0, 2));
+        });
 
         f.AdvanceWiredPass(250, false);
 
         Assert.True(injected);
         Assert.Equal(1, displayed);
-        Assert.Equal(0, movementsAtHint);
+        Assert.Equal(0, movementsAtAppend);
         Assert.Equal(7, movementsAtDisplay);
         Assert.False(counters.HasPendingChanges);
         Assert.Equal(14, ReadPublication(packets).Count(move => move.Type == 1));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CarryHintFailureDoesNotRetryOrDuplicateItsRetainedMovement(bool throws)
-    {
-        var f = new Fixture(FastQueueLayout(2), live: true);
-        var rider = f.Walker(1, 4, 10, 4, 11);
-        var packets = new List<byte[]>();
-        var hints = 0;
-        var movementsAtHint = -1;
-        rider.GetClient()!.SendCallback = args =>
-        {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
-
-            if (IsAvatarHint(bytes)) {
-                hints++;
-                movementsAtHint = ReadPublication(packets).Count;
-
-                if (throws) {
-                    throw new InvalidOperationException("actual client hint callback");
-                }
-            }
-
-            return false;
-        };
-
-        f.Advance(250);
-
-        Assert.Equal(1, hints);
-        Assert.Equal(0, movementsAtHint);
-        Assert.Equal(5, rider.X);
-        var body = Assert.Single(packets.Where(IsMovementBody));
-        Assert.Equal(8, ReadPublication([body]).Count);
-        Assert.Single(ReadPublication([body]), move => move.Type == 0);
-        Assert.Equal(0, f.Engine.ReadStats().Pending);
-    }
-
     [Fact]
-    public void CarryHintReentrantSealOwnsTheOnlyMovementPublication()
+    public void ReentrantSealAfterACarryAppendOwnsTheOnlyMovementPublication()
     {
         var f = new Fixture(FastQueueLayout(2), live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
-        var packets = new List<byte[]>();
-        var hints = 0;
-        rider.GetClient()!.SendCallback = args =>
+        var packets = CapturePublication(rider);
+        var appends = 0;
+        f.AfterCarryAppend(_ =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
-
-            if (IsAvatarHint(bytes)) {
-                hints++;
-                Assert.Empty(ReadPublication(packets));
-                Assert.True(f.Engine.Mutate(() => true));
-                Assert.Single(ReadPublication(packets), move => move.Type == 0);
-            }
-
-            return false;
-        };
+            appends++;
+            Assert.Empty(ReadPublication(packets));
+            Assert.True(f.Engine.Mutate(() => true));
+            Assert.Single(ReadPublication(packets), move => move.Type == 0);
+        });
 
         f.Advance(250);
 
-        Assert.Equal(1, hints);
+        Assert.Equal(1, appends);
         Assert.Single(ReadPublication(packets), move => move.Type == 0);
         Assert.Equal(14, ReadPublication(packets).Count(move => move.Type == 1));
         Assert.Equal(5, rider.X);
@@ -545,45 +465,40 @@ public sealed partial class WiredGlideConveyorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ActorDepartureOrReuseAtFlushDropsOnlyItsOldMovement(bool reuse)
+    public void ActorDepartureOrReuseBeforeTheFlushDropsOnlyItsOldMovement(bool reuse)
     {
         var f = new Fixture(FastQueueLayout(2), live: true);
         var first = f.Walker(1, 4, 10, 4, 11);
         var second = f.Walker(2, 7, 10, 7, 11);
         var room = f.MovementContext().Room;
-        var packets = new List<byte[]>();
+        var packets = CapturePublication(first);
         var changed = false;
-        var hints = new List<int>();
-        first.GetClient()!.SendCallback = args =>
+        var appended = new List<int>();
+        f.AfterCarryAppend(actor =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
+            appended.Add(actor.VirtualId);
 
-            if (IsAvatarHint(bytes)) {
-                hints.Add(BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(10)));
+            if (appended.Count != 2) {
+                return;
             }
 
-            if (!changed && BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredFurniMoveStyleComposer && !IsAvatarHint(bytes)) {
-                changed = true;
+            changed = true;
 
-                if (reuse) {
-                    var replacement = new RoomUser(99, room.Id, first.VirtualId, room, first.GetClient(), TestChatEmotions.Unused, TestRewardProgress.Unused)
-                    { X = first.X, Y = first.Y, Z = first.Z };
-                    f.ReplaceUser(replacement);
-                    Assert.NotEqual(first.Movement.LifetimeId, replacement.Movement.LifetimeId);
-                }
-                else {
-                    first.Movement.State = NavState.Removing;
-                }
+            if (reuse) {
+                var replacement = new RoomUser(99, room.Id, first.VirtualId, room, first.GetClient(), TestChatEmotions.Unused, TestRewardProgress.Unused)
+                { X = first.X, Y = first.Y, Z = first.Z };
+                f.ReplaceUser(replacement);
+                Assert.NotEqual(first.Movement.LifetimeId, replacement.Movement.LifetimeId);
             }
-
-            return false;
-        };
+            else {
+                first.Movement.State = NavState.Removing;
+            }
+        });
 
         f.Advance(250);
 
         Assert.True(changed);
-        Assert.Equal(new[] { 1, 2 }, hints); // Already emitted hints are not retrospectively removed.
+        Assert.Equal(new[] { 1, 2 }, appended);
         var moves = ReadPublication(packets);
         Assert.NotEmpty(moves.Where(move => move.Type == 1));
         Assert.Equal(second.VirtualId, Assert.Single(moves, move => move.Type == 0).Id);
@@ -646,7 +561,7 @@ public sealed partial class WiredGlideConveyorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void CanonicalStrengthRetainedCarryHintReentrancyKeepsExactlyOneBodyOrDropsOldLifetime(bool reuseActor)
+    public void CanonicalStrengthReentrancyAfterACarryAppendKeepsExactlyOneBodyOrDropsOldLifetime(bool reuseActor)
     {
         var layout = FastQueueLayout(2).ToList();
         layout.Add((19, 4, 12, 4, 0, "wf_xtra_mov_curve", JsonSerializer.Serialize(new WiredConfiguration
@@ -656,36 +571,32 @@ public sealed partial class WiredGlideConveyorTests
         var f = new Fixture(layout.ToArray(), live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var packets = CapturePublication(rider);
-        var capture = rider.GetClient()!.SendCallback;
         var reentered = false;
-        rider.GetClient()!.SendCallback = args =>
+        f.AfterCarryAppend(_ =>
         {
-            capture!(args);
-
-            if (!reentered && IsAvatarHint(args.MemoryBuffer.ToArray())) {
-                reentered = true;
-                var context = Assert.IsType<WiredRuntimeContext>(f.EngineField("_runtimeContext"));
-                context.Policy.Addons.Curve = new(7, 100, 0);
-
-                if (reuseActor) {
-                    rider.Movement.State = NavState.Removing;
-                    var replacement = new RoomUser(rider.HabboId, context.Room.Id, rider.VirtualId, context.Room,
-                        null, TestChatEmotions.Unused, TestRewardProgress.Unused);
-                    replacement.SetPos(4, 10, 0);
-                    f.ReplaceUser(replacement);
-                    Assert.NotEqual(rider.Movement.LifetimeId, replacement.Movement.LifetimeId);
-                }
-
-                context.Publication!.Flush();
+            if (reentered) {
+                return;
             }
 
-            return false;
-        };
+            reentered = true;
+            var context = Assert.IsType<WiredRuntimeContext>(f.EngineField("_runtimeContext"));
+            context.Policy.Addons.Curve = new(7, 100, 0);
+
+            if (reuseActor) {
+                rider.Movement.State = NavState.Removing;
+                var replacement = new RoomUser(rider.HabboId, context.Room.Id, rider.VirtualId, context.Room,
+                    null, TestChatEmotions.Unused, TestRewardProgress.Unused);
+                replacement.SetPos(4, 10, 0);
+                f.ReplaceUser(replacement);
+                Assert.NotEqual(rider.Movement.LifetimeId, replacement.Movement.LifetimeId);
+            }
+
+            context.Publication!.Flush();
+        });
 
         f.Advance(250);
 
         Assert.True(reentered);
-        Assert.Single(packets.Where(IsAvatarHint));
         var carried = ReadTrajectoryPublication(packets).Where(move => move.Type == 0).ToArray();
 
         if (reuseActor) {
@@ -703,7 +614,7 @@ public sealed partial class WiredGlideConveyorTests
     [InlineData(true, "v2")]
     [InlineData(false, "legacy")]
     [InlineData(true, "legacy")]
-    public void RepeatedActorPublishesEarlierBodyBeforeItsLaterCommitAndHintEvenForEqualStyles(bool differentStyle, string movementEngine)
+    public void RepeatedActorPublishesEarlierBodyBeforeItsLaterCommitEvenForEqualStyles(bool differentStyle, string movementEngine)
     {
         var layout = FastQueueLayout(2).Where(item => item.Id != 10 && item.Id != 14 && item.Id != 15).ToList();
         var heading = layout.Single(item => item.Id == 12);
@@ -721,33 +632,25 @@ public sealed partial class WiredGlideConveyorTests
 
         var f = new Fixture(layout.ToArray(), live: true, movementEngine: movementEngine);
         var rider = f.Walker(1, 4, 10, 4, 11);
-        var packets = new List<byte[]>();
-        var hints = 0;
+        var packets = CapturePublication(rider);
+        var appends = 0;
         TrajectoryMove[] earlier = [];
-        var laterStyle = -1;
-        rider.GetClient()!.SendCallback = args =>
+        f.AfterCarryAppend(_ =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
+            appends++;
 
-            if (IsAvatarHint(bytes)) {
-                hints++;
-
-                if (hints == 2) {
-                    earlier = ReadTrajectoryPublication(packets).Where(move => move.Type == 0).ToArray();
-                    laterStyle = BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(14));
-                }
+            if (appends == 2) {
+                earlier = ReadTrajectoryPublication(packets).Where(move => move.Type == 0).ToArray();
             }
-
-            return false;
-        };
+        });
 
         f.Advance(250);
 
-        Assert.Equal(2, hints);
+        Assert.Equal(2, appends);
         Assert.Equal((4, 5), (Assert.Single(earlier).FromX, earlier[0].ToX));
-        Assert.Equal(differentStyle ? 7 : 0, laterStyle);
-        Assert.Equal(new[] { (4, 5), (5, 6) }, ReadTrajectoryPublication(packets).Where(move => move.Type == 0).Select(move => (move.FromX, move.ToX)));
+        var carried = ReadTrajectoryPublication(packets).Where(move => move.Type == 0).ToArray();
+        Assert.Equal(new[] { (4, 5), (5, 6) }, carried.Select(move => (move.FromX, move.ToX)));
+        Assert.Equal(new int?[] { null, differentStyle ? 80 : null }, carried.Select(move => move.Strength));
         Assert.Equal(6, rider.X);
         Assert.Equal(0, f.Engine.ReadStats().Pending);
     }
@@ -791,7 +694,7 @@ public sealed partial class WiredGlideConveyorTests
             var bytes = args.MemoryBuffer.ToArray();
             packets.Add(bytes);
 
-            if (BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredFurniMoveStyleComposer) {
+            if (IsMovementBody(bytes)) {
                 poseAtSeal ??= (rider.X, rider.Y);
             }
 
@@ -801,7 +704,7 @@ public sealed partial class WiredGlideConveyorTests
             ? (WiredRoomMovement)typeof(WiredModernAction).GetField("_movement",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(f.Box(12))!
             : new WiredRoomMovement((_, _, _) => { });
-        Assert.True(publication.Append(f.Items[1], new(1, 1, 4, 11, 0, 4, 11, 0, 0, 0, 500), new(1, 0, 100, 0)));
+        Assert.True(publication.Append(f.Items[1], new(1, 1, 4, 11, 0, 4, 11, 0, 0, 0, 500)));
 
         f.Owned(() => Assert.True(movement.MoveAvatar(context, rider, 4, 10, true)));
 
@@ -848,7 +751,7 @@ public sealed partial class WiredGlideConveyorTests
     }
 
     [Fact]
-    public void TrustedProductionVariableDrainSealsAfterTheOriginalAvatarHint()
+    public void TrustedProductionVariableDrainSealsAfterTheRiderIsAppended()
     {
         var f = new Fixture(FastQueueLayout(2), live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
@@ -857,26 +760,29 @@ public sealed partial class WiredGlideConveyorTests
             WiredVariableAvailability.RoomActive, true);
         var packets = new List<byte[]>();
         var injected = false;
-        var beforeHint = -1;
+        var beforeAppend = -1;
         rider.GetClient()!.SendCallback = args =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
-
-            if (!injected && IsAvatarHint(bytes)) {
-                injected = true;
-                beforeHint = ReadPublication(packets).Count;
-                variables.Module.PersistDefinitionConfiguration(definition.ItemId,
-                    before => new(definition, new(before, new WiredVariableValue(1, null, null))));
-            }
+            packets.Add(args.MemoryBuffer.ToArray());
 
             return false;
         };
+        f.AfterCarryAppend(_ =>
+        {
+            if (injected) {
+                return;
+            }
+
+            injected = true;
+            beforeAppend = ReadPublication(packets).Count;
+            variables.Module.PersistDefinitionConfiguration(definition.ItemId,
+                before => new(definition, new(before, new WiredVariableValue(1, null, null))));
+        });
 
         f.Advance(250);
 
         Assert.True(injected);
-        Assert.Equal(0, beforeHint);
+        Assert.Equal(0, beforeAppend);
         var first = ReadPublication([packets.First(IsMovementBody)]);
         Assert.Equal(8, first.Count);
         Assert.Equal(0, first[^1].Type);
@@ -889,40 +795,33 @@ public sealed partial class WiredGlideConveyorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ActorDepartureOrReuseInsideHintCannotFallbackOrPublishTheOldBody(bool reuse)
+    public void ActorDepartureOrReuseRightAfterTheAppendCannotFallbackOrPublishTheOldBody(bool reuse)
     {
         var f = new Fixture(FastQueueLayout(2), live: true);
         var rider = f.Walker(1, 4, 10, 4, 11);
         var room = f.MovementContext().Room;
-        var packets = new List<byte[]>();
-        var hints = 0;
-        rider.GetClient()!.SendCallback = args =>
+        var packets = CapturePublication(rider);
+        var appends = 0;
+        f.AfterCarryAppend(_ =>
         {
-            var bytes = args.MemoryBuffer.ToArray();
-            packets.Add(bytes);
+            appends++;
 
-            if (IsAvatarHint(bytes)) {
-                hints++;
-
-                if (reuse) {
-                    var replacement = new RoomUser(99, room.Id, rider.VirtualId, room, rider.GetClient(), TestChatEmotions.Unused, TestRewardProgress.Unused)
-                    { X = rider.X, Y = rider.Y, Z = rider.Z };
-                    f.ReplaceUser(replacement);
-                }
-                else {
-                    rider.Movement.State = NavState.Removing;
-                }
-
-                f.Engine.Mutate(() => true);
+            if (reuse) {
+                var replacement = new RoomUser(99, room.Id, rider.VirtualId, room, rider.GetClient(), TestChatEmotions.Unused, TestRewardProgress.Unused)
+                { X = rider.X, Y = rider.Y, Z = rider.Z };
+                f.ReplaceUser(replacement);
+            }
+            else {
+                rider.Movement.State = NavState.Removing;
             }
 
-            return false;
-        };
+            f.Engine.Mutate(() => true);
+        });
 
         f.Advance(250);
 
-        Assert.Equal(1, hints);
-        // The hint is inside the first mover: its callback seals before the remaining six commits.
+        Assert.Equal(1, appends);
+        // The append happens in the first mover: the seal comes before the remaining six commits.
         var first = Assert.Single(ReadPublication([packets.First(IsMovementBody)]));
         Assert.Equal((1, 1, 4, 5, 200), (first.Type, first.Id, first.FromX, first.ToX, first.Duration));
         var floors = ReadPublication(packets).Where(move => move.Type == 1).ToArray();
@@ -970,5 +869,4 @@ public sealed partial class WiredGlideConveyorTests
     }
 
     private static bool IsMovementBody(byte[] bytes) => BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredMovementsComposer;
-    private static bool IsAvatarHint(byte[] bytes) => BinaryPrimitives.ReadUInt32BigEndian(bytes) == ServerPacketHeader.WiredFurniMoveStyleComposer && bytes[^1] == 1;
 }

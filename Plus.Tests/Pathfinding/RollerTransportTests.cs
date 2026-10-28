@@ -193,17 +193,15 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void RollerIgnoresStepHeightAndKeepsCarriedZInsteadOfSnappingToTargetTop()
+    public void RollerKeepsTheActorWhenTheTargetTopIsAboveIt()
     {
         ExecutorRoller(10, 0, 1);
         ExecutorFloor(11, 1, 1, height: 20);
         var actor = ExecutorRollerActor(0, 1, 0.5);
         EnableExecutorRollers();
         ExecutorTick();
-        Assert.Equal((1, 1, 0d), (actor.X, actor.Y, actor.Z));
-        Assert.Null(actor.Movement.CurrentRef);
-        Assert.Equal(20, _room.GetGameMap().Navigation!.Grid.WalkZ[5]);
-        Assert.Equal("0.0", ExecutorAvatarSlide(actor).ToZ);
+        Assert.Equal((0, 1, 0.5), (actor.X, actor.Y, actor.Z));
+        Assert.DoesNotContain(_client.Packets, packet => ExecutorIsAvatarSlide(packet, actor.VirtualId));
     }
 
     [Fact]

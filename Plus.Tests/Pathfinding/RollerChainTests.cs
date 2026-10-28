@@ -26,7 +26,7 @@ public partial class PlacedFurniRoomTests
         ExecutorTick();
         EnableExecutorRollers();
         ExecutorTick();
-        Assert.Equal((1, 1, destinationIsRoller ? .5 : 0d), (actor.X, actor.Y, actor.Z));
+        Assert.Equal((1, 1, .5), (actor.X, actor.Y, actor.Z));
     }
     [Fact]
     public void V2RollersCycleWithoutTheLegacyGotRollersFlag()

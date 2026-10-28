@@ -23,7 +23,6 @@ using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Quests.DailyTasks;
 using Plus.HabboHotel.Rewards;
 using Plus.HabboHotel.Users.Effects;
-using Plus.HabboHotel.Users.Messenger.FriendBar;
 using Plus.HabboHotel.Users.Process;
 
 namespace Plus.HabboHotel.Users.Authentication;
@@ -104,9 +103,7 @@ public sealed class SsoLoginService : ISsoLoginService
             session.Send(new AchievementScoreComposer(session.GetHabbo().HabboStats?.AchievementPoints ?? 0));
             session.Send(new CfhTopicsInitComposer(CfhTopicCategorySnapshot.Capture(_moderationManager.UserActionPresets)));
             _achievementShowcase.ShowDefinitions(session);
-            session.Send(new SoundSettingsComposer(session.GetHabbo().ClientVolume, session.GetHabbo().ChatPreference, session.GetHabbo().AllowMessengerInvites,
-                session.GetHabbo().FocusPreference,
-                FriendBarStateUtility.GetInt(session.GetHabbo().FriendbarState), session.GetHabbo().WiredPreferences));
+            session.Send(SoundSettingsComposer.For(session.GetHabbo()));
             //SendMessage(new TalentTrackLevelComposer());
             // The Builders Club status follows the login unasked.
             _buildersClub?.SendStatus(session);

@@ -325,8 +325,7 @@ public sealed class UserProfileService(
     {
         var habbo = session.GetHabbo();
         habbo.FriendbarState = FriendBarStateUtility.GetEnum(state);
-        session.Send(new SoundSettingsComposer(habbo.ClientVolume, habbo.ChatPreference, habbo.AllowMessengerInvites,
-            habbo.FocusPreference, FriendBarStateUtility.GetInt(habbo.FriendbarState), habbo.WiredPreferences));
+        session.Send(SoundSettingsComposer.For(habbo));
     }
 
     public Task SetWiredPreferences(GameClient session, WiredAccountPreferences preferences)

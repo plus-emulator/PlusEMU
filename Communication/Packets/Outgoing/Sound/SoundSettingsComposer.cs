@@ -1,5 +1,6 @@
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users;
+using Plus.HabboHotel.Users.Messenger.FriendBar;
 
 namespace Plus.Communication.Packets.Outgoing.Sound;
 
@@ -29,6 +30,9 @@ public class SoundSettingsComposer : IServerPacket
         _friendBarState = friendBarState;
         _wired = wired;
     }
+
+    public static SoundSettingsComposer For(Habbo habbo) => new(habbo.ClientVolume, habbo.ChatPreference, habbo.AllowMessengerInvites,
+        habbo.FocusPreference, FriendBarStateUtility.GetInt(habbo.FriendbarState), habbo.WiredPreferences);
 
     public void Compose(IOutgoingPacket packet)
     {

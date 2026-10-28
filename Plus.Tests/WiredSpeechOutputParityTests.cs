@@ -167,12 +167,12 @@ public partial class PlacedFurniRoomTests
             box.Configuration.Origin.Native with { OwnedIntParams = [5] }, out _));
     }
 
-    private (WiredComponent Wired, RoomUser Actor) PrepareSpeech(TimeProvider clock)
+    private (WiredComponent Wired, RoomUser Actor) PrepareSpeech(TimeProvider clock, Plus.HabboHotel.Items.IItemDataManager? definitions = null)
     {
         var wired = new WiredComponent(_room, TestLogging.Logger, clock, TestRoomSettings.Empty,
             TestWiredRoomSettingsFactory.Instance, TestWiredConfigurationStore.Instance, _database,
             TestWiredRewardService.Instance, TestBotManagementStore.Instance, TestWiredClients.Empty,
-            TestGroupManager.Empty, TestWiredDefinitions.Unused, TestWiredCommands.Unused,
+            TestGroupManager.Empty, definitions ?? TestWiredDefinitions.Unused, TestWiredCommands.Unused,
             TestWiredAccess.Unused, TestItemRuntime.Travel);
         Set("_wiredComponent", wired);
         var engine = typeof(WiredComponent).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(wired)!;

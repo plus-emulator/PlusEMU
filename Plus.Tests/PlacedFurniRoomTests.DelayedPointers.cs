@@ -275,10 +275,11 @@ public partial class PlacedFurniRoomTests
     /// The room with the variable boxes of these tests placed, the switch H and the trigger: a speech trigger with Execute in Order on
     /// one tile, where every later box stands above the last one.
     /// </summary>
-    private async Task<(WiredComponent Wired, RoomUser Actor, SpeechClock Clock)> DelayedPointerRoom(bool executeInOrder = true)
+    private async Task<(WiredComponent Wired, RoomUser Actor, SpeechClock Clock)> DelayedPointerRoom(bool executeInOrder = true,
+        IItemDataManager? definitions = null)
     {
         var clock = new SpeechClock();
-        var (wired, actor) = PrepareSpeech(clock);
+        var (wired, actor) = PrepareSpeech(clock, definitions);
         var module = new WiredVariableModule(RoomId, new DelayedPointerDirectory(_room), new MemoryWiredVariableStore(), TimeProvider.System);
         typeof(WiredRoomVariables).GetField("<Module>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(wired.Variables, module);

@@ -661,7 +661,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             }
         }
 
-        // An animated wired move shows "wf" on the avatar for one status update.
+        // An animated wired move shows "wf" on the avatar until its animation ends.
         if (animate && !user.IsBot) {
             room.GetRoomUserManager().MarkWiredMove(user, animationTimeMs ?? context.Policy.Addons.AnimationTimeMs);
         }

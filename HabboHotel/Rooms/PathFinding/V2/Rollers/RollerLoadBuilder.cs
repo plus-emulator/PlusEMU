@@ -16,7 +16,8 @@ internal sealed class RollerLoadBuilder(Room room, RollerTransport transport)
         var loads = new List<RollerLoad>();
 
         foreach (var roller in rollers) {
-            if (roller == null || roller.SquareInFront == new Point(roller.GetX, roller.GetY)) {
+            if (roller == null || roller.SquareInFront == new Point(roller.GetX, roller.GetY)
+                || room.GetRoomItemHandler().WaitsForRoller(roller)) {
                 continue;
             }
 

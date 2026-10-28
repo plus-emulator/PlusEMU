@@ -556,7 +556,7 @@ public static class WiredNativeEditorProjection
         // A variable name is stored cleaned (see WiredVariableDefinitions.CleanName). A stored
         // row keeps the name it was saved with.
         if (!storedRow && Variables.WiredVariableDefinitions.IsNamed(name)) {
-            native = native with { Text = Variables.WiredVariableDefinitions.CleanName(native.Text, name == "wf_var_pointer") };
+            native = native with { Text = Variables.WiredVariableDefinitions.CleanName(native.Text) };
         }
 
         native = WiredNativeAuxiliaryEditor.StoredForm(name, native);

@@ -39,6 +39,7 @@ public partial class WiredComponent
     // A board's QueryRevision comes from one counter for the whole room, and the room's boards are numbered from 1 as overlays. The counter starts at 1, so the first save of a board shows revision 2.
     private int _leaderboardRoomRevision = 1;
     private readonly Dictionary<int, uint> _leaderboardOverlayItems = [];
+    private readonly Dictionary<uint, int> _leaderboardAnnounced = [];
 
     private int LeaderboardRevision(uint itemId)
     {
@@ -79,7 +80,7 @@ public partial class WiredComponent
     }
 
     /// <summary>The room's leaderboard snapshot for one user, as on room entry.</summary>
-    public void SendLeaderboardSnapshot(GameClient session) => session.Send(new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors()));
+    public void SendLeaderboardSnapshot(GameClient session) => session.Send(new WiredVariableLeaderboardSnapshotComposer(Announce(LeaderboardDescriptors())));
 
     /// <summary>The published boards of the room, lowest furni id first, each with its stack's user variables to choose from.</summary>
     public IReadOnlyList<WiredLeaderboardDescriptor> LeaderboardDescriptors()
@@ -125,7 +126,7 @@ public partial class WiredComponent
 
         if (overlayId == 0) {
             if (revision == 0 && variableId == "0" && chunks.Length == 0) {
-                session.Send(new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors()));
+                session.Send(new WiredVariableLeaderboardSnapshotComposer(Announce(LeaderboardDescriptors())));
             }
 
             return;
@@ -194,7 +195,7 @@ public partial class WiredComponent
             _leaderboardRevisions[box.Item.Id] = ++_leaderboardRoomRevision;
         }
 
-        BroadcastLeaderboards();
+        BroadcastLeaderboards([box.Item.Id]);
     }
 
     /// <summary>
@@ -250,6 +251,8 @@ public partial class WiredComponent
     /// <summary>The boards a connector changed move to a new revision, and everyone in the room gets the snapshot, also after a board left.</summary>
     private void FlushLeaderboardRepublish()
     {
+        uint[] bumped;
+
         lock (_leaderboardGate) {
             if (_leaderboardRepublishDue is not { } republishAt || _clock.GetUtcNow() < republishAt) {
                 return;
@@ -261,10 +264,11 @@ public partial class WiredComponent
                 _leaderboardRevisions[board] = ++_leaderboardRoomRevision;
             }
 
+            bumped = [.. _republishedLeaderboards];
             _republishedLeaderboards.Clear();
         }
 
-        BroadcastLeaderboards();
+        BroadcastLeaderboards(bumped);
     }
 
     /// <summary>A board left the room: everyone gets the snapshot without it at the next tick of the push grid.</summary>
@@ -275,7 +279,11 @@ public partial class WiredComponent
         }
     }
 
-    private void BroadcastLeaderboards()
+    /// <summary>
+    /// The snapshot goes out after a board was saved or left. A board whose overlay number moved since the last snapshot gets the next revisions in overlay order,
+    /// after the revisions of the boards the event itself bumped.
+    /// </summary>
+    private void BroadcastLeaderboards(IReadOnlyCollection<uint> bumped)
     {
         // An unloading room has dropped its users before its furniture; with nobody to tell, the boxes are not read.
         var clients = _room.GetRoomUserManager()?.GetRoomUsers().Select(user => user.GetClient()).OfType<GameClient>().ToList() ?? [];
@@ -284,11 +292,35 @@ public partial class WiredComponent
             return;
         }
 
-        var snapshot = new WiredVariableLeaderboardSnapshotComposer(LeaderboardDescriptors());
+        _ = LeaderboardDescriptors();
+
+        lock (_leaderboardGate) {
+            foreach (var (overlay, item) in _leaderboardOverlayItems.OrderBy(pair => pair.Key)) {
+                if (!bumped.Contains(item) && _leaderboardAnnounced.TryGetValue(item, out var announced) && announced != overlay) {
+                    _leaderboardRevisions[item] = ++_leaderboardRoomRevision;
+                }
+            }
+        }
+
+        var snapshot = new WiredVariableLeaderboardSnapshotComposer(Announce(LeaderboardDescriptors()));
 
         foreach (var client in clients) {
             client.Send(snapshot);
         }
+    }
+
+    /// <summary>Remembers the overlay number every board has in the snapshot that goes out now.</summary>
+    private IReadOnlyList<WiredLeaderboardDescriptor> Announce(IReadOnlyList<WiredLeaderboardDescriptor> descriptors)
+    {
+        lock (_leaderboardGate) {
+            _leaderboardAnnounced.Clear();
+
+            foreach (var (overlay, item) in _leaderboardOverlayItems) {
+                _leaderboardAnnounced[item] = overlay;
+            }
+        }
+
+        return descriptors;
     }
 
 

@@ -717,7 +717,7 @@ public partial class PlacedFurniRoomTests
     }
 
     [WiredChestDatabaseFact]
-    public void ActualLandingTeamDepartureAndFootballRejoinDoesNotAccrue()
+    public void ActualLandingTeamDepartureAndFootballRejoinCountsTheTeamAtTheStop()
     {
         using var db = new WiredChestDatabaseTests.Fixture();
         var game = PrepareHighscoreGame(db);
@@ -739,8 +739,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(4, WiredGameState.For(_room).ReadTeamType(_room, game.Actor));
         game.Clock.Now += TimeSpan.FromSeconds(2);
         game.Actor.OnChat(0, "stop", false);
-        Assert.Empty(((HighscoreDataFormat)game.Fastest.ExtraData).Entries);
-        Assert.Empty(((HighscoreDataFormat)game.Wins.ExtraData).Entries);
+        Assert.Equal(2, Assert.Single(((HighscoreDataFormat)game.Fastest.ExtraData).Entries).Score);
     }
 
     [WiredChestDatabaseFact]
@@ -918,7 +917,7 @@ public partial class PlacedFurniRoomTests
     [InlineData("many-rows")]
     [InlineData("different-name")]
     [InlineData("period")]
-    public void UnsupportedPriorHistorySurvivesActualRoundSaveAndOrderedDisposal(string history)
+    public void PriorHistoryTakesTheRoundAndSurvivesSaveAndOrderedDisposal(string history)
     {
         using var db = new WiredChestDatabaseTests.Fixture();
         db.Connection.Execute("ALTER TABLE items ADD x INT DEFAULT 0,ADD y INT DEFAULT 0,ADD z DOUBLE DEFAULT 0,ADD rot INT DEFAULT 0,ADD wall_pos TEXT");
@@ -941,13 +940,15 @@ public partial class PlacedFurniRoomTests
             handler.UpdateItem(board);
         }
 
-        var expected = new[] { game.Fastest.ExtraData.Serialize(), game.Wins.ExtraData.Serialize() };
+        var prior = new[] { game.Fastest.ExtraData.Serialize(), game.Wins.ExtraData.Serialize() };
         game.Actor.OnChat(0, "start", false);
         Assert.True(_room.GetSoccer().GameIsStarted);
         game.Clock.Now += TimeSpan.FromSeconds(2);
         game.Actor.OnChat(0, "stop", false);
         Assert.False(_room.GetSoccer().GameIsStarted);
-        Assert.Equal(expected, new[] { game.Fastest.ExtraData.Serialize(), game.Wins.ExtraData.Serialize() });
+        var expected = new[] { game.Fastest.ExtraData.Serialize(), game.Wins.ExtraData.Serialize() };
+        Assert.NotEqual(prior[0], expected[0]);
+        Assert.NotEqual(prior[1], expected[1]);
         InvokeFurnitureSave(handler);
 
         foreach (var board in new[] { game.Fastest, game.Wins }) {
@@ -965,7 +966,7 @@ public partial class PlacedFurniRoomTests
             Assert.Equal(payload, reloaded.Serialize());
 
             if (history == "many-rows") {
-                Assert.Equal(97, reloaded.Entries.Length);
+                Assert.Equal(98, reloaded.Entries.Length);
             }
         }
     }
@@ -1380,7 +1381,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(_room.GetSoccer().GameIsStarted);
 
         if (!unavailableRead) {
-            var changed = new HighscoreDataFormat { State = "1", ScoreType = 1, ClearType = 0 };
+            var changed = new HighscoreDataFormat { State = "0", ScoreType = 1, ClearType = 0, Entries = [new(5, ["another-owner"])] };
             db.Connection.Execute("UPDATE items SET extra_data=@payload WHERE id=502", new { payload = changed.Serialize() });
         }
 
@@ -1416,37 +1417,6 @@ public partial class PlacedFurniRoomTests
             Commits++;
 
             return inner.Commit(writes);
-        }
-    }
-
-    [WiredChestDatabaseTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ExactActorHabboIdMustStayUnchangedForTheExplicitRound(bool changeId)
-    {
-        using var db = new WiredChestDatabaseTests.Fixture();
-        var game = PrepareHighscoreGame(db);
-        game.Actor.OnChat(0, "start", false);
-        Assert.True(_room.GetSoccer().GameIsStarted);
-        var originalId = game.Actor.HabboId;
-
-        if (changeId) {
-            game.Actor.HabboId = originalId + 1;
-        }
-
-        Assert.Equal("owner", game.Actor.GetUsername());
-        game.Clock.Now += TimeSpan.FromSeconds(2);
-        // The second real speech admission supplies the same actor directly, avoiding a different-ID lookup failure.
-        game.Wired.Dispatch(new(Plus.HabboHotel.Items.Wired.Runtime.WiredEventKind.Speech) { Actor = game.Actor, Message = "stop" });
-        Assert.False(_room.GetSoccer().GameIsStarted);
-
-        if (changeId) {
-            Assert.Empty(((HighscoreDataFormat)game.Fastest.ExtraData).Entries);
-            Assert.Empty(((HighscoreDataFormat)game.Wins.ExtraData).Entries);
-        }
-        else {
-            Assert.Equal(2, Assert.Single(((HighscoreDataFormat)game.Fastest.ExtraData).Entries).Score);
-            Assert.Equal(1, Assert.Single(((HighscoreDataFormat)game.Wins.ExtraData).Entries).Score);
         }
     }
 

@@ -164,6 +164,44 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal([$"t=[{expected}]"], LinkTextLogs(f));
     }
 
+    // A row in variable text mode sends the Text Connector label of the variable a pointer points at. In number mode it sends the number.
+    [Theory]
+    [InlineData(2, "user:650", 0, "seven")]
+    [InlineData(2, "user:610", 0, "seven")]
+    [InlineData(1, "user:650", 0, "7")]
+    [InlineData(1, "user:650", 1, "7")]
+    public void LinkSendDataframeReadsTheConnectorOfThePointedVariable(int mode, string variable, int delay, string expected)
+    {
+        using var p = new PointerStack();
+        var f = p.S.F;
+        f.Room.OwnerId = (int)PointedOwner;
+        var store = new LinkTextStore(f.Room.Id);
+        f.Room.GetWired().LinkStore = store;
+        var (l1, l2) = (LinkFurni(f, 50, 4, 1), LinkFurni(f, 51, 4, 2));
+        store.Join(l1.Id, 7, false);
+        store.Join(l2.Id, 7, true);
+        var variables = f.Room.GetWired().Variables;
+        var definitionItem = Placed(f, MakeItem(UserA, "wf_var_user"), 3, 3);
+        var definitionBox = new WiredVariableDefinitionBox(f.Room, definitionItem, Descriptor("wf_var_user"));
+        WiredNativeTestSupport.InstallLegacyVariableDraft(definitionBox, new() { IntParams = [1, 0], Text = "pu_a" });
+        variables.ConfigurationLoaded(definitionBox);
+        var connectorBox = Assert.IsType<WiredVariableMetadataBox>(variables.CreateBox(Placed(f, MakeItem(170, "wf_xtra_var_text_connector"), 3, 3)));
+        WiredNativeTestSupport.InstallLegacyVariableDraft(connectorBox, new() { Text = "7=seven" });
+        variables.ConfigurationLoaded(connectorBox);
+
+        p.SetUser(UserA, f.User, 7);
+        p.Point(UserA);
+        p.Native("wf_act_send_dataframe", [1, mode, 0, AirUser, .. Enumerable.Range(0, 11).SelectMany(_ => new[] { 0, 0, -20 })],
+            [variable, .. Enumerable.Repeat(WiredVariableAbsent.Id, 11)], "[[\"num\",\"\"]]", [100, .. Enumerable.Repeat(200, 12)],
+            [.. Enumerable.Repeat(0, 12)], [l1.Id], delay: delay);
+        LinkTextReceiveDataframe(f, l2, 1, "[[\"num\",\"numph\"]]");
+        LinkTextLog(f, "t=[$(numph)]");
+
+        p.FireAndWait(50 + delay * 500);
+
+        Assert.Equal([$"t=[{expected}]"], LinkTextLogs(f));
+    }
+
     private sealed class LinkTextStore(uint roomId) : IWiredLinkStore
     {
         private readonly Dictionary<uint, WiredLinkEndpoint> _endpoints = [];

@@ -162,7 +162,7 @@ public sealed class WiredUiStyleLengthTests
 
                 Assert.Equal(style, connection.ExecuteScalar<string>("SELECT wired_ui_style FROM users_settings WHERE user_id=7"));
                 Assert.Equal(style, habbo.WiredPreferences.UiStyle);
-                session.Send(new SoundSettingsComposer(habbo.ClientVolume, false, false, false, 1, habbo.WiredPreferences));
+                session.Send(new SoundSettingsComposer(habbo.ClientVolume, false, false, false, 1, habbo.WiredPreferences, habbo.ChatDisplay));
                 var frame = new FlashIncomingPacket { Buffer = Assert.Single(sent).Payload };
 
                 for (var i = 0; i < 3; i++) {

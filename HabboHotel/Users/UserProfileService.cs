@@ -38,6 +38,9 @@ public interface IUserProfileService
     void ChangeMotto(GameClient session, string motto);
     void SetFocusPreference(GameClient session, bool enabled);
     Task SetChatStylePreference(GameClient session, int bubbleId);
+    Task SetChatDisplayPreferences(GameClient session, int chatMode, int bubbleWidth, int scrollSpeed);
+    Task SetChatSize(GameClient session, int chatSize);
+    Task SetOnlineIndicatorPreference(GameClient session, int preference);
     void SetFriendBarState(GameClient session, int state);
     Task SetWiredPreferences(GameClient session, WiredAccountPreferences preferences);
 }
@@ -320,6 +323,12 @@ public sealed class UserProfileService(
 
         return Task.CompletedTask;
     }
+
+    public Task SetChatDisplayPreferences(GameClient session, int chatMode, int bubbleWidth, int scrollSpeed) => throw new NotImplementedException();
+
+    public Task SetChatSize(GameClient session, int chatSize) => throw new NotImplementedException();
+
+    public Task SetOnlineIndicatorPreference(GameClient session, int preference) => throw new NotImplementedException();
 
     public void SetFriendBarState(GameClient session, int state)
     {

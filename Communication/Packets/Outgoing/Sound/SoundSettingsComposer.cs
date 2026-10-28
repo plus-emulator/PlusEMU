@@ -21,7 +21,7 @@ public class SoundSettingsComposer : IServerPacket
 
     public uint MessageId => ServerPacketHeader.SoundSettingsComposer;
 
-    public SoundSettingsComposer(IEnumerable<int> volumes, bool chatPreference, bool invitesStatus, bool focusPreference, int friendBarState, WiredAccountPreferences wired)
+    public SoundSettingsComposer(IEnumerable<int> volumes, bool chatPreference, bool invitesStatus, bool focusPreference, int friendBarState, WiredAccountPreferences wired, ChatDisplayPreferences display)
     {
         _volumes = volumes.ToArray();
         _chatPreference = chatPreference;
@@ -32,7 +32,7 @@ public class SoundSettingsComposer : IServerPacket
     }
 
     public static SoundSettingsComposer For(Habbo habbo) => new(habbo.ClientVolume, habbo.ChatPreference, habbo.AllowMessengerInvites,
-        habbo.FocusPreference, FriendBarStateUtility.GetInt(habbo.FriendbarState), habbo.WiredPreferences);
+        habbo.FocusPreference, FriendBarStateUtility.GetInt(habbo.FriendbarState), habbo.WiredPreferences, habbo.ChatDisplay);
 
     public void Compose(IOutgoingPacket packet)
     {

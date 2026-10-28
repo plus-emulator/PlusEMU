@@ -34,6 +34,8 @@ public static class ClientPacketHeader
 
     //Preferences
     public const uint SetChatStylePreferenceEvent = 3519;
+    public const uint SetChatDisplayPreferencesEvent = 2359;
+    public const uint SetOnlineIndicatorPreferenceEvent = 1917;
     public const uint SetChatPreferenceEvent = 65476;
 
     // Catalog

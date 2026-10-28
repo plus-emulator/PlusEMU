@@ -1,0 +1,1 @@
+-- Chat size, chat mode, bubble width, scroll speed and online indicator of the account settings frame.

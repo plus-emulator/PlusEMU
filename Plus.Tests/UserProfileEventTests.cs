@@ -122,6 +122,9 @@ public sealed class UserProfileEventTests
         public SoundVolumeRequest? Volumes { get; private set; }
         public void ShowUserObject(GameClient session) { }
         public Task SetChatPreference(GameClient session, bool enabled) => Task.CompletedTask;
+        public Task SetChatDisplayPreferences(GameClient session, int chatMode, int bubbleWidth, int scrollSpeed) => Task.CompletedTask;
+        public Task SetChatSize(GameClient session, int chatSize) => Task.CompletedTask;
+        public Task SetOnlineIndicatorPreference(GameClient session, int preference) => Task.CompletedTask;
         public Task SetMessengerInvitePreference(GameClient session, bool enabled)
         {
             Invites = enabled;

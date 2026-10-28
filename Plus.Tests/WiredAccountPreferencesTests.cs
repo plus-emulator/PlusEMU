@@ -23,7 +23,7 @@ public sealed class WiredAccountPreferencesTests
         var packet = new HabbiconTestSupport.RecordingPacket();
         new SoundSettingsComposer([75, 75, 75], false, false, false, 3, Everything).Compose(packet);
 
-        Assert.Equal(new object[] { 75, 75, 75, false, false, false, 3, 0, true, true, true, 0, true, true, "volter", 0, 1, 1, 1, 0 }, packet.Writes);
+        Assert.Equal(new object[] { 75, 75, 75, false, false, false, 3, 0, true, true, true, 0, true, true, "volter", 0, 0, 1, 1, 0 }, packet.Writes);
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public sealed class WiredAccountPreferencesTests
         var packet = new HabbiconTestSupport.RecordingPacket();
         new SoundSettingsComposer([75, 75, 75], false, false, false, 3, new WiredAccountPreferences(false, true, false, true, false, "volter")).Compose(packet);
 
-        Assert.Equal(new object[] { 75, 75, 75, false, false, false, 3, 0, false, true, false, 0, true, false, "volter", 0, 1, 1, 1, 0 }, packet.Writes);
+        Assert.Equal(new object[] { 75, 75, 75, false, false, false, 3, 0, false, true, false, 0, true, false, "volter", 0, 0, 1, 1, 0 }, packet.Writes);
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed class WiredAccountPreferencesTests
         var packet = new HabbiconTestSupport.RecordingPacket();
         new SoundSettingsComposer([75, 75, 75], false, false, false, 3, new Habbo().WiredPreferences).Compose(packet);
 
-        Assert.Equal(new object[] { 75, 75, 75, false, false, false, 3, 0, false, false, false, 0, false, false, "", 0, 1, 1, 1, 0 }, packet.Writes);
+        Assert.Equal(new object[] { 75, 75, 75, false, false, false, 3, 0, false, false, false, 0, false, false, "", 0, 0, 1, 1, 0 }, packet.Writes);
     }
 
     [Theory]

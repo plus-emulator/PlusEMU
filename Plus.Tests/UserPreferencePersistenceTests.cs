@@ -204,7 +204,7 @@ public sealed class UserPreferencePersistenceTests
             (body.ReadInt(), body.ReadInt(), body.ReadInt(), body.ReadBool(), body.ReadBool(), body.ReadBool(),
              body.ReadInt(), body.ReadInt(), body.ReadBool(), body.ReadBool(), body.ReadBool()));
         Assert.Equal((0, false, false, ""), (body.ReadInt(), body.ReadBool(), body.ReadBool(), body.ReadString()));
-        Assert.Equal((0, 1, 1, 1, 0), (body.ReadInt(), body.ReadInt(), body.ReadInt(), body.ReadInt(), body.ReadInt()));
+        Assert.Equal((0, 0, 1, 1, 0), (body.ReadInt(), body.ReadInt(), body.ReadInt(), body.ReadInt(), body.ReadInt()));
         Assert.False(body.HasDataRemaining());
     }
 

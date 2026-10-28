@@ -154,7 +154,7 @@ public class SsoLoginServiceTests
         var settings = Assert.Single(world.Sent, packet => packet.Header == ServerPacketHeader.SoundSettingsComposer);
         const string emptyStyle = "0000";
         const string chatSize = "00000000";
-        const string chatMode = "00000001";
+        const string chatMode = "00000000";
         const string bubbleWidth = "00000001";
         const string scrollSpeed = "00000001";
         const string onlineIndicator = "00000000";

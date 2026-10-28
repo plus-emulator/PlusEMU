@@ -47,7 +47,7 @@ public sealed class UserCurrencyDatabaseTests
         await InSchemaAsync(async (connection, database) =>
         {
             connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Resources/SQLs/Original Database.sql")), commandTimeout: 900);
-            connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/121_AccountWiredPreferences.sql")));
+            connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/122_AccountWiredPreferences.sql")));
             Assert.Equal(0, connection.QuerySingle<int>("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users' " +
                 "AND column_name IN ('activity_points', 'vip_points', 'gotw_points')"));
             connection.Execute("INSERT INTO users (id, username, auth_ticket, credits) VALUES (7, 'wallet', '', 10); " +

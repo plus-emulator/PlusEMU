@@ -27,6 +27,15 @@ public sealed class WiredAccountPreferencesTests
     }
 
     [Fact]
+    public void TheWhisperFlagAndTheShowAllFlagKeepTheirOwnPlaces()
+    {
+        var packet = new HabbiconTestSupport.RecordingPacket();
+        new SoundSettingsComposer([75, 75, 75], false, false, false, 3, new WiredAccountPreferences(false, true, false, true, false, "volter")).Compose(packet);
+
+        Assert.Equal(new object[] { 75, 75, 75, false, false, false, 3, 0, false, true, false, 0, true, false, "volter" }, packet.Writes);
+    }
+
+    [Fact]
     public void ADefaultAccountSendsAllFlagsOffAndAnEmptyStyle()
     {
         var packet = new HabbiconTestSupport.RecordingPacket();
@@ -40,6 +49,7 @@ public sealed class WiredAccountPreferencesTests
     [InlineData("0101000000000000000000", true, true, false, false, false, "")]
     [InlineData("0101010000000000010000", true, true, true, false, true, "")]
     [InlineData("0001000000000001010006766F6C746572", false, true, false, true, true, "volter")]
+    [InlineData("0001000000000001000006766F6C746572", false, true, false, true, false, "volter")]
     public async Task TheClientFrameSavesTheSixFields(string frame, bool menu, bool inspect, bool playTest, bool whisper, bool showAll, string style)
     {
         var profiles = new RecordingProfiles();
@@ -198,7 +208,7 @@ public sealed class WiredAccountPreferencesTests
         }
     }
 
-    private const string MigrationFile = "Database/Migrations/121_AccountWiredPreferences.sql";
+    private const string MigrationFile = "Database/Migrations/122_AccountWiredPreferences.sql";
 
     private static (int, int, int, int, int, string) Row(IDbConnection connection, int userId)
     {

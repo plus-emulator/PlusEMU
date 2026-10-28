@@ -37,12 +37,12 @@ public class SoundSettingsComposer : IServerPacket
         packet.WriteBoolean(_focusPreference);
         packet.WriteInteger(_friendBarState);
         packet.WriteInteger(0);
-        // Wired menu button, wired inspect button, play test mode. Nothing stores
-        // them yet (the wired menu save, outgoing 3802, has no handler), so send the client defaults.
-        packet.WriteBoolean(false);
-        packet.WriteBoolean(false);
-        packet.WriteBoolean(false);
+        packet.WriteBoolean(_wired.MenuButton);
+        packet.WriteBoolean(_wired.InspectButton);
+        packet.WriteBoolean(_wired.PlayTestMode);
         packet.WriteInteger(0);
-        packet.WriteBoolean(false); // wired whisper disabled
+        packet.WriteBoolean(_wired.WhisperDisabled);
+        packet.WriteBoolean(_wired.ShowAllNotifications);
+        packet.WriteString(_wired.UiStyle);
     }
 }

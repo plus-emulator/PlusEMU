@@ -139,6 +139,29 @@ public class SsoLoginServiceTests
         Assert.Equal(new byte[] { 1, pending ? (byte)1 : (byte)0, 1 }, status.Payload);
     }
 
+    [Fact]
+    public async Task LoginSendsTheAccountSettingsFrameWithTheFiveDisplayPreferencesAfterTheWiredStyle()
+    {
+        using var world = new LoginWorld(Task.CompletedTask);
+
+        try {
+            await world.Service.Login(world.Client, "valid");
+        }
+        finally {
+            ProcessOf(world.Habbo)?.Dispose();
+        }
+
+        var settings = Assert.Single(world.Sent, packet => packet.Header == ServerPacketHeader.SoundSettingsComposer);
+        const string emptyStyle = "0000";
+        const string chatSize = "00000000";
+        const string chatMode = "00000000";
+        const string bubbleWidth = "00000001";
+        const string scrollSpeed = "00000001";
+        const string onlineIndicator = "00000000";
+        Assert.EndsWith(emptyStyle + chatSize + chatMode + bubbleWidth + scrollSpeed + onlineIndicator, Convert.ToHexString(settings.Payload));
+        Assert.Equal(3 * 4 + 3 + 4 + 4 + 3 + 4 + 2 + 2 + 5 * 4, settings.Payload.Length);
+    }
+
     private static ProcessComponent? ProcessOf(Habbo habbo) =>
         (ProcessComponent?)typeof(Habbo).GetProperty("Process", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(habbo);
 

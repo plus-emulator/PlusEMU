@@ -2,6 +2,7 @@ using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired.Modern.Actions;
 using Plus.HabboHotel.Items.Wired.Modern.Addons;
+using Plus.HabboHotel.Items.Wired.Variables;
 using Xunit;
 
 namespace Plus.Tests;
@@ -39,6 +40,12 @@ public partial class ModernWiredRuntimeTests
             FurniSourceTypes = [100, .. Enumerable.Repeat(200, 12)],
             UserSourceTypes = [.. Enumerable.Repeat(0, 12)]
         });
+
+    private sealed class NoVariables : IWiredVariableDirectory
+    {
+        public WiredVariableDefinition? Find(uint id) => null;
+        public uint? GetRoomOwner(uint roomId) => 5;
+    }
 
     private static List<byte[]> SpeakerBubbles(List<(uint Header, byte[] Body)> sent) =>
         [.. sent.Where(reply => reply.Header == ServerPacketHeader.ChatComposer).Select(reply => reply.Body)
@@ -80,6 +87,33 @@ public partial class ModernWiredRuntimeTests
         f.Advance(50);
 
         AssertBubble(f, Assert.Single(SpeakerBubbles(sent)), "[b]num[/b]: 5\n[b]txt[/b]: hi", 3, 4);
+    }
+
+    [Fact]
+    public void LinkSpeakerShowsMinusOneAndNullForRowsOfAVariableTheUserDoesNotHold()
+    {
+        var (f, sender, receiver) = SpeakerRoom(true);
+        using var _ = f;
+        var module = new WiredVariableModule(1, new NoVariables(), new MemoryWiredVariableStore(), TimeProvider.System,
+            new RoomWiredBuiltinVariables(f.Room, f.Room.GetWired().ReadBuiltin));
+        typeof(WiredRoomVariables).GetField("<Module>k__BackingField", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .SetValue(f.Room.GetWired().Variables, module);
+        OctoberBox<WiredModernAction>(f, 110, "wf_act_send_dataframe", 0, 0, native => native with
+        {
+            OwnedIntParams = [2, 1, 0, 1, 2, 0, 1, .. Enumerable.Range(0, 10).SelectMany(_ => new[] { 0, 0, -20 })],
+            Text = "[[\"n\",\"\"],[\"t\",\"\"]]",
+            VariableIds = ["user:999", "user:999", .. Enumerable.Repeat("0", 10)],
+            PrimaryItems = [new(receiver.Id, false)],
+            FurniSourceTypes = [100, .. Enumerable.Repeat(200, 12)],
+            UserSourceTypes = [.. Enumerable.Repeat(0, 12)]
+        });
+        SpeakerAddon(f, 130, 3, 4, 1, 1, receiver);
+        var sent = Capture(f.Client);
+
+        f.Fire(land: false);
+        f.Advance(50);
+
+        AssertBubble(f, Assert.Single(SpeakerBubbles(sent)), "[b]n[/b]: -1\n[b]t[/b]: null", 3, 4);
     }
 
     [Fact]

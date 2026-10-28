@@ -237,9 +237,8 @@ internal static class WiredNativeCatalogProjection
         // A global lists canReadCreationTime false, canReadLastUpdateTime true; a Time Utilities Value part is writable and interceptable.
         // A reference to a shared variable of another room is listed as a normal variable (type 0) of availability 20 whose changes can be intercepted.
         // An echo of a custom variable of this room is listed like the variable itself (type 0, interceptable). An alias of a built-in stays type 2.
-        // A context variable box is never interceptable, and one without a value has no last update time.
+        // A context variable box is never interceptable. A variable without a value has no last update time.
         var crossRoom = definition.Link is { } link && link.SourceRoomId != definition.RoomId;
-        var contextBox = definition.Target == WiredVariableTarget.Context && !description.IsDerived;
         var customEcho = description.IsEcho && builtin is null;
         var variable = new WiredNativeVariable(description.CatalogId, description.IsDerived || definition.Link is not null && !crossRoom && !customEcho ? 2 : 0,
             definition.Name, description.IsEcho ? WiredVariableDescription.EchoAvailability
@@ -248,7 +247,7 @@ internal static class WiredNativeCatalogProjection
             !derived && builtin is null && endpoint.Terminal is { Target: WiredVariableTarget.Global, HasValue: true },
             presence, hasValue, writable && hasValue && (builtin is null || RoomWiredBuiltinVariables.SupportsNumericWrite(builtin)),
             (definition.InterceptsChanges || description.IsDerived) && (definition.Link is null || crossRoom || customEcho) && (writable || description.Interceptable) && builtin is null, false,
-            timestamps && definition.Target != WiredVariableTarget.Global, timestamps && (!contextBox || hasValue), connector)
+            timestamps && definition.Target != WiredVariableTarget.Global, timestamps && hasValue, connector)
         { TextConnectorFallback = fallback };
 
         // A pointer is listed as a normal variable of availability 999 that can be created, deleted and written but not intercepted, with an empty text connector, and it requires an execution context.

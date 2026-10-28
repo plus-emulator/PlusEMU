@@ -83,6 +83,10 @@ public static class WiredTemporaryFurnitureActions
         var valueTarget = (WiredVariableTarget)policy.ValueTarget;
         var module = policy.SpawnWithVariable ? context.Room.GetWired().Variables.Module : null;
 
+        if (module != null) {
+            context.VariableFrame ??= WiredVariableRuntimeFrames.Create(context);
+        }
+
         if (module != null && policy.ValueIsVariable) {
             // A value read from a variable is 0 whenever that variable cannot be read; the literal in the form is not a fallback.
             spawnValue = 0;

@@ -15,11 +15,15 @@ public sealed record WiredVariableDescription(WiredVariableDefinition Definition
     public bool IsDerived { get; init; }
     public bool CanCreateAndDelete => !ReadOnly && !IsBuiltin && !IsDerived && Definition.Target is WiredVariableTarget.User or WiredVariableTarget.Furni;
     public bool CanWriteValue => !ReadOnly && HasValue;
-    /// <summary>A variable of the room's own furni or user boxes, which the Variables tab lists holder by holder.</summary>
-    public bool HasHolders => !IsBuiltin && !IsDerived && Definition.Link is null && !Definition.IsPointer
-        && Definition.Target is WiredVariableTarget.User or WiredVariableTarget.Furni;
-    /// <summary>A holder variable whose values are kept when the holder leaves.</summary>
-    public bool IsPermanent => HasHolders && Definition.IsDurable;
+    /// <summary>
+    /// A furni or user variable the Variables tab lists holder by holder: one of the room's own boxes, or an echo of one, which shows the
+    /// holders of the variable it echoes.
+    /// </summary>
+    public bool HasHolders => !IsBuiltin && !IsDerived && !Definition.IsPointer && Definition.Target is WiredVariableTarget.User or WiredVariableTarget.Furni
+        && (Definition.Link is null || IsEcho);
+    /// <summary>A holder variable of its own whose values are kept when the holder leaves.</summary>
+    public bool IsPermanent => HasHolders && !IsEcho && Definition.IsDurable;
+    private bool IsEcho => Definition.Link is { ReadOnly: false } link && link.SourceRoomId == Definition.RoomId;
     public bool CanReadTimestamps => !IsBuiltin && !IsDerived;
     /// <summary>A global variable lists canReadCreationTime false and canReadLastUpdateTime true.</summary>
     public bool CanReadCreationTime => CanReadTimestamps && Definition.Target != WiredVariableTarget.Global;

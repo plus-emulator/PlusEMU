@@ -13,7 +13,7 @@ public class SoundSettingsComposer : IServerPacket
     private readonly WiredAccountPreferences _wired;
 
     private const int ChatSize = 0;
-    private const int ChatMode = 1;
+    private const int ChatMode = 0;
     private const int ChatBubbleWidth = 1;
     private const int ChatScrollSpeed = 1;
     private const int OnlineIndicator = 0;
@@ -34,7 +34,7 @@ public class SoundSettingsComposer : IServerPacket
     {
         // The client reads three volumes, three bools, two ints,
         // three bools, an int and a bool; everything after that is optional.
-        // The five display preferences at the end are not stored yet and keep Habbo's defaults.
+        // The five display preferences at the end are not stored yet. They are the client's own defaults, so chat stays in free flow mode.
         for (var index = 0; index < 3; index++) {
             packet.WriteInteger(index < _volumes.Length ? _volumes[index] : 0);
         }

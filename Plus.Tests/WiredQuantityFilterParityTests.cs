@@ -52,13 +52,13 @@ public sealed class WiredQuantityFilterParityTests
     [Theory]
     [InlineData("wf_xtra_filter_furni")]
     [InlineData("wf_xtra_filter_users")]
-    public void MissingVariableFallsBackToLiteral(string name)
+    public void MissingVariableKeepsNothing(string name)
     {
         var input = new WiredAddonInputs(World(), Inputs(), 0, _ => null);
         var policy = new WiredAddonPolicy();
         var addon = new WiredAddonModule(name, new() { IntParams = [2, 1, 3, 0, 0], VariableIds = ["missing"] });
         Assert.True(addon.Apply(input, policy));
-        Assert.Equal(2, name.EndsWith("furni") ? policy.FurniLimit : policy.UserLimit);
+        Assert.Equal(0, name.EndsWith("furni") ? policy.FurniLimit : policy.UserLimit);
 
     }
 }

@@ -175,12 +175,12 @@ public sealed class WiredRemainderG3FilterTests
     }
 
     [Fact]
-    public void AnAmountVariableTheTriggeringUserLacksKeepsTheTopOneAndNeverNegative()
+    public void AnAmountVariableTheTriggeringUserLacksKeepsNobodyAndNeverNegative()
     {
         var rig = Scored();
         rig.Context.Triggering.UserIds.Add(1);
         Assert.True(rig.Filter([1, 0, 1, 1], Value, Reference).Apply(rig.Context));
-        Assert.Equal([3], rig.Kept);
+        Assert.Empty(rig.Kept);
 
         var negative = Scored();
         negative.Give(Reference, 0, -4);

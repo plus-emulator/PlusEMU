@@ -78,10 +78,6 @@ public sealed class WiredVariableHolderService(ICacheManager users) : IWiredVari
         }
 
         var result = variable.HasValue && userType is -1 or 0 or Habbo ? menu.Owners(variable, page, size, sort) : new(0, page, size, []);
-        result = result with
-        {
-            Holders = result.Holders.Select(x => x with { Name = users.GenerateUser(checked((int)x.Key.HolderId))?.Username ?? x.Name }).ToArray()
-        };
         session.Send(new WiredUserVariablesListComposer(id, result, userType, sort));
     }
 

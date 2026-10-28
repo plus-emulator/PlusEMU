@@ -11,6 +11,7 @@ using Plus.HabboHotel.Cache.Type;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
+using Plus.HabboHotel.Items.Wired.Settings;
 using Plus.HabboHotel.Items.Wired.Variables;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.Instance;
@@ -23,7 +24,7 @@ namespace Plus.Tests;
 public partial class PlacedFurniRoomTests
 {
     private const uint VbUserActive = 501, VbUserPermanent = 502, VbUserShared = 503, VbUserNoValue = 504, VbFurniPermanent = 505,
-        VbFurniRoom = 506, VbFurniNoValue = 507, VbGlobal = 508, VbContext = 509, VbEcho = 510;
+        VbFurniRoom = 506, VbFurniNoValue = 507, VbGlobal = 508, VbContext = 509, VbEcho = 510, VbPointer = 511;
     private const uint VbHolderA = 601, VbHolderB = 602;
     private const int VbOffline = 20, VbIdle = 21;
     private static readonly DateTimeOffset VbBase = new(2026, 10, 28, 10, 0, 0, TimeSpan.Zero);
@@ -43,11 +44,11 @@ public partial class PlacedFurniRoomTests
         _room.UsersWithRights = [];
         _client.GetHabbo().Look = "hd-7";
         _vbStore = new MemoryWiredVariableStore();
-        var module = new WiredVariableModule(RoomId, new ButtonsDirectory(_room), _vbStore, _vbClock);
+        var module = new WiredVariableModule(RoomId, new ButtonsDirectory(_room), new NamedStore(_vbStore), _vbClock);
         typeof(WiredRoomVariables).GetField("<Module>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(_vbWired.Variables, module);
         _dpService = new WiredConfigurationService(TestWiredConfigurationStore.Instance, null!, new FakeWordFilter(), TestLogging.For<WiredConfigurationService>());
         var boxes = new[] { (VbUserActive, "wf_var_user"), (VbUserPermanent, "wf_var_user"), (VbUserShared, "wf_var_user"), (VbUserNoValue, "wf_var_user"),
-            (VbFurniPermanent, "wf_var_furni"), (VbFurniRoom, "wf_var_furni"), (VbFurniNoValue, "wf_var_furni"), (VbGlobal, "wf_var_room"), (VbContext, "wf_var_context"), (VbEcho, "wf_var_echo") };
+            (VbFurniPermanent, "wf_var_furni"), (VbFurniRoom, "wf_var_furni"), (VbFurniNoValue, "wf_var_furni"), (VbGlobal, "wf_var_room"), (VbContext, "wf_var_context"), (VbEcho, "wf_var_echo"), (VbPointer, "wf_var_pointer") };
 
         for (var i = 0; i < boxes.Length; i++) {
             var box = WiredBox(boxes[i].Item1, boxes[i].Item2, i % 4, 3);
@@ -206,6 +207,7 @@ public partial class PlacedFurniRoomTests
     [Theory]
     [InlineData("room:508")]
     [InlineData("ctx:509")]
+    [InlineData("user:511")]
     [InlineData("999999")]
     [InlineData("@id")]
     [InlineData("~chest.available_amount")]
@@ -232,6 +234,20 @@ public partial class PlacedFurniRoomTests
         VbEqual([VbError(3)], await VbOwners("user:510", 1, 10, 0, -1));
         VbEqual([VbError(1)], await VbDelete("user:510"));
         Assert.Equal(7, VbStored(VbUserPermanent, WiredVariableTarget.User, 7)!.Value);
+    }
+
+    // Set on an echo is refused like on any variable that is not permanent.
+    [Fact]
+    public async Task SetOnAnEchoVariableFails()
+    {
+        VbPermanentRoom();
+        VbSeed(VbUserPermanent, WiredVariableTarget.User, 7, 4);
+
+        foreach (var action in new[] { 0, 1, 2 }) {
+            VbEqual([VbError(1), VbResult(false)], await VbSet(1, 7, "user:510", 5, action));
+        }
+
+        Assert.Equal(4, VbStored(VbUserPermanent, WiredVariableTarget.User, 7)!.Value);
     }
 
     [Fact]
@@ -587,6 +603,39 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(20, VbStored(VbUserPermanent, WiredVariableTarget.User, VbOffline)!.Value);
     }
 
+    // A user who may see the variables but not change them gets no answer to Set and Delete, and nothing changes.
+    private TestClient VbReadOnlyGuest()
+    {
+        var guest = VbVisitor(rights: false);
+        var settings = new WiredRoomSettings(_room, new ReadOnlySettingsStore());
+        typeof(WiredComponent).GetField("<Settings>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(_room.GetWired(), settings);
+
+        return guest;
+    }
+
+    [Fact]
+    public async Task SetNeedsTheModifyRightAndNotJustTheInspectRight()
+    {
+        VbPermanentRoom();
+        var guest = VbReadOnlyGuest();
+
+        Assert.NotEmpty(await VbPermanent(1, VbOffline, guest));
+        Assert.Empty(await VbSet(1, VbOffline, "user:502", 3, 0, guest));
+        Assert.Empty(await VbSet(1, VbOffline, "user:502", 3, 2, guest));
+        Assert.Equal(20, VbStored(VbUserPermanent, WiredVariableTarget.User, VbOffline)!.Value);
+    }
+
+    [Fact]
+    public async Task DeleteNeedsTheModifyRightAndNotJustTheInspectRight()
+    {
+        VbPermanentRoom();
+        var guest = VbReadOnlyGuest();
+
+        Assert.NotEmpty(await VbHolders("user:502", guest));
+        Assert.Empty(await VbDelete("user:502", guest));
+        Assert.Equal(20, VbStored(VbUserPermanent, WiredVariableTarget.User, VbOffline)!.Value);
+    }
+
     [Fact]
     public async Task SetNeedsModifyRights()
     {
@@ -613,6 +662,30 @@ public partial class PlacedFurniRoomTests
         Assert.Contains("a=42", DpFire(_vbWired, _vbOwner, _vbClock, 1));
     }
 
+    // The database page query joins the user names; the memory store only knows ids.
+    private sealed class NamedStore(IWiredVariableStore inner) : IWiredVariableStore
+    {
+        public WiredVariableValue? Read(WiredVariableKey key) => inner.Read(key);
+        public IReadOnlyDictionary<WiredVariableKey, WiredVariableValue> ReadMany(IReadOnlyCollection<WiredVariableKey> keys) => inner.ReadMany(keys);
+        public IReadOnlyDictionary<WiredVariableKey, WiredVariableValue> GetHolders(uint definitionId) => inner.GetHolders(definitionId);
+        public WiredVariableWrite Mutate(WiredVariableKey key, Func<WiredVariableValue?, WiredVariableValue?> update, WiredVariableAuthorization? authorization = null) =>
+            inner.Mutate(key, update, authorization);
+        public int DeleteDefinition(uint definitionId) => inner.DeleteDefinition(definitionId);
+        public IReadOnlyDictionary<WiredVariableKey, WiredVariableValue> ClearValues(uint definitionId, WiredVariableAuthorization authorization) =>
+            inner.ClearValues(definitionId, authorization);
+
+        public WiredVariableHolderPage ReadPage(uint definitionId, WiredVariableTarget target, int page, int size, int sort,
+            IReadOnlyCollection<long>? holderFilter = null, IReadOnlyDictionary<long, string>? names = null) =>
+            inner.ReadPage(definitionId, target, page, size, sort, holderFilter, new ButtonsUsers().GetUserCache().ToDictionary(x => (long)x.Id, x => x.Username));
+    }
+
+    private sealed class ReadOnlySettingsStore : IWiredRoomSettingsStore
+    {
+        public WiredRoomSettingsSnapshot? Load(uint roomId) => new(InspectMask: (int)WiredRoomAccess.Everyone, ModifyMask: (int)WiredRoomAccess.Rights);
+        public void Save(uint roomId, int actorId, bool staff, WiredRoomSettingsSnapshot? expected, WiredRoomSettingsSnapshot settings) =>
+            throw new NotSupportedException();
+    }
+
     private sealed class ButtonsDirectory(Room room) : IWiredVariableDirectory
     {
         private readonly Dictionary<uint, WiredVariableDefinition> _definitions = new()
@@ -626,8 +699,9 @@ public partial class PlacedFurniRoomTests
             [VbFurniNoValue] = new(VbFurniNoValue, RoomId, 7, "fn", WiredVariableTarget.Furni, WiredVariableAvailability.RoomActive, false),
             [VbGlobal] = new(VbGlobal, RoomId, 7, "gr", WiredVariableTarget.Global, WiredVariableAvailability.RoomActive, true),
             [VbContext] = new(VbContext, RoomId, 7, "cx", WiredVariableTarget.Context, WiredVariableAvailability.RoomActive, true),
-            [VbEcho] = new(VbEcho, RoomId, 7, "ue", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true,
-                Link: new(RoomId, new(WiredVariableTarget.User, $"custom:{VbUserPermanent}"), false))
+            [VbEcho] = new(VbEcho, RoomId, 7, "ue", WiredVariableTarget.User, WiredVariableAvailability.Persistent, true,
+                Link: new(RoomId, new(WiredVariableTarget.User, $"custom:{VbUserPermanent}"), false)),
+            [VbPointer] = new(VbPointer, RoomId, 7, "up2", WiredVariableTarget.User, WiredVariableAvailability.RoomActive, true, PointerAccessor: $"custom:{VbContext}")
         };
 
         public uint? GetRoomOwner(uint roomId) => 7;

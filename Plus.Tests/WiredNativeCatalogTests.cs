@@ -479,6 +479,57 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         Assert.True(Assert.Single(WiredNativeCatalogProjection.Builtins, row => row.Name == name && row.Target == 0).IsInvisible);
     }
 
+    [Theory]
+    [InlineData("counter", "~clock")]
+    [InlineData("chest", "~chest")]
+    [InlineData("areahide", "~area_hide")]
+    [InlineData("recolorable", "~recolorable_furni")]
+    public void ARoomListsASpecialFurniGroupOnlyWhileItHoldsSuchAFurni(string kind, string group)
+    {
+        var fixture = new Fixture();
+        fixture.Floor.Clear();
+        Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var empty));
+        Assert.All(GroupRows(empty!, group), row => Assert.True(row.IsInvisible));
+        var item = new Item { Id = 77, RoomId = 42, OwnerId = 1, Definition = new() { Id = 77, ItemName = kind } };
+
+        switch (kind) {
+            case "counter":
+                item.Definition.InteractionName = "wf_upcounter1";
+                break;
+            case "chest":
+                item.Definition.InteractionType = InteractionType.WiredChestFurni;
+                break;
+            case "areahide":
+                item.Definition.InteractionType = InteractionType.AreaHide;
+                break;
+            default:
+                item.ExtraData = new Plus.HabboHotel.Items.DataFormat.RecolorableDataFormat();
+                break;
+        }
+
+        fixture.Floor[77] = item;
+        Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var with));
+        Assert.All(GroupRows(with!, group), row => Assert.False(row.IsInvisible));
+        Assert.NotEqual(empty!.Hash, with!.Hash);
+        fixture.Floor.TryRemove(77, out _);
+        Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var after));
+        Assert.Equal(empty.Hash, after!.Hash);
+    }
+
+    [Fact]
+    public void AFurniOfOneGroupLeavesTheOtherGroupsHidden()
+    {
+        var fixture = new Fixture();
+        fixture.Floor.Clear();
+        fixture.Floor[78] = new Item { Id = 78, RoomId = 42, OwnerId = 1, Definition = new() { Id = 78, InteractionName = "wf_upcounter1" } };
+        Assert.True(fixture.Variables.TryCaptureNativeCatalog(out var catalog));
+        Assert.All(new[] { "~chest", "~area_hide", "~recolorable_furni", "~teleport", "~background_color", "~walk_helper", "~pet", "~plant", "~horse" },
+            group => Assert.All(GroupRows(catalog!, group), row => Assert.True(row.IsInvisible)));
+    }
+
+    private static WiredNativeVariable[] GroupRows(WiredNativeCatalog catalog, string group) =>
+        catalog.Variables.Where(row => row.Name.StartsWith(group + ".", StringComparison.Ordinal)).ToArray();
+
     [Fact]
     public void HabbiconIsListedWithAValueAndTimesAndCanMoveFreelyWithoutAValue()
     {

@@ -154,6 +154,17 @@ internal static class WiredNativeCatalogProjection
     private sealed record BuiltinListing(int Type, bool AlwaysAvailable, bool IsInvisible,
         ImmutableArray<KeyValuePair<int, string>>? Connector, string? TextConnectorFallback, System.Text.Json.JsonElement? Flags = null);
 
+    /// <summary>
+    /// The built-ins as one room lists them. The smart rows of counters, chests, area hide and recolorable furni are visible only while the room holds such a furni.
+    /// </summary>
+    internal static ImmutableArray<WiredNativeVariable> BuiltinsFor(IEnumerable<Item> floor)
+    {
+        var held = WiredSpecialFurniGroups.Held(floor);
+
+        return held.Count == 0 ? Builtins
+            : [.. Builtins.Select(row => WiredSpecialFurniGroups.Of(row.Name) is { } group && held.Contains(group) ? row with { IsInvisible = false } : row)];
+    }
+
     private static WiredNativeVariable Builtin((string Id, WiredVariableTarget Target, string Token) entry)
     {
         var reference = new WiredVariableReference(entry.Target, entry.Token);
@@ -242,5 +253,41 @@ internal static class WiredNativeCatalogProjection
         return definition.IsPointer
             ? variable with { Availability = 999, CanCreateAndDelete = true, CanWriteValue = true, CanInterceptChanges = false, Connector = [], TextConnectorFallback = null, RequiresExecutionContext = true }
             : variable;
+    }
+}
+
+internal static class WiredSpecialFurniGroups
+{
+    private static readonly string[] Names = ["~chest", "~clock", "~area_hide", "~recolorable_furni"];
+
+    public static string? Of(string rowName) => rowName.IndexOf('.') is > 0 and var dot && Array.IndexOf(Names, rowName[..dot]) >= 0 ? rowName[..dot] : null;
+
+    public static HashSet<string> Held(IEnumerable<Item> floor)
+    {
+        var held = new HashSet<string>();
+
+        foreach (var item in floor) {
+            if (item.IsTemporary) {
+                continue;
+            }
+
+            if (Chests.WiredChestFurniture.IsChest(item.Definition)) {
+                held.Add("~chest");
+            }
+
+            if (Modern.Actions.WiredCounterController.Recognizes(item)) {
+                held.Add("~clock");
+            }
+
+            if (AreaHide.AreaHideState.IsAreaHide(item)) {
+                held.Add("~area_hide");
+            }
+
+            if (item.ExtraData is DataFormat.RecolorableDataFormat) {
+                held.Add("~recolorable_furni");
+            }
+        }
+
+        return held;
     }
 }

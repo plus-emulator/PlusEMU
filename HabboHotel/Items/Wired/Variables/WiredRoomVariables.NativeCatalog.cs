@@ -167,7 +167,7 @@ public sealed partial class WiredRoomVariables
             var variables = endpoints.Select(endpoint => WiredNativeCatalogProjection.Project(endpoint,
                 connectors.GetValueOrDefault(endpoint.Description.Definition.ItemId), fallbacks.GetValueOrDefault(endpoint.Description.Definition.ItemId)))
                 .OrderBy(variable => variable.Target).ThenBy(variable => variable.Name, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(variable => variable.Id, StringComparer.Ordinal).Concat(WiredNativeCatalogProjection.Builtins).ToImmutableArray();
+                .ThenBy(variable => variable.Id, StringComparer.Ordinal).Concat(WiredNativeCatalogProjection.BuiltinsFor(_room.GetRoomItemHandler().GetFloor)).ToImmutableArray();
 
             if (variables.Select(variable => variable.Id).Distinct(StringComparer.Ordinal).Count() != variables.Length
                 || _room.Id != roomId || _room.OwnerId != ownerId || captured.Any(box => !box.Matches(this))

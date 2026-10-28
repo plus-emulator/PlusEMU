@@ -331,8 +331,12 @@ public partial class PlacedFurniRoomTests
         body.AddRange([furni.Length, .. furni.Cast<object>(), users.Length, .. users.Cast<object>(), variables.Length, .. variables.Cast<object>(),
             secondary.Length, .. secondary.Select(pick => (object)(int)pick)]);
         _client.Packets.Clear();
-        IPacketEvent handler = category == WiredBoxCategory.Addon
-            ? new SaveWiredAddonConfigEvent(_dpService!) : new SaveWiredEffectConfigEvent(_dpService!);
+        IPacketEvent handler = category switch
+        {
+            WiredBoxCategory.Addon => new SaveWiredAddonConfigEvent(_dpService!),
+            WiredBoxCategory.Condition => new SaveWiredConditionConfigEvent(_dpService!),
+            _ => new SaveWiredEffectConfigEvent(_dpService!)
+        };
         await handler.Parse(_client, ClientPacket([.. body]));
         Assert.True(_client.Packets.Any(packet => packet.Header == ServerPacketHeader.HideWiredConfigComposer), $"{name} was not saved");
     }

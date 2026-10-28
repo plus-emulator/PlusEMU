@@ -108,6 +108,9 @@ public sealed record RoomItemSnapshot(
         else if (type == InteractionType.Gift) {
             extra = GiftWrap.Style(legacy);
         }
+        else if (type == InteractionType.Roller) {
+            extra = 1;
+        }
         else if (type == InteractionType.MusicDisc) {
             var fields = legacy.Split('\n');
 
@@ -120,7 +123,8 @@ public sealed record RoomItemSnapshot(
         // and colours and links the forum terminal to groupforum/<groupId>. Without its group the stored data stays.
         FurnitureDataSnapshot? guildData = guild == null ? null
             : new FurnitureDataSnapshot.Strings([legacy, guild.GroupId.ToString(CultureInfo.InvariantCulture), guild.Badge, guild.Colour1, guild.Colour2]);
-        var data = item.IsWallItem ? new FurnitureDataSnapshot.Empty() : MagicTileHeight.IsMagicTile(type)
+        // A roller always shows state 1, whatever data it stores.
+        var data = item.IsWallItem ? new FurnitureDataSnapshot.Empty() : type == InteractionType.Roller ? new FurnitureDataSnapshot.Legacy("1") : MagicTileHeight.IsMagicTile(type)
             ? new FurnitureDataSnapshot.Legacy(MagicTileHeight.ToWire(z).ToString(CultureInfo.InvariantCulture))
             : guildData ?? FurnitureDataSnapshot.Capture(item.ExtraData);
 

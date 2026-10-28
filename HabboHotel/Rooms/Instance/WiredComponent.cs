@@ -332,6 +332,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     /// <summary>A Wired game counter is running, which is a game in progress for scores and team games.</summary>
     public bool GameCounterRunning => _counters.HasRunningGameCounter;
     internal bool NeedsFastCycle => _engine.NeedsFastCycle;
+    internal long RoomTickIndex => _engine.RoomTickIndex;
     internal void ObserveFastWork(Action<bool>? observer) => _engine.ObserveFastWork(observer);
     /// <summary>Drops in-room user values left from an earlier visit, so nothing comes back on return.</summary>
     public void VisitorArriving(int habboId) => _engine.Mutate(() =>

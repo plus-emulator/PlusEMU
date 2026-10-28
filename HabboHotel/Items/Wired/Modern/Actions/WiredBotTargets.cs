@@ -26,6 +26,9 @@ public sealed class WiredBotTargets
     internal Random Random { get; set; } = Random.Shared;
     // Whether a following bot is processed before its user in the tick it decides, so that it sees the tile the user stands on.
     internal Func<bool> BotFirst { get; set; } = () => Random.Shared.Next(2) == 0;
+    // A random number in [0, 1) that decides whether a following bot that could start walking does so in this room tick.
+    internal static Func<double> DefaultStartRoll { get; set; } = () => Random.Shared.NextDouble();
+    internal Func<double> StartRoll { get; set; } = () => DefaultStartRoll();
     private readonly Dictionary<RoomUser, Target> _targets = [];
     private static readonly ConditionalWeakTable<Room, WiredBotTargets> Rooms = new();
     public static WiredBotTargets For(Room room) => Rooms.GetValue(room, _ => new());

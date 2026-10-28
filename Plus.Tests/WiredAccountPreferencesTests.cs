@@ -110,7 +110,7 @@ public sealed class WiredAccountPreferencesTests
             Assert.Contains($"`{column}` tinyint(1) NOT NULL DEFAULT 0", table);
         }
 
-        Assert.Contains("`wired_ui_style` varchar(64) NOT NULL DEFAULT ''", table);
+        Assert.Contains("`wired_ui_style` text NOT NULL DEFAULT ''", table);
     }
 
     [RoomComponentDatabaseFact]

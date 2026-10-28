@@ -175,6 +175,7 @@ public partial class RoomItemHandling
     private readonly ConcurrentDictionary<uint, RoomItemSave> _restorePoint = new();
     private volatile bool _restoreOnDispose;
     private int _mRollerSpeed;
+    private readonly ConcurrentDictionary<uint, byte> _movedByUser = new();
 
     private ConcurrentQueue<Item> _roomItemUpdateQueue;
 
@@ -662,6 +663,10 @@ public partial class RoomItemHandling
     {
         var (fromX, fromY) = (item.GetX, item.GetY);
         var placed = PlaceFloor(session, item, newX, newY, newRot, newItem, onRoller, sendMessage, updateRoomUserStatuses, height, wiredCollision, null, deferPositionSave, announcing);
+
+        if (placed && session != null && (newItem || fromX != item.GetX || fromY != item.GetY)) {
+            _movedByUser[item.Id] = 0;
+        }
 
         // Only a user's placement or move counts: a room load and wired movement do not republish a leaderboard.
         if (placed && session != null && !item.IsTemporary && item.Definition.WiredDescriptor?.CanonicalName == "wf_xtra_var_text_connector" && (newItem || fromX != item.GetX || fromY != item.GetY)) {
@@ -1194,6 +1199,8 @@ public partial class RoomItemHandling
     // Rollers run after the avatars step in the room tick.
     public void OnRollerCycle()
     {
+        var waited = _movedByUser.Keys.ToArray();
+
         if (GotRollers || !_rollers.IsEmpty || ConfigurationItemStates.RollerSpeedController(_room) != null) {
             try {
                 CycleRollers();
@@ -1204,7 +1211,14 @@ public partial class RoomItemHandling
                 GotRollers = false;
             }
         }
+
+        foreach (var id in waited) {
+            _movedByUser.TryRemove(id, out _);
+        }
     }
+
+    // Furni a user places or moves onto a tile waits one room tick before a roller takes it.
+    internal bool WaitsForRoller(Item item) => _movedByUser.ContainsKey(item.Id);
 
     public void OnCycle()
     {

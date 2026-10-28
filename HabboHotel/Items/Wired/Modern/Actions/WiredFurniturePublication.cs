@@ -19,6 +19,9 @@ internal sealed class WiredFurniturePublication(Room room, long deadline, long e
     /// <summary>Sends the movements like a Move and Rotate User box does: after the states a click writes, with the chat held back.</summary>
     internal bool SendsAsUserMovement { get; set; }
 
+    internal bool Append(Item item, WiredMovementComposer movement, object? firing = null, bool executeInOrder = false) =>
+        throw new NotImplementedException();
+
     internal bool Append(Item item, WiredMovementComposer movement, WiredMoveStyleComposer style, object? firing = null, bool executeInOrder = false)
     {
         if (!Open || !ReferenceEquals(item.GetRoom(), room) || !ReferenceEquals(room.GetRoomItemHandler().GetItem(item.Id), item)) {

@@ -24,7 +24,7 @@ internal sealed class CommandIntake(MovementContext context, ForcePlacementServi
             return;
         }
 
-        if (KeepsCurrentWalk(actor, command)) {
+        if (IgnoresClick(actor, command)) {
             return;
         }
 
@@ -49,13 +49,13 @@ internal sealed class CommandIntake(MovementContext context, ForcePlacementServi
         context.Replan(actor);
         context.RefreshMembership(actor);
     }
-    // Habbo ignores a click that has no route while the avatar walks: the walk goes on to its old goal.
+    // Habbo ignores a click that has no route: a walking avatar goes on to its old goal, a standing one gets no status.
     // A click on a tile with no free spot, such as one an avatar occupies, counts as having no route.
-    private bool KeepsCurrentWalk(RoomUser actor, MoveCommand command)
+    private bool IgnoresClick(RoomUser actor, MoveCommand command)
     {
         var state = actor.Movement;
 
-        if (!state.HasIntent || command.Origin != MoveOrigin.User || command.Approach != null
+        if (command.Origin != MoveOrigin.User || command.Approach != null
             || context.Navigation.Settings.UnreachablePolicy == "nearest") {
             return false;
         }

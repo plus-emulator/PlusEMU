@@ -236,12 +236,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
         }
 
         if (wasSitting != user.IsSitting) {
-            room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)
-            {
-                Actor = user,
-                Action = (int)(user.IsSitting ? WiredAvatarAction.Sit : WiredAvatarAction.Stand),
-                Code = -1
-            });
+            user.PostureActions.Enqueue(user.IsSitting ? WiredAvatarAction.Sit : WiredAvatarAction.Stand);
         }
     }
 

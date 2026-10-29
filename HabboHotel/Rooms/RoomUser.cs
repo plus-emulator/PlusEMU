@@ -406,6 +406,20 @@ public class RoomUser
         }
     }
 
+    /// <summary>Sit and Stand actions of a posture change, fired on the room tick that sends the status update.</summary>
+    internal System.Collections.Concurrent.ConcurrentQueue<WiredAvatarAction> PostureActions { get; } = new();
+
+    public void CompletePostureActions()
+    {
+        if (GetRoom() is not { } room) {
+            return;
+        }
+
+        while (PostureActions.TryDequeue(out var action)) {
+            room.GetWired().Dispatch(new(WiredEventKind.AvatarAction) { Actor = this, Action = (int)action, Code = -1 });
+        }
+    }
+
     private void WakeUp(Room room)
     {
         WakePending = false;

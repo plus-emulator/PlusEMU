@@ -9,12 +9,16 @@ using Plus.HabboHotel.Rooms.Chat.Commands;
 using Plus.HabboHotel.Rooms.Chat.Commands.Moderator;
 using Plus.HabboHotel.Rooms.PathFinding;
 using Plus.HabboHotel.Permissions;
+using Plus.HabboHotel.Rooms.Chat.Pets.Locale;
 using Xunit;
 
 namespace Plus.Tests;
 
+[Collection("StressBudget")]
 public class StressBotTests
 {
+    public StressBotTests() => StressBudget.Reset();
+
     [Theory]
     [InlineData("bots", "500", true, 500)]
     [InlineData("BOTS", "clear", true, 0)]
@@ -70,6 +74,8 @@ public class StressBotTests
     {
         var services = new ServiceCollection();
         services.AddSingleton<IFigureDataManager>(new FigureDataManager(NullLogger<FigureDataManager>.Instance));
+        services.AddSingleton<IPetLocale>(new NoPetLocale());
+        services.AddSingleton(TimeProvider.System);
         Plus.Program.AddAssignableTo<ICommandBase>(services, typeof(StressCommand).Assembly);
         using var provider = services.BuildServiceProvider();
         Assert.IsType<StressCommand>(provider.GetRequiredService<StressCommand>());
@@ -234,7 +240,7 @@ public class StressBotTests
     }
 
     // Bypass Room's DB-loading constructor while retaining its real user manager and map.
-    private static (RoomUserManager Manager, Gamemap Map) CreateRoom()
+    internal static (RoomUserManager Manager, Gamemap Map) CreateRoom(IRoomUserStore? store = null)
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         var model = new RoomModel("test", 1, 1, 0, 0, "0000\r0000\r0000\r0000", 0, 0, false);
@@ -248,7 +254,7 @@ public class StressBotTests
         }
 
         typeof(Gamemap).GetProperty(nameof(Gamemap.GameMap))!.SetValue(map, gameMap);
-        var manager = new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused,
+        var manager = new RoomUserManager(room, store ?? TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused,
             new TestBotAiFactory((_, virtualId) => new GenericBot(virtualId, new FakeWordFilter())), TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         typeof(Room).GetField("_gamemap", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, map);
         typeof(Room).GetField("_roomUserManager", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, manager);
@@ -259,6 +265,12 @@ public class StressBotTests
 
     private sealed class StressOnlyProvider : IServiceProvider
     {
-        public object? GetService(Type serviceType) => serviceType == typeof(StressCommand) ? new StressCommand(new FigureDataManager(NullLogger<FigureDataManager>.Instance)) : new object();
+        public object? GetService(Type serviceType) => serviceType == typeof(StressCommand) ? new StressCommand(new FigureDataManager(NullLogger<FigureDataManager>.Instance), new NoPetLocale(), TimeProvider.System) : new object();
+    }
+
+    internal sealed class NoPetLocale : IPetLocale
+    {
+        public void Init() { }
+        public string[] GetValue(string key) => [];
     }
 }

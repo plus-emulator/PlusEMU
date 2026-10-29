@@ -35,7 +35,7 @@ internal class KickPetsCommand : IChatCommand
         }
 
         foreach (var bot in room.GetRoomUserManager().GetUserList().ToList()) {
-            if (bot?.PetData == null) {
+            if (bot?.PetData is not { PetId: > 0 }) {
                 continue;
             }
 

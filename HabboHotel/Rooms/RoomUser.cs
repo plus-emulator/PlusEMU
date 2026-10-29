@@ -192,9 +192,12 @@ public class RoomUser
 
     public bool IsPet => IsBot && BotData.IsPet;
 
-    // A bot has no effects component; its effect is the last one sent for it.
+    /// <summary>Set only for a :stress player: a player avatar that has no session.</summary>
+    internal StressPlayer? Stress { get; init; }
+
+    // A bot or stress player has no effects component; its effect is the last one sent for it.
     private int _botEffect;
-    public int CurrentEffect => IsBot ? _botEffect : GetClient()?.GetHabbo()?.Effects?.CurrentEffect ?? 0;
+    public int CurrentEffect => IsBot || Stress != null ? _botEffect : GetClient()?.GetHabbo()?.Effects?.CurrentEffect ?? 0;
 
 
     public bool IsDancing
@@ -223,7 +226,7 @@ public class RoomUser
     {
         get
         {
-            if (IsBot) {
+            if (IsBot || Stress != null) {
                 return false;
             }
 
@@ -472,14 +475,14 @@ public class RoomUser
     {
         var room = GetRoom();
 
-        if (room == null || !IsBot) {
+        if (room == null || !IsBot && Stress == null) {
             return;
         }
 
-        var style = IsPet ? 0 : colour == 0 ? 2 : colour;
+        var style = IsPet ? 0 : Stress != null || colour != 0 ? colour : 2;
 
         room.SendChat(receiver => new ChatComposer(VirtualId, message, 0, style, receiver),
-            user => user.GetClient()?.GetHabbo() is { } habbo && !(IsPet ? habbo.AllowPetSpeech : habbo.AllowBotSpeech));
+            user => user.GetClient()?.GetHabbo() is { } habbo && (Stress != null || !(IsPet ? habbo.AllowPetSpeech : habbo.AllowBotSpeech)));
 
         if (!IsPet) {
             room.GetRoomUserManager().TurnHeadsToward(this);
@@ -840,7 +843,7 @@ public class RoomUser
             return;
         }
 
-        if (IsBot) {
+        if (IsBot || Stress != null) {
             _botEffect = effectId;
             room.SendPacket(new AvatarEffectComposer(VirtualId, effectId));
 

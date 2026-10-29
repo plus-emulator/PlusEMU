@@ -25,7 +25,7 @@ using Plus.Utilities;
 
 namespace Plus.HabboHotel.Rooms;
 
-public class RoomUserManager
+public partial class RoomUserManager
 {
     public const int MaxStressBots = 2000;
     private readonly object _stressSync = new();
@@ -119,12 +119,21 @@ public class RoomUserManager
                 }
 
                 request.Reply($"Cleared {temporary.Count} temporary stress bots.");
+                ReportStress();
 
                 return;
             }
 
-            if (temporary.Count + request.Amount > MaxStressBots) {
-                request.Reply($"This room has {temporary.Count} stress bots; the limit is {MaxStressBots}. Use :stress bots clear first.");
+            var others = _stressPlayers.Count + _stressHorses.Count;
+
+            if (temporary.Count + others + request.Amount > MaxStressBots) {
+                request.Reply($"This room has {temporary.Count} stress bots and {others} stress players; the limit is {MaxStressBots}. Use :stress bots clear first.");
+
+                return;
+            }
+
+            if (!StressBudget.TryHold(this, temporary.Count + others + request.Amount)) {
+                request.Reply($"The hotel-wide stress limit of {StressBudget.GlobalMax} is reached. Clear stress bots in other rooms first.");
 
                 return;
             }
@@ -147,6 +156,8 @@ public class RoomUserManager
                 user.BotAi?.OnSelfEnterRoom();
             }
 
+            _stressOwners.Add(request.OwnerId);
+            ReportStress();
             request.Reply($"Created {request.Amount} temporary stress bots ({temporary.Count + request.Amount}/{MaxStressBots}). Use :stress bots clear to remove them.");
         }
     }
@@ -482,6 +493,8 @@ public class RoomUserManager
                 return;
             }
 
+            ClearStressFor(session.GetHabbo().Id);
+
             var user = GetUserList().FirstOrDefault(candidate => !candidate.IsBot && ReferenceEquals(candidate.GetClient(), session));
 
             if (user == null) {
@@ -620,7 +633,7 @@ public class RoomUserManager
 
                 bot.BotAi.OnUserLeaveRoom(session);
 
-                if (bot.IsPet && bot.PetData?.OwnerId == user.UserId && !_room.CheckRights(session, true)) {
+                if (bot.IsPet && bot.PetData is { PetId: > 0 } && bot.PetData.OwnerId == user.UserId && !_room.CheckRights(session, true)) {
                     if (!petsToRemove.Contains(bot)) {
                         petsToRemove.Add(bot);
                     }
@@ -684,7 +697,10 @@ public class RoomUserManager
                 ExceptionLogger.LogException(error);
             }
 
-            _room.GetWired()?.Dispatch(new WiredRuntimeEvent(WiredEventKind.Leave) { Actor = user });
+            if (user.Stress == null) {
+                _room.GetWired()?.Dispatch(new WiredRuntimeEvent(WiredEventKind.Leave) { Actor = user });
+            }
+
             user.InternalRoomId = -1;
             OnRemove(user);
 
@@ -753,7 +769,7 @@ public class RoomUserManager
         var users = new List<RoomUser>();
 
         foreach (var entry in _users) {
-            if (!entry.Value.IsBot) {
+            if (!entry.Value.IsBot && entry.Value.Stress == null) {
                 users.Add(entry.Value);
             }
         }
@@ -913,7 +929,7 @@ public class RoomUserManager
             return false;
         }
 
-        if (user.IsBot) {
+        if (user.IsBot || user.Stress != null) {
             return true;
         }
 
@@ -950,6 +966,8 @@ public class RoomUserManager
             }
 
             ProcessStressBots();
+            ProcessStressPlayers();
+            CycleStressPlayers();
             ExpireForwardArrivalEffects();
             CycleHeadTurns();
             _room.GetGameMap().Navigation!.Executor.Tick();
@@ -1038,7 +1056,7 @@ public class RoomUserManager
         try {
             var isBot = user.IsBot;
 
-            if (isBot) {
+            if (isBot || user.Stress != null) {
                 cyclegameitems = false;
             }
 
@@ -1385,6 +1403,7 @@ public class RoomUserManager
 
                 _disposed = true;
                 _stressRequests.Clear();
+                ReleaseStressOnDispose();
                 DisposeUsers();
             }
     }

@@ -32,6 +32,11 @@ public sealed class RoomUserSnapshotService(IGroupManager groups, IGameClientMan
 
     public RoomUserSnapshot? Capture(RoomUser user)
     {
+        if (user.Stress is { } stress) {
+            return new(user.HabboId, stress.Name, "", stress.Look, user.VirtualId, user.X, user.Y,
+                TextHandling.GetString(user.Z), user.RotBody, 1, stress.Gender.ToLowerInvariant(), 0, "", 0, false, 0, 0, "", false, false);
+        }
+
         if (!user.IsBot) {
             var habbo = clients.GetClientByUserId(user.HabboId)?.GetHabbo();
 

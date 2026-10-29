@@ -205,9 +205,9 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
             ? labels?.GetValueOrDefault(value.Value) is { } label ? label
                 : labels is WiredTextConnector { Fallback: { } fallback } ? fallback : value.Value.ToString(CultureInfo.InvariantCulture)
             : "null";
-        // A furni or user without the variable shows "null" and a bot is left out. With nobody to show, the placeholder stays as written.
+        // A furni, user or bot without the variable shows "null". With nobody to show, the placeholder stays as written.
         var values = WiredVariableExecutors.Select(frame, reference.Target, p[3], p[4], WiredVariableExecutors.Picks(configuration, p[4]))
-            .Where(holder => !WiredVariableRuntimeFrames.IsBot(holder)).Select(Shown).ToArray();
+            .Select(Shown).ToArray();
 
         if (values.Length == 0) {
             return text;

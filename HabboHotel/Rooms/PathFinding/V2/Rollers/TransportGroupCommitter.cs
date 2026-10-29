@@ -39,7 +39,7 @@ internal sealed class TransportGroupCommitter(Room room, RollerTransport transpo
         return true;
     }
 
-    // A rider standing on cargo slides in the same bundle as the cargo it stands on.
+    // A rider standing on cargo slides in the same bundle as the cargo it stands on, and all cargo of one roller slide together.
     private static List<IServerPacket> Slides(List<RollerMove> ordered)
     {
         var bundles = new Dictionary<RollerMove, RollerBundleComposer>();
@@ -52,6 +52,12 @@ internal sealed class TransportGroupCommitter(Room room, RollerTransport transpo
                 bundles[rider] = new(rider, cargo);
                 carried.UnionWith(cargo);
             }
+        }
+
+        foreach (var group in ordered.Where(move => move.Cargo != null && !carried.Contains(move)).GroupBy(move => move.Roller).Where(group => group.Count() > 1)) {
+            var cargo = group.OrderBy(move => move.SourceZ).ToList();
+            bundles[cargo[0]] = new(null, cargo);
+            carried.UnionWith(cargo.Skip(1));
         }
 
         var packets = new List<IServerPacket>();

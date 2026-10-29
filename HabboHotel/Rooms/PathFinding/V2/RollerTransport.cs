@@ -9,6 +9,7 @@ namespace Plus.HabboHotel.Rooms.PathFinding;
 internal sealed class RollerTransport(RoomNavigation navigation, MovementContext context, ForcePlacementService placement)
 {
     private const TargetOccupancy Anything = (TargetOccupancy)127;
+    private const double MaxFloatGap = 0.6;
     private NavGrid Grid => navigation.Grid;
 
     public bool CanRide(RoomUser actor) => actor.Movement.State == NavState.Active && !actor.IsWalking
@@ -23,8 +24,8 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
 
     public bool RestsOnRoller(Item roller, Item cargo) => !Grid.Layered || RestingStack(roller).Items.Contains(cargo.Id);
 
-    // The physical stack a layered roller carries: items resting at the roller's top or on an item that does,
-    // and the levels an actor may stand on (the roller top and each stacked item's top).
+    // The physical stack a layered roller carries: items resting at the roller's top or on an item that does, items floating
+    // up to MaxFloatGap above one of those levels, and the levels an actor may stand on (the roller top and each resting item's top).
     private (HashSet<uint> Items, List<double> Levels) RestingStack(Item roller)
     {
         var items = new HashSet<uint>();
@@ -43,6 +44,12 @@ internal sealed class RollerTransport(RoomNavigation navigation, MovementContext
                 }
             }
         } while (grew);
+
+        foreach (var item in candidates) {
+            if (levels.Any(level => item.GetZ > level && item.GetZ - level <= MaxFloatGap + SurfaceSelection.Tolerance)) {
+                items.Add(item.Id);
+            }
+        }
 
         return (items, levels);
     }

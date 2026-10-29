@@ -846,34 +846,6 @@ public partial class WiredComponent : IWiredRuntimeOperations
         }
     }
 
-    private object? _tileChangeFiring;
-    private readonly HashSet<uint> _tileChanged = [];
-
-    /// <summary>Records that a furni changed tile in this firing.</summary>
-    internal void NoteTileChange(object? firing, Item item)
-    {
-        if (firing == null) {
-            return;
-        }
-
-        lock (_pendingFlashes) {
-            if (!ReferenceEquals(_tileChangeFiring, firing)) {
-                _tileChangeFiring = firing;
-                _tileChanged.Clear();
-            }
-
-            _tileChanged.Add(item.Id);
-        }
-    }
-
-    /// <summary>The furni changed tile earlier in this same firing.</summary>
-    internal bool EnteredTileIn(object? firing, Item item)
-    {
-        lock (_pendingFlashes) {
-            return firing != null && ReferenceEquals(_tileChangeFiring, firing) && _tileChanged.Contains(item.Id);
-        }
-    }
-
     private void SendDeferredObjectUpdates()
     {
         Item[] items;

@@ -175,8 +175,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         var firing = context.Firing ?? room.GetWired()?.ExecutingFiring;
 
-        // A furni that entered a user's tile earlier in the same firing may change height or turn there. One that a user already stood on may not.
-        if (x == item.GetX && y == item.GetY && room.GetWired()?.EnteredTileIn(firing, item) == true
+        // A furni may change height or turn on a tile where users stand.
+        if (x == item.GetX && y == item.GetY
             && StayingUsers(room, item, x, y, options.Rotation ?? rotation) is { Count: > 0 } staying) {
             var through = collision?.ThroughUsers.Union(staying).ToHashSet() ?? [.. staying];
             collision = (collision ?? new(new HashSet<uint>(), new HashSet<int>(), new HashSet<uint>())) with { ThroughUsers = through };
@@ -227,10 +227,6 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         if (!WiredRoomOperations.MoveItem(room, item, x, y, options.Rotation, z, animate: false,
                 collision: collision, announce: !options.Animate && !batched)) {
             return false;
-        }
-
-        if (x != source.X || y != source.Y) {
-            room.GetWired()?.NoteTileChange(firing, item);
         }
 
         if (batched && room.GetWired()!.DeferObjectUpdate(item, x == source.X && y == source.Y, policy.DisableAnimation)) {

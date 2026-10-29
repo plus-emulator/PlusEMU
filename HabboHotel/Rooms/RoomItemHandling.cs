@@ -1215,6 +1215,7 @@ public partial class RoomItemHandling
     }
 
     // Furni a user places or moves onto a tile, or Wired moves to another tile, waits one room tick before a roller takes it.
+    // A roller moved that way waits one room tick before it carries its load.
     internal bool WaitsForRoller(Item item) => _movedByUser.ContainsKey(item.Id);
 
     internal void WaitForRoller(Item item) => _movedByUser[item.Id] = 0;

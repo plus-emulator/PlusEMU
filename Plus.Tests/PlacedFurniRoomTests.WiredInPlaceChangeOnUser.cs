@@ -90,16 +90,18 @@ public partial class PlacedFurniRoomTests
         Assert.Contains(sent, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
     }
 
-    [Fact]
-    public async Task AClickOnABotDoesNotRaiseAFurniThatAUserAlreadyStoodOn()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AClickOnABotRaisesAFurniThatAUserAlreadyStoodOn(bool noAnimation)
     {
-        var (actor, tile) = await InPlaceRoom(noAnimation: true, altitude: true, turn: false, moveToUser: false);
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false);
         Stand(actor, 2, 2);
 
         var sent = await ClickABot();
 
-        Assert.Equal((2, 2, 0), (tile.GetX, tile.GetY, tile.GetZ));
-        Assert.DoesNotContain(sent, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
+        Assert.Equal((2, 2, 0.3), (tile.GetX, tile.GetY, tile.GetZ));
+        Assert.Contains(sent, packet => packet.Header == (noAnimation ? ServerPacketHeader.ObjectUpdateComposer : ServerPacketHeader.WiredMovementsComposer));
     }
 
     [Fact]

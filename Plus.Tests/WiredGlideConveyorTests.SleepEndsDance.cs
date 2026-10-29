@@ -57,6 +57,36 @@ public sealed partial class WiredGlideConveyorTests
         Assert.True(room.Owner.IsAsleep);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(8)]
+    public void EveryOtherExpressionEndsADanceWithDanceZeroBeforeTheExpression(int expression)
+    {
+        var room = new ExpressionRoom();
+        room.Dance(1);
+        room.Wait(1000);
+        room.Frames.Clear();
+
+        room.Express(expression);
+
+        Assert.Equal([ServerPacketHeader.DanceComposer, ServerPacketHeader.ActionComposer], room.Frames.Select(frame => frame.Header).ToArray());
+        Assert.Equal(0, BinaryPrimitives.ReadInt32BigEndian(room.Frames[0].Payload.AsSpan(4)));
+        Assert.Equal(expression, BinaryPrimitives.ReadInt32BigEndian(room.Frames[1].Payload.AsSpan(4)));
+        Assert.Equal(0, room.Owner.DanceId);
+    }
+
+    [Fact]
+    public void AnExpressionOfAnAvatarThatDoesNotDanceSendsNoDancePacket()
+    {
+        var room = new ExpressionRoom();
+
+        room.Express(1);
+
+        Assert.Equal([ServerPacketHeader.ActionComposer], room.Frames.Select(frame => frame.Header).ToArray());
+    }
+
     private sealed class ExpressionRoom
     {
         private readonly Fixture _fixture;

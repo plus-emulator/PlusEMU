@@ -127,10 +127,7 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
         if (user.DanceId > 0) {
             user.DanceId = 0;
-
-            if (action == 5) {
-                room.SendPacket(new DanceComposer(user.VirtualId, 0));
-            }
+            room.SendPacket(new DanceComposer(user.VirtualId, 0));
         }
 
         user.UnIdle(atRoomTick: true);

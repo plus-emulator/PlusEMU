@@ -121,6 +121,34 @@ public partial class PlacedFurniRoomTests
         Assert.Equal([expected], DpFire(wired, actor, clock, 5));
     }
 
+    // A precise delay (saved as minus the milliseconds) acts on the pointed variable like a delay of 1.
+    [Theory]
+    [InlineData(DpFurni, "p1", "give", -50, "p1 f=7 g=33 c=44")]
+    [InlineData(DpFurni, "p2", "remove", -50, "p2 f=null g=33 c=44")]
+    [InlineData(DpContext, "p3", "give", -50, "p3 f=21 g=33 c=7")]
+    [InlineData(DpContext, "p4", "remove", -500, "p4 f=21 g=33 c=null")]
+    public async Task APreciseDelayedGiveOrRemoveThroughAPointerActsOnThePointedVariable(int target, string tag, string action, int delay,
+        string expected) => await ADelayedGiveOrRemoveThroughAPointerActsOnThePointedVariable(target, tag, action, delay, true, expected);
+
+    // One Give (no override, value 0) and one Change (+1) through a user pointer, both with a precise delay: each firing creates the pointed
+    // variable on the triggering user when it is missing and adds 1.
+    [Theory]
+    [InlineData(-50, "u1 a=1")]
+    [InlineData(-500, "u1 a=1")]
+    [InlineData(1, "u1 a=1")]
+    [InlineData(0, "u1 a=null")]
+    public async Task APreciseDelayedGiveAndChangeThroughAUserPointerCountOnTheTriggeringUser(int delay, string expected)
+    {
+        var (wired, actor, clock) = await DelayedPointerRoom();
+        await DpGive(DpContext, "ctx:" + DpCtx, DpUa);
+        await DpEffect("wf_act_give_var", [DpUser, 0, 0, 0, 0, -10, 0], ["user:" + DpPu, "n"], furni: [0, 200], users: [0, 200], delay: delay);
+        await DpEffect("wf_act_change_var_val", [DpUser, 1, 0, 0, 1, -10, 0], ["user:" + DpPu, "n"], furni: [0, 200], users: [0, 200], delay: delay);
+        await DpShow("u1 a=$(a)", 5);
+        await DpOutput("a", DpUser, "user:" + DpUa);
+
+        Assert.Equal([expected], DpFire(wired, actor, clock, 5));
+    }
+
     // A user pointer operand after a delay of 1, 2 or 5 reads like pu_a.
     [Theory]
     [InlineData("a1", 1, "pointer", "a1 t=107 b=2 a=7")]

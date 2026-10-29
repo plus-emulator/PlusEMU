@@ -49,6 +49,24 @@ public partial class PlacedFurniRoomTests
         }
     }
 
+    // A precise delay (saved as minus the milliseconds) is a delay too: the write goes through the pointer and flashes the pointed definition.
+    [Theory]
+    [InlineData("change user pointer", -50, new[] { "2", "2", "2" })]
+    [InlineData("give user pointer", -50, new[] { "7", "7", "7" })]
+    [InlineData("remove user pointer", -50, new[] { "8", "8", "8" })]
+    [InlineData("change user pointer", -500, new[] { "2", "2", "2" })]
+    public async Task APreciseDelayedWriteThroughAPointerFlashesThePointedDefinition(string box, int delay, string[] states)
+    {
+        var (wired, actor, clock) = await PreparePointedStack(box, true, delay);
+
+        foreach (var expected in states) {
+            var (own, delayed) = ClickPointedStack(wired, actor, clock);
+
+            Assert.DoesNotContain(own, entry => PointerBoxes.Contains(entry.Id));
+            Assert.Equal([(PointedUser, expected)], Assert.Single(delayed));
+        }
+    }
+
     // Without a delay a write through a pointer is ignored, so no later batch follows and the stack's own batch only holds the
     // definitions its Give boxes reset.
     [Theory]

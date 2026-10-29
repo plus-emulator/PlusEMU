@@ -184,7 +184,7 @@ public sealed class WiredVariableExactWireTests
             Assert.False(WiredExactReadRequest.TryRead(packet, 1, out _));
         }
 
-        foreach (var packet in new[] { Packet(1, "room:10", 1, 50, 0), Packet(1, "room:10", 1, 50, 2, -1), Packet(1, "room:10", 1, 50, 0, 3), Packet(1, "room:10", 1, 50, 0, -1, 0) }) {
+        foreach (var packet in new[] { Packet(1, "room:10", 1, 50, 0), Packet(1, "room:10", 1, 50, 6, -1), Packet(1, "room:10", 1, 50, 0, 3), Packet(1, "room:10", 1, 50, 0, -1, 0) }) {
             Assert.False(WiredExactReadRequest.TryRead(packet, 2, out _));
         }
     }

@@ -50,7 +50,7 @@ public sealed class WiredMenuDelegationTests
         await new WiredAllVariablesRequestEvent(menus).Parse(room, session, Packet(1));
         await new WiredVariableHashesEvent(menus).Parse(room, session, Packet(1, "user:10", 1, "user:10", 2));
         await new WiredVariableHoldersRequestEvent(menus).Parse(room, session, Packet(new string('x', 65)));
-        await new WiredVariableHoldersPageEvent(menus).Parse(room, session, Packet("user:10", 1, 15, 2, -1));
+        await new WiredVariableHoldersPageEvent(menus).Parse(room, session, Packet("user:10", 1, 15, 6, -1));
         await new WiredUserVariableUpdateEvent(menus).Parse(room, session, Packet(0, 5, 0, 12, 0));
         await new WiredUserVariableManageEvent(menus).Parse(room, session, Packet(3, 0, 0, 12, 0));
 
@@ -132,7 +132,7 @@ public sealed class WiredMenuDelegationTests
     {
         public void ShowExactSnapshot(Room room, GameClient session) => Calls.Add("ExactSnapshot");
         public void ShowExactHolders(Room room, GameClient session, string id) => Calls.Add("ExactHolders " + id);
-        public void ShowExactHolderPage(Room room, GameClient session, string id, int page, int size, int users, int sort) => Calls.Add("ExactPage " + id);
+        public void ShowExactHolderPage(Room room, GameClient session, string id, int page, int size, int sort, int userType) => Calls.Add("ExactPage " + id);
         public void WriteExact(Room room, GameClient session, WiredVariableMenuWrite request) => Writes.Add(request);
         public void ManageExact(Room room, GameClient session, WiredVariableMenuWrite request) => Manages.Add(request);
         public List<string> Calls { get; } = [];
@@ -143,8 +143,8 @@ public sealed class WiredMenuDelegationTests
             Calls.Add("CatalogDiff " + string.Join(',', known.Select(pair => $"{pair.Key}={pair.Value}")));
         public void ShowSnapshot(Room room, GameClient session) => Calls.Add("Snapshot");
         public void ShowHolders(Room room, GameClient session, string id) => Calls.Add("Holders " + id);
-        public void ShowHolderPage(Room room, GameClient session, string id, int page, int size, int users, int sort) =>
-            Calls.Add($"HolderPage {id} {page} {size} {users} {sort}");
+        public void ShowHolderPage(Room room, GameClient session, string id, int page, int size, int sort, int userType) =>
+            Calls.Add($"HolderPage {id} {page} {size} {sort} {userType}");
         public void Write(Room room, GameClient session, WiredVariableMenuWrite request)
         {
             Calls.Add("Write");

@@ -77,6 +77,29 @@ public partial class PlacedFurniRoomTests
         Assert.Equal([(0, 3, 2)], SentObjectStates().Select(state => (state.X, state.Y, state.Rotation)));
     }
 
+    // With No Move Animation a Move and Rotate that turns a furni on its tile sends one WiredMovements entry from and to the new rotation, with or without a user on the tile.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ASingleTurnOnTheSpotWithNoMoveAnimationSendsOneWiredMovements(bool userOnTile)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation: true, altitude: false, turn: true, moveToUser: false);
+
+        if (userOnTile) {
+            Stand(actor, 2, 2);
+        }
+        else {
+            Stand(actor, 0, 3);
+        }
+
+        FireRuntimeStack(actor);
+
+        Assert.Equal((2, 2, 2), (tile.GetX, tile.GetY, tile.Rotation));
+        var entry = Assert.Single(SentFloorMovements());
+        Assert.Equal((2, 2, 2, 2, 2, 0), (entry.FromX, entry.FromY, entry.ToX, entry.ToY, entry.Rotation, entry.AnimationMs));
+        Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
+    }
+
     [Fact]
     public async Task AClickOnABotRaisesAFurniThatItMovedOntoAUserEarlierInTheFiring()
     {

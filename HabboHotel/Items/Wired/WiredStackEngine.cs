@@ -41,6 +41,8 @@ internal sealed partial class WiredStackEngine
     private long _cycle;
     private bool _draining;
     private ScheduledAction? _executingAction;
+    private ActionChain? _flushingChain;
+    internal object? ExecutingFiring => _executingAction?.Chain ?? _flushingChain;
 
     public WiredStackEngine(Func<long> now, Func<IWiredItem, bool> attached,
         Func<object[], bool> actorPresent, Action<Item> flash, Action<Exception> error,
@@ -840,7 +842,16 @@ internal sealed partial class WiredStackEngine
         try {
             if (chain.Context.Runtime?.VariableChanges is { IsEmpty: false } batch) {
                 SealPublication();
-                batch.Flush();
+                var previous = _flushingChain;
+                _flushingChain = chain;
+
+                try {
+                    batch.Flush();
+                }
+                finally {
+                    _flushingChain = previous;
+                }
+
                 // The Variable Changed stacks of a batched change run in this pass, like those of a change made at once.
                 FlushExternal();
             }

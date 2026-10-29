@@ -11,7 +11,7 @@ public partial class PlacedFurniRoomTests
 {
     private const uint OneUpdateMove = 959, OneUpdateOrder = 972, OneUpdateNoAnimation = 973, OneUpdatePhysics = 974;
 
-    private async Task<(RoomUser Actor, Item Tile)> OneUpdateRoom(bool noAnimation)
+    private async Task<(RoomUser Actor, Item Tile)> OneUpdateRoom(bool noAnimation, bool executeInOrder = true)
     {
         var (actor, tile, service) = BuiltInRuntimeRoom();
         SaveRuntimeBox(service, Change, 0, "-123", 30, true);
@@ -19,7 +19,10 @@ public partial class PlacedFurniRoomTests
         _client.Packets.Clear();
         await new SaveWiredEffectConfigEvent(service).Parse(_client, ClientPacket((int)OneUpdateMove, 0, "", 1, (int)tile.Id, 0, 1, 100, 1, 0, 0, 0));
         Assert.Equal("saved", SaveAnswer());
-        PlaceUnsaved(OneUpdateOrder, "wf_xtra_exec_in_order", 3);
+
+        if (executeInOrder) {
+            PlaceUnsaved(OneUpdateOrder, "wf_xtra_exec_in_order", 3);
+        }
 
         var physics = WiredBox(OneUpdatePhysics, "wf_xtra_mov_physics", 1, 1);
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(physics, new() { IntParams = [1, 1, 1, 0, 900, 900, 900] }, out var config, out var error), error);

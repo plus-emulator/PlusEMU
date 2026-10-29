@@ -233,6 +233,11 @@ public partial class PlacedFurniRoomTests
         var engine = typeof(WiredComponent).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(wired)!;
         engine.GetType().GetField("_now", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(engine, new Func<long>(() => clock.Ms));
 
+        return (clock, GridManager(clock));
+    }
+
+    private RoomManager GridManager(GridClock clock)
+    {
         var manager = (RoomManager)RuntimeHelpers.GetUninitializedObject(typeof(RoomManager));
         void SetManager(string field, object value) =>
             typeof(RoomManager).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(manager, value);
@@ -243,7 +248,7 @@ public partial class PlacedFurniRoomTests
 
         typeof(RoomUserManager).GetField("_clock", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(_room.GetRoomUserManager(), clock);
 
-        return (clock, manager);
+        return manager;
     }
 
     // A walk tile at (1, 1) whose Walks On stack toggles the target.

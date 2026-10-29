@@ -212,7 +212,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         room.GetWired()?.FurniMoving();
 
         // The moves of one furni in one firing that send no WiredMovements go out as one ObjectUpdate with the final state.
-        var batched = !options.Animate && context.Firing != null && room.GetWired() != null;
+        // A variable write runs on the context of the stack's variables, which has no firing of its own.
+        var batched = !options.Animate && room.GetWired() is { } wired && (context.Firing ?? wired.ExecutingFiring) != null;
 
         if (!WiredRoomOperations.MoveItem(room, item, x, y, options.Rotation, z, animate: false,
                 collision: collision, announce: !options.Animate && !batched)) {

@@ -122,12 +122,18 @@ public sealed class WiredVariableAddonBox : IWiredContextualAddon
     {
         var configuration = context.ConfigurationOf(this);
 
-        if (!ReferenceEquals(context.Room, Instance) || !TryValidateConfiguration(configuration, out _, out _)
-            || !TryDecode(configuration, _variables, out var resolved)) {
+        if (!ReferenceEquals(context.Room, Instance)) {
             return false;
         }
 
-        if (Descriptor.CanonicalName == "wf_xtra_text_output_variable") {
+        var output = Descriptor.CanonicalName == "wf_xtra_text_output_variable";
+
+        if (!TryValidateConfiguration(configuration, out _, out _) || !TryDecode(configuration, _variables, out var resolved)) {
+            // A placeholder without valid settings, such as one never saved, is ignored and its stack runs on.
+            return output;
+        }
+
+        if (output) {
             context.Policy.TextFormatters.Add((current, text) => Format(current, configuration, resolved.Variable, text));
 
             return true;

@@ -382,6 +382,37 @@ internal sealed partial class WiredStackEngine
     internal static bool IsSignalAntenna(Item item) => item.IsFloorItem
         && string.Equals(item.Definition.InteractionName, "antenna", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// A user with rights who uses an antenna sends its signal: the stacks that receive on this antenna run with the user as the
+    /// triggering user (the sender), and the signal carries no furni and no users. The use already switched the antenna's state.
+    /// </summary>
+    public bool SendManualSignal(RoomUser sender, Item antenna) => Pass(() =>
+    {
+        var depth = (_runtimeContext?.Depth ?? -1) + 1;
+
+        if (_runtimeRoom == null || Disabled || TooDeep(depth) || !IsSignalAntenna(antenna) || !_targets!.IsAttached(antenna)) {
+            return false;
+        }
+
+        RefreshStacks();
+        var context = CreateContext(new WiredRuntimeEvent(WiredEventKind.Signal) { Code = unchecked((int)antenna.Id), Actor = sender }, depth);
+        context.Signal = new(new(), new Dictionary<string, long>());
+        context.SignalChainRuns = [];
+        context.Triggering.UserIds.Add(sender.VirtualId);
+        context.Selected = context.Triggering.Copy();
+        var dispatch = new PendingDispatch(context.Event, depth, new([(antenna, antenna.MovementGeneration)], context, context));
+        SnapshotDispatch(dispatch);
+
+        if (QueueFull(dispatch.Slots)) {
+            return false;
+        }
+
+        QueueDispatch(dispatch);
+        UpdateFastWork();
+
+        return true;
+    });
+
     public bool SendSignal(WiredRuntimeContext parent, IEnumerable<Item> receivers,
         WiredSelection selection, bool negative = false) => Pass(() =>
     {

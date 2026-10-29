@@ -35,6 +35,10 @@ public sealed class ItemInteractorFactory(
             return new InteractorWired();
         }
 
+        if (Plus.HabboHotel.Items.Wired.WiredStackEngine.IsSignalAntenna(item)) {
+            return new InteractorWiredAntenna(new InteractorGenericSwitch(quests, rewards));
+        }
+
         return item.Definition.InteractionType switch
         {
             InteractionType.IceSkates or InteractionType.IceTagPole => new InteractorIceTag(),

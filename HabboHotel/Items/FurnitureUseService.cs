@@ -186,7 +186,7 @@ public sealed class FurnitureUseService(IFurnitureUseStore store, IQuestManager 
         // without rights it does nothing. Only a plain state switch is used, since a copy never reaches storage.
         if (item.IsTemporary) {
             if (room.GetRoomItemHandler().OwnsTemporary(item) && room.CheckRights(session, false, true)
-                && item.Interactor is Plus.HabboHotel.Items.Interactor.InteractorGenericSwitch) {
+                && item.Interactor is Plus.HabboHotel.Items.Interactor.InteractorGenericSwitch or Plus.HabboHotel.Items.Interactor.InteractorWiredAntenna) {
                 Trigger(room, session, item, request.Parameter, true);
                 room.GetWired().TriggerEvent(WiredBoxType.TriggerStateChanges, habbo, item);
             }

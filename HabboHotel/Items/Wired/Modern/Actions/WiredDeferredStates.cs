@@ -5,7 +5,7 @@ namespace Plus.HabboHotel.Items.Wired.Modern.Actions;
 
 /// <summary>
 /// State changes Toggle State makes later than its tick batch: a blob changes on the next room tick, in a data update of its own, and a button
-/// set to 1 goes back to 0 after 600 ms. Only the classes named here behave this way.
+/// set to 1 goes back to 0 after 600 ms. Only the classes named here behave this way. Every blob goes to 0 on the room tick after a game counter starts.
 /// </summary>
 public sealed class WiredDeferredStates(Room room)
 {
@@ -14,6 +14,7 @@ public sealed class WiredDeferredStates(Room room)
     private readonly List<Item> _blobs = [];
     private readonly List<(Item Item, long DueMs)> _resets = [];
     private bool _reported;
+    private bool _resetBlobs;
 
     public static WiredDeferredStates For(Room room) => Rooms.GetValue(room, current => new(current));
 
@@ -40,6 +41,13 @@ public sealed class WiredDeferredStates(Room room)
         }
     }
 
+    public void ResetBlobsOnNextRoomTick()
+    {
+        lock (_resets) {
+            _resetBlobs = true;
+        }
+    }
+
     public void CancelReset(Item button)
     {
         lock (_resets) {
@@ -52,6 +60,17 @@ public sealed class WiredDeferredStates(Room room)
         lock (_resets) {
             _resets.RemoveAll(entry => entry.Item == button);
             _resets.Add((button, nowMs + ButtonResetMilliseconds));
+        }
+    }
+
+    /// <summary>Every blob of the room that is not queued for a toggle in this tick, when a game counter started before this room tick, otherwise none.</summary>
+    public Item[] TakeBlobsToReset()
+    {
+        lock (_resets) {
+            var reset = _resetBlobs;
+            _resetBlobs = false;
+
+            return reset ? [.. room.GetRoomItemHandler().GetFloor.Where(item => IsBlob(item) && !_blobs.Contains(item))] : [];
         }
     }
 

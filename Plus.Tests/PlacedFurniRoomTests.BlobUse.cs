@@ -10,7 +10,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    private void StartGameCounter(uint id)
+    private void StartGameCounter(uint id, WiredClockOrigin origin = WiredClockOrigin.Unknown)
     {
         var counter = Furni(id, InteractionType.None, WiredBoxType.None);
         counter.Definition.ItemName = "wf_game_upcounter1";
@@ -20,7 +20,7 @@ public partial class PlacedFurniRoomTests
         _room.GetWired().AttachRoomItem(counter);
         var counters = (WiredCounterController)typeof(Plus.HabboHotel.Rooms.Instance.WiredComponent)
             .GetField("_counters", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(_room.GetWired())!;
-        Assert.True(counters.Control(counter, 0, 0));
+        Assert.True(counters.Control(counter, 0, 0, origin));
         Assert.True(_room.GetWired().GameCounterRunning);
     }
 
@@ -75,5 +75,33 @@ public partial class PlacedFurniRoomTests
 
         Assert.Equal("0", blob.LegacyDataString);
         Assert.Empty(StateHeightPackets());
+    }
+
+    // A Wired start of the game counter sets a blob to 0 on the next room tick, so the first double-click of the game answers 1.
+    [Theory]
+    [InlineData("wf_blob")]
+    [InlineData("wf_blob2")]
+    public async Task ABlobIsResetWhenAWiredStartBeginsTheGameAndThenAnswersTheFirstClickWithOne(string name)
+    {
+        AdmitOwner();
+        var blob = Furni(262, InteractionType.None, WiredBoxType.None);
+        blob.Definition.Modes = 2;
+        blob.Definition.ItemName = name;
+        blob.ExtraData = FurniExtraData.Load(blob.Definition, "1", keepLegacy: true);
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null, blob, 2, 2, 0, true, false, false));
+        StartGameCounter(264, WiredClockOrigin.ModernWired);
+        var use = new UseFurnitureEvent(new FurnitureUseService(new FurnitureUseStore(_database), Proxy<IQuestManager>((_, _) => null)));
+        _client.Packets.Clear();
+
+        _room.GetWired().OnCycle();
+
+        Assert.Equal("0", blob.LegacyDataString);
+        Assert.Contains(StateHeightPackets(), packet => packet.Header == ServerPacketHeader.ObjectsDataUpdateComposer);
+        _client.Packets.Clear();
+
+        await use.Parse(_room, _client, ClientPacket((int)blob.Id, 0));
+        _room.GetWired().OnCycle();
+
+        Assert.Equal("1", blob.LegacyDataString);
     }
 }

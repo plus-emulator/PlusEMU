@@ -233,7 +233,12 @@ public partial class WiredComponent : IWiredRuntimeOperations
         WiredAvatarState.For(_room).FlushTickEffects();
         _highscores?.OnOwnedPass();
 
-        // The blobs change first, so that the state writes are reported in this same pass.
+        // The blobs change first, so that the state writes are reported in this same pass. A game counter start resets them before Toggle State changes its own.
+        foreach (var blob in WiredDeferredStates.For(_room).TakeBlobsToReset()) {
+            blob.LegacyDataString = "0";
+            PublishState(blob, true);
+        }
+
         foreach (var blob in WiredDeferredStates.For(_room).TakeBlobs()) {
             blob.LegacyDataString = WiredDeferredStates.NextState(blob);
             PublishState(blob, true);

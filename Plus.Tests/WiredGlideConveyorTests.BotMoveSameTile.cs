@@ -106,10 +106,10 @@ public sealed partial class WiredGlideConveyorTests
         return bot;
     }
 
-    private static IRoomChatService ChatService() => new RoomChatService(NoOp<IChatStyleManager>.Create(), NoOp<IChatlogManager>.Create(),
+    private static IRoomChatService ChatService(TimeProvider? clock = null) => new RoomChatService(NoOp<IChatStyleManager>.Create(), NoOp<IChatlogManager>.Create(),
         new WordFilterManager(NoOp<Plus.Database.IDatabase>.Create()), NoOp<ICommandManager>.Create(), NoOp<IModerationManager>.Create(),
         NoOp<ISettingsManager>.Create(), NoOp<IQuestManager>.Create(), NoOp<IRewardTrackManager>.Create(), NoOp<IGameClientManager>.Create(),
-        TimeProvider.System);
+        clock ?? TimeProvider.System);
 
     // The bot's status string in a UserUpdate, or null when the packet is no UserUpdate or does not list the bot.
     private static string? BotStatus(byte[] bytes, RoomUser bot)

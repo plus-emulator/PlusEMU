@@ -81,9 +81,10 @@ public sealed class WiredVariableConfiguredBox : IWiredContextualItem
         if (_executors.Destination(Descriptor.CanonicalName, configuration) is { } named && variables != null
             && (configuration.Delay != 0 ? variables.Module.Unpoint(named, context.VariableFrame) : named) is { } destination
             && !variables.Module.IsPointer(destination)) {
-            // Runs of one Variable Changed stack in the same tick (two Gives in one click) flip the context variable they each give once in that tick's update, so those gives count as one firing here.
+            // Runs of one Variable Changed stack in the same tick (two Gives in one click), or of one Receive Signal stack (a split signal), flip the context variable they each give once in that tick's update, so those gives count as one firing here.
             var firing = Descriptor.CanonicalName == "wf_act_give_var" && destination.Target == WiredVariableTarget.Context
-                && context.Trigger is WiredVariableChangedTrigger trigger ? trigger : context.Firing ?? context;
+                && context.Trigger is WiredVariableChangedTrigger or Modern.Triggers.WiredModernTrigger { Descriptor.CanonicalName: "wf_trg_recv_signal" }
+                    ? context.Trigger : context.Firing ?? context;
 
             // A batched Change Variable Value is written when its stack's batch flushes, so the kind is picked then, in the same pass.
             if (Descriptor.CanonicalName == "wf_act_change_var_val" && context.VariableFrame.VariableChanges is { } batch && variables != null) {

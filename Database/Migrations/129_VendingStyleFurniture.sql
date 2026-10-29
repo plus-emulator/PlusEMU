@@ -1,0 +1,2 @@
+-- These classes go to state 1 and back to 0 after a use, like a vending machine, so they use the vending machine interaction.
+UPDATE furniture SET interaction_type = 'vendingmachine' WHERE has_furnidata = 1 AND interaction_type <> 'vendingmachine' AND item_name IN ('antique_c21_magnifyinglass', 'dino_c15_nest', 'lm_jackbox', 'olympics_c16_nanarack', 'paris_c15_vegstall1', 'paris_c15_vegstall2', 'paris_c15_vegstall3', 'toaster', 'tokyo_c18_snackdisplay');

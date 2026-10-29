@@ -68,6 +68,27 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 2), StateLines());
     }
 
+    // A vending machine without hand items still goes to 1 and back to 0 after a use, and hands nothing over.
+    [Fact]
+    public void AVendingMachineWithoutHandItemsGoesToOneAndBackToZero()
+    {
+        var vending = PlacedFurni(41, InteractionType.VendingMachine, 2);
+        WatchState(vending);
+        Viewer(2, 3);
+
+        UseItem(vending);
+        Assert.Equal("1", vending.LegacyDataString);
+
+        for (var tick = 0; tick < 5 && vending.LegacyDataString == "1"; tick++) {
+            vending.ProcessUpdates();
+        }
+
+        Cycle();
+        Assert.Equal("0", vending.LegacyDataString);
+        Assert.Equal((1, 2), StateLines());
+        Assert.Equal(0, _room.GetRoomUserManager().GetRoomUserByHabbo(_client.GetHabbo().Id)!.CarryItemId);
+    }
+
     [Fact]
     public void RepeatedWritesAreReportedOncePerActualChange()
     {

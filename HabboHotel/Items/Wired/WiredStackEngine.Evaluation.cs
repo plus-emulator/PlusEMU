@@ -495,9 +495,11 @@ internal sealed partial class WiredStackEngine
             yield break;
         }
 
-        // A selector flashes each time its stack runs past the gate.
-        foreach (var selector in selectors) {
-            Flash(selector);
+        // A selector flashes each time its stack runs past the gate. A called stack runs its selectors without flashing them.
+        if (!called) {
+            foreach (var selector in selectors) {
+                Flash(selector);
+            }
         }
 
         var conditions = called ? [] : stack.Where(x => IsKind(x, InteractionType.WiredCondition)).ToArray();

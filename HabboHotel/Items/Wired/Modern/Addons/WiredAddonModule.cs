@@ -157,8 +157,8 @@ public sealed class WiredAddonModule
                                 .Where(byId.ContainsKey).Select(id => byId[id].Name);
                         }
 
-                        // With no furni the placeholder stays as written.
-                        if (Name == "wf_xtra_text_output_furni_name" && !names.Any()) {
+                        // With no furni the placeholder stays as written, except for Show Multiple on a selector that selected nothing.
+                        if (Name == "wf_xtra_text_output_furni_name" && !names.Any() && !(P(0) == 2 && P(1) == WiredSources.Selector)) {
                             return text;
                         }
 

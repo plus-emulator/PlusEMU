@@ -12,7 +12,7 @@ public sealed class MovementProfileService(Room room, NavGrid grid, PathfindingS
     public ActorProfile Refresh(RoomUser actor)
     {
         var profile = actor.Movement.Profile;
-        var temporary = actor.BotData?.IsTemporary == true;
+        var temporary = actor.BotData?.IsTemporary == true || actor.Stress != null;
         profile.LegacyOverride = actor.AllowOverride && !temporary;
         profile.IgnoreUsers = temporary;
         profile.IgnoreStepHeight = actor.RidingHorse && settings.RidersIgnoreHeight;

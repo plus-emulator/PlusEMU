@@ -1,9 +1,12 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets.Incoming.Rooms.Engine;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Quests;
+using Plus.HabboHotel.Rooms.Instance;
 using Xunit;
 
 namespace Plus.Tests;
@@ -69,6 +72,46 @@ public partial class PlacedFurniRoomTests
 
         Assert.Equal(["1", "0"], VendingStates(sent));
         Assert.DoesNotContain(sent, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
+    }
+
+    // The Wired disabler stops the Wired passes, but a used machine still goes back to 0 and lets the user walk again.
+    [Fact]
+    public async Task AVendingMachineGoesBackToZeroWhileTheWiredDisablerIsOn()
+    {
+        var (clock, manager) = GridRoom();
+        var disabler = Furni(91, InteractionType.WiredDisabler, WiredBoxType.None);
+        disabler.Definition.Modes = 2;
+        InitializeNativeState(disabler);
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, disabler, 0, 3, 0, true, false, false));
+        disabler.LegacyDataString = "1";
+        var vending = VendingMachine(148);
+        var actor = ExecutorActor(2, 1);
+
+        await UseVending(vending);
+        RunRoom(manager, clock, clock.Ms + 2500, period: 25);
+
+        Assert.Equal("0", vending.LegacyDataString);
+        Assert.Equal(0, vending.InteractingUser);
+        Assert.True(actor.CanWalk);
+        Assert.Equal(148, actor.CarryItemId);
+    }
+
+    // Runs the room's Wired clock on a test clock, so a test can pass a vending timer by hand.
+    private StrongBox<long> VendingClock()
+    {
+        var clock = new StrongBox<long>(1_000_000);
+        var engine = typeof(WiredComponent).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(_room.GetWired())!;
+        engine.GetType().GetField("_now", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(engine, new Func<long>(() => clock.Value));
+
+        return clock;
+    }
+
+    // Moves the test clock on and runs a room tick, which asks for fast passes while a timer runs, then the fast pass that polls the timers.
+    private void PassVendingTime(StrongBox<long> clock, long milliseconds)
+    {
+        clock.Value += milliseconds;
+        _room.GetWired().OnRoomTick();
+        _room.GetWired().OnFastCycle();
     }
 
     private Item VendingMachine(params int[] handItems)

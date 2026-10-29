@@ -9,6 +9,7 @@ using Plus.Core;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Interactor;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Runtime;
 using Plus.HabboHotel.Items.Wired.Configuration;
@@ -81,7 +82,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
             () => _room.GetRoomItemHandler().GetWallAndFloor);
         _engine.BindRuntime(_room, _targets, this,
             () => _counters.HasRunning || WiredBotTargets.For(_room).HasTargets || _chests?.HasPending == true
-                || WiredProjectileFlights.For(_room).HasPending || WiredDeferredStates.For(_room).HasPending, PollCounters, FlushExternalChanges);
+                || WiredProjectileFlights.For(_room).HasPending || WiredDeferredStates.For(_room).HasPending
+                || VendingDispenses.For(_room).HasPending, PollCounters, FlushExternalChanges);
         _engine.ObserveEvent = (evt, now) =>
         {
             _selectorState.Observe(evt, now);
@@ -230,6 +232,8 @@ public partial class WiredComponent : IWiredRuntimeOperations
     public void OnCycle()
     {
         ShowLinkArrivals();
+        // The Wired disabler stops the fast passes that run the vending timers, so the room tick still ends a due vending use.
+        PollVending(_engine.NowMilliseconds);
         WiredAvatarState.For(_room).FlushTickEffects();
         _highscores?.OnOwnedPass();
 

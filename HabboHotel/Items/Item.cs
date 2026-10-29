@@ -1086,27 +1086,6 @@ public class Item
                         }
 
                         break;
-                    case InteractionType.VendingMachine:
-                        if (LegacyDataString == "1") {
-                            user = room.GetRoomUserManager().GetRoomUserByHabbo(InteractingUser);
-
-                            if (user == null) {
-                                break;
-                            }
-
-                            user.UnlockWalking();
-
-                            if (Definition.VendingIds.Count > 0) {
-                                var randomDrink = Definition.VendingIds[Random.Shared.Next(0, Definition.VendingIds.Count)];
-                                user.CarryItem(randomDrink);
-                            }
-
-                            InteractingUser = 0;
-                            LegacyDataString = "0";
-                            UpdateState(false, true);
-                        }
-
-                        break;
                     case InteractionType.Scoreboard: {
                             if (string.IsNullOrEmpty(LegacyDataString)) {
                                 break;

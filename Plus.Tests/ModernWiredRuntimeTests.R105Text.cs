@@ -119,6 +119,28 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal("v13 [$(fn)] [$(all)]", Shown(s, "v13 [$(fn)] [$(all)]"));
     }
 
+    [Fact]
+    public void TextOutputFurniNameWithShowMultipleFillsAnEmptySelectionWithNothing()
+    {
+        using var s = new SelectorStack();
+        s.Selector("wf_slc_furni_with_var", Points(false, false));
+        TextAddon(s, 400, "wf_xtra_text_output_furni_name", [1], "fn\t,", [], furni: [200]);
+
+        Assert.Equal("src []", Shown(s, "src [$(fn)]"));
+    }
+
+    [Fact]
+    public void TextOutputFurniNameWithShowMultiplePrintsTheSelectedFurni()
+    {
+        using var s = new SelectorStack();
+        s.Blocks[2].Definition.FurniName = "Block";
+        s.Give(s.Blocks[2], 2);
+        s.Selector("wf_slc_furni_with_var", Points(false, false));
+        TextAddon(s, 400, "wf_xtra_text_output_furni_name", [1], "fn\t,", [], furni: [200]);
+
+        Assert.Equal("src [Block]", Shown(s, "src [$(fn)]"));
+    }
+
     // Furni Name prints the name of the furnidata ("Colour Tile"), not the shop name.
     [Fact]
     public void TextOutputFurniNamePrintsTheFurnidataName()

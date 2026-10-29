@@ -127,6 +127,10 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
         if (user.DanceId > 0) {
             user.DanceId = 0;
+
+            if (action == 5) {
+                room.SendPacket(new DanceComposer(user.VirtualId, 0));
+            }
         }
 
         user.UnIdle(atRoomTick: true);
@@ -134,8 +138,11 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
 
         if (action == 5) {
             user.WakePending = false;
-            user.IsAsleep = true;
-            room.SendPacket(new SleepComposer(user.VirtualId, true));
+
+            if (!user.IsAsleep) {
+                user.IsAsleep = true;
+                room.SendPacket(new SleepComposer(user.VirtualId, true));
+            }
         }
 
         user.RecentExpression = rule is { Wired: { } remembered, CountsFor: { } window } ? ((int)remembered, clock.GetUtcNow() + window) : null;

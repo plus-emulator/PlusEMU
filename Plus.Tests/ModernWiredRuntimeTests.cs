@@ -254,7 +254,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal((1d, 1, 1, "Gate opened"), (page.Long(), page.Byte(), page.Byte(), page.String()));
         var millis = page.Long();
         Assert.InRange(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - millis, 0, 60_000);
-        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds((long)millis).UtcDateTime.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture), page.String());
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds((long)millis).UtcDateTime.ToString("dd-MM-yyyy HH:mm:ss", CultureInfo.InvariantCulture), page.String());
         Assert.Equal((false, false, false), (page.Bool(), page.Bool(), page.Bool()));
         page.End();
 

@@ -505,13 +505,15 @@ public partial class WiredRuntimeEngineTests
         Assert.True(timers.TryFire("wf_trg_period_short", 3, configuration, 100, 100, 0));
     }
 
-    // The 5 s timer fires 5000 ms apart on the room's 500 ms grid, so like the 500 ms timer its first firing is set by the grid,
-    // not by the arming instant.
+    // The 5 s timer counts on the room timer, so its first firing is the next multiple of 5000 ms after the timer started,
+    // not a period after the arming instant.
     [Theory]
     [InlineData(105, 5000)]
     [InlineData(499, 5000)]
-    [InlineData(500, 5500)]
-    [InlineData(605, 5500)]
+    [InlineData(500, 5000)]
+    [InlineData(605, 5000)]
+    [InlineData(5000, 10000)]
+    [InlineData(7300, 10000)]
     public void A5sTimerStaysOnTheRoomGrid(long armedAt, long firstAt)
     {
         var timers = new WiredTimedTriggers();

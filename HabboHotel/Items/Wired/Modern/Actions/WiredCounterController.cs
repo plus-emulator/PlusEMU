@@ -234,6 +234,10 @@ public sealed class WiredCounterController(long maxHalfSeconds = int.MaxValue * 
             else if (clock.GameAware && operation == 0) {
                 // Starting a game counter starts the game in the same tick.
                 gameTransition?.Invoke(transition);
+
+                if (origin == WiredClockOrigin.ModernWired && item.GetRoom() is { } room) {
+                    WiredDeferredStates.For(room).ResetBlobsOnNextRoomTick();
+                }
             }
         }
 

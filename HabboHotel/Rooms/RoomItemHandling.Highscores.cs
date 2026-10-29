@@ -238,6 +238,32 @@ public partial class RoomItemHandling
         return Enter(0);
     }
 
+    // A board switches its display state between 0 and 1. A board with a score write or a move in flight keeps its state.
+    internal bool TryToggleHighscoreState(Item item)
+    {
+        lock (_payloadGate) {
+            if (PayloadBlocked(item.Id) || item.IsTemporary || !ReferenceEquals(GetItem(item.Id), item)) {
+                return false;
+            }
+
+            lock (item.NavSync) {
+                if (item.ExtraData is not HighscoreDataFormat board) {
+                    return false;
+                }
+
+                item.ExtraData = new HighscoreDataFormat
+                {
+                    State = board.State == "1" ? "0" : "1",
+                    ScoreType = board.ScoreType,
+                    ClearType = board.ClearType,
+                    Entries = board.CaptureEntries()
+                };
+            }
+
+            return true;
+        }
+    }
+
     private bool PayloadBlocked(uint id) => _pendingHighscores.ContainsKey(id) || _payloadTransfers.ContainsKey(id);
     // A hidden pyramid always loads at state 1, so its flips are never saved.
     private string? SavePayload(Item item) => PayloadBlocked(item.Id) || item.Definition.ItemName == "wf_pyramid" || item.ExtraData is HighscoreDataFormat

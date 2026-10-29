@@ -1541,7 +1541,7 @@ public class Item
         }
 
         UpdateState(true, false);
-        room.SendObjectData(this, LegacyDataString, false);
+        room.SendObjectData(this, ExtraData is HighscoreDataFormat board ? board.State : LegacyDataString, false);
         room.SendPacket(new FurnitureMetadataComposer([RoomItemSnapshot.Capture(this)]));
     }
 

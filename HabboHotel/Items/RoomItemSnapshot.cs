@@ -40,9 +40,12 @@ public static class FurnitureWireData
     /// The data an ObjectDataUpdate carries for a state: legacy for ordinary furni, the full map for a recolorable, whose client
     /// logic paints legacy data white.
     /// </summary>
-    public static FurnitureDataSnapshot ForState(IFurniObjectData data, string state) => data is RecolorableDataFormat recolorable
-        ? new FurnitureDataSnapshot.Map(recolorable.WireMap(state))
-        : new FurnitureDataSnapshot.Legacy(state);
+    public static FurnitureDataSnapshot ForState(IFurniObjectData data, string state) => data switch
+    {
+        RecolorableDataFormat recolorable => new FurnitureDataSnapshot.Map(recolorable.WireMap(state)),
+        HighscoreDataFormat board => new FurnitureDataSnapshot.Highscore(state, board.ScoreType, board.ClearType) { Entries = board.CaptureEntries() },
+        _ => new FurnitureDataSnapshot.Legacy(state)
+    };
 }
 
 public sealed record GuildFurnitureAppearance(int GroupId, string Badge, string Colour1, string Colour2);

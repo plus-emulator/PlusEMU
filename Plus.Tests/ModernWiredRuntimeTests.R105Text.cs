@@ -130,9 +130,17 @@ public partial class ModernWiredRuntimeTests
     {
         using var s = new SelectorStack();
         TextAddon(s, 400, "wf_xtra_text_output_furni_name", [0], "fn", [], furni: [100]);
-        TextAddon(s, 401, "wf_xtra_text_output_furni_name", [1], "all\t,", [], furni: [100]);
 
-        Assert.Equal("v13 [$(fn)] [$(all)]", Shown(s, "v13 [$(fn)] [$(all)]"));
+        Assert.Equal("v13 [$(fn)]", Shown(s, "v13 [$(fn)]"));
+    }
+
+    [Fact]
+    public void TextOutputFurniNameWithShowMultipleFillsNoPickedFurniWithNothing()
+    {
+        using var s = new SelectorStack();
+        TextAddon(s, 400, "wf_xtra_text_output_furni_name", [1], "all\t,", [], furni: [100]);
+
+        Assert.Equal("v13 []", Shown(s, "v13 [$(all)]"));
     }
 
     [Fact]

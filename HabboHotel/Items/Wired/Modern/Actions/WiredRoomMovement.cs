@@ -159,9 +159,11 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             options = options with { Rotation = FurnitureDirections.Heading(item.Definition, turned) ?? rotation };
         }
 
-        // A turn on the spot is a plain ObjectUpdate: no WiredMovements for a rotation without a move.
+        // A turn on the spot is a plain ObjectUpdate: no WiredMovements for a rotation without a move, except with No Move Animation.
         // Furni stacked on one tile that turn together also send ObjectUpdate, although the ones above the bottom one land on a new height.
-        if (x == item.GetX && y == item.GetY && rotation != item.Rotation) {
+        var turnsInPlace = x == item.GetX && y == item.GetY && rotation != item.Rotation;
+
+        if (turnsInPlace) {
             options = options with { Animate = false };
         }
 
@@ -175,8 +177,8 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         var firing = context.Firing ?? room.GetWired()?.ExecutingFiring;
 
-        // A furni that entered a user's tile earlier in the same firing may change height or turn there. One that a user already stood on may not.
-        if (x == item.GetX && y == item.GetY && room.GetWired()?.EnteredTileIn(firing, item) == true
+        // A furni may change height or turn on a tile where users stand.
+        if (x == item.GetX && y == item.GetY
             && StayingUsers(room, item, x, y, options.Rotation ?? rotation) is { Count: > 0 } staying) {
             var through = collision?.ThroughUsers.Union(staying).ToHashSet() ?? [.. staying];
             collision = (collision ?? new(new HashSet<uint>(), new HashSet<int>(), new HashSet<uint>())) with { ThroughUsers = through };
@@ -229,11 +231,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             return false;
         }
 
-        if (x != source.X || y != source.Y) {
-            room.GetWired()?.NoteTileChange(firing, item);
-        }
-
-        if (batched && room.GetWired()!.DeferObjectUpdate(item, x == source.X && y == source.Y, policy.DisableAnimation)) {
+        if (batched && room.GetWired()!.DeferObjectUpdate(item, x == source.X && y == source.Y, policy.DisableAnimation, turnsInPlace)) {
             options = options with { Animate = true, AnimationTimeMs = 0 };
             source = Furniture(item);
         }

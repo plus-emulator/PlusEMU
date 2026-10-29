@@ -6,8 +6,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// A furni that a firing moved onto a user and then changes in height or turns on that tile is not stopped by the user.
-// A furni that a user already stood on before the firing is still refused.
+// A furni that changes in height or turns on its tile is not stopped by the users standing on it, whether the same firing moved it there or not.
 public partial class PlacedFurniRoomTests
 {
     private const uint InPlaceMove = 981, InPlaceOrder = 982, InPlaceNoAnimation = 983, InPlaceTurn = 984;
@@ -104,16 +103,18 @@ public partial class PlacedFurniRoomTests
         Assert.Contains(sent, packet => packet.Header == (noAnimation ? ServerPacketHeader.ObjectUpdateComposer : ServerPacketHeader.WiredMovementsComposer));
     }
 
-    [Fact]
-    public async Task AClickOnABotDoesNotTurnAFurniThatAUserAlreadyStoodOn()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AClickOnABotTurnsAFurniThatAUserAlreadyStoodOn(bool noAnimation)
     {
-        var (actor, tile) = await InPlaceRoom(noAnimation: true, altitude: false, turn: true, moveToUser: false);
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: false, turn: true, moveToUser: false);
         Stand(actor, 2, 2);
 
         var sent = await ClickABot();
 
-        Assert.Equal((2, 2, 0), (tile.GetX, tile.GetY, tile.Rotation));
-        Assert.DoesNotContain(sent, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
+        Assert.Equal((2, 2, 2), (tile.GetX, tile.GetY, tile.Rotation));
+        Assert.Contains(sent, packet => packet.Header is ServerPacketHeader.ObjectUpdateComposer or ServerPacketHeader.WiredMovementsComposer);
     }
 
     [Fact]

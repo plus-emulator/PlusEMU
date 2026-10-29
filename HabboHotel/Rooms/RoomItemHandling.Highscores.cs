@@ -98,10 +98,7 @@ public partial class RoomItemHandling
                             return null;
                         }
 
-                        var prior = new HighscoreDataFormat();
-                        prior.Store(row.ExtraData);
-
-                        if (prior.Serialize() != write.LivePrior) {
+                        if (!SameScores(FurniExtraData.Load(write.Definition, row.ExtraData, keepLegacy: true), write.LivePrior)) {
                             return null;
                         }
 
@@ -123,6 +120,17 @@ public partial class RoomItemHandling
 
             return batch != null;
         }
+    }
+
+    // The saved row must hold the live scores. Its display state may lag, and a bought board keeps an empty row until the room saves it.
+    private static bool SameScores(IFurniObjectData saved, string live)
+    {
+        var current = new HighscoreDataFormat();
+        current.Store(live);
+
+        return saved is HighscoreDataFormat board && board.ScoreType == current.ScoreType && board.ClearType == current.ClearType
+            && board.Entries.Length == current.Entries.Length && board.Entries.Zip(current.Entries)
+                .All(pair => pair.First.Score == pair.Second.Score && pair.First.Users.SequenceEqual(pair.Second.Users, StringComparer.Ordinal));
     }
 
     private bool FindRegistered(IReadOnlyList<HighscoreWrite> writes, out HighscoreBatch? batch)
@@ -180,13 +188,7 @@ public partial class RoomItemHandling
                     return HighscoreResolution.Unknown;
                 }
 
-                var data = batch.Writes.Select(write =>
-                {
-                    var parsed = new HighscoreDataFormat();
-                    parsed.Store(candidate ? write.Candidate : write.Prior);
-
-                    return parsed;
-                }).ToArray();
+                var data = batch.Writes.Select(write => FurniExtraData.Load(write.Definition, candidate ? write.Candidate : write.Prior, keepLegacy: true)).ToArray();
                 snapshots = [];
 
                 for (var i = 0; i < batch.Writes.Count; i++) {

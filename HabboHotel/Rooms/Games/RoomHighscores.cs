@@ -6,11 +6,10 @@ using Plus.HabboHotel.Rooms.PathFinding;
 
 namespace Plus.HabboHotel.Rooms.Games;
 
-/// <summary>The observed singleton football/all-time producer. Other game policies remain unchanged.</summary>
+/// <summary>Writes a football round started and stopped by Control Clock to every high score board in the room.</summary>
 internal sealed class RoomHighscores(Room room, TimeProvider time)
 {
-    private sealed record Round(WiredClockTransition Start, RoomUser User, long Lifetime, int HabboId, string Name, long Started,
-        long Generation, long Membership, IReadOnlyList<HighscoreWrite> Boards);
+    private sealed record Round(WiredClockTransition Start, long Started, long Generation);
     private sealed record Completion(Round Round, HighscoreBatch? Batch, IReadOnlyList<HighscoreWrite> Writes);
     private IRoomHighscoreStore? _store;
     private Round? _round;
@@ -61,7 +60,7 @@ internal sealed class RoomHighscores(Room room, TimeProvider time)
         var retry = pending.Batch == null;
 
         if (retry) {
-            if (!SourceStillLive(pending.Round) || !ReferenceEquals(Singleton(), pending.Round.User)) {
+            if (!SourceStillLive(pending.Round)) {
                 _pending = null;
 
                 return;
@@ -82,7 +81,7 @@ internal sealed class RoomHighscores(Room room, TimeProvider time)
             _pending = null;
         }
         else if (result == HighscoreResolution.Prior) {
-            _pending = SourceStillLive(pending.Round) && ReferenceEquals(Singleton(), pending.Round.User) ? pending with { Batch = null } : null;
+            _pending = SourceStillLive(pending.Round) ? pending with { Batch = null } : null;
         }
     }
     internal bool CanBeginOwned(Item item, WiredClockOrigin origin, RoomUser? actor)
@@ -133,34 +132,11 @@ internal sealed class RoomHighscores(Room room, TimeProvider time)
             return;
         }
 
-        var user = Singleton();
-
-        if (user == null || !ReferenceEquals(transition.Actor, user)) {
+        if (!room.GetRoomItemHandler().GetFloor.Any(SupportedBoard)) {
             return;
         }
 
-        var boards = room.GetRoomItemHandler().GetFloor.Where(SupportedBoard).OrderBy(item => item.Id).ToArray();
-
-        if (boards.Length == 0) {
-            return;
-        }
-
-        var writes = new List<HighscoreWrite>();
-
-        foreach (var item in boards) {
-            var data = (HighscoreDataFormat)item.ExtraData;
-
-            if (data.Entries.Length == 1 && (data.Entries[0].Users.Length != 1 || data.Entries[0].Users[0] != user.GetUsername()
-                || data.Entries[0].Score < 0)) {
-                return;
-            }
-
-            var prior = data.Serialize();
-            writes.Add(new(item, item.Placement, item.Definition, room.Id, item.OwnerId, prior, prior));
-        }
-
-        _round = new(transition, user, user.Movement.LifetimeId, user.HabboId, user.GetUsername(), time.GetTimestamp(),
-            Interlocked.Read(ref _generation), user.TeamRevision, writes);
+        _round = new(transition, time.GetTimestamp(), Interlocked.Read(ref _generation));
     }
     private void Complete(WiredClockTransition stop)
     {
@@ -168,52 +144,40 @@ internal sealed class RoomHighscores(Room room, TimeProvider time)
         _round = null; // Completion is consumed before persistence/output/reentrant Stop.
 
         if (round == null || _store == null || stop.WasRunning == false || stop.Reason != WiredClockReason.Stop
-            || !ReferenceEquals(stop.Clock, round.Start.Clock) || stop.Sequence != round.Start.Sequence + 1
-            || !ReferenceEquals(stop.Actor, round.User) || !SourceStillLive(round) || !ReferenceEquals(Singleton(), round.User)) {
+            || !ReferenceEquals(stop.Clock, round.Start.Clock) || stop.Sequence != round.Start.Sequence + 1 || !SourceStillLive(round)) {
             return;
         }
 
         var seconds = time.GetElapsedTime(round.Started, time.GetTimestamp()).TotalSeconds;
 
-        // Provisional whole-second flooring; exact native tick/epoch quantization is not established.
         if (seconds < 0 || seconds > int.MaxValue) {
             return;
         }
 
-        var points = room.GetGameManager().Points;
+        var teams = Teams();
 
-        if (points.Skip(2).Any(score => score != 0) || points[1] < 0) {
+        if (teams.Count == 0) {
             return;
         }
 
         var writes = new List<HighscoreWrite>();
 
-        foreach (var write in round.Boards) {
-            if (write.Item.Id != write.ItemId || write.Item.Placement != write.Placement || !ReferenceEquals(write.Item.Definition, write.Definition)
-                || write.Item.Definition.Id != write.BaseItem || write.Item.Definition.ItemName != write.DefinitionName
-                || write.Item.ExtraData.Serialize() != write.Prior) {
-                return;
-            }
-
+        foreach (var item in room.GetRoomItemHandler().GetFloor.Where(SupportedBoard).OrderBy(item => item.Id)) {
+            var board = (HighscoreDataFormat)item.ExtraData;
+            var prior = board.Serialize();
             var data = new HighscoreDataFormat();
-            data.Store(write.Prior);
+            data.Store(prior);
 
-            if (data.ScoreType == 3) {
-                var best = data.Entries.Length == 0 ? (int)seconds : Math.Min(data.Entries[0].Score, (int)seconds);
-                data.Entries = [new(best, [round.Name])]; // Zero points is eligible for the observed fastest board.
-            }
-            else if (points[1] > 0) {
-                var wins = data.Entries.Length == 0 ? 1L : (long)data.Entries[0].Score + 1;
-
-                if (wins > int.MaxValue) {
-                    return;
-                }
-
-                data.Entries = [new((int)wins, [round.Name])];
-            }
-
+            HighscoreRules.Apply(data, teams, (int)seconds);
             var candidate = data.Serialize();
-            writes.Add(write with { Candidate = candidate, LiveCandidate = candidate });
+
+            if (candidate != prior) {
+                writes.Add(new(item, item.Placement, item.Definition, room.Id, item.OwnerId, prior, candidate));
+            }
+        }
+
+        if (writes.Count == 0) {
+            return;
         }
 
         var handler = room.GetRoomItemHandler();
@@ -233,12 +197,13 @@ internal sealed class RoomHighscores(Room room, TimeProvider time)
         }
         // Unknown is quarantined; all-prior can retry only these frozen candidates on a later owned pass.
     }
-    private RoomUser? Singleton()
-    {
-        var users = room.GetRoomUserManager().GetRoomUsers().Where(user => user != null && !user.IsBot && user.Team != Team.None).ToArray();
-
-        return users.Length == 1 && users[0].Team == Team.Red && WiredGameState.For(room).ReadTeamType(room, users[0]) == 4 ? users[0] : null;
-    }
+    // The players in each team when the round stops, in room order. Bots and leaving users never count.
+    private IReadOnlyList<HighscoreTeam> Teams() => room.GetRoomUserManager().GetRoomUsers()
+        .Where(user => user != null && !user.IsBot && user.Team != Team.None && user.Movement.State != NavState.Removing)
+        .GroupBy(user => user.Team)
+        .OrderBy(group => group.Key)
+        .Select(group => new HighscoreTeam(group.Select(user => user.GetUsername()).ToArray(), room.GetGameManager().Points[(int)group.Key]))
+        .ToArray();
     private bool SourceStillLive(Round round) => round.Generation == Interlocked.Read(ref _generation)
         && ReferenceEquals(room.GetRoomItemHandler().GetItem(round.Start.ItemId), round.Start.Item)
         && round.Start.Item.GetX == round.Start.X && round.Start.Item.GetY == round.Start.Y
@@ -246,12 +211,8 @@ internal sealed class RoomHighscores(Room room, TimeProvider time)
         && round.Start.Item.Id == round.Start.ItemId && round.Start.Item.RoomId == round.Start.RoomId && round.Start.RoomId == room.Id
         && round.Start.Item.OwnerId == round.Start.OwnerId && round.Start.Item.Definition.Id == round.Start.BaseItem
         && round.Start.Item.Definition.ItemName == round.Start.DefinitionName
-        && round.Start.Item.Placement == round.Start.Placement && ReferenceEquals(round.Start.Item.Definition, round.Start.Definition)
-        && round.User.HabboId == round.HabboId && round.User.TeamRevision == round.Membership
-        && round.User.Movement.LifetimeId == round.Lifetime && round.User.Movement.State != NavState.Removing
-        && ReferenceEquals(room.GetRoomUserManager().GetRoomUserByVirtualId(round.User.VirtualId), round.User)
-        && round.User.GetUsername() == round.Name;
+        && round.Start.Item.Placement == round.Start.Placement && ReferenceEquals(round.Start.Item.Definition, round.Start.Definition);
     private static bool SupportedBoard(Item item) => item.IsFloorItem && !item.IsTemporary && item.Definition.InteractionType == InteractionType.None
-        && HighscoreDataFormat.TryDefinition(item.Definition.ItemName, out var kind, out var clear) && kind is 1 or 3 && clear == 0
-        && item.ExtraData is HighscoreDataFormat data && data.ScoreType == kind && data.ClearType == clear && data.Entries.Length <= 1;
+        && HighscoreDataFormat.TryDefinition(item.Definition.ItemName, out var kind, out var clear)
+        && item.ExtraData is HighscoreDataFormat data && data.ScoreType == kind && data.ClearType == clear;
 }

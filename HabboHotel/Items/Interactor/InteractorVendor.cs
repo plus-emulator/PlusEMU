@@ -90,7 +90,7 @@ public class InteractorVendor : IFurniInteractor, IApproachInteractor
     }
 
     private static bool CanDispense(Item item)
-        => item.LegacyDataString != "1" && item.Definition.VendingIds.Count >= 1 && item.InteractingUser == 0;
+        => item.LegacyDataString != "1" && item.InteractingUser == 0;
 
     private static void StartDispensing(Item item, RoomUser user, int habboId)
     {

@@ -816,26 +816,33 @@ public partial class WiredComponent : IWiredRuntimeOperations
     private readonly List<Item> _pendingObjectUpdates = [];
     private readonly HashSet<Item> _changedInPlace = [];
     private readonly HashSet<Item> _changedTile = [];
+    private readonly HashSet<Item> _turnedInPlace = [];
 
     /// <summary>
     /// Holds the ObjectUpdate of a furni that a firing moved without WiredMovements. <see cref="FlushFlashData"/> sends it first, with the state the furni ends on.
     /// With No Move Animation, a furni that changes again on its own tile in the same firing, having never left it, is sent as a WiredMovements entry instead.
-    /// The method then returns true and the caller sends that entry.
+    /// The method then returns true and the caller sends that entry. A furni that only turns on its own tile with No Move Animation is also sent as a WiredMovements entry, at the flush.
     /// </summary>
-    internal bool DeferObjectUpdate(Item item, bool onItsTile, bool noAnimation)
+    internal bool DeferObjectUpdate(Item item, bool onItsTile, bool noAnimation, bool turned = false)
     {
         lock (_pendingFlashes) {
             if (!onItsTile) {
                 _changedInPlace.Remove(item);
                 _changedTile.Add(item);
+                _turnedInPlace.Remove(item);
             }
             else if (_changedInPlace.Contains(item) && noAnimation) {
                 _pendingObjectUpdates.Remove(item);
+                _turnedInPlace.Remove(item);
 
                 return true;
             }
             else if (!_changedTile.Contains(item)) {
                 _changedInPlace.Add(item);
+
+                if (turned && noAnimation) {
+                    _turnedInPlace.Add(item);
+                }
             }
 
             if (!_pendingObjectUpdates.Contains(item)) {
@@ -849,21 +856,32 @@ public partial class WiredComponent : IWiredRuntimeOperations
     private void SendDeferredObjectUpdates()
     {
         Item[] items;
+        HashSet<Item> turned;
 
         lock (_pendingFlashes) {
             _changedInPlace.Clear();
             _changedTile.Clear();
 
             if (_pendingObjectUpdates.Count == 0) {
+                _turnedInPlace.Clear();
+
                 return;
             }
 
             items = [.. _pendingObjectUpdates];
             _pendingObjectUpdates.Clear();
+            turned = [.. _turnedInPlace];
+            _turnedInPlace.Clear();
         }
 
         foreach (var item in items) {
             if (!ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item) || FurniVisibility.IsConcealed(_room, item)) {
+                continue;
+            }
+
+            if (turned.Contains(item)) {
+                _room.SendPacket(new WiredMovementComposer(1, (int)item.Id, item.GetX, item.GetY, item.GetZ, item.GetX, item.GetY, item.GetZ, item.Rotation, item.Rotation, 0));
+
                 continue;
             }
 

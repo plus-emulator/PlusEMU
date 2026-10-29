@@ -303,12 +303,12 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
             var initial = literal;
             long[] paired = [];
 
-            // Given from a variable: its value on each holder itself, or the first value its reference holders have. Furni destinations take the
-            // value of one furni reference holder each (see Pair).
+            // Given from a variable: its value on each holder itself, or the first value its reference holders have. Furni and context destinations
+            // take the value of one furni reference holder each (see Pair).
             if (operandReference is { } given && !sameHolder) {
                 var (referenceUsers, referenceFurni) = p.Length == GiveReferenced ? (p[8], p[9]) : (p[3], p[4]);
 
-                if (reference.Target == WiredVariableTarget.Furni && given.Target == WiredVariableTarget.Furni) {
+                if (reference.Target is WiredVariableTarget.Furni or WiredVariableTarget.Context && given.Target == WiredVariableTarget.Furni) {
                     var referenceValues = ReferenceValues(configuration, given, referenceUsers, referenceFurni, frame);
 
                     if (referenceValues.Length == 0) {

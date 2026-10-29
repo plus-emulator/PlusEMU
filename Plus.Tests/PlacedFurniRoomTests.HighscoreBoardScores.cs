@@ -112,6 +112,23 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(1, Assert.Single(wins.Entries).Score);
     }
 
+    // A board opened in the room has state 1 live while its saved row still says 0. A round still writes it.
+    [WiredChestDatabaseFact]
+    public void ABoardWhoseSavedStateLagsItsLiveStateTakesTheRound()
+    {
+        using var db = new WiredChestDatabaseTests.Fixture();
+        var game = PrepareHighscoreGame(db);
+        ((HighscoreDataFormat)game.Wins.ExtraData).State = "1";
+
+        game.Actor.OnChat(0, "start", false);
+        game.Clock.Now += TimeSpan.FromSeconds(3);
+        game.Actor.OnChat(0, "stop", false);
+
+        var wins = (HighscoreDataFormat)game.Wins.ExtraData;
+        Assert.Equal(1, Assert.Single(wins.Entries).Score);
+        Assert.Equal(wins.Serialize(), db.Connection.QuerySingle<string>("SELECT extra_data FROM items WHERE id=502"));
+    }
+
     // A bought board keeps an empty row until the room saves it. A round still writes it, and the other boards too.
     [WiredChestDatabaseFact]
     public void ABoardWithAnEmptySavedRowTakesTheRound()

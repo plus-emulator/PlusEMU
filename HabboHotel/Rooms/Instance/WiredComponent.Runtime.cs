@@ -98,7 +98,7 @@ public partial class WiredComponent
         }
         else if (descriptor.Category == WiredBoxCategory.Trigger && WiredTriggerConfiguration.Events.ContainsKey(descriptor.CanonicalName)) {
             box = WiredTriggerConfiguration.IsTimed(descriptor.CanonicalName)
-                ? new WiredModernTimedTrigger(_room, item, descriptor, RoomTimerAfterLoad) : new WiredModernTrigger(_room, item, descriptor);
+                ? new WiredModernTimedTrigger(_room, item, descriptor, RoomTimerAfterLoad, now => _engine.TimerOriginAt(now)) : new WiredModernTrigger(_room, item, descriptor);
             defaults = WiredTriggerConfiguration.Defaults(descriptor.CanonicalName);
         }
         else if (descriptor.Category == WiredBoxCategory.Condition && WiredConditionConfiguration.Supports(descriptor.CanonicalName)) {

@@ -809,14 +809,35 @@ public partial class WiredComponent : IWiredRuntimeOperations
 
     private readonly HashSet<Item> _pendingFlashes = [];
     private readonly List<Item> _pendingObjectUpdates = [];
+    private readonly HashSet<Item> _changedInPlace = [];
+    private readonly HashSet<Item> _changedTile = [];
 
-    /// <summary>Holds the ObjectUpdate of a furni that a firing moved without WiredMovements. <see cref="FlushFlashData"/> sends it first, with the state the furni ends on.</summary>
-    internal void DeferObjectUpdate(Item item)
+    /// <summary>
+    /// Holds the ObjectUpdate of a furni that a firing moved without WiredMovements. <see cref="FlushFlashData"/> sends it first, with the state the furni ends on.
+    /// With No Move Animation, a furni that changes again on its own tile in the same firing, having never left it, is sent as a WiredMovements entry instead.
+    /// The method then returns true and the caller sends that entry.
+    /// </summary>
+    internal bool DeferObjectUpdate(Item item, bool onItsTile, bool noAnimation)
     {
         lock (_pendingFlashes) {
+            if (!onItsTile) {
+                _changedInPlace.Remove(item);
+                _changedTile.Add(item);
+            }
+            else if (_changedInPlace.Contains(item) && noAnimation) {
+                _pendingObjectUpdates.Remove(item);
+
+                return true;
+            }
+            else if (!_changedTile.Contains(item)) {
+                _changedInPlace.Add(item);
+            }
+
             if (!_pendingObjectUpdates.Contains(item)) {
                 _pendingObjectUpdates.Add(item);
             }
+
+            return false;
         }
     }
 
@@ -825,6 +846,9 @@ public partial class WiredComponent : IWiredRuntimeOperations
         Item[] items;
 
         lock (_pendingFlashes) {
+            _changedInPlace.Clear();
+            _changedTile.Clear();
+
             if (_pendingObjectUpdates.Count == 0) {
                 return;
             }

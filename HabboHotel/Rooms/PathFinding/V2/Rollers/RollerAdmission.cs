@@ -12,7 +12,7 @@ internal sealed class RollerAdmission(Room room, RollerTransport transport)
         var destination = move.Destination;
         var departing = transport.Departing(departures, destination);
 
-        if (!room.GetGameMap().CanRollItemHere(destination.X, destination.Y)
+        if (!(room.GetGameMap().CanRollItemHere(destination.X, destination.Y) || move.Cargo == null && IsDoor(destination))
             || !NextRollerClear(destination, departing)) {
             return false;
         }
@@ -21,6 +21,9 @@ internal sealed class RollerAdmission(Room room, RollerTransport transport)
             ? AdmitsCargo(cargo, move, departing, departures) && transport.AdmitsCargo(move, departures)
             : transport.AdmitsActor(move, departing);
     }
+
+    // A roller takes a user onto the door tile, even where the heightmap marks that tile void.
+    private bool IsDoor(Point tile) => tile.X == room.GetGameMap().Model.DoorX && tile.Y == room.GetGameMap().Model.DoorY;
 
     // Next-roller clearance: nothing that stays may rise above the destination roller.
     private bool NextRollerClear(Point tile, RollerDepartures departing)

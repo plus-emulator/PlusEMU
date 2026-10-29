@@ -6,6 +6,15 @@ public static class PostureService
 {
     public static void Apply(Room room, NavGrid grid, RoomUser actor)
     {
+        Seat(room, grid, actor);
+
+        if (actor.KeepsSitWhileWalking && !actor.Statusses.ContainsKey("sit")) {
+            actor.Statusses["sit"] = "0.55 1";
+            actor.IsSitting = true;
+        }
+    }
+    private static void Seat(Room room, NavGrid grid, RoomUser actor)
+    {
         var state = actor.Movement;
         actor.Statusses.Remove("sit");
         actor.Statusses.Remove("lay");

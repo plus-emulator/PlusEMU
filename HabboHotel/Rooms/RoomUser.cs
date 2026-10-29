@@ -406,17 +406,45 @@ public class RoomUser
         }
     }
 
-    /// <summary>Sit and Stand actions of a posture change, fired on the room tick that sends the status update.</summary>
-    internal System.Collections.Concurrent.ConcurrentQueue<WiredAvatarAction> PostureActions { get; } = new();
+    /// <summary>The last Sit (1) or Stand (0) request since the room tick, or -1. The tick applies it and fires the action.</summary>
+    internal int PostureRequest = -1;
+
+    /// <summary>A sit that began during a walk stays on until the walk ends.</summary>
+    internal bool KeepsSitWhileWalking;
 
     public void CompletePostureActions()
     {
-        if (GetRoom() is not { } room) {
+        var request = Interlocked.Exchange(ref PostureRequest, -1);
+
+        if (request < 0 || GetRoom() is not { } room) {
             return;
         }
 
-        while (PostureActions.TryDequeue(out var action)) {
-            room.GetWired().Dispatch(new(WiredEventKind.AvatarAction) { Actor = this, Action = (int)action, Code = -1 });
+        var wasSitting = IsSitting;
+
+        if (request == 1 && !Statusses.ContainsKey("sit")) {
+            // Sitting from a diagonal turns the body one step clockwise and the head follows it (3 -> 4, 5 -> 6, 7 -> 0).
+            if (RotBody % 2 != 0) {
+                RotBody = (RotBody + 1) % 8;
+                RotHead = RotBody;
+            }
+
+            // Sitting on the floor sends "sit 0.55 1" (sit height, can stand up) and keeps the avatar's Z.
+            Statusses.Add("sit", "0.55 1");
+            IsSitting = true;
+            KeepsSitWhileWalking = IsWalking;
+            UpdateNeeded = true;
+        }
+        else if (request == 0 && IsSitting) {
+            Statusses.Remove("sit");
+            IsSitting = false;
+            KeepsSitWhileWalking = false;
+            UpdateNeeded = true;
+        }
+
+        if (wasSitting != IsSitting) {
+            room.GetWired().Dispatch(new(WiredEventKind.AvatarAction)
+            { Actor = this, Action = (int)(IsSitting ? WiredAvatarAction.Sit : WiredAvatarAction.Stand), Code = -1 });
         }
     }
 

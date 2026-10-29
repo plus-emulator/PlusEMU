@@ -211,33 +211,12 @@ public sealed class RoomAvatarActionService(TimeProvider clock, IQuestManager qu
         var room = session.GetHabbo().CurrentRoom;
         var user = room.GetRoomUserManager().GetRoomUserByHabbo(session.GetHabbo().Id);
 
-        if (user == null || user.Statusses.ContainsKey("lie") || user.IsLying || user.RidingHorse || user.IsWalking || user.IsSwimming) {
+        if (user == null || user.Statusses.ContainsKey("lie") || user.IsLying || user.RidingHorse || user.IsSwimming) {
             return;
         }
 
-        var wasSitting = user.IsSitting;
-
-        if (posture == 1 && !user.Statusses.ContainsKey("sit")) {
-            // Sitting from a diagonal turns the body one step clockwise and the head follows it (3 -> 4, 5 -> 6, 7 -> 0).
-            if (user.RotBody % 2 != 0) {
-                user.RotBody = (user.RotBody + 1) % 8;
-                user.RotHead = user.RotBody;
-            }
-
-            // Sitting on the floor sends "sit 0.55 1" (sit height, can stand up) and keeps the avatar's Z.
-            user.Statusses.Add("sit", "0.55 1");
-            user.IsSitting = true;
-            user.UpdateNeeded = true;
-        }
-        else if (posture == 0 && user.IsSitting) {
-            user.Statusses.Remove("sit");
-            user.IsSitting = false;
-            user.UpdateNeeded = true;
-        }
-
-        if (wasSitting != user.IsSitting) {
-            user.PostureActions.Enqueue(user.IsSitting ? WiredAvatarAction.Sit : WiredAvatarAction.Stand);
-        }
+        // The last request of a room tick decides; the posture changes on the tick.
+        user.PostureRequest = posture;
     }
 
     public void LookTo(Room room, GameClient session, int x, int y)

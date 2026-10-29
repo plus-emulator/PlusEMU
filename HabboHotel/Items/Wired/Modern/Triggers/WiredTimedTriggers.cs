@@ -14,7 +14,7 @@ public sealed class WiredTimedTriggers
     private readonly Dictionary<uint, long> _firedEpoch = [];
 
     public bool TryFire(string name, uint boxId, WiredConfiguration config,
-        long nowMs, long elapsedMs, long resetEpoch)
+        long nowMs, long elapsedMs, long resetEpoch, Func<long, long>? timerOrigin = null)
     {
         var units = config.IntParams.IsDefaultOrEmpty ? 1 : config.IntParams[0];
 
@@ -49,12 +49,13 @@ public sealed class WiredTimedTriggers
         }
 
         var intervalMs = units * stepMs;
-        // A 500 ms "Repeat every" timer first fires on the next 500 ms room boundary after it is armed (the save time does not set the phase) and then stays on that grid,
-        // the same ticks as the walk steps. The 5 s timer keeps the same grid. The 50 ms timer counts on the 50 ms Wired ticks.
+        // The 500 ms and 5 s timers count on the room timer: a box fires on every multiple of its interval after the timer started, so one armed later
+        // joins the ticks of the others. The room timer starts on the tick of the first arming after the room loads and restarts at the first room tick after a reset.
+        // The 50 ms timer counts on the 50 ms Wired ticks.
         var onGrid = stepMs % StateUpdateMs == 0;
 
         if (!_nextPeriodicAt.TryGetValue(boxId, out var next)) {
-            _nextPeriodicAt[boxId] = onGrid ? NextBoundary(nowMs) + intervalMs - StateUpdateMs : nowMs - nowMs % WiredTickMs + intervalMs;
+            _nextPeriodicAt[boxId] = onGrid ? NextOnTimer(nowMs, timerOrigin?.Invoke(nowMs) ?? 0, intervalMs) : nowMs - nowMs % WiredTickMs + intervalMs;
 
             return false;
         }
@@ -85,6 +86,9 @@ public sealed class WiredTimedTriggers
     private static long AtTimeMilliseconds(WiredConfiguration config) => (config.IntParams.IsDefaultOrEmpty ? 1 : config.IntParams[0]) * 500L;
 
     private static long NextBoundary(long nowMs) => (nowMs / StateUpdateMs + 1) * StateUpdateMs;
+
+    private static long NextOnTimer(long nowMs, long originMs, long intervalMs) =>
+        nowMs < originMs ? originMs : originMs + ((nowMs - originMs) / intervalMs + 1) * intervalMs;
 
     /// <summary>
     /// The first 500 ms room tick strictly after the instant. At Given Time pulses count from the next room tick after the reset, on the room grid.

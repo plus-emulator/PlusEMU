@@ -575,10 +575,19 @@ internal sealed partial class WiredStackEngine
         ? (due + WiredFlashStates.StateUpdateMilliseconds - 1) / WiredFlashStates.StateUpdateMilliseconds * WiredFlashStates.StateUpdateMilliseconds
         : due;
 
+    private long? _timerOrigin;
+
+    /// <summary>
+    /// The room tick the 500 ms and 5 s repeaters count their intervals from: the first room tick after the last timer reset, or before any reset
+    /// the tick of the first repeater that arms.
+    /// </summary>
+    internal long TimerOriginAt(long now) => _timerOrigin ??= now - now % WiredFlashStates.StateUpdateMilliseconds;
+
     public void ResetTimers(IEnumerable<Item> targets) => Pass(() =>
     {
         // One instant for the whole reset, and each stack once however many of its boxes are targeted.
         var now = _now();
+        _timerOrigin = FirstRoomTickAfter(now);
         var tiles = new HashSet<(int X, int Y)>();
 
         foreach (var target in targets) {

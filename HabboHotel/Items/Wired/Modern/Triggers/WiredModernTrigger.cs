@@ -198,14 +198,16 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
     // At Given Time with 0 pulses starts only from a room timer reset, not from being added to the room.
     private bool _resetByAction;
     private readonly Func<long?>? _roomTimer;
+    private readonly Func<long, long>? _timerOrigin;
     private const long RoomTimerMarginMs = 20;
-    public WiredModernTimedTrigger(Room room, Item item, WiredBoxDescriptor descriptor, Func<long?>? roomTimer = null) : base(room, item, descriptor)
+    public WiredModernTimedTrigger(Room room, Item item, WiredBoxDescriptor descriptor, Func<long?>? roomTimer = null, Func<long, long>? timerOrigin = null) : base(room, item, descriptor)
     {
         if (!WiredTriggerConfiguration.IsTimed(descriptor.CanonicalName)) {
             throw new ArgumentException("Not a timed trigger.", nameof(descriptor));
         }
 
         _roomTimer = roomTimer;
+        _timerOrigin = timerOrigin;
     }
     public WiredRuntimeEvent? Poll(long nowMilliseconds)
     {
@@ -220,7 +222,7 @@ public sealed class WiredModernTimedTrigger : WiredModernTrigger, IWiredTimedTri
         }
 
         return _timers.TryFire(Descriptor.CanonicalName, Item.Id, config, nowMilliseconds,
-            Math.Max(0, nowMilliseconds - WiredTimedTriggers.FirstRoomTickAfter(_started)), _epoch)
+            Math.Max(0, nowMilliseconds - WiredTimedTriggers.FirstRoomTickAfter(_started)), _epoch, _timerOrigin)
             ? new(Events.Single()) { EventItem = Item } : null;
     }
     public void Reset(long nowMilliseconds)

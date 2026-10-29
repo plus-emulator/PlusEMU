@@ -71,12 +71,12 @@ public class InteractorVendor : IFurniInteractor, IApproachInteractor
             return;
         }
 
-        StartDispensing(item, user, session.GetHabbo().Id);
+        StartDispensing(itemRoom, item, user, session.GetHabbo().Id);
     }
 
     public bool StartFromApproach(Item item, RoomUser user)
     {
-        if (!CanDispense(item) || user.GetClient()?.GetHabbo() is not { } habbo) {
+        if (!CanDispense(item) || user.GetClient()?.GetHabbo() is not { } habbo || item.GetRoom() is not { } room) {
             return false;
         }
 
@@ -84,7 +84,7 @@ public class InteractorVendor : IFurniInteractor, IApproachInteractor
             return false;
         }
 
-        StartDispensing(item, user, habbo.Id);
+        StartDispensing(room, item, user, habbo.Id);
 
         return true;
     }
@@ -92,15 +92,32 @@ public class InteractorVendor : IFurniInteractor, IApproachInteractor
     private static bool CanDispense(Item item)
         => item.LegacyDataString != "1" && item.InteractingUser == 0;
 
-    private static void StartDispensing(Item item, RoomUser user, int habboId)
+    private static void StartDispensing(Room room, Item item, RoomUser user, int habboId)
     {
         item.InteractingUser = habboId;
         user.CanWalk = false;
         user.ClearMovement(true);
         user.SetRot(Rotation.Calculate(user.X, user.Y, item.GetX, item.GetY), false);
-        item.RequestUpdate(2, true);
         item.LegacyDataString = "1";
-        item.UpdateState(false, true);
+        item.UpdateState(false, false);
+        room.SendObjectData(item, "1", false);
+        room.GetWired().StartVending(item);
+    }
+
+    public static void HandOver(Room room, Item item)
+    {
+        if (item.Definition.VendingIds.Count > 0 && room.GetRoomUserManager().GetRoomUserByHabbo(item.InteractingUser) is { } user) {
+            user.CarryItem(item.Definition.VendingIds[Random.Shared.Next(item.Definition.VendingIds.Count)]);
+        }
+    }
+
+    public static void Finish(Room room, Item item)
+    {
+        room.GetRoomUserManager().GetRoomUserByHabbo(item.InteractingUser)?.UnlockWalking();
+        item.InteractingUser = 0;
+        item.LegacyDataString = "0";
+        item.UpdateState(false, false);
+        room.SendObjectData(item, "0", false);
     }
 
     public void OnWiredTrigger(Item item) { }

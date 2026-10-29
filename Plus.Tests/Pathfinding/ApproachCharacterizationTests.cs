@@ -51,21 +51,24 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void NearVendingClickLocksTheUserThenDispensesOnTheSecondItemCycle()
+    public void NearVendingClickLocksTheUserThenDispensesOnItsTimer()
     {
+        var clock = VendingClock();
         var item = ApproachFixture(InteractionType.VendingMachine);
         var actor = ExecutorActor(1, 0);
         item.Interactor.OnTrigger(_client, item, 0, true);
         Assert.Equal(7, item.InteractingUser);
         Assert.False(actor.CanWalk);
         Assert.Equal("1", item.LegacyDataString);
-        Assert.Equal(2, item.UpdateCounter);
-        ExecutorTick();
+        PassVendingTime(clock, 1249);
         Assert.Equal("1", item.LegacyDataString);
-        Assert.Equal(1, item.UpdateCounter);
         Assert.False(actor.CanWalk);
         Assert.Equal(0, actor.CarryItemId);
-        ExecutorTick();
+        PassVendingTime(clock, 1);
+        Assert.Equal(DrinkId, actor.CarryItemId);
+        Assert.Equal("1", item.LegacyDataString);
+        Assert.False(actor.CanWalk);
+        PassVendingTime(clock, 250);
         Assert.Equal("0", item.LegacyDataString);
         Assert.Equal(0, item.InteractingUser);
         Assert.True(actor.CanWalk);

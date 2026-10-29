@@ -86,7 +86,7 @@ public partial class PlacedFurniRoomTests
         if (kind == InteractionType.VendingMachine) {
             Assert.Equal("1", item.LegacyDataString);
             Assert.False(actor.CanWalk);
-            Assert.Equal(2, item.UpdateCounter);
+            Assert.True(VendingDispenses.For(_room).HasPending);
         }
         else {
             Assert.Equal(2, actor.TeleDelay);
@@ -98,17 +98,18 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
-    public void ArrivalStartedVendingDispensesOnTheSecondItemCycleLikeANearClick()
+    public void ArrivalStartedVendingDispensesOnItsTimerLikeANearClick()
     {
+        var clock = VendingClock();
         var item = ApproachFixture(InteractionType.VendingMachine);
         var actor = ApproachActor(3, 0);
         item.Interactor.OnTrigger(_client, item, 0, true);
         WalkToLanding(actor, 3);
-        Assert.Equal(2, item.UpdateCounter);
-        ExecutorTick();
+        Assert.True(VendingDispenses.For(_room).HasPending);
+        PassVendingTime(clock, 1249);
         Assert.Equal("1", item.LegacyDataString);
         Assert.Equal(0, actor.CarryItemId);
-        ExecutorTick();
+        PassVendingTime(clock, 251);
         Assert.Equal("0", item.LegacyDataString);
         Assert.Equal(0, item.InteractingUser);
         Assert.True(actor.CanWalk);
@@ -146,6 +147,7 @@ public partial class PlacedFurniRoomTests
     [InlineData(InteractionType.Hopper)]
     public void NearClickTimingIsUnchangedWhileAutomaticApproachIsEnabled(InteractionType kind)
     {
+        var clock = VendingClock();
         var item = ApproachFixture(kind);
         var actor = ApproachActor(1, 0);
         item.Interactor.OnTrigger(_client, item, 0, true);
@@ -153,11 +155,11 @@ public partial class PlacedFurniRoomTests
         Assert.Null(actor.Movement.Commands.Read());
 
         if (kind == InteractionType.VendingMachine) {
-            Assert.Equal(2, item.UpdateCounter);
+            Assert.True(VendingDispenses.For(_room).HasPending);
             Assert.False(actor.CanWalk);
-            ExecutorTick();
+            PassVendingTime(clock, 1249);
             Assert.Equal("1", item.LegacyDataString);
-            ExecutorTick();
+            PassVendingTime(clock, 251);
             Assert.Equal("0", item.LegacyDataString);
             Assert.Equal(DrinkId, actor.CarryItemId);
         }

@@ -1,4 +1,5 @@
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Interactor;
 using Microsoft.Extensions.Logging;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Configuration;
@@ -420,8 +421,32 @@ public partial class WiredComponent
             _room.SendObjectData(button, "0", false);
         }
 
+        PollVending(now);
         FlushExternalChanges();
     }
+
+    public void StartVending(Item machine) => VendingDispenses.For(_room).Start(machine, _engine.NowMilliseconds);
+
+    private void PollVending(long now)
+    {
+        var dispenses = VendingDispenses.For(_room);
+
+        if (!dispenses.HasPending) {
+            return;
+        }
+
+        var (handOver, reset) = dispenses.TakeDue(now);
+
+        foreach (var machine in handOver.Where(IsPlaced)) {
+            InteractorVendor.HandOver(_room, machine);
+        }
+
+        foreach (var machine in reset.Where(IsPlaced)) {
+            InteractorVendor.Finish(_room, machine);
+        }
+    }
+
+    private bool IsPlaced(Item item) => ReferenceEquals(_room.GetRoomItemHandler().GetItem(item.Id), item);
 
     private void PollProjectiles(long now)
     {

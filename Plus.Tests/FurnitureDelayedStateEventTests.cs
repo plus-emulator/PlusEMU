@@ -50,6 +50,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void VendingDispenseAndResetAreEachReportedOnce()
     {
+        var clock = VendingClock();
         var vending = PlacedFurni(41, InteractionType.VendingMachine, 2);
         vending.Definition.VendingIds.Add(5);
         WatchState(vending);
@@ -59,9 +60,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal("1", vending.LegacyDataString);
         Assert.Equal((1, 1), StateLines());
 
-        for (var tick = 0; tick < 5 && vending.LegacyDataString == "1"; tick++) {
-            vending.ProcessUpdates();
-        }
+        PassVendingTime(clock, 1500);
 
         Cycle();
         Assert.Equal("0", vending.LegacyDataString);
@@ -72,6 +71,7 @@ public partial class PlacedFurniRoomTests
     [Fact]
     public void AVendingMachineWithoutHandItemsGoesToOneAndBackToZero()
     {
+        var clock = VendingClock();
         var vending = PlacedFurni(41, InteractionType.VendingMachine, 2);
         WatchState(vending);
         Viewer(2, 3);
@@ -79,9 +79,7 @@ public partial class PlacedFurniRoomTests
         UseItem(vending);
         Assert.Equal("1", vending.LegacyDataString);
 
-        for (var tick = 0; tick < 5 && vending.LegacyDataString == "1"; tick++) {
-            vending.ProcessUpdates();
-        }
+        PassVendingTime(clock, 1500);
 
         Cycle();
         Assert.Equal("0", vending.LegacyDataString);

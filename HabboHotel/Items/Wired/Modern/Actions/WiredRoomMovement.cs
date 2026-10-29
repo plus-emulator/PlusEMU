@@ -173,6 +173,15 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             collision = (collision ?? new(new HashSet<uint>(), new HashSet<int>(), new HashSet<uint>())) with { ThroughUsers = through, OntoDoor = true };
         }
 
+        var firing = context.Firing ?? room.GetWired()?.ExecutingFiring;
+
+        // A furni that entered a user's tile earlier in the same firing may change height or turn there. One that a user already stood on may not.
+        if (x == item.GetX && y == item.GetY && room.GetWired()?.EnteredTileIn(firing, item) == true
+            && StayingUsers(room, item, x, y, options.Rotation ?? rotation) is { Count: > 0 } staying) {
+            var through = collision?.ThroughUsers.Union(staying).ToHashSet() ?? [.. staying];
+            collision = (collision ?? new(new HashSet<uint>(), new HashSet<int>(), new HashSet<uint>())) with { ThroughUsers = through };
+        }
+
         var carried = passengers?.For(context, item) ?? Carried(context, item);
         var dx = x - item.GetX;
         var dy = y - item.GetY;
@@ -213,11 +222,15 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         // The moves of one furni in one firing that send no WiredMovements go out as one ObjectUpdate with the final state.
         // A variable write runs on the context of the stack's variables, which has no firing of its own.
-        var batched = !options.Animate && room.GetWired() is { } wired && (context.Firing ?? wired.ExecutingFiring) != null;
+        var batched = !options.Animate && room.GetWired() != null && firing != null;
 
         if (!WiredRoomOperations.MoveItem(room, item, x, y, options.Rotation, z, animate: false,
                 collision: collision, announce: !options.Animate && !batched)) {
             return false;
+        }
+
+        if (x != source.X || y != source.Y) {
+            room.GetWired()?.NoteTileChange(firing, item);
         }
 
         if (batched && room.GetWired()!.DeferObjectUpdate(item, x == source.X && y == source.Y, policy.DisableAnimation)) {
@@ -691,6 +704,14 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         {
             JumpPower = curve?.Type == 7 ? curve.Strength : null
         };
+
+    private static HashSet<int> StayingUsers(Room room, Item item, int x, int y, int rotation)
+    {
+        var kept = WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation)
+            .Intersect(WiredRoomOperations.Footprint(item, x, y, rotation));
+
+        return [.. kept.SelectMany(point => WiredRoomOperations.UsersStandingOn(room, point)).Select(user => user.VirtualId)];
+    }
 
     internal static WiredCollisionPolicy? Collision(WiredPhysicsPolicy? physics, bool step, IReadOnlySet<uint>? unit = null) => physics == null
         ? step || unit != null ? new(new HashSet<uint>(), new HashSet<int>(), new HashSet<uint>(), step, unit) : null

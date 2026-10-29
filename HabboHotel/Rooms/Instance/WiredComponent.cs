@@ -413,6 +413,7 @@ public partial class WiredComponent : IWiredRuntimeOperations
     }
     public bool CallStacks(WiredRuntimeContext context, IEnumerable<Item> targets, bool negative = false) =>
         _engine.CallStacks(context, targets, negative);
+    public bool SendManualSignal(RoomUser sender, Item antenna) => _engine.SendManualSignal(sender, antenna);
     public bool SendSignal(WiredRuntimeContext context, IEnumerable<Item> receivers, WiredSelection selection, bool negative = false) =>
         _engine.SendSignal(context, receivers, selection, negative);
     public bool ScheduleOnRoomTick(WiredRuntimeContext context, long tickBoundary, Action callback, Action? onCancelled = null,

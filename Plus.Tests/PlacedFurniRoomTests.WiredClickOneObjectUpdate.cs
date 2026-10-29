@@ -32,6 +32,16 @@ public partial class PlacedFurniRoomTests
     {
         var (actor, tile) = await OneUpdateRoom(noAnimation: true, executeInOrder: false);
         Stand(actor, 0, 3);
+
+        var sent = await ClickABot();
+
+        Assert.Equal((0, 3, 0.3), (tile.GetX, tile.GetY, tile.GetZ));
+        Assert.Single(sent, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
+    }
+
+    // A Click User box fires on the ClickUser packet of a bot. The room then runs 1.5 s of real room cycles; every packet the client got is returned.
+    private async Task<(uint Header, byte[] Body)[]> ClickABot()
+    {
         var trigger = WiredBox(ClickUpdateTrigger, "wf_trg_click_user", 1, 1);
         Assert.True(WiredNativeTestSupport.TryValidateRuntime(trigger, new() { IntParams = [0, 0] }, out var config, out var error), error);
         trigger.ApplyConfiguration(config);
@@ -51,9 +61,7 @@ public partial class PlacedFurniRoomTests
 
         await new ClickUserEvent().Parse(_room, _client, ClientPacket(bot.VirtualId));
         var atClick = _client.Packets.ToArray();
-        var sent = atClick.Concat(RunRoom(manager, clock, clock.Ms + 1500, period: 25).SelectMany(pass => pass.Packets)).ToArray();
 
-        Assert.Equal((0, 3, 0.3), (tile.GetX, tile.GetY, tile.GetZ));
-        Assert.Single(sent, packet => packet.Header == ServerPacketHeader.ObjectUpdateComposer);
+        return [.. atClick.Concat(RunRoom(manager, clock, clock.Ms + 1500, period: 25).SelectMany(pass => pass.Packets))];
     }
 }

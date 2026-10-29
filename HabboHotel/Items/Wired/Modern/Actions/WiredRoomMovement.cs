@@ -219,8 +219,9 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
             return false;
         }
 
-        if (batched) {
-            room.GetWired()!.DeferObjectUpdate(item);
+        if (batched && room.GetWired()!.DeferObjectUpdate(item, x == source.X && y == source.Y, policy.DisableAnimation)) {
+            options = options with { Animate = true, AnimationTimeMs = 0 };
+            source = Furniture(item);
         }
 
         room.GetWired()?.FurniMoved(source.Tiles.Concat(WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation)

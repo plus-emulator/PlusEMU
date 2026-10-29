@@ -246,10 +246,15 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
     {
         var state = actor.Movement;
         state.Plan?.Exclusions.NextStep();
-        var wasPosed = actor.Statusses.ContainsKey("sit") || actor.Statusses.ContainsKey("lay");
-        actor.Statusses.Remove("sit");
-        actor.Statusses.Remove("lay");
-        actor.IsSitting = actor.IsLying = false;
+        var keepsSit = actor.KeepsSitWhileWalking;
+        var wasPosed = !keepsSit && (actor.Statusses.ContainsKey("sit") || actor.Statusses.ContainsKey("lay"));
+
+        if (!keepsSit) {
+            actor.Statusses.Remove("sit");
+            actor.Statusses.Remove("lay");
+            actor.IsSitting = actor.IsLying = false;
+        }
+
         EndArrival(actor);
         var z = target.Z + context.Graph.RiderOffset(actor, target.Slot);
         actor.SetStatus("mv", $"{target.X},{target.Y},{TextHandling.GetString(z)}");

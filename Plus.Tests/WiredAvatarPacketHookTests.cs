@@ -290,17 +290,19 @@ public partial class WiredAvatarPacketHookTests
         var handler = new SitEvent(world.Actions);
         await handler.Parse(world.Client, Packet(1));
         await handler.Parse(world.Client, Packet(1));
-        Assert.True(world.Actor.IsSitting);
+        Assert.False(world.Actor.IsSitting);
         world.FlushWired();
         Assert.Empty(world.Capture.Events);
         world.Actor.CompletePostureActions();
+        Assert.True(world.Actor.IsSitting);
         world.FlushWired();
         Assert.Single(world.Capture.Events);
         await handler.Parse(world.Client, Packet(0));
         await handler.Parse(world.Client, Packet(0));
+        Assert.True(world.Actor.IsSitting);
+        world.Actor.CompletePostureActions();
         Assert.False(world.Actor.IsSitting);
         Assert.Equal(0, world.Actor.Z);
-        world.Actor.CompletePostureActions();
         world.FlushWired();
         Assert.Equal(new[] { 6, 7 }, world.Capture.Events.Select(evt => evt.Action));
         Assert.All(world.Capture.Events, evt => Assert.Same(world.Actor, evt.Actor));
@@ -311,13 +313,11 @@ public partial class WiredAvatarPacketHookTests
     {
         var world = new World(6);
         world.Actions.SetPosture(world.Client, 2);
+        world.Actor.CompletePostureActions();
         Assert.False(world.Actor.IsSitting);
-        world.Actor.IsWalking = true;
-        world.Actions.SetPosture(world.Client, 1);
-        Assert.False(world.Actor.IsSitting);
-        world.Actor.IsWalking = false;
         world.Actor.RotBody = 3;
         world.Actions.SetPosture(world.Client, 1);
+        world.Actor.CompletePostureActions();
         Assert.True(world.Actor.IsSitting);
         // Sitting from direction 3 turns the body to 4.
         Assert.Equal(4, world.Actor.RotBody);

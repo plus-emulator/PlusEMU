@@ -71,6 +71,62 @@ public sealed partial class WiredGlideConveyorTests
         Assert.DoesNotContain(room.Frames, frame => frame.Header == ServerPacketHeader.WhisperComposer);
     }
 
+    [Fact]
+    public void ASitFollowedByAStandWithinOneRoomTickChangesNothingAndFiresNothing()
+    {
+        var room = new PostureRoom();
+
+        room.ChangePosture(1);
+        room.Wait(150);
+        room.ChangePosture(0);
+        room.Wait(1000);
+
+        Assert.False(room.Owner.IsSitting);
+        Assert.DoesNotContain(room.Frames, frame => frame.Header == ServerPacketHeader.WhisperComposer);
+        Assert.DoesNotContain(room.Frames, frame => frame.Header == ServerPacketHeader.UserUpdateComposer);
+    }
+
+    [Fact]
+    public void AStandFollowedByASitWithinOneRoomTickChangesNothingAndFiresNothing()
+    {
+        var room = new PostureRoom();
+        room.ChangePosture(1);
+        room.Wait(1000);
+        room.Frames.Clear();
+
+        room.ChangePosture(0);
+        room.Wait(150);
+        room.ChangePosture(1);
+        room.Wait(1000);
+
+        Assert.True(room.Owner.IsSitting);
+        Assert.DoesNotContain(room.Frames, frame => frame.Header == ServerPacketHeader.WhisperComposer);
+        Assert.DoesNotContain(room.Frames, frame => frame.Header == ServerPacketHeader.UserUpdateComposer);
+    }
+
+    [Fact]
+    public void ASitRequestIsKeptWhileTheAvatarWalksAndTheAvatarSitsWhereTheWalkEnds()
+    {
+        var room = new PostureRoom();
+        room.Owner.MoveTo(9, 10);
+        room.Wait(500);
+        room.Wait(100);
+        room.ChangePosture(1);
+        room.Wait(500);
+
+        Assert.True(room.Owner.IsWalking);
+        Assert.True(room.Owner.Statusses.ContainsKey("sit"));
+        Assert.True(room.Owner.Statusses.ContainsKey("mv"));
+        Assert.Single(room.Frames, frame => frame.Header == ServerPacketHeader.WhisperComposer);
+
+        room.Wait(3000);
+
+        Assert.False(room.Owner.IsWalking);
+        Assert.Equal((9, 10), (room.Owner.X, room.Owner.Y));
+        Assert.True(room.Owner.IsSitting);
+        Assert.True(room.Owner.Statusses.ContainsKey("sit"));
+    }
+
     private sealed class PostureRoom
     {
         private readonly Fixture _fixture;

@@ -34,6 +34,7 @@ internal sealed class MovementCancellation(MovementContext context)
         actor.GoalX = actor.X;
         actor.GoalY = actor.Y;
         actor.IsWalking = false;
+        actor.KeepsSitWhileWalking = false;
         actor.SetStep = false;
         actor.PathRecalcNeeded = false;
         actor.RemoveStatus("mv");

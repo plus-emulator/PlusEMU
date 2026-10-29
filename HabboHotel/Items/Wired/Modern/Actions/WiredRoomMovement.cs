@@ -207,6 +207,13 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 && room.GetGameMap().WalkMagicAt(user.X, user.Y) == item).Select(user => (User: user, FromZ: user.Z)).ToArray()
             : [];
 
+        // A user who stands on top of a furni that changes height on its tile moves with it, unless the furni turns at the same time.
+        // A furni that moved onto its users earlier in the firing sends no entry for them; they end on top of it.
+        var changesHeightInPlace = item.Definition.InteractionType != InteractionType.WalkMagicTile && x == item.GetX && y == item.GetY && !turnsInPlace;
+        var movedEarlier = changesHeightInPlace && firing != null && MovedItemsByFiring.TryGetValue(firing, out var moved) && moved.Contains(item.Id);
+        var standing = changesHeightInPlace ? StandingUsers(room, item, carried) : [];
+        var onTop = movedEarlier ? [] : standing.Where(user => OnTopOf(item, user)).Select(user => (User: user, FromZ: user.Z)).ToArray();
+
         if (passengers != null && carried.Length + lifted.Length > 0) {
             _prepareCarryPublication?.Invoke(context, [.. carried, .. lifted.Select(lift => lift.User)]);
         }
@@ -229,6 +236,17 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         if (!WiredRoomOperations.MoveItem(room, item, x, y, options.Rotation, z, animate: false,
                 collision: collision, announce: !options.Animate && !batched)) {
             return false;
+        }
+
+        if (firing != null && (item.GetX != source.X || item.GetY != source.Y)) {
+            MovedItemsByFiring.GetOrCreateValue(firing).Add(item.Id);
+        }
+
+        var raised = LiftUsers(onTop, item.GetZ - source.Z);
+        lifted = [.. lifted, .. raised];
+
+        if (movedEarlier) {
+            SettleOnTop(room, item, standing);
         }
 
         if (batched && room.GetWired()!.DeferObjectUpdate(item, x == source.X && y == source.Y, policy.DisableAnimation, turnsInPlace)) {
@@ -318,6 +336,16 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
             foreach (var (user, _) in lifts.Where(lift => !lift.User.IsBot)) {
                 room.GetRoomUserManager().MarkWiredMove(user, options.AnimationTimeMs);
+            }
+        }
+        else if (raised.Length > 0) {
+            var movement = new WiredMovementBatchComposer([.. raised.Select(lift => AvatarMovement(context, null, lift.User, (lift.User.X, lift.User.Y, lift.FromZ), 0))]);
+
+            if (batched) {
+                room.GetWired()!.AfterFlash(() => room.SendPacket(movement));
+            }
+            else {
+                room.SendPacket(movement);
             }
         }
 
@@ -693,6 +721,44 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         }
 
         return true;
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, HashSet<uint>> MovedItemsByFiring = new();
+
+    private static RoomUser[] StandingUsers(Room room, Item item, RoomUser[] carried) => [.. WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation)
+        .SelectMany(point => room.GetGameMap().GetRoomUsers(point))
+        .Where(user => user != null && !carried.Contains(user) && !user.IsWalking && !user.SetStep && !HasQueuedWalk(user)
+            && !user.IsSitting && !user.IsLying && room.GetGameMap().WalkMagicAt(user.X, user.Y) == null)
+        .Distinct()];
+
+    private static bool OnTopOf(Item item, RoomUser user) => Math.Abs(user.Z - item.TotalHeight) < 0.005;
+
+    // A user inside a furni that Wired changes stands on top of it afterwards, with no movement entry.
+    private static void SettleOnTop(Room room, Item item, RoomUser[] users)
+    {
+        foreach (var user in users.Where(user => !OnTopOf(item, user)
+                     && !room.GetGameMap().GetCoordinatedItems(user.Coordinate).Any(other => other.Id != item.Id && other.TotalHeight > item.TotalHeight))) {
+            user.Z = Math.Round(item.TotalHeight, 4);
+            user.UpdateNeeded = true;
+        }
+    }
+
+    // Placement may already have set the new height (navigation rebinding); otherwise the user moves by the furni's height change.
+    private static (RoomUser User, double FromZ)[] LiftUsers((RoomUser User, double FromZ)[] users, double change)
+    {
+        if (Math.Abs(change) < 0.005) {
+            return [];
+        }
+
+        foreach (var (user, fromZ) in users) {
+            if (user.Z == fromZ) {
+                user.Z = Math.Round(fromZ + change, 4);
+            }
+
+            user.UpdateNeeded = true;
+        }
+
+        return users;
     }
 
     private static WiredMovementComposer AvatarMovement(WiredRuntimeContext context,

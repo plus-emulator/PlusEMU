@@ -281,7 +281,7 @@ public sealed class WiredVariableExecutors(WiredVariableModule variables, TimePr
 
         // Give Variable and Change Variable never read a pointer as their value, so the destination keeps its value. A box that runs after a delay reads it like the variable it points at,
         // and writes through a destination pointer on the pointed variable.
-        if (configuration.Delay > 0) {
+        if (configuration.Delay != 0) {
             if (variables.Unpoint(reference, frame) is not { } pointed) {
                 return false;
             }

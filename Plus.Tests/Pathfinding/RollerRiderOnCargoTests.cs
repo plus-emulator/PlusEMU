@@ -27,6 +27,23 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 1, 0d), (cargo.GetX, cargo.GetY, cargo.GetZ));
     }
 
+    // Several cargo of one roller slide in one bundle, lowest first, when no user rides them.
+    [Fact]
+    public void ARollerSlidesSeveralCargoWithoutARiderInOneBundle()
+    {
+        ExecutorRoller(10, 0, 1);
+        ExecutorFloor(12, 0, 1, z: 0.5, height: 0.25);
+        ExecutorFloor(13, 0, 1, z: 0.75, height: 0.25);
+        ExecutorFloor(14, 0, 1, z: 1, height: 0.25);
+        ExecutorActor(3, 3);
+        EnableExecutorRollers();
+        ExecutorTick();
+        var slide = Assert.Single(RollerBundles());
+        Assert.Equal(((0, 1), (1, 1), 10u), (slide.From, slide.To, slide.Roller));
+        Assert.Equal([(12u, "0.5", "0.0"), (13u, "0.75", "0.25"), (14u, "1.0", "0.5")], slide.Objects);
+        Assert.Null(slide.Avatar);
+    }
+
     // A seat is 1 high: its sitter rides at the seat top.
     [Fact]
     public void ARollerCarriesAUserSittingOnItsCargoSeat()

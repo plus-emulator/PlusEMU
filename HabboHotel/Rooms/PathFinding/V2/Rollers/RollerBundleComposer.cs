@@ -6,17 +6,18 @@ using Plus.Utilities;
 
 namespace Plus.HabboHotel.Rooms.PathFinding;
 
-// One roller slide that carries cargo and the rider standing on it.
-internal sealed class RollerBundleComposer(RollerMove rider, IReadOnlyList<RollerMove> cargo) : IServerPacket
+// One roller slide that carries all cargo of a tile and the rider standing on it, if any.
+internal sealed class RollerBundleComposer(RollerMove? rider, IReadOnlyList<RollerMove> cargo) : IServerPacket
 {
     public uint MessageId => ServerPacketHeader.SlideObjectBundleComposer;
 
     public void Compose(IOutgoingPacket packet)
     {
-        packet.WriteInteger(rider.Origin.X);
-        packet.WriteInteger(rider.Origin.Y);
-        packet.WriteInteger(rider.Destination.X);
-        packet.WriteInteger(rider.Destination.Y);
+        var lead = rider ?? cargo[0];
+        packet.WriteInteger(lead.Origin.X);
+        packet.WriteInteger(lead.Origin.Y);
+        packet.WriteInteger(lead.Destination.X);
+        packet.WriteInteger(lead.Destination.Y);
         packet.WriteInteger(cargo.Count);
 
         foreach (var move in cargo) {
@@ -25,7 +26,12 @@ internal sealed class RollerBundleComposer(RollerMove rider, IReadOnlyList<Rolle
             packet.WriteString(TextHandling.GetString(move.CarriedZ));
         }
 
-        packet.WriteUInteger(BuildersClubItemIds.ToWire(rider.Roller.Id));
+        packet.WriteUInteger(BuildersClubItemIds.ToWire(lead.Roller.Id));
+
+        if (rider == null) {
+            return;
+        }
+
         packet.WriteInteger(2);
         packet.WriteInteger(rider.Actor!.VirtualId);
         packet.WriteString(TextHandling.GetString(rider.SourceZ));

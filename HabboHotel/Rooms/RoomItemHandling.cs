@@ -937,7 +937,7 @@ public partial class RoomItemHandling
                 _room.SendObject(item);
             }
             else if (!onRoller && !settled.Contains(item.Id)) {
-                var furnitureSnapshot = RoomItemSnapshot.Capture(item);
+                var furnitureSnapshot = session != null ? RoomItemSnapshot.CaptureUserMove(item) : RoomItemSnapshot.Capture(item);
                 _room.SendPacket(new ObjectUpdateComposer(furnitureSnapshot));
                 _room.SendPacket(new FurnitureMetadataComposer([furnitureSnapshot]));
             }

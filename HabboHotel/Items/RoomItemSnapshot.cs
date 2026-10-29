@@ -64,6 +64,19 @@ public sealed record RoomItemSnapshot(
         }
     }
 
+    /// <summary>
+    /// A user moving or rotating a Wired trigger box shows it at rest (state 0). Its flash state is kept, so the next flash
+    /// still flips from it.
+    /// </summary>
+    public static RoomItemSnapshot CaptureUserMove(Item item)
+    {
+        var snapshot = Capture(item);
+
+        return item.Definition.InteractionType == InteractionType.WiredTrigger
+            ? snapshot with { Data = new FurnitureDataSnapshot.Legacy("0") }
+            : snapshot;
+    }
+
     private static GuildFurnitureAppearance? FindGuild(Item item) =>
         item.Definition.InteractionType is InteractionType.GuildItem or InteractionType.GuildGate or InteractionType.GuildForum
             ? item.GetRoom()?.FindGuildAppearance(item.GroupId)

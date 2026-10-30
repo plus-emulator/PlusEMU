@@ -739,12 +739,16 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     private static double PostureHeight(RoomUser user) => (user.Statusses.GetValueOrDefault("sit") ?? user.Statusses.GetValueOrDefault("lay")) is { } posture
         && double.TryParse(posture.Split(' ')[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var height) ? height : 0;
 
+    // The announced step is the last one of the walker's batch. A horse has no steps of its own: it takes its rider's.
     private static double StepZ(Room room, RoomUser user, Item item)
     {
-        var state = user.Movement;
+        var walker = user.IsBot && user.RidingHorse
+            ? room.GetRoomUserManager().GetRoomUsers().FirstOrDefault(other => !other.IsBot && other.RidingHorse && other.HorseId == user.VirtualId) ?? user
+            : user;
+        var state = walker.Movement;
         var grid = room.GetGameMap().Navigation?.Grid;
 
-        return grid != null && state.PendingCount > 0 && grid.SlotOf(state.Pending[0]) is var slot and >= 0 ? grid.WalkZ[slot] : item.TotalHeight;
+        return grid != null && state.PendingCount > 0 && grid.SlotOf(state.Pending[state.PendingCount - 1]) is var slot and >= 0 ? grid.WalkZ[slot] : item.TotalHeight;
     }
 
     private static bool LiftChanged(Room room, Item item, Lift lift) => lift.Stepping

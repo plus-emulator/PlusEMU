@@ -1,11 +1,14 @@
 using System.Buffers.Binary;
+using System.Reflection;
 using Plus.Communication.Packets.Incoming.Rooms.Avatar;
 using Plus.Communication.Packets.Incoming.Rooms.Engine;
 using Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Items.Wired.Modern;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.Instance;
 using Xunit;
 
 namespace Plus.Tests;
@@ -481,7 +484,7 @@ public partial class PlacedFurniRoomTests
         Assert.All(avatars, entry => Assert.Equal((0.8, 0.5), (entry.FromZ, entry.ToZ)));
     }
 
-    // Two stacks that fire on the same word are two firings: the raise of one lifts the user the other stack moved the furni onto.
+    // Two stacks that fire on the same word and whose effects are due at the same time are two firings: the raise of one lifts the user the other stack moved the furni onto.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -489,16 +492,57 @@ public partial class PlacedFurniRoomTests
     {
         var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false);
         tile.Definition.Walkable = true;
-        AddSpeechBox(990, "wf_trg_says_something", new() { IntParams = [1, 0, 0], Text = "go" }, 0, 3, 3);
-        PlaceSavedBox(991, "wf_act_furni_to_user", 3, 3, 0.5);
-        await new SaveWiredEffectConfigEvent(_inPlaceService!).Parse(_client, ClientPacket(991, 0, "", 1, (int)tile.Id, 0, 1, 100, 1, 0, 0, 0));
+        AddSpeechBox(950, "wf_trg_says_something", new() { IntParams = [1, 0, 0], Text = "go" }, 0, 3, 3);
+        PlaceSavedBox(951, "wf_act_furni_to_user", 3, 3, 0.5);
+        await new SaveWiredEffectConfigEvent(_inPlaceService!).Parse(_client, ClientPacket(951, 0, "", 1, (int)tile.Id, 0, 1, 100, 1, 0, 0, 0));
         Assert.Equal("saved", SaveAnswer());
         await WalkTo(actor, 0, 3);
+        typeof(WiredStackEngine).GetField("_effectOrderRandom", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(EngineOf(_room.GetWired()), new UnshuffledRandom());
+        var clock = new GridClock();
+        var wired = _room.GetWired();
+        typeof(WiredComponent).GetField("_clock", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(wired, clock);
+        var engine = EngineOf(wired);
+        engine.GetType().GetField("_now", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(engine, new Func<long>(() => clock.Ms));
 
         FireByChat(actor);
 
         Assert.Equal((0, 3, 0.3), (tile.GetX, tile.GetY, tile.GetZ));
         var avatar = Assert.Single(AvatarEntries(_client.Packets.ToArray()));
         Assert.Equal((0.5, 0.8), (avatar.FromZ, avatar.ToZ));
+    }
+
+    // A user sitting on the floor keeps sitting when a furni is placed under him by hand and when it is picked up again.
+    [Fact]
+    public async Task AFloorSittingUserKeepsSittingWhenAFurniIsPlacedUnderHimAndPickedUp()
+    {
+        var (actor, _) = await InPlaceRoom(noAnimation: false, altitude: false, turn: false, moveToUser: false);
+        await WalkTo(actor, 0, 3);
+        await new SitEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(_client, ClientPacket(1));
+        ExecutorTick();
+        Assert.True(actor.IsSitting);
+
+        var rug = Furni(StackedRug, InteractionType.None, WiredBoxType.None);
+        rug.Definition.Walkable = true;
+        rug.Definition.Height = 0.2;
+        rug.Definition.Width = rug.Definition.Length = 1;
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(_client, rug, 0, 3, 0, true, false, false, height: 0));
+        ExecutorTick();
+
+        Assert.True(actor.IsSitting);
+        Assert.Equal(0.2, actor.Z, 3);
+
+        _room.GetRoomItemHandler().RemoveFurniture(null!, rug.Id);
+        ExecutorTick();
+
+        Assert.True(actor.IsSitting);
+        Assert.Equal(0, actor.Z, 3);
+    }
+
+    private static object EngineOf(WiredComponent wired) => typeof(WiredComponent).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(wired)!;
+
+    // Keeps stacks that fire together in the order of their triggers.
+    private sealed class UnshuffledRandom : Random
+    {
+        public override int Next(int minValue, int maxValue) => minValue;
     }
 }

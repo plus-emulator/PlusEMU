@@ -313,4 +313,24 @@ public partial class PlacedFurniRoomTests
         Assert.True(actor.IsSitting);
         Assert.Equal(0, actor.Z, 3);
     }
+
+    // A user who has asked to walk off the furni but whose step is not announced yet still stands on it and is lifted with it.
+    [Theory]
+    [InlineData(false, 500)]
+    [InlineData(true, 0)]
+    public async Task AUserWhoHasAskedToWalkOffButNotStartedIsLiftedLikeAStandingUser(bool noAnimation, int durationMs)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false);
+        tile.Definition.Walkable = true;
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 2, 1, height: 0, animate: false, announce: false));
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 2, 2, height: 0, animate: false, announce: false));
+        await WalkTo(actor, 2, 2);
+        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(_client, ClientPacket(2, 3));
+        Assert.False(actor.SetStep);
+
+        FireRuntimeStack(actor);
+
+        var entry = Assert.Single(AvatarEntryDetails(_client.Packets.ToArray()));
+        Assert.Equal((2, 2, 2, 2, 0.5, 0.8, 1, durationMs), (entry.FromX, entry.FromY, entry.ToX, entry.ToY, entry.FromZ, entry.ToZ, entry.AnimationType, entry.DurationMs));
+    }
 }

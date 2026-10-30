@@ -344,6 +344,22 @@ public partial class WiredComponent : IWiredRuntimeOperations
     internal bool NeedsFastCycle => _engine.NeedsFastCycle;
     internal long RoomTickIndex => _engine.RoomTickIndex;
     internal object? ExecutingFiring => _engine.ExecutingFiring;
+    /// <summary>The time the running effect is due. Effects due at the same time are one wave.</summary>
+    internal long? ExecutingMoment => _engine.ExecutingMoment;
+    private readonly Dictionary<uint, long> _tileChanges = [];
+    internal bool ChangedTileThisMoment(uint itemId) => ExecutingMoment is { } moment && _tileChanges.TryGetValue(itemId, out var at) && at == moment;
+    internal void NoteTileChange(uint itemId)
+    {
+        if (ExecutingMoment is not { } moment) {
+            return;
+        }
+
+        if (_tileChanges.Count > 512) {
+            _tileChanges.Clear();
+        }
+
+        _tileChanges[itemId] = moment;
+    }
     internal void ObserveFastWork(Action<bool>? observer) => _engine.ObserveFastWork(observer);
     /// <summary>Drops in-room user values left from an earlier visit, so nothing comes back on return.</summary>
     public void VisitorArriving(int habboId) => _engine.Mutate(() =>

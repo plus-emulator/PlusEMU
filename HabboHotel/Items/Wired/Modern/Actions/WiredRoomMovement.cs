@@ -207,6 +207,11 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 && room.GetGameMap().WalkMagicAt(user.X, user.Y) == item).Select(user => (User: user, FromZ: user.Z)).ToArray()
             : [];
 
+        // A user the furni holds up moves with it when the furni changes height on its tile, unless the furni turns at the same time or landed on the user earlier in the firing.
+        var changesHeightInPlace = item.Definition.InteractionType != InteractionType.WalkMagicTile && x == item.GetX && y == item.GetY && !turnsInPlace;
+        var held = changesHeightInPlace ? HeldUsers(room, item, carried).Where(entry => !IsCovered(firing, item, entry.User)).ToArray() : [];
+        var landsOn = firing != null && (x != item.GetX || y != item.GetY) ? UsersUnder(room, item, x, y, options.Rotation ?? item.Rotation, carried) : [];
+
         if (passengers != null && carried.Length + lifted.Length > 0) {
             _prepareCarryPublication?.Invoke(context, [.. carried, .. lifted.Select(lift => lift.User)]);
         }
@@ -230,6 +235,13 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
                 collision: collision, announce: !options.Animate && !batched)) {
             return false;
         }
+
+        if (firing != null && landsOn.Count > 0) {
+            Cover(firing, item, landsOn);
+        }
+
+        var raised = held.Where(entry => Math.Abs(entry.User.Z - entry.FromZ) >= 0.005).ToArray();
+        lifted = [.. lifted, .. raised];
 
         if (batched && room.GetWired()!.DeferObjectUpdate(item, x == source.X && y == source.Y, policy.DisableAnimation, turnsInPlace)) {
             options = options with { Animate = true, AnimationTimeMs = 0 };
@@ -318,6 +330,16 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
             foreach (var (user, _) in lifts.Where(lift => !lift.User.IsBot)) {
                 room.GetRoomUserManager().MarkWiredMove(user, options.AnimationTimeMs);
+            }
+        }
+        else if (raised.Length > 0) {
+            var movement = new WiredMovementBatchComposer([.. raised.Select(lift => AvatarMovement(context, null, lift.User, (lift.User.X, lift.User.Y, lift.FromZ), 0))]);
+
+            if (batched) {
+                room.GetWired()!.AfterFlash(() => room.SendPacket(movement));
+            }
+            else {
+                room.SendPacket(movement);
             }
         }
 
@@ -694,6 +716,34 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
 
         return true;
     }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, Dictionary<uint, HashSet<int>>> UsersCoveredByFiring = new();
+
+    private static bool IsCovered(object? firing, Item item, RoomUser user) => firing != null && UsersCoveredByFiring.TryGetValue(firing, out var byItem)
+        && byItem.TryGetValue(item.Id, out var users) && users.Contains(user.VirtualId);
+
+    private static void Cover(object firing, Item item, HashSet<int> users)
+    {
+        var byItem = UsersCoveredByFiring.GetOrCreateValue(firing);
+
+        if (!byItem.TryGetValue(item.Id, out var covered)) {
+            byItem[item.Id] = covered = [];
+        }
+
+        covered.UnionWith(users);
+    }
+
+    // The navigation grid lowers or lifts the users it holds on the furni; the users whose height changed get an entry.
+    private static (RoomUser User, double FromZ)[] HeldUsers(Room room, Item item, RoomUser[] carried) => [.. WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation)
+        .SelectMany(point => room.GetGameMap().GetRoomUsers(point))
+        .Where(user => user != null && !carried.Contains(user) && !user.IsWalking && !user.SetStep && !HasQueuedWalk(user)
+            && !user.IsSitting && !user.IsLying && room.GetGameMap().WalkMagicAt(user.X, user.Y) == null)
+        .Distinct().Select(user => (user, user.Z))];
+
+    private static HashSet<int> UsersUnder(Room room, Item item, int x, int y, int rotation, RoomUser[] carried) => [.. WiredRoomOperations.Footprint(item, x, y, rotation)
+        .SelectMany(point => room.GetGameMap().GetRoomUsers(point))
+        .Where(user => user != null && !carried.Contains(user) && user.Movement.CurrentRef?.SupportItemId != item.Id)
+        .Select(user => user.VirtualId)];
 
     private static WiredMovementComposer AvatarMovement(WiredRuntimeContext context,
         WiredCurvePolicy? curve, RoomUser user, (int X, int Y, double Z) source, int? animationTimeMs) =>

@@ -456,4 +456,49 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(0.3, tile.GetZ, 3);
         Assert.Empty(AvatarEntryDetails(_client.Packets.ToArray()));
     }
+
+    // Two users on one 2x1 furni that Wired lowers: each gets an entry; the order in the packet is not part of the rule.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EveryUserOnAMultiTileFurniIsLowered(bool noAnimation)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false, altitudeValue: 0);
+        await UserOnTop(actor, tile, 0.3, width: 2);
+        var other = ExecutorAdditionalBot(3, 3, 9);
+        other.MoveTo(3, 2);
+
+        for (var tick = 0; tick < 40 && ((other.X, other.Y) != (3, 2) || other.IsWalking || other.SetStep); tick++) {
+            ExecutorTick();
+        }
+
+        Assert.Equal((3, 2), (other.X, other.Y));
+
+        var sent = await ClickABot();
+
+        var avatars = AvatarEntries(sent);
+        Assert.Equal([actor.VirtualId, other.VirtualId], avatars.Select(entry => entry.Id).Order());
+        Assert.All(avatars, entry => Assert.Equal((0.8, 0.5), (entry.FromZ, entry.ToZ)));
+    }
+
+    // Two stacks that fire on the same word are two firings: the raise of one lifts the user the other stack moved the furni onto.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ARaiseFromAnotherFiringInTheSameTickLiftsTheUserTheFurniWasMovedOnto(bool noAnimation)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false);
+        tile.Definition.Walkable = true;
+        AddSpeechBox(990, "wf_trg_says_something", new() { IntParams = [1, 0, 0], Text = "go" }, 0, 3, 3);
+        PlaceSavedBox(991, "wf_act_furni_to_user", 3, 3, 0.5);
+        await new SaveWiredEffectConfigEvent(_inPlaceService!).Parse(_client, ClientPacket(991, 0, "", 1, (int)tile.Id, 0, 1, 100, 1, 0, 0, 0));
+        Assert.Equal("saved", SaveAnswer());
+        await WalkTo(actor, 0, 3);
+
+        FireByChat(actor);
+
+        Assert.Equal((0, 3, 0.3), (tile.GetX, tile.GetY, tile.GetZ));
+        var avatar = Assert.Single(AvatarEntries(_client.Packets.ToArray()));
+        Assert.Equal((0.5, 0.8), (avatar.FromZ, avatar.ToZ));
+    }
 }

@@ -360,4 +360,35 @@ public partial class PlacedFurniRoomTests
         var entry = Assert.Single(AvatarEntryDetails(_client.Packets.ToArray()));
         Assert.Equal((2, 1, 2, 2, 0, 0.5, 0, durationMs), (entry.FromX, entry.FromY, entry.ToX, entry.ToY, entry.FromZ, entry.ToZ, entry.AnimationType, entry.DurationMs));
     }
+
+    // A rider and his horse step onto a furni that Wired raises: the rider's entry comes first and runs one above the horse's, which starts one higher.
+    [Theory]
+    [InlineData(false, 500)]
+    [InlineData(true, 0)]
+    public async Task ARiderAndHisHorseSteppingOntoAFurniThatWiredRaisesBothGetAnEntry(bool noAnimation, int durationMs)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false);
+        tile.Definition.Walkable = true;
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 2, 1, height: 0, animate: false, announce: false));
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 2, 2, height: 0, animate: false, announce: false));
+        await WalkTo(actor, 2, 0);
+        var horse = ExternalLifecycleHorse(2, 0);
+        ExecutorTick();
+        EstablishExternalMountedGroup(actor, horse);
+        ExecutorTick();
+        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(_client, ClientPacket(2, 3));
+
+        for (var tick = 0; tick < 40 && !(actor.SetStep && (actor.SetX, actor.SetY) == (2, 2)); tick++) {
+            ExecutorTick();
+        }
+
+        Assert.True(actor.SetStep && (actor.SetX, actor.SetY) == (2, 2));
+
+        FireRuntimeStack(actor);
+
+        var entries = AvatarEntryDetails(_client.Packets.ToArray());
+        Assert.Equal(2, entries.Count);
+        Assert.Equal((2, 1, 2, 2, 2, 1.8, 0, durationMs), (entries[0].FromX, entries[0].FromY, entries[0].ToX, entries[0].ToY, entries[0].FromZ, entries[0].ToZ, entries[0].AnimationType, entries[0].DurationMs));
+        Assert.Equal((2, 1, 2, 2, 0, 0.8, 0, durationMs), (entries[1].FromX, entries[1].FromY, entries[1].ToX, entries[1].ToY, entries[1].FromZ, entries[1].ToZ, entries[1].AnimationType, entries[1].DurationMs));
+    }
 }

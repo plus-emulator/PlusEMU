@@ -333,4 +333,31 @@ public partial class PlacedFurniRoomTests
         var entry = Assert.Single(AvatarEntryDetails(_client.Packets.ToArray()));
         Assert.Equal((2, 2, 2, 2, 0.5, 0.8, 1, durationMs), (entry.FromX, entry.FromY, entry.ToX, entry.ToY, entry.FromZ, entry.ToZ, entry.AnimationType, entry.DurationMs));
     }
+
+    // The announced step goes onto a raised furni when Wired lowers it: the entry runs to the step target at the lower height.
+    [Theory]
+    [InlineData(false, 500)]
+    [InlineData(true, 0)]
+    public async Task AUserSteppingOntoAFurniThatWiredLowersGetsAnEntryToTheLowerStepTarget(bool noAnimation, int durationMs)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false, altitudeValue: 0);
+        tile.Definition.Walkable = true;
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 2, 1, height: 0.3, animate: false, announce: false));
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 2, 2, height: 0.3, animate: false, announce: false));
+        await WalkTo(actor, 2, 0);
+        ExecutorTick();
+        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(_client, ClientPacket(2, 3));
+
+        for (var tick = 0; tick < 40 && !(actor.SetStep && (actor.SetX, actor.SetY) == (2, 2)); tick++) {
+            ExecutorTick();
+        }
+
+        Assert.True(actor.SetStep && (actor.SetX, actor.SetY) == (2, 2));
+
+        FireRuntimeStack(actor);
+
+        Assert.Equal(0, tile.GetZ, 3);
+        var entry = Assert.Single(AvatarEntryDetails(_client.Packets.ToArray()));
+        Assert.Equal((2, 1, 2, 2, 0, 0.5, 0, durationMs), (entry.FromX, entry.FromY, entry.ToX, entry.ToY, entry.FromZ, entry.ToZ, entry.AnimationType, entry.DurationMs));
+    }
 }

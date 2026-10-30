@@ -731,7 +731,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         .SelectMany(point => WiredRoomOperations.UsersStandingOn(room, point))
         .Where(user => user != null && !carried.Contains(user) && room.GetGameMap().WalkMagicAt(user.X, user.Y) == null
             && (user.SetStep || !user.IsWalking && (user.Movement.CurrentRef?.SupportItemId == item.Id || IsInside(user, item))))
-        .Distinct().OrderByDescending(user => user.RidingHorse)
+        .Distinct().OrderByDescending(user => user.RidingHorse && !user.IsBot)
         .Select(user => user.SetStep ? new Lift(user, user.Z, user.RidingHorse && !user.IsBot ? 1 : 0, Stepping: true, StepFromZ: user.SetZ) : new Lift(user, user.Z, PostureHeight(user), IsInside(user, item)))];
 
     private static bool IsInside(RoomUser user, Item item) => user.Movement.CurrentRef == null && !item.Definition.Walkable && Math.Abs(user.Z - item.GetZ) < 0.005;

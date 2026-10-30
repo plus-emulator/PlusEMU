@@ -212,7 +212,7 @@ public partial class PlacedFurniRoomTests
         Assert.True(actor.SetStep && (actor.SetX, actor.SetY) == (2, 2));
         Assert.Equal((2, 1), (actor.X, actor.Y));
 
-        FireRuntimeStack(actor);
+        FireByChat(actor);
 
         Assert.Equal(0.3, tile.GetZ, 3);
         var entry = Assert.Single(AvatarEntryDetails(_client.Packets.ToArray()));
@@ -239,7 +239,7 @@ public partial class PlacedFurniRoomTests
 
         Assert.True(actor.SetStep && (actor.SetX, actor.SetY) == (2, 3));
 
-        FireRuntimeStack(actor);
+        FireByChat(actor);
 
         Assert.Equal(0.3, tile.GetZ, 3);
         Assert.Empty(AvatarEntryDetails(_client.Packets.ToArray()));
@@ -279,14 +279,14 @@ public partial class PlacedFurniRoomTests
     {
         var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false);
         await WalkTo(actor, 0, 3);
-        FireRuntimeStack(actor);
+        FireByChat(actor);
         Assert.Equal((0, 3, 0.3), (tile.GetX, tile.GetY, tile.GetZ));
         Assert.Equal(0.3, actor.Z, 3);
         _client.Packets.Clear();
         await new SaveWiredEffectConfigEvent(_inPlaceService!).Parse(_client, ClientPacket((int)RuntimeBox, 7, 0, 0, 0, 0, 0, -10, 0, "", 1, (int)tile.Id, 0, 2, 100, 200, 2, 0, 200, 2, "-123", "0", 0));
         Assert.Equal("saved", SaveAnswer());
 
-        FireRuntimeStack(actor);
+        FireByChat(actor);
 
         Assert.Equal((0, 3, 0), (tile.GetX, tile.GetY, tile.GetZ));
         var avatar = Assert.Single(AvatarEntries(_client.Packets.ToArray()));
@@ -328,7 +328,7 @@ public partial class PlacedFurniRoomTests
         await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(_client, ClientPacket(2, 3));
         Assert.False(actor.SetStep);
 
-        FireRuntimeStack(actor);
+        FireByChat(actor);
 
         var entry = Assert.Single(AvatarEntryDetails(_client.Packets.ToArray()));
         Assert.Equal((2, 2, 2, 2, 0.5, 0.8, 1, durationMs), (entry.FromX, entry.FromY, entry.ToX, entry.ToY, entry.FromZ, entry.ToZ, entry.AnimationType, entry.DurationMs));
@@ -354,7 +354,7 @@ public partial class PlacedFurniRoomTests
 
         Assert.True(actor.SetStep && (actor.SetX, actor.SetY) == (2, 2));
 
-        FireRuntimeStack(actor);
+        FireByChat(actor);
 
         Assert.Equal(0, tile.GetZ, 3);
         var entry = Assert.Single(AvatarEntryDetails(_client.Packets.ToArray()));
@@ -384,11 +384,76 @@ public partial class PlacedFurniRoomTests
 
         Assert.True(actor.SetStep && (actor.SetX, actor.SetY) == (2, 2));
 
-        FireRuntimeStack(actor);
+        FireByChat(actor);
 
         var entries = AvatarEntryDetails(_client.Packets.ToArray());
         Assert.Equal(2, entries.Count);
         Assert.Equal((2, 1, 2, 2, 2, 1.8, 0, durationMs), (entries[0].FromX, entries[0].FromY, entries[0].ToX, entries[0].ToY, entries[0].FromZ, entries[0].ToZ, entries[0].AnimationType, entries[0].DurationMs));
         Assert.Equal((2, 1, 2, 2, 0, 0.8, 0, durationMs), (entries[1].FromX, entries[1].FromY, entries[1].ToX, entries[1].ToY, entries[1].FromZ, entries[1].ToZ, entries[1].AnimationType, entries[1].DurationMs));
+    }
+
+    // The user says the trigger word through the real chat handler; the Wired cycle then runs the stack.
+    private void FireByChat(RoomUser actor)
+    {
+        Talk(actor, "go");
+        _room.GetWired().OnFastCycle();
+        _room.GetWired().OnCycle();
+    }
+
+    private async Task StepTowardsTheFurni(RoomUser actor, int targetY)
+    {
+        ExecutorTick();
+        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(_client, ClientPacket(2, targetY));
+
+        for (var tick = 0; tick < 40 && !(actor.SetStep && (actor.SetX, actor.SetY) == (2, 2)); tick++) {
+            ExecutorTick();
+        }
+
+        Assert.True(actor.SetStep && (actor.SetX, actor.SetY) == (2, 2));
+    }
+
+    // A fast walker announces two steps at once; his entry goes to the last one, the furni tile, at the new height.
+    [Theory]
+    [InlineData(false, 500)]
+    [InlineData(true, 0)]
+    public async Task AFastWalkerSteppingOntoAFurniThatWiredRaisesGetsAnEntryToTheLastAnnouncedStep(bool noAnimation, int durationMs)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false);
+        tile.Definition.Walkable = true;
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 2, 1, height: 0, animate: false, announce: false));
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 2, 2, height: 0, animate: false, announce: false));
+        await WalkTo(actor, 2, 0);
+        actor.FastWalking = true;
+        await StepTowardsTheFurni(actor, 3);
+        Assert.Equal((2, 0), (actor.X, actor.Y));
+
+        FireByChat(actor);
+
+        var entry = Assert.Single(AvatarEntryDetails(_client.Packets.ToArray()));
+        Assert.Equal((2, 0, 2, 2, 0, 0.8, 0, durationMs), (entry.FromX, entry.FromY, entry.ToX, entry.ToY, entry.FromZ, entry.ToZ, entry.AnimationType, entry.DurationMs));
+    }
+
+    // The furni under a higher one is raised in place, but not above it: the rider's step target keeps its height, so neither the rider nor his horse gets an entry.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ARiderAndHisHorseGetNoEntryWhenTheRaisedFurniStaysUnderAHigherOne(bool noAnimation)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false);
+        tile.Definition.Walkable = true;
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 2, 1, height: 0, animate: false, announce: false));
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 2, 2, height: 0, animate: false, announce: false));
+        ExecutorFloor(StackedRug, 2, 2, z: tile.TotalHeight, height: 0.5);
+        await WalkTo(actor, 2, 0);
+        var horse = ExternalLifecycleHorse(2, 0);
+        ExecutorTick();
+        EstablishExternalMountedGroup(actor, horse);
+        ExecutorTick();
+        await StepTowardsTheFurni(actor, 3);
+
+        FireByChat(actor);
+
+        Assert.Equal(0.3, tile.GetZ, 3);
+        Assert.Empty(AvatarEntryDetails(_client.Packets.ToArray()));
     }
 }

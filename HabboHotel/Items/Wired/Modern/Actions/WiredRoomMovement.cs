@@ -725,13 +725,14 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     private readonly record struct Lift(RoomUser User, double FromZ, double Offset = 0, bool Inside = false, bool Stepping = false, double StepFromZ = 0);
 
     // The navigation grid lowers or lifts the users the furni supports; the users whose height changed get an entry. A sitting or lying user is drawn at the height of his posture.
-    // A user whose announced step goes onto the furni gets an entry from his tile to the step target at the new height; one stepping off it gets none.
+    // A user whose announced step goes onto the furni gets an entry from his tile to the step target at the new height; one stepping off it gets none. A rider's entry is one above his horse's, and comes first.
     // A user inside a furni that cannot be walked on stands at its base and is set to the new base by hand.
     private static Lift[] HeldUsers(Room room, Item item, RoomUser[] carried) => [.. WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation)
         .SelectMany(point => WiredRoomOperations.UsersStandingOn(room, point))
         .Where(user => user != null && !carried.Contains(user) && room.GetGameMap().WalkMagicAt(user.X, user.Y) == null
             && (user.SetStep || !user.IsWalking && (user.Movement.CurrentRef?.SupportItemId == item.Id || IsInside(user, item))))
-        .Distinct().Select(user => user.SetStep ? new Lift(user, user.Z, Stepping: true, StepFromZ: user.SetZ) : new Lift(user, user.Z, PostureHeight(user), IsInside(user, item)))];
+        .Distinct().OrderByDescending(user => user.RidingHorse)
+        .Select(user => user.SetStep ? new Lift(user, user.Z, user.RidingHorse && !user.IsBot ? 1 : 0, Stepping: true, StepFromZ: user.SetZ) : new Lift(user, user.Z, PostureHeight(user), IsInside(user, item)))];
 
     private static bool IsInside(RoomUser user, Item item) => user.Movement.CurrentRef == null && !item.Definition.Walkable && Math.Abs(user.Z - item.GetZ) < 0.005;
 
@@ -751,7 +752,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
         : Math.Abs(lift.User.Z - lift.FromZ) >= 0.005;
 
     private static WiredMovementComposer LiftMovement(WiredRuntimeContext context, WiredCurvePolicy? curve, Room room, Item item, Lift lift, int? animationTimeMs) => lift.Stepping
-        ? new(0, lift.User.VirtualId, lift.User.X, lift.User.Y, lift.FromZ, lift.User.SetX, lift.User.SetY, StepZ(room, lift.User, item),
+        ? new(0, lift.User.VirtualId, lift.User.X, lift.User.Y, lift.FromZ + lift.Offset, lift.User.SetX, lift.User.SetY, StepZ(room, lift.User, item) + lift.Offset,
             lift.User.RotBody, lift.User.RotHead, animationTimeMs ?? context.Policy.Addons.AnimationTimeMs)
         {
             AnimationType = 0

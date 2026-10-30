@@ -729,7 +729,7 @@ public sealed class WiredRoomMovement(Action<RoomUser, IEnumerable<Item>, IEnume
     // A user inside a furni that cannot be walked on stands at its base and is set to the new base by hand.
     private static Lift[] HeldUsers(Room room, Item item, RoomUser[] carried) => [.. WiredRoomOperations.Footprint(item, item.GetX, item.GetY, item.Rotation)
         .SelectMany(point => WiredRoomOperations.UsersStandingOn(room, point))
-        .Where(user => user != null && !carried.Contains(user) && !HasQueuedWalk(user) && room.GetGameMap().WalkMagicAt(user.X, user.Y) == null
+        .Where(user => user != null && !carried.Contains(user) && room.GetGameMap().WalkMagicAt(user.X, user.Y) == null
             && (user.SetStep || !user.IsWalking && (user.Movement.CurrentRef?.SupportItemId == item.Id || IsInside(user, item))))
         .Distinct().Select(user => user.SetStep ? new Lift(user, user.Z, Stepping: true, StepFromZ: user.SetZ) : new Lift(user, user.Z, PostureHeight(user), IsInside(user, item)))];
 

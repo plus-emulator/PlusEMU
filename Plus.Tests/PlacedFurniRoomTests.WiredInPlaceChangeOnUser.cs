@@ -4,6 +4,7 @@ using Plus.Communication.Packets.Incoming.Rooms.Engine;
 using Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern;
 using Plus.HabboHotel.Rooms;
 using Xunit;
@@ -15,9 +16,12 @@ public partial class PlacedFurniRoomTests
 {
     private const uint InPlaceMove = 981, InPlaceOrder = 982, InPlaceNoAnimation = 983, InPlaceTurn = 984, InPlaceWest = 985, InPlacePhysics = 987, StackedRug = 986;
 
+    private WiredConfigurationService? _inPlaceService;
+
     private async Task<(RoomUser Actor, Item Tile)> InPlaceRoom(bool noAnimation, bool altitude, bool turn, bool moveToUser = true, int altitudeValue = 30, bool west = false, int altitudeDelay = 0)
     {
         var (actor, tile, service) = BuiltInRuntimeRoom();
+        _inPlaceService = service;
 
         if (altitude) {
             SaveRuntimeBox(service, Change, 0, "-123", altitudeValue, true, delay: altitudeDelay);

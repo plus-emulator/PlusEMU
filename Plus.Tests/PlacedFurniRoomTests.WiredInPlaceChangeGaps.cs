@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using Plus.Communication.Packets.Incoming.Rooms.Avatar;
 using Plus.Communication.Packets.Incoming.Rooms.Engine;
+using Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired.Modern;
@@ -99,6 +100,7 @@ public partial class PlacedFurniRoomTests
 
         var avatar = Assert.Single(AvatarEntries(sent));
         Assert.Equal((actor.VirtualId, 1.05, 1.35), (avatar.Id, avatar.FromZ, avatar.ToZ));
+        Assert.True(actor.IsSitting);
     }
 
     // A 2x1 furni turns on its first tile. The user on its second tile is left on the floor, the user on its first tile stays on it, and neither gets an entry.
@@ -267,5 +269,48 @@ public partial class PlacedFurniRoomTests
         var avatar = Assert.Single(AvatarEntries(sent));
         Assert.Equal((actor.VirtualId, 0.5, 0.8), (avatar.Id, avatar.FromZ, avatar.ToZ));
         Assert.Equal(0.3, actor.Z, 3);
+    }
+
+    // A furni that cannot be walked on, with a user inside it, is lowered in place: the user is lowered with it and gets an entry.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ANonWalkableFurniLoweredInPlaceOntoAUserLowersHimWithAnEntry(bool noAnimation)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false);
+        await WalkTo(actor, 0, 3);
+        FireRuntimeStack(actor);
+        Assert.Equal((0, 3, 0.3), (tile.GetX, tile.GetY, tile.GetZ));
+        Assert.Equal(0.3, actor.Z, 3);
+        _client.Packets.Clear();
+        await new SaveWiredEffectConfigEvent(_inPlaceService!).Parse(_client, ClientPacket((int)RuntimeBox, 7, 0, 0, 0, 0, 0, -10, 0, "", 1, (int)tile.Id, 0, 2, 100, 200, 2, 0, 200, 2, "-123", "0", 0));
+        Assert.Equal("saved", SaveAnswer());
+
+        FireRuntimeStack(actor);
+
+        Assert.Equal((0, 3, 0), (tile.GetX, tile.GetY, tile.GetZ));
+        var avatar = Assert.Single(AvatarEntries(_client.Packets.ToArray()));
+        Assert.Equal((actor.VirtualId, 0.3, 0), (avatar.Id, avatar.FromZ, avatar.ToZ));
+        Assert.Equal(0, actor.Z, 3);
+    }
+
+    // A sitting user is left behind by a furni that moves to another tile and rises in one wave: he gets no entry and sits on the floor.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ASittingUserLeftBehindByAFurniThatMovesAndRisesGetsNoEntry(bool noAnimation)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false, west: true);
+        await UserOnTop(actor, tile, 0);
+        await new SitEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(_client, ClientPacket(1));
+        ExecutorTick();
+        Assert.True(actor.IsSitting);
+
+        var sent = await ClickABot();
+
+        Assert.Equal((1, 2, 0.3), (tile.GetX, tile.GetY, tile.GetZ));
+        Assert.Empty(AvatarEntries(sent));
+        Assert.True(actor.IsSitting);
+        Assert.Equal(0, actor.Z, 3);
     }
 }

@@ -1,4 +1,5 @@
 using Plus.Communication.Packets.Incoming.Rooms.Avatar;
+using Plus.Communication.Packets.Incoming.Rooms.Engine;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.DataFormat;
@@ -86,13 +87,15 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((2, 2, 0), (actor.X, actor.Y, actor.Z));
     }
 
-    // A bed that slides along and still covers the user's tile sends no entry and keeps him lying.
+    // A bed that slides along and still covers the user's tile sends no entry and keeps him lying. A rise in the same wave lifts him with the bed.
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ALyingUserWhoseBedSlidesAlongUnderHimGetsNoEntryAndKeepsLying(bool noAnimation)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task ALyingUserWhoseBedSlidesAlongUnderHimGetsNoEntryAndKeepsLying(bool noAnimation, bool altitude)
     {
-        var (actor, bed) = await UserLyingOnABed(noAnimation, altitude: false, width: 2);
+        var (actor, bed) = await UserLyingOnABed(noAnimation, altitude, width: 2);
 
         var sent = await ClickABot();
         ExecutorTick();
@@ -101,7 +104,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((1, 2), (bed.GetX, bed.GetY));
         Assert.Empty(AvatarEntries(sent));
         Assert.True(actor.Statusses.ContainsKey("lay"));
-        Assert.Equal(0, actor.Z, 3);
+        Assert.Equal(altitude ? 0.3 : 0, actor.Z, 3);
     }
 
     // A bed moved onto a standing user lays him down with no entry.
@@ -122,5 +125,38 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((0, 3), (bed.GetX, bed.GetY));
         Assert.Empty(AvatarEntries(sent));
         Assert.True(actor.Statusses.ContainsKey("lay"));
+    }
+
+    // A furni that cannot be walked on is moved onto the path of a walking user. The step he has announced onto its tile still happens, and he walks on over it at floor height with no entry.
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task ANonWalkableFurniMovedOntoAWalkingUsersPathDoesNotStopHim(bool noAnimation, bool stepAnnouncedOntoIt)
+    {
+        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: false, turn: false, moveToUser: false, west: true);
+        Assert.True(WiredRoomOperations.MoveItem(_room, tile, 3, 2, height: 0, animate: false, announce: false));
+        await WalkTo(actor, 2, 0);
+        ExecutorTick();
+        await new MoveAvatarEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(_client, ClientPacket(2, 3));
+
+        for (var tick = 0; tick < 60 && !(stepAnnouncedOntoIt ? actor.SetStep && (actor.SetX, actor.SetY) == (2, 2) : (actor.X, actor.Y) == (2, 2) && actor.SetStep); tick++) {
+            ExecutorTick();
+        }
+
+        FireByChat(actor);
+
+        var heights = new List<double>();
+
+        for (var tick = 0; tick < 80 && (actor.X, actor.Y) != (2, 3); tick++) {
+            ExecutorTick();
+            heights.Add(actor.Z);
+        }
+
+        Assert.Equal((2, 2, 0), (tile.GetX, tile.GetY, tile.GetZ));
+        Assert.Equal((2, 3), (actor.X, actor.Y));
+        Assert.All(heights, height => Assert.Equal(0, height, 3));
+        Assert.Empty(AvatarEntries(_client.Packets.ToArray()));
     }
 }

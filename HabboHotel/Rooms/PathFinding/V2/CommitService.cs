@@ -22,13 +22,21 @@ internal sealed class CommitService(Room room, RoomNavigation navigation, Moveme
 
         var revision = state.LocationRevision;
         var count = state.PendingCount;
-        var accepted = ValidPrefix(actor);
+        var held = state.PendingHeld;
+        var heldZ = state.PendingZ[count - 1];
+        var accepted = held ? count : ValidPrefix(actor);
+        state.PendingHeld = false;
         state.RollerHeldStep = false;
         state.PendingCount = 0;
         actor.SetStep = false;
 
         if (accepted > 0) {
             LandPending(actor, accepted, count);
+
+            if (held && (actor.X, actor.Y) == (actor.SetX, actor.SetY)) {
+                actor.Z = state.SupportZ = heldZ;
+                state.CurrentRef = null;
+            }
         }
 
         context.Claims.ReleaseBatch(actor);

@@ -2,6 +2,8 @@ namespace Plus.HabboHotel.Rooms.PathFinding;
 
 internal sealed class RebindService(Room room, NavGrid Grid)
 {
+    private const string FloorSit = "0.55 1";
+
     public void Rebind(RoomUser actor)
     {
         var state = actor.Movement;
@@ -42,6 +44,12 @@ internal sealed class RebindService(Room room, NavGrid Grid)
         }
 
         PostureService.Apply(room, Grid, actor);
+
+        // A user sitting on the floor keeps sitting when the furni under him changes.
+        if (sit == FloorSit && !actor.Statusses.ContainsKey("sit") && !actor.Statusses.ContainsKey("lay")) {
+            actor.Statusses["sit"] = FloorSit;
+            actor.IsSitting = true;
+        }
 
         // A furni that moves but still covers the avatar's tile sends no avatar update. Applying the posture again must not flag one when nothing about the avatar changed.
         actor.UpdateNeeded = updateNeeded;

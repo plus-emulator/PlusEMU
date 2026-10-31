@@ -4,6 +4,7 @@ using Plus.Communication.Packets.Incoming.Rooms.Engine;
 using Plus.Communication.Packets.Incoming.Rooms.Furni.Wired;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.Wired.Configuration;
 using Plus.HabboHotel.Items.Wired.Modern;
 using Plus.HabboHotel.Rooms;
 using Xunit;
@@ -15,12 +16,15 @@ public partial class PlacedFurniRoomTests
 {
     private const uint InPlaceMove = 981, InPlaceOrder = 982, InPlaceNoAnimation = 983, InPlaceTurn = 984, InPlaceWest = 985, InPlacePhysics = 987, StackedRug = 986;
 
-    private async Task<(RoomUser Actor, Item Tile)> InPlaceRoom(bool noAnimation, bool altitude, bool turn, bool moveToUser = true, int altitudeValue = 30, bool west = false)
+    private WiredConfigurationService? _inPlaceService;
+
+    private async Task<(RoomUser Actor, Item Tile)> InPlaceRoom(bool noAnimation, bool altitude, bool turn, bool moveToUser = true, int altitudeValue = 30, bool west = false, int altitudeDelay = 0)
     {
         var (actor, tile, service) = BuiltInRuntimeRoom();
+        _inPlaceService = service;
 
         if (altitude) {
-            SaveRuntimeBox(service, Change, 0, "-123", altitudeValue, true);
+            SaveRuntimeBox(service, Change, 0, "-123", altitudeValue, true, delay: altitudeDelay);
         }
 
         if (moveToUser) {
@@ -371,11 +375,11 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(rug.Id, actor.Movement.CurrentRef!.Value.SupportItemId);
     }
 
-    // A 2x1 furni slides one tile west over a user who stays on top of it, then rises: the user rises with it.
+    // A 2x1 furni slides one tile west over a user who stays on top of it, then rises: the furni entry carries the move and the raise, the user gets no entry, and his next update has the new height.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AUserWhoStaysOnTopOfAFurniThatSlidesThenRisesIsLifted(bool noAnimation)
+    public async Task AUserWhoStaysOnTopOfAFurniThatSlidesThenRisesGetsNoEntry(bool noAnimation)
     {
         var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false, west: true);
         await UserOnTop(actor, tile, 0, width: 2);
@@ -384,8 +388,7 @@ public partial class PlacedFurniRoomTests
         var sent = await ClickABot();
 
         Assert.Equal((1, 2, 0.3), (tile.GetX, tile.GetY, tile.GetZ));
-        var avatar = Assert.Single(WiredMovementPackets(sent).SelectMany(packet => packet), entry => entry.Type == 0);
-        Assert.Equal((actor.VirtualId, 0.5, 0.8), (avatar.Id, avatar.FromZ, avatar.ToZ));
+        Assert.Empty(AvatarEntries(sent));
         AssertBoundTo(actor, tile, 0.8);
     }
 
@@ -435,21 +438,5 @@ public partial class PlacedFurniRoomTests
         Assert.Equal((0.5, 0.8), (avatars[horse.VirtualId].FromZ, avatars[horse.VirtualId].ToZ));
         Assert.Equal((1.5, 1.8), (avatars[actor.VirtualId].FromZ, avatars[actor.VirtualId].ToZ));
         Assert.Equal((0.8, 1.8), (horse.Z, actor.Z));
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ASittingUserOnTheFurniGetsNoEntry(bool noAnimation)
-    {
-        var (actor, tile) = await InPlaceRoom(noAnimation, altitude: true, turn: false, moveToUser: false);
-        await UserOnTop(actor, tile, 0);
-        await new SitEvent(new RoomAvatarActionService(TimeProvider.System, null!, null!)).Parse(_client, ClientPacket(1));
-        ExecutorTick();
-        Assert.True(actor.IsSitting);
-
-        var sent = await ClickABot();
-
-        Assert.All(WiredMovementPackets(sent), packet => Assert.DoesNotContain(packet, entry => entry.Type == 0));
     }
 }

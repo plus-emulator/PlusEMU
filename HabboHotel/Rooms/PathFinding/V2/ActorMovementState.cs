@@ -29,6 +29,8 @@ public sealed class ActorMovementState
     // Purpose each pending edge was claimed with; commit re-validates with the same purpose.
     public StepPurpose[] PendingPurpose { get; } = new StepPurpose[3];
     internal GraphView PendingView { get; set; }
+    // Commit takes the announced steps without validating them again.
+    internal bool PendingHeld { get; set; }
     public bool HasIntent { get; internal set; }
     internal bool LandingInProgress { get; set; }
     public int WaitTicks { get; internal set; }

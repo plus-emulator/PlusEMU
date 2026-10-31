@@ -40,9 +40,12 @@ internal sealed partial class WiredStackEngine
     private long _sequence;
     private long _cycle;
     private bool _draining;
+    private static long _nextChainId;
     private ScheduledAction? _executingAction;
     private ActionChain? _flushingChain;
     internal object? ExecutingFiring => _executingAction?.Chain ?? _flushingChain;
+    internal (long Firing, long At)? ExecutingMoment => _executingAction is { } step ? step.Chain.FirstResumeAt + step.DelayMilliseconds is { } at ? (step.Chain.Id, at) : null
+        : _flushingChain is { LastMoment: { } last } chain ? (chain.Id, last) : null;
 
     public WiredStackEngine(Func<long> now, Func<IWiredItem, bool> attached,
         Func<object[], bool> actorPresent, Action<Item> flash, Action<Exception> error,
@@ -747,6 +750,7 @@ internal sealed partial class WiredStackEngine
 
                         var previousAction = _executingAction;
                         _executingAction = scheduled;
+                        chain.LastMoment = chain.FirstResumeAt + scheduled.DelayMilliseconds;
 
                         try {
                             if (scheduled.Callback != null) {
@@ -1176,6 +1180,8 @@ internal sealed partial class WiredStackEngine
         public int Remaining { get; set; } = remaining;
         public long ReadyAtCycle { get; init; }
         public long? FirstResumeAt { get; set; }
+        public long? LastMoment { get; set; }
+        public long Id { get; } = Interlocked.Increment(ref _nextChainId);
         public bool Contains(IWiredItem box) => stack.Contains(box);
     }
 }

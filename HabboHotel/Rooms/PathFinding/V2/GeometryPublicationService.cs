@@ -57,9 +57,9 @@ internal sealed class GeometryPublicationService(MovementContext context, Rebind
             }
 
             context.Claims.ReleaseBatch(actor);
+            // Furniture that Wired puts on the target of an announced step does not stop the step. Any other change releases the batch for commit's prefix validation.
+            state.PendingHeld = context.Room.GetWired()?.ExecutingFiring != null;
 
-            // Keep the announced batch for commit's prefix validation. A rejected edge is
-            // discovered from the actual landing position, without consuming it.
             return;
         }
 

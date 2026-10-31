@@ -34,14 +34,14 @@ public partial class PlacedFurniRoomTests
         return (actor, tile, service);
     }
 
-    private void SaveRuntimeBox(WiredConfigurationService service, string card, int target, string variableId, int value, bool picksTile, int operation = 0)
+    private void SaveRuntimeBox(WiredConfigurationService service, string card, int target, string variableId, int value, bool picksTile, int operation = 0, int delay = 0)
     {
         PlaceSavedBox(RuntimeBox, card, 1, 1, 1);
         object[] picks = picksTile ? [1, (int)RuntimeTile] : [0];
         var high = value < 0 ? -1 : 0;
         object[] body = card == Give
-            ? [(int)RuntimeBox, 7, target, high, value, 1, 0, -10, 0, "", .. picks, 0, 2, 100, 200, 2, 0, 200, 2, variableId, "0", 0]
-            : [(int)RuntimeBox, 7, target, operation, 0, high, value, -10, 0, "", .. picks, 0, 2, 100, 200, 2, 0, 200, 2, variableId, "0", 0];
+            ? [(int)RuntimeBox, 7, target, high, value, 1, 0, -10, 0, "", .. picks, delay, 2, 100, 200, 2, 0, 200, 2, variableId, "0", 0]
+            : [(int)RuntimeBox, 7, target, operation, 0, high, value, -10, 0, "", .. picks, delay, 2, 100, 200, 2, 0, 200, 2, variableId, "0", 0];
         _client.Packets.Clear();
         new SaveWiredEffectConfigEvent(service).Parse(_client, ClientPacket(body)).GetAwaiter().GetResult();
         Assert.Equal("saved", SaveAnswer());

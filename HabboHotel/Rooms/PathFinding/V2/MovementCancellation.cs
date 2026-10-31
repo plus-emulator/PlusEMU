@@ -29,6 +29,7 @@ internal sealed class MovementCancellation(MovementContext context)
         state.PendingCount = 0;
         state.StopAfterPending = false;
         state.RollerHeldStep = false;
+        state.PendingHeld = false;
         state.WaitTicks = state.StallTicks = 0;
         state.ConsumedSequence = Math.Max(state.ConsumedSequence, discardThrough);
         actor.GoalX = actor.X;

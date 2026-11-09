@@ -35,7 +35,7 @@ public partial class PlacedFurniRoomTests
         habbo.Look = "hd-180-1.ch-210-66";
         habbo.Gender = "M";
         habbo.Motto = "hello";
-        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, "", 0);
+        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 17, 0, "");
         var clock = new EntryClock();
         habbo.Messenger = new HabboMessenger([], [], [], clock);
         habbo.Effects = new Plus.HabboHotel.Users.Effects.EffectsComponent(clock);

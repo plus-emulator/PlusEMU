@@ -22,7 +22,7 @@ public sealed class UserObjectSnapshotTests
             Motto = "motto",
             ChangingName = true,
             LastOnlineAt = DateTimeOffset.FromUnixTimeSeconds(2200000000),
-            HabboStats = new(0, 0, 8, 0, 0, 0, 9, 10, 0, 0, 0, 0, "", 0)
+            HabboStats = new(0, 0, 8, 0, 9, 10, 0, 0, 0, "")
         };
         var composer = new UserObjectComposer(UserObjectSnapshot.Capture(user));
         object[] expected = [7, "Alice", "look", "F", "motto", "", false, 8, 9, 10, false, "2200000000", true, false];
@@ -42,7 +42,7 @@ public sealed class UserObjectSnapshotTests
     [Fact]
     public async Task InformationRequestSendsCapturedUserBeforePerks()
     {
-        var user = new Habbo { Id = 7, HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0) };
+        var user = new Habbo { Id = 7, HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "") };
         var (session, sent) = HabbiconTestSupport.Client(user);
         var service = new UserProfileService(null!, null!, null!, null!, null!, TimeProvider.System, null!, null!, null!, new CameraSettings("0"));
         await new InfoRetrieveEvent(service).Parse(session, HabbiconTestSupport.Incoming());
@@ -58,7 +58,7 @@ public sealed class UserObjectSnapshotTests
         var user = new Habbo
         {
             Id = 7,
-            HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0),
+            HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, ""),
             Access = EditorTestSupport.Access(canUseCamera ? [PermissionKeys.CameraUse] : [])
         };
         var (session, sent) = HabbiconTestSupport.Client(user);

@@ -53,7 +53,7 @@ public sealed class AuthenticatorLogoutTests
                 Username = "seven",
                 Access = UserAccess.Empty,
                 SessionStartedAt = DateTimeOffset.UtcNow,
-                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0),
+                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, ""),
                 Persistence = persistence
             };
             habbo.SetHotelServices(clients, TestRoomManager.Unused);

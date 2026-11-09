@@ -443,7 +443,7 @@ public sealed class UserGrantDatabaseTests : IDisposable
             Id = userId,
             Username = "rcon_grant_user",
             Credits = credits,
-            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0),
+            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, ""),
             Persistence = new UserPersistenceService(_database, TimeProvider.System, _clients),
             SessionStartedAt = DateTimeOffset.UtcNow
         };
@@ -460,7 +460,7 @@ public sealed class UserGrantDatabaseTests : IDisposable
         var factory = new UserDataFactory(null!, _database, [], null!, null!, null!, new Plus.HabboHotel.Rooms.RoomVisitRecorder(_database, TimeProvider.System),
             TimeProvider.System, TestRoomAchievements.Unused, _clients, TestRoomManager.Unused);
         var habbo = (await factory.GetUserDataByIdAsync(User))!;
-        habbo.HabboStats ??= new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        habbo.HabboStats ??= new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         habbo.Persistence = new UserPersistenceService(_database, TimeProvider.System, _clients);
         habbo.SessionStartedAt = DateTimeOffset.UtcNow;
 

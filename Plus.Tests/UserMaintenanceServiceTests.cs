@@ -386,7 +386,7 @@ public sealed class UserMaintenanceServiceTests
             Duckets = 20,
             Diamonds = 20,
             GotwPoints = 20,
-            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0)
+            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, "")
         };
         var (client, sent) = HabbiconTestSupport.Client(habbo);
         var clients = new GameClientManager(null!, null!);

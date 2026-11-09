@@ -113,7 +113,7 @@ public class PetWireTests
         {
             Id = 42,
             Username = "LifePet",
-            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, "", 0)
+            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 12, 0, 0, "")
         };
         var packet = new RecordingPacket();
 

@@ -108,7 +108,7 @@ public partial class PlacedFurniRoomTests
         _room.OwnerId = 7;
         var habbo = _client.GetHabbo();
         habbo.Client = _client;
-        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         var entry = new RecordingRoomEntry();
         habbo.SetHotelServices(TestGameClientManager.Empty, null!, null, entry);
         habbo.SetRoomVisitRecorder(new RecordingEntry([]), TestRoomAchievements.Unused);
@@ -127,7 +127,7 @@ public partial class PlacedFurniRoomTests
         _room.OwnerId = owner ? 7 : 99;
         var habbo = _client.GetHabbo();
         habbo.Client = _client;
-        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         var events = new List<string>();
         habbo.SetRoomVisitRecorder(new RecordingEntry(events), new TestRoomAchievements((session, group, amount) =>
         {

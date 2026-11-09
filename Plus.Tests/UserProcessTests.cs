@@ -432,7 +432,7 @@ public class UserProcessTests
             Look = "look",
             Motto = "",
             Access = UserAccess.Empty,
-            HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "old", 0),
+            HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "old"),
             Effects = new EffectsComponent(clock),
             CreditsUpdateTick = 100
         };

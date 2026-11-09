@@ -113,13 +113,14 @@ internal static class LegacyMigrations
         // Rerun: line 15 clears every auth_ticket again, logging everyone out.
         new("Updates/19_SecureLoginTokens.sql", Column("user_remember_tokens", "grace_uses"), Rerunnable: false),
         // 21_CatalogAdminEditor: creates catalog_admin_log and furni_editor_log and seeds permissions/permissions_rights (file:5-60). 69
-        // keeps both logs (69:2-3); 32 alters catalog_admin_log.
+        // keeps both logs (69:2-3); 32 alters catalog_admin_log; 131 drops furni_editor_log. Updates/22 ran after it, so roles implies
+        // it ran.
         // NOTE: optional user variable @catalog_admin_min_rank (defaults to 8).
-        new("Updates/21_CatalogAdminEditor.sql", Table("furni_editor_log"), Rerunnable: false),
+        new("Updates/21_CatalogAdminEditor.sql", Any(Table("furni_editor_log"), Table("roles")), Rerunnable: false),
         // 20_Housekeeping: creates housekeeping_log and housekeeping_online_peaks and seeds permissions/rights (file:3-47). 36 converts the
-        // log times; the tables stay.
+        // log times; 131 drops both tables. Updates/22 ran after it, so roles implies it ran.
         // Rerun: fails after Updates/22: permissions tables dropped.
-        new("Updates/20_Housekeeping.sql", Table("housekeeping_online_peaks"), Rerunnable: false),
+        new("Updates/20_Housekeeping.sql", Any(Table("housekeeping_online_peaks"), Table("roles")), Rerunnable: false),
         // NOTE: not transactional.
         new("Updates/22_RoleBasedAccessControl.sql", Table("roles"), Rerunnable: false),
         // 23_HabboClubMembership: drops catalog_club_offers.type, extends user_club_memberships, creates the club_gift_*,

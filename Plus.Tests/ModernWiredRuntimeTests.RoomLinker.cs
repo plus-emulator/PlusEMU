@@ -61,7 +61,7 @@ public partial class ModernWiredRuntimeTests
         f.Habbo.Gender = "M";
         f.Habbo.Look = "test";
         f.Habbo.Motto = "";
-        f.Habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        f.Habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         f.Habbo.Access = EditorTestSupport.Access([]);
         Assert.True(destination.GetRoomUserManager().AddAvatarToRoom(f.Client));
         var joined = Assert.IsType<RoomUser>(destination.GetRoomUserManager().GetRoomUserByHabbo(f.Habbo.Id));

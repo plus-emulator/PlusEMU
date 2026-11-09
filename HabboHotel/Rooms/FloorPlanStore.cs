@@ -19,7 +19,7 @@ public sealed class FloorPlanStore(IDatabase database) : IFloorPlanStore
         int written;
 
         if (custom == null) {
-            written = connection.Execute("INSERT INTO room_models (id,door_x,door_y,door_z,door_dir,heightmap,public_items,custom,wall_height) VALUES (@modelName,@DoorX,@DoorY,@DoorZ,@DoorDirection,@Map,'',TRUE,@WallHeight)",
+            written = connection.Execute("INSERT INTO room_models (id,door_x,door_y,door_z,door_dir,heightmap,custom,wall_height) VALUES (@modelName,@DoorX,@DoorY,@DoorZ,@DoorDirection,@Map,TRUE,@WallHeight)",
                 new { modelName, decision.DoorX, decision.DoorY, decision.DoorZ, decision.DoorDirection, decision.Map, decision.WallHeight }, transaction);
         }
         else if (custom.Value) {

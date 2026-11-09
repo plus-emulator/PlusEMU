@@ -154,5 +154,5 @@ public partial class PlacedFurniRoomTests
             return null;
         }));
 
-    private static HabboStats RespectStats(int available) => new(0, 0, 0, 0, 0, 0, 0, available, 0, 0, 0, 0, "old", 0);
+    private static HabboStats RespectStats(int available) => new(0, 0, 0, 0, 0, available, 0, 0, 0, "old");
 }

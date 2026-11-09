@@ -61,7 +61,7 @@ public sealed class UserCurrencyDatabaseTests
                 Id = 7,
                 Credits = 11,
                 SessionStartedAt = DateTimeOffset.UtcNow,
-                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0)
+                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "")
             };
             habbo.Currencies.Load(UserCurrencyStore.Load(connection, 7));
             habbo.Duckets += 4;

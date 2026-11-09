@@ -606,7 +606,7 @@ public sealed partial class WiredNativeLifecycleTests
                 Gender = "M",
                 CurrentRoom = Room,
                 Client = client,
-                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0),
+                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, ""),
                 Effects = new EffectsComponent(new FixedTimeProvider(FixedTimeProvider.Epoch)),
                 Access = EditorTestSupport.Access([])
             };

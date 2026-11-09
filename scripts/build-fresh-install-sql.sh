@@ -24,6 +24,9 @@ room_models room_music_disc_definitions room_music_songs safety_quiz_questions s
 schema_migrations server_landing server_locale server_rewards server_settings snowwar_token_offers talents
 talents_sub_levels wordfilter"
 
+# Upgraded hotels keep these for their old data; a new hotel never has them.
+LEGACY_TABLES="wired_items"
+
 dump() {
     # The first line of a MariaDB 11 dump enables sandbox mode, which older
     # clients reject, so it is dropped.
@@ -44,7 +47,8 @@ tables=$(for table in $CONTENT_TABLES; do grep -qx "$table" <<< "$existing" && e
     echo "-- Import into an empty database instead of Original Database.sql and the update scripts."
     echo "-- Regenerate with scripts/build-fresh-install-sql.sh after adding a migration."
     # MariaDB 10.6 (Ubuntu 22.04) has no uca1400 collations.
-    dump --no-data --routines --triggers "$DB" |
+    # shellcheck disable=SC2046
+    dump --no-data --routines --triggers $(for table in $LEGACY_TABLES; do echo "--ignore-table=$DB.$table"; done) "$DB" |
         sed -E 's/ AUTO_INCREMENT=[0-9]+//; s/utf8mb4_uca1400_ai_ci/utf8mb4_unicode_ci/g'
     # shellcheck disable=SC2086
     dump --no-create-info --skip-triggers "$DB" $tables

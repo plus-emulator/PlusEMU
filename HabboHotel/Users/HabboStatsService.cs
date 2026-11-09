@@ -14,10 +14,9 @@ public class HabboStatsService : IHabboStatsService
         using var connection = _database.Connection();
 
         var statRow = await connection.QueryFirstOrDefaultAsync<HabboStatsMaterializer.Row>(
-            @"SELECT RoomVisits, OnlineTime, Respect, RespectGiven, GiftsGiven, GiftsReceived, 
-              DailyRespectPoints, DailyPetRespectPoints, `AchievementScore` AS AchievementPoints, 
-              quest_id AS QuestId, quest_progress AS QuestProgress, groupid AS FavouriteGroupId, 
-              respectsTimestamp AS RespectsTimestamp, forum_posts AS ForumPosts 
+            @"SELECT RoomVisits, OnlineTime, Respect, RespectGiven,
+              DailyRespectPoints, DailyPetRespectPoints, `AchievementScore` AS AchievementPoints,
+              quest_id AS QuestId, groupid AS FavouriteGroupId, respectsTimestamp AS RespectsTimestamp
               FROM `user_statistics` WHERE `id` = @id LIMIT 1",
             new { id = userId });
 
@@ -29,7 +28,7 @@ public class HabboStatsService : IHabboStatsService
             "INSERT INTO `user_statistics` (`id`) VALUES (@id) ON DUPLICATE KEY UPDATE `id` = VALUES(`id`)",
             new { id = userId });
 
-        return new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        return new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
 
     }
 

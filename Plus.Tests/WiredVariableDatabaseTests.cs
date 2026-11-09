@@ -244,7 +244,7 @@ public sealed class WiredVariableDatabaseTests(ITestOutputHelper output)
             fxPlayer.Motto = "";
             fxPlayer.Look = "test";
             fxPlayer.Gender = "M";
-            fxPlayer.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+            fxPlayer.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
             fxPlayer.Effects = new(new FixedTimeProvider(FixedTimeProvider.Epoch));
             fxPlayer.Access = EditorTestSupport.Access([]);
             fxClient.Revision.InternalIdToOutgoingIdMapping = typeof(ServerPacketHeader).GetFields(BindingFlags.Public | BindingFlags.Static)

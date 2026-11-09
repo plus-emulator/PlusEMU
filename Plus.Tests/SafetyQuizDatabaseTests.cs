@@ -222,7 +222,7 @@ namespace Plus.Tests
                     SessionStartedAt = DateTimeOffset.UtcNow,
                     Persistence = new UserPersistenceService(Database, TimeProvider.System, TestGameClientManager.Empty),
                     Duckets = Connection.ExecuteScalar<int>("SELECT COALESCE(SUM(amount),0) FROM user_currencies WHERE user_id=7 AND type=0"),
-                    HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "old", 0),
+                    HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "old"),
                     Inventory = new InventoryComponent { Furniture = new FurnitureInventoryComponent([], []), Badges = new BadgesInventoryComponent([]) }
                 };
                 habbo.HabboStats.AchievementPoints = Connection.ExecuteScalar<int>("SELECT AchievementScore FROM user_statistics WHERE id=7");

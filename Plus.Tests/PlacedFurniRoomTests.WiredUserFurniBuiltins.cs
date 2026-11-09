@@ -34,7 +34,7 @@ public partial class PlacedFurniRoomTests
         Assert.Null(Read("@pet_id"));
         Assert.Null(Read("@achievement_score"));
         Assert.Null(Read("@favourite_group_id"));
-        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         Assert.Equal(0, Read("@achievement_score")?.Value);
         Assert.Null(Read("@favourite_group_id"));
         habbo.HabboStats.AchievementPoints = 17;
@@ -244,7 +244,7 @@ public partial class PlacedFurniRoomTests
     {
         var user = new RoomUser(7, RoomId, 1, _room, _client, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 1, Y = 2 };
         BuiltinUsers()[user.VirtualId] = user;
-        _client.GetHabbo().HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        _client.GetHabbo().HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         var holder = WiredVariableRuntimeFrames.UserHolder(user);
         var frame = new WiredVariableFrame(RoomId, [holder]);
         var builtins = new RoomWiredBuiltinVariables(_room);

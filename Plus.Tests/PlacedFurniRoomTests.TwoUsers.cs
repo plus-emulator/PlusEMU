@@ -114,7 +114,7 @@ public partial class PlacedFurniRoomTests
         var visitorClient = new TestClient();
         visitorClient.SetHabbo(new Habbo { Id = 8, Username = "guest", CurrentRoom = _room, Access = UserAccess.Empty });
         visitorClient.GetHabbo().IgnoresComponent = new([]);
-        visitorClient.GetHabbo().HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        visitorClient.GetHabbo().HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         typeof(RoomUserManager).GetField("_rewards", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(_room.GetRoomUserManager(), new TestRewardProgress());
         _client.Packets.Clear();

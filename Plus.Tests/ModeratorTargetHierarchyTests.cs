@@ -164,7 +164,7 @@ public sealed class ModeratorTargetHierarchyTests
     public async Task HigherWeightActorCanFlagStaffTarget()
     {
         var actor = new Habbo { Id = 1, Access = EditorTestSupport.Access([], 90) };
-        var target = new Habbo { Id = 2, Username = "target", Access = EditorTestSupport.Access([PermissionKeys.ModerationTool], 50), LastNameChangedAt = DateTimeOffset.FromUnixTimeSeconds(123), HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0) };
+        var target = new Habbo { Id = 2, Username = "target", Access = EditorTestSupport.Access([PermissionKeys.ModerationTool], 50), LastNameChangedAt = DateTimeOffset.FromUnixTimeSeconds(123), HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, "") };
         var (session, _) = HabbiconTestSupport.Client(actor);
         var (targetSession, sent) = HabbiconTestSupport.Client(target);
         target.Client = targetSession;

@@ -285,7 +285,7 @@ public partial class PlacedFurniRoomTests
             Client = client,
             Effects = new EffectsComponent(new FixedTimeProvider(FixedTimeProvider.Epoch)),
             Access = Plus.HabboHotel.Permissions.UserAccess.Empty,
-            HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0)
+            HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "")
         });
         var actor = new RoomUser(id, RoomId, id, _room, client, TestChatEmotions.Unused, TestRewardProgress.Unused) { X = 3, Y = 3, Team = Team.Blue, InternalRoomId = id };
         var users = (ConcurrentDictionary<int, RoomUser>)typeof(RoomUserManager)

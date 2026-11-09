@@ -518,7 +518,7 @@ public class GroupParticipationTests
         new(Manager(group, memberships), Snapshots(), Clients(clients ?? new()), store, new AccountSessionGate());
 
     private static HabboStats Stats(int favourite = 0) =>
-        new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, favourite, "", 0);
+        new(0, 0, 0, 0, 0, 0, 0, 0, favourite, "");
 
     private static Group NewGroup(int id = 9)
     {

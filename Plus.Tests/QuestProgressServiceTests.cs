@@ -114,7 +114,7 @@ public sealed class QuestProgressServiceTests
 
     private static (FlashGameClient Client, List<(uint Header, byte[] Payload)> Sent) Client(int userId, int questId = 0)
     {
-        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, questId, 0, 0, "", 0);
+        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, questId, 0, "");
 
         return HabbiconTestSupport.Client(new() { Id = userId, HabboStats = stats });
     }

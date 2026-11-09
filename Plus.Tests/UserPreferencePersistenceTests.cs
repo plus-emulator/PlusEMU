@@ -124,7 +124,7 @@ public sealed class UserPreferencePersistenceTests
                 CustomBubbleId = 3,
                 Access = UserAccess.Empty,
                 SessionStartedAt = DateTimeOffset.UtcNow,
-                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "old", 0),
+                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "old"),
                 Persistence = new UserPersistenceService(database, TimeProvider.System, TestGameClientManager.Empty)
             };
             var (session, sent) = HabbiconTestSupport.Client(user);
@@ -373,7 +373,7 @@ public sealed class UserPreferencePersistenceTests
                 Id = 7,
                 Credits = 25,
                 SessionStartedAt = now.AddSeconds(-12),
-                HabboStats = new(0, int.MaxValue, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0)
+                HabboStats = new(0, int.MaxValue, 0, 0, 0, 0, 0, 0, 0, "")
             };
             var clock = new SaveClock(now);
             var persistence = new UserPersistenceService(database, clock, TestGameClientManager.Empty);

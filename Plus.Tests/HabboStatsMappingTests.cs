@@ -18,17 +18,13 @@ public class HabboStatsMappingTests
         table.Columns.Add("OnlineTime", typeof(int));
         table.Columns.Add("Respect", typeof(int));
         table.Columns.Add("RespectGiven", typeof(int));
-        table.Columns.Add("GiftsGiven", typeof(int));
-        table.Columns.Add("GiftsReceived", typeof(int));
         table.Columns.Add("DailyRespectPoints", typeof(int));
         table.Columns.Add("DailyPetRespectPoints", typeof(int));
         table.Columns.Add("AchievementPoints", typeof(int));
         table.Columns.Add("QuestId", typeof(uint));
-        table.Columns.Add("QuestProgress", typeof(int));
         table.Columns.Add("FavouriteGroupId", typeof(int));
         table.Columns.Add("RespectsTimestamp", typeof(string));
-        table.Columns.Add("ForumPosts", typeof(int));
-        table.Rows.Add(0, onlineTime, 0, 0, 0, 0, 0, 0, 0, questId, 0, 7, DBNull.Value, 0);
+        table.Rows.Add(0, onlineTime, 0, 0, 0, 0, 0, questId, 7, DBNull.Value);
 
         using var reader = table.CreateDataReader();
 

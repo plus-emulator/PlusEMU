@@ -41,7 +41,7 @@ Auxiliary cancellation restores transient state exactly once without another tim
 PublishConfigured, PublishLegacy and PublishPromotion persist detached validated state
 under engine ownership before changing the live registration. Persistence failures leave
 live state and pending work intact. Successful publication cancels captured work before
-new configuration takes effect. Promotion keeps the legacy wired_items payload available.
+new configuration takes effect.
 Direct ApplyConfiguration is a nonthrowing assignment for already validated input; it must
 not recursively call a publisher. Concrete loaders must preserve legacy behavior without
 a sidecar and surface invalid sidecars without replacing or overwriting their bytes.

@@ -12,7 +12,7 @@ of the complete wired catalogue.
   badge/map/roller effects and the existing no-op reward box. Unsupported enum values are
   logged and skipped during room loading. The negative badge/FX boxes now report their own
   enum type instead of the corresponding positive type.
-- `IWiredItem`, `IWiredCycle`, `wired_items` columns, selected-item/snapshot strings and save
+- `IWiredItem`, `IWiredCycle`, selected-item/snapshot strings and save
   parsers retain their existing shapes. Only periodic triggers use `IWiredCycle.OnCycle`;
   effect `Execute` methods are immediate bodies invoked by the room scheduler.
 - Conditions and the random addon are evaluated in one stack pipeline. Random selects one

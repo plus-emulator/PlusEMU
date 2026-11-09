@@ -137,7 +137,7 @@ public sealed class PlayerProfileSnapshotTests
     }
     private sealed class Stats : IHabboStatsService
     {
-        public Task<HabboStats> LoadHabboStats(int id) => Task.FromResult(new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, "", 0));
+        public Task<HabboStats> LoadHabboStats(int id) => Task.FromResult(new HabboStats(0, 0, 0, 0, 0, 0, 12, 0, 0, ""));
         public Task UpdateDailyRespectsAndTimestamp(int id, int dailyRespects, string timestamp) => throw new NotSupportedException();
     }
     private class EmptyGroups : DispatchProxy

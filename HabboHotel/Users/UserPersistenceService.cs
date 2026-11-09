@@ -56,10 +56,10 @@ public sealed class UserPersistenceService(IDatabase database, TimeProvider cloc
             "`time_muted` = @TimeMuted, `bubble_id` = @CustomBubbleId WHERE `id` = @Id; " +
             "UPDATE `users_settings` SET `home_room` = @HomeRoom, `friend_bar_state` = @FriendbarState WHERE `user_id` = @Id; " +
             "UPDATE `user_statistics` SET `roomvisits` = @RoomVisits, `onlineTime` = `onlineTime` + @SessionSeconds, " +
-            "`respect` = @Respect, `respectGiven` = @RespectGiven, `giftsGiven` = @GiftsGiven, `giftsReceived` = @GiftsReceived, " +
+            "`respect` = @Respect, `respectGiven` = @RespectGiven, " +
             "`dailyRespectPoints` = @DailyRespectPoints, `dailyPetRespectPoints` = @DailyPetRespectPoints, " +
-            "`AchievementScore` = @AchievementPoints, `quest_id` = @QuestId, `quest_progress` = @QuestProgress, " +
-            "`groupid` = @FavouriteGroupId, `forum_posts` = @ForumPosts WHERE `id` = @Id",
+            "`AchievementScore` = @AchievementPoints, `quest_id` = @QuestId, " +
+            "`groupid` = @FavouriteGroupId WHERE `id` = @Id",
             new
             {
                 habbo.Id,
@@ -72,15 +72,11 @@ public sealed class UserPersistenceService(IDatabase database, TimeProvider cloc
                 SessionSeconds = Math.Max(0L, (long)(now - habbo.SessionStartedAt).TotalSeconds),
                 stats.Respect,
                 stats.RespectGiven,
-                stats.GiftsGiven,
-                stats.GiftsReceived,
                 stats.DailyRespectPoints,
                 stats.DailyPetRespectPoints,
                 stats.AchievementPoints,
                 stats.QuestId,
-                stats.QuestProgress,
                 stats.FavouriteGroupId,
-                stats.ForumPosts,
                 now = now.UtcDateTime,
                 replaced
             }, transaction);

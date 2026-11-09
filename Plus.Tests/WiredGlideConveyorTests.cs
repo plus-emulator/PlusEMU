@@ -442,7 +442,7 @@ public sealed partial class WiredGlideConveyorTests
                 Access = UserAccess.Empty,
                 IgnoresComponent = new([]),
                 Effects = new(new FixedTimeProvider(FixedTimeProvider.Epoch)),
-                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0)
+                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "")
             };
             habbo.Effects.Init(habbo);
             client.SetHabbo(habbo);

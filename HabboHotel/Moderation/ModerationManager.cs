@@ -77,7 +77,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
     private async Task Load()
     {
         using var connection = _database.Connection();
-        var presets = await connection.QueryAsync<(string Type, string Message)>("SELECT type, message FROM moderation_presets");
+        var presets = await connection.QueryAsync<(string Type, string Message)>("SELECT type, message FROM moderation_presets WHERE COALESCE(enabled, 1) <> 0");
         var topics = await connection.QueryAsync<(int Id, string Caption)>("SELECT id, caption FROM moderation_topics");
         var actions = await connection.QueryAsync<PresetActionRow>("SELECT id, parent_id AS ParentId, type, caption, message_text AS MessageText, mute_time AS MuteTime, ban_time AS BanTime, ip_time AS IpTime, trade_lock_time AS TradeLockTime, default_sanction AS DefaultSanction FROM moderation_topic_actions");
         var categories = await connection.QueryAsync<(int Id, string Caption)>("SELECT id, caption FROM moderation_preset_action_categories");

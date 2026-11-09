@@ -45,7 +45,7 @@ public sealed class QuestWireComposerTests
     [Fact]
     public void PreparedSnapshotRecomposesIdenticallyAfterSessionMutation()
     {
-        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 0, 0, "", 0);
+        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 42, 0, "");
         var habbo = new Habbo { Id = 7, HabboStats = stats, Quests = new() { [42] = 4 } };
         var (client, _) = HabbiconTestSupport.Client(habbo);
         var quest = new Quest(42, "social", 2, QuestType.SocialChat, 5, "talk", 10, "bit", 3,
@@ -81,7 +81,7 @@ public sealed class QuestWireComposerTests
     [Fact]
     public void UnlockTimestampUsesLegacyNullFloorAndRangeClampAtSnapshotBoundary()
     {
-        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 0, 0, "", 0);
+        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 42, 0, "");
         var (client, _) = HabbiconTestSupport.Client(new Habbo { Id = 7, HabboStats = stats });
 
         Assert.Equal(0, QuestWireDataFactory.Create(client, QuestWithUnlock(null), 1).TimeUnlock);

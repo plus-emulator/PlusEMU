@@ -64,7 +64,7 @@ public partial class PlacedFurniRoomTests
 
     private void EnterForNotice()
     {
-        _client.GetHabbo().HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        _client.GetHabbo().HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         _client.Packets.Clear();
         var quests = Proxy<IQuestManager>((method, _) => throw new InvalidOperationException(method));
         var polls = Proxy<IRoomPollService>((method, _) => method == nameof(IRoomPollService.Offer) ? null : throw new InvalidOperationException(method));

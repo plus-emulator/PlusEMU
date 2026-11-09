@@ -83,7 +83,7 @@ public sealed class TalentTrackDatabaseTests
             var habbo = new Habbo
             {
                 Id = 8,
-                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "old", 0),
+                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "old"),
                 Inventory = new InventoryComponent { Furniture = new([], []) }
             };
             var (client, packets) = HabbiconTestSupport.Client(habbo);

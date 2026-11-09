@@ -13,7 +13,7 @@ public partial class ModernWiredRuntimeTests
         f.Habbo.Gender = "M";
         f.Habbo.Motto = "";
         f.Habbo.Look = "test";
-        f.Habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        f.Habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         f.Room.GetWired().RememberHighlight([1], 0, 100, 0xFFEA00, 0, 4);
         f.Room.GetWired().RememberUserHighlight([f.User.VirtualId], 0, 100, 0xFFEA00, 0, 4);
         var sent = Capture(f.Client);

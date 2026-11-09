@@ -371,7 +371,7 @@ public sealed class GroupRemovalServiceTests
             Id = id,
             Username = "Actor",
             Access = UserAccess.Empty,
-            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, favourite, "", 0)
+            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, favourite, "")
         });
 
     private static GroupRemovalService Service(Group group, Store store, GameClient online, Action? deleted = null, IAccountSessionGate? sessions = null) => new(

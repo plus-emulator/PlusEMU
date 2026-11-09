@@ -378,7 +378,7 @@ public sealed class AchievementPersistenceTests
                     Username = "user",
                     Access = UserAccess.Empty,
                     SessionStartedAt = DateTimeOffset.UtcNow,
-                    HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "old", 0),
+                    HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "old"),
                     // ProgressAchievement refuses a level-up without loaded statistics and inventory.
                     Inventory = new Plus.HabboHotel.Users.Inventory.InventoryComponent(),
                     Persistence = new UserPersistenceService(Database, TimeProvider.System, TestGameClientManager.Empty)

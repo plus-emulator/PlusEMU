@@ -186,7 +186,7 @@ public class SsoLoginServiceTests
                 Look = "look",
                 Clothing = new(),
                 Access = UserAccess.Empty,
-                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0)
+                HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "")
             };
             (Client, Sent) = HabbiconTestSupport.Client(habbo);
             habbo.Client = Client;

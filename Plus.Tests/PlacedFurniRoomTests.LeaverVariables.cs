@@ -232,7 +232,7 @@ public partial class PlacedFurniRoomTests
     private void EnterVisitor(TestClient client)
     {
         client.GetHabbo().CurrentRoom = _room;
-        client.GetHabbo().HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0);
+        client.GetHabbo().HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
         var quests = Proxy<Plus.HabboHotel.Quests.IQuestManager>((method, _) => throw new InvalidOperationException(method));
         var polls = Proxy<Plus.HabboHotel.Rooms.Polls.IRoomPollService>((method, _) => method == nameof(Plus.HabboHotel.Rooms.Polls.IRoomPollService.Offer) ? null : throw new InvalidOperationException(method));
         new RoomEntryService(quests, TimeProvider.System, polls, EntryWordQuiz).Enter(client);

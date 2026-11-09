@@ -39,16 +39,13 @@ public class WiredResetDatabaseTests
         new WiredConfigurationStore(new TestDatabase()).Reset([world.Definition, world.Legacy]);
 
         Assert.Equal(0, Count(admin, "wired_item_configurations", "item_id", world.Definition));
-        Assert.Equal(0, Count(admin, "wired_items", "id", world.Definition));
-        Assert.Equal(0, Count(admin, "wired_items", "id", world.Legacy));
         Assert.Equal(0, Count(admin, "wired_reward_state", "item_id", world.Definition));
         Assert.Equal(0, Count(admin, "wired_variable_values", "definition_id", world.Definition));
         // The same box placed again defines its variable afresh, so the definition is not retired.
         Assert.False(admin.QuerySingle<bool>("SELECT retired FROM wired_variable_locks WHERE definition_id=@Id", new { Id = world.Definition }));
-        // Other variables keep what the boxes hold for them, and other boxes keep their selections.
+        // Other variables keep what the boxes hold for them.
         Assert.Equal(2, Count(admin, "wired_variable_values", "definition_id", world.Other));
         Assert.Equal(1, Count(admin, "wired_item_configurations", "item_id", world.Other));
-        Assert.Equal(world.Definition.ToString(), admin.QuerySingle<string>("SELECT items FROM wired_items WHERE id=@Id", new { Id = world.Selector }));
     }
 
     [WiredResetDatabaseFact]
@@ -68,8 +65,6 @@ public class WiredResetDatabaseTests
         }
 
         Assert.Equal(1, Count(admin, "wired_item_configurations", "item_id", world.Definition));
-        Assert.Equal(1, Count(admin, "wired_items", "id", world.Definition));
-        Assert.Equal(1, Count(admin, "wired_items", "id", world.Legacy));
         Assert.Equal(1, Count(admin, "wired_reward_state", "item_id", world.Definition));
         Assert.Equal(2, Count(admin, "wired_variable_values", "definition_id", world.Definition));
     }
@@ -131,7 +126,7 @@ public class WiredResetDatabaseTests
         variables.ConfigurationSaved(box);
     }
 
-    private sealed record World(uint Definition, uint Legacy, uint Other, uint Selector);
+    private sealed record World(uint Definition, uint Legacy, uint Other);
 
     /// <summary>
     /// A room variable box with every kind of saved row, a legacy box, another variable holding values on both, and a
@@ -142,7 +137,6 @@ public class WiredResetDatabaseTests
         var (room, definition) = PlacedVariable(admin);
         var legacy = PlaceItem(admin, (uint)room.OwnerId, room.Id);
         var other = PlaceItem(admin, (uint)room.OwnerId, room.Id);
-        var selector = PlaceItem(admin, (uint)room.OwnerId, room.Id);
         Configure(admin, definition.Id, "wf_var_room", new WiredConfiguration { IntParams = [10, 7], Text = "reset_probe" });
         Configure(admin, other, "wf_var_furni", new WiredConfiguration { IntParams = [1, 10], Text = "reset_other" });
         admin.Execute("INSERT INTO wired_variable_locks(definition_id) VALUES (@Definition),(@Other)", new { Definition = definition.Id, Other = other });
@@ -150,12 +144,9 @@ public class WiredResetDatabaseTests
             INSERT INTO wired_variable_values(definition_id,target_kind,holder_id,value,created_at,updated_at) VALUES
             (@Definition,3,0,42,@At,@At),(@Definition,0,@Owner,5,@At,@At),(@Other,1,@Definition,9,@At,@At),(@Other,1,@Legacy,8,@At,@At)
             """, new { Definition = definition.Id, Other = other, Legacy = legacy, Owner = room.OwnerId, At = DateTime.UnixEpoch.AddMilliseconds(1) });
-        admin.Execute("INSERT INTO wired_items VALUES (@Id,'',0,'probe','0')", new { Id = definition.Id });
-        admin.Execute("INSERT INTO wired_items VALUES (@Id,'',5,'legacy probe','1')", new { Id = legacy });
-        admin.Execute("INSERT INTO wired_items VALUES (@Id,@Items,0,'','0')", new { Id = selector, Items = definition.Id.ToString() });
         admin.Execute("INSERT INTO wired_reward_state(item_id,claims) VALUES (@Id,'{\"1\":{}}')", new { Id = definition.Id });
 
-        return new(definition.Id, legacy, other, selector);
+        return new(definition.Id, legacy, other);
     }
 
     private static (Room Room, Item Item) PlacedVariable(MySqlConnection admin)

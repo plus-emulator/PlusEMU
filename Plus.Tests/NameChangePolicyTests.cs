@@ -24,7 +24,7 @@ public class NameChangePolicyTests
             Look = "hr-1",
             Gender = "M",
             Motto = "",
-            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0),
+            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, ""),
             LastNameChangedAt = new DateTimeOffset(2040, 1, 1, 0, 0, 0, TimeSpan.Zero),
             Access = UserAccess.Create([new(role)])
         };

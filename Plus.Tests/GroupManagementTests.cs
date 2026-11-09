@@ -311,7 +311,7 @@ public class GroupManagementTests : IDisposable
         var group = NewGroup(hasForum: false);
         group.PublishJoin(8);
         group.MakeAdmin(8);
-        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, group.Id, "", 0);
+        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, group.Id, "");
         var targetHabbo = new Habbo { Id = 8, Username = "Target", Access = Rights(), HabboStats = stats };
         var (targetClient, targetSent) = Client(targetHabbo);
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
@@ -404,7 +404,7 @@ public class GroupManagementTests : IDisposable
             Id = 11,
             Username = "Leaver",
             Access = Rights(),
-            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0)
+            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, "")
         };
         var (client, sent) = Client(leaver);
         var rooms = Proxy<IRoomManager>((method, args) =>

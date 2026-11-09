@@ -63,7 +63,7 @@ public partial class ModernWiredRuntimeTests
     public void UserLevelComparesTheAccountLevel(int level, int comparison, bool passes)
     {
         using var f = new TeleportFixture();
-        f.Habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "", 0) { AchievementPoints = 25000 };
+        f.Habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "") { AchievementPoints = 25000 };
         f.Habbo.AccountLevel = 9;
         var item = MakeItem(101, "wf_cnd_user_level");
         var descriptor = Descriptor("wf_cnd_user_level");

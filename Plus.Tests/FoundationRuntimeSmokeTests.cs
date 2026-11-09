@@ -189,8 +189,8 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
         INSERT INTO user_info (user_id) VALUES (7);
         INSERT INTO user_achievements (userid, `group`, level, progress) VALUES
             (7, 'ACH_SafetyQuizGraduate', 1, 0), (7, 'ACH_FixtureProgress', 2, 3), (8, 'ACH_OtherUserOnly', 1, 0);
-        INSERT INTO room_models (id, door_x, door_y, door_z, door_dir, heightmap, public_items)
-            VALUES ('smoke', 0, 1, 0, 2, '000\r000\r000', '');
+        INSERT INTO room_models (id, door_x, door_y, door_z, door_dir, heightmap)
+            VALUES ('smoke', 0, 1, 0, 2, '000\r000\r000');
         INSERT INTO rooms (id, owner, caption, model_name, allow_pets) VALUES (42, '7', 'Smoke room', 'smoke', TRUE);
         INSERT INTO users_settings (user_id, home_room, allow_mimic, disable_forced_effects) VALUES (7, 42, TRUE, TRUE);
         INSERT INTO bots (id, user_id, room_id, ai_type, name, motto, look, x, y, z, automatic_chat, mix_sentences) VALUES

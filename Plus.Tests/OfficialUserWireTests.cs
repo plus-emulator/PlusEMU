@@ -24,7 +24,7 @@ public class OfficialUserWireTests
             Motto = "hi",
             Look = "hd-180-1",
             Gender = "M",
-            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, "", 0)
+            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 12, 0, 0, "")
         };
         var client = new TestClient();
         client.SetHabbo(habbo);
@@ -57,7 +57,7 @@ public class OfficialUserWireTests
             Motto = "hi",
             Look = "hd-180-1",
             Gender = "M",
-            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, "", 0)
+            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 12, 0, 0, "")
         };
         var client = new TestClient();
         client.SetHabbo(habbo);
@@ -126,7 +126,7 @@ public class OfficialUserWireTests
             Motto = "hi",
             Look = "hd-180-1",
             Gender = "M",
-            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, "", 0)
+            HabboStats = new HabboStats(0, 0, 0, 0, 0, 0, 12, 0, 0, "")
         };
         var client = new TestClient();
         client.SetHabbo(habbo);

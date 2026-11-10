@@ -20,6 +20,10 @@ public sealed class ClientAccessLists(IAccessControl permissions, IChatStyleMana
 
     public void Send(Habbo habbo)
     {
+        if (habbo.Client is { } client && client.Revision?.InternalIdToOutgoingIdMapping.ContainsKey(Plus.Communication.Packets.Outgoing.ServerPacketHeader.UserPurchasableChatStylesComposer) == true) {
+            client.Send(new Plus.Communication.Packets.Outgoing.Rooms.Session.UserPurchasableChatStylesComposer(habbo.PurchasedChatStyles.Keys));
+        }
+
         habbo.Client?.Send(new AllowedChatStylesComposer(styles.GetAllowedStyleIds(habbo.Access)));
         habbo.Client?.Send(new CreatableRoomModelsComposer(CreatableRoomModelSnapshot.Capture(rooms.GetCreatableModels(habbo.Access))));
     }

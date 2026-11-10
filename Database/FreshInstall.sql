@@ -1,11 +1,10 @@
 -- PlusEMU fresh install: the full schema plus game content (catalog, furniture, roles, ...).
 -- Import into an empty database instead of Original Database.sql and the update scripts.
 -- Regenerate with scripts/build-fresh-install-sql.sh after adding a migration.
--- MariaDB dump 10.19-11.4.13-MariaDB, for debian-linux-gnu (x86_64)
+-- MariaDB dump 10.20-11.8.9-MariaDB, for debian-linux-gnu (x86_64)
 --
--- Host: localhost    Database: plusemu_fresh
 -- ------------------------------------------------------
--- Server version	11.4.13-MariaDB-ubu2404
+-- Server version	11.8.9-MariaDB-ubu2404
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -1922,6 +1921,128 @@ CREATE TABLE `recycler_levels` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `recycler_openings`
+--
+
+DROP TABLE IF EXISTS `recycler_openings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `recycler_openings` (
+  `reference` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `operation_reference` char(36) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `box_item_id` int(10) unsigned NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `prize_level` int(11) NOT NULL,
+  `reward_item_id` int(10) unsigned DEFAULT NULL,
+  `reward_definition_id` int(10) unsigned NOT NULL,
+  `chat_style_id` int(11) NOT NULL DEFAULT 0,
+  `opened_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`reference`),
+  UNIQUE KEY `box_item_id` (`box_item_id`),
+  UNIQUE KEY `reward_item_id` (`reward_item_id`),
+  KEY `user_history` (`user_id`,`opened_at`),
+  KEY `recycler_opening_operation` (`operation_reference`),
+  CONSTRAINT `recycler_opening_operation` FOREIGN KEY (`operation_reference`) REFERENCES `recycler_operations` (`reference`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/  /*!50003 TRIGGER recycler_openings_no_update BEFORE UPDATE ON recycler_openings FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Recycler openings cannot be changed'
+*/;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/  /*!50003 TRIGGER recycler_openings_no_delete BEFORE DELETE ON recycler_openings FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Recycler openings cannot be deleted'
+*/;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+
+--
+-- Table structure for table `recycler_operations`
+--
+
+DROP TABLE IF EXISTS `recycler_operations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `recycler_operations` (
+  `reference` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `box_item_id` int(10) unsigned NOT NULL,
+  `configuration_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `prize_id` int(11) NOT NULL,
+  `prize_level` int(11) NOT NULL,
+  `prize_item_id` int(10) unsigned NOT NULL,
+  `chat_style_id` int(11) NOT NULL DEFAULT 0,
+  `inputs_json` longtext NOT NULL CHECK (json_valid(`inputs_json`)),
+  `cost_duckets` int(11) NOT NULL CHECK (`cost_duckets` >= 0),
+  `balance_after` int(11) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`reference`),
+  UNIQUE KEY `box_item_id` (`box_item_id`),
+  KEY `user_history` (`user_id`,`created_at`),
+  KEY `recycler_operation_revision` (`configuration_hash`),
+  CONSTRAINT `recycler_operation_revision` FOREIGN KEY (`configuration_hash`) REFERENCES `recycler_revisions` (`hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/  /*!50003 TRIGGER recycler_operations_no_update BEFORE UPDATE ON recycler_operations FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Recycler receipts cannot be changed'
+*/;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/  /*!50003 TRIGGER recycler_operations_no_delete BEFORE DELETE ON recycler_operations FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Recycler receipts cannot be deleted'
+*/;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+
+--
 -- Table structure for table `recycler_prizes`
 --
 
@@ -1931,14 +2052,88 @@ DROP TABLE IF EXISTS `recycler_prizes`;
 CREATE TABLE `recycler_prizes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `level` int(11) NOT NULL,
-  `item_id` int(10) unsigned NOT NULL,
+  `item_id` int(10) unsigned DEFAULT NULL,
+  `chat_style_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `recycler_level_item` (`level`,`item_id`),
+  UNIQUE KEY `recycler_level_style` (`level`,`chat_style_id`),
   KEY `fk_recycler_prizes_item_id` (`item_id`),
   CONSTRAINT `fk_recycler_prizes_item_id` FOREIGN KEY (`item_id`) REFERENCES `furniture` (`id`),
   CONSTRAINT `fk_recycler_prizes_level` FOREIGN KEY (`level`) REFERENCES `recycler_levels` (`level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `recycler_progress`
+--
+
+DROP TABLE IF EXISTS `recycler_progress`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `recycler_progress` (
+  `user_id` int(11) NOT NULL,
+  `recycled_items` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `boxes_opened` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `recycled_rewards` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `rare_prizes` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `grand_prizes` bigint(20) unsigned NOT NULL DEFAULT 0,
+  `initial_recycled_items` int(10) unsigned DEFAULT NULL,
+  `initial_boxes_opened` int(10) unsigned DEFAULT NULL,
+  `initial_recycled_rewards` int(10) unsigned DEFAULT NULL,
+  `initial_rare_prizes` int(10) unsigned DEFAULT NULL,
+  `initial_grand_prizes` int(10) unsigned DEFAULT NULL,
+  PRIMARY KEY (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `recycler_revisions`
+--
+
+DROP TABLE IF EXISTS `recycler_revisions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `recycler_revisions` (
+  `hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `configuration_json` longtext NOT NULL CHECK (json_valid(`configuration_json`)),
+  `created_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/  /*!50003 TRIGGER recycler_revisions_no_update BEFORE UPDATE ON recycler_revisions FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Recycler revisions cannot be changed'
+*/;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/  /*!50003 TRIGGER recycler_revisions_no_delete BEFORE DELETE ON recycler_revisions FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Recycler revisions cannot be deleted'
+*/;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
 -- Table structure for table `recycler_settings`
@@ -1952,6 +2147,7 @@ CREATE TABLE `recycler_settings` (
   `enabled` tinyint(1) NOT NULL DEFAULT 0,
   `slots` int(11) NOT NULL DEFAULT 5,
   `cooldown_seconds` int(11) NOT NULL DEFAULT 0,
+  `cost_duckets` int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2125,6 +2321,7 @@ CREATE TABLE `room_chat_styles` (
   `required_permission` varchar(191) DEFAULT '',
   `requires_hc` tinyint(1) NOT NULL DEFAULT 0,
   `enabled` tinyint(1) NOT NULL DEFAULT 1,
+  `requires_ownership` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -3138,12 +3335,30 @@ DROP TABLE IF EXISTS `user_presents`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `user_presents` (
   `item_id` int(10) unsigned NOT NULL,
-  `base_id` int(10) unsigned NOT NULL,
+  `base_id` int(10) unsigned DEFAULT NULL,
   `extra_data` text NOT NULL,
+  `chat_style_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`item_id`),
   KEY `fk_user_presents_base_id` (`base_id`),
   CONSTRAINT `fk_user_presents_base_id` FOREIGN KEY (`base_id`) REFERENCES `furniture` (`id`),
   CONSTRAINT `fk_user_presents_item_id` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_purchased_chat_styles`
+--
+
+DROP TABLE IF EXISTS `user_purchased_chat_styles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_purchased_chat_styles` (
+  `user_id` int(11) NOT NULL,
+  `style_id` int(11) NOT NULL,
+  PRIMARY KEY (`user_id`,`style_id`),
+  KEY `fk_purchased_chat_style` (`style_id`),
+  CONSTRAINT `fk_purchased_chat_style` FOREIGN KEY (`style_id`) REFERENCES `room_chat_styles` (`id`),
+  CONSTRAINT `fk_purchased_chat_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -3420,7 +3635,7 @@ CREATE TABLE `users` (
   `ip_reg` varchar(45) DEFAULT NULL,
   `vip` tinyint(1) DEFAULT 1,
   `time_muted` double DEFAULT 0,
-  `bubble_id` tinyint(4) NOT NULL DEFAULT 0,
+  `bubble_id` int(11) NOT NULL DEFAULT 0,
   `credential_generation` int(11) unsigned NOT NULL DEFAULT 0,
   `auth_ticket_session` char(32) DEFAULT NULL,
   `account_created` datetime DEFAULT NULL,
@@ -3818,7 +4033,6 @@ CREATE TABLE `wordfilter` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping routines for database 'plusemu_fresh'
 --
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -3831,11 +4045,10 @@ CREATE TABLE `wordfilter` (
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
 -- Dump completed
--- MariaDB dump 10.19-11.4.13-MariaDB, for debian-linux-gnu (x86_64)
+-- MariaDB dump 10.20-11.8.9-MariaDB, for debian-linux-gnu (x86_64)
 --
--- Host: localhost    Database: plusemu_fresh
 -- ------------------------------------------------------
--- Server version	11.4.13-MariaDB-ubu2404
+-- Server version	11.8.9-MariaDB-ubu2404
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -3843,6 +4056,7 @@ CREATE TABLE `wordfilter` (
 /*!40101 SET NAMES utf8mb4 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*M!100616 SET @OLD_NOTE_VERBOSITY=@@NOTE_VERBOSITY, NOTE_VERBOSITY=0 */;
@@ -3851,6 +4065,7 @@ CREATE TABLE `wordfilter` (
 -- Dumping data for table `achievements`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `achievements` WRITE;
 /*!40000 ALTER TABLE `achievements` DISABLE KEYS */;
 INSERT INTO `achievements` VALUES
@@ -5843,11 +6058,14 @@ INSERT INTO `achievements` VALUES
 (2087,'ACH_RewardTracksCompleted','explore',10,0,10,10,0,334,1,1,NULL);
 /*!40000 ALTER TABLE `achievements` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `acl_permissions`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `acl_permissions` WRITE;
 /*!40000 ALTER TABLE `acl_permissions` DISABLE KEYS */;
 INSERT INTO `acl_permissions` VALUES
@@ -6060,11 +6278,14 @@ INSERT INTO `acl_permissions` VALUES
 ('staff.receive_alerts','staff','Receive staff broadcasts.',0);
 /*!40000 ALTER TABLE `acl_permissions` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `badge_definitions`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `badge_definitions` WRITE;
 /*!40000 ALTER TABLE `badge_definitions` DISABLE KEYS */;
 INSERT INTO `badge_definitions` VALUES
@@ -13028,11 +13249,14 @@ INSERT INTO `badge_definitions` VALUES
 ('ZLD01','');
 /*!40000 ALTER TABLE `badge_definitions` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `bots_pet_commands`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `bots_pet_commands` WRITE;
 /*!40000 ALTER TABLE `bots_pet_commands` DISABLE KEYS */;
 INSERT INTO `bots_pet_commands` VALUES
@@ -13045,11 +13269,14 @@ INSERT INTO `bots_pet_commands` VALUES
 (7,'jump');
 /*!40000 ALTER TABLE `bots_pet_commands` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `bots_pet_responses`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `bots_pet_responses` WRITE;
 /*!40000 ALTER TABLE `bots_pet_responses` DISABLE KEYS */;
 INSERT INTO `bots_pet_responses` VALUES
@@ -13080,11 +13307,14 @@ INSERT INTO `bots_pet_responses` VALUES
 ('speech.pet9','Grrr;');
 /*!40000 ALTER TABLE `bots_pet_responses` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `bots_responses`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `bots_responses` WRITE;
 /*!40000 ALTER TABLE `bots_responses` DISABLE KEYS */;
 INSERT INTO `bots_responses` VALUES
@@ -13096,29 +13326,38 @@ INSERT INTO `bots_responses` VALUES
 (6,'bartender','soda, cola','Hmm, a little bit of energy is what you need!','say','22,19');
 /*!40000 ALTER TABLE `bots_responses` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `campaign_calendar_rewards`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `campaign_calendar_rewards` WRITE;
 /*!40000 ALTER TABLE `campaign_calendar_rewards` DISABLE KEYS */;
 /*!40000 ALTER TABLE `campaign_calendar_rewards` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `campaign_calendars`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `campaign_calendars` WRITE;
 /*!40000 ALTER TABLE `campaign_calendars` DISABLE KEYS */;
 /*!40000 ALTER TABLE `campaign_calendars` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_bot_presets`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_bot_presets` WRITE;
 /*!40000 ALTER TABLE `catalog_bot_presets` DISABLE KEYS */;
 INSERT INTO `catalog_bot_presets` VALUES
@@ -13126,11 +13365,14 @@ INSERT INTO `catalog_bot_presets` VALUES
 (3570,'Skye','hr-9534-39.hd-600-1.ch-819-92.lg-3058-64.sh-3064-110.wa-2005','F','Satisfies your thrist, and does everything the Casual bot can, too!','bartender');
 /*!40000 ALTER TABLE `catalog_bot_presets` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_club_offers`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_club_offers` WRITE;
 /*!40000 ALTER TABLE `catalog_club_offers` DISABLE KEYS */;
 INSERT INTO `catalog_club_offers` VALUES
@@ -13139,20 +13381,26 @@ INSERT INTO `catalog_club_offers` VALUES
 (3,1,'HABBO_CLUB_6_MONTHS',186,500,0,0,0);
 /*!40000 ALTER TABLE `catalog_club_offers` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_offer_limited`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_offer_limited` WRITE;
 /*!40000 ALTER TABLE `catalog_offer_limited` DISABLE KEYS */;
 /*!40000 ALTER TABLE `catalog_offer_limited` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_offer_products`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_offer_products` WRITE;
 /*!40000 ALTER TABLE `catalog_offer_products` DISABLE KEYS */;
 INSERT INTO `catalog_offer_products` VALUES
@@ -32572,11 +32820,14 @@ INSERT INTO `catalog_offer_products` VALUES
 (1900000388,0,'furni',1000009234,NULL,NULL,NULL,NULL,NULL,1,'');
 /*!40000 ALTER TABLE `catalog_offer_products` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_offers`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_offers` WRITE;
 /*!40000 ALTER TABLE `catalog_offers` DISABLE KEYS */;
 INSERT INTO `catalog_offers` VALUES
@@ -51900,11 +52151,14 @@ INSERT INTO `catalog_offers` VALUES
 (1900000388,'clothing_nftshiba',25,0,0,0,1,1,'');
 /*!40000 ALTER TABLE `catalog_offers` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_page_images`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_page_images` WRITE;
 /*!40000 ALTER TABLE `catalog_page_images` DISABLE KEYS */;
 INSERT INTO `catalog_page_images` VALUES
@@ -53564,11 +53818,14 @@ INSERT INTO `catalog_page_images` VALUES
 (2100000101,2,'');
 /*!40000 ALTER TABLE `catalog_page_images` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_page_offers`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_page_offers` WRITE;
 /*!40000 ALTER TABLE `catalog_page_offers` DISABLE KEYS */;
 INSERT INTO `catalog_page_offers` VALUES
@@ -81834,11 +82091,14 @@ INSERT INTO `catalog_page_offers` VALUES
 (2100000101,1900000388,32);
 /*!40000 ALTER TABLE `catalog_page_offers` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_page_texts`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_page_texts` WRITE;
 /*!40000 ALTER TABLE `catalog_page_texts` DISABLE KEYS */;
 INSERT INTO `catalog_page_texts` VALUES
@@ -83426,11 +83686,14 @@ INSERT INTO `catalog_page_texts` VALUES
 (2100000101,2,'');
 /*!40000 ALTER TABLE `catalog_page_texts` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_pages`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_pages` WRITE;
 /*!40000 ALTER TABLE `catalog_pages` DISABLE KEYS */;
 INSERT INTO `catalog_pages` VALUES
@@ -84034,11 +84297,14 @@ INSERT INTO `catalog_pages` VALUES
 (2100000101,2000000012,'Companions',74,NULL,5,'clothing_companions','default_3x3','NORMAL',1,1,0);
 /*!40000 ALTER TABLE `catalog_pages` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_pet_races`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_pet_races` WRITE;
 /*!40000 ALTER TABLE `catalog_pet_races` DISABLE KEYS */;
 INSERT INTO `catalog_pet_races` VALUES
@@ -84290,11 +84556,14 @@ INSERT INTO `catalog_pet_races` VALUES
 (30,10,10,1,0);
 /*!40000 ALTER TABLE `catalog_pet_races` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `catalog_promotions`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `catalog_promotions` WRITE;
 /*!40000 ALTER TABLE `catalog_promotions` DISABLE KEYS */;
 INSERT INTO `catalog_promotions` VALUES
@@ -84304,11 +84573,14 @@ INSERT INTO `catalog_promotions` VALUES
 (8,'NEW: Ducket items!','catalogue/feature_cata_hort_Ducket_Oct26.png','ducket_furni',4,0,-1,'','2030-12-31 23:59:59.000000');
 /*!40000 ALTER TABLE `catalog_promotions` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `club_gift_offers`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `club_gift_offers` WRITE;
 /*!40000 ALTER TABLE `club_gift_offers` DISABLE KEYS */;
 INSERT INTO `club_gift_offers` VALUES
@@ -84326,11 +84598,14 @@ INSERT INTO `club_gift_offers` VALUES
 (33427,1,1);
 /*!40000 ALTER TABLE `club_gift_offers` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `collectible_levels`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `collectible_levels` WRITE;
 /*!40000 ALTER TABLE `collectible_levels` DISABLE KEYS */;
 INSERT INTO `collectible_levels` VALUES
@@ -84356,11 +84631,14 @@ INSERT INTO `collectible_levels` VALUES
 (20,60000);
 /*!40000 ALTER TABLE `collectible_levels` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `crafting_altars_recipes`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `crafting_altars_recipes` WRITE;
 /*!40000 ALTER TABLE `crafting_altars_recipes` DISABLE KEYS */;
 INSERT INTO `crafting_altars_recipes` VALUES
@@ -84385,11 +84663,14 @@ INSERT INTO `crafting_altars_recipes` VALUES
 (8388,19);
 /*!40000 ALTER TABLE `crafting_altars_recipes` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `crafting_recipes`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `crafting_recipes` WRITE;
 /*!40000 ALTER TABLE `crafting_recipes` DISABLE KEYS */;
 INSERT INTO `crafting_recipes` VALUES
@@ -84414,11 +84695,14 @@ INSERT INTO `crafting_recipes` VALUES
 (19,'skullcandle','skullcandle',182,1,1,NULL,'');
 /*!40000 ALTER TABLE `crafting_recipes` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `crafting_recipes_ingredients`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `crafting_recipes_ingredients` WRITE;
 /*!40000 ALTER TABLE `crafting_recipes_ingredients` DISABLE KEYS */;
 INSERT INTO `crafting_recipes_ingredients` VALUES
@@ -84463,11 +84747,14 @@ INSERT INTO `crafting_recipes_ingredients` VALUES
 (19,1623,1);
 /*!40000 ALTER TABLE `crafting_recipes_ingredients` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `daily_task_rewards`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `daily_task_rewards` WRITE;
 /*!40000 ALTER TABLE `daily_task_rewards` DISABLE KEYS */;
 INSERT INTO `daily_task_rewards` VALUES
@@ -84491,11 +84778,14 @@ INSERT INTO `daily_task_rewards` VALUES
 (18,18,8,'0','',100,0);
 /*!40000 ALTER TABLE `daily_task_rewards` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `daily_tasks`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `daily_tasks` WRITE;
 /*!40000 ALTER TABLE `daily_tasks` DISABLE KEYS */;
 INSERT INTO `daily_tasks` VALUES
@@ -84519,11 +84809,14 @@ INSERT INTO `daily_tasks` VALUES
 (18,'1742375669365_G','show_sign','10','show_sign',1,'','',1,1,1);
 /*!40000 ALTER TABLE `daily_tasks` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `furniture`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `furniture` WRITE;
 /*!40000 ALTER TABLE `furniture` DISABLE KEYS */;
 INSERT INTO `furniture` VALUES
@@ -103365,22 +103658,28 @@ INSERT INTO `furniture` VALUES
 (1000012356,'bc_alpha1_z_recolorable','Z Block','s',1,1,1,1,0,0,19347,1,0,0,0,0,'recolorable',0,1,'0','0',0,0,0,0,1,75914,'other',0,1,1,NULL,'Z Block','bc_alpha1_z_recolorable desc',NULL,0,NULL,1,0,0,0,1,1,'buildersclub_alpha1_recolorable',NULL,0,0,1,19347,'bc_alpha1_z_recolorable');
 /*!40000 ALTER TABLE `furniture` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `games_config`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `games_config` WRITE;
 /*!40000 ALTER TABLE `games_config` DISABLE KEYS */;
 INSERT INTO `games_config` VALUES
 (1,'basejump','93d4f3','','http://game.boon.dev/games/gamecenter_basejump/','','BaseJump.swf','BasicAssets.swf','127.0.0.1','90',1);
 /*!40000 ALTER TABLE `games_config` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `groups_items`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `groups_items` WRITE;
 /*!40000 ALTER TABLE `groups_items` DISABLE KEYS */;
 INSERT INTO `groups_items` VALUES
@@ -103866,11 +104165,14 @@ INSERT INTO `groups_items` VALUES
 ('symbol',212,'symbol_vip_part2.gif','symbol_vip_part1.gif',1);
 /*!40000 ALTER TABLE `groups_items` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `habbicons`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `habbicons` WRITE;
 /*!40000 ALTER TABLE `habbicons` DISABLE KEYS */;
 INSERT INTO `habbicons` VALUES
@@ -103920,11 +104222,14 @@ INSERT INTO `habbicons` VALUES
 (71,6,'toast_fine',0,0,0,1,0);
 /*!40000 ALTER TABLE `habbicons` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `habbicon_collections`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `habbicon_collections` WRITE;
 /*!40000 ALTER TABLE `habbicon_collections` DISABLE KEYS */;
 INSERT INTO `habbicon_collections` VALUES
@@ -103934,11 +104239,14 @@ INSERT INTO `habbicon_collections` VALUES
 (8,'duck2',49,40,0,0);
 /*!40000 ALTER TABLE `habbicon_collections` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `moderation_presets`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `moderation_presets` WRITE;
 /*!40000 ALTER TABLE `moderation_presets` DISABLE KEYS */;
 INSERT INTO `moderation_presets` VALUES
@@ -103951,11 +104259,14 @@ INSERT INTO `moderation_presets` VALUES
 (8,'user','Whoa! Your username is contains invalid characters or is generally inappropriate. Please change your username promptly to avoid getting permanently banned from the hotel.',1);
 /*!40000 ALTER TABLE `moderation_presets` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `moderation_preset_action_categories`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `moderation_preset_action_categories` WRITE;
 /*!40000 ALTER TABLE `moderation_preset_action_categories` DISABLE KEYS */;
 INSERT INTO `moderation_preset_action_categories` VALUES
@@ -103967,11 +104278,14 @@ INSERT INTO `moderation_preset_action_categories` VALUES
 (6,'Habboon Hotel #2');
 /*!40000 ALTER TABLE `moderation_preset_action_categories` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `moderation_preset_action_messages`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `moderation_preset_action_messages` WRITE;
 /*!40000 ALTER TABLE `moderation_preset_action_messages` DISABLE KEYS */;
 INSERT INTO `moderation_preset_action_messages` VALUES
@@ -103997,11 +104311,14 @@ INSERT INTO `moderation_preset_action_messages` VALUES
 (20,6,'Threatening Habboon','Do not threaten to, attempt to, or use any scripts or third party software to enter, disrupt, or modify Habboon Hotel.',0,0,0,0,'');
 /*!40000 ALTER TABLE `moderation_preset_action_messages` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `moderation_topics`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `moderation_topics` WRITE;
 /*!40000 ALTER TABLE `moderation_topics` DISABLE KEYS */;
 INSERT INTO `moderation_topics` VALUES
@@ -104013,11 +104330,14 @@ INSERT INTO `moderation_topics` VALUES
 (6,'game_interruption');
 /*!40000 ALTER TABLE `moderation_topics` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `moderation_topic_actions`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `moderation_topic_actions` WRITE;
 /*!40000 ALTER TABLE `moderation_topic_actions` DISABLE KEYS */;
 INSERT INTO `moderation_topic_actions` VALUES
@@ -104050,11 +104370,14 @@ INSERT INTO `moderation_topic_actions` VALUES
 (36,1,'mods','sex_links','Users are to not participate in any sexual, inappropriate, or generally objective acts towards other users without their prior consent.','alert',0,0,0,0);
 /*!40000 ALTER TABLE `moderation_topic_actions` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `navigator_categories`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `navigator_categories` WRITE;
 /*!40000 ALTER TABLE `navigator_categories` DISABLE KEYS */;
 INSERT INTO `navigator_categories` VALUES
@@ -104089,11 +104412,14 @@ INSERT INTO `navigator_categories` VALUES
 (37,'myworld_view','my_rights','Rooms Where I Have Rights','REGULAR',NULL,'my_rights','SHOW_MORE',1,0);
 /*!40000 ALTER TABLE `navigator_categories` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `quests`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `quests` WRITE;
 /*!40000 ALTER TABLE `quests` DISABLE KEYS */;
 INSERT INTO `quests` VALUES
@@ -104156,51 +104482,66 @@ INSERT INTO `quests` VALUES
 (181,'xmas2012_23',23,29,300,'party',0,'','0',NULL,NULL);
 /*!40000 ALTER TABLE `quests` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `recycler_levels`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `recycler_levels` WRITE;
 /*!40000 ALTER TABLE `recycler_levels` DISABLE KEYS */;
 /*!40000 ALTER TABLE `recycler_levels` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `recycler_prizes`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `recycler_prizes` WRITE;
 /*!40000 ALTER TABLE `recycler_prizes` DISABLE KEYS */;
 /*!40000 ALTER TABLE `recycler_prizes` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `recycler_settings`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `recycler_settings` WRITE;
 /*!40000 ALTER TABLE `recycler_settings` DISABLE KEYS */;
 INSERT INTO `recycler_settings` VALUES
-(1,0,5,0);
+(1,0,5,0,0);
 /*!40000 ALTER TABLE `recycler_settings` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `reward_tracks`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `reward_tracks` WRITE;
 /*!40000 ALTER TABLE `reward_tracks` DISABLE KEYS */;
 INSERT INTO `reward_tracks` VALUES
 ('introduction','blue',0,NULL,NULL,1,1.5,25,0,25,1);
 /*!40000 ALTER TABLE `reward_tracks` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `reward_track_prizes`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `reward_track_prizes` WRITE;
 /*!40000 ALTER TABLE `reward_track_prizes` DISABLE KEYS */;
 INSERT INTO `reward_track_prizes` VALUES
@@ -104208,11 +104549,14 @@ INSERT INTO `reward_track_prizes` VALUES
 ('introduction','track_champ_premium',200,4,'badge','ACH_RewardTracksCompleted2',1,1,2);
 /*!40000 ALTER TABLE `reward_track_prizes` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `reward_track_tasks`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `reward_track_tasks` WRITE;
 /*!40000 ALTER TABLE `reward_track_tasks` DISABLE KEYS */;
 INSERT INTO `reward_track_tasks` VALUES
@@ -104247,11 +104591,14 @@ INSERT INTO `reward_track_tasks` VALUES
 ('introduction','wear_badge','wear_badge','',0,30);
 /*!40000 ALTER TABLE `reward_track_tasks` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `reward_track_task_levels`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `reward_track_task_levels` WRITE;
 /*!40000 ALTER TABLE `reward_track_task_levels` DISABLE KEYS */;
 INSERT INTO `reward_track_task_levels` VALUES
@@ -104328,11 +104675,14 @@ INSERT INTO `reward_track_task_levels` VALUES
 ('introduction','wear_badge',1,1,10,0);
 /*!40000 ALTER TABLE `reward_track_task_levels` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `roles`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `roles` WRITE;
 /*!40000 ALTER TABLE `roles` DISABLE KEYS */;
 INSERT INTO `roles` VALUES
@@ -104350,11 +104700,14 @@ INSERT INTO `roles` VALUES
 (13,'events_staff','Events Staff','Migrated subscription tier.',10,1,'EVENT',0,0,'2026-10-07 10:33:48.397056','2026-10-07 10:33:48.397056');
 /*!40000 ALTER TABLE `roles` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `role_limits`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `role_limits` WRITE;
 /*!40000 ALTER TABLE `role_limits` DISABLE KEYS */;
 INSERT INTO `role_limits` VALUES
@@ -104419,11 +104772,14 @@ INSERT INTO `role_limits` VALUES
 (13,'limit.staff_effect',187);
 /*!40000 ALTER TABLE `role_limits` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `role_permissions`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `role_permissions` WRITE;
 /*!40000 ALTER TABLE `role_permissions` DISABLE KEYS */;
 INSERT INTO `role_permissions` VALUES
@@ -105569,75 +105925,81 @@ INSERT INTO `role_permissions` VALUES
 (13,'staff.events');
 /*!40000 ALTER TABLE `role_permissions` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `room_chat_styles`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `room_chat_styles` WRITE;
 /*!40000 ALTER TABLE `room_chat_styles` DISABLE KEYS */;
 INSERT INTO `room_chat_styles` VALUES
-(0,'normal_chat',NULL,0,1),
-(1,'','chat.style.staff',0,1),
-(2,'','chat.style.staff',0,1),
-(3,'',NULL,0,1),
-(4,'',NULL,0,1),
-(5,'',NULL,0,1),
-(6,'',NULL,0,1),
-(7,'',NULL,0,1),
-(8,'','chat.style.staff',0,1),
-(9,'zombie_hand',NULL,1,1),
-(10,'skeleton',NULL,1,1),
-(11,'',NULL,1,1),
-(12,'',NULL,1,1),
-(13,'',NULL,1,1),
-(14,'',NULL,1,1),
-(15,'',NULL,1,1),
-(16,'',NULL,1,1),
-(17,'',NULL,1,1),
-(18,'','chat.style.staff',0,1),
-(19,'piglet',NULL,1,1),
-(20,'sausagedog',NULL,1,1),
-(21,'firingmylazer',NULL,1,1),
-(22,'dragon',NULL,1,1),
-(23,'staff','chat.style.staff',0,1),
-(24,'bats',NULL,1,1),
-(25,'console',NULL,1,1),
-(26,'',NULL,1,1),
-(27,'storm',NULL,1,1),
-(28,'parrot','chat.style.staff',0,1),
-(29,'pirate',NULL,1,1),
-(30,'bot_guide','chat.style.staff',0,1),
-(31,'bot_rentable','chat.style.staff',0,1),
-(32,'skelestock','chat.style.staff',0,1),
-(33,'bot_frank','chat.style.staff',0,1),
-(34,'notification','chat.style.staff',0,1),
-(35,'goat','chat.style.staff',0,1),
-(36,'santa','chat.style.staff',0,1),
-(37,'','chat.style.staff',0,1),
-(38,'','chat.style.staff',0,1),
-(39,'','chat.style.staff',0,1),
-(40,'','chat.style.staff',0,1),
-(41,'','chat.style.staff',0,1),
-(42,'','chat.style.staff',0,1),
-(43,'','chat.style.staff',0,1),
-(44,'','chat.style.staff',0,1),
-(45,'','chat.style.staff',0,1),
-(46,'','chat.style.staff',0,1),
-(47,'','chat.style.staff',0,1),
-(48,'','chat.style.staff',0,1),
-(49,'','chat.style.staff',0,1),
-(50,'','chat.style.staff',0,1),
-(51,'','chat.style.staff',0,1),
-(52,'','chat.style.staff',0,1),
-(53,'','chat.style.staff',0,1);
+(0,'normal_chat',NULL,0,1,0),
+(1,'','chat.style.staff',0,1,0),
+(2,'','chat.style.staff',0,1,0),
+(3,'',NULL,0,1,0),
+(4,'',NULL,0,1,0),
+(5,'',NULL,0,1,0),
+(6,'',NULL,0,1,0),
+(7,'',NULL,0,1,0),
+(8,'','chat.style.staff',0,1,0),
+(9,'zombie_hand',NULL,1,1,0),
+(10,'skeleton',NULL,1,1,0),
+(11,'',NULL,1,1,0),
+(12,'',NULL,1,1,0),
+(13,'',NULL,1,1,0),
+(14,'',NULL,1,1,0),
+(15,'',NULL,1,1,0),
+(16,'',NULL,1,1,0),
+(17,'',NULL,1,1,0),
+(18,'','chat.style.staff',0,1,0),
+(19,'piglet',NULL,1,1,0),
+(20,'sausagedog',NULL,1,1,0),
+(21,'firingmylazer',NULL,1,1,0),
+(22,'dragon',NULL,1,1,0),
+(23,'staff','chat.style.staff',0,1,0),
+(24,'bats',NULL,1,1,0),
+(25,'console',NULL,1,1,0),
+(26,'',NULL,1,1,0),
+(27,'storm',NULL,1,1,0),
+(28,'parrot','chat.style.staff',0,1,0),
+(29,'pirate',NULL,1,1,0),
+(30,'bot_guide','chat.style.staff',0,1,0),
+(31,'bot_rentable','chat.style.staff',0,1,0),
+(32,'skelestock','chat.style.staff',0,1,0),
+(33,'bot_frank','chat.style.staff',0,1,0),
+(34,'notification','chat.style.staff',0,1,0),
+(35,'goat','chat.style.staff',0,1,0),
+(36,'santa','chat.style.staff',0,1,0),
+(37,'','chat.style.staff',0,1,0),
+(38,'','chat.style.staff',0,1,0),
+(39,'','chat.style.staff',0,1,0),
+(40,'','chat.style.staff',0,1,0),
+(41,'','chat.style.staff',0,1,0),
+(42,'','chat.style.staff',0,1,0),
+(43,'','chat.style.staff',0,1,0),
+(44,'','chat.style.staff',0,1,0),
+(45,'','chat.style.staff',0,1,0),
+(46,'','chat.style.staff',0,1,0),
+(47,'','chat.style.staff',0,1,0),
+(48,'','chat.style.staff',0,1,0),
+(49,'','chat.style.staff',0,1,0),
+(50,'','chat.style.staff',0,1,0),
+(51,'','chat.style.staff',0,1,0),
+(52,'','chat.style.staff',0,1,0),
+(53,'','chat.style.staff',0,1,0);
 /*!40000 ALTER TABLE `room_chat_styles` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `room_models`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `room_models` WRITE;
 /*!40000 ALTER TABLE `room_models` DISABLE KEYS */;
 INSERT INTO `room_models` VALUES
@@ -105682,29 +106044,38 @@ INSERT INTO `room_models` VALUES
 ('model_z',0,9,0,2,'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\nxxxxxxxxxxx00000000000000000000\r\nxxxxxxxxxxx00000000000000000000\r\nxxxxxxxxxxx00000000000000000000\r\nx00000000xx00000000000000000000\r\nx00000000xx00000000000000000000\r\nx00000000xx00000000000000000000\r\nx00000000xx00000000000000000000\r\nx00000000xx00000000000000000000\r\n000000000xx00000000000000000000\r\nx00000000xx00000000000000000000\r\nx00000000xx00000000000000000000\r\nx00000000xx00000000000000000000\r\nx00000000xx00000000000000000000\r\nx00000000xx00000000000000000000\r\nx00000000xx00000000000000000000\r\nxxxxxxxxxxx00000000000000000000\r\nxxxxxxxxxxx00000000000000000000\r\nxxxxxxxxxxx00000000000000000000\r\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx','',2,NULL,0,-1,1,0,0,0);
 /*!40000 ALTER TABLE `room_models` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `room_music_disc_definitions`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `room_music_disc_definitions` WRITE;
 /*!40000 ALTER TABLE `room_music_disc_definitions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `room_music_disc_definitions` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `room_music_songs`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `room_music_songs` WRITE;
 /*!40000 ALTER TABLE `room_music_songs` DISABLE KEYS */;
 /*!40000 ALTER TABLE `room_music_songs` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `safety_quiz_questions`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `safety_quiz_questions` WRITE;
 /*!40000 ALTER TABLE `safety_quiz_questions` DISABLE KEYS */;
 INSERT INTO `safety_quiz_questions` VALUES
@@ -105733,11 +106104,14 @@ INSERT INTO `safety_quiz_questions` VALUES
 ('SafetyQuiz1',12,3,0);
 /*!40000 ALTER TABLE `safety_quiz_questions` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `safety_quizzes`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `safety_quizzes` WRITE;
 /*!40000 ALTER TABLE `safety_quizzes` DISABLE KEYS */;
 INSERT INTO `safety_quizzes` VALUES
@@ -105745,22 +106119,28 @@ INSERT INTO `safety_quizzes` VALUES
 ('SafetyQuiz1',1,13,7200);
 /*!40000 ALTER TABLE `safety_quizzes` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `server_landing`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `server_landing` WRITE;
 /*!40000 ALTER TABLE `server_landing` DISABLE KEYS */;
 INSERT INTO `server_landing` VALUES
 (1,'Habboon PlusEMU Edit.','Thanks for using our edit, please keep the credits in :about.','','0','','web_promos/laptop_habbo.png');
 /*!40000 ALTER TABLE `server_landing` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `server_locale`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `server_locale` WRITE;
 /*!40000 ALTER TABLE `server_locale` DISABLE KEYS */;
 INSERT INTO `server_locale` VALUES
@@ -105775,20 +106155,26 @@ INSERT INTO `server_locale` VALUES
 ('user.not_found','Oops, this user could not be found!');
 /*!40000 ALTER TABLE `server_locale` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `server_rewards`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `server_rewards` WRITE;
 /*!40000 ALTER TABLE `server_rewards` DISABLE KEYS */;
 /*!40000 ALTER TABLE `server_rewards` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `server_settings`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `server_settings` WRITE;
 /*!40000 ALTER TABLE `server_settings` DISABLE KEYS */;
 INSERT INTO `server_settings` VALUES
@@ -105847,6 +106233,7 @@ INSERT INTO `server_settings` VALUES
 ('gamecenter.snowwar.queue.match.max','8'),
 ('gamecenter.snowwar.raygun.enabled','1'),
 ('gamecenter.snowwar.restart.seconds','30'),
+('global_home_room','0'),
 ('group.delete.member.limit','500'),
 ('messenger.buddy_limit','5000'),
 ('room.background.allowed_hosts',''),
@@ -105865,11 +106252,14 @@ INSERT INTO `server_settings` VALUES
 ('user.login.message.enabled','0');
 /*!40000 ALTER TABLE `server_settings` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `snowwar_token_offers`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `snowwar_token_offers` WRITE;
 /*!40000 ALTER TABLE `snowwar_token_offers` DISABLE KEYS */;
 INSERT INTO `snowwar_token_offers` VALUES
@@ -105878,11 +106268,14 @@ INSERT INTO `snowwar_token_offers` VALUES
 (3,'GET_SNOWWAR_TOKENS3',200,0,0,300,1,3);
 /*!40000 ALTER TABLE `snowwar_token_offers` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `talents`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `talents` WRITE;
 /*!40000 ALTER TABLE `talents` DISABLE KEYS */;
 INSERT INTO `talents` VALUES
@@ -105892,11 +106285,14 @@ INSERT INTO `talents` VALUES
 (4,'citizenship',3,'CITIZEN','A1 KUMIANKKA|pixel_walldeco');
 /*!40000 ALTER TABLE `talents` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `talents_sub_levels`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `talents_sub_levels` WRITE;
 /*!40000 ALTER TABLE `talents_sub_levels` DISABLE KEYS */;
 INSERT INTO `talents_sub_levels` VALUES
@@ -105914,15 +106310,20 @@ INSERT INTO `talents_sub_levels` VALUES
 (13,'citizenship',3,4,'ACH_FriendListSize1',2);
 /*!40000 ALTER TABLE `talents_sub_levels` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
 -- Dumping data for table `wordfilter`
 --
 
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `wordfilter` WRITE;
 /*!40000 ALTER TABLE `wordfilter` DISABLE KEYS */;
 /*!40000 ALTER TABLE `wordfilter` ENABLE KEYS */;
 UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

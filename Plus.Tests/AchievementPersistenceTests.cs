@@ -324,6 +324,20 @@ public sealed class AchievementPersistenceTests
     }
 
     // Cumulative thresholds 1, 5, 10 and 50 with mixed rewards.
+    [RoomComponentDatabaseFact]
+    public void UncertainRecyclerOutcomeDoesNotOverwritePersistedBalancesOnLogout()
+    {
+        using var fixture = new Fixture();
+        using var connection = fixture.Database.Connection();
+        connection.Execute("UPDATE users SET credits=75 WHERE id=7; INSERT INTO user_currencies VALUES(7,0,90)");
+        fixture.Habbo.Credits = 1;
+        fixture.Habbo.Duckets = 100;
+        fixture.Habbo.CurrencyPersistenceUncertain = true;
+        fixture.Habbo.Persistence.Save(fixture.Habbo);
+        Assert.Equal(75, connection.ExecuteScalar<int>("SELECT credits FROM users WHERE id=7"));
+        Assert.Equal(90, connection.ExecuteScalar<int>("SELECT amount FROM user_currencies WHERE user_id=7 AND type=0"));
+    }
+
     private static Achievement Ladder()
     {
         var achievement = new Achievement { Id = 1, GroupName = Group, Category = "identity" };

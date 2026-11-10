@@ -31,6 +31,7 @@ public sealed class AccessControlLoginRegistrationTests
         services.AddSingleton(DispatchProxy.Create<IModerationManager, Untouchable>());
         services.AddSingleton(DispatchProxy.Create<IUserDataFactory, Untouchable>());
         services.AddSingleton(DispatchProxy.Create<IMessengerDataLoader, Untouchable>());
+        services.AddSingleton(DispatchProxy.Create<Plus.HabboHotel.Recycler.IRecyclerAchievementService, Untouchable>());
         // Use the production scanner, including its interface-to-self factories and internal class discovery.
         Plus.Program.AddAssignableTo<IAuthenticationTask>(services, typeof(Plus.Program).Assembly);
         using var provider = services.BuildServiceProvider();

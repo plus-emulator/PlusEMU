@@ -10,7 +10,10 @@ using Plus.HabboHotel.Users.Inventory.Furniture;
 
 namespace Plus.HabboHotel.Items;
 
-public sealed record GiftContent(uint BaseId, string ExtraData);
+public sealed record GiftContent(uint BaseId, string ExtraData)
+{
+    public int ChatStyleId { get; init; }
+}
 
 public interface IGiftStore
 {

@@ -27,7 +27,7 @@ public sealed class ChatStyleManager : IChatStyleManager, IStartable
     private async Task Load()
     {
         using var connection = _database.Connection();
-        var styles = await connection.QueryAsync<ChatStyle>("SELECT id, name, COALESCE(required_permission, '') AS RequiredPermission, requires_hc AS RequiresHc, enabled FROM room_chat_styles");
+        var styles = await connection.QueryAsync<ChatStyle>("SELECT id, name, COALESCE(required_permission, '') AS RequiredPermission, requires_hc AS RequiresHc, enabled, requires_ownership AS RequiresOwnership FROM room_chat_styles");
         _styles.Clear();
 
         foreach (var style in styles) {

@@ -349,6 +349,92 @@ public partial class PlacedFurniRoomTests
         return (service, store, inputs, box);
     }
 
+    [Fact]
+    public void UnknownRecyclerOutcomeClosesTheSessionAndPreventsStaleWalletPersistence()
+    {
+        var (service, store, inputs, _) = RecyclerFixture();
+        var habbo = _client.GetHabbo();
+        store.BeforeCommit = () => throw new RecyclerOutcomeUnknownException(new RecyclerFailure());
+        service.Recycle(_client, [20, 21]);
+        Assert.True(habbo.CurrencyPersistenceUncertain);
+        Assert.True(habbo.WalletClosed);
+        Assert.True(_client.Closed.IsCancellationRequested);
+        Assert.Empty(_client.Packets);
+        Assert.All(inputs, item => { Assert.True(item.TryReserve()); item.ReleaseReservation(); });
+    }
+
+    [Fact]
+    public void RecyclerChargesTheLiveWalletWithoutDroppingOtherPendingRewards()
+    {
+        var (service, store, _, _) = RecyclerFixture();
+        var habbo = _client.GetHabbo();
+        habbo.Duckets = 150;
+        store.Configuration = store.Configuration with { CostDuckets = 10 };
+        store.PaidBalance = 90;
+        service.Recycle(_client, [20, 21]);
+        Assert.Equal(140, habbo.Duckets);
+        Assert.Equal(99u, Assert.Single(habbo.Inventory!.Furniture.GetItems).Id);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OpeningAChatStyleBoxUsesTheNativeRewardAndOnlyAddsANewOwnershipOnce(bool alreadyOwned)
+    {
+        var (service, store, _, box) = RecyclerFixture();
+        var habbo = _client.GetHabbo();
+        store.Content = new(0, "") { ChatStyleId = 10001 };
+
+        if (alreadyOwned) {
+            habbo.PurchasedChatStyles.TryAdd(10001, 0);
+        }
+
+        _client.BeforeCapture = header =>
+        {
+            if (header == ServerPacketHeader.UserPurchasableChatStyleChangedComposer) {
+                Assert.False(Monitor.IsEntered(habbo.WalletSync));
+                Assert.Null(_room.GetRoomItemHandler().GetItem(box.Id));
+            }
+        };
+        Assert.True(service.TryOpen(_client, box.Id));
+        ExecutorTick();
+        Assert.Equal(1, store.Opens);
+        Assert.True(habbo.PurchasedChatStyles.ContainsKey(10001));
+        Assert.Null(_room.GetRoomItemHandler().GetItem(box.Id));
+        Assert.Equal(alreadyOwned ? 0 : 1, _client.Packets.Count(packet => packet.Header == ServerPacketHeader.UserPurchasableChatStyleChangedComposer));
+        var opened = new FlashIncomingPacket { Buffer = Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.OpenGiftComposer).Body };
+        Assert.Equal("chat_style", opened.ReadString());
+        Assert.Equal(10001, opened.ReadInt());
+    }
+
+    [Fact]
+    public void UnsupportedChatStyleRevisionsCannotListOrConsumeModernPrizes()
+    {
+        var (service, store, _, _) = RecyclerFixture();
+        store.Configuration = store.Configuration with { Levels = [new(1, 1, [new(1, 0, 10001)])] };
+        _client.Revision!.InternalIdToOutgoingIdMapping = _client.Revision.InternalIdToOutgoingIdMapping
+            .Where(pair => pair.Key != ServerPacketHeader.UserPurchasableChatStylesComposer).ToDictionary();
+        service.GetPrizes(_client);
+        var prizes = new FlashIncomingPacket { Buffer = Assert.Single(_client.Packets).Body };
+        Assert.Equal(0, prizes.ReadInt());
+        service.Recycle(_client, [20, 21]);
+        Assert.Empty(store.Consumed);
+        Assert.Equal(2, _client.GetHabbo().Inventory!.Furniture.GetItems.Count());
+    }
+
+    [Fact]
+    public void UnknownOpeningOutcomeClosesTheSessionBeforeAnySuccessPacket()
+    {
+        var (service, store, _, box) = RecyclerFixture();
+        var habbo = _client.GetHabbo();
+        store.BeforeOpen = () => throw new RecyclerOutcomeUnknownException(new RecyclerFailure());
+        Assert.True(service.TryOpen(_client, box.Id));
+        ExecutorTick();
+        Assert.True(habbo.CurrencyPersistenceUncertain);
+        Assert.True(_client.Closed.IsCancellationRequested);
+        Assert.DoesNotContain(_client.Packets, packet => packet.Header == ServerPacketHeader.OpenGiftComposer);
+    }
+
     private sealed class RecyclerRecordingStore : IRecyclerStore
     {
         public RecyclerConfiguration Configuration { get; set; } = new(true, 2, 30, [new(1, 1, [new(1, 102)])]);
@@ -358,15 +444,16 @@ public partial class PlacedFurniRoomTests
         public GiftContent? Content { get; set; } = new(102, "blue");
         public uint[] Consumed { get; private set; } = [];
         public int Opens { get; private set; }
+        public int? PaidBalance { get; set; }
         public RecyclerConfiguration Load() => Configuration;
         public DateTimeOffset? NextAllowed(int userId) => Next;
-        public RecycledBox? Recycle(int userId, uint boxDefinitionId, RecyclerConfiguration configuration, RecyclerPrize prize, IReadOnlyList<RecyclerInput> inputs, DateTimeOffset now)
+        public RecycledBox? Recycle(int userId, uint boxDefinitionId, RecyclerConfiguration configuration, RecyclerPrize prize, IReadOnlyList<RecyclerInput> inputs, DateTimeOffset now, int? currentDuckets = null)
         {
             Assert.Equal((7, 100u), (userId, boxDefinitionId));
             BeforeCommit?.Invoke();
             Consumed = inputs.Select(input => input.Id).ToArray();
 
-            return new(99, "3-2-2040");
+            return new(99, "3-2-2040", PaidBalance);
         }
         public GiftContent? FindBox(uint itemId, int ownerId, uint roomId, uint boxDefinitionId) => Content;
         public uint? OpenBox(uint itemId, int ownerId, uint roomId, uint boxDefinitionId, GiftContent content)
@@ -376,6 +463,15 @@ public partial class PlacedFurniRoomTests
             Opens++;
 
             return 100;
+        }
+
+        public bool OpenChatStyleBox(uint itemId, int ownerId, uint roomId, uint boxDefinitionId, GiftContent content)
+        {
+            Assert.Equal((10u, 7, 42u, 100u), (itemId, ownerId, roomId, boxDefinitionId));
+            BeforeOpen?.Invoke();
+            Opens++;
+
+            return true;
         }
     }
     private sealed class RecyclerFailure() : DbException("forced recycler failure");

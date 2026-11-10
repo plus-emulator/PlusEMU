@@ -301,7 +301,7 @@ public sealed class UserProfileService(
     {
         var habbo = session.GetHabbo();
 
-        if (bubbleId != 0 && (!styles.TryGetStyle(bubbleId, out var style) || !style.CanUse(habbo.Access))) {
+        if (bubbleId != 0 && (!styles.TryGetStyle(bubbleId, out var style) || !style.CanUse(habbo))) {
             return Task.CompletedTask;
         }
 

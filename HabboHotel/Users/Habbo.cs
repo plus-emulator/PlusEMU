@@ -90,7 +90,8 @@ public class Habbo
     internal DateTimeOffset? LastHabbiconTriggeredAt { get; set; }
     internal object WalletSync { get; } = new();
     internal object InventoryMutationSync { get; } = new();
-    internal bool WalletClosed => _habboSaved || _disconnected;
+    internal bool CurrencyPersistenceUncertain { get; set; }
+    internal bool WalletClosed => _habboSaved || _disconnected || CurrencyPersistenceUncertain;
 
     public int Credits { get; set; }
 
@@ -238,6 +239,8 @@ public class Habbo
 
     [System.Diagnostics.CodeAnalysis.MemberNotNullWhen(true, nameof(CurrentRoom))]
     public bool InRoom => CurrentRoom != null;
+
+    public ConcurrentDictionary<int, byte> PurchasedChatStyles { get; } = new();
 
     public Room? CurrentRoom { get; set; }
 

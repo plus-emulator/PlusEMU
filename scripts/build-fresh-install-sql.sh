@@ -14,8 +14,8 @@ bots_pet_commands bots_pet_responses bots_responses campaign_calendar_rewards ca
 catalog_bot_presets catalog_club_offers catalog_deals catalog_items
 catalog_offer_limited catalog_offer_products catalog_offers catalog_page_images
 catalog_page_offers catalog_page_texts catalog_pages catalog_pet_races catalog_promotions
-club_gift_offers crafting_altars_recipes
-crafting_recipes crafting_recipes_ingredients furniture games_config groups_items habbicons
+club_gift_offers collectible_levels crafting_altars_recipes
+crafting_recipes crafting_recipes_ingredients daily_task_rewards daily_tasks furniture games_config groups_items habbicons
 habbicon_collections moderation_presets moderation_preset_action_categories
 moderation_preset_action_messages moderation_topics moderation_topic_actions navigator_categories
 quests recycler_levels recycler_prizes recycler_settings reward_tracks reward_track_prizes
@@ -28,7 +28,7 @@ dump() {
     # The first line of a MariaDB 11 dump enables sandbox mode, which older
     # clients reject, so it is dropped.
     docker exec "$CONTAINER" sh -c 'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" exec mariadb-dump -uroot --skip-dump-date "$@"' sh "$@" |
-        sed '/enable the sandbox mode/d'
+        sed -E '/enable the sandbox mode/d; /^-- Host:/d; /^-- Dumping routines for database /d; s|/\*![0-9]+ DEFINER=`[^`]*`@`[^`]*`\*/||g'
 }
 
 query() {

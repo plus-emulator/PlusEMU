@@ -3,20 +3,20 @@ using Plus.Utilities.DependencyInjection;
 
 namespace Plus.HabboHotel.Recycler;
 
-public sealed record RecyclerPrize(int Id, uint ItemId);
+public sealed record RecyclerPrize(int Id, uint ItemId, int ChatStyleId = 0);
 public sealed record RecyclerLevel(int Id, int Chance, ImmutableArray<RecyclerPrize> Prizes);
-public sealed record RecyclerConfiguration(bool Enabled, int Slots, int CooldownSeconds, ImmutableArray<RecyclerLevel> Levels)
+public sealed record RecyclerConfiguration(bool Enabled, int Slots, int CooldownSeconds, ImmutableArray<RecyclerLevel> Levels, int CostDuckets = 0)
 {
     public static readonly RecyclerConfiguration Closed = new(false, 5, 0, []);
 
     public bool Matches(RecyclerConfiguration other) => Enabled == other.Enabled && Slots == other.Slots
-        && CooldownSeconds == other.CooldownSeconds && Levels.Length == other.Levels.Length
+        && CooldownSeconds == other.CooldownSeconds && CostDuckets == other.CostDuckets && Levels.Length == other.Levels.Length
         && Levels.Zip(other.Levels).All(pair => pair.First.Id == pair.Second.Id && pair.First.Chance == pair.Second.Chance
             && pair.First.Prizes.SequenceEqual(pair.Second.Prizes));
 }
 
 public readonly record struct RecyclerInput(uint Id, uint ItemId);
-public sealed record RecycledBox(uint Id, string ExtraData);
+public sealed record RecycledBox(uint Id, string ExtraData, int? Duckets = null);
 public sealed record RecyclerProduct(string Code, string Type, int SpriteId);
 public sealed record RecyclerPrizeList(int Level, int Chance, ImmutableArray<RecyclerProduct> Products);
 
@@ -28,5 +28,5 @@ public interface IRecyclerRandom
 
 public sealed class RecyclerRandom : IRecyclerRandom
 {
-    public int Next(int exclusiveMaximum) => Random.Shared.Next(exclusiveMaximum);
+    public int Next(int exclusiveMaximum) => System.Security.Cryptography.RandomNumberGenerator.GetInt32(exclusiveMaximum);
 }

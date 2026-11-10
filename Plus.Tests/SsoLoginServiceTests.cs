@@ -98,6 +98,7 @@ public class SsoLoginServiceTests
                 ServerPacketHeader.AuthenticationOkComposer, ServerPacketHeader.AvatarEffectsComposer,
                 ServerPacketHeader.NavigatorSettingsComposer, ServerPacketHeader.FavouritesComposer,
                 ServerPacketHeader.FigureSetIdsComposer, ServerPacketHeader.UserRightsComposer,
+                ServerPacketHeader.UserPurchasableChatStylesComposer,
                 ServerPacketHeader.AllowedChatStylesComposer, ServerPacketHeader.CreatableRoomModelsComposer,
                 ServerPacketHeader.AvailabilityStatusComposer, ServerPacketHeader.AchievementScoreComposer,
                 ServerPacketHeader.CfhTopicsInitComposer, ServerPacketHeader.SoundSettingsComposer,

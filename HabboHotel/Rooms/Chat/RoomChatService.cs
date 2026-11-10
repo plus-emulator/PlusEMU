@@ -73,7 +73,7 @@ public sealed class RoomChatService(
             colour = habbo.CustomBubbleId;
         }
 
-        if (!chatStyleManager.TryGetStyle(colour, out var style) || !style.CanUse(habbo.Access)) {
+        if (!chatStyleManager.TryGetStyle(colour, out var style) || !style.CanUse(habbo)) {
             colour = 0;
         }
 
@@ -213,7 +213,7 @@ public sealed class RoomChatService(
             colour = habbo.CustomBubbleId;
         }
 
-        if (!chatStyleManager.TryGetStyle(colour, out var style) || !style.CanUse(habbo.Access)) {
+        if (!chatStyleManager.TryGetStyle(colour, out var style) || !style.CanUse(habbo)) {
             colour = 0;
         }
 

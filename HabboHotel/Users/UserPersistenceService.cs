@@ -52,7 +52,7 @@ public sealed class UserPersistenceService(IDatabase database, TimeProvider cloc
         connection.Open();
         using var transaction = connection.BeginTransaction();
         connection.Execute(
-            "UPDATE `users` SET `online` = `online` AND @replaced, `last_online` = @now, `credits` = @Credits, " +
+            "UPDATE `users` SET `online` = `online` AND @replaced, `last_online` = @now, `credits` = IF(@uncertain, `credits`, @Credits), " +
             "`time_muted` = @TimeMuted, `bubble_id` = @CustomBubbleId WHERE `id` = @Id; " +
             "UPDATE `users_settings` SET `home_room` = @HomeRoom, `friend_bar_state` = @FriendbarState WHERE `user_id` = @Id; " +
             "UPDATE `user_statistics` SET `roomvisits` = @RoomVisits, `onlineTime` = `onlineTime` + @SessionSeconds, " +
@@ -64,6 +64,7 @@ public sealed class UserPersistenceService(IDatabase database, TimeProvider cloc
             {
                 habbo.Id,
                 habbo.Credits,
+                uncertain = habbo.CurrencyPersistenceUncertain,
                 habbo.TimeMuted,
                 habbo.CustomBubbleId,
                 habbo.HomeRoom,
@@ -85,7 +86,9 @@ public sealed class UserPersistenceService(IDatabase database, TimeProvider cloc
                 replaced
             }, transaction);
 
-        UserCurrencyStore.SetMany(connection, habbo.Id, habbo.Currencies.Snapshot(), transaction);
+        if (!habbo.CurrencyPersistenceUncertain) {
+            UserCurrencyStore.SetMany(connection, habbo.Id, habbo.Currencies.Snapshot(), transaction);
+        }
 
         // Achievement progress without a level-up is only kept in memory until the session is saved; levels are written when unlocked.
         var achievements = habbo.Achievements.Values.Where(achievement => achievement.ProgressUnsaved).ToList();

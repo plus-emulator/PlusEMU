@@ -75,6 +75,7 @@ Object.assign(configuration, {
     'furni.asset.url': `${origin}/assets/furniture/%libname%.${layout.extension}`,
     'pet.asset.url': `${origin}/assets/pet/%libname%.${layout.extension}`,
     'generic.asset.url': `${origin}/assets/generic/%libname%.${layout.extension}`,
+    'asset.bundle.format': layout.extension,
     'room.color.skip.transition': true, 'system.log.packets': false
 });
 const catalogue = buildEffectCatalogue(configuration['camera.available.effects']);

@@ -72,6 +72,7 @@ public sealed partial class WiredGlideConveyorTests
         var f = new Fixture(layout.ToArray(), live: true);
         f.MovementContext().Room.GetWired().AttachRoomItem(f.Items[CounterId]);
         f.SetEngineCallback("_effectOrderRandom", new Random(seed));
+        f.Room.OwnerId = 1;
         f.Room.OwnerName = "user1";
         f.Room.Type = "private";
         var rider = f.Walker(1, 4, 10, 4, 11);

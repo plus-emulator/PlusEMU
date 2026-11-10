@@ -24,6 +24,7 @@ public sealed partial class WiredGlideConveyorTests
         var rider = f.Walker(1, 4, 10, 4, 11);
         var room = f.MovementContext().Room;
         room.Type = "private";
+        room.OwnerId = rider.HabboId;
         room.OwnerName = rider.GetUsername();
         var packets = CapturePublication(rider);
         var request = new WiredUserVariablesRequestEvent(new WiredVariableMenuService());
@@ -84,6 +85,7 @@ public sealed partial class WiredGlideConveyorTests
         Assert.NotNull(room.GetGameMap().Navigation);
         Assert.False(RoomOwnerScope.IsOwner(room));
         room.Type = "private";
+        room.OwnerId = rider.HabboId;
         room.OwnerName = rider.GetUsername();
         var packets = CapturePublication(rider);
         var request = new WiredUserVariablesRequestEvent(new WiredVariableMenuService());

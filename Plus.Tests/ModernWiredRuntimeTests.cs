@@ -232,6 +232,7 @@ public partial class ModernWiredRuntimeTests
     public async Task FiredLogLineReachesTheLogPageAndMonitorForInspectorsOnly()
     {
         using var f = new TeleportFixture();
+        f.Room.OwnerId = f.Habbo.Id;
         f.Room.OwnerName = "Alice";
         f.Room.Type = "private";
         f.Room.UsersWithRights = [];
@@ -332,6 +333,7 @@ public partial class ModernWiredRuntimeTests
     public async Task UnauthorizedMenuAndMonitorRequestsNeverReadStateAndWritesRefuseVisibly()
     {
         using var f = new TeleportFixture();
+        f.Room.OwnerId = f.Habbo.Id;
         f.Room.OwnerName = "Alice";
         f.Room.Type = "private";
         f.Room.UsersWithRights = [];
@@ -358,6 +360,7 @@ public partial class ModernWiredRuntimeTests
     public async Task DeniedMonitorClearLeavesLogsAndItsGateForTheSameSessionOnceGranted()
     {
         using var f = new TeleportFixture();
+        f.Room.OwnerId = f.Habbo.Id;
         f.Room.OwnerName = "Alice";
         f.Room.Type = "private";
         f.Room.UsersWithRights = [];
@@ -401,6 +404,7 @@ public partial class ModernWiredRuntimeTests
     public async Task RightsHolderWithWiredModifyClearsMonitorLogsAndErrorRowsLikeAir()
     {
         using var f = new TeleportFixture();
+        f.Room.OwnerId = f.Habbo.Id;
         f.Room.OwnerName = "Alice";
         f.Room.Type = "private";
         f.Room.UsersWithRights = [2];
@@ -442,6 +446,7 @@ public partial class ModernWiredRuntimeTests
     public async Task OfficialMonitorRequestsAnswerStatsAndTenErrorRowsAndEngineLimitsCountOnTheirRows()
     {
         using var f = new TeleportFixture();
+        f.Room.OwnerId = f.Habbo.Id;
         f.Room.OwnerName = "Alice";
         f.Room.Type = "private";
         f.Room.UsersWithRights = [];
@@ -490,6 +495,7 @@ public partial class ModernWiredRuntimeTests
     public async Task MonitorAndLogGatesUseTheInjectedMonotonicClockAndStayIndependent()
     {
         using var f = new TeleportFixture();
+        f.Room.OwnerId = f.Habbo.Id;
         f.Room.OwnerName = "Alice";
         f.Room.Type = "private";
         f.Room.UsersWithRights = [];

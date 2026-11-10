@@ -108,6 +108,7 @@ public sealed class RoomDecorationServiceTests
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 9;
         room.OwnerName = owner;
+        room.OwnerId = 1;
         room.Type = "private";
         room.Wallpaper = "old";
         room.UsersWithRights = [];

@@ -315,6 +315,9 @@ public class GroupManagementTests : IDisposable
         var targetHabbo = new Habbo { Id = 8, Username = "Target", Access = Rights(), HabboStats = stats };
         var (targetClient, targetSent) = Client(targetHabbo);
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
+        typeof(Room).GetField("_data", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room,
+            new RoomData { Id = group.RoomId, OwnerId = group.CreatorId, OwnerName = "Owner", Type = "private" });
+        room.UsersWithRights = [];
         var manager = new RoomUserManager(room, TestRoomUserStore.Instance, TimeProvider.System, new TestRewardProgress(), TestChatEmotions.Unused, TestBotAiFactory.Inert, TestGameClientManager.Empty, TestItemRuntime.Travel, TestItemRuntime.Settings);
         typeof(Room).GetField("_roomUserManager", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, manager);
         var roomUser = new RoomUser(8, group.RoomId, 3, room, targetClient, TestChatEmotions.Unused, TestRewardProgress.Unused);

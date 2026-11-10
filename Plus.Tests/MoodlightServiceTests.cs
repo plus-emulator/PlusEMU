@@ -74,8 +74,10 @@ public sealed class MoodlightServiceTests
         service.UpdatePreset(room, client, new(1, "invalid", 1, 2));
         service.UpdatePreset(room, client, new(1, "#0053F7", 256, 2));
         room.OwnerName = "another-owner";
+        room.OwnerId = 99;
         service.Toggle(room, client);
         room.OwnerName = "owner";
+        room.OwnerId = 1;
         typeof(Item).GetProperty(nameof(Item.IsTemporary))!.SetValue(item, true);
         service.Toggle(room, client);
         typeof(Item).GetProperty(nameof(Item.IsTemporary))!.SetValue(item, false);
@@ -253,6 +255,7 @@ public sealed class MoodlightServiceTests
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 42;
         room.OwnerName = "owner";
+        room.OwnerId = 1;
         room.Type = "private";
         room.UsersWithRights = [];
         var handling = new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);

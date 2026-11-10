@@ -62,12 +62,14 @@ public sealed class RoomMuteServiceTests
 
         world.Room.MutedUsers.Clear();
         world.Room.OwnerName = "somebody-else";
+        world.Room.OwnerId = 99;
         clock.Calls = 0;
         service.Mute(world.OwnerClient, world.Target.Id, 2);
         Assert.Empty(world.Room.MutedUsers);
         Assert.Equal(0, clock.Calls);
 
         world.Room.OwnerName = world.Owner.Username;
+        world.Room.OwnerId = 7;
         service.Mute(world.OwnerClient, 404, 2);
         Assert.Empty(world.Room.MutedUsers);
         Assert.Equal(0, clock.Calls);
@@ -101,6 +103,7 @@ public sealed class RoomMuteServiceTests
             Room.UsersWithRights = [];
             Room.Type = "private";
             Room.OwnerName = "owner";
+            Room.OwnerId = 7;
             Owner = new() { Id = 7, Username = "owner", CurrentRoom = Room, Access = EditorTestSupport.Access([], 10) };
             Target = new() { Id = 8, Username = "target", CurrentRoom = Room, Access = EditorTestSupport.Access([]) };
             (OwnerClient, _) = HabbiconTestSupport.Client(Owner);

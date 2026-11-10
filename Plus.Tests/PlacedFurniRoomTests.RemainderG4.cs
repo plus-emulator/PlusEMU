@@ -42,7 +42,9 @@ public partial class PlacedFurniRoomTests
         var box = Assert.IsAssignableFrom<IWiredConfiguredItem>(loaded);
         _client.Packets.Clear();
         var before = box.Configuration;
+        Assert.True(_room.GetWired().Settings.TrySave(_client, 2, 2, "", out _));
         _room.OwnerId = _client.GetHabbo().Id + 1000;
+        _room.UsersWithRights = [_client.GetHabbo().Id];
         var native = WiredNativeEditorProjection.DefaultNative(box.Descriptor) with
         {
             OwnedIntParams = [1],

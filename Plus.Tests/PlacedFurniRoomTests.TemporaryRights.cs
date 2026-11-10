@@ -127,6 +127,7 @@ public partial class PlacedFurniRoomTests
         var habbo = _client.GetHabbo();
         habbo.Id = 9;
         habbo.Username = "visitor";
+        _room.OwnerId = 99;
         _room.UsersWithRights = rights ? [9] : [];
     }
 }

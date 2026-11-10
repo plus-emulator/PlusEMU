@@ -10,6 +10,71 @@ namespace Plus.Tests;
 // The owner of a group home room can give rights to any avatar below controller level 1, so a group room keeps individual rights holders at level 1.
 public partial class PlacedFurniRoomTests
 {
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(1, false)]
+    public void BasicMembersBuildOnlyWhenGroupSettingsAllowIt(int adminsOnly, bool allowed)
+    {
+        var group = GroupWithAdmins();
+        group.PublishJoin(8);
+        group.AdminOnlyDeco = adminsOnly;
+        _room.UsersWithRights = [];
+        _room.Group = group;
+        var member = new TestClient();
+        var actor = Admit(member, 8, "member");
+        Assert.Equal(allowed, _room.CheckRights(member, false, true));
+        Assert.False(_room.CheckRights(member, true, true));
+
+        if (allowed) {
+            Assert.Equal("/flatctrl 1//", Assert.Single(RoomUserStatusSnapshot.Capture([actor])).Status);
+            Assert.Equal(1, ControllerLevelSentTo(member));
+        }
+        else {
+            Assert.False(actor.HasStatus("flatctrl"));
+            Assert.DoesNotContain(member.Packets, packet => packet.Header == ServerPacketHeader.YouAreControllerComposer);
+        }
+    }
+
+    [Fact]
+    public void RevocationRemovesGroupRightsButPreservesExplicitRoomRights()
+    {
+        var group = GroupWithAdmins(8);
+        _room.Group = group;
+        var member = new TestClient();
+        var actor = Admit(member, 8, "member");
+        group.TakeAdmin(8);
+        member.Packets.Clear();
+        _room.GetRoomUserManager().RefreshControllerRights(member);
+        Assert.Equal(1, ControllerLevelSentTo(member));
+        Assert.Equal("1", actor.Statusses["flatctrl"]);
+        group.DeleteMember(8);
+        member.Packets.Clear();
+        _room.GetRoomUserManager().RefreshControllerRights(member);
+        Assert.False(_room.CheckRights(member, false, true));
+        Assert.Equal(0, ControllerLevelSentTo(member));
+        Assert.False(actor.HasStatus("flatctrl"));
+        _room.UsersWithRights = [];
+        _room.UsersWithRights.Add(8);
+        member.Packets.Clear();
+        _room.GetRoomUserManager().RefreshControllerRights(member);
+        Assert.Equal(1, ControllerLevelSentTo(member));
+        Assert.True(_room.CheckRights(member, false, true));
+        Assert.False(_room.CheckRights(member, true, true));
+    }
+
+    [Fact]
+    public void OwnershipUsesTheAvatarIdAndGroupAdminNeverBecomesRoomOwner()
+    {
+        _room.Group = GroupWithAdmins(8);
+        _room.UsersWithRights = [];
+        var admin = new TestClient();
+        Admit(admin, 8, _room.OwnerName);
+        Assert.False(_room.CheckRights(admin, true, true));
+        Assert.True(_room.CheckRights(admin, false, true));
+        _client.GetHabbo().Username = "renamed_owner";
+        Assert.True(_room.CheckRights(_client, true, true));
+    }
+
     [Fact]
     public void RightsHolderEnteringAGroupRoomGetsGuestControllerLevel()
     {

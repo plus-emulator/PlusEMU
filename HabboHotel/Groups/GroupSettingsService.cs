@@ -58,14 +58,14 @@ public sealed class GroupSettingsService(
             group.AdminOnlyDeco = request.FurniOptions;
             group.ForumEnabled = forumEnabled;
             group.HasForum = forumEnabled;
-            PublishRoomRights(group, request.FurniOptions);
+            PublishRoomRights(group);
             session.Send(new GroupInfoComposer(groupInfo.Capture(group, session.GetHabbo().Id)));
 
             return Task.CompletedTask;
         }
     }
 
-    private void PublishRoomRights(Group group, int furniOptions)
+    private void PublishRoomRights(Group group)
     {
         if (!rooms.TryGetRoom(group.RoomId, out var room)) {
             return;
@@ -76,15 +76,8 @@ public sealed class GroupSettingsService(
                 continue;
             }
 
-            if (furniOptions == 1) {
-                user.RemoveStatus("flatctrl 1");
-                user.UpdateNeeded = true;
-                user.GetClient()?.Send(new YouAreControllerComposer(room.Id, 0));
-            }
-            else if (furniOptions == 0 && !user.Statusses.ContainsKey("flatctrl 1")) {
-                user.SetStatus("flatctrl 1");
-                user.UpdateNeeded = true;
-                user.GetClient()?.Send(new YouAreControllerComposer(room.Id, 1));
+            if (user.GetClient() is { } client) {
+                room.GetRoomUserManager().RefreshControllerRights(client);
             }
         }
     }

@@ -74,6 +74,7 @@ public partial class PlacedFurniRoomTests
         var other = PlaceNormal(101, 2, 2);
         _room.OwnerId = 99;
         _room.OwnerName = "someone";
+        _room.OwnerId = 99;
         _client.Sent.Clear();
 
         await SaveAreaHide(100, 1, 1, 2, 2);

@@ -28,6 +28,7 @@ public sealed partial class WiredGlideConveyorTests
         var rider = f.Walker(1, startX, 10, startX, 11);
         var room = f.MovementContext().Room;
         room.Type = "private";
+        room.OwnerId = rider.HabboId;
         room.OwnerName = rider.GetUsername();
         var packets = CapturePublication(rider);
         var request = new WiredUserVariablesRequestEvent(new WiredVariableMenuService());

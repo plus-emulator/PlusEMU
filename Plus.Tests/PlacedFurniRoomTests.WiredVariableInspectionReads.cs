@@ -112,11 +112,14 @@ public partial class PlacedFurniRoomTests
         var reads = 0;
         InspectionReadModule((_, after, _) => reads += after ? 1 : 0);
         _client.GetHabbo().Username = "visitor";
+        _room.OwnerId = 99;
         Assert.Equal(1, (await InspectionRead(wall.Id)).Status);
         Assert.Equal(0, reads);
         _client.GetHabbo().Username = "owner";
+        _room.OwnerId = 7;
         Assert.True(_room.GetWired().Settings.TrySave(_client, 1, 0, "", out _));
         _client.GetHabbo().Username = "visitor";
+        _room.OwnerId = 99;
         Assert.False(_room.GetWired().Settings.CanModify(_client));
         Assert.Equal(0, (await InspectionRead(wall.Id)).Status);
         Assert.Equal(9, reads);

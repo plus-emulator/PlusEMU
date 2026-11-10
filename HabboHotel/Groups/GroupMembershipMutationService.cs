@@ -74,6 +74,7 @@ public sealed class GroupMembershipMutationService(
             }
 
             group.HandleRequest(userId, true);
+            PublishController(group, userId);
             SendMemberUpdate(session, group, userId, 2, identity);
 
             return Task.CompletedTask;
@@ -141,14 +142,14 @@ public sealed class GroupMembershipMutationService(
                 group.TakeAdmin(userId);
             }
 
-            PublishController(group, userId, isAdmin);
+            PublishController(group, userId);
             SendMemberUpdate(session, group, userId, isAdmin ? 1 : 2, identity);
 
             return Task.CompletedTask;
         }
     }
 
-    private void PublishController(Group group, int userId, bool isAdmin)
+    private void PublishController(Group group, int userId)
     {
         if (!rooms.TryGetRoom(group.RoomId, out var room)) {
             return;
@@ -160,17 +161,9 @@ public sealed class GroupMembershipMutationService(
             return;
         }
 
-        if (isAdmin) {
-            if (!user.Statusses.ContainsKey("flatctrl 3")) {
-                user.SetStatus("flatctrl 3");
-            }
+        if (user.GetClient() is { } client) {
+            room.GetRoomUserManager().RefreshControllerRights(client);
         }
-        else if (user.Statusses.ContainsKey("flatctrl 3")) {
-            user.RemoveStatus("flatctrl 3");
-        }
-
-        user.UpdateNeeded = true;
-        user.GetClient()?.Send(new YouAreControllerComposer(room.Id, isAdmin ? 3 : 0));
     }
 
     private static void SendMemberUpdate(

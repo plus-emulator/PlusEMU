@@ -113,6 +113,7 @@ public sealed class WiredChestLogTests
     {
         var world = World();
         world.Habbo.Username = "visitor";
+        world.Room.OwnerId = world.Habbo.Id + 1;
 
         await Event(world).Parse(world.Room, world.Client, Incoming(10, 1));
 

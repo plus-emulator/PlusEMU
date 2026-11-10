@@ -106,6 +106,7 @@ public partial class PlacedFurniRoomTests
         await ObjectWrite(1, floor.Id, "-110", 0, 0); // a user target naming a furni variable
         await ObjectWrite(0, floor.Id, "-110", 0, 3); // no such operation
         _client.GetHabbo().Username = "visitor";
+        _room.OwnerId = 99;
         await ObjectWrite(0, floor.Id, "-110", 0, 0);
 
         Assert.Equal("1", floor.LegacyDataString);

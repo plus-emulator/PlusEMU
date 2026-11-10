@@ -47,6 +47,7 @@ public sealed class FurnitureUseServiceTests
 
         if (invalid == "rights") {
             room.OwnerName = "another-owner";
+            room.OwnerId = 99;
         }
 
         if (invalid == "room") {
@@ -72,6 +73,7 @@ public sealed class FurnitureUseServiceTests
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 9;
         room.OwnerName = "owner";
+        room.OwnerId = 7;
         room.Type = "private";
         room.UsersWithRights = [];
         Set(room, "_roomItemHandling", new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards));

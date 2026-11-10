@@ -31,10 +31,12 @@ public partial class PlacedFurniRoomTests
         _client.GetHabbo().Access = UserAccess.Create([], [new(PermissionKeys.CommandHidewired, false)]);
 
         _client.GetHabbo().Username = "visitor";
+        _room.OwnerId = 99;
         Assert.True(await commands.Parse(_client, ":hidewired"));
         Assert.False(_room.HideWired);
 
         _client.GetHabbo().Username = "owner";
+        _room.OwnerId = 7;
         _client.Sent.Clear();
         Assert.True(await commands.Parse(_client, ":hidewired"));
         Assert.True(_room.HideWired);

@@ -108,6 +108,7 @@ public partial class PlacedFurniRoomTests
 
         if (denial == "right") {
             _room.OwnerName = "someone-else";
+            _room.OwnerId = 99;
         }
 
         if (denial == "permission") {

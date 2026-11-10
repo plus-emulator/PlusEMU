@@ -187,6 +187,7 @@ public sealed class ItemRedemptionServiceTests
     {
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 9;
+        room.OwnerId = 1;
         room.OwnerName = "owner";
         room.Type = "private";
         room.UsersWithRights = [];

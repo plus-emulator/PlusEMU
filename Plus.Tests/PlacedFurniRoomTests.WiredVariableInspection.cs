@@ -106,12 +106,14 @@ public partial class PlacedFurniRoomTests
         _room.GetRoomItemHandler().LoadFurniture([wall]);
         var module = InspectionInstallModule();
         _client.GetHabbo().Username = "visitor";
+        _room.OwnerId = 99;
         _client.Packets.Clear();
         await InspectionWrite(wall.Id, "@wallitem_offset", 13);
         Assert.Contains(_client.Packets, packet => packet.Header == ServerPacketHeader.BroadcastMessageAlertComposer);
         Assert.Equal(baseline, wall.WallCoordinates);
         Assert.Empty(store.Writes);
         _client.GetHabbo().Username = "owner";
+        _room.OwnerId = 7;
         _client.Packets.Clear();
         await new WiredUserVariableUpdate64Event(new WiredVariableMenuService()).Parse(_room, _client,
             ClientPacket(1, 1, (int)wall.Id, 0, 0, 13, "internal:@wallitem_offset", 99));

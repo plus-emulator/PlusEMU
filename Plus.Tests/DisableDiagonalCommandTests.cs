@@ -24,17 +24,20 @@ public partial class PlacedFurniRoomTests
         Assert.False(_room.DiagonalSqueeze);
 
         _client.GetHabbo().Username = "visitor";
+        _room.OwnerId = 99;
         Assert.True(await commands.Parse(_client, ":disablediagonal"));
         Assert.False(_room.DiagonalSqueeze);
         Assert.Equal("Oops, you need rights in this room to run this command!", LastWhisper());
 
         _client.GetHabbo().Username = "owner";
+        _room.OwnerId = 7;
         Assert.True(await commands.Parse(_client, ":disablediagonal"));
         Assert.True(_room.DiagonalSqueeze);
         Assert.Equal("You can now walk diagonally between furniture in this room.", LastWhisper());
 
         // Someone with rights who does not own the room may switch it back.
         _client.GetHabbo().Username = "visitor";
+        _room.OwnerId = 99;
         _room.UsersWithRights.Add(_client.GetHabbo().Id);
         Assert.True(await commands.Parse(_client, ":disablediagonal"));
         Assert.False(_room.DiagonalSqueeze);

@@ -501,6 +501,7 @@ public sealed partial class WiredNativeLifecycleTests
         Assert.Equal(WiredRoomSettings.DefaultTimeZone, f.Wired.Variables.TimeZone());
         f.Human();
         f.Room.Type = "private";
+        f.Room.OwnerId = 42;
         f.Room.OwnerName = "viewer";
         var owner = f.Room.GetRoomUserManager().GetRoomUserByHabbo(42).GetClient();
         Assert.True(f.Wired.Settings.TrySave(owner, 0, 0, "Pacific/Honolulu", out var error), error);

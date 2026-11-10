@@ -59,10 +59,12 @@ public sealed class RoomFilterServiceTests
 
         order.Clear();
         world.Room.OwnerName = "somebody-else";
+        world.Room.OwnerId = 99;
         service.Show(world.Client);
         Assert.Empty(order);
 
         world.Room.OwnerName = world.Habbo.Username;
+        world.Room.OwnerId = 7;
         world.Habbo.CurrentRoom = null;
         service.Show(world.Client);
         Assert.Empty(order);
@@ -95,6 +97,7 @@ public sealed class RoomFilterServiceTests
         service.Modify(world.Client, 99, true, "wrong-room");
         Assert.Empty(world.Room.WordFilterList);
         world.Room.OwnerName = "somebody-else";
+        world.Room.OwnerId = 99;
         service.Modify(world.Client, 42, true, "denied");
         Assert.Empty(world.Room.WordFilterList);
     }
@@ -178,6 +181,7 @@ public sealed class RoomFilterServiceTests
             Room.Id = 42;
             Room.Type = "private";
             Room.OwnerName = "owner";
+            Room.OwnerId = 7;
             Room.UsersWithRights = [];
             Room.WordFilterList = [];
             Room.SetFilter(new FilterComponent(Room, store ?? new RecordingStore()));

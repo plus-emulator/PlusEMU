@@ -254,6 +254,7 @@ public partial class PlacedFurniRoomTests
         Viewer();
         var target = PlacedRecolorable(260);
         _client.GetHabbo().Username = "johndoe";
+        _room.OwnerId = 99;
         _room.UsersWithRights = [];
         _client.Packets.Clear();
 

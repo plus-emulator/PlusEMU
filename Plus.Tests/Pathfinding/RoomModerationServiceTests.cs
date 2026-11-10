@@ -41,10 +41,12 @@ public partial class PlacedFurniRoomTests
             achievements.Add(name);
         });
         _room.OwnerName = "somebody else";
+        _room.OwnerId = 99;
         service.Kick(_client, 8);
         Assert.Same(_room, target.GetHabbo().CurrentRoom);
         Assert.Empty(target.Sent);
         _room.OwnerName = "owner";
+        _room.OwnerId = 7;
         service.Kick(_client, 7);
         service.Kick(_client, 404);
         Assert.Empty(achievements);
@@ -175,9 +177,11 @@ public partial class PlacedFurniRoomTests
     {
         var service = new RoomModerationService(null!, Proxy<IGameClientManager>((_, _) => throw new InvalidOperationException("unexpected lookup")));
         _room.OwnerName = "other";
+        _room.OwnerId = 99;
         _room.UsersWithRights = [];
         service.AnswerDoor(_room, _client, "target", true);
         _room.OwnerName = "owner";
+        _room.OwnerId = 7;
         _client.GetHabbo().CurrentRoom = null;
         service.AnswerDoor(_room, _client, "target", true);
         Assert.Empty(_client.Sent);
@@ -231,6 +235,7 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(1, _room.GetBans().Count);
         Assert.Empty(_client.Sent);
         _room.OwnerName = "other";
+        _room.OwnerId = 99;
         _room.UsersWithRights = [];
         service.Unban(_client, 8, 42);
         service.ToggleMute(_client);

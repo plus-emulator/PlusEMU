@@ -32,6 +32,7 @@ public sealed class RoomBannedUsersSnapshotTests
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 42;
         room.OwnerName = "owner";
+        room.OwnerId = owner ? 1 : 2;
         room.Type = "private";
         var bans = new Store();
         typeof(Room).GetField("_bansComponent", BindingFlags.Instance | BindingFlags.NonPublic)!

@@ -129,6 +129,7 @@ public sealed class RoomItemMetadataServiceTests
     {
         var (room, client) = Context();
         room.OwnerName = "someone-else";
+        room.OwnerId = 99;
         var item = AddItem(room, InteractionType.Mannequin);
         var store = new RecordingStore();
 
@@ -191,6 +192,7 @@ public sealed class RoomItemMetadataServiceTests
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 9;
         room.OwnerName = "owner";
+        room.OwnerId = 1;
         room.Type = "private";
         room.UsersWithRights = [];
         typeof(Room).GetField("_roomItemHandling", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(room, new RoomItemHandling(room, TestRoomItemStore.Instance, TestRoomItemMetadataStore.Instance, TestGameClientManager.Empty, TestLanguageManager.RoomItems, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards));

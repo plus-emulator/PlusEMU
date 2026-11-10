@@ -221,6 +221,7 @@ public partial class PlacedFurniRoomTests
     {
         Viewer();
         _room.OwnerName = "someone else";
+        _room.OwnerId = 99;
         var (service, store, _) = BuildersClub();
 
         service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 1, 1, 0, confirmed: true);

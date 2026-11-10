@@ -66,6 +66,7 @@ public partial class PlacedFurniRoomTests
         WatchState(lamp);
         Viewer(0, 0);
         _room.OwnerName = "someone else";
+        _room.OwnerId = 99;
         _room.UsersWithRights = [];
 
         UseItem(lamp);

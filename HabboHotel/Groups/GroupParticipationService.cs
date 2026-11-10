@@ -179,6 +179,10 @@ public sealed class GroupParticipationService(IGroupManager groups, IGroupInfoSn
             .ToArray()));
         session.Send(new GroupInfoComposer(groupInfo.Capture(group, habbo.Id)));
 
+        if (habbo.CurrentRoom is { } homeroom && homeroom.Id == group.RoomId) {
+            homeroom.GetRoomUserManager().RefreshControllerRights(session);
+        }
+
         if (habbo.CurrentRoom != null) {
             habbo.CurrentRoom.SendPacket(new RefreshFavouriteGroupComposer(habbo.Id));
         }

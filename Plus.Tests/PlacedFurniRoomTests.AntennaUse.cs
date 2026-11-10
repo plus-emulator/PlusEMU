@@ -70,6 +70,7 @@ public partial class PlacedFurniRoomTests
         Receiver(110, 0, [antenna], "got signal");
         Viewer(3, 3);
         _room.OwnerName = "someone else";
+        _room.OwnerId = 99;
         _room.OwnerId = 8;
         _room.UsersWithRights = [];
 

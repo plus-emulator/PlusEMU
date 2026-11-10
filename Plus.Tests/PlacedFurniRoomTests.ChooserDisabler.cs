@@ -112,6 +112,7 @@ public partial class PlacedFurniRoomTests
         PlaceChooserDisabler(45, on: false);
         _room.OwnerId = 99;
         _room.OwnerName = "someone";
+        _room.OwnerId = 99;
 
         service.PlaceFloorItem(_room, _client, new(BuildersClubPageId, BuildersClubOfferId, ""), 2, 1, 0, confirmed: true);
 

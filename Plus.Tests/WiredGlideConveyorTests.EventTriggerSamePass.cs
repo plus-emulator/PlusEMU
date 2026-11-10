@@ -65,6 +65,7 @@ public sealed partial class WiredGlideConveyorTests
         var f = SamePassRoom(
             (SamePassTriggerId, 6, 12, 0.0, 0, "wf_trg_stuff_state", SelectedConfig([0, 100], SamePassWatchedId)));
         var user = f.Walker(1, 4, 10, 4, 11);
+        f.Room.OwnerId = 1;
         f.Room.OwnerName = "user1";
         f.Room.Type = "private";
         f.Items[SamePassWatchedId].Attach(f.Room, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);
@@ -90,6 +91,7 @@ public sealed partial class WiredGlideConveyorTests
             (SamePassTriggerId, 6, 12, 0.0, 0, "wf_trg_stuff_state", SelectedConfig([0, 100], SamePassWatchedId)),
             (68, 6, 12, 1.3, 0, "wf_act_toggle_state", ObservedNative("wf_act_toggle_state", [0], [SamePassWatchedId], 100)));
         var user = f.Walker(1, 4, 10, 4, 11);
+        f.Room.OwnerId = 1;
         f.Room.OwnerName = "user1";
         f.Room.Type = "private";
         f.Items[SamePassWatchedId].Attach(f.Room, TestItemRuntime.Interactors, TestItemRuntime.Travel, TestItemRuntime.Rewards);

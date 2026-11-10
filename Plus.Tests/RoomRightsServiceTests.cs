@@ -132,6 +132,7 @@ public sealed class RoomRightsServiceTests
         var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
         room.Id = 42;
         room.OwnerName = "owner";
+        room.OwnerId = 1;
         room.Type = "private";
         room.UsersWithRights = [];
         typeof(Room).GetField("_roomUserManager", BindingFlags.Instance | BindingFlags.NonPublic)!

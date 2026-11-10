@@ -365,7 +365,7 @@ public class Room
                 return false;
             }
 
-            if (session.GetHabbo().Username == OwnerName && Type == "private") {
+            if (session.GetHabbo().Id == OwnerId && Type == "private") {
                 return true;
             }
 
@@ -378,12 +378,12 @@ public class Room
                     return true;
                 }
 
-                if (UsersWithRights.Contains(session.GetHabbo().Id)) {
+                if (UsersWithRights?.Contains(session.GetHabbo().Id) == true) {
                     return true;
                 }
             }
 
-            if (checkForGroups && Type == "private") {
+            if (!requireOwnership && checkForGroups && Type == "private") {
                 if (Group == null) {
                     return false;
                 }
@@ -393,7 +393,7 @@ public class Room
                 }
 
                 if (Group.AdminOnlyDeco == 0) {
-                    if (Group.IsAdmin(session.GetHabbo().Id)) {
+                    if (Group.IsMember(session.GetHabbo().Id)) {
                         return true;
                     }
                 }

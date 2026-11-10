@@ -334,16 +334,16 @@ public class Habbo
         }
     }
 
-    public void CheckCreditsTimer(Plus.Core.Settings.ISettingsManager settings)
+    public void CheckCreditsTimer(Plus.Core.Settings.ISettingsManager settings, IUserProcessStore store)
     {
         lock (WalletSync) {
             if (!WalletClosed) {
-                CheckCreditsTimerCore(settings);
+                CheckCreditsTimerCore(settings, store);
             }
         }
     }
 
-    private void CheckCreditsTimerCore(Plus.Core.Settings.ISettingsManager settings)
+    private void CheckCreditsTimerCore(Plus.Core.Settings.ISettingsManager settings, IUserProcessStore store)
     {
         try {
             CreditsUpdateTick--;
@@ -351,13 +351,32 @@ public class Habbo
             if (CreditsUpdateTick <= 0) {
                 var creditUpdate = Convert.ToInt32(settings.TryGetValue("user.currency_scheduler.credit_reward"));
                 var ducketUpdate = Convert.ToInt32(settings.TryGetValue("user.currency_scheduler.ducket_reward"));
-                creditUpdate += Access.Limit("limit.currency_credits", 0);
-                ducketUpdate += Access.Limit("limit.currency_duckets", 0);
-                Credits += creditUpdate;
-                Duckets += ducketUpdate;
+                creditUpdate = checked(creditUpdate + Access.Limit("limit.currency_credits", 0));
+                ducketUpdate = checked(ducketUpdate + Access.Limit("limit.currency_duckets", 0));
+                var interval = Convert.ToInt32(settings.TryGetValue("user.currency_scheduler.tick"));
+
+                if (creditUpdate < 0 || ducketUpdate < 0) {
+                    return;
+                }
+
+                if (creditUpdate == 0 && ducketUpdate == 0) {
+                    CreditsUpdateTick = interval;
+
+                    return;
+                }
+
+                var credits = checked(Credits + creditUpdate);
+                var duckets = checked(Duckets + ducketUpdate);
+
+                if (!store.SaveCurrency(Id, credits, duckets)) {
+                    return;
+                }
+
+                Credits = credits;
+                Duckets = duckets;
+                CreditsUpdateTick = interval;
                 Client?.Send(new CreditBalanceComposer(Credits));
                 Client?.Send(new HabboActivityPointNotificationComposer(Duckets, ducketUpdate));
-                CreditsUpdateTick = Convert.ToInt32(settings.TryGetValue("user.currency_scheduler.tick"));
             }
         }
         catch { }

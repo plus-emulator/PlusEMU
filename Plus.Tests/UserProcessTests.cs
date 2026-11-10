@@ -449,6 +449,7 @@ public class UserProcessTests
     private static T Proxy<T>(Func<string, object?[]?, object?> invoke) where T : class => CatalogSnapshotTestSupport.Proxy<T>(invoke);
     private sealed class Store(Action<int, int, int, string> save) : IUserProcessStore
     {
+        public bool SaveCurrency(int userId, int credits, int duckets) => throw new NotSupportedException();
         public void ResetDailyRespects(int userId, int respects, int petRespects, string day) => save(userId, respects, petRespects, day);
     }
 

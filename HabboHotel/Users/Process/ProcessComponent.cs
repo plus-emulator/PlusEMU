@@ -100,7 +100,7 @@ public sealed class ProcessComponent(ILogger<ProcessComponent> logger, TimeProvi
                 achievements.ProgressAchievement(player.Client, "ACH_AllTimeHotelPresence", 1);
             }
 
-            player.CheckCreditsTimer(settings);
+            player.CheckCreditsTimer(settings, store);
 
             if (player.Effects is { } effects) {
                 effects.CheckEffectExpiryAt(player, now);

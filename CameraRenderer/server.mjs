@@ -1,13 +1,14 @@
 import http from 'node:http';
-import { readFile, realpath } from 'node:fs/promises';
-import { resolve, extname } from 'node:path';
+import { mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
+import { dirname, resolve, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import stripJsonComments from 'strip-json-comments';
 import { adImageAddress, createAdImages } from './ad-images.mjs';
 import { createAssetCache, freshness } from './asset-cache.mjs';
+import { animatedPng, avatarRequest, AVATAR_ROOM_ID, loopLength } from './avatar.mjs';
 import { createFurnitureDataSource, fetchCameraData } from './furniture-data.mjs';
-import { allowedBrowserRequest, assetLayout, authorized, buildEffectCatalogue, cameraEffectAsset, containedPath, JOB_DEADLINE_MS, MAX_ACTIVE, MAX_BODY, MAX_QUEUE, mediaPath, nitroAssetRelative, pageConfiguration, PREPARE_DEADLINE_MS, QUEUE_WAIT_MS, SMALL_PNG_SIZE, validPng, validateJob, validatePreparation } from './security.mjs';
+import { allowedBrowserRequest, assetLayout, authorized, buildEffectCatalogue, cameraEffectAsset, containedPath, JOB_DEADLINE_MS, MAX_ACTIVE, MAX_AVATAR_QUEUE, MAX_BODY, MAX_QUEUE, mediaPath, nitroAssetRelative, pageConfiguration, PREPARE_DEADLINE_MS, QUEUE_WAIT_MS, SMALL_PNG_SIZE, validPng, validateJob, validatePreparation } from './security.mjs';
 
 const directory = fileURLToPath(new URL('.', import.meta.url));
 const secret = process.env.CAMERA_RENDERER_SECRET;
@@ -24,6 +25,11 @@ const media = rooted(process.env.CAMERA_MEDIA_ROOT, '../camera');
 const pageRoot = rooted(process.env.CAMERA_PAGE_ROOT, '../../Volt/dist');
 // Chromium's sandbox needs user namespaces; hosts without them (proot, some containers) set CAMERA_CHROMIUM_SANDBOX=0.
 const chromiumSandbox = process.env.CAMERA_CHROMIUM_SANDBOX !== '0';
+// Avatar images are on only when the hotel's site and this service share a secret and a folder that nginx serves.
+const avatarSecret = process.env.AVATAR_IMAGER_SECRET;
+if (avatarSecret !== undefined && avatarSecret.length < 32) throw new Error('AVATAR_IMAGER_SECRET must contain at least 32 characters');
+const avatarRoot = process.env.AVATAR_IMAGER_ROOT ? resolve(process.env.AVATAR_IMAGER_ROOT) : null;
+if (Boolean(avatarSecret) !== Boolean(avatarRoot)) throw new Error('AVATAR_IMAGER_SECRET and AVATAR_IMAGER_ROOT must be set together');
 const assetOrigin = process.env.CAMERA_ASSET_ORIGIN ? new URL(process.env.CAMERA_ASSET_ORIGIN) : null;
 if (assetOrigin && (assetOrigin.protocol !== 'https:' || assetOrigin.username || assetOrigin.password || assetOrigin.pathname !== '/' || assetOrigin.search || assetOrigin.hash)) throw new Error('CAMERA_ASSET_ORIGIN must be an HTTPS origin');
 const furnitureData = createFurnitureDataSource({ url: process.env.CAMERA_FURNIDATA_URL, filename: resolve(assets, layout.gamedata['FurnitureData.json']) });
@@ -69,6 +75,7 @@ Object.assign(configuration, {
     'furni.asset.url': `${origin}/assets/furniture/%libname%.${layout.extension}`,
     'pet.asset.url': `${origin}/assets/pet/%libname%.${layout.extension}`,
     'generic.asset.url': `${origin}/assets/generic/%libname%.${layout.extension}`,
+    'asset.bundle.format': layout.extension,
     'room.color.skip.transition': true, 'system.log.packets': false
 });
 const catalogue = buildEffectCatalogue(configuration['camera.available.effects']);
@@ -80,6 +87,7 @@ let active = 0;
 const queue = [];
 const pool = [];
 const POOL_SIZE = 2;
+const AVATAR_FAILURE_MS = 10 * 60 * 1000;
 let warming = null;
 let preparation = null;
 let borrowing = 0;
@@ -305,34 +313,19 @@ async function readJson(request) {
     for await (const chunk of request) {length+=chunk.length; if(length>MAX_BODY) throw new Error('Render body is too large'); chunks.push(chunk);}
     return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
-async function render(job) {
+// Runs one piece of work on a page of the pool, inside the shared limits and the job deadline.
+async function onPage(roomId, geometry, work) {
     const abort = { done: false, acquired: false, released: false, entry: null, context: null };
     let slot;
     let timer;
     const task = (async () => {
         try {
         await acquire(abort);
-        slot = await borrowPage(abort, job.scene.roomId, viewGeometry(job.viewport));
+        slot = await borrowPage(abort, roomId, geometry);
         if (abort.done) throw new Error('Camera render timed out');
-        // A string crosses into the page far faster than Playwright's object serialization of a large scene.
-        const result = await slot.page.evaluate(async ({ body, smallSize }) => {
-            const job = JSON.parse(body);
-            const png = await window.cameraRender(job);
-            const image = new Image();
-            image.src = `data:image/png;base64,${png}`;
-            await image.decode();
-            if (image.naturalWidth !== job.viewport.cropWidth || image.naturalHeight !== job.viewport.cropHeight) throw new Error('Cropped snapshot does not match the viewport');
-            const canvas = document.createElement('canvas');
-            canvas.width = canvas.height = smallSize;
-            const context = canvas.getContext('2d');
-            context.imageSmoothingEnabled = true;
-            context.drawImage(image, 0, 0, smallSize, smallSize);
-            return { png, smallPng: canvas.toDataURL('image/png').split(',')[1] };
-        }, { body: JSON.stringify(job), smallSize: SMALL_PNG_SIZE });
+        const result = await work(slot.page);
         if (abort.done) throw new Error('Camera render timed out');
         if (slot.failures.length) throw new Error(slot.failures[0]);
-        validPng(result.png, job.viewport.cropWidth);
-        validPng(result.smallPng, SMALL_PNG_SIZE);
         return result;
         } finally {
             if (abort.done && abort.acquired && !abort.released) { abort.released = true; release(); }
@@ -358,9 +351,81 @@ async function render(job) {
         if (abort.acquired && !abort.released) { abort.released = true; release(); }
     }
 }
+async function render(job) {
+    const result = await onPage(job.scene.roomId, viewGeometry(job.viewport), page =>
+        // A string crosses into the page far faster than Playwright's object serialization of a large scene.
+        page.evaluate(async ({ body, smallSize }) => {
+            const job = JSON.parse(body);
+            const png = await window.cameraRender(job);
+            const image = new Image();
+            image.src = `data:image/png;base64,${png}`;
+            await image.decode();
+            if (image.naturalWidth !== job.viewport.cropWidth || image.naturalHeight !== job.viewport.cropHeight) throw new Error('Cropped snapshot does not match the viewport');
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = smallSize;
+            const context = canvas.getContext('2d');
+            context.imageSmoothingEnabled = true;
+            context.drawImage(image, 0, 0, smallSize, smallSize);
+            return { png, smallPng: canvas.toDataURL('image/png').split(',')[1] };
+        }, { body: JSON.stringify(job), smallSize: SMALL_PNG_SIZE }));
+    validPng(result.png, job.viewport.cropWidth);
+    validPng(result.smallPng, SMALL_PNG_SIZE);
+    return result;
+}
+const avatarRenders = new Map();
+const avatarFailures = new Map();
+let avatarTurn = Promise.resolve();
+let avatarsWaiting = 0;
+// Draws one avatar image and stores it where nginx finds it for every later request.
+async function drawAvatar({ job, file }) {
+    const frames = await onPage(AVATAR_ROOM_ID, null, page => page.evaluate(body => {
+        if (typeof window.cameraAvatar !== 'function') throw new Error('The client build cannot draw avatar images');
+        return window.cameraAvatar(JSON.parse(body));
+    }, JSON.stringify(job)));
+    if (!Array.isArray(frames) || !frames.length || frames.length > job.frames) throw new Error('Invalid avatar frames');
+    const images = frames.map(frame => Buffer.from(frame, 'base64'));
+    const image = animatedPng(images.slice(0, loopLength(images)));
+    const target = resolve(avatarRoot, file);
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(`${target}.${process.pid}.tmp`, image);
+    await rename(`${target}.${process.pid}.tmp`, target);
+    return image;
+}
+// One avatar at a time, so a photo always finds a free page. Requests for the same image share one drawing.
+function avatarImage(request) {
+    const running = avatarRenders.get(request.file);
+    if (running) return running;
+    if ((avatarFailures.get(request.file) ?? 0) > Date.now()) return Promise.reject(new Error('Avatar image failed a moment ago'));
+    if (avatarsWaiting >= MAX_AVATAR_QUEUE) return Promise.reject(Object.assign(new Error('Avatar queue is full'), { busy: true }));
+    avatarsWaiting++;
+    const drawn = avatarTurn.then(() => drawAvatar(request));
+    avatarTurn = drawn.then(() => {}, () => {});
+    avatarRenders.set(request.file, drawn);
+    drawn.catch(error => {
+        // A figure or effect that cannot be drawn is not tried again on every page view.
+        if (!/timed out|queue|pool/i.test(error.message)) avatarFailures.set(request.file, Date.now() + AVATAR_FAILURE_MS);
+        if (avatarFailures.size > 4096) avatarFailures.clear();
+    }).finally(() => { avatarsWaiting--; avatarRenders.delete(request.file); });
+    return drawn;
+}
+async function serveAvatar(pathname, response) {
+    const request = avatarSecret ? avatarRequest(pathname, avatarSecret) : null;
+    if (!request) { response.writeHead(404).end(); return; }
+    let image;
+    try {
+        image = await readFile(resolve(avatarRoot, request.file)).catch(() => avatarImage(request));
+    } catch (error) {
+        console.error(`Avatar image failed: ${request.file}: ${error.message}`);
+        response.writeHead(error.busy ? 503 : 502).end();
+        return;
+    }
+    response.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=31536000, immutable' }).end(image);
+}
 const server = http.createServer(async (request, response) => {
     response.setHeader('X-Content-Type-Options','nosniff');
     response.setHeader('Cache-Control','no-store');
+    // An avatar path carries its own signature, so nginx can pass these requests on without the camera password.
+    if (request.method === 'GET' && request.url.startsWith('/avatars/')) { await serveAvatar(request.url, response).catch(() => response.destroy()); return; }
     if (!authorized(request.headers.authorization,secret)) {response.writeHead(401).end(); return;}
     // A closed page drops its requests; their downloads then stop unless another request still needs them.
     const lifetime = new AbortController();

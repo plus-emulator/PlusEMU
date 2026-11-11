@@ -6,6 +6,7 @@ export const MAX_BODY = 1024 * 1024;
 export const MAX_PNG = 2 * 1024 * 1024;
 export const MAX_ACTIVE = 2;
 export const MAX_QUEUE = 4;
+export const MAX_AVATAR_QUEUE = 128;
 export const QUEUE_WAIT_MS = 5000;
 export const JOB_DEADLINE_MS = 20000;
 export const PREPARE_DEADLINE_MS = 12000;

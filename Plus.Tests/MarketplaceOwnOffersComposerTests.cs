@@ -14,8 +14,8 @@ public class MarketplaceOwnOffersComposerTests
         var offers = new[]
         {
             new MarketplaceOwnOffer(10, 1, 100, 0, 0, 500, 60),
-            new MarketplaceOwnOffer(11, 2, 101, 0, 0, 600, -4),
-            new MarketplaceOwnOffer(12, 3, 102, 7, 20, 700, 0)
+            new MarketplaceOwnOffer(11, 2, 101, 0, 0, 600, -4, ItemType: 2, ExtraData: "poster", AveragePrice: 520, StatusTime: 4294967301),
+            new MarketplaceOwnOffer(12, 3, 102, 7, 20, 700, 0, StatusTime: 8589934600)
         };
         var composer = new MarketPlaceOwnOffersComposer(new MarketplaceOwnOffers(900, offers));
         offers[0] = new MarketplaceOwnOffer(99, 9, 999, 9, 9, 9, 9);
@@ -29,9 +29,9 @@ public class MarketplaceOwnOffersComposerTests
         Assert.Equal(new object[]
         {
             900, 3,
-            10, 1, 1, 100, 256, "", 0, 0, 500, 60, 100,
-            11, 2, 1, 101, 256, "", 0, 0, 600, -4, 101,
-            12, 3, 1, 102, 256, "", 7, 20, 700, 0, 102
+            10, 1, 1, 100, 0, "", 500, 60, 0,
+            11, 2, 2, 101, "poster", 600, -4, 520, 1, 5,
+            12, 3, 3, 102, 7, 20, 700, 0, 0, 2, 8
         }, first.Writes);
     }
 

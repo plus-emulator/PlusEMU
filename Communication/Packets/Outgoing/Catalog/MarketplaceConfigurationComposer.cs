@@ -12,12 +12,12 @@ public class MarketplaceConfigurationComposer(IMarketplaceFeePolicy fee) : IServ
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteBoolean(true);
-        packet.WriteInteger(fee.SellingFeePercentage); // Commission percentage.
+        packet.WriteInteger(fee.Commission);
         packet.WriteInteger(0); // Credits required to buy listing advertisements.
         packet.WriteInteger(0); // Listing advertisements granted by that purchase.
-        packet.WriteInteger(1);
-        packet.WriteInteger(99999999); //Max price.
-        packet.WriteInteger(48);
+        packet.WriteInteger(fee.OfferMinimumPrice);
+        packet.WriteInteger(fee.OfferMaximumPrice);
+        packet.WriteInteger(fee.OfferExpirationHours);
         packet.WriteInteger(7); //Days.
         packet.WriteInteger(fee.SellingFeePercentage);
         packet.WriteInteger(fee.RevenueLimit);

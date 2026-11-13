@@ -19,15 +19,29 @@ public class MarketPlaceOwnOffersComposer : IServerPacket
         foreach (var offer in _data.Offers) {
             packet.WriteInteger(offer.OfferId);
             packet.WriteInteger(offer.State);
-            packet.WriteInteger(1);
+            packet.WriteInteger(offer.LimitedNumber > 0 ? 3 : offer.ItemType);
             packet.WriteInteger(offer.SpriteId);
-            packet.WriteInteger(256);
-            packet.WriteString("");
-            packet.WriteInteger(offer.LimitedNumber);
-            packet.WriteInteger(offer.LimitedStack);
+
+            if (offer.LimitedNumber > 0) {
+                packet.WriteInteger(offer.LimitedNumber);
+                packet.WriteInteger(offer.LimitedStack);
+            }
+            else {
+                if (offer.ItemType == 1) {
+                    packet.WriteInteger(0);
+                }
+
+                packet.WriteString(offer.ExtraData);
+            }
+
             packet.WriteInteger(offer.TotalPrice);
             packet.WriteInteger(offer.MinutesRemaining);
-            packet.WriteInteger(offer.SpriteId);
+            packet.WriteInteger(offer.AveragePrice);
+
+            if (offer.State is 2 or 3) {
+                packet.WriteInteger(unchecked((int)(offer.StatusTime >> 32)));
+                packet.WriteInteger(unchecked((int)offer.StatusTime));
+            }
         }
     }
 }

@@ -44,6 +44,7 @@ public sealed class MarketplaceDatabaseTests
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
         SqlMapper.AddTypeHandler(new Plus.Database.UtcDateTimeOffsetHandler());
         using var connection = new MySqlConnection(_connectionString);
+        connection.Execute("TRUNCATE marketplace_operations; TRUNCATE marketplace_sales; TRUNCATE marketplace_daily_sales;");
         connection.Execute("DELETE FROM `catalog_marketplace_offers`");
         connection.Execute("DELETE FROM `items`");
         connection.Execute("DELETE FROM `catalog_marketplace_data`");
@@ -60,9 +61,8 @@ public sealed class MarketplaceDatabaseTests
 
         var snapshot = Search(manager, -1, -1, 0);
 
-        Assert.Equal(new[] { 2, 1 }, manager.Keys);
-        Assert.Equal(new uint[] { 2, 1 }, manager.Items.Select(item => item.OfferId).ToArray());
-        Assert.Equal(2, manager.Items[0].ItemType);
+        Assert.Equal(new uint[] { 2, 1 }, snapshot.Offers.Select(item => item.OfferId).ToArray());
+        Assert.Equal(2, snapshot.Offers[0].ItemType);
         Assert.Equal(2, snapshot.Offers.Length);
     }
 
@@ -205,9 +205,8 @@ public sealed class MarketplaceDatabaseTests
         Insert(3, sprite: 300, asking: 5, total: 6, state: "1", timestamp: Now.ToUnixTimeSeconds() - 1000);
         var manager = new Manager();
 
-        Search(manager, 10, 56, 1);
-
-        Assert.Equal(new uint[] { 1, 2 }, manager.Items.Select(item => item.OfferId).ToArray());
+        var snapshot = Search(manager, 10, 56, 1);
+        Assert.Equal(new uint[] { 1, 2 }, snapshot.Offers.Select(item => item.OfferId).ToArray());
     }
 
     [MarketplaceDatabaseFact]
@@ -372,6 +371,8 @@ public sealed class MarketplaceDatabaseTests
 
     private (GameClient Client, int Id) Buyer(int credits)
     {
+        using var connection = new MySqlConnection(_connectionString);
+        connection.Execute("INSERT INTO users(id,username,auth_ticket,credits) VALUES(8,'buyer','',@credits) ON DUPLICATE KEY UPDATE credits=@credits", new { credits });
         var habbo = new Habbo { Id = BuyerId, Username = "buyer", Credits = credits, Inventory = new InventoryComponent { Furniture = new FurnitureInventoryComponent([], []) } };
 
         return (HabbiconTestSupport.Client(habbo).Client, BuyerId);
@@ -567,7 +568,7 @@ public sealed class MarketplaceDatabaseTests
         using var connection = new MySqlConnection(_connectionString);
         connection.Execute("INSERT IGNORE INTO `users` (`id`,`username`,`auth_ticket`) VALUES (@owner, CONCAT('marketplace_', @owner), '')", new { owner });
         connection.Execute("INSERT IGNORE INTO `rooms` (`id`,`model_name`,`owner`) SELECT @roomId, 'model_a', @owner FROM DUAL WHERE @roomId <> 0", new { roomId, owner });
-        connection.Execute("INSERT INTO `items` (`id`,`user_id`,`room_id`,`base_item`,`extra_data`) VALUES (@id,@owner,@roomId,1,'')", new { id, owner, roomId });
+        connection.Execute("INSERT INTO `items` (`id`,`user_id`,`room_id`,`base_item`,`extra_data`) VALUES (@id,@owner,@roomId,900,'')", new { id, owner, roomId });
     }
 
     private int Count(string table)

@@ -54,6 +54,26 @@ public class MarketplaceOfferWireTests
     }
 
     [Fact]
+    public void ConfiguredLimitsAndProgressiveFeeAreSentTogether()
+    {
+        var policy = Policy(new()
+        {
+            ["catalog.marketplace.commission"] = "1",
+            ["catalog.marketplace.fee.percentage"] = "2",
+            ["catalog.marketplace.fee.half_tax_limit"] = "400000",
+            ["catalog.marketplace.fee.revenue_limit"] = "100000",
+            ["catalog.marketplace.price.minimum"] = "2",
+            ["catalog.marketplace.price.maximum"] = "99999",
+            ["catalog.marketplace.expiration_hours"] = "168"
+        });
+        var packet = new HabbiconTestSupport.RecordingPacket();
+        new MarketplaceConfigurationComposer(policy).Compose(packet);
+        Assert.Equal(new object[] { true, 1, 0, 0, 2, 99999, 168, 7, 2, 100000, 400000 }, packet.Writes);
+        Assert.Equal(1, policy.Fee(2));
+        Assert.Equal(14500, policy.Fee(99999));
+    }
+
+    [Fact]
     public void TheBuyResultWritesTheFourIntegersTheClientReads()
     {
         var packet = new HabbiconTestSupport.RecordingPacket();
@@ -132,7 +152,7 @@ public class MarketplaceOfferWireTests
 
     private static MarketplaceFeePolicy Policy(Dictionary<string, string>? values = null) => new(new TestRoomSettings(values));
 
-    private static MakeOfferEvent Offer(IMarketplaceOfferStore store) => new(new MarketplaceListingService(store, Policy(), TimeProvider.System, TestRoomSettings.Empty));
+    private static MakeOfferEvent Offer(IMarketplaceOfferStore store) => new(new MarketplaceListingService(store, Policy(), TimeProvider.System, TestRoomSettings.Empty, MarketplaceTestAccess.Allowed));
 
     private static (Habbo Habbo, InventoryItem[] Items) Owner(ItemType type, int count)
     {

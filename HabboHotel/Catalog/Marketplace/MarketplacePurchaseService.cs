@@ -12,7 +12,7 @@ namespace Plus.HabboHotel.Catalog.Marketplace;
 
 public enum MarketplacePurchaseOutcome
 {
-    Bought, NotFound, Sold, Expired, UnknownItem, OwnOffer, InsufficientCredits, InvalidOffer, WalletClosed
+    Bought, NotFound, Sold, Expired, UnknownItem, OwnOffer, InsufficientCredits, InvalidOffer, WalletClosed, TradingLocked
 }
 
 public interface IMarketplacePurchaseService
@@ -21,61 +21,61 @@ public interface IMarketplacePurchaseService
 }
 
 public sealed class MarketplacePurchaseService(IMarketplacePurchaseStore store, IItemDataManager items, IMarketplaceManager marketplace,
-    TimeProvider time) : IMarketplacePurchaseService
+    TimeProvider time, IMarketplaceFeePolicy? policy = null) : IMarketplacePurchaseService
 {
-    private const double OfferLifetimeSeconds = 172800;
-
-    // One lock for every buyer's sale record: the averages and the sale-stat rows (which have no unique sprite key) update here only.
-    // Static so every instance shares it, whatever the DI lifetime. Lock order is always buyer WalletSync, then this lock.
-    private static readonly object Sales = new();
 
     public MarketplacePurchaseOutcome Buy(GameClient session, int offerId)
     {
         var habbo = session.GetHabbo();
         MarketplacePurchaseOutcome outcome;
 
-        lock (habbo.WalletSync) {
-            if (habbo.WalletClosed) {
-                return MarketplacePurchaseOutcome.WalletClosed;
-            }
-
-            // The bought item is handed straight into the loaded inventory, so nothing is claimed without one.
-            if (habbo.Inventory is not { } inventory) {
-                throw new InvalidOperationException("The user has no loaded inventory to receive a marketplace item.");
-            }
-
-            var listedBefore = time.GetUtcNow().AddSeconds(-OfferLifetimeSeconds);
-            MarketplacePurchaseResult result;
-
-            lock (Sales) {
-                result = store.Claim(new MarketplacePurchaseRequest(offerId, habbo.Id, habbo.Credits, listedBefore,
-                    itemId => items.Items.TryGetValue(itemId, out var definition) ? definition : null,
-                    delivery => PrepareDelivery(habbo, delivery)));
-
-                if (result.Offer is { } sale) {
-                    RecordAverage(sale.SpriteId, sale.TotalPrice);
+        lock (habbo.InventoryMutationSync)
+            lock (habbo.WalletSync) {
+                if (habbo.WalletClosed) {
+                    return MarketplacePurchaseOutcome.WalletClosed;
                 }
+
+                if (habbo.TradingLockExpiresAt > time.GetUtcNow()) {
+                    Publish(session, MarketplacePurchaseOutcome.TradingLocked, offerId);
+
+                    return MarketplacePurchaseOutcome.TradingLocked;
+                }
+
+                // The bought item is handed straight into the loaded inventory, so nothing is claimed without one.
+                if (habbo.Inventory is not { } inventory) {
+                    throw new InvalidOperationException("The user has no loaded inventory to receive a marketplace item.");
+                }
+
+                var listedBefore = time.GetUtcNow().AddHours(-(policy?.OfferExpirationHours ?? 48));
+                MarketplacePurchaseResult result;
+
+                result = MarketplaceCommit.Guard(habbo, () => store.Claim(new MarketplacePurchaseRequest(offerId, habbo.Id, habbo.Credits, listedBefore,
+                    itemId => items.Items.TryGetValue(itemId, out var definition) ? definition : null,
+                    delivery => PrepareDelivery(habbo, delivery))));
+
+                if (result.Refusal is { } refusal) {
+                    outcome = Outcome(refusal);
+                    Publish(session, outcome, offerId);
+
+                    return outcome;
+                }
+
+                var claim = result.Offer!;
+
+                // The charge and the item were committed together, and the item was built before the commit, so handing it over cannot fail.
+                habbo.Credits = claim.BuyerCredits;
+
+                if (!inventory.Furniture.AddItem(claim.Delivery)) {
+                    throw new InvalidOperationException("Committed marketplace delivery was already present in inventory.");
+                }
+
+                session.Send(new CreditBalanceComposer(habbo.Credits));
+                session.Send(new FurniListNotificationComposer(claim.Delivery.Id, 1));
+                session.Send(new PurchaseOKComposer());
+                session.Send(new FurniListAddComposer(InventoryItemSnapshot.Capture(claim.Delivery)));
+                session.Send(new FurniListUpdateComposer());
+                outcome = MarketplacePurchaseOutcome.Bought;
             }
-
-            if (result.Refusal is { } refusal) {
-                outcome = Outcome(refusal);
-                Publish(session, outcome, offerId);
-
-                return outcome;
-            }
-
-            var claim = result.Offer!;
-
-            // The charge and the item were committed together, and the item was built before the commit, so handing it over cannot fail.
-            habbo.Credits = claim.BuyerCredits;
-            session.Send(new CreditBalanceComposer(habbo.Credits));
-            inventory.Furniture.AddItem(claim.Delivery);
-            session.Send(new FurniListNotificationComposer(claim.Delivery.Id, 1));
-            session.Send(new PurchaseOKComposer());
-            session.Send(new FurniListAddComposer(InventoryItemSnapshot.Capture(claim.Delivery)));
-            session.Send(new FurniListUpdateComposer());
-            outcome = MarketplacePurchaseOutcome.Bought;
-        }
 
         Publish(session, outcome, offerId);
 
@@ -96,28 +96,6 @@ public sealed class MarketplacePurchaseService(IMarketplacePurchaseStore store, 
         };
 
         return item.ToInventoryItem() ?? throw new InvalidOperationException($"Furni {delivery.FurniId} could not be built for delivery; nothing was charged.");
-    }
-
-    private void RecordAverage(int spriteId, int totalPrice)
-    {
-        if (marketplace.MarketAverages.ContainsKey(spriteId) && marketplace.MarketCounts.ContainsKey(spriteId)) {
-            var count = marketplace.MarketCounts[spriteId];
-            var average = marketplace.MarketAverages[spriteId] += totalPrice;
-            marketplace.MarketAverages.Remove(spriteId);
-            marketplace.MarketAverages.Add(spriteId, average);
-            marketplace.MarketCounts.Remove(spriteId);
-            marketplace.MarketCounts.Add(spriteId, count + 1);
-
-            return;
-        }
-
-        if (!marketplace.MarketAverages.ContainsKey(spriteId)) {
-            marketplace.MarketAverages.Add(spriteId, totalPrice);
-        }
-
-        if (!marketplace.MarketCounts.ContainsKey(spriteId)) {
-            marketplace.MarketCounts.Add(spriteId, 1);
-        }
     }
 
     // The AIR client answers every buy with one typed result and raises its own alerts and list refresh from it.

@@ -15,6 +15,23 @@ public sealed class UserOnlineFlagTests
 {
     private const int UserId = 7;
 
+    [RoomComponentDatabaseFact]
+    public void AnUncertainWalletNeverOverwritesCommittedCurrencyOnLogout()
+    {
+        InSchema((connection, database) =>
+        {
+            connection.Execute("UPDATE users SET credits=900 WHERE id=7; INSERT INTO user_currencies(user_id,type,amount) VALUES(7,0,40)");
+            var clients = new SharedTestClients();
+            var (habbo, _) = Session(clients);
+            habbo.Credits = 1000;
+            habbo.Duckets = 999;
+            habbo.CurrencyPersistenceUncertain = true;
+            new UserPersistenceService(database, TimeProvider.System, clients).Save(habbo);
+            Assert.Equal(900, connection.QuerySingle<int>("SELECT credits FROM users WHERE id=7"));
+            Assert.Equal(40, connection.QuerySingle<int>("SELECT amount FROM user_currencies WHERE user_id=7 AND type=0"));
+        });
+    }
+
     [Fact]
     public async Task ASuccessfulLoginMarksItsRegisteredSessionOnline()
     {

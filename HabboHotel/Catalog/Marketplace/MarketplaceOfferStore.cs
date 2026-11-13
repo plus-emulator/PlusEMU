@@ -27,12 +27,21 @@ public sealed class MarketplaceOfferStore(IDatabase database) : IMarketplaceOffe
 
     public bool ListFurni(IReadOnlyList<MarketplaceListing> listings)
     {
+        if (listings.Count == 0 || listings.Select(listing => listing.UserId).Distinct().Count() != 1
+            || listings.Any(listing => listing.TotalPrice <= 0 || listing.AskingPrice < 0 || listing.AskingPrice > listing.TotalPrice)) {
+            return false;
+        }
+
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
         try {
-            foreach (var listing in listings) {
+            foreach (var userId in listings.Select(listing => listing.UserId).Distinct().Order()) {
+                MarketplaceCommit.LockUser(connection, transaction, userId);
+            }
+
+            foreach (var listing in listings.OrderBy(listing => listing.FurniId)) {
                 if (connection.ExecuteScalar<int>("SELECT COUNT(*) FROM room_music_playlist WHERE player_id=@FurniId OR disc_id=@FurniId",
                     new { listing.FurniId }, transaction) != 0) {
                     return false;
@@ -56,20 +65,20 @@ public sealed class MarketplaceOfferStore(IDatabase database) : IMarketplaceOffe
                         listing.LimitedStack
                     }, transaction);
                 // TODO @80O: Do not delete items from the items table when putting on marketplace. Just reference the furniture instead.
-                var removed = connection.Execute("DELETE FROM `items` WHERE `id` = @FurniId AND `user_id` = @UserId AND `room_id` = 0 LIMIT 1",
-                    new { listing.FurniId, listing.UserId }, transaction);
+                var removed = connection.Execute("DELETE FROM `items` WHERE `id` = @FurniId AND `user_id` = @UserId AND `room_id` = 0 AND base_item=@ItemId LIMIT 1",
+                    new { listing.FurniId, listing.UserId, listing.ItemId }, transaction);
 
                 if (removed != 1) {
                     throw new InvalidOperationException($"Furni {listing.FurniId} was not removed from user {listing.UserId}; the offer was not published.");
                 }
             }
 
-            transaction.Commit();
+            MarketplaceCommit.Complete(database, connection, transaction, listings[0].UserId, "list");
 
             return true;
         }
         catch {
-            transaction.Rollback();
+            MarketplaceCommit.Rollback(transaction);
             throw;
         }
     }
@@ -81,6 +90,7 @@ public sealed class MarketplaceOfferStore(IDatabase database) : IMarketplaceOffe
         using var transaction = connection.BeginTransaction();
 
         try {
+            MarketplaceCommit.LockUser(connection, transaction, userId);
             var sold = connection.Query<MarketplaceSoldOffer>("SELECT `offer_id` AS OfferId, `asking_price` AS AskingPrice FROM `catalog_marketplace_offers` " +
                 "WHERE `user_id` = @userId AND `state` = '2' FOR UPDATE", new { userId }, transaction).ToList();
             long owed = 0;
@@ -112,12 +122,12 @@ public sealed class MarketplaceOfferStore(IDatabase database) : IMarketplaceOffe
                 throw new InvalidOperationException($"User {userId} was not paid; the sold offers stay queued.");
             }
 
-            transaction.Commit();
+            MarketplaceCommit.Complete(database, connection, transaction, userId, "redeem");
 
             return credits;
         }
         catch {
-            transaction.Rollback();
+            MarketplaceCommit.Rollback(transaction);
             throw;
         }
     }

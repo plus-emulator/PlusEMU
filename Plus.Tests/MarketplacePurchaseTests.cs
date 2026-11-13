@@ -36,9 +36,48 @@ public class MarketplacePurchaseTests
             ServerPacketHeader.FurniListAddComposer, ServerPacketHeader.FurniListUpdateComposer, ServerPacketHeader.MarketplaceBuyOfferResultComposer,
         }, sent.Select(message => message.Header));
         Assert.Equal(new byte[] { 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5 }, sent[^1].Payload);
-        Assert.Equal(101, averages[55]);
-        Assert.Equal(1, counts[55]);
+        Assert.Empty(averages);
+        Assert.Empty(counts);
         Assert.Equal(5, store.Requests.Single().OfferId);
+    }
+
+    [Fact]
+    public void NotificationFailureKeepsTheCommittedDeliveryInMemory()
+    {
+        var store = new ClaimStore(Claim());
+        var buyer = Buyer(credits: 1000);
+        var (client, _) = HabbiconTestSupport.Client(buyer);
+        client.SendCallback = _ => throw new IOException("Transport closed");
+
+        Assert.Throws<IOException>(() => Service(store, new(), new()).Buy(client, 5));
+
+        Assert.Equal(899, buyer.Credits);
+        Assert.NotNull(buyer.Inventory!.Furniture.GetItem(77));
+        Assert.Single(store.Requests);
+    }
+
+    [Fact]
+    public async Task ActiveTradingSanctionRejectsDirectPurchaseWithoutClaiming()
+    {
+        var store = new ClaimStore(Claim());
+        var buyer = Buyer(credits: 1000);
+        buyer.TradingLockExpiresAt = Now.AddMinutes(1);
+        var (client, sent) = HabbiconTestSupport.Client(buyer);
+        await Buy(store, new(), new()).Parse(client, Packet(5));
+        Assert.Empty(store.Requests);
+        Assert.Equal(1000, buyer.Credits);
+        Assert.DoesNotContain(ServerPacketHeader.CreditBalanceComposer, sent.Select(message => message.Header));
+    }
+
+    [Fact]
+    public void ConfiguredExpirationControlsThePurchaseCutoff()
+    {
+        var store = new ClaimStore(Claim());
+        var buyer = Buyer(credits: 1000);
+        var (client, _) = HabbiconTestSupport.Client(buyer);
+        var policy = new MarketplaceFeePolicy(new TestRoomSettings(new() { ["catalog.marketplace.expiration_hours"] = "168" }));
+        Assert.Equal(MarketplacePurchaseOutcome.Bought, Service(store, new(), new(), policy).Buy(client, 5));
+        Assert.Equal(Now.AddDays(-7), Assert.Single(store.Requests).ListedBefore);
     }
 
     [Fact]
@@ -119,7 +158,7 @@ public class MarketplacePurchaseTests
         }
 
         offer.Rows.Add("1", Now.AddSeconds(-1000).UtcDateTime, 101, "", 900u, 77u, 7u, 0, 0);
-        var database = new GroupManagementTests.RecordingDatabase { OfferRows = offer };
+        var database = new GroupManagementTests.RecordingDatabase { OfferRows = offer, Scalar = 899 };
         var (client, _) = HabbiconTestSupport.Client(Buyer(credits: 1000));
 
         Assert.Equal(MarketplacePurchaseOutcome.Bought, Service(new MarketplacePurchaseStore(database), new(), new()).Buy(client, 5));
@@ -127,7 +166,10 @@ public class MarketplacePurchaseTests
         Assert.Equal(899, client.GetHabbo().Credits);
         Assert.Equal(new[] { "commit", "dispose" }, database.Transactions);
         Assert.Single(database.Writes, write => write.Sql.StartsWith("INSERT INTO `items`", StringComparison.Ordinal));
-        MarketplaceRedemptionTests.AssertCreditsWritten(database, userId: 8, credits: 899);
+        var debit = Assert.Single(database.Writes, write => write.Sql.StartsWith("UPDATE `users` SET `credits` = `credits` -", StringComparison.Ordinal));
+        Assert.Contains("`credits` >= @TotalPrice", debit.Sql);
+        Assert.Contains(8, debit.Parameters.Values);
+        Assert.Contains(101, debit.Parameters.Values);
     }
 
     [Fact]
@@ -147,7 +189,7 @@ public class MarketplacePurchaseTests
     private static BuyOfferEvent Buy(IMarketplacePurchaseStore store, Dictionary<int, int> averages, Dictionary<int, int> counts) =>
         new(Service(store, averages, counts));
 
-    private static MarketplacePurchaseService Service(IMarketplacePurchaseStore store, Dictionary<int, int> averages, Dictionary<int, int> counts)
+    private static MarketplacePurchaseService Service(IMarketplacePurchaseStore store, Dictionary<int, int> averages, Dictionary<int, int> counts, IMarketplaceFeePolicy? policy = null)
     {
         var definitions = new Dictionary<uint, ItemDefinition> { [900] = Definition() };
         var items = CatalogSnapshotTestSupport.Proxy<IItemDataManager>((method, _) => method == "get_Items" ? definitions : throw new InvalidOperationException(method));
@@ -158,7 +200,7 @@ public class MarketplacePurchaseTests
             _ => throw new InvalidOperationException(method),
         });
 
-        return new MarketplacePurchaseService(store, items, marketplace, new FixedClock(Now));
+        return new MarketplacePurchaseService(store, items, marketplace, new FixedClock(Now), policy);
     }
 
     private static MarketplaceClaimedOffer Claim() => new(101, 55, new InventoryItem { Id = 77, OwnerId = 8, Definition = Definition(), ExtraData = FurniObjectData.Empty }, 899);

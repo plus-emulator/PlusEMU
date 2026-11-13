@@ -66,6 +66,7 @@ public enum PetPlacementError
 public enum MarketplaceOfferEligibility
 {
     Allowed = 1,
+    NoTradingPass = 3,
     TradingLocked = 6
 }
 

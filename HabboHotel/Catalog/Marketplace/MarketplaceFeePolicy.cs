@@ -15,6 +15,11 @@ public interface IMarketplaceFeePolicy
 
     /// <summary>What the hotel keeps of a buyer-facing price: the client's own formula, so the seller sees the same payout the server pays.</summary>
     int Fee(int price);
+    int Commission => SellingFeePercentage;
+    int OfferMinimumPrice => 1;
+    int OfferMaximumPrice => 99999999;
+    int OfferExpirationHours => 48;
+    int MaximumOfferCount => 500;
 }
 
 // The marketplace window shows the seller `price - ceil(round(1000 * price * (sellingFeePercentage / 100 + 0.5 * price / halfTaxLimit)) / 1000)` for the price typed.
@@ -24,9 +29,16 @@ public sealed class MarketplaceFeePolicy(ISettingsManager settings) : IMarketpla
 {
     public int SellingFeePercentage => Math.Clamp(Read("catalog.marketplace.fee.percentage", 1), 0, 100);
 
+    public int Commission => Math.Clamp(Read("catalog.marketplace.commission", SellingFeePercentage), 0, 100);
+
     public int RevenueLimit => Math.Max(0, Read("catalog.marketplace.fee.revenue_limit", 0));
 
     public int HalfTaxLimit => Math.Max(1, Read("catalog.marketplace.fee.half_tax_limit", int.MaxValue));
+
+    public int OfferMinimumPrice => Math.Clamp(Read("catalog.marketplace.price.minimum", 1), 1, 99999999);
+    public int OfferMaximumPrice => Math.Clamp(Read("catalog.marketplace.price.maximum", 99999999), OfferMinimumPrice, 99999999);
+    public int OfferExpirationHours => Math.Clamp(Read("catalog.marketplace.expiration_hours", 48), 1, 8760);
+    public int MaximumOfferCount => Math.Clamp(Read("catalog.marketplace.batch_limit", 500), 1, 500);
 
     public int Fee(int price) => Fee(price, SellingFeePercentage, HalfTaxLimit);
 

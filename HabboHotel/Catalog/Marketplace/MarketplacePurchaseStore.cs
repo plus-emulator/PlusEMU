@@ -1,4 +1,5 @@
 using Dapper;
+using MySqlConnector;
 using Plus.Database;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Users.Inventory.Furniture;
@@ -26,7 +27,7 @@ public interface IMarketplacePurchaseStore
     MarketplacePurchaseResult Claim(MarketplacePurchaseRequest request);
 }
 
-public sealed class MarketplacePurchaseStore(IDatabase database) : IMarketplacePurchaseStore
+public sealed class MarketplacePurchaseStore(IDatabase database, TimeProvider? time = null) : IMarketplacePurchaseStore
 {
     // Column types as MariaDB stores them: user_id and item_id are unsigned, the limited columns signed.
     private sealed class OfferRow
@@ -34,6 +35,7 @@ public sealed class MarketplacePurchaseStore(IDatabase database) : IMarketplaceP
         public string State { get; set; } = "";
         public DateTimeOffset? ListedAt { get; set; }
         public int TotalPrice { get; set; }
+        public int AskingPrice { get; set; }
         public string ExtraData { get; set; } = "";
         public uint ItemId { get; set; }
         public uint FurniId { get; set; }
@@ -44,12 +46,23 @@ public sealed class MarketplacePurchaseStore(IDatabase database) : IMarketplaceP
 
     public MarketplacePurchaseResult Claim(MarketplacePurchaseRequest request)
     {
+        for (var attempt = 0; ; attempt++) {
+            try {
+                return ClaimOnce(request);
+            }
+            catch (MySqlException error) when (attempt < 3 && error.Number is 1020 or 1205 or 1213) { }
+        }
+    }
+
+    private MarketplacePurchaseResult ClaimOnce(MarketplacePurchaseRequest request)
+    {
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
         try {
-            var offer = connection.QuerySingleOrDefault<OfferRow>("SELECT `state` AS State, `listed_at` AS ListedAt, `total_price` AS TotalPrice, `extra_data` AS ExtraData, " +
+            MarketplaceCommit.LockUser(connection, transaction, request.BuyerId);
+            var offer = connection.QuerySingleOrDefault<OfferRow>("SELECT `state` AS State, `listed_at` AS ListedAt, `total_price` AS TotalPrice, `asking_price` AS AskingPrice, `extra_data` AS ExtraData, " +
                 "`item_id` AS ItemId, `furni_id` AS FurniId, `user_id` AS UserId, `limited_number` AS LimitedNumber, `limited_stack` AS LimitedStack " +
                 "FROM `catalog_marketplace_offers` WHERE `offer_id` = @OfferId LIMIT 1 FOR UPDATE", new { request.OfferId }, transaction);
 
@@ -78,18 +91,27 @@ public sealed class MarketplacePurchaseStore(IDatabase database) : IMarketplaceP
             }
 
             // A negative price would credit the buyer, and the limited columns are unsigned in the delivered item.
-            if (offer.TotalPrice <= 0 || offer.LimitedNumber < 0 || offer.LimitedStack < 0) {
+            if (offer.TotalPrice <= 0 || offer.AskingPrice < 0 || offer.AskingPrice > offer.TotalPrice || offer.LimitedNumber < 0 || offer.LimitedStack < 0) {
                 return Refuse(transaction, MarketplacePurchaseRefusal.InvalidOffer);
-            }
-
-            if (offer.TotalPrice > request.BuyerCredits) {
-                return Refuse(transaction, MarketplacePurchaseRefusal.InsufficientCredits);
             }
 
             // Everything that can fail on the way to delivery runs before the first write: parsing the furni data, building the inventory item.
             var delivery = new MarketplaceDelivery(offer.FurniId, offer.ItemId, offer.ExtraData,
                 Convert.ToUInt32(offer.LimitedNumber), Convert.ToUInt32(offer.LimitedStack), definition);
             var prepared = request.Prepare(delivery);
+
+            if (offer.TotalPrice > request.BuyerCredits) {
+                return Refuse(transaction, MarketplacePurchaseRefusal.InsufficientCredits);
+            }
+
+            // Debit stored credits without discarding rewards still pending in the live wallet.
+            var charged = connection.Execute("UPDATE `users` SET `credits` = `credits` - @TotalPrice " +
+                "WHERE `id` = @BuyerId AND `credits` >= @TotalPrice LIMIT 1",
+                new { offer.TotalPrice, BuyerId = request.BuyerId }, transaction);
+
+            if (charged != 1) {
+                return Refuse(transaction, MarketplacePurchaseRefusal.InsufficientCredits);
+            }
 
             var sold = connection.Execute("UPDATE `catalog_marketplace_offers` SET `state` = '2' WHERE `offer_id` = @OfferId AND `state` = '1' LIMIT 1",
                 new { request.OfferId }, transaction);
@@ -107,19 +129,37 @@ public sealed class MarketplacePurchaseStore(IDatabase database) : IMarketplaceP
                 throw new InvalidOperationException($"Furni {offer.FurniId} was not delivered; nothing was charged.");
             }
 
-            var credits = request.BuyerCredits - offer.TotalPrice;
-
-            if (connection.Execute("UPDATE users SET credits = @credits WHERE id = @BuyerId LIMIT 1", new { credits, request.BuyerId }, transaction) != 1) {
-                throw new InvalidOperationException($"User {request.BuyerId} was not charged; nothing was delivered.");
-            }
-
+            var soldAt = (time ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+            var itemType = offer.LimitedNumber > 0 ? 3 : definition.Type == ItemType.Wall ? 2 : 1;
+            connection.Execute("""
+                INSERT INTO marketplace_sales(offer_id,buyer_id,seller_id,furni_id,item_id,limited_number,limited_stack,item_type,sprite_id,total_price,seller_amount,sold_at)
+                VALUES(@OfferId,@BuyerId,@sellerId,@FurniId,@ItemId,@LimitedNumber,@LimitedStack,@itemType,@spriteId,@TotalPrice,@AskingPrice,@soldAt);
+                INSERT INTO marketplace_daily_sales(item_type,sprite_id,sale_date,sold,total_price)
+                VALUES(@itemType,@spriteId,@saleDate,1,@TotalPrice)
+                ON DUPLICATE KEY UPDATE sold=sold+1,total_price=total_price+VALUES(total_price);
+                """, new
+            {
+                request.OfferId,
+                request.BuyerId,
+                sellerId = offer.UserId,
+                offer.FurniId,
+                offer.ItemId,
+                offer.LimitedNumber,
+                offer.LimitedStack,
+                itemType,
+                spriteId = definition.SpriteId,
+                offer.TotalPrice,
+                offer.AskingPrice,
+                soldAt,
+                saleDate = soldAt.Date
+            }, transaction);
             RecordSale(connection, transaction, definition.SpriteId, offer.TotalPrice);
-            transaction.Commit();
+            MarketplaceCommit.Complete(database, connection, transaction, request.BuyerId, "buy");
 
-            return new MarketplacePurchaseResult(null, new MarketplaceClaimedOffer(offer.TotalPrice, definition.SpriteId, prepared, credits));
+            return new MarketplacePurchaseResult(null, new MarketplaceClaimedOffer(offer.TotalPrice, definition.SpriteId, prepared, request.BuyerCredits - offer.TotalPrice));
         }
         catch {
-            transaction.Rollback();
+            MarketplaceCommit.Rollback(transaction);
             throw;
         }
     }
@@ -133,7 +173,7 @@ public sealed class MarketplacePurchaseStore(IDatabase database) : IMarketplaceP
 
     private static void RecordSale(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int spriteId, int totalPrice)
     {
-        var id = connection.QuerySingleOrDefault<int?>("SELECT `id` FROM `catalog_marketplace_data` WHERE `sprite` = @spriteId LIMIT 1", new { spriteId }, transaction) ?? 0;
+        var id = connection.QuerySingleOrDefault<int?>("SELECT `id` FROM `catalog_marketplace_data` WHERE `sprite` = @spriteId LIMIT 1 FOR UPDATE", new { spriteId }, transaction) ?? 0;
 
         if (id > 0) {
             connection.Execute("UPDATE `catalog_marketplace_data` SET `sold` = `sold` + 1, `avgprice` = (`avgprice` + @totalPrice) WHERE `id` = @id LIMIT 1",

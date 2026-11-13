@@ -1,7 +1,5 @@
 using System.Data;
 using System.Buffers.Binary;
-using System.Reflection;
-using System.Security.Cryptography;
 using System.Text;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets.Incoming.Marketplace;
@@ -15,24 +13,27 @@ namespace Plus.Tests;
 [Collection("Group purchase")]
 public class MarketplaceOfferSearchTests
 {
-    // SHA-256 of the pre-migration GetOffers payloads (hex) for the scenarios below.
-    private const string BaselinePayloadSha256 = "469dfb6d4672beb5dbf80088b825e95b5390c38fbeb7830e3c96a9e9d0165106";
-
     private static readonly DateTimeOffset Now = DateTimeOffset.FromUnixTimeSeconds(1_700_000_000);
 
     [Fact]
-    public async Task ComposedOffersMatchPreMigrationBaseline()
+    public void SearchPreservesTypedResultsWithoutWritingSharedMarketLists()
     {
-        var lines = new List<string>();
+        var (database, manager) = Fixture(Rows());
+        var snapshot = new MarketplaceOfferSearchService(database, manager, new FixedClock(Now)).Search(-1, -1, "", 0);
+        Assert.Equal(new uint[] { 2, 7, 5, 6 }, snapshot.Offers.Select(offer => offer.OfferId));
+        Assert.Equal(2, snapshot.Offers[1].ItemType);
+        Assert.Equal(new uint[] { 9, 3 }, snapshot.Offers.Where(offer => offer.LimitedNumber > 0).Select(offer => offer.LimitedNumber));
+        Assert.Empty(manager.MarketItems);
+        Assert.Empty(manager.MarketItemKeys);
+    }
 
-        foreach (var scenario in Scenarios()) {
-            var (database, manager) = Fixture(scenario.Rows);
-            var (client, sent) = HabbiconTestSupport.Client(new Habbo { Id = 1, Username = "u" });
-            await new GetOffersEvent(new MarketplaceOfferSearchService(database, manager, new FixedClock(Now))).Parse(client, Packet(scenario.Min, scenario.Max, scenario.Query, scenario.Mode));
-            lines.Add($"{scenario.Name}: {Convert.ToHexString(sent.Single().Payload)}");
-        }
-
-        Assert.Equal(BaselinePayloadSha256, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Concat(lines.Select(line => line + "\n"))))));
+    [Fact]
+    public void ConfiguredExpirationControlsTheSearchCutoff()
+    {
+        var (database, manager) = Fixture(Rows());
+        var policy = new MarketplaceFeePolicy(new TestRoomSettings(new() { ["catalog.marketplace.expiration_hours"] = "168" }));
+        new MarketplaceOfferSearchService(database, manager, new FixedClock(Now), policy).Search(-1, -1, "", 0);
+        Assert.Equal(Now.AddDays(-7), Assert.Single(database.OfferQueries).Parameters["threshold"]);
     }
 
     [Theory]
@@ -46,11 +47,12 @@ public class MarketplaceOfferSearchTests
         await new GetOffersEvent(new MarketplaceOfferSearchService(database, manager, new FixedClock(Now))).Parse(client, Packet(min, max, "ignored", mode));
 
         var query = Assert.Single(database.OfferQueries);
-        Assert.Contains($"ORDER BY `asking_price` {order} LIMIT 500", query.Sql);
+        Assert.Contains($"ORDER BY r.total_price {order},r.offer_id LIMIT 500", query.Sql);
         Assert.DoesNotContain(min.ToString(), query.Sql);
         Assert.Equal(min, query.Parameters["minCost"]);
         Assert.Equal(max, query.Parameters["maxCost"]);
         Assert.Equal(Now.AddSeconds(-172800), query.Parameters["threshold"]);
+        Assert.Equal("%ignored%", query.Parameters["pattern"]);
     }
 
     [Theory]
@@ -87,16 +89,8 @@ public class MarketplaceOfferSearchTests
 
     private static List<object[]> Rows() =>
     [
-        [1u, "1", 100, 50, 0, 0], [2u, "1", 100, 30, 0, 0], [3u, "1", 100, 30, 0, 0], [4u, "2", 200, 70, 0, 0],
-        [5u, "1", 300, 10, 9, 4], [6u, "1", 300, 5, 3, 1], [1u, "1", 100, 1, 0, 0], [7u, "2", 200, 20, 0, 0],
-    ];
-
-    private static IEnumerable<(string Name, int Min, int Max, string Query, int Mode, List<object[]>? Rows)> Scenarios() =>
-    [
-        ("mixed-asc", -1, -1, "", 0, Rows()),
-        ("mixed-desc-bounds", 10, 500, "x", 1, Rows()),
-        ("empty", -1, -1, "", 0, []),
-        ("null-table", -1, -1, "", 0, null),
+        [2u, "1", 100, 30, 0, 0], [7u, "2", 200, 20, 0, 0],
+        [5u, "1", 300, 10, 9, 40], [6u, "1", 300, 5, 3, 40],
     ];
 
     private static (GroupManagementTests.RecordingDatabase Database, IMarketplaceManager Manager) Fixture(List<object[]>? rows)
@@ -124,9 +118,13 @@ public class MarketplaceOfferSearchTests
         table.Columns.Add("TotalPrice", typeof(int));
         table.Columns.Add("LimitedNumber", typeof(int));
         table.Columns.Add("LimitedStack", typeof(int));
+        table.Columns.Add("ExtraData", typeof(string));
+        table.Columns.Add("OfferCount", typeof(int));
+        table.Columns.Add("TotalFound", typeof(int));
+        table.Columns.Add("AveragePrice", typeof(int));
 
         foreach (var row in rows ?? []) {
-            table.Rows.Add(row);
+            table.Rows.Add(row.Concat(new object[] { "", 1, rows!.Count, (int)row[2] * 2 }).ToArray());
         }
 
         return table;
@@ -138,6 +136,51 @@ public class MarketplaceOfferSearchTests
         new MarketPlaceOffersComposer(snapshot).Compose(packet);
 
         return string.Join("|", packet.Writes.Select(write => $"{write.GetType().Name}:{write}"));
+    }
+
+    [Fact]
+    public void SearchTreatsWildcardsAsLiteralTextAndDoesNotInterpolateTheQuery()
+    {
+        var (database, manager) = Fixture([]);
+        new MarketplaceOfferSearchService(database, manager, new FixedClock(Now)).Search(-1, -1, "50%_! ' OR 1=1", 0);
+        var query = Assert.Single(database.OfferQueries);
+        Assert.Equal("%50!%!_!! ' OR 1=1%", query.Parameters["pattern"]);
+        Assert.DoesNotContain("OR 1=1", query.Sql);
+    }
+
+    [Fact]
+    public void OversizedSearchDoesNotReachTheDatabase()
+    {
+        var (database, manager) = Fixture([]);
+        Assert.Empty(new MarketplaceOfferSearchService(database, manager, new FixedClock(Now)).Search(-1, -1, new string('x', 101), 0).Offers);
+        Assert.Empty(database.OfferQueries);
+    }
+
+    [Fact]
+    public void OfferWireSeparatesFloorStuffDataWallDataAndLimitedSerials()
+    {
+        var packet = new HabbiconTestSupport.RecordingPacket();
+        new MarketPlaceOffersComposer(new([
+            new(1, 10, 0, 0, 5, 4, 2, 1, "3"),
+            new(2, 10, 0, 0, 7, 6, 1, 2, "poster"),
+            new(3, 10, 9, 100, 50, 40, 1)
+        ], 700)).Compose(packet);
+        Assert.Equal(new object[] {
+            3,
+            1u, 1, 1, 10u, 0, "3", 5, 0, 4, 2,
+            2u, 1, 2, 10u, "poster", 7, 0, 6, 1,
+            3u, 1, 3, 10u, 9u, 100u, 50, 0, 40, 1,
+            700
+        }, packet.Writes);
+    }
+
+    [Fact]
+    public void StatisticsWireIncludesDailyHistoryBeforeTheItemIdentity()
+    {
+        var packet = new HabbiconTestSupport.RecordingPacket();
+        new MarketplaceItemStatsComposer(2, 55, new MarketplaceItemStats(150, 3,
+            [new(-30, 90, 2), new(0, 150, 4)], 99, 0)).Compose(packet);
+        Assert.Equal(new object[] { 150, 3, 30, 2, -30, 90, 2, 0, 150, 4, 2, 55u, 99, 0 }, packet.Writes);
     }
 
     private static FlashIncomingPacket Packet(params object[] values)

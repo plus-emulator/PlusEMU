@@ -12,7 +12,8 @@ public interface IMarketplaceListingService
     bool TryList(Habbo habbo, IReadOnlyList<uint> itemIds, int furniType, int price);
 }
 
-public sealed class MarketplaceListingService(IMarketplaceOfferStore store, IMarketplaceFeePolicy fee, TimeProvider time, ISettingsManager settings) : IMarketplaceListingService
+public sealed class MarketplaceListingService(IMarketplaceOfferStore store, IMarketplaceFeePolicy fee, TimeProvider time, ISettingsManager settings,
+    IMarketplaceAccessPolicy? access = null) : IMarketplaceListingService
 {
     public const int MaximumOfferCount = 500;
     public const int MinimumPrice = 1;
@@ -20,14 +21,14 @@ public sealed class MarketplaceListingService(IMarketplaceOfferStore store, IMar
 
     public bool TryList(Habbo habbo, IReadOnlyList<uint> itemIds, int furniType, int price)
     {
-        if (furniType is not (1 or 2) || price is < MinimumPrice or > MaximumPrice || itemIds.Count is < 1 or > MaximumOfferCount || itemIds.Distinct().Count() != itemIds.Count) {
+        if (furniType is not (1 or 2) || price < fee.OfferMinimumPrice || price > fee.OfferMaximumPrice || itemIds.Count < 1 || itemIds.Count > fee.MaximumOfferCount || itemIds.Distinct().Count() != itemIds.Count) {
             return false;
         }
 
         // The inventory lock first, then the wallet lock, as a trade does. One listing at a time per account: the inventory check, the committed offers and the in-memory removal stay together.
         lock (habbo.InventoryMutationSync)
             lock (habbo.WalletSync) {
-                if (habbo.WalletClosed || habbo.Inventory is not { } inventory) {
+                if (habbo.WalletClosed || habbo.TradingLockExpiresAt > time.GetUtcNow() || access?.HasTradingPass(habbo) == false || habbo.Inventory is not { } inventory) {
                     return false;
                 }
 
@@ -60,8 +61,8 @@ public sealed class MarketplaceListingService(IMarketplaceOfferStore store, IMar
 
                 var listedAt = time.GetUtcNow();
 
-                if (!store.ListFurni(items.Select(item => new MarketplaceListing(item.Id, item.Definition.Id, habbo.Id, seller, price, item.Definition.PublicName,
-                    item.Definition.SpriteId, furniType == 2 ? "2" : "1", listedAt, item.ExtraData.Serialize(), item.UniqueNumber, item.UniqueSeries)).ToArray())) {
+                if (!MarketplaceCommit.Guard(habbo, () => store.ListFurni(items.Select(item => new MarketplaceListing(item.Id, item.Definition.Id, habbo.Id, seller, price, item.Definition.PublicName,
+                    item.Definition.SpriteId, furniType == 2 ? "2" : "1", listedAt, item.ExtraData.Serialize(), item.UniqueNumber, item.UniqueSeries)).ToArray()))) {
                     return false;
                 }
 

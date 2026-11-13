@@ -65,7 +65,7 @@ public class MarketplaceRedemptionTests
 
         Assert.Equal(1030, client.GetHabbo().Credits);
         Assert.Equal(new[] { "commit", "dispose" }, database.Transactions);
-        Assert.Equal(2, database.Writes.Count);
+        Assert.Equal(3, database.Writes.Count);
         Assert.Single(database.Writes, write => write.Sql.StartsWith("DELETE FROM `catalog_marketplace_offers`", StringComparison.Ordinal));
         AssertCreditsWritten(database, userId: 7, credits: 1030);
         Assert.Single(sent);

@@ -21,7 +21,7 @@ public sealed class MarketplaceRedemptionService(IMarketplaceOfferStore store) :
             }
 
             // The store commits the claim only if the wallet can hold the total, so no sale is removed without being paid.
-            if (store.ClaimSold(habbo.Id, owed => CreditBalance.AddToBalance(habbo.Credits, owed)) is not { } credits) {
+            if (MarketplaceCommit.Guard(habbo, () => store.ClaimSold(habbo.Id, owed => CreditBalance.AddToBalance(habbo.Credits, owed))) is not { } credits) {
                 return;
             }
 

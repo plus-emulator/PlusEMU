@@ -2,6 +2,7 @@ using System.Data;
 using System.Reflection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Plus.Communication.Flash;
+using Plus.Communication.Packets;
 using Plus.Communication.Packets.Incoming.Catalog;
 using Plus.Communication.Packets.Outgoing;
 using Plus.Core;
@@ -577,7 +578,8 @@ public sealed class CatalogPurchaseServiceTests
         InteractionType interaction = InteractionType.None, string extraParam = "", IGroupManager? groups = null, IGroupForumStore? forums = null,
         string itemName = "chair", CatalogProduct? product = null, Plus.HabboHotel.Catalog.BuildersClub.IBuildersClubService? buildersClub = null,
         IReadOnlyList<CatalogProduct>? products = null, RecordingMembership? memberships = null, IPlannedShutdown? plannedShutdown = null,
-        IBadgeManager? badges = null, IAvatarEffectStore? effects = null)
+        IBadgeManager? badges = null, IAvatarEffectStore? effects = null, IHabbiconService? habbicons = null,
+        IHabbiconAchievementService? habbiconAchievements = null)
     {
         var definition = new ItemDefinition
         {
@@ -641,7 +643,7 @@ public sealed class CatalogPurchaseServiceTests
             badges ?? new RecordingBadges(stores: true),
             factory,
             botStore,
-            Proxy<IHabbiconService, EmptyProxy>(),
+            habbicons ?? Proxy<IHabbiconService, EmptyProxy>(),
             memberships ?? new RecordingMembership(),
             rewards,
             tracks,
@@ -651,9 +653,49 @@ public sealed class CatalogPurchaseServiceTests
             new FixedClock(new DateTimeOffset(2040, 2, 3, 4, 5, 6, TimeSpan.Zero)),
             NullLogger<CatalogPurchaseService>.Instance,
             buildersClub,
-            plannedShutdown);
+            plannedShutdown, habbiconAchievements);
 
         return new(service, client, habbo, sent, rewards, factory, botStore, tracks);
+    }
+
+    [Fact]
+    public async Task CatalogHabbiconOnlyReconcilesAfterItsOwnershipHasCommitted()
+    {
+        bool committed = false;
+        int reconciliations = 0;
+        var snapshot = HabbiconTestSupport.Snapshot();
+        var store = CatalogSnapshotTestSupport.Proxy<IHabbiconService>((method, args) =>
+        {
+            Assert.Equal(nameof(IHabbiconService.BuyCatalog), method);
+            Assert.Equal(61, args![1]);
+
+            if (committed) {
+                throw new HabbiconRejected(HabbiconActionError.AlreadyOwned);
+            }
+
+            committed = true;
+
+            return new HabbiconChange(snapshot, [snapshot.RequireItem(61)], null);
+        });
+        var achievements = CatalogSnapshotTestSupport.Proxy<IHabbiconAchievementService>((method, args) =>
+        {
+            Assert.Equal(nameof(IHabbiconAchievementService.Reconcile), method);
+            Assert.True(committed);
+            Assert.Same(snapshot, args![1]);
+            reconciliations++;
+
+            return null;
+        });
+        var context = Context(product: new CatalogProduct { Type = CatalogProductType.Habbicon, HabbiconId = 61 },
+            habbicons: store, habbiconAchievements: achievements);
+        await context.Service.Purchase(context.Client, new(1, 2, "", 1));
+        Assert.Equal(1, reconciliations);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+        context.Sent.Clear();
+        await context.Service.Purchase(context.Client, new(1, 2, "", 1));
+        Assert.Equal(1, reconciliations);
+        Assert.DoesNotContain(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseOKComposer);
+        Assert.Contains(context.Sent, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
     }
 
     private static Habbo Habbo() => new()

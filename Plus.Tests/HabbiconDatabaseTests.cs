@@ -49,7 +49,7 @@ public class HabbiconDatabaseTests
 
             using var connection = new MySqlConnection(connectionString);
             connection.Open();
-            connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Resources/SQLs/Original Database.sql")), commandTimeout: 900);
+            connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/FreshInstall.sql")), commandTimeout: 900);
             _importedConnectionString = connectionString;
         }
     }
@@ -80,6 +80,52 @@ public class HabbiconDatabaseTests
         Execute("UPDATE habbicons SET available = TRUE, default_owned = (id = 28), cost_credits = IF(id IN (28,38,49,60,71), 0, 5), cost_points = 0, points_type = 0");
         Execute("UPDATE habbicon_collections SET cost_credits = 40, cost_points = 0, points_type = 0");
         _service = new(_database, _clock);
+    }
+
+    [HabbiconDatabaseFact]
+    public void ClaimableMembersDoNotCompleteCollectionsUntilTheyAreOwned()
+    {
+        Execute("UPDATE habbicons SET cost_credits = 0 WHERE collection_id = 6 AND id <> 71");
+        var collection = _service.Load(UserId).Collections.Single(set => set.Id == 6);
+
+        foreach (var item in collection.Items.Where(item => item.Id != 61)) {
+            _service.Change(UserId, HabbiconAction.Claim, item.Id);
+        }
+
+        Assert.False(_service.Load(UserId).Collections.Single(set => set.Id == 6).Completed);
+        Assert.Equal(HabbiconState.Reward, _service.Load(UserId).RequireItem(71).State);
+        Assert.Throws<HabbiconRejected>(() => _service.Change(UserId, HabbiconAction.Claim, 71));
+        _service.Change(UserId, HabbiconAction.Claim, 61);
+        Assert.True(_service.Load(UserId).Collections.Single(set => set.Id == 6).Completed);
+        Assert.Equal(HabbiconState.Claimable, _service.Load(UserId).RequireItem(71).State);
+        _service.Change(UserId, HabbiconAction.Claim, 71);
+        Assert.Throws<HabbiconRejected>(() => _service.Change(UserId, HabbiconAction.Claim, 71));
+        Assert.Equal(100, Scalar("SELECT credits FROM users WHERE id = 910001"));
+    }
+
+    [HabbiconDatabaseFact]
+    public void UsingOwnedIconsDoesNotReadCurrencyTablesOrChangeFavoriteAndUnseenState()
+    {
+        _service.Change(UserId, HabbiconAction.Buy, 61);
+        _service.Change(UserId, HabbiconAction.Favorite, 61);
+        Execute("RENAME TABLE user_currencies TO task_habbicons_unused_currencies");
+
+        try {
+            Assert.True(_service.Use(UserId, 61));
+            Assert.True(_service.Use(UserId, 28));
+            Assert.False(_service.Use(UserId, 62));
+            Assert.False(_service.Use(910002, 61));
+        }
+        finally {
+            Execute("RENAME TABLE task_habbicons_unused_currencies TO user_currencies");
+        }
+
+        var snapshot = _service.Load(UserId);
+        Assert.Equal(HabbiconState.Favorite, snapshot.RequireItem(61).State);
+        Assert.Contains(61, snapshot.Unseen);
+        Assert.Equal(new[] { 28, 61 }, snapshot.Recent);
+        Assert.Equal(95, Scalar("SELECT credits FROM users WHERE id = 910001"));
+        Assert.Equal(40, Scalar("SELECT SUM(amount) FROM user_currencies WHERE user_id = 910001"));
     }
 
     [HabbiconDatabaseFact]
@@ -309,6 +355,12 @@ public class HabbiconDatabaseTests
     [HabbiconDatabaseFact]
     public void MigrationRerunPreservesCustomPricesHoldingsAndCatalogOffers()
     {
+        Execute("""
+            INSERT INTO catalog_offers (id, localization_key) VALUES (1999000001, 'habbicon_test')
+            ON DUPLICATE KEY UPDATE localization_key = VALUES(localization_key);
+            INSERT IGNORE INTO catalog_offer_products (offer_id, position, product_type, habbicon_id)
+            VALUES (1999000001, 0, 'habbicon', 62);
+            """);
         _service.Change(UserId, HabbiconAction.Buy, 61);
         _service.Change(UserId, HabbiconAction.Favorite, 61);
         Execute("UPDATE habbicons SET cost_credits = 19 WHERE id = 62; UPDATE habbicon_collections SET cost_credits = 93 WHERE id = 6; UPDATE catalog_offers o JOIN catalog_offer_products p ON p.offer_id = o.id SET o.cost_credits = 27 WHERE p.habbicon_id = 62");

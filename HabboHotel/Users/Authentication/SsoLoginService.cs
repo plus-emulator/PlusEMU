@@ -1,4 +1,5 @@
 using Plus.HabboHotel.Campaigns;
+using Plus.HabboHotel.Habbicons;
 using Plus.HabboHotel.Catalog.BuildersClub;
 using Plus.HabboHotel.Subscriptions;
 using Plus.Communication.Packets;
@@ -36,6 +37,8 @@ public interface ISsoLoginService
 public sealed class SsoLoginService : ISsoLoginService
 {
     private readonly ClientAccessLists _clientAccessLists;
+    private readonly IHabbiconService? _habbicons;
+    private readonly IHabbiconAchievementService? _habbiconAchievements;
     private readonly IAuthenticator _authenticate;
     private readonly IPlannedShutdown? _plannedShutdown;
     private readonly IBadgeManager _badgeManager;
@@ -64,9 +67,12 @@ public sealed class SsoLoginService : ISsoLoginService
         IRewardManager rewardManager, ClubLifecycle clubLifecycle, ClientAccessLists clientAccessLists,
         IUserProcessFactory processFactory, IModeratorTicketService tickets, IAvatarEffectService avatarEffects, IRewardTrackManager rewardTracks, ICampaignCalendarService calendars,
         IBuildersClubService? buildersClub = null, IDailyTaskManager? dailyTasks = null,
-        IPlannedShutdown? plannedShutdown = null)
+        IPlannedShutdown? plannedShutdown = null, IHabbiconService? habbicons = null,
+        IHabbiconAchievementService? habbiconAchievements = null)
     {
         _plannedShutdown = plannedShutdown;
+        _habbicons = habbicons;
+        _habbiconAchievements = habbiconAchievements;
         _buildersClub = buildersClub;
         _dailyTasks = dailyTasks;
         _authenticate = authenticate;
@@ -101,6 +107,11 @@ public sealed class SsoLoginService : ISsoLoginService
             session.Send(new UserRightsComposer(UserRightsSnapshot.Capture(session.GetHabbo().Access)));
             _clientAccessLists.Send(session.GetHabbo());
             session.Send(new AvailabilityStatusComposer(_plannedShutdown?.IsPending == true));
+
+            if (_habbicons is not null && _habbiconAchievements is not null) {
+                _habbiconAchievements.Reconcile(session, _habbicons.Load(session.GetHabbo().Id));
+            }
+
             session.Send(new AchievementScoreComposer(session.GetHabbo().HabboStats?.AchievementPoints ?? 0));
             session.Send(new CfhTopicsInitComposer(CfhTopicCategorySnapshot.Capture(_moderationManager.UserActionPresets)));
             _achievementShowcase.ShowDefinitions(session);

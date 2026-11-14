@@ -10,6 +10,7 @@ using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
 using Plus.HabboHotel.Friends;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Habbicons;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Messenger;
@@ -22,6 +23,60 @@ namespace Plus.Tests;
 public sealed class AchievementPersistenceTests
 {
     private const string Group = "ACH_Test";
+
+    [RoomComponentDatabaseFact]
+    public void HabbiconAchievementWriteFailureDoesNotFailTheCommittedAcquisition()
+    {
+        using var fixture = new Fixture();
+        var manager = fixture.Manager();
+        manager.Achievements.Clear();
+        var achievement = new Achievement { GroupName = "ACH_HabbiconCollected", Category = "explore" };
+        achievement.AddLevel(new AchievementLevel(1, 1, 2, 1));
+        manager.Achievements.Add(achievement.GroupName, achievement);
+        using var connection = fixture.Database.Connection();
+        connection.Execute("DROP TABLE user_achievements");
+        var service = new HabbiconAchievementService(manager);
+        service.Reconcile(fixture.Client, HabbiconTestSupport.Snapshot());
+        Assert.Equal(0, fixture.Habbo.Duckets);
+        Assert.Empty(fixture.Sent);
+        Assert.Equal(0, fixture.Habbo.GetAchievementData(achievement.GroupName)!.Level);
+    }
+
+    [RoomComponentDatabaseFact]
+    public void HabbiconReconciliationPersistsLevelsWithoutRepeatingRewards()
+    {
+        using var fixture = new Fixture();
+        var manager = fixture.Manager();
+        manager.Achievements.Clear();
+
+        foreach (var group in new[] { "ACH_HabbiconCollected", "ACH_HabbiconCollectionComp", "ACH_HabbiconUsed" }) {
+            var achievement = new Achievement { GroupName = group, Category = "explore" };
+            achievement.AddLevel(new AchievementLevel(1, 1, 2, 1));
+            achievement.AddLevel(new AchievementLevel(2, 1, 2, 2));
+            manager.Achievements.Add(group, achievement);
+        }
+
+        var service = new HabbiconAchievementService(manager);
+        var snapshot = HabbiconTestSupport.Snapshot();
+        service.Reconcile(fixture.Client, snapshot);
+        service.Reconcile(fixture.Client, snapshot);
+        var owned = snapshot.Items.ToDictionary();
+        owned[71] = owned[71] with { State = HabbiconState.Owned };
+        snapshot = snapshot with { Items = owned, Collections = [snapshot.Collections[0] with { Completed = true }] };
+        service.Reconcile(fixture.Client, snapshot);
+        service.Reconcile(fixture.Client, snapshot);
+        service.Used(fixture.Client);
+        service.Used(fixture.Client);
+        fixture.Habbo.Save();
+        Assert.Equal((5, 10), fixture.StoredAward());
+        using var connection = fixture.Database.Connection();
+        Assert.Equal(new[] { ("ACH_HabbiconCollected", 2), ("ACH_HabbiconCollectionComp", 1), ("ACH_HabbiconUsed", 2) },
+            connection.Query<(string, int)>("SELECT `group`,level FROM user_achievements WHERE userid=7 ORDER BY `group`").ToArray());
+        var before = fixture.Sent.Count;
+        service.Reconcile(fixture.Client, snapshot);
+        Assert.Equal((5, 10), fixture.StoredAward());
+        Assert.DoesNotContain(fixture.Sent.Skip(before), packet => packet.Header == ServerPacketHeader.AchievementUnlockedComposer);
+    }
 
     [RoomComponentDatabaseFact]
     public async Task LogoutDuringBadgeWaitDoesNotConsumeTheLevelOrAwardPoints()

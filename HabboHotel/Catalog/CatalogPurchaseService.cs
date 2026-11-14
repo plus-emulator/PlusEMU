@@ -45,6 +45,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
     private readonly ICatalogManager _catalogManager;
     private readonly IPlannedShutdown? _plannedShutdown;
     private readonly IHabbiconService _habbicons;
+    private readonly IHabbiconAchievementService? _habbiconAchievements;
     private readonly ISettingsManager _settingsManager;
     private readonly IAchievementManager _achievementManager;
     private readonly IItemDataManager _itemManager;
@@ -74,12 +75,13 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         IClubMembershipService clubMemberships, IClubRewards clubRewards, IRewardTrackManager rewardTracks, IAvatarEffectStore avatarEffects,
         IGroupManager groups, IGroupForumStore forums,
         TimeProvider clock, ILogger<CatalogPurchaseService> logger, IBuildersClubService? buildersClub = null,
-        IPlannedShutdown? plannedShutdown = null)
+        IPlannedShutdown? plannedShutdown = null, IHabbiconAchievementService? habbiconAchievements = null)
     {
         _plannedShutdown = plannedShutdown;
         _buildersClub = buildersClub;
         _catalogManager = catalogManager;
         _habbicons = habbicons;
+        _habbiconAchievements = habbiconAchievements;
         _settingsManager = settingsManager;
         _achievementManager = achievementManager;
         _itemManager = itemManager;
@@ -150,6 +152,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
                 }
 
                 var change = _habbicons.BuyCatalog(session.GetHabbo(), product.HabbiconId, offer.CostCredits, offer.CostPoints, offer.PointsType);
+                _habbiconAchievements?.Reconcile(session, change.Snapshot);
                 HabbiconMessages.Publish(session, change);
                 session.Send(new PurchaseOKComposer());
             }

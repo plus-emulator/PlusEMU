@@ -9,6 +9,7 @@ using Plus.Core.FigureData;
 using Plus.Core.Language;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Campaigns;
+using Plus.HabboHotel.Habbicons;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
 using Plus.HabboHotel.Cache;
@@ -162,6 +163,32 @@ public class SsoLoginServiceTests
         Assert.Equal(3 * 4 + 3 + 4 + 4 + 3 + 4 + 2 + 2 + 5 * 4, settings.Payload.Length);
     }
 
+    [Fact]
+    public async Task LoginReconcilesOwnedHabbiconsBeforePublishingAchievementScore()
+    {
+        var calls = new List<int>();
+        var store = new HabbiconTestSupport.Service();
+        var achievements = Proxy<IHabbiconAchievementService>((method, args) =>
+        {
+            Assert.Equal(nameof(IHabbiconAchievementService.Reconcile), method);
+            var session = (GameClient)args![0]!;
+            Assert.NotNull(session.GetHabbo().HabboStats);
+            Assert.Same(store.Data, args[1]);
+            calls.Add(session.GetHabbo().Id);
+
+            return null;
+        });
+        using var world = new LoginWorld(Task.CompletedTask, habbicons: store, habbiconAchievements: achievements);
+
+        try {
+            await world.Service.Login(world.Client, "valid");
+            Assert.Equal(new[] { world.Habbo.Id }, calls);
+        }
+        finally {
+            ProcessOf(world.Habbo)?.Dispose();
+        }
+    }
+
     private static ProcessComponent? ProcessOf(Habbo habbo) =>
         (ProcessComponent?)typeof(Habbo).GetProperty("Process", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(habbo);
 
@@ -177,7 +204,8 @@ public class SsoLoginServiceTests
         public List<(uint Header, byte[] Payload)> Sent { get; }
         public SsoLoginService Service { get; }
 
-        public LoginWorld(Task rewards, IPlannedShutdown? plannedShutdown = null)
+        public LoginWorld(Task rewards, IPlannedShutdown? plannedShutdown = null, IHabbiconService? habbicons = null,
+            IHabbiconAchievementService? habbiconAchievements = null)
         {
             var calls = Calls;
             var habbo = Habbo = new Habbo
@@ -211,7 +239,7 @@ public class SsoLoginServiceTests
                 Proxy<IAvatarEffectService>((_, _) => ImmutableArray<AvatarEffectEntry>.Empty),
                 Proxy<IRewardTrackManager>((_, _) => { calls.Add("tracks"); return null; }),
                 Proxy<ICampaignCalendarService>((_, _) => { calls.Add("calendar"); return null; }),
-                plannedShutdown: plannedShutdown);
+                plannedShutdown: plannedShutdown, habbicons: habbicons, habbiconAchievements: habbiconAchievements);
         }
 
         public void Dispose() => _lifecycle.Dispose();

@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Plus.Communication.Packets.Incoming.Habbicons;
+using Plus.Communication.Packets;
 using Plus.Communication.Packets.Incoming.Rooms.Chat;
 using Plus.Core.Settings;
 using Plus.HabboHotel.GameClients;
@@ -546,6 +547,50 @@ public sealed class RoomChatServiceTests
         Assert.Equal(61, recorder.Id);
         Assert.False(packet.HasDataRemaining());
         Assert.Empty(sent);
+    }
+
+    [Theory]
+    [InlineData(61, true)]
+    [InlineData(999, false)]
+    public void OnlyConfirmedRoomHabbiconsAdvanceUseAchievements(int id, bool accepted)
+    {
+        var clock = new ZonedClock(Now, TimeZoneInfo.Utc);
+        var world = new World(clock);
+        var uses = new List<int>();
+        var achievements = CatalogSnapshotTestSupport.Proxy<IHabbiconAchievementService>((method, args) =>
+        {
+            Assert.Equal(nameof(IHabbiconAchievementService.Used), method);
+            Assert.Contains(world.SenderPackets, packet => packet.Header == ServerPacketHeader.RoomUseHabbiconComposer);
+            uses.Add(((GameClient)args![0]!).GetHabbo().Id);
+
+            return null;
+        });
+        var handler = new RoomHabbiconService(new HabbiconTestSupport.Service(), world.Rewards, clock, achievements);
+        handler.Trigger(world.Sender, id);
+        handler.Trigger(world.Sender, id);
+        Assert.Equal(accepted ? 1 : 0, uses.Count);
+        Assert.Equal(accepted ? 1 : 0, world.Rewards.Progresses.Count);
+    }
+
+    [Theory]
+    [InlineData("Use")]
+    [InlineData("Load")]
+    public void RejectedRoomHabbiconStorageCannotPublishOrAdvanceProgress(string failedOperation)
+    {
+        var world = new World(new FixedTimeProvider(Now));
+        var store = CatalogSnapshotTestSupport.Proxy<IHabbiconService>((method, _) =>
+        {
+            if (method == failedOperation) {
+                throw new HabbiconRejected(HabbiconActionError.InvalidRequest);
+            }
+
+            return true;
+        });
+        var achievements = CatalogSnapshotTestSupport.Proxy<IHabbiconAchievementService>((method, _) => throw new InvalidOperationException(method));
+        new RoomHabbiconService(store, world.Rewards, new FixedTimeProvider(Now), achievements).Trigger(world.Sender, 61);
+        Assert.Empty(world.SenderPackets);
+        Assert.Empty(world.Rewards.Progresses);
+        Assert.Null(world.Sender.GetHabbo().LastHabbiconTriggeredAt);
     }
 
     private sealed class RecordingRoomHabbicons : IRoomHabbiconService

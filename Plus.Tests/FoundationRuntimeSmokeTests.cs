@@ -94,7 +94,10 @@ public sealed class FoundationRuntimeSmokeTests(ITestOutputHelper output)
                 Assert.Equal(42u, habbo.HomeRoom);
                 Assert.True(habbo.AllowMimic);
                 Assert.True(habbo.DisableForcedEffects);
-                Assert.Equal(123, Assert.IsType<HabboStats>(habbo.HabboStats).AchievementPoints);
+                Assert.Equal(133, Assert.IsType<HabboStats>(habbo.HabboStats).AchievementPoints);
+                Assert.Equal((1, 1), (habbo.GetAchievementData("ACH_HabbiconCollected")!.Level,
+                    habbo.GetAchievementData("ACH_HabbiconCollected")!.Progress));
+                Assert.Null(habbo.GetAchievementData("ACH_HabbiconUsed"));
                 Assert.Equal((1, 0), (habbo.GetAchievementData("ACH_SafetyQuizGraduate")!.Level, habbo.GetAchievementData("ACH_SafetyQuizGraduate")!.Progress));
                 Assert.Equal((2, 3), (habbo.GetAchievementData("ACH_FixtureProgress")!.Level, habbo.GetAchievementData("ACH_FixtureProgress")!.Progress));
                 Assert.Null(habbo.GetAchievementData("ACH_OtherUserOnly"));

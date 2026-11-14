@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using MySqlConnector;
 using Plus.Communication.Packets.Outgoing.Habbicons;
 using Plus.Communication.Packets.Outgoing.Rooms.Chat;
 using Plus.HabboHotel.GameClients;
@@ -12,7 +14,8 @@ public interface IRoomHabbiconService
 }
 
 public sealed class RoomHabbiconService(IHabbiconService habbicons, IRewardTrackManager rewards,
-    TimeProvider clock) : IRoomHabbiconService
+    TimeProvider clock, IHabbiconAchievementService? achievements = null,
+    ILogger<RoomHabbiconService>? logger = null) : IRoomHabbiconService
 {
     public void Trigger(GameClient session, int id)
     {
@@ -43,14 +46,31 @@ public sealed class RoomHabbiconService(IHabbiconService habbicons, IRewardTrack
             return;
         }
 
-        if (!habbicons.Use(habbo.Id, id)) {
+        HabbiconSnapshot snapshot;
+
+        try {
+            if (!habbicons.Use(habbo.Id, id)) {
+                return;
+            }
+
+            snapshot = habbicons.Load(habbo.Id);
+        }
+        catch (HabbiconRejected rejected) {
+            logger?.LogWarning("Habbicon use rejected for user {UserId}, code {Code}", habbo.Id, rejected.Code);
+
+            return;
+        }
+        catch (MySqlException exception) {
+            logger?.LogError(exception, "Unable to use Habbicon for user {UserId}", habbo.Id);
+
             return;
         }
 
-        rewards.Progress(session, RewardTrackActions.UseHabbicon);
         habbo.LastHabbiconTriggeredAt = now;
         user.UnIdle();
         room.SendPacket(new RoomUseHabbiconComposer(user.VirtualId, id));
-        session.Send(new UserHabbiconsComposer(habbicons.Load(habbo.Id)));
+        session.Send(new UserHabbiconsComposer(snapshot));
+        achievements?.Used(session);
+        rewards.Progress(session, RewardTrackActions.UseHabbicon);
     }
 }

@@ -2,6 +2,7 @@ using System.Data;
 using Dapper;
 using MySqlConnector;
 using Plus.Database;
+using Plus.Database.Migrator;
 using Plus.HabboHotel.Habbicons;
 using Plus.HabboHotel.Users;
 using Xunit;
@@ -49,7 +50,11 @@ public class HabbiconDatabaseTests
 
             using var connection = new MySqlConnection(connectionString);
             connection.Open();
-            connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/FreshInstall.sql")), commandTimeout: 900);
+
+            foreach (var statement in SqlScript.Split(File.ReadAllText(HabbiconPacketTests.Repo("Database/FreshInstall.sql")))) {
+                connection.Execute(statement, commandTimeout: 900);
+            }
+
             _importedConnectionString = connectionString;
         }
     }

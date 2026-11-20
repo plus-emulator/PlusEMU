@@ -6,7 +6,7 @@ namespace Plus.Tests;
 
 public partial class PlacedFurniRoomTests
 {
-    private const uint GamePlayerValueHeader = 1727;
+    private const uint GamePlayerValueHeader = 786;
 
     [Fact]
     public void StartingAFreezeGameShowsThePlayerThreeLives()

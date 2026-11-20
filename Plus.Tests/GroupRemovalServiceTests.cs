@@ -49,20 +49,20 @@ public sealed class GroupRemovalServiceTests
             NullLogger<PacketManager>.Instance);
         var server = new GroupDispatchServer(manager);
         var client = GroupClient(server);
-        var confirmation = GroupFrame(2272);
+        var confirmation = GroupFrame(542);
         client.OnReceived(confirmation, 0, confirmation.Length);
         await server.Pending;
         Assert.Equal(new[] { ("confirm", 9, 8) }, calls.Calls);
         Assert.True(server.Consumed);
 
         client = GroupClient(server);
-        var removal = GroupFrame(858, block);
+        var removal = GroupFrame(1049, block);
         client.OnReceived(removal, 0, removal.Length);
         await server.Pending;
         Assert.Equal(new[] { ("confirm", 9, 8), ("remove", 9, 8) }, calls.Calls);
         Assert.True(server.Consumed);
-        Assert.Equal(858u, ClientPacketHeader.RemoveGroupMemberEvent);
-        Assert.Equal(2272u, ClientPacketHeader.ConfirmRemoveGroupMemberEvent);
+        Assert.Equal(1049u, ClientPacketHeader.RemoveGroupMemberEvent);
+        Assert.Equal(542u, ClientPacketHeader.ConfirmRemoveGroupMemberEvent);
         Assert.False(manager.IsRegistered(65409));
 
         client = GroupClient(server);

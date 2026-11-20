@@ -45,7 +45,7 @@ public partial class ModernWiredRuntimeTests
         var open = new HabbiconTestSupport.RecordingPacket();
         new WiredLinkOpenComposer(9).Compose(open);
         Assert.Equal(new object[] { 9u }, open.Writes);
-        Assert.Equal((1803u, 3537u, 2463u, 2139u, 3241u), (new WiredLinkOpenComposer(0).MessageId,
+        Assert.Equal((2887u, 2003u, 3980u, 3931u, 3668u), (new WiredLinkOpenComposer(0).MessageId,
             new WiredLinkConfigurationComposer(0, 0, "", false, []).MessageId,
             new WiredLinkOperationResultComposer(0, 0, 0, WiredLinkResult.Ok, null, "", []).MessageId,
             new WiredLinkConnectionsComposer(0, 0, "", []).MessageId, new WiredLinkNetworkInvalidatedComposer(0, 0, "").MessageId));
@@ -105,7 +105,7 @@ public partial class ModernWiredRuntimeTests
         var delta = new HabbiconTestSupport.RecordingPacket();
         new WiredLabelsUpdateComposer([], [5, 6]).Compose(delta);
         Assert.Equal(new object[] { 0, 2, 5u, 6u }, delta.Writes);
-        Assert.Equal((2491u, 1596u), (new WiredLabelsComposer([]).MessageId, new WiredLabelsUpdateComposer([], []).MessageId));
+        Assert.Equal((2469u, 3925u), (new WiredLabelsComposer([]).MessageId, new WiredLabelsUpdateComposer([], []).MessageId));
     }
 
     [Theory]

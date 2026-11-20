@@ -60,7 +60,7 @@ public sealed class CollectiblesHubTests
     public void HeadersMatchAir()
     {
         Assert.Equal(
-            new uint[] { 1534, 1496, 1479, 2572, 1730, 3226, 784, 3993, 3301, 672, 3707, 133 },
+            new uint[] { 2649, 1555, 540, 3178, 3799, 1223, 159, 715, 1857, 2469, 3987, 949 },
             new[]
             {
                 ClientPacketHeader.GetCollectibleWalletAddressesEvent, ClientPacketHeader.GetCollectorScoreEvent, ClientPacketHeader.GetNftCollectionsEvent,
@@ -69,7 +69,7 @@ public sealed class CollectiblesHubTests
                 ClientPacketHeader.MintCollectibleEvent, ClientPacketHeader.GetNftClaimsEvent, ClientPacketHeader.ClaimNftRewardsEvent,
             });
         Assert.Equal(
-            new uint[] { 1645, 2899, 70, 1901, 2380, 177, 3694, 2640, 57, 2964, 2802, 2361, 318 },
+            new uint[] { 3804, 1520, 2489, 3663, 2551, 3329, 1305, 1955, 270, 3047, 1645, 3082, 2128 },
             new[]
             {
                 ServerPacketHeader.CollectibleWalletAddressesComposer, ServerPacketHeader.CollectorScoreComposer, ServerPacketHeader.NftCollectionsComposer,
@@ -92,10 +92,10 @@ public sealed class CollectiblesHubTests
         var manager = new PacketManager(handlers, NullLogger<PacketManager>.Instance);
 
         Assert.Equal(12, handlers.Count);
-        Assert.All(new uint[] { 1534, 1496, 1479, 2572, 1730, 3226, 784, 3993, 3301, 672, 3707, 133 },
+        Assert.All(new uint[] { 2649, 1555, 540, 3178, 3799, 1223, 159, 715, 1857, 2469, 3987, 949 },
             header => Assert.True(manager.IsRegistered(header), $"{header} has no handler"));
         // AIR's mint token, transfer fee and transfer requests.
-        Assert.All(new uint[] { 1252, 3766, 2688, 94, 2385 }, header => Assert.False(manager.IsRegistered(header), $"{header} still has a handler"));
+        Assert.All(new uint[] { 2258, 341, 3810, 3114, 1106 }, header => Assert.False(manager.IsRegistered(header), $"{header} still has a handler"));
     }
 
     [RoomComponentDatabaseFact]

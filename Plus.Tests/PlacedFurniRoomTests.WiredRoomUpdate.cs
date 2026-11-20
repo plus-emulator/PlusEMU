@@ -15,7 +15,7 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// WiredRoomUpdate (2454: bool rollback). Reload sends everyone out of the room and back in, with the furni as they are now.
+// WiredRoomUpdate (1504: bool rollback). Reload sends everyone out of the room and back in, with the furni as they are now.
 // Rollback does the same, but first puts every furni back to its place and state from when the room was loaded.
 // Reload needs Wired modify rights; rollback needs the room owner or staff.
 public partial class PlacedFurniRoomTests
@@ -151,9 +151,9 @@ public partial class PlacedFurniRoomTests
     {
         var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
 
-        Assert.Equal(2454u, Plus.Communication.Packets.Incoming.ClientPacketHeader.WiredRoomUpdateEvent);
-        Assert.Equal(Plus.Communication.Packets.Incoming.ClientPacketHeader.WiredRoomUpdateEvent, revision.IncomingIdToInternalIdMapping[2454]);
-        Assert.Single(revision.IncomingHeaders, entry => entry.Value == 2454);
+        Assert.Equal(1504u, Plus.Communication.Packets.Incoming.ClientPacketHeader.WiredRoomUpdateEvent);
+        Assert.Equal(Plus.Communication.Packets.Incoming.ClientPacketHeader.WiredRoomUpdateEvent, revision.IncomingIdToInternalIdMapping[1504]);
+        Assert.Single(revision.IncomingHeaders, entry => entry.Value == 1504);
     }
 
     private (RoomStateStore Store, List<uint> Unloads) LoadedRoom()

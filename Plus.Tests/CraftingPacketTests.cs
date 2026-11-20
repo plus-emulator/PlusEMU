@@ -78,8 +78,8 @@ public sealed class CraftingPacketTests
         var recipe = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = recipeStream.ToArray()[6..] };
 
         // October AIR crafting request identities are pinned in the paired packet manifest.
-        await manager.TryExecutePacket(client, 1942, altar);
-        await manager.TryExecutePacket(client, 2524, recipe);
+        await manager.TryExecutePacket(client, 2728, altar);
+        await manager.TryExecutePacket(client, 1460, recipe);
 
         Assert.Equal(new[] { "products:100000", "recipe:recipe" }, service.Calls);
         Assert.False(altar.HasDataRemaining());

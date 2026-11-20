@@ -14,11 +14,11 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// The supported client sends the room log page request under header 3696 and registers the room log page frame under header 976.
+// The supported client sends the room log page request under header 357 and registers the room log page frame under header 976.
 public class WiredRoomLogHeaderCompatibilityTests
 {
-    private const uint ClientRequestId = 3696;
-    private const uint ClientPageId = 1508;
+    private const uint ClientRequestId = 357;
+    private const uint ClientPageId = 382;
 
     [Fact]
     public void TheClientsLogPageRequestIdResolvesToTheRoomLogPageHandler()

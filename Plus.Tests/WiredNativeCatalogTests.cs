@@ -29,10 +29,10 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         var diff = new WiredVariableHashesEvent(new WiredVariableMenuService());
         using var manager = new PacketManager([hash, diff], NullLogger<PacketManager>.Instance);
         var registered = (Dictionary<uint, IPacketEvent>)typeof(PacketManager).GetField("_incomingPackets", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(manager)!;
-        Assert.Same(hash, registered[859]);
-        Assert.Same(diff, registered[2650]);
-        Assert.Equal(2007u, ServerPacketHeader.WiredAllVariablesHashComposer);
-        Assert.Equal(517u, ServerPacketHeader.WiredAllVariablesDiffComposer);
+        Assert.Same(hash, registered[2376]);
+        Assert.Same(diff, registered[2186]);
+        Assert.Equal(431u, ServerPacketHeader.WiredAllVariablesHashComposer);
+        Assert.Equal(1774u, ServerPacketHeader.WiredAllVariablesDiffComposer);
     }
 
     [Fact]
@@ -322,7 +322,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         };
         new WiredVariableMenuService().ShowCatalogDiff(fixture.World.Room, fixture.World.Client, new Dictionary<string, int>());
         Assert.Single(fixture.World.Packets);
-        Assert.Equal(517u, fixture.World.Packets[0].Header);
+        Assert.Equal(1774u, fixture.World.Packets[0].Header);
     }
 
     [Fact]
@@ -356,7 +356,7 @@ public sealed class WiredNativeCatalogTests(Xunit.Abstractions.ITestOutputHelper
         var (client, sent) = HabbiconTestSupport.Client(new Habbo());
         client.Send(new WiredNativeCatalogDiffComposer(new(hash, true, ["removed:opaque"], [row])));
         var frame = Assert.Single(sent);
-        Assert.Equal(517u, frame.Header);
+        Assert.Equal(1774u, frame.Header);
         var packet = new FlashIncomingPacket { Buffer = frame.Payload };
         Assert.Equal(hash, packet.ReadInt());
         Assert.True(packet.ReadBool());

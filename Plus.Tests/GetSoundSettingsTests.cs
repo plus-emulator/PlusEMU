@@ -38,11 +38,11 @@ public sealed class GetSoundSettingsTests
         using var manager = Manager();
         var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
 
-        Assert.Equal(2886u, ClientPacketHeader.GetSoundSettingsEvent);
-        Assert.True(manager.IsRegistered(2886));
-        Assert.Equal(2886u, revision.IncomingHeaders[nameof(ClientPacketHeader.GetSoundSettingsEvent)]);
-        Assert.Single(revision.IncomingHeaders, pair => pair.Value == 2886u);
-        Assert.Equal(2886u, revision.IncomingIdToInternalIdMapping[2886]);
+        Assert.Equal(2887u, ClientPacketHeader.GetSoundSettingsEvent);
+        Assert.True(manager.IsRegistered(2887));
+        Assert.Equal(2887u, revision.IncomingHeaders[nameof(ClientPacketHeader.GetSoundSettingsEvent)]);
+        Assert.Single(revision.IncomingHeaders, pair => pair.Value == 2887u);
+        Assert.Equal(2887u, revision.IncomingIdToInternalIdMapping[2887]);
     }
 
     [Fact]
@@ -51,11 +51,11 @@ public sealed class GetSoundSettingsTests
         var (session, sent) = HabbiconTestSupport.Client(User());
         using var manager = Manager();
 
-        await manager.TryExecutePacket(session, 2886, Request());
+        await manager.TryExecutePacket(session, 2887, Request());
 
         var answer = Assert.Single(sent);
         Assert.Equal(ServerPacketHeader.SoundSettingsComposer, answer.Header);
-        Assert.Equal(2180u, answer.Header);
+        Assert.Equal(3635u, answer.Header);
         Assert.Equal(FullFrame, Convert.ToHexString(answer.Payload));
     }
 
@@ -66,10 +66,10 @@ public sealed class GetSoundSettingsTests
         var (session, sent) = HabbiconTestSupport.Client(habbo);
         using var manager = Manager();
 
-        await manager.TryExecutePacket(session, 2886, Request());
+        await manager.TryExecutePacket(session, 2887, Request());
         habbo.WiredPreferences = habbo.WiredPreferences with { ShowAllNotifications = true, UiStyle = "" };
         habbo.ClientVolume = [1, 2, 3];
-        await manager.TryExecutePacket(session, 2886, Request());
+        await manager.TryExecutePacket(session, 2887, Request());
 
         Assert.Equal(2, sent.Count);
         Assert.Equal(FullFrame, Convert.ToHexString(sent[0].Payload));
@@ -85,7 +85,7 @@ public sealed class GetSoundSettingsTests
         var (session, sent) = HabbiconTestSupport.Client(habbo);
         using var manager = Manager();
 
-        await manager.TryExecutePacket(session, 2886, Request());
+        await manager.TryExecutePacket(session, 2887, Request());
         new UserProfileService(null!, null!, null!, null!, null!, TimeProvider.System, null!, null!, null!, null!).SetFriendBarState(session, 1);
 
         Assert.Equal(2, sent.Count);

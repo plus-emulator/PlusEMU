@@ -19,14 +19,14 @@ public sealed class WiredChestLogTests
     private static readonly WiredChestLogRow Row = new(7, 42, WiredChestLogType.Wired, 1, "alice", Moment, 2, 3, 4, 5, 6);
 
     [Theory]
-    [InlineData(nameof(ClientPacketHeader.WiredTransactionGetRoomLogsEvent), 2517u)]
-    [InlineData(nameof(ClientPacketHeader.WiredTransactionGetChestLogsEvent), 205u)]
+    [InlineData(nameof(ClientPacketHeader.WiredTransactionGetRoomLogsEvent), 2180u)]
+    [InlineData(nameof(ClientPacketHeader.WiredTransactionGetChestLogsEvent), 35u)]
     public void LogRequestsUseTheOfficialIds(string name, uint id) =>
         Assert.Equal(id, (uint)typeof(ClientPacketHeader).GetField(name)!.GetRawConstantValue()!);
 
     [Fact]
     public void LogListUsesTheOfficialId() =>
-        Assert.Equal(3464u, ServerPacketHeader.WiredTransactionLogListComposer);
+        Assert.Equal(1216u, ServerPacketHeader.WiredTransactionLogListComposer);
 
     [Fact]
     public void ReservedRoomLogIdIsReleasedToTheOfficialRequest() =>

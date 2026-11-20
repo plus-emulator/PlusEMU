@@ -193,7 +193,7 @@ public sealed class WiredVariableExactWireTests
     public void CompiledCurrentRevisionRegistersExactExtensionsWithoutHeaderRemapping()
     {
         var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
-        Assert.Equal("WIN63-202611041140-327405090", revision.Name);
+        Assert.Equal("WIN63-202611201617-120873662", revision.Name);
         Assert.Equal(10110u, revision.IncomingHeaders["WiredUserVariableUpdate64Event"]);
         Assert.Equal(10111u, revision.IncomingHeaders["WiredUserVariableManage64Event"]);
         Assert.Equal(10113u, revision.IncomingHeaders["WiredUserVariablesRequest64Event"]);

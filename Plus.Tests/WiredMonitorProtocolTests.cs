@@ -23,20 +23,20 @@ public sealed class WiredMonitorProtocolTests
     [Fact]
     public void TheMonitorPacketsTakeTheirOfficialIdsInTheHeaderTablesAndTheRevisionExample()
     {
-        Assert.Equal(1744u, ClientPacketHeader.GetWiredRoomStatsEvent);
-        Assert.Equal(608u, ClientPacketHeader.GetWiredErrorLogsEvent);
-        Assert.Equal(3141u, ClientPacketHeader.ClearWiredErrorLogsEvent);
-        Assert.Equal(324u, ServerPacketHeader.WiredRoomStatsComposer);
-        Assert.Equal(1828u, ServerPacketHeader.WiredErrorLogsComposer);
+        Assert.Equal(3451u, ClientPacketHeader.GetWiredRoomStatsEvent);
+        Assert.Equal(3666u, ClientPacketHeader.GetWiredErrorLogsEvent);
+        Assert.Equal(1310u, ClientPacketHeader.ClearWiredErrorLogsEvent);
+        Assert.Equal(1345u, ServerPacketHeader.WiredRoomStatsComposer);
+        Assert.Equal(1426u, ServerPacketHeader.WiredErrorLogsComposer);
 
         using var table = HabbiconPacketTests.CurrentRevisionTable();
         var incoming = table.RootElement.GetProperty("IncomingHeaders");
         var outgoing = table.RootElement.GetProperty("OutgoingHeaders");
-        Assert.Equal(1744u, incoming.GetProperty(nameof(ClientPacketHeader.GetWiredRoomStatsEvent)).GetUInt32());
-        Assert.Equal(608u, incoming.GetProperty(nameof(ClientPacketHeader.GetWiredErrorLogsEvent)).GetUInt32());
-        Assert.Equal(3141u, incoming.GetProperty(nameof(ClientPacketHeader.ClearWiredErrorLogsEvent)).GetUInt32());
-        Assert.Equal(324u, outgoing.GetProperty(nameof(ServerPacketHeader.WiredRoomStatsComposer)).GetUInt32());
-        Assert.Equal(1828u, outgoing.GetProperty(nameof(ServerPacketHeader.WiredErrorLogsComposer)).GetUInt32());
+        Assert.Equal(3451u, incoming.GetProperty(nameof(ClientPacketHeader.GetWiredRoomStatsEvent)).GetUInt32());
+        Assert.Equal(3666u, incoming.GetProperty(nameof(ClientPacketHeader.GetWiredErrorLogsEvent)).GetUInt32());
+        Assert.Equal(1310u, incoming.GetProperty(nameof(ClientPacketHeader.ClearWiredErrorLogsEvent)).GetUInt32());
+        Assert.Equal(1345u, outgoing.GetProperty(nameof(ServerPacketHeader.WiredRoomStatsComposer)).GetUInt32());
+        Assert.Equal(1426u, outgoing.GetProperty(nameof(ServerPacketHeader.WiredErrorLogsComposer)).GetUInt32());
     }
 
     [Fact]

@@ -23,7 +23,7 @@ public partial class ModernWiredRuntimeTests
         Assert.Equal(new object[] { 2, 42u, "wiredfurni.variables.pickup.title", "wiredfurni.variables.pickup.body" }, packet.Writes);
         // Habbo sends 83 bytes; without the 6-byte frame head (length and header) that is 77.
         Assert.Equal(77, 4 + 4 + 2 + ObjectRemoveConfirmComposer.VariableTitle.Length + 2 + ObjectRemoveConfirmComposer.VariableBody.Length);
-        Assert.Equal(3555u, new ObjectRemoveConfirmComposer(0, false, "", "").MessageId);
+        Assert.Equal(234u, new ObjectRemoveConfirmComposer(0, false, "", "").MessageId);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public partial class ModernWiredRuntimeTests
         new YouArePlayingGameComposer(true).Compose(packet);
 
         Assert.Equal(new object[] { true }, packet.Writes);
-        Assert.Equal(2868u, new YouArePlayingGameComposer(false).MessageId);
+        Assert.Equal(1706u, new YouArePlayingGameComposer(false).MessageId);
     }
 
     [Theory]
@@ -110,7 +110,7 @@ public partial class ModernWiredRuntimeTests
     [Fact]
     public void VariableFxPacketsUseTheOfficialIds()
     {
-        Assert.Equal((1128u, 2302u, 1427u, 760u), (ServerPacketHeader.WiredVariableFxConfigsComposer, ServerPacketHeader.WiredVariableFxConfigsRemovedComposer,
+        Assert.Equal((2256u, 1505u, 3749u, 3447u), (ServerPacketHeader.WiredVariableFxConfigsComposer, ServerPacketHeader.WiredVariableFxConfigsRemovedComposer,
             ServerPacketHeader.WiredVariableFxStatusComposer, ServerPacketHeader.WiredVariableFxStatusRemovedComposer));
     }
 

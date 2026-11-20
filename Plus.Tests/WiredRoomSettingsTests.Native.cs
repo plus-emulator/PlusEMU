@@ -21,9 +21,9 @@ namespace Plus.Tests;
 // has no own timezone). Volt keeps its own save (65465, same fields) and its own settings frame (5102).
 public partial class WiredRoomSettingsTests
 {
-    private const uint NativeGetId = 3895;
-    private const uint NativeSetId = 2842;
-    private const uint NativeSettingsId = 348;
+    private const uint NativeGetId = 547;
+    private const uint NativeSetId = 1300;
+    private const uint NativeSettingsId = 151;
     private const uint VoltSaveId = 65465;
 
     [Fact]

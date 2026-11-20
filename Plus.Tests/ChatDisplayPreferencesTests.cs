@@ -65,11 +65,11 @@ public sealed class ChatDisplayPreferencesTests
         using var manager = Manager(new FailingDatabase());
         var revision = new Plus.Communication.Revisions.RevisionsCache().InternalRevision;
 
-        Assert.Equal(1222u, ClientPacketHeader.SetChatDisplayPreferencesEvent);
-        Assert.Equal(2990u, ClientPacketHeader.SetOnlineIndicatorPreferenceEvent);
-        Assert.Equal(559u, ClientPacketHeader.SetChatStylePreferenceEvent);
+        Assert.Equal(2498u, ClientPacketHeader.SetChatDisplayPreferencesEvent);
+        Assert.Equal(2554u, ClientPacketHeader.SetOnlineIndicatorPreferenceEvent);
+        Assert.Equal(1594u, ClientPacketHeader.SetChatStylePreferenceEvent);
 
-        foreach (var id in new uint[] { 1222, 2990, 559 }) {
+        foreach (var id in new uint[] { 2498, 2554, 1594 }) {
             Assert.True(manager.IsRegistered(id));
             Assert.Single(revision.IncomingHeaders, pair => pair.Value == id);
             Assert.Equal(id, revision.IncomingIdToInternalIdMapping[id]);
@@ -101,7 +101,7 @@ public sealed class ChatDisplayPreferencesTests
         var (session, sent) = HabbiconTestSupport.Client(habbo);
         using var manager = Manager(new FailingDatabase());
 
-        await manager.TryExecutePacket(session, 2886, Request());
+        await manager.TryExecutePacket(session, 2887, Request());
 
         Assert.Equal((3, 1, 2, 0, 2), Tail(Assert.Single(sent).Payload));
     }
@@ -275,38 +275,38 @@ public sealed class ChatDisplayPreferencesTests
             var (session, sent) = HabbiconTestSupport.Client(habbo);
             using var manager = Manager(database);
 
-            await manager.TryExecutePacket(session, 2886, Request());
+            await manager.TryExecutePacket(session, 2887, Request());
             Assert.Equal((0, 0, 1, 1, 0), Tail(sent[^1].Payload));
 
-            await manager.TryExecutePacket(session, 1222, Frame(false, 1, 2, 0));
-            await manager.TryExecutePacket(session, 2886, Request());
+            await manager.TryExecutePacket(session, 2498, Frame(false, 1, 2, 0));
+            await manager.TryExecutePacket(session, 2887, Request());
             Assert.Equal((0, 1, 2, 0, 0), Tail(sent[^1].Payload));
             Assert.Equal((0, 1, 2, 0, 0), Row(connection, 7));
 
-            await manager.TryExecutePacket(session, 2990, Frame(2));
-            await manager.TryExecutePacket(session, 559, Frame(0, 3));
-            await manager.TryExecutePacket(session, 2886, Request());
+            await manager.TryExecutePacket(session, 2554, Frame(2));
+            await manager.TryExecutePacket(session, 1594, Frame(0, 3));
+            await manager.TryExecutePacket(session, 2887, Request());
             Assert.Equal((3, 1, 2, 0, 2), Tail(sent[^1].Payload));
             Assert.Equal((3, 1, 2, 0, 2), Row(connection, 7));
             Assert.Equal((0, 0, 1, 1, 0), Row(connection, 8));
             Assert.Equal(new ChatDisplayPreferences(3, 1, 2, 0, 2), habbo.ChatDisplay);
 
             var count = sent.Count;
-            await manager.TryExecutePacket(session, 1222, Frame(false, 2, 9, -1));
-            await manager.TryExecutePacket(session, 2990, Frame(7));
-            await manager.TryExecutePacket(session, 559, Frame(0, 5));
-            await manager.TryExecutePacket(session, 559, Frame(0, -1));
-            await manager.TryExecutePacket(session, 1222, Frame(false, 1));
-            await manager.TryExecutePacket(session, 2990, Frame());
+            await manager.TryExecutePacket(session, 2498, Frame(false, 2, 9, -1));
+            await manager.TryExecutePacket(session, 2554, Frame(7));
+            await manager.TryExecutePacket(session, 1594, Frame(0, 5));
+            await manager.TryExecutePacket(session, 1594, Frame(0, -1));
+            await manager.TryExecutePacket(session, 2498, Frame(false, 1));
+            await manager.TryExecutePacket(session, 2554, Frame());
 
             Assert.Equal(count, sent.Count);
             Assert.Equal((3, 1, 2, 0, 2), Row(connection, 7));
             Assert.Equal(new ChatDisplayPreferences(3, 1, 2, 0, 2), habbo.ChatDisplay);
 
-            await manager.TryExecutePacket(session, 559, Frame(0));
+            await manager.TryExecutePacket(session, 1594, Frame(0));
             Assert.Equal((3, 1, 2, 0, 2), Row(connection, 7));
 
-            await manager.TryExecutePacket(session, 559, Frame(0, 4));
+            await manager.TryExecutePacket(session, 1594, Frame(0, 4));
             Assert.Equal((4, 1, 2, 0, 2), Row(connection, 7));
         });
     }

@@ -212,7 +212,7 @@ public sealed class GameClientConnectionCheckTests
         world.Manager.RegisterClient(client, 1, "busy");
 
         world.Advance(TimeSpan.FromSeconds(1));
-        byte[] frame = [0, 0, 0, 2, 9, 215];
+        byte[] frame = [0, 0, 0, 2, 5, 157];
         client.OnReceived(frame, 0, frame.Length);
 
         try {

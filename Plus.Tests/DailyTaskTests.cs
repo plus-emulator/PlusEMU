@@ -37,9 +37,9 @@ public sealed class DailyTaskTests
     {
         Assert.Equal(4100u, ClientPacketHeader.GetDailyTasksEvent);
         Assert.Equal(4101u, ClientPacketHeader.ClaimDailyTaskEvent);
-        Assert.Equal(2636u, ServerPacketHeader.ActiveDailyTasksComposer);
-        Assert.Equal(717u, ServerPacketHeader.DailyTasksAddedComposer);
-        Assert.Equal(3173u, ServerPacketHeader.DailyTaskUpdatedComposer);
+        Assert.Equal(2083u, ServerPacketHeader.ActiveDailyTasksComposer);
+        Assert.Equal(3778u, ServerPacketHeader.DailyTasksAddedComposer);
+        Assert.Equal(1535u, ServerPacketHeader.DailyTaskUpdatedComposer);
     }
 
     [Fact]

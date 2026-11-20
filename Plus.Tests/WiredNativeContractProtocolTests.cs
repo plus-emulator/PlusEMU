@@ -101,11 +101,11 @@ public sealed class WiredNativeContractProtocolTests
         Assert.Equal("Pay", parsed.ReceiveText);
         Assert.Equal("generic", parsed.Layout);
         var manager = new PacketManager([new GetWiredContractContentsEvent(), new UpdateWiredContractEvent(new Definitions())], NullLogger<PacketManager>.Instance);
-        Assert.True(manager.IsRegistered(153));
-        Assert.True(manager.IsRegistered(1365));
-        Assert.Equal(1273u, ServerPacketHeader.WiredContractOpenComposer);
-        Assert.Equal(2946u, ServerPacketHeader.WiredContractContentsComposer);
-        Assert.Equal(1061u, ServerPacketHeader.WiredContractUpdateResultComposer);
+        Assert.True(manager.IsRegistered(361));
+        Assert.True(manager.IsRegistered(1431));
+        Assert.Equal(3058u, ServerPacketHeader.WiredContractOpenComposer);
+        Assert.Equal(3988u, ServerPacketHeader.WiredContractContentsComposer);
+        Assert.Equal(2316u, ServerPacketHeader.WiredContractUpdateResultComposer);
     }
 
     [Theory]
@@ -128,14 +128,14 @@ public sealed class WiredNativeContractProtocolTests
         var item = world.AddContract(kind, original);
         new InteractorWiredContract().OnTrigger(owner.Client, item, 0, true);
         var open = Assert.Single(owner.Packets);
-        Assert.Equal(1273u, open.Header);
+        Assert.Equal(3058u, open.Header);
         var openPacket = Packet(open.Payload);
         Assert.Equal(item.Id, openPacket.ReadUInt());
         openPacket.Stream.Dispose();
         owner.Packets.Clear();
         await Fetch(world, owner, item.Id);
         var contents = Assert.Single(owner.Packets);
-        Assert.Equal(2946u, contents.Header);
+        Assert.Equal(3988u, contents.Header);
         var loaded = Decode(contents.Payload);
         Assert.Equal(item.Id, loaded.Id);
         Assert.Equal(kind, loaded.Kind);
@@ -149,7 +149,7 @@ public sealed class WiredNativeContractProtocolTests
         owner.Packets.Clear();
         await Update(world, owner, Encode(changed));
         var response = Assert.Single(owner.Packets);
-        Assert.Equal(1061u, response.Header);
+        Assert.Equal(2316u, response.Header);
         var result = Packet(response.Payload);
         Assert.Equal(item.Id, result.ReadUInt());
         Assert.True(result.ReadBool());

@@ -14,14 +14,14 @@ public class MarketplacePacketRoutingTests
 {
     private static readonly (Type Handler, uint Id)[] Expected =
     [
-        (typeof(GetMarketplaceItemStatsEvent), 3659),
-        (typeof(MakeOfferEvent), 3144),
-        (typeof(GetMarketplaceCanMakeOfferEvent), 2036),
-        (typeof(GetOffersEvent), 1919),
-        (typeof(GetOwnOffersEvent), 1591),
-        (typeof(BuyOfferEvent), 1946),
-        (typeof(RedeemOfferCreditsEvent), 3570),
-        (typeof(CancelOfferEvent), 1008)
+        (typeof(GetMarketplaceItemStatsEvent), 2999),
+        (typeof(MakeOfferEvent), 810),
+        (typeof(GetMarketplaceCanMakeOfferEvent), 3054),
+        (typeof(GetOffersEvent), 3616),
+        (typeof(GetOwnOffersEvent), 3150),
+        (typeof(BuyOfferEvent), 581),
+        (typeof(RedeemOfferCreditsEvent), 1098),
+        (typeof(CancelOfferEvent), 1414)
     ];
 
     [Fact]

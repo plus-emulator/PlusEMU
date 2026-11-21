@@ -19,6 +19,9 @@ public interface ICatalogFurniExtraData
 {
     // The extra data a bought piece of furniture starts with; null when the purchase must be refused.
     string? Read(GameClient session, CatalogProduct product, string extraData, DateTimeOffset utcNow);
+
+    // Text a buyer writes, escaped, cut at maxLength and word filtered unless the buyer may bypass the filter.
+    string ReadText(GameClient session, string text, int maxLength, bool allowBreaks);
 }
 
 public sealed class CatalogFurniExtraData : ICatalogFurniExtraData
@@ -74,7 +77,7 @@ public sealed class CatalogFurniExtraData : ICatalogFurniExtraData
             case InteractionType.Moodlight:
                 return "1,1,1,#000000,255";
             case InteractionType.Trophy:
-                return $"{session.GetHabbo().Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}{Convert.ToChar(9)}{ReadTrophyText(session, extraData)}";
+                return $"{session.GetHabbo().Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}{Convert.ToChar(9)}{ReadText(session, extraData, MaxTrophyTextLength, allowBreaks: true)}";
             case InteractionType.Mannequin:
                 return $"m{Convert.ToChar(5)}.ch-210-1321.lg-285-92{Convert.ToChar(5)}Default Mannequin";
             case InteractionType.BadgeDisplay:
@@ -90,12 +93,12 @@ public sealed class CatalogFurniExtraData : ICatalogFurniExtraData
         }
     }
 
-    private string ReadTrophyText(GameClient session, string text)
+    public string ReadText(GameClient session, string text, int maxLength, bool allowBreaks)
     {
-        text = StringCharFilter.Escape(text, allowBreaks: true);
+        text = StringCharFilter.Escape(text, allowBreaks);
 
-        if (text.Length > MaxTrophyTextLength) {
-            text = text[..MaxTrophyTextLength];
+        if (text.Length > maxLength) {
+            text = text[..maxLength];
         }
 
         return session.GetHabbo().Access.Can(PermissionKeys.ChatFilterBypass) ? text : _wordFilter.CheckMessage(text);

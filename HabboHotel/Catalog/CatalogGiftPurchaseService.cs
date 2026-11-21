@@ -37,6 +37,9 @@ public interface ICatalogGiftPurchaseService
 
 public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
 {
+    // The gift card's message box takes 140 characters.
+    private const int MaxMessageLength = 140;
+
     private readonly ICatalogManager _catalogManager;
     private readonly IPlannedShutdown? _plannedShutdown;
     private readonly ISettingsManager _settingsManager;
@@ -96,7 +99,6 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         var itemId = request.OfferId;
         var data = request.ExtraData;
         var giftUser = StringCharFilter.Escape(request.RecipientName);
-        var giftMessage = StringCharFilter.Escape(request.Message.Replace(Convert.ToChar(5), ' '));
         var spriteId = request.SpriteId;
         var boxId = request.BoxId;
         var ribbonId = request.RibbonId;
@@ -213,6 +215,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
                 return Reject(session, "gifting is blocked for this session");
             }
 
+            var giftMessage = _furniExtraData.ReadText(session, request.Message.Replace(Convert.ToChar(5), ' '), MaxMessageLength, allowBreaks: false);
             var extra_data = GiftWrap.PresentData(giftUser, giftMessage, session.GetHabbo().Id, definition.Id, spriteId, boxId, ribbonId);
 
             if (_furniExtraData.Read(session, item.Product, data, utcNow) is not { } itemExtraData) {

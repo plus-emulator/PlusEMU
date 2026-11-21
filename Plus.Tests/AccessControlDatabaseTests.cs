@@ -588,6 +588,8 @@ public sealed partial class AccessControlDatabaseTests : IDisposable
                     args![1] = Ticket;
 
                     return Ticket != null;
+                case "RemoveTicket":
+                    return null;
                 default:
                     throw new InvalidOperationException(method.Name);
             }

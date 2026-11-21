@@ -187,6 +187,8 @@ public class Habbo
 
     public bool IsHopping { get; set; }
 
+    public uint HoppingRoomId { get; set; }
+
     public uint TeleporterId { get; set; }
 
     public bool IsTeleporting { get; set; }
@@ -413,6 +415,22 @@ public class Habbo
 
     public void PrepareRoom(uint id, string password, bool openConnection = true)
     {
+        // A teleporter or hopper skips the door checks only for the room it leads to, and only for this entry.
+        var arrival = TeleportingRoomId != 0 ? TeleportingRoomId : HoppingRoomId;
+        TeleportingRoomId = 0;
+        HoppingRoomId = 0;
+
+        if (arrival != id) {
+            EndTravel();
+        }
+
+        if (!OpenRoom(id, password, openConnection, arrival)) {
+            EndTravel();
+        }
+    }
+
+    private bool OpenRoom(uint id, string password, bool openConnection, uint arrival)
+    {
         var networkDestination = WiredRoomNetworkDestination;
         var sourceRoomId = (IsTeleporting || IsHopping || networkDestination == id) ? CurrentRoom?.Id ?? 0 : 0;
         WiredRoomNetworkDestination = 0;
@@ -420,7 +438,7 @@ public class Habbo
         WiredRoomEntryDestinationRoomId = 0;
 
         if (Client == null || Client.GetHabbo() == null) {
-            return;
+            return false;
         }
 
         if (Client.GetHabbo().InRoom) {
@@ -436,30 +454,30 @@ public class Habbo
             }
         }
 
-        if (Client.GetHabbo().IsTeleporting && Client.GetHabbo().TeleportingRoomId != id) {
+        if (arrival != 0 && arrival != id) {
             Client.Send(new CloseConnectionComposer());
 
-            return;
+            return false;
         }
 
         if (!HotelRooms.TryLoadRoom(id, out var room)) {
             Client.Send(new CloseConnectionComposer());
 
-            return;
+            return false;
         }
 
         if (room.IsCrashed) {
             Client.SendNotification("This room has crashed! :(");
             Client.Send(new CloseConnectionComposer());
 
-            return;
+            return false;
         }
 
         if (room.GetRoomUserManager().UserCount >= room.UsersMax && !Access.Can(PermissionKeys.RoomEnterFull) && Client.GetHabbo().Id != room.OwnerId) {
             Client.Send(new CantConnectComposer(RoomConnectionError.Full));
             Client.Send(new CloseConnectionComposer());
 
-            return;
+            return false;
         }
 
         if (!Access.Can(PermissionKeys.RoomBanOverride) && room.GetBans().IsBanned(Id)) {
@@ -468,7 +486,7 @@ public class Habbo
             Client.Send(new CantConnectComposer(RoomConnectionError.Banned));
             Client.Send(new CloseConnectionComposer());
 
-            return;
+            return false;
         }
 
         // A WIRED room forward opens the room without OpenConnection.
@@ -476,13 +494,13 @@ public class Habbo
             Client.Send(new OpenConnectionComposer(room.Id));
         }
 
-        if (!room.CheckRights(Client, true) && !Client.GetHabbo().IsTeleporting && !Client.GetHabbo().IsHopping) {
+        if (!room.CheckRights(Client, true) && arrival != id) {
             // A room hidden by Builders Club furni overrides its door mode (notification.builders_club.room_locked); staff still enter.
             if (!Access.Can(PermissionKeys.RoomEnterLocked) && _buildersClub?.HidesRoom(room) == true) {
                 Client.Send(new FlatAccessDeniedComposer(room.Id, ""));
                 Client.Send(new CloseConnectionComposer());
 
-                return;
+                return false;
             }
 
             if (room.Access == RoomAccess.Doorbell && !Access.Can(PermissionKeys.RoomEnterLocked)) {
@@ -490,13 +508,13 @@ public class Habbo
                     Client.Send(new DoorbellComposer(""));
                     room.SendPacket(new DoorbellComposer(Client.GetHabbo().Username), true);
 
-                    return;
+                    return false;
                 }
 
                 Client.Send(new FlatAccessDeniedComposer(room.Id, ""));
                 Client.Send(new CloseConnectionComposer());
 
-                return;
+                return false;
             }
 
             if (room.Access == RoomAccess.Password && !Access.Can(PermissionKeys.RoomEnterLocked)) {
@@ -504,7 +522,7 @@ public class Habbo
                     Client.Send(new GenericErrorComposer(GenericError.WrongRoomPassword));
                     Client.Send(new CloseConnectionComposer());
 
-                    return;
+                    return false;
                 }
             }
         }
@@ -518,7 +536,19 @@ public class Habbo
             WiredRoomEntrySourceRoomId = 0;
             WiredRoomEntryDestinationRoomId = 0;
             Client.Send(new CloseConnectionComposer());
+
+            return false;
         }
+
+        return true;
+    }
+
+    private void EndTravel()
+    {
+        IsTeleporting = false;
+        TeleporterId = 0;
+        IsHopping = false;
+        HopperId = 0;
     }
 
     public bool EnterRoom(Room? room)

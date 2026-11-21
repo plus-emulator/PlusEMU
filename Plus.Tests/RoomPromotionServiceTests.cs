@@ -3,7 +3,9 @@ using Plus.Communication.Packets.Incoming.Catalog;
 using Plus.Communication.Packets.Incoming.Navigator;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Badges;
+using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.Friends;
+using Plus.HabboHotel.Navigator;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.Chat.Filter;
 using Plus.HabboHotel.Users;
@@ -22,10 +24,10 @@ public sealed class RoomPromotionServiceTests
     {
         var context = new Context();
         context.Data.OwnerId = 99;
-        await context.Service.Purchase(context.Client, new(42, "title", "details", 9));
+        await context.Service.Purchase(context.Client, new(1, 2, 42, "title", "details", 9));
         context.Service.Edit(context.Client, new(42, "title", "details"));
         context.Loader.Data = null;
-        await context.Service.Purchase(context.Client, new(42, "title", "details", 9));
+        await context.Service.Purchase(context.Client, new(1, 2, 42, "title", "details", 9));
         Assert.Equal(0, context.Store.Writes);
         Assert.Equal(0, context.Clock.Reads);
         Assert.Empty(context.Sent);
@@ -38,7 +40,7 @@ public sealed class RoomPromotionServiceTests
         var existing = new RoomPromotion("old", "details", 3, Now, Now.AddMinutes(15), context.Clock);
         context.Data.Promotion = existing;
         context.Store.Fail = true;
-        await Assert.ThrowsAsync<InvalidOperationException>(() => context.Service.Purchase(context.Client, new(42, "new", "new details", 9)));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => context.Service.Purchase(context.Client, new(1, 2, 42, "new", "new details", 9)));
         Assert.Throws<InvalidOperationException>(() => context.Service.Edit(context.Client, new(42, "edited", "edited details")));
         Assert.Same(existing, context.Data.Promotion);
         Assert.Equal("old", existing.Name);
@@ -55,7 +57,7 @@ public sealed class RoomPromotionServiceTests
             Assert.Null(context.Data.Promotion);
             Assert.Empty(context.Sent);
         };
-        await context.Service.Purchase(context.Client, new(42, "title", "details", 9));
+        await context.Service.Purchase(context.Client, new(1, 2, 42, "title", "details", 9));
         var first = context.Data.Promotion;
         Assert.Equal(Now, first.StartedAt);
         Assert.Equal(Now.AddMinutes(120), first.ExpiresAt);
@@ -64,7 +66,7 @@ public sealed class RoomPromotionServiceTests
         Assert.Single(context.Sent);
 
         context.Store.BeforeWrite = () => Assert.Same(first, context.Data.Promotion);
-        await context.Service.Purchase(context.Client, new(42, "extended", "details", 10));
+        await context.Service.Purchase(context.Client, new(1, 2, 42, "extended", "details", 10));
         Assert.Equal(Now, context.Data.Promotion.StartedAt);
         Assert.Equal(Now.AddHours(4), context.Data.Promotion.ExpiresAt);
         Assert.Equal(10, context.Data.Promotion.CategoryId);
@@ -95,7 +97,7 @@ public sealed class RoomPromotionServiceTests
             HabbiconTestSupport.Incoming(7, 8, 42, "title", false, "details", 9));
         await new EditRoomPromotionEvent(capture).Parse(context.Client,
             HabbiconTestSupport.Incoming(42, "edited", "more details"));
-        Assert.Equal(new PurchaseRoomPromotionRequest(42, "title", "details", 9), capture.PurchaseRequest);
+        Assert.Equal(new PurchaseRoomPromotionRequest(7, 8, 42, "title", "details", 9), capture.PurchaseRequest);
         Assert.Equal(new EditRoomPromotionRequest(42, "edited", "more details"), capture.EditRequest);
     }
 
@@ -104,6 +106,7 @@ public sealed class RoomPromotionServiceTests
         public RoomData Data { get; } = new() { Id = 42, OwnerId = 7, OwnerName = "owner" };
         public Loader Loader { get; }
         public Store Store { get; } = new();
+        public CatalogPurchaseServiceTests.RecordingRewards Rewards { get; } = new(succeeds: true);
         public Clock Clock { get; } = new();
         public Plus.HabboHotel.GameClients.GameClient Client { get; }
         public List<(uint Header, byte[] Payload)> Sent { get; }
@@ -124,7 +127,8 @@ public sealed class RoomPromotionServiceTests
                 Proxy<IWordFilterManager>((_, args) => args[0]),
                 Proxy<ISettingsManager>((_, _) => "120"),
                 Proxy<IBadgeManager>((_, _) => throw new InvalidOperationException("Unexpected badge write.")),
-                Proxy<IMessengerDataLoader>((_, _) => null), Clock);
+                Proxy<IMessengerDataLoader>((_, _) => null), Proxy<ICatalogManager>((_, _) => null), Rewards,
+                Proxy<INavigatorManager>((_, _) => null), Clock);
         }
     }
 
@@ -151,7 +155,7 @@ public sealed class RoomPromotionServiceTests
         public int Writes { get; private set; }
         public bool Fail { get; set; }
         public Action? BeforeWrite { get; set; }
-        public void Save(uint roomId, int ownerId, RoomPromotion promotion) => Write();
+        public void Save(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, uint roomId, int ownerId, RoomPromotion promotion) => Write();
         public void Edit(uint roomId, int ownerId, string name, string description) => Write();
         private void Write()
         {

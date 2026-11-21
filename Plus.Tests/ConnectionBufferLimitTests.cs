@@ -13,6 +13,8 @@ namespace Plus.Tests;
 public sealed class ConnectionBufferLimitTests
 {
     private const uint BulkMessageId = 1;
+    private const uint SlowMessageId = 2;
+    private const int FillerPacketSize = 16 * 1024;
 
     [Fact]
     public async Task AWebSocketMessageOverTheReceiveLimitClosesTheConnection()
@@ -110,6 +112,55 @@ public sealed class ConnectionBufferLimitTests
         }
     }
 
+    [Fact]
+    public async Task AFlashClientThatKeepsSendingWhileAPacketIsHandledIsDisconnected()
+    {
+        using var server = new SlowHandlerServer();
+        Assert.True(server.Start());
+
+        try {
+            using var socket = await GameSocket.Connect(server);
+            await socket.Stream.WriteAsync(Packet(SlowMessageId, 0));
+            await server.Handling.WaitAsync(TimeSpan.FromSeconds(5));
+
+            await SendPaced(socket, 2L * GameClient.ReceiveBufferLimit);
+
+            Assert.True(await socket.IsClosed());
+        }
+        finally {
+            server.Release();
+            server.Stop();
+        }
+    }
+
+    [Fact]
+    public async Task DataUnderTheReceiveLimitWaitsForASlowHandlerAndIsCountedOnlyUntilHandled()
+    {
+        using var server = new SlowHandlerServer();
+        Assert.True(server.Start());
+
+        try {
+            using var socket = await GameSocket.Connect(server);
+            var queued = 3L * GameClient.ReceiveBufferLimit / 4;
+
+            for (var round = 1; round <= 2; round++) {
+                await socket.Stream.WriteAsync(Packet(SlowMessageId, 0));
+                await server.Handling.WaitAsync(TimeSpan.FromSeconds(5));
+                var sent = await SendPaced(socket, queued);
+
+                Assert.True(await socket.StaysOpen());
+                server.Release();
+                Assert.True(await server.HandledBulk(round * (sent / FillerPacketSize)));
+            }
+
+            Assert.False(server.Client!.Closed.IsCancellationRequested);
+        }
+        finally {
+            server.Release();
+            server.Stop();
+        }
+    }
+
     /// <summary>Sends far more than the limit plus what the kernel buffers hold; true once the server closed the client.</summary>
     private static async Task<bool> SendUntilClosed(GameClient client)
     {
@@ -142,6 +193,34 @@ public sealed class ConnectionBufferLimitTests
         }
         catch (IOException) {
         }
+    }
+
+    /// <summary>Writes whole filler packets in small paced writes, so no single read fills the transport buffer; returns the bytes sent.</summary>
+    private static async Task<long> SendPaced(GameSocket socket, long total)
+    {
+        var filler = Packet(BulkMessageId, FillerPacketSize - 6);
+        var sent = 0L;
+
+        try {
+            while (sent + filler.Length <= total) {
+                await socket.Stream.WriteAsync(filler);
+                sent += filler.Length;
+                await Task.Delay(1);
+            }
+        }
+        catch (IOException) {
+        }
+
+        return sent;
+    }
+
+    private static byte[] Packet(uint messageId, int bodyLength)
+    {
+        var packet = new byte[6 + bodyLength];
+        BinaryPrimitives.WriteInt32BigEndian(packet, 2 + bodyLength);
+        BinaryPrimitives.WriteUInt16BigEndian(packet.AsSpan(4), (ushort)messageId);
+
+        return packet;
     }
 
     /// <summary>A masked binary frame header; the zero mask leaves the payload as written.</summary>
@@ -184,6 +263,57 @@ public sealed class ConnectionBufferLimitTests
 
             return new WsSessionProxy(this, Client);
         }
+    }
+
+    /// <summary>A Flash server whose handler for the slow message waits until the test releases it.</summary>
+    private sealed class SlowHandlerServer() : TcpServer(IPAddress.Loopback, 0), IGameServer
+    {
+        private readonly SemaphoreSlim _released = new(0);
+        private readonly SemaphoreSlim _handling = new(0);
+        private int _bulkHandled;
+
+        public GameClient? Client { get; private set; }
+
+        public Task Handling => _handling.WaitAsync();
+
+        public void Release() => _released.Release();
+
+        public async Task<bool> HandledBulk(long count)
+        {
+            for (var i = 0; i < 100 && Volatile.Read(ref _bulkHandled) < count; i++) {
+                await Task.Delay(100);
+            }
+
+            return Volatile.Read(ref _bulkHandled) == count;
+        }
+
+        protected override TcpSession CreateSession()
+        {
+            var mapping = new Dictionary<uint, uint> { [BulkMessageId] = BulkMessageId, [SlowMessageId] = SlowMessageId };
+            Client = new FlashGameClient(this, new FlashPacketFactory(), TestLogging.GameClient)
+            {
+                Revision = new Revision { IncomingIdToInternalIdMapping = mapping }
+            };
+
+            return new TcpSessionProxy(this, Client);
+        }
+
+        public Task PacketReceived(GameClient client, uint messageId, IIncomingPacket packet)
+        {
+            if (messageId != SlowMessageId) {
+                Interlocked.Increment(ref _bulkHandled);
+
+                return Task.CompletedTask;
+            }
+
+            _handling.Release();
+
+            return _released.WaitAsync();
+        }
+
+        public bool ModifyOutgoingPacket(GameClient client, IOutgoingPacket packet) => true;
+
+        public bool HasOutgoingPacketInjectors(uint messageId) => false;
     }
 
     private sealed class TcpGameServer() : TcpServer(IPAddress.Loopback, 0)

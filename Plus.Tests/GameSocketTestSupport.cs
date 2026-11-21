@@ -81,6 +81,10 @@ internal sealed class GameSocket : IDisposable
         catch (IOException) {
             return true;
         }
+        catch (InvalidOperationException) when (!Tcp.Connected) {
+            // A write that failed because the server closed the connection already marked the socket closed.
+            return true;
+        }
         catch (TimeoutException) {
             return false;
         }

@@ -39,7 +39,7 @@ internal class LoadStatisticsLoginTask : IUserDataLoadingTask
                 await _habboStatsService.UpdateDailyRespectsAndTimestamp(habbo.Id, dailyRespects, stats.RespectsTimestamp);
             }
 
-            if (!_groups.TryGetGroup(stats.FavouriteGroupId, out var group)) {
+            if (!_groups.TryGetGroup(stats.FavouriteGroupId, out var group) || !group.IsMember(habbo.Id)) {
                 stats.FavouriteGroupId = 0;
             }
 

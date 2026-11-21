@@ -1,18 +1,15 @@
-using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Plus.Communication.Packets;
 using Plus.Communication.Packets.Outgoing.Catalog;
 using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.Communication.Packets.Outgoing.Inventory.Purse;
 using Plus.Communication.Packets.Outgoing.Notifications;
-using Plus.Communication.Packets.Outgoing.Moderation;
 using Plus.Core;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Catalog.Utilities;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
-using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Subscriptions;
 using Plus.HabboHotel.Users.Inventory.Furniture;
@@ -217,71 +214,9 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
             }
 
             var extra_data = GiftWrap.PresentData(giftUser, giftMessage, session.GetHabbo().Id, definition.Id, spriteId, boxId, ribbonId);
-            string? itemExtraData = null;
-            var progressPetAchievement = false;
 
-            switch (definition.InteractionType) {
-                case InteractionType.None:
-                    itemExtraData = "";
-                    break;
-                case InteractionType.Recolorable:
-                    // A gift carries no colour choice, so it starts in its palette's first colour.
-                    itemExtraData = RecolorableDataFormat.FormatCatalogueColor(RecolorablePalette.PurchaseColor(definition.ItemName, null));
-                    break;
-                case InteractionType.Pet:
-                    if (!GiftWrap.PetDataAccepted(data)) {
-                        return Reject(session, "invalid pet data for offer {OfferId}", itemId);
-                    }
-
-                    progressPetAchievement = true;
-                    break;
-                case InteractionType.Floor:
-                case InteractionType.Wallpaper:
-                case InteractionType.Landscape:
-                    // Each pattern offer names its pattern; the client sends an empty value for those.
-                    if (!string.IsNullOrEmpty(item.Product.ExtraParam)) {
-                        itemExtraData = item.Product.ExtraParam;
-                        break;
-                    }
-
-                    double number = 0;
-
-                    try {
-                        number = string.IsNullOrEmpty(data) ? 0 : double.Parse(data, CultureInfo.InvariantCulture);
-                    }
-                    catch {
-                        //ignored
-                    }
-
-                    itemExtraData = number.ToString(CultureInfo.InvariantCulture);
-                    break; // maintain extra data // todo: validate
-                case InteractionType.Postit:
-                    itemExtraData = "FFFF33";
-                    break;
-                case InteractionType.Moodlight:
-                    itemExtraData = "1,1,1,#000000,255";
-                    break;
-                case InteractionType.Trophy:
-                    itemExtraData = $"{sender.Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}{Convert.ToChar(9)}{data}";
-                    break;
-                case InteractionType.Mannequin:
-                    itemExtraData = $"m{Convert.ToChar(5)}.ch-210-1321.lg-285-92{Convert.ToChar(5)}Default Mannequin";
-                    break;
-                case InteractionType.BadgeDisplay:
-                    if (session.GetHabbo().Inventory?.Badges.HasBadge(data) != true) {
-                        session.Send(new BroadcastMessageAlertComposer("Oops, it appears that you do not own this badge."));
-
-                        return Reject(session, "badge {Badge} is not owned", data);
-                    }
-
-                    itemExtraData = $"{data}{Convert.ToChar(9)}{sender.Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}";
-                    break;
-                default:
-                    itemExtraData = definition.InteractionType is InteractionType.CameraPicture or InteractionType.Background
-                        || FurniExtraData.RejectsClientImage(new[] { data })
-                        ? ""
-                        : data;
-                    break;
+            if (_furniExtraData.Read(session, item.Product, data, utcNow) is not { } itemExtraData) {
+                return Reject(session, "extra data {ExtraData} is not valid for offer {OfferId}", data, itemId);
             }
 
             Plus.HabboHotel.Users.Inventory.Furniture.InventoryItem? giveItem = null;
@@ -293,7 +228,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
                 }
 
                 giveItem = _giftStore.Create(connection, transaction, habbo.Id, presentData, definition,
-                    extra_data, itemExtraData ?? "");
+                    extra_data, itemExtraData);
 
                 return true;
             }, ClubRewards.EligibleCatalogPurchase(item.LocalizationKey))) {
@@ -303,10 +238,6 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
             }
 
             if (giveItem != null) {
-                if (progressPetAchievement) {
-                    _achievementManager.ProgressAchievement(session, "ACH_PetLover", 1);
-                }
-
                 var receiver = _gameClientManager.GetClientByUserId(habbo.Id);
 
                 if (receiver != null) {

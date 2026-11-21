@@ -539,6 +539,11 @@ public class Habbo
 
     private void EnterOpenRoom(GameClient client, Room room)
     {
+        // A repeated entry packet from a user who is already in the room changes nothing.
+        if (room.GetRoomUserManager().GetRoomUserByHabbo(Id) is { } admitted && ReferenceEquals(admitted.GetClient(), client)) {
+            return;
+        }
+
         client.GetHabbo().CurrentRoom = room;
         // The NFT chat styles come before RoomReady, the entry tile right after it.
         client.Send(new Plus.Communication.Packets.Outgoing.Rooms.Session.UserNftChatStylesComposer());

@@ -22,6 +22,7 @@ public abstract class GameClient
     private readonly object _lifecycle = new();
     private readonly CancellationTokenSource _closed = new();
     private ITimer? _loginDeadline;
+    private long _receivedUnhandled;
 
     public RecyclableMemoryStream? _incompleteStream;
     public Arc4? Rc4Client { get; set; }
@@ -97,7 +98,10 @@ public abstract class GameClient
     /// <summary>A connection that has not logged in this long after it opened is closed.</summary>
     internal static readonly TimeSpan LoginDeadline = TimeSpan.FromSeconds(30);
 
-    /// <summary>The most a connection may have received and not yet handled: room for four of the largest game packets.</summary>
+    /// <summary>
+    /// The most received data a connection may have waiting for the packet handler, and the most its transport may
+    /// buffer: room for four of the largest game packets.
+    /// </summary>
     internal const int ReceiveBufferLimit = 2 * 1024 * 1024;
 
     /// <summary>The most a connection may have waiting to be sent. A client that leaves more unread is not reading.</summary>
@@ -209,6 +213,13 @@ public abstract class GameClient
     /// </summary>
     internal virtual async void OnReceived(byte[] buffer, long offset, long size)
     {
+        // Each chunk waits until the one before it is handled, so a slow handler must not let the queue grow without end.
+        if (Interlocked.Add(ref _receivedUnhandled, size) > ReceiveBufferLimit) {
+            Disconnect();
+
+            return;
+        }
+
         try {
             await ReceiveAsync(buffer, offset, size);
         }
@@ -221,6 +232,9 @@ public abstract class GameClient
             catch (Exception disconnectException) {
                 _logger.LogError(disconnectException, "Failed to close connection {ConnectionId}", Id);
             }
+        }
+        finally {
+            Interlocked.Add(ref _receivedUnhandled, -size);
         }
     }
 

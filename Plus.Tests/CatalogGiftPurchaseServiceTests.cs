@@ -9,6 +9,7 @@ using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Rooms.Chat.Filter;
 using Plus.HabboHotel.Subscriptions;
@@ -183,17 +184,95 @@ public sealed class CatalogGiftPurchaseServiceTests
         Assert.Empty(context.RecipientPackets);
     }
 
+    [Theory]
+    [InlineData(InteractionType.VendingMachine, "client data")]
+    [InlineData(InteractionType.MusicDisc, "7")]
+    [InlineData(InteractionType.MonsterplantSeed, "12")]
+    [InlineData(InteractionType.Lovelock, "1;sender;recipient")]
+    public async Task GiftedFurniStartsWithTheDataOfANormalPurchase(InteractionType interaction, string clientData)
+    {
+        var context = CreateContext(contentType: interaction);
+
+        await context.Service.Purchase(context.SenderClient, Request(extraData: clientData));
+
+        Assert.Equal(1, context.Store.Creates);
+        Assert.Equal("", context.Store.ContentExtraData);
+    }
+
+    [Theory]
+    [InlineData("0,133,255", "0,133,255")]
+    [InlineData("1,2,3", "255,255,255")]
+    [InlineData("", "255,255,255")]
+    public async Task GiftedRecolorableKeepsOnlyAColourFromTheClassPalette(string clientData, string stored)
+    {
+        var context = CreateContext(contentType: InteractionType.Recolorable, itemName: "bc_block_0_recolorable");
+
+        await context.Service.Purchase(context.SenderClient, Request(extraData: clientData));
+
+        Assert.Equal(stored, context.Store.ContentExtraData);
+    }
+
+    [Theory]
+    [InlineData("well done", "well done")]
+    [InlineData("line one\nline two", "line one\nline two")]
+    [InlineData("a\u0001b\u007Fc", "abc")]
+    [InlineData("you badword", "you bobba")]
+    public async Task TrophyTextIsEscapedAndFiltered(string text, string stored)
+    {
+        var context = CreateContext(contentType: InteractionType.Trophy);
+
+        await context.Service.Purchase(context.SenderClient, Request(extraData: text));
+
+        Assert.Equal($"sender\t3-2-2040\t{stored}", context.Store.ContentExtraData);
+    }
+
+    [Fact]
+    public async Task TrophyTextIsCutAtTheInscriptionLimit()
+    {
+        var context = CreateContext(contentType: InteractionType.Trophy);
+
+        await context.Service.Purchase(context.SenderClient, Request(extraData: new string('T', 600)));
+
+        Assert.Equal($"sender\t3-2-2040\t{new string('T', 300)}", context.Store.ContentExtraData);
+    }
+
+    [Fact]
+    public async Task BuyerWhoMayBypassTheFilterKeepsAnUnfilteredTrophyText()
+    {
+        var context = CreateContext(contentType: InteractionType.Trophy);
+        context.Sender.Access = UserAccess.Create([], [new(PermissionKeys.ChatFilterBypass, false)]);
+
+        await context.Service.Purchase(context.SenderClient, Request(extraData: "you badword"));
+
+        Assert.Equal("sender\t3-2-2040\tyou badword", context.Store.ContentExtraData);
+    }
+
+    [Fact]
+    public async Task GiftedBadgeDisplayNeedsABadgeTheBuyerOwns()
+    {
+        var context = CreateContext(contentType: InteractionType.BadgeDisplay);
+
+        await context.Service.Purchase(context.SenderClient, Request(extraData: "ADM"));
+
+        Assert.Equal(0, context.Rewards.Charges);
+        Assert.Equal(0, context.Store.Creates);
+        Assert.Equal(100, context.Sender.Credits);
+        Assert.Contains(context.SenderPackets, packet => packet.Header == ServerPacketHeader.PurchaseErrorComposer);
+        Assert.Empty(context.RecipientPackets);
+    }
+
     private static CatalogGiftPurchaseRequest Request(string recipient = "recipient", string extraData = "") =>
         new(1, 2, extraData, recipient, "hello", 3, 4, 5, true);
 
     private static Context CreateContext(bool enabled = true, bool missingRecipient = false,
         bool recipientIsSender = false, bool recipientAllowsGifts = true, bool storeFails = false, string attachedBadge = "",
-        bool club = false, IPlannedShutdown? plannedShutdown = null, InteractionType contentType = InteractionType.None)
+        bool club = false, IPlannedShutdown? plannedShutdown = null, InteractionType contentType = InteractionType.None,
+        string itemName = "chair")
     {
         var content = new ItemDefinition
         {
             Id = 50,
-            ItemName = "chair",
+            ItemName = itemName,
             ProductType = "s",
             Type = ItemType.Floor,
             InteractionType = contentType,
@@ -247,7 +326,7 @@ public sealed class CatalogGiftPurchaseServiceTests
             memberships,
             rewards,
             store,
-            new CatalogFurniExtraData(Proxy<IGroupManager, EmptyProxy>(), Proxy<IWordFilterManager, EmptyProxy>(),
+            new CatalogFurniExtraData(Proxy<IGroupManager, EmptyProxy>(), WordFilter(),
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<CatalogFurniExtraData>.Instance),
             clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CatalogGiftPurchaseService>.Instance,
@@ -255,6 +334,9 @@ public sealed class CatalogGiftPurchaseServiceTests
 
         return new(service, senderClient, sender, recipient, senderPackets, recipientPackets, clients, rewards, store, clock, memberships);
     }
+
+    private static IWordFilterManager WordFilter() => CatalogSnapshotTestSupport.Proxy<IWordFilterManager>((method, args) =>
+        method == nameof(IWordFilterManager.CheckMessage) ? ((string)args[0]!).Replace("badword", "bobba") : throw new InvalidOperationException(method));
 
     private static List<(uint Header, byte[] Payload)> Capture(GameClient client)
     {
@@ -400,10 +482,12 @@ public sealed class CatalogGiftPurchaseServiceTests
     private sealed class GiftStore(bool fails, ItemDefinition present) : ICatalogGiftStore
     {
         public int Creates { get; private set; }
+        public string? ContentExtraData { get; private set; }
         public InventoryItem Create(IDbConnection connection, IDbTransaction transaction, int recipientId,
             ItemDefinition presentDefinition, ItemDefinition contentDefinition, string presentExtraData, string contentExtraData)
         {
             Creates++;
+            ContentExtraData = contentExtraData;
 
             if (fails) {
                 throw new InvalidOperationException("store failed");

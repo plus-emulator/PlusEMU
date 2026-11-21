@@ -133,6 +133,30 @@ public sealed class CatalogPurchaseServiceTests
         Assert.Equal(stored, Assert.Single(context.Factory.ExtraData));
     }
 
+    [Theory]
+    [InlineData("well done", "well done")]
+    [InlineData("line one\nline two", "line one\nline two")]
+    [InlineData("a\u0001b\u007Fc", "abc")]
+    [InlineData("you badword", "you bobba")]
+    public async Task TrophyTextIsEscapedAndFiltered(string text, string stored)
+    {
+        var context = Context(interaction: InteractionType.Trophy);
+
+        await context.Service.Purchase(context.Client, new(1, 2, text, 1));
+
+        Assert.Equal($"Dennis\t3-2-2040\t{stored}", Assert.Single(context.Factory.ExtraData));
+    }
+
+    [Fact]
+    public async Task TrophyTextIsCutAtTheInscriptionLimit()
+    {
+        var context = Context(interaction: InteractionType.Trophy);
+
+        await context.Service.Purchase(context.Client, new(1, 2, new string('T', 600), 1));
+
+        Assert.Equal($"Dennis\t3-2-2040\t{new string('T', 300)}", Assert.Single(context.Factory.ExtraData));
+    }
+
     [Fact]
     public async Task SeasonalCurrencyOfferChargesItsOwnTypeAndPublishesThatBalance()
     {
@@ -580,6 +604,9 @@ public sealed class CatalogPurchaseServiceTests
         return args[1] != null;
     });
 
+    private static IWordFilterManager WordFilter() => CatalogSnapshotTestSupport.Proxy<IWordFilterManager>((method, args) =>
+        method == nameof(IWordFilterManager.CheckMessage) ? ((string)args[0]!).Replace("badword", "bobba") : throw new InvalidOperationException(method));
+
     private static IGroupForumStore Forums(List<int> enabled) => CatalogSnapshotTestSupport.Proxy<IGroupForumStore>((method, args) =>
     {
         Assert.Equal(nameof(IGroupForumStore.Enable), method);
@@ -666,7 +693,7 @@ public sealed class CatalogPurchaseServiceTests
             effects ?? Proxy<IAvatarEffectStore, EmptyProxy>(),
             groups ??= Proxy<IGroupManager, EmptyProxy>(),
             forums ?? Proxy<IGroupForumStore, EmptyProxy>(),
-            new CatalogFurniExtraData(groups, Proxy<IWordFilterManager, EmptyProxy>(),
+            new CatalogFurniExtraData(groups, WordFilter(),
                 NullLogger<CatalogFurniExtraData>.Instance),
             new FixedClock(new DateTimeOffset(2040, 2, 3, 4, 5, 6, TimeSpan.Zero)),
             NullLogger<CatalogPurchaseService>.Instance,

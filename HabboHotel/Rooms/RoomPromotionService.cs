@@ -1,6 +1,8 @@
 using System.Data;
 using Dapper;
 using Plus.Communication.Packets.Outgoing.Catalog;
+using Plus.Communication.Packets.Outgoing.Inventory.Purse;
+using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Plus.Core.Settings;
 using Plus.Database;
@@ -83,6 +85,16 @@ public sealed class RoomPromotionService(IRoomDataLoader dataLoader, IRoomManage
         RoomEventSnapshot snapshot;
         string name;
 
+        // Only the room ad page sells promotions.
+        // The client form takes a name of 5 to 25 characters, a description of up to 100 and one of the event categories.
+        if (!catalog.TryGetPage(request.PageId, out var page) || !page.CanOpen(habbo) || page.Layout != "roomads"
+            || !page.Offers.TryGetValue(request.OfferId, out var offer) || !offer.Enabled || !offer.CanPurchase(habbo)
+            || request.Name.Length is < 5 or > 25 || request.Description.Length > 100
+            || navigator.EventCategories.All(category => category.Id != request.CategoryId)
+            || habbo.Credits < offer.CostCredits || habbo.Currencies[offer.PointsType] < offer.CostPoints) {
+            return;
+        }
+
         lock (_sync) {
             if (!dataLoader.TryGetData(request.RoomId, out var loaded) || loaded.OwnerId != habbo.Id) {
                 return;
@@ -99,12 +111,12 @@ public sealed class RoomPromotionService(IRoomDataLoader dataLoader, IRoomManage
                 : (previous.ExpiresAt ?? now).AddHours(2);
             var promotion = new RoomPromotion(name, description, startedAt, expiresAt, request.CategoryId, clock);
 
-            if (!rewards.Charge(habbo, 0, deliver: (connection, transaction) =>
+            if (!rewards.Charge(habbo, offer.CostCredits, offer.CostPoints, offer.PointsType, (connection, transaction) =>
                 {
                     store.Save(connection, transaction, data.Id, habbo.Id, promotion);
 
                     return true;
-                })) {
+                }, ClubRewards.EligibleCatalogPurchase(offer.LocalizationKey))) {
                 return;
             }
 
@@ -114,6 +126,14 @@ public sealed class RoomPromotionService(IRoomDataLoader dataLoader, IRoomManage
 
         if (habbo.Inventory?.Badges.HasBadge("RADZZ") == false) {
             await badges.GiveBadge(habbo, "RADZZ");
+        }
+
+        if (offer.CostCredits > 0) {
+            session.Send(new CreditBalanceComposer(habbo.Credits));
+        }
+
+        if (offer.CostPoints > 0) {
+            session.Send(new HabboActivityPointNotificationComposer(habbo.Currencies[offer.PointsType], -offer.CostPoints, offer.PointsType));
         }
 
         session.Send(new PurchaseOKComposer());

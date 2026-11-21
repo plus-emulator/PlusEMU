@@ -86,8 +86,8 @@ public sealed class MessengerNavigationServiceTests
     [Fact]
     public void FollowPreservesSilentGatesUnavailableNoticeAndPreparedForward()
     {
-        var (client, sent) = Client(new Habbo { Id = 1 });
         var (target, _) = Client(new Habbo { Id = 2 });
+        var (client, sent) = Client(new Habbo { Id = 1, Messenger = Messenger(Friend(2, target.GetHabbo())) });
         var lookups = 0;
         var service = new MessengerNavigationService(new RecordingSearch(), Clients(id =>
         {
@@ -98,7 +98,6 @@ public sealed class MessengerNavigationServiceTests
         service.Follow(client, 0);
         service.Follow(client, 1);
         Assert.Equal(0, lookups);
-        service.Follow(client, 3);
         Assert.Empty(sent);
         service.Follow(client, 2);
         var failed = new FlashIncomingPacket { Buffer = Assert.Single(sent).Payload };
@@ -120,6 +119,64 @@ public sealed class MessengerNavigationServiceTests
         var forward = new FlashIncomingPacket { Buffer = sent[0].Payload };
         Assert.Equal(99, forward.ReadInt());
         Assert.False(forward.HasDataRemaining());
+    }
+
+    [Fact]
+    public void FollowRefusesANonFriendWithTheSameReplyWhetherTheyAreOnlineOrNot()
+    {
+        var (online, _) = Client(new Habbo { Id = 2, CurrentRoom = RoomWithId(99) });
+        var (client, sent) = Client(new Habbo { Id = 1, Messenger = Messenger() });
+        var service = new MessengerNavigationService(new RecordingSearch(), Clients(id => id == 2 ? online : null));
+
+        service.Follow(client, 2);
+        service.Follow(client, 3);
+
+        Assert.Equal(2, sent.Count);
+        Assert.All(sent, packet => Assert.Equal(ServerPacketHeader.FollowFriendFailedComposer, packet.Header));
+        Assert.Equal(sent[0].Payload, sent[1].Payload);
+        AssertFollowError(sent[0], FriendFollowError.NotFriend);
+        Assert.Equal(0u, client.GetHabbo().PendingFollowRoomId);
+    }
+
+    [Fact]
+    public void FollowRefusesAnOfflineFriendAndAFriendTheFriendListShowsAsNotFollowable()
+    {
+        var hidden = new Habbo { Id = 5, AllowUserFollowing = true, CurrentRoom = RoomWithId(99) };
+        var (hiddenClient, _) = Client(hidden);
+        var hiddenFriend = Friend(5, hidden);
+        Assert.True(MessengerBuddySnapshot.Capture(hiddenFriend).Online);
+        Assert.False(MessengerBuddySnapshot.Capture(hiddenFriend).ShowInRoom);
+        var (client, sent) = Client(new Habbo { Id = 1, Messenger = Messenger(Friend(4, null), hiddenFriend) });
+        var service = new MessengerNavigationService(new RecordingSearch(), Clients(id => id == 5 ? hiddenClient : null));
+
+        service.Follow(client, 4);
+        service.Follow(client, 5);
+
+        Assert.Equal(2, sent.Count);
+        AssertFollowError(sent[0], FriendFollowError.Offline);
+        AssertFollowError(sent[1], FriendFollowError.Prevented);
+        Assert.Equal(0u, client.GetHabbo().PendingFollowRoomId);
+    }
+
+    private static void AssertFollowError((uint Header, byte[] Payload) packet, FriendFollowError error)
+    {
+        Assert.Equal(ServerPacketHeader.FollowFriendFailedComposer, packet.Header);
+        var wire = new FlashIncomingPacket { Buffer = packet.Payload };
+        Assert.Equal((int)error, wire.ReadInt());
+        Assert.False(wire.HasDataRemaining());
+    }
+
+    private static HabboMessenger Messenger(params MessengerBuddy[] friends) =>
+        new(friends.ToDictionary(friend => friend.Id), new(), [], TimeProvider.System);
+
+    private static MessengerBuddy Friend(int id, Habbo? online) => new() { Id = id, Habbo = online };
+
+    private static Room RoomWithId(uint id)
+    {
+        var room = (Room)RuntimeHelpers.GetUninitializedObject(typeof(Room));
+        room.Id = id;
+
+        return room;
     }
 
     [RoomComponentDatabaseFact]

@@ -10,6 +10,10 @@ public class InitDiffieHandshakeEvent : IPacketEvent
 {
     public Task Parse(GameClient session, IIncomingPacket packet)
     {
+        if (!session.TryStartHandshakeStep(HandshakeStep.InitDiffieHandshake)) {
+            return Task.CompletedTask;
+        }
+
         session.Send(new InitDiffieHandshakeComposer(HabboEncryptionV2.GetRsaDiffieHellmanPrimeKey(), HabboEncryptionV2.GetRsaDiffieHellmanGeneratorKey()));
 
         return Task.CompletedTask;

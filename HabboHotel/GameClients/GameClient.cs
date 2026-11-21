@@ -93,6 +93,9 @@ public abstract class GameClient
     /// <summary>Set by the transport once it knows where the connection comes from.</summary>
     public ClientAddress? RemoteAddress { get; internal set; }
 
+    /// <summary>A connection that has not logged in this long after it opened is closed.</summary>
+    internal static readonly TimeSpan LoginDeadline = TimeSpan.FromSeconds(30);
+
 
     private Revision RequiredRevision => Revision ?? throw new InvalidOperationException("The client has no packet revision.");
 

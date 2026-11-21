@@ -33,19 +33,21 @@ public class NitroClientFactory : IGameClientFactory<WsSessionProxy, WsServer>
     private readonly FlashPacketFactory _packetFactory;
     private readonly IRevisionsCache _revisionsCache;
     private readonly ILogger<GameClient> _logger;
+    private readonly TimeProvider _clock;
 
-    public NitroClientFactory(FlashPacketFactory packetFactory, IRevisionsCache revisionsCache, ILogger<GameClient> logger)
+    public NitroClientFactory(FlashPacketFactory packetFactory, IRevisionsCache revisionsCache, ILogger<GameClient> logger, TimeProvider clock)
     {
         _packetFactory = packetFactory;
         _revisionsCache = revisionsCache;
         _logger = logger;
+        _clock = clock;
     }
 
     public WsSessionProxy Create(WsServer server)
     {
         var flashClient = new FlashGameClient((NitroServer)server, _packetFactory, _logger)
         { Revision = _revisionsCache.InternalRevision };
-        var wsSession = new WsSessionProxy((NitroServer)server, flashClient, _logger, ((NitroServer)server).Admission);
+        var wsSession = new WsSessionProxy((NitroServer)server, flashClient, _logger, ((NitroServer)server).Admission, _clock);
 
         return wsSession;
     }

@@ -5,9 +5,12 @@ namespace Plus.HabboHotel.GameClients;
 public class TcpSessionProxy : TcpSession
 {
     private readonly GameClient _client;
-    public TcpSessionProxy(TcpServer server, GameClient client) : base(server)
+    private readonly TimeProvider _clock;
+
+    public TcpSessionProxy(TcpServer server, GameClient client, TimeProvider? clock = null) : base(server)
     {
         _client = client;
+        _clock = clock ?? TimeProvider.System;
         _client.Id = Id;
         _client.SendCallback = args =>
         {

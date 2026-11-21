@@ -20,13 +20,15 @@ public class WsSessionProxy : WsSession
     private readonly GameClient _client;
     private readonly ILogger _logger;
     private readonly ConnectionAdmission? _admission;
+    private readonly TimeProvider _clock;
     private IDisposable? _connectionSlot;
 
-    public WsSessionProxy(WsServer server, GameClient client, ILogger? logger = null, ConnectionAdmission? admission = null) : base(server)
+    public WsSessionProxy(WsServer server, GameClient client, ILogger? logger = null, ConnectionAdmission? admission = null, TimeProvider? clock = null) : base(server)
     {
         _client = client;
         _logger = logger ?? NullLogger.Instance;
         _admission = admission;
+        _clock = clock ?? TimeProvider.System;
         SendLock = ResolveSendLock(this) ?? new object();
         _client.Id = Id;
         _client.SendCallback = args =>

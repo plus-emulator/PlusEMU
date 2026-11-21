@@ -7,15 +7,16 @@ namespace Plus.HabboHotel.Quests;
 
 public interface IQuestProgressStore
 {
-    void Start(int userId, int questId);
+    bool TryStart(int userId, Quest quest, out int progress);
     void Cancel(int userId, int questId);
     void SaveProgress(int userId, int questId, int progress, bool completed);
 }
 
 public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
 {
-    public void Start(int userId, int questId)
+    public bool TryStart(int userId, Quest quest, out int progress)
     {
+        var questId = quest.Id;
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
@@ -26,6 +27,9 @@ public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
         }
 
         transaction.Commit();
+        progress = 0;
+
+        return true;
     }
 
     public void Cancel(int userId, int questId)
@@ -127,7 +131,7 @@ public sealed class QuestProgressService(IQuestProgressStore store, IQuestManage
             return;
         }
 
-        store.Start(habbo.Id, quest.Id);
+        store.TryStart(habbo.Id, quest, out _);
         stats.QuestId = quest.Id;
         quests.GetList(session, null);
         session.Send(new QuestStartedComposer(QuestWireDataFactory.Create(session, quest, quests.GetAmountOfQuestsInCategory(quest.Category))));

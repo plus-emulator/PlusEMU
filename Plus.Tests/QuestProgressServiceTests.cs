@@ -127,7 +127,7 @@ public sealed class QuestProgressServiceTests
         public bool Fail { get; init; }
         public List<(int UserId, int QuestId)> Starts { get; } = [];
         public List<(int UserId, int QuestId, int Progress, bool Completed)> Progress { get; } = [];
-        public void Start(int userId, int questId)
+        public bool TryStart(int userId, Quest quest, out int progress)
         {
             beforeStart?.Invoke();
 
@@ -135,7 +135,10 @@ public sealed class QuestProgressServiceTests
                 throw new InvalidOperationException("forced failure");
             }
 
-            Starts.Add((userId, questId));
+            Starts.Add((userId, quest.Id));
+            progress = 0;
+
+            return true;
         }
         public void Cancel(int userId, int questId)
         {

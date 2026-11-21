@@ -42,18 +42,14 @@ public class ModerationTicket
 
     public ModerationTicketStatus GetStatus(int id)
     {
-        if (Moderator == null) {
-            return ModerationTicketStatus.Open;
-        }
-
-        if (Moderator.Id == id && !Answered) {
-            return ModerationTicketStatus.Assigned;
-        }
-
         if (Answered) {
             return ModerationTicketStatus.ClosedOrAssignedElsewhere;
         }
 
-        return ModerationTicketStatus.ClosedOrAssignedElsewhere;
+        if (Moderator == null) {
+            return ModerationTicketStatus.Open;
+        }
+
+        return Moderator.Id == id ? ModerationTicketStatus.Assigned : ModerationTicketStatus.ClosedOrAssignedElsewhere;
     }
 }

@@ -54,7 +54,9 @@ public interface IModeratorTicketService
 public sealed class ModeratorTicketService(IModerationManager moderation, IGameClientManager clients,
     IModeratorUserLookup users, IModeratorTicketStore store, TimeProvider clock, IRoomDataLoader rooms) : IModeratorTicketService
 {
+    private static readonly TimeSpan SubmitCooldown = TimeSpan.FromSeconds(60);
     private readonly object _submissionLock = new();
+    private readonly Dictionary<int, DateTimeOffset> _lastSubmissions = [];
 
     public static ModeratorTicketSnapshot Capture(ModerationTicket ticket, int viewerId, DateTimeOffset now) =>
         new(ticket.Id, ticket.GetStatus(viewerId), ticket.Type, ticket.Category,
@@ -85,6 +87,21 @@ public sealed class ModeratorTicketService(IModerationManager moderation, IGameC
                 }
             }
 
+            var now = clock.GetUtcNow();
+
+            foreach (var (userId, submittedAt) in _lastSubmissions) {
+                if (now - submittedAt >= SubmitCooldown) {
+                    _lastSubmissions.Remove(userId);
+                }
+            }
+
+            if (_lastSubmissions.TryGetValue(sender.Id, out var lastSubmit)) {
+                var seconds = (int)Math.Ceiling((lastSubmit + SubmitCooldown - now).TotalSeconds);
+                client.SendNotification($"You're sending calls for help too fast! Please wait {seconds} seconds!");
+
+                return;
+            }
+
             Habbo? reported;
             RoomData? room = null;
             int type;
@@ -113,7 +130,7 @@ public sealed class ModeratorTicketService(IModerationManager moderation, IGameC
                 }
             }
 
-            var ticket = new ModerationTicket(1, type, request.Category, clock.GetUtcNow(), 1, sender, reported,
+            var ticket = new ModerationTicket(1, type, request.Category, now, 1, sender, reported,
                 StringCharFilter.Escape(request.Message.Trim()), room, request.Chats.ToList());
             store.RecordSubmission(sender.Id);
 
@@ -121,6 +138,7 @@ public sealed class ModeratorTicketService(IModerationManager moderation, IGameC
                 return;
             }
 
+            _lastSubmissions[sender.Id] = now;
             clients.ModAlert("A new support ticket has been submitted!");
             Broadcast(ticket, sender.Id);
         }
@@ -160,6 +178,7 @@ public sealed class ModeratorTicketService(IModerationManager moderation, IGameC
 
         clients.GetClientByUserId(ticket.Sender.Id)?.Send(new ModeratorSupportTicketResponseComposer(result));
         ticket.Answered = true;
+        moderation.RemoveTicket(ticket.Id);
         Broadcast(ticket, client.GetHabbo().Id);
     }
 
@@ -176,6 +195,7 @@ public sealed class ModeratorTicketService(IModerationManager moderation, IGameC
         }
 
         ticket.Answered = true;
+        moderation.RemoveTicket(ticket.Id);
         Broadcast(ticket, client.GetHabbo().Id);
     }
 

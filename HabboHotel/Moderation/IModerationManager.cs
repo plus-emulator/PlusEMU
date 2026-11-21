@@ -26,6 +26,7 @@ public interface IModerationManager
 
     bool TryAddTicket(ModerationTicket ticket);
     bool TryGetTicket(int ticketId, [NotNullWhen(true)] out ModerationTicket? ticket);
+    void RemoveTicket(int ticketId);
     bool UserHasTickets(int userId);
     ModerationTicket? GetTicketBySenderId(int userId);
 

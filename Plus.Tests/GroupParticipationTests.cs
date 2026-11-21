@@ -75,6 +75,8 @@ public class GroupParticipationTests
     {
         var first = NewGroup(9);
         var second = NewGroup(10);
+        first.PublishJoin(8);
+        second.PublishJoin(8);
         var directory = new Dictionary<int, Group> { [9] = first, [10] = second };
         var habbo = new Habbo { Id = 8, Username = "Bob", HabboStats = Stats() };
         var (clientA, sentA) = HabbiconTestSupport.Client(habbo);
@@ -328,6 +330,30 @@ public class GroupParticipationTests
         Assert.Empty(sent);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PrivateGroupJoinWritesNothingAndPublishesNothing(bool pendingRequest)
+    {
+        var group = NewGroup();
+        group.Type = GroupType.Locked;
+
+        if (pendingRequest) {
+            group.PublishJoin(8);
+        }
+
+        group.Type = GroupType.Private;
+        var store = new FakeParticipationStore();
+        var (client, sent) = HabbiconTestSupport.Client(new Habbo { Id = 8, Username = "Bob", Look = "hr-1" });
+
+        await Service(store, group).Join(client, group.Id);
+
+        Assert.Empty(store.Joins);
+        Assert.False(group.IsMember(8));
+        Assert.Equal(pendingRequest, group.HasRequest(8));
+        Assert.Empty(sent);
+    }
+
     [Fact]
     public async Task JoinIsPersistedBeforeMemoryIsPublished()
     {
@@ -354,6 +380,7 @@ public class GroupParticipationTests
     public async Task SetFavouritePersistsBeforeMemoryAndSendsRefreshWithoutRoom()
     {
         var group = NewGroup();
+        group.PublishJoin(8);
         var habbo = new Habbo { Id = 8, Username = "Bob", HabboStats = Stats() };
         var observedBeforeWrite = -1;
         var store = new FakeParticipationStore
@@ -379,12 +406,28 @@ public class GroupParticipationTests
     public async Task FailedFavouriteWriteKeepsMemoryAndSendsNothing()
     {
         var group = NewGroup();
+        group.PublishJoin(8);
         var habbo = new Habbo { Id = 8, Username = "Bob", HabboStats = Stats() };
         var store = new FakeParticipationStore { OnFavourite = (_, _) => false };
         var (client, sent) = HabbiconTestSupport.Client(habbo);
 
         await Service(store, group).SetFavourite(client, group.Id);
 
+        Assert.Equal(0, habbo.HabboStats.FavouriteGroupId);
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public async Task NonMemberFavouriteWritesNothingAndSendsNothing()
+    {
+        var group = NewGroup();
+        var habbo = new Habbo { Id = 8, Username = "Bob", HabboStats = Stats() };
+        var store = new FakeParticipationStore();
+        var (client, sent) = HabbiconTestSupport.Client(habbo);
+
+        await Service(store, group).SetFavourite(client, group.Id);
+
+        Assert.Empty(store.Favourites);
         Assert.Equal(0, habbo.HabboStats.FavouriteGroupId);
         Assert.Empty(sent);
     }
@@ -448,6 +491,7 @@ public class GroupParticipationTests
     public async Task FavouritePublicationIsAtomicWithTheFinalSave(bool remove)
     {
         var group = NewGroup();
+        group.PublishJoin(8);
         var original = remove ? group.Id : 0;
         var target = remove ? 0 : group.Id;
         var habbo = new Habbo { Id = 8, HabboStats = Stats(original), Access = UserAccess.Empty };

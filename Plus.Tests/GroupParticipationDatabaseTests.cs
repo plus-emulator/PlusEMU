@@ -143,10 +143,58 @@ public class GroupParticipationDatabaseTests
     }
 
     [GroupParticipationDatabaseFact]
+    public async Task PrivateGroupRefusesMembershipAndRequestWithoutWriting()
+    {
+        await WithSchema(async connectionString =>
+        {
+            using (var setup = new MySqlConnection(connectionString)) {
+                setup.Open();
+                setup.Execute("UPDATE `groups` SET state = '2' WHERE id = 2");
+            }
+
+            var store = new GroupParticipationStore(new HabbiconDatabaseTests.TestDatabase(connectionString));
+
+            Assert.Equal(GroupJoinOutcome.Refused, store.Join(7, 2, false, 1500));
+            Assert.Equal(GroupJoinOutcome.Refused, store.Join(7, 2, true, 1500));
+
+            using var connection = new MySqlConnection(connectionString);
+            connection.Open();
+            Assert.Equal(0, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM group_memberships"));
+            Assert.Equal(0, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM group_requests"));
+        });
+    }
+
+    [GroupParticipationDatabaseFact]
+    public async Task NonMemberFavouriteIsRefusedWithoutWriting()
+    {
+        await WithSchema(async connectionString =>
+        {
+            using (var setup = new MySqlConnection(connectionString)) {
+                setup.Open();
+                setup.Execute("INSERT INTO group_requests (user_id, group_id) VALUES (7, 2)");
+            }
+
+            var store = new GroupParticipationStore(new HabbiconDatabaseTests.TestDatabase(connectionString));
+
+            Assert.False(store.SaveFavourite(7, 1));
+            Assert.False(store.SaveFavourite(7, 2));
+
+            using var connection = new MySqlConnection(connectionString);
+            connection.Open();
+            Assert.Equal(0, connection.ExecuteScalar<int>("SELECT groupid FROM user_statistics WHERE id = 7"));
+        });
+    }
+
+    [GroupParticipationDatabaseFact]
     public async Task FavouriteWritesCommitIncludingZeroAndRefuseMissingStats()
     {
         await WithSchema(async connectionString =>
         {
+            using (var setup = new MySqlConnection(connectionString)) {
+                setup.Open();
+                setup.Execute("INSERT INTO group_memberships (user_id, group_id) VALUES (7, 3), (8, 3)");
+            }
+
             var store = new GroupParticipationStore(new HabbiconDatabaseTests.TestDatabase(connectionString));
 
             Assert.True(store.SaveFavourite(7, 3));

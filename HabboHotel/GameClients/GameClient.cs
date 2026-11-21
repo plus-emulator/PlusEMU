@@ -22,6 +22,8 @@ public abstract class GameClient
     private readonly object _lifecycle = new();
     private readonly CancellationTokenSource _closed = new();
     private ITimer? _loginDeadline;
+    private bool _loggingIn;
+    private bool _loginDeadlinePassed;
     private long _receivedUnhandled;
 
     public RecyclableMemoryStream? _incompleteStream;
@@ -182,10 +184,49 @@ public abstract class GameClient
     internal void StartLoginDeadline(TimeProvider clock) =>
         _loginDeadline = clock.CreateTimer(static client => ((GameClient)client!).CloseUnlessLoggedIn(), this, LoginDeadline, Timeout.InfiniteTimeSpan);
 
+    /// <summary>
+    /// Holds the login deadline off until <see cref="EndLogin"/>, because a login uses up its ticket before it ends.
+    /// False when the connection already closed.
+    /// </summary>
+    internal bool TryBeginLogin()
+    {
+        lock (_lifecycle) {
+            if (_closed.IsCancellationRequested) {
+                return false;
+            }
+
+            _loggingIn = true;
+
+            return true;
+        }
+    }
+
+    /// <summary>A login that ends without a Habbo after the deadline passed closes the connection.</summary>
+    internal void EndLogin()
+    {
+        lock (_lifecycle) {
+            _loggingIn = false;
+
+            if (!_loginDeadlinePassed || _habbo != null) {
+                return;
+            }
+
+            Close();
+        }
+
+        DisconnectRequested?.Invoke();
+    }
+
     private void CloseUnlessLoggedIn()
     {
         lock (_lifecycle) {
             if (_habbo != null) {
+                return;
+            }
+
+            if (_loggingIn) {
+                _loginDeadlinePassed = true;
+
                 return;
             }
 

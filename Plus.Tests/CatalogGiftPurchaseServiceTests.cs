@@ -261,8 +261,43 @@ public sealed class CatalogGiftPurchaseServiceTests
         Assert.Empty(context.RecipientPackets);
     }
 
-    private static CatalogGiftPurchaseRequest Request(string recipient = "recipient", string extraData = "") =>
-        new(1, 2, extraData, recipient, "hello", 3, 4, 5, true);
+    [Theory]
+    [InlineData("hello", "hello")]
+    [InlineData("you badword", "you bobba")]
+    [InlineData("line one\nline two", "line one line two")]
+    [InlineData("a\u0005b\u0001c", "a bc")]
+    public async Task GiftMessageIsEscapedAndFiltered(string message, string stored)
+    {
+        var context = CreateContext();
+
+        await context.Service.Purchase(context.SenderClient, Request(message: message));
+
+        Assert.Equal(GiftWrap.PresentData("recipient", stored, 1, 50, 3, 4, 5), context.Store.PresentExtraData);
+    }
+
+    [Fact]
+    public async Task GiftMessageIsCutAtTheGiftCardLimit()
+    {
+        var context = CreateContext();
+
+        await context.Service.Purchase(context.SenderClient, Request(message: new string('M', 600)));
+
+        Assert.Equal(GiftWrap.PresentData("recipient", new string('M', 140), 1, 50, 3, 4, 5), context.Store.PresentExtraData);
+    }
+
+    [Fact]
+    public async Task BuyerWhoMayBypassTheFilterKeepsAnUnfilteredGiftMessage()
+    {
+        var context = CreateContext();
+        context.Sender.Access = UserAccess.Create([], [new(PermissionKeys.ChatFilterBypass, false)]);
+
+        await context.Service.Purchase(context.SenderClient, Request(message: "you badword"));
+
+        Assert.Equal(GiftWrap.PresentData("recipient", "you badword", 1, 50, 3, 4, 5), context.Store.PresentExtraData);
+    }
+
+    private static CatalogGiftPurchaseRequest Request(string recipient = "recipient", string extraData = "", string message = "hello") =>
+        new(1, 2, extraData, recipient, message, 3, 4, 5, true);
 
     private static Context CreateContext(bool enabled = true, bool missingRecipient = false,
         bool recipientIsSender = false, bool recipientAllowsGifts = true, bool storeFails = false, string attachedBadge = "",
@@ -482,11 +517,13 @@ public sealed class CatalogGiftPurchaseServiceTests
     private sealed class GiftStore(bool fails, ItemDefinition present) : ICatalogGiftStore
     {
         public int Creates { get; private set; }
+        public string? PresentExtraData { get; private set; }
         public string? ContentExtraData { get; private set; }
         public InventoryItem Create(IDbConnection connection, IDbTransaction transaction, int recipientId,
             ItemDefinition presentDefinition, ItemDefinition contentDefinition, string presentExtraData, string contentExtraData)
         {
             Creates++;
+            PresentExtraData = presentExtraData;
             ContentExtraData = contentExtraData;
 
             if (fails) {

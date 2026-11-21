@@ -225,6 +225,101 @@ public sealed class RoomChatServiceTests
         Assert.Equal(kept, System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(payload.AsSpan(4, 2)));
     }
 
+    // A whisper is cleaned and cut to 200 characters like talk, before the word filter, the chat log or a user sees it.
+    [Fact]
+    public async Task AWhisperIsCleanedAndCutLikeTalkBeforeItIsFilteredLoggedOrSent()
+    {
+        var world = new World();
+        var kept = "A" + new string('B', 199);
+
+        await world.Service.Whisper(world.Sender, "Bob A\u0001" + new string('B', 298), 2);
+
+        Assert.Equal(kept, Assert.Single(world.Filter.Checked));
+        Assert.Equal($"<Whisper to Bob>: {kept}", Assert.Single(world.Logs.Entries).Message);
+        Assert.Equal(kept, Message(Assert.Single(world.SenderPackets)));
+        Assert.Equal(kept, Message(Assert.Single(world.RecipientPackets)));
+    }
+
+    // A Says Something trigger reads the cleaned whisper.
+    [Fact]
+    public async Task AWhisperReachesWiredCleaned()
+    {
+        var world = new World();
+        world.AddHiddenSpeechTrigger("hello");
+        Set(world.SenderUser, "_chatEmotions", new TestChatEmotions());
+
+        await world.Service.Whisper(world.Sender, "Bob hel\u0001lo", 0);
+
+        Assert.Empty(world.RecipientPackets);
+        Assert.Equal("hello", Message(Assert.Single(world.SenderPackets)));
+    }
+
+    // `users.username` holds at most 125 characters. A longer target name matches nobody and the whisper is dropped before anything sees it.
+    [Theory]
+    [InlineData(126, " hello")]
+    [InlineData(65534, " ")]
+    public async Task AWhisperToANameLongerThanAnyUsernameIsDropped(int length, string rest)
+    {
+        var world = new World();
+
+        await world.Service.Whisper(world.Sender, new string('B', length) + rest, 2);
+
+        Assert.Empty(world.Logs.Entries);
+        Assert.Empty(world.Filter.Checked);
+        Assert.Empty(world.SenderPackets);
+        Assert.Empty(world.RecipientPackets);
+    }
+
+    [Theory]
+    [InlineData(16)]
+    [InlineData(125)]
+    public async Task AWhisperToAnUnknownNameAsLongAsAUsernameIsLogged(int length)
+    {
+        var world = new World();
+        var name = new string('B', length);
+
+        await world.Service.Whisper(world.Sender, name + " hello", 2);
+
+        Assert.Equal($"<Whisper to {name}>: hello", Assert.Single(world.Logs.Entries).Message);
+        Assert.Equal("hello", Message(Assert.Single(world.SenderPackets)));
+    }
+
+    [Fact]
+    public async Task AWhisperReachesARecipientWithAThirtyCharacterName()
+    {
+        var world = new World();
+        var name = new string('B', 30);
+        world.Recipient.GetHabbo().Username = name;
+
+        await world.Service.Whisper(world.Sender, name + " hello", 2);
+
+        Assert.Equal($"<Whisper to {name}>: hello", Assert.Single(world.Logs.Entries).Message);
+        Assert.Equal("hello", Message(Assert.Single(world.SenderPackets)));
+        Assert.Equal("hello", Message(Assert.Single(world.RecipientPackets)));
+    }
+
+    // The target name is cleaned like the message, so it cannot add a line to the chat log.
+    [Theory]
+    [InlineData("Bo\u0001b", "Bob", true)]
+    [InlineData("Bob\r\n[12:00]", "Bob  [12:00]", false)]
+    public async Task AWhisperTargetNameIsCleanedBeforeItIsLoggedOrMatched(string name, string cleaned, bool delivered)
+    {
+        var world = new World();
+
+        await world.Service.Whisper(world.Sender, name + " hello", 2);
+
+        Assert.Equal($"<Whisper to {cleaned}>: hello", Assert.Single(world.Logs.Entries).Message);
+        Assert.Equal("hello", Message(Assert.Single(world.SenderPackets)));
+        Assert.Equal(delivered ? 1 : 0, world.RecipientPackets.Count);
+    }
+
+    private static string Message((uint Header, byte[] Payload) packet)
+    {
+        var length = System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(packet.Payload.AsSpan(4, 2));
+
+        return Encoding.UTF8.GetString(packet.Payload, 6, length);
+    }
+
     // Room chat packets: i32 virtual id, string message, i32 gesture, i32 bubble style.
     private static int Bubble((uint Header, byte[] Payload) packet)
     {
@@ -825,8 +920,14 @@ public sealed class RoomChatServiceTests
     {
         public bool Banned { get; set; }
         public string Replacement { get; set; } = "";
+        public List<string> Checked { get; } = [];
         public void Init() { }
-        public string CheckMessage(string message) => Replacement.Length == 0 ? message : Replacement;
+        public string CheckMessage(string message)
+        {
+            Checked.Add(message);
+
+            return Replacement.Length == 0 ? message : Replacement;
+        }
         public bool CheckBannedWords(string message) => Banned;
         public bool IsFiltered(string message) => Banned;
     }

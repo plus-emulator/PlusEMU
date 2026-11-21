@@ -24,7 +24,12 @@ internal class BanLoginCheckTask : IAuthenticationTask
         }
 
 #pragma warning disable CS0618 // The handshake's machine id only lives on the session.
-        return !_moderationManager.HasBan(ModerationBanType.Username, username) && !_moderationManager.HasBan(ModerationBanType.Machine, session.MachineId);
+        if (_moderationManager.HasBan(ModerationBanType.Username, username) || _moderationManager.HasBan(ModerationBanType.Machine, session.MachineId)) {
+            return false;
+        }
 #pragma warning restore CS0618
+
+        // An IP ban holds the address as text, as users.ip_last records it.
+        return session.RemoteAddress is not { IsVisitor: true } visitor || !_moderationManager.HasBan(ModerationBanType.Ip, visitor.Address.ToString());
     }
 }

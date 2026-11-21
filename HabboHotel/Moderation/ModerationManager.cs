@@ -163,7 +163,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     private async Task LoadBans(IDbConnection connection)
     {
-        var bans = await connection.QueryAsync<BanRow>("SELECT bantype AS Type, value, reason, expire AS ExpiresAt FROM bans WHERE bantype IN ('machine', 'user')");
+        var bans = await connection.QueryAsync<BanRow>("SELECT bantype AS Type, value, reason, expire AS ExpiresAt FROM bans");
         var now = _clock.GetUtcNow();
         _bans.Clear();
 
@@ -396,9 +396,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
             // Published in the same turn as the row: an unban, which clears the cache in its own turn, always comes
             // entirely before or after. A re-ban also refreshes the cached expiry.
-            if (work.Type == ModerationBanType.Machine || work.Type == ModerationBanType.Username) {
-                _bans[(work.Type, work.Value)] = new(work.Type, work.Value, work.Reason, work.ExpiresAt);
-            }
+            _bans[(work.Type, work.Value)] = new(work.Type, work.Value, work.Reason, work.ExpiresAt);
         }
         finally {
             _banWrites.Release();
@@ -438,7 +436,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     /// <summary>
     /// Accounts a ban covers. A machine ban reaches the sessions online with that handshake machine id. An IP ban reaches
-    /// only the accounts whose users.ip_last is that address. Username and machine bans are refused at login by BanLoginCheckTask.
+    /// only the accounts whose users.ip_last is that address. BanLoginCheckTask refuses a login under any of the three bans.
     /// </summary>
     internal async Task<IReadOnlyList<int>> BannedAccounts(ModerationBanType type, string banValue, CancellationToken cancellationToken = default)
     {

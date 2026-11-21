@@ -192,7 +192,7 @@ public sealed class GiftOpeningServiceTests
         public bool FailOpen; public int Opens; public int InvalidDeletes;
         public GiftContent Content { get; init; } = new(200, "blue");
         public GiftContent? Find(uint itemId) => Content;
-        public void Open(uint itemId, int ownerId, uint roomId, uint presentBaseId, GiftContent content)
+        public void Open(uint itemId, int ownerId, uint roomId, uint presentBaseId, GiftContent content, string extraData)
         {
             before?.Invoke();
 

@@ -7,7 +7,9 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.DataFormat;
+using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Rooms.Chat.Filter;
+using Plus.Utilities;
 using Plus.Utilities.DependencyInjection;
 
 namespace Plus.HabboHotel.Catalog;
@@ -21,6 +23,9 @@ public interface ICatalogFurniExtraData
 
 public sealed class CatalogFurniExtraData : ICatalogFurniExtraData
 {
+    // The catalogue's trophy inscription box takes 300 characters.
+    private const int MaxTrophyTextLength = 300;
+
     private readonly IGroupManager _groups;
     private readonly IWordFilterManager _wordFilter;
     private readonly ILogger<CatalogFurniExtraData> _logger;
@@ -69,7 +74,7 @@ public sealed class CatalogFurniExtraData : ICatalogFurniExtraData
             case InteractionType.Moodlight:
                 return "1,1,1,#000000,255";
             case InteractionType.Trophy:
-                return $"{session.GetHabbo().Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}{Convert.ToChar(9)}{extraData}";
+                return $"{session.GetHabbo().Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}{Convert.ToChar(9)}{ReadTrophyText(session, extraData)}";
             case InteractionType.Mannequin:
                 return $"m{Convert.ToChar(5)}.ch-210-1321.lg-285-92{Convert.ToChar(5)}Default Mannequin";
             case InteractionType.BadgeDisplay:
@@ -83,6 +88,17 @@ public sealed class CatalogFurniExtraData : ICatalogFurniExtraData
             default:
                 return "";
         }
+    }
+
+    private string ReadTrophyText(GameClient session, string text)
+    {
+        text = StringCharFilter.Escape(text, allowBreaks: true);
+
+        if (text.Length > MaxTrophyTextLength) {
+            text = text[..MaxTrophyTextLength];
+        }
+
+        return session.GetHabbo().Access.Can(PermissionKeys.ChatFilterBypass) ? text : _wordFilter.CheckMessage(text);
     }
 
     // GuildSelectorCatalogWidget sends the chosen group's id. Group furniture needs a group the buyer belongs to. A forum

@@ -1,10 +1,12 @@
 using System.Reflection;
+using Plus.Communication.Packets.Incoming.Rooms.Connection;
 using Plus.Communication.Packets.Outgoing;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Items.Wired;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Rooms.Games.Banzai;
 using Plus.HabboHotel.Rooms.Games.Teams;
+using Plus.HabboHotel.Rooms.Polls;
 using Xunit;
 
 namespace Plus.Tests;
@@ -142,6 +144,41 @@ public partial class PlacedFurniRoomTests
         WithUnavailableRoomGame(() => Assert.True(habbo.EnterRoom(_room)));
         Assert.Equal(owner ? ["visit"] : ["visit", "achievement"], events);
         Assert.Equal(owner ? 0 : 1, habbo.HabboStats.RoomVisits);
+    }
+
+    // One real entry counts once, however often the client repeats the room entry packet.
+    [Fact]
+    public void RepeatedGoToFlatFromAnAdmittedUserDoesNotRedoTheEntry()
+    {
+        _room.OwnerId = 99;
+        var habbo = _client.GetHabbo();
+        habbo.Client = _client;
+        habbo.Look = "hd-180-1";
+        habbo.Gender = "M";
+        habbo.HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
+        var clock = new EntryClock();
+        habbo.Effects = new Plus.HabboHotel.Users.Effects.EffectsComponent(clock);
+        var polls = Proxy<IRoomPollService>((method, _) => method == nameof(IRoomPollService.Offer) ? null : throw new InvalidOperationException(method));
+        habbo.SetHotelServices(TestGameClientManager.Empty, null!, null, new RoomEntryService(null!, clock, polls, EntryWordQuiz));
+        var events = new List<string>();
+        habbo.SetRoomVisitRecorder(new RecordingEntry(events), new TestRoomAchievements((_, group, _) => events.Add(group)));
+        WithUnavailableRoomGame(() => Assert.True(habbo.EnterRoom(_room)));
+        var admitted = _room.GetRoomUserManager().GetRoomUserByHabbo(7);
+        Assert.NotNull(admitted);
+        _client.Sent.Clear();
+
+        WithUnavailableRoomGame(() =>
+        {
+            for (var i = 0; i < 3; i++) {
+                new GoToFlatEvent().Parse(_client, ClientPacket((int)RoomId)).GetAwaiter().GetResult();
+            }
+        });
+
+        Assert.Equal(["visit", "ACH_RoomEntry"], events);
+        Assert.Equal(1, habbo.HabboStats.RoomVisits);
+        Assert.Empty(_client.Sent);
+        Assert.Same(_room, habbo.CurrentRoom);
+        Assert.Same(admitted, _room.GetRoomUserManager().GetRoomUserByHabbo(7));
     }
 
     private sealed class RecordingEntry(List<string> events) : IRoomVisitRecorder

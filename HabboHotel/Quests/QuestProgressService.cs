@@ -20,14 +20,20 @@ public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
-        connection.Execute("REPLACE INTO user_quests (user_id,quest_id) VALUES (@userId,@questId)", new { userId, questId }, transaction);
+        var isNew = connection.Execute("INSERT IGNORE INTO user_quests (user_id,quest_id) VALUES (@userId,@questId)", new { userId, questId }, transaction) == 1;
+        progress = isNew ? 0 : connection.QuerySingle<int?>("SELECT progress FROM user_quests WHERE user_id=@userId AND quest_id=@questId FOR UPDATE",
+            new { userId, questId }, transaction) ?? 0;
+
+        // A completed quest stays completed, so its reward is paid only once.
+        if (!isNew && quest.IsCompleted(progress)) {
+            return false;
+        }
 
         if (connection.Execute("UPDATE user_statistics SET quest_id=@questId WHERE id=@userId LIMIT 1", new { userId, questId }, transaction) != 1) {
             throw new InvalidOperationException("Quest state was not persisted.");
         }
 
         transaction.Commit();
-        progress = 0;
 
         return true;
     }
@@ -131,7 +137,15 @@ public sealed class QuestProgressService(IQuestProgressStore store, IQuestManage
             return;
         }
 
-        store.TryStart(habbo.Id, quest, out _);
+        var started = store.TryStart(habbo.Id, quest, out var progress);
+        habbo.Quests[quest.Id] = progress;
+
+        if (!started) {
+            quests.GetList(session, null);
+
+            return;
+        }
+
         stats.QuestId = quest.Id;
         quests.GetList(session, null);
         session.Send(new QuestStartedComposer(QuestWireDataFactory.Create(session, quest, quests.GetAmountOfQuestsInCategory(quest.Category))));

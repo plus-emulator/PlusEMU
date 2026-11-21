@@ -18,7 +18,12 @@
     "Flash": {
         "Hostname": "127.0.0.1",
         "Port": 1232,
-        "Name": "Default Flash Server"
+        "Name": "Default Flash Server",
+        "TrustedProxies": [
+            "127.0.0.1",
+            "::1"
+        ],
+        "MaxConnectionsPerIp": 20
     },
     "Nitro": {
         "Hostname": "127.0.0.1",

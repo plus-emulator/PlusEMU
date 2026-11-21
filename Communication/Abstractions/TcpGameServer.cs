@@ -30,7 +30,10 @@ public abstract class TcpGameServer<TGameServerOptions> : TcpServer, IGameServer
         _logger = logger;
         _incomingInjectors = incomingInjectors.GroupBy(x => x.MessageId).ToDictionary(x => x.Key, x => x.ToArray());
         _outgoingInjectors = outgoingInjectors.GroupBy(x => x.MessageId).ToDictionary(x => x.Key, x => x.ToArray());
+        Admission = new(options.Value, TimeProvider.System, logger);
     }
+
+    internal ConnectionAdmission Admission { get; }
 
     protected override TcpSession CreateSession() => _clientFactory.Create(this);
 

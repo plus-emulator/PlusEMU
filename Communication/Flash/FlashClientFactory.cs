@@ -22,5 +22,6 @@ public class FlashClientFactory : IGameClientFactory<TcpSessionProxy, TcpServer>
     }
 
     public TcpSessionProxy Create(TcpServer server) =>
-        new((FlashServer)server, new FlashGameClient((FlashServer)server, _packetFactory, _logger) { Revision = _revisionsCache.InternalRevision }, _clock);
+        new((FlashServer)server, new FlashGameClient((FlashServer)server, _packetFactory, _logger) { Revision = _revisionsCache.InternalRevision }, _clock,
+            ((FlashServer)server).Admission);
 }

@@ -31,6 +31,7 @@ public static class WebErrors
     public const string NotFound = "not_found";
     public const string MethodNotAllowed = "method_not_allowed";
     public const string PayloadTooLarge = "payload_too_large";
+    public const string TooManyRequests = "too_many_requests";
     public const string ServerError = "server_error";
 }
 
@@ -55,7 +56,7 @@ public class WebServer : IWebServer
     public WebServer(IOptions<WebServerConfiguration> options, IBadgeRarityManager badgeRarity, ICatalogFurnidata furnidata,
         Plus.HabboHotel.Items.Wired.WebApi.IWiredWebApiService? wiredWebApi = null, IFlashGamedata? flashGamedata = null,
         IOptions<AirClientConfiguration>? airClient = null, IHandshakeRsaKeyProvider? handshakeKey = null, ISsoTicketStore? tickets = null,
-        ILauncherTokenStore? launcherTokens = null, TimeProvider? time = null)
+        ILauncherTokenStore? launcherTokens = null, TimeProvider? time = null, IOptions<LoginThrottleConfiguration>? loginThrottle = null)
     {
         _configuration = options.Value;
         _badgeLeaderboard = new(badgeRarity);

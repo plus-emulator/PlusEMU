@@ -14,6 +14,9 @@ public interface IAvatarWardrobeService
 
 public sealed class AvatarWardrobeService(IFigureDataManager figures, IAvatarWardrobeStore store, IUserDataFactory userData) : IAvatarWardrobeService
 {
+    // The client wardrobe has 10 slots, numbered from 1.
+    private const int SlotCount = 10;
+
     public async Task ShowWardrobe(GameClient session)
     {
         var userId = session.GetHabbo().Id;
@@ -33,7 +36,13 @@ public sealed class AvatarWardrobeService(IFigureDataManager figures, IAvatarWar
             return;
         }
 
+        var storedGender = gender.ToUpper();
+
+        if (slotId is < 1 or > SlotCount || storedGender is not ("M" or "F")) {
+            return;
+        }
+
         var processed = figures.ProcessFigure(look, gender, wardrobe.GetClothingParts, ClubAccess.LevelFor(habbo.Access));
-        store.SaveSlot(habbo.Id, slotId, processed, gender.ToUpper());
+        store.SaveSlot(habbo.Id, slotId, processed, storedGender);
     }
 }

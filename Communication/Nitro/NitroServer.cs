@@ -9,7 +9,7 @@ using Plus.HabboHotel.GameClients;
 
 namespace Plus.Communication.Nitro;
 
-public class NitroServerConfiguration : IWebsocketServerOptions
+public class NitroServerConfiguration : IGameServerOptions
 {
     public string Name { get; set; } = "Nitro";
     public int Port { get; set; }

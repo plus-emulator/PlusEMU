@@ -7,4 +7,6 @@ public class FlashServerConfiguration : IGameServerOptions
     public string Name => "Flash";
     public string Hostname { get; set; } = "127.0.0.1";
     public int Port { get; set; }
+    public IEnumerable<string>? TrustedProxies { get; set; }
+    public int MaxConnectionsPerIp { get; set; } = 20;
 }

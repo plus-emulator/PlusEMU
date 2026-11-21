@@ -21,7 +21,7 @@ public sealed class ConnectionAdmission
     private readonly Dictionary<IPAddress, int> _connections = new();
     private readonly Dictionary<IPAddress, DateTimeOffset> _refusalsLogged = new();
 
-    public ConnectionAdmission(IWebsocketServerOptions options, TimeProvider clock, ILogger logger)
+    public ConnectionAdmission(IGameServerOptions options, TimeProvider clock, ILogger logger)
     {
         _clock = clock;
         _logger = logger;

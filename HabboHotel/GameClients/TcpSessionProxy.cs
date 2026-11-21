@@ -1,4 +1,5 @@
 using NetCoreServer;
+using Plus.Communication.Abstractions;
 
 namespace Plus.HabboHotel.GameClients;
 
@@ -6,11 +7,13 @@ public class TcpSessionProxy : TcpSession
 {
     private readonly GameClient _client;
     private readonly TimeProvider _clock;
+    private readonly ConnectionAdmission? _admission;
 
-    public TcpSessionProxy(TcpServer server, GameClient client, TimeProvider? clock = null) : base(server)
+    public TcpSessionProxy(TcpServer server, GameClient client, TimeProvider? clock = null, ConnectionAdmission? admission = null) : base(server)
     {
         _client = client;
         _clock = clock ?? TimeProvider.System;
+        _admission = admission;
         _client.Id = Id;
         _client.SendCallback = args =>
         {

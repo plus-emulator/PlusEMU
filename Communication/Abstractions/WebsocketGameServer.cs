@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace Plus.Communication.Abstractions;
 
 public abstract class WebsocketGameServer<TGameServerOptions> : WsServer, IGameServer
-    where TGameServerOptions : class, IWebsocketServerOptions
+    where TGameServerOptions : class, IGameServerOptions
 {
     private readonly IGameClientFactory<WsSessionProxy, WsServer> _clientFactory;
     private readonly IPacketManager _packetManager;

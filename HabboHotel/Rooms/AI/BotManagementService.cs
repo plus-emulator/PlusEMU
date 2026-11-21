@@ -10,6 +10,7 @@ using Plus.Database;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Rooms.AI.Speech;
+using Plus.HabboHotel.Rooms.Chat;
 using Plus.HabboHotel.Subscriptions;
 
 using Plus.HabboHotel.Rooms;
@@ -115,6 +116,9 @@ public interface IBotManagementService
 
 public sealed class BotManagementService(IBotManagementStore store, IFigureDataManager figures, Random? random = null) : IBotManagementService
 {
+    // The editor gets every line back in one packet string of at most 65535 bytes. 100 lines of 200 characters fit at 3 bytes per character.
+    private const int MaxSpeechLines = 100;
+
     private readonly Random _random = random ?? Random.Shared;
 
     /// <summary>A bot placed from the inventory faces direction 2.</summary>
@@ -298,7 +302,11 @@ public sealed class BotManagementService(IBotManagementStore store, IFigureDataM
             return;
         }
 
-        var speech = parts[0].Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Select(text => Regex.Replace(text, "<(.|\\n)*?>", string.Empty)).ToArray();
+        var speech = parts[0].Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Take(MaxSpeechLines)
+            .Select(text => Regex.Replace(text, "<[^>]*>", string.Empty))
+            .Select(text => text.Length > RoomChatService.MaxMessageLength ? text[..RoomChatService.MaxMessageLength] : text)
+            .ToArray();
         interval = Math.Max(7, interval);
         var saved = store.SaveSpeech(bot.Id, bot.RoomId, speech, automatic, interval, mix);
         bot.AutomaticChat = automatic;

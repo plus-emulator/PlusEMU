@@ -50,6 +50,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
     private readonly IClubMembershipService _clubMemberships;
     private readonly IClubRewards _clubRewards;
     private readonly ICatalogGiftStore _giftStore;
+    private readonly ICatalogFurniExtraData _furniExtraData;
     private readonly TimeProvider _clock;
     private readonly ILogger<CatalogGiftPurchaseService> _logger;
 
@@ -62,6 +63,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         IClubMembershipService clubMemberships,
         IClubRewards clubRewards,
         ICatalogGiftStore giftStore,
+        ICatalogFurniExtraData furniExtraData,
         TimeProvider clock,
         ILogger<CatalogGiftPurchaseService> logger,
         IPlannedShutdown? plannedShutdown = null)
@@ -76,6 +78,7 @@ public sealed class CatalogGiftPurchaseService : ICatalogGiftPurchaseService
         _clubMemberships = clubMemberships;
         _clubRewards = clubRewards;
         _giftStore = giftStore;
+        _furniExtraData = furniExtraData;
         _clock = clock;
         _logger = logger;
     }

@@ -15,6 +15,7 @@ using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Groups.Forums;
 using Plus.HabboHotel.Habbicons;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Rooms.Chat.Filter;
 using Plus.HabboHotel.Subscriptions;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Effects;
@@ -663,8 +664,10 @@ public sealed class CatalogPurchaseServiceTests
             rewards,
             tracks,
             effects ?? Proxy<IAvatarEffectStore, EmptyProxy>(),
-            groups ?? Proxy<IGroupManager, EmptyProxy>(),
+            groups ??= Proxy<IGroupManager, EmptyProxy>(),
             forums ?? Proxy<IGroupForumStore, EmptyProxy>(),
+            new CatalogFurniExtraData(groups, Proxy<IWordFilterManager, EmptyProxy>(),
+                NullLogger<CatalogFurniExtraData>.Instance),
             new FixedClock(new DateTimeOffset(2040, 2, 3, 4, 5, 6, TimeSpan.Zero)),
             NullLogger<CatalogPurchaseService>.Instance,
             buildersClub,

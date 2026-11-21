@@ -7,8 +7,10 @@ using Plus.Core.Settings;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Quests;
+using Plus.HabboHotel.Rooms.Chat.Filter;
 using Plus.HabboHotel.Subscriptions;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Inventory;
@@ -245,6 +247,8 @@ public sealed class CatalogGiftPurchaseServiceTests
             memberships,
             rewards,
             store,
+            new CatalogFurniExtraData(Proxy<IGroupManager, EmptyProxy>(), Proxy<IWordFilterManager, EmptyProxy>(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<CatalogFurniExtraData>.Instance),
             clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CatalogGiftPurchaseService>.Instance,
             plannedShutdown);

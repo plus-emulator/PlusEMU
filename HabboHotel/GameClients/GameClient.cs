@@ -84,6 +84,11 @@ public abstract class GameClient
 
     internal bool TryRecordRevisionSelection() => Interlocked.Exchange(ref _revisionSelectionLogged, 1) == 0;
 
+    private int _handshakeSteps;
+
+    /// <summary>True the first time a connection takes this handshake step, false on every repeat.</summary>
+    internal bool TryStartHandshakeStep(HandshakeStep step) => (Interlocked.Or(ref _handshakeSteps, (int)step) & (int)step) == 0;
+
     // True only when the supplied args have a pending operation that will raise Completed; unset until a transport attaches.
     internal Func<SocketAsyncEventArgs, bool>? SendCallback { get; set; }
     internal Action? DisconnectRequested { get; set; }

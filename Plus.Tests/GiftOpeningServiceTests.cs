@@ -37,7 +37,7 @@ public sealed class GiftOpeningServiceTests
         Assert.NotSame(definition, gift.Definition);
         var delivered = Assert.IsType<InventoryItem>(Assert.IsType<InventoryComponent>(client.GetHabbo().Inventory).Furniture.GetItem(gift.Id));
         Assert.Same(definition, delivered.Definition);
-        Assert.Equal("blue", delivered.ExtraData.Serialize());
+        Assert.Equal("", delivered.ExtraData.Serialize());
         Assert.NotEmpty(sent);
     }
 
@@ -144,6 +144,42 @@ public sealed class GiftOpeningServiceTests
         Assert.Empty(room.GetGameMap().GetCoordinatedItems(new(1, 1)));
     }
 
+    [Theory]
+    [InlineData(InteractionType.None, "blue")]
+    [InlineData(InteractionType.None, "")]
+    [InlineData(InteractionType.MusicDisc, "7")]
+    [InlineData(InteractionType.MonsterplantSeed, "12")]
+    [InlineData(InteractionType.CrackableEgg, "999")]
+    [InlineData(InteractionType.Lovelock, "1\u0005sender\u0005recipient")]
+    public async Task OldGiftOfFurniWithoutPurchaseDataOpensWithEmptyData(InteractionType type, string stored)
+    {
+        var (_, client, _, gift) = Context();
+        var store = new Store { Content = new(200, stored) };
+        var definition = Definition(200, type);
+
+        await Service(store, definition).OpenAsync(client, gift.Id);
+
+        Assert.Equal("", store.OpenedExtraData);
+        var delivered = Assert.IsType<InventoryItem>(Assert.IsType<InventoryComponent>(client.GetHabbo().Inventory).Furniture.GetItem(gift.Id));
+        Assert.Equal(FurniExtraData.Load(definition, "", keepLegacy: true).Serialize(), delivered.ExtraData.Serialize());
+    }
+
+    [Theory]
+    [InlineData(InteractionType.Trophy, "sender\t3-2-2040\twell done")]
+    [InlineData(InteractionType.BadgeDisplay, "ADM\tsender\t3-2-2040")]
+    [InlineData(InteractionType.Postit, "FFFF33")]
+    public async Task OldGiftOfFurniWithPurchaseDataKeepsItsStoredData(InteractionType type, string stored)
+    {
+        var (_, client, _, gift) = Context();
+        var store = new Store { Content = new(200, stored) };
+
+        await Service(store, Definition(200, type)).OpenAsync(client, gift.Id);
+
+        Assert.Equal(stored, store.OpenedExtraData);
+        var delivered = Assert.IsType<InventoryItem>(Assert.IsType<InventoryComponent>(client.GetHabbo().Inventory).Furniture.GetItem(gift.Id));
+        Assert.Equal(stored, delivered.ExtraData.Serialize());
+    }
+
     private sealed class FailingPlacement : IRoomItemStore
     {
         public int Attempts { get; private set; }
@@ -190,6 +226,7 @@ public sealed class GiftOpeningServiceTests
     private sealed class Store(Action? before = null) : IGiftStore
     {
         public bool FailOpen; public int Opens; public int InvalidDeletes;
+        public string? OpenedExtraData { get; private set; }
         public GiftContent Content { get; init; } = new(200, "blue");
         public GiftContent? Find(uint itemId) => Content;
         public void Open(uint itemId, int ownerId, uint roomId, uint presentBaseId, GiftContent content, string extraData)
@@ -201,6 +238,7 @@ public sealed class GiftOpeningServiceTests
             }
 
             Opens++;
+            OpenedExtraData = extraData;
         }
         public void DeleteInvalid(uint itemId, int ownerId, uint roomId)
         {

@@ -43,6 +43,35 @@ public sealed class FlashConnectionAdmissionTests
     }
 
     [Fact]
+    public async Task TheFlashServerKeepsNothingOfTheConnectionsItRefuses()
+    {
+        using var server = new TrackingFlashServer(new FlashServerConfiguration { Hostname = "127.0.0.1", Port = 0, TrustedProxies = [], MaxConnectionsPerIp = 1 });
+        Assert.True(server.Start());
+
+        try {
+            using var held = await GameSocket.Connect(server);
+            Assert.True(await held.StaysOpen());
+
+            for (var i = 0; i < 200; i++) {
+                using var refused = await GameSocket.Connect(server);
+                Assert.True(await refused.IsClosed());
+            }
+
+            Assert.True(await Eventually(() =>
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+
+                return Task.FromResult(server.ConnectedSessions == 1 && server.Alive == 1);
+            }), $"{server.Alive} of {server.Created} sessions are still alive");
+        }
+        finally {
+            server.Stop();
+        }
+    }
+
+    [Fact]
     public async Task LocalFlashConnectionsAreNotLimitedWhenLoopbackIsATrustedProxy()
     {
         using var server = Flash(new FlashServerConfiguration { Hostname = "127.0.0.1", Port = 0, MaxConnectionsPerIp = 1 });
@@ -94,6 +123,45 @@ public sealed class FlashConnectionAdmissionTests
         }
 
         return false;
+    }
+
+    /// <summary>The real Flash server, with a weak reference to each session so a test can see which ones stay in memory.</summary>
+    private sealed class TrackingFlashServer(FlashServerConfiguration configuration) : FlashServer(Options.Create(configuration),
+        new FlashClientFactory(new FlashPacketFactory(), CatalogSnapshotTestSupport.Proxy<IRevisionsCache>((_, _) => null), TestLogging.GameClient, TimeProvider.System),
+        CatalogSnapshotTestSupport.Proxy<IPacketManager>((name, _) => throw new NotSupportedException(name)), [], [], NullLogger<FlashServer>.Instance)
+    {
+        private readonly List<WeakReference> _sessions = [];
+
+        public int Created
+        {
+            get
+            {
+                lock (_sessions) {
+                    return _sessions.Count;
+                }
+            }
+        }
+
+        public int Alive
+        {
+            get
+            {
+                lock (_sessions) {
+                    return _sessions.Count(session => session.IsAlive);
+                }
+            }
+        }
+
+        protected override TcpSession CreateSession()
+        {
+            var session = base.CreateSession();
+
+            lock (_sessions) {
+                _sessions.Add(new(session));
+            }
+
+            return session;
+        }
     }
 
     private sealed class RecordingTcpServer(ConnectionAdmission admission) : TcpServer(IPAddress.Loopback, 0)

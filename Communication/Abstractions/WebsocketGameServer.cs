@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using NetCoreServer;
 using Plus.Communication.Flash;
@@ -16,7 +15,6 @@ public abstract class WebsocketGameServer<TGameServerOptions> : WsServer, IGameS
     private readonly IReadOnlyDictionary<uint, IIncomingPacketInjector[]> _incomingInjectors;
     private readonly IReadOnlyDictionary<uint, IOutgoingPacketInjector[]> _outgoingInjectors;
     private readonly ILogger _logger;
-    private readonly ConcurrentDictionary<Guid, WsSessionProxy> _connectedClients = new();
 
     protected WebsocketGameServer(IOptions<TGameServerOptions> options,
         IGameClientFactory<WsSessionProxy, WsServer> clientFactory,
@@ -38,27 +36,6 @@ public abstract class WebsocketGameServer<TGameServerOptions> : WsServer, IGameS
     internal ConnectionAdmission Admission { get; }
 
     protected override WsSession CreateSession() => _clientFactory.Create(this);
-
-    protected override void OnConnected(TcpSession session)
-    {
-        if (session is not WsSessionProxy gameClient) {
-            session.Disconnect();
-
-            //_logger.LogWarning("Expected {TGameClient} to be connected. Got {type}", typeof(TGameClient), session.GetType());
-            return;
-        }
-
-        if (!_connectedClients.TryAdd(gameClient.Id, gameClient)) {
-            //_logger.LogWarning("Failed to cache client. {id} {ip}", gameClient.Id, gameClient.Socket.RemoteEndPoint?.ToString());
-            gameClient.Disconnect();
-        }
-    }
-
-    protected override void OnDisconnected(TcpSession session)
-    {
-        _connectedClients.TryRemove(session.Id, out _);
-    }
-
 
     public Task PacketReceived(GameClient client, uint messageId, IIncomingPacket packet)
     {

@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.Chat.Filter;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Inventory.Furniture;
 using Xunit;
@@ -23,7 +24,7 @@ public sealed class RoomInteractionServiceTests
     public void RatingRejectsInvalidOwnerAndDuplicateRequests()
     {
         var store = new RecordingStore();
-        var service = new RoomInteractionService(store);
+        var service = new RoomInteractionService(store, Unfiltered);
         var (room, owner, _) = Context("owner");
         service.Rate(room, owner, 2);
         service.Rate(room, owner, 1);
@@ -41,7 +42,7 @@ public sealed class RoomInteractionServiceTests
     {
         var (room, client, sent) = Context("owner", "voter");
         var store = new RecordingStore { ResultingScore = 42 };
-        var service = new RoomInteractionService(store);
+        var service = new RoomInteractionService(store, Unfiltered);
 
         service.Rate(room, client, -1);
         service.Rate(room, client, -1);
@@ -58,7 +59,7 @@ public sealed class RoomInteractionServiceTests
         var (room, client, sent) = Context("owner", "voter");
         var store = new RecordingStore { Fail = true };
 
-        Assert.Throws<InvalidOperationException>(() => new RoomInteractionService(store).Rate(room, client, 1));
+        Assert.Throws<InvalidOperationException>(() => new RoomInteractionService(store, Unfiltered).Rate(room, client, 1));
 
         Assert.Equal(0, room.Score);
         Assert.Empty(client.GetHabbo().RatedRooms);
@@ -71,7 +72,7 @@ public sealed class RoomInteractionServiceTests
         var (room, client, _) = Context("owner");
         var item = AddItem(room, InteractionType.Gate);
         var store = new RecordingStore();
-        var service = new RoomInteractionService(store);
+        var service = new RoomInteractionService(store, Unfiltered);
         service.DeleteSticky(room, client, item.Id);
         item.Definition.InteractionType = InteractionType.Postit;
         store.Fail = true;
@@ -114,7 +115,7 @@ public sealed class RoomInteractionServiceTests
             Assert.Empty(sent);
         }
         };
-        var service = new RoomInteractionService(store);
+        var service = new RoomInteractionService(store, Unfiltered);
 
         if (fail) {
             Assert.Throws<InvalidOperationException>(() => service.UpdateSticky(room, client, item.Id, "9CCEFF", "edited"));
@@ -138,7 +139,7 @@ public sealed class RoomInteractionServiceTests
         var item = AddItem(room, InteractionType.Postit);
         item.LegacyDataString = "FFFF33 old";
         var store = new RecordingStore();
-        var service = new RoomInteractionService(store);
+        var service = new RoomInteractionService(store, Unfiltered);
         service.ShowSticky(room, client, item.Id);
         var read = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = Assert.Single(sent).Payload };
         Assert.Equal("7", read.ReadString());
@@ -197,6 +198,8 @@ public sealed class RoomInteractionServiceTests
             server.Execute($"DROP DATABASE `{schema}`");
         }
     }
+
+    private static readonly IWordFilterManager Unfiltered = CatalogSnapshotTestSupport.Proxy<IWordFilterManager>((_, args) => args[0]);
 
     private sealed class StickyDatabase(string connectionString) : IDatabase
     {

@@ -4,6 +4,7 @@ using Plus.Communication.Packets.Outgoing.Rooms.Furni.Stickys;
 using Plus.Database;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Rooms.Chat.Filter;
 
 namespace Plus.HabboHotel.Rooms;
 
@@ -59,7 +60,7 @@ public interface IRoomInteractionService
     void UpdateSticky(Room room, GameClient session, uint itemId, string colour, string text);
 }
 
-public sealed class RoomInteractionService(IRoomInteractionStore store) : IRoomInteractionService
+public sealed class RoomInteractionService(IRoomInteractionStore store, IWordFilterManager wordFilter) : IRoomInteractionService
 {
     public void Rate(Room room, GameClient session, int rating)
     {

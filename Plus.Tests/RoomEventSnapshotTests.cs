@@ -17,7 +17,7 @@ public sealed class RoomEventSnapshotTests
         var composer = new RoomEventComposer(RoomEventSnapshot.Capture(room, promotion));
         var packet = new HabbiconTestSupport.RecordingPacket();
         composer.Compose(packet);
-        Assert.Equal(new object[] { active ? 42 : -1, active ? 7 : -1, active ? "Alice" : "", active ? 1 : -1,
+        Assert.Equal(new object[] { active ? 42 : -1, active ? 7 : -1, active ? "Alice" : "", active ? 42 : -1,
             active ? 0 : -1, active ? "Event" : "", active ? "Description" : "", 0, 0, active ? 0 : -1 }, packet.Writes);
 
         room.Id = 99;

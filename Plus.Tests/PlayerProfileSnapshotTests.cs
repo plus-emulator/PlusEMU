@@ -8,6 +8,7 @@ using Plus.HabboHotel.Badges.Rarity;
 using Plus.HabboHotel.Friends;
 using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Users;
+using Plus.HabboHotel.Users.UserData;
 using Xunit;
 
 namespace Plus.Tests;
@@ -124,6 +125,56 @@ public sealed class PlayerProfileSnapshotTests
         Assert.Equal(int.MaxValue - 1, BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(payload.Length - ProfileTailBytes - 5, 4)));
     }
 
+    // Live stats are saved at logout, so a profile view must not replace them with the saved copy.
+    [Fact]
+    public async Task OpeningAProfileKeepsTheOnlinePlayersLiveStats()
+    {
+        var viewer = new Habbo { Id = 3, Username = "Viewer", HabboStats = new(4, 0, 0, 1, 9, 9, 25, 0, 0, "11/21") };
+        var target = new Habbo { Id = 7, Username = "Alice", HabboStats = new(5, 0, 1, 0, 10, 10, 40, 0, 0, "11/21") };
+        var (session, sent) = HabbiconTestSupport.Client(viewer);
+        var (targetClient, _) = HabbiconTestSupport.Client(target);
+        var clients = new SharedTestClients();
+        clients.Online[3] = session;
+        clients.Online[7] = targetClient;
+        var profiles = new PlayerProfileService(DispatchProxy.Create<IGroupManager, EmptyGroups>(),
+            DispatchProxy.Create<IMessengerDataLoader, FriendCount>(), clients, null!, new Stats(), new FixedClock(), new NoBadges());
+
+        await profiles.Open(session, 7);
+        await profiles.Open(session, 3);
+
+        Assert.Equal((5, 1, 10, 40), (target.HabboStats!.RoomVisits, target.HabboStats.Respect, target.HabboStats.DailyRespectPoints, target.HabboStats.AchievementPoints));
+        Assert.Equal((4, 1, 9, 9, 25), (viewer.HabboStats!.RoomVisits, viewer.HabboStats.RespectGiven, viewer.HabboStats.DailyRespectPoints,
+            viewer.HabboStats.DailyPetRespectPoints, viewer.HabboStats.AchievementPoints));
+        Assert.Equal([40, 25], sent.Select(packet => ProfileAchievementPoints(packet.Payload)));
+    }
+
+    [Fact]
+    public async Task AnOfflinePlayersProfileShowsTheSavedStats()
+    {
+        var viewer = new Habbo { Id = 3, Username = "Viewer", HabboStats = new(0, 0, 0, 0, 10, 10, 25, 0, 0, "") };
+        var (session, sent) = HabbiconTestSupport.Client(viewer);
+        var clients = new SharedTestClients();
+        clients.Online[3] = session;
+        var profiles = new PlayerProfileService(DispatchProxy.Create<IGroupManager, EmptyGroups>(),
+            DispatchProxy.Create<IMessengerDataLoader, FriendCount>(), clients, DispatchProxy.Create<IUserDataFactory, OfflineUser>(),
+            new Stats(), new FixedClock(), new NoBadges());
+
+        await profiles.Open(session, 8);
+
+        Assert.Equal(12, ProfileAchievementPoints(Assert.Single(sent).Payload));
+    }
+
+    private static int ProfileAchievementPoints(byte[] payload)
+    {
+        var offset = 4;
+
+        for (var field = 0; field < 4; field++) {
+            offset += 2 + BinaryPrimitives.ReadUInt16BigEndian(payload.AsSpan(offset, 2));
+        }
+
+        return BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(offset, 4));
+    }
+
     private sealed class NoBadges : IBadgeRarityManager
     {
         public BadgeLeaderboardSnapshot Snapshot => BadgeLeaderboardSnapshot.Empty;
@@ -144,6 +195,11 @@ public sealed class PlayerProfileSnapshotTests
     {
         protected override object? Invoke(MethodInfo? method, object?[]? args) => method?.Name == "GetGroupsForUser"
             ? new List<Group>() : throw new NotSupportedException(method?.Name);
+    }
+    private class OfflineUser : DispatchProxy
+    {
+        protected override object? Invoke(MethodInfo? method, object?[]? args) => method?.Name == "GetUserDataByIdAsync"
+            ? Task.FromResult<Habbo?>(new Habbo { Id = (int)args![0]!, Username = "Offline" }) : throw new NotSupportedException(method?.Name);
     }
     private class FriendCount : DispatchProxy
     {

@@ -10,6 +10,10 @@ public interface IRoomMuteService
 
 public sealed class RoomMuteService(IAchievementManager achievements, TimeProvider clock) : IRoomMuteService
 {
+    // The client offers room owners and rights holders mutes up to 10 minutes, and ambassadors up to 18 hours.
+    private const int LongestRoomMuteMinutes = 10;
+    private const int LongestAmbassadorMuteMinutes = 18 * 60;
+
     public void Mute(GameClient session, int userId, int durationMinutes)
     {
         var habbo = session.GetHabbo();
@@ -28,14 +32,16 @@ public sealed class RoomMuteService(IAchievementManager achievements, TimeProvid
         var targetClient = target?.GetClient();
         var targetHabbo = targetClient?.GetHabbo();
 
-        if (target == null || targetClient == null || targetHabbo == null
+        if (target == null || targetClient == null || targetHabbo == null || room.OwnerId == userId
             || !RoomModerationPolicy.CanTarget(habbo.Access, targetHabbo.Access)) {
             return;
         }
 
         var now = clock.GetUtcNow();
 
-        if (!RoomMuteDeadline.TryCreate(now, durationMinutes, out var mutedUntil)) {
+        var longestMuteMinutes = habbo.IsAmbassador ? LongestAmbassadorMuteMinutes : LongestRoomMuteMinutes;
+
+        if (durationMinutes > longestMuteMinutes || !RoomMuteDeadline.TryCreate(now, durationMinutes, out var mutedUntil)) {
             return;
         }
 

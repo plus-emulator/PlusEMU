@@ -6,7 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
 using NLog.Extensions.Logging;
+using Plus.Communication.Abstractions;
 using Plus.HabboHotel.Badges.Rarity;
 using Plus.Communication.Encryption.Keys;
 using Plus.Communication.Http.Air;
@@ -56,16 +58,23 @@ public class WebServer : IWebServer
     public WebServer(IOptions<WebServerConfiguration> options, IBadgeRarityManager badgeRarity, ICatalogFurnidata furnidata,
         Plus.HabboHotel.Items.Wired.WebApi.IWiredWebApiService? wiredWebApi = null, IFlashGamedata? flashGamedata = null,
         IOptions<AirClientConfiguration>? airClient = null, IHandshakeRsaKeyProvider? handshakeKey = null, ISsoTicketStore? tickets = null,
-        ILauncherTokenStore? launcherTokens = null, TimeProvider? time = null, IOptions<LoginThrottleConfiguration>? loginThrottle = null)
+        ILauncherTokenStore? launcherTokens = null, TimeProvider? time = null, IOptions<LoginThrottleConfiguration>? loginThrottle = null,
+        ILoggerFactory? loggers = null)
     {
         _configuration = options.Value;
         _badgeLeaderboard = new(badgeRarity);
         _furnidata = new(furnidata);
         _wiredWebApi = wiredWebApi == null ? null : new(wiredWebApi);
         _flashGamedata = flashGamedata == null ? null : new(flashGamedata, airClient?.Value ?? new());
+        time ??= TimeProvider.System;
+        loggers ??= NullLoggerFactory.Instance;
+        // Web logins get their own throttle, so forged proxy headers can never block or crowd out game socket logins.
         _airClient = handshakeKey == null || tickets == null || launcherTokens == null
             ? null
-            : new(airClient?.Value ?? new(), handshakeKey, tickets, launcherTokens, time ?? TimeProvider.System);
+            : new(airClient?.Value ?? new(), handshakeKey, tickets, launcherTokens, time,
+                new LoginThrottle(loginThrottle ?? Options.Create(new LoginThrottleConfiguration()), time, loggers.CreateLogger<LoginThrottle>(),
+                    LoginThrottle.DefaultCapacity, "AIR logins"),
+                new ConnectionAdmission(new ProxyOptions(_configuration.TrustedProxies), time, loggers.CreateLogger<WebServer>()));
     }
 
     public IReadOnlyCollection<string> Urls => _app?.Urls.ToList() ?? [];
@@ -162,6 +171,15 @@ public class WebServer : IWebServer
         context.Response.Headers.CacheControl = "no-store";
 
         return context.Response.WriteAsJsonAsync(new { error, code });
+    }
+
+    /// <summary>Lets <see cref="ConnectionAdmission"/> find the visitor address behind the web server's proxies. It limits no connections.</summary>
+    private sealed record ProxyOptions(IEnumerable<string>? TrustedProxies) : IGameServerOptions
+    {
+        public string Name => "WebServer";
+        public string Hostname => "";
+        public int Port => 0;
+        public int MaxConnectionsPerIp => 0;
     }
 
     /// <summary>

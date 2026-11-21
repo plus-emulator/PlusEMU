@@ -135,7 +135,7 @@ public sealed class GroupParticipationService(IGroupManager groups, IGroupInfoSn
         }
 
         lock (found) {
-            if (!IsCurrent(found)) {
+            if (!IsCurrent(found) || !found.IsMember(habbo.Id)) {
                 return Task.CompletedTask;
             }
 

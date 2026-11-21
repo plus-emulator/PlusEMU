@@ -165,6 +165,45 @@ public sealed class RoomInteractionServiceTests
         Assert.Equal(1, store.Updates);
     }
 
+    // A note keeps at most 500 characters and its line breaks, loses control characters and goes through the word filter.
+    [Theory]
+    [InlineData("owner")]
+    [InlineData("holder")]
+    public void StickyTextIsCleanedCutAndFiltered(string username)
+    {
+        var (room, client, _) = Context("owner", username);
+        room.UsersWithRights.Add(2);
+        var item = AddItem(room, InteractionType.Postit);
+        item.LegacyDataString = "FFFF33 old";
+        var store = new RecordingStore();
+        var service = new RoomInteractionService(store, BobbaFilter);
+
+        service.UpdateSticky(room, client, item.Id, "9CCEFF", "bobba\r\nnext\u0001line" + new string('x', 600));
+
+        var expected = "9CCEFF " + ("*****\r\nnextline" + new string('x', 600))[..500];
+        Assert.Equal(expected, store.UpdatedData);
+        Assert.Equal(expected, item.LegacyDataString);
+    }
+
+    // Like chat, the word filter skips a user with the filter bypass.
+    [Fact]
+    public void StickyTextOfAUserWithTheFilterBypassIsCleanedButNotFiltered()
+    {
+        var (room, client, _) = Context("owner");
+        client.GetHabbo().Access = Plus.HabboHotel.Permissions.UserAccess.Create([],
+            [new(Plus.HabboHotel.Permissions.PermissionKeys.ChatFilterBypass, false)]);
+        var item = AddItem(room, InteractionType.Postit);
+        var store = new RecordingStore();
+        var service = new RoomInteractionService(store, BobbaFilter);
+
+        service.UpdateSticky(room, client, item.Id, "9CCEFF", "bobba\u0001" + new string('x', 600));
+
+        Assert.Equal("9CCEFF " + ("bobba" + new string('x', 600))[..500], store.UpdatedData);
+    }
+
+    private static readonly IWordFilterManager BobbaFilter =
+        CatalogSnapshotTestSupport.Proxy<IWordFilterManager>((_, args) => ((string)args[0]!).Replace("bobba", "*****"));
+
     [RoomComponentDatabaseFact]
     public void StickyUpdateTargetsTheExactRoomAndReportsFailureWithoutChangingAnotherNote()
     {

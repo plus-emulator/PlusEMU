@@ -97,6 +97,12 @@ public abstract class GameClient
     /// <summary>A connection that has not logged in this long after it opened is closed.</summary>
     internal static readonly TimeSpan LoginDeadline = TimeSpan.FromSeconds(30);
 
+    /// <summary>The most a connection may have received and not yet handled: room for four of the largest game packets.</summary>
+    internal const int ReceiveBufferLimit = 2 * 1024 * 1024;
+
+    /// <summary>The most a connection may have waiting to be sent. A client that leaves more unread is not reading.</summary>
+    internal const int SendBufferLimit = 8 * 1024 * 1024;
+
 
     private Revision RequiredRevision => Revision ?? throw new InvalidOperationException("The client has no packet revision.");
 

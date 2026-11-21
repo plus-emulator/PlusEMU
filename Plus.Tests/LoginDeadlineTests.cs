@@ -7,7 +7,10 @@ using Plus.Communication.Nitro;
 using Plus.Communication.Packets;
 using Plus.Communication.Revisions;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Users;
+using Plus.HabboHotel.Users.Authentication;
+using Plus.HabboHotel.Users.UserData;
 using Xunit;
 
 namespace Plus.Tests;
@@ -106,6 +109,82 @@ public sealed class LoginDeadlineTests
             server.Stop();
         }
     }
+
+    [Fact]
+    public async Task ALoginThatStartedBeforeTheDeadlineFinishesAfterIt()
+    {
+        using var server = new RecordingTcpServer(_clock);
+        Assert.True(server.Start());
+
+        try {
+            using var socket = await GameSocket.Connect(server);
+            var session = await server.Connected.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var load = new TaskCompletionSource<Habbo?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var clients = new SharedTestClients();
+            var login = SlowLogin(clients, load.Task).AuthenticateUsingSSO(session, "ticket-for-user-seven");
+
+            _clock.Advance(GameClient.LoginDeadline + TimeSpan.FromSeconds(1));
+            load.SetResult(LoadedHabbo(clients));
+
+            Assert.Null(await login.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.True(await socket.StaysOpen());
+            Assert.False(session.Closed.IsCancellationRequested);
+        }
+        finally {
+            server.Stop();
+        }
+    }
+
+    [Fact]
+    public async Task ALoginThatFailsAfterTheDeadlinePassedClosesTheConnection()
+    {
+        using var server = new RecordingTcpServer(_clock);
+        Assert.True(server.Start());
+
+        try {
+            using var socket = await GameSocket.Connect(server);
+            var session = await server.Connected.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var load = new TaskCompletionSource<Habbo?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var login = SlowLogin(new SharedTestClients(), load.Task).AuthenticateUsingSSO(session, "ticket-for-user-seven");
+
+            _clock.Advance(GameClient.LoginDeadline + TimeSpan.FromSeconds(1));
+            load.SetResult(null);
+
+            Assert.NotNull(await login.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.True(await socket.IsClosed());
+        }
+        finally {
+            server.Stop();
+        }
+    }
+
+    private static Authenticator SlowLogin(SharedTestClients clients, Task<Habbo?> load)
+    {
+        var tickets = CatalogSnapshotTestSupport.Proxy<ISsoTicketStore>((name, _) => name == nameof(ISsoTicketStore.Consume)
+            ? Task.FromResult<int?>(7)
+            : throw new NotSupportedException(name));
+        var users = CatalogSnapshotTestSupport.Proxy<IUserDataFactory>((name, _) => name == nameof(IUserDataFactory.Create) ? load : throw new NotSupportedException(name));
+
+        return new Authenticator([], clients, users, tickets, new AccountSessionGate(), NoPersistence, TestLoginThrottle.Off);
+    }
+
+    private static Habbo LoadedHabbo(SharedTestClients clients)
+    {
+        var habbo = new Habbo
+        {
+            Id = 7,
+            Username = "seven",
+            Access = UserAccess.Empty,
+            SessionStartedAt = DateTimeOffset.UtcNow,
+            HabboStats = new(0, 0, 0, 0, 0, 0, 0, 0, 0, ""),
+            Persistence = NoPersistence
+        };
+        habbo.SetHotelServices(clients, TestRoomManager.Unused);
+
+        return habbo;
+    }
+
+    private static IUserPersistenceService NoPersistence => CatalogSnapshotTestSupport.Proxy<IUserPersistenceService>((_, _) => null);
 
     private static IRevisionsCache NoRevisions => CatalogSnapshotTestSupport.Proxy<IRevisionsCache>((_, _) => null);
 

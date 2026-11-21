@@ -30,10 +30,7 @@ public class TcpSessionProxy : TcpSession
         _client.DisconnectRequested = () => Disconnect();
     }
 
-    protected override void OnConnected()
-    {
-        base.OnConnected();
-    }
+    protected override void OnConnecting() => _client.StartLoginDeadline(_clock);
 
     protected override void OnDisconnected() => _client.OnTransportDisconnected();
 

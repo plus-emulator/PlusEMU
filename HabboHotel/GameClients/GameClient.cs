@@ -21,6 +21,7 @@ public abstract class GameClient
     private Habbo? _habbo;
     private readonly object _lifecycle = new();
     private readonly CancellationTokenSource _closed = new();
+    private ITimer? _loginDeadline;
 
     public RecyclableMemoryStream? _incompleteStream;
     public Arc4? Rc4Client { get; set; }
@@ -162,9 +163,26 @@ public abstract class GameClient
 
             SetHabbo(habbo);
             register();
+            _loginDeadline?.Dispose();
 
             return true;
         }
+    }
+
+    internal void StartLoginDeadline(TimeProvider clock) =>
+        _loginDeadline = clock.CreateTimer(static client => ((GameClient)client!).CloseUnlessLoggedIn(), this, LoginDeadline, Timeout.InfiniteTimeSpan);
+
+    private void CloseUnlessLoggedIn()
+    {
+        lock (_lifecycle) {
+            if (_habbo != null) {
+                return;
+            }
+
+            Close();
+        }
+
+        DisconnectRequested?.Invoke();
     }
 
     private void Close()
@@ -173,6 +191,8 @@ public abstract class GameClient
             if (!_closed.IsCancellationRequested) {
                 _closed.Cancel();
             }
+
+            _loginDeadline?.Dispose();
         }
     }
 

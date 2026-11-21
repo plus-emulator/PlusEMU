@@ -49,10 +49,7 @@ public class WsSessionProxy : WsSession
     /// <summary>The library's lock around its shared frame send buffer; every frame this session writes takes it.</summary>
     internal object SendLock { get; }
 
-    protected override void OnConnected()
-    {
-        base.OnConnected();
-    }
+    protected override void OnConnecting() => _client.StartLoginDeadline(_clock);
 
     /// <summary>Over the per-IP limit the connection closes here, before the upgrade, so it never reaches a login.</summary>
     public override bool OnWsConnecting(HttpRequest request, HttpResponse response)

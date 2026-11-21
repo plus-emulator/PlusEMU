@@ -50,6 +50,9 @@ public sealed class RoomRightsStore(IDatabase database) : IRoomRightsStore
 
 public sealed class RoomRightsService(IRoomRightsStore store, ILanguageManager languageManager, ICacheManager cacheManager) : IRoomRightsService
 {
+    // Above the default club friend limit, so an owner can still give rights to every friend.
+    private const int MaxRightsHolders = 1000;
+
     public void Show(GameClient session)
     {
         var habbo = session.GetHabbo();
@@ -79,11 +82,21 @@ public sealed class RoomRightsService(IRoomRightsStore store, ILanguageManager l
             return;
         }
 
+        if (userId == room.OwnerId || room.UsersWithRights.Count >= MaxRightsHolders) {
+            return;
+        }
+
+        var roomUser = room.GetRoomUserManager().GetRoomUserByHabbo(userId);
+        var user = roomUser == null ? cacheManager.GenerateUser(userId) : null;
+
+        if (roomUser == null && user == null) {
+            return;
+        }
+
         store.Assign(room.RoomId, userId);
         room.UsersWithRights.Add(userId);
-        var roomUser = room.GetRoomUserManager().GetRoomUserByHabbo(userId);
 
-        if (roomUser != null && !roomUser.IsBot) {
+        if (roomUser != null) {
             roomUser.SetStatus("flatctrl", "1");
             roomUser.UpdateNeeded = true;
             roomUser.GetClient()?.Send(new YouAreControllerComposer(room.Id, 1));
@@ -97,11 +110,7 @@ public sealed class RoomRightsService(IRoomRightsStore store, ILanguageManager l
             return;
         }
 
-        var user = cacheManager.GenerateUser(userId);
-
-        if (user != null) {
-            session.Send(new FlatControllerAddedComposer(room.RoomId, user.Id, user.Username));
-        }
+        session.Send(new FlatControllerAddedComposer(room.RoomId, user!.Id, user.Username));
     }
 
     public void Remove(Room room, GameClient session, IReadOnlyList<int> userIds)

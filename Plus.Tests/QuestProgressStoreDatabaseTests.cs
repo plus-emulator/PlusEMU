@@ -1,6 +1,7 @@
 using System.Data;
 using Dapper;
 using MySqlConnector;
+using Plus.Communication.Flash;
 using Plus.Communication.Packets.Outgoing;
 using Plus.Database;
 using Plus.HabboHotel.Friends;
@@ -86,9 +87,67 @@ public sealed class QuestProgressStoreDatabaseTests
         Assert.Equal(0, ActiveQuest(connection));
     });
 
-    private static (GameClient Client, List<(uint Header, byte[] Payload)> Sent) Login()
+    [RoomComponentDatabaseFact]
+    public void LoginLoadsSavedQuestProgressSoTheListAndTheNextStepContinueFromIt() => WithSchema((database, connection) =>
     {
-        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 0, "");
+        connection.Execute("""
+            INSERT INTO quests VALUES (115, 'social', 1, 10, 1, 'REQUESTFRIEND', 10, '', 0, NULL, NULL),
+                (116, 'social', 2, 9, 3, 'CHAT', 10, '', 0, NULL, NULL),
+                (101, 'room_builder', 1, 0, 5, 'MOVEITEM', 10, '', 0, NULL, NULL);
+            INSERT INTO user_quests (user_id, quest_id, progress) VALUES (7, 115, 1), (7, 101, 2);
+            UPDATE user_statistics SET quest_id = 101 WHERE id = 7;
+            """);
+        var store = new QuestProgressStore(database);
+        var manager = new QuestManager(database, CatalogSnapshotTestSupport.Proxy<IMessengerDataLoader>((_, _) => null),
+            TestLogging.For<QuestManager>(), store);
+        manager.Init();
+        var (client, sent) = Login(activeQuest: 101);
+
+        new LoadUserQuestsTask(database).Load(client.GetHabbo()).GetAwaiter().GetResult();
+        manager.GetList(client, null);
+
+        var list = ListedQuests(sent.Last(packet => packet.Header == ServerPacketHeader.QuestListComposer).Payload);
+        Assert.Equal((116, false, 0), list["social"]);
+        Assert.Equal((101, true, 2), list["room_builder"]);
+
+        manager.ProgressUserQuest(client, QuestType.FurniMove);
+
+        Assert.Equal(3, SavedProgress(connection, 101));
+        Assert.Equal(0, client.GetHabbo().Duckets);
+    });
+
+    private static Dictionary<string, (int Id, bool Started, int Progress)> ListedQuests(byte[] payload)
+    {
+        var reader = new FlashIncomingPacket { Buffer = payload };
+        var quests = new Dictionary<string, (int, bool, int)>();
+
+        for (var count = reader.ReadInt(); count > 0; count--) {
+            var category = reader.ReadString();
+            reader.ReadInt();
+            reader.ReadInt();
+            reader.ReadInt();
+            var id = reader.ReadInt();
+            var started = reader.ReadBool();
+            reader.ReadString();
+            reader.ReadString();
+            reader.ReadInt();
+            reader.ReadString();
+            var progress = reader.ReadInt();
+            reader.ReadInt();
+            reader.ReadInt();
+            reader.ReadString();
+            reader.ReadString();
+            reader.ReadBool();
+            reader.ReadBool();
+            quests[category] = (id, started, progress);
+        }
+
+        return quests;
+    }
+
+    private static (GameClient Client, List<(uint Header, byte[] Payload)> Sent) Login(int activeQuest = 0)
+    {
+        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, activeQuest, 0, "");
 
         return HabbiconTestSupport.Client(new Habbo { Id = UserId, HabboStats = stats });
     }

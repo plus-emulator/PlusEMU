@@ -28,6 +28,10 @@ public class CommandManager : ICommandManager
 
         var parts = data.Split(Convert.ToChar(1));
 
+        if (parts.Length < 2) {
+            return false;
+        }
+
         if (_commands.TryGetValue(parts[0].ToLower(), out var command)) {
             var parameters = parts[1].Split(':');
 

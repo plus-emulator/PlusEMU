@@ -18,7 +18,7 @@ internal class AlertUserCommand : IRconCommand
 
     public Task<bool> TryExecute(string[] parameters)
     {
-        if (!int.TryParse(parameters[0], out var userId)) {
+        if (parameters.Length < 2 || !int.TryParse(parameters[0], out var userId)) {
             return Task.FromResult(false);
         }
 

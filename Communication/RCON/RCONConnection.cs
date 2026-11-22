@@ -132,6 +132,8 @@ public sealed class RconConnection : IDisposable
 
             lock (_gate) {
                 if (_state != RequestState.Pending) {
+                    Dispose();
+
                     return;
                 }
 

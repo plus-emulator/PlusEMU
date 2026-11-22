@@ -11,6 +11,8 @@ namespace Plus.Tests;
 
 public sealed class ScheduledCurrencyTests
 {
+    private const int Interval = 3;
+
     [Fact]
     public void PersistencePrecedesLiveBalancesAndPackets()
     {
@@ -23,7 +25,7 @@ public sealed class ScheduledCurrencyTests
             return true;
         });
         using var process = Process(habbo, store);
-        process.Run(null);
+        RunInterval(process);
 
         Assert.Equal((100, 20, 0), before);
         Assert.Equal((7, 105, 30), Assert.Single(store.Writes));
@@ -43,7 +45,7 @@ public sealed class ScheduledCurrencyTests
             ? throws ? throw new InvalidOperationException("write failed") : false
             : true);
         using var process = Process(habbo, store);
-        process.Run(null);
+        RunInterval(process);
         Assert.Equal((100, 20), (habbo.Credits, habbo.Duckets));
         Assert.Empty(sent);
         fail = false;
@@ -61,7 +63,7 @@ public sealed class ScheduledCurrencyTests
         habbo.Duckets = 25;
         var store = new Store((_, _, _) => true);
         using var process = Process(habbo, store);
-        process.Run(null);
+        RunInterval(process);
         Assert.Equal((7, 145, 35), Assert.Single(store.Writes));
         Assert.Equal((145, 35), (habbo.Credits, habbo.Duckets));
     }
@@ -78,7 +80,7 @@ public sealed class ScheduledCurrencyTests
         habbo.Duckets = duckets;
         var store = new Store((_, _, _) => true);
         using var process = Process(habbo, store, Settings(creditReward, ducketReward));
-        process.Run(null);
+        RunInterval(process);
         Assert.Empty(store.Writes);
         Assert.Empty(sent);
         Assert.Equal((credits, duckets), (habbo.Credits, habbo.Duckets));
@@ -90,12 +92,29 @@ public sealed class ScheduledCurrencyTests
         var (habbo, _) = Player();
         var store = new Store((_, _, _) => true);
         using var process = Process(habbo, store);
-        process.Run(null);
+        RunInterval(process);
         process.Run(null);
         process.Run(null);
         Assert.Single(store.Writes);
         process.Run(null);
         Assert.Equal([(7, 105, 30), (7, 110, 40)], store.Writes);
+    }
+
+    [Fact]
+    public void ANewSessionGetsItsFirstRewardOnlyAfterAFullInterval()
+    {
+        var (habbo, sent) = Player();
+        var store = new Store((_, _, _) => true);
+        using var process = Process(habbo, store);
+        process.Run(null);
+        Assert.Empty(store.Writes);
+        Assert.Empty(sent);
+        Assert.Equal((100, 20), (habbo.Credits, habbo.Duckets));
+        process.Run(null);
+        process.Run(null);
+        Assert.Equal((7, 105, 30), Assert.Single(store.Writes));
+        Assert.Equal((105, 30), (habbo.Credits, habbo.Duckets));
+        Assert.Equal(2, sent.Count);
     }
 
     [Fact]
@@ -105,7 +124,7 @@ public sealed class ScheduledCurrencyTests
         typeof(Habbo).GetField("_disconnected", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(habbo, true);
         var store = new Store((_, _, _) => true);
         using var process = Process(habbo, store);
-        process.Run(null);
+        RunInterval(process);
         Assert.Empty(store.Writes);
         Assert.Empty(sent);
     }
@@ -116,7 +135,7 @@ public sealed class ScheduledCurrencyTests
         var (habbo, sent) = Player();
         var store = new Store((_, _, _) => true);
         using var process = Process(habbo, store, Settings(0, 0));
-        process.Run(null);
+        RunInterval(process);
         Assert.Empty(store.Writes);
         Assert.Empty(sent);
         Assert.Equal(3, habbo.CreditsUpdateTick);
@@ -135,8 +154,15 @@ public sealed class ScheduledCurrencyTests
     {
         ["user.currency_scheduler.credit_reward"] = credits.ToString(),
         ["user.currency_scheduler.ducket_reward"] = duckets.ToString(),
-        ["user.currency_scheduler.tick"] = "3"
+        ["user.currency_scheduler.tick"] = Interval.ToString()
     });
+
+    private static void RunInterval(ProcessComponent process)
+    {
+        for (var check = 0; check < Interval; check++) {
+            process.Run(null);
+        }
+    }
 
     private static ProcessComponent Process(Habbo habbo, IUserProcessStore store, ISettingsManager? settings = null)
     {

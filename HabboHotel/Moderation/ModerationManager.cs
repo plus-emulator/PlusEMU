@@ -1,3 +1,4 @@
+using Plus.Communication.Abstractions;
 using Plus.Core;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
@@ -466,7 +467,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     public bool IsBanned(ModerationBanType type, string value, [NotNullWhen(true)] out ModerationBan? ban)
     {
-        if (!_bans.TryGetValue((type, value), out ban)) {
+        if (!TryGetBan(type, value, out ban)) {
             return false;
         }
 
@@ -475,28 +476,52 @@ public sealed class ModerationManager : IModerationManager, IStartable
         }
 
         using (var connection = _database.Connection()) {
-            connection.Execute("DELETE FROM bans WHERE bantype = @type AND value = @value LIMIT 1", new { type = BanTypeUtility.FromModerationBanType(type), value });
+            connection.Execute("DELETE FROM bans WHERE bantype = @type AND value = @value LIMIT 1", new { type = BanTypeUtility.FromModerationBanType(type), value = ban.Value });
         }
 
-        _bans.TryRemove((type, value), out _);
+        _bans.TryRemove((type, ban.Value), out _);
 
         return false;
     }
 
     public bool HasBan(ModerationBanType type, string value)
     {
-        if (!IsBanned(type, value, out _)) {
+        if (!IsBanned(type, value, out var ban)) {
             return false;
         }
 
         using var connection = _database.Connection();
         var exists = connection.ExecuteScalar<bool>("SELECT EXISTS(SELECT 1 FROM bans WHERE bantype = @type AND value = @value)",
-            new { type = BanTypeUtility.FromModerationBanType(type), value });
+            new { type = BanTypeUtility.FromModerationBanType(type), value = ban.Value });
 
         if (!exists) {
-            _bans.TryRemove((type, value), out _);
+            _bans.TryRemove((type, ban.Value), out _);
         }
 
         return exists;
+    }
+
+    /// <summary>An IP ban matches by parsed address, so any way of writing the address finds it. A stored value that is no address never matches.</summary>
+    private bool TryGetBan(ModerationBanType type, string value, [NotNullWhen(true)] out ModerationBan? ban)
+    {
+        if (type != ModerationBanType.Ip) {
+            return _bans.TryGetValue((type, value), out ban);
+        }
+
+        ban = null;
+
+        if (ConnectionAdmission.ParseAddress(value) is not { } address) {
+            return false;
+        }
+
+        foreach (var (key, cached) in _bans) {
+            if (key.Type == ModerationBanType.Ip && address.Equals(ConnectionAdmission.ParseAddress(key.Value))) {
+                ban = cached;
+
+                return true;
+            }
+        }
+
+        return false;
     }
 }

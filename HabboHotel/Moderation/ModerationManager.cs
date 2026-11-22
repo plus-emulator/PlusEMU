@@ -3,6 +3,7 @@ using Plus.Core;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
 using System.Data;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using Dapper;
 using Plus.Database;
@@ -190,6 +191,11 @@ public sealed class ModerationManager : IModerationManager, IStartable
         };
 
         private static DateTimeOffset Expiry(ModerationBan ban) => ban.ExpiresAt ?? DateTimeOffset.MinValue;
+
+        // Every write makes a new instance, so removing a stale entry never removes a write made after it was read.
+        public bool Equals(CachedBan? other) => ReferenceEquals(this, other);
+
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 
     private void Cache(ModerationBan row)

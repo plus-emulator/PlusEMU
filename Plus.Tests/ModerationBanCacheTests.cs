@@ -105,7 +105,52 @@ public sealed class ModerationBanCacheTests
     }
 
     [RoomComponentDatabaseFact]
-    public async Task AnActiveIpBanInTheDatabaseRefusesALoginFromThatAddress()
+    public Task AnActiveIpBanInTheDatabaseRefusesALoginFromThatAddress() => WithBansTable(async connection =>
+    {
+        connection.Execute("INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES ('ip', '203.0.113.7', 'reason', @expire, 'mod')",
+            new { expire = Now.AddDays(1).UtcDateTime });
+
+        var manager = DatabaseManager(connection.ConnectionString);
+        manager.ReCacheBans();
+
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+        Assert.True(await CanLoginFrom(manager, "203.0.113.8"));
+    });
+
+    [Theory]
+    [InlineData("2001:db8:0:0::5", "2001:db8::5", true)]
+    [InlineData("2001:DB8::5", "2001:db8::5", true)]
+    [InlineData("::ffff:203.0.113.7", "203.0.113.7", true)]
+    [InlineData("203.0.113.7", "::ffff:203.0.113.7", true)]
+    [InlineData("203.0.113.7", "203.0.113.8", false)]
+    [InlineData("not an address", "203.0.113.7", false)]
+    [InlineData("1234", "0.0.4.210", false)]
+    public async Task AnIpBanMatchesItsAddressInAnyWrittenForm(string stored, string visitor, bool banned)
+    {
+        var manager = Manager();
+        await manager.BanUser("mod", ModerationBanType.Ip, stored, "reason", Now.AddDays(1));
+
+        Assert.Equal(banned, manager.IsBanned(ModerationBanType.Ip, visitor, out _));
+    }
+
+    [RoomComponentDatabaseFact]
+    public Task AnIpBanStoredInAnotherFormRefusesALoginFromThatAddress() => WithBansTable(async connection =>
+    {
+        connection.Execute("""
+            INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES
+                ('ip', '2001:db8:0:0::5', 'reason', @expire, 'mod'), ('ip', '::ffff:203.0.113.7', 'reason', @expire, 'mod')
+            """, new { expire = Now.AddDays(1).UtcDateTime });
+
+        var manager = DatabaseManager(connection.ConnectionString);
+        manager.ReCacheBans();
+
+        Assert.False(await CanLoginFrom(manager, "2001:db8::5"));
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+        Assert.True(await CanLoginFrom(manager, "203.0.113.8"));
+    });
+
+    /// <summary>Runs the test against a bans table in its own schema, dropped afterwards.</summary>
+    private static async Task WithBansTable(Func<MySqlConnection, Task> test)
     {
         var root = Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!;
         using var server = new MySqlConnection(root);
@@ -114,33 +159,30 @@ public sealed class ModerationBanCacheTests
         server.Execute($"CREATE DATABASE `{schema}`");
 
         try {
-            var connectionString = new MySqlConnectionStringBuilder(root) { Database = schema }.ConnectionString;
-
-            using (var connection = new MySqlConnection(connectionString)) {
-                connection.Execute("""
-                    CREATE TABLE bans (
-                        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, bantype ENUM('user','ip','machine') NOT NULL DEFAULT 'user',
-                        value VARCHAR(50) NOT NULL, reason TEXT NOT NULL, expire DATETIME(6) NULL, added_by VARCHAR(50) NOT NULL, added_date DATETIME(6) NULL);
-                    """);
-                connection.Execute("INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES ('ip', '203.0.113.7', 'reason', @expire, 'mod')",
-                    new { expire = Now.AddDays(1).UtcDateTime });
-            }
-
-            var manager = new ModerationManager(new SchemaDatabase(connectionString), NullLogger<ModerationManager>.Instance,
-                Proxy<ISsoTicketStore>((_, _) => Task.CompletedTask), new SharedTestClients(), new AccountSessionGate(), new FakeTimeProvider(Now));
-            manager.ReCacheBans();
-            var users = Proxy<IUserDataFactory>((method, _) => method == nameof(IUserDataFactory.GetUsernameForHabboById) ? Task.FromResult("bob") : null);
-            var (banned, _) = HabbiconTestSupport.Client(new Habbo { Id = 1 });
-            banned.RemoteAddress = new ClientAddress(IPAddress.Parse("203.0.113.7"), true);
-            var (other, _) = HabbiconTestSupport.Client(new Habbo { Id = 2 });
-            other.RemoteAddress = new ClientAddress(IPAddress.Parse("203.0.113.8"), true);
-
-            Assert.False(await new BanLoginCheckTask(manager, users).CanLogin(banned, 1));
-            Assert.True(await new BanLoginCheckTask(manager, users).CanLogin(other, 2));
+            using var connection = new MySqlConnection(new MySqlConnectionStringBuilder(root) { Database = schema }.ConnectionString);
+            connection.Open();
+            connection.Execute("""
+                CREATE TABLE bans (
+                    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, bantype ENUM('user','ip','machine') NOT NULL DEFAULT 'user',
+                    value VARCHAR(50) NOT NULL, reason TEXT NOT NULL, expire DATETIME(6) NULL, added_by VARCHAR(50) NOT NULL, added_date DATETIME(6) NULL);
+                """);
+            await test(connection);
         }
         finally {
             server.Execute($"DROP DATABASE IF EXISTS `{schema}`");
         }
+    }
+
+    private static ModerationManager DatabaseManager(string connectionString) => new(new SchemaDatabase(connectionString), NullLogger<ModerationManager>.Instance,
+        Proxy<ISsoTicketStore>((_, _) => Task.CompletedTask), new SharedTestClients(), new AccountSessionGate(), new FakeTimeProvider(Now));
+
+    private static Task<bool> CanLoginFrom(IModerationManager manager, string address)
+    {
+        var users = Proxy<IUserDataFactory>((method, _) => method == nameof(IUserDataFactory.GetUsernameForHabboById) ? Task.FromResult("bob") : null);
+        var (session, _) = HabbiconTestSupport.Client(new Habbo { Id = 1 });
+        session.RemoteAddress = new ClientAddress(IPAddress.Parse(address), true);
+
+        return new BanLoginCheckTask(manager, users).CanLogin(session, 1);
     }
 
     private sealed class SchemaDatabase(string connectionString) : IDatabase

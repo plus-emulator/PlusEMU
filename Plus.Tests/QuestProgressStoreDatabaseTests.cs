@@ -56,6 +56,36 @@ public sealed class QuestProgressStoreDatabaseTests
     });
 
     [RoomComponentDatabaseFact]
+    public void ParallelStartsOfTheSameSavedQuestAllSucceed() => WithSchema((database, connection) =>
+    {
+        connection.Execute("INSERT INTO user_quests (user_id, quest_id, progress) VALUES (@UserId, 101, 2)", new { UserId });
+        var store = new QuestProgressStore(database);
+
+        for (var round = 0; round < 20; round++) {
+            var starts = Task.WhenAll(Enumerable.Range(0, 4).Select(_ => Task.Run(() => store.TryStart(UserId, MoveItem, out var progress) && progress == 2)));
+
+            Assert.All(starts.GetAwaiter().GetResult(), Assert.True);
+        }
+
+        Assert.Equal(2, SavedProgress(connection, MoveItem.Id));
+        Assert.Equal(MoveItem.Id, ActiveQuest(connection));
+    });
+
+    [RoomComponentDatabaseFact]
+    public void ParallelStartsOfANewQuestAllSucceed() => WithSchema((database, connection) =>
+    {
+        var store = new QuestProgressStore(database);
+
+        for (var round = 0; round < 20; round++) {
+            connection.Execute("DELETE FROM user_quests");
+            var starts = Task.WhenAll(Enumerable.Range(0, 4).Select(_ => Task.Run(() => store.TryStart(UserId, MoveItem, out var progress) && progress == 0)));
+
+            Assert.All(starts.GetAwaiter().GetResult(), Assert.True);
+            Assert.Equal(0, SavedProgress(connection, MoveItem.Id));
+        }
+    });
+
+    [RoomComponentDatabaseFact]
     public void CompletedQuestPaysItsRewardOnlyOnceInTheSameSessionAndAfterARelog() => WithSchema((database, connection) =>
     {
         connection.Execute("""

@@ -43,9 +43,9 @@
         "Hostname": "127.0.0.1",
         "Port": 30001,
         "AllowedAddresses": [
-            "127.0.0.1",
-            "localhost"
-        ]
+            "127.0.0.1"
+        ],
+        "Secret": ""
     },
     "Encryption": {
         "RsaPrivateKeyFile": ""

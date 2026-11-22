@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using NetCoreServer;
 using Plus.Communication.Abstractions;
 
@@ -31,7 +32,7 @@ public class TcpSessionProxy : TcpSession
 
             if (Interlocked.Add(ref _bytesSending, size) > GameClient.SendBufferLimit) {
                 Interlocked.Add(ref _bytesSending, -size);
-                Disconnect();
+                _client.CloseOverLimit("send buffer");
 
                 return false;
             }
@@ -79,6 +80,14 @@ public class TcpSessionProxy : TcpSession
     {
         _connectionSlot?.Dispose();
         _client.OnTransportDisconnected();
+    }
+
+    /// <summary>The library reports a receive buffer over its limit here, then closes the session.</summary>
+    protected override void OnError(SocketError error)
+    {
+        if (error == SocketError.NoBufferSpaceAvailable) {
+            _client.CloseOverLimit("receive buffer");
+        }
     }
 
     protected override void OnReceived(byte[] buffer, long offset, long size)

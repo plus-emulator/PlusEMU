@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
@@ -13,6 +14,8 @@ namespace Plus.HabboHotel.GameClients;
 
 public abstract class GameClient
 {
+    private static readonly AddressLogThrottle LimitWarnings = new(TimeProvider.System);
+
     private readonly IGameServer _server;
     private readonly IPacketFactory _packetFactory;
     private readonly object _sendLock = new();
@@ -116,6 +119,18 @@ public abstract class GameClient
     {
         Close();
         DisconnectRequested?.Invoke();
+    }
+
+    /// <summary>Closes a connection that went over a buffer limit, with a warning that names the address and the limit.</summary>
+    internal void CloseOverLimit(string limit, IPAddress? peer = null)
+    {
+        var address = RemoteAddress?.Address ?? peer ?? IPAddress.None;
+
+        if (!Closed.IsCancellationRequested && LimitWarnings.ShouldLog(address)) {
+            _logger.LogWarning("Closed game connection {ConnectionId} from {Address}: it went over the {Limit} limit", Id, address, limit);
+        }
+
+        Disconnect();
     }
 
     /// <summary>Cancelled once the connection is closing, including after a packet timeout; session work should stop.</summary>
@@ -262,7 +277,7 @@ public abstract class GameClient
     {
         // Each chunk waits until the one before it is handled, so a slow handler must not let the queue grow without end.
         if (Interlocked.Add(ref _receivedUnhandled, size) > ReceiveBufferLimit) {
-            Disconnect();
+            CloseOverLimit("receive queue");
 
             return;
         }

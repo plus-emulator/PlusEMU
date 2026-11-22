@@ -6,6 +6,7 @@ using Microsoft.Extensions.Time.Testing;
 using MySqlConnector;
 using Plus.Communication.Abstractions;
 using Plus.Database;
+using Plus.Database.Migrator;
 using Plus.HabboHotel.Moderation;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Authentication;
@@ -150,22 +151,96 @@ public sealed class ModerationBanCacheTests
     });
 
     [RoomComponentDatabaseFact]
-    public Task LoadingBansDeletesOnlyTheExpiredRowOfAValue() => WithBansTable(connection =>
+    public Task ALoadedIpBanHoldsUntilItsLongestRowExpires() => WithBansTable(async connection =>
     {
-        var active = connection.ExecuteScalar<int>("INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES ('ip', '203.0.113.7', 'active', @expire, 'mod'); SELECT LAST_INSERT_ID();",
-            new { expire = Now.AddDays(1).UtcDateTime });
-        connection.Execute("INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES ('ip', '203.0.113.7', 'expired', @expire, 'mod')",
-            new { expire = Now.AddDays(-1).UtcDateTime });
+        InsertBan(connection, "ip", "203.0.113.7", Now.AddHours(1));
+        var year = InsertBan(connection, "ip", "203.0.113.7", Now.AddYears(1));
+        var clock = new FakeTimeProvider(Now);
+        var manager = DatabaseManager(connection.ConnectionString, clock);
+        manager.ReCacheBans();
+        clock.Advance(TimeSpan.FromHours(2));
 
-        DatabaseManager(connection.ConnectionString).ReCacheBans();
-
-        Assert.Equal([active], connection.Query<int>("SELECT id FROM bans"));
-
-        return Task.CompletedTask;
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+        Assert.Contains(year, connection.Query<int>("SELECT id FROM bans"));
     });
 
-    /// <summary>Runs the test against a bans table in its own schema, dropped afterwards.</summary>
-    private static async Task WithBansTable(Func<MySqlConnection, Task> test)
+    [RoomComponentDatabaseFact]
+    public Task AShorterIpBanDoesNotLiftALongerOneOnTheSameAddress() => ShorterIpBanAfterALongerOne(withIndex: true);
+
+    [RoomComponentDatabaseFact]
+    public Task AShorterIpBanDoesNotLiftALongerOneInATableWithoutTheIndex() => ShorterIpBanAfterALongerOne(withIndex: false);
+
+    private static Task ShorterIpBanAfterALongerOne(bool withIndex) => WithBansTable(async connection =>
+    {
+        var clock = new FakeTimeProvider(Now);
+        var manager = DatabaseManager(connection.ConnectionString, clock);
+        await manager.BanUser("mod", ModerationBanType.Ip, "203.0.113.7", "year", Now.AddYears(1));
+        await manager.BanUser("mod", ModerationBanType.Ip, "203.0.113.7", "hour", Now.AddHours(1));
+        clock.Advance(TimeSpan.FromHours(2));
+
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+        Assert.Equal(["year"], connection.Query<string>("SELECT reason FROM bans WHERE expire > @now", new { now = clock.GetUtcNow().UtcDateTime }));
+
+        manager.ReCacheBans();
+
+        Assert.Equal(["year"], connection.Query<string>("SELECT reason FROM bans"));
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+    }, withIndex);
+
+    [RoomComponentDatabaseFact]
+    public Task AnExpiredRowInAnotherFormDoesNotLiftAnActiveIpBan() => WithBansTable(async connection =>
+    {
+        // Many addresses, so the cache meets an expired form before the active one for some of them.
+        var addresses = Enumerable.Range(1, 20).Select(octet => $"203.0.113.{octet}").ToList();
+
+        foreach (var address in addresses) {
+            InsertBan(connection, "ip", address, Now.AddHours(1));
+            InsertBan(connection, "ip", "::ffff:" + address, Now.AddYears(1));
+        }
+
+        var clock = new FakeTimeProvider(Now);
+        var manager = DatabaseManager(connection.ConnectionString, clock);
+        manager.ReCacheBans();
+        clock.Advance(TimeSpan.FromHours(2));
+
+        foreach (var address in addresses) {
+            Assert.False(await CanLoginFrom(manager, address), address);
+        }
+    });
+
+    [RoomComponentDatabaseFact]
+    public Task AShorterUserBanDoesNotLiftALongerOne() => WithBansTable(async connection =>
+    {
+        var clock = new FakeTimeProvider(Now);
+        var manager = DatabaseManager(connection.ConnectionString, clock);
+        await manager.BanUser("mod", ModerationBanType.Username, "bob", "year", Now.AddYears(1));
+        await manager.BanUser("mod", ModerationBanType.Username, "bob", "hour", Now.AddHours(1));
+        clock.Advance(TimeSpan.FromHours(2));
+
+        Assert.False(await CanLoginFrom(manager, "198.51.100.1"));
+        Assert.Equal(2, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM bans"));
+    });
+
+    [Theory]
+    [InlineData(" 203.0.113.7", "203.0.113.7", true)]
+    [InlineData("203.0.113.7 ", "203.0.113.7", true)]
+    [InlineData("192.168.010.001", "192.168.8.1", false)]
+    [InlineData("192.168.010.001", "192.168.10.1", false)]
+    public async Task AStoredIpBanIgnoresSpacesAndNeverReadsAnOctet(string stored, string visitor, bool banned)
+    {
+        var manager = Manager();
+        await manager.BanUser("mod", ModerationBanType.Ip, stored, "reason", Now.AddDays(1));
+
+        Assert.Equal(banned, manager.IsBanned(ModerationBanType.Ip, visitor, out _));
+    }
+
+    private static int InsertBan(MySqlConnection connection, string type, string value, DateTimeOffset expire) => connection.ExecuteScalar<int>(
+        "INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES (@type, @value, 'reason', @expire, 'mod'); SELECT LAST_INSERT_ID();",
+        new { type, value, expire = expire.UtcDateTime });
+
+    /// <summary>Runs the test against the fresh install bans table, optionally without its index, in its own schema, dropped afterwards.</summary>
+    private static async Task WithBansTable(Func<MySqlConnection, Task> test, bool withIndex = true)
     {
         var root = Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!;
         using var server = new MySqlConnection(root);
@@ -176,11 +251,14 @@ public sealed class ModerationBanCacheTests
         try {
             using var connection = new MySqlConnection(new MySqlConnectionStringBuilder(root) { Database = schema }.ConnectionString);
             connection.Open();
-            connection.Execute("""
-                CREATE TABLE bans (
-                    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, bantype ENUM('user','ip','machine') NOT NULL DEFAULT 'user',
-                    value VARCHAR(50) NOT NULL, reason TEXT NOT NULL, expire DATETIME(6) NULL, added_by VARCHAR(50) NOT NULL, added_date DATETIME(6) NULL);
-                """);
+            connection.Execute(SqlScript.Split(File.ReadAllText(HabbiconPacketTests.Repo("Database/FreshInstall.sql")))
+                .Single(statement => statement.Contains("CREATE TABLE `bans` (", StringComparison.Ordinal)));
+
+            if (!withIndex) {
+                connection.Execute("ALTER TABLE bans DROP INDEX type_value_expire");
+            }
+
+            connection.Execute("CREATE TABLE users (id INT NOT NULL PRIMARY KEY, username VARCHAR(50) NOT NULL, ip_last VARCHAR(45) NOT NULL)");
             await test(connection);
         }
         finally {
@@ -188,8 +266,9 @@ public sealed class ModerationBanCacheTests
         }
     }
 
-    private static ModerationManager DatabaseManager(string connectionString) => new(new SchemaDatabase(connectionString), NullLogger<ModerationManager>.Instance,
-        Proxy<ISsoTicketStore>((_, _) => Task.CompletedTask), new SharedTestClients(), new AccountSessionGate(), new FakeTimeProvider(Now));
+    private static ModerationManager DatabaseManager(string connectionString, TimeProvider? clock = null) => new(new SchemaDatabase(connectionString),
+        NullLogger<ModerationManager>.Instance, Proxy<ISsoTicketStore>((_, _) => Task.CompletedTask), new SharedTestClients(), new AccountSessionGate(),
+        clock ?? new FakeTimeProvider(Now));
 
     private static Task<bool> CanLoginFrom(IModerationManager manager, string address)
     {

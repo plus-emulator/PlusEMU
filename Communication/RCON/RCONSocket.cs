@@ -58,4 +58,6 @@ public class RconSocket : IRconSocket
     }
 
     public ICommandManager GetCommands() => _commands;
+
+    internal static byte[]? ReadSecret(RconConfiguration configuration, ILogger logger) => throw new NotImplementedException();
 }

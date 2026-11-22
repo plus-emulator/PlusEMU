@@ -37,7 +37,7 @@ public sealed class RconConnection : IDisposable
 
     public RconConnection(Socket socket, ILogger<RconConnection> logger) : this(socket, logger, null, TimeProvider.System) { }
 
-    internal RconConnection(Socket socket, ILogger<RconConnection> logger, ICommandManager? commands, TimeProvider time)
+    internal RconConnection(Socket socket, ILogger<RconConnection> logger, ICommandManager? commands, TimeProvider time, byte[]? secret = null)
     {
         _socket = socket;
         _logger = logger;

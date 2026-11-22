@@ -149,6 +149,21 @@ public sealed class ModerationBanCacheTests
         Assert.True(await CanLoginFrom(manager, "203.0.113.8"));
     });
 
+    [RoomComponentDatabaseFact]
+    public Task LoadingBansDeletesOnlyTheExpiredRowOfAValue() => WithBansTable(connection =>
+    {
+        var active = connection.ExecuteScalar<int>("INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES ('ip', '203.0.113.7', 'active', @expire, 'mod'); SELECT LAST_INSERT_ID();",
+            new { expire = Now.AddDays(1).UtcDateTime });
+        connection.Execute("INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES ('ip', '203.0.113.7', 'expired', @expire, 'mod')",
+            new { expire = Now.AddDays(-1).UtcDateTime });
+
+        DatabaseManager(connection.ConnectionString).ReCacheBans();
+
+        Assert.Equal([active], connection.Query<int>("SELECT id FROM bans"));
+
+        return Task.CompletedTask;
+    });
+
     /// <summary>Runs the test against a bans table in its own schema, dropped afterwards.</summary>
     private static async Task WithBansTable(Func<MySqlConnection, Task> test)
     {

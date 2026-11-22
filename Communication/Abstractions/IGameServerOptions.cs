@@ -8,8 +8,8 @@ public interface IGameServerOptions
 
     /// <summary>
     /// Proxy addresses whose forwarded visitor address is used. Null means loopback only. Raw TCP has no forwarded
-    /// address, so a Flash connection from a trusted proxy has no known visitor: it gets no per-address limit, no login
-    /// limit and no IP ban check.
+    /// address, so a Flash connection from a trusted proxy has no known visitor: it gets no per-address limit and no
+    /// login limit.
     /// </summary>
     IEnumerable<string>? TrustedProxies { get; }
 

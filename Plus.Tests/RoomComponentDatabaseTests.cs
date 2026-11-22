@@ -221,7 +221,7 @@ public sealed class RoomComponentDatabaseTests
             var writtenAt = DateTimeOffset.FromUnixTimeSeconds(2_200_002_000).AddTicks(1_230);
             chatlogs.StoreChatlog(new(10, 42, "first", writtenAt));
             chatlogs.StoreChatlog(new(11, 42, new string('x', 40), writtenAt));
-            Assert.Throws<MySqlException>(chatlogs.FlushAndSave);
+            chatlogs.FlushAndSave();
             Assert.Equal(3, connection.QuerySingle<int>("SELECT COUNT(*) FROM chatlogs"));
             var successfulChatlogs = new Plus.HabboHotel.Rooms.Chat.Logs.ChatlogManager(new ProbeDatabase(databaseConnection));
             successfulChatlogs.StoreChatlog(new(10, 42, "written", writtenAt));
@@ -290,6 +290,58 @@ public sealed class RoomComponentDatabaseTests
                 (loadedItem.Id, loadedItem.OwnerId, loadedItem.Username, loadedItem.GroupId, loadedItem.GetX, loadedItem.GetY, loadedItem.GetZ,
                     loadedItem.Rotation, loadedItem.UniqueNumber, loadedItem.UniqueSeries));
             Assert.Equal("200;1", loadedItem.LegacyDataString);
+        }
+        finally {
+            connection.Execute("USE information_schema");
+            connection.Execute($"DROP DATABASE `{schema}`");
+        }
+    }
+
+    // `chatlogs.message` holds 65535 bytes, so a longer entry is stored cut on a character boundary.
+    // A batch the database refuses is dropped, so later entries are still stored.
+    [RoomComponentDatabaseFact]
+    public void ChatlogEntriesFitTheColumnAndARefusedBatchDoesNotBlockLaterEntries()
+    {
+        using var connection = new MySqlConnection(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE"));
+        connection.Open();
+        var schema = "room_component_" + Guid.NewGuid().ToString("N");
+        connection.Execute($"CREATE DATABASE `{schema}`");
+
+        try {
+            connection.Execute($"USE `{schema}`");
+            connection.Execute("""
+                CREATE TABLE chatlogs (
+                    id INT AUTO_INCREMENT PRIMARY KEY, user_id INT UNSIGNED NOT NULL, room_id INT UNSIGNED NOT NULL,
+                    message TEXT NOT NULL, `timestamp` DATETIME(6) NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                """);
+            var databaseConnection = new MySqlConnectionStringBuilder(
+                Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!)
+            { Database = schema }.ConnectionString;
+            var chatlogs = new Plus.HabboHotel.Rooms.Chat.Logs.ChatlogManager(new ProbeDatabase(databaseConnection));
+            var at = DateTimeOffset.FromUnixTimeSeconds(2_200_000_000);
+            var whisper = "<Whisper to " + new string('B', 65534) + ">: ";
+            var emoji = string.Concat(Enumerable.Repeat("\U0001F600", 20000));
+
+            chatlogs.StoreChatlog(new(1, 42, whisper, at));
+            chatlogs.StoreChatlog(new(2, 42, new string('€', 30000), at));
+            chatlogs.StoreChatlog(new(3, 42, "a" + emoji, at));
+            chatlogs.FlushAndSave();
+
+            Assert.Equal([whisper[..65535], new string('€', 21845), "a" + emoji[..32766]],
+                connection.Query<string>("SELECT message FROM chatlogs ORDER BY user_id"));
+
+            connection.Execute("DELETE FROM chatlogs");
+            chatlogs.StoreChatlog(new(-1, 42, "refused", at));
+
+            for (var i = 0; i < 9; i++) {
+                chatlogs.StoreChatlog(new(4, 42, "same batch", at));
+            }
+
+            chatlogs.StoreChatlog(new(5, 42, "next", at));
+            chatlogs.FlushAndSave();
+
+            Assert.Equal(["next"], connection.Query<string>("SELECT message FROM chatlogs"));
         }
         finally {
             connection.Execute("USE information_schema");

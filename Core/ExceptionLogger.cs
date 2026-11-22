@@ -29,6 +29,11 @@ public static class ExceptionLogger
         SqlLogger.LogError(exception, "Error in query:\r\n{Query}", query);
     }
 
+    public static void LogRefusedQuery(string query, string reason)
+    {
+        SqlLogger.LogError("Query refused ({Reason}):\r\n{Query}", reason, query);
+    }
+
     public static void LogException(Exception exception)
     {
         DefaultLogger.LogError(exception, "Unhandled exception");

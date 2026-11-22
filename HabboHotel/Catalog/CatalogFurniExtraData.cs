@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Plus.Communication.Packets;
@@ -40,9 +41,19 @@ public sealed class CatalogFurniExtraData : ICatalogFurniExtraData
         _logger = logger;
     }
 
+    // Bought furniture of any other type starts with an empty string.
+    public static bool HasPurchaseData(InteractionType type) => type is InteractionType.GuildItem or InteractionType.GuildGate
+        or InteractionType.GuildForum or InteractionType.Floor or InteractionType.Wallpaper or InteractionType.Landscape
+        or InteractionType.Recolorable or InteractionType.Postit or InteractionType.Moodlight or InteractionType.Trophy
+        or InteractionType.Mannequin or InteractionType.BadgeDisplay;
+
     public string? Read(GameClient session, CatalogProduct product, string extraData, DateTimeOffset utcNow)
     {
         var definition = product.Definition!;
+
+        if (!HasPurchaseData(definition.InteractionType)) {
+            return "";
+        }
 
         switch (definition.InteractionType) {
             case InteractionType.GuildItem:
@@ -89,7 +100,7 @@ public sealed class CatalogFurniExtraData : ICatalogFurniExtraData
 
                 return $"{extraData}{Convert.ToChar(9)}{session.GetHabbo().Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}";
             default:
-                return "";
+                throw new UnreachableException($"No purchase data rule for {definition.InteractionType}.");
         }
     }
 

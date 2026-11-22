@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.Communication.Packets.Outgoing.Rooms.Furni;
 using Plus.Database;
+using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.Cache;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms;
@@ -99,6 +100,8 @@ public sealed class GiftOpeningService(IGiftStore store, IItemDataManager items,
                 return Task.CompletedTask;
             }
 
+            var extraData = CatalogFurniExtraData.HasPurchaseData(definition.InteractionType) ? content.ExtraData : "";
+
             Item replacement;
 
             try {
@@ -109,7 +112,7 @@ public sealed class GiftOpeningService(IGiftStore store, IItemDataManager items,
                     OwnerId = gift.OwnerId,
                     RoomId = gift.RoomId,
                     Definition = definition,
-                    ExtraData = FurniExtraData.Load(definition, content.ExtraData, keepLegacy: true),
+                    ExtraData = FurniExtraData.Load(definition, extraData, keepLegacy: true),
                     GetX = gift.GetX,
                     GetY = gift.GetY,
                     GetZ = gift.GetZ,
@@ -138,7 +141,7 @@ public sealed class GiftOpeningService(IGiftStore store, IItemDataManager items,
                 return Task.CompletedTask;
             }
 
-            store.Open(gift.Id, habbo.Id, room.RoomId, gift.Definition.Id, content, content.ExtraData);
+            store.Open(gift.Id, habbo.Id, room.RoomId, gift.Definition.Id, content, extraData);
             room.GetRoomItemHandler().RemoveFurniture(session, gift.Id);
             var inRoom = false;
 

@@ -166,8 +166,8 @@ public sealed class ConnectionAdmission
             return null;
         }
 
-        // IPAddress also parses shorthands such as "1234" or "127.1", which no proxy or ban writes.
-        if (address.AddressFamily == AddressFamily.InterNetwork && text.Count('.') != 3) {
+        // IPAddress also parses shorthands such as "1234" or "127.1", and reads "010" as octal. No proxy or ban writes either.
+        if (address.AddressFamily == AddressFamily.InterNetwork && (text.Count('.') != 3 || text.ToString().Split('.').Any(part => part is ['0', _, ..]))) {
             return null;
         }
 

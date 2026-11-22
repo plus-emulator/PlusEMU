@@ -164,7 +164,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     private async Task LoadBans(IDbConnection connection)
     {
-        var bans = await connection.QueryAsync<BanRow>("SELECT bantype AS Type, value, reason, expire AS ExpiresAt FROM bans");
+        var bans = await connection.QueryAsync<BanRow>("SELECT id, bantype AS Type, value, reason, expire AS ExpiresAt FROM bans");
         var now = _clock.GetUtcNow();
         _bans.Clear();
 
@@ -174,12 +174,12 @@ public sealed class ModerationManager : IModerationManager, IStartable
                 _bans.TryAdd((type, ban.Value), new(type, ban.Value, ban.Reason, expiresAt));
             }
             else {
-                await connection.ExecuteAsync("DELETE FROM bans WHERE bantype = @type AND value = @value LIMIT 1", new { type = ban.Type, value = ban.Value });
+                await connection.ExecuteAsync("DELETE FROM bans WHERE id = @id", new { id = ban.Id });
             }
         }
     }
 
-    private sealed record BanRow(string Type, string Value, string Reason, DateTimeOffset? ExpiresAt);
+    private sealed record BanRow(int Id, string Type, string Value, string Reason, DateTimeOffset? ExpiresAt);
 
     /// <summary>
     /// How long a ban may hold its caller, across every step of a compound ban. Kept under the packet manager's 5 s limit

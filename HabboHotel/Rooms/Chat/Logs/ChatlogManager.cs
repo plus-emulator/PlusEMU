@@ -1,4 +1,5 @@
 using Dapper;
+using Plus.Core;
 using Plus.Database;
 
 namespace Plus.HabboHotel.Rooms.Chat.Logs;
@@ -65,9 +66,13 @@ public sealed class ChatlogManager : IChatlogManager
             }
 
             transaction.Commit();
-            _chatlogs.Clear();
+        }
+        catch (Exception exception) {
+            // A batch the database refuses is dropped, so it cannot stop every later chat line.
+            ExceptionLogger.LogCriticalException(exception);
         }
         finally {
+            _chatlogs.Clear();
             _lock.ExitWriteLock();
         }
     }

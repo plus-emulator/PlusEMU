@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Unicode;
 using Plus.HabboHotel.Users;
 
 namespace Plus.HabboHotel.Rooms.Chat.Logs;
@@ -11,7 +13,7 @@ public sealed class ChatlogEntry
     {
         PlayerId = playerId;
         RoomId = roomId;
-        Message = message;
+        Message = FitColumn(message);
         CreatedAt = createdAt.ToUniversalTime();
 
         if (player != null) {
@@ -34,4 +36,18 @@ public sealed class ChatlogEntry
     public Habbo? PlayerNullable() => _playerReference != null && _playerReference.TryGetTarget(out var player) ? player : null;
 
     public Room? RoomNullable() => _roomReference != null && _roomReference.TryGetTarget(out var room) && !room.MDisposed ? room : null;
+
+    // `chatlogs.message` is a `text` column, which holds 65535 bytes of UTF-8.
+    private static string FitColumn(string message)
+    {
+        const int maxBytes = ushort.MaxValue;
+
+        if (Encoding.UTF8.GetByteCount(message) <= maxBytes) {
+            return message;
+        }
+
+        Utf8.FromUtf16(message, new byte[maxBytes], out var kept, out _);
+
+        return message[..kept];
+    }
 }

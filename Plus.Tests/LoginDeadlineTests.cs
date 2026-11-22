@@ -158,6 +158,17 @@ public sealed class LoginDeadlineTests
         }
     }
 
+    [Fact]
+    public void AFailingCloseAtTheDeadlineDoesNotEscapeTheTimer()
+    {
+        var client = NewClient();
+        client.DisconnectRequested = () => throw new InvalidOperationException("The transport failed to close.");
+        client.StartLoginDeadline(_clock);
+
+        Assert.Null(Record.Exception(() => _clock.Advance(GameClient.LoginDeadline)));
+        Assert.True(client.Closed.IsCancellationRequested);
+    }
+
     private static Authenticator SlowLogin(SharedTestClients clients, Task<Habbo?> load)
     {
         var tickets = CatalogSnapshotTestSupport.Proxy<ISsoTicketStore>((name, _) => name == nameof(ISsoTicketStore.Consume)

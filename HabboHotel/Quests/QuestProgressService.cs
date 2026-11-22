@@ -20,12 +20,14 @@ public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
-        var isNew = connection.Execute("INSERT IGNORE INTO user_quests (user_id,quest_id) VALUES (@userId,@questId)", new { userId, questId }, transaction) == 1;
-        progress = isNew ? 0 : connection.QuerySingle<int?>("SELECT progress FROM user_quests WHERE user_id=@userId AND quest_id=@questId FOR UPDATE",
+        // The insert takes the row lock at once, so parallel starts of one quest wait instead of deadlocking.
+        connection.Execute("INSERT INTO user_quests (user_id,quest_id) VALUES (@userId,@questId) ON DUPLICATE KEY UPDATE quest_id=quest_id",
+            new { userId, questId }, transaction);
+        progress = connection.QuerySingle<int?>("SELECT progress FROM user_quests WHERE user_id=@userId AND quest_id=@questId FOR UPDATE",
             new { userId, questId }, transaction) ?? 0;
 
         // A completed quest stays completed, so its reward is paid only once.
-        if (!isNew && quest.IsCompleted(progress)) {
+        if (progress >= OpenBelow(quest)) {
             return false;
         }
 

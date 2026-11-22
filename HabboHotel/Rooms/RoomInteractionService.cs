@@ -117,7 +117,7 @@ public sealed class RoomInteractionService(IRoomInteractionStore store, IWordFil
                 return;
             }
 
-            if (!room.CheckRights(session) && !text.StartsWith(item.LegacyDataString)) {
+            if (!room.CheckRights(session)) {
                 return;
             }
 

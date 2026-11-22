@@ -109,6 +109,12 @@ public abstract class GameClient
     /// </summary>
     internal const int ReceiveBufferLimit = 2 * 1024 * 1024;
 
+    /// <summary>
+    /// A received chunk that waits for the handler also holds its copy and async state, just under 512 bytes, so it
+    /// counts this much against <see cref="ReceiveBufferLimit"/> on top of its data.
+    /// </summary>
+    private const int WaitingChunkOverhead = 512;
+
     /// <summary>The most a connection may have waiting to be sent. A client that leaves more unread is not reading.</summary>
     internal const int SendBufferLimit = 8 * 1024 * 1024;
 
@@ -276,13 +282,15 @@ public abstract class GameClient
     internal virtual async void OnReceived(byte[] buffer, long offset, long size)
     {
         // Each chunk waits until the one before it is handled, so a slow handler must not let the queue grow without end.
-        if (Interlocked.Add(ref _receivedUnhandled, size) > ReceiveBufferLimit) {
-            CloseOverLimit("receive queue");
-
-            return;
-        }
+        var cost = size + WaitingChunkOverhead;
 
         try {
+            if (Interlocked.Add(ref _receivedUnhandled, cost) > ReceiveBufferLimit) {
+                CloseOverLimit("receive queue");
+
+                return;
+            }
+
             await ReceiveAsync(buffer, offset, size);
         }
         catch (Exception exception) {
@@ -296,7 +304,7 @@ public abstract class GameClient
             }
         }
         finally {
-            Interlocked.Add(ref _receivedUnhandled, -size);
+            Interlocked.Add(ref _receivedUnhandled, -cost);
         }
     }
 

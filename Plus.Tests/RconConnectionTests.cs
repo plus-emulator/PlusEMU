@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Plus.Communication.RCON;
 using Plus.Communication.RCON.Commands;
+using Plus.Communication.RCON.Commands.User;
+using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Grants;
 using Xunit;
 
@@ -143,6 +145,69 @@ public sealed class RconConnectionTests
         Assert.Equal("disconnect_user\u000142", commands.Request);
     }
 
+    [Fact]
+    public async Task ALegacyCommandThatThrowsStillClosesTheSocket()
+    {
+        using var sockets = await ConnectedSockets.Create();
+        using var connection = new RconConnection(sockets.Server, NullLogger<RconConnection>.Instance, new ThrowingCommands(), new FakeTimeProvider());
+
+        await sockets.Client.SendAsync(Encoding.Default.GetBytes("disconnect_user\u000142"));
+
+        await AssertClosed(sockets.Client);
+    }
+
+    [Theory]
+    [InlineData("disconnect_user")]
+    [InlineData("alert_user\u000142")]
+    [InlineData("progress_user_achievement\u000142:ACH")]
+    public async Task MalformedLegacyInputRunsNothingAndClosesTheSocket(string request)
+    {
+        var (commands, disconnect, sent) = LegacyCommands();
+        using var sockets = await ConnectedSockets.Create();
+        using var connection = new RconConnection(sockets.Server, NullLogger<RconConnection>.Instance, commands, new FakeTimeProvider());
+
+        await sockets.Client.SendAsync(Encoding.Default.GetBytes(request));
+
+        await AssertClosed(sockets.Client);
+        Assert.Null(disconnect.Received);
+        Assert.Empty(sent);
+    }
+
+    [Theory]
+    [InlineData("disconnect_user")]
+    [InlineData("alert_user\u000142")]
+    [InlineData("progress_user_achievement\u000142:ACH")]
+    public void TheCommandManagerRefusesMalformedLegacyInput(string request)
+    {
+        var (commands, disconnect, sent) = LegacyCommands();
+
+        Assert.False(commands.Parse(request));
+        Assert.Null(disconnect.Received);
+        Assert.Empty(sent);
+    }
+
+    private static (CommandManager Commands, RecordingCommand Disconnect, List<(uint Header, byte[] Payload)> Sent) LegacyCommands()
+    {
+        var (client, sent) = HabbiconTestSupport.Client(new Habbo { Id = 42 });
+        var clients = new TestGameClientManager(id => id == 42 ? client : null);
+        var disconnect = new RecordingCommand("disconnect_user");
+        var commands = new CommandManager([
+            disconnect, new AlertUserCommand(clients), new ProgressUserAchievementCommand(clients, TestItemRuntime.Achievements),
+        ]);
+
+        return (commands, disconnect, sent);
+    }
+
+    private static async Task AssertClosed(Socket socket)
+    {
+        var buffer = new byte[256];
+
+        try {
+            while (await socket.ReceiveAsync(buffer.AsMemory()).AsTask().WaitAsync(HangGuard) > 0) { }
+        }
+        catch (SocketException) { }
+    }
+
     private static async Task<JsonElement> ReadResponse(Socket socket)
     {
         using var stream = new NetworkStream(socket, ownsSocket: false);
@@ -234,6 +299,26 @@ public sealed class RconConnectionTests
             Request = data;
 
             return result;
+        }
+    }
+
+    private sealed class ThrowingCommands : ICommandManager
+    {
+        public bool Parse(string data) => throw new InvalidOperationException("The command failed.");
+    }
+
+    private sealed class RecordingCommand(string key) : IRconCommand
+    {
+        public string[]? Received { get; private set; }
+        public string Key => key;
+        public string Parameters => string.Empty;
+        public string Description => string.Empty;
+
+        public Task<bool> TryExecute(string[] parameters)
+        {
+            Received = parameters;
+
+            return Task.FromResult(true);
         }
     }
 

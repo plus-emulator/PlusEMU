@@ -156,7 +156,7 @@ public class PlusEnvironment : IPlusEnvironment
             await StartupSequence.Start(_startableTasks);
 
             // Managers are ready before any listener accepts requests.
-            RconSocket.Init(_rconConfiguration.Hostname, _rconConfiguration.Port, _rconConfiguration.AllowedAddresses);
+            RconSocket.Init(_rconConfiguration);
             FlashServer.Start();
             _nitroServer.Start();
             await WebServer.Start();

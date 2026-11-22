@@ -116,6 +116,56 @@ public sealed class QuestProgressStoreDatabaseTests
         Assert.Equal(0, client.GetHabbo().Duckets);
     });
 
+    [RoomComponentDatabaseFact]
+    public void ProgressOnACompletedActiveQuestPaysNothingAndKeepsTheSavedRow() => WithSchema((database, connection) =>
+    {
+        connection.Execute("""
+            INSERT INTO quests VALUES (101, 'room_builder', 1, 0, 3, 'MOVEITEM', 10, '', 0, NULL, NULL);
+            INSERT INTO user_quests (user_id, quest_id, progress) VALUES (7, 101, 3);
+            """);
+        var (manager, _) = Quests(database);
+        var (client, sent) = Login(activeQuest: MoveItem.Id);
+        client.GetHabbo().Quests[MoveItem.Id] = 2;
+
+        manager.ProgressUserQuest(client, QuestType.FurniMove);
+
+        client.GetHabbo().HabboStats!.QuestId = MoveItem.Id;
+        client.GetHabbo().Quests[MoveItem.Id] = 0;
+        manager.ProgressUserQuest(client, QuestType.FurniMove);
+
+        Assert.Equal(0, client.GetHabbo().Duckets);
+        Assert.DoesNotContain(sent, packet => packet.Header == ServerPacketHeader.QuestCompletedComposer);
+        Assert.Equal(3, SavedProgress(connection, MoveItem.Id));
+    });
+
+    [RoomComponentDatabaseFact]
+    public void CancelKeepsTheSavedRowOfACompletedActiveQuest() => WithSchema((database, connection) =>
+    {
+        connection.Execute("""
+            INSERT INTO quests VALUES (115, 'social', 3, 10, 1, 'REQUESTFRIEND', 10, '', 0, NULL, NULL);
+            INSERT INTO user_quests (user_id, quest_id, progress) VALUES (7, 115, 1);
+            UPDATE user_statistics SET quest_id = 115 WHERE id = 7;
+            """);
+        var (_, service) = Quests(database);
+        var (client, _) = Login(activeQuest: RequestFriend.Id);
+
+        service.Cancel(client);
+
+        Assert.Equal(new[] { 1 }, connection.Query<int>("SELECT progress FROM user_quests WHERE user_id = 7 AND quest_id = 115"));
+        Assert.Equal(0, ActiveQuest(connection));
+        Assert.False(new QuestProgressStore(database).TryStart(UserId, RequestFriend, out _));
+    });
+
+    private static (QuestManager Manager, QuestProgressService Service) Quests(IDatabase database)
+    {
+        var store = new QuestProgressStore(database);
+        var manager = new QuestManager(database, CatalogSnapshotTestSupport.Proxy<IMessengerDataLoader>((_, _) => null),
+            TestLogging.For<QuestManager>(), store);
+        manager.Init();
+
+        return (manager, new QuestProgressService(store, manager));
+    }
+
     private static Dictionary<string, (int Id, bool Started, int Progress)> ListedQuests(byte[] payload)
     {
         var reader = new FlashIncomingPacket { Buffer = payload };

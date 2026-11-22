@@ -132,8 +132,9 @@ public sealed class RoomInteractionServiceTests
         Assert.Equal(1, store.Updates);
     }
 
+    // Only a user with rights changes a note's text or colour, whatever text a visitor sends.
     [Fact]
-    public void StickyReadsCaptureDataAndEditsPreserveAppendAndColourPolicy()
+    public void StickyReadsCaptureDataAndOnlyUsersWithRightsEditWithAValidColour()
     {
         var (room, client, sent) = Context("owner", "visitor");
         var item = AddItem(room, InteractionType.Postit);
@@ -147,11 +148,19 @@ public sealed class RoomInteractionServiceTests
         Assert.False(read.HasDataRemaining());
         sent.Clear();
         service.UpdateSticky(room, client, item.Id, "FFFF33", "replacement");
-        service.UpdateSticky(room, client, item.Id, "bad", "FFFF33 old appended");
+        service.UpdateSticky(room, client, item.Id, "FF9CFF", "FFFF33 old appended");
+        Assert.Equal("FFFF33 old", item.LegacyDataString);
+        item.LegacyDataString = "FFFF33";
+        service.UpdateSticky(room, client, item.Id, "9CCEFF", "FFFF33 appended");
+        Assert.Equal("FFFF33", item.LegacyDataString);
         Assert.Equal(0, store.Updates);
         Assert.Empty(sent);
-        service.UpdateSticky(room, client, item.Id, "FF9CFF", "FFFF33 old appended");
-        Assert.Equal("FF9CFF FFFF33 old appended", item.LegacyDataString);
+        room.UsersWithRights.Add(2);
+        service.UpdateSticky(room, client, item.Id, "bad", "edited");
+        Assert.Equal(0, store.Updates);
+        Assert.Empty(sent);
+        service.UpdateSticky(room, client, item.Id, "FF9CFF", "edited");
+        Assert.Equal("FF9CFF edited", item.LegacyDataString);
         Assert.Equal(1, store.Updates);
         sent.Clear();
         item.Definition.InteractionType = InteractionType.Gate;

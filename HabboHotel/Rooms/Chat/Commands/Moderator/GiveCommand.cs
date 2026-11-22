@@ -39,13 +39,18 @@ internal class GiveCommand : ITargetChatCommand
                         break;
                     }
 
-                    if (int.TryParse(amountText, out var amount)) {
+                    if (int.TryParse(amountText, out var amount) && amount > 0) {
                         lock (target.WalletSync) {
                             if (target.WalletClosed) {
                                 break;
                             }
 
-                            target.Credits = target.Credits += amount;
+                            if (!FitsBalance(target.Credits, amount)) {
+                                session.SendWhisper("Oops, that amount would go over the maximum balance!");
+                                break;
+                            }
+
+                            target.Credits += amount;
                             target.Client?.Send(new CreditBalanceComposer(target.Credits));
                         }
 
@@ -67,9 +72,14 @@ internal class GiveCommand : ITargetChatCommand
                         break;
                     }
 
-                    if (int.TryParse(amountText, out var amount)) {
+                    if (int.TryParse(amountText, out var amount) && amount > 0) {
                         lock (target.WalletSync) {
                             if (target.WalletClosed) {
+                                break;
+                            }
+
+                            if (!FitsBalance(target.Duckets, amount)) {
+                                session.SendWhisper("Oops, that amount would go over the maximum balance!");
                                 break;
                             }
 
@@ -94,9 +104,14 @@ internal class GiveCommand : ITargetChatCommand
                         break;
                     }
 
-                    if (int.TryParse(amountText, out var amount)) {
+                    if (int.TryParse(amountText, out var amount) && amount > 0) {
                         lock (target.WalletSync) {
                             if (target.WalletClosed) {
+                                break;
+                            }
+
+                            if (!FitsBalance(target.Diamonds, amount)) {
+                                session.SendWhisper("Oops, that amount would go over the maximum balance!");
                                 break;
                             }
 
@@ -122,8 +137,13 @@ internal class GiveCommand : ITargetChatCommand
                         break;
                     }
 
-                    if (int.TryParse(amountText, out var amount)) {
-                        target.GotwPoints = target.GotwPoints + amount;
+                    if (int.TryParse(amountText, out var amount) && amount > 0) {
+                        if (!FitsBalance(target.GotwPoints, amount)) {
+                            session.SendWhisper("Oops, that amount would go over the maximum balance!");
+                            break;
+                        }
+
+                        target.GotwPoints += amount;
                         target.Client?.Send(new HabboActivityPointNotificationComposer(target.GotwPoints, amount, 103));
 
                         if (target.Id != session.GetHabbo().Id) {
@@ -151,9 +171,14 @@ internal class GiveCommand : ITargetChatCommand
                         break;
                     }
 
-                    if (int.TryParse(amountText, out var amount)) {
+                    if (int.TryParse(amountText, out var amount) && amount > 0) {
                         lock (target.WalletSync) {
                             if (target.WalletClosed) {
+                                break;
+                            }
+
+                            if (!FitsBalance(target.Currencies[pointsType], amount)) {
+                                session.SendWhisper("Oops, that amount would go over the maximum balance!");
                                 break;
                             }
 
@@ -179,4 +204,6 @@ internal class GiveCommand : ITargetChatCommand
 
         return Task.CompletedTask;
     }
+
+    private static bool FitsBalance(int balance, int amount) => (long)balance + amount <= int.MaxValue;
 }

@@ -19,7 +19,7 @@ internal class MassEnableCommand : IChatCommand
             return;
         }
 
-        if (int.TryParse(parameters[0], out var enableId)) {
+        if (int.TryParse(parameters[0], out var enableId) && enableId >= 0) {
             if (enableId == 102 || enableId == 178) {
                 session.Disconnect();
 

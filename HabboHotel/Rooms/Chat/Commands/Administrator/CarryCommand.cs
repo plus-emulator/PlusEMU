@@ -12,9 +12,7 @@ internal class CarryCommand : IChatCommand
 
     public void Execute(GameClient session, Room room, string[] parameters)
     {
-        var itemId = 0;
-
-        if (!int.TryParse(Convert.ToString(parameters[0]), out itemId)) {
+        if (parameters.Length == 0 || !int.TryParse(parameters[0], out var itemId) || itemId < 0) {
             session.SendWhisper("Please enter a valid integer.");
 
             return;

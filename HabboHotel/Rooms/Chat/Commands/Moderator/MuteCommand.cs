@@ -30,7 +30,7 @@ internal class MuteCommand : ITargetChatCommand
             return Task.CompletedTask;
         }
 
-        if (double.TryParse(parameters[0], out var time)) {
+        if (parameters.Length > 0 && double.TryParse(parameters[0], out var time) && double.IsFinite(time) && time > 0) {
             if (time > 600 && !session.GetHabbo().Access.Can(PermissionKeys.ModerationMuteLimitOverride)) {
                 time = 600;
             }

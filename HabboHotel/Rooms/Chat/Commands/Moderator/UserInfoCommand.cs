@@ -25,13 +25,13 @@ internal class UserInfoCommand : IChatCommand
 
     public void Execute(GameClient session, Room room, string[] parameters)
     {
-        if (parameters.Length < 2) {
+        if (parameters.Length < 1) {
             session.SendWhisper("Please enter the username of the user you wish to view.");
 
             return;
         }
 
-        var username = parameters[1];
+        var username = parameters[0];
         var userData = _users.Find(username);
 
         if (userData == null) {

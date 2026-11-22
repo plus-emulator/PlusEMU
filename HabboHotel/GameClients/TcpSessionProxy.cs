@@ -59,9 +59,12 @@ public class TcpSessionProxy : TcpSession
     protected override void OnConnecting()
     {
         if (_admission != null) {
-            var address = _admission.Resolve(((IPEndPoint)Socket.RemoteEndPoint!).Address, []);
-            _client.RemoteAddress = address;
-            _connectionSlot = _admission.TryAdmit(address);
+            if (Socket.RemoteEndPoint is IPEndPoint peer) {
+                var address = _admission.Resolve(peer.Address, []);
+                _client.RemoteAddress = address;
+                _connectionSlot = _admission.TryAdmit(address);
+            }
+
             _refused = _connectionSlot == null;
         }
 

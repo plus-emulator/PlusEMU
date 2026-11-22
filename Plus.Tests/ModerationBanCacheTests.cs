@@ -222,6 +222,53 @@ public sealed class ModerationBanCacheTests
         Assert.Equal(2, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM bans"));
     });
 
+    [RoomComponentDatabaseFact]
+    public Task ALoadedMachineBanHoldsUntilItsLongestRowExpires() => WithBansTable(async connection =>
+    {
+        InsertBan(connection, "machine", "machine", Now.AddHours(1));
+        var year = InsertBan(connection, "machine", "machine", Now.AddYears(1));
+        var clock = new FakeTimeProvider(Now);
+        var manager = DatabaseManager(connection.ConnectionString, clock);
+        manager.ReCacheBans();
+        clock.Advance(TimeSpan.FromHours(2));
+
+        Assert.False(await CanLoginFrom(manager, "198.51.100.1", "machine"));
+        Assert.False(await CanLoginFrom(manager, "198.51.100.1", "machine"));
+        Assert.True(await CanLoginFrom(manager, "198.51.100.1", "other"));
+        Assert.Contains(year, connection.Query<int>("SELECT id FROM bans"));
+    });
+
+    [RoomComponentDatabaseFact]
+    public Task ABanHoldsUntilTheDatabaseHasDeletedEveryRowOfIt() => WithBansTable(async connection =>
+    {
+        var manager = DatabaseManager(connection.ConnectionString);
+        await manager.BanUser("mod", ModerationBanType.Username, "bob", "year", Now.AddYears(1));
+        await manager.BanUser("mod", ModerationBanType.Username, "bob", "day", Now.AddDays(1));
+
+        connection.Execute("DELETE FROM bans WHERE reason = 'year'");
+
+        Assert.False(await CanLoginFrom(manager, "198.51.100.1"));
+
+        connection.Execute("DELETE FROM bans");
+
+        Assert.True(await CanLoginFrom(manager, "198.51.100.1"));
+        Assert.True(await CanLoginFrom(manager, "198.51.100.1"));
+    });
+
+    [RoomComponentDatabaseFact]
+    public Task ABanWrittenWhileALoginFindsTheOldRowsGoneStaysCached() => WithBansTable(async connection =>
+    {
+        var database = new HookedDatabase(connection.ConnectionString);
+        var manager = DatabaseManager(connection.ConnectionString, database: database);
+        await manager.BanUser("mod", ModerationBanType.Username, "bob", "year", Now.AddYears(1));
+        connection.Execute("DELETE FROM bans");
+        database.AfterNextQuery = () => manager.BanUser("mod", ModerationBanType.Username, "bob", "day", Now.AddDays(1)).GetAwaiter().GetResult();
+
+        Assert.True(await CanLoginFrom(manager, "198.51.100.1"));
+        Assert.Equal(["day"], connection.Query<string>("SELECT reason FROM bans"));
+        Assert.False(await CanLoginFrom(manager, "198.51.100.1"));
+    });
+
     [Theory]
     [InlineData(" 203.0.113.7", "203.0.113.7", true)]
     [InlineData("203.0.113.7 ", "203.0.113.7", true)]
@@ -266,15 +313,20 @@ public sealed class ModerationBanCacheTests
         }
     }
 
-    private static ModerationManager DatabaseManager(string connectionString, TimeProvider? clock = null) => new(new SchemaDatabase(connectionString),
+    private static ModerationManager DatabaseManager(string connectionString, TimeProvider? clock = null, IDatabase? database = null) => new(
+        database ?? new SchemaDatabase(connectionString),
         NullLogger<ModerationManager>.Instance, Proxy<ISsoTicketStore>((_, _) => Task.CompletedTask), new SharedTestClients(), new AccountSessionGate(),
         clock ?? new FakeTimeProvider(Now));
 
-    private static Task<bool> CanLoginFrom(IModerationManager manager, string address)
+    private static Task<bool> CanLoginFrom(IModerationManager manager, string address, string? machineId = null)
     {
         var users = Proxy<IUserDataFactory>((method, _) => method == nameof(IUserDataFactory.GetUsernameForHabboById) ? Task.FromResult("bob") : null);
         var (session, _) = HabbiconTestSupport.Client(new Habbo { Id = 1 });
         session.RemoteAddress = new ClientAddress(IPAddress.Parse(address), true);
+
+        if (machineId != null) {
+            session.RecordMachineId(machineId);
+        }
 
         return new BanLoginCheckTask(manager, users).CanLogin(session, 1);
     }
@@ -283,6 +335,49 @@ public sealed class ModerationBanCacheTests
     {
         public bool IsConnected() => true;
         public IDbConnection Connection() => new MySqlConnection(connectionString);
+    }
+
+    /// <summary>Runs <see cref="AfterNextQuery"/> once, when the next connection's first query has finished.</summary>
+    private sealed class HookedDatabase(string connectionString) : IDatabase
+    {
+        private Action? _afterNextQuery;
+
+        public Action? AfterNextQuery { set => _afterNextQuery = value; }
+
+        public bool IsConnected() => true;
+
+        public IDbConnection Connection()
+        {
+            var connection = new MySqlConnection(connectionString);
+
+            return Interlocked.Exchange(ref _afterNextQuery, null) is { } hook ? new HookedConnection(connection, hook) : connection;
+        }
+    }
+
+    /// <summary>Dapper closes a connection it opened as soon as the query ends, so the hook runs between the query and the caller's next step.</summary>
+    private sealed class HookedConnection(MySqlConnection inner, Action hook) : IDbConnection
+    {
+        private Action? _hook = hook;
+
+        [System.Diagnostics.CodeAnalysis.AllowNull]
+        public string ConnectionString { get => inner.ConnectionString; set => inner.ConnectionString = value; }
+        public int ConnectionTimeout => inner.ConnectionTimeout;
+        public string Database => inner.Database;
+        public ConnectionState State => inner.State;
+
+        public IDbTransaction BeginTransaction() => inner.BeginTransaction();
+        public IDbTransaction BeginTransaction(IsolationLevel il) => inner.BeginTransaction(il);
+        public void ChangeDatabase(string databaseName) => inner.ChangeDatabase(databaseName);
+        public IDbCommand CreateCommand() => inner.CreateCommand();
+        public void Open() => inner.Open();
+
+        public void Close()
+        {
+            inner.Close();
+            Interlocked.Exchange(ref _hook, null)?.Invoke();
+        }
+
+        public void Dispose() => inner.Dispose();
     }
 
     private static ModerationManager Manager() => new(

@@ -8,8 +8,8 @@ namespace Plus.HabboHotel.Quests;
 public interface IQuestProgressStore
 {
     bool TryStart(int userId, Quest quest, out int progress);
-    void Cancel(int userId, int questId);
-    void SaveProgress(int userId, int questId, int progress, bool completed);
+    void Cancel(int userId, Quest quest);
+    bool SaveProgress(int userId, Quest quest, int progress, bool completed);
 }
 
 public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
@@ -38,8 +38,9 @@ public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
         return true;
     }
 
-    public void Cancel(int userId, int questId)
+    public void Cancel(int userId, Quest quest)
     {
+        var questId = quest.Id;
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
@@ -52,8 +53,9 @@ public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
         transaction.Commit();
     }
 
-    public void SaveProgress(int userId, int questId, int progress, bool completed)
+    public bool SaveProgress(int userId, Quest quest, int progress, bool completed)
     {
+        var questId = quest.Id;
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
@@ -68,6 +70,8 @@ public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
         }
 
         transaction.Commit();
+
+        return true;
     }
 }
 
@@ -99,7 +103,7 @@ public sealed class QuestProgressService(IQuestProgressStore store, IQuestManage
             return;
         }
 
-        store.Cancel(habbo.Id, quest.Id);
+        store.Cancel(habbo.Id, quest);
         stats.QuestId = 0;
         session.Send(new QuestAbortedComposer(QuestWireDataFactory.Create(session, quest, quests.GetAmountOfQuestsInCategory(quest.Category))));
         quests.GetList(session, null);

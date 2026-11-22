@@ -171,19 +171,21 @@ public sealed class QuestProgressServiceTests
 
             return Result.Started;
         }
-        public void Cancel(int userId, int questId)
+        public void Cancel(int userId, Quest quest)
         {
             if (Fail) {
                 throw new InvalidOperationException("forced failure");
             }
         }
-        public void SaveProgress(int userId, int questId, int progress, bool completed)
+        public bool SaveProgress(int userId, Quest quest, int progress, bool completed)
         {
             if (Fail) {
                 throw new InvalidOperationException("forced failure");
             }
 
-            Progress.Add((userId, questId, progress, completed));
+            Progress.Add((userId, quest.Id, progress, completed));
+
+            return true;
         }
     }
 

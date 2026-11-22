@@ -158,7 +158,7 @@ public class QuestManager : IQuestManager, IStartable
                 break;
         }
 
-        _progressStore.SaveProgress(session.GetHabbo().Id, quest.Id, totalProgress, completeQuest);
+        _progressStore.SaveProgress(session.GetHabbo().Id, quest, totalProgress, completeQuest);
         session.GetHabbo().Quests[stats.QuestId] = totalProgress;
         session.Send(new QuestStartedComposer(QuestWireDataFactory.Create(session, quest, GetAmountOfQuestsInCategory(quest.Category))));
 

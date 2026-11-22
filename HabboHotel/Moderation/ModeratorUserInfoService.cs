@@ -21,6 +21,6 @@ public sealed class ModeratorUserInfoService(IModerationUserStore users, IGameCl
             return;
         }
 
-        session.Send(new ModeratorUserInfoComposer(user, clients.GetClientByUserId(userId)?.GetHabbo() != null, clock.GetUtcNow()));
+        session.Send(new ModeratorUserInfoComposer(user.VisibleTo(session.GetHabbo().Access), clients.GetClientByUserId(userId)?.GetHabbo() != null, clock.GetUtcNow()));
     }
 }

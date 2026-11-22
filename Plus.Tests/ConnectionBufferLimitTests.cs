@@ -2,7 +2,9 @@ using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using NetCoreServer;
+using Plus.Communication.Abstractions;
 using Plus.Communication.Flash;
 using Plus.Communication.Packets;
 using Plus.Communication.Revisions;
@@ -234,6 +236,39 @@ public sealed class ConnectionBufferLimitTests
         }
     }
 
+    [Fact]
+    public async Task ALimitCloseLogsOneWarningPerAddressPerMinute()
+    {
+        var log = new WarningLog();
+        var handler = new SlowHandler();
+        var address = IPAddress.Parse("198.51.100.23");
+        var one = new byte[1];
+
+        try {
+            for (var connection = 0; connection < 2; connection++) {
+                var client = handler.NewClient(log);
+                client.RemoteAddress = new ClientAddress(address, true);
+                var slow = Packet(SlowMessageId, 0);
+                client.OnReceived(slow, 0, slow.Length);
+                await handler.Handling.WaitAsync(TimeSpan.FromSeconds(5));
+
+                for (var chunk = 0; chunk < GameClient.ReceiveBufferLimit / 256; chunk++) {
+                    client.OnReceived(one, 0, 1);
+                }
+
+                Assert.True(client.Closed.IsCancellationRequested);
+            }
+
+            var warning = Assert.Single(log.Warnings);
+            Assert.Contains("198.51.100.23", warning);
+            Assert.Contains("receive queue", warning);
+        }
+        finally {
+            handler.Release();
+            handler.Release();
+        }
+    }
+
     /// <summary>Sends far more than the limit plus what the kernel buffers hold; true once the server closed the client.</summary>
     private static async Task<bool> SendUntilClosed(GameClient client)
     {
@@ -362,10 +397,10 @@ public sealed class ConnectionBufferLimitTests
             return Volatile.Read(ref _bulkHandled) == count;
         }
 
-        public GameClient NewClient()
+        public GameClient NewClient(ILogger<GameClient>? logger = null)
         {
             var mapping = new Dictionary<uint, uint> { [BulkMessageId] = BulkMessageId, [SlowMessageId] = SlowMessageId };
-            Client = new FlashGameClient(this, new FlashPacketFactory(), TestLogging.GameClient)
+            Client = new FlashGameClient(this, new FlashPacketFactory(), logger ?? TestLogging.GameClient)
             {
                 Revision = new Revision { IncomingIdToInternalIdMapping = mapping }
             };
@@ -393,6 +428,24 @@ public sealed class ConnectionBufferLimitTests
         public bool ModifyOutgoingPacket(GameClient client, IOutgoingPacket packet) => true;
 
         public bool HasOutgoingPacketInjectors(uint messageId) => false;
+    }
+
+    private sealed class WarningLog : ILogger<GameClient>
+    {
+        public List<string> Warnings { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Warning) {
+                lock (Warnings) {
+                    Warnings.Add(formatter(state, exception));
+                }
+            }
+        }
     }
 
     private sealed class SlowTcpServer(SlowHandler handler) : TcpServer(IPAddress.Loopback, 0)

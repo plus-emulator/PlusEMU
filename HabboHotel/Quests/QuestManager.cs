@@ -158,7 +158,14 @@ public class QuestManager : IQuestManager, IStartable
                 break;
         }
 
-        _progressStore.SaveProgress(session.GetHabbo().Id, quest, totalProgress, completeQuest);
+        // Only a write that moves an open saved row counts, so a completed quest never pays again.
+        if (!_progressStore.SaveProgress(session.GetHabbo().Id, quest, totalProgress, completeQuest)) {
+            stats.QuestId = 0;
+            GetList(session, null);
+
+            return;
+        }
+
         session.GetHabbo().Quests[stats.QuestId] = totalProgress;
         session.Send(new QuestStartedComposer(QuestWireDataFactory.Create(session, quest, GetAmountOfQuestsInCategory(quest.Category))));
 

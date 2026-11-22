@@ -34,13 +34,7 @@ public class Quest
 
     public bool IsEndedAt(DateTimeOffset now) => LocksAt is { } locksAt && now >= locksAt;
 
-    public bool IsCompleted(int progress)
-    {
-        switch (GoalType) {
-            default:
-                return progress >= GoalData;
-            case QuestType.ExploreFindItem:
-                return progress >= 1;
-        }
-    }
+    public int CompletionProgress => GoalType == QuestType.ExploreFindItem ? 1 : GoalData;
+
+    public bool IsCompleted(int progress) => progress >= CompletionProgress;
 }

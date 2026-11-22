@@ -217,23 +217,29 @@ public abstract class GameClient
         DisconnectRequested?.Invoke();
     }
 
+    // Runs on a timer thread, where an escaping exception would end the process.
     private void CloseUnlessLoggedIn()
     {
-        lock (_lifecycle) {
-            if (_habbo != null) {
-                return;
+        try {
+            lock (_lifecycle) {
+                if (_habbo != null) {
+                    return;
+                }
+
+                if (_loggingIn) {
+                    _loginDeadlinePassed = true;
+
+                    return;
+                }
+
+                Close();
             }
 
-            if (_loggingIn) {
-                _loginDeadlinePassed = true;
-
-                return;
-            }
-
-            Close();
+            DisconnectRequested?.Invoke();
         }
-
-        DisconnectRequested?.Invoke();
+        catch (Exception exception) {
+            _logger.LogError(exception, "Closing connection {ConnectionId} at the login deadline failed", Id);
+        }
     }
 
     private void Close()

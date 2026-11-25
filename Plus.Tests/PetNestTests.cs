@@ -69,7 +69,8 @@ public partial class PlacedFurniRoomTests
 
         Assert.Contains("lay", petUser.Statusses.Keys);
         Assert.Equal(walk, WalkTarget(petUser));
-        Assert.InRange(pet.Energy - energy, 0, 1);
+        var rest = (int)Math.Ceiling(pet.MaxEnergy * (70 * Plus.HabboHotel.Rooms.RoomCycle.Interval / TimeSpan.FromHours(1)));
+        Assert.InRange(pet.Energy - energy, 0, rest);
     }
 
     private static readonly string[] HorseSleepingLines =

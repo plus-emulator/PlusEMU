@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
 using Plus.HabboHotel.Rooms;
+using Plus.HabboHotel.Rooms.Chat.Filter;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Inventory.Furniture;
 using Xunit;
@@ -23,7 +24,7 @@ public sealed class RoomInteractionServiceTests
     public void RatingRejectsInvalidOwnerAndDuplicateRequests()
     {
         var store = new RecordingStore();
-        var service = new RoomInteractionService(store);
+        var service = new RoomInteractionService(store, Unfiltered);
         var (room, owner, _) = Context("owner");
         service.Rate(room, owner, 2);
         service.Rate(room, owner, 1);
@@ -41,7 +42,7 @@ public sealed class RoomInteractionServiceTests
     {
         var (room, client, sent) = Context("owner", "voter");
         var store = new RecordingStore { ResultingScore = 42 };
-        var service = new RoomInteractionService(store);
+        var service = new RoomInteractionService(store, Unfiltered);
 
         service.Rate(room, client, -1);
         service.Rate(room, client, -1);
@@ -58,7 +59,7 @@ public sealed class RoomInteractionServiceTests
         var (room, client, sent) = Context("owner", "voter");
         var store = new RecordingStore { Fail = true };
 
-        Assert.Throws<InvalidOperationException>(() => new RoomInteractionService(store).Rate(room, client, 1));
+        Assert.Throws<InvalidOperationException>(() => new RoomInteractionService(store, Unfiltered).Rate(room, client, 1));
 
         Assert.Equal(0, room.Score);
         Assert.Empty(client.GetHabbo().RatedRooms);
@@ -71,7 +72,7 @@ public sealed class RoomInteractionServiceTests
         var (room, client, _) = Context("owner");
         var item = AddItem(room, InteractionType.Gate);
         var store = new RecordingStore();
-        var service = new RoomInteractionService(store);
+        var service = new RoomInteractionService(store, Unfiltered);
         service.DeleteSticky(room, client, item.Id);
         item.Definition.InteractionType = InteractionType.Postit;
         store.Fail = true;
@@ -114,7 +115,7 @@ public sealed class RoomInteractionServiceTests
             Assert.Empty(sent);
         }
         };
-        var service = new RoomInteractionService(store);
+        var service = new RoomInteractionService(store, Unfiltered);
 
         if (fail) {
             Assert.Throws<InvalidOperationException>(() => service.UpdateSticky(room, client, item.Id, "9CCEFF", "edited"));
@@ -131,14 +132,15 @@ public sealed class RoomInteractionServiceTests
         Assert.Equal(1, store.Updates);
     }
 
+    // Only a user with rights changes a note's text or colour, whatever text a visitor sends.
     [Fact]
-    public void StickyReadsCaptureDataAndEditsPreserveAppendAndColourPolicy()
+    public void StickyReadsCaptureDataAndOnlyUsersWithRightsEditWithAValidColour()
     {
         var (room, client, sent) = Context("owner", "visitor");
         var item = AddItem(room, InteractionType.Postit);
         item.LegacyDataString = "FFFF33 old";
         var store = new RecordingStore();
-        var service = new RoomInteractionService(store);
+        var service = new RoomInteractionService(store, Unfiltered);
         service.ShowSticky(room, client, item.Id);
         var read = new Plus.Communication.Flash.FlashIncomingPacket { Buffer = Assert.Single(sent).Payload };
         Assert.Equal("7", read.ReadString());
@@ -146,11 +148,19 @@ public sealed class RoomInteractionServiceTests
         Assert.False(read.HasDataRemaining());
         sent.Clear();
         service.UpdateSticky(room, client, item.Id, "FFFF33", "replacement");
-        service.UpdateSticky(room, client, item.Id, "bad", "FFFF33 old appended");
+        service.UpdateSticky(room, client, item.Id, "FF9CFF", "FFFF33 old appended");
+        Assert.Equal("FFFF33 old", item.LegacyDataString);
+        item.LegacyDataString = "FFFF33";
+        service.UpdateSticky(room, client, item.Id, "9CCEFF", "FFFF33 appended");
+        Assert.Equal("FFFF33", item.LegacyDataString);
         Assert.Equal(0, store.Updates);
         Assert.Empty(sent);
-        service.UpdateSticky(room, client, item.Id, "FF9CFF", "FFFF33 old appended");
-        Assert.Equal("FF9CFF FFFF33 old appended", item.LegacyDataString);
+        room.UsersWithRights.Add(2);
+        service.UpdateSticky(room, client, item.Id, "bad", "edited");
+        Assert.Equal(0, store.Updates);
+        Assert.Empty(sent);
+        service.UpdateSticky(room, client, item.Id, "FF9CFF", "edited");
+        Assert.Equal("FF9CFF edited", item.LegacyDataString);
         Assert.Equal(1, store.Updates);
         sent.Clear();
         item.Definition.InteractionType = InteractionType.Gate;
@@ -163,6 +173,45 @@ public sealed class RoomInteractionServiceTests
         Assert.Empty(sent);
         Assert.Equal(1, store.Updates);
     }
+
+    // A note keeps at most 500 characters and its line breaks, loses control characters and goes through the word filter.
+    [Theory]
+    [InlineData("owner")]
+    [InlineData("holder")]
+    public void StickyTextIsCleanedCutAndFiltered(string username)
+    {
+        var (room, client, _) = Context("owner", username);
+        room.UsersWithRights.Add(2);
+        var item = AddItem(room, InteractionType.Postit);
+        item.LegacyDataString = "FFFF33 old";
+        var store = new RecordingStore();
+        var service = new RoomInteractionService(store, BobbaFilter);
+
+        service.UpdateSticky(room, client, item.Id, "9CCEFF", "bobba\r\nnext\u0001line" + new string('x', 600));
+
+        var expected = "9CCEFF " + ("*****\r\nnextline" + new string('x', 600))[..500];
+        Assert.Equal(expected, store.UpdatedData);
+        Assert.Equal(expected, item.LegacyDataString);
+    }
+
+    // Like chat, the word filter skips a user with the filter bypass.
+    [Fact]
+    public void StickyTextOfAUserWithTheFilterBypassIsCleanedButNotFiltered()
+    {
+        var (room, client, _) = Context("owner");
+        client.GetHabbo().Access = Plus.HabboHotel.Permissions.UserAccess.Create([],
+            [new(Plus.HabboHotel.Permissions.PermissionKeys.ChatFilterBypass, false)]);
+        var item = AddItem(room, InteractionType.Postit);
+        var store = new RecordingStore();
+        var service = new RoomInteractionService(store, BobbaFilter);
+
+        service.UpdateSticky(room, client, item.Id, "9CCEFF", "bobba\u0001" + new string('x', 600));
+
+        Assert.Equal("9CCEFF " + ("bobba" + new string('x', 600))[..500], store.UpdatedData);
+    }
+
+    private static readonly IWordFilterManager BobbaFilter =
+        CatalogSnapshotTestSupport.Proxy<IWordFilterManager>((_, args) => ((string)args[0]!).Replace("bobba", "*****"));
 
     [RoomComponentDatabaseFact]
     public void StickyUpdateTargetsTheExactRoomAndReportsFailureWithoutChangingAnotherNote()
@@ -197,6 +246,8 @@ public sealed class RoomInteractionServiceTests
             server.Execute($"DROP DATABASE `{schema}`");
         }
     }
+
+    private static readonly IWordFilterManager Unfiltered = CatalogSnapshotTestSupport.Proxy<IWordFilterManager>((_, args) => args[0]);
 
     private sealed class StickyDatabase(string connectionString) : IDatabase
     {

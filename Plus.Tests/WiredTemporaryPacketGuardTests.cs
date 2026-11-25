@@ -97,7 +97,7 @@ public class WiredTemporaryPacketGuardTests
                 : parameter.ParameterType == typeof(IMoodlightService)
                     ? new MoodlightService(new RoomItemMetadataStore(database))
                     : parameter.ParameterType == typeof(IRoomInteractionService)
-                        ? new RoomInteractionService(new RoomInteractionStore(database))
+                        ? new RoomInteractionService(new RoomInteractionStore(database), null!)
                         : parameter.ParameterType == typeof(ILoveLockService)
                             ? new LoveLockService(new LoveLockStore(database), TimeProvider.System, TestRewardProgress.Unused)
                             : parameter.ParameterType == typeof(IItemRedemptionService)

@@ -4,6 +4,9 @@ using Plus.Communication.Packets.Outgoing.Rooms.Furni.Stickys;
 using Plus.Database;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Permissions;
+using Plus.HabboHotel.Rooms.Chat.Filter;
+using Plus.Utilities;
 
 namespace Plus.HabboHotel.Rooms;
 
@@ -59,8 +62,11 @@ public interface IRoomInteractionService
     void UpdateSticky(Room room, GameClient session, uint itemId, string colour, string text);
 }
 
-public sealed class RoomInteractionService(IRoomInteractionStore store) : IRoomInteractionService
+public sealed class RoomInteractionService(IRoomInteractionStore store, IWordFilterManager wordFilter) : IRoomInteractionService
 {
+    // A note keeps the 500 characters its editor takes.
+    private const int MaxStickyLength = 500;
+
     public void Rate(Room room, GameClient session, int rating)
     {
         if (rating is not (-1 or 1)) {
@@ -111,12 +117,19 @@ public sealed class RoomInteractionService(IRoomInteractionStore store) : IRoomI
                 return;
             }
 
-            if (!room.CheckRights(session) && !text.StartsWith(item.LegacyDataString)) {
+            if (!room.CheckRights(session)) {
                 return;
             }
 
             if (colour is not ("FFFF33" or "FF9CFF" or "9CCEFF" or "9CFF9C")) {
                 return;
+            }
+
+            text = StringCharFilter.Escape(text, allowBreaks: true);
+            text = text.Length > MaxStickyLength ? text[..MaxStickyLength] : text;
+
+            if (!session.GetHabbo().Access.Can(PermissionKeys.ChatFilterBypass)) {
+                text = wordFilter.CheckMessage(text);
             }
 
             var data = $"{colour} {text}";

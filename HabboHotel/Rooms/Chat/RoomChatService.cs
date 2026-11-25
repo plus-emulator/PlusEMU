@@ -37,6 +37,9 @@ public sealed class RoomChatService(
     /// <summary>Characters of a room chat message the hotel keeps.</summary>
     public const int MaxMessageLength = 200;
 
+    // `users.username` holds 125 characters, so a longer whisper target matches nobody.
+    private const int MaxUsernameLength = 125;
+
     public Task Chat(GameClient session, string message, int colour) => PublicChat(session, message, colour, false);
 
     public Task Shout(GameClient session, string message, int colour) => PublicChat(session, message, colour, true);
@@ -62,12 +65,7 @@ public sealed class RoomChatService(
         }
 
         var now = clock.GetUtcNow();
-        message = StringCharFilter.Escape(message);
-
-        // Longer talk is echoed with its first 200 characters.
-        if (message.Length > MaxMessageLength) {
-            message = message[..MaxMessageLength];
-        }
+        message = Clean(message);
 
         if (habbo.CustomBubbleId != 0) {
             colour = habbo.CustomBubbleId;
@@ -191,8 +189,13 @@ public sealed class RoomChatService(
             return;
         }
 
-        var toUser = parameters[..separator];
-        var message = parameters[(separator + 1)..];
+        var toUser = StringCharFilter.Escape(parameters[..separator]);
+
+        if (toUser.Length is 0 or > MaxUsernameLength) {
+            return;
+        }
+
+        var message = Clean(parameters[(separator + 1)..]);
         var user = room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id);
 
         if (user == null) {
@@ -311,4 +314,11 @@ public sealed class RoomChatService(
         }
     }
 
+    // Longer talk is echoed with its first 200 characters.
+    private static string Clean(string message)
+    {
+        message = StringCharFilter.Escape(message);
+
+        return message.Length > MaxMessageLength ? message[..MaxMessageLength] : message;
+    }
 }

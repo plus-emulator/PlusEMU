@@ -221,13 +221,13 @@ public sealed class RoomComponentDatabaseTests
             var writtenAt = DateTimeOffset.FromUnixTimeSeconds(2_200_002_000).AddTicks(1_230);
             chatlogs.StoreChatlog(new(10, 42, "first", writtenAt));
             chatlogs.StoreChatlog(new(11, 42, new string('x', 40), writtenAt));
-            Assert.Throws<MySqlException>(chatlogs.FlushAndSave);
-            Assert.Equal(3, connection.QuerySingle<int>("SELECT COUNT(*) FROM chatlogs"));
+            chatlogs.FlushAndSave();
+            Assert.Equal(["first"], connection.Query<string>("SELECT message FROM chatlogs WHERE user_id IN (10, 11)"));
             var successfulChatlogs = new Plus.HabboHotel.Rooms.Chat.Logs.ChatlogManager(new ProbeDatabase(databaseConnection));
             successfulChatlogs.StoreChatlog(new(10, 42, "written", writtenAt));
             successfulChatlogs.FlushAndSave();
             Assert.Equal(writtenAt.UtcDateTime, DateTime.SpecifyKind(
-                connection.QuerySingle<DateTime>("SELECT `timestamp` FROM chatlogs WHERE user_id = 10"), DateTimeKind.Utc));
+                connection.QuerySingle<DateTime>("SELECT `timestamp` FROM chatlogs WHERE message = 'written'"), DateTimeKind.Utc));
             var history = new Plus.HabboHotel.Moderation.ModeratorHistoryService(
                 new ProbeDatabase(databaseConnection), null!, null!, new TestModeratorUserLookup(), new TestChatlogManager(), visitClock);
             var roomVisits = Assert.IsType<Plus.HabboHotel.Moderation.ModeratorUserRoomVisits>(history.GetUserRoomVisits(7));
@@ -235,7 +235,7 @@ public sealed class RoomComponentDatabaseTests
             Assert.Equal((42u, "Probe room", DateTimeOffset.FromUnixTimeSeconds(2_200_000_000)),
                 (visit.Room.Id, visit.Room.Name, visit.EnteredAt));
             var userChatlog = Assert.IsType<Plus.HabboHotel.Moderation.ModeratorUserChatlog>(history.GetUserChatlog(7));
-            Assert.Equal(["written", "inside visit"],
+            Assert.Equal(["first", "written", "inside visit"],
                 Assert.Single(userChatlog.Rooms).Entries.Select(entry => entry.Message).ToArray());
             var tradeStore = (ITradeStore)new RoomTradingComponent(new ProbeDatabase(databaseConnection), visitClock, TestRoomSettings.Empty);
             tradeStore.TransferItem(90, 1, 2);
@@ -290,6 +290,85 @@ public sealed class RoomComponentDatabaseTests
                 (loadedItem.Id, loadedItem.OwnerId, loadedItem.Username, loadedItem.GroupId, loadedItem.GetX, loadedItem.GetY, loadedItem.GetZ,
                     loadedItem.Rotation, loadedItem.UniqueNumber, loadedItem.UniqueSeries));
             Assert.Equal("200;1", loadedItem.LegacyDataString);
+        }
+        finally {
+            connection.Execute("USE information_schema");
+            connection.Execute($"DROP DATABASE `{schema}`");
+        }
+    }
+
+    // `chatlogs.message` holds 65535 bytes, so a longer entry is stored cut on a character boundary.
+    [RoomComponentDatabaseFact]
+    public void ChatlogEntriesFitTheColumn()
+    {
+        using var connection = new MySqlConnection(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE"));
+        connection.Open();
+        var schema = "room_component_" + Guid.NewGuid().ToString("N");
+        connection.Execute($"CREATE DATABASE `{schema}`");
+
+        try {
+            connection.Execute($"USE `{schema}`");
+            connection.Execute("""
+                CREATE TABLE chatlogs (
+                    id INT AUTO_INCREMENT PRIMARY KEY, user_id INT UNSIGNED NOT NULL, room_id INT UNSIGNED NOT NULL,
+                    message TEXT NOT NULL, `timestamp` DATETIME(6) NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                """);
+            var databaseConnection = new MySqlConnectionStringBuilder(
+                Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!)
+            { Database = schema }.ConnectionString;
+            var chatlogs = new Plus.HabboHotel.Rooms.Chat.Logs.ChatlogManager(new ProbeDatabase(databaseConnection));
+            var at = DateTimeOffset.FromUnixTimeSeconds(2_200_000_000);
+            var whisper = "<Whisper to " + new string('B', 65534) + ">: ";
+            var emoji = string.Concat(Enumerable.Repeat("\U0001F600", 20000));
+
+            chatlogs.StoreChatlog(new(1, 42, whisper, at));
+            chatlogs.StoreChatlog(new(2, 42, new string('€', 30000), at));
+            chatlogs.StoreChatlog(new(3, 42, "a" + emoji, at));
+            chatlogs.FlushAndSave();
+
+            Assert.Equal([whisper[..65535], new string('€', 21845), "a" + emoji[..32766]],
+                connection.Query<string>("SELECT message FROM chatlogs ORDER BY user_id"));
+        }
+        finally {
+            connection.Execute("USE information_schema");
+            connection.Execute($"DROP DATABASE `{schema}`");
+        }
+    }
+
+    // A `utf8mb3` column refuses an emoji. Only that entry is lost, not the other lines of its batch or later lines.
+    [RoomComponentDatabaseFact]
+    public void ARefusedChatlogEntryIsTheOnlyEntryLostFromItsBatch()
+    {
+        using var connection = new MySqlConnection(Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE"));
+        connection.Open();
+        var schema = "room_component_" + Guid.NewGuid().ToString("N");
+        connection.Execute($"CREATE DATABASE `{schema}`");
+
+        try {
+            connection.Execute($"USE `{schema}`");
+            connection.Execute("""
+                CREATE TABLE chatlogs (
+                    id INT AUTO_INCREMENT PRIMARY KEY, user_id INT UNSIGNED NOT NULL, room_id INT UNSIGNED NOT NULL,
+                    message TEXT NOT NULL, `timestamp` DATETIME(6) NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci;
+                """);
+            var databaseConnection = new MySqlConnectionStringBuilder(
+                Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!)
+            { Database = schema }.ConnectionString;
+            var chatlogs = new Plus.HabboHotel.Rooms.Chat.Logs.ChatlogManager(new ProbeDatabase(databaseConnection));
+            var at = DateTimeOffset.FromUnixTimeSeconds(2_200_000_000);
+            var players = Enumerable.Range(1, 10).ToArray();
+
+            foreach (var player in players) {
+                chatlogs.StoreChatlog(new(player, 42, player == 5 ? "emoji \U0001F600" : $"line of player {player}", at));
+            }
+
+            chatlogs.StoreChatlog(new(11, 42, "next", at));
+            chatlogs.FlushAndSave();
+
+            Assert.Equal([.. players.Where(player => player != 5).Select(player => $"line of player {player}"), "next"],
+                connection.Query<string>("SELECT message FROM chatlogs ORDER BY id"));
         }
         finally {
             connection.Execute("USE information_schema");

@@ -82,6 +82,42 @@ public sealed class BotManagementServiceTests
         Assert.False(bot.MixSentences);
     }
 
+    // Speech keeps its first 100 lines, each cut to 200 characters. The chat settings sent with it are always saved.
+    [Theory]
+    [InlineData(130, 1, 100, 1)]
+    [InlineData(1, 250, 1, 200)]
+    [InlineData(100, 200, 100, 200)]
+    public void SpeechOverTheLimitsIsCutAndItsSettingsAreSaved(int lines, int length, int keptLines, int keptLength)
+    {
+        var (service, store, bot, client) = Fixture(ownerId: 7, actorId: 7);
+        bot.AutomaticChat = false;
+        bot.SpeakingInterval = 11;
+        bot.MixSentences = true;
+        var payload = string.Join("\r", Enumerable.Range(0, lines).Select(line => $"{line % 10}" + new string('x', length - 1))) + ";#;true;#;9;#;false";
+
+        service.SaveAction(client, new(bot.Id, BotAction.Speech, payload));
+
+        Assert.Equal((bot.Id, (uint)42, true, 9, false), store.LastSpeech);
+        Assert.True(bot.AutomaticChat);
+        Assert.Equal(9, bot.SpeakingInterval);
+        Assert.False(bot.MixSentences);
+        Assert.Equal(Enumerable.Range(0, keptLines).Select(line => $"{line % 10}" + new string('x', keptLength - 1)),
+            bot.RandomSpeech.Select(speech => speech.Message));
+    }
+
+    // Tags are removed before a line is cut, so a short line in tags keeps all its text.
+    [Fact]
+    public void SpeechLinesLoseTheirTagsBeforeTheyAreCut()
+    {
+        var (service, store, bot, client) = Fixture(ownerId: 7, actorId: 7);
+        var payload = string.Join("\r", "<b>hi</b>", "<b>" + new string('x', 198) + "</b>", "<i>" + new string('y', 250)) + ";#;true;#;7;#;false";
+
+        service.SaveAction(client, new(bot.Id, BotAction.Speech, payload));
+
+        Assert.Equal(1, store.SpeechWrites);
+        Assert.Equal(["hi", new string('x', 198), new string('y', 200)], bot.RandomSpeech.Select(speech => speech.Message));
+    }
+
     [Fact]
     public async Task OpenHandlerDecodesAndActualServiceCapturesBotEditorData()
     {

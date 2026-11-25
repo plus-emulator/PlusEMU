@@ -4,6 +4,7 @@ using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Items;
+using Plus.HabboHotel.Items.AreaHide;
 using Plus.HabboHotel.Items.DataFormat;
 
 namespace Plus.HabboHotel.Users.Inventory.Furniture;
@@ -52,7 +53,7 @@ public static class ItemTypeExtensions
     public static IFurniObjectData CreateData(this ItemDefinition definition)
     {
         if (definition.InteractionType == InteractionType.AreaHide) {
-            return new IntArrayDataFormat { Data = Enumerable.Repeat(0, 8).ToList() };
+            return AreaHideState.Fresh();
         }
 
         if (definition.InteractionType == InteractionType.Gift) {

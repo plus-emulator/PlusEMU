@@ -78,7 +78,10 @@ public enum MarketplaceOfferResult
 
 public enum FriendFollowError
 {
-    Unavailable = 2
+    NotFriend = 0,
+    Offline = 1,
+    Unavailable = 2,
+    Prevented = 3
 }
 
 public enum IgnoreStatus

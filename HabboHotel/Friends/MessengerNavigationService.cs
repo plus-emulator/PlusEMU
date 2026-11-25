@@ -49,9 +49,22 @@ public sealed class MessengerNavigationService(ISearchResultFactory search, IGam
             return;
         }
 
-        var target = clients.GetClientByUserId(buddyId)?.GetHabbo();
+        // A non-friend gets the same reply whether they are online or not.
+        if (habbo.Messenger?.GetFriend(buddyId) is not { } friend) {
+            session.Send(new FollowFriendFailedComposer(FriendFollowError.NotFriend));
 
-        if (target == null) {
+            return;
+        }
+
+        if (friend.Habbo is not { } target) {
+            session.Send(new FollowFriendFailedComposer(FriendFollowError.Offline));
+
+            return;
+        }
+
+        if (friend.HideInRoom) {
+            session.Send(new FollowFriendFailedComposer(FriendFollowError.Prevented));
+
             return;
         }
 

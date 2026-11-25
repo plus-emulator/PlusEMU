@@ -83,6 +83,38 @@ public sealed class ClubCatalogServiceTests
     }
 
     [Fact]
+    public async Task AMembershipExtensionAddsItsDaysToTheHabboClubAchievement()
+    {
+        var progress = new List<(string Group, int Amount)>();
+        var context = Context(achievements: HabboClubProgress(progress));
+
+        await context.Service.PurchaseMembership(context.Client, 9);
+
+        Assert.Equal([("ACH_HC", 31)], progress);
+    }
+
+    [Fact]
+    public async Task ARefusedMembershipExtensionAddsNoHabboClubProgress()
+    {
+        var progress = new List<(string Group, int Amount)>();
+        var context = Context(membershipSucceeds: false, achievements: HabboClubProgress(progress));
+
+        await context.Service.PurchaseMembership(context.Client, 9);
+
+        Assert.Empty(progress);
+    }
+
+    private static IAchievementManager HabboClubProgress(List<(string Group, int Amount)> progress) =>
+        CatalogSnapshotTestSupport.Proxy<IAchievementManager>((method, args) =>
+        {
+            if (method == nameof(IAchievementManager.ProgressAchievement)) {
+                progress.Add(((string)args[1]!, (int)args[2]!));
+            }
+
+            return true;
+        });
+
+    [Fact]
     public async Task SuccessfulMembershipExtensionPublishesBalancesBeforeConfirmationAndMembership()
     {
         var context = Context();

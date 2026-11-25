@@ -283,7 +283,7 @@ internal sealed class AnnounceService(Room room, RoomNavigation navigation, Move
 
         AnnounceWiredWalk(actor, target);
     }
-    // A teleport or hopper arrival ends with the first step out; until then the teleporters and doorbell treat the user as arriving.
+    // A teleport or hopper arrival ends with the first step out; until then the teleporters treat the user as arriving.
     private static void EndArrival(RoomUser actor)
     {
         if (actor.IsBot || actor.IsPet || actor.GetClient()?.GetHabbo() is not { } habbo) {

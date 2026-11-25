@@ -821,6 +821,7 @@ public class Item
                                                 hoppingClient.GetHabbo() != null) {
                                                 hoppingClient.GetHabbo().IsHopping = true;
                                                 hoppingClient.GetHabbo().HopperId = nextHopperId;
+                                                hoppingClient.GetHabbo().HoppingRoomId = roomHopId;
                                                 room.GetGameMap().Navigation!.Remove(user);
 
                                                 hoppingClient.GetHabbo().PrepareRoom(roomHopId, "");

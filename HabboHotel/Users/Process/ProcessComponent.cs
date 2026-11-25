@@ -26,6 +26,7 @@ public sealed class ProcessComponent(ILogger<ProcessComponent> logger, TimeProvi
             }
 
             _player = player;
+            player.CreditsUpdateTick = int.TryParse(settings.TryGetValue("user.currency_scheduler.tick"), out var interval) ? interval : 0;
             _timer = clock.CreateTimer(Run, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
 
             return true;

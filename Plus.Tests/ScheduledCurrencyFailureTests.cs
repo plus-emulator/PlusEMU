@@ -19,7 +19,7 @@ public sealed class ScheduledCurrencyFailureTests
 
         try {
             using (process) {
-                process.Run(null);
+                RunInterval(process);
             }
         }
         finally {
@@ -37,7 +37,7 @@ public sealed class ScheduledCurrencyFailureTests
         var (process, habbo) = Create(store, Settings(-1, 10));
 
         using (process) {
-            process.Run(null);
+            RunInterval(process);
         }
 
         Assert.Empty(store.Writes);
@@ -54,6 +54,13 @@ public sealed class ScheduledCurrencyFailureTests
         Assert.True(process.Init(habbo));
 
         return (process, habbo);
+    }
+
+    private static void RunInterval(ProcessComponent process)
+    {
+        for (var check = 0; check < 3; check++) {
+            process.Run(null);
+        }
     }
 
     private static ISettingsManager Settings(int credits, int duckets) => new TestRoomSettings(new()

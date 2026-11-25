@@ -13,7 +13,7 @@ namespace Plus.Tests;
 // Pets drink from water bowls and the horse trough like on Habbo. Drink sends the pet onto a bowl or next to the
 // trough; there it takes the "eat" posture, says a drinking line and the water goes down by one. Water that nobody
 // drank for a few minutes is full again at the next drink; an empty bowl stays empty while pets keep drinking.
-// Pets also go to drink by themselves.
+// Pets also go to drink by themselves. The milk bowl is only for the pets in its custom params and never runs out.
 public partial class PlacedFurniRoomTests
 {
     private static readonly DateTimeOffset Noon = new(2026, 11, 17, 12, 0, 0, TimeSpan.Zero);
@@ -27,7 +27,39 @@ public partial class PlacedFurniRoomTests
     [InlineData("pet_toy_ball", false)]
     public void WaterBowlsAndTheTroughHoldWater(string name, bool water)
     {
-        Assert.Equal(water, PetWater.Is(new ItemDefinition { ItemName = name }));
+        Assert.Equal(water, PetWater.Suits(new ItemDefinition { ItemName = name }, 0));
+    }
+
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(28, false)]
+    [InlineData(0, false)]
+    public void TheMilkBowlIsForTheCat(int petType, bool drinks)
+    {
+        Assert.Equal(drinks, PetWater.Suits(new ItemDefinition { ItemName = "milkbowl", CustomParams = "1" }, petType));
+    }
+
+    [Fact]
+    public void ACatDrinksMilkByItselfAndTheBowlStaysFull()
+    {
+        LegacyRider();
+        var petUser = PetUser(CommandPet(1, 17_600, 420));
+        var bowl = Water(80, "milkbowl", "5", 3, 3, true);
+        bowl.Definition.CustomParams = "1";
+        var ai = CommandBot(petUser, -1);
+        _client.Packets.Clear();
+
+        for (var tick = 0; tick < 4000 && !petUser.Statusses.ContainsKey("eat"); tick++) {
+            ai.OnTimerTick();
+
+            if (WalkTarget(petUser) == (3, 3) && petUser.Coordinate != new System.Drawing.Point(3, 3)) {
+                ArriveAt(ai, petUser, 3, 3);
+            }
+        }
+
+        Assert.Contains("eat", petUser.Statusses.Keys);
+        Assert.Equal("5", bowl.LegacyDataString);
+        Assert.Equal("*Splish splash*", ChatLines().Last());
     }
 
     [Fact]

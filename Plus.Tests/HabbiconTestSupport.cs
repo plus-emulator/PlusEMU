@@ -22,7 +22,7 @@ internal static class HabbiconTestSupport
             .ToDictionary(field => field.Name, field => (uint)field.GetRawConstantValue()!)
     };
 
-    public static (FlashGameClient Client, List<(uint Header, byte[] Payload)> Sent) Client(Habbo habbo)
+    public static (FlashGameClient Client, List<(uint Header, byte[] Payload)> Sent) Client(Habbo? habbo)
     {
         var sent = new List<(uint, byte[])>();
         var headers = typeof(ServerPacketHeader).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -38,7 +38,10 @@ internal static class HabbiconTestSupport
                 return true;
             }
         };
-        client.SetHabbo(habbo);
+
+        if (habbo != null) {
+            client.SetHabbo(habbo);
+        }
 
         return (client, sent);
     }

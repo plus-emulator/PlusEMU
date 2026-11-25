@@ -32,7 +32,7 @@ public sealed class ClientIdentityServiceTests
     [InlineData(true)]
     public void IdentityIsCapturedBeforeTheBanCheckAndOnlyAnAllowedMachineGetsAReply(bool banned)
     {
-        var (client, sent) = HabbiconTestSupport.Client(new Habbo { Id = 1 });
+        var (client, sent) = HabbiconTestSupport.Client(null);
         var disconnected = false;
         client.DisconnectRequested = () => disconnected = true;
         var moderation = CatalogSnapshotTestSupport.Proxy<IModerationManager>((method, args) =>
@@ -63,6 +63,73 @@ public sealed class ClientIdentityServiceTests
             Assert.False(body.HasDataRemaining());
         }
     }
+
+    [Fact]
+    public void OnlyTheFirstMachineIdOfAConnectionIsRecordedAndEchoed()
+    {
+        var (client, sent) = HabbiconTestSupport.Client(null);
+        var service = new ClientIdentityService(NoBans());
+
+        service.SetMachineIdentity(client, "first");
+        service.SetMachineIdentity(client, "second");
+
+        Assert.Equal("first", client.MachineId);
+        Assert.Equal(new[] { "first" }, Echoes(sent));
+        Assert.False(client.Closed.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void MachineIdAfterLoginIsIgnored()
+    {
+        var (client, sent) = HabbiconTestSupport.Client(new Habbo { Id = 1 });
+
+        new ClientIdentityService(NoBans()).SetMachineIdentity(client, "late");
+
+        Assert.Equal(string.Empty, client.MachineId);
+        Assert.Empty(sent);
+        Assert.False(client.Closed.IsCancellationRequested);
+    }
+
+    [Theory]
+    [InlineData(50, true)]
+    [InlineData(51, false)]
+    [InlineData(64, false)]
+    [InlineData(2000, false)]
+    public void MachineIdLongerThanABanValueIsIgnoredAndKeepsTheConnection(int length, bool accepted)
+    {
+        var (client, sent) = HabbiconTestSupport.Client(null);
+        var machineId = new string('A', length);
+
+        new ClientIdentityService(NoBans()).SetMachineIdentity(client, machineId);
+
+        Assert.Equal(accepted ? new[] { machineId } : Array.Empty<string>(), Echoes(sent));
+        Assert.Equal(accepted ? machineId : string.Empty, client.MachineId);
+        Assert.False(client.Closed.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void IgnoredLongMachineIdLeavesRoomForAValidOne()
+    {
+        var (client, sent) = HabbiconTestSupport.Client(null);
+        var service = new ClientIdentityService(NoBans());
+
+        service.SetMachineIdentity(client, new string('A', 64));
+        service.SetMachineIdentity(client, "valid");
+
+        Assert.Equal("valid", client.MachineId);
+        Assert.Equal(new[] { "valid" }, Echoes(sent));
+        Assert.False(client.Closed.IsCancellationRequested);
+    }
+
+    private static IModerationManager NoBans() => CatalogSnapshotTestSupport.Proxy<IModerationManager>((method, _) =>
+        method == nameof(IModerationManager.HasBan) ? false : throw new NotSupportedException(method));
+
+    private static string[] Echoes(List<(uint Header, byte[] Payload)> sent) => sent.Select(packet =>
+    {
+        Assert.Equal(ServerPacketHeader.SetUniqueIdComposer, packet.Header);
+
+        return new Plus.Communication.Flash.FlashIncomingPacket { Buffer = packet.Payload }.ReadString();
+    }).ToArray();
 
     private sealed class RecordingIdentity : IClientIdentityService
     {

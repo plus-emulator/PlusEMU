@@ -92,7 +92,25 @@ public sealed class PacketManager : IPacketManager, IDisposable
             return;
         }
 
-        var task = pak.Parse(session, packet);
+        Task task;
+
+        try {
+            task = pak.Parse(session, packet);
+        }
+        // The packet reader throws these when a packet ends before the fields a handler reads.
+        // Only a connection that has not logged in is closed for it.
+        catch (Exception e) when (e is ArgumentOutOfRangeException or IndexOutOfRangeException or EndOfStreamException) {
+            _logger.LogWarning("Malformed packet {packetId} for session {session} @ Habbo {username} from {address}: {message}",
+                pak.GetType().Name, session.Id, session.GetHabbo()?.Username ?? string.Empty, session.RemoteAddress?.Address, e.Message);
+            _logger.LogDebug(e, "Malformed packet {packetId} for session {session}", pak.GetType().Name, session.Id);
+
+            if (session.GetHabbo() == null) {
+                session.Disconnect();
+            }
+
+            return;
+        }
+
         // The trusted camera renderer has its own bounded deadline. Other packet limits stay unchanged.
         var timeout = pak is RenderRoomEvent or RenderRoomThumbnailEvent
             ? TimeSpan.FromSeconds(30) : _maximumRunTimeInSec;

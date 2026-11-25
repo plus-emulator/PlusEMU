@@ -10,6 +10,10 @@ public class CompleteDiffieHandshakeEvent : IPacketEvent
 {
     public Task Parse(GameClient session, IIncomingPacket packet)
     {
+        if (!session.TryStartHandshakeStep(HandshakeStep.CompleteDiffieHandshake)) {
+            return Task.CompletedTask;
+        }
+
         var cipherPublickey = packet.ReadString();
         var sharedKey = HabboEncryptionV2.CalculateDiffieHellmanSharedKey(cipherPublickey);
 

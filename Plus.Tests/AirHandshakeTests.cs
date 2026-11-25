@@ -105,11 +105,40 @@ public class AirHandshakeTests
         Assert.Equal(new RsaKeys().N, provider.Key.ModulusHex);
     }
 
-    private static async Task RunHandshake(AirClient air)
+    [Fact]
+    public void SignedPrimeAndGeneratorAreComputedOnceAndReused()
     {
-        var server = new FakeServer();
+        HabboEncryptionV2.Initialize(Key);
+
+        Assert.Same(HabboEncryptionV2.GetRsaDiffieHellmanPrimeKey(), HabboEncryptionV2.GetRsaDiffieHellmanPrimeKey());
+        Assert.Same(HabboEncryptionV2.GetRsaDiffieHellmanGeneratorKey(), HabboEncryptionV2.GetRsaDiffieHellmanGeneratorKey());
+    }
+
+    [Fact]
+    public async Task EachDiffieHandshakePacketIsAnsweredOncePerConnection()
+    {
+        HabboEncryptionV2.Initialize(Key);
+        var air = new AirClient(Key.ModulusHex);
         var sent = new List<byte[]>();
-        var session = new FlashGameClient(server, new FlashPacketFactory(), TestLogging.GameClient)
+        var session = Session(new FakeServer(), sent);
+
+        await new InitDiffieHandshakeEvent().Parse(session, new FlashIncomingPacket());
+        await new InitDiffieHandshakeEvent().Parse(session, new FlashIncomingPacket());
+        var init = new FrameReader(Assert.Single(sent));
+        var clientPublicKey = air.OnInitDiffieHandshake(init.ReadString(), init.ReadString());
+        sent.Clear();
+
+        for (var attempt = 0; attempt < 2; attempt++) {
+            using var stream = PlusMemoryStream.GetStream(FrameReader.String(clientPublicKey));
+            await new CompleteDiffieHandshakeEvent().Parse(session, new FlashIncomingPacket(stream));
+        }
+
+        Assert.Equal(SecretKeyId, new FrameReader(Assert.Single(sent)).Header);
+        Assert.False(session.Closed.IsCancellationRequested);
+    }
+
+    private static FlashGameClient Session(FakeServer server, List<byte[]> sent) =>
+        new(server, new FlashPacketFactory(), TestLogging.GameClient)
         {
             Revision = new Revision
             {
@@ -129,6 +158,12 @@ public class AirHandshakeTests
                 return false;
             }
         };
+
+    private static async Task RunHandshake(AirClient air)
+    {
+        var server = new FakeServer();
+        var sent = new List<byte[]>();
+        var session = Session(server, sent);
 
         // In 3371: the signed prime and generator.
         await new InitDiffieHandshakeEvent().Parse(session, new FlashIncomingPacket());

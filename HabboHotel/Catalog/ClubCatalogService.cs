@@ -119,6 +119,7 @@ public sealed class ClubCatalogService(
 
         session.Send(new PurchaseOKComposer());
         session.Send(new ScrSendUserInfoComposer(ClubStatusSnapshot.Capture(habbo.Access, ClubStatusSnapshot.PurchaseResponse)));
+        achievements.ProgressAchievement(session, ClubAchievement.Group, offer.Days);
 
         return Task.CompletedTask;
     }

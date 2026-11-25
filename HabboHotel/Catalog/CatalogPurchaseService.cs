@@ -532,5 +532,6 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         // The client caches offers; resend them so the next confirmation shows the new end date.
         session.Send(new HabboClubOffersComposer(ClubOfferSnapshotFactory.Capture(_catalogManager.ClubOffers, ClubWindow, membershipEnd, utcNow)));
         session.Send(new ScrSendUserInfoComposer(ClubStatusSnapshot.Capture(habbo.Access, ClubStatusSnapshot.PurchaseResponse)));
+        _achievementManager.ProgressAchievement(session, ClubAchievement.Group, offer.Days);
     }
 }

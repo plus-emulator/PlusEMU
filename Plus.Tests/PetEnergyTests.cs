@@ -4,8 +4,8 @@ using Xunit;
 
 namespace Plus.Tests;
 
-// Habbo gives a pet 100 + 20 energy per level and a happiness bar of 100. Rest adds one energy point
-// about every 40 seconds while the pet is below its maximum; food can push it above the maximum.
+// Habbo gives a pet 100 + 20 energy per level and a happiness bar of 100. Rest refills the maximum energy in one hour,
+// one point at a time, while the pet is below its maximum; food can push it above the maximum.
 public partial class PlacedFurniRoomTests
 {
     private static readonly int[] HabboLevels =
@@ -32,14 +32,17 @@ public partial class PlacedFurniRoomTests
         Assert.Equal(100, new PetInformationService(TimeProvider.System).Capture(pet).MaxNutrition);
     }
 
-    [Fact]
-    public void RestAddsOneEnergyAboutEveryFortySeconds()
+    [Theory]
+    [InlineData(0, 2, 54)]
+    [InlineData(110, 6, 64)]
+    [InlineData(250, 3, 58)]
+    public void RestRefillsTheMaximumEnergyInOneHour(int experience, int minutes, int energy)
     {
-        var pet = RestingPet(0, 50);
+        var pet = RestingPet(experience, 50);
 
-        Tick(pet, TimeSpan.FromMinutes(2));
+        Tick(pet, TimeSpan.FromMinutes(minutes));
 
-        Assert.Equal(53, pet.Energy);
+        Assert.Equal(energy, pet.Energy);
     }
 
     [Theory]

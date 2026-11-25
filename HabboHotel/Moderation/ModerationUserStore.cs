@@ -1,9 +1,10 @@
 using Dapper;
 using Plus.Database;
+using Plus.HabboHotel.Permissions;
 
 namespace Plus.HabboHotel.Moderation;
 
-public sealed class ModerationUserData
+public sealed record ModerationUserData
 {
     public int Id { get; init; }
     public string Username { get; init; } = "";
@@ -22,6 +23,8 @@ public sealed class ModerationUserData
     public int Cautions { get; init; }
     public int Bans { get; init; }
     public int TradingLockCount { get; init; }
+
+    public ModerationUserData VisibleTo(UserAccess viewer) => viewer.Can(PermissionKeys.ModerationUserEmail) ? this : this with { Mail = "" };
 }
 
 public interface IModerationUserStore

@@ -25,14 +25,14 @@ internal class UserInfoCommand : IChatCommand
 
     public void Execute(GameClient session, Room room, string[] parameters)
     {
-        if (parameters.Length < 2) {
+        if (parameters.Length < 1) {
             session.SendWhisper("Please enter the username of the user you wish to view.");
 
             return;
         }
 
-        var username = parameters[1];
-        var userData = _users.Find(username);
+        var username = parameters[0];
+        var userData = _users.Find(username)?.VisibleTo(session.GetHabbo().Access);
 
         if (userData == null) {
             session.SendNotification($"Oops, there is no user in the database with that username ({username})!");
@@ -47,7 +47,11 @@ internal class UserInfoCommand : IChatCommand
         habboInfo.Append($"ID: {userData.Id}\r");
         habboInfo.Append($"Rank: {userData.Rank}\r");
         habboInfo.Append($"Roles: {string.Join(", ", _access.Resolve(userData.Id).Roles.Select(role => role.Name))}\r");
-        habboInfo.Append($"Email: {userData.Mail}\r");
+
+        if (userData.Mail.Length > 0) {
+            habboInfo.Append($"Email: {userData.Mail}\r");
+        }
+
         habboInfo.Append($"Online Status: {(targetClient != null ? "True" : "False")}\r\r");
         habboInfo.Append("Currency Info:\r");
         habboInfo.Append($"Credits: {userData.Credits}\r");

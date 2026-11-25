@@ -132,6 +132,7 @@ public static class PermissionKeys
     public const string ModerationTool = "moderation.tool";
     public const string ModerationTradeLock = "moderation.trade_lock";
     public const string ModerationTradeLockAny = "moderation.trade_lock_any";
+    public const string ModerationUserEmail = "moderation.user_email";
     public const string NavigatorCategoriesStaff = "navigator.categories.staff";
     public const string NavigatorEventsModerate = "navigator.events.moderate";
     public const string NavigatorRoomModelsStaff = "navigator.room_models.staff";

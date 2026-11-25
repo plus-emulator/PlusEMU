@@ -49,8 +49,7 @@ public sealed class PlayerProfileService(IGroupManager groupManager, IMessengerD
             return;
         }
 
-        var stats = await statsLoader.LoadHabboStats(userId);
-        target.HabboStats = stats;
+        var stats = target.HabboStats ?? await statsLoader.LoadHabboStats(userId);
         var groups = groupManager.GetGroupsForUser(target.Id).Select(group => new ProfileGroupSnapshot(group.Id, group.Name,
             group.Badge, groupManager.GetColourCode(group.Colour1, true), groupManager.GetColourCode(group.Colour2, false),
             stats.FavouriteGroupId == group.Id, group.ForumEnabled)).ToImmutableArray();

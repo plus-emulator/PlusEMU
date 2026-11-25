@@ -6,11 +6,14 @@ namespace Plus.HabboHotel.Rooms.AI;
 /// <summary>
 /// Pet food furni: a classname starting with "petfood" or the "pet_food" furniline. Its customparams read
 /// "energy,experience,happiness" and an optional list of the pet types that eat it, as in "375,15,0 8,26,30".
+/// Pet food without customparams, such as the carrot, feeds every pet type with 250 energy and 50 experience.
 /// </summary>
 public sealed record PetFood(int Energy, int Experience, int Happiness, IReadOnlyList<int> PetTypes)
 {
     /// <summary>A food lasts five bites; its furni state counts the bites taken.</summary>
     public const int Bites = 5;
+
+    private static readonly PetFood WithoutValues = new(250, 50, 0, []);
 
     public int BiteEnergy => (Energy + 5) / 10;
 
@@ -27,7 +30,12 @@ public sealed record PetFood(int Energy, int Experience, int Happiness, IReadOnl
         }
 
         var parts = definition.CustomParams.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var values = parts.Length > 0 ? parts[0].Split(',') : [];
+
+        if (parts.Length == 0) {
+            return WithoutValues;
+        }
+
+        var values = parts[0].Split(',');
 
         if (values.Length != 3 || !TryParseAll(values, out var numbers)) {
             return null;

@@ -55,7 +55,7 @@ public sealed class GroupInvitationStore(IDatabase database) : IGroupInvitationS
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
-        if (!GroupParticipationStore.LockAccount(connection, transaction, userId) || !GroupParticipationStore.LockGroup(connection, transaction, groupId)) {
+        if (!GroupParticipationStore.LockAccount(connection, transaction, userId) || GroupParticipationStore.LockGroup(connection, transaction, groupId) is null) {
             return GroupJoinOutcome.Refused;
         }
 

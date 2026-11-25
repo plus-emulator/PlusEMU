@@ -28,7 +28,7 @@ public sealed class GroupParticipationStore(IDatabase database) : IGroupParticip
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
-        if (!LockAccount(connection, transaction, userId) || !LockGroup(connection, transaction, groupId)) {
+        if (!LockAccount(connection, transaction, userId) || LockGroup(connection, transaction, groupId) is null or GroupType.Private) {
             return GroupJoinOutcome.Refused;
         }
 
@@ -55,7 +55,12 @@ public sealed class GroupParticipationStore(IDatabase database) : IGroupParticip
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
-        if (!LockAccount(connection, transaction, userId) || groupId != 0 && !LockGroup(connection, transaction, groupId)) {
+        if (!LockAccount(connection, transaction, userId) || groupId != 0 && LockGroup(connection, transaction, groupId) is null) {
+            return false;
+        }
+
+        if (groupId != 0 && connection.ExecuteScalar<int>("SELECT COUNT(*) FROM group_memberships WHERE user_id = @userId AND group_id = @groupId",
+                new { userId, groupId }, transaction) == 0) {
             return false;
         }
 
@@ -70,8 +75,10 @@ public sealed class GroupParticipationStore(IDatabase database) : IGroupParticip
     }
 
     // Deletion locks the same groups row, so a deleted group cannot gain a membership, request or favourite afterwards.
-    internal static bool LockGroup(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int groupId) =>
-        connection.Query<int>("SELECT id FROM `groups` WHERE id = @groupId FOR UPDATE", new { groupId }, transaction).Count() == 1;
+    internal static GroupType? LockGroup(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int groupId) =>
+        connection.Query<int>("SELECT CAST(CAST(state AS CHAR) AS UNSIGNED) FROM `groups` WHERE id = @groupId FOR UPDATE", new { groupId }, transaction)
+            .Select(state => (GroupType?)state)
+            .SingleOrDefault();
 
     internal static bool LockAccount(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int userId) =>
         connection.Query<int>("SELECT id FROM users WHERE id = @userId FOR UPDATE", new { userId }, transaction).Count() == 1;

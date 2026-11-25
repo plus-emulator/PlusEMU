@@ -396,6 +396,42 @@ public class UserProcessTests
         Assert.Equal(1, writes);
     }
 
+    [Theory]
+    [InlineData("stranger", 0)]
+    [InlineData("requester", 0)]
+    [InlineData("member", 9)]
+    [InlineData("admin", 9)]
+    [InlineData("owner", 9)]
+    public async Task StatisticsLoginKeepsTheFavouriteGroupOnlyForItsMembers(string role, int expectedFavourite)
+    {
+        var clock = new ManualClock();
+        var (habbo, _) = Player(clock);
+        var stats = new HabboStats(0, 0, 0, 0, 0, 0, 0, 0, 9, "01/02");
+        habbo.HabboStats = null!;
+        GroupMembershipSnapshot membership = role switch
+        {
+            "member" => new([7], [], []),
+            "admin" or "owner" => new([], [7], []),
+            "requester" => new([], [], [7]),
+            _ => GroupMembershipSnapshot.Empty,
+        };
+        var group = new Group(9, "Crew", "desc", "b01014s02024", 42, role == "owner" ? 7 : 99,
+            null, 0, 3, 4, 0, false, membership);
+        var statistics = Proxy<IHabboStatsService>((method, _) =>
+            method == "LoadHabboStats" ? Task.FromResult(stats) : throw new NotSupportedException(method));
+        var groups = Proxy<IGroupManager>((method, args) =>
+        {
+            Assert.Equal("TryGetGroup", method);
+            Assert.Equal(9, args![0]);
+            args[1] = group;
+
+            return true;
+        });
+        await new LoadStatisticsLoginTask(statistics, groups, clock, TestLogging.For<LoadStatisticsLoginTask>()).Load(habbo);
+        Assert.Same(stats, habbo.HabboStats);
+        Assert.Equal(expectedFavourite, stats.FavouriteGroupId);
+    }
+
     [RoomComponentDatabaseFact]
     public void DailyRespectStoreWritesDistinctCountsAndCapturedCalendarDay()
     {

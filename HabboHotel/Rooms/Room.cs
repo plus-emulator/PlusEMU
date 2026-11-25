@@ -822,6 +822,8 @@ public class Room
         }
     }
 
+    public IEnumerable<Item> VisibleWallItems => GetRoomItemHandler().GetWall;
+
     public void SetWiredHidden(bool hidden)
     {
         HideWired = hidden;

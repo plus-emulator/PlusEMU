@@ -89,6 +89,7 @@ public static class ServerPacketHeader
     public const uint FurniRecolorUpdateComposer = 166;
     public const uint ObjectRemoveComposer = 2785;
     public const uint ObjectRemoveMultipleComposer = 1571;
+    public const uint ItemRemoveMultipleComposer = 1682;
     public const uint SlideObjectBundleComposer = 3213;
     public const uint ItemsComposer = 552;
     public const uint ItemAddComposer = 3917;

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.Communication.Packets.Outgoing.Rooms.Furni;
 using Plus.Database;
+using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.Cache;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Rooms;
@@ -18,7 +19,7 @@ public sealed record GiftContent(uint BaseId, string ExtraData)
 public interface IGiftStore
 {
     GiftContent? Find(uint itemId);
-    void Open(uint itemId, int ownerId, uint roomId, uint presentBaseId, GiftContent content);
+    void Open(uint itemId, int ownerId, uint roomId, uint presentBaseId, GiftContent content, string extraData);
     void DeleteInvalid(uint itemId, int ownerId, uint roomId);
 }
 
@@ -31,13 +32,13 @@ public sealed class GiftStore(IDatabase database) : IGiftStore
         return connection.QuerySingleOrDefault<GiftContent>("SELECT base_id AS BaseId,extra_data AS ExtraData FROM user_presents WHERE item_id=@itemId LIMIT 1", new { itemId });
     }
 
-    public void Open(uint itemId, int ownerId, uint roomId, uint presentBaseId, GiftContent content)
+    public void Open(uint itemId, int ownerId, uint roomId, uint presentBaseId, GiftContent content, string extraData)
     {
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
-        if (connection.Execute("UPDATE items SET base_item=@BaseId,extra_data=@ExtraData,room_id=0 WHERE id=@itemId AND user_id=@ownerId AND room_id=@roomId AND base_item=@presentBaseId LIMIT 1", new { itemId, ownerId, roomId, presentBaseId, content.BaseId, content.ExtraData }, transaction) != 1 ||
+        if (connection.Execute("UPDATE items SET base_item=@BaseId,extra_data=@ExtraData,room_id=0 WHERE id=@itemId AND user_id=@ownerId AND room_id=@roomId AND base_item=@presentBaseId LIMIT 1", new { itemId, ownerId, roomId, presentBaseId, content.BaseId, ExtraData = extraData }, transaction) != 1 ||
             connection.Execute("DELETE FROM user_presents WHERE item_id=@itemId AND base_id=@BaseId AND extra_data <=> @ExtraData LIMIT 1", new { itemId, content.BaseId, content.ExtraData }, transaction) != 1) {
             throw new InvalidOperationException("Gift was not opened.");
         }
@@ -99,6 +100,8 @@ public sealed class GiftOpeningService(IGiftStore store, IItemDataManager items,
                 return Task.CompletedTask;
             }
 
+            var extraData = CatalogFurniExtraData.HasPurchaseData(definition.InteractionType) ? content.ExtraData : "";
+
             Item replacement;
 
             try {
@@ -109,7 +112,7 @@ public sealed class GiftOpeningService(IGiftStore store, IItemDataManager items,
                     OwnerId = gift.OwnerId,
                     RoomId = gift.RoomId,
                     Definition = definition,
-                    ExtraData = FurniExtraData.Load(definition, content.ExtraData, keepLegacy: true),
+                    ExtraData = FurniExtraData.Load(definition, extraData, keepLegacy: true),
                     GetX = gift.GetX,
                     GetY = gift.GetY,
                     GetZ = gift.GetZ,
@@ -138,7 +141,7 @@ public sealed class GiftOpeningService(IGiftStore store, IItemDataManager items,
                 return Task.CompletedTask;
             }
 
-            store.Open(gift.Id, habbo.Id, room.RoomId, gift.Definition.Id, content);
+            store.Open(gift.Id, habbo.Id, room.RoomId, gift.Definition.Id, content, extraData);
             room.GetRoomItemHandler().RemoveFurniture(session, gift.Id);
             var inRoom = false;
 

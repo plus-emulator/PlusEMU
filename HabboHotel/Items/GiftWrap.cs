@@ -1,5 +1,4 @@
 using System.Globalization;
-using Plus.HabboHotel.Catalog.Utilities;
 
 namespace Plus.HabboHotel.Items;
 
@@ -23,29 +22,5 @@ internal static class GiftWrap
         }
 
         return 1;
-    }
-
-    public static bool PetDataAccepted(string data)
-    {
-        try {
-            var bits = data.Split('\n');
-
-            if (!PetUtility.CheckPetName(bits[0])) {
-                return false;
-            }
-
-            if (bits[1].Length > 2) {
-                return false;
-            }
-
-            if (bits[2].Length != 6) {
-                return false;
-            }
-
-            return true;
-        }
-        catch (IndexOutOfRangeException) {
-            return false;
-        }
     }
 }

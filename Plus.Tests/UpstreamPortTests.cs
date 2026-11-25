@@ -32,17 +32,6 @@ public class UpstreamPortTests
         Assert.Equal(1, GiftWrap.Style("short"));
     }
 
-    [Theory]
-    [InlineData("Buddy\n1\nffffff", true)]
-    [InlineData("bad name\n1\nffffff", false)]
-    [InlineData("Buddy\n123\nffffff", false)]
-    [InlineData("Buddy\n1\nabc", false)]
-    [InlineData("Buddy", false)]
-    public void PetGiftAcceptsOnlyACompleteValidPet(string data, bool accepted)
-    {
-        Assert.Equal(accepted, GiftWrap.PetDataAccepted(data));
-    }
-
     [Fact]
     public void WiredIdAndSkateboardNamesComeFromTheFurnitureRow()
     {

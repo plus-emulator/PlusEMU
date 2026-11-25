@@ -10,7 +10,6 @@ using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.Communication.Packets.Outgoing.Inventory.Pets;
 using Plus.Communication.Packets.Outgoing.Inventory.Purse;
 using Plus.Communication.Packets.Outgoing.Notifications;
-using Plus.Communication.Packets.Outgoing.Moderation;
 using Plus.Core;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Achievements;
@@ -21,7 +20,6 @@ using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Groups;
 using Plus.HabboHotel.Groups.Forums;
 using Plus.HabboHotel.Items;
-using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Users.Effects;
 using Plus.HabboHotel.Habbicons;
@@ -58,6 +56,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
     private readonly IAvatarEffectStore _avatarEffects;
     private readonly IGroupManager _groups;
     private readonly IGroupForumStore _forums;
+    private readonly ICatalogFurniExtraData _furniExtraData;
     private readonly TimeProvider _clock;
     private readonly ILogger<CatalogPurchaseService> _logger;
     private readonly IBuildersClubService? _buildersClub;
@@ -73,7 +72,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         ICatalogBotPurchaseStore botPurchases,
         IHabbiconService habbicons,
         IClubMembershipService clubMemberships, IClubRewards clubRewards, IRewardTrackManager rewardTracks, IAvatarEffectStore avatarEffects,
-        IGroupManager groups, IGroupForumStore forums,
+        IGroupManager groups, IGroupForumStore forums, ICatalogFurniExtraData furniExtraData,
         TimeProvider clock, ILogger<CatalogPurchaseService> logger, IBuildersClubService? buildersClub = null,
         IPlannedShutdown? plannedShutdown = null, IHabbiconAchievementService? habbiconAchievements = null)
     {
@@ -94,6 +93,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
         _avatarEffects = avatarEffects;
         _groups = groups;
         _forums = forums;
+        _furniExtraData = furniExtraData;
         _clock = clock;
         _logger = logger;
     }
@@ -189,7 +189,7 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
 
         switch (product.Type) {
             case CatalogProductType.Furni when !offer.IsBundle:
-                if (ReadFurniExtraData(session, product, extraData, utcNow) is not { } furniExtraData) {
+                if (_furniExtraData.Read(session, product, extraData, utcNow) is not { } furniExtraData) {
                     return;
                 }
 
@@ -421,77 +421,6 @@ public sealed class CatalogPurchaseService : ICatalogPurchaseService
 
         session.Send(new PurchaseOKComposer(CatalogPurchaseConfirmation.Capture(offer)));
         session.Send(new FurniListUpdateComposer());
-    }
-
-    // The extra data a bought piece of furniture starts with; null when the purchase must be refused.
-    private string? ReadFurniExtraData(GameClient session, CatalogProduct product, string extraData, DateTimeOffset utcNow)
-    {
-        var definition = product.Definition!;
-
-        switch (definition.InteractionType) {
-            case InteractionType.GuildItem:
-            case InteractionType.GuildGate:
-            case InteractionType.GuildForum:
-                return ReadGuildExtraData(session, definition.InteractionType, extraData);
-            case InteractionType.Floor:
-            case InteractionType.Wallpaper:
-            case InteractionType.Landscape:
-                // Each pattern offer names its pattern; the client sends an empty value for those.
-                if (!string.IsNullOrEmpty(product.ExtraParam)) {
-                    return product.ExtraParam;
-                }
-
-                double number = 0;
-
-                try {
-                    number = string.IsNullOrEmpty(extraData) ? 0 : double.Parse(extraData, CultureInfo.InvariantCulture);
-                }
-                catch (Exception e) {
-                    _logger.LogWarning(e, "Invalid catalog floor extra data {ExtraData}", extraData);
-                }
-
-                return number.ToString(CultureInfo.InvariantCulture); // maintain extra data // todo: validate
-            case InteractionType.Recolorable:
-                // The client sends the chosen "r,g,b" and only offers the class's palette;
-                // any other value starts in the palette's first colour.
-                return RecolorableDataFormat.FormatCatalogueColor(RecolorablePalette.PurchaseColor(definition.ItemName,
-                    RecolorableDataFormat.TryParseCatalogueColor(extraData, out var chosen) ? chosen : null));
-            case InteractionType.Postit:
-                return "FFFF33";
-            case InteractionType.Moodlight:
-                return "1,1,1,#000000,255";
-            case InteractionType.Trophy:
-                return $"{session.GetHabbo().Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}{Convert.ToChar(9)}{extraData}";
-            case InteractionType.Mannequin:
-                return $"m{Convert.ToChar(5)}.ch-210-1321.lg-285-92{Convert.ToChar(5)}Default Mannequin";
-            case InteractionType.BadgeDisplay:
-                if (session.GetHabbo().Inventory?.Badges.HasBadge(extraData) != true) {
-                    session.Send(new BroadcastMessageAlertComposer("Oops, it appears that you do not own this badge."));
-
-                    return null;
-                }
-
-                return $"{extraData}{Convert.ToChar(9)}{session.GetHabbo().Username}{Convert.ToChar(9)}{utcNow.Day}-{utcNow.Month}-{utcNow.Year}";
-            default:
-                return "";
-        }
-    }
-
-    // GuildSelectorCatalogWidget sends the chosen group's id. Group furniture needs a group the buyer belongs to. A forum
-    // terminal for a group without a forum opens that forum, which only its owner may do: GuildForumSelectorCatalogWidget
-    // offers the groups that have a forum and the groups the user owns.
-    private string? ReadGuildExtraData(GameClient session, InteractionType type, string extraData)
-    {
-        var habboId = session.GetHabbo().Id;
-
-        if (int.TryParse(extraData, NumberStyles.None, CultureInfo.InvariantCulture, out var groupId) && _groups.TryGetGroup(groupId, out var group)
-            && (type == InteractionType.GuildForum && !group.ForumEnabled ? group.CreatorId == habboId : group.CreatorId == habboId || group.IsMember(habboId))) {
-            return groupId.ToString(CultureInfo.InvariantCulture);
-        }
-
-        session.Send(new PurchaseErrorComposer(PurchaseError.Rejected));
-
-        return null;
     }
 
     // Buying a group's first forum terminal is what gives the group its forum.

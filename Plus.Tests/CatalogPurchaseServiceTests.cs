@@ -865,7 +865,7 @@ public sealed class CatalogPurchaseServiceTests
         public Task Reload() => Task.CompletedTask;
     }
 
-    private sealed class RecordingRewards(bool succeeds) : IClubRewards
+    internal sealed class RecordingRewards(bool succeeds) : IClubRewards
     {
         public int Charges { get; private set; }
         public IDbConnection Connection { get; } = Proxy<IDbConnection, EmptyProxy>();

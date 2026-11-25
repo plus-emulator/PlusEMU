@@ -54,10 +54,19 @@ public sealed class RoomSettingsDatabaseTests
             connection.Execute("CREATE TABLE room_promotions (room_id INT PRIMARY KEY, title VARCHAR(100), description VARCHAR(255), timestamp_start DATETIME(6), timestamp_expire DATETIME(6), category_id INT)");
             var instant = new DateTimeOffset(2040, 12, 31, 23, 0, 0, TimeSpan.Zero);
             var promotion = new RoomPromotion("title", "details", 9, instant, instant.AddHours(2), TimeProvider.System);
-            promotionStore.Save(42, 8, promotion);
+
+            using (var transaction = connection.BeginTransaction()) {
+                promotionStore.Save(connection, transaction, 42, 8, promotion);
+                transaction.Commit();
+            }
+
             Assert.Equal(instant.UtcDateTime, connection.QuerySingle<DateTime>("SELECT timestamp_start FROM room_promotions"));
             Assert.Equal(instant.AddHours(2).UtcDateTime, connection.QuerySingle<DateTime>("SELECT timestamp_expire FROM room_promotions"));
-            Assert.Throws<InvalidOperationException>(() => promotionStore.Save(42, 7, promotion));
+
+            using (var transaction = connection.BeginTransaction()) {
+                Assert.Throws<InvalidOperationException>(() => promotionStore.Save(connection, transaction, 42, 7, promotion));
+            }
+
             Assert.Throws<InvalidOperationException>(() => promotionStore.Edit(42, 7, "rejected", "rejected"));
             promotionStore.Edit(42, 8, "edited", "more details");
             Assert.Equal("edited", connection.QuerySingle<string>("SELECT title FROM room_promotions"));

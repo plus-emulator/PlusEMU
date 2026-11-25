@@ -14,7 +14,7 @@ public sealed class RoomEventComposer(RoomEventSnapshot data) : IServerPacket
         packet.WriteInteger(data.RoomId);
         packet.WriteInteger(data.OwnerId);
         packet.WriteString(data.OwnerName);
-        packet.WriteInteger(data.Active ? 1 : -1);
+        packet.WriteInteger(data.RoomId);
         packet.WriteInteger(data.Active ? 0 : -1);
         packet.WriteString(data.Name);
         packet.WriteString(data.Description);

@@ -1,32 +1,36 @@
+using System.Data;
 using Dapper;
 using Plus.Communication.Packets.Outgoing.Catalog;
+using Plus.Communication.Packets.Outgoing.Inventory.Purse;
+using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Communication.Packets.Outgoing.Rooms.Engine;
 using Plus.Core.Settings;
 using Plus.Database;
 using Plus.HabboHotel.Badges;
+using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.Friends;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Navigator;
 using Plus.HabboHotel.Rooms.Chat.Filter;
+using Plus.HabboHotel.Subscriptions;
 using Plus.HabboHotel.Users.Messenger;
 using Plus.Utilities.DependencyInjection;
 
 namespace Plus.HabboHotel.Rooms;
 
-public sealed record PurchaseRoomPromotionRequest(uint RoomId, string Name, string Description, int CategoryId);
+public sealed record PurchaseRoomPromotionRequest(int PageId, int OfferId, uint RoomId, string Name, string Description, int CategoryId);
 public sealed record EditRoomPromotionRequest(uint RoomId, string Name, string Description);
 
 public interface IRoomPromotionStore
 {
-    void Save(uint roomId, int ownerId, RoomPromotion promotion);
+    void Save(IDbConnection connection, IDbTransaction transaction, uint roomId, int ownerId, RoomPromotion promotion);
     void Edit(uint roomId, int ownerId, string name, string description);
 }
 
 public sealed class RoomPromotionStore(IDatabase database) : IRoomPromotionStore
 {
-    public void Save(uint roomId, int ownerId, RoomPromotion promotion)
+    public void Save(IDbConnection connection, IDbTransaction transaction, uint roomId, int ownerId, RoomPromotion promotion)
     {
-        using var connection = database.Connection();
-
         if (connection.Execute("""
             INSERT INTO room_promotions (room_id,title,description,timestamp_start,timestamp_expire,category_id)
             SELECT @roomId,@Name,@Description,@startedAt,@expiresAt,@CategoryId
@@ -42,7 +46,7 @@ public sealed class RoomPromotionStore(IDatabase database) : IRoomPromotionStore
             promotion.CategoryId,
             startedAt = promotion.StartedAt?.UtcDateTime,
             expiresAt = promotion.ExpiresAt?.UtcDateTime
-        }) == 0) {
+        }, transaction) == 0) {
             throw new InvalidOperationException("Room promotion was not persisted.");
         }
     }
@@ -70,7 +74,7 @@ public interface IRoomPromotionService
 
 public sealed class RoomPromotionService(IRoomDataLoader dataLoader, IRoomManager rooms, IRoomPromotionStore store,
     IWordFilterManager filter, ISettingsManager settings, IBadgeManager badges, IMessengerDataLoader messenger,
-    TimeProvider clock) : IRoomPromotionService
+    ICatalogManager catalog, IClubRewards rewards, INavigatorManager navigator, TimeProvider clock) : IRoomPromotionService
 {
     private readonly object _sync = new();
 
@@ -80,6 +84,16 @@ public sealed class RoomPromotionService(IRoomDataLoader dataLoader, IRoomManage
         RoomData data;
         RoomEventSnapshot snapshot;
         string name;
+
+        // Only the room ad page sells promotions.
+        // The client form takes a name of 5 to 25 characters, a description of up to 100 and one of the event categories.
+        if (!catalog.TryGetPage(request.PageId, out var page) || !page.CanOpen(habbo) || page.Layout != "roomads"
+            || !page.Offers.TryGetValue(request.OfferId, out var offer) || !offer.Enabled || !offer.CanPurchase(habbo)
+            || request.Name.Length is < 5 or > 25 || request.Description.Length > 100
+            || navigator.EventCategories.All(category => category.Id != request.CategoryId)
+            || habbo.Credits < offer.CostCredits || habbo.Currencies[offer.PointsType] < offer.CostPoints) {
+            return;
+        }
 
         lock (_sync) {
             if (!dataLoader.TryGetData(request.RoomId, out var loaded) || loaded.OwnerId != habbo.Id) {
@@ -96,13 +110,30 @@ public sealed class RoomPromotionService(IRoomDataLoader dataLoader, IRoomManage
                 ? now.AddMinutes(Convert.ToInt32(settings.TryGetValue("room.promotion.lifespan")))
                 : (previous.ExpiresAt ?? now).AddHours(2);
             var promotion = new RoomPromotion(name, description, startedAt, expiresAt, request.CategoryId, clock);
-            store.Save(data.Id, habbo.Id, promotion);
+
+            if (!rewards.Charge(habbo, offer.CostCredits, offer.CostPoints, offer.PointsType, (connection, transaction) =>
+                {
+                    store.Save(connection, transaction, data.Id, habbo.Id, promotion);
+
+                    return true;
+                }, ClubRewards.EligibleCatalogPurchase(offer.LocalizationKey))) {
+                return;
+            }
+
             data.Promotion = promotion;
             snapshot = RoomEventSnapshot.Capture(data, promotion);
         }
 
         if (habbo.Inventory?.Badges.HasBadge("RADZZ") == false) {
             await badges.GiveBadge(habbo, "RADZZ");
+        }
+
+        if (offer.CostCredits > 0) {
+            session.Send(new CreditBalanceComposer(habbo.Credits));
+        }
+
+        if (offer.CostPoints > 0) {
+            session.Send(new HabboActivityPointNotificationComposer(habbo.Currencies[offer.PointsType], -offer.CostPoints, offer.PointsType));
         }
 
         session.Send(new PurchaseOKComposer());

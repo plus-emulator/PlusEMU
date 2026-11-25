@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Plus.Communication.Abstractions;
 using Plus.Communication.Encryption.Keys;
 using Plus.HabboHotel.Users.Authentication;
 
@@ -16,12 +17,14 @@ namespace Plus.Communication.Http.Air;
 /// <item>POST /api/client/air-launcher-token with <c>{"ticket": "..."}</c>: trades a live game ticket, which only the
 /// hotel website hands to a signed-in user, for a launcher token. DELETE with the Bearer token revokes it.</item>
 /// </list>
+/// Wrong tickets and launcher tokens on both paths count against one failed-login limit per visitor address.
 /// </summary>
 public class AirClientEndpoints(AirClientConfiguration configuration, IHandshakeRsaKeyProvider handshakeKey, ISsoTicketStore tickets,
-    ILauncherTokenStore launcherTokens, TimeProvider time)
+    ILauncherTokenStore launcherTokens, TimeProvider time, ILoginThrottle loginThrottle, ConnectionAdmission proxies)
 {
     public const string TicketPath = "/api/client/air-ticket";
     public const string LauncherTokenPath = "/api/client/air-launcher-token";
+    private const string RealIpHeader = "X-Real-IP";
 
     public void Map(IEndpointRouteBuilder routes)
     {
@@ -64,7 +67,19 @@ public class AirClientEndpoints(AirClientConfiguration configuration, IHandshake
 
     private async Task<IResult> Ticket(HttpContext context)
     {
-        if (Bearer(context) is not { } token || await launcherTokens.Resolve(token) is not { } userId) {
+        var visitor = Visitor(context);
+
+        if (loginThrottle.IsBlocked(visitor)) {
+            return TooManyAttempts();
+        }
+
+        if (Bearer(context) is not { } token) {
+            return Unauthorized(context);
+        }
+
+        if (await launcherTokens.Resolve(token) is not { } userId) {
+            loginThrottle.RecordFailure(visitor);
+
             return Unauthorized(context);
         }
 
@@ -75,6 +90,12 @@ public class AirClientEndpoints(AirClientConfiguration configuration, IHandshake
 
     private async Task<IResult> IssueLauncherToken(HttpContext context)
     {
+        var visitor = Visitor(context);
+
+        if (loginThrottle.IsBlocked(visitor)) {
+            return TooManyAttempts();
+        }
+
         string? ticket = null;
 
         try {
@@ -93,6 +114,8 @@ public class AirClientEndpoints(AirClientConfiguration configuration, IHandshake
 
         // The ticket is used up here, exactly as a game login would use it.
         if (await tickets.Consume(ticket) is not { } userId) {
+            loginThrottle.RecordFailure(visitor);
+
             return Unauthorized(context);
         }
 
@@ -113,6 +136,15 @@ public class AirClientEndpoints(AirClientConfiguration configuration, IHandshake
         return Results.NoContent();
     }
 
+    /// <summary>
+    /// Only X-Real-IP names the visitor here. The last X-Forwarded-For entry can be a shared hop, such as a CDN edge,
+    /// so a trusted proxy that sends no X-Real-IP is not counted.
+    /// </summary>
+    private ClientAddress? Visitor(HttpContext context) =>
+        context.Connection.RemoteIpAddress is { } peer
+            ? proxies.Resolve(peer, context.Request.Headers[RealIpHeader].Select(value => (RealIpHeader, value ?? "")))
+            : null;
+
     private static string? Bearer(HttpContext context)
     {
         var header = context.Request.Headers.Authorization.ToString();
@@ -126,6 +158,9 @@ public class AirClientEndpoints(AirClientConfiguration configuration, IHandshake
 
         return Results.Json(new { error = "Not signed in.", code = "unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
     }
+
+    private static IResult TooManyAttempts() =>
+        Results.Json(new { error = "Too many failed attempts. Please try again later.", code = WebErrors.TooManyRequests }, statusCode: StatusCodes.Status429TooManyRequests);
 
     private static string OrDefault(string value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value.TrimEnd('/');
 }

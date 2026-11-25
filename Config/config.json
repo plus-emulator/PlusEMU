@@ -75,7 +75,11 @@
     },
     "WebServer": {
         "Hostname": "127.0.0.1",
-        "Port": 8080
+        "Port": 8080,
+        "TrustedProxies": [
+            "127.0.0.1",
+            "::1"
+        ]
     },
     "Camera": {
         "RendererUrl": "http://127.0.0.1:3921/render",

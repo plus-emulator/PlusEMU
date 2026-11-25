@@ -23,23 +23,29 @@ public interface ILoginThrottle
 
 internal sealed class LoginThrottle : ILoginThrottle
 {
+    internal const int DefaultCapacity = 10_000;
+
     private readonly int _maxFailures;
     private readonly TimeSpan _window;
     private readonly TimeSpan _block;
     private readonly int _capacity;
+    private readonly string _logins;
     private readonly TimeProvider _clock;
     private readonly ILogger<LoginThrottle> _logger;
     private readonly object _lock = new();
     private readonly Dictionary<IPAddress, Entry> _entries = new();
 
-    public LoginThrottle(IOptions<LoginThrottleConfiguration> options, TimeProvider clock, ILogger<LoginThrottle> logger) : this(options, clock, logger, 10_000) { }
+    public LoginThrottle(IOptions<LoginThrottleConfiguration> options, TimeProvider clock, ILogger<LoginThrottle> logger) : this(options, clock, logger, DefaultCapacity) { }
 
-    internal LoginThrottle(IOptions<LoginThrottleConfiguration> options, TimeProvider clock, ILogger<LoginThrottle> logger, int capacity)
+    /// <param name="logins">Names the blocked logins in the log.</param>
+    internal LoginThrottle(IOptions<LoginThrottleConfiguration> options, TimeProvider clock, ILogger<LoginThrottle> logger, int capacity,
+        string logins = "game logins")
     {
         _maxFailures = options.Value.MaxFailuresPerIp;
         _window = TimeSpan.FromMinutes(options.Value.WindowMinutes);
         _block = TimeSpan.FromMinutes(options.Value.BlockMinutes);
         _capacity = capacity;
+        _logins = logins;
         _clock = clock;
         _logger = logger;
     }
@@ -108,7 +114,7 @@ internal sealed class LoginThrottle : ILoginThrottle
             entry.BlockedUntil = now + _block;
         }
 
-        _logger.LogWarning("Blocked game logins from {Address} for {BlockMinutes} minutes after {Failures} failed logins", visitor.Address, _block.TotalMinutes, _maxFailures);
+        _logger.LogWarning("Blocked {Logins} from {Address} for {BlockMinutes} minutes after {Failures} failed logins", _logins, visitor.Address, _block.TotalMinutes, _maxFailures);
     }
 
     private void RemoveExpired(DateTimeOffset now)

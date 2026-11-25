@@ -679,7 +679,7 @@ public class Room
         var furnitureSnapshot = RoomFurnitureSnapshot.Capture(snapshotFurniture, OwnerId, OwnerName);
         session.Send(new ObjectsComposer(furnitureSnapshot));
         session.Send(new FurnitureMetadataComposer(furnitureSnapshot.Items));
-        var snapshotWalls = GetRoomItemHandler().GetWall.ToArray();
+        var snapshotWalls = VisibleWallItems.ToArray();
         var wallSnapshot = RoomFurnitureSnapshot.Capture(snapshotWalls, OwnerId, OwnerName);
         session.Send(new ItemsComposer(wallSnapshot));
         session.Send(new FurnitureMetadataComposer(wallSnapshot.Items));
@@ -822,7 +822,15 @@ public class Room
         }
     }
 
-    public IEnumerable<Item> VisibleWallItems => GetRoomItemHandler().GetWall;
+    public IEnumerable<Item> VisibleWallItems
+    {
+        get
+        {
+            var hiding = FurniVisibility.Capture(this);
+
+            return GetRoomItemHandler().GetWall.Where(item => !FurniVisibility.Hides(hiding, item));
+        }
+    }
 
     public void SetWiredHidden(bool hidden)
     {

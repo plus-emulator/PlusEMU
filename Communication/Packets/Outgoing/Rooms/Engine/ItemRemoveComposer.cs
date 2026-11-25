@@ -8,11 +8,13 @@ public class ItemRemoveComposer : IServerPacket
 {
     private readonly string _itemId;
     private readonly int _userId;
+    private readonly bool _byInvisibleFurniManager;
 
     public uint MessageId => ServerPacketHeader.ItemRemoveComposer;
 
-    public ItemRemoveComposer(uint itemId, int userId)
+    public ItemRemoveComposer(uint itemId, int userId, bool byInvisibleFurniManager = false)
     {
+        _byInvisibleFurniManager = byInvisibleFurniManager;
         _itemId = BuildersClubItemIds.ToWire(itemId).ToString(CultureInfo.InvariantCulture);
         _userId = userId;
     }
@@ -21,6 +23,6 @@ public class ItemRemoveComposer : IServerPacket
     {
         packet.WriteString(_itemId);
         packet.WriteInteger(_userId);
-        packet.WriteBoolean(false);
+        packet.WriteBoolean(_byInvisibleFurniManager);
     }
 }

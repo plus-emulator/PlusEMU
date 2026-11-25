@@ -4,9 +4,14 @@
 set -euo pipefail
 port="$1"
 db() { mariadb --protocol=tcp --host=127.0.0.1 --port="$port" --user=root --skip-ssl "$@"; }
-for schema in $(db -N -e "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"); do
-  db -e "DROP DATABASE \`$schema\`"
-done
+# The server keeps its data in memory, so every run starts and ends without test schemas.
+drop_schemas() {
+  for schema in $(db -N -e "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"); do
+    db -e "DROP DATABASE \`$schema\`"
+  done
+}
+drop_schemas
+trap drop_schemas EXIT
 db -e "SET GLOBAL max_connections = 1000"
 server="Server=127.0.0.1;Port=$port;User ID=root;Pooling=false;Allow User Variables=true"
 imports=()

@@ -272,7 +272,6 @@ public class Habbo
         // Move each of these loading tasks to their own IUserDataLoadingTask implementation.
         //foreach (var id in data.FavouritedRooms) FavoriteRooms.Add(id);
         Client = client;
-        //Quests = data.Quests;
         _disconnected = false;
     }
 

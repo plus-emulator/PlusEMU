@@ -30,6 +30,36 @@ public sealed class QuestProgressServiceTests
     }
 
     [Fact]
+    public void RefusedStartLeavesNoActiveQuestAndRefreshesTheList()
+    {
+        var quest = TestQuest(3, "social", 1);
+        var manager = new QuestManagerFake(quest);
+        var (client, sent) = Client(7);
+        var store = new RecordingStore { Result = (false, 1) };
+
+        new QuestProgressService(store, manager).Start(client, quest.Id);
+
+        Assert.Equal(0, Assert.IsType<HabboStats>(client.GetHabbo().HabboStats).QuestId);
+        Assert.Equal(1, client.GetHabbo().GetQuestProgress(quest.Id));
+        Assert.Equal(1, manager.ListRequests);
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void StartUsesTheSavedProgressOfAQuestInProgress()
+    {
+        var quest = new Quest(3, "room_builder", 1, QuestType.FurniMove, 3, "MOVEITEM", 10, "", 0, null, null);
+        var manager = new QuestManagerFake(quest);
+        var (client, _) = Client(7);
+        var store = new RecordingStore { Result = (true, 2) };
+
+        new QuestProgressService(store, manager).Start(client, quest.Id);
+
+        Assert.Equal(quest.Id, Assert.IsType<HabboStats>(client.GetHabbo().HabboStats).QuestId);
+        Assert.Equal(2, client.GetHabbo().GetQuestProgress(quest.Id));
+    }
+
+    [Fact]
     public void StartWithoutLoadedStatisticsWritesNothing()
     {
         var quest = TestQuest(3, "social", 1);
@@ -125,9 +155,10 @@ public sealed class QuestProgressServiceTests
     private sealed class RecordingStore(Action? beforeStart = null) : IQuestProgressStore
     {
         public bool Fail { get; init; }
+        public (bool Started, int Progress) Result { get; init; } = (true, 0);
         public List<(int UserId, int QuestId)> Starts { get; } = [];
         public List<(int UserId, int QuestId, int Progress, bool Completed)> Progress { get; } = [];
-        public void Start(int userId, int questId)
+        public bool TryStart(int userId, Quest quest, out int progress)
         {
             beforeStart?.Invoke();
 
@@ -135,21 +166,26 @@ public sealed class QuestProgressServiceTests
                 throw new InvalidOperationException("forced failure");
             }
 
-            Starts.Add((userId, questId));
+            Starts.Add((userId, quest.Id));
+            progress = Result.Progress;
+
+            return Result.Started;
         }
-        public void Cancel(int userId, int questId)
+        public void Cancel(int userId, Quest quest)
         {
             if (Fail) {
                 throw new InvalidOperationException("forced failure");
             }
         }
-        public void SaveProgress(int userId, int questId, int progress, bool completed)
+        public bool SaveProgress(int userId, Quest quest, int progress, bool completed)
         {
             if (Fail) {
                 throw new InvalidOperationException("forced failure");
             }
 
-            Progress.Add((userId, questId, progress, completed));
+            Progress.Add((userId, quest.Id, progress, completed));
+
+            return true;
         }
     }
 

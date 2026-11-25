@@ -7,33 +7,47 @@ namespace Plus.HabboHotel.Quests;
 
 public interface IQuestProgressStore
 {
-    void Start(int userId, int questId);
-    void Cancel(int userId, int questId);
-    void SaveProgress(int userId, int questId, int progress, bool completed);
+    bool TryStart(int userId, Quest quest, out int progress);
+    void Cancel(int userId, Quest quest);
+    bool SaveProgress(int userId, Quest quest, int progress, bool completed);
 }
 
 public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
 {
-    public void Start(int userId, int questId)
+    public bool TryStart(int userId, Quest quest, out int progress)
     {
+        var questId = quest.Id;
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
-        connection.Execute("REPLACE INTO user_quests (user_id,quest_id) VALUES (@userId,@questId)", new { userId, questId }, transaction);
+        // The insert takes the row lock at once, so parallel starts of one quest wait instead of deadlocking.
+        connection.Execute("INSERT INTO user_quests (user_id,quest_id) VALUES (@userId,@questId) ON DUPLICATE KEY UPDATE quest_id=quest_id",
+            new { userId, questId }, transaction);
+        progress = connection.QuerySingle<int?>("SELECT progress FROM user_quests WHERE user_id=@userId AND quest_id=@questId FOR UPDATE",
+            new { userId, questId }, transaction) ?? 0;
+
+        // A completed quest stays completed, so its reward is paid only once.
+        if (progress >= OpenBelow(quest)) {
+            return false;
+        }
 
         if (connection.Execute("UPDATE user_statistics SET quest_id=@questId WHERE id=@userId LIMIT 1", new { userId, questId }, transaction) != 1) {
             throw new InvalidOperationException("Quest state was not persisted.");
         }
 
         transaction.Commit();
+
+        return true;
     }
 
-    public void Cancel(int userId, int questId)
+    public void Cancel(int userId, Quest quest)
     {
+        var questId = quest.Id;
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
-        connection.Execute("DELETE FROM user_quests WHERE user_id=@userId AND quest_id=@questId", new { userId, questId }, transaction);
+        connection.Execute("DELETE FROM user_quests WHERE user_id=@userId AND quest_id=@questId AND COALESCE(progress,0) < @goal",
+            new { userId, questId, goal = OpenBelow(quest) }, transaction);
 
         if (connection.Execute("UPDATE user_statistics SET quest_id=0 WHERE id=@userId LIMIT 1", new { userId }, transaction) != 1) {
             throw new InvalidOperationException("Quest cancellation was not persisted.");
@@ -42,15 +56,16 @@ public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
         transaction.Commit();
     }
 
-    public void SaveProgress(int userId, int questId, int progress, bool completed)
+    public bool SaveProgress(int userId, Quest quest, int progress, bool completed)
     {
+        var questId = quest.Id;
         using var connection = database.Connection();
         connection.Open();
         using var transaction = connection.BeginTransaction();
 
-        if (connection.Execute("UPDATE user_quests SET progress=@progress WHERE user_id=@userId AND quest_id=@questId LIMIT 1",
-                new { userId, questId, progress }, transaction) != 1) {
-            throw new InvalidOperationException("Quest progress was not persisted.");
+        if (connection.Execute("UPDATE user_quests SET progress=@progress WHERE user_id=@userId AND quest_id=@questId AND COALESCE(progress,0) < @goal LIMIT 1",
+                new { userId, questId, progress, goal = OpenBelow(quest) }, transaction) != 1) {
+            return false;
         }
 
         if (completed && connection.Execute("UPDATE user_statistics SET quest_id=0 WHERE id=@userId LIMIT 1", new { userId }, transaction) != 1) {
@@ -58,7 +73,12 @@ public sealed class QuestProgressStore(IDatabase database) : IQuestProgressStore
         }
 
         transaction.Commit();
+
+        return true;
     }
+
+    // A saved row stays open until its progress reaches the goal. A row without progress is always open, so a quest with goal 0 pays once.
+    private static int OpenBelow(Quest quest) => Math.Max(1, quest.CompletionProgress);
 }
 
 public interface IQuestProgressService
@@ -89,7 +109,7 @@ public sealed class QuestProgressService(IQuestProgressStore store, IQuestManage
             return;
         }
 
-        store.Cancel(habbo.Id, quest.Id);
+        store.Cancel(habbo.Id, quest);
         stats.QuestId = 0;
         session.Send(new QuestAbortedComposer(QuestWireDataFactory.Create(session, quest, quests.GetAmountOfQuestsInCategory(quest.Category))));
         quests.GetList(session, null);
@@ -127,7 +147,15 @@ public sealed class QuestProgressService(IQuestProgressStore store, IQuestManage
             return;
         }
 
-        store.Start(habbo.Id, quest.Id);
+        var started = store.TryStart(habbo.Id, quest, out var progress);
+        habbo.Quests[quest.Id] = progress;
+
+        if (!started) {
+            quests.GetList(session, null);
+
+            return;
+        }
+
         stats.QuestId = quest.Id;
         quests.GetList(session, null);
         session.Send(new QuestStartedComposer(QuestWireDataFactory.Create(session, quest, quests.GetAmountOfQuestsInCategory(quest.Category))));

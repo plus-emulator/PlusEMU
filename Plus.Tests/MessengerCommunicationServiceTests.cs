@@ -143,7 +143,7 @@ public sealed class MessengerCommunicationServiceTests
     }
 
     [Fact]
-    public async Task RefusedRequestSkipsTheRewardButStillProgressesTheQuest()
+    public async Task RefusedRequestSkipsTheRewardAndTheQuest()
     {
         using var f = new MessengerFixture();
         var (session, _) = f.Session(f.Messenger(outstanding: 5));
@@ -152,6 +152,20 @@ public sealed class MessengerCommunicationServiceTests
         await f.Service().RequestFriend(session, "friend");
 
         Assert.Empty(f.Rewards.Progressed);
+        Assert.Empty(f.Quests.Calls);
+    }
+
+    [Fact]
+    public async Task RepeatedRequestToTheSameUserProgressesTheQuestOnce()
+    {
+        using var f = new MessengerFixture();
+        var (session, _) = f.Session(f.Messenger());
+        f.Loader.Next = Task.FromResult((5, false));
+
+        await f.Service().RequestFriend(session, "friend");
+        await f.Service().RequestFriend(session, "friend");
+        await f.Service().RequestFriend(session, "friend");
+
         Assert.Equal(new[] { "quest SocialFriend" }, f.Quests.Calls);
     }
 

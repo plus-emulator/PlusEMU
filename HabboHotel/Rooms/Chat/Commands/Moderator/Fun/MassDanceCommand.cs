@@ -19,9 +19,7 @@ internal class MassDanceCommand : IChatCommand
             return;
         }
 
-        var danceId = Convert.ToInt32(parameters[0]);
-
-        if (danceId < 0 || danceId > 4) {
+        if (!int.TryParse(parameters[0], out var danceId) || danceId < 0 || danceId > 4) {
             session.SendWhisper("Please enter a dance ID. (1-4)");
 
             return;

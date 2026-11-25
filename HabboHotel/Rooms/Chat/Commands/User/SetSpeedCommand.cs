@@ -22,7 +22,8 @@ internal class SetSpeedCommand : IChatCommand
             return;
         }
 
-        if (int.TryParse(parameters[0], out var speed)) {
+        // Speeds 0 to 3 match the roller speed controller, one roller step every 500 to 2000 ms.
+        if (int.TryParse(parameters[0], out var speed) && speed is >= 0 and <= 3) {
             session.GetHabbo().CurrentRoom.GetRoomItemHandler().SetSpeed(speed);
         }
         else {

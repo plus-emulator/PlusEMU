@@ -187,7 +187,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
         public CachedBan With(ModerationBan row) => this with
         {
             Latest = Expiry(row) > Expiry(Latest) ? row : Latest,
-            StoredValues = StoredValues.Contains(row.Value) ? StoredValues : [..StoredValues, row.Value]
+            StoredValues = StoredValues.Contains(row.Value) ? StoredValues : [.. StoredValues, row.Value]
         };
 
         private static DateTimeOffset Expiry(ModerationBan ban) => ban.ExpiresAt ?? DateTimeOffset.MinValue;

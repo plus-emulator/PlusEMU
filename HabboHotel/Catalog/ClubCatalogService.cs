@@ -5,6 +5,7 @@ using Plus.Communication.Packets.Outgoing.Inventory.Purse;
 using Plus.Communication.Packets.Outgoing.Notifications;
 using Plus.Communication.Packets.Outgoing.Users;
 using Plus.Core;
+using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Subscriptions;
 using Plus.Utilities.DependencyInjection;
@@ -32,6 +33,7 @@ public sealed class ClubCatalogService(
     ICatalogSnapshotService snapshots,
     ICatalogManager catalog,
     IClubMembershipService memberships,
+    IAchievementManager achievements,
     IPlannedShutdown? plannedShutdown = null) : IClubCatalogService
 {
     private readonly IPlannedShutdown? _plannedShutdown = plannedShutdown;
@@ -117,6 +119,7 @@ public sealed class ClubCatalogService(
 
         session.Send(new PurchaseOKComposer());
         session.Send(new ScrSendUserInfoComposer(ClubStatusSnapshot.Capture(habbo.Access, ClubStatusSnapshot.PurchaseResponse)));
+        achievements.ProgressAchievement(session, ClubAchievement.Group, offer.Days);
 
         return Task.CompletedTask;
     }

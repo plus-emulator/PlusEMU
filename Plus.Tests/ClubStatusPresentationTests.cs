@@ -88,7 +88,7 @@ public sealed class ClubStatusPresentationTests
                 now.AddDays(-40), 35 * ClubMembership.Day, now.AddSeconds(-120)))
         };
         var (client, sent) = HabbiconTestSupport.Client(habbo);
-        var service = new ClubCatalogService(new Rewards(), null!, null!, null!);
+        var service = new ClubCatalogService(new Rewards(), null!, null!, null!, null!);
         await service.ShowStatus(client, "habbo_club_other");
         await service.ShowStatus(client, "HABBO_CLUB");
         Assert.Empty(sent);
@@ -131,7 +131,7 @@ public sealed class ClubStatusPresentationTests
                 return new(7, "01-10-2040", .25, 2, 3, 40, 5, 10, 60);
             }
         };
-        var service = new ClubCatalogService(rewards, null!, null!, null!);
+        var service = new ClubCatalogService(rewards, null!, null!, null!, null!);
 
         await service.ShowKickback(client);
 
@@ -153,7 +153,7 @@ public sealed class ClubStatusPresentationTests
     {
         var (client, sent) = HabbiconTestSupport.Client(new Habbo());
         var rewards = new Rewards { ReadKickback = _ => throw new InvalidOperationException("lookup failed") };
-        var service = new ClubCatalogService(rewards, null!, null!, null!);
+        var service = new ClubCatalogService(rewards, null!, null!, null!, null!);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.ShowKickback(client));
 

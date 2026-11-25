@@ -416,6 +416,25 @@ public sealed class CatalogPurchaseServiceTests
     }
 
     [Fact]
+    public async Task BuyingHabboClubAddsItsDaysToTheHabboClubAchievement()
+    {
+        var progress = new List<(string Group, int Amount)>();
+        var achievements = CatalogSnapshotTestSupport.Proxy<IAchievementManager>((method, args) =>
+        {
+            if (method == nameof(IAchievementManager.ProgressAchievement)) {
+                progress.Add(((string)args[1]!, (int)args[2]!));
+            }
+
+            return true;
+        });
+        var context = Context(club: true, achievements: achievements);
+
+        await context.Service.Purchase(context.Client, new(1, 9, "", 1));
+
+        Assert.Equal([("ACH_HC", 31)], progress);
+    }
+
+    [Fact]
     public async Task OwnerBuyingTheFirstForumTerminalOpensTheGroupForum()
     {
         var group = Group(owner: 42, members: [], forum: false);
@@ -594,7 +613,7 @@ public sealed class CatalogPurchaseServiceTests
         string itemName = "chair", CatalogProduct? product = null, Plus.HabboHotel.Catalog.BuildersClub.IBuildersClubService? buildersClub = null,
         IReadOnlyList<CatalogProduct>? products = null, RecordingMembership? memberships = null, IPlannedShutdown? plannedShutdown = null,
         IBadgeManager? badges = null, IAvatarEffectStore? effects = null, IHabbiconService? habbicons = null,
-        IHabbiconAchievementService? habbiconAchievements = null)
+        IHabbiconAchievementService? habbiconAchievements = null, IAchievementManager? achievements = null)
     {
         var definition = new ItemDefinition
         {
@@ -653,7 +672,7 @@ public sealed class CatalogPurchaseServiceTests
         var service = new CatalogPurchaseService(
             catalog,
             new Settings(enabled),
-            Proxy<IAchievementManager, EmptyProxy>(),
+            achievements ?? Proxy<IAchievementManager, EmptyProxy>(),
             Proxy<IItemDataManager, EmptyProxy>(),
             badges ?? new RecordingBadges(stores: true),
             factory,

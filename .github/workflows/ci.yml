@@ -1,0 +1,63 @@
+name: C# checks
+
+on:
+  push:
+    branches: [master]
+    paths-ignore: ['**.md']
+  pull_request:
+    paths-ignore: ['**.md']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Pull requests from forks never run on the self-hosted runners.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, plus-ci]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test release scripts
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+      - run: dotnet run --project tools/Plus.CodeStyle -- check
+      - run: dotnet build "Plus Emulator.sln" --configuration Release --property:Platform="Any CPU" --maxcpucount:1
+      - name: Test on MariaDB 10.11 and 11.8
+        run: |
+          .github/scripts/test-on-mariadb.sh "$PLUS_CI_MARIADB_1011_PORT" > mariadb-10.11.log 2>&1 & old=$!
+          .github/scripts/test-on-mariadb.sh "$PLUS_CI_MARIADB_118_PORT" > mariadb-11.8.log 2>&1 & new=$!
+          status=0
+          wait "$old" || status=1
+          wait "$new" || status=1
+          for log in mariadb-10.11.log mariadb-11.8.log; do echo "::group::$log"; cat "$log"; echo "::endgroup::"; grep -hE "Passed!|Failed!|^\s+Failed " "$log" || true; done
+          exit "$status"
+
+  fork:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+        ports:
+          - "127.0.0.1:3306:3306"
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: sudo apt-get update && sudo apt-get install -y mariadb-client
+      - run: dotnet run --project tools/Plus.CodeStyle -- check
+      - run: dotnet build "Plus Emulator.sln" --configuration Release --property:Platform="Any CPU" --maxcpucount:1
+      - run: .github/scripts/test-on-mariadb.sh 3306

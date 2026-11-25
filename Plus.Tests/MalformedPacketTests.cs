@@ -143,7 +143,8 @@ public sealed class MalformedPacketTests
 
         public IReadOnlyList<(LogLevel Level, string Message, Exception? Exception)> Entries
         {
-            get {
+            get
+            {
                 lock (_entries) {
                     return _entries.ToList();
                 }

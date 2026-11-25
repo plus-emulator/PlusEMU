@@ -58,7 +58,8 @@ public sealed class PetPlacementService(
 
             if (!room.GetGameMap().ValidTile(x, y)
                 || !room.GetGameMap().SquareIsOpen(x, y, false)
-                || !room.GetGameMap().CanWalk(x, y, false)) {
+                || !room.GetGameMap().CanWalk(x, y, false)
+                || FurniVisibility.HiddenTiles(room).Contains((x, y))) {
                 session.Send(new RoomErrorNotifComposer(PetPlacementError.InvalidTile));
 
                 return;

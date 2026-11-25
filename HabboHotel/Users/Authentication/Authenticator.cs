@@ -33,6 +33,10 @@ internal class Authenticator : IAuthenticator
             return AuthenticationError.TooManyAttempts;
         }
 
+        if (!session.TryBeginLogin()) {
+            return AuthenticationError.SessionClosed;
+        }
+
         AuthenticationError? error;
 
         // The packet manager abandons slow logins and closes the socket; the login must stop with it.
@@ -41,6 +45,9 @@ internal class Authenticator : IAuthenticator
         }
         catch (OperationCanceledException) when (session.Closed.IsCancellationRequested) {
             return AuthenticationError.SessionClosed;
+        }
+        finally {
+            session.EndLogin();
         }
 
         // Only a ticket that is not live counts; a valid ticket for a prohibited account is no guess.

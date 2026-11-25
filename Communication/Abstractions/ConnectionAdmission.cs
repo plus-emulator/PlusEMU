@@ -9,21 +9,18 @@ namespace Plus.Communication.Abstractions;
 /// </summary>
 public sealed class ConnectionAdmission
 {
-    private const int MaxRefusalLogEntries = 4096;
-    private static readonly TimeSpan RefusalLogInterval = TimeSpan.FromMinutes(1);
     private static readonly IPAddress[] LoopbackProxies = [IPAddress.Loopback, IPAddress.IPv6Loopback];
 
     private readonly HashSet<IPAddress> _trustedProxies;
     private readonly int _maxConnectionsPerAddress;
-    private readonly TimeProvider _clock;
     private readonly ILogger _logger;
     private readonly object _lock = new();
     private readonly Dictionary<IPAddress, int> _connections = new();
-    private readonly Dictionary<IPAddress, DateTimeOffset> _refusalsLogged = new();
+    private readonly AddressLogThrottle _refusalLog;
 
-    public ConnectionAdmission(IWebsocketServerOptions options, TimeProvider clock, ILogger logger)
+    public ConnectionAdmission(IGameServerOptions options, TimeProvider clock, ILogger logger)
     {
-        _clock = clock;
+        _refusalLog = new(clock);
         _logger = logger;
         _maxConnectionsPerAddress = options.MaxConnectionsPerIp;
         _trustedProxies = new(options.TrustedProxies == null ? LoopbackProxies : ParseTrustedProxies(options.TrustedProxies));
@@ -74,7 +71,7 @@ public sealed class ConnectionAdmission
                 return new Lease(this, address.Address);
             }
 
-            if (!ShouldLogRefusal(address.Address)) {
+            if (!_refusalLog.ShouldLog(address.Address)) {
                 return null;
             }
         }
@@ -82,29 +79,6 @@ public sealed class ConnectionAdmission
         _logger.LogWarning("Refused a game connection from {Address}: it already has {Limit} open connections", address.Address, _maxConnectionsPerAddress);
 
         return null;
-    }
-
-    private bool ShouldLogRefusal(IPAddress address)
-    {
-        var now = _clock.GetUtcNow();
-
-        if (_refusalsLogged.TryGetValue(address, out var logged) && now - logged < RefusalLogInterval) {
-            return false;
-        }
-
-        if (_refusalsLogged.Count >= MaxRefusalLogEntries) {
-            foreach (var stale in _refusalsLogged.Where(entry => now - entry.Value >= RefusalLogInterval).Select(entry => entry.Key).ToList()) {
-                _refusalsLogged.Remove(stale);
-            }
-
-            if (_refusalsLogged.Count >= MaxRefusalLogEntries) {
-                _refusalsLogged.Clear();
-            }
-        }
-
-        _refusalsLogged[address] = now;
-
-        return true;
     }
 
     private void Release(IPAddress address)

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,20 +15,32 @@ public class WsSessionProxy : WsSession
 
     private static readonly FieldInfo? WebSocketField = typeof(WsSession).GetField("WebSocket", BindingFlags.Instance | BindingFlags.NonPublic);
     private static readonly FieldInfo? SendLockField = typeof(WebSocket).GetField("WsSendLock", BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly FieldInfo? FrameBufferField = typeof(WebSocket).GetField("WsReceiveFrameBuffer", BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly FieldInfo? MessageBufferField = typeof(WebSocket).GetField("WsReceiveFinalBuffer", BindingFlags.Instance | BindingFlags.NonPublic);
 
     private static readonly IDisposable Disconnected = new ClosedLease();
 
     private readonly GameClient _client;
     private readonly ILogger _logger;
     private readonly ConnectionAdmission? _admission;
+    private readonly TimeProvider _clock;
+    private readonly NetCoreServer.Buffer? _frameBuffer;
+    private readonly NetCoreServer.Buffer? _messageBuffer;
     private IDisposable? _connectionSlot;
+    private IPAddress? _peer;
 
-    public WsSessionProxy(WsServer server, GameClient client, ILogger? logger = null, ConnectionAdmission? admission = null) : base(server)
+    public WsSessionProxy(WsServer server, GameClient client, ILogger? logger = null, ConnectionAdmission? admission = null, TimeProvider? clock = null) : base(server)
     {
         _client = client;
         _logger = logger ?? NullLogger.Instance;
         _admission = admission;
+        _clock = clock ?? TimeProvider.System;
         SendLock = ResolveSendLock(this) ?? new object();
+        var webSocket = WebSocketField?.GetValue(this);
+        _frameBuffer = webSocket == null ? null : FrameBufferField?.GetValue(webSocket) as NetCoreServer.Buffer;
+        _messageBuffer = webSocket == null ? null : MessageBufferField?.GetValue(webSocket) as NetCoreServer.Buffer;
+        OptionReceiveBufferLimit = GameClient.ReceiveBufferLimit;
+        OptionSendBufferLimit = GameClient.SendBufferLimit;
         _client.Id = Id;
         _client.SendCallback = args =>
         {
@@ -47,9 +60,10 @@ public class WsSessionProxy : WsSession
     /// <summary>The library's lock around its shared frame send buffer; every frame this session writes takes it.</summary>
     internal object SendLock { get; }
 
-    protected override void OnConnected()
+    protected override void OnConnecting()
     {
-        base.OnConnected();
+        _peer = (Socket.RemoteEndPoint as IPEndPoint)?.Address;
+        _client.StartLoginDeadline(_clock);
     }
 
     /// <summary>Over the per-IP limit the connection closes here, before the upgrade, so it never reaches a login.</summary>
@@ -96,9 +110,25 @@ public class WsSessionProxy : WsSession
     {
         try {
             base.OnReceived(buffer, offset, size);
+
+            // The library keeps an unfinished upgrade request, frame or message whatever its size.
+            if (Request.Cache.Size + (_frameBuffer?.Size ?? 0) + (_messageBuffer?.Size ?? 0) > GameClient.ReceiveBufferLimit) {
+                _client.CloseOverLimit("receive buffer", _peer);
+            }
         }
         catch (Exception exception) {
             Fail(exception, "receive");
+        }
+    }
+
+    /// <summary>
+    /// The library drops a send over the send buffer limit and keeps the session; close it instead. A receive buffer
+    /// over its limit reports the same error.
+    /// </summary>
+    protected override void OnError(SocketError error)
+    {
+        if (error == SocketError.NoBufferSpaceAvailable) {
+            _client.CloseOverLimit("send or receive buffer", _peer);
         }
     }
 

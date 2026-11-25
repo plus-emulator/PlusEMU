@@ -270,7 +270,7 @@ public sealed class ConnectionAdmissionTests
     public async Task TheGameServerClosesConnectionsOverTheLimitBeforeTheUpgradeAndFreesSlotsOnClose()
     {
         using var server = new NitroServer(Options.Create(new NitroServerConfiguration { Hostname = "127.0.0.1", Port = 0, MaxConnectionsPerIp = 2 }),
-            new NitroClientFactory(new FlashPacketFactory(), CatalogSnapshotTestSupport.Proxy<IRevisionsCache>((_, _) => null), TestLogging.GameClient),
+            new NitroClientFactory(new FlashPacketFactory(), CatalogSnapshotTestSupport.Proxy<IRevisionsCache>((_, _) => null), TestLogging.GameClient, TimeProvider.System),
             CatalogSnapshotTestSupport.Proxy<IPacketManager>((name, _) => throw new NotSupportedException(name)), [], [], NullLogger<NitroServer>.Instance);
         Assert.True(server.Start());
 

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
@@ -13,6 +14,8 @@ namespace Plus.HabboHotel.GameClients;
 
 public abstract class GameClient
 {
+    private static readonly AddressLogThrottle LimitWarnings = new(TimeProvider.System);
+
     private readonly IGameServer _server;
     private readonly IPacketFactory _packetFactory;
     private readonly object _sendLock = new();
@@ -21,6 +24,10 @@ public abstract class GameClient
     private Habbo? _habbo;
     private readonly object _lifecycle = new();
     private readonly CancellationTokenSource _closed = new();
+    private ITimer? _loginDeadline;
+    private bool _loggingIn;
+    private bool _loginDeadlinePassed;
+    private long _receivedUnhandled;
 
     public RecyclableMemoryStream? _incompleteStream;
     public Arc4? Rc4Client { get; set; }
@@ -93,6 +100,24 @@ public abstract class GameClient
     /// <summary>Set by the transport once it knows where the connection comes from.</summary>
     public ClientAddress? RemoteAddress { get; internal set; }
 
+    /// <summary>A connection that has not logged in this long after it opened is closed.</summary>
+    internal static readonly TimeSpan LoginDeadline = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// The most received data a connection may have waiting for the packet handler, and the most its transport may
+    /// buffer: room for four of the largest game packets.
+    /// </summary>
+    internal const int ReceiveBufferLimit = 2 * 1024 * 1024;
+
+    /// <summary>
+    /// A received chunk that waits for the handler also holds its copy and async state, just under 512 bytes, so it
+    /// counts this much against <see cref="ReceiveBufferLimit"/> on top of its data.
+    /// </summary>
+    private const int WaitingChunkOverhead = 512;
+
+    /// <summary>The most a connection may have waiting to be sent. A client that leaves more unread is not reading.</summary>
+    internal const int SendBufferLimit = 8 * 1024 * 1024;
+
 
     private Revision RequiredRevision => Revision ?? throw new InvalidOperationException("The client has no packet revision.");
 
@@ -100,6 +125,18 @@ public abstract class GameClient
     {
         Close();
         DisconnectRequested?.Invoke();
+    }
+
+    /// <summary>Closes a connection that went over a buffer limit, with a warning that names the address and the limit.</summary>
+    internal void CloseOverLimit(string limit, IPAddress? peer = null)
+    {
+        var address = RemoteAddress?.Address ?? peer ?? IPAddress.None;
+
+        if (!Closed.IsCancellationRequested && LimitWarnings.ShouldLog(address)) {
+            _logger.LogWarning("Closed game connection {ConnectionId} from {Address}: it went over the {Limit} limit", Id, address, limit);
+        }
+
+        Disconnect();
     }
 
     /// <summary>Cancelled once the connection is closing, including after a packet timeout; session work should stop.</summary>
@@ -159,8 +196,70 @@ public abstract class GameClient
 
             SetHabbo(habbo);
             register();
+            _loginDeadline?.Dispose();
 
             return true;
+        }
+    }
+
+    internal void StartLoginDeadline(TimeProvider clock) =>
+        _loginDeadline = clock.CreateTimer(static client => ((GameClient)client!).CloseUnlessLoggedIn(), this, LoginDeadline, Timeout.InfiniteTimeSpan);
+
+    /// <summary>
+    /// Holds the login deadline off until <see cref="EndLogin"/>, because a login uses up its ticket before it ends.
+    /// False when the connection already closed.
+    /// </summary>
+    internal bool TryBeginLogin()
+    {
+        lock (_lifecycle) {
+            if (_closed.IsCancellationRequested) {
+                return false;
+            }
+
+            _loggingIn = true;
+
+            return true;
+        }
+    }
+
+    /// <summary>A login that ends without a Habbo after the deadline passed closes the connection.</summary>
+    internal void EndLogin()
+    {
+        lock (_lifecycle) {
+            _loggingIn = false;
+
+            if (!_loginDeadlinePassed || _habbo != null) {
+                return;
+            }
+
+            Close();
+        }
+
+        DisconnectRequested?.Invoke();
+    }
+
+    // Runs on a timer thread, where an escaping exception would end the process.
+    private void CloseUnlessLoggedIn()
+    {
+        try {
+            lock (_lifecycle) {
+                if (_habbo != null) {
+                    return;
+                }
+
+                if (_loggingIn) {
+                    _loginDeadlinePassed = true;
+
+                    return;
+                }
+
+                Close();
+            }
+
+            DisconnectRequested?.Invoke();
+        }
+        catch (Exception exception) {
+            _logger.LogError(exception, "Closing connection {ConnectionId} at the login deadline failed", Id);
         }
     }
 
@@ -170,6 +269,8 @@ public abstract class GameClient
             if (!_closed.IsCancellationRequested) {
                 _closed.Cancel();
             }
+
+            _loginDeadline?.Dispose();
         }
     }
 
@@ -180,7 +281,16 @@ public abstract class GameClient
     /// </summary>
     internal virtual async void OnReceived(byte[] buffer, long offset, long size)
     {
+        // Each chunk waits until the one before it is handled, so a slow handler must not let the queue grow without end.
+        var cost = size + WaitingChunkOverhead;
+
         try {
+            if (Interlocked.Add(ref _receivedUnhandled, cost) > ReceiveBufferLimit) {
+                CloseOverLimit("receive queue");
+
+                return;
+            }
+
             await ReceiveAsync(buffer, offset, size);
         }
         catch (Exception exception) {
@@ -192,6 +302,9 @@ public abstract class GameClient
             catch (Exception disconnectException) {
                 _logger.LogError(disconnectException, "Failed to close connection {ConnectionId}", Id);
             }
+        }
+        finally {
+            Interlocked.Add(ref _receivedUnhandled, -cost);
         }
     }
 

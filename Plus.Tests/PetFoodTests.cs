@@ -34,12 +34,25 @@ public partial class PlacedFurniRoomTests
     }
 
     [Theory]
-    [InlineData("petfood28", "pet_food", "")]
+    [InlineData("petfood19", "pet_food", "8,26")]
     [InlineData("waterbowl*1", "pet_accessories", "")]
     [InlineData("chair", "", "375,10,0")]
     public void FurniWithoutFoodValuesIsNoPetFood(string name, string line, string customParams)
     {
         Assert.Null(PetFood.Of(new ItemDefinition { ItemName = name, FurniLine = line, CustomParams = customParams }));
+    }
+
+    [Theory]
+    [InlineData("petfood28", "pet_food")]
+    [InlineData("petfood31", "")]
+    public void PetFoodWithoutValuesGivesEveryPetTwentyFiveEnergyAndTenExperiencePerBite(string name, string line)
+    {
+        var food = PetFood.Of(new ItemDefinition { ItemName = name, FurniLine = line, CustomParams = "" });
+
+        Assert.NotNull(food);
+        Assert.Equal((25, 10), (food.BiteEnergy, food.BiteExperience));
+        Assert.True(food.Feeds(0));
+        Assert.True(food.Feeds(11));
     }
 
     [Fact]

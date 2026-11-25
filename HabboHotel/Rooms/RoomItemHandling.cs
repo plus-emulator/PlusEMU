@@ -616,12 +616,12 @@ public partial class RoomItemHandling
         }
 
         announcing?.Invoke();
-        var neverSent = item.IsFloorItem && FurniVisibility.ForgetRemoved(_room, item);
+        var neverSent = FurniVisibility.ForgetRemoved(_room, item);
 
         if (announce && item.IsFloorItem && !neverSent) {
             _room.SendPacket(new ObjectRemoveComposer(item.Id, item.IsTemporary, pickerId ?? item.UserId));
         }
-        else if (announce && item.IsWallItem) {
+        else if (announce && item.IsWallItem && !neverSent) {
             _room.SendPacket(new ItemRemoveComposer(item.Id, pickerId ?? item.UserId));
         }
 
@@ -1208,7 +1208,7 @@ public partial class RoomItemHandling
             snapshot = RoomItemSnapshot.Capture(item);
         }
 
-        if (announce) {
+        if (announce && !FurniVisibility.Reconcile(_room, [item]).Contains(item.Id)) {
             _room.SendPacket(new ItemUpdateComposer(snapshot));
             _room.SendPacket(new FurnitureMetadataComposer([snapshot]));
         }

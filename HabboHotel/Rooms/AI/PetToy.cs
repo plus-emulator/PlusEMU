@@ -6,4 +6,6 @@ namespace Plus.HabboHotel.Rooms.AI;
 public static class PetToy
 {
     public static bool Is(ItemDefinition definition) => definition.ItemName == "pet_toy_ball";
+
+    public static bool Suits(ItemDefinition definition, int petType) => throw new NotImplementedException();
 }

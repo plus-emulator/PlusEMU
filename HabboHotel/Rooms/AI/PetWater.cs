@@ -17,6 +17,8 @@ public static class PetWater
         definition.ItemName.StartsWith("waterbowl", StringComparison.Ordinal) || definition.ItemName.StartsWith("water_bowl", StringComparison.Ordinal)
         || definition.ItemName == "horse_trough";
 
+    public static bool Suits(ItemDefinition definition, int petType) => throw new NotImplementedException();
+
     /// <summary>One drink at <paramref name="now"/>: the water that nobody drank for a while is full again first.</summary>
     public static void Drink(Item water, DateTimeOffset now)
     {

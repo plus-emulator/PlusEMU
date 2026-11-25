@@ -191,8 +191,9 @@ public sealed class ConnectionBufferLimitTests
 
             var one = new byte[1];
 
+            // A busy server can read several bytes as one chunk, so keep sending until the data alone passes the limit.
             try {
-                for (var sent = 0; sent < TinyChunkData && !handler.Client!.Closed.IsCancellationRequested; sent++) {
+                for (var sent = 0; sent <= GameClient.ReceiveBufferLimit && !handler.Client!.Closed.IsCancellationRequested; sent++) {
                     socket.Tcp.Client.Send(one);
                 }
             }

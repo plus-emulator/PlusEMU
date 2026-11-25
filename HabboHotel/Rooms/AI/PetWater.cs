@@ -5,7 +5,7 @@ using Plus.HabboHotel.Items.DataFormat;
 
 namespace Plus.HabboHotel.Rooms.AI;
 
-/// <summary>Water bowls and the horse trough. Their furni state is the water left, from 5 (full) to 0.</summary>
+/// <summary>Water bowls and the horse trough. Their furni state is the water left, from 5 (full) to 0. The milk bowl never runs out.</summary>
 public static class PetWater
 {
     public const int Full = 5;
@@ -17,7 +17,8 @@ public static class PetWater
         definition.ItemName.StartsWith("waterbowl", StringComparison.Ordinal) || definition.ItemName.StartsWith("water_bowl", StringComparison.Ordinal)
         || definition.ItemName == "horse_trough";
 
-    public static bool Suits(ItemDefinition definition, int petType) => throw new NotImplementedException();
+    public static bool Suits(ItemDefinition definition, int petType) =>
+        Is(definition) || (definition.ItemName == "milkbowl" && PetToy.ListsPetType(definition, petType));
 
     /// <summary>One drink at <paramref name="now"/>: the water that nobody drank for a while is full again first.</summary>
     public static void Drink(Item water, DateTimeOffset now)

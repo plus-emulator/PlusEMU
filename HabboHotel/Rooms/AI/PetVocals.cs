@@ -61,12 +61,17 @@ public static class PetVocals
         [(29, PetVocal.Eating)] = ["Mmm, I'm wolfing this down!"],
         [(35, PetVocal.Eating)] = ["Veganism isn't just for Christmas. Veganism is for life.", "*Crunch* I just ADORE meal times. *Crunch*", "Mmmm. Healthy. *Crunch*"],
         [(0, PetVocal.Drinking)] = ["*drinking*"],
+        [(1, PetVocal.Drinking)] = ["*Splish splash*"],
         [(8, PetVocal.Drinking)] = ["Yes... Yes... This unholy water gives me strength!"],
         [(15, PetVocal.Drinking)] = ["Ah, that's the good stuff."],
         [(20, PetVocal.Drinking)] = ["This is literally the greatest drink I have ever had!"],
         [(21, PetVocal.Drinking)] = ["Yes... not too much, but not too little either."],
         [(29, PetVocal.Drinking)] = ["I love to drink! Love it, love it, love it!", "H-2-Whoa!", "Oops, did I spill some?", "*slurp slurp slurp*"],
         [(35, PetVocal.Drinking)] = ["Drinking water after an entire day eating grass is simply heavenly.", "*Gulp* ..if it wasn't for water.. *Gulp* ..life wouldn't exist on this planet.."],
+        [(1, PetVocal.Playing)] = ["*playing*"],
+        [(8, PetVocal.Playing)] = ["Joy is mine!"],
+        [(11, PetVocal.Playing)] = ["Woohoo!", "Anyone up for a game of croak-ay?", "Fun fun fun..."],
+        [(28, PetVocal.Playing)] = ["This is pawesome!"],
         [(15, PetVocal.Sleeping)] = ["Zzzz.... Marston!", "Zzzz... Old Dan Tucker....", "Zzzz... I have a heart that can never be tamed..."],
         [(21, PetVocal.Sleeping)] =
         [
@@ -85,7 +90,7 @@ public static class PetVocals
         return vocal switch
         {
             PetVocal.Refusal => [.. SharedRefusals, .. own],
-            PetVocal.Playing => SharedPlaying,
+            PetVocal.Playing => [.. SharedPlaying, .. own],
             _ => own
         };
     }

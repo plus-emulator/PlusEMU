@@ -181,7 +181,7 @@ public class PetBot : BotAi
                     else if (Random.Shared.Next(DrinkChance) == 0 && FindWater(botRoom, botUser) is { } water) {
                         GoTo(botRoom, botUser, water);
                     }
-                    else if (Random.Shared.Next(ToyChance) == 0 && FindNearest(botRoom, botUser, item => PetToy.Is(item.Definition) && item.Definition.Walkable) is { } toy) {
+                    else if (Random.Shared.Next(ToyChance) == 0 && FindToy(botRoom, botUser, petData.Type) is { } toy) {
                         GoTo(botRoom, botUser, toy);
                     }
                     else if (Random.Shared.Next(NestChance) == 0 && FindNearest(botRoom, botUser, item => PetNest.Is(item.Definition) && item.Definition.Walkable) is { } nest) {
@@ -346,7 +346,11 @@ public class PetBot : BotAi
     private static Item? FindFood(Room room, RoomUser pet, Pet petData) => room.GetRoomItemHandler()
         .FindNearestFloor(pet.Coordinate, item => !item.IsTemporary && PetFood.Of(item.Definition)?.Feeds(petData.Type) == true);
 
-    private static Item? FindWater(Room room, RoomUser pet) => FindNearest(room, pet, item => PetWater.Is(item.Definition));
+    private static Item? FindWater(Room room, RoomUser pet) =>
+        FindNearest(room, pet, item => PetWater.Suits(item.Definition, pet.PetData?.Type ?? -1));
+
+    private static Item? FindToy(Room room, RoomUser pet, int petType) =>
+        FindNearest(room, pet, item => PetToy.Suits(item.Definition, petType) && item.Definition.Walkable);
 
     private static Item? FindNearest(Room room, RoomUser pet, Func<Item, bool> wanted) => room.GetRoomItemHandler().GetFloor
         .Where(wanted)
@@ -398,7 +402,7 @@ public class PetBot : BotAi
             return false;
         }
 
-        if (PetWater.Is(item.Definition)) {
+        if (PetWater.Suits(item.Definition, petData.Type)) {
             Drink(item, pet);
 
             return true;
@@ -410,7 +414,7 @@ public class PetBot : BotAi
             return true;
         }
 
-        if (PetToy.Is(item.Definition)) {
+        if (PetToy.Suits(item.Definition, petData.Type)) {
             Play(item, pet, petData);
 
             return true;
@@ -426,15 +430,18 @@ public class PetBot : BotAi
         pet.UpdateNeeded = true;
         _actionTimer = 10;
         PetVocals.Say(pet, PetVocal.Drinking);
-        PetWater.Drink(water, DateTimeOffset.UtcNow);
-        water.UpdateState(true, true);
+
+        if (PetWater.Is(water.Definition)) {
+            PetWater.Drink(water, DateTimeOffset.UtcNow);
+            water.UpdateState(true, true);
+        }
     }
 
-    // A horse kicks the ball; other pets play with it. The ball moves for three and a half seconds.
+    // A horse kicks the ball, a frog dips in the pond and other pets play. The toy moves for three and a half seconds.
     private void Play(Item toy, RoomUser pet, Pet petData)
     {
         RemovePetStatus();
-        pet.Statusses[petData.Type == 15 ? "kck" : "pla"] = TextHandling.GetString(pet.Z);
+        pet.Statusses[PetToy.IsPond(toy.Definition) ? "dip" : petData.Type == 15 ? "kck" : "pla"] = TextHandling.GetString(pet.Z);
         pet.Statusses["gst"] = "sml";
         pet.UpdateNeeded = true;
         _actionTimer = 10;

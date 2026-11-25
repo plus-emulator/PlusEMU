@@ -14,8 +14,9 @@ namespace Plus.HabboHotel.Rooms.AI.Types;
 public class PetBot : BotAi
 {
     private int _actionTimer;
-    private static readonly int EnergyRestTicks = (int)(TimeSpan.FromSeconds(40) / RoomCycle.Interval);
-    private int _energyTimer;
+    // Rest refills a pet's maximum energy in one hour, one point at a time.
+    private static readonly TimeSpan RefillTime = TimeSpan.FromHours(1);
+    private TimeSpan _rest;
     private uint _visitId;
     private Point _targetPosition;
     private Point _visitSpot;
@@ -31,7 +32,6 @@ public class PetBot : BotAi
         _random = random ?? Random.Shared;
         _speechTimer = Random.Shared.Next(10, 60);
         _actionTimer = Random.Shared.Next(10, 30 + virtualId);
-        _energyTimer = EnergyRestTicks - 1;
     }
 
     private void RemovePetStatus()
@@ -200,12 +200,11 @@ public class PetBot : BotAi
             _actionTimer--;
         }
 
-        if (_energyTimer <= 0) {
-            petData.PetEnergy(true); // Add Energy
-            _energyTimer = EnergyRestTicks - 1;
-        }
-        else {
-            _energyTimer--;
+        _rest += RoomCycle.Interval * petData.MaxEnergy;
+
+        if (_rest >= RefillTime) {
+            _rest -= RefillTime;
+            petData.PetEnergy(true);
         }
     }
 

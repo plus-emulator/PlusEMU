@@ -101,6 +101,53 @@ public sealed class RoomRightsServiceTests
     }
 
     [Fact]
+    public void RightsAreNotGivenToAUserWhoDoesNotExist()
+    {
+        var room = TestRoom();
+        var (owner, sent) = HabbiconTestSupport.Client(new Habbo { Id = 1, Username = "owner", Access = EditorTestSupport.Access([]) });
+        var store = new RecordingStore();
+        var service = new RoomRightsService(store, null!, new Cache(new() { Id = 2, Username = "guest" }));
+
+        service.Assign(room, owner, 2000000000);
+
+        Assert.Empty(store.Assignments);
+        Assert.Empty(room.UsersWithRights);
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void RightsAreNotGivenToTheRoomOwner()
+    {
+        var room = TestRoom();
+        var (owner, sent) = HabbiconTestSupport.Client(new Habbo { Id = 1, Username = "owner", Access = EditorTestSupport.Access([]) });
+        var store = new RecordingStore();
+        var service = new RoomRightsService(store, null!, new Cache(new() { Id = 1, Username = "owner" }));
+
+        service.Assign(room, owner, 1);
+
+        Assert.Empty(store.Assignments);
+        Assert.Empty(room.UsersWithRights);
+        Assert.Empty(sent);
+    }
+
+    [Theory]
+    [InlineData(999, true)]
+    [InlineData(1000, false)]
+    public void ARoomHasAtMostOneThousandRightsHolders(int holders, bool given)
+    {
+        var room = TestRoom();
+        room.UsersWithRights = Enumerable.Range(10_000, holders).ToList();
+        var (owner, _) = HabbiconTestSupport.Client(new Habbo { Id = 1, Username = "owner", Access = EditorTestSupport.Access([]) });
+        var store = new RecordingStore();
+        var service = new RoomRightsService(store, null!, new Cache(new() { Id = 2, Username = "guest" }));
+
+        service.Assign(room, owner, 2);
+
+        Assert.Equal(given, store.Assignments.Contains((room.Id, 2)));
+        Assert.Equal(given, room.UsersWithRights.Contains(2));
+    }
+
+    [Fact]
     public void NonOwnerAssignmentIsALegitimateNoOp()
     {
         var room = TestRoom();
@@ -120,7 +167,7 @@ public sealed class RoomRightsServiceTests
     {
         var room = TestRoom();
         var (owner, sent) = HabbiconTestSupport.Client(new Habbo { Id = 1, Username = "owner", Access = EditorTestSupport.Access([]) });
-        var service = new RoomRightsService(new RecordingStore { Fail = true }, null!, new Cache(null));
+        var service = new RoomRightsService(new RecordingStore { Fail = true }, null!, new Cache(new() { Id = 2, Username = "guest" }));
 
         Assert.Throws<InvalidOperationException>(() => service.Assign(room, owner, 2));
         Assert.Empty(room.UsersWithRights);

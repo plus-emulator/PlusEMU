@@ -86,6 +86,58 @@ public sealed class RoomMuteServiceTests
     }
 
 
+    [Fact]
+    public void RightsHolderCannotMuteTheRoomOwner()
+    {
+        var clock = new CountingClock(Now, TimeZoneInfo.Utc);
+        var world = new World(clock);
+        var (achievements, achievementRecorder) = AchievementRecorder.Create();
+        world.Owner.Access = UserAccess.Empty;
+        world.Target.Access = UserAccess.Empty;
+        world.Room.WhoCanMute = 1;
+        world.Room.UsersWithRights.Add(world.Target.Id);
+
+        new RoomMuteService(achievements, clock).Mute(world.TargetClient, world.Owner.Id, 2);
+
+        Assert.Empty(world.Room.MutedUsers);
+        Assert.Equal(0, achievementRecorder.Calls);
+    }
+
+    [Theory]
+    [InlineData(10, true)]
+    [InlineData(11, false)]
+    [InlineData(1080, false)]
+    public void RightsHolderMuteIsNoLongerThanTenMinutes(int durationMinutes, bool muted)
+    {
+        var clock = new CountingClock(Now, TimeZoneInfo.Utc);
+        var world = new World(clock);
+        var (achievements, _) = AchievementRecorder.Create();
+        world.Room.OwnerId = 99;
+        world.Room.OwnerName = "somebody-else";
+        world.Room.WhoCanMute = 1;
+        world.Room.UsersWithRights.Add(world.Owner.Id);
+
+        new RoomMuteService(achievements, clock).Mute(world.OwnerClient, world.Target.Id, durationMinutes);
+
+        Assert.Equal(muted, world.Room.MutedUsers.ContainsKey(world.Target.Id));
+    }
+
+    [Theory]
+    [InlineData(1080, true)]
+    [InlineData(1081, false)]
+    [InlineData(35_791_394, false)]
+    public void AmbassadorMuteIsNoLongerThanEighteenHours(int durationMinutes, bool muted)
+    {
+        var clock = new CountingClock(Now, TimeZoneInfo.Utc);
+        var world = new World(clock);
+        var (achievements, _) = AchievementRecorder.Create();
+        world.Owner.Access = EditorTestSupport.Access([PermissionKeys.Ambassador], 10);
+
+        new RoomMuteService(achievements, clock).Mute(world.OwnerClient, world.Target.Id, durationMinutes);
+
+        Assert.Equal(muted, world.Room.MutedUsers.ContainsKey(world.Target.Id));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(1)]

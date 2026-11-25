@@ -96,6 +96,53 @@ public class AvatarWardrobeTests
         Assert.Equal(new object[] { 7, 3, "processed", "M" }, Assert.Single(store.Saves));
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(10)]
+    public void OutfitIsSavedInEveryWardrobeSlot(int slotId)
+    {
+        var store = new RecordingStore();
+        var habbo = new Habbo { Id = 7, Clothing = new ClothingComponent() };
+
+        new AvatarWardrobeService(new RecordingFigures(), store, UserDataExists(true)).SaveOutfit(habbo, slotId, "raw-look", "f");
+
+        Assert.Equal(new object[] { 7, slotId, "processed", "F" }, Assert.Single(store.Saves));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(11)]
+    [InlineData(9999)]
+    public void OutfitOutsideTheWardrobeSlotsIsNotSaved(int slotId)
+    {
+        var figures = new RecordingFigures();
+        var store = new RecordingStore();
+        var habbo = new Habbo { Id = 7, Clothing = new ClothingComponent() };
+
+        new AvatarWardrobeService(figures, store, UserDataExists(true)).SaveOutfit(habbo, slotId, "raw-look", "m");
+
+        Assert.Empty(figures.Calls);
+        Assert.Empty(store.Saves);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("U")]
+    [InlineData("MF")]
+    [InlineData("<b>x</b>")]
+    public void OutfitWithAnInvalidGenderIsNotSaved(string gender)
+    {
+        var figures = new RecordingFigures();
+        var store = new RecordingStore();
+        var habbo = new Habbo { Id = 7, Clothing = new ClothingComponent() };
+
+        new AvatarWardrobeService(figures, store, UserDataExists(true)).SaveOutfit(habbo, 3, "raw-look", gender);
+
+        Assert.Empty(figures.Calls);
+        Assert.Empty(store.Saves);
+    }
+
     [Fact]
     public void OutfitIsNotSavedWithoutALoadedWardrobe()
     {

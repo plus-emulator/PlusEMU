@@ -6,6 +6,7 @@ using Plus.Communication.Packets.Incoming.Catalog;
 using Plus.Communication.Packets.Outgoing;
 using Plus.Communication.Packets.Outgoing.Catalog;
 using Plus.Core;
+using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Catalog;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Items;
@@ -158,8 +159,10 @@ public sealed class ClubCatalogServiceTests
         bool hasClubPage = true,
         bool hasOffer = true,
         bool membershipSucceeds = true,
-        IPlannedShutdown? plannedShutdown = null)
+        IPlannedShutdown? plannedShutdown = null,
+        IAchievementManager? achievements = null)
     {
+        achievements ??= CatalogSnapshotTestSupport.Proxy<IAchievementManager>((_, _) => false);
         var habbo = new Habbo { Id = 42, Username = "Dennis", Credits = 100, Diamonds = 50 };
         var (client, sent) = HabbiconTestSupport.Client(habbo);
         var rewards = new RecordingRewards(claimSucceeds);
@@ -179,7 +182,7 @@ public sealed class ClubCatalogServiceTests
             ? [new CatalogPage { Id = 1, Enabled = true, Layout = "club_buy" }]
             : [];
         var memberships = new RecordingMembership(membershipSucceeds);
-        var service = new ClubCatalogService(rewards, new SnapshotService(), catalog, memberships, plannedShutdown);
+        var service = new ClubCatalogService(rewards, new SnapshotService(), catalog, memberships, achievements, plannedShutdown);
 
         return new(service, client, habbo, sent, rewards, memberships);
     }

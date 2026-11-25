@@ -24,9 +24,15 @@ public static class AreaHideState
     private static readonly ConditionalWeakTable<Item, object> Gates = new();
     private static readonly string[] Fields = ["state", "rootX", "rootY", "width", "length", "invisibility", "wallItems", "invert"];
     public static bool IsAreaHide(Item item) => item.Definition.InteractionType == InteractionType.AreaHide;
+    /// <summary>A hider that was never set up is off, has no area and hides wall items.</summary>
+    public static IntArrayDataFormat Fresh() => new() { Data = [0, 0, 0, 0, 0, 0, 1, 0] };
     public static IntArrayDataFormat Load(string stored)
     {
-        var values = stored.Length == 0 ? [0] : stored.Split('\n').Select(value => int.Parse(value, CultureInfo.InvariantCulture)).ToArray();
+        if (stored.Length == 0) {
+            return Fresh();
+        }
+
+        var values = stored.Split('\n').Select(value => int.Parse(value, CultureInfo.InvariantCulture)).ToArray();
 
         if (values.Length > 8) {
             throw new FormatException("Invalid area-hide NumberData.");

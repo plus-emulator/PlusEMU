@@ -41,6 +41,16 @@ public sealed class AreaHideParityTests
         Assert.Throws<FormatException>(() => AreaHideState.Load("1\n2\n3\n4\n5\n6\n7\n8\n9"));
     }
 
+    [Fact]
+    public void ANewHiderStartsOffWithoutAnAreaAndHidesWallItems()
+    {
+        var definition = new ItemDefinition { Id = 1, ItemName = "conf_area_hide", InteractionType = InteractionType.AreaHide, Type = ItemType.Floor };
+        int[] fresh = [0, 0, 0, 0, 0, 0, 1, 0];
+
+        Assert.Equal(fresh, Assert.IsType<IntArrayDataFormat>(definition.CreateData()).Data);
+        Assert.Equal(fresh, AreaHideState.Load("").Data);
+    }
+
     [WiredChestDatabaseFact]
     public void MigrationRepairsOnlyMatchingAssetFloorSpriteAndKnownWrongInteractionAndRepeatsSafely()
     {

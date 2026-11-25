@@ -1,6 +1,8 @@
+using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Reflection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Plus.Communication.Packets;
 using Plus.Communication.Packets.Incoming;
 using Plus.Communication.Packets.Incoming.Moderation;
@@ -289,6 +291,147 @@ public sealed class ModeratorTicketSnapshotTests
         Assert.True(problems.Count == 0, string.Join("\n", problems));
     }
 
+    [Fact]
+    public async Task SubmissionCutsTheMessageToTheReportFormLimit()
+    {
+        var ticket = await SubmitRoomReport(new string('m', 600));
+        Assert.Equal(new string('m', 253), ticket.Issue);
+    }
+
+    [Fact]
+    public async Task SubmissionKeepsOnlyTheFirstHundredChatLines()
+    {
+        var ticket = await SubmitRoomReport("help", Enumerable.Range(0, 150).Select(index => $"line {index}").ToArray());
+        Assert.Equal(Enumerable.Range(0, 100).Select(index => $"line {index}"), ticket.ReportedChats);
+    }
+
+    [Fact]
+    public async Task SubmissionCutsEachChatLineToTheLargestFormattedChatLine()
+    {
+        var tableTabs = string.Concat(Enumerable.Repeat(FormattedTableTab, 66)) + "&#39321;&#39321;";
+        var ticket = await SubmitRoomReport("help", tableTabs, new string('c', 9000), "short");
+        Assert.Equal(new[] { tableTabs, new string('c', 5266), "short" }, ticket.ReportedChats);
+    }
+
+    [Fact]
+    public async Task SubmissionKeepsFormattedNonLatinChatLinesWhole()
+    {
+        var cyrillic = string.Concat(Enumerable.Repeat("&#1071;", 200));
+        var coloured = "<span style=\"color: orange\">" + string.Concat(Enumerable.Repeat("&#39321;", 197)) + "</span>";
+        var ticket = await SubmitRoomReport("help", cyrillic, coloured);
+        Assert.Equal(new[] { cyrillic, coloured }, ticket.ReportedChats);
+    }
+
+    [Fact]
+    public async Task SubmissionNeverCutsASurrogatePairInHalf()
+    {
+        var ticket = await SubmitRoomReport(new string('m', 252) + "😀", new string('c', 5265) + "😀");
+        Assert.Equal(new string('m', 252), ticket.Issue);
+        Assert.Equal(new[] { new string('c', 5265) }, ticket.ReportedChats);
+    }
+
+    [Fact]
+    public void SenderWaitsAMinuteBetweenTicketsEvenAfterDeletingThePendingCall()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var world = new TicketWorld(RealTickets(), clock);
+        world.Rooms[42] = new RoomData { Id = 42 };
+        var (sender, _, _) = Connect(Person(1, "Sender"));
+        world.Service.Submit(sender, new("help", 6, -1, 42, []));
+        world.Service.DeletePending(sender);
+        clock.Advance(TimeSpan.FromSeconds(59));
+        world.Service.Submit(sender, new("help again", 6, -1, 42, []));
+        Assert.Equal((1, 1), (world.Alerts, world.Submissions));
+        clock.Advance(TimeSpan.FromSeconds(2));
+        world.Service.Submit(sender, new("help again", 6, -1, 42, []));
+        Assert.Equal((2, 2), (world.Alerts, world.Submissions));
+    }
+
+    [Fact]
+    public void CooldownHoldsForANewSessionOfTheSameUser()
+    {
+        var clock = new FakeTimeProvider(Now);
+        var world = new TicketWorld(RealTickets(), clock);
+        world.Rooms[42] = new RoomData { Id = 42 };
+        var (first, _, _) = Connect(Person(1, "Sender"));
+        world.Service.Submit(first, new("help", 6, -1, 42, []));
+        world.Service.DeletePending(first);
+        clock.Advance(TimeSpan.FromSeconds(20));
+        var (relogged, sent, _) = Connect(Person(1, "Sender"));
+        world.Service.Submit(relogged, new("help again", 6, -1, 42, []));
+        Assert.Equal((1, 1), (world.Alerts, world.Submissions));
+        var notice = Assert.Single(sent);
+        Assert.Equal(ServerPacketHeader.BroadcastMessageAlertComposer, notice.Header);
+        Assert.Equal("You're sending calls for help too fast! Please wait 40 seconds!",
+            new Plus.Communication.Flash.FlashIncomingPacket { Buffer = notice.Payload }.ReadString());
+        clock.Advance(TimeSpan.FromSeconds(41));
+        world.Service.Submit(relogged, new("help again", 6, -1, 42, []));
+        Assert.Equal((2, 2), (world.Alerts, world.Submissions));
+    }
+
+    [Fact]
+    public void SenderDeletedCallLeavesMemoryAndReachesStaffAsClosed()
+    {
+        var moderation = RealTickets();
+        var world = new TicketWorld(moderation);
+        world.Rooms[42] = new RoomData { Id = 42 };
+        var (sender, _, _) = Connect(Person(1, "Sender"));
+        world.Service.Submit(sender, new("help", 6, -1, 42, []));
+        world.Service.DeletePending(sender);
+        Assert.Empty(moderation.GetTickets);
+        Assert.Equal((int)ModerationTicketStatus.ClosedOrAssignedElsewhere, Compose(world.Updates[^1])[1]);
+        Assert.Equal(0, TicketsSentAtLogin(world.Service));
+    }
+
+    [Fact]
+    public void ModeratorClosedTicketLeavesMemoryAndTheLoginList()
+    {
+        var moderation = RealTickets();
+        var world = new TicketWorld(moderation);
+        world.Rooms[42] = new RoomData { Id = 42 };
+        var (sender, _, _) = Connect(Person(1, "Sender"));
+        var (staff, _, _) = Connect(Person(3, "Staff", moderator: true));
+        world.Service.Submit(sender, new("help", 6, -1, 42, []));
+        var id = Assert.Single(moderation.GetTickets).Id;
+        world.Service.Pick(staff, id);
+        world.Service.Close(staff, id, SupportTicketResult.Resolved);
+        Assert.Empty(moderation.GetTickets);
+        Assert.Equal(0, TicketsSentAtLogin(world.Service));
+    }
+
+    // The web client sends a typed `[a]` table tab as this markup.
+    private const string FormattedTableTab = "<span data-chat-table-tab=\"\" style=\"display:inline-block;min-width:4em\"></span>";
+
+    private static ModerationManager RealTickets() =>
+        new(null!, NullLogger<ModerationManager>.Instance, null!, null!, null!, TimeProvider.System);
+
+    private static int TicketsSentAtLogin(ModeratorTicketService service)
+    {
+        var (staff, sent, _) = Connect(Person(4, "Late", moderator: true));
+        service.SendInitialization(staff);
+        var init = Assert.Single(sent);
+        Assert.Equal(ServerPacketHeader.ModeratorInitComposer, init.Header);
+
+        return BinaryPrimitives.ReadInt32BigEndian(init.Payload);
+    }
+
+    private static async Task<ModerationTicket> SubmitRoomReport(string message, params string[] chats)
+    {
+        var (client, _, _) = Connect(Person(1, "Sender"));
+        var world = new TicketWorld();
+        world.Rooms[42] = new RoomData { Id = 42 };
+        var frame = new List<object> { message, 6, -1, 42, chats.Length };
+
+        foreach (var chat in chats) {
+            frame.Add(0);
+            frame.Add(chat);
+        }
+
+        await Dispatch(new SubmitNewTicketEvent(world.Service), client, ClientPacketHeader.SubmitNewTicketEvent, frame.ToArray());
+
+        return Assert.Single(world.Tickets);
+    }
+
     private static async Task RefuseRoomReport(int roomId, bool assertLookup)
     {
         var (client, _, disconnected) = Connect(Person(1, "Sender", roomId: 99));
@@ -471,12 +614,13 @@ public sealed class ModeratorTicketSnapshotTests
         public int Abuses { get; private set; }
         public int Alerts { get; private set; }
         public int Broadcasts { get; private set; }
+        public List<IServerPacket> Updates { get; } = [];
         public ModeratorTicketService Service { get; }
 
-        public TicketWorld()
+        public TicketWorld(IModerationManager? moderation = null, TimeProvider? clock = null)
         {
-            Service = new(Proxy<IModerationManager>(Moderate), Proxy<IGameClientManager>(Clients), Proxy<IModeratorUserLookup>(Users),
-                new RecordingStore(this), TimeProvider.System, Proxy<IRoomDataLoader>(LoadRoom));
+            Service = new(moderation ?? Proxy<IModerationManager>(Moderate), Proxy<IGameClientManager>(Clients), Proxy<IModeratorUserLookup>(Users),
+                new RecordingStore(this), clock ?? TimeProvider.System, Proxy<IRoomDataLoader>(LoadRoom));
         }
 
         private object? Moderate(string method, object?[] args)
@@ -495,6 +639,8 @@ public sealed class ModeratorTicketSnapshotTests
                     args[1] = ticket;
 
                     return ticket != null;
+                case "RemoveTicket":
+                    return null;
                 default:
                     throw new InvalidOperationException(method);
             }
@@ -534,6 +680,7 @@ public sealed class ModeratorTicketSnapshotTests
                     return null;
                 case "SendPacket":
                     Broadcasts++;
+                    Updates.Add((IServerPacket)args[0]!);
 
                     return null;
                 case "GetClientByUserId":

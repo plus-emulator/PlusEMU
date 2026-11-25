@@ -489,6 +489,8 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     public bool TryGetTicket(int ticketId, [NotNullWhen(true)] out ModerationTicket? ticket) => _modTickets.TryGetValue(ticketId, out ticket);
 
+    public void RemoveTicket(int ticketId) => _modTickets.TryRemove(ticketId, out _);
+
     public bool UserHasTickets(int userId) => _modTickets.Any(x => x.Value.Sender.Id == userId && x.Value.Answered == false);
 
     public ModerationTicket? GetTicketBySenderId(int userId) => _modTickets.Values.FirstOrDefault(ticket => ticket.Sender.Id == userId && !ticket.Answered);

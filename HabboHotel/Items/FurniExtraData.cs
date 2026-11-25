@@ -211,6 +211,12 @@ internal static class FurniExtraData
 
                     return data;
                 }
+            case InteractionType.BadgeDisplay: {
+                    var display = new BadgeDisplayDataFormat();
+                    display.Store(stored);
+
+                    return display;
+                }
             case InteractionType.AreaHide:
                 return AreaHide.AreaHideState.Load(stored);
             case InteractionType.Toner when Data.Toner.TonerState.Load(stored) is { } toner:

@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -13,6 +14,7 @@ public sealed class RconConnection : IDisposable
     // Fits a grant bundle at its decoded cap (8192 bytes, Base64 10924 characters) with room for the envelope.
     internal const int MaxRequestBytes = 16384;
     private const int MaxLegacyParameterLength = 1024;
+    private const string InvalidRequest = "Invalid RCON request.";
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(2);
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private static readonly JsonSerializerOptions JsonOptions = new() { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
@@ -26,6 +28,7 @@ public sealed class RconConnection : IDisposable
 
     private readonly ILogger<RconConnection> _logger;
     private readonly ICommandManager? _commands;
+    private readonly byte[]? _secret;
     private readonly byte[] _buffer = new byte[1024];
     private readonly object _gate = new();
     private readonly MemoryStream _request = new();
@@ -35,13 +38,14 @@ public sealed class RconConnection : IDisposable
     private RequestState _state;
     private int _disposed;
 
-    public RconConnection(Socket socket, ILogger<RconConnection> logger) : this(socket, logger, null, TimeProvider.System) { }
+    public RconConnection(Socket socket, ILogger<RconConnection> logger, byte[]? secret) : this(socket, logger, null, TimeProvider.System, secret) { }
 
-    internal RconConnection(Socket socket, ILogger<RconConnection> logger, ICommandManager? commands, TimeProvider time)
+    internal RconConnection(Socket socket, ILogger<RconConnection> logger, ICommandManager? commands, TimeProvider time, byte[]? secret = null)
     {
         _socket = socket;
         _logger = logger;
         _commands = commands;
+        _secret = secret;
         _timeout = time.CreateTimer(_ => TimeoutRequest(), null, RequestTimeout, Timeout.InfiniteTimeSpan);
         Receive();
     }
@@ -99,6 +103,14 @@ public sealed class RconConnection : IDisposable
 
                 if (!_jsonRequest) {
                     _state = RequestState.Processing;
+
+                    if (_secret != null) {
+                        _logger.LogWarning("Refused a legacy RCON request because the legacy format cannot carry Rcon:Secret.");
+                        Reject(InvalidRequest);
+
+                        return;
+                    }
+
                     var data = Encoding.Default.GetString(_buffer, 0, bytes);
 
                     if (!Commands.Parse(data)) {
@@ -132,6 +144,8 @@ public sealed class RconConnection : IDisposable
 
             lock (_gate) {
                 if (_state != RequestState.Pending) {
+                    Dispose();
+
                     return;
                 }
 
@@ -164,10 +178,17 @@ public sealed class RconConnection : IDisposable
 
             var request = JsonSerializer.Deserialize<AcknowledgedRequest>(StrictUtf8.GetString(bytes), JsonOptions);
 
+            if (!Authorized(request?.Secret)) {
+                _logger.LogWarning("Refused an RCON request with a missing or wrong secret.");
+                Reject(InvalidRequest);
+
+                return;
+            }
+
             var acknowledged = request?.Command == null ? null : Commands.Acknowledged(request.Command);
 
             if (!Valid(request, acknowledged != null ? MaxRequestBytes : MaxLegacyParameterLength)) {
-                Reject("Invalid RCON request.");
+                Reject(InvalidRequest);
 
                 return;
             }
@@ -215,6 +236,9 @@ public sealed class RconConnection : IDisposable
             return GrantOutcome.Fail(GrantOutcome.InternalError);
         }
     }
+
+    private bool Authorized(string? secret) =>
+        _secret == null || (secret != null && CryptographicOperations.FixedTimeEquals(_secret, Encoding.UTF8.GetBytes(secret)));
 
     private static bool Valid(AcknowledgedRequest? request, int maxParameterLength)
     {
@@ -327,6 +351,8 @@ public sealed class RconConnection : IDisposable
         public string? Command { get; init; }
         [JsonPropertyName("parameters")]
         public string[]? Parameters { get; init; }
+        [JsonPropertyName("secret")]
+        public string? Secret { get; init; }
     }
 
     private enum RequestState

@@ -20,7 +20,7 @@ internal class ProgressUserAchievementCommand : IRconCommand
 
     public Task<bool> TryExecute(string[] parameters)
     {
-        if (!int.TryParse(parameters[0], out var userId)) {
+        if (parameters.Length < 3 || !int.TryParse(parameters[0], out var userId)) {
             return Task.FromResult(false);
         }
 

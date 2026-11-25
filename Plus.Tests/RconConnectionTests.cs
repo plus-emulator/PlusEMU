@@ -1,11 +1,15 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Plus.Communication.RCON;
 using Plus.Communication.RCON.Commands;
+using Plus.Communication.RCON.Commands.User;
+using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Grants;
 using Xunit;
 
@@ -14,6 +18,7 @@ namespace Plus.Tests;
 public sealed class RconConnectionTests
 {
     private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(30);
+    private const string Secret = "0123456789abcdef0123456789abcdef";
 
     [Fact]
     public async Task AcknowledgesASplitJsonRequestOnlyAfterTheCommandSucceeds()
@@ -143,6 +148,265 @@ public sealed class RconConnectionTests
         Assert.Equal("disconnect_user\u000142", commands.Request);
     }
 
+    [Fact]
+    public async Task ALegacyCommandThatThrowsStillClosesTheSocket()
+    {
+        using var sockets = await ConnectedSockets.Create();
+        using var connection = new RconConnection(sockets.Server, NullLogger<RconConnection>.Instance, new ThrowingCommands(), new FakeTimeProvider());
+
+        await sockets.Client.SendAsync(Encoding.Default.GetBytes("disconnect_user\u000142"));
+
+        await AssertClosed(sockets.Client);
+    }
+
+    [Theory]
+    [InlineData("disconnect_user")]
+    [InlineData("alert_user\u000142")]
+    [InlineData("progress_user_achievement\u000142:ACH")]
+    public async Task MalformedLegacyInputRunsNothingAndClosesTheSocket(string request)
+    {
+        var (commands, disconnect, sent) = LegacyCommands();
+        using var sockets = await ConnectedSockets.Create();
+        using var connection = new RconConnection(sockets.Server, NullLogger<RconConnection>.Instance, commands, new FakeTimeProvider());
+
+        await sockets.Client.SendAsync(Encoding.Default.GetBytes(request));
+
+        await AssertClosed(sockets.Client);
+        Assert.Null(disconnect.Received);
+        Assert.Empty(sent);
+    }
+
+    [Theory]
+    [InlineData("disconnect_user")]
+    [InlineData("alert_user\u000142")]
+    [InlineData("progress_user_achievement\u000142:ACH")]
+    public void TheCommandManagerRefusesMalformedLegacyInput(string request)
+    {
+        var (commands, disconnect, sent) = LegacyCommands();
+
+        Assert.False(commands.Parse(request));
+        Assert.Null(disconnect.Received);
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public async Task ACorrectSecretRunsTheCommand()
+    {
+        using var sockets = await ConnectedSockets.Create();
+        var commands = new RecordingCommands(true);
+        using var connection = Connect(sockets, commands, Secret);
+
+        await sockets.Client.SendAsync(Encoding.UTF8.GetBytes("{\"command\":\"disconnect_user\",\"parameters\":[\"42\"],\"secret\":\"" + Secret + "\"}\n"));
+
+        Assert.Equal(0, (await ReadResponse(sockets.Client)).GetProperty("status").GetInt32());
+        Assert.Equal("disconnect_user\u000142", commands.Request);
+    }
+
+    [Fact]
+    public async Task ACorrectSecretRunsAnAcknowledgedCommand()
+    {
+        using var sockets = await ConnectedSockets.Create();
+        var commands = new AcknowledgedCommands(_ => Task.FromResult(GrantOutcome.Success(null)));
+        using var connection = Connect(sockets, commands, Secret);
+
+        await sockets.Client.SendAsync(Encoding.UTF8.GetBytes("{\"secret\":\"" + Secret + "\",\"command\":\"give_user_badge\",\"parameters\":[\"42\",\"ADM\"]}\n"));
+
+        Assert.Equal(0, (await ReadResponse(sockets.Client)).GetProperty("status").GetInt32());
+        Assert.Equal(["42", "ADM"], commands.Received!);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(",\"secret\":null")]
+    [InlineData(",\"secret\":\"\"")]
+    [InlineData(",\"secret\":\"0123456789abcdef0123456789abcdeX\"")]
+    [InlineData(",\"secret\":\"0123456789ABCDEF0123456789ABCDEF\"")]
+    [InlineData(",\"secret\":\"0123456789abcdef\"")]
+    [InlineData(",\"secret\":\"0123456789abcdef0123456789abcdef0\"")]
+    public async Task AMissingOrWrongSecretRunsNothingAndClosesTheConnection(string secretMember)
+    {
+        var invalid = await InvalidRequestMessage();
+        using var sockets = await ConnectedSockets.Create();
+        var commands = new RecordingCommands(true);
+        using var connection = Connect(sockets, commands, Secret);
+
+        await sockets.Client.SendAsync(Encoding.UTF8.GetBytes("{\"command\":\"disconnect_user\",\"parameters\":[\"42\"]" + secretMember + "}\n"));
+
+        var response = await ReadResponse(sockets.Client);
+        Assert.Equal(1, response.GetProperty("status").GetInt32());
+        Assert.Equal(invalid, response.GetProperty("message").GetString());
+        await AssertClosed(sockets.Client);
+        Assert.Null(commands.Request);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(",\"secret\":\"0123456789abcdef0123456789abcdeX\"")]
+    public async Task AMissingOrWrongSecretNeverRunsAnAcknowledgedCommand(string secretMember)
+    {
+        using var sockets = await ConnectedSockets.Create();
+        var commands = new AcknowledgedCommands(_ => Task.FromResult(GrantOutcome.Success(null)));
+        using var connection = Connect(sockets, commands, Secret);
+
+        await sockets.Client.SendAsync(Encoding.UTF8.GetBytes("{\"command\":\"grant_user_bundle\",\"parameters\":[\"42\",\"order-1\",\"AAAA\"]" + secretMember + "}\n"));
+
+        Assert.Equal(1, (await ReadResponse(sockets.Client)).GetProperty("status").GetInt32());
+        await AssertClosed(sockets.Client);
+        Assert.Null(commands.Received);
+    }
+
+    [Fact]
+    public async Task TheLegacyFormatIsRefusedWhenASecretIsSet()
+    {
+        using var sockets = await ConnectedSockets.Create();
+        var commands = new RecordingCommands(true);
+        using var connection = Connect(sockets, commands, Secret);
+
+        await sockets.Client.SendAsync(Encoding.Default.GetBytes("disconnect_user\u000142"));
+
+        await AssertClosed(sockets.Client);
+        Assert.Null(commands.Request);
+    }
+
+    [Fact]
+    public async Task TheLegacyFormatStillWorksWithoutASecret()
+    {
+        using var sockets = await ConnectedSockets.Create();
+        var commands = new RecordingCommands(true);
+        using var connection = Connect(sockets, commands, string.Empty);
+
+        await sockets.Client.SendAsync(Encoding.Default.GetBytes("disconnect_user\u000142"));
+
+        await AssertClosed(sockets.Client);
+        Assert.Equal("disconnect_user\u000142", commands.Request);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(",\"secret\":\"any value the website holds\"")]
+    public async Task AServerWithoutASecretRunsRequestsWithOrWithoutTheSecretMember(string secretMember)
+    {
+        using var sockets = await ConnectedSockets.Create();
+        var commands = new RecordingCommands(true);
+        using var connection = Connect(sockets, commands, string.Empty);
+
+        await sockets.Client.SendAsync(Encoding.UTF8.GetBytes("{\"command\":\"disconnect_user\",\"parameters\":[\"42\"]" + secretMember + "}\n"));
+
+        Assert.Equal(0, (await ReadResponse(sockets.Client)).GetProperty("status").GetInt32());
+        Assert.Equal("disconnect_user\u000142", commands.Request);
+    }
+
+    [Fact]
+    public async Task NeitherTheConfiguredNorAWrongSecretIsWrittenToTheLog()
+    {
+        const string wrong = "fedcba9876543210fedcba9876543210";
+        var logger = new RecordingLogger();
+        var requests = new (ICommandManager Commands, string Request)[]
+        {
+            (new RecordingCommands(true), "{\"command\":\"disconnect_user\",\"parameters\":[\"42\"],\"secret\":\"" + wrong + "\"}\n"),
+            (new RecordingCommands(false), "{\"command\":\"disconnect_user\",\"parameters\":[\"42\"],\"secret\":\"" + Secret + "\"}\n"),
+            (new AcknowledgedCommands(_ => throw new InvalidOperationException("failed")), "{\"command\":\"give_user_badge\",\"parameters\":[\"42\",\"ADM\"],\"secret\":\"" + Secret + "\"}\n"),
+            (new RecordingCommands(true), "disconnect_user\u000142:" + Secret),
+        };
+
+        foreach (var (commands, request) in requests) {
+            using var sockets = await ConnectedSockets.Create();
+            using var connection = Connect(sockets, commands, Secret, logger);
+
+            await sockets.Client.SendAsync(Encoding.UTF8.GetBytes(request));
+            await AssertClosed(sockets.Client);
+        }
+
+        Assert.NotEmpty(logger.Entries);
+        Assert.All(logger.Entries, entry => Assert.DoesNotContain(Secret, entry.Text));
+        Assert.All(logger.Entries, entry => Assert.DoesNotContain(wrong, entry.Text));
+    }
+
+    [Fact]
+    public void AnEmptySecretOnLoopbackStartsWithoutAWarning()
+    {
+        var logger = new RecordingLogger();
+
+        Assert.Null(RconSocket.ReadSecret(new RconConfiguration { Hostname = "127.0.0.1" }, logger));
+        Assert.DoesNotContain(logger.Entries, entry => entry.Level >= LogLevel.Warning);
+    }
+
+    [Theory]
+    [InlineData("0.0.0.0")]
+    [InlineData("10.0.0.5")]
+    public void AnEmptySecretOnANonLoopbackAddressWarnsAtStartup(string hostname)
+    {
+        var logger = new RecordingLogger();
+
+        Assert.Null(RconSocket.ReadSecret(new RconConfiguration { Hostname = hostname }, logger));
+        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Text.Contains("Rcon:Secret"));
+    }
+
+    [Fact]
+    public void ASecretShorterThan32CharactersIsRejectedAtStartup()
+    {
+        var shortSecret = Secret[..31];
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            RconSocket.ReadSecret(new RconConfiguration { Hostname = "127.0.0.1", Secret = shortSecret }, new RecordingLogger()));
+
+        Assert.Contains("Rcon:Secret", error.Message);
+        Assert.Contains("32", error.Message);
+        Assert.DoesNotContain(shortSecret, error.Message);
+    }
+
+    [Fact]
+    public async Task ASecretOf32CharactersOnANonLoopbackAddressStartsWithoutAWarning()
+    {
+        var logger = new RecordingLogger();
+        var secret = RconSocket.ReadSecret(new RconConfiguration { Hostname = "0.0.0.0", Secret = Secret }, logger);
+        using var sockets = await ConnectedSockets.Create();
+        var commands = new RecordingCommands(true);
+        using var connection = new RconConnection(sockets.Server, NullLogger<RconConnection>.Instance, commands, new FakeTimeProvider(), secret);
+
+        await sockets.Client.SendAsync(Encoding.UTF8.GetBytes("{\"command\":\"disconnect_user\",\"parameters\":[\"42\"]}\n"));
+
+        Assert.Equal(1, (await ReadResponse(sockets.Client)).GetProperty("status").GetInt32());
+        Assert.Null(commands.Request);
+        Assert.DoesNotContain(logger.Entries, entry => entry.Level >= LogLevel.Warning);
+    }
+
+    private static RconConnection Connect(ConnectedSockets sockets, ICommandManager commands, string secret, ILogger<RconConnection>? logger = null) =>
+        new(sockets.Server, logger ?? NullLogger<RconConnection>.Instance, commands, new FakeTimeProvider(),
+            RconSocket.ReadSecret(new RconConfiguration { Hostname = "127.0.0.1", Secret = secret }, NullLogger.Instance));
+
+    private static async Task<string?> InvalidRequestMessage()
+    {
+        using var sockets = await ConnectedSockets.Create();
+        using var connection = new RconConnection(sockets.Server, NullLogger<RconConnection>.Instance, new RecordingCommands(true), new FakeTimeProvider());
+
+        await sockets.Client.SendAsync(Encoding.UTF8.GetBytes("{\"command\":\"not_registered\",\"parameters\":[]}\n"));
+
+        return (await ReadResponse(sockets.Client)).GetProperty("message").GetString();
+    }
+
+    private static (CommandManager Commands, RecordingCommand Disconnect, List<(uint Header, byte[] Payload)> Sent) LegacyCommands()
+    {
+        var (client, sent) = HabbiconTestSupport.Client(new Habbo { Id = 42 });
+        var clients = new TestGameClientManager(id => id == 42 ? client : null);
+        var disconnect = new RecordingCommand("disconnect_user");
+        var commands = new CommandManager([
+            disconnect, new AlertUserCommand(clients), new ProgressUserAchievementCommand(clients, TestItemRuntime.Achievements),
+        ]);
+
+        return (commands, disconnect, sent);
+    }
+
+    private static async Task AssertClosed(Socket socket)
+    {
+        var buffer = new byte[256];
+
+        try {
+            while (await socket.ReceiveAsync(buffer.AsMemory()).AsTask().WaitAsync(HangGuard) > 0) { }
+        }
+        catch (SocketException) { }
+    }
+
     private static async Task<JsonElement> ReadResponse(Socket socket)
     {
         using var stream = new NetworkStream(socket, ownsSocket: false);
@@ -234,6 +498,36 @@ public sealed class RconConnectionTests
             Request = data;
 
             return result;
+        }
+    }
+
+    private sealed class RecordingLogger : ILogger<RconConnection>
+    {
+        public ConcurrentQueue<(LogLevel Level, string Text)> Entries { get; } = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Enqueue((logLevel, formatter(state, exception) + " " + state + " " + exception));
+    }
+
+    private sealed class ThrowingCommands : ICommandManager
+    {
+        public bool Parse(string data) => throw new InvalidOperationException("The command failed.");
+    }
+
+    private sealed class RecordingCommand(string key) : IRconCommand
+    {
+        public string[]? Received { get; private set; }
+        public string Key => key;
+        public string Parameters => string.Empty;
+        public string Description => string.Empty;
+
+        public Task<bool> TryExecute(string[] parameters)
+        {
+            Received = parameters;
+
+            return Task.FromResult(true);
         }
     }
 

@@ -4,5 +4,10 @@ public class RconConfiguration
 {
     public string Hostname { get; set; } = "127.0.0.1";
     public int Port { get; set; }
+
+    /// <summary>IP addresses that may connect. Host names such as localhost are not resolved and never match.</summary>
     public IEnumerable<string> AllowedAddresses { get; set; } = [];
+
+    /// <summary>The shared secret every request must carry. Empty turns the check off.</summary>
+    public string Secret { get; set; } = string.Empty;
 }

@@ -1,6 +1,12 @@
+using System.Data;
+using System.Net;
+using Dapper;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using MySqlConnector;
+using Plus.Communication.Abstractions;
 using Plus.Database;
+using Plus.Database.Migrator;
 using Plus.HabboHotel.Moderation;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Authentication;
@@ -72,6 +78,306 @@ public sealed class ModerationBanCacheTests
         var users = Proxy<IUserDataFactory>((method, _) => method == nameof(IUserDataFactory.GetUsernameForHabboById) ? Task.FromResult("bob") : null);
 
         Assert.Equal(allowed, await new BanLoginCheckTask(moderation, users).CanLogin(session, 1));
+    }
+
+    [Theory]
+    [InlineData("203.0.113.7", true, false)]
+    [InlineData("203.0.113.8", true, true)]
+    [InlineData("203.0.113.7", false, true)]
+    public async Task LoginIsRefusedFromABannedVisitorAddress(string address, bool isVisitor, bool allowed)
+    {
+        var (session, _) = HabbiconTestSupport.Client(new Habbo { Id = 1 });
+        session.RemoteAddress = new ClientAddress(IPAddress.Parse(address), isVisitor);
+        var moderation = Proxy<IModerationManager>((method, args) =>
+            method == nameof(IModerationManager.HasBan) && (ModerationBanType)args[0]! == ModerationBanType.Ip && (string)args[1]! == "203.0.113.7");
+        var users = Proxy<IUserDataFactory>((method, _) => method == nameof(IUserDataFactory.GetUsernameForHabboById) ? Task.FromResult("bob") : null);
+
+        Assert.Equal(allowed, await new BanLoginCheckTask(moderation, users).CanLogin(session, 1));
+    }
+
+    [Fact]
+    public async Task ANewIpBanIsKnownToTheLoginCheck()
+    {
+        var manager = Manager();
+        await manager.BanUser("mod", ModerationBanType.Ip, "203.0.113.7", "reason", Now.AddDays(1));
+
+        Assert.True(manager.IsBanned(ModerationBanType.Ip, "203.0.113.7", out var ban));
+        Assert.Equal(ModerationBanType.Ip, ban.Type);
+    }
+
+    [RoomComponentDatabaseFact]
+    public Task AnActiveIpBanInTheDatabaseRefusesALoginFromThatAddress() => WithBansTable(async connection =>
+    {
+        connection.Execute("INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES ('ip', '203.0.113.7', 'reason', @expire, 'mod')",
+            new { expire = Now.AddDays(1).UtcDateTime });
+
+        var manager = DatabaseManager(connection.ConnectionString);
+        manager.ReCacheBans();
+
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+        Assert.True(await CanLoginFrom(manager, "203.0.113.8"));
+    });
+
+    [Theory]
+    [InlineData("2001:db8:0:0::5", "2001:db8::5", true)]
+    [InlineData("2001:DB8::5", "2001:db8::5", true)]
+    [InlineData("::ffff:203.0.113.7", "203.0.113.7", true)]
+    [InlineData("203.0.113.7", "::ffff:203.0.113.7", true)]
+    [InlineData("203.0.113.7", "203.0.113.8", false)]
+    [InlineData("not an address", "203.0.113.7", false)]
+    [InlineData("1234", "0.0.4.210", false)]
+    public async Task AnIpBanMatchesItsAddressInAnyWrittenForm(string stored, string visitor, bool banned)
+    {
+        var manager = Manager();
+        await manager.BanUser("mod", ModerationBanType.Ip, stored, "reason", Now.AddDays(1));
+
+        Assert.Equal(banned, manager.IsBanned(ModerationBanType.Ip, visitor, out _));
+    }
+
+    [RoomComponentDatabaseFact]
+    public Task AnIpBanStoredInAnotherFormRefusesALoginFromThatAddress() => WithBansTable(async connection =>
+    {
+        connection.Execute("""
+            INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES
+                ('ip', '2001:db8:0:0::5', 'reason', @expire, 'mod'), ('ip', '::ffff:203.0.113.7', 'reason', @expire, 'mod')
+            """, new { expire = Now.AddDays(1).UtcDateTime });
+
+        var manager = DatabaseManager(connection.ConnectionString);
+        manager.ReCacheBans();
+
+        Assert.False(await CanLoginFrom(manager, "2001:db8::5"));
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+        Assert.True(await CanLoginFrom(manager, "203.0.113.8"));
+    });
+
+    [RoomComponentDatabaseFact]
+    public Task ALoadedIpBanHoldsUntilItsLongestRowExpires() => WithBansTable(async connection =>
+    {
+        InsertBan(connection, "ip", "203.0.113.7", Now.AddHours(1));
+        var year = InsertBan(connection, "ip", "203.0.113.7", Now.AddYears(1));
+        var clock = new FakeTimeProvider(Now);
+        var manager = DatabaseManager(connection.ConnectionString, clock);
+        manager.ReCacheBans();
+        clock.Advance(TimeSpan.FromHours(2));
+
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+        Assert.Contains(year, connection.Query<int>("SELECT id FROM bans"));
+    });
+
+    [RoomComponentDatabaseFact]
+    public Task AShorterIpBanDoesNotLiftALongerOneOnTheSameAddress() => ShorterIpBanAfterALongerOne(withIndex: true);
+
+    [RoomComponentDatabaseFact]
+    public Task AShorterIpBanDoesNotLiftALongerOneInATableWithoutTheIndex() => ShorterIpBanAfterALongerOne(withIndex: false);
+
+    private static Task ShorterIpBanAfterALongerOne(bool withIndex) => WithBansTable(async connection =>
+    {
+        var clock = new FakeTimeProvider(Now);
+        var manager = DatabaseManager(connection.ConnectionString, clock);
+        await manager.BanUser("mod", ModerationBanType.Ip, "203.0.113.7", "year", Now.AddYears(1));
+        await manager.BanUser("mod", ModerationBanType.Ip, "203.0.113.7", "hour", Now.AddHours(1));
+        clock.Advance(TimeSpan.FromHours(2));
+
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+        Assert.Equal(["year"], connection.Query<string>("SELECT reason FROM bans WHERE expire > @now", new { now = clock.GetUtcNow().UtcDateTime }));
+
+        manager.ReCacheBans();
+
+        Assert.Equal(["year"], connection.Query<string>("SELECT reason FROM bans"));
+        Assert.False(await CanLoginFrom(manager, "203.0.113.7"));
+    }, withIndex);
+
+    [RoomComponentDatabaseFact]
+    public Task AnExpiredRowInAnotherFormDoesNotLiftAnActiveIpBan() => WithBansTable(async connection =>
+    {
+        // Many addresses, so the cache meets an expired form before the active one for some of them.
+        var addresses = Enumerable.Range(1, 20).Select(octet => $"203.0.113.{octet}").ToList();
+
+        foreach (var address in addresses) {
+            InsertBan(connection, "ip", address, Now.AddHours(1));
+            InsertBan(connection, "ip", "::ffff:" + address, Now.AddYears(1));
+        }
+
+        var clock = new FakeTimeProvider(Now);
+        var manager = DatabaseManager(connection.ConnectionString, clock);
+        manager.ReCacheBans();
+        clock.Advance(TimeSpan.FromHours(2));
+
+        foreach (var address in addresses) {
+            Assert.False(await CanLoginFrom(manager, address), address);
+        }
+    });
+
+    [RoomComponentDatabaseFact]
+    public Task AShorterUserBanDoesNotLiftALongerOne() => WithBansTable(async connection =>
+    {
+        var clock = new FakeTimeProvider(Now);
+        var manager = DatabaseManager(connection.ConnectionString, clock);
+        await manager.BanUser("mod", ModerationBanType.Username, "bob", "year", Now.AddYears(1));
+        await manager.BanUser("mod", ModerationBanType.Username, "bob", "hour", Now.AddHours(1));
+        clock.Advance(TimeSpan.FromHours(2));
+
+        Assert.False(await CanLoginFrom(manager, "198.51.100.1"));
+        Assert.Equal(2, connection.ExecuteScalar<int>("SELECT COUNT(*) FROM bans"));
+    });
+
+    [RoomComponentDatabaseFact]
+    public Task ALoadedMachineBanHoldsUntilItsLongestRowExpires() => WithBansTable(async connection =>
+    {
+        InsertBan(connection, "machine", "machine", Now.AddHours(1));
+        var year = InsertBan(connection, "machine", "machine", Now.AddYears(1));
+        var clock = new FakeTimeProvider(Now);
+        var manager = DatabaseManager(connection.ConnectionString, clock);
+        manager.ReCacheBans();
+        clock.Advance(TimeSpan.FromHours(2));
+
+        Assert.False(await CanLoginFrom(manager, "198.51.100.1", "machine"));
+        Assert.False(await CanLoginFrom(manager, "198.51.100.1", "machine"));
+        Assert.True(await CanLoginFrom(manager, "198.51.100.1", "other"));
+        Assert.Contains(year, connection.Query<int>("SELECT id FROM bans"));
+    });
+
+    [RoomComponentDatabaseFact]
+    public Task ABanHoldsUntilTheDatabaseHasDeletedEveryRowOfIt() => WithBansTable(async connection =>
+    {
+        var manager = DatabaseManager(connection.ConnectionString);
+        await manager.BanUser("mod", ModerationBanType.Username, "bob", "year", Now.AddYears(1));
+        await manager.BanUser("mod", ModerationBanType.Username, "bob", "day", Now.AddDays(1));
+
+        connection.Execute("DELETE FROM bans WHERE reason = 'year'");
+
+        Assert.False(await CanLoginFrom(manager, "198.51.100.1"));
+
+        connection.Execute("DELETE FROM bans");
+
+        Assert.True(await CanLoginFrom(manager, "198.51.100.1"));
+        Assert.True(await CanLoginFrom(manager, "198.51.100.1"));
+    });
+
+    [RoomComponentDatabaseFact]
+    public Task ABanWrittenWhileALoginFindsTheOldRowsGoneStaysCached() => WithBansTable(async connection =>
+    {
+        var database = new HookedDatabase(connection.ConnectionString);
+        var manager = DatabaseManager(connection.ConnectionString, database: database);
+        await manager.BanUser("mod", ModerationBanType.Username, "bob", "year", Now.AddYears(1));
+        connection.Execute("DELETE FROM bans");
+        database.AfterNextQuery = () => manager.BanUser("mod", ModerationBanType.Username, "bob", "day", Now.AddDays(1)).GetAwaiter().GetResult();
+
+        Assert.True(await CanLoginFrom(manager, "198.51.100.1"));
+        Assert.Equal(["day"], connection.Query<string>("SELECT reason FROM bans"));
+        Assert.False(await CanLoginFrom(manager, "198.51.100.1"));
+    });
+
+    [Theory]
+    [InlineData(" 203.0.113.7", "203.0.113.7", true)]
+    [InlineData("203.0.113.7 ", "203.0.113.7", true)]
+    [InlineData("192.168.010.001", "192.168.8.1", false)]
+    [InlineData("192.168.010.001", "192.168.10.1", false)]
+    public async Task AStoredIpBanIgnoresSpacesAndNeverReadsAnOctet(string stored, string visitor, bool banned)
+    {
+        var manager = Manager();
+        await manager.BanUser("mod", ModerationBanType.Ip, stored, "reason", Now.AddDays(1));
+
+        Assert.Equal(banned, manager.IsBanned(ModerationBanType.Ip, visitor, out _));
+    }
+
+    private static int InsertBan(MySqlConnection connection, string type, string value, DateTimeOffset expire) => connection.ExecuteScalar<int>(
+        "INSERT INTO bans (bantype, value, reason, expire, added_by) VALUES (@type, @value, 'reason', @expire, 'mod'); SELECT LAST_INSERT_ID();",
+        new { type, value, expire = expire.UtcDateTime });
+
+    /// <summary>Runs the test against the fresh install bans table, optionally without its index, in its own schema, dropped afterwards.</summary>
+    private static async Task WithBansTable(Func<MySqlConnection, Task> test, bool withIndex = true)
+    {
+        var root = Environment.GetEnvironmentVariable("ROOM_COMPONENT_DATABASE")!;
+        using var server = new MySqlConnection(root);
+        server.Open();
+        var schema = "moderation_ip_bans_" + Guid.NewGuid().ToString("N");
+        server.Execute($"CREATE DATABASE `{schema}`");
+
+        try {
+            using var connection = new MySqlConnection(new MySqlConnectionStringBuilder(root) { Database = schema }.ConnectionString);
+            connection.Open();
+            connection.Execute(SqlScript.Split(File.ReadAllText(HabbiconPacketTests.Repo("Database/FreshInstall.sql")))
+                .Single(statement => statement.Contains("CREATE TABLE `bans` (", StringComparison.Ordinal)));
+
+            if (!withIndex) {
+                connection.Execute("ALTER TABLE bans DROP INDEX type_value_expire");
+            }
+
+            connection.Execute("CREATE TABLE users (id INT NOT NULL PRIMARY KEY, username VARCHAR(50) NOT NULL, ip_last VARCHAR(45) NOT NULL)");
+            await test(connection);
+        }
+        finally {
+            server.Execute($"DROP DATABASE IF EXISTS `{schema}`");
+        }
+    }
+
+    private static ModerationManager DatabaseManager(string connectionString, TimeProvider? clock = null, IDatabase? database = null) => new(
+        database ?? new SchemaDatabase(connectionString),
+        NullLogger<ModerationManager>.Instance, Proxy<ISsoTicketStore>((_, _) => Task.CompletedTask), new SharedTestClients(), new AccountSessionGate(),
+        clock ?? new FakeTimeProvider(Now));
+
+    private static Task<bool> CanLoginFrom(IModerationManager manager, string address, string? machineId = null)
+    {
+        var users = Proxy<IUserDataFactory>((method, _) => method == nameof(IUserDataFactory.GetUsernameForHabboById) ? Task.FromResult("bob") : null);
+        var (session, _) = HabbiconTestSupport.Client(new Habbo { Id = 1 });
+        session.RemoteAddress = new ClientAddress(IPAddress.Parse(address), true);
+
+        if (machineId != null) {
+            session.RecordMachineId(machineId);
+        }
+
+        return new BanLoginCheckTask(manager, users).CanLogin(session, 1);
+    }
+
+    private sealed class SchemaDatabase(string connectionString) : IDatabase
+    {
+        public bool IsConnected() => true;
+        public IDbConnection Connection() => new MySqlConnection(connectionString);
+    }
+
+    /// <summary>Runs <see cref="AfterNextQuery"/> once, when the next connection's first query has finished.</summary>
+    private sealed class HookedDatabase(string connectionString) : IDatabase
+    {
+        private Action? _afterNextQuery;
+
+        public Action? AfterNextQuery { set => _afterNextQuery = value; }
+
+        public bool IsConnected() => true;
+
+        public IDbConnection Connection()
+        {
+            var connection = new MySqlConnection(connectionString);
+
+            return Interlocked.Exchange(ref _afterNextQuery, null) is { } hook ? new HookedConnection(connection, hook) : connection;
+        }
+    }
+
+    /// <summary>Dapper closes a connection it opened as soon as the query ends, so the hook runs between the query and the caller's next step.</summary>
+    private sealed class HookedConnection(MySqlConnection inner, Action hook) : IDbConnection
+    {
+        private Action? _hook = hook;
+
+        [System.Diagnostics.CodeAnalysis.AllowNull]
+        public string ConnectionString { get => inner.ConnectionString; set => inner.ConnectionString = value; }
+        public int ConnectionTimeout => inner.ConnectionTimeout;
+        public string Database => inner.Database;
+        public ConnectionState State => inner.State;
+
+        public IDbTransaction BeginTransaction() => inner.BeginTransaction();
+        public IDbTransaction BeginTransaction(IsolationLevel il) => inner.BeginTransaction(il);
+        public void ChangeDatabase(string databaseName) => inner.ChangeDatabase(databaseName);
+        public IDbCommand CreateCommand() => inner.CreateCommand();
+        public void Open() => inner.Open();
+
+        public void Close()
+        {
+            inner.Close();
+            Interlocked.Exchange(ref _hook, null)?.Invoke();
+        }
+
+        public void Dispose() => inner.Dispose();
     }
 
     private static ModerationManager Manager() => new(

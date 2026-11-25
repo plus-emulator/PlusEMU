@@ -1,7 +1,9 @@
+using Plus.Communication.Abstractions;
 using Plus.Core;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
 using System.Data;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using Dapper;
 using Plus.Database;
@@ -19,7 +21,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
     private readonly IGameClientManager _clients;
     private readonly IAccountSessionGate _sessionGate;
     private readonly TimeProvider _clock;
-    private readonly ConcurrentDictionary<(ModerationBanType Type, string Value), ModerationBan> _bans = new();
+    private readonly ConcurrentDictionary<(ModerationBanType Type, string Key), CachedBan> _bans = new();
     private readonly Dictionary<int, List<ModerationPresetActions>> _moderationCfhTopicActions = new();
 
 
@@ -163,22 +165,49 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     private async Task LoadBans(IDbConnection connection)
     {
-        var bans = await connection.QueryAsync<BanRow>("SELECT bantype AS Type, value, reason, expire AS ExpiresAt FROM bans WHERE bantype IN ('machine', 'user')");
+        var bans = await connection.QueryAsync<BanRow>("SELECT id, bantype AS Type, value, reason, expire AS ExpiresAt FROM bans");
         var now = _clock.GetUtcNow();
         _bans.Clear();
 
         foreach (var ban in bans) {
             if (ban.ExpiresAt is { } expiresAt && expiresAt > now) {
-                var type = BanTypeUtility.GetModerationBanType(ban.Type);
-                _bans.TryAdd((type, ban.Value), new(type, ban.Value, ban.Reason, expiresAt));
+                Cache(new(BanTypeUtility.GetModerationBanType(ban.Type), ban.Value, ban.Reason, expiresAt));
             }
             else {
-                await connection.ExecuteAsync("DELETE FROM bans WHERE bantype = @type AND value = @value LIMIT 1", new { type = ban.Type, value = ban.Value });
+                await connection.ExecuteAsync("DELETE FROM bans WHERE id = @id", new { id = ban.Id });
             }
         }
     }
 
-    private sealed record BanRow(string Type, string Value, string Reason, DateTimeOffset? ExpiresAt);
+    private sealed record BanRow(int Id, string Type, string Value, string Reason, DateTimeOffset? ExpiresAt);
+
+    /// <summary>Every cached row of one banned value. The value stays banned until the latest of their expiries.</summary>
+    private sealed record CachedBan((ModerationBanType Type, string Key) Key, ModerationBan Latest, string[] StoredValues)
+    {
+        public CachedBan With(ModerationBan row) => this with
+        {
+            Latest = Expiry(row) > Expiry(Latest) ? row : Latest,
+            StoredValues = StoredValues.Contains(row.Value) ? StoredValues : [.. StoredValues, row.Value]
+        };
+
+        private static DateTimeOffset Expiry(ModerationBan ban) => ban.ExpiresAt ?? DateTimeOffset.MinValue;
+
+        // Every write makes a new instance, so removing a stale entry never removes a write made after it was read.
+        public bool Equals(CachedBan? other) => ReferenceEquals(this, other);
+
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    }
+
+    private void Cache(ModerationBan row)
+    {
+        if (CacheKey(row.Type, row.Value) is { } key) {
+            _bans.AddOrUpdate((row.Type, key), cacheKey => new(cacheKey, row, [row.Value]), (_, cached) => cached.With(row));
+        }
+    }
+
+    /// <summary>An IP ban is keyed by its parsed address, so every way of writing the address finds it. A stored value that is no address has no key.</summary>
+    private static string? CacheKey(ModerationBanType type, string value) =>
+        type == ModerationBanType.Ip ? ConnectionAdmission.ParseAddress(value.AsSpan().Trim())?.ToString() : value;
 
     /// <summary>
     /// How long a ban may hold its caller, across every step of a compound ban. Kept under the packet manager's 5 s limit
@@ -395,10 +424,8 @@ public sealed class ModerationManager : IModerationManager, IStartable
             _pendingBans[work] = 0;
 
             // Published in the same turn as the row: an unban, which clears the cache in its own turn, always comes
-            // entirely before or after. A re-ban also refreshes the cached expiry.
-            if (work.Type == ModerationBanType.Machine || work.Type == ModerationBanType.Username) {
-                _bans[(work.Type, work.Value)] = new(work.Type, work.Value, work.Reason, work.ExpiresAt);
-            }
+            // entirely before or after.
+            Cache(new(work.Type, work.Value, work.Reason, work.ExpiresAt));
         }
         finally {
             _banWrites.Release();
@@ -438,7 +465,7 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     /// <summary>
     /// Accounts a ban covers. A machine ban reaches the sessions online with that handshake machine id. An IP ban reaches
-    /// only the accounts whose users.ip_last is that address. Username and machine bans are refused at login by BanLoginCheckTask.
+    /// only the accounts whose users.ip_last is that address. BanLoginCheckTask refuses a login under any of the three bans.
     /// </summary>
     internal async Task<IReadOnlyList<int>> BannedAccounts(ModerationBanType type, string banValue, CancellationToken cancellationToken = default)
     {
@@ -468,37 +495,48 @@ public sealed class ModerationManager : IModerationManager, IStartable
 
     public bool IsBanned(ModerationBanType type, string value, [NotNullWhen(true)] out ModerationBan? ban)
     {
-        if (!_bans.TryGetValue((type, value), out ban)) {
-            return false;
-        }
+        ban = CachedInForce(type, value)?.Latest;
 
-        if (!ban.IsExpiredAt(_clock.GetUtcNow())) {
-            return true;
-        }
-
-        using (var connection = _database.Connection()) {
-            connection.Execute("DELETE FROM bans WHERE bantype = @type AND value = @value LIMIT 1", new { type = BanTypeUtility.FromModerationBanType(type), value });
-        }
-
-        _bans.TryRemove((type, value), out _);
-
-        return false;
+        return ban != null;
     }
 
     public bool HasBan(ModerationBanType type, string value)
     {
-        if (!IsBanned(type, value, out _)) {
+        if (CachedInForce(type, value) is not { } cached) {
             return false;
         }
 
         using var connection = _database.Connection();
-        var exists = connection.ExecuteScalar<bool>("SELECT EXISTS(SELECT 1 FROM bans WHERE bantype = @type AND value = @value)",
-            new { type = BanTypeUtility.FromModerationBanType(type), value });
+        var inForce = connection.ExecuteScalar<bool>("SELECT EXISTS(SELECT 1 FROM bans WHERE bantype = @type AND value IN @values AND expire > @now)",
+            new { type = BanTypeUtility.FromModerationBanType(type), values = cached.StoredValues, now = _clock.GetUtcNow().UtcDateTime });
 
-        if (!exists) {
-            _bans.TryRemove((type, value), out _);
+        if (!inForce) {
+            _bans.TryRemove(new(cached.Key, cached));
         }
 
-        return exists;
+        return inForce;
+    }
+
+    /// <summary>The cached ban of a value while any of its rows is in force. Once every row has expired, those rows are deleted.</summary>
+    private CachedBan? CachedInForce(ModerationBanType type, string value)
+    {
+        if (CacheKey(type, value) is not { } key || !_bans.TryGetValue((type, key), out var cached)) {
+            return null;
+        }
+
+        var now = _clock.GetUtcNow();
+
+        if (!cached.Latest.IsExpiredAt(now)) {
+            return cached;
+        }
+
+        using (var connection = _database.Connection()) {
+            connection.Execute("DELETE FROM bans WHERE bantype = @type AND value IN @values AND (expire IS NULL OR expire <= @now)",
+                new { type = BanTypeUtility.FromModerationBanType(type), values = cached.StoredValues, now = now.UtcDateTime });
+        }
+
+        _bans.TryRemove(new(cached.Key, cached));
+
+        return null;
     }
 }

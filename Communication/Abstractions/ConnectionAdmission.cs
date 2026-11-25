@@ -128,18 +128,24 @@ public sealed class ConnectionAdmission
             text = text[..text.IndexOf(':')];
         }
 
+        var address = ParseAddress(text);
+
+        return address == null || IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any) ? null : address;
+    }
+
+    /// <summary>Parses a plain address as one value, so every way of writing it, IPv4-mapped included, gives the same value.</summary>
+    internal static IPAddress? ParseAddress(ReadOnlySpan<char> text)
+    {
         if (!IPAddress.TryParse(text, out var address)) {
             return null;
         }
 
-        // IPAddress also parses shorthands such as "1234" or "127.1", which no proxy sends.
-        if (address.AddressFamily == AddressFamily.InterNetwork && text.Count('.') != 3) {
+        // IPAddress also parses shorthands such as "1234" or "127.1", and reads "010" as octal. No proxy or ban writes either.
+        if (address.AddressFamily == AddressFamily.InterNetwork && (text.Count('.') != 3 || text.ToString().Split('.').Any(part => part is ['0', _, ..]))) {
             return null;
         }
 
-        address = Normalize(address);
-
-        return IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any) ? null : address;
+        return Normalize(address);
     }
 
     private static IPAddress Normalize(IPAddress address)

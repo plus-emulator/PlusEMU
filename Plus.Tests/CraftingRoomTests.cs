@@ -221,7 +221,7 @@ public partial class PlacedFurniRoomTests
 
                 return false;
             }),
-            TestLogging.For<CraftingService>());
+            TestLogging.For<CraftingService>(), _interactionClock);
         _client.Sent.Clear();
         _client.Packets.Clear();
 

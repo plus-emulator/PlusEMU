@@ -23,7 +23,7 @@ public interface ICraftingService
 }
 
 public sealed class CraftingService(ICraftingStore store, IItemDataManager definitions, IAchievementManager achievements,
-    ILogger<CraftingService> logger) : ICraftingService
+    ILogger<CraftingService> logger, TimeProvider time) : ICraftingService
 {
     public void GetProducts(GameClient session, uint altarId)
     {

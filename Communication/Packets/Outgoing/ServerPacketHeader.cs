@@ -17,6 +17,7 @@ public static class ServerPacketHeader
     public const uint UserRightsComposer = 1539;
     public const uint GamePlayerValueComposer = 786;
     public const uint GenericErrorComposer = 2260;
+    public const uint ErrorReportComposer = 2960;
     public const uint DisconnectReasonComposer = 4000;
     public const uint SetUniqueIdComposer = 65511;
     public const uint AvailabilityStatusComposer = 2087;

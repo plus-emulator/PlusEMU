@@ -47,7 +47,7 @@ public sealed class CraftingService(ICraftingStore store, IItemDataManager defin
 
     public void GetRecipe(GameClient session, string code)
     {
-        if (store.Find(code, session.GetHabbo().Id) is { } recipe && Valid(recipe) && Visible(recipe)) {
+        if (store.Find(code, session.GetHabbo().Id) is { } recipe && Valid(recipe)) {
             session.Send(new CraftingRecipeComposer(recipe.Ingredients
                 .Select(ingredient => (ingredient.Amount, definitions.Items[ingredient.ItemId].ItemName)).ToImmutableArray()));
         }

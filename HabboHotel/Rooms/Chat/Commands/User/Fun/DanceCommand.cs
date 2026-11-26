@@ -32,6 +32,7 @@ internal class DanceCommand : IChatCommand
                 return;
             }
 
+            thisUser.DanceId = danceId;
             session.GetHabbo().CurrentRoom.SendPacket(new DanceComposer(thisUser.VirtualId, danceId));
         }
         else {

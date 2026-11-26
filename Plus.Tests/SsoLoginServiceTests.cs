@@ -25,6 +25,7 @@ using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Authentication;
 using Plus.HabboHotel.Users.Effects;
 using Plus.HabboHotel.Users.Process;
+using Plus.HabboHotel.Items.MysteryBoxes;
 using Xunit;
 
 namespace Plus.Tests;
@@ -165,6 +166,39 @@ public class SsoLoginServiceTests
     }
 
     [Fact]
+    public async Task LoginSendsTheMysteryBoxAndKeyColoursOfAUserWhoHasEither()
+    {
+        var store = new TestMysteryBoxStore();
+        store.Users[7] = new("blue", "red");
+        using var world = new LoginWorld(Task.CompletedTask, mysteryBoxes: new MysteryBoxService(store));
+
+        try {
+            await world.Service.Login(world.Client, "valid");
+        }
+        finally {
+            ProcessOf(world.Habbo)?.Dispose();
+        }
+
+        var keys = Assert.Single(world.Sent, packet => packet.Header == ServerPacketHeader.MysteryBoxKeysComposer);
+        Assert.Equal("0004" + Convert.ToHexString("blue"u8) + "0003" + Convert.ToHexString("red"u8), Convert.ToHexString(keys.Payload));
+    }
+
+    [Fact]
+    public async Task LoginSendsNoMysteryBoxColoursWithoutABoxOrAKey()
+    {
+        using var world = new LoginWorld(Task.CompletedTask, mysteryBoxes: new MysteryBoxService(new TestMysteryBoxStore()));
+
+        try {
+            await world.Service.Login(world.Client, "valid");
+        }
+        finally {
+            ProcessOf(world.Habbo)?.Dispose();
+        }
+
+        Assert.DoesNotContain(world.Sent, packet => packet.Header == ServerPacketHeader.MysteryBoxKeysComposer);
+    }
+
+    [Fact]
     public async Task LoginReconcilesOwnedHabbiconsBeforePublishingAchievementScore()
     {
         var calls = new List<int>();
@@ -206,7 +240,7 @@ public class SsoLoginServiceTests
         public SsoLoginService Service { get; }
 
         public LoginWorld(Task rewards, IPlannedShutdown? plannedShutdown = null, IHabbiconService? habbicons = null,
-            IHabbiconAchievementService? habbiconAchievements = null)
+            IHabbiconAchievementService? habbiconAchievements = null, IMysteryBoxService? mysteryBoxes = null)
         {
             var calls = Calls;
             var habbo = Habbo = new Habbo
@@ -240,7 +274,7 @@ public class SsoLoginServiceTests
                 Proxy<IAvatarEffectService>((_, _) => ImmutableArray<AvatarEffectEntry>.Empty),
                 Proxy<IRewardTrackManager>((_, _) => { calls.Add("tracks"); return null; }),
                 Proxy<ICampaignCalendarService>((_, _) => { calls.Add("calendar"); return null; }),
-                plannedShutdown: plannedShutdown, habbicons: habbicons, habbiconAchievements: habbiconAchievements);
+                plannedShutdown: plannedShutdown, habbicons: habbicons, habbiconAchievements: habbiconAchievements, mysteryBoxes: mysteryBoxes);
         }
 
         public void Dispose() => _lifecycle.Dispose();

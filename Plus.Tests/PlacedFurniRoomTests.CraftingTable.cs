@@ -80,14 +80,26 @@ public partial class PlacedFurniRoomTests
         Assert.False(packet.HasDataRemaining());
     }
 
-    [Theory]
-    [InlineData("no_such_recipe")]
-    [InlineData(Trap)]
-    public async Task AnUnknownOrUndiscoveredRecipeGetsNoAnswer(string code)
+    [Fact]
+    public async Task AnUndiscoveredSecretRecipeStillGetsItsIngredients()
+    {
+        var (service, _) = CraftingTable(8);
+
+        await new GetCraftingRecipeEvent(service).Parse(_client, ClientPacket(Trap));
+
+        Assert.Equal([ServerPacketHeader.CraftingRecipeComposer], _client.Sent);
+        var packet = new FlashIncomingPacket { Buffer = Body(ServerPacketHeader.CraftingRecipeComposer) };
+        Assert.Equal(2, packet.ReadInt());
+        Assert.Equal([(1, Rope), (1, Food)], Enumerable.Range(0, 2).Select(_ => (packet.ReadInt(), packet.ReadString())));
+        Assert.False(packet.HasDataRemaining());
+    }
+
+    [Fact]
+    public async Task AnUnknownRecipeGetsNoAnswer()
     {
         var (service, _) = CraftingTable(7);
 
-        await new GetCraftingRecipeEvent(service).Parse(_client, ClientPacket(code));
+        await new GetCraftingRecipeEvent(service).Parse(_client, ClientPacket("no_such_recipe"));
 
         Assert.Empty(_client.Sent);
     }

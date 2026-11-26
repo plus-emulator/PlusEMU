@@ -110,7 +110,7 @@ public sealed class CraftingStore(IDatabase database) : ICraftingStore
         }
 
         var ingredients = connection.Query<IngredientRow>(
-            "SELECT recipe_id AS RecipeId,item_id AS ItemId,amount FROM crafting_recipes_ingredients WHERE recipe_id IN @ids ORDER BY recipe_id,item_id" + (transaction is null ? "" : " FOR UPDATE"),
+            "SELECT recipe_id AS RecipeId,item_id AS ItemId,amount FROM crafting_recipes_ingredients WHERE recipe_id IN @ids ORDER BY recipe_id,position,item_id" + (transaction is null ? "" : " FOR UPDATE"),
             new { ids = rows.Select(row => row.Id).ToArray() }, transaction).ToLookup(row => row.RecipeId);
 
         return rows.Select(row => new CraftingRecipe(row.Id, row.Code, row.ProductCode, row.RewardId, row.Secret,

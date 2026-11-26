@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Data.Common;
 using Microsoft.Extensions.Logging;
 using Plus.Communication.Packets.Outgoing.Crafting;
+using Plus.Communication.Packets.Outgoing.Handshake;
 using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.GameClients;
@@ -25,11 +26,20 @@ public interface ICraftingService
 public sealed class CraftingService(ICraftingStore store, IItemDataManager definitions, IAchievementManager achievements,
     ILogger<CraftingService> logger, TimeProvider time) : ICraftingService
 {
+    private const int ProductsError = 1300;
+    private const int SecretMixError = 1303;
+    private const int AvailableError = 1304;
+
     public void GetProducts(GameClient session, uint altarId)
     {
-        var altar = GetAltar(session, altarId);
-        CraftingRecipe[] recipes = altar is null ? [] : store.Load(altar.Definition.Id, session.GetHabbo().Id).Where(recipe => Valid(recipe) && recipe.Available).ToArray();
-        var products = recipes.Where(recipe => !recipe.Secret || recipe.Discovered).Select(Product).ToImmutableArray();
+        if (GetAltar(session, altarId) is not { } altar) {
+            Report(session, ProductsError);
+
+            return;
+        }
+
+        var recipes = Recipes(altar, session.GetHabbo().Id);
+        var products = recipes.Where(Visible).Select(Product).ToImmutableArray();
         var ingredients = recipes.SelectMany(recipe => recipe.Ingredients).Select(ingredient => definitions.Items[ingredient.ItemId].ItemName)
             .Distinct(StringComparer.Ordinal).ToImmutableArray();
         session.Send(new CraftableProductsComposer(products, ingredients));
@@ -37,26 +47,25 @@ public sealed class CraftingService(ICraftingStore store, IItemDataManager defin
 
     public void GetRecipe(GameClient session, string code)
     {
-        var recipe = store.Find(code, session.GetHabbo().Id);
-        session.Send(new CraftingRecipeComposer(recipe is not null && Valid(recipe) && (!recipe.Secret || recipe.Discovered)
-            ? recipe.Ingredients.Select(ingredient => (ingredient.Amount, definitions.Items[ingredient.ItemId].ItemName)).ToImmutableArray()
-            : []));
+        if (store.Find(code, session.GetHabbo().Id) is { } recipe && Valid(recipe) && Visible(recipe)) {
+            session.Send(new CraftingRecipeComposer(recipe.Ingredients
+                .Select(ingredient => (ingredient.Amount, definitions.Items[ingredient.ItemId].ItemName)).ToImmutableArray()));
+        }
     }
 
     public void GetAvailable(GameClient session, uint altarId, IReadOnlyList<uint> itemIds)
     {
         var altar = GetAltar(session, altarId);
         var selected = Select(session, itemIds);
+        var recipes = altar is null ? Array.Empty<CraftingRecipe>() : Recipes(altar, session.GetHabbo().Id);
 
-        if (altar is null || selected is null) {
-            session.Send(new CraftingRecipesAvailableComposer(0, false));
+        if (altar is null || selected is null || !Ingredients(recipes, selected)) {
+            Report(session, AvailableError);
 
             return;
         }
 
         var counts = Counts(selected);
-        var recipes = store.Load(altar.Definition.Id, session.GetHabbo().Id)
-            .Where(recipe => Valid(recipe) && recipe.Available).ToArray();
         var complete = recipes.Any(recipe => recipe.Matches(counts));
         var undiscovered = recipes.Count(recipe => recipe.Secret && !recipe.Discovered && recipe.Contains(counts) && !recipe.Matches(counts));
         session.Send(new CraftingRecipesAvailableComposer(undiscovered, complete));
@@ -75,33 +84,52 @@ public sealed class CraftingService(ICraftingStore store, IItemDataManager defin
             var room = habbo.CurrentRoom;
 
             if (habbo.WalletClosed || !ReferenceEquals(habbo.Client, session) || room is null || altar is null
-                || altar.OwnerId != (uint)habbo.Id || room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id)?.IsTrading != false
-                || habbo.Inventory is not { } inventory) {
+                || altar.OwnerId != (uint)habbo.Id || habbo.Inventory is not { } inventory) {
+                return;
+            }
+
+            if (room.GetRoomUserManager().GetRoomUserByHabbo(habbo.Id)?.IsTrading != false) {
                 session.Send(new CraftingResultComposer(null));
 
                 return;
             }
 
-            var recipes = store.Load(altar.Definition.Id, habbo.Id).Where(recipe => Valid(recipe) && recipe.Available).ToArray();
-            var selected = itemIds is null ? null : Select(session, itemIds);
-            var recipe = itemIds is null
-                ? recipes.SingleOrDefault(recipe => recipe.Code == code && (!recipe.Secret || recipe.Discovered))
-                : selected is null ? null : recipes.FirstOrDefault(recipe => recipe.Matches(Counts(selected)));
+            var recipes = Recipes(altar, habbo.Id);
+            InventoryItem[] selected;
+            CraftingRecipe? recipe;
 
-            if (recipe is null) {
-                session.Send(new CraftingResultComposer(null));
+            if (itemIds is null) {
+                recipe = recipes.SingleOrDefault(recipe => recipe.Code == code && Visible(recipe));
 
-                return;
+                if (recipe is null) {
+                    session.Send(new CraftingResultComposer(null));
+
+                    return;
+                }
+
+                selected = recipe.Ingredients.SelectMany(ingredient => inventory.Furniture.GetItems
+                    .Where(item => item.Definition.Id == ingredient.ItemId && item.OwnerId == (uint)habbo.Id && item.UniqueNumber == 0 && item.UniqueSeries == 0)
+                    .OrderBy(item => item.Id).Take(ingredient.Amount)).ToArray();
+
+                if (!recipe.Matches(Counts(selected))) {
+                    return;
+                }
             }
+            else {
+                if (Select(session, itemIds) is not { } mix || !Ingredients(recipes, mix)) {
+                    Report(session, SecretMixError);
 
-            selected ??= recipe.Ingredients.SelectMany(ingredient => inventory.Furniture.GetItems
-                .Where(item => item.Definition.Id == ingredient.ItemId && item.OwnerId == (uint)habbo.Id && item.UniqueNumber == 0 && item.UniqueSeries == 0)
-                .OrderBy(item => item.Id).Take(ingredient.Amount)).ToArray();
+                    return;
+                }
 
-            if (!recipe.Matches(Counts(selected))) {
-                session.Send(new CraftingResultComposer(null));
+                selected = mix;
+                recipe = recipes.FirstOrDefault(recipe => recipe.Matches(Counts(selected)));
 
-                return;
+                if (recipe is null) {
+                    session.Send(new CraftingResultComposer(null));
+
+                    return;
+                }
             }
 
             var reserved = new List<InventoryItem>(selected.Length);
@@ -200,7 +228,8 @@ public sealed class CraftingService(ICraftingStore store, IItemDataManager defin
 
         var item = room.GetRoomItemHandler().GetItem(altarId);
 
-        return item is { IsTemporary: false } && item.RoomId == room.RoomId && ReferenceEquals(item.GetRoom(), room) ? item : null;
+        return item is { IsTemporary: false, Definition.InteractionType: InteractionType.CraftingTable } && item.RoomId == room.RoomId
+            && ReferenceEquals(item.GetRoom(), room) ? item : null;
     }
 
     private static InventoryItem[]? Select(GameClient session, IReadOnlyList<uint> itemIds)
@@ -222,6 +251,20 @@ public sealed class CraftingService(ICraftingStore store, IItemDataManager defin
 
     private static bool Active(GameClient session, Plus.HabboHotel.Users.Habbo habbo) =>
         !habbo.WalletClosed && ReferenceEquals(session.GetHabbo(), habbo) && ReferenceEquals(habbo.Client, session);
+
+    private CraftingRecipe[] Recipes(Item altar, int userId) => store.Load(altar.Definition.Id, userId)
+        .Where(recipe => Valid(recipe) && recipe.Available).OrderBy(recipe => recipe.Code, StringComparer.Ordinal).ToArray();
+
+    private static bool Visible(CraftingRecipe recipe) => !recipe.Secret || recipe.Discovered;
+
+    private static bool Ingredients(IEnumerable<CraftingRecipe> recipes, IEnumerable<InventoryItem> selected)
+    {
+        var ingredients = recipes.SelectMany(recipe => recipe.Ingredients).Select(ingredient => ingredient.ItemId).ToHashSet();
+
+        return selected.All(item => ingredients.Contains(item.Definition.Id));
+    }
+
+    private void Report(GameClient session, int messageId) => session.Send(new ErrorReportComposer(messageId, 1, time.GetUtcNow()));
 
     private bool Valid(CraftingRecipe recipe) => definitions.Items.TryGetValue(recipe.RewardId, out var reward)
         && reward.ProductType is "s" or "i" && recipe.Ingredients.All(ingredient => definitions.Items.ContainsKey(ingredient.ItemId));

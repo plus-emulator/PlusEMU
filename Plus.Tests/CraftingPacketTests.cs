@@ -1,5 +1,6 @@
 using Plus.Communication.Packets.Incoming.Crafting;
 using Plus.Communication.Packets.Outgoing.Crafting;
+using Plus.Communication.Packets.Outgoing.Handshake;
 using Plus.HabboHotel.Crafting;
 using Plus.HabboHotel.GameClients;
 using Plus.HabboHotel.Users;
@@ -21,10 +22,20 @@ public sealed class CraftingPacketTests
         Assert.Equal(new object[] { true, "recipe", "product", "furniture" }, packet.Writes);
         packet = new HabbiconTestSupport.RecordingPacket();
         new CraftingResultComposer(null).Compose(packet);
-        Assert.Equal(new object[] { false }, packet.Writes);
+        Assert.Equal(new object[] { false, "", "", "" }, packet.Writes);
         packet = new HabbiconTestSupport.RecordingPacket();
         new CraftingRecipeComposer([(2, "ingredient")]).Compose(packet);
         Assert.Equal(new object[] { 1, 2, "ingredient" }, packet.Writes);
+    }
+
+    [Fact]
+    public void AnErrorReportCarriesTheMessageIdAndTheUtcTimeLikeHabbo()
+    {
+        var packet = new HabbiconTestSupport.RecordingPacket();
+        var composer = new ErrorReportComposer(1303, 1, new DateTimeOffset(2026, 11, 26, 21, 51, 0, TimeSpan.FromHours(1)));
+        composer.Compose(packet);
+        Assert.Equal(2960u, composer.MessageId);
+        Assert.Equal(new object[] { 1303, 1, "11/26/26, 8:51 PM" }, packet.Writes);
     }
 
     [Fact]

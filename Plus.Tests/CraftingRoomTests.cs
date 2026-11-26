@@ -68,11 +68,12 @@ public partial class PlacedFurniRoomTests
         service.CraftSecret(_client, 10, [20, 21]);
         Assert.Empty(store.Consumed);
         Assert.Equal(2, Assert.IsType<InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItems.Count());
-        Assert.All(_client.Packets, packet =>
-        {
-            Assert.Equal(ServerPacketHeader.CraftingResultComposer, packet.Header);
-            Assert.False(new FlashIncomingPacket { Buffer = packet.Body }.ReadBool());
-        });
+        Assert.Equal(new[] { ServerPacketHeader.CraftingResultComposer, ServerPacketHeader.ErrorReportComposer,
+            ServerPacketHeader.ErrorReportComposer, ServerPacketHeader.CraftingResultComposer }, _client.Sent);
+        Assert.All(_client.Packets.Where(packet => packet.Header == ServerPacketHeader.CraftingResultComposer),
+            packet => Assert.Equal(FailedCraftingResult, packet.Body));
+        Assert.All(_client.Packets.Where(packet => packet.Header == ServerPacketHeader.ErrorReportComposer),
+            packet => Assert.Equal(ErrorReport(1303), packet.Body));
     }
 
     [Theory]
@@ -95,9 +96,15 @@ public partial class PlacedFurniRoomTests
 
         Assert.Empty(store.Consumed);
         Assert.All(ingredients, item => Assert.Same(item, Assert.IsType<InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItem(item.Id)));
-        var result = new FlashIncomingPacket { Buffer = Assert.Single(_client.Packets).Body };
-        Assert.False(result.ReadBool());
-        Assert.False(result.HasDataRemaining());
+
+        if (secret) {
+            Assert.Equal(ErrorReport(1303), Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.ErrorReportComposer).Body);
+            Assert.Single(_client.Packets);
+        }
+        else {
+            Assert.Empty(_client.Packets);
+        }
+
         Assert.True(ingredients[0].TryReserve());
         ingredients[0].ReleaseReservation();
     }
@@ -145,7 +152,14 @@ public partial class PlacedFurniRoomTests
         service.Craft(_client, 10, "recipe");
         Assert.Empty(store.Consumed);
         Assert.Equal(2, Assert.IsType<InventoryComponent>(_client.GetHabbo().Inventory).Furniture.GetItems.Count());
-        Assert.Equal(ServerPacketHeader.CraftingResultComposer, Assert.Single(_client.Packets).Header);
+
+        if (failedWrite) {
+            Assert.Equal(FailedCraftingResult, Assert.Single(_client.Packets, packet => packet.Header == ServerPacketHeader.CraftingResultComposer).Body);
+            Assert.Single(_client.Packets);
+        }
+        else {
+            Assert.Empty(_client.Packets);
+        }
     }
 
     [Fact]
@@ -194,7 +208,7 @@ public partial class PlacedFurniRoomTests
 
     private (CraftingService Service, CraftingRecordingStore Store, InventoryItem[] Ingredients) CraftingFixture(bool secret = true, bool discovered = false, bool wallReward = false, Action? award = null)
     {
-        var altar = Furni(10, InteractionType.None, WiredBoxType.None);
+        var altar = Furni(10, InteractionType.CraftingTable, WiredBoxType.None);
         altar.Definition.Id = 100;
         Assert.True(_room.GetRoomItemHandler().SetFloorItem(null!, altar, 1, 1, 0, true, false, false));
         var habbo = _client.GetHabbo();

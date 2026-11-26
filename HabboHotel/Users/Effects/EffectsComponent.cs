@@ -129,6 +129,7 @@ public sealed class EffectsComponent
         CurrentEffect = effectId;
 
         if (user.IsDancing) {
+            user.DanceId = 0;
             _habbo.CurrentRoom.SendPacket(new DanceComposer(user.VirtualId, 0));
         }
 

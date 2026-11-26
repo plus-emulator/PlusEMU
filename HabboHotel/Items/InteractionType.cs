@@ -140,5 +140,6 @@ public enum InteractionType
     Recolorable,
     EffectBox,
     SnowboardSlope,
-    SnowboardJump
+    SnowboardJump,
+    MysteryBox
 }

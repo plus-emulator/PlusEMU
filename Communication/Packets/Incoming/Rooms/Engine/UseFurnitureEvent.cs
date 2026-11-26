@@ -14,7 +14,7 @@ internal sealed class UseFurnitureEvent(IFurnitureUseService furniture, IMonster
         var itemId = BuildersClubItemIds.FromWire(packet.ReadUInt());
         var parameter = packet.ReadInt();
 
-        if (seeds?.TryPlant(room, session, itemId) == true) {
+        if (seeds?.TryPlant(room, session, itemId) == true || mysteryBoxes?.TryUse(room, session, itemId) == true) {
             return Task.CompletedTask;
         }
 

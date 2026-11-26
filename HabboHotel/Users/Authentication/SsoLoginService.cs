@@ -122,6 +122,7 @@ public sealed class SsoLoginService : ISsoLoginService
             //SendMessage(new TalentTrackLevelComposer());
             // The Builders Club status follows the login unasked.
             _buildersClub?.SendStatus(session);
+            _mysteryBoxes?.SendKeys(session);
 
 
             foreach (var role in session.GetHabbo().Access.Roles) {

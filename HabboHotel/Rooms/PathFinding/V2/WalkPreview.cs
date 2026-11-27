@@ -35,6 +35,7 @@ public sealed partial class RoomNavigation
             }
 
             var session = actor.GetClient();
+
             if (_room.MDisposed || session == null || session.Closed.IsCancellationRequested
                 || session.GetHabbo()?.CurrentRoom != _room || actor.Movement.State != NavState.Active
                 || _room.GetRoomUserManager()?.GetRoomUserByVirtualId(actor.VirtualId) != actor) {
@@ -77,6 +78,7 @@ public sealed partial class RoomNavigation
         }
 
         var tiles = new (int X, int Y)[route.Count];
+
         for (var i = 0; i < tiles.Length; i++) {
             var tile = route.Steps[i].Tile;
             tiles[i] = (tile % Grid.Width, tile / Grid.Width);

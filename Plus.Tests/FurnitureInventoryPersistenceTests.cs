@@ -246,7 +246,8 @@ public sealed class FurnitureInventoryPersistenceTests
                 new ItemDefinition { Id = 100, Type = ItemType.Floor, InteractionType = InteractionType.GuildItem, Modes = 2 },
                 new ItemDefinition { Id = 101, Type = ItemType.Wall },
                 new ItemDefinition { Id = 102, Type = ItemType.Wall, InteractionType = InteractionType.CameraPicture },
-                new ItemDefinition { Id = 103, Type = ItemType.Wall, InteractionType = InteractionType.Floor });
+                new ItemDefinition { Id = 103, Type = ItemType.Wall, InteractionType = InteractionType.Floor },
+                new ItemDefinition { Id = 104, Type = ItemType.Floor, InteractionType = InteractionType.MysteryBox });
             var database = new TestDatabase(builder.ConnectionString);
 
             var loaded = await new FurnitureInventoryLoader(database, definitions).Load(1);
@@ -299,6 +300,10 @@ public sealed class FurnitureInventoryPersistenceTests
             // A floor pattern keeps its pattern too, or it can never be applied to a room.
             await connection.ExecuteAsync("INSERT INTO items VALUES (16,1,0,103,'104',0,0)");
             Assert.Equal("104", (await new FurnitureInventoryLoader(database, definitions).Load(1)).Single(item => item.Id == 16).ExtraData.Serialize());
+
+            // A mystery box keeps its colour state, or it is placed as an inactive box.
+            await connection.ExecuteAsync("INSERT INTO items VALUES (17,1,0,104,'22',0,0)");
+            Assert.Equal("22", (await new FurnitureInventoryLoader(database, definitions).Load(1)).Single(item => item.Id == 17).ExtraData.Serialize());
         }
         finally {
             await server.ExecuteAsync($"DROP DATABASE IF EXISTS `{schema}`");

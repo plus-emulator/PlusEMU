@@ -194,6 +194,105 @@ public partial class PlacedFurniRoomTests
     }
 
     [Fact]
+    public void CompletingTheDailyQuestsGivesABoxColourAndAKeyOfAnotherColour()
+    {
+        var world = PrepareMysteryBox("0", ownerBox: "");
+        world.Store.Users.Remove(7);
+        var guestBox = Furni(61, InteractionType.MysteryBox, WiredBoxType.None);
+        guestBox.OwnerId = 8;
+        guestBox.ExtraData = new LegacyDataFormat { Data = BlueOpened };
+        Assert.True(_room.GetRoomItemHandler().SetFloorItem(null, guestBox, 3, 3, 0, true, false, false));
+        _client.Packets.Clear();
+
+        world.Service.CompleteDailyQuests(_client);
+
+        var (userId, colors) = Assert.Single(world.Store.Keys);
+        var box = MysteryBoxColor.IndexOf(colors.Box);
+        Assert.Equal(7, userId);
+        Assert.InRange(box, 0, MysteryBoxColor.Names.Count - 1);
+        Assert.InRange(MysteryBoxColor.IndexOf(colors.Key), 0, MysteryBoxColor.Names.Count - 1);
+        Assert.NotEqual(colors.Box, colors.Key);
+        Assert.Equal(Utf(colors.Box).Concat(Utf(colors.Key)), MysteryBody(_client, ServerPacketHeader.MysteryBoxKeysComposer));
+        Assert.Equal(MysteryBoxColor.Locked(box).ToString(), world.Box.LegacyDataString);
+        Assert.Equal(BlueOpened, guestBox.LegacyDataString);
+    }
+
+    [Fact]
+    public void EveryDailyKeyReplacesTheLastOneAndNeverHasTheBoxColour()
+    {
+        var world = PrepareMysteryBox(BlueLocked);
+        var keys = new HashSet<string>();
+
+        for (var day = 0; day < 200; day++) {
+            world.Service.CompleteDailyQuests(_client);
+
+            var colors = world.Store.Users[7];
+            Assert.Equal("blue", colors.Box);
+            Assert.NotEqual("blue", colors.Key);
+            Assert.Contains(colors.Key, MysteryBoxColor.Names);
+            keys.Add(colors.Key);
+        }
+
+        Assert.Equal(MysteryBoxColor.Names.Count - 1, keys.Count);
+        Assert.Equal(BlueLocked, world.Box.LegacyDataString);
+    }
+
+    [Fact]
+    public async Task TheNextDailyKeyLocksAnOpenedBoxSoItOpensAgain()
+    {
+        var world = PrepareMysteryBox(BlueLocked);
+        await world.Use(world.Guest);
+        await world.Use(_client);
+        Assert.Equal(BlueOpened, world.Box.LegacyDataString);
+        world.Guest.Sent.Clear();
+
+        world.Service.CompleteDailyQuests(_client);
+
+        Assert.Equal(BlueLocked, world.Box.LegacyDataString);
+        Assert.Contains(ServerPacketHeader.ObjectDataUpdateComposer, world.Guest.Sent);
+
+        world.Store.Users[8] = new("", "blue");
+        await world.Use(world.Guest);
+        await world.Use(_client);
+
+        Assert.Equal(BlueOpened, world.Box.LegacyDataString);
+        Assert.Equal(2, world.Store.Opened.Count);
+    }
+
+    [Fact]
+    public async Task TheDailyKeyLeavesABoxAGuestUnlocked()
+    {
+        var world = PrepareMysteryBox(BlueLocked);
+        await world.Use(world.Guest);
+
+        world.Service.CompleteDailyQuests(_client);
+
+        Assert.Equal(BlueUnlocked, world.Box.LegacyDataString);
+        await world.Use(_client);
+        Assert.Equal(BlueOpened, world.Box.LegacyDataString);
+        Assert.Single(world.Store.Opened);
+    }
+
+    [Fact]
+    public void TheDailyKeyLocksTheBoxesInTheOwnersInventory()
+    {
+        var world = PrepareMysteryBox(BlueLocked);
+        var stored = new InventoryItem
+        {
+            Id = 62,
+            OwnerId = 7,
+            Definition = world.Box.Definition,
+            ExtraData = FurniExtraData.Load(world.Box.Definition, BlueOpened, keepLegacy: true)
+        };
+        Assert.True(_client.GetHabbo().Inventory!.Furniture.AddItem(stored));
+
+        world.Service.CompleteDailyQuests(_client);
+
+        Assert.Equal(BlueLocked, Assert.IsType<LegacyDataFormat>(stored.ExtraData).Data);
+        Assert.Contains(ServerPacketHeader.FurniListAddComposer, _client.Sent);
+    }
+
+    [Fact]
     public void MysteryBoxFurnitureUsesTheMysteryBoxInteraction() =>
         Assert.Equal(InteractionType.MysteryBox, InteractionTypes.GetTypeFromString("mystery_box"));
 
@@ -228,7 +327,7 @@ public partial class PlacedFurniRoomTests
         store.Users[8] = new("", guestKey);
         var prize = new ItemDefinition { Id = 77, SpriteId = MysteryPrizeSprite, Type = ItemType.Floor, ProductType = "s", ItemName = "prize", PublicName = "" };
         store.PrizeTable.Add(new(prize, 1));
-        var service = new MysteryBoxService(store);
+        var service = new MysteryBoxService(store, Proxy<IRoomManager>((name, _) => name == nameof(IRoomManager.GetRooms) ? new List<Room> { _room } : null));
 
         var box = Furni(MysteryBoxId, InteractionType.MysteryBox, WiredBoxType.None);
         box.Definition.ItemName = "mystery_box";

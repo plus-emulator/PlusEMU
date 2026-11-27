@@ -104,6 +104,8 @@ public static class InteractionTypes
                 return InteractionType.SnowboardSlope;
             case "snowb_jump":
                 return InteractionType.SnowboardJump;
+            case "mystery_box":
+                return InteractionType.MysteryBox;
             case "lowpool":
                 return InteractionType.Lowpool;
             case "haloweenpool":

@@ -18,6 +18,7 @@ using Plus.HabboHotel.Achievements;
 using Plus.HabboHotel.Badges;
 using Plus.HabboHotel.Cache;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.MysteryBoxes;
 using Plus.HabboHotel.Moderation;
 using Plus.HabboHotel.Navigator;
 using Plus.HabboHotel.Permissions;
@@ -56,6 +57,7 @@ public sealed class SsoLoginService : ISsoLoginService
     private readonly ICampaignCalendarService _calendars;
     private readonly IBuildersClubService? _buildersClub;
     private readonly IDailyTaskManager? _dailyTasks;
+    private readonly IMysteryBoxService? _mysteryBoxes;
 
     public SsoLoginService(IAuthenticator authenticate,
         IBadgeManager badgeManager,
@@ -68,8 +70,9 @@ public sealed class SsoLoginService : ISsoLoginService
         IUserProcessFactory processFactory, IModeratorTicketService tickets, IAvatarEffectService avatarEffects, IRewardTrackManager rewardTracks, ICampaignCalendarService calendars,
         IBuildersClubService? buildersClub = null, IDailyTaskManager? dailyTasks = null,
         IPlannedShutdown? plannedShutdown = null, IHabbiconService? habbicons = null,
-        IHabbiconAchievementService? habbiconAchievements = null)
+        IHabbiconAchievementService? habbiconAchievements = null, IMysteryBoxService? mysteryBoxes = null)
     {
+        _mysteryBoxes = mysteryBoxes;
         _plannedShutdown = plannedShutdown;
         _habbicons = habbicons;
         _habbiconAchievements = habbiconAchievements;
@@ -119,6 +122,7 @@ public sealed class SsoLoginService : ISsoLoginService
             //SendMessage(new TalentTrackLevelComposer());
             // The Builders Club status follows the login unasked.
             _buildersClub?.SendStatus(session);
+            _mysteryBoxes?.SendKeys(session);
 
 
             foreach (var role in session.GetHabbo().Access.Roles) {

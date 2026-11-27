@@ -538,4 +538,6 @@ public static class ClientPacketHeader
     public const uint HasClaimedProductEvent = 2160;
     public const uint ClaimProductEvent = 2671;
     public const uint GetSecondsUntilEvent = 1066;
+
+    public const uint MysteryBoxWaitingCanceledEvent = 1782;
 }

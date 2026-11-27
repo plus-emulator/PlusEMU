@@ -1849,6 +1849,23 @@ CREATE TABLE `moderation_topics` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `mystery_box_prizes`
+--
+
+DROP TABLE IF EXISTS `mystery_box_prizes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mystery_box_prizes` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `furniture_id` int(11) unsigned NOT NULL,
+  `weight` int(11) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `furniture_id` (`furniture_id`),
+  CONSTRAINT `fk_mystery_box_prizes_furniture_id` FOREIGN KEY (`furniture_id`) REFERENCES `furniture` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `navigator_categories`
 --
 
@@ -3293,6 +3310,22 @@ CREATE TABLE `user_launcher_tokens` (
   KEY `user_id` (`user_id`),
   KEY `expires_at` (`expires_at`),
   CONSTRAINT `fk_user_launcher_tokens_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_mystery_boxes`
+--
+
+DROP TABLE IF EXISTS `user_mystery_boxes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_mystery_boxes` (
+  `user_id` int(11) NOT NULL,
+  `box_color` varchar(16) NOT NULL DEFAULT '',
+  `key_color` varchar(16) NOT NULL DEFAULT '',
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_user_mystery_boxes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -86977,7 +87010,7 @@ INSERT INTO `furniture` VALUES
 (4751,'hween12_grabby','Fairground Grabber','s',1,1,1,0,0,0,4751,1,1,1,1,1,'vendingmachine',0,2,'1035,1037,1038,1039,1040,1041,1042,1043,1044,1045','0',0,0,0,0,1,45508,'vending_machine',2,1,1,NULL,'Fairground Grabber','Have a go, who knows what you might win, or lose...',NULL,0,NULL,1,0,0,0,0,1,'habboween_2012','',0,1,1,4751,'hween12_grabby'),
 (4752,'hween12_wolf','Wolf','s',1,1,1,0,0,0,4752,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,45508,'other',0,1,1,NULL,'Wolf','*Grrr*',NULL,0,NULL,1,0,0,0,0,1,'habboween_2012','',0,1,1,4752,'hween12_wolf'),
 (4753,'hween12_strengthtest','Test Your Strength!','s',1,1,1,0,0,0,4753,1,1,1,1,1,'dice',0,8,'0','0',0,0,0,0,1,45508,'other',2,1,1,NULL,'Test Your Strength!','Are you an intergalactic man of muscle?',NULL,0,NULL,1,0,0,0,0,1,'habboween_2012','',0,1,1,4753,'hween12_strengthtest'),
-(4797,'mystery_box','mystery_box','s',1,1,1,0,0,0,4797,1,1,1,1,1,'default',0,25,'0','0',0,0,0,0,1,45508,'other',0,1,1,NULL,'Xmas Mystery Box','Open with a friend with keys collected from Christmas quests to get festive prizes!',NULL,0,NULL,1,0,0,0,0,1,'xmas2012',NULL,0,0,0,4797,'mystery_box'),
+(4797,'mystery_box','mystery_box','s',1,1,1,0,0,0,4797,0,0,0,1,1,'mystery_box',0,25,'0','0',0,0,0,0,1,45508,'other',0,1,1,NULL,'Xmas Mystery Box','Open with a friend with keys collected from Christmas quests to get festive prizes!',NULL,0,NULL,1,0,0,0,0,1,'xmas2012',NULL,0,0,0,4797,'mystery_box'),
 (4823,'pet_toy_ball','Pet Ball','s',1,1,0,0,0,1,4823,1,1,1,1,1,'default',0,2,'0','0',0,0,0,0,1,45508,'other',2,1,1,NULL,'Pet Ball','Go fetch!',NULL,0,NULL,1,1,0,0,0,0,'pet_accessories',NULL,0,1,1,4823,'pet_toy_ball'),
 (4824,'pet_waterbottle','Baby Waterbottle','s',1,1,0,0,0,1,4824,1,1,1,1,1,'default',0,6,'0','0',0,0,0,0,1,45508,'other',2,1,1,NULL,'Baby Waterbottle','Even little pets need to drink',NULL,0,NULL,1,1,0,0,0,0,'pet_accessories',NULL,0,1,1,4824,'pet_waterbottle'),
 (4826,'pet_blanket_pink','Pink Pet Blanket','s',1,1,0.1,0,0,1,4826,1,1,1,1,1,'default',0,1,'0','0',0,0,0,0,1,45508,'other',2,1,1,NULL,'Pink Pet Blanket','Awwwwwwww!',NULL,0,NULL,1,1,0,0,0,0.1,'nests',NULL,0,1,1,4826,'pet_blanket_pink'),

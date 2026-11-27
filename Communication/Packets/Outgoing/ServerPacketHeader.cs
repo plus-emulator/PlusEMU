@@ -535,4 +535,9 @@ public static class ServerPacketHeader
     public const uint HasClaimedProductResponseComposer = 713;
     public const uint ClaimProductResultComposer = 994;
     public const uint SecondsUntilComposer = 2845;
+
+    public const uint MysteryBoxKeysComposer = 3919;
+    public const uint ShowMysteryBoxWaitComposer = 2525;
+    public const uint CancelMysteryBoxWaitComposer = 1780;
+    public const uint GotMysteryBoxPrizeComposer = 266;
 }

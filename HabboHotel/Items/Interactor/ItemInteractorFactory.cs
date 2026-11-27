@@ -77,6 +77,7 @@ public sealed class ItemInteractorFactory(
             InteractionType.Skateboard => new InteractorSkateboard(achievements),
             InteractionType.CameraPicture => new InteractorCameraPicture(),
             InteractionType.CraftingTable => new InteractorCraftingTable(),
+            InteractionType.MysteryBox => new InteractorMysteryBox(),
             InteractionType.EffectBox => new InteractorEffectBox(redemptions, timeProvider),
             _ => new InteractorGenericSwitch(quests, rewards)
         };

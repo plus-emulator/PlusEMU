@@ -366,6 +366,7 @@ public static class ClientPacketHeader
     public const uint GetGameAchievementsEvent = 65475;
     public const uint GetBonusRareInfoEvent = 2283;
     public const uint MoveAvatarEvent = 2912;
+    public const uint WalkPreviewEvent = 6298;
     public const uint SaveBrandingItemEvent = 2826;
     public const uint SetAreaHideEvent = 1802;
     public const uint SaveEnforcedCategorySettingsEvent = 1931;

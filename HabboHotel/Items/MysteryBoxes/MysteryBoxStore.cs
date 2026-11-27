@@ -47,6 +47,8 @@ public sealed class MysteryBoxStore(IDatabase database, IItemDataManager items) 
         return new(ownerPrize, guestPrize);
     }
 
+    public void GiveKey(int userId, MysteryBoxColors colors) => throw new NotImplementedException();
+
     private static InventoryItem Insert(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int userId, ItemDefinition prize)
     {
         var id = connection.ExecuteScalar<uint>("INSERT INTO items(user_id,base_item,extra_data) VALUES(@userId,@baseId,''); SELECT LAST_INSERT_ID()",

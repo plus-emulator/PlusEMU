@@ -12,6 +12,7 @@ using Plus.Core;
 using Plus.Core.Settings;
 using Plus.HabboHotel.Badges;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.MysteryBoxes;
 using Plus.HabboHotel.Subscriptions;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Badges;
@@ -38,7 +39,7 @@ public interface IDailyTaskManager
 /// At the day's end every online user gets the new day's list.
 /// </summary>
 public sealed class DailyTaskManager(IDailyTaskStore store, ISettingsManager settings, IGameClientManager clients, IBadgeManager badges,
-    TimeProvider clock, ILogger<DailyTaskManager> logger) : IDailyTaskManager, IStartable, IDisposable
+    TimeProvider clock, ILogger<DailyTaskManager> logger, IMysteryBoxService? mysteryBoxes = null) : IDailyTaskManager, IStartable, IDisposable
 {
     public const int DefaultCount = 3;
     public const int DefaultUnclaimedDays = 7;

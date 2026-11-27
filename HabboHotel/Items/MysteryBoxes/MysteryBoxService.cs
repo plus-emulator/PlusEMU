@@ -30,6 +30,9 @@ public interface IMysteryBoxStore
 
     /// <summary>Returns null when the guest no longer holds that key.</summary>
     MysteryBoxOpened? Open(MysteryBoxOpening opening);
+
+    /// <summary>Saves the user's colours and locks every box of the user that no guest has unlocked.</summary>
+    void GiveKey(int userId, MysteryBoxColors colors);
 }
 
 [Singleton]
@@ -42,13 +45,19 @@ public interface IMysteryBoxService
 
     /// <summary>Sends the user's box and key colours when they have either.</summary>
     void SendKeys(GameClient session);
+
+    /// <summary>
+    /// Runs when the user completes the day's daily quests: the user gets a box colour when they have none, a new key of another
+    /// colour, and their boxes lock again with that box colour.
+    /// </summary>
+    void CompleteDailyQuests(GameClient session);
 }
 
 /// <summary>
 /// A box opens when its owner and a guest with a key of the box colour both use it, in either order.
 /// The first one waits. A guest who waits puts the key in, so the box shows as unlocked until the guest cancels or leaves.
 /// </summary>
-public sealed class MysteryBoxService(IMysteryBoxStore store) : IMysteryBoxService
+public sealed class MysteryBoxService(IMysteryBoxStore store, IRoomManager? rooms = null) : IMysteryBoxService
 {
     private readonly Lock _sync = new();
     private readonly Dictionary<uint, Waiter> _waiting = [];
@@ -167,6 +176,8 @@ public sealed class MysteryBoxService(IMysteryBoxStore store) : IMysteryBoxServi
             session.Send(new MysteryBoxKeysComposer(colors));
         }
     }
+
+    public void CompleteDailyQuests(GameClient session) => throw new NotImplementedException();
 
     private void Open(Item box, int color, GameClient owner, GameClient guest)
     {

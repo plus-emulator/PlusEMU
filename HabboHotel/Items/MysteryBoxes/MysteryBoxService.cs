@@ -2,6 +2,7 @@ using Plus.Communication.Packets.Outgoing.Inventory.Furni;
 using Plus.Communication.Packets.Outgoing.Rooms.Furni.MysteryBoxes;
 using Plus.Communication.Packets.Outgoing.Rooms.Notifications;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.DataFormat;
 using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Users.Inventory.Furniture;
 using Plus.Utilities.DependencyInjection;
@@ -30,6 +31,9 @@ public interface IMysteryBoxStore
 
     /// <summary>Returns null when the guest no longer holds that key.</summary>
     MysteryBoxOpened? Open(MysteryBoxOpening opening);
+
+    /// <summary>Saves the user's colours and locks every box of the user that no guest has unlocked.</summary>
+    void GiveKey(int userId, MysteryBoxColors colors);
 }
 
 [Singleton]
@@ -42,13 +46,19 @@ public interface IMysteryBoxService
 
     /// <summary>Sends the user's box and key colours when they have either.</summary>
     void SendKeys(GameClient session);
+
+    /// <summary>
+    /// Runs when the user completes the day's daily quests: the user gets a box colour when they have none, a new key of another
+    /// colour, and their boxes lock again with that box colour.
+    /// </summary>
+    void CompleteDailyQuests(GameClient session);
 }
 
 /// <summary>
 /// A box opens when its owner and a guest with a key of the box colour both use it, in either order.
 /// The first one waits. A guest who waits puts the key in, so the box shows as unlocked until the guest cancels or leaves.
 /// </summary>
-public sealed class MysteryBoxService(IMysteryBoxStore store) : IMysteryBoxService
+public sealed class MysteryBoxService(IMysteryBoxStore store, IRoomManager? rooms = null) : IMysteryBoxService
 {
     private readonly Lock _sync = new();
     private readonly Dictionary<uint, Waiter> _waiting = [];
@@ -168,6 +178,28 @@ public sealed class MysteryBoxService(IMysteryBoxStore store) : IMysteryBoxServi
         }
     }
 
+    public void CompleteDailyQuests(GameClient session)
+    {
+        var habbo = session.GetHabbo();
+        var box = MysteryBoxColor.IndexOf(store.Colors(habbo.Id).Box);
+
+        if (box < 0) {
+            box = Random.Shared.Next(MysteryBoxColor.Names.Count);
+        }
+
+        var key = Random.Shared.Next(MysteryBoxColor.Names.Count - 1);
+
+        if (key >= box) {
+            key++;
+        }
+
+        var colors = new MysteryBoxColors(MysteryBoxColor.Names[box], MysteryBoxColor.Names[key]);
+        store.GiveKey(habbo.Id, colors);
+        LockPlacedBoxes(habbo.Id, box);
+        LockInventoryBoxes(session, box);
+        session.Send(new MysteryBoxKeysComposer(colors));
+    }
+
     private void Open(Item box, int color, GameClient owner, GameClient guest)
     {
         lock (_sync) {
@@ -219,6 +251,48 @@ public sealed class MysteryBoxService(IMysteryBoxStore store) : IMysteryBoxServi
             return _waiting.TryGetValue(box.Id, out var waiter) && ReferenceEquals(waiter.Room, room) ? waiter : null;
         }
     }
+
+    private void LockPlacedBoxes(int userId, int color)
+    {
+        if (rooms == null) {
+            return;
+        }
+
+        foreach (var room in rooms.GetRooms()) {
+            foreach (var box in room.GetRoomItemHandler().GetFloor
+                         .Where(item => item.OwnerId == userId && item.Definition?.InteractionType == InteractionType.MysteryBox)) {
+                lock (box) {
+                    if (Lockable(MysteryBoxColor.State(box.LegacyDataString), color)) {
+                        SetState(box, MysteryBoxColor.Locked(color));
+                    }
+                }
+            }
+        }
+    }
+
+    private static void LockInventoryBoxes(GameClient session, int color)
+    {
+        var habbo = session.GetHabbo();
+        var locked = new List<InventoryItem>();
+
+        lock (habbo.InventoryMutationSync) {
+            foreach (var item in habbo.Inventory?.Furniture.AllItems ?? []) {
+                var data = item.ExtraData is LegacyDataFormat legacy ? legacy.Data : "";
+
+                if (item.Definition.InteractionType == InteractionType.MysteryBox && Lockable(MysteryBoxColor.State(data), color)) {
+                    item.ExtraData = FurniExtraData.Load(item.Definition, MysteryBoxColor.Locked(color).ToString(), keepLegacy: true);
+                    locked.Add(item);
+                }
+            }
+        }
+
+        foreach (var item in locked) {
+            session.Send(new FurniListAddComposer(InventoryItemSnapshot.Capture(item)));
+        }
+    }
+
+    // A box a guest has unlocked keeps waiting for its owner.
+    private static bool Lockable(int state, int color) => state != MysteryBoxColor.Locked(color) && state != MysteryBoxColor.Unlocked(color);
 
     private static void Relock(Item box)
     {

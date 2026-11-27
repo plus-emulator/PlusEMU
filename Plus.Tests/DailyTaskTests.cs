@@ -15,9 +15,11 @@ using Plus.Core.Settings;
 using Plus.Database;
 using Plus.HabboHotel.Badges;
 using Plus.HabboHotel.GameClients;
+using Plus.HabboHotel.Items.MysteryBoxes;
 using Plus.HabboHotel.Permissions;
 using Plus.HabboHotel.Quests;
 using Plus.HabboHotel.Quests.DailyTasks;
+using Plus.HabboHotel.Rooms;
 using Plus.HabboHotel.Users;
 using Plus.HabboHotel.Users.Badges;
 using Plus.HabboHotel.Users.Inventory;
@@ -276,6 +278,32 @@ public sealed class DailyTaskTests
     }
 
     [Fact]
+    public void CompletingEveryRegularTaskGivesOneMysteryBoxKeyADay()
+    {
+        var mysteryBoxes = new RecordingMysteryBoxes();
+        var (manager, store, clock) = Manager(regular: [Definition(1, "chat"), Definition(2, "wave")], mysteryBoxes: mysteryBoxes);
+        var (client, _) = HabbiconTestSupport.Client(User());
+        manager.SendActive(client);
+
+        manager.Progress(client, "chat");
+        Assert.Empty(mysteryBoxes.Completed);
+
+        manager.Progress(client, "wave");
+        Assert.Same(client, Assert.Single(mysteryBoxes.Completed));
+
+        manager.Progress(client, "show_sign", 1, "10");
+        Assert.Equal(DailyTaskStatus.Completed, store.Definition(9).Status);
+        manager.Progress(client, "chat");
+        manager.Progress(client, "wave");
+        Assert.Single(mysteryBoxes.Completed);
+
+        clock.Now = Now.AddHours(3);
+        manager.Progress(client, "chat");
+        manager.Progress(client, "wave");
+        Assert.Equal(2, mysteryBoxes.Completed.Count);
+    }
+
+    [Fact]
     public void TheResetSendsEveryoneOnlineTheNewList()
     {
         var clients = new List<GameClient>();
@@ -448,14 +476,14 @@ public sealed class DailyTaskTests
             rewards ?? [new DailyTaskReward(DailyTaskReward.Currency, "0", "", 25)]);
 
     private static (DailyTaskManager Manager, FakeStore Store, Clock Clock) Manager(IReadOnlyList<DailyTaskDefinition>? regular = null,
-        List<GameClient>? clients = null)
+        List<GameClient>? clients = null, IMysteryBoxService? mysteryBoxes = null)
     {
         var definitions = (regular ?? [Definition(1, "chat"), Definition(2, "wave"), Definition(3, "dance"), Definition(4, "swim")])
             .Append(Definition(9, "show_sign", parameters: "10", bonus: true)).ToList();
         var store = new FakeStore(definitions);
         var clock = new Clock(Now, Zone);
         var manager = new DailyTaskManager(store, new Settings(), ClientList.Create(clients ?? []), new NoBadges(), clock,
-            NullLogger<DailyTaskManager>.Instance);
+            NullLogger<DailyTaskManager>.Instance, mysteryBoxes);
         manager.Load();
 
         return (manager, store, clock);
@@ -613,6 +641,15 @@ public sealed class DailyTaskTests
         public void SendActive(GameClient session) => throw new NotSupportedException();
         public void Progress(GameClient session, string actionType, int amount = 1, string? parameter = null) => Calls.Add((actionType, amount, parameter));
         public void Claim(GameClient session, int taskId) => throw new NotSupportedException();
+    }
+
+    private sealed class RecordingMysteryBoxes : IMysteryBoxService
+    {
+        public List<GameClient> Completed { get; } = [];
+        public void CompleteDailyQuests(GameClient session) => Completed.Add(session);
+        public bool TryUse(Room room, GameClient session, uint itemId) => throw new NotSupportedException();
+        public void CancelWait(Room room, GameClient session, int boxOwnerId) => throw new NotSupportedException();
+        public void SendKeys(GameClient session) => throw new NotSupportedException();
     }
 
     private sealed class RawDatabase(string connectionString) : IDatabase

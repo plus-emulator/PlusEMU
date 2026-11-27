@@ -13,6 +13,7 @@ internal sealed class TestMysteryBoxStore : IMysteryBoxStore
     public Dictionary<int, MysteryBoxColors> Users { get; } = [];
     public List<MysteryBoxPrize> PrizeTable { get; } = [];
     public List<MysteryBoxOpening> Opened { get; } = [];
+    public List<(int UserId, MysteryBoxColors Colors)> Keys { get; } = [];
 
     public MysteryBoxColors Colors(int userId) => Users.GetValueOrDefault(userId, MysteryBoxColors.None);
 
@@ -28,6 +29,12 @@ internal sealed class TestMysteryBoxStore : IMysteryBoxStore
         Users[opening.GuestId] = Colors(opening.GuestId) with { Key = "" };
 
         return new(Prize(OwnerPrizeId, opening.OwnerId, opening.OwnerPrize), Prize(GuestPrizeId, opening.GuestId, opening.GuestPrize));
+    }
+
+    public void GiveKey(int userId, MysteryBoxColors colors)
+    {
+        Keys.Add((userId, colors));
+        Users[userId] = colors;
     }
 
     private static InventoryItem Prize(uint id, int ownerId, ItemDefinition definition) => new()

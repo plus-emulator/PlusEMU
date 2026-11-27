@@ -96,9 +96,16 @@ public static class DailyTaskRules
     public static bool BonusDue(IEnumerable<(UserDailyTask Task, DailyTaskDefinition Definition)> today)
     {
         var tasks = today.ToList();
-        var regular = tasks.Where(entry => !entry.Definition.Bonus).ToList();
 
-        return regular.Count > 0 && regular.All(entry => entry.Task.Status != DailyTaskStatus.InProgress) && tasks.All(entry => !entry.Definition.Bonus);
+        return RegularDone(tasks) && tasks.All(entry => !entry.Definition.Bonus);
+    }
+
+    /// <summary>True when the day has regular tasks and every one of them is completed.</summary>
+    public static bool RegularDone(IEnumerable<(UserDailyTask Task, DailyTaskDefinition Definition)> today)
+    {
+        var regular = today.Where(entry => !entry.Definition.Bonus).ToList();
+
+        return regular.Count > 0 && regular.All(entry => entry.Task.Status != DailyTaskStatus.InProgress);
     }
 
     /// <summary>

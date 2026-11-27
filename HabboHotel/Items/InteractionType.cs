@@ -141,5 +141,6 @@ public enum InteractionType
     EffectBox,
     SnowboardSlope,
     SnowboardJump,
+    CraftingTable,
     MysteryBox
 }

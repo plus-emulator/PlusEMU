@@ -60,10 +60,12 @@ public sealed class CraftingRecipesAvailableComposer(int count, bool complete) :
 
 public sealed class CraftingResultComposer(CraftingProduct? product) : IServerPacket
 {
+    private static readonly CraftingProduct Failed = new("", "", "");
+
     public uint MessageId => ServerPacketHeader.CraftingResultComposer;
     public void Compose(IOutgoingPacket packet)
     {
         packet.WriteBoolean(product is not null);
-        product?.Compose(packet);
+        (product ?? Failed).Compose(packet);
     }
 }

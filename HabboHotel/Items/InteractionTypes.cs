@@ -280,6 +280,8 @@ public static class InteractionTypes
                 return InteractionType.Counter;
             case "camera_picture":
                 return InteractionType.CameraPicture;
+            case "crafting_table":
+                return InteractionType.CraftingTable;
             case "fx_provider":
                 return InteractionType.FxProvider;
             case "exchange":

@@ -142,6 +142,101 @@ public sealed class CraftingDatabaseTests
         Assert.Equal(2, fixture.Connection.ExecuteScalar<int>("SELECT COUNT(*) FROM crafting_recipes"));
     }
 
+    private const string ParityMigration = "Database/Migrations/176_CraftingHabboParity.sql";
+
+    [CraftingDatabaseFact]
+    public void IngredientsLoadInTheirRecipeOrderNotByFurnitureId()
+    {
+        using var fixture = new Fixture();
+        fixture.Connection.Execute("""
+            INSERT INTO crafting_recipes(id,code,product_code,reward_item_id) VALUES(2,'ordered','ordered',102);
+            INSERT INTO crafting_altars_recipes VALUES(100,2);
+            INSERT INTO crafting_recipes_ingredients(recipe_id,item_id,amount,position) VALUES(2,103,2,2),(2,105,1,1),(2,104,1,3);
+            """);
+
+        var recipe = Assert.Single(fixture.Store.Load(100, 7), recipe => recipe.Code == "ordered");
+
+        Assert.Equal([105u, 103u, 104u], recipe.Ingredients.Select(ingredient => ingredient.ItemId));
+        Assert.Equal([105u, 103u, 104u], fixture.Store.Find("ordered", 7)!.Ingredients.Select(ingredient => ingredient.ItemId));
+    }
+
+    [CraftingDatabaseFact]
+    public void TheParityMigrationAddsTheSurvivalistAndSnowmanRecipesInHabboOrder()
+    {
+        using var fixture = new Fixture();
+        fixture.Connection.Execute("INSERT INTO furniture(id,item_name,sprite_id) VALUES " + string.Join(',', SurvivalAndSnowman
+            .Select((row, index) => $"({1000 + index},'{row.Name}',{row.Sprite})")));
+        fixture.Connection.Execute("INSERT INTO furniture(id,item_name,sprite_id,interaction_type) VALUES(1100,'xmas_c20_crafter',1,'default'),(1101,'jungle_c16_worktable',2,'vendingmachine')");
+        var migration = File.ReadAllText(HabbiconPacketTests.Repo(ParityMigration));
+
+        fixture.Connection.Execute(migration);
+        fixture.Connection.Execute(migration);
+
+        var table = Id("survival_c26_craftingtable");
+        var snowman = Id("xmas_c19_snowcraft");
+        Assert.Equal(["crafting_table", "crafting_table", "crafting_table", "vendingmachine"], fixture.Connection.Query<string>(
+            "SELECT interaction_type FROM furniture WHERE id IN (@table,@snowman,1100,1101) ORDER BY id", new { table, snowman }));
+        var survival = fixture.Store.Load(table, 7);
+        Assert.Equal(15, survival.Length);
+        Assert.All(survival, recipe => Assert.False(recipe.Secret));
+        Assert.All(survival, recipe => Assert.Equal(recipe.Code, recipe.ProductCode));
+        Assert.Equal([(Id("survival_c26_stream"), 1), (Id("survival_c26_sleepingbag"), 2), (Id("survival_c26_foodsupplies"), 1)],
+            survival.Single(recipe => recipe.Code == "survival_c26_cave").Ingredients.Select(row => (row.ItemId, row.Amount)));
+        Assert.Equal([(Id("survival_cloth_c26_survivalmask"), 1), (Id("survival_c26_flare"), 1), (Id("survival_c26_rope"), 1)],
+            survival.Single(recipe => recipe.Code == "survival_cloth_c26_survivaljumpsuit").Ingredients.Select(row => (row.ItemId, row.Amount)));
+        Assert.Equal(Id("survival_c26_cave"), survival.Single(recipe => recipe.Code == "survival_c26_cave").RewardId);
+        var snow = fixture.Store.Load(snowman, 7);
+        Assert.Equal(["xmas_c19_angelfigure2", "xmas_c19_dragonfigure2", "xmas_c19_reindeerfigure2", "xmas_c19_robinfigure2", "xmas_c19_unicornfigure2"],
+            snow.Select(recipe => recipe.Code).Order(StringComparer.Ordinal));
+        Assert.Equal([(Id("xmas_c19_angelfigure"), 5), (Id("xmas_c19_jarofgold"), 2)],
+            snow.Single(recipe => recipe.Code == "xmas_c19_angelfigure2").Ingredients.Select(row => (row.ItemId, row.Amount)));
+        Assert.Equal(21, fixture.Connection.ExecuteScalar<int>("SELECT COUNT(*) FROM crafting_recipes"));
+        Assert.Equal(1 + 34 + 8, fixture.Connection.ExecuteScalar<int>("SELECT COUNT(*) FROM crafting_recipes_ingredients"));
+    }
+
+    [CraftingDatabaseFact]
+    public void TheParityMigrationFixesTheAltarRecipesAndAddsTheMissingOnes()
+    {
+        using var fixture = new Fixture();
+        fixture.Connection.Execute("""
+            INSERT INTO furniture(id,item_name,sprite_id) VALUES
+            (900,'hween_c15_altar',8388),(901,'hween14_skelepieces',6178),(902,'deadduck',208),(903,'hween_c15_purecrystal1',8404),
+            (904,'hween_c15_purecrystal2',8363),(905,'duck_afro',5002),(906,'hween13_bldtrail',5300);
+            """);
+        fixture.Connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/45_Crafting.sql")));
+        fixture.Connection.Execute("""
+            INSERT INTO furniture(id,item_name,sprite_id) VALUES(907,'hween14_doll3',6203);
+            """);
+        var migration = File.ReadAllText(HabbiconPacketTests.Repo(ParityMigration));
+
+        fixture.Connection.Execute(migration);
+        fixture.Connection.Execute(migration);
+
+        Assert.Equal("crafting_table", fixture.Connection.ExecuteScalar<string>("SELECT interaction_type FROM furniture WHERE id=900"));
+        var altar = fixture.Store.Load(900, 7);
+        Assert.Equal([(902u, 4), (903u, 1)], altar.Single(recipe => recipe.Code == "hween14_skelepieces").Ingredients.Select(row => (row.ItemId, row.Amount)));
+        Assert.Equal([(902u, 2), (903u, 1)], altar.Single(recipe => recipe.Code == "hween13_bldtrail").Ingredients.Select(row => (row.ItemId, row.Amount)));
+        var doll = altar.Single(recipe => recipe.Code == "hween14_doll3");
+        Assert.True(doll.Secret);
+        Assert.Equal(907u, doll.RewardId);
+        Assert.Equal([(901u, 3), (905u, 1), (904u, 1)], doll.Ingredients.Select(row => (row.ItemId, row.Amount)));
+    }
+
+    private static readonly (string Name, int Sprite)[] SurvivalAndSnowman =
+    [
+        ("survival_c26_craftingtable", 19220), ("survival_c26_cave", 19219), ("survival_c26_stream", 19237), ("survival_c26_sleepingbag", 19235),
+        ("survival_c26_foodsupplies", 19229), ("survival_c26_factionsymbols", 19223), ("survival_c26_stonesymbol", 19236), ("survival_c26_flare", 19225),
+        ("survival_c26_firekit", 19224), ("survival_c26_foliage", 19227), ("survival_c26_rope", 19234), ("survival_c26_foliagefloor", 19228),
+        ("survival_c26_hammock", 19230), ("survival_c26_podium", 19233), ("survival_c26_surveillancetree", 19240), ("survival_c26_treebridge", 19242),
+        ("survival_c26_trap", 19241), ("survival_cloth_c26_braid", 19246), ("survival_cloth_c26_drone", 19248),
+        ("survival_cloth_c26_survivaljumpsuit", 19250), ("survival_cloth_c26_survivalmask", 19251),
+        ("xmas_c19_snowcraft", 10911), ("xmas_c19_angelfigure", 10884), ("xmas_c19_angelfigure2", 10934), ("xmas_c19_jarofgold", 10881),
+        ("xmas_c19_dragonfigure", 10930), ("xmas_c19_dragonfigure2", 10915), ("xmas_c19_reindeerfigure", 10907), ("xmas_c19_reindeerfigure2", 10897),
+        ("xmas_c19_robinfigure", 10902), ("xmas_c19_robinfigure2", 10933), ("xmas_c19_unicornfigure", 10940), ("xmas_c19_unicornfigure2", 10929)
+    ];
+
+    private static uint Id(string name) => (uint)(1000 + Array.FindIndex(SurvivalAndSnowman, row => row.Name == name));
+
     private sealed class Fixture : IDisposable
     {
         private readonly MySqlConnection _admin;
@@ -169,10 +264,11 @@ public sealed class CraftingDatabaseTests
                 Connection.Execute(dump[start..(dump.IndexOf(';', start) + 1)]);
                 Connection.Execute("CREATE TABLE users(id INT PRIMARY KEY); INSERT INTO users VALUES(7),(8)");
                 Connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo("Database/Migrations/45_Crafting.sql")));
+                Connection.Execute(File.ReadAllText(HabbiconPacketTests.Repo(ParityMigration)));
                 Connection.Execute("""
                     INSERT INTO crafting_recipes(id,code,product_code,reward_item_id,secret,remaining) VALUES(1,'test_recipe','test_product',102,TRUE,2);
                     INSERT INTO crafting_altars_recipes VALUES(100,1);
-                    INSERT INTO crafting_recipes_ingredients VALUES(1,101,2);
+                    INSERT INTO crafting_recipes_ingredients(recipe_id,item_id,amount) VALUES(1,101,2);
                     INSERT INTO items(id,user_id,room_id,base_item,extra_data) VALUES
                     (10,7,42,100,''),(20,7,0,101,''),(21,7,0,101,''),(22,8,0,101,''),(23,7,42,101,''),(24,8,0,101,'');
                     """);

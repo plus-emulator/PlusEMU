@@ -97,6 +97,7 @@ public static class ServerPacketHeader
     // Plus-only id, not an official one: furni metadata for the entries above. 5120 is free in the client's and Volt-Renderer's
     // incoming tables.
     public const uint FurnitureMetadataComposer = 5120;
+    public const uint WalkPreviewComposer = 5121;
     public const uint ItemRemoveComposer = 1326;
 
     // Room Session

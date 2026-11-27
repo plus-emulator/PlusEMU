@@ -104710,6 +104710,42 @@ COMMIT;
 SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
 
 --
+-- Dumping data for table `mystery_box_prizes`
+--
+
+SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
+LOCK TABLES `mystery_box_prizes` WRITE;
+/*!40000 ALTER TABLE `mystery_box_prizes` DISABLE KEYS */;
+INSERT INTO `mystery_box_prizes` VALUES
+(1,44661,5),
+(2,44671,5),
+(3,44681,5),
+(4,44691,5),
+(5,44701,5),
+(6,45121,5),
+(7,45131,5),
+(8,45141,5),
+(9,45151,5),
+(10,45161,5),
+(11,45171,5),
+(12,45181,5),
+(13,45191,5),
+(14,45201,1),
+(15,45211,5),
+(16,45221,5),
+(17,45231,5),
+(18,45241,5),
+(19,45251,5),
+(20,45261,5),
+(21,45271,5),
+(22,45291,5),
+(23,45301,5);
+/*!40000 ALTER TABLE `mystery_box_prizes` ENABLE KEYS */;
+UNLOCK TABLES;
+COMMIT;
+SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
+
+--
 -- Dumping data for table `navigator_categories`
 --
 

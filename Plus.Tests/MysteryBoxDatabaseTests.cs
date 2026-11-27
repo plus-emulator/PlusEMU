@@ -42,7 +42,8 @@ public sealed class MysteryBoxDatabaseTests
     [RoomComponentDatabaseFact]
     public void ThePrizeMigrationMatchesExactNamesOnceAndARerunAddsNothing()
     {
-        WithSchema("mystery_box_prizes_", (connection, _) => {
+        WithSchema("mystery_box_prizes_", (connection, _) =>
+        {
             connection.Execute("""
                 INSERT INTO furniture (id, item_name) VALUES
                     (10, 'xmas12_chair'), (11, 'xmas12_fireplace'), (12, 'XMAS12_TABLE'), (13, 'xmas12_chair_other'), (14, 'mystery_box');
@@ -61,7 +62,8 @@ public sealed class MysteryBoxDatabaseTests
     [RoomComponentDatabaseFact]
     public void GivingAKeySavesTheColoursAndLocksTheUsersBoxesThatNoGuestUnlocked()
     {
-        WithSchema("mystery_box_keys_", (connection, connectionString) => {
+        WithSchema("mystery_box_keys_", (connection, connectionString) =>
+        {
             connection.Execute("""
                 INSERT INTO users (id, username) VALUES (7, 'owner'), (8, 'guest');
                 INSERT INTO furniture (id, item_name, interaction_type) VALUES (1, 'mystery_box', 'mystery_box'), (2, 'chair', 'default');

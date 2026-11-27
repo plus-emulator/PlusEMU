@@ -117,6 +117,8 @@ public sealed class DailyTaskManager(IDailyTaskStore store, ISettingsManager set
             return;
         }
 
+        var chainDone = false;
+
         lock (Gate(habbo.Id)) {
             var now = clock.GetUtcNow();
 
@@ -129,6 +131,7 @@ public sealed class DailyTaskManager(IDailyTaskStore store, ISettingsManager set
             }
 
             var completed = false;
+            var completedRegular = false;
 
             foreach (var task in state.Tasks.Where(task => task.Day == state.Day && task.Status == DailyTaskStatus.InProgress).ToList()) {
                 if (!definitions.ById.TryGetValue(task.DefinitionId, out var definition) || !definition.Matches(actionType, parameter)
@@ -143,11 +146,24 @@ public sealed class DailyTaskManager(IDailyTaskStore store, ISettingsManager set
                 task.Progress = plan.Progress;
                 task.Status = plan.Status;
                 completed |= plan.Status == DailyTaskStatus.Completed;
+                completedRegular |= plan.Status == DailyTaskStatus.Completed && !definition.Bonus;
                 session.Send(new DailyTaskUpdatedComposer(task.Id, task.Progress, task.Status, DailyTaskRules.SecondsLeft(task, now)));
             }
 
+            // Each regular task completes once, so the day's chain completes once.
+            chainDone = completedRegular && DailyTaskRules.RegularDone(Today(state, definitions));
+
             if (completed && OpenBonus(habbo.Id, state) is { Count: > 0 } bonus) {
                 session.Send(new DailyTasksAddedComposer(bonus.Select(task => DailyTaskRules.Wire(task, definitions.ById[task.DefinitionId], now)).ToList()));
+            }
+        }
+
+        if (chainDone && mysteryBoxes != null) {
+            try {
+                mysteryBoxes.CompleteDailyQuests(session);
+            }
+            catch (Exception exception) {
+                logger.LogError(exception, "Giving the mystery box key of user {UserId} failed", habbo.Id);
             }
         }
     }
@@ -313,10 +329,8 @@ public sealed class DailyTaskManager(IDailyTaskStore store, ISettingsManager set
     private List<UserDailyTask> OpenBonus(int userId, UserState state)
     {
         var definitions = Volatile.Read(ref _definitions);
-        var today = state.Tasks.Where(task => task.Day == state.Day && definitions.ById.ContainsKey(task.DefinitionId))
-            .Select(task => (task, definitions.ById[task.DefinitionId]));
 
-        if (!DailyTaskRules.BonusDue(today)) {
+        if (!DailyTaskRules.BonusDue(Today(state, definitions))) {
             return [];
         }
 
@@ -337,6 +351,10 @@ public sealed class DailyTaskManager(IDailyTaskStore store, ISettingsManager set
             return [];
         }
     }
+
+    private static IEnumerable<(UserDailyTask Task, DailyTaskDefinition Definition)> Today(UserState state, Definitions definitions) =>
+        state.Tasks.Where(task => task.Day == state.Day && definitions.ById.ContainsKey(task.DefinitionId))
+            .Select(task => (task, definitions.ById[task.DefinitionId]));
 
     /// <summary>Today's tasks (regular first, then the bonus) and the completed tasks of earlier days.</summary>
     private List<DailyTaskWire> Visible(UserState state, DateTimeOffset now)

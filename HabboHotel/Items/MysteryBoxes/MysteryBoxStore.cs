@@ -47,7 +47,24 @@ public sealed class MysteryBoxStore(IDatabase database, IItemDataManager items) 
         return new(ownerPrize, guestPrize);
     }
 
-    public void GiveKey(int userId, MysteryBoxColors colors) => throw new NotImplementedException();
+    public void GiveKey(int userId, MysteryBoxColors colors)
+    {
+        var color = MysteryBoxColor.IndexOf(colors.Box);
+        using var connection = database.Connection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
+        connection.Execute("""
+            INSERT INTO user_mystery_boxes (user_id, box_color, key_color) VALUES (@userId, @box, @key)
+            ON DUPLICATE KEY UPDATE box_color=VALUES(box_color), key_color=VALUES(key_color)
+            """, new { userId, box = colors.Box, key = colors.Key }, transaction);
+        connection.Execute("""
+            UPDATE items i JOIN furniture f ON f.id=i.base_item
+            SET i.extra_data=@locked
+            WHERE i.user_id=@userId AND f.interaction_type='mystery_box' AND i.extra_data NOT IN (@locked, @unlocked)
+            """, new { userId, locked = MysteryBoxColor.Locked(color).ToString(), unlocked = MysteryBoxColor.Unlocked(color).ToString() }, transaction);
+        transaction.Commit();
+    }
 
     private static InventoryItem Insert(System.Data.IDbConnection connection, System.Data.IDbTransaction transaction, int userId, ItemDefinition prize)
     {

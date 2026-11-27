@@ -105,6 +105,7 @@ public sealed class PublicCraftingCatalogMigrationTests
     {
         var start = dump.IndexOf($"CREATE TABLE `{table}` (", StringComparison.Ordinal);
         var end = dump.IndexOf(';', dump.IndexOf("ENGINE=", start, StringComparison.Ordinal));
+
         return dump[start..(end + 1)];
     }
 }
